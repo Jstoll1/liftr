@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liftr</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- LOGIN SCREEN -->
+  <main id="login-screen" class="screen">
+    <div class="login-wrap">
+      <div class="brand">
+        <span class="brand-mark">LIFTR</span>
+        <span class="brand-sub">who's training today?</span>
+      </div>
+      <div class="user-picker">
+        <button class="user-card" data-user="jessica">
+          <span class="user-avatar" style="--accent:#ff5da2">J</span>
+          <span class="user-name">Jessica</span>
+        </button>
+        <button class="user-card" data-user="jake">
+          <span class="user-avatar" style="--accent:#4fc3ff">J</span>
+          <span class="user-name">Jake</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- DASHBOARD SCREEN -->
+  <main id="dashboard-screen" class="screen hidden">
+    <header class="topbar">
+      <button id="switch-user" class="link-btn" aria-label="Switch user">&larr; Switch</button>
+      <div id="clock" class="clock">
+        <span id="clock-date" class="clock-date"></span>
+        <span id="clock-time" class="clock-time"></span>
+      </div>
+      <div id="streak-badge" class="streak-badge hidden">
+        <span id="streak-count">0</span> day streak
+      </div>
+    </header>
+
+    <section class="goal-card">
+      <span id="goal-avatar" class="goal-avatar">J</span>
+      <div class="goal-copy">
+        <span id="goal-username" class="goal-username"></span>
+        <span id="goal-label" class="goal-label">GOAL</span>
+        <span id="goal-text" class="goal-text"></span>
+      </div>
+    </section>
+
+    <section id="session-section" class="session-section">
+      <span class="section-title">Today's Session</span>
+
+      <article id="session-card" class="session-card">
+        <div class="session-card-head">
+          <span id="session-icon" class="session-icon"></span>
+          <div class="session-head-copy">
+            <span id="session-name" class="session-name"></span>
+            <span id="session-tagline" class="session-tagline"></span>
+          </div>
+          <span id="session-status" class="session-status hidden">Done</span>
+        </div>
+
+        <ul id="session-exercises" class="session-exercises"></ul>
+
+        <button id="log-session-btn" class="primary-btn">Start Session</button>
+      </article>
+
+      <div class="up-next">
+        <span class="up-next-label">Up next</span>
+        <span id="up-next-name" class="up-next-name"></span>
+      </div>
+    </section>
+
+    <section class="history-section">
+      <span class="section-title">Recent Activity</span>
+      <ul id="history-list" class="history-list"></ul>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
