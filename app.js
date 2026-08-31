@@ -798,8 +798,12 @@
   function getLastWeight(user, exerciseName) {
     const history = getHistory(user);
     for (let i = history.length - 1; i >= 0; i--) {
-      const w = history[i].performance?.[exerciseName]?.weight;
-      if (w != null) return w;
+      const sets = history[i].performance?.[exerciseName]?.sets;
+      if (!sets) continue;
+      // Anchor on the last set they actually logged a weight for — usually
+      // their heaviest/working weight for the day.
+      const withWeight = [...sets].reverse().find((s) => s.weight != null);
+      if (withWeight) return withWeight.weight;
     }
     return null;
   }
@@ -816,9 +820,12 @@
     exercises.forEach((ex) => {
       const setCount = parseSetCount(ex.detail);
       const target = parseTargetReps(ex.detail);
+      const seedWeight = usesWeight(ex) ? getLastWeight(user, ex.name) : null;
       logs[ex.name] = {
-        sets: Array.from({ length: setCount }, () => ({ target, actual: target, touched: false })),
-        weight: usesWeight(ex) ? getLastWeight(user, ex.name) : null,
+        // Weight lives per set, not per exercise — sets often ramp
+        // (e.g. 135/155/175/185), so each one gets its own adjustable value,
+        // all seeded from wherever the athlete left off last time.
+        sets: Array.from({ length: setCount }, () => ({ target, actual: target, weight: seedWeight, touched: false })),
         flag: "",
       };
     });
@@ -915,35 +922,50 @@
     // Real image missing (404) — quietly fall back to the icon tile underneath.
     head.querySelector(".wex-img").addEventListener("error", (e) => {
       e.target.style.display = "none";
+      e.target.nextElementSibling.style.display = "flex";
     });
 
     const body = document.createElement("div");
     body.className = "wex-body hidden";
 
+    const showWeight = usesWeight(ex);
+
+    // Weight lives inside each set row (ramping sets are the norm, not the
+    // exception), alongside either a rep stepper or a simple complete-toggle.
     const setsHtml = log.sets
       .map((s, i) => {
-        if (s.target != null) {
-          return `
-            <div class="wex-set-row" data-set-index="${i}">
-              <span class="wex-set-label">Set ${i + 1} <span class="wex-set-target">· target ${s.target}</span></span>
-              <div class="wex-stepper">
-                <button type="button" class="wex-step-btn" data-dir="-1">−</button>
-                <span class="wex-step-value">${s.actual}</span>
-                <button type="button" class="wex-step-btn" data-dir="1">+</button>
-              </div>
-            </div>
-          `;
-        }
+        const weightControl = showWeight
+          ? `<div class="wex-mini-stepper" data-role="weight">
+               <button type="button" class="wex-mini-btn" data-dir="-1">−</button>
+               <input type="number" inputmode="numeric" pattern="[0-9]*" class="wex-mini-input" placeholder="—" value="${s.weight ?? ""}" />
+               <span class="wex-mini-unit">lb</span>
+               <button type="button" class="wex-mini-btn" data-dir="1">+</button>
+             </div>`
+          : "";
+        const repsControl =
+          s.target != null
+            ? `<div class="wex-mini-stepper" data-role="reps">
+                 <button type="button" class="wex-mini-btn" data-dir="-1">−</button>
+                 <span class="wex-mini-value">${s.actual}</span>
+                 <span class="wex-mini-unit">reps</span>
+                 <button type="button" class="wex-mini-btn" data-dir="1">+</button>
+               </div>`
+            : `<button type="button" class="wex-toggle-btn">Mark Done</button>`;
+        const label =
+          s.target != null
+            ? `Set ${i + 1} <span class="wex-set-target">· target ${s.target}</span>`
+            : log.sets.length > 1
+              ? `Round ${i + 1}`
+              : "This one";
+
         return `
           <div class="wex-set-row" data-set-index="${i}">
-            <span class="wex-set-label">${log.sets.length > 1 ? `Round ${i + 1}` : "This one"}</span>
-            <button type="button" class="wex-toggle-btn">Mark Done</button>
+            <span class="wex-set-label">${label}</span>
+            <div class="wex-set-controls">${weightControl}${repsControl}</div>
           </div>
         `;
       })
       .join("");
-
-    const showWeight = usesWeight(ex);
 
     body.innerHTML = `
       <div class="wex-body-image">
@@ -952,19 +974,6 @@
       </div>
       ${ex.howTo ? `<p class="wex-howto">${escapeHtml(ex.howTo)}</p>` : ""}
       ${ex.tip ? `<p class="wex-tip">💡 ${escapeHtml(ex.tip)}</p>` : ""}
-      ${
-        showWeight
-          ? `<div class="wex-weight-row">
-               <span class="wex-weight-label">Weight</span>
-               <div class="wex-stepper">
-                 <button type="button" class="wex-step-btn" data-weight-dir="-1">−</button>
-                 <input type="number" inputmode="numeric" class="wex-weight-input" placeholder="—" value="${log.weight ?? ""}" />
-                 <span class="wex-weight-unit">lbs</span>
-                 <button type="button" class="wex-step-btn" data-weight-dir="1">+</button>
-               </div>
-             </div>`
-          : ""
-      }
       <div class="wex-sets">${setsHtml}</div>
       <input type="text" class="wex-flag-input" placeholder="Anything to flag on this one? (optional)" maxlength="140" />
       <div class="wex-swap-row">
@@ -975,18 +984,42 @@
     // Real image missing (404) — quietly fall back to the icon tile underneath.
     body.querySelector(".wex-img-large").addEventListener("error", (e) => {
       e.target.style.display = "none";
+      e.target.nextElementSibling.style.display = "flex";
     });
 
     body.querySelectorAll(".wex-set-row").forEach((row) => {
       const idx = Number(row.dataset.setIndex);
       const set = log.sets[idx];
 
-      const stepper = row.querySelector(".wex-stepper");
-      if (stepper) {
-        const valueEl = stepper.querySelector(".wex-step-value");
-        stepper.querySelectorAll(".wex-step-btn").forEach((stepBtn) => {
-          stepBtn.addEventListener("click", () => {
-            const dir = Number(stepBtn.dataset.dir);
+      const weightStepper = row.querySelector('.wex-mini-stepper[data-role="weight"]');
+      if (weightStepper) {
+        const weightInput = weightStepper.querySelector(".wex-mini-input");
+        const setWeight = (value) => {
+          set.weight = value;
+          set.touched = true;
+          weightInput.value = value ?? "";
+          row.classList.add("touched");
+        };
+        weightInput.addEventListener("input", (e) => {
+          const parsed = e.target.value === "" ? null : Number(e.target.value);
+          set.weight = Number.isFinite(parsed) ? parsed : null;
+          set.touched = true;
+          row.classList.add("touched");
+        });
+        weightStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const dir = Number(btn.dataset.dir);
+            setWeight(Math.max(0, (set.weight ?? 0) + dir * 5));
+          });
+        });
+      }
+
+      const repsStepper = row.querySelector('.wex-mini-stepper[data-role="reps"]');
+      if (repsStepper) {
+        const valueEl = repsStepper.querySelector(".wex-mini-value");
+        repsStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const dir = Number(btn.dataset.dir);
             set.actual = Math.max(0, (set.actual ?? 0) + dir);
             set.touched = true;
             valueEl.textContent = set.actual;
@@ -997,32 +1030,16 @@
       }
 
       const toggleBtn = row.querySelector(".wex-toggle-btn");
-      toggleBtn.addEventListener("click", () => {
-        set.touched = !set.touched;
-        set.actual = set.touched ? 1 : null;
-        toggleBtn.classList.toggle("done", set.touched);
-        toggleBtn.textContent = set.touched ? "✓ Done" : "Mark Done";
-        row.classList.toggle("touched", set.touched);
-      });
-    });
-
-    if (showWeight) {
-      const weightInput = body.querySelector(".wex-weight-input");
-      const setWeight = (value) => {
-        log.weight = value;
-        weightInput.value = value ?? "";
-      };
-      weightInput.addEventListener("input", (e) => {
-        const parsed = e.target.value === "" ? null : Number(e.target.value);
-        log.weight = Number.isFinite(parsed) ? parsed : null;
-      });
-      body.querySelectorAll(".wex-step-btn[data-weight-dir]").forEach((stepBtn) => {
-        stepBtn.addEventListener("click", () => {
-          const dir = Number(stepBtn.dataset.weightDir);
-          setWeight(Math.max(0, (log.weight ?? 0) + dir * 5));
+      if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+          set.touched = !set.touched;
+          set.actual = set.touched ? 1 : null;
+          toggleBtn.classList.toggle("done", set.touched);
+          toggleBtn.textContent = set.touched ? "✓ Done" : "Mark Done";
+          row.classList.toggle("touched", set.touched);
         });
-      });
-    }
+      }
+    });
 
     body.querySelector(".wex-flag-input").addEventListener("input", (e) => {
       log.flag = e.target.value;
@@ -1073,15 +1090,12 @@
     const lines = [];
     Object.entries(logs).forEach(([name, log]) => {
       const touchedSets = log.sets.filter((s) => s.touched);
-      const weightPart = log.weight != null ? `${log.weight} lbs` : "";
       if (touchedSets.length > 0) {
-        const repsPart =
-          touchedSets[0].target != null
-            ? `${touchedSets.map((s) => `${s.actual}/${s.target}`).join(", ")} reps`
-            : `completed ${touchedSets.length}/${log.sets.length}`;
-        lines.push(`${name}: ${[weightPart, repsPart].filter(Boolean).join(", ")}`);
-      } else if (weightPart) {
-        lines.push(`${name}: ${weightPart}`);
+        const parts = touchedSets.map((s) => {
+          const reps = s.target != null ? `${s.actual}/${s.target}` : s.actual ? "done" : "skipped";
+          return s.weight != null ? `${s.weight}lb×${reps}` : reps;
+        });
+        lines.push(`${name}: ${parts.join(", ")}`);
       }
       if (log.flag && log.flag.trim()) {
         lines.push(`${name} note: "${log.flag.trim()}"`);
@@ -1096,8 +1110,8 @@
   function extractPerformance(logs) {
     const performance = {};
     Object.entries(logs).forEach(([name, log]) => {
-      if (log.weight != null || log.sets.some((s) => s.touched)) {
-        performance[name] = { weight: log.weight, sets: log.sets.map((s) => ({ target: s.target, actual: s.actual })) };
+      if (log.sets.some((s) => s.touched)) {
+        performance[name] = { sets: log.sets.map((s) => ({ target: s.target, actual: s.actual, weight: s.weight })) };
       }
     });
     return performance;
