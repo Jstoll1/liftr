@@ -10,3 +10,7 @@ Static fitness app. Open `index.html` to view the interface.
 - `assistant/`: plans and behavior specifications for the future in-app assistant; no runtime integration yet.
 
 See [the collaboration guide](COLLABORATION.md) for ownership and delivery steps.
+
+## Image library
+
+Browse the [20-image leg-day collection](assets/images/leg-day/README.md), including its visual catalog and generation prompts. See the [collection roadmap](assets/images/README.md) for planned additions.
