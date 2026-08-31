@@ -7,7 +7,7 @@
   // Fill this in with your deployed Cloudflare Worker URL once the AI
   // backend is live (see worker/README.md). Left empty, the app falls back
   // to the local rule-based planner below — everything still works without it.
-  const AI_ENDPOINT = "";
+  const AI_ENDPOINT = "https://liftr-ai.jhs797.workers.dev";
   const AI_TIMEOUT_MS = 9000;
 
   // Rotation order for the training split. "Custom" sessions sit outside
