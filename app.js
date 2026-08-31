@@ -1,8 +1,14 @@
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "liftr_history_v2";
+  const STORAGE_KEY = "liftr_history_v3";
   const SOUND_KEY = "liftr_sound_enabled";
+
+  // Fill this in with your deployed Cloudflare Worker URL once the AI
+  // backend is live (see worker/README.md). Left empty, the app falls back
+  // to the local rule-based planner below — everything still works without it.
+  const AI_ENDPOINT = "https://liftr-ai.jhs797.workers.dev";
+  const AI_TIMEOUT_MS = 9000;
 
   // Rotation order for the training split. "Custom" sessions sit outside
   // this rotation entirely — they don't count as a rotation step.
@@ -265,13 +271,66 @@
   }
 
   function getEntryExercises(user, entry) {
-    return entry.splitKey === "custom" ? entry.exercises : buildWorkoutPlan(user, entry.splitKey, entry);
+    if (Array.isArray(entry.exercises)) return entry.exercises;
+    return buildWorkoutPlan(user, entry.splitKey, entry); // backward-compat for older logged entries
   }
 
   function buildTags({ minutes, energy, partner }) {
     const tags = [`${minutes} MIN`, ENERGY_LABEL[energy].toUpperCase()];
     if (partner) tags.push("W/ PARTNER");
     return tags;
+  }
+
+  // Everything the AI (or the local fallback) is allowed to choose from —
+  // the base list plus the finisher/partner bonus moves, all up for grabs
+  // based on today's actual context instead of always-on rules.
+  function buildCandidatePool(user, splitKey) {
+    const pool = [...SPLIT_LIBRARY[splitKey].exercises[user]];
+    const finisher = FINISHERS[splitKey]?.[user];
+    const partnerExtra = PARTNER_EXTRAS[splitKey]?.[user];
+    if (finisher) pool.push(finisher);
+    if (partnerExtra) pool.push(partnerExtra);
+    return pool;
+  }
+
+  // Asks the Cloudflare Worker (which holds the OpenAI key) to pick today's
+  // exercises from the real candidate pool. Falls back to the local
+  // rule-based planner on any failure, timeout, or if no endpoint is set.
+  async function computePlan(user, splitKey, checkIn) {
+    if (AI_ENDPOINT) {
+      try {
+        const persona = PERSONAS[user];
+        const meta = SPLIT_LIBRARY[splitKey];
+        const res = await fetch(AI_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            persona: { name: persona.name, goal: persona.goal },
+            split: { key: splitKey, name: meta.name, tagline: meta.tagline },
+            minutes: checkIn.minutes,
+            energy: checkIn.energy,
+            partner: Boolean(checkIn.partner),
+            candidates: buildCandidatePool(user, splitKey),
+          }),
+          signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const validPlan =
+            Array.isArray(data.exercises) &&
+            data.exercises.length > 0 &&
+            data.exercises.every((e) => e && typeof e.name === "string" && typeof e.detail === "string");
+          if (validPlan) {
+            return { exercises: data.exercises, reason: typeof data.reason === "string" ? data.reason : null, source: "ai" };
+          }
+        }
+      } catch {
+        // network error, timeout, or malformed response — fall through to local plan
+      }
+    }
+
+    return { exercises: buildWorkoutPlan(user, splitKey, checkIn), reason: null, source: "local" };
   }
 
   // ---------- retro guitar riff synth ----------
@@ -380,8 +439,9 @@
   // ---------- state ----------
 
   let currentUser = null;
-  let checkInState = { minutes: 30, energy: "medium", partner: "no" };
+  let checkInState = { minutes: 30, energy: "medium", partner: false };
   let selectedSplitKey = null; // split chosen on the select screen, awaiting log
+  let previewPlan = null; // { exercises, reason, source } computed for the current preview
   let customSelection = new Map(); // exerciseId -> { name, detail }
 
   // ---------- screen helpers ----------
@@ -445,6 +505,38 @@
     el.innerHTML = tags.map((t) => `<span class="tag-chip">${t}</span>`).join("");
   }
 
+  function renderAiNote(text) {
+    const el = document.getElementById("session-ai-note");
+    if (!text) {
+      el.classList.add("hidden");
+      el.textContent = "";
+      return;
+    }
+    el.classList.remove("hidden");
+    el.textContent = `🤖 ${text}`;
+  }
+
+  // Shown while computePlan() is awaiting the AI (or immediately resolving
+  // the local fallback) — keeps the screen from looking frozen mid-fetch.
+  function renderSessionLoading(splitKey) {
+    const meta = getSplitMeta(splitKey);
+    document.getElementById("session-icon").textContent = meta.icon;
+    document.getElementById("session-name").textContent = meta.name;
+    document.getElementById("session-tagline").textContent = "Personalizing your session…";
+    document.getElementById("session-status").classList.add("hidden");
+    renderTags(null);
+    renderAiNote(null);
+
+    const list = document.getElementById("session-exercises");
+    list.innerHTML = '<li class="skeleton-row"></li><li class="skeleton-row"></li><li class="skeleton-row"></li>';
+
+    const btn = document.getElementById("log-session-btn");
+    btn.textContent = "Loading…";
+    btn.disabled = true;
+    btn.onclick = null;
+    document.getElementById("back-to-options").classList.remove("hidden");
+  }
+
   function renderSessionScreen(user, history) {
     const done = loggedToday(history);
     const entry = done ? history[history.length - 1] : null;
@@ -462,23 +554,36 @@
     if (done) {
       renderExerciseList(getEntryExercises(user, entry));
       renderTags(buildTags(entry));
+      renderAiNote(entry.source === "ai" ? entry.reason : null);
       statusEl.classList.remove("hidden");
       btn.textContent = "Session Logged ✓";
       btn.disabled = true;
       btn.onclick = null;
       backLink.classList.add("hidden");
-    } else {
-      renderExerciseList(buildWorkoutPlan(user, splitKey, checkInState));
-      renderTags(buildTags(checkInState));
-      statusEl.classList.add("hidden");
-      btn.textContent = "Start Session";
-      btn.disabled = false;
-      btn.onclick = () => {
-        logSession(user, splitKey, checkInState);
-        renderSessionScreen(user, getHistory(user));
-      };
-      backLink.classList.remove("hidden");
+      return;
     }
+
+    if (!previewPlan) {
+      renderSessionLoading(splitKey);
+      return;
+    }
+
+    renderExerciseList(previewPlan.exercises);
+    renderTags(buildTags(checkInState));
+    renderAiNote(previewPlan.source === "ai" ? previewPlan.reason : null);
+    statusEl.classList.add("hidden");
+    btn.textContent = "Start Session";
+    btn.disabled = false;
+    btn.onclick = () => {
+      logSession(user, splitKey, {
+        ...checkInState,
+        exercises: previewPlan.exercises,
+        reason: previewPlan.reason,
+        source: previewPlan.source,
+      });
+      renderSessionScreen(user, getHistory(user));
+    };
+    backLink.classList.remove("hidden");
   }
 
   function renderHistory(history) {
@@ -536,6 +641,20 @@
     renderStreak(history);
   }
 
+  // Navigates to the session screen for a freshly chosen split, shows a
+  // loading state, then fills in the AI (or local fallback) plan once ready.
+  async function selectSplitAndPreview(user, splitKey) {
+    selectedSplitKey = splitKey;
+    previewPlan = null;
+    showScreen("session-screen");
+    renderSessionFull(user);
+
+    const plan = await computePlan(user, splitKey, checkInState);
+    if (selectedSplitKey !== splitKey) return; // user navigated away while we were waiting
+    previewPlan = plan;
+    renderSessionScreen(user, getHistory(user));
+  }
+
   // ---------- rendering: check-in screen ----------
 
   function selectChip(row, value) {
@@ -545,11 +664,11 @@
   }
 
   function renderCheckIn(user) {
-    checkInState = { minutes: 30, energy: "medium", partner: "no" };
+    checkInState = { minutes: 30, energy: "medium", partner: false };
     document.getElementById("checkin-name").textContent = PERSONAS[user].name;
     selectChip(document.getElementById("checkin-energy"), checkInState.energy);
     selectChip(document.getElementById("checkin-minutes"), checkInState.minutes);
-    selectChip(document.getElementById("checkin-partner"), checkInState.partner);
+    selectChip(document.getElementById("checkin-partner"), checkInState.partner ? "yes" : "no");
   }
 
   function initCheckIn() {
@@ -560,7 +679,9 @@
         if (!chip) return;
         const key = row.dataset.option;
         const raw = chip.dataset.value;
-        checkInState[key] = key === "minutes" ? Number(raw) : raw;
+        // partner's chip values are "yes"/"no" strings, but a non-empty
+        // string is always truthy — store it as a real boolean instead.
+        checkInState[key] = key === "minutes" ? Number(raw) : key === "partner" ? raw === "yes" : raw;
         selectChip(row, raw);
       });
     });
@@ -599,12 +720,6 @@
       card.onclick = () => selectSplitAndPreview(user, key);
       altContainer.appendChild(card);
     });
-  }
-
-  function selectSplitAndPreview(user, splitKey) {
-    selectedSplitKey = splitKey;
-    showScreen("session-screen");
-    renderSessionFull(user);
   }
 
   function initSelectScreen() {
@@ -674,7 +789,6 @@
       if (customSelection.size === 0) return;
       logSession(currentUser, "custom", {
         ...checkInState,
-        partner: checkInState.partner === "yes",
         exercises: Array.from(customSelection.values()),
       });
       showScreen("session-screen");
