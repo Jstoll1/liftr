@@ -295,9 +295,233 @@ html, body {
   45% { transform: scale(1); text-shadow: 0 0 10px currentColor, 0 0 22px currentColor; }
 }
 
-/* ---------- DASHBOARD ---------- */
+/* ---------- SHARED PANEL (check-in / select / custom) ---------- */
 
-#dashboard-screen {
+.panel-wrap {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 0 60px;
+  animation: rise 0.4s ease both;
+}
+
+.panel-wrap.wide {
+  max-width: 560px;
+}
+
+.top-link {
+  align-self: flex-start;
+  margin-bottom: 4px;
+}
+
+.panel-heading {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.panel-heading-accent {
+  color: var(--accent);
+}
+
+.panel-subtext {
+  margin-top: -8px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* ---------- RECOMMENDED / ALTERNATIVE CARDS ---------- */
+
+.rec-card {
+  position: relative;
+  text-align: left;
+  background: var(--bg-card);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 22px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  color: var(--text);
+  box-shadow: 0 0 30px -10px var(--accent);
+  transition: transform 0.1s ease;
+}
+
+.rec-card:hover { transform: translateY(-2px); }
+
+.rec-badge {
+  align-self: flex-start;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--bg);
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 5px 10px;
+}
+
+.rec-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rec-icon {
+  font-size: 32px;
+  filter: drop-shadow(0 0 8px rgba(255, 207, 63, 0.5));
+}
+
+.rec-head-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rec-name {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.rec-tagline {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.rec-reason {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.rec-cta {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+}
+
+.alt-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.alt-card {
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  color: var(--text);
+  transition: border-color 0.1s ease, transform 0.1s ease;
+}
+
+.alt-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.alt-icon { font-size: 20px; }
+.alt-name { font-size: 12px; font-weight: 700; }
+.alt-tagline { font-size: 10px; color: var(--text-dim); line-height: 1.3; }
+
+.custom-cta {
+  margin-top: 4px;
+}
+
+/* ---------- CUSTOM BUILDER ---------- */
+
+.custom-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.custom-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.custom-group-heading {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+}
+
+.custom-ex-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-ex-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.custom-ex-row:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-card));
+}
+
+.custom-ex-row input {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.custom-ex-name { flex: 1; font-weight: 600; }
+.custom-ex-detail { color: var(--gold); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.custom-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0 4px;
+  background: linear-gradient(180deg, transparent, var(--bg) 30%);
+}
+
+.custom-count {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.custom-footer .primary-btn {
+  flex: 1;
+}
+
+.back-to-options {
+  align-self: center;
+}
+
+/* ---------- SESSION SCREEN ---------- */
+
+#session-screen {
   align-items: flex-start;
   justify-content: center;
   display: flex;
@@ -582,23 +806,6 @@ html, body {
 }
 .ghost-btn:hover { color: var(--text); border-color: var(--text-dim); }
 
-.up-next {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
-.up-next-label {
-  color: var(--text-dim);
-}
-
-.up-next-name {
-  font-weight: 700;
-  color: var(--accent);
-}
-
 .history-list {
   list-style: none;
   margin: 0;
@@ -631,47 +838,7 @@ html, body {
   padding: 8px 4px;
 }
 
-/* ---------- CUSTOMIZE MODAL ---------- */
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  background: rgba(5, 0, 12, 0.82);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  animation: flashIn 0.2s ease both;
-}
-
-.modal-card {
-  width: 100%;
-  max-width: 420px;
-  background: var(--bg-card);
-  border: 2px solid var(--accent);
-  border-radius: var(--radius);
-  padding: 24px 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  box-shadow: 0 0 40px -6px var(--accent);
-  animation: rise 0.3s ease both;
-}
-
-.modal-title {
-  font-family: var(--font-display);
-  font-size: 14px;
-  letter-spacing: 1px;
-  color: var(--accent);
-  text-shadow: 0 0 10px var(--accent);
-}
-
-.modal-subtitle {
-  margin-top: -12px;
-  font-size: 12px;
-  color: var(--text-dim);
-}
+/* ---------- SHARED OPTION CHIPS (check-in) ---------- */
 
 .option-group {
   display: flex;
@@ -717,17 +884,6 @@ html, body {
   box-shadow: 0 0 12px -2px var(--accent);
 }
 
-.modal-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 4px;
-}
-
-.modal-actions .primary-btn,
-.modal-actions .ghost-btn {
-  flex: 1;
-}
-
 @keyframes rise {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -755,4 +911,5 @@ html, body {
 @media (max-width: 400px) {
   .user-picker { gap: 10px; }
   .goal-card { padding: 16px; }
+  .alt-grid { grid-template-columns: 1fr; }
 }

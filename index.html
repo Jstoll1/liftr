@@ -49,8 +49,89 @@
     </div>
   </main>
 
-  <!-- DASHBOARD SCREEN -->
-  <main id="dashboard-screen" class="screen hidden">
+  <!-- DAILY CHECK-IN SCREEN -->
+  <main id="checkin-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="checkin-switch" class="link-btn top-link">&larr; SWITCH</button>
+      <span class="section-title">Today's Check-In</span>
+      <h2 class="panel-heading">How are we feeling, <span id="checkin-name" class="panel-heading-accent"></span>?</h2>
+      <span class="panel-subtext">This tunes today's recommendation and workload.</span>
+
+      <div class="option-group">
+        <span class="option-label">⚡ Energy Level</span>
+        <div id="checkin-energy" class="option-row" data-option="energy">
+          <button class="chip" data-value="low">Low</button>
+          <button class="chip" data-value="medium">Medium</button>
+          <button class="chip" data-value="high">High</button>
+        </div>
+      </div>
+
+      <div class="option-group">
+        <span class="option-label">⏱ Time You've Got</span>
+        <div id="checkin-minutes" class="option-row" data-option="minutes">
+          <button class="chip" data-value="15">15 min</button>
+          <button class="chip" data-value="30">30 min</button>
+          <button class="chip" data-value="45">45 min</button>
+          <button class="chip" data-value="60">60 min</button>
+        </div>
+      </div>
+
+      <div class="option-group">
+        <span class="option-label">🤝 Got a Partner Today?</span>
+        <div id="checkin-partner" class="option-row" data-option="partner">
+          <button class="chip" data-value="yes">Yes</button>
+          <button class="chip" data-value="no">No</button>
+        </div>
+      </div>
+
+      <button id="checkin-submit" class="primary-btn">Submit Check-In</button>
+    </div>
+  </main>
+
+  <!-- WORKOUT SELECTION SCREEN -->
+  <main id="select-screen" class="screen hidden">
+    <div class="panel-wrap wide">
+      <button id="select-switch" class="link-btn top-link">&larr; SWITCH</button>
+      <span class="section-title">Recommended For You</span>
+
+      <button id="recommended-card" class="rec-card">
+        <span class="rec-badge">TOP PICK</span>
+        <div class="rec-head">
+          <span id="rec-icon" class="rec-icon"></span>
+          <div class="rec-head-copy">
+            <span id="rec-name" class="rec-name"></span>
+            <span id="rec-tagline" class="rec-tagline"></span>
+          </div>
+        </div>
+        <p id="rec-reason" class="rec-reason"></p>
+        <span class="rec-cta">Select This Workout &rarr;</span>
+      </button>
+
+      <span class="section-title">Or Choose Another</span>
+      <div id="alt-options" class="alt-grid"></div>
+
+      <button id="custom-workout-btn" class="ghost-btn custom-cta">🛠 Create Custom Workout</button>
+    </div>
+  </main>
+
+  <!-- CUSTOM WORKOUT BUILDER SCREEN -->
+  <main id="custom-screen" class="screen hidden">
+    <div class="panel-wrap wide">
+      <button id="custom-back" class="link-btn top-link">&larr; BACK TO OPTIONS</button>
+      <span class="section-title">Build Your Own</span>
+      <span class="panel-subtext">Mix and match exercises from every category.</span>
+
+      <div id="custom-groups" class="custom-groups"></div>
+
+      <div class="custom-footer">
+        <span id="custom-count" class="custom-count">0 selected</span>
+        <button id="custom-start-btn" class="primary-btn" disabled>Start Custom Session</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- SESSION SCREEN (preview before logging, or today's completed session) -->
+  <main id="session-screen" class="screen hidden">
     <header class="topbar">
       <button id="switch-user" class="link-btn" aria-label="Switch user">&larr; SWITCH</button>
       <div id="clock" class="clock">
@@ -91,10 +172,7 @@
         <button id="log-session-btn" class="primary-btn">Start Session</button>
       </article>
 
-      <div class="up-next">
-        <span class="up-next-label">Up next</span>
-        <span id="up-next-name" class="up-next-name"></span>
-      </div>
+      <button id="back-to-options" class="link-btn back-to-options hidden">&larr; Not feeling it? Back to options</button>
     </section>
 
     <section class="history-section">
@@ -102,46 +180,6 @@
       <ul id="history-list" class="history-list"></ul>
     </section>
   </main>
-
-  <!-- CUSTOMIZE MODAL -->
-  <div id="customize-modal" class="modal-overlay hidden">
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <span id="modal-title" class="modal-title">BUILD TODAY'S SESSION</span>
-      <span id="modal-subtitle" class="modal-subtitle"></span>
-
-      <div class="option-group">
-        <span class="option-label">⏱ Amount of Time</span>
-        <div id="option-time" class="option-row" data-option="minutes">
-          <button class="chip" data-value="15">15 min</button>
-          <button class="chip" data-value="30">30 min</button>
-          <button class="chip" data-value="45">45 min</button>
-          <button class="chip" data-value="60">60 min</button>
-        </div>
-      </div>
-
-      <div class="option-group">
-        <span class="option-label">⚡ Energy Level</span>
-        <div id="option-energy" class="option-row" data-option="energy">
-          <button class="chip" data-value="low">Low</button>
-          <button class="chip" data-value="medium">Medium</button>
-          <button class="chip" data-value="high">High</button>
-        </div>
-      </div>
-
-      <div class="option-group">
-        <span class="option-label">🤝 Got a Partner?</span>
-        <div id="option-partner" class="option-row" data-option="partner">
-          <button class="chip" data-value="yes">Yes</button>
-          <button class="chip" data-value="no">No</button>
-        </div>
-      </div>
-
-      <div class="modal-actions">
-        <button id="modal-cancel" class="ghost-btn">Cancel</button>
-        <button id="modal-confirm" class="primary-btn">Lock In &amp; Start</button>
-      </div>
-    </div>
-  </div>
 
   <script src="app.js"></script>
 </body>

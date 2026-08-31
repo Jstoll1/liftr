@@ -2,12 +2,11 @@
   "use strict";
 
   const STORAGE_KEY = "liftr_history_v2";
-  const CURRENT_USER_KEY = "liftr_current_user";
   const SOUND_KEY = "liftr_sound_enabled";
 
-  // Rotation order for the training split. "Rest" is inferred separately
-  // (same-day completion), it isn't a step in the rotation itself.
-  const SPLIT_ORDER = ["chest-back", "legs", "cardio"];
+  // Rotation order for the training split. "Custom" sessions sit outside
+  // this rotation entirely — they don't count as a rotation step.
+  const SPLIT_ORDER = ["chest-back", "legs", "cardio", "core-mobility"];
 
   const PERSONAS = {
     jessica: {
@@ -84,7 +83,32 @@
         ],
       },
     },
+    "core-mobility": {
+      name: "Core & Mobility",
+      icon: "🧘",
+      tagline: "Light movement & recovery",
+      exercises: {
+        jessica: [
+          { name: "Dead Bug", detail: "3 x 12" },
+          { name: "Hip Flexor Stretch Flow", detail: "5 min" },
+          { name: "Side Plank", detail: "3 x 30s/side" },
+          { name: "Cat-Cow Flow", detail: "5 min" },
+        ],
+        jake: [
+          { name: "Hanging Leg Raise", detail: "3 x 12" },
+          { name: "90/90 Hip Flow", detail: "5 min" },
+          { name: "Weighted Plank", detail: "3 x 45s" },
+          { name: "Thoracic Rotation Flow", detail: "5 min" },
+        ],
+      },
+    },
   };
+
+  const CUSTOM_META = { name: "Custom Session", icon: "🛠", tagline: "Your own mix" };
+
+  function getSplitMeta(splitKey) {
+    return SPLIT_LIBRARY[splitKey] || CUSTOM_META;
+  }
 
   // Bonus exercise appended when energy is high and time allows it.
   const FINISHERS = {
@@ -99,6 +123,10 @@
     cardio: {
       jessica: { name: "Finisher: All-Out Sprint", detail: "6 x 30s" },
       jake: { name: "Finisher: Assault Bike Sprint", detail: "5 x 20s" },
+    },
+    "core-mobility": {
+      jessica: { name: "Finisher: Mountain Climbers", detail: "3 x 20" },
+      jake: { name: "Finisher: Bear Crawl", detail: "3 x 20m" },
     },
   };
 
@@ -115,6 +143,10 @@
     cardio: {
       jessica: { name: "Partner Medicine Ball Circuit", detail: "10 min" },
       jake: { name: "Partner Relay Sprints", detail: "6 x 100m" },
+    },
+    "core-mobility": {
+      jessica: { name: "Partner Plank Hand-Slap", detail: "3 x 20s" },
+      jake: { name: "Partner-Assisted Stretch Flow", detail: "8 min" },
     },
   };
 
@@ -158,18 +190,13 @@
     return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
   }
 
-  // ---------- split rotation logic ----------
+  // ---------- rotation & recommendation ----------
 
-  function nextSplitKey(history) {
-    if (history.length === 0) return SPLIT_ORDER[0];
-    const last = history[history.length - 1].splitKey;
-    const idx = SPLIT_ORDER.indexOf(last);
-    return SPLIT_ORDER[(idx + 1) % SPLIT_ORDER.length];
-  }
-
-  function splitAfter(splitKey) {
-    const idx = SPLIT_ORDER.indexOf(splitKey);
-    return SPLIT_ORDER[(idx + 1) % SPLIT_ORDER.length];
+  function getLastRotationEntry(history) {
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (SPLIT_ORDER.includes(history[i].splitKey)) return history[i];
+    }
+    return null;
   }
 
   function loggedToday(history) {
@@ -187,6 +214,32 @@
       offset++;
     }
     return streak;
+  }
+
+  // Picks today's recommended split from the rotation, then lets a low
+  // energy check-in override a heavy lifting day in favor of something lighter.
+  function recommendSplit(history, checkIn) {
+    const last = getLastRotationEntry(history);
+    const rotationPick = last
+      ? SPLIT_ORDER[(SPLIT_ORDER.indexOf(last.splitKey) + 1) % SPLIT_ORDER.length]
+      : SPLIT_ORDER[0];
+
+    if (checkIn.energy === "low" && (rotationPick === "chest-back" || rotationPick === "legs")) {
+      const key = "core-mobility";
+      return {
+        key,
+        reason: `Running low on energy today — let's swap the heavy lifting for ${SPLIT_LIBRARY[key].name} and keep the streak alive.`,
+      };
+    }
+
+    let reason;
+    if (!last) {
+      reason = `Fresh start — let's kick off with ${SPLIT_LIBRARY[rotationPick].name}.`;
+    } else {
+      const when = last.date === daysAgo(1) ? "yesterday" : `on ${formatShortDate(last.date)}`;
+      reason = `You hit ${SPLIT_LIBRARY[last.splitKey].name} ${when} — ${SPLIT_LIBRARY[rotationPick].name} is up next.`;
+    }
+    return { key: rotationPick, reason };
   }
 
   // ---------- workout plan builder ----------
@@ -209,6 +262,10 @@
       if (extra) list = [...list, extra];
     }
     return list;
+  }
+
+  function getEntryExercises(user, entry) {
+    return entry.splitKey === "custom" ? entry.exercises : buildWorkoutPlan(user, entry.splitKey, entry);
   }
 
   function buildTags({ minutes, energy, partner }) {
@@ -323,13 +380,25 @@
   // ---------- state ----------
 
   let currentUser = null;
+  let checkInState = { minutes: 30, energy: "medium", partner: "no" };
+  let selectedSplitKey = null; // split chosen on the select screen, awaiting log
+  let customSelection = new Map(); // exerciseId -> { name, detail }
 
-  // ---------- rendering ----------
+  // ---------- screen helpers ----------
+
+  const SCREEN_IDS = ["login-screen", "welcome-screen", "checkin-screen", "select-screen", "custom-screen", "session-screen"];
+
+  function showScreen(id) {
+    SCREEN_IDS.forEach((s) => document.getElementById(s).classList.toggle("hidden", s !== id));
+  }
+
+  // ---------- rendering: clock / goal ----------
 
   function renderClock() {
     const now = new Date();
     const dateEl = document.getElementById("clock-date");
     const timeEl = document.getElementById("clock-time");
+    if (!dateEl || !timeEl) return;
 
     dateEl.textContent = now.toLocaleDateString(undefined, {
       weekday: "long",
@@ -353,6 +422,8 @@
     document.getElementById("goal-text").textContent = persona.goal;
   }
 
+  // ---------- rendering: session screen ----------
+
   function renderExerciseList(exercises) {
     const list = document.getElementById("session-exercises");
     list.innerHTML = "";
@@ -374,39 +445,40 @@
     el.innerHTML = tags.map((t) => `<span class="tag-chip">${t}</span>`).join("");
   }
 
-  function renderSession(user, history) {
+  function renderSessionScreen(user, history) {
     const done = loggedToday(history);
-    const todaysEntry = done ? history[history.length - 1] : null;
-    const splitKey = done ? todaysEntry.splitKey : nextSplitKey(history);
-    const split = SPLIT_LIBRARY[splitKey];
-    const upcomingKey = splitAfter(splitKey);
-    const upcoming = SPLIT_LIBRARY[upcomingKey];
+    const entry = done ? history[history.length - 1] : null;
+    const splitKey = done ? entry.splitKey : selectedSplitKey;
+    const meta = getSplitMeta(splitKey);
 
-    document.getElementById("session-icon").textContent = split.icon;
-    document.getElementById("session-name").textContent = split.name;
-    document.getElementById("session-tagline").textContent = split.tagline;
+    document.getElementById("session-icon").textContent = meta.icon;
+    document.getElementById("session-name").textContent = meta.name;
+    document.getElementById("session-tagline").textContent = meta.tagline;
 
     const statusEl = document.getElementById("session-status");
     const btn = document.getElementById("log-session-btn");
+    const backLink = document.getElementById("back-to-options");
 
     if (done) {
-      const plan = buildWorkoutPlan(user, splitKey, todaysEntry);
-      renderExerciseList(plan);
-      renderTags(buildTags(todaysEntry));
+      renderExerciseList(getEntryExercises(user, entry));
+      renderTags(buildTags(entry));
       statusEl.classList.remove("hidden");
       btn.textContent = "Session Logged ✓";
       btn.disabled = true;
       btn.onclick = null;
+      backLink.classList.add("hidden");
     } else {
-      renderExerciseList(split.exercises[user]);
-      renderTags(null);
+      renderExerciseList(buildWorkoutPlan(user, splitKey, checkInState));
+      renderTags(buildTags(checkInState));
       statusEl.classList.add("hidden");
       btn.textContent = "Start Session";
       btn.disabled = false;
-      btn.onclick = () => openCustomizeModal(user, splitKey);
+      btn.onclick = () => {
+        logSession(user, splitKey, checkInState);
+        renderSessionScreen(user, getHistory(user));
+      };
+      backLink.classList.remove("hidden");
     }
-
-    document.getElementById("up-next-name").textContent = upcoming.name;
   }
 
   function renderHistory(history) {
@@ -423,16 +495,16 @@
 
     const recent = history.slice(-5).reverse();
     recent.forEach((entry) => {
-      const split = SPLIT_LIBRARY[entry.splitKey];
-      const meta = entry.minutes
+      const meta = getSplitMeta(entry.splitKey);
+      const metaLine = entry.minutes
         ? `${entry.minutes} min · ${ENERGY_LABEL[entry.energy]}${entry.partner ? " · w/ partner" : ""}`
         : "";
       const li = document.createElement("li");
       li.innerHTML = `
-        <span class="hist-icon">${split.icon}</span>
-        <span class="hist-name">${split.name}</span>
+        <span class="hist-icon">${meta.icon}</span>
+        <span class="hist-name">${meta.name}</span>
         <span class="hist-date">${formatShortDate(entry.date)}</span>
-        ${meta ? `<span class="hist-meta">${meta}</span>` : ""}
+        ${metaLine ? `<span class="hist-meta">${metaLine}</span>` : ""}
       `;
       list.appendChild(li);
     });
@@ -455,20 +527,16 @@
     }
   }
 
-  function renderDashboard(user) {
+  function renderSessionFull(user) {
     const persona = PERSONAS[user];
     const history = getHistory(user);
-
     renderGoal(persona);
-    renderSession(user, history);
+    renderSessionScreen(user, history);
     renderHistory(history);
     renderStreak(history);
   }
 
-  // ---------- customize modal ----------
-
-  const modalState = { minutes: 30, energy: "medium", partner: "no" };
-  let modalContext = null; // { user, splitKey }
+  // ---------- rendering: check-in screen ----------
 
   function selectChip(row, value) {
     row.querySelectorAll(".chip").forEach((chip) => {
@@ -476,51 +544,141 @@
     });
   }
 
-  function openCustomizeModal(user, splitKey) {
-    modalContext = { user, splitKey };
-    const split = SPLIT_LIBRARY[splitKey];
-    document.getElementById("modal-subtitle").textContent = `${split.icon} ${split.name} — dial it in`;
-
-    selectChip(document.getElementById("option-time"), modalState.minutes);
-    selectChip(document.getElementById("option-energy"), modalState.energy);
-    selectChip(document.getElementById("option-partner"), modalState.partner);
-
-    document.getElementById("customize-modal").classList.remove("hidden");
+  function renderCheckIn(user) {
+    checkInState = { minutes: 30, energy: "medium", partner: "no" };
+    document.getElementById("checkin-name").textContent = PERSONAS[user].name;
+    selectChip(document.getElementById("checkin-energy"), checkInState.energy);
+    selectChip(document.getElementById("checkin-minutes"), checkInState.minutes);
+    selectChip(document.getElementById("checkin-partner"), checkInState.partner);
   }
 
-  function closeCustomizeModal() {
-    document.getElementById("customize-modal").classList.add("hidden");
-    modalContext = null;
-  }
-
-  function initCustomizeModal() {
-    document.querySelectorAll("#customize-modal .option-row").forEach((row) => {
+  function initCheckIn() {
+    ["checkin-energy", "checkin-minutes", "checkin-partner"].forEach((id) => {
+      const row = document.getElementById(id);
       row.addEventListener("click", (e) => {
         const chip = e.target.closest(".chip");
         if (!chip) return;
         const key = row.dataset.option;
         const raw = chip.dataset.value;
-        modalState[key] = key === "minutes" ? Number(raw) : raw;
+        checkInState[key] = key === "minutes" ? Number(raw) : raw;
         selectChip(row, raw);
       });
     });
 
-    document.getElementById("modal-cancel").addEventListener("click", closeCustomizeModal);
-
-    document.getElementById("modal-confirm").addEventListener("click", () => {
-      if (!modalContext) return;
-      const { user, splitKey } = modalContext;
-      logSession(user, splitKey, {
-        minutes: modalState.minutes,
-        energy: modalState.energy,
-        partner: modalState.partner === "yes",
-      });
-      closeCustomizeModal();
-      renderDashboard(user);
+    document.getElementById("checkin-submit").addEventListener("click", () => {
+      showSelect(currentUser);
     });
 
-    document.getElementById("customize-modal").addEventListener("click", (e) => {
-      if (e.target.id === "customize-modal") closeCustomizeModal();
+    document.getElementById("checkin-switch").addEventListener("click", showLogin);
+  }
+
+  // ---------- rendering: select screen ----------
+
+  function renderSelectScreen(user, history) {
+    const rec = recommendSplit(history, checkInState);
+    const recMeta = getSplitMeta(rec.key);
+
+    document.getElementById("rec-icon").textContent = recMeta.icon;
+    document.getElementById("rec-name").textContent = recMeta.name;
+    document.getElementById("rec-tagline").textContent = recMeta.tagline;
+    document.getElementById("rec-reason").textContent = rec.reason;
+    document.getElementById("recommended-card").onclick = () => selectSplitAndPreview(user, rec.key);
+
+    const altKeys = SPLIT_ORDER.filter((k) => k !== rec.key);
+    const altContainer = document.getElementById("alt-options");
+    altContainer.innerHTML = "";
+    altKeys.forEach((key) => {
+      const meta = getSplitMeta(key);
+      const card = document.createElement("button");
+      card.className = "alt-card";
+      card.innerHTML = `
+        <span class="alt-icon">${meta.icon}</span>
+        <span class="alt-name">${meta.name}</span>
+        <span class="alt-tagline">${meta.tagline}</span>
+      `;
+      card.onclick = () => selectSplitAndPreview(user, key);
+      altContainer.appendChild(card);
+    });
+  }
+
+  function selectSplitAndPreview(user, splitKey) {
+    selectedSplitKey = splitKey;
+    showScreen("session-screen");
+    renderSessionFull(user);
+  }
+
+  function initSelectScreen() {
+    document.getElementById("select-switch").addEventListener("click", showLogin);
+    document.getElementById("custom-workout-btn").addEventListener("click", () => showCustom(currentUser));
+    document.getElementById("back-to-options").addEventListener("click", () => showSelect(currentUser));
+  }
+
+  // ---------- rendering: custom builder screen ----------
+
+  function renderCustomScreen(user) {
+    customSelection = new Map();
+    const container = document.getElementById("custom-groups");
+    container.innerHTML = "";
+
+    SPLIT_ORDER.forEach((splitKey) => {
+      const meta = getSplitMeta(splitKey);
+      const group = document.createElement("div");
+      group.className = "custom-group";
+
+      const heading = document.createElement("span");
+      heading.className = "custom-group-heading";
+      heading.textContent = `${meta.icon} ${meta.name}`;
+      group.appendChild(heading);
+
+      const list = document.createElement("div");
+      list.className = "custom-ex-list";
+
+      SPLIT_LIBRARY[splitKey].exercises[user].forEach((ex, i) => {
+        const id = `${splitKey}:${i}`;
+        const row = document.createElement("label");
+        row.className = "custom-ex-row";
+        row.innerHTML = `
+          <input type="checkbox" data-id="${id}" data-name="${ex.name}" data-detail="${ex.detail}" />
+          <span class="custom-ex-name">${ex.name}</span>
+          <span class="custom-ex-detail">${ex.detail}</span>
+        `;
+        list.appendChild(row);
+      });
+
+      group.appendChild(list);
+      container.appendChild(group);
+    });
+
+    updateCustomFooter();
+  }
+
+  function updateCustomFooter() {
+    const count = customSelection.size;
+    document.getElementById("custom-count").textContent = `${count} selected`;
+    document.getElementById("custom-start-btn").disabled = count === 0;
+  }
+
+  function initCustomScreen() {
+    document.getElementById("custom-back").addEventListener("click", () => showSelect(currentUser));
+
+    document.getElementById("custom-groups").addEventListener("change", (e) => {
+      const input = e.target.closest("input[type=checkbox]");
+      if (!input) return;
+      const { id, name, detail } = input.dataset;
+      if (input.checked) customSelection.set(id, { name, detail });
+      else customSelection.delete(id);
+      updateCustomFooter();
+    });
+
+    document.getElementById("custom-start-btn").addEventListener("click", () => {
+      if (customSelection.size === 0) return;
+      logSession(currentUser, "custom", {
+        ...checkInState,
+        partner: checkInState.partner === "yes",
+        exercises: Array.from(customSelection.values()),
+      });
+      showScreen("session-screen");
+      renderSessionFull(currentUser);
     });
   }
 
@@ -528,10 +686,8 @@
 
   function showLogin() {
     currentUser = null;
-    localStorage.removeItem(CURRENT_USER_KEY);
-    document.getElementById("dashboard-screen").classList.add("hidden");
-    document.getElementById("welcome-screen").classList.add("hidden");
-    document.getElementById("login-screen").classList.remove("hidden");
+    selectedSplitKey = null;
+    showScreen("login-screen");
   }
 
   function showWelcome(user) {
@@ -539,9 +695,8 @@
     document.documentElement.style.setProperty("--accent", persona.accent);
     document.getElementById("welcome-name").textContent = persona.name.toUpperCase();
 
-    document.getElementById("login-screen").classList.add("hidden");
+    showScreen("welcome-screen");
     const welcome = document.getElementById("welcome-screen");
-    welcome.classList.remove("hidden");
 
     // restart the pulse animation on a fresh element
     const nameEl = document.getElementById("welcome-name");
@@ -554,19 +709,31 @@
     const advance = () => {
       welcome.removeEventListener("click", advance);
       clearTimeout(timer);
-      showDashboard(user);
+      currentUser = user;
+      const history = getHistory(user);
+      if (loggedToday(history)) {
+        selectedSplitKey = null;
+        showScreen("session-screen");
+        renderSessionFull(user);
+      } else {
+        showScreen("checkin-screen");
+        renderCheckIn(user);
+      }
     };
     welcome.addEventListener("click", advance);
     const timer = setTimeout(advance, 2600);
   }
 
-  function showDashboard(user) {
+  function showSelect(user) {
     currentUser = user;
-    localStorage.setItem(CURRENT_USER_KEY, user);
-    document.getElementById("welcome-screen").classList.add("hidden");
-    document.getElementById("login-screen").classList.add("hidden");
-    document.getElementById("dashboard-screen").classList.remove("hidden");
-    renderDashboard(user);
+    showScreen("select-screen");
+    renderSelectScreen(user, getHistory(user));
+  }
+
+  function showCustom(user) {
+    currentUser = user;
+    showScreen("custom-screen");
+    renderCustomScreen(user);
   }
 
   // ---------- init ----------
@@ -582,7 +749,9 @@
   });
   setSoundEnabled(soundEnabled);
 
-  initCustomizeModal();
+  initCheckIn();
+  initSelectScreen();
+  initCustomScreen();
 
   renderClock();
   setInterval(renderClock, 1000);
