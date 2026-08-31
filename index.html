@@ -58,6 +58,11 @@
       <span class="panel-subtext">This tunes today's recommendation and workload.</span>
 
       <div class="option-group">
+        <span class="option-label">📝 Anything to flag? <span class="option-label-optional">(optional)</span></span>
+        <textarea id="checkin-note" class="note-input" rows="3" placeholder="How did last session feel? Equipment changed? New goal? A weight you struggled or hit a PR on?"></textarea>
+      </div>
+
+      <div class="option-group">
         <span class="option-label">⚡ Energy Level</span>
         <div id="checkin-energy" class="option-row" data-option="energy">
           <button class="chip" data-value="low">Low</button>
@@ -181,6 +186,39 @@
       <span class="section-title">Recent Activity</span>
       <ul id="history-list" class="history-list"></ul>
     </section>
+  </main>
+
+  <!-- ACTIVE WORKOUT RUNNER -->
+  <main id="workout-screen" class="screen hidden">
+    <div class="panel-wrap wide workout-panel">
+      <button id="workout-switch" class="link-btn top-link">&larr; SWITCH</button>
+
+      <div class="workout-header">
+        <span id="workout-icon" class="workout-icon"></span>
+        <div class="workout-header-copy">
+          <span id="workout-name" class="workout-name"></span>
+          <span id="workout-tagline" class="workout-tagline"></span>
+        </div>
+        <button id="workout-regenerate" class="ghost-btn small" title="Regenerate today's picks">🔄</button>
+      </div>
+
+      <section class="warmup-card">
+        <span class="section-title">Warm-Up</span>
+        <ul id="warmup-list" class="warmup-list"></ul>
+      </section>
+
+      <section class="session-section">
+        <span class="section-title">Today's Exercises</span>
+        <span class="panel-subtext">Tap any exercise for a tip and to log reps — totally optional.</span>
+        <div id="workout-exercise-list" class="workout-exercise-list"></div>
+      </section>
+
+      <button id="workout-abandon" class="link-btn back-to-options">&larr; Not this one? Back to options</button>
+    </div>
+
+    <div class="workout-footer">
+      <button id="finish-workout-btn" class="primary-btn">Finish Workout</button>
+    </div>
   </main>
 
   <script src="app.js"></script>

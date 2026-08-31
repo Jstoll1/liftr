@@ -2,6 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "liftr_history_v3";
+  const NOTES_KEY = "liftr_notes_v1";
   const SOUND_KEY = "liftr_sound_enabled";
 
   // Fill this in with your deployed Cloudflare Worker URL once the AI
@@ -34,18 +35,18 @@
       tagline: "Push-pull strength builder",
       exercises: {
         jessica: [
-          { name: "Push-Up Ladder", detail: "3 x 12" },
-          { name: "Lat Pulldown", detail: "3 x 15" },
-          { name: "Dumbbell Chest Press", detail: "3 x 12" },
-          { name: "Seated Cable Row", detail: "3 x 15" },
-          { name: "Plank to Row", detail: "3 x 10/side" },
+          { name: "Push-Up Ladder", detail: "3 x 12", superset: "A", tip: "Keep your core braced and lower with control — quality over speed." },
+          { name: "Lat Pulldown", detail: "3 x 15", superset: "A", tip: "Drive your elbows down and back, not your hands." },
+          { name: "Dumbbell Chest Press", detail: "3 x 12", superset: "B", tip: "Lower until your elbows are just below your shoulders, then press up and slightly in." },
+          { name: "Seated Cable Row", detail: "3 x 15", superset: "B", tip: "Squeeze your shoulder blades together at the finish, don't just pull with your arms." },
+          { name: "Plank to Row", detail: "3 x 10/side", tip: "Keep your hips square — resist the urge to rotate as you row." },
         ],
         jake: [
-          { name: "Barbell Bench Press", detail: "4 x 6" },
-          { name: "Weighted Pull-Ups", detail: "4 x 6" },
-          { name: "Incline Dumbbell Press", detail: "3 x 8" },
-          { name: "Bent-Over Barbell Row", detail: "4 x 8" },
-          { name: "Cable Fly", detail: "3 x 12" },
+          { name: "Barbell Bench Press", detail: "4 x 6", superset: "A", tip: "Keep your feet planted and drive through your upper back for a stable base." },
+          { name: "Weighted Pull-Ups", detail: "4 x 6", superset: "A", tip: "Full range every rep — dead hang to chin over the bar." },
+          { name: "Incline Dumbbell Press", detail: "3 x 8", superset: "B", tip: "30-degree incline max — steeper turns this into a shoulder press." },
+          { name: "Bent-Over Barbell Row", detail: "4 x 8", superset: "B", tip: "Hinge at the hips, flat back, pull to your lower ribs." },
+          { name: "Cable Fly", detail: "3 x 12", tip: "Slight bend in the elbows the whole way — think 'hug a tree,' not 'press.'" },
         ],
       },
     },
@@ -55,18 +56,18 @@
       tagline: "Lower body power & stability",
       exercises: {
         jessica: [
-          { name: "Goblet Squat", detail: "3 x 15" },
-          { name: "Step-Ups", detail: "3 x 12/leg" },
-          { name: "Glute Bridge", detail: "3 x 15" },
-          { name: "Lateral Band Walk", detail: "3 x 20" },
-          { name: "Bodyweight Lunge", detail: "3 x 12/leg" },
+          { name: "Goblet Squat", detail: "3 x 15", superset: "A", tip: "Hold the weight close to your chest and sit straight down between your heels." },
+          { name: "Step-Ups", detail: "3 x 12/leg", superset: "A", tip: "Drive through the heel of your working leg — don't push off the back foot." },
+          { name: "Glute Bridge", detail: "3 x 15", tip: "Squeeze your glutes hard at the top, pause for a beat." },
+          { name: "Lateral Band Walk", detail: "3 x 20", tip: "Stay low and keep tension on the band the entire time." },
+          { name: "Bodyweight Lunge", detail: "3 x 12/leg", tip: "Keep your front knee tracking over your ankle, not caving in." },
         ],
         jake: [
-          { name: "Barbell Back Squat", detail: "5 x 5" },
-          { name: "Romanian Deadlift", detail: "4 x 6" },
-          { name: "Walking Lunges", detail: "3 x 10/leg" },
-          { name: "Leg Press", detail: "3 x 10" },
-          { name: "Standing Calf Raise", detail: "4 x 15" },
+          { name: "Barbell Back Squat", detail: "5 x 5", superset: "A", tip: "Brace your core before you unrack, and keep your chest tall through the whole rep." },
+          { name: "Romanian Deadlift", detail: "4 x 6", superset: "A", tip: "Push your hips back, not down — you should feel this in your hamstrings." },
+          { name: "Walking Lunges", detail: "3 x 10/leg", tip: "Take a long enough stride that your front knee stays behind your toes." },
+          { name: "Leg Press", detail: "3 x 10", tip: "Don't let your lower back round off the pad at the bottom." },
+          { name: "Standing Calf Raise", detail: "4 x 15", tip: "Pause at the top and the bottom — don't just bounce through it." },
         ],
       },
     },
@@ -76,16 +77,16 @@
       tagline: "Conditioning & active recovery",
       exercises: {
         jessica: [
-          { name: "Tempo Run", detail: "25 min" },
-          { name: "Stair Climber Intervals", detail: "15 min" },
-          { name: "Cycling", detail: "20 min" },
-          { name: "Mobility Flow", detail: "10 min" },
+          { name: "Tempo Run", detail: "25 min", tip: "Aim for a pace you could hold a short conversation at, not a sprint." },
+          { name: "Stair Climber Intervals", detail: "15 min", tip: "Push the pace on work intervals, actually recover on the rest ones." },
+          { name: "Cycling", detail: "20 min", tip: "Keep a steady cadence — smooth and controlled beats mashing the pedals." },
+          { name: "Mobility Flow", detail: "10 min", tip: "Move slow and controlled — this is recovery, not a workout." },
         ],
         jake: [
-          { name: "Rowing Intervals", detail: "8 x 500m" },
-          { name: "Sled Push", detail: "6 rounds" },
-          { name: "Battle Ropes", detail: "5 x 30s" },
-          { name: "Jump Rope Finisher", detail: "5 min" },
+          { name: "Rowing Intervals", detail: "8 x 500m", tip: "Drive with your legs first, then lean back, then pull — legs, hips, arms." },
+          { name: "Sled Push", detail: "6 rounds", tip: "Stay low with a slight forward lean, drive through the balls of your feet." },
+          { name: "Battle Ropes", detail: "5 x 30s", tip: "Keep your core tight — the power comes from your shoulders, not your wrists." },
+          { name: "Jump Rope Finisher", detail: "5 min", tip: "Small, quick hops — you shouldn't be jumping high off the ground." },
         ],
       },
     },
@@ -95,16 +96,16 @@
       tagline: "Light movement & recovery",
       exercises: {
         jessica: [
-          { name: "Dead Bug", detail: "3 x 12" },
-          { name: "Hip Flexor Stretch Flow", detail: "5 min" },
-          { name: "Side Plank", detail: "3 x 30s/side" },
-          { name: "Cat-Cow Flow", detail: "5 min" },
+          { name: "Dead Bug", detail: "3 x 12", tip: "Keep your lower back pressed into the floor the entire set." },
+          { name: "Hip Flexor Stretch Flow", detail: "5 min", tip: "Squeeze the glute on your back leg to deepen the stretch safely." },
+          { name: "Side Plank", detail: "3 x 30s/side", tip: "Stack your hips and keep your body in one straight line." },
+          { name: "Cat-Cow Flow", detail: "5 min", tip: "Move with your breath — inhale to arch, exhale to round." },
         ],
         jake: [
-          { name: "Hanging Leg Raise", detail: "3 x 12" },
-          { name: "90/90 Hip Flow", detail: "5 min" },
-          { name: "Weighted Plank", detail: "3 x 45s" },
-          { name: "Thoracic Rotation Flow", detail: "5 min" },
+          { name: "Hanging Leg Raise", detail: "3 x 12", tip: "Control the descent — don't let momentum swing you through the rep." },
+          { name: "90/90 Hip Flow", detail: "5 min", tip: "Keep your chest tall as you rotate between positions." },
+          { name: "Weighted Plank", detail: "3 x 45s", tip: "Squeeze your glutes and brace like you're about to get punched." },
+          { name: "Thoracic Rotation Flow", detail: "5 min", tip: "Rotate from your upper back, keep your hips still." },
         ],
       },
     },
@@ -119,42 +120,115 @@
   // Bonus exercise appended when energy is high and time allows it.
   const FINISHERS = {
     "chest-back": {
-      jessica: { name: "Finisher: Burpee Pulse", detail: "3 x 10" },
-      jake: { name: "Finisher: Death-Rep Push-Ups", detail: "2 x max" },
+      jessica: { name: "Finisher: Burpee Pulse", detail: "3 x 10", tip: "Keep the pace steady — a sustainable rhythm beats an all-out first ten seconds." },
+      jake: { name: "Finisher: Death-Rep Push-Ups", detail: "2 x max", tip: "Go until your form breaks down, not just until it's hard." },
     },
     legs: {
-      jessica: { name: "Finisher: Jump Squats", detail: "3 x 12" },
-      jake: { name: "Finisher: Bodyweight Squat Burnout", detail: "1 x max" },
+      jessica: { name: "Finisher: Jump Squats", detail: "3 x 12", tip: "Land soft, immediately absorb into your next rep." },
+      jake: { name: "Finisher: Bodyweight Squat Burnout", detail: "1 x max", tip: "Full depth every rep, even as your legs fatigue." },
     },
     cardio: {
-      jessica: { name: "Finisher: All-Out Sprint", detail: "6 x 30s" },
-      jake: { name: "Finisher: Assault Bike Sprint", detail: "5 x 20s" },
+      jessica: { name: "Finisher: All-Out Sprint", detail: "6 x 30s", tip: "This is 100% effort — leave nothing in the tank." },
+      jake: { name: "Finisher: Assault Bike Sprint", detail: "5 x 20s", tip: "Push and pull with your arms too — it's a full-body effort." },
     },
     "core-mobility": {
-      jessica: { name: "Finisher: Mountain Climbers", detail: "3 x 20" },
-      jake: { name: "Finisher: Bear Crawl", detail: "3 x 20m" },
+      jessica: { name: "Finisher: Mountain Climbers", detail: "3 x 20", tip: "Keep your hips low and driven, don't let them ride up." },
+      jake: { name: "Finisher: Bear Crawl", detail: "3 x 20m", tip: "Move opposite hand and foot together, keep your hips level." },
     },
   };
 
   // Bonus exercise appended when training with a partner.
   const PARTNER_EXTRAS = {
     "chest-back": {
-      jessica: { name: "Partner Med-Ball Chest Pass", detail: "3 x 15" },
-      jake: { name: "Partner Resistance Push-Off", detail: "3 x 15" },
+      jessica: { name: "Partner Med-Ball Chest Pass", detail: "3 x 15", tip: "Step into each pass and catch with soft hands." },
+      jake: { name: "Partner Resistance Push-Off", detail: "3 x 15", tip: "Your partner provides steady resistance — communicate the pace." },
     },
     legs: {
-      jessica: { name: "Partner Wall-Sit Hold", detail: "3 x 45s" },
-      jake: { name: "Partner Sled Drag", detail: "4 x 20m" },
+      jessica: { name: "Partner Wall-Sit Hold", detail: "3 x 45s", tip: "Thighs parallel to the floor, back flat against the wall." },
+      jake: { name: "Partner Sled Drag", detail: "4 x 20m", tip: "Take turns — one drags while the other rests and coaches form." },
     },
     cardio: {
-      jessica: { name: "Partner Medicine Ball Circuit", detail: "10 min" },
-      jake: { name: "Partner Relay Sprints", detail: "6 x 100m" },
+      jessica: { name: "Partner Medicine Ball Circuit", detail: "10 min", tip: "Keep the ball moving — minimal rest between exchanges." },
+      jake: { name: "Partner Relay Sprints", detail: "6 x 100m", tip: "Full sprint on your leg, then actively recover while you wait." },
     },
     "core-mobility": {
-      jessica: { name: "Partner Plank Hand-Slap", detail: "3 x 20s" },
-      jake: { name: "Partner-Assisted Stretch Flow", detail: "8 min" },
+      jessica: { name: "Partner Plank Hand-Slap", detail: "3 x 20s", tip: "Keep your core braced even as you reach to slap hands." },
+      jake: { name: "Partner-Assisted Stretch Flow", detail: "8 min", tip: "Communicate constantly — you control how deep the stretch goes." },
     },
   };
+
+  // Generic warm-up checklist shown before the exercise list — purely a
+  // visual, ephemeral checklist (not persisted, not sent to the AI).
+  const WARMUPS = {
+    "chest-back": ["5 min light cardio to raise your heart rate", "Band pull-aparts x 15", "Arm circles + shoulder rolls x 10 each way"],
+    legs: ["5 min easy bike or brisk walk", "Bodyweight squats x 15", "Leg swings x 10 each leg"],
+    cardio: ["3 min easy pace ramp-up", "Dynamic leg swings x 10 each leg", "A few strides at building effort"],
+    "core-mobility": ["Cat-cow x 10", "World's greatest stretch x 5 each side", "Deep breaths, slow it down"],
+    custom: ["5 min light cardio to raise your heart rate", "Dynamic stretches for whatever's on today's list", "A lighter warm-up set before your first heavy set"],
+  };
+
+  function getWarmup(splitKey) {
+    return WARMUPS[splitKey] || WARMUPS.custom;
+  }
+
+  // ---------- exercise images ----------
+  // Looks for images/<body-part>/<slugified-exercise-name>.jpg — drop real
+  // photos into that structure (see worker-free root /images folder) and
+  // they'll be picked up automatically; missing files fall back to an icon
+  // tile gracefully (see the onerror handling in renderWorkoutExercises).
+
+  const CHEST_BACK_CHEST_EXERCISES = new Set([
+    "Push-Up Ladder",
+    "Dumbbell Chest Press",
+    "Cable Fly",
+    "Barbell Bench Press",
+    "Incline Dumbbell Press",
+    "Finisher: Burpee Pulse",
+    "Finisher: Death-Rep Push-Ups",
+    "Partner Med-Ball Chest Pass",
+    "Partner Resistance Push-Off",
+  ]);
+
+  const SPLIT_BODY_PART = { legs: "legs", cardio: "cardio", "core-mobility": "core" };
+
+  function getBodyPart(splitKey, exerciseName) {
+    if (splitKey === "chest-back") {
+      return CHEST_BACK_CHEST_EXERCISES.has(exerciseName) ? "chest" : "back";
+    }
+    return SPLIT_BODY_PART[splitKey] || "core";
+  }
+
+  function slugify(str) {
+    return str
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
+  function getExerciseImagePath(splitKey, exerciseName) {
+    return `images/${getBodyPart(splitKey, exerciseName)}/${slugify(exerciseName)}.jpg`;
+  }
+
+  // ---------- set/rep parsing ----------
+  // Reads a "detail" string like "4 x 6" into a set count + target reps so
+  // the workout runner knows how many set rows to draw and whether they get
+  // a rep stepper (clean "N x reps") or a simple complete-toggle (timed
+  // cardio, AMRAP finishers, "N rounds," etc.).
+
+  function parseSetCount(detail) {
+    const m = detail.match(/^(\d+)\s*(?:x\b|rounds?\b)/i);
+    return m ? Math.min(Number(m[1]), 8) : 1;
+  }
+
+  function isRepBased(detail) {
+    return /^\d+\s*x\s*\d+(\/\S+)?$/i.test(detail.trim());
+  }
+
+  function parseTargetReps(detail) {
+    if (!isRepBased(detail)) return null;
+    const m = detail.match(/^\d+\s*x\s*(\d+)/i);
+    return m ? Number(m[1]) : null;
+  }
 
   const ENERGY_LABEL = { low: "Low Energy", medium: "Medium Energy", high: "High Energy" };
   const TIME_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 5 };
@@ -194,6 +268,44 @@
     const d = new Date();
     d.setDate(d.getDate() - n);
     return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  }
+
+  // ---------- persistent check-in notes ----------
+  // Free-text feedback (equipment changes, goal updates, "struggled with
+  // 205 today," etc.) persists here across sessions so the AI can reference
+  // it later — separate from the workout history itself.
+
+  function loadAllNotes() {
+    try {
+      return JSON.parse(localStorage.getItem(NOTES_KEY)) || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveAllNotes(all) {
+    localStorage.setItem(NOTES_KEY, JSON.stringify(all));
+  }
+
+  function getNotes(user) {
+    return loadAllNotes()[user] || [];
+  }
+
+  function logNote(user, text) {
+    const trimmed = (text || "").trim();
+    if (!trimmed) return;
+    const all = loadAllNotes();
+    if (!all[user]) all[user] = [];
+    all[user].push({ date: todayStr(), text: trimmed });
+    saveAllNotes(all);
+  }
+
+  // Prior days' notes only — today's is passed separately as todayNote so
+  // the AI sees it distinctly from the history it's meant to build on.
+  function getPastNotes(user, limit = 5) {
+    return getNotes(user)
+      .filter((n) => n.date !== todayStr())
+      .slice(-limit);
   }
 
   // ---------- rotation & recommendation ----------
@@ -310,6 +422,8 @@
             minutes: checkIn.minutes,
             energy: checkIn.energy,
             partner: Boolean(checkIn.partner),
+            todayNote: (checkIn.note || "").trim() || null,
+            pastNotes: getPastNotes(user, 5),
             candidates: buildCandidatePool(user, splitKey),
           }),
           signal: AbortSignal.timeout(AI_TIMEOUT_MS),
@@ -439,14 +553,23 @@
   // ---------- state ----------
 
   let currentUser = null;
-  let checkInState = { minutes: 30, energy: "medium", partner: false };
+  let checkInState = { minutes: 30, energy: "medium", partner: false, note: "" };
   let selectedSplitKey = null; // split chosen on the select screen, awaiting log
   let previewPlan = null; // { exercises, reason, source } computed for the current preview
-  let customSelection = new Map(); // exerciseId -> { name, detail }
+  let customSelection = new Map(); // exerciseId -> { name, detail, splitKey, tip, superset }
+  let activeWorkout = null; // { sessionSplitKey, exercises, logs, reason, source } for the in-progress workout runner
 
   // ---------- screen helpers ----------
 
-  const SCREEN_IDS = ["login-screen", "welcome-screen", "checkin-screen", "select-screen", "custom-screen", "session-screen"];
+  const SCREEN_IDS = [
+    "login-screen",
+    "welcome-screen",
+    "checkin-screen",
+    "select-screen",
+    "custom-screen",
+    "session-screen",
+    "workout-screen",
+  ];
 
   function showScreen(id) {
     SCREEN_IDS.forEach((s) => document.getElementById(s).classList.toggle("hidden", s !== id));
@@ -572,16 +695,11 @@
     renderTags(buildTags(checkInState));
     renderAiNote(previewPlan.source === "ai" ? previewPlan.reason : null);
     statusEl.classList.add("hidden");
-    btn.textContent = "Start Session";
+    btn.textContent = "Start Workout";
     btn.disabled = false;
     btn.onclick = () => {
-      logSession(user, splitKey, {
-        ...checkInState,
-        exercises: previewPlan.exercises,
-        reason: previewPlan.reason,
-        source: previewPlan.source,
-      });
-      renderSessionScreen(user, getHistory(user));
+      const exercises = previewPlan.exercises.map((ex) => ({ ...ex, splitKey }));
+      showWorkout(user, splitKey, exercises, { reason: previewPlan.reason, source: previewPlan.source });
     };
     backLink.classList.remove("hidden");
   }
@@ -610,9 +728,16 @@
         <span class="hist-name">${meta.name}</span>
         <span class="hist-date">${formatShortDate(entry.date)}</span>
         ${metaLine ? `<span class="hist-meta">${metaLine}</span>` : ""}
+        ${entry.note ? `<span class="hist-note">📝 “${escapeHtml(entry.note)}”</span>` : ""}
       `;
       list.appendChild(li);
     });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
   }
 
   function formatShortDate(dateStr) {
@@ -655,6 +780,266 @@
     renderSessionScreen(user, getHistory(user));
   }
 
+  // ---------- rendering: active workout runner ----------
+
+  function buildInitialLogs(exercises) {
+    const logs = {};
+    exercises.forEach((ex) => {
+      const setCount = parseSetCount(ex.detail);
+      const target = parseTargetReps(ex.detail);
+      logs[ex.name] = {
+        sets: Array.from({ length: setCount }, () => ({ target, actual: target, touched: false })),
+        flag: "",
+      };
+    });
+    return logs;
+  }
+
+  // Groups exercises sharing a (splitKey, superset) tag together for
+  // display, so a real pair renders as one bracketed superset card.
+  function groupExercisesForDisplay(exercises) {
+    const groups = [];
+    const bySupersetKey = new Map();
+    exercises.forEach((ex) => {
+      if (ex.superset) {
+        const key = `${ex.splitKey}:${ex.superset}`;
+        if (bySupersetKey.has(key)) {
+          bySupersetKey.get(key).items.push(ex);
+        } else {
+          const group = { items: [ex] };
+          bySupersetKey.set(key, group);
+          groups.push(group);
+        }
+      } else {
+        groups.push({ items: [ex] });
+      }
+    });
+    return groups;
+  }
+
+  function renderWorkoutHeader(splitKey) {
+    const meta = getSplitMeta(splitKey);
+    document.getElementById("workout-icon").textContent = meta.icon;
+    document.getElementById("workout-name").textContent = meta.name;
+    document.getElementById("workout-tagline").textContent = meta.tagline;
+    document.getElementById("workout-regenerate").classList.toggle("hidden", splitKey === "custom");
+  }
+
+  function renderWarmup(splitKey) {
+    const list = document.getElementById("warmup-list");
+    list.innerHTML = "";
+    getWarmup(splitKey).forEach((text) => {
+      const li = document.createElement("li");
+      li.className = "warmup-item";
+      li.innerHTML = `<span class="warmup-check">☐</span><span>${escapeHtml(text)}</span>`;
+      li.addEventListener("click", () => {
+        li.classList.toggle("checked");
+        li.querySelector(".warmup-check").textContent = li.classList.contains("checked") ? "☑" : "☐";
+      });
+      list.appendChild(li);
+    });
+  }
+
+  function renderExerciseCard(ex) {
+    const card = document.createElement("div");
+    card.className = "wex-card";
+
+    const imgPath = getExerciseImagePath(ex.splitKey, ex.name);
+    const fallbackIcon = getSplitMeta(ex.splitKey).icon;
+    const log = activeWorkout.logs[ex.name];
+
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "wex-head";
+    head.innerHTML = `
+      <span class="wex-image">
+        <img src="${imgPath}" alt="" class="wex-img" />
+        <span class="wex-img-fallback">${fallbackIcon}</span>
+      </span>
+      <span class="wex-head-copy">
+        <span class="wex-name">${escapeHtml(ex.name)}</span>
+        <span class="wex-detail">${escapeHtml(ex.detail)}</span>
+      </span>
+      <span class="wex-chevron">▾</span>
+    `;
+    // Real image missing (404) — quietly fall back to the icon tile underneath.
+    head.querySelector(".wex-img").addEventListener("error", (e) => {
+      e.target.style.display = "none";
+    });
+
+    const body = document.createElement("div");
+    body.className = "wex-body hidden";
+
+    const setsHtml = log.sets
+      .map((s, i) => {
+        if (s.target != null) {
+          return `
+            <div class="wex-set-row" data-set-index="${i}">
+              <span class="wex-set-label">Set ${i + 1} <span class="wex-set-target">· target ${s.target}</span></span>
+              <div class="wex-stepper">
+                <button type="button" class="wex-step-btn" data-dir="-1">−</button>
+                <span class="wex-step-value">${s.actual}</span>
+                <button type="button" class="wex-step-btn" data-dir="1">+</button>
+              </div>
+            </div>
+          `;
+        }
+        return `
+          <div class="wex-set-row" data-set-index="${i}">
+            <span class="wex-set-label">${log.sets.length > 1 ? `Round ${i + 1}` : "This one"}</span>
+            <button type="button" class="wex-toggle-btn">Mark Done</button>
+          </div>
+        `;
+      })
+      .join("");
+
+    body.innerHTML = `
+      ${ex.tip ? `<p class="wex-tip">💡 ${escapeHtml(ex.tip)}</p>` : ""}
+      <div class="wex-sets">${setsHtml}</div>
+      <input type="text" class="wex-flag-input" placeholder="Anything to flag on this one? (optional)" maxlength="140" />
+    `;
+
+    body.querySelectorAll(".wex-set-row").forEach((row) => {
+      const idx = Number(row.dataset.setIndex);
+      const set = log.sets[idx];
+
+      const stepper = row.querySelector(".wex-stepper");
+      if (stepper) {
+        const valueEl = stepper.querySelector(".wex-step-value");
+        stepper.querySelectorAll(".wex-step-btn").forEach((stepBtn) => {
+          stepBtn.addEventListener("click", () => {
+            const dir = Number(stepBtn.dataset.dir);
+            set.actual = Math.max(0, (set.actual ?? 0) + dir);
+            set.touched = true;
+            valueEl.textContent = set.actual;
+            row.classList.add("touched");
+          });
+        });
+        return;
+      }
+
+      const toggleBtn = row.querySelector(".wex-toggle-btn");
+      toggleBtn.addEventListener("click", () => {
+        set.touched = !set.touched;
+        set.actual = set.touched ? 1 : null;
+        toggleBtn.classList.toggle("done", set.touched);
+        toggleBtn.textContent = set.touched ? "✓ Done" : "Mark Done";
+        row.classList.toggle("touched", set.touched);
+      });
+    });
+
+    body.querySelector(".wex-flag-input").addEventListener("input", (e) => {
+      log.flag = e.target.value;
+    });
+
+    head.addEventListener("click", () => {
+      body.classList.toggle("hidden");
+      head.classList.toggle("expanded");
+    });
+
+    card.appendChild(head);
+    card.appendChild(body);
+    return card;
+  }
+
+  function renderWorkoutExercises() {
+    const container = document.getElementById("workout-exercise-list");
+    container.innerHTML = "";
+    groupExercisesForDisplay(activeWorkout.exercises).forEach((group) => {
+      if (group.items.length > 1) {
+        const wrap = document.createElement("div");
+        wrap.className = "superset-group";
+        wrap.innerHTML = `<span class="superset-label">SUPERSET · ALTERNATE BETWEEN THESE</span>`;
+        group.items.forEach((ex) => wrap.appendChild(renderExerciseCard(ex)));
+        container.appendChild(wrap);
+      } else {
+        container.appendChild(renderExerciseCard(group.items[0]));
+      }
+    });
+  }
+
+  // Compiles whatever the athlete actually logged (touched sets, flags) into
+  // a compact free-text summary — feeds straight into the persistent notes
+  // log so future AI recommendations can reference it. Empty if they
+  // engaged with none of it, since feedback here is entirely optional.
+  function summarizeWorkoutLog(logs) {
+    const lines = [];
+    Object.entries(logs).forEach(([name, log]) => {
+      const touchedSets = log.sets.filter((s) => s.touched);
+      if (touchedSets.length > 0) {
+        if (touchedSets[0].target != null) {
+          lines.push(`${name}: ${touchedSets.map((s) => `${s.actual}/${s.target}`).join(", ")} reps`);
+        } else {
+          lines.push(`${name}: completed ${touchedSets.length}/${log.sets.length}`);
+        }
+      }
+      if (log.flag && log.flag.trim()) {
+        lines.push(`${name} note: "${log.flag.trim()}"`);
+      }
+    });
+    return lines.join(" · ");
+  }
+
+  function showWorkout(user, sessionSplitKey, exercises, meta = {}) {
+    activeWorkout = {
+      sessionSplitKey,
+      exercises,
+      logs: buildInitialLogs(exercises),
+      reason: meta.reason ?? null,
+      source: meta.source ?? "local",
+    };
+    showScreen("workout-screen");
+    renderWorkoutHeader(sessionSplitKey);
+    renderWarmup(sessionSplitKey);
+    renderWorkoutExercises();
+  }
+
+  function initWorkoutScreen() {
+    document.getElementById("workout-switch").addEventListener("click", () => {
+      activeWorkout = null;
+      showLogin();
+    });
+
+    document.getElementById("workout-abandon").addEventListener("click", () => {
+      activeWorkout = null;
+      showSelect(currentUser);
+    });
+
+    document.getElementById("workout-regenerate").addEventListener("click", async () => {
+      if (!activeWorkout || activeWorkout.sessionSplitKey === "custom") return;
+      const btn = document.getElementById("workout-regenerate");
+      btn.disabled = true;
+      const plan = await computePlan(currentUser, activeWorkout.sessionSplitKey, checkInState);
+      const exercises = plan.exercises.map((ex) => ({ ...ex, splitKey: activeWorkout.sessionSplitKey }));
+      activeWorkout.exercises = exercises;
+      activeWorkout.logs = buildInitialLogs(exercises);
+      activeWorkout.reason = plan.reason;
+      activeWorkout.source = plan.source;
+      renderWorkoutExercises();
+      btn.disabled = false;
+    });
+
+    document.getElementById("finish-workout-btn").addEventListener("click", () => {
+      if (!activeWorkout) return;
+      const summary = summarizeWorkoutLog(activeWorkout.logs);
+      const combinedNote = [checkInState.note?.trim(), summary].filter(Boolean).join(" | ") || null;
+
+      logSession(currentUser, activeWorkout.sessionSplitKey, {
+        ...checkInState,
+        exercises: activeWorkout.exercises.map(({ name, detail, tip, superset }) => ({ name, detail, tip, superset })),
+        reason: activeWorkout.reason,
+        source: activeWorkout.source,
+        note: combinedNote,
+      });
+
+      if (summary) logNote(currentUser, summary);
+
+      activeWorkout = null;
+      showScreen("session-screen");
+      renderSessionFull(currentUser);
+    });
+  }
+
   // ---------- rendering: check-in screen ----------
 
   function selectChip(row, value) {
@@ -664,8 +1049,9 @@
   }
 
   function renderCheckIn(user) {
-    checkInState = { minutes: 30, energy: "medium", partner: false };
+    checkInState = { minutes: 30, energy: "medium", partner: false, note: "" };
     document.getElementById("checkin-name").textContent = PERSONAS[user].name;
+    document.getElementById("checkin-note").value = "";
     selectChip(document.getElementById("checkin-energy"), checkInState.energy);
     selectChip(document.getElementById("checkin-minutes"), checkInState.minutes);
     selectChip(document.getElementById("checkin-partner"), checkInState.partner ? "yes" : "no");
@@ -686,7 +1072,12 @@
       });
     });
 
+    document.getElementById("checkin-note").addEventListener("input", (e) => {
+      checkInState.note = e.target.value;
+    });
+
     document.getElementById("checkin-submit").addEventListener("click", () => {
+      logNote(currentUser, checkInState.note);
       showSelect(currentUser);
     });
 
@@ -753,7 +1144,8 @@
         const row = document.createElement("label");
         row.className = "custom-ex-row";
         row.innerHTML = `
-          <input type="checkbox" data-id="${id}" data-name="${ex.name}" data-detail="${ex.detail}" />
+          <input type="checkbox" data-id="${id}" data-name="${ex.name}" data-detail="${ex.detail}"
+                 data-split="${splitKey}" data-tip="${ex.tip || ""}" data-superset="${ex.superset || ""}" />
           <span class="custom-ex-name">${ex.name}</span>
           <span class="custom-ex-detail">${ex.detail}</span>
         `;
@@ -779,20 +1171,18 @@
     document.getElementById("custom-groups").addEventListener("change", (e) => {
       const input = e.target.closest("input[type=checkbox]");
       if (!input) return;
-      const { id, name, detail } = input.dataset;
-      if (input.checked) customSelection.set(id, { name, detail });
-      else customSelection.delete(id);
+      const { id, name, detail, split, tip, superset } = input.dataset;
+      if (input.checked) {
+        customSelection.set(id, { name, detail, splitKey: split, tip: tip || undefined, superset: superset || undefined });
+      } else {
+        customSelection.delete(id);
+      }
       updateCustomFooter();
     });
 
     document.getElementById("custom-start-btn").addEventListener("click", () => {
       if (customSelection.size === 0) return;
-      logSession(currentUser, "custom", {
-        ...checkInState,
-        exercises: Array.from(customSelection.values()),
-      });
-      showScreen("session-screen");
-      renderSessionFull(currentUser);
+      showWorkout(currentUser, "custom", Array.from(customSelection.values()));
     });
   }
 
@@ -801,6 +1191,7 @@
   function showLogin() {
     currentUser = null;
     selectedSplitKey = null;
+    activeWorkout = null;
     showScreen("login-screen");
   }
 
@@ -866,6 +1257,7 @@
   initCheckIn();
   initSelectScreen();
   initCustomScreen();
+  initWorkoutScreen();
 
   renderClock();
   setInterval(renderClock, 1000);
