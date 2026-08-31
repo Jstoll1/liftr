@@ -18,7 +18,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/reverse-lunge.jpg"
+      "webPath": "images/legs/reverse-lunge.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 69516
     },
     {
       "id": "forward-lunge-v1",
@@ -37,7 +40,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/forward-lunge.jpg"
+      "webPath": "images/legs/forward-lunge.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 66397
     },
     {
       "id": "bodyweight-squat-v1",
@@ -56,7 +62,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/bodyweight-squat.jpg"
+      "webPath": "images/legs/bodyweight-squat.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 61681
     },
     {
       "id": "goblet-squat-v1",
@@ -75,7 +84,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/goblet-squat.jpg"
+      "webPath": "images/legs/goblet-squat.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 70166
     },
     {
       "id": "conventional-deadlift-v1",
@@ -94,7 +106,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/conventional-deadlift.jpg"
+      "webPath": "images/legs/conventional-deadlift.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 83711
     },
     {
       "id": "stiff-leg-deadlift-v1",
@@ -113,7 +128,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/stiff-leg-deadlift.jpg"
+      "webPath": "images/legs/stiff-leg-deadlift.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 62263
     },
     {
       "id": "step-up-v1",
@@ -132,7 +150,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/step-up.jpg"
+      "webPath": "images/legs/step-up.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 68154
     },
     {
       "id": "wall-sit-v1",
@@ -151,7 +172,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/wall-sit.jpg"
+      "webPath": "images/legs/wall-sit.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 76256
     },
     {
       "id": "romanian-deadlift-v1",
@@ -170,7 +194,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/romanian-deadlift.jpg"
+      "webPath": "images/legs/romanian-deadlift.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 64772
     },
     {
       "id": "sumo-deadlift-v1",
@@ -189,7 +216,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/sumo-deadlift.jpg"
+      "webPath": "images/legs/sumo-deadlift.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 73054
     },
     {
       "id": "bulgarian-split-squat-v1",
@@ -208,7 +238,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/bulgarian-split-squat.jpg"
+      "webPath": "images/legs/bulgarian-split-squat.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 65059
     },
     {
       "id": "lateral-lunge-v1",
@@ -227,7 +260,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/lateral-lunge.jpg"
+      "webPath": "images/legs/lateral-lunge.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 81539
     },
     {
       "id": "glute-bridge-v1",
@@ -246,7 +282,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/glute-bridge.jpg"
+      "webPath": "images/legs/glute-bridge.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 57894
     },
     {
       "id": "hip-thrust-v1",
@@ -265,7 +304,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/hip-thrust.jpg"
+      "webPath": "images/legs/hip-thrust.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 61847
     },
     {
       "id": "standing-calf-raise-v1",
@@ -284,7 +326,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/standing-calf-raise.jpg"
+      "webPath": "images/legs/standing-calf-raise.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 63847
     },
     {
       "id": "seated-calf-raise-v1",
@@ -303,7 +348,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/seated-calf-raise.jpg"
+      "webPath": "images/legs/seated-calf-raise.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 63309
     },
     {
       "id": "leg-press-v1",
@@ -322,7 +370,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/leg-press.jpg"
+      "webPath": "images/legs/leg-press.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 89733
     },
     {
       "id": "leg-extension-v1",
@@ -341,7 +392,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/leg-extension.jpg"
+      "webPath": "images/legs/leg-extension.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 101595
     },
     {
       "id": "seated-leg-curl-v1",
@@ -360,7 +414,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/seated-leg-curl.jpg"
+      "webPath": "images/legs/seated-leg-curl.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 86195
     },
     {
       "id": "barbell-back-squat-v1",
@@ -379,7 +436,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-leg-day-library.md",
-      "webPath": "images/legs/barbell-back-squat.jpg"
+      "webPath": "images/legs/barbell-back-squat.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 69173
     },
     {
       "id": "push-up-v1",
@@ -398,7 +458,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/chest/push-up.jpg"
+      "webPath": "images/chest/push-up.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 58440
     },
     {
       "id": "barbell-bench-press-v1",
@@ -417,7 +480,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/chest/barbell-bench-press.jpg"
+      "webPath": "images/chest/barbell-bench-press.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 76349
     },
     {
       "id": "dumbbell-bench-press-v1",
@@ -436,7 +502,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/chest/dumbbell-bench-press.jpg"
+      "webPath": "images/chest/dumbbell-bench-press.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 65909
     },
     {
       "id": "incline-dumbbell-press-v1",
@@ -455,7 +524,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/chest/incline-dumbbell-press.jpg"
+      "webPath": "images/chest/incline-dumbbell-press.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 82867
     },
     {
       "id": "dumbbell-chest-fly-v1",
@@ -474,7 +546,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/chest/dumbbell-chest-fly.jpg"
+      "webPath": "images/chest/dumbbell-chest-fly.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 70054
     },
     {
       "id": "cable-chest-fly-v1",
@@ -493,7 +568,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/chest/cable-chest-fly.jpg"
+      "webPath": "images/chest/cable-chest-fly.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 76756
     },
     {
       "id": "incline-push-up-v1",
@@ -512,7 +590,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/chest/incline-push-up.jpg"
+      "webPath": "images/chest/incline-push-up.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 69323
     },
     {
       "id": "pec-deck-fly-v1",
@@ -531,7 +612,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/chest/pec-deck-fly.jpg"
+      "webPath": "images/chest/pec-deck-fly.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 95929
     },
     {
       "id": "pull-up-v1",
@@ -550,7 +634,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/back/pull-up.jpg"
+      "webPath": "images/back/pull-up.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 72701
     },
     {
       "id": "lat-pulldown-v1",
@@ -569,7 +656,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/back/lat-pulldown.jpg"
+      "webPath": "images/back/lat-pulldown.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 83032
     },
     {
       "id": "seated-cable-row-v1",
@@ -588,7 +678,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/back/seated-cable-row.jpg"
+      "webPath": "images/back/seated-cable-row.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 76522
     },
     {
       "id": "one-arm-dumbbell-row-v1",
@@ -607,7 +700,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/back/one-arm-dumbbell-row.jpg"
+      "webPath": "images/back/one-arm-dumbbell-row.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 82140
     },
     {
       "id": "bent-over-barbell-row-v1",
@@ -626,7 +722,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/back/bent-over-barbell-row.jpg"
+      "webPath": "images/back/bent-over-barbell-row.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 72779
     },
     {
       "id": "chest-supported-row-v1",
@@ -645,7 +744,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/back/chest-supported-row.jpg"
+      "webPath": "images/back/chest-supported-row.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 85177
     },
     {
       "id": "straight-arm-pulldown-v1",
@@ -664,7 +766,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/back/straight-arm-pulldown.jpg"
+      "webPath": "images/back/straight-arm-pulldown.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 74258
     },
     {
       "id": "back-extension-v1",
@@ -683,7 +788,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/back/back-extension.jpg"
+      "webPath": "images/back/back-extension.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 59312
     },
     {
       "id": "seated-dumbbell-shoulder-press-v1",
@@ -702,7 +810,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/shoulders/seated-dumbbell-shoulder-press.jpg"
+      "webPath": "images/shoulders/seated-dumbbell-shoulder-press.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 68510
     },
     {
       "id": "standing-barbell-overhead-press-v1",
@@ -721,7 +832,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/shoulders/standing-barbell-overhead-press.jpg"
+      "webPath": "images/shoulders/standing-barbell-overhead-press.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 62127
     },
     {
       "id": "dumbbell-lateral-raise-v1",
@@ -740,7 +854,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/shoulders/dumbbell-lateral-raise.jpg"
+      "webPath": "images/shoulders/dumbbell-lateral-raise.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 55253
     },
     {
       "id": "dumbbell-front-raise-v1",
@@ -759,7 +876,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/shoulders/dumbbell-front-raise.jpg"
+      "webPath": "images/shoulders/dumbbell-front-raise.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 60727
     },
     {
       "id": "bent-over-reverse-fly-v1",
@@ -778,7 +898,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/shoulders/bent-over-reverse-fly.jpg"
+      "webPath": "images/shoulders/bent-over-reverse-fly.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 64540
     },
     {
       "id": "face-pull-v1",
@@ -797,7 +920,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/shoulders/face-pull.jpg"
+      "webPath": "images/shoulders/face-pull.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 73489
     },
     {
       "id": "single-arm-landmine-press-v1",
@@ -816,7 +942,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/shoulders/single-arm-landmine-press.jpg"
+      "webPath": "images/shoulders/single-arm-landmine-press.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 64033
     },
     {
       "id": "dumbbell-shrug-v1",
@@ -835,7 +964,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/shoulders/dumbbell-shrug.jpg"
+      "webPath": "images/shoulders/dumbbell-shrug.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 63830
     },
     {
       "id": "standing-dumbbell-curl-v1",
@@ -854,7 +986,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/arms/standing-dumbbell-curl.jpg"
+      "webPath": "images/arms/standing-dumbbell-curl.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 61051
     },
     {
       "id": "hammer-curl-v1",
@@ -873,7 +1008,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/arms/hammer-curl.jpg"
+      "webPath": "images/arms/hammer-curl.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 64800
     },
     {
       "id": "preacher-curl-v1",
@@ -892,7 +1030,10 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/arms/preacher-curl.jpg"
+      "webPath": "images/arms/preacher-curl.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 93180
     },
     {
       "id": "rope-triceps-pushdown-v1",
@@ -911,7 +1052,142 @@
       "instructionalReview": "pending-qualified-trainer-review",
       "generatedWith": "built-in image_gen",
       "handoff": "handoffs/2026-08-31-upper-body-library.md",
-      "webPath": "images/arms/rope-triceps-pushdown.jpg"
+      "webPath": "images/arms/rope-triceps-pushdown.jpg",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 80905
+    },
+    {
+      "id": "incline-dumbbell-curl-v1",
+      "exerciseId": "incline-dumbbell-curl",
+      "name": "Incline dumbbell curl",
+      "collection": "arms",
+      "category": "arms",
+      "equipment": "dumbbells and incline bench",
+      "path": "assets/images/arms/incline-dumbbell-curl-v1.png",
+      "webPath": "images/arms/incline-dumbbell-curl.jpg",
+      "alt": "Athlete illustrating incline dumbbell curl.",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1859873,
+      "placement": "Exercise selection card or detail illustration",
+      "status": "ready",
+      "instructionalReview": "pending-qualified-trainer-review",
+      "generatedWith": "built-in image_gen",
+      "handoff": "handoffs/2026-08-31-upper-body-library.md",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 80016
+    },
+    {
+      "id": "overhead-dumbbell-triceps-extension-v1",
+      "exerciseId": "overhead-dumbbell-triceps-extension",
+      "name": "Overhead dumbbell triceps extension",
+      "collection": "arms",
+      "category": "arms",
+      "equipment": "single dumbbell",
+      "path": "assets/images/arms/overhead-dumbbell-triceps-extension-v1.png",
+      "webPath": "images/arms/overhead-dumbbell-triceps-extension.jpg",
+      "alt": "Athlete illustrating overhead dumbbell triceps extension.",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1719342,
+      "placement": "Exercise selection card or detail illustration",
+      "status": "ready",
+      "instructionalReview": "pending-qualified-trainer-review",
+      "generatedWith": "built-in image_gen",
+      "handoff": "handoffs/2026-08-31-upper-body-library.md",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 67272
+    },
+    {
+      "id": "lying-triceps-extension-v1",
+      "exerciseId": "lying-triceps-extension",
+      "name": "Lying EZ-bar triceps extension",
+      "collection": "arms",
+      "category": "arms",
+      "equipment": "EZ curl bar and flat bench",
+      "path": "assets/images/arms/lying-triceps-extension-v1.png",
+      "webPath": "images/arms/lying-triceps-extension.jpg",
+      "alt": "Athlete illustrating lying ez-bar triceps extension.",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1519361,
+      "placement": "Exercise selection card or detail illustration",
+      "status": "ready",
+      "instructionalReview": "pending-qualified-trainer-review",
+      "generatedWith": "built-in image_gen",
+      "handoff": "handoffs/2026-08-31-upper-body-library.md",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 55313
+    },
+    {
+      "id": "dumbbell-triceps-kickback-v1",
+      "exerciseId": "dumbbell-triceps-kickback",
+      "name": "Dumbbell triceps kickback",
+      "collection": "arms",
+      "category": "arms",
+      "equipment": "dumbbell and bench",
+      "path": "assets/images/arms/dumbbell-triceps-kickback-v1.png",
+      "webPath": "images/arms/dumbbell-triceps-kickback.jpg",
+      "alt": "Athlete illustrating dumbbell triceps kickback.",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1701448,
+      "placement": "Exercise selection card or detail illustration",
+      "status": "ready",
+      "instructionalReview": "pending-qualified-trainer-review",
+      "generatedWith": "built-in image_gen",
+      "handoff": "handoffs/2026-08-31-upper-body-library.md",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 68939
+    },
+    {
+      "id": "seated-wrist-curl-v1",
+      "exerciseId": "seated-wrist-curl",
+      "name": "Seated wrist curl",
+      "collection": "arms",
+      "category": "arms",
+      "equipment": "dumbbells and bench",
+      "path": "assets/images/arms/seated-wrist-curl-v1.png",
+      "webPath": "images/arms/seated-wrist-curl.jpg",
+      "alt": "Athlete illustrating seated wrist curl.",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1816353,
+      "placement": "Exercise selection card or detail illustration",
+      "status": "ready",
+      "instructionalReview": "pending-qualified-trainer-review",
+      "generatedWith": "built-in image_gen",
+      "handoff": "handoffs/2026-08-31-upper-body-library.md",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 75052
+    },
+    {
+      "id": "seated-reverse-wrist-curl-v1",
+      "exerciseId": "seated-reverse-wrist-curl",
+      "name": "Seated reverse wrist curl",
+      "collection": "arms",
+      "category": "arms",
+      "equipment": "dumbbells and bench",
+      "path": "assets/images/arms/seated-reverse-wrist-curl-v1.png",
+      "webPath": "images/arms/seated-reverse-wrist-curl.jpg",
+      "alt": "Athlete illustrating seated reverse wrist curl.",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1853864,
+      "placement": "Exercise selection card or detail illustration",
+      "status": "ready",
+      "instructionalReview": "pending-qualified-trainer-review",
+      "generatedWith": "built-in image_gen",
+      "handoff": "handoffs/2026-08-31-upper-body-library.md",
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 77136
     }
   ]
 }

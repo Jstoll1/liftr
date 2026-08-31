@@ -17,6 +17,10 @@ The `assistant/` folder is for future assistant planning. Agree on its UI/backen
 
 Keep UI changes and image deliveries in separate commits where practical. Avoid force pushes and concurrent changes to the same files. Each tool should use its own local checkout. Pulling or merging Git changes is what shares files between tools; folders alone do not synchronize them.
 
+## App-ready image delivery
+
+The user requested image deliveries on main so Claude can pull them directly. Preserve and merge the latest main changes before pushing; never force push. Keep generated PNG originals in `assets/images/<collection>/` and publish web JPEG copies in the existing app's `images/<body-part>/` folders. Leg-day originals map to `images/legs/`. Record JPEG paths as `webPath` in the manifest. These user instructions supersede the earlier branch-only delivery default for image content.
+
 ## Public repository precautions
 
 Treat committed files as public and potentially accessible from the deployed site. Keep drafts and large source files outside this repository. Never commit API keys, private user data, personal reference photos without approval, or confidential prompts. A folder name does not provide access control.
