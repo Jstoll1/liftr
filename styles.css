@@ -1,15 +1,15 @@
 :root {
   color-scheme: dark;
-  --bg: #0b0b0c;
-  --bg-elevated: #18181a;
-  --bg-card: #1e1e21;
-  --border: #333336;
-  --text: #f5f4f0;
-  --text-dim: #9a9a9e;
-  --accent-jessica: #ff7a1a;
-  --accent-jake: #ffd60a;
-  --accent: #ffd60a;
-  --gold: #ffd60a;
+  --bg: #0a0014;
+  --bg-elevated: #150826;
+  --bg-card: #1a0b2e;
+  --border: #3a1e5c;
+  --text: #f4eefe;
+  --text-dim: #a68fd0;
+  --accent-jessica: #ff2e97;
+  --accent-jake: #05d9e8;
+  --accent: #05d9e8;
+  --gold: #ffcf3f;
   --success: #39ff8f;
   --radius: 14px;
   --font-display: "Press Start 2P", monospace;
@@ -37,8 +37,8 @@ html, body {
   inset: 0;
   z-index: -2;
   background:
-    radial-gradient(ellipse at 50% 18%, rgba(255, 138, 26, 0.18), transparent 55%),
-    linear-gradient(180deg, #1a1613 0%, #0b0b0c 45%, #0b0b0c 100%);
+    radial-gradient(ellipse at 50% 18%, rgba(255, 46, 151, 0.25), transparent 55%),
+    linear-gradient(180deg, #1a0b2e 0%, #0a0014 45%, #0a0014 100%);
   overflow: hidden;
 }
 
@@ -50,8 +50,8 @@ html, body {
   bottom: 0;
   height: 65%;
   background-image:
-    linear-gradient(rgba(255, 138, 26, 0.35) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 138, 26, 0.35) 1px, transparent 1px);
+    linear-gradient(rgba(5, 217, 232, 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(5, 217, 232, 0.55) 1px, transparent 1px);
   background-size: 60px 60px;
   transform: perspective(300px) rotateX(65deg);
   transform-origin: bottom;
@@ -67,7 +67,7 @@ html, body {
   top: 30%;
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--accent-jessica), var(--gold), var(--accent-jake), transparent);
-  box-shadow: 0 0 20px 4px rgba(255, 138, 26, 0.6);
+  box-shadow: 0 0 20px 4px rgba(255, 46, 151, 0.6);
 }
 
 @keyframes gridScroll {
@@ -105,7 +105,7 @@ html, body {
   height: 40px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: rgba(11, 11, 12, 0.7);
+  background: rgba(10, 0, 20, 0.7);
   color: var(--text);
   font-size: 16px;
   cursor: pointer;
@@ -349,7 +349,7 @@ html, body {
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   color: var(--gold);
-  text-shadow: 0 0 10px rgba(255, 214, 10, 0.55);
+  text-shadow: 0 0 10px rgba(255, 207, 63, 0.6);
 }
 
 .clock-time .colon {
@@ -465,7 +465,7 @@ html, body {
 .session-icon {
   font-size: 30px;
   line-height: 1;
-  filter: drop-shadow(0 0 8px rgba(255, 214, 10, 0.5));
+  filter: drop-shadow(0 0 8px rgba(255, 207, 63, 0.5));
 }
 
 .session-head-copy {
@@ -548,7 +548,7 @@ html, body {
   letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
-  color: var(--bg);
+  color: #0a0014;
   background: var(--accent);
   box-shadow: 0 0 0 2px rgba(0,0,0,0.4) inset, 0 4px 0 color-mix(in srgb, var(--accent) 60%, black), 0 0 20px -4px var(--accent);
   transition: transform 0.08s ease, box-shadow 0.08s ease;
@@ -637,7 +637,7 @@ html, body {
   position: fixed;
   inset: 0;
   z-index: 70;
-  background: rgba(8, 8, 9, 0.82);
+  background: rgba(5, 0, 12, 0.82);
   display: flex;
   align-items: center;
   justify-content: center;
