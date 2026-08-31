@@ -354,10 +354,16 @@
     if (!last) {
       reason = `Fresh start — let's kick off with ${SPLIT_LIBRARY[rotationPick].name}.`;
     } else {
-      const when = last.date === daysAgo(1) ? "yesterday" : `on ${formatShortDate(last.date)}`;
-      reason = `You hit ${SPLIT_LIBRARY[last.splitKey].name} ${when} — ${SPLIT_LIBRARY[rotationPick].name} is up next.`;
+      reason = `You hit ${SPLIT_LIBRARY[last.splitKey].name} ${describeWhen(last.date)} — ${SPLIT_LIBRARY[rotationPick].name} is up next.`;
     }
     return { key: rotationPick, reason };
+  }
+
+  // Turns a stored YYYY-M-D date into "today" / "yesterday" / "on Aug 29".
+  function describeWhen(dateStr) {
+    if (dateStr === todayStr()) return "today";
+    if (dateStr === daysAgo(1)) return "yesterday";
+    return `on ${formatShortDate(dateStr)}`;
   }
 
   // ---------- workout plan builder ----------
@@ -1166,10 +1172,51 @@
     });
   }
 
+  function getMotivationalLine(streak) {
+    if (streak >= 7) return `🔥 ${streak} days strong — this is who you are now.`;
+    if (streak >= 3) return `🔥 ${streak} days strong — you're on a roll.`;
+    if (streak >= 1) return "You're building a habit. Keep it going.";
+    return "Every rep counts — let's build some momentum today.";
+  }
+
+  // Personalized recap shown at the top of check-in: a first-timer welcome,
+  // or a "here's where you left off" summary for returning users — makes it
+  // obvious the app is actually tracking them, not just a blank form.
+  function renderRecapCard(user) {
+    const persona = PERSONAS[user];
+    const history = getHistory(user);
+    const el = document.getElementById("recap-card");
+
+    if (history.length === 0) {
+      el.innerHTML = `
+        <span class="recap-eyebrow">🎉 FIRST CHECK-IN</span>
+        <p class="recap-line">Welcome to Liftr, ${escapeHtml(persona.name)}! We're excited to have you — let's get your first session logged.</p>
+        <p class="recap-mission">🎯 ${escapeHtml(persona.goal)}</p>
+      `;
+      return;
+    }
+
+    const last = history[history.length - 1];
+    const lastMeta = getSplitMeta(last.splitKey);
+    const streak = currentStreak(history);
+
+    el.innerHTML = `
+      <span class="recap-eyebrow">YOUR PROGRESS</span>
+      <p class="recap-line">Last time, ${describeWhen(last.date)} — you crushed <strong>${lastMeta.icon} ${escapeHtml(lastMeta.name)}</strong>.</p>
+      <div class="recap-stats">
+        ${streak > 0 ? `<span class="recap-stat">🔥 ${streak} day streak</span>` : ""}
+        <span class="recap-stat">📈 ${history.length} session${history.length === 1 ? "" : "s"} logged</span>
+      </div>
+      <p class="recap-motivation">${getMotivationalLine(streak)}</p>
+      <p class="recap-mission">🎯 ${escapeHtml(persona.goal)}</p>
+    `;
+  }
+
   function renderCheckIn(user) {
     checkInState = { minutes: 30, energy: "medium", partner: false, note: "" };
     document.getElementById("checkin-name").textContent = PERSONAS[user].name;
     document.getElementById("checkin-note").value = "";
+    renderRecapCard(user);
     selectChip(document.getElementById("checkin-energy"), checkInState.energy);
     selectChip(document.getElementById("checkin-minutes"), checkInState.minutes);
     selectChip(document.getElementById("checkin-partner"), checkInState.partner ? "yes" : "no");
