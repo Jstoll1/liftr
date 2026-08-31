@@ -12,12 +12,12 @@
   const PERSONAS = {
     jessica: {
       name: "Jessica",
-      accent: "#ff2e97",
+      accent: "#ff7a1a",
       goal: "Build lean endurance for her first half-marathon",
     },
     jake: {
       name: "Jake",
-      accent: "#05d9e8",
+      accent: "#ffd60a",
       goal: "Pack on strength for a 405lb deadlift",
     },
   };
