@@ -32,7 +32,7 @@ export default {
       return json({ error: "Invalid JSON body" }, 400, corsHeaders);
     }
 
-    const { persona, split, minutes, energy, partner, candidates } = body || {};
+    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes } = body || {};
     const valid =
       persona?.name &&
       persona?.goal &&
@@ -73,6 +73,12 @@ export default {
       "Prioritize whichever candidates best serve the athlete's stated goal.",
       "On low energy, trim volume and prefer the lower-fatigue candidates.",
       "If a partner is available, prefer partner-friendly candidates when present.",
+      "The athlete may give a free-text note (today's, and/or recent prior days').",
+      "Use it: honor equipment constraints or injuries by avoiding candidates that",
+      "conflict with them, factor in stated goal changes, and if it mentions a",
+      "specific weight, rep count, or exercise they struggled or excelled with,",
+      "acknowledge it by name in your reason — e.g. suggest easing back toward a",
+      "prior weight after a struggle, or acknowledge hitting a new threshold.",
       "Keep the reason to one specific, motivating sentence — no generic filler.",
     ].join(" ");
 
@@ -83,6 +89,8 @@ export default {
       minutesAvailable: minutes,
       energyLevel: energy,
       hasPartner: Boolean(partner),
+      todayNote: todayNote || null,
+      recentFeedback: Array.isArray(pastNotes) ? pastNotes : [],
       candidateExercises: candidates,
     });
 
