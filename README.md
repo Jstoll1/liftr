@@ -14,7 +14,7 @@ drop them into:
 images/<body-part>/<slugified-exercise-name>.jpg
 ```
 
-Body-part folders: `chest`, `back`, `legs`, `cardio`, `core`.
+Image folders now include `chest`, `back`, `legs`, `shoulders`, and `arms`. The current app routes chest/back, legs, cardio and core; Claude can add shoulder/arm routing when adding those workout types.
 
 The slug is the exercise name lowercased, with anything that isn't a
 letter/number turned into a single hyphen. For example:
@@ -43,5 +43,7 @@ instead of the built-in local rules.
 See [the collaboration guide](COLLABORATION.md) for ownership and delivery steps.
 
 ## Image library
+
+54 exercise illustrations are included: 20 legs, 8 chest, 8 back, 8 shoulders, and 10 arms. App-ready JPEGs are in [images/](images/README.md); original PNGs, final prompts, and visual catalogs are in [assets/images/](assets/images/README.md).
 
 Browse the [20-image leg-day collection](assets/images/leg-day/README.md), including its visual catalog and generation prompts. See the [collection roadmap](assets/images/README.md) for planned additions.

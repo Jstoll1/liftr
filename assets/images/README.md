@@ -6,14 +6,19 @@ Use one subfolder per workout collection, with versioned exercise filenames. Kee
 
 - [Leg day](leg-day/README.md): 20 exercise illustrations covering squats, lunges, hinges, glutes, calves, and machines. All eight originally requested movements are included.
 
+- [Chest](chest/README.md): 8 illustrations.
+- [Back](back/README.md): 8 illustrations.
+- [Shoulders](shoulders/README.md): 8 illustrations.
+- [Arms](arms/README.md): 10 illustrations.
+
+App-ready JPEG copies are in the root `images/` folder.
+
 ## Expansion roadmap — not generated yet
 
 Create these folders when their first assets are delivered; this list is a plan, not an inventory of existing images.
 
 | Collection | Suggested initial coverage |
 |---|---|
-| `chest-back/` | Push-up, bench press, incline dumbbell press, chest fly, pull-up, lat pulldown, seated row, one-arm dumbbell row |
-| `shoulders-arms/` | Overhead press, lateral raise, rear-delt fly, biceps curl, hammer curl, triceps pushdown, overhead triceps extension |
 | `core/` | Plank, side plank, dead bug, bird dog, reverse crunch, Pallof press |
 | `cardio/` | Walking, running, cycling, rowing, elliptical, stair climber, jump rope |
 | `mobility/` | Ankle mobility, hip-flexor stretch, hamstring stretch, calf stretch, thoracic rotation |
