@@ -4,40 +4,61 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Liftr</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+
+  <div class="synth-grid" aria-hidden="true"></div>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <button id="sound-toggle" class="sound-toggle" aria-label="Toggle sound">🔊</button>
 
   <!-- LOGIN SCREEN -->
   <main id="login-screen" class="screen">
     <div class="login-wrap">
       <div class="brand">
         <span class="brand-mark">LIFTR</span>
-        <span class="brand-sub">who's training today?</span>
+        <span class="brand-sub">&gt; INSERT LIFTER TO CONTINUE &lt;</span>
       </div>
       <div class="user-picker">
         <button class="user-card" data-user="jessica">
-          <span class="user-avatar" style="--accent:#ff5da2">J</span>
+          <span class="user-avatar" style="--accent:#ff2e97">J</span>
           <span class="user-name">Jessica</span>
         </button>
         <button class="user-card" data-user="jake">
-          <span class="user-avatar" style="--accent:#4fc3ff">J</span>
+          <span class="user-avatar" style="--accent:#05d9e8">J</span>
           <span class="user-name">Jake</span>
         </button>
       </div>
     </div>
   </main>
 
+  <!-- WELCOME / TITLE-CARD SCREEN -->
+  <main id="welcome-screen" class="screen hidden">
+    <div class="welcome-wrap">
+      <span class="welcome-eyebrow">POWER UP</span>
+      <h1 id="welcome-text" class="welcome-text">
+        <span>WELCOME</span>
+        <span>BACK,</span>
+        <span id="welcome-name" class="welcome-name">JAKE</span>
+      </h1>
+      <span class="welcome-hint">tap anywhere to continue</span>
+    </div>
+  </main>
+
   <!-- DASHBOARD SCREEN -->
   <main id="dashboard-screen" class="screen hidden">
     <header class="topbar">
-      <button id="switch-user" class="link-btn" aria-label="Switch user">&larr; Switch</button>
+      <button id="switch-user" class="link-btn" aria-label="Switch user">&larr; SWITCH</button>
       <div id="clock" class="clock">
         <span id="clock-date" class="clock-date"></span>
         <span id="clock-time" class="clock-time"></span>
       </div>
       <div id="streak-badge" class="streak-badge hidden">
-        <span id="streak-count">0</span> day streak
+        <span id="streak-count">0</span> DAY STREAK
       </div>
     </header>
 
@@ -45,7 +66,7 @@
       <span id="goal-avatar" class="goal-avatar">J</span>
       <div class="goal-copy">
         <span id="goal-username" class="goal-username"></span>
-        <span id="goal-label" class="goal-label">GOAL</span>
+        <span id="goal-label" class="goal-label">MISSION</span>
         <span id="goal-text" class="goal-text"></span>
       </div>
     </section>
@@ -63,6 +84,8 @@
           <span id="session-status" class="session-status hidden">Done</span>
         </div>
 
+        <div id="session-tags" class="session-tags hidden"></div>
+
         <ul id="session-exercises" class="session-exercises"></ul>
 
         <button id="log-session-btn" class="primary-btn">Start Session</button>
@@ -79,6 +102,46 @@
       <ul id="history-list" class="history-list"></ul>
     </section>
   </main>
+
+  <!-- CUSTOMIZE MODAL -->
+  <div id="customize-modal" class="modal-overlay hidden">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <span id="modal-title" class="modal-title">BUILD TODAY'S SESSION</span>
+      <span id="modal-subtitle" class="modal-subtitle"></span>
+
+      <div class="option-group">
+        <span class="option-label">⏱ Amount of Time</span>
+        <div id="option-time" class="option-row" data-option="minutes">
+          <button class="chip" data-value="15">15 min</button>
+          <button class="chip" data-value="30">30 min</button>
+          <button class="chip" data-value="45">45 min</button>
+          <button class="chip" data-value="60">60 min</button>
+        </div>
+      </div>
+
+      <div class="option-group">
+        <span class="option-label">⚡ Energy Level</span>
+        <div id="option-energy" class="option-row" data-option="energy">
+          <button class="chip" data-value="low">Low</button>
+          <button class="chip" data-value="medium">Medium</button>
+          <button class="chip" data-value="high">High</button>
+        </div>
+      </div>
+
+      <div class="option-group">
+        <span class="option-label">🤝 Got a Partner?</span>
+        <div id="option-partner" class="option-row" data-option="partner">
+          <button class="chip" data-value="yes">Yes</button>
+          <button class="chip" data-value="no">No</button>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="modal-cancel" class="ghost-btn">Cancel</button>
+        <button id="modal-confirm" class="primary-btn">Lock In &amp; Start</button>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
