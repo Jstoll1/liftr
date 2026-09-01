@@ -314,6 +314,7 @@
       exercises: {
         jessica: [
           { name: "Goblet Squat", detail: "3 x 15", superset: "A", howTo: "Hold a dumbbell at your chest and squat down until your thighs are parallel to the floor.", tip: "Hold the weight close to your chest and sit straight down between your heels." },
+          { name: "Leg Press", detail: "3 x 12", superset: "A", howTo: "Sit firmly against the machine pad and press the platform away by extending your legs, then lower it with control.", tip: "Use a shoulder-width stance and let your knees travel naturally over your toes to emphasize your quads." },
           { name: "Step-Ups", detail: "3 x 12/leg", superset: "A", howTo: "Step one foot fully onto a box or bench and drive up until that leg is straight.", tip: "Drive through the heel of your working leg — don't push off the back foot." },
           { name: "Glute Bridge", detail: "3 x 15", howTo: "Lying on your back with knees bent, drive your hips up toward the ceiling.", tip: "Squeeze your glutes hard at the top, pause for a beat." },
           { name: "Lateral Band Walk", detail: "3 x 20", howTo: "With a band around your ankles or knees, take small steps sideways in a partial squat.", tip: "Stay low and keep tension on the band the entire time." },
@@ -647,6 +648,44 @@
     return list;
   }
 
+  // Interprets common focus requests locally so the recommendation reacts
+  // immediately even when the coach service is offline or still responding.
+  function getCoachFocus(text) {
+    const value = String(text || "").toLowerCase();
+    if (/\b(quad|quads|quadriceps|front of (my )?legs?)\b/.test(value)) return "quads";
+    if (/\b(glute|glutes|booty)\b/.test(value)) return "glutes";
+    if (/\b(hamstring|hamstrings|posterior chain)\b/.test(value)) return "hamstrings";
+    return null;
+  }
+
+  function inferSplitFromChat(text) {
+    const value = String(text || "").toLowerCase();
+    if (getCoachFocus(value) || /\b(leg|legs|lower body|squat|deadlift|lunge)\b/.test(value)) return "legs";
+    if (/\b(chest|back|upper body|push|pull)\b/.test(value)) return "chest-back";
+    if (/\b(cardio|run|running|conditioning|endurance)\b/.test(value)) return "cardio";
+    if (/\b(core|abs|mobility|stretch|recovery)\b/.test(value)) return "core-mobility";
+    return null;
+  }
+
+  // Keeps a requested muscle group visible in the actual draft rather than
+  // only mentioning it in chat. Requested moves are drawn from the approved
+  // exercise library, then the rest of the plan remains intact.
+  function applyCoachFocus(user, splitKey, exercises, note) {
+    const focus = getCoachFocus(note);
+    if (splitKey !== "legs" || !focus) return exercises;
+    const priorities = {
+      quads: ["Leg Press", "Goblet Squat", "Step-Ups", "Walking Lunges", "Bodyweight Lunge", "Barbell Back Squat"],
+      glutes: ["Glute Bridge", "Goblet Squat", "Step-Ups", "Romanian Deadlift", "Walking Lunges"],
+      hamstrings: ["Romanian Deadlift", "Glute Bridge", "Walking Lunges", "Bodyweight Lunge"],
+    }[focus];
+    const pool = buildCandidatePool(user, splitKey);
+    const byName = new Map(pool.map((exercise) => [exercise.name, exercise]));
+    const requested = priorities.map((name) => byName.get(name)).filter(Boolean);
+    const combined = [...requested, ...exercises];
+    const unique = combined.filter((exercise, index, all) => all.findIndex((item) => item.name === exercise.name) === index);
+    return unique.slice(0, Math.max(exercises.length, Math.min(4, requested.length)));
+  }
+
   function getEntryExercises(user, entry) {
     if (Array.isArray(entry.exercises)) return entry.exercises;
     return buildWorkoutPlan(user, entry.splitKey, entry); // backward-compat for older logged entries
@@ -716,7 +755,7 @@
                 : []
             );
             return {
-              exercises: data.exercises,
+              exercises: applyCoachFocus(user, splitKey, data.exercises, checkIn.note),
               reason: typeof data.reason === "string" ? data.reason : null,
               source: "ai",
               suggestedWeights,
@@ -728,7 +767,12 @@
       }
     }
 
-    return { exercises: buildWorkoutPlan(user, splitKey, checkIn), reason: null, source: "local", suggestedWeights: new Map() };
+    return {
+      exercises: applyCoachFocus(user, splitKey, buildWorkoutPlan(user, splitKey, checkIn), checkIn.note),
+      reason: null,
+      source: "local",
+      suggestedWeights: new Map(),
+    };
   }
 
   // ---------- retro guitar riff synth ----------
@@ -843,6 +887,9 @@
   // Split key the coach picked up on from the conversation (e.g. "let's do
   // legs today"), overriding the rule-based recommendation when set.
   let chatSuggestedSplit = null;
+  let recommendationDraft = null; // live exercise-level plan shown inside the recommendation card
+  let recommendationDraftKey = null;
+  let recommendationRequestId = 0; // prevents a slower, older coach response replacing a newer request
   let selectedSplitKey = null; // split chosen on the select screen, awaiting log
   let previewPlan = null; // { exercises, reason, source } computed for the current preview
   let customSelection = new Map(); // exerciseId -> { name, detail, splitKey, tip, superset }
@@ -1643,6 +1690,9 @@
     chatMessages = [{ role: "coach", text: greeting }];
     chatBusy = false;
     chatSuggestedSplit = null;
+    recommendationDraft = null;
+    recommendationDraftKey = null;
+    recommendationRequestId++;
     renderChatThread();
     setChatBusy(false);
   }
@@ -1716,6 +1766,14 @@
     // raw message still becomes today's note so nothing typed is lost.
     let reply = "Got it, I'll keep that in mind for today.";
     let constraint = text;
+    const localSuggestedSplit = inferSplitFromChat(text);
+    const localFocus = getCoachFocus(text);
+    if (localSuggestedSplit) chatSuggestedSplit = localSuggestedSplit;
+    if (localFocus === "quads") {
+      reply = "I’ll shift this toward your quads with leg press, squats, and step-ups. Any knee issues I should account for? If that looks good, open the workout below to review it.";
+    } else if (localFocus) {
+      reply = `I’ll shift today’s leg workout toward your ${localFocus}. Anything sore or any equipment you want me to avoid?`;
+    }
 
     if (AI_ENDPOINT) {
       try {
@@ -1740,15 +1798,19 @@
           const data = await res.json();
           if (typeof data.reply === "string" && data.reply.trim()) {
             reply = data.reply.trim();
-            constraint = typeof data.constraint === "string" && data.constraint.trim() ? data.constraint.trim() : null;
+            constraint = typeof data.constraint === "string" && data.constraint.trim() ? data.constraint.trim() : text;
           }
-          if (SPLIT_ORDER.includes(data.suggestedSplit)) {
+          if (!localSuggestedSplit && SPLIT_ORDER.includes(data.suggestedSplit)) {
             chatSuggestedSplit = data.suggestedSplit;
           }
         }
       } catch {
         // network error or timeout — fall through to the local fallback above
       }
+    }
+
+    if (localFocus && !reply.includes("?")) {
+      reply += " Anything sore or any equipment you want me to avoid?";
     }
 
     chatMessages.push({ role: "coach", text: reply });
@@ -1806,6 +1868,49 @@
 
   // ---------- rendering: select screen ----------
 
+  function renderRecommendationExercises(exercises, focus, loading = false) {
+    const update = document.getElementById("rec-live-update");
+    const list = document.getElementById("rec-exercises");
+    if (!update || !list) return;
+
+    if (focus) {
+      update.textContent = `LIVE UPDATE · ${focus.toUpperCase()} FOCUS APPLIED`;
+      update.classList.remove("hidden");
+    } else if (loading) {
+      update.textContent = "COACH IS FINE-TUNING THIS DRAFT…";
+      update.classList.remove("hidden");
+    } else {
+      update.classList.add("hidden");
+      update.textContent = "";
+    }
+
+    list.innerHTML = exercises
+      .map((exercise) => `<li><span>${escapeHtml(exercise.name)}</span><strong>${escapeHtml(exercise.detail)}</strong></li>`)
+      .join("");
+  }
+
+  function openRecommendationPreview(user, splitKey) {
+    if (!recommendationDraft || recommendationDraftKey !== splitKey) {
+      selectSplitAndPreview(user, splitKey);
+      return;
+    }
+    selectedSplitKey = splitKey;
+    previewPlan = recommendationDraft;
+    showScreen("session-screen");
+    renderSessionFull(user);
+  }
+
+  async function refreshRecommendationDraft(user, splitKey, reason) {
+    const requestId = ++recommendationRequestId;
+    const plan = await computePlan(user, splitKey, { ...checkInState });
+    if (requestId !== recommendationRequestId || currentUser !== user) return;
+    if (document.getElementById("select-screen").classList.contains("hidden")) return;
+
+    recommendationDraftKey = splitKey;
+    recommendationDraft = { ...plan, reason: plan.reason || reason };
+    renderRecommendationExercises(plan.exercises, getCoachFocus(checkInState.note), false);
+  }
+
   function renderSelectScreen(user, history) {
     placeTerminalPanel("select");
     // The coach can steer this straight from the chat ("let's do legs
@@ -1820,7 +1925,12 @@
     document.getElementById("rec-name").textContent = recMeta.name;
     document.getElementById("rec-tagline").textContent = recMeta.tagline;
     document.getElementById("rec-reason").textContent = rec.reason;
-    document.getElementById("recommended-card").onclick = () => selectSplitAndPreview(user, rec.key);
+    const localExercises = applyCoachFocus(user, rec.key, buildWorkoutPlan(user, rec.key, checkInState), checkInState.note);
+    recommendationDraftKey = rec.key;
+    recommendationDraft = { exercises: localExercises, reason: rec.reason, source: "local", suggestedWeights: new Map() };
+    renderRecommendationExercises(localExercises, getCoachFocus(checkInState.note), Boolean(AI_ENDPOINT));
+    document.getElementById("recommended-card").onclick = () => openRecommendationPreview(user, rec.key);
+    refreshRecommendationDraft(user, rec.key, rec.reason);
 
     const altKeys = SPLIT_ORDER.filter((k) => k !== rec.key);
     const altContainer = document.getElementById("alt-options");

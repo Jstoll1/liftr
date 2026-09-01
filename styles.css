@@ -846,6 +846,49 @@ button,
   color: var(--text);
 }
 
+.rec-live-update {
+  align-self: flex-start;
+  color: var(--gold);
+  background: rgba(255, 207, 63, 0.1);
+  border: 1px solid rgba(255, 207, 63, 0.35);
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-family: var(--font-display);
+  font-size: 8px;
+  line-height: 1.4;
+  letter-spacing: 0.5px;
+}
+
+.rec-exercises {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rec-exercises li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-top: 7px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.rec-exercises li span {
+  font-weight: 700;
+}
+
+.rec-exercises li strong {
+  flex-shrink: 0;
+  color: var(--gold);
+  font-size: 11px;
+}
+
 .rec-cta {
   font-size: 12px;
   font-weight: 700;
