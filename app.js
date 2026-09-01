@@ -1662,6 +1662,45 @@
     document.getElementById("chat-input").disabled = busy;
   }
 
+  // Keeps the retro block cursor glued to the real caret position. The app
+  // font isn't monospace, so a simple "N characters * fixed width" guess
+  // would drift — instead a hidden same-font span measures the actual
+  // pixel width of the text before the caret on every change.
+  let updateChatCursor = () => {};
+
+  function initTerminalCursor() {
+    const input = document.getElementById("chat-input");
+    const cursor = document.getElementById("chat-cursor");
+    if (!input || !cursor) return;
+
+    // The `font` shorthand doesn't carry letter-spacing, so copy it
+    // explicitly too — otherwise the cursor drifts earlier than the real
+    // caret on longer strings. The input's own left padding also has to be
+    // added back in since the cursor is positioned relative to the wrap,
+    // not the input's text content box.
+    const inputStyle = getComputedStyle(input);
+    const paddingLeft = parseFloat(inputStyle.paddingLeft) || 0;
+    const measurer = document.createElement("span");
+    measurer.style.position = "absolute";
+    measurer.style.visibility = "hidden";
+    measurer.style.whiteSpace = "pre";
+    measurer.style.font = inputStyle.font;
+    measurer.style.letterSpacing = inputStyle.letterSpacing;
+    document.body.appendChild(measurer);
+
+    updateChatCursor = () => {
+      const pos = input.selectionStart ?? input.value.length;
+      measurer.textContent = input.value.slice(0, pos);
+      // Once typed text overflows the box, the input scrolls internally to
+      // keep the real caret visible — subtract that scroll or the cursor
+      // drifts off past the visible text.
+      cursor.style.left = `${paddingLeft + measurer.offsetWidth - input.scrollLeft}px`;
+    };
+
+    ["input", "keyup", "click", "focus", "select", "scroll"].forEach((evt) => input.addEventListener(evt, updateChatCursor));
+    updateChatCursor();
+  }
+
   async function sendChatMessage() {
     const input = document.getElementById("chat-input");
     const text = input.value.trim();
@@ -1669,6 +1708,7 @@
 
     chatMessages.push({ role: "user", text });
     input.value = "";
+    updateChatCursor();
     renderChatThread();
     setChatBusy(true);
 
@@ -2311,6 +2351,7 @@
   initSelectScreen();
   initCustomScreen();
   initWorkoutScreen();
+  initTerminalCursor();
 
   renderClock();
   setInterval(renderClock, 1000);

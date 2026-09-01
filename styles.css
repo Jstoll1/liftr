@@ -534,6 +534,7 @@ button,
   min-width: 0;
   display: flex;
   align-items: center;
+  overflow: hidden;
 }
 
 .terminal-input {
@@ -541,15 +542,36 @@ button,
   background: none;
   border: none;
   padding: 4px 0;
-  /* the native caret already tracks the real position (including scroll,
-     selection, everything) and only shows while focused — no need to fake it */
-  caret-color: var(--accent);
+  /* the custom block cursor tracks the real caret position, so the
+     browser's own thin caret would just be a redundant second cursor */
+  caret-color: transparent;
 }
 
 .terminal-input:focus {
   outline: none;
   box-shadow: none;
   border-color: transparent;
+}
+
+.term-cursor {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent);
+  pointer-events: none;
+  transition: left 0.05s linear;
+  opacity: 0;
+}
+
+.terminal-input:focus + .term-cursor {
+  opacity: 1;
+  animation: blink 1s step-start infinite;
+}
+
+.terminal-input:disabled + .term-cursor {
+  opacity: 0;
+  animation: none;
 }
 
 /* ---------- CHECK-IN CHIP ROW (compact) ---------- */
