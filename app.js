@@ -4950,6 +4950,7 @@ okra`;
             <span class="library-tag-chip">PDF</span>
           </span>
         </div>
+        <button type="button" class="library-item-rename" data-id="${escapeHtml(doc.id)}" title="Rename">✏️</button>
         <button type="button" class="library-item-remove" data-id="${escapeHtml(doc.id)}" title="Remove">✕</button>
       </li>
     `
@@ -5004,6 +5005,67 @@ okra`;
     renderSessionFull(user);
   }
 
+  // Uploaded filenames are often export/download garbage — a CMS
+  // timestamp, an underscore-joined slug — rather than something a human
+  // named, e.g. "2018020221190401_arnoldblueprint_mass_phase_1.pdf". This
+  // strips the leading ID, turns separators into spaces, and title-cases
+  // what's left. It can't recover word boundaries inside a squashed word
+  // like "arnoldblueprint" (no dictionary to split on), so it's a best
+  // guess — the rename control next to each title is the real fix for
+  // whatever this doesn't get right.
+  function cleanUploadedTitle(filename) {
+    let name = filename.replace(/\.pdf$/i, "");
+    name = name.replace(/^\d{4,}[-_\s]*/, "");
+    name = name.replace(/[_\-.]+/g, " ").trim().replace(/\s+/g, " ");
+    if (!name) return filename.replace(/\.pdf$/i, "");
+    return name.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  // Swaps a library item's title for an inline input so a bad auto-cleaned
+  // name (or any name) can be fixed by hand — the auto-cleanup can't
+  // recover word boundaries lost inside a squashed filename, so this is
+  // the actual fix for whatever it guesses wrong.
+  function startRenameLibraryDoc(id) {
+    const item = Array.from(document.querySelectorAll(".library-item-rename")).find((b) => b.dataset.id === id)?.closest(".library-item");
+    const titleEl = item?.querySelector(".library-item-title");
+    const doc = loadLibrary().docs.find((d) => d.id === id);
+    if (!item || !titleEl || !doc) return;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "library-item-rename-input";
+    input.value = doc.title;
+    input.maxLength = 80;
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let done = false;
+    const commit = () => {
+      if (done) return;
+      done = true;
+      const value = input.value.trim();
+      if (value && value !== doc.title) {
+        const fresh = loadLibrary();
+        const freshDoc = fresh.docs.find((d) => d.id === id);
+        if (freshDoc) {
+          freshDoc.title = value.slice(0, 80);
+          saveLibrary(fresh);
+          pushLibraryToCloud();
+        }
+      }
+      renderLibraryList();
+    };
+    input.addEventListener("blur", commit);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") input.blur();
+      if (e.key === "Escape") {
+        input.value = doc.title;
+        input.blur();
+      }
+    });
+  }
+
   function initLibrary() {
     document.getElementById("library-back").addEventListener("click", () => returnToCheckIn(currentUser));
 
@@ -5037,7 +5099,7 @@ okra`;
           const library = loadLibrary();
           library.docs.push({
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            title: file.name.replace(/\.pdf$/i, ""),
+            title: cleanUploadedTitle(file.name),
             addedAt: todayStr(),
             pageCount,
             text,
@@ -5058,6 +5120,11 @@ okra`;
     });
 
     document.getElementById("library-list").addEventListener("click", (e) => {
+      const renameBtn = e.target.closest(".library-item-rename");
+      if (renameBtn) {
+        startRenameLibraryDoc(renameBtn.dataset.id);
+        return;
+      }
       const btn = e.target.closest(".library-item-remove");
       if (!btn) return;
       const library = loadLibrary();
