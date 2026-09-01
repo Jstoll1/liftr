@@ -1080,38 +1080,71 @@ okra`;
     return { text: text.slice(0, MAX_LIBRARY_DOC_CHARS), pageCount: pdf.numPages };
   }
 
-  // Ranks library docs by keyword overlap with today's context (split,
-  // note, focus) so the AI gets the most relevant material first and stays
-  // within the char budget — instead of every call dragging along the
-  // athlete's entire library regardless of relevance.
+  const LIBRARY_CHUNK_SIZE = 700;
+  const LIBRARY_CHUNK_STRIDE = 550; // overlaps so a match near a chunk edge isn't split awkwardly
+  const MAX_LIBRARY_CHUNKS = 8;
+
+  // Ranks PASSAGES within library docs by keyword overlap with today's
+  // context (split, note, focus), not whole documents — a long upload's
+  // most relevant part to today's query is rarely at the very start, so
+  // scoring whole docs and then just sending their opening characters
+  // (the old approach) meant a real match deep in a program often lost to
+  // the doc's introduction/disclaimer text sitting at char 0. Chunking
+  // first, then scoring each chunk, sends the actually relevant passage.
   function getLibraryContext(queryText) {
     const docs = loadLibrary().docs;
     if (docs.length === 0) return [];
     const queryWords = new Set(normalizeExerciseText(queryText || "").split(" ").filter((w) => w.length > 3));
 
-    const ranked = docs
-      .map((doc) => {
-        if (queryWords.size === 0) return { doc, score: 0 };
-        const docWords = normalizeExerciseText(doc.text).split(" ");
+    const chunks = [];
+    docs.forEach((doc) => {
+      const text = doc.text || "";
+      if (text.length <= LIBRARY_CHUNK_SIZE) {
+        chunks.push({ doc, text, start: 0, score: 0 });
+        return;
+      }
+      for (let start = 0; start < text.length; start += LIBRARY_CHUNK_STRIDE) {
+        chunks.push({ doc, text: text.slice(start, start + LIBRARY_CHUNK_SIZE), start, score: 0 });
+        if (start + LIBRARY_CHUNK_SIZE >= text.length) break;
+      }
+    });
+
+    if (queryWords.size > 0) {
+      chunks.forEach((chunk) => {
+        const chunkWords = normalizeExerciseText(chunk.text).split(" ");
         let score = 0;
-        docWords.forEach((w) => {
+        chunkWords.forEach((w) => {
           if (queryWords.has(w)) score++;
         });
-        return { doc, score };
-      })
-      .sort((a, b) => b.score - a.score);
+        chunk.score = score;
+      });
+    }
 
-    // With no keyword signal at all (or nothing scored), still surface a
-    // small library — the athlete uploaded it to be used, not to sit idle
-    // until they happen to type a matching word. A larger library falls
-    // back to relevance only, so it doesn't all ride along by default.
-    const picked = ranked.some((r) => r.score > 0) ? ranked.filter((r) => r.score > 0) : ranked.slice(0, 2);
+    const scored = chunks.filter((c) => c.score > 0).sort((a, b) => b.score - a.score).slice(0, MAX_LIBRARY_CHUNKS);
+    // With no keyword signal anywhere, still surface a small library — the
+    // athlete uploaded it to be used, not to sit idle until a matching
+    // word happens to appear. A couple of opening chunks per doc, same
+    // fallback intent as before.
+    const picked = scored.length > 0 ? scored : chunks.filter((c) => c.start === 0).slice(0, 2);
+
+    // Multiple winning chunks from the same doc get merged back together
+    // in reading order, so the excerpt reads as one passage instead of
+    // score-shuffled fragments.
+    const byDoc = new Map();
+    picked.forEach((chunk) => {
+      if (!byDoc.has(chunk.doc.id)) byDoc.set(chunk.doc.id, { doc: chunk.doc, chunks: [] });
+      byDoc.get(chunk.doc.id).chunks.push(chunk);
+    });
 
     const results = [];
     let budget = MAX_LIBRARY_CONTEXT_CHARS;
-    for (const { doc } of picked) {
+    for (const { doc, chunks: docChunks } of byDoc.values()) {
       if (budget <= 0) break;
-      const excerpt = doc.text.slice(0, budget);
+      const excerpt = docChunks
+        .sort((a, b) => a.start - b.start)
+        .map((c) => c.text)
+        .join(" […] ")
+        .slice(0, budget);
       if (!excerpt) continue;
       results.push({ title: doc.title, excerpt });
       budget -= excerpt.length;
@@ -1239,6 +1272,10 @@ okra`;
           { name: "Dumbbell Chest Press", detail: "3 x 12", superset: "B", howTo: "Lying on a bench, press two dumbbells up from chest level until your arms are extended.", tip: "Lower until your elbows are just below your shoulders, then press up and slightly in." },
           { name: "Seated Cable Row", detail: "3 x 15", superset: "B", howTo: "Seated at the cable, pull the handle to your torso while keeping your back straight.", tip: "Squeeze your shoulder blades together at the finish, don't just pull with your arms." },
           { name: "Plank to Row", detail: "3 x 10/side", howTo: "In a plank with a dumbbell in each hand, row one dumbbell to your ribs, alternating sides.", tip: "Keep your hips square — resist the urge to rotate as you row." },
+          { name: "Cable Chest Fly", detail: "3 x 15", superset: "C", howTo: "Standing between two cable stacks, bring the handles together in front of your chest in an arcing motion.", tip: "Slight bend in the elbows the whole way — think 'hug a tree,' not 'press.'" },
+          { name: "Chest-Supported Row", detail: "3 x 12", superset: "C", howTo: "Lying chest-down on an incline bench, row the handles up toward your ribs.", tip: "The bench does the bracing for you — focus entirely on squeezing your back." },
+          { name: "Incline Push-Up", detail: "3 x 15", howTo: "Hands on a bench or box, lower your chest toward it and push back up.", tip: "The higher the surface, the easier the rep — pick a height that's still a real challenge." },
+          { name: "One-Arm Dumbbell Row", detail: "3 x 12/side", howTo: "One hand and knee on a bench, row a dumbbell up to your hip with the other arm.", tip: "Keep your back flat and pull with your elbow, not your hand." },
         ],
         jake: [
           { name: "Barbell Bench Press", detail: "4 x 6", superset: "A", howTo: "Lying on a bench, lower the bar to your chest, then press it back up to full arm extension.", tip: "Keep your feet planted and drive through your upper back for a stable base." },
@@ -1246,6 +1283,10 @@ okra`;
           { name: "Incline Dumbbell Press", detail: "3 x 8", superset: "B", howTo: "On a slightly inclined bench, press two dumbbells up from shoulder level.", tip: "30-degree incline max — steeper turns this into a shoulder press." },
           { name: "Bent-Over Barbell Row", detail: "4 x 8", superset: "B", howTo: "Hinged forward at the hips, pull the barbell up to your lower ribs.", tip: "Hinge at the hips, flat back, pull to your lower ribs." },
           { name: "Cable Fly", detail: "3 x 12", howTo: "Standing between two cable stacks, bring the handles together in front of your chest in an arcing motion.", tip: "Slight bend in the elbows the whole way — think 'hug a tree,' not 'press.'" },
+          { name: "Dumbbell Bench Press", detail: "4 x 8", superset: "C", howTo: "Lying on a bench, press two dumbbells up from chest level until your arms are extended.", tip: "Let the dumbbells travel slightly in as you press — don't lock them straight up." },
+          { name: "Pull-Up", detail: "4 x max", superset: "C", howTo: "From a dead hang, pull your chin over the bar and lower back down under control.", tip: "Full range every rep — dead hang to chin over the bar, no half reps." },
+          { name: "Straight-Arm Pulldown", detail: "3 x 15", howTo: "Standing at a high cable, keep your arms straight and pull the bar down to your thighs.", tip: "Hinge slightly at the hips and let your lats, not your arms, do the pulling." },
+          { name: "Dips", detail: "3 x 10", howTo: "Support yourself on parallel bars and lower until your shoulders are below your elbows, then press back up.", tip: "Lean forward slightly to bias chest over triceps." },
         ],
       },
     },
@@ -1261,6 +1302,10 @@ okra`;
           { name: "Glute Bridge", detail: "3 x 15", howTo: "Lying on your back with knees bent, drive your hips up toward the ceiling.", tip: "Squeeze your glutes hard at the top, pause for a beat." },
           { name: "Lateral Band Walk", detail: "3 x 20", howTo: "With a band around your ankles or knees, take small steps sideways in a partial squat.", tip: "Stay low and keep tension on the band the entire time." },
           { name: "Bodyweight Lunge", detail: "3 x 12/leg", howTo: "Step forward and drop your back knee toward the floor, then push back to standing.", tip: "Keep your front knee tracking over your ankle, not caving in." },
+          { name: "Hip Thrust", detail: "3 x 15", superset: "B", howTo: "Upper back against a bench, drive your hips up until your body forms a straight line.", tip: "Tuck your chin slightly and drive through your heels, not your toes." },
+          { name: "Leg Curl", detail: "3 x 15", superset: "B", howTo: "Lying face down on the machine, curl the pad up toward your glutes.", tip: "Control the negative — don't let the weight snap your legs back down." },
+          { name: "Wall Sit", detail: "3 x 45s", howTo: "Back against a wall, slide down until your thighs are parallel to the floor and hold.", tip: "Keep your knees tracking over your ankles, not caving inward." },
+          { name: "Bulgarian Split Squat", detail: "3 x 10/leg", howTo: "Rear foot elevated on a bench, lower your back knee toward the floor, then drive back up.", tip: "Keep most of your weight on the front leg — the back foot is just for balance." },
         ],
         jake: [
           { name: "Barbell Back Squat", detail: "5 x 5", superset: "A", howTo: "With the bar across your upper back, squat down until your hips are below your knees, then stand.", tip: "Brace your core before you unrack, and keep your chest tall through the whole rep." },
@@ -1268,6 +1313,9 @@ okra`;
           { name: "Walking Lunges", detail: "3 x 10/leg", howTo: "Step forward into a lunge, then bring your back foot through into the next lunge.", tip: "Take a long enough stride that your front knee stays behind your toes." },
           { name: "Leg Press", detail: "3 x 10", howTo: "Seated in the machine, push the platform away by extending your legs, then control it back.", tip: "Don't let your lower back round off the pad at the bottom." },
           { name: "Standing Calf Raise", detail: "4 x 15", howTo: "Rise up onto the balls of your feet, then lower back down under control.", tip: "Pause at the top and the bottom — don't just bounce through it." },
+          { name: "Bulgarian Split Squat", detail: "4 x 8/leg", superset: "B", howTo: "Rear foot elevated on a bench, lower your back knee toward the floor, then drive back up.", tip: "Keep most of your weight on the front leg — the back foot is just for balance." },
+          { name: "Leg Extension", detail: "3 x 15", superset: "B", howTo: "Seated in the machine, extend your legs until straight, then lower with control.", tip: "Pause at the top for a beat instead of just swinging through." },
+          { name: "Seated Calf Raise", detail: "4 x 15", howTo: "Knees under the pad, rise up onto your toes, then lower under control.", tip: "Go for a full stretch at the bottom — don't cut the range short." },
         ],
       },
     },
@@ -1281,12 +1329,16 @@ okra`;
           { name: "Stair Climber Intervals", detail: "15 min", howTo: "Alternate between a hard push and an easier recovery pace on the stair climber.", tip: "Push the pace on work intervals, actually recover on the rest ones." },
           { name: "Cycling", detail: "20 min", howTo: "A steady-state ride at a consistent, moderate effort.", tip: "Keep a steady cadence — smooth and controlled beats mashing the pedals." },
           { name: "Mobility Flow", detail: "10 min", howTo: "A slow sequence of stretches and controlled movements to aid recovery.", tip: "Move slow and controlled — this is recovery, not a workout." },
+          { name: "Rowing Intervals", detail: "6 x 400m", howTo: "Row hard for the target distance, then rest before the next interval.", tip: "Drive with your legs first, then lean back, then pull — legs, hips, arms." },
+          { name: "Battle Ropes", detail: "5 x 20s", howTo: "Alternate slamming the ropes up and down as fast as you can for the interval.", tip: "Keep your core tight — the power comes from your shoulders, not your wrists." },
         ],
         jake: [
           { name: "Rowing Intervals", detail: "8 x 500m", howTo: "Row hard for the target distance, then rest before the next interval.", tip: "Drive with your legs first, then lean back, then pull — legs, hips, arms." },
           { name: "Sled Push", detail: "6 rounds", howTo: "Load a sled and push it forward across the marked distance.", tip: "Stay low with a slight forward lean, drive through the balls of your feet." },
           { name: "Battle Ropes", detail: "5 x 30s", howTo: "Alternate slamming the ropes up and down as fast as you can for the interval.", tip: "Keep your core tight — the power comes from your shoulders, not your wrists." },
           { name: "Jump Rope Finisher", detail: "5 min", howTo: "Continuous jump rope at a steady pace for the full duration.", tip: "Small, quick hops — you shouldn't be jumping high off the ground." },
+          { name: "Stair Climber Intervals", detail: "15 min", howTo: "Alternate between a hard push and an easier recovery pace on the stair climber.", tip: "Push the pace on work intervals, actually recover on the rest ones." },
+          { name: "Cycling", detail: "20 min", howTo: "A steady-state ride at a consistent, moderate effort.", tip: "Keep a steady cadence — smooth and controlled beats mashing the pedals." },
         ],
       },
     },
@@ -1300,12 +1352,20 @@ okra`;
           { name: "Hip Flexor Stretch Flow", detail: "5 min", howTo: "A half-kneeling stretch sequence targeting the front of the hips.", tip: "Squeeze the glute on your back leg to deepen the stretch safely." },
           { name: "Side Plank", detail: "3 x 30s/side", howTo: "Prop yourself up on one forearm with your body in a straight line, hips lifted.", tip: "Stack your hips and keep your body in one straight line." },
           { name: "Cat-Cow Flow", detail: "5 min", howTo: "On hands and knees, alternate arching and rounding your spine with your breath.", tip: "Move with your breath — inhale to arch, exhale to round." },
+          { name: "Bird Dog", detail: "3 x 10/side", howTo: "From hands and knees, extend the opposite arm and leg, then return with control.", tip: "Keep your hips square to the floor the whole time." },
+          { name: "Crunch", detail: "3 x 20", howTo: "Lying on your back, knees bent, curl your shoulders up off the floor.", tip: "Lead with your chest, not your chin — don't yank your neck." },
+          { name: "World's Greatest Stretch", detail: "4/side", howTo: "From a deep lunge, rotate your torso and reach the same-side arm toward the ceiling.", tip: "Keep your back knee off the floor and hips square." },
+          { name: "Deep Squat Hold", detail: "3 x 30s", howTo: "Sink into the bottom of a bodyweight squat and hold, chest up.", tip: "Let your elbows gently press your knees out if it helps you settle in." },
         ],
         jake: [
           { name: "Hanging Leg Raise", detail: "3 x 12", howTo: "Hanging from a bar, raise your legs up toward your chest with control.", tip: "Control the descent — don't let momentum swing you through the rep." },
           { name: "90/90 Hip Flow", detail: "5 min", howTo: "Seated with both legs bent at 90 degrees, rotate between positions to open the hips.", tip: "Keep your chest tall as you rotate between positions." },
           { name: "Weighted Plank", detail: "3 x 45s", howTo: "Hold a forearm plank with a plate on your back for added load.", tip: "Squeeze your glutes and brace like you're about to get punched." },
           { name: "Thoracic Rotation Flow", detail: "5 min", howTo: "On hands and knees, rotate one arm up and open your chest toward the ceiling.", tip: "Rotate from your upper back, keep your hips still." },
+          { name: "Cable Crunch", detail: "3 x 15", howTo: "Kneeling below a high cable, curl your torso down toward your knees.", tip: "Round through your spine — this is a crunch, not a hip hinge." },
+          { name: "Standing Oblique Cable Crunch", detail: "3 x 12/side", howTo: "Standing beside a high cable, crunch your torso down and to the side.", tip: "Keep your hips still — the movement comes from your obliques, not your legs." },
+          { name: "Figure-4 Stretch", detail: "45s/side", howTo: "Lying on your back, cross one ankle over the opposite knee and pull the leg in.", tip: "Keep your lower back flat on the floor as you pull the leg toward you." },
+          { name: "Open-Book Rotation", detail: "8/side", howTo: "Lying on your side with knees bent, rotate your top arm open toward the floor behind you.", tip: "Keep your knees stacked and let your eyes follow your hand." },
         ],
       },
     },
@@ -1825,6 +1885,51 @@ okra`;
     return SPLIT_LIBRARY[splitKey].exercises[user].filter((ex) => !excluded.has(ex.name));
   }
 
+  // A bigger exercise pool doesn't reduce repetition on its own — slicing
+  // the same fixed prefix every time would still show the same first N
+  // exercises forever. This ranks the pool by how recently each one was
+  // actually used for this split and prefers the ones sitting out, so a
+  // larger library actually gets seen instead of most of it going unused.
+  // Superset pairs are grouped into one unit first so ranking never splits
+  // a pair apart — a unit's recency is whichever of its exercises was used
+  // more recently, and the final selection is restored to catalog order.
+  function pickVariedExercises(user, splitKey, base, count) {
+    if (base.length <= count) return base.slice(0, count);
+
+    const lastUsedIndex = new Map();
+    getHistory(user)
+      .filter((entry) => entry.splitKey === splitKey)
+      .slice(-6)
+      .forEach((entry, sessionIdx) => {
+        getEntryExercises(user, entry).forEach((ex) => lastUsedIndex.set(ex.name, sessionIdx));
+      });
+
+    const units = [];
+    base.forEach((ex, i) => {
+      const last = units[units.length - 1];
+      if (ex.superset && last && last.exercises[0].superset === ex.superset) {
+        last.exercises.push(ex);
+      } else {
+        units.push({ exercises: [ex], firstIndex: i });
+      }
+    });
+    units.forEach((unit) => {
+      unit.recency = Math.max(-1, ...unit.exercises.map((ex) => lastUsedIndex.get(ex.name) ?? -1));
+    });
+
+    const selected = [];
+    let total = 0;
+    for (const unit of [...units].sort((a, b) => a.recency - b.recency)) {
+      if (total >= count) break;
+      selected.push(unit);
+      total += unit.exercises.length;
+    }
+
+    return selected
+      .sort((a, b) => a.firstIndex - b.firstIndex)
+      .flatMap((unit) => unit.exercises);
+  }
+
   // Turns a base exercise list into today's actual plan based on the
   // amount of time available, energy level, and whether a partner is along.
   function buildWorkoutPlan(user, splitKey, { minutes, energy, partner }) {
@@ -1833,7 +1938,7 @@ okra`;
     if (energy === "low") count = Math.max(2, count - 1);
     if (energy === "high") count = Math.min(base.length, count + 1);
 
-    let list = base.slice(0, count);
+    let list = pickVariedExercises(user, splitKey, base, count);
 
     if (energy === "high" && minutes >= 45) {
       const finisher = FINISHERS[splitKey][user];
@@ -2106,6 +2211,14 @@ okra`;
             pastNotes: getPastNotes(user, 5),
             weightHistory: buildWeightHistory(user),
             candidates: buildCandidatePool(user, splitKey),
+            // What this split actually looked like the last couple of
+            // times, so the model can favor variety from a candidate pool
+            // that's grown well past what a single session needs, instead
+            // of gravitating to the same "best" few every time.
+            recentExercises: getHistory(user)
+              .filter((entry) => entry.splitKey === splitKey)
+              .slice(-2)
+              .flatMap((entry) => getEntryExercises(user, entry).map((ex) => ex.name)),
             libraryContext: getLibraryContext(`${meta.name} ${checkIn.note || ""} ${(persona.focusAreas || []).join(" ")}`),
             libraryRoutines: getLibraryRoutinesContext(),
           }),
@@ -2728,23 +2841,49 @@ okra`;
     if (exactHistory.length > 0) {
       const latest = exactHistory[exactHistory.length - 1];
       const weightedSets = latest.performance.sets.filter((set) => Number.isFinite(set.weight) && set.weight > 0);
+      // The last SET's weight is the top of the ramp (sets ascend toward
+      // the working weight), so this is already the right reference point
+      // to progress from, not just the most recently touched value.
       const lastWeight = weightedSets[weightedSets.length - 1].weight;
       const previous = exactHistory[exactHistory.length - 2];
-      const repeatedSuccess = completedTarget(latest.performance) && previous && completedTarget(previous.performance);
-      const missed = latest.performance.sets.some(
-        (set) => set.target != null && set.actual != null && Number(set.actual) < Number(set.target) * 0.8
-      );
-      const change = repeatedSuccess ? 5 : missed ? -5 : 0;
+      const latestSkipped = Boolean(latest.performance.skipped);
+      const repeatedSuccess = !latestSkipped && completedTarget(latest.performance) && previous && completedTarget(previous.performance);
+      const missed =
+        !latestSkipped &&
+        latest.performance.sets.some((set) => set.target != null && set.actual != null && Number(set.actual) < Number(set.target) * 0.8);
+      // Closes the loop on the effort chip captured last session — completing
+      // the target says WHAT happened, effort says how much was left in the
+      // tank, and progression should move faster or slower accordingly
+      // instead of always bumping by the same fixed 5 lb regardless.
+      const latestEffort = latest.performance.effort;
+      let change = 0;
+      let reason = "flat";
+      if (latestSkipped) {
+        reason = "skipped";
+      } else if (missed) {
+        change = -5;
+        reason = "missed";
+      } else if (repeatedSuccess) {
+        change = latestEffort === "easy" ? 10 : latestEffort === "hard" ? 0 : 5;
+        reason = latestEffort === "easy" ? "repeated-easy" : latestEffort === "hard" ? "repeated-hard" : "repeated";
+      } else if (latestEffort === "easy") {
+        change = 5;
+        reason = "single-easy";
+      } else if (latestEffort === "hard") {
+        reason = "single-hard";
+      }
       const weight = roundTrainingWeight(Math.max(5, lastWeight + change));
-      return {
-        weight,
-        source: "history",
-        explanation: repeatedSuccess
-          ? `You completed the target at ${lastWeight} lb in your last two sessions, so the coach added 5 lb.`
-          : missed
-            ? `Your last logged reps fell short at ${lastWeight} lb, so the coach reduced the starting load slightly.`
-            : `Starts from your most recent ${ex.name} working weight.`
+      const EXPLAIN = {
+        skipped: `You skipped ${ex.name} last time, so the coach kept today's weight where it was.`,
+        missed: `Your last logged reps fell short at ${lastWeight} lb, so the coach reduced the starting load slightly.`,
+        "repeated-easy": `${lastWeight} lb felt easy while hitting the target the last two sessions, so the coach added 10 lb.`,
+        "repeated-hard": `You hit the target the last two sessions, but ${lastWeight} lb felt hard both times — the coach held steady instead of pushing further.`,
+        repeated: `You completed the target at ${lastWeight} lb in your last two sessions, so the coach added 5 lb.`,
+        "single-easy": `${lastWeight} lb felt easy last time, so the coach added 5 lb.`,
+        "single-hard": `${lastWeight} lb felt hard last time — the coach held the weight rather than adding more.`,
+        flat: `Starts from your most recent ${ex.name} working weight.`,
       };
+      return { weight, source: "history", explanation: EXPLAIN[reason] };
     }
 
     if (Number.isFinite(aiWeight) && aiWeight > 0) {

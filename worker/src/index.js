@@ -55,7 +55,7 @@ export default {
       return handleOpening(body, env, corsHeaders);
     }
 
-    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory, libraryContext, libraryRoutines } = body || {};
+    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory, recentExercises, libraryContext, libraryRoutines } = body || {};
     const valid =
       persona?.name &&
       persona?.goal &&
@@ -128,6 +128,14 @@ export default {
       "of energy level or session length — it's an explicit request, not an",
       "optional volume decision like the split's own default finisher above.",
       "If a partner is available, prefer partner-friendly candidates when present.",
+      "recentlyUsed lists exercises this same session type actually used the",
+      "last couple of times. The candidate list is often bigger than a single",
+      "session needs specifically so there's room to rotate — prefer candidates",
+      "NOT in recentlyUsed over ones that are, all else being equal, so the",
+      "athlete sees real variety across sessions instead of the same picks",
+      "every time. This is a preference, not a rule: still choose whatever",
+      "genuinely best fits today's goal, energy, and note even if that means",
+      "repeating something recent.",
       "The athlete may give a free-text note (today's, and/or recent prior days').",
       "Use it: honor equipment constraints or injuries by avoiding candidates that",
       "conflict with them, factor in stated goal changes, and if it mentions a",
@@ -174,6 +182,7 @@ export default {
       todayNote: todayNote || null,
       recentFeedback: Array.isArray(pastNotes) ? pastNotes : [],
       weightHistory: Array.isArray(weightHistory) ? weightHistory : [],
+      recentlyUsed: Array.isArray(recentExercises) ? recentExercises : [],
       libraryReference: sanitizeLibraryContext(libraryContext),
       savedRoutines: sanitizeLibraryRoutines(libraryRoutines),
       candidateExercises: candidates,
