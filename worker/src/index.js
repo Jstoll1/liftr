@@ -390,11 +390,9 @@ async function handleSwap(body, env, corsHeaders) {
   }
 }
 
-// Short, conversational check-in chat — the athlete can mention pain,
-// fatigue, equipment limits, or anything else before picking a workout.
-// Replies stay brief; anything worth factoring into exercise selection
-// comes back as `constraint`, a short imperative phrase the app folds into
-// the same free-text note the plan-selection endpoint already reads.
+// Ongoing coaching conversation for workouts, motivation, goals, setbacks,
+// and reflection. Workout constraints and explicit goal changes come back as
+// structured fields so the client can act on them safely.
 const SPLIT_KEYS = ["chest-back", "legs", "cardio", "core-mobility"];
 const SPLIT_LABELS = {
   "chest-back": "Chest & Back",
@@ -404,7 +402,7 @@ const SPLIT_LABELS = {
 };
 
 async function handleChat(body, env, corsHeaders) {
-  const { persona, messages } = body;
+  const { persona, messages, context } = body;
   const valid =
     persona?.name &&
     persona?.goal &&
@@ -420,7 +418,10 @@ async function handleChat(body, env, corsHeaders) {
   const schema = {
     type: "object",
     properties: {
-      reply: { type: "string", description: "A short, warm, practical reply — 1 to 3 sentences." },
+      reply: {
+        type: "string",
+        description: "A warm, practical coaching reply. Brief for simple messages; more developed for reflective, emotional, goal-oriented, or multi-part discussions.",
+      },
       constraint: {
         type: ["string", "null"],
         description:
@@ -433,8 +434,17 @@ async function handleChat(body, env, corsHeaders) {
           "Set this to chest-back, legs, cardio, or core-mobility ONLY if the athlete clearly stated what type of workout they want today " +
           "(e.g. 'let's do legs', 'I want a cardio day'). Leave it null if they didn't specify — never guess.",
       },
+      goalUpdate: {
+        type: ["string", "null"],
+        description: "The athlete's new goal only when they clearly asked to set or change it; otherwise null.",
+      },
+      responseDepth: {
+        type: "string",
+        enum: ["brief", "expanded"],
+        description: "expanded for motivation, setbacks, goal strategy, performance reflection, or multi-part discussion; brief for simple requests.",
+      },
     },
-    required: ["reply", "constraint", "suggestedSplit"],
+    required: ["reply", "constraint", "suggestedSplit", "goalUpdate", "responseDepth"],
     additionalProperties: false,
   };
 
@@ -445,11 +455,20 @@ async function handleChat(body, env, corsHeaders) {
   ].filter(Boolean);
 
   const systemPrompt = [
-    "You are a friendly, knowledgeable strength coach texting with an athlete",
-    "before their workout, as part of a fitness app's check-in screen.",
+    "You are a thoughtful, knowledgeable ongoing fitness coach talking with an athlete",
+    "on the main page of their training app. You can discuss workouts, motivation,",
+    "confidence, habits, goals, setbacks, sports, and progress—not only today's check-in.",
     `The athlete is ${persona.name}, whose goal is: ${persona.goal}.`,
     profileBits.length ? `Also known about them: ${profileBits.join("; ")}.` : "",
-    "Keep replies SHORT — 1 to 3 sentences, warm and practical, not generic filler.",
+    context ? `Recent app context: ${JSON.stringify(context)}.` : "",
+    "Calibrate depth to the athlete. For a simple request or factual adjustment, use",
+    "1 to 3 concise sentences. When they share meaningful context, emotion, a setback,",
+    "a motivation problem, a changing goal, performance patterns, or multiple connected",
+    "questions, expand to roughly 3 to 7 sentences. Reflect what you heard, connect it",
+    "to their real history when available, offer one practical next step, and ask one or",
+    "two focused questions that move the conversation forward. Do not interrogate them.",
+    "Set responseDepth to expanded for those deeper discussions and brief otherwise.",
+    "Avoid generic hype. Ground encouragement in their stated situation or app history.",
     "If they mention pain, an injury, fatigue, equipment limits, or anything else",
     "that should change today's exercise selection, acknowledge it supportively",
     "and set constraint to a short imperative phrase capturing it (e.g. 'avoid",
@@ -460,6 +479,8 @@ async function handleChat(body, env, corsHeaders) {
     `below the chat (options: ${SPLIT_KEYS.map((k) => `${k} = ${SPLIT_LABELS[k]}`).join(", ")}).`,
     "If they clearly say what they want today, set suggestedSplit to that key",
     "so the app updates the recommendation to match — otherwise leave it null.",
+    "Only set goalUpdate when the athlete clearly asks to change or set their goal.",
+    "Phrase it as a clean standalone goal. Discussing a possible goal is not enough.",
   ].join(" ");
 
   const openaiMessages = [
@@ -500,7 +521,13 @@ async function handleChat(body, env, corsHeaders) {
     }
 
     const suggestedSplit = SPLIT_KEYS.includes(parsed.suggestedSplit) ? parsed.suggestedSplit : null;
-    return json({ reply: parsed.reply, constraint: parsed.constraint || null, suggestedSplit }, 200, corsHeaders);
+    return json({
+      reply: parsed.reply,
+      constraint: parsed.constraint || null,
+      suggestedSplit,
+      goalUpdate: parsed.goalUpdate || null,
+      responseDepth: parsed.responseDepth === "expanded" ? "expanded" : "brief",
+    }, 200, corsHeaders);
   } catch (err) {
     console.error("Worker error (chat)", err?.stack || String(err));
     return json({ error: "Worker error" }, 500, corsHeaders);
