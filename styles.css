@@ -566,7 +566,7 @@ button,
 }
 
 .terminal-panel .chat-thread {
-  max-height: 220px;
+  max-height: min(360px, 45vh);
   padding: 12px;
 }
 

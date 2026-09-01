@@ -1970,6 +1970,41 @@
     updateChatCursor();
   }
 
+  function isWorkoutRelevantMessage(text) {
+    const value = String(text || "").toLowerCase();
+    return Boolean(
+      inferSplitFromChat(value) ||
+      getCoachFocus(value) ||
+      /\b(sore|pain|hurt|injury|tight|fatigue|tired|energy|equipment|barbell|dumbbell|machine|cable|band|gym|home workout|partner|minutes?|shorter|longer|remove|skip|swap|exercise|workout|sets?|reps?|weight)\b/.test(value)
+    );
+  }
+
+  function extractGoalUpdate(text) {
+    const match = String(text || "").match(/\b(?:change|set|update)\s+(?:my\s+)?goal\s+to\s+(.+)|\bmy\s+(?:new\s+)?goal\s+is\s+(.+)/i);
+    const goal = (match?.[1] || match?.[2] || "").trim().replace(/[.!?]+$/, "");
+    return goal.length >= 5 ? goal.slice(0, 180) : null;
+  }
+
+  function buildLocalCoachReply(user, text) {
+    const value = text.toLowerCase();
+    const history = getHistory(user);
+    const streak = currentStreak(history);
+    if (/\b(motivation|motivated|unmotivated|don't feel like|do not feel like|struggling to start|skip today)\b/.test(value)) {
+      const evidence = history.length > 0
+        ? `You’ve already logged ${history.length} session${history.length === 1 ? "" : "s"}${streak ? ` and built a ${streak}-day streak` : ""}.`
+        : "You do not need a perfect session to begin building momentum.";
+      return `${evidence} Let’s lower the barrier: commit to the warm-up and one exercise, then decide whether to continue. What is making today feel hardest—energy, time, or confidence?`;
+    }
+    const goal = extractGoalUpdate(text);
+    if (goal) return `I’ve updated your goal to “${goal}.” What would make progress toward that goal feel meaningful over the next four weeks?`;
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    const questionCount = (text.match(/\?/g) || []).length;
+    if (wordCount >= 28 || questionCount >= 2) {
+      return "There are a few connected pieces in what you shared, and they deserve more than a quick workout tweak. Which part feels most important right now, and what outcome would make this conversation useful for you?";
+    }
+    return "I’m here for that too. Tell me a little more about what is going on and what kind of support would help most right now.";
+  }
+
   async function sendChatMessage() {
     const input = document.getElementById("chat-input");
     const text = input.value.trim();
@@ -1981,10 +2016,11 @@
     renderChatThread();
     setChatBusy(true);
 
-    // Best-effort fallback if the AI is unreachable or unconfigured — the
-    // raw message still becomes today's note so nothing typed is lost.
-    let reply = "Got it, I'll keep that in mind for today.";
-    let constraint = text;
+    // General coaching belongs in memory without automatically changing the
+    // workout. Only messages with training constraints enter today's plan.
+    let reply = buildLocalCoachReply(currentUser, text);
+    let constraint = isWorkoutRelevantMessage(text) ? text : null;
+    let goalUpdate = extractGoalUpdate(text);
     const localSuggestedSplit = inferSplitFromChat(text);
     const localFocus = getCoachFocus(text);
     if (localSuggestedSplit) chatSuggestedSplit = localSuggestedSplit;
@@ -2010,6 +2046,16 @@
               focusAreas: persona.focusAreas,
             },
             messages: chatMessages,
+            context: {
+              streak: currentStreak(getHistory(currentUser)),
+              sessionsLogged: getHistory(currentUser).length,
+              recentNotes: getNotes(currentUser).slice(-6),
+              recentWorkouts: getHistory(currentUser).slice(-5).map((entry) => ({
+                date: entry.date,
+                workout: getSplitMeta(entry.splitKey).name,
+                note: entry.note || null,
+              })),
+            },
           }),
           signal: AbortSignal.timeout(AI_TIMEOUT_MS),
         });
@@ -2017,8 +2063,9 @@
           const data = await res.json();
           if (typeof data.reply === "string" && data.reply.trim()) {
             reply = data.reply.trim();
-            constraint = typeof data.constraint === "string" && data.constraint.trim() ? data.constraint.trim() : text;
+            if (typeof data.constraint === "string" && data.constraint.trim()) constraint = data.constraint.trim();
           }
+          if (typeof data.goalUpdate === "string" && data.goalUpdate.trim()) goalUpdate = data.goalUpdate.trim().slice(0, 180);
           if (!localSuggestedSplit && SPLIT_ORDER.includes(data.suggestedSplit)) {
             chatSuggestedSplit = data.suggestedSplit;
           }
@@ -2038,10 +2085,20 @@
 
     if (constraint) {
       checkInState.note = [checkInState.note, constraint].filter(Boolean).join(". ");
-      // Save each meaningful exchange at the time it happens. The chat can
-      // continue on the recommendation screen, so waiting for the earlier
-      // check-in submit button would lose those later updates on relaunch.
-      logNote(currentUser, constraint);
+    }
+    // Preserve the conversation theme for future openings without forcing
+    // a general motivation or goal discussion into today's workout prompt.
+    logNote(currentUser, constraint || text);
+
+    if (goalUpdate) {
+      const persona = getPersonaProfile(currentUser);
+      saveProfile(currentUser, {
+        goal: goalUpdate,
+        heightIn: persona.heightIn,
+        weightLb: persona.weightLb,
+        focusAreas: persona.focusAreas,
+      });
+      renderRecapCard(currentUser);
     }
 
     // If the athlete's already on the workout-selection screen, let the
