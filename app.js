@@ -236,6 +236,7 @@
       weightLb: stored.weightLb ?? null,
       focusAreas: Array.isArray(stored.focusAreas) ? stored.focusAreas : [],
       excludedExercises: Array.isArray(stored.excludedExercises) ? stored.excludedExercises : [],
+      lastGreetingTopic: stored.lastGreetingTopic ?? null,
     };
   }
 
@@ -740,6 +741,16 @@
     return overrides;
   }
 
+  // Qualitative ("go lighter today") rather than a specific number — applies
+  // as a relative adjustment to whatever the weight cascade would otherwise
+  // pick, for every weighted exercise today, not just one named lift.
+  function detectWeightDirection(text) {
+    const value = String(text || "").toLowerCase();
+    if (/\b(lighter|light today|go easy|easier|ease up|back off|less weight|reduce the weight|deload)\b/.test(value)) return "lighter";
+    if (/\b(heavier|heavy today|push harder|more weight|increase the weight|max out|go big)\b/.test(value)) return "heavier";
+    return null;
+  }
+
   const EXCLUSION_INTENT = /\b(no|never|avoid|hate|can't|cannot|don't|do not|won't|stop|skip|remove|exclude|drop|without|take out)\b/;
 
   // Matches a specific named exercise against negative-intent language
@@ -914,7 +925,7 @@
   // ---------- state ----------
 
   let currentUser = null;
-  let checkInState = { minutes: 30, energy: "medium", partner: false, note: "", weightOverrides: {} };
+  let checkInState = { minutes: 30, energy: "medium", partner: false, note: "", weightOverrides: {}, weightDirection: null };
   let chatMessages = []; // [{ role: "coach" | "user", text }] for the check-in chat
   let chatBusy = false;
   // Split key the coach picked up on from the conversation (e.g. "let's do
@@ -1284,7 +1295,7 @@
     return targeted.length > 0 && targeted.every((set) => Number(set.actual) >= Number(set.target));
   }
 
-  function getWeightRecommendation(user, ex, aiWeight) {
+  function computeBaseWeightRecommendation(user, ex, aiWeight) {
     if (!usesWeight(ex)) return null;
 
     // What the athlete just told the coach beats everything else, including
@@ -1354,6 +1365,29 @@
       };
     }
     return null;
+  }
+
+  // A qualitative "let's go lighter/heavier today" (checkInState.weightDirection)
+  // adjusts whatever the cascade above landed on — every weighted exercise,
+  // not just one named lift. Skipped when the athlete stated an exact
+  // number for THIS exercise ("stated") — that's already a deliberate,
+  // specific override and shouldn't be second-guessed by a general mood.
+  function getWeightRecommendation(user, ex, aiWeight) {
+    const base = computeBaseWeightRecommendation(user, ex, aiWeight);
+    if (!base || base.source === "stated") return base;
+
+    const direction = checkInState.weightDirection;
+    if (!direction) return base;
+
+    const factor = direction === "lighter" ? 0.85 : 1.1;
+    const adjusted = roundTrainingWeight(base.weight * factor);
+    if (adjusted === base.weight) return base;
+
+    return {
+      weight: adjusted,
+      source: base.source,
+      explanation: `${base.explanation} You said you're going ${direction} today, so the coach adjusted from ${base.weight} lb to ${adjusted} lb.`,
+    };
   }
 
   function buildInitialLogs(user, exercises, suggestedWeights) {
@@ -1953,7 +1987,7 @@
 
   function renderCheckIn(user) {
     placeTerminalPanel("checkin");
-    checkInState = { minutes: 30, energy: "medium", partner: false, note: "", weightOverrides: {} };
+    checkInState = { minutes: 30, energy: "medium", partner: false, note: "", weightOverrides: {}, weightDirection: null };
     document.getElementById("checkin-name").textContent = getPersonaProfile(user).name;
     document.getElementById("hub-cheer-btn").title = `Cheer ${getPersonaProfile(otherUser(user)).name}`;
     renderRecapCard(user);
@@ -2024,11 +2058,20 @@
       .filter((topic) => topic.matches > 0)
       .sort((a, b) => b.matches - a.matches || b.latestIndex - a.latestIndex);
 
-    if (ranked.length > 0) {
-      const topic = ranked[0];
+    // Never ask about the exact same topic two check-ins in a row. Without
+    // this, answering "how's your knee?" logs a note that still says
+    // "knee" — which keeps that topic winning the ranking above forever,
+    // so it ends up asking the same question every single login.
+    const persona = getPersonaProfile(user);
+    const repeat = persona.lastGreetingTopic;
+    const topic = ranked.find((t) => t.key !== repeat) || null;
+
+    if (topic) {
+      saveProfile(user, { ...persona, lastGreetingTopic: topic.key });
       return `${topic.emoji} ${topic.question}`;
     }
 
+    saveProfile(user, { ...persona, lastGreetingTopic: null });
     const raw = recentNotes[recentNotes.length - 1].text;
     const clean = raw.replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "").replace(/\s+/g, " ").trim().slice(0, 100);
     return clean
@@ -2153,6 +2196,13 @@
     if (excludedNow.length > 0) {
       excludedNow.forEach((name) => excludeExercise(currentUser, name));
       localAcks.push(`won't suggest ${excludedNow.join(", ")} again — bring it back anytime from Settings`);
+    }
+    // A general "let's go lighter today" (no specific number) adjusts every
+    // weighted exercise's suggested load, not just one named lift.
+    const weightDirection = detectWeightDirection(text);
+    if (weightDirection) {
+      checkInState.weightDirection = weightDirection;
+      localAcks.push(`going ${weightDirection} across the board today`);
     }
     if (localAcks.length > 0) {
       reply = `Got it — ${localAcks.join("; and ")}.`;
@@ -2569,9 +2619,11 @@
       const weightLb = weightVal === "" ? null : Number(weightVal);
       const goal = document.getElementById("settings-goal").value.trim() || PERSONAS[currentUser].goal;
       const focusAreas = Array.from(document.querySelectorAll("#settings-focus .chip.selected")).map((c) => c.dataset.value);
-      const excludedExercises = getPersonaProfile(currentUser).excludedExercises;
 
-      saveProfile(currentUser, { goal, heightIn, weightLb, focusAreas, excludedExercises });
+      // Spread the current profile first so any field this form doesn't
+      // edit (excludedExercises, lastGreetingTopic, ...) survives a save
+      // instead of getting silently wiped by a partial object here.
+      saveProfile(currentUser, { ...getPersonaProfile(currentUser), goal, heightIn, weightLb, focusAreas });
       returnToCheckIn(currentUser);
     });
 
