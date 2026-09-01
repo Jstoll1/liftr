@@ -24,7 +24,7 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609010157" />
+  <link rel="stylesheet" href="styles.css?v=202609010212" />
 </head>
 <body>
 
@@ -74,15 +74,15 @@
         <div class="hub-tiles">
           <button id="hub-settings-btn" class="hub-tile" title="Settings">
             <span class="hub-tile-icon">⚙️</span>
-            <span class="hub-tile-label">Settings</span>
           </button>
           <button id="hub-history-btn" class="hub-tile" title="History">
             <span class="hub-tile-icon">📜</span>
-            <span class="hub-tile-label">History</span>
+          </button>
+          <button id="hub-graph-btn" class="hub-tile" title="Weight Trends">
+            <span class="hub-tile-icon">📈</span>
           </button>
           <button id="hub-cheer-btn" class="hub-tile" title="Cheer">
             <span class="hub-tile-icon">👋</span>
-            <span id="hub-cheer-label" class="hub-tile-label">Cheer</span>
           </button>
         </div>
       </div>
@@ -102,7 +102,6 @@
             <span class="terminal-prompt">&gt;</span>
             <div class="terminal-input-wrap">
               <input type="text" id="chat-input" class="chat-input terminal-input" placeholder="type here..." maxlength="200" />
-              <span id="chat-cursor" class="term-cursor">▌</span>
             </div>
             <button type="button" id="chat-send" class="chat-send-btn">Send</button>
           </div>
@@ -209,6 +208,33 @@
       <span class="section-title">Full History</span>
       <h2 class="panel-heading">Every session, <span id="history-name" class="panel-heading-accent"></span></h2>
       <ul id="history-full-list" class="history-list"></ul>
+    </div>
+  </main>
+
+  <!-- WEIGHT TRENDS / GRAPH SCREEN -->
+  <main id="graph-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="graph-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">Weight Trends</span>
+      <h2 class="panel-heading">Track <span id="graph-name" class="panel-heading-accent"></span>'s progress</h2>
+
+      <div class="graph-log-row">
+        <input type="date" id="graph-date" class="settings-input graph-date-input" />
+        <input type="number" id="graph-weight-input" class="settings-input" inputmode="numeric" placeholder="lbs" min="0" max="600" />
+        <button id="graph-log-btn" class="ghost-btn graph-log-btn">Log Weight</button>
+      </div>
+
+      <div class="graph-toggles">
+        <button type="button" class="chip graph-toggle selected" data-series="bodyweight">⚖️ Bodyweight</button>
+        <button type="button" class="chip graph-toggle" data-series="bench">🏋️ Bench (est. 1RM)</button>
+        <button type="button" class="chip graph-toggle" data-series="squat">🦵 Squat (est. 1RM)</button>
+      </div>
+
+      <div class="graph-chart-wrap">
+        <svg id="graph-svg" viewBox="0 0 600 300" preserveAspectRatio="none"></svg>
+        <p id="graph-empty" class="graph-empty hidden">No data yet — log a weigh-in above, or finish a bench/squat session, to see a trend line.</p>
+      </div>
+      <div id="graph-legend" class="graph-legend"></div>
     </div>
   </main>
 
@@ -362,6 +388,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=202609010157"></script>
+  <script src="app.js?v=202609010212"></script>
 </body>
 </html>
