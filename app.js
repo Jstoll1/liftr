@@ -1671,6 +1671,18 @@ okra`;
     pushToCloud(user);
   }
 
+  // Patches the most recently logged entry — used by the post-workout
+  // rating/recommendation-feedback chips on the done screen, which apply
+  // to a session after logSession already wrote it, not during.
+  function patchLastSession(user, patch) {
+    const all = loadAllHistory();
+    const entries = all[user];
+    if (!entries || entries.length === 0) return;
+    Object.assign(entries[entries.length - 1], patch);
+    saveAllHistory(all);
+    pushToCloud(user);
+  }
+
   function todayStr() {
     const d = new Date();
     return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
@@ -2257,6 +2269,7 @@ okra`;
   const EFFORT_ICON = { easy: "😌", right: "👍", hard: "😤" };
 
   function formatPerformanceSummary(perf) {
+    if (perf?.skipped) return "⏭ Skipped";
     const touched = (perf?.sets || []).filter((s) => s.actual != null || s.weight != null);
     if (touched.length === 0) return perf?.effort ? EFFORT_ICON[perf.effort] ?? null : null;
     const setsText = touched
@@ -2282,7 +2295,8 @@ okra`;
       }
       const loggedSummary = performance ? formatPerformanceSummary(performance[ex.name]) : null;
       const li = document.createElement("li");
-      if (loggedSummary) li.classList.add("ex-logged");
+      if (performance?.[ex.name]?.skipped) li.classList.add("ex-skipped");
+      else if (loggedSummary) li.classList.add("ex-logged");
       li.innerHTML = `<span>${escapeHtml(ex.name)}</span><span class="ex-detail">${escapeHtml(loggedSummary || ex.detail)}</span>`;
       list.appendChild(li);
     });
@@ -2402,6 +2416,37 @@ okra`;
     document.getElementById("session-done-note").classList.add("hidden");
   }
 
+  // Two lightweight, one-tap post-workout signals — separate from the
+  // per-exercise effort chips, which cover how the exercises felt, not
+  // whether today's session was the right call or a rough day overall.
+  // Patches the already-logged entry in place (logSession already ran by
+  // the time this screen shows), and re-renders on every tap so the
+  // selected chip stays in sync with what's actually stored.
+  function renderSessionFeedbackRows(user, entry) {
+    const ratingRow = document.getElementById("session-rating-row");
+    const recRow = document.getElementById("session-rec-feedback-row");
+    ratingRow.classList.remove("hidden");
+    recRow.classList.remove("hidden");
+
+    ratingRow.querySelectorAll(".session-feedback-chip").forEach((chip) => {
+      chip.classList.toggle("selected", chip.dataset.rating === entry.overallRating);
+      chip.onclick = () => {
+        entry.overallRating = entry.overallRating === chip.dataset.rating ? null : chip.dataset.rating;
+        patchLastSession(user, { overallRating: entry.overallRating });
+        renderSessionFeedbackRows(user, entry);
+      };
+    });
+
+    recRow.querySelectorAll(".session-feedback-chip").forEach((chip) => {
+      chip.classList.toggle("selected", chip.dataset.rec === entry.recFeedback);
+      chip.onclick = () => {
+        entry.recFeedback = entry.recFeedback === chip.dataset.rec ? null : chip.dataset.rec;
+        patchLastSession(user, { recFeedback: entry.recFeedback });
+        renderSessionFeedbackRows(user, entry);
+      };
+    });
+  }
+
   function renderSessionScreen(user, history) {
     // loggedToday alone isn't enough: it stays true for the rest of the day
     // once ANY session is logged, so it can't distinguish "just landed here,
@@ -2443,6 +2488,7 @@ okra`;
         ? "🎉 Nice work — here's what you actually logged. See you tomorrow!"
         : "🎉 Session complete. See you tomorrow!";
       document.getElementById("session-done-note").classList.remove("hidden");
+      renderSessionFeedbackRows(user, entry);
       // "Not feeling it? Back to options" (backLink, above) doesn't make
       // sense once a session is already logged — it stays hidden — but that
       // left this screen with no obvious way out beyond the small fixed
@@ -2452,6 +2498,8 @@ okra`;
       return;
     }
     document.getElementById("session-done-note").classList.add("hidden");
+    document.getElementById("session-rating-row").classList.add("hidden");
+    document.getElementById("session-rec-feedback-row").classList.add("hidden");
     document.getElementById("session-done-home-btn").classList.add("hidden");
     document.getElementById("preview-coach-section").classList.remove("hidden");
     document.getElementById("preview-actions").classList.remove("hidden");
@@ -2639,6 +2687,18 @@ okra`;
     return Math.max(5, Math.round(value / 5) * 5);
   }
 
+  // Ramps each set up toward the coach's recommended weight instead of
+  // starting cold at the full working weight on set 1 — the first set
+  // lands around 80% of target, climbing to 100% on the last, which is
+  // how a real pyramid/ramping warm-up is actually structured. A single
+  // set just gets the full recommendation; there's nothing to ramp across.
+  function computeRampedWeight(seedWeight, index, setCount) {
+    if (seedWeight == null) return null;
+    if (setCount <= 1) return seedWeight;
+    const fraction = 0.8 + 0.2 * (index / (setCount - 1));
+    return roundTrainingWeight(seedWeight * fraction) ?? seedWeight;
+  }
+
   function getLoggedExercisePerformances(user, exerciseName) {
     return getHistory(user)
       .map((entry) => ({ date: entry.date, performance: entry.performance?.[exerciseName] }))
@@ -2753,12 +2813,19 @@ okra`;
       const recommendation = getWeightRecommendation(user, ex, suggestedWeights?.get(ex.name));
       const seedWeight = recommendation?.weight ?? null;
       logs[ex.name] = {
-        // Weight lives per set, not per exercise — sets often ramp
-        // (e.g. 135/155/175/185), so each one gets its own adjustable value,
-        // all seeded from wherever the athlete left off last time.
-        sets: Array.from({ length: setCount }, () => ({ target, actual: target, weight: seedWeight, touched: false })),
+        // Weight lives per set, not per exercise — sets ramp up toward the
+        // recommended working weight (e.g. 85/90/100/105) rather than
+        // starting cold at the full weight on set 1, so each one gets its
+        // own adjustable value seeded from the ramp.
+        sets: Array.from({ length: setCount }, (_, i) => ({
+          target,
+          actual: target,
+          weight: computeRampedWeight(seedWeight, i, setCount),
+          touched: false,
+        })),
         flag: "",
         effort: null,
+        skipped: false,
         weightRecommendation: recommendation,
       };
     });
@@ -2988,20 +3055,35 @@ okra`;
 
     // One tap logs the whole exercise as done at its planned sets/reps/weight
     // — the common case where nothing needs adjusting shouldn't require
-    // opening the card and touching every set individually. Tapping again
-    // undoes it. Sits outside the expand button (not nested inside it —
-    // buttons can't nest) so it works with the card collapsed.
+    // opening the card and touching every set individually. A second tap
+    // marks it explicitly skipped (recorded as skipped, not silently
+    // dropped or mistaken for "done"); a third resets it. Sits outside the
+    // expand button (not nested inside it — buttons can't nest) so it
+    // works with the card collapsed.
     const quickDoneBtn = document.createElement("button");
     quickDoneBtn.type = "button";
     quickDoneBtn.className = "wex-quickdone";
-    quickDoneBtn.title = "Mark done as planned";
     const allTouched = () => log.sets.length > 0 && log.sets.every((s) => s.touched);
+    const quickState = () => (log.skipped ? "skipped" : allTouched() ? "done" : "none");
     const syncQuickDoneBtn = () => {
-      const done = allTouched();
-      quickDoneBtn.textContent = done ? "✓" : "○";
-      quickDoneBtn.classList.toggle("done", done);
+      const state = quickState();
+      quickDoneBtn.textContent = state === "done" ? "✓" : state === "skipped" ? "✕" : "○";
+      quickDoneBtn.classList.toggle("done", state === "done");
+      quickDoneBtn.classList.toggle("skipped", state === "skipped");
+      quickDoneBtn.title =
+        state === "done" ? "Done as planned — tap to mark skipped" : state === "skipped" ? "Marked skipped — tap to reset" : "Mark done as planned";
     };
     syncQuickDoneBtn();
+    // Any direct interaction with a specific set (typed weight, stepper,
+    // per-set toggle) clearly means the athlete IS doing this exercise —
+    // clears a stale "skipped" state so the quick-done icon doesn't keep
+    // showing skipped while sets are actively being logged underneath it.
+    const clearSkip = () => {
+      if (!log.skipped) return;
+      log.skipped = false;
+      syncQuickDoneBtn();
+      card.classList.remove("skipped");
+    };
     // Steps through the remaining body-part folders on each 404 before
     // giving up and showing the icon tile — the exercise's real photo could
     // be filed under any of them regardless of which split/program/library
@@ -3023,6 +3105,16 @@ okra`;
     const showWeight = usesWeight(ex);
     const weightRecommendation = log.weightRecommendation;
 
+    // A tap-and-hold +/- gets tedious jumping from an empty field up to a
+    // real working weight, so each weight-bearing set also gets a slider —
+    // scaled to comfortably cover a jump up from wherever this exercise's
+    // weight already sits (current sets, the coach's starting-weight
+    // recommendation, or a 45lb floor), not a one-size-fits-all range that
+    // would make fine control impossible on a light dumbbell exercise.
+    const sliderMax = showWeight
+      ? Math.max(100, Math.ceil((Math.max(...log.sets.map((s) => s.weight || 0), weightRecommendation?.weight || 0, 45) * 2.5) / 5) * 5)
+      : 0;
+
     // Weight lives inside each set row (ramping sets are the norm, not the
     // exception), alongside either a rep stepper or a simple complete-toggle.
     const setsHtml = log.sets
@@ -3034,6 +3126,9 @@ okra`;
                <span class="wex-mini-unit">lb</span>
                <button type="button" class="wex-mini-btn" data-dir="1">+</button>
              </div>`
+          : "";
+        const weightSlider = showWeight
+          ? `<input type="range" class="wex-weight-slider" min="0" max="${sliderMax}" step="5" value="${s.weight ?? 0}" aria-label="Slide to set ${escapeHtml(ex.name)} weight" />`
           : "";
         const repsControl =
           s.target != null
@@ -3055,6 +3150,7 @@ okra`;
           <div class="wex-set-row" data-set-index="${i}">
             <span class="wex-set-label">${label}</span>
             <div class="wex-set-controls">${weightControl}${repsControl}</div>
+            ${weightSlider}
           </div>
         `;
       })
@@ -3070,11 +3166,11 @@ okra`;
       ${showWeight && weightRecommendation ? `
         <div class="wex-weight-rec">
           <div>
-            <span class="wex-weight-rec-label">⚡ COACH STARTING WEIGHT</span>
+            <span class="wex-weight-rec-label">⚡ COACH TOP-SET WEIGHT</span>
             <strong>${weightRecommendation.weight} lb</strong>
-            <p>${escapeHtml(weightRecommendation.explanation)}</p>
+            <p>${escapeHtml(weightRecommendation.explanation)}${log.sets.length > 1 ? ` Sets ramp up to this — ${log.sets.map((s) => s.weight ?? "—").join("/")} lb.` : ""}</p>
           </div>
-          <button type="button" class="wex-apply-weight">Use ${weightRecommendation.weight} lb</button>
+          <button type="button" class="wex-apply-weight">${log.sets.length > 1 ? `Ramp to ${weightRecommendation.weight} lb` : `Use ${weightRecommendation.weight} lb`}</button>
         </div>
       ` : ""}
       <div class="wex-sets">${setsHtml}</div>
@@ -3110,27 +3206,34 @@ okra`;
       const set = log.sets[idx];
 
       const weightStepper = row.querySelector('.wex-mini-stepper[data-role="weight"]');
+      const weightSlider = row.querySelector(".wex-weight-slider");
       if (weightStepper) {
         const weightInput = weightStepper.querySelector(".wex-mini-input");
         const setWeight = (value) => {
           set.weight = value;
           set.touched = true;
           weightInput.value = value ?? "";
+          if (weightSlider) weightSlider.value = value ?? 0;
           row.classList.add("touched");
         };
         weightInput.addEventListener("input", (e) => {
           const parsed = e.target.value === "" ? null : Number(e.target.value);
-          set.weight = Number.isFinite(parsed) ? parsed : null;
-          set.touched = true;
-          row.classList.add("touched");
+          setWeight(Number.isFinite(parsed) ? parsed : null);
+          clearSkip();
           schedulePersistActiveWorkout();
         });
         weightStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
           const dir = Number(btn.dataset.dir);
           attachHoldStepper(btn, () => {
             setWeight(Math.max(0, (set.weight ?? 0) + dir * 5));
+            clearSkip();
             schedulePersistActiveWorkout();
           });
+        });
+        weightSlider?.addEventListener("input", (e) => {
+          setWeight(Number(e.target.value));
+          clearSkip();
+          schedulePersistActiveWorkout();
         });
       }
 
@@ -3144,6 +3247,7 @@ okra`;
             set.touched = true;
             valueEl.textContent = set.actual;
             row.classList.add("touched");
+            clearSkip();
             schedulePersistActiveWorkout();
           });
         });
@@ -3158,6 +3262,7 @@ okra`;
           toggleBtn.classList.toggle("done", set.touched);
           toggleBtn.textContent = set.touched ? "✓ Done" : "Mark Done";
           row.classList.toggle("touched", set.touched);
+          clearSkip();
           schedulePersistActiveWorkout();
         });
       }
@@ -3166,15 +3271,24 @@ okra`;
     const applyWeightButton = body.querySelector(".wex-apply-weight");
     if (applyWeightButton && weightRecommendation) {
       applyWeightButton.addEventListener("click", () => {
-        log.sets.forEach((set) => {
-          set.weight = weightRecommendation.weight;
+        // Re-applies the same ramp buildInitialLogs seeded with, not a
+        // flat weight — this button is "reset to the coach's numbers,"
+        // and the coach's numbers ramp.
+        log.sets.forEach((set, i) => {
+          set.weight = computeRampedWeight(weightRecommendation.weight, i, log.sets.length);
           set.touched = true;
         });
-        body.querySelectorAll('.wex-mini-stepper[data-role="weight"] .wex-mini-input').forEach((input) => {
-          input.value = weightRecommendation.weight;
-          input.closest(".wex-set-row")?.classList.add("touched");
+        body.querySelectorAll(".wex-set-row").forEach((row) => {
+          const i = Number(row.dataset.setIndex);
+          const rampedWeight = log.sets[i].weight;
+          const input = row.querySelector('.wex-mini-stepper[data-role="weight"] .wex-mini-input');
+          if (input) input.value = rampedWeight ?? "";
+          const slider = row.querySelector(".wex-weight-slider");
+          if (slider) slider.value = rampedWeight ?? 0;
+          row.classList.add("touched");
         });
         applyWeightButton.textContent = `Applied ${weightRecommendation.weight} lb ✓`;
+        clearSkip();
         schedulePersistActiveWorkout();
       });
     }
@@ -3233,22 +3347,35 @@ okra`;
     });
 
     quickDoneBtn.addEventListener("click", () => {
-      const nowDone = !allTouched();
+      const current = quickState();
+      // none -> done -> skipped -> none. Skipped still marks every set
+      // touched (recorded on purpose as "didn't do this"), not untouched
+      // (which would just look unrecorded again).
+      const next = current === "none" ? "done" : current === "done" ? "skipped" : "none";
+      log.skipped = next === "skipped";
       log.sets.forEach((s) => {
-        s.touched = nowDone;
-        // Toggle-based sets (no numeric target) only carry meaning as
-        // touched/untouched — mirror the same actual value the per-set
-        // "Mark Done" button already sets, so the two stay consistent.
-        if (s.target == null) s.actual = nowDone ? 1 : null;
+        s.touched = next !== "none";
+        if (next === "skipped") {
+          // An explicit skip always means zero, overriding any target
+          // default or prior manual edit — the other two transitions
+          // never touch actual for a rep-based set, so a value the
+          // athlete already typed in isn't clobbered by a later tap here.
+          s.actual = 0;
+        } else if (s.target == null) {
+          s.actual = next === "done" ? 1 : null;
+        }
       });
       syncQuickDoneBtn();
+      card.classList.toggle("skipped", next === "skipped");
       body.querySelectorAll(".wex-set-row").forEach((row) => {
-        row.classList.toggle("touched", nowDone);
+        row.classList.toggle("touched", next !== "none");
         const toggleBtn = row.querySelector(".wex-toggle-btn");
         if (toggleBtn) {
-          toggleBtn.classList.toggle("done", nowDone);
-          toggleBtn.textContent = nowDone ? "✓ Done" : "Mark Done";
+          toggleBtn.classList.toggle("done", next !== "none");
+          toggleBtn.textContent = next !== "none" ? "✓ Done" : "Mark Done";
         }
+        const valueEl = row.querySelector(".wex-mini-value");
+        if (valueEl) valueEl.textContent = log.sets[Number(row.dataset.setIndex)].actual;
       });
       schedulePersistActiveWorkout();
     });
@@ -3319,17 +3446,21 @@ okra`;
   function summarizeWorkoutLog(logs) {
     const lines = [];
     Object.entries(logs).forEach(([name, log]) => {
-      const touchedSets = log.sets.filter((s) => s.touched);
       const exerciseParts = [];
-      if (touchedSets.length > 0) {
-        exerciseParts.push(
-          touchedSets
-            .map((s) => {
-              const reps = s.target != null ? `${s.actual}/${s.target}` : s.actual ? "done" : "skipped";
-              return s.weight != null ? `${s.weight}lb×${reps}` : reps;
-            })
-            .join(", ")
-        );
+      if (log.skipped) {
+        exerciseParts.push("skipped");
+      } else {
+        const touchedSets = log.sets.filter((s) => s.touched);
+        if (touchedSets.length > 0) {
+          exerciseParts.push(
+            touchedSets
+              .map((s) => {
+                const reps = s.target != null ? `${s.actual}/${s.target}` : s.actual ? "done" : "not done";
+                return s.weight != null ? `${s.weight}lb×${reps}` : reps;
+              })
+              .join(", ")
+          );
+        }
       }
       if (log.effort && EFFORT_LABEL[log.effort]) exerciseParts.push(EFFORT_LABEL[log.effort]);
       if (exerciseParts.length > 0) lines.push(`${name}: ${exerciseParts.join(", ")}`);
@@ -3346,10 +3477,11 @@ okra`;
   function extractPerformance(logs) {
     const performance = {};
     Object.entries(logs).forEach(([name, log]) => {
-      if (log.sets.some((s) => s.touched) || log.effort) {
+      if (log.sets.some((s) => s.touched) || log.effort || log.skipped) {
         performance[name] = {
           sets: log.sets.map((s) => ({ target: s.target, actual: s.actual, weight: s.weight })),
           effort: log.effort || null,
+          skipped: Boolean(log.skipped),
         };
       }
     });
@@ -4500,6 +4632,8 @@ okra`;
   // captured (history, performance, notes) — no new data collection.
 
   const SORENESS_PATTERN = /\b(sore|soreness|pain|hurt|injury|tight|ache)\b/i;
+  const SESSION_RATING_ICON = { rough: "😞", solid: "🙂", great: "🔥" };
+  const SESSION_REC_ICON = { up: "👍", down: "👎" };
 
   function daysSince(dateStr) {
     const then = new Date(dateStr).getTime();
@@ -4546,6 +4680,25 @@ okra`;
       insights.push(`🩹 Recent mention: "${latest.text}" (${formatShortDate(latest.date)}) — worth following up before pushing that area.`);
     }
 
+    const recent10 = history.slice(-10);
+    const roughCount = recent10.filter((e) => e.overallRating === "rough").length;
+    if (roughCount >= 2) {
+      insights.push(`😞 Rated "Rough" ${roughCount} of the last ${recent10.length} sessions — worth checking what's making it hard.`);
+    }
+
+    const recDownCount = recent10.filter((e) => e.recFeedback === "down").length;
+    if (recDownCount >= 2) {
+      insights.push(`👎 Said "not really" to the workout choice ${recDownCount} of the last ${recent10.length} times — the recommendation isn't landing.`);
+    }
+
+    const skippedCount = recent10.reduce(
+      (sum, e) => sum + Object.values(e.performance || {}).filter((p) => p.skipped).length,
+      0
+    );
+    if (skippedCount > 0) {
+      insights.push(`⏭ ${skippedCount} exercise${skippedCount === 1 ? "" : "s"} marked skipped in the last ${recent10.length} sessions.`);
+    }
+
     if (insights.length === 0) {
       insights.push("✅ Nothing flagged — logging consistently with balanced effort feedback.");
     }
@@ -4565,16 +4718,18 @@ okra`;
         .slice(0, 8)
         .map((entry) => {
           const meta = getSplitMeta(entry.splitKey);
-          const metaLine = entry.minutes
-            ? `${entry.minutes} min · ${ENERGY_LABEL[entry.energy]}${entry.partner ? " · w/ partner" : ""}`
-            : "";
+          const badges = [
+            entry.minutes ? `${entry.minutes} min · ${ENERGY_LABEL[entry.energy]}${entry.partner ? " · w/ partner" : ""}` : "",
+            SESSION_RATING_ICON[entry.overallRating] ? `${SESSION_RATING_ICON[entry.overallRating]} ${entry.overallRating}` : "",
+            SESSION_REC_ICON[entry.recFeedback] ? `${SESSION_REC_ICON[entry.recFeedback]} workout fit` : "",
+          ].filter(Boolean).join(" · ");
           return `
         <li class="trainer-session">
           <div class="trainer-session-head">
             <span>${meta.icon} ${escapeHtml(meta.name)}</span>
             <span class="trainer-session-date">${formatShortDate(entry.date)}</span>
           </div>
-          ${metaLine ? `<span class="trainer-session-meta">${escapeHtml(metaLine)}</span>` : ""}
+          ${badges ? `<span class="trainer-session-meta">${escapeHtml(badges)}</span>` : ""}
           ${entry.note ? `<p class="trainer-session-note">${escapeHtml(entry.note)}</p>` : ""}
         </li>
       `;

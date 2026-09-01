@@ -24,7 +24,7 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609013000" />
+  <link rel="stylesheet" href="styles.css?v=202609013100" />
 </head>
 <body>
 
@@ -405,6 +405,24 @@
         <ul id="session-exercises" class="session-exercises"></ul>
 
         <p id="session-done-note" class="session-done-note hidden"></p>
+
+        <div id="session-rating-row" class="session-feedback-row hidden">
+          <span class="session-feedback-label">How was today, overall?</span>
+          <div class="session-feedback-chips">
+            <button type="button" class="session-feedback-chip" data-rating="rough">😞 Rough</button>
+            <button type="button" class="session-feedback-chip" data-rating="solid">🙂 Solid</button>
+            <button type="button" class="session-feedback-chip" data-rating="great">🔥 Great</button>
+          </div>
+        </div>
+
+        <div id="session-rec-feedback-row" class="session-feedback-row hidden">
+          <span class="session-feedback-label">Was this the right workout for today?</span>
+          <div class="session-feedback-chips">
+            <button type="button" class="session-feedback-chip" data-rec="up">👍 Yes</button>
+            <button type="button" class="session-feedback-chip" data-rec="down">👎 Not really</button>
+          </div>
+        </div>
+
         <button id="session-done-home-btn" type="button" class="primary-btn hidden">🏠 Back to Home</button>
 
         <div id="preview-actions" class="preview-actions hidden">
@@ -465,6 +483,6 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
   </script>
-  <script src="app.js?v=202609013000"></script>
+  <script src="app.js?v=202609013100"></script>
 </body>
 </html>
