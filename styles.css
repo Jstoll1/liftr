@@ -1512,6 +1512,33 @@ button,
 .library-item-remove:hover { color: #ff4d4d; }
 .library-item-start:hover { color: var(--accent); }
 
+.day-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.day-chip {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.day-chip:hover { border-color: var(--accent); }
+
+.day-chip.is-next {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-elevated));
+  box-shadow: 0 0 10px -3px var(--accent);
+}
+
 .library-tag-chip {
   display: inline-block;
   margin-left: 6px;

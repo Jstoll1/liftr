@@ -1364,6 +1364,7 @@ okra`;
     "shortcut-to-shred-1": {
       user: "jake",
       program: "shortcut-to-shred",
+      programLabel: "Shortcut to Shred",
       dayNumber: 1,
       name: "Shortcut to Shred — Day 1: Chest, Triceps & Abs",
       icon: "🔥",
@@ -1385,6 +1386,7 @@ okra`;
     "shortcut-to-shred-2": {
       user: "jake",
       program: "shortcut-to-shred",
+      programLabel: "Shortcut to Shred",
       dayNumber: 2,
       name: "Shortcut to Shred — Day 2: Shoulders, Legs & Calves",
       icon: "🔥",
@@ -1407,6 +1409,7 @@ okra`;
     "shortcut-to-shred-3": {
       user: "jake",
       program: "shortcut-to-shred",
+      programLabel: "Shortcut to Shred",
       dayNumber: 3,
       name: "Shortcut to Shred — Day 3: Back, Traps & Biceps",
       icon: "🔥",
@@ -1429,6 +1432,7 @@ okra`;
     "shortcut-to-shred-4": {
       user: "jake",
       program: "shortcut-to-shred",
+      programLabel: "Shortcut to Shred",
       dayNumber: 4,
       name: "Shortcut to Shred — Day 4: Chest, Triceps & Abs (Single-Joint)",
       icon: "🔥",
@@ -1451,6 +1455,7 @@ okra`;
     "shortcut-to-shred-5": {
       user: "jake",
       program: "shortcut-to-shred",
+      programLabel: "Shortcut to Shred",
       dayNumber: 5,
       name: "Shortcut to Shred — Day 5: Shoulders, Legs & Calves (Single-Joint)",
       icon: "🔥",
@@ -1472,6 +1477,7 @@ okra`;
     "shortcut-to-shred-6": {
       user: "jake",
       program: "shortcut-to-shred",
+      programLabel: "Shortcut to Shred",
       dayNumber: 6,
       name: "Shortcut to Shred — Day 6: Back, Traps & Biceps (Single-Joint)",
       icon: "🔥",
@@ -3772,18 +3778,53 @@ okra`;
     const presetEntries = Object.entries(SPECIAL_WORKOUTS).filter(([, preset]) => preset.user === user);
     const routines = loadLibrary().routines;
 
-    const presetHtml = presetEntries
-      .map(
-        ([key, preset]) => `
-      <li class="library-item more-workout-item" data-kind="preset" data-key="${escapeHtml(key)}">
+    // Same-program entries (Shortcut to Shred's 6 days) collapse into one
+    // compact row with a day picker instead of a full-detail row repeated
+    // per day — a 6-day program shouldn't take 6x the scroll of everything
+    // else in this list. A preset with no "program" field (Jessica's
+    // game-day workout) is its own group of one and keeps the full row.
+    const groups = new Map();
+    presetEntries.forEach(([key, preset]) => {
+      const groupId = preset.program || key;
+      if (!groups.has(groupId)) groups.set(groupId, []);
+      groups.get(groupId).push({ key, preset });
+    });
+
+    const presetHtml = Array.from(groups.values())
+      .map((entries) => {
+        if (entries.length === 1) {
+          const { key, preset } = entries[0];
+          return `
+        <li class="library-item more-workout-item" data-kind="preset" data-key="${escapeHtml(key)}">
+          <div class="library-item-info">
+            <span class="library-item-title">${preset.icon} ${escapeHtml(preset.name)}</span>
+            <span class="library-item-meta">${escapeHtml(preset.tagline)}</span>
+          </div>
+          <span class="library-item-start">▶</span>
+        </li>
+      `;
+        }
+        entries.sort((a, b) => (a.preset.dayNumber || 0) - (b.preset.dayNumber || 0));
+        const { preset: first } = entries[0];
+        const dayChips = entries
+          .map(
+            ({ key, preset }) => `
+          <button type="button" class="day-chip more-workout-item${key === nextKey ? " is-next" : ""}" data-kind="preset" data-key="${escapeHtml(key)}">
+            Day ${preset.dayNumber}
+          </button>
+        `
+          )
+          .join("");
+        return `
+      <li class="library-item more-workout-program">
         <div class="library-item-info">
-          <span class="library-item-title">${preset.icon} ${escapeHtml(preset.name)}</span>
-          <span class="library-item-meta">${escapeHtml(preset.tagline)}${key === nextKey ? ' <span class="library-tag-chip">NEXT UP</span>' : ""}</span>
+          <span class="library-item-title">${first.icon} ${escapeHtml(first.programLabel || first.name)}</span>
+          <span class="library-item-meta">${entries.length}-day rotation · tap a day to start${nextKey && entries.some((e) => e.key === nextKey) ? " (next up highlighted)" : ""}</span>
+          <div class="day-chip-row">${dayChips}</div>
         </div>
-        <span class="library-item-start">▶</span>
       </li>
-    `
-      )
+    `;
+      })
       .join("");
 
     const routineHtml = routines
