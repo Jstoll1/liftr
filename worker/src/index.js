@@ -48,6 +48,7 @@ export default {
       candidates.every((c) => typeof c?.name === "string" && typeof c?.detail === "string");
 
     if (!valid) {
+      console.error("Malformed plan request", JSON.stringify(body));
       return json({ error: "Malformed request" }, 400, corsHeaders);
     }
 
@@ -120,6 +121,7 @@ export default {
       });
 
       if (!aiRes.ok) {
+        console.error("OpenAI error", aiRes.status, await aiRes.text());
         return json({ error: "Upstream AI error" }, 502, corsHeaders);
       }
 
@@ -133,11 +135,13 @@ export default {
       const exercises = (parsed.chosen || []).map((name) => byName.get(name)).filter(Boolean);
 
       if (exercises.length === 0) {
+        console.error("Empty plan after mapping", JSON.stringify(parsed));
         return json({ error: "Empty plan" }, 502, corsHeaders);
       }
 
       return json({ exercises, reason: parsed.reason || "" }, 200, corsHeaders);
-    } catch {
+    } catch (err) {
+      console.error("Worker error (plan)", err?.stack || String(err));
       return json({ error: "Worker error" }, 500, corsHeaders);
     }
   },
@@ -165,6 +169,7 @@ async function handleChat(body, env, corsHeaders) {
     messages.every((m) => (m?.role === "user" || m?.role === "coach") && typeof m?.text === "string");
 
   if (!valid) {
+    console.error("Malformed chat request", JSON.stringify(body));
     return json({ error: "Malformed chat request" }, 400, corsHeaders);
   }
 
@@ -219,6 +224,7 @@ async function handleChat(body, env, corsHeaders) {
     });
 
     if (!aiRes.ok) {
+      console.error("OpenAI error (chat)", aiRes.status, await aiRes.text());
       return json({ error: "Upstream AI error" }, 502, corsHeaders);
     }
 
@@ -227,11 +233,13 @@ async function handleChat(body, env, corsHeaders) {
     const parsed = JSON.parse(content);
 
     if (typeof parsed.reply !== "string" || !parsed.reply.trim()) {
+      console.error("Empty chat reply", JSON.stringify(parsed));
       return json({ error: "Empty reply" }, 502, corsHeaders);
     }
 
     return json({ reply: parsed.reply, constraint: parsed.constraint || null }, 200, corsHeaders);
-  } catch {
+  } catch (err) {
+    console.error("Worker error (chat)", err?.stack || String(err));
     return json({ error: "Worker error" }, 500, corsHeaders);
   }
 }
