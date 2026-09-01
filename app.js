@@ -1890,6 +1890,26 @@ okra`;
     return SPLIT_LIBRARY[splitKey].exercises[user].filter((ex) => !excluded.has(ex.name));
   }
 
+  function isPartnerExercise(exercise) {
+    return /partner/i.test(`${exercise?.name || ""} ${exercise?.phase || ""} ${exercise?.howTo || ""}`);
+  }
+
+  function isWorkoutAllowedForCheckIn(splitKey, context = checkInState) {
+    const preset = SPECIAL_WORKOUTS[splitKey];
+    return !preset?.defaultCheckIn?.partner || Boolean(context.partner);
+  }
+
+  function isFinisherExercise(exercise) {
+    return /^finisher:/i.test(exercise?.name || "");
+  }
+
+  function targetExerciseCount({ minutes, energy }) {
+    const base = TIME_TO_COUNT[minutes] ?? 4;
+    if (energy === "low") return Math.max(2, base - 1);
+    if (energy === "high") return Math.min(6, base + 1);
+    return base;
+  }
+
   // A bigger exercise pool doesn't reduce repetition on its own — slicing
   // the same fixed prefix every time would still show the same first N
   // exercises forever. This ranks the pool by how recently each one was
@@ -1939,16 +1959,12 @@ okra`;
   // amount of time available, energy level, and whether a partner is along.
   function buildWorkoutPlan(user, splitKey, { minutes, energy, partner }) {
     const base = getAvailableExercises(user, splitKey);
-    let count = Math.min(TIME_TO_COUNT[minutes] ?? base.length, base.length);
-    if (energy === "low") count = Math.max(2, count - 1);
-    if (energy === "high") count = Math.min(base.length, count + 1);
-
-    let list = pickVariedExercises(user, splitKey, base, count);
-
-    if (energy === "high" && minutes >= 45) {
-      const finisher = FINISHERS[splitKey][user];
-      if (finisher) list = [...list, finisher];
-    }
+    const desiredTotal = targetExerciseCount({ minutes, energy });
+    const finisher = energy === "high" && minutes >= 45 ? FINISHERS[splitKey]?.[user] : null;
+    const baseCount = Math.max(1, desiredTotal - (finisher ? 1 : 0));
+    let list = pickVariedExercises(user, splitKey, base, Math.min(baseCount, base.length));
+    if (list.length > baseCount) list = list.slice(0, baseCount);
+    if (finisher) list = [...list, finisher];
     if (partner) {
       const extra = PARTNER_EXTRAS[splitKey][user];
       if (extra) list = [...list, extra];
@@ -1966,6 +1982,78 @@ okra`;
       }
     }
     return list;
+  }
+
+  function mergeCanonicalExercises(exercises, pool) {
+    const byName = new Map(pool.map((exercise) => [exercise.name, exercise]));
+    const seen = new Set();
+    return (exercises || [])
+      .map((exercise) => byName.get(exercise?.name))
+      .filter((exercise) => exercise && !seen.has(exercise.name) && seen.add(exercise.name));
+  }
+
+  function balanceChestBackPlan(user, exercises, checkIn) {
+    const pool = buildCandidatePool(user, "chest-back", checkIn);
+    const canonical = mergeCanonicalExercises(exercises, pool);
+    const regularPool = pool.filter((exercise) => !isFinisherExercise(exercise) && (checkIn.partner || !isPartnerExercise(exercise)));
+    const regularChosen = canonical.filter((exercise) => !isFinisherExercise(exercise) && (checkIn.partner || !isPartnerExercise(exercise)));
+    const desiredTotal = targetExerciseCount(checkIn);
+    const finisher = checkIn.energy === "high" && checkIn.minutes >= 45 ? pool.find(isFinisherExercise) : null;
+    const desiredRegular = Math.max(2, desiredTotal - (finisher ? 1 : 0));
+    const focus = getCoachFocus(checkIn.note);
+    const paired = (exercise) => Boolean(
+      exercise.superset && regularPool.some((candidate) => candidate.name !== exercise.name && candidate.superset === exercise.superset)
+    );
+    const ordered = (predicate) => {
+      const chosen = regularChosen.filter(predicate);
+      const remaining = regularPool.filter((exercise) => predicate(exercise) && !chosen.some((item) => item.name === exercise.name));
+      return [
+        ...chosen.filter(paired),
+        ...remaining.filter(paired),
+        ...chosen.filter((exercise) => !paired(exercise)),
+        ...remaining.filter((exercise) => !paired(exercise)),
+      ];
+    };
+    const chest = ordered((exercise) => getExerciseTraits(exercise).has("horizontalPush"));
+    const back = ordered((exercise) => {
+      const traits = getExerciseTraits(exercise);
+      return traits.has("horizontalPull") || traits.has("verticalPull");
+    });
+    let chestTarget = Math.ceil(desiredRegular / 2);
+    if (focus === "back") chestTarget = Math.floor(desiredRegular / 2);
+    const backTarget = desiredRegular - chestTarget;
+    const result = [];
+    const push = (exercise) => {
+      if (exercise && !result.some((item) => item.name === exercise.name)) result.push(exercise);
+    };
+    for (let index = 0; index < Math.max(chestTarget, backTarget); index++) {
+      if (focus === "back") {
+        if (index < backTarget) push(back[index]);
+        if (index < chestTarget) push(chest[index]);
+      } else {
+        if (index < chestTarget) push(chest[index]);
+        if (index < backTarget) push(back[index]);
+      }
+    }
+    [...regularChosen, ...regularPool].forEach((exercise) => {
+      if (result.length < desiredRegular) push(exercise);
+    });
+    if (finisher) push(finisher);
+    return result.slice(0, desiredTotal);
+  }
+
+  function enforcePlanConstraints(user, splitKey, exercises, checkIn) {
+    if (SPECIAL_WORKOUTS[splitKey]) return exercises;
+    if (splitKey === "chest-back") return balanceChestBackPlan(user, exercises, checkIn);
+    const pool = buildCandidatePool(user, splitKey, checkIn);
+    const desired = targetExerciseCount(checkIn) + (checkIn.partner ? 1 : 0);
+    const canonical = mergeCanonicalExercises(exercises, pool).filter((exercise) => checkIn.partner || !isPartnerExercise(exercise));
+    const fallback = buildWorkoutPlan(user, splitKey, checkIn).filter((exercise) => checkIn.partner || !isPartnerExercise(exercise));
+    const result = [];
+    [...canonical, ...fallback, ...pool].forEach((exercise) => {
+      if (result.length < desired && !result.some((item) => item.name === exercise.name)) result.push(exercise);
+    });
+    return result;
   }
 
   // Body-part/focus keywords, each anchored to a nearby intent verb so
@@ -2098,9 +2186,9 @@ okra`;
   // only mentioning it in chat. Works for any split by ranking the real
   // candidate pool on trait overlap with the requested focus, instead of a
   // fixed exercise list per muscle group.
-  function applyCoachFocus(user, splitKey, exercises, note) {
+  function applyCoachFocus(user, splitKey, exercises, note, context = checkInState) {
     const focus = getCoachFocus(note);
-    const pool = buildCandidatePool(user, splitKey);
+    const pool = buildCandidatePool(user, splitKey, context);
     let result = exercises;
 
     const traits = focus ? FOCUS_TRAITS[focus] : null;
@@ -2132,7 +2220,7 @@ okra`;
     // buildWorkoutPlan/the AI already included it. That finisher was asked
     // for by name, not inferred from trait overlap, so it's never subject to
     // the trim above either.
-    const finisherOverride = checkInState.finisherOverride;
+    const finisherOverride = context.finisherOverride;
     if (finisherOverride && finisherOverride !== splitKey) {
       const crossFinisher = FINISHERS[finisherOverride]?.[user];
       if (crossFinisher && !result.some((exercise) => exercise.name === crossFinisher.name)) {
@@ -2148,15 +2236,14 @@ okra`;
   }
 
   function buildTags({ minutes, energy, partner }, extraTags = []) {
-    const tags = [`${minutes} MIN`, ENERGY_LABEL[energy].toUpperCase()];
-    if (partner) tags.push("W/ PARTNER");
+    const tags = [`${minutes} MIN`, ENERGY_LABEL[energy].toUpperCase(), partner ? "W/ PARTNER" : "SOLO"];
     return [...tags, ...extraTags];
   }
 
   // Everything the AI (or the local fallback) is allowed to choose from —
   // the base list plus the finisher/partner bonus moves, all up for grabs
   // based on today's actual context instead of always-on rules.
-  function buildCandidatePool(user, splitKey) {
+  function buildCandidatePool(user, splitKey, context = checkInState) {
     if (SPECIAL_WORKOUTS[splitKey]) {
       const excluded = new Set(getPersonaProfile(user).excludedExercises);
       return SPECIAL_WORKOUTS[splitKey].exercises.filter((exercise) => !excluded.has(exercise.name));
@@ -2165,8 +2252,8 @@ okra`;
     const pool = getAvailableExercises(user, splitKey);
     const finisher = FINISHERS[splitKey]?.[user];
     const partnerExtra = PARTNER_EXTRAS[splitKey]?.[user];
-    if (finisher && !excluded.has(finisher.name)) pool.push(finisher);
-    if (partnerExtra && !excluded.has(partnerExtra.name)) pool.push(partnerExtra);
+    if (finisher && context.energy === "high" && context.minutes >= 45 && !excluded.has(finisher.name)) pool.push(finisher);
+    if (partnerExtra && context.partner && !excluded.has(partnerExtra.name)) pool.push(partnerExtra);
 
     // "Leg day, ab finish" — the athlete asked for a finisher from a split
     // that isn't the one being trained today. The candidate list is
@@ -2190,7 +2277,7 @@ okra`;
   async function computePlan(user, splitKey, checkIn) {
     if (SPECIAL_WORKOUTS[splitKey]) {
       const preset = SPECIAL_WORKOUTS[splitKey];
-      const exercises = applyCoachFocus(user, splitKey, buildCandidatePool(user, splitKey), checkIn.note);
+      const exercises = applyCoachFocus(user, splitKey, buildCandidatePool(user, splitKey, checkIn), checkIn.note, checkIn);
       return { exercises, reason: preset.reason, source: "preset", suggestedWeights: new Map() };
     }
     if (AI_ENDPOINT) {
@@ -2215,7 +2302,7 @@ okra`;
             todayNote: (checkIn.note || "").trim() || null,
             pastNotes: getPastNotes(user, 5),
             weightHistory: buildWeightHistory(user),
-            candidates: buildCandidatePool(user, splitKey),
+            candidates: buildCandidatePool(user, splitKey, checkIn),
             // What this split actually looked like the last couple of
             // times, so the model can favor variety from a candidate pool
             // that's grown well past what a single session needs, instead
@@ -2244,8 +2331,9 @@ okra`;
                     .map((s) => [s.exercise, s.weight])
                 : []
             );
+            const focused = applyCoachFocus(user, splitKey, data.exercises, checkIn.note, checkIn);
             return {
-              exercises: applyCoachFocus(user, splitKey, data.exercises, checkIn.note),
+              exercises: enforcePlanConstraints(user, splitKey, focused, checkIn),
               reason: typeof data.reason === "string" ? data.reason : null,
               source: "ai",
               suggestedWeights,
@@ -2258,7 +2346,12 @@ okra`;
     }
 
     return {
-      exercises: applyCoachFocus(user, splitKey, buildWorkoutPlan(user, splitKey, checkIn), checkIn.note),
+      exercises: enforcePlanConstraints(
+        user,
+        splitKey,
+        applyCoachFocus(user, splitKey, buildWorkoutPlan(user, splitKey, checkIn), checkIn.note, checkIn),
+        checkIn
+      ),
       reason: null,
       source: "local",
       suggestedWeights: new Map(),
@@ -2271,6 +2364,7 @@ okra`;
   let checkInState = { minutes: 30, energy: "medium", partner: false, note: "", weightOverrides: {}, weightDirection: null, finisherOverride: null };
   let chatMessages = []; // [{ role: "coach" | "user", text }] for the check-in chat
   let chatBusy = false;
+  let coachContextTarget = null;
   // Split key the coach picked up on from the conversation (e.g. "let's do
   // legs today"), overriding the rule-based recommendation when set.
   let chatSuggestedSplit = null;
@@ -2421,6 +2515,37 @@ okra`;
     });
   }
 
+  function getExerciseRoleLabel(exercise) {
+    if (isFinisherExercise(exercise)) return "FINISHER";
+    if (isPartnerExercise(exercise)) return "PARTNER";
+    const traits = getExerciseTraits(exercise);
+    if (traits.has("horizontalPush")) return "CHEST";
+    if (traits.has("horizontalPull") || traits.has("verticalPull")) return "BACK";
+    if (traits.has("quads")) return "QUADS";
+    if (traits.has("hamstrings")) return "HAMSTRINGS";
+    if (traits.has("glutes")) return "GLUTES";
+    if (traits.has("core")) return "CORE";
+    if (traits.has("conditioning")) return "CONDITIONING";
+    if (traits.has("mobility")) return "MOBILITY";
+    return "EXERCISE";
+  }
+
+  function renderPreviewPlanSummary(exercises, context) {
+    const summary = document.getElementById("preview-plan-summary");
+    if (!summary) return;
+    const counts = new Map();
+    exercises.forEach((exercise) => {
+      const role = getExerciseRoleLabel(exercise);
+      counts.set(role, (counts.get(role) || 0) + 1);
+    });
+    const order = ["CHEST", "BACK", "QUADS", "HAMSTRINGS", "GLUTES", "CORE", "CONDITIONING", "MOBILITY", "FINISHER", "PARTNER", "EXERCISE"];
+    const mix = order.filter((role) => counts.has(role)).map((role) => `${counts.get(role)} ${role.toLowerCase()}`).join(" · ");
+    const mode = context.partner ? "with partner" : "solo";
+    const energy = ENERGY_LABEL[context.energy] || "energy not logged";
+    summary.innerHTML = `<strong>PLAN CHECK</strong><span>${escapeHtml(mix)} · ${escapeHtml(mode)} · ${context.minutes} min · ${escapeHtml(energy)}</span>`;
+    summary.classList.remove("hidden");
+  }
+
   // Live-editable version of the preview list — lets the athlete drop or
   // add exercises right on the preview card instead of leaving for the
   // full cross-category builder (still available via "Edit Exercises" for
@@ -2430,6 +2555,7 @@ okra`;
   function renderPreviewExerciseList(exercises, splitKey) {
     const list = document.getElementById("session-exercises");
     list.innerHTML = "";
+    renderPreviewPlanSummary(exercises, checkInState);
     let currentPhase = null;
     exercises.forEach((ex, idx) => {
       if (ex.phase && ex.phase !== currentPhase) {
@@ -2441,17 +2567,28 @@ okra`;
       }
       const li = document.createElement("li");
       li.className = "session-ex-editable";
+      const imageCandidates = getExerciseImageCandidates(ex.name);
       li.innerHTML = `
+        <span class="session-ex-number">${idx + 1}</span>
+        <span class="session-ex-image"><img src="${imageCandidates[0]}" alt="" /><span>${getSplitMeta(splitKey).icon}</span></span>
         <span class="session-ex-info">
-          <span>${escapeHtml(ex.name)}</span>
+          <span class="session-ex-title"><strong>${escapeHtml(ex.name)}</strong><em>${escapeHtml(getExerciseRoleLabel(ex))}</em></span>
           <span class="ex-detail">${escapeHtml(ex.detail)}</span>
+          ${ex.howTo ? `<span class="session-ex-howto">${escapeHtml(ex.howTo)}</span>` : ""}
         </span>
         <button type="button" class="session-ex-remove" data-idx="${idx}" title="Remove ${escapeHtml(ex.name)}" aria-label="Remove ${escapeHtml(ex.name)}">✕</button>
       `;
+      const image = li.querySelector("img");
+      let imageIndex = 0;
+      image.addEventListener("error", () => {
+        imageIndex++;
+        if (imageIndex < imageCandidates.length) image.src = imageCandidates[imageIndex];
+        else image.style.display = "none";
+      });
       list.appendChild(li);
     });
 
-    const candidates = buildCandidatePool(currentUser, splitKey).filter(
+    const candidates = buildCandidatePool(currentUser, splitKey, checkInState).filter(
       (candidate) => !exercises.some((ex) => ex.name === candidate.name)
     );
     const addLi = document.createElement("li");
@@ -2518,6 +2655,7 @@ okra`;
     document.getElementById("session-status").classList.add("hidden");
     renderTags(null);
     renderAiNote(null);
+    document.getElementById("preview-plan-summary").classList.add("hidden");
 
     const list = document.getElementById("session-exercises");
     list.innerHTML = '<li class="skeleton-row"></li><li class="skeleton-row"></li><li class="skeleton-row"></li>';
@@ -2591,6 +2729,7 @@ okra`;
     const backLink = document.getElementById("back-to-options");
 
     if (done) {
+      document.getElementById("preview-plan-summary").classList.add("hidden");
       document.getElementById("preview-coach-section").classList.add("hidden");
       document.getElementById("preview-actions").classList.add("hidden");
       document.getElementById("save-workout-btn").classList.add("hidden");
@@ -2806,18 +2945,6 @@ okra`;
     return Math.max(5, Math.round(value / 5) * 5);
   }
 
-  // Ramps each set up toward the coach's recommended weight instead of
-  // starting cold at the full working weight on set 1 — the first set
-  // lands around 80% of target, climbing to 100% on the last, which is
-  // how a real pyramid/ramping warm-up is actually structured. A single
-  // set just gets the full recommendation; there's nothing to ramp across.
-  function computeRampedWeight(seedWeight, index, setCount) {
-    if (seedWeight == null) return null;
-    if (setCount <= 1) return seedWeight;
-    const fraction = 0.8 + 0.2 * (index / (setCount - 1));
-    return roundTrainingWeight(seedWeight * fraction) ?? seedWeight;
-  }
-
   function getLoggedExercisePerformances(user, exerciseName) {
     return getHistory(user)
       .map((entry) => ({ date: entry.date, performance: entry.performance?.[exerciseName] }))
@@ -2958,16 +3085,13 @@ okra`;
       const recommendation = getWeightRecommendation(user, ex, suggestedWeights?.get(ex.name));
       const seedWeight = recommendation?.weight ?? null;
       logs[ex.name] = {
-        // Weight lives per set, not per exercise — sets ramp up toward the
-        // recommended working weight (e.g. 85/90/100/105) rather than
-        // starting cold at the full weight on set 1, so each one gets its
-        // own adjustable value seeded from the ramp.
-        sets: Array.from({ length: setCount }, (_, i) => ({
+        sets: Array.from({ length: setCount }, () => ({
           target,
           actual: target,
-          weight: computeRampedWeight(seedWeight, i, setCount),
+          weight: seedWeight,
           touched: false,
         })),
+        workingWeight: seedWeight,
         flag: "",
         effort: null,
         skipped: false,
@@ -2988,7 +3112,7 @@ okra`;
         if (bySupersetKey.has(key)) {
           bySupersetKey.get(key).items.push(ex);
         } else {
-          const group = { items: [ex] };
+          const group = { items: [ex], superset: ex.superset };
           bySupersetKey.set(key, group);
           groups.push(group);
         }
@@ -2997,6 +3121,24 @@ okra`;
       }
     });
     return groups;
+  }
+
+  function getWorkoutGroupLabel(group, phaseName) {
+    const partnerWork = checkInState.partner || /partner/i.test(phaseName || "") || group.items.some(isPartnerExercise);
+    if (partnerWork) return "PARTNER SET · MOVE TOGETHER, THEN SWITCH";
+    return `SUPERSET${group.superset ? ` ${group.superset}` : ""} · ALTERNATE EXERCISES`;
+  }
+
+  function updateWorkoutProgress() {
+    if (!activeWorkout) return;
+    const logs = activeWorkout.exercises.map((exercise) => activeWorkout.logs[exercise.name]).filter(Boolean);
+    const totalSets = logs.reduce((sum, log) => sum + log.sets.length, 0);
+    const completedSets = logs.reduce((sum, log) => sum + log.sets.filter((set) => set.touched).length, 0);
+    const completedExercises = logs.filter((log) => log.sets.length > 0 && log.sets.every((set) => set.touched)).length;
+    const percent = totalSets ? Math.round((completedSets / totalSets) * 100) : 0;
+    document.getElementById("workout-progress-title").textContent = `${completedExercises} of ${logs.length} exercises logged`;
+    document.getElementById("workout-progress-detail").textContent = `${completedSets} of ${totalSets} sets · ${percent}%`;
+    document.getElementById("workout-progress-bar").style.width = `${percent}%`;
   }
 
   function renderWorkoutHeader(splitKey) {
@@ -3029,7 +3171,7 @@ okra`;
       squat: /squat|leg press|wall.?sit/,
       lunge: /lunge|step.?up|split squat/,
       hinge: /deadlift|hinge|good morning|glute bridge/,
-      horizontalPush: /bench press|chest press|push.?up|chest pass|cable fly/,
+      horizontalPush: /bench press|chest press|incline dumbbell press|push.?up|chest pass|cable fly/,
       verticalPull: /pull.?up|pulldown/,
       horizontalPull: /row/,
       core: /plank|dead bug|leg raise|mountain climber/,
@@ -3250,30 +3392,17 @@ okra`;
     const showWeight = usesWeight(ex);
     const weightRecommendation = log.weightRecommendation;
 
-    // A tap-and-hold +/- gets tedious jumping from an empty field up to a
-    // real working weight, so each weight-bearing set also gets a slider —
-    // scaled to comfortably cover a jump up from wherever this exercise's
-    // weight already sits (current sets, the coach's starting-weight
-    // recommendation, or a 45lb floor), not a one-size-fits-all range that
-    // would make fine control impossible on a light dumbbell exercise.
-    const sliderMax = showWeight
-      ? Math.max(100, Math.ceil((Math.max(...log.sets.map((s) => s.weight || 0), weightRecommendation?.weight || 0, 45) * 2.5) / 5) * 5)
-      : 0;
+    if (showWeight && log.workingWeight == null) {
+      log.workingWeight = log.sets.find((set) => !set.touched && set.weight != null)?.weight
+        ?? log.sets.find((set) => set.weight != null)?.weight
+        ?? weightRecommendation?.weight
+        ?? null;
+    }
 
-    // Weight lives inside each set row (ramping sets are the norm, not the
-    // exception), alongside either a rep stepper or a simple complete-toggle.
     const setsHtml = log.sets
       .map((s, i) => {
         const weightControl = showWeight
-          ? `<div class="wex-mini-stepper" data-role="weight">
-               <button type="button" class="wex-mini-btn" data-dir="-1">−</button>
-               <input type="number" inputmode="numeric" pattern="[0-9]*" class="wex-mini-input" placeholder="—" value="${s.weight ?? ""}" />
-               <span class="wex-mini-unit">lb</span>
-               <button type="button" class="wex-mini-btn" data-dir="1">+</button>
-             </div>`
-          : "";
-        const weightSlider = showWeight
-          ? `<input type="range" class="wex-weight-slider" min="0" max="${sliderMax}" step="5" value="${s.weight ?? 0}" aria-label="Slide to set ${escapeHtml(ex.name)} weight" />`
+          ? `<span class="wex-set-weight">${s.weight != null ? `${s.weight} lb` : "weight not set"}</span>`
           : "";
         const repsControl =
           s.target != null
@@ -3282,7 +3411,8 @@ okra`;
                  <span class="wex-mini-value">${s.actual}</span>
                  <span class="wex-mini-unit">reps</span>
                  <button type="button" class="wex-mini-btn" data-dir="1">+</button>
-               </div>`
+               </div>
+               <button type="button" class="wex-set-done${s.touched ? " done" : ""}" aria-label="Mark set ${i + 1} complete">${s.touched ? "✓" : "○"}</button>`
             : `<button type="button" class="wex-toggle-btn">Mark Done</button>`;
         const label =
           s.target != null
@@ -3292,10 +3422,9 @@ okra`;
               : "This one";
 
         return `
-          <div class="wex-set-row" data-set-index="${i}">
+          <div class="wex-set-row${s.touched ? " touched" : ""}" data-set-index="${i}">
             <span class="wex-set-label">${label}</span>
             <div class="wex-set-controls">${weightControl}${repsControl}</div>
-            ${weightSlider}
           </div>
         `;
       })
@@ -3308,14 +3437,18 @@ okra`;
       </div>
       ${ex.howTo ? `<p class="wex-howto">${escapeHtml(ex.howTo)}</p>` : ""}
       ${ex.tip ? `<p class="wex-tip">💡 ${escapeHtml(ex.tip)}</p>` : ""}
-      ${showWeight && weightRecommendation ? `
-        <div class="wex-weight-rec">
-          <div>
-            <span class="wex-weight-rec-label">⚡ COACH TOP-SET WEIGHT</span>
-            <strong>${weightRecommendation.weight} lb</strong>
-            <p>${escapeHtml(weightRecommendation.explanation)}${log.sets.length > 1 ? ` Sets ramp up to this — ${log.sets.map((s) => s.weight ?? "—").join("/")} lb.` : ""}</p>
+      ${showWeight ? `
+        <div class="wex-working-load">
+          <div class="wex-working-load-copy">
+            <span>WORKING WEIGHT</span>
+            <strong>${weightRecommendation ? `Coach start: ${weightRecommendation.weight} lb` : "Set today’s load"}</strong>
           </div>
-          <button type="button" class="wex-apply-weight">${log.sets.length > 1 ? `Ramp to ${weightRecommendation.weight} lb` : `Use ${weightRecommendation.weight} lb`}</button>
+          <div class="wex-working-load-controls">
+            <button type="button" data-delta="-5" aria-label="Decrease working weight by 5 pounds">−5</button>
+            <label><input type="number" inputmode="numeric" pattern="[0-9]*" class="wex-working-load-input" aria-label="Working weight in pounds" placeholder="—" value="${log.workingWeight ?? ""}" /><span>lb</span></label>
+            <button type="button" data-delta="5" aria-label="Increase working weight by 5 pounds">+5</button>
+          </div>
+          <p>Change this once between sets. It updates unfinished sets; completed sets keep the load you used.</p>
         </div>
       ` : ""}
       <div class="wex-sets">${setsHtml}</div>
@@ -3350,41 +3483,10 @@ okra`;
       const idx = Number(row.dataset.setIndex);
       const set = log.sets[idx];
 
-      const weightStepper = row.querySelector('.wex-mini-stepper[data-role="weight"]');
-      const weightSlider = row.querySelector(".wex-weight-slider");
-      if (weightStepper) {
-        const weightInput = weightStepper.querySelector(".wex-mini-input");
-        const setWeight = (value) => {
-          set.weight = value;
-          set.touched = true;
-          weightInput.value = value ?? "";
-          if (weightSlider) weightSlider.value = value ?? 0;
-          row.classList.add("touched");
-        };
-        weightInput.addEventListener("input", (e) => {
-          const parsed = e.target.value === "" ? null : Number(e.target.value);
-          setWeight(Number.isFinite(parsed) ? parsed : null);
-          clearSkip();
-          schedulePersistActiveWorkout();
-        });
-        weightStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
-          const dir = Number(btn.dataset.dir);
-          attachHoldStepper(btn, () => {
-            setWeight(Math.max(0, (set.weight ?? 0) + dir * 5));
-            clearSkip();
-            schedulePersistActiveWorkout();
-          });
-        });
-        weightSlider?.addEventListener("input", (e) => {
-          setWeight(Number(e.target.value));
-          clearSkip();
-          schedulePersistActiveWorkout();
-        });
-      }
-
       const repsStepper = row.querySelector('.wex-mini-stepper[data-role="reps"]');
       if (repsStepper) {
         const valueEl = repsStepper.querySelector(".wex-mini-value");
+        const doneButton = row.querySelector(".wex-set-done");
         repsStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
           const dir = Number(btn.dataset.dir);
           attachHoldStepper(btn, () => {
@@ -3392,9 +3494,21 @@ okra`;
             set.touched = true;
             valueEl.textContent = set.actual;
             row.classList.add("touched");
+            doneButton?.classList.add("done");
+            if (doneButton) doneButton.textContent = "✓";
             clearSkip();
+            updateWorkoutProgress();
             schedulePersistActiveWorkout();
           });
+        });
+        doneButton?.addEventListener("click", () => {
+          set.touched = !set.touched;
+          row.classList.toggle("touched", set.touched);
+          doneButton.classList.toggle("done", set.touched);
+          doneButton.textContent = set.touched ? "✓" : "○";
+          clearSkip();
+          updateWorkoutProgress();
+          schedulePersistActiveWorkout();
         });
         return;
       }
@@ -3408,33 +3522,34 @@ okra`;
           toggleBtn.textContent = set.touched ? "✓ Done" : "Mark Done";
           row.classList.toggle("touched", set.touched);
           clearSkip();
+          updateWorkoutProgress();
           schedulePersistActiveWorkout();
         });
       }
     });
 
-    const applyWeightButton = body.querySelector(".wex-apply-weight");
-    if (applyWeightButton && weightRecommendation) {
-      applyWeightButton.addEventListener("click", () => {
-        // Re-applies the same ramp buildInitialLogs seeded with, not a
-        // flat weight — this button is "reset to the coach's numbers,"
-        // and the coach's numbers ramp.
-        log.sets.forEach((set, i) => {
-          set.weight = computeRampedWeight(weightRecommendation.weight, i, log.sets.length);
-          set.touched = true;
+    const workingLoadInput = body.querySelector(".wex-working-load-input");
+    if (workingLoadInput) {
+      const applyWorkingWeight = (value) => {
+        const next = Number.isFinite(value) && value > 0 ? Math.round(value) : null;
+        log.workingWeight = next;
+        workingLoadInput.value = next ?? "";
+        log.sets.forEach((set, index) => {
+          if (set.touched) return;
+          set.weight = next;
+          const label = body.querySelector(`.wex-set-row[data-set-index="${index}"] .wex-set-weight`);
+          if (label) label.textContent = next == null ? "weight not set" : `${next} lb`;
         });
-        body.querySelectorAll(".wex-set-row").forEach((row) => {
-          const i = Number(row.dataset.setIndex);
-          const rampedWeight = log.sets[i].weight;
-          const input = row.querySelector('.wex-mini-stepper[data-role="weight"] .wex-mini-input');
-          if (input) input.value = rampedWeight ?? "";
-          const slider = row.querySelector(".wex-weight-slider");
-          if (slider) slider.value = rampedWeight ?? 0;
-          row.classList.add("touched");
-        });
-        applyWeightButton.textContent = `Applied ${weightRecommendation.weight} lb ✓`;
         clearSkip();
         schedulePersistActiveWorkout();
+      };
+      workingLoadInput.addEventListener("input", (event) => {
+        const value = event.target.value === "" ? null : Number(event.target.value);
+        applyWorkingWeight(value);
+      });
+      body.querySelectorAll(".wex-working-load-controls button").forEach((button) => {
+        const delta = Number(button.dataset.delta);
+        attachHoldStepper(button, () => applyWorkingWeight(Math.max(0, (log.workingWeight ?? 0) + delta)));
       });
     }
 
@@ -3514,6 +3629,11 @@ okra`;
       card.classList.toggle("skipped", next === "skipped");
       body.querySelectorAll(".wex-set-row").forEach((row) => {
         row.classList.toggle("touched", next !== "none");
+        const setDone = row.querySelector(".wex-set-done");
+        if (setDone) {
+          setDone.classList.toggle("done", next !== "none");
+          setDone.textContent = next !== "none" ? "✓" : "○";
+        }
         const toggleBtn = row.querySelector(".wex-toggle-btn");
         if (toggleBtn) {
           toggleBtn.classList.toggle("done", next !== "none");
@@ -3522,6 +3642,7 @@ okra`;
         const valueEl = row.querySelector(".wex-mini-value");
         if (valueEl) valueEl.textContent = log.sets[Number(row.dataset.setIndex)].actual;
       });
+      updateWorkoutProgress();
       schedulePersistActiveWorkout();
     });
 
@@ -3554,7 +3675,7 @@ okra`;
         if (group.items.length > 1) {
           const wrap = document.createElement("div");
           wrap.className = "superset-group";
-          wrap.innerHTML = `<span class="superset-label">PARTNERS · MOVE TOGETHER, THEN SWITCH</span>`;
+          wrap.innerHTML = `<span class="superset-label">${escapeHtml(getWorkoutGroupLabel(group, phase.name))}</span>`;
           group.items.forEach((ex) => wrap.appendChild(renderExerciseCard(ex)));
           phaseWrap.appendChild(wrap);
         } else {
@@ -3563,6 +3684,7 @@ okra`;
       });
       container.appendChild(phaseWrap);
     });
+    updateWorkoutProgress();
   }
 
   // Compiles whatever the athlete actually logged (touched sets, flags) into
@@ -3793,11 +3915,36 @@ okra`;
   // Moves the single terminal-panel DOM node into whichever screen's slot
   // is currently relevant, so the chat thread/state carries over instead
   // of resetting each time the user moves from check-in into selection.
+  const COACH_SCREEN_CONTEXT = {
+    checkin: { label: "OPEN CONVERSATION · TELL ME WHAT MATTERS TODAY", prompt: "Ask your coach anything…", suggestions: ["Low energy today", "I have 30 minutes", "No machines available"] },
+    select: { label: "LIVE RECOMMENDATION · YOUR NOTES UPDATE THE PLAN", prompt: "Change focus, time, or equipment…", suggestions: ["Focus on quads", "Make it shorter", "Bodyweight only"] },
+    preview: { label: "WORKOUT DRAFT · REVIEW BEFORE YOU START", prompt: "Ask for a change to this workout…", suggestions: ["Swap an exercise", "Use fewer exercises", "Change the equipment"] },
+  };
+
+  function updateCoachContext(target) {
+    const context = COACH_SCREEN_CONTEXT[target] || COACH_SCREEN_CONTEXT.checkin;
+    coachContextTarget = target;
+    document.getElementById("chat-context").textContent = context.label;
+    document.getElementById("chat-input").placeholder = context.prompt;
+    document.getElementById("chat-quick-actions").innerHTML = context.suggestions
+      .map((suggestion) => `<button type="button" data-prompt="${escapeHtml(suggestion)}">${escapeHtml(suggestion)}</button>`)
+      .join("");
+  }
+
   function placeTerminalPanel(target) {
     const panel = document.getElementById("terminal-panel");
     const slotId = target === "select" ? "select-chat-slot" : target === "preview" ? "preview-chat-slot" : "checkin-chat-slot";
     const slot = document.getElementById(slotId);
     if (panel && slot) slot.appendChild(panel);
+    const changed = coachContextTarget !== target;
+    if (panel && changed) {
+      const collapsed = target === "preview";
+      panel.classList.toggle("collapsed", collapsed);
+      const toggle = document.getElementById("chat-panel-toggle");
+      toggle.textContent = collapsed ? "Open" : "Hide";
+      toggle.setAttribute("aria-expanded", String(!collapsed));
+    }
+    updateCoachContext(target);
   }
 
   // Opens with whatever the athlete told the coach last time, so it feels
@@ -3871,7 +4018,9 @@ okra`;
     recommendationDraft = null;
     recommendationDraftKey = null;
     recommendationRequestId++;
+    coachContextTarget = null;
     renderChatThread();
+    updateCoachContext("checkin");
     setChatBusy(false);
     upgradeCoachOpening(user);
   }
@@ -4040,7 +4189,8 @@ okra`;
     let reply = buildLocalCoachReply(currentUser, text);
     let constraint = isWorkoutRelevantMessage(text) ? text : null;
     let goalUpdate = extractGoalUpdate(text);
-    const localSuggestedSplit = inferSplitFromChat(text, currentUser);
+    const inferredSplit = inferSplitFromChat(text, currentUser);
+    const localSuggestedSplit = inferredSplit && isWorkoutAllowedForCheckIn(inferredSplit) ? inferredSplit : null;
     const localFocus = getCoachFocus(text);
     if (localSuggestedSplit) chatSuggestedSplit = localSuggestedSplit;
     if (localFocus) {
@@ -4101,6 +4251,7 @@ okra`;
             libraryContext: getLibraryContext(text),
             libraryRoutines: getLibraryRoutinesContext(),
             context: {
+              screen: coachContextTarget || "checkin",
               streak: currentStreak(getHistory(currentUser)),
               sessionsLogged: getHistory(currentUser).length,
               recentNotes: getNotes(currentUser).slice(-6),
@@ -4121,8 +4272,9 @@ okra`;
           }
           if (typeof data.goalUpdate === "string" && data.goalUpdate.trim()) goalUpdate = data.goalUpdate.trim().slice(0, 180);
           const suggestedIsValid =
-            SPLIT_ORDER.includes(data.suggestedSplit) ||
-            SPECIAL_WORKOUTS[data.suggestedSplit]?.user === currentUser;
+            (SPLIT_ORDER.includes(data.suggestedSplit) ||
+              SPECIAL_WORKOUTS[data.suggestedSplit]?.user === currentUser) &&
+            isWorkoutAllowedForCheckIn(data.suggestedSplit);
           if (!localSuggestedSplit && suggestedIsValid) {
             chatSuggestedSplit = data.suggestedSplit;
           }
@@ -4186,6 +4338,21 @@ okra`;
     document.getElementById("chat-input").addEventListener("keydown", (e) => {
       if (e.key === "Enter") sendChatMessage();
     });
+    document.getElementById("chat-quick-actions").addEventListener("click", (e) => {
+      const suggestion = e.target.closest("button[data-prompt]");
+      if (!suggestion || chatBusy) return;
+      const input = document.getElementById("chat-input");
+      input.value = suggestion.dataset.prompt;
+      updateChatCursor();
+      sendChatMessage();
+    });
+    document.getElementById("chat-panel-toggle").addEventListener("click", () => {
+      const panel = document.getElementById("terminal-panel");
+      const collapsed = panel.classList.toggle("collapsed");
+      const toggle = document.getElementById("chat-panel-toggle");
+      toggle.textContent = collapsed ? "Open" : "Hide";
+      toggle.setAttribute("aria-expanded", String(!collapsed));
+    });
 
     document.getElementById("checkin-submit").addEventListener("click", () => {
       showSelect(currentUser);
@@ -4247,6 +4414,7 @@ okra`;
   function openSpecialWorkoutPreview(user, splitKey) {
     const preset = SPECIAL_WORKOUTS[splitKey];
     if (!preset || preset.user !== user) return;
+    if (preset.defaultCheckIn?.partner && !checkInState.partner) return;
     // Presets set their own realistic check-in defaults (Jessica's game-day
     // core session is a short partner workout; Shortcut to Shred is a long
     // solo one) — falls back to the original jess-game-day-core defaults
@@ -4255,7 +4423,7 @@ okra`;
     chatSuggestedSplit = null;
     selectedSplitKey = splitKey;
     previewPlan = {
-      exercises: buildCandidatePool(user, splitKey).map((exercise) => ({ ...exercise, splitKey })),
+      exercises: buildCandidatePool(user, splitKey, checkInState).map((exercise) => ({ ...exercise, splitKey })),
       reason: preset.reason,
       source: "preset",
       suggestedWeights: new Map(),
@@ -4280,7 +4448,11 @@ okra`;
     // The coach can steer this straight from the chat ("let's do legs
     // today") — that override wins over the rotation-based guess until the
     // next check-in resets it.
-    const rec = chatSuggestedSplit
+    const allowedSuggestedSplit = chatSuggestedSplit && isWorkoutAllowedForCheckIn(chatSuggestedSplit)
+      ? chatSuggestedSplit
+      : null;
+    if (chatSuggestedSplit && !allowedSuggestedSplit) chatSuggestedSplit = null;
+    const rec = allowedSuggestedSplit
       ? { key: chatSuggestedSplit, reason: "Based on what you told your coach — let's do it." }
       : recommendSplit(history, checkInState);
     const recMeta = getSplitMeta(rec.key);
@@ -4294,8 +4466,13 @@ okra`;
     // buildWorkoutPlan only knows the generic SPLIT_LIBRARY ones, so mirror
     // computePlan's branch here for the immediate synchronous draft too.
     const localExercises = SPECIAL_WORKOUTS[rec.key]
-      ? applyCoachFocus(user, rec.key, buildCandidatePool(user, rec.key), checkInState.note)
-      : applyCoachFocus(user, rec.key, buildWorkoutPlan(user, rec.key, checkInState), checkInState.note);
+      ? applyCoachFocus(user, rec.key, buildCandidatePool(user, rec.key, checkInState), checkInState.note, checkInState)
+      : enforcePlanConstraints(
+          user,
+          rec.key,
+          applyCoachFocus(user, rec.key, buildWorkoutPlan(user, rec.key, checkInState), checkInState.note, checkInState),
+          checkInState
+        );
     recommendationDraftKey = rec.key;
     recommendationDraft = { exercises: localExercises, reason: rec.reason, source: "local", suggestedWeights: new Map() };
     renderRecommendationExercises(localExercises, getCoachFocus(checkInState.note), Boolean(AI_ENDPOINT));
@@ -4332,8 +4509,11 @@ okra`;
     if (!list) return;
 
     const nextKey = user === "jake" ? nextShortcutToShredKey(user) : null;
-    const presetEntries = Object.entries(SPECIAL_WORKOUTS).filter(([, preset]) => preset.user === user);
-    const routines = loadLibrary().routines;
+    const presetEntries = Object.entries(SPECIAL_WORKOUTS).filter(([, preset]) => {
+      if (preset.user !== user) return false;
+      return checkInState.partner || !preset.defaultCheckIn?.partner;
+    });
+    const routines = loadLibrary().routines.filter((routine) => checkInState.partner || !routine.exercises.some(isPartnerExercise));
 
     // Same-program entries (Shortcut to Shred's 6 days) collapse into one
     // compact row with a day picker instead of a full-detail row repeated
