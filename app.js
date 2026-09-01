@@ -221,6 +221,126 @@
     }
   }
 
+  // ---------- exercise library (uploaded PDFs, referenced by the AI) ----------
+  // Shared across both personas (a training program or PT protocol usually
+  // isn't personal to one of them) — stored as extracted plain text, not the
+  // original PDF bytes, so it fits easily in localStorage/KV and can be
+  // dropped straight into an AI prompt with no server-side parsing needed.
+
+  const LIBRARY_KEY = "liftr_library_v1";
+  // Caps how much of one document's text we keep. Generous enough for a
+  // real program PDF; just a ceiling against something huge blowing out
+  // localStorage/KV or every future AI call's token cost.
+  const MAX_LIBRARY_DOC_CHARS = 80000;
+  // Hard ceiling on how much library text rides along on any single AI
+  // call — keeps token cost bounded no matter how large the library grows.
+  const MAX_LIBRARY_CONTEXT_CHARS = 3000;
+
+  function loadLibrary() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(LIBRARY_KEY));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveLibrary(docs) {
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(docs));
+  }
+
+  function pushLibraryToCloud() {
+    if (!AI_ENDPOINT) return;
+    fetch(`${AI_ENDPOINT}/library`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ docs: loadLibrary() }),
+      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+    }).catch(() => {});
+  }
+
+  // Merges the cloud copy in by id (union, not overwrite) so a document
+  // uploaded from one device isn't lost if the other device syncs first —
+  // this app has no per-doc "last modified" or tombstone tracking, so union
+  // is the safest default even though a delete on one device can resurface
+  // after a pull from a device that hasn't seen it yet.
+  async function pullLibraryFromCloud() {
+    if (!AI_ENDPOINT) return;
+    try {
+      const res = await fetch(`${AI_ENDPOINT}/library`, { signal: AbortSignal.timeout(AI_TIMEOUT_MS) });
+      if (!res.ok) return;
+      const data = await res.json();
+      const cloudDocs = Array.isArray(data.docs) ? data.docs : [];
+      if (cloudDocs.length === 0) {
+        pushLibraryToCloud();
+        return;
+      }
+      const local = loadLibrary();
+      const byId = new Map(local.map((d) => [d.id, d]));
+      cloudDocs.forEach((d) => {
+        if (d && typeof d.id === "string" && !byId.has(d.id)) byId.set(d.id, d);
+      });
+      saveLibrary(Array.from(byId.values()));
+    } catch {
+      // Worker unreachable — keep going with whatever's local.
+    }
+  }
+
+  // Runs entirely client-side via pdf.js (loaded in index.html) — the Worker
+  // never sees the raw PDF, just whatever plain text this pulls out of it.
+  async function extractPdfText(file) {
+    if (!window.pdfjsLib) throw new Error("PDF reader didn't load — check your connection and try again.");
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const pageTexts = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      pageTexts.push(content.items.map((item) => item.str).join(" "));
+    }
+    const text = pageTexts.join("\n\n").replace(/[ \t]+/g, " ").trim();
+    return { text: text.slice(0, MAX_LIBRARY_DOC_CHARS), pageCount: pdf.numPages };
+  }
+
+  // Ranks library docs by keyword overlap with today's context (split,
+  // note, focus) so the AI gets the most relevant material first and stays
+  // within the char budget — instead of every call dragging along the
+  // athlete's entire library regardless of relevance.
+  function getLibraryContext(queryText) {
+    const docs = loadLibrary();
+    if (docs.length === 0) return [];
+    const queryWords = new Set(normalizeExerciseText(queryText || "").split(" ").filter((w) => w.length > 3));
+
+    const ranked = docs
+      .map((doc) => {
+        if (queryWords.size === 0) return { doc, score: 0 };
+        const docWords = normalizeExerciseText(doc.text).split(" ");
+        let score = 0;
+        docWords.forEach((w) => {
+          if (queryWords.has(w)) score++;
+        });
+        return { doc, score };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    // With no keyword signal at all (or nothing scored), still surface a
+    // small library — the athlete uploaded it to be used, not to sit idle
+    // until they happen to type a matching word. A larger library falls
+    // back to relevance only, so it doesn't all ride along by default.
+    const picked = ranked.some((r) => r.score > 0) ? ranked.filter((r) => r.score > 0) : ranked.slice(0, 2);
+
+    const results = [];
+    let budget = MAX_LIBRARY_CONTEXT_CHARS;
+    for (const { doc } of picked) {
+      if (budget <= 0) break;
+      const excerpt = doc.text.slice(0, budget);
+      if (!excerpt) continue;
+      results.push({ title: doc.title, excerpt });
+      budget -= excerpt.length;
+    }
+    return results;
+  }
+
   // Merges the athlete's editable settings (goal override, height, weight,
   // focus areas) over the static base persona — everything the app reads
   // about a user goes through here, so a settings edit takes effect
@@ -989,6 +1109,7 @@
             pastNotes: getPastNotes(user, 5),
             weightHistory: buildWeightHistory(user),
             candidates: buildCandidatePool(user, splitKey),
+            libraryContext: getLibraryContext(`${meta.name} ${checkIn.note || ""} ${(persona.focusAreas || []).join(" ")}`),
           }),
           signal: AbortSignal.timeout(AI_TIMEOUT_MS),
         });
@@ -1054,6 +1175,7 @@
     "settings-screen",
     "history-screen",
     "graph-screen",
+    "library-screen",
     "select-screen",
     "custom-screen",
     "session-screen",
@@ -2446,6 +2568,7 @@
               focusAreas: persona.focusAreas,
             },
             messages: chatMessages,
+            libraryContext: getLibraryContext(text),
             context: {
               streak: currentStreak(getHistory(currentUser)),
               sessionsLogged: getHistory(currentUser).length,
@@ -2549,6 +2672,7 @@
     document.getElementById("hub-history-btn").addEventListener("click", () => showHistory(currentUser));
     document.getElementById("hub-graph-btn").addEventListener("click", () => showGraph(currentUser));
     document.getElementById("hub-cheer-btn").addEventListener("click", () => showCheerModal(currentUser));
+    document.getElementById("hub-library-btn").addEventListener("click", () => showLibrary(currentUser));
   }
 
   // ---------- rendering: select screen ----------
@@ -2826,7 +2950,7 @@
     const advance = async () => {
       welcome.removeEventListener("click", advance);
       currentUser = user;
-      await pullFromCloud(user);
+      await Promise.all([pullFromCloud(user), pullLibraryFromCloud()]);
       const history = getHistory(user);
       if (loggedToday(history)) {
         selectedSplitKey = null;
@@ -2992,6 +3116,93 @@
 
   function initHistory() {
     document.getElementById("history-back").addEventListener("click", () => returnToCheckIn(currentUser));
+  }
+
+  // ---------- exercise library screen ----------
+
+  function renderLibraryList() {
+    const list = document.getElementById("library-list");
+    const empty = document.getElementById("library-empty");
+    const docs = loadLibrary();
+
+    list.innerHTML = docs
+      .map(
+        (doc) => `
+      <li class="library-item">
+        <div class="library-item-info">
+          <span class="library-item-title">📄 ${escapeHtml(doc.title)}</span>
+          <span class="library-item-meta">${doc.pageCount} page${doc.pageCount === 1 ? "" : "s"} · added ${formatShortDate(doc.addedAt)}</span>
+        </div>
+        <button type="button" class="library-item-remove" data-id="${escapeHtml(doc.id)}" title="Remove">✕</button>
+      </li>
+    `
+      )
+      .join("");
+    empty.classList.toggle("hidden", docs.length > 0);
+  }
+
+  function showLibrary(user) {
+    currentUser = user;
+    showScreen("library-screen");
+    renderLibraryList();
+  }
+
+  function initLibrary() {
+    document.getElementById("library-back").addEventListener("click", () => returnToCheckIn(currentUser));
+
+    const fileInput = document.getElementById("library-file-input");
+    const status = document.getElementById("library-status");
+    document.getElementById("library-upload-btn").addEventListener("click", () => fileInput.click());
+
+    fileInput.addEventListener("change", async () => {
+      const files = Array.from(fileInput.files || []);
+      fileInput.value = "";
+      if (files.length === 0) return;
+
+      for (const file of files) {
+        if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+          status.textContent = `Skipped "${file.name}" — only PDF files are supported.`;
+          continue;
+        }
+        // A huge file would take a long time to parse client-side (and
+        // exceed MAX_LIBRARY_DOC_CHARS anyway) — cap before even trying.
+        if (file.size > 25 * 1024 * 1024) {
+          status.textContent = `Skipped "${file.name}" — that's over the 25MB limit.`;
+          continue;
+        }
+        status.textContent = `Reading "${file.name}"…`;
+        try {
+          const { text, pageCount } = await extractPdfText(file);
+          if (!text) {
+            status.textContent = `Couldn't find any readable text in "${file.name}" — skipped.`;
+            continue;
+          }
+          const docs = loadLibrary();
+          docs.push({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            title: file.name.replace(/\.pdf$/i, ""),
+            addedAt: todayStr(),
+            pageCount,
+            text,
+          });
+          saveLibrary(docs);
+          renderLibraryList();
+          status.textContent = `Added "${file.name}".`;
+        } catch (err) {
+          console.error("PDF extraction failed", err);
+          status.textContent = `Couldn't read "${file.name}" — it may be scanned/image-only or corrupted.`;
+        }
+      }
+      pushLibraryToCloud();
+    });
+
+    document.getElementById("library-list").addEventListener("click", (e) => {
+      const btn = e.target.closest(".library-item-remove");
+      if (!btn) return;
+      saveLibrary(loadLibrary().filter((d) => d.id !== btn.dataset.id));
+      renderLibraryList();
+      pushLibraryToCloud();
+    });
   }
 
   // ---------- weight trends / graph screen ----------
@@ -3257,6 +3468,7 @@
   initCheckIn();
   initSettings();
   initHistory();
+  initLibrary();
   initGraphScreen();
   initCheerModal();
   initSelectScreen();

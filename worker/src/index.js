@@ -30,6 +30,9 @@ export default {
     if (url.pathname === "/cheers") {
       return handleCheers(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/library") {
+      return handleLibrary(request, env, corsHeaders);
+    }
 
     if (request.method !== "POST") {
       return json({ error: "Method not allowed" }, 405, corsHeaders);
@@ -52,7 +55,7 @@ export default {
       return handleOpening(body, env, corsHeaders);
     }
 
-    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory } = body || {};
+    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory, libraryContext } = body || {};
     const valid =
       persona?.name &&
       persona?.goal &&
@@ -138,6 +141,14 @@ export default {
       "from related lifts (e.g. someone who deadlifts 225 lbs probably starts",
       "Romanian Deadlift lighter, around 60-70% of that). Never guess for an",
       "exercise you have no reasonable basis for — omit it instead.",
+      "libraryReference (if present) holds excerpts from documents the athlete",
+      "personally uploaded — their own training program, a PT's rehab protocol,",
+      "a coach's notes, etc. Let it inform your picks and reasoning where it's",
+      "actually relevant (e.g. a rehab protocol that says avoid a movement, or",
+      "a program that specifies a rep scheme) — but it never overrides the",
+      "candidate list: still only choose from candidateExercises, never an",
+      "exercise the reference material mentions but that isn't a candidate.",
+      "If nothing in it applies to today's session, ignore it entirely.",
     ].join(" ");
 
     const userPrompt = JSON.stringify({
@@ -153,6 +164,7 @@ export default {
       todayNote: todayNote || null,
       recentFeedback: Array.isArray(pastNotes) ? pastNotes : [],
       weightHistory: Array.isArray(weightHistory) ? weightHistory : [],
+      libraryReference: sanitizeLibraryContext(libraryContext),
       candidateExercises: candidates,
     });
 
@@ -215,6 +227,17 @@ export default {
   },
 };
 
+// Defense in depth against a malformed or oversized libraryContext blowing
+// up prompt/token cost — the client already budgets this, but the Worker
+// shouldn't trust that blindly since nothing stops a direct request here.
+function sanitizeLibraryContext(libraryContext) {
+  if (!Array.isArray(libraryContext)) return [];
+  return libraryContext
+    .filter((item) => item && typeof item.title === "string" && typeof item.excerpt === "string")
+    .slice(0, 5)
+    .map((item) => ({ title: item.title.slice(0, 120), excerpt: item.excerpt.slice(0, 3000) }));
+}
+
 function json(data, status, headers) {
   return new Response(JSON.stringify(data), {
     status,
@@ -261,6 +284,53 @@ async function handleKv(request, env, corsHeaders, url) {
       return json({ ok: true }, 200, corsHeaders);
     } catch (err) {
       console.error("KV write error", err?.stack || String(err));
+      return json({ error: "Write failed" }, 500, corsHeaders);
+    }
+  }
+
+  return json({ error: "Method not allowed" }, 405, corsHeaders);
+}
+
+// Shared exercise-library sync — extracted PDF text uploaded from either
+// persona's device, keyed under one global key (not per-user, since a
+// training program or PT protocol usually isn't specific to one athlete).
+// Same whole-blob-overwrite shape as handleKv above; the client is
+// responsible for merging its local copy with the cloud copy before POSTing.
+async function handleLibrary(request, env, corsHeaders) {
+  if (!env.LIFTR_KV) {
+    console.error("LIFTR_KV binding missing");
+    return json({ error: "Sync not configured" }, 500, corsHeaders);
+  }
+
+  const key = "liftr:library";
+
+  if (request.method === "GET") {
+    try {
+      const stored = await env.LIFTR_KV.get(key);
+      const docs = stored ? JSON.parse(stored) : [];
+      return json({ docs: Array.isArray(docs) ? docs : [] }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Library read error", err?.stack || String(err));
+      return json({ error: "Read failed" }, 500, corsHeaders);
+    }
+  }
+
+  if (request.method === "POST" || request.method === "PUT") {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400, corsHeaders);
+    }
+    const docs = Array.isArray(body?.docs) ? body.docs : null;
+    if (!docs) {
+      return json({ error: "Malformed library body" }, 400, corsHeaders);
+    }
+    try {
+      await env.LIFTR_KV.put(key, JSON.stringify(docs));
+      return json({ ok: true }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Library write error", err?.stack || String(err));
       return json({ error: "Write failed" }, 500, corsHeaders);
     }
   }
@@ -416,7 +486,7 @@ const SPLIT_LABELS = {
 };
 
 async function handleChat(body, env, corsHeaders) {
-  const { persona, messages, context } = body;
+  const { persona, messages, context, libraryContext } = body;
   const valid =
     persona?.name &&
     persona?.goal &&
@@ -468,6 +538,8 @@ async function handleChat(body, env, corsHeaders) {
     Array.isArray(persona.focusAreas) && persona.focusAreas.length ? `focused on: ${persona.focusAreas.join(", ")}` : null,
   ].filter(Boolean);
 
+  const libraryDocs = sanitizeLibraryContext(libraryContext);
+
   const systemPrompt = [
     "You are a thoughtful, knowledgeable ongoing fitness coach talking with an athlete",
     "on the main page of their training app. You can discuss workouts, motivation,",
@@ -475,6 +547,9 @@ async function handleChat(body, env, corsHeaders) {
     `The athlete is ${persona.name}, whose goal is: ${persona.goal}.`,
     profileBits.length ? `Also known about them: ${profileBits.join("; ")}.` : "",
     context ? `Recent app context: ${JSON.stringify(context)}.` : "",
+    libraryDocs.length
+      ? `The athlete has personally uploaded reference material — their own training program, PT protocol, or coaching notes. Reference it naturally when relevant to what they're asking, but don't force it in if it doesn't apply: ${JSON.stringify(libraryDocs)}.`
+      : "",
     "Calibrate depth to the athlete. For a simple request or factual adjustment, use",
     "1 to 3 concise sentences. When they share meaningful context, emotion, a setback,",
     "a motivation problem, a changing goal, performance patterns, or multiple connected",
