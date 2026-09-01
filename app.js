@@ -2311,9 +2311,16 @@ okra`;
         ? "🎉 Nice work — here's what you actually logged. See you tomorrow!"
         : "🎉 Session complete. See you tomorrow!";
       document.getElementById("session-done-note").classList.remove("hidden");
+      // "Not feeling it? Back to options" (backLink, above) doesn't make
+      // sense once a session is already logged — it stays hidden — but that
+      // left this screen with no obvious way out beyond the small fixed
+      // home icon in the corner, easy to miss on a screen that's otherwise
+      // all cards. A real, visible button here is the actual fix.
+      document.getElementById("session-done-home-btn").classList.remove("hidden");
       return;
     }
     document.getElementById("session-done-note").classList.add("hidden");
+    document.getElementById("session-done-home-btn").classList.add("hidden");
     document.getElementById("preview-coach-section").classList.remove("hidden");
     document.getElementById("preview-actions").classList.remove("hidden");
     placeTerminalPanel("preview");
@@ -3857,6 +3864,7 @@ okra`;
     document.getElementById("select-switch").addEventListener("click", showLogin);
     document.getElementById("custom-workout-btn").addEventListener("click", () => showCustom(currentUser));
     document.getElementById("back-to-options").addEventListener("click", () => showSelect(currentUser));
+    document.getElementById("session-done-home-btn").addEventListener("click", () => showHome());
     document.getElementById("edit-preview-btn").addEventListener("click", () => {
       if (previewPlan) showCustom(currentUser, previewPlan.exercises);
     });
