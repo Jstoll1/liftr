@@ -2139,6 +2139,46 @@ okra`;
   let customSelection = new Map(); // exerciseId -> { name, detail, splitKey, tip, superset }
   let activeWorkout = null; // { sessionSplitKey, exercises, logs, reason, source } for the in-progress workout runner
 
+  // ---------- active-workout persistence ----------
+  // activeWorkout used to live only in memory — closing the tab, backgrounding
+  // the PWA long enough for iOS to reclaim it, or just reloading mid-workout
+  // silently lost every logged set with no way back in, since "Resume
+  // Workout" only ever checked the in-memory variable. Persisting it means a
+  // reload genuinely resumes instead of just discarding progress.
+  const ACTIVE_WORKOUT_KEY = "liftr_active_workout_v1";
+  let persistActiveWorkoutTimer = null;
+
+  function persistActiveWorkout() {
+    if (!activeWorkout || !currentUser) {
+      localStorage.removeItem(ACTIVE_WORKOUT_KEY);
+      return;
+    }
+    localStorage.setItem(ACTIVE_WORKOUT_KEY, JSON.stringify({ user: currentUser, checkInState, workout: activeWorkout }));
+  }
+
+  // Rapid-fire mutations (holding a stepper, typing a weight) debounce
+  // through here instead of writing to localStorage on every tick; discrete
+  // one-off events (starting, finishing, swapping) call persistActiveWorkout
+  // directly so they're never lost to a debounce window getting interrupted.
+  function schedulePersistActiveWorkout() {
+    clearTimeout(persistActiveWorkoutTimer);
+    persistActiveWorkoutTimer = setTimeout(persistActiveWorkout, 400);
+  }
+
+  // Restores a persisted in-progress workout for this user, if any — called
+  // right after login, before deciding which screen to land on.
+  function loadActiveWorkout(user) {
+    try {
+      const raw = JSON.parse(localStorage.getItem(ACTIVE_WORKOUT_KEY));
+      if (raw && raw.user === user && raw.workout) {
+        activeWorkout = raw.workout;
+        if (raw.checkInState) checkInState = { ...checkInState, ...raw.checkInState };
+      }
+    } catch {
+      localStorage.removeItem(ACTIVE_WORKOUT_KEY);
+    }
+  }
+
   // ---------- screen helpers ----------
 
   const SCREEN_IDS = [
@@ -2281,7 +2321,17 @@ okra`;
   }
 
   function renderSessionScreen(user, history) {
-    const done = loggedToday(history);
+    // loggedToday alone isn't enough: it stays true for the rest of the day
+    // once ANY session is logged, so it can't distinguish "just landed here,
+    // show today's completed session" from "explicitly picked a new/second
+    // workout to preview" (selectSplitAndPreview et al. always set
+    // selectedSplitKey before rendering here). Without the second half of
+    // this check, every attempt to start another session after finishing
+    // one — a deliberate second workout, or just re-picking from the select
+    // screen — silently showed the stale "Done" card instead, with no way
+    // out. Same combined condition already used by the coach-chat live
+    // preview refresh above.
+    const done = loggedToday(history) && !selectedSplitKey;
     const entry = done ? history[history.length - 1] : null;
     const splitKey = done ? entry.splitKey : selectedSplitKey;
     const meta = getSplitMeta(splitKey);
@@ -2311,9 +2361,16 @@ okra`;
         ? "🎉 Nice work — here's what you actually logged. See you tomorrow!"
         : "🎉 Session complete. See you tomorrow!";
       document.getElementById("session-done-note").classList.remove("hidden");
+      // "Not feeling it? Back to options" (backLink, above) doesn't make
+      // sense once a session is already logged — it stays hidden — but that
+      // left this screen with no obvious way out beyond the small fixed
+      // home icon in the corner, easy to miss on a screen that's otherwise
+      // all cards. A real, visible button here is the actual fix.
+      document.getElementById("session-done-home-btn").classList.remove("hidden");
       return;
     }
     document.getElementById("session-done-note").classList.add("hidden");
+    document.getElementById("session-done-home-btn").classList.add("hidden");
     document.getElementById("preview-coach-section").classList.remove("hidden");
     document.getElementById("preview-actions").classList.remove("hidden");
     placeTerminalPanel("preview");
@@ -2773,6 +2830,7 @@ okra`;
     activeWorkout.exercises[idx] = replacement;
     delete activeWorkout.logs[ex.name];
     activeWorkout.logs[replacement.name] = buildInitialLogs(currentUser, [replacement])[replacement.name];
+    persistActiveWorkout();
     const sharedTraits = [...getExerciseTraits(ex)].filter((trait) => getExerciseTraits(replacement).has(trait));
     const explanation = aiChoice?.explanation || (reason
       ? `Best available match for “${reason}” while keeping the workout balanced.`
@@ -2950,10 +3008,14 @@ okra`;
           set.weight = Number.isFinite(parsed) ? parsed : null;
           set.touched = true;
           row.classList.add("touched");
+          schedulePersistActiveWorkout();
         });
         weightStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
           const dir = Number(btn.dataset.dir);
-          attachHoldStepper(btn, () => setWeight(Math.max(0, (set.weight ?? 0) + dir * 5)));
+          attachHoldStepper(btn, () => {
+            setWeight(Math.max(0, (set.weight ?? 0) + dir * 5));
+            schedulePersistActiveWorkout();
+          });
         });
       }
 
@@ -2967,6 +3029,7 @@ okra`;
             set.touched = true;
             valueEl.textContent = set.actual;
             row.classList.add("touched");
+            schedulePersistActiveWorkout();
           });
         });
         return;
@@ -2980,6 +3043,7 @@ okra`;
           toggleBtn.classList.toggle("done", set.touched);
           toggleBtn.textContent = set.touched ? "✓ Done" : "Mark Done";
           row.classList.toggle("touched", set.touched);
+          schedulePersistActiveWorkout();
         });
       }
     });
@@ -2996,11 +3060,13 @@ okra`;
           input.closest(".wex-set-row")?.classList.add("touched");
         });
         applyWeightButton.textContent = `Applied ${weightRecommendation.weight} lb ✓`;
+        schedulePersistActiveWorkout();
       });
     }
 
     body.querySelector(".wex-flag-input").addEventListener("input", (e) => {
       log.flag = e.target.value;
+      schedulePersistActiveWorkout();
     });
 
     body.querySelector(".wex-swap-btn").addEventListener("click", async () => {
@@ -3121,20 +3187,31 @@ okra`;
       reason: meta.reason ?? null,
       source: meta.source ?? "local",
     };
+    persistActiveWorkout();
+    renderActiveWorkoutScreen();
+  }
+
+  // Draws workout-screen from whatever's already in activeWorkout — shared
+  // by starting a fresh workout (showWorkout, above) and resuming one
+  // restored from storage on login, which never re-initializes activeWorkout
+  // itself since that would wipe the sets already logged.
+  function renderActiveWorkoutScreen() {
     showScreen("workout-screen");
-    renderWorkoutHeader(sessionSplitKey);
-    renderWarmup(sessionSplitKey);
+    renderWorkoutHeader(activeWorkout.sessionSplitKey);
+    renderWarmup(activeWorkout.sessionSplitKey);
     renderWorkoutExercises();
   }
 
   function initWorkoutScreen() {
     document.getElementById("workout-switch").addEventListener("click", () => {
       activeWorkout = null;
+      persistActiveWorkout();
       showLogin();
     });
 
     document.getElementById("workout-abandon").addEventListener("click", () => {
       activeWorkout = null;
+      persistActiveWorkout();
       showSelect(currentUser);
     });
 
@@ -3148,6 +3225,7 @@ okra`;
       activeWorkout.logs = buildInitialLogs(currentUser, exercises, plan.suggestedWeights);
       activeWorkout.reason = plan.reason;
       activeWorkout.source = plan.source;
+      persistActiveWorkout();
       renderWorkoutExercises();
       btn.disabled = false;
     });
@@ -3169,6 +3247,12 @@ okra`;
       if (summary) logNote(currentUser, summary);
 
       activeWorkout = null;
+      persistActiveWorkout();
+      // Clears the just-finished split's selection so renderSessionScreen's
+      // done check (loggedToday && !selectedSplitKey) correctly shows the
+      // completed-session card immediately, instead of still treating this
+      // as an in-progress preview of the split that was just logged.
+      selectedSplitKey = null;
       showScreen("session-screen");
       renderSessionFull(currentUser);
     });
@@ -3857,6 +3941,7 @@ okra`;
     document.getElementById("select-switch").addEventListener("click", showLogin);
     document.getElementById("custom-workout-btn").addEventListener("click", () => showCustom(currentUser));
     document.getElementById("back-to-options").addEventListener("click", () => showSelect(currentUser));
+    document.getElementById("session-done-home-btn").addEventListener("click", () => showHome());
     document.getElementById("edit-preview-btn").addEventListener("click", () => {
       if (previewPlan) showCustom(currentUser, previewPlan.exercises);
     });
@@ -4003,6 +4088,10 @@ okra`;
       showLogin();
       return;
     }
+    // Landing on the hub means no split is actively being previewed —
+    // clears any leftover selection so a later, unrelated visit to
+    // session-screen can't misread it as "still previewing this."
+    selectedSplitKey = null;
     showScreen("checkin-screen");
     placeTerminalPanel("checkin");
     renderRecapCard(currentUser);
@@ -4039,7 +4128,15 @@ okra`;
     const advance = async () => {
       welcome.removeEventListener("click", advance);
       currentUser = user;
+      loadActiveWorkout(user);
       await Promise.all([pullFromCloud(user), pullLibraryFromCloud()]);
+      // A workout still in progress (reload, backgrounded PWA, closed tab
+      // mid-set) always wins — resuming exactly where it left off beats
+      // routing through the hub and making them notice/tap "Resume Workout."
+      if (activeWorkout) {
+        renderActiveWorkoutScreen();
+        return;
+      }
       const history = getHistory(user);
       if (loggedToday(history)) {
         selectedSplitKey = null;
@@ -4659,6 +4756,15 @@ okra`;
 
   renderClock();
   setInterval(renderClock, 1000);
+
+  // Flushes any debounced-but-not-yet-written active-workout changes right
+  // before the tab/PWA is backgrounded or closed — the exact moment iOS is
+  // most likely to reclaim the page, so the 400ms debounce window shouldn't
+  // be the thing standing between a logged set and actually saving it.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") persistActiveWorkout();
+  });
+  window.addEventListener("pagehide", persistActiveWorkout);
 
   showLogin();
 })();

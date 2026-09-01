@@ -1,10 +1,198 @@
 {
-  "generatedAt": "2026-09-01T13:44:37.522Z",
+  "generatedAt": "2026-09-01T13:45:24.910Z",
   "source": "app.js",
   "summary": {
     "distinctExercises": 110,
     "ready": 110,
-    "issues": 0
+    "issues": 0,
+    "orphans": 37
   },
-  "issues": []
+  "issues": [],
+  "orphans": [
+    {
+      "path": "images/chest/cable-chest-fly.jpg",
+      "slug": "cable-chest-fly",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/chest/dumbbell-bench-press.jpg",
+      "slug": "dumbbell-bench-press",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/chest/dumbbell-chest-fly.jpg",
+      "slug": "dumbbell-chest-fly",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/chest/incline-push-up.jpg",
+      "slug": "incline-push-up",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/chest/pec-deck-fly.jpg",
+      "slug": "pec-deck-fly",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/chest/push-up.jpg",
+      "slug": "push-up",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/back/back-extension.jpg",
+      "slug": "back-extension",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/back/chest-supported-row.jpg",
+      "slug": "chest-supported-row",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/back/one-arm-dumbbell-row.jpg",
+      "slug": "one-arm-dumbbell-row",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/back/pull-up.jpg",
+      "slug": "pull-up",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/legs/bodyweight-squat.jpg",
+      "slug": "bodyweight-squat",
+      "possibleTypoOf": "bodyweight-squats"
+    },
+    {
+      "path": "images/legs/bulgarian-split-squat.jpg",
+      "slug": "bulgarian-split-squat",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/legs/conventional-deadlift.jpg",
+      "slug": "conventional-deadlift",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/legs/forward-lunge.jpg",
+      "slug": "forward-lunge",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/legs/hip-thrust.jpg",
+      "slug": "hip-thrust",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/legs/lateral-lunge.jpg",
+      "slug": "lateral-lunge",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/legs/seated-leg-curl.jpg",
+      "slug": "seated-leg-curl",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/legs/step-up.jpg",
+      "slug": "step-up",
+      "possibleTypoOf": "step-ups"
+    },
+    {
+      "path": "images/legs/stiff-leg-deadlift.jpg",
+      "slug": "stiff-leg-deadlift",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/legs/sumo-deadlift.jpg",
+      "slug": "sumo-deadlift",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/legs/wall-sit.jpg",
+      "slug": "wall-sit",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/shoulders/bent-over-reverse-fly.jpg",
+      "slug": "bent-over-reverse-fly",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/shoulders/dumbbell-front-raise.jpg",
+      "slug": "dumbbell-front-raise",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/shoulders/dumbbell-shrug.jpg",
+      "slug": "dumbbell-shrug",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/shoulders/face-pull.jpg",
+      "slug": "face-pull",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/shoulders/seated-dumbbell-shoulder-press.jpg",
+      "slug": "seated-dumbbell-shoulder-press",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/shoulders/single-arm-landmine-press.jpg",
+      "slug": "single-arm-landmine-press",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/shoulders/standing-barbell-overhead-press.jpg",
+      "slug": "standing-barbell-overhead-press",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/arms/dumbbell-triceps-kickback.jpg",
+      "slug": "dumbbell-triceps-kickback",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/arms/hammer-curl.jpg",
+      "slug": "hammer-curl",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/arms/lying-triceps-extension.jpg",
+      "slug": "lying-triceps-extension",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/arms/overhead-dumbbell-triceps-extension.jpg",
+      "slug": "overhead-dumbbell-triceps-extension",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/arms/preacher-curl.jpg",
+      "slug": "preacher-curl",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/arms/rope-triceps-pushdown.jpg",
+      "slug": "rope-triceps-pushdown",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/arms/seated-reverse-wrist-curl.jpg",
+      "slug": "seated-reverse-wrist-curl",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/arms/seated-wrist-curl.jpg",
+      "slug": "seated-wrist-curl",
+      "possibleTypoOf": null
+    },
+    {
+      "path": "images/arms/standing-dumbbell-curl.jpg",
+      "slug": "standing-dumbbell-curl",
+      "possibleTypoOf": null
+    }
+  ]
 }
