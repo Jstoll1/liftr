@@ -488,7 +488,7 @@
   }
 
   const ENERGY_LABEL = { low: "Low Energy", medium: "Medium Energy", high: "High Energy" };
-  const TIME_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 5 };
+  const TIME_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 6 };
 
   // ---------- storage helpers ----------
 
@@ -633,6 +633,7 @@
     const base = SPLIT_LIBRARY[splitKey].exercises[user];
     let count = Math.min(TIME_TO_COUNT[minutes] ?? base.length, base.length);
     if (energy === "low") count = Math.max(2, count - 1);
+    if (energy === "high") count = Math.min(base.length, count + 1);
 
     let list = base.slice(0, count);
 

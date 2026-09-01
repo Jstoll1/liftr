@@ -7,7 +7,7 @@
 // it can reorder/trim/include, never invent — so the response is always
 // safe to render directly in the app.
 
-const MINUTES_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 5 };
+const MINUTES_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 6 };
 
 export default {
   async fetch(request, env) {
@@ -98,12 +98,19 @@ export default {
       additionalProperties: false,
     };
 
+    const targetCount = MINUTES_TO_COUNT[minutes] || 4;
     const systemPrompt = [
       "You are a sharp, encouraging personal trainer picking today's exercises",
       "from a FIXED candidate list. Never invent exercises outside that list.",
-      `Aim for roughly ${MINUTES_TO_COUNT[minutes] || 4} exercises for a ${minutes}-minute session.`,
+      `Choose AT LEAST ${targetCount} exercises for a ${minutes}-minute session —`,
+      "that count is a floor, not a suggestion; use every relevant candidate you",
+      "have available before choosing fewer than that.",
       "Prioritize whichever candidates best serve the athlete's stated goal.",
       "On low energy, trim volume and prefer the lower-fatigue candidates.",
+      "On high energy, especially for 45+ minute sessions, go the other",
+      "direction: use the full candidate list including any 'Finisher:'-named",
+      "candidate — that's exactly the scenario it exists for — and don't hold",
+      "back on volume just because a session could technically be shorter.",
       "If a partner is available, prefer partner-friendly candidates when present.",
       "The athlete may give a free-text note (today's, and/or recent prior days').",
       "Use it: honor equipment constraints or injuries by avoiding candidates that",
