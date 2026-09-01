@@ -6,7 +6,15 @@ compatibility_date = "2024-11-01"
 # Update this if your GitHub Pages URL is different.
 [vars]
 ALLOWED_ORIGIN = "https://jstoll1.github.io"
+# Shared default for chat/swap/opening — cheap, fast, plenty good for
+# conversational replies and one-exercise substitutions.
 OPENAI_MODEL = "gpt-4o-mini"
+# The exercise-picking engine specifically — the highest-stakes call, since
+# it's the one actually building the workout. Set to a stronger model than
+# OPENAI_MODEL above; same API key, no new token needed. Costs more per
+# call (still fractions of a cent at this volume) — drop this line to fall
+# back to OPENAI_MODEL if you'd rather keep everything on gpt-4o-mini.
+OPENAI_MODEL_PLAN = "gpt-4o"
 
 # OPENAI_API_KEY is a secret, not a var — never put it in this file.
 # Set it with: wrangler secret put OPENAI_API_KEY

@@ -157,7 +157,11 @@ export default {
           Authorization: `Bearer ${env.OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: env.OPENAI_MODEL || "gpt-4o-mini",
+          // The exercise-picking engine gets its own, stronger model —
+          // falls back to the shared OPENAI_MODEL, then gpt-4o-mini, if
+          // OPENAI_MODEL_PLAN isn't set. Same OPENAI_API_KEY covers both;
+          // this is just which model that key is allowed to call.
+          model: env.OPENAI_MODEL_PLAN || env.OPENAI_MODEL || "gpt-4o-mini",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
