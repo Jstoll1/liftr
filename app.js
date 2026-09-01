@@ -1382,6 +1382,16 @@
     showScreen("welcome-screen");
     const welcome = document.getElementById("welcome-screen");
 
+    // Vega scurries across Jessica's welcome screen only. Removing and
+    // re-adding the class restarts the run when she returns to this screen.
+    welcome.classList.remove("vega-active");
+    if (user === "jessica") {
+      const vegaImage = document.querySelector("#vega-scurry img");
+      vegaImage.onerror = () => welcome.classList.remove("vega-active");
+      void welcome.offsetWidth;
+      welcome.classList.add("vega-active");
+    }
+
     // restart the pulse animation on a fresh element
     const nameEl = document.getElementById("welcome-name");
     nameEl.classList.remove("riff-pulse");
