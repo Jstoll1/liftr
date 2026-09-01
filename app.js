@@ -1600,7 +1600,7 @@ okra`;
   // and takes whichever one 404s last — no splitKey involved at all, which
   // also means a newly added split/program/preset just works without a
   // matching code change here.
-  const IMAGE_BODY_PARTS = ["chest", "back", "legs", "shoulders", "arms"];
+  const IMAGE_BODY_PARTS = ["chest", "back", "legs", "shoulders", "arms", "core"];
 
   function slugify(str) {
     return str
