@@ -54,6 +54,9 @@ export default {
     if (body?.mode === "opening") {
       return handleOpening(body, env, corsHeaders);
     }
+    if (body?.mode === "parseLibraryDoc") {
+      return handleParseLibraryDoc(body, env, corsHeaders);
+    }
 
     const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory, recentExercises, libraryContext, libraryRoutines } = body || {};
     const valid =
@@ -507,6 +510,110 @@ async function handleSwap(body, env, corsHeaders) {
     return json({ exercise: parsed.exercise, reason: parsed.reason }, 200, corsHeaders);
   } catch (err) {
     console.error("Worker error (swap)", err?.stack || String(err));
+    return json({ error: "Worker error" }, 500, corsHeaders);
+  }
+}
+
+// Caps how much of an uploaded doc's text gets sent to the model for
+// parsing — generous enough for a real multi-day program, bounded so
+// token cost/context stays sane regardless of how large the upload is.
+const MAX_PARSE_DOC_CHARS = 24000;
+
+// Turns a raw uploaded PDF's extracted text into the app's own exercise
+// shape (name/detail/howTo/tip, grouped into named workout days) so it
+// can render with the exact same components as every other workout in
+// the app, instead of just being a wall of PDF text. Never invents
+// exercises the document doesn't actually mention — if the model can't
+// find real workout content (a nutrition guide, a rehab note with no
+// discrete exercise list, etc.) it returns an empty workouts array
+// rather than fabricating one, and the client shows that honestly.
+async function handleParseLibraryDoc(body, env, corsHeaders) {
+  const { title, text } = body || {};
+  const valid = typeof title === "string" && typeof text === "string" && text.trim().length > 0;
+  if (!valid) return json({ error: "Malformed parse request" }, 400, corsHeaders);
+
+  const schema = {
+    type: "object",
+    properties: {
+      summary: {
+        type: "string",
+        description:
+          "One to three sentences explaining what this program/document actually is — its goal, structure, and who it's for. If it isn't a workout program at all, say what it is instead.",
+      },
+      workouts: {
+        type: "array",
+        description: "Each distinct workout/day the document describes. Empty array if the document contains no identifiable structured workout.",
+        items: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              description: "A short label for this workout/day, e.g. 'Day 1: Chest & Triceps' or the document's own name if it's a single-day routine.",
+            },
+            exercises: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string", description: "The exercise name as stated (or clearly implied) in the document." },
+                  detail: { type: "string", description: "Sets/reps/duration exactly as the document states it, e.g. '4 x 8-10' or '20 min'." },
+                  howTo: { type: "string", description: "A brief, accurate one-sentence how-to for this exercise using standard form — write this even if the document itself doesn't explain it." },
+                  tip: { type: "string", description: "One short, practical coaching cue for this exercise." },
+                },
+                required: ["name", "detail", "howTo", "tip"],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ["name", "exercises"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["summary", "workouts"],
+    additionalProperties: false,
+  };
+
+  const systemPrompt = [
+    "You extract the actual workout content from a document's raw extracted text into a",
+    "structured format. Only include exercises the document genuinely mentions or clearly",
+    "implies — never invent exercises, sets, or reps it doesn't state. If sets/reps aren't",
+    "given for something that's clearly an exercise, write a sensible standard detail and",
+    "say so isn't needed — just make a reasonable choice.",
+    "Group exercises into separate workouts/days exactly as the document structures them",
+    "(e.g. 'Day 1', 'Push Day', 'Week 1 Phase'). If it's genuinely one single routine, return",
+    "exactly one workout. If the document has no identifiable exercise program at all",
+    "(nutrition advice, a cover page, general commentary), return an empty workouts array",
+    "and use summary to say what the document actually is instead.",
+    "Keep the summary factual and specific to this document — no generic filler.",
+  ].join(" ");
+
+  try {
+    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: env.OPENAI_MODEL_PLAN || env.OPENAI_MODEL || "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: JSON.stringify({ title, documentText: text.slice(0, MAX_PARSE_DOC_CHARS) }) },
+        ],
+        response_format: { type: "json_schema", json_schema: { name: "parsed_library_doc", schema, strict: true } },
+        temperature: 0.2,
+      }),
+    });
+    if (!aiRes.ok) {
+      console.error("OpenAI error (parseLibraryDoc)", aiRes.status, await aiRes.text());
+      return json({ error: "Upstream AI error" }, 502, corsHeaders);
+    }
+    const aiData = await aiRes.json();
+    const parsed = JSON.parse(aiData.choices?.[0]?.message?.content || "{}");
+    if (typeof parsed.summary !== "string" || !Array.isArray(parsed.workouts)) {
+      return json({ error: "Malformed AI response" }, 502, corsHeaders);
+    }
+    return json({ summary: parsed.summary, workouts: parsed.workouts }, 200, corsHeaders);
+  } catch (err) {
+    console.error("Worker error (parseLibraryDoc)", err?.stack || String(err));
     return json({ error: "Worker error" }, 500, corsHeaders);
   }
 }

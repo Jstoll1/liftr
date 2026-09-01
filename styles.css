@@ -1735,6 +1735,16 @@ button,
   min-width: 0;
 }
 
+.library-item-info.library-doc-open {
+  cursor: pointer;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+}
+.library-item-info.library-doc-open:hover .library-item-title { color: var(--accent); }
+
 .library-item-title {
   font-weight: 700;
   font-size: 13px;
@@ -1813,6 +1823,39 @@ button,
   font-size: 9px;
   letter-spacing: 0.5px;
   color: var(--text-dim);
+}
+
+.library-tag-chip.library-tag-parsed {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.library-doc-workout {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.library-doc-workout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.library-doc-workout-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.library-doc-start-btn {
+  flex-shrink: 0;
 }
 
 .save-workout-link {

@@ -24,7 +24,7 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609013400" />
+  <link rel="stylesheet" href="styles.css?v=202609013500" />
 </head>
 <body>
 
@@ -262,6 +262,16 @@
     </div>
   </main>
 
+  <!-- LIBRARY DOC DETAIL SCREEN -->
+  <main id="library-doc-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="library-doc-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">From Your Library</span>
+      <h2 id="library-doc-title" class="panel-heading"></h2>
+      <div id="library-doc-body"></div>
+    </div>
+  </main>
+
   <!-- WEIGHT TRENDS / GRAPH SCREEN -->
   <main id="graph-screen" class="screen hidden">
     <div class="panel-wrap">
@@ -483,6 +493,6 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
   </script>
-  <script src="app.js?v=202609013400"></script>
+  <script src="app.js?v=202609013500"></script>
 </body>
 </html>

@@ -1881,6 +1881,11 @@ okra`;
   // (AI candidates and the local fallback alike) reads through, so an
   // excluded exercise can never come back as a suggestion.
   function getAvailableExercises(user, splitKey) {
+    // "custom" (a saved routine with no splitKey, or a library-doc workout)
+    // has no base pool of its own to draw more candidates from — the
+    // preview's "+ Add an exercise" picker just has nothing to offer
+    // there, which is correct: there's no wider category to pull from.
+    if (!SPLIT_LIBRARY[splitKey]) return [];
     const excluded = new Set(getPersonaProfile(user).excludedExercises);
     return SPLIT_LIBRARY[splitKey].exercises[user].filter((ex) => !excluded.has(ex.name));
   }
@@ -2326,6 +2331,7 @@ okra`;
     "settings-screen",
     "history-screen",
     "trainer-screen",
+    "library-doc-screen",
     "graph-screen",
     "library-screen",
     "select-screen",
@@ -4943,11 +4949,12 @@ okra`;
       .map(
         (doc) => `
       <li class="library-item">
-        <div class="library-item-info">
+        <div class="library-item-info library-doc-open" data-id="${escapeHtml(doc.id)}" role="button" tabindex="0" title="View this workout">
           <span class="library-item-title">📄 ${escapeHtml(doc.title)}</span>
           <span class="library-item-meta">
             ${doc.pageCount} page${doc.pageCount === 1 ? "" : "s"} · added ${formatShortDate(doc.addedAt)}
             <span class="library-tag-chip">PDF</span>
+            ${doc.parsedWorkouts ? `<span class="library-tag-chip library-tag-parsed">VIEW WORKOUT ›</span>` : ""}
           </span>
         </div>
         <button type="button" class="library-item-rename" data-id="${escapeHtml(doc.id)}" title="Rename">✏️</button>
@@ -4985,6 +4992,141 @@ okra`;
     currentUser = user;
     showScreen("library-screen");
     renderLibraryList();
+  }
+
+  // Sends an uploaded doc's raw extracted text to the AI to turn into the
+  // app's own exercise shape (name/detail/howTo/tip, grouped into named
+  // workout days) — the same structure every other workout in the app
+  // uses, so the result renders with the exact same components instead of
+  // being a wall of PDF text. Cached onto the doc so this only runs once
+  // per upload, not every time the athlete opens it.
+  async function parseLibraryDocument(doc) {
+    if (!AI_ENDPOINT) return { error: "offline" };
+    try {
+      const res = await fetch(AI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "parseLibraryDoc", title: doc.title, text: doc.text }),
+        signal: AbortSignal.timeout(AI_TIMEOUT_MS * 2),
+      });
+      if (!res.ok) return { error: "request-failed" };
+      const data = await res.json();
+      if (typeof data.summary !== "string" || !Array.isArray(data.workouts)) return { error: "malformed" };
+
+      const library = loadLibrary();
+      const freshDoc = library.docs.find((d) => d.id === doc.id);
+      if (freshDoc) {
+        freshDoc.summary = data.summary;
+        freshDoc.parsedWorkouts = data.workouts;
+        saveLibrary(library);
+        pushLibraryToCloud();
+      }
+      return { summary: data.summary, workouts: data.workouts };
+    } catch {
+      return { error: "request-failed" };
+    }
+  }
+
+  // Jumps straight into the session screen with one of a parsed library
+  // doc's workouts — same shortcut saved routines and SPECIAL_WORKOUTS
+  // presets use, just sourced from an uploaded PDF instead.
+  function startLibraryDocWorkout(user, docTitle, workout) {
+    currentUser = user;
+    checkInState = { ...checkInState, minutes: 30, energy: "medium", partner: false };
+    chatSuggestedSplit = null;
+    selectedSplitKey = "custom";
+    previewPlan = {
+      exercises: workout.exercises.map((ex) => ({ ...ex, splitKey: "custom" })),
+      reason: `From your uploaded "${docTitle}": ${workout.name}.`,
+      source: "preset",
+      suggestedWeights: new Map(),
+    };
+    showScreen("session-screen");
+    renderSessionFull(user);
+  }
+
+  function renderLibraryDocBody(doc, state) {
+    const container = document.getElementById("library-doc-body");
+    if (state === "loading") {
+      container.innerHTML = `<p class="panel-subtext">🤖 Reading through "${escapeHtml(doc.title)}" and pulling out the actual workout…</p>`;
+      return;
+    }
+    if (state === "offline") {
+      container.innerHTML = `<p class="panel-subtext">This needs the AI coach to read the document, which isn't reachable right now. The raw text is still being referenced in chat and workout planning — try viewing this again later.</p>`;
+      return;
+    }
+    if (state === "error") {
+      container.innerHTML = `
+        <p class="panel-subtext">Couldn't parse this one right now.</p>
+        <button type="button" id="library-doc-retry" class="ghost-btn">Try Again</button>
+      `;
+      document.getElementById("library-doc-retry").addEventListener("click", () => showLibraryDoc(doc, true));
+      return;
+    }
+
+    const workouts = doc.parsedWorkouts || [];
+    if (workouts.length === 0) {
+      container.innerHTML = `
+        <p class="panel-subtext">${escapeHtml(doc.summary || "No structured workout was found in this document.")}</p>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <p class="panel-subtext">${escapeHtml(doc.summary || "")}</p>
+      ${workouts
+        .map(
+          (workout, wIdx) => `
+        <div class="library-doc-workout">
+          <div class="library-doc-workout-head">
+            <span class="library-doc-workout-name">${escapeHtml(workout.name)}</span>
+            <button type="button" class="ghost-btn library-doc-start-btn" data-workout-index="${wIdx}">▶ Start This Workout</button>
+          </div>
+          <ul class="session-exercises">
+            ${workout.exercises
+              .map((ex) => `<li><span>${escapeHtml(ex.name)}</span><span class="ex-detail">${escapeHtml(ex.detail)}</span></li>`)
+              .join("")}
+          </ul>
+        </div>
+      `
+        )
+        .join("")}
+    `;
+
+    container.querySelectorAll(".library-doc-start-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const workout = workouts[Number(btn.dataset.workoutIndex)];
+        startLibraryDocWorkout(currentUser, doc.title, workout);
+      });
+    });
+  }
+
+  async function showLibraryDoc(doc, forceReparse = false) {
+    const screenEl = document.getElementById("library-doc-screen");
+    showScreen("library-doc-screen");
+    document.getElementById("library-doc-title").textContent = doc.title;
+    screenEl.dataset.docId = doc.id;
+
+    if (doc.parsedWorkouts && !forceReparse) {
+      renderLibraryDocBody(doc, "ready");
+      return;
+    }
+    if (!AI_ENDPOINT) {
+      renderLibraryDocBody(doc, "offline");
+      return;
+    }
+
+    renderLibraryDocBody(doc, "loading");
+    const result = await parseLibraryDocument(doc);
+    // The athlete may have navigated to a different screen, or a different
+    // library doc, while this was in flight.
+    if (screenEl.classList.contains("hidden") || screenEl.dataset.docId !== doc.id) return;
+
+    if (result.error) {
+      renderLibraryDocBody(doc, "error");
+      return;
+    }
+    renderLibraryDocBody({ ...doc, summary: result.summary, parsedWorkouts: result.workouts }, "ready");
   }
 
   // Jumps straight into the session screen with a saved routine's exercises
@@ -5068,6 +5210,7 @@ okra`;
 
   function initLibrary() {
     document.getElementById("library-back").addEventListener("click", () => returnToCheckIn(currentUser));
+    document.getElementById("library-doc-back").addEventListener("click", () => showLibrary(currentUser));
 
     const fileInput = document.getElementById("library-file-input");
     const status = document.getElementById("library-status");
@@ -5120,6 +5263,12 @@ okra`;
     });
 
     document.getElementById("library-list").addEventListener("click", (e) => {
+      const openBtn = e.target.closest(".library-doc-open");
+      if (openBtn) {
+        const doc = loadLibrary().docs.find((d) => d.id === openBtn.dataset.id);
+        if (doc) showLibraryDoc(doc);
+        return;
+      }
       const renameBtn = e.target.closest(".library-item-rename");
       if (renameBtn) {
         startRenameLibraryDoc(renameBtn.dataset.id);
@@ -5139,6 +5288,15 @@ okra`;
       saveLibrary(library);
       renderLibraryList();
       pushLibraryToCloud();
+    });
+
+    document.getElementById("library-list").addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const openBtn = e.target.closest(".library-doc-open");
+      if (!openBtn) return;
+      e.preventDefault();
+      const doc = loadLibrary().docs.find((d) => d.id === openBtn.dataset.id);
+      if (doc) showLibraryDoc(doc);
     });
 
     const routinesList = document.getElementById("library-routines-list");
