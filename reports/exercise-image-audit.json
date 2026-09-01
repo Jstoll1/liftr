@@ -1,0 +1,1149 @@
+{
+  "generatedAt": "2026-09-01T12:16:46.945Z",
+  "appFile": "app.js",
+  "summary": {
+    "exerciseReferences": 73,
+    "uniqueExpectedImages": 71,
+    "readyReferences": 20,
+    "issueReferences": 53,
+    "uniqueIssueImages": 52
+  },
+  "issues": [
+    {
+      "user": "jessica",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Plank to Row",
+      "imagePath": "images/back/plank-to-row.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Weighted Pull-Ups",
+      "imagePath": "images/back/weighted-pull-ups.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Lateral Band Walk",
+      "imagePath": "images/legs/lateral-band-walk.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Tempo Run",
+      "imagePath": "images/cardio/tempo-run.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Stair Climber Intervals",
+      "imagePath": "images/cardio/stair-climber-intervals.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Cycling",
+      "imagePath": "images/cardio/cycling.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Mobility Flow",
+      "imagePath": "images/cardio/mobility-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Rowing Intervals",
+      "imagePath": "images/cardio/rowing-intervals.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Sled Push",
+      "imagePath": "images/cardio/sled-push.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Battle Ropes",
+      "imagePath": "images/cardio/battle-ropes.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Jump Rope Finisher",
+      "imagePath": "images/cardio/jump-rope-finisher.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Dead Bug",
+      "imagePath": "images/core/dead-bug.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Hip Flexor Stretch Flow",
+      "imagePath": "images/core/hip-flexor-stretch-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Side Plank",
+      "imagePath": "images/core/side-plank.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Cat-Cow Flow",
+      "imagePath": "images/core/cat-cow-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Hanging Leg Raise",
+      "imagePath": "images/core/hanging-leg-raise.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "90/90 Hip Flow",
+      "imagePath": "images/core/90-90-hip-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Weighted Plank",
+      "imagePath": "images/core/weighted-plank.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Thoracic Rotation Flow",
+      "imagePath": "images/core/thoracic-rotation-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "chest-back",
+      "source": "finisher",
+      "exercise": "Finisher: Burpee Pulse",
+      "imagePath": "images/chest/finisher-burpee-pulse.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "legs",
+      "source": "finisher",
+      "exercise": "Finisher: Jump Squats",
+      "imagePath": "images/legs/finisher-jump-squats.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "finisher",
+      "exercise": "Finisher: All-Out Sprint",
+      "imagePath": "images/cardio/finisher-all-out-sprint.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "finisher",
+      "exercise": "Finisher: Assault Bike Sprint",
+      "imagePath": "images/cardio/finisher-assault-bike-sprint.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "finisher",
+      "exercise": "Finisher: Mountain Climbers",
+      "imagePath": "images/core/finisher-mountain-climbers.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "finisher",
+      "exercise": "Finisher: Bear Crawl",
+      "imagePath": "images/core/finisher-bear-crawl.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "chest-back",
+      "source": "partner",
+      "exercise": "Partner Med-Ball Chest Pass",
+      "imagePath": "images/chest/partner-med-ball-chest-pass.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "chest-back",
+      "source": "partner",
+      "exercise": "Partner Resistance Push-Off",
+      "imagePath": "images/chest/partner-resistance-push-off.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "legs",
+      "source": "partner",
+      "exercise": "Partner Wall-Sit Hold",
+      "imagePath": "images/legs/partner-wall-sit-hold.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "legs",
+      "source": "partner",
+      "exercise": "Partner Sled Drag",
+      "imagePath": "images/legs/partner-sled-drag.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "partner",
+      "exercise": "Partner Medicine Ball Circuit",
+      "imagePath": "images/cardio/partner-medicine-ball-circuit.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "partner",
+      "exercise": "Partner Relay Sprints",
+      "imagePath": "images/cardio/partner-relay-sprints.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "partner",
+      "exercise": "Partner Plank Hand-Slap",
+      "imagePath": "images/core/partner-plank-hand-slap.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "partner",
+      "exercise": "Partner-Assisted Stretch Flow",
+      "imagePath": "images/core/partner-assisted-stretch-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "DB Dead Bug Hold + Heel Taps",
+      "imagePath": "images/core/db-dead-bug-hold-heel-taps.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Forearm Plank",
+      "imagePath": "images/core/forearm-plank.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "DB Suitcase March",
+      "imagePath": "images/core/db-suitcase-march.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Bird Dog",
+      "imagePath": "images/core/bird-dog.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Side Plank",
+      "imagePath": "images/core/side-plank.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "DB Glute Bridge",
+      "imagePath": "images/core/db-glute-bridge.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "90/90 Hip Switches",
+      "imagePath": "images/core/90-90-hip-switches.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Adductor Rock-Backs",
+      "imagePath": "images/core/adductor-rock-backs.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Half-Kneeling Hip-Flexor Stretch + Reach",
+      "imagePath": "images/core/half-kneeling-hip-flexor-stretch-reach.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Knee-Over-Toe Ankle Rocks",
+      "imagePath": "images/core/knee-over-toe-ankle-rocks.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Open-Book Rotations",
+      "imagePath": "images/core/open-book-rotations.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "DB Goblet Squat Hold",
+      "imagePath": "images/core/db-goblet-squat-hold.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Slow Calf Raises",
+      "imagePath": "images/core/slow-calf-raises.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Plank Shoulder Taps",
+      "imagePath": "images/core/plank-shoulder-taps.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Glute Bridge March",
+      "imagePath": "images/core/glute-bridge-march.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Dead Hang",
+      "imagePath": "images/core/dead-hang.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Hip Flexor Stretch",
+      "imagePath": "images/core/hip-flexor-stretch.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Adductor Stretch",
+      "imagePath": "images/core/adductor-stretch.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Calf Stretch",
+      "imagePath": "images/core/calf-stretch.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Deep Breathing",
+      "imagePath": "images/core/deep-breathing.jpg",
+      "status": "missing",
+      "bytes": 0
+    }
+  ],
+  "references": [
+    {
+      "user": "jessica",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Push-Up Ladder",
+      "imagePath": "images/chest/push-up-ladder.jpg",
+      "status": "ready",
+      "bytes": 58440
+    },
+    {
+      "user": "jessica",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Lat Pulldown",
+      "imagePath": "images/back/lat-pulldown.jpg",
+      "status": "ready",
+      "bytes": 83032
+    },
+    {
+      "user": "jessica",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Dumbbell Chest Press",
+      "imagePath": "images/chest/dumbbell-chest-press.jpg",
+      "status": "ready",
+      "bytes": 65909
+    },
+    {
+      "user": "jessica",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Seated Cable Row",
+      "imagePath": "images/back/seated-cable-row.jpg",
+      "status": "ready",
+      "bytes": 76522
+    },
+    {
+      "user": "jessica",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Plank to Row",
+      "imagePath": "images/back/plank-to-row.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Barbell Bench Press",
+      "imagePath": "images/chest/barbell-bench-press.jpg",
+      "status": "ready",
+      "bytes": 76349
+    },
+    {
+      "user": "jake",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Weighted Pull-Ups",
+      "imagePath": "images/back/weighted-pull-ups.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Incline Dumbbell Press",
+      "imagePath": "images/chest/incline-dumbbell-press.jpg",
+      "status": "ready",
+      "bytes": 82867
+    },
+    {
+      "user": "jake",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Bent-Over Barbell Row",
+      "imagePath": "images/back/bent-over-barbell-row.jpg",
+      "status": "ready",
+      "bytes": 72779
+    },
+    {
+      "user": "jake",
+      "splitKey": "chest-back",
+      "source": "base",
+      "exercise": "Cable Fly",
+      "imagePath": "images/chest/cable-fly.jpg",
+      "status": "ready",
+      "bytes": 76756
+    },
+    {
+      "user": "jessica",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Goblet Squat",
+      "imagePath": "images/legs/goblet-squat.jpg",
+      "status": "ready",
+      "bytes": 70166
+    },
+    {
+      "user": "jessica",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Leg Press",
+      "imagePath": "images/legs/leg-press.jpg",
+      "status": "ready",
+      "bytes": 89733
+    },
+    {
+      "user": "jessica",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Step-Ups",
+      "imagePath": "images/legs/step-ups.jpg",
+      "status": "ready",
+      "bytes": 68154
+    },
+    {
+      "user": "jessica",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Glute Bridge",
+      "imagePath": "images/legs/glute-bridge.jpg",
+      "status": "ready",
+      "bytes": 57894
+    },
+    {
+      "user": "jessica",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Lateral Band Walk",
+      "imagePath": "images/legs/lateral-band-walk.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Bodyweight Lunge",
+      "imagePath": "images/legs/bodyweight-lunge.jpg",
+      "status": "ready",
+      "bytes": 66397
+    },
+    {
+      "user": "jake",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Barbell Back Squat",
+      "imagePath": "images/legs/barbell-back-squat.jpg",
+      "status": "ready",
+      "bytes": 69173
+    },
+    {
+      "user": "jake",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Romanian Deadlift",
+      "imagePath": "images/legs/romanian-deadlift.jpg",
+      "status": "ready",
+      "bytes": 64772
+    },
+    {
+      "user": "jake",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Walking Lunges",
+      "imagePath": "images/legs/walking-lunges.jpg",
+      "status": "ready",
+      "bytes": 64908
+    },
+    {
+      "user": "jake",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Leg Press",
+      "imagePath": "images/legs/leg-press.jpg",
+      "status": "ready",
+      "bytes": 89733
+    },
+    {
+      "user": "jake",
+      "splitKey": "legs",
+      "source": "base",
+      "exercise": "Standing Calf Raise",
+      "imagePath": "images/legs/standing-calf-raise.jpg",
+      "status": "ready",
+      "bytes": 63847
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Tempo Run",
+      "imagePath": "images/cardio/tempo-run.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Stair Climber Intervals",
+      "imagePath": "images/cardio/stair-climber-intervals.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Cycling",
+      "imagePath": "images/cardio/cycling.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Mobility Flow",
+      "imagePath": "images/cardio/mobility-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Rowing Intervals",
+      "imagePath": "images/cardio/rowing-intervals.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Sled Push",
+      "imagePath": "images/cardio/sled-push.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Battle Ropes",
+      "imagePath": "images/cardio/battle-ropes.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "base",
+      "exercise": "Jump Rope Finisher",
+      "imagePath": "images/cardio/jump-rope-finisher.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Dead Bug",
+      "imagePath": "images/core/dead-bug.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Hip Flexor Stretch Flow",
+      "imagePath": "images/core/hip-flexor-stretch-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Side Plank",
+      "imagePath": "images/core/side-plank.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Cat-Cow Flow",
+      "imagePath": "images/core/cat-cow-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Hanging Leg Raise",
+      "imagePath": "images/core/hanging-leg-raise.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "90/90 Hip Flow",
+      "imagePath": "images/core/90-90-hip-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Weighted Plank",
+      "imagePath": "images/core/weighted-plank.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "base",
+      "exercise": "Thoracic Rotation Flow",
+      "imagePath": "images/core/thoracic-rotation-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "chest-back",
+      "source": "finisher",
+      "exercise": "Finisher: Burpee Pulse",
+      "imagePath": "images/chest/finisher-burpee-pulse.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "chest-back",
+      "source": "finisher",
+      "exercise": "Finisher: Death-Rep Push-Ups",
+      "imagePath": "images/chest/finisher-death-rep-push-ups.jpg",
+      "status": "ready",
+      "bytes": 58440
+    },
+    {
+      "user": "jessica",
+      "splitKey": "legs",
+      "source": "finisher",
+      "exercise": "Finisher: Jump Squats",
+      "imagePath": "images/legs/finisher-jump-squats.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "legs",
+      "source": "finisher",
+      "exercise": "Finisher: Bodyweight Squat Burnout",
+      "imagePath": "images/legs/finisher-bodyweight-squat-burnout.jpg",
+      "status": "ready",
+      "bytes": 61681
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "finisher",
+      "exercise": "Finisher: All-Out Sprint",
+      "imagePath": "images/cardio/finisher-all-out-sprint.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "finisher",
+      "exercise": "Finisher: Assault Bike Sprint",
+      "imagePath": "images/cardio/finisher-assault-bike-sprint.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "finisher",
+      "exercise": "Finisher: Mountain Climbers",
+      "imagePath": "images/core/finisher-mountain-climbers.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "finisher",
+      "exercise": "Finisher: Bear Crawl",
+      "imagePath": "images/core/finisher-bear-crawl.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "chest-back",
+      "source": "partner",
+      "exercise": "Partner Med-Ball Chest Pass",
+      "imagePath": "images/chest/partner-med-ball-chest-pass.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "chest-back",
+      "source": "partner",
+      "exercise": "Partner Resistance Push-Off",
+      "imagePath": "images/chest/partner-resistance-push-off.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "legs",
+      "source": "partner",
+      "exercise": "Partner Wall-Sit Hold",
+      "imagePath": "images/legs/partner-wall-sit-hold.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "legs",
+      "source": "partner",
+      "exercise": "Partner Sled Drag",
+      "imagePath": "images/legs/partner-sled-drag.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "cardio",
+      "source": "partner",
+      "exercise": "Partner Medicine Ball Circuit",
+      "imagePath": "images/cardio/partner-medicine-ball-circuit.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "cardio",
+      "source": "partner",
+      "exercise": "Partner Relay Sprints",
+      "imagePath": "images/cardio/partner-relay-sprints.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "core-mobility",
+      "source": "partner",
+      "exercise": "Partner Plank Hand-Slap",
+      "imagePath": "images/core/partner-plank-hand-slap.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jake",
+      "splitKey": "core-mobility",
+      "source": "partner",
+      "exercise": "Partner-Assisted Stretch Flow",
+      "imagePath": "images/core/partner-assisted-stretch-flow.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "DB Dead Bug Hold + Heel Taps",
+      "imagePath": "images/core/db-dead-bug-hold-heel-taps.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Forearm Plank",
+      "imagePath": "images/core/forearm-plank.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "DB Suitcase March",
+      "imagePath": "images/core/db-suitcase-march.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Bird Dog",
+      "imagePath": "images/core/bird-dog.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Side Plank",
+      "imagePath": "images/core/side-plank.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "DB Glute Bridge",
+      "imagePath": "images/core/db-glute-bridge.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "90/90 Hip Switches",
+      "imagePath": "images/core/90-90-hip-switches.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Adductor Rock-Backs",
+      "imagePath": "images/core/adductor-rock-backs.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Half-Kneeling Hip-Flexor Stretch + Reach",
+      "imagePath": "images/core/half-kneeling-hip-flexor-stretch-reach.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Knee-Over-Toe Ankle Rocks",
+      "imagePath": "images/core/knee-over-toe-ankle-rocks.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Open-Book Rotations",
+      "imagePath": "images/core/open-book-rotations.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "DB Goblet Squat Hold",
+      "imagePath": "images/core/db-goblet-squat-hold.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Slow Calf Raises",
+      "imagePath": "images/core/slow-calf-raises.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Plank Shoulder Taps",
+      "imagePath": "images/core/plank-shoulder-taps.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Glute Bridge March",
+      "imagePath": "images/core/glute-bridge-march.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Dead Hang",
+      "imagePath": "images/core/dead-hang.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Hip Flexor Stretch",
+      "imagePath": "images/core/hip-flexor-stretch.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Adductor Stretch",
+      "imagePath": "images/core/adductor-stretch.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Calf Stretch",
+      "imagePath": "images/core/calf-stretch.jpg",
+      "status": "missing",
+      "bytes": 0
+    },
+    {
+      "user": "jessica",
+      "splitKey": "jess-game-day-core",
+      "source": "special-preset",
+      "exercise": "Deep Breathing",
+      "imagePath": "images/core/deep-breathing.jpg",
+      "status": "missing",
+      "bytes": 0
+    }
+  ]
+}

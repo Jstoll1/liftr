@@ -1,0 +1,29 @@
+name: Exercise image audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "app.js"
+      - "images/**"
+      - "scripts/audit-exercise-images.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Crawl workout image references
+        run: node scripts/audit-exercise-images.mjs --write
+      - name: Add audit to job summary
+        run: cat reports/exercise-image-audit.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exercise-image-audit
+          path: reports/exercise-image-audit.*
