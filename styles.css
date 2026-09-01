@@ -725,6 +725,36 @@ button,
   gap: 8px;
 }
 
+.excluded-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.excluded-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, #ff4d4d 14%, var(--bg-elevated));
+  border: 1px solid color-mix(in srgb, #ff4d4d 45%, transparent);
+  border-radius: 999px;
+  padding: 6px 8px 6px 12px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.excluded-chip-remove {
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.excluded-chip-remove:hover { color: #ff4d4d; }
+
 /* ---------- MODAL (cheer, etc.) ---------- */
 
 .modal-overlay {
