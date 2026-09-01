@@ -76,7 +76,13 @@ export default {
 
     const names = candidates.map((c) => c.name);
     const baseTarget = MINUTES_TO_COUNT[minutes] || 4;
-    const energyTarget = energy === "low" ? Math.max(2, baseTarget - 1) : energy === "high" ? Math.min(6, baseTarget + 1) : baseTarget;
+    let energyTarget = energy === "low" ? Math.max(2, baseTarget - 1) : energy === "high" ? Math.min(6, baseTarget + 1) : baseTarget;
+    const hasFinisher = energy === "high" && minutes >= 45 && candidates.some((candidate) => /^finisher:/i.test(candidate.name));
+    if (split?.key === "chest-back") {
+      let regularTarget = Math.max(2, energyTarget - (hasFinisher ? 1 : 0));
+      if (regularTarget % 2 !== 0) regularTarget += energy === "low" ? -1 : 1;
+      energyTarget = regularTarget + (hasFinisher ? 1 : 0);
+    }
     const targetCount = Math.min(candidates.length, energyTarget);
 
     const schema = {
@@ -135,7 +141,7 @@ export default {
         ? "A partner is available; partner-friendly candidates may be used when they fit."
         : "The athlete is training alone. NEVER choose a partner exercise or a movement that requires another person.",
       split?.key === "chest-back"
-        ? "This is a combined Chest & Back session. Keep it balanced: include at least two chest/horizontal-push exercises and at least two back/row/pull exercises when the target count is four or more."
+        ? "This is a combined Chest & Back session. Build it from complete push/pull superset pairs in A, B, then C order. Start with the primary loaded compound pair, then the secondary loaded pair; bodyweight work and isolation belong after those. Include equal chest/horizontal-push and back/row/pull movements before an optional finisher."
         : "Keep the chosen movements aligned with the requested workout type.",
       "Some candidates carry a `superset` field — candidates sharing the same",
       "superset value are a deliberate pair (e.g. a push paired with a pull, so",

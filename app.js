@@ -1267,13 +1267,14 @@ okra`;
       tagline: "Push-pull strength builder",
       exercises: {
         jessica: [
-          { name: "Push-Up Ladder", detail: "3 x 12", superset: "A", howTo: "From a plank, lower your chest to the floor and push back up — ladder means add a rep each round.", tip: "Keep your core braced and lower with control — quality over speed." },
-          { name: "Lat Pulldown", detail: "3 x 15", superset: "A", howTo: "Seated at the machine, pull the bar down to your upper chest, then control it back up.", tip: "Drive your elbows down and back, not your hands." },
-          { name: "Dumbbell Chest Press", detail: "3 x 12", superset: "B", howTo: "Lying on a bench, press two dumbbells up from chest level until your arms are extended.", tip: "Lower until your elbows are just below your shoulders, then press up and slightly in." },
-          { name: "Seated Cable Row", detail: "3 x 15", superset: "B", howTo: "Seated at the cable, pull the handle to your torso while keeping your back straight.", tip: "Squeeze your shoulder blades together at the finish, don't just pull with your arms." },
+          { name: "Dumbbell Bench Press", detail: "4 x 8", superset: "A", howTo: "Lying on a bench, press two dumbbells up from chest level until your arms are extended.", tip: "Use a load that makes reps seven and eight challenging without losing shoulder position." },
+          { name: "Lat Pulldown", detail: "4 x 8-10", superset: "A", howTo: "Seated at the machine, pull the bar down to your upper chest, then control it back up.", tip: "Drive your elbows down and back, not your hands." },
+          { name: "Incline Dumbbell Press", detail: "3 x 10", superset: "B", howTo: "On a low incline, press two dumbbells from shoulder level until your arms are extended.", tip: "Keep the bench near 30 degrees so the chest stays the main driver." },
+          { name: "Chest-Supported Row", detail: "3 x 10", superset: "B", howTo: "Lying chest-down on an incline bench, row the dumbbells toward your ribs.", tip: "Pause at the top and keep your chest connected to the pad." },
           { name: "Plank to Row", detail: "3 x 10/side", howTo: "In a plank with a dumbbell in each hand, row one dumbbell to your ribs, alternating sides.", tip: "Keep your hips square — resist the urge to rotate as you row." },
-          { name: "Cable Chest Fly", detail: "3 x 15", superset: "C", howTo: "Standing between two cable stacks, bring the handles together in front of your chest in an arcing motion.", tip: "Slight bend in the elbows the whole way — think 'hug a tree,' not 'press.'" },
-          { name: "Chest-Supported Row", detail: "3 x 12", superset: "C", howTo: "Lying chest-down on an incline bench, row the handles up toward your ribs.", tip: "The bench does the bracing for you — focus entirely on squeezing your back." },
+          { name: "Cable Chest Fly", detail: "3 x 12", superset: "C", howTo: "Standing between two cable stacks, bring the handles together in front of your chest in an arcing motion.", tip: "Slight bend in the elbows the whole way — think 'hug a tree,' not 'press.'" },
+          { name: "Seated Cable Row", detail: "3 x 12", superset: "C", howTo: "Seated at the cable, pull the handle to your torso while keeping your back straight.", tip: "Squeeze your shoulder blades together at the finish, don't just pull with your arms." },
+          { name: "Push-Up Ladder", detail: "2 x max", howTo: "From a plank, lower your chest to the floor and push back up, stopping when clean reps break down.", tip: "Use this after the loaded work, not instead of it." },
           { name: "Incline Push-Up", detail: "3 x 15", howTo: "Hands on a bench or box, lower your chest toward it and push back up.", tip: "The higher the surface, the easier the rep — pick a height that's still a real challenge." },
           { name: "One-Arm Dumbbell Row", detail: "3 x 12/side", howTo: "One hand and knee on a bench, row a dumbbell up to your hip with the other arm.", tip: "Keep your back flat and pull with your elbow, not your hand." },
         ],
@@ -1910,6 +1911,16 @@ okra`;
     return base;
   }
 
+  function chestBackPlanSize(checkIn, hasFinisher) {
+    const requested = targetExerciseCount(checkIn);
+    let regular = Math.max(2, requested - (hasFinisher ? 1 : 0));
+    // A push/pull workout should contain complete pairs. For low energy we
+    // trim an orphaned movement; otherwise we add its counterpart so a
+    // 30-minute selection never becomes "two presses and one pulldown."
+    if (regular % 2 !== 0) regular += checkIn.energy === "low" ? -1 : 1;
+    return { regular, total: regular + (hasFinisher ? 1 : 0) };
+  }
+
   // A bigger exercise pool doesn't reduce repetition on its own — slicing
   // the same fixed prefix every time would still show the same first N
   // exercises forever. This ranks the pool by how recently each one was
@@ -1997,28 +2008,25 @@ okra`;
     const canonical = mergeCanonicalExercises(exercises, pool);
     const regularPool = pool.filter((exercise) => !isFinisherExercise(exercise) && (checkIn.partner || !isPartnerExercise(exercise)));
     const regularChosen = canonical.filter((exercise) => !isFinisherExercise(exercise) && (checkIn.partner || !isPartnerExercise(exercise)));
-    const desiredTotal = targetExerciseCount(checkIn);
     const finisher = checkIn.energy === "high" && checkIn.minutes >= 45 ? pool.find(isFinisherExercise) : null;
-    const desiredRegular = Math.max(2, desiredTotal - (finisher ? 1 : 0));
+    const { regular: desiredRegular, total: desiredTotal } = chestBackPlanSize(checkIn, Boolean(finisher));
     const focus = getCoachFocus(checkIn.note);
-    const paired = (exercise) => Boolean(
-      exercise.superset && regularPool.some((candidate) => candidate.name !== exercise.name && candidate.superset === exercise.superset)
-    );
-    const ordered = (predicate) => {
-      const chosen = regularChosen.filter(predicate);
-      const remaining = regularPool.filter((exercise) => predicate(exercise) && !chosen.some((item) => item.name === exercise.name));
-      return [
-        ...chosen.filter(paired),
-        ...remaining.filter(paired),
-        ...chosen.filter((exercise) => !paired(exercise)),
-        ...remaining.filter((exercise) => !paired(exercise)),
-      ];
-    };
-    const chest = ordered((exercise) => getExerciseTraits(exercise).has("horizontalPush"));
-    const back = ordered((exercise) => {
+    const isChest = (exercise) => getExerciseTraits(exercise).has("horizontalPush");
+    const isBack = (exercise) => {
       const traits = getExerciseTraits(exercise);
       return traits.has("horizontalPull") || traits.has("verticalPull");
+    };
+    const priority = (key) => ({ A: 0, B: 1, C: 2 }[key] ?? 10);
+    const pairMap = new Map();
+    regularPool.forEach((exercise) => {
+      if (!exercise.superset) return;
+      if (!pairMap.has(exercise.superset)) pairMap.set(exercise.superset, []);
+      pairMap.get(exercise.superset).push(exercise);
     });
+    const completePairs = Array.from(pairMap, ([key, items]) => ({ key, items }))
+      .filter(({ items }) => items.some(isChest) && items.some(isBack))
+      .sort((a, b) => priority(a.key) - priority(b.key));
+
     let chestTarget = Math.ceil(desiredRegular / 2);
     if (focus === "back") chestTarget = Math.floor(desiredRegular / 2);
     const backTarget = desiredRegular - chestTarget;
@@ -2026,16 +2034,30 @@ okra`;
     const push = (exercise) => {
       if (exercise && !result.some((item) => item.name === exercise.name)) result.push(exercise);
     };
-    for (let index = 0; index < Math.max(chestTarget, backTarget); index++) {
-      if (focus === "back") {
-        if (index < backTarget) push(back[index]);
-        if (index < chestTarget) push(chest[index]);
+    // Fill the plan with complete, intentionally programmed push/pull
+    // supersets first. A weak AI response can influence the explanation,
+    // but it cannot replace the primary compound pairs with accessories.
+    completePairs.forEach(({ items }) => {
+      if (result.length + 2 > desiredRegular) return;
+      push(items.find(isChest));
+      push(items.find(isBack));
+    });
+
+    const chosenAndPool = [...regularChosen, ...regularPool];
+    const chest = chosenAndPool.filter(isChest);
+    const back = chosenAndPool.filter(isBack);
+    for (let index = 0; result.length < desiredRegular && index < Math.max(chest.length, back.length); index++) {
+      const currentChest = result.filter(isChest).length;
+      const currentBack = result.filter(isBack).length;
+      if (focus === "back" || currentBack < currentChest) {
+        if (currentBack < backTarget) push(back.find((exercise) => !result.some((item) => item.name === exercise.name)));
+        if (currentChest < chestTarget && result.length < desiredRegular) push(chest.find((exercise) => !result.some((item) => item.name === exercise.name)));
       } else {
-        if (index < chestTarget) push(chest[index]);
-        if (index < backTarget) push(back[index]);
+        if (currentChest < chestTarget) push(chest.find((exercise) => !result.some((item) => item.name === exercise.name)));
+        if (currentBack < backTarget && result.length < desiredRegular) push(back.find((exercise) => !result.some((item) => item.name === exercise.name)));
       }
     }
-    [...regularChosen, ...regularPool].forEach((exercise) => {
+    chosenAndPool.forEach((exercise) => {
       if (result.length < desiredRegular) push(exercise);
     });
     if (finisher) push(finisher);
@@ -2557,13 +2579,25 @@ okra`;
     list.innerHTML = "";
     renderPreviewPlanSummary(exercises, checkInState);
     let currentPhase = null;
+    let currentSuperset = null;
     exercises.forEach((ex, idx) => {
       if (ex.phase && ex.phase !== currentPhase) {
         currentPhase = ex.phase;
+        currentSuperset = null;
         const heading = document.createElement("li");
         heading.className = "session-phase-heading";
         heading.textContent = ex.phase;
         list.appendChild(heading);
+      }
+      const hasCompleteSuperset = ex.superset && exercises.filter((item) => item.superset === ex.superset).length > 1;
+      if (hasCompleteSuperset && ex.superset !== currentSuperset) {
+        currentSuperset = ex.superset;
+        const heading = document.createElement("li");
+        heading.className = "session-superset-heading";
+        heading.textContent = `SUPERSET ${ex.superset} · ALTERNATE THE NEXT TWO LIFTS`;
+        list.appendChild(heading);
+      } else if (!hasCompleteSuperset) {
+        currentSuperset = null;
       }
       const li = document.createElement("li");
       li.className = "session-ex-editable";
@@ -4395,8 +4429,16 @@ okra`;
       update.textContent = "";
     }
 
-    list.innerHTML = exercises
-      .map((exercise) => `<li><span>${escapeHtml(exercise.name)}</span><strong>${escapeHtml(exercise.detail)}</strong></li>`)
+    list.innerHTML = groupExercisesForDisplay(exercises)
+      .map((group) => {
+        const label = group.items.length > 1
+          ? `<li class="rec-superset-label">SUPERSET ${escapeHtml(group.superset || "")} · PUSH / PULL</li>`
+          : "";
+        const rows = group.items
+          .map((exercise) => `<li><span>${escapeHtml(exercise.name)}</span><strong>${escapeHtml(exercise.detail)}</strong></li>`)
+          .join("");
+        return label + rows;
+      })
       .join("");
   }
 
