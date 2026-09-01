@@ -237,6 +237,7 @@
       focusAreas: Array.isArray(stored.focusAreas) ? stored.focusAreas : [],
       excludedExercises: Array.isArray(stored.excludedExercises) ? stored.excludedExercises : [],
       lastGreetingTopic: stored.lastGreetingTopic ?? null,
+      lastGreetingText: stored.lastGreetingText ?? null,
     };
   }
 
@@ -2090,6 +2091,56 @@
     recommendationRequestId++;
     renderChatThread();
     setChatBusy(false);
+    upgradeCoachOpening(user);
+  }
+
+  let chatOpeningRequestId = 0;
+
+  // The local greeting above matches against a fixed ~9-keyword topic list
+  // and otherwise just quotes the last note back with the same trailing
+  // question every time — it renders instantly (and works offline), but it
+  // isn't actually intelligent. This swaps it for one the AI wrote after
+  // reading the real recent notes, once it lands.
+  async function upgradeCoachOpening(user) {
+    if (!AI_ENDPOINT) return;
+    const requestId = ++chatOpeningRequestId;
+    try {
+      const persona = getPersonaProfile(user);
+      const recentNotes = getPastNotes(user, 5).map((n) => ({ date: n.date, text: n.text }));
+      const res = await fetch(AI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "opening",
+          persona: {
+            name: persona.name,
+            goal: persona.goal,
+            heightIn: persona.heightIn,
+            weightLb: persona.weightLb,
+            focusAreas: persona.focusAreas,
+          },
+          recentNotes,
+          lastGreeting: persona.lastGreetingText,
+        }),
+        signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (typeof data.greeting !== "string" || !data.greeting.trim()) return;
+      // A newer reset (switched users, or came back to check-in again)
+      // already superseded this request — drop it.
+      if (requestId !== chatOpeningRequestId) return;
+      const greeting = data.greeting.trim();
+      // Patch just the opening slot rather than replacing the whole thread,
+      // in case the athlete already started typing while this was in flight.
+      if (chatMessages[0]?.role === "coach") {
+        chatMessages[0] = { role: "coach", text: greeting };
+        renderChatThread();
+      }
+      saveProfile(user, { ...getPersonaProfile(user), lastGreetingText: greeting });
+    } catch {
+      // offline or timed out — the local greeting already rendered, that's fine
+    }
   }
 
   function renderChatThread() {

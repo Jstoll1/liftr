@@ -48,6 +48,9 @@ export default {
     if (body?.mode === "chat") {
       return handleChat(body, env, corsHeaders);
     }
+    if (body?.mode === "opening") {
+      return handleOpening(body, env, corsHeaders);
+    }
 
     const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory } = body || {};
     const valid =
@@ -530,6 +533,99 @@ async function handleChat(body, env, corsHeaders) {
     }, 200, corsHeaders);
   } catch (err) {
     console.error("Worker error (chat)", err?.stack || String(err));
+    return json({ error: "Worker error" }, 500, corsHeaders);
+  }
+}
+
+// Writes the coach's very first message when the check-in chat opens. The
+// local fallback (a fixed ~9-keyword topic matcher in app.js) only catches
+// a handful of subjects and otherwise always quotes the last note back
+// verbatim with the same trailing question — this is what makes the coach
+// actually read recent notes and write something specific and different
+// each time, instead of a template.
+async function handleOpening(body, env, corsHeaders) {
+  const { persona, recentNotes, lastGreeting } = body || {};
+  const valid = persona?.name && persona?.goal && Array.isArray(recentNotes);
+  if (!valid) {
+    console.error("Malformed opening request", JSON.stringify(body));
+    return json({ error: "Malformed opening request" }, 400, corsHeaders);
+  }
+
+  const schema = {
+    type: "object",
+    properties: {
+      greeting: {
+        type: "string",
+        description: "The coach's opening message for today's check-in — 1 to 2 sentences, warm and specific, ending in an inviting question.",
+      },
+    },
+    required: ["greeting"],
+    additionalProperties: false,
+  };
+
+  const profileBits = [
+    persona.heightIn ? `${Math.floor(persona.heightIn / 12)}'${persona.heightIn % 12}" tall` : null,
+    persona.weightLb ? `${persona.weightLb} lb bodyweight` : null,
+    Array.isArray(persona.focusAreas) && persona.focusAreas.length ? `focused on: ${persona.focusAreas.join(", ")}` : null,
+  ].filter(Boolean);
+
+  const systemPrompt = [
+    "You write the very first message an athlete sees when they open their",
+    "fitness coaching app for today's check-in.",
+    `The athlete is ${persona.name}, whose goal is: ${persona.goal}.`,
+    profileBits.length ? `Also known about them: ${profileBits.join("; ")}.` : "",
+    recentNotes.length > 0
+      ? `Their recent notes to the coach, oldest first: ${JSON.stringify(recentNotes)}.`
+      : "They have no recent notes on file — this may be a new or returning athlete.",
+    "Write ONE short, warm, specific opening message (1-2 sentences) ending in",
+    "an inviting question about today. If a recent note mentions something",
+    "concrete — an injury, a sport, an emotion, equipment, a goal change — pick",
+    "the single most relevant one and reference it naturally and specifically,",
+    "in your own words. Do not use a fixed template like 'Last time you",
+    "mentioned X, how is that going' — vary the phrasing and angle every time,",
+    "the way a real coach who remembers you would actually talk.",
+    lastGreeting ? `You opened with this exact message last time — do not repeat it or its structure: "${lastGreeting}".` : "",
+    "If there is nothing specific to reference, ask a natural, brief question",
+    "about how they're feeling today given their goal — still not a rigid template.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  try {
+    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: env.OPENAI_MODEL || "gpt-4o-mini",
+        messages: [{ role: "system", content: systemPrompt }],
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "coach_opening", schema, strict: true },
+        },
+        temperature: 0.9,
+      }),
+    });
+
+    if (!aiRes.ok) {
+      console.error("OpenAI error (opening)", aiRes.status, await aiRes.text());
+      return json({ error: "Upstream AI error" }, 502, corsHeaders);
+    }
+
+    const aiData = await aiRes.json();
+    const content = aiData.choices?.[0]?.message?.content;
+    const parsed = JSON.parse(content);
+
+    if (typeof parsed.greeting !== "string" || !parsed.greeting.trim()) {
+      console.error("Empty opening", JSON.stringify(parsed));
+      return json({ error: "Empty opening" }, 502, corsHeaders);
+    }
+
+    return json({ greeting: parsed.greeting.trim() }, 200, corsHeaders);
+  } catch (err) {
+    console.error("Worker error (opening)", err?.stack || String(err));
     return json({ error: "Worker error" }, 500, corsHeaders);
   }
 }
