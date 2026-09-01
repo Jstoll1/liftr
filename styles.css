@@ -359,11 +359,14 @@ button,
 }
 
 @keyframes powerChord {
-  0%, 100% { transform: scale(1); text-shadow: 0 0 10px currentColor, 0 0 22px currentColor; }
-  10% { transform: scale(1.12); text-shadow: 0 0 22px currentColor, 0 0 50px currentColor; }
-  20% { transform: scale(0.98); text-shadow: 0 0 8px currentColor, 0 0 16px currentColor; }
-  32% { transform: scale(1.08); text-shadow: 0 0 20px currentColor, 0 0 46px currentColor; }
-  45% { transform: scale(1); text-shadow: 0 0 10px currentColor, 0 0 22px currentColor; }
+  /* Kept well short of the earlier peak (was 0 0 50px) — on a blocky pixel
+     font like Press Start 2P, that much blur dissolved the name into an
+     unreadable glowing smear instead of a glow. */
+  0%, 100% { transform: scale(1); text-shadow: 0 0 8px currentColor, 0 0 14px currentColor; }
+  10% { transform: scale(1.06); text-shadow: 0 0 12px currentColor, 0 0 22px currentColor; }
+  20% { transform: scale(0.99); text-shadow: 0 0 6px currentColor, 0 0 12px currentColor; }
+  32% { transform: scale(1.04); text-shadow: 0 0 11px currentColor, 0 0 20px currentColor; }
+  45% { transform: scale(1); text-shadow: 0 0 8px currentColor, 0 0 14px currentColor; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -721,6 +724,36 @@ button,
   flex-wrap: wrap;
   gap: 8px;
 }
+
+.excluded-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.excluded-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, #ff4d4d 14%, var(--bg-elevated));
+  border: 1px solid color-mix(in srgb, #ff4d4d 45%, transparent);
+  border-radius: 999px;
+  padding: 6px 8px 6px 12px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.excluded-chip-remove {
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.excluded-chip-remove:hover { color: #ff4d4d; }
 
 /* ---------- MODAL (cheer, etc.) ---------- */
 

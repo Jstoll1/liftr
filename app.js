@@ -83,7 +83,7 @@
     const latest = [...all[user]].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
     if (latest && latest.date === date) {
       const persona = getPersonaProfile(user);
-      saveProfile(user, { goal: persona.goal, heightIn: persona.heightIn, weightLb: weight, focusAreas: persona.focusAreas });
+      saveProfile(user, { ...persona, weightLb: weight });
     } else {
       pushToCloud(user);
     }
@@ -235,7 +235,24 @@
       heightIn: stored.heightIn ?? null,
       weightLb: stored.weightLb ?? null,
       focusAreas: Array.isArray(stored.focusAreas) ? stored.focusAreas : [],
+      excludedExercises: Array.isArray(stored.excludedExercises) ? stored.excludedExercises : [],
+      lastGreetingTopic: stored.lastGreetingTopic ?? null,
     };
+  }
+
+  // Permanently bans an exercise from ever being auto-suggested again (by
+  // the AI or the local fallback) — not just for today's session. Reversible
+  // from Settings. Kept on the profile so it syncs and backs up with
+  // everything else.
+  function excludeExercise(user, exerciseName) {
+    const persona = getPersonaProfile(user);
+    if (persona.excludedExercises.includes(exerciseName)) return;
+    saveProfile(user, { ...persona, excludedExercises: [...persona.excludedExercises, exerciseName] });
+  }
+
+  function includeExercise(user, exerciseName) {
+    const persona = getPersonaProfile(user);
+    saveProfile(user, { ...persona, excludedExercises: persona.excludedExercises.filter((n) => n !== exerciseName) });
   }
 
   function otherUser(user) {
@@ -488,7 +505,7 @@
   }
 
   const ENERGY_LABEL = { low: "Low Energy", medium: "Medium Energy", high: "High Energy" };
-  const TIME_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 5 };
+  const TIME_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 6 };
 
   // ---------- storage helpers ----------
 
@@ -627,12 +644,42 @@
 
   // ---------- workout plan builder ----------
 
+  function normalizeExerciseText(str) {
+    return String(str || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Every exercise name this persona could ever be offered — base lists,
+  // finishers, and partner bonuses across every split. Used to match free
+  // chat text (stated weights, exclusions) against a known, closed set of
+  // names rather than guessing.
+  function getAllExerciseNames(user) {
+    const names = new Set();
+    Object.values(SPLIT_LIBRARY).forEach((split) => split.exercises[user]?.forEach((ex) => names.add(ex.name)));
+    Object.values(FINISHERS).forEach((entry) => entry[user] && names.add(entry[user].name));
+    Object.values(PARTNER_EXTRAS).forEach((entry) => entry[user] && names.add(entry[user].name));
+    return Array.from(names);
+  }
+
+  // The base list for a split with anything the athlete has permanently
+  // excluded already filtered out — the single choke point every planner
+  // (AI candidates and the local fallback alike) reads through, so an
+  // excluded exercise can never come back as a suggestion.
+  function getAvailableExercises(user, splitKey) {
+    const excluded = new Set(getPersonaProfile(user).excludedExercises);
+    return SPLIT_LIBRARY[splitKey].exercises[user].filter((ex) => !excluded.has(ex.name));
+  }
+
   // Turns a base exercise list into today's actual plan based on the
   // amount of time available, energy level, and whether a partner is along.
   function buildWorkoutPlan(user, splitKey, { minutes, energy, partner }) {
-    const base = SPLIT_LIBRARY[splitKey].exercises[user];
+    const base = getAvailableExercises(user, splitKey);
     let count = Math.min(TIME_TO_COUNT[minutes] ?? base.length, base.length);
     if (energy === "low") count = Math.max(2, count - 1);
+    if (energy === "high") count = Math.min(base.length, count + 1);
 
     let list = base.slice(0, count);
 
@@ -647,18 +694,103 @@
     return list;
   }
 
+  // Body-part/focus keywords, each anchored to a nearby intent verb so
+  // "focus on my back" counts but "my lower back hurts" doesn't get
+  // misread as a training focus instead of a pain flag.
+  const FOCUS_INTENT = /\b(focus(?:ing)? on|emphasi[sz]e|work(?:ing)? on|target(?:ing)?|hit|prioriti[sz]e|more|extra)\b/;
+  const FOCUS_KEYWORDS = {
+    quads: /\b(quad|quads|quadriceps)\b/,
+    glutes: /\b(glute|glutes|booty)\b/,
+    hamstrings: /\b(hamstring|hamstrings|posterior chain)\b/,
+    chest: /\b(chest|pecs?)\b/,
+    back: /\b(back|lats?)\b/,
+  };
+  // Which exercise traits (from getExerciseTraits) satisfy each focus —
+  // this is what lets focus-reordering work on every split instead of a
+  // hardcoded exercise list per muscle group.
+  const FOCUS_TRAITS = {
+    quads: ["quads"],
+    glutes: ["glutes"],
+    hamstrings: ["hamstrings"],
+    chest: ["horizontalPush"],
+    back: ["horizontalPull", "verticalPull"],
+  };
+
+  // Matches free text like "225 on bench" or "start me at 185 for squat"
+  // against this persona's known exercise names by word overlap, so a
+  // stated weight actually seeds that exercise today instead of the app
+  // falling back to stale history or a generic AI guess.
+  function detectWeightOverrides(text, user) {
+    const overrides = [];
+    const names = getAllExerciseNames(user);
+    const pattern = /(\d{2,4})\s*(?:lb|lbs|pounds?)?\s*(?:on|for|with)\s+(?:the\s+)?([a-z][a-z\s-]{2,40})/gi;
+    let match;
+    while ((match = pattern.exec(text))) {
+      const weight = Number(match[1]);
+      if (!Number.isFinite(weight) || weight <= 0) continue;
+      const phraseWords = new Set(normalizeExerciseText(match[2]).split(" ").filter((w) => w.length > 2));
+      if (phraseWords.size === 0) continue;
+      let best = null;
+      names.forEach((name) => {
+        const nameWords = normalizeExerciseText(name.replace(/^finisher:\s*/i, "")).split(" ").filter((w) => w.length > 2);
+        const overlap = nameWords.filter((w) => phraseWords.has(w)).length;
+        if (overlap > 0 && (!best || overlap > best.overlap)) best = { name, overlap };
+      });
+      if (best) overrides.push({ exercise: best.name, weight });
+    }
+    return overrides;
+  }
+
+  // Qualitative ("go lighter today") rather than a specific number — applies
+  // as a relative adjustment to whatever the weight cascade would otherwise
+  // pick, for every weighted exercise today, not just one named lift.
+  function detectWeightDirection(text) {
+    const value = String(text || "").toLowerCase();
+    if (/\b(lighter|light today|go easy|easier|ease up|back off|less weight|reduce the weight|deload)\b/.test(value)) return "lighter";
+    if (/\b(heavier|heavy today|push harder|more weight|increase the weight|max out|go big)\b/.test(value)) return "heavier";
+    return null;
+  }
+
+  const EXCLUSION_INTENT = /\b(no|never|avoid|hate|can't|cannot|don't|do not|won't|stop|skip|remove|exclude|drop|without|take out)\b/;
+
+  // Matches a specific named exercise against negative-intent language
+  // ("no weighted pullups", "never squats") — comparison is on normalized
+  // text (punctuation/case/hyphens stripped from both sides) so phrasing
+  // like a missing hyphen doesn't cause a miss. Checked clause-by-clause
+  // (split on sentence punctuation) rather than across the whole message,
+  // so "no wait, let's do 225 on bench" doesn't misfire — the "no" and
+  // "bench" never share a clause. Anything matched gets permanently
+  // excluded, not just filtered for today — see excludeExercise.
+  function detectExclusionRequests(text, user) {
+    const names = getAllExerciseNames(user);
+    const matches = new Set();
+    String(text || "")
+      .split(/[.!?;,]+/)
+      .forEach((clause) => {
+        if (!EXCLUSION_INTENT.test(clause.toLowerCase())) return;
+        const norm = normalizeExerciseText(clause);
+        names.forEach((name) => {
+          const normName = normalizeExerciseText(name.replace(/^finisher:\s*/i, ""));
+          if (normName && norm.includes(normName)) matches.add(name);
+        });
+      });
+    return Array.from(matches);
+  }
+
   // Interprets common focus requests locally so the recommendation reacts
   // immediately even when the coach service is offline or still responding.
   function getCoachFocus(text) {
     const value = String(text || "").toLowerCase();
-    if (/\b(quad|quads|quadriceps|front of (my )?legs?)\b/.test(value)) return "quads";
-    if (/\b(glute|glutes|booty)\b/.test(value)) return "glutes";
-    if (/\b(hamstring|hamstrings|posterior chain)\b/.test(value)) return "hamstrings";
+    if (!FOCUS_INTENT.test(value)) return null;
+    for (const [focus, pattern] of Object.entries(FOCUS_KEYWORDS)) {
+      if (pattern.test(value)) return focus;
+    }
     return null;
   }
 
   function inferSplitFromChat(text) {
     const value = String(text || "").toLowerCase();
+    if (getCoachFocus(value) === "chest") return "chest-back";
     if (getCoachFocus(value) || /\b(leg|legs|lower body|squat|deadlift|lunge)\b/.test(value)) return "legs";
     if (/\b(chest|back|upper body|push|pull)\b/.test(value)) return "chest-back";
     if (/\b(cardio|run|running|conditioning|endurance)\b/.test(value)) return "cardio";
@@ -667,34 +799,33 @@
   }
 
   // Keeps a requested muscle group visible in the actual draft rather than
-  // only mentioning it in chat. Requested moves are drawn from the approved
-  // exercise library, then the rest of the plan remains intact.
+  // only mentioning it in chat. Works for any split by ranking the real
+  // candidate pool on trait overlap with the requested focus, instead of a
+  // fixed exercise list per muscle group.
   function applyCoachFocus(user, splitKey, exercises, note) {
     const focus = getCoachFocus(note);
     const pool = buildCandidatePool(user, splitKey);
     let result = exercises;
 
-    if (splitKey === "legs" && focus) {
-      const priorities = {
-        quads: ["Leg Press", "Goblet Squat", "Step-Ups", "Walking Lunges", "Bodyweight Lunge", "Barbell Back Squat"],
-        glutes: ["Glute Bridge", "Goblet Squat", "Step-Ups", "Romanian Deadlift", "Walking Lunges"],
-        hamstrings: ["Romanian Deadlift", "Glute Bridge", "Walking Lunges", "Bodyweight Lunge"],
-      }[focus];
-      const byName = new Map(pool.map((exercise) => [exercise.name, exercise]));
-      const requested = priorities.map((name) => byName.get(name)).filter(Boolean);
-      const combined = [...requested, ...exercises];
-      const unique = combined.filter((exercise, index, all) => all.findIndex((item) => item.name === exercise.name) === index);
-      result = unique.slice(0, Math.max(exercises.length, Math.min(4, requested.length)));
+    const traits = focus ? FOCUS_TRAITS[focus] : null;
+    if (traits) {
+      const requested = pool.filter((exercise) => {
+        const exerciseTraits = getExerciseTraits(exercise);
+        return traits.some((trait) => exerciseTraits.has(trait));
+      });
+      if (requested.length > 0) {
+        const combined = [...requested, ...exercises];
+        const unique = combined.filter((exercise, index, all) => all.findIndex((item) => item.name === exercise.name) === index);
+        result = unique.slice(0, Math.max(exercises.length, Math.min(4, requested.length)));
+      }
     }
 
-    // Common removal requests also work without the network. Match an
-    // explicit action directly against an approved exercise name.
+    // Naming a specific exercise to skip is handled once, centrally, in
+    // sendChatMessage (detectExclusionRequests bans it durably via
+    // excludeExercise) — buildCandidatePool already keeps it out of `pool`
+    // above, so it can't come back in `result` either. Only the general
+    // "trim the volume" request needs handling here.
     const request = String(note || "").toLowerCase();
-    pool.forEach((exercise) => {
-      const escapedName = exercise.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const removal = new RegExp(`\\b(?:remove|skip|avoid|without|drop|take out|do not want|don't want|no)\\s+(?:the\\s+)?${escapedName}\\b`, "i");
-      if (removal.test(request)) result = result.filter((item) => item.name !== exercise.name);
-    });
     if (/\b(fewer exercises|shorter workout|remove one exercise)\b/i.test(request) && result.length > 2) {
       result = result.slice(0, -1);
     }
@@ -716,11 +847,12 @@
   // the base list plus the finisher/partner bonus moves, all up for grabs
   // based on today's actual context instead of always-on rules.
   function buildCandidatePool(user, splitKey) {
-    const pool = [...SPLIT_LIBRARY[splitKey].exercises[user]];
+    const excluded = new Set(getPersonaProfile(user).excludedExercises);
+    const pool = getAvailableExercises(user, splitKey);
     const finisher = FINISHERS[splitKey]?.[user];
     const partnerExtra = PARTNER_EXTRAS[splitKey]?.[user];
-    if (finisher) pool.push(finisher);
-    if (partnerExtra) pool.push(partnerExtra);
+    if (finisher && !excluded.has(finisher.name)) pool.push(finisher);
+    if (partnerExtra && !excluded.has(partnerExtra.name)) pool.push(partnerExtra);
     return pool;
   }
 
@@ -793,7 +925,7 @@
   // ---------- state ----------
 
   let currentUser = null;
-  let checkInState = { minutes: 30, energy: "medium", partner: false, note: "" };
+  let checkInState = { minutes: 30, energy: "medium", partner: false, note: "", weightOverrides: {}, weightDirection: null };
   let chatMessages = []; // [{ role: "coach" | "user", text }] for the check-in chat
   let chatBusy = false;
   // Split key the coach picked up on from the conversation (e.g. "let's do
@@ -1163,8 +1295,20 @@
     return targeted.length > 0 && targeted.every((set) => Number(set.actual) >= Number(set.target));
   }
 
-  function getWeightRecommendation(user, ex, aiWeight) {
+  function computeBaseWeightRecommendation(user, ex, aiWeight) {
     if (!usesWeight(ex)) return null;
+
+    // What the athlete just told the coach beats everything else, including
+    // logged history — it's fresh, explicit, and about today specifically.
+    const stated = checkInState.weightOverrides?.[ex.name];
+    if (Number.isFinite(stated) && stated > 0) {
+      return {
+        weight: roundTrainingWeight(stated),
+        source: "stated",
+        explanation: `You told your coach to start at ${stated} lb today.`,
+      };
+    }
+
     const exactHistory = getLoggedExercisePerformances(user, ex.name);
     if (exactHistory.length > 0) {
       const latest = exactHistory[exactHistory.length - 1];
@@ -1221,6 +1365,29 @@
       };
     }
     return null;
+  }
+
+  // A qualitative "let's go lighter/heavier today" (checkInState.weightDirection)
+  // adjusts whatever the cascade above landed on — every weighted exercise,
+  // not just one named lift. Skipped when the athlete stated an exact
+  // number for THIS exercise ("stated") — that's already a deliberate,
+  // specific override and shouldn't be second-guessed by a general mood.
+  function getWeightRecommendation(user, ex, aiWeight) {
+    const base = computeBaseWeightRecommendation(user, ex, aiWeight);
+    if (!base || base.source === "stated") return base;
+
+    const direction = checkInState.weightDirection;
+    if (!direction) return base;
+
+    const factor = direction === "lighter" ? 0.85 : 1.1;
+    const adjusted = roundTrainingWeight(base.weight * factor);
+    if (adjusted === base.weight) return base;
+
+    return {
+      weight: adjusted,
+      source: base.source,
+      explanation: `${base.explanation} You said you're going ${direction} today, so the coach adjusted from ${base.weight} lb to ${adjusted} lb.`,
+    };
   }
 
   function buildInitialLogs(user, exercises, suggestedWeights) {
@@ -1820,7 +1987,7 @@
 
   function renderCheckIn(user) {
     placeTerminalPanel("checkin");
-    checkInState = { minutes: 30, energy: "medium", partner: false, note: "" };
+    checkInState = { minutes: 30, energy: "medium", partner: false, note: "", weightOverrides: {}, weightDirection: null };
     document.getElementById("checkin-name").textContent = getPersonaProfile(user).name;
     document.getElementById("hub-cheer-btn").title = `Cheer ${getPersonaProfile(otherUser(user)).name}`;
     renderRecapCard(user);
@@ -1891,11 +2058,20 @@
       .filter((topic) => topic.matches > 0)
       .sort((a, b) => b.matches - a.matches || b.latestIndex - a.latestIndex);
 
-    if (ranked.length > 0) {
-      const topic = ranked[0];
+    // Never ask about the exact same topic two check-ins in a row. Without
+    // this, answering "how's your knee?" logs a note that still says
+    // "knee" — which keeps that topic winning the ranking above forever,
+    // so it ends up asking the same question every single login.
+    const persona = getPersonaProfile(user);
+    const repeat = persona.lastGreetingTopic;
+    const topic = ranked.find((t) => t.key !== repeat) || null;
+
+    if (topic) {
+      saveProfile(user, { ...persona, lastGreetingTopic: topic.key });
       return `${topic.emoji} ${topic.question}`;
     }
 
+    saveProfile(user, { ...persona, lastGreetingTopic: null });
     const raw = recentNotes[recentNotes.length - 1].text;
     const clean = raw.replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "").replace(/\s+/g, " ").trim().slice(0, 100);
     return clean
@@ -1921,7 +2097,17 @@
     el.innerHTML = chatMessages
       .map((m) => `<div class="chat-bubble chat-${m.role}">${escapeHtml(m.text)}</div>`)
       .join("");
-    el.scrollTop = el.scrollHeight;
+    // Wait a frame so layout has settled before measuring — otherwise
+    // scrollHeight can be read before the new bubble's height is final.
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+      // The thread's own scroll isn't enough if the panel itself is off
+      // the bottom of the page (e.g. after a chip pick or a tall reply
+      // pushed the input row out of the viewport) — bring the input into
+      // view too so the latest exchange is always visible without a
+      // manual page scroll.
+      document.getElementById("chat-input")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
   }
 
   function setChatBusy(busy) {
@@ -2024,10 +2210,38 @@
     const localSuggestedSplit = inferSplitFromChat(text);
     const localFocus = getCoachFocus(text);
     if (localSuggestedSplit) chatSuggestedSplit = localSuggestedSplit;
-    if (localFocus === "quads") {
-      reply = "I’ll shift this toward your quads with leg press, squats, and step-ups. Any knee issues I should account for? If that looks good, open the workout below to review it.";
-    } else if (localFocus) {
-      reply = `I’ll shift today’s leg workout toward your ${localFocus}. Anything sore or any equipment you want me to avoid?`;
+    if (localFocus) {
+      reply = `I’ll shift today’s workout toward your ${localFocus}. Anything sore or any equipment you want me to avoid? Open the workout below to review it.`;
+    }
+
+    // Explicit "225 on bench" style statements seed that exercise's weight
+    // today, ahead of history or any AI guess. Naming a specific exercise
+    // with negative intent ("no weighted pullups") bans it for good, not
+    // just today — see excludeExercise. Both can fire on the same message,
+    // so build the fallback reply from whichever apply instead of one
+    // overwriting the other.
+    const localAcks = [];
+    const weightOverrides = detectWeightOverrides(text, currentUser);
+    if (weightOverrides.length > 0) {
+      weightOverrides.forEach((o) => {
+        checkInState.weightOverrides[o.exercise] = o.weight;
+      });
+      localAcks.push(`starting you at ${weightOverrides.map((o) => `${o.exercise} at ${o.weight} lb`).join(", ")} today`);
+    }
+    const excludedNow = detectExclusionRequests(text, currentUser);
+    if (excludedNow.length > 0) {
+      excludedNow.forEach((name) => excludeExercise(currentUser, name));
+      localAcks.push(`won't suggest ${excludedNow.join(", ")} again — bring it back anytime from Settings`);
+    }
+    // A general "let's go lighter today" (no specific number) adjusts every
+    // weighted exercise's suggested load, not just one named lift.
+    const weightDirection = detectWeightDirection(text);
+    if (weightDirection) {
+      checkInState.weightDirection = weightDirection;
+      localAcks.push(`going ${weightDirection} across the board today`);
+    }
+    if (localAcks.length > 0) {
+      reply = `Got it — ${localAcks.join("; and ")}.`;
     }
 
     if (AI_ENDPOINT) {
@@ -2424,6 +2638,25 @@
       chip.addEventListener("click", () => chip.classList.toggle("selected"));
       focusContainer.appendChild(chip);
     });
+
+    renderExcludedList(user);
+  }
+
+  function renderExcludedList(user) {
+    const container = document.getElementById("settings-excluded");
+    const empty = document.getElementById("settings-excluded-empty");
+    const excluded = getPersonaProfile(user).excludedExercises;
+    container.innerHTML = excluded
+      .map(
+        (name) => `
+      <span class="excluded-chip">
+        ${escapeHtml(name)}
+        <button type="button" class="excluded-chip-remove" data-name="${escapeHtml(name)}" title="Allow again">✕</button>
+      </span>
+    `
+      )
+      .join("");
+    empty.classList.toggle("hidden", excluded.length > 0);
   }
 
   function showSettings(user) {
@@ -2444,8 +2677,18 @@
       const goal = document.getElementById("settings-goal").value.trim() || PERSONAS[currentUser].goal;
       const focusAreas = Array.from(document.querySelectorAll("#settings-focus .chip.selected")).map((c) => c.dataset.value);
 
-      saveProfile(currentUser, { goal, heightIn, weightLb, focusAreas });
+      // Spread the current profile first so any field this form doesn't
+      // edit (excludedExercises, lastGreetingTopic, ...) survives a save
+      // instead of getting silently wiped by a partial object here.
+      saveProfile(currentUser, { ...getPersonaProfile(currentUser), goal, heightIn, weightLb, focusAreas });
       returnToCheckIn(currentUser);
+    });
+
+    document.getElementById("settings-excluded").addEventListener("click", (e) => {
+      const btn = e.target.closest(".excluded-chip-remove");
+      if (!btn) return;
+      includeExercise(currentUser, btn.dataset.name);
+      renderExcludedList(currentUser);
     });
 
     document.getElementById("settings-export").addEventListener("click", exportBackupFile);
