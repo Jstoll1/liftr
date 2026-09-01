@@ -1194,24 +1194,120 @@
     });
   }
 
-  // Swaps one exercise for a different one from the same body part's full
-  // candidate pool (base + finisher + partner move), skipping anything
-  // already in today's workout. Purely local — no AI round trip needed for
-  // "replace flies with something else."
-  function swapExercise(ex) {
+  function getExerciseTraits(exercise) {
+    const text = `${exercise.name} ${exercise.howTo || ""}`.toLowerCase();
+    const traits = new Set();
+    const patterns = {
+      squat: /squat|leg press|wall.?sit/,
+      lunge: /lunge|step.?up|split squat/,
+      hinge: /deadlift|hinge|good morning|glute bridge/,
+      horizontalPush: /bench press|chest press|push.?up|chest pass|cable fly/,
+      verticalPull: /pull.?up|pulldown/,
+      horizontalPull: /row/,
+      core: /plank|dead bug|leg raise|mountain climber/,
+      conditioning: /run|sprint|bike|cycling|rower|rope|sled|stair|burpee/,
+      mobility: /stretch|mobility|flow|rotation|cat.?cow/,
+      quads: /squat|leg press|lunge|step.?up|wall.?sit/,
+      glutes: /glute|bridge|squat|lunge|step.?up|deadlift/,
+      hamstrings: /deadlift|hinge|hamstring|glute bridge/,
+    };
+    Object.entries(patterns).forEach(([trait, pattern]) => {
+      if (pattern.test(text)) traits.add(trait);
+    });
+    return traits;
+  }
+
+  function conflictsWithSwapReason(exercise, reason) {
+    const request = String(reason || "").toLowerCase();
+    const text = `${exercise.name} ${exercise.howTo || ""}`.toLowerCase();
+    if (/\b(no|avoid|without|don't have|do not have)\s+(a\s+)?barbell\b/.test(request) && /barbell/.test(text)) return true;
+    if (/\b(no|avoid|without|don't have|do not have)\s+(a\s+)?dumbbells?\b/.test(request) && /dumbbell/.test(text)) return true;
+    if (/\b(no|avoid|without|don't have|do not have)\s+(a\s+)?(?:machine|cable)\b/.test(request) && /machine|cable|pulldown|leg press/.test(text)) return true;
+    if (/\b(knee|knees)\b/.test(request) && /jump|lunge|step.?up|deep squat/.test(text)) return true;
+    if (/\b(shoulder|shoulders|rotator cuff)\b/.test(request) && /press|push.?up|fly|pull.?up|pulldown/.test(text)) return true;
+    if (/\b(lower back|low back|back pain)\b/.test(request) && /deadlift|bent.?over|hinge/.test(text)) return true;
+    return false;
+  }
+
+  function chooseLocalSwap(ex, options, reason) {
+    const originalTraits = getExerciseTraits(ex);
+    const request = `${checkInState.note || ""} ${reason || ""}`.toLowerCase();
+    const focus = getCoachFocus(request);
+    const ranked = options
+      .map((candidate, index) => {
+        const traits = getExerciseTraits(candidate);
+        let score = 0;
+        originalTraits.forEach((trait) => {
+          if (traits.has(trait)) score += ["quads", "glutes", "hamstrings"].includes(trait) ? 2 : 8;
+        });
+        if (focus && traits.has(focus)) score += 7;
+        if (/\b(bodyweight|no equipment)\b/.test(request) && !/barbell|dumbbell|cable|machine|sled|ball|band/i.test(candidate.name)) score += 9;
+        if (conflictsWithSwapReason(candidate, request)) score -= 100;
+        if (/finisher|partner/i.test(candidate.name) && !/finisher|partner/i.test(ex.name)) score -= 3;
+        return { candidate, score, index };
+      })
+      .sort((a, b) => b.score - a.score || a.index - b.index);
+    return ranked[0]?.candidate || null;
+  }
+
+  async function requestAiSwap(ex, options, reason) {
+    if (!AI_ENDPOINT || options.length === 0) return null;
+    try {
+      const persona = getPersonaProfile(currentUser);
+      const response = await fetch(AI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "swap",
+          persona: { name: persona.name, goal: persona.goal, focusAreas: persona.focusAreas },
+          workout: getSplitMeta(ex.splitKey).name,
+          currentExercise: ex,
+          currentWorkout: activeWorkout.exercises.map((item) => item.name),
+          reason: reason || "Choose the closest useful alternative.",
+          todayNote: checkInState.note || null,
+          candidates: options,
+        }),
+        signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      const exercise = options.find((option) => option.name === data.exercise);
+      if (!exercise) return null;
+      return { exercise, explanation: typeof data.reason === "string" ? data.reason : null, source: "ai" };
+    } catch {
+      return null;
+    }
+  }
+
+  // Chooses a safe, non-duplicate replacement. The AI gets first choice;
+  // the deterministic movement/constraint scorer keeps Swap useful offline.
+  async function swapExercise(ex, reason) {
     if (!activeWorkout) return null;
     const currentNames = new Set(activeWorkout.exercises.map((e) => e.name));
-    const options = buildCandidatePool(currentUser, ex.splitKey).filter((c) => !currentNames.has(c.name));
+    const unused = buildCandidatePool(currentUser, ex.splitKey).filter((c) => !currentNames.has(c.name));
+    const fullReason = `${checkInState.note || ""} ${reason || ""}`;
+    const constraintSafe = unused.filter((candidate) => !conflictsWithSwapReason(candidate, fullReason));
+    const options = constraintSafe.length > 0 ? constraintSafe : unused;
     if (options.length === 0) return null;
 
-    const replacement = { ...options[Math.floor(Math.random() * options.length)], splitKey: ex.splitKey };
+    const aiChoice = await requestAiSwap(ex, options, reason);
+    const localChoice = chooseLocalSwap(ex, options, reason);
+    const chosen = aiChoice?.exercise || localChoice;
+    if (!chosen) return null;
+    const replacement = { ...chosen, splitKey: ex.splitKey, superset: ex.superset || chosen.superset };
     const idx = activeWorkout.exercises.findIndex((e) => e.name === ex.name);
     if (idx === -1) return null;
 
     activeWorkout.exercises[idx] = replacement;
     delete activeWorkout.logs[ex.name];
     activeWorkout.logs[replacement.name] = buildInitialLogs(currentUser, [replacement])[replacement.name];
-    return replacement;
+    const sharedTraits = [...getExerciseTraits(ex)].filter((trait) => getExerciseTraits(replacement).has(trait));
+    const explanation = aiChoice?.explanation || (reason
+      ? `Best available match for “${reason}” while keeping the workout balanced.`
+      : sharedTraits.length > 0
+        ? `Keeps the same ${sharedTraits[0].replace(/([A-Z])/g, " $1").toLowerCase()} training purpose without duplicating another exercise.`
+        : "Best unused option for this workout and your current focus.");
+    return { exercise: replacement, explanation, source: aiChoice?.source || "local" };
   }
 
   // Tap = one step. Press and hold = repeats, accelerating the longer it's
@@ -1330,6 +1426,7 @@
         <input type="text" class="wex-swap-input" placeholder="Want to swap this? e.g. 'replace flies, shoulder is sore'" maxlength="140" />
         <button type="button" class="wex-swap-btn">🔁 Swap</button>
       </div>
+      <p class="wex-swap-status hidden" aria-live="polite"></p>
     `;
     // Real image missing (404) — quietly fall back to the icon tile underneath.
     body.querySelector(".wex-img-large").addEventListener("error", (e) => {
@@ -1393,15 +1490,36 @@
       log.flag = e.target.value;
     });
 
-    body.querySelector(".wex-swap-btn").addEventListener("click", () => {
+    body.querySelector(".wex-swap-btn").addEventListener("click", async () => {
       const swapInput = body.querySelector(".wex-swap-input");
+      const swapButton = body.querySelector(".wex-swap-btn");
+      const swapStatus = body.querySelector(".wex-swap-status");
       const reasonText = swapInput.value.trim();
-      const replaced = swapExercise(ex);
-      if (!replaced) return;
+      swapButton.disabled = true;
+      swapButton.textContent = "Choosing…";
+      swapStatus.textContent = "Coach is comparing movement patterns and your constraints…";
+      swapStatus.classList.remove("hidden");
+      const result = await swapExercise(ex, reasonText);
+      if (!result) {
+        swapButton.disabled = false;
+        swapButton.textContent = "🔁 Swap";
+        swapStatus.textContent = "No unused replacement fits this workout yet. Try editing the workout instead.";
+        return;
+      }
       if (reasonText) {
-        logNote(currentUser, `Swapped ${ex.name} → ${replaced.name} (${reasonText})`);
+        logNote(currentUser, `Swapped ${ex.name} → ${result.exercise.name} (${reasonText})`);
       }
       renderWorkoutExercises();
+      const newCard = Array.from(document.querySelectorAll(".wex-card")).find((item) => item.querySelector(".wex-name")?.textContent === result.exercise.name);
+      if (newCard) {
+        const newStatus = newCard.querySelector(".wex-swap-status");
+        newCard.querySelector(".wex-body")?.classList.remove("hidden");
+        newCard.querySelector(".wex-head")?.classList.add("expanded");
+        if (newStatus) {
+          newStatus.textContent = `Coach swap: ${ex.name} → ${result.exercise.name}. ${result.explanation}`;
+          newStatus.classList.remove("hidden");
+        }
+      }
     });
 
     head.addEventListener("click", () => {

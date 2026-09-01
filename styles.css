@@ -2139,6 +2139,18 @@ button,
   color: var(--accent);
 }
 
+.wex-swap-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.wex-swap-status {
+  margin: 0;
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .workout-footer {
   position: fixed;
   left: 0;
