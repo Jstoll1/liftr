@@ -5128,6 +5128,13 @@ okra`;
       const btn = e.target.closest(".library-item-remove");
       if (!btn) return;
       const library = loadLibrary();
+      const doc = library.docs.find((d) => d.id === btn.dataset.id);
+      // Removing is permanent — the original PDF isn't stored anywhere to
+      // recover it from, only its extracted text, so a stray tap here
+      // (especially now that a second small icon button, rename, sits
+      // right next to this one) shouldn't be able to silently delete an
+      // upload with no way back.
+      if (doc && !window.confirm(`Remove "${doc.title}" from your library? This can't be undone — you'd need to re-upload the PDF.`)) return;
       library.docs = library.docs.filter((d) => d.id !== btn.dataset.id);
       saveLibrary(library);
       renderLibraryList();
