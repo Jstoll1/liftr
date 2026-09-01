@@ -11,6 +11,7 @@ Use one subfolder per workout collection, with versioned exercise filenames. Kee
 - [Shoulders](shoulders/README.md): 8 illustrations.
 - [Arms](arms/README.md): 10 illustrations.
 - [Core and mobility](core/README.md): 6 illustrations replacing workout-card fallbacks.
+- [Complete coverage expansion](coverage/README.md): 64 exercise-specific illustrations covering all remaining app workouts.
 
 App-ready JPEG copies are in the root `images/` folder.
 
