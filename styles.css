@@ -416,6 +416,265 @@ button,
   color: var(--text-dim);
 }
 
+.recap-cheer {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+/* ---------- HOME HUB TILES ---------- */
+
+.hub-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.hub-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 6px;
+  cursor: pointer;
+  color: var(--text);
+  font-family: var(--font-mono);
+  transition: border-color 0.1s ease, transform 0.1s ease;
+}
+
+.hub-tile:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.hub-tile-icon {
+  font-size: 20px;
+}
+
+.hub-tile-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ---------- RETRO TERMINAL CHAT PANEL ---------- */
+
+.terminal-panel {
+  display: flex;
+  flex-direction: column;
+  background: #050208;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 24px -8px var(--accent);
+}
+
+.terminal-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+.terminal-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot-red { background: #ff5f56; }
+.dot-yellow { background: #ffbd2e; }
+.dot-green { background: #27c93f; }
+
+.terminal-titletext {
+  margin-left: 6px;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.terminal-panel .chat-thread {
+  max-height: 220px;
+  padding: 12px;
+}
+
+.terminal-panel .chat-input-row {
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+
+.terminal-prompt {
+  color: var(--accent);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.terminal-input {
+  background: none;
+  border: none;
+  padding: 4px 0;
+}
+
+.terminal-input:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.term-cursor {
+  color: var(--accent);
+  animation: blink 1s step-start infinite;
+  margin-right: 4px;
+  pointer-events: none;
+}
+
+/* ---------- CHECK-IN CHIP ROW (compact) ---------- */
+
+.checkin-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.option-group.compact .option-label {
+  font-size: 11px;
+}
+
+.option-group.compact .chip {
+  padding: 8px 6px;
+  font-size: 11px;
+}
+
+/* ---------- SETTINGS FORM ---------- */
+
+.settings-row {
+  display: flex;
+  gap: 10px;
+}
+
+.settings-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.settings-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.settings-input:focus {
+  outline: none;
+}
+
+.settings-input::-webkit-outer-spin-button,
+.settings-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.settings-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.settings-field-unit {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.focus-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- MODAL (cheer, etc.) ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(5, 0, 12, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: flashIn 0.2s ease both;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-card);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 0 40px -6px var(--accent);
+  animation: rise 0.3s ease both;
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-shadow: 0 0 10px var(--accent);
+}
+
+.modal-subtext {
+  margin: -8px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.cheer-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cheer-presets .chip {
+  flex: 1;
+  min-width: 100px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-actions .primary-btn,
+.modal-actions .ghost-btn {
+  flex: 1;
+}
+
 /* ---------- RECOMMENDED / ALTERNATIVE CARDS ---------- */
 
 .rec-card {

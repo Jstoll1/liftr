@@ -36,7 +36,7 @@ export default {
       return handleChat(body, env, corsHeaders);
     }
 
-    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes } = body || {};
+    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory } = body || {};
     const valid =
       persona?.name &&
       persona?.goal &&
@@ -66,8 +66,25 @@ export default {
           type: "string",
           description: "One upbeat, specific sentence explaining the picks.",
         },
+        suggestedWeights: {
+          type: "array",
+          description:
+            "A starting weight (lbs) for each chosen exercise the athlete has NO logged weight history for, " +
+            "estimated from their known strength on related lifts (similar movement pattern or muscle group) " +
+            "and the note the app is passing along. Skip any exercise already in weightHistory — the app already " +
+            "has real data for those. Leave the array empty if you have no reasonable basis to estimate anything.",
+          items: {
+            type: "object",
+            properties: {
+              exercise: { type: "string", enum: names },
+              weight: { type: "number" },
+            },
+            required: ["exercise", "weight"],
+            additionalProperties: false,
+          },
+        },
       },
-      required: ["chosen", "reason"],
+      required: ["chosen", "reason", "suggestedWeights"],
       additionalProperties: false,
     };
 
@@ -85,17 +102,27 @@ export default {
       "acknowledge it by name in your reason — e.g. suggest easing back toward a",
       "prior weight after a struggle, or acknowledge hitting a new threshold.",
       "Keep the reason to one specific, motivating sentence — no generic filler.",
+      "weightHistory lists real weights the athlete has actually logged on other",
+      "exercises. For any CHOSEN exercise missing from weightHistory, estimate a",
+      "conservative, sensible starting weight in suggestedWeights by reasoning",
+      "from related lifts (e.g. someone who deadlifts 225 lbs probably starts",
+      "Romanian Deadlift lighter, around 60-70% of that). Never guess for an",
+      "exercise you have no reasonable basis for — omit it instead.",
     ].join(" ");
 
     const userPrompt = JSON.stringify({
       athlete: persona.name,
       goal: persona.goal,
+      heightInches: persona.heightIn || null,
+      bodyweightLb: persona.weightLb || null,
+      focusAreas: Array.isArray(persona.focusAreas) ? persona.focusAreas : [],
       workoutType: split.name,
       minutesAvailable: minutes,
       energyLevel: energy,
       hasPartner: Boolean(partner),
       todayNote: todayNote || null,
       recentFeedback: Array.isArray(pastNotes) ? pastNotes : [],
+      weightHistory: Array.isArray(weightHistory) ? weightHistory : [],
       candidateExercises: candidates,
     });
 
@@ -139,7 +166,14 @@ export default {
         return json({ error: "Empty plan" }, 502, corsHeaders);
       }
 
-      return json({ exercises, reason: parsed.reason || "" }, 200, corsHeaders);
+      // Only keep suggestions for exercises actually in today's plan, with a
+      // real numeric weight — never trust the model's numbers blindly.
+      const chosenNames = new Set(exercises.map((e) => e.name));
+      const suggestedWeights = (parsed.suggestedWeights || [])
+        .filter((s) => chosenNames.has(s?.exercise) && Number.isFinite(s?.weight) && s.weight >= 0)
+        .map((s) => ({ exercise: s.exercise, weight: s.weight }));
+
+      return json({ exercises, reason: parsed.reason || "", suggestedWeights }, 200, corsHeaders);
     } catch (err) {
       console.error("Worker error (plan)", err?.stack || String(err));
       return json({ error: "Worker error" }, 500, corsHeaders);
@@ -187,10 +221,17 @@ async function handleChat(body, env, corsHeaders) {
     additionalProperties: false,
   };
 
+  const profileBits = [
+    persona.heightIn ? `${Math.floor(persona.heightIn / 12)}'${persona.heightIn % 12}" tall` : null,
+    persona.weightLb ? `${persona.weightLb} lb bodyweight` : null,
+    Array.isArray(persona.focusAreas) && persona.focusAreas.length ? `focused on: ${persona.focusAreas.join(", ")}` : null,
+  ].filter(Boolean);
+
   const systemPrompt = [
     "You are a friendly, knowledgeable strength coach texting with an athlete",
     "before their workout, as part of a fitness app's check-in screen.",
     `The athlete is ${persona.name}, whose goal is: ${persona.goal}.`,
+    profileBits.length ? `Also known about them: ${profileBits.join("; ")}.` : "",
     "Keep replies SHORT — 1 to 3 sentences, warm and practical, not generic filler.",
     "If they mention pain, an injury, fatigue, equipment limits, or anything else",
     "that should change today's exercise selection, acknowledge it supportively",

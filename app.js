@@ -28,6 +28,77 @@
     },
   };
 
+  const PROFILE_KEY = "liftr_profile_v1";
+
+  function loadAllProfiles() {
+    try {
+      return JSON.parse(localStorage.getItem(PROFILE_KEY)) || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveProfile(user, profile) {
+    const all = loadAllProfiles();
+    all[user] = profile;
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(all));
+  }
+
+  // Merges the athlete's editable settings (goal override, height, weight,
+  // focus areas) over the static base persona — everything the app reads
+  // about a user goes through here, so a settings edit takes effect
+  // everywhere immediately without touching call sites individually.
+  function getPersonaProfile(user) {
+    const base = PERSONAS[user];
+    const stored = loadAllProfiles()[user] || {};
+    return {
+      name: base.name,
+      accent: base.accent,
+      goal: stored.goal?.trim() || base.goal,
+      heightIn: stored.heightIn ?? null,
+      weightLb: stored.weightLb ?? null,
+      focusAreas: Array.isArray(stored.focusAreas) ? stored.focusAreas : [],
+    };
+  }
+
+  function otherUser(user) {
+    return user === "jake" ? "jessica" : "jake";
+  }
+
+  // ---------- cross-user cheers ----------
+  // A tiny "leave them a note" feature — cheers are stored keyed by the
+  // RECEIVING user, shown once on their next check-in recap, then cleared.
+
+  const CHEERS_KEY = "liftr_cheers_v1";
+  const CHEER_PRESETS = ["🔥 Keep it up!", "💪 You've got this!", "👏 Proud of you!", "🙌 Crushing it lately!"];
+
+  function loadAllCheers() {
+    try {
+      return JSON.parse(localStorage.getItem(CHEERS_KEY)) || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function sendCheer(toUser, fromUser, text) {
+    const trimmed = (text || "").trim();
+    if (!trimmed) return;
+    const all = loadAllCheers();
+    if (!all[toUser]) all[toUser] = [];
+    all[toUser].push({ from: fromUser, text: trimmed, date: todayStr() });
+    localStorage.setItem(CHEERS_KEY, JSON.stringify(all));
+  }
+
+  // Pops (reads + clears) any unseen cheers waiting for this user.
+  function takeUnseenCheers(user) {
+    const all = loadAllCheers();
+    const pending = all[user] || [];
+    if (pending.length === 0) return [];
+    all[user] = [];
+    localStorage.setItem(CHEERS_KEY, JSON.stringify(all));
+    return pending;
+  }
+
   const SPLIT_LIBRARY = {
     "chest-back": {
       name: "Chest & Back",
@@ -417,19 +488,26 @@
   async function computePlan(user, splitKey, checkIn) {
     if (AI_ENDPOINT) {
       try {
-        const persona = PERSONAS[user];
+        const persona = getPersonaProfile(user);
         const meta = SPLIT_LIBRARY[splitKey];
         const res = await fetch(AI_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            persona: { name: persona.name, goal: persona.goal },
+            persona: {
+              name: persona.name,
+              goal: persona.goal,
+              heightIn: persona.heightIn,
+              weightLb: persona.weightLb,
+              focusAreas: persona.focusAreas,
+            },
             split: { key: splitKey, name: meta.name, tagline: meta.tagline },
             minutes: checkIn.minutes,
             energy: checkIn.energy,
             partner: Boolean(checkIn.partner),
             todayNote: (checkIn.note || "").trim() || null,
             pastNotes: getPastNotes(user, 5),
+            weightHistory: buildWeightHistory(user),
             candidates: buildCandidatePool(user, splitKey),
           }),
           signal: AbortSignal.timeout(AI_TIMEOUT_MS),
@@ -442,7 +520,19 @@
             data.exercises.length > 0 &&
             data.exercises.every((e) => e && typeof e.name === "string" && typeof e.detail === "string");
           if (validPlan) {
-            return { exercises: data.exercises, reason: typeof data.reason === "string" ? data.reason : null, source: "ai" };
+            const suggestedWeights = new Map(
+              Array.isArray(data.suggestedWeights)
+                ? data.suggestedWeights
+                    .filter((s) => s && typeof s.exercise === "string" && Number.isFinite(s.weight))
+                    .map((s) => [s.exercise, s.weight])
+                : []
+            );
+            return {
+              exercises: data.exercises,
+              reason: typeof data.reason === "string" ? data.reason : null,
+              source: "ai",
+              suggestedWeights,
+            };
           }
         }
       } catch {
@@ -450,7 +540,7 @@
       }
     }
 
-    return { exercises: buildWorkoutPlan(user, splitKey, checkIn), reason: null, source: "local" };
+    return { exercises: buildWorkoutPlan(user, splitKey, checkIn), reason: null, source: "local", suggestedWeights: new Map() };
   }
 
   // ---------- retro guitar riff synth ----------
@@ -573,6 +663,8 @@
     "login-screen",
     "welcome-screen",
     "checkin-screen",
+    "settings-screen",
+    "history-screen",
     "select-screen",
     "custom-screen",
     "session-screen",
@@ -793,7 +885,7 @@
   }
 
   function renderSessionFull(user) {
-    const persona = PERSONAS[user];
+    const persona = getPersonaProfile(user);
     const history = getHistory(user);
     renderGoal(persona);
     renderSessionScreen(user, history);
@@ -833,6 +925,25 @@
     return null;
   }
 
+  // Every exercise this athlete has ever logged a weight for, most recent
+  // value each — sent to the AI so it can estimate a sensible starting
+  // weight for something they've never logged by reasoning from what they
+  // actually lift elsewhere (e.g. deadlift weight informs RDL weight).
+  function buildWeightHistory(user) {
+    const latest = new Map(); // name -> { weight, date }
+    getHistory(user).forEach((entry) => {
+      Object.entries(entry.performance || {}).forEach(([name, perf]) => {
+        const withWeight = [...(perf.sets || [])].reverse().find((s) => s.weight != null);
+        if (!withWeight) return;
+        const existing = latest.get(name);
+        if (!existing || entry.date >= existing.date) {
+          latest.set(name, { weight: withWeight.weight, date: entry.date });
+        }
+      });
+    });
+    return Array.from(latest, ([exercise, v]) => ({ exercise, weight: v.weight }));
+  }
+
   // A rough "does this exercise typically use added weight" heuristic —
   // strength splits and anything explicitly named "Weighted ___" get the
   // weight field; pure cardio/mobility work doesn't.
@@ -840,12 +951,14 @@
     return ex.splitKey === "chest-back" || ex.splitKey === "legs" || /weighted/i.test(ex.name);
   }
 
-  function buildInitialLogs(user, exercises) {
+  function buildInitialLogs(user, exercises, suggestedWeights) {
     const logs = {};
     exercises.forEach((ex) => {
       const setCount = parseSetCount(ex.detail);
       const target = parseTargetReps(ex.detail);
-      const seedWeight = usesWeight(ex) ? getLastWeight(user, ex.name) : null;
+      // Real logged history always wins; an AI cold-start estimate (reasoned
+      // from strength on related lifts) only fills in when we have nothing.
+      const seedWeight = usesWeight(ex) ? getLastWeight(user, ex.name) ?? suggestedWeights?.get(ex.name) ?? null : null;
       logs[ex.name] = {
         // Weight lives per set, not per exercise — sets often ramp
         // (e.g. 135/155/175/185), so each one gets its own adjustable value,
@@ -920,6 +1033,39 @@
     delete activeWorkout.logs[ex.name];
     activeWorkout.logs[replacement.name] = buildInitialLogs(currentUser, [replacement])[replacement.name];
     return replacement;
+  }
+
+  // Tap = one step. Press and hold = repeats, accelerating the longer it's
+  // held — so jumping a weight from 0 to 225 doesn't take forty taps.
+  function attachHoldStepper(btn, onStep) {
+    let timeoutId = null;
+    let active = false;
+
+    const scheduleNext = (delay) => {
+      timeoutId = setTimeout(() => {
+        if (!active) return;
+        onStep();
+        scheduleNext(Math.max(45, delay * 0.72));
+      }, delay);
+    };
+
+    const start = (e) => {
+      e.preventDefault();
+      if (active) return;
+      active = true;
+      onStep();
+      scheduleNext(450);
+    };
+
+    const stop = () => {
+      active = false;
+      clearTimeout(timeoutId);
+    };
+
+    btn.addEventListener("pointerdown", start);
+    btn.addEventListener("pointerup", stop);
+    btn.addEventListener("pointerleave", stop);
+    btn.addEventListener("pointercancel", stop);
   }
 
   function renderExerciseCard(ex) {
@@ -1032,10 +1178,8 @@
           row.classList.add("touched");
         });
         weightStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const dir = Number(btn.dataset.dir);
-            setWeight(Math.max(0, (set.weight ?? 0) + dir * 5));
-          });
+          const dir = Number(btn.dataset.dir);
+          attachHoldStepper(btn, () => setWeight(Math.max(0, (set.weight ?? 0) + dir * 5)));
         });
       }
 
@@ -1043,8 +1187,8 @@
       if (repsStepper) {
         const valueEl = repsStepper.querySelector(".wex-mini-value");
         repsStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const dir = Number(btn.dataset.dir);
+          const dir = Number(btn.dataset.dir);
+          attachHoldStepper(btn, () => {
             set.actual = Math.max(0, (set.actual ?? 0) + dir);
             set.touched = true;
             valueEl.textContent = set.actual;
@@ -1146,7 +1290,7 @@
     activeWorkout = {
       sessionSplitKey,
       exercises,
-      logs: buildInitialLogs(user, exercises),
+      logs: buildInitialLogs(user, exercises, meta.suggestedWeights),
       reason: meta.reason ?? null,
       source: meta.source ?? "local",
     };
@@ -1174,7 +1318,7 @@
       const plan = await computePlan(currentUser, activeWorkout.sessionSplitKey, checkInState);
       const exercises = plan.exercises.map((ex) => ({ ...ex, splitKey: activeWorkout.sessionSplitKey }));
       activeWorkout.exercises = exercises;
-      activeWorkout.logs = buildInitialLogs(currentUser, exercises);
+      activeWorkout.logs = buildInitialLogs(currentUser, exercises, plan.suggestedWeights);
       activeWorkout.reason = plan.reason;
       activeWorkout.source = plan.source;
       renderWorkoutExercises();
@@ -1222,12 +1366,18 @@
   // or a "here's where you left off" summary for returning users — makes it
   // obvious the app is actually tracking them, not just a blank form.
   function renderRecapCard(user) {
-    const persona = PERSONAS[user];
+    const persona = getPersonaProfile(user);
     const history = getHistory(user);
     const el = document.getElementById("recap-card");
 
+    const cheers = takeUnseenCheers(user);
+    const cheerHtml = cheers
+      .map((c) => `<p class="recap-cheer">💌 ${escapeHtml(getPersonaProfile(c.from).name)} says: "${escapeHtml(c.text)}"</p>`)
+      .join("");
+
     if (history.length === 0) {
       el.innerHTML = `
+        ${cheerHtml}
         <span class="recap-eyebrow">🎉 FIRST CHECK-IN</span>
         <p class="recap-line">Welcome to Liftr, ${escapeHtml(persona.name)}! We're excited to have you — let's get your first session logged.</p>
         <p class="recap-mission">🎯 ${escapeHtml(persona.goal)}</p>
@@ -1240,6 +1390,7 @@
     const streak = currentStreak(history);
 
     el.innerHTML = `
+      ${cheerHtml}
       <span class="recap-eyebrow">YOUR PROGRESS</span>
       <p class="recap-line">Last time, ${describeWhen(last.date)} — you crushed <strong>${lastMeta.icon} ${escapeHtml(lastMeta.name)}</strong>.</p>
       <div class="recap-stats">
@@ -1253,7 +1404,8 @@
 
   function renderCheckIn(user) {
     checkInState = { minutes: 30, energy: "medium", partner: false, note: "" };
-    document.getElementById("checkin-name").textContent = PERSONAS[user].name;
+    document.getElementById("checkin-name").textContent = getPersonaProfile(user).name;
+    document.getElementById("hub-cheer-label").textContent = getPersonaProfile(otherUser(user)).name;
     renderRecapCard(user);
     selectChip(document.getElementById("checkin-energy"), checkInState.energy);
     selectChip(document.getElementById("checkin-minutes"), checkInState.minutes);
@@ -1310,7 +1462,7 @@
 
     if (AI_ENDPOINT) {
       try {
-        const persona = PERSONAS[currentUser];
+        const persona = getPersonaProfile(currentUser);
         const res = await fetch(AI_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1368,6 +1520,10 @@
     });
 
     document.getElementById("checkin-switch").addEventListener("click", showLogin);
+
+    document.getElementById("hub-settings-btn").addEventListener("click", () => showSettings(currentUser));
+    document.getElementById("hub-history-btn").addEventListener("click", () => showHistory(currentUser));
+    document.getElementById("hub-cheer-btn").addEventListener("click", () => showCheerModal(currentUser));
   }
 
   // ---------- rendering: select screen ----------
@@ -1482,7 +1638,7 @@
   }
 
   function showWelcome(user) {
-    const persona = PERSONAS[user];
+    const persona = getPersonaProfile(user);
     document.documentElement.style.setProperty("--accent", persona.accent);
     document.getElementById("welcome-name").textContent = persona.name.toUpperCase();
 
@@ -1527,6 +1683,161 @@
     renderCustomScreen(user);
   }
 
+  // Returns to the check-in hub WITHOUT resetting it — used by Settings/
+  // History's back buttons so an in-progress chat or chip picks survive a
+  // trip to a sub-screen. Only the recap card is refreshed (a goal edit or
+  // a cheer may have just landed).
+  function returnToCheckIn(user) {
+    showScreen("checkin-screen");
+    renderRecapCard(user);
+    document.getElementById("hub-cheer-label").textContent = getPersonaProfile(otherUser(user)).name;
+  }
+
+  // ---------- settings screen ----------
+
+  function renderSettings(user) {
+    const persona = getPersonaProfile(user);
+    document.getElementById("settings-name").textContent = persona.name;
+    document.getElementById("settings-goal").value = persona.goal;
+    document.getElementById("settings-height-ft").value = persona.heightIn != null ? Math.floor(persona.heightIn / 12) : "";
+    document.getElementById("settings-height-in").value = persona.heightIn != null ? persona.heightIn % 12 : "";
+    document.getElementById("settings-weight").value = persona.weightLb ?? "";
+
+    const focusContainer = document.getElementById("settings-focus");
+    focusContainer.innerHTML = "";
+    SPLIT_ORDER.forEach((key) => {
+      const meta = SPLIT_LIBRARY[key];
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.dataset.value = key;
+      chip.textContent = `${meta.icon} ${meta.name}`;
+      if (persona.focusAreas.includes(key)) chip.classList.add("selected");
+      chip.addEventListener("click", () => chip.classList.toggle("selected"));
+      focusContainer.appendChild(chip);
+    });
+  }
+
+  function showSettings(user) {
+    currentUser = user;
+    showScreen("settings-screen");
+    renderSettings(user);
+  }
+
+  function initSettings() {
+    document.getElementById("settings-back").addEventListener("click", () => returnToCheckIn(currentUser));
+
+    document.getElementById("settings-save").addEventListener("click", () => {
+      const ft = Number(document.getElementById("settings-height-ft").value) || 0;
+      const inch = Number(document.getElementById("settings-height-in").value) || 0;
+      const heightIn = ft || inch ? ft * 12 + inch : null;
+      const weightVal = document.getElementById("settings-weight").value;
+      const weightLb = weightVal === "" ? null : Number(weightVal);
+      const goal = document.getElementById("settings-goal").value.trim() || PERSONAS[currentUser].goal;
+      const focusAreas = Array.from(document.querySelectorAll("#settings-focus .chip.selected")).map((c) => c.dataset.value);
+
+      saveProfile(currentUser, { goal, heightIn, weightLb, focusAreas });
+      returnToCheckIn(currentUser);
+    });
+  }
+
+  // ---------- history screen ----------
+
+  function renderHistoryFull(user) {
+    document.getElementById("history-name").textContent = getPersonaProfile(user).name;
+    const list = document.getElementById("history-full-list");
+    list.innerHTML = "";
+    const history = getHistory(user);
+
+    if (history.length === 0) {
+      const note = document.createElement("li");
+      note.className = "empty-note";
+      note.textContent = "No sessions logged yet.";
+      list.appendChild(note);
+      return;
+    }
+
+    [...history].reverse().forEach((entry) => {
+      const meta = getSplitMeta(entry.splitKey);
+      const metaLine = entry.minutes
+        ? `${entry.minutes} min · ${ENERGY_LABEL[entry.energy]}${entry.partner ? " · w/ partner" : ""}`
+        : "";
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span class="hist-icon">${meta.icon}</span>
+        <span class="hist-name">${escapeHtml(meta.name)}</span>
+        <span class="hist-date">${formatShortDate(entry.date)}</span>
+        ${metaLine ? `<span class="hist-meta">${escapeHtml(metaLine)}</span>` : ""}
+        ${entry.note ? `<span class="hist-note">📝 “${escapeHtml(entry.note)}”</span>` : ""}
+      `;
+      list.appendChild(li);
+    });
+  }
+
+  function showHistory(user) {
+    currentUser = user;
+    showScreen("history-screen");
+    renderHistoryFull(user);
+  }
+
+  function initHistory() {
+    document.getElementById("history-back").addEventListener("click", () => returnToCheckIn(currentUser));
+  }
+
+  // ---------- cheer modal ----------
+
+  function renderCheerModal(user) {
+    const target = otherUser(user);
+    const targetProfile = getPersonaProfile(target);
+    const streak = currentStreak(getHistory(target));
+
+    document.getElementById("cheer-title").textContent = `👋 Cheer on ${targetProfile.name}`;
+    document.getElementById("cheer-subtext").textContent =
+      streak > 0
+        ? `${targetProfile.name} is on a ${streak}-day streak — send them some love.`
+        : `Let ${targetProfile.name} know you're thinking of them.`;
+
+    const presets = document.getElementById("cheer-presets");
+    presets.innerHTML = "";
+    CHEER_PRESETS.forEach((text) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.textContent = text;
+      chip.addEventListener("click", () => {
+        sendCheer(target, user, text);
+        closeCheerModal();
+      });
+      presets.appendChild(chip);
+    });
+
+    document.getElementById("cheer-custom").value = "";
+  }
+
+  function showCheerModal(user) {
+    renderCheerModal(user);
+    document.getElementById("cheer-modal").classList.remove("hidden");
+  }
+
+  function closeCheerModal() {
+    document.getElementById("cheer-modal").classList.add("hidden");
+  }
+
+  function initCheerModal() {
+    document.getElementById("cheer-cancel").addEventListener("click", closeCheerModal);
+
+    document.getElementById("cheer-send").addEventListener("click", () => {
+      const text = document.getElementById("cheer-custom").value.trim();
+      if (!text) return;
+      sendCheer(otherUser(currentUser), currentUser, text);
+      closeCheerModal();
+    });
+
+    document.getElementById("cheer-modal").addEventListener("click", (e) => {
+      if (e.target.id === "cheer-modal") closeCheerModal();
+    });
+  }
+
   // ---------- init ----------
 
   document.querySelectorAll(".user-card").forEach((card) => {
@@ -1541,6 +1852,9 @@
   setSoundEnabled(soundEnabled);
 
   initCheckIn();
+  initSettings();
+  initHistory();
+  initCheerModal();
   initSelectScreen();
   initCustomScreen();
   initWorkoutScreen();
