@@ -117,7 +117,7 @@ button,
   box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.75);
 }
 
-.sound-toggle {
+.home-button {
   position: fixed;
   top: max(16px, env(safe-area-inset-top));
   right: max(16px, env(safe-area-inset-right));
@@ -132,7 +132,12 @@ button,
   cursor: pointer;
 }
 
-.sound-toggle.muted { opacity: 0.45; }
+.home-button:hover,
+.home-button:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 14px -3px var(--accent);
+}
 
 /* ---------- shared ---------- */
 
@@ -249,6 +254,48 @@ button,
 
 #welcome-screen {
   cursor: pointer;
+  overflow: hidden;
+}
+
+.vega-scurry {
+  --vega-height: clamp(52px, 8vw, 72px);
+  --vega-width: clamp(25px, 3.9vw, 35px);
+  position: absolute;
+  z-index: 2;
+  top: max(10px, env(safe-area-inset-top));
+  left: 0;
+  width: var(--vega-width);
+  height: var(--vega-height);
+  max-width: 35px;
+  max-height: 72px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(calc(0px - var(--vega-width)));
+}
+
+.vega-scurry > img {
+  display: block;
+  width: var(--vega-width) !important;
+  height: var(--vega-height) !important;
+  max-width: 35px !important;
+  max-height: 72px !important;
+  object-fit: contain;
+}
+
+#welcome-screen.vega-active .vega-scurry {
+  animation: vegaScurry 3.8s linear 0.25s both;
+}
+
+@keyframes vegaScurry {
+  0% {
+    opacity: 0;
+    transform: translateX(calc(0px - var(--vega-width)));
+  }
+  3%, 94% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translateX(100vw);
+  }
 }
 
 .welcome-wrap {
@@ -317,6 +364,13 @@ button,
   20% { transform: scale(0.98); text-shadow: 0 0 8px currentColor, 0 0 16px currentColor; }
   32% { transform: scale(1.08); text-shadow: 0 0 20px currentColor, 0 0 46px currentColor; }
   45% { transform: scale(1); text-shadow: 0 0 10px currentColor, 0 0 22px currentColor; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #welcome-screen.vega-active .vega-scurry {
+    display: none;
+    animation: none;
+  }
 }
 
 /* ---------- SHARED PANEL (check-in / select / custom) ---------- */
@@ -797,6 +851,49 @@ button,
   color: var(--text);
 }
 
+.rec-live-update {
+  align-self: flex-start;
+  color: var(--gold);
+  background: rgba(255, 207, 63, 0.1);
+  border: 1px solid rgba(255, 207, 63, 0.35);
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-family: var(--font-display);
+  font-size: 8px;
+  line-height: 1.4;
+  letter-spacing: 0.5px;
+}
+
+.rec-exercises {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rec-exercises li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-top: 7px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.rec-exercises li span {
+  font-weight: 700;
+}
+
+.rec-exercises li strong {
+  flex-shrink: 0;
+  color: var(--gold);
+  font-size: 11px;
+}
+
 .rec-cta {
   font-size: 12px;
   font-weight: 700;
@@ -1060,6 +1157,24 @@ button,
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.preview-coach-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.preview-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 10px;
+}
+
+.preview-actions .primary-btn,
+.preview-actions .ghost-btn {
+  width: 100%;
 }
 
 .section-title {
@@ -1978,6 +2093,67 @@ button,
   border-color: var(--accent);
 }
 
+.wex-weight-rec {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gold) 9%, var(--bg-elevated));
+}
+
+.wex-weight-rec > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+.wex-weight-rec-label {
+  color: var(--gold);
+  font-family: var(--font-display);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.wex-weight-rec strong {
+  color: var(--gold);
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.wex-weight-rec p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.wex-apply-weight {
+  flex-shrink: 0;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: rgba(255, 207, 63, 0.1);
+  color: var(--gold);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 420px) {
+  .wex-weight-rec {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .wex-apply-weight { width: 100%; }
+}
+
 .wex-swap-row {
   display: flex;
   gap: 8px;
@@ -2022,6 +2198,18 @@ button,
 .wex-swap-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.wex-swap-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.wex-swap-status {
+  margin: 0;
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .workout-footer {

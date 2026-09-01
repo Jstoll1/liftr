@@ -42,6 +42,9 @@ export default {
       return json({ error: "Invalid JSON body" }, 400, corsHeaders);
     }
 
+    if (body?.mode === "swap") {
+      return handleSwap(body, env, corsHeaders);
+    }
     if (body?.mode === "chat") {
       return handleChat(body, env, corsHeaders);
     }
@@ -313,6 +316,78 @@ async function handleCheers(request, env, corsHeaders, url) {
   }
 
   return json({ error: "Method not allowed" }, 405, corsHeaders);
+}
+
+// Chooses one replacement from a trusted list. The client removes exercises
+// already in the workout before sending candidates, so the model cannot
+// invent a movement or create a duplicate.
+async function handleSwap(body, env, corsHeaders) {
+  const { persona, workout, currentExercise, currentWorkout, reason, todayNote, candidates } = body || {};
+  const valid =
+    persona?.name &&
+    persona?.goal &&
+    typeof workout === "string" &&
+    typeof currentExercise?.name === "string" &&
+    Array.isArray(currentWorkout) &&
+    Array.isArray(candidates) &&
+    candidates.length > 0 &&
+    candidates.every((candidate) => typeof candidate?.name === "string" && typeof candidate?.detail === "string");
+  if (!valid) return json({ error: "Malformed swap request" }, 400, corsHeaders);
+
+  const names = candidates.map((candidate) => candidate.name);
+  const schema = {
+    type: "object",
+    properties: {
+      exercise: { type: "string", enum: names },
+      reason: { type: "string", description: "One short sentence explaining why this is the best replacement." },
+    },
+    required: ["exercise", "reason"],
+    additionalProperties: false,
+  };
+
+  const systemPrompt = [
+    "You are choosing exactly one intelligent exercise substitution for an in-progress workout.",
+    "Choose only from the candidate list. Never invent an exercise.",
+    "Honor the athlete's stated pain, equipment, fatigue, and movement constraints first.",
+    "Then preserve the original exercise's muscle group and movement purpose when practical.",
+    "Avoid choices that conflict with the athlete's reason even if they are mechanically similar.",
+    "Return one concise explanation that names the practical reason for the choice.",
+  ].join(" ");
+
+  try {
+    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: env.OPENAI_MODEL || "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: JSON.stringify({
+              athlete: persona,
+              workout,
+              replacing: currentExercise,
+              currentWorkout,
+              athleteRequest: reason || null,
+              todayContext: todayNote || null,
+              candidates,
+            }),
+          },
+        ],
+        response_format: { type: "json_schema", json_schema: { name: "exercise_swap", schema, strict: true } },
+        temperature: 0.3,
+      }),
+    });
+    if (!aiRes.ok) return json({ error: "Upstream AI error" }, 502, corsHeaders);
+    const aiData = await aiRes.json();
+    const parsed = JSON.parse(aiData.choices?.[0]?.message?.content || "{}");
+    if (!names.includes(parsed.exercise)) return json({ error: "Invalid swap choice" }, 502, corsHeaders);
+    return json({ exercise: parsed.exercise, reason: parsed.reason }, 200, corsHeaders);
+  } catch (err) {
+    console.error("Worker error (swap)", err?.stack || String(err));
+    return json({ error: "Worker error" }, 500, corsHeaders);
+  }
 }
 
 // Short, conversational check-in chat — the athlete can mention pain,

@@ -24,14 +24,14 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609010220" />
+  <link rel="stylesheet" href="styles.css?v=202609011230" />
 </head>
 <body>
 
   <div class="synth-grid" aria-hidden="true"></div>
   <div class="scanlines" aria-hidden="true"></div>
 
-  <button id="sound-toggle" class="sound-toggle" aria-label="Toggle sound">🔊</button>
+  <button id="home-button" class="home-button hidden" aria-label="Go to home" title="Home">⌂</button>
 
   <!-- LOGIN SCREEN -->
   <main id="login-screen" class="screen">
@@ -55,6 +55,9 @@
 
   <!-- WELCOME / TITLE-CARD SCREEN -->
   <main id="welcome-screen" class="screen hidden">
+    <div id="vega-scurry" class="vega-scurry" aria-hidden="true">
+      <img src="images/characters/vega-scurry.gif" alt="" draggable="false" />
+    </div>
     <div class="welcome-wrap">
       <span class="welcome-eyebrow">POWER UP</span>
       <h1 id="welcome-text" class="welcome-text">
@@ -274,7 +277,9 @@
           </div>
         </div>
         <p id="rec-reason" class="rec-reason"></p>
-        <span class="rec-cta">Select This Workout &rarr;</span>
+        <div id="rec-live-update" class="rec-live-update hidden" aria-live="polite"></div>
+        <ul id="rec-exercises" class="rec-exercises"></ul>
+        <span class="rec-cta">View Workout Breakdown &rarr;</span>
       </button>
 
       <span class="section-title">Or Choose Another</span>
@@ -325,6 +330,12 @@
     <section id="session-section" class="session-section">
       <span class="section-title">Today's Session</span>
 
+      <div id="preview-coach-section" class="preview-coach-section hidden">
+        <span class="section-title">Adjust With Your Coach</span>
+        <p class="panel-subtext">Ask for substitutions, a different focus, fewer exercises, or equipment changes.</p>
+        <div id="preview-chat-slot"></div>
+      </div>
+
       <article id="session-card" class="session-card">
         <div class="session-card-head">
           <span id="session-icon" class="session-icon"></span>
@@ -343,7 +354,10 @@
 
         <p id="session-done-note" class="session-done-note hidden"></p>
 
-        <button id="log-session-btn" class="primary-btn">Start Session</button>
+        <div id="preview-actions" class="preview-actions hidden">
+          <button id="edit-preview-btn" class="ghost-btn">Edit Exercises</button>
+          <button id="log-session-btn" class="primary-btn">Start Session</button>
+        </div>
       </article>
 
       <button id="back-to-options" class="link-btn back-to-options hidden">&larr; Not feeling it? Back to options</button>
@@ -389,6 +403,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=202609010314"></script>
+  <script src="app.js?v=202609011230"></script>
 </body>
 </html>

@@ -3,7 +3,6 @@
 
   const STORAGE_KEY = "liftr_history_v3";
   const NOTES_KEY = "liftr_notes_v1";
-  const SOUND_KEY = "liftr_sound_enabled";
 
   // Fill this in with your deployed Cloudflare Worker URL once the AI
   // backend is live (see worker/README.md). Left empty, the app falls back
@@ -314,6 +313,7 @@
       exercises: {
         jessica: [
           { name: "Goblet Squat", detail: "3 x 15", superset: "A", howTo: "Hold a dumbbell at your chest and squat down until your thighs are parallel to the floor.", tip: "Hold the weight close to your chest and sit straight down between your heels." },
+          { name: "Leg Press", detail: "3 x 12", superset: "A", howTo: "Sit firmly against the machine pad and press the platform away by extending your legs, then lower it with control.", tip: "Use a shoulder-width stance and let your knees travel naturally over your toes to emphasize your quads." },
           { name: "Step-Ups", detail: "3 x 12/leg", superset: "A", howTo: "Step one foot fully onto a box or bench and drive up until that leg is straight.", tip: "Drive through the heel of your working leg — don't push off the back foot." },
           { name: "Glute Bridge", detail: "3 x 15", howTo: "Lying on your back with knees bent, drive your hips up toward the ceiling.", tip: "Squeeze your glutes hard at the top, pause for a beat." },
           { name: "Lateral Band Walk", detail: "3 x 20", howTo: "With a band around your ankles or knees, take small steps sideways in a partial squat.", tip: "Stay low and keep tension on the band the entire time." },
@@ -648,6 +648,60 @@
     return list;
   }
 
+  // Interprets common focus requests locally so the recommendation reacts
+  // immediately even when the coach service is offline or still responding.
+  function getCoachFocus(text) {
+    const value = String(text || "").toLowerCase();
+    if (/\b(quad|quads|quadriceps|front of (my )?legs?)\b/.test(value)) return "quads";
+    if (/\b(glute|glutes|booty)\b/.test(value)) return "glutes";
+    if (/\b(hamstring|hamstrings|posterior chain)\b/.test(value)) return "hamstrings";
+    return null;
+  }
+
+  function inferSplitFromChat(text) {
+    const value = String(text || "").toLowerCase();
+    if (getCoachFocus(value) || /\b(leg|legs|lower body|squat|deadlift|lunge)\b/.test(value)) return "legs";
+    if (/\b(chest|back|upper body|push|pull)\b/.test(value)) return "chest-back";
+    if (/\b(cardio|run|running|conditioning|endurance)\b/.test(value)) return "cardio";
+    if (/\b(core|abs|mobility|stretch|recovery)\b/.test(value)) return "core-mobility";
+    return null;
+  }
+
+  // Keeps a requested muscle group visible in the actual draft rather than
+  // only mentioning it in chat. Requested moves are drawn from the approved
+  // exercise library, then the rest of the plan remains intact.
+  function applyCoachFocus(user, splitKey, exercises, note) {
+    const focus = getCoachFocus(note);
+    const pool = buildCandidatePool(user, splitKey);
+    let result = exercises;
+
+    if (splitKey === "legs" && focus) {
+      const priorities = {
+        quads: ["Leg Press", "Goblet Squat", "Step-Ups", "Walking Lunges", "Bodyweight Lunge", "Barbell Back Squat"],
+        glutes: ["Glute Bridge", "Goblet Squat", "Step-Ups", "Romanian Deadlift", "Walking Lunges"],
+        hamstrings: ["Romanian Deadlift", "Glute Bridge", "Walking Lunges", "Bodyweight Lunge"],
+      }[focus];
+      const byName = new Map(pool.map((exercise) => [exercise.name, exercise]));
+      const requested = priorities.map((name) => byName.get(name)).filter(Boolean);
+      const combined = [...requested, ...exercises];
+      const unique = combined.filter((exercise, index, all) => all.findIndex((item) => item.name === exercise.name) === index);
+      result = unique.slice(0, Math.max(exercises.length, Math.min(4, requested.length)));
+    }
+
+    // Common removal requests also work without the network. Match an
+    // explicit action directly against an approved exercise name.
+    const request = String(note || "").toLowerCase();
+    pool.forEach((exercise) => {
+      const escapedName = exercise.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const removal = new RegExp(`\\b(?:remove|skip|avoid|without|drop|take out|do not want|don't want|no)\\s+(?:the\\s+)?${escapedName}\\b`, "i");
+      if (removal.test(request)) result = result.filter((item) => item.name !== exercise.name);
+    });
+    if (/\b(fewer exercises|shorter workout|remove one exercise)\b/i.test(request) && result.length > 2) {
+      result = result.slice(0, -1);
+    }
+    return result;
+  }
+
   function getEntryExercises(user, entry) {
     if (Array.isArray(entry.exercises)) return entry.exercises;
     return buildWorkoutPlan(user, entry.splitKey, entry); // backward-compat for older logged entries
@@ -717,7 +771,7 @@
                 : []
             );
             return {
-              exercises: data.exercises,
+              exercises: applyCoachFocus(user, splitKey, data.exercises, checkIn.note),
               reason: typeof data.reason === "string" ? data.reason : null,
               source: "ai",
               suggestedWeights,
@@ -729,110 +783,12 @@
       }
     }
 
-    return { exercises: buildWorkoutPlan(user, splitKey, checkIn), reason: null, source: "local", suggestedWeights: new Map() };
-  }
-
-  // ---------- retro guitar riff synth ----------
-
-  let audioCtx = null;
-  let soundEnabled = localStorage.getItem(SOUND_KEY) !== "off";
-
-  function getAudioCtx() {
-    if (!audioCtx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) audioCtx = new AC();
-    }
-    return audioCtx;
-  }
-
-  function makeDistortionCurve(amount) {
-    const n = 44100;
-    const curve = new Float32Array(n);
-    const k = amount;
-    for (let i = 0; i < n; i++) {
-      const x = (i * 2) / n - 1;
-      curve[i] = ((3 + k) * x * 20 * (Math.PI / 180)) / (Math.PI + k * Math.abs(x));
-    }
-    return curve;
-  }
-
-  function playRiff() {
-    if (!soundEnabled) return;
-    const ctx = getAudioCtx();
-    if (!ctx) return;
-    if (ctx.state === "suspended") ctx.resume();
-
-    const master = ctx.createGain();
-    master.gain.value = 0.18;
-    master.connect(ctx.destination);
-
-    const distortion = ctx.createWaveShaper();
-    distortion.curve = makeDistortionCurve(320);
-    distortion.oversample = "4x";
-
-    const lowpass = ctx.createBiquadFilter();
-    lowpass.type = "lowpass";
-    lowpass.frequency.value = 2400;
-
-    distortion.connect(lowpass);
-    lowpass.connect(master);
-
-    // Palm-muted gallop riff on a low power chord (E2 root + fifth).
-    const rootFreq = 82.41; // E2
-    const fifthFreq = 123.47; // B2
-    const pattern = [0, 0, 1, 0, 0, 1, 2, 0]; // 0=root,1=fifth,2=octave
-    const noteLen = 0.11;
-    const start = ctx.currentTime + 0.02;
-
-    pattern.forEach((step, i) => {
-      const freq = step === 1 ? fifthFreq : step === 2 ? rootFreq * 2 : rootFreq;
-      const t0 = start + i * noteLen;
-
-      const osc1 = ctx.createOscillator();
-      osc1.type = "sawtooth";
-      osc1.frequency.value = freq;
-      const osc2 = ctx.createOscillator();
-      osc2.type = "square";
-      osc2.frequency.value = freq;
-
-      const noteGain = ctx.createGain();
-      noteGain.gain.setValueAtTime(0.0001, t0);
-      noteGain.gain.exponentialRampToValueAtTime(1, t0 + 0.01);
-      noteGain.gain.exponentialRampToValueAtTime(0.0001, t0 + noteLen * 0.9);
-
-      osc1.connect(noteGain);
-      osc2.connect(noteGain);
-      noteGain.connect(distortion);
-
-      osc1.start(t0);
-      osc1.stop(t0 + noteLen);
-      osc2.start(t0);
-      osc2.stop(t0 + noteLen);
-    });
-
-    // Final held power chord hit.
-    const hitT = start + pattern.length * noteLen + 0.05;
-    [rootFreq, fifthFreq, rootFreq * 2].forEach((freq) => {
-      const osc = ctx.createOscillator();
-      osc.type = "sawtooth";
-      osc.frequency.value = freq;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, hitT);
-      g.gain.exponentialRampToValueAtTime(0.9, hitT + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, hitT + 0.9);
-      osc.connect(g);
-      g.connect(distortion);
-      osc.start(hitT);
-      osc.stop(hitT + 0.9);
-    });
-  }
-
-  function setSoundEnabled(enabled) {
-    soundEnabled = enabled;
-    localStorage.setItem(SOUND_KEY, enabled ? "on" : "off");
-    const btn = document.getElementById("sound-toggle");
-    btn.textContent = enabled ? "🔊" : "🔇";
-    btn.classList.toggle("muted", !enabled);
+    return {
+      exercises: applyCoachFocus(user, splitKey, buildWorkoutPlan(user, splitKey, checkIn), checkIn.note),
+      reason: null,
+      source: "local",
+      suggestedWeights: new Map(),
+    };
   }
 
   // ---------- state ----------
@@ -844,6 +800,9 @@
   // Split key the coach picked up on from the conversation (e.g. "let's do
   // legs today"), overriding the rule-based recommendation when set.
   let chatSuggestedSplit = null;
+  let recommendationDraft = null; // live exercise-level plan shown inside the recommendation card
+  let recommendationDraftKey = null;
+  let recommendationRequestId = 0; // prevents a slower, older coach response replacing a newer request
   let selectedSplitKey = null; // split chosen on the select screen, awaiting log
   let previewPlan = null; // { exercises, reason, source } computed for the current preview
   let customSelection = new Map(); // exerciseId -> { name, detail, splitKey, tip, superset }
@@ -866,6 +825,8 @@
 
   function showScreen(id) {
     SCREEN_IDS.forEach((s) => document.getElementById(s).classList.toggle("hidden", s !== id));
+    const homeButton = document.getElementById("home-button");
+    if (homeButton) homeButton.classList.toggle("hidden", id === "login-screen" || id === "welcome-screen");
   }
 
   // ---------- rendering: clock / goal ----------
@@ -967,6 +928,10 @@
     list.innerHTML = '<li class="skeleton-row"></li><li class="skeleton-row"></li><li class="skeleton-row"></li>';
 
     const btn = document.getElementById("log-session-btn");
+    document.getElementById("preview-coach-section").classList.remove("hidden");
+    document.getElementById("preview-actions").classList.remove("hidden");
+    document.getElementById("edit-preview-btn").disabled = true;
+    placeTerminalPanel("preview");
     btn.textContent = "Loading…";
     btn.disabled = true;
     btn.onclick = null;
@@ -989,6 +954,8 @@
     const backLink = document.getElementById("back-to-options");
 
     if (done) {
+      document.getElementById("preview-coach-section").classList.add("hidden");
+      document.getElementById("preview-actions").classList.add("hidden");
       renderExerciseList(getEntryExercises(user, entry), entry.performance);
       renderTags(buildTags(entry));
       renderAiNote(entry.source === "ai" ? entry.reason : null);
@@ -1005,6 +972,9 @@
       return;
     }
     document.getElementById("session-done-note").classList.add("hidden");
+    document.getElementById("preview-coach-section").classList.remove("hidden");
+    document.getElementById("preview-actions").classList.remove("hidden");
+    placeTerminalPanel("preview");
 
     if (!previewPlan) {
       renderSessionLoading(splitKey);
@@ -1015,11 +985,16 @@
     renderTags(buildTags(checkInState));
     renderAiNote(previewPlan.source === "ai" ? previewPlan.reason : null);
     statusEl.classList.add("hidden");
+    document.getElementById("edit-preview-btn").disabled = false;
     btn.textContent = "Start Workout";
     btn.disabled = false;
     btn.onclick = () => {
       const exercises = previewPlan.exercises.map((ex) => ({ ...ex, splitKey }));
-      showWorkout(user, splitKey, exercises, { reason: previewPlan.reason, source: previewPlan.source });
+      showWorkout(user, splitKey, exercises, {
+        reason: previewPlan.reason,
+        source: previewPlan.source,
+        suggestedWeights: previewPlan.suggestedWeights,
+      });
     };
     backLink.classList.remove("hidden");
   }
@@ -1100,6 +1075,22 @@
     renderSessionScreen(user, getHistory(user));
   }
 
+  async function refreshPreviewFromCoach(user) {
+    const nextSplit = chatSuggestedSplit || selectedSplitKey;
+    const requestId = ++recommendationRequestId;
+    selectedSplitKey = nextSplit;
+    previewPlan = null;
+    renderSessionScreen(user, getHistory(user));
+
+    const plan = await computePlan(user, nextSplit, { ...checkInState });
+    if (requestId !== recommendationRequestId || selectedSplitKey !== nextSplit) return;
+    if (document.getElementById("session-screen").classList.contains("hidden")) return;
+    previewPlan = plan;
+    recommendationDraftKey = nextSplit;
+    recommendationDraft = plan;
+    renderSessionScreen(user, getHistory(user));
+  }
+
   // ---------- rendering: active workout runner ----------
 
   // Scans history newest-first for the last weight logged against this
@@ -1141,7 +1132,96 @@
   // strength splits and anything explicitly named "Weighted ___" get the
   // weight field; pure cardio/mobility work doesn't.
   function usesWeight(ex) {
+    if (/bodyweight|push-up|plank|dead bug|mobility|stretch|flow|cat-cow|jump squat|mountain climber/i.test(ex.name)) return false;
     return ex.splitKey === "chest-back" || ex.splitKey === "legs" || /weighted/i.test(ex.name);
+  }
+
+  function getExerciseLoadFactor(exerciseName) {
+    const name = exerciseName.toLowerCase();
+    const factors = [
+      [/leg press/, 1.5], [/back squat/, 1], [/romanian deadlift/, 0.72], [/deadlift/, 1],
+      [/goblet squat/, 0.28], [/step.?up|lunge/, 0.22], [/glute bridge/, 0.55],
+      [/barbell bench/, 1], [/incline dumbbell press/, 0.62], [/dumbbell chest press/, 0.68],
+      [/cable fly/, 0.32], [/lat pulldown/, 0.62], [/cable row/, 0.65], [/barbell row/, 0.72],
+      [/calf raise/, 0.5], [/weighted pull.?up/, 0.18],
+    ];
+    return factors.find(([pattern]) => pattern.test(name))?.[1] ?? 0.4;
+  }
+
+  function roundTrainingWeight(value) {
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return Math.max(5, Math.round(value / 5) * 5);
+  }
+
+  function getLoggedExercisePerformances(user, exerciseName) {
+    return getHistory(user)
+      .map((entry) => ({ date: entry.date, performance: entry.performance?.[exerciseName] }))
+      .filter((entry) => entry.performance?.sets?.some((set) => Number.isFinite(set.weight) && set.weight > 0));
+  }
+
+  function completedTarget(performance) {
+    const targeted = performance.sets.filter((set) => set.target != null && set.weight != null);
+    return targeted.length > 0 && targeted.every((set) => Number(set.actual) >= Number(set.target));
+  }
+
+  function getWeightRecommendation(user, ex, aiWeight) {
+    if (!usesWeight(ex)) return null;
+    const exactHistory = getLoggedExercisePerformances(user, ex.name);
+    if (exactHistory.length > 0) {
+      const latest = exactHistory[exactHistory.length - 1];
+      const weightedSets = latest.performance.sets.filter((set) => Number.isFinite(set.weight) && set.weight > 0);
+      const lastWeight = weightedSets[weightedSets.length - 1].weight;
+      const previous = exactHistory[exactHistory.length - 2];
+      const repeatedSuccess = completedTarget(latest.performance) && previous && completedTarget(previous.performance);
+      const missed = latest.performance.sets.some(
+        (set) => set.target != null && set.actual != null && Number(set.actual) < Number(set.target) * 0.8
+      );
+      const change = repeatedSuccess ? 5 : missed ? -5 : 0;
+      const weight = roundTrainingWeight(Math.max(5, lastWeight + change));
+      return {
+        weight,
+        source: "history",
+        explanation: repeatedSuccess
+          ? `You completed the target at ${lastWeight} lb in your last two sessions, so the coach added 5 lb.`
+          : missed
+            ? `Your last logged reps fell short at ${lastWeight} lb, so the coach reduced the starting load slightly.`
+            : `Starts from your most recent ${ex.name} working weight.`
+      };
+    }
+
+    if (Number.isFinite(aiWeight) && aiWeight > 0) {
+      return {
+        weight: roundTrainingWeight(aiWeight),
+        source: "ai",
+        explanation: "Estimated by the coach from your profile, target reps, and related logged lifts.",
+      };
+    }
+
+    const traits = getExerciseTraits(ex);
+    let bestRelated = null;
+    buildWeightHistory(user).forEach((entry) => {
+      const relatedTraits = getExerciseTraits({ name: entry.exercise, howTo: "" });
+      const overlap = [...traits].filter((trait) => relatedTraits.has(trait)).length;
+      if (overlap > 0 && (!bestRelated || overlap > bestRelated.overlap)) bestRelated = { ...entry, overlap };
+    });
+    if (bestRelated) {
+      const converted = bestRelated.weight * (getExerciseLoadFactor(ex.name) / getExerciseLoadFactor(bestRelated.exercise));
+      return {
+        weight: roundTrainingWeight(converted * 0.9),
+        source: "related",
+        explanation: `Conservative estimate from your logged ${bestRelated.exercise} weight and the similar movement pattern.`,
+      };
+    }
+
+    const bodyweight = getPersonaProfile(user).weightLb;
+    if (Number.isFinite(bodyweight) && bodyweight > 0) {
+      return {
+        weight: roundTrainingWeight(bodyweight * getExerciseLoadFactor(ex.name) * 0.5),
+        source: "profile",
+        explanation: "Conservative first-session estimate from your bodyweight and this exercise’s loading pattern.",
+      };
+    }
+    return null;
   }
 
   function buildInitialLogs(user, exercises, suggestedWeights) {
@@ -1149,15 +1229,15 @@
     exercises.forEach((ex) => {
       const setCount = parseSetCount(ex.detail);
       const target = parseTargetReps(ex.detail);
-      // Real logged history always wins; an AI cold-start estimate (reasoned
-      // from strength on related lifts) only fills in when we have nothing.
-      const seedWeight = usesWeight(ex) ? getLastWeight(user, ex.name) ?? suggestedWeights?.get(ex.name) ?? null : null;
+      const recommendation = getWeightRecommendation(user, ex, suggestedWeights?.get(ex.name));
+      const seedWeight = recommendation?.weight ?? null;
       logs[ex.name] = {
         // Weight lives per set, not per exercise — sets often ramp
         // (e.g. 135/155/175/185), so each one gets its own adjustable value,
         // all seeded from wherever the athlete left off last time.
         sets: Array.from({ length: setCount }, () => ({ target, actual: target, weight: seedWeight, touched: false })),
         flag: "",
+        weightRecommendation: recommendation,
       };
     });
     return logs;
@@ -1208,24 +1288,120 @@
     });
   }
 
-  // Swaps one exercise for a different one from the same body part's full
-  // candidate pool (base + finisher + partner move), skipping anything
-  // already in today's workout. Purely local — no AI round trip needed for
-  // "replace flies with something else."
-  function swapExercise(ex) {
+  function getExerciseTraits(exercise) {
+    const text = `${exercise.name} ${exercise.howTo || ""}`.toLowerCase();
+    const traits = new Set();
+    const patterns = {
+      squat: /squat|leg press|wall.?sit/,
+      lunge: /lunge|step.?up|split squat/,
+      hinge: /deadlift|hinge|good morning|glute bridge/,
+      horizontalPush: /bench press|chest press|push.?up|chest pass|cable fly/,
+      verticalPull: /pull.?up|pulldown/,
+      horizontalPull: /row/,
+      core: /plank|dead bug|leg raise|mountain climber/,
+      conditioning: /run|sprint|bike|cycling|rower|rope|sled|stair|burpee/,
+      mobility: /stretch|mobility|flow|rotation|cat.?cow/,
+      quads: /squat|leg press|lunge|step.?up|wall.?sit/,
+      glutes: /glute|bridge|squat|lunge|step.?up|deadlift/,
+      hamstrings: /deadlift|hinge|hamstring|glute bridge/,
+    };
+    Object.entries(patterns).forEach(([trait, pattern]) => {
+      if (pattern.test(text)) traits.add(trait);
+    });
+    return traits;
+  }
+
+  function conflictsWithSwapReason(exercise, reason) {
+    const request = String(reason || "").toLowerCase();
+    const text = `${exercise.name} ${exercise.howTo || ""}`.toLowerCase();
+    if (/\b(no|avoid|without|don't have|do not have)\s+(a\s+)?barbell\b/.test(request) && /barbell/.test(text)) return true;
+    if (/\b(no|avoid|without|don't have|do not have)\s+(a\s+)?dumbbells?\b/.test(request) && /dumbbell/.test(text)) return true;
+    if (/\b(no|avoid|without|don't have|do not have)\s+(a\s+)?(?:machine|cable)\b/.test(request) && /machine|cable|pulldown|leg press/.test(text)) return true;
+    if (/\b(knee|knees)\b/.test(request) && /jump|lunge|step.?up|deep squat/.test(text)) return true;
+    if (/\b(shoulder|shoulders|rotator cuff)\b/.test(request) && /press|push.?up|fly|pull.?up|pulldown/.test(text)) return true;
+    if (/\b(lower back|low back|back pain)\b/.test(request) && /deadlift|bent.?over|hinge/.test(text)) return true;
+    return false;
+  }
+
+  function chooseLocalSwap(ex, options, reason) {
+    const originalTraits = getExerciseTraits(ex);
+    const request = `${checkInState.note || ""} ${reason || ""}`.toLowerCase();
+    const focus = getCoachFocus(request);
+    const ranked = options
+      .map((candidate, index) => {
+        const traits = getExerciseTraits(candidate);
+        let score = 0;
+        originalTraits.forEach((trait) => {
+          if (traits.has(trait)) score += ["quads", "glutes", "hamstrings"].includes(trait) ? 2 : 8;
+        });
+        if (focus && traits.has(focus)) score += 7;
+        if (/\b(bodyweight|no equipment)\b/.test(request) && !/barbell|dumbbell|cable|machine|sled|ball|band/i.test(candidate.name)) score += 9;
+        if (conflictsWithSwapReason(candidate, request)) score -= 100;
+        if (/finisher|partner/i.test(candidate.name) && !/finisher|partner/i.test(ex.name)) score -= 3;
+        return { candidate, score, index };
+      })
+      .sort((a, b) => b.score - a.score || a.index - b.index);
+    return ranked[0]?.candidate || null;
+  }
+
+  async function requestAiSwap(ex, options, reason) {
+    if (!AI_ENDPOINT || options.length === 0) return null;
+    try {
+      const persona = getPersonaProfile(currentUser);
+      const response = await fetch(AI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "swap",
+          persona: { name: persona.name, goal: persona.goal, focusAreas: persona.focusAreas },
+          workout: getSplitMeta(ex.splitKey).name,
+          currentExercise: ex,
+          currentWorkout: activeWorkout.exercises.map((item) => item.name),
+          reason: reason || "Choose the closest useful alternative.",
+          todayNote: checkInState.note || null,
+          candidates: options,
+        }),
+        signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      const exercise = options.find((option) => option.name === data.exercise);
+      if (!exercise) return null;
+      return { exercise, explanation: typeof data.reason === "string" ? data.reason : null, source: "ai" };
+    } catch {
+      return null;
+    }
+  }
+
+  // Chooses a safe, non-duplicate replacement. The AI gets first choice;
+  // the deterministic movement/constraint scorer keeps Swap useful offline.
+  async function swapExercise(ex, reason) {
     if (!activeWorkout) return null;
     const currentNames = new Set(activeWorkout.exercises.map((e) => e.name));
-    const options = buildCandidatePool(currentUser, ex.splitKey).filter((c) => !currentNames.has(c.name));
+    const unused = buildCandidatePool(currentUser, ex.splitKey).filter((c) => !currentNames.has(c.name));
+    const fullReason = `${checkInState.note || ""} ${reason || ""}`;
+    const constraintSafe = unused.filter((candidate) => !conflictsWithSwapReason(candidate, fullReason));
+    const options = constraintSafe.length > 0 ? constraintSafe : unused;
     if (options.length === 0) return null;
 
-    const replacement = { ...options[Math.floor(Math.random() * options.length)], splitKey: ex.splitKey };
+    const aiChoice = await requestAiSwap(ex, options, reason);
+    const localChoice = chooseLocalSwap(ex, options, reason);
+    const chosen = aiChoice?.exercise || localChoice;
+    if (!chosen) return null;
+    const replacement = { ...chosen, splitKey: ex.splitKey, superset: ex.superset || chosen.superset };
     const idx = activeWorkout.exercises.findIndex((e) => e.name === ex.name);
     if (idx === -1) return null;
 
     activeWorkout.exercises[idx] = replacement;
     delete activeWorkout.logs[ex.name];
     activeWorkout.logs[replacement.name] = buildInitialLogs(currentUser, [replacement])[replacement.name];
-    return replacement;
+    const sharedTraits = [...getExerciseTraits(ex)].filter((trait) => getExerciseTraits(replacement).has(trait));
+    const explanation = aiChoice?.explanation || (reason
+      ? `Best available match for “${reason}” while keeping the workout balanced.`
+      : sharedTraits.length > 0
+        ? `Keeps the same ${sharedTraits[0].replace(/([A-Z])/g, " $1").toLowerCase()} training purpose without duplicating another exercise.`
+        : "Best unused option for this workout and your current focus.");
+    return { exercise: replacement, explanation, source: aiChoice?.source || "local" };
   }
 
   // Tap = one step. Press and hold = repeats, accelerating the longer it's
@@ -1293,6 +1469,7 @@
     body.className = "wex-body hidden";
 
     const showWeight = usesWeight(ex);
+    const weightRecommendation = log.weightRecommendation;
 
     // Weight lives inside each set row (ramping sets are the norm, not the
     // exception), alongside either a rep stepper or a simple complete-toggle.
@@ -1338,12 +1515,23 @@
       </div>
       ${ex.howTo ? `<p class="wex-howto">${escapeHtml(ex.howTo)}</p>` : ""}
       ${ex.tip ? `<p class="wex-tip">💡 ${escapeHtml(ex.tip)}</p>` : ""}
+      ${showWeight && weightRecommendation ? `
+        <div class="wex-weight-rec">
+          <div>
+            <span class="wex-weight-rec-label">⚡ COACH STARTING WEIGHT</span>
+            <strong>${weightRecommendation.weight} lb</strong>
+            <p>${escapeHtml(weightRecommendation.explanation)}</p>
+          </div>
+          <button type="button" class="wex-apply-weight">Use ${weightRecommendation.weight} lb</button>
+        </div>
+      ` : ""}
       <div class="wex-sets">${setsHtml}</div>
       <input type="text" class="wex-flag-input" placeholder="Anything to flag on this one? (optional)" maxlength="140" />
       <div class="wex-swap-row">
         <input type="text" class="wex-swap-input" placeholder="Want to swap this? e.g. 'replace flies, shoulder is sore'" maxlength="140" />
         <button type="button" class="wex-swap-btn">🔁 Swap</button>
       </div>
+      <p class="wex-swap-status hidden" aria-live="polite"></p>
     `;
     // Real image missing (404) — quietly fall back to the icon tile underneath.
     body.querySelector(".wex-img-large").addEventListener("error", (e) => {
@@ -1403,19 +1591,55 @@
       }
     });
 
+    const applyWeightButton = body.querySelector(".wex-apply-weight");
+    if (applyWeightButton && weightRecommendation) {
+      applyWeightButton.addEventListener("click", () => {
+        log.sets.forEach((set) => {
+          set.weight = weightRecommendation.weight;
+          set.touched = true;
+        });
+        body.querySelectorAll('.wex-mini-stepper[data-role="weight"] .wex-mini-input').forEach((input) => {
+          input.value = weightRecommendation.weight;
+          input.closest(".wex-set-row")?.classList.add("touched");
+        });
+        applyWeightButton.textContent = `Applied ${weightRecommendation.weight} lb ✓`;
+      });
+    }
+
     body.querySelector(".wex-flag-input").addEventListener("input", (e) => {
       log.flag = e.target.value;
     });
 
-    body.querySelector(".wex-swap-btn").addEventListener("click", () => {
+    body.querySelector(".wex-swap-btn").addEventListener("click", async () => {
       const swapInput = body.querySelector(".wex-swap-input");
+      const swapButton = body.querySelector(".wex-swap-btn");
+      const swapStatus = body.querySelector(".wex-swap-status");
       const reasonText = swapInput.value.trim();
-      const replaced = swapExercise(ex);
-      if (!replaced) return;
+      swapButton.disabled = true;
+      swapButton.textContent = "Choosing…";
+      swapStatus.textContent = "Coach is comparing movement patterns and your constraints…";
+      swapStatus.classList.remove("hidden");
+      const result = await swapExercise(ex, reasonText);
+      if (!result) {
+        swapButton.disabled = false;
+        swapButton.textContent = "🔁 Swap";
+        swapStatus.textContent = "No unused replacement fits this workout yet. Try editing the workout instead.";
+        return;
+      }
       if (reasonText) {
-        logNote(currentUser, `Swapped ${ex.name} → ${replaced.name} (${reasonText})`);
+        logNote(currentUser, `Swapped ${ex.name} → ${result.exercise.name} (${reasonText})`);
       }
       renderWorkoutExercises();
+      const newCard = Array.from(document.querySelectorAll(".wex-card")).find((item) => item.querySelector(".wex-name")?.textContent === result.exercise.name);
+      if (newCard) {
+        const newStatus = newCard.querySelector(".wex-swap-status");
+        newCard.querySelector(".wex-body")?.classList.remove("hidden");
+        newCard.querySelector(".wex-head")?.classList.add("expanded");
+        if (newStatus) {
+          newStatus.textContent = `Coach swap: ${ex.name} → ${result.exercise.name}. ${result.explanation}`;
+          newStatus.classList.remove("hidden");
+        }
+      }
     });
 
     head.addEventListener("click", () => {
@@ -1622,7 +1846,8 @@
   // of resetting each time the user moves from check-in into selection.
   function placeTerminalPanel(target) {
     const panel = document.getElementById("terminal-panel");
-    const slot = document.getElementById(target === "select" ? "select-chat-slot" : "checkin-chat-slot");
+    const slotId = target === "select" ? "select-chat-slot" : target === "preview" ? "preview-chat-slot" : "checkin-chat-slot";
+    const slot = document.getElementById(slotId);
     if (panel && slot) slot.appendChild(panel);
   }
 
@@ -1630,20 +1855,64 @@
   // like a coach who was actually paying attention — not a blank "how are
   // you" every single day. Falls back to a generic opener when there's
   // nothing recent to reference.
+  function buildCoachOpening(user, history) {
+    const recentNotes = getNotes(user).slice(-6);
+    if (recentNotes.length === 0) {
+      return history.length === 0
+        ? `👋 Hey ${PERSONAS[user].name}! Anything going on today I should know about before we get moving?`
+        : "👋 Welcome back! Any sore spots, schedule changes, or goals you want me to account for today?";
+    }
+
+    const topics = [
+      { key: "basketball", pattern: /\b(basketball|hoops?|pickup(?: game)?)\b/i, emoji: "🏀", question: "How was your basketball game? Anything from it you want to work on today?" },
+      { key: "running", pattern: /\b(run|running|race|marathon|5k|10k|tempo|miles?)\b/i, emoji: "🏃", question: "How did your run go? Anything you want today’s workout to improve or protect?" },
+      { key: "quads", pattern: /\b(quad|quads|quadriceps|front of (my )?legs?)\b/i, emoji: "🦵", question: "How are your quads feeling today? Do you want to keep emphasizing them or shift the focus?" },
+      { key: "knees", pattern: /\b(knee|knees)\b/i, emoji: "🦵", question: "How are your knees feeling today? Should I reduce impact or adjust your exercise choices?" },
+      { key: "shoulders", pattern: /\b(shoulder|shoulders|rotator cuff)\b/i, emoji: "💪", question: "How is your shoulder feeling today? Anything you want me to avoid or strengthen?" },
+      { key: "back", pattern: /\b(lower back|low back|back pain|back soreness)\b/i, emoji: "💪", question: "How is your back feeling today? Should I adjust loading or movement choices?" },
+      { key: "soreness", pattern: /\b(sore|soreness|pain|hurt|tight|ache)\b/i, emoji: "🤕", question: "How is that soreness feeling today? Is it improving, unchanged, or worse?" },
+      { key: "energy", pattern: /\b(tired|fatigue|fatigued|sleep|energy|exhausted)\b/i, emoji: "😴", question: "How is your energy today? Should I keep the session lighter or are you ready to push?" },
+      { key: "equipment", pattern: /\b(equipment|gym|home workout|dumbbell|barbell|machine|bands?)\b/i, emoji: "🏋️", question: "What equipment do you have available today? I can reshape the workout around it." },
+    ];
+
+    // Frequency wins; recency breaks ties. This keeps a recurring concern
+    // prominent while still allowing a new, specific update to take over.
+    const ranked = topics
+      .map((topic) => {
+        let matches = 0;
+        let latestIndex = -1;
+        recentNotes.forEach((note, index) => {
+          if (topic.pattern.test(note.text)) {
+            matches++;
+            latestIndex = index;
+          }
+        });
+        return { ...topic, matches, latestIndex };
+      })
+      .filter((topic) => topic.matches > 0)
+      .sort((a, b) => b.matches - a.matches || b.latestIndex - a.latestIndex);
+
+    if (ranked.length > 0) {
+      const topic = ranked[0];
+      return `${topic.emoji} ${topic.question}`;
+    }
+
+    const raw = recentNotes[recentNotes.length - 1].text;
+    const clean = raw.replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "").replace(/\s+/g, " ").trim().slice(0, 100);
+    return clean
+      ? `💬 Last time you mentioned “${clean}.” How is that going, and what would you like to work on today?`
+      : "👋 Welcome back! What feels most important for today’s workout?";
+  }
+
   function resetChat(user) {
     const history = getHistory(user);
-    const lastNote = getPastNotes(user, 1)[0];
-    let greeting;
-    if (history.length === 0) {
-      greeting = `Hey ${PERSONAS[user].name}! I'm your coach. Anything going on today I should know about before we get moving?`;
-    } else if (lastNote) {
-      greeting = `Welcome back! Last time you mentioned: "${lastNote.text}" — how's that today? Anything else before I help pick your session?`;
-    } else {
-      greeting = "Welcome back! Anything going on today — sore spots, low on time, equipment changes — before I help pick your session?";
-    }
+    const greeting = buildCoachOpening(user, history);
     chatMessages = [{ role: "coach", text: greeting }];
     chatBusy = false;
     chatSuggestedSplit = null;
+    recommendationDraft = null;
+    recommendationDraftKey = null;
+    recommendationRequestId++;
     renderChatThread();
     setChatBusy(false);
   }
@@ -1717,6 +1986,14 @@
     // raw message still becomes today's note so nothing typed is lost.
     let reply = "Got it, I'll keep that in mind for today.";
     let constraint = text;
+    const localSuggestedSplit = inferSplitFromChat(text);
+    const localFocus = getCoachFocus(text);
+    if (localSuggestedSplit) chatSuggestedSplit = localSuggestedSplit;
+    if (localFocus === "quads") {
+      reply = "I’ll shift this toward your quads with leg press, squats, and step-ups. Any knee issues I should account for? If that looks good, open the workout below to review it.";
+    } else if (localFocus) {
+      reply = `I’ll shift today’s leg workout toward your ${localFocus}. Anything sore or any equipment you want me to avoid?`;
+    }
 
     if (AI_ENDPOINT) {
       try {
@@ -1741,9 +2018,9 @@
           const data = await res.json();
           if (typeof data.reply === "string" && data.reply.trim()) {
             reply = data.reply.trim();
-            constraint = typeof data.constraint === "string" && data.constraint.trim() ? data.constraint.trim() : null;
+            constraint = typeof data.constraint === "string" && data.constraint.trim() ? data.constraint.trim() : text;
           }
-          if (SPLIT_ORDER.includes(data.suggestedSplit)) {
+          if (!localSuggestedSplit && SPLIT_ORDER.includes(data.suggestedSplit)) {
             chatSuggestedSplit = data.suggestedSplit;
           }
         }
@@ -1752,18 +2029,28 @@
       }
     }
 
+    if (localFocus && !reply.includes("?")) {
+      reply += " Anything sore or any equipment you want me to avoid?";
+    }
+
     chatMessages.push({ role: "coach", text: reply });
     renderChatThread();
     setChatBusy(false);
 
     if (constraint) {
       checkInState.note = [checkInState.note, constraint].filter(Boolean).join(". ");
+      // Save each meaningful exchange at the time it happens. The chat can
+      // continue on the recommendation screen, so waiting for the earlier
+      // check-in submit button would lose those later updates on relaunch.
+      logNote(currentUser, constraint);
     }
 
     // If the athlete's already on the workout-selection screen, let the
     // recommendation react immediately instead of waiting for a re-visit.
     if (!document.getElementById("select-screen").classList.contains("hidden")) {
       renderSelectScreen(currentUser, getHistory(currentUser));
+    } else if (!document.getElementById("session-screen").classList.contains("hidden") && selectedSplitKey && !loggedToday(getHistory(currentUser))) {
+      refreshPreviewFromCoach(currentUser);
     }
   }
 
@@ -1788,11 +2075,14 @@
     });
 
     document.getElementById("checkin-submit").addEventListener("click", () => {
-      logNote(currentUser, checkInState.note);
       showSelect(currentUser);
     });
 
     document.getElementById("checkin-start-btn").addEventListener("click", (e) => {
+      if (activeWorkout) {
+        showScreen("workout-screen");
+        return;
+      }
       e.currentTarget.classList.add("hidden");
       document.getElementById("checkin-form").classList.remove("hidden");
     });
@@ -1806,6 +2096,49 @@
   }
 
   // ---------- rendering: select screen ----------
+
+  function renderRecommendationExercises(exercises, focus, loading = false) {
+    const update = document.getElementById("rec-live-update");
+    const list = document.getElementById("rec-exercises");
+    if (!update || !list) return;
+
+    if (focus) {
+      update.textContent = `LIVE UPDATE · ${focus.toUpperCase()} FOCUS APPLIED`;
+      update.classList.remove("hidden");
+    } else if (loading) {
+      update.textContent = "COACH IS FINE-TUNING THIS DRAFT…";
+      update.classList.remove("hidden");
+    } else {
+      update.classList.add("hidden");
+      update.textContent = "";
+    }
+
+    list.innerHTML = exercises
+      .map((exercise) => `<li><span>${escapeHtml(exercise.name)}</span><strong>${escapeHtml(exercise.detail)}</strong></li>`)
+      .join("");
+  }
+
+  function openRecommendationPreview(user, splitKey) {
+    if (!recommendationDraft || recommendationDraftKey !== splitKey) {
+      selectSplitAndPreview(user, splitKey);
+      return;
+    }
+    selectedSplitKey = splitKey;
+    previewPlan = recommendationDraft;
+    showScreen("session-screen");
+    renderSessionFull(user);
+  }
+
+  async function refreshRecommendationDraft(user, splitKey, reason) {
+    const requestId = ++recommendationRequestId;
+    const plan = await computePlan(user, splitKey, { ...checkInState });
+    if (requestId !== recommendationRequestId || currentUser !== user) return;
+    if (document.getElementById("select-screen").classList.contains("hidden")) return;
+
+    recommendationDraftKey = splitKey;
+    recommendationDraft = { ...plan, reason: plan.reason || reason };
+    renderRecommendationExercises(plan.exercises, getCoachFocus(checkInState.note), false);
+  }
 
   function renderSelectScreen(user, history) {
     placeTerminalPanel("select");
@@ -1821,7 +2154,12 @@
     document.getElementById("rec-name").textContent = recMeta.name;
     document.getElementById("rec-tagline").textContent = recMeta.tagline;
     document.getElementById("rec-reason").textContent = rec.reason;
-    document.getElementById("recommended-card").onclick = () => selectSplitAndPreview(user, rec.key);
+    const localExercises = applyCoachFocus(user, rec.key, buildWorkoutPlan(user, rec.key, checkInState), checkInState.note);
+    recommendationDraftKey = rec.key;
+    recommendationDraft = { exercises: localExercises, reason: rec.reason, source: "local", suggestedWeights: new Map() };
+    renderRecommendationExercises(localExercises, getCoachFocus(checkInState.note), Boolean(AI_ENDPOINT));
+    document.getElementById("recommended-card").onclick = () => openRecommendationPreview(user, rec.key);
+    refreshRecommendationDraft(user, rec.key, rec.reason);
 
     const altKeys = SPLIT_ORDER.filter((k) => k !== rec.key);
     const altContainer = document.getElementById("alt-options");
@@ -1844,12 +2182,16 @@
     document.getElementById("select-switch").addEventListener("click", showLogin);
     document.getElementById("custom-workout-btn").addEventListener("click", () => showCustom(currentUser));
     document.getElementById("back-to-options").addEventListener("click", () => showSelect(currentUser));
+    document.getElementById("edit-preview-btn").addEventListener("click", () => {
+      if (previewPlan) showCustom(currentUser, previewPlan.exercises);
+    });
   }
 
   // ---------- rendering: custom builder screen ----------
 
-  function renderCustomScreen(user) {
+  function renderCustomScreen(user, seedExercises = []) {
     customSelection = new Map();
+    const seededNames = new Set(seedExercises.map((exercise) => exercise.name));
     const container = document.getElementById("custom-groups");
     container.innerHTML = "";
 
@@ -1868,11 +2210,13 @@
 
       SPLIT_LIBRARY[splitKey].exercises[user].forEach((ex, i) => {
         const id = `${splitKey}:${i}`;
+        const selected = seededNames.has(ex.name);
+        if (selected) customSelection.set(id, { ...ex, splitKey });
         const row = document.createElement("label");
         row.className = "custom-ex-row";
         row.innerHTML = `
           <input type="checkbox" data-id="${id}" data-name="${ex.name}" data-detail="${ex.detail}"
-                 data-split="${splitKey}" data-tip="${ex.tip || ""}" data-superset="${ex.superset || ""}" />
+                 data-split="${splitKey}" data-tip="${ex.tip || ""}" data-superset="${ex.superset || ""}" ${selected ? "checked" : ""} />
           <span class="custom-ex-name">${ex.name}</span>
           <span class="custom-ex-detail">${ex.detail}</span>
         `;
@@ -1922,6 +2266,20 @@
     showScreen("login-screen");
   }
 
+  function showHome() {
+    if (!currentUser) {
+      showLogin();
+      return;
+    }
+    showScreen("checkin-screen");
+    placeTerminalPanel("checkin");
+    renderRecapCard(currentUser);
+    const startButton = document.getElementById("checkin-start-btn");
+    startButton.textContent = activeWorkout ? "▶ Resume Workout" : "🏋️ Start a Workout";
+    startButton.classList.remove("hidden");
+    document.getElementById("checkin-form").classList.add("hidden");
+  }
+
   function showWelcome(user) {
     const persona = getPersonaProfile(user);
     document.documentElement.style.setProperty("--accent", persona.accent);
@@ -1930,13 +2288,21 @@
     showScreen("welcome-screen");
     const welcome = document.getElementById("welcome-screen");
 
+    // Vega scurries across Jessica's welcome screen only. Removing and
+    // re-adding the class restarts the run when she returns to this screen.
+    welcome.classList.remove("vega-active");
+    if (user === "jessica") {
+      const vegaImage = document.querySelector("#vega-scurry img");
+      vegaImage.onerror = () => welcome.classList.remove("vega-active");
+      void welcome.offsetWidth;
+      welcome.classList.add("vega-active");
+    }
+
     // restart the pulse animation on a fresh element
     const nameEl = document.getElementById("welcome-name");
     nameEl.classList.remove("riff-pulse");
     void nameEl.offsetWidth;
     nameEl.classList.add("riff-pulse");
-
-    playRiff();
 
     const advance = async () => {
       welcome.removeEventListener("click", advance);
@@ -1963,10 +2329,10 @@
     renderSelectScreen(user, getHistory(user));
   }
 
-  function showCustom(user) {
+  function showCustom(user, seedExercises = []) {
     currentUser = user;
     showScreen("custom-screen");
-    renderCustomScreen(user);
+    renderCustomScreen(user, seedExercises);
   }
 
   // Returns to the check-in hub WITHOUT resetting it — used by Settings/
@@ -2338,11 +2704,7 @@
   });
 
   document.getElementById("switch-user").addEventListener("click", showLogin);
-
-  document.getElementById("sound-toggle").addEventListener("click", () => {
-    setSoundEnabled(!soundEnabled);
-  });
-  setSoundEnabled(soundEnabled);
+  document.getElementById("home-button").addEventListener("click", showHome);
 
   initCheckIn();
   initSettings();
