@@ -46,6 +46,56 @@ function inspectJpeg(filePath) {
   return "ready";
 }
 
+// Cheap Levenshtein distance — good enough to catch "off by a typo or an
+// extra/missing s" naming drift between what a delivered file is called and
+// what the app actually looks for, without pulling in a dependency.
+function editDistance(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+// The other half of the audit: files that exist on disk but don't match any
+// current exercise's expected slug at all. The app-side lookup only ever
+// tries the exact slugified name, so a delivered file named even slightly
+// differently than app.js's exercise name (a typo, a leftover from a
+// renamed exercise, a stray "-v2") sits there doing nothing forever with no
+// error anywhere — this is the case a "missing images" report alone can't
+// catch, since from that report's point of view the exercise still looks
+// unaddressed even though someone already delivered art for it.
+function findOrphanFiles(expectedSlugs) {
+  const orphans = [];
+  for (const folder of IMAGE_BODY_PARTS) {
+    const dir = path.join(IMAGES_DIR, folder);
+    if (!fs.existsSync(dir)) continue;
+    for (const file of fs.readdirSync(dir)) {
+      if (!file.endsWith(".jpg")) continue;
+      const slug = file.slice(0, -4);
+      if (expectedSlugs.has(slug)) continue;
+      let closest = null;
+      let closestDistance = Infinity;
+      for (const candidate of expectedSlugs) {
+        const distance = editDistance(slug, candidate);
+        if (distance < closestDistance) {
+          closest = candidate;
+          closestDistance = distance;
+        }
+      }
+      orphans.push({
+        path: path.posix.join("images", folder, file),
+        slug,
+        possibleTypoOf: closestDistance <= 3 ? closest : null,
+      });
+    }
+  }
+  return orphans;
+}
+
 function buildReport() {
   const names = extractExerciseNames(fs.readFileSync(APP_JS, "utf8"));
   const exercises = names.map((name) => {
@@ -66,16 +116,18 @@ function buildReport() {
     };
   });
   const issues = exercises.filter((exercise) => exercise.status !== "ready");
+  const orphans = findOrphanFiles(new Set(exercises.map((exercise) => exercise.slug)));
   return {
     generatedAt: new Date().toISOString(),
     source: "app.js",
-    summary: { distinctExercises: exercises.length, ready: exercises.length - issues.length, issues: issues.length },
+    summary: { distinctExercises: exercises.length, ready: exercises.length - issues.length, issues: issues.length, orphans: orphans.length },
     issues,
+    orphans,
   };
 }
 
 function toMarkdown(report) {
-  const { distinctExercises, ready, issues } = report.summary;
+  const { distinctExercises, ready, issues, orphans } = report.summary;
   const lines = [
     "# Exercise image audit",
     "",
@@ -84,6 +136,7 @@ function toMarkdown(report) {
     `- Distinct exercises: **${distinctExercises}**`,
     `- Ready images: **${ready}**`,
     `- Missing or invalid images: **${issues}**`,
+    `- Unmatched files on disk: **${orphans}**`,
     "",
     "## Images needing attention",
     "",
@@ -95,7 +148,26 @@ function toMarkdown(report) {
     lines.push(`| ${issue.name.replaceAll("|", "\\|")} | ${issue.status} | \`${issue.slug}.jpg\` | ${folder} |`);
   }
   if (!report.issues.length) lines.push("| None | — | — | — |");
-  lines.push("", "The app checks every configured body-part folder, so a ready image may live in any of them.", "");
+  lines.push(
+    "",
+    "The app checks every configured body-part folder, so a ready image may live in any of them.",
+    "",
+    "## Unmatched files on disk",
+    "",
+    "Files that exist but don't match any current exercise's expected slug —",
+    "a naming mismatch this app-side lookup can't recover from on its own",
+    "(the app only ever tries the exact slugified exercise name). Usually a",
+    "typo, a leftover from a renamed/removed exercise, or a delivery that",
+    "used a slightly different filename than requested.",
+    "",
+    "| File | Closest exercise slug (if any, within edit distance 3) |",
+    "| --- | --- |",
+  );
+  for (const orphan of report.orphans) {
+    lines.push(`| \`${orphan.path}\` | ${orphan.possibleTypoOf ? `\`${orphan.possibleTypoOf}\`` : "no close match — may be intentional"} |`);
+  }
+  if (!report.orphans.length) lines.push("| None | — |");
+  lines.push("");
   return lines.join("\n");
 }
 
