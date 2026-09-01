@@ -16,4 +16,4 @@ OPENAI_MODEL = "gpt-4o-mini"
 # then replace the id below with the one it prints, and redeploy.
 [[kv_namespaces]]
 binding = "LIFTR_KV"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "2b89a5d262d84832801fe39e3cdc8301"
