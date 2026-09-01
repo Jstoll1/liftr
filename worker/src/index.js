@@ -131,6 +131,11 @@ export default {
       "of energy level or session length — it's an explicit request, not an",
       "optional volume decision like the split's own default finisher above.",
       "If a partner is available, prefer partner-friendly candidates when present.",
+      "Some candidates carry a `superset` field — candidates sharing the same",
+      "superset value are a deliberate pair (e.g. a push paired with a pull, so",
+      "the session stays balanced). ALWAYS choose both members of a pair",
+      "together, never just one — picking only one half breaks the balance it",
+      "exists to guarantee.",
       "recentlyUsed lists exercises this same session type actually used the",
       "last couple of times. The candidate list is often bigger than a single",
       "session needs specifically so there's room to rotate — prefer candidates",
@@ -233,6 +238,23 @@ export default {
       if (exercises.length === 0) {
         console.error("Empty plan after mapping", JSON.stringify(parsed));
         return json({ error: "Empty plan" }, 502, corsHeaders);
+      }
+
+      // The schema only constrains WHICH names are valid, not their
+      // relationships — nothing stops the model from choosing one half of
+      // a superset pair without the other. A pair exists specifically to
+      // guarantee balance (e.g. a bench press + pull-up pair is exactly
+      // one push and one pull); picking only the push half of every pair
+      // silently turns a "Chest & Back" session into an all-push one.
+      // Deterministically complete any partial pair rather than trusting
+      // a prompt instruction to always hold.
+      const chosenSupersetKeys = new Set(exercises.filter((e) => e.superset).map((e) => e.superset));
+      if (chosenSupersetKeys.size > 0) {
+        candidates.forEach((c) => {
+          if (c.superset && chosenSupersetKeys.has(c.superset) && !exercises.some((e) => e.name === c.name)) {
+            exercises.push(c);
+          }
+        });
       }
 
       // Only keep suggestions for exercises actually in today's plan, with a
