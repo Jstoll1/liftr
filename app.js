@@ -733,6 +733,18 @@
       const extra = PARTNER_EXTRAS[splitKey][user];
       if (extra) list = [...list, extra];
     }
+
+    // An explicitly requested cross-category finisher ("ab finish" on leg
+    // day) always gets included here — it was asked for by name, so it
+    // shouldn't depend on the energy/duration heuristic above the way the
+    // split's own default finisher does.
+    const finisherOverride = checkInState.finisherOverride;
+    if (finisherOverride && finisherOverride !== splitKey) {
+      const crossFinisher = FINISHERS[finisherOverride]?.[user];
+      if (crossFinisher && !list.some((ex) => ex.name === crossFinisher.name)) {
+        list = [...list, crossFinisher];
+      }
+    }
     return list;
   }
 
@@ -790,6 +802,21 @@
     const value = String(text || "").toLowerCase();
     if (/\b(lighter|light today|go easy|easier|ease up|back off|less weight|reduce the weight|deload)\b/.test(value)) return "lighter";
     if (/\b(heavier|heavy today|push harder|more weight|increase the weight|max out|go big)\b/.test(value)) return "heavier";
+    return null;
+  }
+
+  // "Leg day, ab finish" asks for a finisher from a DIFFERENT category than
+  // the split being trained — the candidate pool is normally scoped to one
+  // split only, so without this the AI/local fallback structurally can't
+  // pick a core move during a legs session no matter how clearly it's
+  // asked for. Returns which split's finisher to pull in as an extra
+  // candidate, e.g. "core-mobility" for an ab/core finisher.
+  function detectFinisherRequest(text) {
+    const value = String(text || "").toLowerCase();
+    if (/\b(ab|abs|core)\s*(finish|finisher)\b|\bfinish(ing)?\s*(with|on)\s*(abs?|core)\b/.test(value)) return "core-mobility";
+    if (/\bcardio\s*(finish|finisher)\b|\bfinish(ing)?\s*(with|on)\s*cardio\b/.test(value)) return "cardio";
+    if (/\bleg\s*(finish|finisher)\b|\bfinish(ing)?\s*(with|on)\s*legs\b/.test(value)) return "legs";
+    if (/\b(chest|back|upper.?body)\s*(finish|finisher)\b/.test(value)) return "chest-back";
     return null;
   }
 
@@ -871,6 +898,20 @@
     if (/\b(fewer exercises|shorter workout|remove one exercise)\b/i.test(request) && result.length > 2) {
       result = result.slice(0, -1);
     }
+
+    // A same-message focus request ("focus on quads... ab finish") makes the
+    // slicing above re-rank around the quads trait, which can silently cut
+    // the explicitly-requested cross-category finisher back out even though
+    // buildWorkoutPlan/the AI already included it. That finisher was asked
+    // for by name, not inferred from trait overlap, so it's never subject to
+    // the trim above either.
+    const finisherOverride = checkInState.finisherOverride;
+    if (finisherOverride && finisherOverride !== splitKey) {
+      const crossFinisher = FINISHERS[finisherOverride]?.[user];
+      if (crossFinisher && !result.some((exercise) => exercise.name === crossFinisher.name)) {
+        result = [...result, crossFinisher];
+      }
+    }
     return result;
   }
 
@@ -899,6 +940,20 @@
     const partnerExtra = PARTNER_EXTRAS[splitKey]?.[user];
     if (finisher && !excluded.has(finisher.name)) pool.push(finisher);
     if (partnerExtra && !excluded.has(partnerExtra.name)) pool.push(partnerExtra);
+
+    // "Leg day, ab finish" — the athlete asked for a finisher from a split
+    // that isn't the one being trained today. The candidate list is
+    // normally scoped to just this split, so without pulling that other
+    // split's finisher in as an extra option, the AI has no way to honor
+    // this no matter how clearly it's stated (it can only choose from
+    // what's actually in `candidates`).
+    const finisherOverride = checkInState.finisherOverride;
+    if (finisherOverride && finisherOverride !== splitKey) {
+      const crossFinisher = FINISHERS[finisherOverride]?.[user];
+      if (crossFinisher && !excluded.has(crossFinisher.name) && !pool.some((ex) => ex.name === crossFinisher.name)) {
+        pool.push(crossFinisher);
+      }
+    }
     return pool;
   }
 
@@ -976,7 +1031,7 @@
   // ---------- state ----------
 
   let currentUser = null;
-  let checkInState = { minutes: 30, energy: "medium", partner: false, note: "", weightOverrides: {}, weightDirection: null };
+  let checkInState = { minutes: 30, energy: "medium", partner: false, note: "", weightOverrides: {}, weightDirection: null, finisherOverride: null };
   let chatMessages = []; // [{ role: "coach" | "user", text }] for the check-in chat
   let chatBusy = false;
   // Split key the coach picked up on from the conversation (e.g. "let's do
@@ -2063,7 +2118,7 @@
 
   function renderCheckIn(user) {
     placeTerminalPanel("checkin");
-    checkInState = { minutes: 30, energy: "medium", partner: false, note: "", weightOverrides: {}, weightDirection: null };
+    checkInState = { minutes: 30, energy: "medium", partner: false, note: "", weightOverrides: {}, weightDirection: null, finisherOverride: null };
     document.getElementById("checkin-name").textContent = getPersonaProfile(user).name;
     document.getElementById("hub-cheer-btn").title = `Cheer ${getPersonaProfile(otherUser(user)).name}`;
     renderRecapCard(user);
@@ -2365,6 +2420,11 @@
     if (weightDirection) {
       checkInState.weightDirection = weightDirection;
       localAcks.push(`going ${weightDirection} across the board today`);
+    }
+    const finisherRequest = detectFinisherRequest(text);
+    if (finisherRequest) {
+      checkInState.finisherOverride = finisherRequest;
+      localAcks.push(`closing with a ${SPLIT_LIBRARY[finisherRequest].name} finisher`);
     }
     if (localAcks.length > 0) {
       reply = `Got it — ${localAcks.join("; and ")}.`;
