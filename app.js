@@ -1676,17 +1676,58 @@
   // like a coach who was actually paying attention — not a blank "how are
   // you" every single day. Falls back to a generic opener when there's
   // nothing recent to reference.
+  function buildCoachOpening(user, history) {
+    const recentNotes = getNotes(user).slice(-6);
+    if (recentNotes.length === 0) {
+      return history.length === 0
+        ? `👋 Hey ${PERSONAS[user].name}! Anything going on today I should know about before we get moving?`
+        : "👋 Welcome back! Any sore spots, schedule changes, or goals you want me to account for today?";
+    }
+
+    const topics = [
+      { key: "basketball", pattern: /\b(basketball|hoops?|pickup(?: game)?)\b/i, emoji: "🏀", question: "How was your basketball game? Anything from it you want to work on today?" },
+      { key: "running", pattern: /\b(run|running|race|marathon|5k|10k|tempo|miles?)\b/i, emoji: "🏃", question: "How did your run go? Anything you want today’s workout to improve or protect?" },
+      { key: "quads", pattern: /\b(quad|quads|quadriceps|front of (my )?legs?)\b/i, emoji: "🦵", question: "How are your quads feeling today? Do you want to keep emphasizing them or shift the focus?" },
+      { key: "knees", pattern: /\b(knee|knees)\b/i, emoji: "🦵", question: "How are your knees feeling today? Should I reduce impact or adjust your exercise choices?" },
+      { key: "shoulders", pattern: /\b(shoulder|shoulders|rotator cuff)\b/i, emoji: "💪", question: "How is your shoulder feeling today? Anything you want me to avoid or strengthen?" },
+      { key: "back", pattern: /\b(lower back|low back|back pain|back soreness)\b/i, emoji: "💪", question: "How is your back feeling today? Should I adjust loading or movement choices?" },
+      { key: "soreness", pattern: /\b(sore|soreness|pain|hurt|tight|ache)\b/i, emoji: "🤕", question: "How is that soreness feeling today? Is it improving, unchanged, or worse?" },
+      { key: "energy", pattern: /\b(tired|fatigue|fatigued|sleep|energy|exhausted)\b/i, emoji: "😴", question: "How is your energy today? Should I keep the session lighter or are you ready to push?" },
+      { key: "equipment", pattern: /\b(equipment|gym|home workout|dumbbell|barbell|machine|bands?)\b/i, emoji: "🏋️", question: "What equipment do you have available today? I can reshape the workout around it." },
+    ];
+
+    // Frequency wins; recency breaks ties. This keeps a recurring concern
+    // prominent while still allowing a new, specific update to take over.
+    const ranked = topics
+      .map((topic) => {
+        let matches = 0;
+        let latestIndex = -1;
+        recentNotes.forEach((note, index) => {
+          if (topic.pattern.test(note.text)) {
+            matches++;
+            latestIndex = index;
+          }
+        });
+        return { ...topic, matches, latestIndex };
+      })
+      .filter((topic) => topic.matches > 0)
+      .sort((a, b) => b.matches - a.matches || b.latestIndex - a.latestIndex);
+
+    if (ranked.length > 0) {
+      const topic = ranked[0];
+      return `${topic.emoji} ${topic.question}`;
+    }
+
+    const raw = recentNotes[recentNotes.length - 1].text;
+    const clean = raw.replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "").replace(/\s+/g, " ").trim().slice(0, 100);
+    return clean
+      ? `💬 Last time you mentioned “${clean}.” How is that going, and what would you like to work on today?`
+      : "👋 Welcome back! What feels most important for today’s workout?";
+  }
+
   function resetChat(user) {
     const history = getHistory(user);
-    const lastNote = getPastNotes(user, 1)[0];
-    let greeting;
-    if (history.length === 0) {
-      greeting = `Hey ${PERSONAS[user].name}! I'm your coach. Anything going on today I should know about before we get moving?`;
-    } else if (lastNote) {
-      greeting = `Welcome back! Last time you mentioned: "${lastNote.text}" — how's that today? Anything else before I help pick your session?`;
-    } else {
-      greeting = "Welcome back! Anything going on today — sore spots, low on time, equipment changes — before I help pick your session?";
-    }
+    const greeting = buildCoachOpening(user, history);
     chatMessages = [{ role: "coach", text: greeting }];
     chatBusy = false;
     chatSuggestedSplit = null;
@@ -1819,6 +1860,10 @@
 
     if (constraint) {
       checkInState.note = [checkInState.note, constraint].filter(Boolean).join(". ");
+      // Save each meaningful exchange at the time it happens. The chat can
+      // continue on the recommendation screen, so waiting for the earlier
+      // check-in submit button would lose those later updates on relaunch.
+      logNote(currentUser, constraint);
     }
 
     // If the athlete's already on the workout-selection screen, let the
@@ -1849,7 +1894,6 @@
     });
 
     document.getElementById("checkin-submit").addEventListener("click", () => {
-      logNote(currentUser, checkInState.note);
       showSelect(currentUser);
     });
 
