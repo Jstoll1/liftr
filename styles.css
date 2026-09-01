@@ -1519,7 +1519,8 @@ button,
   font-size: 11px;
 }
 
-.library-item-remove {
+.library-item-remove,
+.library-item-start {
   border: none;
   background: none;
   color: var(--text-dim);
@@ -1530,6 +1531,26 @@ button,
   flex-shrink: 0;
 }
 .library-item-remove:hover { color: #ff4d4d; }
+.library-item-start:hover { color: var(--accent); }
+
+.library-tag-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+.save-workout-link {
+  align-self: center;
+  font-size: 11px;
+  letter-spacing: 0;
+  font-weight: 500;
+  text-transform: none;
+}
 
 .empty-note {
   color: var(--text-dim);

@@ -24,7 +24,7 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609011600" />
+  <link rel="stylesheet" href="styles.css?v=202609011800" />
 </head>
 <body>
 
@@ -238,6 +238,13 @@
 
       <ul id="library-list" class="library-list"></ul>
       <p id="library-empty" class="panel-subtext">Nothing uploaded yet — add a PDF above and the coach will start referencing it.</p>
+
+      <div class="backup-section">
+        <span class="option-label">💪 Saved Workouts <span class="option-label-optional">(proven combos, ready to start anytime)</span></span>
+        <p class="panel-subtext">Save a workout from the session preview screen to build your own library of go-to combos — the AI coach can also draw on these when suggesting a variation.</p>
+        <ul id="library-routines-list" class="library-list"></ul>
+        <p id="library-routines-empty" class="panel-subtext">Nothing saved yet — tap "Save this workout" from any session preview.</p>
+      </div>
     </div>
   </main>
 
@@ -384,6 +391,7 @@
           <button id="edit-preview-btn" class="ghost-btn">Edit Exercises</button>
           <button id="log-session-btn" class="primary-btn">Start Session</button>
         </div>
+        <button id="save-workout-btn" type="button" class="link-btn save-workout-link hidden">💾 Save this workout to your library</button>
       </article>
 
       <button id="back-to-options" class="link-btn back-to-options hidden">&larr; Not feeling it? Back to options</button>
@@ -437,6 +445,6 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
   </script>
-  <script src="app.js?v=202609011600"></script>
+  <script src="app.js?v=202609011800"></script>
 </body>
 </html>

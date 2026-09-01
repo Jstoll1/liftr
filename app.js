@@ -236,17 +236,760 @@
   // call — keeps token cost bounded no matter how large the library grows.
   const MAX_LIBRARY_CONTEXT_CHARS = 3000;
 
+  // Id for the pre-seeded "Shortcut to Shred" reference doc (see
+  // seedLibraryIfNeeded below) — fixed so re-seeding logic can recognize it,
+  // and so the dedicated Jake workouts below can point back to it by id.
+  const SHRED_PDF_SEED_ID = "seed-shortcut-to-shred";
+  const SHRED_PDF_SEED_TEXT = `WORKOUT PROGRAM
+Cardio acceleration is critical to Shortcut to Shred. It will fire up Knee Tuck Jump
+your fat-burning furnace like nothing else. Cardio acceleration Diagonal Bound
+is a technique that combines high-intensity cardio and
+ Tire Flip
+resistance training into one fast-paced workout. Instead
+of resting between your lifts, you will do cardio between Skipping (in place)
+every single set. Simply put, you’ll lift one set of a prescribed Elliptical
+exercise, such as bench press, and then immediately follow it DB Clean
+with one minute of cardio. Smith Machine Clean
+ Step-up with Knee Raise
+Cardio effectively replaces your rest periods. Now, I don’t
+mean you have to rack the barbell, run across the gym, and
+jump on a treadmill or stationary bike. Your cardio acceleration
+exercises can be as simple as running in place next to the
+bench. You can also jump rope, perform dumbbell cleans,
+step-ups, or any combination of full-body exercises. Whatever SHORTCUT TO SHRED
+you do, the point is to move for an entire minute.
+ WORKOUT PROGRAM
+Between each set, you’ll do one minute of a cardio acceleration
+exercise. If you’re new to fitness and find that one minute is PHASE 1: WEEK 1
+too long, you can reduce the time to 30 seconds, or go at a
+slower pace. The goal is to gradually increase the time you WORKOUT 1: CHEST, TRICEPS, ABS (MULTI-JOINT)
+spend doing high-intensity cardio. You want to keep each
+cardio acceleration minute as intense and demanding as EXERCISE SETS REPS
+possible. Bench Press 4 9-11
+ Incline Dumbbell Press 3 9-11
+CARDIO ACCELERATION OPTIONS Decline Smith Machine Press 3 9-11
+KB Swing Dips 4 9-11
+Goblet Squat Close-Grip Bench Press 4 9-11
+Squat Jump Cable Crunch 3 9-11
+Box Jump Smith Machine Hip Thrust 3 9-11
+DB Step-up
+BB Step-up
+Sprints
+ WORKOUT 2: SHOULDERS, LEGS, CALVES (MULTI-JOINT)
+Running in Place EXERCISE SETS REPS
+Medicine Ball Slam Barbell Shoulder Press 4 9-11
+Dumbbell Lunge Alternating Dumbbell
+Lunge Jumps Shoulder Press (Standing) 3 9-11
+Side-to-Side Box Shuffle Smith Machine One-Arm
+Sledgehammer Swing Upright Row 3 9-11
+Battling Ropes Squat 4 9-11
+Rocket Jump Deadlift 3 9-11
+Lateral Bound Walking Lunge 3 9-11
+Lateral Box Jump Standing Calf Raise 3 9-11
+Side Standing Long Jump Seated Calf Raise 3 9-11
+Mountain Climber
+Jump Rope
+WORKOUT 3: BACK, TRAPS, BICEPS (MULTI-JOINT) Straight-Arm Pulldown 3 12-15
+ Smith Machine
+EXERCISE SETS REPS Behind-the-Back Shrug 4 12-15
+Barbell Bent Over Row 4 9-11 Incline Dumbbell Curl 3 12-15
+Dumbbell Bent-Over Row 3 9-11 High Cable Curl 3 12-15
+Seated Cable Row 3 9-11 Rope Cable Curl 3 12-15
+Barbell Shrug 4 9-11 Dumbbell Reverse Wrist Curl 3 12-15
+Barbell Curl 3 9-11
+Barbell or EZ-Bar Preacher Curl 3 9-11
+Reverse-Grip Barbell Curl 3 9-11
+Barbell Wrist Curl 3 9-11 PHASE 1: WEEK 2
+ WORKOUT 1: CHEST, TRICEPS, ABS (MULTI-JOINT)
+WORKOUT 4: CHEST, TRICEPS, ABS (SINGLE JOINT) EXERCISE SETS REPS
+ Bench Press 4 6-8
+EXERCISE SETS REPS
+ Incline Dumbbell Press 3 6-8
+Incline Dumbbell Flye 3 12-15
+ Decline Smith Machine Press 3 6-8
+Dumbbell Flye 3 12-15
+ Dips 4 6-8
+Cable Crossover 3 12-15
+ Close-Grip Bench Press 4 6-8
+Triceps Pressdown 3 12-15
+ Cable Crunch 3 7-8
+Overhead Dumbbell Extension 3 12-15
+ Smith Machine Hip Thrust 3 7-8
+Cable Lying Triceps Extension 3 12-15
+Crunch 3 12-15
+Standing Oblique Cable Crunch 3 12-15
+ WORKOUT 2: SHOULDERS, LEGS, CALVES
+ EXERCISE SETS REPS
+WORKOUT 5: SHOULDERS, LEGS, CALVES Barbell Shoulder Press 4 6-8
+ Alternating Dumbbell
+EXERCISE SETS REPS
+ Shoulder Press (Standing) 3 6-8
+Dumbbell Lateral Raise 3 12-15
+ Smith Machine
+Barbell Front Raise 3 12-15
+ One-Arm Upright Row 3 6-8
+Dumbbell Bent-Over Lateral Raise 3 12-15
+ Squat 4 6-8
+Leg Extension 4 12-15
+ Deadlift 3 6-8
+Leg Curl 4 12-15
+ Walking Lunge 3 6-8
+Seated Calf Raise 3 12-15
+ Standing Calf Raise 3 7-8
+Donkey or Leg Press Calf Raise 3 12-15
+ Seated Calf Raise 3 7-8
+WORKOUT 6: BACK, TRAPS, BICEPS
+ WORKOUT 3: BACK, TRAPS, BICEPS
+EXERCISE SETS REPS
+ EXERCISE SETS REPS
+Lat Pulldown 3 12-15
+ Barbell Bent Over Row 4 6-8
+Reverse-Grip Pulldown 3 12-15
+ Dumbbell Bent-Over Row 3 6-8
+Seated Cable Row 3 6-8 PHASE 1: WEEK 3
+Barbell Shrug 4 6-8
+Barbell Curl 3 6-8 WORKOUT 1: CHEST, TRICEPS, ABS (MULTI-JOINT)
+Barbell or EZ-Bar Preacher Curl 3 6-8
+ EXERCISE SETS REPS
+Reverse-Grip Barbell Curl 3 6-8
+ Bench Press 4 2-5
+Barbell Wrist Curl 3 6-8
+ Incline Dumbbell Press 3 2-5
+ Decline Smith Machine Press 3 2-5
+ Dips 4 2-5
+WORKOUT 4: CHEST, TRICEPS, ABS (SINGLE JOINT) Close-Grip Bench Press 4 2-5
+EXERCISE SETS REPS Cable Crunch 3 5-6
+Incline Dumbbell Flye 3 16-20 Smith Machine Hip Thrust 3 5-6
+Dumbbell Flye 3 16-20
+Cable Crossover 3 16-20
+Triceps Pressdown 3 16-20 WORKOUT 2: SHOULDERS, LEGS, CALVES
+Overhead Dumbbell Extension 3 16-20
+ EXERCISE SETS REPS
+Cable Lying Triceps Extension 3 16-20
+ Barbell Shoulder Press 4 2-5
+Crunch 3 16-20
+ Alternating Dumbbell
+Standing Oblique Cable Crunch 3 16-20
+ Shoulder Press (Standing) 3 2-5
+ Smith Machine
+ One-Arm Upright Row 3 4-5
+WORKOUT 5: SHOULDERS, LEGS, CALVES Squat 4 2-5
+EXERCISE SETS REPS Deadlift 3 2-5
+Dumbbell Lateral Raise 3 16-20 Walking Lunge 3 4-5
+Barbell Front Raise 3 16-20 Standing Calf Raise 3 5-6
+Dumbbell Bent-Over Lateral Raise 3 16-20 Seated Calf Raise 3 5-6
+Leg Extension 4 16-20
+Leg Curl 4 16-20
+Seated Calf Raise 3 16-20 WORKOUT 3: BACK, TRAPS, BICEPS
+Donkey or Leg Press Calf Raise 3 16-20
+ EXERCISE SETS REPS
+ Barbell Bent Over Row 4 2-5
+ Dumbbell Bent-Over Row 3 2-5
+WORKOUT 6: BACK, TRAPS, BICEPS Seated Cable Row 3 2-5
+EXERCISE SETS REPS Barbell Shrug 4 2-5
+Lat Pulldown 3 16-20 Barbell Curl 3 2-5
+Reverse-Grip Pulldown 3 16-20 Barbell or EZ-Bar Preacher Curl 3 4-5
+Straight-Arm Pulldown 3 16-20 Reverse-Grip Barbell Curl 3 4-5
+Smith Machine Barbell Wrist Curl 3 4-5
+ Behind-the-Back Shrug 4 16-20
+Incline Dumbbell Curl 3 16-20
+High Cable Curl 3 16-20 WORKOUT 4: CHEST, TRICEPS, ABS (SINGLE JOINT)
+Rope Cable Curl 3 16-20
+ EXERCISE SETS REPS
+Dumbbell Reverse Wrist Curl 3 16-20
+ Incline Dumbbell Flye 3 21-30
+Dumbbell Flye 3 21-30 by 20-30 percent and lift until you reach muscle failure again.
+Cable Crossover 3 21-30 You are now done with the set and ready to move to the next
+Triceps Pressdown 3 21-30 exercise.
+Overhead Dumbbell Extension 3 21-30 WORKOUT 1: CHEST, TRICEPS, ABS (MULTI-JOINT)
+Cable Lying Triceps Extension 3 21-30
+Crunch 3 21-30 EXERCISE SETS REPS
+Standing Oblique Cable Crunch 3 21-30 Bench Press 4* 9-11
+ Incline Bench Press 3* 9-11
+ Decline Dumbbell Press 3* 9-11
+WORKOUT 5: SHOULDERS, LEGS, CALVES Dips 4* 9-11
+ Close-Grip Bench Press 4* 9-11
+EXERCISE SETS REPS Smith Machine Crunch 3* 9-11
+Dumbbell Lateral Raise 3 21-30 Hanging Leg Raise 3* 9-11
+Barbell Front Raise 3 21-30
+Dumbbell Bent-Over Lateral Raise 3 21-30 *On the last set do a cardio accelerated rest-pause dropset
+Leg Extension 4 21-30
+Leg Curl 4 21-30
+Seated Calf Raise 3 21-30 WORKOUT 2: SHOULDERS, LEGS, CALVES (MULTI-JOINT)
+Donkey or Leg Press Calf Raise 3 21-30
+ EXERCISE SETS REPS
+ Barbell Shoulder Press 4* 9-11
+ Dumbbell Shoulder Press (Seated) 3* 9-11
+WORKOUT 6: BACK, TRAPS, BICEPS Dumbbell Upright Row 3* 9-11
+EXERCISE SETS REPS Squat 4* 9-11
+Lat Pulldown 3 21-30 Deadlift 3* 9-11
+Reverse-Grip Pulldown 3 21-30 Leg Press 3* 9-11
+Straight-Arm Pulldown 3 21-30 Standing Calf Raise 3* 9-11
+Smith Machine Seated Calf Raise 3* 9-11
+ Behind-the-Back Shrug 4 21-30 *On the last set do a cardio accelerated rest-pause dropset
+Incline Dumbbell Curl 3 21-30
+High Cable Curl 3 21-30
+Rope Cable Curl 3 21-30
+ WORKOUT 3: BACK, TRAPS, BICEPS (MULTI-JOINT)
+Dumbbell Reverse Wrist Curl 3 21-30
+ EXERCISE SETS REPS
+ Barbell Bent Over Row 4* 9-11
+ Incline Dumbbell Row 3* 9-11
+PHASE 2: WEEK 4 Seated Cable Row 3* 9-11
+If you’re feeling really good and want to make the Shortcut to
+ Barbell Shrug 4* 9-11
+Shred sessions even more intense, start performing a “cardio
+accelerated rest-pause dropset” on the last set of each major Barbell Curl 3* 9-11
+exercise. The technique is as brutal as it sounds, believe me. Seated Barbell Curl 3* 9-11
+ Reverse-Grip Barbell or EZ-Bar Curl 3* 9-11
+Cardio accelerated rest-pause dropset: Take the last set of Behind-The-Back Wrist Curl 3* 9-11
+each exercise to muscle failure. Then, rack the weight and
+perform cardio acceleration by running in place for 15-20 *On the last set do a cardio accelerated rest-pause dropset
+seconds. Pick up the weight and continue doing reps until you
+reach muscle failure again. Immediately decrease the weight
+WORKOUT 4: CHEST, TRICEPS, ABS (SINGLE JOINT) PHASE 2: WEEK 5
+EXERCISE SETS REPS WORKOUT 1: CHEST, TRICEPS, ABS (MULTI-JOINT)
+Cable Crossover from Low Pulley 4* 12-15
+ EXERCISE SETS REPS
+Cable Crossover 3* 12-15
+ Bench Press 4* 6-8
+Dumbbell Flye 3* 12-15
+ Incline Bench Press 3* 6-8
+Overhead Cable Triceps Extension 3* 12-15
+ Decline Dumbbell Press 3* 6-8
+Lying Triceps Extension 3* 12-15
+ Dips 4* 6-8
+Rope Triceps Pressdown 3* 12-15
+ Close-Grip Bench Press 4* 6-8
+Crossover Crunch 3* 12-15
+ Smith Machine Crunch 3* 7-8
+Cable Woodchopper 3* 12-15
+ Hanging Leg Raise^ 3* 7-8
+*On the last set do a cardio accelerated rest-pause dropset
+ *On the last set do a cardio accelerated rest-pause dropset
+ ^Use ankle weights or hold dumbbell between feet if needed
+WORKOUT 5: SHOULDERS, LEGS, CALVES
+EXERCISE SETS REPS
+ WORKOUT 2: SHOULDERS, LEGS, CALVES (MULTI-JOINT)
+Dumbbell Lateral Raise 4* 12-15
+Cable Front Raise 3* 12-15 EXERCISE SETS REPS
+Lying Cable Rear Delt Flye 3* 12-15 Barbell Shoulder Press 4* 6-8
+Leg Extension 4* 12-15 Dumbbell Shoulder Press (Seated) 3* 6-8
+Leg Curl 4* 12-15 Dumbbell Upright Row 3* 6-8
+Seated Calf Raise 3* 12-15 Squat 4* 6-8
+Donkey or Leg Press Calf Raise 3* 12-15 Deadlift 3* 6-8
+ Leg Press 3* 6-8
+*On the last set do a cardio accelerated rest-pause dropset
+ Standing Calf Raise 3* 7-8
+ Seated Calf Raise 3* 7-8
+ WORKOUT 6: BACK, TRAPS, BICEPS *On the last set do a cardio accelerated rest-pause dropset
+EXERCISE SETS REPS
+Lat Pulldown 4* 12-15
+ WORKOUT 3: BACK, TRAPS, BICEPS (MULTI-JOINT)
+Behind-the-Neck Pulldown 3* 12-15
+Rope Straight-Arm Pulldown 3* 12-15 EXERCISE SETS REPS
+Dumbbell Shrug 4* 12-15 Barbell Bent Over Row 4* 6-8
+EZ-Bar Cable Curl 3* 12-15 Incline Dumbbell Row 3* 6-8
+Incline Dumbbell Curl 3* 12-15 Seated Cable Row 3* 6-8
+Dumbbell Hammer Curl 3* 12-15 Barbell Shrug 4* 6-8
+Dumbbell Reverse Wrist Curl 3* 12-15 Barbell Curl 3* 6-8
+ Seated Barbell Curl 3* 6-8
+*On the last set do a cardio accelerated rest-pause dropset
+ Reverse-Grip Barbell or EZ-Bar Curl 3* 6-8
+ Behind-The-Back Wrist Curl 3* 6-8
+ *On the last set do a cardio accelerated rest-pause dropset
+WORKOUT 4: CHEST, TRICEPS, ABS (SINGLE JOINT) PHASE 2: WEEK 6
+EXERCISE SETS REPS WORKOUT 1: CHEST, TRICEPS, ABS (MULTI-JOINT)
+Cable Crossover from Low Pulley 4* 16-20
+ EXERCISE SETS REPS
+Cable Crossover 3* 16-20
+ Bench Press 4* 2-5
+Dumbbell Flye 3* 16-20
+ Incline Bench Press 3* 2-5
+Overhead Cable Triceps Extension 3* 16-20
+ Decline Dumbbell Press 3* 2-5
+Lying Triceps Extension 3* 16-20
+ Dips 4* 2-5
+Rope Triceps Pressdown 3* 16-20
+ Close-Grip Bench Press 4* 2-5
+Crossover Crunch 3* 16-20
+ Smith Machine Crunch 3* 4-5
+Cable Woodchopper 3* 16-20
+ Hanging Leg Raise^ 3* 4-5
+*On the last set do a cardio accelerated rest-pause dropset
+ *On the last set do a cardio accelerated rest-pause dropset
+ ^Use ankle weights or hold dumbbell between feet if needed
+WORKOUT 5: SHOULDERS, LEGS, CALVES
+EXERCISE SETS REPS
+ WORKOUT 2: SHOULDERS, LEGS, CALVES (MULTI-JOINT)
+Dumbbell Lateral Raise 4* 16-20
+Cable Front Raise 3* 16-20 EXERCISE SETS REPS
+Lying Cable Rear Delt Flye 3* 16-20 Barbell Shoulder Press 4* 2-5
+Leg Extension 4* 16-20 Dumbbell Shoulder Press (Seated) 3* 2-5
+Leg Curl 4* 16-20 Dumbbell Upright Row 3* 2-5
+Seated Calf Raise 3* 16-20 Squat 4* 2-5
+Donkey or Leg Press Calf Raise 3* 16-20 Deadlift 3* 2-5
+ Leg Press 3* 2-5
+*On the last set do a cardio accelerated rest-pause dropset
+ Standing Calf Raise 3* 4-5
+ Seated Calf Raise 3* 4-5
+WORKOUT 6: BACK, TRAPS, BICEPS *On the last set do a cardio accelerated rest-pause dropset
+EXERCISE SETS REPS
+Lat Pulldown 4* 16-20
+ WORKOUT 3: BACK, TRAPS, BICEPS (MULTI-JOINT)
+Behind-the-Neck Pulldown 3* 16-20
+Rope Straight-Arm Pulldown 3* 16-20 EXERCISE SETS REPS
+Dumbbell Shrug 4* 16-20 Barbell Bent Over Row 4* 2-5
+EZ-Bar Cable Curl 3* 16-20 Incline Dumbbell Row 3* 2-5
+Incline Dumbbell Curl 3* 16-20 Seated Cable Row 3* 2-5
+Dumbbell Hammer Curl 3* 16-20 Barbell Shrug 4* 2-5
+Dumbbell Reverse Wrist Curl 3* 16-20 Barbell Curl 3* 2-5
+ Seated Barbell Curl 3* 2-5
+*On the last set do a cardio accelerated rest-pause dropset
+ Reverse-Grip Barbell or EZ-Bar Curl 3* 4-5
+ Behind-The-Back Wrist Curl 3* 4-5
+ *On the last set do a cardio accelerated rest-pause dropset
+WORKOUT 4: CHEST, TRICEPS, ABS (SINGLE JOINT) NUTRITION PLAN
+ Shortcut to Shred is built on three distinct nutrition phases.
+EXERCISE SETS REPS Each phase calls for different amounts of carbohydrates
+Cable Crossover from Low Pulley 4* 21-30 and calories. Your protein and fat intake remains the same
+Cable Crossover 3* 21-30 throughout Shortcut to Shred, but your carb intake gradually
+Dumbbell Flye 3* 21-30 drops, which also drops your overall calories.
+Overhead Cable Triceps Extension 3* 21-30
+Lying Triceps Extension 3* 21-30 SHORTCUT TO SHRED
+Rope Triceps Pressdown 3* 21-30 NUTRITION PLAN
+Crossover Crunch 3* 21-30
+Cable Woodchopper 3* 21-30 PROTEIN
+ Phase 1-3: 1.5 g per pound of body weight
+*On the last set do a cardio accelerated rest-pause dropset
+ FAT
+ Phase 1-3: 0.5 g per pound of body weight
+WORKOUT 5: SHOULDERS, LEGS, CALVES CARBS
+ Phase 1, Week 1: 1.5 g per pound of body weight
+EXERCISE SETS REPS
+ Phase 2, Weeks 2-3: 1 g per pound of body weight
+Dumbbell Lateral Raise 4* 21-30
+ Phase 3, Weeks 3-6: 0.5 g per pound of body weight
+Cable Front Raise 3* 21-30
+Lying Cable Rear Delt Flye 3* 21-30 In Phases 1 and 2, your caloric intake is different on workout
+Leg Extension 4* 21-30 days and rest days, because on rest days you will not ingest a
+Leg Curl 4* 21-30 pre- or post-workout meal.
+Seated Calf Raise 3* 21-30
+ In Phase 3, you will have more calories on your rest days than
+Donkey or Leg Press Calf Raise 3* 21-30 on workout days. Why? When you drop your carb intake down
+ to 0.5 grams per pound of bodyweight, your leptin levels may
+*On the last set do a cardio accelerated rest-pause dropset
+ drop if you don’t have enough calories. Leptin is a critical
+ hormone for maintaining your metabolic rate. If leptin levels
+ drop too low, your metabolic rate drops, too.
+WORKOUT 6: BACK, TRAPS, BICEPS
+ By giving your body a high-carb day, you can keep your leptin
+EXERCISE SETS REPS levels even, which helps you continue burning fat and get
+Lat Pulldown 4* 21-30 through the diet. A high-carb rest day will do wonders for your
+ mind.
+Behind-the-Neck Pulldown 3* 21-30
+Rope Straight-Arm Pulldown 3* 21-30
+Dumbbell Shrug 4* 21-30 PHASE I
+EZ-Bar Cable Curl 3* 21-30 Protein: 1.5 grams per pound
+Incline Dumbbell Curl 3* 21-30 Fats: 0.5 grams per pound
+Dumbbell Hammer Curl 3* 21-30 Carbs: 1.5 grams per pound
+Dumbbell Reverse Wrist Curl 3* 21-30
+ WAKE-UP SUPPLEMENTS
+*On the last set do a cardio accelerated rest-pause dropset
+ 200 mg caffeine
+ 500-1000 mg green tea extract
+ 2 g acetyl-L-carnitine
+BREAKFAST 14 small Wonka Pixy Stix or 1 Giant Pixy Stix
+30-60 min after wake-up supplements 5 g BCAAs
+3 whole eggs 1.5-5 g creatine
+3 egg whites 1.5-2 g beta-alanine
+1 cup cooked oatmeal 2 g carnitine
+1 tbsp honey
+1/2 large grapefruit DINNER
+ 8 oz top sirloin steak
+LATE-MORNING SNACK 1 large sweet potato
+8 oz. reduced-fat Greek yogurt 2 cups mixed green salad
+1 tbsp honey 1 tbsp olive oil
+1/2 oz. walnuts (7 halves) crushed 1 tbsp vinegar
+ 2-3 g fish oil
+LATE-MORNING SUPPLEMENTS 2-3 g CLA
+200 mg caffeine
+500-1000 mg green tea extract NIGHTTIME SNACK
+2 g acetyl-L-carnitine 8 oz low-fat cottage cheese
+ 1 cup sliced pineapple
+LUNCH 2-3 g fish oil
+5 oz. can tuna 2-3 g CLA
+2 slices whole-wheat bread
+1 tbsp light mayonnaise NUTRITIONAL INFO
+1/2 large grapefruit Calories: 3,000
+ Protein: 285 g
+MIDDAY SNACK Carbs: 270 g
+3 sticks light mozzarella string cheese Fat: 90 g
+1 medium apple
+1 oz mixed nuts
+PRE-WORKOUT SUPPLEMENTS PHASE II – WEEKS 2-3
+30-60 minutes before workout Protein: 1.5 grams per pound of body weight
+200 mg caffeine Fats: 0.5 grams per pound
+500-1000 mg green tea extract Carbs: 1 gram per pound
+2 g acetyl-L-carnitine Like in Phase 1, on the one day of the week that you don’t train,
+ these numbers will be slightly lower since you skip the pre-
+WORKOUT MEAL and post-workout meals. Feel free to have your pre-workout
+Sip throughout workout shake as an extra snack on that rest day if you get hungry.
+1 scoop protein powder
+ The sample meals are similar to Phase 1, but this does not
+1.5-5 g creatine mean you need to eat these exact foods and only these foods
+1.5-2 g beta-alanine for all 3 weeks of the first 2 phases of this program. The foods
+ are similar so you can see what I removed and changed to
+POST-WORKOUT MEAL bring the carbs down without affecting protein and fat much.
+Within 30 minutes after workout
+ Refer to the alternative foods list for foods that you can use
+2 scoops protein powder to replace these sample choices so the diet doesn’t become
+ boring and bereft of nutrient diversity.
+WAKE-UP SUPPLEMENTS WORKOUT MEAL
+200 mg caffeine Sip throughout workout
+500-1000 mg green tea extract 1 scoop protein powder
+2 g acetyl-L-carnitine 1.5-5 g creatine
+ 1.5-2 g beta-alanine
+BREAKFAST
+30-60 min after wake-up supplements POST-WORKOUT MEAL
+1 scoop protein powder (sip while prepping breakfast) Within 30 minutes after workout
+3 whole eggs 2 scoops protein powder
+3 egg whites 14 small Wonka Pixy Stix or 1 Giant Pixy Stix
+1 cup cooked oatmeal 5 g BCAAs
+1 tbsp honey 1.5-5 g creatine
+1/2 large grapefruit 1.5-2 g beta-alanine
+2-3 g fish oil 2 g carnitine
+2-3 g CLA
+ DINNER
+LATE-MORNING SNACK 8 oz top sirloin steak
+8 oz. reduced-fat Greek yogurt 1 large sweet potato
+1 tsp honey 1 cup chopped broccoli
+1/2 oz walnuts (7 halves), crushed 2-3 g fish oil
+ 2-3 g CLA
+LATE-MORNING SUPPLEMENTS
+200 mg caffeine NIGHTTIME SNACK
+500-1000 mg green tea extract 1 cup low-fat cottage cheese
+2 g acetyl-L-carnitine 2-3 g fish oil
+ 2-3 g CLA
+LUNCH
+5 oz. can tuna TOTALS
+2 cups mixed green salad Calories: 2,600
+1 tbsp olive oil Protein: 280 g
+1 tbsp vinegar Carbs: 180 g
+1/2 large grapefruit Fat: 80 g
+MIDDAY SNACK
+3 sticks light mozzarella string cheese PHASE III – WEEKS 4-6
+1 oz mixed nuts Protein: 1.5 grams per pound
+ Fats: 0.5 grams per pound
+PRE-WORKOUT SUPPLEMENTS Carbs: 0.5 grams per pound
+30-60 minutes before workout Dropping calories and carbs again will cause your body to
+200 mg caffeine continue burning fat. Unlike in Phases 1 and 2, where you eat
+500-1000 mg green tea extract fewer calories and carbs on your rest day, the opposite holds
+ true in Phase 3. You will eat more carbs and calories on your
+2 g acetyl-L-carnitine
+ rest days.
+ On your rest days throughout Phase 3, you get to enjoy a
+ high-carb, pig-out day. Since you go so low in carbs six days
+of the week, you will need this one high-carb day to prevent 1 tbsp olive oil
+your metabolism from sputtering and slowing down to spare 1 tbsp vinegar
+energy reserves (body fat). The high-carb day will help kick
+start your metabolism again, keeping you in a fat-burning
+mode for the final phase MIDDAY SNACK
+ 3 sticks light mozzarella string cheese
+ 1 oz mixed nuts
+HIGH-CARB, REST DAY MACROS
+Protein: 1.5 grams of protein per pound of body weight PRE-WORKOUT SUPPLEMENTS
+Carbs: At least 2 grams of carbs per pound of body weight 30-60 minutes before workout
+Fat: 0.5 grams per pound of body weight 200 mg caffeine
+A high-carb pig-out day does not mean you’ll eat pizza and 500-1000 mg green tea extract
+drink beer all day. Sure, a couple beers or a glass of wine 2 g acetyl-L-carnitine
+won’t derail your progress, but your high-carb day isn’t a full
+24-hour chest session.
+ WORKOUT MEAL
+Shoot for low-fat carb sources. High-glycemic or fast-digesting Sip throughout workout
+carbs are fine during the first half of the day, as is fruit, but 1 scoop protein powder
+to prevent any of those carbs from being stored as body fat, 1.5-5 g creatine
+focus on slow-digesting or low-glycemic carbs later in the day.
+ 1.5-2 g beta-alanine
+ POST-WORKOUT MEAL
+WORKOUT DAYS Within 30 minutes after workout
+WAKE-UP SUPPLEMENTS 2 scoops protein powder
+200 mg caffeine 14 small Wonka Pixy Stix or 1 Giant Pixy Stix
+500-1000 mg green tea extract 5 g BCAAs
+2 g acetyl-L-carnitine 1.5-5 g creatine
+ 1.5-2 g beta-alanine
+BREAKFAST 2 g carnitine
+30-60 min after wake-up supplements
+1 scoop protein powder (sip while prepping breakfast) DINNER
+3 whole eggs 8 oz top sirloin steak
+3 egg whites 1 cup chopped broccoli
+2-3 g fish oil 2-3 g fish oil
+2-3 g CLA 2-3 g CLA
+LATE-MORNING SNACK NIGHTTIME SNACK
+Turkey, Swiss, and avocado rolls 8 oz low-fat cottage cheese
+ 2-3 g fish oil
+LATE-MORNING SUPPLEMENTS 2-3 g CLA
+200 mg caffeine
+500-1000 mg green tea extract TOTALS
+2 g acetyl-L-carnitine Calories: 2,200
+ Protein: 280 g
+LUNCH Carbs: 80 g
+5 oz. can tuna Fat: 80 g
+2 cups mixed green salad
+HIGH-CARB REST DAYS MID-DAY SNACK
+WAKE-UP SUPPLEMENTS 3 sticks light mozzarella string cheese
+200 mg caffeine
+ 6 cups air-popped popcorn or 1 bag low-fat microwave
+500-1000 mg green tea extract
+ popcorn
+2 g acetyl-L-carnitine
+ 1/2 medium cantaloupe
+BREAKFAST DINNER
+30-60 min after wake-up supplements
+ 8 oz chicken breast
+1 scoop whey protein (sip while prepping breakfast)
+ 1 cup cooked brown rice
+5 g BCAAs
+ 1 cup cooked black beans
+1.5-5 g creatine
+ 1 cup chopped broccoli
+1.5-2 g beta-alanine
+ 2-3 g fish oil
+2 g carnitine
+ 2-3 g CLA
+3 whole eggs
+3 egg whites
+ NIGHTTIME SNACK
+3 four-inch pancakes
+ 1 cup reduced-fat Greek yogurt
+2 tbsp maple syrup
+ 1 tbsp honey
+2-3 g fish oil
+ 1/2 oz. walnuts (7 halves), crushed
+2-3 g CLA
+ 2-3 g fish oil
+ 2-3 g CLA
+LATE-MORNING SNACK
+1 scoop protein powder (sip while prepping pizza)
+ TOTALS
+Stoppani EZ Pizza
+ Calories: 3,100
+ Protein: 260 g
+Ingredients:
+ Carbs: 360 g
+1/4 Boboli whole-wheat pizza crust
+ Fat: 70 g
+1/4 cup light mozzarella
+1/4 cup marinara sauce
+ SUPPLEMENT PLAN
+Directions: The Shortcut to Shred supplement schedule is practiced and
+1. Spread sauce on crust and top with cheese. precise. Everything I do is researched, tested in the lab, and
+ tried on my own physique. My body is a product of my brain.
+2. Place in oven and bake for about 15 minutes or
+ If you want the best results from this program, you need to
+ until cheese is melted. follow this regimen. Every capsule, every shake, and every
+ dose is intended to help you achieve your best physique.
+LATE-MORNING SUPPLEMENTS
+200 mg caffeine
+500-1000 mg green tea extract PROTEIN
+ If you still think that drinking a whey protein shake before
+2 g acetyl-L-carnitine
+ and after workouts is the best way to ensure proper muscle
+ growth, you’re only half right. Yes, whey is critical to take
+LUNCH both before and after workouts. But using whey alone will
+6-inch Subway Turkey and ham (double meat) shortchange your results.
+ on wheat
+ Research suggests that a combination of fast-digesting whey
+1 oz. bag Baked Lays
+ protein along with both a medium-digesting protein, like egg-
+1 large diet soda white protein, and a very slow-digesting protein, such as
+ micellar casein, is superior to a single protein source. Based
+ on the research and real-world data, your protein shake
+should be about 25-40% whey, 50% casein, and 10-25% carnitine is best taken after a tough workout to enhance
+medium-digesting protein like egg-white protein. recovery and promote fatty acid metabolism. Whey and
+ carbohydrates consumed post-workout are the perfect
+ vehicles for this form of carnitine.
+BCAAS
+The three BCAAs are leucine, isoleucine, and valine. They are
+critical for muscle growth. While whey protein is rich in BCAAs, CREATINE
+taking additional BCAAs around your workouts can further Creatine is one of the most-researched sports nutrition
+enhance recovery and provide a quick source of muscular supplements on the market. It provides muscular energy for
+energy. As a result, BCAAs can improve your workouts and high-intensity exercise, helps you build muscle, and boosts
+boost performance. strength gains. Research suggests that creatine can boost
+ muscle gains by as much as 10 pounds and strength by 10
+In fact, one study I performed with the Weider Research percent in just a few weeks.
+Group—presented at the 2009 annual meeting of the
+International Society of Sports Nutrition—further supports For best delivery, put creatine in your pre- and post-workout
+BCAAs’ ability to help build muscle. We discovered that protein shakes. That’s when you get a bigger insulin response,
+subjects taking them around workouts gained nearly twice and insulin helps drive creatine into your muscles.
+as much muscle mass on an 8-week training program than
+subjects taking only whey or Gatorade around workouts.
+ BETA-ALANINE
+Specific BCAAs offer additional benefits, such as: Research suggests that when trained lifters add beta-alanine
+Leucine: Turns on muscle protein synthesis; increases satiety and creatine to their supplement regimen, they gain more
+Isoleucine: Supports fat loss; provides energy muscle and lose more body fat than those taking creatine
+Valine: Decreases fatigue; supports fat loss; prolongs energy alone. Beta-alanine can also increase muscle strength and
+ endurance during workouts.
+FISH OIL
+Fish oil supplements are a great source of essential omega-3 CAFFEINE
+fats, especially EPA and DHA. Omega-3 fats may help reduce This potent central nervous system stimulant increases
+your risk of coronary heart disease, as well as support healthy alertness, mental focus, and your pain threshold during
+brain and joint function. But for those who train, nothing is workouts. It also functions as a powerful fat burner. Since it’s a
+more exciting than current research suggesting fish oil may stimulant, caffeine naturally increases the number of calories
+help with muscle growth and recovery as well as support fat your body burns. Caffeine also attaches to receptors on fat
+loss. If you’re not already taking a fish oil supplement, reel cells to blunt fat storage and increase fatty acid release.
+one in today.
+ GREEN TEA EXTRACT
+ACETYL L-CARNITINE Green tea enhances fat loss and offers a host of additional
+Acetyl L-carnitine (ALCAR) is L-carnitine with an acetyl group health and physique benefits, including joint support and
+attached. This attachment increases carnitine’s uptake by the muscle recovery. Green tea aids fat loss by boosting daily
+body, making it more effective. ALCAR is able to enter the calorie burn. The ingredients in green tea responsible for this
+brain, where it may aid in brain function, boost alertness, and effect are called catechins. The most important catechin is
+support positive mood. epigallocatechin gallate (EGCG).
+In other areas of the body, such as muscle cells, carnitine aids EGCG inhibits an enzyme that normally breaks down
+fat loss transporting fatty acids into the power centers of cells, norepinephrine, a neurotransmitter and hormone that boosts
+called mitochondria. These power centers work to generate metabolic rate and fat burning.
+energy by burning up nutrients such as fat for fuel.
+ CONJUGATED LINOLEIC ACID (CLA)
+L-CARNITINE L-TARTRATE Conjugated linoleic acid (CLA) is a naturally occurring group
+L-carnitine L-tartrate supports fat loss and increases energy. of omega-6 fats that aids fat loss and supports lean mass. CLA
+This pure form of carnitine requires insulin for absorption. burns body fat by boosting your metabolic rate and inhibiting
+Unlike ALCAR, which is great throughout the day, straight the enzyme lipoprotein lipase (LPL). LPL allows fat cells to pull
+fat from the bloodstream and store it as body fat. By inhibiting BEFORE BED
+LPL, CLA encourages the body to burn fat instead of store it. Protein powder: 1 scoop
+By helping the body use fat for fuel, CLA also spares your
+muscle mass. When your body is fueling itself with fats, it
+doesn’t need to break down muscle tissue for additional fuel. ALTERNATIVE FOODS
+In this way, CLA can help you burn unwanted blubber and You will notice that the sample meals given in each phase of
+preserve your hard-earned muscle. Shortcut to Shred are very similar. This does not mean that
+ you should eat these exact foods, and only these foods,
+ throughout the program. Refer to the alternative foods below
+SUPPLEMENT TIMING so you can keep your diet diverse and well-stocked with
+AND DOSAGE myriad nutrients!
+MORNING
+Protein powder: 1 scoop MEAT REPLACEMENTS
+Fish oil: 2-3 g The following meats can be used for any meal on Shortcut to
+Caffeine: 200 mg Shred. You can also replace any meat with roughly 2 servings
+Green tea extract: 500-1,000 mg of the dairy products listed below, or 2 scoops of whey or
+Acetyl L-carnitine: 1.5-2 g mixed protein powder.
+CLA: 2-3 g
+ chicken breast
+LATE MORNING/EARLY AFTERNOON chicken thighs
+Caffeine: 200-300 mg chicken drumstick
+Green tea extract: 500-1,000 mg turkey breast
+Acetyl L-carnitine: 1.5-2 g turkey leg
+ lean ground turkey
+30-45 MINUTES PRE-WORKOUT lean ground beef
+Caffeine: 200-300 mg tri-tip steak
+Green tea extract: 500-1,000 mg flank steak
+Acetyl L-carnitine: 1.5-2 g pork tenderloin
+BCAAs: 5 g bison
+Creatine: 1 serving venison
+Beta-alanine: 1.5-3 g ostrich
+ lamb
+IMMEDIATELY PRE-WORKOUT goat
+Protein powder: 1 scoop salmon
+ sardines
+IMMEDIATELY POST-WORKOUT herring
+Protein powder: 2 scoops trout
+ tilapia
+BCAAs: 5 g
+ cod
+Creatine: 1 serving
+ halibut
+Beta-alanine: 1.5-3 g
+ sole or flounder
+L-carnitine: 2 g
+ arctic char
+ shrimp
+WITH DINNER crab
+Fish oil: 2-3 g
+ scallop
+CLA: 2-3 g clams
+ mussels
+WITH FINAL MEAL oysters
+Fish oil: 2-3 g lobster
+CLA: 2-3 g squid
+octopus
+lean deli turkey breast
+ FRUIT REPLACEMENTS
+ Replace any of the fruit with any of these:
+lean deli chicken breast
+lean deli ham orange
+lean deli roast beef peach
+ nectarine
+ banana
+DAIRY REPLACEMENTS pear
+You will eat dairy at several meals, including foods like Greek Asian pear
+yogurt, cottage cheese, and low-fat string cheese. Feel to strawberries
+replace any of these with each other, or any of the following: blueberries
+ raspberries
+4-6 oz of any of the meats above blackberries
+2 oz beef jerky cherries
+3 slices or oz of low-fat cheese grapes
+1 scoop of whey or mixed protein kiwifruit
+1 scoop casein or mixed protein
+ OATMEAL REPLACEMENTS
+ Replace the morning oatmeal with any of these alternatives:
+EGG REPLACEMENTS
+I highly recommend that you do not replace eggs due to the whole-grain cold cereal
+benefits that they provide for muscle growth and strength. granola
+However, I understand that some people cannot stand eggs, whole-wheat waffle
+others are allergic, and some of you just get sick of eating Ezekiel bread
+them. So, if you must, you can replace eggs with the following:
+ whole-wheat bread
+ whole-wheat English muffin
+1-2 scoops egg protein
+ whole-wheat pita bread
+1-2 scoops whey protein or a mixed protein
+ whole-wheat bagel
+1 serving of the dairy foods listed
+6 oz of any of the meats listed
+ WHOLE-WHEAT BREAD REPLACEMENTS
+ Replace whole-wheat bread with any of these:
+VEGETABLE REPLACEMENTS Ezekiel bread
+These vegetables can replace the salad at dinner, and since rye bread
+they are low in carbs, you can add 0.5-1 cup to almost any
+ sourdough bread
+meal on the plan:
+ whole-wheat English muffin
+ whole-wheat pita bread
+asparagus
+ whole-wheat bagel
+green beans
+ whole-wheat tortilla
+broccoli
+cauliflower
+onion SWEET POTATO REPLACEMENTS
+bell peppers When get to eat a sweet potato in the early stage of the diet,
+Brussels sprouts you can replace it with any of these:
+zucchini 1 cup brown rice
+eggplant 1 cup whole-wheat pasta (small amount of marinara sauce)
+bok choy (Chinese cabbage) 1 cup of beans
+mushrooms 1 cup quinoa
+spinach
+cucumber
+okra`;
+
+  // { docs: [...uploaded PDFs...], routines: [...saved structured workouts...] }
+  // Kept as one object (one KV key, one localStorage key) so the two
+  // collections always sync together. Reads tolerate the pre-routines shape
+  // (a bare array) that shipped before this — that's what "docs" used to be.
   function loadLibrary() {
     try {
       const parsed = JSON.parse(localStorage.getItem(LIBRARY_KEY));
-      return Array.isArray(parsed) ? parsed : [];
+      if (Array.isArray(parsed)) return { docs: parsed, routines: [] };
+      return {
+        docs: Array.isArray(parsed?.docs) ? parsed.docs : [],
+        routines: Array.isArray(parsed?.routines) ? parsed.routines : [],
+      };
     } catch {
-      return [];
+      return { docs: [], routines: [] };
     }
   }
 
-  function saveLibrary(docs) {
-    localStorage.setItem(LIBRARY_KEY, JSON.stringify(docs));
+  function saveLibrary(library) {
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
   }
 
   function pushLibraryToCloud() {
@@ -254,16 +997,16 @@
     fetch(`${AI_ENDPOINT}/library`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ docs: loadLibrary() }),
+      body: JSON.stringify(loadLibrary()),
       signal: AbortSignal.timeout(AI_TIMEOUT_MS),
     }).catch(() => {});
   }
 
-  // Merges the cloud copy in by id (union, not overwrite) so a document
-  // uploaded from one device isn't lost if the other device syncs first —
-  // this app has no per-doc "last modified" or tombstone tracking, so union
-  // is the safest default even though a delete on one device can resurface
-  // after a pull from a device that hasn't seen it yet.
+  // Merges the cloud copy in by id (union, not overwrite) so a document or
+  // saved routine added from one device isn't lost if the other device syncs
+  // first — this app has no per-item "last modified" or tombstone tracking,
+  // so union is the safest default even though a delete on one device can
+  // resurface after a pull from a device that hasn't seen it yet.
   async function pullLibraryFromCloud() {
     if (!AI_ENDPOINT) return;
     try {
@@ -271,19 +1014,54 @@
       if (!res.ok) return;
       const data = await res.json();
       const cloudDocs = Array.isArray(data.docs) ? data.docs : [];
-      if (cloudDocs.length === 0) {
+      const cloudRoutines = Array.isArray(data.routines) ? data.routines : [];
+      if (cloudDocs.length === 0 && cloudRoutines.length === 0) {
         pushLibraryToCloud();
         return;
       }
       const local = loadLibrary();
-      const byId = new Map(local.map((d) => [d.id, d]));
+      const docsById = new Map(local.docs.map((d) => [d.id, d]));
       cloudDocs.forEach((d) => {
-        if (d && typeof d.id === "string" && !byId.has(d.id)) byId.set(d.id, d);
+        if (d && typeof d.id === "string" && !docsById.has(d.id)) docsById.set(d.id, d);
       });
-      saveLibrary(Array.from(byId.values()));
+      const routinesById = new Map(local.routines.map((r) => [r.id, r]));
+      cloudRoutines.forEach((r) => {
+        if (r && typeof r.id === "string" && !routinesById.has(r.id)) routinesById.set(r.id, r);
+      });
+      saveLibrary({ docs: Array.from(docsById.values()), routines: Array.from(routinesById.values()) });
     } catch {
       // Worker unreachable — keep going with whatever's local.
     }
+  }
+
+  // A hand-picked reference workout gets bundled straight into the app so
+  // it's already there on first load — the athlete shouldn't have to
+  // re-upload a PDF I was explicitly asked to add. Tracked separately from
+  // the library itself (not just "is it in there now") so a deliberate
+  // delete sticks instead of the seed silently reappearing next load.
+  const LIBRARY_SEEDS_KEY = "liftr_library_seeds_v1";
+
+  function seedLibraryIfNeeded() {
+    let seeded;
+    try {
+      seeded = JSON.parse(localStorage.getItem(LIBRARY_SEEDS_KEY)) || [];
+    } catch {
+      seeded = [];
+    }
+    if (seeded.includes(SHRED_PDF_SEED_ID)) return;
+
+    const library = loadLibrary();
+    library.docs.push({
+      id: SHRED_PDF_SEED_ID,
+      title: "Shortcut to Shred (Jim Stoppani)",
+      addedAt: "2015-9-9",
+      pageCount: 15,
+      text: SHRED_PDF_SEED_TEXT,
+      tags: ["pdf"],
+    });
+    saveLibrary(library);
+    localStorage.setItem(LIBRARY_SEEDS_KEY, JSON.stringify([...seeded, SHRED_PDF_SEED_ID]));
+    pushLibraryToCloud();
   }
 
   // Runs entirely client-side via pdf.js (loaded in index.html) — the Worker
@@ -307,7 +1085,7 @@
   // within the char budget — instead of every call dragging along the
   // athlete's entire library regardless of relevance.
   function getLibraryContext(queryText) {
-    const docs = loadLibrary();
+    const docs = loadLibrary().docs;
     if (docs.length === 0) return [];
     const queryWords = new Set(normalizeExerciseText(queryText || "").split(" ").filter((w) => w.length > 3));
 
@@ -339,6 +1117,33 @@
       budget -= excerpt.length;
     }
     return results;
+  }
+
+  // Compact form of the athlete's own saved routines — proven combos they've
+  // kept, like "bench press pairs with pull-ups" — for the AI to draw on
+  // when asked for a variation or a similar workout. Names only (no
+  // howTo/tip prose) keeps this small regardless of library size.
+  function getLibraryRoutinesContext() {
+    return loadLibrary()
+      .routines.slice(-8)
+      .map((r) => ({ name: r.name, splitKey: r.splitKey || null, exercises: r.exercises.map((ex) => ex.name) }));
+  }
+
+  // Saves the actual exercises the athlete is looking at right now (already
+  // formatted by the app — name/detail/howTo/tip) as a reusable named
+  // routine, so "give me a workout like X" has real, proven combos to draw
+  // on instead of the AI guessing what worked before.
+  function saveWorkoutToLibrary(name, splitKey, exercises) {
+    const library = loadLibrary();
+    library.routines.push({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      splitKey: splitKey || null,
+      addedAt: todayStr(),
+      exercises: exercises.map((ex) => ({ name: ex.name, detail: ex.detail, howTo: ex.howTo || null, tip: ex.tip || null })),
+    });
+    saveLibrary(library);
+    pushLibraryToCloud();
   }
 
   // Merges the athlete's editable settings (goal override, height, weight,
@@ -543,6 +1348,170 @@
       ],
     },
   };
+
+
+  // "Shortcut to Shred" — Jim Stoppani's 6-day cardio-acceleration program
+  // (see the seeded library doc above for the source PDF). Real Phase 1 /
+  // Week 1 sets, reps, and exercise order, transcribed from the program —
+  // the entry-level intensity of what's actually a 6-week progression
+  // (rep ranges tighten and a rest-pause dropset gets added in later
+  // weeks). Six day-types in rotation, not one static workout — jake's
+  // dedicated select-screen button below walks through them in order.
+  const SHORTCUT_TO_SHRED_CARDIO_NOTE =
+    "⚡ Cardio Acceleration: after EVERY set below, do 60 sec of continuous movement — jump rope, DB clean, running in place, KB swing, or a squat jump — before your next set. That minute IS your rest period; don't take a normal rest on top of it.";
+
+  const SHORTCUT_TO_SHRED_WORKOUTS = {
+    "shortcut-to-shred-1": {
+      user: "jake",
+      program: "shortcut-to-shred",
+      dayNumber: 1,
+      name: "Shortcut to Shred — Day 1: Chest, Triceps & Abs",
+      icon: "🔥",
+      tagline: "Multi-joint · 9-11 reps · cardio acceleration",
+      reason: "Jim Stoppani's fat-loss protocol — cardio between every single set keeps your heart rate up the whole session.",
+      sourceTags: ["📄 Source: Shortcut to Shred (PDF)"],
+      defaultCheckIn: { minutes: 60, energy: "high", partner: false },
+      warmup: ["5 min easy bike or jump rope to get moving", "Push-up x 10", "Band pull-aparts x 15", "Arm circles x 10 each way"],
+      exercises: [
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Bench Press", detail: "4 x 9-11", howTo: "Barbell bench press, flat bench, standard grip.", tip: "Keep your shoulder blades pinned and drive through your feet." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Incline Dumbbell Press", detail: "3 x 9-11", howTo: "Press dumbbells up and slightly in from an incline bench.", tip: "Don't let your elbows flare past 45 degrees." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Decline Smith Machine Press", detail: "3 x 9-11", howTo: "Press on a decline bench using the Smith machine bar.", tip: "Control the negative — don't bounce off your chest." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Dips", detail: "4 x 9-11", howTo: "Chest dips on parallel bars, leaning forward slightly.", tip: "Stop at a comfortable shoulder depth — don't overstretch." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Close-Grip Bench Press", detail: "4 x 9-11", howTo: "Bench press with hands just inside shoulder width to target triceps.", tip: "Keep your elbows tucked close to your body." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Cable Crunch", detail: "3 x 9-11", howTo: "Kneel facing a high cable and crunch down, pulling with your abs, not your arms.", tip: "Round your spine — don't just bend at the hips." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Smith Machine Hip Thrust", detail: "3 x 9-11", howTo: "Upper back on a bench, bar across your hips on the Smith machine, drive your hips up.", tip: "Squeeze your glutes hard at the top — avoid overarching your low back." },
+      ],
+    },
+    "shortcut-to-shred-2": {
+      user: "jake",
+      program: "shortcut-to-shred",
+      dayNumber: 2,
+      name: "Shortcut to Shred — Day 2: Shoulders, Legs & Calves",
+      icon: "🔥",
+      tagline: "Multi-joint · 9-11 reps · cardio acceleration",
+      reason: "Squats and deadlifts with a minute of cardio wedged between every set — brutal, but it's exactly what makes this program work.",
+      sourceTags: ["📄 Source: Shortcut to Shred (PDF)"],
+      defaultCheckIn: { minutes: 60, energy: "high", partner: false },
+      warmup: ["5 min easy bike or jump rope to get moving", "Bodyweight squat x 15", "Leg swings x 10 each leg", "Arm circles x 10 each way"],
+      exercises: [
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Barbell Shoulder Press", detail: "4 x 9-11", howTo: "Standing or seated barbell press overhead.", tip: "Brace your core — don't lean back excessively." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Alternating Dumbbell Shoulder Press (Standing)", detail: "3 x 9-11", howTo: "Press one dumbbell at a time overhead while standing.", tip: "Keep your hips square, resist twisting." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Smith Machine One-Arm Upright Row", detail: "3 x 9-11", howTo: "Grip the Smith bar with one hand and pull it up toward your chin.", tip: "Lead with your elbow, keep the bar close to your body." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Squat", detail: "4 x 9-11", howTo: "Barbell back squat, feet shoulder-width.", tip: "Break at the hips and knees together, keep your chest up." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Deadlift", detail: "3 x 9-11", howTo: "Conventional barbell deadlift from the floor.", tip: "Keep the bar close to your shins the entire pull." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Walking Lunge", detail: "3 x 9-11", howTo: "Alternating walking lunges, holding dumbbells at your sides.", tip: "Keep your torso upright, front knee tracking over your foot." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Standing Calf Raise", detail: "3 x 9-11", howTo: "Rise onto your toes on a standing calf raise machine.", tip: "Pause and squeeze at the top." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Seated Calf Raise", detail: "3 x 9-11", howTo: "Rise onto your toes with weight across your knees, seated.", tip: "Use a full stretch at the bottom of each rep." },
+      ],
+    },
+    "shortcut-to-shred-3": {
+      user: "jake",
+      program: "shortcut-to-shred",
+      dayNumber: 3,
+      name: "Shortcut to Shred — Day 3: Back, Traps & Biceps",
+      icon: "🔥",
+      tagline: "Multi-joint · 9-11 reps · cardio acceleration",
+      reason: "Rows, shrugs, and curls — keep the cardio acceleration going between every set to stay in the fat-burning zone.",
+      sourceTags: ["📄 Source: Shortcut to Shred (PDF)"],
+      defaultCheckIn: { minutes: 60, energy: "high", partner: false },
+      warmup: ["5 min easy bike or jump rope to get moving", "Band pull-aparts x 15", "Dead hang x 20 sec", "Arm circles x 10 each way"],
+      exercises: [
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Barbell Bent Over Row", detail: "4 x 9-11", howTo: "Hinge at the hips and row the barbell to your lower ribs.", tip: "Keep your back flat — don't jerk the weight up." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Dumbbell Bent-Over Row", detail: "3 x 9-11", howTo: "Bent-over row with dumbbells, one or both arms.", tip: "Squeeze your shoulder blade at the top of each rep." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Seated Cable Row", detail: "3 x 9-11", howTo: "Seated row, pulling the handle to your midsection.", tip: "Don't lean back excessively to move more weight." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Barbell Shrug", detail: "4 x 9-11", howTo: "Hold a barbell at arm's length and shrug your shoulders straight up.", tip: "Avoid rolling your shoulders — straight up and down." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Barbell Curl", detail: "3 x 9-11", howTo: "Standing barbell curl, elbows pinned to your sides.", tip: "Don't swing — control the weight on the way down." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Barbell or EZ-Bar Preacher Curl", detail: "3 x 9-11", howTo: "Curl on a preacher bench to isolate the biceps.", tip: "Don't fully lock out at the bottom — keep tension on." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Reverse-Grip Barbell Curl", detail: "3 x 9-11", howTo: "Barbell curl with an overhand (pronated) grip.", tip: "Go lighter than a regular curl — this hits your forearms hard." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Barbell Wrist Curl", detail: "3 x 9-11", howTo: "Forearms on a bench, curl the bar up using just your wrists.", tip: "Keep the movement slow and controlled." },
+      ],
+    },
+    "shortcut-to-shred-4": {
+      user: "jake",
+      program: "shortcut-to-shred",
+      dayNumber: 4,
+      name: "Shortcut to Shred — Day 4: Chest, Triceps & Abs (Single-Joint)",
+      icon: "🔥",
+      tagline: "Single-joint · 12-15 reps · cardio acceleration",
+      reason: "Isolation day — higher reps, same relentless cardio acceleration between every set.",
+      sourceTags: ["📄 Source: Shortcut to Shred (PDF)"],
+      defaultCheckIn: { minutes: 60, energy: "high", partner: false },
+      warmup: ["5 min easy bike or jump rope to get moving", "Push-up x 10", "Band pull-aparts x 15", "Arm circles x 10 each way"],
+      exercises: [
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Incline Dumbbell Flye", detail: "3 x 12-15", howTo: "Flye motion on an incline bench with a slight bend in the elbows.", tip: "Think 'hug a tree' — don't let it turn into a press." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Dumbbell Flye", detail: "3 x 12-15", howTo: "Flat bench flye with dumbbells.", tip: "Stop the stretch at shoulder level to protect the joint." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Cable Crossover", detail: "3 x 12-15", howTo: "Standing cable crossover, pulling the handles down and together.", tip: "Cross your hands slightly at the bottom for a full squeeze." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Triceps Pressdown", detail: "3 x 12-15", howTo: "Cable pressdown with a straight or angled bar.", tip: "Keep your elbows pinned at your sides the whole set." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Overhead Dumbbell Extension", detail: "3 x 12-15", howTo: "Extend one or two dumbbells overhead behind your head.", tip: "Keep your elbows pointed forward, not flared out." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Cable Lying Triceps Extension", detail: "3 x 12-15", howTo: "Lying on a bench, extend a cable attachment overhead.", tip: "Keep your upper arms still — only the forearm moves." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Crunch", detail: "3 x 12-15", howTo: "Standard floor crunch.", tip: "Exhale hard at the top of each rep." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Standing Oblique Cable Crunch", detail: "3 x 12-15", howTo: "Standing side crunch against cable resistance.", tip: "Crunch your ribs toward your hip — don't just lean." },
+      ],
+    },
+    "shortcut-to-shred-5": {
+      user: "jake",
+      program: "shortcut-to-shred",
+      dayNumber: 5,
+      name: "Shortcut to Shred — Day 5: Shoulders, Legs & Calves (Single-Joint)",
+      icon: "🔥",
+      tagline: "Single-joint · 12-15 reps · cardio acceleration",
+      reason: "Leg extensions, curls, and raises — the isolation counterpart to Day 2, still cardio-accelerated the whole way through.",
+      sourceTags: ["📄 Source: Shortcut to Shred (PDF)"],
+      defaultCheckIn: { minutes: 60, energy: "high", partner: false },
+      warmup: ["5 min easy bike or jump rope to get moving", "Bodyweight squat x 15", "Leg swings x 10 each leg", "Arm circles x 10 each way"],
+      exercises: [
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Dumbbell Lateral Raise", detail: "3 x 12-15", howTo: "Raise dumbbells out to the sides to shoulder height.", tip: "Lead with your elbows, keep a slight bend the whole time." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Barbell Front Raise", detail: "3 x 12-15", howTo: "Raise a barbell straight out in front to shoulder height.", tip: "Don't swing — control the weight down slowly." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Dumbbell Bent-Over Lateral Raise", detail: "3 x 12-15", howTo: "Hinge forward and raise dumbbells out to the sides.", tip: "Keep a soft bend in the knees and a flat back." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Leg Extension", detail: "4 x 12-15", howTo: "Seated leg extension machine.", tip: "Pause and squeeze your quads at the top." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Leg Curl", detail: "4 x 12-15", howTo: "Lying or seated leg curl machine.", tip: "Control the negative — don't let the weight snap back." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Seated Calf Raise", detail: "3 x 12-15", howTo: "Rise onto your toes with weight across your knees, seated.", tip: "Full stretch at the bottom, full squeeze at the top." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Donkey or Leg Press Calf Raise", detail: "3 x 12-15", howTo: "Calf raise on a donkey calf machine or leg press platform.", tip: "Use a full range of motion — don't bounce." },
+      ],
+    },
+    "shortcut-to-shred-6": {
+      user: "jake",
+      program: "shortcut-to-shred",
+      dayNumber: 6,
+      name: "Shortcut to Shred — Day 6: Back, Traps & Biceps (Single-Joint)",
+      icon: "🔥",
+      tagline: "Single-joint · 12-15 reps · cardio acceleration",
+      reason: "The last day in the rotation — pulldowns, shrugs, and curls to finish the cycle before it repeats.",
+      sourceTags: ["📄 Source: Shortcut to Shred (PDF)"],
+      defaultCheckIn: { minutes: 60, energy: "high", partner: false },
+      warmup: ["5 min easy bike or jump rope to get moving", "Band pull-aparts x 15", "Dead hang x 20 sec", "Arm circles x 10 each way"],
+      exercises: [
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Lat Pulldown", detail: "3 x 12-15", howTo: "Pull a wide bar down to your upper chest.", tip: "Lead with your elbows, avoid leaning back too far." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Reverse-Grip Pulldown", detail: "3 x 12-15", howTo: "Lat pulldown with an underhand grip.", tip: "This shifts more emphasis to your lower lats and biceps." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Straight-Arm Pulldown", detail: "3 x 12-15", howTo: "Standing at a high cable, pull a straight bar down with straight arms.", tip: "Keep a very slight elbow bend — don't turn it into a triceps move." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Smith Machine Behind-the-Back Shrug", detail: "4 x 12-15", howTo: "Stand facing away from a Smith bar behind you and shrug straight up.", tip: "This angle hits your traps from a different line of pull." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Incline Dumbbell Curl", detail: "3 x 12-15", howTo: "Curl dumbbells while seated on an incline bench, arms hanging behind you.", tip: "The incline stretches the biceps — don't rush the negative." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "High Cable Curl", detail: "3 x 12-15", howTo: "Cross-body curl pulling from two high cable pulleys.", tip: "Keep your elbows up and stationary throughout." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Rope Cable Curl", detail: "3 x 12-15", howTo: "Curl a rope attachment from a low cable, twisting your wrists up at the top.", tip: "Turn your pinkies toward your shoulders at the top for peak contraction." },
+        { phase: SHORTCUT_TO_SHRED_CARDIO_NOTE, name: "Dumbbell Reverse Wrist Curl", detail: "3 x 12-15", howTo: "Forearms on a bench, palms down, curl the dumbbells up using your wrists.", tip: "Use light weight — this is a small, isolated movement." },
+      ],
+    },
+  };
+
+  const SHORTCUT_TO_SHRED_ORDER = [
+    "shortcut-to-shred-1",
+    "shortcut-to-shred-2",
+    "shortcut-to-shred-3",
+    "shortcut-to-shred-4",
+    "shortcut-to-shred-5",
+    "shortcut-to-shred-6",
+  ];
+
+  // Rotates through the 6 day-types in order based on how many Shortcut to
+  // Shred sessions this athlete has already logged — so the dedicated
+  // button always picks up where they left off instead of repeating Day 1
+  // every time.
+  function nextShortcutToShredKey(user) {
+    const count = getHistory(user).filter((e) => SHORTCUT_TO_SHRED_ORDER.includes(e.splitKey)).length;
+    return SHORTCUT_TO_SHRED_ORDER[count % SHORTCUT_TO_SHRED_ORDER.length];
+  }
+
+  Object.assign(SPECIAL_WORKOUTS, SHORTCUT_TO_SHRED_WORKOUTS);
 
   const CUSTOM_META = { name: "Custom Session", icon: "🛠", tagline: "Your own mix" };
 
@@ -1040,10 +2009,10 @@
     return buildWorkoutPlan(user, entry.splitKey, entry); // backward-compat for older logged entries
   }
 
-  function buildTags({ minutes, energy, partner }) {
+  function buildTags({ minutes, energy, partner }, extraTags = []) {
     const tags = [`${minutes} MIN`, ENERGY_LABEL[energy].toUpperCase()];
     if (partner) tags.push("W/ PARTNER");
-    return tags;
+    return [...tags, ...extraTags];
   }
 
   // Everything the AI (or the local fallback) is allowed to choose from —
@@ -1110,6 +2079,7 @@
             weightHistory: buildWeightHistory(user),
             candidates: buildCandidatePool(user, splitKey),
             libraryContext: getLibraryContext(`${meta.name} ${checkIn.note || ""} ${(persona.focusAreas || []).join(" ")}`),
+            libraryRoutines: getLibraryRoutinesContext(),
           }),
           signal: AbortSignal.timeout(AI_TIMEOUT_MS),
         });
@@ -1297,6 +2267,7 @@
     const btn = document.getElementById("log-session-btn");
     document.getElementById("preview-coach-section").classList.remove("hidden");
     document.getElementById("preview-actions").classList.remove("hidden");
+    document.getElementById("save-workout-btn").classList.add("hidden");
     document.getElementById("edit-preview-btn").disabled = true;
     placeTerminalPanel("preview");
     btn.textContent = "Loading…";
@@ -1323,8 +2294,9 @@
     if (done) {
       document.getElementById("preview-coach-section").classList.add("hidden");
       document.getElementById("preview-actions").classList.add("hidden");
+      document.getElementById("save-workout-btn").classList.add("hidden");
       renderExerciseList(getEntryExercises(user, entry), entry.performance);
-      renderTags(buildTags(entry));
+      renderTags(buildTags(entry, meta.sourceTags || []));
       renderAiNote(entry.source === "ai" ? entry.reason : null);
       statusEl.classList.remove("hidden");
       btn.textContent = "Session Logged ✓";
@@ -1348,8 +2320,9 @@
       return;
     }
 
+    document.getElementById("save-workout-btn").classList.remove("hidden");
     renderExerciseList(previewPlan.exercises);
-    renderTags(buildTags(checkInState));
+    renderTags(buildTags(checkInState, meta.sourceTags || []));
     renderAiNote(previewPlan.source === "ai" ? previewPlan.reason : null);
     statusEl.classList.add("hidden");
     document.getElementById("edit-preview-btn").disabled = false;
@@ -2569,6 +3542,7 @@
             },
             messages: chatMessages,
             libraryContext: getLibraryContext(text),
+            libraryRoutines: getLibraryRoutinesContext(),
             context: {
               streak: currentStreak(getHistory(currentUser)),
               sessionsLogged: getHistory(currentUser).length,
@@ -2712,7 +3686,11 @@
   function openSpecialWorkoutPreview(user, splitKey) {
     const preset = SPECIAL_WORKOUTS[splitKey];
     if (!preset || preset.user !== user) return;
-    checkInState = { ...checkInState, minutes: 30, energy: "medium", partner: true };
+    // Presets set their own realistic check-in defaults (Jessica's game-day
+    // core session is a short partner workout; Shortcut to Shred is a long
+    // solo one) — falls back to the original jess-game-day-core defaults
+    // for any preset that doesn't specify its own.
+    checkInState = { ...checkInState, ...(preset.defaultCheckIn || { minutes: 30, energy: "medium", partner: true }) };
     chatSuggestedSplit = null;
     selectedSplitKey = splitKey;
     previewPlan = {
@@ -2786,6 +3764,21 @@
       card.onclick = () => openSpecialWorkoutPreview(user, "jess-game-day-core");
       altContainer.prepend(card);
     }
+
+    if (user === "jake") {
+      const nextKey = nextShortcutToShredKey(user);
+      const preset = SPECIAL_WORKOUTS[nextKey];
+      const card = document.createElement("button");
+      card.className = "alt-card preset-card";
+      card.innerHTML = `
+        <span class="alt-icon">${preset.icon}</span>
+        <span class="alt-name">Shortcut to Shred — Day ${preset.dayNumber}/6</span>
+        <span class="alt-tagline">${preset.tagline}</span>
+        <span class="preset-goal">${preset.reason}</span>
+      `;
+      card.onclick = () => openSpecialWorkoutPreview(user, nextKey);
+      altContainer.prepend(card);
+    }
   }
 
   function initSelectScreen() {
@@ -2795,6 +3788,19 @@
     document.getElementById("edit-preview-btn").addEventListener("click", () => {
       if (previewPlan) showCustom(currentUser, previewPlan.exercises);
     });
+    const saveBtn = document.getElementById("save-workout-btn");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", () => {
+        if (!previewPlan || previewPlan.exercises.length === 0) return;
+        const name = window.prompt("Name this workout to save it to your library:", getSplitMeta(selectedSplitKey)?.name || "My Workout");
+        if (!name || !name.trim()) return;
+        saveWorkoutToLibrary(name.trim().slice(0, 60), selectedSplitKey, previewPlan.exercises);
+        saveBtn.textContent = "💾 Saved!";
+        setTimeout(() => {
+          saveBtn.textContent = "💾 Save this workout to your library";
+        }, 1800);
+      });
+    }
   }
 
   // ---------- rendering: custom builder screen ----------
@@ -3121,30 +4127,73 @@
   // ---------- exercise library screen ----------
 
   function renderLibraryList() {
-    const list = document.getElementById("library-list");
-    const empty = document.getElementById("library-empty");
-    const docs = loadLibrary();
+    const docList = document.getElementById("library-list");
+    const docEmpty = document.getElementById("library-empty");
+    const { docs, routines } = loadLibrary();
 
-    list.innerHTML = docs
+    docList.innerHTML = docs
       .map(
         (doc) => `
       <li class="library-item">
         <div class="library-item-info">
           <span class="library-item-title">📄 ${escapeHtml(doc.title)}</span>
-          <span class="library-item-meta">${doc.pageCount} page${doc.pageCount === 1 ? "" : "s"} · added ${formatShortDate(doc.addedAt)}</span>
+          <span class="library-item-meta">
+            ${doc.pageCount} page${doc.pageCount === 1 ? "" : "s"} · added ${formatShortDate(doc.addedAt)}
+            <span class="library-tag-chip">PDF</span>
+          </span>
         </div>
         <button type="button" class="library-item-remove" data-id="${escapeHtml(doc.id)}" title="Remove">✕</button>
       </li>
     `
       )
       .join("");
-    empty.classList.toggle("hidden", docs.length > 0);
+    docEmpty.classList.toggle("hidden", docs.length > 0);
+
+    const routineList = document.getElementById("library-routines-list");
+    const routineEmpty = document.getElementById("library-routines-empty");
+    if (routineList) {
+      routineList.innerHTML = routines
+        .map(
+          (r) => `
+        <li class="library-item">
+          <div class="library-item-info">
+            <span class="library-item-title">💪 ${escapeHtml(r.name)}</span>
+            <span class="library-item-meta">
+              ${r.exercises.length} exercise${r.exercises.length === 1 ? "" : "s"} · added ${formatShortDate(r.addedAt)}
+            </span>
+          </div>
+          <button type="button" class="library-item-start" data-id="${escapeHtml(r.id)}" title="Start this workout">▶</button>
+          <button type="button" class="library-item-remove" data-id="${escapeHtml(r.id)}" title="Remove">✕</button>
+        </li>
+      `
+        )
+        .join("");
+      routineEmpty.classList.toggle("hidden", routines.length > 0);
+    }
   }
 
   function showLibrary(user) {
     currentUser = user;
     showScreen("library-screen");
     renderLibraryList();
+  }
+
+  // Jumps straight into the session screen with a saved routine's exercises
+  // — same shortcut SPECIAL_WORKOUTS presets use, just sourced from the
+  // athlete's own saved library instead of a hardcoded program.
+  function startSavedRoutine(user, routine) {
+    currentUser = user;
+    checkInState = { ...checkInState, minutes: 30, energy: "medium", partner: false };
+    chatSuggestedSplit = null;
+    selectedSplitKey = routine.splitKey || "custom";
+    previewPlan = {
+      exercises: routine.exercises.map((ex) => ({ ...ex, splitKey: selectedSplitKey })),
+      reason: `Your saved workout: ${routine.name}.`,
+      source: "preset",
+      suggestedWeights: new Map(),
+    };
+    showScreen("session-screen");
+    renderSessionFull(user);
   }
 
   function initLibrary() {
@@ -3177,15 +4226,19 @@
             status.textContent = `Couldn't find any readable text in "${file.name}" — skipped.`;
             continue;
           }
-          const docs = loadLibrary();
-          docs.push({
+          const library = loadLibrary();
+          library.docs.push({
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             title: file.name.replace(/\.pdf$/i, ""),
             addedAt: todayStr(),
             pageCount,
             text,
+            // Every doc in this library comes from an uploaded PDF today —
+            // tagged explicitly (rather than left implicit) so any future
+            // non-PDF source is visually distinct instead of assumed PDF.
+            tags: ["pdf"],
           });
-          saveLibrary(docs);
+          saveLibrary(library);
           renderLibraryList();
           status.textContent = `Added "${file.name}".`;
         } catch (err) {
@@ -3199,10 +4252,32 @@
     document.getElementById("library-list").addEventListener("click", (e) => {
       const btn = e.target.closest(".library-item-remove");
       if (!btn) return;
-      saveLibrary(loadLibrary().filter((d) => d.id !== btn.dataset.id));
+      const library = loadLibrary();
+      library.docs = library.docs.filter((d) => d.id !== btn.dataset.id);
+      saveLibrary(library);
       renderLibraryList();
       pushLibraryToCloud();
     });
+
+    const routinesList = document.getElementById("library-routines-list");
+    if (routinesList) {
+      routinesList.addEventListener("click", (e) => {
+        const startBtn = e.target.closest(".library-item-start");
+        if (startBtn) {
+          const routine = loadLibrary().routines.find((r) => r.id === startBtn.dataset.id);
+          if (routine) startSavedRoutine(currentUser, routine);
+          return;
+        }
+        const removeBtn = e.target.closest(".library-item-remove");
+        if (removeBtn) {
+          const library = loadLibrary();
+          library.routines = library.routines.filter((r) => r.id !== removeBtn.dataset.id);
+          saveLibrary(library);
+          renderLibraryList();
+          pushLibraryToCloud();
+        }
+      });
+    }
   }
 
   // ---------- weight trends / graph screen ----------
@@ -3464,6 +4539,8 @@
 
   document.getElementById("switch-user").addEventListener("click", showLogin);
   document.getElementById("home-button").addEventListener("click", showHome);
+
+  seedLibraryIfNeeded();
 
   initCheckIn();
   initSettings();

@@ -55,7 +55,7 @@ export default {
       return handleOpening(body, env, corsHeaders);
     }
 
-    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory, libraryContext } = body || {};
+    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory, libraryContext, libraryRoutines } = body || {};
     const valid =
       persona?.name &&
       persona?.goal &&
@@ -149,6 +149,16 @@ export default {
       "candidate list: still only choose from candidateExercises, never an",
       "exercise the reference material mentions but that isn't a candidate.",
       "If nothing in it applies to today's session, ignore it entirely.",
+      "savedRoutines (if present) lists workouts this athlete has personally",
+      "kept — proven combos that worked for them (e.g. they always pair bench",
+      "press with pull-ups). When their note or history suggests they want",
+      "something similar to, or a variation on, a saved routine, use it as a",
+      "reference pattern: prefer picking candidates today that match the same",
+      "movement roles (e.g. a saved routine pairing a horizontal push with a",
+      "vertical pull suggests doing the same pairing again, even with",
+      "different specific candidates). Still only choose from",
+      "candidateExercises — never invent or add movements from savedRoutines",
+      "that aren't in today's candidate list.",
     ].join(" ");
 
     const userPrompt = JSON.stringify({
@@ -165,6 +175,7 @@ export default {
       recentFeedback: Array.isArray(pastNotes) ? pastNotes : [],
       weightHistory: Array.isArray(weightHistory) ? weightHistory : [],
       libraryReference: sanitizeLibraryContext(libraryContext),
+      savedRoutines: sanitizeLibraryRoutines(libraryRoutines),
       candidateExercises: candidates,
     });
 
@@ -238,6 +249,21 @@ function sanitizeLibraryContext(libraryContext) {
     .map((item) => ({ title: item.title.slice(0, 120), excerpt: item.excerpt.slice(0, 3000) }));
 }
 
+// Same defense-in-depth as sanitizeLibraryContext above, for the athlete's
+// saved-workout combos — names only, capped, so a malformed or oversized
+// payload can't blow up prompt/token cost.
+function sanitizeLibraryRoutines(libraryRoutines) {
+  if (!Array.isArray(libraryRoutines)) return [];
+  return libraryRoutines
+    .filter((item) => item && typeof item.name === "string" && Array.isArray(item.exercises))
+    .slice(0, 8)
+    .map((item) => ({
+      name: item.name.slice(0, 80),
+      splitKey: typeof item.splitKey === "string" ? item.splitKey : null,
+      exercises: item.exercises.filter((e) => typeof e === "string").slice(0, 20).map((e) => e.slice(0, 80)),
+    }));
+}
+
 function json(data, status, headers) {
   return new Response(JSON.stringify(data), {
     status,
@@ -307,8 +333,12 @@ async function handleLibrary(request, env, corsHeaders) {
   if (request.method === "GET") {
     try {
       const stored = await env.LIFTR_KV.get(key);
-      const docs = stored ? JSON.parse(stored) : [];
-      return json({ docs: Array.isArray(docs) ? docs : [] }, 200, corsHeaders);
+      const data = stored ? JSON.parse(stored) : null;
+      // Tolerates the pre-routines shape (a bare array of docs) written by
+      // clients before saved workouts existed.
+      const docs = Array.isArray(data) ? data : Array.isArray(data?.docs) ? data.docs : [];
+      const routines = Array.isArray(data?.routines) ? data.routines : [];
+      return json({ docs, routines }, 200, corsHeaders);
     } catch (err) {
       console.error("Library read error", err?.stack || String(err));
       return json({ error: "Read failed" }, 500, corsHeaders);
@@ -322,12 +352,10 @@ async function handleLibrary(request, env, corsHeaders) {
     } catch {
       return json({ error: "Invalid JSON body" }, 400, corsHeaders);
     }
-    const docs = Array.isArray(body?.docs) ? body.docs : null;
-    if (!docs) {
-      return json({ error: "Malformed library body" }, 400, corsHeaders);
-    }
+    const docs = Array.isArray(body?.docs) ? body.docs : [];
+    const routines = Array.isArray(body?.routines) ? body.routines : [];
     try {
-      await env.LIFTR_KV.put(key, JSON.stringify(docs));
+      await env.LIFTR_KV.put(key, JSON.stringify({ docs, routines }));
       return json({ ok: true }, 200, corsHeaders);
     } catch (err) {
       console.error("Library write error", err?.stack || String(err));
@@ -486,7 +514,7 @@ const SPLIT_LABELS = {
 };
 
 async function handleChat(body, env, corsHeaders) {
-  const { persona, messages, context, libraryContext } = body;
+  const { persona, messages, context, libraryContext, libraryRoutines } = body;
   const valid =
     persona?.name &&
     persona?.goal &&
@@ -539,6 +567,7 @@ async function handleChat(body, env, corsHeaders) {
   ].filter(Boolean);
 
   const libraryDocs = sanitizeLibraryContext(libraryContext);
+  const savedRoutines = sanitizeLibraryRoutines(libraryRoutines);
 
   const systemPrompt = [
     "You are a thoughtful, knowledgeable ongoing fitness coach talking with an athlete",
@@ -549,6 +578,9 @@ async function handleChat(body, env, corsHeaders) {
     context ? `Recent app context: ${JSON.stringify(context)}.` : "",
     libraryDocs.length
       ? `The athlete has personally uploaded reference material — their own training program, PT protocol, or coaching notes. Reference it naturally when relevant to what they're asking, but don't force it in if it doesn't apply: ${JSON.stringify(libraryDocs)}.`
+      : "",
+    savedRoutines.length
+      ? `The athlete has saved these workouts as proven combos they like: ${JSON.stringify(savedRoutines)}. If they ask for a variation, a similar workout, or want to combine/derive from something they've done before, reason about the movement pattern of the saved combo (e.g. a horizontal push paired with a vertical pull) and suggest analogous exercises or a natural variation — don't just repeat the saved list verbatim unless asked to.`
       : "",
     "Calibrate depth to the athlete. For a simple request or factual adjustment, use",
     "1 to 3 concise sentences. When they share meaningful context, emotion, a setback,",
