@@ -2001,6 +2001,11 @@ button,
   overflow: hidden;
 }
 
+.wex-head-row {
+  display: flex;
+  align-items: center;
+}
+
 .wex-head {
   width: 100%;
   display: flex;
@@ -2013,6 +2018,29 @@ button,
   color: var(--text);
   font-family: var(--font-mono);
   text-align: left;
+}
+
+.wex-quickdone {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  margin-right: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wex-quickdone.done {
+  border-color: var(--success);
+  color: var(--success);
+  background: rgba(57, 255, 143, 0.14);
 }
 
 .wex-image {
@@ -2241,6 +2269,46 @@ button,
   border-color: var(--success);
   color: var(--success);
   background: rgba(57, 255, 143, 0.12);
+}
+
+.wex-effort-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wex-effort-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+.wex-effort-chips {
+  display: flex;
+  gap: 8px;
+}
+
+.wex-effort-chip {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 8px 6px;
+  cursor: pointer;
+}
+
+.wex-effort-chip:hover { border-color: var(--accent); }
+
+.wex-effort-chip.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-elevated));
+  box-shadow: 0 0 12px -2px var(--accent);
 }
 
 .wex-flag-input {

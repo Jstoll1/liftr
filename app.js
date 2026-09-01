@@ -1626,11 +1626,17 @@ okra`;
   }
 
   function isRepBased(detail) {
-    return /^\d+\s*x\s*\d+(\/\S+)?$/i.test(detail.trim());
+    // Covers both a flat rep count ("4 x 6") and a rep range ("4 x 9-11") —
+    // programs like Shortcut to Shred write targets as ranges, and those
+    // were previously falling through to the generic round/toggle UI.
+    return /^\d+\s*x\s*\d+(-\d+)?(\/\S+)?$/i.test(detail.trim());
   }
 
   function parseTargetReps(detail) {
     if (!isRepBased(detail)) return null;
+    // Use the low end of a range as the target so "as planned" defaults to
+    // the minimum the program actually asks for; the rep stepper covers
+    // pushing past it.
     const m = detail.match(/^\d+\s*x\s*(\d+)/i);
     return m ? Number(m[1]) : null;
   }
@@ -2240,15 +2246,18 @@ okra`;
   // Compact "what you actually did" string for one exercise's logged sets —
   // e.g. "185×6, 185×5, 190×4" — falling back gracefully per set when only
   // reps or only weight were touched.
+  const EFFORT_ICON = { easy: "😌", right: "👍", hard: "😤" };
+
   function formatPerformanceSummary(perf) {
     const touched = (perf?.sets || []).filter((s) => s.actual != null || s.weight != null);
-    if (touched.length === 0) return null;
-    return touched
+    if (touched.length === 0) return perf?.effort ? EFFORT_ICON[perf.effort] ?? null : null;
+    const setsText = touched
       .map((s) => {
         const reps = s.target != null ? String(s.actual ?? "-") : s.actual ? "✓" : "-";
         return s.weight != null ? `${s.weight}×${reps}` : reps;
       })
       .join(", ");
+    return perf.effort && EFFORT_ICON[perf.effort] ? `${setsText} ${EFFORT_ICON[perf.effort]}` : setsText;
   }
 
   function renderExerciseList(exercises, performance) {
@@ -2532,8 +2541,12 @@ okra`;
   // strength splits and anything explicitly named "Weighted ___" get the
   // weight field; pure cardio/mobility work doesn't.
   function usesWeight(ex) {
-    if (/bodyweight|push-up|plank|dead bug|mobility|stretch|flow|cat-cow|jump squat|mountain climber/i.test(ex.name)) return false;
-    return ex.splitKey === "chest-back" || ex.splitKey === "legs" || /weighted|\bdb\b|dumbbell|goblet|suitcase/i.test(ex.name);
+    if (/bodyweight|push-up|pushup|plank|dead bug|mobility|stretch|flow|cat-cow|jump squat|mountain climber|burpee|\bjog|\brun|sprint|jump rope|high knee|butt kick|\bwalk|march|dead hang/i.test(ex.name)) return false;
+    if (ex.splitKey === "chest-back" || ex.splitKey === "legs") return true;
+    // Name-based catch-all for loaded movements outside those two splits —
+    // e.g. Shortcut to Shred's barbell/cable/machine work, which previously
+    // got no weight field at all just for living in a different splitKey.
+    return /weighted|\bdb\b|dumbbell|goblet|suitcase|barbell|kettlebell|\bcable|machine|\bplate|pulldown|\bpress\b|squat|deadlift|\brow\b|curl|extension|\bfly\b|flye|raise|thrust|shrug|\bdip\b/i.test(ex.name);
   }
 
   function getExerciseLoadFactor(exerciseName) {
@@ -2672,6 +2685,7 @@ okra`;
         // all seeded from wherever the athlete left off last time.
         sets: Array.from({ length: setCount }, () => ({ target, actual: target, weight: seedWeight, touched: false })),
         flag: "",
+        effort: null,
         weightRecommendation: recommendation,
       };
     });
@@ -2881,6 +2895,9 @@ okra`;
     const fallbackIcon = getSplitMeta(ex.splitKey).icon;
     const log = activeWorkout.logs[ex.name];
 
+    const headRow = document.createElement("div");
+    headRow.className = "wex-head-row";
+
     const head = document.createElement("button");
     head.type = "button";
     head.className = "wex-head";
@@ -2895,6 +2912,23 @@ okra`;
       </span>
       <span class="wex-chevron">▾</span>
     `;
+
+    // One tap logs the whole exercise as done at its planned sets/reps/weight
+    // — the common case where nothing needs adjusting shouldn't require
+    // opening the card and touching every set individually. Tapping again
+    // undoes it. Sits outside the expand button (not nested inside it —
+    // buttons can't nest) so it works with the card collapsed.
+    const quickDoneBtn = document.createElement("button");
+    quickDoneBtn.type = "button";
+    quickDoneBtn.className = "wex-quickdone";
+    quickDoneBtn.title = "Mark done as planned";
+    const allTouched = () => log.sets.length > 0 && log.sets.every((s) => s.touched);
+    const syncQuickDoneBtn = () => {
+      const done = allTouched();
+      quickDoneBtn.textContent = done ? "✓" : "○";
+      quickDoneBtn.classList.toggle("done", done);
+    };
+    syncQuickDoneBtn();
     // Steps through the remaining body-part folders on each 404 before
     // giving up and showing the icon tile — the exercise's real photo could
     // be filed under any of them regardless of which split/program/library
@@ -2971,6 +3005,14 @@ okra`;
         </div>
       ` : ""}
       <div class="wex-sets">${setsHtml}</div>
+      <div class="wex-effort-row">
+        <span class="wex-effort-label">How did it feel?</span>
+        <div class="wex-effort-chips">
+          <button type="button" class="wex-effort-chip${log.effort === "easy" ? " selected" : ""}" data-effort="easy">😌 Easy</button>
+          <button type="button" class="wex-effort-chip${log.effort === "right" ? " selected" : ""}" data-effort="right">👍 Just Right</button>
+          <button type="button" class="wex-effort-chip${log.effort === "hard" ? " selected" : ""}" data-effort="hard">😤 Hard</button>
+        </div>
+      </div>
       <input type="text" class="wex-flag-input" placeholder="Anything to flag on this one? (optional)" maxlength="140" />
       <div class="wex-swap-row">
         <input type="text" class="wex-swap-input" placeholder="Want to swap this? e.g. 'replace flies, shoulder is sore'" maxlength="140" />
@@ -3064,6 +3106,17 @@ okra`;
       });
     }
 
+    body.querySelectorAll(".wex-effort-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const value = chip.dataset.effort;
+        log.effort = log.effort === value ? null : value;
+        body.querySelectorAll(".wex-effort-chip").forEach((c) => {
+          c.classList.toggle("selected", c.dataset.effort === log.effort);
+        });
+        schedulePersistActiveWorkout();
+      });
+    });
+
     body.querySelector(".wex-flag-input").addEventListener("input", (e) => {
       log.flag = e.target.value;
       schedulePersistActiveWorkout();
@@ -3106,7 +3159,30 @@ okra`;
       head.classList.toggle("expanded");
     });
 
-    card.appendChild(head);
+    quickDoneBtn.addEventListener("click", () => {
+      const nowDone = !allTouched();
+      log.sets.forEach((s) => {
+        s.touched = nowDone;
+        // Toggle-based sets (no numeric target) only carry meaning as
+        // touched/untouched — mirror the same actual value the per-set
+        // "Mark Done" button already sets, so the two stay consistent.
+        if (s.target == null) s.actual = nowDone ? 1 : null;
+      });
+      syncQuickDoneBtn();
+      body.querySelectorAll(".wex-set-row").forEach((row) => {
+        row.classList.toggle("touched", nowDone);
+        const toggleBtn = row.querySelector(".wex-toggle-btn");
+        if (toggleBtn) {
+          toggleBtn.classList.toggle("done", nowDone);
+          toggleBtn.textContent = nowDone ? "✓ Done" : "Mark Done";
+        }
+      });
+      schedulePersistActiveWorkout();
+    });
+
+    headRow.appendChild(head);
+    headRow.appendChild(quickDoneBtn);
+    card.appendChild(headRow);
     card.appendChild(body);
     return card;
   }
@@ -3148,17 +3224,25 @@ okra`;
   // a compact free-text summary — feeds straight into the persistent notes
   // log so future AI recommendations can reference it. Empty if they
   // engaged with none of it, since feedback here is entirely optional.
+  const EFFORT_LABEL = { easy: "felt easy", right: "felt just right", hard: "felt hard" };
+
   function summarizeWorkoutLog(logs) {
     const lines = [];
     Object.entries(logs).forEach(([name, log]) => {
       const touchedSets = log.sets.filter((s) => s.touched);
+      const exerciseParts = [];
       if (touchedSets.length > 0) {
-        const parts = touchedSets.map((s) => {
-          const reps = s.target != null ? `${s.actual}/${s.target}` : s.actual ? "done" : "skipped";
-          return s.weight != null ? `${s.weight}lb×${reps}` : reps;
-        });
-        lines.push(`${name}: ${parts.join(", ")}`);
+        exerciseParts.push(
+          touchedSets
+            .map((s) => {
+              const reps = s.target != null ? `${s.actual}/${s.target}` : s.actual ? "done" : "skipped";
+              return s.weight != null ? `${s.weight}lb×${reps}` : reps;
+            })
+            .join(", ")
+        );
       }
+      if (log.effort && EFFORT_LABEL[log.effort]) exerciseParts.push(EFFORT_LABEL[log.effort]);
+      if (exerciseParts.length > 0) lines.push(`${name}: ${exerciseParts.join(", ")}`);
       if (log.flag && log.flag.trim()) {
         lines.push(`${name} note: "${log.flag.trim()}"`);
       }
@@ -3172,8 +3256,11 @@ okra`;
   function extractPerformance(logs) {
     const performance = {};
     Object.entries(logs).forEach(([name, log]) => {
-      if (log.sets.some((s) => s.touched)) {
-        performance[name] = { sets: log.sets.map((s) => ({ target: s.target, actual: s.actual, weight: s.weight })) };
+      if (log.sets.some((s) => s.touched) || log.effort) {
+        performance[name] = {
+          sets: log.sets.map((s) => ({ target: s.target, actual: s.actual, weight: s.weight })),
+          effort: log.effort || null,
+        };
       }
     });
     return performance;
