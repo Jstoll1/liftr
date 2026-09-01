@@ -24,7 +24,7 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609011800" />
+  <link rel="stylesheet" href="styles.css?v=202609012000" />
 </head>
 <body>
 
@@ -318,6 +318,11 @@
       <span class="section-title">Or Choose Another</span>
       <div id="alt-options" class="alt-grid"></div>
 
+      <span class="section-title">More Workouts</span>
+      <p class="panel-subtext">Special programs and anything you've saved to your library — pick any of them directly.</p>
+      <ul id="more-workouts-list" class="library-list"></ul>
+      <p id="more-workouts-empty" class="panel-subtext hidden">Nothing here yet — save a workout from any session preview to see it in this list.</p>
+
       <button id="custom-workout-btn" class="ghost-btn custom-cta">🛠 Create Custom Workout</button>
     </div>
   </main>
@@ -445,6 +450,6 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
   </script>
-  <script src="app.js?v=202609011800"></script>
+  <script src="app.js?v=202609012000"></script>
 </body>
 </html>

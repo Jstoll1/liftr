@@ -960,27 +960,6 @@ button,
   transform: translateY(-2px);
 }
 
-.preset-card {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 12px;
-  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-card));
-}
-
-.preset-card .alt-icon {
-  grid-row: 1 / 4;
-  align-self: center;
-  font-size: 30px;
-}
-
-.preset-goal {
-  color: var(--text-dim);
-  font-size: 10px;
-  line-height: 1.45;
-}
-
 .alt-icon { font-size: 20px; }
 .alt-name { font-size: 12px; font-weight: 700; }
 .alt-tagline { font-size: 10px; color: var(--text-dim); line-height: 1.3; }

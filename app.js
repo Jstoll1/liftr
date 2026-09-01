@@ -3751,34 +3751,53 @@ okra`;
       altContainer.appendChild(card);
     });
 
-    if (user === "jessica") {
-      const preset = SPECIAL_WORKOUTS["jess-game-day-core"];
-      const card = document.createElement("button");
-      card.className = "alt-card preset-card";
-      card.innerHTML = `
-        <span class="alt-icon">${preset.icon}</span>
-        <span class="alt-name">${preset.name}</span>
-        <span class="alt-tagline">${preset.tagline}</span>
-        <span class="preset-goal">${preset.reason}</span>
-      `;
-      card.onclick = () => openSpecialWorkoutPreview(user, "jess-game-day-core");
-      altContainer.prepend(card);
-    }
+    renderMoreWorkoutsList(user);
+  }
 
-    if (user === "jake") {
-      const nextKey = nextShortcutToShredKey(user);
-      const preset = SPECIAL_WORKOUTS[nextKey];
-      const card = document.createElement("button");
-      card.className = "alt-card preset-card";
-      card.innerHTML = `
-        <span class="alt-icon">${preset.icon}</span>
-        <span class="alt-name">Shortcut to Shred — Day ${preset.dayNumber}/6</span>
-        <span class="alt-tagline">${preset.tagline}</span>
-        <span class="preset-goal">${preset.reason}</span>
-      `;
-      card.onclick = () => openSpecialWorkoutPreview(user, nextKey);
-      altContainer.prepend(card);
-    }
+  // A single browsable list of every other way to start a workout today —
+  // this persona's special programs (each Shortcut to Shred day individually,
+  // not just whichever one is "next") plus anything saved to the shared
+  // library — sitting alongside the coach's recommendation rather than
+  // auto-picking one via a single dedicated button.
+  function renderMoreWorkoutsList(user) {
+    const list = document.getElementById("more-workouts-list");
+    const empty = document.getElementById("more-workouts-empty");
+    if (!list) return;
+
+    const nextKey = user === "jake" ? nextShortcutToShredKey(user) : null;
+    const presetEntries = Object.entries(SPECIAL_WORKOUTS).filter(([, preset]) => preset.user === user);
+    const routines = loadLibrary().routines;
+
+    const presetHtml = presetEntries
+      .map(
+        ([key, preset]) => `
+      <li class="library-item more-workout-item" data-kind="preset" data-key="${escapeHtml(key)}">
+        <div class="library-item-info">
+          <span class="library-item-title">${preset.icon} ${escapeHtml(preset.name)}</span>
+          <span class="library-item-meta">${escapeHtml(preset.tagline)}${key === nextKey ? ' <span class="library-tag-chip">NEXT UP</span>' : ""}</span>
+        </div>
+        <span class="library-item-start">▶</span>
+      </li>
+    `
+      )
+      .join("");
+
+    const routineHtml = routines
+      .map(
+        (r) => `
+      <li class="library-item more-workout-item" data-kind="routine" data-id="${escapeHtml(r.id)}">
+        <div class="library-item-info">
+          <span class="library-item-title">💪 ${escapeHtml(r.name)}</span>
+          <span class="library-item-meta">${r.exercises.length} exercise${r.exercises.length === 1 ? "" : "s"} · your saved workout</span>
+        </div>
+        <span class="library-item-start">▶</span>
+      </li>
+    `
+      )
+      .join("");
+
+    list.innerHTML = presetHtml + routineHtml;
+    if (empty) empty.classList.toggle("hidden", presetEntries.length + routines.length > 0);
   }
 
   function initSelectScreen() {
@@ -3801,6 +3820,17 @@ okra`;
         }, 1800);
       });
     }
+
+    document.getElementById("more-workouts-list")?.addEventListener("click", (e) => {
+      const item = e.target.closest(".more-workout-item");
+      if (!item) return;
+      if (item.dataset.kind === "preset") {
+        openSpecialWorkoutPreview(currentUser, item.dataset.key);
+      } else {
+        const routine = loadLibrary().routines.find((r) => r.id === item.dataset.id);
+        if (routine) startSavedRoutine(currentUser, routine);
+      }
+    });
   }
 
   // ---------- rendering: custom builder screen ----------
@@ -4379,7 +4409,9 @@ okra`;
       PAD_L = 34,
       PAD_R = 10,
       PAD_T = 14,
-      PAD_B = 10;
+      // Room for the date labels along the bottom (was 10 — too tight to
+      // fit any text, which is why the axis had no dates at all before).
+      PAD_B = 26;
     const xFor = (t) =>
       maxT === minT ? PAD_L + (W - PAD_L - PAD_R) / 2 : PAD_L + ((t - minT) / (maxT - minT)) * (W - PAD_L - PAD_R);
     const yFor = (w) =>
@@ -4406,6 +4438,25 @@ okra`;
       label.textContent = Math.round(w);
       svg.appendChild(label);
     }
+
+    // X-axis date labels — a small, evenly-spaced subset (not one per
+    // point) so a long history doesn't overlap into an unreadable smear on
+    // a narrow mobile chart. First/last anchor inward so they can't clip
+    // past the SVG edge.
+    const uniqueDates = Array.from(new Set(allPoints.map((p) => p.date))).sort((a, b) => new Date(a) - new Date(b));
+    const maxLabels = 5;
+    const step = Math.max(1, Math.ceil(uniqueDates.length / maxLabels));
+    const labelDates = uniqueDates.filter((_, i) => i % step === 0 || i === uniqueDates.length - 1);
+    labelDates.forEach((dateStr, i) => {
+      const x = xFor(new Date(dateStr).getTime());
+      const label = document.createElementNS(ns, "text");
+      label.setAttribute("x", x);
+      label.setAttribute("y", H - PAD_B + 16);
+      label.setAttribute("class", "graph-axis-label");
+      label.setAttribute("text-anchor", i === 0 ? "start" : i === labelDates.length - 1 ? "end" : "middle");
+      label.textContent = formatShortDate(dateStr);
+      svg.appendChild(label);
+    });
 
     withTimes.forEach((s) => {
       const d = s.points.map((p, i) => `${i === 0 ? "M" : "L"} ${xFor(p.t)} ${yFor(p.weight)}`).join(" ");
