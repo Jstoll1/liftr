@@ -3,7 +3,6 @@
 
   const STORAGE_KEY = "liftr_history_v3";
   const NOTES_KEY = "liftr_notes_v1";
-  const SOUND_KEY = "liftr_sound_enabled";
 
   // Fill this in with your deployed Cloudflare Worker URL once the AI
   // backend is live (see worker/README.md). Left empty, the app falls back
@@ -672,18 +671,34 @@
   // exercise library, then the rest of the plan remains intact.
   function applyCoachFocus(user, splitKey, exercises, note) {
     const focus = getCoachFocus(note);
-    if (splitKey !== "legs" || !focus) return exercises;
-    const priorities = {
-      quads: ["Leg Press", "Goblet Squat", "Step-Ups", "Walking Lunges", "Bodyweight Lunge", "Barbell Back Squat"],
-      glutes: ["Glute Bridge", "Goblet Squat", "Step-Ups", "Romanian Deadlift", "Walking Lunges"],
-      hamstrings: ["Romanian Deadlift", "Glute Bridge", "Walking Lunges", "Bodyweight Lunge"],
-    }[focus];
     const pool = buildCandidatePool(user, splitKey);
-    const byName = new Map(pool.map((exercise) => [exercise.name, exercise]));
-    const requested = priorities.map((name) => byName.get(name)).filter(Boolean);
-    const combined = [...requested, ...exercises];
-    const unique = combined.filter((exercise, index, all) => all.findIndex((item) => item.name === exercise.name) === index);
-    return unique.slice(0, Math.max(exercises.length, Math.min(4, requested.length)));
+    let result = exercises;
+
+    if (splitKey === "legs" && focus) {
+      const priorities = {
+        quads: ["Leg Press", "Goblet Squat", "Step-Ups", "Walking Lunges", "Bodyweight Lunge", "Barbell Back Squat"],
+        glutes: ["Glute Bridge", "Goblet Squat", "Step-Ups", "Romanian Deadlift", "Walking Lunges"],
+        hamstrings: ["Romanian Deadlift", "Glute Bridge", "Walking Lunges", "Bodyweight Lunge"],
+      }[focus];
+      const byName = new Map(pool.map((exercise) => [exercise.name, exercise]));
+      const requested = priorities.map((name) => byName.get(name)).filter(Boolean);
+      const combined = [...requested, ...exercises];
+      const unique = combined.filter((exercise, index, all) => all.findIndex((item) => item.name === exercise.name) === index);
+      result = unique.slice(0, Math.max(exercises.length, Math.min(4, requested.length)));
+    }
+
+    // Common removal requests also work without the network. Match an
+    // explicit action directly against an approved exercise name.
+    const request = String(note || "").toLowerCase();
+    pool.forEach((exercise) => {
+      const escapedName = exercise.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const removal = new RegExp(`\\b(?:remove|skip|avoid|without|drop|take out|do not want|don't want|no)\\s+(?:the\\s+)?${escapedName}\\b`, "i");
+      if (removal.test(request)) result = result.filter((item) => item.name !== exercise.name);
+    });
+    if (/\b(fewer exercises|shorter workout|remove one exercise)\b/i.test(request) && result.length > 2) {
+      result = result.slice(0, -1);
+    }
+    return result;
   }
 
   function getEntryExercises(user, entry) {
@@ -775,109 +790,6 @@
     };
   }
 
-  // ---------- retro guitar riff synth ----------
-
-  let audioCtx = null;
-  let soundEnabled = localStorage.getItem(SOUND_KEY) !== "off";
-
-  function getAudioCtx() {
-    if (!audioCtx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) audioCtx = new AC();
-    }
-    return audioCtx;
-  }
-
-  function makeDistortionCurve(amount) {
-    const n = 44100;
-    const curve = new Float32Array(n);
-    const k = amount;
-    for (let i = 0; i < n; i++) {
-      const x = (i * 2) / n - 1;
-      curve[i] = ((3 + k) * x * 20 * (Math.PI / 180)) / (Math.PI + k * Math.abs(x));
-    }
-    return curve;
-  }
-
-  function playRiff() {
-    if (!soundEnabled) return;
-    const ctx = getAudioCtx();
-    if (!ctx) return;
-    if (ctx.state === "suspended") ctx.resume();
-
-    const master = ctx.createGain();
-    master.gain.value = 0.18;
-    master.connect(ctx.destination);
-
-    const distortion = ctx.createWaveShaper();
-    distortion.curve = makeDistortionCurve(320);
-    distortion.oversample = "4x";
-
-    const lowpass = ctx.createBiquadFilter();
-    lowpass.type = "lowpass";
-    lowpass.frequency.value = 2400;
-
-    distortion.connect(lowpass);
-    lowpass.connect(master);
-
-    // Palm-muted gallop riff on a low power chord (E2 root + fifth).
-    const rootFreq = 82.41; // E2
-    const fifthFreq = 123.47; // B2
-    const pattern = [0, 0, 1, 0, 0, 1, 2, 0]; // 0=root,1=fifth,2=octave
-    const noteLen = 0.11;
-    const start = ctx.currentTime + 0.02;
-
-    pattern.forEach((step, i) => {
-      const freq = step === 1 ? fifthFreq : step === 2 ? rootFreq * 2 : rootFreq;
-      const t0 = start + i * noteLen;
-
-      const osc1 = ctx.createOscillator();
-      osc1.type = "sawtooth";
-      osc1.frequency.value = freq;
-      const osc2 = ctx.createOscillator();
-      osc2.type = "square";
-      osc2.frequency.value = freq;
-
-      const noteGain = ctx.createGain();
-      noteGain.gain.setValueAtTime(0.0001, t0);
-      noteGain.gain.exponentialRampToValueAtTime(1, t0 + 0.01);
-      noteGain.gain.exponentialRampToValueAtTime(0.0001, t0 + noteLen * 0.9);
-
-      osc1.connect(noteGain);
-      osc2.connect(noteGain);
-      noteGain.connect(distortion);
-
-      osc1.start(t0);
-      osc1.stop(t0 + noteLen);
-      osc2.start(t0);
-      osc2.stop(t0 + noteLen);
-    });
-
-    // Final held power chord hit.
-    const hitT = start + pattern.length * noteLen + 0.05;
-    [rootFreq, fifthFreq, rootFreq * 2].forEach((freq) => {
-      const osc = ctx.createOscillator();
-      osc.type = "sawtooth";
-      osc.frequency.value = freq;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, hitT);
-      g.gain.exponentialRampToValueAtTime(0.9, hitT + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, hitT + 0.9);
-      osc.connect(g);
-      g.connect(distortion);
-      osc.start(hitT);
-      osc.stop(hitT + 0.9);
-    });
-  }
-
-  function setSoundEnabled(enabled) {
-    soundEnabled = enabled;
-    localStorage.setItem(SOUND_KEY, enabled ? "on" : "off");
-    const btn = document.getElementById("sound-toggle");
-    btn.textContent = enabled ? "🔊" : "🔇";
-    btn.classList.toggle("muted", !enabled);
-  }
-
   // ---------- state ----------
 
   let currentUser = null;
@@ -912,6 +824,8 @@
 
   function showScreen(id) {
     SCREEN_IDS.forEach((s) => document.getElementById(s).classList.toggle("hidden", s !== id));
+    const homeButton = document.getElementById("home-button");
+    if (homeButton) homeButton.classList.toggle("hidden", id === "login-screen" || id === "welcome-screen");
   }
 
   // ---------- rendering: clock / goal ----------
@@ -1013,6 +927,10 @@
     list.innerHTML = '<li class="skeleton-row"></li><li class="skeleton-row"></li><li class="skeleton-row"></li>';
 
     const btn = document.getElementById("log-session-btn");
+    document.getElementById("preview-coach-section").classList.remove("hidden");
+    document.getElementById("preview-actions").classList.remove("hidden");
+    document.getElementById("edit-preview-btn").disabled = true;
+    placeTerminalPanel("preview");
     btn.textContent = "Loading…";
     btn.disabled = true;
     btn.onclick = null;
@@ -1035,6 +953,8 @@
     const backLink = document.getElementById("back-to-options");
 
     if (done) {
+      document.getElementById("preview-coach-section").classList.add("hidden");
+      document.getElementById("preview-actions").classList.add("hidden");
       renderExerciseList(getEntryExercises(user, entry), entry.performance);
       renderTags(buildTags(entry));
       renderAiNote(entry.source === "ai" ? entry.reason : null);
@@ -1051,6 +971,9 @@
       return;
     }
     document.getElementById("session-done-note").classList.add("hidden");
+    document.getElementById("preview-coach-section").classList.remove("hidden");
+    document.getElementById("preview-actions").classList.remove("hidden");
+    placeTerminalPanel("preview");
 
     if (!previewPlan) {
       renderSessionLoading(splitKey);
@@ -1061,6 +984,7 @@
     renderTags(buildTags(checkInState));
     renderAiNote(previewPlan.source === "ai" ? previewPlan.reason : null);
     statusEl.classList.add("hidden");
+    document.getElementById("edit-preview-btn").disabled = false;
     btn.textContent = "Start Workout";
     btn.disabled = false;
     btn.onclick = () => {
@@ -1143,6 +1067,22 @@
     const plan = await computePlan(user, splitKey, checkInState);
     if (selectedSplitKey !== splitKey) return; // user navigated away while we were waiting
     previewPlan = plan;
+    renderSessionScreen(user, getHistory(user));
+  }
+
+  async function refreshPreviewFromCoach(user) {
+    const nextSplit = chatSuggestedSplit || selectedSplitKey;
+    const requestId = ++recommendationRequestId;
+    selectedSplitKey = nextSplit;
+    previewPlan = null;
+    renderSessionScreen(user, getHistory(user));
+
+    const plan = await computePlan(user, nextSplit, { ...checkInState });
+    if (requestId !== recommendationRequestId || selectedSplitKey !== nextSplit) return;
+    if (document.getElementById("session-screen").classList.contains("hidden")) return;
+    previewPlan = plan;
+    recommendationDraftKey = nextSplit;
+    recommendationDraft = plan;
     renderSessionScreen(user, getHistory(user));
   }
 
@@ -1668,7 +1608,8 @@
   // of resetting each time the user moves from check-in into selection.
   function placeTerminalPanel(target) {
     const panel = document.getElementById("terminal-panel");
-    const slot = document.getElementById(target === "select" ? "select-chat-slot" : "checkin-chat-slot");
+    const slotId = target === "select" ? "select-chat-slot" : target === "preview" ? "preview-chat-slot" : "checkin-chat-slot";
+    const slot = document.getElementById(slotId);
     if (panel && slot) slot.appendChild(panel);
   }
 
@@ -1870,6 +1811,8 @@
     // recommendation react immediately instead of waiting for a re-visit.
     if (!document.getElementById("select-screen").classList.contains("hidden")) {
       renderSelectScreen(currentUser, getHistory(currentUser));
+    } else if (!document.getElementById("session-screen").classList.contains("hidden") && selectedSplitKey && !loggedToday(getHistory(currentUser))) {
+      refreshPreviewFromCoach(currentUser);
     }
   }
 
@@ -1898,6 +1841,10 @@
     });
 
     document.getElementById("checkin-start-btn").addEventListener("click", (e) => {
+      if (activeWorkout) {
+        showScreen("workout-screen");
+        return;
+      }
       e.currentTarget.classList.add("hidden");
       document.getElementById("checkin-form").classList.remove("hidden");
     });
@@ -1997,12 +1944,16 @@
     document.getElementById("select-switch").addEventListener("click", showLogin);
     document.getElementById("custom-workout-btn").addEventListener("click", () => showCustom(currentUser));
     document.getElementById("back-to-options").addEventListener("click", () => showSelect(currentUser));
+    document.getElementById("edit-preview-btn").addEventListener("click", () => {
+      if (previewPlan) showCustom(currentUser, previewPlan.exercises);
+    });
   }
 
   // ---------- rendering: custom builder screen ----------
 
-  function renderCustomScreen(user) {
+  function renderCustomScreen(user, seedExercises = []) {
     customSelection = new Map();
+    const seededNames = new Set(seedExercises.map((exercise) => exercise.name));
     const container = document.getElementById("custom-groups");
     container.innerHTML = "";
 
@@ -2021,11 +1972,13 @@
 
       SPLIT_LIBRARY[splitKey].exercises[user].forEach((ex, i) => {
         const id = `${splitKey}:${i}`;
+        const selected = seededNames.has(ex.name);
+        if (selected) customSelection.set(id, { ...ex, splitKey });
         const row = document.createElement("label");
         row.className = "custom-ex-row";
         row.innerHTML = `
           <input type="checkbox" data-id="${id}" data-name="${ex.name}" data-detail="${ex.detail}"
-                 data-split="${splitKey}" data-tip="${ex.tip || ""}" data-superset="${ex.superset || ""}" />
+                 data-split="${splitKey}" data-tip="${ex.tip || ""}" data-superset="${ex.superset || ""}" ${selected ? "checked" : ""} />
           <span class="custom-ex-name">${ex.name}</span>
           <span class="custom-ex-detail">${ex.detail}</span>
         `;
@@ -2075,6 +2028,20 @@
     showScreen("login-screen");
   }
 
+  function showHome() {
+    if (!currentUser) {
+      showLogin();
+      return;
+    }
+    showScreen("checkin-screen");
+    placeTerminalPanel("checkin");
+    renderRecapCard(currentUser);
+    const startButton = document.getElementById("checkin-start-btn");
+    startButton.textContent = activeWorkout ? "▶ Resume Workout" : "🏋️ Start a Workout";
+    startButton.classList.remove("hidden");
+    document.getElementById("checkin-form").classList.add("hidden");
+  }
+
   function showWelcome(user) {
     const persona = getPersonaProfile(user);
     document.documentElement.style.setProperty("--accent", persona.accent);
@@ -2098,8 +2065,6 @@
     nameEl.classList.remove("riff-pulse");
     void nameEl.offsetWidth;
     nameEl.classList.add("riff-pulse");
-
-    playRiff();
 
     const advance = async () => {
       welcome.removeEventListener("click", advance);
@@ -2126,10 +2091,10 @@
     renderSelectScreen(user, getHistory(user));
   }
 
-  function showCustom(user) {
+  function showCustom(user, seedExercises = []) {
     currentUser = user;
     showScreen("custom-screen");
-    renderCustomScreen(user);
+    renderCustomScreen(user, seedExercises);
   }
 
   // Returns to the check-in hub WITHOUT resetting it — used by Settings/
@@ -2501,11 +2466,7 @@
   });
 
   document.getElementById("switch-user").addEventListener("click", showLogin);
-
-  document.getElementById("sound-toggle").addEventListener("click", () => {
-    setSoundEnabled(!soundEnabled);
-  });
-  setSoundEnabled(soundEnabled);
+  document.getElementById("home-button").addEventListener("click", showHome);
 
   initCheckIn();
   initSettings();
