@@ -1574,31 +1574,19 @@ okra`;
   }
 
   // ---------- exercise images ----------
-  // Looks for images/<body-part>/<slugified-exercise-name>.jpg — drop real
-  // photos into that structure (see worker-free root /images folder) and
-  // they'll be picked up automatically; missing files fall back to an icon
-  // tile gracefully (see the onerror handling in renderWorkoutExercises).
-
-  const CHEST_BACK_CHEST_EXERCISES = new Set([
-    "Push-Up Ladder",
-    "Dumbbell Chest Press",
-    "Cable Fly",
-    "Barbell Bench Press",
-    "Incline Dumbbell Press",
-    "Finisher: Burpee Pulse",
-    "Finisher: Death-Rep Push-Ups",
-    "Partner Med-Ball Chest Pass",
-    "Partner Resistance Push-Off",
-  ]);
-
-  const SPLIT_BODY_PART = { legs: "legs", cardio: "cardio", "core-mobility": "core" };
-
-  function getBodyPart(splitKey, exerciseName) {
-    if (splitKey === "chest-back") {
-      return CHEST_BACK_CHEST_EXERCISES.has(exerciseName) ? "chest" : "back";
-    }
-    return SPLIT_BODY_PART[splitKey] || "core";
-  }
+  // Looks for images/<body-part>/<slugified-exercise-name>.jpg. Body part
+  // used to be guessed from splitKey (chest-back/legs/cardio/core-mobility)
+  // — that broke down the moment an exercise came from anywhere else
+  // (a SPECIAL_WORKOUTS preset like Shortcut to Shred, a saved library
+  // routine, a custom-built session): none of those carry one of the four
+  // canonical splitKeys, so every image lookup silently fell through to a
+  // wrong folder and missed real photos that actually existed. Exercise
+  // NAME is the only thing guaranteed present regardless of source, so the
+  // lookup now tries every body-part folder that actually has photos in it
+  // and takes whichever one 404s last — no splitKey involved at all, which
+  // also means a newly added split/program/preset just works without a
+  // matching code change here.
+  const IMAGE_BODY_PARTS = ["chest", "back", "legs", "shoulders", "arms"];
 
   function slugify(str) {
     return str
@@ -1607,8 +1595,9 @@ okra`;
       .replace(/^-+|-+$/g, "");
   }
 
-  function getExerciseImagePath(splitKey, exerciseName) {
-    return `images/${getBodyPart(splitKey, exerciseName)}/${slugify(exerciseName)}.jpg`;
+  function getExerciseImageCandidates(exerciseName) {
+    const slug = slugify(exerciseName);
+    return IMAGE_BODY_PARTS.map((part) => `images/${part}/${slug}.jpg`);
   }
 
   // ---------- set/rep parsing ----------
@@ -2816,7 +2805,7 @@ okra`;
     const card = document.createElement("div");
     card.className = "wex-card";
 
-    const imgPath = getExerciseImagePath(ex.splitKey, ex.name);
+    const imgCandidates = getExerciseImageCandidates(ex.name);
     const fallbackIcon = getSplitMeta(ex.splitKey).icon;
     const log = activeWorkout.logs[ex.name];
 
@@ -2825,7 +2814,7 @@ okra`;
     head.className = "wex-head";
     head.innerHTML = `
       <span class="wex-image">
-        <img src="${imgPath}" alt="" class="wex-img" />
+        <img src="${imgCandidates[0]}" alt="" class="wex-img" />
         <span class="wex-img-fallback">${fallbackIcon}</span>
       </span>
       <span class="wex-head-copy">
@@ -2834,8 +2823,17 @@ okra`;
       </span>
       <span class="wex-chevron">▾</span>
     `;
-    // Real image missing (404) — quietly fall back to the icon tile underneath.
+    // Steps through the remaining body-part folders on each 404 before
+    // giving up and showing the icon tile — the exercise's real photo could
+    // be filed under any of them regardless of which split/program/library
+    // routine this session's exercise list actually came from.
+    let candidateIndex = 0;
     head.querySelector(".wex-img").addEventListener("error", (e) => {
+      candidateIndex++;
+      if (candidateIndex < imgCandidates.length) {
+        e.target.src = imgCandidates[candidateIndex];
+        return;
+      }
       e.target.style.display = "none";
       e.target.nextElementSibling.style.display = "flex";
     });
@@ -2885,7 +2883,7 @@ okra`;
 
     body.innerHTML = `
       <div class="wex-body-image">
-        <img src="${imgPath}" alt="" class="wex-img-large" />
+        <img src="${imgCandidates[0]}" alt="" class="wex-img-large" />
         <span class="wex-img-large-fallback">${fallbackIcon}</span>
       </div>
       ${ex.howTo ? `<p class="wex-howto">${escapeHtml(ex.howTo)}</p>` : ""}
@@ -2908,8 +2906,14 @@ okra`;
       </div>
       <p class="wex-swap-status hidden" aria-live="polite"></p>
     `;
-    // Real image missing (404) — quietly fall back to the icon tile underneath.
+    // Same chained-candidate fallback as the collapsed card's thumbnail above.
+    let largeCandidateIndex = 0;
     body.querySelector(".wex-img-large").addEventListener("error", (e) => {
+      largeCandidateIndex++;
+      if (largeCandidateIndex < imgCandidates.length) {
+        e.target.src = imgCandidates[largeCandidateIndex];
+        return;
+      }
       e.target.style.display = "none";
       e.target.nextElementSibling.style.display = "flex";
     });
