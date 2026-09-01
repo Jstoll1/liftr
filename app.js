@@ -18,7 +18,7 @@
   const PERSONAS = {
     jessica: {
       name: "Jessica",
-      accent: "#ff2e97",
+      accent: "#c13cff",
       goal: "Build lean endurance for her first half-marathon",
     },
     jake: {
@@ -1538,6 +1538,7 @@
   }
 
   function renderCheckIn(user) {
+    placeTerminalPanel("checkin");
     checkInState = { minutes: 30, energy: "medium", partner: false, note: "" };
     document.getElementById("checkin-name").textContent = getPersonaProfile(user).name;
     document.getElementById("hub-cheer-label").textContent = getPersonaProfile(otherUser(user)).name;
@@ -1546,12 +1547,26 @@
     selectChip(document.getElementById("checkin-minutes"), checkInState.minutes);
     selectChip(document.getElementById("checkin-partner"), checkInState.partner ? "yes" : "no");
     resetChat(user);
+    document.getElementById("checkin-form").classList.add("hidden");
+    document.getElementById("checkin-start-btn").classList.remove("hidden");
   }
 
   // ---------- check-in chat ----------
   // A short conversational front door — the athlete can mention pain,
   // fatigue, or equipment limits and have it actually shape today's
   // exercise selection, instead of typing into a note nobody responds to.
+  // The same panel (and conversation) physically moves onto the workout
+  // selection screen after check-in, via placeTerminalPanel — it's one
+  // continuous chat, not a reset-per-screen widget.
+
+  // Moves the single terminal-panel DOM node into whichever screen's slot
+  // is currently relevant, so the chat thread/state carries over instead
+  // of resetting each time the user moves from check-in into selection.
+  function placeTerminalPanel(target) {
+    const panel = document.getElementById("terminal-panel");
+    const slot = document.getElementById(target === "select" ? "select-chat-slot" : "checkin-chat-slot");
+    if (panel && slot) slot.appendChild(panel);
+  }
 
   function resetChat(user) {
     const history = getHistory(user);
@@ -1580,6 +1595,34 @@
     document.getElementById("chat-input").disabled = busy;
   }
 
+  // Keeps the retro block cursor glued to the real caret position. The app
+  // font isn't monospace, so a simple "N characters * fixed width" guess
+  // would drift — instead a hidden same-font span measures the actual
+  // pixel width of the text before the caret on every change.
+  let updateChatCursor = () => {};
+
+  function initTerminalCursor() {
+    const input = document.getElementById("chat-input");
+    const cursor = document.getElementById("chat-cursor");
+    if (!input || !cursor) return;
+
+    const measurer = document.createElement("span");
+    measurer.style.position = "absolute";
+    measurer.style.visibility = "hidden";
+    measurer.style.whiteSpace = "pre";
+    measurer.style.font = getComputedStyle(input).font;
+    document.body.appendChild(measurer);
+
+    updateChatCursor = () => {
+      const pos = input.selectionStart ?? input.value.length;
+      measurer.textContent = input.value.slice(0, pos);
+      cursor.style.left = `${measurer.offsetWidth}px`;
+    };
+
+    ["input", "keyup", "click", "focus", "select"].forEach((evt) => input.addEventListener(evt, updateChatCursor));
+    updateChatCursor();
+  }
+
   async function sendChatMessage() {
     const input = document.getElementById("chat-input");
     const text = input.value.trim();
@@ -1587,6 +1630,7 @@
 
     chatMessages.push({ role: "user", text });
     input.value = "";
+    updateChatCursor();
     renderChatThread();
     setChatBusy(true);
 
@@ -1654,6 +1698,11 @@
       showSelect(currentUser);
     });
 
+    document.getElementById("checkin-start-btn").addEventListener("click", (e) => {
+      e.currentTarget.classList.add("hidden");
+      document.getElementById("checkin-form").classList.remove("hidden");
+    });
+
     document.getElementById("checkin-switch").addEventListener("click", showLogin);
 
     document.getElementById("hub-settings-btn").addEventListener("click", () => showSettings(currentUser));
@@ -1664,6 +1713,7 @@
   // ---------- rendering: select screen ----------
 
   function renderSelectScreen(user, history) {
+    placeTerminalPanel("select");
     const rec = recommendSplit(history, checkInState);
     const recMeta = getSplitMeta(rec.key);
 
@@ -2004,6 +2054,7 @@
   initSelectScreen();
   initCustomScreen();
   initWorkoutScreen();
+  initTerminalCursor();
 
   renderClock();
   setInterval(renderClock, 1000);

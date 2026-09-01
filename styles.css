@@ -6,7 +6,7 @@
   --border: #3a1e5c;
   --text: #f4eefe;
   --text-dim: #a68fd0;
-  --accent-jessica: #ff2e97;
+  --accent-jessica: #c13cff;
   --accent-jake: #05d9e8;
   --accent: #05d9e8;
   --gold: #ffcf3f;
@@ -537,10 +537,22 @@ button,
   font-family: var(--font-mono);
 }
 
+.terminal-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
 .terminal-input {
+  width: 100%;
   background: none;
   border: none;
   padding: 4px 0;
+  /* the custom block cursor below tracks the real caret position, so the
+     browser's own thin caret would just be a redundant second cursor */
+  caret-color: transparent;
 }
 
 .terminal-input:focus {
@@ -550,13 +562,28 @@ button,
 }
 
 .term-cursor {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--accent);
   animation: blink 1s step-start infinite;
-  margin-right: 4px;
   pointer-events: none;
+  transition: left 0.05s linear;
+}
+
+.terminal-input:disabled + .term-cursor {
+  opacity: 0;
 }
 
 /* ---------- CHECK-IN CHIP ROW (compact) ---------- */
+
+.checkin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: rise 0.3s ease both;
+}
 
 .checkin-chips {
   display: flex;

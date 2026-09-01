@@ -24,7 +24,7 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609010141" />
+  <link rel="stylesheet" href="styles.css?v=202609010157" />
 </head>
 <body>
 
@@ -42,7 +42,7 @@
       </div>
       <div class="user-picker">
         <button class="user-card" data-user="jessica">
-          <span class="user-avatar" style="--accent:#ff2e97">J</span>
+          <span class="user-avatar" style="--accent:#c13cff">J</span>
           <span class="user-name">Jessica</span>
         </button>
         <button class="user-card" data-user="jake">
@@ -89,52 +89,60 @@
 
       <div id="recap-card" class="recap-card"></div>
 
-      <div class="terminal-panel">
-        <div class="terminal-titlebar">
-          <span class="terminal-dot dot-red"></span>
-          <span class="terminal-dot dot-yellow"></span>
-          <span class="terminal-dot dot-green"></span>
-          <span class="terminal-titletext">COACH://<span id="checkin-name"></span></span>
-        </div>
-        <div id="chat-thread" class="chat-thread"></div>
-        <div class="chat-input-row">
-          <span class="terminal-prompt">&gt;</span>
-          <input type="text" id="chat-input" class="chat-input terminal-input" placeholder="type here..." maxlength="200" />
-          <span class="term-cursor">▌</span>
-          <button type="button" id="chat-send" class="chat-send-btn">Send</button>
-        </div>
-      </div>
-
-      <div class="checkin-chips">
-        <div class="option-group compact">
-          <span class="option-label">⚡ Energy</span>
-          <div id="checkin-energy" class="option-row" data-option="energy">
-            <button class="chip" data-value="low">Low</button>
-            <button class="chip" data-value="medium">Medium</button>
-            <button class="chip" data-value="high">High</button>
+      <div id="checkin-chat-slot">
+        <div id="terminal-panel" class="terminal-panel">
+          <div class="terminal-titlebar">
+            <span class="terminal-dot dot-red"></span>
+            <span class="terminal-dot dot-yellow"></span>
+            <span class="terminal-dot dot-green"></span>
+            <span class="terminal-titletext">COACH://<span id="checkin-name"></span></span>
           </div>
-        </div>
-
-        <div class="option-group compact">
-          <span class="option-label">⏱ Time</span>
-          <div id="checkin-minutes" class="option-row" data-option="minutes">
-            <button class="chip" data-value="15">15 min</button>
-            <button class="chip" data-value="30">30 min</button>
-            <button class="chip" data-value="45">45 min</button>
-            <button class="chip" data-value="60">60 min</button>
-          </div>
-        </div>
-
-        <div class="option-group compact">
-          <span class="option-label">🤝 Partner</span>
-          <div id="checkin-partner" class="option-row" data-option="partner">
-            <button class="chip" data-value="yes">Yes</button>
-            <button class="chip" data-value="no">No</button>
+          <div id="chat-thread" class="chat-thread"></div>
+          <div class="chat-input-row">
+            <span class="terminal-prompt">&gt;</span>
+            <div class="terminal-input-wrap">
+              <input type="text" id="chat-input" class="chat-input terminal-input" placeholder="type here..." maxlength="200" />
+              <span id="chat-cursor" class="term-cursor">▌</span>
+            </div>
+            <button type="button" id="chat-send" class="chat-send-btn">Send</button>
           </div>
         </div>
       </div>
 
-      <button id="checkin-submit" class="primary-btn">Submit Check-In</button>
+      <button id="checkin-start-btn" class="primary-btn">🏋️ Start a Workout</button>
+
+      <div id="checkin-form" class="checkin-form hidden">
+        <div class="checkin-chips">
+          <div class="option-group compact">
+            <span class="option-label">⚡ Energy</span>
+            <div id="checkin-energy" class="option-row" data-option="energy">
+              <button class="chip" data-value="low">Low</button>
+              <button class="chip" data-value="medium">Medium</button>
+              <button class="chip" data-value="high">High</button>
+            </div>
+          </div>
+
+          <div class="option-group compact">
+            <span class="option-label">⏱ Time</span>
+            <div id="checkin-minutes" class="option-row" data-option="minutes">
+              <button class="chip" data-value="15">15 min</button>
+              <button class="chip" data-value="30">30 min</button>
+              <button class="chip" data-value="45">45 min</button>
+              <button class="chip" data-value="60">60 min</button>
+            </div>
+          </div>
+
+          <div class="option-group compact">
+            <span class="option-label">🤝 Partner</span>
+            <div id="checkin-partner" class="option-row" data-option="partner">
+              <button class="chip" data-value="yes">Yes</button>
+              <button class="chip" data-value="no">No</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="checkin-submit" class="primary-btn">Submit Check-In</button>
+      </div>
     </div>
   </main>
 
@@ -222,6 +230,11 @@
   <main id="select-screen" class="screen hidden">
     <div class="panel-wrap wide">
       <button id="select-switch" class="link-btn top-link">&larr; SWITCH</button>
+
+      <span class="section-title">Fine-Tune With Your Coach</span>
+      <p class="panel-subtext">Equipment changes, injuries, anything else? Keep chatting — I'll factor it in below.</p>
+      <div id="select-chat-slot"></div>
+
       <span class="section-title">Recommended For You</span>
 
       <button id="recommended-card" class="rec-card">
@@ -349,6 +362,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=202609010141"></script>
+  <script src="app.js?v=202609010157"></script>
 </body>
 </html>
