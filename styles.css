@@ -1229,6 +1229,8 @@ button,
 .preview-actions .primary-btn,
 .preview-actions .ghost-btn {
   width: 100%;
+  padding: 11px;
+  font-size: 12px;
 }
 
 .section-title {
