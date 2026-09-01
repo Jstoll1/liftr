@@ -2280,6 +2280,71 @@ okra`;
     });
   }
 
+  // Live-editable version of the preview list — lets the athlete drop or
+  // add exercises right on the preview card instead of leaving for the
+  // full cross-category builder (still available via "Edit Exercises" for
+  // bigger changes). Mutates previewPlan.exercises in place so Start
+  // Workout's onclick (which reads previewPlan.exercises fresh) always
+  // reflects whatever's currently in the list.
+  function renderPreviewExerciseList(exercises, splitKey) {
+    const list = document.getElementById("session-exercises");
+    list.innerHTML = "";
+    let currentPhase = null;
+    exercises.forEach((ex, idx) => {
+      if (ex.phase && ex.phase !== currentPhase) {
+        currentPhase = ex.phase;
+        const heading = document.createElement("li");
+        heading.className = "session-phase-heading";
+        heading.textContent = ex.phase;
+        list.appendChild(heading);
+      }
+      const li = document.createElement("li");
+      li.className = "session-ex-editable";
+      li.innerHTML = `
+        <span class="session-ex-info">
+          <span>${escapeHtml(ex.name)}</span>
+          <span class="ex-detail">${escapeHtml(ex.detail)}</span>
+        </span>
+        <button type="button" class="session-ex-remove" data-idx="${idx}" title="Remove ${escapeHtml(ex.name)}" aria-label="Remove ${escapeHtml(ex.name)}">✕</button>
+      `;
+      list.appendChild(li);
+    });
+
+    const candidates = buildCandidatePool(currentUser, splitKey).filter(
+      (candidate) => !exercises.some((ex) => ex.name === candidate.name)
+    );
+    const addLi = document.createElement("li");
+    addLi.className = "session-ex-add-row";
+    addLi.innerHTML =
+      candidates.length > 0
+        ? `<select class="session-ex-add-select">
+             <option value="">+ Add an exercise…</option>
+             ${candidates.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)} (${escapeHtml(c.detail)})</option>`).join("")}
+           </select>`
+        : `<span class="session-ex-add-empty">No more exercises to add from this workout's pool — try Edit Exercises for the full library.</span>`;
+    list.appendChild(addLi);
+
+    list.querySelectorAll(".session-ex-remove").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        previewPlan.exercises.splice(Number(btn.dataset.idx), 1);
+        renderPreviewExerciseList(previewPlan.exercises, splitKey);
+      });
+    });
+
+    const addSelect = list.querySelector(".session-ex-add-select");
+    addSelect?.addEventListener("change", () => {
+      const chosen = candidates.find((c) => c.name === addSelect.value);
+      if (!chosen) return;
+      previewPlan.exercises.push({ ...chosen, splitKey });
+      renderPreviewExerciseList(previewPlan.exercises, splitKey);
+    });
+
+    // At least one exercise is required to start — removing down to zero
+    // disables Start Workout rather than silently letting it log nothing.
+    const startBtn = document.getElementById("log-session-btn");
+    if (startBtn) startBtn.disabled = exercises.length === 0;
+  }
+
   function renderTags(tags) {
     const el = document.getElementById("session-tags");
     if (!tags || tags.length === 0) {
@@ -2390,7 +2455,7 @@ okra`;
     }
 
     document.getElementById("save-workout-btn").classList.remove("hidden");
-    renderExerciseList(previewPlan.exercises);
+    renderPreviewExerciseList(previewPlan.exercises, splitKey);
     renderTags(buildTags(checkInState, meta.sourceTags || []));
     renderAiNote(previewPlan.source === "ai" ? previewPlan.reason : null);
     statusEl.classList.add("hidden");
