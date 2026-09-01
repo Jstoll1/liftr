@@ -840,6 +840,9 @@
   let checkInState = { minutes: 30, energy: "medium", partner: false, note: "" };
   let chatMessages = []; // [{ role: "coach" | "user", text }] for the check-in chat
   let chatBusy = false;
+  // Split key the coach picked up on from the conversation (e.g. "let's do
+  // legs today"), overriding the rule-based recommendation when set.
+  let chatSuggestedSplit = null;
   let selectedSplitKey = null; // split chosen on the select screen, awaiting log
   let previewPlan = null; // { exercises, reason, source } computed for the current preview
   let customSelection = new Map(); // exerciseId -> { name, detail, splitKey, tip, superset }
@@ -1622,14 +1625,24 @@
     if (panel && slot) slot.appendChild(panel);
   }
 
+  // Opens with whatever the athlete told the coach last time, so it feels
+  // like a coach who was actually paying attention — not a blank "how are
+  // you" every single day. Falls back to a generic opener when there's
+  // nothing recent to reference.
   function resetChat(user) {
     const history = getHistory(user);
-    const greeting =
-      history.length === 0
-        ? `Hey ${PERSONAS[user].name}! I'm your coach. Anything going on today I should know about before we get moving?`
-        : "Welcome back! Anything going on today — sore spots, low on time, equipment changes — before I help pick your session?";
+    const lastNote = getPastNotes(user, 1)[0];
+    let greeting;
+    if (history.length === 0) {
+      greeting = `Hey ${PERSONAS[user].name}! I'm your coach. Anything going on today I should know about before we get moving?`;
+    } else if (lastNote) {
+      greeting = `Welcome back! Last time you mentioned: "${lastNote.text}" — how's that today? Anything else before I help pick your session?`;
+    } else {
+      greeting = "Welcome back! Anything going on today — sore spots, low on time, equipment changes — before I help pick your session?";
+    }
     chatMessages = [{ role: "coach", text: greeting }];
     chatBusy = false;
+    chatSuggestedSplit = null;
     renderChatThread();
     setChatBusy(false);
   }
@@ -1672,7 +1685,13 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             mode: "chat",
-            persona: { name: persona.name, goal: persona.goal },
+            persona: {
+              name: persona.name,
+              goal: persona.goal,
+              heightIn: persona.heightIn,
+              weightLb: persona.weightLb,
+              focusAreas: persona.focusAreas,
+            },
             messages: chatMessages,
           }),
           signal: AbortSignal.timeout(AI_TIMEOUT_MS),
@@ -1682,6 +1701,9 @@
           if (typeof data.reply === "string" && data.reply.trim()) {
             reply = data.reply.trim();
             constraint = typeof data.constraint === "string" && data.constraint.trim() ? data.constraint.trim() : null;
+          }
+          if (SPLIT_ORDER.includes(data.suggestedSplit)) {
+            chatSuggestedSplit = data.suggestedSplit;
           }
         }
       } catch {
@@ -1695,6 +1717,12 @@
 
     if (constraint) {
       checkInState.note = [checkInState.note, constraint].filter(Boolean).join(". ");
+    }
+
+    // If the athlete's already on the workout-selection screen, let the
+    // recommendation react immediately instead of waiting for a re-visit.
+    if (!document.getElementById("select-screen").classList.contains("hidden")) {
+      renderSelectScreen(currentUser, getHistory(currentUser));
     }
   }
 
@@ -1740,7 +1768,12 @@
 
   function renderSelectScreen(user, history) {
     placeTerminalPanel("select");
-    const rec = recommendSplit(history, checkInState);
+    // The coach can steer this straight from the chat ("let's do legs
+    // today") — that override wins over the rotation-based guess until the
+    // next check-in resets it.
+    const rec = chatSuggestedSplit
+      ? { key: chatSuggestedSplit, reason: "Based on what you told your coach — let's do it." }
+      : recommendSplit(history, checkInState);
     const recMeta = getSplitMeta(rec.key);
 
     document.getElementById("rec-icon").textContent = recMeta.icon;

@@ -313,6 +313,14 @@ async function handleCheers(request, env, corsHeaders, url) {
 // Replies stay brief; anything worth factoring into exercise selection
 // comes back as `constraint`, a short imperative phrase the app folds into
 // the same free-text note the plan-selection endpoint already reads.
+const SPLIT_KEYS = ["chest-back", "legs", "cardio", "core-mobility"];
+const SPLIT_LABELS = {
+  "chest-back": "Chest & Back",
+  legs: "Legs",
+  cardio: "Cardio",
+  "core-mobility": "Core & Mobility",
+};
+
 async function handleChat(body, env, corsHeaders) {
   const { persona, messages } = body;
   const valid =
@@ -336,8 +344,15 @@ async function handleChat(body, env, corsHeaders) {
         description:
           "A short imperative phrase to factor into today's exercise selection (e.g. 'avoid overhead pressing, shoulder is sore'), or null if nothing constraint-worthy was said.",
       },
+      suggestedSplit: {
+        type: ["string", "null"],
+        enum: [...SPLIT_KEYS, null],
+        description:
+          "Set this to chest-back, legs, cardio, or core-mobility ONLY if the athlete clearly stated what type of workout they want today " +
+          "(e.g. 'let's do legs', 'I want a cardio day'). Leave it null if they didn't specify — never guess.",
+      },
     },
-    required: ["reply", "constraint"],
+    required: ["reply", "constraint", "suggestedSplit"],
     additionalProperties: false,
   };
 
@@ -359,6 +374,10 @@ async function handleChat(body, env, corsHeaders) {
     "overhead pressing, shoulder is sore'). If nothing like that was said, set",
     "constraint to null. Never give medical advice beyond general common sense",
     "(e.g. suggest resting an acute injury rather than pushing through it).",
+    "The app is also showing this athlete a recommended workout category",
+    `below the chat (options: ${SPLIT_KEYS.map((k) => `${k} = ${SPLIT_LABELS[k]}`).join(", ")}).`,
+    "If they clearly say what they want today, set suggestedSplit to that key",
+    "so the app updates the recommendation to match — otherwise leave it null.",
   ].join(" ");
 
   const openaiMessages = [
@@ -398,7 +417,8 @@ async function handleChat(body, env, corsHeaders) {
       return json({ error: "Empty reply" }, 502, corsHeaders);
     }
 
-    return json({ reply: parsed.reply, constraint: parsed.constraint || null }, 200, corsHeaders);
+    const suggestedSplit = SPLIT_KEYS.includes(parsed.suggestedSplit) ? parsed.suggestedSplit : null;
+    return json({ reply: parsed.reply, constraint: parsed.constraint || null, suggestedSplit }, 200, corsHeaders);
   } catch (err) {
     console.error("Worker error (chat)", err?.stack || String(err));
     return json({ error: "Worker error" }, 500, corsHeaders);
