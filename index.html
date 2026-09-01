@@ -24,7 +24,7 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609010057" />
+  <link rel="stylesheet" href="styles.css?v=202609010141" />
 </head>
 <body>
 
@@ -69,24 +69,25 @@
   <!-- DAILY CHECK-IN / HOME HUB SCREEN -->
   <main id="checkin-screen" class="screen hidden">
     <div class="panel-wrap">
-      <button id="checkin-switch" class="link-btn top-link">&larr; SWITCH</button>
+      <div class="hub-topbar">
+        <button id="checkin-switch" class="link-btn top-link">&larr; SWITCH</button>
+        <div class="hub-tiles">
+          <button id="hub-settings-btn" class="hub-tile" title="Settings">
+            <span class="hub-tile-icon">⚙️</span>
+            <span class="hub-tile-label">Settings</span>
+          </button>
+          <button id="hub-history-btn" class="hub-tile" title="History">
+            <span class="hub-tile-icon">📜</span>
+            <span class="hub-tile-label">History</span>
+          </button>
+          <button id="hub-cheer-btn" class="hub-tile" title="Cheer">
+            <span class="hub-tile-icon">👋</span>
+            <span id="hub-cheer-label" class="hub-tile-label">Cheer</span>
+          </button>
+        </div>
+      </div>
 
       <div id="recap-card" class="recap-card"></div>
-
-      <div class="hub-tiles">
-        <button id="hub-settings-btn" class="hub-tile">
-          <span class="hub-tile-icon">⚙️</span>
-          <span class="hub-tile-label">Settings</span>
-        </button>
-        <button id="hub-history-btn" class="hub-tile">
-          <span class="hub-tile-icon">📜</span>
-          <span class="hub-tile-label">History</span>
-        </button>
-        <button id="hub-cheer-btn" class="hub-tile">
-          <span class="hub-tile-icon">👋</span>
-          <span id="hub-cheer-label" class="hub-tile-label">Cheer</span>
-        </button>
-      </div>
 
       <div class="terminal-panel">
         <div class="terminal-titlebar">
@@ -180,6 +181,16 @@
       </div>
 
       <button id="settings-save" class="primary-btn">Save Settings</button>
+
+      <div class="backup-section">
+        <span class="option-label">💾 Backup &amp; Restore <span class="option-label-optional">(both personas)</span></span>
+        <p class="panel-subtext">Insurance in case this device's storage ever gets wiped.</p>
+        <div class="backup-row">
+          <button id="settings-export" type="button" class="ghost-btn">Export Backup</button>
+          <button id="settings-import" type="button" class="ghost-btn">Import Backup</button>
+        </div>
+        <input type="file" id="settings-import-file" accept="application/json" class="hidden" />
+      </div>
     </div>
   </main>
 
@@ -338,6 +349,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=202609010057"></script>
+  <script src="app.js?v=202609010141"></script>
 </body>
 </html>

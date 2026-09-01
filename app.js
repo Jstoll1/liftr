@@ -45,6 +45,56 @@
     pushToCloud(user);
   }
 
+  // ---------- local JSON backup / restore ----------
+  // Manual insurance policy independent of the cloud sync below — a single
+  // file with both personas' full state, in case a device's storage (or the
+  // Worker) is ever unavailable.
+
+  function exportBackupFile() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      history: loadAllHistory(),
+      notes: loadAllNotes(),
+      profile: loadAllProfiles(),
+      cheers: loadAllCheers(),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `liftr-backup-${todayStr()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importBackupFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try {
+        data = JSON.parse(String(reader.result));
+      } catch {
+        alert("That file isn't valid JSON — couldn't restore it.");
+        return;
+      }
+      if (!data || typeof data !== "object") {
+        alert("That doesn't look like a Liftr backup file.");
+        return;
+      }
+      if (data.history) saveAllHistory(data.history);
+      if (data.notes) saveAllNotes(data.notes);
+      if (data.profile) localStorage.setItem(PROFILE_KEY, JSON.stringify(data.profile));
+      if (data.cheers) localStorage.setItem(CHEERS_KEY, JSON.stringify(data.cheers));
+      Object.keys(PERSONAS).forEach((u) => pushToCloud(u));
+      alert("Backup restored. Reloading...");
+      location.reload();
+    };
+    reader.readAsText(file);
+  }
+
   // ---------- cross-device sync (Cloudflare KV) ----------
   // localStorage stays the source of truth for instant, offline-first reads;
   // this layer just keeps a copy in the cloud so a second phone can catch up.
@@ -1824,6 +1874,16 @@
 
       saveProfile(currentUser, { goal, heightIn, weightLb, focusAreas });
       returnToCheckIn(currentUser);
+    });
+
+    document.getElementById("settings-export").addEventListener("click", exportBackupFile);
+
+    const importInput = document.getElementById("settings-import-file");
+    document.getElementById("settings-import").addEventListener("click", () => importInput.click());
+    importInput.addEventListener("change", () => {
+      const file = importInput.files?.[0];
+      if (file) importBackupFile(file);
+      importInput.value = "";
     });
   }
 

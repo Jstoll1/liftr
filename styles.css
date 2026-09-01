@@ -428,21 +428,33 @@ button,
 
 /* ---------- HOME HUB TILES ---------- */
 
-.hub-tiles {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+.hub-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: -4px;
+}
+
+.hub-topbar .top-link {
+  margin-bottom: 0;
+}
+
+.hub-tiles {
+  display: flex;
+  gap: 6px;
 }
 
 .hub-tile {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 6px;
+  border-radius: 999px;
+  padding: 5px 10px 5px 8px;
   cursor: pointer;
   color: var(--text);
   font-family: var(--font-mono);
@@ -451,19 +463,21 @@ button,
 
 .hub-tile:hover {
   border-color: var(--accent);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .hub-tile-icon {
-  font-size: 20px;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .hub-tile-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--text-dim);
+  white-space: nowrap;
 }
 
 /* ---------- RETRO TERMINAL CHAT PANEL ---------- */
@@ -561,6 +575,23 @@ button,
 
 /* ---------- SETTINGS FORM ---------- */
 
+.note-input {
+  width: 100%;
+  resize: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  padding: 10px 12px;
+}
+
+.note-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .settings-row {
   display: flex;
   gap: 10px;
@@ -584,7 +615,7 @@ button,
   border: none;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -1192,6 +1223,26 @@ button,
 }
 .ghost-btn:hover { color: var(--text); border-color: var(--text-dim); }
 
+.backup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.backup-row {
+  display: flex;
+  gap: 10px;
+}
+
+.backup-row .ghost-btn {
+  flex: 1;
+  padding: 12px;
+  font-size: 11px;
+}
+
 .history-list {
   list-style: none;
   margin: 0;
@@ -1302,7 +1353,10 @@ button,
   border-radius: 10px;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 13px;
+  /* 16px is the iOS Safari threshold below which focusing an input
+     auto-zooms the page — this app is a fixed-viewport iOS web app,
+     so inputs must stay at/above it. */
+  font-size: 16px;
   padding: 10px 12px;
 }
 
@@ -1722,12 +1776,12 @@ button,
 }
 
 .wex-mini-input {
-  width: 32px;
+  width: 38px;
   background: none;
   border: none;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -1783,7 +1837,7 @@ button,
   border-radius: 10px;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 16px;
   padding: 10px 12px;
 }
 
@@ -1810,7 +1864,7 @@ button,
   border-radius: 10px;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 16px;
   padding: 8px 10px;
 }
 
