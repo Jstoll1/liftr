@@ -82,6 +82,10 @@
     {
       "id": "barbell-back-squat-v1",
       "prompt": "Use case: stylized-concept. Asset type: individual square exercise card illustration for Liftr fitness app. Create a polished anatomically plausible 3D editorial fitness illustration of a fully clothed adult athletic demonstrator, charcoal workout top, charcoal shorts and training shoes, full body and all equipment visible with generous padding. Clean dark navy studio background, subtle cyan and magenta rim lighting matching synthwave UI, bright neutral illumination makes limbs and equipment clear. Restrained aesthetic, no grid, no typography, no logos, no watermark. Exercise recognition image, not a medical diagram. Square composition. Primary request: barbell back squat at bottom position, bar supported across upper back below neck, both hands grip bar outside shoulders, feet shoulder width flat on floor, knees following toes, back neutral. Three-quarter side view, modest plates, entire bar and athlete visible."
+    },
+    {
+      "id": "walking-lunges-v1",
+      "prompt": "Use case: stylized-concept. Asset type: square exercise card illustration for Liftr fitness app, matching the existing exercise image library. Primary request: walking lunge shown in a recognizable transition into the next stride: an adult athletic male demonstrator in a lowered forward lunge, front foot flat, rear heel raised, rear knee close to the floor, torso upright, with a subtle cyan forward motion arrow beyond the leading foot that communicates continued forward travel. Fully clothed in charcoal workout t-shirt, charcoal shorts, and training shoes. One person with exactly two arms and two legs, anatomically plausible pose, hands on hips, both feet and entire body visible with generous padding. Clean dark navy studio background, cyan and magenta rim lighting, bright neutral illumination. Polished 3D editorial fitness illustration. No grid, typography, logos, watermark, duplicated limbs, or extra people. Exercise recognition image, not a complete medical or technique diagram. Square composition."
     }
   ]
 }
