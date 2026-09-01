@@ -512,6 +512,17 @@ const SPLIT_LABELS = {
   cardio: "Cardio",
   "core-mobility": "Core & Mobility",
 };
+// Persona-specific presets that go beyond the four generic splits — each
+// one built for a specific real scenario, richer than its generic
+// equivalent. Offered only to the athlete it was built for, so this can't
+// leak into the other persona's chat. When the athlete describes the
+// scenario a preset was built for, prefer suggesting it over the thin
+// generic split it would otherwise fall back to.
+const PERSONA_SPLIT_KEYS = {
+  Jessica: {
+    "jess-game-day-core": "Jess + Partner: Core & Mobility — a 5-phase pre-basketball-game partner session (trunk stability + hip mobility), richer than the generic core-mobility split",
+  },
+};
 
 async function handleChat(body, env, corsHeaders) {
   const { persona, messages, context, libraryContext, libraryRoutines } = body;
@@ -527,6 +538,9 @@ async function handleChat(body, env, corsHeaders) {
     return json({ error: "Malformed chat request" }, 400, corsHeaders);
   }
 
+  const personaSplitKeys = PERSONA_SPLIT_KEYS[persona.name] || {};
+  const allSplitKeys = [...SPLIT_KEYS, ...Object.keys(personaSplitKeys)];
+
   const schema = {
     type: "object",
     properties: {
@@ -541,10 +555,13 @@ async function handleChat(body, env, corsHeaders) {
       },
       suggestedSplit: {
         type: ["string", "null"],
-        enum: [...SPLIT_KEYS, null],
+        enum: [...allSplitKeys, null],
         description:
-          "Set this to chest-back, legs, cardio, or core-mobility ONLY if the athlete clearly stated what type of workout they want today " +
-          "(e.g. 'let's do legs', 'I want a cardio day'). Leave it null if they didn't specify — never guess.",
+          `Set this to one of ${allSplitKeys.join(", ")} ONLY if the athlete clearly stated what type of workout they want today ` +
+          "(e.g. 'let's do legs', 'I want a cardio day'). Leave it null if they didn't specify — never guess." +
+          (Object.keys(personaSplitKeys).length
+            ? ` ${Object.entries(personaSplitKeys).map(([key, desc]) => `${key} = ${desc}`).join("; ")}.`
+            : ""),
       },
       goalUpdate: {
         type: ["string", "null"],
@@ -600,6 +617,9 @@ async function handleChat(body, env, corsHeaders) {
     `below the chat (options: ${SPLIT_KEYS.map((k) => `${k} = ${SPLIT_LABELS[k]}`).join(", ")}).`,
     "If they clearly say what they want today, set suggestedSplit to that key",
     "so the app updates the recommendation to match — otherwise leave it null.",
+    Object.keys(personaSplitKeys).length
+      ? `This athlete also has a personal preset built for a specific scenario: ${Object.entries(personaSplitKeys).map(([key, desc]) => `${key} (${desc})`).join("; ")}. It isn't one of the four visible category cards, but if they describe that scenario, set suggestedSplit to it instead of the generic category it would otherwise fall under — it's more complete and was built for exactly that.`
+      : "",
     "Only set goalUpdate when the athlete clearly asks to change or set their goal.",
     "Phrase it as a clean standalone goal. Discussing a possible goal is not enough.",
   ].join(" ");
@@ -641,7 +661,7 @@ async function handleChat(body, env, corsHeaders) {
       return json({ error: "Empty reply" }, 502, corsHeaders);
     }
 
-    const suggestedSplit = SPLIT_KEYS.includes(parsed.suggestedSplit) ? parsed.suggestedSplit : null;
+    const suggestedSplit = allSplitKeys.includes(parsed.suggestedSplit) ? parsed.suggestedSplit : null;
     return json({
       reply: parsed.reply,
       constraint: parsed.constraint || null,

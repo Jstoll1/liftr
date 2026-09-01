@@ -1955,8 +1955,15 @@ okra`;
     return null;
   }
 
-  function inferSplitFromChat(text) {
+  function inferSplitFromChat(text, user) {
     const value = String(text || "").toLowerCase();
+    // Jessica's purpose-built pre-game partner session (SPECIAL_WORKOUTS
+    // "jess-game-day-core") is a real, deliberately-designed session —
+    // trunk stability + hip mobility across 5 phases — not the generic
+    // 3-4 exercise Core & Mobility split. Mentioning the actual scenario
+    // it was built for should reach it instead of silently falling back
+    // to the thin generic default.
+    if (user === "jessica" && /\b(game|basketball|hoops?|pickup)\b/.test(value)) return "jess-game-day-core";
     if (getCoachFocus(value) === "chest") return "chest-back";
     if (getCoachFocus(value) || /\b(leg|legs|lower body|squat|deadlift|lunge)\b/.test(value)) return "legs";
     if (/\b(chest|back|upper body|push|pull)\b/.test(value)) return "chest-back";
@@ -3291,6 +3298,23 @@ okra`;
   // engaged with none of it, since feedback here is entirely optional.
   const EFFORT_LABEL = { easy: "felt easy", right: "felt just right", hard: "felt hard" };
 
+  // Called once, right when the athlete hits Finish: any set they never
+  // touched (no rep/weight adjustment, no quick-done tap) gets marked done
+  // at its planned value. Every other capture control here is opt-out, not
+  // opt-in, for exactly this reason — requiring a tap on every single set
+  // just to log "went as planned" meant real sessions were finishing with
+  // an empty performance record. Live in-workout styling reads .touched
+  // too, but this only runs at Finish, after that UI is torn down.
+  function autoConfirmRemainingSets(logs) {
+    Object.values(logs).forEach((log) => {
+      log.sets.forEach((s) => {
+        if (s.touched) return;
+        s.touched = true;
+        if (s.target == null) s.actual = 1;
+      });
+    });
+  }
+
   function summarizeWorkoutLog(logs) {
     const lines = [];
     Object.entries(logs).forEach(([name, log]) => {
@@ -3384,6 +3408,7 @@ okra`;
 
     document.getElementById("finish-workout-btn").addEventListener("click", () => {
       if (!activeWorkout) return;
+      autoConfirmRemainingSets(activeWorkout.logs);
       const summary = summarizeWorkoutLog(activeWorkout.logs);
       const combinedNote = [checkInState.note?.trim(), summary].filter(Boolean).join(" | ") || null;
 
@@ -3689,7 +3714,7 @@ okra`;
   function isWorkoutRelevantMessage(text) {
     const value = String(text || "").toLowerCase();
     return Boolean(
-      inferSplitFromChat(value) ||
+      inferSplitFromChat(value, currentUser) ||
       getCoachFocus(value) ||
       /\b(sore|pain|hurt|injury|tight|fatigue|tired|energy|equipment|barbell|dumbbell|machine|cable|band|gym|home workout|partner|minutes?|shorter|longer|remove|skip|swap|exercise|workout|sets?|reps?|weight)\b/.test(value)
     );
@@ -3737,7 +3762,7 @@ okra`;
     let reply = buildLocalCoachReply(currentUser, text);
     let constraint = isWorkoutRelevantMessage(text) ? text : null;
     let goalUpdate = extractGoalUpdate(text);
-    const localSuggestedSplit = inferSplitFromChat(text);
+    const localSuggestedSplit = inferSplitFromChat(text, currentUser);
     const localFocus = getCoachFocus(text);
     if (localSuggestedSplit) chatSuggestedSplit = localSuggestedSplit;
     if (localFocus) {
@@ -3817,7 +3842,10 @@ okra`;
             if (typeof data.constraint === "string" && data.constraint.trim()) constraint = data.constraint.trim();
           }
           if (typeof data.goalUpdate === "string" && data.goalUpdate.trim()) goalUpdate = data.goalUpdate.trim().slice(0, 180);
-          if (!localSuggestedSplit && SPLIT_ORDER.includes(data.suggestedSplit)) {
+          const suggestedIsValid =
+            SPLIT_ORDER.includes(data.suggestedSplit) ||
+            SPECIAL_WORKOUTS[data.suggestedSplit]?.user === currentUser;
+          if (!localSuggestedSplit && suggestedIsValid) {
             chatSuggestedSplit = data.suggestedSplit;
           }
         }
@@ -3982,7 +4010,13 @@ okra`;
     document.getElementById("rec-name").textContent = recMeta.name;
     document.getElementById("rec-tagline").textContent = recMeta.tagline;
     document.getElementById("rec-reason").textContent = rec.reason;
-    const localExercises = applyCoachFocus(user, rec.key, buildWorkoutPlan(user, rec.key, checkInState), checkInState.note);
+    // A chat-suggested rec.key can now be a persona preset (e.g.
+    // "jess-game-day-core"), not just one of the four generic splits —
+    // buildWorkoutPlan only knows the generic SPLIT_LIBRARY ones, so mirror
+    // computePlan's branch here for the immediate synchronous draft too.
+    const localExercises = SPECIAL_WORKOUTS[rec.key]
+      ? applyCoachFocus(user, rec.key, buildCandidatePool(user, rec.key), checkInState.note)
+      : applyCoachFocus(user, rec.key, buildWorkoutPlan(user, rec.key, checkInState), checkInState.note);
     recommendationDraftKey = rec.key;
     recommendationDraft = { exercises: localExercises, reason: rec.reason, source: "local", suggestedWeights: new Map() };
     renderRecommendationExercises(localExercises, getCoachFocus(checkInState.note), Boolean(AI_ENDPOINT));
