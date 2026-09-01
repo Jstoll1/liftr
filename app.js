@@ -35,18 +35,18 @@
       tagline: "Push-pull strength builder",
       exercises: {
         jessica: [
-          { name: "Push-Up Ladder", detail: "3 x 12", superset: "A", tip: "Keep your core braced and lower with control — quality over speed." },
-          { name: "Lat Pulldown", detail: "3 x 15", superset: "A", tip: "Drive your elbows down and back, not your hands." },
-          { name: "Dumbbell Chest Press", detail: "3 x 12", superset: "B", tip: "Lower until your elbows are just below your shoulders, then press up and slightly in." },
-          { name: "Seated Cable Row", detail: "3 x 15", superset: "B", tip: "Squeeze your shoulder blades together at the finish, don't just pull with your arms." },
-          { name: "Plank to Row", detail: "3 x 10/side", tip: "Keep your hips square — resist the urge to rotate as you row." },
+          { name: "Push-Up Ladder", detail: "3 x 12", superset: "A", howTo: "From a plank, lower your chest to the floor and push back up — ladder means add a rep each round.", tip: "Keep your core braced and lower with control — quality over speed." },
+          { name: "Lat Pulldown", detail: "3 x 15", superset: "A", howTo: "Seated at the machine, pull the bar down to your upper chest, then control it back up.", tip: "Drive your elbows down and back, not your hands." },
+          { name: "Dumbbell Chest Press", detail: "3 x 12", superset: "B", howTo: "Lying on a bench, press two dumbbells up from chest level until your arms are extended.", tip: "Lower until your elbows are just below your shoulders, then press up and slightly in." },
+          { name: "Seated Cable Row", detail: "3 x 15", superset: "B", howTo: "Seated at the cable, pull the handle to your torso while keeping your back straight.", tip: "Squeeze your shoulder blades together at the finish, don't just pull with your arms." },
+          { name: "Plank to Row", detail: "3 x 10/side", howTo: "In a plank with a dumbbell in each hand, row one dumbbell to your ribs, alternating sides.", tip: "Keep your hips square — resist the urge to rotate as you row." },
         ],
         jake: [
-          { name: "Barbell Bench Press", detail: "4 x 6", superset: "A", tip: "Keep your feet planted and drive through your upper back for a stable base." },
-          { name: "Weighted Pull-Ups", detail: "4 x 6", superset: "A", tip: "Full range every rep — dead hang to chin over the bar." },
-          { name: "Incline Dumbbell Press", detail: "3 x 8", superset: "B", tip: "30-degree incline max — steeper turns this into a shoulder press." },
-          { name: "Bent-Over Barbell Row", detail: "4 x 8", superset: "B", tip: "Hinge at the hips, flat back, pull to your lower ribs." },
-          { name: "Cable Fly", detail: "3 x 12", tip: "Slight bend in the elbows the whole way — think 'hug a tree,' not 'press.'" },
+          { name: "Barbell Bench Press", detail: "4 x 6", superset: "A", howTo: "Lying on a bench, lower the bar to your chest, then press it back up to full arm extension.", tip: "Keep your feet planted and drive through your upper back for a stable base." },
+          { name: "Weighted Pull-Ups", detail: "4 x 6", superset: "A", howTo: "With extra weight attached, pull your chin over the bar from a dead hang.", tip: "Full range every rep — dead hang to chin over the bar." },
+          { name: "Incline Dumbbell Press", detail: "3 x 8", superset: "B", howTo: "On a slightly inclined bench, press two dumbbells up from shoulder level.", tip: "30-degree incline max — steeper turns this into a shoulder press." },
+          { name: "Bent-Over Barbell Row", detail: "4 x 8", superset: "B", howTo: "Hinged forward at the hips, pull the barbell up to your lower ribs.", tip: "Hinge at the hips, flat back, pull to your lower ribs." },
+          { name: "Cable Fly", detail: "3 x 12", howTo: "Standing between two cable stacks, bring the handles together in front of your chest in an arcing motion.", tip: "Slight bend in the elbows the whole way — think 'hug a tree,' not 'press.'" },
         ],
       },
     },
@@ -56,18 +56,18 @@
       tagline: "Lower body power & stability",
       exercises: {
         jessica: [
-          { name: "Goblet Squat", detail: "3 x 15", superset: "A", tip: "Hold the weight close to your chest and sit straight down between your heels." },
-          { name: "Step-Ups", detail: "3 x 12/leg", superset: "A", tip: "Drive through the heel of your working leg — don't push off the back foot." },
-          { name: "Glute Bridge", detail: "3 x 15", tip: "Squeeze your glutes hard at the top, pause for a beat." },
-          { name: "Lateral Band Walk", detail: "3 x 20", tip: "Stay low and keep tension on the band the entire time." },
-          { name: "Bodyweight Lunge", detail: "3 x 12/leg", tip: "Keep your front knee tracking over your ankle, not caving in." },
+          { name: "Goblet Squat", detail: "3 x 15", superset: "A", howTo: "Hold a dumbbell at your chest and squat down until your thighs are parallel to the floor.", tip: "Hold the weight close to your chest and sit straight down between your heels." },
+          { name: "Step-Ups", detail: "3 x 12/leg", superset: "A", howTo: "Step one foot fully onto a box or bench and drive up until that leg is straight.", tip: "Drive through the heel of your working leg — don't push off the back foot." },
+          { name: "Glute Bridge", detail: "3 x 15", howTo: "Lying on your back with knees bent, drive your hips up toward the ceiling.", tip: "Squeeze your glutes hard at the top, pause for a beat." },
+          { name: "Lateral Band Walk", detail: "3 x 20", howTo: "With a band around your ankles or knees, take small steps sideways in a partial squat.", tip: "Stay low and keep tension on the band the entire time." },
+          { name: "Bodyweight Lunge", detail: "3 x 12/leg", howTo: "Step forward and drop your back knee toward the floor, then push back to standing.", tip: "Keep your front knee tracking over your ankle, not caving in." },
         ],
         jake: [
-          { name: "Barbell Back Squat", detail: "5 x 5", superset: "A", tip: "Brace your core before you unrack, and keep your chest tall through the whole rep." },
-          { name: "Romanian Deadlift", detail: "4 x 6", superset: "A", tip: "Push your hips back, not down — you should feel this in your hamstrings." },
-          { name: "Walking Lunges", detail: "3 x 10/leg", tip: "Take a long enough stride that your front knee stays behind your toes." },
-          { name: "Leg Press", detail: "3 x 10", tip: "Don't let your lower back round off the pad at the bottom." },
-          { name: "Standing Calf Raise", detail: "4 x 15", tip: "Pause at the top and the bottom — don't just bounce through it." },
+          { name: "Barbell Back Squat", detail: "5 x 5", superset: "A", howTo: "With the bar across your upper back, squat down until your hips are below your knees, then stand.", tip: "Brace your core before you unrack, and keep your chest tall through the whole rep." },
+          { name: "Romanian Deadlift", detail: "4 x 6", superset: "A", howTo: "Holding the bar, push your hips back and lower it along your legs until you feel a hamstring stretch.", tip: "Push your hips back, not down — you should feel this in your hamstrings." },
+          { name: "Walking Lunges", detail: "3 x 10/leg", howTo: "Step forward into a lunge, then bring your back foot through into the next lunge.", tip: "Take a long enough stride that your front knee stays behind your toes." },
+          { name: "Leg Press", detail: "3 x 10", howTo: "Seated in the machine, push the platform away by extending your legs, then control it back.", tip: "Don't let your lower back round off the pad at the bottom." },
+          { name: "Standing Calf Raise", detail: "4 x 15", howTo: "Rise up onto the balls of your feet, then lower back down under control.", tip: "Pause at the top and the bottom — don't just bounce through it." },
         ],
       },
     },
@@ -77,16 +77,16 @@
       tagline: "Conditioning & active recovery",
       exercises: {
         jessica: [
-          { name: "Tempo Run", detail: "25 min", tip: "Aim for a pace you could hold a short conversation at, not a sprint." },
-          { name: "Stair Climber Intervals", detail: "15 min", tip: "Push the pace on work intervals, actually recover on the rest ones." },
-          { name: "Cycling", detail: "20 min", tip: "Keep a steady cadence — smooth and controlled beats mashing the pedals." },
-          { name: "Mobility Flow", detail: "10 min", tip: "Move slow and controlled — this is recovery, not a workout." },
+          { name: "Tempo Run", detail: "25 min", howTo: "A steady, moderately hard run held for the full duration.", tip: "Aim for a pace you could hold a short conversation at, not a sprint." },
+          { name: "Stair Climber Intervals", detail: "15 min", howTo: "Alternate between a hard push and an easier recovery pace on the stair climber.", tip: "Push the pace on work intervals, actually recover on the rest ones." },
+          { name: "Cycling", detail: "20 min", howTo: "A steady-state ride at a consistent, moderate effort.", tip: "Keep a steady cadence — smooth and controlled beats mashing the pedals." },
+          { name: "Mobility Flow", detail: "10 min", howTo: "A slow sequence of stretches and controlled movements to aid recovery.", tip: "Move slow and controlled — this is recovery, not a workout." },
         ],
         jake: [
-          { name: "Rowing Intervals", detail: "8 x 500m", tip: "Drive with your legs first, then lean back, then pull — legs, hips, arms." },
-          { name: "Sled Push", detail: "6 rounds", tip: "Stay low with a slight forward lean, drive through the balls of your feet." },
-          { name: "Battle Ropes", detail: "5 x 30s", tip: "Keep your core tight — the power comes from your shoulders, not your wrists." },
-          { name: "Jump Rope Finisher", detail: "5 min", tip: "Small, quick hops — you shouldn't be jumping high off the ground." },
+          { name: "Rowing Intervals", detail: "8 x 500m", howTo: "Row hard for the target distance, then rest before the next interval.", tip: "Drive with your legs first, then lean back, then pull — legs, hips, arms." },
+          { name: "Sled Push", detail: "6 rounds", howTo: "Load a sled and push it forward across the marked distance.", tip: "Stay low with a slight forward lean, drive through the balls of your feet." },
+          { name: "Battle Ropes", detail: "5 x 30s", howTo: "Alternate slamming the ropes up and down as fast as you can for the interval.", tip: "Keep your core tight — the power comes from your shoulders, not your wrists." },
+          { name: "Jump Rope Finisher", detail: "5 min", howTo: "Continuous jump rope at a steady pace for the full duration.", tip: "Small, quick hops — you shouldn't be jumping high off the ground." },
         ],
       },
     },
@@ -96,16 +96,16 @@
       tagline: "Light movement & recovery",
       exercises: {
         jessica: [
-          { name: "Dead Bug", detail: "3 x 12", tip: "Keep your lower back pressed into the floor the entire set." },
-          { name: "Hip Flexor Stretch Flow", detail: "5 min", tip: "Squeeze the glute on your back leg to deepen the stretch safely." },
-          { name: "Side Plank", detail: "3 x 30s/side", tip: "Stack your hips and keep your body in one straight line." },
-          { name: "Cat-Cow Flow", detail: "5 min", tip: "Move with your breath — inhale to arch, exhale to round." },
+          { name: "Dead Bug", detail: "3 x 12", howTo: "Lying on your back, extend opposite arm and leg while keeping your lower back flat.", tip: "Keep your lower back pressed into the floor the entire set." },
+          { name: "Hip Flexor Stretch Flow", detail: "5 min", howTo: "A half-kneeling stretch sequence targeting the front of the hips.", tip: "Squeeze the glute on your back leg to deepen the stretch safely." },
+          { name: "Side Plank", detail: "3 x 30s/side", howTo: "Prop yourself up on one forearm with your body in a straight line, hips lifted.", tip: "Stack your hips and keep your body in one straight line." },
+          { name: "Cat-Cow Flow", detail: "5 min", howTo: "On hands and knees, alternate arching and rounding your spine with your breath.", tip: "Move with your breath — inhale to arch, exhale to round." },
         ],
         jake: [
-          { name: "Hanging Leg Raise", detail: "3 x 12", tip: "Control the descent — don't let momentum swing you through the rep." },
-          { name: "90/90 Hip Flow", detail: "5 min", tip: "Keep your chest tall as you rotate between positions." },
-          { name: "Weighted Plank", detail: "3 x 45s", tip: "Squeeze your glutes and brace like you're about to get punched." },
-          { name: "Thoracic Rotation Flow", detail: "5 min", tip: "Rotate from your upper back, keep your hips still." },
+          { name: "Hanging Leg Raise", detail: "3 x 12", howTo: "Hanging from a bar, raise your legs up toward your chest with control.", tip: "Control the descent — don't let momentum swing you through the rep." },
+          { name: "90/90 Hip Flow", detail: "5 min", howTo: "Seated with both legs bent at 90 degrees, rotate between positions to open the hips.", tip: "Keep your chest tall as you rotate between positions." },
+          { name: "Weighted Plank", detail: "3 x 45s", howTo: "Hold a forearm plank with a plate on your back for added load.", tip: "Squeeze your glutes and brace like you're about to get punched." },
+          { name: "Thoracic Rotation Flow", detail: "5 min", howTo: "On hands and knees, rotate one arm up and open your chest toward the ceiling.", tip: "Rotate from your upper back, keep your hips still." },
         ],
       },
     },
@@ -120,40 +120,40 @@
   // Bonus exercise appended when energy is high and time allows it.
   const FINISHERS = {
     "chest-back": {
-      jessica: { name: "Finisher: Burpee Pulse", detail: "3 x 10", tip: "Keep the pace steady — a sustainable rhythm beats an all-out first ten seconds." },
-      jake: { name: "Finisher: Death-Rep Push-Ups", detail: "2 x max", tip: "Go until your form breaks down, not just until it's hard." },
+      jessica: { name: "Finisher: Burpee Pulse", detail: "3 x 10", howTo: "A continuous, lower-impact burpee — step back instead of jumping, then step back up.", tip: "Keep the pace steady — a sustainable rhythm beats an all-out first ten seconds." },
+      jake: { name: "Finisher: Death-Rep Push-Ups", detail: "2 x max", howTo: "Standard push-ups performed to full fatigue.", tip: "Go until your form breaks down, not just until it's hard." },
     },
     legs: {
-      jessica: { name: "Finisher: Jump Squats", detail: "3 x 12", tip: "Land soft, immediately absorb into your next rep." },
-      jake: { name: "Finisher: Bodyweight Squat Burnout", detail: "1 x max", tip: "Full depth every rep, even as your legs fatigue." },
+      jessica: { name: "Finisher: Jump Squats", detail: "3 x 12", howTo: "A bodyweight squat with an explosive jump at the top.", tip: "Land soft, immediately absorb into your next rep." },
+      jake: { name: "Finisher: Bodyweight Squat Burnout", detail: "1 x max", howTo: "Bodyweight squats performed continuously to fatigue.", tip: "Full depth every rep, even as your legs fatigue." },
     },
     cardio: {
-      jessica: { name: "Finisher: All-Out Sprint", detail: "6 x 30s", tip: "This is 100% effort — leave nothing in the tank." },
-      jake: { name: "Finisher: Assault Bike Sprint", detail: "5 x 20s", tip: "Push and pull with your arms too — it's a full-body effort." },
+      jessica: { name: "Finisher: All-Out Sprint", detail: "6 x 30s", howTo: "Maximum-effort sprints with brief rest between.", tip: "This is 100% effort — leave nothing in the tank." },
+      jake: { name: "Finisher: Assault Bike Sprint", detail: "5 x 20s", howTo: "Maximum-effort intervals on the assault bike.", tip: "Push and pull with your arms too — it's a full-body effort." },
     },
     "core-mobility": {
-      jessica: { name: "Finisher: Mountain Climbers", detail: "3 x 20", tip: "Keep your hips low and driven, don't let them ride up." },
-      jake: { name: "Finisher: Bear Crawl", detail: "3 x 20m", tip: "Move opposite hand and foot together, keep your hips level." },
+      jessica: { name: "Finisher: Mountain Climbers", detail: "3 x 20", howTo: "From a plank, drive your knees toward your chest quickly, alternating legs.", tip: "Keep your hips low and driven, don't let them ride up." },
+      jake: { name: "Finisher: Bear Crawl", detail: "3 x 20m", howTo: "Crawl forward on hands and feet with your knees just off the ground.", tip: "Move opposite hand and foot together, keep your hips level." },
     },
   };
 
   // Bonus exercise appended when training with a partner.
   const PARTNER_EXTRAS = {
     "chest-back": {
-      jessica: { name: "Partner Med-Ball Chest Pass", detail: "3 x 15", tip: "Step into each pass and catch with soft hands." },
-      jake: { name: "Partner Resistance Push-Off", detail: "3 x 15", tip: "Your partner provides steady resistance — communicate the pace." },
+      jessica: { name: "Partner Med-Ball Chest Pass", detail: "3 x 15", howTo: "Stand facing your partner and pass a medicine ball back and forth from your chest.", tip: "Step into each pass and catch with soft hands." },
+      jake: { name: "Partner Resistance Push-Off", detail: "3 x 15", howTo: "Your partner holds light resistance against your press or push movement.", tip: "Your partner provides steady resistance — communicate the pace." },
     },
     legs: {
-      jessica: { name: "Partner Wall-Sit Hold", detail: "3 x 45s", tip: "Thighs parallel to the floor, back flat against the wall." },
-      jake: { name: "Partner Sled Drag", detail: "4 x 20m", tip: "Take turns — one drags while the other rests and coaches form." },
+      jessica: { name: "Partner Wall-Sit Hold", detail: "3 x 45s", howTo: "Both hold a wall-sit together, thighs parallel to the floor.", tip: "Thighs parallel to the floor, back flat against the wall." },
+      jake: { name: "Partner Sled Drag", detail: "4 x 20m", howTo: "One partner drags the sled while the other walks alongside coaching form.", tip: "Take turns — one drags while the other rests and coaches form." },
     },
     cardio: {
-      jessica: { name: "Partner Medicine Ball Circuit", detail: "10 min", tip: "Keep the ball moving — minimal rest between exchanges." },
-      jake: { name: "Partner Relay Sprints", detail: "6 x 100m", tip: "Full sprint on your leg, then actively recover while you wait." },
+      jessica: { name: "Partner Medicine Ball Circuit", detail: "10 min", howTo: "Trade off exercises with a medicine ball in a continuous circuit.", tip: "Keep the ball moving — minimal rest between exchanges." },
+      jake: { name: "Partner Relay Sprints", detail: "6 x 100m", howTo: "Take turns sprinting a set distance while your partner rests.", tip: "Full sprint on your leg, then actively recover while you wait." },
     },
     "core-mobility": {
-      jessica: { name: "Partner Plank Hand-Slap", detail: "3 x 20s", tip: "Keep your core braced even as you reach to slap hands." },
-      jake: { name: "Partner-Assisted Stretch Flow", detail: "8 min", tip: "Communicate constantly — you control how deep the stretch goes." },
+      jessica: { name: "Partner Plank Hand-Slap", detail: "3 x 20s", howTo: "Both hold a plank facing each other, taking turns reaching to slap hands.", tip: "Keep your core braced even as you reach to slap hands." },
+      jake: { name: "Partner-Assisted Stretch Flow", detail: "8 min", howTo: "Your partner gently assists deepening a series of stretches.", tip: "Communicate constantly — you control how deep the stretch goes." },
     },
   };
 
@@ -354,10 +354,16 @@
     if (!last) {
       reason = `Fresh start — let's kick off with ${SPLIT_LIBRARY[rotationPick].name}.`;
     } else {
-      const when = last.date === daysAgo(1) ? "yesterday" : `on ${formatShortDate(last.date)}`;
-      reason = `You hit ${SPLIT_LIBRARY[last.splitKey].name} ${when} — ${SPLIT_LIBRARY[rotationPick].name} is up next.`;
+      reason = `You hit ${SPLIT_LIBRARY[last.splitKey].name} ${describeWhen(last.date)} — ${SPLIT_LIBRARY[rotationPick].name} is up next.`;
     }
     return { key: rotationPick, reason };
+  }
+
+  // Turns a stored YYYY-M-D date into "today" / "yesterday" / "on Aug 29".
+  function describeWhen(dateStr) {
+    if (dateStr === todayStr()) return "today";
+    if (dateStr === daysAgo(1)) return "yesterday";
+    return `on ${formatShortDate(dateStr)}`;
   }
 
   // ---------- workout plan builder ----------
@@ -579,22 +585,26 @@
 
   function renderClock() {
     const now = new Date();
-    const dateEl = document.getElementById("clock-date");
-    const timeEl = document.getElementById("clock-time");
-    if (!dateEl || !timeEl) return;
-
-    dateEl.textContent = now.toLocaleDateString(undefined, {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    });
-
     let hours = now.getHours();
     const minutes = String(now.getMinutes()).padStart(2, "0");
     const ampm = hours >= 12 ? "PM" : "AM";
     hours = hours % 12 || 12;
+    const timeHtml = `${hours}<span class="colon">:</span>${minutes} <span class="clock-ampm">${ampm}</span>`;
 
-    timeEl.innerHTML = `${hours}<span class="colon">:</span>${minutes} <span style="font-size:14px;color:var(--text-dim)">${ampm}</span>`;
+    const dateEl = document.getElementById("clock-date");
+    const timeEl = document.getElementById("clock-time");
+    if (dateEl) {
+      dateEl.textContent = now.toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      });
+    }
+    if (timeEl) timeEl.innerHTML = timeHtml;
+
+    // Same live clock also drives the flash banner on the active workout screen.
+    const workoutTimeEl = document.getElementById("workout-clock-time");
+    if (workoutTimeEl) workoutTimeEl.innerHTML = timeHtml;
   }
 
   function renderGoal(persona) {
@@ -782,13 +792,40 @@
 
   // ---------- rendering: active workout runner ----------
 
-  function buildInitialLogs(exercises) {
+  // Scans history newest-first for the last weight logged against this
+  // exact exercise name, so the weight field starts pre-filled instead of
+  // making the athlete re-enter it every time nothing's changed.
+  function getLastWeight(user, exerciseName) {
+    const history = getHistory(user);
+    for (let i = history.length - 1; i >= 0; i--) {
+      const sets = history[i].performance?.[exerciseName]?.sets;
+      if (!sets) continue;
+      // Anchor on the last set they actually logged a weight for — usually
+      // their heaviest/working weight for the day.
+      const withWeight = [...sets].reverse().find((s) => s.weight != null);
+      if (withWeight) return withWeight.weight;
+    }
+    return null;
+  }
+
+  // A rough "does this exercise typically use added weight" heuristic —
+  // strength splits and anything explicitly named "Weighted ___" get the
+  // weight field; pure cardio/mobility work doesn't.
+  function usesWeight(ex) {
+    return ex.splitKey === "chest-back" || ex.splitKey === "legs" || /weighted/i.test(ex.name);
+  }
+
+  function buildInitialLogs(user, exercises) {
     const logs = {};
     exercises.forEach((ex) => {
       const setCount = parseSetCount(ex.detail);
       const target = parseTargetReps(ex.detail);
+      const seedWeight = usesWeight(ex) ? getLastWeight(user, ex.name) : null;
       logs[ex.name] = {
-        sets: Array.from({ length: setCount }, () => ({ target, actual: target, touched: false })),
+        // Weight lives per set, not per exercise — sets often ramp
+        // (e.g. 135/155/175/185), so each one gets its own adjustable value,
+        // all seeded from wherever the athlete left off last time.
+        sets: Array.from({ length: setCount }, () => ({ target, actual: target, weight: seedWeight, touched: false })),
         flag: "",
       };
     });
@@ -840,6 +877,26 @@
     });
   }
 
+  // Swaps one exercise for a different one from the same body part's full
+  // candidate pool (base + finisher + partner move), skipping anything
+  // already in today's workout. Purely local — no AI round trip needed for
+  // "replace flies with something else."
+  function swapExercise(ex) {
+    if (!activeWorkout) return null;
+    const currentNames = new Set(activeWorkout.exercises.map((e) => e.name));
+    const options = buildCandidatePool(currentUser, ex.splitKey).filter((c) => !currentNames.has(c.name));
+    if (options.length === 0) return null;
+
+    const replacement = { ...options[Math.floor(Math.random() * options.length)], splitKey: ex.splitKey };
+    const idx = activeWorkout.exercises.findIndex((e) => e.name === ex.name);
+    if (idx === -1) return null;
+
+    activeWorkout.exercises[idx] = replacement;
+    delete activeWorkout.logs[ex.name];
+    activeWorkout.logs[replacement.name] = buildInitialLogs(currentUser, [replacement])[replacement.name];
+    return replacement;
+  }
+
   function renderExerciseCard(ex) {
     const card = document.createElement("div");
     card.className = "wex-card";
@@ -865,50 +922,104 @@
     // Real image missing (404) — quietly fall back to the icon tile underneath.
     head.querySelector(".wex-img").addEventListener("error", (e) => {
       e.target.style.display = "none";
+      e.target.nextElementSibling.style.display = "flex";
     });
 
     const body = document.createElement("div");
     body.className = "wex-body hidden";
 
+    const showWeight = usesWeight(ex);
+
+    // Weight lives inside each set row (ramping sets are the norm, not the
+    // exception), alongside either a rep stepper or a simple complete-toggle.
     const setsHtml = log.sets
       .map((s, i) => {
-        if (s.target != null) {
-          return `
-            <div class="wex-set-row" data-set-index="${i}">
-              <span class="wex-set-label">Set ${i + 1} <span class="wex-set-target">· target ${s.target}</span></span>
-              <div class="wex-stepper">
-                <button type="button" class="wex-step-btn" data-dir="-1">−</button>
-                <span class="wex-step-value">${s.actual}</span>
-                <button type="button" class="wex-step-btn" data-dir="1">+</button>
-              </div>
-            </div>
-          `;
-        }
+        const weightControl = showWeight
+          ? `<div class="wex-mini-stepper" data-role="weight">
+               <button type="button" class="wex-mini-btn" data-dir="-1">−</button>
+               <input type="number" inputmode="numeric" pattern="[0-9]*" class="wex-mini-input" placeholder="—" value="${s.weight ?? ""}" />
+               <span class="wex-mini-unit">lb</span>
+               <button type="button" class="wex-mini-btn" data-dir="1">+</button>
+             </div>`
+          : "";
+        const repsControl =
+          s.target != null
+            ? `<div class="wex-mini-stepper" data-role="reps">
+                 <button type="button" class="wex-mini-btn" data-dir="-1">−</button>
+                 <span class="wex-mini-value">${s.actual}</span>
+                 <span class="wex-mini-unit">reps</span>
+                 <button type="button" class="wex-mini-btn" data-dir="1">+</button>
+               </div>`
+            : `<button type="button" class="wex-toggle-btn">Mark Done</button>`;
+        const label =
+          s.target != null
+            ? `Set ${i + 1} <span class="wex-set-target">· target ${s.target}</span>`
+            : log.sets.length > 1
+              ? `Round ${i + 1}`
+              : "This one";
+
         return `
           <div class="wex-set-row" data-set-index="${i}">
-            <span class="wex-set-label">${log.sets.length > 1 ? `Round ${i + 1}` : "This one"}</span>
-            <button type="button" class="wex-toggle-btn">Mark Done</button>
+            <span class="wex-set-label">${label}</span>
+            <div class="wex-set-controls">${weightControl}${repsControl}</div>
           </div>
         `;
       })
       .join("");
 
     body.innerHTML = `
+      <div class="wex-body-image">
+        <img src="${imgPath}" alt="" class="wex-img-large" />
+        <span class="wex-img-large-fallback">${fallbackIcon}</span>
+      </div>
+      ${ex.howTo ? `<p class="wex-howto">${escapeHtml(ex.howTo)}</p>` : ""}
       ${ex.tip ? `<p class="wex-tip">💡 ${escapeHtml(ex.tip)}</p>` : ""}
       <div class="wex-sets">${setsHtml}</div>
       <input type="text" class="wex-flag-input" placeholder="Anything to flag on this one? (optional)" maxlength="140" />
+      <div class="wex-swap-row">
+        <input type="text" class="wex-swap-input" placeholder="Want to swap this? e.g. 'replace flies, shoulder is sore'" maxlength="140" />
+        <button type="button" class="wex-swap-btn">🔁 Swap</button>
+      </div>
     `;
+    // Real image missing (404) — quietly fall back to the icon tile underneath.
+    body.querySelector(".wex-img-large").addEventListener("error", (e) => {
+      e.target.style.display = "none";
+      e.target.nextElementSibling.style.display = "flex";
+    });
 
     body.querySelectorAll(".wex-set-row").forEach((row) => {
       const idx = Number(row.dataset.setIndex);
       const set = log.sets[idx];
 
-      const stepper = row.querySelector(".wex-stepper");
-      if (stepper) {
-        const valueEl = stepper.querySelector(".wex-step-value");
-        stepper.querySelectorAll(".wex-step-btn").forEach((stepBtn) => {
-          stepBtn.addEventListener("click", () => {
-            const dir = Number(stepBtn.dataset.dir);
+      const weightStepper = row.querySelector('.wex-mini-stepper[data-role="weight"]');
+      if (weightStepper) {
+        const weightInput = weightStepper.querySelector(".wex-mini-input");
+        const setWeight = (value) => {
+          set.weight = value;
+          set.touched = true;
+          weightInput.value = value ?? "";
+          row.classList.add("touched");
+        };
+        weightInput.addEventListener("input", (e) => {
+          const parsed = e.target.value === "" ? null : Number(e.target.value);
+          set.weight = Number.isFinite(parsed) ? parsed : null;
+          set.touched = true;
+          row.classList.add("touched");
+        });
+        weightStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const dir = Number(btn.dataset.dir);
+            setWeight(Math.max(0, (set.weight ?? 0) + dir * 5));
+          });
+        });
+      }
+
+      const repsStepper = row.querySelector('.wex-mini-stepper[data-role="reps"]');
+      if (repsStepper) {
+        const valueEl = repsStepper.querySelector(".wex-mini-value");
+        repsStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const dir = Number(btn.dataset.dir);
             set.actual = Math.max(0, (set.actual ?? 0) + dir);
             set.touched = true;
             valueEl.textContent = set.actual;
@@ -919,17 +1030,30 @@
       }
 
       const toggleBtn = row.querySelector(".wex-toggle-btn");
-      toggleBtn.addEventListener("click", () => {
-        set.touched = !set.touched;
-        set.actual = set.touched ? 1 : null;
-        toggleBtn.classList.toggle("done", set.touched);
-        toggleBtn.textContent = set.touched ? "✓ Done" : "Mark Done";
-        row.classList.toggle("touched", set.touched);
-      });
+      if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+          set.touched = !set.touched;
+          set.actual = set.touched ? 1 : null;
+          toggleBtn.classList.toggle("done", set.touched);
+          toggleBtn.textContent = set.touched ? "✓ Done" : "Mark Done";
+          row.classList.toggle("touched", set.touched);
+        });
+      }
     });
 
     body.querySelector(".wex-flag-input").addEventListener("input", (e) => {
       log.flag = e.target.value;
+    });
+
+    body.querySelector(".wex-swap-btn").addEventListener("click", () => {
+      const swapInput = body.querySelector(".wex-swap-input");
+      const reasonText = swapInput.value.trim();
+      const replaced = swapExercise(ex);
+      if (!replaced) return;
+      if (reasonText) {
+        logNote(currentUser, `Swapped ${ex.name} → ${replaced.name} (${reasonText})`);
+      }
+      renderWorkoutExercises();
     });
 
     head.addEventListener("click", () => {
@@ -967,11 +1091,11 @@
     Object.entries(logs).forEach(([name, log]) => {
       const touchedSets = log.sets.filter((s) => s.touched);
       if (touchedSets.length > 0) {
-        if (touchedSets[0].target != null) {
-          lines.push(`${name}: ${touchedSets.map((s) => `${s.actual}/${s.target}`).join(", ")} reps`);
-        } else {
-          lines.push(`${name}: completed ${touchedSets.length}/${log.sets.length}`);
-        }
+        const parts = touchedSets.map((s) => {
+          const reps = s.target != null ? `${s.actual}/${s.target}` : s.actual ? "done" : "skipped";
+          return s.weight != null ? `${s.weight}lb×${reps}` : reps;
+        });
+        lines.push(`${name}: ${parts.join(", ")}`);
       }
       if (log.flag && log.flag.trim()) {
         lines.push(`${name} note: "${log.flag.trim()}"`);
@@ -980,11 +1104,24 @@
     return lines.join(" · ");
   }
 
+  // Distills each log down to just {weight, sets} for storage on the
+  // history entry — this is what getLastWeight() reads back later to
+  // pre-fill the weight field next time this exercise comes up.
+  function extractPerformance(logs) {
+    const performance = {};
+    Object.entries(logs).forEach(([name, log]) => {
+      if (log.sets.some((s) => s.touched)) {
+        performance[name] = { sets: log.sets.map((s) => ({ target: s.target, actual: s.actual, weight: s.weight })) };
+      }
+    });
+    return performance;
+  }
+
   function showWorkout(user, sessionSplitKey, exercises, meta = {}) {
     activeWorkout = {
       sessionSplitKey,
       exercises,
-      logs: buildInitialLogs(exercises),
+      logs: buildInitialLogs(user, exercises),
       reason: meta.reason ?? null,
       source: meta.source ?? "local",
     };
@@ -1012,7 +1149,7 @@
       const plan = await computePlan(currentUser, activeWorkout.sessionSplitKey, checkInState);
       const exercises = plan.exercises.map((ex) => ({ ...ex, splitKey: activeWorkout.sessionSplitKey }));
       activeWorkout.exercises = exercises;
-      activeWorkout.logs = buildInitialLogs(exercises);
+      activeWorkout.logs = buildInitialLogs(currentUser, exercises);
       activeWorkout.reason = plan.reason;
       activeWorkout.source = plan.source;
       renderWorkoutExercises();
@@ -1026,10 +1163,11 @@
 
       logSession(currentUser, activeWorkout.sessionSplitKey, {
         ...checkInState,
-        exercises: activeWorkout.exercises.map(({ name, detail, tip, superset }) => ({ name, detail, tip, superset })),
+        exercises: activeWorkout.exercises.map(({ name, detail, tip, howTo, superset }) => ({ name, detail, tip, howTo, superset })),
         reason: activeWorkout.reason,
         source: activeWorkout.source,
         note: combinedNote,
+        performance: extractPerformance(activeWorkout.logs),
       });
 
       if (summary) logNote(currentUser, summary);
@@ -1048,10 +1186,51 @@
     });
   }
 
+  function getMotivationalLine(streak) {
+    if (streak >= 7) return `🔥 ${streak} days strong — this is who you are now.`;
+    if (streak >= 3) return `🔥 ${streak} days strong — you're on a roll.`;
+    if (streak >= 1) return "You're building a habit. Keep it going.";
+    return "Every rep counts — let's build some momentum today.";
+  }
+
+  // Personalized recap shown at the top of check-in: a first-timer welcome,
+  // or a "here's where you left off" summary for returning users — makes it
+  // obvious the app is actually tracking them, not just a blank form.
+  function renderRecapCard(user) {
+    const persona = PERSONAS[user];
+    const history = getHistory(user);
+    const el = document.getElementById("recap-card");
+
+    if (history.length === 0) {
+      el.innerHTML = `
+        <span class="recap-eyebrow">🎉 FIRST CHECK-IN</span>
+        <p class="recap-line">Welcome to Liftr, ${escapeHtml(persona.name)}! We're excited to have you — let's get your first session logged.</p>
+        <p class="recap-mission">🎯 ${escapeHtml(persona.goal)}</p>
+      `;
+      return;
+    }
+
+    const last = history[history.length - 1];
+    const lastMeta = getSplitMeta(last.splitKey);
+    const streak = currentStreak(history);
+
+    el.innerHTML = `
+      <span class="recap-eyebrow">YOUR PROGRESS</span>
+      <p class="recap-line">Last time, ${describeWhen(last.date)} — you crushed <strong>${lastMeta.icon} ${escapeHtml(lastMeta.name)}</strong>.</p>
+      <div class="recap-stats">
+        ${streak > 0 ? `<span class="recap-stat">🔥 ${streak} day streak</span>` : ""}
+        <span class="recap-stat">📈 ${history.length} session${history.length === 1 ? "" : "s"} logged</span>
+      </div>
+      <p class="recap-motivation">${getMotivationalLine(streak)}</p>
+      <p class="recap-mission">🎯 ${escapeHtml(persona.goal)}</p>
+    `;
+  }
+
   function renderCheckIn(user) {
     checkInState = { minutes: 30, energy: "medium", partner: false, note: "" };
     document.getElementById("checkin-name").textContent = PERSONAS[user].name;
     document.getElementById("checkin-note").value = "";
+    renderRecapCard(user);
     selectChip(document.getElementById("checkin-energy"), checkInState.energy);
     selectChip(document.getElementById("checkin-minutes"), checkInState.minutes);
     selectChip(document.getElementById("checkin-partner"), checkInState.partner ? "yes" : "no");
@@ -1213,7 +1392,6 @@
 
     const advance = () => {
       welcome.removeEventListener("click", advance);
-      clearTimeout(timer);
       currentUser = user;
       const history = getHistory(user);
       if (loggedToday(history)) {
@@ -1225,8 +1403,9 @@
         renderCheckIn(user);
       }
     };
+    // Waits for the tap — matches the "tap anywhere to continue" hint
+    // instead of secretly auto-advancing on a timer underneath it.
     welcome.addEventListener("click", advance);
-    const timer = setTimeout(advance, 2600);
   }
 
   function showSelect(user) {

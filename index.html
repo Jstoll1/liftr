@@ -2,8 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <title>Liftr</title>
+
+  <!-- iOS "Add to Home Screen" behavior: launches full-screen with no Safari
+       chrome, uses this title, and status-bar text sits over our own dark
+       background (translucent) rather than a forced white/black bar. -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Liftr" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0a0014" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
+  <link rel="manifest" href="manifest.json" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
@@ -54,6 +68,9 @@
     <div class="panel-wrap">
       <button id="checkin-switch" class="link-btn top-link">&larr; SWITCH</button>
       <span class="section-title">Today's Check-In</span>
+
+      <div id="recap-card" class="recap-card"></div>
+
       <h2 class="panel-heading">How are we feeling, <span id="checkin-name" class="panel-heading-accent"></span>?</h2>
       <span class="panel-subtext">This tunes today's recommendation and workload.</span>
 
@@ -193,14 +210,15 @@
     <div class="panel-wrap wide workout-panel">
       <button id="workout-switch" class="link-btn top-link">&larr; SWITCH</button>
 
-      <div class="workout-header">
-        <span id="workout-icon" class="workout-icon"></span>
-        <div class="workout-header-copy">
-          <span id="workout-name" class="workout-name"></span>
-          <span id="workout-tagline" class="workout-tagline"></span>
+      <div class="workout-flash-banner">
+        <span id="workout-icon" class="workout-flash-icon"></span>
+        <div class="workout-flash-text">
+          <span id="workout-clock-time" class="workout-flash-time"></span>
+          <span id="workout-name" class="workout-flash-name"></span>
         </div>
         <button id="workout-regenerate" class="ghost-btn small" title="Regenerate today's picks">🔄</button>
       </div>
+      <span id="workout-tagline" class="workout-tagline"></span>
 
       <section class="warmup-card">
         <span class="section-title">Warm-Up</span>

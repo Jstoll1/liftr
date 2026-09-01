@@ -16,7 +16,10 @@
   --font-mono: "Orbitron", sans-serif;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
 
 html, body {
   margin: 0;
@@ -26,6 +29,24 @@ html, body {
   color: var(--text);
   font-family: var(--font-mono);
   overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+/* iOS-app feel: buttons/cards don't trigger the text-selection callout menu
+   on a long press, but real inputs/textareas stay normally selectable. */
+button,
+.user-card,
+.rec-card,
+.alt-card,
+.chip,
+.wex-head,
+.wex-mini-btn,
+.wex-toggle-btn,
+.wex-swap-btn,
+.warmup-item {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .hidden { display: none !important; }
@@ -98,8 +119,8 @@ html, body {
 
 .sound-toggle {
   position: fixed;
-  top: 16px;
-  right: 16px;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
   z-index: 60;
   width: 40px;
   height: 40px;
@@ -117,11 +138,14 @@ html, body {
 
 .screen {
   min-height: 100vh;
+  min-height: 100dvh; /* accounts for Safari's collapsing toolbar; ignored where unsupported */
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
   position: relative;
   z-index: 1;
 }
@@ -329,6 +353,65 @@ html, body {
 
 .panel-subtext {
   margin-top: -8px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.recap-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02), 0 8px 30px -14px var(--accent);
+  animation: rise 0.4s ease 0.05s both;
+}
+
+.recap-eyebrow {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  text-shadow: 0 0 8px var(--accent);
+}
+
+.recap-line {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.recap-line strong {
+  color: var(--accent);
+}
+
+.recap-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recap-stat {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.recap-motivation {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.recap-mission {
+  margin: 0;
   font-size: 12px;
   color: var(--text-dim);
 }
@@ -578,6 +661,11 @@ html, body {
 
 .clock-time .colon {
   animation: blink 1s step-start infinite;
+}
+
+.clock-ampm {
+  font-size: 14px;
+  color: var(--text-dim);
 }
 
 .streak-badge {
@@ -978,32 +1066,60 @@ html, body {
   font-size: 14px;
 }
 
-.workout-header {
+/* Retro arcade marquee: live clock + workout name flashing together in one box. */
+.workout-flash-banner {
   display: flex;
   align-items: center;
   gap: 14px;
+  background: var(--bg-card);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: 0 0 20px -4px var(--accent);
+  animation: flashBannerPulse 2.4s ease-in-out infinite;
 }
 
-.workout-icon {
-  font-size: 32px;
+.workout-flash-icon {
+  font-size: 30px;
   filter: drop-shadow(0 0 8px rgba(255, 207, 63, 0.5));
 }
 
-.workout-header-copy {
+.workout-flash-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  min-width: 0;
 }
 
-.workout-name {
-  font-size: 19px;
-  font-weight: 700;
+.workout-flash-time {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+  text-shadow: 0 0 10px rgba(255, 214, 10, 0.6);
+}
+
+.workout-flash-name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  text-shadow: 0 0 8px var(--accent);
+  animation: neonFlicker 4s infinite;
 }
 
 .workout-tagline {
+  display: block;
+  margin-top: -8px;
   font-size: 12px;
   color: var(--text-dim);
+}
+
+@keyframes flashBannerPulse {
+  0%, 100% { box-shadow: 0 0 20px -4px var(--accent); border-color: var(--accent); }
+  50% { box-shadow: 0 0 32px -2px var(--accent); border-color: color-mix(in srgb, var(--accent) 70%, white); }
 }
 
 .warmup-card {
@@ -1113,6 +1229,7 @@ html, body {
 }
 
 .wex-img-fallback {
+  display: none;
   font-size: 20px;
   z-index: 0;
 }
@@ -1153,6 +1270,39 @@ html, body {
   gap: 12px;
 }
 
+.wex-body-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wex-img-large {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+}
+
+.wex-img-large-fallback {
+  display: none;
+  font-size: 48px;
+  z-index: 0;
+}
+
+.wex-howto {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
 .wex-tip {
   margin: 0;
   font-size: 12px;
@@ -1171,8 +1321,8 @@ html, body {
 
 .wex-set-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 8px;
   background: var(--bg-elevated);
   border: 1px solid transparent;
   border-radius: 10px;
@@ -1190,37 +1340,83 @@ html, body {
   font-weight: 400;
 }
 
-.wex-stepper {
+.wex-set-controls {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.wex-step-btn {
-  width: 26px;
-  height: 26px;
+.wex-mini-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border-radius: 8px;
+  padding: 4px 6px;
+}
+
+.wex-mini-btn {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: var(--bg-card);
+  background: var(--bg-elevated);
   color: var(--text);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.wex-step-btn:hover { border-color: var(--accent); color: var(--accent); }
+.wex-mini-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-.wex-step-value {
-  min-width: 22px;
+.wex-mini-value {
+  min-width: 18px;
   text-align: center;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
+.wex-mini-input {
+  width: 32px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.wex-mini-input::placeholder {
+  color: var(--text-dim);
+}
+
+.wex-mini-input:focus {
+  outline: none;
+}
+
+/* Hide native number spinners so the +/- steppers are the only controls seen. */
+.wex-mini-input::-webkit-outer-spin-button,
+.wex-mini-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.wex-mini-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.wex-mini-unit {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
 .wex-toggle-btn {
+  align-self: flex-start;
   border: 1px solid var(--border);
   background: var(--bg-card);
   color: var(--text-dim);
@@ -1258,6 +1454,52 @@ html, body {
 .wex-flag-input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.wex-swap-row {
+  display: flex;
+  gap: 8px;
+}
+
+.wex-swap-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 8px 10px;
+}
+
+.wex-swap-input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.wex-swap-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.wex-swap-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wex-swap-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .workout-footer {
