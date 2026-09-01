@@ -1188,6 +1188,28 @@
       "webWidth": 768,
       "webHeight": 768,
       "webBytes": 77136
+    },
+    {
+      "id": "walking-lunges-v1",
+      "exerciseId": "walking-lunges",
+      "name": "Walking Lunges",
+      "collection": "leg-day",
+      "category": "lunges",
+      "equipment": "bodyweight",
+      "path": "assets/images/leg-day/walking-lunges-v1.png",
+      "webPath": "images/legs/walking-lunges.jpg",
+      "alt": "Athlete illustrating walking lunges.",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1491065,
+      "webWidth": 768,
+      "webHeight": 768,
+      "webBytes": 64908,
+      "placement": "Leg-day exercise card for Walking Lunges",
+      "status": "ready",
+      "instructionalReview": "pending-qualified-trainer-review",
+      "generatedWith": "built-in image_gen",
+      "handoff": "handoffs/2026-08-31-leg-day-library.md"
     }
   ]
 }

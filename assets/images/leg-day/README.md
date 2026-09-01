@@ -28,6 +28,7 @@ The exact final prompt for each image is in [prompts.json](prompts.json). Integr
 | Exercise | Image | Equipment |
 |---|---|---|
 | Reverse lunge | <img src="reverse-lunge-v1.png" alt="Reverse lunge" width="180"> | bodyweight |
+| Walking Lunges | <img src="walking-lunges-v1.png" alt="Walking Lunges" width="180"> | bodyweight |
 | Forward lunge | <img src="forward-lunge-v1.png" alt="Forward lunge" width="180"> | bodyweight |
 | Step-up | <img src="step-up-v1.png" alt="Step-up" width="180"> | box |
 | Bulgarian split squat | <img src="bulgarian-split-squat-v1.png" alt="Bulgarian split squat" width="180"> | bench |
