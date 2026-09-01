@@ -10,6 +10,7 @@ Use one subfolder per workout collection, with versioned exercise filenames. Kee
 - [Back](back/README.md): 8 illustrations.
 - [Shoulders](shoulders/README.md): 8 illustrations.
 - [Arms](arms/README.md): 10 illustrations.
+- [Core and mobility](core/README.md): 6 illustrations replacing workout-card fallbacks.
 
 App-ready JPEG copies are in the root `images/` folder.
 
@@ -19,7 +20,7 @@ Create these folders when their first assets are delivered; this list is a plan,
 
 | Collection | Suggested initial coverage |
 |---|---|
-| `core/` | Plank, side plank, dead bug, bird dog, reverse crunch, Pallof press |
+| `core/` | Reverse crunch, Pallof press, and additional core variations |
 | `cardio/` | Walking, running, cycling, rowing, elliptical, stair climber, jump rope |
 | `mobility/` | Ankle mobility, hip-flexor stretch, hamstring stretch, calf stretch, thoracic rotation |
 

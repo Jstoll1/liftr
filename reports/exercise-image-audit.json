@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-01T12:20:14.164Z",
+  "generatedAt": "2026-09-01T12:40:11.324Z",
   "source": "app.js",
   "summary": {
     "distinctExercises": 110,
-    "ready": 25,
-    "issues": 85
+    "ready": 31,
+    "issues": 79
   },
   "issues": [
     {
@@ -188,21 +188,6 @@
       ]
     },
     {
-      "name": "Bird Dog",
-      "slug": "bird-dog",
-      "status": "missing",
-      "imagePath": null,
-      "suggestedFolder": null,
-      "checkedPaths": [
-        "images/chest/bird-dog.jpg",
-        "images/back/bird-dog.jpg",
-        "images/legs/bird-dog.jpg",
-        "images/shoulders/bird-dog.jpg",
-        "images/arms/bird-dog.jpg",
-        "images/core/bird-dog.jpg"
-      ]
-    },
-    {
       "name": "Bodyweight Squats",
       "slug": "bodyweight-squats",
       "status": "missing",
@@ -353,21 +338,6 @@
       ]
     },
     {
-      "name": "Dead Bug",
-      "slug": "dead-bug",
-      "status": "missing",
-      "imagePath": null,
-      "suggestedFolder": "core",
-      "checkedPaths": [
-        "images/chest/dead-bug.jpg",
-        "images/back/dead-bug.jpg",
-        "images/legs/dead-bug.jpg",
-        "images/shoulders/dead-bug.jpg",
-        "images/arms/dead-bug.jpg",
-        "images/core/dead-bug.jpg"
-      ]
-    },
-    {
       "name": "Deadlift",
       "slug": "deadlift",
       "status": "missing",
@@ -503,21 +473,6 @@
       ]
     },
     {
-      "name": "Elbow-to-Opposite-Knee",
-      "slug": "elbow-to-opposite-knee",
-      "status": "missing",
-      "imagePath": null,
-      "suggestedFolder": null,
-      "checkedPaths": [
-        "images/chest/elbow-to-opposite-knee.jpg",
-        "images/back/elbow-to-opposite-knee.jpg",
-        "images/legs/elbow-to-opposite-knee.jpg",
-        "images/shoulders/elbow-to-opposite-knee.jpg",
-        "images/arms/elbow-to-opposite-knee.jpg",
-        "images/core/elbow-to-opposite-knee.jpg"
-      ]
-    },
-    {
       "name": "Figure-4 Stretch",
       "slug": "figure-4-stretch",
       "status": "missing",
@@ -623,21 +578,6 @@
       ]
     },
     {
-      "name": "Forearm Plank",
-      "slug": "forearm-plank",
-      "status": "missing",
-      "imagePath": null,
-      "suggestedFolder": "core",
-      "checkedPaths": [
-        "images/chest/forearm-plank.jpg",
-        "images/back/forearm-plank.jpg",
-        "images/legs/forearm-plank.jpg",
-        "images/shoulders/forearm-plank.jpg",
-        "images/arms/forearm-plank.jpg",
-        "images/core/forearm-plank.jpg"
-      ]
-    },
-    {
       "name": "Half-Kneeling Hip-Flexor Stretch",
       "slug": "half-kneeling-hip-flexor-stretch",
       "status": "missing",
@@ -710,21 +650,6 @@
         "images/shoulders/hip-flexor-stretch-flow.jpg",
         "images/arms/hip-flexor-stretch-flow.jpg",
         "images/core/hip-flexor-stretch-flow.jpg"
-      ]
-    },
-    {
-      "name": "Hip-Flexor Stretch + Overhead Reach",
-      "slug": "hip-flexor-stretch-overhead-reach",
-      "status": "missing",
-      "imagePath": null,
-      "suggestedFolder": null,
-      "checkedPaths": [
-        "images/chest/hip-flexor-stretch-overhead-reach.jpg",
-        "images/back/hip-flexor-stretch-overhead-reach.jpg",
-        "images/legs/hip-flexor-stretch-overhead-reach.jpg",
-        "images/shoulders/hip-flexor-stretch-overhead-reach.jpg",
-        "images/arms/hip-flexor-stretch-overhead-reach.jpg",
-        "images/core/hip-flexor-stretch-overhead-reach.jpg"
       ]
     },
     {
@@ -1040,21 +965,6 @@
         "images/shoulders/rowing-intervals.jpg",
         "images/arms/rowing-intervals.jpg",
         "images/core/rowing-intervals.jpg"
-      ]
-    },
-    {
-      "name": "Side Plank",
-      "slug": "side-plank",
-      "status": "missing",
-      "imagePath": null,
-      "suggestedFolder": "core",
-      "checkedPaths": [
-        "images/chest/side-plank.jpg",
-        "images/back/side-plank.jpg",
-        "images/legs/side-plank.jpg",
-        "images/shoulders/side-plank.jpg",
-        "images/arms/side-plank.jpg",
-        "images/core/side-plank.jpg"
       ]
     },
     {
