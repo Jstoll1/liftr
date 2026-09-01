@@ -560,6 +560,8 @@
 
   let currentUser = null;
   let checkInState = { minutes: 30, energy: "medium", partner: false, note: "" };
+  let chatMessages = []; // [{ role: "coach" | "user", text }] for the check-in chat
+  let chatBusy = false;
   let selectedSplitKey = null; // split chosen on the select screen, awaiting log
   let previewPlan = null; // { exercises, reason, source } computed for the current preview
   let customSelection = new Map(); // exerciseId -> { name, detail, splitKey, tip, superset }
@@ -617,12 +619,28 @@
 
   // ---------- rendering: session screen ----------
 
-  function renderExerciseList(exercises) {
+  // Compact "what you actually did" string for one exercise's logged sets —
+  // e.g. "185×6, 185×5, 190×4" — falling back gracefully per set when only
+  // reps or only weight were touched.
+  function formatPerformanceSummary(perf) {
+    const touched = (perf?.sets || []).filter((s) => s.actual != null || s.weight != null);
+    if (touched.length === 0) return null;
+    return touched
+      .map((s) => {
+        const reps = s.target != null ? String(s.actual ?? "-") : s.actual ? "✓" : "-";
+        return s.weight != null ? `${s.weight}×${reps}` : reps;
+      })
+      .join(", ");
+  }
+
+  function renderExerciseList(exercises, performance) {
     const list = document.getElementById("session-exercises");
     list.innerHTML = "";
     exercises.forEach((ex) => {
+      const loggedSummary = performance ? formatPerformanceSummary(performance[ex.name]) : null;
       const li = document.createElement("li");
-      li.innerHTML = `<span>${ex.name}</span><span class="ex-detail">${ex.detail}</span>`;
+      if (loggedSummary) li.classList.add("ex-logged");
+      li.innerHTML = `<span>${escapeHtml(ex.name)}</span><span class="ex-detail">${escapeHtml(loggedSummary || ex.detail)}</span>`;
       list.appendChild(li);
     });
   }
@@ -668,6 +686,7 @@
     btn.disabled = true;
     btn.onclick = null;
     document.getElementById("back-to-options").classList.remove("hidden");
+    document.getElementById("session-done-note").classList.add("hidden");
   }
 
   function renderSessionScreen(user, history) {
@@ -685,7 +704,7 @@
     const backLink = document.getElementById("back-to-options");
 
     if (done) {
-      renderExerciseList(getEntryExercises(user, entry));
+      renderExerciseList(getEntryExercises(user, entry), entry.performance);
       renderTags(buildTags(entry));
       renderAiNote(entry.source === "ai" ? entry.reason : null);
       statusEl.classList.remove("hidden");
@@ -693,8 +712,14 @@
       btn.disabled = true;
       btn.onclick = null;
       backLink.classList.add("hidden");
+      const hasPerformance = entry.performance && Object.keys(entry.performance).length > 0;
+      document.getElementById("session-done-note").textContent = hasPerformance
+        ? "🎉 Nice work — here's what you actually logged. See you tomorrow!"
+        : "🎉 Session complete. See you tomorrow!";
+      document.getElementById("session-done-note").classList.remove("hidden");
       return;
     }
+    document.getElementById("session-done-note").classList.add("hidden");
 
     if (!previewPlan) {
       renderSessionLoading(splitKey);
@@ -1229,11 +1254,92 @@
   function renderCheckIn(user) {
     checkInState = { minutes: 30, energy: "medium", partner: false, note: "" };
     document.getElementById("checkin-name").textContent = PERSONAS[user].name;
-    document.getElementById("checkin-note").value = "";
     renderRecapCard(user);
     selectChip(document.getElementById("checkin-energy"), checkInState.energy);
     selectChip(document.getElementById("checkin-minutes"), checkInState.minutes);
     selectChip(document.getElementById("checkin-partner"), checkInState.partner ? "yes" : "no");
+    resetChat(user);
+  }
+
+  // ---------- check-in chat ----------
+  // A short conversational front door — the athlete can mention pain,
+  // fatigue, or equipment limits and have it actually shape today's
+  // exercise selection, instead of typing into a note nobody responds to.
+
+  function resetChat(user) {
+    const history = getHistory(user);
+    const greeting =
+      history.length === 0
+        ? `Hey ${PERSONAS[user].name}! I'm your coach. Anything going on today I should know about before we get moving?`
+        : "Welcome back! Anything going on today — sore spots, low on time, equipment changes — before I help pick your session?";
+    chatMessages = [{ role: "coach", text: greeting }];
+    chatBusy = false;
+    renderChatThread();
+    setChatBusy(false);
+  }
+
+  function renderChatThread() {
+    const el = document.getElementById("chat-thread");
+    el.innerHTML = chatMessages
+      .map((m) => `<div class="chat-bubble chat-${m.role}">${escapeHtml(m.text)}</div>`)
+      .join("");
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function setChatBusy(busy) {
+    chatBusy = busy;
+    document.getElementById("chat-send").disabled = busy;
+    document.getElementById("chat-send").textContent = busy ? "…" : "Send";
+    document.getElementById("chat-input").disabled = busy;
+  }
+
+  async function sendChatMessage() {
+    const input = document.getElementById("chat-input");
+    const text = input.value.trim();
+    if (!text || chatBusy) return;
+
+    chatMessages.push({ role: "user", text });
+    input.value = "";
+    renderChatThread();
+    setChatBusy(true);
+
+    // Best-effort fallback if the AI is unreachable or unconfigured — the
+    // raw message still becomes today's note so nothing typed is lost.
+    let reply = "Got it, I'll keep that in mind for today.";
+    let constraint = text;
+
+    if (AI_ENDPOINT) {
+      try {
+        const persona = PERSONAS[currentUser];
+        const res = await fetch(AI_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "chat",
+            persona: { name: persona.name, goal: persona.goal },
+            messages: chatMessages,
+          }),
+          signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.reply === "string" && data.reply.trim()) {
+            reply = data.reply.trim();
+            constraint = typeof data.constraint === "string" && data.constraint.trim() ? data.constraint.trim() : null;
+          }
+        }
+      } catch {
+        // network error or timeout — fall through to the local fallback above
+      }
+    }
+
+    chatMessages.push({ role: "coach", text: reply });
+    renderChatThread();
+    setChatBusy(false);
+
+    if (constraint) {
+      checkInState.note = [checkInState.note, constraint].filter(Boolean).join(". ");
+    }
   }
 
   function initCheckIn() {
@@ -1251,8 +1357,9 @@
       });
     });
 
-    document.getElementById("checkin-note").addEventListener("input", (e) => {
-      checkInState.note = e.target.value;
+    document.getElementById("chat-send").addEventListener("click", sendChatMessage);
+    document.getElementById("chat-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendChatMessage();
     });
 
     document.getElementById("checkin-submit").addEventListener("click", () => {

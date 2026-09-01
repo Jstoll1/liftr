@@ -75,8 +75,14 @@
       <span class="panel-subtext">This tunes today's recommendation and workload.</span>
 
       <div class="option-group">
-        <span class="option-label">📝 Anything to flag? <span class="option-label-optional">(optional)</span></span>
-        <textarea id="checkin-note" class="note-input" rows="3" placeholder="How did last session feel? Equipment changed? New goal? A weight you struggled or hit a PR on?"></textarea>
+        <span class="option-label">💬 Chat with your coach <span class="option-label-optional">(optional)</span></span>
+        <div class="chat-panel">
+          <div id="chat-thread" class="chat-thread"></div>
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Anything going on today? e.g. 'my shoulder is sore'" maxlength="200" />
+            <button type="button" id="chat-send" class="chat-send-btn">Send</button>
+          </div>
+        </div>
       </div>
 
       <div class="option-group">
@@ -192,6 +198,8 @@
         <p id="session-ai-note" class="session-ai-note hidden"></p>
 
         <ul id="session-exercises" class="session-exercises"></ul>
+
+        <p id="session-done-note" class="session-done-note hidden"></p>
 
         <button id="log-session-btn" class="primary-btn">Start Session</button>
       </article>
