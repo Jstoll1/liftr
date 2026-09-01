@@ -10,3 +10,10 @@ OPENAI_MODEL = "gpt-4o-mini"
 
 # OPENAI_API_KEY is a secret, not a var — never put it in this file.
 # Set it with: wrangler secret put OPENAI_API_KEY
+
+# Cross-device sync storage. Create the namespace once with:
+#   npx wrangler kv namespace create LIFTR_KV
+# then replace the id below with the one it prints, and redeploy.
+[[kv_namespaces]]
+binding = "LIFTR_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"

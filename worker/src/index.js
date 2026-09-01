@@ -11,14 +11,24 @@ const MINUTES_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 5 };
 
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
     const corsHeaders = {
       "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN || "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
     };
 
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders });
+    }
+
+    // Cross-device sync (Cloudflare KV) — separate from the AI plan/chat
+    // logic below, which stays mounted at "/" for backward compatibility.
+    if (url.pathname === "/kv") {
+      return handleKv(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/cheers") {
+      return handleCheers(request, env, corsHeaders, url);
     }
 
     if (request.method !== "POST") {
@@ -186,6 +196,116 @@ function json(data, status, headers) {
     status,
     headers: { "Content-Type": "application/json", ...headers },
   });
+}
+
+const VALID_USERS = ["jake", "jessica"];
+
+// Cross-device sync for the app's main state blob (history, notes, profile).
+// Keyed liftr:<user>, whole-blob last-write-wins — the client pulls once on
+// entry and pushes after each meaningful mutation (never on every tap).
+async function handleKv(request, env, corsHeaders, url) {
+  const user = url.searchParams.get("user");
+  if (!VALID_USERS.includes(user)) {
+    return json({ error: "Invalid or missing user" }, 400, corsHeaders);
+  }
+  if (!env.LIFTR_KV) {
+    console.error("LIFTR_KV binding missing");
+    return json({ error: "Sync not configured" }, 500, corsHeaders);
+  }
+
+  const key = `liftr:${user}`;
+
+  if (request.method === "GET") {
+    try {
+      const stored = await env.LIFTR_KV.get(key);
+      return json({ value: stored ? JSON.parse(stored) : null }, 200, corsHeaders);
+    } catch (err) {
+      console.error("KV read error", err?.stack || String(err));
+      return json({ error: "Read failed" }, 500, corsHeaders);
+    }
+  }
+
+  if (request.method === "POST" || request.method === "PUT") {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400, corsHeaders);
+    }
+    try {
+      await env.LIFTR_KV.put(key, JSON.stringify(body));
+      return json({ ok: true }, 200, corsHeaders);
+    } catch (err) {
+      console.error("KV write error", err?.stack || String(err));
+      return json({ error: "Write failed" }, 500, corsHeaders);
+    }
+  }
+
+  return json({ error: "Method not allowed" }, 405, corsHeaders);
+}
+
+// Cross-user "cheer" queue, keyed by the RECIPIENT so each person only ever
+// reads their own inbox. Additive (append on POST) rather than overwrite,
+// since two people could cheer each other around the same time.
+async function handleCheers(request, env, corsHeaders, url) {
+  const user = url.searchParams.get("user");
+  if (!VALID_USERS.includes(user)) {
+    return json({ error: "Invalid or missing user" }, 400, corsHeaders);
+  }
+  if (!env.LIFTR_KV) {
+    console.error("LIFTR_KV binding missing");
+    return json({ error: "Sync not configured" }, 500, corsHeaders);
+  }
+
+  const key = `cheers:${user}`;
+
+  if (request.method === "GET") {
+    try {
+      const stored = await env.LIFTR_KV.get(key);
+      const cheers = stored ? JSON.parse(stored) : [];
+      return json({ cheers: Array.isArray(cheers) ? cheers : [] }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Cheers read error", err?.stack || String(err));
+      return json({ error: "Read failed" }, 500, corsHeaders);
+    }
+  }
+
+  if (request.method === "POST") {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400, corsHeaders);
+    }
+    const from = typeof body?.from === "string" ? body.from.slice(0, 40) : "";
+    const text = typeof body?.text === "string" ? body.text.slice(0, 200) : "";
+    if (!from || !text) {
+      return json({ error: "Malformed cheer" }, 400, corsHeaders);
+    }
+    try {
+      const stored = await env.LIFTR_KV.get(key);
+      const cheers = stored ? JSON.parse(stored) : [];
+      const list = Array.isArray(cheers) ? cheers : [];
+      list.push({ from, text, date: new Date().toISOString() });
+      await env.LIFTR_KV.put(key, JSON.stringify(list.slice(-20)));
+      return json({ ok: true }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Cheers write error", err?.stack || String(err));
+      return json({ error: "Write failed" }, 500, corsHeaders);
+    }
+  }
+
+  if (request.method === "DELETE") {
+    try {
+      await env.LIFTR_KV.put(key, JSON.stringify([]));
+      return json({ ok: true }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Cheers clear error", err?.stack || String(err));
+      return json({ error: "Clear failed" }, 500, corsHeaders);
+    }
+  }
+
+  return json({ error: "Method not allowed" }, 405, corsHeaders);
 }
 
 // Short, conversational check-in chat — the athlete can mention pain,

@@ -42,6 +42,81 @@
     const all = loadAllProfiles();
     all[user] = profile;
     localStorage.setItem(PROFILE_KEY, JSON.stringify(all));
+    pushToCloud(user);
+  }
+
+  // ---------- cross-device sync (Cloudflare KV) ----------
+  // localStorage stays the source of truth for instant, offline-first reads;
+  // this layer just keeps a copy in the cloud so a second phone can catch up.
+  // Pull once on entry, push after each meaningful save — never on every tap.
+
+  function pushToCloud(user) {
+    if (!AI_ENDPOINT) return;
+    const payload = {
+      history: getHistory(user),
+      notes: getNotes(user),
+      profile: loadAllProfiles()[user] || {},
+    };
+    fetch(`${AI_ENDPOINT}/kv?user=${user}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+    }).catch(() => {});
+  }
+
+  // Fetches the cloud copy of state + any pending cheers for this user and
+  // merges them into localStorage. Fails silently — offline just means the
+  // app keeps working off whatever's already local.
+  async function pullFromCloud(user) {
+    if (!AI_ENDPOINT) return;
+    try {
+      const [stateRes, cheersRes] = await Promise.all([
+        fetch(`${AI_ENDPOINT}/kv?user=${user}`, { signal: AbortSignal.timeout(AI_TIMEOUT_MS) }),
+        fetch(`${AI_ENDPOINT}/cheers?user=${user}`, { signal: AbortSignal.timeout(AI_TIMEOUT_MS) }),
+      ]);
+
+      if (stateRes.ok) {
+        const data = await stateRes.json();
+        if (data.value) {
+          const { history, notes, profile } = data.value;
+          if (Array.isArray(history)) {
+            const all = loadAllHistory();
+            all[user] = history;
+            saveAllHistory(all);
+          }
+          if (Array.isArray(notes)) {
+            const all = loadAllNotes();
+            all[user] = notes;
+            saveAllNotes(all);
+          }
+          if (profile) {
+            const all = loadAllProfiles();
+            all[user] = profile;
+            localStorage.setItem(PROFILE_KEY, JSON.stringify(all));
+          }
+        } else {
+          // Nothing in the cloud yet for this user — seed it from local.
+          pushToCloud(user);
+        }
+      }
+
+      if (cheersRes.ok) {
+        const data = await cheersRes.json();
+        const cloudCheers = Array.isArray(data.cheers) ? data.cheers : [];
+        if (cloudCheers.length > 0) {
+          const all = loadAllCheers();
+          all[user] = [...(all[user] || []), ...cloudCheers];
+          localStorage.setItem(CHEERS_KEY, JSON.stringify(all));
+          fetch(`${AI_ENDPOINT}/cheers?user=${user}`, {
+            method: "DELETE",
+            signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+          }).catch(() => {});
+        }
+      }
+    } catch {
+      // Worker unreachable — keep going with whatever's local.
+    }
   }
 
   // Merges the athlete's editable settings (goal override, height, weight,
@@ -87,6 +162,14 @@
     if (!all[toUser]) all[toUser] = [];
     all[toUser].push({ from: fromUser, text: trimmed, date: todayStr() });
     localStorage.setItem(CHEERS_KEY, JSON.stringify(all));
+    if (AI_ENDPOINT) {
+      fetch(`${AI_ENDPOINT}/cheers?user=${toUser}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from: fromUser, text: trimmed }),
+        signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+      }).catch(() => {});
+    }
   }
 
   // Pops (reads + clears) any unseen cheers waiting for this user.
@@ -328,6 +411,7 @@
     if (!all[user]) all[user] = [];
     all[user].push({ date: todayStr(), splitKey, ...params });
     saveAllHistory(all);
+    pushToCloud(user);
   }
 
   function todayStr() {
@@ -369,6 +453,7 @@
     if (!all[user]) all[user] = [];
     all[user].push({ date: todayStr(), text: trimmed });
     saveAllNotes(all);
+    pushToCloud(user);
   }
 
   // Prior days' notes only — today's is passed separately as todayNote so
@@ -1653,9 +1738,10 @@
 
     playRiff();
 
-    const advance = () => {
+    const advance = async () => {
       welcome.removeEventListener("click", advance);
       currentUser = user;
+      await pullFromCloud(user);
       const history = getHistory(user);
       if (loggedToday(history)) {
         selectedSplitKey = null;
