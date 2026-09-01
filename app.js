@@ -989,7 +989,11 @@
     btn.disabled = false;
     btn.onclick = () => {
       const exercises = previewPlan.exercises.map((ex) => ({ ...ex, splitKey }));
-      showWorkout(user, splitKey, exercises, { reason: previewPlan.reason, source: previewPlan.source });
+      showWorkout(user, splitKey, exercises, {
+        reason: previewPlan.reason,
+        source: previewPlan.source,
+        suggestedWeights: previewPlan.suggestedWeights,
+      });
     };
     backLink.classList.remove("hidden");
   }
@@ -1127,7 +1131,96 @@
   // strength splits and anything explicitly named "Weighted ___" get the
   // weight field; pure cardio/mobility work doesn't.
   function usesWeight(ex) {
+    if (/bodyweight|push-up|plank|dead bug|mobility|stretch|flow|cat-cow|jump squat|mountain climber/i.test(ex.name)) return false;
     return ex.splitKey === "chest-back" || ex.splitKey === "legs" || /weighted/i.test(ex.name);
+  }
+
+  function getExerciseLoadFactor(exerciseName) {
+    const name = exerciseName.toLowerCase();
+    const factors = [
+      [/leg press/, 1.5], [/back squat/, 1], [/romanian deadlift/, 0.72], [/deadlift/, 1],
+      [/goblet squat/, 0.28], [/step.?up|lunge/, 0.22], [/glute bridge/, 0.55],
+      [/barbell bench/, 1], [/incline dumbbell press/, 0.62], [/dumbbell chest press/, 0.68],
+      [/cable fly/, 0.32], [/lat pulldown/, 0.62], [/cable row/, 0.65], [/barbell row/, 0.72],
+      [/calf raise/, 0.5], [/weighted pull.?up/, 0.18],
+    ];
+    return factors.find(([pattern]) => pattern.test(name))?.[1] ?? 0.4;
+  }
+
+  function roundTrainingWeight(value) {
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return Math.max(5, Math.round(value / 5) * 5);
+  }
+
+  function getLoggedExercisePerformances(user, exerciseName) {
+    return getHistory(user)
+      .map((entry) => ({ date: entry.date, performance: entry.performance?.[exerciseName] }))
+      .filter((entry) => entry.performance?.sets?.some((set) => Number.isFinite(set.weight) && set.weight > 0));
+  }
+
+  function completedTarget(performance) {
+    const targeted = performance.sets.filter((set) => set.target != null && set.weight != null);
+    return targeted.length > 0 && targeted.every((set) => Number(set.actual) >= Number(set.target));
+  }
+
+  function getWeightRecommendation(user, ex, aiWeight) {
+    if (!usesWeight(ex)) return null;
+    const exactHistory = getLoggedExercisePerformances(user, ex.name);
+    if (exactHistory.length > 0) {
+      const latest = exactHistory[exactHistory.length - 1];
+      const weightedSets = latest.performance.sets.filter((set) => Number.isFinite(set.weight) && set.weight > 0);
+      const lastWeight = weightedSets[weightedSets.length - 1].weight;
+      const previous = exactHistory[exactHistory.length - 2];
+      const repeatedSuccess = completedTarget(latest.performance) && previous && completedTarget(previous.performance);
+      const missed = latest.performance.sets.some(
+        (set) => set.target != null && set.actual != null && Number(set.actual) < Number(set.target) * 0.8
+      );
+      const change = repeatedSuccess ? 5 : missed ? -5 : 0;
+      const weight = roundTrainingWeight(Math.max(5, lastWeight + change));
+      return {
+        weight,
+        source: "history",
+        explanation: repeatedSuccess
+          ? `You completed the target at ${lastWeight} lb in your last two sessions, so the coach added 5 lb.`
+          : missed
+            ? `Your last logged reps fell short at ${lastWeight} lb, so the coach reduced the starting load slightly.`
+            : `Starts from your most recent ${ex.name} working weight.`
+      };
+    }
+
+    if (Number.isFinite(aiWeight) && aiWeight > 0) {
+      return {
+        weight: roundTrainingWeight(aiWeight),
+        source: "ai",
+        explanation: "Estimated by the coach from your profile, target reps, and related logged lifts.",
+      };
+    }
+
+    const traits = getExerciseTraits(ex);
+    let bestRelated = null;
+    buildWeightHistory(user).forEach((entry) => {
+      const relatedTraits = getExerciseTraits({ name: entry.exercise, howTo: "" });
+      const overlap = [...traits].filter((trait) => relatedTraits.has(trait)).length;
+      if (overlap > 0 && (!bestRelated || overlap > bestRelated.overlap)) bestRelated = { ...entry, overlap };
+    });
+    if (bestRelated) {
+      const converted = bestRelated.weight * (getExerciseLoadFactor(ex.name) / getExerciseLoadFactor(bestRelated.exercise));
+      return {
+        weight: roundTrainingWeight(converted * 0.9),
+        source: "related",
+        explanation: `Conservative estimate from your logged ${bestRelated.exercise} weight and the similar movement pattern.`,
+      };
+    }
+
+    const bodyweight = getPersonaProfile(user).weightLb;
+    if (Number.isFinite(bodyweight) && bodyweight > 0) {
+      return {
+        weight: roundTrainingWeight(bodyweight * getExerciseLoadFactor(ex.name) * 0.5),
+        source: "profile",
+        explanation: "Conservative first-session estimate from your bodyweight and this exercise’s loading pattern.",
+      };
+    }
+    return null;
   }
 
   function buildInitialLogs(user, exercises, suggestedWeights) {
@@ -1135,15 +1228,15 @@
     exercises.forEach((ex) => {
       const setCount = parseSetCount(ex.detail);
       const target = parseTargetReps(ex.detail);
-      // Real logged history always wins; an AI cold-start estimate (reasoned
-      // from strength on related lifts) only fills in when we have nothing.
-      const seedWeight = usesWeight(ex) ? getLastWeight(user, ex.name) ?? suggestedWeights?.get(ex.name) ?? null : null;
+      const recommendation = getWeightRecommendation(user, ex, suggestedWeights?.get(ex.name));
+      const seedWeight = recommendation?.weight ?? null;
       logs[ex.name] = {
         // Weight lives per set, not per exercise — sets often ramp
         // (e.g. 135/155/175/185), so each one gets its own adjustable value,
         // all seeded from wherever the athlete left off last time.
         sets: Array.from({ length: setCount }, () => ({ target, actual: target, weight: seedWeight, touched: false })),
         flag: "",
+        weightRecommendation: recommendation,
       };
     });
     return logs;
@@ -1375,6 +1468,7 @@
     body.className = "wex-body hidden";
 
     const showWeight = usesWeight(ex);
+    const weightRecommendation = log.weightRecommendation;
 
     // Weight lives inside each set row (ramping sets are the norm, not the
     // exception), alongside either a rep stepper or a simple complete-toggle.
@@ -1420,6 +1514,16 @@
       </div>
       ${ex.howTo ? `<p class="wex-howto">${escapeHtml(ex.howTo)}</p>` : ""}
       ${ex.tip ? `<p class="wex-tip">💡 ${escapeHtml(ex.tip)}</p>` : ""}
+      ${showWeight && weightRecommendation ? `
+        <div class="wex-weight-rec">
+          <div>
+            <span class="wex-weight-rec-label">⚡ COACH STARTING WEIGHT</span>
+            <strong>${weightRecommendation.weight} lb</strong>
+            <p>${escapeHtml(weightRecommendation.explanation)}</p>
+          </div>
+          <button type="button" class="wex-apply-weight">Use ${weightRecommendation.weight} lb</button>
+        </div>
+      ` : ""}
       <div class="wex-sets">${setsHtml}</div>
       <input type="text" class="wex-flag-input" placeholder="Anything to flag on this one? (optional)" maxlength="140" />
       <div class="wex-swap-row">
@@ -1485,6 +1589,21 @@
         });
       }
     });
+
+    const applyWeightButton = body.querySelector(".wex-apply-weight");
+    if (applyWeightButton && weightRecommendation) {
+      applyWeightButton.addEventListener("click", () => {
+        log.sets.forEach((set) => {
+          set.weight = weightRecommendation.weight;
+          set.touched = true;
+        });
+        body.querySelectorAll('.wex-mini-stepper[data-role="weight"] .wex-mini-input').forEach((input) => {
+          input.value = weightRecommendation.weight;
+          input.closest(".wex-set-row")?.classList.add("touched");
+        });
+        applyWeightButton.textContent = `Applied ${weightRecommendation.weight} lb ✓`;
+      });
+    }
 
     body.querySelector(".wex-flag-input").addEventListener("input", (e) => {
       log.flag = e.target.value;

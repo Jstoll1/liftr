@@ -2093,6 +2093,67 @@ button,
   border-color: var(--accent);
 }
 
+.wex-weight-rec {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gold) 9%, var(--bg-elevated));
+}
+
+.wex-weight-rec > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+.wex-weight-rec-label {
+  color: var(--gold);
+  font-family: var(--font-display);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.wex-weight-rec strong {
+  color: var(--gold);
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.wex-weight-rec p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.wex-apply-weight {
+  flex-shrink: 0;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: rgba(255, 207, 63, 0.1);
+  color: var(--gold);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 420px) {
+  .wex-weight-rec {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .wex-apply-weight { width: 100%; }
+}
+
 .wex-swap-row {
   display: flex;
   gap: 8px;
