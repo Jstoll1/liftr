@@ -72,6 +72,11 @@ export default {
     }
 
     const names = candidates.map((c) => c.name);
+    const baseCount = MINUTES_TO_COUNT[minutes] || 4;
+    const targetCount = Math.min(
+      candidates.length,
+      energy === "low" ? Math.max(2, baseCount - 1) : energy === "high" ? Math.min(6, baseCount + 1) : baseCount
+    );
 
     const schema = {
       type: "object",
@@ -79,7 +84,8 @@ export default {
         chosen: {
           type: "array",
           items: { type: "string", enum: names },
-          minItems: 1,
+          minItems: targetCount,
+          maxItems: targetCount,
         },
         reason: {
           type: "string",
@@ -107,19 +113,18 @@ export default {
       additionalProperties: false,
     };
 
-    const targetCount = MINUTES_TO_COUNT[minutes] || 4;
     const systemPrompt = [
       "You are a sharp, encouraging personal trainer picking today's exercises",
       "from a FIXED candidate list. Never invent exercises outside that list.",
-      `Choose AT LEAST ${targetCount} exercises for a ${minutes}-minute session —`,
-      "that count is a floor, not a suggestion; use every relevant candidate you",
-      "have available before choosing fewer than that.",
+      `Choose EXACTLY ${targetCount} distinct exercises for this ${minutes}-minute session.`,
       "Prioritize whichever candidates best serve the athlete's stated goal.",
       "On low energy, trim volume and prefer the lower-fatigue candidates.",
-      "On high energy, especially for 45+ minute sessions, go the other",
-      "direction: use the full candidate list including any 'Finisher:'-named",
-      "candidate — that's exactly the scenario it exists for — and don't hold",
-      "back on volume just because a session could technically be shorter.",
+      "On high energy for 45+ minute sessions, include the 'Finisher:'-named",
+      "candidate when one is present, but keep the plan inside the exact count",
+      "and time budget above.",
+      "If workoutType is Chest & Back, the chosen plan must visibly train BOTH:",
+      "include at least two chest/push movements and two back/pull movements",
+      "whenever the target count is four or more. Alternate push and pull when possible.",
       "The candidate list is usually all one body-part/category for this",
       "session's split, but may include exactly one 'Finisher:'-named candidate",
       "from a DIFFERENT category — that only happens when the athlete",
@@ -127,7 +132,8 @@ export default {
       "session). ALWAYS include that specific candidate in chosen, regardless",
       "of energy level or session length — it's an explicit request, not an",
       "optional volume decision like the split's own default finisher above.",
-      "If a partner is available, prefer partner-friendly candidates when present.",
+      "If hasPartner is false, never choose an exercise whose name or instructions",
+      "mention a partner. If a partner is available, prefer partner-friendly candidates when present.",
       "The athlete may give a free-text note (today's, and/or recent prior days').",
       "Use it: honor equipment constraints or injuries by avoiding candidates that",
       "conflict with them, factor in stated goal changes, and if it mentions a",

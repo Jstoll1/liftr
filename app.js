@@ -1807,20 +1807,31 @@ okra`;
     return SPLIT_LIBRARY[splitKey].exercises[user].filter((ex) => !excluded.has(ex.name));
   }
 
+  function isPartnerExercise(exercise) {
+    return /partner/i.test(`${exercise?.name || ""} ${exercise?.phase || ""} ${exercise?.howTo || ""}`);
+  }
+
+  function isFinisherExercise(exercise) {
+    return /^finisher:/i.test(exercise?.name || "");
+  }
+
+  function targetExerciseCount({ minutes, energy }) {
+    const base = TIME_TO_COUNT[minutes] ?? 4;
+    if (energy === "low") return Math.max(2, base - 1);
+    if (energy === "high") return Math.min(6, base + 1);
+    return base;
+  }
+
   // Turns a base exercise list into today's actual plan based on the
   // amount of time available, energy level, and whether a partner is along.
   function buildWorkoutPlan(user, splitKey, { minutes, energy, partner }) {
     const base = getAvailableExercises(user, splitKey);
-    let count = Math.min(TIME_TO_COUNT[minutes] ?? base.length, base.length);
-    if (energy === "low") count = Math.max(2, count - 1);
-    if (energy === "high") count = Math.min(base.length, count + 1);
+    const desiredTotal = targetExerciseCount({ minutes, energy });
+    const finisher = energy === "high" && minutes >= 45 ? FINISHERS[splitKey]?.[user] : null;
+    const baseCount = Math.max(1, desiredTotal - (finisher ? 1 : 0));
+    let list = base.slice(0, Math.min(baseCount, base.length));
 
-    let list = base.slice(0, count);
-
-    if (energy === "high" && minutes >= 45) {
-      const finisher = FINISHERS[splitKey][user];
-      if (finisher) list = [...list, finisher];
-    }
+    if (finisher) list = [...list, finisher];
     if (partner) {
       const extra = PARTNER_EXTRAS[splitKey][user];
       if (extra) list = [...list, extra];
@@ -1838,6 +1849,91 @@ okra`;
       }
     }
     return list;
+  }
+
+  function mergeCanonicalExercises(exercises, pool) {
+    const byName = new Map(pool.map((exercise) => [exercise.name, exercise]));
+    const seen = new Set();
+    return (exercises || [])
+      .map((exercise) => byName.get(exercise?.name))
+      .filter((exercise) => exercise && !seen.has(exercise.name) && seen.add(exercise.name));
+  }
+
+  function balanceChestBackPlan(user, exercises, checkIn) {
+    const pool = buildCandidatePool(user, "chest-back", checkIn);
+    const canonical = mergeCanonicalExercises(exercises, pool);
+    const regularPool = pool.filter((exercise) => !isFinisherExercise(exercise) && (checkIn.partner || !isPartnerExercise(exercise)));
+    const regularChosen = canonical.filter((exercise) => !isFinisherExercise(exercise) && (checkIn.partner || !isPartnerExercise(exercise)));
+    const desiredTotal = targetExerciseCount(checkIn);
+    const finisher = checkIn.energy === "high" && checkIn.minutes >= 45
+      ? pool.find((exercise) => isFinisherExercise(exercise))
+      : null;
+    const desiredRegular = Math.max(2, desiredTotal - (finisher ? 1 : 0));
+    const focus = getCoachFocus(checkIn.note);
+    const belongsToCompleteSuperset = (exercise) => Boolean(
+      exercise.superset && regularPool.some((candidate) => candidate.name !== exercise.name && candidate.superset === exercise.superset)
+    );
+
+    const orderedByPreference = (predicate) => {
+      const chosen = regularChosen.filter(predicate);
+      const remaining = regularPool.filter((exercise) => predicate(exercise) && !chosen.some((item) => item.name === exercise.name));
+      return [
+        ...chosen.filter(belongsToCompleteSuperset),
+        ...remaining.filter(belongsToCompleteSuperset),
+        ...chosen.filter((exercise) => !belongsToCompleteSuperset(exercise)),
+        ...remaining.filter((exercise) => !belongsToCompleteSuperset(exercise)),
+      ];
+    };
+    const chest = orderedByPreference((exercise) => getExerciseTraits(exercise).has("horizontalPush"));
+    const back = orderedByPreference((exercise) => {
+      const traits = getExerciseTraits(exercise);
+      return traits.has("horizontalPull") || traits.has("verticalPull");
+    });
+    const other = orderedByPreference((exercise) => {
+      const traits = getExerciseTraits(exercise);
+      return !traits.has("horizontalPush") && !traits.has("horizontalPull") && !traits.has("verticalPull");
+    });
+
+    let chestTarget = Math.ceil(desiredRegular / 2);
+    if (focus === "back") chestTarget = Math.floor(desiredRegular / 2);
+    const backTarget = desiredRegular - chestTarget;
+    const result = [];
+    const pushUnique = (exercise) => {
+      if (exercise && !result.some((item) => item.name === exercise.name)) result.push(exercise);
+    };
+    const maxRounds = Math.max(chestTarget, backTarget);
+    for (let index = 0; index < maxRounds; index++) {
+      if (focus === "back") {
+        if (index < backTarget) pushUnique(back[index]);
+        if (index < chestTarget) pushUnique(chest[index]);
+      } else {
+        if (index < chestTarget) pushUnique(chest[index]);
+        if (index < backTarget) pushUnique(back[index]);
+      }
+    }
+    [...regularChosen, ...regularPool, ...other].forEach((exercise) => {
+      if (result.length < desiredRegular) pushUnique(exercise);
+    });
+    if (finisher) pushUnique(finisher);
+    return result.slice(0, desiredTotal);
+  }
+
+  // AI output is treated as a draft. This gate enforces the athlete's hard
+  // constraints and the split's promised movement balance before anything
+  // reaches a recommendation card or active workout.
+  function enforcePlanConstraints(user, splitKey, exercises, checkIn) {
+    if (SPECIAL_WORKOUTS[splitKey]) return exercises;
+    if (splitKey === "chest-back") return balanceChestBackPlan(user, exercises, checkIn);
+
+    const pool = buildCandidatePool(user, splitKey, checkIn);
+    const desired = targetExerciseCount(checkIn) + (checkIn.partner ? 1 : 0);
+    const canonical = mergeCanonicalExercises(exercises, pool).filter((exercise) => checkIn.partner || !isPartnerExercise(exercise));
+    const fallback = buildWorkoutPlan(user, splitKey, checkIn).filter((exercise) => checkIn.partner || !isPartnerExercise(exercise));
+    const result = [];
+    [...canonical, ...fallback, ...pool].forEach((exercise) => {
+      if (result.length < desired && !result.some((item) => item.name === exercise.name)) result.push(exercise);
+    });
+    return result;
   }
 
   // Body-part/focus keywords, each anchored to a nearby intent verb so
@@ -1963,9 +2059,9 @@ okra`;
   // only mentioning it in chat. Works for any split by ranking the real
   // candidate pool on trait overlap with the requested focus, instead of a
   // fixed exercise list per muscle group.
-  function applyCoachFocus(user, splitKey, exercises, note) {
+  function applyCoachFocus(user, splitKey, exercises, note, context = checkInState) {
     const focus = getCoachFocus(note);
-    const pool = buildCandidatePool(user, splitKey);
+    const pool = buildCandidatePool(user, splitKey, context);
     let result = exercises;
 
     const traits = focus ? FOCUS_TRAITS[focus] : null;
@@ -1997,7 +2093,7 @@ okra`;
     // buildWorkoutPlan/the AI already included it. That finisher was asked
     // for by name, not inferred from trait overlap, so it's never subject to
     // the trim above either.
-    const finisherOverride = checkInState.finisherOverride;
+    const finisherOverride = context.finisherOverride;
     if (finisherOverride && finisherOverride !== splitKey) {
       const crossFinisher = FINISHERS[finisherOverride]?.[user];
       if (crossFinisher && !result.some((exercise) => exercise.name === crossFinisher.name)) {
@@ -2013,15 +2109,14 @@ okra`;
   }
 
   function buildTags({ minutes, energy, partner }, extraTags = []) {
-    const tags = [`${minutes} MIN`, ENERGY_LABEL[energy].toUpperCase()];
-    if (partner) tags.push("W/ PARTNER");
+    const tags = [`${minutes} MIN`, ENERGY_LABEL[energy].toUpperCase(), partner ? "W/ PARTNER" : "SOLO"];
     return [...tags, ...extraTags];
   }
 
   // Everything the AI (or the local fallback) is allowed to choose from —
   // the base list plus the finisher/partner bonus moves, all up for grabs
   // based on today's actual context instead of always-on rules.
-  function buildCandidatePool(user, splitKey) {
+  function buildCandidatePool(user, splitKey, context = checkInState) {
     if (SPECIAL_WORKOUTS[splitKey]) {
       const excluded = new Set(getPersonaProfile(user).excludedExercises);
       return SPECIAL_WORKOUTS[splitKey].exercises.filter((exercise) => !excluded.has(exercise.name));
@@ -2030,8 +2125,8 @@ okra`;
     const pool = getAvailableExercises(user, splitKey);
     const finisher = FINISHERS[splitKey]?.[user];
     const partnerExtra = PARTNER_EXTRAS[splitKey]?.[user];
-    if (finisher && !excluded.has(finisher.name)) pool.push(finisher);
-    if (partnerExtra && !excluded.has(partnerExtra.name)) pool.push(partnerExtra);
+    if (finisher && context.energy === "high" && context.minutes >= 45 && !excluded.has(finisher.name)) pool.push(finisher);
+    if (partnerExtra && context.partner && !excluded.has(partnerExtra.name)) pool.push(partnerExtra);
 
     // "Leg day, ab finish" — the athlete asked for a finisher from a split
     // that isn't the one being trained today. The candidate list is
@@ -2055,7 +2150,7 @@ okra`;
   async function computePlan(user, splitKey, checkIn) {
     if (SPECIAL_WORKOUTS[splitKey]) {
       const preset = SPECIAL_WORKOUTS[splitKey];
-      const exercises = applyCoachFocus(user, splitKey, buildCandidatePool(user, splitKey), checkIn.note);
+      const exercises = applyCoachFocus(user, splitKey, buildCandidatePool(user, splitKey, checkIn), checkIn.note, checkIn);
       return { exercises, reason: preset.reason, source: "preset", suggestedWeights: new Map() };
     }
     if (AI_ENDPOINT) {
@@ -2080,7 +2175,7 @@ okra`;
             todayNote: (checkIn.note || "").trim() || null,
             pastNotes: getPastNotes(user, 5),
             weightHistory: buildWeightHistory(user),
-            candidates: buildCandidatePool(user, splitKey),
+            candidates: buildCandidatePool(user, splitKey, checkIn),
             libraryContext: getLibraryContext(`${meta.name} ${checkIn.note || ""} ${(persona.focusAreas || []).join(" ")}`),
             libraryRoutines: getLibraryRoutinesContext(),
           }),
@@ -2101,8 +2196,9 @@ okra`;
                     .map((s) => [s.exercise, s.weight])
                 : []
             );
+            const focused = applyCoachFocus(user, splitKey, data.exercises, checkIn.note, checkIn);
             return {
-              exercises: applyCoachFocus(user, splitKey, data.exercises, checkIn.note),
+              exercises: enforcePlanConstraints(user, splitKey, focused, checkIn),
               reason: typeof data.reason === "string" ? data.reason : null,
               source: "ai",
               suggestedWeights,
@@ -2115,7 +2211,12 @@ okra`;
     }
 
     return {
-      exercises: applyCoachFocus(user, splitKey, buildWorkoutPlan(user, splitKey, checkIn), checkIn.note),
+      exercises: enforcePlanConstraints(
+        user,
+        splitKey,
+        applyCoachFocus(user, splitKey, buildWorkoutPlan(user, splitKey, checkIn), checkIn.note, checkIn),
+        checkIn
+      ),
       reason: null,
       source: "local",
       suggestedWeights: new Map(),
@@ -2136,6 +2237,8 @@ okra`;
   let recommendationRequestId = 0; // prevents a slower, older coach response replacing a newer request
   let selectedSplitKey = null; // split chosen on the select screen, awaiting log
   let previewPlan = null; // { exercises, reason, source } computed for the current preview
+  let previewEditSnapshot = null; // immutable copy used by the inline editor's undo action
+  let coachContextTarget = null; // prevents duplicate context prompts as the chat panel rerenders
   let customSelection = new Map(); // exerciseId -> { name, detail, splitKey, tip, superset }
   let activeWorkout = null; // { sessionSplitKey, exercises, logs, reason, source } for the in-progress workout runner
 
@@ -2251,11 +2354,46 @@ okra`;
       .join(", ");
   }
 
+  function getExerciseRoleLabel(exercise) {
+    if (isFinisherExercise(exercise)) return "FINISHER";
+    if (isPartnerExercise(exercise)) return "PARTNER";
+    const traits = getExerciseTraits(exercise);
+    if (traits.has("horizontalPush")) return "CHEST";
+    if (traits.has("horizontalPull") || traits.has("verticalPull")) return "BACK";
+    if (traits.has("quads")) return "QUADS";
+    if (traits.has("hamstrings")) return "HAMSTRINGS";
+    if (traits.has("glutes")) return "GLUTES";
+    if (traits.has("core")) return "CORE";
+    if (traits.has("conditioning")) return "CONDITIONING";
+    if (traits.has("mobility")) return "MOBILITY";
+    return "EXERCISE";
+  }
+
+  function renderPreviewPlanSummary(splitKey, exercises, context) {
+    const summary = document.getElementById("preview-plan-summary");
+    if (!summary || !Array.isArray(exercises)) return;
+    const roleCounts = new Map();
+    exercises.forEach((exercise) => {
+      const role = getExerciseRoleLabel(exercise);
+      roleCounts.set(role, (roleCounts.get(role) || 0) + 1);
+    });
+    const preferredOrder = ["CHEST", "BACK", "QUADS", "HAMSTRINGS", "GLUTES", "CORE", "CONDITIONING", "MOBILITY", "FINISHER", "PARTNER", "EXERCISE"];
+    const mix = preferredOrder
+      .filter((role) => roleCounts.has(role))
+      .map((role) => `${roleCounts.get(role)} ${role.toLowerCase()}`)
+      .join(" · ");
+    const mode = context.partner ? "with partner" : "solo";
+    const timeLabel = Number.isFinite(context.minutes) ? `${context.minutes} min` : "time not logged";
+    const energyLabel = ENERGY_LABEL[context.energy] || "energy not logged";
+    summary.innerHTML = `<strong>PLAN CHECK</strong><span>${escapeHtml(mix)} · ${escapeHtml(mode)} · ${escapeHtml(timeLabel)} · ${escapeHtml(energyLabel)}</span>`;
+    summary.classList.remove("hidden");
+  }
+
   function renderExerciseList(exercises, performance) {
     const list = document.getElementById("session-exercises");
     list.innerHTML = "";
     let currentPhase = null;
-    exercises.forEach((ex) => {
+    exercises.forEach((ex, exerciseIndex) => {
       if (ex.phase && ex.phase !== currentPhase) {
         currentPhase = ex.phase;
         const heading = document.createElement("li");
@@ -2265,8 +2403,31 @@ okra`;
       }
       const loggedSummary = performance ? formatPerformanceSummary(performance[ex.name]) : null;
       const li = document.createElement("li");
+      li.className = "session-exercise-card";
       if (loggedSummary) li.classList.add("ex-logged");
-      li.innerHTML = `<span>${escapeHtml(ex.name)}</span><span class="ex-detail">${escapeHtml(loggedSummary || ex.detail)}</span>`;
+      const imageCandidates = getExerciseImageCandidates(ex.name);
+      li.innerHTML = `
+        <span class="session-exercise-number">${exerciseIndex + 1}</span>
+        <span class="session-exercise-image">
+          <img src="${imageCandidates[0]}" alt="" />
+          <span>${getSplitMeta(ex.splitKey || selectedSplitKey)?.icon || "💪"}</span>
+        </span>
+        <span class="session-exercise-copy">
+          <span class="session-exercise-title-row">
+            <strong>${escapeHtml(ex.name)}</strong>
+            <span class="session-exercise-role">${escapeHtml(getExerciseRoleLabel(ex))}</span>
+          </span>
+          <span class="ex-detail">${escapeHtml(loggedSummary || ex.detail)}</span>
+          ${ex.howTo && !performance ? `<span class="session-exercise-howto">${escapeHtml(ex.howTo)}</span>` : ""}
+        </span>
+      `;
+      const image = li.querySelector("img");
+      let candidateIndex = 0;
+      image?.addEventListener("error", () => {
+        candidateIndex++;
+        if (candidateIndex < imageCandidates.length) image.src = imageCandidates[candidateIndex];
+        else image.style.display = "none";
+      });
       list.appendChild(li);
     });
   }
@@ -2303,6 +2464,7 @@ okra`;
     document.getElementById("session-status").classList.add("hidden");
     renderTags(null);
     renderAiNote(null);
+    document.getElementById("preview-plan-summary").classList.add("hidden");
 
     const list = document.getElementById("session-exercises");
     list.innerHTML = '<li class="skeleton-row"></li><li class="skeleton-row"></li><li class="skeleton-row"></li>';
@@ -2312,6 +2474,8 @@ okra`;
     document.getElementById("preview-actions").classList.remove("hidden");
     document.getElementById("save-workout-btn").classList.add("hidden");
     document.getElementById("edit-preview-btn").disabled = true;
+    document.getElementById("preview-editor").classList.add("hidden");
+    previewEditSnapshot = null;
     placeTerminalPanel("preview");
     btn.textContent = "Loading…";
     btn.disabled = true;
@@ -2345,10 +2509,13 @@ okra`;
     const backLink = document.getElementById("back-to-options");
 
     if (done) {
+      document.getElementById("preview-editor").classList.add("hidden");
+      previewEditSnapshot = null;
       document.getElementById("preview-coach-section").classList.add("hidden");
       document.getElementById("preview-actions").classList.add("hidden");
       document.getElementById("save-workout-btn").classList.add("hidden");
       renderExerciseList(getEntryExercises(user, entry), entry.performance);
+      renderPreviewPlanSummary(splitKey, getEntryExercises(user, entry), entry);
       renderTags(buildTags(entry, meta.sourceTags || []));
       renderAiNote(entry.source === "ai" ? entry.reason : null);
       statusEl.classList.remove("hidden");
@@ -2382,6 +2549,7 @@ okra`;
 
     document.getElementById("save-workout-btn").classList.remove("hidden");
     renderExerciseList(previewPlan.exercises);
+    renderPreviewPlanSummary(splitKey, previewPlan.exercises, checkInState);
     renderTags(buildTags(checkInState, meta.sourceTags || []));
     renderAiNote(previewPlan.source === "ai" ? previewPlan.reason : null);
     statusEl.classList.add("hidden");
@@ -2397,6 +2565,126 @@ okra`;
       });
     };
     backLink.classList.remove("hidden");
+  }
+
+  function clonePreviewExercises(exercises) {
+    return exercises.map((exercise) => ({ ...exercise }));
+  }
+
+  function getPreviewEditCandidates(user) {
+    const candidates = [
+      ...SPLIT_ORDER.flatMap((splitKey) => SPLIT_LIBRARY[splitKey].exercises[user].map((exercise) => ({ ...exercise, splitKey }))),
+      ...(selectedSplitKey ? buildCandidatePool(user, selectedSplitKey, checkInState) : []),
+    ];
+    const unique = new Map();
+    candidates.forEach((exercise) => {
+      if (!unique.has(exercise.name)) unique.set(exercise.name, exercise);
+    });
+    return [...unique.values()];
+  }
+
+  function announcePreviewEdit(message) {
+    const status = document.getElementById("preview-edit-status");
+    if (status) status.textContent = message;
+    renderExerciseList(previewPlan.exercises);
+    renderPreviewPlanSummary(selectedSplitKey, previewPlan.exercises, checkInState);
+    renderPreviewEditor(currentUser);
+  }
+
+  function renderPreviewEditor(user) {
+    if (!previewPlan) return;
+    const list = document.getElementById("preview-edit-list");
+    list.innerHTML = previewPlan.exercises
+      .map(
+        (exercise, index) => `
+          <div class="preview-edit-row" data-index="${index}">
+            <div class="preview-edit-copy">
+              <div>
+                <strong>${escapeHtml(exercise.name)}</strong>
+                <span class="preview-edit-role">${escapeHtml(getExerciseRoleLabel(exercise))}</span>
+              </div>
+              <span>${escapeHtml(exercise.detail)}</span>
+            </div>
+            ${exercise.howTo ? `<p class="preview-edit-howto">${escapeHtml(exercise.howTo)}</p>` : ""}
+            <div class="preview-edit-controls">
+              <button type="button" data-action="up" aria-label="Move ${escapeHtml(exercise.name)} up" ${index === 0 ? "disabled" : ""}>↑</button>
+              <button type="button" data-action="down" aria-label="Move ${escapeHtml(exercise.name)} down" ${index === previewPlan.exercises.length - 1 ? "disabled" : ""}>↓</button>
+              <button type="button" data-action="swap" aria-label="Intelligently replace ${escapeHtml(exercise.name)}">Swap</button>
+              <button type="button" data-action="remove" aria-label="Remove ${escapeHtml(exercise.name)}" ${previewPlan.exercises.length === 1 ? "disabled" : ""}>Remove</button>
+            </div>
+          </div>
+        `
+      )
+      .join("");
+
+    const selectedNames = new Set(previewPlan.exercises.map((exercise) => exercise.name));
+    const available = getPreviewEditCandidates(user).filter((exercise) => !selectedNames.has(exercise.name));
+    const select = document.getElementById("preview-add-select");
+    select.innerHTML = available.length
+      ? `<option value="">Choose an exercise…</option>${available.map((exercise) => `<option value="${escapeHtml(exercise.name)}">${escapeHtml(exercise.name)} · ${escapeHtml(exercise.detail)}</option>`).join("")}`
+      : '<option value="">No unused exercises available</option>';
+    document.getElementById("preview-add-btn").disabled = available.length === 0;
+  }
+
+  function openPreviewEditor(user) {
+    if (!previewPlan) return;
+    previewEditSnapshot = clonePreviewExercises(previewPlan.exercises);
+    document.getElementById("preview-editor").classList.remove("hidden");
+    document.getElementById("preview-edit-status").textContent = "Changes update this preview immediately.";
+    renderPreviewEditor(user);
+    document.getElementById("preview-editor").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function initPreviewEditor() {
+    document.getElementById("preview-editor-done").addEventListener("click", () => {
+      document.getElementById("preview-editor").classList.add("hidden");
+      document.getElementById("session-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+
+    document.getElementById("preview-edit-list").addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-action]");
+      const row = event.target.closest(".preview-edit-row");
+      if (!button || !row || !previewPlan) return;
+      const index = Number(row.dataset.index);
+      const exercise = previewPlan.exercises[index];
+      if (!exercise) return;
+
+      if (button.dataset.action === "up" && index > 0) {
+        [previewPlan.exercises[index - 1], previewPlan.exercises[index]] = [previewPlan.exercises[index], previewPlan.exercises[index - 1]];
+        announcePreviewEdit(`Moved ${exercise.name} earlier in the workout.`);
+      } else if (button.dataset.action === "down" && index < previewPlan.exercises.length - 1) {
+        [previewPlan.exercises[index + 1], previewPlan.exercises[index]] = [previewPlan.exercises[index], previewPlan.exercises[index + 1]];
+        announcePreviewEdit(`Moved ${exercise.name} later in the workout.`);
+      } else if (button.dataset.action === "remove" && previewPlan.exercises.length > 1) {
+        previewPlan.exercises.splice(index, 1);
+        announcePreviewEdit(`Removed ${exercise.name}. The workout now has ${previewPlan.exercises.length} exercises.`);
+      } else if (button.dataset.action === "swap") {
+        const selectedNames = new Set(previewPlan.exercises.map((item) => item.name));
+        const candidates = getPreviewEditCandidates(currentUser).filter((candidate) => !selectedNames.has(candidate.name) && !conflictsWithSwapReason(candidate, checkInState.note));
+        const replacement = chooseLocalSwap(exercise, candidates, checkInState.note);
+        if (!replacement) {
+          document.getElementById("preview-edit-status").textContent = `No unused replacement currently fits ${exercise.name}.`;
+          return;
+        }
+        previewPlan.exercises[index] = { ...replacement, superset: exercise.superset, phase: exercise.phase };
+        announcePreviewEdit(`Coach swap: ${exercise.name} → ${replacement.name}.`);
+      }
+    });
+
+    document.getElementById("preview-add-btn").addEventListener("click", () => {
+      if (!previewPlan) return;
+      const select = document.getElementById("preview-add-select");
+      const exercise = getPreviewEditCandidates(currentUser).find((candidate) => candidate.name === select.value);
+      if (!exercise) return;
+      previewPlan.exercises.push({ ...exercise });
+      announcePreviewEdit(`Added ${exercise.name}. The workout now has ${previewPlan.exercises.length} exercises.`);
+    });
+
+    document.getElementById("preview-undo-btn").addEventListener("click", () => {
+      if (!previewPlan || !previewEditSnapshot) return;
+      previewPlan.exercises = clonePreviewExercises(previewEditSnapshot);
+      announcePreviewEdit("Restored the workout to the version you opened in the editor.");
+    });
   }
 
   function renderHistory(history) {
@@ -2671,6 +2959,7 @@ okra`;
         // (e.g. 135/155/175/185), so each one gets its own adjustable value,
         // all seeded from wherever the athlete left off last time.
         sets: Array.from({ length: setCount }, () => ({ target, actual: target, weight: seedWeight, touched: false })),
+        workingWeight: seedWeight,
         flag: "",
         weightRecommendation: recommendation,
       };
@@ -2689,7 +2978,7 @@ okra`;
         if (bySupersetKey.has(key)) {
           bySupersetKey.get(key).items.push(ex);
         } else {
-          const group = { items: [ex] };
+          const group = { items: [ex], superset: ex.superset };
           bySupersetKey.set(key, group);
           groups.push(group);
         }
@@ -2698,6 +2987,26 @@ okra`;
       }
     });
     return groups;
+  }
+
+  function getWorkoutGroupLabel(group, phaseName) {
+    const isPartnerWork = checkInState.partner || /partner/i.test(phaseName || "") || group.items.some((exercise) => /partner/i.test(exercise.phase || ""));
+    if (isPartnerWork) return "PARTNER SET · MOVE TOGETHER, THEN SWITCH";
+    const label = group.superset ? ` ${group.superset}` : "";
+    return `SUPERSET${label} · ALTERNATE EXERCISES`;
+  }
+
+  function updateWorkoutProgress() {
+    if (!activeWorkout) return;
+    const exerciseLogs = activeWorkout.exercises.map((exercise) => activeWorkout.logs[exercise.name]).filter(Boolean);
+    const totalSets = exerciseLogs.reduce((sum, log) => sum + log.sets.length, 0);
+    const completedSets = exerciseLogs.reduce((sum, log) => sum + log.sets.filter((set) => set.touched).length, 0);
+    const completedExercises = exerciseLogs.filter((log) => log.sets.length > 0 && log.sets.every((set) => set.touched)).length;
+    const totalExercises = exerciseLogs.length;
+    const percent = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
+    document.getElementById("workout-progress-title").textContent = `${completedExercises} of ${totalExercises} exercises logged`;
+    document.getElementById("workout-progress-detail").textContent = `${completedSets} of ${totalSets} sets · ${percent}%`;
+    document.getElementById("workout-progress-bar").style.width = `${percent}%`;
   }
 
   function renderWorkoutHeader(splitKey) {
@@ -2730,7 +3039,7 @@ okra`;
       squat: /squat|leg press|wall.?sit/,
       lunge: /lunge|step.?up|split squat/,
       hinge: /deadlift|hinge|good morning|glute bridge/,
-      horizontalPush: /bench press|chest press|push.?up|chest pass|cable fly/,
+      horizontalPush: /bench press|chest press|incline dumbbell press|push.?up|chest pass|cable fly/,
       verticalPull: /pull.?up|pulldown/,
       horizontalPull: /row/,
       core: /plank|dead bug|leg raise|mountain climber/,
@@ -2916,17 +3225,19 @@ okra`;
     const showWeight = usesWeight(ex);
     const weightRecommendation = log.weightRecommendation;
 
-    // Weight lives inside each set row (ramping sets are the norm, not the
-    // exception), alongside either a rep stepper or a simple complete-toggle.
+    if (showWeight && log.workingWeight == null) {
+      log.workingWeight = log.sets.find((set) => !set.touched && set.weight != null)?.weight
+        ?? log.sets.find((set) => set.weight != null)?.weight
+        ?? weightRecommendation?.weight
+        ?? null;
+    }
+
+    // The working weight is changed once above the set list. It flows into
+    // every unfinished set; completed sets keep the load actually used.
     const setsHtml = log.sets
       .map((s, i) => {
         const weightControl = showWeight
-          ? `<div class="wex-mini-stepper" data-role="weight">
-               <button type="button" class="wex-mini-btn" data-dir="-1">−</button>
-               <input type="number" inputmode="numeric" pattern="[0-9]*" class="wex-mini-input" placeholder="—" value="${s.weight ?? ""}" />
-               <span class="wex-mini-unit">lb</span>
-               <button type="button" class="wex-mini-btn" data-dir="1">+</button>
-             </div>`
+          ? `<span class="wex-set-weight" data-role="set-weight">${s.weight != null ? `${s.weight} lb` : "weight not set"}</span>`
           : "";
         const repsControl =
           s.target != null
@@ -2935,7 +3246,8 @@ okra`;
                  <span class="wex-mini-value">${s.actual}</span>
                  <span class="wex-mini-unit">reps</span>
                  <button type="button" class="wex-mini-btn" data-dir="1">+</button>
-               </div>`
+               </div>
+               <button type="button" class="wex-set-done${s.touched ? " done" : ""}" aria-label="Mark set ${i + 1} complete">${s.touched ? "✓" : "○"}</button>`
             : `<button type="button" class="wex-toggle-btn">Mark Done</button>`;
         const label =
           s.target != null
@@ -2960,14 +3272,18 @@ okra`;
       </div>
       ${ex.howTo ? `<p class="wex-howto">${escapeHtml(ex.howTo)}</p>` : ""}
       ${ex.tip ? `<p class="wex-tip">💡 ${escapeHtml(ex.tip)}</p>` : ""}
-      ${showWeight && weightRecommendation ? `
-        <div class="wex-weight-rec">
-          <div>
-            <span class="wex-weight-rec-label">⚡ COACH STARTING WEIGHT</span>
-            <strong>${weightRecommendation.weight} lb</strong>
-            <p>${escapeHtml(weightRecommendation.explanation)}</p>
+      ${showWeight ? `
+        <div class="wex-working-load">
+          <div class="wex-working-load-copy">
+            <span>WORKING WEIGHT</span>
+            <strong>${weightRecommendation ? `Coach start: ${weightRecommendation.weight} lb` : "Set today’s load"}</strong>
           </div>
-          <button type="button" class="wex-apply-weight">Use ${weightRecommendation.weight} lb</button>
+          <div class="wex-working-load-controls">
+            <button type="button" data-delta="-5" aria-label="Decrease working weight by 5 pounds">−5</button>
+            <label><input type="number" inputmode="numeric" pattern="[0-9]*" class="wex-working-load-input" placeholder="—" value="${log.workingWeight ?? ""}" /><span>lb</span></label>
+            <button type="button" data-delta="5" aria-label="Increase working weight by 5 pounds">+5</button>
+          </div>
+          <p>Change this once between sets. It updates every unfinished set; completed sets stay locked.</p>
         </div>
       ` : ""}
       <div class="wex-sets">${setsHtml}</div>
@@ -2994,34 +3310,10 @@ okra`;
       const idx = Number(row.dataset.setIndex);
       const set = log.sets[idx];
 
-      const weightStepper = row.querySelector('.wex-mini-stepper[data-role="weight"]');
-      if (weightStepper) {
-        const weightInput = weightStepper.querySelector(".wex-mini-input");
-        const setWeight = (value) => {
-          set.weight = value;
-          set.touched = true;
-          weightInput.value = value ?? "";
-          row.classList.add("touched");
-        };
-        weightInput.addEventListener("input", (e) => {
-          const parsed = e.target.value === "" ? null : Number(e.target.value);
-          set.weight = Number.isFinite(parsed) ? parsed : null;
-          set.touched = true;
-          row.classList.add("touched");
-          schedulePersistActiveWorkout();
-        });
-        weightStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
-          const dir = Number(btn.dataset.dir);
-          attachHoldStepper(btn, () => {
-            setWeight(Math.max(0, (set.weight ?? 0) + dir * 5));
-            schedulePersistActiveWorkout();
-          });
-        });
-      }
-
       const repsStepper = row.querySelector('.wex-mini-stepper[data-role="reps"]');
       if (repsStepper) {
         const valueEl = repsStepper.querySelector(".wex-mini-value");
+        const doneButton = row.querySelector(".wex-set-done");
         repsStepper.querySelectorAll(".wex-mini-btn").forEach((btn) => {
           const dir = Number(btn.dataset.dir);
           attachHoldStepper(btn, () => {
@@ -3029,8 +3321,19 @@ okra`;
             set.touched = true;
             valueEl.textContent = set.actual;
             row.classList.add("touched");
+            doneButton?.classList.add("done");
+            if (doneButton) doneButton.textContent = "✓";
+            updateWorkoutProgress();
             schedulePersistActiveWorkout();
           });
+        });
+        doneButton?.addEventListener("click", () => {
+          set.touched = !set.touched;
+          row.classList.toggle("touched", set.touched);
+          doneButton.classList.toggle("done", set.touched);
+          doneButton.textContent = set.touched ? "✓" : "○";
+          updateWorkoutProgress();
+          schedulePersistActiveWorkout();
         });
         return;
       }
@@ -3043,24 +3346,32 @@ okra`;
           toggleBtn.classList.toggle("done", set.touched);
           toggleBtn.textContent = set.touched ? "✓ Done" : "Mark Done";
           row.classList.toggle("touched", set.touched);
+          updateWorkoutProgress();
           schedulePersistActiveWorkout();
         });
       }
     });
 
-    const applyWeightButton = body.querySelector(".wex-apply-weight");
-    if (applyWeightButton && weightRecommendation) {
-      applyWeightButton.addEventListener("click", () => {
-        log.sets.forEach((set) => {
-          set.weight = weightRecommendation.weight;
-          set.touched = true;
+    const workingLoadInput = body.querySelector(".wex-working-load-input");
+    if (workingLoadInput) {
+      const applyWorkingWeight = (value) => {
+        const next = Number.isFinite(value) && value > 0 ? Math.round(value) : null;
+        log.workingWeight = next;
+        workingLoadInput.value = next ?? "";
+        log.sets.forEach((set, index) => {
+          if (set.touched) return;
+          set.weight = next;
+          const label = body.querySelector(`.wex-set-row[data-set-index="${index}"] .wex-set-weight`);
+          if (label) label.textContent = next != null ? `${next} lb` : "weight not set";
         });
-        body.querySelectorAll('.wex-mini-stepper[data-role="weight"] .wex-mini-input').forEach((input) => {
-          input.value = weightRecommendation.weight;
-          input.closest(".wex-set-row")?.classList.add("touched");
-        });
-        applyWeightButton.textContent = `Applied ${weightRecommendation.weight} lb ✓`;
         schedulePersistActiveWorkout();
+      };
+      workingLoadInput.addEventListener("input", (event) => {
+        const parsed = event.target.value === "" ? null : Number(event.target.value);
+        applyWorkingWeight(parsed);
+      });
+      body.querySelectorAll(".wex-working-load-controls button[data-delta]").forEach((button) => {
+        attachHoldStepper(button, () => applyWorkingWeight(Math.max(5, (log.workingWeight ?? 0) + Number(button.dataset.delta))));
       });
     }
 
@@ -3089,6 +3400,7 @@ okra`;
         logNote(currentUser, `Swapped ${ex.name} → ${result.exercise.name} (${reasonText})`);
       }
       renderWorkoutExercises();
+      updateWorkoutProgress();
       const newCard = Array.from(document.querySelectorAll(".wex-card")).find((item) => item.querySelector(".wex-name")?.textContent === result.exercise.name);
       if (newCard) {
         const newStatus = newCard.querySelector(".wex-swap-status");
@@ -3133,7 +3445,7 @@ okra`;
         if (group.items.length > 1) {
           const wrap = document.createElement("div");
           wrap.className = "superset-group";
-          wrap.innerHTML = `<span class="superset-label">PARTNERS · MOVE TOGETHER, THEN SWITCH</span>`;
+          wrap.innerHTML = `<span class="superset-label">${escapeHtml(getWorkoutGroupLabel(group, phase.name))}</span>`;
           group.items.forEach((ex) => wrap.appendChild(renderExerciseCard(ex)));
           phaseWrap.appendChild(wrap);
         } else {
@@ -3200,6 +3512,7 @@ okra`;
     renderWorkoutHeader(activeWorkout.sessionSplitKey);
     renderWarmup(activeWorkout.sessionSplitKey);
     renderWorkoutExercises();
+    updateWorkoutProgress();
   }
 
   function initWorkoutScreen() {
@@ -3338,11 +3651,61 @@ okra`;
   // Moves the single terminal-panel DOM node into whichever screen's slot
   // is currently relevant, so the chat thread/state carries over instead
   // of resetting each time the user moves from check-in into selection.
+  const COACH_SCREEN_CONTEXT = {
+    checkin: {
+      label: "OPEN CONVERSATION · TELL ME WHAT MATTERS TODAY",
+      prompt: "Ask your coach anything…",
+      suggestions: ["Low energy today", "I have 30 minutes", "No machines available"],
+      message: null,
+    },
+    select: {
+      label: "LIVE RECOMMENDATION · YOUR NOTES UPDATE THE PLAN",
+      prompt: "Change focus, time, or equipment…",
+      suggestions: ["Focus on quads", "Make it shorter", "Bodyweight only"],
+      message: "I’ve built these options from your check-in. Tell me what to emphasize, avoid, or shorten and I’ll update the recommendation live.",
+    },
+    preview: {
+      label: "WORKOUT DRAFT · REVIEW BEFORE YOU START",
+      prompt: "Ask for a change to this workout…",
+      suggestions: ["Swap an exercise", "Use fewer exercises", "Change the equipment"],
+      message: "This is your workout draft. You can ask me for changes here, or use Edit Exercises for direct control before starting.",
+    },
+  };
+
+  function updateCoachContext(target, announce = true) {
+    const context = COACH_SCREEN_CONTEXT[target] || COACH_SCREEN_CONTEXT.checkin;
+    const changed = coachContextTarget !== target;
+    coachContextTarget = target;
+    const contextEl = document.getElementById("chat-context");
+    const input = document.getElementById("chat-input");
+    const actions = document.getElementById("chat-quick-actions");
+    if (contextEl) contextEl.textContent = context.label;
+    if (input) input.placeholder = context.prompt;
+    if (actions) {
+      actions.innerHTML = context.suggestions.map((suggestion) => `<button type="button" data-prompt="${escapeHtml(suggestion)}">${escapeHtml(suggestion)}</button>`).join("");
+    }
+    if (announce && changed && context.message && chatMessages.length > 0 && !chatMessages.some((message) => message.context === target)) {
+      chatMessages.push({ role: "coach", text: context.message, context: target });
+      renderChatThread();
+    }
+  }
+
   function placeTerminalPanel(target) {
     const panel = document.getElementById("terminal-panel");
     const slotId = target === "select" ? "select-chat-slot" : target === "preview" ? "preview-chat-slot" : "checkin-chat-slot";
     const slot = document.getElementById(slotId);
     if (panel && slot) slot.appendChild(panel);
+    const changed = coachContextTarget !== target;
+    if (panel && changed) {
+      panel.classList.toggle("collapsed", target === "preview");
+      const toggle = document.getElementById("chat-panel-toggle");
+      if (toggle) {
+        const expanded = target !== "preview";
+        toggle.textContent = expanded ? "Hide" : "Open";
+        toggle.setAttribute("aria-expanded", String(expanded));
+      }
+    }
+    updateCoachContext(target);
   }
 
   // Opens with whatever the athlete told the coach last time, so it feels
@@ -3411,12 +3774,14 @@ okra`;
     const history = getHistory(user);
     const greeting = buildCoachOpening(user, history);
     chatMessages = [{ role: "coach", text: greeting }];
+    coachContextTarget = null;
     chatBusy = false;
     chatSuggestedSplit = null;
     recommendationDraft = null;
     recommendationDraftKey = null;
     recommendationRequestId++;
     renderChatThread();
+    updateCoachContext("checkin", false);
     setChatBusy(false);
     upgradeCoachOpening(user);
   }
@@ -3646,6 +4011,7 @@ okra`;
             libraryContext: getLibraryContext(text),
             libraryRoutines: getLibraryRoutinesContext(),
             context: {
+              screen: coachContextTarget || "checkin",
               streak: currentStreak(getHistory(currentUser)),
               sessionsLogged: getHistory(currentUser).length,
               recentNotes: getNotes(currentUser).slice(-6),
@@ -3728,6 +4094,21 @@ okra`;
     document.getElementById("chat-input").addEventListener("keydown", (e) => {
       if (e.key === "Enter") sendChatMessage();
     });
+    document.getElementById("chat-quick-actions").addEventListener("click", (e) => {
+      const suggestion = e.target.closest("button[data-prompt]");
+      if (!suggestion || chatBusy) return;
+      const input = document.getElementById("chat-input");
+      input.value = suggestion.dataset.prompt;
+      updateChatCursor();
+      sendChatMessage();
+    });
+    document.getElementById("chat-panel-toggle").addEventListener("click", () => {
+      const panel = document.getElementById("terminal-panel");
+      const collapsed = panel.classList.toggle("collapsed");
+      const toggle = document.getElementById("chat-panel-toggle");
+      toggle.textContent = collapsed ? "Open" : "Hide";
+      toggle.setAttribute("aria-expanded", String(!collapsed));
+    });
 
     document.getElementById("checkin-submit").addEventListener("click", () => {
       showSelect(currentUser);
@@ -3788,6 +4169,7 @@ okra`;
   function openSpecialWorkoutPreview(user, splitKey) {
     const preset = SPECIAL_WORKOUTS[splitKey];
     if (!preset || preset.user !== user) return;
+    if (preset.defaultCheckIn?.partner && !checkInState.partner) return;
     // Presets set their own realistic check-in defaults (Jessica's game-day
     // core session is a short partner workout; Shortcut to Shred is a long
     // solo one) — falls back to the original jess-game-day-core defaults
@@ -3830,7 +4212,12 @@ okra`;
     document.getElementById("rec-name").textContent = recMeta.name;
     document.getElementById("rec-tagline").textContent = recMeta.tagline;
     document.getElementById("rec-reason").textContent = rec.reason;
-    const localExercises = applyCoachFocus(user, rec.key, buildWorkoutPlan(user, rec.key, checkInState), checkInState.note);
+    const localExercises = enforcePlanConstraints(
+      user,
+      rec.key,
+      applyCoachFocus(user, rec.key, buildWorkoutPlan(user, rec.key, checkInState), checkInState.note, checkInState),
+      checkInState
+    );
     recommendationDraftKey = rec.key;
     recommendationDraft = { exercises: localExercises, reason: rec.reason, source: "local", suggestedWeights: new Map() };
     renderRecommendationExercises(localExercises, getCoachFocus(checkInState.note), Boolean(AI_ENDPOINT));
@@ -3867,8 +4254,11 @@ okra`;
     if (!list) return;
 
     const nextKey = user === "jake" ? nextShortcutToShredKey(user) : null;
-    const presetEntries = Object.entries(SPECIAL_WORKOUTS).filter(([, preset]) => preset.user === user);
-    const routines = loadLibrary().routines;
+    const presetEntries = Object.entries(SPECIAL_WORKOUTS).filter(([, preset]) => {
+      if (preset.user !== user) return false;
+      return checkInState.partner || !preset.defaultCheckIn?.partner;
+    });
+    const routines = loadLibrary().routines.filter((routine) => checkInState.partner || !routine.exercises.some(isPartnerExercise));
 
     // Same-program entries (Shortcut to Shred's 6 days) collapse into one
     // compact row with a day picker instead of a full-detail row repeated
@@ -3943,7 +4333,7 @@ okra`;
     document.getElementById("back-to-options").addEventListener("click", () => showSelect(currentUser));
     document.getElementById("session-done-home-btn").addEventListener("click", () => showHome());
     document.getElementById("edit-preview-btn").addEventListener("click", () => {
-      if (previewPlan) showCustom(currentUser, previewPlan.exercises);
+      if (previewPlan) openPreviewEditor(currentUser);
     });
     const saveBtn = document.getElementById("save-workout-btn");
     if (saveBtn) {
@@ -4750,6 +5140,7 @@ okra`;
   initGraphScreen();
   initCheerModal();
   initSelectScreen();
+  initPreviewEditor();
   initCustomScreen();
   initWorkoutScreen();
   initTerminalCursor();
