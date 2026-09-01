@@ -2200,6 +2200,7 @@ okra`;
     "checkin-screen",
     "settings-screen",
     "history-screen",
+    "trainer-screen",
     "graph-screen",
     "library-screen",
     "select-screen",
@@ -3927,6 +3928,7 @@ okra`;
     document.getElementById("hub-settings-btn").addEventListener("click", () => showSettings(currentUser));
     document.getElementById("hub-history-btn").addEventListener("click", () => showHistory(currentUser));
     document.getElementById("hub-graph-btn").addEventListener("click", () => showGraph(currentUser));
+    document.getElementById("hub-trainer-btn").addEventListener("click", () => showTrainer());
     document.getElementById("hub-cheer-btn").addEventListener("click", () => showCheerModal(currentUser));
     document.getElementById("hub-library-btn").addEventListener("click", () => showLibrary(currentUser));
   }
@@ -4490,6 +4492,152 @@ okra`;
     document.getElementById("history-back").addEventListener("click", () => returnToCheckIn(currentUser));
   }
 
+  // ---------- master trainer screen ----------
+  // A single view across BOTH athletes — not scoped to whoever is currently
+  // logged in — so a shared trainer/partner can see what each of them
+  // actually did, what they told the coach, and what's worth adjusting,
+  // without switching accounts back and forth. Reads only what's already
+  // captured (history, performance, notes) — no new data collection.
+
+  const SORENESS_PATTERN = /\b(sore|soreness|pain|hurt|injury|tight|ache)\b/i;
+
+  function daysSince(dateStr) {
+    const then = new Date(dateStr).getTime();
+    if (!Number.isFinite(then)) return null;
+    return Math.max(0, Math.round((Date.now() - then) / 86400000));
+  }
+
+  // Cheap heuristics over data the app already has — a starting point for
+  // "how do we fine-tune this for them," not a diagnosis. Each one names a
+  // concrete number or quote so it's checkable, not just a vibe.
+  function computeTrainerInsights(user) {
+    const history = getHistory(user);
+    const notes = getNotes(user);
+    const insights = [];
+
+    if (history.length === 0) {
+      insights.push("🎬 No sessions logged yet.");
+      return insights;
+    }
+
+    const gap = daysSince(history[history.length - 1].date);
+    if (gap != null && gap >= 3) {
+      insights.push(`⏸ No session logged in ${gap} days — worth a check-in.`);
+    }
+
+    const effortCounts = { easy: 0, right: 0, hard: 0 };
+    history.slice(-10).forEach((entry) => {
+      Object.values(entry.performance || {}).forEach((perf) => {
+        if (perf.effort && effortCounts[perf.effort] != null) effortCounts[perf.effort]++;
+      });
+    });
+    const totalEffort = effortCounts.easy + effortCounts.right + effortCounts.hard;
+    if (totalEffort >= 3 && effortCounts.easy / totalEffort > 0.5) {
+      insights.push(`📈 Rating sessions "Easy" often lately (${effortCounts.easy}/${totalEffort} tagged) — may be ready to progress weight or reps.`);
+    } else if (totalEffort >= 3 && effortCounts.hard / totalEffort > 0.4) {
+      insights.push(`⚠️ Rating sessions "Hard" often lately (${effortCounts.hard}/${totalEffort} tagged) — consider easing volume or adding rest.`);
+    } else if (totalEffort === 0) {
+      insights.push("📭 No effort feedback tagged yet — the Easy / Just Right / Hard chips mid-workout build this signal over time.");
+    }
+
+    const recentSoreness = notes.slice(-10).filter((n) => SORENESS_PATTERN.test(n.text));
+    if (recentSoreness.length > 0) {
+      const latest = recentSoreness[recentSoreness.length - 1];
+      insights.push(`🩹 Recent mention: "${latest.text}" (${formatShortDate(latest.date)}) — worth following up before pushing that area.`);
+    }
+
+    if (insights.length === 0) {
+      insights.push("✅ Nothing flagged — logging consistently with balanced effort feedback.");
+    }
+    return insights;
+  }
+
+  function renderTrainerPersonaSection(user) {
+    const persona = getPersonaProfile(user);
+    const history = getHistory(user);
+    const notes = getNotes(user);
+    const streak = currentStreak(history);
+    const insights = computeTrainerInsights(user);
+
+    const sessionsHtml =
+      [...history]
+        .reverse()
+        .slice(0, 8)
+        .map((entry) => {
+          const meta = getSplitMeta(entry.splitKey);
+          const metaLine = entry.minutes
+            ? `${entry.minutes} min · ${ENERGY_LABEL[entry.energy]}${entry.partner ? " · w/ partner" : ""}`
+            : "";
+          return `
+        <li class="trainer-session">
+          <div class="trainer-session-head">
+            <span>${meta.icon} ${escapeHtml(meta.name)}</span>
+            <span class="trainer-session-date">${formatShortDate(entry.date)}</span>
+          </div>
+          ${metaLine ? `<span class="trainer-session-meta">${escapeHtml(metaLine)}</span>` : ""}
+          ${entry.note ? `<p class="trainer-session-note">${escapeHtml(entry.note)}</p>` : ""}
+        </li>
+      `;
+        })
+        .join("") || `<li class="empty-note">No sessions logged yet.</li>`;
+
+    const notesHtml =
+      [...notes]
+        .reverse()
+        .slice(0, 6)
+        .map((n) => `<li class="trainer-note-row"><span class="trainer-note-date">${formatShortDate(n.date)}</span><span>${escapeHtml(n.text)}</span></li>`)
+        .join("") || `<li class="empty-note">No feedback captured yet.</li>`;
+
+    const insightsHtml = insights.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+
+    return `
+      <section class="trainer-persona" style="--accent:${persona.accent}">
+        <div class="trainer-persona-head">
+          <span class="trainer-avatar">${escapeHtml(persona.name[0])}</span>
+          <div class="trainer-persona-copy">
+            <span class="trainer-persona-name">${escapeHtml(persona.name)}</span>
+            <span class="trainer-persona-goal">🎯 ${escapeHtml(persona.goal)}</span>
+          </div>
+        </div>
+        <div class="recap-stats">
+          <span class="recap-stat">📈 ${history.length} session${history.length === 1 ? "" : "s"}</span>
+          <span class="recap-stat">🔥 ${streak} day streak</span>
+          <span class="recap-stat">${loggedToday(history) ? "✅ Logged today" : "⏳ Not logged today"}</span>
+        </div>
+        <div class="trainer-block">
+          <span class="trainer-block-title">Coaching Signals</span>
+          <ul class="trainer-insights-list">${insightsHtml}</ul>
+        </div>
+        <div class="trainer-block">
+          <span class="trainer-block-title">Recent Feedback</span>
+          <ul class="trainer-notes-list">${notesHtml}</ul>
+        </div>
+        <div class="trainer-block">
+          <span class="trainer-block-title">Recent Sessions</span>
+          <ul class="trainer-sessions-list">${sessionsHtml}</ul>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderTrainerScreen() {
+    document.getElementById("trainer-content").innerHTML = Object.keys(PERSONAS)
+      .map((user) => renderTrainerPersonaSection(user))
+      .join("");
+  }
+
+  function showTrainer() {
+    showScreen("trainer-screen");
+    renderTrainerScreen();
+  }
+
+  function initTrainerScreen() {
+    document.getElementById("trainer-back").addEventListener("click", () => {
+      if (currentUser) returnToCheckIn(currentUser);
+      else showLogin();
+    });
+  }
+
   // ---------- exercise library screen ----------
 
   function renderLibraryList() {
@@ -4932,6 +5080,7 @@ okra`;
   initCheckIn();
   initSettings();
   initHistory();
+  initTrainerScreen();
   initLibrary();
   initGraphScreen();
   initCheerModal();

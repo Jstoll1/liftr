@@ -24,7 +24,7 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609012900" />
+  <link rel="stylesheet" href="styles.css?v=202609013000" />
 </head>
 <body>
 
@@ -89,6 +89,9 @@
           </button>
           <button id="hub-library-btn" class="hub-tile" title="Exercise Library">
             <span class="hub-tile-icon">📚</span>
+          </button>
+          <button id="hub-trainer-btn" class="hub-tile" title="Master Trainer">
+            <span class="hub-tile-icon">🎓</span>
           </button>
         </div>
       </div>
@@ -221,6 +224,17 @@
       <span class="section-title">Full History</span>
       <h2 class="panel-heading">Every session, <span id="history-name" class="panel-heading-accent"></span></h2>
       <ul id="history-full-list" class="history-list"></ul>
+    </div>
+  </main>
+
+  <!-- MASTER TRAINER SCREEN -->
+  <main id="trainer-screen" class="screen hidden">
+    <div class="panel-wrap wide">
+      <button id="trainer-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">Master Trainer</span>
+      <h2 class="panel-heading">Both athletes, one view</h2>
+      <span class="panel-subtext">Every logged session, what they told the coach, and signals worth acting on — for both of you.</span>
+      <div id="trainer-content" class="trainer-content"></div>
     </div>
   </main>
 
@@ -451,6 +465,6 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
   </script>
-  <script src="app.js?v=202609012900"></script>
+  <script src="app.js?v=202609013000"></script>
 </body>
 </html>
