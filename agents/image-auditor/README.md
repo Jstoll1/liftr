@@ -1,33 +1,20 @@
 # Exercise Image Auditor
 
-This repository-native agent crawls Liftr's real JavaScript workout definitions and checks the exact JPEG path the app will request for every exercise.
+This repository agent crawls every exercise definition in `app.js` and checks the same body-part image folders the Liftr interface searches at runtime.
 
 ## Run it
 
 ```sh
-node scripts/audit-exercise-images.mjs --write
+node scripts/audit-exercise-images.js --write
 ```
 
-Reports are written to:
-
-- `reports/exercise-image-audit.md`
-- `reports/exercise-image-audit.json`
-
-Add `--fail-on-missing` when a nonzero exit status is useful in CI.
-
-## What it scans
-
-- Base exercises for Jessica and Jake
-- Finishers
-- Partner exercises
-- Special workout presets
-- The app's actual body-part routing and filename slugging function
+It writes `reports/exercise-image-audit.md` for people and `reports/exercise-image-audit.json` for tools or image-generation workflows. Add `--fail-on-missing` when missing or invalid images should fail a CI job. Use `--json` to print machine-readable output.
 
 ## What it flags
 
-- Missing files
-- Zero-byte files
-- Paths that are not files
-- Files at `.jpg` paths that do not have valid JPEG start/end markers
+- Missing JPEGs
+- Empty files
+- Directories at an expected image path
+- Files without valid JPEG start and end markers
 
-The audit treats a missing image as the reason an exercise displays the app's fallback icon. It does not judge exercise technique or anatomical accuracy. Generated exercise art still requires the source PNG, prompt record, manifest entry, app-ready JPEG, handoff, and qualified trainer review described in `assets/images/README.md`.
+It suggests a body-part folder when it can infer one from the exercise name. The audit finds coverage gaps; generated exercise art still needs the source image, prompt record, manifest entry, app-ready JPEG, handoff, and qualified trainer review described in `assets/images/README.md`.

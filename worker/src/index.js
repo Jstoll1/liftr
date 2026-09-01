@@ -30,6 +30,9 @@ export default {
     if (url.pathname === "/cheers") {
       return handleCheers(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/library") {
+      return handleLibrary(request, env, corsHeaders);
+    }
 
     if (request.method !== "POST") {
       return json({ error: "Method not allowed" }, 405, corsHeaders);
@@ -48,8 +51,11 @@ export default {
     if (body?.mode === "chat") {
       return handleChat(body, env, corsHeaders);
     }
+    if (body?.mode === "opening") {
+      return handleOpening(body, env, corsHeaders);
+    }
 
-    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory } = body || {};
+    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory, libraryContext, libraryRoutines } = body || {};
     const valid =
       persona?.name &&
       persona?.goal &&
@@ -114,6 +120,13 @@ export default {
       "direction: use the full candidate list including any 'Finisher:'-named",
       "candidate — that's exactly the scenario it exists for — and don't hold",
       "back on volume just because a session could technically be shorter.",
+      "The candidate list is usually all one body-part/category for this",
+      "session's split, but may include exactly one 'Finisher:'-named candidate",
+      "from a DIFFERENT category — that only happens when the athlete",
+      "specifically asked to close with it (e.g. an ab finisher during a legs",
+      "session). ALWAYS include that specific candidate in chosen, regardless",
+      "of energy level or session length — it's an explicit request, not an",
+      "optional volume decision like the split's own default finisher above.",
       "If a partner is available, prefer partner-friendly candidates when present.",
       "The athlete may give a free-text note (today's, and/or recent prior days').",
       "Use it: honor equipment constraints or injuries by avoiding candidates that",
@@ -128,6 +141,24 @@ export default {
       "from related lifts (e.g. someone who deadlifts 225 lbs probably starts",
       "Romanian Deadlift lighter, around 60-70% of that). Never guess for an",
       "exercise you have no reasonable basis for — omit it instead.",
+      "libraryReference (if present) holds excerpts from documents the athlete",
+      "personally uploaded — their own training program, a PT's rehab protocol,",
+      "a coach's notes, etc. Let it inform your picks and reasoning where it's",
+      "actually relevant (e.g. a rehab protocol that says avoid a movement, or",
+      "a program that specifies a rep scheme) — but it never overrides the",
+      "candidate list: still only choose from candidateExercises, never an",
+      "exercise the reference material mentions but that isn't a candidate.",
+      "If nothing in it applies to today's session, ignore it entirely.",
+      "savedRoutines (if present) lists workouts this athlete has personally",
+      "kept — proven combos that worked for them (e.g. they always pair bench",
+      "press with pull-ups). When their note or history suggests they want",
+      "something similar to, or a variation on, a saved routine, use it as a",
+      "reference pattern: prefer picking candidates today that match the same",
+      "movement roles (e.g. a saved routine pairing a horizontal push with a",
+      "vertical pull suggests doing the same pairing again, even with",
+      "different specific candidates). Still only choose from",
+      "candidateExercises — never invent or add movements from savedRoutines",
+      "that aren't in today's candidate list.",
     ].join(" ");
 
     const userPrompt = JSON.stringify({
@@ -143,6 +174,8 @@ export default {
       todayNote: todayNote || null,
       recentFeedback: Array.isArray(pastNotes) ? pastNotes : [],
       weightHistory: Array.isArray(weightHistory) ? weightHistory : [],
+      libraryReference: sanitizeLibraryContext(libraryContext),
+      savedRoutines: sanitizeLibraryRoutines(libraryRoutines),
       candidateExercises: candidates,
     });
 
@@ -154,7 +187,11 @@ export default {
           Authorization: `Bearer ${env.OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: env.OPENAI_MODEL || "gpt-4o-mini",
+          // The exercise-picking engine gets its own, stronger model —
+          // falls back to the shared OPENAI_MODEL, then gpt-4o-mini, if
+          // OPENAI_MODEL_PLAN isn't set. Same OPENAI_API_KEY covers both;
+          // this is just which model that key is allowed to call.
+          model: env.OPENAI_MODEL_PLAN || env.OPENAI_MODEL || "gpt-4o-mini",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
@@ -200,6 +237,32 @@ export default {
     }
   },
 };
+
+// Defense in depth against a malformed or oversized libraryContext blowing
+// up prompt/token cost — the client already budgets this, but the Worker
+// shouldn't trust that blindly since nothing stops a direct request here.
+function sanitizeLibraryContext(libraryContext) {
+  if (!Array.isArray(libraryContext)) return [];
+  return libraryContext
+    .filter((item) => item && typeof item.title === "string" && typeof item.excerpt === "string")
+    .slice(0, 5)
+    .map((item) => ({ title: item.title.slice(0, 120), excerpt: item.excerpt.slice(0, 3000) }));
+}
+
+// Same defense-in-depth as sanitizeLibraryContext above, for the athlete's
+// saved-workout combos — names only, capped, so a malformed or oversized
+// payload can't blow up prompt/token cost.
+function sanitizeLibraryRoutines(libraryRoutines) {
+  if (!Array.isArray(libraryRoutines)) return [];
+  return libraryRoutines
+    .filter((item) => item && typeof item.name === "string" && Array.isArray(item.exercises))
+    .slice(0, 8)
+    .map((item) => ({
+      name: item.name.slice(0, 80),
+      splitKey: typeof item.splitKey === "string" ? item.splitKey : null,
+      exercises: item.exercises.filter((e) => typeof e === "string").slice(0, 20).map((e) => e.slice(0, 80)),
+    }));
+}
 
 function json(data, status, headers) {
   return new Response(JSON.stringify(data), {
@@ -247,6 +310,55 @@ async function handleKv(request, env, corsHeaders, url) {
       return json({ ok: true }, 200, corsHeaders);
     } catch (err) {
       console.error("KV write error", err?.stack || String(err));
+      return json({ error: "Write failed" }, 500, corsHeaders);
+    }
+  }
+
+  return json({ error: "Method not allowed" }, 405, corsHeaders);
+}
+
+// Shared exercise-library sync — extracted PDF text uploaded from either
+// persona's device, keyed under one global key (not per-user, since a
+// training program or PT protocol usually isn't specific to one athlete).
+// Same whole-blob-overwrite shape as handleKv above; the client is
+// responsible for merging its local copy with the cloud copy before POSTing.
+async function handleLibrary(request, env, corsHeaders) {
+  if (!env.LIFTR_KV) {
+    console.error("LIFTR_KV binding missing");
+    return json({ error: "Sync not configured" }, 500, corsHeaders);
+  }
+
+  const key = "liftr:library";
+
+  if (request.method === "GET") {
+    try {
+      const stored = await env.LIFTR_KV.get(key);
+      const data = stored ? JSON.parse(stored) : null;
+      // Tolerates the pre-routines shape (a bare array of docs) written by
+      // clients before saved workouts existed.
+      const docs = Array.isArray(data) ? data : Array.isArray(data?.docs) ? data.docs : [];
+      const routines = Array.isArray(data?.routines) ? data.routines : [];
+      return json({ docs, routines }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Library read error", err?.stack || String(err));
+      return json({ error: "Read failed" }, 500, corsHeaders);
+    }
+  }
+
+  if (request.method === "POST" || request.method === "PUT") {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400, corsHeaders);
+    }
+    const docs = Array.isArray(body?.docs) ? body.docs : [];
+    const routines = Array.isArray(body?.routines) ? body.routines : [];
+    try {
+      await env.LIFTR_KV.put(key, JSON.stringify({ docs, routines }));
+      return json({ ok: true }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Library write error", err?.stack || String(err));
       return json({ error: "Write failed" }, 500, corsHeaders);
     }
   }
@@ -402,7 +514,7 @@ const SPLIT_LABELS = {
 };
 
 async function handleChat(body, env, corsHeaders) {
-  const { persona, messages, context } = body;
+  const { persona, messages, context, libraryContext, libraryRoutines } = body;
   const valid =
     persona?.name &&
     persona?.goal &&
@@ -454,6 +566,9 @@ async function handleChat(body, env, corsHeaders) {
     Array.isArray(persona.focusAreas) && persona.focusAreas.length ? `focused on: ${persona.focusAreas.join(", ")}` : null,
   ].filter(Boolean);
 
+  const libraryDocs = sanitizeLibraryContext(libraryContext);
+  const savedRoutines = sanitizeLibraryRoutines(libraryRoutines);
+
   const systemPrompt = [
     "You are a thoughtful, knowledgeable ongoing fitness coach talking with an athlete",
     "on the main page of their training app. You can discuss workouts, motivation,",
@@ -461,6 +576,12 @@ async function handleChat(body, env, corsHeaders) {
     `The athlete is ${persona.name}, whose goal is: ${persona.goal}.`,
     profileBits.length ? `Also known about them: ${profileBits.join("; ")}.` : "",
     context ? `Recent app context: ${JSON.stringify(context)}.` : "",
+    libraryDocs.length
+      ? `The athlete has personally uploaded reference material — their own training program, PT protocol, or coaching notes. Reference it naturally when relevant to what they're asking, but don't force it in if it doesn't apply: ${JSON.stringify(libraryDocs)}.`
+      : "",
+    savedRoutines.length
+      ? `The athlete has saved these workouts as proven combos they like: ${JSON.stringify(savedRoutines)}. If they ask for a variation, a similar workout, or want to combine/derive from something they've done before, reason about the movement pattern of the saved combo (e.g. a horizontal push paired with a vertical pull) and suggest analogous exercises or a natural variation — don't just repeat the saved list verbatim unless asked to.`
+      : "",
     "Calibrate depth to the athlete. For a simple request or factual adjustment, use",
     "1 to 3 concise sentences. When they share meaningful context, emotion, a setback,",
     "a motivation problem, a changing goal, performance patterns, or multiple connected",
@@ -530,6 +651,99 @@ async function handleChat(body, env, corsHeaders) {
     }, 200, corsHeaders);
   } catch (err) {
     console.error("Worker error (chat)", err?.stack || String(err));
+    return json({ error: "Worker error" }, 500, corsHeaders);
+  }
+}
+
+// Writes the coach's very first message when the check-in chat opens. The
+// local fallback (a fixed ~9-keyword topic matcher in app.js) only catches
+// a handful of subjects and otherwise always quotes the last note back
+// verbatim with the same trailing question — this is what makes the coach
+// actually read recent notes and write something specific and different
+// each time, instead of a template.
+async function handleOpening(body, env, corsHeaders) {
+  const { persona, recentNotes, lastGreeting } = body || {};
+  const valid = persona?.name && persona?.goal && Array.isArray(recentNotes);
+  if (!valid) {
+    console.error("Malformed opening request", JSON.stringify(body));
+    return json({ error: "Malformed opening request" }, 400, corsHeaders);
+  }
+
+  const schema = {
+    type: "object",
+    properties: {
+      greeting: {
+        type: "string",
+        description: "The coach's opening message for today's check-in — 1 to 2 sentences, warm and specific, ending in an inviting question.",
+      },
+    },
+    required: ["greeting"],
+    additionalProperties: false,
+  };
+
+  const profileBits = [
+    persona.heightIn ? `${Math.floor(persona.heightIn / 12)}'${persona.heightIn % 12}" tall` : null,
+    persona.weightLb ? `${persona.weightLb} lb bodyweight` : null,
+    Array.isArray(persona.focusAreas) && persona.focusAreas.length ? `focused on: ${persona.focusAreas.join(", ")}` : null,
+  ].filter(Boolean);
+
+  const systemPrompt = [
+    "You write the very first message an athlete sees when they open their",
+    "fitness coaching app for today's check-in.",
+    `The athlete is ${persona.name}, whose goal is: ${persona.goal}.`,
+    profileBits.length ? `Also known about them: ${profileBits.join("; ")}.` : "",
+    recentNotes.length > 0
+      ? `Their recent notes to the coach, oldest first: ${JSON.stringify(recentNotes)}.`
+      : "They have no recent notes on file — this may be a new or returning athlete.",
+    "Write ONE short, warm, specific opening message (1-2 sentences) ending in",
+    "an inviting question about today. If a recent note mentions something",
+    "concrete — an injury, a sport, an emotion, equipment, a goal change — pick",
+    "the single most relevant one and reference it naturally and specifically,",
+    "in your own words. Do not use a fixed template like 'Last time you",
+    "mentioned X, how is that going' — vary the phrasing and angle every time,",
+    "the way a real coach who remembers you would actually talk.",
+    lastGreeting ? `You opened with this exact message last time — do not repeat it or its structure: "${lastGreeting}".` : "",
+    "If there is nothing specific to reference, ask a natural, brief question",
+    "about how they're feeling today given their goal — still not a rigid template.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  try {
+    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: env.OPENAI_MODEL || "gpt-4o-mini",
+        messages: [{ role: "system", content: systemPrompt }],
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "coach_opening", schema, strict: true },
+        },
+        temperature: 0.9,
+      }),
+    });
+
+    if (!aiRes.ok) {
+      console.error("OpenAI error (opening)", aiRes.status, await aiRes.text());
+      return json({ error: "Upstream AI error" }, 502, corsHeaders);
+    }
+
+    const aiData = await aiRes.json();
+    const content = aiData.choices?.[0]?.message?.content;
+    const parsed = JSON.parse(content);
+
+    if (typeof parsed.greeting !== "string" || !parsed.greeting.trim()) {
+      console.error("Empty opening", JSON.stringify(parsed));
+      return json({ error: "Empty opening" }, 502, corsHeaders);
+    }
+
+    return json({ greeting: parsed.greeting.trim() }, 200, corsHeaders);
+  } catch (err) {
+    console.error("Worker error (opening)", err?.stack || String(err));
     return json({ error: "Worker error" }, 500, corsHeaders);
   }
 }

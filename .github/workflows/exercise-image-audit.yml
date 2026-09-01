@@ -6,7 +6,7 @@ on:
     paths:
       - "app.js"
       - "images/**"
-      - "scripts/audit-exercise-images.mjs"
+      - "scripts/audit-exercise-images.js"
 
 permissions:
   contents: read
@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: "22"
       - name: Crawl workout image references
-        run: node scripts/audit-exercise-images.mjs --write
+        run: node scripts/audit-exercise-images.js --write
       - name: Add audit to job summary
         run: cat reports/exercise-image-audit.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4

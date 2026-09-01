@@ -1,69 +1,99 @@
 # Exercise image audit
 
-Generated: 2026-09-01T12:16:46.945Z
+Generated from `app.js` at 2026-09-01T12:20:14.164Z.
 
-- Exercise references scanned: **73**
-- Unique image paths expected: **71**
-- References with working JPEGs: **20**
-- References with missing, empty, or invalid images: **53**
-- Unique image files requiring attention: **52**
+- Distinct exercises: **110**
+- Ready images: **25**
+- Missing or invalid images: **85**
 
-## Images requiring attention
+## Images needing attention
 
-| User | Workout | Exercise | Expected path | Problem |
-|---|---|---|---|---|
-| jessica | chest-back | Plank to Row | `images/back/plank-to-row.jpg` | missing |
-| jake | chest-back | Weighted Pull-Ups | `images/back/weighted-pull-ups.jpg` | missing |
-| jessica | legs | Lateral Band Walk | `images/legs/lateral-band-walk.jpg` | missing |
-| jessica | cardio | Tempo Run | `images/cardio/tempo-run.jpg` | missing |
-| jessica | cardio | Stair Climber Intervals | `images/cardio/stair-climber-intervals.jpg` | missing |
-| jessica | cardio | Cycling | `images/cardio/cycling.jpg` | missing |
-| jessica | cardio | Mobility Flow | `images/cardio/mobility-flow.jpg` | missing |
-| jake | cardio | Rowing Intervals | `images/cardio/rowing-intervals.jpg` | missing |
-| jake | cardio | Sled Push | `images/cardio/sled-push.jpg` | missing |
-| jake | cardio | Battle Ropes | `images/cardio/battle-ropes.jpg` | missing |
-| jake | cardio | Jump Rope Finisher | `images/cardio/jump-rope-finisher.jpg` | missing |
-| jessica | core-mobility | Dead Bug | `images/core/dead-bug.jpg` | missing |
-| jessica | core-mobility | Hip Flexor Stretch Flow | `images/core/hip-flexor-stretch-flow.jpg` | missing |
-| jessica | core-mobility | Side Plank | `images/core/side-plank.jpg` | missing |
-| jessica | core-mobility | Cat-Cow Flow | `images/core/cat-cow-flow.jpg` | missing |
-| jake | core-mobility | Hanging Leg Raise | `images/core/hanging-leg-raise.jpg` | missing |
-| jake | core-mobility | 90/90 Hip Flow | `images/core/90-90-hip-flow.jpg` | missing |
-| jake | core-mobility | Weighted Plank | `images/core/weighted-plank.jpg` | missing |
-| jake | core-mobility | Thoracic Rotation Flow | `images/core/thoracic-rotation-flow.jpg` | missing |
-| jessica | chest-back | Finisher: Burpee Pulse | `images/chest/finisher-burpee-pulse.jpg` | missing |
-| jessica | legs | Finisher: Jump Squats | `images/legs/finisher-jump-squats.jpg` | missing |
-| jessica | cardio | Finisher: All-Out Sprint | `images/cardio/finisher-all-out-sprint.jpg` | missing |
-| jake | cardio | Finisher: Assault Bike Sprint | `images/cardio/finisher-assault-bike-sprint.jpg` | missing |
-| jessica | core-mobility | Finisher: Mountain Climbers | `images/core/finisher-mountain-climbers.jpg` | missing |
-| jake | core-mobility | Finisher: Bear Crawl | `images/core/finisher-bear-crawl.jpg` | missing |
-| jessica | chest-back | Partner Med-Ball Chest Pass | `images/chest/partner-med-ball-chest-pass.jpg` | missing |
-| jake | chest-back | Partner Resistance Push-Off | `images/chest/partner-resistance-push-off.jpg` | missing |
-| jessica | legs | Partner Wall-Sit Hold | `images/legs/partner-wall-sit-hold.jpg` | missing |
-| jake | legs | Partner Sled Drag | `images/legs/partner-sled-drag.jpg` | missing |
-| jessica | cardio | Partner Medicine Ball Circuit | `images/cardio/partner-medicine-ball-circuit.jpg` | missing |
-| jake | cardio | Partner Relay Sprints | `images/cardio/partner-relay-sprints.jpg` | missing |
-| jessica | core-mobility | Partner Plank Hand-Slap | `images/core/partner-plank-hand-slap.jpg` | missing |
-| jake | core-mobility | Partner-Assisted Stretch Flow | `images/core/partner-assisted-stretch-flow.jpg` | missing |
-| jessica | jess-game-day-core | DB Dead Bug Hold + Heel Taps | `images/core/db-dead-bug-hold-heel-taps.jpg` | missing |
-| jessica | jess-game-day-core | Forearm Plank | `images/core/forearm-plank.jpg` | missing |
-| jessica | jess-game-day-core | DB Suitcase March | `images/core/db-suitcase-march.jpg` | missing |
-| jessica | jess-game-day-core | Bird Dog | `images/core/bird-dog.jpg` | missing |
-| jessica | jess-game-day-core | Side Plank | `images/core/side-plank.jpg` | missing |
-| jessica | jess-game-day-core | DB Glute Bridge | `images/core/db-glute-bridge.jpg` | missing |
-| jessica | jess-game-day-core | 90/90 Hip Switches | `images/core/90-90-hip-switches.jpg` | missing |
-| jessica | jess-game-day-core | Adductor Rock-Backs | `images/core/adductor-rock-backs.jpg` | missing |
-| jessica | jess-game-day-core | Half-Kneeling Hip-Flexor Stretch + Reach | `images/core/half-kneeling-hip-flexor-stretch-reach.jpg` | missing |
-| jessica | jess-game-day-core | Knee-Over-Toe Ankle Rocks | `images/core/knee-over-toe-ankle-rocks.jpg` | missing |
-| jessica | jess-game-day-core | Open-Book Rotations | `images/core/open-book-rotations.jpg` | missing |
-| jessica | jess-game-day-core | DB Goblet Squat Hold | `images/core/db-goblet-squat-hold.jpg` | missing |
-| jessica | jess-game-day-core | Slow Calf Raises | `images/core/slow-calf-raises.jpg` | missing |
-| jessica | jess-game-day-core | Plank Shoulder Taps | `images/core/plank-shoulder-taps.jpg` | missing |
-| jessica | jess-game-day-core | Glute Bridge March | `images/core/glute-bridge-march.jpg` | missing |
-| jessica | jess-game-day-core | Dead Hang | `images/core/dead-hang.jpg` | missing |
-| jessica | jess-game-day-core | Hip Flexor Stretch | `images/core/hip-flexor-stretch.jpg` | missing |
-| jessica | jess-game-day-core | Adductor Stretch | `images/core/adductor-stretch.jpg` | missing |
-| jessica | jess-game-day-core | Calf Stretch | `images/core/calf-stretch.jpg` | missing |
-| jessica | jess-game-day-core | Deep Breathing | `images/core/deep-breathing.jpg` | missing |
+| Exercise | Status | Expected filename | Suggested folder |
+| --- | --- | --- | --- |
+| 90/90 Hip Flow | missing | `90-90-hip-flow.jpg` | Needs review |
+| 90/90 Hip Switches | missing | `90-90-hip-switches.jpg` | Needs review |
+| Alternating Dumbbell Shoulder Press (Standing) | missing | `alternating-dumbbell-shoulder-press-standing.jpg` | `images/shoulders/` |
+| Barbell Bent Over Row | missing | `barbell-bent-over-row.jpg` | `images/back/` |
+| Barbell Curl | missing | `barbell-curl.jpg` | `images/arms/` |
+| Barbell Front Raise | missing | `barbell-front-raise.jpg` | `images/shoulders/` |
+| Barbell Shoulder Press | missing | `barbell-shoulder-press.jpg` | `images/shoulders/` |
+| Barbell Shrug | missing | `barbell-shrug.jpg` | `images/shoulders/` |
+| Barbell Wrist Curl | missing | `barbell-wrist-curl.jpg` | `images/arms/` |
+| Barbell or EZ-Bar Preacher Curl | missing | `barbell-or-ez-bar-preacher-curl.jpg` | `images/arms/` |
+| Battle Ropes | missing | `battle-ropes.jpg` | Needs review |
+| Bench Press | missing | `bench-press.jpg` | `images/chest/` |
+| Bird Dog | missing | `bird-dog.jpg` | Needs review |
+| Bodyweight Squats | missing | `bodyweight-squats.jpg` | `images/legs/` |
+| Cable Crossover | missing | `cable-crossover.jpg` | `images/chest/` |
+| Cable Crunch | missing | `cable-crunch.jpg` | `images/core/` |
+| Cable Lying Triceps Extension | missing | `cable-lying-triceps-extension.jpg` | `images/arms/` |
+| Cat-Cow | missing | `cat-cow.jpg` | Needs review |
+| Cat-Cow Flow | missing | `cat-cow-flow.jpg` | Needs review |
+| Child’s Pose + Side Reach | missing | `child-s-pose-side-reach.jpg` | Needs review |
+| Close-Grip Bench Press | missing | `close-grip-bench-press.jpg` | `images/chest/` |
+| Crunch | missing | `crunch.jpg` | `images/core/` |
+| Cycling | missing | `cycling.jpg` | Needs review |
+| Dead Bug | missing | `dead-bug.jpg` | `images/core/` |
+| Deadlift | missing | `deadlift.jpg` | `images/legs/` |
+| Decline Smith Machine Press | missing | `decline-smith-machine-press.jpg` | Needs review |
+| Deep Squat Hold | missing | `deep-squat-hold.jpg` | `images/legs/` |
+| Dips | missing | `dips.jpg` | `images/chest/` |
+| Donkey or Leg Press Calf Raise | missing | `donkey-or-leg-press-calf-raise.jpg` | `images/legs/` |
+| Dumbbell Bent-Over Lateral Raise | missing | `dumbbell-bent-over-lateral-raise.jpg` | `images/shoulders/` |
+| Dumbbell Bent-Over Row | missing | `dumbbell-bent-over-row.jpg` | `images/back/` |
+| Dumbbell Flye | missing | `dumbbell-flye.jpg` | `images/chest/` |
+| Dumbbell Reverse Wrist Curl | missing | `dumbbell-reverse-wrist-curl.jpg` | `images/arms/` |
+| Elbow-to-Opposite-Knee | missing | `elbow-to-opposite-knee.jpg` | Needs review |
+| Figure-4 Stretch | missing | `figure-4-stretch.jpg` | Needs review |
+| Finisher: All-Out Sprint | missing | `finisher-all-out-sprint.jpg` | Needs review |
+| Finisher: Assault Bike Sprint | missing | `finisher-assault-bike-sprint.jpg` | Needs review |
+| Finisher: Bear Crawl | missing | `finisher-bear-crawl.jpg` | Needs review |
+| Finisher: Burpee Pulse | missing | `finisher-burpee-pulse.jpg` | Needs review |
+| Finisher: Jump Squats | missing | `finisher-jump-squats.jpg` | `images/legs/` |
+| Finisher: Mountain Climbers | missing | `finisher-mountain-climbers.jpg` | Needs review |
+| Forearm Plank | missing | `forearm-plank.jpg` | `images/core/` |
+| Half-Kneeling Hip-Flexor Stretch | missing | `half-kneeling-hip-flexor-stretch.jpg` | Needs review |
+| Hamstring Stretch | missing | `hamstring-stretch.jpg` | Needs review |
+| Hanging Leg Raise | missing | `hanging-leg-raise.jpg` | Needs review |
+| High Cable Curl | missing | `high-cable-curl.jpg` | `images/arms/` |
+| Hip Flexor Stretch Flow | missing | `hip-flexor-stretch-flow.jpg` | Needs review |
+| Hip-Flexor Stretch + Overhead Reach | missing | `hip-flexor-stretch-overhead-reach.jpg` | Needs review |
+| Incline Dumbbell Flye | missing | `incline-dumbbell-flye.jpg` | `images/chest/` |
+| Jump Rope Finisher | missing | `jump-rope-finisher.jpg` | Needs review |
+| Lateral Band Walk | missing | `lateral-band-walk.jpg` | Needs review |
+| Leg Curl | missing | `leg-curl.jpg` | `images/legs/` |
+| Mobility Flow | missing | `mobility-flow.jpg` | Needs review |
+| Open-Book Rotation | missing | `open-book-rotation.jpg` | Needs review |
+| Overhead Dumbbell Extension | missing | `overhead-dumbbell-extension.jpg` | Needs review |
+| Partner Med-Ball Chest Pass | missing | `partner-med-ball-chest-pass.jpg` | `images/chest/` |
+| Partner Medicine Ball Circuit | missing | `partner-medicine-ball-circuit.jpg` | Needs review |
+| Partner Plank Hand-Slap | missing | `partner-plank-hand-slap.jpg` | `images/core/` |
+| Partner Relay Sprints | missing | `partner-relay-sprints.jpg` | Needs review |
+| Partner Resistance Push-Off | missing | `partner-resistance-push-off.jpg` | Needs review |
+| Partner Sled Drag | missing | `partner-sled-drag.jpg` | Needs review |
+| Partner Wall-Sit Hold | missing | `partner-wall-sit-hold.jpg` | Needs review |
+| Partner-Assisted Stretch Flow | missing | `partner-assisted-stretch-flow.jpg` | Needs review |
+| Plank | missing | `plank.jpg` | `images/core/` |
+| Plank to Row | missing | `plank-to-row.jpg` | `images/back/` |
+| Reverse-Grip Barbell Curl | missing | `reverse-grip-barbell-curl.jpg` | `images/arms/` |
+| Reverse-Grip Pulldown | missing | `reverse-grip-pulldown.jpg` | `images/back/` |
+| Rope Cable Curl | missing | `rope-cable-curl.jpg` | `images/arms/` |
+| Rowing Intervals | missing | `rowing-intervals.jpg` | Needs review |
+| Side Plank | missing | `side-plank.jpg` | `images/core/` |
+| Sled Push | missing | `sled-push.jpg` | Needs review |
+| Slow Lateral Lunge | missing | `slow-lateral-lunge.jpg` | `images/legs/` |
+| Smith Machine Behind-the-Back Shrug | missing | `smith-machine-behind-the-back-shrug.jpg` | `images/shoulders/` |
+| Smith Machine Hip Thrust | missing | `smith-machine-hip-thrust.jpg` | `images/legs/` |
+| Smith Machine One-Arm Upright Row | missing | `smith-machine-one-arm-upright-row.jpg` | `images/shoulders/` |
+| Squat | missing | `squat.jpg` | `images/legs/` |
+| Stair Climber Intervals | missing | `stair-climber-intervals.jpg` | Needs review |
+| Standing Oblique Cable Crunch | missing | `standing-oblique-cable-crunch.jpg` | `images/core/` |
+| Tempo Run | missing | `tempo-run.jpg` | Needs review |
+| Thoracic Rotation Flow | missing | `thoracic-rotation-flow.jpg` | Needs review |
+| Triceps Pressdown | missing | `triceps-pressdown.jpg` | `images/arms/` |
+| Walking Lunge | missing | `walking-lunge.jpg` | `images/legs/` |
+| Weighted Plank | missing | `weighted-plank.jpg` | `images/core/` |
+| Weighted Pull-Ups | missing | `weighted-pull-ups.jpg` | `images/back/` |
+| World’s Greatest Stretch | missing | `world-s-greatest-stretch.jpg` | Needs review |
 
-An exercise can appear more than once when it is used in base, partner, finisher, or preset workout definitions.
+The app checks every configured body-part folder, so a ready image may live in any of them.
