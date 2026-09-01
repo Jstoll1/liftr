@@ -24,7 +24,7 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609013400" />
+  <link rel="stylesheet" href="styles.css?v=202609013800" />
 </head>
 <body>
 
@@ -89,6 +89,9 @@
           </button>
           <button id="hub-library-btn" class="hub-tile" title="Exercise Library">
             <span class="hub-tile-icon">📚</span>
+          </button>
+          <button id="hub-trainer-btn" class="hub-tile" title="Master Trainer">
+            <span class="hub-tile-icon">🎓</span>
           </button>
         </div>
       </div>
@@ -227,6 +230,17 @@
     </div>
   </main>
 
+  <!-- MASTER TRAINER SCREEN -->
+  <main id="trainer-screen" class="screen hidden">
+    <div class="panel-wrap wide">
+      <button id="trainer-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">Master Trainer</span>
+      <h2 class="panel-heading">Both athletes, one view</h2>
+      <span class="panel-subtext">Every logged session, what they told the coach, and signals worth acting on — for both of you.</span>
+      <div id="trainer-content" class="trainer-content"></div>
+    </div>
+  </main>
+
   <!-- EXERCISE LIBRARY SCREEN -->
   <main id="library-screen" class="screen hidden">
     <div class="panel-wrap">
@@ -248,6 +262,16 @@
         <ul id="library-routines-list" class="library-list"></ul>
         <p id="library-routines-empty" class="panel-subtext">Nothing saved yet — tap "Save this workout" from any session preview.</p>
       </div>
+    </div>
+  </main>
+
+  <!-- LIBRARY DOC DETAIL SCREEN -->
+  <main id="library-doc-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="library-doc-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">From Your Library</span>
+      <h2 id="library-doc-title" class="panel-heading"></h2>
+      <div id="library-doc-body"></div>
     </div>
   </main>
 
@@ -395,24 +419,25 @@
 
         <ul id="session-exercises" class="session-exercises"></ul>
 
-        <div id="preview-editor" class="preview-editor hidden" aria-live="polite">
-          <div class="preview-editor-head">
-            <div>
-              <strong>EDIT WORKOUT</strong>
-              <span>Reorder, replace, remove, or add exercises.</span>
-            </div>
-            <button id="preview-editor-done" type="button" class="ghost-btn small">Done</button>
+        <p id="session-done-note" class="session-done-note hidden"></p>
+
+        <div id="session-rating-row" class="session-feedback-row hidden">
+          <span class="session-feedback-label">How was today, overall?</span>
+          <div class="session-feedback-chips">
+            <button type="button" class="session-feedback-chip" data-rating="rough">😞 Rough</button>
+            <button type="button" class="session-feedback-chip" data-rating="solid">🙂 Solid</button>
+            <button type="button" class="session-feedback-chip" data-rating="great">🔥 Great</button>
           </div>
-          <p id="preview-edit-status" class="preview-edit-status">Changes update this preview immediately.</p>
-          <div id="preview-edit-list" class="preview-edit-list"></div>
-          <div class="preview-add-row">
-            <select id="preview-add-select" aria-label="Exercise to add"></select>
-            <button id="preview-add-btn" type="button" class="ghost-btn small">+ Add</button>
-          </div>
-          <button id="preview-undo-btn" type="button" class="link-btn">↶ Undo changes</button>
         </div>
 
-        <p id="session-done-note" class="session-done-note hidden"></p>
+        <div id="session-rec-feedback-row" class="session-feedback-row hidden">
+          <span class="session-feedback-label">Was this the right workout for today?</span>
+          <div class="session-feedback-chips">
+            <button type="button" class="session-feedback-chip" data-rec="up">👍 Yes</button>
+            <button type="button" class="session-feedback-chip" data-rec="down">👎 Not really</button>
+          </div>
+        </div>
+
         <button id="session-done-home-btn" type="button" class="primary-btn hidden">🏠 Back to Home</button>
 
         <div id="preview-actions" class="preview-actions hidden">
@@ -480,6 +505,6 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
   </script>
-  <script src="app.js?v=202609013400"></script>
+  <script src="app.js?v=202609013800"></script>
 </body>
 </html>

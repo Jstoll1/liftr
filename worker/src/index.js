@@ -54,8 +54,11 @@ export default {
     if (body?.mode === "opening") {
       return handleOpening(body, env, corsHeaders);
     }
+    if (body?.mode === "parseLibraryDoc") {
+      return handleParseLibraryDoc(body, env, corsHeaders);
+    }
 
-    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory, libraryContext, libraryRoutines } = body || {};
+    const { persona, split, minutes, energy, partner, candidates, todayNote, pastNotes, weightHistory, recentExercises, libraryContext, libraryRoutines } = body || {};
     const valid =
       persona?.name &&
       persona?.goal &&
@@ -72,11 +75,9 @@ export default {
     }
 
     const names = candidates.map((c) => c.name);
-    const baseCount = MINUTES_TO_COUNT[minutes] || 4;
-    const targetCount = Math.min(
-      candidates.length,
-      energy === "low" ? Math.max(2, baseCount - 1) : energy === "high" ? Math.min(6, baseCount + 1) : baseCount
-    );
+    const baseTarget = MINUTES_TO_COUNT[minutes] || 4;
+    const energyTarget = energy === "low" ? Math.max(2, baseTarget - 1) : energy === "high" ? Math.min(6, baseTarget + 1) : baseTarget;
+    const targetCount = Math.min(candidates.length, energyTarget);
 
     const schema = {
       type: "object",
@@ -116,15 +117,13 @@ export default {
     const systemPrompt = [
       "You are a sharp, encouraging personal trainer picking today's exercises",
       "from a FIXED candidate list. Never invent exercises outside that list.",
-      `Choose EXACTLY ${targetCount} distinct exercises for this ${minutes}-minute session.`,
+      `Choose exactly ${targetCount} exercises for this ${minutes}-minute, ${energy}-energy session.`,
       "Prioritize whichever candidates best serve the athlete's stated goal.",
       "On low energy, trim volume and prefer the lower-fatigue candidates.",
-      "On high energy for 45+ minute sessions, include the 'Finisher:'-named",
-      "candidate when one is present, but keep the plan inside the exact count",
-      "and time budget above.",
-      "If workoutType is Chest & Back, the chosen plan must visibly train BOTH:",
-      "include at least two chest/push movements and two back/pull movements",
-      "whenever the target count is four or more. Alternate push and pull when possible.",
+      "On high energy, especially for 45+ minute sessions, go the other",
+      "direction: use the full candidate list including any 'Finisher:'-named",
+      "candidate — that's exactly the scenario it exists for — and don't hold",
+      "back on volume just because a session could technically be shorter.",
       "The candidate list is usually all one body-part/category for this",
       "session's split, but may include exactly one 'Finisher:'-named candidate",
       "from a DIFFERENT category — that only happens when the athlete",
@@ -132,8 +131,25 @@ export default {
       "session). ALWAYS include that specific candidate in chosen, regardless",
       "of energy level or session length — it's an explicit request, not an",
       "optional volume decision like the split's own default finisher above.",
-      "If hasPartner is false, never choose an exercise whose name or instructions",
-      "mention a partner. If a partner is available, prefer partner-friendly candidates when present.",
+      partner
+        ? "A partner is available; partner-friendly candidates may be used when they fit."
+        : "The athlete is training alone. NEVER choose a partner exercise or a movement that requires another person.",
+      split?.key === "chest-back"
+        ? "This is a combined Chest & Back session. Keep it balanced: include at least two chest/horizontal-push exercises and at least two back/row/pull exercises when the target count is four or more."
+        : "Keep the chosen movements aligned with the requested workout type.",
+      "Some candidates carry a `superset` field — candidates sharing the same",
+      "superset value are a deliberate pair (e.g. a push paired with a pull, so",
+      "the session stays balanced). ALWAYS choose both members of a pair",
+      "together, never just one — picking only one half breaks the balance it",
+      "exists to guarantee.",
+      "recentlyUsed lists exercises this same session type actually used the",
+      "last couple of times. The candidate list is often bigger than a single",
+      "session needs specifically so there's room to rotate — prefer candidates",
+      "NOT in recentlyUsed over ones that are, all else being equal, so the",
+      "athlete sees real variety across sessions instead of the same picks",
+      "every time. This is a preference, not a rule: still choose whatever",
+      "genuinely best fits today's goal, energy, and note even if that means",
+      "repeating something recent.",
       "The athlete may give a free-text note (today's, and/or recent prior days').",
       "Use it: honor equipment constraints or injuries by avoiding candidates that",
       "conflict with them, factor in stated goal changes, and if it mentions a",
@@ -180,6 +196,7 @@ export default {
       todayNote: todayNote || null,
       recentFeedback: Array.isArray(pastNotes) ? pastNotes : [],
       weightHistory: Array.isArray(weightHistory) ? weightHistory : [],
+      recentlyUsed: Array.isArray(recentExercises) ? recentExercises : [],
       libraryReference: sanitizeLibraryContext(libraryContext),
       savedRoutines: sanitizeLibraryRoutines(libraryRoutines),
       candidateExercises: candidates,
@@ -227,6 +244,23 @@ export default {
       if (exercises.length === 0) {
         console.error("Empty plan after mapping", JSON.stringify(parsed));
         return json({ error: "Empty plan" }, 502, corsHeaders);
+      }
+
+      // The schema only constrains WHICH names are valid, not their
+      // relationships — nothing stops the model from choosing one half of
+      // a superset pair without the other. A pair exists specifically to
+      // guarantee balance (e.g. a bench press + pull-up pair is exactly
+      // one push and one pull); picking only the push half of every pair
+      // silently turns a "Chest & Back" session into an all-push one.
+      // Deterministically complete any partial pair rather than trusting
+      // a prompt instruction to always hold.
+      const chosenSupersetKeys = new Set(exercises.filter((e) => e.superset).map((e) => e.superset));
+      if (chosenSupersetKeys.size > 0) {
+        candidates.forEach((c) => {
+          if (c.superset && chosenSupersetKeys.has(c.superset) && !exercises.some((e) => e.name === c.name)) {
+            exercises.push(c);
+          }
+        });
       }
 
       // Only keep suggestions for exercises actually in today's plan, with a
@@ -508,6 +542,110 @@ async function handleSwap(body, env, corsHeaders) {
   }
 }
 
+// Caps how much of an uploaded doc's text gets sent to the model for
+// parsing — generous enough for a real multi-day program, bounded so
+// token cost/context stays sane regardless of how large the upload is.
+const MAX_PARSE_DOC_CHARS = 24000;
+
+// Turns a raw uploaded PDF's extracted text into the app's own exercise
+// shape (name/detail/howTo/tip, grouped into named workout days) so it
+// can render with the exact same components as every other workout in
+// the app, instead of just being a wall of PDF text. Never invents
+// exercises the document doesn't actually mention — if the model can't
+// find real workout content (a nutrition guide, a rehab note with no
+// discrete exercise list, etc.) it returns an empty workouts array
+// rather than fabricating one, and the client shows that honestly.
+async function handleParseLibraryDoc(body, env, corsHeaders) {
+  const { title, text } = body || {};
+  const valid = typeof title === "string" && typeof text === "string" && text.trim().length > 0;
+  if (!valid) return json({ error: "Malformed parse request" }, 400, corsHeaders);
+
+  const schema = {
+    type: "object",
+    properties: {
+      summary: {
+        type: "string",
+        description:
+          "One to three sentences explaining what this program/document actually is — its goal, structure, and who it's for. If it isn't a workout program at all, say what it is instead.",
+      },
+      workouts: {
+        type: "array",
+        description: "Each distinct workout/day the document describes. Empty array if the document contains no identifiable structured workout.",
+        items: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              description: "A short label for this workout/day, e.g. 'Day 1: Chest & Triceps' or the document's own name if it's a single-day routine.",
+            },
+            exercises: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string", description: "The exercise name as stated (or clearly implied) in the document." },
+                  detail: { type: "string", description: "Sets/reps/duration exactly as the document states it, e.g. '4 x 8-10' or '20 min'." },
+                  howTo: { type: "string", description: "A brief, accurate one-sentence how-to for this exercise using standard form — write this even if the document itself doesn't explain it." },
+                  tip: { type: "string", description: "One short, practical coaching cue for this exercise." },
+                },
+                required: ["name", "detail", "howTo", "tip"],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ["name", "exercises"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["summary", "workouts"],
+    additionalProperties: false,
+  };
+
+  const systemPrompt = [
+    "You extract the actual workout content from a document's raw extracted text into a",
+    "structured format. Only include exercises the document genuinely mentions or clearly",
+    "implies — never invent exercises, sets, or reps it doesn't state. If sets/reps aren't",
+    "given for something that's clearly an exercise, write a sensible standard detail and",
+    "say so isn't needed — just make a reasonable choice.",
+    "Group exercises into separate workouts/days exactly as the document structures them",
+    "(e.g. 'Day 1', 'Push Day', 'Week 1 Phase'). If it's genuinely one single routine, return",
+    "exactly one workout. If the document has no identifiable exercise program at all",
+    "(nutrition advice, a cover page, general commentary), return an empty workouts array",
+    "and use summary to say what the document actually is instead.",
+    "Keep the summary factual and specific to this document — no generic filler.",
+  ].join(" ");
+
+  try {
+    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: env.OPENAI_MODEL_PLAN || env.OPENAI_MODEL || "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: JSON.stringify({ title, documentText: text.slice(0, MAX_PARSE_DOC_CHARS) }) },
+        ],
+        response_format: { type: "json_schema", json_schema: { name: "parsed_library_doc", schema, strict: true } },
+        temperature: 0.2,
+      }),
+    });
+    if (!aiRes.ok) {
+      console.error("OpenAI error (parseLibraryDoc)", aiRes.status, await aiRes.text());
+      return json({ error: "Upstream AI error" }, 502, corsHeaders);
+    }
+    const aiData = await aiRes.json();
+    const parsed = JSON.parse(aiData.choices?.[0]?.message?.content || "{}");
+    if (typeof parsed.summary !== "string" || !Array.isArray(parsed.workouts)) {
+      return json({ error: "Malformed AI response" }, 502, corsHeaders);
+    }
+    return json({ summary: parsed.summary, workouts: parsed.workouts }, 200, corsHeaders);
+  } catch (err) {
+    console.error("Worker error (parseLibraryDoc)", err?.stack || String(err));
+    return json({ error: "Worker error" }, 500, corsHeaders);
+  }
+}
+
 // Ongoing coaching conversation for workouts, motivation, goals, setbacks,
 // and reflection. Workout constraints and explicit goal changes come back as
 // structured fields so the client can act on them safely.
@@ -517,6 +655,17 @@ const SPLIT_LABELS = {
   legs: "Legs",
   cardio: "Cardio",
   "core-mobility": "Core & Mobility",
+};
+// Persona-specific presets that go beyond the four generic splits — each
+// one built for a specific real scenario, richer than its generic
+// equivalent. Offered only to the athlete it was built for, so this can't
+// leak into the other persona's chat. When the athlete describes the
+// scenario a preset was built for, prefer suggesting it over the thin
+// generic split it would otherwise fall back to.
+const PERSONA_SPLIT_KEYS = {
+  Jessica: {
+    "jess-game-day-core": "Jess + Partner: Core & Mobility — a 5-phase pre-basketball-game partner session (trunk stability + hip mobility), richer than the generic core-mobility split",
+  },
 };
 
 async function handleChat(body, env, corsHeaders) {
@@ -533,6 +682,9 @@ async function handleChat(body, env, corsHeaders) {
     return json({ error: "Malformed chat request" }, 400, corsHeaders);
   }
 
+  const personaSplitKeys = PERSONA_SPLIT_KEYS[persona.name] || {};
+  const allSplitKeys = [...SPLIT_KEYS, ...Object.keys(personaSplitKeys)];
+
   const schema = {
     type: "object",
     properties: {
@@ -547,10 +699,13 @@ async function handleChat(body, env, corsHeaders) {
       },
       suggestedSplit: {
         type: ["string", "null"],
-        enum: [...SPLIT_KEYS, null],
+        enum: [...allSplitKeys, null],
         description:
-          "Set this to chest-back, legs, cardio, or core-mobility ONLY if the athlete clearly stated what type of workout they want today " +
-          "(e.g. 'let's do legs', 'I want a cardio day'). Leave it null if they didn't specify — never guess.",
+          `Set this to one of ${allSplitKeys.join(", ")} ONLY if the athlete clearly stated what type of workout they want today ` +
+          "(e.g. 'let's do legs', 'I want a cardio day'). Leave it null if they didn't specify — never guess." +
+          (Object.keys(personaSplitKeys).length
+            ? ` ${Object.entries(personaSplitKeys).map(([key, desc]) => `${key} = ${desc}`).join("; ")}.`
+            : ""),
       },
       goalUpdate: {
         type: ["string", "null"],
@@ -606,6 +761,9 @@ async function handleChat(body, env, corsHeaders) {
     `below the chat (options: ${SPLIT_KEYS.map((k) => `${k} = ${SPLIT_LABELS[k]}`).join(", ")}).`,
     "If they clearly say what they want today, set suggestedSplit to that key",
     "so the app updates the recommendation to match — otherwise leave it null.",
+    Object.keys(personaSplitKeys).length
+      ? `This athlete also has a personal preset built for a specific scenario: ${Object.entries(personaSplitKeys).map(([key, desc]) => `${key} (${desc})`).join("; ")}. It isn't one of the four visible category cards, but if they describe that scenario, set suggestedSplit to it instead of the generic category it would otherwise fall under — it's more complete and was built for exactly that.`
+      : "",
     "Only set goalUpdate when the athlete clearly asks to change or set their goal.",
     "Phrase it as a clean standalone goal. Discussing a possible goal is not enough.",
   ].join(" ");
@@ -647,7 +805,7 @@ async function handleChat(body, env, corsHeaders) {
       return json({ error: "Empty reply" }, 502, corsHeaders);
     }
 
-    const suggestedSplit = SPLIT_KEYS.includes(parsed.suggestedSplit) ? parsed.suggestedSplit : null;
+    const suggestedSplit = allSplitKeys.includes(parsed.suggestedSplit) ? parsed.suggestedSplit : null;
     return json({
       reply: parsed.reply,
       constraint: parsed.constraint || null,
