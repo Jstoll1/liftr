@@ -386,10 +386,48 @@
     },
   };
 
+  const SPECIAL_WORKOUTS = {
+    "jess-game-day-core": {
+      user: "jessica",
+      name: "Jess + Partner Game-Day Core & Mobility",
+      icon: "🏀",
+      tagline: "30–35 min · partner · moderate/easy",
+      reason: "Core stability, mobility, and activation without leg fatigue—built for a basketball day.",
+      warmup: [
+        "Treadmill Walk · 3 min",
+        "World’s Greatest Stretch · 3/side",
+        "Squat-to-Stand + Overhead Reach · 6 reps",
+        "Cat-Cow · 6 reps",
+      ],
+      exercises: [
+        { phase: "Core Circuit · 3 rounds · switch after each move · rest 45 sec", name: "DB Dead Bug Hold + Heel Taps", detail: "3 x 8/side", superset: "A1", howTo: "Partner A holds one dumbbell over the chest while alternating controlled heel taps.", tip: "Keep your low back gently pressed into the floor." },
+        { phase: "Core Circuit · 3 rounds · switch after each move · rest 45 sec", name: "Forearm Plank", detail: "3 x 30–40 sec", superset: "A1", howTo: "Partner B holds a forearm plank while Partner A completes heel taps, then switch.", tip: "Squeeze glutes and keep a straight line from shoulders to heels." },
+        { phase: "Core Circuit · 3 rounds · switch after each move · rest 45 sec", name: "DB Suitcase March", detail: "3 x 10/side", superset: "A2", howTo: "Hold one dumbbell at your side and march slowly without leaning toward the weight.", tip: "Stay tall and resist side-bending." },
+        { phase: "Core Circuit · 3 rounds · switch after each move · rest 45 sec", name: "Bird Dog", detail: "3 x 8/side", superset: "A2", howTo: "From hands and knees, extend the opposite arm and leg, then return with control.", tip: "Keep your hips square to the floor." },
+        { phase: "Core Circuit · 3 rounds · switch after each move · rest 45 sec", name: "Side Plank", detail: "3 x 25 sec/side", superset: "A3", howTo: "Hold a side plank while your partner completes glute bridges, then switch.", tip: "Stack shoulders and hips; shorten the hold before losing position." },
+        { phase: "Core Circuit · 3 rounds · switch after each move · rest 45 sec", name: "DB Glute Bridge", detail: "3 x 12", superset: "A3", howTo: "Rest a dumbbell across your hips and drive into a controlled bridge.", tip: "Pause at the top without arching your lower back." },
+        { phase: "Mobility Flow · 2 rounds · move together", name: "90/90 Hip Switches", detail: "2 x 8/side", howTo: "Sit tall with both knees bent and rotate them side to side through the 90/90 positions.", tip: "Move smoothly and use your hands only as needed." },
+        { phase: "Mobility Flow · 2 rounds · move together", name: "Adductor Rock-Backs", detail: "2 x 8/side", howTo: "From hands and knees, extend one leg to the side and rock your hips backward.", tip: "Keep a neutral spine and stop at a gentle inner-thigh stretch." },
+        { phase: "Mobility Flow · 2 rounds · move together", name: "Half-Kneeling Hip-Flexor Stretch + Reach", detail: "2 x 30 sec/side", howTo: "From half-kneeling, tuck the pelvis, shift forward slightly, and reach overhead.", tip: "Squeeze the glute of the kneeling side." },
+        { phase: "Mobility Flow · 2 rounds · move together", name: "Knee-Over-Toe Ankle Rocks", detail: "2 x 10/side", howTo: "Drive the knee forward over the toes while keeping the heel planted.", tip: "Track the knee in line with the middle toes." },
+        { phase: "Mobility Flow · 2 rounds · move together", name: "Open-Book Rotations", detail: "2 x 6/side", howTo: "Lie on your side with knees stacked and rotate the top arm open across the floor.", tip: "Keep both knees together as your upper back rotates." },
+        { phase: "Core + Activation Finisher · 2 rounds · minimal rest", name: "DB Goblet Squat Hold", detail: "2 x 20 sec", howTo: "Hold a dumbbell at your chest and sit into a comfortable squat hold.", tip: "This is activation, not fatigue—stay above any depth that feels taxing." },
+        { phase: "Core + Activation Finisher · 2 rounds · minimal rest", name: "Slow Calf Raises", detail: "2 x 12", howTo: "Rise onto the balls of your feet slowly, pause, and lower with control.", tip: "Use a full comfortable range without bouncing." },
+        { phase: "Core + Activation Finisher · 2 rounds · minimal rest", name: "Plank Shoulder Taps", detail: "2 x 8/side", howTo: "From a high plank, tap the opposite shoulder while resisting hip rotation.", tip: "Widen your feet if needed to keep the pelvis steady." },
+        { phase: "Core + Activation Finisher · 2 rounds · minimal rest", name: "Glute Bridge March", detail: "2 x 8/side", howTo: "Hold a bridge and lift one foot at a time without letting the hips drop.", tip: "Take small, controlled marches." },
+        { phase: "Core + Activation Finisher · 2 rounds · minimal rest", name: "Dead Hang", detail: "2 x 20–30 sec", howTo: "Hang from a pull-up bar with a comfortable grip and relaxed breathing.", tip: "Keep the shoulders gently active; stop if the grip or shoulders feel strained." },
+        { phase: "3-Minute Reset · finish together", name: "Hip Flexor Stretch", detail: "30 sec/side", howTo: "Settle into a relaxed half-kneeling hip-flexor stretch.", tip: "Breathe slowly and keep the stretch easy." },
+        { phase: "3-Minute Reset · finish together", name: "Adductor Stretch", detail: "30 sec/side", howTo: "Use a comfortable seated or side-lunge position to relax the inner thigh.", tip: "No forcing—finish feeling looser." },
+        { phase: "3-Minute Reset · finish together", name: "Calf Stretch", detail: "30 sec/side", howTo: "Press the back heel down in a supported standing calf stretch.", tip: "Keep the toes pointed forward." },
+        { phase: "3-Minute Reset · finish together", name: "Deep Breathing", detail: "4–5 slow breaths", howTo: "Sit or lie comfortably and take slow breaths into the ribs and belly.", tip: "Let each exhale be longer than the inhale." },
+      ],
+    },
+  };
+
   const CUSTOM_META = { name: "Custom Session", icon: "🛠", tagline: "Your own mix" };
 
   function getSplitMeta(splitKey) {
-    return SPLIT_LIBRARY[splitKey] || CUSTOM_META;
+    return SPLIT_LIBRARY[splitKey] || SPECIAL_WORKOUTS[splitKey] || CUSTOM_META;
   }
 
   // Bonus exercise appended when energy is high and time allows it.
@@ -443,7 +481,7 @@
   };
 
   function getWarmup(splitKey) {
-    return WARMUPS[splitKey] || WARMUPS.custom;
+    return SPECIAL_WORKOUTS[splitKey]?.warmup || WARMUPS[splitKey] || WARMUPS.custom;
   }
 
   // ---------- exercise images ----------
@@ -662,6 +700,9 @@
     Object.values(SPLIT_LIBRARY).forEach((split) => split.exercises[user]?.forEach((ex) => names.add(ex.name)));
     Object.values(FINISHERS).forEach((entry) => entry[user] && names.add(entry[user].name));
     Object.values(PARTNER_EXTRAS).forEach((entry) => entry[user] && names.add(entry[user].name));
+    Object.values(SPECIAL_WORKOUTS).forEach((workout) => {
+      if (workout.user === user) workout.exercises.forEach((exercise) => names.add(exercise.name));
+    });
     return Array.from(names);
   }
 
@@ -848,6 +889,10 @@
   // the base list plus the finisher/partner bonus moves, all up for grabs
   // based on today's actual context instead of always-on rules.
   function buildCandidatePool(user, splitKey) {
+    if (SPECIAL_WORKOUTS[splitKey]) {
+      const excluded = new Set(getPersonaProfile(user).excludedExercises);
+      return SPECIAL_WORKOUTS[splitKey].exercises.filter((exercise) => !excluded.has(exercise.name));
+    }
     const excluded = new Set(getPersonaProfile(user).excludedExercises);
     const pool = getAvailableExercises(user, splitKey);
     const finisher = FINISHERS[splitKey]?.[user];
@@ -861,6 +906,11 @@
   // exercises from the real candidate pool. Falls back to the local
   // rule-based planner on any failure, timeout, or if no endpoint is set.
   async function computePlan(user, splitKey, checkIn) {
+    if (SPECIAL_WORKOUTS[splitKey]) {
+      const preset = SPECIAL_WORKOUTS[splitKey];
+      const exercises = applyCoachFocus(user, splitKey, buildCandidatePool(user, splitKey), checkIn.note);
+      return { exercises, reason: preset.reason, source: "preset", suggestedWeights: new Map() };
+    }
     if (AI_ENDPOINT) {
       try {
         const persona = getPersonaProfile(user);
@@ -1014,7 +1064,15 @@
   function renderExerciseList(exercises, performance) {
     const list = document.getElementById("session-exercises");
     list.innerHTML = "";
+    let currentPhase = null;
     exercises.forEach((ex) => {
+      if (ex.phase && ex.phase !== currentPhase) {
+        currentPhase = ex.phase;
+        const heading = document.createElement("li");
+        heading.className = "session-phase-heading";
+        heading.textContent = ex.phase;
+        list.appendChild(heading);
+      }
       const loggedSummary = performance ? formatPerformanceSummary(performance[ex.name]) : null;
       const li = document.createElement("li");
       if (loggedSummary) li.classList.add("ex-logged");
@@ -1265,7 +1323,7 @@
   // weight field; pure cardio/mobility work doesn't.
   function usesWeight(ex) {
     if (/bodyweight|push-up|plank|dead bug|mobility|stretch|flow|cat-cow|jump squat|mountain climber/i.test(ex.name)) return false;
-    return ex.splitKey === "chest-back" || ex.splitKey === "legs" || /weighted/i.test(ex.name);
+    return ex.splitKey === "chest-back" || ex.splitKey === "legs" || /weighted|\bdb\b|dumbbell|goblet|suitcase/i.test(ex.name);
   }
 
   function getExerciseLoadFactor(exerciseName) {
@@ -1822,16 +1880,33 @@
   function renderWorkoutExercises() {
     const container = document.getElementById("workout-exercise-list");
     container.innerHTML = "";
-    groupExercisesForDisplay(activeWorkout.exercises).forEach((group) => {
-      if (group.items.length > 1) {
-        const wrap = document.createElement("div");
-        wrap.className = "superset-group";
-        wrap.innerHTML = `<span class="superset-label">SUPERSET · ALTERNATE BETWEEN THESE</span>`;
-        group.items.forEach((ex) => wrap.appendChild(renderExerciseCard(ex)));
-        container.appendChild(wrap);
-      } else {
-        container.appendChild(renderExerciseCard(group.items[0]));
+    const phases = [];
+    activeWorkout.exercises.forEach((exercise) => {
+      const phaseName = exercise.phase || "";
+      let phase = phases[phases.length - 1];
+      if (!phase || phase.name !== phaseName) {
+        phase = { name: phaseName, exercises: [] };
+        phases.push(phase);
       }
+      phase.exercises.push(exercise);
+    });
+
+    phases.forEach((phase) => {
+      const phaseWrap = document.createElement("section");
+      phaseWrap.className = phase.name ? "workout-phase" : "workout-phase workout-phase-plain";
+      if (phase.name) phaseWrap.innerHTML = `<h3 class="workout-phase-title">${escapeHtml(phase.name)}</h3>`;
+      groupExercisesForDisplay(phase.exercises).forEach((group) => {
+        if (group.items.length > 1) {
+          const wrap = document.createElement("div");
+          wrap.className = "superset-group";
+          wrap.innerHTML = `<span class="superset-label">PARTNERS · MOVE TOGETHER, THEN SWITCH</span>`;
+          group.items.forEach((ex) => wrap.appendChild(renderExerciseCard(ex)));
+          phaseWrap.appendChild(wrap);
+        } else {
+          phaseWrap.appendChild(renderExerciseCard(group.items[0]));
+        }
+      });
+      container.appendChild(phaseWrap);
     });
   }
 
@@ -1916,7 +1991,7 @@
 
       logSession(currentUser, activeWorkout.sessionSplitKey, {
         ...checkInState,
-        exercises: activeWorkout.exercises.map(({ name, detail, tip, howTo, superset }) => ({ name, detail, tip, howTo, superset })),
+        exercises: activeWorkout.exercises.map(({ name, detail, tip, howTo, superset, phase }) => ({ name, detail, tip, howTo, superset, phase })),
         reason: activeWorkout.reason,
         source: activeWorkout.source,
         note: combinedNote,
@@ -2450,6 +2525,22 @@
     renderSessionFull(user);
   }
 
+  function openSpecialWorkoutPreview(user, splitKey) {
+    const preset = SPECIAL_WORKOUTS[splitKey];
+    if (!preset || preset.user !== user) return;
+    checkInState = { ...checkInState, minutes: 30, energy: "medium", partner: true };
+    chatSuggestedSplit = null;
+    selectedSplitKey = splitKey;
+    previewPlan = {
+      exercises: buildCandidatePool(user, splitKey).map((exercise) => ({ ...exercise, splitKey })),
+      reason: preset.reason,
+      source: "preset",
+      suggestedWeights: new Map(),
+    };
+    showScreen("session-screen");
+    renderSessionFull(user);
+  }
+
   async function refreshRecommendationDraft(user, splitKey, reason) {
     const requestId = ++recommendationRequestId;
     const plan = await computePlan(user, splitKey, { ...checkInState });
@@ -2497,6 +2588,20 @@
       card.onclick = () => selectSplitAndPreview(user, key);
       altContainer.appendChild(card);
     });
+
+    if (user === "jessica") {
+      const preset = SPECIAL_WORKOUTS["jess-game-day-core"];
+      const card = document.createElement("button");
+      card.className = "alt-card preset-card";
+      card.innerHTML = `
+        <span class="alt-icon">${preset.icon}</span>
+        <span class="alt-name">${preset.name}</span>
+        <span class="alt-tagline">${preset.tagline}</span>
+        <span class="preset-goal">${preset.reason}</span>
+      `;
+      card.onclick = () => openSpecialWorkoutPreview(user, "jess-game-day-core");
+      altContainer.prepend(card);
+    }
   }
 
   function initSelectScreen() {
@@ -2513,6 +2618,7 @@
   function renderCustomScreen(user, seedExercises = []) {
     customSelection = new Map();
     const seededNames = new Set(seedExercises.map((exercise) => exercise.name));
+    const standardNames = new Set(SPLIT_ORDER.flatMap((key) => SPLIT_LIBRARY[key].exercises[user].map((exercise) => exercise.name)));
     const container = document.getElementById("custom-groups");
     container.innerHTML = "";
 
@@ -2548,6 +2654,30 @@
       container.appendChild(group);
     });
 
+    const presetOnly = seedExercises.filter((exercise) => !standardNames.has(exercise.name));
+    if (presetOnly.length > 0) {
+      const group = document.createElement("div");
+      group.className = "custom-group";
+      group.innerHTML = '<span class="custom-group-heading">🏀 Current Preset Exercises</span>';
+      const list = document.createElement("div");
+      list.className = "custom-ex-list";
+      presetOnly.forEach((exercise, index) => {
+        const id = `preset:${index}`;
+        customSelection.set(id, { ...exercise });
+        const row = document.createElement("label");
+        row.className = "custom-ex-row";
+        row.innerHTML = `
+          <input type="checkbox" checked data-id="${id}" data-name="${escapeHtml(exercise.name)}" data-detail="${escapeHtml(exercise.detail)}"
+                 data-split="${escapeHtml(exercise.splitKey || "custom")}" data-tip="${escapeHtml(exercise.tip || "")}" data-how-to="${escapeHtml(exercise.howTo || "")}" data-superset="${escapeHtml(exercise.superset || "")}" data-phase="${escapeHtml(exercise.phase || "")}" />
+          <span class="custom-ex-name">${escapeHtml(exercise.name)}</span>
+          <span class="custom-ex-detail">${escapeHtml(exercise.detail)}</span>
+        `;
+        list.appendChild(row);
+      });
+      group.appendChild(list);
+      container.prepend(group);
+    }
+
     updateCustomFooter();
   }
 
@@ -2563,9 +2693,17 @@
     document.getElementById("custom-groups").addEventListener("change", (e) => {
       const input = e.target.closest("input[type=checkbox]");
       if (!input) return;
-      const { id, name, detail, split, tip, superset } = input.dataset;
+      const { id, name, detail, split, tip, superset, phase, howTo } = input.dataset;
       if (input.checked) {
-        customSelection.set(id, { name, detail, splitKey: split, tip: tip || undefined, superset: superset || undefined });
+        customSelection.set(id, {
+          name,
+          detail,
+          splitKey: split,
+          tip: tip || undefined,
+          howTo: howTo || undefined,
+          superset: superset || undefined,
+          phase: phase || undefined,
+        });
       } else {
         customSelection.delete(id);
       }
