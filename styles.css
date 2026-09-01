@@ -6,7 +6,7 @@
   --border: #3a1e5c;
   --text: #f4eefe;
   --text-dim: #a68fd0;
-  --accent-jessica: #ff2e97;
+  --accent-jessica: #c13cff;
   --accent-jake: #05d9e8;
   --accent: #05d9e8;
   --gold: #ffcf3f;
@@ -458,6 +458,321 @@ button,
   margin: 0;
   font-size: 12px;
   color: var(--text-dim);
+}
+
+.recap-cheer {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+/* ---------- HOME HUB TILES ---------- */
+
+.hub-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: -4px;
+}
+
+.hub-topbar .top-link {
+  margin-bottom: 0;
+}
+
+.hub-tiles {
+  display: flex;
+  gap: 6px;
+}
+
+.hub-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text);
+  transition: border-color 0.1s ease, transform 0.1s ease;
+}
+
+.hub-tile:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.hub-tile-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* ---------- RETRO TERMINAL CHAT PANEL ---------- */
+
+.terminal-panel {
+  display: flex;
+  flex-direction: column;
+  background: #050208;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 24px -8px var(--accent);
+}
+
+.terminal-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+.terminal-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot-red { background: #ff5f56; }
+.dot-yellow { background: #ffbd2e; }
+.dot-green { background: #27c93f; }
+
+.terminal-titletext {
+  margin-left: 6px;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.terminal-panel .chat-thread {
+  max-height: 220px;
+  padding: 12px;
+}
+
+.terminal-panel .chat-input-row {
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+
+.terminal-prompt {
+  color: var(--accent);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.terminal-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.terminal-input {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  /* the custom block cursor tracks the real caret position, so the
+     browser's own thin caret would just be a redundant second cursor */
+  caret-color: transparent;
+}
+
+.terminal-input:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.term-cursor {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent);
+  pointer-events: none;
+  transition: left 0.05s linear;
+  opacity: 0;
+}
+
+.terminal-input:focus + .term-cursor {
+  opacity: 1;
+  animation: blink 1s step-start infinite;
+}
+
+.terminal-input:disabled + .term-cursor {
+  opacity: 0;
+  animation: none;
+}
+
+/* ---------- CHECK-IN CHIP ROW (compact) ---------- */
+
+.checkin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: rise 0.3s ease both;
+}
+
+.checkin-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.option-group.compact .option-label {
+  font-size: 11px;
+}
+
+.option-group.compact .chip {
+  padding: 8px 6px;
+  font-size: 11px;
+}
+
+/* ---------- SETTINGS FORM ---------- */
+
+.note-input {
+  width: 100%;
+  resize: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  padding: 10px 12px;
+}
+
+.note-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-row {
+  display: flex;
+  gap: 10px;
+}
+
+.settings-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.settings-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.settings-input:focus {
+  outline: none;
+}
+
+.settings-input::-webkit-outer-spin-button,
+.settings-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.settings-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.settings-field-unit {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.focus-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- MODAL (cheer, etc.) ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(5, 0, 12, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: flashIn 0.2s ease both;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-card);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 0 40px -6px var(--accent);
+  animation: rise 0.3s ease both;
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-shadow: 0 0 10px var(--accent);
+}
+
+.modal-subtext {
+  margin: -8px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.cheer-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cheer-presets .chip {
+  flex: 1;
+  min-width: 100px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-actions .primary-btn,
+.modal-actions .ghost-btn {
+  flex: 1;
 }
 
 /* ---------- RECOMMENDED / ALTERNATIVE CARDS ---------- */
@@ -918,6 +1233,21 @@ button,
   font-weight: 700;
 }
 
+.session-exercises li.ex-logged {
+  border-color: color-mix(in srgb, var(--success) 45%, transparent);
+}
+
+.session-exercises li.ex-logged .ex-detail {
+  color: var(--success);
+}
+
+.session-done-note {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
 .primary-btn {
   border: none;
   border-radius: 10px;
@@ -962,6 +1292,26 @@ button,
 }
 .ghost-btn:hover { color: var(--text); border-color: var(--text-dim); }
 
+.backup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.backup-row {
+  display: flex;
+  gap: 10px;
+}
+
+.backup-row .ghost-btn {
+  flex: 1;
+  padding: 12px;
+  font-size: 11px;
+}
+
 .history-list {
   list-style: none;
   margin: 0;
@@ -995,6 +1345,108 @@ button,
   padding: 8px 4px;
 }
 
+/* ---------- WEIGHT TRENDS / GRAPH SCREEN ---------- */
+
+.graph-log-row {
+  display: flex;
+  gap: 8px;
+}
+
+.graph-date-input {
+  flex: 1;
+  color-scheme: dark;
+}
+
+#graph-weight-input {
+  width: 70px;
+  flex: none;
+}
+
+.graph-log-btn {
+  flex: none;
+  padding: 0 16px;
+}
+
+.graph-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.graph-chart-wrap {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  min-height: 180px;
+}
+
+#graph-svg {
+  width: 100%;
+  height: 220px;
+  display: block;
+  overflow: visible;
+}
+
+.graph-gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.graph-axis-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: var(--text-dim);
+}
+
+.graph-line {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+.graph-point {
+  stroke: var(--bg-card);
+  stroke-width: 1;
+}
+
+.graph-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.graph-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.graph-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 /* ---------- SHARED OPTION CHIPS (check-in) ---------- */
 
 .option-group {
@@ -1018,30 +1470,100 @@ button,
   opacity: 0.7;
 }
 
-.note-input {
-  width: 100%;
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.chat-bubble {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.chat-bubble.chat-coach {
+  align-self: flex-start;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-bubble.chat-user {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--accent) 22%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-bottom-right-radius: 4px;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.5;
+  /* 16px is the iOS Safari threshold below which focusing an input
+     auto-zooms the page — this app is a fixed-viewport iOS web app,
+     so inputs must stay at/above it. */
+  font-size: 16px;
   padding: 10px 12px;
-  resize: vertical;
-  min-height: 60px;
-  transition: border-color 0.1s ease, box-shadow 0.1s ease;
 }
 
-.note-input::placeholder {
+.chat-input::placeholder {
   color: var(--text-dim);
   opacity: 0.6;
 }
 
-.note-input:focus {
+.chat-input:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 12px -2px var(--accent);
+}
+
+.chat-input:disabled {
+  opacity: 0.6;
+}
+
+.chat-send-btn {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 10px;
+  padding: 0 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--bg);
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.chat-send-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .option-row {
@@ -1425,12 +1947,12 @@ button,
 }
 
 .wex-mini-input {
-  width: 32px;
+  width: 38px;
   background: none;
   border: none;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -1486,7 +2008,7 @@ button,
   border-radius: 10px;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 16px;
   padding: 10px 12px;
 }
 
@@ -1513,7 +2035,7 @@ button,
   border-radius: 10px;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 16px;
   padding: 8px 10px;
 }
 

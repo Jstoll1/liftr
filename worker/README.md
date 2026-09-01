@@ -70,3 +70,43 @@ exercise list.
 fraction of a cent. Two people logging one session a day costs pennies a
 month. You can change the model via the `OPENAI_MODEL` var in
 `wrangler.toml` if you want to use something else.
+
+## 5. Cross-device sync (Cloudflare KV)
+
+This same Worker also backs cross-device sync, so if Jake or Jessica use
+Liftr on more than one phone, their history/notes/settings (and cheers)
+follow them instead of staying stuck on one device. It's optional — the
+app still works purely on localStorage if you skip this — but it's free
+on Cloudflare's free tier for two people's usage.
+
+```sh
+cd worker
+npx wrangler kv namespace create LIFTR_KV
+```
+
+That prints something like:
+
+```
+[[kv_namespaces]]
+binding = "LIFTR_KV"
+id = "abcd1234..."
+```
+
+Copy the `id` value into `wrangler.toml`, replacing
+`REPLACE_WITH_YOUR_KV_NAMESPACE_ID` in the `[[kv_namespaces]]` block that's
+already there. Then redeploy:
+
+```sh
+npx wrangler deploy
+```
+
+Nothing else to configure — the app already calls `/kv` and `/cheers` on
+this same Worker URL. It pulls once when someone taps into their profile
+on the welcome screen, and pushes after finishing a workout, saving a
+check-in note, updating settings, or sending a cheer. If the Worker or
+network is unreachable, it fails silently and the app keeps working off
+whatever's already stored locally.
+
+Free tier limits are generous for two people (100k reads/day, 1,000
+writes/day) — comfortably enough since syncing only happens at those
+checkpoints, not on every tap while working out.

@@ -21,7 +21,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
+       changes, so browsers/CDNs don't keep serving a stale cached copy
+       alongside a freshly-updated index.html. -->
+  <link rel="stylesheet" href="styles.css?v=202609010220" />
 </head>
 <body>
 
@@ -39,7 +42,7 @@
       </div>
       <div class="user-picker">
         <button class="user-card" data-user="jessica">
-          <span class="user-avatar" style="--accent:#ff2e97">J</span>
+          <span class="user-avatar" style="--accent:#c13cff">J</span>
           <span class="user-name">Jessica</span>
         </button>
         <button class="user-card" data-user="jake">
@@ -66,57 +69,202 @@
     </div>
   </main>
 
-  <!-- DAILY CHECK-IN SCREEN -->
+  <!-- DAILY CHECK-IN / HOME HUB SCREEN -->
   <main id="checkin-screen" class="screen hidden">
     <div class="panel-wrap">
-      <button id="checkin-switch" class="link-btn top-link">&larr; SWITCH</button>
-      <span class="section-title">Today's Check-In</span>
+      <div class="hub-topbar">
+        <button id="checkin-switch" class="link-btn top-link">&larr; SWITCH</button>
+        <div class="hub-tiles">
+          <button id="hub-settings-btn" class="hub-tile" title="Settings">
+            <span class="hub-tile-icon">⚙️</span>
+          </button>
+          <button id="hub-history-btn" class="hub-tile" title="History">
+            <span class="hub-tile-icon">📜</span>
+          </button>
+          <button id="hub-graph-btn" class="hub-tile" title="Weight Trends">
+            <span class="hub-tile-icon">📈</span>
+          </button>
+          <button id="hub-cheer-btn" class="hub-tile" title="Cheer">
+            <span class="hub-tile-icon">👋</span>
+          </button>
+        </div>
+      </div>
 
       <div id="recap-card" class="recap-card"></div>
 
-      <h2 class="panel-heading">How are we feeling, <span id="checkin-name" class="panel-heading-accent"></span>?</h2>
-      <span class="panel-subtext">This tunes today's recommendation and workload.</span>
-
-      <div class="option-group">
-        <span class="option-label">📝 Anything to flag? <span class="option-label-optional">(optional)</span></span>
-        <textarea id="checkin-note" class="note-input" rows="3" placeholder="How did last session feel? Equipment changed? New goal? A weight you struggled or hit a PR on?"></textarea>
-      </div>
-
-      <div class="option-group">
-        <span class="option-label">⚡ Energy Level</span>
-        <div id="checkin-energy" class="option-row" data-option="energy">
-          <button class="chip" data-value="low">Low</button>
-          <button class="chip" data-value="medium">Medium</button>
-          <button class="chip" data-value="high">High</button>
+      <div id="checkin-chat-slot">
+        <div id="terminal-panel" class="terminal-panel">
+          <div class="terminal-titlebar">
+            <span class="terminal-dot dot-red"></span>
+            <span class="terminal-dot dot-yellow"></span>
+            <span class="terminal-dot dot-green"></span>
+            <span class="terminal-titletext">COACH://<span id="checkin-name"></span></span>
+          </div>
+          <div id="chat-thread" class="chat-thread"></div>
+          <div class="chat-input-row">
+            <span class="terminal-prompt">&gt;</span>
+            <div class="terminal-input-wrap">
+              <input type="text" id="chat-input" class="chat-input terminal-input" placeholder="type here..." maxlength="200" />
+              <span id="chat-cursor" class="term-cursor">▌</span>
+            </div>
+            <button type="button" id="chat-send" class="chat-send-btn">Send</button>
+          </div>
         </div>
       </div>
 
-      <div class="option-group">
-        <span class="option-label">⏱ Time You've Got</span>
-        <div id="checkin-minutes" class="option-row" data-option="minutes">
-          <button class="chip" data-value="15">15 min</button>
-          <button class="chip" data-value="30">30 min</button>
-          <button class="chip" data-value="45">45 min</button>
-          <button class="chip" data-value="60">60 min</button>
-        </div>
-      </div>
+      <button id="checkin-start-btn" class="primary-btn">🏋️ Start a Workout</button>
 
-      <div class="option-group">
-        <span class="option-label">🤝 Got a Partner Today?</span>
-        <div id="checkin-partner" class="option-row" data-option="partner">
-          <button class="chip" data-value="yes">Yes</button>
-          <button class="chip" data-value="no">No</button>
-        </div>
-      </div>
+      <div id="checkin-form" class="checkin-form hidden">
+        <div class="checkin-chips">
+          <div class="option-group compact">
+            <span class="option-label">⚡ Energy</span>
+            <div id="checkin-energy" class="option-row" data-option="energy">
+              <button class="chip" data-value="low">Low</button>
+              <button class="chip" data-value="medium">Medium</button>
+              <button class="chip" data-value="high">High</button>
+            </div>
+          </div>
 
-      <button id="checkin-submit" class="primary-btn">Submit Check-In</button>
+          <div class="option-group compact">
+            <span class="option-label">⏱ Time</span>
+            <div id="checkin-minutes" class="option-row" data-option="minutes">
+              <button class="chip" data-value="15">15 min</button>
+              <button class="chip" data-value="30">30 min</button>
+              <button class="chip" data-value="45">45 min</button>
+              <button class="chip" data-value="60">60 min</button>
+            </div>
+          </div>
+
+          <div class="option-group compact">
+            <span class="option-label">🤝 Partner</span>
+            <div id="checkin-partner" class="option-row" data-option="partner">
+              <button class="chip" data-value="yes">Yes</button>
+              <button class="chip" data-value="no">No</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="checkin-submit" class="primary-btn">Submit Check-In</button>
+      </div>
     </div>
   </main>
+
+  <!-- SETTINGS SCREEN -->
+  <main id="settings-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="settings-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">Persona Settings</span>
+      <h2 class="panel-heading">Tell the coach about <span id="settings-name" class="panel-heading-accent"></span></h2>
+      <span class="panel-subtext">Used to personalize recommendations and estimate starting weights.</span>
+
+      <div class="option-group">
+        <span class="option-label">🎯 Goal</span>
+        <textarea id="settings-goal" class="note-input" rows="2" maxlength="140"></textarea>
+      </div>
+
+      <div class="option-group">
+        <span class="option-label">📏 Height</span>
+        <div class="settings-row">
+          <div class="settings-field">
+            <input type="number" id="settings-height-ft" class="settings-input" inputmode="numeric" placeholder="ft" min="0" max="8" />
+            <span class="settings-field-unit">ft</span>
+          </div>
+          <div class="settings-field">
+            <input type="number" id="settings-height-in" class="settings-input" inputmode="numeric" placeholder="in" min="0" max="11" />
+            <span class="settings-field-unit">in</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="option-group">
+        <span class="option-label">⚖️ Bodyweight</span>
+        <div class="settings-row">
+          <div class="settings-field">
+            <input type="number" id="settings-weight" class="settings-input" inputmode="numeric" placeholder="—" min="0" max="600" />
+            <span class="settings-field-unit">lbs</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="option-group">
+        <span class="option-label">🎯 Areas of Focus <span class="option-label-optional">(pick any)</span></span>
+        <div id="settings-focus" class="option-row focus-row"></div>
+      </div>
+
+      <button id="settings-save" class="primary-btn">Save Settings</button>
+
+      <div class="backup-section">
+        <span class="option-label">💾 Backup &amp; Restore <span class="option-label-optional">(both personas)</span></span>
+        <p class="panel-subtext">Insurance in case this device's storage ever gets wiped.</p>
+        <div class="backup-row">
+          <button id="settings-export" type="button" class="ghost-btn">Export Backup</button>
+          <button id="settings-import" type="button" class="ghost-btn">Import Backup</button>
+        </div>
+        <input type="file" id="settings-import-file" accept="application/json" class="hidden" />
+      </div>
+    </div>
+  </main>
+
+  <!-- HISTORY SCREEN -->
+  <main id="history-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="history-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">Full History</span>
+      <h2 class="panel-heading">Every session, <span id="history-name" class="panel-heading-accent"></span></h2>
+      <ul id="history-full-list" class="history-list"></ul>
+    </div>
+  </main>
+
+  <!-- WEIGHT TRENDS / GRAPH SCREEN -->
+  <main id="graph-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="graph-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">Weight Trends</span>
+      <h2 class="panel-heading">Track <span id="graph-name" class="panel-heading-accent"></span>'s progress</h2>
+
+      <div class="graph-log-row">
+        <input type="date" id="graph-date" class="settings-input graph-date-input" />
+        <input type="number" id="graph-weight-input" class="settings-input" inputmode="numeric" placeholder="lbs" min="0" max="600" />
+        <button id="graph-log-btn" class="ghost-btn graph-log-btn">Log Weight</button>
+      </div>
+
+      <div class="graph-toggles">
+        <button type="button" class="chip graph-toggle selected" data-series="bodyweight">⚖️ Bodyweight</button>
+        <button type="button" class="chip graph-toggle" data-series="bench">🏋️ Bench (est. 1RM)</button>
+        <button type="button" class="chip graph-toggle" data-series="squat">🦵 Squat (est. 1RM)</button>
+      </div>
+
+      <div class="graph-chart-wrap">
+        <svg id="graph-svg" viewBox="0 0 600 300" preserveAspectRatio="none"></svg>
+        <p id="graph-empty" class="graph-empty hidden">No data yet — log a weigh-in above, or finish a bench/squat session, to see a trend line.</p>
+      </div>
+      <div id="graph-legend" class="graph-legend"></div>
+    </div>
+  </main>
+
+  <!-- CHEER MODAL -->
+  <div id="cheer-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <span id="cheer-title" class="modal-title"></span>
+      <p id="cheer-subtext" class="modal-subtext"></p>
+      <div id="cheer-presets" class="cheer-presets"></div>
+      <input type="text" id="cheer-custom" class="chat-input" placeholder="Or write your own..." maxlength="120" />
+      <div class="modal-actions">
+        <button id="cheer-cancel" class="ghost-btn">Cancel</button>
+        <button id="cheer-send" class="primary-btn">Send</button>
+      </div>
+    </div>
+  </div>
 
   <!-- WORKOUT SELECTION SCREEN -->
   <main id="select-screen" class="screen hidden">
     <div class="panel-wrap wide">
       <button id="select-switch" class="link-btn top-link">&larr; SWITCH</button>
+
+      <span class="section-title">Fine-Tune With Your Coach</span>
+      <p class="panel-subtext">Equipment changes, injuries, anything else? Keep chatting — I'll factor it in below.</p>
+      <div id="select-chat-slot"></div>
+
       <span class="section-title">Recommended For You</span>
 
       <button id="recommended-card" class="rec-card">
@@ -196,6 +344,8 @@
 
         <ul id="session-exercises" class="session-exercises"></ul>
 
+        <p id="session-done-note" class="session-done-note hidden"></p>
+
         <button id="log-session-btn" class="primary-btn">Start Session</button>
       </article>
 
@@ -242,6 +392,6 @@
     </div>
   </main>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=202609010222"></script>
 </body>
 </html>
