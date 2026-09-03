@@ -2578,14 +2578,16 @@ button,
 }
 
 .wex-mini-input {
-  width: 38px;
-  background: none;
-  border: none;
+  width: 48px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 16px;
   font-weight: 700;
   text-align: center;
+  padding: 3px 2px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2595,6 +2597,7 @@ button,
 
 .wex-mini-input:focus {
   outline: none;
+  box-shadow: 0 0 8px -1px var(--accent);
 }
 
 /* Hide native number spinners so the +/- steppers are the only controls seen. */

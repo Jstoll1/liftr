@@ -3267,7 +3267,7 @@ okra`;
         const weightControl = showWeight
           ? `<div class="wex-mini-stepper" data-role="weight">
                <button type="button" class="wex-mini-btn" data-dir="-1">−</button>
-               <input type="number" inputmode="numeric" pattern="[0-9]*" class="wex-mini-input" placeholder="—" value="${s.weight ?? ""}" />
+               <input type="number" inputmode="decimal" step="any" class="wex-mini-input" placeholder="—" value="${s.weight ?? ""}" />
                <span class="wex-mini-unit">lb</span>
                <button type="button" class="wex-mini-btn" data-dir="1">+</button>
              </div>`
