@@ -1711,7 +1711,60 @@ okra`;
   }
 
   const ENERGY_LABEL = { low: "Low Energy", medium: "Medium Energy", high: "High Energy" };
-  const TIME_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 6 };
+
+  // Real gym-clock math, not a guess: how long a set takes to perform, how
+  // long you actually rest before the next one (supersets need less, since
+  // the "rest" for muscle group A is spent working group B), and the fixed
+  // overhead of warming up and moving between stations. TIME_TO_COUNT below
+  // is this model run once per duration bucket for a typical 3-4 set
+  // superset pair, so a stated "45 min" check-in produces a plan that
+  // actually takes about 45 minutes instead of quietly wrapping in 20.
+  const SET_WORK_SECONDS = 35;
+  const SUPERSET_REST_SECONDS = 45;
+  const SOLO_REST_SECONDS = 75;
+  const EXERCISE_SETUP_SECONDS = 45; // once per exercise/pair — loading weight, moving stations
+  const WARMUP_SECONDS = 360;
+
+  const TIME_TO_COUNT = { 15: 2, 30: 4, 45: 6, 60: 8 };
+
+  // Projects real elapsed minutes for a finished exercise list — used to
+  // show "about how long this actually takes" on the preview screen, the
+  // same model TIME_TO_COUNT above was derived from.
+  function estimateSessionMinutes(exercises) {
+    const bySupersetKey = new Map();
+    const units = [];
+    exercises.forEach((ex) => {
+      if (ex.superset) {
+        const key = `${ex.splitKey || ""}:${ex.superset}`;
+        if (bySupersetKey.has(key)) {
+          bySupersetKey.get(key).push(ex);
+          return;
+        }
+        const unit = [ex];
+        bySupersetKey.set(key, unit);
+        units.push(unit);
+      } else {
+        units.push([ex]);
+      }
+    });
+
+    let totalSeconds = WARMUP_SECONDS;
+    units.forEach((unit) => {
+      const minuteMatch = unit[0].detail?.match(/(\d+)\s*min\b/i);
+      if (unit.length === 1 && minuteMatch) {
+        totalSeconds += Number(minuteMatch[1]) * 60 + EXERCISE_SETUP_SECONDS;
+        return;
+      }
+      const setsPerItem = unit.map((ex) => parseSetCount(ex.detail));
+      const rounds = Math.max(...setsPerItem);
+      const isPaired = unit.length > 1;
+      const restPerRound = (isPaired ? SUPERSET_REST_SECONDS : SOLO_REST_SECONDS) * unit.length;
+      const workPerRound = SET_WORK_SECONDS * unit.length;
+      totalSeconds += rounds * (workPerRound + restPerRound) + EXERCISE_SETUP_SECONDS * unit.length;
+    });
+
+    return Math.round(totalSeconds / 60);
+  }
 
   // ---------- storage helpers ----------
 
@@ -1915,7 +1968,7 @@ okra`;
   function targetExerciseCount({ minutes, energy }) {
     const base = TIME_TO_COUNT[minutes] ?? 4;
     if (energy === "low") return Math.max(2, base - 1);
-    if (energy === "high") return Math.min(6, base + 1);
+    if (energy === "high") return Math.min(10, base + 1);
     return base;
   }
 
@@ -2572,7 +2625,8 @@ okra`;
     const mix = order.filter((role) => counts.has(role)).map((role) => `${counts.get(role)} ${role.toLowerCase()}`).join(" · ");
     const mode = context.partner ? "with partner" : "solo";
     const energy = ENERGY_LABEL[context.energy] || "energy not logged";
-    summary.innerHTML = `<strong>PLAN CHECK</strong><span>${escapeHtml(mix)} · ${escapeHtml(mode)} · ${context.minutes} min · ${escapeHtml(energy)}</span>`;
+    const estimatedMinutes = estimateSessionMinutes(exercises);
+    summary.innerHTML = `<strong>PLAN CHECK</strong><span>${escapeHtml(mix)} · ${escapeHtml(mode)} · ~${estimatedMinutes} min (asked for ${context.minutes}) · ${escapeHtml(energy)}</span>`;
     summary.classList.remove("hidden");
   }
 
@@ -2714,7 +2768,7 @@ okra`;
     document.getElementById("preview-plan-summary").classList.add("hidden");
 
     const list = document.getElementById("session-exercises");
-    const rowCount = Math.max(1, Math.min(8, estimatedExerciseCount(splitKey, checkInState)));
+    const rowCount = Math.max(1, Math.min(10, estimatedExerciseCount(splitKey, checkInState)));
     list.innerHTML = '<li class="skeleton-row"></li>'.repeat(rowCount);
 
     const btn = document.getElementById("log-session-btn");
