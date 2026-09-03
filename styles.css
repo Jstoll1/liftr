@@ -2359,6 +2359,83 @@ button,
   flex-shrink: 0;
 }
 
+.weighin-table-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.weighin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.weighin-table th {
+  text-align: left;
+  color: var(--text-dim);
+  font-family: var(--font-display);
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  font-weight: 400;
+  padding: 0 8px 6px;
+}
+
+.weighin-table th:last-child,
+.weighin-table td:last-child {
+  text-align: right;
+  width: 32px;
+}
+
+.weighin-table td {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.weighin-weight-cell {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.weighin-weight-cell:hover {
+  color: var(--accent);
+}
+
+.weighin-edit-input {
+  width: 64px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  padding: 3px 4px;
+}
+
+.weighin-edit-input:focus {
+  outline: none;
+  box-shadow: 0 0 8px -1px var(--accent);
+}
+
+.weighin-remove {
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.weighin-remove:hover {
+  color: #ff5c5c;
+}
+
 /* ---------- SHARED OPTION CHIPS (check-in) ---------- */
 
 .option-group {

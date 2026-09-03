@@ -89,6 +89,14 @@
     }
   }
 
+  function removeWeighIn(user, date) {
+    const all = loadAllWeighIns();
+    if (!all[user]) return;
+    all[user] = all[user].filter((w) => w.date !== date);
+    saveAllWeighIns(all);
+    pushToCloud(user);
+  }
+
   // ---------- local JSON backup / restore ----------
   // Manual insurance policy independent of the cloud sync below — a single
   // file with both personas' full state, in case a device's storage (or the
@@ -5619,6 +5627,7 @@ okra`;
     if (seriesData.length === 0) {
       empty.classList.remove("hidden");
       renderGraphLegend([]);
+      renderWeighInTable(user);
       return;
     }
     empty.classList.add("hidden");
@@ -5714,6 +5723,76 @@ okra`;
     });
 
     renderGraphLegend(seriesData);
+    renderWeighInTable(user);
+  }
+
+  // Every logged weigh-in, most recent first — the graph shows the trend,
+  // this shows (and lets you fix) the actual entries behind it. Double-tap
+  // the weight to edit it in place; logWeighIn already upserts by date, so
+  // editing is just re-logging the same date with a corrected number.
+  function renderWeighInTable(user) {
+    const tbody = document.getElementById("weighin-table-body");
+    const empty = document.getElementById("weighin-table-empty");
+    const entries = [...getWeighIns(user)].reverse();
+    empty.classList.toggle("hidden", entries.length > 0);
+
+    tbody.innerHTML = entries
+      .map(
+        (w) => `
+      <tr data-date="${escapeHtml(w.date)}">
+        <td>${escapeHtml(formatShortDate(w.date))}</td>
+        <td class="weighin-weight-cell" title="Double-tap to edit">${w.weight} lb</td>
+        <td><button type="button" class="weighin-remove" data-date="${escapeHtml(w.date)}" title="Remove">✕</button></td>
+      </tr>
+    `
+      )
+      .join("");
+
+    tbody.querySelectorAll(".weighin-weight-cell").forEach((cell) => {
+      cell.addEventListener("dblclick", () => startEditWeighIn(user, cell));
+    });
+    tbody.querySelectorAll(".weighin-remove").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!window.confirm(`Remove the ${formatShortDate(btn.dataset.date)} weigh-in?`)) return;
+        removeWeighIn(user, btn.dataset.date);
+        renderGraph(user);
+      });
+    });
+  }
+
+  function startEditWeighIn(user, cell) {
+    const date = cell.closest("tr")?.dataset.date;
+    const entry = getWeighIns(user).find((w) => w.date === date);
+    if (!date || !entry) return;
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.inputMode = "decimal";
+    input.step = "any";
+    input.className = "weighin-edit-input";
+    input.value = entry.weight;
+    cell.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let done = false;
+    const commit = () => {
+      if (done) return;
+      done = true;
+      const value = Number(input.value);
+      if (Number.isFinite(value) && value > 0 && value !== entry.weight) {
+        logWeighIn(user, date, value);
+      }
+      renderGraph(user);
+    };
+    input.addEventListener("blur", commit);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") input.blur();
+      if (e.key === "Escape") {
+        input.value = entry.weight;
+        input.blur();
+      }
+    });
   }
 
   function renderGraphLegend(seriesData) {

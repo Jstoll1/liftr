@@ -24,7 +24,7 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609013700" />
+  <link rel="stylesheet" href="styles.css?v=202609013800" />
 </head>
 <body>
 
@@ -299,6 +299,18 @@
         <p id="graph-empty" class="graph-empty hidden">No data yet — log a weigh-in above, or finish a bench/squat session, to see a trend line.</p>
       </div>
       <div id="graph-legend" class="graph-legend"></div>
+
+      <div class="weighin-table-section">
+        <span class="section-title">Logged Weigh-Ins</span>
+        <span class="panel-subtext">Double-tap a weight to fix a typo. ✕ removes an entry.</span>
+        <table class="weighin-table">
+          <thead>
+            <tr><th>Date</th><th>Weight</th><th></th></tr>
+          </thead>
+          <tbody id="weighin-table-body"></tbody>
+        </table>
+        <p id="weighin-table-empty" class="panel-subtext hidden">No weigh-ins logged yet.</p>
+      </div>
     </div>
   </main>
 
@@ -505,6 +517,6 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
   </script>
-  <script src="app.js?v=202609013700"></script>
+  <script src="app.js?v=202609013800"></script>
 </body>
 </html>
