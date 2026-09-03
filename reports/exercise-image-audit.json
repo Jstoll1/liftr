@@ -1,32 +1,22 @@
 {
-  "generatedAt": "2026-09-01T13:45:34.297Z",
+  "generatedAt": "2026-09-01T22:47:08.052Z",
   "source": "app.js",
   "summary": {
-    "distinctExercises": 110,
-    "ready": 110,
+    "distinctExercises": 119,
+    "ready": 119,
     "issues": 0,
-    "orphans": 37
+    "orphans": 29
   },
   "issues": [],
   "orphans": [
-    {
-      "path": "images/chest/cable-chest-fly.jpg",
-      "slug": "cable-chest-fly",
-      "possibleTypoOf": null
-    },
-    {
-      "path": "images/chest/dumbbell-bench-press.jpg",
-      "slug": "dumbbell-bench-press",
-      "possibleTypoOf": null
-    },
     {
       "path": "images/chest/dumbbell-chest-fly.jpg",
       "slug": "dumbbell-chest-fly",
       "possibleTypoOf": null
     },
     {
-      "path": "images/chest/incline-push-up.jpg",
-      "slug": "incline-push-up",
+      "path": "images/chest/dumbbell-chest-press.jpg",
+      "slug": "dumbbell-chest-press",
       "possibleTypoOf": null
     },
     {
@@ -37,7 +27,7 @@
     {
       "path": "images/chest/push-up.jpg",
       "slug": "push-up",
-      "possibleTypoOf": null
+      "possibleTypoOf": "pull-up"
     },
     {
       "path": "images/back/back-extension.jpg",
@@ -45,29 +35,9 @@
       "possibleTypoOf": null
     },
     {
-      "path": "images/back/chest-supported-row.jpg",
-      "slug": "chest-supported-row",
-      "possibleTypoOf": null
-    },
-    {
-      "path": "images/back/one-arm-dumbbell-row.jpg",
-      "slug": "one-arm-dumbbell-row",
-      "possibleTypoOf": null
-    },
-    {
-      "path": "images/back/pull-up.jpg",
-      "slug": "pull-up",
-      "possibleTypoOf": null
-    },
-    {
       "path": "images/legs/bodyweight-squat.jpg",
       "slug": "bodyweight-squat",
       "possibleTypoOf": "bodyweight-squats"
-    },
-    {
-      "path": "images/legs/bulgarian-split-squat.jpg",
-      "slug": "bulgarian-split-squat",
-      "possibleTypoOf": null
     },
     {
       "path": "images/legs/conventional-deadlift.jpg",
@@ -77,11 +47,6 @@
     {
       "path": "images/legs/forward-lunge.jpg",
       "slug": "forward-lunge",
-      "possibleTypoOf": null
-    },
-    {
-      "path": "images/legs/hip-thrust.jpg",
-      "slug": "hip-thrust",
       "possibleTypoOf": null
     },
     {
@@ -107,11 +72,6 @@
     {
       "path": "images/legs/sumo-deadlift.jpg",
       "slug": "sumo-deadlift",
-      "possibleTypoOf": null
-    },
-    {
-      "path": "images/legs/wall-sit.jpg",
-      "slug": "wall-sit",
       "possibleTypoOf": null
     },
     {

@@ -1,0 +1,96 @@
+{
+  "generatedAt": "2026-09-01T22:47:07.947Z",
+  "rows": [
+    {
+      "user": "jake",
+      "minutes": 45,
+      "energy": "high",
+      "expectedCount": 5,
+      "expectedPairs": [
+        "A",
+        "B"
+      ],
+      "plan": [
+        "Barbell Bench Press",
+        "Weighted Pull-Ups",
+        "Incline Dumbbell Press",
+        "Bent-Over Barbell Row",
+        "Finisher: Death-Rep Push-Ups"
+      ],
+      "roles": [
+        "chest",
+        "back",
+        "chest",
+        "back",
+        "finisher"
+      ],
+      "failures": []
+    },
+    {
+      "user": "jessica",
+      "minutes": 45,
+      "energy": "high",
+      "expectedCount": 5,
+      "expectedPairs": [
+        "A",
+        "B"
+      ],
+      "plan": [
+        "Dumbbell Bench Press",
+        "Lat Pulldown",
+        "Incline Dumbbell Press",
+        "Chest-Supported Row",
+        "Finisher: Burpee Pulse"
+      ],
+      "roles": [
+        "chest",
+        "back",
+        "chest",
+        "back",
+        "finisher"
+      ],
+      "failures": []
+    },
+    {
+      "user": "jake",
+      "minutes": 30,
+      "energy": "medium",
+      "expectedCount": 4,
+      "expectedPairs": [
+        "A",
+        "B"
+      ],
+      "plan": [
+        "Barbell Bench Press",
+        "Weighted Pull-Ups",
+        "Incline Dumbbell Press",
+        "Bent-Over Barbell Row"
+      ],
+      "roles": [
+        "chest",
+        "back",
+        "chest",
+        "back"
+      ],
+      "failures": []
+    },
+    {
+      "user": "jessica",
+      "minutes": 30,
+      "energy": "low",
+      "expectedCount": 2,
+      "expectedPairs": [
+        "A"
+      ],
+      "plan": [
+        "Dumbbell Bench Press",
+        "Lat Pulldown"
+      ],
+      "roles": [
+        "chest",
+        "back"
+      ],
+      "failures": []
+    }
+  ]
+}

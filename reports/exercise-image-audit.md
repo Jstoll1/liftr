@@ -1,11 +1,11 @@
 # Exercise image audit
 
-Generated from `app.js` at 2026-09-01T13:45:34.297Z.
+Generated from `app.js` at 2026-09-01T22:47:08.052Z.
 
-- Distinct exercises: **110**
-- Ready images: **110**
+- Distinct exercises: **119**
+- Ready images: **119**
 - Missing or invalid images: **0**
-- Unmatched files on disk: **37**
+- Unmatched files on disk: **29**
 
 ## Images needing attention
 
@@ -25,27 +25,19 @@ used a slightly different filename than requested.
 
 | File | Closest exercise slug (if any, within edit distance 3) |
 | --- | --- |
-| `images/chest/cable-chest-fly.jpg` | no close match — may be intentional |
-| `images/chest/dumbbell-bench-press.jpg` | no close match — may be intentional |
 | `images/chest/dumbbell-chest-fly.jpg` | no close match — may be intentional |
-| `images/chest/incline-push-up.jpg` | no close match — may be intentional |
+| `images/chest/dumbbell-chest-press.jpg` | no close match — may be intentional |
 | `images/chest/pec-deck-fly.jpg` | no close match — may be intentional |
-| `images/chest/push-up.jpg` | no close match — may be intentional |
+| `images/chest/push-up.jpg` | `pull-up` |
 | `images/back/back-extension.jpg` | no close match — may be intentional |
-| `images/back/chest-supported-row.jpg` | no close match — may be intentional |
-| `images/back/one-arm-dumbbell-row.jpg` | no close match — may be intentional |
-| `images/back/pull-up.jpg` | no close match — may be intentional |
 | `images/legs/bodyweight-squat.jpg` | `bodyweight-squats` |
-| `images/legs/bulgarian-split-squat.jpg` | no close match — may be intentional |
 | `images/legs/conventional-deadlift.jpg` | no close match — may be intentional |
 | `images/legs/forward-lunge.jpg` | no close match — may be intentional |
-| `images/legs/hip-thrust.jpg` | no close match — may be intentional |
 | `images/legs/lateral-lunge.jpg` | no close match — may be intentional |
 | `images/legs/seated-leg-curl.jpg` | no close match — may be intentional |
 | `images/legs/step-up.jpg` | `step-ups` |
 | `images/legs/stiff-leg-deadlift.jpg` | no close match — may be intentional |
 | `images/legs/sumo-deadlift.jpg` | no close match — may be intentional |
-| `images/legs/wall-sit.jpg` | no close match — may be intentional |
 | `images/shoulders/bent-over-reverse-fly.jpg` | no close match — may be intentional |
 | `images/shoulders/dumbbell-front-raise.jpg` | no close match — may be intentional |
 | `images/shoulders/dumbbell-shrug.jpg` | no close match — may be intentional |

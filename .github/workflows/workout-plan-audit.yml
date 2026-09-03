@@ -1,0 +1,29 @@
+name: Workout plan audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "app.js"
+      - "scripts/audit-workout-plans.js"
+      - ".github/workflows/workout-plan-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Audit workout population scenarios
+        run: node scripts/audit-workout-plans.js --write
+      - name: Add audit to job summary
+        run: cat reports/workout-plan-audit.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: workout-plan-audit
+          path: reports/workout-plan-audit.*

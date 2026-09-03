@@ -24,7 +24,7 @@
   <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
        changes, so browsers/CDNs don't keep serving a stale cached copy
        alongside a freshly-updated index.html. -->
-  <link rel="stylesheet" href="styles.css?v=202609013600" />
+  <link rel="stylesheet" href="styles.css?v=202609013700" />
 </head>
 <body>
 
@@ -105,8 +105,11 @@
             <span class="terminal-dot dot-yellow"></span>
             <span class="terminal-dot dot-green"></span>
             <span class="terminal-titletext">COACH://<span id="checkin-name"></span></span>
+            <button id="chat-panel-toggle" type="button" class="chat-panel-toggle" aria-expanded="true">Hide</button>
           </div>
+          <div id="chat-context" class="chat-context" aria-live="polite"></div>
           <div id="chat-thread" class="chat-thread"></div>
+          <div id="chat-quick-actions" class="chat-quick-actions" aria-label="Suggested coach prompts"></div>
           <div class="chat-input-row">
             <span class="terminal-prompt">&gt;</span>
             <div class="terminal-input-wrap">
@@ -412,6 +415,8 @@
 
         <p id="session-ai-note" class="session-ai-note hidden"></p>
 
+        <div id="preview-plan-summary" class="preview-plan-summary hidden" aria-live="polite"></div>
+
         <ul id="session-exercises" class="session-exercises"></ul>
 
         <p id="session-done-note" class="session-done-note hidden"></p>
@@ -465,6 +470,13 @@
         <button id="workout-regenerate" class="ghost-btn small" title="Regenerate today's picks">🔄</button>
       </div>
       <span id="workout-tagline" class="workout-tagline"></span>
+      <div class="workout-progress" aria-live="polite">
+        <div class="workout-progress-copy">
+          <strong id="workout-progress-title">0 of 0 exercises logged</strong>
+          <span id="workout-progress-detail">0 of 0 sets</span>
+        </div>
+        <div class="workout-progress-track"><span id="workout-progress-bar"></span></div>
+      </div>
 
       <section class="warmup-card">
         <span class="section-title">Warm-Up</span>
@@ -493,6 +505,6 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
   </script>
-  <script src="app.js?v=202609013600"></script>
+  <script src="app.js?v=202609013700"></script>
 </body>
 </html>

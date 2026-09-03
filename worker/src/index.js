@@ -75,6 +75,15 @@ export default {
     }
 
     const names = candidates.map((c) => c.name);
+    const baseTarget = MINUTES_TO_COUNT[minutes] || 4;
+    let energyTarget = energy === "low" ? Math.max(2, baseTarget - 1) : energy === "high" ? Math.min(6, baseTarget + 1) : baseTarget;
+    const hasFinisher = energy === "high" && minutes >= 45 && candidates.some((candidate) => /^finisher:/i.test(candidate.name));
+    if (split?.key === "chest-back") {
+      let regularTarget = Math.max(2, energyTarget - (hasFinisher ? 1 : 0));
+      if (regularTarget % 2 !== 0) regularTarget += energy === "low" ? -1 : 1;
+      energyTarget = regularTarget + (hasFinisher ? 1 : 0);
+    }
+    const targetCount = Math.min(candidates.length, energyTarget);
 
     const schema = {
       type: "object",
@@ -82,7 +91,8 @@ export default {
         chosen: {
           type: "array",
           items: { type: "string", enum: names },
-          minItems: 1,
+          minItems: targetCount,
+          maxItems: targetCount,
         },
         reason: {
           type: "string",
@@ -110,13 +120,10 @@ export default {
       additionalProperties: false,
     };
 
-    const targetCount = MINUTES_TO_COUNT[minutes] || 4;
     const systemPrompt = [
       "You are a sharp, encouraging personal trainer picking today's exercises",
       "from a FIXED candidate list. Never invent exercises outside that list.",
-      `Choose AT LEAST ${targetCount} exercises for a ${minutes}-minute session —`,
-      "that count is a floor, not a suggestion; use every relevant candidate you",
-      "have available before choosing fewer than that.",
+      `Choose exactly ${targetCount} exercises for this ${minutes}-minute, ${energy}-energy session.`,
       "Prioritize whichever candidates best serve the athlete's stated goal.",
       "On low energy, trim volume and prefer the lower-fatigue candidates.",
       "On high energy, especially for 45+ minute sessions, go the other",
@@ -130,7 +137,12 @@ export default {
       "session). ALWAYS include that specific candidate in chosen, regardless",
       "of energy level or session length — it's an explicit request, not an",
       "optional volume decision like the split's own default finisher above.",
-      "If a partner is available, prefer partner-friendly candidates when present.",
+      partner
+        ? "A partner is available; partner-friendly candidates may be used when they fit."
+        : "The athlete is training alone. NEVER choose a partner exercise or a movement that requires another person.",
+      split?.key === "chest-back"
+        ? "This is a combined Chest & Back session. Build it from complete push/pull superset pairs in A, B, then C order. Start with the primary loaded compound pair, then the secondary loaded pair; bodyweight work and isolation belong after those. Include equal chest/horizontal-push and back/row/pull movements before an optional finisher."
+        : "Keep the chosen movements aligned with the requested workout type.",
       "Some candidates carry a `superset` field — candidates sharing the same",
       "superset value are a deliberate pair (e.g. a push paired with a pull, so",
       "the session stays balanced). ALWAYS choose both members of a pair",
