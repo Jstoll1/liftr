@@ -2687,6 +2687,20 @@ okra`;
     el.textContent = `🤖 ${text}`;
   }
 
+  // How many exercises the real plan is actually going to land on, so the
+  // loading skeleton below can match it — a fixed 3-row skeleton used to
+  // show regardless of check-in settings, so a short/low-energy session
+  // (whose real target is 2) visibly "lost" a row the moment the real plan
+  // rendered, reading like the workout had just been shrunk.
+  function estimatedExerciseCount(splitKey, checkIn) {
+    if (SPECIAL_WORKOUTS[splitKey]) return buildCandidatePool(currentUser, splitKey, checkIn).length;
+    if (splitKey === "chest-back") {
+      const hasFinisher = checkIn.energy === "high" && checkIn.minutes >= 45;
+      return chestBackPlanSize(checkIn, hasFinisher).total;
+    }
+    return targetExerciseCount(checkIn) + (checkIn.partner ? 1 : 0);
+  }
+
   // Shown while computePlan() is awaiting the AI (or immediately resolving
   // the local fallback) — keeps the screen from looking frozen mid-fetch.
   function renderSessionLoading(splitKey) {
@@ -2700,7 +2714,8 @@ okra`;
     document.getElementById("preview-plan-summary").classList.add("hidden");
 
     const list = document.getElementById("session-exercises");
-    list.innerHTML = '<li class="skeleton-row"></li><li class="skeleton-row"></li><li class="skeleton-row"></li>';
+    const rowCount = Math.max(1, Math.min(8, estimatedExerciseCount(splitKey, checkInState)));
+    list.innerHTML = '<li class="skeleton-row"></li>'.repeat(rowCount);
 
     const btn = document.getElementById("log-session-btn");
     document.getElementById("preview-coach-section").classList.remove("hidden");
