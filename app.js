@@ -3,10 +3,12 @@
 // synced through a small Cloudflare Worker (worker/src/index.js, the
 // /picks and /results routes) so everyone can see everyone's picks and
 // live rankings from one shared "scoreboard" page — not just their own
-// browser. A game locks (no more changes, for anyone) once its kickoff
-// time passes, independent of whether that manager has hit "Lock In".
-// Hitting "Lock In" freezes ALL of that manager's picks immediately,
-// even for games that haven't kicked off yet.
+// browser.
+//
+// Each game is submitted individually: pick a team, hit Submit, and it's
+// saved. You can change your mind and resubmit as many times as you want
+// right up until that specific game's kickoff — at that instant it locks
+// for everyone, submitted or not.
 
 // Fill this in after deploying the Worker (see worker/README.md), e.g.
 // "https://liftr-ai.<your-subdomain>.workers.dev". Left blank, the app
@@ -53,14 +55,13 @@ function saveAll(data) {
 
 function getManagerState(name) {
   const all = loadAll();
-  return all[name] || { picks: {}, tiebreaker: "", lockedIn: false, lockedAt: null };
+  return all[name] || { picks: {}, tiebreaker: "" };
 }
 
 function setManagerState(name, state) {
   const all = loadAll();
   all[name] = state;
   saveAll(all);
-  schedulePush(name, state);
 }
 
 function isGameLocked(game) {
@@ -68,13 +69,6 @@ function isGameLocked(game) {
 }
 
 // --- Worker sync (cross-device picks + results) --------------------------
-
-let pushTimer = null;
-function schedulePush(name, state) {
-  if (!WORKER_URL) return;
-  clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => pushManagerState(name, state), 800);
-}
 
 async function pushManagerState(manager, state) {
   if (!WORKER_URL) return;
@@ -128,7 +122,7 @@ async function pushResult(gameId, winner) {
 
 // Cloud is the source of truth across devices — pull once per manager
 // select and merge into local storage before rendering, so a manager who
-// locked in on their phone sees it locked on their laptop too.
+// submitted a pick on their phone sees it submitted on their laptop too.
 async function syncManagerFromCloud(name) {
   const cloud = await fetchAllPicks();
   if (!cloud || !cloud[name]) return;
@@ -141,16 +135,21 @@ async function syncManagerFromCloud(name) {
 
 let currentManager = null;
 
+// Ephemeral, per-manager, not persisted: what's currently selected on
+// screen but not yet submitted. Reset whenever a manager is (re)selected.
+let draftPicks = {};
+let draftTiebreaker = null;
+
+const logoScreen = document.getElementById("logo-screen");
 const loginScreen = document.getElementById("login-screen");
 const picksScreen = document.getElementById("picks-screen");
 const scoreboardScreen = document.getElementById("scoreboard-screen");
 const managerPicker = document.getElementById("manager-picker");
 const managerBadge = document.getElementById("manager-badge");
 const gamesList = document.getElementById("games-list");
-const lockedBanner = document.getElementById("locked-banner");
-const lockedBannerSub = document.getElementById("locked-banner-sub");
 const tiebreakerInput = document.getElementById("tiebreaker-input");
-const lockBtn = document.getElementById("lock-btn");
+const tiebreakerSubmitBtn = document.getElementById("tiebreaker-submit-btn");
+const tiebreakerStatus = document.getElementById("tiebreaker-status");
 const picksProgress = document.getElementById("picks-progress");
 const switchBtn = document.getElementById("switch-btn");
 const toScoreboardBtn = document.getElementById("to-scoreboard-btn");
@@ -159,6 +158,18 @@ const scoreboardRefreshBtn = document.getElementById("scoreboard-refresh-btn");
 const rankingsList = document.getElementById("rankings-list");
 const scoreboardTable = document.getElementById("scoreboard-table");
 const resultsForm = document.getElementById("results-form");
+
+// --- Logo / splash screen ---------------------------------------------
+
+function goToPlayerSelect() {
+  logoScreen.classList.add("hidden");
+  loginScreen.classList.remove("hidden");
+}
+
+logoScreen.addEventListener("click", goToPlayerSelect);
+setTimeout(() => {
+  if (!logoScreen.classList.contains("hidden")) goToPlayerSelect();
+}, 3200);
 
 function renderManagerPicker() {
   const all = loadAll();
@@ -179,6 +190,8 @@ function renderManagerPicker() {
 
 async function selectManager(name) {
   currentManager = name;
+  draftPicks = {};
+  draftTiebreaker = null;
   managerBadge.textContent = name.toUpperCase();
   loginScreen.classList.add("hidden");
   picksScreen.classList.remove("hidden");
@@ -189,78 +202,103 @@ async function selectManager(name) {
 
 function renderPicksScreen() {
   const state = getManagerState(currentManager);
-  const lockedIn = state.lockedIn;
-
-  lockedBanner.classList.toggle("hidden", !lockedIn);
-  if (lockedIn) {
-    lockedBannerSub.textContent = `Locked at ${new Date(state.lockedAt).toLocaleString()} — picks are final.`;
-  }
 
   gamesList.innerHTML = "";
   GAMES.forEach((game) => {
-    const gameLocked = lockedIn || isGameLocked(game);
-    const card = document.createElement("div");
-    card.className = "game-card" + (gameLocked ? " game-locked" : "");
+    const gameLocked = isGameLocked(game);
+    const submittedPick = state.picks[game.id];
 
-    const selected = state.picks[game.id];
+    if (draftPicks[game.id] === undefined) {
+      draftPicks[game.id] = submittedPick;
+    }
+    const draft = draftPicks[game.id];
+    const hasUnsavedChange = draft && draft !== submittedPick;
+
+    const card = document.createElement("div");
+    card.className = "game-card" + (gameLocked ? " game-locked" : "") + (submittedPick && !hasUnsavedChange ? " game-submitted" : "");
+
+    let statusLabel = "OPEN";
+    let statusClass = "open";
+    if (gameLocked) {
+      statusLabel = "LOCKED";
+      statusClass = "locked";
+    } else if (submittedPick && !hasUnsavedChange) {
+      statusLabel = "SUBMITTED";
+      statusClass = "submitted";
+    }
 
     card.innerHTML = `
       <div class="game-meta">
         <span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>
-        <span class="game-status ${gameLocked ? "locked" : "open"}">${gameLocked ? "LOCKED" : "OPEN"}</span>
+        <span class="game-status ${statusClass}">${statusLabel}</span>
       </div>
       <div class="matchup-row">
         <button class="team-btn away-btn" type="button">${game.away}<span class="team-spread">${game.favorite === game.away ? "-" + game.spread : "+" + game.spread}</span></button>
         <span class="vs-divider">VS</span>
         <button class="team-btn home-btn" type="button">${game.home}<span class="team-spread">${game.favorite === game.home ? "-" + game.spread : "+" + game.spread}</span></button>
       </div>
+      <div class="game-submit-row">
+        <span class="game-submit-note">${gameLocked ? (submittedPick ? `Final pick: ${submittedPick}` : "No pick submitted — locked") : submittedPick && !hasUnsavedChange ? `✓ Submitted: ${submittedPick}` : ""}</span>
+        <button class="ghost-btn submit-pick-btn" type="button" ${gameLocked ? "disabled" : ""}>Submit</button>
+      </div>
     `;
 
     const awayBtn = card.querySelector(".away-btn");
     const homeBtn = card.querySelector(".home-btn");
+    const submitPickBtn = card.querySelector(".submit-pick-btn");
 
     [
       [awayBtn, game.away],
       [homeBtn, game.home],
     ].forEach(([btn, team]) => {
-      if (selected === team) btn.classList.add("selected");
+      if (draft === team) btn.classList.add("selected");
       btn.disabled = gameLocked;
       btn.addEventListener("click", () => {
-        const s = getManagerState(currentManager);
-        s.picks[game.id] = team;
-        setManagerState(currentManager, s);
+        draftPicks[game.id] = team;
         renderPicksScreen();
       });
+    });
+
+    submitPickBtn.disabled = gameLocked || !draft || draft === submittedPick;
+    submitPickBtn.textContent = submittedPick && !hasUnsavedChange ? "Submitted" : "Submit";
+    submitPickBtn.addEventListener("click", () => {
+      const s = getManagerState(currentManager);
+      s.picks[game.id] = draft;
+      setManagerState(currentManager, s);
+      pushManagerState(currentManager, s);
+      renderPicksScreen();
     });
 
     gamesList.appendChild(card);
   });
 
   const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
-  const tiebreakerLocked = lockedIn || isGameLocked(tiebreakerGame);
-  tiebreakerInput.value = state.tiebreaker || "";
+  const tiebreakerLocked = isGameLocked(tiebreakerGame);
+  if (draftTiebreaker === null) {
+    draftTiebreaker = state.tiebreaker || "";
+  }
+  tiebreakerInput.value = draftTiebreaker;
   tiebreakerInput.disabled = tiebreakerLocked;
   tiebreakerInput.oninput = () => {
-    const s = getManagerState(currentManager);
-    s.tiebreaker = tiebreakerInput.value;
-    setManagerState(currentManager, s);
+    draftTiebreaker = tiebreakerInput.value;
+    const changed = draftTiebreaker !== "" && draftTiebreaker !== String(state.tiebreaker || "");
+    tiebreakerSubmitBtn.disabled = tiebreakerLocked || !changed;
   };
+  const tbChanged = draftTiebreaker !== "" && draftTiebreaker !== String(state.tiebreaker || "");
+  tiebreakerSubmitBtn.disabled = tiebreakerLocked || !tbChanged;
+  tiebreakerStatus.textContent = tiebreakerLocked
+    ? (state.tiebreaker ? `Final: ${state.tiebreaker}` : "No tiebreaker submitted — locked")
+    : state.tiebreaker ? `✓ Submitted: ${state.tiebreaker}` : "";
 
-  const totalPicked = Object.keys(state.picks).length;
-  picksProgress.textContent = `${totalPicked} of ${GAMES.length} games picked` + (state.tiebreaker ? " · tiebreaker set" : " · tiebreaker not set");
-
-  const allPicked = totalPicked === GAMES.length && String(state.tiebreaker).trim() !== "";
-  lockBtn.disabled = lockedIn || !allPicked;
-  lockBtn.textContent = lockedIn ? "🔒 PICKS LOCKED IN" : "🔒 LOCK IN PICKS";
+  const totalSubmitted = Object.values(state.picks).filter(Boolean).length;
+  picksProgress.textContent = `${totalSubmitted} of ${GAMES.length} games submitted` + (state.tiebreaker ? " · tiebreaker submitted" : " · tiebreaker not submitted");
 }
 
-lockBtn.addEventListener("click", () => {
-  const state = getManagerState(currentManager);
-  if (state.lockedIn) return;
-  state.lockedIn = true;
-  state.lockedAt = new Date().toISOString();
-  setManagerState(currentManager, state);
-  pushManagerState(currentManager, state); // push immediately, don't wait on the debounce
+tiebreakerSubmitBtn.addEventListener("click", () => {
+  const s = getManagerState(currentManager);
+  s.tiebreaker = draftTiebreaker;
+  setManagerState(currentManager, s);
+  pushManagerState(currentManager, s);
   renderPicksScreen();
 });
 
@@ -324,7 +362,7 @@ function renderScoreboardTable(cloudPicks, results) {
   let html = `<thead><tr><th class="manager-col">Manager</th>${headCells}<th>Tiebreak</th></tr></thead><tbody>`;
 
   MANAGERS.forEach((name) => {
-    const state = cloudPicks[name] || { picks: {}, tiebreaker: "", lockedIn: false };
+    const state = cloudPicks[name] || { picks: {}, tiebreaker: "" };
     const cells = GAMES.map((game) => {
       const gameStarted = isGameLocked(game);
       const pick = state.picks[game.id];
@@ -344,8 +382,9 @@ function renderScoreboardTable(cloudPicks, results) {
     const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
     const tbVisible = isGameLocked(tiebreakerGame);
     const tbCell = tbVisible ? (state.tiebreaker || "—") : "🔒";
+    const submittedCount = Object.values(state.picks).filter(Boolean).length;
 
-    html += `<tr><td class="manager-col">${name}${state.lockedIn ? " 🔒" : ""}</td>${cells}<td>${tbCell}</td></tr>`;
+    html += `<tr><td class="manager-col">${name} <span class="ranking-lock">(${submittedCount}/${GAMES.length})</span></td>${cells}<td>${tbCell}</td></tr>`;
   });
 
   html += "</tbody>";
@@ -364,8 +403,9 @@ function computeScore(state, results) {
 
 function renderRankings(cloudPicks, results) {
   const rows = MANAGERS.map((name) => {
-    const state = cloudPicks[name] || { picks: {}, lockedIn: false };
-    return { name, score: computeScore(state, results), lockedIn: !!state.lockedIn };
+    const state = cloudPicks[name] || { picks: {} };
+    const submittedCount = Object.values(state.picks).filter(Boolean).length;
+    return { name, score: computeScore(state, results), submittedCount };
   }).sort((a, b) => b.score - a.score);
 
   rankingsList.innerHTML = "";
@@ -375,7 +415,7 @@ function renderRankings(cloudPicks, results) {
     div.innerHTML = `
       <span class="ranking-place">#${i + 1}</span>
       <span class="ranking-name">${row.name}</span>
-      <span class="ranking-lock">${row.lockedIn ? "🔒 locked" : "editing"}</span>
+      <span class="ranking-lock">${row.submittedCount}/${GAMES.length} submitted</span>
       <span class="ranking-score">${row.score} correct</span>
     `;
     rankingsList.appendChild(div);

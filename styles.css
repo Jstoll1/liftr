@@ -490,3 +490,137 @@ html, body {
   font-size: 11px;
   padding: 6px;
 }
+
+/* --- Logo / splash screen ------------------------------------------- */
+
+.logo-screen {
+  cursor: pointer;
+  background: radial-gradient(ellipse at center, #1a0033 0%, var(--bg) 70%);
+}
+
+.logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+.logo-text {
+  margin: 0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(30px, 11vw, 64px);
+  letter-spacing: 4px;
+  color: var(--neon-pink);
+  text-shadow:
+    0 0 8px var(--neon-pink),
+    0 0 22px var(--neon-pink),
+    0 0 44px var(--neon-purple),
+    0 0 80px var(--neon-purple);
+  animation:
+    neon-color-cycle 3.2s ease-in-out infinite,
+    neon-buzz 2.6s linear infinite;
+}
+
+.logo-hint {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 6px var(--neon-cyan);
+  animation: neon-buzz 1.4s steps(2, end) infinite;
+}
+
+@keyframes neon-color-cycle {
+  0%, 100% {
+    color: var(--neon-pink);
+    text-shadow:
+      0 0 8px var(--neon-pink),
+      0 0 22px var(--neon-pink),
+      0 0 44px var(--neon-purple),
+      0 0 80px var(--neon-purple);
+  }
+  50% {
+    color: var(--neon-cyan);
+    text-shadow:
+      0 0 8px var(--neon-cyan),
+      0 0 22px var(--neon-cyan),
+      0 0 44px var(--neon-purple),
+      0 0 80px var(--neon-purple);
+  }
+}
+
+/* Mimics a flickering neon tube: mostly steady, with a couple of quick
+   dropouts and one longer buzz per cycle. */
+@keyframes neon-buzz {
+  0%, 3%, 6%, 100% { opacity: 1; }
+  4% { opacity: 0.4; }
+  5% { opacity: 0.85; }
+  42% { opacity: 1; }
+  43% { opacity: 0.3; }
+  44% { opacity: 0.9; }
+  45% { opacity: 0.5; }
+  46% { opacity: 1; }
+}
+
+/* --- Picks screen: per-game submit flow ------------------------------ */
+
+.picks-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 0;
+}
+
+.ghost-btn {
+  background: transparent;
+  border: 2px solid var(--card-border);
+  border-radius: 8px;
+  color: var(--neon-cyan);
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ghost-btn:hover:not(:disabled) {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(5, 217, 232, 0.4);
+}
+
+.ghost-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.game-card.game-submitted {
+  border-color: var(--neon-green);
+}
+
+.game-status.submitted {
+  color: var(--neon-yellow);
+  border: 1px solid var(--neon-yellow);
+}
+
+.game-submit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.game-submit-note {
+  font-size: 10px;
+  color: var(--neon-green);
+}
+
+.tiebreaker-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tiebreaker-status {
+  font-size: 10px;
+  color: var(--neon-green);
+}

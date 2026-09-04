@@ -16,12 +16,20 @@
   <div class="synth-grid" aria-hidden="true"></div>
   <div class="scanlines" aria-hidden="true"></div>
 
-  <!-- NAME SELECT SCREEN -->
-  <main id="login-screen" class="screen">
+  <!-- LOGO / SPLASH SCREEN -->
+  <main id="logo-screen" class="screen logo-screen">
+    <div class="logo-wrap">
+      <h1 class="logo-text" aria-label="Brochiefs">BROCHIEFS</h1>
+      <span class="logo-hint">TAP TO CONTINUE</span>
+    </div>
+  </main>
+
+  <!-- PLAYER SELECT SCREEN -->
+  <main id="login-screen" class="screen hidden">
     <div class="wrap">
       <div class="brand">
-        <span class="brand-mark">BROCHIEFS</span>
-        <span class="brand-sub">2026 PICK'EM &mdash; INSERT MANAGER TO CONTINUE</span>
+        <span class="brand-mark">CHOOSE YOUR PLAYER</span>
+        <span class="brand-sub">2026 PICK'EM &mdash; SELECT YOUR NAME TO CONTINUE</span>
       </div>
       <div id="manager-picker" class="manager-picker"></div>
     </div>
@@ -36,21 +44,19 @@
         <button id="to-scoreboard-btn" class="link-btn">SCOREBOARD &rarr;</button>
       </div>
 
-      <div id="locked-banner" class="locked-banner hidden">
-        <span class="locked-banner-title">🔒 PICKS LOCKED IN</span>
-        <span id="locked-banner-sub" class="locked-banner-sub"></span>
-      </div>
+      <p class="picks-hint">Pick a team, then hit Submit. You can change your pick and resubmit right up until that game kicks off &mdash; then it locks for everyone.</p>
+
+      <span id="picks-progress" class="picks-progress"></span>
 
       <div id="games-list" class="games-list"></div>
 
       <div class="tiebreaker-card">
         <span class="tiebreaker-label">TIEBREAKER &mdash; Total combined points, Clemson @ LSU (G8)</span>
-        <input type="number" id="tiebreaker-input" class="tiebreaker-input" inputmode="numeric" min="0" max="150" placeholder="e.g. 45" />
-      </div>
-
-      <div class="submit-row">
-        <span id="picks-progress" class="picks-progress"></span>
-        <button id="lock-btn" class="primary-btn" disabled>🔒 LOCK IN PICKS</button>
+        <div class="tiebreaker-row">
+          <input type="number" id="tiebreaker-input" class="tiebreaker-input" inputmode="numeric" min="0" max="150" placeholder="e.g. 45" />
+          <button id="tiebreaker-submit-btn" class="ghost-btn" type="button" disabled>Submit</button>
+        </div>
+        <span id="tiebreaker-status" class="tiebreaker-status"></span>
       </div>
     </div>
   </main>
