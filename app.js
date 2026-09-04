@@ -291,31 +291,52 @@ function pickLabel(game, pick) {
   return `${pick.team} ATS ${spreadStr} (${pts} pt)`;
 }
 
-// Ordered low-risk to high-risk, matching how the rules explain it
-// (🟢 play it safe → 🔥 trust the number → 🚨 call the upset) instead of
-// grouping by team, which made all 4 options look equally weighted.
-function pickOptionsHtml(game) {
-  const dog = game.favorite === game.away ? game.home : game.away;
-  const dogId = game.favorite === game.away ? game.homeId : game.awayId;
-  const favId = game.favorite === game.away ? game.awayId : game.homeId;
+// Hero team-vs-team cards (logo + spread number + name up top, like a
+// sportsbook matchup card) with 2 pick buttons per team beneath: the
+// Straight Up buttons sit together in the middle (inner side, next to
+// each other across the center line) and the Spread buttons flank the
+// outer edges — so the two "modes" each read as one visual row.
+function teamCardHtml(game, team, teamId, isFavorite, side, draft) {
+  const spreadDisplay = isFavorite ? `-${game.spread}` : `+${game.spread}`;
+  const suPts = pointValue(game, team, "SU");
+  const atsSelected = pickEqual(draft, { team, mode: "ATS" });
+  const suSelected = pickEqual(draft, { team, mode: "SU" });
 
-  const opt = (team, teamId, mode, emoji, riskClass, desc) => `
-    <button class="pick-option-btn ${riskClass}" type="button" data-team="${team}" data-mode="${mode}">
-      <img class="pick-opt-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
-      <span class="pick-opt-info">
-        <span class="pick-opt-team">${team}</span>
-        <span class="pick-opt-desc">${desc}</span>
-      </span>
-      <span class="pick-opt-pts">${emoji} ${pointValue(game, team, mode)}<small>PT</small></span>
+  const atsBtn = `
+    <button class="pick-mini-btn ats ${atsSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="ATS">
+      <span class="pick-mini-label">SPREAD</span>
+      <span class="pick-mini-value">${spreadDisplay}</span>
+      <span class="pick-mini-pts">2 PT</span>
     </button>
   `;
+  const suBtn = `
+    <button class="pick-mini-btn su ${isFavorite ? "risk-low" : "risk-high"} ${suSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="SU">
+      <span class="pick-mini-label">STRAIGHT UP</span>
+      <span class="pick-mini-value">${isFavorite ? "🟢 Chalk" : "🚨 Upset"}</span>
+      <span class="pick-mini-pts">${suPts} PT</span>
+    </button>
+  `;
+  // Away (left side): outer=ATS first, inner=SU second. Home (right
+  // side): inner=SU first, outer=ATS second — puts both SU buttons
+  // adjacent in the middle and both ATS buttons on the far edges.
+  const buttons = side === "away" ? atsBtn + suBtn : suBtn + atsBtn;
 
   return `
-    <div class="pick-options-list">
-      ${opt(game.favorite, favId, "SU", "🟢", "risk-low", "Straight up win")}
-      ${opt(game.away, game.awayId, "ATS", "🔥", "risk-mid", `Covers ${game.favorite === game.away ? "-" : "+"}${game.spread}`)}
-      ${opt(game.home, game.homeId, "ATS", "🔥", "risk-mid", `Covers ${game.favorite === game.home ? "-" : "+"}${game.spread}`)}
-      ${opt(dog, dogId, "SU", "🚨", "risk-high", "Upset, straight up win")}
+    <div class="team-card">
+      <img class="team-card-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
+      <span class="team-card-spread">${spreadDisplay}</span>
+      <span class="team-card-name">${team}</span>
+      <div class="team-card-buttons">${buttons}</div>
+    </div>
+  `;
+}
+
+function matchupCardsHtml(game, draft) {
+  const awayIsFav = game.favorite === game.away;
+  return `
+    <div class="matchup-cards-row">
+      ${teamCardHtml(game, game.away, game.awayId, awayIsFav, "away", draft)}
+      ${teamCardHtml(game, game.home, game.homeId, !awayIsFav, "home", draft)}
     </div>
   `;
 }
@@ -352,7 +373,7 @@ function renderPicksScreen() {
         <span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>
         <span class="game-status ${statusClass}">${statusLabel}</span>
       </div>
-      ${pickOptionsHtml(game)}
+      ${matchupCardsHtml(game, draft)}
       <div class="game-submit-row">
         <span class="game-submit-note">${gameLocked ? (submittedPick ? `Final pick: ${pickLabel(game, submittedPick)}` : "No pick submitted — locked") : submittedPick && !hasUnsavedChange ? `✓ Submitted: ${pickLabel(game, submittedPick)}` : ""}</span>
         <button class="ghost-btn submit-pick-btn" type="button" ${gameLocked ? "disabled" : ""}>Submit</button>
@@ -361,10 +382,9 @@ function renderPicksScreen() {
 
     const submitPickBtn = card.querySelector(".submit-pick-btn");
 
-    card.querySelectorAll(".pick-option-btn").forEach((btn) => {
+    card.querySelectorAll(".pick-mini-btn").forEach((btn) => {
       const team = btn.dataset.team;
       const mode = btn.dataset.mode;
-      if (pickEqual(draft, { team, mode })) btn.classList.add("selected");
       btn.disabled = gameLocked;
       btn.addEventListener("click", () => {
         draftPicks[game.id] = { team, mode };

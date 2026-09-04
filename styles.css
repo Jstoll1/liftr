@@ -182,9 +182,10 @@ html, body {
 
 .topbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
 }
 
 .link-btn {
@@ -196,7 +197,8 @@ html, body {
   font-size: 12px;
   letter-spacing: 1px;
   cursor: pointer;
-  padding: 6px 0;
+  padding: 10px 4px;
+  white-space: nowrap;
 }
 
 .manager-badge {
@@ -748,99 +750,115 @@ html, body {
   color: var(--neon-green);
 }
 
-/* --- Pick options: 4 choices per game, ordered low-risk to high-risk -- */
+/* --- Matchup hero cards: team vs team, 2 pick buttons each ----------- */
 
-.pick-options-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.matchup-cards-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
-.pick-option-btn {
+.team-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid var(--card-border);
+  border-radius: 12px;
+  padding: 12px 8px 10px;
+}
+
+.team-card-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(5, 217, 232, 0.35));
+  margin-bottom: 2px;
+}
+
+.team-card-spread {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 17px;
+  color: var(--text);
+  line-height: 1;
+}
+
+.team-card-name {
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-dim);
+  line-height: 1.3;
+  min-height: 28px;
   display: flex;
   align-items: center;
-  gap: 10px;
+}
+
+.team-card-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
   width: 100%;
+  margin-top: 4px;
+}
+
+.pick-mini-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   background: rgba(255, 255, 255, 0.04);
   border: 2px solid var(--card-border);
-  border-left-width: 4px;
   border-radius: 8px;
   color: var(--text);
   font-family: 'Orbitron', sans-serif;
-  font-weight: 700;
-  padding: 9px 12px;
+  padding: 7px 4px;
   cursor: pointer;
-  text-align: left;
   transition: all 0.15s ease;
 }
 
-.pick-option-btn.risk-low { border-left-color: var(--neon-green); }
-.pick-option-btn.risk-mid { border-left-color: var(--neon-yellow); }
-.pick-option-btn.risk-high { border-left-color: var(--neon-pink); }
+.pick-mini-btn.su.risk-low { border-bottom-color: var(--neon-green); border-bottom-width: 3px; }
+.pick-mini-btn.su.risk-high { border-bottom-color: var(--neon-pink); border-bottom-width: 3px; }
+.pick-mini-btn.ats { border-bottom-color: var(--neon-yellow); border-bottom-width: 3px; }
 
-.pick-opt-logo {
-  width: 30px;
-  height: 30px;
-  object-fit: contain;
-  flex-shrink: 0;
-  filter: drop-shadow(0 0 4px rgba(5, 217, 232, 0.35));
-}
-
-.pick-opt-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.pick-opt-team {
-  font-size: 13px;
-  line-height: 1.2;
-}
-
-.pick-opt-desc {
-  font-size: 9px;
-  font-weight: 500;
+.pick-mini-label {
+  font-size: 7px;
+  letter-spacing: 0.5px;
   color: var(--text-dim);
 }
 
-.pick-opt-pts {
-  flex-shrink: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 3px;
+.pick-mini-value {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pick-mini-pts {
   font-family: 'Press Start 2P', monospace;
-  font-size: 13px;
+  font-size: 8px;
   color: var(--neon-yellow);
   text-shadow: 0 0 4px var(--neon-yellow);
 }
 
-.pick-opt-pts small {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 8px;
-  opacity: 0.8;
-}
-
-.pick-option-btn:hover:not(:disabled) {
+.pick-mini-btn:hover:not(:disabled) {
   border-top-color: var(--neon-cyan);
+  border-left-color: var(--neon-cyan);
   border-right-color: var(--neon-cyan);
-  border-bottom-color: var(--neon-cyan);
 }
 
-.pick-option-btn.selected {
+.pick-mini-btn.selected {
   border-color: var(--neon-purple);
-  background: rgba(193, 60, 255, 0.22);
+  background: rgba(193, 60, 255, 0.25);
   box-shadow: 0 0 12px rgba(193, 60, 255, 0.5);
 }
 
-.pick-option-btn.risk-low.selected { border-left-color: var(--neon-green); }
-.pick-option-btn.risk-mid.selected { border-left-color: var(--neon-yellow); }
-.pick-option-btn.risk-high.selected { border-left-color: var(--neon-pink); }
+.pick-mini-btn.selected.su.risk-low { border-bottom-color: var(--neon-green); }
+.pick-mini-btn.selected.su.risk-high { border-bottom-color: var(--neon-pink); }
+.pick-mini-btn.selected.ats { border-bottom-color: var(--neon-yellow); }
 
-.pick-option-btn:disabled {
+.pick-mini-btn:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 /* --- Results entry: final score inputs -------------------------------- */
