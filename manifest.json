@@ -1,7 +1,7 @@
 {
-  "name": "Liftr",
-  "short_name": "Liftr",
-  "description": "Retro workout tracker for Jessica and Jake.",
+  "name": "Brochiefs Pick'em",
+  "short_name": "Pick'em",
+  "description": "Retro arcade pick'em app for the Brochiefs 2026 pool.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0a0014",

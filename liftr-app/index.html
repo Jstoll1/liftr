@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>Liftr</title>
+
+  <!-- iOS "Add to Home Screen" behavior: launches full-screen with no Safari
+       chrome, uses this title, and status-bar text sits over our own dark
+       background (translucent) rather than a forced white/black bar. -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Liftr" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0a0014" />
+  <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="../icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="../icons/favicon-16.png" />
+  <link rel="manifest" href="../manifest.json" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
+  <!-- ?v= is a manual cache-buster: bump it whenever styles.css or app.js
+       changes, so browsers/CDNs don't keep serving a stale cached copy
+       alongside a freshly-updated index.html. -->
+  <link rel="stylesheet" href="styles.css?v=202609013800" />
+</head>
+<body>
+
+  <div class="synth-grid" aria-hidden="true"></div>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <button id="home-button" class="home-button hidden" aria-label="Go to home" title="Home">⌂</button>
+
+  <!-- LOGIN SCREEN -->
+  <main id="login-screen" class="screen">
+    <div class="login-wrap">
+      <div class="brand">
+        <span class="brand-mark">LIFTR</span>
+        <span class="brand-sub">&gt; INSERT LIFTER TO CONTINUE &lt;</span>
+      </div>
+      <div class="user-picker">
+        <button class="user-card" data-user="jessica">
+          <span class="user-avatar" style="--accent:#c13cff">J</span>
+          <span class="user-name">Jessica</span>
+        </button>
+        <button class="user-card" data-user="jake">
+          <span class="user-avatar" style="--accent:#05d9e8">J</span>
+          <span class="user-name">Jake</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- WELCOME / TITLE-CARD SCREEN -->
+  <main id="welcome-screen" class="screen hidden">
+    <div id="vega-scurry" class="vega-scurry" aria-hidden="true">
+      <img src="../images/characters/vega-scurry.gif" alt="" draggable="false" />
+    </div>
+    <div class="welcome-wrap">
+      <span class="welcome-eyebrow">POWER UP</span>
+      <h1 id="welcome-text" class="welcome-text">
+        <span>WELCOME</span>
+        <span>BACK,</span>
+        <span id="welcome-name" class="welcome-name">JAKE</span>
+      </h1>
+      <span class="welcome-hint">tap anywhere to continue</span>
+    </div>
+  </main>
+
+  <!-- DAILY CHECK-IN / HOME HUB SCREEN -->
+  <main id="checkin-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <div class="hub-topbar">
+        <button id="checkin-switch" class="link-btn top-link">&larr; SWITCH</button>
+        <div class="hub-tiles">
+          <button id="hub-settings-btn" class="hub-tile" title="Settings">
+            <span class="hub-tile-icon">⚙️</span>
+          </button>
+          <button id="hub-history-btn" class="hub-tile" title="History">
+            <span class="hub-tile-icon">📜</span>
+          </button>
+          <button id="hub-graph-btn" class="hub-tile" title="Weight Trends">
+            <span class="hub-tile-icon">📈</span>
+          </button>
+          <button id="hub-cheer-btn" class="hub-tile" title="Cheer">
+            <span class="hub-tile-icon">👋</span>
+          </button>
+          <button id="hub-library-btn" class="hub-tile" title="Exercise Library">
+            <span class="hub-tile-icon">📚</span>
+          </button>
+          <button id="hub-trainer-btn" class="hub-tile" title="Master Trainer">
+            <span class="hub-tile-icon">🎓</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="recap-card" class="recap-card"></div>
+
+      <div id="checkin-chat-slot">
+        <div id="terminal-panel" class="terminal-panel">
+          <div class="terminal-titlebar">
+            <span class="terminal-dot dot-red"></span>
+            <span class="terminal-dot dot-yellow"></span>
+            <span class="terminal-dot dot-green"></span>
+            <span class="terminal-titletext">COACH://<span id="checkin-name"></span></span>
+            <button id="chat-panel-toggle" type="button" class="chat-panel-toggle" aria-expanded="true">Hide</button>
+          </div>
+          <div id="chat-context" class="chat-context" aria-live="polite"></div>
+          <div id="chat-thread" class="chat-thread"></div>
+          <div id="chat-quick-actions" class="chat-quick-actions" aria-label="Suggested coach prompts"></div>
+          <div class="chat-input-row">
+            <span class="terminal-prompt">&gt;</span>
+            <div class="terminal-input-wrap">
+              <input type="text" id="chat-input" class="chat-input terminal-input" placeholder="Ask about workouts, goals, motivation, or anything on your mind..." maxlength="600" />
+              <span id="chat-cursor" class="term-cursor">▌</span>
+            </div>
+            <button type="button" id="chat-send" class="chat-send-btn">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <button id="checkin-start-btn" class="primary-btn">🏋️ Start a Workout</button>
+
+      <div id="checkin-form" class="checkin-form hidden">
+        <div class="checkin-chips">
+          <div class="option-group compact">
+            <span class="option-label">⚡ Energy</span>
+            <div id="checkin-energy" class="option-row" data-option="energy">
+              <button class="chip" data-value="low">Low</button>
+              <button class="chip" data-value="medium">Medium</button>
+              <button class="chip" data-value="high">High</button>
+            </div>
+          </div>
+
+          <div class="option-group compact">
+            <span class="option-label">⏱ Time</span>
+            <div id="checkin-minutes" class="option-row" data-option="minutes">
+              <button class="chip" data-value="15">15 min</button>
+              <button class="chip" data-value="30">30 min</button>
+              <button class="chip" data-value="45">45 min</button>
+              <button class="chip" data-value="60">60 min</button>
+            </div>
+          </div>
+
+          <div class="option-group compact">
+            <span class="option-label">🤝 Partner</span>
+            <div id="checkin-partner" class="option-row" data-option="partner">
+              <button class="chip" data-value="yes">Yes</button>
+              <button class="chip" data-value="no">No</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="checkin-submit" class="primary-btn">Submit Check-In</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- SETTINGS SCREEN -->
+  <main id="settings-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="settings-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">Persona Settings</span>
+      <h2 class="panel-heading">Tell the coach about <span id="settings-name" class="panel-heading-accent"></span></h2>
+      <span class="panel-subtext">Used to personalize recommendations and estimate starting weights.</span>
+
+      <div class="option-group">
+        <span class="option-label">🎯 Goal</span>
+        <textarea id="settings-goal" class="note-input" rows="2" maxlength="140"></textarea>
+      </div>
+
+      <div class="option-group">
+        <span class="option-label">📏 Height</span>
+        <div class="settings-row">
+          <div class="settings-field">
+            <input type="number" id="settings-height-ft" class="settings-input" inputmode="numeric" placeholder="ft" min="0" max="8" />
+            <span class="settings-field-unit">ft</span>
+          </div>
+          <div class="settings-field">
+            <input type="number" id="settings-height-in" class="settings-input" inputmode="numeric" placeholder="in" min="0" max="11" />
+            <span class="settings-field-unit">in</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="option-group">
+        <span class="option-label">⚖️ Bodyweight</span>
+        <div class="settings-row">
+          <div class="settings-field">
+            <input type="number" id="settings-weight" class="settings-input" inputmode="numeric" placeholder="—" min="0" max="600" />
+            <span class="settings-field-unit">lbs</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="option-group">
+        <span class="option-label">🎯 Areas of Focus <span class="option-label-optional">(pick any)</span></span>
+        <div id="settings-focus" class="option-row focus-row"></div>
+      </div>
+
+      <div class="option-group">
+        <span class="option-label">🚫 Never Suggest <span class="option-label-optional">(said in chat, or removed here)</span></span>
+        <div id="settings-excluded" class="excluded-list"></div>
+        <p id="settings-excluded-empty" class="panel-subtext hidden">Nothing excluded — say "no [exercise]" in chat anytime to ban one.</p>
+      </div>
+
+      <button id="settings-save" class="primary-btn">Save Settings</button>
+
+      <div class="backup-section">
+        <span class="option-label">💾 Backup &amp; Restore <span class="option-label-optional">(both personas)</span></span>
+        <p class="panel-subtext">Insurance in case this device's storage ever gets wiped.</p>
+        <div class="backup-row">
+          <button id="settings-export" type="button" class="ghost-btn">Export Backup</button>
+          <button id="settings-import" type="button" class="ghost-btn">Import Backup</button>
+        </div>
+        <input type="file" id="settings-import-file" accept="application/json" class="hidden" />
+      </div>
+    </div>
+  </main>
+
+  <!-- HISTORY SCREEN -->
+  <main id="history-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="history-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">Full History</span>
+      <h2 class="panel-heading">Every session, <span id="history-name" class="panel-heading-accent"></span></h2>
+      <ul id="history-full-list" class="history-list"></ul>
+    </div>
+  </main>
+
+  <!-- MASTER TRAINER SCREEN -->
+  <main id="trainer-screen" class="screen hidden">
+    <div class="panel-wrap wide">
+      <button id="trainer-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">Master Trainer</span>
+      <h2 class="panel-heading">Both athletes, one view</h2>
+      <span class="panel-subtext">Every logged session, what they told the coach, and signals worth acting on — for both of you.</span>
+      <div id="trainer-content" class="trainer-content"></div>
+    </div>
+  </main>
+
+  <!-- EXERCISE LIBRARY SCREEN -->
+  <main id="library-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="library-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">Exercise Library</span>
+      <h2 class="panel-heading">Reference material the coach reads</h2>
+      <span class="panel-subtext">Upload training programs, PT protocols, or exercise guides as PDFs — the AI coach reads relevant excerpts when picking today's workout or replying in chat.</span>
+
+      <button id="library-upload-btn" type="button" class="primary-btn">📄 Upload PDF</button>
+      <input type="file" id="library-file-input" accept="application/pdf" multiple class="hidden" />
+      <p id="library-status" class="panel-subtext"></p>
+
+      <ul id="library-list" class="library-list"></ul>
+      <p id="library-empty" class="panel-subtext">Nothing uploaded yet — add a PDF above and the coach will start referencing it.</p>
+
+      <div class="backup-section">
+        <span class="option-label">💪 Saved Workouts <span class="option-label-optional">(proven combos, ready to start anytime)</span></span>
+        <p class="panel-subtext">Save a workout from the session preview screen to build your own library of go-to combos — the AI coach can also draw on these when suggesting a variation.</p>
+        <ul id="library-routines-list" class="library-list"></ul>
+        <p id="library-routines-empty" class="panel-subtext">Nothing saved yet — tap "Save this workout" from any session preview.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- LIBRARY DOC DETAIL SCREEN -->
+  <main id="library-doc-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="library-doc-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">From Your Library</span>
+      <h2 id="library-doc-title" class="panel-heading"></h2>
+      <div id="library-doc-body"></div>
+    </div>
+  </main>
+
+  <!-- WEIGHT TRENDS / GRAPH SCREEN -->
+  <main id="graph-screen" class="screen hidden">
+    <div class="panel-wrap">
+      <button id="graph-back" class="link-btn top-link">&larr; BACK</button>
+      <span class="section-title">Weight Trends</span>
+      <h2 class="panel-heading">Track <span id="graph-name" class="panel-heading-accent"></span>'s progress</h2>
+
+      <div class="graph-log-row">
+        <input type="date" id="graph-date" class="settings-input graph-date-input" />
+        <input type="number" id="graph-weight-input" class="settings-input" inputmode="numeric" placeholder="lbs" min="0" max="600" />
+        <button id="graph-log-btn" class="ghost-btn graph-log-btn">Log Weight</button>
+      </div>
+
+      <div class="graph-toggles">
+        <button type="button" class="chip graph-toggle selected" data-series="bodyweight">⚖️ Bodyweight</button>
+        <button type="button" class="chip graph-toggle" data-series="bench">🏋️ Bench (est. 1RM)</button>
+        <button type="button" class="chip graph-toggle" data-series="squat">🦵 Squat (est. 1RM)</button>
+      </div>
+
+      <div class="graph-chart-wrap">
+        <svg id="graph-svg" viewBox="0 0 600 300" preserveAspectRatio="none"></svg>
+        <p id="graph-empty" class="graph-empty hidden">No data yet — log a weigh-in above, or finish a bench/squat session, to see a trend line.</p>
+      </div>
+      <div id="graph-legend" class="graph-legend"></div>
+
+      <div class="weighin-table-section">
+        <span class="section-title">Logged Weigh-Ins</span>
+        <span class="panel-subtext">Double-tap a weight to fix a typo. ✕ removes an entry.</span>
+        <table class="weighin-table">
+          <thead>
+            <tr><th>Date</th><th>Weight</th><th></th></tr>
+          </thead>
+          <tbody id="weighin-table-body"></tbody>
+        </table>
+        <p id="weighin-table-empty" class="panel-subtext hidden">No weigh-ins logged yet.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- CHEER MODAL -->
+  <div id="cheer-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <span id="cheer-title" class="modal-title"></span>
+      <p id="cheer-subtext" class="modal-subtext"></p>
+      <div id="cheer-presets" class="cheer-presets"></div>
+      <input type="text" id="cheer-custom" class="chat-input" placeholder="Or write your own..." maxlength="120" />
+      <div class="modal-actions">
+        <button id="cheer-cancel" class="ghost-btn">Cancel</button>
+        <button id="cheer-send" class="primary-btn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKOUT SELECTION SCREEN -->
+  <main id="select-screen" class="screen hidden">
+    <div class="panel-wrap wide">
+      <button id="select-switch" class="link-btn top-link">&larr; SWITCH</button>
+
+      <span class="section-title">Fine-Tune With Your Coach</span>
+      <p class="panel-subtext">Equipment changes, injuries, anything else? Keep chatting — I'll factor it in below.</p>
+      <div id="select-chat-slot"></div>
+
+      <span class="section-title">Recommended For You</span>
+
+      <button id="recommended-card" class="rec-card">
+        <span class="rec-badge">TOP PICK</span>
+        <div class="rec-head">
+          <span id="rec-icon" class="rec-icon"></span>
+          <div class="rec-head-copy">
+            <span id="rec-name" class="rec-name"></span>
+            <span id="rec-tagline" class="rec-tagline"></span>
+          </div>
+        </div>
+        <p id="rec-reason" class="rec-reason"></p>
+        <div id="rec-live-update" class="rec-live-update hidden" aria-live="polite"></div>
+        <ul id="rec-exercises" class="rec-exercises"></ul>
+        <span class="rec-cta">View Workout Breakdown &rarr;</span>
+      </button>
+
+      <span class="section-title">Or Choose Another</span>
+      <div id="alt-options" class="alt-grid"></div>
+
+      <span class="section-title">More Workouts</span>
+      <p class="panel-subtext">Special programs and anything you've saved to your library — pick any of them directly.</p>
+      <ul id="more-workouts-list" class="library-list"></ul>
+      <p id="more-workouts-empty" class="panel-subtext hidden">Nothing here yet — save a workout from any session preview to see it in this list.</p>
+
+      <button id="custom-workout-btn" class="ghost-btn custom-cta">🛠 Create Custom Workout</button>
+    </div>
+  </main>
+
+  <!-- CUSTOM WORKOUT BUILDER SCREEN -->
+  <main id="custom-screen" class="screen hidden">
+    <div class="panel-wrap wide">
+      <button id="custom-back" class="link-btn top-link">&larr; BACK TO OPTIONS</button>
+      <span class="section-title">Build Your Own</span>
+      <span class="panel-subtext">Mix and match exercises from every category.</span>
+
+      <div id="custom-groups" class="custom-groups"></div>
+
+      <div class="custom-footer">
+        <span id="custom-count" class="custom-count">0 selected</span>
+        <button id="custom-start-btn" class="primary-btn" disabled>Start Custom Session</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- SESSION SCREEN (preview before logging, or today's completed session) -->
+  <main id="session-screen" class="screen hidden">
+    <header class="topbar">
+      <button id="switch-user" class="link-btn" aria-label="Switch user">&larr; SWITCH</button>
+      <div id="clock" class="clock">
+        <span id="clock-date" class="clock-date"></span>
+        <span id="clock-time" class="clock-time"></span>
+      </div>
+      <div id="streak-badge" class="streak-badge hidden">
+        <span id="streak-count">0</span> DAY STREAK
+      </div>
+    </header>
+
+    <section class="goal-card">
+      <span id="goal-avatar" class="goal-avatar">J</span>
+      <div class="goal-copy">
+        <span id="goal-username" class="goal-username"></span>
+        <span id="goal-label" class="goal-label">MISSION</span>
+        <span id="goal-text" class="goal-text"></span>
+      </div>
+    </section>
+
+    <section id="session-section" class="session-section">
+      <span class="section-title">Today's Session</span>
+
+      <div id="preview-coach-section" class="preview-coach-section hidden">
+        <span class="section-title">Adjust With Your Coach</span>
+        <p class="panel-subtext">Ask for substitutions, a different focus, fewer exercises, or equipment changes.</p>
+        <div id="preview-chat-slot"></div>
+      </div>
+
+      <article id="session-card" class="session-card">
+        <div class="session-card-head">
+          <span id="session-icon" class="session-icon"></span>
+          <div class="session-head-copy">
+            <span id="session-name" class="session-name"></span>
+            <span id="session-tagline" class="session-tagline"></span>
+          </div>
+          <span id="session-status" class="session-status hidden">Done</span>
+        </div>
+
+        <div id="session-tags" class="session-tags hidden"></div>
+
+        <p id="session-ai-note" class="session-ai-note hidden"></p>
+
+        <div id="preview-plan-summary" class="preview-plan-summary hidden" aria-live="polite"></div>
+
+        <ul id="session-exercises" class="session-exercises"></ul>
+
+        <p id="session-done-note" class="session-done-note hidden"></p>
+
+        <div id="session-rating-row" class="session-feedback-row hidden">
+          <span class="session-feedback-label">How was today, overall?</span>
+          <div class="session-feedback-chips">
+            <button type="button" class="session-feedback-chip" data-rating="rough">😞 Rough</button>
+            <button type="button" class="session-feedback-chip" data-rating="solid">🙂 Solid</button>
+            <button type="button" class="session-feedback-chip" data-rating="great">🔥 Great</button>
+          </div>
+        </div>
+
+        <div id="session-rec-feedback-row" class="session-feedback-row hidden">
+          <span class="session-feedback-label">Was this the right workout for today?</span>
+          <div class="session-feedback-chips">
+            <button type="button" class="session-feedback-chip" data-rec="up">👍 Yes</button>
+            <button type="button" class="session-feedback-chip" data-rec="down">👎 Not really</button>
+          </div>
+        </div>
+
+        <button id="session-done-home-btn" type="button" class="primary-btn hidden">🏠 Back to Home</button>
+
+        <div id="preview-actions" class="preview-actions hidden">
+          <button id="edit-preview-btn" class="ghost-btn">Edit Exercises</button>
+          <button id="log-session-btn" class="primary-btn">Start Session</button>
+        </div>
+        <button id="save-workout-btn" type="button" class="link-btn save-workout-link hidden">💾 Save this workout to your library</button>
+      </article>
+
+      <button id="back-to-options" class="link-btn back-to-options hidden">&larr; Not feeling it? Back to options</button>
+    </section>
+
+    <section class="history-section">
+      <span class="section-title">Recent Activity</span>
+      <ul id="history-list" class="history-list"></ul>
+    </section>
+  </main>
+
+  <!-- ACTIVE WORKOUT RUNNER -->
+  <main id="workout-screen" class="screen hidden">
+    <div class="panel-wrap wide workout-panel">
+      <button id="workout-switch" class="link-btn top-link">&larr; SWITCH</button>
+
+      <div class="workout-flash-banner">
+        <span id="workout-icon" class="workout-flash-icon"></span>
+        <div class="workout-flash-text">
+          <span id="workout-clock-time" class="workout-flash-time"></span>
+          <span id="workout-name" class="workout-flash-name"></span>
+        </div>
+        <button id="workout-regenerate" class="ghost-btn small" title="Regenerate today's picks">🔄</button>
+      </div>
+      <span id="workout-tagline" class="workout-tagline"></span>
+      <div class="workout-progress" aria-live="polite">
+        <div class="workout-progress-copy">
+          <strong id="workout-progress-title">0 of 0 exercises logged</strong>
+          <span id="workout-progress-detail">0 of 0 sets</span>
+        </div>
+        <div class="workout-progress-track"><span id="workout-progress-bar"></span></div>
+      </div>
+
+      <section class="warmup-card">
+        <span class="section-title">Warm-Up</span>
+        <ul id="warmup-list" class="warmup-list"></ul>
+      </section>
+
+      <section class="session-section">
+        <span class="section-title">Today's Exercises</span>
+        <span class="panel-subtext">Tap any exercise for a tip and to log reps — totally optional.</span>
+        <div id="workout-exercise-list" class="workout-exercise-list"></div>
+      </section>
+
+      <button id="workout-abandon" class="link-btn back-to-options">&larr; Not this one? Back to options</button>
+    </div>
+
+    <div class="workout-footer">
+      <button id="finish-workout-btn" class="primary-btn">Finish Workout</button>
+    </div>
+  </main>
+
+  <!-- pdf.js — extracts plain text from uploaded exercise-library PDFs
+       entirely client-side (nothing binary ever touches the Worker). -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+  </script>
+  <script src="app.js?v=202609034100"></script>
+</body>
+</html>

@@ -1,8 +1,13 @@
 # liftr
 
-A retro workout app for two lifters — Jessica and Jake. Static HTML/CSS/JS,
-no build step; `index.html` is the entry point (works via GitHub Pages or
-any static server).
+The site root (`index.html`) is currently the **Brochiefs 2026 pick'em app**
+(`app.js`, `styles.css`) — pick a manager name, make picks for each game,
+and lock them in before kickoff. See its own notes inline in `app.js`.
+
+The original retro workout app for two lifters — Jessica and Jake — has
+been moved to `liftr-app/` while the pick'em app occupies the root. It's
+otherwise unchanged: static HTML/CSS/JS, no build step, `liftr-app/index.html`
+is its entry point.
 
 ## Adding exercise photos
 
