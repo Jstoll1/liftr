@@ -148,31 +148,6 @@ async function fetchAllPicks() {
   }
 }
 
-async function fetchResults() {
-  if (!WORKER_URL) return {};
-  try {
-    const res = await fetch(`${WORKER_URL}/results`);
-    if (!res.ok) return {};
-    const data = await res.json();
-    return data.results || {};
-  } catch {
-    return {};
-  }
-}
-
-async function pushResult(gameId, awayScore, homeScore) {
-  if (!WORKER_URL) return;
-  try {
-    await fetch(`${WORKER_URL}/results`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gameId, awayScore, homeScore }),
-    });
-  } catch {
-    // Offline or worker unreachable.
-  }
-}
-
 // Live scores, proxied through the Worker (which talks to ESPN's public
 // scoreboard server-side). Returns a map of gameId -> live status, or {}
 // if the Worker is unreachable — the scoreboard just won't show live
@@ -231,7 +206,6 @@ const scoreboardRefreshBtn = document.getElementById("scoreboard-refresh-btn");
 const liveScoresList = document.getElementById("live-scores-list");
 const rankingsList = document.getElementById("rankings-list");
 const scoreboardTable = document.getElementById("scoreboard-table");
-const resultsForm = document.getElementById("results-form");
 const rulesModal = document.getElementById("rules-modal");
 const rulesOpenBtn = document.getElementById("rules-open-btn");
 const rulesCloseBtn = document.getElementById("rules-close-btn");
@@ -495,40 +469,68 @@ async function renderScoreboard() {
     const state = rawPicks[name];
     if (state) cloudPicks[name] = { ...state, picks: sanitizePicks(state.picks) };
   });
-  const results = await fetchResults();
   const live = await fetchLiveScores();
+  const results = computeLiveResults(live);
 
-  renderLiveScores(live);
-  renderResultsForm(results);
+  renderLiveScores(live, cloudPicks);
   renderScoreboardTable(cloudPicks, results);
   renderRankings(cloudPicks, results);
 }
 
-function renderLiveScores(live) {
+// Results are derived straight from ESPN's live feed once a game goes
+// final — no manual score entry. A game only counts once ESPN marks it
+// completed, so scores never lock in early off a still-live number.
+function computeLiveResults(live) {
+  const results = {};
+  GAMES.forEach((game) => {
+    const g = live[game.id];
+    if (g && g.completed && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore)) {
+      results[game.id] = { awayScore: g.awayScore, homeScore: g.homeScore };
+    }
+  });
+  return results;
+}
+
+// Which managers picked a given team in a given mode, for the "who's on
+// this side" line under each team in the live grid.
+function pickersFor(cloudPicks, gameId, team, mode) {
+  return MANAGERS.filter((name) => {
+    const pick = cloudPicks[name]?.picks?.[gameId];
+    return pick && pick.team === team && pick.mode === mode;
+  });
+}
+
+function teamPickersHtml(cloudPicks, game, team, mode, label) {
+  const names = pickersFor(cloudPicks, game.id, team, mode);
+  if (names.length === 0) return "";
+  return `<span class="picker-line"><strong>${label}</strong> ${names.join(", ")}</span>`;
+}
+
+function renderLiveScores(live, cloudPicks) {
   const started = GAMES.filter((g) => isGameLocked(g));
   if (started.length === 0) {
-    liveScoresList.innerHTML = `<p class="live-scores-empty">Live scores show up here once the first game kicks off.</p>`;
+    liveScoresList.innerHTML = `<p class="live-scores-empty">Live scores &amp; who-picked-who show up here once the first game kicks off.</p>`;
     return;
   }
 
-  liveScoresList.innerHTML = `<span class="rules-heading live-scores-heading">📡 LIVE SCORES</span>` + started
+  liveScoresList.innerHTML = `<span class="rules-heading live-scores-heading">📡 LIVE SCOREBOARD</span>` + started
     .map((game) => {
       const g = live[game.id];
-      if (!g) {
-        return `
-          <div class="live-score-card pending">
-            <div class="live-score-team"><img class="live-score-logo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.display='none'" /><span>${game.away}</span></div>
-            <span class="live-score-status">Waiting for score&hellip;</span>
-            <div class="live-score-team"><img class="live-score-logo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.display='none'" /><span>${game.home}</span></div>
-          </div>
-        `;
-      }
+      const found = g && g.found;
 
-      const statusText = g.completed ? "FINAL" : g.state === "in" ? (g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`) : g.detail || "Scheduled";
-      const awayLead = g.awayScore !== null && g.homeScore !== null && g.awayScore > g.homeScore;
-      const homeLead = g.awayScore !== null && g.homeScore !== null && g.homeScore > g.awayScore;
+      const statusText = found
+        ? g.completed
+          ? "FINAL"
+          : g.state === "in"
+            ? g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`
+            : g.detail || "Scheduled"
+        : "Waiting for score…";
+      const awayScore = found ? g.awayScore ?? "—" : "—";
+      const homeScore = found ? g.homeScore ?? "—" : "—";
+      const awayLead = found && g.awayScore !== null && g.homeScore !== null && g.awayScore > g.homeScore;
+      const homeLead = found && g.awayScore !== null && g.homeScore !== null && g.homeScore > g.awayScore;
 
-      const winProbHtml = g.winProb
+      const winProbHtml = found && g.winProb
         ? `
           <div class="win-prob-bar">
             <div class="win-prob-fill away" style="width:${g.winProb.away}%"></div>
@@ -541,19 +543,27 @@ function renderLiveScores(live) {
         `
         : "";
 
+      const awayPickers = teamPickersHtml(cloudPicks, game, game.away, "SU", "SU") + teamPickersHtml(cloudPicks, game, game.away, "ATS", "ATS");
+      const homePickers = teamPickersHtml(cloudPicks, game, game.home, "SU", "SU") + teamPickersHtml(cloudPicks, game, game.home, "ATS", "ATS");
+
       return `
-        <div class="live-score-card ${g.completed ? "final" : g.state === "in" ? "in-progress" : ""}">
-          <div class="live-score-row">
-            <div class="live-score-team ${awayLead ? "leading" : ""}">
+        <div class="live-score-card ${found && g.completed ? "final" : found && g.state === "in" ? "in-progress" : ""}">
+          <div class="live-score-grid">
+            <div class="live-score-col ${awayLead ? "leading" : ""}">
               <img class="live-score-logo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
-              <span>${game.away}</span>
+              <span class="live-score-team-name">${game.away}</span>
+              <span class="live-score-number">${awayScore}</span>
+              <div class="live-score-pickers">${awayPickers || '<span class="picker-line none">&mdash;</span>'}</div>
             </div>
-            <span class="live-score-number">${g.awayScore ?? "—"}</span>
-            <span class="live-score-status">${statusText}</span>
-            <span class="live-score-number">${g.homeScore ?? "—"}</span>
-            <div class="live-score-team ${homeLead ? "leading" : ""}">
+            <div class="live-score-mid">
+              <span class="live-score-status">${statusText}</span>
+              <span class="live-score-vs">@</span>
+            </div>
+            <div class="live-score-col ${homeLead ? "leading" : ""}">
               <img class="live-score-logo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
-              <span>${game.home}</span>
+              <span class="live-score-team-name">${game.home}</span>
+              <span class="live-score-number">${homeScore}</span>
+              <div class="live-score-pickers">${homePickers || '<span class="picker-line none">&mdash;</span>'}</div>
             </div>
           </div>
           ${winProbHtml}
@@ -561,38 +571,6 @@ function renderLiveScores(live) {
       `;
     })
     .join("");
-}
-
-function renderResultsForm(results) {
-  resultsForm.innerHTML = "";
-  GAMES.forEach((game) => {
-    const r = results[game.id];
-    const row = document.createElement("div");
-    row.className = "result-row score-result-row";
-    row.innerHTML = `
-      <span>G${game.id} &middot; ${game.away} @ ${game.home}</span>
-      <div class="score-inputs">
-        <input type="number" class="score-input" inputmode="numeric" placeholder="${game.away}" min="0" max="150" data-side="away" />
-        <span>&ndash;</span>
-        <input type="number" class="score-input" inputmode="numeric" placeholder="${game.home}" min="0" max="150" data-side="home" />
-        <button type="button" class="ghost-btn small score-save-btn">Save</button>
-      </div>
-    `;
-    const awayInput = row.querySelector('[data-side="away"]');
-    const homeInput = row.querySelector('[data-side="home"]');
-    if (r) {
-      awayInput.value = r.awayScore;
-      homeInput.value = r.homeScore;
-    }
-    row.querySelector(".score-save-btn").addEventListener("click", async () => {
-      const a = Number(awayInput.value);
-      const h = Number(homeInput.value);
-      if (!Number.isFinite(a) || !Number.isFinite(h)) return;
-      await pushResult(game.id, a, h);
-      renderScoreboard();
-    });
-    resultsForm.appendChild(row);
-  });
 }
 
 function renderScoreboardTable(cloudPicks, results) {

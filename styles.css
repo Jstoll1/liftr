@@ -559,52 +559,56 @@ html, body {
   opacity: 0.75;
 }
 
-.live-score-card.pending {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  opacity: 0.7;
-}
-
-.live-score-row {
+.live-score-grid {
   display: grid;
-  grid-template-columns: 1fr auto auto auto 1fr;
-  align-items: center;
-  gap: 6px;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: 8px;
 }
 
-.live-score-team {
+.live-score-col {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
+  min-width: 0;
+  text-align: center;
+}
+
+.live-score-col.leading .live-score-team-name,
+.live-score-col.leading .live-score-number {
+  color: var(--neon-green);
+  text-shadow: 0 0 4px var(--neon-green);
+}
+
+.live-score-team-name {
   font-size: 10px;
   font-weight: 700;
-  min-width: 0;
-}
-
-.live-score-team span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.live-score-team.leading {
-  color: var(--neon-green);
+  max-width: 100%;
 }
 
 .live-score-logo {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
-  flex-shrink: 0;
 }
 
 .live-score-number {
   font-family: 'Press Start 2P', monospace;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--neon-yellow);
   text-shadow: 0 0 4px var(--neon-yellow);
+}
+
+.live-score-mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: 10px;
 }
 
 .live-score-status {
@@ -612,6 +616,34 @@ html, body {
   color: var(--text-dim);
   text-align: center;
   white-space: nowrap;
+}
+
+.live-score-vs {
+  font-size: 9px;
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.live-score-pickers {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 2px;
+}
+
+.picker-line {
+  font-size: 8px;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.picker-line strong {
+  color: var(--neon-cyan);
+  margin-right: 3px;
+}
+
+.picker-line.none {
+  opacity: 0.4;
 }
 
 .win-prob-bar {
@@ -730,40 +762,6 @@ html, body {
 .pick-cell.incorrect { color: var(--neon-pink); }
 .pick-cell.pending { color: var(--text-dim); }
 .pick-cell.hidden-pick { color: var(--text-dim); font-style: italic; }
-
-.results-card {
-  background: var(--card-bg);
-  border: 2px dashed var(--card-border);
-  border-radius: 12px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.results-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.result-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
-}
-
-.result-row select {
-  background: rgba(0, 0, 0, 0.3);
-  border: 2px solid var(--card-border);
-  border-radius: 6px;
-  color: var(--text);
-  font-family: 'Orbitron', sans-serif;
-  font-size: 11px;
-  padding: 6px;
-}
 
 /* --- Logo / splash screen ------------------------------------------- */
 
@@ -1154,31 +1152,6 @@ html, body {
   opacity: 0.5;
 }
 
-/* --- Results entry: final score inputs -------------------------------- */
-
-.score-result-row {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.score-inputs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.score-input {
-  width: 64px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 2px solid var(--card-border);
-  border-radius: 6px;
-  color: var(--text);
-  font-family: 'Orbitron', sans-serif;
-  font-size: 12px;
-  padding: 6px;
-}
-
 .ghost-btn.small {
   padding: 6px 10px;
   font-size: 10px;
@@ -1247,6 +1220,12 @@ html, body {
   font-weight: 700;
   color: var(--neon-yellow);
   text-shadow: 0 0 6px var(--neon-yellow);
+}
+
+.section-heading {
+  display: block;
+  text-align: center;
+  margin-top: 6px;
 }
 
 .rules-list {
