@@ -174,9 +174,6 @@ function goToPlayerSelect() {
 }
 
 logoScreen.addEventListener("click", goToPlayerSelect);
-setTimeout(() => {
-  if (!logoScreen.classList.contains("hidden")) goToPlayerSelect();
-}, 3200);
 
 function renderManagerPicker() {
   const all = loadAll();
