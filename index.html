@@ -21,12 +21,20 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609040341" />
+  <link rel="stylesheet" href="styles.css?v=202609040348" />
 </head>
 <body>
 
   <div class="synth-grid" aria-hidden="true"></div>
   <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- WORDMARK HEADER: sits above every screen except the splash itself,
+       tap to jump back to player select -->
+  <header id="home-header" class="home-header hidden">
+    <button id="home-logo-btn" class="home-logo-btn" type="button" aria-label="Home">
+      <img class="home-logo-img" src="icons/wordmark.png" alt="Brochiefs Football" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'home-logo-fallback',textContent:'BROCHIEFS'}))" />
+    </button>
+  </header>
 
   <!-- LOGO / SPLASH SCREEN -->
   <main id="logo-screen" class="screen logo-screen">
@@ -116,6 +124,8 @@
       </div>
       <p class="scoreboard-note">Picks stay hidden until a game kicks off — once it starts, everyone's pick for that game is revealed here.</p>
 
+      <div id="live-scores-list" class="live-scores-list"></div>
+
       <div id="rankings-list" class="rankings-list"></div>
 
       <div class="scoreboard-table-wrap">
@@ -129,6 +139,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=202609040341"></script>
+  <script src="app.js?v=202609040348"></script>
 </body>
 </html>

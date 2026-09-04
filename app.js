@@ -228,12 +228,15 @@ const switchBtn = document.getElementById("switch-btn");
 const toScoreboardBtn = document.getElementById("to-scoreboard-btn");
 const scoreboardBackBtn = document.getElementById("scoreboard-back-btn");
 const scoreboardRefreshBtn = document.getElementById("scoreboard-refresh-btn");
+const liveScoresList = document.getElementById("live-scores-list");
 const rankingsList = document.getElementById("rankings-list");
 const scoreboardTable = document.getElementById("scoreboard-table");
 const resultsForm = document.getElementById("results-form");
 const rulesModal = document.getElementById("rules-modal");
 const rulesOpenBtn = document.getElementById("rules-open-btn");
 const rulesCloseBtn = document.getElementById("rules-close-btn");
+const homeHeader = document.getElementById("home-header");
+const homeLogoBtn = document.getElementById("home-logo-btn");
 
 // --- Logo / splash screen ---------------------------------------------
 
@@ -251,12 +254,24 @@ function closeRules() {
 function goToPlayerSelect() {
   logoScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
+  homeHeader.classList.remove("hidden");
   if (!localStorage.getItem(RULES_SEEN_KEY)) openRules();
+}
+
+// Jumps back to player select from anywhere — the wordmark header is
+// visible on every screen except the splash, so this is always reachable.
+function goHome() {
+  currentManager = null;
+  picksScreen.classList.add("hidden");
+  scoreboardScreen.classList.add("hidden");
+  loginScreen.classList.remove("hidden");
+  renderManagerPicker();
 }
 
 logoScreen.addEventListener("click", goToPlayerSelect);
 rulesOpenBtn.addEventListener("click", openRules);
 rulesCloseBtn.addEventListener("click", closeRules);
+homeLogoBtn.addEventListener("click", goHome);
 
 async function renderManagerPicker() {
   const local = loadAll();
@@ -455,12 +470,7 @@ tiebreakerSubmitBtn.addEventListener("click", () => {
   renderPicksScreen();
 });
 
-switchBtn.addEventListener("click", () => {
-  currentManager = null;
-  picksScreen.classList.add("hidden");
-  loginScreen.classList.remove("hidden");
-  renderManagerPicker();
-});
+switchBtn.addEventListener("click", goHome);
 
 // --- Scoreboard ------------------------------------------------------------
 
@@ -486,10 +496,71 @@ async function renderScoreboard() {
     if (state) cloudPicks[name] = { ...state, picks: sanitizePicks(state.picks) };
   });
   const results = await fetchResults();
+  const live = await fetchLiveScores();
 
+  renderLiveScores(live);
   renderResultsForm(results);
   renderScoreboardTable(cloudPicks, results);
   renderRankings(cloudPicks, results);
+}
+
+function renderLiveScores(live) {
+  const started = GAMES.filter((g) => isGameLocked(g));
+  if (started.length === 0) {
+    liveScoresList.innerHTML = `<p class="live-scores-empty">Live scores show up here once the first game kicks off.</p>`;
+    return;
+  }
+
+  liveScoresList.innerHTML = `<span class="rules-heading live-scores-heading">📡 LIVE SCORES</span>` + started
+    .map((game) => {
+      const g = live[game.id];
+      if (!g) {
+        return `
+          <div class="live-score-card pending">
+            <div class="live-score-team"><img class="live-score-logo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.display='none'" /><span>${game.away}</span></div>
+            <span class="live-score-status">Waiting for score&hellip;</span>
+            <div class="live-score-team"><img class="live-score-logo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.display='none'" /><span>${game.home}</span></div>
+          </div>
+        `;
+      }
+
+      const statusText = g.completed ? "FINAL" : g.state === "in" ? (g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`) : g.detail || "Scheduled";
+      const awayLead = g.awayScore !== null && g.homeScore !== null && g.awayScore > g.homeScore;
+      const homeLead = g.awayScore !== null && g.homeScore !== null && g.homeScore > g.awayScore;
+
+      const winProbHtml = g.winProb
+        ? `
+          <div class="win-prob-bar">
+            <div class="win-prob-fill away" style="width:${g.winProb.away}%"></div>
+            <div class="win-prob-fill home" style="width:${g.winProb.home}%"></div>
+          </div>
+          <div class="win-prob-labels">
+            <span>${Math.round(g.winProb.away)}% ${game.away}</span>
+            <span>${Math.round(g.winProb.home)}% ${game.home}</span>
+          </div>
+        `
+        : "";
+
+      return `
+        <div class="live-score-card ${g.completed ? "final" : g.state === "in" ? "in-progress" : ""}">
+          <div class="live-score-row">
+            <div class="live-score-team ${awayLead ? "leading" : ""}">
+              <img class="live-score-logo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
+              <span>${game.away}</span>
+            </div>
+            <span class="live-score-number">${g.awayScore ?? "—"}</span>
+            <span class="live-score-status">${statusText}</span>
+            <span class="live-score-number">${g.homeScore ?? "—"}</span>
+            <div class="live-score-team ${homeLead ? "leading" : ""}">
+              <img class="live-score-logo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
+              <span>${game.home}</span>
+            </div>
+          </div>
+          ${winProbHtml}
+        </div>
+      `;
+    })
+    .join("");
 }
 
 function renderResultsForm(results) {
