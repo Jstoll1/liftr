@@ -51,6 +51,9 @@ export default {
     if (url.pathname === "/results") {
       return handleResults(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/live") {
+      return handleLive(corsHeaders);
+    }
 
     if (request.method !== "POST") {
       return json({ error: "Method not allowed" }, 405, corsHeaders);
@@ -547,6 +550,95 @@ async function handleResults(request, env, corsHeaders, url) {
   }
 
   return json({ error: "Method not allowed" }, 405, corsHeaders);
+}
+
+// Live scores — proxies ESPN's public (unauthenticated, undocumented)
+// scoreboard so the client never talks to espn.com directly (avoids any
+// CORS uncertainty and keeps the team-matching logic server-side). Must
+// be kept in sync by hand with the GAMES list in app.js — same 10
+// games, same ESPN team IDs, since Workers can't import the browser's
+// app.js directly.
+//
+// NOTE: this hits an undocumented ESPN endpoint that was never live-
+// tested against real in-progress games before shipping (no network
+// access in the dev sandbox). It's written defensively — any missing
+// or unexpected field degrades to that one game just not showing live
+// data, never a hard failure — but the exact response shape should be
+// double-checked once real games are underway, and adjusted here if
+// ESPN's fields don't match what's assumed below.
+const LIVE_GAMES = [
+  { id: 1, awayId: 2335, homeId: 2349 },
+  { id: 2, awayId: 193, homeId: 221 },
+  { id: 3, awayId: 239, homeId: 2 },
+  { id: 4, awayId: 103, homeId: 2132 },
+  { id: 5, awayId: 2655, homeId: 150 },
+  { id: 6, awayId: 68, homeId: 2483 },
+  { id: 7, awayId: 2751, homeId: 36 },
+  { id: 8, awayId: 228, homeId: 99 },
+  { id: 9, awayId: 151, homeId: 333 },
+  { id: 10, awayId: 97, homeId: 145 },
+];
+const LIVE_DATES = ["20260905", "20260906"];
+
+async function handleLive(corsHeaders) {
+  try {
+    const events = [];
+    for (const date of LIVE_DATES) {
+      try {
+        const res = await fetch(
+          `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&limit=300`
+        );
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (Array.isArray(data?.events)) events.push(...data.events);
+      } catch (err) {
+        console.error(`ESPN scoreboard fetch failed for ${date}`, err?.stack || String(err));
+      }
+    }
+
+    const games = LIVE_GAMES.map((g) => {
+      try {
+        const event = events.find((e) => {
+          const comp = e?.competitions?.[0];
+          const ids = (comp?.competitors || []).map((c) => Number(c?.team?.id));
+          return ids.includes(g.awayId) && ids.includes(g.homeId);
+        });
+        if (!event) return { id: g.id, found: false };
+
+        const comp = event.competitions[0];
+        const away = comp.competitors.find((c) => c.homeAway === "away");
+        const home = comp.competitors.find((c) => c.homeAway === "home");
+        const statusType = comp.status?.type || event.status?.type || {};
+
+        let winProb = null;
+        const prob = comp.situation?.lastPlay?.probability;
+        if (prob && Number.isFinite(prob.homeWinPercentage) && Number.isFinite(prob.awayWinPercentage)) {
+          winProb = { home: prob.homeWinPercentage, away: prob.awayWinPercentage };
+        }
+
+        return {
+          id: g.id,
+          found: true,
+          state: statusType.state || "pre", // "pre" | "in" | "post"
+          completed: !!statusType.completed,
+          detail: statusType.shortDetail || statusType.detail || "",
+          period: comp.status?.period ?? null,
+          clock: comp.status?.displayClock ?? null,
+          awayScore: away?.score != null ? Number(away.score) : null,
+          homeScore: home?.score != null ? Number(home.score) : null,
+          winProb,
+        };
+      } catch (err) {
+        console.error(`Live match failed for game ${g.id}`, err?.stack || String(err));
+        return { id: g.id, found: false };
+      }
+    });
+
+    return json({ games }, 200, corsHeaders);
+  } catch (err) {
+    console.error("Live scores error", err?.stack || String(err));
+    return json({ games: [] }, 200, corsHeaders); // never break the client over this
+  }
 }
 
 // Cross-user "cheer" queue, keyed by the RECIPIENT so each person only ever

@@ -173,6 +173,26 @@ async function pushResult(gameId, awayScore, homeScore) {
   }
 }
 
+// Live scores, proxied through the Worker (which talks to ESPN's public
+// scoreboard server-side). Returns a map of gameId -> live status, or {}
+// if the Worker is unreachable — the scoreboard just won't show live
+// data in that case, nothing breaks.
+async function fetchLiveScores() {
+  if (!WORKER_URL) return {};
+  try {
+    const res = await fetch(`${WORKER_URL}/live`);
+    if (!res.ok) return {};
+    const data = await res.json();
+    const byId = {};
+    (data.games || []).forEach((g) => {
+      if (g && g.found) byId[g.id] = g;
+    });
+    return byId;
+  } catch {
+    return {};
+  }
+}
+
 // Cloud is the source of truth across devices — pull once per manager
 // select and merge into local storage before rendering, so a manager who
 // submitted a pick on their phone sees it submitted on their laptop too.
