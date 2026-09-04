@@ -7,21 +7,20 @@
 
 const STORAGE_KEY = "brochiefs_picks_v1";
 
-// NOTE: the sheet only gives day-of-week + ET time, not a calendar date.
-// These are set for the assumed Week 1 slate (Sat Aug 29 / Sun Aug 30,
-// 2026) — double check against the real schedule and adjust the `date`
-// fields below if the actual dates differ.
+// Kickoff dates confirmed against each team's published 2026 schedule:
+// Week 1 Saturday slate is Sept 5, 2026; the Louisville/Ole Miss "Music
+// City Kickoff" is Sunday, Sept 6, 2026.
 const GAMES = [
-  { id: 1, away: "Liberty", home: "James Madison", favorite: "James Madison", spread: 6.5, kickoff: "2026-08-29T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ESPNU" },
-  { id: 2, away: "Miami (OH)", home: "Pitt", favorite: "Pitt", spread: 16.5, kickoff: "2026-08-29T16:30:00Z", kickoffLabel: "Sat 12:30 PM ET", tv: "The CW" },
-  { id: 3, away: "Baylor", home: "Auburn", favorite: "Auburn", spread: 7.5, kickoff: "2026-08-29T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ABC" },
-  { id: 4, away: "Boston College", home: "Cincinnati", favorite: "Cincinnati", spread: 7.5, kickoff: "2026-08-29T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "FOX" },
-  { id: 5, away: "Tulane", home: "Duke", favorite: "Duke", spread: 7.5, kickoff: "2026-08-29T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ACCN" },
-  { id: 6, away: "Boise State", home: "#2 Oregon", favorite: "#2 Oregon", spread: 24.5, kickoff: "2026-08-29T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "CBS" },
-  { id: 7, away: "Wyoming", home: "Colorado State", favorite: "Colorado State", spread: 3.5, kickoff: "2026-08-29T22:00:00Z", kickoffLabel: "Sat 6:00 PM ET", tv: "USA" },
-  { id: 8, away: "Clemson", home: "#11 LSU", favorite: "#11 LSU", spread: 10, kickoff: "2026-08-29T23:30:00Z", kickoffLabel: "Sat 7:30 PM ET", tv: "ABC", tiebreakerGame: true },
-  { id: 9, away: "East Carolina", home: "#13 Alabama", favorite: "#13 Alabama", spread: 27.5, kickoff: "2026-08-29T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ABC" },
-  { id: 10, away: "#24 Louisville", home: "#9 Ole Miss", favorite: "#9 Ole Miss", spread: 7, kickoffLabel: "Sun 7:30 PM ET", kickoff: "2026-08-30T23:30:00Z", tv: "ABC" },
+  { id: 1, away: "Liberty", home: "James Madison", favorite: "James Madison", spread: 6.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ESPNU" },
+  { id: 2, away: "Miami (OH)", home: "Pitt", favorite: "Pitt", spread: 16.5, kickoff: "2026-09-05T16:30:00Z", kickoffLabel: "Sat 12:30 PM ET", tv: "The CW" },
+  { id: 3, away: "Baylor", home: "Auburn", favorite: "Auburn", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ABC" },
+  { id: 4, away: "Boston College", home: "Cincinnati", favorite: "Cincinnati", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "FOX" },
+  { id: 5, away: "Tulane", home: "Duke", favorite: "Duke", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ACCN" },
+  { id: 6, away: "Boise State", home: "#2 Oregon", favorite: "#2 Oregon", spread: 24.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "CBS" },
+  { id: 7, away: "Wyoming", home: "Colorado State", favorite: "Colorado State", spread: 3.5, kickoff: "2026-09-05T22:00:00Z", kickoffLabel: "Sat 6:00 PM ET", tv: "USA" },
+  { id: 8, away: "Clemson", home: "#11 LSU", favorite: "#11 LSU", spread: 10, kickoff: "2026-09-05T23:30:00Z", kickoffLabel: "Sat 7:30 PM ET", tv: "ABC", tiebreakerGame: true },
+  { id: 9, away: "East Carolina", home: "#13 Alabama", favorite: "#13 Alabama", spread: 27.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ABC" },
+  { id: 10, away: "#24 Louisville", home: "#9 Ole Miss", favorite: "#9 Ole Miss", spread: 7, kickoffLabel: "Sun 7:30 PM ET", kickoff: "2026-09-06T23:30:00Z", tv: "ABC" },
 ];
 
 const MANAGERS = [
