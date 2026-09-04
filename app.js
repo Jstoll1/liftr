@@ -247,30 +247,6 @@ rulesOpenBtn.addEventListener("click", openRules);
 rulesCloseBtn.addEventListener("click", closeRules);
 homeLogoBtn.addEventListener("click", goHome);
 
-// --- Splash countdown to first kickoff ---------------------------------
-
-const FIRST_KICKOFF = GAMES.reduce(
-  (earliest, g) => (new Date(g.kickoff) < new Date(earliest) ? g.kickoff : earliest),
-  GAMES[0].kickoff
-);
-const splashCountdownEl = document.getElementById("splash-countdown");
-
-function updateSplashCountdown() {
-  const diff = new Date(FIRST_KICKOFF).getTime() - Date.now();
-  if (diff <= 0) {
-    splashCountdownEl.textContent = "GAMES LIVE 🔴";
-    return;
-  }
-  const totalSeconds = Math.floor(diff / 1000);
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  splashCountdownEl.textContent = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-updateSplashCountdown();
-setInterval(updateSplashCountdown, 1000);
-
 async function renderManagerPicker() {
   const local = loadAll();
   const cloud = await fetchAllPicks();
