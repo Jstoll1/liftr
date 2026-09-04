@@ -837,6 +837,8 @@ html, body {
   letter-spacing: 2px;
   color: var(--neon-yellow);
   text-shadow: 0 0 6px var(--neon-yellow);
+  text-align: center;
+  line-height: 1.6;
 }
 
 .logo-text {
