@@ -263,6 +263,17 @@ html, body {
   border-radius: 3px;
 }
 
+/* The card this device is locked to — cyan instead of the accent so it
+   reads as "you" at a glance among the roster. */
+.manager-card.is-me {
+  border-color: var(--neon-cyan);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 4px 0 rgba(0, 0, 0, 0.5), 0 0 18px rgba(5, 217, 232, 0.45);
+}
+
+.manager-card.is-me .player-tag {
+  background: var(--neon-cyan);
+}
+
 .manager-card.defending-champ {
   border-color: var(--neon-yellow);
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 4px 0 rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 228, 94, 0.4);
@@ -1133,8 +1144,20 @@ html, body {
 }
 
 .game-status.submitted {
-  color: var(--neon-yellow);
-  border: 1px solid var(--neon-yellow);
+  color: var(--neon-green);
+  border: 1px solid var(--neon-green);
+  transform-origin: right center;
+}
+
+/* Brief pulse on the SAVED badge of the card you just tapped — the
+   feedback that replaces the old Submit button. */
+.game-card.just-saved .game-status.submitted {
+  animation: saved-pulse 0.9s ease-out;
+}
+
+@keyframes saved-pulse {
+  0% { transform: scale(1.4); box-shadow: 0 0 16px var(--neon-green); }
+  100% { transform: scale(1); box-shadow: none; }
 }
 
 .game-submit-row {

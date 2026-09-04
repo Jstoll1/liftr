@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609041131" />
+  <link rel="stylesheet" href="styles.css?v=202609041208" />
 </head>
 <body>
 
@@ -53,7 +53,7 @@
     <div class="wrap">
       <div class="brand">
         <span class="brand-mark">CHOOSE YOUR PLAYER</span>
-        <span class="brand-sub">2026 PICK'EM &mdash; SELECT YOUR NAME TO CONTINUE</span>
+        <span id="brand-sub" class="brand-sub">Tap your name &mdash; this device will remember you</span>
       </div>
       <div id="manager-picker" class="manager-picker"></div>
       <span class="avatar-hint">Long-press your card to set an emoji avatar</span>
@@ -71,6 +71,19 @@
       <div class="modal-actions">
         <button id="avatar-reset-btn" class="ghost-btn" type="button">Reset to Letter</button>
         <button id="avatar-save-btn" class="primary-btn" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WHO ARE YOU? / SWITCH CONFIRM MODAL -->
+  <div id="identity-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <span class="modal-title">WHO ARE YOU?</span>
+      <span id="identity-preview" class="avatar-edit-preview"></span>
+      <span id="identity-text" class="modal-subtext"></span>
+      <div class="modal-actions">
+        <button id="identity-cancel-btn" class="ghost-btn" type="button">Not me</button>
+        <button id="identity-confirm-btn" class="primary-btn" type="button">That's me</button>
       </div>
     </div>
   </div>
@@ -116,7 +129,7 @@
         <button id="to-scoreboard-btn" class="link-btn">SCOREBOARD &rarr;</button>
       </div>
 
-      <p class="picks-hint">Each game: pick a team straight up (1 pt favorite / 3 pt underdog) or against the spread (2 pts either way), then hit Submit. Change and resubmit anytime until that game kicks off &mdash; then it locks for everyone.</p>
+      <p class="picks-hint">Each game: pick a team straight up (1 pt favorite / 3 pt underdog) or against the spread (2 pts either way). Every tap saves instantly &mdash; change your mind as often as you like until that game kicks off, then it locks for everyone.</p>
 
       <span id="picks-progress" class="picks-progress"></span>
 
@@ -126,7 +139,6 @@
         <span class="tiebreaker-label">TIEBREAKER &mdash; Total combined points, Clemson @ LSU (G8)</span>
         <div class="tiebreaker-row">
           <input type="number" id="tiebreaker-input" class="tiebreaker-input" inputmode="numeric" min="0" max="150" placeholder="e.g. 45" />
-          <button id="tiebreaker-submit-btn" class="ghost-btn" type="button" disabled>Submit</button>
         </div>
         <span id="tiebreaker-status" class="tiebreaker-status"></span>
       </div>
@@ -172,6 +184,6 @@
     </button>
   </nav>
 
-  <script src="app.js?v=202609041131"></script>
+  <script src="app.js?v=202609041208"></script>
 </body>
 </html>

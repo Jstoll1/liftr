@@ -183,10 +183,24 @@ async function syncManagerFromCloud(name) {
 
 let currentManager = null;
 
-// Ephemeral, per-manager, not persisted: what's currently selected on
-// screen but not yet submitted. Reset whenever a manager is (re)selected.
-let draftPicks = {};
-let draftTiebreaker = null;
+// Identity is remembered per device ("Who are you?" is answered once),
+// so return visits skip the roster and land straight on picks or the
+// live board. Switching is an explicit, confirmed act — nobody ends up
+// on someone else's card by accident.
+const ME_KEY = "brochiefs_me_v1";
+
+function loadMe() {
+  const me = localStorage.getItem(ME_KEY);
+  return MANAGERS.includes(me) ? me : null;
+}
+
+function saveMe(name) {
+  localStorage.setItem(ME_KEY, name);
+}
+
+function firstKickoffPassed() {
+  return GAMES.some((g) => isGameLocked(g));
+}
 
 const logoScreen = document.getElementById("logo-screen");
 const loginScreen = document.getElementById("login-screen");
@@ -196,7 +210,6 @@ const managerPicker = document.getElementById("manager-picker");
 const managerBadge = document.getElementById("manager-badge");
 const gamesList = document.getElementById("games-list");
 const tiebreakerInput = document.getElementById("tiebreaker-input");
-const tiebreakerSubmitBtn = document.getElementById("tiebreaker-submit-btn");
 const tiebreakerStatus = document.getElementById("tiebreaker-status");
 const picksProgress = document.getElementById("picks-progress");
 const switchBtn = document.getElementById("switch-btn");
@@ -220,6 +233,12 @@ const bottomNav = document.getElementById("bottom-nav");
 const navHomeBtn = document.getElementById("nav-home-btn");
 const navPicksBtn = document.getElementById("nav-picks-btn");
 const navScoreboardBtn = document.getElementById("nav-scoreboard-btn");
+const identityModal = document.getElementById("identity-modal");
+const identityPreview = document.getElementById("identity-preview");
+const identityText = document.getElementById("identity-text");
+const identityConfirmBtn = document.getElementById("identity-confirm-btn");
+const identityCancelBtn = document.getElementById("identity-cancel-btn");
+const brandSub = document.getElementById("brand-sub");
 
 // --- Logo / splash screen ---------------------------------------------
 
@@ -234,12 +253,31 @@ function closeRules() {
   localStorage.setItem(RULES_SEEN_KEY, "1");
 }
 
+// Leaving the splash: if this device already knows who you are, skip the
+// roster and land where the action is — your picks before the first
+// kickoff, the live board once games are underway. First-timers get the
+// rules once, then "Who are you?".
 function goToPlayerSelect() {
   logoScreen.classList.add("hidden");
-  loginScreen.classList.remove("hidden");
   homeHeader.classList.remove("hidden");
   bottomNav.classList.remove("hidden");
+
+  const me = loadMe();
+  if (me) {
+    currentManager = me;
+    managerBadge.textContent = me.toUpperCase();
+    if (firstKickoffPassed()) {
+      loginScreen.classList.add("hidden");
+      showScoreboard();
+    } else {
+      selectManager(me);
+    }
+    return;
+  }
+
+  loginScreen.classList.remove("hidden");
   setActiveNav("home");
+  renderManagerPicker();
   if (!localStorage.getItem(RULES_SEEN_KEY)) openRules();
 }
 
@@ -252,10 +290,11 @@ function setActiveNav(target) {
   if (target === "scoreboard") navScoreboardBtn.classList.add("active");
 }
 
-// Jumps back to player select from anywhere — the wordmark header is
-// visible on every screen except the splash, so this is always reachable.
+// Roster view from anywhere — the wordmark header is visible on every
+// screen except the splash, so this is always reachable. Deliberately
+// does NOT forget who you are: your card is marked YOU, and picking a
+// different card asks for confirmation before switching.
 function goHome() {
-  currentManager = null;
   picksScreen.classList.add("hidden");
   scoreboardScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
@@ -357,14 +396,15 @@ async function renderManagerPicker() {
     const partial = !complete && (submittedCount > 0 || tiebreakerDone);
 
     const isChamp = name === "Jake";
+    const isMe = name === currentManager;
     const accent = AVATAR_COLORS[i % AVATAR_COLORS.length];
     const avatarContent = avatarOverrides[name] || name[0];
 
     const btn = document.createElement("button");
-    btn.className = "manager-card" + (complete ? " has-picks" : "") + (partial ? " partial-picks" : "") + (isChamp ? " defending-champ" : "");
+    btn.className = "manager-card" + (complete ? " has-picks" : "") + (partial ? " partial-picks" : "") + (isChamp ? " defending-champ" : "") + (isMe ? " is-me" : "");
     btn.style.setProperty("--accent", accent);
     btn.innerHTML = `
-      <span class="player-tag">P${i + 1}</span>
+      <span class="player-tag">${isMe ? "YOU" : `P${i + 1}`}</span>
       <span class="badge-slot">${isChamp ? `<span class="champ-badge">🏆 Defending Champ</span>` : ""}</span>
       <span class="manager-avatar-ring">
         <span class="manager-avatar">${avatarContent}</span>
@@ -395,11 +435,20 @@ async function renderManagerPicker() {
         longPressFired = false;
         return;
       }
-      selectManager(name);
+      // Your own card goes straight in; anyone else's asks first.
+      if (currentManager === name) {
+        selectManager(name);
+      } else {
+        openIdentityConfirm(name, accent);
+      }
     });
 
     managerPicker.appendChild(btn);
   });
+
+  brandSub.textContent = currentManager
+    ? `You're ${currentManager} — tap another name to switch`
+    : "Tap your name — this device will remember you";
 }
 
 // --- Avatar editor modal ------------------------------------------------
@@ -450,17 +499,71 @@ avatarResetBtn.addEventListener("click", async () => {
   renderManagerPicker();
 });
 
+// --- "Who are you?" confirm --------------------------------------------
+// The one deliberate step that locks a device to a name. Shown on first
+// visit, and again any time someone taps a card that isn't theirs.
+
+let pendingIdentity = null;
+
+function openIdentityConfirm(name, accent) {
+  pendingIdentity = name;
+  identityPreview.textContent = avatarOverrides[name] || name[0];
+  identityPreview.style.setProperty("--accent", accent);
+  identityText.textContent = currentManager
+    ? `Switch from ${currentManager} to ${name}? This device will remember ${name} from now on.`
+    : `Lock in as ${name}? This device will remember you — use SWITCH later if you need to change.`;
+  identityConfirmBtn.textContent = currentManager ? `Switch to ${name}` : `That's me`;
+  identityModal.classList.remove("hidden");
+}
+
+function closeIdentityConfirm() {
+  identityModal.classList.add("hidden");
+  pendingIdentity = null;
+}
+
+identityModal.addEventListener("click", (e) => {
+  if (e.target === identityModal) closeIdentityConfirm();
+});
+identityCancelBtn.addEventListener("click", closeIdentityConfirm);
+identityConfirmBtn.addEventListener("click", () => {
+  const name = pendingIdentity;
+  closeIdentityConfirm();
+  if (name) {
+    saveMe(name);
+    selectManager(name);
+  }
+});
+
 async function selectManager(name) {
   currentManager = name;
-  draftPicks = {};
-  draftTiebreaker = null;
+  saveMe(name);
   managerBadge.textContent = name.toUpperCase();
   loginScreen.classList.add("hidden");
+  scoreboardScreen.classList.add("hidden");
   picksScreen.classList.remove("hidden");
   renderPicksScreen();
   setActiveNav("picks");
   await syncManagerFromCloud(name);
   renderPicksScreen();
+}
+
+// Re-render without yanking the page: capture scroll, redraw, restore.
+// Works for sync and async renderers.
+function withScrollPreserved(fn) {
+  const y = window.scrollY;
+  const result = fn();
+  const restore = () => window.scrollTo(0, y);
+  if (result && typeof result.then === "function") result.then(restore);
+  else restore();
+  return result;
+}
+
+// The only time-driven change on the picks screen is a game locking at
+// kickoff, so background refreshes compare this and skip the redraw
+// when nothing has flipped.
+let lastLockSignature = null;
+function lockSignature() {
+  return GAMES.map((g) => (isGameLocked(g) ? "1" : "0")).join("");
 }
 
 function pickEqual(a, b) {
@@ -526,65 +629,68 @@ function matchupCardsHtml(game, draft) {
   `;
 }
 
+// Tap = saved. There's no separate Submit: every pick is freely
+// changeable until that game kicks off anyway, so a confirm step added
+// no safety — it only created a way to lose unsaved work on a refresh.
+// The card you just tapped gets a brief "SAVED ✓" pulse instead.
+let justSavedGameId = null;
+
 function renderPicksScreen() {
   const state = getManagerState(currentManager);
+  lastLockSignature = lockSignature();
 
   gamesList.innerHTML = "";
   GAMES.forEach((game) => {
     const gameLocked = isGameLocked(game);
-    const submittedPick = state.picks[game.id];
-
-    if (draftPicks[game.id] === undefined) {
-      draftPicks[game.id] = submittedPick;
-    }
-    const draft = draftPicks[game.id];
-    const hasUnsavedChange = draft && !pickEqual(draft, submittedPick);
+    const pick = state.picks[game.id];
 
     const card = document.createElement("div");
-    card.className = "game-card" + (gameLocked ? " game-locked" : "") + (submittedPick && !hasUnsavedChange ? " game-submitted" : "");
+    card.className =
+      "game-card" +
+      (gameLocked ? " game-locked" : "") +
+      (pick ? " game-submitted" : "") +
+      (justSavedGameId === game.id ? " just-saved" : "");
 
     let statusLabel = "OPEN";
     let statusClass = "open";
     if (gameLocked) {
       statusLabel = "LOCKED";
       statusClass = "locked";
-    } else if (submittedPick && !hasUnsavedChange) {
-      statusLabel = "SUBMITTED";
+    } else if (pick) {
+      statusLabel = "SAVED ✓";
       statusClass = "submitted";
     }
+
+    const note = gameLocked
+      ? pick ? `Final pick: ${pickLabel(game, pick)}` : "No pick made — locked"
+      : pick ? `✓ Saved: ${pickLabel(game, pick)}` : "Tap a button to pick — it saves instantly";
 
     card.innerHTML = `
       <div class="game-meta">
         <span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>
         <span class="game-status ${statusClass}">${statusLabel}</span>
       </div>
-      ${matchupCardsHtml(game, draft)}
+      ${matchupCardsHtml(game, pick)}
       <div class="game-submit-row">
-        <span class="game-submit-note">${gameLocked ? (submittedPick ? `Final pick: ${pickLabel(game, submittedPick)}` : "No pick submitted — locked") : submittedPick && !hasUnsavedChange ? `✓ Submitted: ${pickLabel(game, submittedPick)}` : ""}</span>
-        <button class="ghost-btn submit-pick-btn" type="button" ${gameLocked ? "disabled" : ""}>Submit</button>
+        <span class="game-submit-note">${note}</span>
       </div>
     `;
-
-    const submitPickBtn = card.querySelector(".submit-pick-btn");
 
     card.querySelectorAll(".pick-mini-btn").forEach((btn) => {
       const team = btn.dataset.team;
       const mode = btn.dataset.mode;
       btn.disabled = gameLocked;
       btn.addEventListener("click", () => {
-        draftPicks[game.id] = { team, mode };
-        renderPicksScreen();
+        const s = getManagerState(currentManager);
+        s.picks[game.id] = { team, mode };
+        setManagerState(currentManager, s);
+        pushManagerState(currentManager, s);
+        justSavedGameId = game.id;
+        withScrollPreserved(renderPicksScreen);
+        setTimeout(() => {
+          justSavedGameId = null;
+        }, 1200);
       });
-    });
-
-    submitPickBtn.disabled = gameLocked || !draft || pickEqual(draft, submittedPick);
-    submitPickBtn.textContent = submittedPick && !hasUnsavedChange ? "Submitted" : "Submit";
-    submitPickBtn.addEventListener("click", () => {
-      const s = getManagerState(currentManager);
-      s.picks[game.id] = draft;
-      setManagerState(currentManager, s);
-      pushManagerState(currentManager, s);
-      renderPicksScreen();
     });
 
     gamesList.appendChild(card);
@@ -592,32 +698,37 @@ function renderPicksScreen() {
 
   const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
   const tiebreakerLocked = isGameLocked(tiebreakerGame);
-  if (draftTiebreaker === null) {
-    draftTiebreaker = state.tiebreaker || "";
+  // Don't clobber a number someone is mid-typing on a background redraw.
+  if (document.activeElement !== tiebreakerInput) {
+    tiebreakerInput.value = state.tiebreaker || "";
   }
-  tiebreakerInput.value = draftTiebreaker;
   tiebreakerInput.disabled = tiebreakerLocked;
-  tiebreakerInput.oninput = () => {
-    draftTiebreaker = tiebreakerInput.value;
-    const changed = draftTiebreaker !== "" && draftTiebreaker !== String(state.tiebreaker || "");
-    tiebreakerSubmitBtn.disabled = tiebreakerLocked || !changed;
-  };
-  const tbChanged = draftTiebreaker !== "" && draftTiebreaker !== String(state.tiebreaker || "");
-  tiebreakerSubmitBtn.disabled = tiebreakerLocked || !tbChanged;
   tiebreakerStatus.textContent = tiebreakerLocked
-    ? (state.tiebreaker ? `Final: ${state.tiebreaker}` : "No tiebreaker submitted — locked")
-    : state.tiebreaker ? `✓ Submitted: ${state.tiebreaker}` : "";
+    ? state.tiebreaker ? `Final: ${state.tiebreaker}` : "No tiebreaker entered — locked"
+    : state.tiebreaker ? `✓ Saved: ${state.tiebreaker}` : "Saves as you type";
 
-  const totalSubmitted = Object.values(state.picks).filter(Boolean).length;
-  picksProgress.textContent = `${totalSubmitted} of ${GAMES.length} games submitted` + (state.tiebreaker ? " · tiebreaker submitted" : " · tiebreaker not submitted");
+  updatePicksProgress(state);
 }
 
-tiebreakerSubmitBtn.addEventListener("click", () => {
-  const s = getManagerState(currentManager);
-  s.tiebreaker = draftTiebreaker;
-  setManagerState(currentManager, s);
-  pushManagerState(currentManager, s);
-  renderPicksScreen();
+function updatePicksProgress(state) {
+  const totalPicked = Object.values(state.picks).filter(Boolean).length;
+  picksProgress.textContent =
+    `${totalPicked} of ${GAMES.length} games picked` + (state.tiebreaker ? " · tiebreaker set" : " · tiebreaker not set");
+}
+
+// Tiebreaker saves as you type (debounced), no button.
+let tiebreakerSaveTimer = null;
+tiebreakerInput.addEventListener("input", () => {
+  clearTimeout(tiebreakerSaveTimer);
+  tiebreakerSaveTimer = setTimeout(() => {
+    if (!currentManager) return;
+    const s = getManagerState(currentManager);
+    s.tiebreaker = tiebreakerInput.value.trim();
+    setManagerState(currentManager, s);
+    pushManagerState(currentManager, s);
+    tiebreakerStatus.textContent = s.tiebreaker ? `✓ Saved: ${s.tiebreaker}` : "Saves as you type";
+    updatePicksProgress(s);
+  }, 500);
 });
 
 switchBtn.addEventListener("click", goHome);
@@ -827,12 +938,18 @@ function renderRankings(cloudPicks, results) {
 
 // Re-render periodically so games auto-lock the moment kickoff passes,
 // and the scoreboard/rankings stay live without a manual refresh.
+// Background refresh. The picks list only redraws when a game's lock
+// state actually flips (a kickoff), so it never yanks the page out from
+// under someone mid-scroll for no reason. The board is meant to be live,
+// so it refreshes every tick, but keeps the scroll position.
 setInterval(() => {
   if (currentManager && !picksScreen.classList.contains("hidden")) {
-    renderPicksScreen();
+    if (lockSignature() !== lastLockSignature) {
+      withScrollPreserved(renderPicksScreen);
+    }
   }
   if (!scoreboardScreen.classList.contains("hidden")) {
-    renderScoreboard();
+    withScrollPreserved(renderScoreboard);
   }
 }, 30000);
 
