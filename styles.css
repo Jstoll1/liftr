@@ -641,6 +641,8 @@ html, body {
 .picks-progress {
   font-size: 11px;
   color: var(--text-dim);
+  display: block;
+  text-align: center;
 }
 
 .primary-btn {
@@ -713,6 +715,30 @@ html, body {
   opacity: 0.75;
 }
 
+.live-score-card.upcoming .live-score-number {
+  opacity: 0.35;
+}
+
+.live-score-spread {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--neon-pink);
+  text-shadow: 0 0 4px var(--neon-pink);
+}
+
+.live-score-spread.dog {
+  color: var(--text-dim);
+  text-shadow: none;
+  opacity: 0.7;
+}
+
+.live-score-gnum {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--neon-cyan);
+  opacity: 0.8;
+}
+
 .live-score-grid {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -769,7 +795,9 @@ html, body {
   font-size: 8px;
   color: var(--text-dim);
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  max-width: 78px;
+  line-height: 1.4;
 }
 
 .live-score-vs {

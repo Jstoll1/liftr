@@ -253,11 +253,30 @@ function closeRules() {
   localStorage.setItem(RULES_SEEN_KEY, "1");
 }
 
+// Every screen opens at the top the first time. Coming back to a screen
+// you've already scrolled restores where you left it, so nobody lands at
+// the bottom of the scoreboard because they were deep in their picks.
+const savedScroll = {};
+let activeScreenName = null;
+function rememberScroll() {
+  if (activeScreenName) savedScroll[activeScreenName] = window.scrollY;
+}
+// Call rememberScroll() BEFORE hiding the current screen: once it's
+// hidden the page shrinks and the browser clamps scrollY to the top.
+function enterScreen(name) {
+  activeScreenName = name;
+  const y = savedScroll[name] ?? 0;
+  window.scrollTo(0, y);
+  // async renders can grow the page after this tick; pin again once painted
+  requestAnimationFrame(() => window.scrollTo(0, savedScroll[name] ?? 0));
+}
+
 // Leaving the splash: if this device already knows who you are, skip the
 // roster and land where the action is — your picks before the first
 // kickoff, the live board once games are underway. First-timers get the
 // rules once, then "Who are you?".
 function goToPlayerSelect() {
+  rememberScroll();
   logoScreen.classList.add("hidden");
   homeHeader.classList.remove("hidden");
   bottomNav.classList.remove("hidden");
@@ -278,6 +297,7 @@ function goToPlayerSelect() {
   loginScreen.classList.remove("hidden");
   setActiveNav("home");
   renderManagerPicker();
+  enterScreen("home");
   if (!localStorage.getItem(RULES_SEEN_KEY)) openRules();
 }
 
@@ -295,11 +315,13 @@ function setActiveNav(target) {
 // does NOT forget who you are: your card is marked YOU, and picking a
 // different card asks for confirmation before switching.
 function goHome() {
+  rememberScroll();
   picksScreen.classList.add("hidden");
   scoreboardScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
   renderManagerPicker();
   setActiveNav("home");
+  enterScreen("home");
 }
 
 logoScreen.addEventListener("click", goToPlayerSelect);
@@ -313,12 +335,15 @@ navPicksBtn.addEventListener("click", () => {
     goHome();
     return;
   }
+  rememberScroll();
   scoreboardScreen.classList.add("hidden");
   loginScreen.classList.add("hidden");
   picksScreen.classList.remove("hidden");
   renderPicksScreen();
   setActiveNav("picks");
+  enterScreen("picks");
 });
+
 navScoreboardBtn.addEventListener("click", () => {
   loginScreen.classList.add("hidden");
   showScoreboard();
@@ -535,6 +560,7 @@ identityConfirmBtn.addEventListener("click", () => {
 });
 
 async function selectManager(name) {
+  rememberScroll();
   currentManager = name;
   saveMe(name);
   managerBadge.textContent = name.toUpperCase();
@@ -543,8 +569,9 @@ async function selectManager(name) {
   picksScreen.classList.remove("hidden");
   renderPicksScreen();
   setActiveNav("picks");
+  enterScreen("picks");
   await syncManagerFromCloud(name);
-  renderPicksScreen();
+  withScrollPreserved(renderPicksScreen);
 }
 
 // Re-render without yanking the page: capture scroll, redraw, restore.
@@ -736,20 +763,24 @@ switchBtn.addEventListener("click", goHome);
 // --- Scoreboard ------------------------------------------------------------
 
 function showScoreboard() {
+  rememberScroll();
   picksScreen.classList.add("hidden");
   scoreboardScreen.classList.remove("hidden");
-  renderScoreboard();
   setActiveNav("scoreboard");
+  enterScreen("scoreboard");
+  withScrollPreserved(renderScoreboard);
 }
 
 toScoreboardBtn.addEventListener("click", showScoreboard);
 scoreboardBackBtn.addEventListener("click", () => {
+  rememberScroll();
   scoreboardScreen.classList.add("hidden");
   picksScreen.classList.remove("hidden");
   renderPicksScreen();
   setActiveNav("picks");
+  enterScreen("picks");
 });
-scoreboardRefreshBtn.addEventListener("click", renderScoreboard);
+scoreboardRefreshBtn.addEventListener("click", () => withScrollPreserved(renderScoreboard));
 
 async function renderScoreboard() {
   const rawPicks = (await fetchAllPicks()) || loadAll();
@@ -796,28 +827,35 @@ function teamPickersHtml(cloudPicks, game, team, mode, label) {
 }
 
 function renderLiveScores(live, cloudPicks) {
-  const started = GAMES.filter((g) => isGameLocked(g));
-  if (started.length === 0) {
-    liveScoresList.innerHTML = `<p class="live-scores-empty">Live scores &amp; who-picked-who show up here once the first game kicks off.</p>`;
-    return;
-  }
+  // Every game is on the board from the start: logos, kickoff, TV and the
+  // line on the favorite. Scores, clock and win probability fill in from
+  // ESPN once a game is live; who-picked-who stays hidden until kickoff.
+  const ordered = [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
+  const anyStarted = ordered.some((g) => isGameLocked(g));
+  const heading = anyStarted ? "📡 LIVE SCOREBOARD" : "📡 SCOREBOARD &middot; PICKS REVEAL AT KICKOFF";
 
-  liveScoresList.innerHTML = `<span class="rules-heading live-scores-heading">📡 LIVE SCOREBOARD</span>` + started
+  liveScoresList.innerHTML = `<span class="rules-heading live-scores-heading">${heading}</span>` + ordered
     .map((game) => {
+      const locked = isGameLocked(game);
       const g = live[game.id];
-      const found = g && g.found;
+      const found = locked && g && g.found;
 
-      const statusText = found
-        ? g.completed
-          ? "FINAL"
-          : g.state === "in"
-            ? g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`
-            : g.detail || "Scheduled"
-        : "Waiting for score…";
+      const statusText = !locked
+        ? `${game.kickoffLabel} &middot; ${game.tv}`
+        : found
+          ? g.completed
+            ? "FINAL"
+            : g.state === "in"
+              ? g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`
+              : g.detail || "Scheduled"
+          : "Waiting for score…";
       const awayScore = found ? g.awayScore ?? "—" : "—";
       const homeScore = found ? g.homeScore ?? "—" : "—";
       const awayLead = found && g.awayScore !== null && g.homeScore !== null && g.awayScore > g.homeScore;
       const homeLead = found && g.awayScore !== null && g.homeScore !== null && g.homeScore > g.awayScore;
+
+      const awaySpread = game.favorite === game.away ? `<span class="live-score-spread">-${game.spread}</span>` : `<span class="live-score-spread dog">+${game.spread}</span>`;
+      const homeSpread = game.favorite === game.home ? `<span class="live-score-spread">-${game.spread}</span>` : `<span class="live-score-spread dog">+${game.spread}</span>`;
 
       const winProbHtml = found && g.winProb
         ? `
@@ -832,27 +870,38 @@ function renderLiveScores(live, cloudPicks) {
         `
         : "";
 
-      const awayPickers = teamPickersHtml(cloudPicks, game, game.away, "SU", "SU") + teamPickersHtml(cloudPicks, game, game.away, "ATS", "ATS");
-      const homePickers = teamPickersHtml(cloudPicks, game, game.home, "SU", "SU") + teamPickersHtml(cloudPicks, game, game.home, "ATS", "ATS");
+      let awayPickers = "";
+      let homePickers = "";
+      if (locked) {
+        awayPickers = teamPickersHtml(cloudPicks, game, game.away, "SU", "SU") + teamPickersHtml(cloudPicks, game, game.away, "ATS", "ATS");
+        homePickers = teamPickersHtml(cloudPicks, game, game.home, "SU", "SU") + teamPickersHtml(cloudPicks, game, game.home, "ATS", "ATS");
+        awayPickers = awayPickers || '<span class="picker-line none">&mdash;</span>';
+        homePickers = homePickers || '<span class="picker-line none">&mdash;</span>';
+      }
+
+      const cardClass = !locked ? "upcoming" : found && g.completed ? "final" : found && g.state === "in" ? "in-progress" : "";
 
       return `
-        <div class="live-score-card ${found && g.completed ? "final" : found && g.state === "in" ? "in-progress" : ""}">
+        <div class="live-score-card ${cardClass}">
           <div class="live-score-grid">
             <div class="live-score-col ${awayLead ? "leading" : ""}">
               <img class="live-score-logo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
               <span class="live-score-team-name">${game.away}</span>
+              ${awaySpread}
               <span class="live-score-number">${awayScore}</span>
-              <div class="live-score-pickers">${awayPickers || '<span class="picker-line none">&mdash;</span>'}</div>
+              ${locked ? `<div class="live-score-pickers">${awayPickers}</div>` : ""}
             </div>
             <div class="live-score-mid">
+              <span class="live-score-gnum">G${game.id}</span>
               <span class="live-score-status">${statusText}</span>
               <span class="live-score-vs">@</span>
             </div>
             <div class="live-score-col ${homeLead ? "leading" : ""}">
               <img class="live-score-logo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
               <span class="live-score-team-name">${game.home}</span>
+              ${homeSpread}
               <span class="live-score-number">${homeScore}</span>
-              <div class="live-score-pickers">${homePickers || '<span class="picker-line none">&mdash;</span>'}</div>
+              ${locked ? `<div class="live-score-pickers">${homePickers}</div>` : ""}
             </div>
           </div>
           ${winProbHtml}
