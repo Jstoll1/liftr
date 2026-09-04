@@ -2,10 +2,11 @@ name = "liftr-ai"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
 
-# Locks down CORS so only your deployed site can call this Worker.
-# Update this if your GitHub Pages URL is different.
+# Locks down CORS so only your deployed site(s) can call this Worker.
+# Comma-separated — the pick'em app now lives at brochiefs.com, but the
+# raw GitHub Pages URL still works too, so both are allowed.
 [vars]
-ALLOWED_ORIGIN = "https://jstoll1.github.io"
+ALLOWED_ORIGIN = "https://brochiefs.com,https://www.brochiefs.com,https://jstoll1.github.io"
 # Shared default for chat/swap/opening — cheap, fast, plenty good for
 # conversational replies and one-exercise substitutions.
 OPENAI_MODEL = "gpt-4o-mini"

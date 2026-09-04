@@ -12,10 +12,22 @@ const MINUTES_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 6 };
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // ALLOWED_ORIGIN can be a single origin or a comma-separated list (e.g.
+    // both the GitHub Pages URL and a custom domain during a domain
+    // migration) — reflect back whichever one the request actually came
+    // from if it's on the list, so both keep working.
+    const allowedOrigins = (env.ALLOWED_ORIGIN || "*").split(",").map((o) => o.trim());
+    const requestOrigin = request.headers.get("Origin");
+    const allowOrigin = allowedOrigins.includes("*")
+      ? "*"
+      : allowedOrigins.includes(requestOrigin)
+        ? requestOrigin
+        : allowedOrigins[0];
     const corsHeaders = {
-      "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN || "*",
+      "Access-Control-Allow-Origin": allowOrigin,
       "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
+      Vary: "Origin",
     };
 
     if (request.method === "OPTIONS") {
