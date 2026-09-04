@@ -12,6 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=202609041525" />
   <link rel="stylesheet" href="merch.css?v=202609041700" />
+  <link rel="stylesheet" href="merch-photo.css?v=202609041902" />
 </head>
 <body class="merch-page">
   <div class="synth-grid" aria-hidden="true"></div>
@@ -26,9 +27,9 @@
   <main class="screen merch-screen">
     <div class="merch-wrap">
       <section class="merch-hero">
-        <span class="merch-kicker">BROCHIEFS TEAM STORE</span>
-        <h1>MERCH</h1>
-        <p>Officially unofficial gear for draft day.</p>
+        <img id="merch-hero-art" class="merch-hero-art" alt="Brochiefs Football merch collection" />
+        <p>Officially unofficial gear for draft day, Sundays, babies, beverages and bad decisions.</p>
+        <div class="merch-disclaimer">PRETEND STORE • NO REAL ORDERS • MAXIMUM BRO ENERGY</div>
       </section>
 
       <section class="merch-toolbar" aria-label="Merchandise filters">
@@ -40,10 +41,7 @@
 
       <section class="logo-vault-section">
         <div class="merch-section-head">
-          <div>
-            <span class="merch-section-kicker">LOGO VAULT</span>
-            <h2>Seven ways to Brochief</h2>
-          </div>
+          <div><span class="merch-section-kicker">LOGO VAULT</span><h2>Seven ways to Brochief</h2></div>
           <span class="merch-section-note">same squad. different energy.</span>
         </div>
         <div id="logo-vault" class="logo-vault"></div>
@@ -51,10 +49,7 @@
 
       <section class="catalog-section">
         <div class="merch-section-head catalog-head">
-          <div>
-            <span class="merch-section-kicker">THE DROP</span>
-            <h2 id="catalog-title">All Gear</h2>
-          </div>
+          <div><span class="merch-section-kicker">THE DROP</span><h2 id="catalog-title">All Gear</h2></div>
           <span id="catalog-count" class="merch-section-note"></span>
         </div>
         <div id="merch-grid" class="merch-grid"></div>
@@ -63,7 +58,7 @@
       <section class="merch-footer-card">
         <span class="merch-section-kicker">BROCHIEFS GUARANTEE</span>
         <h2>Every item is fake. The drip is real.</h2>
-        <p>No payment processing, no shipping, no inventory. This is a fantasy store inside a fantasy football app, exactly as nature intended.</p>
+        <p>No payment processing, no shipping, no inventory. This is a fantasy store inside a fantasy football app.</p>
       </section>
     </div>
   </main>
@@ -71,24 +66,13 @@
   <div id="merch-toast" class="merch-toast" role="status" aria-live="polite"></div>
 
   <nav class="bottom-nav merch-bottom-nav">
-    <button class="nav-btn" type="button" onclick="location.href='index.html'">
-      <span class="nav-btn-icon">🏠</span>
-      <span class="nav-btn-label">Home</span>
-    </button>
-    <button class="nav-btn" type="button" onclick="location.href='index.html'">
-      <span class="nav-btn-icon">🎯</span>
-      <span class="nav-btn-label">Picks</span>
-    </button>
-    <button class="nav-btn" type="button" onclick="location.href='index.html'">
-      <span class="nav-btn-icon">📊</span>
-      <span class="nav-btn-label">Board</span>
-    </button>
-    <button class="nav-btn active" type="button">
-      <span class="nav-btn-icon">🛍️</span>
-      <span class="nav-btn-label">Merch</span>
-    </button>
+    <button class="nav-btn" type="button" onclick="location.href='index.html'"><span class="nav-btn-icon">🏠</span><span class="nav-btn-label">Home</span></button>
+    <button class="nav-btn" type="button" onclick="location.href='index.html'"><span class="nav-btn-icon">🎯</span><span class="nav-btn-label">Picks</span></button>
+    <button class="nav-btn" type="button" onclick="location.href='index.html'"><span class="nav-btn-icon">📊</span><span class="nav-btn-label">Board</span></button>
+    <button class="nav-btn active" type="button"><span class="nav-btn-icon">🛍️</span><span class="nav-btn-label">Merch</span></button>
   </nav>
 
-  <script src="merch.js?v=202609041700"></script>
+  <script src="merch-images.js?v=202609041902"></script>
+  <script src="merch.js?v=202609041902"></script>
 </body>
 </html>
