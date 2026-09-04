@@ -488,9 +488,12 @@ async function handlePicks(request, env, corsHeaders, url) {
 }
 
 // Brochiefs pick'em results — one KV entry per game (result:<gameId>)
-// holding which team covered. No auth (small trusted friend group, same as
-// the rest of this app); anyone can enter a result once it's known. The
-// scoreboard uses this plus everyone's picks to compute rankings.
+// holding the final score ({awayScore, homeScore}) as JSON. The client
+// derives both the straight-up winner and the ATS (spread) winner from
+// that score plus the game's locked spread. No auth (small trusted
+// friend group, same as the rest of this app); anyone can enter a score
+// once it's known. The scoreboard uses this plus everyone's picks to
+// compute point totals and rankings.
 async function handleResults(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) {
     console.error("LIFTR_KV binding missing");
@@ -501,7 +504,17 @@ async function handleResults(request, env, corsHeaders, url) {
     try {
       const list = await env.LIFTR_KV.list({ prefix: "result:" });
       const entries = await Promise.all(
-        list.keys.map(async (k) => [k.name.slice("result:".length), await env.LIFTR_KV.get(k.name)])
+        list.keys.map(async (k) => {
+          const raw = await env.LIFTR_KV.get(k.name);
+          if (!raw) return [k.name.slice("result:".length), null];
+          let value;
+          try {
+            value = JSON.parse(raw);
+          } catch {
+            value = null; // tolerates a stale pre-score-based entry
+          }
+          return [k.name.slice("result:".length), value];
+        })
       );
       const results = Object.fromEntries(entries.filter(([, value]) => value));
       return json({ results }, 200, corsHeaders);
@@ -519,12 +532,13 @@ async function handleResults(request, env, corsHeaders, url) {
       return json({ error: "Invalid JSON body" }, 400, corsHeaders);
     }
     const gameId = body?.gameId;
-    const winner = body?.winner;
-    if (!Number.isFinite(gameId) || typeof winner !== "string" || !winner) {
-      return json({ error: "Invalid gameId or winner" }, 400, corsHeaders);
+    const awayScore = body?.awayScore;
+    const homeScore = body?.homeScore;
+    if (!Number.isFinite(gameId) || !Number.isFinite(awayScore) || !Number.isFinite(homeScore)) {
+      return json({ error: "Invalid gameId, awayScore, or homeScore" }, 400, corsHeaders);
     }
     try {
-      await env.LIFTR_KV.put(`result:${gameId}`, winner);
+      await env.LIFTR_KV.put(`result:${gameId}`, JSON.stringify({ awayScore, homeScore }));
       return json({ ok: true }, 200, corsHeaders);
     } catch (err) {
       console.error("Results write error", err?.stack || String(err));

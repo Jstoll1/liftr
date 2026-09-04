@@ -747,3 +747,102 @@ html, body {
   font-size: 10px;
   color: var(--neon-green);
 }
+
+/* --- Pick options: 4 choices per game (Fav/Dog x SU/ATS) ------------- */
+
+.pick-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pick-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px solid var(--card-border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.pick-opt-logo {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 4px rgba(5, 217, 232, 0.35));
+}
+
+.pick-opt-team {
+  flex: 1;
+  line-height: 1.2;
+}
+
+.pick-opt-desc {
+  display: block;
+  font-size: 8px;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.pick-opt-pts {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 4px var(--neon-yellow);
+  flex-shrink: 0;
+}
+
+.pick-option-btn:hover:not(:disabled) {
+  border-color: var(--neon-cyan);
+}
+
+.pick-option-btn.selected {
+  border-color: var(--neon-purple);
+  background: rgba(193, 60, 255, 0.22);
+  box-shadow: 0 0 12px rgba(193, 60, 255, 0.5);
+}
+
+.pick-option-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* --- Results entry: final score inputs -------------------------------- */
+
+.score-result-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.score-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.score-input {
+  width: 64px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--card-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  padding: 6px;
+}
+
+.ghost-btn.small {
+  padding: 6px 10px;
+  font-size: 10px;
+}

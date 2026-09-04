@@ -5,10 +5,44 @@
 // live rankings from one shared "scoreboard" page — not just their own
 // browser.
 //
-// Each game is submitted individually: pick a team, hit Submit, and it's
-// saved. You can change your mind and resubmit as many times as you want
-// right up until that specific game's kickoff — at that instant it locks
-// for everyone, submitted or not.
+// Each game is submitted individually: pick one of 4 options, hit
+// Submit, and it's saved. You can change your mind and resubmit as many
+// times as you want right up until that specific game's kickoff — at
+// that instant it locks for everyone, submitted or not.
+//
+// Scoring (per the official rules email): for each game, pick ONE of —
+//   Favorite, Straight Up   = 1 point
+//   Either team, Against the Spread (covers) = 2 points
+//   Underdog, Straight Up   = 3 points
+// A pick scores only if it's fully correct (SU picks need that team to
+// win outright; ATS picks need that team to cover), otherwise 0.
+
+function pointValue(game, team, mode) {
+  if (mode === "ATS") return 2;
+  return team === game.favorite ? 1 : 3;
+}
+
+// Given a final score, returns who won straight-up and who covered.
+function resultOutcome(game, result) {
+  if (!result || !Number.isFinite(result.awayScore) || !Number.isFinite(result.homeScore)) return null;
+  const { awayScore, homeScore } = result;
+  const suWinner = awayScore > homeScore ? game.away : game.home;
+  const favMargin = game.favorite === game.home ? homeScore - awayScore : awayScore - homeScore;
+  const favoriteCovered = favMargin > game.spread;
+  const underdog = game.favorite === game.away ? game.home : game.away;
+  const atsWinner = favoriteCovered ? game.favorite : underdog;
+  return { suWinner, atsWinner };
+}
+
+// Points earned for one pick given a final score, or null if the game
+// hasn't been scored yet.
+function scorePick(game, pick, result) {
+  const outcome = resultOutcome(game, result);
+  if (!outcome) return null;
+  if (!pick || !pick.team || !pick.mode) return 0;
+  const winner = pick.mode === "SU" ? outcome.suWinner : outcome.atsWinner;
+  return pick.team === winner ? pointValue(game, pick.team, pick.mode) : 0;
+}
 
 // Fill this in after deploying the Worker (see worker/README.md), e.g.
 // "https://liftr-ai.<your-subdomain>.workers.dev". Left blank, the app
@@ -60,9 +94,21 @@ function saveAll(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+// Discards any pick saved in the old "just a team name" format (from
+// before the SU/ATS scoring rules were wired in), so stale test data
+// renders as "not submitted" instead of crashing or showing "undefined".
+function sanitizePicks(picks) {
+  const clean = {};
+  Object.entries(picks || {}).forEach(([gameId, pick]) => {
+    if (pick && typeof pick === "object" && pick.team && pick.mode) clean[gameId] = pick;
+  });
+  return clean;
+}
+
 function getManagerState(name) {
   const all = loadAll();
-  return all[name] || { picks: {}, tiebreaker: "" };
+  const state = all[name] || { picks: {}, tiebreaker: "" };
+  return { ...state, picks: sanitizePicks(state.picks) };
 }
 
 function setManagerState(name, state) {
@@ -114,13 +160,13 @@ async function fetchResults() {
   }
 }
 
-async function pushResult(gameId, winner) {
+async function pushResult(gameId, awayScore, homeScore) {
   if (!WORKER_URL) return;
   try {
     await fetch(`${WORKER_URL}/results`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gameId, winner }),
+      body: JSON.stringify({ gameId, awayScore, homeScore }),
     });
   } catch {
     // Offline or worker unreachable.
@@ -134,7 +180,7 @@ async function syncManagerFromCloud(name) {
   const cloud = await fetchAllPicks();
   if (!cloud || !cloud[name]) return;
   const all = loadAll();
-  all[name] = cloud[name];
+  all[name] = { ...cloud[name], picks: sanitizePicks(cloud[name].picks) };
   saveAll(all);
 }
 
@@ -183,7 +229,7 @@ async function renderManagerPicker() {
   managerPicker.innerHTML = "";
   MANAGERS.forEach((name, i) => {
     const state = all[name];
-    const submittedCount = state ? Object.values(state.picks || {}).filter(Boolean).length : 0;
+    const submittedCount = state ? Object.keys(sanitizePicks(state.picks)).length : 0;
     const tiebreakerDone = !!(state && String(state.tiebreaker || "").trim() !== "");
     const complete = submittedCount === GAMES.length && tiebreakerDone;
     const partial = !complete && (submittedCount > 0 || tiebreakerDone);
@@ -215,6 +261,40 @@ async function selectManager(name) {
   renderPicksScreen();
 }
 
+function pickEqual(a, b) {
+  if (!a || !b) return a === b;
+  return a.team === b.team && a.mode === b.mode;
+}
+
+function pickLabel(game, pick) {
+  if (!pick) return "";
+  const pts = pointValue(game, pick.team, pick.mode);
+  if (pick.mode === "SU") return `${pick.team} SU (${pts} pt)`;
+  const spreadStr = pick.team === game.favorite ? `-${game.spread}` : `+${game.spread}`;
+  return `${pick.team} ATS ${spreadStr} (${pts} pt)`;
+}
+
+function pickOptionsHtml(game) {
+  const favSpread = `-${game.spread}`;
+  const dogSpread = `+${game.spread}`;
+  const opt = (team, teamId, mode) => `
+    <button class="pick-option-btn" type="button" data-team="${team}" data-mode="${mode}">
+      <img class="pick-opt-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
+      <span class="pick-opt-team">${team}</span>
+      <span class="pick-opt-desc">${mode === "SU" ? "Win SU" : `ATS ${team === game.favorite ? favSpread : dogSpread}`}</span>
+      <span class="pick-opt-pts">${pointValue(game, team, mode)} PT</span>
+    </button>
+  `;
+  return `
+    <div class="pick-options-grid">
+      ${opt(game.away, game.awayId, "SU")}
+      ${opt(game.home, game.homeId, "SU")}
+      ${opt(game.away, game.awayId, "ATS")}
+      ${opt(game.home, game.homeId, "ATS")}
+    </div>
+  `;
+}
+
 function renderPicksScreen() {
   const state = getManagerState(currentManager);
 
@@ -227,7 +307,7 @@ function renderPicksScreen() {
       draftPicks[game.id] = submittedPick;
     }
     const draft = draftPicks[game.id];
-    const hasUnsavedChange = draft && draft !== submittedPick;
+    const hasUnsavedChange = draft && !pickEqual(draft, submittedPick);
 
     const card = document.createElement("div");
     card.className = "game-card" + (gameLocked ? " game-locked" : "") + (submittedPick && !hasUnsavedChange ? " game-submitted" : "");
@@ -247,42 +327,27 @@ function renderPicksScreen() {
         <span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>
         <span class="game-status ${statusClass}">${statusLabel}</span>
       </div>
-      <div class="matchup-row">
-        <button class="team-btn away-btn" type="button">
-          <img class="team-logo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
-          <span class="team-name">${game.away}</span>
-          <span class="team-spread">${game.favorite === game.away ? "-" + game.spread : "+" + game.spread}</span>
-        </button>
-        <span class="vs-divider"><span class="vs-bolt">⚡</span>VS</span>
-        <button class="team-btn home-btn" type="button">
-          <img class="team-logo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
-          <span class="team-name">${game.home}</span>
-          <span class="team-spread">${game.favorite === game.home ? "-" + game.spread : "+" + game.spread}</span>
-        </button>
-      </div>
+      ${pickOptionsHtml(game)}
       <div class="game-submit-row">
-        <span class="game-submit-note">${gameLocked ? (submittedPick ? `Final pick: ${submittedPick}` : "No pick submitted — locked") : submittedPick && !hasUnsavedChange ? `✓ Submitted: ${submittedPick}` : ""}</span>
+        <span class="game-submit-note">${gameLocked ? (submittedPick ? `Final pick: ${pickLabel(game, submittedPick)}` : "No pick submitted — locked") : submittedPick && !hasUnsavedChange ? `✓ Submitted: ${pickLabel(game, submittedPick)}` : ""}</span>
         <button class="ghost-btn submit-pick-btn" type="button" ${gameLocked ? "disabled" : ""}>Submit</button>
       </div>
     `;
 
-    const awayBtn = card.querySelector(".away-btn");
-    const homeBtn = card.querySelector(".home-btn");
     const submitPickBtn = card.querySelector(".submit-pick-btn");
 
-    [
-      [awayBtn, game.away],
-      [homeBtn, game.home],
-    ].forEach(([btn, team]) => {
-      if (draft === team) btn.classList.add("selected");
+    card.querySelectorAll(".pick-option-btn").forEach((btn) => {
+      const team = btn.dataset.team;
+      const mode = btn.dataset.mode;
+      if (pickEqual(draft, { team, mode })) btn.classList.add("selected");
       btn.disabled = gameLocked;
       btn.addEventListener("click", () => {
-        draftPicks[game.id] = team;
+        draftPicks[game.id] = { team, mode };
         renderPicksScreen();
       });
     });
 
-    submitPickBtn.disabled = gameLocked || !draft || draft === submittedPick;
+    submitPickBtn.disabled = gameLocked || !draft || pickEqual(draft, submittedPick);
     submitPickBtn.textContent = submittedPick && !hasUnsavedChange ? "Submitted" : "Submit";
     submitPickBtn.addEventListener("click", () => {
       const s = getManagerState(currentManager);
@@ -349,7 +414,12 @@ scoreboardBackBtn.addEventListener("click", () => {
 scoreboardRefreshBtn.addEventListener("click", renderScoreboard);
 
 async function renderScoreboard() {
-  const cloudPicks = (await fetchAllPicks()) || loadAll();
+  const rawPicks = (await fetchAllPicks()) || loadAll();
+  const cloudPicks = {};
+  MANAGERS.forEach((name) => {
+    const state = rawPicks[name];
+    if (state) cloudPicks[name] = { ...state, picks: sanitizePicks(state.picks) };
+  });
   const results = await fetchResults();
 
   renderResultsForm(results);
@@ -360,20 +430,29 @@ async function renderScoreboard() {
 function renderResultsForm(results) {
   resultsForm.innerHTML = "";
   GAMES.forEach((game) => {
+    const r = results[game.id];
     const row = document.createElement("div");
-    row.className = "result-row";
+    row.className = "result-row score-result-row";
     row.innerHTML = `
       <span>G${game.id} &middot; ${game.away} @ ${game.home}</span>
-      <select data-game="${game.id}">
-        <option value="">— pending —</option>
-        <option value="${game.away}">${game.away} covered</option>
-        <option value="${game.home}">${game.home} covered</option>
-      </select>
+      <div class="score-inputs">
+        <input type="number" class="score-input" inputmode="numeric" placeholder="${game.away}" min="0" max="150" data-side="away" />
+        <span>&ndash;</span>
+        <input type="number" class="score-input" inputmode="numeric" placeholder="${game.home}" min="0" max="150" data-side="home" />
+        <button type="button" class="ghost-btn small score-save-btn">Save</button>
+      </div>
     `;
-    const select = row.querySelector("select");
-    select.value = results[game.id] || "";
-    select.addEventListener("change", async () => {
-      await pushResult(game.id, select.value);
+    const awayInput = row.querySelector('[data-side="away"]');
+    const homeInput = row.querySelector('[data-side="home"]');
+    if (r) {
+      awayInput.value = r.awayScore;
+      homeInput.value = r.homeScore;
+    }
+    row.querySelector(".score-save-btn").addEventListener("click", async () => {
+      const a = Number(awayInput.value);
+      const h = Number(homeInput.value);
+      if (!Number.isFinite(a) || !Number.isFinite(h)) return;
+      await pushResult(game.id, a, h);
       renderScoreboard();
     });
     resultsForm.appendChild(row);
@@ -382,10 +461,11 @@ function renderResultsForm(results) {
 
 function renderScoreboardTable(cloudPicks, results) {
   const headCells = GAMES.map((g) => `<th>G${g.id}</th>`).join("");
-  let html = `<thead><tr><th class="manager-col">Manager</th>${headCells}<th>Tiebreak</th></tr></thead><tbody>`;
+  let html = `<thead><tr><th class="manager-col">Manager</th>${headCells}<th>Tiebreak</th><th>PTS</th></tr></thead><tbody>`;
 
   MANAGERS.forEach((name) => {
     const state = cloudPicks[name] || { picks: {}, tiebreaker: "" };
+    let total = 0;
     const cells = GAMES.map((game) => {
       const gameStarted = isGameLocked(game);
       const pick = state.picks[game.id];
@@ -396,11 +476,13 @@ function renderScoreboardTable(cloudPicks, results) {
       if (!pick) {
         return `<td class="pick-cell pending">—</td>`;
       }
-      const result = results[game.id];
-      let cls = "pending";
-      if (result) cls = result === pick ? "correct" : "incorrect";
-      const pickId = pick === game.away ? game.awayId : game.homeId;
-      return `<td class="pick-cell ${cls}"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.display='none'" />${pick}</td>`;
+      const pts = scorePick(game, pick, results[game.id]);
+      if (pts) total += pts;
+      const cls = pts === null ? "pending" : pts > 0 ? "correct" : "incorrect";
+      const pickId = pick.team === game.away ? game.awayId : game.homeId;
+      const label = `${pick.team} ${pick.mode}`;
+      const ptsLabel = pts !== null ? ` (${pts})` : "";
+      return `<td class="pick-cell ${cls}"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.display='none'" />${label}${ptsLabel}</td>`;
     }).join("");
 
     const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
@@ -408,7 +490,7 @@ function renderScoreboardTable(cloudPicks, results) {
     const tbCell = tbVisible ? (state.tiebreaker || "—") : "🔒";
     const submittedCount = Object.values(state.picks).filter(Boolean).length;
 
-    html += `<tr><td class="manager-col">${name} <span class="ranking-lock">(${submittedCount}/${GAMES.length})</span></td>${cells}<td>${tbCell}</td></tr>`;
+    html += `<tr><td class="manager-col">${name} <span class="ranking-lock">(${submittedCount}/${GAMES.length})</span></td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
   });
 
   html += "</tbody>";
@@ -416,21 +498,26 @@ function renderScoreboardTable(cloudPicks, results) {
 }
 
 function computeScore(state, results) {
-  let correct = 0;
+  let total = 0;
   GAMES.forEach((game) => {
-    const result = results[game.id];
-    const pick = state.picks[game.id];
-    if (result && pick && result === pick) correct += 1;
+    const pts = scorePick(game, state.picks[game.id], results[game.id]);
+    if (pts) total += pts;
   });
-  return correct;
+  return total;
 }
 
 function renderRankings(cloudPicks, results) {
+  const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
+  const tbResult = results[tiebreakerGame.id];
+  const actualTotal = tbResult ? tbResult.awayScore + tbResult.homeScore : null;
+
   const rows = MANAGERS.map((name) => {
     const state = cloudPicks[name] || { picks: {} };
     const submittedCount = Object.values(state.picks).filter(Boolean).length;
-    return { name, score: computeScore(state, results), submittedCount };
-  }).sort((a, b) => b.score - a.score);
+    const tbGuess = Number(state.tiebreaker);
+    const tbDiff = actualTotal !== null && Number.isFinite(tbGuess) ? Math.abs(tbGuess - actualTotal) : Infinity;
+    return { name, score: computeScore(state, results), submittedCount, tbDiff };
+  }).sort((a, b) => b.score - a.score || a.tbDiff - b.tbDiff);
 
   rankingsList.innerHTML = "";
   rows.forEach((row, i) => {
@@ -440,7 +527,7 @@ function renderRankings(cloudPicks, results) {
       <span class="ranking-place">#${i + 1}</span>
       <span class="ranking-name">${row.name}</span>
       <span class="ranking-lock">${row.submittedCount}/${GAMES.length} submitted</span>
-      <span class="ranking-score">${row.score} correct</span>
+      <span class="ranking-score">${row.score} PTS</span>
     `;
     rankingsList.appendChild(div);
   });
