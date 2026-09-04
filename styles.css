@@ -123,18 +123,21 @@ html, body {
 }
 
 .manager-avatar {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 15px;
-  background: rgba(255, 255, 255, 0.06);
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: 17px;
+  line-height: 1;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
   border: 2px solid var(--accent, var(--neon-purple));
   color: var(--accent, var(--neon-purple));
-  text-shadow: 0 0 6px var(--accent, var(--neon-purple));
+  text-shadow: 0 0 8px var(--accent, var(--neon-purple));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent, var(--neon-purple)) 45%, transparent);
 }
 
 .manager-name {
@@ -589,19 +592,25 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 22px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 24px;
+  box-sizing: border-box;
 }
 
 .logo-text {
   margin: 0;
-  font-family: 'Press Start 2P', monospace;
-  font-size: clamp(30px, 11vw, 64px);
-  letter-spacing: 4px;
-  color: var(--neon-pink);
+  max-width: 100%;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: clamp(30px, 10vw, 68px);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  color: var(--neon-cyan);
   text-shadow:
-    0 0 8px var(--neon-pink),
-    0 0 22px var(--neon-pink),
-    0 0 44px var(--neon-purple),
-    0 0 80px var(--neon-purple);
+    0 0 6px var(--neon-cyan),
+    0 0 16px var(--neon-cyan),
+    0 0 34px var(--neon-purple);
   animation:
     neon-color-cycle 3.2s ease-in-out infinite,
     neon-buzz 2.6s linear infinite;
@@ -617,20 +626,18 @@ html, body {
 
 @keyframes neon-color-cycle {
   0%, 100% {
-    color: var(--neon-pink);
-    text-shadow:
-      0 0 8px var(--neon-pink),
-      0 0 22px var(--neon-pink),
-      0 0 44px var(--neon-purple),
-      0 0 80px var(--neon-purple);
-  }
-  50% {
     color: var(--neon-cyan);
     text-shadow:
-      0 0 8px var(--neon-cyan),
-      0 0 22px var(--neon-cyan),
-      0 0 44px var(--neon-purple),
-      0 0 80px var(--neon-purple);
+      0 0 6px var(--neon-cyan),
+      0 0 16px var(--neon-cyan),
+      0 0 34px var(--neon-purple);
+  }
+  50% {
+    color: var(--neon-pink);
+    text-shadow:
+      0 0 6px var(--neon-pink),
+      0 0 16px var(--neon-pink),
+      0 0 34px var(--neon-purple);
   }
 }
 
