@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>Brochiefs Pick'em</title>
+  <meta name="theme-color" content="#0a0014" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=1" />
+</head>
+<body>
+
+  <div class="synth-grid" aria-hidden="true"></div>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- NAME SELECT SCREEN -->
+  <main id="login-screen" class="screen">
+    <div class="wrap">
+      <div class="brand">
+        <span class="brand-mark">BROCHIEFS</span>
+        <span class="brand-sub">2026 PICK'EM &mdash; INSERT MANAGER TO CONTINUE</span>
+      </div>
+      <div id="manager-picker" class="manager-picker"></div>
+    </div>
+  </main>
+
+  <!-- PICKS SCREEN -->
+  <main id="picks-screen" class="screen hidden">
+    <div class="wrap wide">
+      <div class="topbar">
+        <button id="switch-btn" class="link-btn">&larr; SWITCH</button>
+        <span id="manager-badge" class="manager-badge"></span>
+      </div>
+
+      <div id="locked-banner" class="locked-banner hidden">
+        <span class="locked-banner-title">🔒 PICKS LOCKED IN</span>
+        <span id="locked-banner-sub" class="locked-banner-sub"></span>
+      </div>
+
+      <div id="games-list" class="games-list"></div>
+
+      <div class="tiebreaker-card">
+        <span class="tiebreaker-label">TIEBREAKER &mdash; Total combined points, Clemson @ LSU (G8)</span>
+        <input type="number" id="tiebreaker-input" class="tiebreaker-input" inputmode="numeric" min="0" max="150" placeholder="e.g. 45" />
+      </div>
+
+      <div class="submit-row">
+        <span id="picks-progress" class="picks-progress"></span>
+        <button id="lock-btn" class="primary-btn" disabled>🔒 LOCK IN PICKS</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js?v=1"></script>
+</body>
+</html>
