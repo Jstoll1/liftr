@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609040326" />
+  <link rel="stylesheet" href="styles.css?v=202609040328" />
 </head>
 <body>
 
@@ -44,8 +44,41 @@
         <span class="brand-sub">2026 PICK'EM &mdash; SELECT YOUR NAME TO CONTINUE</span>
       </div>
       <div id="manager-picker" class="manager-picker"></div>
+      <button id="rules-open-btn" class="link-btn rules-link" type="button">📜 How It Works</button>
     </div>
   </main>
+
+  <!-- RULES MODAL -->
+  <div id="rules-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <span class="modal-title">🏈 HOW IT WORKS</span>
+      <span class="modal-subtext">Year 13 &mdash; this weekend's picks decide fantasy draft order. 1st place picks any draft slot first, 2nd picks next, and so on.</span>
+
+      <div class="rules-section">
+        <span class="rules-heading">⚡ Scoring &mdash; pick ONE per game</span>
+        <ul class="rules-list">
+          <li>🟢 Favorite, Straight Up &mdash; <strong>1 pt</strong></li>
+          <li>🔥 Either team, Against the Spread &mdash; <strong>2 pts</strong></li>
+          <li>🚨 Underdog, Straight Up &mdash; <strong>3 pts</strong></li>
+        </ul>
+        <span class="rules-example">e.g. LSU -10 vs Clemson: LSU SU = 1, LSU -10 or Clemson +10 = 2, Clemson SU = 3</span>
+      </div>
+
+      <div class="rules-section">
+        <span class="rules-heading">🎯 Tiebreaker</span>
+        <span class="rules-example">Guess the total combined points in Clemson @ LSU. Closest wins ties &mdash; going over is allowed.</span>
+      </div>
+
+      <div class="rules-section">
+        <span class="rules-heading">🔒 Locking</span>
+        <span class="rules-example">Resubmit any pick as many times as you want &mdash; it locks automatically the moment that game kicks off.</span>
+      </div>
+
+      <span class="rules-max">Max possible score: 30 PTS</span>
+
+      <button id="rules-close-btn" class="primary-btn">LET'S GO 🏈🍻</button>
+    </div>
+  </div>
 
   <!-- PICKS SCREEN -->
   <main id="picks-screen" class="screen hidden">
@@ -96,6 +129,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=202609040326"></script>
+  <script src="app.js?v=202609040328"></script>
 </body>
 </html>

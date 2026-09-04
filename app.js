@@ -211,15 +211,32 @@ const scoreboardRefreshBtn = document.getElementById("scoreboard-refresh-btn");
 const rankingsList = document.getElementById("rankings-list");
 const scoreboardTable = document.getElementById("scoreboard-table");
 const resultsForm = document.getElementById("results-form");
+const rulesModal = document.getElementById("rules-modal");
+const rulesOpenBtn = document.getElementById("rules-open-btn");
+const rulesCloseBtn = document.getElementById("rules-close-btn");
 
 // --- Logo / splash screen ---------------------------------------------
+
+const RULES_SEEN_KEY = "brochiefs_rules_seen_v1";
+
+function openRules() {
+  rulesModal.classList.remove("hidden");
+}
+
+function closeRules() {
+  rulesModal.classList.add("hidden");
+  localStorage.setItem(RULES_SEEN_KEY, "1");
+}
 
 function goToPlayerSelect() {
   logoScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
+  if (!localStorage.getItem(RULES_SEEN_KEY)) openRules();
 }
 
 logoScreen.addEventListener("click", goToPlayerSelect);
+rulesOpenBtn.addEventListener("click", openRules);
+rulesCloseBtn.addEventListener("click", closeRules);
 
 async function renderManagerPicker() {
   const local = loadAll();
