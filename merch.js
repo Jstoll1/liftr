@@ -1,1 +1,172 @@
-(()=>{"use strict";const LOGOS=[['classic','Classic','assets/merch/logo-classic.svg'],['vice','Vice Circle','assets/merch/logo-vice.svg'],['script','Script','assets/merch/logo-script.svg'],['badge','League Badge','assets/merch/logo-badge.svg'],['monogram','Monogram B','assets/merch/logo-monogram.svg'],['stripes','Retro Stripes','assets/merch/logo-stripes.svg'],['helmet','Helmet B','assets/merch/logo-helmet.svg']].map(x=>({id:x[0],name:x[1],file:x[2]}));const P=[['Vice Trucker Hat','Hats',29.99,'hat','classic','black','BEST SELLER','Mesh-back tailgate authority.'],['Circle B Dad Hat','Hats',24.99,'hat','badge','black','NEW','Unstructured, low-key, still elite.'],['Script Snapback','Hats',27.99,'hat','script','navy','ALL IN','Flat bill. Loud opinions.'],['Classic Rope Cap','Hats',31.99,'hat','classic','white','NEW','Country-club energy, fantasy-football motives.'],['Neon Performance Cap','Hats',32.99,'hat','stripes','cyan','NEW','For sweating through a 12-leg parlay.'],['Sunday Beanie','Hats',26.99,'beanie','monogram','black','COLD FRONT','Fourth-quarter weather approved.'],['Commissioner Visor','Hats',24.99,'visor','classic','white','COMMISH','For ruling with questionable judgment.'],['Monogram Bucket Hat','Hats',28.99,'bucket','monogram','pink','NEW','Pool deck. Draft board. Same thing.'],['Classic Logo Tee','Shirts',27.99,'tee','classic','black','BEST SELLER','The one that started the dynasty.'],['Vice Circle Tee','Shirts',28.99,'tee','vice','white','NEW','Miami-night energy without the palm tree.'],['Script Brochiefs Tee','Shirts',28.99,'tee','script','black','ALL IN','Soft shirt. Aggressive lineup takes.'],['Retro Stripes Tee','Shirts',28.99,'tee','stripes','navy','NEW','Old-school broadcast booth vibes.'],['Sunday Scaries Tee','Shirts',26.99,'tee','monogram','gray','SUNDAY','For when the early window goes sideways.'],['Good Players. Better Bros. Tee','Shirts',29.99,'tee','badge','black','BROS','The official unofficial league motto.'],['Draft Night 13 Tee','Shirts',29.99,'tee','classic','pink','LIMITED','Year 13. Zero lessons learned.'],['Defending Champ Tee','Shirts',31.99,'tee','badge','black','CHAMP','Wear until mathematically eliminated.'],['Pocket B Tee','Shirts',25.99,'tee','monogram','white','CLEAN','Tiny logo. Massive confidence.'],['Tailgate Tank','Shirts',24.99,'tank','stripes','black','HOT','Sleeves are for rebuilding teams.'],['All In Hoodie','Hoodies',59.99,'hoodie','script','black','ALL IN','Heavyweight fleece for cold takes.'],['Classic Logo Hoodie','Hoodies',57.99,'hoodie','classic','navy','BEST SELLER','The Sunday-night uniform.'],['Zip Monogram Hoodie','Hoodies',62.99,'hoodie','monogram','black','NEW','Full zip. Full send.'],['Retro Stripe Crewneck','Hoodies',54.99,'crew','stripes','gray','NEW','Vintage scoreboard energy.'],['Sunday Night Quarter Zip','Hoodies',64.99,'quarterzip','badge','navy','PREMIUM','For pretending this is a professional operation.'],['League Champ Hoodie','Hoodies',69.99,'hoodie','badge','black','CHAMP','Embarrass the group chat all winter.'],['Commissioner Windbreaker','Hoodies',74.99,'quarterzip','classic','cyan','COMMISH','Weather-resistant. Complaint-resistant-ish.'],['Future Brochief Onesie','Baby',19.99,'onesie','classic','black','BEST SELLER','Born into the league. No opt-out.'],['Rookie Season Onesie','Baby',19.99,'onesie','monogram','white','ROOKIE','First season. Already better waiver discipline.'],['Sunday Nap Club Romper','Baby',22.99,'onesie','script','gray','NAP','For sleeping through the late window.'],['Tiny Commissioner Tee','Baby',18.99,'tee','badge','cyan','COMMISH','Small human. Absolute authority.'],['Circle B Baby Bib','Baby',12.99,'bib','badge','black','NEW','Protects against milk and bad trades.'],['All In Baby Bib','Baby',12.99,'bib','script','pink','ALL IN','Snack time has no half measures.'],['Baby Bucket Hat','Baby',16.99,'bucket','classic','white','SUN','Sideline shade for future GMs.'],['Draft Day Swaddle','Baby',24.99,'tee','stripes','gray','NEW','Technically a blanket. Spiritually a uniform.'],['Insulated Tumbler 20oz','Drinkware',29.99,'cup','classic','black','BEST SELLER','Keeps coffee hot and takes hotter.'],['Stadium Cup 4-Pack','Drinkware',18.99,'cup','stripes','black','TAILGATE','Reusable until somebody loses one.'],['Ceramic Coffee Mug','Drinkware',16.99,'mug','classic','black','MORNING','Waiver wire fuel vessel.'],['Travel Mug 16oz','Drinkware',24.99,'mug','badge','black','ALL IN','Commute-ready commissioner juice.'],['Shaker Bottle 28oz','Drinkware',24.99,'bottle','script','black','GYM','Protein, electrolytes, or poor choices.'],['Water Bottle 32oz','Drinkware',27.99,'bottle','badge','navy','NEW','Hydrate before you overreact.'],['Can Cooler 2-Pack','Drinkware',9.99,'koozie','monogram','black','ESSENTIAL','Cold can. Warm friendship.'],['Pint Glass 2-Pack','Drinkware',19.99,'glass','classic','clear','BAR','For sophisticated roster construction.'],['Rocks Glass 2-Pack','Drinkware',24.99,'glass','badge','clear','PREMIUM','For reviewing trades like a board meeting.'],['Coffee Thermos','Drinkware',31.99,'bottle','stripes','black','NEW','The 7 AM waiver claim companion.'],['Toddler Sippy Cup','Drinkware',14.99,'cup','monogram','cyan','ROOKIE','Leak-resistant. Tantrum-resistant not guaranteed.'],['Kids Plate Set 3-Piece','Game Day',24.99,'plate','monogram','black','NEW','Plate, bowl and cup for tiny tailgaters.'],['Tailgate Plate Set 4-Pack','Game Day',26.99,'plate','classic','black','TAILGATE','Burgers deserve branding too.'],['Bowl + Plate Set','Game Day',21.99,'bowl','vice','navy','NEW','For chili, wings and matchup anxiety.'],['Neon Coaster 4-Pack','Game Day',15.99,'coaster','badge','black','BAR','Protect the table. Not the friendship.'],['Draft Board Serving Tray','Game Day',34.99,'tray','stripes','black','DRAFT','Snacks on one side. Receipts on the other.'],['Sunday Snack Bowl','Game Day',18.99,'bowl','classic','gray','SUNDAY','Sized for chips and emotional support.']].map((p,i)=>({id:i+1,name:p[0],category:p[1],price:p[2],shape:p[3],logo:p[4],tone:p[5],tag:p[6],sub:p[7]}));const A=['#ff2079','#05d9e8','#39ff88','#ffe45e','#c13cff'],by=Object.fromEntries(LOGOS.map(l=>[l.id,l])),filters=['All','Hats','Shirts','Hoodies','Baby','Drinkware','Game Day'];let active='All',cart=Number(sessionStorage.getItem('brochiefs_fake_cart')||0),timer=null;const f=document.getElementById('merch-filters'),g=document.getElementById('merch-grid'),v=document.getElementById('logo-vault'),cnt=document.getElementById('catalog-count'),ttl=document.getElementById('catalog-title'),cc=document.getElementById('cart-count'),toast=document.getElementById('merch-toast');function rf(){f.innerHTML=filters.map(x=>`<button class="merch-filter ${x===active?'active':''}" type="button" data-filter="${x}">${x}</button>`).join('');f.querySelectorAll('button').forEach(b=>b.onclick=()=>{active=b.dataset.filter;rf();rp()})}function rv(){v.innerHTML=LOGOS.map(l=>`<article class="logo-card"><img src="${l.file}" alt="${l.name} Brochiefs logo"><span>${l.name}</span></article>`).join('')}function rp(){const list=active==='All'?P:P.filter(p=>p.category===active);ttl.textContent=active==='All'?'All Gear':active;cnt.textContent=`${list.length} fake products`;g.innerHTML=list.map(p=>`<article class="merch-card" style="--card-accent:${A[p.id%A.length]}"><span class="merch-tag">${p.tag}</span><div class="product-art"><div class="product-shape ${p.shape} ${['white','gray','pink','cyan','navy'].includes(p.tone)?p.tone:''}"><img src="${(by[p.logo]||LOGOS[0]).file}" alt=""></div></div><div class="product-info"><span class="product-name">${p.name}</span><span class="product-sub">${p.sub}</span><div class="product-bottom"><span class="product-price">$${p.price.toFixed(2)}</span><button class="product-add" type="button" data-id="${p.id}">ADD</button></div></div></article>`).join('');g.querySelectorAll('.product-add').forEach(b=>b.onclick=()=>add(Number(b.dataset.id)))}function msg(s){clearTimeout(timer);toast.textContent=s;toast.classList.add('show');timer=setTimeout(()=>toast.classList.remove('show'),1700)}function add(id){const p=P.find(x=>x.id===id);if(!p)return;cart++;sessionStorage.setItem('brochiefs_fake_cart',String(cart));cc.textContent=cart;msg(`${p.name} added to the pretend cart ✓`)}document.getElementById('merch-cart').onclick=()=>msg(cart?`${cart} fake item${cart===1?'':'s'} in cart. Checkout remains gloriously unavailable.`:'Your pretend cart is empty. Fix that.');cc.textContent=cart;rf();rv();rp()})();
+(() => {
+  "use strict";
+
+  const IMAGES = window.MERCH_IMAGES || {};
+  const ROWS = Array.isArray(IMAGES.rows) ? IMAGES.rows : [];
+  const LOGOS = [
+    ["classic","Classic","assets/merch/logo-classic.svg"],
+    ["vice","Vice Circle","assets/merch/logo-vice.svg"],
+    ["script","Script","assets/merch/logo-script.svg"],
+    ["badge","League Badge","assets/merch/logo-badge.svg"],
+    ["monogram","Monogram B","assets/merch/logo-monogram.svg"],
+    ["stripes","Retro Stripes","assets/merch/logo-stripes.svg"],
+    ["helmet","Helmet B","assets/merch/logo-helmet.svg"]
+  ].map(x => ({ id:x[0], name:x[1], file:x[2] }));
+
+  // Photo atlas: five generated rows, four products per row.
+  // 0: all-in hoodie, baby bib, better-bros hoodie, can cooler
+  // 1: ceramic mug, circle dad hat, classic hoodie, classic logo tee
+  // 2: classic tee, dad hat, helmet tee, infant onesie
+  // 3: insulated tumbler, jersey tee, kids plate, pint glass
+  // 4: retro stripes tee, script hat, script snapback, script tee
+  const A = {
+    allin:[0,0], bib:[0,1], betterbros:[0,2], cooler:[0,3],
+    mug:[1,0], circledadhat:[1,1], classichoodie:[1,2], classictee:[1,3],
+    classictall:[2,0], dadhat:[2,1], helmettee:[2,2], onesie:[2,3],
+    tumbler:[3,0], jersey:[3,1], plate:[3,2], pint:[3,3],
+    stripes:[4,0], scripthat:[4,1], scriptsnap:[4,2], scripttee:[4,3]
+  };
+
+  const RAW = [
+    ["Vice Trucker Hat","Hats",29.99,"scriptsnap","BEST SELLER","Mesh-back tailgate authority."],
+    ["Circle B Dad Hat","Hats",24.99,"circledadhat","NEW","Low-profile. High-confidence."],
+    ["Script Snapback","Hats",27.99,"scriptsnap","ALL IN","Flat bill. Loud opinions."],
+    ["Classic Dad Hat","Hats",31.99,"dadhat","CLEAN","Country-club energy. Fantasy-football motives."],
+    ["Sunday Trucker Hat","Hats",29.99,"scripthat","GAMEDAY","The official parking-lot uniform."],
+    ["Vice Night Cap","Hats",28.99,"scripthat","NEW","Black-on-black with Vice script."],
+    ["Commissioner Cap","Hats",32.99,"circledadhat","COMMISH","For ruling with questionable judgment."],
+    ["Draft Day Snapback","Hats",30.99,"scriptsnap","LIMITED","Looks better after your third bad pick."],
+
+    ["Classic Logo Tee","Shirts",27.99,"classictee","BEST SELLER","The one that started the dynasty."],
+    ["Vice Circle Tee","Shirts",28.99,"classictall","NEW","Miami-night energy without the palm tree."],
+    ["Script Brochiefs Tee","Shirts",28.99,"scripttee","ALL IN","Soft shirt. Aggressive lineup takes."],
+    ["Retro Stripes Tee","Shirts",28.99,"stripes","NEW","Old-school broadcast booth vibes."],
+    ["Sunday Hits Different Tee","Shirts",29.99,"classictall","SUNDAY","Because Sundays absolutely do."],
+    ["Pocket B Tee","Shirts",27.99,"helmettee","CLEAN","Tiny logo. Massive confidence."],
+    ["Brocchiefs 00 Jersey Tee","Shirts",31.99,"jersey","GAMEDAY","Roster number: all of us."],
+    ["Draft Night 13 Tee","Shirts",29.99,"classictee","LIMITED","Year 13. Zero lessons learned."],
+    ["Defending Champ Tee","Shirts",31.99,"stripes","CHAMP","Wear until mathematically eliminated."],
+    ["Good Players. Better Bros. Tee","Shirts",29.99,"scripttee","BROS","The official unofficial league motto."],
+
+    ["All In Hoodie","Hoodies",59.99,"allin","ALL IN","Heavyweight fleece for cold takes."],
+    ["Classic Logo Hoodie","Hoodies",57.99,"classichoodie","BEST SELLER","The Sunday-night uniform."],
+    ["Better Bros Hoodie","Hoodies",59.99,"betterbros","MOTTO","Good players. Better bros."],
+    ["Zip Monogram Hoodie","Hoodies",62.99,"classichoodie","NEW","Full zip. Full send."],
+    ["League Champ Hoodie","Hoodies",69.99,"allin","CHAMP","Embarrass the group chat all winter."],
+    ["Sunday Night Hoodie","Hoodies",61.99,"classichoodie","NIGHT","Made for the late window."],
+    ["Commissioner Hoodie","Hoodies",64.99,"betterbros","COMMISH","Authority sold separately."],
+
+    ["Future Brochief Onesie","Baby",19.99,"onesie","BEST SELLER","Born into the league. No opt-out."],
+    ["Rookie Season Onesie","Baby",19.99,"onesie","ROOKIE","First season. Already better waiver discipline."],
+    ["Circle B Baby Bib","Baby",12.99,"bib","NEW","Protects against milk and bad trades."],
+    ["All In Baby Bib","Baby",12.99,"bib","ALL IN","Snack time has no half measures."],
+    ["Tiny Commissioner Tee","Baby",18.99,"helmettee","COMMISH","Small human. Absolute authority."],
+    ["Sunday Nap Club Onesie","Baby",22.99,"onesie","NAP","For sleeping through the late window."],
+    ["Future GM Bundle","Baby",29.99,"bib","BUNDLE","Bib, onesie, front-office upside."],
+
+    ["Insulated Tumbler 20oz","Drinkware",29.99,"tumbler","BEST SELLER","Keeps coffee hot and takes hotter."],
+    ["Stadium Cup 4-Pack","Drinkware",18.99,"pint","TAILGATE","Reusable until somebody loses one."],
+    ["Ceramic Coffee Mug","Drinkware",16.99,"mug","MORNING","Waiver wire fuel vessel."],
+    ["Travel Mug 16oz","Drinkware",24.99,"mug","ALL IN","Commute-ready commissioner juice."],
+    ["Can Cooler 2-Pack","Drinkware",9.99,"cooler","ESSENTIAL","Cold can. Warm friendship."],
+    ["Pint Glass 2-Pack","Drinkware",19.99,"pint","BAR","For sophisticated roster construction."],
+    ["Draft Room Tumbler","Drinkware",34.99,"tumbler","PREMIUM","Built for the entire draft."],
+    ["Commissioner Coffee Set","Drinkware",31.99,"mug","COMMISH","Two fake mugs. One real rivalry."],
+    ["Sunday Pint Set","Drinkware",24.99,"pint","SUNDAY","For the early and late windows."],
+    ["Sideline Can Cooler","Drinkware",12.99,"cooler","NEW","Cold beverage, hot take."],
+
+    ["Kids Plate Set 3-Piece","Game Day",24.99,"plate","NEW","Plate, bowl and cup for tiny tailgaters."],
+    ["Tailgate Plate Set","Game Day",26.99,"plate","TAILGATE","Burgers deserve branding too."],
+    ["Draft Night Pint Set","Game Day",39.99,"pint","DRAFT","For trades that require a beverage."],
+    ["Commissioner Drink Set","Game Day",44.99,"tumbler","COMMISH","Authority sold separately."],
+    ["Sunday Snack Set","Game Day",21.99,"plate","SUNDAY","Sized for chips and emotional support."],
+    ["Parking Lot Party Pack","Game Day",34.99,"cooler","BUNDLE","Pretend cups. Very real tailgate energy."]
+  ];
+
+  const PRODUCTS = RAW.map((p,i) => ({id:i+1,name:p[0],category:p[1],price:p[2],photo:p[3],tag:p[4],sub:p[5]}));
+  const ACCENTS = ["#ff2079","#05d9e8","#39ff88","#ffe45e","#c13cff"];
+  const FILTERS = ["All","Hats","Shirts","Hoodies","Baby","Drinkware","Game Day"];
+  const X = [0,33.333,66.667,100];
+  let active = "All";
+  let cart = Number(sessionStorage.getItem("brochiefs_fake_cart") || 0);
+  let timer = null;
+
+  const filtersEl = document.getElementById("merch-filters");
+  const gridEl = document.getElementById("merch-grid");
+  const vaultEl = document.getElementById("logo-vault");
+  const countEl = document.getElementById("catalog-count");
+  const titleEl = document.getElementById("catalog-title");
+  const cartCountEl = document.getElementById("cart-count");
+  const toastEl = document.getElementById("merch-toast");
+  const heroEl = document.getElementById("merch-hero-art");
+
+  if (heroEl && IMAGES.hero) heroEl.src = IMAGES.hero;
+
+  function renderFilters(){
+    filtersEl.innerHTML = FILTERS.map(f => `<button class="merch-filter ${f===active?"active":""}" type="button" data-filter="${f}">${f}</button>`).join("");
+    filtersEl.querySelectorAll("button").forEach(btn => btn.addEventListener("click", () => {
+      active = btn.dataset.filter;
+      renderFilters();
+      renderProducts();
+    }));
+  }
+
+  function renderVault(){
+    vaultEl.innerHTML = LOGOS.map(l => `<article class="logo-card"><img src="${l.file}" alt="${l.name} Brochiefs logo" loading="lazy"><span>${l.name}</span></article>`).join("");
+  }
+
+  function photoMarkup(key){
+    const pos = A[key] || A.classictee;
+    const row = ROWS[pos[0]];
+    if (!row) return `<div class="merch-photo-fallback">BROCHIEFS<br>MERCH</div>`;
+    return `<div class="product-photo" data-row="${pos[0]}" data-col="${pos[1]}" style="--photo-x:${X[pos[1]]}%"></div>`;
+  }
+
+  function hydratePhotos(){
+    gridEl.querySelectorAll(".product-photo").forEach(el => {
+      const row = ROWS[Number(el.dataset.row)];
+      if (row) el.style.backgroundImage = `url("${row}")`;
+    });
+  }
+
+  function renderProducts(){
+    const list = active === "All" ? PRODUCTS : PRODUCTS.filter(p => p.category === active);
+    titleEl.textContent = active === "All" ? "All Gear" : active;
+    countEl.textContent = `${list.length} fake products`;
+    gridEl.innerHTML = list.map(p => `
+      <article class="merch-card" style="--card-accent:${ACCENTS[p.id % ACCENTS.length]}">
+        <span class="merch-tag">${p.tag}</span>
+        <span class="merch-image-badge">PHOTO DROP</span>
+        <div class="product-art">${photoMarkup(p.photo)}</div>
+        <div class="product-info">
+          <span class="product-name">${p.name}</span>
+          <span class="product-sub">${p.sub}</span>
+          <div class="product-bottom"><span class="product-price">$${p.price.toFixed(2)}</span><button class="product-add" type="button" data-id="${p.id}">ADD</button></div>
+        </div>
+      </article>`).join("");
+    hydratePhotos();
+    gridEl.querySelectorAll(".product-add").forEach(btn => btn.addEventListener("click", () => add(Number(btn.dataset.id))));
+  }
+
+  function msg(text){
+    clearTimeout(timer);
+    toastEl.textContent = text;
+    toastEl.classList.add("show");
+    timer = setTimeout(() => toastEl.classList.remove("show"), 1700);
+  }
+
+  function add(id){
+    const p = PRODUCTS.find(x => x.id === id);
+    if (!p) return;
+    cart += 1;
+    sessionStorage.setItem("brochiefs_fake_cart", String(cart));
+    cartCountEl.textContent = cart;
+    msg(`${p.name} added to the pretend cart ✓`);
+  }
+
+  document.getElementById("merch-cart").addEventListener("click", () => msg(cart ? `${cart} fake item${cart===1?"":"s"} in cart. Checkout remains gloriously unavailable.` : "Your pretend cart is empty. Fix that."));
+  cartCountEl.textContent = cart;
+  renderFilters();
+  renderVault();
+  renderProducts();
+})();
