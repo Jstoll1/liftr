@@ -1,0 +1,14 @@
+{
+  "name": "Liftr",
+  "short_name": "Liftr",
+  "description": "Retro workout tracker for Jessica and Jake.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0014",
+  "theme_color": "#0a0014",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icons/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icons/favicon-32.png", "sizes": "32x32", "type": "image/png" }
+  ]
+}
