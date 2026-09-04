@@ -748,62 +748,84 @@ html, body {
   color: var(--neon-green);
 }
 
-/* --- Pick options: 4 choices per game (Fav/Dog x SU/ATS) ------------- */
+/* --- Pick options: 4 choices per game, ordered low-risk to high-risk -- */
 
-.pick-options-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+.pick-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .pick-option-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
   background: rgba(255, 255, 255, 0.04);
   border: 2px solid var(--card-border);
-  border-radius: 10px;
+  border-left-width: 4px;
+  border-radius: 8px;
   color: var(--text);
   font-family: 'Orbitron', sans-serif;
   font-weight: 700;
-  font-size: 11px;
-  padding: 8px 10px;
+  padding: 9px 12px;
   cursor: pointer;
   text-align: left;
   transition: all 0.15s ease;
 }
 
+.pick-option-btn.risk-low { border-left-color: var(--neon-green); }
+.pick-option-btn.risk-mid { border-left-color: var(--neon-yellow); }
+.pick-option-btn.risk-high { border-left-color: var(--neon-pink); }
+
 .pick-opt-logo {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
   flex-shrink: 0;
   filter: drop-shadow(0 0 4px rgba(5, 217, 232, 0.35));
 }
 
-.pick-opt-team {
+.pick-opt-info {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pick-opt-team {
+  font-size: 13px;
   line-height: 1.2;
 }
 
 .pick-opt-desc {
-  display: block;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 500;
   color: var(--text-dim);
-  margin-top: 2px;
 }
 
 .pick-opt-pts {
+  flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
   font-family: 'Press Start 2P', monospace;
-  font-size: 8px;
+  font-size: 13px;
   color: var(--neon-yellow);
   text-shadow: 0 0 4px var(--neon-yellow);
-  flex-shrink: 0;
+}
+
+.pick-opt-pts small {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 8px;
+  opacity: 0.8;
 }
 
 .pick-option-btn:hover:not(:disabled) {
-  border-color: var(--neon-cyan);
+  border-top-color: var(--neon-cyan);
+  border-right-color: var(--neon-cyan);
+  border-bottom-color: var(--neon-cyan);
 }
 
 .pick-option-btn.selected {
@@ -811,6 +833,10 @@ html, body {
   background: rgba(193, 60, 255, 0.22);
   box-shadow: 0 0 12px rgba(193, 60, 255, 0.5);
 }
+
+.pick-option-btn.risk-low.selected { border-left-color: var(--neon-green); }
+.pick-option-btn.risk-mid.selected { border-left-color: var(--neon-yellow); }
+.pick-option-btn.risk-high.selected { border-left-color: var(--neon-pink); }
 
 .pick-option-btn:disabled {
   cursor: not-allowed;

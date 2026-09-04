@@ -291,23 +291,31 @@ function pickLabel(game, pick) {
   return `${pick.team} ATS ${spreadStr} (${pts} pt)`;
 }
 
+// Ordered low-risk to high-risk, matching how the rules explain it
+// (🟢 play it safe → 🔥 trust the number → 🚨 call the upset) instead of
+// grouping by team, which made all 4 options look equally weighted.
 function pickOptionsHtml(game) {
-  const favSpread = `-${game.spread}`;
-  const dogSpread = `+${game.spread}`;
-  const opt = (team, teamId, mode) => `
-    <button class="pick-option-btn" type="button" data-team="${team}" data-mode="${mode}">
+  const dog = game.favorite === game.away ? game.home : game.away;
+  const dogId = game.favorite === game.away ? game.homeId : game.awayId;
+  const favId = game.favorite === game.away ? game.awayId : game.homeId;
+
+  const opt = (team, teamId, mode, emoji, riskClass, desc) => `
+    <button class="pick-option-btn ${riskClass}" type="button" data-team="${team}" data-mode="${mode}">
       <img class="pick-opt-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
-      <span class="pick-opt-team">${team}</span>
-      <span class="pick-opt-desc">${mode === "SU" ? "Win SU" : `ATS ${team === game.favorite ? favSpread : dogSpread}`}</span>
-      <span class="pick-opt-pts">${pointValue(game, team, mode)} PT</span>
+      <span class="pick-opt-info">
+        <span class="pick-opt-team">${team}</span>
+        <span class="pick-opt-desc">${desc}</span>
+      </span>
+      <span class="pick-opt-pts">${emoji} ${pointValue(game, team, mode)}<small>PT</small></span>
     </button>
   `;
+
   return `
-    <div class="pick-options-grid">
-      ${opt(game.away, game.awayId, "SU")}
-      ${opt(game.home, game.homeId, "SU")}
-      ${opt(game.away, game.awayId, "ATS")}
-      ${opt(game.home, game.homeId, "ATS")}
+    <div class="pick-options-list">
+      ${opt(game.favorite, favId, "SU", "🟢", "risk-low", "Straight up win")}
+      ${opt(game.away, game.awayId, "ATS", "🔥", "risk-mid", `Covers ${game.favorite === game.away ? "-" : "+"}${game.spread}`)}
+      ${opt(game.home, game.homeId, "ATS", "🔥", "risk-mid", `Covers ${game.favorite === game.home ? "-" : "+"}${game.spread}`)}
+      ${opt(dog, dogId, "SU", "🚨", "risk-high", "Upset, straight up win")}
     </div>
   `;
 }
