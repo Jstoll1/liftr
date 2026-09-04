@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609040428" />
+  <link rel="stylesheet" href="styles.css?v=202609041131" />
 </head>
 <body>
 
@@ -155,6 +155,23 @@
     </div>
   </main>
 
-  <script src="app.js?v=202609040428"></script>
+  <!-- BOTTOM NAV: matches the wordmark header, sits on every screen
+       except the splash -->
+  <nav id="bottom-nav" class="bottom-nav hidden">
+    <button id="nav-home-btn" class="nav-btn" type="button">
+      <span class="nav-btn-icon">🏠</span>
+      <span class="nav-btn-label">Home</span>
+    </button>
+    <button id="nav-picks-btn" class="nav-btn" type="button">
+      <span class="nav-btn-icon">🎯</span>
+      <span class="nav-btn-label">Picks</span>
+    </button>
+    <button id="nav-scoreboard-btn" class="nav-btn" type="button">
+      <span class="nav-btn-icon">📊</span>
+      <span class="nav-btn-label">Board</span>
+    </button>
+  </nav>
+
+  <script src="app.js?v=202609041131"></script>
 </body>
 </html>

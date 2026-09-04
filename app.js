@@ -216,6 +216,10 @@ const avatarEditPreview = document.getElementById("avatar-edit-preview");
 const avatarEmojiInput = document.getElementById("avatar-emoji-input");
 const avatarSaveBtn = document.getElementById("avatar-save-btn");
 const avatarResetBtn = document.getElementById("avatar-reset-btn");
+const bottomNav = document.getElementById("bottom-nav");
+const navHomeBtn = document.getElementById("nav-home-btn");
+const navPicksBtn = document.getElementById("nav-picks-btn");
+const navScoreboardBtn = document.getElementById("nav-scoreboard-btn");
 
 // --- Logo / splash screen ---------------------------------------------
 
@@ -234,7 +238,18 @@ function goToPlayerSelect() {
   logoScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
   homeHeader.classList.remove("hidden");
+  bottomNav.classList.remove("hidden");
+  setActiveNav("home");
   if (!localStorage.getItem(RULES_SEEN_KEY)) openRules();
+}
+
+// Keeps the bottom tab bar's highlighted tab in sync, however the
+// screen got navigated to (top links, bottom nav, or the wordmark).
+function setActiveNav(target) {
+  [navHomeBtn, navPicksBtn, navScoreboardBtn].forEach((btn) => btn.classList.remove("active"));
+  if (target === "home") navHomeBtn.classList.add("active");
+  if (target === "picks") navPicksBtn.classList.add("active");
+  if (target === "scoreboard") navScoreboardBtn.classList.add("active");
 }
 
 // Jumps back to player select from anywhere — the wordmark header is
@@ -245,12 +260,31 @@ function goHome() {
   scoreboardScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
   renderManagerPicker();
+  setActiveNav("home");
 }
 
 logoScreen.addEventListener("click", goToPlayerSelect);
 rulesOpenBtn.addEventListener("click", openRules);
 rulesCloseBtn.addEventListener("click", closeRules);
 homeLogoBtn.addEventListener("click", goHome);
+
+navHomeBtn.addEventListener("click", goHome);
+navPicksBtn.addEventListener("click", () => {
+  if (!currentManager) {
+    goHome();
+    return;
+  }
+  scoreboardScreen.classList.add("hidden");
+  loginScreen.classList.add("hidden");
+  picksScreen.classList.remove("hidden");
+  renderPicksScreen();
+  setActiveNav("picks");
+});
+navScoreboardBtn.addEventListener("click", () => {
+  loginScreen.classList.add("hidden");
+  showScoreboard();
+  setActiveNav("scoreboard");
+});
 
 // --- Avatar overrides: long-press a player card to swap their letter
 // avatar for an emoji. Persisted locally and synced through the Worker
@@ -424,6 +458,7 @@ async function selectManager(name) {
   loginScreen.classList.add("hidden");
   picksScreen.classList.remove("hidden");
   renderPicksScreen();
+  setActiveNav("picks");
   await syncManagerFromCloud(name);
   renderPicksScreen();
 }
@@ -593,6 +628,7 @@ function showScoreboard() {
   picksScreen.classList.add("hidden");
   scoreboardScreen.classList.remove("hidden");
   renderScoreboard();
+  setActiveNav("scoreboard");
 }
 
 toScoreboardBtn.addEventListener("click", showScoreboard);
@@ -600,6 +636,7 @@ scoreboardBackBtn.addEventListener("click", () => {
   scoreboardScreen.classList.add("hidden");
   picksScreen.classList.remove("hidden");
   renderPicksScreen();
+  setActiveNav("picks");
 });
 scoreboardRefreshBtn.addEventListener("click", renderScoreboard);
 

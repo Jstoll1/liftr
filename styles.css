@@ -57,7 +57,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px 48px;
+  padding: 24px 16px 96px;
 }
 
 .hidden { display: none !important; }
@@ -96,6 +96,66 @@ html, body {
   font-size: 14px;
   color: var(--neon-pink);
   text-shadow: 0 0 6px var(--neon-pink);
+}
+
+/* Bottom nav — same dark-gradient-fade language as the top header, just
+   mirrored, fixed (not sticky) so it's always reachable regardless of
+   scroll position, with room for the iOS home-indicator safe area. */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(10, 0, 20, 0.96) 70%, rgba(10, 0, 20, 0));
+}
+
+.nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 84px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 4px;
+  cursor: pointer;
+  color: var(--text-dim);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.nav-btn-icon {
+  font-size: 20px;
+  filter: grayscale(1) opacity(0.6);
+  transition: filter 0.15s ease;
+}
+
+.nav-btn-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.nav-btn:hover {
+  color: var(--text);
+  transform: translateY(-2px);
+}
+
+.nav-btn.active {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 6px var(--neon-cyan);
+}
+
+.nav-btn.active .nav-btn-icon {
+  filter: none;
+  text-shadow: 0 0 6px var(--neon-cyan);
 }
 
 .wrap {
