@@ -1351,17 +1351,17 @@ html, body {
 .pick-mini-btn.selected::after {
   content: "✓";
   position: absolute;
-  top: -7px;
-  right: -7px;
-  width: 18px;
-  height: 18px;
+  top: 3px;
+  right: 3px;
+  width: 15px;
+  height: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--neon-purple);
   color: #0a0014;
   font-family: 'Press Start 2P', monospace;
-  font-size: 9px;
+  font-size: 8px;
   line-height: 1;
   border: 2px solid var(--bg);
   border-radius: 4px;
