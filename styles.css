@@ -137,19 +137,57 @@ html, body {
 }
 
 .manager-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 16px 8px;
-  background: var(--card-bg);
+  padding: 20px 8px 14px;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent, var(--neon-purple)) 22%, transparent), transparent 70%),
+    var(--card-bg);
   border: 2px solid var(--card-border);
   border-radius: 10px;
   color: var(--text);
   font-family: 'Orbitron', sans-serif;
   font-weight: 700;
   cursor: pointer;
+  overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+/* Shimmering gradient edge, same technique as the game cards, tinted
+   to this player's accent color instead of the fixed neon trio. */
+.manager-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: conic-gradient(from 0deg, var(--accent, var(--neon-purple)), transparent 30%, transparent 70%, var(--accent, var(--neon-purple)));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  animation: card-edge-shift 5s linear infinite;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.manager-card:hover::before,
+.manager-card:focus-visible::before {
+  opacity: 0.9;
+}
+
+.player-tag {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--accent, var(--neon-purple));
+  text-shadow: 0 0 4px var(--accent, var(--neon-purple));
+  opacity: 0.85;
 }
 
 .manager-card.defending-champ {
@@ -167,9 +205,24 @@ html, body {
 }
 
 .manager-card:hover, .manager-card:focus-visible {
-  transform: translateY(-2px);
-  border-color: var(--neon-pink);
-  box-shadow: 0 0 16px rgba(255, 32, 121, 0.45);
+  transform: translateY(-3px) scale(1.02);
+  border-color: var(--accent, var(--neon-pink));
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent, var(--neon-pink)) 55%, transparent);
+}
+
+.manager-avatar-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px dashed color-mix(in srgb, var(--accent, var(--neon-purple)) 55%, transparent);
+  transition: transform 0.2s ease;
+}
+
+.manager-card:hover .manager-avatar-ring {
+  transform: rotate(20deg);
 }
 
 .manager-avatar {
@@ -183,7 +236,7 @@ html, body {
   font-weight: 900;
   font-size: 17px;
   line-height: 1;
-  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03));
   border: 2px solid var(--accent, var(--neon-purple));
   color: var(--accent, var(--neon-purple));
   text-shadow: 0 0 8px var(--accent, var(--neon-purple));

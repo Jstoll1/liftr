@@ -261,12 +261,17 @@ async function renderManagerPicker() {
     const partial = !complete && (submittedCount > 0 || tiebreakerDone);
 
     const isChamp = name === "Jake";
+    const accent = AVATAR_COLORS[i % AVATAR_COLORS.length];
 
     const btn = document.createElement("button");
     btn.className = "manager-card" + (complete ? " has-picks" : "") + (partial ? " partial-picks" : "") + (isChamp ? " defending-champ" : "");
+    btn.style.setProperty("--accent", accent);
     btn.innerHTML = `
+      <span class="player-tag">P${i + 1}</span>
       ${isChamp ? `<span class="champ-badge">🏆 Defending Champ</span>` : ""}
-      <span class="manager-avatar" style="--accent:${AVATAR_COLORS[i % AVATAR_COLORS.length]}">${name[0]}</span>
+      <span class="manager-avatar-ring">
+        <span class="manager-avatar">${name[0]}</span>
+      </span>
       <span class="manager-name">${name}</span>
       <span class="manager-pick-status">${complete ? "✓ All in" : partial ? `${submittedCount}/${GAMES.length} in` : ""}</span>
     `;
