@@ -21,18 +21,25 @@ const STORAGE_KEY = "brochiefs_picks_v1";
 // Kickoff dates confirmed against each team's published 2026 schedule:
 // Week 1 Saturday slate is Sept 5, 2026; the Louisville/Ole Miss "Music
 // City Kickoff" is Sunday, Sept 6, 2026.
+// ESPN team IDs, used to hotlink official logos from ESPN's CDN
+// (a.espncdn.com/i/teamlogos/ncaa/500/<id>.png) — nothing downloaded or
+// stored in this repo, just referenced by URL like any other <img src>.
 const GAMES = [
-  { id: 1, away: "Liberty", home: "James Madison", favorite: "James Madison", spread: 6.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ESPNU" },
-  { id: 2, away: "Miami (OH)", home: "Pitt", favorite: "Pitt", spread: 16.5, kickoff: "2026-09-05T16:30:00Z", kickoffLabel: "Sat 12:30 PM ET", tv: "The CW" },
-  { id: 3, away: "Baylor", home: "Auburn", favorite: "Auburn", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ABC" },
-  { id: 4, away: "Boston College", home: "Cincinnati", favorite: "Cincinnati", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "FOX" },
-  { id: 5, away: "Tulane", home: "Duke", favorite: "Duke", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ACCN" },
-  { id: 6, away: "Boise State", home: "#2 Oregon", favorite: "#2 Oregon", spread: 24.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "CBS" },
-  { id: 7, away: "Wyoming", home: "Colorado State", favorite: "Colorado State", spread: 3.5, kickoff: "2026-09-05T22:00:00Z", kickoffLabel: "Sat 6:00 PM ET", tv: "USA" },
-  { id: 8, away: "Clemson", home: "#11 LSU", favorite: "#11 LSU", spread: 10, kickoff: "2026-09-05T23:30:00Z", kickoffLabel: "Sat 7:30 PM ET", tv: "ABC", tiebreakerGame: true },
-  { id: 9, away: "East Carolina", home: "#13 Alabama", favorite: "#13 Alabama", spread: 27.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ABC" },
-  { id: 10, away: "#24 Louisville", home: "#9 Ole Miss", favorite: "#9 Ole Miss", spread: 7, kickoffLabel: "Sun 7:30 PM ET", kickoff: "2026-09-06T23:30:00Z", tv: "ABC" },
+  { id: 1, away: "Liberty", awayId: 2335, home: "James Madison", homeId: 2349, favorite: "James Madison", spread: 6.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ESPNU" },
+  { id: 2, away: "Miami (OH)", awayId: 193, home: "Pitt", homeId: 221, favorite: "Pitt", spread: 16.5, kickoff: "2026-09-05T16:30:00Z", kickoffLabel: "Sat 12:30 PM ET", tv: "The CW" },
+  { id: 3, away: "Baylor", awayId: 239, home: "Auburn", homeId: 2, favorite: "Auburn", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ABC" },
+  { id: 4, away: "Boston College", awayId: 103, home: "Cincinnati", homeId: 2132, favorite: "Cincinnati", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "FOX" },
+  { id: 5, away: "Tulane", awayId: 2655, home: "Duke", homeId: 150, favorite: "Duke", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ACCN" },
+  { id: 6, away: "Boise State", awayId: 68, home: "#2 Oregon", homeId: 2483, favorite: "#2 Oregon", spread: 24.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "CBS" },
+  { id: 7, away: "Wyoming", awayId: 2751, home: "Colorado State", homeId: 36, favorite: "Colorado State", spread: 3.5, kickoff: "2026-09-05T22:00:00Z", kickoffLabel: "Sat 6:00 PM ET", tv: "USA" },
+  { id: 8, away: "Clemson", awayId: 228, home: "#11 LSU", homeId: 99, favorite: "#11 LSU", spread: 10, kickoff: "2026-09-05T23:30:00Z", kickoffLabel: "Sat 7:30 PM ET", tv: "ABC", tiebreakerGame: true },
+  { id: 9, away: "East Carolina", awayId: 151, home: "#13 Alabama", homeId: 333, favorite: "#13 Alabama", spread: 27.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ABC" },
+  { id: 10, away: "#24 Louisville", awayId: 97, home: "#9 Ole Miss", homeId: 145, favorite: "#9 Ole Miss", spread: 7, kickoffLabel: "Sun 7:30 PM ET", kickoff: "2026-09-06T23:30:00Z", tv: "ABC" },
 ];
+
+function logoUrl(espnId) {
+  return `https://a.espncdn.com/i/teamlogos/ncaa/500/${espnId}.png`;
+}
 
 const MANAGERS = [
   "Robert", "Logan", "Jordan", "Conlan", "Dewitt",
@@ -233,9 +240,17 @@ function renderPicksScreen() {
         <span class="game-status ${statusClass}">${statusLabel}</span>
       </div>
       <div class="matchup-row">
-        <button class="team-btn away-btn" type="button">${game.away}<span class="team-spread">${game.favorite === game.away ? "-" + game.spread : "+" + game.spread}</span></button>
-        <span class="vs-divider">VS</span>
-        <button class="team-btn home-btn" type="button">${game.home}<span class="team-spread">${game.favorite === game.home ? "-" + game.spread : "+" + game.spread}</span></button>
+        <button class="team-btn away-btn" type="button">
+          <img class="team-logo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
+          <span class="team-name">${game.away}</span>
+          <span class="team-spread">${game.favorite === game.away ? "-" + game.spread : "+" + game.spread}</span>
+        </button>
+        <span class="vs-divider"><span class="vs-bolt">⚡</span>VS</span>
+        <button class="team-btn home-btn" type="button">
+          <img class="team-logo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
+          <span class="team-name">${game.home}</span>
+          <span class="team-spread">${game.favorite === game.home ? "-" + game.spread : "+" + game.spread}</span>
+        </button>
       </div>
       <div class="game-submit-row">
         <span class="game-submit-note">${gameLocked ? (submittedPick ? `Final pick: ${submittedPick}` : "No pick submitted — locked") : submittedPick && !hasUnsavedChange ? `✓ Submitted: ${submittedPick}` : ""}</span>
@@ -376,7 +391,8 @@ function renderScoreboardTable(cloudPicks, results) {
       const result = results[game.id];
       let cls = "pending";
       if (result) cls = result === pick ? "correct" : "incorrect";
-      return `<td class="pick-cell ${cls}">${pick}</td>`;
+      const pickId = pick === game.away ? game.awayId : game.homeId;
+      return `<td class="pick-cell ${cls}"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.display='none'" />${pick}</td>`;
     }).join("");
 
     const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);

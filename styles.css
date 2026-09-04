@@ -204,18 +204,56 @@ html, body {
 }
 
 .game-card {
+  position: relative;
   background: var(--card-bg);
   border: 2px solid var(--card-border);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.game-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: linear-gradient(120deg, var(--neon-pink), var(--neon-purple), var(--neon-cyan), var(--neon-pink));
+  background-size: 300% 300%;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  animation: card-edge-shift 6s linear infinite;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.game-card:hover::before {
+  opacity: 0.9;
+}
+
+.game-card.game-submitted::before {
+  opacity: 0.55;
+}
+
+@keyframes card-edge-shift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
 }
 
 .game-card.game-locked {
   opacity: 0.6;
   border-color: rgba(255, 32, 121, 0.4);
+}
+
+.game-card.game-locked::before {
+  display: none;
 }
 
 .game-meta {
@@ -253,9 +291,13 @@ html, body {
 }
 
 .team-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   background: rgba(255, 255, 255, 0.04);
   border: 2px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text);
   font-family: 'Orbitron', sans-serif;
   font-weight: 700;
@@ -267,22 +309,45 @@ html, body {
   line-height: 1.3;
 }
 
+.team-logo {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(5, 217, 232, 0.35));
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.team-btn .team-name {
+  display: block;
+}
+
 .team-btn .team-spread {
   display: block;
   font-size: 9px;
   color: var(--text-dim);
-  margin-top: 4px;
+  margin-top: 2px;
   font-weight: 500;
 }
 
 .team-btn:hover:not(:disabled) {
   border-color: var(--neon-cyan);
+  transform: translateY(-2px);
+}
+
+.team-btn:hover:not(:disabled) .team-logo {
+  filter: drop-shadow(0 0 10px rgba(5, 217, 232, 0.7));
+  transform: scale(1.06);
 }
 
 .team-btn.selected {
   border-color: var(--neon-purple);
   background: rgba(193, 60, 255, 0.22);
-  box-shadow: 0 0 12px rgba(193, 60, 255, 0.5);
+  box-shadow: 0 0 16px rgba(193, 60, 255, 0.55);
+}
+
+.team-btn.selected .team-logo {
+  filter: drop-shadow(0 0 12px rgba(193, 60, 255, 0.8));
+  transform: scale(1.08);
 }
 
 .team-btn:disabled {
@@ -292,11 +357,24 @@ html, body {
 
 .vs-divider {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   font-family: 'Press Start 2P', monospace;
   font-size: 10px;
   color: var(--neon-yellow);
+}
+
+.vs-bolt {
+  font-size: 16px;
+  filter: drop-shadow(0 0 6px var(--neon-yellow));
+  animation: vs-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes vs-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
 }
 
 .tiebreaker-card {
@@ -450,6 +528,14 @@ html, body {
 .scoreboard-table td.manager-col {
   text-align: left;
   font-weight: 700;
+}
+
+.pick-cell-logo {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  vertical-align: middle;
+  margin-right: 4px;
 }
 
 .pick-cell.correct { color: var(--neon-green); }
