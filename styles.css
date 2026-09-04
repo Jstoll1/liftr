@@ -944,9 +944,11 @@ html, body {
 
 .arcade-sun-wrap {
   position: relative;
-  width: min(78vw, 400px);
-  height: min(78vw, 400px);
+  width: min(78vw, 440px);
+  height: min(78vw, 440px);
   flex: 0 0 auto;
+  /* lets the wordmark size itself from the sun's width (cqw units) */
+  container-type: inline-size;
 }
 
 /* Synthwave striped sun, Miami-Vice sunset palette */
@@ -1008,6 +1010,7 @@ html, body {
 .arcade-tag {
   font-family: 'Press Start 2P', monospace;
   font-size: clamp(7px, 2.3vw, 9px);
+  font-size: clamp(7px, 2.2cqw, 10px);
   letter-spacing: 1.5px;
   color: var(--neon-yellow);
   text-shadow: 0 0 6px var(--neon-yellow), 0 0 2px #000, 0 1px 3px rgba(0, 0, 0, 0.9);
@@ -1023,6 +1026,8 @@ html, body {
   font-family: 'Orbitron', sans-serif;
   font-weight: 900;
   font-size: clamp(30px, 10vw, 68px);
+  /* ~9 Orbitron-900 glyphs at 0.75em each: 12.5cqw keeps the word inside the sun */
+  font-size: clamp(28px, 12.5cqw, 56px);
   letter-spacing: 0.03em;
   white-space: nowrap;
   color: var(--neon-cyan);
@@ -1076,6 +1081,7 @@ html, body {
 
 .logo-hint {
   font-size: 11px;
+  font-size: clamp(10px, 2.8cqw, 13px);
   letter-spacing: 2px;
   color: var(--neon-cyan);
   text-shadow: 0 0 6px var(--neon-cyan), 0 0 2px #000, 0 1px 3px rgba(0, 0, 0, 0.9);
