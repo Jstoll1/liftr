@@ -14,7 +14,7 @@
 // "https://liftr-ai.<your-subdomain>.workers.dev". Left blank, the app
 // works fine on a single device/browser but the scoreboard can only ever
 // show picks made on that same device.
-const WORKER_URL = "";
+const WORKER_URL = "https://liftr-ai.jhs797.workers.dev";
 
 const STORAGE_KEY = "brochiefs_picks_v1";
 
