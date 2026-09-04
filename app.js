@@ -247,6 +247,39 @@ rulesOpenBtn.addEventListener("click", openRules);
 rulesCloseBtn.addEventListener("click", closeRules);
 homeLogoBtn.addEventListener("click", goHome);
 
+// Deterministic per-name "identicon" — a small symmetric pixel-grid
+// avatar, generated from the name itself so it's stable across every
+// device/session with no image assets or network calls. Mirrored
+// horizontally, classic identicon style, rendered as inline SVG.
+function hashString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+function avatarSvg(name, accent) {
+  let seed = hashString(name) || 1;
+  const rand = () => {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    return (seed >>> 16) / 65535;
+  };
+  const cols = 5;
+  const rows = 5;
+  const half = Math.ceil(cols / 2);
+  const rects = [];
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < half; x++) {
+      if (rand() <= 0.55) continue;
+      rects.push(`<rect x="${x}" y="${y}" width="1" height="1" />`);
+      const mirrorX = cols - 1 - x;
+      if (mirrorX !== x) rects.push(`<rect x="${mirrorX}" y="${y}" width="1" height="1" />`);
+    }
+  }
+  return `<svg viewBox="0 0 ${cols} ${rows}" xmlns="http://www.w3.org/2000/svg" fill="${accent}" shape-rendering="crispEdges">${rects.join("")}</svg>`;
+}
+
 async function renderManagerPicker() {
   const local = loadAll();
   const cloud = await fetchAllPicks();
@@ -268,9 +301,9 @@ async function renderManagerPicker() {
     btn.style.setProperty("--accent", accent);
     btn.innerHTML = `
       <span class="player-tag">P${i + 1}</span>
-      ${isChamp ? `<span class="champ-badge">🏆 Defending Champ</span>` : ""}
+      <span class="badge-slot">${isChamp ? `<span class="champ-badge">🏆 Defending Champ</span>` : ""}</span>
       <span class="manager-avatar-ring">
-        <span class="manager-avatar">${name[0]}</span>
+        <span class="manager-avatar">${avatarSvg(name, accent)}</span>
       </span>
       <span class="manager-name-plate">
         <span class="manager-name">${name}</span>

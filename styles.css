@@ -208,6 +208,17 @@ html, body {
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 4px 0 rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 228, 94, 0.4);
 }
 
+/* Reserved on every card, champion or not, so a badge on one card
+   never makes its whole grid row taller than the rest — every tile
+   ends up the same height regardless of which row it lands in. */
+.badge-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  margin-top: 4px;
+}
+
 .champ-badge {
   font-size: 9px;
   font-weight: 700;
@@ -215,7 +226,6 @@ html, body {
   color: var(--neon-yellow);
   text-shadow: 0 0 6px var(--neon-yellow);
   white-space: nowrap;
-  margin-top: 4px;
 }
 
 .manager-card:hover, .manager-card:focus-visible {
@@ -239,14 +249,16 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Press Start 2P', monospace;
-  font-weight: 400;
-  font-size: 24px;
-  line-height: 1;
-  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent, var(--neon-purple)) 70%, white), var(--accent, var(--neon-purple)));
+  background: radial-gradient(circle at 35% 30%, #1c0430, #0a0014);
   border: 3px solid #0a0014;
-  color: #0a0014;
-  box-shadow: 0 0 0 2px var(--accent, var(--neon-purple)), 0 3px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 2px var(--accent, var(--neon-purple)), 0 3px 0 rgba(0, 0, 0, 0.5), inset 0 0 10px color-mix(in srgb, var(--accent, var(--neon-purple)) 45%, transparent);
+  overflow: hidden;
+}
+
+.manager-avatar svg {
+  width: 68%;
+  height: 68%;
+  filter: drop-shadow(0 0 3px var(--accent, var(--neon-purple)));
 }
 
 .manager-name-plate {
