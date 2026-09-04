@@ -33,6 +33,7 @@
       <div class="topbar">
         <button id="switch-btn" class="link-btn">&larr; SWITCH</button>
         <span id="manager-badge" class="manager-badge"></span>
+        <button id="to-scoreboard-btn" class="link-btn">SCOREBOARD &rarr;</button>
       </div>
 
       <div id="locked-banner" class="locked-banner hidden">
@@ -50,6 +51,29 @@
       <div class="submit-row">
         <span id="picks-progress" class="picks-progress"></span>
         <button id="lock-btn" class="primary-btn" disabled>🔒 LOCK IN PICKS</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- SCOREBOARD SCREEN -->
+  <main id="scoreboard-screen" class="screen hidden">
+    <div class="wrap wide">
+      <div class="topbar">
+        <button id="scoreboard-back-btn" class="link-btn">&larr; MY PICKS</button>
+        <span class="manager-badge">LIVE SCOREBOARD</span>
+        <button id="scoreboard-refresh-btn" class="link-btn" title="Refresh">⟳ REFRESH</button>
+      </div>
+      <p class="scoreboard-note">Picks stay hidden until a game kicks off — once it starts, everyone's pick for that game is revealed here.</p>
+
+      <div id="rankings-list" class="rankings-list"></div>
+
+      <div class="scoreboard-table-wrap">
+        <table id="scoreboard-table" class="scoreboard-table"></table>
+      </div>
+
+      <div class="results-card">
+        <span class="tiebreaker-label">ENTER RESULTS &mdash; who covered the spread?</span>
+        <div id="results-form" class="results-form"></div>
       </div>
     </div>
   </main>

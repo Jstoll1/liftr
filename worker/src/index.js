@@ -33,6 +33,12 @@ export default {
     if (url.pathname === "/library") {
       return handleLibrary(request, env, corsHeaders);
     }
+    if (url.pathname === "/picks") {
+      return handlePicks(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/results") {
+      return handleResults(request, env, corsHeaders, url);
+    }
 
     if (request.method !== "POST") {
       return json({ error: "Method not allowed" }, 405, corsHeaders);
@@ -405,6 +411,111 @@ async function handleLibrary(request, env, corsHeaders) {
       return json({ ok: true }, 200, corsHeaders);
     } catch (err) {
       console.error("Library write error", err?.stack || String(err));
+      return json({ error: "Write failed" }, 500, corsHeaders);
+    }
+  }
+
+  return json({ error: "Method not allowed" }, 405, corsHeaders);
+}
+
+// Brochiefs pick'em sync — one KV entry per manager (picks:<manager>) so
+// concurrent submissions from different people never clobber each other.
+// GET returns every manager's state in one shot (for the scoreboard); POST
+// writes exactly one manager's state, whole-blob last-write-wins for that
+// manager only. Kickoff-based per-game locking and the "locked in" flag are
+// enforced by the client when building the state it POSTs; this endpoint
+// just stores whatever it's given for a valid manager name.
+const PICKS_MANAGERS = [
+  "Robert", "Logan", "Jordan", "Conlan", "Dewitt",
+  "Nissan", "Skills", "Jake", "Curt", "Andrew",
+];
+
+async function handlePicks(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) {
+    console.error("LIFTR_KV binding missing");
+    return json({ error: "Sync not configured" }, 500, corsHeaders);
+  }
+
+  if (request.method === "GET") {
+    try {
+      const entries = await Promise.all(
+        PICKS_MANAGERS.map(async (manager) => {
+          const stored = await env.LIFTR_KV.get(`picks:${manager}`);
+          return [manager, stored ? JSON.parse(stored) : null];
+        })
+      );
+      const picks = Object.fromEntries(entries.filter(([, value]) => value !== null));
+      return json({ picks }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Picks read error", err?.stack || String(err));
+      return json({ error: "Read failed" }, 500, corsHeaders);
+    }
+  }
+
+  if (request.method === "POST" || request.method === "PUT") {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400, corsHeaders);
+    }
+    const manager = body?.manager;
+    if (!PICKS_MANAGERS.includes(manager)) {
+      return json({ error: "Invalid or missing manager" }, 400, corsHeaders);
+    }
+    try {
+      await env.LIFTR_KV.put(`picks:${manager}`, JSON.stringify(body.state || {}));
+      return json({ ok: true }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Picks write error", err?.stack || String(err));
+      return json({ error: "Write failed" }, 500, corsHeaders);
+    }
+  }
+
+  return json({ error: "Method not allowed" }, 405, corsHeaders);
+}
+
+// Brochiefs pick'em results — one KV entry per game (result:<gameId>)
+// holding which team covered. No auth (small trusted friend group, same as
+// the rest of this app); anyone can enter a result once it's known. The
+// scoreboard uses this plus everyone's picks to compute rankings.
+async function handleResults(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) {
+    console.error("LIFTR_KV binding missing");
+    return json({ error: "Sync not configured" }, 500, corsHeaders);
+  }
+
+  if (request.method === "GET") {
+    try {
+      const list = await env.LIFTR_KV.list({ prefix: "result:" });
+      const entries = await Promise.all(
+        list.keys.map(async (k) => [k.name.slice("result:".length), await env.LIFTR_KV.get(k.name)])
+      );
+      const results = Object.fromEntries(entries.filter(([, value]) => value));
+      return json({ results }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Results read error", err?.stack || String(err));
+      return json({ error: "Read failed" }, 500, corsHeaders);
+    }
+  }
+
+  if (request.method === "POST" || request.method === "PUT") {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400, corsHeaders);
+    }
+    const gameId = body?.gameId;
+    const winner = body?.winner;
+    if (!Number.isFinite(gameId) || typeof winner !== "string" || !winner) {
+      return json({ error: "Invalid gameId or winner" }, 400, corsHeaders);
+    }
+    try {
+      await env.LIFTR_KV.put(`result:${gameId}`, winner);
+      return json({ ok: true }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Results write error", err?.stack || String(err));
       return json({ error: "Write failed" }, 500, corsHeaders);
     }
   }

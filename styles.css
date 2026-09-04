@@ -363,3 +363,130 @@ html, body {
 .primary-btn:not(:disabled):hover {
   transform: translateY(-2px);
 }
+
+.scoreboard-note {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 0;
+}
+
+.rankings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.ranking-row.rank-1 {
+  border-color: var(--neon-yellow);
+  box-shadow: 0 0 12px rgba(255, 228, 94, 0.35);
+}
+
+.ranking-place {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--neon-yellow);
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.ranking-name {
+  flex: 1;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.ranking-score {
+  font-size: 12px;
+  color: var(--neon-green);
+  font-weight: 700;
+}
+
+.ranking-lock {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.scoreboard-table-wrap {
+  overflow-x: auto;
+  border: 2px solid var(--card-border);
+  border-radius: 10px;
+}
+
+.scoreboard-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+  min-width: 640px;
+}
+
+.scoreboard-table th,
+.scoreboard-table td {
+  padding: 8px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--card-border);
+  white-space: nowrap;
+}
+
+.scoreboard-table th {
+  background: rgba(193, 60, 255, 0.12);
+  color: var(--neon-cyan);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+}
+
+.scoreboard-table td.manager-col {
+  text-align: left;
+  font-weight: 700;
+}
+
+.pick-cell.correct { color: var(--neon-green); }
+.pick-cell.incorrect { color: var(--neon-pink); }
+.pick-cell.pending { color: var(--text-dim); }
+.pick-cell.hidden-pick { color: var(--text-dim); font-style: italic; }
+
+.results-card {
+  background: var(--card-bg);
+  border: 2px dashed var(--card-border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.results-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.result-row select {
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--card-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  padding: 6px;
+}

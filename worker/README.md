@@ -110,3 +110,25 @@ whatever's already stored locally.
 Free tier limits are generous for two people (100k reads/day, 1,000
 writes/day) — comfortably enough since syncing only happens at those
 checkpoints, not on every tap while working out.
+
+## 6. Brochiefs pick'em sync (same Worker, `/picks` and `/results`)
+
+The pick'em app at the repo root (`index.html`/`app.js`) also uses this
+Worker so everyone's picks and a live scoreboard/rankings show up on one
+shared page instead of being stuck on each person's own device.
+
+Nothing extra to deploy — `/picks` and `/results` are routed in the same
+`worker/src/index.js` and use the same `LIFTR_KV` namespace as above (keyed
+`picks:<manager>` and `result:<gameId>`, so nothing collides with the
+`liftr:<user>` keys the workout app uses).
+
+Set the pick'em app's Worker URL in `app.js` at the repo root:
+
+```js
+const WORKER_URL = "https://liftr-ai.<your-subdomain>.workers.dev";
+```
+
+Left blank, the pick'em app still works fully on localStorage — it just
+can't show anyone else's picks. `/results` has no auth (same small trusted
+group as the rest of this app); anyone can record which team covered once
+a game ends, and the scoreboard uses that to compute live rankings.

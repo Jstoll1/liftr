@@ -1,9 +1,18 @@
 // Brochiefs 2026 College Football Pick'em — retro arcade pick app.
-// Picks are stored per-manager in localStorage. A game locks (no more
-// changes, for anyone) once its kickoff time passes, independent of
-// whether that manager has hit "Lock In". Hitting "Lock In" freezes ALL
-// of that manager's picks immediately, even for games that haven't
-// kicked off yet.
+// Picks are cached per-manager in localStorage and, when configured,
+// synced through a small Cloudflare Worker (worker/src/index.js, the
+// /picks and /results routes) so everyone can see everyone's picks and
+// live rankings from one shared "scoreboard" page — not just their own
+// browser. A game locks (no more changes, for anyone) once its kickoff
+// time passes, independent of whether that manager has hit "Lock In".
+// Hitting "Lock In" freezes ALL of that manager's picks immediately,
+// even for games that haven't kicked off yet.
+
+// Fill this in after deploying the Worker (see worker/README.md), e.g.
+// "https://liftr-ai.<your-subdomain>.workers.dev". Left blank, the app
+// works fine on a single device/browser but the scoreboard can only ever
+// show picks made on that same device.
+const WORKER_URL = "";
 
 const STORAGE_KEY = "brochiefs_picks_v1";
 
@@ -51,16 +60,90 @@ function setManagerState(name, state) {
   const all = loadAll();
   all[name] = state;
   saveAll(all);
+  schedulePush(name, state);
 }
 
 function isGameLocked(game) {
   return Date.now() >= new Date(game.kickoff).getTime();
 }
 
+// --- Worker sync (cross-device picks + results) --------------------------
+
+let pushTimer = null;
+function schedulePush(name, state) {
+  if (!WORKER_URL) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => pushManagerState(name, state), 800);
+}
+
+async function pushManagerState(manager, state) {
+  if (!WORKER_URL) return;
+  try {
+    await fetch(`${WORKER_URL}/picks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ manager, state }),
+    });
+  } catch {
+    // Offline or worker unreachable — local copy still saved, fine.
+  }
+}
+
+async function fetchAllPicks() {
+  if (!WORKER_URL) return null;
+  try {
+    const res = await fetch(`${WORKER_URL}/picks`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.picks || {};
+  } catch {
+    return null;
+  }
+}
+
+async function fetchResults() {
+  if (!WORKER_URL) return {};
+  try {
+    const res = await fetch(`${WORKER_URL}/results`);
+    if (!res.ok) return {};
+    const data = await res.json();
+    return data.results || {};
+  } catch {
+    return {};
+  }
+}
+
+async function pushResult(gameId, winner) {
+  if (!WORKER_URL) return;
+  try {
+    await fetch(`${WORKER_URL}/results`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameId, winner }),
+    });
+  } catch {
+    // Offline or worker unreachable.
+  }
+}
+
+// Cloud is the source of truth across devices — pull once per manager
+// select and merge into local storage before rendering, so a manager who
+// locked in on their phone sees it locked on their laptop too.
+async function syncManagerFromCloud(name) {
+  const cloud = await fetchAllPicks();
+  if (!cloud || !cloud[name]) return;
+  const all = loadAll();
+  all[name] = cloud[name];
+  saveAll(all);
+}
+
+// --- Screens / navigation -------------------------------------------------
+
 let currentManager = null;
 
 const loginScreen = document.getElementById("login-screen");
 const picksScreen = document.getElementById("picks-screen");
+const scoreboardScreen = document.getElementById("scoreboard-screen");
 const managerPicker = document.getElementById("manager-picker");
 const managerBadge = document.getElementById("manager-badge");
 const gamesList = document.getElementById("games-list");
@@ -70,6 +153,12 @@ const tiebreakerInput = document.getElementById("tiebreaker-input");
 const lockBtn = document.getElementById("lock-btn");
 const picksProgress = document.getElementById("picks-progress");
 const switchBtn = document.getElementById("switch-btn");
+const toScoreboardBtn = document.getElementById("to-scoreboard-btn");
+const scoreboardBackBtn = document.getElementById("scoreboard-back-btn");
+const scoreboardRefreshBtn = document.getElementById("scoreboard-refresh-btn");
+const rankingsList = document.getElementById("rankings-list");
+const scoreboardTable = document.getElementById("scoreboard-table");
+const resultsForm = document.getElementById("results-form");
 
 function renderManagerPicker() {
   const all = loadAll();
@@ -88,11 +177,13 @@ function renderManagerPicker() {
   });
 }
 
-function selectManager(name) {
+async function selectManager(name) {
   currentManager = name;
   managerBadge.textContent = name.toUpperCase();
   loginScreen.classList.add("hidden");
   picksScreen.classList.remove("hidden");
+  renderPicksScreen();
+  await syncManagerFromCloud(name);
   renderPicksScreen();
 }
 
@@ -169,6 +260,7 @@ lockBtn.addEventListener("click", () => {
   state.lockedIn = true;
   state.lockedAt = new Date().toISOString();
   setManagerState(currentManager, state);
+  pushManagerState(currentManager, state); // push immediately, don't wait on the debounce
   renderPicksScreen();
 });
 
@@ -179,11 +271,125 @@ switchBtn.addEventListener("click", () => {
   renderManagerPicker();
 });
 
+// --- Scoreboard ------------------------------------------------------------
+
+function showScoreboard() {
+  picksScreen.classList.add("hidden");
+  scoreboardScreen.classList.remove("hidden");
+  renderScoreboard();
+}
+
+toScoreboardBtn.addEventListener("click", showScoreboard);
+scoreboardBackBtn.addEventListener("click", () => {
+  scoreboardScreen.classList.add("hidden");
+  picksScreen.classList.remove("hidden");
+  renderPicksScreen();
+});
+scoreboardRefreshBtn.addEventListener("click", renderScoreboard);
+
+async function renderScoreboard() {
+  const cloudPicks = (await fetchAllPicks()) || loadAll();
+  const results = await fetchResults();
+
+  renderResultsForm(results);
+  renderScoreboardTable(cloudPicks, results);
+  renderRankings(cloudPicks, results);
+}
+
+function renderResultsForm(results) {
+  resultsForm.innerHTML = "";
+  GAMES.forEach((game) => {
+    const row = document.createElement("div");
+    row.className = "result-row";
+    row.innerHTML = `
+      <span>G${game.id} &middot; ${game.away} @ ${game.home}</span>
+      <select data-game="${game.id}">
+        <option value="">— pending —</option>
+        <option value="${game.away}">${game.away} covered</option>
+        <option value="${game.home}">${game.home} covered</option>
+      </select>
+    `;
+    const select = row.querySelector("select");
+    select.value = results[game.id] || "";
+    select.addEventListener("change", async () => {
+      await pushResult(game.id, select.value);
+      renderScoreboard();
+    });
+    resultsForm.appendChild(row);
+  });
+}
+
+function renderScoreboardTable(cloudPicks, results) {
+  const headCells = GAMES.map((g) => `<th>G${g.id}</th>`).join("");
+  let html = `<thead><tr><th class="manager-col">Manager</th>${headCells}<th>Tiebreak</th></tr></thead><tbody>`;
+
+  MANAGERS.forEach((name) => {
+    const state = cloudPicks[name] || { picks: {}, tiebreaker: "", lockedIn: false };
+    const cells = GAMES.map((game) => {
+      const gameStarted = isGameLocked(game);
+      const pick = state.picks[game.id];
+
+      if (!gameStarted) {
+        return `<td class="pick-cell hidden-pick">🔒</td>`;
+      }
+      if (!pick) {
+        return `<td class="pick-cell pending">—</td>`;
+      }
+      const result = results[game.id];
+      let cls = "pending";
+      if (result) cls = result === pick ? "correct" : "incorrect";
+      return `<td class="pick-cell ${cls}">${pick}</td>`;
+    }).join("");
+
+    const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
+    const tbVisible = isGameLocked(tiebreakerGame);
+    const tbCell = tbVisible ? (state.tiebreaker || "—") : "🔒";
+
+    html += `<tr><td class="manager-col">${name}${state.lockedIn ? " 🔒" : ""}</td>${cells}<td>${tbCell}</td></tr>`;
+  });
+
+  html += "</tbody>";
+  scoreboardTable.innerHTML = html;
+}
+
+function computeScore(state, results) {
+  let correct = 0;
+  GAMES.forEach((game) => {
+    const result = results[game.id];
+    const pick = state.picks[game.id];
+    if (result && pick && result === pick) correct += 1;
+  });
+  return correct;
+}
+
+function renderRankings(cloudPicks, results) {
+  const rows = MANAGERS.map((name) => {
+    const state = cloudPicks[name] || { picks: {}, lockedIn: false };
+    return { name, score: computeScore(state, results), lockedIn: !!state.lockedIn };
+  }).sort((a, b) => b.score - a.score);
+
+  rankingsList.innerHTML = "";
+  rows.forEach((row, i) => {
+    const div = document.createElement("div");
+    div.className = "ranking-row" + (i === 0 && row.score > 0 ? " rank-1" : "");
+    div.innerHTML = `
+      <span class="ranking-place">#${i + 1}</span>
+      <span class="ranking-name">${row.name}</span>
+      <span class="ranking-lock">${row.lockedIn ? "🔒 locked" : "editing"}</span>
+      <span class="ranking-score">${row.score} correct</span>
+    `;
+    rankingsList.appendChild(div);
+  });
+}
+
 // Re-render periodically so games auto-lock the moment kickoff passes,
-// even if the manager just leaves the tab open.
+// and the scoreboard/rankings stay live without a manual refresh.
 setInterval(() => {
   if (currentManager && !picksScreen.classList.contains("hidden")) {
     renderPicksScreen();
+  }
+  if (!scoreboardScreen.classList.contains("hidden")) {
+    renderScoreboard();
   }
 }, 30000);
 
