@@ -175,17 +175,25 @@ function goToPlayerSelect() {
 
 logoScreen.addEventListener("click", goToPlayerSelect);
 
-function renderManagerPicker() {
-  const all = loadAll();
+async function renderManagerPicker() {
+  const local = loadAll();
+  const cloud = await fetchAllPicks();
+  const all = cloud ? { ...local, ...cloud } : local; // cloud wins where it has data
+
   managerPicker.innerHTML = "";
   MANAGERS.forEach((name, i) => {
     const state = all[name];
-    const hasPicks = state && Object.keys(state.picks || {}).length > 0;
+    const submittedCount = state ? Object.values(state.picks || {}).filter(Boolean).length : 0;
+    const tiebreakerDone = !!(state && String(state.tiebreaker || "").trim() !== "");
+    const complete = submittedCount === GAMES.length && tiebreakerDone;
+    const partial = !complete && (submittedCount > 0 || tiebreakerDone);
+
     const btn = document.createElement("button");
-    btn.className = "manager-card" + (hasPicks ? " has-picks" : "");
+    btn.className = "manager-card" + (complete ? " has-picks" : "") + (partial ? " partial-picks" : "");
     btn.innerHTML = `
       <span class="manager-avatar" style="--accent:${AVATAR_COLORS[i % AVATAR_COLORS.length]}">${name[0]}</span>
       <span class="manager-name">${name}</span>
+      <span class="manager-pick-status">${complete ? "✓ All in" : partial ? `${submittedCount}/${GAMES.length} in` : ""}</span>
     `;
     btn.addEventListener("click", () => selectManager(name));
     managerPicker.appendChild(btn);

@@ -145,9 +145,25 @@ html, body {
   letter-spacing: 0.5px;
 }
 
-.manager-card.has-picks .manager-name::after {
-  content: " ✓";
+.manager-pick-status {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  min-height: 11px;
+  color: var(--text-dim);
+}
+
+.manager-card.has-picks .manager-pick-status {
   color: var(--neon-green);
+  text-shadow: 0 0 6px var(--neon-green);
+}
+
+.manager-card.partial-picks {
+  border-color: var(--neon-yellow);
+}
+
+.manager-card.partial-picks .manager-pick-status {
+  color: var(--neon-yellow);
+  text-shadow: 0 0 6px var(--neon-yellow);
 }
 
 .topbar {
