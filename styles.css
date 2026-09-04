@@ -837,6 +837,29 @@ html, body {
   letter-spacing: 2px;
   color: var(--neon-yellow);
   text-shadow: 0 0 6px var(--neon-yellow);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.splash-countdown-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.splash-countdown-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--text-dim);
+}
+
+.splash-countdown {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(20px, 6vw, 30px);
+  letter-spacing: 4px;
+  color: var(--neon-green);
+  text-shadow: 0 0 8px var(--neon-green), 0 0 18px var(--neon-green);
 }
 
 .logo-text {
