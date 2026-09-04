@@ -249,16 +249,15 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 35% 30%, #1c0430, #0a0014);
+  font-family: 'Press Start 2P', monospace;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent, var(--neon-purple)) 70%, white), var(--accent, var(--neon-purple)));
   border: 3px solid #0a0014;
-  box-shadow: 0 0 0 2px var(--accent, var(--neon-purple)), 0 3px 0 rgba(0, 0, 0, 0.5), inset 0 0 10px color-mix(in srgb, var(--accent, var(--neon-purple)) 45%, transparent);
+  color: #0a0014;
+  box-shadow: 0 0 0 2px var(--accent, var(--neon-purple)), 0 3px 0 rgba(0, 0, 0, 0.5);
   overflow: hidden;
-}
-
-.manager-avatar svg {
-  width: 68%;
-  height: 68%;
-  filter: drop-shadow(0 0 3px var(--accent, var(--neon-purple)));
 }
 
 .manager-name-plate {
@@ -1290,6 +1289,54 @@ html, body {
   color: var(--text-dim);
   text-align: center;
   line-height: 1.5;
+}
+
+.avatar-hint {
+  display: block;
+  text-align: center;
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  margin-top: -8px;
+}
+
+.avatar-edit-preview {
+  align-self: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent, var(--neon-purple)) 70%, white), var(--accent, var(--neon-purple)));
+  border: 3px solid #0a0014;
+  box-shadow: 0 0 0 2px var(--accent, var(--neon-purple)), 0 3px 0 rgba(0, 0, 0, 0.5);
+  color: #0a0014;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.avatar-emoji-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--card-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  text-align: center;
+  padding: 10px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-actions .ghost-btn,
+.modal-actions .primary-btn {
+  flex: 1;
 }
 
 .rules-section {

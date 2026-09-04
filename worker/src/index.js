@@ -54,6 +54,9 @@ export default {
     if (url.pathname === "/live") {
       return handleLive(corsHeaders);
     }
+    if (url.pathname === "/avatars") {
+      return handleAvatars(request, env, corsHeaders, url);
+    }
 
     if (request.method !== "POST") {
       return json({ error: "Method not allowed" }, 405, corsHeaders);
@@ -639,6 +642,70 @@ async function handleLive(corsHeaders) {
     console.error("Live scores error", err?.stack || String(err));
     return json({ games: [] }, 200, corsHeaders); // never break the client over this
   }
+}
+
+// Player avatar overrides — one KV entry per manager (avatar:<manager>)
+// holding a single emoji string, set by long-pressing their card in the
+// app. GET returns all of them in one shot; POST sets one; DELETE resets
+// one back to its default letter avatar.
+async function handleAvatars(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) {
+    console.error("LIFTR_KV binding missing");
+    return json({ error: "Sync not configured" }, 500, corsHeaders);
+  }
+
+  if (request.method === "GET") {
+    try {
+      const entries = await Promise.all(
+        PICKS_MANAGERS.map(async (manager) => [manager, await env.LIFTR_KV.get(`avatar:${manager}`)])
+      );
+      const avatars = Object.fromEntries(entries.filter(([, value]) => value));
+      return json({ avatars }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Avatars read error", err?.stack || String(err));
+      return json({ error: "Read failed" }, 500, corsHeaders);
+    }
+  }
+
+  if (request.method === "POST" || request.method === "PUT") {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400, corsHeaders);
+    }
+    const manager = body?.manager;
+    const emoji = body?.emoji;
+    if (!PICKS_MANAGERS.includes(manager)) {
+      return json({ error: "Invalid or missing manager" }, 400, corsHeaders);
+    }
+    if (typeof emoji !== "string" || emoji.length === 0 || emoji.length > 16) {
+      return json({ error: "Invalid emoji" }, 400, corsHeaders);
+    }
+    try {
+      await env.LIFTR_KV.put(`avatar:${manager}`, emoji);
+      return json({ ok: true }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Avatars write error", err?.stack || String(err));
+      return json({ error: "Write failed" }, 500, corsHeaders);
+    }
+  }
+
+  if (request.method === "DELETE") {
+    const manager = url.searchParams.get("manager");
+    if (!PICKS_MANAGERS.includes(manager)) {
+      return json({ error: "Invalid or missing manager" }, 400, corsHeaders);
+    }
+    try {
+      await env.LIFTR_KV.delete(`avatar:${manager}`);
+      return json({ ok: true }, 200, corsHeaders);
+    } catch (err) {
+      console.error("Avatars delete error", err?.stack || String(err));
+      return json({ error: "Delete failed" }, 500, corsHeaders);
+    }
+  }
+
+  return json({ error: "Method not allowed" }, 405, corsHeaders);
 }
 
 // Cross-user "cheer" queue, keyed by the RECIPIENT so each person only ever

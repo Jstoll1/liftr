@@ -211,6 +211,11 @@ const rulesOpenBtn = document.getElementById("rules-open-btn");
 const rulesCloseBtn = document.getElementById("rules-close-btn");
 const homeHeader = document.getElementById("home-header");
 const homeLogoBtn = document.getElementById("home-logo-btn");
+const avatarModal = document.getElementById("avatar-modal");
+const avatarEditPreview = document.getElementById("avatar-edit-preview");
+const avatarEmojiInput = document.getElementById("avatar-emoji-input");
+const avatarSaveBtn = document.getElementById("avatar-save-btn");
+const avatarResetBtn = document.getElementById("avatar-reset-btn");
 
 // --- Logo / splash screen ---------------------------------------------
 
@@ -247,43 +252,67 @@ rulesOpenBtn.addEventListener("click", openRules);
 rulesCloseBtn.addEventListener("click", closeRules);
 homeLogoBtn.addEventListener("click", goHome);
 
-// Deterministic per-name "identicon" — a small symmetric pixel-grid
-// avatar, generated from the name itself so it's stable across every
-// device/session with no image assets or network calls. Mirrored
-// horizontally, classic identicon style, rendered as inline SVG.
-function hashString(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = (h * 31 + str.charCodeAt(i)) >>> 0;
+// --- Avatar overrides: long-press a player card to swap their letter
+// avatar for an emoji. Persisted locally and synced through the Worker
+// (/avatars) so the choice shows up for everyone, on every device.
+const AVATAR_STORAGE_KEY = "brochiefs_avatars_v1";
+let avatarOverrides = {};
+
+function loadAvatars() {
+  try {
+    return JSON.parse(localStorage.getItem(AVATAR_STORAGE_KEY)) || {};
+  } catch {
+    return {};
   }
-  return h;
 }
 
-function avatarSvg(name, accent) {
-  let seed = hashString(name) || 1;
-  const rand = () => {
-    seed = (seed * 1103515245 + 12345) >>> 0;
-    return (seed >>> 16) / 65535;
-  };
-  const cols = 5;
-  const rows = 5;
-  const half = Math.ceil(cols / 2);
-  const rects = [];
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < half; x++) {
-      if (rand() <= 0.55) continue;
-      rects.push(`<rect x="${x}" y="${y}" width="1" height="1" />`);
-      const mirrorX = cols - 1 - x;
-      if (mirrorX !== x) rects.push(`<rect x="${mirrorX}" y="${y}" width="1" height="1" />`);
-    }
+function saveAvatars(data) {
+  localStorage.setItem(AVATAR_STORAGE_KEY, JSON.stringify(data));
+}
+
+async function fetchAvatars() {
+  if (!WORKER_URL) return null;
+  try {
+    const res = await fetch(`${WORKER_URL}/avatars`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.avatars || {};
+  } catch {
+    return null;
   }
-  return `<svg viewBox="0 0 ${cols} ${rows}" xmlns="http://www.w3.org/2000/svg" fill="${accent}" shape-rendering="crispEdges">${rects.join("")}</svg>`;
+}
+
+async function pushAvatar(manager, emoji) {
+  if (!WORKER_URL) return;
+  try {
+    await fetch(`${WORKER_URL}/avatars`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ manager, emoji }),
+    });
+  } catch {
+    // Offline or worker unreachable — local copy still saved, fine.
+  }
+}
+
+async function resetAvatar(manager) {
+  if (!WORKER_URL) return;
+  try {
+    await fetch(`${WORKER_URL}/avatars?manager=${encodeURIComponent(manager)}`, { method: "DELETE" });
+  } catch {
+    // Offline or worker unreachable.
+  }
 }
 
 async function renderManagerPicker() {
   const local = loadAll();
   const cloud = await fetchAllPicks();
   const all = cloud ? { ...local, ...cloud } : local; // cloud wins where it has data
+
+  const localAvatars = loadAvatars();
+  const cloudAvatars = await fetchAvatars();
+  avatarOverrides = cloudAvatars ? { ...localAvatars, ...cloudAvatars } : localAvatars;
+  saveAvatars(avatarOverrides);
 
   managerPicker.innerHTML = "";
   MANAGERS.forEach((name, i) => {
@@ -295,6 +324,7 @@ async function renderManagerPicker() {
 
     const isChamp = name === "Jake";
     const accent = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    const avatarContent = avatarOverrides[name] || name[0];
 
     const btn = document.createElement("button");
     btn.className = "manager-card" + (complete ? " has-picks" : "") + (partial ? " partial-picks" : "") + (isChamp ? " defending-champ" : "");
@@ -303,17 +333,88 @@ async function renderManagerPicker() {
       <span class="player-tag">P${i + 1}</span>
       <span class="badge-slot">${isChamp ? `<span class="champ-badge">🏆 Defending Champ</span>` : ""}</span>
       <span class="manager-avatar-ring">
-        <span class="manager-avatar">${avatarSvg(name, accent)}</span>
+        <span class="manager-avatar">${avatarContent}</span>
       </span>
       <span class="manager-name-plate">
         <span class="manager-name">${name}</span>
         <span class="manager-pick-status">${complete ? "✓ All in" : partial ? `${submittedCount}/${GAMES.length} in` : ""}</span>
       </span>
     `;
-    btn.addEventListener("click", () => selectManager(name));
+
+    // Long-press (550ms) opens the avatar editor instead of navigating.
+    let longPressTimer = null;
+    let longPressFired = false;
+    const cancelLongPress = () => clearTimeout(longPressTimer);
+    btn.addEventListener("pointerdown", () => {
+      longPressFired = false;
+      longPressTimer = setTimeout(() => {
+        longPressFired = true;
+        openAvatarEditor(name, accent);
+      }, 550);
+    });
+    btn.addEventListener("pointerup", cancelLongPress);
+    btn.addEventListener("pointerleave", cancelLongPress);
+    btn.addEventListener("pointercancel", cancelLongPress);
+    btn.addEventListener("click", (e) => {
+      if (longPressFired) {
+        e.preventDefault();
+        longPressFired = false;
+        return;
+      }
+      selectManager(name);
+    });
+
     managerPicker.appendChild(btn);
   });
 }
+
+// --- Avatar editor modal ------------------------------------------------
+
+let editingAvatarManager = null;
+
+function openAvatarEditor(name, accent) {
+  editingAvatarManager = name;
+  const current = avatarOverrides[name] || "";
+  avatarEditPreview.textContent = current || name[0];
+  avatarEditPreview.style.setProperty("--accent", accent);
+  avatarEmojiInput.value = current;
+  avatarModal.classList.remove("hidden");
+  avatarEmojiInput.focus();
+}
+
+function closeAvatarEditor() {
+  avatarModal.classList.add("hidden");
+  editingAvatarManager = null;
+}
+
+avatarModal.addEventListener("click", (e) => {
+  if (e.target === avatarModal) closeAvatarEditor();
+});
+
+avatarEmojiInput.addEventListener("input", () => {
+  avatarEditPreview.textContent = avatarEmojiInput.value.trim() || (editingAvatarManager ? editingAvatarManager[0] : "");
+});
+
+avatarSaveBtn.addEventListener("click", async () => {
+  if (!editingAvatarManager) return;
+  const val = avatarEmojiInput.value.trim();
+  if (val) {
+    avatarOverrides[editingAvatarManager] = val;
+    saveAvatars(avatarOverrides);
+    await pushAvatar(editingAvatarManager, val);
+  }
+  closeAvatarEditor();
+  renderManagerPicker();
+});
+
+avatarResetBtn.addEventListener("click", async () => {
+  if (!editingAvatarManager) return;
+  delete avatarOverrides[editingAvatarManager];
+  saveAvatars(avatarOverrides);
+  await resetAvatar(editingAvatarManager);
+  closeAvatarEditor();
+  renderManagerPicker();
+});
 
 async function selectManager(name) {
   currentManager = name;

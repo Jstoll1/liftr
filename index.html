@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609040424" />
+  <link rel="stylesheet" href="styles.css?v=202609040428" />
 </head>
 <body>
 
@@ -56,9 +56,24 @@
         <span class="brand-sub">2026 PICK'EM &mdash; SELECT YOUR NAME TO CONTINUE</span>
       </div>
       <div id="manager-picker" class="manager-picker"></div>
+      <span class="avatar-hint">Long-press your card to set an emoji avatar</span>
       <button id="rules-open-btn" class="link-btn rules-link" type="button">📜 How It Works</button>
     </div>
   </main>
+
+  <!-- AVATAR EDITOR MODAL -->
+  <div id="avatar-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <span class="modal-title">CHOOSE AVATAR</span>
+      <span class="modal-subtext">Tap the field below and use your keyboard's emoji picker. Applies for everyone, on every device.</span>
+      <span id="avatar-edit-preview" class="avatar-edit-preview"></span>
+      <input type="text" id="avatar-emoji-input" class="avatar-emoji-input" maxlength="8" placeholder="🧑‍🔬" />
+      <div class="modal-actions">
+        <button id="avatar-reset-btn" class="ghost-btn" type="button">Reset to Letter</button>
+        <button id="avatar-save-btn" class="primary-btn" type="button">Save</button>
+      </div>
+    </div>
+  </div>
 
   <!-- RULES MODAL -->
   <div id="rules-modal" class="modal-overlay hidden">
@@ -140,6 +155,6 @@
     </div>
   </main>
 
-  <script src="app.js?v=202609040424"></script>
+  <script src="app.js?v=202609040428"></script>
 </body>
 </html>
