@@ -188,9 +188,12 @@ async function renderManagerPicker() {
     const complete = submittedCount === GAMES.length && tiebreakerDone;
     const partial = !complete && (submittedCount > 0 || tiebreakerDone);
 
+    const isChamp = name === "Jake";
+
     const btn = document.createElement("button");
-    btn.className = "manager-card" + (complete ? " has-picks" : "") + (partial ? " partial-picks" : "");
+    btn.className = "manager-card" + (complete ? " has-picks" : "") + (partial ? " partial-picks" : "") + (isChamp ? " defending-champ" : "");
     btn.innerHTML = `
+      ${isChamp ? `<span class="champ-badge">🏆 Defending Champ</span>` : ""}
       <span class="manager-avatar" style="--accent:${AVATAR_COLORS[i % AVATAR_COLORS.length]}">${name[0]}</span>
       <span class="manager-name">${name}</span>
       <span class="manager-pick-status">${complete ? "✓ All in" : partial ? `${submittedCount}/${GAMES.length} in` : ""}</span>

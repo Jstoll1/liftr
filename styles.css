@@ -116,6 +116,20 @@ html, body {
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
+.manager-card.defending-champ {
+  border-color: var(--neon-yellow);
+  box-shadow: 0 0 14px rgba(255, 228, 94, 0.3);
+}
+
+.champ-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 6px var(--neon-yellow);
+  white-space: nowrap;
+}
+
 .manager-card:hover, .manager-card:focus-visible {
   transform: translateY(-2px);
   border-color: var(--neon-pink);
