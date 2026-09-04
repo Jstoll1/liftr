@@ -4,7 +4,9 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
-const APP_JS = path.join(ROOT, "app.js");
+// The Liftr workout app (and its exercise references) live in liftr-app/
+// now that the repo root serves the Brochiefs pick'em app instead.
+const APP_JS = path.join(ROOT, "liftr-app", "app.js");
 const IMAGES_DIR = path.join(ROOT, "images");
 const REPORTS_DIR = path.join(ROOT, "reports");
 const IMAGE_BODY_PARTS = ["chest", "back", "legs", "shoulders", "arms", "core"];

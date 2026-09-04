@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "app.js"
+      - "liftr-app/app.js"
       - "scripts/audit-workout-plans.js"
       - ".github/workflows/workout-plan-audit.yml"
 

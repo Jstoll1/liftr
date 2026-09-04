@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "app.js"
+      - "liftr-app/app.js"
       - "images/**"
       - "scripts/audit-exercise-images.js"
 

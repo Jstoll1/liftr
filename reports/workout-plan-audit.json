@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-01T22:47:07.947Z",
+  "generatedAt": "2026-09-04T03:30:40.975Z",
   "rows": [
     {
       "user": "jake",
@@ -15,6 +15,8 @@
         "Weighted Pull-Ups",
         "Incline Dumbbell Press",
         "Bent-Over Barbell Row",
+        "Dumbbell Bench Press",
+        "Pull-Up",
         "Finisher: Death-Rep Push-Ups"
       ],
       "roles": [
@@ -22,9 +24,13 @@
         "back",
         "chest",
         "back",
+        "chest",
+        "back",
         "finisher"
       ],
-      "failures": []
+      "failures": [
+        "expected 5 exercises, got 7"
+      ]
     },
     {
       "user": "jessica",
@@ -40,6 +46,8 @@
         "Lat Pulldown",
         "Incline Dumbbell Press",
         "Chest-Supported Row",
+        "Incline Push-Up",
+        "One-Arm Dumbbell Row",
         "Finisher: Burpee Pulse"
       ],
       "roles": [
@@ -47,9 +55,13 @@
         "back",
         "chest",
         "back",
+        "chest",
+        "back",
         "finisher"
       ],
-      "failures": []
+      "failures": [
+        "expected 5 exercises, got 7"
+      ]
     },
     {
       "user": "jake",

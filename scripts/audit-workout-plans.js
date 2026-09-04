@@ -5,7 +5,9 @@ const path = require("path");
 const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
-let source = fs.readFileSync(path.join(root, "app.js"), "utf8");
+// The Liftr workout app now lives in liftr-app/ — the repo root serves
+// the Brochiefs pick'em app instead.
+let source = fs.readFileSync(path.join(root, "liftr-app", "app.js"), "utf8");
 const initMarker = "  // ---------- init ----------";
 const initIndex = source.indexOf(initMarker);
 if (initIndex < 0) throw new Error("Could not locate Liftr init marker");

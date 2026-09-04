@@ -1,6 +1,6 @@
 # Exercise image audit
 
-Generated from `app.js` at 2026-09-01T22:47:08.052Z.
+Generated from `app.js` at 2026-09-04T03:30:54.757Z.
 
 - Distinct exercises: **119**
 - Ready images: **119**
