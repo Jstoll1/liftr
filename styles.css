@@ -141,42 +141,54 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 20px 8px 14px;
+  gap: 0;
+  padding: 22px 8px 0;
   background:
-    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent, var(--neon-purple)) 22%, transparent), transparent 70%),
-    var(--card-bg);
-  border: 2px solid var(--card-border);
-  border-radius: 10px;
+    linear-gradient(165deg,
+      color-mix(in srgb, var(--accent, var(--neon-purple)) 55%, var(--bg2)) 0%,
+      color-mix(in srgb, var(--accent, var(--neon-purple)) 18%, var(--bg2)) 45%,
+      var(--bg) 100%);
+  border: 3px solid var(--accent, var(--card-border));
+  border-radius: 6px;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   color: var(--text);
   font-family: 'Orbitron', sans-serif;
   font-weight: 700;
   cursor: pointer;
   overflow: hidden;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 4px 0 rgba(0, 0, 0, 0.5);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-/* Shimmering gradient edge, same technique as the game cards, tinted
-   to this player's accent color instead of the fixed neon trio. */
-.manager-card::before {
+/* Corner brackets — the "selection cursor" flashing in on hover/focus,
+   like locking onto a fighter on the roster screen. */
+.manager-card::after {
   content: "";
   position: absolute;
-  inset: 0;
-  padding: 2px;
-  border-radius: inherit;
-  background: conic-gradient(from 0deg, var(--accent, var(--neon-purple)), transparent 30%, transparent 70%, var(--accent, var(--neon-purple)));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
+  inset: -3px;
   opacity: 0;
-  animation: card-edge-shift 5s linear infinite;
-  transition: opacity 0.25s ease;
+  background:
+    linear-gradient(var(--neon-yellow), var(--neon-yellow)) top left / 16px 4px no-repeat,
+    linear-gradient(var(--neon-yellow), var(--neon-yellow)) top left / 4px 16px no-repeat,
+    linear-gradient(var(--neon-yellow), var(--neon-yellow)) top right / 16px 4px no-repeat,
+    linear-gradient(var(--neon-yellow), var(--neon-yellow)) top right / 4px 16px no-repeat,
+    linear-gradient(var(--neon-yellow), var(--neon-yellow)) bottom left / 16px 4px no-repeat,
+    linear-gradient(var(--neon-yellow), var(--neon-yellow)) bottom left / 4px 16px no-repeat,
+    linear-gradient(var(--neon-yellow), var(--neon-yellow)) bottom right / 16px 4px no-repeat,
+    linear-gradient(var(--neon-yellow), var(--neon-yellow)) bottom right / 4px 16px no-repeat;
+  filter: drop-shadow(0 0 5px var(--neon-yellow));
+  animation: bracket-flash 0.6s steps(2, end) infinite;
+  transition: opacity 0.1s ease;
   pointer-events: none;
 }
 
-.manager-card:hover::before,
-.manager-card:focus-visible::before {
-  opacity: 0.9;
+.manager-card:hover::after,
+.manager-card:focus-visible::after {
+  opacity: 1;
+}
+
+@keyframes bracket-flash {
+  50% { opacity: 0.4; }
 }
 
 .player-tag {
@@ -185,14 +197,15 @@ html, body {
   left: 8px;
   font-family: 'Press Start 2P', monospace;
   font-size: 8px;
-  color: var(--accent, var(--neon-purple));
-  text-shadow: 0 0 4px var(--accent, var(--neon-purple));
-  opacity: 0.85;
+  color: #0a0014;
+  background: var(--accent, var(--neon-purple));
+  padding: 2px 5px;
+  border-radius: 3px;
 }
 
 .manager-card.defending-champ {
   border-color: var(--neon-yellow);
-  box-shadow: 0 0 14px rgba(255, 228, 94, 0.3);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 4px 0 rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 228, 94, 0.4);
 }
 
 .champ-badge {
@@ -202,57 +215,62 @@ html, body {
   color: var(--neon-yellow);
   text-shadow: 0 0 6px var(--neon-yellow);
   white-space: nowrap;
+  margin-top: 4px;
 }
 
 .manager-card:hover, .manager-card:focus-visible {
-  transform: translateY(-3px) scale(1.02);
-  border-color: var(--accent, var(--neon-pink));
-  box-shadow: 0 0 20px color-mix(in srgb, var(--accent, var(--neon-pink)) 55%, transparent);
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3), 0 6px 0 rgba(0, 0, 0, 0.5), 0 0 22px color-mix(in srgb, var(--accent, var(--neon-pink)) 65%, transparent);
 }
 
 .manager-avatar-ring {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 2px dashed color-mix(in srgb, var(--accent, var(--neon-purple)) 55%, transparent);
-  transition: transform 0.2s ease;
-}
-
-.manager-card:hover .manager-avatar-ring {
-  transform: rotate(20deg);
+  width: 64px;
+  height: 64px;
+  margin-top: 4px;
 }
 
 .manager-avatar {
-  width: 44px;
-  height: 44px;
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Orbitron', sans-serif;
-  font-weight: 900;
-  font-size: 17px;
+  font-family: 'Press Start 2P', monospace;
+  font-weight: 400;
+  font-size: 24px;
   line-height: 1;
-  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03));
-  border: 2px solid var(--accent, var(--neon-purple));
-  color: var(--accent, var(--neon-purple));
-  text-shadow: 0 0 8px var(--accent, var(--neon-purple));
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent, var(--neon-purple)) 45%, transparent);
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent, var(--neon-purple)) 70%, white), var(--accent, var(--neon-purple)));
+  border: 3px solid #0a0014;
+  color: #0a0014;
+  box-shadow: 0 0 0 2px var(--accent, var(--neon-purple)), 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+.manager-name-plate {
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 4px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 2px solid color-mix(in srgb, var(--accent, var(--neon-purple)) 70%, transparent);
+  text-align: center;
 }
 
 .manager-name {
-  font-size: 12px;
-  letter-spacing: 0.5px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 .manager-pick-status {
+  display: block;
   font-size: 9px;
   letter-spacing: 0.5px;
   min-height: 11px;
   color: var(--text-dim);
+  margin-top: 2px;
 }
 
 .manager-card.has-picks .manager-pick-status {

@@ -272,8 +272,10 @@ async function renderManagerPicker() {
       <span class="manager-avatar-ring">
         <span class="manager-avatar">${name[0]}</span>
       </span>
-      <span class="manager-name">${name}</span>
-      <span class="manager-pick-status">${complete ? "✓ All in" : partial ? `${submittedCount}/${GAMES.length} in` : ""}</span>
+      <span class="manager-name-plate">
+        <span class="manager-name">${name}</span>
+        <span class="manager-pick-status">${complete ? "✓ All in" : partial ? `${submittedCount}/${GAMES.length} in` : ""}</span>
+      </span>
     `;
     btn.addEventListener("click", () => selectManager(name));
     managerPicker.appendChild(btn);
