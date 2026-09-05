@@ -149,6 +149,7 @@ html, body {
   padding: 6px 4px;
   cursor: pointer;
   color: var(--text-dim);
+  text-decoration: none;
   transition: color 0.15s ease, transform 0.15s ease;
 }
 

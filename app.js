@@ -229,6 +229,8 @@ const bottomNav = document.getElementById("bottom-nav");
 const navHomeBtn = document.getElementById("nav-home-btn");
 const navPicksBtn = document.getElementById("nav-picks-btn");
 const navScoreboardBtn = document.getElementById("nav-scoreboard-btn");
+const navHistoryBtn = document.getElementById("nav-history-btn");
+const historyScreen = document.getElementById("history-screen");
 const identityModal = document.getElementById("identity-modal");
 const identityPreview = document.getElementById("identity-preview");
 const identityText = document.getElementById("identity-text");
@@ -301,7 +303,8 @@ function goToPlayerSelect() {
 // Keeps the bottom tab bar's highlighted tab in sync, however the
 // screen got navigated to (top links, bottom nav, or the wordmark).
 function setActiveNav(target) {
-  [navHomeBtn, navPicksBtn, navScoreboardBtn].forEach((btn) => btn.classList.remove("active"));
+  [navHomeBtn, navPicksBtn, navScoreboardBtn, navHistoryBtn].forEach((btn) => btn.classList.remove("active"));
+  if (target === "history") navHistoryBtn.classList.add("active");
   if (target === "home") navHomeBtn.classList.add("active");
   if (target === "picks") navPicksBtn.classList.add("active");
   if (target === "scoreboard") navScoreboardBtn.classList.add("active");
@@ -313,6 +316,7 @@ function setActiveNav(target) {
 // different card asks for confirmation before switching.
 function goHome() {
   rememberScroll();
+  historyScreen.classList.add("hidden");
   picksScreen.classList.add("hidden");
   scoreboardScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
@@ -333,6 +337,7 @@ navPicksBtn.addEventListener("click", () => {
     return;
   }
   rememberScroll();
+  historyScreen.classList.add("hidden");
   scoreboardScreen.classList.add("hidden");
   loginScreen.classList.add("hidden");
   picksScreen.classList.remove("hidden");
@@ -340,6 +345,17 @@ navPicksBtn.addEventListener("click", () => {
   setActiveNav("picks");
   enterScreen("picks");
 });
+
+function showHistory() {
+  rememberScroll();
+  loginScreen.classList.add("hidden");
+  picksScreen.classList.add("hidden");
+  scoreboardScreen.classList.add("hidden");
+  historyScreen.classList.remove("hidden");
+  setActiveNav("history");
+  enterScreen("history");
+}
+navHistoryBtn.addEventListener("click", showHistory);
 
 navScoreboardBtn.addEventListener("click", () => {
   loginScreen.classList.add("hidden");
@@ -558,6 +574,7 @@ identityConfirmBtn.addEventListener("click", () => {
 
 async function selectManager(name) {
   rememberScroll();
+  historyScreen.classList.add("hidden");
   currentManager = name;
   saveMe(name);
   managerBadge.textContent = name.toUpperCase();
@@ -772,6 +789,8 @@ tiebreakerInput.addEventListener("input", () => {
 
 function showScoreboard() {
   rememberScroll();
+  historyScreen.classList.add("hidden");
+  loginScreen.classList.add("hidden");
   picksScreen.classList.add("hidden");
   scoreboardScreen.classList.remove("hidden");
   setActiveNav("scoreboard");
