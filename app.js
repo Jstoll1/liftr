@@ -256,19 +256,20 @@ function closeRules() {
 // Every screen opens at the top the first time. Coming back to a screen
 // you've already scrolled restores where you left it, so nobody lands at
 // the bottom of the scoreboard because they were deep in their picks.
+const appScroll = document.getElementById("app-scroll");
 const savedScroll = {};
 let activeScreenName = null;
 function rememberScroll() {
-  if (activeScreenName) savedScroll[activeScreenName] = window.scrollY;
+  if (activeScreenName) savedScroll[activeScreenName] = appScroll.scrollTop;
 }
 // Call rememberScroll() BEFORE hiding the current screen: once it's
 // hidden the page shrinks and the browser clamps scrollY to the top.
 function enterScreen(name) {
   activeScreenName = name;
   const y = savedScroll[name] ?? 0;
-  window.scrollTo(0, y);
+  appScroll.scrollTop = y;
   // async renders can grow the page after this tick; pin again once painted
-  requestAnimationFrame(() => window.scrollTo(0, savedScroll[name] ?? 0));
+  requestAnimationFrame(() => { appScroll.scrollTop = savedScroll[name] ?? 0; });
 }
 
 // Leaving the splash: if this device already knows who you are, skip the
@@ -577,9 +578,9 @@ async function selectManager(name) {
 // Re-render without yanking the page: capture scroll, redraw, restore.
 // Works for sync and async renderers.
 function withScrollPreserved(fn) {
-  const y = window.scrollY;
+  const y = appScroll.scrollTop;
   const result = fn();
-  const restore = () => window.scrollTo(0, y);
+  const restore = () => { appScroll.scrollTop = y; };
   if (result && typeof result.then === "function") result.then(restore);
   else restore();
   return result;

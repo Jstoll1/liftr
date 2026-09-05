@@ -20,7 +20,22 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Orbitron', system-ui, sans-serif;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* The one and only scroll container. Fixed to the viewport so iOS never
+   scrolls the document itself; the bottom nav (a sibling, outside this)
+   therefore stays pinned no matter what the page does. */
+.app-scroll {
+  position: fixed;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  z-index: 2;
 }
 
 .synth-grid {
@@ -53,8 +68,7 @@ html, body {
 .screen {
   position: relative;
   z-index: 2;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;

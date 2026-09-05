@@ -21,12 +21,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609050915" />
+  <link rel="stylesheet" href="styles.css?v=202609050930" />
 </head>
 <body>
 
   <div class="synth-grid" aria-hidden="true"></div>
   <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- APP SCROLLER: the body never scrolls; this container does. That keeps
+       the fixed bottom nav rock-steady on iOS, which otherwise lets fixed
+       elements drift during rubber-band scrolling and toolbar collapse. -->
+  <div id="app-scroll" class="app-scroll">
 
   <!-- WORDMARK HEADER: sits above every screen except the splash itself,
        tap to jump back to player select -->
@@ -171,6 +176,8 @@
     </div>
   </main>
 
+  </div><!-- /app-scroll -->
+
   <!-- BOTTOM NAV: matches the wordmark header, sits on every screen
        except the splash -->
   <nav id="bottom-nav" class="bottom-nav hidden">
@@ -188,6 +195,6 @@
     </button>
   </nav>
 
-  <script src="app.js?v=202609050915"></script>
+  <script src="app.js?v=202609050930"></script>
 </body>
 </html>
