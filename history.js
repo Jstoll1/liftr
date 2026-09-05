@@ -113,13 +113,15 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   const idle=()=>!input.value&&document.activeElement!==input&&!form.classList.contains('busy');
   function showFact(){
     if(!facts.length||!idle())return;
-    const f=facts[fi++%facts.length];currentAsk=f.ask;const text=f.fact+'  · tap to ask';let i=0;
-    clearInterval(typeTimer);ghost.textContent='';
-    typeTimer=setInterval(()=>{ghost.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(typeTimer)},18);
+    const f=facts[fi++%facts.length];currentAsk=f.ask;const text=f.fact;let i=0;
+    clearInterval(typeTimer);ghost.innerHTML='<span class="ghost-fact"></span>';const span=ghost.firstChild;
+    typeTimer=setInterval(()=>{span.textContent=text.slice(0,++i);if(i>=text.length){clearInterval(typeTimer);
+      const btn=document.createElement('button');btn.type='button';btn.className='ghost-ask';btn.textContent='ASK ▸';
+      btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();if(currentAsk&&idle()){input.value=currentAsk;sync();form.requestSubmit()}});
+      ghost.appendChild(btn)}},18);
   }
   function startAttract(){clearInterval(attractTimer);showFact();attractTimer=setInterval(showFact,7000)}
   function stopAttract(){clearInterval(attractTimer);clearInterval(typeTimer);attractTimer=null}
-  ghost.addEventListener('click',e=>{if(currentAsk&&idle()){e.stopPropagation();input.value=currentAsk;sync();form.requestSubmit()}});
   input.addEventListener('focus',stopAttract);
   input.addEventListener('blur',()=>{if(idle())startAttract()});
   if(facts.length)startAttract();

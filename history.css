@@ -272,8 +272,9 @@
 .archive-ask-cursor { display: inline-block; vertical-align: text-bottom; width: 10px; height: 20px; margin-left: 2px; background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: hint-blink 1s steps(1, end) infinite; }
 .archive-ask-line:focus-within .archive-ask-cursor { animation-duration: .6s; }
 .archive-ask.busy .archive-ask-cursor { animation: none; opacity: .3; }
-.archive-ask-ghost { pointer-events: auto; cursor: pointer; color: rgba(5,217,232,.45); text-shadow: none; margin-left: 6px; font-weight: 500; font-size: 14px; }
-.archive-ask-ghost:hover { color: rgba(5,217,232,.8); }
+.archive-ask-ghost { pointer-events: none; color: rgba(5,217,232,.45); text-shadow: none; margin-left: 6px; font-weight: 500; font-size: 14px; }
+.ghost-ask { pointer-events: auto; cursor: pointer; margin-left: 8px; padding: 2px 8px; border: 1px solid rgba(5,217,232,.6); border-radius: 6px; background: rgba(5,217,232,.12); color: var(--cyan); font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .04em; vertical-align: middle; text-shadow: 0 0 5px rgba(5,217,232,.5); }
+.ghost-ask:hover { background: rgba(5,217,232,.25); }
 .archive-ask.has-text .archive-ask-ghost { display: none; }
 .archive-ask-answer { margin-top: 10px; padding: 12px 14px; border: 1px solid rgba(255,255,255,.12); border-left: 3px solid var(--gold); border-radius: 8px; background: rgba(21,0,36,.7); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-weight: 500; font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
 .archive-ask-answer.error { border-left-color: var(--pink); color: var(--muted); }
