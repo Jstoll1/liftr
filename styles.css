@@ -1214,6 +1214,20 @@ html, body {
   animation: saved-pulse 0.9s ease-out;
 }
 
+.game-status.submitted.updated {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+}
+
+.game-card.just-saved .game-status.submitted.updated {
+  animation: updated-pulse 0.9s ease-out;
+}
+
+@keyframes updated-pulse {
+  0% { transform: scale(1.4); box-shadow: 0 0 16px var(--neon-cyan); }
+  100% { transform: scale(1); box-shadow: none; }
+}
+
 @keyframes saved-pulse {
   0% { transform: scale(1.4); box-shadow: 0 0 16px var(--neon-green); }
   100% { transform: scale(1); box-shadow: none; }

@@ -661,6 +661,8 @@ function matchupCardsHtml(game, draft) {
 // no safety — it only created a way to lose unsaved work on a refresh.
 // The card you just tapped gets a brief "SAVED ✓" pulse instead.
 let justSavedGameId = null;
+// "saved" for a first pick, "updated" when an existing pick was changed.
+let justSavedKind = "saved";
 
 function renderPicksScreen() {
   const state = getManagerState(currentManager);
@@ -683,14 +685,18 @@ function renderPicksScreen() {
     if (gameLocked) {
       statusLabel = "LOCKED";
       statusClass = "locked";
+    } else if (pick && justSavedGameId === game.id && justSavedKind === "updated") {
+      statusLabel = "UPDATED ✓";
+      statusClass = "submitted updated";
     } else if (pick) {
       statusLabel = "SAVED ✓";
       statusClass = "submitted";
     }
 
+    const noteVerb = justSavedGameId === game.id && justSavedKind === "updated" ? "Updated" : "Saved";
     const note = gameLocked
       ? pick ? `Final pick: ${pickLabel(game, pick)}` : "No pick made — locked"
-      : pick ? `✓ Saved: ${pickLabel(game, pick)}` : "Tap a button to pick — it saves instantly";
+      : pick ? `✓ ${noteVerb}: ${pickLabel(game, pick)}` : "Tap a button to pick — it saves instantly";
 
     card.innerHTML = `
       <div class="game-meta">
@@ -709,14 +715,20 @@ function renderPicksScreen() {
       btn.disabled = gameLocked;
       btn.addEventListener("click", () => {
         const s = getManagerState(currentManager);
+        const prev = s.picks[game.id];
+        const changed = !!prev && (prev.team !== team || prev.mode !== mode);
+        if (prev && !changed) return; // same button again: nothing to save
         s.picks[game.id] = { team, mode };
         setManagerState(currentManager, s);
         pushManagerState(currentManager, s);
         justSavedGameId = game.id;
+        justSavedKind = changed ? "updated" : "saved";
         withScrollPreserved(renderPicksScreen);
         setTimeout(() => {
+          if (justSavedGameId !== game.id) return;
           justSavedGameId = null;
-        }, 1200);
+          withScrollPreserved(renderPicksScreen);
+        }, 2500);
       });
     });
 
