@@ -1089,7 +1089,7 @@ function renderLiveScores(live, cloudPicks) {
 
 function renderScoreboardTable(cloudPicks, results) {
   const headCells = GAMES.map((g) => `<th>G${g.id}</th>`).join("");
-  let html = `<thead><tr><th class="manager-col">Team</th>${headCells}<th>Tiebreak</th><th>PTS</th></tr></thead><tbody>`;
+  let html = `<thead><tr><th class="manager-col">Team</th>${headCells}<th>TB</th><th>PTS</th></tr></thead><tbody>`;
 
   MANAGERS.forEach((name) => {
     const state = cloudPicks[name] || { picks: {}, tiebreaker: "" };

@@ -1167,12 +1167,12 @@ html, body {
   border-collapse: collapse;
   width: 100%;
   font-size: 11px;
-  min-width: 640px;
+  min-width: 470px;
 }
 
 .scoreboard-table th,
 .scoreboard-table td {
-  padding: 8px 10px;
+  padding: 6px 3px;
   text-align: center;
   border-bottom: 1px solid var(--card-border);
   white-space: nowrap;
@@ -1181,20 +1181,32 @@ html, body {
 .scoreboard-table th {
   background: rgba(193, 60, 255, 0.12);
   color: var(--neon-cyan);
-  font-size: 10px;
-  letter-spacing: 0.5px;
+  font-size: 9px;
+  letter-spacing: 0.3px;
   position: sticky;
   top: 0;
 }
 
+/* Name column stays put while the games scroll sideways */
+.scoreboard-table th.manager-col,
 .scoreboard-table td.manager-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
   text-align: left;
   font-weight: 700;
+  padding-left: 8px;
+  background: #140026;
+  box-shadow: 2px 0 0 rgba(193, 60, 255, 0.25);
 }
+.scoreboard-table th.manager-col { z-index: 2; background: #1c0733; }
+.scoreboard-table tr.is-me td.manager-col { background: #0f1a2a; }
+
+.scoreboard-table .ranking-lock { display: block; font-size: 8px; margin-top: 1px; }
 
 .pick-cell-logo {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
   vertical-align: middle;
   display: block;
