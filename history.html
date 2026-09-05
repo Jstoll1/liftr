@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>BroChiefs League Archive</title>
+  <meta name="theme-color" content="#07060d" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="history.css?v=20260905" />
+</head>
+<body>
+  <header class="archive-header">
+    <a class="archive-logo" href="index.html" aria-label="Back to BroChiefs">
+      <img src="icons/wordmark.png" alt="BroChiefs Football" />
+    </a>
+    <span class="archive-header-meta">Official League Archive · 2014–2025</span>
+  </header>
+
+  <main class="archive-main">
+    <section class="archive-hero" id="top">
+      <div>
+        <div class="hero-content">
+          <span class="eyebrow">BroChiefs Football League · Official Record</span>
+          <h1>League History</h1>
+          <span class="hero-years">2014–2025 · 12 completed seasons</span>
+          <p class="hero-copy">Twelve seasons. Twelve champions crowned. Every title, every finish and every name preserved.</p>
+        </div>
+
+        <div class="hero-stat-grid" aria-label="League history summary">
+          <div class="hero-stat"><strong>12</strong><span>Completed seasons</span></div>
+          <div class="hero-stat"><strong>10</strong><span>Active franchises</span></div>
+          <div class="hero-stat"><strong>90</strong><span>Most career wins · Dewitt</span></div>
+          <div class="hero-stat"><strong>3</strong><span>Most championships · Dewitt</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="archive-section" id="lineage">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Championship lineage</span><h2>The trophy, year by year.</h2><p>Every completed season. One champion. Repeat winners start to show up fast.</p></div></div>
+      <div class="lineage-wrap"><div id="lineage-track" class="lineage-track"></div></div>
+    </section>
+
+    <section class="archive-section" id="record-book">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Active franchises only</span><h2>The Record Book</h2><p>Regular-season results from 2014 through 2025. Postseason finish is tracked separately through titles, finals and podiums.</p></div></div>
+      <div class="ledger-controls" aria-label="Sort record book"><button class="active" type="button" data-sort="titles">Titles</button><button type="button" data-sort="wins">Wins</button><button type="button" data-sort="pct">Win %</button><button type="button" data-sort="podiums">Podiums</button></div>
+      <div class="table-shell"><table class="ledger-table"><thead><tr><th>RK</th><th>Owner</th><th>W-L</th><th>Win %</th><th>Titles</th><th>Finals</th><th>Podiums</th></tr></thead><tbody id="ledger-body"></tbody></table></div>
+    </section>
+
+    <section class="archive-section" id="franchises">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Active franchise resumes</span><h2>Twelve years on one card.</h2><p>Each owner stays the historical entity. Team names change. The record follows the owner.</p></div></div>
+      <div id="franchise-grid" class="franchise-grid"></div>
+    </section>
+
+    <section class="archive-section" id="seasons">
+      <div class="section-heading-row">
+        <div class="section-heading"><span class="eyebrow">Season archive</span><h2>The league, one year at a time.</h2><p>Open any season for the podium, the full final standings, the regular-season record and a short note from the record.</p></div>
+        <button id="expand-all" class="section-action" type="button">Expand all seasons</button>
+      </div>
+      <div id="history-eras"></div>
+    </section>
+
+    <section class="archive-section" id="records">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">League records</span><h2>The numbers that stayed.</h2><p>Some records show dominance. Some show persistence. The archive does not choose favorites.</p></div></div>
+      <div class="records-grid">
+        <article class="record-card featured"><span>Most championships</span><strong>3</strong><small>Dewitt · 2014, 2018, 2020</small></article>
+        <article class="record-card"><span>Most career wins</span><strong>90</strong><small>Dewitt · 90–59</small></article>
+        <article class="record-card"><span>Best regular season</span><strong>11–2</strong><small>Jake · 2021 · Champion</small></article>
+        <article class="record-card"><span>Most podiums</span><strong>7</strong><small>Dewitt · 3 titles, 2 seconds, 2 thirds</small></article>
+        <article class="record-card"><span>Most runner-up finishes</span><strong>3</strong><small>Jordan · 2015, 2020, 2021</small></article>
+        <article class="record-card"><span>Most third-place finishes</span><strong>3</strong><small>Andrew · 2015, 2018, 2019</small></article>
+        <article class="record-card"><span>Best season without a title</span><strong>10–2</strong><small>Nissan · 2018 · Runner-up</small></article>
+        <article class="record-card"><span>Raw points record</span><strong>1,796.58</strong><small>Jordan · 2022 · 138.2 PF/G</small></article>
+      </div>
+    </section>
+
+    <section class="archive-section" id="names">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Archive editorial</span><h2>Top 10 Team Names</h2><p>The data can prove wins. It cannot prove taste. This ranking is the exception.</p></div></div>
+      <div id="name-ranking" class="name-ranking"></div>
+    </section>
+
+    <section class="memoriam-section" id="memoriam">
+      <div class="memoriam-heading"><span class="eyebrow">Former league members</span><h2>In Memoriam</h2><p>Gone from the BroChiefs. Still in the record.</p></div>
+      <div id="memoriam-grid" class="memoriam-grid"></div>
+    </section>
+
+    <footer class="methodology"><strong>Record note</strong><p>Regular-season records, points for and points against come from ESPN season standings. Final standing, championship, runner-up and third-place finish come from ESPN league history. The active Record Book excludes former members. Former members remain part of season history and league-wide records. Raw scoring totals are not adjusted for scoring changes across eras.</p></footer>
+  </main>
+
+  <nav class="archive-bottom-nav" aria-label="Archive navigation"><a href="index.html">Home</a><a href="#record-book">Records</a><a href="#seasons">Seasons</a><a class="active" href="#top">League</a></nav>
+  <script src="history.js?v=20260905"></script>
+</body>
+</html>
