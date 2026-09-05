@@ -152,17 +152,77 @@ async function fetchAllPicks() {
 // scoreboard server-side). Returns a map of gameId -> live status, or {}
 // if the Worker is unreachable — the scoreboard just won't show live
 // data in that case, nothing breaks.
-async function fetchLiveScores() {
-  if (!WORKER_URL) return {};
-  try {
-    const res = await fetch(`${WORKER_URL}/live?t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) return {};
-    const data = await res.json();
-    const byId = {};
-    (data.games || []).forEach((g) => {
-      if (g && g.found) byId[g.id] = g;
+// ESPN's public scoreboard allows browser requests but blocks Cloudflare's
+// datacenter IPs, so the phone asks ESPN directly and the Worker route is
+// only a fallback. Matching by ESPN team id, same as the Worker did.
+const ESPN_SCOREBOARD_DATES = ["20260905", "20260906"];
+function parseEspnEvents(events) {
+  const byId = {};
+  GAMES.forEach((game) => {
+    const event = events.find((e) => {
+      const ids = ((e?.competitions?.[0]?.competitors) || []).map((c) => Number(c?.team?.id));
+      return ids.includes(game.awayId) && ids.includes(game.homeId);
     });
-    return byId;
+    if (!event) return;
+    const comp = event.competitions[0];
+    const away = comp.competitors.find((c) => c.homeAway === "away");
+    const home = comp.competitors.find((c) => c.homeAway === "home");
+    const statusType = comp.status?.type || event.status?.type || {};
+    const prob = comp.situation?.lastPlay?.probability;
+    const winProb = prob && Number.isFinite(prob.homeWinPercentage) && Number.isFinite(prob.awayWinPercentage)
+      ? { home: prob.homeWinPercentage * 100, away: prob.awayWinPercentage * 100 }
+      : null;
+    byId[game.id] = {
+      id: game.id,
+      found: true,
+      state: statusType.state || "pre",
+      completed: !!statusType.completed,
+      detail: statusType.shortDetail || statusType.detail || "",
+      period: comp.status?.period ?? null,
+      clock: comp.status?.displayClock ?? null,
+      awayScore: away?.score != null ? Number(away.score) : null,
+      homeScore: home?.score != null ? Number(home.score) : null,
+      winProb,
+    };
+  });
+  return byId;
+}
+
+async function fetchLiveFromEspn() {
+  const events = [];
+  for (const date of ESPN_SCOREBOARD_DATES) {
+    const res = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300&t=${Date.now()}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) continue;
+    const data = await res.json();
+    if (Array.isArray(data?.events)) events.push(...data.events);
+  }
+  return parseEspnEvents(events);
+}
+
+async function fetchLiveFromWorker() {
+  if (!WORKER_URL) return {};
+  const res = await fetch(`${WORKER_URL}/live?t=${Date.now()}`, { cache: "no-store" });
+  if (!res.ok) return {};
+  const data = await res.json();
+  const byId = {};
+  (data.games || []).forEach((g) => {
+    if (g && g.found) byId[g.id] = g;
+  });
+  return byId;
+}
+
+async function fetchLiveScores() {
+  try {
+    const direct = await fetchLiveFromEspn();
+    if (Object.keys(direct).length) return direct;
+  } catch (err) {
+    console.warn("ESPN direct fetch failed, falling back to Worker", err);
+  }
+  try {
+    return await fetchLiveFromWorker();
   } catch {
     return {};
   }
