@@ -598,7 +598,7 @@ async function handleLive(corsHeaders) {
     for (const date of LIVE_DATES) {
       try {
         const res = await fetch(
-          `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&limit=300`
+          `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300`
         );
         if (!res.ok) continue;
         const data = await res.json();
