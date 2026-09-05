@@ -1936,3 +1936,13 @@ html, body {
 .bug-prob-strip span { display: block; height: 100%; }
 .bug-prob-strip .away { background: var(--neon-cyan); }
 .bug-prob-strip .home { background: var(--neon-pink); }
+
+/* v2.1: pick type on its own line, chips flow full width beneath */
+.bug-pick-group { display: flex; flex-direction: column; gap: 4px; }
+.bug-pick-group + .bug-pick-group { margin-top: 4px; }
+.bug-pick-group.none { font-size: 9px; color: var(--text-dim); opacity: .6; }
+.bug-pick-tag { align-self: flex-start; margin-top: 0; }
+.bug-side-head { padding-bottom: 3px; }
+.bug-side + .bug-side { margin-top: 10px; }
+.pick-chip { font-size: 9px; padding: 2px 6px 2px 2px; }
+.pick-chip-av { width: 13px; height: 13px; font-size: 7px; }

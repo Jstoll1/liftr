@@ -1047,12 +1047,12 @@ function bugSideDetail(cloudPicks, game, team, short) {
   const ats = pickersFor(cloudPicks, game.id, team, "ATS");
   const su = pickersFor(cloudPicks, game.id, team, "SU");
   const rows = [];
-  if (ats.length) rows.push(`<div class="bug-pick-row"><span class="bug-pick-tag ats">ATS</span><div class="pick-chips">${nameChips(ats)}</div></div>`);
-  if (su.length) rows.push(`<div class="bug-pick-row"><span class="bug-pick-tag su">SU</span><div class="pick-chips">${nameChips(su)}</div></div>`);
+  if (ats.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tag ats">SPREAD ${spreadTxt}</span><div class="pick-chips">${nameChips(ats)}</div></div>`);
+  if (su.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tag su">STRAIGHT UP</span><div class="pick-chips">${nameChips(su)}</div></div>`);
   return `
     <div class="bug-side">
-      <div class="bug-side-head"><span>${short}</span><span class="bug-side-line ${isFav ? "fav" : "dog"}">${spreadTxt}</span><span class="bug-side-count">${ats.length + su.length}</span></div>
-      ${rows.length ? rows.join("") : '<div class="bug-pick-row none">nobody</div>'}
+      <div class="bug-side-head"><span>${short}</span><span class="bug-side-count">${ats.length + su.length}</span></div>
+      ${rows.length ? rows.join("") : '<div class="bug-pick-group none">nobody</div>'}
     </div>
   `;
 }
