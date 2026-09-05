@@ -1227,9 +1227,9 @@ async function handleOpening(body, env, corsHeaders) {
 // POST { question } -> { answer }. The model only sees the archive dataset
 // and is instructed to answer nothing else; off-topic questions get a fixed
 // refusal line. Light per-IP rate limit in KV so the key can't be farmed.
-const HISTORY_SYSTEM = (slice) => `Today's date is ${new Date().toISOString().slice(0, 10)}. The most recent completed season in the archive is 2025, so "last year", "last season" and "most recent" mean the 2025 season, and "this year" means the 2026 season which has not been played yet.
+const HISTORY_SYSTEM = (slice, asker) => `Today's date is ${new Date().toISOString().slice(0, 10)}. The most recent completed season in the archive is 2025, so "last year", "last season" and "most recent" mean the 2025 season, and "this year" means the 2026 season which has not been played yet.
 
-You are the BroChiefs Football League archivist. You answer questions about the BroChiefs fantasy football league using the JSON dataset below. Rules:
+${asker ? `The person asking is ${asker}, an owner in the league. "I", "me", "my" and "mine" in the question refer to ${asker}. ` : ""}You are the BroChiefs Football League archivist. You answer questions about the BroChiefs fantasy football league using the JSON dataset below. Rules:
 1. League history means anything in the dataset: the ten active owners, the former members (Marty Griffin, Ryan Hacker, Tyler Cerone, Patrick Williams), every season from 2014 to 2025, standings, records, points, titles, podiums, eras and team names. Questions like "when was Marty's last season", "who did Ryan finish above in 2017" or "what was Jake's team name in 2018" are league history and must be answered from the data. When in doubt, treat the question as league history and answer it.
 2. Only refuse when the question is clearly unrelated to this league (weather, news, the NFL or college football itself, other leagues, coding, personal advice). For those reply exactly: "The archive only covers BroChiefs league history. Ask about a season, an owner, a record or a team name."
 3. Never invent facts. Counting questions (how many times, who has the most finishes in the bottom three, top three, last place) must be answered from the precomputed fields: topThreeFinishes and topThreeYears, bottomThreeFinishes and bottomThreeYears, lastPlaceFinishes and lastPlaceYears, or the leagueRecords lists mostBottomThreeFinishes and mostTopThreeFinishes; for any other finish-based count, tally the owner's finishesByYear string (year:finish) or seasonLines and show the years you counted. Never estimate a count. The dataset also includes a matchups section built from the ESPN league schedule: headToHead[ownerA][ownerB] with regular season and playoff records, championship meetings and the last meeting; ownerMatchupStats per owner (regular season and playoff records, championship game record and list, close-game records in games decided by under 5 and under 10, wins and losses by 50 or more, an all-play record and a luck number where negative means unlucky and positive means the schedule helped, average weekly points, highest and lowest week, weeks as league top or lowest scorer, longest win streak, 100 and 150 point weeks, bench points total and per week, biggest win, worst loss); leagueMatchupRecords (highest and lowest weekly scores, biggest blowouts, closest games, highest score in a loss, lowest score in a win, every championship game, most bench points in a season, most weeks as top scorer, longest win streaks, luckiest and unluckiest owners, best close-game records, most played pairs, and a notAvailable line listing what the archive cannot answer, which you should quote when a question needs it); and everyGameByYear listing each game as "W<week> winner points d. loser points". Use headToHead for any "record against" question. The dataset includes careerTotals per owner (wins, losses, win percentage, total and per-game points for and against, titles, finals, podiums, last-place finishes, best and worst seasons, team names by year) as well as every season's standings, so use those numbers directly and do arithmetic (sums, averages, differences, rankings across owners or seasons) whenever a question calls for it. Only say the archive does not record something when none of these tables can produce the answer. The archive has no player-level, draft, injury or transaction data. Owner first names in questions match the owner field in the data; Marty means Marty Griffin, Ryan means Ryan Hacker, Cerone means Tyler Cerone, Williams means Patrick Williams.
@@ -1262,11 +1262,13 @@ async function handleHistoryAsk(request, env, corsHeaders) {
   try { body = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
   const question = String(body?.question || "").trim().slice(0, 300);
   if (question.length < 3) return json({ error: "Ask a question" }, 400, corsHeaders);
+  // Who is asking: the manager this device chose on the pick'em, if any.
+  const asker = HISTORY.owners.includes(body?.asker) ? body.asker : null;
 
   // Obvious prompt-injection phrasing gets the refusal line without a model call.
   const REFUSAL = "The archive only covers BroChiefs league history. Ask about a season, an owner, a record or a team name.";
   if (/ignore (all |the |any )?(previous|prior|above)|system prompt|your instructions|act as|pretend (you|to be)|jailbreak|developer mode|reveal (the|your) prompt/i.test(question)) {
-    await logArchive(env, question, REFUSAL, "blocked");
+    await logArchive(env, question, REFUSAL, "blocked", asker);
     return json({ answer: REFUSAL }, 200, corsHeaders);
   }
 
@@ -1287,7 +1289,7 @@ async function handleHistoryAsk(request, env, corsHeaders) {
         max_tokens: 420,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: HISTORY_SYSTEM(selectContext(question)) },
+          { role: "system", content: HISTORY_SYSTEM(selectContext(question, asker), asker) },
           { role: "user", content: question },
         ],
       }),
@@ -1311,7 +1313,7 @@ async function handleHistoryAsk(request, env, corsHeaders) {
         year: Number.isInteger(r.year) && r.year >= 2014 && r.year <= 2025 ? r.year : null,
       }));
     const followUps = (Array.isArray(parsed?.followUps) ? parsed.followUps : []).slice(0, 3).map((s) => String(s).slice(0, 80)).filter(Boolean);
-    await logArchive(env, question, answer, "ok");
+    await logArchive(env, question, answer, "ok", asker);
     return json({ answer, receipts, followUps }, 200, corsHeaders);
   } catch (err) {
     console.error("history-ask failed", err);
@@ -1321,10 +1323,10 @@ async function handleHistoryAsk(request, env, corsHeaders) {
 
 // Keep a week of Q&A in KV so bad refusals and jailbreak attempts can be
 // reviewed. GET /history-log?key=<ARCHIVE_LOG_KEY> lists them, newest first.
-async function logArchive(env, question, answer, kind) {
+async function logArchive(env, question, answer, kind, asker) {
   try {
     const ts = Date.now();
-    await env.LIFTR_KV.put(`hist-log:${String(9999999999999 - ts)}`, JSON.stringify({ ts, kind, question, answer }), { expirationTtl: 7 * 24 * 3600 });
+    await env.LIFTR_KV.put(`hist-log:${String(9999999999999 - ts)}`, JSON.stringify({ ts, kind, question, answer, asker: asker || null }), { expirationTtl: 7 * 24 * 3600 });
   } catch (err) {
     console.error("archive log failed", err);
   }
@@ -1340,7 +1342,7 @@ async function handleHistoryLog(request, env, corsHeaders, url) {
 <style>body{font:14px/1.5 system-ui;background:#0a0014;color:#f4f0ff;padding:16px;max-width:760px;margin:0 auto}
 .r{border:1px solid #3a2a50;border-radius:8px;padding:10px 12px;margin:0 0 10px}.q{color:#05d9e8;font-weight:700}.a{margin-top:4px}
 .m{color:#9a8bb8;font-size:12px}.blocked .q{color:#ff2079}</style>
-<h2>Archive log · ${rows.length} of last 7 days</h2>` + rows.filter(Boolean).map((r) => `<div class="r ${r.kind}"><div class="m">${new Date(r.ts).toLocaleString("en-US", { timeZone: "America/New_York" })} · ${r.kind}</div><div class="q">${escapeHtml(r.question)}</div><div class="a">${escapeHtml(r.answer)}</div></div>`).join("");
+<h2>Archive log · ${rows.length} of last 7 days</h2>` + rows.filter(Boolean).map((r) => `<div class="r ${r.kind}"><div class="m">${new Date(r.ts).toLocaleString("en-US", { timeZone: "America/New_York" })} · ${r.kind}${r.asker ? ` · <b style="color:#ffe45e">${escapeHtml(r.asker)}</b>` : " · unknown"}</div><div class="q">${escapeHtml(r.question)}</div><div class="a">${escapeHtml(r.answer)}</div></div>`).join("");
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders } });
 }
 
@@ -1374,9 +1376,10 @@ const NAME_WORDS = /\b(team name|team names|named|call(ed)? (his|their|the) team
 const ERA_WORDS = /\b(era|eras|founding|old guard|open era)/i;
 const FORMER_WORDS = /\b(former|left the league|quit|gone|memoriam|used to|old members?)/i;
 
-function selectContext(question) {
+function selectContext(question, asker) {
   const q = ` ${question.toLowerCase()} `;
   const owners = new Set();
+  if (asker && /\b(i|me|my|mine|myself)\b/.test(q)) owners.add(asker);
   for (const [owner, aliases] of Object.entries(OWNER_ALIASES)) {
     if (aliases.some((a) => q.includes(a))) owners.add(owner);
   }

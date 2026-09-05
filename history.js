@@ -142,7 +142,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     if(!worker){typeOut('The archive is offline right now.','error');return}
     form.classList.add('busy');clearExtras();typeOut('SEARCHING THE ARCHIVE…');
     try{
-      const res=await fetch(worker+'/history-ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+      const res=await fetch(worker+'/history-ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,asker:(()=>{try{return localStorage.getItem('brochiefs_me_v1')||null}catch{return null}})()})});
       const data=await res.json().catch(()=>({}));
       if(!res.ok||!data.answer){typeOut(data.error||'The archive is not answering right now.','error')}
       else{typeOut(data.answer);setTimeout(()=>{renderReceipts(data.receipts);renderFollowUps(data.followUps)},Math.min(data.answer.length*12,2400))}
