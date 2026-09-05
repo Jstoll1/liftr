@@ -986,7 +986,7 @@ function renderLiveScores(live, cloudPicks) {
   const title = document.getElementById("scoreboard-title");
   if (title) {
     title.innerHTML = liveCount > 0
-      ? `📡 <span class="live-dot"></span> ${liveCount} LIVE`
+      ? `📡 SCOREBOARD <span class="live-dot"></span> ${liveCount} LIVE`
       : "📡 LIVE SCOREBOARD";
   }
 
