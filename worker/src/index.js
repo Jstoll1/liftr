@@ -1284,8 +1284,11 @@ async function handleHistoryAsk(request, env, corsHeaders) {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
-        model: env.OPENAI_MODEL || "gpt-4o-mini",
-        temperature: 0.3,
+        // The archive uses the stronger model: ranking and counting across
+        // owners is where the mini model slipped. OPENAI_MODEL_ARCHIVE can
+        // override; otherwise reuse OPENAI_MODEL_PLAN (gpt-4o).
+        model: env.OPENAI_MODEL_ARCHIVE || env.OPENAI_MODEL_PLAN || "gpt-4o",
+        temperature: 0.2,
         max_tokens: 420,
         response_format: { type: "json_object" },
         messages: [
