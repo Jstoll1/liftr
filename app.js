@@ -167,7 +167,14 @@ function parseEspnEvents(events) {
     const comp = event.competitions[0];
     const away = comp.competitors.find((c) => c.homeAway === "away");
     const home = comp.competitors.find((c) => c.homeAway === "home");
-    const statusType = comp.status?.type || event.status?.type || {};
+    // ESPN carries status on both the event and the competition and they
+    // do not always flip together at the final, so read both and treat any
+    // "final" signal as final.
+    const st1 = comp.status?.type || {};
+    const st2 = event.status?.type || {};
+    const isFinal = (t) => !!t.completed || t.state === "post" || /^STATUS_FINAL/.test(t.name || "") || /^final/i.test(t.shortDetail || t.detail || t.description || "");
+    const finalNow = isFinal(st1) || isFinal(st2);
+    const statusType = finalNow ? { ...st2, ...st1, completed: true, state: "post", shortDetail: (st1.shortDetail && /final/i.test(st1.shortDetail)) ? st1.shortDetail : (st2.shortDetail && /final/i.test(st2.shortDetail)) ? st2.shortDetail : "Final" } : (Object.keys(st1).length ? st1 : st2);
     const prob = comp.situation?.lastPlay?.probability;
     const winProb = prob && Number.isFinite(prob.homeWinPercentage) && Number.isFinite(prob.awayWinPercentage)
       ? { home: prob.homeWinPercentage * 100, away: prob.awayWinPercentage * 100 }
