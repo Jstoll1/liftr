@@ -1029,15 +1029,21 @@ function namesListHtml(names) {
   return names.map((n) => `<span class="bug-name-line${n === currentManager ? " me" : ""}">${n}</span>`).join("");
 }
 
-function bugSideDetail(cloudPicks, game, team) {
+function namesInline(names) {
+  if (names.length === 0) return `<span class="bug-names none">&mdash;</span>`;
+  return `<span class="bug-names">${names.map((n) => `<span class="bug-name-line${n === currentManager ? " me" : ""}">${n}</span>`).join('<span class="bug-sep">, </span>')}</span>`;
+}
+
+// Stacked breakdown: a short team header, then one line per pick type with
+// the names run together, so the bug grows downward and stays in its cell.
+function bugSideDetail(cloudPicks, game, team, short) {
   const isFav = team === game.favorite;
   const spreadTxt = isFav ? `-${game.spread}` : `+${game.spread}`;
   return `
-    <div class="bug-col">
-      <span class="bug-col-title">Spread <em>${spreadTxt}</em></span>
-      ${namesListHtml(pickersFor(cloudPicks, game.id, team, "ATS"))}
-      <span class="bug-col-title">Straight Up</span>
-      ${namesListHtml(pickersFor(cloudPicks, game.id, team, "SU"))}
+    <div class="bug-side">
+      <span class="bug-side-head">${short}</span>
+      <div class="bug-pick-line"><span class="bug-pick-label">ATS <em>${spreadTxt}</em></span>${namesInline(pickersFor(cloudPicks, game.id, team, "ATS"))}</div>
+      <div class="bug-pick-line"><span class="bug-pick-label">SU</span>${namesInline(pickersFor(cloudPicks, game.id, team, "SU"))}</div>
     </div>
   `;
 }
@@ -1099,10 +1105,8 @@ function renderLiveScores(live, cloudPicks) {
 
       const detail = !expanded ? "" : locked
         ? `<div class="bug-detail">
-             <div class="bug-cols">
-               <div class="bug-col-head">${game.awayShort}</div><div class="bug-col-head">${game.homeShort}</div>
-               ${bugSideDetail(cloudPicks, game, game.away)}${bugSideDetail(cloudPicks, game, game.home)}
-             </div>
+             ${bugSideDetail(cloudPicks, game, game.away, game.awayShort)}
+             ${bugSideDetail(cloudPicks, game, game.home, game.homeShort)}
              ${winProbHtml}
            </div>`
         : `<div class="bug-detail"><span class="bug-hidden-note">🔒 Picks reveal at kickoff (${game.kickoffLabel})</span></div>`;
@@ -1114,6 +1118,7 @@ function renderLiveScores(live, cloudPicks) {
           <div class="bug-head">
             <span class="bug-gnum">G${game.id}</span>
             <span class="bug-status">${isLive ? '<span class="live-dot"></span>' : ""}${statusText}</span>
+            ${locked && !expanded ? `<span class="bug-counts">${pickersFor(cloudPicks, game.id, game.away, "ATS").length + pickersFor(cloudPicks, game.id, game.away, "SU").length}·${pickersFor(cloudPicks, game.id, game.home, "ATS").length + pickersFor(cloudPicks, game.id, game.home, "SU").length}</span>` : ""}
             <span class="bug-caret">${expanded ? "▴" : "▾"}</span>
           </div>
           ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop)}
