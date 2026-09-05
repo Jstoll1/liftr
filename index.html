@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609051800" />
+  <link rel="stylesheet" href="styles.css?v=202609051900" />
   <link rel="stylesheet" href="history.css?v=202609051620" />
 </head>
 <body>
@@ -37,6 +37,7 @@
   <!-- WORDMARK HEADER: sits above every screen except the splash itself,
        tap to jump back to player select -->
   <header id="home-header" class="home-header hidden">
+    <button id="me-pill" class="me-pill hidden" type="button" aria-label="Who you are"></button>
     <button id="home-logo-btn" class="home-logo-btn" type="button" aria-label="Home">
       <img class="home-logo-img" src="icons/wordmark.png" alt="Brochiefs Football" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'home-logo-fallback',textContent:'BROCHIEFS'}))" />
     </button>
@@ -294,7 +295,7 @@
     </button>
   </nav>
 
-  <script src="app.js?v=202609051820"></script>
+  <script src="app.js?v=202609051900"></script>
   <script src="attract-facts.js?v=202609051620"></script>
   <script src="history.js?v=202609051810"></script>
 </body>

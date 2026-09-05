@@ -1846,3 +1846,40 @@ html, body {
   background: var(--accent, var(--neon-purple)); color: #0a0014; font-size: 13px; flex: none;
 }
 .claim-skip { margin-top: 10px; font-size: 10px; opacity: 0.7; }
+
+/* Identity pill: who this device is, on every screen, top right */
+.me-pill {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 4px;
+  border: 1px solid rgba(5, 217, 232, 0.55);
+  border-radius: 999px;
+  background: rgba(5, 217, 232, 0.08);
+  color: var(--neon-cyan);
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  z-index: 4;
+}
+.me-pill.hidden { display: none; }
+.me-pill-avatar {
+  width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--accent, var(--neon-purple)); color: #0a0014; font-size: 11px; font-weight: 700; flex: none;
+}
+@media (max-width: 360px) { .me-pill-name { display: none; } .me-pill { padding-right: 4px; } }
+
+/* "You" markers: your name in pick lists, rankings and the picks table */
+.bug-name-line.me { color: var(--neon-cyan); font-weight: 700; text-shadow: 0 0 5px rgba(5, 217, 232, 0.6); }
+.bug-name-line.me::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 5px var(--neon-cyan); margin-right: 5px; vertical-align: middle; }
+.ranking-row.is-me { border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(5, 217, 232, 0.25); }
+.ranking-row.is-me .ranking-name { color: var(--neon-cyan); }
+.ranking-row.is-me .ranking-name::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 5px var(--neon-cyan); margin-right: 6px; vertical-align: middle; }
+.scoreboard-table tr.is-me td { background: rgba(5, 217, 232, 0.07); }
+.scoreboard-table tr.is-me td.manager-col { color: var(--neon-cyan); }

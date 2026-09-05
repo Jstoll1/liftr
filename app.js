@@ -256,6 +256,21 @@ function loadMe() {
 
 function saveMe(name) {
   localStorage.setItem(ME_KEY, name);
+  updateMePill();
+}
+
+// Header pill showing who this device is. Tap goes to the roster, where
+// picking another card asks before switching.
+function updateMePill() {
+  const pill = document.getElementById("me-pill");
+  if (!pill) return;
+  const me = loadMe();
+  if (!me) { pill.classList.add("hidden"); return; }
+  const idx = MANAGERS.indexOf(me);
+  const accent = AVATAR_COLORS[(idx >= 0 ? idx : 0) % AVATAR_COLORS.length];
+  const av = (typeof avatarOverrides !== "undefined" && avatarOverrides[me]) || me[0];
+  pill.innerHTML = `<span class="me-pill-avatar" style="--accent:${accent}">${av}</span><span class="me-pill-name">${me.toUpperCase()}</span>`;
+  pill.classList.remove("hidden");
 }
 
 function firstKickoffPassed() {
@@ -347,6 +362,7 @@ function goToPlayerSelect() {
   logoScreen.classList.add("hidden");
   homeHeader.classList.remove("hidden");
   bottomNav.classList.remove("hidden");
+  updateMePill();
 
   const me = loadMe();
   if (me) {
@@ -398,6 +414,7 @@ logoScreen.addEventListener("click", goToPlayerSelect);
 rulesOpenBtn.addEventListener("click", openRules);
 rulesCloseBtn.addEventListener("click", closeRules);
 homeLogoBtn.addEventListener("click", goHome);
+document.getElementById("me-pill")?.addEventListener("click", goHome);
 
 navHomeBtn.addEventListener("click", goHome);
 navPicksBtn.addEventListener("click", () => {
@@ -495,6 +512,7 @@ async function renderManagerPicker() {
   const cloudAvatars = await fetchAvatars();
   avatarOverrides = cloudAvatars ? { ...localAvatars, ...cloudAvatars } : localAvatars;
   saveAvatars(avatarOverrides);
+  updateMePill();
 
   managerPicker.innerHTML = "";
   MANAGERS.forEach((name, i) => {
@@ -960,7 +978,7 @@ const lastScores = {};
 
 function namesListHtml(names) {
   if (names.length === 0) return `<span class="bug-name-line none">&mdash;</span>`;
-  return names.map((n) => `<span class="bug-name-line">${n}</span>`).join("");
+  return names.map((n) => `<span class="bug-name-line${n === currentManager ? " me" : ""}">${n}</span>`).join("");
 }
 
 function bugSideDetail(cloudPicks, game, team) {
@@ -1105,7 +1123,7 @@ function renderScoreboardTable(cloudPicks, results) {
     const tbCell = tbVisible ? (state.tiebreaker || "—") : "🔒";
     const submittedCount = Object.values(state.picks).filter(Boolean).length;
 
-    html += `<tr><td class="manager-col">${name} <span class="ranking-lock">(${submittedCount}/${GAMES.length})</span></td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
+    html += `<tr class="${name === currentManager ? "is-me" : ""}"><td class="manager-col">${name} <span class="ranking-lock">(${submittedCount}/${GAMES.length})</span></td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
   });
 
   html += "</tbody>";
@@ -1137,7 +1155,7 @@ function renderRankings(cloudPicks, results) {
   rankingsList.innerHTML = "";
   rows.forEach((row, i) => {
     const div = document.createElement("div");
-    div.className = "ranking-row" + (i === 0 && row.score > 0 ? " rank-1" : "");
+    div.className = "ranking-row" + (i === 0 && row.score > 0 ? " rank-1" : "") + (row.name === currentManager ? " is-me" : "");
     div.innerHTML = `
       <span class="ranking-place">#${i + 1}</span>
       <span class="ranking-name">${row.name}</span>
