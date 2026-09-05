@@ -59,7 +59,13 @@ function renderFranchises(){
     const d=designation(r);
     return `<details class="franchise-card" style="--owner-accent:${color(owner)}"><summary class="franchise-head"><div class="franchise-id"><span class="franchise-tag ${d.cls}">${d.tag}</span><h3>${owner}</h3><span class="franchise-byline">${d.est}</span></div><div class="franchise-side"><span class="franchise-trophies">${cups(r.titles)}</span><span class="franchise-record-mini">${r.wins}–${r.losses}</span><span class="franchise-toggle">+</span></div></summary><div class="franchise-body"><div class="franchise-record">${r.wins}–${r.losses} <span>${pct(r.pct)}</span></div><div class="mini-stats"><div><span>Titles</span><strong>${r.titles}</strong></div><div><span>Finals</span><strong>${r.finals}</strong></div><div><span>Podiums</span><strong>${r.podiums}</strong></div></div><div class="season-extremes">${extremeCard('Best team','best',r.best,owner)}${extremeCard('Worst team','worst',r.worst,owner)}</div><p class="franchise-copy">${A.copy[owner]}</p></div></details>`;
   }).join('');
-  document.querySelectorAll('.franchise-card').forEach(d=>d.addEventListener('toggle',()=>{d.querySelector('.franchise-toggle').textContent=d.open?'−':'+'}));
+  document.querySelectorAll('.franchise-card').forEach(d=>d.addEventListener('toggle',()=>{d.querySelector('.franchise-toggle').textContent=d.open?'−':'+';updateFranchiseTag()}));
+  updateFranchiseTag();
+}
+function updateFranchiseTag(){
+  const b=document.getElementById('franchise-expand');if(!b)return;
+  const cards=[...document.querySelectorAll('.franchise-card')],all=cards.length&&cards.every(c=>c.open);
+  b.innerHTML=all?'COLLAPSE ALL <span class="expand-tag-caret">▴</span>':'TAP TO EXPAND <span class="expand-tag-caret">▾</span>';
 }
 function podium(label,owner,s,champ=false){const r=row(s,owner);return `<div class="${champ?'champion':''}"><span>${label}</span><strong>${owner}</strong><small>${r.team} · ${r.wins}–${r.losses}</small></div>`}
 function seasonCard(s){
@@ -77,6 +83,7 @@ function updateExpand(){
 function renderNames(){document.getElementById('name-ranking').innerHTML=A.names.map((x,i)=>`<article class="name-rank-card"><span class="name-rank-number">${String(i+1).padStart(2,'0')}</span><div><h3>${x[0]}</h3><p>${x[1]} · ${x[2]}</p><small>${x[3]}</small></div></article>`).join('')}
 function renderMemoriam(){document.getElementById('memoriam-grid').innerHTML=A.memoriam.map(x=>`<article class="memoriam-card"><span class="memoriam-years">${x[1]}</span><h3>${x[0]}</h3><div class="memoriam-record">${x[2]}</div><span class="memoriam-line">${x[3]}</span><p>${x[4]}</p></article>`).join('')}
 document.querySelectorAll('.ledger-controls button').forEach(b=>b.addEventListener('click',()=>renderLedger(b.dataset.sort)));
+document.getElementById('franchise-expand')?.addEventListener('click',()=>{const cards=[...document.querySelectorAll('.franchise-card')],open=!cards.every(c=>c.open);cards.forEach(c=>c.open=open);updateFranchiseTag()});
 document.getElementById('expand-all').addEventListener('click',()=>{const cards=[...document.querySelectorAll('.season-card')],open=!cards.every(c=>c.open);cards.forEach(c=>c.open=open);updateExpand()});
 renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();renderMemoriam();updateExpand();
 
