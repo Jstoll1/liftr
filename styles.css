@@ -1976,3 +1976,12 @@ html, body {
 .pick-cell.lean-miss .pick-cell-logo { opacity: .6; }
 .scoreboard-table th.final { color: var(--neon-green); }
 .scoreboard-table th.live { color: #ff3b5c; }
+
+/* Badge tiers: +1 quiet green, +2 bright cyan, +3 gold pulse */
+.pick-badge.hit { background: rgba(57, 255, 136, .55); color: #0a0014; box-shadow: none; }
+.pick-badge.hit2 { background: var(--neon-cyan); color: #0a0014; box-shadow: 0 0 8px rgba(5, 217, 232, .8); }
+/* Live lean: a small dot at the logo's corner instead of a ring */
+.pick-cell.lean-hit .pick-mark::after, .pick-cell.lean-miss .pick-mark::after { inset: auto -3px -3px auto; width: 7px; height: 7px; border: 0; border-radius: 50%; }
+.pick-cell.lean-hit .pick-mark::after { background: var(--neon-green); box-shadow: 0 0 5px var(--neon-green); }
+.pick-cell.lean-miss .pick-mark::after { background: var(--neon-pink); box-shadow: 0 0 5px var(--neon-pink); }
+.pick-cell.lean-miss .pick-cell-logo { opacity: 1; }

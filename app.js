@@ -1214,7 +1214,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}) {
         : "";
       // Final games: points ride as a badge on the logo (+2 in green, ✗ in
       // pink with the logo dimmed) instead of a third stacked line.
-      const badge = pts === null ? "" : pts >= 3 ? `<span class="pick-badge upset">+3</span>` : pts > 0 ? `<span class="pick-badge hit">+${pts}</span>` : `<span class="pick-badge miss">✗</span>`;
+      const badge = pts === null ? "" : pts >= 3 ? `<span class="pick-badge upset">+3</span>` : pts === 2 ? `<span class="pick-badge hit2">+2</span>` : pts > 0 ? `<span class="pick-badge hit">+1</span>` : `<span class="pick-badge miss">✗</span>`;
       return `<td class="pick-cell ${cls}" title="${short} ${pick.mode}${pts !== null ? ` · ${pts} pt` : ""}"><span class="pick-mark">${badge}<img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${spreadTag}</td>`;
     }).join("");
 
