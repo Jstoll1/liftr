@@ -595,16 +595,28 @@ const LIVE_DATES = ["20260905", "20260906"];
 async function handleLive(corsHeaders) {
   try {
     const events = [];
+    const debug = [];
     for (const date of LIVE_DATES) {
+      const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300`;
       try {
-        const res = await fetch(
-          `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300`,
-          { cf: { cacheTtl: 0, cacheEverything: false }, headers: { "Cache-Control": "no-cache" } }
-        );
-        if (!res.ok) continue;
-        const data = await res.json();
-        if (Array.isArray(data?.events)) events.push(...data.events);
+        const res = await fetch(url, {
+          cf: { cacheTtl: 0, cacheEverything: false },
+          headers: {
+            "Cache-Control": "no-cache",
+            // ESPN's public API rejects some datacenter requests without a browser-like UA
+            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+            Accept: "application/json",
+          },
+        });
+        const text = await res.text();
+        let data = null;
+        try { data = JSON.parse(text); } catch { data = null; }
+        const count = Array.isArray(data?.events) ? data.events.length : 0;
+        debug.push({ date, status: res.status, events: count, sample: count ? "" : text.slice(0, 160) });
+        if (!res.ok || !data) continue;
+        if (Array.isArray(data.events)) events.push(...data.events);
       } catch (err) {
+        debug.push({ date, error: String(err?.message || err) });
         console.error(`ESPN scoreboard fetch failed for ${date}`, err?.stack || String(err));
       }
     }
@@ -647,7 +659,7 @@ async function handleLive(corsHeaders) {
       }
     });
 
-    return json({ games }, 200, corsHeaders);
+    return json({ games, debug }, 200, corsHeaders);
   } catch (err) {
     console.error("Live scores error", err?.stack || String(err));
     return json({ games: [] }, 200, corsHeaders); // never break the client over this
