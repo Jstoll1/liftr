@@ -57,7 +57,7 @@ function renderFranchises(){
     const finish=latest?latest:r.seconds?'Runner-up':r.thirds?'Third place':'—';
     const detail=latest?row(S[String(latest)],owner).team:r.seconds?`${r.seconds} runner-up finish${r.seconds===1?'':'es'}`:r.thirds?`${r.thirds} third-place finish${r.thirds===1?'':'es'}`:'Still open';
     const d=designation(r);
-    return `<details class="franchise-card" style="--owner-accent:${color(owner)}"><summary class="franchise-head"><div class="franchise-id"><span class="franchise-tag ${d.cls}">${d.tag}</span><h3>${owner}</h3><span class="franchise-byline">${d.est}</span></div><div class="franchise-side"><span class="franchise-trophies">${cups(r.titles)}</span><span class="franchise-record-mini">${r.wins}–${r.losses}</span><span class="franchise-toggle">+</span></div></summary><div class="franchise-body"><div class="franchise-record">${r.wins}–${r.losses} <span>${pct(r.pct)}</span></div><div class="mini-stats"><div><span>Titles</span><strong>${r.titles}</strong></div><div><span>Finals</span><strong>${r.finals}</strong></div><div><span>Podiums</span><strong>${r.podiums}</strong></div></div><div class="season-extremes">${extremeCard('Best team','best',r.best,owner)}${extremeCard('Worst team','worst',r.worst,owner)}</div><p class="franchise-copy">${A.copy[owner]}</p></div></details>`;
+    return `<details class="franchise-card" data-owner="${owner}" style="--owner-accent:${color(owner)}"><summary class="franchise-head"><div class="franchise-id"><span class="franchise-tag ${d.cls}">${d.tag}</span><h3>${owner}</h3><span class="franchise-byline">${d.est}</span></div><div class="franchise-side"><span class="franchise-trophies">${cups(r.titles)}</span><span class="franchise-record-mini">${r.wins}–${r.losses}</span><span class="franchise-toggle">+</span></div></summary><div class="franchise-body"><div class="franchise-record">${r.wins}–${r.losses} <span>${pct(r.pct)}</span></div><div class="mini-stats"><div><span>Titles</span><strong>${r.titles}</strong></div><div><span>Finals</span><strong>${r.finals}</strong></div><div><span>Podiums</span><strong>${r.podiums}</strong></div></div><div class="season-extremes">${extremeCard('Best team','best',r.best,owner)}${extremeCard('Worst team','worst',r.worst,owner)}</div><p class="franchise-copy">${A.copy[owner]}</p></div></details>`;
   }).join('');
   document.querySelectorAll('.franchise-card').forEach(d=>d.addEventListener('toggle',()=>{d.querySelector('.franchise-toggle').textContent=d.open?'−':'+';updateFranchiseTag()}));
   updateFranchiseTag();
@@ -71,7 +71,7 @@ function podium(label,owner,s,champ=false){const r=row(s,owner);return `<div cla
 function seasonCard(s){
   const c=row(s,s.champion);
   const table=s.standings.map(r=>`<tr><td class="rank-cell">${r.rank}</td><td><span class="owner-cell">${r.owner}</span><span class="team-cell">${r.team}</span></td><td>${r.wins}–${r.losses}</td><td>${num(r.pf)}</td><td>${num(r.pa)}</td><td>${r.pfg.toFixed(1)}</td></tr>`).join('');
-  return `<details class="season-card"><summary><div class="season-year-lockup"><span class="season-year">${s.year}</span><span class="season-champ-label">CHAMPION</span></div><div class="season-champion"><strong>${s.champion}</strong><span>${c.team}</span></div><span class="season-summary-record">${c.wins}–${c.losses}</span><span class="season-toggle">+</span></summary><div class="season-expanded"><div class="podium-grid">${podium('Champion',s.champion,s,true)}${podium('Runner-up',s.second,s)}${podium('Third place',s.third,s)}</div><p class="season-recap">${s.recap}</p><div class="table-scroll"><table class="season-table"><thead><tr><th>Finish</th><th>Owner / Team</th><th>W-L</th><th>PF</th><th>PA</th><th>PF/G</th></tr></thead><tbody>${table}</tbody></table></div></div></details>`;
+  return `<details class="season-card" data-year="${s.year}"><summary><div class="season-year-lockup"><span class="season-year">${s.year}</span><span class="season-champ-label">CHAMPION</span></div><div class="season-champion"><strong>${s.champion}</strong><span>${c.team}</span></div><span class="season-summary-record">${c.wins}–${c.losses}</span><span class="season-toggle">+</span></summary><div class="season-expanded"><div class="podium-grid">${podium('Champion',s.champion,s,true)}${podium('Runner-up',s.second,s)}${podium('Third place',s.third,s)}</div><p class="season-recap">${s.recap}</p><div class="table-scroll"><table class="season-table"><thead><tr><th>Finish</th><th>Owner / Team</th><th>W-L</th><th>PF</th><th>PA</th><th>PF/G</th></tr></thead><tbody>${table}</tbody></table></div></div></details>`;
 }
 function renderSeasons(){
   document.getElementById('history-eras').innerHTML=A.eras.map(e=>`<section class="era-block"><div class="era-heading"><span class="eyebrow">${e[0]}</span><h3>${e[1]}</h3><p>${e[2]}</p></div><div class="season-stack">${e[3].map(y=>seasonCard(S[String(y)])).join('')}</div></section>`).join('');
@@ -99,20 +99,53 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   input.addEventListener('input',sync);sync();
   input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();form.requestSubmit()}});
   form.querySelector('.archive-ask-line').addEventListener('click',()=>input.focus());
+  const receiptsEl=document.getElementById('archive-receipts'),followEl=document.getElementById('archive-followups');
   function typeOut(text,cls){
     clearInterval(timer);out.className='archive-ask-answer'+(cls?' '+cls:'');out.textContent='';let i=0;
     timer=setInterval(()=>{out.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(timer)},12);
+  }
+  function clearExtras(){receiptsEl.innerHTML='';receiptsEl.classList.add('hidden');followEl.innerHTML='';followEl.classList.add('hidden')}
+  // Jump to the card a receipt points at: a franchise card (by owner) or a
+  // season card (by year), opening it and scrolling it into view.
+  function jumpTo(owner,year){
+    const scroller=document.getElementById('app-scroll')||window;
+    let target=null;
+    if(owner)target=document.querySelector(`.franchise-card[data-owner="${owner}"]`);
+    if(!target&&year)target=document.querySelector(`.season-card[data-year="${year}"]`);
+    if(!target)return;
+    target.open=true;
+    const top=target.getBoundingClientRect().top+(scroller===window?window.scrollY:scroller.scrollTop)-96;
+    if(scroller===window)window.scrollTo({top,behavior:'smooth'});else scroller.scrollTo({top,behavior:'smooth'});
+    target.classList.add('receipt-flash');setTimeout(()=>target.classList.remove('receipt-flash'),1600);
+  }
+  function renderReceipts(list){
+    receiptsEl.innerHTML='';
+    if(!list||!list.length){receiptsEl.classList.add('hidden');return}
+    list.forEach(r=>{
+      const b=document.createElement('button');b.type='button';b.className='receipt'+((r.owner||r.year)?' linked':'');
+      b.innerHTML=`<span class="receipt-label">${r.label}</span><span class="receipt-value">${r.value}</span>${r.owner||r.year?`<span class="receipt-target">${r.owner||''}${r.owner&&r.year?' · ':''}${r.year||''}</span>`:''}`;
+      if(r.owner||r.year)b.addEventListener('click',()=>jumpTo(r.owner,r.year));
+      receiptsEl.appendChild(b);
+    });
+    receiptsEl.classList.remove('hidden');
+  }
+  function renderFollowUps(list){
+    followEl.innerHTML='';
+    if(!list||!list.length){followEl.classList.add('hidden');return}
+    list.forEach(q=>{const b=document.createElement('button');b.type='button';b.className='followup';b.textContent=q;
+      b.addEventListener('click',()=>{input.value=q;sync();form.requestSubmit()});followEl.appendChild(b)});
+    followEl.classList.remove('hidden');
   }
   form.addEventListener('submit',async e=>{
     e.preventDefault();
     const q=input.value.trim();if(q.length<3||form.classList.contains('busy'))return;
     if(!worker){typeOut('The archive is offline right now.','error');return}
-    form.classList.add('busy');typeOut('SEARCHING THE ARCHIVE…');
+    form.classList.add('busy');clearExtras();typeOut('SEARCHING THE ARCHIVE…');
     try{
       const res=await fetch(worker+'/history-ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
       const data=await res.json().catch(()=>({}));
       if(!res.ok||!data.answer){typeOut(data.error||'The archive is not answering right now.','error')}
-      else typeOut(data.answer);
+      else{typeOut(data.answer);setTimeout(()=>{renderReceipts(data.receipts);renderFollowUps(data.followUps)},Math.min(data.answer.length*12,2400))}
     }catch{typeOut('The archive is not answering right now.','error')}
     form.classList.remove('busy');input.value='';sync();input.blur();
   });

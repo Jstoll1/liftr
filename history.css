@@ -284,3 +284,22 @@
 .expand-tag { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid rgba(5,217,232,.5); border-radius: 6px; background: rgba(5,217,232,.06); color: var(--cyan); font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .06em; cursor: pointer; text-shadow: 0 0 5px rgba(5,217,232,.5); }
 .expand-tag:hover { background: rgba(5,217,232,.14); }
 .expand-tag-caret { font-family: 'Orbitron', sans-serif; font-size: 10px; line-height: 1; }
+
+/* --- Receipts: the numbers an answer rests on, tappable into the archive --- */
+.archive-receipts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.archive-receipts.hidden, .archive-followups.hidden { display: none; }
+.receipt { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; padding: 9px 10px; border: 1px solid rgba(242,193,78,.45); border-radius: 8px; background: rgba(242,193,78,.06); color: var(--text); text-align: left; cursor: default; font-family: 'Orbitron', system-ui, sans-serif; }
+.receipt.linked { cursor: pointer; border-color: rgba(5,217,232,.55); background: rgba(5,217,232,.06); }
+.receipt.linked:hover { background: rgba(5,217,232,.14); }
+.receipt-label { font-size: 7px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.receipt-value { font-family: 'Press Start 2P', monospace; font-size: 11px; color: var(--gold); text-shadow: 0 0 6px rgba(242,193,78,.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.receipt.linked .receipt-value { color: var(--cyan); text-shadow: 0 0 6px rgba(5,217,232,.5); }
+.receipt-target { font-size: 8px; font-weight: 700; color: var(--cyan); letter-spacing: .04em; }
+.receipt-target::after { content: " ▸"; }
+.archive-followups { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.followup { padding: 6px 10px; border: 1px solid rgba(193,60,255,.5); border-radius: 6px; background: rgba(193,60,255,.08); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 9px; letter-spacing: .03em; cursor: pointer; }
+.followup:hover { background: rgba(193,60,255,.2); color: #fff; }
+.followup::before { content: "› "; color: var(--purple); }
+@keyframes receipt-flash { 0% { box-shadow: 0 0 0 0 rgba(5,217,232,.8); } 100% { box-shadow: 0 0 0 14px rgba(5,217,232,0); } }
+.receipt-flash { animation: receipt-flash 1.4s ease-out; }
+@media (max-width: 420px) { .archive-receipts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
