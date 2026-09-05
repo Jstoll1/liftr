@@ -6,7 +6,8 @@ A.owners.forEach(owner=>{
   const wins=seasons.reduce((n,r)=>n+r.wins,0),losses=seasons.reduce((n,r)=>n+r.losses,0);
   const titles=Object.values(S).filter(s=>s.champion===owner).length,seconds=Object.values(S).filter(s=>s.second===owner).length,thirds=Object.values(S).filter(s=>s.third===owner).length;
   const best=seasons.reduce((a,b)=>b.wins/(b.wins+b.losses)>a.wins/(a.wins+a.losses)?b:a);
-  O[owner]={owner,seasons,wins,losses,titles,seconds,thirds,finals:titles+seconds,podiums:titles+seconds+thirds,pct:wins/(wins+losses),best};
+  const worst=seasons.reduce((a,b)=>b.wins/(b.wins+b.losses)<a.wins/(a.wins+a.losses)?b:a);
+  O[owner]={owner,seasons,wins,losses,titles,seconds,thirds,finals:titles+seconds,podiums:titles+seconds+thirds,pct:wins/(wins+losses),best,worst};
 });
 const pct=v=>v.toFixed(3).replace(/^0/,'');
 const num=v=>v.toLocaleString(undefined,{maximumFractionDigits:2});
@@ -26,6 +27,18 @@ function renderLedger(k=ledgerSort){
   document.getElementById('ledger-body').innerHTML=ledgerRows(k).map((r,i)=>`<tr><td class="rank-cell">${i+1}</td><td><strong>${r.owner}</strong><span class="ledger-seasons">${r.seasons.length} season${r.seasons.length===1?'':'s'}</span></td><td>${r.wins}–${r.losses}</td><td>${pct(r.pct)}</td><td class="title-cell">${cups(r.titles)}</td><td>${r.finals}</td><td>${r.podiums}</td></tr>`).join('');
   document.querySelectorAll('.ledger-controls button').forEach(b=>b.classList.toggle('active',b.dataset.sort===k));
 }
+function finishLine(owner,yr){
+  const s=S[String(yr)],r=row(s,owner);
+  if(s.champion===owner)return 'Won the title';
+  if(s.second===owner)return 'Lost the final';
+  if(s.third===owner)return 'Finished third';
+  const n=s.standings.length;
+  if(r.rank===n)return 'Finished last in the league';
+  return `Finished ${r.rank}th of ${n}`;
+}
+function extremeCard(label,cls,x,owner){
+  return `<div class="extreme ${cls}"><span class="extreme-label">${label}</span><strong class="extreme-year">${x.year}</strong><span class="extreme-record">${x.wins}–${x.losses}</span><span class="extreme-team">${x.team}</span><small class="extreme-byline">${finishLine(owner,x.year)}</small></div>`;
+}
 function designation(r){
   const first=r.seasons[0].year,last=r.seasons[r.seasons.length-1].year;
   const est=`Est. ${first} · ${r.seasons.length} season${r.seasons.length===1?'':'s'}`;
@@ -44,7 +57,7 @@ function renderFranchises(){
     const finish=latest?latest:r.seconds?'Runner-up':r.thirds?'Third place':'—';
     const detail=latest?row(S[String(latest)],owner).team:r.seconds?`${r.seconds} runner-up finish${r.seconds===1?'':'es'}`:r.thirds?`${r.thirds} third-place finish${r.thirds===1?'':'es'}`:'Still open';
     const d=designation(r);
-    return `<details class="franchise-card" style="--owner-accent:${color(owner)}"><summary class="franchise-head"><div class="franchise-id"><span class="franchise-tag ${d.cls}">${d.tag}</span><h3>${owner}</h3><span class="franchise-byline">${d.est}</span></div><div class="franchise-side"><span class="franchise-trophies">${cups(r.titles)}</span><span class="franchise-record-mini">${r.wins}–${r.losses}</span><span class="franchise-toggle">+</span></div></summary><div class="franchise-body"><div class="franchise-record">${r.wins}–${r.losses} <span>${pct(r.pct)}</span></div><div class="mini-stats"><div><span>Titles</span><strong>${r.titles}</strong></div><div><span>Finals</span><strong>${r.finals}</strong></div><div><span>Podiums</span><strong>${r.podiums}</strong></div></div><div class="season-extremes"><div><span>Best record</span><strong>${r.best.year} · ${r.best.wins}–${r.best.losses}</strong><small>${r.best.team}</small></div><div><span>${latest?'Last title':'Best finish'}</span><strong>${finish}</strong><small>${detail}</small></div></div><p class="franchise-copy">${A.copy[owner]}</p></div></details>`;
+    return `<details class="franchise-card" style="--owner-accent:${color(owner)}"><summary class="franchise-head"><div class="franchise-id"><span class="franchise-tag ${d.cls}">${d.tag}</span><h3>${owner}</h3><span class="franchise-byline">${d.est}</span></div><div class="franchise-side"><span class="franchise-trophies">${cups(r.titles)}</span><span class="franchise-record-mini">${r.wins}–${r.losses}</span><span class="franchise-toggle">+</span></div></summary><div class="franchise-body"><div class="franchise-record">${r.wins}–${r.losses} <span>${pct(r.pct)}</span></div><div class="mini-stats"><div><span>Titles</span><strong>${r.titles}</strong></div><div><span>Finals</span><strong>${r.finals}</strong></div><div><span>Podiums</span><strong>${r.podiums}</strong></div></div><div class="season-extremes">${extremeCard('Best team','best',r.best,owner)}${extremeCard('Worst team','worst',r.worst,owner)}</div><p class="franchise-copy">${A.copy[owner]}</p></div></details>`;
   }).join('');
   document.querySelectorAll('.franchise-card').forEach(d=>d.addEventListener('toggle',()=>{d.querySelector('.franchise-toggle').textContent=d.open?'−':'+'}));
 }

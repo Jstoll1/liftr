@@ -129,12 +129,21 @@
 .mini-stats { display: grid; grid-template-columns: repeat(3,1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .mini-stats div { padding: 13px 10px 12px 0; }
 .mini-stats div + div { padding-left: 10px; border-left: 1px solid var(--line); }
-.mini-stats span,.season-extremes span { display: block; color: var(--muted); font-size: 7px; line-height: 1.4; letter-spacing: .1em; text-transform: uppercase; }
+.mini-stats span { display: block; color: var(--muted); font-size: 7px; line-height: 1.4; letter-spacing: .1em; text-transform: uppercase; }
 .mini-stats strong { display: block; margin-top: 4px; font-size: 18px; }
-.season-extremes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 17px; }
-.season-extremes strong,.season-extremes small { display: block; }
-.season-extremes strong { margin-top: 5px; font-size: 11px; }
-.season-extremes small { margin-top: 4px; color: var(--muted); font: 500 10px/1.4 'Orbitron',system-ui,sans-serif; }
+.season-extremes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.extreme { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.02); display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.extreme.best { border-color: rgba(57,255,136,.35); }
+.extreme.worst { border-color: rgba(255,32,121,.35); }
+.extreme-label { color: var(--muted); font-size: 7px; letter-spacing: .12em; text-transform: uppercase; }
+.extreme.best .extreme-label { color: #39ff88; }
+.extreme.worst .extreme-label { color: var(--pink); }
+.extreme-year { font-family: 'Press Start 2P', monospace; font-size: 11px; margin-top: 4px; }
+.extreme-record { font-size: 16px; font-weight: 900; }
+.extreme.best .extreme-record { color: #39ff88; }
+.extreme.worst .extreme-record { color: var(--pink); }
+.extreme-team { color: var(--text); font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
+.extreme-byline { color: var(--muted); font-size: 10px; line-height: 1.4; }
 .franchise-copy { margin: 18px 0 0; color: #d6d0dc; font: 500 12px/1.6 'Orbitron',system-ui,sans-serif; }
 
 .era-block + .era-block { margin-top: 62px; }
@@ -224,7 +233,6 @@
   .lineage-track { grid-template-columns: repeat(12,128px); }
   .lineage-card { min-height: 186px; border-radius: 10px; }
   .franchise-card { padding: 17px; }
-  .season-extremes { grid-template-columns: 1fr; }
   .season-card summary { grid-template-columns: 72px minmax(0,1fr) 48px 20px; min-height: 82px; padding: 12px; }
   .season-year-lockup { display: block; }
   .season-year { font-size: 18px; }
