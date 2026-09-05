@@ -97,6 +97,24 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   // and the block cursor always sits right after the last character.
   const sync=()=>{const v=input.value.replace(/\n/g,' ');if(v!==input.value)input.value=v;mirror.textContent=v;form.classList.toggle('has-text',v.length>0)};
   input.addEventListener('input',sync);sync();
+  // Attract mode: while the box is idle, type a real fact from the archive
+  // into the ghost line every few seconds. Tapping it asks the question.
+  const ghost=document.getElementById('archive-ghost');
+  const facts=(typeof ATTRACT_FACTS!=='undefined'&&ATTRACT_FACTS.length)?ATTRACT_FACTS.slice().sort(()=>Math.random()-0.5):[];
+  let fi=0,attractTimer=null,typeTimer=null,currentAsk=null;
+  const idle=()=>!input.value&&document.activeElement!==input&&!form.classList.contains('busy');
+  function showFact(){
+    if(!facts.length||!idle())return;
+    const f=facts[fi++%facts.length];currentAsk=f.ask;const text=f.fact+'  · tap to ask';let i=0;
+    clearInterval(typeTimer);ghost.textContent='';
+    typeTimer=setInterval(()=>{ghost.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(typeTimer)},18);
+  }
+  function startAttract(){clearInterval(attractTimer);showFact();attractTimer=setInterval(showFact,7000)}
+  function stopAttract(){clearInterval(attractTimer);clearInterval(typeTimer);attractTimer=null}
+  ghost.addEventListener('click',e=>{if(currentAsk&&idle()){e.stopPropagation();input.value=currentAsk;sync();form.requestSubmit()}});
+  input.addEventListener('focus',stopAttract);
+  input.addEventListener('blur',()=>{if(idle())startAttract()});
+  if(facts.length)startAttract();
   input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();form.requestSubmit()}});
   form.querySelector('.archive-ask-line').addEventListener('click',()=>input.focus());
   const receiptsEl=document.getElementById('archive-receipts'),followEl=document.getElementById('archive-followups');
@@ -147,6 +165,6 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
       if(!res.ok||!data.answer){typeOut(data.error||'The archive is not answering right now.','error')}
       else{typeOut(data.answer);setTimeout(()=>{renderReceipts(data.receipts);renderFollowUps(data.followUps)},Math.min(data.answer.length*12,2400))}
     }catch{typeOut('The archive is not answering right now.','error')}
-    form.classList.remove('busy');input.value='';sync();input.blur();
+    form.classList.remove('busy');input.value='';sync();input.blur();if(idle())startAttract();
   });
 })();
