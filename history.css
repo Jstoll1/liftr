@@ -258,15 +258,18 @@
 /* --- Ask the Archive: retro terminal input on the hero --- */
 .archive-ask { position: relative; z-index: 2; margin-top: 26px; max-width: 760px; }
 .archive-ask-label { display: block; font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--gold); text-shadow: 0 0 6px rgba(242,193,78,.6); letter-spacing: .08em; margin-bottom: 8px; }
-.archive-ask-line { position: relative; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 2px solid rgba(5,217,232,.55); border-radius: 8px; background: rgba(0, 0, 0, .45); box-shadow: 0 0 12px rgba(5,217,232,.18), inset 0 0 18px rgba(5,217,232,.06); }
+.archive-ask-line { position: relative; display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 12px; border: 2px solid rgba(5,217,232,.55); border-radius: 8px; background: rgba(0, 0, 0, .45); box-shadow: 0 0 12px rgba(5,217,232,.18), inset 0 0 18px rgba(5,217,232,.06); cursor: text; overflow: hidden; }
 .archive-ask-line:focus-within { border-color: var(--cyan); box-shadow: 0 0 16px rgba(5,217,232,.4); }
-.archive-ask-prompt { font-family: 'Press Start 2P', monospace; font-size: 11px; color: var(--cyan); text-shadow: 0 0 6px var(--cyan); }
-.archive-ask-input { flex: 0 0 auto; width: 0; max-width: calc(100% - 40px); min-width: 0; background: transparent; border: 0; outline: 0; color: var(--cyan); font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: .04em; caret-color: transparent; text-shadow: 0 0 5px rgba(5,217,232,.6); }
-.archive-ask-ghost { flex: 1; min-width: 0; color: rgba(5,217,232,.35); font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-.archive-ask.has-text .archive-ask-ghost { display: none; }
-.archive-ask-cursor { width: 9px; height: 14px; background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: hint-blink 1s steps(1, end) infinite; flex: none; }
+.archive-ask-prompt { font-family: 'Press Start 2P', monospace; font-size: 11px; color: var(--cyan); text-shadow: 0 0 6px var(--cyan); flex: none; }
+/* 16px keeps iOS Safari from auto-zooming the page when the field is focused */
+.archive-ask-input, .archive-ask-ghost, .archive-ask-mirror { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 16px; letter-spacing: .02em; }
+.archive-ask-input { flex: 0 0 auto; width: 0; max-width: calc(100% - 44px); padding: 0; margin: 0; background: transparent; border: 0; outline: 0; color: var(--cyan); caret-color: transparent; text-shadow: 0 0 5px rgba(5,217,232,.5); }
+.archive-ask-mirror { position: absolute; left: -9999px; top: 0; visibility: hidden; white-space: pre; }
+.archive-ask-cursor { width: 10px; height: 20px; background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: hint-blink 1s steps(1, end) infinite; flex: none; }
 .archive-ask-line:focus-within .archive-ask-cursor { animation-duration: .6s; }
 .archive-ask.busy .archive-ask-cursor { animation: none; opacity: .3; }
+.archive-ask-ghost { flex: 1; min-width: 0; color: rgba(5,217,232,.35); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.archive-ask.has-text .archive-ask-ghost { display: none; }
 .archive-ask-answer { margin-top: 10px; padding: 12px 14px; border: 1px solid rgba(255,255,255,.12); border-left: 3px solid var(--gold); border-radius: 8px; background: rgba(21,0,36,.7); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-weight: 500; font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
 .archive-ask-answer.error { border-left-color: var(--pink); color: var(--muted); }
 .archive-ask-answer.hidden { display: none; }

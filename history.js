@@ -92,10 +92,13 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   const form=document.getElementById('archive-ask'),input=document.getElementById('archive-q'),out=document.getElementById('archive-a');
   if(!form)return;
   const worker=(typeof WORKER_URL!=='undefined'&&WORKER_URL)||'';
-  // Press Start 2P is monospace, so the input can be sized to its text and
-  // the block cursor sits right after the last typed character.
-  const sizeInput=()=>{const n=input.value.length;input.style.width=n?`calc(${n}ch + ${n*0.04}em + 0.6ch)`:'0px';form.classList.toggle('has-text',n>0)};
+  // Size the input to its rendered text (measured with a hidden mirror in
+  // the same font) so the block cursor sits right after the last character.
+  const line=form.querySelector('.archive-ask-line');
+  const mirror=document.createElement('span');mirror.className='archive-ask-mirror';line.appendChild(mirror);
+  const sizeInput=()=>{const v=input.value;mirror.textContent=v;const w=v?mirror.getBoundingClientRect().width+3:0;input.style.width=w+'px';form.classList.toggle('has-text',v.length>0)};
   input.addEventListener('input',sizeInput);sizeInput();
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(sizeInput);
   form.querySelector('.archive-ask-line').addEventListener('click',()=>input.focus());
   let timer=null;
   function typeOut(text,cls){
