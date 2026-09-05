@@ -937,7 +937,7 @@ function renderLiveScores(live, cloudPicks) {
 
 function renderScoreboardTable(cloudPicks, results) {
   const headCells = GAMES.map((g) => `<th>G${g.id}</th>`).join("");
-  let html = `<thead><tr><th class="manager-col">Manager</th>${headCells}<th>Tiebreak</th><th>PTS</th></tr></thead><tbody>`;
+  let html = `<thead><tr><th class="manager-col">Team</th>${headCells}<th>Tiebreak</th><th>PTS</th></tr></thead><tbody>`;
 
   MANAGERS.forEach((name) => {
     const state = cloudPicks[name] || { picks: {}, tiebreaker: "" };
@@ -955,10 +955,15 @@ function renderScoreboardTable(cloudPicks, results) {
       const pts = scorePick(game, pick, results[game.id]);
       if (pts) total += pts;
       const cls = pts === null ? "pending" : pts > 0 ? "correct" : "incorrect";
+      // Logo only; the line appears only when the pick was against the
+      // spread, so a bare logo reads as straight up at a glance.
       const pickId = pick.team === game.away ? game.awayId : game.homeId;
-      const label = `${pick.team} ${pick.mode}`;
-      const ptsLabel = pts !== null ? ` (${pts})` : "";
-      return `<td class="pick-cell ${cls}"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.display='none'" />${label}${ptsLabel}</td>`;
+      const short = pick.team === game.away ? game.awayShort : game.homeShort;
+      const spreadTag = pick.mode === "ATS"
+        ? `<span class="pick-cell-spread">${pick.team === game.favorite ? "-" : "+"}${game.spread}</span>`
+        : "";
+      const ptsTag = pts !== null ? `<span class="pick-cell-pts">${pts}</span>` : "";
+      return `<td class="pick-cell ${cls}" title="${short} ${pick.mode}"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" />${spreadTag}${ptsTag}</td>`;
     }).join("");
 
     const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);

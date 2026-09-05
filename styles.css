@@ -1139,11 +1139,29 @@ html, body {
 }
 
 .pick-cell-logo {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
   vertical-align: middle;
-  margin-right: 4px;
+  display: block;
+  margin: 0 auto;
+}
+
+.pick-cell { text-align: center; }
+
+.pick-cell-spread {
+  display: block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--neon-pink);
+  margin-top: 2px;
+}
+
+.pick-cell-pts {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  margin-top: 1px;
 }
 
 .pick-cell.correct { color: var(--neon-green); }
@@ -1741,3 +1759,5 @@ html, body {
   padding-top: 6px;
   border-top: 1px dashed var(--card-border);
 }
+
+.pick-cell-short { display: block; font-size: 9px; font-weight: 700; }
