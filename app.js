@@ -1108,7 +1108,7 @@ function renderLiveScores(live, cloudPicks) {
           ? "FINAL"
           : isLive
             ? (g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
-            : (found ? (g.detail || "Scheduled") : "Waiting…");
+            : (found && g.state === "pre" ? game.kickoffLabel.replace(/^(Sat|Sun) /, "") : found ? (g.detail || "Scheduled") : "Waiting…");
 
       const awayScore = found ? g.awayScore ?? "–" : "–";
       const homeScore = found ? g.homeScore ?? "–" : "–";
@@ -1159,7 +1159,9 @@ function renderLiveScores(live, cloudPicks) {
           </div>
           ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop)}
           ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop)}
-          ${isLive && g.winProb && !expanded ? `<div class="bug-prob-strip"><span class="away" style="width:${g.winProb.away}%"></span><span class="home" style="width:${g.winProb.home}%"></span></div>` : ""}
+          ${!expanded ? (isLive && g.winProb
+            ? `<div class="bug-prob-strip"><span class="away" style="width:${g.winProb.away}%"></span><span class="home" style="width:${g.winProb.home}%"></span></div>`
+            : `<div class="bug-prob-strip empty"></div>`) : ""}
           ${detail}
         </div>
       `;

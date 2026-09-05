@@ -1985,3 +1985,6 @@ html, body {
 .pick-cell.lean-hit .pick-mark::after { background: var(--neon-green); box-shadow: 0 0 5px var(--neon-green); }
 .pick-cell.lean-miss .pick-mark::after { background: var(--neon-pink); box-shadow: 0 0 5px var(--neon-pink); }
 .pick-cell.lean-miss .pick-cell-logo { opacity: 1; }
+
+/* Every collapsed bug reserves the strip row so rows stay level */
+.bug-prob-strip.empty { background: transparent; }
