@@ -140,4 +140,14 @@ The model only sees the archive dataset in `src/history-data.js` (a mirror of
 the data in the root `history.js`; regenerate it when that file changes) and
 is instructed to refuse anything outside BroChiefs league history. Uses the
 existing `OPENAI_API_KEY` secret and `OPENAI_MODEL` (default `gpt-4o-mini`).
-Rate limited to 40 questions per IP per hour via `LIFTR_KV`.
+Rate limited to 40 questions per IP per hour via `LIFTR_KV`. Requests must
+carry an Origin on the `ALLOWED_ORIGIN` list, and obvious prompt-injection
+phrasing is refused without a model call.
+
+Every question and answer is kept in KV for seven days. To review them, set a
+secret once:
+
+    npx wrangler secret put ARCHIVE_LOG_KEY
+
+then open `https://liftr-ai.jhs797.workers.dev/history-log?key=<that value>`
+on any device. Without the secret the endpoint returns 404.
