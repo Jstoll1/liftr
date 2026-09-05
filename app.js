@@ -385,9 +385,20 @@ function goToPlayerSelect() {
   else openClaimPrompt();
 }
 
+// Analytics: one page view per screen, plus a few named events. Wrapped
+// so a blocked or slow script never affects the app.
+function track(path, extra) {
+  try {
+    if (!window.goatcounter || typeof window.goatcounter.count !== "function") return;
+    window.goatcounter.count({ path, title: extra?.title || path, event: !!extra?.event });
+  } catch {}
+}
+
 // Keeps the bottom tab bar's highlighted tab in sync, however the
 // screen got navigated to (top links, bottom nav, or the wordmark).
+let lastTrackedScreen = null;
 function setActiveNav(target) {
+  if (target !== lastTrackedScreen) { lastTrackedScreen = target; track(`/${target}`); }
   [navHomeBtn, navPicksBtn, navScoreboardBtn, navHistoryBtn].forEach((btn) => btn.classList.remove("active"));
   if (target === "history") navHistoryBtn.classList.add("active");
   if (target === "home") navHomeBtn.classList.add("active");
@@ -411,6 +422,7 @@ function goHome() {
 }
 
 logoScreen.addEventListener("click", goToPlayerSelect);
+track("/splash");
 rulesOpenBtn.addEventListener("click", openRules);
 rulesCloseBtn.addEventListener("click", closeRules);
 homeLogoBtn.addEventListener("click", goHome);
@@ -848,6 +860,7 @@ function renderPicksScreen() {
         pushManagerState(currentManager, s);
         justSavedGameId = game.id;
         justSavedKind = changed ? "updated" : "saved";
+        track(changed ? "pick-updated" : "pick-saved", { event: true });
         withScrollPreserved(renderPicksScreen);
         setTimeout(() => {
           if (justSavedGameId !== game.id) return;
@@ -1079,7 +1092,7 @@ function renderLiveScores(live, cloudPicks) {
   liveScoresList.querySelectorAll(".scorebug").forEach((el) => {
     const id = Number(el.dataset.game);
     const toggle = () => {
-      if (expandedGames.has(id)) expandedGames.delete(id); else expandedGames.add(id);
+      if (expandedGames.has(id)) expandedGames.delete(id); else { expandedGames.add(id); track("scorebug-expand", { event: true }); }
       withScrollPreserved(() => renderLiveScores(live, cloudPicks));
     };
     el.addEventListener("click", toggle);

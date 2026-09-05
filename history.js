@@ -158,7 +158,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     e.preventDefault();
     const q=input.value.trim();if(q.length<3||form.classList.contains('busy'))return;
     if(!worker){typeOut('The archive is offline right now.','error');return}
-    form.classList.add('busy');clearExtras();typeOut('SEARCHING THE ARCHIVE…');
+    form.classList.add('busy');clearExtras();typeOut('SEARCHING THE ARCHIVE…');try{window.goatcounter&&window.goatcounter.count({path:'archive-ask',title:'archive-ask',event:true})}catch{}
     try{
       const res=await fetch(worker+'/history-ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,asker:(()=>{try{return localStorage.getItem('brochiefs_me_v1')||null}catch{return null}})()})});
       const data=await res.json().catch(()=>({}));
