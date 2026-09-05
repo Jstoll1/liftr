@@ -1149,19 +1149,12 @@ function renderLiveScores(live, cloudPicks) {
           <div class="bug-head">
             <span class="bug-gnum">G${game.id}</span>
             <span class="bug-status">${isLive ? '<span class="live-dot"></span>' : ""}${statusText}</span>
-            ${locked && !expanded ? (() => {
-              const ac = pickersFor(cloudPicks, game.id, game.away, "ATS").length + pickersFor(cloudPicks, game.id, game.away, "SU").length;
-              const hc = pickersFor(cloudPicks, game.id, game.home, "ATS").length + pickersFor(cloudPicks, game.id, game.home, "SU").length;
-              const tot = Math.max(1, ac + hc);
-              return `<span class="bug-count-bars" title="${ac} on ${game.awayShort}, ${hc} on ${game.homeShort}"><span class="bug-count-bar away" style="width:${Math.round(ac / tot * 100)}%"></span><span class="bug-count-bar home" style="width:${Math.round(hc / tot * 100)}%"></span></span>`;
-            })() : ""}
+            
             <span class="bug-caret">${expanded ? "▴" : "▾"}</span>
           </div>
           ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop)}
           ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop)}
-          ${!expanded ? (isLive && g.winProb
-            ? `<div class="bug-prob-strip"><span class="away" style="width:${g.winProb.away}%"></span><span class="home" style="width:${g.winProb.home}%"></span></div>`
-            : `<div class="bug-prob-strip empty"></div>`) : ""}
+
           ${detail}
         </div>
       `;
