@@ -140,7 +140,10 @@ The model only sees the archive dataset in `src/history-data.js` (a mirror of
 the data in the root `history.js`; regenerate it when that file changes) and
 is instructed to refuse anything outside BroChiefs league history. Uses the
 existing `OPENAI_API_KEY` secret and `OPENAI_MODEL` (default `gpt-4o-mini`).
-Rate limited to 40 questions per IP per hour via `LIFTR_KV`. Requests must
+Rate limited to 40 questions per IP per hour via `LIFTR_KV`. The model does
+not see the whole archive: `selectContext()` in `src/index.js` reads the
+question for owner names and nicknames, team names, seasons and topic words,
+then sends only the matching tables (2k to 12k tokens instead of 40k+). Requests must
 carry an Origin on the `ALLOWED_ORIGIN` list, and obvious prompt-injection
 phrasing is refused without a model call.
 
