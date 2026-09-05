@@ -59,7 +59,7 @@ const STORAGE_KEY = "brochiefs_picks_v1";
 // (a.espncdn.com/i/teamlogos/ncaa/500/<id>.png) — nothing downloaded or
 // stored in this repo, just referenced by URL like any other <img src>.
 const GAMES = [
-  { id: 1, away: "Liberty", awayId: 2335, awayShort: "Liberty", homeShort: "JMU", home: "James Madison", homeId: 2349, favorite: "James Madison", spread: 6.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ESPNU" },
+  { id: 1, away: "Liberty", awayId: 2335, awayShort: "Liberty", homeShort: "JMU", home: "James Madison", homeId: 256, favorite: "James Madison", spread: 6.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ESPNU" },
   { id: 2, away: "Miami (OH)", awayId: 193, awayShort: "Miami OH", homeShort: "Pitt", home: "Pitt", homeId: 221, favorite: "Pitt", spread: 16.5, kickoff: "2026-09-05T16:30:00Z", kickoffLabel: "Sat 12:30 PM ET", tv: "The CW" },
   { id: 3, away: "Baylor", awayId: 239, awayShort: "Baylor", homeShort: "Auburn", home: "Auburn", homeId: 2, favorite: "Auburn", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ABC" },
   { id: 4, away: "Boston College", awayId: 103, awayShort: "BC", homeShort: "Cincy", home: "Cincinnati", homeId: 2132, favorite: "Cincinnati", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "FOX" },
@@ -827,6 +827,8 @@ function teamPickersHtml(cloudPicks, game, team, mode, label) {
 // Which scorebugs the viewer has expanded to see the pick lists. Kept
 // across the 30s refresh so the board doesn't snap shut mid-read.
 const expandedGames = new Set();
+// Last scores seen per game, so a changed number gets the arcade pop.
+const lastScores = {};
 
 function namesListHtml(names) {
   if (names.length === 0) return `<span class="bug-name-line none">&mdash;</span>`;
@@ -879,17 +881,21 @@ function renderLiveScores(live, cloudPicks) {
 
       const awayScore = found ? g.awayScore ?? "–" : "–";
       const homeScore = found ? g.homeScore ?? "–" : "–";
+      const prev = lastScores[game.id] || {};
+      const awayPop = found && prev.away !== undefined && prev.away !== awayScore;
+      const homePop = found && prev.home !== undefined && prev.home !== homeScore;
+      if (found) lastScores[game.id] = { away: awayScore, home: homeScore };
       const hasScores = found && g.awayScore !== null && g.homeScore !== null;
       const awayLead = hasScores && g.awayScore > g.homeScore;
       const homeLead = hasScores && g.homeScore > g.awayScore;
       const awayFav = game.favorite === game.away;
 
-      const row = (team, short, id, score, lead, fav) => `
+      const row = (team, short, id, score, lead, fav, pop) => `
         <div class="bug-row ${lead ? "leading" : ""}">
           <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
           <span class="bug-team">${short}</span>
           ${fav ? `<span class="bug-fav">-${game.spread}</span>` : `<span class="bug-fav dog"></span>`}
-          <span class="bug-score">${score}</span>
+          <span class="bug-score ${pop ? "pop" : ""}">${score}</span>
         </div>`;
 
       const winProbHtml = isLive && g.winProb
@@ -916,8 +922,8 @@ function renderLiveScores(live, cloudPicks) {
             <span class="bug-status">${isLive ? '<span class="live-dot"></span>' : ""}${statusText}</span>
             <span class="bug-caret">${expanded ? "▴" : "▾"}</span>
           </div>
-          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav)}
-          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav)}
+          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop)}
+          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop)}
           ${detail}
         </div>
       `;

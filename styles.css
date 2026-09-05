@@ -153,9 +153,11 @@ html, body {
 }
 
 .nav-btn-icon {
-  font-size: 20px;
-  filter: grayscale(1) opacity(0.6);
-  transition: filter 0.15s ease;
+  width: 22px;
+  height: 22px;
+  display: block;
+  color: var(--text-dim);
+  transition: color 0.15s ease, filter 0.15s ease;
 }
 
 .nav-btn-label {
@@ -177,9 +179,11 @@ html, body {
 }
 
 .nav-btn.active .nav-btn-icon {
-  filter: none;
-  text-shadow: 0 0 6px var(--neon-cyan);
+  color: var(--neon-cyan);
+  filter: drop-shadow(0 0 5px var(--neon-cyan));
 }
+
+.nav-btn:hover .nav-btn-icon { color: var(--text); }
 
 .wrap {
   width: 100%;
@@ -769,7 +773,24 @@ html, body {
   text-overflow: ellipsis;
 }
 
-.scorebug.is-live .bug-status { color: #ff3b5c; font-weight: 700; }
+.scorebug.is-live .bug-status,
+.scorebug.is-final .bug-status {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  letter-spacing: 0.5px;
+}
+.scorebug.is-live .bug-status { color: #ff3b5c; text-shadow: 0 0 5px rgba(255, 59, 92, 0.7); }
+.scorebug.is-final .bug-status { color: var(--neon-yellow); }
+
+/* Arcade score pop: a number that just changed flashes and scales */
+.bug-score.pop {
+  animation: score-pop 0.9s ease-out;
+}
+
+@keyframes score-pop {
+  0% { transform: scale(1.7); color: #fff; text-shadow: 0 0 14px var(--neon-yellow), 0 0 28px var(--neon-pink); }
+  100% { transform: scale(1); }
+}
 
 .bug-caret { color: var(--neon-purple); font-size: 10px; }
 
@@ -1076,6 +1097,19 @@ html, body {
 .ranking-row.rank-1 {
   border-color: var(--neon-yellow);
   box-shadow: 0 0 12px rgba(255, 228, 94, 0.35);
+  animation: hiscore-glow 2s ease-in-out infinite;
+}
+
+@keyframes hiscore-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 228, 94, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(255, 228, 94, 0.7); }
+}
+
+.ranking-row.rank-1 .ranking-place::after {
+  content: " 1UP";
+  font-size: 7px;
+  color: var(--neon-green);
+  animation: hint-blink 1s steps(1, end) infinite;
 }
 
 .ranking-place {
@@ -1093,9 +1127,10 @@ html, body {
 }
 
 .ranking-score {
-  font-size: 12px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
   color: var(--neon-green);
-  font-weight: 700;
+  text-shadow: 0 0 5px var(--neon-green);
 }
 
 .ranking-lock {

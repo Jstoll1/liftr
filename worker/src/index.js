@@ -570,7 +570,7 @@ async function handleResults(request, env, corsHeaders, url) {
 // double-checked once real games are underway, and adjusted here if
 // ESPN's fields don't match what's assumed below.
 const LIVE_GAMES = [
-  { id: 1, awayId: 2335, homeId: 2349 },
+  { id: 1, awayId: 2335, homeId: 256 },
   { id: 2, awayId: 193, homeId: 221 },
   { id: 3, awayId: 239, homeId: 2 },
   { id: 4, awayId: 103, homeId: 2132 },
