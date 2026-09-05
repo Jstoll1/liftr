@@ -1079,11 +1079,7 @@ function renderLiveScores(live, cloudPicks) {
   // Compact scorebugs in a 2-up grid, every game from the start. Tap a
   // bug to expand the who-picked-what lists (only once that game has
   // kicked off). A red pulsing dot marks games that are live right now.
-  // Open bugs float to the front so the grid never leaves a hole beside
-  // a tall card; the rest keep kickoff order.
-  const ordered = [...GAMES]
-    .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id)
-    .sort((a, b) => (expandedGames.has(b.id) ? 1 : 0) - (expandedGames.has(a.id) ? 1 : 0));
+  const ordered = [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
   const liveCount = ordered.filter((g) => { const l = live[g.id]; return isGameLocked(g) && l && l.found && l.state === "in" && !l.completed; }).length;
   // Live count rides in the top bar title instead of a section heading.
   const title = document.getElementById("scoreboard-title");
