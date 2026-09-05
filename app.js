@@ -59,16 +59,16 @@ const STORAGE_KEY = "brochiefs_picks_v1";
 // (a.espncdn.com/i/teamlogos/ncaa/500/<id>.png) — nothing downloaded or
 // stored in this repo, just referenced by URL like any other <img src>.
 const GAMES = [
-  { id: 1, away: "Liberty", awayId: 2335, home: "James Madison", homeId: 2349, favorite: "James Madison", spread: 6.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ESPNU" },
-  { id: 2, away: "Miami (OH)", awayId: 193, home: "Pitt", homeId: 221, favorite: "Pitt", spread: 16.5, kickoff: "2026-09-05T16:30:00Z", kickoffLabel: "Sat 12:30 PM ET", tv: "The CW" },
-  { id: 3, away: "Baylor", awayId: 239, home: "Auburn", homeId: 2, favorite: "Auburn", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ABC" },
-  { id: 4, away: "Boston College", awayId: 103, home: "Cincinnati", homeId: 2132, favorite: "Cincinnati", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "FOX" },
-  { id: 5, away: "Tulane", awayId: 2655, home: "Duke", homeId: 150, favorite: "Duke", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ACCN" },
-  { id: 6, away: "Boise State", awayId: 68, home: "#2 Oregon", homeId: 2483, favorite: "#2 Oregon", spread: 24.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "CBS" },
-  { id: 7, away: "Wyoming", awayId: 2751, home: "Colorado State", homeId: 36, favorite: "Colorado State", spread: 3.5, kickoff: "2026-09-05T22:00:00Z", kickoffLabel: "Sat 6:00 PM ET", tv: "USA" },
-  { id: 8, away: "Clemson", awayId: 228, home: "#11 LSU", homeId: 99, favorite: "#11 LSU", spread: 10, kickoff: "2026-09-05T23:30:00Z", kickoffLabel: "Sat 7:30 PM ET", tv: "ABC", tiebreakerGame: true },
-  { id: 9, away: "East Carolina", awayId: 151, home: "#13 Alabama", homeId: 333, favorite: "#13 Alabama", spread: 27.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ABC" },
-  { id: 10, away: "#24 Louisville", awayId: 97, home: "#9 Ole Miss", homeId: 145, favorite: "#9 Ole Miss", spread: 7, kickoffLabel: "Sun 7:30 PM ET", kickoff: "2026-09-06T23:30:00Z", tv: "ABC" },
+  { id: 1, away: "Liberty", awayId: 2335, awayShort: "Liberty", homeShort: "JMU", home: "James Madison", homeId: 2349, favorite: "James Madison", spread: 6.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ESPNU" },
+  { id: 2, away: "Miami (OH)", awayId: 193, awayShort: "Miami OH", homeShort: "Pitt", home: "Pitt", homeId: 221, favorite: "Pitt", spread: 16.5, kickoff: "2026-09-05T16:30:00Z", kickoffLabel: "Sat 12:30 PM ET", tv: "The CW" },
+  { id: 3, away: "Baylor", awayId: 239, awayShort: "Baylor", homeShort: "Auburn", home: "Auburn", homeId: 2, favorite: "Auburn", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ABC" },
+  { id: 4, away: "Boston College", awayId: 103, awayShort: "BC", homeShort: "Cincy", home: "Cincinnati", homeId: 2132, favorite: "Cincinnati", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "FOX" },
+  { id: 5, away: "Tulane", awayId: 2655, awayShort: "Tulane", homeShort: "Duke", home: "Duke", homeId: 150, favorite: "Duke", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ACCN" },
+  { id: 6, away: "Boise State", awayId: 68, awayShort: "Boise St", homeShort: "Oregon", home: "#2 Oregon", homeId: 2483, favorite: "#2 Oregon", spread: 24.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "CBS" },
+  { id: 7, away: "Wyoming", awayId: 2751, awayShort: "Wyoming", homeShort: "Colo St", home: "Colorado State", homeId: 36, favorite: "Colorado State", spread: 3.5, kickoff: "2026-09-05T22:00:00Z", kickoffLabel: "Sat 6:00 PM ET", tv: "USA" },
+  { id: 8, away: "Clemson", awayId: 228, awayShort: "Clemson", homeShort: "LSU", home: "#11 LSU", homeId: 99, favorite: "#11 LSU", spread: 10, kickoff: "2026-09-05T23:30:00Z", kickoffLabel: "Sat 7:30 PM ET", tv: "ABC", tiebreakerGame: true },
+  { id: 9, away: "East Carolina", awayId: 151, awayShort: "ECU", homeShort: "Alabama", home: "#13 Alabama", homeId: 333, favorite: "#13 Alabama", spread: 27.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ABC" },
+  { id: 10, away: "#24 Louisville", awayId: 97, awayShort: "Louisville", homeShort: "Ole Miss", home: "#9 Ole Miss", homeId: 145, favorite: "#9 Ole Miss", spread: 7, kickoffLabel: "Sun 7:30 PM ET", kickoff: "2026-09-06T23:30:00Z", tv: "ABC" },
 ];
 
 function logoUrl(espnId) {
@@ -839,89 +839,111 @@ function teamPickersHtml(cloudPicks, game, team, mode, label) {
   return `<span class="picker-line"><strong>${label}</strong> ${names.join(", ")}</span>`;
 }
 
-function renderLiveScores(live, cloudPicks) {
-  // Every game is on the board from the start: logos, kickoff, TV and the
-  // line on the favorite. Scores, clock and win probability fill in from
-  // ESPN once a game is live; who-picked-who stays hidden until kickoff.
-  const ordered = [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
-  const anyStarted = ordered.some((g) => isGameLocked(g));
-  const heading = anyStarted ? "📡 LIVE SCOREBOARD" : "📡 SCOREBOARD &middot; PICKS REVEAL AT KICKOFF";
+// Which scorebugs the viewer has expanded to see the pick lists. Kept
+// across the 30s refresh so the board doesn't snap shut mid-read.
+const expandedGames = new Set();
 
-  liveScoresList.innerHTML = `<span class="rules-heading live-scores-heading">${heading}</span>` + ordered
+function namesListHtml(names) {
+  if (names.length === 0) return `<span class="bug-name-line none">&mdash;</span>`;
+  return names.map((n) => `<span class="bug-name-line">${n}</span>`).join("");
+}
+
+function bugSideDetail(cloudPicks, game, team) {
+  const isFav = team === game.favorite;
+  const spreadTxt = isFav ? `-${game.spread}` : `+${game.spread}`;
+  return `
+    <div class="bug-col">
+      <span class="bug-col-title">Spread <em>${spreadTxt}</em></span>
+      ${namesListHtml(pickersFor(cloudPicks, game.id, team, "ATS"))}
+      <span class="bug-col-title">Straight Up</span>
+      ${namesListHtml(pickersFor(cloudPicks, game.id, team, "SU"))}
+    </div>
+  `;
+}
+
+function renderLiveScores(live, cloudPicks) {
+  // Compact scorebugs in a 2-up grid, every game from the start. Tap a
+  // bug to expand the who-picked-what lists (only once that game has
+  // kicked off). A red pulsing dot marks games that are live right now.
+  const ordered = [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
+  const liveCount = ordered.filter((g) => { const l = live[g.id]; return isGameLocked(g) && l && l.found && l.state === "in" && !l.completed; }).length;
+  const heading = liveCount > 0
+    ? `<span class="live-dot"></span> ${liveCount} LIVE`
+    : "📡 SCOREBOARD";
+
+  liveScoresList.innerHTML = `<span class="rules-heading live-scores-heading">${heading}</span><div class="bug-grid">` + ordered
     .map((game) => {
       const locked = isGameLocked(game);
       const g = live[game.id];
       const found = locked && g && g.found;
+      const isLive = found && g.state === "in" && !g.completed;
+      const isFinal = found && g.completed;
+      const expanded = expandedGames.has(game.id);
 
       const statusText = !locked
-        ? `${game.kickoffLabel} &middot; ${game.tv}`
-        : found
-          ? g.completed
-            ? "FINAL"
-            : g.state === "in"
-              ? g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`
-              : g.detail || "Scheduled"
-          : "Waiting for score…";
-      const awayScore = found ? g.awayScore ?? "—" : "—";
-      const homeScore = found ? g.homeScore ?? "—" : "—";
-      const awayLead = found && g.awayScore !== null && g.homeScore !== null && g.awayScore > g.homeScore;
-      const homeLead = found && g.awayScore !== null && g.homeScore !== null && g.homeScore > g.awayScore;
+        ? game.kickoffLabel.replace(/^(Sat|Sun) /, "")
+        : isFinal
+          ? "FINAL"
+          : isLive
+            ? (g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
+            : (found ? (g.detail || "Scheduled") : "Waiting…");
 
-      const awaySpread = game.favorite === game.away ? `<span class="live-score-spread">-${game.spread}</span>` : `<span class="live-score-spread dog">+${game.spread}</span>`;
-      const homeSpread = game.favorite === game.home ? `<span class="live-score-spread">-${game.spread}</span>` : `<span class="live-score-spread dog">+${game.spread}</span>`;
+      const awayScore = found ? g.awayScore ?? "–" : "–";
+      const homeScore = found ? g.homeScore ?? "–" : "–";
+      const hasScores = found && g.awayScore !== null && g.homeScore !== null;
+      const awayLead = hasScores && g.awayScore > g.homeScore;
+      const homeLead = hasScores && g.homeScore > g.awayScore;
+      const awayFav = game.favorite === game.away;
 
-      const winProbHtml = found && g.winProb
-        ? `
-          <div class="win-prob-bar">
-            <div class="win-prob-fill away" style="width:${g.winProb.away}%"></div>
-            <div class="win-prob-fill home" style="width:${g.winProb.home}%"></div>
-          </div>
-          <div class="win-prob-labels">
-            <span>${Math.round(g.winProb.away)}% ${game.away}</span>
-            <span>${Math.round(g.winProb.home)}% ${game.home}</span>
-          </div>
-        `
+      const row = (team, short, id, score, lead, fav) => `
+        <div class="bug-row ${lead ? "leading" : ""}">
+          <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+          <span class="bug-team">${short}</span>
+          ${fav ? `<span class="bug-fav">-${game.spread}</span>` : `<span class="bug-fav dog"></span>`}
+          <span class="bug-score">${score}</span>
+        </div>`;
+
+      const winProbHtml = isLive && g.winProb
+        ? `<div class="win-prob-bar"><div class="win-prob-fill away" style="width:${g.winProb.away}%"></div><div class="win-prob-fill home" style="width:${g.winProb.home}%"></div></div>
+           <div class="win-prob-labels"><span>${Math.round(g.winProb.away)}% ${game.awayShort}</span><span>${Math.round(g.winProb.home)}% ${game.homeShort}</span></div>`
         : "";
 
-      let awayPickers = "";
-      let homePickers = "";
-      if (locked) {
-        awayPickers = teamPickersHtml(cloudPicks, game, game.away, "SU", "SU") + teamPickersHtml(cloudPicks, game, game.away, "ATS", "ATS");
-        homePickers = teamPickersHtml(cloudPicks, game, game.home, "SU", "SU") + teamPickersHtml(cloudPicks, game, game.home, "ATS", "ATS");
-        awayPickers = awayPickers || '<span class="picker-line none">&mdash;</span>';
-        homePickers = homePickers || '<span class="picker-line none">&mdash;</span>';
-      }
+      const detail = !expanded ? "" : locked
+        ? `<div class="bug-detail">
+             <div class="bug-cols">
+               <div class="bug-col-head">${game.awayShort}</div><div class="bug-col-head">${game.homeShort}</div>
+               ${bugSideDetail(cloudPicks, game, game.away)}${bugSideDetail(cloudPicks, game, game.home)}
+             </div>
+             ${winProbHtml}
+           </div>`
+        : `<div class="bug-detail"><span class="bug-hidden-note">🔒 Picks reveal at kickoff (${game.kickoffLabel})</span></div>`;
 
-      const cardClass = !locked ? "upcoming" : found && g.completed ? "final" : found && g.state === "in" ? "in-progress" : "";
+      const cls = ["scorebug", isLive ? "is-live" : "", isFinal ? "is-final" : "", !locked ? "upcoming" : "", expanded ? "expanded" : ""].join(" ");
 
       return `
-        <div class="live-score-card ${cardClass}">
-          <div class="live-score-grid">
-            <div class="live-score-col ${awayLead ? "leading" : ""}">
-              <img class="live-score-logo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
-              <span class="live-score-team-name">${game.away}</span>
-              ${awaySpread}
-              <span class="live-score-number">${awayScore}</span>
-              ${locked ? `<div class="live-score-pickers">${awayPickers}</div>` : ""}
-            </div>
-            <div class="live-score-mid">
-              <span class="live-score-gnum">G${game.id}</span>
-              <span class="live-score-status">${statusText}</span>
-              <span class="live-score-vs">@</span>
-            </div>
-            <div class="live-score-col ${homeLead ? "leading" : ""}">
-              <img class="live-score-logo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
-              <span class="live-score-team-name">${game.home}</span>
-              ${homeSpread}
-              <span class="live-score-number">${homeScore}</span>
-              ${locked ? `<div class="live-score-pickers">${homePickers}</div>` : ""}
-            </div>
+        <div class="${cls}" data-game="${game.id}" role="button" tabindex="0" aria-expanded="${expanded}">
+          <div class="bug-head">
+            <span class="bug-gnum">G${game.id}</span>
+            <span class="bug-status">${isLive ? '<span class="live-dot"></span>' : ""}${statusText}</span>
+            <span class="bug-caret">${expanded ? "▴" : "▾"}</span>
           </div>
-          ${winProbHtml}
+          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav)}
+          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav)}
+          ${detail}
         </div>
       `;
     })
-    .join("");
+    .join("") + `</div>`;
+
+  liveScoresList.querySelectorAll(".scorebug").forEach((el) => {
+    const id = Number(el.dataset.game);
+    const toggle = () => {
+      if (expandedGames.has(id)) expandedGames.delete(id); else expandedGames.add(id);
+      withScrollPreserved(() => renderLiveScores(live, cloudPicks));
+    };
+    el.addEventListener("click", toggle);
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+  });
 }
 
 function renderScoreboardTable(cloudPicks, results) {

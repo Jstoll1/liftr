@@ -706,6 +706,185 @@ html, body {
   gap: 8px;
 }
 
+/* --- Scorebugs: 2-up grid of compact ESPN-style bugs ------------------- */
+.bug-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (min-width: 700px) {
+  .bug-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.scorebug {
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  border-radius: 10px;
+  padding: 6px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  min-width: 0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.scorebug.is-live {
+  border-color: #ff3b5c;
+  box-shadow: 0 0 10px rgba(255, 59, 92, 0.35);
+}
+
+.scorebug.is-final { opacity: 0.7; }
+.scorebug.expanded { grid-column: 1 / -1; }
+
+.bug-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 8px;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+
+.bug-gnum {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--neon-cyan);
+}
+
+.bug-status {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scorebug.is-live .bug-status { color: #ff3b5c; font-weight: 700; }
+
+.bug-caret { color: var(--neon-purple); font-size: 10px; }
+
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff3b5c;
+  box-shadow: 0 0 6px #ff3b5c;
+  animation: live-blink 1.1s ease-in-out infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes live-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.bug-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.bug-logo { width: 20px; height: 20px; object-fit: contain; }
+
+.bug-team {
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bug-fav {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--neon-pink);
+  text-shadow: 0 0 4px var(--neon-pink);
+  min-width: 26px;
+  text-align: right;
+}
+
+.bug-score {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 4px var(--neon-yellow);
+  min-width: 24px;
+  text-align: right;
+}
+
+.scorebug.upcoming .bug-score { opacity: 0.3; }
+
+.bug-row.leading .bug-team,
+.bug-row.leading .bug-score {
+  color: var(--neon-green);
+  text-shadow: 0 0 4px var(--neon-green);
+}
+
+.bug-detail {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--card-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bug-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+}
+
+.bug-col-head {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--neon-cyan);
+  text-align: center;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(5, 217, 232, 0.3);
+}
+
+.bug-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  text-align: center;
+}
+
+.bug-col-title {
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.bug-col-title em {
+  font-style: normal;
+  color: var(--neon-pink);
+}
+
+.bug-name-line {
+  font-size: 11px;
+  color: var(--text);
+}
+
+.bug-name-line.none { color: var(--text-dim); opacity: 0.5; }
+
+.bug-hidden-note {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
 .live-scores-heading {
   display: block;
   text-align: center;
