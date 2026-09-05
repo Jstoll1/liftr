@@ -976,7 +976,7 @@ async function renderScoreboard() {
   const results = computeLiveResults(live);
 
   renderLiveScores(live, cloudPicks);
-  renderScoreboardTable(cloudPicks, results);
+  renderScoreboardTable(cloudPicks, results, live);
   renderRankings(cloudPicks, results);
   renderInsertCoin(cloudPicks);
   const stamp = document.getElementById("scoreboard-updated");
@@ -1177,7 +1177,7 @@ function renderLiveScores(live, cloudPicks) {
   });
 }
 
-function renderScoreboardTable(cloudPicks, results) {
+function renderScoreboardTable(cloudPicks, results, live = {}) {
   const headCells = GAMES.map((g) => `<th class="${results[g.id] ? "final" : isGameLocked(g) ? "live" : ""}">G${g.id}</th>`).join("");
   let html = `<thead><tr><th class="manager-col">Team</th>${headCells}<th>TB</th><th>PTS</th></tr></thead><tbody>`;
 
@@ -1196,7 +1196,15 @@ function renderScoreboardTable(cloudPicks, results) {
       }
       const pts = scorePick(game, pick, results[game.id]);
       if (pts) total += pts;
-      const cls = pts === null ? "pending" : pts > 0 ? "correct" : "incorrect";
+      // In-progress games: a provisional lean from the live score, shown as
+      // a soft outline (green covering / pink not) without counting points.
+      let lean = "";
+      const lg = live[game.id];
+      if (pts === null && lg && lg.found && lg.state === "in" && Number.isFinite(lg.awayScore) && Number.isFinite(lg.homeScore) && (lg.awayScore || lg.homeScore)) {
+        const prov = scorePick(game, pick, { awayScore: lg.awayScore, homeScore: lg.homeScore });
+        lean = prov === null ? "" : prov > 0 ? " lean-hit" : " lean-miss";
+      }
+      const cls = (pts === null ? "pending" : pts > 0 ? "correct" : "incorrect") + lean;
       // Logo only; the line appears only when the pick was against the
       // spread, so a bare logo reads as straight up at a glance.
       const pickId = pick.team === game.away ? game.awayId : game.homeId;
@@ -1206,7 +1214,7 @@ function renderScoreboardTable(cloudPicks, results) {
         : "";
       // Final games: points ride as a badge on the logo (+2 in green, ✗ in
       // pink with the logo dimmed) instead of a third stacked line.
-      const badge = pts === null ? "" : pts > 0 ? `<span class="pick-badge hit">+${pts}</span>` : `<span class="pick-badge miss">✗</span>`;
+      const badge = pts === null ? "" : pts >= 3 ? `<span class="pick-badge upset">+3</span>` : pts > 0 ? `<span class="pick-badge hit">+${pts}</span>` : `<span class="pick-badge miss">✗</span>`;
       return `<td class="pick-cell ${cls}" title="${short} ${pick.mode}${pts !== null ? ` · ${pts} pt` : ""}"><span class="pick-mark">${badge}<img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${spreadTag}</td>`;
     }).join("");
 

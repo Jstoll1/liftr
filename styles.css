@@ -1961,3 +1961,18 @@ html, body {
 
 .updated-stamp { display: block; margin: 4px auto 10px; background: none; border: 0; color: var(--text-dim); font-family: 'Orbitron', sans-serif; font-size: 9px; letter-spacing: .04em; cursor: pointer; }
 .updated-stamp.busy { color: var(--neon-cyan); }
+
+/* Bigger, clearer result badges; gold for a correct upset (+3) */
+.pick-badge { top: -8px; right: -12px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; font-size: 8px; border-width: 2px; }
+.pick-badge.miss { font-size: 11px; font-family: 'Orbitron', sans-serif; font-weight: 900; }
+.pick-badge.upset { background: var(--neon-yellow); color: #0a0014; box-shadow: 0 0 10px rgba(255, 228, 94, .9), 0 0 20px rgba(255, 228, 94, .4); animation: upset-glow 1.6s ease-in-out infinite; }
+@keyframes upset-glow { 0%, 100% { box-shadow: 0 0 8px rgba(255, 228, 94, .7); } 50% { box-shadow: 0 0 16px rgba(255, 228, 94, 1), 0 0 28px rgba(255, 228, 94, .5); } }
+.pick-cell.correct .pick-mark { filter: drop-shadow(0 0 4px rgba(57, 255, 136, .6)); }
+.pick-cell.incorrect .pick-cell-logo { opacity: .28; filter: grayscale(.8); }
+/* Live lean: soft ring around the logo while the game is in progress */
+.pick-cell.lean-hit .pick-mark::after, .pick-cell.lean-miss .pick-mark::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px dashed; pointer-events: none; }
+.pick-cell.lean-hit .pick-mark::after { border-color: rgba(57, 255, 136, .8); }
+.pick-cell.lean-miss .pick-mark::after { border-color: rgba(255, 32, 121, .7); }
+.pick-cell.lean-miss .pick-cell-logo { opacity: .6; }
+.scoreboard-table th.final { color: var(--neon-green); }
+.scoreboard-table th.live { color: #ff3b5c; }
