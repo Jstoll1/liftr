@@ -305,3 +305,7 @@
 @keyframes receipt-flash { 0% { box-shadow: 0 0 0 0 rgba(5,217,232,.8); } 100% { box-shadow: 0 0 0 14px rgba(5,217,232,0); } }
 .receipt-flash { animation: receipt-flash 1.4s ease-out; }
 @media (max-width: 420px) { .archive-receipts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.franchise-tag.commish { color: var(--gold); border-color: rgba(242,193,78,.7); background: rgba(242,193,78,.08); margin-left: 6px; text-shadow: 0 0 6px rgba(242,193,78,.6); }
+.franchise-tag.commish::before { content: "★ "; }
+.record-card.commish { border-color: rgba(242,193,78,.5); background: linear-gradient(145deg, rgba(242,193,78,.1), transparent 55%), var(--panel); }

@@ -104,7 +104,7 @@ league = {
     "formerMembers": [o for o, c in careers.items() if not c["active"]],
     "note": "Head-to-head, weekly and playoff game data live in the matchups section.",
 }
-slim = {"owners": A["owners"], "leagueRecords": league, "careerTotals": careers, "seasons": seasons,
+slim = {"commissioner": {"owner": "Andrew", "since": 2014, "note": "Andrew founded the BroChiefs in 2014 and has been commissioner every season since; he is the only person to hold the role."}, "owners": A["owners"], "leagueRecords": league, "careerTotals": careers, "seasons": seasons,
         "eras": [{"years": e[0], "name": e[1], "note": e[2]} for e in A["eras"]],
         "topTeamNames": [{"name": n[0], "owner": n[1], "year": n[2], "note": n[3]} for n in A["names"]],
         "formerMembers": [{"name": m[0], "years": m[1], "record": m[2], "line": m[3], "note": m[4]} for m in A["memoriam"]],
