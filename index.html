@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=202609051145" />
-  <link rel="stylesheet" href="history.css?v=202609051310" />
+  <link rel="stylesheet" href="history.css?v=202609051320" />
 </head>
 <body>
 
@@ -189,8 +189,9 @@
           <label class="archive-ask-label" for="archive-q">ASK THE ARCHIVE</label>
           <div class="archive-ask-line">
             <span class="archive-ask-prompt">&gt;</span>
-            <input id="archive-q" class="archive-ask-input" type="text" maxlength="300" placeholder="who has the most last place finishes" enterkeyhint="send" />
+            <input id="archive-q" class="archive-ask-input" type="text" maxlength="300" enterkeyhint="send" aria-label="Ask the archive" />
             <span class="archive-ask-cursor" aria-hidden="true"></span>
+            <span id="archive-ghost" class="archive-ask-ghost" aria-hidden="true">who has the most last place finishes</span>
           </div>
           <div id="archive-a" class="archive-ask-answer hidden"></div>
         </form>
@@ -281,6 +282,6 @@
   </nav>
 
   <script src="app.js?v=202609051145"></script>
-  <script src="history.js?v=202609051310"></script>
+  <script src="history.js?v=202609051320"></script>
 </body>
 </html>

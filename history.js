@@ -92,6 +92,11 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   const form=document.getElementById('archive-ask'),input=document.getElementById('archive-q'),out=document.getElementById('archive-a');
   if(!form)return;
   const worker=(typeof WORKER_URL!=='undefined'&&WORKER_URL)||'';
+  // Press Start 2P is monospace, so the input can be sized to its text and
+  // the block cursor sits right after the last typed character.
+  const sizeInput=()=>{const n=input.value.length;input.style.width=n?`calc(${n}ch + ${n*0.04}em + 0.6ch)`:'0px';form.classList.toggle('has-text',n>0)};
+  input.addEventListener('input',sizeInput);sizeInput();
+  form.querySelector('.archive-ask-line').addEventListener('click',()=>input.focus());
   let timer=null;
   function typeOut(text,cls){
     clearInterval(timer);out.className='archive-ask-answer'+(cls?' '+cls:'');out.textContent='';let i=0;
@@ -108,6 +113,6 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
       if(!res.ok||!data.answer){typeOut(data.error||'The archive is not answering right now.','error')}
       else typeOut(data.answer);
     }catch{typeOut('The archive is not answering right now.','error')}
-    form.classList.remove('busy');
+    form.classList.remove('busy');input.value='';sizeInput();
   });
 })();

@@ -1223,7 +1223,9 @@ async function handleOpening(body, env, corsHeaders) {
 // POST { question } -> { answer }. The model only sees the archive dataset
 // and is instructed to answer nothing else; off-topic questions get a fixed
 // refusal line. Light per-IP rate limit in KV so the key can't be farmed.
-const HISTORY_SYSTEM = `You are the BroChiefs Football League archivist. You answer questions ONLY about the BroChiefs fantasy football league history using the JSON dataset below. Rules:
+const HISTORY_SYSTEM = () => `Today's date is ${new Date().toISOString().slice(0, 10)}. The most recent completed season in the archive is 2025, so "last year", "last season" and "most recent" mean the 2025 season, and "this year" means the 2026 season which has not been played yet.
+
+You are the BroChiefs Football League archivist. You answer questions ONLY about the BroChiefs fantasy football league history using the JSON dataset below. Rules:
 1. If the question is not about BroChiefs league history (owners, seasons 2014-2025, records, titles, team names, former members), reply exactly: "The archive only covers BroChiefs league history. Ask about a season, an owner, a record or a team name."
 2. Never invent facts. If the dataset does not contain the answer, say the archive does not record it.
 3. Keep answers to one to three sentences. Write in dependency grammar: every sentence has a clear subject and verb, and clauses connect with commas or conjunctions rather than fragments. Never use em dashes or hyphens as punctuation. Records are written like 9-3 using an en dash.
@@ -1258,7 +1260,7 @@ async function handleHistoryAsk(request, env, corsHeaders) {
         temperature: 0.3,
         max_tokens: 220,
         messages: [
-          { role: "system", content: HISTORY_SYSTEM },
+          { role: "system", content: HISTORY_SYSTEM() },
           { role: "user", content: question },
         ],
       }),
