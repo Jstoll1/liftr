@@ -793,7 +793,23 @@ async function renderScoreboard() {
   renderLiveScores(live, cloudPicks);
   renderScoreboardTable(cloudPicks, results);
   renderRankings(cloudPicks, results);
+  renderInsertCoin(cloudPicks);
 }
+
+// "INSERT COIN" prompt at the top of the board for the viewer's own
+// still-open, still-unpicked games. Tap jumps straight to the picks.
+function renderInsertCoin(cloudPicks) {
+  const el = document.getElementById("insert-coin");
+  if (!el) return;
+  if (!currentManager) { el.classList.add("hidden"); return; }
+  const state = cloudPicks[currentManager] || getManagerState(currentManager);
+  const open = GAMES.filter((g) => !isGameLocked(g) && !state.picks[g.id]);
+  if (open.length === 0) { el.classList.add("hidden"); return; }
+  const list = open.map((g) => `G${g.id}`).join(" ");
+  el.innerHTML = `<span class="coin-blink">INSERT COIN</span><span class="coin-sub">${open.length} GAME${open.length === 1 ? "" : "S"} UNPICKED &middot; ${list} &middot; TAP TO PICK</span>`;
+  el.classList.remove("hidden");
+}
+document.getElementById("insert-coin")?.addEventListener("click", () => navPicksBtn.click());
 
 // Results are derived straight from ESPN's live feed once a game goes
 // final — no manual score entry. A game only counts once ESPN marks it
