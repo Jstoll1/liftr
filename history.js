@@ -100,7 +100,15 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   // Attract mode: while the box is idle, type a real fact from the archive
   // into the ghost line every few seconds. Tapping it asks the question.
   const ghost=document.getElementById('archive-ghost');
-  const facts=(typeof ATTRACT_FACTS!=='undefined'&&ATTRACT_FACTS.length)?ATTRACT_FACTS.slice().sort(()=>Math.random()-0.5):[];
+  // Signed-in owners mostly see their own facts (three of every four), with
+  // league-wide facts mixed in; everyone else gets the league-wide set.
+  const me=(()=>{try{return localStorage.getItem('brochiefs_me_v1')||null}catch{return null}})();
+  const all=(typeof ATTRACT_FACTS!=='undefined'&&ATTRACT_FACTS.length)?ATTRACT_FACTS:[];
+  const shuffle=a=>a.slice().sort(()=>Math.random()-0.5);
+  const mineF=shuffle(all.filter(f=>f.owner===me)),leagueF=shuffle(all.filter(f=>!f.owner));
+  let facts=[];
+  if(me&&mineF.length){let i=0,j=0;while(i<mineF.length||j<leagueF.length){for(let k=0;k<3&&i<mineF.length;k++)facts.push(mineF[i++]);if(j<leagueF.length)facts.push(leagueF[j++])}}
+  else facts=leagueF;
   let fi=0,attractTimer=null,typeTimer=null,currentAsk=null;
   const idle=()=>!input.value&&document.activeElement!==input&&!form.classList.contains('busy');
   function showFact(){

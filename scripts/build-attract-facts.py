@@ -40,5 +40,30 @@ for o in H['owners']:
     s = S[o]; facts.append((f"{o}'s best week: {s['highestWeek']}", f"what is {o}'s highest scoring week"))
 fm = [m for m in H['formerMembers'] if m['name'].startswith('Marty')][0]; facts.append((f"Marty auto-drafted for four years, went {fm['record']} and won the 2022 title", "tell me about Marty"))
 out = [{"fact": f.replace('–', '-'), "ask": q} for f, q in facts]
+
+# Personal facts: shown to the signed-in owner in second person. "ask" is the
+# question the archive answers; it uses the owner's name so it works for anyone.
+h2h = M['headToHead']
+for o in H['owners']:
+    c = C[o]; s = S[o]; mine = []
+    rec = f"{c['wins']}-{c['losses']}"
+    if c['titles']: mine.append((f"You have {c['titles']} title{'s' if c['titles']>1 else ''} ({', '.join(map(str, c['titleYears']))}) and a {rec} career record", f"how many titles does {o} have"))
+    else: mine.append((f"You are {rec} all time with no title yet, {c['podiums']} podium{'s' if c['podiums']!=1 else ''}", f"how close has {o} come to a title"))
+    mine.append((f"Your best season: {c['bestSeason']['year']} at {c['bestSeason']['wins']}-{c['bestSeason']['losses']} ({c['bestSeason']['team']})", f"what was {o}'s best season"))
+    mine.append((f"Your worst season: {c['worstSeason']['year']} at {c['worstSeason']['wins']}-{c['worstSeason']['losses']} ({c['worstSeason']['team']})", f"what was {o}'s worst season"))
+    mine.append((f"Your best week: {s['highestWeek']}", f"what is {o}'s highest scoring week"))
+    mine.append((f"You are {s['closeGameRecordUnder5']} in games decided by under 5", f"what is {o}'s record in close games"))
+    luck = s['luck']; mine.append((f"Luck check: you are {luck:+} wins versus your all-play record ({s['allPlayRecord']})", f"is {o} lucky or unlucky"))
+    mine.append((f"You have left {s['benchPointsTotal']} points on the bench, {s['benchPointsPerWeek']} a week", f"how many bench points has {o} left"))
+    rivals = sorted(h2h.get(o, {}).items(), key=lambda kv: -int(kv[1]['regularSeason'].split()[1].split('-')[0]) - int(kv[1]['regularSeason'].split()[1].split('-')[1]))
+    for other, e in rivals[:3]:
+        if other not in H['owners']: continue
+        mine.append((f"You are {e['regularSeason'].split()[1]} against {other} in the regular season", f"what is {o}'s record against {other}"))
+    worst_h2h = None
+    for other, e in h2h.get(o, {}).items():
+        w_, l_ = map(int, e['regularSeason'].split()[1].split('-'))
+        if other in H['owners'] and l_ - w_ >= 2 and (worst_h2h is None or l_ - w_ > worst_h2h[1]): worst_h2h = (other, l_ - w_, e['regularSeason'].split()[1])
+    if worst_h2h: mine.append((f"{worst_h2h[0]} owns you: {worst_h2h[2]} in the regular season", f"who does {o} struggle against the most"))
+    out += [{"fact": f.replace('–', '-'), "ask": q, "owner": o} for f, q in mine]
 open('attract-facts.js', 'w').write("// Real facts from the archive tables, cycled in the Ask the Archive box\n// while idle. Built by scripts/build-attract-facts.py.\nconst ATTRACT_FACTS = " + json.dumps(out, ensure_ascii=False) + ";\n")
 print(f"wrote attract-facts.js with {len(out)} facts")
