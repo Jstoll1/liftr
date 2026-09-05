@@ -212,10 +212,6 @@ const gamesList = document.getElementById("games-list");
 const tiebreakerInput = document.getElementById("tiebreaker-input");
 const tiebreakerStatus = document.getElementById("tiebreaker-status");
 const picksProgress = document.getElementById("picks-progress");
-const switchBtn = document.getElementById("switch-btn");
-const toScoreboardBtn = document.getElementById("to-scoreboard-btn");
-const scoreboardBackBtn = document.getElementById("scoreboard-back-btn");
-const scoreboardRefreshBtn = document.getElementById("scoreboard-refresh-btn");
 const liveScoresList = document.getElementById("live-scores-list");
 const rankingsList = document.getElementById("rankings-list");
 const scoreboardTable = document.getElementById("scoreboard-table");
@@ -771,7 +767,6 @@ tiebreakerInput.addEventListener("input", () => {
   }, 500);
 });
 
-switchBtn.addEventListener("click", goHome);
 
 // --- Scoreboard ------------------------------------------------------------
 
@@ -784,16 +779,6 @@ function showScoreboard() {
   withScrollPreserved(renderScoreboard);
 }
 
-toScoreboardBtn.addEventListener("click", showScoreboard);
-scoreboardBackBtn.addEventListener("click", () => {
-  rememberScroll();
-  scoreboardScreen.classList.add("hidden");
-  picksScreen.classList.remove("hidden");
-  renderPicksScreen();
-  setActiveNav("picks");
-  enterScreen("picks");
-});
-scoreboardRefreshBtn.addEventListener("click", () => withScrollPreserved(renderScoreboard));
 
 async function renderScoreboard() {
   const rawPicks = (await fetchAllPicks()) || loadAll();
@@ -871,8 +856,8 @@ function renderLiveScores(live, cloudPicks) {
   const title = document.getElementById("scoreboard-title");
   if (title) {
     title.innerHTML = liveCount > 0
-      ? `<span class="live-dot"></span> ${liveCount} LIVE &middot; SCOREBOARD`
-      : "LIVE SCOREBOARD";
+      ? `📡 <span class="live-dot"></span> ${liveCount} LIVE`
+      : "📡 LIVE SCOREBOARD";
   }
 
   liveScoresList.innerHTML = `<div class="bug-grid">` + ordered

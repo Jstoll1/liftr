@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609051000" />
+  <link rel="stylesheet" href="styles.css?v=202609051010" />
 </head>
 <body>
 
@@ -132,10 +132,8 @@
   <!-- PICKS SCREEN -->
   <main id="picks-screen" class="screen hidden">
     <div class="wrap wide">
-      <div class="topbar">
-        <button id="switch-btn" class="link-btn">&larr; SWITCH</button>
+      <div class="topbar centered">
         <span id="manager-badge" class="manager-badge"></span>
-        <button id="to-scoreboard-btn" class="link-btn">SCOREBOARD &rarr;</button>
       </div>
 
       <p class="picks-hint">Each game: pick a team straight up (1 pt favorite / 3 pt underdog) or against the spread (2 pts either way). Every tap saves instantly &mdash; change your mind as often as you like until that game kicks off, then it locks for everyone.</p>
@@ -157,10 +155,8 @@
   <!-- SCOREBOARD SCREEN -->
   <main id="scoreboard-screen" class="screen hidden">
     <div class="wrap wide">
-      <div class="topbar">
-        <button id="scoreboard-back-btn" class="link-btn">&larr; MY PICKS</button>
-        <span id="scoreboard-title" class="manager-badge">LIVE SCOREBOARD</span>
-        <button id="scoreboard-refresh-btn" class="link-btn" title="Refresh">⟳ REFRESH</button>
+      <div class="topbar centered">
+        <span id="scoreboard-title" class="manager-badge">📡 LIVE SCOREBOARD</span>
       </div>
 
       <div id="live-scores-list" class="live-scores-list"></div>
@@ -194,6 +190,6 @@
     </button>
   </nav>
 
-  <script src="app.js?v=202609051000"></script>
+  <script src="app.js?v=202609051010"></script>
 </body>
 </html>

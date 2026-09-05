@@ -400,6 +400,11 @@ html, body {
   gap: 8px 12px;
 }
 
+.topbar.centered {
+  justify-content: center;
+  text-align: center;
+}
+
 .link-btn {
   background: none;
   border: none;
