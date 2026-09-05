@@ -70,7 +70,11 @@ html, body {
   display: flex;
   justify-content: center;
   padding: 8px 12px;
-  background: linear-gradient(to bottom, rgba(10, 0, 20, 0.96) 70%, rgba(10, 0, 20, 0));
+  background: rgba(10, 0, 20, 0.98);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(193, 60, 255, 0.45);
+  box-shadow: 0 6px 18px rgba(10, 0, 20, 0.9);
 }
 
 .home-logo-btn {
@@ -112,7 +116,11 @@ html, body {
   justify-content: center;
   gap: 4px;
   padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, rgba(10, 0, 20, 0.96) 70%, rgba(10, 0, 20, 0));
+  background: rgba(10, 0, 20, 0.98);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(193, 60, 255, 0.45);
+  box-shadow: 0 -6px 18px rgba(10, 0, 20, 0.9);
 }
 
 .nav-btn {
@@ -1359,28 +1367,19 @@ html, body {
   box-shadow: 0 0 12px rgba(193, 60, 255, 0.5);
 }
 
-/* Pixel-badge checkmark, top-right corner — a second, unmissable signal
-   for "this is picked" beyond the border/glow, which can be hard to
-   spot at a glance across a whole row of similar buttons. */
-.pick-mini-btn.selected::after {
-  content: "✓";
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 15px;
-  height: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--neon-purple);
-  color: #0a0014;
+/* Pixel checkmark inline with the label — a second, unmissable signal
+   for "this is picked" that never collides with the label or the card
+   edge, whatever the button width. */
+.pick-mini-btn.selected .pick-mini-label {
+  color: var(--neon-yellow);
+}
+
+.pick-mini-btn.selected .pick-mini-label::before {
+  content: "✓ ";
   font-family: 'Press Start 2P', monospace;
-  font-size: 8px;
-  line-height: 1;
-  border: 2px solid var(--bg);
-  border-radius: 4px;
-  box-shadow: 0 0 8px var(--neon-purple);
-  z-index: 2;
+  font-size: 7px;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 5px var(--neon-yellow);
 }
 
 .pick-mini-btn.selected.su.risk-low { border-bottom-color: var(--neon-green); }
