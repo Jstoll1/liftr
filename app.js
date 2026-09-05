@@ -1029,21 +1029,30 @@ function namesListHtml(names) {
   return names.map((n) => `<span class="bug-name-line${n === currentManager ? " me" : ""}">${n}</span>`).join("");
 }
 
-function namesInline(names) {
-  if (names.length === 0) return `<span class="bug-names none">&mdash;</span>`;
-  return `<span class="bug-names">${names.map((n) => `<span class="bug-name-line${n === currentManager ? " me" : ""}">${n}</span>`).join('<span class="bug-sep">, </span>')}</span>`;
+// Name chips: avatar initial (or emoji) plus name, wrapping as a unit.
+function nameChips(names) {
+  return names.map((n) => {
+    const idx = MANAGERS.indexOf(n);
+    const accent = AVATAR_COLORS[(idx >= 0 ? idx : 0) % AVATAR_COLORS.length];
+    const av = avatarOverrides[n] || n[0];
+    return `<span class="pick-chip${n === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${n}</span>`;
+  }).join("");
 }
 
-// Stacked breakdown: a short team header, then one line per pick type with
-// the names run together, so the bug grows downward and stays in its cell.
+// Stacked breakdown: team header carrying the line, then one row per pick
+// type that has anyone on it. Empty rows are dropped.
 function bugSideDetail(cloudPicks, game, team, short) {
   const isFav = team === game.favorite;
   const spreadTxt = isFav ? `-${game.spread}` : `+${game.spread}`;
+  const ats = pickersFor(cloudPicks, game.id, team, "ATS");
+  const su = pickersFor(cloudPicks, game.id, team, "SU");
+  const rows = [];
+  if (ats.length) rows.push(`<div class="bug-pick-row"><span class="bug-pick-tag ats">ATS</span><div class="pick-chips">${nameChips(ats)}</div></div>`);
+  if (su.length) rows.push(`<div class="bug-pick-row"><span class="bug-pick-tag su">SU</span><div class="pick-chips">${nameChips(su)}</div></div>`);
   return `
     <div class="bug-side">
-      <span class="bug-side-head">${short}</span>
-      <div class="bug-pick-line"><span class="bug-pick-label">ATS <em>${spreadTxt}</em></span>${namesInline(pickersFor(cloudPicks, game.id, team, "ATS"))}</div>
-      <div class="bug-pick-line"><span class="bug-pick-label">SU</span>${namesInline(pickersFor(cloudPicks, game.id, team, "SU"))}</div>
+      <div class="bug-side-head"><span>${short}</span><span class="bug-side-line ${isFav ? "fav" : "dog"}">${spreadTxt}</span><span class="bug-side-count">${ats.length + su.length}</span></div>
+      ${rows.length ? rows.join("") : '<div class="bug-pick-row none">nobody</div>'}
     </div>
   `;
 }
@@ -1052,7 +1061,11 @@ function renderLiveScores(live, cloudPicks) {
   // Compact scorebugs in a 2-up grid, every game from the start. Tap a
   // bug to expand the who-picked-what lists (only once that game has
   // kicked off). A red pulsing dot marks games that are live right now.
-  const ordered = [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
+  // Open bugs float to the front so the grid never leaves a hole beside
+  // a tall card; the rest keep kickoff order.
+  const ordered = [...GAMES]
+    .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id)
+    .sort((a, b) => (expandedGames.has(b.id) ? 1 : 0) - (expandedGames.has(a.id) ? 1 : 0));
   const liveCount = ordered.filter((g) => { const l = live[g.id]; return isGameLocked(g) && l && l.found && l.state === "in" && !l.completed; }).length;
   // Live count rides in the top bar title instead of a section heading.
   const title = document.getElementById("scoreboard-title");
@@ -1118,11 +1131,17 @@ function renderLiveScores(live, cloudPicks) {
           <div class="bug-head">
             <span class="bug-gnum">G${game.id}</span>
             <span class="bug-status">${isLive ? '<span class="live-dot"></span>' : ""}${statusText}</span>
-            ${locked && !expanded ? `<span class="bug-counts">${pickersFor(cloudPicks, game.id, game.away, "ATS").length + pickersFor(cloudPicks, game.id, game.away, "SU").length}·${pickersFor(cloudPicks, game.id, game.home, "ATS").length + pickersFor(cloudPicks, game.id, game.home, "SU").length}</span>` : ""}
+            ${locked && !expanded ? (() => {
+              const ac = pickersFor(cloudPicks, game.id, game.away, "ATS").length + pickersFor(cloudPicks, game.id, game.away, "SU").length;
+              const hc = pickersFor(cloudPicks, game.id, game.home, "ATS").length + pickersFor(cloudPicks, game.id, game.home, "SU").length;
+              const tot = Math.max(1, ac + hc);
+              return `<span class="bug-count-bars" title="${ac} on ${game.awayShort}, ${hc} on ${game.homeShort}"><span class="bug-count-bar away" style="width:${Math.round(ac / tot * 100)}%"></span><span class="bug-count-bar home" style="width:${Math.round(hc / tot * 100)}%"></span></span>`;
+            })() : ""}
             <span class="bug-caret">${expanded ? "▴" : "▾"}</span>
           </div>
           ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop)}
           ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop)}
+          ${isLive && g.winProb && !expanded ? `<div class="bug-prob-strip"><span class="away" style="width:${g.winProb.away}%"></span><span class="home" style="width:${g.winProb.home}%"></span></div>` : ""}
           ${detail}
         </div>
       `;

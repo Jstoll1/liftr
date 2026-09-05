@@ -1912,3 +1912,27 @@ html, body {
 .bug-names.none { color: var(--text-dim); opacity: .5; }
 .bug-sep { color: var(--text-dim); }
 .bug-counts { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); flex: none; }
+
+/* --- Scorebug breakdown v2: chips, header lines, count bars --- */
+.bug-side-head { display: flex; align-items: baseline; gap: 6px; }
+.bug-side-line { font-family: 'Press Start 2P', monospace; font-size: 7px; }
+.bug-side-line.fav { color: var(--neon-pink); text-shadow: 0 0 4px var(--neon-pink); }
+.bug-side-line.dog { color: var(--text-dim); }
+.bug-side-count { margin-left: auto; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); }
+.bug-pick-row { display: flex; align-items: flex-start; gap: 6px; }
+.bug-pick-row.none { font-size: 9px; color: var(--text-dim); opacity: .6; }
+.bug-pick-tag { flex: none; margin-top: 3px; padding: 1px 4px; border-radius: 3px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .04em; }
+.bug-pick-tag.ats { color: var(--neon-yellow); border: 1px solid rgba(255, 228, 94, .5); }
+.bug-pick-tag.su { color: var(--neon-purple); border: 1px solid rgba(193, 60, 255, .5); }
+.pick-chips { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.pick-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 2px; border: 1px solid var(--card-border); border-radius: 999px; background: rgba(255, 255, 255, .04); font-size: 10px; font-weight: 700; color: var(--text); white-space: nowrap; }
+.pick-chip-av { width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--accent, var(--neon-purple)); color: #0a0014; font-size: 8px; font-weight: 700; flex: none; }
+.pick-chip.me { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .16); color: var(--neon-cyan); box-shadow: 0 0 6px rgba(5, 217, 232, .35); }
+.bug-count-bars { display: inline-flex; width: 34px; height: 5px; border-radius: 3px; overflow: hidden; background: rgba(255, 255, 255, .08); flex: none; margin-right: 4px; }
+.bug-count-bar { display: block; height: 100%; }
+.bug-count-bar.away { background: var(--neon-cyan); }
+.bug-count-bar.home { background: var(--neon-pink); }
+.bug-prob-strip { display: flex; height: 3px; border-radius: 2px; overflow: hidden; margin-top: 4px; background: rgba(255, 255, 255, .08); }
+.bug-prob-strip span { display: block; height: 100%; }
+.bug-prob-strip .away { background: var(--neon-cyan); }
+.bug-prob-strip .home { background: var(--neon-pink); }
