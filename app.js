@@ -972,7 +972,18 @@ async function renderScoreboard() {
   renderScoreboardTable(cloudPicks, results);
   renderRankings(cloudPicks, results);
   renderInsertCoin(cloudPicks);
+  const stamp = document.getElementById("scoreboard-updated");
+  if (stamp) {
+    const src = Object.keys(live).length ? "ESPN" : "no live data";
+    stamp.textContent = `updated ${new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })} · ${src} · tap to refresh`;
+    stamp.classList.remove("busy");
+  }
 }
+document.getElementById("scoreboard-updated")?.addEventListener("click", (e) => {
+  e.currentTarget.classList.add("busy");
+  e.currentTarget.textContent = "refreshing…";
+  withScrollPreserved(renderScoreboard);
+});
 
 // "INSERT COIN" prompt at the top of the board for the viewer's own
 // still-open, still-unpicked games. Tap jumps straight to the picks.
