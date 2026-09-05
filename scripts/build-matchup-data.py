@@ -36,16 +36,19 @@ for y in sorted(d['seasons']):
             if m['week'] == lastweek and pair == {champ, ru}: label = 'championship game'
             elif m['week'] == lastweek and third in pair: label = 'third place game'
             else: label = 'playoff week game'
-        w, l = (h, a) if hp > ap else (a, h); wp, lp = max(hp, ap), min(hp, ap)
+        # ESPN's winner field already applies the league tiebreaker for the
+        # handful of tied games before 2021, so trust it over raw points.
+        home_won = m['winner'] == 'HOME'
+        w, l = (h, a) if home_won else (a, h); wp, lp = (hp, ap) if home_won else (ap, hp)
+        if hp == ap: note = f"Tied {hp}-{ap} on points; {w} won on the league tiebreaker."
         if label == 'championship game' and w != champ:
-            note = (f"The final week ended {wp}-{lp} and the title was decided on a two-week total, which {champ} won."
-                    if wp == lp else f"The final week score favored {w}, but the title was decided on a two-week total, which {champ} won.")
-            w, l = champ, ru
+            note = f"The final week score favored {w}, but the title was decided on a two-week total, which {champ} won."
+            w, l = champ, ru; wp, lp = lp, wp
         g = {'year': int(y), 'week': m['week'], 'type': label, 'winner': w, 'loser': l,
              'winnerPoints': R(wp), 'loserPoints': R(lp), 'margin': R(wp - lp)}
         if note: g['note'] = note
         games.append(g)
-        for o, p, opp, res in ((h, hp, a, 'W' if hp > ap else 'L'), (a, ap, h, 'W' if ap > hp else 'L')):
+        for o, p, opp, res in ((h, hp, a, 'W' if home_won else 'L'), (a, ap, h, 'L' if home_won else 'W')):
             weekly.append({'year': int(y), 'week': m['week'], 'owner': o, 'points': R(p), 'opponent': opp, 'result': res, 'type': label})
     for tid, wk in s['benchPointsByTeamWeek'].items():
         for w, pts in wk.items():
@@ -86,8 +89,24 @@ for o in owners:
     for r in b: by_season[r['year']] += r['bench']
     bw_ = max([g for g in regg if g['winner'] == o], key=lambda g: g['margin'])
     wl_ = max([g for g in regg if g['loser'] == o], key=lambda g: g['margin'])
+    close = [w for w in rs if abs(next(g['margin'] for g in regg if g['year']==w['year'] and g['week']==w['week'] and o in (g['winner'],g['loser']))) < 5]
+    close10 = [w for w in rs if abs(next(g['margin'] for g in regg if g['year']==w['year'] and g['week']==w['week'] and o in (g['winner'],g['loser']))) < 10]
+    # all-play: record if the owner had played every other team each week
+    ap_w = ap_l = 0
+    for w in rs:
+        others = [x for x in wk_groups[(w['year'], w['week'])] if x['owner'] != o]
+        ap_w += sum(w['points'] > x['points'] for x in others); ap_l += sum(w['points'] < x['points'] for x in others)
+    ap_pct = ap_w / (ap_w + ap_l) if (ap_w + ap_l) else 0
+    actual_w = sum(x['result'] == 'W' for x in rs); expected_w = ap_pct * len(rs)
     per[o] = {
         'active': o in active,
+        'closeGameRecordUnder5': f"{sum(x['result']=='W' for x in close)}-{sum(x['result']=='L' for x in close)}",
+        'closeGameRecordUnder10': f"{sum(x['result']=='W' for x in close10)}-{sum(x['result']=='L' for x in close10)}",
+        'winsBy50Plus': sum(1 for g in regg if g['winner'] == o and g['margin'] >= 50),
+        'lossesBy50Plus': sum(1 for g in regg if g['loser'] == o and g['margin'] >= 50),
+        'allPlayRecord': f"{ap_w}-{ap_l}", 'allPlayWinPct': R(ap_pct),
+        'luck': R(actual_w - expected_w),
+        'luckNote': 'luck = actual wins minus the wins an all-play schedule would predict; positive means the schedule helped, negative means the owner was unlucky',
         'regularSeasonRecord': f"{sum(w['result']=='W' for w in rs)}-{sum(w['result']=='L' for w in rs)}",
         'playoffWeekRecord': f"{sum(w['result']=='W' for w in po)}-{sum(w['result']=='L' for w in po)}",
         'championshipGameRecord': f"{sum(g['winner']==o for g in finals)}-{sum(g['loser']==o for g in finals)}",
@@ -103,6 +122,7 @@ for o in owners:
         'worstLoss': f"{wl_['margin']} to {wl_['winner']} in {wl_['year']} week {wl_['week']} ({wl_['winnerPoints']}-{wl_['loserPoints']})",
     }
 
+pair_counts = collections.Counter(tuple(sorted((g['winner'], g['loser']))) for g in regg)
 fmt_w = lambda w: f"{w['owner']} {w['points']} in {w['year']} week {w['week']} vs {w['opponent']} ({w['result']})"
 fmt_g = lambda g: f"{g['year']} week {g['week']}: {g['winner']} {g['winnerPoints']} beat {g['loser']} {g['loserPoints']} (margin {g['margin']})"
 bench_season = collections.defaultdict(float)
@@ -120,7 +140,12 @@ league = {
     'mostWeeksAsTopScorer': [f"{o} {n}" for o, n in tops.most_common(5)],
     'mostWeeksAsLowestScorer': [f"{o} {n}" for o, n in bots.most_common(5)],
     'longestWinStreaks': sorted([f"{o} {p['longestWinStreak']}" for o, p in per.items()], key=lambda s: -int(s.split()[-1]))[:5],
-    'scope': 'Regular season only for weekly records, blowouts, closest games and bench points. The league used divisional schedules, so some owner pairs met rarely. Playoff week scores before 2021 can be two-week totals.',
+    'luckiestOwners': sorted([f"{o} {p['luck']:+} ({p['regularSeasonRecord']} actual, all-play {p['allPlayRecord']})" for o, p in per.items()], key=lambda s: -float(s.split()[1]))[:5],
+    'unluckiestOwners': sorted([f"{o} {p['luck']:+} ({p['regularSeasonRecord']} actual, all-play {p['allPlayRecord']})" for o, p in per.items()], key=lambda s: float(s.split()[1]))[:5],
+    'bestCloseGameRecords': sorted([f"{o} {p['closeGameRecordUnder5']} in games decided by under 5" for o, p in per.items()], key=lambda s: -int(s.split()[1].split('-')[0]))[:5],
+    'mostPlayedPairs': [f"{a} vs {b}: {n} regular season games" for (a, b), n in sorted(pair_counts.items(), key=lambda kv: -kv[1])[:5]],
+    'scope': 'Regular season only for weekly records, blowouts, closest games, close-game records, all-play and bench points. The league used divisional schedules, so some owner pairs met rarely. Playoff week scores before 2021 can be two-week totals.',
+    'notAvailable': 'The archive has no playoff seeds or playoff appearance lists (only podium finishes), no in-game or comeback data (weekly totals only), no projections or favorite/underdog lines, and no player, draft, injury or transaction data.',
 }
 compact = {y: [f"W{g['week']} {g['winner']} {g['winnerPoints']} d. {g['loser']} {g['loserPoints']}" + ('' if g['type'] == 'regular season' else f" [{g['type']}]") for g in games if g['year'] == int(y)] for y in sorted({g['year'] for g in games})}
 M = {'headToHead': h2h, 'ownerMatchupStats': per, 'leagueMatchupRecords': league, 'everyGameByYear': compact}
