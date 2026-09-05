@@ -346,7 +346,7 @@ function sanitizeLibraryRoutines(libraryRoutines) {
 function json(data, status, headers) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json", ...headers },
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...headers },
   });
 }
 
@@ -598,7 +598,8 @@ async function handleLive(corsHeaders) {
     for (const date of LIVE_DATES) {
       try {
         const res = await fetch(
-          `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300`
+          `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300`,
+          { cf: { cacheTtl: 0, cacheEverything: false }, headers: { "Cache-Control": "no-cache" } }
         );
         if (!res.ok) continue;
         const data = await res.json();

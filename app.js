@@ -139,7 +139,7 @@ async function pushManagerState(manager, state) {
 async function fetchAllPicks() {
   if (!WORKER_URL) return null;
   try {
-    const res = await fetch(`${WORKER_URL}/picks`);
+    const res = await fetch(`${WORKER_URL}/picks?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
     return data.picks || {};
@@ -155,7 +155,7 @@ async function fetchAllPicks() {
 async function fetchLiveScores() {
   if (!WORKER_URL) return {};
   try {
-    const res = await fetch(`${WORKER_URL}/live`);
+    const res = await fetch(`${WORKER_URL}/live?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return {};
     const data = await res.json();
     const byId = {};
@@ -1103,6 +1103,17 @@ setInterval(() => {
   if (!scoreboardScreen.classList.contains("hidden")) {
     withScrollPreserved(renderScoreboard);
   }
-}, 30000);
+}, 20000);
+
+// Timers pause while the phone is locked or the app is in the background.
+// Refresh the moment it comes back so the board never shows stale scores.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
+  if (currentManager && !picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
+});
+window.addEventListener("pageshow", (e) => {
+  if (e.persisted && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
+});
 
 renderManagerPicker();
