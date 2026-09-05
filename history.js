@@ -89,18 +89,16 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
 
 // --- Ask the Archive -------------------------------------------------------
 (function(){
-  const form=document.getElementById('archive-ask'),input=document.getElementById('archive-q'),out=document.getElementById('archive-a');
+  const form=document.getElementById('archive-ask'),input=document.getElementById('archive-q'),out=document.getElementById('archive-a'),mirror=document.getElementById('archive-mirror-text');
   if(!form)return;
   const worker=(typeof WORKER_URL!=='undefined'&&WORKER_URL)||'';
-  // Size the input to its rendered text (measured with a hidden mirror in
-  // the same font) so the block cursor sits right after the last character.
-  const line=form.querySelector('.archive-ask-line');
-  const mirror=document.createElement('span');mirror.className='archive-ask-mirror';line.appendChild(mirror);
-  const sizeInput=()=>{const v=input.value;mirror.textContent=v;const w=v?mirror.getBoundingClientRect().width+3:0;input.style.width=w+'px';form.classList.toggle('has-text',v.length>0)};
-  input.addEventListener('input',sizeInput);sizeInput();
-  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(sizeInput);
-  form.querySelector('.archive-ask-line').addEventListener('click',()=>input.focus());
   let timer=null;
+  // The render layer mirrors the textarea so the text wraps onto new lines
+  // and the block cursor always sits right after the last character.
+  const sync=()=>{const v=input.value.replace(/\n/g,' ');if(v!==input.value)input.value=v;mirror.textContent=v;form.classList.toggle('has-text',v.length>0)};
+  input.addEventListener('input',sync);sync();
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();form.requestSubmit()}});
+  form.querySelector('.archive-ask-line').addEventListener('click',()=>input.focus());
   function typeOut(text,cls){
     clearInterval(timer);out.className='archive-ask-answer'+(cls?' '+cls:'');out.textContent='';let i=0;
     timer=setInterval(()=>{out.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(timer)},12);
@@ -116,6 +114,6 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
       if(!res.ok||!data.answer){typeOut(data.error||'The archive is not answering right now.','error')}
       else typeOut(data.answer);
     }catch{typeOut('The archive is not answering right now.','error')}
-    form.classList.remove('busy');input.value='';sizeInput();
+    form.classList.remove('busy');input.value='';sync();input.blur();
   });
 })();

@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=202609051145" />
-  <link rel="stylesheet" href="history.css?v=202609051335" />
+  <link rel="stylesheet" href="history.css?v=202609051400" />
 </head>
 <body>
 
@@ -189,9 +189,10 @@
           <label class="archive-ask-label" for="archive-q">ASK THE ARCHIVE</label>
           <div class="archive-ask-line">
             <span class="archive-ask-prompt">&gt;</span>
-            <input id="archive-q" class="archive-ask-input" type="text" maxlength="300" enterkeyhint="send" aria-label="Ask the archive" />
-            <span class="archive-ask-cursor" aria-hidden="true"></span>
-            <span id="archive-ghost" class="archive-ask-ghost" aria-hidden="true">who has the most last place finishes</span>
+            <div class="archive-ask-field">
+              <div class="archive-ask-render" aria-hidden="true"><span id="archive-mirror-text"></span><span class="archive-ask-cursor"></span><span id="archive-ghost" class="archive-ask-ghost">most last place finishes?</span></div>
+              <textarea id="archive-q" class="archive-ask-input" rows="1" maxlength="300" enterkeyhint="send" aria-label="Ask the archive" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+            </div>
           </div>
           <div id="archive-a" class="archive-ask-answer hidden"></div>
         </form>
@@ -282,6 +283,6 @@
   </nav>
 
   <script src="app.js?v=202609051145"></script>
-  <script src="history.js?v=202609051335"></script>
+  <script src="history.js?v=202609051400"></script>
 </body>
 </html>
