@@ -1999,3 +1999,9 @@ html, body {
 .pick-cell.correct .pick-mark { filter: none; }
 .pick-cell.incorrect .pick-cell-logo { opacity: .4; filter: grayscale(.6); }
 .pick-cell.correct .pick-cell-spread { display: none; }
+
+/* Sticky name column always stacks above cell contents while scrolling */
+.scoreboard-table td.manager-col { z-index: 3; }
+.scoreboard-table th.manager-col { z-index: 4; }
+.scoreboard-table th { z-index: 2; }
+.pick-mark, .pick-pill, .pick-cell-spread { position: relative; z-index: 0; }
