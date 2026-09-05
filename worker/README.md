@@ -151,3 +151,8 @@ secret once:
 
 then open `https://liftr-ai.jhs797.workers.dev/history-log?key=<that value>`
 on any device. Without the secret the endpoint returns 404.
+
+Matchup data (head-to-head, weekly scores, playoff games, bench points) comes
+from `src/matchup-data.js`, built from `data/espn-history.json`, which is
+exported from ESPN with `scripts/export-espn-history.mjs` (see the header of
+that script for the cookies it needs).
