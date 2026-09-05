@@ -867,11 +867,15 @@ function renderLiveScores(live, cloudPicks) {
   // kicked off). A red pulsing dot marks games that are live right now.
   const ordered = [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
   const liveCount = ordered.filter((g) => { const l = live[g.id]; return isGameLocked(g) && l && l.found && l.state === "in" && !l.completed; }).length;
-  const heading = liveCount > 0
-    ? `<span class="live-dot"></span> ${liveCount} LIVE`
-    : "📡 SCOREBOARD";
+  // Live count rides in the top bar title instead of a section heading.
+  const title = document.getElementById("scoreboard-title");
+  if (title) {
+    title.innerHTML = liveCount > 0
+      ? `<span class="live-dot"></span> ${liveCount} LIVE &middot; SCOREBOARD`
+      : "LIVE SCOREBOARD";
+  }
 
-  liveScoresList.innerHTML = `<span class="rules-heading live-scores-heading">${heading}</span><div class="bug-grid">` + ordered
+  liveScoresList.innerHTML = `<div class="bug-grid">` + ordered
     .map((game) => {
       const locked = isGameLocked(game);
       const g = live[game.id];
