@@ -107,9 +107,23 @@
   background: linear-gradient(145deg,color-mix(in srgb,var(--owner-accent) 8%,transparent),transparent 45%),var(--panel);
 }
 .franchise-card::before { content: ''; position: absolute; width: 150px; height: 150px; right: -72px; top: -82px; border: 1px solid color-mix(in srgb,var(--owner-accent) 26%,transparent); border-radius: 50%; }
-.franchise-head { position: relative; display: flex; align-items: start; justify-content: space-between; gap: 12px; }
-.franchise-head h3 { margin: 6px 0 0; font-size: 23px; }
+.franchise-head { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; list-style: none; cursor: pointer; }
+.franchise-head::-webkit-details-marker { display: none; }
+.franchise-head h3 { margin: 4px 0 0; font-size: 20px; }
+.franchise-id { min-width: 0; }
+.franchise-byline { display: block; margin-top: 4px; color: var(--muted); font-size: 8px; letter-spacing: .12em; text-transform: uppercase; }
+.franchise-tag { display: inline-block; padding: 3px 7px; border: 1px solid currentColor; border-radius: 6px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .04em; text-transform: uppercase; }
+.franchise-tag.champ { color: var(--gold); text-shadow: 0 0 6px rgba(242,193,78,.6); }
+.franchise-tag.finalist { color: var(--cyan); }
+.franchise-tag.podium { color: var(--purple); }
+.franchise-tag.hunting { color: var(--muted); }
+.franchise-tag.rookie { color: #39ff88; }
+.franchise-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
 .franchise-trophies { color: var(--gold); letter-spacing: -.14em; }
+.franchise-record-mini { color: var(--owner-accent); font-size: 11px; font-weight: 900; }
+.franchise-toggle { color: var(--muted); font-size: 18px; line-height: 1; }
+.franchise-card[open] { border-color: color-mix(in srgb,var(--owner-accent) 55%,var(--line)); }
+.franchise-body { margin-top: 6px; }
 .franchise-record { margin: 22px 0 18px; font-size: 25px; font-weight: 900; }
 .franchise-record span { margin-left: 8px; color: var(--owner-accent); font-size: 12px; }
 .mini-stats { display: grid; grid-template-columns: repeat(3,1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
