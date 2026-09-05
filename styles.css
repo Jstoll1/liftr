@@ -1895,3 +1895,6 @@ html, body {
 .ranking-row.is-me .ranking-name::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 5px var(--neon-cyan); margin-right: 6px; vertical-align: middle; }
 .scoreboard-table tr.is-me td { background: rgba(5, 217, 232, 0.07); }
 .scoreboard-table tr.is-me td.manager-col { color: var(--neon-cyan); }
+
+.claim-btn.current { border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: 0 0 8px rgba(5, 217, 232, 0.3); }
+.claim-you { margin-left: auto; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-cyan); }

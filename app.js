@@ -426,7 +426,7 @@ track("/splash");
 rulesOpenBtn.addEventListener("click", openRules);
 rulesCloseBtn.addEventListener("click", closeRules);
 homeLogoBtn.addEventListener("click", goHome);
-document.getElementById("me-pill")?.addEventListener("click", goHome);
+document.getElementById("me-pill")?.addEventListener("click", openOwnerPicker);
 
 navHomeBtn.addEventListener("click", goHome);
 navPicksBtn.addEventListener("click", () => {
@@ -647,7 +647,7 @@ let pendingIdentity = null;
 // Compact "Who are you?" for a device with no saved identity. Fires on
 // entry from the splash and again if they head for Picks, Scores or
 // History without choosing. "Just looking" hides it for this visit.
-function openClaimPrompt() {
+let openClaimPrompt = function () {
   if (loadMe() || claimSkippedThisVisit) return false;
   claimGrid.innerHTML = MANAGERS.map((name, idx) => {
     const accent = AVATAR_COLORS[idx % AVATAR_COLORS.length];
@@ -662,8 +662,43 @@ function openClaimPrompt() {
   }));
   claimModal.classList.remove("hidden");
   return true;
-}
+};
 claimSkipBtn.addEventListener("click", () => { claimSkippedThisVisit = true; claimModal.classList.add("hidden"); });
+
+// Same picker, opened from the header pill: switch owners in place without
+// leaving the screen you are on. The current owner is marked.
+function openOwnerPicker() {
+  const me = loadMe();
+  document.getElementById("claim-title").textContent = "SELECT YOUR OWNER";
+  document.getElementById("claim-subtext").textContent = me ? `This phone is ${me}. Tap a name to switch.` : "Tap your name.";
+  claimSkipBtn.textContent = "Cancel";
+  claimGrid.innerHTML = MANAGERS.map((name, idx) => {
+    const accent = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+    const av = avatarOverrides[name] || name[0];
+    return `<button type="button" class="claim-btn${name === me ? " current" : ""}" data-name="${name}"><span class="claim-avatar" style="--accent:${accent}">${av}</span>${name}${name === me ? '<span class="claim-you">YOU</span>' : ""}</button>`;
+  }).join("");
+  claimGrid.querySelectorAll(".claim-btn").forEach((btn) => btn.addEventListener("click", async () => {
+    const name = btn.dataset.name;
+    claimModal.classList.add("hidden");
+    if (name === me) return;
+    saveMe(name);
+    currentManager = name;
+    managerBadge.textContent = name.toUpperCase();
+    // Re-render whatever screen is showing so "you" markers and picks follow
+    if (!picksScreen.classList.contains("hidden")) { await syncManagerFromCloud(name); withScrollPreserved(renderPicksScreen); }
+    if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
+    if (!loginScreen.classList.contains("hidden")) renderManagerPicker();
+  }));
+  claimModal.classList.remove("hidden");
+}
+// Restore the first-visit wording whenever the claim prompt is used again
+const _openClaimPrompt = openClaimPrompt;
+openClaimPrompt = function () {
+  document.getElementById("claim-title").textContent = "WHO ARE YOU?";
+  document.getElementById("claim-subtext").textContent = "Pick your name once and this phone will remember you.";
+  claimSkipBtn.textContent = "Just looking for now";
+  return _openClaimPrompt();
+};
 claimModal.addEventListener("click", (e) => { if (e.target === claimModal) { claimSkippedThisVisit = true; claimModal.classList.add("hidden"); } });
 
 function openIdentityConfirm(name, accent) {
