@@ -1988,3 +1988,14 @@ html, body {
 
 /* Every collapsed bug reserves the strip row so rows stay level */
 .bug-prob-strip.empty { background: transparent; }
+
+/* Result pills under the logo (replaces the corner badges) */
+.pick-badge { display: none; }
+.pick-pill { display: inline-block; margin-top: 3px; min-width: 22px; padding: 1px 5px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 7px; line-height: 12px; text-align: center; }
+.pick-pill.hit { background: rgba(57, 255, 136, .22); color: var(--neon-green); border: 1px solid rgba(57, 255, 136, .5); }
+.pick-pill.hit2 { background: rgba(5, 217, 232, .22); color: var(--neon-cyan); border: 1px solid rgba(5, 217, 232, .6); }
+.pick-pill.upset { background: rgba(255, 228, 94, .28); color: var(--neon-yellow); border: 1px solid var(--neon-yellow); box-shadow: 0 0 6px rgba(255, 228, 94, .5); }
+.pick-pill.miss { background: rgba(255, 32, 121, .18); color: var(--neon-pink); border: 1px solid rgba(255, 32, 121, .5); font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 9px; }
+.pick-cell.correct .pick-mark { filter: none; }
+.pick-cell.incorrect .pick-cell-logo { opacity: .4; filter: grayscale(.6); }
+.pick-cell.correct .pick-cell-spread { display: none; }

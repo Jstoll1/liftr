@@ -1205,8 +1205,11 @@ function renderScoreboardTable(cloudPicks, results, live = {}) {
         : "";
       // Final games: points ride as a badge on the logo (+2 in green, ✗ in
       // pink with the logo dimmed) instead of a third stacked line.
-      const badge = pts === null ? "" : pts >= 3 ? `<span class="pick-badge upset">+3</span>` : pts === 2 ? `<span class="pick-badge hit2">+2</span>` : pts > 0 ? `<span class="pick-badge hit">+1</span>` : `<span class="pick-badge miss">✗</span>`;
-      return `<td class="pick-cell ${cls}" title="${short} ${pick.mode}${pts !== null ? ` · ${pts} pt` : ""}"><span class="pick-mark">${badge}<img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${spreadTag}</td>`;
+      // Final: logo with a small result pill under it and no spread line.
+      // Live or upcoming: logo with the spread (if ATS) and a lean dot.
+      const pill = pts === null ? "" : pts >= 3 ? `<span class="pick-pill upset">+3</span>` : pts === 2 ? `<span class="pick-pill hit2">+2</span>` : pts > 0 ? `<span class="pick-pill hit">+1</span>` : `<span class="pick-pill miss">✗</span>`;
+      const under = pts === null ? spreadTag : pill;
+      return `<td class="pick-cell ${cls}" title="${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}"><span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
     }).join("");
 
     const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
