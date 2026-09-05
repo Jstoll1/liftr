@@ -1160,7 +1160,7 @@ function renderLiveScores(live, cloudPicks) {
 }
 
 function renderScoreboardTable(cloudPicks, results) {
-  const headCells = GAMES.map((g) => `<th>G${g.id}</th>`).join("");
+  const headCells = GAMES.map((g) => `<th class="${results[g.id] ? "final" : isGameLocked(g) ? "live" : ""}">G${g.id}</th>`).join("");
   let html = `<thead><tr><th class="manager-col">Team</th>${headCells}<th>TB</th><th>PTS</th></tr></thead><tbody>`;
 
   MANAGERS.forEach((name) => {
@@ -1186,8 +1186,10 @@ function renderScoreboardTable(cloudPicks, results) {
       const spreadTag = pick.mode === "ATS"
         ? `<span class="pick-cell-spread">${pick.team === game.favorite ? "-" : "+"}${game.spread}</span>`
         : "";
-      const ptsTag = pts !== null ? `<span class="pick-cell-pts">${pts}</span>` : "";
-      return `<td class="pick-cell ${cls}" title="${short} ${pick.mode}"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" />${spreadTag}${ptsTag}</td>`;
+      // Final games: points ride as a badge on the logo (+2 in green, ✗ in
+      // pink with the logo dimmed) instead of a third stacked line.
+      const badge = pts === null ? "" : pts > 0 ? `<span class="pick-badge hit">+${pts}</span>` : `<span class="pick-badge miss">✗</span>`;
+      return `<td class="pick-cell ${cls}" title="${short} ${pick.mode}${pts !== null ? ` · ${pts} pt` : ""}"><span class="pick-mark">${badge}<img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${spreadTag}</td>`;
     }).join("");
 
     const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);

@@ -1946,3 +1946,15 @@ html, body {
 .bug-side + .bug-side { margin-top: 10px; }
 .pick-chip { font-size: 9px; padding: 2px 6px 2px 2px; }
 .pick-chip-av { width: 13px; height: 13px; font-size: 7px; }
+
+/* Finished games in the picks table: badge on the logo, dimmed misses */
+.pick-mark { position: relative; display: block; width: 22px; margin: 0 auto; }
+.pick-badge { position: absolute; top: -6px; right: -9px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1; z-index: 1; border: 1px solid #0a0014; }
+.pick-badge.hit { background: var(--neon-green); color: #0a0014; box-shadow: 0 0 6px rgba(57, 255, 136, .6); }
+.pick-badge.miss { background: var(--neon-pink); color: #0a0014; box-shadow: 0 0 6px rgba(255, 32, 121, .5); }
+.pick-cell.incorrect .pick-cell-logo { opacity: .35; filter: grayscale(.6); }
+.pick-cell.incorrect .pick-cell-spread { opacity: .5; }
+.pick-cell.correct .pick-cell-spread { color: var(--neon-green); text-shadow: 0 0 4px rgba(57, 255, 136, .5); }
+.scoreboard-table th.final::after { content: ""; display: block; width: 14px; height: 2px; margin: 3px auto 0; background: var(--neon-green); box-shadow: 0 0 4px var(--neon-green); }
+.scoreboard-table th.live::after { content: ""; display: block; width: 6px; height: 6px; margin: 2px auto 0; border-radius: 50%; background: #ff3b5c; box-shadow: 0 0 5px #ff3b5c; animation: live-blink 1.1s ease-in-out infinite; }
+.pick-cell-pts { display: none; }
