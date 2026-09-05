@@ -1097,19 +1097,6 @@ html, body {
 .ranking-row.rank-1 {
   border-color: var(--neon-yellow);
   box-shadow: 0 0 12px rgba(255, 228, 94, 0.35);
-  animation: hiscore-glow 2s ease-in-out infinite;
-}
-
-@keyframes hiscore-glow {
-  0%, 100% { box-shadow: 0 0 10px rgba(255, 228, 94, 0.3); }
-  50% { box-shadow: 0 0 20px rgba(255, 228, 94, 0.7); }
-}
-
-.ranking-row.rank-1 .ranking-place::after {
-  content: " 1UP";
-  font-size: 7px;
-  color: var(--neon-green);
-  animation: hint-blink 1s steps(1, end) infinite;
 }
 
 .ranking-place {
