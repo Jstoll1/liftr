@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609051145" />
+  <link rel="stylesheet" href="styles.css?v=202609051540" />
   <link rel="stylesheet" href="history.css?v=202609051500" />
 </head>
 <body>
@@ -82,6 +82,16 @@
         <button id="avatar-reset-btn" class="ghost-btn" type="button">Reset to Letter</button>
         <button id="avatar-save-btn" class="primary-btn" type="button">Save</button>
       </div>
+    </div>
+  </div>
+
+  <!-- QUICK CLAIM: shown when a device has no saved identity -->
+  <div id="claim-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <span class="modal-title">WHO ARE YOU?</span>
+      <span class="modal-subtext">Pick your name once and this phone will remember you.</span>
+      <div id="claim-grid" class="claim-grid"></div>
+      <button id="claim-skip-btn" class="link-btn claim-skip" type="button">Just looking for now</button>
     </div>
   </div>
 
@@ -284,7 +294,7 @@
     </button>
   </nav>
 
-  <script src="app.js?v=202609051145"></script>
-  <script src="history.js?v=202609051520"></script>
+  <script src="app.js?v=202609051540"></script>
+  <script src="history.js?v=202609051540"></script>
 </body>
 </html>

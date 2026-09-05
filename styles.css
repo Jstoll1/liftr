@@ -1815,3 +1815,33 @@ html, body {
 }
 
 .pick-cell-short { display: block; font-size: 9px; font-weight: 700; }
+
+/* Quick claim picker: grid of names for a device with no saved identity */
+.claim-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  margin: 6px 0 2px;
+}
+.claim-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 2px solid var(--card-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.claim-btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+.claim-avatar {
+  width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  background: var(--accent, var(--neon-purple)); color: #0a0014; font-size: 13px; flex: none;
+}
+.claim-skip { margin-top: 10px; font-size: 10px; opacity: 0.7; }

@@ -232,6 +232,12 @@ const navScoreboardBtn = document.getElementById("nav-scoreboard-btn");
 const navHistoryBtn = document.getElementById("nav-history-btn");
 const historyScreen = document.getElementById("history-screen");
 const identityModal = document.getElementById("identity-modal");
+const claimModal = document.getElementById("claim-modal");
+const claimGrid = document.getElementById("claim-grid");
+const claimSkipBtn = document.getElementById("claim-skip-btn");
+// Remember that the viewer dismissed the claim prompt for this visit only,
+// so it does not nag on every tab but comes back next time they open the app.
+let claimSkippedThisVisit = false;
 const identityPreview = document.getElementById("identity-preview");
 const identityText = document.getElementById("identity-text");
 const identityConfirmBtn = document.getElementById("identity-confirm-btn");
@@ -249,6 +255,8 @@ function openRules() {
 function closeRules() {
   rulesModal.classList.add("hidden");
   localStorage.setItem(RULES_SEEN_KEY, "1");
+  if (!logoScreen.classList.contains("hidden")) return;
+  openClaimPrompt();
 }
 
 // Every screen opens at the top the first time. Coming back to a screen
@@ -298,6 +306,7 @@ function goToPlayerSelect() {
   renderManagerPicker();
   enterScreen("home");
   if (!localStorage.getItem(RULES_SEEN_KEY)) openRules();
+  else openClaimPrompt();
 }
 
 // Keeps the bottom tab bar's highlighted tab in sync, however the
@@ -347,6 +356,7 @@ navPicksBtn.addEventListener("click", () => {
 });
 
 function showHistory() {
+  if (!currentManager) openClaimPrompt();
   rememberScroll();
   loginScreen.classList.add("hidden");
   picksScreen.classList.add("hidden");
@@ -358,6 +368,7 @@ function showHistory() {
 navHistoryBtn.addEventListener("click", showHistory);
 
 navScoreboardBtn.addEventListener("click", () => {
+  if (!currentManager) openClaimPrompt();
   loginScreen.classList.add("hidden");
   showScoreboard();
   setActiveNav("scoreboard");
@@ -542,6 +553,28 @@ avatarResetBtn.addEventListener("click", async () => {
 // visit, and again any time someone taps a card that isn't theirs.
 
 let pendingIdentity = null;
+
+// Compact "Who are you?" for a device with no saved identity. Fires on
+// entry from the splash and again if they head for Picks, Scores or
+// History without choosing. "Just looking" hides it for this visit.
+function openClaimPrompt() {
+  if (loadMe() || claimSkippedThisVisit) return false;
+  claimGrid.innerHTML = MANAGERS.map((name, idx) => {
+    const accent = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+    const av = avatarOverrides[name] || name[0];
+    return `<button type="button" class="claim-btn" data-name="${name}"><span class="claim-avatar" style="--accent:${accent}">${av}</span>${name}</button>`;
+  }).join("");
+  claimGrid.querySelectorAll(".claim-btn").forEach((btn) => btn.addEventListener("click", () => {
+    const name = btn.dataset.name;
+    claimModal.classList.add("hidden");
+    saveMe(name);
+    selectManager(name);
+  }));
+  claimModal.classList.remove("hidden");
+  return true;
+}
+claimSkipBtn.addEventListener("click", () => { claimSkippedThisVisit = true; claimModal.classList.add("hidden"); });
+claimModal.addEventListener("click", (e) => { if (e.target === claimModal) { claimSkippedThisVisit = true; claimModal.classList.add("hidden"); } });
 
 function openIdentityConfirm(name, accent) {
   pendingIdentity = name;
