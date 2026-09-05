@@ -977,7 +977,7 @@ async function renderScoreboard() {
 
   renderLiveScores(live, cloudPicks);
   renderScoreboardTable(cloudPicks, results, live);
-  renderRankings(cloudPicks, results);
+  renderRankings(cloudPicks, results, live);
   renderInsertCoin(cloudPicks);
   const stamp = document.getElementById("scoreboard-updated");
   if (stamp) {
@@ -1233,7 +1233,46 @@ function computeScore(state, results) {
   return total;
 }
 
-function renderRankings(cloudPicks, results) {
+// Which rankings rows are open to show that player's game-by-game picks.
+const expandedRankings = new Set();
+
+function playerBreakdownHtml(name, state, results, live) {
+  const ordered = [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
+  return `<div class="rank-detail">${ordered.map((game) => {
+    const locked = isGameLocked(game);
+    const pick = state.picks[game.id];
+    const g = live[game.id];
+    const isFinal = !!results[game.id];
+    const isLive = !isFinal && g && g.found && g.state === "in";
+    const scoreTxt = isFinal ? `${results[game.id].awayScore}-${results[game.id].homeScore}` : isLive ? `${g.awayScore ?? "–"}-${g.homeScore ?? "–"}` : "";
+    const status = isFinal ? "FINAL" : isLive ? (g.detail || "LIVE") : locked ? "Waiting…" : game.kickoffLabel.replace(/^(Sat|Sun) /, "");
+    let pickHtml, resultHtml = "";
+    if (!locked) {
+      pickHtml = `<span class="rd-pick hidden-pick">🔒 locked until kickoff</span>`;
+    } else if (!pick) {
+      pickHtml = `<span class="rd-pick none">no pick</span>`;
+    } else {
+      const pickId = pick.team === game.away ? game.awayId : game.homeId;
+      const short = pick.team === game.away ? game.awayShort : game.homeShort;
+      const line = pick.mode === "ATS" ? `<em>${pick.team === game.favorite ? "-" : "+"}${game.spread}</em>` : `<em class="su">SU</em>`;
+      pickHtml = `<span class="rd-pick"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${short} ${line}<span class="rd-worth">${pointValue(game, pick.team, pick.mode)} pt${pointValue(game, pick.team, pick.mode) > 1 ? "s" : ""}</span></span>`;
+      const pts = scorePick(game, pick, results[game.id]);
+      if (pts !== null) resultHtml = pts >= 3 ? `<span class="pick-pill upset">+3</span>` : pts === 2 ? `<span class="pick-pill hit2">+2</span>` : pts > 0 ? `<span class="pick-pill hit">+1</span>` : `<span class="pick-pill miss">✗</span>`;
+      else if (isLive && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore) && (g.awayScore || g.homeScore)) {
+        const prov = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
+        resultHtml = prov === null ? "" : prov > 0 ? `<span class="rd-lean hit">covering</span>` : `<span class="rd-lean miss">not yet</span>`;
+      }
+    }
+    return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}">
+      <span class="rd-game">G${game.id}</span>
+      <span class="rd-matchup">${game.awayShort} @ ${game.homeShort}<span class="rd-status">${scoreTxt ? scoreTxt + " · " : ""}${status}</span></span>
+      ${pickHtml}
+      <span class="rd-result">${resultHtml}</span>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function renderRankings(cloudPicks, results, live = {}) {
   const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
   const tbResult = results[tiebreakerGame.id];
   const actualTotal = tbResult ? tbResult.awayScore + tbResult.homeScore : null;
@@ -1243,19 +1282,28 @@ function renderRankings(cloudPicks, results) {
     const submittedCount = Object.values(state.picks).filter(Boolean).length;
     const tbGuess = Number(state.tiebreaker);
     const tbDiff = actualTotal !== null && Number.isFinite(tbGuess) ? Math.abs(tbGuess - actualTotal) : Infinity;
-    return { name, score: computeScore(state, results), submittedCount, tbDiff };
+    return { name, state, score: computeScore(state, results), submittedCount, tbDiff };
   }).sort((a, b) => b.score - a.score || a.tbDiff - b.tbDiff);
 
   rankingsList.innerHTML = "";
   rows.forEach((row, i) => {
+    const open = expandedRankings.has(row.name);
     const div = document.createElement("div");
-    div.className = "ranking-row" + (i === 0 && row.score > 0 ? " rank-1" : "") + (row.name === currentManager ? " is-me" : "");
+    div.className = "ranking-row" + (i === 0 && row.score > 0 ? " rank-1" : "") + (row.name === currentManager ? " is-me" : "") + (open ? " open" : "");
     div.innerHTML = `
-      <span class="ranking-place">#${i + 1}</span>
-      <span class="ranking-name">${row.name}</span>
-      <span class="ranking-lock">${row.submittedCount}/${GAMES.length} submitted</span>
-      <span class="ranking-score">${row.score} PTS</span>
+      <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
+        <span class="ranking-place">#${i + 1}</span>
+        <span class="ranking-name">${row.name}</span>
+        <span class="ranking-lock">${row.submittedCount}/${GAMES.length} submitted</span>
+        <span class="ranking-score">${row.score} PTS</span>
+        <span class="ranking-caret">${open ? "▴" : "▾"}</span>
+      </div>
+      ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
     `;
+    div.querySelector(".ranking-main").addEventListener("click", () => {
+      if (expandedRankings.has(row.name)) expandedRankings.delete(row.name); else { expandedRankings.add(row.name); track("ranking-expand", { event: true }); }
+      withScrollPreserved(() => renderRankings(cloudPicks, results, live));
+    });
     rankingsList.appendChild(div);
   });
 }
