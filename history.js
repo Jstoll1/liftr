@@ -79,3 +79,28 @@ function renderMemoriam(){document.getElementById('memoriam-grid').innerHTML=A.m
 document.querySelectorAll('.ledger-controls button').forEach(b=>b.addEventListener('click',()=>renderLedger(b.dataset.sort)));
 document.getElementById('expand-all').addEventListener('click',()=>{const cards=[...document.querySelectorAll('.season-card')],open=!cards.every(c=>c.open);cards.forEach(c=>c.open=open);updateExpand()});
 renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();renderMemoriam();updateExpand();
+
+// --- Ask the Archive -------------------------------------------------------
+(function(){
+  const form=document.getElementById('archive-ask'),input=document.getElementById('archive-q'),out=document.getElementById('archive-a');
+  if(!form)return;
+  const worker=(typeof WORKER_URL!=='undefined'&&WORKER_URL)||'';
+  let timer=null;
+  function typeOut(text,cls){
+    clearInterval(timer);out.className='archive-ask-answer'+(cls?' '+cls:'');out.textContent='';let i=0;
+    timer=setInterval(()=>{out.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(timer)},12);
+  }
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const q=input.value.trim();if(q.length<3||form.classList.contains('busy'))return;
+    if(!worker){typeOut('The archive is offline right now.','error');return}
+    form.classList.add('busy');typeOut('SEARCHING THE ARCHIVE…');
+    try{
+      const res=await fetch(worker+'/history-ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok||!data.answer){typeOut(data.error||'The archive is not answering right now.','error')}
+      else typeOut(data.answer);
+    }catch{typeOut('The archive is not answering right now.','error')}
+    form.classList.remove('busy');
+  });
+})();

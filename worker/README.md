@@ -132,3 +132,12 @@ Left blank, the pick'em app still works fully on localStorage — it just
 can't show anyone else's picks. `/results` has no auth (same small trusted
 group as the rest of this app); anyone can record which team covered once
 a game ends, and the scoreboard uses that to compute live rankings.
+
+## 7. `/history-ask` — League history Q&A
+
+`POST /history-ask` with `{ "question": "..." }` returns `{ "answer": "..." }`.
+The model only sees the archive dataset in `src/history-data.js` (a mirror of
+the data in the root `history.js`; regenerate it when that file changes) and
+is instructed to refuse anything outside BroChiefs league history. Uses the
+existing `OPENAI_API_KEY` secret and `OPENAI_MODEL` (default `gpt-4o-mini`).
+Rate limited to 40 questions per IP per hour via `LIFTR_KV`.

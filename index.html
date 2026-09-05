@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=202609051145" />
-  <link rel="stylesheet" href="history.css?v=202609051245" />
+  <link rel="stylesheet" href="history.css?v=202609051300" />
 </head>
 <body>
 
@@ -185,6 +185,16 @@
           <p class="hero-copy">Twelve seasons have crowned twelve champions, and every title, finish and name is preserved here.</p>
         </div>
 
+        <form id="archive-ask" class="archive-ask" autocomplete="off">
+          <label class="archive-ask-label" for="archive-q">ASK THE ARCHIVE</label>
+          <div class="archive-ask-line">
+            <span class="archive-ask-prompt">&gt;</span>
+            <input id="archive-q" class="archive-ask-input" type="text" maxlength="300" placeholder="who has the most last place finishes" enterkeyhint="send" />
+            <span class="archive-ask-cursor" aria-hidden="true"></span>
+          </div>
+          <div id="archive-a" class="archive-ask-answer hidden"></div>
+        </form>
+
         <div class="hero-stat-grid" aria-label="League history summary">
           <div class="hero-stat"><strong>12</strong><span>Completed seasons</span></div>
           <div class="hero-stat"><strong>10</strong><span>Active franchises</span></div>
@@ -270,6 +280,6 @@
   </nav>
 
   <script src="app.js?v=202609051145"></script>
-  <script src="history.js?v=202609051245"></script>
+  <script src="history.js?v=202609051300"></script>
 </body>
 </html>
