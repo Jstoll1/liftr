@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609060400" />
+  <link rel="stylesheet" href="styles.css?v=202609060500" />
   <link rel="stylesheet" href="history.css?v=202609060420" />
 </head>
 <body>
@@ -175,11 +175,11 @@
 
       <div id="live-scores-list" class="live-scores-list"></div>
 
-      <span class="rules-heading section-heading">🏆 RANKINGS</span>
+      <span class="rules-heading section-heading">🏆 LEADERBOARD</span>
       <div id="rankings-list" class="rankings-list"></div>
 
-      <span class="rules-heading section-heading">📋 ALL PICKS</span>
-      <div class="scoreboard-table-wrap">
+      <button id="all-picks-toggle" class="rules-heading section-heading all-picks-toggle" type="button" aria-expanded="false">📋 ALL PICKS <span class="all-picks-caret">▾</span></button>
+      <div class="scoreboard-table-wrap hidden">
         <table id="scoreboard-table" class="scoreboard-table"></table>
       </div>
     </div>
@@ -302,7 +302,7 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=202609060400"></script>
+  <script src="app.js?v=202609060500"></script>
   <script src="attract-facts.js?v=202609052030"></script>
   <script src="history.js?v=202609060140"></script>
 </body>

@@ -221,18 +221,21 @@ async function fetchLiveFromWorker() {
   return byId;
 }
 
+// Latest live map, shared with the picks screen so locked games there show
+// the score without their own fetch.
+let latestLive = {};
 async function fetchLiveScores() {
+  let live = {};
   try {
-    const direct = await fetchLiveFromEspn();
-    if (Object.keys(direct).length) return direct;
+    live = await fetchLiveFromEspn();
   } catch (err) {
     console.warn("ESPN direct fetch failed, falling back to Worker", err);
   }
-  try {
-    return await fetchLiveFromWorker();
-  } catch {
-    return {};
+  if (!Object.keys(live).length) {
+    try { live = await fetchLiveFromWorker(); } catch { live = {}; }
   }
+  if (Object.keys(live).length) latestLive = live;
+  return live;
 }
 
 // Cloud is the source of truth across devices — pull once per manager
@@ -843,6 +846,43 @@ let justSavedGameId = null;
 // "saved" for a first pick, "updated" when an existing pick was changed.
 let justSavedKind = "saved";
 
+// Once a game locks the pick buttons are dead weight, so the card turns
+// into a scorebug: both teams with live or final scores, the picked team
+// highlighted, and what the pick is worth or has earned.
+function lockedResultHtml(game, pick, finalRes, liveG) {
+  const src = finalRes || liveG;
+  const aS = src && Number.isFinite(src.awayScore) ? src.awayScore : null;
+  const hS = src && Number.isFinite(src.homeScore) ? src.homeScore : null;
+  const pickedSide = pick ? (pick.team === game.away ? "away" : "home") : null;
+  const row = (side, name, id, score, other) => `<div class="lr-team ${pickedSide === side ? "picked" : ""}">
+      <img class="lr-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+      <span class="lr-name">${name}</span>
+      ${pickedSide === side ? `<span class="lr-you">YOUR PICK</span>` : ""}
+      <span class="lr-score ${finalRes && score !== null && score > other ? "win" : ""}">${score === null ? "–" : score}</span>
+    </div>`;
+  let foot;
+  if (!pick) {
+    foot = `<span class="lr-foot none">NO PICK MADE</span>`;
+  } else {
+    const worth = pointValue(game, pick.team, pick.mode);
+    const modeTxt = pick.mode === "ATS" ? `SPREAD ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : "STRAIGHT UP";
+    const pts = finalRes ? scorePick(game, pick, finalRes) : null;
+    if (pts !== null) {
+      foot = `<span class="lr-foot"><span class="lr-mode">${modeTxt}</span><span class="rd-pts ${pts >= 3 ? "upset" : pts === 2 ? "hit2" : pts > 0 ? "hit" : "miss"}">${pts > 0 ? "+" + pts : "0"}</span></span>`;
+    } else if (liveG && aS !== null && hS !== null && (aS || hS)) {
+      const prov = scorePick(game, pick, { awayScore: aS, homeScore: hS });
+      foot = `<span class="lr-foot"><span class="lr-mode">${modeTxt}</span><span class="rd-pts ${prov > 0 ? "lean-hit" : "lean-miss"}">${prov > 0 ? "+" + worth + "?" : "0?"}</span></span>`;
+    } else {
+      foot = `<span class="lr-foot"><span class="lr-mode">${modeTxt}</span><span class="lr-worth">WORTH ${worth} PT</span></span>`;
+    }
+  }
+  return `<div class="locked-result ${finalRes ? "final" : liveG ? "live" : ""}">
+    ${row("away", game.away, game.awayId, aS, hS)}
+    ${row("home", game.home, game.homeId, hS, aS)}
+    ${foot}
+  </div>`;
+}
+
 function renderPicksScreen() {
   const state = getManagerState(currentManager);
   lastLockSignature = lockSignature();
@@ -859,9 +899,18 @@ function renderPicksScreen() {
       (pick ? " game-submitted" : "") +
       (justSavedGameId === game.id ? " just-saved" : "");
 
+    const g = latestLive[game.id];
+    const finalRes = gameLocked ? computeLiveResults(latestLive)[game.id] : null;
+    const isLive = gameLocked && !finalRes && g && g.found && g.state === "in";
     let statusLabel = "OPEN";
     let statusClass = "open";
-    if (gameLocked) {
+    if (finalRes) {
+      statusLabel = "FINAL";
+      statusClass = "final";
+    } else if (isLive) {
+      statusLabel = g.detail || "LIVE";
+      statusClass = "live";
+    } else if (gameLocked) {
       statusLabel = "LOCKED";
       statusClass = "locked";
     } else if (pick && justSavedGameId === game.id && justSavedKind === "updated") {
@@ -882,10 +931,8 @@ function renderPicksScreen() {
         <span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>
         <span class="game-status ${statusClass}">${statusLabel}</span>
       </div>
-      ${matchupCardsHtml(game, pick)}
-      <div class="game-submit-row">
-        <span class="game-submit-note">${note}</span>
-      </div>
+      ${gameLocked ? lockedResultHtml(game, pick, finalRes, isLive ? g : null) : matchupCardsHtml(game, pick)}
+      ${gameLocked ? "" : `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>`}
     `;
 
     card.querySelectorAll(".pick-mini-btn").forEach((btn) => {
@@ -1288,6 +1335,11 @@ function playerBreakdownHtml(name, state, results, live) {
   return `<div class="rank-detail"><div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${summary}</div>`;
 }
 
+function ordinal(n) {
+  const s = ["TH", "ST", "ND", "RD"], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 function renderRankings(cloudPicks, results, live = {}) {
   const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
   const tbResult = results[tiebreakerGame.id];
@@ -1308,10 +1360,10 @@ function renderRankings(cloudPicks, results, live = {}) {
     div.className = "ranking-row" + (i === 0 && row.score > 0 ? " rank-1" : "") + (row.name === currentManager ? " is-me" : "") + (open ? " open" : "");
     div.innerHTML = `
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
-        <span class="ranking-place">#${i + 1}</span>
-        <span class="ranking-name">${row.name}</span>
-        <span class="ranking-lock">${row.submittedCount}/${GAMES.length} submitted</span>
-        <span class="ranking-score">${row.score} PTS</span>
+        <span class="ranking-place">${ordinal(i + 1)}</span>
+        <span class="ranking-name">${row.name.toUpperCase()}<span class="ranking-lock">${row.submittedCount}/${GAMES.length} PICKED</span></span>
+        <span class="ranking-dots" aria-hidden="true"></span>
+        <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
         <span class="ranking-caret">${open ? "▴" : "▾"}</span>
       </div>
       ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
@@ -1334,6 +1386,9 @@ setInterval(() => {
   if (currentManager && !picksScreen.classList.contains("hidden")) {
     if (lockSignature() !== lastLockSignature) {
       withScrollPreserved(renderPicksScreen);
+    } else if (GAMES.some(isGameLocked)) {
+      // Locked cards carry live scores now, so keep them moving too.
+      fetchLiveScores().then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
     }
   }
   if (!scoreboardScreen.classList.contains("hidden")) {
@@ -1346,10 +1401,23 @@ setInterval(() => {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
   if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
-  if (currentManager && !picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
+  if (currentManager && !picksScreen.classList.contains("hidden")) fetchLiveScores().then(() => withScrollPreserved(renderPicksScreen));
 });
 window.addEventListener("pageshow", (e) => {
   if (e.persisted && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
 });
 
 renderManagerPicker();
+
+
+// All Picks starts collapsed: the scorebugs and the leaderboard are the
+// point of the board, the full grid is there when someone wants it.
+(() => {
+  const toggle = document.getElementById("all-picks-toggle");
+  const wrap = document.querySelector(".scoreboard-table-wrap");
+  if (!toggle || !wrap) return;
+  let open = false;
+  const paint = () => { wrap.classList.toggle("hidden", !open); toggle.classList.toggle("open", open); toggle.setAttribute("aria-expanded", String(open)); };
+  toggle.addEventListener("click", () => { open = !open; paint(); if (open) track("all-picks-open", { event: true }); });
+  paint();
+})();
