@@ -1312,8 +1312,17 @@ async function handleHistoryAsk(request, env, corsHeaders) {
       }),
     });
     if (!aiRes.ok) {
-      console.error("OpenAI error (history-ask)", aiRes.status, await aiRes.text());
-      return json({ error: "The archive is not answering right now." }, 502, corsHeaders);
+      const body = await aiRes.text();
+      console.error("OpenAI error (history-ask)", aiRes.status, body);
+      // Tell the phone which kind of failure it was so nobody has to tail
+      // the Worker to find out. Never echo the provider's message itself.
+      const why = aiRes.status === 429 && /quota|billing/i.test(body) ? "The archive's OpenAI account is out of credit."
+        : aiRes.status === 429 ? "The archive is busy. Try again in a minute."
+        : aiRes.status === 401 || aiRes.status === 403 ? "The archive's OpenAI key is not working."
+        : aiRes.status >= 500 ? "OpenAI is having trouble. Try again shortly."
+        : `The archive is not answering right now (OpenAI ${aiRes.status}).`;
+      await logArchive(env, question, why, "error", asker);
+      return json({ error: why }, 502, corsHeaders);
     }
     const data = await aiRes.json();
     const raw = (data.choices?.[0]?.message?.content || "").trim();
@@ -1325,7 +1334,7 @@ async function handleHistoryAsk(request, env, corsHeaders) {
       .filter((r) => r && r.label && r.value)
       .map((r) => ({
         label: String(r.label).slice(0, 40),
-        value: String(r.value).slice(0, 24),
+        value: String(r.value).slice(0, 60),
         owner: owners.has(r.owner) ? r.owner : null,
         year: Number.isInteger(r.year) && r.year >= 2014 && r.year <= 2025 ? r.year : null,
       }));
@@ -1334,6 +1343,7 @@ async function handleHistoryAsk(request, env, corsHeaders) {
     return json({ answer, receipts, followUps }, 200, corsHeaders);
   } catch (err) {
     console.error("history-ask failed", err);
+    await logArchive(env, question, `Worker error: ${String(err && err.message || err).slice(0, 120)}`, "error", asker).catch(() => {});
     return json({ error: "The archive is not answering right now." }, 502, corsHeaders);
   }
 }
@@ -1358,7 +1368,7 @@ async function handleHistoryLog(request, env, corsHeaders, url) {
   const html = `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Archive log</title>
 <style>body{font:14px/1.5 system-ui;background:#0a0014;color:#f4f0ff;padding:16px;max-width:760px;margin:0 auto}
 .r{border:1px solid #3a2a50;border-radius:8px;padding:10px 12px;margin:0 0 10px}.q{color:#05d9e8;font-weight:700}.a{margin-top:4px}
-.m{color:#9a8bb8;font-size:12px}.blocked .q{color:#ff2079}</style>
+.m{color:#9a8bb8;font-size:12px}.blocked .q,.error .a{color:#ff2079}</style>
 <h2>Archive log · ${rows.length} of last 7 days</h2>` + rows.filter(Boolean).map((r) => `<div class="r ${r.kind}"><div class="m">${new Date(r.ts).toLocaleString("en-US", { timeZone: "America/New_York" })} · ${r.kind}${r.asker ? ` · <b style="color:#ffe45e">${escapeHtml(r.asker)}</b>` : " · unknown"}</div><div class="q">${escapeHtml(r.question)}</div><div class="a">${escapeHtml(r.answer)}</div></div>`).join("");
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders } });
 }
