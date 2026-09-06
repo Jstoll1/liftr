@@ -159,4 +159,14 @@ on any device. Without the secret the endpoint returns 404.
 Matchup data (head-to-head, weekly scores, playoff games, bench points) comes
 from `src/matchup-data.js`, built from `data/espn-history.json`, which is
 exported from ESPN with `scripts/export-espn-history.mjs` (see the header of
-that script for the cookies it needs).
+that script for the cookies it needs). The export also pulls every draft
+(first overall pick by year, each owner's round-one slot, auto-drafted picks),
+so the archive can answer draft questions once you re-export:
+
+```
+cd ~/liftr
+ESPN_LEAGUE_ID=878153 ESPN_S2='...' SWID='{...}' node scripts/export-espn-history.mjs
+python3 scripts/build-matchup-data.py
+git add data/espn-history.json worker/src/matchup-data.js && git commit -m "Refresh ESPN export" && git push
+cd worker && npx wrangler deploy
+```

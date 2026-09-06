@@ -148,6 +148,49 @@ league = {
     'notAvailable': 'The archive has no playoff seeds or playoff appearance lists (only podium finishes), no in-game or comeback data (weekly totals only), no projections or favorite/underdog lines, and no player, draft, injury or transaction data.',
 }
 compact = {y: [f"W{g['week']} {g['winner']} {g['winnerPoints']} d. {g['loser']} {g['loserPoints']}" + ('' if g['type'] == 'regular season' else f" [{g['type']}]") for g in games if g['year'] == int(y)] for y in sorted({g['year'] for g in games})}
-M = {'headToHead': h2h, 'ownerMatchupStats': per, 'leagueMatchupRecords': league, 'everyGameByYear': compact}
+# Draft data (present once the export was run with mDraftDetail). Who held
+# the first overall pick each year, each owner's slots, and the round-one
+# board per season.
+draft = None
+years_with_draft = [y for y in sorted(d['seasons']) if d['seasons'][y].get('draft')]
+if years_with_draft:
+    first_by_year, slots, first_round, auto_by_owner = {}, collections.defaultdict(dict), {}, collections.Counter()
+    for y in years_with_draft:
+        s = d['seasons'][y]; arch = A['seasons'][y][4]
+        owner_of = {}
+        for t in s['teams']:
+            m = [r for r in arch if norm(r[1]) == norm(t['name'])] or \
+                [r for r in arch if r[2] == t['wins'] and r[3] == t['losses'] and abs(r[4] - (t['pointsFor'] or 0)) < 1]
+            owner_of[t['id']] = m[0][0] if len(m) == 1 else f"team {t['id']}"
+        picks = sorted(s['draft'], key=lambda p: p['overall'])
+        r1 = [p for p in picks if p['round'] == 1]
+        first_round[int(y)] = [f"{p['roundPick']}. {owner_of.get(p['teamId'], '?')}: {p['player'] or 'player ' + str(p['playerId'])}" + (' (auto)' if p['autoDrafted'] else '') for p in r1]
+        for p in r1:
+            o = owner_of.get(p['teamId'], '?')
+            slots[o][int(y)] = p['roundPick']
+            if p['roundPick'] == 1:
+                first_by_year[int(y)] = {'owner': o, 'player': p['player'] or f"player {p['playerId']}", 'autoDrafted': p['autoDrafted']}
+        for p in picks:
+            if p['autoDrafted']: auto_by_owner[owner_of.get(p['teamId'], '?')] += 1
+    first_counts = collections.Counter(v['owner'] for v in first_by_year.values())
+    per_owner = {}
+    for o, by_year in slots.items():
+        vals = list(by_year.values())
+        per_owner[o] = {'firstOverallPicks': first_counts.get(o, 0),
+                        'firstOverallYears': sorted(y for y, v in first_by_year.items() if v['owner'] == o),
+                        'draftSlotsByYear': ' '.join(f"{y}:{by_year[y]}" for y in sorted(by_year)),
+                        'averageDraftSlot': R(sum(vals) / len(vals)),
+                        'bestSlot': min(vals), 'worstSlot': max(vals),
+                        'autoDraftedPicks': auto_by_owner.get(o, 0)}
+    draft = {'seasonsWithDraftData': [int(y) for y in years_with_draft],
+             'firstOverallPickByYear': first_by_year,
+             'mostFirstOverallPicks': [f"{o} {n} ({', '.join(str(y) for y in per_owner[o]['firstOverallYears'])})" for o, n in first_counts.most_common()],
+             'mostAutoDraftedPicks': [f"{o} {n}" for o, n in auto_by_owner.most_common(5)],
+             'draftSlotsByOwner': per_owner,
+             'firstRoundByYear': first_round,
+             'scope': 'Draft slot means the position in round one. First overall is slot 1. Player names come from ESPN where available.'}
+    league['notAvailable'] = league['notAvailable'].replace('no player, draft, injury or transaction data', 'no injury or transaction data and no player stats beyond the draft board')
+
+M = {'headToHead': h2h, 'ownerMatchupStats': per, 'leagueMatchupRecords': league, 'everyGameByYear': compact, 'draft': draft}
 open('worker/src/matchup-data.js', 'w').write("// Derived from data/espn-history.json (ESPN league matchup export).\n// Regenerate with scripts/build-matchup-data.py when the export changes.\nexport const MATCHUPS = " + json.dumps(M, separators=(',', ':')) + ";\n")
 print(f"wrote worker/src/matchup-data.js: {len(games)} games, {len(owners)} owners, {len(json.dumps(M))} bytes")

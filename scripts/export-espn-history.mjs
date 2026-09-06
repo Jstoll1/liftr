@@ -5,8 +5,9 @@
 //   ESPN_LEAGUE_ID=123456 ESPN_S2='...' SWID='{...}' node scripts/export-espn-history.mjs
 //
 // Writes data/espn-history.json with, per season: members, teams, every
-// matchup (week, sides, scores, playoff flag) and each team's bench points
-// per week. Nothing secret is written to the file.
+// matchup (week, sides, scores, playoff flag), each team's bench points
+// per week and the draft (every pick, slot, player, auto-draft flag).
+// Nothing secret is written to the file.
 
 import { writeFileSync, mkdirSync } from "node:fs";
 
@@ -59,13 +60,31 @@ function benchPoints(team) {
   return Math.round(bench * 100) / 100;
 }
 
+// Player id -> full name for a season. ESPN filters the player pool with a
+// JSON header; if the call fails the picks are kept without names.
+async function playerNames(year, ids) {
+  const out = {};
+  const unique = [...new Set(ids.filter(Boolean))];
+  for (let i = 0; i < unique.length; i += 100) {
+    const chunk = unique.slice(i, i + 100);
+    try {
+      const res = await fetch(`https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${year}/players?scoringPeriodId=0&view=players_wl`, {
+        headers: { ...headers, "x-fantasy-filter": JSON.stringify({ players: { filterIds: { value: chunk }, limit: chunk.length } }) },
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      for (const p of await res.json()) out[p.id] = p.fullName || `${p.firstName || ""} ${p.lastName || ""}`.trim();
+    } catch { /* names stay null */ }
+  }
+  return out;
+}
+
 const out = { exportedAt: new Date().toISOString(), leagueId: String(LEAGUE), seasons: {} };
 
 for (let year = FIRST; year <= LAST; year++) {
   process.stdout.write(`${year}: `);
   let league;
   try {
-    league = await fetchSeason(year, ["mTeam", "mMatchup", "mSettings", "mStandings"]);
+    league = await fetchSeason(year, ["mTeam", "mMatchup", "mSettings", "mStandings", "mDraftDetail"]);
   } catch (err) {
     console.log(`skipped (${err.message})`);
     continue;
@@ -104,7 +123,20 @@ for (let year = FIRST; year <= LAST; year++) {
       process.stdout.write("x");
     }
   }
-  out.seasons[year] = { regularSeasonWeeks: regWeeks, members, teams, matchups, benchPointsByTeamWeek: bench };
+  // Draft: every pick with its slot, and the player name where ESPN will
+  // give it to us (older seasons sometimes only return the id).
+  let draft = null;
+  const picks = league.draftDetail?.picks || [];
+  if (picks.length) {
+    const names = await playerNames(year, picks.map((p) => p.playerId));
+    draft = picks.map((p) => ({
+      overall: p.overallPickNumber, round: p.roundId, roundPick: p.roundPickNumber,
+      teamId: p.teamId, playerId: p.playerId, player: names[p.playerId] || null,
+      autoDrafted: !!p.autoDraftTypeId, keeper: !!p.keeper,
+    }));
+    process.stdout.write(` draft ${picks.length} picks`);
+  }
+  out.seasons[year] = { regularSeasonWeeks: regWeeks, members, teams, matchups, benchPointsByTeamWeek: bench, draft };
   console.log(` ${teams.length} teams, ${matchups.length} matchups`);
 }
 
