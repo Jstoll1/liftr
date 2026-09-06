@@ -1238,38 +1238,46 @@ const expandedRankings = new Set();
 
 function playerBreakdownHtml(name, state, results, live) {
   const ordered = [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
-  return `<div class="rank-detail">${ordered.map((game) => {
+  let banked = 0, liveCovering = 0, liveOpen = 0;
+  const rows = ordered.map((game) => {
     const locked = isGameLocked(game);
     const pick = state.picks[game.id];
     const g = live[game.id];
     const isFinal = !!results[game.id];
     const isLive = !isFinal && g && g.found && g.state === "in";
     const scoreTxt = isFinal ? `${results[game.id].awayScore}-${results[game.id].homeScore}` : isLive ? `${g.awayScore ?? "–"}-${g.homeScore ?? "–"}` : "";
-    const status = isFinal ? "FINAL" : isLive ? (g.detail || "LIVE") : locked ? "Waiting…" : game.kickoffLabel.replace(/^(Sat|Sun) /, "");
-    let pickHtml, resultHtml = "";
+    const statusTag = isFinal ? `<span class="rd-tag final">FINAL</span>` : isLive ? `<span class="rd-tag live">${g.detail || "LIVE"}</span>` : locked ? `<span class="rd-tag wait">WAITING</span>` : `<span class="rd-tag time">${game.kickoffLabel.replace(/^(Sat|Sun) /, "")}</span>`;
+
+    let pickHtml, ptsHtml = `<span class="rd-pts none">–</span>`;
     if (!locked) {
-      pickHtml = `<span class="rd-pick hidden-pick">🔒 locked until kickoff</span>`;
+      pickHtml = `<span class="rd-pickcard locked">🔒 LOCKED</span>`;
     } else if (!pick) {
-      pickHtml = `<span class="rd-pick none">no pick</span>`;
+      pickHtml = `<span class="rd-pickcard nopick">NO PICK</span>`;
     } else {
       const pickId = pick.team === game.away ? game.awayId : game.homeId;
       const short = pick.team === game.away ? game.awayShort : game.homeShort;
-      const line = pick.mode === "ATS" ? `<em>${pick.team === game.favorite ? "-" : "+"}${game.spread}</em>` : `<em class="su">SU</em>`;
-      pickHtml = `<span class="rd-pick"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${short} ${line}<span class="rd-worth">${pointValue(game, pick.team, pick.mode)} pt${pointValue(game, pick.team, pick.mode) > 1 ? "s" : ""}</span></span>`;
+      const worth = pointValue(game, pick.team, pick.mode);
+      const mode = pick.mode === "ATS" ? `<span class="rd-mode ats">${pick.team === game.favorite ? "-" : "+"}${game.spread}</span>` : `<span class="rd-mode su">SU</span>`;
+      pickHtml = `<span class="rd-pickcard"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span>${mode}<span class="rd-worth">${worth} PT</span></span>`;
       const pts = scorePick(game, pick, results[game.id]);
-      if (pts !== null) resultHtml = pts >= 3 ? `<span class="pick-pill upset">+3</span>` : pts === 2 ? `<span class="pick-pill hit2">+2</span>` : pts > 0 ? `<span class="pick-pill hit">+1</span>` : `<span class="pick-pill miss">✗</span>`;
-      else if (isLive && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore) && (g.awayScore || g.homeScore)) {
+      if (pts !== null) {
+        banked += pts;
+        ptsHtml = pts >= 3 ? `<span class="rd-pts upset">+3</span>` : pts === 2 ? `<span class="rd-pts hit2">+2</span>` : pts > 0 ? `<span class="rd-pts hit">+1</span>` : `<span class="rd-pts miss">0</span>`;
+      } else if (isLive && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore) && (g.awayScore || g.homeScore)) {
         const prov = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
-        resultHtml = prov === null ? "" : prov > 0 ? `<span class="rd-lean hit">covering</span>` : `<span class="rd-lean miss">not yet</span>`;
+        liveOpen += 1;
+        if (prov > 0) { liveCovering += 1; ptsHtml = `<span class="rd-pts lean-hit">+${worth}?</span>`; }
+        else ptsHtml = `<span class="rd-pts lean-miss">0?</span>`;
       }
     }
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}">
-      <span class="rd-game">G${game.id}</span>
-      <span class="rd-matchup">${game.awayShort} @ ${game.homeShort}<span class="rd-status">${scoreTxt ? scoreTxt + " · " : ""}${status}</span></span>
-      ${pickHtml}
-      <span class="rd-result">${resultHtml}</span>
+      <div class="rd-game"><span class="rd-gnum">G${game.id}</span><span class="rd-teams">${game.awayShort} @ ${game.homeShort}</span><span class="rd-sub">${scoreTxt ? `<b>${scoreTxt}</b>` : ""}${statusTag}</span></div>
+      <div class="rd-pick">${pickHtml}</div>
+      <div class="rd-result">${ptsHtml}</div>
     </div>`;
-  }).join("")}</div>`;
+  }).join("");
+  const summary = `<div class="rd-summary"><span>BANKED <b>${banked}</b></span>${liveOpen ? `<span>LIVE <b>${liveCovering}/${liveOpen}</b> covering</span>` : ""}</div>`;
+  return `<div class="rank-detail"><div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${summary}</div>`;
 }
 
 function renderRankings(cloudPicks, results, live = {}) {
