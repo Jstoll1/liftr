@@ -184,20 +184,40 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
 // Twelve fixed questions so everyone plays the same board. Every answer is
 // taken from the archive datasets (history-data / matchup-data) as built.
 (()=>{
-  const Q=[
+  const POOL=[
     {q:'Who has won the most BroChiefs titles?',o:['Dewitt','Jake','Curt','Skills'],a:0,why:'Dewitt has three: 2014, 2018 and 2020. Jake and Curt have two each.'},
     {q:'Who has been commissioner since the league was founded in 2014?',o:['Andrew','Dewitt','Logan','Jake'],a:0,why:'Andrew founded the league and has run every season since. Nobody else has held the job.'},
+    {q:'Put the last four champions in order, 2022 to 2025.',o:['Marty, Conlan, Curt, Jake','Conlan, Marty, Jake, Curt','Marty, Curt, Conlan, Jake','Curt, Conlan, Marty, Jake'],a:0,why:'Marty in 2022, Conlan in 2023, Curt in 2024, Jake in 2025.'},
+    {q:'Which active owner has the worst all-time record?',o:['Andrew','Nissan','Logan','Conlan'],a:0,why:'Andrew is 67-82, a .450 win rate. Nissan .489 and Logan .497 are next.'},
+    {q:'Who has played every season and never won a title?',o:['Andrew','Nissan','Robert','Conlan'],a:0,why:'Twelve seasons, zero rings. Nissan is at eleven. Robert has not played all twelve.'},
     {q:'Which former member won the 2022 championship?',o:['Marty Griffin','Ryan Hacker','Tyler Cerone','Patrick Williams'],a:0,why:'Marty won it all in 2022 during a four-season run from 2021 to 2024.'},
     {q:'What is the highest single-week score in league history?',o:['Dewitt, 196.16 in 2022','Jordan, 195.8 in 2021','Jake, 188.4 in 2021','Curt, 201.2 in 2019'],a:0,why:'Dewitt dropped 196.16 on Skills in week 8 of 2022. Jordan\u0027s 195.8 in 2021 is second.'},
-    {q:'Who has held the first overall draft pick the most times?',o:['Dewitt','Jake','Curt','Jordan'],a:0,why:'Dewitt picked first four times: 2018, 2023, 2024 and 2025. Jake did it three times.'},
     {q:'Who has the most auto-drafted picks in league history?',o:['Marty','Ryan','Curt','Nissan'],a:0,why:'Marty let the computer pick 17 times. The legend is true.'},
     {q:'Who scored 32 points in 2014 week 6, the lowest week ever?',o:['Jordan','Nissan','Curt','Andrew'],a:0,why:'Jordan\u0027s 32 against Skills in 2014 is the floor. Nissan\u0027s 33 in 2015 is next.'},
-    {q:'What is the biggest margin of victory in a single game?',o:['101 points','78 points','96 points','112 points'],a:0,why:'Conlan 161, Ryan 60 in week 9 of 2018. Skills over Jordan by 96 in 2014 is second.'},
+    {q:'Who won by 101 points, the biggest margin ever?',o:['Conlan over Ryan, 2018','Skills over Jordan, 2014','Dewitt over Andrew, 2022','Curt over Nissan, 2017'],a:0,why:'Conlan 161, Ryan 60 in week 9 of 2018. Skills over Jordan by 96 in 2014 is second.'},
     {q:'Who went 11-2 with "Herbert\u0027s Sherbert" in 2021, the best record ever?',o:['Jake','Dewitt','Curt','Jordan'],a:0,why:'Jake\u0027s 2021 team went 11-2 and won the title with 1,794 points.'},
     {q:'Which active owner is the unluckiest by all-play record?',o:['Curt','Nissan','Andrew','Logan'],a:0,why:'Curt would be 702-635 if he played everyone every week. His real record trails that by about five wins.'},
+    {q:'Which owner is the luckiest, about six wins better than his all-play record?',o:['Jake','Marty','Skills','Dewitt'],a:0,why:'Jake is 79-70 but 649-686 all-play. The schedule has been kind.'},
     {q:'Who went 10-2 in 2018 and still did not win the title?',o:['Nissan','Skills','Logan','Conlan'],a:0,why:'Nissan\u0027s 10-2 in 2018 ended as runner-up to Dewitt. Best record ever without a ring.'},
-    {q:'Who has the most career wins?',o:['Dewitt, 90','Skills, 82','Jake, 79','Logan, 74'],a:0,why:'Dewitt is 90-59 all time, eight wins clear of Skills.'},
+    {q:'Who scored 1,796 points in 2022, the most in any season, and finished third?',o:['Jordan','Jake','Curt','Nissan'],a:0,why:'Jordan\u0027s 2022 team out-scored everyone and still came home third.'},
+    {q:'Who has lost the championship game the most times?',o:['Jordan','Logan','Dewitt','Nissan'],a:0,why:'Jordan is a three-time runner-up: 2015, 2020 and 2021. Logan and Dewitt have two each.'},
+    {q:'Who has the most third-place finishes?',o:['Andrew','Nissan','Dewitt','Logan'],a:0,why:'Andrew has three bronzes, in 2015, 2018 and 2019, and no title.'},
+    {q:'Who has been the week\u0027s lowest scorer most often?',o:['Jake','Jordan','Curt','Conlan'],a:0,why:'Jake has finished dead last in a week 21 times. Jordan is right behind at 20.'},
+    {q:'Who has lost by 50 or more points the most times?',o:['Conlan','Dewitt','Curt','Jake'],a:0,why:'Conlan has taken 13 fifty-point beatings. Dewitt is next with 12.'},
+    {q:'Who led the league in points per game over his career?',o:['Marty','Dewitt','Robert','Jake'],a:0,why:'Marty averaged 119.5 a week across four seasons. Dewitt is second at 116.2.'},
+    {q:'Which pair has met the most times in the regular season, 24 games?',o:['Andrew and Curt','Jake and Dewitt','Logan and Skills','Conlan and Nissan'],a:0,why:'Andrew and Curt have met 24 times, tied with Jake and Skills. Curt leads that one 14-10.'},
+    {q:'What was Logan\u0027s team called when he won the 2015 title?',o:['Abdullah Oblongatas','Two Dragons','Turts McHurts','Gooey Bellies'],a:0,why:'Abdullah Oblongatas beat Jordan 240-169 in the 2015 final.'},
+    {q:'Which team name won the 2016 championship?',o:['myfreecams .com','Tears In Kevin','Action Jackson','The Sleeping Giants'],a:0,why:'Skills won 2016 as myfreecams .com, 230.5 to 227.5 over Dewitt.'},
+    {q:'Conlan won the 2023 title under which name?',o:['Turts McHurts','No playoff spot To park my Carr','High Energy Daddys','Pooch\u0027s College Fund'],a:0,why:'Turts McHurts, 2023. The Carr name was his 3-9 team in 2016.'},
+    {q:'Which final was decided by a single point, 110.5 to 109.5?',o:['2019, Jordan over Dewitt','2016, Skills over Dewitt','2014, Dewitt over Logan','2024, Curt over Jake'],a:0,why:'Jordan edged Dewitt by one point in 2019. The 2014 final was a 194-194 tie settled by tiebreaker.'},
+    {q:'Which final was a 194-194 tie settled by the league tiebreaker?',o:['2014, Dewitt over Logan','2019, Jordan over Dewitt','2016, Skills over Dewitt','2020, Dewitt over Jordan'],a:0,why:'The very first final ended level, and Dewitt took it on the tiebreaker.'},
+    {q:'Who took LeSean McCoy first overall in the first ever draft, 2014?',o:['Jake','Dewitt','Andrew','Logan'],a:0,why:'Jake, drafting as Take it to the Hauschka, went McCoy at 1.1. Dewitt took Adrian Peterson at 2.'},
+    {q:'Who drafted Christian McCaffrey first overall in 2020?',o:['Curt','Jordan','Dewitt','Jake'],a:0,why:'Curt in 2020. Jordan took McCaffrey first in 2021, and Dewitt did in 2024.'},
+    {q:'Andrew went 2-11 in 2023, the worst record ever, under which name?',o:['High Energy Daddys','Lucky Johnson','Sweatpants Boner','The Famous Grouse'],a:0,why:'High Energy Daddys, 2-11. Lucky Johnson was Jake\u0027s 2-10 team in 2017.'},
+    {q:'Who has the best record in games decided by under 5 points, 12-5?',o:['Skills','Logan','Curt','Nissan'],a:0,why:'Skills is 12-5 in nail-biters. Logan is 12-8.'},
   ];
+  const PER_GAME=12;
+  let Q=[];
   const el=(id)=>document.getElementById(id);
   const start=el('trivia-start'),play=el('trivia-play'),end=el('trivia-end');
   if(!start)return;
@@ -206,8 +226,10 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   // to another screen picks up at the same question.
   const PROG_KEY='brochiefs_trivia_progress_v1';
   let i=0,score=0,order=[],answered=false,picked=null;
-  const loadProg=()=>{try{const p=JSON.parse(localStorage.getItem(PROG_KEY));return p&&Number.isInteger(p.i)&&p.i<Q.length?p:null}catch{return null}};
-  const saveProg=()=>{try{localStorage.setItem(PROG_KEY,JSON.stringify({i,score,order,answered,picked,ts:Date.now()}))}catch{}};
+  const loadProg=()=>{try{const p=JSON.parse(localStorage.getItem(PROG_KEY));return p&&Number.isInteger(p.i)&&Array.isArray(p.drawn)&&p.drawn.length===PER_GAME&&p.i<PER_GAME&&p.drawn.every((k)=>POOL[k])?p:null}catch{return null}};
+  let drawn=[];
+  const saveProg=()=>{try{localStorage.setItem(PROG_KEY,JSON.stringify({i,score,order,answered,picked,drawn,ts:Date.now()}))}catch{}};
+  const draw=(ids)=>{drawn=ids||shuffle(POOL.map((_,k)=>k)).slice(0,PER_GAME);Q=drawn.map((k)=>POOL[k]);};
   const clearProg=()=>{try{localStorage.removeItem(PROG_KEY)}catch{}};
   const shuffle=(arr)=>{const a=arr.slice();for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]]}return a};
   const track=(e)=>{try{window.goatcounter&&window.goatcounter.count({path:e,title:e,event:true})}catch{}};
@@ -249,12 +271,12 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   }
   function showResume(){
     const p=loadProg();const btn=el('trivia-resume');const sb=el('trivia-start-btn');
-    if(p){btn.textContent='▶ CONTINUE · Q'+(p.i+1)+' / '+Q.length+' · SCORE '+p.score;btn.classList.remove('hidden');sb.textContent='↻ START OVER';sb.classList.remove('primary');}
+    if(p){btn.textContent='▶ CONTINUE · Q'+(p.i+1)+' / '+PER_GAME+' · SCORE '+p.score;btn.classList.remove('hidden');sb.textContent='↻ START OVER';sb.classList.remove('primary');}
     else{btn.classList.add('hidden');sb.textContent='▶ START';sb.classList.add('primary');}
   }
   function beginPlay(){start.classList.add('hidden');end.classList.add('hidden');play.classList.remove('hidden')}
-  el('trivia-resume').addEventListener('click',()=>{const p=loadProg();if(!p){showResume();return}i=p.i;score=p.score;order=p.order;answered=!!p.answered;picked=p.picked??null;beginPlay();render(true);track('trivia-resume')});
-  el('trivia-start-btn').addEventListener('click',()=>{i=0;score=0;clearProg();beginPlay();render();track('trivia-start')});
+  el('trivia-resume').addEventListener('click',()=>{const p=loadProg();if(!p){showResume();return}draw(p.drawn);i=p.i;score=p.score;order=p.order;answered=!!p.answered;picked=p.picked??null;beginPlay();render(true);track('trivia-resume')});
+  el('trivia-start-btn').addEventListener('click',()=>{i=0;score=0;clearProg();draw();beginPlay();render();track('trivia-start')});
   el('trivia-next').addEventListener('click',()=>{if(i===Q.length-1){finish();return}i++;render();play.scrollIntoView({block:'start',behavior:'smooth'})});
   el('trivia-again').addEventListener('click',()=>{end.classList.add('hidden');start.classList.remove('hidden');showBest();showResume();start.scrollIntoView({block:'start',behavior:'smooth'})});
   showBest();showResume();
