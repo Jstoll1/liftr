@@ -463,6 +463,10 @@ const PICKS_MANAGERS = [
 // Kickoffs (ms since epoch) for the 2026 Week 1 slate, same values as
 // GAMES in app.js. A pick for a game past its kickoff can no longer be
 // added or changed through /picks.
+// Per-isolate cache of the assembled picks map (see GET /picks).
+let picksCache = null;
+const PICKS_CACHE_MS = 5000;
+
 const PICKS_KICKOFF = Object.fromEntries(Object.entries({
   1: "2026-09-05T16:00:00Z", 2: "2026-09-05T16:30:00Z", 3: "2026-09-05T19:30:00Z", 4: "2026-09-05T19:30:00Z", 5: "2026-09-05T19:30:00Z",
   6: "2026-09-05T19:30:00Z", 7: "2026-09-05T22:00:00Z", 8: "2026-09-05T23:30:00Z", 9: "2026-09-05T16:00:00Z", 10: "2026-09-06T23:30:00Z",
@@ -476,6 +480,14 @@ async function handlePicks(request, env, corsHeaders, url) {
 
   if (request.method === "GET") {
     try {
+      // Every phone polls this every 20 seconds on game day. Ten KV reads
+      // per poll would burn through the free tier's daily read quota in an
+      // afternoon, so the Worker keeps a short in-memory copy and serves
+      // that; a save clears it so nobody waits more than a few seconds.
+      const now = Date.now();
+      if (picksCache && now - picksCache.at < PICKS_CACHE_MS) {
+        return json({ picks: picksCache.picks, cached: true }, 200, corsHeaders);
+      }
       const entries = await Promise.all(
         PICKS_MANAGERS.map(async (manager) => {
           const stored = await env.LIFTR_KV.get(`picks:${manager}`);
@@ -483,6 +495,7 @@ async function handlePicks(request, env, corsHeaders, url) {
         })
       );
       const picks = Object.fromEntries(entries.filter(([, value]) => value !== null));
+      picksCache = { at: now, picks };
       return json({ picks }, 200, corsHeaders);
     } catch (err) {
       console.error("Picks read error", err?.stack || String(err));
@@ -518,6 +531,7 @@ async function handlePicks(request, env, corsHeaders, url) {
           incoming.picks[id] = { ...p, savedAt: prev && prev.team === p.team && prev.mode === p.mode ? (prev.savedAt || null) : nowAdmin, ...(prev && prev.team === p.team && prev.mode === p.mode ? {} : { repairedAt: nowAdmin }) };
         }
         await env.LIFTR_KV.put(`picks:${manager}`, JSON.stringify(incoming));
+        picksCache = null;
         await logPickChanges(env, manager, stored, incoming, true);
         return json({ ok: true, admin: true, state: incoming }, 200, corsHeaders);
       }
@@ -541,6 +555,7 @@ async function handlePicks(request, env, corsHeaders, url) {
       merged.tiebreaker = useIncoming ? (incoming.tiebreaker ?? "") : stored.tiebreaker;
       merged.tiebreakerUpdatedAt = Math.max(ta, tb);
       await env.LIFTR_KV.put(`picks:${manager}`, JSON.stringify(merged));
+      picksCache = null;
       await logPickChanges(env, manager, stored, merged, false);
       return json({ ok: true, state: merged }, 200, corsHeaders);
     } catch (err) {
