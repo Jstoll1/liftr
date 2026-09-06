@@ -156,6 +156,8 @@ secret once:
 then open `https://liftr-ai.jhs797.workers.dev/history-log?key=<that value>`
 on any device. Without the secret the endpoint returns 404.
 
+Every pick change is logged for 30 days. `/picks-log?key=<ARCHIVE_LOG_KEY>` lists them newest first, marks any change made after that game kicked off, and flags any current pick stamped after kickoff. An admin repair replaces a manager's stored picks outright: `POST /picks?key=<ARCHIVE_LOG_KEY>` with `{"manager","state"}`.
+
 Matchup data (head-to-head, weekly scores, playoff games, bench points) comes
 from `src/matchup-data.js`, built from `data/espn-history.json`, which is
 exported from ESPN with `scripts/export-espn-history.mjs` (see the header of

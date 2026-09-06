@@ -48,6 +48,9 @@ export default {
     if (url.pathname === "/library") {
       return handleLibrary(request, env, corsHeaders);
     }
+    if (url.pathname === "/picks-log") {
+      return handlePicksLog(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/picks") {
       return handlePicks(request, env, corsHeaders, url);
     }
@@ -510,6 +513,7 @@ async function handlePicks(request, env, corsHeaders, url) {
       const admin = !!env.ARCHIVE_LOG_KEY && url.searchParams.get("key") === env.ARCHIVE_LOG_KEY;
       if (admin) {
         await env.LIFTR_KV.put(`picks:${manager}`, JSON.stringify(incoming));
+        await logPickChanges(env, manager, stored, incoming, true);
         return json({ ok: true, admin: true, state: incoming }, 200, corsHeaders);
       }
       const merged = { picks: {}, tiebreaker: "" };
@@ -528,6 +532,7 @@ async function handlePicks(request, env, corsHeaders, url) {
       merged.tiebreaker = useIncoming ? (incoming.tiebreaker ?? "") : stored.tiebreaker;
       merged.tiebreakerUpdatedAt = Math.max(ta, tb);
       await env.LIFTR_KV.put(`picks:${manager}`, JSON.stringify(merged));
+      await logPickChanges(env, manager, stored, merged, false);
       return json({ ok: true, state: merged }, 200, corsHeaders);
     } catch (err) {
       console.error("Picks write error", err?.stack || String(err));
@@ -545,6 +550,54 @@ async function handlePicks(request, env, corsHeaders, url) {
 // friend group, same as the rest of this app); anyone can enter a score
 // once it's known. The scoreboard uses this plus everyone's picks to
 // compute point totals and rankings.
+// Every change to a manager's picks is written to KV (30 days) so a
+// disputed score can be traced: which game, from what to what, when, and
+// whether that game had already kicked off.
+async function logPickChanges(env, manager, before, after, admin) {
+  try {
+    const changes = [];
+    const ids = new Set([...Object.keys(before?.picks || {}), ...Object.keys(after?.picks || {})]);
+    for (const id of ids) {
+      const a = before?.picks?.[id], b = after?.picks?.[id];
+      const fa = a ? `${a.team} ${a.mode}` : null, fb = b ? `${b.team} ${b.mode}` : null;
+      if (fa !== fb) changes.push({ game: Number(id), from: fa, to: fb, afterKickoff: !!PICKS_KICKOFF[id] && Date.now() >= PICKS_KICKOFF[id] });
+    }
+    if (String(before?.tiebreaker ?? "") !== String(after?.tiebreaker ?? "")) changes.push({ game: 0, from: String(before?.tiebreaker ?? ""), to: String(after?.tiebreaker ?? ""), afterKickoff: false });
+    if (!changes.length) return;
+    const ts = Date.now();
+    await env.LIFTR_KV.put(`picks-log:${String(9999999999999 - ts)}`, JSON.stringify({ ts, manager, admin, changes }), { expirationTtl: 30 * 24 * 3600 });
+  } catch (err) {
+    console.error("pick log failed", err);
+  }
+}
+
+async function handlePicksLog(request, env, corsHeaders, url) {
+  if (!env.ARCHIVE_LOG_KEY || url.searchParams.get("key") !== env.ARCHIVE_LOG_KEY) return new Response("Not found", { status: 404 });
+  const list = await env.LIFTR_KV.list({ prefix: "picks-log:", limit: 500 });
+  const rows = (await Promise.all(list.keys.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
+  // Current state check: any pick stamped after its game's kickoff is a
+  // change that should not have been possible.
+  const flagged = [];
+  for (const manager of PICKS_MANAGERS) {
+    const st = await env.LIFTR_KV.get(`picks:${manager}`, "json");
+    for (const [id, p] of Object.entries(st?.picks || {})) {
+      if (p?.updatedAt && PICKS_KICKOFF[id] && p.updatedAt > PICKS_KICKOFF[id]) flagged.push({ manager, game: Number(id), pick: `${p.team} ${p.mode}`, at: p.updatedAt });
+    }
+  }
+  const fmt = (t) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York" });
+  const html = `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Picks log</title>
+<style>body{font:14px/1.5 system-ui;background:#0a0014;color:#f4f0ff;padding:16px;max-width:760px;margin:0 auto}
+.r{border:1px solid #3a2a50;border-radius:8px;padding:10px 12px;margin:0 0 10px}.m{color:#9a8bb8;font-size:12px}.who{color:#ffe45e;font-weight:700}
+.c{margin-left:8px}.late{color:#ff2079;font-weight:700}.adm{color:#05d9e8}h3{margin:18px 0 8px}</style>
+<h2>Picks log · ${rows.length} changes</h2>
+<h3>Current picks stamped after kickoff (${flagged.length})</h3>` +
+    (flagged.length ? flagged.map((f) => `<div class="r late">${escapeHtml(f.manager)} · G${f.game} · ${escapeHtml(f.pick)} · ${fmt(f.at)}</div>`).join("") : `<div class="m">None.</div>`) +
+    `<h3>Change history (newest first)</h3>` +
+    rows.map((r) => `<div class="r"><div class="m">${fmt(r.ts)} · <span class="who">${escapeHtml(r.manager)}</span>${r.admin ? ' · <span class="adm">admin repair</span>' : ""}</div>` +
+      r.changes.map((c) => `<div class="c">${c.game ? `G${c.game}` : "Tiebreaker"}: ${escapeHtml(c.from ?? "none")} → ${escapeHtml(c.to ?? "none")}${c.afterKickoff ? ' <span class="late">after kickoff</span>' : ""}</div>`).join("") + `</div>`).join("");
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders } });
+}
+
 async function handleResults(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) {
     console.error("LIFTR_KV binding missing");
