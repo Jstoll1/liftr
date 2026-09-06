@@ -191,10 +191,10 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     {q:'Which active owner has the worst all-time record?',o:['Andrew','Nissan','Logan','Conlan'],a:0,why:'Andrew is 67-82, a .450 win rate. Nissan .489 and Logan .497 are next.'},
     {q:'Who has played every season and never won a title?',o:['Andrew','Nissan','Robert','Conlan'],a:0,why:'Twelve seasons, zero rings. Nissan is at eleven. Robert has not played all twelve.'},
     {q:'Which former member won the 2022 championship?',o:['Marty Griffin','Ryan Hacker','Tyler Cerone','Patrick Williams'],a:0,why:'Marty won it all in 2022 during a four-season run from 2021 to 2024.'},
-    {q:'What is the highest single-week score in league history?',o:['Dewitt, 196.16 in 2022','Jordan, 195.8 in 2021','Jake, 188.4 in 2021','Curt, 201.2 in 2019'],a:0,why:'Dewitt dropped 196.16 on Skills in week 8 of 2022. Jordan\u0027s 195.8 in 2021 is second.'},
+    {q:'What is the highest single-week score in league history?',o:['Dewitt, 196.16 in 2022','Jordan, 195.8 in 2021','Jordan, 191.56 in 2021','Conlan, 191.36 in 2023'],a:0,why:'Dewitt dropped 196.16 on Skills in week 8 of 2022. Jordan\u0027s 195.8 in week 2 of 2021 is second.'},
     {q:'Who has the most auto-drafted picks in league history?',o:['Marty','Ryan','Curt','Nissan'],a:0,why:'Marty let the computer pick 17 times. The legend is true.'},
     {q:'Who scored 32 points in 2014 week 6, the lowest week ever?',o:['Jordan','Nissan','Curt','Andrew'],a:0,why:'Jordan\u0027s 32 against Skills in 2014 is the floor. Nissan\u0027s 33 in 2015 is next.'},
-    {q:'Who won by 101 points, the biggest margin ever?',o:['Conlan over Ryan, 2018','Skills over Jordan, 2014','Dewitt over Andrew, 2022','Curt over Nissan, 2017'],a:0,why:'Conlan 161, Ryan 60 in week 9 of 2018. Skills over Jordan by 96 in 2014 is second.'},
+    {q:'Who won by 101 points, the biggest margin ever?',o:['Conlan over Ryan, 2018','Skills over Jordan, 2014','Nissan over Curt, 2018','Conlan over Logan, 2023'],a:0,why:'Conlan 161, Ryan 60 in week 9 of 2018. Skills over Jordan by 96 in 2014 is second, then Nissan over Curt by 94.5.'},
     {q:'Who went 11-2 with "Herbert\u0027s Sherbert" in 2021, the best record ever?',o:['Jake','Dewitt','Curt','Jordan'],a:0,why:'Jake\u0027s 2021 team went 11-2 and won the title with 1,794 points.'},
     {q:'Which active owner is the unluckiest by all-play record?',o:['Curt','Nissan','Andrew','Logan'],a:0,why:'Curt would be 702-635 if he played everyone every week. His real record trails that by about five wins.'},
     {q:'Which owner is the luckiest, about six wins better than his all-play record?',o:['Jake','Marty','Skills','Dewitt'],a:0,why:'Jake is 79-70 but 649-686 all-play. The schedule has been kind.'},
@@ -205,7 +205,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     {q:'Who has been the week\u0027s lowest scorer most often?',o:['Jake','Jordan','Curt','Conlan'],a:0,why:'Jake has finished dead last in a week 21 times. Jordan is right behind at 20.'},
     {q:'Who has lost by 50 or more points the most times?',o:['Conlan','Dewitt','Curt','Jake'],a:0,why:'Conlan has taken 13 fifty-point beatings. Dewitt is next with 12.'},
     {q:'Who led the league in points per game over his career?',o:['Marty','Dewitt','Robert','Jake'],a:0,why:'Marty averaged 119.5 a week across four seasons. Dewitt is second at 116.2.'},
-    {q:'Which pair has met the most times in the regular season, 24 games?',o:['Andrew and Curt','Jake and Dewitt','Logan and Skills','Conlan and Nissan'],a:0,why:'Andrew and Curt have met 24 times, tied with Jake and Skills. Curt leads that one 14-10.'},
+    {q:'Which of these pairs has met 24 times in the regular season, the most of any rivalry?',o:['Andrew and Curt','Jake and Dewitt','Logan and Skills','Conlan and Nissan'],a:0,why:'Andrew and Curt, with Curt leading 14-10. Three other pairs also sit at 24: Jake and Skills, Dewitt and Jordan, Curt and Jake. Jake and Dewitt have met only five times.'},
     {q:'What was Logan\u0027s team called when he won the 2015 title?',o:['Abdullah Oblongatas','Two Dragons','Turts McHurts','Gooey Bellies'],a:0,why:'Abdullah Oblongatas beat Jordan 240-169 in the 2015 final.'},
     {q:'Which team name won the 2016 championship?',o:['myfreecams .com','Tears In Kevin','Action Jackson','The Sleeping Giants'],a:0,why:'Skills won 2016 as myfreecams .com, 230.5 to 227.5 over Dewitt.'},
     {q:'Conlan won the 2023 title under which name?',o:['Turts McHurts','No playoff spot To park my Carr','High Energy Daddys','Pooch\u0027s College Fund'],a:0,why:'Turts McHurts, 2023. The Carr name was his 3-9 team in 2016.'},
@@ -214,7 +214,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     {q:'Who took LeSean McCoy first overall in the first ever draft, 2014?',o:['Jake','Dewitt','Andrew','Logan'],a:0,why:'Jake, drafting as Take it to the Hauschka, went McCoy at 1.1. Dewitt took Adrian Peterson at 2.'},
     {q:'Who drafted Christian McCaffrey first overall in 2020?',o:['Curt','Jordan','Dewitt','Jake'],a:0,why:'Curt in 2020. Jordan took McCaffrey first in 2021, and Dewitt did in 2024.'},
     {q:'Andrew went 2-11 in 2023, the worst record ever, under which name?',o:['High Energy Daddys','Lucky Johnson','Sweatpants Boner','The Famous Grouse'],a:0,why:'High Energy Daddys, 2-11. Lucky Johnson was Jake\u0027s 2-10 team in 2017.'},
-    {q:'Who has the best record in games decided by under 5 points, 12-5?',o:['Skills','Logan','Curt','Nissan'],a:0,why:'Skills is 12-5 in nail-biters. Logan is 12-8.'},
+    {q:'Who is 12-5 in games decided by under 5 points?',o:['Skills','Logan','Curt','Nissan'],a:0,why:'Skills wins the nail-biters. Logan is 12-8, Nissan 11-12, Curt 7-14. Dewitt\u0027s 15-6 is the best of anyone.'},
   ];
   const PER_GAME=12;
   let Q=[];
