@@ -221,7 +221,12 @@ function parseEspnEvents(events) {
     // "final" signal as final.
     const st1 = comp.status?.type || {};
     const st2 = event.status?.type || {};
-    const isFinal = (t) => !!t.completed || t.state === "post" || /^STATUS_FINAL/.test(t.name || "") || /^final/i.test(t.shortDetail || t.detail || t.description || "");
+    // Final means ESPN's structured flags say so: completed, or a
+    // STATUS_FINAL* name. A postponed or canceled game also sits in state
+    // "post" with completed=false, so "post" alone is never treated as
+    // final, and free-text status strings are never used for scoring.
+    const isVoid = (t) => /^STATUS_(POSTPONED|CANCELED|CANCELLED|SUSPENDED|FORFEIT)/.test(t.name || "");
+    const isFinal = (t) => !isVoid(t) && (t.completed === true || /^STATUS_FINAL/.test(t.name || ""));
     const finalNow = isFinal(st1) || isFinal(st2);
     const statusType = finalNow ? { ...st2, ...st1, completed: true, state: "post", shortDetail: (st1.shortDetail && /final/i.test(st1.shortDetail)) ? st1.shortDetail : (st2.shortDetail && /final/i.test(st2.shortDetail)) ? st2.shortDetail : "Final" } : (Object.keys(st1).length ? st1 : st2);
     const prob = comp.situation?.lastPlay?.probability;
@@ -233,6 +238,7 @@ function parseEspnEvents(events) {
       found: true,
       state: statusType.state || "pre",
       completed: !!statusType.completed,
+      rawStatus: { comp: { name: st1.name, state: st1.state, completed: st1.completed, detail: st1.shortDetail }, event: { name: st2.name, state: st2.state, completed: st2.completed, detail: st2.shortDetail } },
       detail: statusType.shortDetail || statusType.detail || "",
       period: comp.status?.period ?? null,
       clock: comp.status?.displayClock ?? null,
@@ -296,11 +302,19 @@ async function syncManagerFromCloud(name) {
   const all = loadAll();
   const local = all[name] || { picks: {}, tiebreaker: "" };
   const remote = cloud[name] ? { ...cloud[name], picks: sanitizePicks(cloud[name].picks) } : null;
-  const merged = remote ? mergeStates(remote, local) : local;
+  const merged = remote ? mergeStates(remote, local) : { ...local, picks: {} };
+  // Games past kickoff are settled: the cloud copy at lock is the record,
+  // and nothing on this device may add, change or resurrect a pick for
+  // them. Only open games merge.
+  GAMES.forEach((game) => {
+    if (!isGameLocked(game)) return;
+    if (remote && remote.picks[game.id]) merged.picks[game.id] = remote.picks[game.id];
+    else delete merged.picks[game.id];
+  });
   all[name] = merged;
   saveAll(all);
-  // If local held something the cloud did not, send the merged copy up.
-  if (JSON.stringify(merged) !== JSON.stringify(remote || {})) pushManagerState(name, merged);
+  // If local held an open-game pick the cloud did not, send it up.
+  if (remote && JSON.stringify(merged.picks) !== JSON.stringify(remote.picks)) pushManagerState(name, merged);
 }
 
 // --- Screens / navigation -------------------------------------------------

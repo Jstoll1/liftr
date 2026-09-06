@@ -457,6 +457,14 @@ const PICKS_MANAGERS = [
   "Nissan", "Skills", "Jake", "Curt", "Andrew",
 ];
 
+// Kickoffs (ms since epoch) for the 2026 Week 1 slate, same values as
+// GAMES in app.js. A pick for a game past its kickoff can no longer be
+// added or changed through /picks.
+const PICKS_KICKOFF = Object.fromEntries(Object.entries({
+  1: "2026-09-05T16:00:00Z", 2: "2026-09-05T16:30:00Z", 3: "2026-09-05T19:30:00Z", 4: "2026-09-05T19:30:00Z", 5: "2026-09-05T19:30:00Z",
+  6: "2026-09-05T19:30:00Z", 7: "2026-09-05T22:00:00Z", 8: "2026-09-05T23:30:00Z", 9: "2026-09-05T16:00:00Z", 10: "2026-09-06T23:30:00Z",
+}).map(([id, iso]) => [id, new Date(iso).getTime()]));
+
 async function handlePicks(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) {
     console.error("LIFTR_KV binding missing");
@@ -497,10 +505,20 @@ async function handlePicks(request, env, corsHeaders, url) {
       // the incoming pick wins, which is the old behaviour.
       const incoming = body.state || {};
       const stored = JSON.parse((await env.LIFTR_KV.get(`picks:${manager}`)) || "null") || { picks: {} };
+      // Admin repair: with the log key, the posted state replaces the
+      // stored one outright, locked games included.
+      const admin = !!env.ARCHIVE_LOG_KEY && url.searchParams.get("key") === env.ARCHIVE_LOG_KEY;
+      if (admin) {
+        await env.LIFTR_KV.put(`picks:${manager}`, JSON.stringify(incoming));
+        return json({ ok: true, admin: true, state: incoming }, 200, corsHeaders);
+      }
       const merged = { picks: {}, tiebreaker: "" };
       const ids = new Set([...Object.keys(stored.picks || {}), ...Object.keys(incoming.picks || {})]);
+      const now = Date.now();
       for (const id of ids) {
         const a = stored.picks?.[id], b = incoming.picks?.[id];
+        // Past kickoff the stored pick is final: no additions, no changes.
+        if (PICKS_KICKOFF[id] && now >= PICKS_KICKOFF[id]) { if (a) merged.picks[id] = a; continue; }
         merged.picks[id] = !a ? b : !b ? a : (a.updatedAt || 0) > (b.updatedAt || 0) ? a : b;
       }
       const ta = stored.tiebreakerUpdatedAt || 0, tb = incoming.tiebreakerUpdatedAt || 0;
