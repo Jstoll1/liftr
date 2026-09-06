@@ -491,8 +491,26 @@ async function handlePicks(request, env, corsHeaders, url) {
       return json({ error: "Invalid or missing manager" }, 400, corsHeaders);
     }
     try {
-      await env.LIFTR_KV.put(`picks:${manager}`, JSON.stringify(body.state || {}));
-      return json({ ok: true }, 200, corsHeaders);
+      // Merge game by game on updatedAt so a phone with a stale copy of
+      // the other games cannot wipe a pick made elsewhere. Picks without a
+      // timestamp (older clients) lose to timestamped ones and otherwise
+      // the incoming pick wins, which is the old behaviour.
+      const incoming = body.state || {};
+      const stored = JSON.parse((await env.LIFTR_KV.get(`picks:${manager}`)) || "null") || { picks: {} };
+      const merged = { picks: {}, tiebreaker: "" };
+      const ids = new Set([...Object.keys(stored.picks || {}), ...Object.keys(incoming.picks || {})]);
+      for (const id of ids) {
+        const a = stored.picks?.[id], b = incoming.picks?.[id];
+        merged.picks[id] = !a ? b : !b ? a : (a.updatedAt || 0) > (b.updatedAt || 0) ? a : b;
+      }
+      const ta = stored.tiebreakerUpdatedAt || 0, tb = incoming.tiebreakerUpdatedAt || 0;
+      const incomingHas = String(incoming.tiebreaker || "").trim() !== "";
+      const storedHas = String(stored.tiebreaker || "").trim() !== "";
+      const useIncoming = tb > ta || !storedHas || (tb === ta && incomingHas);
+      merged.tiebreaker = useIncoming ? (incoming.tiebreaker ?? "") : stored.tiebreaker;
+      merged.tiebreakerUpdatedAt = Math.max(ta, tb);
+      await env.LIFTR_KV.put(`picks:${manager}`, JSON.stringify(merged));
+      return json({ ok: true, state: merged }, 200, corsHeaders);
     } catch (err) {
       console.error("Picks write error", err?.stack || String(err));
       return json({ error: "Write failed" }, 500, corsHeaders);

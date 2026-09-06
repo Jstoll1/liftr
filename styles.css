@@ -2105,3 +2105,7 @@ html, body {
 .ranking-score { font-size: 13px; color: var(--neon-green); text-shadow: 0 0 6px var(--neon-green); min-width: 34px; text-align: right; }
 .ranking-row.rank-1 .ranking-score { color: var(--neon-yellow); text-shadow: 0 0 8px var(--neon-yellow); }
 .ranking-caret { width: 10px; text-align: right; }
+
+/* --- Sync status on the pick pill --- */
+.game-status.submitted.saving { color: var(--neon-yellow); border-color: var(--neon-yellow); animation: live-blink 1s ease-in-out infinite; }
+.game-status.submitted.failed { color: var(--neon-pink); border-color: var(--neon-pink); }

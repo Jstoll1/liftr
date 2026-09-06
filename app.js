@@ -123,17 +123,66 @@ function isGameLocked(game) {
 
 // --- Worker sync (cross-device picks + results) --------------------------
 
-async function pushManagerState(manager, state) {
-  if (!WORKER_URL) return;
-  try {
-    await fetch(`${WORKER_URL}/picks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ manager, state }),
-    });
-  } catch {
-    // Offline or worker unreachable — local copy still saved, fine.
+// Every pick carries the time it was made so two copies of a manager's
+// state can be merged game by game instead of one blob replacing the
+// other. Newer wins per game; a pick with no timestamp is treated as old.
+function mergeStates(a, b) {
+  const out = { picks: {}, tiebreaker: "" };
+  const ids = new Set([...Object.keys(a?.picks || {}), ...Object.keys(b?.picks || {})]);
+  ids.forEach((id) => {
+    const pa = a?.picks?.[id], pb = b?.picks?.[id];
+    if (!pa) out.picks[id] = pb; else if (!pb) out.picks[id] = pa;
+    else out.picks[id] = (pb.updatedAt || 0) > (pa.updatedAt || 0) ? pb : pa;
+  });
+  const ta = a?.tiebreakerUpdatedAt || 0, tb = b?.tiebreakerUpdatedAt || 0;
+  const useB = tb > ta || (tb === ta && !String(a?.tiebreaker || "").trim());
+  out.tiebreaker = useB ? (b?.tiebreaker ?? "") : (a?.tiebreaker ?? "");
+  out.tiebreakerUpdatedAt = Math.max(ta, tb);
+  return out;
+}
+
+// Push with retries. The caller gets true only when the Worker confirmed
+// the write; on failure the state is queued and retried in the background
+// so a flaky connection never silently drops a pick.
+const PENDING_KEY = "brochiefs_pending_push_v1";
+let syncStatus = "idle"; // idle | saving | saved | failed
+const syncListeners = new Set();
+function setSyncStatus(next) { syncStatus = next; syncListeners.forEach((fn) => fn(next)); }
+
+async function pushManagerState(manager, state, { attempts = 3 } = {}) {
+  if (!WORKER_URL) return false;
+  setSyncStatus("saving");
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(`${WORKER_URL}/picks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manager, state }),
+        cache: "no-store",
+      });
+      if (res.ok) {
+        try { localStorage.removeItem(PENDING_KEY); } catch {}
+        setSyncStatus("saved");
+        return true;
+      }
+    } catch {
+      // fall through to retry
+    }
+    await new Promise((r) => setTimeout(r, 600 * (i + 1)));
   }
+  try { localStorage.setItem(PENDING_KEY, manager); } catch {}
+  setSyncStatus("failed");
+  return false;
+}
+
+// Retry anything that failed to reach the Worker, on a timer and whenever
+// the app comes back to the foreground.
+async function flushPendingPush() {
+  let manager = null;
+  try { manager = localStorage.getItem(PENDING_KEY); } catch {}
+  if (!manager) return;
+  const ok = await pushManagerState(manager, getManagerState(manager), { attempts: 1 });
+  if (ok && manager === currentManager && !picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
 }
 
 async function fetchAllPicks() {
@@ -243,10 +292,15 @@ async function fetchLiveScores() {
 // submitted a pick on their phone sees it submitted on their laptop too.
 async function syncManagerFromCloud(name) {
   const cloud = await fetchAllPicks();
-  if (!cloud || !cloud[name]) return;
+  if (!cloud) return;
   const all = loadAll();
-  all[name] = { ...cloud[name], picks: sanitizePicks(cloud[name].picks) };
+  const local = all[name] || { picks: {}, tiebreaker: "" };
+  const remote = cloud[name] ? { ...cloud[name], picks: sanitizePicks(cloud[name].picks) } : null;
+  const merged = remote ? mergeStates(remote, local) : local;
+  all[name] = merged;
   saveAll(all);
+  // If local held something the cloud did not, send the merged copy up.
+  if (JSON.stringify(merged) !== JSON.stringify(remote || {})) pushManagerState(name, merged);
 }
 
 // --- Screens / navigation -------------------------------------------------
@@ -938,6 +992,12 @@ function renderPicksScreen() {
     } else if (gameLocked) {
       statusLabel = "LOCKED";
       statusClass = "locked";
+    } else if (pick && justSavedGameId === game.id && syncStatus === "saving") {
+      statusLabel = "SAVING…";
+      statusClass = "submitted saving";
+    } else if (pick && justSavedGameId === game.id && syncStatus === "failed") {
+      statusLabel = "NOT SYNCED ⚠";
+      statusClass = "submitted failed";
     } else if (pick && justSavedGameId === game.id && justSavedKind === "updated") {
       statusLabel = "UPDATED ✓";
       statusClass = "submitted updated";
@@ -949,6 +1009,7 @@ function renderPicksScreen() {
     const noteVerb = justSavedGameId === game.id && justSavedKind === "updated" ? "Updated" : "Saved";
     const note = gameLocked
       ? pick ? `Final pick: ${pickLabel(game, pick)}` : "No pick made — locked"
+      : pick && justSavedGameId === game.id && syncStatus === "failed" ? `⚠ ${pickLabel(game, pick)} is saved on this phone but not synced yet — retrying`
       : pick ? `✓ ${noteVerb}: ${pickLabel(game, pick)}` : "Tap a button to pick — it saves instantly";
 
     card.innerHTML = `
@@ -969,15 +1030,15 @@ function renderPicksScreen() {
         const prev = s.picks[game.id];
         const changed = !!prev && (prev.team !== team || prev.mode !== mode);
         if (prev && !changed) return; // same button again: nothing to save
-        s.picks[game.id] = { team, mode };
+        s.picks[game.id] = { team, mode, updatedAt: Date.now() };
         setManagerState(currentManager, s);
-        pushManagerState(currentManager, s);
+        pushManagerState(currentManager, s).then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
         justSavedGameId = game.id;
         justSavedKind = changed ? "updated" : "saved";
         track(changed ? "pick-updated" : "pick-saved", { event: true });
         withScrollPreserved(renderPicksScreen);
         setTimeout(() => {
-          if (justSavedGameId !== game.id) return;
+          if (justSavedGameId !== game.id || syncStatus === "failed") return;
           justSavedGameId = null;
           withScrollPreserved(renderPicksScreen);
         }, 2500);
@@ -1015,6 +1076,7 @@ tiebreakerInput.addEventListener("input", () => {
     if (!currentManager) return;
     const s = getManagerState(currentManager);
     s.tiebreaker = tiebreakerInput.value.trim();
+    s.tiebreakerUpdatedAt = Date.now();
     setManagerState(currentManager, s);
     pushManagerState(currentManager, s);
     tiebreakerStatus.textContent = s.tiebreaker ? `✓ Saved: ${s.tiebreaker}` : "Saves as you type";
@@ -1419,12 +1481,14 @@ setInterval(() => {
   if (!scoreboardScreen.classList.contains("hidden")) {
     withScrollPreserved(renderScoreboard);
   }
+  flushPendingPush();
 }, 20000);
 
 // Timers pause while the phone is locked or the app is in the background.
 // Refresh the moment it comes back so the board never shows stale scores.
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
+  flushPendingPush();
   if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
   if (currentManager && !picksScreen.classList.contains("hidden")) fetchLiveScores().then(() => withScrollPreserved(renderPicksScreen));
 });
