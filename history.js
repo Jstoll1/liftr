@@ -259,9 +259,34 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     if(k===Q[i].a)score++;
     paintAnswer();saveProg();
   }
+  const WORKER=(typeof WORKER_URL==='string'&&WORKER_URL)||'';
+  const me=()=>{try{return localStorage.getItem('brochiefs_me_v1')||null}catch{return null}};
+  const fmtWhen=(t)=>t?new Date(t).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+  async function loadHighScores(){
+    const list=el('trivia-hs-list');if(!list||!WORKER)return;
+    try{
+      const res=await fetch(WORKER+'/trivia?t='+Date.now(),{cache:'no-store'});const data=await res.json();
+      const rows=(data.scores||[]).sort((a,b)=>b.best-a.best||(a.bestAt||0)-(b.bestAt||0));
+      if(!rows.length){list.innerHTML='<div class="trivia-hs-empty">No scores yet. Be the first on the board.</div>';return}
+      const who=me();
+      list.innerHTML=rows.map((r,i)=>'<div class="trivia-hs-row'+(r.player===who?' me':'')+(i===0?' top':'')+'"><span class="trivia-hs-rank">'+(i+1)+'</span><span class="trivia-hs-name">'+r.player.toUpperCase()+'<span class="trivia-hs-sub">'+r.plays+' game'+(r.plays===1?'':'s')+(r.avg!=null?' · avg '+r.avg:'')+'</span></span><span class="trivia-hs-when">'+fmtWhen(r.bestAt)+'</span><span class="trivia-hs-score">'+String(r.best).padStart(2,'0')+'</span></div>').join('');
+    }catch{list.innerHTML='<div class="trivia-hs-empty">High scores are offline right now.</div>'}
+  }
+  async function postScore(sc,total){
+    const who=me();const box=el('trivia-posted');if(!box)return;
+    if(!who){box.textContent='Tap your name in the top corner to post scores to the league board.';box.classList.remove('hidden');return}
+    if(!WORKER)return;
+    try{
+      const res=await fetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,score:sc,total})});
+      const data=await res.json().catch(()=>({}));
+      if(res.ok&&data.ok){box.textContent='Posted for '+who+' · best '+data.best+'/12 · '+data.plays+' game'+(data.plays===1?'':'s');box.classList.remove('hidden');loadHighScores();}
+      else{box.textContent='Score not posted: '+(data.error||'try again');box.classList.remove('hidden')}
+    }catch{box.textContent='Score not posted: the Worker is unreachable.';box.classList.remove('hidden')}
+  }
   function finish(){
     play.classList.add('hidden');end.classList.remove('hidden');
     el('trivia-final').textContent=score+' / '+Q.length;
+    postScore(score,Q.length);
     const rank=score===12?'COMMISSIONER':score>=10?'HALL OF FAMER':score>=8?'LEAGUE HISTORIAN':score>=5?'CASUAL BRO':'AUTO-DRAFTER';
     el('trivia-rank').textContent='RANK: '+rank;
     let prev=null;try{prev=JSON.parse(localStorage.getItem(BEST_KEY))}catch{}
@@ -279,5 +304,6 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   el('trivia-start-btn').addEventListener('click',()=>{i=0;score=0;clearProg();draw();beginPlay();render();track('trivia-start')});
   el('trivia-next').addEventListener('click',()=>{if(i===Q.length-1){finish();return}i++;render();play.scrollIntoView({block:'start',behavior:'smooth'})});
   el('trivia-again').addEventListener('click',()=>{end.classList.add('hidden');start.classList.remove('hidden');showBest();showResume();start.scrollIntoView({block:'start',behavior:'smooth'})});
-  showBest();showResume();
+  showBest();showResume();loadHighScores();
+  document.getElementById('nav-trivia-btn')?.addEventListener('click',loadHighScores);
 })();

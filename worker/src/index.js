@@ -48,6 +48,9 @@ export default {
     if (url.pathname === "/library") {
       return handleLibrary(request, env, corsHeaders);
     }
+    if (url.pathname === "/trivia") {
+      return handleTrivia(request, env, corsHeaders);
+    }
     if (url.pathname === "/picks-log") {
       return handlePicksLog(request, env, corsHeaders, url);
     }
@@ -593,6 +596,38 @@ async function logPickChanges(env, manager, before, after, admin) {
   } catch (err) {
     console.error("pick log failed", err);
   }
+}
+
+// Trivia high scores: one KV entry per owner holding best score, games
+// played, and the last ten results. GET returns everyone's line.
+let triviaCache = null;
+async function handleTrivia(request, env, corsHeaders) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  if (request.method === "GET") {
+    const now = Date.now();
+    if (triviaCache && now - triviaCache.at < 5000) return json({ scores: triviaCache.scores }, 200, corsHeaders);
+    const rows = await Promise.all(PICKS_MANAGERS.map(async (p) => [p, await env.LIFTR_KV.get(`trivia:${p}`, "json")]));
+    const scores = rows.filter(([, v]) => v).map(([player, v]) => ({ player, best: v.best, bestAt: v.bestAt, plays: v.plays, last: v.last, lastAt: v.lastAt, avg: v.plays ? Math.round((v.sum / v.plays) * 10) / 10 : null }));
+    triviaCache = { at: now, scores };
+    return json({ scores }, 200, corsHeaders);
+  }
+  if (request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+    const player = body?.player;
+    const score = Number(body?.score), total = Number(body?.total);
+    if (!PICKS_MANAGERS.includes(player)) return json({ error: "Unknown player" }, 400, corsHeaders);
+    if (!Number.isInteger(score) || !Number.isInteger(total) || total < 1 || total > 50 || score < 0 || score > total) return json({ error: "Bad score" }, 400, corsHeaders);
+    const now = Date.now();
+    const cur = (await env.LIFTR_KV.get(`trivia:${player}`, "json")) || { best: 0, bestAt: null, plays: 0, sum: 0, history: [] };
+    cur.plays += 1; cur.sum += score; cur.last = score; cur.lastAt = now;
+    if (score > cur.best || cur.bestAt === null) { cur.best = score; cur.bestAt = now; }
+    cur.history = [...(cur.history || []), { score, total, at: now }].slice(-10);
+    await env.LIFTR_KV.put(`trivia:${player}`, JSON.stringify(cur));
+    triviaCache = null;
+    return json({ ok: true, best: cur.best, plays: cur.plays }, 200, corsHeaders);
+  }
+  return json({ error: "Method not allowed" }, 405, corsHeaders);
 }
 
 async function handlePicksLog(request, env, corsHeaders, url) {
