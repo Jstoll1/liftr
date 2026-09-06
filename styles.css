@@ -2068,9 +2068,16 @@ html, body {
 .lr-score { font-family: 'Press Start 2P', monospace; font-size: 15px; color: var(--text); min-width: 34px; text-align: right; }
 .locked-result.live .lr-score { color: var(--neon-yellow); text-shadow: 0 0 6px rgba(255, 228, 94, .5); }
 .lr-score.win { color: var(--neon-green); text-shadow: 0 0 6px rgba(57, 255, 136, .6); }
-.lr-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 4px 8px 2px; }
+.lr-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 8px 2px; margin-top: 2px; border-top: 1px dashed rgba(193, 60, 255, .25); }
+.lr-lines { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.lr-took { font-size: 11px; color: var(--text-dim); }
+.lr-took b { color: var(--text); font-weight: 800; }
+.lr-outcome { font-size: 11px; font-weight: 700; color: var(--text); }
+.lr-outcome.hit { color: var(--neon-green); }
+.lr-outcome.miss { color: var(--neon-pink); }
+.lr-foot .rd-pts { flex: none; min-width: 56px; }
 .lr-foot.none { justify-content: center; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); padding-top: 8px; }
-.lr-mode { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--neon-yellow); border: 1px solid rgba(255, 228, 94, .5); border-radius: 3px; padding: 3px 5px; }
+.lr-mode-unused { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--neon-yellow); border: 1px solid rgba(255, 228, 94, .5); border-radius: 3px; padding: 3px 5px; }
 .lr-worth { font-size: 9px; font-weight: 700; color: var(--text-dim); letter-spacing: .06em; }
 .locked-result .rd-pts { min-width: 44px; }
 

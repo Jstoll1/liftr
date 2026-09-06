@@ -862,19 +862,44 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
     </div>`;
   let foot;
   if (!pick) {
-    foot = `<span class="lr-foot none">NO PICK MADE</span>`;
+    foot = `<div class="lr-foot none">NO PICK MADE</div>`;
   } else {
     const worth = pointValue(game, pick.team, pick.mode);
-    const modeTxt = pick.mode === "ATS" ? `SPREAD ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : "STRAIGHT UP";
+    const isFav = pick.team === game.favorite;
+    const short = pick.team === game.away ? game.awayShort : game.homeShort;
+    const took = pick.mode === "ATS"
+      ? `<b>${short} ${isFav ? "-" : "+"}${game.spread}</b> against the spread`
+      : `<b>${short}</b> straight up${isFav ? "" : " (upset)"}`;
+    const pickScore = pickedSide === "away" ? aS : hS;
+    const otherScore = pickedSide === "away" ? hS : aS;
+    const haveScore = pickScore !== null && otherScore !== null && (pickScore || otherScore);
+    const diff = haveScore ? pickScore - otherScore : 0;
     const pts = finalRes ? scorePick(game, pick, finalRes) : null;
+    const prov = !finalRes && liveG && haveScore ? scorePick(game, pick, { awayScore: aS, homeScore: hS }) : null;
+    let outcome = "", pill = `<span class="lr-worth">WORTH ${worth} PT</span>`;
+    const byTxt = diff === 0 ? "tied" : `${diff > 0 ? "won" : "lost"} by ${Math.abs(diff)}`;
+    const liveByTxt = diff === 0 ? "tied" : `${diff > 0 ? "up" : "down"} ${Math.abs(diff)}`;
     if (pts !== null) {
-      foot = `<span class="lr-foot"><span class="lr-mode">${modeTxt}</span><span class="rd-pts ${pts >= 3 ? "upset" : pts === 2 ? "hit2" : pts > 0 ? "hit" : "miss"}">${pts > 0 ? "+" + pts : "0"}</span></span>`;
-    } else if (liveG && aS !== null && hS !== null && (aS || hS)) {
-      const prov = scorePick(game, pick, { awayScore: aS, homeScore: hS });
-      foot = `<span class="lr-foot"><span class="lr-mode">${modeTxt}</span><span class="rd-pts ${prov > 0 ? "lean-hit" : "lean-miss"}">${prov > 0 ? "+" + worth + "?" : "0?"}</span></span>`;
+      const hit = pts > 0;
+      outcome = pick.mode === "ATS"
+        ? `${short} ${byTxt} · ${hit ? "covered the number" : "did not cover"}`
+        : `${short} ${byTxt} · ${hit ? "won outright" : "lost outright"}`;
+      pill = `<span class="rd-pts ${pts >= 3 ? "upset" : pts === 2 ? "hit2" : hit ? "hit" : "miss"}">${hit ? "+" + pts : "0"} PTS</span>`;
+    } else if (prov !== null) {
+      const hit = prov > 0;
+      outcome = pick.mode === "ATS"
+        ? `${short} ${liveByTxt} · ${hit ? "covering" : "not covering"} right now`
+        : `${short} ${liveByTxt} · ${hit ? "winning" : "trailing"} right now`;
+      pill = `<span class="rd-pts ${hit ? "lean-hit" : "lean-miss"}">${hit ? "+" + worth : "0"}?</span>`;
     } else {
-      foot = `<span class="lr-foot"><span class="lr-mode">${modeTxt}</span><span class="lr-worth">WORTH ${worth} PT</span></span>`;
+      outcome = pick.mode === "ATS"
+        ? (isFav ? `Needs ${short} to win by more than ${game.spread}` : `Needs ${short} to win or lose by less than ${game.spread}`)
+        : `Needs ${short} to win the game`;
     }
+    foot = `<div class="lr-foot">
+      <div class="lr-lines"><span class="lr-took">You took ${took} for <b>${worth} PT</b></span><span class="lr-outcome ${pts !== null ? (pts > 0 ? "hit" : "miss") : prov !== null ? (prov > 0 ? "hit" : "miss") : ""}">${outcome}</span></div>
+      ${pill}
+    </div>`;
   }
   return `<div class="locked-result ${finalRes ? "final" : liveG ? "live" : ""}">
     ${row("away", game.away, game.awayId, aS, hS)}
