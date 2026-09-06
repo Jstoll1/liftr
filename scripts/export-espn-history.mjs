@@ -32,8 +32,8 @@ async function getJson(url) {
 
 // ESPN serves 2018+ from the current endpoint and older seasons from
 // leagueHistory, which wraps the league object in an array.
-async function fetchSeason(year, params) {
-  const qs = params.map((p) => `view=${p}`).join("&");
+async function fetchSeason(year, params, extra = "") {
+  const qs = params.map((p) => `view=${p}`).join("&") + extra;
   if (year >= 2018) {
     return getJson(`https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${year}/segments/0/leagues/${LEAGUE}?${qs}`);
   }
@@ -76,6 +76,34 @@ async function playerNames(year, ids) {
     } catch { /* names stay null */ }
   }
   return out;
+}
+
+// League activity feed: paged "topics", each holding one or more messages
+// with a type id (178 free agent add, 180 waiver add, 179/181/239 drop,
+// 244 trade) plus the team and player involved.
+async function fetchActivity(year) {
+  const all = [];
+  for (let offset = 0; offset < 2000; offset += 25) {
+    const filter = { topics: { filterType: { value: ["ACTIVITY_TRANSACTIONS"] }, limit: 25, limitPerMessageSet: { value: 25 }, offset, sortMessageDate: { sortPriority: 1, sortAsc: false }, sortFor: { sortPriority: 2, sortAsc: false }, filterIncludeMessageTypeIds: { value: [178, 180, 179, 239, 181, 244] } } };
+    const base = year >= 2018
+      ? `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${year}/segments/0/leagues/${LEAGUE}/communication/?view=kona_league_communication`
+      : `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/${LEAGUE}/communication/?seasonId=${year}&view=kona_league_communication`;
+    let res;
+    try {
+      res = await fetch(base, { headers: { ...headers, "x-fantasy-filter": JSON.stringify(filter) } });
+    } catch { return offset ? all : null; }
+    if (!res.ok) return offset ? all : null;
+    const data = await res.json();
+    const topics = (Array.isArray(data) ? data[0]?.topics : data.topics) || [];
+    if (!topics.length) break;
+    for (const t of topics) {
+      for (const m of t.messages || []) {
+        all.push({ date: t.date ?? m.date ?? null, topicId: t.id, messageTypeId: m.messageTypeId, teamId: m.to ?? m.for ?? null, from: m.from ?? null, playerId: m.targetId ?? null, bid: m.messageTypeId === 180 ? (m.from ?? null) : null, raw: { to: m.to ?? null, from: m.from ?? null, for: m.for ?? null, targetId: m.targetId ?? null } });
+      }
+    }
+    if (topics.length < 25) break;
+  }
+  return all;
 }
 
 const out = { exportedAt: new Date().toISOString(), leagueId: String(LEAGUE), seasons: {} };
@@ -136,23 +164,34 @@ for (let year = FIRST; year <= LAST; year++) {
     }));
     process.stdout.write(` draft ${picks.length} picks`);
   }
-  // Transactions (waiver claims, free agent adds, trades). ESPN serves
-  // these through the mTransactions2 view; older seasons may not have
-  // them, so a failure just leaves the field null.
-  let transactions = null;
-  try {
-    const tx = await fetchSeason(year, ["mTransactions2"]);
-    const list = tx.transactions || [];
-    transactions = list.map((t) => ({
-      id: t.id, type: t.type, status: t.status, teamId: t.teamId, bidAmount: t.bidAmount ?? null,
-      scoringPeriodId: t.scoringPeriodId ?? null, proposedDate: t.proposedDate ?? null, processDate: t.processDate ?? null,
-      items: (t.items || []).map((it) => ({ type: it.type, playerId: it.playerId, fromTeamId: it.fromTeamId, toTeamId: it.toTeamId })),
-    }));
-    process.stdout.write(` tx ${transactions.length}`);
-  } catch (err) {
-    process.stdout.write(" tx n/a");
+  // Transactions. ESPN's mTransactions2 view only answers for one scoring
+  // period at a time, so ask week by week and de-duplicate by id. If that
+  // still comes back empty, fall back to the league activity feed, the
+  // same source ESPN's "Recent Activity" page reads.
+  let transactions = [];
+  const seen = new Set();
+  for (const w of weeks) {
+    try {
+      const tx = await fetchSeason(year, ["mTransactions2"], `&scoringPeriodId=${w}`);
+      for (const t of tx.transactions || []) {
+        if (seen.has(t.id)) continue;
+        seen.add(t.id);
+        transactions.push({
+          id: t.id, type: t.type, status: t.status, teamId: t.teamId, bidAmount: t.bidAmount ?? null,
+          scoringPeriodId: t.scoringPeriodId ?? w, proposedDate: t.proposedDate ?? null, processDate: t.processDate ?? null,
+          items: (t.items || []).map((it) => ({ type: it.type, playerId: it.playerId, fromTeamId: it.fromTeamId, toTeamId: it.toTeamId })),
+        });
+      }
+    } catch { /* week without data */ }
   }
-  out.seasons[year] = { regularSeasonWeeks: regWeeks, members, teams, matchups, benchPointsByTeamWeek: bench, draft, transactions };
+  let activity = null;
+  if (!transactions.length) {
+    activity = await fetchActivity(year);
+    process.stdout.write(` activity ${activity ? activity.length : "n/a"}`);
+  } else {
+    process.stdout.write(` tx ${transactions.length}`);
+  }
+  out.seasons[year] = { regularSeasonWeeks: regWeeks, members, teams, matchups, benchPointsByTeamWeek: bench, draft, transactions: transactions.length ? transactions : null, activity };
   console.log(` ${teams.length} teams, ${matchups.length} matchups`);
 }
 
