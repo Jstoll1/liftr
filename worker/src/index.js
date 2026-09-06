@@ -831,7 +831,7 @@ async function handleSwap(body, env, corsHeaders) {
   ].join(" ");
 
   try {
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    const askOpenAI = () => fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
@@ -941,7 +941,7 @@ async function handleParseLibraryDoc(body, env, corsHeaders) {
   ].join(" ");
 
   try {
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    const askOpenAI = () => fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
@@ -1294,7 +1294,7 @@ async function handleHistoryAsk(request, env, corsHeaders) {
   await env.LIFTR_KV.put(bucket, String(used + 1), { expirationTtl: 3700 });
 
   try {
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    const askOpenAI = () => fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
@@ -1311,6 +1311,16 @@ async function handleHistoryAsk(request, env, corsHeaders) {
         ],
       }),
     });
+    let aiRes = await askOpenAI();
+    if (aiRes.status === 429) {
+      // Tokens-per-minute limit: OpenAI says how long to wait. Wait once
+      // (capped so the phone does not time out) and try again.
+      const body = await aiRes.clone().text();
+      const m = /try again in ([\d.]+)s/i.exec(body);
+      const waitMs = Math.min(Math.ceil((m ? Number(m[1]) : 3) * 1000) + 500, 9000);
+      await new Promise((r) => setTimeout(r, waitMs));
+      aiRes = await askOpenAI();
+    }
     if (!aiRes.ok) {
       const body = await aiRes.text();
       console.error("OpenAI error (history-ask)", aiRes.status, body);
@@ -1472,12 +1482,19 @@ function selectContext(question, asker) {
     // No owner named: every owner's career line, trimmed of per-season detail
     // Trim the per-season detail but keep finishesByYear so finish-based
     // counts (bottom three, top half, etc.) can still be checked.
-    slice.careerTotals = Object.fromEntries(Object.entries(HISTORY.careerTotals).map(([o, c]) => {
-      const { seasonLines, ...rest } = c; return [o, rest];
+    // OpenAI's per-minute token cap on this account is 30k, so the generic
+    // slice has to stay well under half of that: drop the season objects
+    // (the rankings and leagueRecords already carry the extremes) and,
+    // unless former members are the topic, drop their rows too since the
+    // rankings tables still mark them.
+    const includeFormer = FORMER_WORDS.test(q);
+    slice.careerTotals = Object.fromEntries(Object.entries(HISTORY.careerTotals).filter(([, c]) => includeFormer || c.active).map(([o, c]) => {
+      const { seasonLines, bestSeason, worstSeason, highestScoringSeason, lowestScoringSeason, rankAmongActive, ...rest } = c; return [o, rest];
     }));
-    slice.ownerMatchupStats = Object.fromEntries(Object.entries(MATCHUPS.ownerMatchupStats).map(([o, s]) => {
-      const { championshipGames, ...rest } = s; return [o, rest];
+    slice.ownerMatchupStats = Object.fromEntries(Object.entries(MATCHUPS.ownerMatchupStats).filter(([, c]) => includeFormer || c.active).map(([o, s]) => {
+      const { championshipGames, luckNote, highestWeek, lowestWeek, biggestWin, worstLoss, mostBenchPointsSeason, ...rest } = s; return [o, rest];
     }));
+    slice.note = "careerTotals and ownerMatchupStats here cover active owners only" + (includeFormer ? "" : "; former members appear in the rankings tables marked (former)") + ". Best and worst seasons, biggest wins and losses, and highest and lowest weeks are in leagueRecords and leagueMatchupRecords.";
   }
 
   // Seasons named: full standings and every game that year
