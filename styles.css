@@ -2109,3 +2109,9 @@ html, body {
 /* --- Sync status on the pick pill --- */
 .game-status.submitted.saving { color: var(--neon-yellow); border-color: var(--neon-yellow); animation: live-blink 1s ease-in-out infinite; }
 .game-status.submitted.failed { color: var(--neon-pink); border-color: var(--neon-pink); }
+
+/* --- Phone vs cloud mismatch repair --- */
+.picks-mismatch { display: flex; flex-direction: column; gap: 6px; width: 100%; margin: 10px 0 4px; padding: 10px 12px; text-align: left; font-family: 'Orbitron', system-ui, sans-serif; font-size: 11px; color: var(--text); background: rgba(255, 32, 121, .08); border: 2px solid var(--neon-pink); border-radius: 8px; cursor: pointer; }
+.picks-mismatch b { color: var(--neon-pink); }
+.picks-mismatch span { color: var(--text-dim); line-height: 1.5; }
+.picks-mismatch-cta { color: var(--neon-cyan) !important; font-weight: 700; }

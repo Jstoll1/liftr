@@ -296,12 +296,49 @@ async function fetchLiveScores() {
 // Cloud is the source of truth across devices — pull once per manager
 // select and merge into local storage before rendering, so a manager who
 // submitted a pick on their phone sees it submitted on their laptop too.
+// Locked games where this device and the cloud disagree, and the device's
+// picks as they were before the cloud copy replaced them.
+let lockedMismatch = [];
+const phoneSnapshot = {};
+
+// Admin repair from the phone: post this device's picks as the record.
+async function restorePhonePicks(name) {
+  const snap = phoneSnapshot[name];
+  if (!snap) return;
+  const key = window.prompt("Admin key (ARCHIVE_LOG_KEY) to make this phone's picks the record:");
+  if (!key) return;
+  try {
+    const res = await fetch(`${WORKER_URL}/picks?key=${encodeURIComponent(key)}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
+      body: JSON.stringify({ manager: name, state: snap }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.admin) { window.alert("Not restored: the key did not match."); return; }
+    delete phoneSnapshot[name];
+    lockedMismatch = [];
+    const all = loadAll(); all[name] = snap; saveAll(all);
+    window.alert("Restored. The cloud now matches this phone.");
+    withScrollPreserved(renderPicksScreen);
+  } catch {
+    window.alert("Not restored: could not reach the Worker.");
+  }
+}
+
 async function syncManagerFromCloud(name) {
   const cloud = await fetchAllPicks();
   if (!cloud) return;
   const all = loadAll();
   const local = all[name] || { picks: {}, tiebreaker: "" };
   const remote = cloud[name] ? { ...cloud[name], picks: sanitizePicks(cloud[name].picks) } : null;
+  // Before the cloud copy replaces locked games on this device, note where
+  // the two disagree so the owner can restore this device's picks if the
+  // cloud record is the one that is wrong.
+  const before = { ...local, picks: sanitizePicks(local.picks) };
+  lockedMismatch = GAMES.filter((g) => isGameLocked(g)).filter((g) => {
+    const a = before.picks[g.id], b = remote?.picks?.[g.id];
+    return (a?.team || "") !== (b?.team || "") || (a?.mode || "") !== (b?.mode || "");
+  }).map((g) => ({ id: g.id, phone: before.picks[g.id] || null, cloud: remote?.picks?.[g.id] || null }));
+  if (lockedMismatch.length && !phoneSnapshot[name]) phoneSnapshot[name] = before;
   const merged = remote ? mergeStates(remote, local) : { ...local, picks: {} };
   // Games past kickoff are settled: the cloud copy at lock is the record,
   // and nothing on this device may add, change or resurrect a pick for
@@ -520,6 +557,7 @@ navPicksBtn.addEventListener("click", () => {
   renderPicksScreen();
   setActiveNav("picks");
   enterScreen("picks");
+  syncManagerFromCloud(currentManager).then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
 });
 
 function showHistory() {
@@ -820,6 +858,7 @@ async function selectManager(name) {
   renderPicksScreen();
   setActiveNav("picks");
   enterScreen("picks");
+  syncManagerFromCloud(currentManager).then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
   await syncManagerFromCloud(name);
   withScrollPreserved(renderPicksScreen);
 }
@@ -1080,6 +1119,15 @@ function updatePicksProgress(state) {
   const totalPicked = Object.values(state.picks).filter(Boolean).length;
   picksProgress.textContent =
     `${totalPicked} of ${GAMES.length} games picked` + (state.tiebreaker ? " · tiebreaker set" : " · tiebreaker not set");
+  let warn = document.getElementById("picks-mismatch");
+  if (!warn) { warn = document.createElement("button"); warn.id = "picks-mismatch"; warn.type = "button"; warn.className = "picks-mismatch"; picksProgress.insertAdjacentElement("afterend", warn); warn.addEventListener("click", () => restorePhonePicks(currentManager)); }
+  if (lockedMismatch.length && phoneSnapshot[currentManager]) {
+    const lines = lockedMismatch.map((m) => `G${m.id}: phone ${m.phone ? pickLabel(GAMES.find((g) => g.id === m.id), m.phone) : "none"} · cloud ${m.cloud ? pickLabel(GAMES.find((g) => g.id === m.id), m.cloud) : "none"}`);
+    warn.innerHTML = `<b>⚠ This phone and the scoreboard disagree on ${lockedMismatch.length} locked game${lockedMismatch.length === 1 ? "" : "s"}</b><span>${lines.join("<br>")}</span><span class="picks-mismatch-cta">Tap to make this phone's picks the record (needs the admin key)</span>`;
+    warn.classList.remove("hidden");
+  } else {
+    warn.classList.add("hidden");
+  }
 }
 
 // Tiebreaker saves as you type (debounced), no button.
