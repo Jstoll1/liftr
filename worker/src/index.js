@@ -1509,7 +1509,7 @@ const OWNER_ALIASES = {
 const RECORD_WORDS = /\b(record|records|most|least|best|worst|highest|lowest|ever|all[- ]time|history|streak|blowout|closest|margin|leader|leaders|rank|ranking|top|bottom|first|last place|drought|title|titles|champion|championship|championships|final|finals|podium|podiums|bench|points|scor)/i;
 const NAME_WORDS = /\b(team name|team names|named|call(ed)? (his|their|the) team|nickname)/i;
 const ERA_WORDS = /\b(era|eras|founding|old guard|open era)/i;
-const DRAFT_WORDS = /\b(draft|drafted|drafts|pick order|first overall|1st overall|number one pick|#1 pick|auto[- ]?draft)/i;
+const DRAFT_WORDS = /(\bdraft|\bdrafted|\bdrafts|\bdrafting|pick order|first overall|1st overall|number one pick|number 1 pick|no\.? ?1 pick|#1 pick|first pick|1st pick|top pick|picked first|first selection|round one|first round|1st round|auto[- ]?draft)/i;
 const FORMER_WORDS = /\b(former|left the league|quit|gone|memoriam|used to|old members?)/i;
 
 function selectContext(question, asker) {
