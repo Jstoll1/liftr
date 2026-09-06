@@ -887,6 +887,17 @@ function pickEqual(a, b) {
   return a.team === b.team && a.mode === b.mode;
 }
 
+// When a pick was recorded: the Worker's stamp first, the phone's tap
+// time as a fallback, nothing for picks made before stamping existed.
+function pickTimeLabel(pick) {
+  const t = pick?.savedAt || pick?.updatedAt;
+  if (!t) return "";
+  const d = new Date(t);
+  const day = d.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" });
+  const time = d.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
+  return `${day} ${time}`;
+}
+
 function pickLabel(game, pick) {
   if (!pick) return "";
   const pts = pointValue(game, pick.team, pick.mode);
@@ -1003,8 +1014,9 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
         ? (isFav ? `Needs ${short} to win by more than ${game.spread}` : `Needs ${short} to win or lose by less than ${game.spread}`)
         : `Needs ${short} to win the game`;
     }
+    const when = pickTimeLabel(pick);
     foot = `<div class="lr-foot">
-      <div class="lr-lines"><span class="lr-took">You took ${took} for <b>${worth} PT</b></span><span class="lr-outcome ${pts !== null ? (pts > 0 ? "hit" : "miss") : prov !== null ? (prov > 0 ? "hit" : "miss") : ""}">${outcome}</span></div>
+      <div class="lr-lines"><span class="lr-took">You took ${took} for <b>${worth} PT</b>${when ? ` <span class="lr-when">· picked ${when}</span>` : ""}</span><span class="lr-outcome ${pts !== null ? (pts > 0 ? "hit" : "miss") : prov !== null ? (prov > 0 ? "hit" : "miss") : ""}">${outcome}</span></div>
       ${pill}
     </div>`;
   }
@@ -1063,7 +1075,7 @@ function renderPicksScreen() {
     const note = gameLocked
       ? pick ? `Final pick: ${pickLabel(game, pick)}` : "No pick made — locked"
       : pick && justSavedGameId === game.id && syncStatus === "failed" ? `⚠ ${pickLabel(game, pick)} is saved on this phone but not synced yet — retrying`
-      : pick ? `✓ ${noteVerb}: ${pickLabel(game, pick)}` : "Tap a button to pick — it saves instantly";
+      : pick ? `✓ ${noteVerb}: ${pickLabel(game, pick)}${pickTimeLabel(pick) ? ` · ${pickTimeLabel(pick)}` : ""}` : "Tap a button to pick — it saves instantly";
 
     card.innerHTML = `
       <div class="game-meta">
@@ -1455,7 +1467,7 @@ function playerBreakdownHtml(name, state, results, live) {
       const short = pick.team === game.away ? game.awayShort : game.homeShort;
       const worth = pointValue(game, pick.team, pick.mode);
       const mode = pick.mode === "ATS" ? `<span class="rd-mode ats">${pick.team === game.favorite ? "-" : "+"}${game.spread}</span>` : `<span class="rd-mode su">STRAIGHT UP</span>`;
-      pickHtml = `<span class="rd-pickcard"><span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}<span class="rd-worth">WORTH ${worth} PT</span></span></span>`;
+      pickHtml = `<span class="rd-pickcard"><span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}<span class="rd-worth">WORTH ${worth} PT</span></span>${pickTimeLabel(pick) ? `<span class="rd-when">${pickTimeLabel(pick)}</span>` : ""}</span>`;
       const pts = scorePick(game, pick, results[game.id]);
       if (pts !== null) {
         banked += pts;

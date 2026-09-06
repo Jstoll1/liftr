@@ -512,6 +512,11 @@ async function handlePicks(request, env, corsHeaders, url) {
       // stored one outright, locked games included.
       const admin = !!env.ARCHIVE_LOG_KEY && url.searchParams.get("key") === env.ARCHIVE_LOG_KEY;
       if (admin) {
+        const nowAdmin = Date.now();
+        for (const [id, p] of Object.entries(incoming.picks || {})) {
+          const prev = stored.picks?.[id];
+          incoming.picks[id] = { ...p, savedAt: prev && prev.team === p.team && prev.mode === p.mode ? (prev.savedAt || null) : nowAdmin, ...(prev && prev.team === p.team && prev.mode === p.mode ? {} : { repairedAt: nowAdmin }) };
+        }
         await env.LIFTR_KV.put(`picks:${manager}`, JSON.stringify(incoming));
         await logPickChanges(env, manager, stored, incoming, true);
         return json({ ok: true, admin: true, state: incoming }, 200, corsHeaders);
@@ -523,7 +528,11 @@ async function handlePicks(request, env, corsHeaders, url) {
         const a = stored.picks?.[id], b = incoming.picks?.[id];
         // Past kickoff the stored pick is final: no additions, no changes.
         if (PICKS_KICKOFF[id] && now >= PICKS_KICKOFF[id]) { if (a) merged.picks[id] = a; continue; }
-        merged.picks[id] = !a ? b : !b ? a : (a.updatedAt || 0) > (b.updatedAt || 0) ? a : b;
+        const chosen = !a ? b : !b ? a : (a.updatedAt || 0) > (b.updatedAt || 0) ? a : b;
+        // savedAt is the Worker's own clock, set whenever the pick changes,
+        // so every pick carries a time nobody's device can fake.
+        const changed = !a || !chosen || a.team !== chosen.team || a.mode !== chosen.mode;
+        merged.picks[id] = changed ? { ...chosen, savedAt: now } : { ...chosen, savedAt: a.savedAt || chosen.savedAt || null };
       }
       const ta = stored.tiebreakerUpdatedAt || 0, tb = incoming.tiebreakerUpdatedAt || 0;
       const incomingHas = String(incoming.tiebreaker || "").trim() !== "";

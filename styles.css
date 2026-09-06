@@ -2115,3 +2115,6 @@ html, body {
 .picks-mismatch b { color: var(--neon-pink); }
 .picks-mismatch span { color: var(--text-dim); line-height: 1.5; }
 .picks-mismatch-cta { color: var(--neon-cyan) !important; font-weight: 700; }
+
+.lr-when { color: var(--text-dim); font-weight: 500; }
+.rd-when { font-size: 8px; color: var(--text-dim); letter-spacing: .04em; }
