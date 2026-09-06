@@ -1245,20 +1245,21 @@ function playerBreakdownHtml(name, state, results, live) {
     const g = live[game.id];
     const isFinal = !!results[game.id];
     const isLive = !isFinal && g && g.found && g.state === "in";
-    const scoreTxt = isFinal ? `${results[game.id].awayScore}-${results[game.id].homeScore}` : isLive ? `${g.awayScore ?? "–"}-${g.homeScore ?? "–"}` : "";
     const statusTag = isFinal ? `<span class="rd-tag final">FINAL</span>` : isLive ? `<span class="rd-tag live">${g.detail || "LIVE"}</span>` : locked ? `<span class="rd-tag wait">WAITING</span>` : `<span class="rd-tag time">${game.kickoffLabel.replace(/^(Sat|Sun) /, "")}</span>`;
 
     let pickHtml, ptsHtml = `<span class="rd-pts none">–</span>`;
+    let pickedSide = null;
     if (!locked) {
       pickHtml = `<span class="rd-pickcard locked">🔒 LOCKED</span>`;
     } else if (!pick) {
       pickHtml = `<span class="rd-pickcard nopick">NO PICK</span>`;
     } else {
+      pickedSide = pick.team === game.away ? "away" : "home";
       const pickId = pick.team === game.away ? game.awayId : game.homeId;
       const short = pick.team === game.away ? game.awayShort : game.homeShort;
       const worth = pointValue(game, pick.team, pick.mode);
-      const mode = pick.mode === "ATS" ? `<span class="rd-mode ats">${pick.team === game.favorite ? "-" : "+"}${game.spread}</span>` : `<span class="rd-mode su">SU</span>`;
-      pickHtml = `<span class="rd-pickcard"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span>${mode}<span class="rd-worth">${worth} PT</span></span>`;
+      const mode = pick.mode === "ATS" ? `<span class="rd-mode ats">${pick.team === game.favorite ? "-" : "+"}${game.spread}</span>` : `<span class="rd-mode su">STRAIGHT UP</span>`;
+      pickHtml = `<span class="rd-pickcard"><span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}<span class="rd-worth">WORTH ${worth} PT</span></span></span>`;
       const pts = scorePick(game, pick, results[game.id]);
       if (pts !== null) {
         banked += pts;
@@ -1270,8 +1271,15 @@ function playerBreakdownHtml(name, state, results, live) {
         else ptsHtml = `<span class="rd-pts lean-miss">0?</span>`;
       }
     }
+    const src = isFinal ? results[game.id] : isLive ? g : null;
+    const aS = src && Number.isFinite(src.awayScore) ? src.awayScore : null;
+    const hS = src && Number.isFinite(src.homeScore) ? src.homeScore : null;
+    const scoreCell = (s, other) => `<span class="rd-sc ${isFinal && s !== null && s > other ? "win" : ""}">${s === null ? "" : s}</span>`;
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}">
-      <div class="rd-game"><span class="rd-gnum">G${game.id}</span><span class="rd-teams">${game.awayShort} @ ${game.homeShort}</span><span class="rd-sub">${scoreTxt ? `<b>${scoreTxt}</b>` : ""}${statusTag}</span></div>
+      <div class="rd-game">
+        <span class="rd-gline">G${game.id} ${statusTag}</span>
+        <span class="rd-matchup"><span class="rd-tm away ${pickedSide === "away" ? "picked" : ""}">${game.awayShort}</span>${scoreCell(aS, hS)}<span class="rd-tm home ${pickedSide === "home" ? "picked" : ""}">${game.homeShort}</span>${scoreCell(hS, aS)}</span>
+      </div>
       <div class="rd-pick">${pickHtml}</div>
       <div class="rd-result">${ptsHtml}</div>
     </div>`;
