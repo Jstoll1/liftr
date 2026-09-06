@@ -2067,3 +2067,8 @@ html, body {
 .rd-pts.lean-miss { color: var(--neon-pink); border: 1px dashed rgba(255, 32, 121, .5); }
 .rd-summary { display: flex; gap: 14px; justify-content: flex-end; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(5, 217, 232, .3); font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); }
 .rd-summary b { color: var(--neon-green); font-weight: 400; }
+
+.rd-head, .rd-row { grid-template-columns: minmax(0, .85fr) minmax(0, 1.25fr) 44px; }
+.rd-pickcard { font-size: 10px; gap: 4px; padding: 4px 6px 4px 4px; }
+.rd-worth { margin-left: 2px; }
+.rd-teams { font-size: 10.5px; }
