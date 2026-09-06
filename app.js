@@ -152,12 +152,30 @@ function setSyncStatus(next) { syncStatus = next; syncListeners.forEach((fn) => 
 async function pushManagerState(manager, state, { attempts = 3 } = {}) {
   if (!WORKER_URL) return false;
   setSyncStatus("saving");
+  // Read, merge, then write: only this device's newer picks go up, and a
+  // stale copy of the other games never overwrites what the cloud holds.
+  // Locked games are always taken from the cloud.
+  let toSend = state;
+  try {
+    const cloud = await fetchAllPicks();
+    const remote = cloud && cloud[manager] ? { ...cloud[manager], picks: sanitizePicks(cloud[manager].picks) } : null;
+    if (remote) {
+      toSend = mergeStates(remote, state);
+      GAMES.forEach((game) => {
+        if (!isGameLocked(game)) return;
+        if (remote.picks[game.id]) toSend.picks[game.id] = remote.picks[game.id]; else delete toSend.picks[game.id];
+      });
+      const all = loadAll(); all[manager] = toSend; saveAll(all);
+    }
+  } catch {
+    // Cloud unreadable: send what we have; the Worker merges too.
+  }
   for (let i = 0; i < attempts; i++) {
     try {
       const res = await fetch(`${WORKER_URL}/picks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ manager, state }),
+        body: JSON.stringify({ manager, state: toSend }),
         cache: "no-store",
       });
       if (res.ok) {
