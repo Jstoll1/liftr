@@ -179,3 +179,65 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     form.classList.remove('busy');input.value='';sync();input.blur();if(idle())startAttract();
   });
 })();
+
+// --- BroChiefs Trivia ------------------------------------------------------
+// Twelve fixed questions so everyone plays the same board. Every answer is
+// taken from the archive datasets (history-data / matchup-data) as built.
+(()=>{
+  const Q=[
+    {q:'Who has won the most BroChiefs titles?',o:['Dewitt','Jake','Curt','Skills'],a:0,why:'Dewitt has three: 2014, 2018 and 2020. Jake and Curt have two each.'},
+    {q:'Who has been commissioner since the league was founded in 2014?',o:['Andrew','Dewitt','Logan','Jake'],a:0,why:'Andrew founded the league and has run every season since. Nobody else has held the job.'},
+    {q:'Which former member won the 2022 championship?',o:['Marty Griffin','Ryan Hacker','Tyler Cerone','Patrick Williams'],a:0,why:'Marty won it all in 2022 during a four-season run from 2021 to 2024.'},
+    {q:'What is the highest single-week score in league history?',o:['Dewitt, 196.16 in 2022','Jordan, 195.8 in 2021','Jake, 188.4 in 2021','Curt, 201.2 in 2019'],a:0,why:'Dewitt dropped 196.16 on Skills in week 8 of 2022. Jordan\u0027s 195.8 in 2021 is second.'},
+    {q:'Who has held the first overall draft pick the most times?',o:['Dewitt','Jake','Curt','Jordan'],a:0,why:'Dewitt picked first four times: 2018, 2023, 2024 and 2025. Jake did it three times.'},
+    {q:'Who has the most auto-drafted picks in league history?',o:['Marty','Ryan','Curt','Nissan'],a:0,why:'Marty let the computer pick 17 times. The legend is true.'},
+    {q:'Who scored 32 points in 2014 week 6, the lowest week ever?',o:['Jordan','Nissan','Curt','Andrew'],a:0,why:'Jordan\u0027s 32 against Skills in 2014 is the floor. Nissan\u0027s 33 in 2015 is next.'},
+    {q:'What is the biggest margin of victory in a single game?',o:['101 points','78 points','96 points','112 points'],a:0,why:'Conlan 161, Ryan 60 in week 9 of 2018. Skills over Jordan by 96 in 2014 is second.'},
+    {q:'Who went 11-2 with "Herbert\u0027s Sherbert" in 2021, the best record ever?',o:['Jake','Dewitt','Curt','Jordan'],a:0,why:'Jake\u0027s 2021 team went 11-2 and won the title with 1,794 points.'},
+    {q:'Which active owner is the unluckiest by all-play record?',o:['Curt','Nissan','Andrew','Logan'],a:0,why:'Curt would be 702-635 if he played everyone every week. His real record trails that by about five wins.'},
+    {q:'Who went 10-2 in 2018 and still did not win the title?',o:['Nissan','Skills','Logan','Conlan'],a:0,why:'Nissan\u0027s 10-2 in 2018 ended as runner-up to Dewitt. Best record ever without a ring.'},
+    {q:'Who has the most career wins?',o:['Dewitt, 90','Skills, 82','Jake, 79','Logan, 74'],a:0,why:'Dewitt is 90-59 all time, eight wins clear of Skills.'},
+  ];
+  const el=(id)=>document.getElementById(id);
+  const start=el('trivia-start'),play=el('trivia-play'),end=el('trivia-end');
+  if(!start)return;
+  const BEST_KEY='brochiefs_trivia_best_v1';
+  let i=0,score=0,order=[],answered=false;
+  const shuffle=(arr)=>{const a=arr.slice();for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]]}return a};
+  const track=(e)=>{try{window.goatcounter&&window.goatcounter.count({path:e,title:e,event:true})}catch{}};
+  function showBest(){let b=null;try{b=JSON.parse(localStorage.getItem(BEST_KEY))}catch{}const box=el('trivia-best');if(b&&b.score!=null){box.textContent='HI-SCORE '+b.score+'/12';box.classList.remove('hidden')}else box.classList.add('hidden')}
+  function render(){
+    const q=Q[i];answered=false;
+    el('trivia-count').textContent='Q'+(i+1)+' / '+Q.length;
+    el('trivia-score').textContent='SCORE '+score;
+    el('trivia-q').textContent=q.q;
+    // Shuffle the choices per question so the right answer moves around.
+    order=shuffle(q.o.map((_,k)=>k));
+    const opts=el('trivia-opts');opts.innerHTML='';
+    order.forEach((k,n)=>{const b=document.createElement('button');b.type='button';b.className='trivia-opt';b.innerHTML='<span class="trivia-key">'+'ABCD'[n]+'</span>'+q.o[k];b.addEventListener('click',()=>answer(k,b));opts.appendChild(b)});
+    el('trivia-feedback').classList.add('hidden');el('trivia-next').classList.add('hidden');
+    el('trivia-next').textContent=i===Q.length-1?'FINISH ▸':'NEXT ▸';
+  }
+  function answer(k,btn){
+    if(answered)return;answered=true;
+    const q=Q[i];const right=k===q.a;if(right)score++;
+    document.querySelectorAll('.trivia-opt').forEach((b,n)=>{b.disabled=true;if(order[n]===q.a)b.classList.add('right');});
+    if(!right)btn.classList.add('wrong');
+    const fb=el('trivia-feedback');fb.innerHTML='<b>'+(right?'CORRECT':'WRONG')+'</b> '+q.why;fb.className='trivia-feedback '+(right?'ok':'bad');
+    el('trivia-score').textContent='SCORE '+score;
+    el('trivia-next').classList.remove('hidden');
+  }
+  function finish(){
+    play.classList.add('hidden');end.classList.remove('hidden');
+    el('trivia-final').textContent=score+' / '+Q.length;
+    const rank=score===12?'COMMISSIONER':score>=10?'HALL OF FAMER':score>=8?'LEAGUE HISTORIAN':score>=5?'CASUAL BRO':'AUTO-DRAFTER';
+    el('trivia-rank').textContent='RANK: '+rank;
+    let prev=null;try{prev=JSON.parse(localStorage.getItem(BEST_KEY))}catch{}
+    if(!prev||score>prev.score){try{localStorage.setItem(BEST_KEY,JSON.stringify({score,ts:Date.now()}))}catch{}el('trivia-rank').textContent+=' · NEW HI-SCORE';}
+    track('trivia-finish');
+  }
+  el('trivia-start-btn').addEventListener('click',()=>{i=0;score=0;start.classList.add('hidden');end.classList.add('hidden');play.classList.remove('hidden');render();track('trivia-start')});
+  el('trivia-next').addEventListener('click',()=>{if(i===Q.length-1){finish();return}i++;render();play.scrollIntoView({block:'start',behavior:'smooth'})});
+  el('trivia-again').addEventListener('click',()=>{end.classList.add('hidden');start.classList.remove('hidden');showBest();start.scrollIntoView({block:'start',behavior:'smooth'})});
+  showBest();
+})();
