@@ -21,8 +21,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609060800" />
-  <link rel="stylesheet" href="history.css?v=202609061000" />
+  <link rel="stylesheet" href="styles.css?v=202609061030" />
+  <link rel="stylesheet" href="history.css?v=202609061030" />
 </head>
 <body>
 
@@ -220,30 +220,6 @@
       </div>
     </section>
 
-    <section class="archive-section" id="trivia">
-      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Insert coin</span><h2>BroChiefs Trivia</h2><p>Twelve questions, four choices each, every answer pulled from the record below. No peeking.</p></div></div>
-      <div id="trivia-game" class="trivia-game">
-        <div id="trivia-start" class="trivia-start">
-          <div class="trivia-marquee">12 QUESTIONS · 4 CHOICES · 1 SHOT</div>
-          <button id="trivia-start-btn" class="trivia-btn primary" type="button">▶ START</button>
-          <div id="trivia-best" class="trivia-best hidden"></div>
-        </div>
-        <div id="trivia-play" class="trivia-play hidden">
-          <div class="trivia-top"><span id="trivia-count" class="trivia-count"></span><span id="trivia-score" class="trivia-score"></span></div>
-          <div id="trivia-q" class="trivia-q"></div>
-          <div id="trivia-opts" class="trivia-opts"></div>
-          <div id="trivia-feedback" class="trivia-feedback hidden"></div>
-          <button id="trivia-next" class="trivia-btn hidden" type="button">NEXT ▸</button>
-        </div>
-        <div id="trivia-end" class="trivia-end hidden">
-          <div class="trivia-marquee">GAME OVER</div>
-          <div id="trivia-final" class="trivia-final"></div>
-          <div id="trivia-rank" class="trivia-rank"></div>
-          <button id="trivia-again" class="trivia-btn primary" type="button">↻ PLAY AGAIN</button>
-        </div>
-      </div>
-    </section>
-
     <section class="archive-section" id="lineage">
       <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Championship lineage</span><h2>The trophy, year by year.</h2><p>Every completed season produced one champion, and the repeat winners show up fast.</p></div></div>
       <div class="lineage-wrap"><div id="lineage-track" class="lineage-track"></div></div>
@@ -298,6 +274,37 @@
   </div>
   </main>
 
+  <!-- TRIVIA SCREEN -->
+  <main id="trivia-screen" class="screen history-screen hidden">
+    <div class="archive-main">
+      <header class="archive-hero trivia-hero"><span class="eyebrow">BroChiefs Football League · Arcade</span><h1>TRIVIA</h1><span class="hero-years">12 questions · 4 choices · 1 shot</span></header>
+    <section class="archive-section" id="trivia">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Insert coin</span><h2>How well do you know the league?</h2><p>Every answer comes straight from the archive. No peeking at the History tab.</p></div></div>
+      <div id="trivia-game" class="trivia-game">
+        <div id="trivia-start" class="trivia-start">
+          <div class="trivia-marquee">12 QUESTIONS · 4 CHOICES · 1 SHOT</div>
+          <button id="trivia-start-btn" class="trivia-btn primary" type="button">▶ START</button>
+          <div id="trivia-best" class="trivia-best hidden"></div>
+        </div>
+        <div id="trivia-play" class="trivia-play hidden">
+          <div class="trivia-top"><span id="trivia-count" class="trivia-count"></span><span id="trivia-score" class="trivia-score"></span></div>
+          <div id="trivia-q" class="trivia-q"></div>
+          <div id="trivia-opts" class="trivia-opts"></div>
+          <div id="trivia-feedback" class="trivia-feedback hidden"></div>
+          <button id="trivia-next" class="trivia-btn hidden" type="button">NEXT ▸</button>
+        </div>
+        <div id="trivia-end" class="trivia-end hidden">
+          <div class="trivia-marquee">GAME OVER</div>
+          <div id="trivia-final" class="trivia-final"></div>
+          <div id="trivia-rank" class="trivia-rank"></div>
+          <button id="trivia-again" class="trivia-btn primary" type="button">↻ PLAY AGAIN</button>
+        </div>
+      </div>
+    </section>
+
+    </div>
+  </main>
+
   </div><!-- /app-scroll -->
 
   <!-- BOTTOM NAV: matches the wordmark header, sits on every screen
@@ -319,6 +326,10 @@
       <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M4 1h8v1h2v1h1v3h-1v1h-1v1h-1v1h-1v1H9v2h2v1h1v1H4v-1h1v-1h2v-2H6V9H5V8H4V7H3V6H2V3h1V2h1zm0 2H3v2h1v1h1V3zm8 0v3h1V5h1V3z"/></svg>
       <span class="nav-btn-label">History</span>
     </button>
+    <button id="nav-trivia-btn" class="nav-btn" type="button">
+      <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M3 4h10v1h1v1h1v5h-1v1h-1v1h-2v-1H5v1H3v-1H2v-1H1V6h1V5h1zm1 2v2H3v1h1v2h1V9h1V8H5V6zm7 0v1h1v1h-1v1h1v-1h1V7h-1V6zm-2 2v1h1V8z"/></svg>
+      <span class="nav-btn-label">Trivia</span>
+    </button>
   </nav>
 
   <!-- GoatCounter analytics: no cookies, no personal data. The app is a
@@ -326,7 +337,7 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=202609060815"></script>
+  <script src="app.js?v=202609061030"></script>
   <script src="attract-facts.js?v=202609052030"></script>
   <script src="history.js?v=202609061000"></script>
 </body>

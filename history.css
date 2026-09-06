@@ -335,3 +335,10 @@
 #trivia-next { margin-top: 12px; width: 100%; }
 .trivia-final { font-family: 'Press Start 2P', monospace; font-size: 28px; color: var(--gold); text-shadow: 0 0 14px rgba(242, 193, 78, .6); }
 .trivia-rank { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--cyan); letter-spacing: .08em; line-height: 1.8; }
+
+.trivia-hero h1 { margin: 6px 0 4px; }
+#trivia-screen .archive-section { padding: 28px 0 60px; border-bottom: 0; }
+#trivia-screen .archive-hero { padding: 26px 0 22px; min-height: 0; }
+#trivia-screen .archive-hero h1 { font-size: clamp(30px, 8vw, 54px); margin: 8px 0 6px; }
+#trivia-screen .hero-years { margin-bottom: 0; font-size: 13px; }
+#trivia-screen .archive-hero::before, #trivia-screen .archive-hero::after { display: none; }

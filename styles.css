@@ -2118,3 +2118,7 @@ html, body {
 
 .lr-when { color: var(--text-dim); font-weight: 500; }
 .rd-when { font-size: 8px; color: var(--text-dim); letter-spacing: .04em; }
+
+/* --- Five tabs --- */
+.nav-btn { width: auto; flex: 1 1 0; min-width: 0; padding: 6px 2px; }
+.nav-btn-label { font-size: 9px; }

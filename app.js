@@ -439,6 +439,8 @@ const navPicksBtn = document.getElementById("nav-picks-btn");
 const navScoreboardBtn = document.getElementById("nav-scoreboard-btn");
 const navHistoryBtn = document.getElementById("nav-history-btn");
 const historyScreen = document.getElementById("history-screen");
+const navTriviaBtn = document.getElementById("nav-trivia-btn");
+const triviaScreen = document.getElementById("trivia-screen");
 const identityModal = document.getElementById("identity-modal");
 const claimModal = document.getElementById("claim-modal");
 const claimGrid = document.getElementById("claim-grid");
@@ -532,8 +534,9 @@ function track(path, extra) {
 let lastTrackedScreen = null;
 function setActiveNav(target) {
   if (target !== lastTrackedScreen) { lastTrackedScreen = target; track(`/${target}`); }
-  [navHomeBtn, navPicksBtn, navScoreboardBtn, navHistoryBtn].forEach((btn) => btn.classList.remove("active"));
+  [navHomeBtn, navPicksBtn, navScoreboardBtn, navHistoryBtn, navTriviaBtn].forEach((btn) => btn.classList.remove("active"));
   if (target === "history") navHistoryBtn.classList.add("active");
+  if (target === "trivia") navTriviaBtn.classList.add("active");
   if (target === "home") navHomeBtn.classList.add("active");
   if (target === "picks") navPicksBtn.classList.add("active");
   if (target === "scoreboard") navScoreboardBtn.classList.add("active");
@@ -546,6 +549,7 @@ function setActiveNav(target) {
 function goHome() {
   rememberScroll();
   historyScreen.classList.add("hidden");
+  triviaScreen.classList.add("hidden");
   picksScreen.classList.add("hidden");
   scoreboardScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
@@ -569,6 +573,7 @@ navPicksBtn.addEventListener("click", () => {
   }
   rememberScroll();
   historyScreen.classList.add("hidden");
+  triviaScreen.classList.add("hidden");
   scoreboardScreen.classList.add("hidden");
   loginScreen.classList.add("hidden");
   picksScreen.classList.remove("hidden");
@@ -584,11 +589,24 @@ function showHistory() {
   loginScreen.classList.add("hidden");
   picksScreen.classList.add("hidden");
   scoreboardScreen.classList.add("hidden");
+  triviaScreen.classList.add("hidden");
   historyScreen.classList.remove("hidden");
   setActiveNav("history");
   enterScreen("history");
 }
 navHistoryBtn.addEventListener("click", showHistory);
+
+function showTrivia() {
+  rememberScroll();
+  loginScreen.classList.add("hidden");
+  picksScreen.classList.add("hidden");
+  scoreboardScreen.classList.add("hidden");
+  historyScreen.classList.add("hidden");
+  triviaScreen.classList.remove("hidden");
+  setActiveNav("trivia");
+  enterScreen("trivia");
+}
+navTriviaBtn.addEventListener("click", showTrivia);
 
 navScoreboardBtn.addEventListener("click", () => {
   if (!currentManager) openClaimPrompt();
@@ -867,6 +885,7 @@ identityConfirmBtn.addEventListener("click", () => {
 async function selectManager(name) {
   rememberScroll();
   historyScreen.classList.add("hidden");
+  triviaScreen.classList.add("hidden");
   currentManager = name;
   saveMe(name);
   managerBadge.textContent = name.toUpperCase();
@@ -1182,6 +1201,7 @@ tiebreakerInput.addEventListener("input", () => {
 function showScoreboard() {
   rememberScroll();
   historyScreen.classList.add("hidden");
+  triviaScreen.classList.add("hidden");
   loginScreen.classList.add("hidden");
   picksScreen.classList.add("hidden");
   scoreboardScreen.classList.remove("hidden");
