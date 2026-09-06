@@ -202,30 +202,40 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   const start=el('trivia-start'),play=el('trivia-play'),end=el('trivia-end');
   if(!start)return;
   const BEST_KEY='brochiefs_trivia_best_v1';
-  let i=0,score=0,order=[],answered=false;
+  // In-progress game, saved after every answer so a closed tab or a trip
+  // to another screen picks up at the same question.
+  const PROG_KEY='brochiefs_trivia_progress_v1';
+  let i=0,score=0,order=[],answered=false,picked=null;
+  const loadProg=()=>{try{const p=JSON.parse(localStorage.getItem(PROG_KEY));return p&&Number.isInteger(p.i)&&p.i<Q.length?p:null}catch{return null}};
+  const saveProg=()=>{try{localStorage.setItem(PROG_KEY,JSON.stringify({i,score,order,answered,picked,ts:Date.now()}))}catch{}};
+  const clearProg=()=>{try{localStorage.removeItem(PROG_KEY)}catch{}};
   const shuffle=(arr)=>{const a=arr.slice();for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]]}return a};
   const track=(e)=>{try{window.goatcounter&&window.goatcounter.count({path:e,title:e,event:true})}catch{}};
   function showBest(){let b=null;try{b=JSON.parse(localStorage.getItem(BEST_KEY))}catch{}const box=el('trivia-best');if(b&&b.score!=null){box.textContent='HI-SCORE '+b.score+'/12';box.classList.remove('hidden')}else box.classList.add('hidden')}
-  function render(){
-    const q=Q[i];answered=false;
+  function render(resume){
+    const q=Q[i];
+    if(!resume){answered=false;picked=null;order=shuffle(q.o.map((_,k)=>k));}
     el('trivia-count').textContent='Q'+(i+1)+' / '+Q.length;
     el('trivia-score').textContent='SCORE '+score;
     el('trivia-q').textContent=q.q;
-    // Shuffle the choices per question so the right answer moves around.
-    order=shuffle(q.o.map((_,k)=>k));
     const opts=el('trivia-opts');opts.innerHTML='';
     order.forEach((k,n)=>{const b=document.createElement('button');b.type='button';b.className='trivia-opt';b.innerHTML='<span class="trivia-key">'+'ABCD'[n]+'</span>'+q.o[k];b.addEventListener('click',()=>answer(k,b));opts.appendChild(b)});
     el('trivia-feedback').classList.add('hidden');el('trivia-next').classList.add('hidden');
     el('trivia-next').textContent=i===Q.length-1?'FINISH ▸':'NEXT ▸';
+    if(resume&&answered)paintAnswer();
+    saveProg();
   }
-  function answer(k,btn){
-    if(answered)return;answered=true;
-    const q=Q[i];const right=k===q.a;if(right)score++;
-    document.querySelectorAll('.trivia-opt').forEach((b,n)=>{b.disabled=true;if(order[n]===q.a)b.classList.add('right');});
-    if(!right)btn.classList.add('wrong');
+  function paintAnswer(){
+    const q=Q[i];const right=picked===q.a;
+    document.querySelectorAll('.trivia-opt').forEach((b,n)=>{b.disabled=true;if(order[n]===q.a)b.classList.add('right');if(!right&&order[n]===picked)b.classList.add('wrong');});
     const fb=el('trivia-feedback');fb.innerHTML='<b>'+(right?'CORRECT':'WRONG')+'</b> '+q.why;fb.className='trivia-feedback '+(right?'ok':'bad');
     el('trivia-score').textContent='SCORE '+score;
     el('trivia-next').classList.remove('hidden');
+  }
+  function answer(k){
+    if(answered)return;answered=true;picked=k;
+    if(k===Q[i].a)score++;
+    paintAnswer();saveProg();
   }
   function finish(){
     play.classList.add('hidden');end.classList.remove('hidden');
@@ -234,10 +244,18 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     el('trivia-rank').textContent='RANK: '+rank;
     let prev=null;try{prev=JSON.parse(localStorage.getItem(BEST_KEY))}catch{}
     if(!prev||score>prev.score){try{localStorage.setItem(BEST_KEY,JSON.stringify({score,ts:Date.now()}))}catch{}el('trivia-rank').textContent+=' · NEW HI-SCORE';}
+    clearProg();showResume();
     track('trivia-finish');
   }
-  el('trivia-start-btn').addEventListener('click',()=>{i=0;score=0;start.classList.add('hidden');end.classList.add('hidden');play.classList.remove('hidden');render();track('trivia-start')});
+  function showResume(){
+    const p=loadProg();const btn=el('trivia-resume');const sb=el('trivia-start-btn');
+    if(p){btn.textContent='▶ CONTINUE · Q'+(p.i+1)+' / '+Q.length+' · SCORE '+p.score;btn.classList.remove('hidden');sb.textContent='↻ START OVER';sb.classList.remove('primary');}
+    else{btn.classList.add('hidden');sb.textContent='▶ START';sb.classList.add('primary');}
+  }
+  function beginPlay(){start.classList.add('hidden');end.classList.add('hidden');play.classList.remove('hidden')}
+  el('trivia-resume').addEventListener('click',()=>{const p=loadProg();if(!p){showResume();return}i=p.i;score=p.score;order=p.order;answered=!!p.answered;picked=p.picked??null;beginPlay();render(true);track('trivia-resume')});
+  el('trivia-start-btn').addEventListener('click',()=>{i=0;score=0;clearProg();beginPlay();render();track('trivia-start')});
   el('trivia-next').addEventListener('click',()=>{if(i===Q.length-1){finish();return}i++;render();play.scrollIntoView({block:'start',behavior:'smooth'})});
-  el('trivia-again').addEventListener('click',()=>{end.classList.add('hidden');start.classList.remove('hidden');showBest();start.scrollIntoView({block:'start',behavior:'smooth'})});
-  showBest();
+  el('trivia-again').addEventListener('click',()=>{end.classList.add('hidden');start.classList.remove('hidden');showBest();showResume();start.scrollIntoView({block:'start',behavior:'smooth'})});
+  showBest();showResume();
 })();
