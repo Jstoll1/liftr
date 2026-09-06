@@ -136,7 +136,23 @@ for (let year = FIRST; year <= LAST; year++) {
     }));
     process.stdout.write(` draft ${picks.length} picks`);
   }
-  out.seasons[year] = { regularSeasonWeeks: regWeeks, members, teams, matchups, benchPointsByTeamWeek: bench, draft };
+  // Transactions (waiver claims, free agent adds, trades). ESPN serves
+  // these through the mTransactions2 view; older seasons may not have
+  // them, so a failure just leaves the field null.
+  let transactions = null;
+  try {
+    const tx = await fetchSeason(year, ["mTransactions2"]);
+    const list = tx.transactions || [];
+    transactions = list.map((t) => ({
+      id: t.id, type: t.type, status: t.status, teamId: t.teamId, bidAmount: t.bidAmount ?? null,
+      scoringPeriodId: t.scoringPeriodId ?? null, proposedDate: t.proposedDate ?? null, processDate: t.processDate ?? null,
+      items: (t.items || []).map((it) => ({ type: it.type, playerId: it.playerId, fromTeamId: it.fromTeamId, toTeamId: it.toTeamId })),
+    }));
+    process.stdout.write(` tx ${transactions.length}`);
+  } catch (err) {
+    process.stdout.write(" tx n/a");
+  }
+  out.seasons[year] = { regularSeasonWeeks: regWeeks, members, teams, matchups, benchPointsByTeamWeek: bench, draft, transactions };
   console.log(` ${teams.length} teams, ${matchups.length} matchups`);
 }
 
