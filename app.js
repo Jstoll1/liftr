@@ -1534,6 +1534,17 @@ function playerBreakdownHtml(name, state, results, live) {
   return `<div class="rank-detail"><div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${summary}</div>`;
 }
 
+// Second line under a leaderboard name: picks progress while the slate is
+// open, then the tiebreaker guess, then how far off it landed.
+function rankingSubline(row, actualTotal, tbGame) {
+  const parts = [];
+  if (row.submittedCount < GAMES.length) parts.push(`${row.submittedCount}/${GAMES.length} PICKED`);
+  if (row.tbGuess === null) parts.push("NO TIEBREAKER");
+  else if (actualTotal === null) parts.push(`TB ${row.tbGuess}`);
+  else parts.push(`TB ${row.tbGuess} · OFF BY ${row.tbDiff}`);
+  return parts.join(" · ");
+}
+
 function ordinal(n) {
   const s = ["TH", "ST", "ND", "RD"], v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
@@ -1547,10 +1558,26 @@ function renderRankings(cloudPicks, results, live = {}) {
   const rows = MANAGERS.map((name) => {
     const state = cloudPicks[name] || { picks: {} };
     const submittedCount = Object.values(state.picks).filter(Boolean).length;
-    const tbGuess = Number(state.tiebreaker);
+    const tbRaw = String(state.tiebreaker ?? "").trim();
+    const tbGuess = tbRaw === "" ? NaN : Number(tbRaw);
     const tbDiff = actualTotal !== null && Number.isFinite(tbGuess) ? Math.abs(tbGuess - actualTotal) : Infinity;
-    return { name, state, score: computeScore(state, results), submittedCount, tbDiff };
+    return { name, state, score: computeScore(state, results), submittedCount, tbGuess: Number.isFinite(tbGuess) ? tbGuess : null, tbDiff };
   }).sort((a, b) => b.score - a.score || a.tbDiff - b.tbDiff);
+
+  // Competition ranking: equal score and equal tiebreaker distance share a
+  // place and show as T-3RD. Before the tiebreaker game is final every
+  // equal score is a tie; after it, only identical guesses stay tied.
+  let place = 0;
+  rows.forEach((row, i) => {
+    const prev = rows[i - 1];
+    const tiedWithPrev = prev && prev.score === row.score && prev.tbDiff === row.tbDiff;
+    if (!tiedWithPrev) place = i + 1;
+    row.place = place;
+  });
+  rows.forEach((row, i) => {
+    const next = rows[i + 1];
+    row.tied = (rows[i - 1] && rows[i - 1].place === row.place) || (next && next.place === row.place);
+  });
 
   rankingsList.innerHTML = "";
   rows.forEach((row, i) => {
@@ -1559,8 +1586,8 @@ function renderRankings(cloudPicks, results, live = {}) {
     div.className = "ranking-row" + (i === 0 && row.score > 0 ? " rank-1" : "") + (row.name === currentManager ? " is-me" : "") + (open ? " open" : "");
     div.innerHTML = `
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
-        <span class="ranking-place">${ordinal(i + 1)}</span>
-        <span class="ranking-name">${row.name.toUpperCase()}<span class="ranking-lock">${row.submittedCount}/${GAMES.length} PICKED</span></span>
+        <span class="ranking-place">${row.tied ? "T-" : ""}${ordinal(row.place)}</span>
+        <span class="ranking-name">${row.name.toUpperCase()}<span class="ranking-lock">${rankingSubline(row, actualTotal, tiebreakerGame)}</span></span>
         <span class="ranking-dots" aria-hidden="true"></span>
         <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
         <span class="ranking-caret">${open ? "▴" : "▾"}</span>
