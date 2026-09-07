@@ -1335,8 +1335,8 @@ function renderLiveScores(live, cloudPicks) {
   if (title) {
     const allFinal = ordered.every((g) => { const l = live[g.id]; return l && l.found && l.completed; });
     title.innerHTML = liveCount > 0
-      ? `<span class="title-ico siren">🚨</span> SCOREBOARD · ${liveCount} LIVE`
-      : allFinal ? `<span class="title-ico trophy">🏆</span> FINAL SCOREBOARD` : `<span class="title-ico">📡</span> LIVE SCOREBOARD`;
+      ? `📡 SCOREBOARD <span class="live-dot"></span> ${liveCount} LIVE`
+      : allFinal ? "🏁 FINAL SCOREBOARD" : "📡 LIVE SCOREBOARD";
   }
 
   liveScoresList.innerHTML = `<div class="bug-grid ${liveCount > 0 ? "has-live" : ""}">` + ordered

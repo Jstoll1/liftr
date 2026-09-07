@@ -2167,11 +2167,3 @@ html, body {
 .wc-pts { font-size: 14px; color: var(--neon-green); text-shadow: 0 0 6px var(--neon-green); }
 @keyframes champ-flash { 50% { opacity: .55; } }
 .wc-line { display: flex; align-items: baseline; gap: 14px; }
-
-/* --- Scoreboard title icon states --- */
-.title-ico { display: inline-block; }
-.title-ico.siren { animation: siren-spin 0.9s linear infinite, siren-glow 0.45s ease-in-out infinite alternate; }
-@keyframes siren-spin { 0% { transform: rotate(-12deg) scale(1); } 50% { transform: rotate(12deg) scale(1.15); } 100% { transform: rotate(-12deg) scale(1); } }
-@keyframes siren-glow { from { filter: drop-shadow(0 0 2px #ff3b5c); } to { filter: drop-shadow(0 0 10px #ff3b5c) drop-shadow(0 0 4px #05d9e8); } }
-.title-ico.trophy { animation: trophy-bob 1.6s ease-in-out infinite; }
-@keyframes trophy-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
