@@ -1385,13 +1385,21 @@ function renderLiveScores(live, cloudPicks) {
         : `<div class="bug-detail"><span class="bug-hidden-note">🔒 Picks reveal at kickoff (${game.kickoffLabel})</span></div>`;
 
       const cls = ["scorebug", isLive ? "is-live" : "", isFinal ? "is-final" : "", !locked ? "upcoming" : "", expanded ? "expanded" : ""].join(" ");
+      // The viewer's own outcome on a final, same pills as the All Picks
+      // grid: +1 / +2 / +3 or a pink ✗.
+      let myPill = "";
+      if (isFinal && currentManager) {
+        const myPick = cloudPicks[currentManager]?.picks?.[game.id];
+        const pts = scorePick(game, myPick, { awayScore: g.awayScore, homeScore: g.homeScore });
+        if (myPick && pts !== null) myPill = pts >= 3 ? `<span class="pick-pill upset bug-mine">+3</span>` : pts === 2 ? `<span class="pick-pill hit2 bug-mine">+2</span>` : pts > 0 ? `<span class="pick-pill hit bug-mine">+1</span>` : `<span class="pick-pill miss bug-mine">✗</span>`;
+      }
 
       return `
         <div class="${cls}" data-game="${game.id}" role="button" tabindex="0" aria-expanded="${expanded}">
           <div class="bug-head">
             <span class="bug-gnum">G${game.id}</span>
             <span class="bug-status">${isLive ? '<span class="live-dot"></span>' : ""}${statusText}</span>
-            
+            ${myPill}
             <span class="bug-caret">${expanded ? "▴" : "▾"}</span>
           </div>
           ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop)}
