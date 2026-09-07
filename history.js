@@ -220,6 +220,11 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     {q:'Whose team was "Cousins with Downs" in 2024?',o:['Andrew','Nissan','Jordan','Logan'],a:0,why:'Andrew, 2024, after five straight years as High Energy Daddys.'},
     {q:'Whose team was "Two Aarons One Kupp" in 2020?',o:['Curt','Logan','Jordan','Dewitt'],a:0,why:'Curt, 2020, the year he took Christian McCaffrey first overall.'},
     {q:'Whose team was "Butt Snorting Gooey Bellies" in 2018?',o:['Jordan','Skills','Conlan','Nissan'],a:0,why:'Jordan. Eleven of his twelve teams have carried Gooey Bellies in the name. The exception was 2016, Crowcoa Butter.'},
+    {q:'Which of these was NOT one of Conlan\u0027s team names?',o:['Waffle House Resident','Los garaPollos Hermanos','Dalvin and the Chipblocks','That\u0027s a Jeudy'],a:0,why:'Waffle House Resident was Nissan. The other three are Conlan in 2018, 2019 and 2022.'},
+    {q:'Which of these was NOT one of Logan\u0027s team names?',o:['Rum Cam','Gronk\u0027s Golden TATEr Tots','Noah\u0027s FANTasy','Hunter\u0027s Wives'],a:0,why:'Rum Cam was Conlan in 2020. The other three are Logan.'},
+    {q:'Which of these was NOT one of Jake\u0027s team names?',o:['Patty Had A CeeDee Lamb','MaHomie WhoLeo','Keeping Up w/the Joneses','To Bijan or Not to Bijan'],a:0,why:'Patty Had A CeeDee Lamb was Curt. The other three are Jake in 2018, 2020 and 2024.'},
+    {q:'Which of these was NOT one of Nissan\u0027s team names?',o:['Keenan and WhoLeo','black tahoe','The Pie Guys','Jeudys Chubbie'],a:0,why:'Keenan and WhoLeo was Jake in 2019. The other three are Nissan.'},
+    {q:'Which of these was NOT one of Curt\u0027s team names?',o:['Hill\u0027s Pills','The Sleeping Giants','1 More Stafford Passing T.Deebo','Two Dragons'],a:0,why:'Hill\u0027s Pills was Logan in 2024. The other three are Curt.'},
     {q:'Who is 12-5 in games decided by under 5 points?',o:['Skills','Logan','Curt','Nissan'],a:0,why:'Skills wins the nail-biters. Logan is 12-8, Nissan 11-12, Curt 7-14. Dewitt\u0027s 15-6 is the best of anyone.'},
   ];
   const PER_GAME=12;
