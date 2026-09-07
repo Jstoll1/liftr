@@ -826,7 +826,7 @@ html, body {
   100% { transform: scale(1); }
 }
 
-.bug-caret { color: var(--neon-purple); font-size: 10px; }
+.bug-caret { color: var(--neon-purple); font-family: 'Orbitron', system-ui, sans-serif; font-size: 13px; line-height: 1; font-weight: 900; }
 
 .live-dot {
   display: inline-block;
