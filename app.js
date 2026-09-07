@@ -1341,14 +1341,24 @@ function nameChips(names) {
 
 // Stacked breakdown: team header carrying the line, then one row per pick
 // type that has anyone on it. Empty rows are dropped.
-function bugSideDetail(cloudPicks, game, team, short) {
+function bugSideDetail(cloudPicks, game, team, short, finalRes) {
   const isFav = team === game.favorite;
   const spreadTxt = isFav ? `-${game.spread}` : `+${game.spread}`;
   const ats = pickersFor(cloudPicks, game.id, team, "ATS");
   const su = pickersFor(cloudPicks, game.id, team, "SU");
+  // One small pill per category: what it is worth before the final, what
+  // it paid after. Same pills as the All Picks grid.
+  const pill = (mode) => {
+    const worth = pointValue(game, team, mode);
+    if (!finalRes) return `<span class="bug-pick-worth">${worth} PT</span>`;
+    const outcome = resultOutcome(game, finalRes);
+    if (mode === "ATS" && outcome && outcome.push) return `<span class="pick-pill push">PUSH</span>`;
+    const pts = scorePick(game, { team, mode }, finalRes);
+    return pts > 0 ? `<span class="pick-pill ${pts >= 3 ? "upset" : pts === 2 ? "hit2" : "hit"}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
+  };
   const rows = [];
-  if (ats.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tag ats">SPREAD ${spreadTxt}</span><div class="pick-chips">${nameChips(ats)}</div></div>`);
-  if (su.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tag su">STRAIGHT UP</span><div class="pick-chips">${nameChips(su)}</div></div>`);
+  if (ats.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag ats">SPREAD ${spreadTxt}</span>${pill("ATS")}</span><div class="pick-chips">${nameChips(ats)}</div></div>`);
+  if (su.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag su">STRAIGHT UP</span>${pill("SU")}</span><div class="pick-chips">${nameChips(su)}</div></div>`);
   return `
     <div class="bug-side">
       <div class="bug-side-head"><span>${short}</span><span class="bug-side-count">${ats.length + su.length}</span></div>
@@ -1415,8 +1425,8 @@ function renderLiveScores(live, cloudPicks) {
 
       const detail = !expanded ? "" : locked
         ? `<div class="bug-detail">
-             ${bugSideDetail(cloudPicks, game, game.away, game.awayShort)}
-             ${bugSideDetail(cloudPicks, game, game.home, game.homeShort)}
+             ${bugSideDetail(cloudPicks, game, game.away, game.awayShort, isFinal ? { awayScore: g.awayScore, homeScore: g.homeScore } : null)}
+             ${bugSideDetail(cloudPicks, game, game.home, game.homeShort, isFinal ? { awayScore: g.awayScore, homeScore: g.homeScore } : null)}
              ${winProbHtml}
            </div>`
         : `<div class="bug-detail"><span class="bug-hidden-note">🔒 Picks reveal at kickoff (${game.kickoffLabel})</span></div>`;

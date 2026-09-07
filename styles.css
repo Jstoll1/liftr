@@ -2180,3 +2180,10 @@ html, body {
 
 /* Push on the spread: nobody scores */
 .pick-pill.push, .rd-pts.push { background: rgba(244, 240, 255, .08); color: var(--text-dim); border: 1px dashed rgba(244, 240, 255, .4); }
+
+/* --- Category pills in the expanded scorebug --- */
+.bug-pick-tagline { display: inline-flex; align-items: center; gap: 6px; margin-top: 3px; }
+.bug-pick-tagline .bug-pick-tag { margin-top: 0; }
+.bug-pick-tagline .pick-pill { margin-top: 0; min-width: 20px; padding: 0 4px; font-size: 6px; line-height: 11px; }
+.bug-pick-tagline .pick-pill.miss { font-size: 8px; }
+.bug-pick-worth { font-family: 'Orbitron', system-ui, sans-serif; font-size: 7px; font-weight: 700; color: var(--text-dim); letter-spacing: .06em; }
