@@ -1162,9 +1162,18 @@ function renderPicksScreen() {
     tiebreakerInput.value = state.tiebreaker || "";
   }
   tiebreakerInput.disabled = tiebreakerLocked;
-  tiebreakerStatus.textContent = tiebreakerLocked
-    ? state.tiebreaker ? `Final: ${state.tiebreaker}` : "No tiebreaker entered — locked"
-    : state.tiebreaker ? `✓ Saved: ${state.tiebreaker}` : "Saves as you type";
+  // Locked: show the guess against the real total, live or final.
+  const tbFinal = computeLiveResults(latestLive)[tiebreakerGame.id];
+  const tbLiveG = !tbFinal && latestLive[tiebreakerGame.id] && latestLive[tiebreakerGame.id].found && latestLive[tiebreakerGame.id].state === "in" ? latestLive[tiebreakerGame.id] : null;
+  const tbActual = tbFinal ? tbFinal.awayScore + tbFinal.homeScore : tbLiveG && Number.isFinite(tbLiveG.awayScore) && Number.isFinite(tbLiveG.homeScore) ? tbLiveG.awayScore + tbLiveG.homeScore : null;
+  const guess = String(state.tiebreaker ?? "").trim();
+  let tbText;
+  if (!tiebreakerLocked) tbText = guess ? `✓ Saved: ${guess}` : "Saves as you type";
+  else if (!guess) tbText = `No tiebreaker entered — locked${tbActual !== null ? ` · ${tbFinal ? "final" : "now"} ${tbActual}` : ""}`;
+  else if (tbFinal) tbText = `Your guess: ${guess} · Final: ${tbActual} · off by ${Math.abs(Number(guess) - tbActual)}`;
+  else if (tbLiveG && tbActual !== null) tbText = `Your guess: ${guess} · Now: ${tbActual} · off by ${Math.abs(Number(guess) - tbActual)}`;
+  else tbText = `Your guess: ${guess} · waiting on kickoff`;
+  tiebreakerStatus.textContent = tbText;
 
   updatePicksProgress(state);
 }
