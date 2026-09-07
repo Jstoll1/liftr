@@ -1,0 +1,31 @@
+# Deploys the Cloudflare Worker whenever the worker code changes on main.
+# Needs two repository secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   an API token made from the "Edit Cloudflare Workers" template
+#   CLOUDFLARE_ACCOUNT_ID  the account id shown on the Workers & Pages overview page
+# Worker secrets set with `wrangler secret put` (OpenAI key, archive log key)
+# live on Cloudflare and are untouched by deploys.
+name: Deploy Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker/**"
+      - ".github/workflows/deploy-worker.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy
