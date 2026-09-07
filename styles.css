@@ -2167,3 +2167,5 @@ html, body {
 .wc-pts { font-size: 14px; color: var(--neon-green); text-shadow: 0 0 6px var(--neon-green); }
 @keyframes champ-flash { 50% { opacity: .55; } }
 .wc-line { display: flex; align-items: baseline; gap: 14px; }
+.wc-siren { display: inline-block; font-style: normal; animation: wc-siren 0.8s ease-in-out infinite alternate; }
+@keyframes wc-siren { from { transform: rotate(-14deg); filter: drop-shadow(0 0 2px #ff3b5c); } to { transform: rotate(14deg); filter: drop-shadow(0 0 8px #ff3b5c); } }
