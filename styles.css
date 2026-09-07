@@ -2133,5 +2133,5 @@ html, body {
 .rd-tb-miss.wait, .rd-tb-miss.none { color: var(--text-dim); }
 
 /* --- Your outcome on a final scorebug --- */
-.bug-head .bug-mine { margin: 0; flex: none; }
+.bug-head .bug-mine { margin: 0 0 0 auto; flex: none; }
 .bug-head .bug-mine + .bug-caret { margin-left: 4px; }

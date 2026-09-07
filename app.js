@@ -1400,7 +1400,6 @@ function renderLiveScores(live, cloudPicks) {
             <span class="bug-gnum">G${game.id}</span>
             <span class="bug-status">${isLive ? '<span class="live-dot"></span>' : ""}${statusText}</span>
             ${myPill}
-            <span class="bug-caret">${expanded ? "▴" : "▾"}</span>
           </div>
           ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop)}
           ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop)}
