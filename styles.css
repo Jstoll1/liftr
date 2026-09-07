@@ -777,7 +777,7 @@ html, body {
   box-shadow: 0 0 10px rgba(255, 59, 92, 0.35);
 }
 
-.scorebug.is-final { opacity: 0.7; }
+.scorebug.is-final { opacity: 1; }
 /* expanded bugs grow downward and stay in their grid cell */
 .scorebug.expanded { align-self: start; }
 
