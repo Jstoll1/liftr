@@ -214,6 +214,12 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     {q:'Who took LeSean McCoy first overall in the first ever draft, 2014?',o:['Jake','Dewitt','Andrew','Logan'],a:0,why:'Jake, drafting as Take it to the Hauschka, went McCoy at 1.1. Dewitt took Adrian Peterson at 2.'},
     {q:'Who drafted Christian McCaffrey first overall in 2020?',o:['Curt','Jordan','Dewitt','Jake'],a:0,why:'Curt in 2020. Jordan took McCaffrey first in 2021, and Dewitt did in 2024.'},
     {q:'Andrew went 2-11 in 2023, the worst record ever, under which name?',o:['High Energy Daddys','Lucky Johnson','Sweatpants Boner','The Famous Grouse'],a:0,why:'High Energy Daddys, 2-11. Lucky Johnson was Jake\u0027s 2-10 team in 2017.'},
+    {q:'Whose team was "Masterdeflated in the bathroom" in 2015?',o:['Conlan','Logan','Curt','Andrew'],a:0,why:'Conlan, 2015. It sits in the archive\u0027s top team names. The 2016 follow-up was "No playoff spot To park my Carr".'},
+    {q:'Whose team was "Miles Davis\u0027 Pee Pants"?',o:['Logan','Jake','Nissan','Skills'],a:0,why:'Logan ran that name in 2021 and 2022, then went to "Kupp of Olave" in 2023.'},
+    {q:'Whose team was "Rub n Chubb" in 2023?',o:['Jake','Curt','Conlan','Robert'],a:0,why:'Jake, 2023. He followed it with "To Bijan or Not to Bijan" and "Mr.Burrow\u0027s Naberhood".'},
+    {q:'Whose team was "Cousins with Downs" in 2024?',o:['Andrew','Nissan','Jordan','Logan'],a:0,why:'Andrew, 2024, after five straight years as High Energy Daddys.'},
+    {q:'Whose team was "Two Aarons One Kupp" in 2020?',o:['Curt','Logan','Jordan','Dewitt'],a:0,why:'Curt, 2020, the year he took Christian McCaffrey first overall.'},
+    {q:'Whose team was "Butt Snorting Gooey Bellies" in 2018?',o:['Jordan','Skills','Conlan','Nissan'],a:0,why:'Jordan. Every one of his teams since 2014 has carried Gooey Bellies somewhere in the name.'},
     {q:'Who is 12-5 in games decided by under 5 points?',o:['Skills','Logan','Curt','Nissan'],a:0,why:'Skills wins the nail-biters. Logan is 12-8, Nissan 11-12, Curt 7-14. Dewitt\u0027s 15-6 is the best of anyone.'},
   ];
   const PER_GAME=12;
