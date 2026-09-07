@@ -2122,3 +2122,12 @@ html, body {
 /* --- Five tabs --- */
 .nav-btn { width: auto; flex: 1 1 0; min-width: 0; padding: 6px 2px; }
 .nav-btn-label { font-size: 9px; }
+
+/* --- Breakdown tiebreaker row --- */
+.rd-tb { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 3px; column-gap: 10px; align-items: center; margin-top: 8px; padding: 8px 10px; border: 1px dashed rgba(255, 228, 94, .5); border-radius: 8px; background: rgba(255, 228, 94, .05); }
+.rd-tb-label { grid-column: 1 / -1; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-yellow); letter-spacing: .06em; }
+.rd-tb-guess { font-size: 12px; font-weight: 800; color: var(--text); }
+.rd-tb-miss { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--neon-green); text-align: right; }
+.rd-tb-miss b { font-size: 8px; }
+.rd-tb-miss.live { color: var(--neon-yellow); }
+.rd-tb-miss.wait, .rd-tb-miss.none { color: var(--text-dim); }

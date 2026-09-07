@@ -1530,8 +1530,22 @@ function playerBreakdownHtml(name, state, results, live) {
       <div class="rd-result">${ptsHtml}</div>
     </div>`;
   }).join("");
+  // Tiebreaker row: the game, the guess, the real total once final, and
+  // the miss, so the tiebreak ordering on the board is explained here.
+  const tbGame = GAMES.find((g) => g.tiebreakerGame);
+  const tbRaw = String(state.tiebreaker ?? "").trim();
+  const tbGuess = tbRaw === "" ? null : Number(tbRaw);
+  const tbRes = results[tbGame.id];
+  const tbLive = !tbRes && live[tbGame.id] && live[tbGame.id].found && live[tbGame.id].state === "in" ? live[tbGame.id] : null;
+  const actual = tbRes ? tbRes.awayScore + tbRes.homeScore : tbLive && Number.isFinite(tbLive.awayScore) && Number.isFinite(tbLive.homeScore) ? tbLive.awayScore + tbLive.homeScore : null;
+  let tbStatus;
+  if (tbGuess === null) tbStatus = `<span class="rd-tb-miss none">NO GUESS</span>`;
+  else if (tbRes) tbStatus = `<span class="rd-tb-miss">FINAL ${actual} · OFF BY <b>${Math.abs(tbGuess - actual)}</b></span>`;
+  else if (tbLive) tbStatus = `<span class="rd-tb-miss live">NOW ${actual} · OFF BY ${Math.abs(tbGuess - actual)}</span>`;
+  else tbStatus = `<span class="rd-tb-miss wait">WAITING ON KICKOFF</span>`;
+  const tbRow = `<div class="rd-tb"><span class="rd-tb-label">TIEBREAKER · G${tbGame.id} ${tbGame.awayShort} @ ${tbGame.homeShort} TOTAL</span><span class="rd-tb-guess">${tbGuess === null ? "–" : "GUESS " + tbGuess}</span>${tbStatus}</div>`;
   const summary = `<div class="rd-summary"><span>BANKED <b>${banked}</b></span>${liveOpen ? `<span>LIVE <b>${liveCovering}/${liveOpen}</b> covering</span>` : ""}</div>`;
-  return `<div class="rank-detail"><div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${summary}</div>`;
+  return `<div class="rank-detail"><div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
 }
 
 // Second line under a leaderboard name: picks progress while the slate is
