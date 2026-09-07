@@ -2144,3 +2144,10 @@ html, body {
 .ms-label { font-size: 6px; color: var(--text-dim); letter-spacing: .08em; }
 .ms-score { color: var(--neon-green); text-shadow: 0 0 6px var(--neon-green); }
 .ms-rank { color: var(--neon-yellow); }
+
+/* --- Scoreboard top: tighter stack --- */
+#scoreboard-screen .wrap { gap: 8px; }
+#scoreboard-screen .updated-stamp { margin: 0 auto 2px; }
+#scoreboard-screen .my-score { margin: 2px auto 4px; }
+#scoreboard-screen .section-heading { margin-top: 22px; }
+#scoreboard-screen .all-picks-toggle { margin-top: 16px; }
