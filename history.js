@@ -219,7 +219,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     {q:'Whose team was "Rub n Chubb" in 2023?',o:['Jake','Curt','Conlan','Robert'],a:0,why:'Jake, 2023. He followed it with "To Bijan or Not to Bijan" and "Mr.Burrow\u0027s Naberhood".'},
     {q:'Whose team was "Cousins with Downs" in 2024?',o:['Andrew','Nissan','Jordan','Logan'],a:0,why:'Andrew, 2024, after five straight years as High Energy Daddys.'},
     {q:'Whose team was "Two Aarons One Kupp" in 2020?',o:['Curt','Logan','Jordan','Dewitt'],a:0,why:'Curt, 2020, the year he took Christian McCaffrey first overall.'},
-    {q:'Whose team was "Butt Snorting Gooey Bellies" in 2018?',o:['Jordan','Skills','Conlan','Nissan'],a:0,why:'Jordan. Every one of his teams since 2014 has carried Gooey Bellies somewhere in the name.'},
+    {q:'Whose team was "Butt Snorting Gooey Bellies" in 2018?',o:['Jordan','Skills','Conlan','Nissan'],a:0,why:'Jordan. Eleven of his twelve teams have carried Gooey Bellies in the name. The exception was 2016, Crowcoa Butter.'},
     {q:'Who is 12-5 in games decided by under 5 points?',o:['Skills','Logan','Curt','Nissan'],a:0,why:'Skills wins the nail-biters. Logan is 12-8, Nissan 11-12, Curt 7-14. Dewitt\u0027s 15-6 is the best of anyone.'},
   ];
   const PER_GAME=12;
