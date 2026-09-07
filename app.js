@@ -1226,6 +1226,7 @@ async function renderScoreboard() {
   renderScoreboardTable(cloudPicks, results, live);
   const ranked = renderRankings(cloudPicks, results, live);
   renderMyScore(ranked);
+  renderWeekChamp(ranked, results);
   renderInsertCoin(cloudPicks);
   const stamp = document.getElementById("scoreboard-updated");
   if (stamp) {
@@ -1332,12 +1333,13 @@ function renderLiveScores(live, cloudPicks) {
   // Live count rides in the top bar title instead of a section heading.
   const title = document.getElementById("scoreboard-title");
   if (title) {
+    const allFinal = ordered.every((g) => { const l = live[g.id]; return l && l.found && l.completed; });
     title.innerHTML = liveCount > 0
       ? `📡 SCOREBOARD <span class="live-dot"></span> ${liveCount} LIVE`
-      : "📡 LIVE SCOREBOARD";
+      : allFinal ? "🏁 FINAL SCOREBOARD" : "📡 LIVE SCOREBOARD";
   }
 
-  liveScoresList.innerHTML = `<div class="bug-grid">` + ordered
+  liveScoresList.innerHTML = `<div class="bug-grid ${liveCount > 0 ? "has-live" : ""}">` + ordered
     .map((game) => {
       const locked = isGameLocked(game);
       const g = live[game.id];
@@ -1606,6 +1608,19 @@ function renderRankings(cloudPicks, results, live = {}) {
   rankingsList.innerHTML = "";
   renderRankingRows(rows, cloudPicks, results, live);
   return rows;
+}
+
+// Once every game is final, the week's high score flashes above the
+// board. Ties that the tiebreaker did not split show every name.
+function renderWeekChamp(rows, results) {
+  const el = document.getElementById("week-champ");
+  if (!el) return;
+  const allFinal = GAMES.every((g) => results[g.id]);
+  if (!allFinal || !rows.length) { el.classList.add("hidden"); return; }
+  const top = rows.filter((r) => r.place === rows[0].place);
+  const names = top.map((r) => r.name.toUpperCase()).join(" & ");
+  el.innerHTML = `<span class="wc-label">WEEK 1 HIGH SCORE</span><span class="wc-name">${names}</span><span class="wc-pts">${String(rows[0].score).padStart(2, "0")} PTS</span>`;
+  el.classList.remove("hidden");
 }
 
 // "1UP" strip under the refresh line: the viewer's score and place, in
