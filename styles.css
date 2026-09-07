@@ -2177,3 +2177,6 @@ html, body {
 #scoreboard-screen .my-score.hidden + .live-scores-list { padding: 0; border: 0; border-radius: 0; box-shadow: none; }
 #scoreboard-screen .wrap > .my-score + .live-scores-list { margin-top: -8px; }
 #scoreboard-screen .my-score + .live-scores-list .bug-grid { gap: 6px; }
+
+/* Push on the spread: nobody scores */
+.pick-pill.push, .rd-pts.push { background: rgba(244, 240, 255, .08); color: var(--text-dim); border: 1px dashed rgba(244, 240, 255, .4); }

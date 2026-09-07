@@ -28,10 +28,12 @@ function resultOutcome(game, result) {
   const { awayScore, homeScore } = result;
   const suWinner = awayScore > homeScore ? game.away : game.home;
   const favMargin = game.favorite === game.home ? homeScore - awayScore : awayScore - homeScore;
-  const favoriteCovered = favMargin > game.spread;
   const underdog = game.favorite === game.away ? game.home : game.away;
-  const atsWinner = favoriteCovered ? game.favorite : underdog;
-  return { suWinner, atsWinner };
+  // A push (favorite wins by exactly the spread) pays nobody on the
+  // spread: atsWinner is null and both sides score 0.
+  const push = favMargin === game.spread;
+  const atsWinner = push ? null : favMargin > game.spread ? game.favorite : underdog;
+  return { suWinner, atsWinner, push };
 }
 
 // Points earned for one pick given a final score, or null if the game
@@ -41,6 +43,7 @@ function scorePick(game, pick, result) {
   if (!outcome) return null;
   if (!pick || !pick.team || !pick.mode) return 0;
   const winner = pick.mode === "SU" ? outcome.suWinner : outcome.atsWinner;
+  if (winner === null) return 0;
   return pick.team === winner ? pointValue(game, pick.team, pick.mode) : 0;
 }
 
@@ -1037,14 +1040,15 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
     const liveByTxt = diff === 0 ? "tied" : `${diff > 0 ? "up" : "down"} ${Math.abs(diff)}`;
     if (pts !== null) {
       const hit = pts > 0;
+      const pushed = pick.mode === "ATS" && resultOutcome(game, finalRes)?.push;
       outcome = pick.mode === "ATS"
-        ? `${short} ${byTxt} · ${hit ? "covered the number" : "did not cover"}`
+        ? `${short} ${byTxt} · ${pushed ? "push, nobody scores" : hit ? "covered the number" : "did not cover"}`
         : `${short} ${byTxt} · ${hit ? "won outright" : "lost outright"}`;
-      pill = `<span class="rd-pts ${pts >= 3 ? "upset" : pts === 2 ? "hit2" : hit ? "hit" : "miss"}">${hit ? "+" + pts : "0"} PTS</span>`;
+      pill = pushed ? `<span class="rd-pts push">PUSH</span>` : `<span class="rd-pts ${pts >= 3 ? "upset" : pts === 2 ? "hit2" : hit ? "hit" : "miss"}">${hit ? "+" + pts : "0"} PTS</span>`;
     } else if (prov !== null) {
       const hit = prov > 0;
       outcome = pick.mode === "ATS"
-        ? `${short} ${liveByTxt} · ${hit ? "covering" : "not covering"} right now`
+        ? `${short} ${liveByTxt} · ${resultOutcome(game, { awayScore: aS, homeScore: hS })?.push ? "on the number, a push right now" : hit ? "covering" : "not covering"} right now`
         : `${short} ${liveByTxt} · ${hit ? "winning" : "trailing"} right now`;
       pill = `<span class="rd-pts ${hit ? "lean-hit" : "lean-miss"}">${hit ? "+" + worth : "0"}?</span>`;
     } else {
@@ -1395,7 +1399,8 @@ function renderLiveScores(live, cloudPicks) {
       if (isFinal && currentManager) {
         const myPick = cloudPicks[currentManager]?.picks?.[game.id];
         const pts = scorePick(game, myPick, { awayScore: g.awayScore, homeScore: g.homeScore });
-        if (myPick && pts !== null) myPill = pts >= 3 ? `<span class="pick-pill upset bug-mine">+3</span>` : pts === 2 ? `<span class="pick-pill hit2 bug-mine">+2</span>` : pts > 0 ? `<span class="pick-pill hit bug-mine">+1</span>` : `<span class="pick-pill miss bug-mine">✗</span>`;
+        const myPush = myPick && myPick.mode === "ATS" && resultOutcome(game, { awayScore: g.awayScore, homeScore: g.homeScore })?.push;
+        if (myPick && pts !== null) myPill = myPush ? `<span class="pick-pill push bug-mine">P</span>` : pts >= 3 ? `<span class="pick-pill upset bug-mine">+3</span>` : pts === 2 ? `<span class="pick-pill hit2 bug-mine">+2</span>` : pts > 0 ? `<span class="pick-pill hit bug-mine">+1</span>` : `<span class="pick-pill miss bug-mine">✗</span>`;
       }
 
       return `
@@ -1464,7 +1469,8 @@ function renderScoreboardTable(cloudPicks, results, live = {}) {
       // pink with the logo dimmed) instead of a third stacked line.
       // Final: logo with a small result pill under it and no spread line.
       // Live or upcoming: logo with the spread (if ATS) and a lean dot.
-      const pill = pts === null ? "" : pts >= 3 ? `<span class="pick-pill upset">+3</span>` : pts === 2 ? `<span class="pick-pill hit2">+2</span>` : pts > 0 ? `<span class="pick-pill hit">+1</span>` : `<span class="pick-pill miss">✗</span>`;
+      const pushed = pts !== null && pick.mode === "ATS" && resultOutcome(game, results[game.id])?.push;
+      const pill = pts === null ? "" : pushed ? `<span class="pick-pill push">P</span>` : pts >= 3 ? `<span class="pick-pill upset">+3</span>` : pts === 2 ? `<span class="pick-pill hit2">+2</span>` : pts > 0 ? `<span class="pick-pill hit">+1</span>` : `<span class="pick-pill miss">✗</span>`;
       const under = pts === null ? spreadTag : pill;
       return `<td class="pick-cell ${cls}" title="${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}"><span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
     }).join("");
@@ -1520,7 +1526,8 @@ function playerBreakdownHtml(name, state, results, live) {
       const pts = scorePick(game, pick, results[game.id]);
       if (pts !== null) {
         banked += pts;
-        ptsHtml = pts >= 3 ? `<span class="rd-pts upset">+3</span>` : pts === 2 ? `<span class="rd-pts hit2">+2</span>` : pts > 0 ? `<span class="rd-pts hit">+1</span>` : `<span class="rd-pts miss">0</span>`;
+        const pushed = pick.mode === "ATS" && resultOutcome(game, results[game.id])?.push;
+        ptsHtml = pushed ? `<span class="rd-pts push">PUSH</span>` : pts >= 3 ? `<span class="rd-pts upset">+3</span>` : pts === 2 ? `<span class="rd-pts hit2">+2</span>` : pts > 0 ? `<span class="rd-pts hit">+1</span>` : `<span class="rd-pts miss">0</span>`;
       } else if (isLive && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore) && (g.awayScore || g.homeScore)) {
         const prov = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
         liveOpen += 1;
