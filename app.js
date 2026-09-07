@@ -1619,7 +1619,7 @@ function renderWeekChamp(rows, results) {
   if (!allFinal || !rows.length) { el.classList.add("hidden"); return; }
   const top = rows.filter((r) => r.place === rows[0].place);
   const names = top.map((r) => r.name.toUpperCase()).join(" & ");
-  el.innerHTML = `<span class="wc-label"><span class="wc-siren">🚨</span> WEEK 1 HIGH SCORE <span class="wc-siren">🚨</span></span><span class="wc-line"><span class="wc-name">${names}</span><span class="wc-pts">${String(rows[0].score).padStart(2, "0")} PTS</span></span>`;
+  el.innerHTML = `<span class="wc-label"><svg class="wc-siren" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path class="wc-beam" fill="currentColor" d="M1 6h2v1H1zM13 6h2v1h-2zM2 3h1v1h1v1H3V4H2zM12 4h1V3h1v1h-1v1h-1z"/><path class="wc-lamp" d="M6 3h4v1h1v1h1v5H4V5h1V4h1z"/><path fill="#f4f0ff" d="M6 4h1v1H6zM5 5h1v2H5z" opacity=".6"/><path fill="#3a2a50" d="M3 10h10v1h1v2H2v-2h1z"/><path fill="#1c0733" d="M4 12h8v1H4z"/></svg> WEEK 1 HIGH SCORE <svg class="wc-siren" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path class="wc-beam" fill="currentColor" d="M1 6h2v1H1zM13 6h2v1h-2zM2 3h1v1h1v1H3V4H2zM12 4h1V3h1v1h-1v1h-1z"/><path class="wc-lamp" d="M6 3h4v1h1v1h1v5H4V5h1V4h1z"/><path fill="#f4f0ff" d="M6 4h1v1H6zM5 5h1v2H5z" opacity=".6"/><path fill="#3a2a50" d="M3 10h10v1h1v2H2v-2h1z"/><path fill="#1c0733" d="M4 12h8v1H4z"/></svg></span><span class="wc-line"><span class="wc-name">${names}</span><span class="wc-pts">${String(rows[0].score).padStart(2, "0")} PTS</span></span>`;
   el.classList.remove("hidden");
 }
 

@@ -2167,5 +2167,9 @@ html, body {
 .wc-pts { font-size: 14px; color: var(--neon-green); text-shadow: 0 0 6px var(--neon-green); }
 @keyframes champ-flash { 50% { opacity: .55; } }
 .wc-line { display: flex; align-items: baseline; gap: 14px; }
-.wc-siren { display: inline-block; font-style: normal; animation: wc-siren 0.8s ease-in-out infinite alternate; }
-@keyframes wc-siren { from { transform: rotate(-14deg); filter: drop-shadow(0 0 2px #ff3b5c); } to { transform: rotate(14deg); filter: drop-shadow(0 0 8px #ff3b5c); } }
+.wc-label { display: inline-flex; align-items: center; gap: 8px; }
+.wc-siren { width: 16px; height: 16px; color: var(--neon-yellow); }
+.wc-lamp { fill: #ff3b5c; animation: wc-lamp 0.5s steps(1, end) infinite; }
+.wc-beam { animation: wc-beam 0.5s steps(1, end) infinite; }
+@keyframes wc-lamp { 0% { fill: #ff3b5c; } 50% { fill: #ffe45e; } }
+@keyframes wc-beam { 0% { opacity: 1; } 50% { opacity: 0; } }
