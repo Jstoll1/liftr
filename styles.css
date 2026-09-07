@@ -2151,3 +2151,7 @@ html, body {
 #scoreboard-screen .my-score { margin: 2px auto 4px; }
 #scoreboard-screen .section-heading { margin-top: 22px; }
 #scoreboard-screen .all-picks-toggle { margin-top: 16px; }
+
+/* Games that have not kicked off sit back at 45% fade */
+.scorebug.upcoming { opacity: .55; }
+.scorebug.upcoming .bug-score { opacity: 1; }
