@@ -74,6 +74,12 @@ const GAMES = [
   { id: 10, away: "#24 Louisville", awayId: 97, awayShort: "Louisville", homeShort: "Ole Miss", home: "#9 Ole Miss", homeId: 145, favorite: "#9 Ole Miss", spread: 7, kickoffLabel: "Sun 7:30 PM ET", kickoff: "2026-09-06T23:30:00Z", tv: "ABC" },
 ];
 
+const WEEK_LABEL = "Week 1";
+function weekIsFinal() {
+  const results = computeLiveResults(latestLive);
+  return GAMES.every((g) => results[g.id]);
+}
+
 function logoUrl(espnId) {
   return `https://a.espncdn.com/i/teamlogos/ncaa/500/${espnId}.png`;
 }
@@ -675,6 +681,10 @@ async function renderManagerPicker() {
   const local = loadAll();
   const cloud = await fetchAllPicks();
   const all = cloud ? { ...local, ...cloud } : local; // cloud wins where it has data
+  // Once games have started the roster shows points instead of pick counts.
+  if (firstKickoffPassed() && !Object.keys(latestLive).length) { try { await fetchLiveScores(); } catch {} }
+  const pickerResults = firstKickoffPassed() ? computeLiveResults(latestLive) : {};
+  const scored = Object.keys(pickerResults).length > 0;
 
   const localAvatars = loadAvatars();
   const cloudAvatars = await fetchAvatars();
@@ -706,7 +716,7 @@ async function renderManagerPicker() {
       </span>
       <span class="manager-name-plate">
         <span class="manager-name">${name}</span>
-        <span class="manager-pick-status">${complete ? "✓ All in" : partial ? `${submittedCount}/${GAMES.length} in` : ""}</span>
+        <span class="manager-pick-status">${scored ? `${computeScore(state || { picks: {} }, pickerResults)} PTS` : complete ? "✓ All in" : partial ? `${submittedCount}/${GAMES.length} in` : ""}</span>
       </span>
     `;
 
@@ -1180,8 +1190,18 @@ function renderPicksScreen() {
 
 function updatePicksProgress(state) {
   const totalPicked = Object.values(state.picks).filter(Boolean).length;
-  picksProgress.textContent =
-    `${totalPicked} of ${GAMES.length} games picked` + (state.tiebreaker ? " · tiebreaker set" : " · tiebreaker not set");
+  const results = computeLiveResults(latestLive);
+  const allFinal = GAMES.every((g) => results[g.id]);
+  const allLocked = GAMES.every(isGameLocked);
+  picksProgress.textContent = allFinal
+    ? `${WEEK_LABEL} is final · you scored ${computeScore(state, results)} pts`
+    : allLocked
+      ? `${WEEK_LABEL} is locked · ${computeScore(state, results)} pts so far`
+      : `${totalPicked} of ${GAMES.length} games picked` + (state.tiebreaker ? " · tiebreaker set" : " · tiebreaker not set");
+  const hint = document.querySelector("#picks-screen .picks-hint");
+  if (hint) hint.textContent = allLocked
+    ? `${WEEK_LABEL} has kicked off. Your card is locked; scores and results update below as games finish.`
+    : "Each game: pick a team straight up (1 pt favorite / 3 pt underdog) or against the spread (2 pts either way; a push on the number pays nobody). Every tap saves instantly — change your mind as often as you like until that game kicks off, then it locks for everyone.";
   let warn = document.getElementById("picks-mismatch");
   if (!warn) { warn = document.createElement("button"); warn.id = "picks-mismatch"; warn.type = "button"; warn.className = "picks-mismatch"; picksProgress.insertAdjacentElement("afterend", warn); warn.addEventListener("click", () => restorePhonePicks(currentManager)); }
   if (lockedMismatch.length && phoneSnapshot[currentManager]) {
@@ -1635,7 +1655,7 @@ function renderWeekChamp(rows, results) {
   if (!allFinal || !rows.length) { el.classList.add("hidden"); return; }
   const top = rows.filter((r) => r.place === rows[0].place);
   const names = top.map((r) => r.name.toUpperCase()).join(" & ");
-  el.innerHTML = `<span class="wc-label"><span class="wc-rule"></span>WEEK 1 HIGH SCORE<span class="wc-rule"></span></span><span class="wc-line"><span class="wc-name">${names}</span><span class="wc-pts">${String(rows[0].score).padStart(2, "0")}<small>PTS</small></span></span>`;
+  el.innerHTML = `<span class="wc-label"><span class="wc-rule"></span>${WEEK_LABEL.toUpperCase()} HIGH SCORE<span class="wc-rule"></span></span><span class="wc-line"><span class="wc-name">${names}</span><span class="wc-pts">${String(rows[0].score).padStart(2, "0")}<small>PTS</small></span></span>`;
   el.classList.remove("hidden");
 }
 
