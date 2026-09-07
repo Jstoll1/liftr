@@ -2135,3 +2135,13 @@ html, body {
 /* --- Your outcome on a final scorebug --- */
 .bug-head .bug-mine { margin: 0 0 0 auto; flex: none; }
 .bug-head .bug-mine + .bug-caret { margin-left: 4px; }
+
+/* --- 1UP score strip --- */
+.my-score { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 6px auto 12px; padding: 8px 14px; width: fit-content; max-width: 100%; border: 2px solid var(--neon-cyan); border-radius: 8px; background: rgba(5, 217, 232, .06); box-shadow: 0 0 12px rgba(5, 217, 232, .25); font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--text); cursor: pointer; white-space: nowrap; }
+.my-score.hidden { display: none; }
+.ms-1up { color: var(--neon-pink); animation: live-blink 1.2s steps(2, start) infinite; }
+.ms-name { color: var(--neon-cyan); }
+.ms-score, .ms-rank { display: inline-flex; align-items: baseline; gap: 6px; }
+.ms-label { font-size: 6px; color: var(--text-dim); letter-spacing: .08em; }
+.ms-score { color: var(--neon-green); text-shadow: 0 0 6px var(--neon-green); }
+.ms-rank { color: var(--neon-yellow); }

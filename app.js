@@ -1223,7 +1223,8 @@ async function renderScoreboard() {
 
   renderLiveScores(live, cloudPicks);
   renderScoreboardTable(cloudPicks, results, live);
-  renderRankings(cloudPicks, results, live);
+  const ranked = renderRankings(cloudPicks, results, live);
+  renderMyScore(ranked);
   renderInsertCoin(cloudPicks);
   const stamp = document.getElementById("scoreboard-updated");
   if (stamp) {
@@ -1598,9 +1599,30 @@ function renderRankings(cloudPicks, results, live = {}) {
   rows.forEach((row, i) => {
     const next = rows[i + 1];
     row.tied = (rows[i - 1] && rows[i - 1].place === row.place) || (next && next.place === row.place);
+    row.subline = rankingSubline(row, actualTotal, tiebreakerGame);
   });
 
   rankingsList.innerHTML = "";
+  renderRankingRows(rows, cloudPicks, results, live);
+  return rows;
+}
+
+// "1UP" strip under the refresh line: the viewer's score and place, in
+// arcade type. Tap jumps to their leaderboard row.
+function renderMyScore(rows) {
+  const el = document.getElementById("my-score");
+  if (!el) return;
+  const me = currentManager && rows.find((r) => r.name === currentManager);
+  if (!me) { el.classList.add("hidden"); return; }
+  el.innerHTML = `<span class="ms-1up">1UP</span><span class="ms-name">${me.name.toUpperCase()}</span><span class="ms-score"><span class="ms-label">SCORE</span>${String(me.score).padStart(2, "0")}</span><span class="ms-rank"><span class="ms-label">RANK</span>${me.tied ? "T-" : ""}${ordinal(me.place)}</span>`;
+  el.classList.remove("hidden");
+}
+document.getElementById("my-score")?.addEventListener("click", () => {
+  const row = [...document.querySelectorAll(".ranking-row")].find((r) => r.querySelector(".ranking-name")?.textContent.startsWith((currentManager || "").toUpperCase()));
+  row?.scrollIntoView({ block: "center", behavior: "smooth" });
+});
+
+function renderRankingRows(rows, cloudPicks, results, live) {
   rows.forEach((row, i) => {
     const open = expandedRankings.has(row.name);
     const div = document.createElement("div");
@@ -1608,7 +1630,7 @@ function renderRankings(cloudPicks, results, live = {}) {
     div.innerHTML = `
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place">${row.tied ? "T-" : ""}${ordinal(row.place)}</span>
-        <span class="ranking-name">${row.name.toUpperCase()}<span class="ranking-lock">${rankingSubline(row, actualTotal, tiebreakerGame)}</span></span>
+        <span class="ranking-name">${row.name.toUpperCase()}<span class="ranking-lock">${row.subline}</span></span>
         <span class="ranking-dots" aria-hidden="true"></span>
         <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
         <span class="ranking-caret">${open ? "▴" : "▾"}</span>
