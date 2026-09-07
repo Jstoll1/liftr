@@ -1614,7 +1614,7 @@ function renderMyScore(rows) {
   if (!el) return;
   const me = currentManager && rows.find((r) => r.name === currentManager);
   if (!me) { el.classList.add("hidden"); return; }
-  el.innerHTML = `<span class="ms-1up">1UP</span><span class="ms-name">${me.name.toUpperCase()}</span><span class="ms-score"><span class="ms-label">SCORE</span>${String(me.score).padStart(2, "0")}</span><span class="ms-rank"><span class="ms-label">RANK</span>${me.tied ? "T-" : ""}${ordinal(me.place)}</span>`;
+  el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ms-name">${me.name.toUpperCase()}</span><span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>`;
   el.classList.remove("hidden");
 }
 document.getElementById("my-score")?.addEventListener("click", () => {
