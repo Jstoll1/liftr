@@ -2166,3 +2166,4 @@ html, body {
 .wc-name { font-size: 14px; color: var(--neon-yellow); text-shadow: 0 0 10px rgba(255, 228, 94, .8); }
 .wc-pts { font-size: 9px; color: var(--neon-green); text-shadow: 0 0 6px var(--neon-green); }
 @keyframes champ-flash { 50% { opacity: .55; } }
+.wc-line { display: flex; align-items: baseline; gap: 14px; }
