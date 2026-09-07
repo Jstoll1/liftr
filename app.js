@@ -559,7 +559,8 @@ function goHome() {
 }
 
 logoScreen.addEventListener("click", goToPlayerSelect);
-track("/splash");
+
+
 rulesOpenBtn.addEventListener("click", openRules);
 rulesCloseBtn.addEventListener("click", closeRules);
 homeLogoBtn.addEventListener("click", goHome);
@@ -1691,4 +1692,21 @@ renderManagerPicker();
   const paint = () => { wrap.classList.toggle("hidden", !open); toggle.classList.toggle("open", open); toggle.setAttribute("aria-expanded", String(open)); };
   toggle.addEventListener("click", () => { open = !open; paint(); if (open) track("all-picks-open", { event: true }); });
   paint();
+})();
+
+// The splash shows once per 12 hours per device. Inside that window the
+// app opens straight to where the tap would have landed.
+const SPLASH_KEY = "brochiefs_splash_seen_v1";
+const SPLASH_TTL = 12 * 60 * 60 * 1000;
+(() => {
+  let last = 0;
+  try { last = Number(localStorage.getItem(SPLASH_KEY)) || 0; } catch {}
+  const fresh = Date.now() - last < SPLASH_TTL;
+  const mark = () => { try { localStorage.setItem(SPLASH_KEY, String(Date.now())); } catch {} };
+  if (fresh && loadMe()) {
+    goToPlayerSelect();
+  } else {
+    track("/splash");
+    logoScreen.addEventListener("click", mark, { once: true });
+  }
 })();
