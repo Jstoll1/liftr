@@ -1,5 +1,5 @@
 {
- "exportedAt": "2026-09-09T11:35:39.855Z",
+ "exportedAt": "2026-09-09T11:41:02.683Z",
  "leagueId": "878153",
  "seasons": {
   "2014": {
@@ -131119,6 +131119,6216 @@
        "playerId": 3139477,
        "fromTeamId": 3,
        "toTeamId": 0
+      }
+     ]
+    }
+   ],
+   "activity": null
+  },
+  "2026": {
+   "regularSeasonWeeks": 13,
+   "members": [
+    {
+     "id": "{0D3B0B22-750C-4FD4-92F6-E83E56CB5F5B}",
+     "firstName": "Jake",
+     "lastName": "Stoll",
+     "displayName": "atlfalcon756"
+    },
+    {
+     "id": "{185CE179-A733-44E3-9B57-E21797904C9C}",
+     "firstName": "tyler",
+     "lastName": "conlan",
+     "displayName": "tylerconlan"
+    },
+    {
+     "id": "{296A3F8D-7AA8-4843-A9B2-325839BA41C9}",
+     "firstName": "Tyler",
+     "lastName": "Dewitt",
+     "displayName": "ty49erfan81"
+    },
+    {
+     "id": "{2977104D-7E27-4F54-BC81-405F5BA52E0E}",
+     "firstName": "John",
+     "lastName": "Nissan",
+     "displayName": "jnissan60"
+    },
+    {
+     "id": "{5B4A6A77-93A0-4BBD-8760-925E906FCD44}",
+     "firstName": "Logan",
+     "lastName": "Eaton",
+     "displayName": "ESPNFAN0081944434"
+    },
+    {
+     "id": "{6CF0A732-8060-40F2-B107-71CA106ADBF1}",
+     "firstName": "Curt",
+     "lastName": "Stark",
+     "displayName": "CurtStark"
+    },
+    {
+     "id": "{7B87FD58-B941-4681-8C72-FF24B80352F3}",
+     "firstName": "adam",
+     "lastName": "skillingstad",
+     "displayName": "skillz3134"
+    },
+    {
+     "id": "{901E2CC8-7D3A-4E5A-9E2C-C87D3A9E5A37}",
+     "firstName": "Ty",
+     "lastName": "Franz",
+     "displayName": "1326Ty"
+    },
+    {
+     "id": "{996D5798-F2E9-4E04-B4F7-B039DA7732A8}",
+     "firstName": "Logan",
+     "lastName": "Eaton",
+     "displayName": "loganeaton25"
+    },
+    {
+     "id": "{C3C23DC7-DD6E-46EE-9DD1-0E3CCB2C55AD}",
+     "firstName": "Robert",
+     "lastName": "Eaton",
+     "displayName": "RobertLubsEaton"
+    },
+    {
+     "id": "{F09B322D-A1A7-482D-9B32-2DA1A7782D25}",
+     "firstName": "Andrew",
+     "lastName": "Steioff",
+     "displayName": "wildCATSfortheCrown"
+    },
+    {
+     "id": "{FF163591-654D-4A7D-8312-07201E67BE05}",
+     "firstName": "Jordan",
+     "lastName": "Woods",
+     "displayName": "WoodsJordan"
+    }
+   ],
+   "teams": [
+    {
+     "id": 1,
+     "name": "Andrews Achane Penix Hurts",
+     "abbrev": "AAPH",
+     "ownerIds": [
+      "{F09B322D-A1A7-482D-9B32-2DA1A7782D25}"
+     ],
+     "wins": 0,
+     "losses": 0,
+     "ties": 0,
+     "pointsFor": 0,
+     "pointsAgainst": 0,
+     "finalStanding": 10
+    },
+    {
+     "id": 2,
+     "name": "Mr.Burrow's Naberhood",
+     "abbrev": "JS",
+     "ownerIds": [
+      "{0D3B0B22-750C-4FD4-92F6-E83E56CB5F5B}"
+     ],
+     "wins": 0,
+     "losses": 0,
+     "ties": 0,
+     "pointsFor": 0,
+     "pointsAgainst": 0,
+     "finalStanding": 9
+    },
+    {
+     "id": 3,
+     "name": "Jed York's Gooey Bellies",
+     "abbrev": "WOOD",
+     "ownerIds": [
+      "{FF163591-654D-4A7D-8312-07201E67BE05}"
+     ],
+     "wins": 0,
+     "losses": 0,
+     "ties": 0,
+     "pointsFor": 0,
+     "pointsAgainst": 0,
+     "finalStanding": 8
+    },
+    {
+     "id": 4,
+     "name": "The Executioner  ",
+     "abbrev": "JN",
+     "ownerIds": [
+      "{2977104D-7E27-4F54-BC81-405F5BA52E0E}"
+     ],
+     "wins": 0,
+     "losses": 0,
+     "ties": 0,
+     "pointsFor": 0,
+     "pointsAgainst": 0,
+     "finalStanding": 7
+    },
+    {
+     "id": 5,
+     "name": "Carry and the Hendersons",
+     "abbrev": "tjc",
+     "ownerIds": [
+      "{185CE179-A733-44E3-9B57-E21797904C9C}"
+     ],
+     "wins": 0,
+     "losses": 0,
+     "ties": 0,
+     "pointsFor": 0,
+     "pointsAgainst": 0,
+     "finalStanding": 6
+    },
+    {
+     "id": 6,
+     "name": "Two Dragons",
+     "abbrev": "2Drg",
+     "ownerIds": [
+      "{6CF0A732-8060-40F2-B107-71CA106ADBF1}"
+     ],
+     "wins": 0,
+     "losses": 0,
+     "ties": 0,
+     "pointsFor": 0,
+     "pointsAgainst": 0,
+     "finalStanding": 5
+    },
+    {
+     "id": 7,
+     "name": "Sweatpants Boner",
+     "abbrev": "BNR",
+     "ownerIds": [
+      "{7B87FD58-B941-4681-8C72-FF24B80352F3}"
+     ],
+     "wins": 0,
+     "losses": 0,
+     "ties": 0,
+     "pointsFor": 0,
+     "pointsAgainst": 0,
+     "finalStanding": 4
+    },
+    {
+     "id": 8,
+     "name": "Christian Chaplains",
+     "abbrev": "INRI",
+     "ownerIds": [
+      "{901E2CC8-7D3A-4E5A-9E2C-C87D3A9E5A37}",
+      "{296A3F8D-7AA8-4843-A9B2-325839BA41C9}"
+     ],
+     "wins": 0,
+     "losses": 0,
+     "ties": 0,
+     "pointsFor": 0,
+     "pointsAgainst": 0,
+     "finalStanding": 2
+    },
+    {
+     "id": 9,
+     "name": "Hunter's Wives",
+     "abbrev": "WIFE",
+     "ownerIds": [
+      "{5B4A6A77-93A0-4BBD-8760-925E906FCD44}",
+      "{996D5798-F2E9-4E04-B4F7-B039DA7732A8}"
+     ],
+     "wins": 0,
+     "losses": 0,
+     "ties": 0,
+     "pointsFor": 0,
+     "pointsAgainst": 0,
+     "finalStanding": 3
+    },
+    {
+     "id": 10,
+     "name": "NoMartyNoProblem",
+     "abbrev": "MART",
+     "ownerIds": [
+      "{C3C23DC7-DD6E-46EE-9DD1-0E3CCB2C55AD}"
+     ],
+     "wins": 0,
+     "losses": 0,
+     "ties": 0,
+     "pointsFor": 0,
+     "pointsAgainst": 0,
+     "finalStanding": 1
+    }
+   ],
+   "matchups": [
+    {
+     "week": 1,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 6,
+      "points": 0
+     },
+     "away": {
+      "teamId": 10,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 1,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 2,
+      "points": 0
+     },
+     "away": {
+      "teamId": 1,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 1,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 8,
+      "points": 0
+     },
+     "away": {
+      "teamId": 3,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 1,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 5,
+      "points": 0
+     },
+     "away": {
+      "teamId": 7,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 1,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 9,
+      "points": 0
+     },
+     "away": {
+      "teamId": 4,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 2,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 1,
+      "points": 0
+     },
+     "away": {
+      "teamId": 3,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 2,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 7,
+      "points": 0
+     },
+     "away": {
+      "teamId": 6,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 2,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 4,
+      "points": 0
+     },
+     "away": {
+      "teamId": 10,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 2,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 5,
+      "points": 0
+     },
+     "away": {
+      "teamId": 2,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 2,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 9,
+      "points": 0
+     },
+     "away": {
+      "teamId": 8,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 3,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 7,
+      "points": 0
+     },
+     "away": {
+      "teamId": 4,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 3,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 1,
+      "points": 0
+     },
+     "away": {
+      "teamId": 5,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 3,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 3,
+      "points": 0
+     },
+     "away": {
+      "teamId": 9,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 3,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 6,
+      "points": 0
+     },
+     "away": {
+      "teamId": 2,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 3,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 10,
+      "points": 0
+     },
+     "away": {
+      "teamId": 8,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 4,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 5,
+      "points": 0
+     },
+     "away": {
+      "teamId": 9,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 4,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 2,
+      "points": 0
+     },
+     "away": {
+      "teamId": 7,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 4,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 8,
+      "points": 0
+     },
+     "away": {
+      "teamId": 4,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 4,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 6,
+      "points": 0
+     },
+     "away": {
+      "teamId": 1,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 4,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 10,
+      "points": 0
+     },
+     "away": {
+      "teamId": 3,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 5,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 2,
+      "points": 0
+     },
+     "away": {
+      "teamId": 8,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 5,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 5,
+      "points": 0
+     },
+     "away": {
+      "teamId": 6,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 5,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 9,
+      "points": 0
+     },
+     "away": {
+      "teamId": 10,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 5,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 7,
+      "points": 0
+     },
+     "away": {
+      "teamId": 1,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 5,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 4,
+      "points": 0
+     },
+     "away": {
+      "teamId": 3,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 6,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 10,
+      "points": 0
+     },
+     "away": {
+      "teamId": 1,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 6,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 3,
+      "points": 0
+     },
+     "away": {
+      "teamId": 7,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 6,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 4,
+      "points": 0
+     },
+     "away": {
+      "teamId": 5,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 6,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 9,
+      "points": 0
+     },
+     "away": {
+      "teamId": 2,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 6,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 8,
+      "points": 0
+     },
+     "away": {
+      "teamId": 6,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 7,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 7,
+      "points": 0
+     },
+     "away": {
+      "teamId": 10,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 7,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 5,
+      "points": 0
+     },
+     "away": {
+      "teamId": 3,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 7,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 2,
+      "points": 0
+     },
+     "away": {
+      "teamId": 4,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 7,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 6,
+      "points": 0
+     },
+     "away": {
+      "teamId": 9,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 7,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 1,
+      "points": 0
+     },
+     "away": {
+      "teamId": 8,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 8,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 10,
+      "points": 0
+     },
+     "away": {
+      "teamId": 5,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 8,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 3,
+      "points": 0
+     },
+     "away": {
+      "teamId": 2,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 8,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 4,
+      "points": 0
+     },
+     "away": {
+      "teamId": 6,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 8,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 9,
+      "points": 0
+     },
+     "away": {
+      "teamId": 1,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 8,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 8,
+      "points": 0
+     },
+     "away": {
+      "teamId": 7,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 9,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 2,
+      "points": 0
+     },
+     "away": {
+      "teamId": 10,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 9,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 6,
+      "points": 0
+     },
+     "away": {
+      "teamId": 5,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 9,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 3,
+      "points": 0
+     },
+     "away": {
+      "teamId": 8,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 9,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 1,
+      "points": 0
+     },
+     "away": {
+      "teamId": 7,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 9,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 4,
+      "points": 0
+     },
+     "away": {
+      "teamId": 9,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 10,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 6,
+      "points": 0
+     },
+     "away": {
+      "teamId": 3,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 10,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 1,
+      "points": 0
+     },
+     "away": {
+      "teamId": 2,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 10,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 10,
+      "points": 0
+     },
+     "away": {
+      "teamId": 4,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 10,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 7,
+      "points": 0
+     },
+     "away": {
+      "teamId": 5,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 10,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 8,
+      "points": 0
+     },
+     "away": {
+      "teamId": 9,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 11,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 1,
+      "points": 0
+     },
+     "away": {
+      "teamId": 4,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 11,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 6,
+      "points": 0
+     },
+     "away": {
+      "teamId": 7,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 11,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 9,
+      "points": 0
+     },
+     "away": {
+      "teamId": 3,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 11,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 2,
+      "points": 0
+     },
+     "away": {
+      "teamId": 5,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 11,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 8,
+      "points": 0
+     },
+     "away": {
+      "teamId": 10,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 12,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 7,
+      "points": 0
+     },
+     "away": {
+      "teamId": 9,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 12,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 5,
+      "points": 0
+     },
+     "away": {
+      "teamId": 1,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 12,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 4,
+      "points": 0
+     },
+     "away": {
+      "teamId": 8,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 12,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 2,
+      "points": 0
+     },
+     "away": {
+      "teamId": 6,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 12,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 3,
+      "points": 0
+     },
+     "away": {
+      "teamId": 10,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 13,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 5,
+      "points": 0
+     },
+     "away": {
+      "teamId": 8,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 13,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 7,
+      "points": 0
+     },
+     "away": {
+      "teamId": 2,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 13,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 10,
+      "points": 0
+     },
+     "away": {
+      "teamId": 9,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 13,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 1,
+      "points": 0
+     },
+     "away": {
+      "teamId": 6,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    },
+    {
+     "week": 13,
+     "playoff": false,
+     "tier": null,
+     "home": {
+      "teamId": 3,
+      "points": 0
+     },
+     "away": {
+      "teamId": 4,
+      "points": 0
+     },
+     "winner": "UNDECIDED"
+    }
+   ],
+   "benchPointsByTeamWeek": {
+    "1": {
+     "1": 0,
+     "2": 0,
+     "3": 0,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0,
+     "9": 0,
+     "10": 0,
+     "11": 0,
+     "12": 0,
+     "13": 0
+    },
+    "2": {
+     "1": 0,
+     "2": 0,
+     "3": 0,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0,
+     "9": 0,
+     "10": 0,
+     "11": 0,
+     "12": 0,
+     "13": 0
+    },
+    "3": {
+     "1": 0,
+     "2": 0,
+     "3": 0,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0,
+     "9": 0,
+     "10": 0,
+     "11": 0,
+     "12": 0,
+     "13": 0
+    },
+    "4": {
+     "1": 0,
+     "2": 0,
+     "3": 0,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0,
+     "9": 0,
+     "10": 0,
+     "11": 0,
+     "12": 0,
+     "13": 0
+    },
+    "5": {
+     "1": 0,
+     "2": 0,
+     "3": 0,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0,
+     "9": 0,
+     "10": 0,
+     "11": 0,
+     "12": 0,
+     "13": 0
+    },
+    "6": {
+     "1": 0,
+     "2": 0,
+     "3": 0,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0,
+     "9": 0,
+     "10": 0,
+     "11": 0,
+     "12": 0,
+     "13": 0
+    },
+    "7": {
+     "1": 0,
+     "2": 0,
+     "3": 0,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0,
+     "9": 0,
+     "10": 0,
+     "11": 0,
+     "12": 0,
+     "13": 0
+    },
+    "8": {
+     "1": 0,
+     "2": 0,
+     "3": 0,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0,
+     "9": 0,
+     "10": 0,
+     "11": 0,
+     "12": 0,
+     "13": 0
+    },
+    "9": {
+     "1": 0,
+     "2": 0,
+     "3": 0,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0,
+     "9": 0,
+     "10": 0,
+     "11": 0,
+     "12": 0,
+     "13": 0
+    },
+    "10": {
+     "1": 0,
+     "2": 0,
+     "3": 0,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0,
+     "9": 0,
+     "10": 0,
+     "11": 0,
+     "12": 0,
+     "13": 0
+    }
+   },
+   "draft": [
+    {
+     "overall": 1,
+     "round": 1,
+     "roundPick": 1,
+     "teamId": 9,
+     "playerId": 4429795,
+     "player": "Jahmyr Gibbs",
+     "position": "RB",
+     "proTeamId": 8,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 2,
+     "round": 1,
+     "roundPick": 2,
+     "teamId": 1,
+     "playerId": 4430807,
+     "player": "Bijan Robinson",
+     "position": "RB",
+     "proTeamId": 1,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 3,
+     "round": 1,
+     "roundPick": 3,
+     "teamId": 5,
+     "playerId": 4242335,
+     "player": "Jonathan Taylor",
+     "position": "RB",
+     "proTeamId": 11,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 4,
+     "round": 1,
+     "roundPick": 4,
+     "teamId": 7,
+     "playerId": 4426515,
+     "player": "Puka Nacua",
+     "position": "WR",
+     "proTeamId": 14,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 5,
+     "round": 1,
+     "roundPick": 5,
+     "teamId": 2,
+     "playerId": 4430878,
+     "player": "Jaxon Smith-Njigba",
+     "position": "WR",
+     "proTeamId": 26,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 6,
+     "round": 1,
+     "roundPick": 6,
+     "teamId": 4,
+     "playerId": 4374302,
+     "player": "Amon-Ra St. Brown",
+     "position": "WR",
+     "proTeamId": 8,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 7,
+     "round": 1,
+     "roundPick": 7,
+     "teamId": 6,
+     "playerId": 4362628,
+     "player": "Ja'Marr Chase",
+     "position": "WR",
+     "proTeamId": 4,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 8,
+     "round": 1,
+     "roundPick": 8,
+     "teamId": 10,
+     "playerId": 4379399,
+     "player": "James Cook III",
+     "position": "RB",
+     "proTeamId": 2,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 9,
+     "round": 1,
+     "roundPick": 9,
+     "teamId": 8,
+     "playerId": 3117251,
+     "player": "Christian McCaffrey",
+     "position": "RB",
+     "proTeamId": 25,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 10,
+     "round": 1,
+     "roundPick": 10,
+     "teamId": 3,
+     "playerId": 4262921,
+     "player": "Justin Jefferson",
+     "position": "WR",
+     "proTeamId": 16,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 11,
+     "round": 2,
+     "roundPick": 1,
+     "teamId": 3,
+     "playerId": 4429160,
+     "player": "De'Von Achane",
+     "position": "RB",
+     "proTeamId": 15,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 12,
+     "round": 2,
+     "roundPick": 2,
+     "teamId": 8,
+     "playerId": 4241389,
+     "player": "CeeDee Lamb",
+     "position": "WR",
+     "proTeamId": 6,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 13,
+     "round": 2,
+     "roundPick": 3,
+     "teamId": 10,
+     "playerId": 4362238,
+     "player": "Chase Brown",
+     "position": "RB",
+     "proTeamId": 4,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 14,
+     "round": 2,
+     "roundPick": 4,
+     "teamId": 6,
+     "playerId": 3043078,
+     "player": "Derrick Henry",
+     "position": "RB",
+     "proTeamId": 33,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 15,
+     "round": 2,
+     "roundPick": 5,
+     "teamId": 4,
+     "playerId": 3929630,
+     "player": "Saquon Barkley",
+     "position": "RB",
+     "proTeamId": 21,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 16,
+     "round": 2,
+     "roundPick": 6,
+     "teamId": 2,
+     "playerId": 4685382,
+     "player": "Omarion Hampton",
+     "position": "RB",
+     "proTeamId": 24,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 17,
+     "round": 2,
+     "roundPick": 7,
+     "teamId": 7,
+     "playerId": 4890973,
+     "player": "Ashton Jeanty",
+     "position": "RB",
+     "proTeamId": 13,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 18,
+     "round": 2,
+     "roundPick": 8,
+     "teamId": 5,
+     "playerId": 4047646,
+     "player": "A.J. Brown",
+     "position": "WR",
+     "proTeamId": 17,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 19,
+     "round": 2,
+     "roundPick": 9,
+     "teamId": 1,
+     "playerId": 4870808,
+     "player": "Jeremiyah Love",
+     "position": "RB",
+     "proTeamId": 22,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 20,
+     "round": 2,
+     "roundPick": 10,
+     "teamId": 9,
+     "playerId": 4426502,
+     "player": "Drake London",
+     "position": "WR",
+     "proTeamId": 1,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 21,
+     "round": 3,
+     "roundPick": 1,
+     "teamId": 9,
+     "playerId": 4258173,
+     "player": "Nico Collins",
+     "position": "WR",
+     "proTeamId": 34,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 22,
+     "round": 3,
+     "roundPick": 2,
+     "teamId": 1,
+     "playerId": 4426354,
+     "player": "George Pickens",
+     "position": "WR",
+     "proTeamId": 6,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 23,
+     "round": 3,
+     "roundPick": 3,
+     "teamId": 5,
+     "playerId": 4430737,
+     "player": "Kyren Williams",
+     "position": "RB",
+     "proTeamId": 14,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 24,
+     "round": 3,
+     "roundPick": 4,
+     "teamId": 7,
+     "playerId": 4432665,
+     "player": "Brock Bowers",
+     "position": "TE",
+     "proTeamId": 13,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 25,
+     "round": 3,
+     "roundPick": 5,
+     "teamId": 2,
+     "playerId": 4241478,
+     "player": "DeVonta Smith",
+     "position": "WR",
+     "proTeamId": 21,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 26,
+     "round": 3,
+     "roundPick": 6,
+     "teamId": 4,
+     "playerId": 4361370,
+     "player": "Chris Olave",
+     "position": "WR",
+     "proTeamId": 18,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 27,
+     "round": 3,
+     "roundPick": 7,
+     "teamId": 6,
+     "playerId": 4361307,
+     "player": "Trey McBride",
+     "position": "TE",
+     "proTeamId": 22,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 28,
+     "round": 3,
+     "roundPick": 8,
+     "teamId": 10,
+     "playerId": 4428331,
+     "player": "Rashee Rice",
+     "position": "WR",
+     "proTeamId": 12,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 29,
+     "round": 3,
+     "roundPick": 9,
+     "teamId": 8,
+     "playerId": 4567048,
+     "player": "Kenneth Walker III",
+     "position": "RB",
+     "proTeamId": 12,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 30,
+     "round": 3,
+     "roundPick": 10,
+     "teamId": 3,
+     "playerId": 3918298,
+     "player": "Josh Allen",
+     "position": "QB",
+     "proTeamId": 2,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 31,
+     "round": 4,
+     "roundPick": 1,
+     "teamId": 3,
+     "playerId": 4361579,
+     "player": "Javonte Williams",
+     "position": "RB",
+     "proTeamId": 6,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 32,
+     "round": 4,
+     "roundPick": 2,
+     "teamId": 8,
+     "playerId": 4595348,
+     "player": "Malik Nabers",
+     "position": "WR",
+     "proTeamId": 19,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 33,
+     "round": 4,
+     "roundPick": 3,
+     "teamId": 10,
+     "playerId": 4567750,
+     "player": "Emeka Egbuka",
+     "position": "WR",
+     "proTeamId": 27,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 34,
+     "round": 4,
+     "roundPick": 4,
+     "teamId": 6,
+     "playerId": 4569618,
+     "player": "Garrett Wilson",
+     "position": "WR",
+     "proTeamId": 20,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 35,
+     "round": 4,
+     "roundPick": 5,
+     "teamId": 4,
+     "playerId": 4427366,
+     "player": "Breece Hall",
+     "position": "RB",
+     "proTeamId": 20,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 36,
+     "round": 4,
+     "roundPick": 6,
+     "teamId": 2,
+     "playerId": 4685702,
+     "player": "Quinshon Judkins",
+     "position": "RB",
+     "proTeamId": 5,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 37,
+     "round": 4,
+     "roundPick": 7,
+     "teamId": 7,
+     "playerId": 4239996,
+     "player": "Travis Etienne Jr.",
+     "position": "RB",
+     "proTeamId": 18,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 38,
+     "round": 4,
+     "roundPick": 8,
+     "teamId": 5,
+     "playerId": 4429615,
+     "player": "Zay Flowers",
+     "position": "WR",
+     "proTeamId": 33,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 39,
+     "round": 4,
+     "roundPick": 9,
+     "teamId": 1,
+     "playerId": 16800,
+     "player": "Davante Adams",
+     "position": "WR",
+     "proTeamId": 14,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 40,
+     "round": 4,
+     "roundPick": 10,
+     "teamId": 9,
+     "playerId": 4239993,
+     "player": "Tee Higgins",
+     "position": "WR",
+     "proTeamId": 4,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 41,
+     "round": 5,
+     "roundPick": 1,
+     "teamId": 9,
+     "playerId": 4685512,
+     "player": "Jadarian Price",
+     "position": "RB",
+     "proTeamId": 26,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 42,
+     "round": 5,
+     "roundPick": 2,
+     "teamId": 1,
+     "playerId": 4372016,
+     "player": "Jaylen Waddle",
+     "position": "WR",
+     "proTeamId": 7,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 43,
+     "round": 5,
+     "roundPick": 3,
+     "teamId": 5,
+     "playerId": 4431452,
+     "player": "Drake Maye",
+     "position": "QB",
+     "proTeamId": 17,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 44,
+     "round": 5,
+     "roundPick": 4,
+     "teamId": 7,
+     "playerId": 4612826,
+     "player": "Ladd McConkey",
+     "position": "WR",
+     "proTeamId": 24,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 45,
+     "round": 5,
+     "roundPick": 5,
+     "teamId": 2,
+     "playerId": 3916387,
+     "player": "Lamar Jackson",
+     "position": "QB",
+     "proTeamId": 33,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 46,
+     "round": 5,
+     "roundPick": 6,
+     "teamId": 4,
+     "playerId": 4685472,
+     "player": "Tetairoa McMillan",
+     "position": "WR",
+     "proTeamId": 29,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 47,
+     "round": 5,
+     "roundPick": 7,
+     "teamId": 6,
+     "playerId": 4696981,
+     "player": "Cam Skattebo",
+     "position": "RB",
+     "proTeamId": 19,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 48,
+     "round": 5,
+     "roundPick": 8,
+     "teamId": 10,
+     "playerId": 4723086,
+     "player": "Colston Loveland",
+     "position": "TE",
+     "proTeamId": 3,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 49,
+     "round": 5,
+     "roundPick": 9,
+     "teamId": 8,
+     "playerId": 4685278,
+     "player": "Luther Burden III",
+     "position": "WR",
+     "proTeamId": 3,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 50,
+     "round": 5,
+     "roundPick": 10,
+     "teamId": 3,
+     "playerId": 3121422,
+     "player": "Terry McLaurin",
+     "position": "WR",
+     "proTeamId": 28,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 51,
+     "round": 6,
+     "roundPick": 1,
+     "teamId": 3,
+     "playerId": 4431459,
+     "player": "Tyler Warren",
+     "position": "TE",
+     "proTeamId": 11,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 52,
+     "round": 6,
+     "roundPick": 2,
+     "teamId": 8,
+     "playerId": 3915511,
+     "player": "Joe Burrow",
+     "position": "QB",
+     "proTeamId": 4,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 53,
+     "round": 6,
+     "roundPick": 3,
+     "teamId": 10,
+     "playerId": 4426388,
+     "player": "Jameson Williams",
+     "position": "WR",
+     "proTeamId": 8,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 54,
+     "round": 6,
+     "roundPick": 4,
+     "teamId": 6,
+     "playerId": 4596448,
+     "player": "Bucky Irving",
+     "position": "RB",
+     "proTeamId": 27,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 55,
+     "round": 6,
+     "roundPick": 5,
+     "teamId": 4,
+     "playerId": 4882093,
+     "player": "Bhayshul Tuten",
+     "position": "RB",
+     "proTeamId": 30,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 56,
+     "round": 6,
+     "roundPick": 6,
+     "teamId": 2,
+     "playerId": 4360248,
+     "player": "Kyle Pitts Sr.",
+     "position": "TE",
+     "proTeamId": 1,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 57,
+     "round": 6,
+     "roundPick": 7,
+     "teamId": 7,
+     "playerId": 3915416,
+     "player": "DJ Moore",
+     "position": "WR",
+     "proTeamId": 2,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 58,
+     "round": 6,
+     "roundPick": 8,
+     "teamId": 5,
+     "playerId": 4432710,
+     "player": "TreVeyon Henderson",
+     "position": "RB",
+     "proTeamId": 17,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 59,
+     "round": 6,
+     "roundPick": 9,
+     "teamId": 1,
+     "playerId": 4426348,
+     "player": "Jayden Daniels",
+     "position": "QB",
+     "proTeamId": 28,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 60,
+     "round": 6,
+     "roundPick": 10,
+     "teamId": 9,
+     "playerId": 4259545,
+     "player": "D'Andre Swift",
+     "position": "RB",
+     "proTeamId": 3,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 61,
+     "round": 7,
+     "roundPick": 1,
+     "teamId": 9,
+     "playerId": 5083076,
+     "player": "Harold Fannin Jr.",
+     "position": "TE",
+     "proTeamId": 5,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 62,
+     "round": 7,
+     "roundPick": 2,
+     "teamId": 1,
+     "playerId": 3040151,
+     "player": "George Kittle",
+     "position": "TE",
+     "proTeamId": 25,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 63,
+     "round": 7,
+     "roundPick": 3,
+     "teamId": 5,
+     "playerId": 4035687,
+     "player": "Michael Pittman Jr.",
+     "position": "WR",
+     "proTeamId": 23,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 64,
+     "round": 7,
+     "roundPick": 4,
+     "teamId": 7,
+     "playerId": 4035538,
+     "player": "David Montgomery",
+     "position": "RB",
+     "proTeamId": 34,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 65,
+     "round": 7,
+     "roundPick": 5,
+     "teamId": 2,
+     "playerId": 4569173,
+     "player": "Rhamondre Stevenson",
+     "position": "RB",
+     "proTeamId": 17,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 66,
+     "round": 7,
+     "roundPick": 6,
+     "teamId": 4,
+     "playerId": 4040715,
+     "player": "Jalen Hurts",
+     "position": "QB",
+     "proTeamId": 21,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 67,
+     "round": 7,
+     "roundPick": 7,
+     "teamId": 6,
+     "playerId": 16737,
+     "player": "Mike Evans",
+     "position": "WR",
+     "proTeamId": 25,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 68,
+     "round": 7,
+     "roundPick": 8,
+     "teamId": 10,
+     "playerId": 2577417,
+     "player": "Dak Prescott",
+     "position": "QB",
+     "proTeamId": 6,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 69,
+     "round": 7,
+     "roundPick": 9,
+     "teamId": 8,
+     "playerId": 4248528,
+     "player": "Christian Watson",
+     "position": "WR",
+     "proTeamId": 9,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 70,
+     "round": 7,
+     "roundPick": 10,
+     "teamId": 3,
+     "playerId": 4432620,
+     "player": "Parker Washington",
+     "position": "WR",
+     "proTeamId": 30,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 71,
+     "round": 8,
+     "roundPick": 1,
+     "teamId": 3,
+     "playerId": 4431299,
+     "player": "Rome Odunze",
+     "position": "WR",
+     "proTeamId": 3,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 72,
+     "round": 8,
+     "roundPick": 2,
+     "teamId": 8,
+     "playerId": 4569987,
+     "player": "Jaylen Warren",
+     "position": "RB",
+     "proTeamId": 23,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 73,
+     "round": 8,
+     "roundPick": 3,
+     "teamId": 10,
+     "playerId": 4047365,
+     "player": "Josh Jacobs",
+     "position": "RB",
+     "proTeamId": 9,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 74,
+     "round": 8,
+     "roundPick": 4,
+     "teamId": 6,
+     "playerId": 4871023,
+     "player": "Carnell Tate",
+     "position": "WR",
+     "proTeamId": 10,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 75,
+     "round": 8,
+     "roundPick": 5,
+     "teamId": 4,
+     "playerId": 4430027,
+     "player": "Sam LaPorta",
+     "position": "TE",
+     "proTeamId": 8,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 76,
+     "round": 8,
+     "roundPick": 6,
+     "teamId": 2,
+     "playerId": 4047650,
+     "player": "DK Metcalf",
+     "position": "WR",
+     "proTeamId": 23,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 77,
+     "round": 8,
+     "roundPick": 7,
+     "teamId": 7,
+     "playerId": 4432708,
+     "player": "Marvin Harrison Jr.",
+     "position": "WR",
+     "proTeamId": 22,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 78,
+     "round": 8,
+     "roundPick": 8,
+     "teamId": 5,
+     "playerId": 3128429,
+     "player": "Courtland Sutton",
+     "position": "WR",
+     "proTeamId": 7,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 79,
+     "round": 8,
+     "roundPick": 9,
+     "teamId": 1,
+     "playerId": 4678008,
+     "player": "Jonathon Brooks",
+     "position": "RB",
+     "proTeamId": 29,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 80,
+     "round": 8,
+     "roundPick": 10,
+     "teamId": 9,
+     "playerId": 4429023,
+     "player": "MarShawn Lloyd",
+     "position": "RB",
+     "proTeamId": 9,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 81,
+     "round": 9,
+     "roundPick": 1,
+     "teamId": 9,
+     "playerId": 4689114,
+     "player": "Jaxson Dart",
+     "position": "QB",
+     "proTeamId": 19,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 82,
+     "round": 9,
+     "roundPick": 2,
+     "teamId": 1,
+     "playerId": 3953687,
+     "player": "Brandon Aubrey",
+     "position": "K",
+     "proTeamId": 6,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 83,
+     "round": 9,
+     "roundPick": 3,
+     "teamId": 5,
+     "playerId": 3916148,
+     "player": "Tony Pollard",
+     "position": "RB",
+     "proTeamId": 10,
+     "autoDrafted": true,
+     "keeper": false
+    },
+    {
+     "overall": 84,
+     "round": 9,
+     "roundPick": 4,
+     "teamId": 7,
+     "playerId": 4569587,
+     "player": "Wan'Dale Robinson",
+     "position": "WR",
+     "proTeamId": 10,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 85,
+     "round": 9,
+     "roundPick": 5,
+     "teamId": 2,
+     "playerId": 4360078,
+     "player": "Alec Pierce",
+     "position": "WR",
+     "proTeamId": 11,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 86,
+     "round": 9,
+     "roundPick": 6,
+     "teamId": 4,
+     "playerId": 4360761,
+     "player": "Michael Wilson",
+     "position": "WR",
+     "proTeamId": 22,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 87,
+     "round": 9,
+     "roundPick": 7,
+     "teamId": 6,
+     "playerId": 4038941,
+     "player": "Justin Herbert",
+     "position": "QB",
+     "proTeamId": 24,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 88,
+     "round": 9,
+     "roundPick": 8,
+     "teamId": 10,
+     "playerId": 2976212,
+     "player": "Stefon Diggs",
+     "position": "WR",
+     "proTeamId": 28,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 89,
+     "round": 9,
+     "roundPick": 9,
+     "teamId": 8,
+     "playerId": 3116165,
+     "player": "Chris Godwin Jr.",
+     "position": "WR",
+     "proTeamId": 27,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 90,
+     "round": 9,
+     "roundPick": 10,
+     "teamId": 3,
+     "playerId": 4371733,
+     "player": "Kenny Gainwell",
+     "position": "RB",
+     "proTeamId": 27,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 91,
+     "round": 10,
+     "roundPick": 1,
+     "teamId": 3,
+     "playerId": 4362081,
+     "player": "Cameron Dicker",
+     "position": "K",
+     "proTeamId": 24,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 92,
+     "round": 10,
+     "roundPick": 2,
+     "teamId": 8,
+     "playerId": 4572680,
+     "player": "Tucker Kraft",
+     "position": "TE",
+     "proTeamId": 9,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 93,
+     "round": 10,
+     "roundPick": 3,
+     "teamId": 10,
+     "playerId": 4429096,
+     "player": "Blake Corum",
+     "position": "RB",
+     "proTeamId": 14,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 94,
+     "round": 10,
+     "roundPick": 4,
+     "teamId": 6,
+     "playerId": 4038815,
+     "player": "Rico Dowdle",
+     "position": "RB",
+     "proTeamId": 23,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 95,
+     "round": 10,
+     "roundPick": 5,
+     "teamId": 4,
+     "playerId": 3916433,
+     "player": "Jakobi Meyers",
+     "position": "WR",
+     "proTeamId": 30,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 96,
+     "round": 10,
+     "roundPick": 6,
+     "teamId": 2,
+     "playerId": 4241985,
+     "player": "J.K. Dobbins",
+     "position": "RB",
+     "proTeamId": 7,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 97,
+     "round": 10,
+     "roundPick": 7,
+     "teamId": 7,
+     "playerId": 4431611,
+     "player": "Caleb Williams",
+     "position": "QB",
+     "proTeamId": 3,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 98,
+     "round": 10,
+     "roundPick": 8,
+     "teamId": 5,
+     "playerId": 3046439,
+     "player": "Hunter Henry",
+     "position": "TE",
+     "proTeamId": 17,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 99,
+     "round": 10,
+     "roundPick": 9,
+     "teamId": 1,
+     "playerId": 4701936,
+     "player": "Matthew Golden",
+     "position": "WR",
+     "proTeamId": 9,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 100,
+     "round": 10,
+     "roundPick": 10,
+     "teamId": 9,
+     "playerId": 4432773,
+     "player": "Brian Thomas Jr.",
+     "position": "WR",
+     "proTeamId": 30,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 101,
+     "round": 11,
+     "roundPick": 1,
+     "teamId": 9,
+     "playerId": 4429205,
+     "player": "Jordan Addison",
+     "position": "WR",
+     "proTeamId": 16,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 102,
+     "round": 11,
+     "roundPick": 2,
+     "teamId": 1,
+     "playerId": 3139477,
+     "player": "Patrick Mahomes",
+     "position": "QB",
+     "proTeamId": 12,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 103,
+     "round": 11,
+     "roundPick": 3,
+     "teamId": 5,
+     "playerId": 4608686,
+     "player": "Kyle Monangai",
+     "position": "RB",
+     "proTeamId": 3,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 104,
+     "round": 11,
+     "roundPick": 4,
+     "teamId": 7,
+     "playerId": 4697815,
+     "player": "Rachaad White",
+     "position": "RB",
+     "proTeamId": 28,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 105,
+     "round": 11,
+     "roundPick": 5,
+     "teamId": 2,
+     "playerId": 4870795,
+     "player": "Makai Lemon",
+     "position": "WR",
+     "proTeamId": 21,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 106,
+     "round": 11,
+     "roundPick": 6,
+     "teamId": 4,
+     "playerId": 15847,
+     "player": "Travis Kelce",
+     "position": "TE",
+     "proTeamId": 12,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 107,
+     "round": 11,
+     "roundPick": 7,
+     "teamId": 6,
+     "playerId": 4373678,
+     "player": "Khalil Shakir",
+     "position": "WR",
+     "proTeamId": 2,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 108,
+     "round": 11,
+     "roundPick": 8,
+     "teamId": 10,
+     "playerId": 3042519,
+     "player": "Aaron Jones Sr.",
+     "position": "RB",
+     "proTeamId": 16,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 109,
+     "round": 11,
+     "roundPick": 9,
+     "teamId": 8,
+     "playerId": 4360310,
+     "player": "Trevor Lawrence",
+     "position": "QB",
+     "proTeamId": 30,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 110,
+     "round": 11,
+     "roundPick": 10,
+     "teamId": 3,
+     "playerId": -16014,
+     "player": "Rams D/ST",
+     "position": "D/ST",
+     "proTeamId": 14,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 111,
+     "round": 12,
+     "roundPick": 1,
+     "teamId": 3,
+     "playerId": 4870653,
+     "player": "KC Concepcion",
+     "position": "WR",
+     "proTeamId": 5,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 112,
+     "round": 12,
+     "roundPick": 2,
+     "teamId": 8,
+     "playerId": 4568490,
+     "player": "RJ Harvey",
+     "position": "RB",
+     "proTeamId": 7,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 113,
+     "round": 12,
+     "roundPick": 3,
+     "teamId": 10,
+     "playerId": 4429025,
+     "player": "Quentin Johnston",
+     "position": "WR",
+     "proTeamId": 24,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 114,
+     "round": 12,
+     "roundPick": 4,
+     "teamId": 6,
+     "playerId": 4241416,
+     "player": "Chuba Hubbard",
+     "position": "RB",
+     "proTeamId": 29,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 115,
+     "round": 12,
+     "roundPick": 5,
+     "teamId": 4,
+     "playerId": -16034,
+     "player": "Texans D/ST",
+     "position": "D/ST",
+     "proTeamId": 34,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 116,
+     "round": 12,
+     "roundPick": 6,
+     "teamId": 2,
+     "playerId": -16007,
+     "player": "Broncos D/ST",
+     "position": "D/ST",
+     "proTeamId": 7,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 117,
+     "round": 12,
+     "roundPick": 7,
+     "teamId": 7,
+     "playerId": 4683062,
+     "player": "Xavier Worthy",
+     "position": "WR",
+     "proTeamId": 12,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 118,
+     "round": 12,
+     "roundPick": 8,
+     "teamId": 5,
+     "playerId": 3121023,
+     "player": "Dallas Goedert",
+     "position": "TE",
+     "proTeamId": 21,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 119,
+     "round": 12,
+     "roundPick": 9,
+     "teamId": 1,
+     "playerId": -16026,
+     "player": "Seahawks D/ST",
+     "position": "D/ST",
+     "proTeamId": 26,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 120,
+     "round": 12,
+     "roundPick": 10,
+     "teamId": 9,
+     "playerId": 4688813,
+     "player": "Josh Downs",
+     "position": "WR",
+     "proTeamId": 11,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 121,
+     "round": 13,
+     "roundPick": 1,
+     "teamId": 9,
+     "playerId": 4360569,
+     "player": "Jordan Mason",
+     "position": "RB",
+     "proTeamId": 16,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 122,
+     "round": 13,
+     "roundPick": 2,
+     "teamId": 1,
+     "playerId": 4575131,
+     "player": "Jacory Croskey-Merritt",
+     "position": "RB",
+     "proTeamId": 28,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 123,
+     "round": 13,
+     "roundPick": 3,
+     "teamId": 5,
+     "playerId": -16017,
+     "player": "Patriots D/ST",
+     "position": "D/ST",
+     "proTeamId": 17,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 124,
+     "round": 13,
+     "roundPick": 4,
+     "teamId": 7,
+     "playerId": 4362249,
+     "player": "Jayden Reed",
+     "position": "WR",
+     "proTeamId": 9,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 125,
+     "round": 13,
+     "roundPick": 5,
+     "teamId": 2,
+     "playerId": 4429059,
+     "player": "Woody Marks",
+     "position": "RB",
+     "proTeamId": 34,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 126,
+     "round": 13,
+     "roundPick": 6,
+     "teamId": 4,
+     "playerId": 3126486,
+     "player": "Deebo Samuel Sr.",
+     "position": "WR",
+     "proTeamId": 25,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 127,
+     "round": 13,
+     "roundPick": 7,
+     "teamId": 6,
+     "playerId": -16023,
+     "player": "Steelers D/ST",
+     "position": "D/ST",
+     "proTeamId": 23,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 128,
+     "round": 13,
+     "roundPick": 8,
+     "teamId": 10,
+     "playerId": -16021,
+     "player": "Eagles D/ST",
+     "position": "D/ST",
+     "proTeamId": 21,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 129,
+     "round": 13,
+     "roundPick": 9,
+     "teamId": 8,
+     "playerId": 4361050,
+     "player": "Isaiah Likely",
+     "position": "TE",
+     "proTeamId": 19,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 130,
+     "round": 13,
+     "roundPick": 10,
+     "teamId": 3,
+     "playerId": 4361432,
+     "player": "Romeo Doubs",
+     "position": "WR",
+     "proTeamId": 17,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 131,
+     "round": 14,
+     "roundPick": 1,
+     "teamId": 3,
+     "playerId": 4242355,
+     "player": "Jake Ferguson",
+     "position": "TE",
+     "proTeamId": 6,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 132,
+     "round": 14,
+     "roundPick": 2,
+     "teamId": 8,
+     "playerId": 4710714,
+     "player": "De'Zhaun Stribling",
+     "position": "WR",
+     "proTeamId": 25,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 133,
+     "round": 14,
+     "roundPick": 3,
+     "teamId": 10,
+     "playerId": 2473037,
+     "player": "Jason Myers",
+     "position": "K",
+     "proTeamId": 26,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 134,
+     "round": 14,
+     "roundPick": 4,
+     "teamId": 6,
+     "playerId": 12483,
+     "player": "Matthew Stafford",
+     "position": "QB",
+     "proTeamId": 14,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 135,
+     "round": 14,
+     "roundPick": 5,
+     "teamId": 4,
+     "playerId": 4574716,
+     "player": "Harrison Mevis",
+     "position": "K",
+     "proTeamId": 14,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 136,
+     "round": 14,
+     "roundPick": 6,
+     "teamId": 2,
+     "playerId": 4695883,
+     "player": "Jalen Coker",
+     "position": "WR",
+     "proTeamId": 29,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 137,
+     "round": 14,
+     "roundPick": 7,
+     "teamId": 7,
+     "playerId": -16033,
+     "player": "Ravens D/ST",
+     "position": "D/ST",
+     "proTeamId": 33,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 138,
+     "round": 14,
+     "roundPick": 8,
+     "teamId": 5,
+     "playerId": 3055899,
+     "player": "Harrison Butker",
+     "position": "K",
+     "proTeamId": 12,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 139,
+     "round": 14,
+     "roundPick": 9,
+     "teamId": 1,
+     "playerId": 3116365,
+     "player": "Mark Andrews",
+     "position": "TE",
+     "proTeamId": 33,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 140,
+     "round": 14,
+     "roundPick": 10,
+     "teamId": 9,
+     "playerId": 4596334,
+     "player": "Keaton Mitchell",
+     "position": "RB",
+     "proTeamId": 24,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 141,
+     "round": 15,
+     "roundPick": 1,
+     "teamId": 9,
+     "playerId": -16030,
+     "player": "Jaguars D/ST",
+     "position": "D/ST",
+     "proTeamId": 30,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 142,
+     "round": 15,
+     "roundPick": 2,
+     "teamId": 1,
+     "playerId": 4426385,
+     "player": "Zach Charbonnet",
+     "position": "RB",
+     "proTeamId": 26,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 143,
+     "round": 15,
+     "roundPick": 3,
+     "teamId": 5,
+     "playerId": 4428718,
+     "player": "Tre Tucker",
+     "position": "WR",
+     "proTeamId": 13,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 144,
+     "round": 15,
+     "roundPick": 4,
+     "teamId": 7,
+     "playerId": 4686658,
+     "player": "Mike Washington Jr.",
+     "position": "RB",
+     "proTeamId": 13,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 145,
+     "round": 15,
+     "roundPick": 5,
+     "teamId": 2,
+     "playerId": 2971573,
+     "player": "Ka'imi Fairbairn",
+     "position": "K",
+     "proTeamId": 34,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 146,
+     "round": 15,
+     "roundPick": 6,
+     "teamId": 4,
+     "playerId": 4032473,
+     "player": "Rashid Shaheed",
+     "position": "WR",
+     "proTeamId": 26,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 147,
+     "round": 15,
+     "roundPick": 7,
+     "teamId": 6,
+     "playerId": 4385690,
+     "player": "Dalton Kincaid",
+     "position": "TE",
+     "proTeamId": 2,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 148,
+     "round": 15,
+     "roundPick": 8,
+     "teamId": 10,
+     "playerId": 4832800,
+     "player": "Denzel Boston",
+     "position": "WR",
+     "proTeamId": 5,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 149,
+     "round": 15,
+     "roundPick": 9,
+     "teamId": 8,
+     "playerId": -16024,
+     "player": "Chargers D/ST",
+     "position": "D/ST",
+     "proTeamId": 24,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 150,
+     "round": 15,
+     "roundPick": 10,
+     "teamId": 3,
+     "playerId": 4361529,
+     "player": "Isiah Pacheco",
+     "position": "RB",
+     "proTeamId": 8,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 151,
+     "round": 16,
+     "roundPick": 1,
+     "teamId": 3,
+     "playerId": 3046779,
+     "player": "Jared Goff",
+     "position": "QB",
+     "proTeamId": 8,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 152,
+     "round": 16,
+     "roundPick": 2,
+     "teamId": 8,
+     "playerId": 4034949,
+     "player": "Eddy Pineiro",
+     "position": "K",
+     "proTeamId": 25,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 153,
+     "round": 16,
+     "roundPick": 3,
+     "teamId": 10,
+     "playerId": 4362619,
+     "player": "Chris Rodriguez Jr.",
+     "position": "RB",
+     "proTeamId": 30,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 154,
+     "round": 16,
+     "roundPick": 4,
+     "teamId": 6,
+     "playerId": 4869461,
+     "player": "Trey Smack",
+     "position": "K",
+     "proTeamId": 9,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 155,
+     "round": 16,
+     "roundPick": 5,
+     "teamId": 4,
+     "playerId": 15818,
+     "player": "Keenan Allen",
+     "position": "WR",
+     "proTeamId": 11,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 156,
+     "round": 16,
+     "roundPick": 6,
+     "teamId": 2,
+     "playerId": 4426338,
+     "player": "Bo Nix",
+     "position": "QB",
+     "proTeamId": 7,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 157,
+     "round": 16,
+     "roundPick": 7,
+     "teamId": 7,
+     "playerId": 4567104,
+     "player": "Will Reichard",
+     "position": "K",
+     "proTeamId": 16,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 158,
+     "round": 16,
+     "roundPick": 8,
+     "teamId": 5,
+     "playerId": 3052587,
+     "player": "Baker Mayfield",
+     "position": "QB",
+     "proTeamId": 27,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 159,
+     "round": 16,
+     "roundPick": 9,
+     "teamId": 1,
+     "playerId": 4685261,
+     "player": "Germie Bernard",
+     "position": "WR",
+     "proTeamId": 23,
+     "autoDrafted": false,
+     "keeper": false
+    },
+    {
+     "overall": 160,
+     "round": 16,
+     "roundPick": 10,
+     "teamId": 9,
+     "playerId": 4686361,
+     "player": "Cam Little",
+     "position": "K",
+     "proTeamId": 30,
+     "autoDrafted": false,
+     "keeper": false
+    }
+   ],
+   "transactions": [
+    {
+     "id": "af01f4ec-5176-480e-880d-4eb4294a33ea",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4361432,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "c692fa9b-f983-4df1-a715-696b3c1b94a6",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4361529,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "155b6f46-90b5-400d-a474-6fe023d4827d",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4258173,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "df552437-ab7a-4f2e-9c0e-712ff87f55d5",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3128429,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "c7b10efd-f760-4582-a580-136991304ce7",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4361307,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "b77df3fd-678e-4898-8ea1-1d4b1c466e87",
+     "type": "ROSTER",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917203436,
+     "processDate": null,
+     "items": [
+      {
+       "type": "LINEUP",
+       "playerId": 3040151,
+       "fromTeamId": 0,
+       "toTeamId": 0
+      },
+      {
+       "type": "LINEUP",
+       "playerId": 3116365,
+       "fromTeamId": 0,
+       "toTeamId": 0
+      }
+     ]
+    },
+    {
+     "id": "f210dbdf-8052-4555-893f-2fa536c0be6d",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4362628,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "3ae5b5b0-922d-474e-8dc7-d9310f49f81c",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 2976212,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "203c1e09-c437-45ca-91f3-241536ab6231",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4431611,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "4d5c4334-3249-43b2-a7ba-36191d0a41a0",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": -16007,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "be5c6abb-a912-47b6-bda2-888a7c0dc2f9",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4248528,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "bfbe682c-6165-4b8e-be9d-c0f7032a755f",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4595348,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "a7b7928e-a217-4ae9-b399-213529a59746",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3055899,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "33b47bc8-7270-492d-9a22-ea52bb634ea9",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4241985,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "0c59a160-3fa0-43f3-abb5-0745d3953a98",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4832800,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "0a3e1c18-4026-4ff0-9a49-d28a28958c08",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4429059,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "e2c38f3c-f34b-4134-ba91-a187d3143913",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4432620,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "ccf1fe05-c6a1-4501-9332-176ff5ee3775",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": -16023,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "676f0985-b452-4cf7-8128-3fbffc79181a",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 15847,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "f183259a-8081-4a47-82e3-9b17460f1c93",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4612826,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "8b72a51b-386d-437b-8fce-c4379f71035b",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4431299,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "3166c8bd-e233-4511-bc65-8b54909be3eb",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3915416,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "d732fa29-4daf-41cc-a48b-8b34933dd348",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4432773,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "a4ee97f7-f72b-4f46-8ee4-837b27c3dc9a",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4426354,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "0d81a142-fcc0-495f-aa81-8ec67ac40c6c",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 2473037,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "1a604172-2008-467f-aaa9-c9a1eb3cb2f3",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4047650,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "cbf4ad38-ec64-402f-8139-11d055fe52cf",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3046779,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "dcc9170b-2409-49a6-afc6-d93972ff13ca",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3040151,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "e9230033-b235-4b20-9df8-856b7cd593e4",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4035687,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "cc9b6a86-6751-4596-9eae-972b8a3fa3c0",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4040715,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "620cb482-06f9-4162-b049-cdc6935f717c",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4427366,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "d826d0a1-b381-49e9-a5bc-386fbfd2b955",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4688813,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "df503283-b856-4ca7-acd5-0a26bc18dc88",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4360310,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "b2ad1d5a-8982-4ca1-bbc2-b2669fb06a6b",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4685512,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "1069182f-fc4d-431e-a478-dca4c843da27",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3121023,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "c3eab88e-ae59-4254-a717-f4bcfd72091f",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4362238,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "ee367c27-5a86-45df-911b-fa099e865c50",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4239996,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "a91e1f18-6c12-4902-a96f-fe45404787fc",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4575131,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "c25a26c9-e651-496c-b43f-e6955b52b781",
+     "type": "ROSTER",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788918587257,
+     "processDate": null,
+     "items": [
+      {
+       "type": "LINEUP",
+       "playerId": 3121023,
+       "fromTeamId": 0,
+       "toTeamId": 0
+      },
+      {
+       "type": "LINEUP",
+       "playerId": 3046439,
+       "fromTeamId": 0,
+       "toTeamId": 0
+      }
+     ]
+    },
+    {
+     "id": "ff9c182d-4e74-4ba1-9354-00137a1cb9f1",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3918298,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "241530a7-c234-45a3-9a00-b0f093bb6b9d",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3953687,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "046dfb1d-ae3f-4196-8535-78c357aad65d",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4047646,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "7af590e0-7a3a-4ca6-a41b-973b78ac8bb7",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4361579,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "8eaad593-45c6-4dde-b41c-2c159da66871",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4569987,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "796ad091-b40d-4c40-8b3c-ea773383ddba",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3916433,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "084fafdd-a41b-4304-8377-50fb3add1762",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4362249,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "8ac21193-a195-4783-8edb-3c7f2503ae20",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4678008,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "c80c3beb-cc2a-4aef-906d-0ca32960c44c",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4685261,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "f0e4e18f-6d82-46cb-8783-cd475e016739",
+     "type": "ROSTER",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917393715,
+     "processDate": null,
+     "items": [
+      {
+       "type": "LINEUP",
+       "playerId": 4432710,
+       "fromTeamId": 0,
+       "toTeamId": 0
+      },
+      {
+       "type": "LINEUP",
+       "playerId": 3916148,
+       "fromTeamId": 0,
+       "toTeamId": 0
+      }
+     ]
+    },
+    {
+     "id": "6c0e0cb4-fa4a-487f-94a0-277934fb366f",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 2577417,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "ff02ec4e-89d9-4be6-9638-4f91a044d34d",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4034949,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "adaf2c42-c4e2-465c-ad3f-bc4819d0c02e",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3043078,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "171d4f5d-ad44-462b-9c7d-dadb1372e13f",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4430027,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "2efea97b-ce79-4871-8345-8b758a8e6fd7",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4890973,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "20e29d5a-5f98-432b-a963-b5f99e588b29",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4426515,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "f73ce7e6-7bc4-440a-81da-3ee70d1ea9fd",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4701936,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "55e92f9b-96f1-44be-82df-20fbcb2e32e0",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4361370,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "b71a2844-df57-41ad-abc6-57e250e486b4",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4035538,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "29a9003e-424f-4211-9917-093dd9d59e16",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4242355,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "5f9082b1-bbfa-4ce6-a8e9-bc043d08eb33",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4379399,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "4d1edfe4-34f3-4354-8c3e-772918ffc24e",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4429795,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "788aa45d-7fa3-45d3-a0ec-ce60fe2614e3",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3126486,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "0a2035a7-7025-4bd4-bebe-7c9e78308b9e",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4259545,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "6c43bec2-79b9-4cd7-8bc7-176879806114",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": -16034,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "79197e13-b43a-4d2a-bbb5-af0812ec2798",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4372016,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "bba206af-30d8-49c5-83fc-3db19bedb541",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4262921,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "a1954d5e-6c95-40b8-aff1-b91a1947f2a2",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4689114,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "068e5491-1ae3-4e64-b3e5-c127f27c47fb",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4047365,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "7430dcc5-eedf-4462-8301-9944d788b574",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4572680,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "d867bfa4-124c-4884-8bb7-8a333a39d549",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4361050,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "37ab70d4-2f2e-4707-8d5a-0348a8230680",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4870653,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "18021fef-9a8d-43a0-8342-334e1fab2397",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 15818,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "ada6be5f-a95b-42c7-a994-a4d6dfd39b2e",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4429025,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "e3d1ed7f-93d2-41c1-a546-c5fb33528646",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3139477,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "e3ee05df-64c9-4b13-984f-1112aef5c9a9",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4567048,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "cc44a4c8-1f1a-42f9-9d74-3206b6d0ce24",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4568490,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "cc68300f-abdb-458d-aa65-ad4fdfd5cbcf",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4569618,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "848e5f04-83f3-427e-871a-6e4f21d1da7e",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4596334,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "93d52b9d-910a-47f5-82a4-c6f069a9acad",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4430737,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "0b9ab2ce-d04e-481f-bbb4-9f330357d33a",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4429160,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "30c26159-f9b0-4cc5-9c7c-2d8f786bfc63",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4569587,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "a91d54da-c457-4ded-afd2-021011ee09a5",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4710714,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "3cd1e666-bdb4-45c4-863a-2cabb43b6278",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4723086,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "fe2c12db-79a1-4c1e-a742-a6607177e563",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4686361,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "8d458658-d9d7-47ed-9ae6-f8d2520a46e1",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4241478,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "412fb343-c98a-4293-8b91-0bd9cd55de7b",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4038815,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "2f3a4c99-182e-4f63-9547-3c665badb09d",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3915511,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "0f1f7564-5db6-4a46-8edb-67c22256abd9",
+     "type": "ROSTER",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788926999383,
+     "processDate": null,
+     "items": [
+      {
+       "type": "LINEUP",
+       "playerId": 4361050,
+       "fromTeamId": 0,
+       "toTeamId": 0
+      },
+      {
+       "type": "LINEUP",
+       "playerId": 4572680,
+       "fromTeamId": 0,
+       "toTeamId": 0
+      }
+     ]
+    },
+    {
+     "id": "6e70e783-7ec3-48fa-9afc-fbf89c1880e6",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4362081,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "883b54ac-70fe-48e4-b451-5da172ef3868",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3929630,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "cb1ba273-3ae5-47c6-8313-45bf5a67b298",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4696981,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "c76d6c56-6372-43c7-a26b-b4e4aa5f9b45",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4426502,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "8b443d90-be95-4ba2-b0e1-4de76dd644d4",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": -16024,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "37f53dd3-78df-4762-a073-ce6eb2f5a11a",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4429023,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "465b3646-f2cc-4997-be30-8ae7410ef6fc",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3916387,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "34dc87ca-638f-4373-ba3b-0d14b1eceb05",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4360078,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "8c5fdaa7-e81f-4178-86ca-42b177706580",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4871023,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "2a3847d6-b232-4fae-b1c9-679924362a18",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4432708,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "d3860629-2245-4f20-abce-0bc6a7a9e50c",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4431459,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "753df14d-483b-452c-bbdf-6174021989fc",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4685472,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "afdfe435-b094-49c5-869b-9df8b41c15d6",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4869461,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "33e9f648-03eb-4415-a3ff-f1ac9f52986b",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4428718,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "a174e969-7add-49a7-9a96-ae4e5dd28b58",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 16737,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "b8094b5e-1149-4707-a6a7-f1ced5375b6c",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4432710,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "6ca26e5d-7fb5-4e00-abfc-b21ab92212b2",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": -16014,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "e5bf2dce-10c5-41e5-9b44-6309ab426548",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4426385,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "a5f96bb9-b82d-4ed5-8b1d-c296be67fe6c",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4695883,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "ec3d9341-ee46-49cf-b630-5a3f526709a5",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4567104,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "01015591-40d5-4c41-ad50-ce53b7db9e07",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4430807,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "8c21064a-b88f-4192-b577-671da9b32492",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4429615,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "b22c3469-72b2-4b2b-b451-6bbc27ffacdd",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 12483,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "49351842-0140-4e8a-8e3f-ebc082046b67",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3121422,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "2232f710-9616-4381-b412-fc86b6afa4aa",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3052587,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "a4392b9b-76b6-4516-804c-2446eb5c5376",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4429205,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "bd66e62c-b995-4724-ad25-0715146a8585",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": -16017,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "532740eb-3cd0-4386-a9e9-d25425c097c1",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4870795,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "36f0577e-2946-47f1-b5d0-0fde5dc00bca",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4385690,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "f49c72f7-6b6f-4be8-9cc3-3f09baa4ccbb",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4685278,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "fef62691-3a70-4a01-a68e-1861748e174d",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4032473,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "4717a59a-b2b2-4c01-993c-e1eb0725ece0",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4685382,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "bb903406-e683-43fe-9a97-0cf83227fda4",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3046439,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "ffd6f9f6-3def-4905-857d-d26c615b25b0",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3042519,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "44dd24dd-c7bc-486f-9b59-4e2b4d73ed1b",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4596448,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "840d7e9c-8338-4218-b18b-b34608e9dcb4",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4431452,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "3f4007b3-43d7-4f04-a1f8-d29ade432030",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3117251,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "c923ad26-a1cf-4947-9a4d-8af9d38634ea",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4574716,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "f668a732-ce57-4431-804f-130565f5e1ca",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 2971573,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "d2203d8f-9e6e-4298-b766-829debe5b119",
+     "type": "ROSTER",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917531793,
+     "processDate": null,
+     "items": [
+      {
+       "type": "LINEUP",
+       "playerId": 3040151,
+       "fromTeamId": 0,
+       "toTeamId": 0
+      },
+      {
+       "type": "LINEUP",
+       "playerId": 3116365,
+       "fromTeamId": 0,
+       "toTeamId": 0
+      }
+     ]
+    },
+    {
+     "id": "8811d675-08c3-4044-bb8b-7fb79a73c3f1",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4567750,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "20a97d48-b466-4a1f-9678-4c8119ae6e8a",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 5083076,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "a7acdf0f-1ecf-4ce4-84fc-b5a9a3c9986b",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": -16030,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "db255d1e-a3bc-4652-a925-0f89f441df07",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4430878,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "9a4cf07e-25dd-4dbc-971b-92888af7e477",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4608686,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "29cea196-c008-40b7-a52c-77a4eb7e0e55",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4374302,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "2b41359f-8f14-413e-b4b9-cff9ec1edae9",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4426388,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "794aab0c-8e5c-4243-bd70-0d9a15335fde",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4241389,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "aea27ec8-39ab-427d-a63c-7be4b621421d",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4373678,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "baa2aaa4-e6c8-4231-83a5-0f745441d407",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 3,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4371733,
+       "fromTeamId": 0,
+       "toTeamId": 3
+      }
+     ]
+    },
+    {
+     "id": "ef9b6127-b279-4fae-8773-fa44628f599b",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4432665,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "c02dcece-80b6-4276-8675-2389d5fc2f61",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 16800,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "c392a2af-6d89-45ed-b137-98ddacd6e927",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4239993,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "e7d915a6-08a8-4252-a44f-f534cec5056d",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4242335,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "5bf7e5ce-9482-4d9e-b777-288cf5d0bb48",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4362619,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "9d7ddc47-b5df-488d-a97b-20fc5544cdfd",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4685702,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "62973075-eae7-4c9c-be45-7855b17efd9c",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4426338,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "6a2cf916-7ed2-499b-8690-64eac262893a",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3116365,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "488904f6-7a6c-4440-931b-10e7affb803e",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 5,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3916148,
+       "fromTeamId": 0,
+       "toTeamId": 5
+      }
+     ]
+    },
+    {
+     "id": "aee017b6-7232-4329-b2a4-8e140f6c4a0d",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4241416,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "22259d91-8f12-4f75-8ba8-9955d78824ce",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4683062,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "b27c26a9-4ef0-42ea-b1f7-87e788776fde",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4360761,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "7d2cd090-a4c5-4db1-81da-69880b0cb0cb",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4686658,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "24eb2555-8a2a-4447-8ef4-3365c97e5b5a",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 4,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4882093,
+       "fromTeamId": 0,
+       "toTeamId": 4
+      }
+     ]
+    },
+    {
+     "id": "73600276-8c91-471b-a19e-a684e2645a84",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4697815,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "4a492e89-1c66-40f5-abfc-cdeb03cacae9",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": -16026,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "c232381a-e5a8-43e9-9ade-f61eb701add9",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4870808,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "112243c8-d109-419c-9996-7dd4e2411a1c",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4429096,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "a4370b74-b428-4818-b396-7dbb94913856",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4428331,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "f7b4dbd9-d84c-41cd-a054-fb9da82efb71",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4360248,
+       "fromTeamId": 0,
+       "toTeamId": 2
+      }
+     ]
+    },
+    {
+     "id": "4d1f63e3-ccd8-4e07-ae2e-59d01ea97608",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 6,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4038941,
+       "fromTeamId": 0,
+       "toTeamId": 6
+      }
+     ]
+    },
+    {
+     "id": "5e79446b-d7ca-4a1f-b81b-8c3ddc4193ef",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 7,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": -16033,
+       "fromTeamId": 0,
+       "toTeamId": 7
+      }
+     ]
+    },
+    {
+     "id": "e09b8fe3-059e-4707-8aa0-d8c75e1a96f5",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 1,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4426348,
+       "fromTeamId": 0,
+       "toTeamId": 1
+      }
+     ]
+    },
+    {
+     "id": "b363a8b1-9093-48df-823b-e25cf75cc2c8",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 10,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": -16021,
+       "fromTeamId": 0,
+       "toTeamId": 10
+      }
+     ]
+    },
+    {
+     "id": "75f7ad80-58dd-41b5-9ddf-93c97517e25f",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 9,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4360569,
+       "fromTeamId": 0,
+       "toTeamId": 9
+      }
+     ]
+    },
+    {
+     "id": "22867ada-a441-4463-a24c-54ca64061c72",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 8,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 3116165,
+       "fromTeamId": 0,
+       "toTeamId": 8
+      }
+     ]
+    },
+    {
+     "id": "fbc3dbbb-c30e-414e-9f45-e6cb7e4faaf8",
+     "type": "DRAFT",
+     "status": "EXECUTED",
+     "teamId": 2,
+     "bidAmount": 0,
+     "scoringPeriodId": 1,
+     "proposedDate": 1788917184962,
+     "processDate": null,
+     "items": [
+      {
+       "type": "DRAFT",
+       "playerId": 4569173,
+       "fromTeamId": 0,
+       "toTeamId": 2
       }
      ]
     }
