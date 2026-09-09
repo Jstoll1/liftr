@@ -223,7 +223,20 @@ if years_with_draft:
         pos_firsts = {'earliestEverByPosition': earliest,
                       'firstTakenEachYearByPosition': {pos: [f"{yr}: {e['owner']} took {e['player']} at pick {e['overall']} (round {e['round']})" for yr, e in sorted(v.items())] for pos, v in by_year_first.items()},
                       'note': 'Positions come from ESPN. QB, RB, WR, TE, K and D/ST. "Earliest ever" is the lowest overall pick number any owner has spent on that position.'}
+    # Every pick, by owner and year, as compact lines: "R3 P24 Player (WR)".
+    full = collections.defaultdict(dict)
+    board = {}
+    for y in years_with_draft:
+        s = d['seasons'][y]
+        owner_of = resolve_owners(y, s)
+        picks = sorted(s['draft'], key=lambda p: p['overall'])
+        board[int(y)] = [f"P{p['overall']} R{p['round']} {owner_of.get(p['teamId'], '?')}: {p['player'] or 'player ' + str(p['playerId'])}" + (f" ({p['position']})" if p.get('position') else '') + (' auto' if p['autoDrafted'] else '') for p in picks]
+        for p in picks:
+            o = owner_of.get(p['teamId'], '?')
+            full[o].setdefault(int(y), []).append(f"R{p['round']} P{p['overall']} {p['player'] or 'player ' + str(p['playerId'])}" + (f" ({p['position']})" if p.get('position') else '') + (' auto' if p['autoDrafted'] else ''))
     draft = {'seasonsWithDraftData': [int(y) for y in years_with_draft],
+             'fullDraftByOwnerYear': dict(full),
+             'fullBoardByYear': board,
              'seasonsInProgress': [int(y) for y in in_progress],
              'currentSeasonNote': (f"The {in_progress[-1]} season is in progress: its draft is on record, but standings, matchups and results for it are not yet in the archive." if in_progress else None),
              **({'positions': pos_firsts} if pos_firsts else {}),
