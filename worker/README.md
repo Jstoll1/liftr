@@ -167,7 +167,7 @@ so the archive can answer draft questions once you re-export:
 
 ```
 cd ~/liftr
-ESPN_LEAGUE_ID=878153 ESPN_S2='...' SWID='{...}' node scripts/export-espn-history.mjs
+ESPN_LEAGUE_ID=878153 LAST_SEASON=2026 ESPN_S2='...' SWID='{...}' node scripts/export-espn-history.mjs
 python3 scripts/build-matchup-data.py
 git add data/espn-history.json worker/src/matchup-data.js && git commit -m "Refresh ESPN export" && git push
 cd worker && npx wrangler deploy

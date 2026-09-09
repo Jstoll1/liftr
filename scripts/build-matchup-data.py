@@ -13,17 +13,40 @@ A = json.loads(re.search(r'const A=(\{.*?\});\n', open('history.js').read(), re.
 norm = lambda s: re.sub(r'[^a-z0-9]', '', s.lower())
 R = lambda x: round(x, 2)
 
+# ESPN owner id -> archive owner, learned from every completed season, so a
+# season still in progress (no final standings yet) can still be mapped.
+owner_by_espn_id = {}
+
+def resolve_owners(y, s):
+    """Map ESPN team id -> archive owner name for season y."""
+    owner_of = {}
+    if y in A['seasons']:
+        arch = A['seasons'][y][4]
+        for t in s['teams']:
+            m = [r for r in arch if norm(r[1]) == norm(t['name'])] or \
+                [r for r in arch if r[2] == t['wins'] and r[3] == t['losses'] and abs(r[4] - (t['pointsFor'] or 0)) < 1]
+            if len(m) != 1:
+                raise SystemExit(f"{y}: could not match ESPN team {t['name']} to an archive owner")
+            owner_of[t['id']] = m[0][0]
+            for oid in t.get('ownerIds') or []:
+                owner_by_espn_id.setdefault(oid, m[0][0])
+        return owner_of
+    for t in s['teams']:
+        hits = [owner_by_espn_id[oid] for oid in (t.get('ownerIds') or []) if oid in owner_by_espn_id]
+        if len(set(hits)) != 1:
+            raise SystemExit(f"{y}: could not map ESPN team {t['name']} (owners {t.get('ownerIds')}) to a known owner")
+        owner_of[t['id']] = hits[0]
+    return owner_of
+
+in_progress = [y for y in sorted(d['seasons']) if y not in A['seasons']]
+
 games, weekly, bench_rows = [], [], []
 for y in sorted(d['seasons']):
+    if y not in A['seasons']:
+        continue  # season in progress: draft only, handled below
     s = d['seasons'][y]; arch = A['seasons'][y][4]
     champ, ru, third = A['seasons'][y][0], A['seasons'][y][1], A['seasons'][y][2]
-    owner_of = {}
-    for t in s['teams']:
-        m = [r for r in arch if norm(r[1]) == norm(t['name'])] or \
-            [r for r in arch if r[2] == t['wins'] and r[3] == t['losses'] and abs(r[4] - (t['pointsFor'] or 0)) < 1]
-        if len(m) != 1:
-            raise SystemExit(f"{y}: could not match ESPN team {t['name']} to an archive owner")
-        owner_of[t['id']] = m[0][0]
+    owner_of = resolve_owners(y, s)
     reg = s['regularSeasonWeeks']; lastweek = max(m['week'] for m in s['matchups'])
     for m in s['matchups']:
         if not m['home'] or not m['away'] or m['winner'] == 'UNDECIDED':
@@ -156,12 +179,8 @@ years_with_draft = [y for y in sorted(d['seasons']) if d['seasons'][y].get('draf
 if years_with_draft:
     first_by_year, slots, first_round, auto_by_owner = {}, collections.defaultdict(dict), {}, collections.Counter()
     for y in years_with_draft:
-        s = d['seasons'][y]; arch = A['seasons'][y][4]
-        owner_of = {}
-        for t in s['teams']:
-            m = [r for r in arch if norm(r[1]) == norm(t['name'])] or \
-                [r for r in arch if r[2] == t['wins'] and r[3] == t['losses'] and abs(r[4] - (t['pointsFor'] or 0)) < 1]
-            owner_of[t['id']] = m[0][0] if len(m) == 1 else f"team {t['id']}"
+        s = d['seasons'][y]
+        owner_of = resolve_owners(y, s)
         picks = sorted(s['draft'], key=lambda p: p['overall'])
         r1 = [p for p in picks if p['round'] == 1]
         first_round[int(y)] = [f"{p['roundPick']}. {owner_of.get(p['teamId'], '?')}: {p['player'] or 'player ' + str(p['playerId'])}" + (' (auto)' if p['autoDrafted'] else '') for p in r1]
@@ -188,12 +207,8 @@ if years_with_draft:
         earliest = {}
         by_year_first = {}
         for y in years_with_draft:
-            s = d['seasons'][y]; arch = A['seasons'][y][4]
-            owner_of = {}
-            for t in s['teams']:
-                m = [r for r in arch if norm(r[1]) == norm(t['name'])] or \
-                    [r for r in arch if r[2] == t['wins'] and r[3] == t['losses'] and abs(r[4] - (t['pointsFor'] or 0)) < 1]
-                owner_of[t['id']] = m[0][0] if len(m) == 1 else f"team {t['id']}"
+            s = d['seasons'][y]
+            owner_of = resolve_owners(y, s)
             picks = sorted(s['draft'], key=lambda p: p['overall'])
             seen = {}
             for p in picks:
@@ -209,6 +224,8 @@ if years_with_draft:
                       'firstTakenEachYearByPosition': {pos: [f"{yr}: {e['owner']} took {e['player']} at pick {e['overall']} (round {e['round']})" for yr, e in sorted(v.items())] for pos, v in by_year_first.items()},
                       'note': 'Positions come from ESPN. QB, RB, WR, TE, K and D/ST. "Earliest ever" is the lowest overall pick number any owner has spent on that position.'}
     draft = {'seasonsWithDraftData': [int(y) for y in years_with_draft],
+             'seasonsInProgress': [int(y) for y in in_progress],
+             'currentSeasonNote': (f"The {in_progress[-1]} season is in progress: its draft is on record, but standings, matchups and results for it are not yet in the archive." if in_progress else None),
              **({'positions': pos_firsts} if pos_firsts else {}),
              'firstOverallPickByYear': first_by_year,
              'mostFirstOverallPicks': [f"{o} {n} ({', '.join(str(y) for y in per_owner[o]['firstOverallYears'])})" for o, n in first_counts.most_common()],
