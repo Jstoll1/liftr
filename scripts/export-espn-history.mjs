@@ -60,7 +60,9 @@ function benchPoints(team) {
   return Math.round(bench * 100) / 100;
 }
 
-// Player id -> full name for a season. ESPN filters the player pool with a
+const POSITIONS = { 1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "D/ST", 7: "P", 9: "DT", 10: "DE", 11: "LB", 12: "CB", 13: "S" };
+
+// Player id -> name, position and pro team for a season. ESPN filters the player pool with a
 // JSON header; if the call fails the picks are kept without names.
 async function playerNames(year, ids) {
   const out = {};
@@ -72,7 +74,7 @@ async function playerNames(year, ids) {
         headers: { ...headers, "x-fantasy-filter": JSON.stringify({ players: { filterIds: { value: chunk }, limit: chunk.length } }) },
       });
       if (!res.ok) throw new Error(String(res.status));
-      for (const p of await res.json()) out[p.id] = p.fullName || `${p.firstName || ""} ${p.lastName || ""}`.trim();
+      for (const p of await res.json()) out[p.id] = { name: p.fullName || `${p.firstName || ""} ${p.lastName || ""}`.trim(), positionId: p.defaultPositionId ?? null, proTeamId: p.proTeamId ?? null };
     } catch { /* names stay null */ }
   }
   return out;
@@ -159,7 +161,8 @@ for (let year = FIRST; year <= LAST; year++) {
     const names = await playerNames(year, picks.map((p) => p.playerId));
     draft = picks.map((p) => ({
       overall: p.overallPickNumber, round: p.roundId, roundPick: p.roundPickNumber,
-      teamId: p.teamId, playerId: p.playerId, player: names[p.playerId] || null,
+      teamId: p.teamId, playerId: p.playerId, player: names[p.playerId]?.name || null,
+      position: POSITIONS[names[p.playerId]?.positionId] || null, proTeamId: names[p.playerId]?.proTeamId ?? null,
       autoDrafted: !!p.autoDraftTypeId, keeper: !!p.keeper,
     }));
     process.stdout.write(` draft ${picks.length} picks`);

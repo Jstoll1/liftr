@@ -182,7 +182,34 @@ if years_with_draft:
                         'averageDraftSlot': R(sum(vals) / len(vals)),
                         'bestSlot': min(vals), 'worstSlot': max(vals),
                         'autoDraftedPicks': auto_by_owner.get(o, 0)}
+    # Positional firsts, only when the export carries positions.
+    pos_firsts = {}
+    if any(p.get('position') for y in years_with_draft for p in d['seasons'][y]['draft']):
+        earliest = {}
+        by_year_first = {}
+        for y in years_with_draft:
+            s = d['seasons'][y]; arch = A['seasons'][y][4]
+            owner_of = {}
+            for t in s['teams']:
+                m = [r for r in arch if norm(r[1]) == norm(t['name'])] or \
+                    [r for r in arch if r[2] == t['wins'] and r[3] == t['losses'] and abs(r[4] - (t['pointsFor'] or 0)) < 1]
+                owner_of[t['id']] = m[0][0] if len(m) == 1 else f"team {t['id']}"
+            picks = sorted(s['draft'], key=lambda p: p['overall'])
+            seen = {}
+            for p in picks:
+                pos = p.get('position')
+                if not pos or pos in seen:
+                    continue
+                seen[pos] = True
+                entry = {'year': int(y), 'overall': p['overall'], 'round': p['round'], 'owner': owner_of.get(p['teamId'], '?'), 'player': p['player']}
+                by_year_first.setdefault(pos, {})[int(y)] = entry
+                if pos not in earliest or p['overall'] < earliest[pos]['overall']:
+                    earliest[pos] = entry
+        pos_firsts = {'earliestEverByPosition': earliest,
+                      'firstTakenEachYearByPosition': {pos: [f"{yr}: {e['owner']} took {e['player']} at pick {e['overall']} (round {e['round']})" for yr, e in sorted(v.items())] for pos, v in by_year_first.items()},
+                      'note': 'Positions come from ESPN. QB, RB, WR, TE, K and D/ST. "Earliest ever" is the lowest overall pick number any owner has spent on that position.'}
     draft = {'seasonsWithDraftData': [int(y) for y in years_with_draft],
+             **({'positions': pos_firsts} if pos_firsts else {}),
              'firstOverallPickByYear': first_by_year,
              'mostFirstOverallPicks': [f"{o} {n} ({', '.join(str(y) for y in per_owner[o]['firstOverallYears'])})" for o, n in first_counts.most_common()],
              'mostAutoDraftedPicks': [f"{o} {n}" for o, n in auto_by_owner.most_common(5)],
