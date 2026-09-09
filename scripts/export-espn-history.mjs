@@ -198,6 +198,10 @@ for (let year = FIRST; year <= LAST; year++) {
   console.log(` ${teams.length} teams, ${matchups.length} matchups`);
 }
 
+if (!Object.keys(out.seasons).length) {
+  console.error("\nNo seasons exported. Every request failed, which almost always means the ESPN_S2 and SWID values are wrong or stale. The existing data file was left untouched.");
+  process.exit(1);
+}
 mkdirSync("data", { recursive: true });
 writeFileSync("data/espn-history.json", JSON.stringify(out, null, 1));
 console.log("Wrote data/espn-history.json");
