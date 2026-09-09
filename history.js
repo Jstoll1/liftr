@@ -225,7 +225,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     {q:'Which of these was NOT one of Jake\u0027s team names?',o:['Patty Had A CeeDee Lamb','MaHomie WhoLeo','Keeping Up w/the Joneses','To Bijan or Not to Bijan'],a:0,why:'Patty Had A CeeDee Lamb was Curt. The other three are Jake in 2018, 2020 and 2024.'},
     {q:'Which of these was NOT one of Nissan\u0027s team names?',o:['Keenan and WhoLeo','black tahoe','The Pie Guys','Jeudys Chubbie'],a:0,why:'Keenan and WhoLeo was Jake in 2019. The other three are Nissan.'},
     {q:'Which of these was NOT one of Curt\u0027s team names?',o:['Hill\u0027s Pills','The Sleeping Giants','1 More Stafford Passing T.Deebo','Two Dragons'],a:0,why:'Hill\u0027s Pills was Logan in 2024. The other three are Curt.'},
-    {q:'What is the earliest a kicker has ever been drafted in league history?',o:['2026, Brandon Aubrey, by Andrew','2015, Matt Bryant, by Cerone','2019, Justin Tucker, by Skills','2024, Harrison Butker, by Andrew'],a:0,why:'Pick 82, round 9, in 2026. Andrew took Brandon Aubrey and beat Cerone\u0027s 2015 mark of pick 87 for Matt Bryant. Tucker went 117th in 2019 and Butker 109th in 2024.'},
+    {pin:true,q:'What is the earliest a kicker has ever been drafted in league history?',o:['2026, Brandon Aubrey, by Andrew','2015, Matt Bryant, by Cerone','2019, Justin Tucker, by Skills','2024, Harrison Butker, by Andrew'],a:0,why:'Pick 82, round 9, in 2026. Andrew took Brandon Aubrey and beat Cerone\u0027s 2015 mark of pick 87 for Matt Bryant. Tucker went 117th in 2019 and Butker 109th in 2024.'},
     {q:'Who has been the first to draft a kicker the most times, eight of thirteen drafts?',o:['Andrew','Skills','Cerone','Jordan'],a:0,why:'Andrew, including every draft from 2021 to 2026. Skills did it in 2019 and 2020, Cerone in 2014 and 2015, Jordan in 2018.'},
     {q:'Who took Travis Kelce fourth overall in 2023, the earliest tight end ever drafted?',o:['Logan','Dewitt','Curt','Jake'],a:0,why:'Logan, at pick 4. No other tight end has gone in the first round\u0027s top four.'},
     {q:'Who took Peyton Manning third overall in 2014, the earliest quarterback ever drafted?',o:['Williams','Jake','Dewitt','Andrew'],a:0,why:'Patrick Williams, in his only season. He finished 3-9.'},
@@ -244,7 +244,8 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   const loadProg=()=>{try{const p=JSON.parse(localStorage.getItem(PROG_KEY));return p&&Number.isInteger(p.i)&&Array.isArray(p.drawn)&&p.drawn.length===PER_GAME&&p.i<PER_GAME&&p.drawn.every((k)=>POOL[k])?p:null}catch{return null}};
   let drawn=[];
   const saveProg=()=>{try{localStorage.setItem(PROG_KEY,JSON.stringify({i,score,order,answered,picked,drawn,ts:Date.now()}))}catch{}};
-  const draw=(ids)=>{drawn=ids||shuffle(POOL.map((_,k)=>k)).slice(0,PER_GAME);Q=drawn.map((k)=>POOL[k]);};
+  // Pinned questions lead every game in pool order; the rest of the 12 are drawn at random.
+  const draw=(ids)=>{if(!ids){const pinned=POOL.map((q,k)=>q.pin?k:-1).filter((k)=>k>=0);const rest=shuffle(POOL.map((_,k)=>k).filter((k)=>!POOL[k].pin));ids=pinned.concat(rest).slice(0,PER_GAME);}drawn=ids;Q=drawn.map((k)=>POOL[k]);};
   const clearProg=()=>{try{localStorage.removeItem(PROG_KEY)}catch{}};
   const shuffle=(arr)=>{const a=arr.slice();for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]]}return a};
   const track=(e)=>{try{window.goatcounter&&window.goatcounter.count({path:e,title:e,event:true})}catch{}};
