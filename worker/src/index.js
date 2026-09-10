@@ -60,6 +60,9 @@ export default {
     if (url.pathname === "/picks-log") {
       return handlePicksLog(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/admin-check") {
+      return handleAdminCheck(env, corsHeaders, url);
+    }
     if (url.pathname === "/auth-log") {
       return handleAuthLog(request, env, corsHeaders, url);
     }
@@ -487,8 +490,38 @@ const gamesKey = (week) => `games:w${week}`;
 const resultsKey = (week) => `results:w${week}`;
 const WEEKS_KEY = "weeks";
 
+// Two administrators, two keys, two jobs.
+//
+//   ARCHIVE_LOG_KEY  the app owner. Everything: the logs, owner logins and
+//                    resets, the login mode, pick repairs, and the slate.
+//   SLATE_KEY        the games. Loading a week and saving a slate, nothing
+//                    else — it cannot read a log or touch an owner's code.
+//
+// isAdmin stays the app owner's check, so every existing caller keeps its
+// meaning; only the slate is widened to accept either key.
 function isAdmin(env, url) {
   return !!env.ARCHIVE_LOG_KEY && url.searchParams.get("key") === env.ARCHIVE_LOG_KEY;
+}
+
+function isSlateAdmin(env, url) {
+  return isAdmin(env, url) || (!!env.SLATE_KEY && url.searchParams.get("key") === env.SLATE_KEY);
+}
+
+// Which console a key opens. The app owner's key answers "app", the slate
+// key answers "slate", anything else is turned away.
+function keyRole(env, url) {
+  if (isAdmin(env, url)) return "app";
+  if (!!env.SLATE_KEY && url.searchParams.get("key") === env.SLATE_KEY) return "slate";
+  return null;
+}
+
+// The gesture in the app asks here which surface to open, so a wrong key
+// fails at the prompt instead of on the first action behind it.
+function handleAdminCheck(env, corsHeaders, url) {
+  if (!env.ARCHIVE_LOG_KEY && !env.SLATE_KEY) return json({ ok: false, error: "No admin key is set on the Worker." }, 503, corsHeaders);
+  const role = keyRole(env, url);
+  if (!role) return json({ ok: false }, 403, corsHeaders);
+  return json({ ok: true, role }, 200, corsHeaders);
 }
 
 // --- Owner login ----------------------------------------------------------
@@ -511,9 +544,20 @@ const AUTH_WINDOW_MS = 10 * 60 * 1000;
 const authKey = (manager) => `auth:${manager}`;
 const authTriesKey = (manager) => `auth-tries:${manager}`;
 
-function authMode(env) {
-  const m = String(env.AUTH_MODE || "off").toLowerCase();
-  return m === "on" || m === "soft" ? m : "off";
+const AUTH_MODE_KEY = "auth-mode";
+const cleanMode = (m) => { const v = String(m || "off").toLowerCase(); return v === "on" || v === "soft" ? v : "off"; };
+
+// The mode is stored in KV so the app owner can change it from the console
+// without a deploy. AUTH_MODE in wrangler.toml is the fallback for a
+// Worker that has never had one set.
+let modeCache = null;
+async function authMode(env) {
+  if (modeCache && Date.now() - modeCache.at < 5000) return modeCache.mode;
+  let stored = null;
+  try { stored = await env.LIFTR_KV.get(AUTH_MODE_KEY); } catch {}
+  const mode = cleanMode(stored || env.AUTH_MODE);
+  modeCache = { at: Date.now(), mode };
+  return mode;
 }
 
 const b64url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -693,6 +737,9 @@ async function handleAuthLog(request, env, corsHeaders, url) {
   if (!isAdmin(env, url)) return new Response("Not found", { status: 404 });
   const list = await env.LIFTR_KV.list({ prefix: "auth-log:", limit: 500 });
   const rows = (await Promise.all(list.keys.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
+  // The console renders these itself; the page below is for opening the
+  // log straight in a browser.
+  if (url.searchParams.get("format") === "json") return json({ events: rows }, 200, corsHeaders);
 
   // A device seen under more than one owner is the strongest signal here:
   // it is one browser that has signed in as two different people.
@@ -754,7 +801,7 @@ async function handleAuthLog(request, env, corsHeaders, url) {
 // POST /auth {action:"reset", key} → commissioner frees a name to be re-claimed
 async function handleAuth(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
-  const mode = authMode(env);
+  const mode = await authMode(env);
 
   if (request.method === "GET") {
     const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, !!(await env.LIFTR_KV.get(authKey(m)))]));
@@ -772,6 +819,14 @@ async function handleAuth(request, env, corsHeaders, url) {
   // sign-in came from a device that owner has used before.
   const deviceId = typeof body?.device === "string" ? body.device.slice(0, 24) : "";
   const client = body?.client && typeof body.client === "object" ? body.client : {};
+
+  if (action === "mode") {
+    if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+    const next = cleanMode(body?.mode);
+    await env.LIFTR_KV.put(AUTH_MODE_KEY, next);
+    modeCache = null;
+    return json({ ok: true, mode: next }, 200, corsHeaders);
+  }
 
   if (action === "reset") {
     if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
@@ -891,7 +946,7 @@ async function handlePicks(request, env, corsHeaders, url) {
     }
     // Owner login. The admin key still overrides, so a repair works even
     // for someone who has not claimed their name.
-    const mode = authMode(env);
+    const mode = await authMode(env);
     const owner = await tokenOwner(env, body?.token);
     const authed = owner === manager || isAdmin(env, url);
     if (mode === "on" && !authed) {
@@ -1072,8 +1127,8 @@ async function handleGames(request, env, corsHeaders, url) {
     // The slate editor calls this before it does anything, so a wrong key
     // fails immediately instead of after a whole week has been picked out.
     if (url.searchParams.get("check")) {
-      if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
-      return json({ ok: true }, 200, corsHeaders);
+      if (!isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+      return json({ ok: true, role: keyRole(env, url) }, 200, corsHeaders);
     }
     const weeks = await readWeeks(env);
     if (url.searchParams.get("all")) {
@@ -1092,7 +1147,7 @@ async function handleGames(request, env, corsHeaders, url) {
   }
 
   if (request.method === "POST" || request.method === "PUT") {
-    if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+    if (!isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
     let body;
     try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
     const checked = validateSlate(body);
@@ -1174,6 +1229,7 @@ async function handlePicksLog(request, env, corsHeaders, url) {
   if (!env.ARCHIVE_LOG_KEY || url.searchParams.get("key") !== env.ARCHIVE_LOG_KEY) return new Response("Not found", { status: 404 });
   const list = await env.LIFTR_KV.list({ prefix: "picks-log:", limit: 500 });
   const rows = (await Promise.all(list.keys.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
+  if (url.searchParams.get("format") === "json") return json({ changes: rows }, 200, corsHeaders);
   // Current state check: any pick stamped after its game's kickoff is a
   // change that should not have been possible.
   const flagged = [];

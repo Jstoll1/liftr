@@ -809,14 +809,18 @@ rulesOpenBtn.addEventListener("click", openRules);
 rulesCloseBtn.addEventListener("click", closeRules);
 homeLogoBtn.addEventListener("click", goHome);
 
-// --- Slate editor, unlocked by gesture --------------------------------
-// The editor has no page of its own and no link anywhere in the app:
-// three taps on the header wordmark, in quick succession, asks for the
-// league admin key, and the editor only opens behind a key the Worker
-// accepts. Every tap still goes home, so the gesture is invisible to
-// anyone who is not looking for it. admin.js is fetched on the first
-// unlock and never for the league, which is what the separate page used
-// to buy us.
+// --- Admin surfaces, unlocked by gesture ------------------------------
+// Three taps on the header wordmark, in quick succession, asks for a key.
+// The Worker says which of two administrators that key belongs to and the
+// matching surface opens — nothing else does:
+//
+//   slate key  →  the slate editor (admin.js). Picking the week's games is
+//                 delegated, and that key opens nothing but the editor.
+//   app key    →  the app console (console.js). Logs, owner logins, the
+//                 login mode, this device, and the editor if wanted.
+//
+// Every tap still goes home, so the gesture is invisible to anyone not
+// looking for it, and neither script is fetched until a key checks out.
 const ADMIN_TAP_WINDOW_MS = 900;
 const ADMIN_KEY_STORE = "brochiefs_admin_key"; // read back by admin.js
 const adminOverlay = document.getElementById("admin-overlay");
@@ -824,8 +828,10 @@ const adminGate = document.getElementById("admin-gate");
 let adminTaps = 0;
 let adminTapTimer = null;
 let adminScriptLoaded = false;
-// Cleared when the tab closes, so the gate is back on the next visit.
-let adminUnlocked = false;
+let consoleScriptLoaded = false;
+// Both cleared when the tab closes, so the gate is back on the next visit.
+let adminRole = null;
+let adminKeyHeld = "";
 
 homeLogoBtn.addEventListener("click", () => {
   adminTaps += 1;
@@ -834,9 +840,10 @@ homeLogoBtn.addEventListener("click", () => {
   adminTapTimer = setTimeout(() => { adminTaps = 0; }, ADMIN_TAP_WINDOW_MS);
 });
 
-// Unlocked already in this tab: straight back in. Otherwise the key first.
+// Already unlocked in this tab: straight back to that surface. Otherwise
+// the key decides.
 function requestAdmin() {
-  if (adminUnlocked) { openAdmin(); return; }
+  if (adminRole) { openRole(adminRole); return; }
   if (!adminGate) return;
   const input = document.getElementById("admin-gate-key");
   if (input) input.value = "";
@@ -854,8 +861,8 @@ function closeAdminGate() {
   adminGate?.classList.add("hidden");
 }
 
-// The Worker is the authority on the key — /games?check=1 says yes or no
-// without handing anything back — so a wrong key never opens the editor.
+// The Worker is the authority: /admin-check says whether the key is good
+// and which console it opens, without handing anything back.
 async function submitAdminKey() {
   const input = document.getElementById("admin-gate-key");
   const key = input?.value.trim();
@@ -863,22 +870,31 @@ async function submitAdminKey() {
   const okBtn = document.getElementById("admin-gate-ok");
   if (okBtn) okBtn.disabled = true;
   setAdminGateStatus("Checking the key…");
-  let ok = false, reachable = true;
+  let role = null, reachable = true, status = 0, err = "";
   try {
-    const res = await fetch(`${WORKER_URL}/games?check=1&key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" });
-    ok = res.ok;
+    const res = await fetch(`${WORKER_URL}/admin-check?key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" });
+    status = res.status;
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) role = data.role;
+    if (data.error) err = data.error;
   } catch {
     reachable = false;
   }
   if (okBtn) okBtn.disabled = false;
   if (!reachable) { setAdminGateStatus("Could not reach the Worker to check the key.", "bad"); return; }
-  if (!ok) { setAdminGateStatus("That key is not right.", "bad"); return; }
+  if (!role) { setAdminGateStatus(status === 403 ? "That key is not right." : err || "The Worker could not check that key.", "bad"); return; }
+  adminRole = role;
+  adminKeyHeld = key;
   // admin.js reads the key from here rather than from a field on screen.
   try { sessionStorage.setItem(ADMIN_KEY_STORE, key); } catch {}
-  adminUnlocked = true;
   if (input) input.value = "";
   closeAdminGate();
-  openAdmin();
+  openRole(role);
+}
+
+function openRole(role) {
+  if (role === "app") openAppConsole();
+  else openAdmin();
 }
 
 document.getElementById("admin-gate-ok")?.addEventListener("click", submitAdminKey);
@@ -888,15 +904,16 @@ document.getElementById("admin-gate-key")?.addEventListener("keydown", (e) => {
 });
 adminGate?.addEventListener("click", (e) => { if (e.target === adminGate) closeAdminGate(); });
 
+// --- The slate editor (either key, but only the slate key lands here) --
 function openAdmin() {
-  if (!adminOverlay || !adminUnlocked) return;
+  if (!adminOverlay || !adminRole) return;
   adminOverlay.classList.remove("hidden");
   document.body.classList.add("admin-open");
   adminOverlay.scrollTop = 0;
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609122000";
+  tag.src = "admin.js?v=202609122100";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -907,6 +924,61 @@ function closeAdmin() {
 }
 // admin.js calls this from its Exit button instead of navigating away.
 window.closeSlateEditor = closeAdmin;
+// and the console opens it from its Slate tab.
+window.openSlateEditor = openAdmin;
+
+// --- The app console (the app owner's key only) -----------------------
+function openAppConsole() {
+  if (adminRole !== "app") return;
+  if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
+  consoleScriptLoaded = true;
+  const tag = document.createElement("script");
+  tag.src = "console.js?v=202609122100";
+  // console.js shows itself once it loads.
+  tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
+  document.body.appendChild(tag);
+}
+
+// What the console needs from the running app: the verified key, a picture
+// of this device, and the few actions that belong to the app rather than
+// the Worker.
+window.appConsoleKey = () => (adminRole === "app" ? adminKeyHeld : "");
+window.appDiagnostics = () => {
+  const all = loadAll();
+  const cached = Object.keys(all).filter((n) => Object.keys(sanitizePicks(all[n]?.picks)).length);
+  let queued = null;
+  try { queued = localStorage.getItem(PENDING_KEY); } catch {}
+  const mine = currentManager ? getManagerState(currentManager) : null;
+  return {
+    "Week": `${WEEK_LABEL} · ${GAMES.length} games`,
+    "Games locked": `${GAMES.filter(isGameLocked).length} of ${GAMES.length}`,
+    "Next kickoff": (() => { const g = gamesByKickoff().find((x) => !isGameLocked(x)); return g ? `${g.awayShort} at ${g.homeShort} · ${kickoffCountdown(g.kickoff)?.text || "—"}` : "all underway"; })(),
+    "This device is": loadMe() || "unclaimed",
+    "Signed in as": currentManager || "nobody",
+    "Picks on this device": mine ? `${Object.keys(mine.picks).length} of ${GAMES.length}${mine.tiebreaker !== "" ? ` · TB ${mine.tiebreaker}` : ""}` : "—",
+    "Cached locally": cached.length ? cached.join(", ") : "nothing",
+    "Live feed": latestLiveAt ? `${Object.keys(latestLive).length} games · ${latestLiveSource} · ${new Date(latestLiveAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : "not fetched yet",
+    "Sync": syncStatus + (queued ? ` · queued for ${queued}` : ""),
+    "Login token": loadAuth() ? `held for ${loadAuth().manager}` : "none",
+    "Login mode": authState.mode,
+    "Worker": WORKER_URL || "not configured",
+  };
+};
+window.appResync = async () => {
+  await Promise.all([loadSlate(), fetchLiveScores(), refreshAuthState()]);
+  if (currentManager) await syncManagerFromCloud(currentManager);
+  if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
+  if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
+};
+window.appForgetDevice = () => {
+  try { localStorage.removeItem(ME_KEY); } catch {}
+  updateMePill();
+};
+window.appClearPicks = () => {
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(PENDING_KEY); } catch {}
+  if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
+};
+window.appRefreshAuth = () => refreshAuthState();
 
 // Any tab in the nav is also a way out of the editor: the nav sits above
 // the overlay while it is open, and the tab's own handler then runs and

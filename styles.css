@@ -2326,6 +2326,42 @@ html, body {
    has to be its own scroll container — that is what the standalone page
    used to get from the document. */
 .admin-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: var(--nav-h); z-index: 40; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; background: var(--bg); padding-top: calc(14px + env(safe-area-inset-top)); }
+/* The app owner's console: tabs over a scrolling body, in the same
+   overlay shell as the slate editor. */
+.console-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 0 4px; }
+.console-tab { -webkit-tap-highlight-color: transparent; touch-action: manipulation; min-height: 34px; padding: 6px 9px; border: 2px solid var(--card-border); border-radius: 8px; background: rgba(0, 0, 0, .3); color: var(--text-dim); font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .06em; cursor: pointer; }
+.console-tab.active { border-color: var(--neon-cyan); color: var(--neon-cyan); background: rgba(5, 217, 232, .1); }
+.console-body { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 12px; }
+
+.con-summary { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 6px 0; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); letter-spacing: .06em; }
+.con-summary .bad { color: var(--neon-pink); }
+.con-summary .warn { color: #ffb347; }
+.con-ok { font-size: 11px; color: var(--neon-green); padding: 2px 0 6px; }
+
+.con-row { border: 1px solid var(--card-border); border-left-width: 3px; border-radius: 8px; padding: 7px 9px; background: rgba(0, 0, 0, .25); }
+.con-row.bad { border-left-color: var(--neon-pink); }
+.con-row.warn { border-left-color: #ffb347; }
+.con-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 11px; }
+.con-row-head b { font-family: 'Orbitron', system-ui, sans-serif; color: var(--neon-yellow); }
+.con-row-head span { color: var(--text-dim); font-size: 10px; }
+.con-line { font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.con-line.dim { color: var(--text-dim); font-size: 10px; }
+.con-tag { font-family: 'Press Start 2P', monospace; font-size: 6px; padding: 2px 4px; border-radius: 3px; border: 1px solid currentColor; }
+.con-tag.bad { color: var(--neon-pink); }
+.con-tag.warn { color: #ffb347; }
+.con-tag.adm { color: var(--neon-cyan); }
+
+.con-diag { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 10px; font-size: 10px; color: var(--text-dim); line-height: 1.5; overflow-wrap: anywhere; }
+.con-diag b { color: var(--neon-cyan); font-weight: 700; }
+.con-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+
+.con-modes { display: flex; flex-direction: column; gap: 6px; }
+.con-mode { -webkit-tap-highlight-color: transparent; text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; border: 2px solid var(--card-border); border-radius: 8px; background: rgba(0, 0, 0, .25); color: var(--text); cursor: pointer; }
+.con-mode.on { border-color: var(--neon-green); background: rgba(57, 255, 136, .07); }
+.con-mode-label { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--neon-cyan); letter-spacing: .06em; }
+.con-mode.on .con-mode-label { color: var(--neon-green); }
+.con-mode-note { font-size: 10px; color: var(--text-dim); line-height: 1.45; }
+
 /* Lineup preview: ten compact rows, logos + names + line, read-only. */
 /* Only the preview's header carries a count, so only it goes to flex —
    the Suggest 10 header keeps its centred title. */

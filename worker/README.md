@@ -246,11 +246,29 @@ Routes:
 - `GET /season` every week's slate, picks and stored finals, for season standings
 - `POST /season` a week's final scores, ignored for games that have not started
 
-The commissioner sets the week from inside the app: **tap the BroChiefs
-wordmark in the header three times in a row**. There is no admin page and no
-link — the gesture opens a key prompt, `GET /games?check=1&key=…` checks the
-key, and only then does the editor appear and `admin.js` get fetched, so
-nothing about it ships to the league. The key is kept in `sessionStorage` for
+### Two administrators
+
+Three taps on the BroChiefs wordmark asks for a key, `GET /admin-check?key=…`
+says which administrator it belongs to, and only that surface opens. There is
+no admin page and no link anywhere, and neither script is fetched until a key
+checks out, so nothing about either ships to the league.
+
+| key | role | opens | can also |
+| --- | --- | --- | --- |
+| `SLATE_KEY` | picks the games | the slate editor | nothing else — no logs, no owner codes, no pick repairs |
+| `ARCHIVE_LOG_KEY` | the app owner | the app console | the logs, owner resets, the login mode, pick repairs, and the editor |
+
+The console is tabbed: **Pick changes** (the 30-day log, marking anything
+changed after kickoff or saved without a login), **Logins** (the login log
+with its alerts), **Owners** (who has claimed a name, and reset), **This
+device** (what the app on this phone sees, and the local cache tools),
+**Login mode** (off / soft / on, stored in KV so it needs no deploy) and
+**Slate** (opens the editor).
+
+Both logs also answer `&format=json` so the console can render them in a tab
+instead of opening a page.
+
+The slate editor: `GET /games?check=1&key=…` accepts either key, and The key is kept in `sessionStorage` for
 that tab, so the prompt returns on the next visit. Any tab in the bottom nav
 closes the editor. It asks
 the browser (not the Worker, which ESPN blocks) for a week's college slate,

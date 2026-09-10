@@ -26,6 +26,14 @@ AUTH_MODE = "off"
 
 # OPENAI_API_KEY is a secret, not a var — never put it in this file.
 # Set it with: wrangler secret put OPENAI_API_KEY
+# AUTH_MODE above is only the fallback: once the app console sets a mode it
+# is stored in KV and that wins, so the switch needs no deploy.
+#
+# Two administrators, two keys. ARCHIVE_LOG_KEY is the app owner's and opens
+# everything. SLATE_KEY belongs to whoever picks the games and opens the
+# slate editor alone — it cannot read a log or reset an owner's code.
+#   wrangler secret put SLATE_KEY
+#
 # AUTH_SECRET signs the login tokens. Any long random string; changing it
 # signs everyone out. Set it with: wrangler secret put AUTH_SECRET
 
