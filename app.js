@@ -657,7 +657,6 @@ const loginScreen = document.getElementById("login-screen");
 const picksScreen = document.getElementById("picks-screen");
 const scoreboardScreen = document.getElementById("scoreboard-screen");
 const managerPicker = document.getElementById("manager-picker");
-const managerBadge = document.getElementById("manager-badge");
 const gamesList = document.getElementById("games-list");
 const tiebreakerInput = document.getElementById("tiebreaker-input");
 const tiebreakerStatus = document.getElementById("tiebreaker-status");
@@ -756,7 +755,6 @@ function goToPlayerSelect() {
   const me = loadMe();
   if (me) {
     currentManager = me;
-    managerBadge.textContent = me.toUpperCase();
     if (firstKickoffPassed()) {
       loginScreen.classList.add("hidden");
       showScoreboard();
@@ -929,7 +927,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609141500";
+  tag.src = "admin.js?v=202609141600";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1293,7 +1291,6 @@ function openOwnerPicker() {
     if (!(await requireOwnerAuth(name))) return;
     saveMe(name);
     currentManager = name;
-    managerBadge.textContent = name.toUpperCase();
     // Re-render whatever screen is showing so "you" markers and picks follow
     if (!picksScreen.classList.contains("hidden")) { await syncManagerFromCloud(name); withScrollPreserved(renderPicksScreen); }
     if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
@@ -1346,7 +1343,6 @@ async function selectManager(name) {
   triviaScreen.classList.add("hidden");
   currentManager = name;
   saveMe(name);
-  managerBadge.textContent = name.toUpperCase();
   loginScreen.classList.add("hidden");
   scoreboardScreen.classList.add("hidden");
   picksScreen.classList.remove("hidden");
