@@ -26,20 +26,33 @@
 
   async function show() {
     el("admin-key").value = getKey();
-    // The next unplayed week is the one being set, so default to it.
-    let next = 2;
-    try {
-      const res = await fetch(`${WORKER_URL}/games?t=${Date.now()}`, { cache: "no-store" });
-      const data = await res.json();
-      const list = data?.weeks?.list;
-      if (Array.isArray(list) && list.length) next = Math.max(...list) + 1;
-    } catch {}
     const sel = el("admin-espn-week");
     if (!sel.options.length) {
       sel.innerHTML = Array.from({ length: 16 }, (_, i) => `<option value="${i + 1}">Week ${i + 1}</option>`).join("");
     }
-    sel.value = String(Math.min(16, next));
-    el("admin-year").value = String(new Date().getFullYear());
+    let week = 1;
+    let year = new Date().getFullYear();
+    // ESPN knows what week it is; guessing from the calendar or from what
+    // has already been published both go wrong the moment a week is set
+    // early or a slate is skipped.
+    try {
+      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?limit=1&t=${Date.now()}`, { cache: "no-store" });
+      const data = await res.json();
+      const wk = Number(data?.week?.number) || Number(data?.leagues?.[0]?.season?.type?.week?.number);
+      const yr = Number(data?.season?.year) || Number(data?.leagues?.[0]?.season?.year);
+      if (Number.isInteger(wk) && wk >= 1 && wk <= 16) week = wk;
+      if (Number.isInteger(yr) && yr >= 2000) year = yr;
+    } catch {
+      // Offline or ESPN down: fall back to the week after the last one
+      // published, which is the usual next thing to set.
+      try {
+        const res = await fetch(`${WORKER_URL}/games?t=${Date.now()}`, { cache: "no-store" });
+        const list = (await res.json())?.weeks?.list;
+        if (Array.isArray(list) && list.length) week = Math.min(16, Math.max(...list) + 1);
+      } catch {}
+    }
+    sel.value = String(week);
+    el("admin-year").value = String(year);
     syncGate();
     renderFound();
   }
