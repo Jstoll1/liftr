@@ -51,6 +51,9 @@ export default {
     if (url.pathname === "/games") {
       return handleGames(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/weeks") {
+      return handleWeekSummaries(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/season") {
       return handleSeason(request, env, corsHeaders, url);
     }
@@ -1186,6 +1189,144 @@ async function handleGames(request, env, corsHeaders, url) {
 // --- Season: every week's slate, picks and stored finals -------------------
 // Lets any client compute season standings without walking the whole store.
 let seasonCache = null;
+// --- Weekly performance log -----------------------------------------------
+// The app scores a week live off ESPN and, until now, kept nothing: once
+// ESPN's scoreboard moved on, that week's performance was gone. A week is
+// sealed here the moment its last game is final — one KV entry holding
+// every owner's line and who won — so the season can be looked at later
+// and the leaderboard can count trophies.
+//
+// The scoring below has to agree with app.js exactly: against the spread
+// pays 2, the favourite straight up pays 1, the underdog straight up pays
+// 3, a push on the number pays nobody, and a pick scores only if it is
+// fully right.
+const summaryKey = (week) => `week-summary:w${week}`;
+
+function seasonPointValue(game, team, mode) {
+  if (mode === "ATS") return 2;
+  return team === game.favorite ? 1 : 3;
+}
+
+function seasonOutcome(game, result) {
+  if (!result || !Number.isFinite(result.awayScore) || !Number.isFinite(result.homeScore)) return null;
+  const { awayScore, homeScore } = result;
+  const suWinner = awayScore > homeScore ? game.away : game.home;
+  const favMargin = game.favorite === game.home ? homeScore - awayScore : awayScore - homeScore;
+  const underdog = game.favorite === game.away ? game.home : game.away;
+  const push = favMargin === game.spread;
+  return { suWinner, atsWinner: push ? null : favMargin > game.spread ? game.favorite : underdog, push };
+}
+
+function seasonScorePick(game, pick, result) {
+  const outcome = seasonOutcome(game, result);
+  if (!outcome) return null;
+  if (!pick || !pick.team || !pick.mode) return 0;
+  const winner = pick.mode === "SU" ? outcome.suWinner : outcome.atsWinner;
+  if (winner === null) return 0;
+  return pick.team === winner ? seasonPointValue(game, pick.team, pick.mode) : 0;
+}
+
+// One week's standings. Same order as the board: points, then whoever came
+// closest on the tiebreaker; anyone still level shares the place and, at
+// the top, shares the win.
+function buildSummary(week, slate, results, picks) {
+  const games = slate?.games || [];
+  if (!games.length) return null;
+  const played = games.filter((g) => results?.[g.id]);
+  const complete = played.length === games.length;
+  const tbGame = games.find((g) => g.tiebreakerGame);
+  const tbResult = tbGame ? results?.[tbGame.id] : null;
+  const actualTotal = tbResult ? tbResult.awayScore + tbResult.homeScore : null;
+
+  const rows = PICKS_MANAGERS.map((name) => {
+    const state = picks?.[name] || { picks: {}, tiebreaker: "" };
+    let score = 0, hits = 0, misses = 0, picked = 0;
+    for (const g of games) {
+      const pick = state.picks?.[g.id];
+      if (pick) picked += 1;
+      const pts = seasonScorePick(g, pick, results?.[g.id]);
+      if (pts === null) continue;
+      if (pts > 0) { score += pts; hits += 1; } else if (pick) misses += 1;
+    }
+    const raw = String(state.tiebreaker ?? "").trim();
+    const guess = raw === "" ? null : Number(raw);
+    const tbDiff = actualTotal !== null && Number.isFinite(guess) ? Math.abs(guess - actualTotal) : null;
+    return { name, score, hits, misses, picked, tbGuess: Number.isFinite(guess) ? guess : null, tbDiff };
+  }).sort((a, b) => b.score - a.score || (a.tbDiff ?? Infinity) - (b.tbDiff ?? Infinity));
+
+  let place = 0;
+  rows.forEach((row, i) => {
+    const prev = rows[i - 1];
+    const tied = prev && prev.score === row.score && (prev.tbDiff ?? Infinity) === (row.tbDiff ?? Infinity);
+    if (!tied) place = i + 1;
+    row.place = place;
+  });
+  // Nobody wins a week where nobody scored, so an empty week never hands
+  // out a trophy.
+  const top = rows.filter((r) => r.place === 1 && r.score > 0);
+  rows.forEach((r) => { r.won = complete && top.some((t) => t.name === r.name); });
+
+  return {
+    week,
+    label: slate?.label || `Week ${week}`,
+    complete,
+    games: games.length,
+    played: played.length,
+    highScore: rows[0]?.score ?? 0,
+    winners: complete ? top.map((r) => r.name) : [],
+    tiebreaker: tbGame ? { game: tbGame.id, matchup: `${tbGame.awayShort} at ${tbGame.homeShort}`, actual: actualTotal } : null,
+    rows,
+    sealedAt: Date.now(),
+  };
+}
+
+// Writes the summary for a week, and keeps the sealed-at stamp from the
+// first sealing so a later correction does not look like a new week.
+async function sealWeek(env, week) {
+  const [slate, results, ...picksRows] = await Promise.all([
+    env.LIFTR_KV.get(gamesKey(week), "json"),
+    env.LIFTR_KV.get(resultsKey(week), "json"),
+    ...PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(pickKey(week, m), "json")]),
+  ]);
+  const summary = buildSummary(week, slate, results || {}, Object.fromEntries(picksRows.filter(([, v]) => v)));
+  if (!summary) return null;
+  const prior = await env.LIFTR_KV.get(summaryKey(week), "json");
+  if (prior?.sealedAt && summary.complete) summary.sealedAt = prior.sealedAt;
+  await env.LIFTR_KV.put(summaryKey(week), JSON.stringify(summary));
+  summariesCache = null;
+  return summary;
+}
+
+// Every sealed week, plus the trophy count the leaderboard shows. Public:
+// it is the same standings the board already displays, just kept.
+let summariesCache = null;
+async function handleWeekSummaries(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  if (request.method === "POST") {
+    // Re-seal on demand: the app owner's console uses this after a
+    // correction, and it is how a week already played gets caught up.
+    if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+    const weeks = await readWeeks(env);
+    const asked = Number(url.searchParams.get("week"));
+    const list = Number.isInteger(asked) ? [asked] : weeks.list;
+    const done = [];
+    for (const n of list) { const s = await sealWeek(env, n); if (s) done.push({ week: n, complete: s.complete, winners: s.winners }); }
+    return json({ ok: true, sealed: done }, 200, corsHeaders);
+  }
+  if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  const now = Date.now();
+  if (summariesCache && now - summariesCache.at < 60000) return json({ ...summariesCache.data, cached: true }, 200, corsHeaders);
+  const weeks = await readWeeks(env);
+  const rows = await Promise.all(weeks.list.map(async (n) => [n, await env.LIFTR_KV.get(summaryKey(n), "json")]));
+  const summaries = Object.fromEntries(rows.filter(([, v]) => v));
+  // One trophy per week won, which is what the leaderboard draws.
+  const trophies = {};
+  for (const s of Object.values(summaries)) for (const w of s.winners || []) trophies[w] = (trophies[w] || 0) + 1;
+  const data = { weeks, summaries, trophies };
+  summariesCache = { at: now, data };
+  return json(data, 200, corsHeaders);
+}
+
 async function handleSeason(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
 
@@ -1208,7 +1349,10 @@ async function handleSeason(request, env, corsHeaders, url) {
     const prior = (await env.LIFTR_KV.get(resultsKey(week), "json")) || {};
     await env.LIFTR_KV.put(resultsKey(week), JSON.stringify({ ...prior, ...clean }));
     seasonCache = null;
-    return json({ ok: true, week, stored: Object.keys(clean).length }, 200, corsHeaders);
+    // Seal on every post: partial while the week is running, final once
+    // the last game is in, and the trophy only counts when it is final.
+    const sealed = await sealWeek(env, week);
+    return json({ ok: true, week, stored: Object.keys(clean).length, complete: !!sealed?.complete, winners: sealed?.winners || [] }, 200, corsHeaders);
   }
 
   if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, corsHeaders);

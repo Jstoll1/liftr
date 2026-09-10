@@ -158,6 +158,29 @@ on any device. Without the secret the endpoint returns 404.
 
 Every pick change is logged for 30 days. `/picks-log?key=<ARCHIVE_LOG_KEY>` lists them newest first, marks any change made after that game kicked off, and flags any current pick stamped after kickoff. An admin repair replaces a manager's stored picks outright: `POST /picks?key=<ARCHIVE_LOG_KEY>` with `{"manager","state"}`.
 
+### Weekly performance log
+
+The board is computed live from ESPN, so a week that has finished leaves no
+record of itself — once ESPN's scoreboard moves on it cannot be rebuilt. Each
+week is therefore **sealed** into `week-summary:w<N>`: every owner's points,
+hits, misses, picks made, tiebreaker guess and distance, their place, and who
+won. `POST /season` seals on every call, so a week is partial while it runs
+and final once its last game is in; the app posts the finals from whichever
+phone is on the scoreboard when that happens, and remembers it did so.
+
+- `GET /weeks` → `{weeks, summaries, trophies}`, public. `trophies` is the
+  count of weeks won per owner, which is what the leaderboard draws beside
+  each name
+- `POST /weeks?key=<ARCHIVE_LOG_KEY>` re-seals every week, or one with
+  `&week=N`. Safe to repeat: a sealed week keeps its original date and a
+  trophy is never counted twice
+
+A week is only won once every game is final, and a week nobody scored in has
+no winner. Ties that the tiebreaker does not split share the win, and each of
+those owners gets a trophy. The scoring here mirrors `app.js` exactly — ATS
+pays 2, favourite straight up 1, underdog straight up 3, a push pays nobody —
+so the sealed standings match what the board showed.
+
 ### Owner logins
 
 Each owner claims their own name once with a code they choose, and every pick

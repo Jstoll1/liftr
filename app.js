@@ -916,7 +916,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609122200";
+  tag.src = "admin.js?v=202609122300";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -947,7 +947,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609122200";
+  tag.src = "console.js?v=202609122300";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -993,6 +993,7 @@ window.appClearPicks = () => {
   if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
 };
 window.appRefreshAuth = () => refreshAuthState();
+window.appRefreshWeeks = () => loadWeekSummaries();
 // console.js calls this when it closes, so Exit locks there too.
 window.lockAdminSurfaces = lockAdmin;
 
@@ -1692,6 +1693,7 @@ async function renderScoreboard() {
   const live = await fetchLiveScores();
   const results = computeLiveResults(live);
 
+  archiveWeekIfFinal(results);
   renderLiveScores(live, cloudPicks);
   renderScoreboardTable(cloudPicks, results, live);
   const ranked = renderRankings(cloudPicks, results, live);
@@ -2061,6 +2063,61 @@ function ordinal(n) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
+// --- Weekly performance and trophies ----------------------------------
+// The board is computed live from ESPN, so a week that has finished has
+// to be handed to the Worker or it is never kept. Whichever phone is on
+// the scoreboard when the last game goes final posts the finals; the
+// Worker seals the week from its own copy of the slate and picks, and
+// hands back the standings. One trophy per week won, drawn next to the
+// name on the leaderboard.
+let weekTrophies = {};
+let weekSummaries = {};
+const SEALED_KEY = "brochiefs_sealed_v1";
+
+async function loadWeekSummaries() {
+  if (!WORKER_URL) return;
+  try {
+    const res = await fetch(`${WORKER_URL}/weeks?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    weekTrophies = data.trophies || {};
+    weekSummaries = data.summaries || {};
+  } catch {
+    // Leave whatever we had; trophies are decoration, not the score.
+  }
+}
+
+// Once every game in the week is final, push the finals up. Tracked per
+// week on this device so ten phones do not each post it ten times.
+async function archiveWeekIfFinal(results) {
+  if (!WORKER_URL || !GAMES.length) return;
+  if (!GAMES.every((g) => results[g.id])) return;
+  let done = [];
+  try { done = JSON.parse(localStorage.getItem(SEALED_KEY) || "[]"); } catch {}
+  if (done.includes(currentWeek)) return;
+  try {
+    const res = await fetch(`${WORKER_URL}/season`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
+      body: JSON.stringify({ week: currentWeek, results }),
+    });
+    if (!res.ok) return;
+    try { localStorage.setItem(SEALED_KEY, JSON.stringify([...done, currentWeek])); } catch {}
+    await loadWeekSummaries();
+  } catch {
+    // Try again on the next refresh.
+  }
+}
+
+// One 🏆 per week won, and a count once there are too many to read at a
+// glance.
+function trophiesFor(name) {
+  const n = weekTrophies[name] || 0;
+  if (!n) return "";
+  const label = `${n} week${n === 1 ? "" : "s"} won`;
+  const face = n <= 4 ? "🏆".repeat(n) : `🏆<span class="rank-trophy-x">×${n}</span>`;
+  return `<span class="rank-trophies" title="${label}" aria-label="${label}">${face}</span>`;
+}
+
 function renderRankings(cloudPicks, results, live = {}) {
   const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
   const tbResult = results[tiebreakerGame.id];
@@ -2132,7 +2189,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     div.innerHTML = `
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place">${row.tied ? "T-" : ""}${ordinal(row.place)}</span>
-        <span class="ranking-name">${row.name.toUpperCase()}<span class="ranking-lock">${row.subline}</span></span>
+        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${row.name.toUpperCase()}</span>${trophiesFor(row.name)}</span><span class="ranking-lock">${row.subline}</span></span>
         <span class="ranking-dots" aria-hidden="true"></span>
         <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
         <span class="ranking-caret">${open ? "▴" : "▾"}</span>
@@ -2256,7 +2313,7 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
   // Fetch this week's slate before anything renders, so nobody sees last
   // week's games flash past. The splash covers the wait. Whether login is
   // live, and who has claimed a name, comes down in the same breath.
-  await Promise.all([loadSlate(), refreshAuthState()]);
+  await Promise.all([loadSlate(), refreshAuthState(), loadWeekSummaries()]);
   lastLockSignature = lockSignature();
   renderManagerPicker();
 

@@ -2160,6 +2160,13 @@ html, body {
 .ranking-place { width: 34px; font-size: 9px; color: var(--neon-yellow); }
 .ranking-row:nth-child(n+5) .ranking-place { color: var(--text-dim); }
 .ranking-name { flex: 0 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; font-family: 'Press Start 2P', monospace; font-size: 9px; font-weight: 400; color: var(--text); letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Name and its trophies share a line inside the (column) name cell; the
+   name is the part that ellipsizes, the trophies never shrink. */
+.rank-nameline { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.rank-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-trophies { flex: none; font-size: 10px; line-height: 1; letter-spacing: -1px; }
+.rank-trophy-x { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-yellow); letter-spacing: 0; margin-left: 1px; }
+
 .ranking-name .ranking-lock { font-family: 'Orbitron', system-ui, sans-serif; font-size: 8px; font-weight: 700; color: var(--text-dim); letter-spacing: .06em; }
 .ranking-row.is-me .ranking-name::before { display: none; }
 .ranking-row.is-me .ranking-name { color: var(--neon-cyan); }

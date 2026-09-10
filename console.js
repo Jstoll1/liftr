@@ -51,6 +51,54 @@
       </div>`).join("");
   }
 
+  // --- Season ---------------------------------------------------------
+  // Week by week, from the sealed summaries. This is the record the board
+  // cannot rebuild once ESPN moves on, so it is also where a week that
+  // never got sealed shows up as unsealed.
+  async function renderSeason() {
+    const data = await get("/weeks");
+    const summaries = data.summaries || {};
+    const trophies = data.trophies || {};
+    const list = (data.weeks?.list || []).slice().sort((a, b) => b - a);
+    const board = Object.entries(trophies).sort((a, b) => b[1] - a[1]);
+    const sealed = list.filter((n) => summaries[n]?.complete);
+
+    body.innerHTML = `<div class="con-summary">
+        <span>${sealed.length} of ${list.length} week${list.length === 1 ? "" : "s"} sealed</span>
+        <span>${board.length} owner${board.length === 1 ? "" : "s"} with a week</span>
+      </div>
+      ${board.length ? `<div class="con-row"><div class="con-row-head"><b>Weeks won</b></div>
+        <div class="con-line">${board.map(([who, n]) => `${esc(who)} ${"🏆".repeat(Math.min(n, 4))}${n > 4 ? `×${n}` : ""}`).join(" · ")}</div></div>` : ""}
+      ${list.map((n) => {
+        const s = summaries[n];
+        if (!s) return `<div class="con-row warn"><div class="con-row-head"><b>Week ${n}</b><span>never sealed</span></div>
+          <div class="con-line dim">No summary stored. If the week was played, Re-seal below will build one from the slate, picks and finals the Worker has.</div></div>`;
+        const top = (s.rows || []).filter((r) => r.picked > 0);
+        return `<div class="con-row${s.complete ? "" : " warn"}">
+          <div class="con-row-head"><b>${esc(s.label)}</b>
+            <span>${s.complete ? `winner ${esc((s.winners || []).join(" & ")) || "nobody scored"} · ${s.highScore} pts` : `in progress · ${s.played}/${s.games} final`}</span></div>
+          ${s.tiebreaker ? `<div class="con-line dim">TB ${esc(s.tiebreaker.matchup)}${s.tiebreaker.actual !== null ? ` · total ${s.tiebreaker.actual}` : ""}</div>` : ""}
+          ${top.length ? `<div class="con-line dim">${top.map((r) => `${r.won ? "🏆 " : ""}${esc(r.name)} ${r.score}${r.tbDiff !== null ? ` (off ${r.tbDiff})` : ""}`).join(" · ")}</div>` : `<div class="con-line dim">Nobody picked this week.</div>`}
+        </div>`;
+      }).join("")}
+      <div class="con-actions"><button id="con-reseal" class="admin-btn" type="button">Re-seal every week</button></div>
+      <p class="admin-intro">Re-sealing recomputes each week from the slate, picks and finals in KV. It is safe to run any time — a week already sealed keeps its original date, and a trophy is never counted twice.</p>`;
+
+    el("con-reseal").addEventListener("click", async () => {
+      say("Re-sealing…");
+      try {
+        const res = await fetch(`${WORKER_URL}/weeks?key=${encodeURIComponent(key())}`, { method: "POST" });
+        const out = await res.json();
+        if (!res.ok) { say(out.error || "Could not re-seal.", "bad"); return; }
+        say(`Sealed ${out.sealed.length} week${out.sealed.length === 1 ? "" : "s"}.`, "ok");
+        window.appRefreshWeeks?.();
+        renderTab();
+      } catch {
+        say("Could not reach the Worker.", "bad");
+      }
+    });
+  }
+
   // --- Logins ---------------------------------------------------------
   async function renderLogins() {
     const { events } = await get("/auth-log?format=json");
@@ -187,7 +235,7 @@
     });
   }
 
-  const TABS = { picks: renderPicks, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate };
+  const TABS = { picks: renderPicks, season: renderSeason, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate };
 
   async function renderTab() {
     body.innerHTML = `<div class="admin-empty">Loading…</div>`;
