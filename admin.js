@@ -34,7 +34,6 @@
       const list = data?.weeks?.list;
       if (Array.isArray(list) && list.length) next = Math.max(...list) + 1;
     } catch {}
-    el("admin-week").value = String(next);
     const sel = el("admin-espn-week");
     if (!sel.options.length) {
       sel.innerHTML = Array.from({ length: 16 }, (_, i) => `<option value="${i + 1}">Week ${i + 1}</option>`).join("");
@@ -74,8 +73,9 @@
     el("admin-save").disabled = !has;
   }
 
-  // ESPN's scoreboard takes a season week, which returns every game from
-  // Thursday through Sunday in one call. groups=80 is all of FBS.
+  // One control: the ESPN season week is also the league week it publishes
+  // to, so week 4 of the season is always week 4 of the pick'em. ESPN's
+  // scoreboard returns Thursday through Sunday in one call; groups=80 is FBS.
   async function loadEspn() {
     if (!(await verifyKey())) return;
     const wk = Number(el("admin-espn-week").value);
@@ -145,7 +145,7 @@
   // that work, not a blank board. The saved slate carries ESPN team ids, so
   // each stored game re-checks the row it came from.
   async function preselectSaved() {
-    const week = Number(el("admin-week").value);
+    const week = Number(el("admin-espn-week").value);
     if (!Number.isInteger(week) || week < 1) return null;
     try {
       const res = await fetch(`${WORKER_URL}/games?week=${week}&t=${Date.now()}`, { cache: "no-store" });
@@ -326,8 +326,8 @@
   async function save() {
     const key = await verifyKey();
     if (!key) return;
-    const week = Number(el("admin-week").value);
-    if (!Number.isInteger(week) || week < 1) { say("Week must be a whole number.", "bad"); return; }
+    const week = Number(el("admin-espn-week").value);
+    if (!Number.isInteger(week) || week < 1) { say("Pick a week.", "bad"); return; }
     if (!picked.size) { say("Select at least one game.", "bad"); return; }
     const tb = [...picked.values()].filter((p) => p.tiebreaker);
     if (tb.length !== 1) { say("Mark exactly one game as the tiebreaker.", "bad"); return; }

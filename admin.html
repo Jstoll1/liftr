@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="admin-standalone-root">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609110930" />
+  <link rel="stylesheet" href="styles.css?v=202609111100" />
 </head>
 <body class="admin-standalone">
 
@@ -29,14 +29,14 @@
   <main id="admin-screen" class="screen">
     <div class="wrap wide">
       <div class="topbar centered"><span class="manager-badge">🛠 SLATE EDITOR</span></div>
-      <p class="admin-intro">Enter the admin key, pick the ESPN week, and load it. Tap the games the league is playing, up to ten, and mark one as the tiebreaker. Spreads and favorites come from ESPN and are not editable.</p>
+      <p class="admin-intro">Enter the admin key, pick the week, and load it. The week you load is the week you publish to. Tap the games the league is playing, up to ten, and mark one as the tiebreaker. Spreads and favorites come from ESPN and are not editable.</p>
 
       <div class="admin-row">
         <label class="admin-field">Admin key<input id="admin-key" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="ARCHIVE_LOG_KEY" /></label>
-        <label class="admin-field small">Week<input id="admin-week" type="number" min="1" max="30" inputmode="numeric" /></label>
+
       </div>
       <div class="admin-row">
-        <label class="admin-field">ESPN week<select id="admin-espn-week"></select></label>
+        <label class="admin-field">Week<select id="admin-espn-week"></select></label>
         <label class="admin-field small">Season<input id="admin-year" type="number" min="2000" max="2100" inputmode="numeric" /></label>
         <button id="admin-load" class="admin-btn" type="button">Load week</button>
         <button id="admin-suggest-btn" class="admin-btn" type="button">★ Suggest 10</button>
@@ -69,6 +69,6 @@
     </div>
   </main>
 
-  <script src="admin.js?v=202609110930"></script>
+  <script src="admin.js?v=202609111100"></script>
 </body>
 </html>
