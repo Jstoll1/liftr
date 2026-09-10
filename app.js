@@ -53,7 +53,10 @@ function scorePick(game, pick, result) {
 // show picks made on that same device.
 const WORKER_URL = "https://liftr-ai.jhs797.workers.dev";
 
-const STORAGE_KEY = "brochiefs_picks_v1";
+const STORAGE_KEY_BASE = "brochiefs_picks_v1";
+// Local picks are namespaced per week from week 2 on, so a device holding
+// last week's card cannot leak it into the new one.
+const storageKey = () => (currentWeek === 1 ? STORAGE_KEY_BASE : `${STORAGE_KEY_BASE}_w${currentWeek}`);
 
 // Kickoff dates confirmed against each team's published 2026 schedule:
 // Week 1 Saturday slate is Sept 5, 2026; the Louisville/Ole Miss "Music
@@ -61,7 +64,10 @@ const STORAGE_KEY = "brochiefs_picks_v1";
 // ESPN team IDs, used to hotlink official logos from ESPN's CDN
 // (a.espncdn.com/i/teamlogos/ncaa/500/<id>.png) — nothing downloaded or
 // stored in this repo, just referenced by URL like any other <img src>.
-const GAMES = [
+// The week-1 slate ships in the file so the app works before the Worker
+// answers, and as a fallback if it never does. From week 2 on the slate
+// comes from the Worker, where the commissioner edits it.
+let GAMES = [
   { id: 1, away: "Liberty", awayId: 2335, awayShort: "Liberty", homeShort: "JMU", home: "James Madison", homeId: 256, favorite: "James Madison", spread: 6.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ESPNU" },
   { id: 2, away: "Miami (OH)", awayId: 193, awayShort: "Miami OH", homeShort: "Pitt", home: "Pitt", homeId: 221, favorite: "Pitt", spread: 16.5, kickoff: "2026-09-05T16:30:00Z", kickoffLabel: "Sat 12:30 PM ET", tv: "The CW" },
   { id: 3, away: "Baylor", awayId: 239, awayShort: "Baylor", homeShort: "Auburn", home: "Auburn", homeId: 2, favorite: "Auburn", spread: 7.5, kickoff: "2026-09-05T19:30:00Z", kickoffLabel: "Sat 3:30 PM ET", tv: "ABC" },
@@ -74,7 +80,30 @@ const GAMES = [
   { id: 10, away: "#24 Louisville", awayId: 97, awayShort: "Louisville", homeShort: "Ole Miss", home: "#9 Ole Miss", homeId: 145, favorite: "#9 Ole Miss", spread: 7, kickoffLabel: "Sun 7:30 PM ET", kickoff: "2026-09-06T23:30:00Z", tv: "ABC" },
 ];
 
-const WEEK_LABEL = "Week 1";
+let WEEK_LABEL = "Week 1";
+let currentWeek = 1;
+let weekList = [1];
+
+// Pull the current slate from the Worker. Keeps the built-in week 1 if the
+// Worker is unreachable or has nothing stored, so the app never shows an
+// empty board.
+async function loadSlate(week) {
+  if (!WORKER_URL) return false;
+  try {
+    const q = week ? `?week=${week}&` : "?";
+    const res = await fetch(`${WORKER_URL}/games${q}t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (data.weeks && Array.isArray(data.weeks.list)) weekList = data.weeks.list;
+    if (!Array.isArray(data.games) || !data.games.length) return false;
+    GAMES = data.games;
+    currentWeek = data.week || currentWeek;
+    WEEK_LABEL = data.label || `Week ${currentWeek}`;
+    return true;
+  } catch {
+    return false;
+  }
+}
 function weekIsFinal() {
   const results = computeLiveResults(latestLive);
   return GAMES.every((g) => results[g.id]);
@@ -93,14 +122,14 @@ const AVATAR_COLORS = ["#ff2079", "#05d9e8", "#c13cff", "#ffe45e", "#39ff88"];
 
 function loadAll() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    return JSON.parse(localStorage.getItem(storageKey())) || {};
   } catch {
     return {};
   }
 }
 
 function saveAll(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  localStorage.setItem(storageKey(), JSON.stringify(data));
 }
 
 // Discards any pick saved in the old "just a team name" format (from
@@ -184,7 +213,7 @@ async function pushManagerState(manager, state, { attempts = 3 } = {}) {
       const res = await fetch(`${WORKER_URL}/picks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ manager, state: toSend }),
+        body: JSON.stringify({ manager, state: toSend, week: currentWeek }),
         cache: "no-store",
       });
       if (res.ok) {
@@ -215,7 +244,7 @@ async function flushPendingPush() {
 async function fetchAllPicks() {
   if (!WORKER_URL) return null;
   try {
-    const res = await fetch(`${WORKER_URL}/picks?t=${Date.now()}`, { cache: "no-store" });
+    const res = await fetch(`${WORKER_URL}/picks?week=${currentWeek}&t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
     return data.picks || {};
@@ -337,7 +366,7 @@ async function restorePhonePicks(name) {
   try {
     const res = await fetch(`${WORKER_URL}/picks?key=${encodeURIComponent(key)}`, {
       method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
-      body: JSON.stringify({ manager: name, state: snap }),
+      body: JSON.stringify({ manager: name, state: snap, week: currentWeek }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.admin) { window.alert("Not restored: the key did not match."); return; }
@@ -1740,8 +1769,6 @@ window.addEventListener("pageshow", (e) => {
   if (e.persisted && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
 });
 
-renderManagerPicker();
-
 
 // All Picks starts collapsed: the scorebugs and the leaderboard are the
 // point of the board, the full grid is there when someone wants it.
@@ -1759,7 +1786,13 @@ renderManagerPicker();
 // app opens straight to where the tap would have landed.
 const SPLASH_KEY = "brochiefs_splash_seen_v1";
 const SPLASH_TTL = 12 * 60 * 60 * 1000;
-(() => {
+(async () => {
+  // Fetch this week's slate before anything renders, so nobody sees last
+  // week's games flash past. The splash covers the wait.
+  await loadSlate();
+  lastLockSignature = lockSignature();
+  renderManagerPicker();
+
   let last = 0;
   try { last = Number(localStorage.getItem(SPLASH_KEY)) || 0; } catch {}
   const fresh = Date.now() - last < SPLASH_TTL;

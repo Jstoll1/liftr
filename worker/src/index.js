@@ -48,6 +48,12 @@ export default {
     if (url.pathname === "/library") {
       return handleLibrary(request, env, corsHeaders);
     }
+    if (url.pathname === "/games") {
+      return handleGames(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/season") {
+      return handleSeason(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/trivia") {
       return handleTrivia(request, env, corsHeaders);
     }
@@ -466,9 +472,46 @@ const PICKS_MANAGERS = [
 // Kickoffs (ms since epoch) for the 2026 Week 1 slate, same values as
 // GAMES in app.js. A pick for a game past its kickoff can no longer be
 // added or changed through /picks.
+// --- Weeks -----------------------------------------------------------------
+// Week 1 was played and scored before the app understood weeks, so its keys
+// stay exactly where they were. Week 2 onward is namespaced. That makes the
+// change additive: nothing can disturb a week that is already in the books.
+const pickKey = (week, manager) => (week === 1 ? `picks:${manager}` : `picks:w${week}:${manager}`);
+const gamesKey = (week) => `games:w${week}`;
+const resultsKey = (week) => `results:w${week}`;
+const WEEKS_KEY = "weeks";
+
+function isAdmin(env, url) {
+  return !!env.ARCHIVE_LOG_KEY && url.searchParams.get("key") === env.ARCHIVE_LOG_KEY;
+}
+
+async function readWeeks(env) {
+  const stored = await env.LIFTR_KV.get(WEEKS_KEY, "json");
+  if (stored && Array.isArray(stored.list) && stored.list.length) return stored;
+  return { current: 1, list: [1] };
+}
+
+// The week a request is about: an explicit ?week=N, else the current one.
+async function weekFrom(env, url) {
+  const raw = url.searchParams.get("week");
+  const n = raw === null ? null : Number(raw);
+  if (Number.isInteger(n) && n >= 1 && n <= 30) return n;
+  return (await readWeeks(env)).current;
+}
+
 // Per-isolate cache of the assembled picks map (see GET /picks).
 let picksCache = null;
 const PICKS_CACHE_MS = 5000;
+
+// Kickoff times for a week, read from that week's stored games. Week 1
+// predates the games store, so its hardcoded table below is the fallback.
+async function kickoffsFor(env, week) {
+  const wk = await env.LIFTR_KV.get(gamesKey(week), "json");
+  if (wk && Array.isArray(wk.games) && wk.games.length) {
+    return Object.fromEntries(wk.games.map((g) => [String(g.id), new Date(g.kickoff).getTime()]));
+  }
+  return week === 1 ? PICKS_KICKOFF : {};
+}
 
 const PICKS_KICKOFF = Object.fromEntries(Object.entries({
   1: "2026-09-05T16:00:00Z", 2: "2026-09-05T16:30:00Z", 3: "2026-09-05T19:30:00Z", 4: "2026-09-05T19:30:00Z", 5: "2026-09-05T19:30:00Z",
@@ -488,18 +531,19 @@ async function handlePicks(request, env, corsHeaders, url) {
       // afternoon, so the Worker keeps a short in-memory copy and serves
       // that; a save clears it so nobody waits more than a few seconds.
       const now = Date.now();
-      if (picksCache && now - picksCache.at < PICKS_CACHE_MS) {
-        return json({ picks: picksCache.picks, cached: true }, 200, corsHeaders);
+      const week = await weekFrom(env, url);
+      if (picksCache && picksCache.week === week && now - picksCache.at < PICKS_CACHE_MS) {
+        return json({ week, picks: picksCache.picks, cached: true }, 200, corsHeaders);
       }
       const entries = await Promise.all(
         PICKS_MANAGERS.map(async (manager) => {
-          const stored = await env.LIFTR_KV.get(`picks:${manager}`);
+          const stored = await env.LIFTR_KV.get(pickKey(week, manager));
           return [manager, stored ? JSON.parse(stored) : null];
         })
       );
       const picks = Object.fromEntries(entries.filter(([, value]) => value !== null));
-      picksCache = { at: now, picks };
-      return json({ picks }, 200, corsHeaders);
+      picksCache = { at: now, week, picks };
+      return json({ week, picks }, 200, corsHeaders);
     } catch (err) {
       console.error("Picks read error", err?.stack || String(err));
       return json({ error: "Read failed" }, 500, corsHeaders);
@@ -523,7 +567,9 @@ async function handlePicks(request, env, corsHeaders, url) {
       // timestamp (older clients) lose to timestamped ones and otherwise
       // the incoming pick wins, which is the old behaviour.
       const incoming = body.state || {};
-      const stored = JSON.parse((await env.LIFTR_KV.get(`picks:${manager}`)) || "null") || { picks: {} };
+      const week = Number.isInteger(body.week) && body.week >= 1 ? body.week : await weekFrom(env, url);
+      const kickoffs = await kickoffsFor(env, week);
+      const stored = JSON.parse((await env.LIFTR_KV.get(pickKey(week, manager))) || "null") || { picks: {} };
       // Admin repair: with the log key, the posted state replaces the
       // stored one outright, locked games included.
       const admin = !!env.ARCHIVE_LOG_KEY && url.searchParams.get("key") === env.ARCHIVE_LOG_KEY;
@@ -533,10 +579,10 @@ async function handlePicks(request, env, corsHeaders, url) {
           const prev = stored.picks?.[id];
           incoming.picks[id] = { ...p, savedAt: prev && prev.team === p.team && prev.mode === p.mode ? (prev.savedAt || null) : nowAdmin, ...(prev && prev.team === p.team && prev.mode === p.mode ? {} : { repairedAt: nowAdmin }) };
         }
-        await env.LIFTR_KV.put(`picks:${manager}`, JSON.stringify(incoming));
+        await env.LIFTR_KV.put(pickKey(week, manager), JSON.stringify(incoming));
         picksCache = null;
-        await logPickChanges(env, manager, stored, incoming, true);
-        return json({ ok: true, admin: true, state: incoming }, 200, corsHeaders);
+        await logPickChanges(env, manager, stored, incoming, true, week, kickoffs);
+        return json({ ok: true, admin: true, week, state: incoming }, 200, corsHeaders);
       }
       const merged = { picks: {}, tiebreaker: "" };
       const ids = new Set([...Object.keys(stored.picks || {}), ...Object.keys(incoming.picks || {})]);
@@ -544,7 +590,7 @@ async function handlePicks(request, env, corsHeaders, url) {
       for (const id of ids) {
         const a = stored.picks?.[id], b = incoming.picks?.[id];
         // Past kickoff the stored pick is final: no additions, no changes.
-        if (PICKS_KICKOFF[id] && now >= PICKS_KICKOFF[id]) { if (a) merged.picks[id] = a; continue; }
+        if (kickoffs[id] && now >= kickoffs[id]) { if (a) merged.picks[id] = a; continue; }
         const chosen = !a ? b : !b ? a : (a.updatedAt || 0) > (b.updatedAt || 0) ? a : b;
         // savedAt is the Worker's own clock, set whenever the pick changes,
         // so every pick carries a time nobody's device can fake.
@@ -557,10 +603,10 @@ async function handlePicks(request, env, corsHeaders, url) {
       const useIncoming = tb > ta || !storedHas || (tb === ta && incomingHas);
       merged.tiebreaker = useIncoming ? (incoming.tiebreaker ?? "") : stored.tiebreaker;
       merged.tiebreakerUpdatedAt = Math.max(ta, tb);
-      await env.LIFTR_KV.put(`picks:${manager}`, JSON.stringify(merged));
+      await env.LIFTR_KV.put(pickKey(week, manager), JSON.stringify(merged));
       picksCache = null;
-      await logPickChanges(env, manager, stored, merged, false);
-      return json({ ok: true, state: merged }, 200, corsHeaders);
+      await logPickChanges(env, manager, stored, merged, false, week, kickoffs);
+      return json({ ok: true, week, state: merged }, 200, corsHeaders);
     } catch (err) {
       console.error("Picks write error", err?.stack || String(err));
       return json({ error: "Write failed" }, 500, corsHeaders);
@@ -580,19 +626,20 @@ async function handlePicks(request, env, corsHeaders, url) {
 // Every change to a manager's picks is written to KV (30 days) so a
 // disputed score can be traced: which game, from what to what, when, and
 // whether that game had already kicked off.
-async function logPickChanges(env, manager, before, after, admin) {
+async function logPickChanges(env, manager, before, after, admin, week = 1, kickoffs = null) {
   try {
     const changes = [];
     const ids = new Set([...Object.keys(before?.picks || {}), ...Object.keys(after?.picks || {})]);
     for (const id of ids) {
       const a = before?.picks?.[id], b = after?.picks?.[id];
       const fa = a ? `${a.team} ${a.mode}` : null, fb = b ? `${b.team} ${b.mode}` : null;
-      if (fa !== fb) changes.push({ game: Number(id), from: fa, to: fb, afterKickoff: !!PICKS_KICKOFF[id] && Date.now() >= PICKS_KICKOFF[id] });
+      const ko = (kickoffs || PICKS_KICKOFF)[id];
+      if (fa !== fb) changes.push({ game: Number(id), from: fa, to: fb, afterKickoff: !!ko && Date.now() >= ko });
     }
     if (String(before?.tiebreaker ?? "") !== String(after?.tiebreaker ?? "")) changes.push({ game: 0, from: String(before?.tiebreaker ?? ""), to: String(after?.tiebreaker ?? ""), afterKickoff: false });
     if (!changes.length) return;
     const ts = Date.now();
-    await env.LIFTR_KV.put(`picks-log:${String(9999999999999 - ts)}`, JSON.stringify({ ts, manager, admin, changes }), { expirationTtl: 30 * 24 * 3600 });
+    await env.LIFTR_KV.put(`picks-log:${String(9999999999999 - ts)}`, JSON.stringify({ ts, week, manager, admin, changes }), { expirationTtl: 30 * 24 * 3600 });
   } catch (err) {
     console.error("pick log failed", err);
   }
@@ -628,6 +675,157 @@ async function handleTrivia(request, env, corsHeaders) {
     return json({ ok: true, best: cur.best, plays: cur.plays }, 200, corsHeaders);
   }
   return json({ error: "Method not allowed" }, 405, corsHeaders);
+}
+
+// --- Games: the week's slate, editable by the commissioner ----------------
+// GET  /games            current week's games and the list of weeks
+// GET  /games?week=N     one week
+// GET  /games?all=1      every stored week
+// POST /games?key=...    save a week (admin), optionally making it current
+let gamesCache = null;
+
+function validateSlate(body) {
+  const week = Number(body?.week);
+  if (!Number.isInteger(week) || week < 1 || week > 30) return "week must be a whole number from 1 to 30";
+  const games = body?.games;
+  if (!Array.isArray(games) || games.length < 1 || games.length > 16) return "games must be a list of 1 to 16 matchups";
+  const seen = new Set();
+  const clean = [];
+  for (const [i, g] of games.entries()) {
+    const at = `game ${i + 1}`;
+    const id = Number(g?.id);
+    if (!Number.isInteger(id) || id < 1 || id > 16) return `${at}: id must be 1 to 16`;
+    if (seen.has(id)) return `${at}: duplicate id ${id}`;
+    seen.add(id);
+    for (const f of ["away", "home", "awayShort", "homeShort", "favorite", "kickoff"]) {
+      if (typeof g[f] !== "string" || !g[f].trim()) return `${at}: ${f} is required`;
+    }
+    const awayId = Number(g.awayId), homeId = Number(g.homeId);
+    if (!Number.isInteger(awayId) || !Number.isInteger(homeId)) return `${at}: awayId and homeId must be ESPN team ids`;
+    const spread = Number(g.spread);
+    if (!Number.isFinite(spread) || spread < 0 || spread > 80) return `${at}: spread must be 0 to 80`;
+    if (Math.round(spread * 2) !== spread * 2) return `${at}: spread must be a whole or half point`;
+    if (g.favorite !== g.away && g.favorite !== g.home) return `${at}: favorite must be exactly the away or home name`;
+    const kick = new Date(g.kickoff).getTime();
+    if (!Number.isFinite(kick)) return `${at}: kickoff must be an ISO date`;
+    clean.push({
+      id, away: g.away.trim(), home: g.home.trim(), awayShort: g.awayShort.trim(), homeShort: g.homeShort.trim(),
+      awayId, homeId, favorite: g.favorite.trim(), spread,
+      kickoff: new Date(kick).toISOString(),
+      kickoffLabel: typeof g.kickoffLabel === "string" && g.kickoffLabel.trim() ? g.kickoffLabel.trim() : kickoffLabelFor(kick),
+      tv: typeof g.tv === "string" ? g.tv.trim() : "",
+      ...(g.tiebreakerGame ? { tiebreakerGame: true } : {}),
+    });
+  }
+  const tb = clean.filter((g) => g.tiebreakerGame);
+  if (tb.length !== 1) return "exactly one game must be marked as the tiebreaker";
+  return { week, label: typeof body.label === "string" && body.label.trim() ? body.label.trim() : `Week ${week}`, games: clean };
+}
+
+function kickoffLabelFor(ms) {
+  const d = new Date(ms);
+  const day = d.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" });
+  const time = d.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
+  return `${day} ${time} ET`;
+}
+
+async function handleGames(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+
+  if (request.method === "GET") {
+    const weeks = await readWeeks(env);
+    if (url.searchParams.get("all")) {
+      const all = await Promise.all(weeks.list.map(async (n) => [n, await env.LIFTR_KV.get(gamesKey(n), "json")]));
+      return json({ weeks, slates: Object.fromEntries(all.filter(([, v]) => v)) }, 200, corsHeaders);
+    }
+    const week = await weekFrom(env, url);
+    const now = Date.now();
+    if (gamesCache && gamesCache.week === week && now - gamesCache.at < 5000) {
+      return json({ weeks, ...gamesCache.slate, cached: true }, 200, corsHeaders);
+    }
+    const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
+    if (!slate) return json({ weeks, week, games: null, note: "no slate stored for this week" }, 200, corsHeaders);
+    gamesCache = { at: now, week, slate };
+    return json({ weeks, ...slate }, 200, corsHeaders);
+  }
+
+  if (request.method === "POST" || request.method === "PUT") {
+    if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+    const checked = validateSlate(body);
+    if (typeof checked === "string") return json({ error: checked }, 400, corsHeaders);
+
+    // A week whose games have already kicked off is not editable, so a
+    // scored week cannot be rewritten out from under the league.
+    const existing = await env.LIFTR_KV.get(gamesKey(checked.week), "json");
+    if (existing && Array.isArray(existing.games)) {
+      const started = existing.games.some((g) => Date.now() >= new Date(g.kickoff).getTime());
+      if (started && !url.searchParams.get("force")) {
+        return json({ error: `Week ${checked.week} has already kicked off. Add ?force=1 to overwrite it anyway.` }, 409, corsHeaders);
+      }
+    }
+    await env.LIFTR_KV.put(gamesKey(checked.week), JSON.stringify(checked));
+    const weeks = await readWeeks(env);
+    const list = [...new Set([...weeks.list, checked.week])].sort((a, b) => a - b);
+    const current = body.makeCurrent === false ? weeks.current : checked.week;
+    await env.LIFTR_KV.put(WEEKS_KEY, JSON.stringify({ current, list }));
+    gamesCache = null;
+    return json({ ok: true, week: checked.week, current, list, games: checked.games.length }, 200, corsHeaders);
+  }
+
+  return json({ error: "Method not allowed" }, 405, corsHeaders);
+}
+
+// --- Season: every week's slate, picks and stored finals -------------------
+// Lets any client compute season standings without walking the whole store.
+let seasonCache = null;
+async function handleSeason(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+
+  if (request.method === "POST") {
+    // A client posts a week's final scores once every game in it is final,
+    // so past weeks can be scored without ESPN. Only completed games count.
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+    const week = Number(body?.week);
+    if (!Number.isInteger(week) || week < 1 || week > 30) return json({ error: "Bad week" }, 400, corsHeaders);
+    const kickoffs = await kickoffsFor(env, week);
+    const clean = {};
+    for (const [id, r] of Object.entries(body?.results || {})) {
+      const a = Number(r?.awayScore), h = Number(r?.homeScore);
+      if (!Number.isInteger(a) || !Number.isInteger(h) || a < 0 || h < 0 || a > 200 || h > 200) continue;
+      if (!kickoffs[id] || Date.now() < kickoffs[id]) continue; // not started: ignore
+      clean[id] = { awayScore: a, homeScore: h };
+    }
+    if (!Object.keys(clean).length) return json({ error: "No usable results" }, 400, corsHeaders);
+    const prior = (await env.LIFTR_KV.get(resultsKey(week), "json")) || {};
+    await env.LIFTR_KV.put(resultsKey(week), JSON.stringify({ ...prior, ...clean }));
+    seasonCache = null;
+    return json({ ok: true, week, stored: Object.keys(clean).length }, 200, corsHeaders);
+  }
+
+  if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, corsHeaders);
+
+  const now = Date.now();
+  if (seasonCache && now - seasonCache.at < 30000) return json({ ...seasonCache.data, cached: true }, 200, corsHeaders);
+  const weeks = await readWeeks(env);
+  const out = { weeks, season: {} };
+  for (const n of weeks.list) {
+    const [slate, results, ...picksRows] = await Promise.all([
+      env.LIFTR_KV.get(gamesKey(n), "json"),
+      env.LIFTR_KV.get(resultsKey(n), "json"),
+      ...PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(pickKey(n, m), "json")]),
+    ]);
+    out.season[n] = {
+      label: slate?.label || `Week ${n}`,
+      games: slate?.games || null,
+      results: results || {},
+      picks: Object.fromEntries(picksRows.filter(([, v]) => v)),
+    };
+  }
+  seasonCache = { at: now, data: out };
+  return json(out, 200, corsHeaders);
 }
 
 async function handlePicksLog(request, env, corsHeaders, url) {

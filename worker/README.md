@@ -173,3 +173,25 @@ git add data/espn-history.json worker/src/matchup-data.js && git commit -m "Refr
 cd worker && npx wrangler deploy
 ```
 
+
+
+## Weeks and the slate editor
+
+The pick'em is season-long. Each week's ten games live in KV as `games:w<N>`,
+and `weeks` holds `{current, list}`. Picks are stored per week. Week 1 was
+played before the app understood weeks, so its picks stay at `picks:<manager>`
+and every later week is namespaced `picks:w<N>:<manager>`; the change is
+additive so a scored week cannot be disturbed.
+
+Routes:
+
+- `GET /games` current week's slate, `?week=N` for one week, `?all=1` for every stored week
+- `POST /games?key=<ARCHIVE_LOG_KEY>` save a week. Validates every field, requires exactly one tiebreaker game, and refuses a week that has already kicked off unless `&force=1`
+- `GET /picks?week=N`, and `POST /picks` with `week` in the body
+- `GET /season` every week's slate, picks and stored finals, for season standings
+- `POST /season` a week's final scores, ignored for games that have not started
+
+The commissioner sets the week at **brochiefs.com/#admin**. That screen asks
+the browser (not the Worker, which ESPN blocks) for a date's college slate,
+lists the games, and takes a spread and favorite for each. ESPN's closing line
+prefills the spread where it has one.
