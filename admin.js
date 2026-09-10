@@ -16,6 +16,8 @@
   let found = [];         // games ESPN returned for the chosen week
   let picked = new Map(); // espn event id -> { spread, favSide, tiebreaker }
 
+  let keyOk = false;      // the Worker has confirmed this key
+
   const getKey = () => { try { return sessionStorage.getItem(KEY_STORE) || ""; } catch { return ""; } };
   const setKey = (k) => { try { sessionStorage.setItem(KEY_STORE, k); } catch {} };
 
@@ -33,14 +35,43 @@
     }
     sel.value = String(Math.min(16, next));
     el("admin-year").value = String(new Date().getFullYear());
+    syncGate();
     renderFound();
   }
 
   const say = (msg, kind = "") => { const s = el("admin-status"); s.textContent = msg; s.className = "admin-status " + kind; };
 
+  // Loading a week is gated the same way saving is. This is not a security
+  // boundary on its own, the Worker is that, but it means a wrong key fails
+  // before ten games get picked out rather than after.
+  async function verifyKey() {
+    const key = el("admin-key").value.trim();
+    if (!key) { say("Enter the admin key first.", "bad"); return ""; }
+    if (keyOk && key === getKey()) return key;
+    say("Checking the key…");
+    try {
+      const res = await fetch(`${WORKER_URL}/games?check=1&key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) { keyOk = false; say("That key is not right.", "bad"); return ""; }
+      keyOk = true;
+      setKey(key);
+      return key;
+    } catch (err) {
+      keyOk = false;
+      say(`Could not reach the Worker to check the key (${err.message}).`, "bad");
+      return "";
+    }
+  }
+
+  function syncGate() {
+    const has = !!el("admin-key").value.trim();
+    el("admin-load").disabled = !has;
+    el("admin-save").disabled = !has;
+  }
+
   // ESPN's scoreboard takes a season week, which returns every game from
   // Thursday through Sunday in one call. groups=80 is all of FBS.
   async function loadEspn() {
+    if (!(await verifyKey())) return;
     const wk = Number(el("admin-espn-week").value);
     const year = Number(el("admin-year").value);
     if (!Number.isInteger(wk) || wk < 1 || wk > 20) { say("Pick a week.", "bad"); return; }
@@ -140,9 +171,8 @@
   });
 
   async function save() {
-    const key = el("admin-key").value.trim();
-    if (!key) { say("Enter the admin key.", "bad"); return; }
-    setKey(key);
+    const key = await verifyKey();
+    if (!key) return;
     const week = Number(el("admin-week").value);
     if (!Number.isInteger(week) || week < 1) { say("Week must be a whole number.", "bad"); return; }
     if (!picked.size) { say("Select at least one game.", "bad"); return; }
@@ -179,6 +209,7 @@
     }
   }
 
+  el("admin-key").addEventListener("input", () => { keyOk = false; syncGate(); });
   el("admin-load").addEventListener("click", loadEspn);
   el("admin-clear").addEventListener("click", () => {
     picked = new Map();

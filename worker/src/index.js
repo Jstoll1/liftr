@@ -733,6 +733,12 @@ async function handleGames(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
 
   if (request.method === "GET") {
+    // The slate editor calls this before it does anything, so a wrong key
+    // fails immediately instead of after a whole week has been picked out.
+    if (url.searchParams.get("check")) {
+      if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+      return json({ ok: true }, 200, corsHeaders);
+    }
     const weeks = await readWeeks(env);
     if (url.searchParams.get("all")) {
       const all = await Promise.all(weeks.list.map(async (n) => [n, await env.LIFTR_KV.get(gamesKey(n), "json")]));
