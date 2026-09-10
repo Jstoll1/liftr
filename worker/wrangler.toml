@@ -17,8 +17,17 @@ OPENAI_MODEL = "gpt-4o-mini"
 # back to OPENAI_MODEL if you'd rather keep everything on gpt-4o-mini.
 OPENAI_MODEL_PLAN = "gpt-4o"
 
+# Owner login. "off" ships the endpoints without changing anything: picks
+# save exactly as they do today, tokens are ignored. "soft" still accepts
+# every pick but marks the ones that arrived without a login in the picks
+# log. "on" makes a token mandatory — an owner who has not claimed their
+# name cannot save until they do.
+AUTH_MODE = "off"
+
 # OPENAI_API_KEY is a secret, not a var — never put it in this file.
 # Set it with: wrangler secret put OPENAI_API_KEY
+# AUTH_SECRET signs the login tokens. Any long random string; changing it
+# signs everyone out. Set it with: wrangler secret put AUTH_SECRET
 
 # Cross-device sync storage. Create the namespace once with:
 #   npx wrangler kv namespace create LIFTR_KV

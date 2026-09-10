@@ -2326,6 +2326,69 @@ html, body {
    has to be its own scroll container — that is what the standalone page
    used to get from the document. */
 .admin-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: var(--nav-h); z-index: 40; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; background: var(--bg); padding-top: calc(14px + env(safe-area-inset-top)); }
+/* Lineup preview: ten compact rows, logos + names + line, read-only. */
+/* Only the preview's header carries a count, so only it goes to flex —
+   the Suggest 10 header keeps its centred title. */
+#admin-preview .sg-head { display: flex; align-items: center; gap: 8px; }
+.lp-count { margin-left: auto; font-size: 7px; color: var(--neon-cyan); }
+.lp-list { padding-top: 8px; gap: 4px; }
+.lp-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'logos teams line' 'logos when line'; column-gap: 8px; row-gap: 1px; align-items: center; padding: 6px 9px; border: 2px solid var(--card-border); border-radius: 8px; background: rgba(255, 255, 255, .02); }
+.lp-row.noline { border-color: rgba(255, 32, 121, .5); }
+.lp-logos { grid-area: logos; display: flex; align-items: center; gap: 2px; }
+.lp-logos img, .lp-logos i { width: 20px; height: 20px; object-fit: contain; }
+.lp-teams { grid-area: teams; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; line-height: 1.2; overflow-wrap: anywhere; }
+.lp-at { color: var(--text-dim); font-weight: 500; font-size: 10px; }
+.lp-tb { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-yellow); border: 1px solid var(--neon-yellow); border-radius: 3px; padding: 1px 3px; vertical-align: middle; }
+.lp-line { grid-area: line; justify-self: end; font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--neon-yellow); white-space: nowrap; }
+.lp-line.none { color: var(--neon-pink); }
+.lp-when { grid-area: when; font-size: 8.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Owner logins, in the slate editor. */
+.admin-owners { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; }
+.admin-owners-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 359px) { .admin-owners-list { grid-template-columns: minmax(0, 1fr); } }
+.admin-owner { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border: 2px solid var(--card-border); border-radius: 8px; background: rgba(0, 0, 0, .25); }
+.admin-owner.on { border-color: var(--neon-green); background: rgba(57, 255, 136, .07); }
+.ao-name { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; }
+.ao-state { font-size: 9px; color: var(--text-dim); margin-right: auto; }
+.admin-owner.on .ao-state { color: var(--neon-green); }
+.ao-reset { min-height: 30px; padding: 4px 8px; font-size: 7px; }
+
+/* Owner code: claim a name, then sign in with it. */
+.code-owner {
+  align-self: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 13px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px var(--neon-cyan);
+}
+
+.code-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--card-border);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--text);
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 16px;
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+
+.code-input:focus { outline: none; border-color: var(--neon-cyan); }
+
+.code-status {
+  min-height: 14px;
+  font-size: 10px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.code-status.bad { color: var(--neon-pink); }
+
 /* The key gate rides above the editor overlay, not below it. */
 .admin-gate { z-index: 45; }
 .admin-gate-input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; text-align: center; letter-spacing: .08em; }

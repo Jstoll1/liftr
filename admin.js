@@ -492,5 +492,96 @@
     else location.href = "index.html";
   });
 
+
+  // --- Preview the lineup ---------------------------------------------
+  // What the league will see, before it is saved: the games tapped so far
+  // in kickoff order, with both logos, both names and the line. Ten rows
+  // fit without scrolling on a phone, so it answers "where am I" in one
+  // look. Read-only — tapping a row does nothing, closing changes nothing.
+  function openPreview() {
+    const list = el("admin-preview-list");
+    const count = el("admin-preview-count");
+    const rows = found.filter((g) => picked.has(g.key));
+    const hasTb = [...picked.values()].some((v) => v.tiebreaker);
+    if (count) count.textContent = `${rows.length}/${MAX_PICKS}${rows.length && !hasTb ? " · no TB" : ""}`;
+    if (!rows.length) {
+      list.innerHTML = `<div class="admin-empty">${found.length ? "Nothing tapped yet." : "Load a week first."}</div>`;
+    } else {
+      let lastDay = "";
+      list.innerHTML = rows.map((g) => {
+        const day = new Date(g.kickoff).toLocaleDateString("en-US", { weekday: "short", month: "numeric", day: "numeric" });
+        const header = day !== lastDay ? `<div class="admin-day">${esc(day)}</div>` : "";
+        lastDay = day;
+        const p = picked.get(g.key) || {};
+        const favShort = g.favSide === "home" ? g.homeShort : g.awayShort;
+        const line = g.spread === null ? "no line" : `${favShort} -${g.spread}`;
+        const time = new Date(g.kickoff).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+        const logo = (src) => (src ? `<img src="${esc(src)}" alt="" loading="lazy" />` : `<i></i>`);
+        return `${header}<div class="lp-row${g.spread === null ? " noline" : ""}">
+          <span class="lp-logos">${logo(g.awayLogo)}${logo(g.homeLogo)}</span>
+          <span class="lp-teams">${esc(g.awayShort)} <span class="lp-at">at</span> ${esc(g.homeShort)}${p.tiebreaker ? ` <span class="lp-tb">TB</span>` : ""}</span>
+          <span class="lp-line${g.spread === null ? " none" : ""}">${esc(line)}</span>
+          <span class="lp-when">${esc(time)}${g.tv ? " · " + esc(g.tv) : ""}</span>
+        </div>`;
+      }).join("");
+    }
+    el("admin-preview").classList.remove("hidden");
+  }
+
+  const closePreview = () => el("admin-preview").classList.add("hidden");
+  el("admin-preview-btn").addEventListener("click", openPreview);
+  el("admin-preview-close").addEventListener("click", closePreview);
+  el("admin-preview").addEventListener("click", (e) => { if (e.target.id === "admin-preview") closePreview(); });
+
+  // --- Owner logins ---------------------------------------------------
+  // Self-claim means the first person to a name sets its code, so the
+  // commissioner needs a way to see who has claimed what and to hand a
+  // name back. Reset only clears the claim; it never sets a code.
+  const OWNERS = [
+    "Robert", "Logan", "Jordan", "Conlan", "Dewitt",
+    "Nissan", "Skills", "Jake", "Curt", "Andrew",
+  ];
+  let ownerAuth = { mode: "off", claimed: [] };
+
+  async function loadOwners() {
+    const list = el("admin-owners-list");
+    const modeOut = el("admin-owners-mode");
+    if (!list) return;
+    try {
+      const res = await fetch(`${WORKER_URL}/auth?t=${Date.now()}`, { cache: "no-store" });
+      ownerAuth = await res.json();
+    } catch {
+      list.innerHTML = `<div class="admin-empty">Could not reach the Worker.</div>`;
+      return;
+    }
+    const claimed = new Set(ownerAuth.claimed || []);
+    if (modeOut) modeOut.textContent = `AUTH_MODE ${String(ownerAuth.mode || "off").toUpperCase()}`;
+    list.innerHTML = OWNERS.map((name) => `<div class="admin-owner${claimed.has(name) ? " on" : ""}">
+        <span class="ao-name">${esc(name)}</span>
+        <span class="ao-state">${claimed.has(name) ? "claimed" : "not claimed"}</span>
+        ${claimed.has(name) ? `<button class="admin-btn ao-reset" type="button" data-name="${esc(name)}">Reset</button>` : ""}
+      </div>`).join("");
+    list.querySelectorAll(".ao-reset").forEach((btn) => btn.addEventListener("click", async () => {
+      const name = btn.dataset.name;
+      if (!confirm(`Clear ${name}'s code? The next person to tap ${name} sets a new one.`)) return;
+      const key = await verifyKey();
+      if (!key) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch(`${WORKER_URL}/auth?key=${encodeURIComponent(key)}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "reset", manager: name }),
+        });
+        if (!res.ok) { say(`Could not reset ${name}.`, "bad"); btn.disabled = false; return; }
+        say(`${name} can be claimed again.`, "ok");
+        await loadOwners();
+      } catch {
+        say("Could not reach the Worker.", "bad");
+        btn.disabled = false;
+      }
+    }));
+  }
+  loadOwners();
+
   show();
 })();

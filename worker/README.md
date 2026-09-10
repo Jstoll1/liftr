@@ -158,6 +158,39 @@ on any device. Without the secret the endpoint returns 404.
 
 Every pick change is logged for 30 days. `/picks-log?key=<ARCHIVE_LOG_KEY>` lists them newest first, marks any change made after that game kicked off, and flags any current pick stamped after kickoff. An admin repair replaces a manager's stored picks outright: `POST /picks?key=<ARCHIVE_LOG_KEY>` with `{"manager","state"}`.
 
+### Owner logins
+
+Each owner claims their own name once with a code they choose, and every pick
+they post afterwards carries a token — `base64url({m, exp})` signed with
+`AUTH_SECRET` — so the Worker can tell a real submission from someone typing
+another owner's name. Reading the board, the archive and trivia needs nothing.
+
+    npx wrangler secret put AUTH_SECRET     # any long random string
+
+`AUTH_MODE` in `wrangler.toml` decides how live it is, and it ships **off**:
+
+| mode | `POST /picks` |
+| --- | --- |
+| `off` | tokens ignored; picks save exactly as they always have |
+| `soft` | saves without a token still go through, and the picks log marks them "not signed in" |
+| `on` | a token matching the body's owner is required; the admin key still overrides |
+
+- `GET /auth` → `{mode, claimed:[names]}`, no secrets
+- `POST /auth {action:"claim", manager, code}` → sets the first code for an
+  unclaimed name (6 characters or more) and returns a token; 409 if taken
+- `POST /auth {action:"login", manager, code}` → token, or 401. Eight wrong
+  tries per owner in ten minutes and it answers 429 until the window passes
+- `POST /auth?key=<ARCHIVE_LOG_KEY> {action:"reset", manager}` → frees a name
+  to be claimed again. Codes are never recoverable, only reset
+
+Codes are stored as `SHA-256(salt + code)` under `auth:<owner>`; the attempt
+limit, not the hash, is what makes a short owner-chosen code impractical to
+guess. Every claim and reset is logged for a year under `auth-log:` with a
+hashed IP, so a name claimed by the wrong person can be traced and handed
+back. The slate editor lists who has claimed what and has the reset button.
+
+To try it while the mode is `off`, open the app with `?auth=1`.
+
 Matchup data (head-to-head, weekly scores, playoff games, bench points) comes
 from `src/matchup-data.js`, built from `data/espn-history.json`, which is
 exported from ESPN with `scripts/export-espn-history.mjs` (see the header of

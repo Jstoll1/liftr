@@ -60,6 +60,9 @@ export default {
     if (url.pathname === "/picks-log") {
       return handlePicksLog(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/auth") {
+      return handleAuth(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/picks") {
       return handlePicks(request, env, corsHeaders, url);
     }
@@ -485,6 +488,175 @@ function isAdmin(env, url) {
   return !!env.ARCHIVE_LOG_KEY && url.searchParams.get("key") === env.ARCHIVE_LOG_KEY;
 }
 
+// --- Owner login ----------------------------------------------------------
+// Each owner claims their name once with a code they choose, and every
+// pick they submit afterwards carries a token proving it is them. There
+// are no emails, no passwords to recover and no sessions to store: the
+// token is the owner's name plus an expiry, signed with AUTH_SECRET, so
+// the Worker can check it without a lookup.
+//
+// AUTH_MODE (a var in wrangler.toml) decides how much of this is real:
+//   off  — endpoints work so it can be tested, /picks ignores tokens
+//   soft — /picks still accepts anyone, but logs writes that had no token
+//   on   — /picks requires a token whose owner matches the body
+// It ships "off". Nothing about the league's week changes until it moves.
+const AUTH_TOKEN_DAYS = 150;        // past the end of the season
+const AUTH_MIN_CODE = 6;            // owners pick these, so set a floor
+const AUTH_MAX_TRIES = 8;           // per owner, per window
+const AUTH_WINDOW_MS = 10 * 60 * 1000;
+
+const authKey = (manager) => `auth:${manager}`;
+const authTriesKey = (manager) => `auth-tries:${manager}`;
+
+function authMode(env) {
+  const m = String(env.AUTH_MODE || "off").toLowerCase();
+  return m === "on" || m === "soft" ? m : "off";
+}
+
+const b64url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const utf8 = (str) => new TextEncoder().encode(str);
+
+async function sha256Hex(str) {
+  const digest = await crypto.subtle.digest("SHA-256", utf8(str));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Codes are short and owner-chosen, so the salted hash is paired with a
+// per-owner attempt limit below — that, not the hash, is what makes
+// guessing impractical.
+async function codeHash(code, salt) {
+  return sha256Hex(`${salt}:${code}`);
+}
+
+// Length-independent compare, so a wrong code cannot be narrowed down by
+// how long the response took.
+function sameSecret(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function hmacHex(secret, message) {
+  const key = await crypto.subtle.importKey("raw", utf8(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, utf8(message));
+  return b64url(sig);
+}
+
+async function signToken(env, manager) {
+  const payload = b64url(utf8(JSON.stringify({ m: manager, exp: Date.now() + AUTH_TOKEN_DAYS * 86400000 })));
+  return `${payload}.${await hmacHex(env.AUTH_SECRET, payload)}`;
+}
+
+// Returns the owner the token is for, or null. Checks the signature before
+// it trusts anything inside the payload.
+async function tokenOwner(env, token) {
+  if (!env.AUTH_SECRET || typeof token !== "string" || !token.includes(".")) return null;
+  const [payload, sig] = token.split(".", 2);
+  if (!payload || !sig) return null;
+  if (!sameSecret(sig, await hmacHex(env.AUTH_SECRET, payload))) return null;
+  let claims;
+  try {
+    claims = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0))));
+  } catch {
+    return null;
+  }
+  if (!PICKS_MANAGERS.includes(claims?.m)) return null;
+  if (!Number.isFinite(claims?.exp) || Date.now() >= claims.exp) return null;
+  return claims.m;
+}
+
+// A rolling window of failed attempts per owner. Successful logins clear
+// it, so the limit only ever bites someone who keeps getting it wrong.
+async function tooManyTries(env, manager) {
+  const rec = await env.LIFTR_KV.get(authTriesKey(manager), "json");
+  if (!rec || Date.now() - rec.since > AUTH_WINDOW_MS) return false;
+  return rec.n >= AUTH_MAX_TRIES;
+}
+
+async function noteTry(env, manager, ok) {
+  if (ok) { await env.LIFTR_KV.delete(authTriesKey(manager)); return; }
+  const rec = await env.LIFTR_KV.get(authTriesKey(manager), "json");
+  const fresh = !rec || Date.now() - rec.since > AUTH_WINDOW_MS;
+  const next = fresh ? { since: Date.now(), n: 1 } : { since: rec.since, n: rec.n + 1 };
+  await env.LIFTR_KV.put(authTriesKey(manager), JSON.stringify(next), { expirationTtl: 3600 });
+}
+
+// Who claimed what, when, and from where. Self-claim means the first
+// person to a name gets it, so this is the record that says whether a
+// claim was the owner or someone quicker.
+async function logClaim(env, manager, request, kind) {
+  try {
+    const ts = Date.now();
+    // The IP is kept only as a hash, so two claims can be told apart
+    // without the log holding anyone's address.
+    const ipHash = (await sha256Hex(`${env.AUTH_SECRET || ""}:${request.headers.get("CF-Connecting-IP") || ""}`)).slice(0, 12);
+    await env.LIFTR_KV.put(`auth-log:${String(9999999999999 - ts)}`, JSON.stringify({
+      ts, manager, kind, ipHash,
+      country: request.headers.get("CF-IPCountry") || "",
+      agent: (request.headers.get("User-Agent") || "").slice(0, 200),
+    }), { expirationTtl: 365 * 24 * 3600 });
+  } catch (err) {
+    console.error("claim log failed", err);
+  }
+}
+
+// GET  /auth                  → { mode, claimed: [names] }
+// POST /auth {action:"claim"} → first code for a name nobody has claimed
+// POST /auth {action:"login"} → token for a name already claimed
+// POST /auth {action:"reset", key} → commissioner frees a name to be re-claimed
+async function handleAuth(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  const mode = authMode(env);
+
+  if (request.method === "GET") {
+    const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, !!(await env.LIFTR_KV.get(authKey(m)))]));
+    return json({ mode, claimed: rows.filter(([, c]) => c).map(([m]) => m) }, 200, corsHeaders);
+  }
+
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  if (!env.AUTH_SECRET) return json({ error: "Login is not configured yet" }, 503, corsHeaders);
+
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const action = body?.action;
+  const manager = body?.manager;
+
+  if (action === "reset") {
+    if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+    if (!PICKS_MANAGERS.includes(manager)) return json({ error: "Unknown owner" }, 400, corsHeaders);
+    await env.LIFTR_KV.delete(authKey(manager));
+    await env.LIFTR_KV.delete(authTriesKey(manager));
+    await logClaim(env, manager, request, "reset");
+    return json({ ok: true, manager, claimed: false }, 200, corsHeaders);
+  }
+
+  if (!PICKS_MANAGERS.includes(manager)) return json({ error: "Unknown owner" }, 400, corsHeaders);
+  const code = typeof body?.code === "string" ? body.code.trim() : "";
+  const stored = await env.LIFTR_KV.get(authKey(manager), "json");
+
+  if (action === "claim") {
+    if (stored) return json({ error: `${manager} is already claimed. Enter that code, or ask the commissioner to reset it.`, claimed: true }, 409, corsHeaders);
+    if (code.length < AUTH_MIN_CODE) return json({ error: `Use at least ${AUTH_MIN_CODE} characters.` }, 400, corsHeaders);
+    if (code.length > 64) return json({ error: "That code is too long." }, 400, corsHeaders);
+    const salt = crypto.randomUUID();
+    await env.LIFTR_KV.put(authKey(manager), JSON.stringify({ salt, hash: await codeHash(code, salt), setAt: Date.now() }));
+    await logClaim(env, manager, request, "claim");
+    return json({ ok: true, manager, token: await signToken(env, manager) }, 200, corsHeaders);
+  }
+
+  if (action === "login") {
+    if (!stored) return json({ error: `${manager} has not been claimed yet. Set a code to claim it.`, claimed: false }, 404, corsHeaders);
+    if (await tooManyTries(env, manager)) return json({ error: "Too many tries. Wait ten minutes." }, 429, corsHeaders);
+    const ok = code.length >= 1 && sameSecret(await codeHash(code, stored.salt), stored.hash);
+    await noteTry(env, manager, ok);
+    if (!ok) return json({ error: "That code is not right." }, 401, corsHeaders);
+    return json({ ok: true, manager, token: await signToken(env, manager) }, 200, corsHeaders);
+  }
+
+  return json({ error: "Unknown action" }, 400, corsHeaders);
+}
+
 async function readWeeks(env) {
   const stored = await env.LIFTR_KV.get(WEEKS_KEY, "json");
   if (stored && Array.isArray(stored.list) && stored.list.length) return stored;
@@ -561,6 +733,14 @@ async function handlePicks(request, env, corsHeaders, url) {
     if (!PICKS_MANAGERS.includes(manager)) {
       return json({ error: "Invalid or missing manager" }, 400, corsHeaders);
     }
+    // Owner login. The admin key still overrides, so a repair works even
+    // for someone who has not claimed their name.
+    const mode = authMode(env);
+    const owner = await tokenOwner(env, body?.token);
+    const authed = owner === manager || isAdmin(env, url);
+    if (mode === "on" && !authed) {
+      return json({ error: `Sign in as ${manager} to save picks.`, needsLogin: true, manager }, 401, corsHeaders);
+    }
     try {
       // Merge game by game on updatedAt so a phone with a stale copy of
       // the other games cannot wipe a pick made elsewhere. Picks without a
@@ -605,8 +785,8 @@ async function handlePicks(request, env, corsHeaders, url) {
       merged.tiebreakerUpdatedAt = Math.max(ta, tb);
       await env.LIFTR_KV.put(pickKey(week, manager), JSON.stringify(merged));
       picksCache = null;
-      await logPickChanges(env, manager, stored, merged, false, week, kickoffs);
-      return json({ ok: true, week, state: merged }, 200, corsHeaders);
+      await logPickChanges(env, manager, stored, merged, false, week, kickoffs, !authed);
+      return json({ ok: true, week, state: merged, signedIn: owner === manager }, 200, corsHeaders);
     } catch (err) {
       console.error("Picks write error", err?.stack || String(err));
       return json({ error: "Write failed" }, 500, corsHeaders);
@@ -626,7 +806,7 @@ async function handlePicks(request, env, corsHeaders, url) {
 // Every change to a manager's picks is written to KV (30 days) so a
 // disputed score can be traced: which game, from what to what, when, and
 // whether that game had already kicked off.
-async function logPickChanges(env, manager, before, after, admin, week = 1, kickoffs = null) {
+async function logPickChanges(env, manager, before, after, admin, week = 1, kickoffs = null, unauth = false) {
   try {
     const changes = [];
     const ids = new Set([...Object.keys(before?.picks || {}), ...Object.keys(after?.picks || {})]);
@@ -639,7 +819,7 @@ async function logPickChanges(env, manager, before, after, admin, week = 1, kick
     if (String(before?.tiebreaker ?? "") !== String(after?.tiebreaker ?? "")) changes.push({ game: 0, from: String(before?.tiebreaker ?? ""), to: String(after?.tiebreaker ?? ""), afterKickoff: false });
     if (!changes.length) return;
     const ts = Date.now();
-    await env.LIFTR_KV.put(`picks-log:${String(9999999999999 - ts)}`, JSON.stringify({ ts, week, manager, admin, changes }), { expirationTtl: 30 * 24 * 3600 });
+    await env.LIFTR_KV.put(`picks-log:${String(9999999999999 - ts)}`, JSON.stringify({ ts, week, manager, admin, ...(unauth ? { unauth: true } : {}), changes }), { expirationTtl: 30 * 24 * 3600 });
   } catch (err) {
     console.error("pick log failed", err);
   }
@@ -856,7 +1036,7 @@ async function handlePicksLog(request, env, corsHeaders, url) {
 <h3>Current picks stamped after kickoff (${flagged.length})</h3>` +
     (flagged.length ? flagged.map((f) => `<div class="r late">${escapeHtml(f.manager)} · G${f.game} · ${escapeHtml(f.pick)} · ${fmt(f.at)}</div>`).join("") : `<div class="m">None.</div>`) +
     `<h3>Change history (newest first)</h3>` +
-    rows.map((r) => `<div class="r"><div class="m">${fmt(r.ts)} · <span class="who">${escapeHtml(r.manager)}</span>${r.admin ? ' · <span class="adm">admin repair</span>' : ""}</div>` +
+    rows.map((r) => `<div class="r"><div class="m">${fmt(r.ts)} · <span class="who">${escapeHtml(r.manager)}</span>${r.admin ? ' · <span class="adm">admin repair</span>' : ""}${r.unauth ? ' · <span class="late">not signed in</span>' : ""}</div>` +
       r.changes.map((c) => `<div class="c">${c.game ? `G${c.game}` : "Tiebreaker"}: ${escapeHtml(c.from ?? "none")} → ${escapeHtml(c.to ?? "none")}${c.afterKickoff ? ' <span class="late">after kickoff</span>' : ""}</div>`).join("") + `</div>`).join("");
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders } });
 }

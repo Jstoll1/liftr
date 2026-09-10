@@ -213,9 +213,15 @@ async function pushManagerState(manager, state, { attempts = 3 } = {}) {
       const res = await fetch(`${WORKER_URL}/picks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ manager, state: toSend, week: currentWeek }),
+        body: JSON.stringify({ manager, state: toSend, week: currentWeek, token: tokenFor(manager) || undefined }),
         cache: "no-store",
       });
+      // Signed out: retrying cannot help, so stop and ask for the code.
+      if (res.status === 401) {
+        setSyncStatus("failed");
+        handleAuthFailure(manager);
+        return false;
+      }
       if (res.ok) {
         try { localStorage.removeItem(PENDING_KEY); } catch {}
         setSyncStatus("saved");
@@ -443,6 +449,173 @@ function updateMePill() {
   pill.innerHTML = `<span class="me-pill-avatar" style="--accent:${accent}">${av}</span><span class="me-pill-name">${me.toUpperCase()}</span>`;
   pill.classList.remove("hidden");
 }
+
+// --- Owner login ------------------------------------------------------
+// Each owner claims their name once with a code of their own choosing and
+// this device keeps a signed token for them; picks are posted with it so
+// the Worker knows the pick is really theirs. Reading the board, the
+// archive and trivia never needs any of this.
+//
+// The Worker's AUTH_MODE decides whether it is live ("off" ships the
+// whole path dark). While it is off nothing here shows up, so the league
+// sees exactly what it sees today; add ?auth=1 to the URL to try it.
+const AUTH_TOKEN_KEY = "brochiefs_token_v1";
+const AUTH_PREVIEW_KEY = "brochiefs_auth_preview";
+let authState = { mode: "off", claimed: [] };
+
+function authPreview() {
+  try {
+    if (new URLSearchParams(location.search).get("auth") === "1") sessionStorage.setItem(AUTH_PREVIEW_KEY, "1");
+    return sessionStorage.getItem(AUTH_PREVIEW_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+// Live for the league only once the Worker says so.
+function authActive() {
+  return authState.mode === "on" || authState.mode === "soft" || authPreview();
+}
+
+// Codes are mandatory only in "on". In "soft" a pick still saves without
+// one, so the code step is offered rather than required.
+function authRequired() {
+  return authState.mode === "on";
+}
+
+function loadAuth() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(AUTH_TOKEN_KEY) || "null");
+    return raw && MANAGERS.includes(raw.manager) && typeof raw.token === "string" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveAuth(manager, token) {
+  try { localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify({ manager, token })); } catch {}
+}
+
+function clearAuth() {
+  try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+}
+
+// The token only counts for the owner it was issued to, so switching
+// owners on a device means signing in as the new one.
+function tokenFor(name) {
+  const held = loadAuth();
+  return held && held.manager === name ? held.token : null;
+}
+
+async function refreshAuthState() {
+  if (!WORKER_URL) return;
+  try {
+    const res = await fetch(`${WORKER_URL}/auth?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (typeof data.mode === "string") authState = { mode: data.mode, claimed: Array.isArray(data.claimed) ? data.claimed : [] };
+  } catch {
+    // Login stays off if the Worker cannot be reached; picks still queue.
+  }
+}
+
+// The code step. Resolves true once this device holds a token for `name`,
+// false if the owner backed out. An unclaimed name is being claimed for
+// the first time and sets its code here; a claimed one signs in.
+let codeResolve = null;
+function requireOwnerAuth(name) {
+  if (!authActive() || tokenFor(name)) return Promise.resolve(true);
+  const claimed = authState.claimed.includes(name);
+  const modal = document.getElementById("code-modal");
+  if (!modal) return Promise.resolve(true);
+  document.getElementById("code-title").textContent = claimed ? "🔑 YOUR CODE" : "🔑 SET YOUR CODE";
+  document.getElementById("code-subtext").textContent = claimed
+    ? `Enter the code you set for ${name}.`
+    : `Nobody has claimed ${name} yet. Pick a code of six characters or more — you will need it on every device.`;
+  document.getElementById("code-owner").textContent = name.toUpperCase();
+  const input = document.getElementById("code-input");
+  input.value = "";
+  input.placeholder = claimed ? "your code" : "at least 6 characters";
+  document.getElementById("code-ok").textContent = claimed ? "Sign in" : "Claim it";
+  setCodeStatus(authRequired() ? "" : "Optional for now — picks still save without it.");
+  modal.dataset.owner = name;
+  modal.dataset.claimed = claimed ? "1" : "";
+  modal.classList.remove("hidden");
+  setTimeout(() => input.focus(), 50);
+  return new Promise((resolve) => { codeResolve = resolve; });
+}
+
+function setCodeStatus(msg, kind = "") {
+  const el = document.getElementById("code-status");
+  if (el) { el.textContent = msg || ""; el.className = "code-status " + kind; }
+}
+
+function closeCodeModal(result) {
+  document.getElementById("code-modal")?.classList.add("hidden");
+  const done = codeResolve;
+  codeResolve = null;
+  if (done) done(!!result);
+}
+
+async function submitOwnerCode() {
+  const modal = document.getElementById("code-modal");
+  const name = modal?.dataset.owner;
+  const claimed = modal?.dataset.claimed === "1";
+  const code = document.getElementById("code-input")?.value.trim() || "";
+  if (!name) return;
+  if (!code) { setCodeStatus("Enter your code.", "bad"); return; }
+  if (!claimed && code.length < 6) { setCodeStatus("Six characters or more.", "bad"); return; }
+  const okBtn = document.getElementById("code-ok");
+  if (okBtn) okBtn.disabled = true;
+  setCodeStatus(claimed ? "Checking…" : "Claiming…");
+  let data = null, status = 0;
+  try {
+    const res = await fetch(`${WORKER_URL}/auth`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
+      body: JSON.stringify({ action: claimed ? "login" : "claim", manager: name, code }),
+    });
+    status = res.status;
+    data = await res.json().catch(() => null);
+  } catch {
+    if (okBtn) okBtn.disabled = false;
+    setCodeStatus("Could not reach the Worker.", "bad");
+    return;
+  }
+  if (okBtn) okBtn.disabled = false;
+  if (status === 200 && data?.token) {
+    saveAuth(name, data.token);
+    if (!authState.claimed.includes(name)) authState.claimed = [...authState.claimed, name];
+    closeCodeModal(true);
+    return;
+  }
+  // The name was claimed between the roster loading and this tap, or the
+  // claim is gone after a reset: flip the step and let them try again.
+  if (status === 409 || (status === 404 && data?.claimed === false)) {
+    await refreshAuthState();
+    setCodeStatus(data?.error || "Try that again.", "bad");
+    modal.dataset.claimed = status === 409 ? "1" : "";
+    document.getElementById("code-ok").textContent = status === 409 ? "Sign in" : "Claim it";
+    return;
+  }
+  setCodeStatus(data?.error || "That did not work.", "bad");
+}
+
+// A 401 from a save means the token is gone, expired, or for someone
+// else. Drop it and ask, so the next tap saves.
+async function handleAuthFailure(manager) {
+  clearAuth();
+  await refreshAuthState();
+  if (!picksScreen.classList.contains("hidden")) await requireOwnerAuth(manager);
+}
+
+document.getElementById("code-ok")?.addEventListener("click", submitOwnerCode);
+document.getElementById("code-cancel")?.addEventListener("click", () => closeCodeModal(false));
+document.getElementById("code-input")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); submitOwnerCode(); }
+});
+document.getElementById("code-modal")?.addEventListener("click", (e) => {
+  if (e.target.id === "code-modal") closeCodeModal(false);
+});
 
 function firstKickoffPassed() {
   return GAMES.some((g) => isGameLocked(g));
@@ -692,7 +865,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609121800";
+  tag.src = "admin.js?v=202609121900";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -956,9 +1129,10 @@ let openClaimPrompt = function () {
     const av = avatarOverrides[name] || name[0];
     return `<button type="button" class="claim-btn" data-name="${name}"><span class="claim-avatar" style="--accent:${accent}">${av}</span>${name}</button>`;
   }).join("");
-  claimGrid.querySelectorAll(".claim-btn").forEach((btn) => btn.addEventListener("click", () => {
+  claimGrid.querySelectorAll(".claim-btn").forEach((btn) => btn.addEventListener("click", async () => {
     const name = btn.dataset.name;
     claimModal.classList.add("hidden");
+    if (!(await requireOwnerAuth(name))) return;
     saveMe(name);
     selectManager(name);
   }));
@@ -983,6 +1157,7 @@ function openOwnerPicker() {
     const name = btn.dataset.name;
     claimModal.classList.add("hidden");
     if (name === me) return;
+    if (!(await requireOwnerAuth(name))) return;
     saveMe(name);
     currentManager = name;
     managerBadge.textContent = name.toUpperCase();
@@ -1023,13 +1198,13 @@ identityModal.addEventListener("click", (e) => {
   if (e.target === identityModal) closeIdentityConfirm();
 });
 identityCancelBtn.addEventListener("click", closeIdentityConfirm);
-identityConfirmBtn.addEventListener("click", () => {
+identityConfirmBtn.addEventListener("click", async () => {
   const name = pendingIdentity;
   closeIdentityConfirm();
-  if (name) {
-    saveMe(name);
-    selectManager(name);
-  }
+  if (!name) return;
+  if (!(await requireOwnerAuth(name))) return;
+  saveMe(name);
+  selectManager(name);
 });
 
 async function selectManager(name) {
@@ -1960,8 +2135,9 @@ const SPLASH_KEY = "brochiefs_splash_seen_v1";
 const SPLASH_TTL = 12 * 60 * 60 * 1000;
 (async () => {
   // Fetch this week's slate before anything renders, so nobody sees last
-  // week's games flash past. The splash covers the wait.
-  await loadSlate();
+  // week's games flash past. The splash covers the wait. Whether login is
+  // live, and who has claimed a name, comes down in the same breath.
+  await Promise.all([loadSlate(), refreshAuthState()]);
   lastLockSignature = lockSignature();
   renderManagerPicker();
 
