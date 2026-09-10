@@ -581,6 +581,14 @@
       }
     }));
   }
+  // Every claim, sign-in, failure and reset, with what is unusual called
+  // out at the top of the page.
+  el("admin-login-log").addEventListener("click", async () => {
+    const key = await verifyKey();
+    if (!key) return;
+    window.open(`${WORKER_URL}/auth-log?key=${encodeURIComponent(key)}`, "_blank", "noopener");
+  });
+
   loadOwners();
 
   show();

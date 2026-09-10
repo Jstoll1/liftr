@@ -185,9 +185,31 @@ another owner's name. Reading the board, the archive and trivia needs nothing.
 
 Codes are stored as `SHA-256(salt + code)` under `auth:<owner>`; the attempt
 limit, not the hash, is what makes a short owner-chosen code impractical to
-guess. Every claim and reset is logged for a year under `auth-log:` with a
-hashed IP, so a name claimed by the wrong person can be traced and handed
-back. The slate editor lists who has claimed what and has the reset button.
+guess. The slate editor lists who has claimed what and has the reset button.
+
+**Login log.** Every claim, sign-in, failure, lockout and reset is kept for a
+year under `auth-log:`, readable at `/auth-log?key=<ARCHIVE_LOG_KEY>` (404
+without it) and linked from the editor. Each event records:
+
+| field | source |
+| --- | --- |
+| `ipShort` | `CF-Connecting-IP` truncated to /24 (v4) or /48 (v6) |
+| `ipHash` | salted hash of the full address — exact match without storing it |
+| `country` `city` `region` `asn` `asOrg` `colo` `tz` | `request.cf` |
+| `browser` `os` `device` | parsed from `User-Agent`, coarsely |
+| `lang` | `Accept-Language` |
+| `deviceId` | random id the app keeps in `localStorage` — no cookie, nothing personal |
+| `clientTz` `screen` | sent by the app, to tell two similar devices apart |
+
+No single field means much on its own, so each owner keeps a short list of the
+devices that have signed in as them (`auth-devices:<owner>`, last 12) and the
+log flags what is new. The page leads with what deserves a look: one device
+that has signed in as two different owners, three or more failed codes for an
+owner, sign-ins from a device that owner has not used, and every claim. A
+failed attempt never adds a device to the known list.
+
+Note that `request.cf` is a fixed stub under `wrangler dev`, so city and ASN
+only mean something in production.
 
 To try it while the mode is `off`, open the app with `?auth=1`.
 

@@ -461,6 +461,11 @@ function updateMePill() {
 // sees exactly what it sees today; add ?auth=1 to the URL to try it.
 const AUTH_TOKEN_KEY = "brochiefs_token_v1";
 const AUTH_PREVIEW_KEY = "brochiefs_auth_preview";
+// A random id for this browser, kept alongside the token. It is not an
+// identity and carries nothing about the person — it exists so the login
+// log can say "a device that has signed in as Dewitt before" instead of
+// treating every sign-in as brand new.
+const AUTH_DEVICE_KEY = "brochiefs_device_v1";
 let authState = { mode: "off", claimed: [] };
 
 function authPreview() {
@@ -481,6 +486,32 @@ function authActive() {
 // one, so the code step is offered rather than required.
 function authRequired() {
   return authState.mode === "on";
+}
+
+function deviceId() {
+  try {
+    let id = localStorage.getItem(AUTH_DEVICE_KEY);
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)).replace(/-/g, "").slice(0, 24);
+      localStorage.setItem(AUTH_DEVICE_KEY, id);
+    }
+    return id;
+  } catch {
+    return "";
+  }
+}
+
+// Only what helps tell one device from another: the screen it is on and
+// the timezone it thinks it is in.
+function deviceDetails() {
+  try {
+    return {
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+      screen: `${screen.width}x${screen.height}`,
+    };
+  } catch {
+    return {};
+  }
 }
 
 function loadAuth() {
@@ -572,7 +603,7 @@ async function submitOwnerCode() {
   try {
     const res = await fetch(`${WORKER_URL}/auth`, {
       method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
-      body: JSON.stringify({ action: claimed ? "login" : "claim", manager: name, code }),
+      body: JSON.stringify({ action: claimed ? "login" : "claim", manager: name, code, device: deviceId(), client: deviceDetails() }),
     });
     status = res.status;
     data = await res.json().catch(() => null);
@@ -865,7 +896,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609121900";
+  tag.src = "admin.js?v=202609122000";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }

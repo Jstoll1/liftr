@@ -60,6 +60,9 @@ export default {
     if (url.pathname === "/picks-log") {
       return handlePicksLog(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/auth-log") {
+      return handleAuthLog(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/auth") {
       return handleAuth(request, env, corsHeaders, url);
     }
@@ -582,23 +585,167 @@ async function noteTry(env, manager, ok) {
   await env.LIFTR_KV.put(authTriesKey(manager), JSON.stringify(next), { expirationTtl: 3600 });
 }
 
-// Who claimed what, when, and from where. Self-claim means the first
-// person to a name gets it, so this is the record that says whether a
-// claim was the owner or someone quicker.
-async function logClaim(env, manager, request, kind) {
-  try {
-    const ts = Date.now();
-    // The IP is kept only as a hash, so two claims can be told apart
-    // without the log holding anyone's address.
-    const ipHash = (await sha256Hex(`${env.AUTH_SECRET || ""}:${request.headers.get("CF-Connecting-IP") || ""}`)).slice(0, 12);
-    await env.LIFTR_KV.put(`auth-log:${String(9999999999999 - ts)}`, JSON.stringify({
-      ts, manager, kind, ipHash,
-      country: request.headers.get("CF-IPCountry") || "",
-      agent: (request.headers.get("User-Agent") || "").slice(0, 200),
-    }), { expirationTtl: 365 * 24 * 3600 });
-  } catch (err) {
-    console.error("claim log failed", err);
+// --- Login log ------------------------------------------------------------
+// Every claim, sign-in, failure and reset, kept for a year, with enough
+// around it to tell "Dewitt on his phone again" from "someone else trying
+// Dewitt". The useful signal is not any single field, it is whether this
+// combination has been seen for this owner before, so each owner carries a
+// short list of the devices that have signed in as them and every event
+// says whether the device and the network are new.
+//
+// What is recorded, and where it comes from:
+//   ipShort   CF-Connecting-IP truncated to /24 (v4) or /48 (v6)
+//   ipHash    salted hash of the full address — exact match without keeping it
+//   country / city / region / asn / asOrg / colo / tz   request.cf
+//   browser / os / device   parsed from User-Agent
+//   lang      Accept-Language
+//   deviceId  a random id the app keeps in localStorage, so a browser is
+//             recognisable across sessions without a cookie
+//   newDevice / newNetwork   first time for this owner
+const AUTH_LOG_TTL = 365 * 24 * 3600;
+const authDevicesKey = (manager) => `auth-devices:${manager}`;
+
+// A /24 keeps the neighbourhood and drops the household; /48 is the
+// equivalent slice of an IPv6 address.
+function ipPrefix(ip) {
+  if (!ip) return "";
+  if (ip.includes(":")) return ip.split(":").slice(0, 3).join(":") + "::/48";
+  const parts = ip.split(".");
+  return parts.length === 4 ? `${parts[0]}.${parts[1]}.${parts[2]}.0/24` : ip;
+}
+
+// Coarse on purpose: the point is "iPhone Safari" versus "Windows Chrome",
+// not a version table.
+function parseAgent(ua) {
+  const s = String(ua || "");
+  const browser = /Edg\//.test(s) ? "Edge"
+    : /SamsungBrowser/.test(s) ? "Samsung Internet"
+    : /OPR\/|Opera/.test(s) ? "Opera"
+    : /Firefox\//.test(s) ? "Firefox"
+    : /CriOS/.test(s) ? "Chrome iOS"
+    : /Chrome\//.test(s) ? "Chrome"
+    : /Safari\//.test(s) ? "Safari"
+    : s ? "other" : "";
+  const os = /iPhone|iPod/.test(s) ? "iPhone"
+    : /iPad/.test(s) ? "iPad"
+    : /Android/.test(s) ? "Android"
+    : /Mac OS X/.test(s) ? "macOS"
+    : /Windows/.test(s) ? "Windows"
+    : /Linux/.test(s) ? "Linux"
+    : "";
+  const device = /iPhone|iPod|Android.*Mobile/.test(s) ? "phone"
+    : /iPad|Tablet|Android/.test(s) ? "tablet"
+    : os ? "computer" : "";
+  return { browser, os, device };
+}
+
+// The devices that have signed in as this owner. Capped, so the list stays
+// a quick "have we seen this before" check rather than a growing history.
+async function seenDevice(env, manager, deviceId, ipHash) {
+  const key = authDevicesKey(manager);
+  const list = (await env.LIFTR_KV.get(key, "json")) || [];
+  const now = Date.now();
+  const known = deviceId ? list.find((d) => d.id === deviceId) : null;
+  const knownNetwork = list.some((d) => d.ipHash === ipHash);
+  if (deviceId) {
+    if (known) { known.lastAt = now; known.n = (known.n || 1) + 1; known.ipHash = ipHash; }
+    else list.unshift({ id: deviceId, firstAt: now, lastAt: now, n: 1, ipHash });
+    await env.LIFTR_KV.put(key, JSON.stringify(list.slice(0, 12)));
   }
+  return { newDevice: !!deviceId && !known, newNetwork: !knownNetwork };
+}
+
+async function authEvent(env, request, { manager, kind, ok = true, deviceId = "", client = {} }) {
+  try {
+    const ip = request.headers.get("CF-Connecting-IP") || "";
+    const cf = request.cf || {};
+    const ipHash = (await sha256Hex(`${env.AUTH_SECRET || ""}:${ip}`)).slice(0, 12);
+    // A failure should not teach the log that a device is now familiar, so
+    // only a successful event updates the owner's device list.
+    const seen = ok ? await seenDevice(env, manager, deviceId, ipHash) : { newDevice: undefined, newNetwork: undefined };
+    const agent = parseAgent(request.headers.get("User-Agent"));
+    const ts = Date.now();
+    await env.LIFTR_KV.put(`auth-log:${String(9999999999999 - ts)}`, JSON.stringify({
+      ts, manager, kind, ok,
+      ipShort: ipPrefix(ip), ipHash,
+      country: cf.country || request.headers.get("CF-IPCountry") || "",
+      city: cf.city || "", region: cf.region || "",
+      asn: cf.asn || null, asOrg: cf.asOrganization || "",
+      colo: cf.colo || "", tz: cf.timezone || "",
+      ...agent,
+      lang: (request.headers.get("Accept-Language") || "").split(",")[0],
+      ua: (request.headers.get("User-Agent") || "").slice(0, 180),
+      deviceId: deviceId ? String(deviceId).slice(0, 24) : "",
+      clientTz: typeof client.tz === "string" ? client.tz.slice(0, 40) : "",
+      screen: typeof client.screen === "string" ? client.screen.slice(0, 20) : "",
+      ...(seen.newDevice ? { newDevice: true } : {}),
+      ...(seen.newNetwork && ok ? { newNetwork: true } : {}),
+    }), { expirationTtl: AUTH_LOG_TTL });
+  } catch (err) {
+    console.error("auth log failed", err);
+  }
+}
+
+// The log, read with the admin key. Anything worth a second look is called
+// out at the top: a run of failures, a first-time device, a sign-in from a
+// network that owner has not used, and any device used by two owners.
+async function handleAuthLog(request, env, corsHeaders, url) {
+  if (!isAdmin(env, url)) return new Response("Not found", { status: 404 });
+  const list = await env.LIFTR_KV.list({ prefix: "auth-log:", limit: 500 });
+  const rows = (await Promise.all(list.keys.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
+
+  // A device seen under more than one owner is the strongest signal here:
+  // it is one browser that has signed in as two different people.
+  const byDevice = new Map();
+  for (const r of rows) {
+    if (!r.deviceId || !r.ok) continue;
+    if (!byDevice.has(r.deviceId)) byDevice.set(r.deviceId, new Set());
+    byDevice.get(r.deviceId).add(r.manager);
+  }
+  const shared = [...byDevice.entries()].filter(([, who]) => who.size > 1);
+
+  // Failures bunched together in time, per owner.
+  const fails = {};
+  for (const r of rows) if (!r.ok) fails[r.manager] = (fails[r.manager] || 0) + 1;
+
+  const fmt = (t) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York" });
+  const where = (r) => [r.city, r.region, r.country].filter(Boolean).join(", ") || "unknown";
+  const what = (r) => [r.os, r.browser].filter(Boolean).join(" ") || "unknown";
+  const flags = (r) => [
+    !r.ok ? `<span class="bad">failed</span>` : "",
+    r.newDevice ? `<span class="warn">new device</span>` : "",
+    r.newNetwork ? `<span class="warn">new network</span>` : "",
+    r.kind === "reset" ? `<span class="adm">reset</span>` : "",
+    r.kind === "claim" ? `<span class="adm">claimed</span>` : "",
+    r.deviceId && byDevice.get(r.deviceId)?.size > 1 ? `<span class="bad">device used by ${[...byDevice.get(r.deviceId)].join(" + ")}</span>` : "",
+  ].filter(Boolean).join(" ");
+
+  const alerts = [
+    ...shared.map(([id, who]) => `One device (${escapeHtml(id.slice(0, 8))}…) has signed in as ${escapeHtml([...who].join(" and "))}`),
+    ...Object.entries(fails).filter(([, n]) => n >= 3).map(([m, n]) => `${escapeHtml(m)}: ${n} failed code${n === 1 ? "" : "s"}`),
+    // A first claim is a new device by definition, so it is listed as a
+    // claim below rather than repeated here.
+    ...rows.filter((r) => r.ok && r.newDevice && r.kind === "login").slice(0, 10).map((r) => `${escapeHtml(r.manager)} signed in on a new device from ${escapeHtml(where(r))} (${escapeHtml(what(r))}) on ${fmt(r.ts)}`),
+    ...rows.filter((r) => r.kind === "claim").slice(0, 10).map((r) => `${escapeHtml(r.manager)} was claimed from ${escapeHtml(where(r))} (${escapeHtml(what(r))}) on ${fmt(r.ts)}`),
+  ];
+
+  const html = `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login log</title>
+<style>body{font:14px/1.5 system-ui;background:#0a0014;color:#f4f0ff;padding:16px;max-width:820px;margin:0 auto}
+.r{border:1px solid #3a2a50;border-radius:8px;padding:10px 12px;margin:0 0 10px}
+.m{color:#9a8bb8;font-size:12px}.who{color:#ffe45e;font-weight:700}
+.bad{color:#ff2079;font-weight:700}.warn{color:#ffb347;font-weight:700}.adm{color:#05d9e8}
+.d{font-size:12px;color:#cfc4e8}.k{color:#9a8bb8}h3{margin:18px 0 8px}
+.alert{border-color:#ff2079}code{color:#9a8bb8;font-size:11px;word-break:break-all}</style>
+<h2>Login log · ${rows.length} events</h2>
+<h3>Worth a look (${alerts.length})</h3>` +
+    (alerts.length ? alerts.map((a) => `<div class="r alert">${a}</div>`).join("") : `<div class="m">Nothing unusual.</div>`) +
+    `<h3>Every event (newest first)</h3>` +
+    (rows.length ? rows.map((r) => `<div class="r">
+      <div class="m">${fmt(r.ts)} · <span class="who">${escapeHtml(r.manager)}</span> · ${escapeHtml(r.kind)} ${flags(r)}</div>
+      <div class="d"><span class="k">where</span> ${escapeHtml(where(r))}${r.asOrg ? ` · ${escapeHtml(r.asOrg)}${r.asn ? ` (AS${r.asn})` : ""}` : ""} · <span class="k">ip</span> ${escapeHtml(r.ipShort || "—")}</div>
+      <div class="d"><span class="k">device</span> ${escapeHtml(what(r))}${r.device ? ` ${escapeHtml(r.device)}` : ""}${r.screen ? ` · ${escapeHtml(r.screen)}` : ""}${r.deviceId ? ` · id ${escapeHtml(r.deviceId.slice(0, 8))}…` : ""}${r.clientTz ? ` · ${escapeHtml(r.clientTz)}` : ""}</div>
+    </div>`).join("") : `<div class="m">No logins yet.</div>`);
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders } });
 }
 
 // GET  /auth                  → { mode, claimed: [names] }
@@ -621,13 +768,18 @@ async function handleAuth(request, env, corsHeaders, url) {
   try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
   const action = body?.action;
   const manager = body?.manager;
+  // The app keeps a random id per browser, so the log can say whether a
+  // sign-in came from a device that owner has used before.
+  const deviceId = typeof body?.device === "string" ? body.device.slice(0, 24) : "";
+  const client = body?.client && typeof body.client === "object" ? body.client : {};
 
   if (action === "reset") {
     if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
     if (!PICKS_MANAGERS.includes(manager)) return json({ error: "Unknown owner" }, 400, corsHeaders);
     await env.LIFTR_KV.delete(authKey(manager));
     await env.LIFTR_KV.delete(authTriesKey(manager));
-    await logClaim(env, manager, request, "reset");
+    await env.LIFTR_KV.delete(authDevicesKey(manager));
+    await authEvent(env, request, { manager, kind: "reset", deviceId, client });
     return json({ ok: true, manager, claimed: false }, 200, corsHeaders);
   }
 
@@ -641,15 +793,19 @@ async function handleAuth(request, env, corsHeaders, url) {
     if (code.length > 64) return json({ error: "That code is too long." }, 400, corsHeaders);
     const salt = crypto.randomUUID();
     await env.LIFTR_KV.put(authKey(manager), JSON.stringify({ salt, hash: await codeHash(code, salt), setAt: Date.now() }));
-    await logClaim(env, manager, request, "claim");
+    await authEvent(env, request, { manager, kind: "claim", deviceId, client });
     return json({ ok: true, manager, token: await signToken(env, manager) }, 200, corsHeaders);
   }
 
   if (action === "login") {
     if (!stored) return json({ error: `${manager} has not been claimed yet. Set a code to claim it.`, claimed: false }, 404, corsHeaders);
-    if (await tooManyTries(env, manager)) return json({ error: "Too many tries. Wait ten minutes." }, 429, corsHeaders);
+    if (await tooManyTries(env, manager)) {
+      await authEvent(env, request, { manager, kind: "locked out", ok: false, deviceId, client });
+      return json({ error: "Too many tries. Wait ten minutes." }, 429, corsHeaders);
+    }
     const ok = code.length >= 1 && sameSecret(await codeHash(code, stored.salt), stored.hash);
     await noteTry(env, manager, ok);
+    await authEvent(env, request, { manager, kind: "login", ok, deviceId, client });
     if (!ok) return json({ error: "That code is not right." }, 401, corsHeaders);
     return json({ ok: true, manager, token: await signToken(env, manager) }, 200, corsHeaders);
   }
