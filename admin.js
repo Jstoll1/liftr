@@ -61,12 +61,19 @@
     if (opener && Number(loadedWeek) === wk) {
       const k = new Date(opener.kickoff);
       const when = k.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
-      out.textContent = `First game ${when} ET · ${opener.awayShort} at ${opener.homeShort}`;
+      // The countdown comes from app.js, which runs the same clock on the
+      // picks page. Loaded on its own the editor just skips it.
+      const cd = typeof kickoffCountdown === "function" ? kickoffCountdown(opener.kickoff) : null;
+      const left = !cd ? "" : cd.past ? " · already kicked off" : ` · kicks off in ${cd.text}`;
+      out.textContent = `First game ${when} ET · ${opener.awayShort} at ${opener.homeShort}${left}`;
       return;
     }
     const r = weekRangeText(wk);
     out.textContent = r ? `Week window ${r}` : "";
   }
+
+  // Keep the opener's countdown moving once a week is loaded.
+  setInterval(() => { if (found.length) showWeekDates(); }, 1000);
 
   async function show() {
     let week = 1;

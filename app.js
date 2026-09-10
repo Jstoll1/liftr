@@ -690,7 +690,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609121300";
+  tag.src = "admin.js?v=202609121400";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1217,6 +1217,7 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
 function renderPicksScreen() {
   const state = getManagerState(currentManager);
   lastLockSignature = lockSignature();
+  renderPicksCountdown();
 
   gamesList.innerHTML = "";
   GAMES.forEach((game) => {
@@ -1841,6 +1842,62 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     rankingsList.appendChild(div);
   });
 }
+
+// --- Kickoff countdown ------------------------------------------------
+// How long until a kickoff, in a string that shortens as it closes in:
+// days out it is "2d 14h 22m", inside a day "14h 22m 09s", inside an hour
+// "22m 09s". Shared with the slate editor (admin.js), which counts down to
+// the opener of the week it has loaded.
+function kickoffCountdown(iso) {
+  const at = new Date(iso).getTime();
+  if (!Number.isFinite(at)) return null;
+  const ms = at - Date.now();
+  if (ms <= 0) return { text: "kicked off", past: true, ms };
+  const total = Math.floor(ms / 1000);
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  const text = d ? `${d}d ${pad(h)}h ${pad(m)}m` : h ? `${h}h ${pad(m)}m ${pad(s)}s` : `${m}m ${pad(s)}s`;
+  return { text, past: false, ms };
+}
+
+// The week in kickoff order, earliest first — the slate comes from the
+// ESPN pull in whatever order it was picked, so this is what "first game"
+// and "next game" mean.
+function gamesByKickoff() {
+  return [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
+}
+
+// Counts down to the week's opener, then to each next game as they kick
+// off, and disappears once the whole slate is underway.
+function renderPicksCountdown() {
+  const el = document.getElementById("picks-countdown");
+  if (!el) return;
+  const ordered = gamesByKickoff();
+  const first = ordered[0];
+  const next = ordered.find((g) => !isGameLocked(g));
+  if (!first || !next) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const cd = kickoffCountdown(next.kickoff);
+  if (!cd || cd.past) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const label = next.id === first.id ? "FIRST KICKOFF" : "NEXT KICKOFF";
+  const where = `${next.awayShort} at ${next.homeShort}`;
+  const when = `${next.kickoffLabel}${next.tv ? ` · ${next.tv}` : ""}`;
+  // Under an hour the whole slate is about to lock, so the strip goes hot.
+  el.className = "picks-countdown" + (cd.ms < 3600000 ? " soon" : "");
+  el.innerHTML = `<span class="cd-label">⏱ ${label}</span><span class="cd-clock">${cd.text}</span><span class="cd-game">${escapeCd(where)} · ${escapeCd(when)}</span>`;
+}
+
+function escapeCd(str) {
+  return String(str).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+// Its own second-by-second timer, separate from the 20s refresh: the clock
+// has to move, but nothing else on the page needs redrawing that often.
+setInterval(() => {
+  if (currentManager && !picksScreen.classList.contains("hidden")) renderPicksCountdown();
+}, 1000);
 
 // Re-render periodically so games auto-lock the moment kickoff passes,
 // and the scoreboard/rankings stay live without a manual refresh.
