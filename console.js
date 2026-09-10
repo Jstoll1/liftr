@@ -180,7 +180,9 @@
     body.innerHTML = `<p class="admin-intro">Picking the week's games is delegated: whoever holds the slate key opens the editor with the same three taps on the wordmark. This opens it from here with your key.</p>
       <div class="con-actions"><button id="con-slate-open" class="admin-btn primary" type="button">Open the slate editor</button></div>`;
     el("con-slate-open").addEventListener("click", () => {
-      close();
+      // Hide without locking: openSlateEditor needs the role this console
+      // was unlocked with.
+      root.classList.add("hidden");
       window.openSlateEditor?.();
     });
   }
@@ -206,7 +208,13 @@
   });
   el("console-refresh").addEventListener("click", renderTab);
 
-  const close = () => { root.classList.add("hidden"); document.body.classList.remove("admin-open"); };
+  const close = () => {
+    root.classList.add("hidden");
+    document.body.classList.remove("admin-open");
+    // Exit locks: the next three taps ask for a key again, so the other
+    // key lands on its own surface.
+    window.lockAdminSurfaces?.();
+  };
   el("console-exit").addEventListener("click", close);
 
   // app.js calls this each time the gesture opens the console.

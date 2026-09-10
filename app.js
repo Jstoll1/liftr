@@ -882,9 +882,12 @@ async function submitAdminKey() {
   }
   if (okBtn) okBtn.disabled = false;
   if (!reachable) { setAdminGateStatus("Could not reach the Worker to check the key.", "bad"); return; }
+  // 403 is a wrong key; 409 means the two keys are set to the same value
+  // and the Worker refuses to guess which role was meant.
   if (!role) { setAdminGateStatus(status === 403 ? "That key is not right." : err || "The Worker could not check that key.", "bad"); return; }
   adminRole = role;
   adminKeyHeld = key;
+  setAdminGateStatus(role === "app" ? "App console…" : "Slate editor…", "ok");
   // admin.js reads the key from here rather than from a field on screen.
   try { sessionStorage.setItem(ADMIN_KEY_STORE, key); } catch {}
   if (input) input.value = "";
@@ -913,7 +916,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609122100";
+  tag.src = "admin.js?v=202609122200";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -921,6 +924,17 @@ function openAdmin() {
 function closeAdmin() {
   adminOverlay?.classList.add("hidden");
   document.body.classList.remove("admin-open");
+  lockAdmin();
+}
+
+// Leaving an admin surface locks it again: the next three taps ask for a
+// key. Without this the tab kept whichever role it unlocked first, so
+// typing the other key appeared to open the wrong surface — and a phone
+// left on the table stayed unlocked.
+function lockAdmin() {
+  adminRole = null;
+  adminKeyHeld = "";
+  try { sessionStorage.removeItem(ADMIN_KEY_STORE); } catch {}
 }
 // admin.js calls this from its Exit button instead of navigating away.
 window.closeSlateEditor = closeAdmin;
@@ -933,7 +947,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609122100";
+  tag.src = "console.js?v=202609122200";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -979,6 +993,8 @@ window.appClearPicks = () => {
   if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
 };
 window.appRefreshAuth = () => refreshAuthState();
+// console.js calls this when it closes, so Exit locks there too.
+window.lockAdminSurfaces = lockAdmin;
 
 // Any tab in the nav is also a way out of the editor: the nav sits above
 // the overlay while it is open, and the tab's own handler then runs and

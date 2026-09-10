@@ -503,6 +503,14 @@ function isAdmin(env, url) {
   return !!env.ARCHIVE_LOG_KEY && url.searchParams.get("key") === env.ARCHIVE_LOG_KEY;
 }
 
+// Two keys holding the same value would collapse into one role — the app
+// owner's, since that is checked first — which reads as "the slate key
+// opened the console". That is a misconfiguration, not a role, so say so
+// rather than quietly handing out the wider surface.
+function keysCollide(env) {
+  return !!env.SLATE_KEY && !!env.ARCHIVE_LOG_KEY && env.SLATE_KEY === env.ARCHIVE_LOG_KEY;
+}
+
 function isSlateAdmin(env, url) {
   return isAdmin(env, url) || (!!env.SLATE_KEY && url.searchParams.get("key") === env.SLATE_KEY);
 }
@@ -519,6 +527,7 @@ function keyRole(env, url) {
 // fails at the prompt instead of on the first action behind it.
 function handleAdminCheck(env, corsHeaders, url) {
   if (!env.ARCHIVE_LOG_KEY && !env.SLATE_KEY) return json({ ok: false, error: "No admin key is set on the Worker." }, 503, corsHeaders);
+  if (keysCollide(env)) return json({ ok: false, error: "SLATE_KEY and ARCHIVE_LOG_KEY are the same value. Set the slate key to something different." }, 409, corsHeaders);
   const role = keyRole(env, url);
   if (!role) return json({ ok: false }, 403, corsHeaders);
   return json({ ok: true, role }, 200, corsHeaders);
