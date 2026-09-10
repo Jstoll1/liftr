@@ -16,6 +16,7 @@
   let found = [];         // games ESPN returned for the chosen week
   let picked = new Map(); // espn event id -> { spread, favSide, tiebreaker }
 
+  let suggested = [];    // event ids from the last recommendation
   let filter = "";       // live team-name filter over the loaded week
   let keyOk = false;      // the Worker has confirmed this key
 
@@ -107,7 +108,10 @@
           homeId: Number(home.team?.id),
           awayLogo: away.team?.logo || "",
           homeLogo: home.team?.logo || "",
-          rank: Number(home.curatedRank?.current) || Number(away.curatedRank?.current) || 99,
+          awayRank: Number(away.curatedRank?.current) || 99,
+          homeRank: Number(home.curatedRank?.current) || 99,
+          conf: !!c.conferenceCompetition,
+          note: (ev.competitions?.[0]?.notes || [])[0]?.headline || "",
           kickoff: ev.date,
           tv: (c.broadcasts || []).flatMap((b) => b.names || [])[0] || "",
           spread, favSide,
@@ -153,6 +157,96 @@
       }
       return { count: saved.length, missing };
     } catch { return null; }
+  }
+
+  // Recommendations. Everything here comes off the ESPN record the week
+  // was loaded with, so the ranking is reproducible and explainable: each
+  // suggestion carries the reasons that earned it a spot.
+  const BIG_FOUR = /\b(ABC|CBS|NBC|FOX)\b/i;
+  const CABLE = /\b(ESPN|ESPN2|FS1|BTN|SECN|TNT)\b/i;
+
+  function rateGame(g) {
+    const why = [];
+    let score = 0;
+    const ranked = [g.awayRank, g.homeRank].filter((r) => r <= 25);
+    if (ranked.length === 2) {
+      score += 40 + (26 - Math.max(...ranked));
+      why.push(`No. ${Math.min(g.awayRank, g.homeRank)} vs No. ${Math.max(g.awayRank, g.homeRank)}`);
+    } else if (ranked.length === 1) {
+      score += 14 + (26 - ranked[0]) / 3;
+      why.push(`No. ${ranked[0]} in it`);
+    }
+    const sp = g.spread;
+    if (sp === null) { score -= 50; }
+    else if (sp <= 3) { score += 22; why.push("Pick em"); }
+    else if (sp <= 7) { score += 15; why.push("One score line"); }
+    else if (sp <= 10) { score += 8; }
+    else if (sp <= 17) { score += 1; }
+    else if (sp <= 24) { score -= 8; }
+    else { score -= 26; why.push("Likely blowout"); }
+
+    const et = Number(new Date(g.kickoff).toLocaleString("en-US", { timeZone: "America/New_York", hour: "2-digit", hour12: false }));
+    if (et >= 20) { score += 12; why.push("Prime time"); }
+    else if (et >= 19) { score += 9; why.push("Night game"); }
+    else if (et >= 15) { score += 4; }
+
+    if (BIG_FOUR.test(g.tv)) { score += 9; why.push(g.tv); }
+    else if (CABLE.test(g.tv)) { score += 4; }
+
+    if (g.conf) { score += 5; why.push("Conference game"); }
+    if (g.note) why.push(g.note);
+    return { score, why: why.slice(0, 3) };
+  }
+
+  // A slate that is all Saturday afternoon is a worse watch than one that
+  // spreads across the week, so each extra game on a day it already has
+  // pays a little less.
+  function recommend() {
+    const rated = found.filter((g) => g.spread !== null)
+      .map((g) => ({ g, ...rateGame(g) }))
+      .sort((a, b) => b.score - a.score);
+    const perDay = new Map();
+    const out = [];
+    for (const r of rated) {
+      if (out.length >= MAX_PICKS) break;
+      const day = new Date(r.g.kickoff).toDateString();
+      const n = perDay.get(day) || 0;
+      r.adjusted = r.score - n * 3;
+      out.push(r);
+      perDay.set(day, n + 1);
+    }
+    return out.sort((a, b) => b.adjusted - a.adjusted);
+  }
+
+  function openSuggest() {
+    if (!found.length) { say("Load a week first.", "bad"); return; }
+    const picks = recommend();
+    if (!picks.length) { say("Nothing in this week has a line yet.", "bad"); return; }
+    suggested = picks.map((r) => r.g.key);
+    el("admin-suggest-list").innerHTML = picks.map((r, i) => {
+      const g = r.g;
+      const fav = g.favSide === "home" ? g.homeShort : g.awayShort;
+      const when = new Date(g.kickoff).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
+      return `<div class="sg-row">
+        <span class="sg-num">${i + 1}</span>
+        <div class="sg-body">
+          <div class="sg-teams">${esc(g.awayShort)} @ ${esc(g.homeShort)}</div>
+          <div class="sg-meta">${esc(fav)} -${g.spread} · ${esc(when)}${g.tv ? " · " + esc(g.tv) : ""}</div>
+          <div class="sg-why">${r.why.map((w) => `<span>${esc(w)}</span>`).join("")}</div>
+        </div>
+      </div>`;
+    }).join("");
+    el("admin-suggest").classList.remove("hidden");
+  }
+
+  function applySuggest() {
+    picked = new Map();
+    suggested.forEach((k, i) => picked.set(k, { tiebreaker: i === 0 }));
+    el("admin-suggest").classList.add("hidden");
+    filter = "";
+    el("admin-search").value = "";
+    say(`${picked.size} recommended games selected. The top one is the tiebreaker. Change anything you like.`, "ok");
+    renderFound();
   }
 
   function renderFound() {
@@ -276,6 +370,10 @@
     renderFound();
   });
   el("admin-save").addEventListener("click", save);
+  el("admin-suggest-btn").addEventListener("click", openSuggest);
+  el("admin-suggest-use").addEventListener("click", applySuggest);
+  el("admin-suggest-close").addEventListener("click", () => el("admin-suggest").classList.add("hidden"));
+  el("admin-suggest").addEventListener("click", (e) => { if (e.target.id === "admin-suggest") el("admin-suggest").classList.add("hidden"); });
   el("admin-exit").addEventListener("click", () => { location.hash = ""; location.reload(); });
 
   if (location.hash === "#admin") show();
