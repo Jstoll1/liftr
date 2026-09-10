@@ -55,11 +55,16 @@
         const away = (c.competitors || []).find((x) => x.homeAway === "away");
         const home = (c.competitors || []).find((x) => x.homeAway === "home");
         if (!away || !home) return null;
-        // ESPN often carries the closing line. Use it as a starting point;
-        // the commissioner can overwrite every number.
+        // The line comes from ESPN and is never editable here. ESPN's
+        // spread is signed from the home side, so a negative number means
+        // the home team is laying it. A game ESPN has no line for cannot
+        // be picked: there is nothing to play against.
         const odds = (c.odds || [])[0] || {};
-        const favSide = odds.homeTeamOdds?.favorite ? "home" : odds.awayTeamOdds?.favorite ? "away" : "home";
-        const spread = Number.isFinite(Number(odds.spread)) ? Math.abs(Number(odds.spread)) : "";
+        const raw = Number(odds.spread);
+        const hasLine = Number.isFinite(raw) && raw !== 0;
+        const favSide = !hasLine ? "" : odds.homeTeamOdds?.favorite ? "home"
+          : odds.awayTeamOdds?.favorite ? "away" : raw < 0 ? "home" : "away";
+        const spread = hasLine ? Math.abs(raw) : null;
         return {
           key: ev.id,
           away: away.team?.displayName || away.team?.name || "",
@@ -96,21 +101,19 @@
       lastDay = dayLabel;
       const on = picked.has(g.key);
       const p = picked.get(g.key) || {};
+      const favShort = g.favSide === "home" ? g.homeShort : g.awayShort;
+      const lineText = g.spread === null ? "No line yet" : `${favShort} -${g.spread}`;
       const k = new Date(g.kickoff);
       const time = k.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-      return `${header}<div class="admin-game ${on ? "on" : ""}" data-key="${esc(g.key)}">
+      return `${header}<div class="admin-game ${on ? "on" : ""} ${g.spread === null ? "noline" : ""}" data-key="${esc(g.key)}">
         <button class="admin-pick" type="button" data-act="toggle">
           <span class="admin-check">${on ? "✓" : ""}</span>
           <span class="admin-teams">${esc(g.awayShort)} @ ${esc(g.homeShort)}</span>
+          <span class="admin-odds ${g.spread === null ? "none" : ""}">${esc(lineText)}</span>
           <span class="admin-time">${esc(time)}${g.tv ? " · " + esc(g.tv) : ""}</span>
         </button>
         ${on ? `<div class="admin-line">
-          <label>Spread<input class="admin-spread" type="number" step="0.5" min="0" max="80" inputmode="decimal" value="${p.spread ?? ""}" /></label>
-          <div class="admin-fav">
-            <button type="button" class="admin-favbtn ${p.favSide === "away" ? "on" : ""}" data-act="fav" data-side="away">${esc(g.awayShort)}</button>
-            <button type="button" class="admin-favbtn ${p.favSide === "home" ? "on" : ""}" data-act="fav" data-side="home">${esc(g.homeShort)}</button>
-          </div>
-          <label class="admin-tb"><input type="radio" name="admin-tb" data-act="tb" ${p.tiebreaker ? "checked" : ""} /> Tiebreaker</label>
+          <label class="admin-tb"><input type="radio" name="admin-tb" data-act="tb" ${p.tiebreaker ? "checked" : ""} /> Tiebreaker game</label>
         </div>` : ""}
       </div>`;
     }).join("");
@@ -125,25 +128,15 @@
     const act = e.target.closest("[data-act]")?.dataset.act;
     if (act === "toggle") {
       if (picked.has(key)) { picked.delete(key); say(""); }
+      else if (g.spread === null) { say(`ESPN has no line on ${g.awayShort} @ ${g.homeShort} yet. Load the week again closer to kickoff.`, "bad"); return; }
       else if (picked.size >= MAX_PICKS) { say(`That is ${MAX_PICKS} already. Untap one first.`, "bad"); return; }
-      else picked.set(key, { spread: g.spread, favSide: g.favSide, tiebreaker: false });
-      renderFound();
-    } else if (act === "fav") {
-      const p = picked.get(key); if (!p) return;
-      p.favSide = e.target.dataset.side;
+      else picked.set(key, { tiebreaker: false });
       renderFound();
     } else if (act === "tb") {
       picked.forEach((v) => { v.tiebreaker = false; });
       const p = picked.get(key); if (p) p.tiebreaker = true;
       renderFound();
     }
-  });
-  // Spread edits are read on save, but keep the map current as they type so
-  // a re-render never wipes a number.
-  el("admin-games").addEventListener("input", (e) => {
-    if (!e.target.classList.contains("admin-spread")) return;
-    const key = e.target.closest(".admin-game")?.dataset.key;
-    const p = picked.get(key); if (p) p.spread = e.target.value;
   });
 
   async function save() {
@@ -161,14 +154,13 @@
     for (const g of found) {
       const p = picked.get(g.key);
       if (!p) continue;
-      const spread = Number(p.spread);
-      if (!Number.isFinite(spread) || spread < 0) { say(`Enter a spread for ${g.awayShort} @ ${g.homeShort}.`, "bad"); return; }
+      if (!Number.isFinite(g.spread)) { say(`ESPN has no line on ${g.awayShort} @ ${g.homeShort}. Untap it.`, "bad"); return; }
       id += 1;
       games.push({
         id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort,
         awayId: g.awayId, homeId: g.homeId,
-        favorite: p.favSide === "away" ? g.away : g.home,
-        spread, kickoff: g.kickoff, tv: g.tv,
+        favorite: g.favSide === "away" ? g.away : g.home,
+        spread: g.spread, kickoff: g.kickoff, tv: g.tv,
         ...(p.tiebreaker ? { tiebreakerGame: true } : {}),
       });
     }

@@ -2205,17 +2205,15 @@ html, body {
 .admin-empty { color: var(--text-dim); font-size: 11px; padding: 12px 0; text-align: center; }
 .admin-game { border: 2px solid var(--card-border); border-radius: 8px; background: rgba(0, 0, 0, .25); }
 .admin-game.on { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .07); }
-.admin-pick { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; padding: 9px 10px; background: none; border: 0; color: var(--text); text-align: left; cursor: pointer; }
-.admin-check { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--neon-green); }
-.admin-teams { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.admin-time { font-size: 9px; color: var(--text-dim); white-space: nowrap; }
-.admin-line { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; }
-.admin-line label { display: flex; flex-direction: column; gap: 3px; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-yellow); }
-.admin-spread { width: 74px; padding: 7px 8px; border-radius: 6px; border: 2px solid rgba(255, 228, 94, .5); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; }
-.admin-fav { display: flex; gap: 6px; }
-.admin-favbtn { padding: 8px 10px; border-radius: 6px; border: 2px solid var(--card-border); background: rgba(255, 255, 255, .03); color: var(--text-dim); font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 11px; cursor: pointer; }
-.admin-favbtn.on { border-color: var(--neon-yellow); color: var(--neon-yellow); background: rgba(255, 228, 94, .12); }
-.admin-tb { flex-direction: row !important; align-items: center; gap: 6px !important; color: var(--neon-purple) !important; }
+.admin-pick { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; grid-template-areas: 'chk teams time' 'chk odds odds'; align-items: center; column-gap: 8px; row-gap: 2px; width: 100%; padding: 9px 10px; background: none; border: 0; color: var(--text); text-align: left; cursor: pointer; }
+.admin-check { grid-area: chk; font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--neon-green); }
+.admin-teams { grid-area: teams; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-time { grid-area: time; font-size: 9px; color: var(--text-dim); white-space: nowrap; }
+.admin-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; }
+.admin-odds { grid-area: odds; justify-self: start; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; color: var(--neon-yellow); letter-spacing: .04em; white-space: nowrap; }
+.admin-odds.none { color: var(--text-dim); font-weight: 400; }
+.admin-game.noline .admin-pick { opacity: .45; }
+.admin-tb { flex-direction: row !important; font-size: 8px !important; align-items: center; gap: 6px !important; color: var(--neon-purple) !important; }
 .admin-check-row { display: flex; align-items: center; gap: 8px; font-family: 'Orbitron', system-ui, sans-serif; font-size: 12px; color: var(--text-dim); }
 .admin-field select { padding: 9px 10px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; }
 .admin-day { position: sticky; top: 0; z-index: 1; padding: 6px 2px 4px; background: #0a0014; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--neon-pink); letter-spacing: .1em; }
