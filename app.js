@@ -690,7 +690,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609121500";
+  tag.src = "admin.js?v=202609121600";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1260,10 +1260,9 @@ function renderPicksScreen() {
     }
 
     const noteVerb = justSavedGameId === game.id && justSavedKind === "updated" ? "Updated" : "Saved";
-    const note = gameLocked
-      ? pick ? `Final pick: ${pickLabel(game, pick)}` : "No pick made — locked"
-      : pick && justSavedGameId === game.id && syncStatus === "failed" ? `⚠ ${pickLabel(game, pick)} is saved on this phone but not synced yet — retrying`
-      : pick ? `✓ ${noteVerb}: ${pickLabel(game, pick)}${pickTimeLabel(pick) ? ` · ${pickTimeLabel(pick)}` : ""}` : "Tap a button to pick — it saves instantly";
+    const note = pick && justSavedGameId === game.id && syncStatus === "failed"
+      ? `⚠ ${pickLabel(game, pick)} is saved on this phone but not synced yet — retrying`
+      : pick ? `✓ ${noteVerb}: ${pickLabel(game, pick)}${pickTimeLabel(pick) ? ` · ${pickTimeLabel(pick)}` : ""}` : "";
 
     card.innerHTML = `
       <div class="game-meta">
@@ -1271,7 +1270,7 @@ function renderPicksScreen() {
         <span class="game-status ${statusClass}">${statusLabel}</span>
       </div>
       ${gameLocked ? lockedResultHtml(game, pick, finalRes, isLive ? g : null) : matchupCardsHtml(game, pick)}
-      ${gameLocked ? "" : `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>`}
+      ${gameLocked || !note ? "" : `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>`}
     `;
 
     card.querySelectorAll(".pick-mini-btn").forEach((btn) => {
@@ -1336,8 +1335,8 @@ function updatePicksProgress(state) {
       : `${totalPicked} of ${GAMES.length} games picked` + (state.tiebreaker ? " · tiebreaker set" : " · tiebreaker not set");
   const hint = document.querySelector("#picks-screen .picks-hint");
   if (hint) hint.textContent = allLocked
-    ? `${WEEK_LABEL} has kicked off. Your card is locked; scores and results update below as games finish.`
-    : "Each game: pick a team straight up (1 pt favorite / 3 pt underdog) or against the spread (2 pts either way; a push on the number pays nobody). Every tap saves instantly — change your mind as often as you like until that game kicks off, then it locks for everyone.";
+    ? `${WEEK_LABEL} has kicked off and your card is locked. Scores and results update below as games finish.`
+    : "One pick per game: straight up (1 pt favorite, 3 pt underdog) or against the spread (2 pts). Tap to save — change it any time until that game kicks off.";
   let warn = document.getElementById("picks-mismatch");
   if (!warn) { warn = document.createElement("button"); warn.id = "picks-mismatch"; warn.type = "button"; warn.className = "picks-mismatch"; picksProgress.insertAdjacentElement("afterend", warn); warn.addEventListener("click", () => restorePhonePicks(currentManager)); }
   if (lockedMismatch.length && phoneSnapshot[currentManager]) {
