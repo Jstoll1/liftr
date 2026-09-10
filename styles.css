@@ -2228,7 +2228,7 @@ html, body {
 .admin-game:not(.on) .admin-logos { filter: grayscale(.35); opacity: .85; }
 .admin-teams { grid-area: teams; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; line-height: 1.25; overflow-wrap: anywhere; }
 .admin-time { grid-area: time; font-size: 8.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.admin-line input[type=radio] { width: 20px; height: 20px; accent-color: var(--neon-cyan); flex: none; }
+.admin-line input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--neon-cyan); flex: none; }
 .admin-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 8px 8px; }
 .admin-odds { grid-area: odds; justify-self: start; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 11px; color: var(--neon-yellow); letter-spacing: .04em; white-space: nowrap; }
 .admin-odds.none { color: var(--text-dim); font-weight: 400; }

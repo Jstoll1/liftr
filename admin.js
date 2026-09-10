@@ -377,7 +377,7 @@
           <span class="admin-time">${esc(time)}${g.tv ? " · " + esc(g.tv) : ""}</span>
         </button>
         ${on ? `<div class="admin-line">
-          <label class="admin-tb"><input type="radio" name="admin-tb" data-act="tb" ${p.tiebreaker ? "checked" : ""} /> Tiebreaker game</label>
+          <label class="admin-tb"><input type="checkbox" data-act="tb" ${p.tiebreaker ? "checked" : ""} /> Tiebreaker game</label>
         </div>` : ""}
       </div>`;
     }).join("");
@@ -403,8 +403,11 @@
       else picked.set(key, { tiebreaker: false });
       renderFound();
     } else if (act === "tb") {
+      // One tiebreaker at a time, and tapping the one that is set clears it.
+      const p = picked.get(key); if (!p) return;
+      const was = p.tiebreaker;
       picked.forEach((v) => { v.tiebreaker = false; });
-      const p = picked.get(key); if (p) p.tiebreaker = true;
+      p.tiebreaker = !was;
       renderFound();
     }
   });
