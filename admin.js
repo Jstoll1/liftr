@@ -12,7 +12,8 @@
 
   const el = (id) => document.getElementById(id);
   const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  let found = [];      // games ESPN returned for the chosen date
+  const MAX_PICKS = 10;   // the league plays ten games a week
+  let found = [];         // games ESPN returned for the chosen week
   let picked = new Map(); // espn event id -> { spread, favSide, tiebreaker }
 
   const getKey = () => { try { return sessionStorage.getItem(KEY_STORE) || ""; } catch { return ""; } };
@@ -24,26 +25,29 @@
     bottomNav.classList.add("hidden");
     root.classList.remove("hidden");
     el("admin-key").value = getKey();
-    el("admin-week").value = String(Math.max(1, ...(typeof weekList !== "undefined" ? weekList : [1])) + 1);
-    el("admin-date").value = nextSaturday();
+    const next = Math.max(1, ...(typeof weekList !== "undefined" ? weekList : [1])) + 1;
+    el("admin-week").value = String(next);
+    const sel = el("admin-espn-week");
+    if (!sel.options.length) {
+      sel.innerHTML = Array.from({ length: 16 }, (_, i) => `<option value="${i + 1}">Week ${i + 1}</option>`).join("");
+    }
+    sel.value = String(Math.min(16, next));
+    el("admin-year").value = String(new Date().getFullYear());
     renderFound();
-  }
-
-  function nextSaturday() {
-    const d = new Date();
-    d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7));
-    return d.toISOString().slice(0, 10);
   }
 
   const say = (msg, kind = "") => { const s = el("admin-status"); s.textContent = msg; s.className = "admin-status " + kind; };
 
-  // ESPN's scoreboard for one date. groups=80 is all of FBS.
+  // ESPN's scoreboard takes a season week, which returns every game from
+  // Thursday through Sunday in one call. groups=80 is all of FBS.
   async function loadEspn() {
-    const date = el("admin-date").value.replace(/-/g, "");
-    if (!/^\d{8}$/.test(date)) { say("Pick a date first.", "bad"); return; }
-    say("Asking ESPN for that day's games…");
+    const wk = Number(el("admin-espn-week").value);
+    const year = Number(el("admin-year").value);
+    if (!Number.isInteger(wk) || wk < 1 || wk > 20) { say("Pick a week.", "bad"); return; }
+    if (!Number.isInteger(year) || year < 2000) { say("Enter the season year.", "bad"); return; }
+    say(`Asking ESPN for ${year} week ${wk}…`);
     try {
-      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300&t=${Date.now()}`, { cache: "no-store" });
+      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${year}&seasontype=2&week=${wk}&groups=80&limit=500&t=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
       found = (data.events || []).map((ev) => {
@@ -64,27 +68,37 @@
           homeShort: home.team?.shortDisplayName || home.team?.abbreviation || "",
           awayId: Number(away.team?.id),
           homeId: Number(home.team?.id),
+          rank: Number(home.curatedRank?.current) || Number(away.curatedRank?.current) || 99,
           kickoff: ev.date,
           tv: (c.broadcasts || []).flatMap((b) => b.names || [])[0] || "",
           spread, favSide,
         };
       }).filter(Boolean).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
       picked = new Map();
-      say(`${found.length} games on ${el("admin-date").value}. Tap the ones the league is playing.`, "ok");
+      if (!found.length) {
+        say(`ESPN returned no games for ${year} week ${wk}. Check the year and week.`, "bad");
+      } else {
+        say(`${found.length} games in week ${wk}. Tap up to ${MAX_PICKS}.`, "ok");
+      }
       renderFound();
     } catch (err) {
-      say(`Could not reach ESPN (${err.message}). Try again, or check the date.`, "bad");
+      say(`Could not reach ESPN (${err.message}).`, "bad");
     }
   }
 
   function renderFound() {
     const list = el("admin-games");
-    if (!found.length) { list.innerHTML = `<div class="admin-empty">Choose a date and tap Load games.</div>`; return; }
+    if (!found.length) { list.innerHTML = `<div class="admin-empty">Pick a week and tap Load week.</div>`; return; }
+    let lastDay = "";
     list.innerHTML = found.map((g) => {
+      const dayLabel = new Date(g.kickoff).toLocaleDateString("en-US", { weekday: "long", month: "numeric", day: "numeric" });
+      const header = dayLabel !== lastDay ? `<div class="admin-day">${esc(dayLabel)}</div>` : "";
+      lastDay = dayLabel;
       const on = picked.has(g.key);
       const p = picked.get(g.key) || {};
-      const time = new Date(g.kickoff).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-      return `<div class="admin-game ${on ? "on" : ""}" data-key="${esc(g.key)}">
+      const k = new Date(g.kickoff);
+      const time = k.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      return `${header}<div class="admin-game ${on ? "on" : ""}" data-key="${esc(g.key)}">
         <button class="admin-pick" type="button" data-act="toggle">
           <span class="admin-check">${on ? "✓" : ""}</span>
           <span class="admin-teams">${esc(g.awayShort)} @ ${esc(g.homeShort)}</span>
@@ -100,7 +114,7 @@
         </div>` : ""}
       </div>`;
     }).join("");
-    el("admin-count").textContent = `${picked.size} selected`;
+    el("admin-count").textContent = `${picked.size} of ${MAX_PICKS} selected`;
   }
 
   el("admin-games").addEventListener("click", (e) => {
@@ -110,7 +124,8 @@
     const g = found.find((x) => x.key === key);
     const act = e.target.closest("[data-act]")?.dataset.act;
     if (act === "toggle") {
-      if (picked.has(key)) picked.delete(key);
+      if (picked.has(key)) { picked.delete(key); say(""); }
+      else if (picked.size >= MAX_PICKS) { say(`That is ${MAX_PICKS} already. Untap one first.`, "bad"); return; }
       else picked.set(key, { spread: g.spread, favSide: g.favSide, tiebreaker: false });
       renderFound();
     } else if (act === "fav") {
@@ -173,6 +188,11 @@
   }
 
   el("admin-load").addEventListener("click", loadEspn);
+  el("admin-clear").addEventListener("click", () => {
+    picked = new Map();
+    say("Selections cleared.");
+    renderFound();
+  });
   el("admin-save").addEventListener("click", save);
   el("admin-exit").addEventListener("click", () => { location.hash = ""; location.reload(); });
 

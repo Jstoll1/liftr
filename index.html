@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609101200" />
+  <link rel="stylesheet" href="styles.css?v=202609101400" />
   <link rel="stylesheet" href="history.css?v=202609061230" />
 </head>
 <body>
@@ -280,15 +280,17 @@
   <main id="admin-screen" class="screen hidden">
     <div class="wrap wide">
       <div class="topbar centered"><span class="manager-badge">🛠 SLATE EDITOR</span></div>
-      <p class="admin-intro">Set the week's ten games. Pick the date, load that day's college slate from ESPN, tap the games the league is playing, then set each spread and the favorite. One game is the tiebreaker.</p>
+      <p class="admin-intro">Set the week's ten games. Pick the ESPN week and load it. Every game from Thursday through Sunday is listed by day. Tap the ten the league is playing, set each spread and favorite, and mark one as the tiebreaker.</p>
 
       <div class="admin-row">
         <label class="admin-field">Admin key<input id="admin-key" type="password" autocomplete="off" placeholder="ARCHIVE_LOG_KEY" /></label>
         <label class="admin-field small">Week<input id="admin-week" type="number" min="1" max="30" inputmode="numeric" /></label>
       </div>
       <div class="admin-row">
-        <label class="admin-field">Game date<input id="admin-date" type="date" /></label>
-        <button id="admin-load" class="admin-btn" type="button">Load games</button>
+        <label class="admin-field">ESPN week<select id="admin-espn-week"></select></label>
+        <label class="admin-field small">Season<input id="admin-year" type="number" min="2000" max="2100" inputmode="numeric" /></label>
+        <button id="admin-load" class="admin-btn" type="button">Load week</button>
+        <button id="admin-clear" class="admin-btn" type="button">Clear</button>
       </div>
 
       <div id="admin-status" class="admin-status"></div>
@@ -374,7 +376,7 @@
           async src="https://gc.zgo.at/count.js"></script>
   <script src="app.js?v=202609101200"></script>
   <script src="attract-facts.js?v=202609052030"></script>
-  <script src="admin.js?v=202609101200"></script>
+  <script src="admin.js?v=202609101400"></script>
   <script src="history.js?v=202609091430"></script>
 </body>
 </html>

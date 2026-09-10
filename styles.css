@@ -2217,3 +2217,5 @@ html, body {
 .admin-favbtn.on { border-color: var(--neon-yellow); color: var(--neon-yellow); background: rgba(255, 228, 94, .12); }
 .admin-tb { flex-direction: row !important; align-items: center; gap: 6px !important; color: var(--neon-purple) !important; }
 .admin-check-row { display: flex; align-items: center; gap: 8px; font-family: 'Orbitron', system-ui, sans-serif; font-size: 12px; color: var(--text-dim); }
+.admin-field select { padding: 9px 10px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; }
+.admin-day { position: sticky; top: 0; z-index: 1; padding: 6px 2px 4px; background: #0a0014; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--neon-pink); letter-spacing: .1em; }
