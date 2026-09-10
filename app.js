@@ -739,6 +739,7 @@ function enterScreen(name) {
   appScroll.scrollTop = y;
   // async renders can grow the page after this tick; pin again once painted
   requestAnimationFrame(() => { appScroll.scrollTop = savedScroll[name] ?? 0; syncHeaderSize(); });
+  renderHeaderCountdown();
 }
 
 // Leaving the splash: if this device already knows who you are, skip the
@@ -928,7 +929,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609141200";
+  tag.src = "admin.js?v=202609141500";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -2275,10 +2276,31 @@ function escapeCd(str) {
   return String(str).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
+// The same clock, shrunk into the header for every page except Picks,
+// which already carries the full strip above the slate. Tapping it goes
+// to Picks, since that is what the deadline is for.
+function renderHeaderCountdown() {
+  const el = document.getElementById("header-countdown");
+  if (!el) return;
+  const onPicks = !picksScreen.classList.contains("hidden");
+  const next = gamesByKickoff().find((g) => !isGameLocked(g));
+  const cd = next ? kickoffCountdown(next.kickoff) : null;
+  if (onPicks || !currentManager || !cd || cd.past) { el.classList.add("hidden"); return; }
+  el.className = "head-cd" + (cd.ms < 3600000 ? " soon" : "");
+  el.innerHTML = `<span class="hcd-dot"></span>${escapeCd(cd.text)}`;
+  el.title = `${next.awayShort} at ${next.homeShort} · ${next.kickoffLabel}`;
+}
+
+document.getElementById("header-countdown")?.addEventListener("click", () => {
+  navPicksBtn?.click();
+});
+
 // Its own second-by-second timer, separate from the 20s refresh: the clock
 // has to move, but nothing else on the page needs redrawing that often.
 setInterval(() => {
-  if (currentManager && !picksScreen.classList.contains("hidden")) renderPicksCountdown();
+  if (!currentManager) return;
+  if (!picksScreen.classList.contains("hidden")) renderPicksCountdown();
+  renderHeaderCountdown();
 }, 1000);
 
 // Re-render periodically so games auto-lock the moment kickoff passes,
