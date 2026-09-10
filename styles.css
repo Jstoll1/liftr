@@ -2326,6 +2326,15 @@ html, body {
 .sg-meta { font-size: 10px; color: var(--neon-yellow); margin-top: 2px; }
 .sg-why { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
 .sg-why span { padding: 2px 6px; border-radius: 999px; border: 1px solid rgba(185, 103, 255, .5); font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--neon-purple); letter-spacing: .06em; }
+.ov-scrim { z-index: 90; }
+.ov-card { border-color: var(--neon-yellow); }
+.ov-body { padding: 0 14px 10px; }
+.ov-lead { margin: 8px 0; font-size: 12px; line-height: 1.5; color: var(--text); }
+.ov-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ov-col { padding: 8px; border-radius: 8px; border: 2px solid var(--card-border); font-family: 'Orbitron', system-ui, sans-serif; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.ov-col.out { border-color: rgba(255, 92, 138, .55); color: var(--neon-pink); }
+.ov-col.in { border-color: rgba(0, 255, 143, .5); color: var(--neon-green); }
+.ov-head { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .08em; margin-bottom: 6px; color: var(--text-dim); }
 .sg-foot { display: flex; gap: 10px; align-items: center; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 2px solid var(--card-border); background: #0a0316; }
 
 /* The slate editor rides over the app rather than living on a page of its

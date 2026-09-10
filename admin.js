@@ -327,30 +327,54 @@
   function updateSuggestCount() {
     const n = suggested.filter((x) => x.on).length;
     const btn = el("admin-suggest-use");
-    btn.textContent = n ? `Add ${n}` : "None chosen";
+    btn.textContent = n ? `Use these ${n}` : "None chosen";
     btn.disabled = !n;
   }
 
-  // Recommendations add to whatever is already selected rather than
-  // replacing it, so a slate part built by hand survives the suggestion.
-  function applySuggest() {
+  // What taking the chosen recommendations would cost the current slate.
+  function suggestDiff() {
     const want = suggested.filter((x) => x.on).map((x) => x.key);
-    let added = 0, skipped = 0;
-    for (const key of want) {
-      if (picked.has(key)) continue;
-      if (picked.size >= MAX_PICKS) { skipped += 1; continue; }
-      picked.set(key, { tiebreaker: false });
-      added += 1;
-    }
-    if (picked.size && ![...picked.values()].some((v) => v.tiebreaker)) {
-      const first = want.find((k) => picked.has(k)) || [...picked.keys()][0];
-      picked.get(first).tiebreaker = true;
-    }
+    const incoming = want.filter((k) => !picked.has(k));
+    const outgoing = [...picked.keys()].filter((k) => !want.includes(k));
+    return { want, incoming, outgoing, kept: want.length - incoming.length };
+  }
+
+  const nameOf = (key) => {
+    const g = found.find((x) => x.key === key);
+    return g ? `${g.awayShort} @ ${g.homeShort}` : "";
+  };
+
+  // Taking recommendations replaces the slate. Anything already selected
+  // that is not in the chosen set would be dropped, so say so first.
+  function confirmSuggest() {
+    const d = suggestDiff();
+    if (!d.want.length) return;
+    if (!d.outgoing.length) { applySuggest(); return; }
+    el("admin-override-body").innerHTML = `
+      <p class="ov-lead">${d.outgoing.length === picked.size ? `All ${picked.size} of your selected games are` : `${d.outgoing.length} of your ${picked.size} selected ${d.outgoing.length === 1 ? "games is" : "games are"}`} not in this set and would be dropped.</p>
+      <div class="ov-cols">
+        <div class="ov-col out"><div class="ov-head">Dropping ${d.outgoing.length}</div>${d.outgoing.map((k) => `<div>${esc(nameOf(k))}</div>`).join("")}</div>
+        <div class="ov-col in"><div class="ov-head">Adding ${d.incoming.length}</div>${d.incoming.length ? d.incoming.map((k) => `<div>${esc(nameOf(k))}</div>`).join("") : "<div>Nothing new</div>"}</div>
+      </div>
+      <p class="ov-lead">${d.kept} ${d.kept === 1 ? "game stays" : "games stay"}. The slate becomes ${d.want.length} of ${MAX_PICKS}.</p>`;
+    el("admin-override-ok").textContent = `Override ${picked.size}`;
+    openSheet("admin-override");
+  }
+
+  function applySuggest() {
+    const { want } = suggestDiff();
+    if (!want.length) return;
+    // Whoever held the tiebreaker keeps it if they survive the swap.
+    const heldTb = [...picked.entries()].find(([, v]) => v.tiebreaker)?.[0];
+    picked = new Map();
+    for (const key of want.slice(0, MAX_PICKS)) picked.set(key, { tiebreaker: false });
+    const tb = heldTb && picked.has(heldTb) ? heldTb : want[0];
+    if (picked.has(tb)) picked.get(tb).tiebreaker = true;
+    closeSheet("admin-override");
     closeSheet("admin-suggest");
     filter = "";
     el("admin-search").value = "";
-    const tail = skipped ? ` ${skipped} did not fit under the ${MAX_PICKS} game cap.` : "";
-    say(`${added} added, ${picked.size} of ${MAX_PICKS} selected.${tail} Change anything you like.`, skipped ? "bad" : "ok");
+    say(`Slate replaced with ${picked.size} games. ${nameOf(tb)} is the tiebreaker. Change anything you like.`, "ok");
     renderFound();
   }
 
@@ -479,7 +503,7 @@
   });
   el("admin-save").addEventListener("click", save);
   el("admin-suggest-btn").addEventListener("click", openSuggest);
-  el("admin-suggest-use").addEventListener("click", applySuggest);
+  el("admin-suggest-use").addEventListener("click", confirmSuggest);
   el("admin-suggest-list").addEventListener("click", (e) => {
     const row = e.target.closest(".sg-row");
     if (!row) return;
@@ -490,6 +514,9 @@
     updateSuggestCount();
   });
   el("admin-suggest-close").addEventListener("click", () => closeSheet("admin-suggest"));
+  el("admin-override-ok").addEventListener("click", applySuggest);
+  el("admin-override-cancel").addEventListener("click", () => { closeSheet("admin-override"); openSheet("admin-suggest"); });
+  el("admin-override").addEventListener("click", (e) => { if (e.target.id === "admin-override") { closeSheet("admin-override"); openSheet("admin-suggest"); } });
   el("admin-suggest").addEventListener("click", (e) => { if (e.target.id === "admin-suggest") closeSheet("admin-suggest"); });
   // Inside the app the editor is an overlay, so Exit closes it and leaves
   // the league's screen underneath untouched.

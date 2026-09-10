@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609130930" />
+  <link rel="stylesheet" href="styles.css?v=202609131200" />
   <link rel="stylesheet" href="history.css?v=202609061230" />
 </head>
 <body>
@@ -447,13 +447,24 @@
     </div>
   </div>
 
+  <div id="admin-override" class="sg-scrim ov-scrim hidden">
+    <div class="sg-card ov-card" role="dialog" aria-modal="true" aria-label="Override picks">
+      <div class="sg-head">⚠ OVERRIDE PICKS</div>
+      <div id="admin-override-body" class="sg-list ov-body"></div>
+      <div class="sg-foot">
+        <button id="admin-override-ok" class="admin-btn primary" type="button">Override</button>
+        <button id="admin-override-cancel" class="admin-btn" type="button">Back</button>
+      </div>
+    </div>
+  </div>
+
   <div id="admin-suggest" class="sg-scrim hidden">
     <div class="sg-card" role="dialog" aria-modal="true" aria-label="Recommended games">
       <div class="sg-head">★ TOP 10 TO CONSIDER</div>
-      <p class="sg-intro">Ranked on matchup quality: teams in the poll, how close the line is, kickoff window, network, and conference stakes. Spread across days so the week is not all one afternoon. Tap any row to drop it, then add the rest to what you already have.</p>
+      <p class="sg-intro">Ranked on matchup quality: teams in the poll, how close the line is, kickoff window, network, and conference stakes. Spread across days so the week is not all one afternoon. Tap any row to drop it. Taking the rest replaces the slate, and you get a chance to see what changes first.</p>
       <div id="admin-suggest-list" class="sg-list"></div>
       <div class="sg-foot">
-        <button id="admin-suggest-use" class="admin-btn primary" type="button">Add 10</button>
+        <button id="admin-suggest-use" class="admin-btn primary" type="button">Use these 10</button>
         <button id="admin-suggest-close" class="admin-btn" type="button">Cancel</button>
       </div>
     </div>
@@ -462,8 +473,8 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=202609130930"></script>
+  <script src="app.js?v=202609131200"></script>
   <script src="attract-facts.js?v=202609052030"></script>
-  <script src="history.js?v=202609130930"></script>
+  <script src="history.js?v=202609131200"></script>
 </body>
 </html>
