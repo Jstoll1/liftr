@@ -285,7 +285,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
       const rows=(data.scores||[]).sort((a,b)=>b.best-a.best||(a.bestAt||0)-(b.bestAt||0));
       if(!rows.length){list.innerHTML='<div class="trivia-hs-empty">No scores yet. Be the first on the board.</div>';return}
       const who=me();
-      list.innerHTML=rows.map((r,i)=>'<div class="trivia-hs-row'+(r.player===who?' me':'')+(i===0?' top':'')+'"><span class="trivia-hs-rank">'+(i+1)+'</span><span class="trivia-hs-name">'+r.player.toUpperCase()+'<span class="trivia-hs-sub">'+r.plays+' game'+(r.plays===1?'':'s')+(r.avg!=null?' · avg '+r.avg:'')+'</span></span><span class="trivia-hs-when">'+fmtWhen(r.bestAt)+'</span><span class="trivia-hs-score">'+String(r.best).padStart(2,'0')+'</span></div>').join('');
+      list.innerHTML=rows.map((r,i)=>'<div class="trivia-hs-row'+(r.player===who?' me':'')+(i===0?' top':'')+'"><span class="trivia-hs-rank">'+(i+1)+'</span><span class="trivia-hs-name">'+r.player.toUpperCase()+'</span><span class="trivia-hs-when">'+fmtWhen(r.bestAt)+'</span><span class="trivia-hs-score">'+String(r.best).padStart(2,'0')+'</span></div>').join('');
     }catch{list.innerHTML='<div class="trivia-hs-empty">High scores are offline right now.</div>'}
   }
   async function postScore(sc,total){

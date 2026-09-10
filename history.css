@@ -351,9 +351,8 @@
 .trivia-hs-row.top { border-color: rgba(242, 193, 78, .55); background: rgba(242, 193, 78, .06); }
 .trivia-hs-row.me { border-color: rgba(5, 217, 232, .5); background: rgba(5, 217, 232, .06); }
 .trivia-hs-rank { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--gold); }
-.trivia-hs-name { display: flex; flex-direction: column; gap: 3px; font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trivia-hs-name { display: block; align-self: center; font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trivia-hs-row.me .trivia-hs-name { color: var(--cyan); }
-.trivia-hs-sub { font-family: 'Orbitron', system-ui, sans-serif; font-size: 8px; font-weight: 700; color: var(--muted); letter-spacing: .06em; }
 .trivia-hs-when { font-family: 'Orbitron', system-ui, sans-serif; font-size: 9px; color: var(--muted); }
 .trivia-hs-score { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #39ff88; text-shadow: 0 0 6px rgba(57, 255, 136, .6); text-align: right; }
 .trivia-hs-row.top .trivia-hs-score { color: var(--gold); text-shadow: 0 0 8px rgba(242, 193, 78, .7); }
