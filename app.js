@@ -714,6 +714,18 @@ function closeRules() {
 // you've already scrolled restores where you left it, so nobody lands at
 // the bottom of the scoreboard because they were deep in their picks.
 const appScroll = document.getElementById("app-scroll");
+
+// Shrink the header once the page has moved. Hysteresis on the two
+// thresholds so a list that sits right on the boundary cannot flicker.
+let headerCompact = false;
+function syncHeaderSize() {
+  const y = appScroll.scrollTop;
+  const next = headerCompact ? y > 24 : y > 64;
+  if (next === headerCompact) return;
+  headerCompact = next;
+  homeHeader.classList.toggle("compact", next);
+}
+appScroll.addEventListener("scroll", syncHeaderSize, { passive: true });
 const savedScroll = {};
 let activeScreenName = null;
 function rememberScroll() {
@@ -726,7 +738,7 @@ function enterScreen(name) {
   const y = savedScroll[name] ?? 0;
   appScroll.scrollTop = y;
   // async renders can grow the page after this tick; pin again once painted
-  requestAnimationFrame(() => { appScroll.scrollTop = savedScroll[name] ?? 0; });
+  requestAnimationFrame(() => { appScroll.scrollTop = savedScroll[name] ?? 0; syncHeaderSize(); });
 }
 
 // Leaving the splash: if this device already knows who you are, skip the
@@ -916,7 +928,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609132000";
+  tag.src = "admin.js?v=202609140900";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }

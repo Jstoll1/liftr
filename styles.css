@@ -85,6 +85,7 @@ html, body {
   display: flex;
   justify-content: center;
   padding: 8px 12px;
+  transition: padding .18s ease;
   background: rgba(10, 0, 20, 0.98);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
@@ -104,7 +105,17 @@ html, body {
   height: 46px;
   width: auto;
   filter: drop-shadow(0 0 6px rgba(255, 32, 121, 0.4));
-  transition: filter 0.15s ease;
+  transition: filter .15s ease, height .18s ease;
+}
+
+/* The wordmark is the best thing on the page at rest and dead weight once
+   you are reading a list, so it shrinks out of the way on the way down and
+   comes back the moment you return to the top. */
+.home-header.compact { padding: 3px 12px; }
+.home-header.compact .home-logo-btn { padding: 2px; }
+.home-header.compact .home-logo-img { height: 26px; }
+@media (prefers-reduced-motion: reduce) {
+  .home-header, .home-logo-img { transition: none; }
 }
 
 .home-logo-btn:hover .home-logo-img {
