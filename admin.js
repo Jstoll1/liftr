@@ -97,6 +97,8 @@
     }
     renderWeekOptions(week);
     el("admin-year").value = String(year);
+    const note = el("admin-season-note");
+    if (note) note.textContent = year === new Date().getFullYear() ? "" : `${year} season`;
     syncGate();
     renderFound();
     // Opening the editor almost always means working on this week, so load

@@ -2272,6 +2272,15 @@ html, body {
 .admin-status.bad { color: var(--neon-pink); }
 .admin-when { font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1.7; color: var(--neon-pink); letter-spacing: .06em; }
 .admin-when:empty { display: none; }
+.admin-week { display: flex; align-items: flex-end; gap: 8px; }
+.admin-week .admin-field { flex: 1 1 auto; }
+.admin-btn.icon { flex: none; width: 44px; padding: 0; font-size: 14px; line-height: 1; }
+.admin-btn.wide { width: 100%; justify-content: center; margin-top: 4px; }
+.admin-btn.link { border: 0; background: none; padding: 8px 6px; min-height: 36px; font-size: 7px; color: var(--neon-purple); }
+.admin-season-note { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-yellow); letter-spacing: .06em; }
+.admin-season-note:empty { display: none; }
+.admin-filter-row { display: flex; align-items: center; gap: 6px; }
+.admin-filter-row .admin-search { flex: 1 1 auto; }
 .admin-search { display: block; }
 .admin-search input { -webkit-appearance: none; appearance: none; width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; }
 .admin-search input:focus { outline: none; border-color: var(--neon-cyan); }
