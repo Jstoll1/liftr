@@ -99,6 +99,11 @@
     el("admin-year").value = String(year);
     syncGate();
     renderFound();
+    // Opening the editor almost always means working on this week, so load
+    // it rather than making the commissioner tap Load to see anything. The
+    // key is already held from the gate, and loading re-checks whatever is
+    // saved for the week, so a slate in progress comes back selected.
+    if (getKey().trim()) loadEspn();
   }
 
   // The calendar is either a flat list of weeks or a list of season types
