@@ -1634,36 +1634,45 @@ html, body {
 .team-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 3px;
+  gap: 5px;
   background: rgba(255, 255, 255, 0.03);
   border: 2px solid var(--card-border);
   border-radius: 12px;
-  padding: 8px 6px;
+  padding: 7px 6px;
+}
+
+/* Identity on one line — mark, name, number — so the card spends its
+   height on the two buttons that are actually tapped. */
+.team-card-id {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
 }
 
 .team-card-logo {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
-  filter: drop-shadow(0 0 6px rgba(5, 217, 232, 0.35));
-}
-
-.team-card-spread {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 14px;
-  color: var(--text);
-  line-height: 1;
+  filter: drop-shadow(0 0 5px rgba(5, 217, 232, 0.35));
 }
 
 .team-card-name {
   font-size: 11px;
   font-weight: 700;
-  text-align: center;
   color: var(--text-dim);
-  line-height: 1.25;
-  display: flex;
-  align-items: center;
+  line-height: 1.15;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.team-card-spread {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .team-card-buttons {
@@ -1672,7 +1681,6 @@ html, body {
   gap: 5px;
   width: 100%;
   margin-top: auto;
-  padding-top: 3px;
 }
 
 .pick-mini-btn {

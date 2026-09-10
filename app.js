@@ -928,7 +928,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609141030";
+  tag.src = "admin.js?v=202609141200";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1432,9 +1432,11 @@ function teamCardHtml(game, team, teamId, isFavorite, side, draft) {
 
   return `
     <div class="team-card">
-      <img class="team-card-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
-      <span class="team-card-spread">${spreadDisplay}</span>
-      <span class="team-card-name">${team}</span>
+      <div class="team-card-id">
+        <img class="team-card-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
+        <span class="team-card-name">${team}</span>
+        <span class="team-card-spread">${spreadDisplay}</span>
+      </div>
       <div class="team-card-buttons">${buttons}</div>
     </div>
   `;
