@@ -472,7 +472,6 @@ const avatarEmojiInput = document.getElementById("avatar-emoji-input");
 const avatarSaveBtn = document.getElementById("avatar-save-btn");
 const avatarResetBtn = document.getElementById("avatar-reset-btn");
 const bottomNav = document.getElementById("bottom-nav");
-const navHomeBtn = document.getElementById("nav-home-btn");
 const navPicksBtn = document.getElementById("nav-picks-btn");
 const navScoreboardBtn = document.getElementById("nav-scoreboard-btn");
 const navHistoryBtn = document.getElementById("nav-history-btn");
@@ -572,17 +571,20 @@ function track(path, extra) {
 let lastTrackedScreen = null;
 function setActiveNav(target) {
   if (target !== lastTrackedScreen) { lastTrackedScreen = target; track(`/${target}`); }
-  [navHomeBtn, navPicksBtn, navScoreboardBtn, navHistoryBtn, navTriviaBtn].forEach((btn) => btn.classList.remove("active"));
+  [navPicksBtn, navScoreboardBtn, navHistoryBtn, navTriviaBtn].forEach((btn) => btn.classList.remove("active"));
   if (target === "history") navHistoryBtn.classList.add("active");
   if (target === "trivia") navTriviaBtn.classList.add("active");
-  if (target === "home") navHomeBtn.classList.add("active");
+  // The roster has no tab of its own — the pill in the header is how you
+  // change owner — so no tab lights up while it is showing.
   if (target === "picks") navPicksBtn.classList.add("active");
   if (target === "scoreboard") navScoreboardBtn.classList.add("active");
 }
 
 // Roster view from anywhere — the wordmark header is visible on every
-// screen except the splash, so this is always reachable. Deliberately
-// does NOT forget who you are: your card is marked YOU, and picking a
+// screen except the splash, so this is always reachable, and it is also
+// where Picks lands when nobody has been chosen yet. There is no Home
+// tab: the pill in the header is how you switch owner. Deliberately does
+// NOT forget who you are: your card is marked YOU, and picking a
 // different card asks for confirmation before switching.
 function goHome() {
   rememberScroll();
@@ -690,7 +692,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609121700";
+  tag.src = "admin.js?v=202609121800";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -710,7 +712,6 @@ bottomNav.addEventListener("click", () => {
 }, true);
 document.getElementById("me-pill")?.addEventListener("click", openOwnerPicker);
 
-navHomeBtn.addEventListener("click", goHome);
 navPicksBtn.addEventListener("click", () => {
   if (!currentManager) {
     goHome();
