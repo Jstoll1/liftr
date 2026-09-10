@@ -1954,6 +1954,15 @@ html, body {
   letter-spacing: 0.04em;
   cursor: pointer;
   z-index: 4;
+  transition: padding .18s ease, font-size .18s ease, gap .18s ease;
+}
+/* Follows the wordmark down, but only part way: the pill is a tap target
+   and the logo is not, so it keeps enough of itself to hit. */
+.home-header.compact .me-pill { gap: 5px; padding: 3px 7px 3px 3px; font-size: 9px; }
+.home-header.compact .me-pill-avatar { width: 16px; height: 16px; font-size: 8px; }
+.me-pill-avatar { transition: width .18s ease, height .18s ease, font-size .18s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .me-pill, .me-pill-avatar { transition: none; }
 }
 .me-pill.hidden { display: none; }
 .me-pill-avatar {
