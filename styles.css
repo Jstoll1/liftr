@@ -2201,6 +2201,10 @@ html, body {
 .admin-status { min-height: 16px; font-family: 'Orbitron', system-ui, sans-serif; font-size: 11px; color: var(--text-dim); }
 .admin-status.ok { color: var(--neon-green); }
 .admin-status.bad { color: var(--neon-pink); }
+.admin-search { display: block; }
+.admin-search input { -webkit-appearance: none; appearance: none; width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; }
+.admin-search input:focus { outline: none; border-color: var(--neon-cyan); }
+.admin-search input::-webkit-search-cancel-button { -webkit-appearance: none; width: 18px; height: 18px; background: var(--text-dim); border-radius: 50%; -webkit-mask: linear-gradient(45deg, transparent 44%, #000 44%, #000 56%, transparent 56%), linear-gradient(-45deg, transparent 44%, #000 44%, #000 56%, transparent 56%); cursor: pointer; }
 .admin-listhead { display: flex; justify-content: space-between; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); letter-spacing: .08em; padding-bottom: 4px; border-bottom: 1px solid var(--card-border); }
 .admin-games { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 12px; }
 /* The whole week is on the page, so the save controls ride along at the

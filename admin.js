@@ -16,6 +16,7 @@
   let found = [];         // games ESPN returned for the chosen week
   let picked = new Map(); // espn event id -> { spread, favSide, tiebreaker }
 
+  let filter = "";       // live team-name filter over the loaded week
   let keyOk = false;      // the Worker has confirmed this key
 
   const getKey = () => { try { return sessionStorage.getItem(KEY_STORE) || ""; } catch { return ""; } };
@@ -110,9 +111,12 @@
           kickoff: ev.date,
           tv: (c.broadcasts || []).flatMap((b) => b.names || [])[0] || "",
           spread, favSide,
+          hay: `${away.team?.displayName || ""} ${away.team?.shortDisplayName || ""} ${away.team?.abbreviation || ""} ${away.team?.location || ""} ${home.team?.displayName || ""} ${home.team?.shortDisplayName || ""} ${home.team?.abbreviation || ""} ${home.team?.location || ""}`.toLowerCase(),
         };
       }).filter(Boolean).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
       picked = new Map();
+      filter = "";
+      el("admin-search").value = "";
       if (!found.length) {
         say(`ESPN returned no games for ${year} week ${wk}. Check the year and week.`, "bad");
         renderFound();
@@ -153,9 +157,24 @@
 
   function renderFound() {
     const list = el("admin-games");
-    if (!found.length) { list.innerHTML = `<div class="admin-empty">Pick a week and tap Load week.</div>`; return; }
+    const shown = el("admin-shown");
+    if (!found.length) {
+      list.innerHTML = `<div class="admin-empty">Pick a week and tap Load week.</div>`;
+      shown.textContent = "";
+      updateCount();
+      return;
+    }
+    // Filtering only hides rows. A game stays selected while it is out of
+    // view, so typing a search never costs the commissioner a pick.
+    const rows = filter ? found.filter((g) => g.hay.includes(filter)) : found;
+    shown.textContent = filter ? `${rows.length} of ${found.length} shown` : `${found.length} games`;
+    if (!rows.length) {
+      list.innerHTML = `<div class="admin-empty">No team in this week matches "${esc(filter)}".</div>`;
+      updateCount();
+      return;
+    }
     let lastDay = "";
-    list.innerHTML = found.map((g) => {
+    list.innerHTML = rows.map((g) => {
       const dayLabel = new Date(g.kickoff).toLocaleDateString("en-US", { weekday: "long", month: "numeric", day: "numeric" });
       const header = dayLabel !== lastDay ? `<div class="admin-day">${esc(dayLabel)}</div>` : "";
       lastDay = dayLabel;
@@ -178,6 +197,10 @@
         </div>` : ""}
       </div>`;
     }).join("");
+    updateCount();
+  }
+
+  function updateCount() {
     const hasTb = [...picked.values()].some((v) => v.tiebreaker);
     const tbNote = !picked.size ? "" : hasTb ? " · TB set" : " · no TB yet";
     el("admin-count").textContent = `${picked.size} of ${MAX_PICKS} selected${tbNote}`;
@@ -242,6 +265,10 @@
   }
 
   el("admin-key").addEventListener("input", () => { keyOk = false; syncGate(); });
+  el("admin-search").addEventListener("input", (e) => {
+    filter = e.target.value.trim().toLowerCase();
+    renderFound();
+  });
   el("admin-load").addEventListener("click", loadEspn);
   el("admin-clear").addEventListener("click", () => {
     picked = new Map();
