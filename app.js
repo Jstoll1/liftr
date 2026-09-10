@@ -690,7 +690,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609121600";
+  tag.src = "admin.js?v=202609121700";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1220,7 +1220,10 @@ function renderPicksScreen() {
   renderPicksCountdown();
 
   gamesList.innerHTML = "";
-  GAMES.forEach((game) => {
+  // Kickoff order, not the order the commissioner happened to tap them
+  // in: the card at the top is always the next one to lock, which is what
+  // the countdown above is counting down to.
+  gamesByKickoff().forEach((game) => {
     const gameLocked = isGameLocked(game);
     const pick = state.picks[game.id];
 
@@ -1302,6 +1305,10 @@ function renderPicksScreen() {
 
   const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
   const tiebreakerLocked = isGameLocked(tiebreakerGame);
+  // The label has to come from the slate: it named week 1's game while the
+  // Worker was already serving a different week's tiebreaker.
+  const tbLabel = document.querySelector("#picks-screen .tiebreaker-label");
+  if (tbLabel) tbLabel.textContent = `TIEBREAKER — Total combined points, ${tiebreakerGame.awayShort} @ ${tiebreakerGame.homeShort} (G${tiebreakerGame.id})`;
   // Don't clobber a number someone is mid-typing on a background redraw.
   if (document.activeElement !== tiebreakerInput) {
     tiebreakerInput.value = state.tiebreaker || "";
@@ -1506,7 +1513,7 @@ function renderLiveScores(live, cloudPicks) {
   // Compact scorebugs in a 2-up grid, every game from the start. Tap a
   // bug to expand the who-picked-what lists (only once that game has
   // kicked off). A red pulsing dot marks games that are live right now.
-  const ordered = [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
+  const ordered = gamesByKickoff();
   const liveCount = ordered.filter((g) => { const l = live[g.id]; return isGameLocked(g) && l && l.found && l.state === "in" && !l.completed; }).length;
   // Live count rides in the top bar title instead of a section heading.
   const title = document.getElementById("scoreboard-title");
@@ -1605,13 +1612,16 @@ function renderLiveScores(live, cloudPicks) {
 }
 
 function renderScoreboardTable(cloudPicks, results, live = {}) {
-  const headCells = GAMES.map((g) => `<th class="${results[g.id] ? "final" : isGameLocked(g) ? "live" : ""}">G${g.id}</th>`).join("");
+  // One ordered list for the header and every row, so the columns read
+  // left to right in kickoff order and stay aligned with their labels.
+  const ordered = gamesByKickoff();
+  const headCells = ordered.map((g) => `<th class="${results[g.id] ? "final" : isGameLocked(g) ? "live" : ""}">G${g.id}</th>`).join("");
   let html = `<thead><tr><th class="manager-col">Team</th>${headCells}<th>TB</th><th>PTS</th></tr></thead><tbody>`;
 
   MANAGERS.forEach((name) => {
     const state = cloudPicks[name] || { picks: {}, tiebreaker: "" };
     let total = 0;
-    const cells = GAMES.map((game) => {
+    const cells = ordered.map((game) => {
       const gameStarted = isGameLocked(game);
       const pick = state.picks[game.id];
 
@@ -1674,7 +1684,7 @@ function computeScore(state, results) {
 const expandedRankings = new Set();
 
 function playerBreakdownHtml(name, state, results, live) {
-  const ordered = [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
+  const ordered = gamesByKickoff();
   let banked = 0, liveCovering = 0, liveOpen = 0;
   const rows = ordered.map((game) => {
     const locked = isGameLocked(game);
