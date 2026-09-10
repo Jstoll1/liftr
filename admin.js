@@ -104,6 +104,8 @@
           homeShort: home.team?.shortDisplayName || home.team?.abbreviation || "",
           awayId: Number(away.team?.id),
           homeId: Number(home.team?.id),
+          awayLogo: away.team?.logo || "",
+          homeLogo: home.team?.logo || "",
           rank: Number(home.curatedRank?.current) || Number(away.curatedRank?.current) || 99,
           kickoff: ev.date,
           tv: (c.broadcasts || []).flatMap((b) => b.names || [])[0] || "",
@@ -113,13 +115,40 @@
       picked = new Map();
       if (!found.length) {
         say(`ESPN returned no games for ${year} week ${wk}. Check the year and week.`, "bad");
-      } else {
-        say(`${found.length} games in week ${wk}. Tap up to ${MAX_PICKS}.`, "ok");
+        renderFound();
+        return;
       }
+      const restored = await preselectSaved();
+      const note = restored === null ? ""
+        : restored.missing ? ` ${restored.count} already saved, ${restored.missing === 1 ? "one of which is" : `${restored.missing} of which are`} not in this ESPN week.`
+        : restored.count ? ` ${restored.count} already saved and re-checked.` : "";
+      say(`${found.length} games in week ${wk}. Tap up to ${MAX_PICKS}.${note}`, "ok");
       renderFound();
     } catch (err) {
       say(`Could not reach ESPN (${err.message}).`, "bad");
     }
+  }
+
+  // Coming back to a week the commissioner has already started should show
+  // that work, not a blank board. The saved slate carries ESPN team ids, so
+  // each stored game re-checks the row it came from.
+  async function preselectSaved() {
+    const week = Number(el("admin-week").value);
+    if (!Number.isInteger(week) || week < 1) return null;
+    try {
+      const res = await fetch(`${WORKER_URL}/games?week=${week}&t=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const saved = Array.isArray(data.games) ? data.games : [];
+      if (!saved.length) return { count: 0, missing: 0 };
+      let missing = 0;
+      for (const g of saved) {
+        const row = found.find((f) => f.awayId === Number(g.awayId) && f.homeId === Number(g.homeId));
+        if (!row) { missing += 1; continue; }
+        picked.set(row.key, { tiebreaker: !!g.tiebreakerGame });
+      }
+      return { count: saved.length, missing };
+    } catch { return null; }
   }
 
   function renderFound() {
@@ -139,6 +168,7 @@
       return `${header}<div class="admin-game ${on ? "on" : ""} ${g.spread === null ? "noline" : ""}" data-key="${esc(g.key)}">
         <button class="admin-pick" type="button" data-act="toggle">
           <span class="admin-check">${on ? "✓" : ""}</span>
+          <span class="admin-logos">${g.awayLogo ? `<img src="${esc(g.awayLogo)}" alt="" loading="lazy" />` : `<i></i>`}${g.homeLogo ? `<img src="${esc(g.homeLogo)}" alt="" loading="lazy" />` : `<i></i>`}</span>
           <span class="admin-teams">${esc(g.awayShort)} @ ${esc(g.homeShort)}</span>
           <span class="admin-odds ${g.spread === null ? "none" : ""}">${esc(lineText)}</span>
           <span class="admin-time">${esc(time)}${g.tv ? " · " + esc(g.tv) : ""}</span>
