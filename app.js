@@ -602,6 +602,59 @@ logoScreen.addEventListener("click", goToPlayerSelect);
 rulesOpenBtn.addEventListener("click", openRules);
 rulesCloseBtn.addEventListener("click", closeRules);
 homeLogoBtn.addEventListener("click", goHome);
+
+// --- Slate editor, unlocked by gesture --------------------------------
+// The editor has no page of its own and no link anywhere in the app:
+// three taps on the header wordmark, in quick succession, opens it. Every
+// tap still goes home, so the gesture is invisible to anyone who is not
+// looking for it. admin.js is fetched on the first unlock and never for
+// the league, which is what the separate page used to buy us.
+const ADMIN_TAP_WINDOW_MS = 900;
+const adminOverlay = document.getElementById("admin-overlay");
+let adminTaps = 0;
+let adminTapTimer = null;
+let adminScriptLoaded = false;
+
+homeLogoBtn.addEventListener("click", () => {
+  adminTaps += 1;
+  clearTimeout(adminTapTimer);
+  if (adminTaps >= 3) { adminTaps = 0; openAdmin(); return; }
+  adminTapTimer = setTimeout(() => { adminTaps = 0; }, ADMIN_TAP_WINDOW_MS);
+});
+
+function openAdmin() {
+  if (!adminOverlay) return;
+  adminOverlay.classList.remove("hidden");
+  document.body.classList.add("admin-open");
+  if (!adminScriptLoaded) {
+    adminScriptLoaded = true;
+    const tag = document.createElement("script");
+    tag.src = "admin.js?v=202609121200";
+    // admin.js runs show() on load, which fills the key field from
+    // sessionStorage and asks ESPN what week it is.
+    tag.onload = () => focusAdminKey();
+    tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
+    document.body.appendChild(tag);
+    return;
+  }
+  focusAdminKey();
+}
+
+// The key is the gate: admin.js leaves Load and Save disabled until one is
+// entered and checks it against the Worker before it will load a week.
+function focusAdminKey() {
+  const key = document.getElementById("admin-key");
+  if (!key) return;
+  adminOverlay.scrollTop = 0;
+  if (!key.value.trim()) setTimeout(() => key.focus(), 50);
+}
+
+function closeAdmin() {
+  adminOverlay?.classList.add("hidden");
+  document.body.classList.remove("admin-open");
+}
+// admin.js calls this from its Exit button instead of navigating away.
+window.closeSlateEditor = closeAdmin;
 document.getElementById("me-pill")?.addEventListener("click", openOwnerPicker);
 
 navHomeBtn.addEventListener("click", goHome);

@@ -1,6 +1,8 @@
-// Commissioner's slate editor. Its own page at brochiefs.com/admin.html so
-// none of it ships with the app the league loads. Gated by the same
-// ARCHIVE_LOG_KEY the log pages use: the Worker rejects a save without it.
+// Commissioner's slate editor. No page and no link of its own: three taps
+// on the header wordmark opens it (see openAdmin in app.js), and this file
+// is only fetched on that first unlock, so none of it ships with the app
+// the league loads. Gated by the same ARCHIVE_LOG_KEY the log pages use:
+// the Worker rejects a save without it.
 //
 // The flow avoids typing ESPN team ids by hand. The browser asks ESPN for
 // a date's college slate (the Worker cannot, Cloudflare's IPs are blocked),
@@ -477,7 +479,12 @@
   });
   el("admin-suggest-close").addEventListener("click", () => el("admin-suggest").classList.add("hidden"));
   el("admin-suggest").addEventListener("click", (e) => { if (e.target.id === "admin-suggest") el("admin-suggest").classList.add("hidden"); });
-  el("admin-exit").addEventListener("click", () => { location.href = "index.html"; });
+  // Inside the app the editor is an overlay, so Exit closes it and leaves
+  // the league's screen underneath untouched.
+  el("admin-exit").addEventListener("click", () => {
+    if (typeof window.closeSlateEditor === "function") window.closeSlateEditor();
+    else location.href = "index.html";
+  });
 
   show();
 })();

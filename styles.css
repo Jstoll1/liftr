@@ -2259,10 +2259,10 @@ html, body {
 .sg-why span { padding: 2px 6px; border-radius: 999px; border: 1px solid rgba(185, 103, 255, .5); font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--neon-purple); letter-spacing: .06em; }
 .sg-foot { display: flex; gap: 10px; align-items: center; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 2px solid var(--card-border); background: #0a0316; }
 
-/* The slate editor stands alone. The app locks the document and scrolls an
-   inner container; this page has no such container, so the document itself
-   scrolls here. */
-html.admin-standalone-root, body.admin-standalone { height: auto; overflow: visible; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: auto; }
-body.admin-standalone { min-height: 100%; padding-top: 14px; }
-body.admin-standalone .screen { display: block; min-height: 0; padding: 0 14px 24px; }
-.admin-standalone .admin-game { display: flex; flex-direction: column; }
+/* The slate editor rides over the app rather than living on a page of its
+   own. The app locks the document and scrolls #app-scroll, so the overlay
+   has to be its own scroll container — that is what the standalone page
+   used to get from the document. */
+.admin-overlay { position: fixed; inset: 0; z-index: 40; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; background: var(--bg); padding-top: calc(14px + env(safe-area-inset-top)); }
+.admin-overlay .screen { display: block; min-height: 0; padding: 0 14px 24px; }
+.admin-overlay .admin-game { display: flex; flex-direction: column; }

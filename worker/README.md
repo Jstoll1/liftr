@@ -191,7 +191,12 @@ Routes:
 - `GET /season` every week's slate, picks and stored finals, for season standings
 - `POST /season` a week's final scores, ignored for games that have not started
 
-The commissioner sets the week at **brochiefs.com/admin.html**. That screen asks
-the browser (not the Worker, which ESPN blocks) for a date's college slate,
+The commissioner sets the week from inside the app: **tap the BroChiefs
+wordmark in the header three times in a row**. There is no admin page and no
+link — the gesture reveals the slate editor as an overlay and only then fetches
+`admin.js`, so nothing about it ships to the league. The editor asks for the
+admin key up front (Load and Save stay disabled without one, and the key is
+checked against `GET /games?check=1&key=…` before a week will load). It asks
+the browser (not the Worker, which ESPN blocks) for a week's college slate,
 lists the games, and takes a spread and favorite for each. ESPN's closing line
 prefills the spread where it has one.
