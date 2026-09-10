@@ -2205,6 +2205,7 @@ html, body {
 .admin-games { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 12px; }
 /* The whole week is on the page, so the save controls ride along at the
    bottom rather than sitting past 86 games. */
+.admin-foot .admin-status { flex-basis: 100%; margin: 0; }
 .admin-foot { position: sticky; bottom: 0; z-index: 3; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px; margin-top: 6px; border-top: 2px solid var(--card-border); background: rgba(10, 3, 24, .96); backdrop-filter: blur(6px); }
 .admin-foot .admin-count { margin-left: auto; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-cyan); }
 .admin-empty { color: var(--text-dim); font-size: 11px; padding: 12px 0; text-align: center; }

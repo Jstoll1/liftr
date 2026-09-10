@@ -148,7 +148,9 @@
         </div>` : ""}
       </div>`;
     }).join("");
-    el("admin-count").textContent = `${picked.size} of ${MAX_PICKS} selected`;
+    const hasTb = [...picked.values()].some((v) => v.tiebreaker);
+    const tbNote = !picked.size ? "" : hasTb ? " · TB set" : " · no TB yet";
+    el("admin-count").textContent = `${picked.size} of ${MAX_PICKS} selected${tbNote}`;
   }
 
   el("admin-games").addEventListener("click", (e) => {
