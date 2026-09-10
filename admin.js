@@ -1,8 +1,9 @@
 // Commissioner's slate editor. No page and no link of its own: three taps
-// on the header wordmark opens it (see openAdmin in app.js), and this file
-// is only fetched on that first unlock, so none of it ships with the app
-// the league loads. Gated by the same ARCHIVE_LOG_KEY the log pages use:
-// the Worker rejects a save without it.
+// on the header wordmark asks for the admin key, and this file is only
+// fetched once that key checks out, so none of it ships with the app the
+// league loads. The key itself is the gate in app.js and is left in
+// sessionStorage for this tab; the Worker re-checks it on every load and
+// rejects a save without it.
 //
 // The flow avoids typing ESPN team ids by hand. The browser asks ESPN for
 // a date's college slate (the Worker cannot, Cloudflare's IPs are blocked),
@@ -68,7 +69,6 @@
   }
 
   async function show() {
-    el("admin-key").value = getKey();
     let week = 1;
     let year = new Date().getFullYear();
     // ESPN knows what week it is, and ships the season calendar alongside,
@@ -114,9 +114,9 @@
   // boundary on its own, the Worker is that, but it means a wrong key fails
   // before ten games get picked out rather than after.
   async function verifyKey() {
-    const key = el("admin-key").value.trim();
-    if (!key) { say("Enter the admin key first.", "bad"); return ""; }
-    if (keyOk && key === getKey()) return key;
+    const key = getKey().trim();
+    if (!key) { say("The admin key is missing. Close and re-open the editor.", "bad"); return ""; }
+    if (keyOk) return key;
     say("Checking the key…");
     try {
       const res = await fetch(`${WORKER_URL}/games?check=1&key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" });
@@ -132,7 +132,7 @@
   }
 
   function syncGate() {
-    const has = !!el("admin-key").value.trim();
+    const has = !!getKey().trim();
     el("admin-load").disabled = !has;
     el("admin-save").disabled = !has;
   }
@@ -453,7 +453,6 @@
     }
   }
 
-  el("admin-key").addEventListener("input", () => { keyOk = false; syncGate(); });
   el("admin-espn-week").addEventListener("change", showWeekDates);
   el("admin-search").addEventListener("input", (e) => {
     filter = e.target.value.trim().toLowerCase();

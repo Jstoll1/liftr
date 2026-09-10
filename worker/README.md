@@ -193,10 +193,11 @@ Routes:
 
 The commissioner sets the week from inside the app: **tap the BroChiefs
 wordmark in the header three times in a row**. There is no admin page and no
-link — the gesture reveals the slate editor as an overlay and only then fetches
-`admin.js`, so nothing about it ships to the league. The editor asks for the
-admin key up front (Load and Save stay disabled without one, and the key is
-checked against `GET /games?check=1&key=…` before a week will load). It asks
+link — the gesture opens a key prompt, `GET /games?check=1&key=…` checks the
+key, and only then does the editor appear and `admin.js` get fetched, so
+nothing about it ships to the league. The key is kept in `sessionStorage` for
+that tab, so the prompt returns on the next visit. Any tab in the bottom nav
+closes the editor. It asks
 the browser (not the Worker, which ESPN blocks) for a week's college slate,
 lists the games, and takes a spread and favorite for each. ESPN's closing line
 prefills the spread where it has one.

@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609121200" />
+  <link rel="stylesheet" href="styles.css?v=202609121300" />
   <link rel="stylesheet" href="history.css?v=202609061230" />
 </head>
 <body>
@@ -280,16 +280,27 @@
        three taps on the header wordmark asks for the admin key, and
        admin.js is only fetched once that key checks out, so nothing here
        loads for the league. -->
+  <!-- The key gate. Three taps on the wordmark opens this, and only a key
+       the Worker accepts opens the editor behind it. -->
+  <div id="admin-gate" class="modal-overlay admin-gate hidden">
+    <div class="modal-card">
+      <span class="modal-title">🔒 ADMIN KEY</span>
+      <span class="modal-subtext">The slate editor is behind the league admin key.</span>
+      <input type="password" id="admin-gate-key" class="admin-gate-input" placeholder="ADMIN KEY" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" />
+      <span id="admin-gate-status" class="admin-status"></span>
+      <div class="modal-actions">
+        <button id="admin-gate-cancel" class="ghost-btn" type="button">Never mind</button>
+        <button id="admin-gate-ok" class="primary-btn" type="button">Unlock</button>
+      </div>
+    </div>
+  </div>
+
   <div id="admin-overlay" class="admin-overlay hidden">
     <main id="admin-screen" class="screen">
       <div class="wrap wide">
         <div class="topbar centered"><span class="manager-badge">🛠 SLATE EDITOR</span></div>
-        <p class="admin-intro">Enter the admin key, pick the week, and load it. The week you load is the week you publish to. Tap the games the league is playing, up to ten, and mark one as the tiebreaker. Spreads and favorites come from ESPN and are not editable.</p>
+        <p class="admin-intro">Pick the week and load it. The week you load is the week you publish to. Tap the games the league is playing, up to ten, and mark one as the tiebreaker. Spreads and favorites come from ESPN and are not editable.</p>
 
-        <div class="admin-row">
-          <label class="admin-field">Admin key<input id="admin-key" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="ARCHIVE_LOG_KEY" /></label>
-
-        </div>
         <div class="admin-row">
           <label class="admin-field">Week<select id="admin-espn-week"></select></label>
           <label class="admin-field small">Season<input id="admin-year" type="number" min="2000" max="2100" inputmode="numeric" /></label>
@@ -395,7 +406,7 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=202609121200"></script>
+  <script src="app.js?v=202609121300"></script>
   <script src="attract-facts.js?v=202609052030"></script>
   <script src="history.js?v=202609091430"></script>
 </body>

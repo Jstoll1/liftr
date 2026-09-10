@@ -605,48 +605,94 @@ homeLogoBtn.addEventListener("click", goHome);
 
 // --- Slate editor, unlocked by gesture --------------------------------
 // The editor has no page of its own and no link anywhere in the app:
-// three taps on the header wordmark, in quick succession, opens it. Every
-// tap still goes home, so the gesture is invisible to anyone who is not
-// looking for it. admin.js is fetched on the first unlock and never for
-// the league, which is what the separate page used to buy us.
+// three taps on the header wordmark, in quick succession, asks for the
+// league admin key, and the editor only opens behind a key the Worker
+// accepts. Every tap still goes home, so the gesture is invisible to
+// anyone who is not looking for it. admin.js is fetched on the first
+// unlock and never for the league, which is what the separate page used
+// to buy us.
 const ADMIN_TAP_WINDOW_MS = 900;
+const ADMIN_KEY_STORE = "brochiefs_admin_key"; // read back by admin.js
 const adminOverlay = document.getElementById("admin-overlay");
+const adminGate = document.getElementById("admin-gate");
 let adminTaps = 0;
 let adminTapTimer = null;
 let adminScriptLoaded = false;
+// Cleared when the tab closes, so the gate is back on the next visit.
+let adminUnlocked = false;
 
 homeLogoBtn.addEventListener("click", () => {
   adminTaps += 1;
   clearTimeout(adminTapTimer);
-  if (adminTaps >= 3) { adminTaps = 0; openAdmin(); return; }
+  if (adminTaps >= 3) { adminTaps = 0; requestAdmin(); return; }
   adminTapTimer = setTimeout(() => { adminTaps = 0; }, ADMIN_TAP_WINDOW_MS);
 });
 
-function openAdmin() {
-  if (!adminOverlay) return;
-  adminOverlay.classList.remove("hidden");
-  document.body.classList.add("admin-open");
-  if (!adminScriptLoaded) {
-    adminScriptLoaded = true;
-    const tag = document.createElement("script");
-    tag.src = "admin.js?v=202609121200";
-    // admin.js runs show() on load, which fills the key field from
-    // sessionStorage and asks ESPN what week it is.
-    tag.onload = () => focusAdminKey();
-    tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
-    document.body.appendChild(tag);
-    return;
-  }
-  focusAdminKey();
+// Unlocked already in this tab: straight back in. Otherwise the key first.
+function requestAdmin() {
+  if (adminUnlocked) { openAdmin(); return; }
+  if (!adminGate) return;
+  const input = document.getElementById("admin-gate-key");
+  if (input) input.value = "";
+  setAdminGateStatus("");
+  adminGate.classList.remove("hidden");
+  setTimeout(() => input?.focus(), 50);
 }
 
-// The key is the gate: admin.js leaves Load and Save disabled until one is
-// entered and checks it against the Worker before it will load a week.
-function focusAdminKey() {
-  const key = document.getElementById("admin-key");
-  if (!key) return;
+function setAdminGateStatus(msg, kind = "") {
+  const el = document.getElementById("admin-gate-status");
+  if (el) { el.textContent = msg || ""; el.className = "admin-status " + kind; }
+}
+
+function closeAdminGate() {
+  adminGate?.classList.add("hidden");
+}
+
+// The Worker is the authority on the key — /games?check=1 says yes or no
+// without handing anything back — so a wrong key never opens the editor.
+async function submitAdminKey() {
+  const input = document.getElementById("admin-gate-key");
+  const key = input?.value.trim();
+  if (!key) { setAdminGateStatus("Enter the key.", "bad"); return; }
+  const okBtn = document.getElementById("admin-gate-ok");
+  if (okBtn) okBtn.disabled = true;
+  setAdminGateStatus("Checking the key…");
+  let ok = false, reachable = true;
+  try {
+    const res = await fetch(`${WORKER_URL}/games?check=1&key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" });
+    ok = res.ok;
+  } catch {
+    reachable = false;
+  }
+  if (okBtn) okBtn.disabled = false;
+  if (!reachable) { setAdminGateStatus("Could not reach the Worker to check the key.", "bad"); return; }
+  if (!ok) { setAdminGateStatus("That key is not right.", "bad"); return; }
+  // admin.js reads the key from here rather than from a field on screen.
+  try { sessionStorage.setItem(ADMIN_KEY_STORE, key); } catch {}
+  adminUnlocked = true;
+  if (input) input.value = "";
+  closeAdminGate();
+  openAdmin();
+}
+
+document.getElementById("admin-gate-ok")?.addEventListener("click", submitAdminKey);
+document.getElementById("admin-gate-cancel")?.addEventListener("click", closeAdminGate);
+document.getElementById("admin-gate-key")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); submitAdminKey(); }
+});
+adminGate?.addEventListener("click", (e) => { if (e.target === adminGate) closeAdminGate(); });
+
+function openAdmin() {
+  if (!adminOverlay || !adminUnlocked) return;
+  adminOverlay.classList.remove("hidden");
+  document.body.classList.add("admin-open");
   adminOverlay.scrollTop = 0;
-  if (!key.value.trim()) setTimeout(() => key.focus(), 50);
+  if (adminScriptLoaded) return;
+  adminScriptLoaded = true;
+  const tag = document.createElement("script");
+  tag.src = "admin.js?v=202609121300";
+  tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
+  document.body.appendChild(tag);
 }
 
 function closeAdmin() {
@@ -655,6 +701,13 @@ function closeAdmin() {
 }
 // admin.js calls this from its Exit button instead of navigating away.
 window.closeSlateEditor = closeAdmin;
+
+// Any tab in the nav is also a way out of the editor: the nav sits above
+// the overlay while it is open, and the tab's own handler then runs and
+// lands on that screen.
+bottomNav.addEventListener("click", () => {
+  if (!adminOverlay?.classList.contains("hidden")) closeAdmin();
+}, true);
 document.getElementById("me-pill")?.addEventListener("click", openOwnerPicker);
 
 navHomeBtn.addEventListener("click", goHome);

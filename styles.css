@@ -1,5 +1,6 @@
 :root {
   --bg: #0a0014;
+  --nav-h: calc(63px + env(safe-area-inset-bottom));
   --bg2: #150024;
   --neon-pink: #ff2079;
   --neon-cyan: #05d9e8;
@@ -2263,6 +2264,15 @@ html, body {
    own. The app locks the document and scrolls #app-scroll, so the overlay
    has to be its own scroll container — that is what the standalone page
    used to get from the document. */
-.admin-overlay { position: fixed; inset: 0; z-index: 40; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; background: var(--bg); padding-top: calc(14px + env(safe-area-inset-top)); }
+.admin-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: var(--nav-h); z-index: 40; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; background: var(--bg); padding-top: calc(14px + env(safe-area-inset-top)); }
+/* The key gate rides above the editor overlay, not below it. */
+.admin-gate { z-index: 45; }
+.admin-gate-input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; text-align: center; letter-spacing: .08em; }
+.admin-gate-input:focus { outline: none; border-color: var(--neon-cyan); }
+.admin-gate .admin-status { text-align: center; }
+
+/* The nav stays reachable over the editor: any tab out of it is also the
+   way out of it, so the Exit button at the foot is not the only door. */
+body.admin-open .bottom-nav { z-index: 41; }
 .admin-overlay .screen { display: block; min-height: 0; padding: 0 14px 24px; }
 .admin-overlay .admin-game { display: flex; flex-direction: column; }
