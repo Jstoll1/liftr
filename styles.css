@@ -2310,8 +2310,8 @@ html, body {
 
 /* Recommended-games pop up. Full height on a phone with the action bar
    pinned, so the list scrolls under it instead of past the thumb. */
-.sg-scrim { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; background: rgba(4, 1, 12, .82); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
-.sg-card { display: flex; flex-direction: column; width: min(560px, 100%); max-height: 92vh; max-height: 92dvh; border: 2px solid var(--neon-cyan); border-radius: 14px 14px 0 0; background: #0a0316; box-shadow: 0 -8px 40px rgba(5, 217, 232, .18); }
+.sg-scrim { position: fixed; inset: 0; height: 100vh; height: 100dvh; z-index: 80; display: flex; align-items: flex-end; justify-content: center; background: rgba(4, 1, 12, .82); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.sg-card { display: flex; flex-direction: column; width: min(560px, 100%); min-height: 0; max-height: 92vh; max-height: 92dvh; border: 2px solid var(--neon-cyan); border-radius: 14px 14px 0 0; background: #0a0316; box-shadow: 0 -8px 40px rgba(5, 217, 232, .18); }
 .sg-head { padding: 14px 14px 8px; font-family: 'Press Start 2P', monospace; font-size: 10px; color: var(--neon-yellow); letter-spacing: .08em; text-align: center; }
 .sg-intro { margin: 0 14px 10px; font-size: 11px; line-height: 1.55; color: var(--text-dim); }
 .sg-list { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 14px 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -2441,5 +2441,7 @@ html, body {
 /* The nav stays reachable over the editor: any tab out of it is also the
    way out of it, so the Exit button at the foot is not the only door. */
 body.admin-open .bottom-nav { z-index: 41; }
+body.sheet-open .bottom-nav { display: none; }
+body.sheet-open #admin-overlay { overflow: hidden; }
 .admin-overlay .screen { display: block; min-height: 0; padding: 0 14px 24px; }
 .admin-overlay .admin-game { display: flex; flex-direction: column; }

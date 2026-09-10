@@ -115,6 +115,11 @@
     }
   }
 
+  // Sheets sit at body level. Flag the body while one is open so the app
+  // nav gets out of the way and the board behind stops scrolling.
+  const openSheet = (id) => { el(id).classList.remove("hidden"); document.body.classList.add("sheet-open"); };
+  const closeSheet = (id) => { el(id).classList.add("hidden"); document.body.classList.remove("sheet-open"); };
+
   const say = (msg, kind = "") => { const s = el("admin-status"); s.textContent = msg; s.className = "admin-status " + kind; };
 
   // Loading a week is gated the same way saving is. This is not a security
@@ -315,7 +320,8 @@
       </button>`;
     }).join("");
     updateSuggestCount();
-    el("admin-suggest").classList.remove("hidden");
+    openSheet("admin-suggest");
+    el("admin-suggest-list").scrollTop = 0;
   }
 
   function updateSuggestCount() {
@@ -340,7 +346,7 @@
       const first = want.find((k) => picked.has(k)) || [...picked.keys()][0];
       picked.get(first).tiebreaker = true;
     }
-    el("admin-suggest").classList.add("hidden");
+    closeSheet("admin-suggest");
     filter = "";
     el("admin-search").value = "";
     const tail = skipped ? ` ${skipped} did not fit under the ${MAX_PICKS} game cap.` : "";
@@ -483,8 +489,8 @@
     row.classList.toggle("on", item.on);
     updateSuggestCount();
   });
-  el("admin-suggest-close").addEventListener("click", () => el("admin-suggest").classList.add("hidden"));
-  el("admin-suggest").addEventListener("click", (e) => { if (e.target.id === "admin-suggest") el("admin-suggest").classList.add("hidden"); });
+  el("admin-suggest-close").addEventListener("click", () => closeSheet("admin-suggest"));
+  el("admin-suggest").addEventListener("click", (e) => { if (e.target.id === "admin-suggest") closeSheet("admin-suggest"); });
   // Inside the app the editor is an overlay, so Exit closes it and leaves
   // the league's screen underneath untouched.
   el("admin-exit").addEventListener("click", () => {
@@ -525,10 +531,10 @@
         </div>`;
       }).join("");
     }
-    el("admin-preview").classList.remove("hidden");
+    openSheet("admin-preview");
   }
 
-  const closePreview = () => el("admin-preview").classList.add("hidden");
+  const closePreview = () => closeSheet("admin-preview");
   el("admin-preview-btn").addEventListener("click", openPreview);
   el("admin-preview-close").addEventListener("click", closePreview);
   el("admin-preview").addEventListener("click", (e) => { if (e.target.id === "admin-preview") closePreview(); });
