@@ -17,7 +17,7 @@
   let found = [];         // games ESPN returned for the chosen week
   let picked = new Map(); // espn event id -> { spread, favSide, tiebreaker }
 
-  let suggested = [];    // event ids from the last recommendation
+  let suggested = [];    // [{key, on}] from the last recommendation
   let filter = "";       // live team-name filter over the loaded week
   let keyOk = false;      // the Worker has confirmed this key
 
@@ -226,30 +226,52 @@
     if (!found.length) { say("Load a week first.", "bad"); return; }
     const picks = recommend();
     if (!picks.length) { say("Nothing in this week has a line yet.", "bad"); return; }
-    suggested = picks.map((r) => r.g.key);
+    suggested = picks.map((r) => ({ key: r.g.key, on: true }));
     el("admin-suggest-list").innerHTML = picks.map((r, i) => {
       const g = r.g;
       const fav = g.favSide === "home" ? g.homeShort : g.awayShort;
       const when = new Date(g.kickoff).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
-      return `<div class="sg-row">
+      return `<button type="button" class="sg-row on" data-key="${esc(g.key)}">
         <span class="sg-num">${i + 1}</span>
+        <span class="sg-check">✓</span>
         <div class="sg-body">
           <div class="sg-teams">${esc(g.awayShort)} @ ${esc(g.homeShort)}</div>
           <div class="sg-meta">${esc(fav)} -${g.spread} · ${esc(when)}${g.tv ? " · " + esc(g.tv) : ""}</div>
           <div class="sg-why">${r.why.map((w) => `<span>${esc(w)}</span>`).join("")}</div>
         </div>
-      </div>`;
+      </button>`;
     }).join("");
+    updateSuggestCount();
     el("admin-suggest").classList.remove("hidden");
   }
 
+  function updateSuggestCount() {
+    const n = suggested.filter((x) => x.on).length;
+    const btn = el("admin-suggest-use");
+    btn.textContent = n ? `Add ${n}` : "None chosen";
+    btn.disabled = !n;
+  }
+
+  // Recommendations add to whatever is already selected rather than
+  // replacing it, so a slate part built by hand survives the suggestion.
   function applySuggest() {
-    picked = new Map();
-    suggested.forEach((k, i) => picked.set(k, { tiebreaker: i === 0 }));
+    const want = suggested.filter((x) => x.on).map((x) => x.key);
+    let added = 0, skipped = 0;
+    for (const key of want) {
+      if (picked.has(key)) continue;
+      if (picked.size >= MAX_PICKS) { skipped += 1; continue; }
+      picked.set(key, { tiebreaker: false });
+      added += 1;
+    }
+    if (picked.size && ![...picked.values()].some((v) => v.tiebreaker)) {
+      const first = want.find((k) => picked.has(k)) || [...picked.keys()][0];
+      picked.get(first).tiebreaker = true;
+    }
     el("admin-suggest").classList.add("hidden");
     filter = "";
     el("admin-search").value = "";
-    say(`${picked.size} recommended games selected. The top one is the tiebreaker. Change anything you like.`, "ok");
+    const tail = skipped ? ` ${skipped} did not fit under the ${MAX_PICKS} game cap.` : "";
+    say(`${added} added, ${picked.size} of ${MAX_PICKS} selected.${tail} Change anything you like.`, skipped ? "bad" : "ok");
     renderFound();
   }
 
@@ -376,6 +398,15 @@
   el("admin-save").addEventListener("click", save);
   el("admin-suggest-btn").addEventListener("click", openSuggest);
   el("admin-suggest-use").addEventListener("click", applySuggest);
+  el("admin-suggest-list").addEventListener("click", (e) => {
+    const row = e.target.closest(".sg-row");
+    if (!row) return;
+    const item = suggested.find((x) => x.key === row.dataset.key);
+    if (!item) return;
+    item.on = !item.on;
+    row.classList.toggle("on", item.on);
+    updateSuggestCount();
+  });
   el("admin-suggest-close").addEventListener("click", () => el("admin-suggest").classList.add("hidden"));
   el("admin-suggest").addEventListener("click", (e) => { if (e.target.id === "admin-suggest") el("admin-suggest").classList.add("hidden"); });
   el("admin-exit").addEventListener("click", () => { location.href = "index.html"; });
