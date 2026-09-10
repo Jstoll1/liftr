@@ -690,7 +690,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609121400";
+  tag.src = "admin.js?v=202609121500";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1844,23 +1844,23 @@ function renderRankingRows(rows, cloudPicks, results, live) {
 }
 
 // --- Kickoff countdown ------------------------------------------------
-// How long until a kickoff, in a string that shortens as it closes in:
-// days out it is "2d 14h 22m", inside a day "14h 22m 09s", inside an hour
-// "22m 09s". Shared with the slate editor (admin.js), which counts down to
-// the opener of the week it has loaded.
+// How long until a kickoff, on an arcade clock that always runs to the
+// second: "1D 08:36:12" with a day left, "08:36:12" inside a day,
+// "36:12" inside an hour. Shared with the slate editor (admin.js), which
+// counts down to the opener of the week it has loaded.
 function kickoffCountdown(iso) {
   const at = new Date(iso).getTime();
   if (!Number.isFinite(at)) return null;
   const ms = at - Date.now();
-  if (ms <= 0) return { text: "kicked off", past: true, ms };
+  if (ms <= 0) return { text: "KICKED OFF", past: true, ms };
   const total = Math.floor(ms / 1000);
   const d = Math.floor(total / 86400);
   const h = Math.floor((total % 86400) / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   const pad = (n) => String(n).padStart(2, "0");
-  const text = d ? `${d}d ${pad(h)}h ${pad(m)}m` : h ? `${h}h ${pad(m)}m ${pad(s)}s` : `${m}m ${pad(s)}s`;
-  return { text, past: false, ms };
+  const clock = d || h ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  return { text: d ? `${d}D ${clock}` : clock, past: false, ms };
 }
 
 // The week in kickoff order, earliest first — the slate comes from the
@@ -1881,12 +1881,11 @@ function renderPicksCountdown() {
   if (!first || !next) { el.classList.add("hidden"); el.innerHTML = ""; return; }
   const cd = kickoffCountdown(next.kickoff);
   if (!cd || cd.past) { el.classList.add("hidden"); el.innerHTML = ""; return; }
-  const label = next.id === first.id ? "FIRST KICKOFF" : "NEXT KICKOFF";
-  const where = `${next.awayShort} at ${next.homeShort}`;
-  const when = `${next.kickoffLabel}${next.tv ? ` · ${next.tv}` : ""}`;
+  const label = next.id === first.id ? "1ST KICKOFF" : "NEXT KICKOFF";
+  const game = `${next.awayShort} at ${next.homeShort} · ${next.kickoffLabel}`;
   // Under an hour the whole slate is about to lock, so the strip goes hot.
   el.className = "picks-countdown" + (cd.ms < 3600000 ? " soon" : "");
-  el.innerHTML = `<span class="cd-label">⏱ ${label}</span><span class="cd-clock">${cd.text}</span><span class="cd-game">${escapeCd(where)} · ${escapeCd(when)}</span>`;
+  el.innerHTML = `<span class="cd-label">${label}</span><span class="cd-clock">${cd.text}</span><span class="cd-game">${escapeCd(game)}</span>`;
 }
 
 function escapeCd(str) {
