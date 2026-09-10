@@ -916,7 +916,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609131200";
+  tag.src = "admin.js?v=202609131600";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -2037,19 +2037,25 @@ function playerBreakdownHtml(name, state, results, live) {
   const tbRes = results[tbGame.id];
   const tbLive = !tbRes && live[tbGame.id] && live[tbGame.id].found && live[tbGame.id].state === "in" ? live[tbGame.id] : null;
   const actual = tbRes ? tbRes.awayScore + tbRes.homeScore : tbLive && Number.isFinite(tbLive.awayScore) && Number.isFinite(tbLive.homeScore) ? tbLive.awayScore + tbLive.homeScore : null;
+  // Somebody else's guess stays sealed until their game kicks off.
+  const tbSealed = !isGameLocked(tbGame) && name !== currentManager;
   let tbStatus;
-  if (tbGuess === null) tbStatus = `<span class="rd-tb-miss none">NO GUESS</span>`;
+  if (tbSealed) tbStatus = `<span class="rd-tb-miss wait">SEALED UNTIL KICKOFF</span>`;
+  else if (tbGuess === null) tbStatus = `<span class="rd-tb-miss none">NO GUESS</span>`;
   else if (tbRes) tbStatus = `<span class="rd-tb-miss">FINAL ${actual} · OFF BY <b>${Math.abs(tbGuess - actual)}</b></span>`;
   else if (tbLive) tbStatus = `<span class="rd-tb-miss live">NOW ${actual} · OFF BY ${Math.abs(tbGuess - actual)}</span>`;
   else tbStatus = `<span class="rd-tb-miss wait">WAITING ON KICKOFF</span>`;
-  const tbRow = `<div class="rd-tb"><span class="rd-tb-label">TIEBREAKER · G${tbGame.id} ${tbGame.awayShort} @ ${tbGame.homeShort} TOTAL</span><span class="rd-tb-guess">${tbGuess === null ? "–" : "GUESS " + tbGuess}</span>${tbStatus}</div>`;
+  const tbRow = `<div class="rd-tb"><span class="rd-tb-label">TIEBREAKER · G${tbGame.id} ${tbGame.awayShort} @ ${tbGame.homeShort} TOTAL</span><span class="rd-tb-guess">${tbSealed ? "🔒" : tbGuess === null ? "–" : "GUESS " + tbGuess}</span>${tbStatus}</div>`;
   const summary = `<div class="rd-summary"><span>BANKED <b>${banked}</b></span>${liveOpen ? `<span>LIVE <b>${liveCovering}/${liveOpen}</b> covering</span>` : ""}</div>`;
   return `<div class="rank-detail"><div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
 }
 
-// Second line under a leaderboard name: picks progress while the slate is
-// open, then the tiebreaker guess, then how far off it landed.
-function rankingSubline(row, actualTotal, tbGame) {
+// Second line under a leaderboard name. Everything on it is competitive
+// information, so none of it shows while the slate is still open: a
+// tiebreaker guess is a number to bid against, and a pick count says who
+// is still deciding. It all appears once the tiebreaker game locks.
+function rankingSubline(row, actualTotal, tbGame, isMe) {
+  if (!isGameLocked(tbGame) && !isMe) return "";
   const parts = [];
   if (row.submittedCount < GAMES.length) parts.push(`${row.submittedCount}/${GAMES.length} PICKED`);
   if (row.tbGuess === null) parts.push("NO TIEBREAKER");
@@ -2145,7 +2151,7 @@ function renderRankings(cloudPicks, results, live = {}) {
   rows.forEach((row, i) => {
     const next = rows[i + 1];
     row.tied = (rows[i - 1] && rows[i - 1].place === row.place) || (next && next.place === row.place);
-    row.subline = rankingSubline(row, actualTotal, tiebreakerGame);
+    row.subline = rankingSubline(row, actualTotal, tiebreakerGame, row.name === currentManager);
   });
 
   rankingsList.innerHTML = "";
