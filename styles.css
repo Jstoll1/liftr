@@ -2206,7 +2206,9 @@ html, body {
 .admin-search input:focus { outline: none; border-color: var(--neon-cyan); }
 .admin-search input::-webkit-search-cancel-button { -webkit-appearance: none; width: 18px; height: 18px; background: var(--text-dim); border-radius: 50%; -webkit-mask: linear-gradient(45deg, transparent 44%, #000 44%, #000 56%, transparent 56%), linear-gradient(-45deg, transparent 44%, #000 44%, #000 56%, transparent 56%); cursor: pointer; }
 .admin-listhead { display: flex; justify-content: space-between; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); letter-spacing: .08em; padding-bottom: 4px; border-bottom: 1px solid var(--card-border); }
-.admin-games { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 12px; }
+.admin-games { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; align-content: start; gap: 6px; padding: 4px 0 12px; }
+.admin-games .admin-day, .admin-games .admin-empty { grid-column: 1 / -1; }
+@media (max-width: 359px) { .admin-games { grid-template-columns: minmax(0, 1fr); } }
 /* The whole week is on the page, so the save controls ride along at the
    bottom rather than sitting past 86 games. */
 .admin-foot .admin-status { order: -1; flex-basis: 100%; margin: 0; }
@@ -2216,16 +2218,17 @@ html, body {
 .admin-empty { color: var(--text-dim); font-size: 11px; padding: 12px 0; text-align: center; }
 .admin-game { border: 2px solid var(--card-border); border-radius: 8px; background: rgba(0, 0, 0, .25); }
 .admin-game.on { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .07); }
-.admin-pick { -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; min-height: 48px; display: grid; grid-template-columns: 22px 46px minmax(0, 1fr) auto; grid-template-areas: 'chk logos teams time' 'chk logos odds odds'; align-items: center; column-gap: 8px; row-gap: 2px; width: 100%; padding: 9px 10px; background: none; border: 0; color: var(--text); text-align: left; cursor: pointer; }
-.admin-check { grid-area: chk; font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--neon-green); }
+.admin-game.on .admin-check { border-color: var(--neon-green); background: rgba(0, 255, 143, .12); }
+.admin-pick { -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; min-height: 48px; height: 100%; align-content: start; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'logos chk' 'teams teams' 'odds odds' 'time time'; align-items: center; column-gap: 8px; row-gap: 3px; width: 100%; padding: 9px 10px; background: none; border: 0; color: var(--text); text-align: left; cursor: pointer; }
+.admin-check { grid-area: chk; justify-self: end; width: 18px; height: 18px; display: grid; place-items: center; border: 2px solid var(--card-border); border-radius: 5px; font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--neon-green); }
 .admin-logos { grid-area: logos; display: flex; align-items: center; gap: 2px; }
-.admin-logos img, .admin-logos i { width: 21px; height: 21px; object-fit: contain; }
+.admin-logos img, .admin-logos i { width: 19px; height: 19px; object-fit: contain; }
 .admin-game:not(.on) .admin-logos { filter: grayscale(.35); opacity: .85; }
-.admin-teams { grid-area: teams; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.admin-time { grid-area: time; font-size: 9px; color: var(--text-dim); white-space: nowrap; }
+.admin-teams { grid-area: teams; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; line-height: 1.25; overflow-wrap: anywhere; }
+.admin-time { grid-area: time; font-size: 8.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .admin-line input[type=radio] { width: 20px; height: 20px; accent-color: var(--neon-cyan); flex: none; }
-.admin-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; }
-.admin-odds { grid-area: odds; justify-self: start; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; color: var(--neon-yellow); letter-spacing: .04em; white-space: nowrap; }
+.admin-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 8px 8px; }
+.admin-odds { grid-area: odds; justify-self: start; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 11px; color: var(--neon-yellow); letter-spacing: .04em; white-space: nowrap; }
 .admin-odds.none { color: var(--text-dim); font-weight: 400; }
 .admin-game.noline .admin-pick { opacity: .45; }
 .admin-tb { -webkit-tap-highlight-color: transparent; touch-action: manipulation; min-height: 40px; padding-right: 6px; flex-direction: row !important; font-size: 8px !important; align-items: center; gap: 6px !important; color: var(--neon-purple) !important; }
@@ -2248,3 +2251,8 @@ html, body {
 .sg-why { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
 .sg-why span { padding: 2px 6px; border-radius: 999px; border: 1px solid rgba(185, 103, 255, .5); font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--neon-purple); letter-spacing: .06em; }
 .sg-foot { display: flex; gap: 10px; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 2px solid var(--card-border); background: #0a0316; }
+
+/* The slate editor stands alone, so it carries its own top padding
+   instead of sitting under the app header. */
+.admin-standalone { padding-top: 14px; }
+.admin-standalone .admin-game { display: flex; flex-direction: column; }

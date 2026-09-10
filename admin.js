@@ -1,11 +1,12 @@
-// Commissioner's slate editor. Reached at brochiefs.com/#admin, gated by
-// the same ARCHIVE_LOG_KEY the log pages use. Nothing here is reachable
-// without that key: the Worker rejects a save that does not carry it.
+// Commissioner's slate editor. Its own page at brochiefs.com/admin.html so
+// none of it ships with the app the league loads. Gated by the same
+// ARCHIVE_LOG_KEY the log pages use: the Worker rejects a save without it.
 //
 // The flow avoids typing ESPN team ids by hand. The browser asks ESPN for
 // a date's college slate (the Worker cannot, Cloudflare's IPs are blocked),
 // lists the games, and the commissioner taps the ones the league is playing.
 (() => {
+  const WORKER_URL = "https://liftr-ai.jhs797.workers.dev";
   const KEY_STORE = "brochiefs_admin_key";
   const root = document.getElementById("admin-screen");
   if (!root) return;
@@ -23,13 +24,16 @@
   const getKey = () => { try { return sessionStorage.getItem(KEY_STORE) || ""; } catch { return ""; } };
   const setKey = (k) => { try { sessionStorage.setItem(KEY_STORE, k); } catch {} };
 
-  function show() {
-    [logoScreen, loginScreen, picksScreen, scoreboardScreen, historyScreen, triviaScreen].forEach((s) => s && s.classList.add("hidden"));
-    homeHeader.classList.remove("hidden");
-    bottomNav.classList.add("hidden");
-    root.classList.remove("hidden");
+  async function show() {
     el("admin-key").value = getKey();
-    const next = Math.max(1, ...(typeof weekList !== "undefined" ? weekList : [1])) + 1;
+    // The next unplayed week is the one being set, so default to it.
+    let next = 2;
+    try {
+      const res = await fetch(`${WORKER_URL}/games?t=${Date.now()}`, { cache: "no-store" });
+      const data = await res.json();
+      const list = data?.weeks?.list;
+      if (Array.isArray(list) && list.length) next = Math.max(...list) + 1;
+    } catch {}
     el("admin-week").value = String(next);
     const sel = el("admin-espn-week");
     if (!sel.options.length) {
@@ -374,8 +378,7 @@
   el("admin-suggest-use").addEventListener("click", applySuggest);
   el("admin-suggest-close").addEventListener("click", () => el("admin-suggest").classList.add("hidden"));
   el("admin-suggest").addEventListener("click", (e) => { if (e.target.id === "admin-suggest") el("admin-suggest").classList.add("hidden"); });
-  el("admin-exit").addEventListener("click", () => { location.hash = ""; location.reload(); });
+  el("admin-exit").addEventListener("click", () => { location.href = "index.html"; });
 
-  if (location.hash === "#admin") show();
-  window.addEventListener("hashchange", () => { if (location.hash === "#admin") show(); });
+  show();
 })();

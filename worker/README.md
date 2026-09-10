@@ -191,7 +191,7 @@ Routes:
 - `GET /season` every week's slate, picks and stored finals, for season standings
 - `POST /season` a week's final scores, ignored for games that have not started
 
-The commissioner sets the week at **brochiefs.com/#admin**. That screen asks
+The commissioner sets the week at **brochiefs.com/admin.html**. That screen asks
 the browser (not the Worker, which ESPN blocks) for a date's college slate,
 lists the games, and takes a spread and favorite for each. ESPN's closing line
 prefills the spread where it has one.
