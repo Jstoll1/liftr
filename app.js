@@ -927,7 +927,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609141600";
+  tag.src = "admin.js?v=202609141700";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -2240,7 +2240,10 @@ function kickoffCountdown(iso) {
   const s = total % 60;
   const pad = (n) => String(n).padStart(2, "0");
   const clock = d || h ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
-  return { text: d ? `${d}D ${clock}` : clock, past: false, ms };
+  // The header chip sits between a wordmark and a name pill, so it gets a
+  // coarse form until the last hour, when the seconds start mattering.
+  const brief = d ? `${d}D ${h}H` : h ? `${h}H ${pad(m)}M` : `${pad(m)}:${pad(s)}`;
+  return { text: d ? `${d}D ${clock}` : clock, brief, past: false, ms };
 }
 
 // The week in kickoff order, earliest first — the slate comes from the
@@ -2283,7 +2286,7 @@ function renderHeaderCountdown() {
   const cd = next ? kickoffCountdown(next.kickoff) : null;
   if (onPicks || !currentManager || !cd || cd.past) { el.classList.add("hidden"); return; }
   el.className = "head-cd" + (cd.ms < 3600000 ? " soon" : "");
-  el.innerHTML = `<span class="hcd-dot"></span>${escapeCd(cd.text)}`;
+  el.innerHTML = `<span class="hcd-dot"></span>${escapeCd(cd.brief)}`;
   el.title = `${next.awayShort} at ${next.homeShort} · ${next.kickoffLabel}`;
 }
 
