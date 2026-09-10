@@ -2526,3 +2526,31 @@ body.sheet-open .bottom-nav { display: none; }
 body.sheet-open #admin-overlay { overflow: hidden; }
 .admin-overlay .screen { display: block; min-height: 0; padding: 0 14px 24px; }
 .admin-overlay .admin-game { display: flex; flex-direction: column; }
+
+/* Unsynced picks are the one failure that can cost someone points, so it
+   gets a banner that stays until the queue clears, not a badge that fades
+   with the tap that caused it. */
+.sync-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border: 2px solid rgba(255, 92, 138, .7);
+  border-radius: 10px;
+  background: rgba(255, 92, 138, .1);
+  color: var(--neon-pink);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.sync-banner.hidden { display: none; }
+.sync-banner b { color: #fff; }
+.sync-banner .sb-text { flex: 1 1 180px; min-width: 0; }
+.sync-banner .sb-retry {
+  flex: none; min-height: 40px; padding: 8px 14px; border-radius: 8px;
+  border: 2px solid var(--neon-pink); background: rgba(255, 92, 138, .16);
+  color: #fff; font-family: 'Press Start 2P', monospace; font-size: 8px;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.sync-banner .sb-retry[disabled] { opacity: .5; cursor: default; }

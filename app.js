@@ -187,6 +187,13 @@ let syncStatus = "idle"; // idle | saving | saved | failed
 const syncListeners = new Set();
 function setSyncStatus(next) { syncStatus = next; syncListeners.forEach((fn) => fn(next)); }
 
+// The queue, not the last tap, is the truth about whether a pick reached
+// the cloud. A badge tied to the tap goes stale the moment the pulse timer
+// clears, which is well before three retries have run out.
+function pendingPushFor(manager) {
+  try { return localStorage.getItem(PENDING_KEY) === manager; } catch { return false; }
+}
+
 async function pushManagerState(manager, state, { attempts = 3 } = {}) {
   if (!WORKER_URL) return false;
   setSyncStatus("saving");
@@ -927,7 +934,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609141700";
+  tag.src = "admin.js?v=202609141900";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1525,6 +1532,7 @@ function renderPicksScreen() {
   const state = getManagerState(currentManager);
   lastLockSignature = lockSignature();
   renderPicksCountdown();
+  renderSyncBanner();
 
   gamesList.innerHTML = "";
   // Kickoff order, not the order the commissioner happened to tap them
@@ -1558,8 +1566,8 @@ function renderPicksScreen() {
     } else if (pick && justSavedGameId === game.id && syncStatus === "saving") {
       statusLabel = "SAVING…";
       statusClass = "submitted saving";
-    } else if (pick && justSavedGameId === game.id && syncStatus === "failed") {
-      statusLabel = "NOT SYNCED ⚠";
+    } else if (pick && (pendingPushFor(currentManager) || (justSavedGameId === game.id && syncStatus === "failed"))) {
+      statusLabel = "THIS PHONE ⚠";
       statusClass = "submitted failed";
     } else if (pick && justSavedGameId === game.id && justSavedKind === "updated") {
       statusLabel = "UPDATED ✓";
@@ -1570,8 +1578,8 @@ function renderPicksScreen() {
     }
 
     const noteVerb = justSavedGameId === game.id && justSavedKind === "updated" ? "Updated" : "Saved";
-    const note = pick && justSavedGameId === game.id && syncStatus === "failed"
-      ? `⚠ ${pickLabel(game, pick)} is saved on this phone but not synced yet — retrying`
+    const note = pick && (pendingPushFor(currentManager) || (justSavedGameId === game.id && syncStatus === "failed"))
+      ? `⚠ ${pickLabel(game, pick)} is on this phone but has not reached the league yet`
       : pick ? `✓ ${noteVerb}: ${pickLabel(game, pick)}${pickTimeLabel(pick) ? ` · ${pickTimeLabel(pick)}` : ""}` : "";
 
     card.innerHTML = `
@@ -2252,6 +2260,29 @@ function kickoffCountdown(iso) {
 function gamesByKickoff() {
   return [...GAMES].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff) || a.id - b.id);
 }
+
+// Stays up for as long as the queue holds this manager, across renders,
+// navigation and reloads. Retrying is a button rather than only a timer so
+// somebody who just walked back into signal is not left waiting.
+function renderSyncBanner() {
+  const el = document.getElementById("sync-banner");
+  if (!el) return;
+  if (!currentManager || !pendingPushFor(currentManager)) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const state = getManagerState(currentManager);
+  const n = Object.values(state.picks || {}).filter(Boolean).length;
+  const busy = syncStatus === "saving";
+  el.className = "sync-banner";
+  el.innerHTML = `<span class="sb-text">⚠ <b>${n} pick${n === 1 ? "" : "s"} on this phone only.</b> ${n === 1 ? "It has" : "They have"} not reached the league yet, so ${n === 1 ? "it will" : "they will"} not score. Keep this page open${busy ? " — retrying now" : " and it keeps retrying"}.</span>
+    <button class="sb-retry" type="button" ${busy ? "disabled" : ""}>${busy ? "RETRYING…" : "RETRY NOW"}</button>`;
+  el.querySelector(".sb-retry")?.addEventListener("click", () => { flushPendingPush().then(renderSyncBanner); renderSyncBanner(); });
+}
+
+// Any change in sync state redraws the banner immediately, so it appears
+// the moment the retries give up rather than on the next render.
+syncListeners.add(() => {
+  renderSyncBanner();
+  if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
+});
 
 // Counts down to the week's opener, then to each next game as they kick
 // off, and disappears once the whole slate is underway.
