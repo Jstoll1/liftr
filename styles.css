@@ -2201,6 +2201,8 @@ html, body {
 .admin-status { min-height: 16px; font-family: 'Orbitron', system-ui, sans-serif; font-size: 11px; color: var(--text-dim); }
 .admin-status.ok { color: var(--neon-green); }
 .admin-status.bad { color: var(--neon-pink); }
+.admin-when { font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1.7; color: var(--neon-pink); letter-spacing: .06em; }
+.admin-when:empty { display: none; }
 .admin-search { display: block; }
 .admin-search input { -webkit-appearance: none; appearance: none; width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; }
 .admin-search input:focus { outline: none; border-color: var(--neon-cyan); }

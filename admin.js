@@ -24,17 +24,53 @@
   const getKey = () => { try { return sessionStorage.getItem(KEY_STORE) || ""; } catch { return ""; } };
   const setKey = (k) => { try { sessionStorage.setItem(KEY_STORE, k); } catch {} };
 
+  let loadedWeek = 0;       // the week `found` was loaded for
+  let calendar = new Map(); // week number -> { start, end } from ESPN
+
+  const dayLabel = (iso) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+  function weekRangeText(wk) {
+    const c = calendar.get(wk);
+    if (!c) return "";
+    const a = dayLabel(c.start), b = dayLabel(c.end);
+    return a === b ? a : `${a} – ${b}`;
+  }
+
+  function renderWeekOptions(selected) {
+    const sel = el("admin-espn-week");
+    sel.innerHTML = Array.from({ length: 16 }, (_, i) => {
+      const n = i + 1;
+      const r = weekRangeText(n);
+      return `<option value="${n}">Week ${n}${r ? ` · ${r}` : ""}</option>`;
+    }).join("");
+    sel.value = String(selected);
+    showWeekDates();
+  }
+
+  // Before a week is loaded the only reference is ESPN's calendar window,
+  // which runs Tuesday to Tuesday and so is not the first kickoff. Once the
+  // week is loaded the real opener replaces it.
+  function showWeekDates() {
+    const wk = Number(el("admin-espn-week").value);
+    const out = el("admin-when");
+    if (!out) return;
+    const opener = found.length ? found[0] : null;
+    if (opener && Number(loadedWeek) === wk) {
+      const k = new Date(opener.kickoff);
+      const when = k.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+      out.textContent = `First game ${when} ET · ${opener.awayShort} at ${opener.homeShort}`;
+      return;
+    }
+    const r = weekRangeText(wk);
+    out.textContent = r ? `Week window ${r}` : "";
+  }
+
   async function show() {
     el("admin-key").value = getKey();
-    const sel = el("admin-espn-week");
-    if (!sel.options.length) {
-      sel.innerHTML = Array.from({ length: 16 }, (_, i) => `<option value="${i + 1}">Week ${i + 1}</option>`).join("");
-    }
     let week = 1;
     let year = new Date().getFullYear();
-    // ESPN knows what week it is; guessing from the calendar or from what
-    // has already been published both go wrong the moment a week is set
-    // early or a slate is skipped.
+    // ESPN knows what week it is, and ships the season calendar alongside,
+    // so the dropdown can carry real dates instead of bare numbers.
     try {
       const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?limit=1&t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
@@ -42,19 +78,32 @@
       const yr = Number(data?.season?.year) || Number(data?.leagues?.[0]?.season?.year);
       if (Number.isInteger(wk) && wk >= 1 && wk <= 16) week = wk;
       if (Number.isInteger(yr) && yr >= 2000) year = yr;
+      readCalendar(data?.leagues?.[0]?.calendar);
     } catch {
-      // Offline or ESPN down: fall back to the week after the last one
-      // published, which is the usual next thing to set.
       try {
         const res = await fetch(`${WORKER_URL}/games?t=${Date.now()}`, { cache: "no-store" });
         const list = (await res.json())?.weeks?.list;
         if (Array.isArray(list) && list.length) week = Math.min(16, Math.max(...list) + 1);
       } catch {}
     }
-    sel.value = String(week);
+    renderWeekOptions(week);
     el("admin-year").value = String(year);
     syncGate();
     renderFound();
+  }
+
+  // The calendar is either a flat list of weeks or a list of season types
+  // each holding its own weeks. Regular season is type 2.
+  function readCalendar(cal) {
+    if (!Array.isArray(cal)) return;
+    const entries = cal[0]?.entries
+      ? (cal.find((c) => String(c.value) === "2") || cal[0]).entries
+      : cal;
+    for (const e of entries || []) {
+      const n = Number(e.value ?? e.label);
+      if (!Number.isInteger(n) || !e.startDate || !e.endDate) continue;
+      calendar.set(n, { start: e.startDate, end: e.endDate });
+    }
   }
 
   const say = (msg, kind = "") => { const s = el("admin-status"); s.textContent = msg; s.className = "admin-status " + kind; };
@@ -135,6 +184,7 @@
           hay: `${away.team?.displayName || ""} ${away.team?.shortDisplayName || ""} ${away.team?.abbreviation || ""} ${away.team?.location || ""} ${home.team?.displayName || ""} ${home.team?.shortDisplayName || ""} ${home.team?.abbreviation || ""} ${home.team?.location || ""}`.toLowerCase(),
         };
       }).filter(Boolean).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+      loadedWeek = wk;
       picked = new Map();
       filter = "";
       el("admin-search").value = "";
@@ -148,6 +198,7 @@
         : restored.missing ? ` ${restored.count} already saved, ${restored.missing === 1 ? "one of which is" : `${restored.missing} of which are`} not in this ESPN week.`
         : restored.count ? ` ${restored.count} already saved and re-checked.` : "";
       say(`${found.length} games in week ${wk}. Tap up to ${MAX_PICKS}.${note}`, "ok");
+      showWeekDates();
       renderFound();
     } catch (err) {
       say(`Could not reach ESPN (${err.message}).`, "bad");
@@ -398,6 +449,7 @@
   }
 
   el("admin-key").addEventListener("input", () => { keyOk = false; syncGate(); });
+  el("admin-espn-week").addEventListener("change", showWeekDates);
   el("admin-search").addEventListener("input", (e) => {
     filter = e.target.value.trim().toLowerCase();
     renderFound();
