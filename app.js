@@ -934,7 +934,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609151100";
+  tag.src = "admin.js?v=202609151400";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -965,7 +965,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609151100";
+  tag.src = "console.js?v=202609151400";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2113,16 +2113,16 @@ function ordinal(n) {
 }
 
 // --- The pot ----------------------------------------------------------
-// Ten managers at $140 each. Most of it pays out weekly so every week has
-// a reason to care; the rest waits on the season so the people out of a
-// given week still have something to play for in November. Change these
-// four numbers and every figure below follows.
+// Ten managers at $140 each, paid out entirely week by week: $100 to
+// whoever wins the week, fourteen weeks, which spends the pot exactly.
+// The weekly tiebreaker settles ties, so one winner takes the hundred.
+// Change these numbers and every figure below follows.
 const POT = {
   buyIn: 140,
   members: 10,
-  weeks: 14,          // weeks the league plays
-  weekly: 75,         // to the winner of each week
-  season: [250, 100], // season champion, runner-up
+  weeks: 14,   // weeks the league plays
+  weekly: 100, // to the winner of each week
+  season: [],  // nothing held back for the season
 };
 POT.total = POT.buyIn * POT.members;
 POT.weeklyTotal = POT.weekly * POT.weeks;
@@ -2162,7 +2162,7 @@ function payoutLedger() {
     r.tied = (prev && prev.points === r.points) || (list[i + 1] && list[i + 1].points === r.points);
     r.seasonPrize = POT.season[place - 1] || 0;
   });
-  const contested = list.some((r) => r.tied && r.seasonPrize);
+  const contested = POT.season.length > 0 && list.some((r) => r.tied && r.seasonPrize);
   return { list, sealed: sealed.length, done, contested };
 }
 
@@ -2176,9 +2176,11 @@ function renderPayouts() {
     <div class="pot-head">
       <div class="pot-stat"><b>${money(POT.total)}</b><span>${POT.members} × ${money(POT.buyIn)}</span></div>
       <div class="pot-stat"><b>${money(POT.weekly)}</b><span>per week · ${POT.weeks} weeks</span></div>
-      <div class="pot-stat"><b>${money(POT.season[0])} / ${money(POT.season[1])}</b><span>season 1st / 2nd</span></div>
+      ${POT.season.length
+        ? `<div class="pot-stat"><b>${POT.season.map(money).join(" / ")}</b><span>season ${POT.season.length > 1 ? "1st / 2nd" : "champion"}</span></div>`
+        : `<div class="pot-stat"><b>1ST ONLY</b><span>${POT.total === POT.weeklyTotal ? "winner takes the week" : money(POT.total - POT.weeklyTotal) + " unallocated"}</span></div>`}
     </div>
-    <div class="pot-note">${sealed} of ${POT.weeks} weeks settled · ${money(paid)} paid out · ${money(Math.max(0, left))} still to play for weekly${done ? "" : " · season money is a projection"}</div>
+    <div class="pot-note">${sealed} of ${POT.weeks} weeks settled · ${money(paid)} paid out · ${money(Math.max(0, left))} still to play for${POT.season.length && !done ? " weekly · season money is a projection" : ""}</div>
     ${contested ? `<div class="pot-warn">⚠ Season places are tied on points where the money sits. The weekly tiebreaker does not settle the season, so the league needs a rule for this before the last week.</div>` : ""}
     <div class="pot-table">
       <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>WON</span><span>EARNED</span></div>
