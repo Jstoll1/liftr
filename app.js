@@ -934,7 +934,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609150900";
+  tag.src = "admin.js?v=202609151100";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -965,7 +965,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609150900";
+  tag.src = "console.js?v=202609151100";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1635,8 +1635,8 @@ function renderPicksScreen() {
   const tbActual = tbFinal ? tbFinal.awayScore + tbFinal.homeScore : tbLiveG && Number.isFinite(tbLiveG.awayScore) && Number.isFinite(tbLiveG.homeScore) ? tbLiveG.awayScore + tbLiveG.homeScore : null;
   const guess = String(state.tiebreaker ?? "").trim();
   let tbText;
-  if (!tiebreakerLocked) tbText = guess ? `✓ Saved: ${guess}` : "Saves as you type";
-  else if (!guess) tbText = `No tiebreaker entered — locked${tbActual !== null ? ` · ${tbFinal ? "final" : "now"} ${tbActual}` : ""}`;
+  if (!tiebreakerLocked) tbText = guess ? `✓ Saved: ${guess}` : "Required — ties go to whoever is closest, and no guess loses every tie.";
+  else if (!guess) tbText = `No tiebreaker entered — locked. Any tie this week is lost.${tbActual !== null ? ` · ${tbFinal ? "final" : "now"} ${tbActual}` : ""}`;
   else if (tbFinal) tbText = `Your guess: ${guess} · Final: ${tbActual} · off by ${Math.abs(Number(guess) - tbActual)}`;
   else if (tbLiveG && tbActual !== null) tbText = `Your guess: ${guess} · Now: ${tbActual} · off by ${Math.abs(Number(guess) - tbActual)}`;
   else tbText = `Your guess: ${guess} · waiting on kickoff`;
@@ -1654,7 +1654,29 @@ function updatePicksProgress(state) {
     ? `${WEEK_LABEL} is final · you scored ${computeScore(state, results)} pts`
     : allLocked
       ? `${WEEK_LABEL} is locked · ${computeScore(state, results)} pts so far`
-      : `${totalPicked} of ${GAMES.length} games picked` + (state.tiebreaker ? " · tiebreaker set" : " · tiebreaker not set");
+      : `${totalPicked} of ${GAMES.length} games picked` + (state.tiebreaker ? " · tiebreaker set" : " · tiebreaker MISSING");
+
+  // The tiebreaker decides who takes a week, and ten managers on ten games
+  // tie constantly. Somebody who never enters one forfeits every tie, so
+  // say it plainly rather than letting them find out on a Sunday night.
+  let tbWarn = document.getElementById("tb-required");
+  if (!tbWarn) {
+    tbWarn = document.createElement("div");
+    tbWarn.id = "tb-required";
+    tbWarn.className = "tb-required hidden";
+    picksProgress.insertAdjacentElement("afterend", tbWarn);
+  }
+  const needsTb = !allLocked && !String(state.tiebreaker ?? "").trim();
+  tbWarn.classList.toggle("hidden", !needsTb);
+  if (needsTb) {
+    const done = totalPicked >= GAMES.length;
+    tbWarn.innerHTML = `<b>⚠ No tiebreaker set.</b> ${done ? "Your card is otherwise complete." : ""} Ties are decided by the closest guess at the tiebreaker game's total, so leaving it blank forfeits every tie this week.
+      <button class="tb-jump" type="button">SET IT NOW</button>`;
+    tbWarn.querySelector(".tb-jump")?.addEventListener("click", () => {
+      tiebreakerInput.scrollIntoView({ block: "center", behavior: "smooth" });
+      tiebreakerInput.focus();
+    });
+  }
   const hint = document.querySelector("#picks-screen .picks-hint");
   if (hint) hint.textContent = allLocked
     ? `${WEEK_LABEL} has kicked off and your card is locked. Scores and results update below as games finish.`
@@ -2090,6 +2112,87 @@ function ordinal(n) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
+// --- The pot ----------------------------------------------------------
+// Ten managers at $140 each. Most of it pays out weekly so every week has
+// a reason to care; the rest waits on the season so the people out of a
+// given week still have something to play for in November. Change these
+// four numbers and every figure below follows.
+const POT = {
+  buyIn: 140,
+  members: 10,
+  weeks: 14,          // weeks the league plays
+  weekly: 75,         // to the winner of each week
+  season: [250, 100], // season champion, runner-up
+};
+POT.total = POT.buyIn * POT.members;
+POT.weeklyTotal = POT.weekly * POT.weeks;
+POT.seasonTotal = POT.season.reduce((a, b) => a + b, 0);
+
+const money = (n) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
+
+// Earnings come from the sealed summaries, which are the Worker's own
+// record rather than anything a phone computed. A week with co-winners
+// splits that week's money, though the tiebreaker should prevent it.
+function payoutLedger() {
+  const sealed = Object.values(weekSummaries).filter((s) => s && s.complete);
+  const rows = new Map(MANAGERS.map((n) => [n, { name: n, weeksWon: 0, earned: 0, points: 0, played: 0 }]));
+  for (const s of sealed) {
+    const share = (s.winners || []).length ? POT.weekly / s.winners.length : 0;
+    for (const w of s.winners || []) {
+      const r = rows.get(w); if (!r) continue;
+      r.weeksWon += 1; r.earned += share;
+    }
+    for (const row of s.rows || []) {
+      const r = rows.get(row.name); if (!r) continue;
+      r.points += row.score || 0; r.played += 1;
+    }
+  }
+  const list = [...rows.values()].sort((a, b) => b.points - a.points || b.earned - a.earned || a.name.localeCompare(b.name));
+  // Season money is a projection until the last week is sealed, so it is
+  // labelled as one rather than added to what someone has actually won.
+  const done = sealed.length >= POT.weeks;
+  // Competition ranking, so a tie on points is shown as a tie rather than
+  // broken by whatever order the names happened to land in. Season money
+  // is real money, so a tie across a prize line has to be visible.
+  let place = 0;
+  list.forEach((r, i) => {
+    const prev = list[i - 1];
+    if (!prev || prev.points !== r.points) place = i + 1;
+    r.seasonPlace = place;
+    r.tied = (prev && prev.points === r.points) || (list[i + 1] && list[i + 1].points === r.points);
+    r.seasonPrize = POT.season[place - 1] || 0;
+  });
+  const contested = list.some((r) => r.tied && r.seasonPrize);
+  return { list, sealed: sealed.length, done, contested };
+}
+
+function renderPayouts() {
+  const panel = document.getElementById("payouts-panel");
+  if (!panel || panel.classList.contains("hidden")) return;
+  const { list, sealed, done, contested } = payoutLedger();
+  const paid = list.reduce((a, r) => a + r.earned, 0);
+  const left = POT.total - paid - POT.seasonTotal;
+  panel.innerHTML = `
+    <div class="pot-head">
+      <div class="pot-stat"><b>${money(POT.total)}</b><span>${POT.members} × ${money(POT.buyIn)}</span></div>
+      <div class="pot-stat"><b>${money(POT.weekly)}</b><span>per week · ${POT.weeks} weeks</span></div>
+      <div class="pot-stat"><b>${money(POT.season[0])} / ${money(POT.season[1])}</b><span>season 1st / 2nd</span></div>
+    </div>
+    <div class="pot-note">${sealed} of ${POT.weeks} weeks settled · ${money(paid)} paid out · ${money(Math.max(0, left))} still to play for weekly${done ? "" : " · season money is a projection"}</div>
+    ${contested ? `<div class="pot-warn">⚠ Season places are tied on points where the money sits. The weekly tiebreaker does not settle the season, so the league needs a rule for this before the last week.</div>` : ""}
+    <div class="pot-table">
+      <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>WON</span><span>EARNED</span></div>
+      ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}">
+        <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
+        <span class="pot-name">${r.name.toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
+        <span class="pot-pts">${r.points}</span>
+        <span class="pot-won">${r.weeksWon ? "🏆".repeat(Math.min(r.weeksWon, 3)) + (r.weeksWon > 3 ? `×${r.weeksWon}` : "") : "–"}</span>
+        <span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>
+      </div>`).join("")}
+    </div>
+    ${sealed ? "" : `<div class="pot-empty">No weeks settled yet. Earnings appear once a week's last game is final.</div>`}`;
+}
+
 // --- Weekly performance and trophies ----------------------------------
 // The board is computed live from ESPN, so a week that has finished has
 // to be handed to the Worker or it is never kept. Whichever phone is on
@@ -2350,6 +2453,7 @@ setInterval(() => {
   }
   if (!scoreboardScreen.classList.contains("hidden")) {
     withScrollPreserved(renderScoreboard);
+    renderPayouts();
   }
   flushPendingPush();
 }, 20000);
@@ -2376,6 +2480,21 @@ window.addEventListener("pageshow", (e) => {
   let open = false;
   const paint = () => { wrap.classList.toggle("hidden", !open); toggle.classList.toggle("open", open); toggle.setAttribute("aria-expanded", String(open)); };
   toggle.addEventListener("click", () => { open = !open; paint(); if (open) track("all-picks-open", { event: true }); });
+  paint();
+})();
+
+(() => {
+  const toggle = document.getElementById("payouts-toggle");
+  const panel = document.getElementById("payouts-panel");
+  if (!toggle || !panel) return;
+  let open = false;
+  const paint = () => {
+    panel.classList.toggle("hidden", !open);
+    toggle.classList.toggle("open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+    if (open) renderPayouts();
+  };
+  toggle.addEventListener("click", () => { open = !open; paint(); if (open) track("pot-open", { event: true }); });
   paint();
 })();
 

@@ -2551,6 +2551,22 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* Unsynced picks are the one failure that can cost someone points, so it
    gets a banner that stays until the queue clears, not a badge that fades
    with the tap that caused it. */
+.tb-required {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 8px; padding: 10px 12px;
+  border: 2px solid rgba(255, 228, 94, .65); border-radius: 10px;
+  background: rgba(255, 228, 94, .09); color: var(--neon-yellow);
+  font-size: 12px; line-height: 1.45;
+}
+.tb-required.hidden { display: none; }
+.tb-required b { color: #fff; }
+.tb-jump {
+  flex: none; min-height: 40px; padding: 8px 14px; border-radius: 8px;
+  border: 2px solid var(--neon-yellow); background: rgba(255, 228, 94, .16);
+  color: #fff; font-family: 'Press Start 2P', monospace; font-size: 8px;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+
 .sync-banner {
   display: flex;
   align-items: center;
@@ -2575,3 +2591,28 @@ body.sheet-open #admin-overlay { overflow: hidden; }
   cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
 }
 .sync-banner .sb-retry[disabled] { opacity: .5; cursor: default; }
+
+/* The pot. Money is the one thing nobody should have to squint at, so the
+   figures are plain numerals rather than the pixel font. */
+.payouts-panel { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.payouts-panel.hidden { display: none; }
+.pot-head { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pot-stat { display: flex; flex-direction: column; gap: 3px; padding: 8px 6px; border: 2px solid var(--card-border); border-radius: 8px; background: rgba(0, 255, 143, .05); text-align: center; }
+.pot-stat b { font-family: 'Orbitron', system-ui, sans-serif; font-size: 15px; color: var(--neon-green); }
+.pot-stat span { font-family: 'Press Start 2P', monospace; font-size: 5.5px; line-height: 1.6; color: var(--text-dim); letter-spacing: .05em; }
+.pot-note { font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.8; color: var(--text-dim); letter-spacing: .05em; }
+.pot-warn { padding: 8px 10px; border: 2px solid rgba(255, 92, 138, .6); border-radius: 8px; background: rgba(255, 92, 138, .08); color: var(--neon-pink); font-size: 11px; line-height: 1.5; }
+.pot-table { display: flex; flex-direction: column; border: 2px solid var(--card-border); border-radius: 10px; overflow: hidden; }
+.pot-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 34px 52px 62px; align-items: center; gap: 6px; padding: 8px 8px; border-top: 1px solid rgba(255, 255, 255, .05); font-size: 12px; }
+.pot-row:first-child { border-top: 0; }
+.pot-row.head { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); letter-spacing: .06em; background: rgba(255, 255, 255, .03); }
+.pot-row.me { background: rgba(5, 217, 232, .1); box-shadow: inset 3px 0 0 var(--neon-cyan); }
+.pot-row.inmoney .pot-name { color: var(--neon-yellow); }
+.pot-place { font-family: 'Press Start 2P', monospace; font-size: 7px; white-space: nowrap; color: var(--text-dim); }
+.pot-name { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pot-proj { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--neon-purple); flex: none; }
+.pot-pts { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; text-align: right; }
+.pot-won { font-size: 10px; text-align: center; white-space: nowrap; }
+.pot-earned { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; color: var(--neon-green); text-align: right; }
+.pot-empty { font-size: 11px; color: var(--text-dim); text-align: center; padding: 4px 0; }
+@media (max-width: 360px) { .pot-row { grid-template-columns: 20px minmax(0, 1fr) 30px 44px 56px; font-size: 11px; } }
