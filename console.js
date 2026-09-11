@@ -38,17 +38,42 @@
   async function renderPicks() {
     const { changes } = await get("/picks-log?format=json");
     if (!changes.length) { body.innerHTML = `<div class="admin-empty">No pick changes in the last 30 days.</div>`; return; }
-    const late = changes.filter((c) => (c.changes || []).some((x) => x.afterKickoff));
+    const isLate = (r) => (r.changes || []).some((x) => x.afterKickoff);
+    const late = changes.filter(isLate);
     const unauth = changes.filter((c) => c.unauth);
+
+    // One flat list of every edit anyone made is unreadable at ten managers
+    // a week. Group by manager, so a question about one person is one card
+    // rather than a scroll, and anything flagged sorts to the top.
+    const byManager = new Map();
+    for (const r of changes) {
+      const g = byManager.get(r.manager) || { manager: r.manager, rows: [], late: 0, unauth: 0, edits: 0, last: 0 };
+      g.rows.push(r);
+      g.edits += (r.changes || []).length;
+      if (isLate(r)) g.late += 1;
+      if (r.unauth) g.unauth += 1;
+      g.last = Math.max(g.last, r.ts || 0);
+      byManager.set(r.manager, g);
+    }
+    const groups = [...byManager.values()].sort((a, b) =>
+      (b.late - a.late) || (b.unauth - a.unauth) || (b.last - a.last));
+
     body.innerHTML = `<div class="con-summary">
-        <span>${changes.length} change${changes.length === 1 ? "" : "s"}</span>
+        <span>${changes.length} change${changes.length === 1 ? "" : "s"} · ${groups.length} manager${groups.length === 1 ? "" : "s"}</span>
         <span class="${late.length ? "bad" : ""}">${late.length} after kickoff</span>
         <span class="${unauth.length ? "warn" : ""}">${unauth.length} not signed in</span>
-      </div>` + changes.map((r) => `<div class="con-row${(r.changes || []).some((x) => x.afterKickoff) ? " bad" : ""}">
-        <div class="con-row-head"><b>${esc(r.manager)}</b><span>${when(r.ts)}${r.week ? ` · wk ${r.week}` : ""}</span>
-          ${r.admin ? `<span class="con-tag adm">repair</span>` : ""}${r.unauth ? `<span class="con-tag warn">no login</span>` : ""}</div>
-        ${(r.changes || []).map((c) => `<div class="con-line">${c.game ? `G${c.game}` : "Tiebreaker"}: ${esc(c.from ?? "none")} → ${esc(c.to ?? "none")}${c.afterKickoff ? ` <span class="con-tag bad">after kickoff</span>` : ""}</div>`).join("")}
-      </div>`).join("");
+      </div>` + groups.map((g) => `<details class="con-group${g.late ? " bad" : ""}" ${g.late ? "open" : ""}>
+        <summary class="con-group-head">
+          <span class="cg-name">${esc(g.manager)}</span>
+          <span class="cg-counts">${g.edits} edit${g.edits === 1 ? "" : "s"}${g.late ? ` · <b class="bad">${g.late} after kickoff</b>` : ""}${g.unauth ? ` · <b class="warn">${g.unauth} no login</b>` : ""}</span>
+          <span class="cg-last">${when(g.last)}</span>
+        </summary>
+        ${g.rows.map((r) => `<div class="con-row${isLate(r) ? " bad" : ""}">
+          <div class="con-row-head"><span>${when(r.ts)}${r.week ? ` · wk ${r.week}` : ""}</span>
+            ${r.admin ? `<span class="con-tag adm">repair</span>` : ""}${r.unauth ? `<span class="con-tag warn">no login</span>` : ""}</div>
+          ${(r.changes || []).map((c) => `<div class="con-line">${c.game ? `G${c.game}` : "Tiebreaker"}: ${esc(c.from ?? "none")} → ${esc(c.to ?? "none")}${c.afterKickoff ? ` <span class="con-tag bad">after kickoff</span>` : ""}</div>`).join("")}
+        </div>`).join("")}
+      </details>`).join("");
   }
 
   // --- Season ---------------------------------------------------------
