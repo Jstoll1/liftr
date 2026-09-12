@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609171800";
+  tag.src = "admin.js?v=202609171930";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609171800";
+  tag.src = "console.js?v=202609171930";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2228,8 +2228,14 @@ function playerBreakdownHtml(name, state, results, live) {
   else if (tbRes) tbStatus = `<span class="rd-tb-miss">FINAL ${actual} · OFF BY <b>${Math.abs(tbGuess - actual)}</b></span>`;
   else if (tbLive) tbStatus = `<span class="rd-tb-miss live">NOW ${actual} · OFF BY ${Math.abs(tbGuess - actual)}</span>`;
   else tbStatus = `<span class="rd-tb-miss wait">WAITING ON KICKOFF</span>`;
-  const tbRow = `<div class="rd-tb"><span class="rd-tb-label">TIEBREAKER · G${tbGame.id} ${tbGame.awayShort} @ ${tbGame.homeShort} TOTAL</span><span class="rd-tb-guess">${tbSealed ? "🔒" : tbGuess === null ? "–" : "GUESS " + tbGuess}</span>${tbStatus}</div>`;
-  const summary = `<div class="rd-summary"><span>BANKED <b>${banked}</b></span>${liveOpen ? `<span>LIVE <b>${liveCovering}/${liveOpen}</b> covering</span>` : ""}</div>`;
+  // Built on the same columns as the rows above it, so the label sits
+  // under GAME and the guess under PICK rather than the two being flung
+  // to opposite edges of a box.
+  const tbRow = `<div class="rd-tb">
+    <span class="rd-tb-label">TIEBREAKER<br /><b>G${tbGame.id} ${tbGame.awayShort} @ ${tbGame.homeShort}</b> TOTAL</span>
+    <span class="rd-tb-right"><span class="rd-tb-guess">${tbSealed ? "🔒" : tbGuess === null ? "–" : tbGuess}</span>${tbStatus}</span>
+  </div>`;
+  const summary = `<div class="rd-summary"><span>BANKED <b>${banked}</b></span>${liveOpen ? `<span>LIVE <b>${liveCovering}/${liveOpen}</b> COVERING</span>` : ""}</div>`;
   return `<div class="rank-detail"><div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
 }
 

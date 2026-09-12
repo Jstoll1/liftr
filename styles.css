@@ -2212,7 +2212,7 @@ html, body {
 .rd-pts.miss { background: rgba(255, 32, 121, .14); color: var(--neon-pink); border: 1px solid rgba(255, 32, 121, .5); }
 .rd-pts.lean-hit { color: var(--neon-green); border: 1px dashed rgba(57, 255, 136, .6); }
 .rd-pts.lean-miss { color: var(--neon-pink); border: 1px dashed rgba(255, 32, 121, .5); }
-.rd-summary { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: flex-end; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(5, 217, 232, .35); font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1.6; color: var(--text-dim); }
+.rd-summary { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: flex-start; margin-top: 6px; padding-top: 7px; border-top: 1px solid rgba(5, 217, 232, .35); font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1.6; color: var(--text-dim); }
 .rd-summary b { color: var(--neon-green); font-weight: 400; }
 
 /* --- Picks: locked cards become scorebugs --- */
@@ -2292,10 +2292,13 @@ html, body {
 .nav-btn-label { font-size: 9px; }
 
 /* --- Breakdown tiebreaker row --- */
-.rd-tb { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 3px; column-gap: 10px; align-items: center; margin-top: 8px; padding: 8px 10px; border: 1px dashed rgba(255, 228, 94, .5); border-radius: 8px; background: rgba(255, 228, 94, .05); }
-.rd-tb-label { grid-column: 1 / -1; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-yellow); letter-spacing: .06em; }
-.rd-tb-guess { font-size: 12px; font-weight: 800; color: var(--text); }
-.rd-tb-miss { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--neon-green); text-align: right; }
+.rd-tb { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr) 44px; column-gap: 8px; align-items: center; margin-top: 8px; padding: 7px 0; border-top: 1px solid rgba(255, 228, 94, .35); }
+.rd-tb-label { font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.7; color: var(--neon-yellow); letter-spacing: .06em; }
+.rd-tb-label b { font-weight: 400; color: var(--text); }
+/* Guess and result travel together, starting where the pick column does. */
+.rd-tb-right { grid-column: 2 / -1; display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.rd-tb-guess { flex: none; min-width: 22px; font-size: 13px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.rd-tb-miss { min-width: 0; font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1.6; color: var(--neon-green); }
 .rd-tb-miss b { font-size: 8px; }
 .rd-tb-miss.live { color: var(--neon-yellow); }
 .rd-tb-miss.wait, .rd-tb-miss.none { color: var(--text-dim); }
