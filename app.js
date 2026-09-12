@@ -995,7 +995,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609191730";
+  tag.src = "admin.js?v=202609191900";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1026,7 +1026,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609191730";
+  tag.src = "console.js?v=202609191900";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1191,7 +1191,9 @@ async function renderManagerPicker() {
   const cloud = await fetchAllPicks();
   const all = cloud ? { ...local, ...cloud } : local; // cloud wins where it has data
   // Once games have started the roster shows points instead of pick counts.
-  if (firstKickoffPassed() && !Object.keys(latestLive).length) { try { await fetchLiveScores(); } catch {} }
+  // Fetched whether or not anything has kicked off: the feed carries each
+  // team's poll rank, which the board and the picks cards show all week.
+  if (!Object.keys(latestLive).length) { try { await fetchLiveScores(); } catch {} }
   const pickerResults = firstKickoffPassed() ? computeLiveResults(latestLive) : {};
   const scored = Object.keys(pickerResults).length > 0;
 
@@ -1636,6 +1638,7 @@ async function refreshPicksStanding() {
     const state = fetched[name];
     if (state) cloudPicks[name] = { ...state, picks: sanitizePicks(state.picks) };
   });
+  const hadLive = Object.keys(latestLive).length > 0;
   const results = computeLiveResults(await fetchLiveScores());
   picksStandingFinals = Object.keys(results).length > 0;
   picksStandingRows = rankManagers(cloudPicks, results);
@@ -1644,6 +1647,9 @@ async function refreshPicksStanding() {
     // The row arrives a beat after the page, so the progress line above it
     // has to be told to stop repeating the score.
     updatePicksProgress(getManagerState(currentManager));
+    // If that call is what first brought the feed in, the cards were drawn
+    // without it and are missing their ranks.
+    if (!hadLive && Object.keys(latestLive).length) withScrollPreserved(renderPicksScreen);
   }
 }
 
@@ -2092,6 +2098,10 @@ function renderLiveScores(live, cloudPicks) {
       const locked = isGameLocked(game);
       const g = live[game.id];
       const found = locked && g && g.found;
+      // Scores stay behind the lock; a poll rank does not. It is public
+      // all week and it is most useful before a game, so it reads from the
+      // feed directly rather than from the gate that hides scores.
+      const feed = g && g.found ? g : null;
       const isLive = found && g.state === "in" && !g.completed;
       const isFinal = found && g.completed;
       const expanded = expandedGames.has(game.id);
@@ -2186,8 +2196,8 @@ function renderLiveScores(live, cloudPicks) {
             <span class="bug-status">${statusText}</span>${tvTag}
             ${myPill}
           </div>
-          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop, found ? g.awayRank : null, isLive && g.possession === "away")}
-          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop, found ? g.homeRank : null, isLive && g.possession === "home")}
+          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop, feed?.awayRank ?? null, isLive && g.possession === "away")}
+          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop, feed?.homeRank ?? null, isLive && g.possession === "home")}
 
           ${detail}
         </div>
