@@ -79,7 +79,7 @@ export default {
       return handleResults(request, env, corsHeaders, url);
     }
     if (url.pathname === "/live") {
-      return handleLive(corsHeaders);
+      return handleLive(corsHeaders, env);
     }
     if (url.pathname === "/history-ask") {
       return handleHistoryAsk(request, env, corsHeaders);
@@ -1475,25 +1475,30 @@ async function handleResults(request, env, corsHeaders, url) {
 // data, never a hard failure — but the exact response shape should be
 // double-checked once real games are underway, and adjusted here if
 // ESPN's fields don't match what's assumed below.
-const LIVE_GAMES = [
-  { id: 1, awayId: 2335, homeId: 256 },
-  { id: 2, awayId: 193, homeId: 221 },
-  { id: 3, awayId: 239, homeId: 2 },
-  { id: 4, awayId: 103, homeId: 2132 },
-  { id: 5, awayId: 2655, homeId: 150 },
-  { id: 6, awayId: 68, homeId: 2483 },
-  { id: 7, awayId: 2751, homeId: 36 },
-  { id: 8, awayId: 228, homeId: 99 },
-  { id: 9, awayId: 151, homeId: 333 },
-  { id: 10, awayId: 97, homeId: 145 },
-];
-const LIVE_DATES = ["20260905", "20260906"];
+// The week's matchups and the days they fall on both come from the stored
+// slate. These were once hardcoded to week 1's team ids and dates, so the
+// fallback returned nothing at all from week 2 onward.
+const etDay = (iso) => {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return null;
+  return new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
+};
 
-async function handleLive(corsHeaders) {
+async function liveTargets(env) {
+  const week = (await readWeeks(env)).current;
+  const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
+  const games = (slate?.games || []).map((g) => ({ id: g.id, awayId: Number(g.awayId), homeId: Number(g.homeId) }));
+  const dates = [...new Set((slate?.games || []).map((g) => etDay(g.kickoff)).filter(Boolean))].sort();
+  return { games, dates };
+}
+
+async function handleLive(corsHeaders, env) {
   try {
+    const { games: targets, dates } = await liveTargets(env);
+    if (!targets.length) return json({ games: [], debug: [{ note: "no slate stored for the current week" }] }, 200, corsHeaders);
     const events = [];
     const debug = [];
-    for (const date of LIVE_DATES) {
+    for (const date of dates) {
       const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300`;
       try {
         const res = await fetch(url, {
@@ -1518,7 +1523,7 @@ async function handleLive(corsHeaders) {
       }
     }
 
-    const games = LIVE_GAMES.map((g) => {
+    const games = targets.map((g) => {
       try {
         const event = events.find((e) => {
           const comp = e?.competitions?.[0];

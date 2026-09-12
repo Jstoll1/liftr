@@ -273,7 +273,20 @@ async function fetchAllPicks() {
 // ESPN's public scoreboard allows browser requests but blocks Cloudflare's
 // datacenter IPs, so the phone asks ESPN directly and the Worker route is
 // only a fallback. Matching by ESPN team id, same as the Worker did.
-const ESPN_SCOREBOARD_DATES = ["20260905", "20260906"];
+// The days to ask ESPN about come from the slate itself. These were once
+// hardcoded to week 1's Saturday and Sunday, which meant every week after
+// that asked for the wrong days and found no scores at all.
+function espnScoreboardDates() {
+  const days = new Set();
+  for (const g of GAMES) {
+    const t = new Date(g.kickoff).getTime();
+    if (!Number.isFinite(t)) continue;
+    // Eastern, because that is the day ESPN files a game under, and a
+    // Friday night kickoff is already Saturday in UTC.
+    days.add(new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, ""));
+  }
+  return [...days].sort();
+}
 function parseEspnEvents(events) {
   const byId = {};
   GAMES.forEach((game) => {
@@ -321,7 +334,7 @@ function parseEspnEvents(events) {
 
 async function fetchLiveFromEspn() {
   const events = [];
-  for (const date of ESPN_SCOREBOARD_DATES) {
+  for (const date of espnScoreboardDates()) {
     const res = await fetch(
       `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300&t=${Date.now()}`,
       { cache: "no-store" }
@@ -934,7 +947,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609160900";
+  tag.src = "admin.js?v=202609160930";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -965,7 +978,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609160900";
+  tag.src = "console.js?v=202609160930";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
