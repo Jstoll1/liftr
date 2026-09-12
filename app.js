@@ -947,7 +947,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609160930";
+  tag.src = "admin.js?v=202609161100";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -978,7 +978,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609160930";
+  tag.src = "console.js?v=202609161100";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1912,7 +1912,7 @@ function renderLiveScores(live, cloudPicks) {
       const awayFav = game.favorite === game.away;
 
       const row = (team, short, id, score, lead, fav, pop) => `
-        <div class="bug-row ${lead ? "leading" : ""}">
+        <div class="bug-row ${lead ? "leading" : ""} ${myPick && myPick.team === team ? "mine" : ""}">
           <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
           <span class="bug-team">${short}</span>
           ${fav ? `<span class="bug-fav">-${game.spread}</span>` : `<span class="bug-fav dog"></span>`}
@@ -1933,16 +1933,31 @@ function renderLiveScores(live, cloudPicks) {
         : `<div class="bug-detail"><span class="bug-hidden-note">🔒 Picks reveal at kickoff (${game.kickoffLabel})</span></div>`;
 
       const cls = ["scorebug", isLive ? "is-live" : "", isFinal ? "is-final" : "", !locked ? "upcoming" : "", expanded ? "expanded" : ""].join(" ");
-      // The viewer's own outcome on a final, same pills as the All Picks
-      // grid: +1 / +2 / +3 or a pink ✗.
+      // What this game is worth to the viewer, top right. Before kickoff
+      // it just states the stake; live it carries a dot, green while the
+      // pick is covering and red while it is not; at the final a miss is
+      // struck through so a lost game reads as lost at a glance.
       let myPill = "";
-      if (isFinal && currentManager) {
-        const myPick = cloudPicks[currentManager]?.picks?.[game.id];
-        const pts = scorePick(game, myPick, { awayScore: g.awayScore, homeScore: g.homeScore });
-        const myPush = myPick && myPick.mode === "ATS" && resultOutcome(game, { awayScore: g.awayScore, homeScore: g.homeScore })?.push;
-        if (myPick && pts !== null) myPill = myPush ? `<span class="pick-pill push bug-mine">P</span>` : pts >= 3 ? `<span class="pick-pill upset bug-mine">+3</span>` : pts === 2 ? `<span class="pick-pill hit2 bug-mine">+2</span>` : pts > 0 ? `<span class="pick-pill hit bug-mine">+1</span>` : `<span class="pick-pill miss bug-mine">✗</span>`;
+      const myPick = currentManager ? cloudPicks[currentManager]?.picks?.[game.id] : null;
+      if (myPick) {
+        const worth = pointValue(game, myPick.team, myPick.mode);
+        const mine = myPick.team === game.away ? game.awayShort : game.homeShort;
+        const isFav = myPick.team === game.favorite;
+        const terms = myPick.mode === "ATS" ? `${isFav ? "-" : "+"}${game.spread}` : "SU";
+        const res = hasScores ? { awayScore: g.awayScore, homeScore: g.homeScore } : null;
+        const pts = isFinal && res ? scorePick(game, myPick, res) : null;
+        const lean = !isFinal && isLive && res ? scorePick(game, myPick, res) : null;
+        const pushed = res && myPick.mode === "ATS" && resultOutcome(game, res)?.push;
+        let tone = "pending", dot = "", tail = `<b>${worth}</b>`;
+        if (pts !== null) {
+          tone = pushed ? "push" : pts > 0 ? "hit" : "miss";
+          tail = pushed ? "<b>P</b>" : pts > 0 ? `<b>+${pts}</b>` : `<b>${worth}</b>`;
+        } else if (lean !== null) {
+          tone = lean > 0 ? "covering" : "slipping";
+          dot = `<span class="stake-dot"></span>`;
+        }
+        myPill = `<span class="stake ${tone}" title="You took ${mine} ${terms} for ${worth} pt">${dot}${terms} ${tail}</span>`;
       }
-
       return `
         <div class="${cls}" data-game="${game.id}" role="button" tabindex="0" aria-expanded="${expanded}">
           <div class="bug-head">
