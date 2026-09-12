@@ -2663,7 +2663,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-stat b { font-family: 'Orbitron', system-ui, sans-serif; font-size: 15px; color: var(--neon-green); }
 .pot-stat span { font-family: 'Press Start 2P', monospace; font-size: 5.5px; line-height: 1.6; color: var(--text-dim); letter-spacing: .05em; }
 .pot-note { font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.8; color: var(--text-dim); letter-spacing: .05em; }
-.pot-live { padding: 8px 10px; border: 1px solid rgba(255, 228, 94, .5); border-radius: 8px; background: rgba(255, 228, 94, .07); color: var(--neon-yellow); font-size: 11px; line-height: 1.5; }
+.pot-live { align-self: flex-start; padding: 3px 8px; border: 1px solid rgba(255, 228, 94, .5); border-radius: 999px; background: rgba(255, 228, 94, .08); color: var(--neon-yellow); font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .06em; }
 .pot-livemark { color: var(--neon-yellow); margin-left: 3px; font-size: 14px; line-height: 0; }
 .pot-warn { padding: 8px 10px; border: 2px solid rgba(255, 92, 138, .6); border-radius: 8px; background: rgba(255, 92, 138, .08); color: var(--neon-pink); font-size: 11px; line-height: 1.5; }
 .pot-table { display: flex; flex-direction: column; border: 2px solid var(--card-border); border-radius: 10px; overflow: hidden; }
