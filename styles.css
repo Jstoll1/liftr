@@ -2068,7 +2068,6 @@ html, body {
 .bug-side-line { font-family: 'Press Start 2P', monospace; font-size: 7px; }
 .bug-side-line.fav { color: var(--neon-pink); text-shadow: 0 0 4px var(--neon-pink); }
 .bug-side-line.dog { color: var(--text-dim); }
-.bug-side-count { margin-left: auto; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); }
 .bug-pick-row { display: flex; align-items: flex-start; gap: 6px; }
 .bug-pick-row.none { font-size: 9px; color: var(--text-dim); opacity: .6; }
 .bug-pick-tag { flex: none; margin-top: 3px; padding: 1px 4px; border-radius: 3px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .04em; }

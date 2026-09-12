@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609190930";
+  tag.src = "admin.js?v=202609191045";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609190930";
+  tag.src = "console.js?v=202609191045";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1878,7 +1878,7 @@ function bugSideDetail(cloudPicks, game, team, short, finalRes) {
   if (su.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag su">STRAIGHT UP</span>${pill("SU")}</span><div class="pick-chips">${nameChips(su)}</div></div>`);
   return `
     <div class="bug-side">
-      <div class="bug-side-head"><span>${short}</span><span class="bug-side-count">${ats.length + su.length}</span></div>
+      <div class="bug-side-head"><span>${short}</span></div>
       ${rows.length ? rows.join("") : '<div class="bug-pick-group none">nobody</div>'}
     </div>
   `;
