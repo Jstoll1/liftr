@@ -2195,6 +2195,8 @@ html, body {
 .rd-pick { min-width: 0; display: flex; }
 .rd-pickcard { display: flex; flex-direction: column; gap: 3px; min-width: 0; max-width: 100%; padding: 5px 8px 5px 6px; border: 1px solid var(--card-border); border-radius: 8px; background: rgba(255, 255, 255, .04); }
 .rd-pickcard.locked, .rd-pickcard.nopick { justify-content: center; color: var(--text-dim); font-family: 'Press Start 2P', monospace; font-size: 7px; padding: 8px; border-style: dashed; }
+/* On a game that is over, no pick is a loss, not a pending state. */
+.rd-pickcard.nopick.lost { color: var(--neon-pink); border-color: rgba(255, 92, 138, .45); }
 .rd-pickteam { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11px; font-weight: 700; }
 .rd-logo { width: 18px; height: 18px; object-fit: contain; flex: none; }
 .rd-team { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

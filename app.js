@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609172100";
+  tag.src = "admin.js?v=202609172200";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609172100";
+  tag.src = "console.js?v=202609172200";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2174,7 +2174,11 @@ function playerBreakdownHtml(name, state, results, live) {
     if (!locked) {
       pickHtml = `<span class="rd-pickcard locked">🔒 LOCKED</span>`;
     } else if (!pick) {
-      pickHtml = `<span class="rd-pickcard nopick">NO PICK</span>`;
+      pickHtml = `<span class="rd-pickcard nopick${isFinal ? " lost" : ""}">NO PICK</span>`;
+      // A kicked-off game with nothing submitted scores nothing, so it is
+      // a zero rather than a dash. A dash here read the same as the rows
+      // still waiting below it.
+      if (isFinal) ptsHtml = `<span class="rd-pts miss">0</span>`;
     } else {
       pickedSide = pick.team === game.away ? "away" : "home";
       const pickId = pick.team === game.away ? game.awayId : game.homeId;
