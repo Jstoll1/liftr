@@ -298,7 +298,10 @@ function rankBadge(rank) {
   return rank ? `<i class="tm-rank" title="AP rank">${rank}</i>` : "";
 }
 function ballMark(hasBall) {
-  return hasBall ? `<i class="tm-ball" role="img" aria-label="has the ball">\uD83C\uDFC8</i>` : "";
+  // Drawn in CSS rather than set as the football emoji. The emoji renders
+  // as the platform's full-colour artwork, which is glossy, detailed, and
+  // the wrong size on a row of pixel type.
+  return hasBall ? `<i class="tm-ball" role="img" aria-label="has the ball"></i>` : "";
 }
 
 function parseEspnEvents(events) {
@@ -995,7 +998,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609192030";
+  tag.src = "admin.js?v=202609192145";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1026,7 +1029,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609192030";
+  tag.src = "console.js?v=202609192145";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);

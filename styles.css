@@ -1041,18 +1041,35 @@ html, body {
   letter-spacing: 0;
 }
 .tm-rank::before { content: "#"; opacity: .55; font-weight: 600; }
-/* Who has the ball, on a game being played. It only ever appears on one
-   side of one row, so it can be small and still be found. */
-/* The ball sits at the end of the team name, between the name and the
-   spread, which is where it reads as "these guys have it". It costs the
-   name cell about ten pixels on a two-across card, so it stays small and
-   the gap before it stays tight. */
+/* Who has the ball, on a game being played. It sits at the end of the team
+   name, between the name and the spread, which is where it reads as
+   "these guys have it". It only ever appears on one side of one row, so it
+   can be small and still be found.
+
+   Drawn here rather than set as the football emoji. The emoji is the
+   platform's own artwork: glossy, shaded, sized to a text glyph, and
+   nothing like the flat pixel type it sits in. This is six pixels of flat
+   colour with two laces, which is a football at this size and matches the
+   rest of the board. */
 .tm-ball {
+  /* Pixel art, not a smooth ellipse and not the emoji. One 1.5px pixel is
+     the element itself, the rest are box-shadows on a five by three grid,
+     so the edges stay square the way the type around them is square:
+
+       . # # # .
+       # # L # #      L is the lace pixel
+       . # # # .
+
+     A five by three grid, drawn as an SVG with crispEdges so the squares
+     stay square at any size. Box-shadow pixels could not do this: whole
+     pixels were too wide on a four-wide grid and read as a cross, and a
+     fractional size left gaps between them. Eight by not-quite-five,
+     narrower and half the height of the emoji it replaces. */
   flex: none;
-  font-style: normal;
-  font-size: 8px;
-  line-height: 1;
-  filter: drop-shadow(0 0 3px rgba(255, 255, 255, .55));
+  display: inline-block;
+  width: 8px;
+  height: 4.8px;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'><path fill='%23d2782f' d='M1 0h3v1H1z M0 1h5v1H0z M1 2h3v1H1z'/><rect fill='%23ffe9c7' x='2' y='1' width='1' height='1'/></svg>") no-repeat center / 100% 100%;
 }
 
 .bug-fav {
@@ -2328,7 +2345,9 @@ html, body {
 .lr-logo { width: 26px; height: 26px; object-fit: contain; }
 .lr-name { display: flex; align-items: baseline; gap: 5px; font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; white-space: nowrap; }
 .lr-name .tm-rank { font-size: 9px; }
-.lr-name .tm-ball { font-size: 11px; }
+/* Roomier card, so it can be a touch bigger without costing a name
+   anything. */
+.lr-name .tm-ball { width: 10px; height: 6px; }
 .lr-team.picked .lr-name { color: var(--neon-cyan); }
 /* The bet itself, on the row it belongs to: which side, what number,
    what it pays. */
