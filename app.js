@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609170930";
+  tag.src = "admin.js?v=202609171000";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609170930";
+  tag.src = "console.js?v=202609171000";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1885,6 +1885,54 @@ function bugSideDetail(cloudPicks, game, team, short, finalRes) {
   `;
 }
 
+// ESPN hands back full network names, and "Big Ten Network" has no
+// business taking a third of a scorebug. Known networks map to the
+// abbreviation people actually say; anything unknown and long falls back
+// to initials rather than being cut mid-word by an ellipsis.
+const NETWORK_SHORT = {
+  "big ten network": "BTN",
+  "btn": "BTN",
+  "acc network": "ACCN",
+  "acc network extra": "ACCNX",
+  "accnx": "ACCNX",
+  "sec network": "SECN",
+  "sec network+": "SECN+",
+  "sec network alternate": "SECN",
+  "cbs sports network": "CBSSN",
+  "pac-12 network": "P12N",
+  "longhorn network": "LHN",
+  "mountain west network": "MWN",
+  "nfl network": "NFLN",
+  "big 12 now": "B12",
+  "big 12 now on espn+": "B12",
+  "the cw": "CW",
+  "cw network": "CW",
+  "espn+": "ESPN+",
+  "espn2": "ESPN2",
+  "espn3": "ESPN3",
+  "espnu": "ESPNU",
+  "espnews": "ESPNEWS",
+  "peacock": "PEACOCK",
+  "paramount+": "PARA+",
+  "amazon prime video": "PRIME",
+  "prime video": "PRIME",
+  "apple tv+": "APPLE",
+  "truv": "TRUTV",
+  "trutv": "TRUTV",
+};
+
+function shortNetwork(raw) {
+  const name = String(raw || "").trim();
+  if (!name) return "";
+  const hit = NETWORK_SHORT[name.toLowerCase()];
+  if (hit) return hit;
+  if (name.length <= 7) return name.toUpperCase();
+  // Unknown and long: initials of the words that carry meaning.
+  const words = name.split(/[\s|]+/).filter((w) => w && !/^(network|sports|channel|the|tv)$/i.test(w));
+  if (words.length > 1) return words.map((w) => w[0]).join("").toUpperCase().slice(0, 6);
+  return name.toUpperCase().slice(0, 7);
+}
+
 function renderLiveScores(live, cloudPicks) {
   // Compact scorebugs in a 2-up grid, every game from the start. Tap a
   // bug to expand the who-picked-what lists (only once that game has
@@ -1921,7 +1969,9 @@ function renderLiveScores(live, cloudPicks) {
             ? (g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
             : (found && g.state === "pre" ? timeOnly : found ? (g.detail || "Scheduled") : "Waiting…");
       // The channel only matters for a game you might still go and watch.
-      const tvTag = !locked && game.tv ? `<span class="bug-tv">${escapeCd(game.tv)}</span>` : "";
+      const tvTag = !locked && game.tv
+        ? `<span class="bug-tv" title="${escapeCd(game.tv)}">${escapeCd(shortNetwork(game.tv))}</span>`
+        : "";
 
       const awayScore = found ? g.awayScore ?? "–" : "–";
       const homeScore = found ? g.homeScore ?? "–" : "–";
