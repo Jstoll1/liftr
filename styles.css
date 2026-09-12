@@ -9,6 +9,9 @@
   --neon-green: #39ff88;
   --text: #f4f0ff;
   --text-dim: #9a8bb8;
+  /* One notch up from --text-dim, for secondary text that has to stay
+     readable on a card the board is deliberately recessing. */
+  --text-meta: #b4a7cd;
   --card-bg: rgba(21, 0, 36, 0.75);
   --card-border: rgba(193, 60, 255, 0.35);
 }
@@ -868,7 +871,7 @@ html, body {
   align-items: center;
   gap: 6px;
   font-size: 8px;
-  color: var(--text-dim);
+  color: var(--text-meta);
   margin-bottom: 2px;
 }
 
@@ -879,11 +882,11 @@ html, body {
   flex: none;
   padding: 1px 4px;
   border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, .18);
+  border: 1px solid rgba(255, 255, 255, .3);
   font-family: 'Press Start 2P', monospace;
   font-size: 5.5px;
   letter-spacing: .04em;
-  color: var(--text-dim);
+  color: var(--text-meta);
   white-space: nowrap;
   max-width: 62px;
   overflow: hidden;
@@ -967,7 +970,7 @@ html, body {
 .bug-fav {
   font-family: 'Press Start 2P', monospace;
   font-size: 6.5px;
-  color: var(--text-dim);
+  color: var(--text-meta);
   text-align: right;
   /* The line is reference and the score is the news, so keep air between
      them rather than letting -16.5 collide with 28. */
@@ -977,7 +980,7 @@ html, body {
 .bug-score {
   font-family: 'Press Start 2P', monospace;
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--text-meta);
   text-align: right;
 }
 
@@ -2355,11 +2358,11 @@ html, body {
 #scoreboard-screen .all-picks-toggle { margin-top: 16px; }
 
 /* Games that have not kicked off sit back at 45% fade */
-.scorebug.upcoming { opacity: .55; }
+.scorebug.upcoming { opacity: .78; }
 .scorebug.upcoming .bug-score { opacity: 1; }
 
 /* While anything is live, only live games sit at full brightness */
-.bug-grid.has-live .scorebug:not(.is-live) { opacity: .55; }
+.bug-grid.has-live .scorebug:not(.is-live) { opacity: .78; }
 
 /* --- Week high score readout --- */
 .week-champ { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0 auto 4px; padding: 10px 0 12px; width: 100%; border-top: 1px solid rgba(255, 228, 94, .45); border-bottom: 1px solid rgba(255, 228, 94, .45); background: linear-gradient(180deg, rgba(255, 228, 94, .05), rgba(255, 228, 94, 0) 60%); font-family: 'Press Start 2P', monospace; text-align: center; }
