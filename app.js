@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609191045";
+  tag.src = "admin.js?v=202609191200";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609191045";
+  tag.src = "console.js?v=202609191200";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1776,14 +1776,22 @@ async function renderScoreboard() {
   renderMyScore(ranked, cloudPicks, live);
   renderWeekChamp(ranked, results);
   renderInsertCoin(cloudPicks);
+  // The clock lives inside the strip when there is one, so the board does
+  // not spend a whole line on it. Seconds are gone: the poll is every 30,
+  // so second-level precision was never true.
   const stamp = document.getElementById("scoreboard-updated");
   if (stamp) {
-    const src = Object.keys(live).length ? "ESPN" : "no live data";
-    const stale = cloudPicksStale ? " · ⚠ picks not reloaded" : "";
-    stamp.textContent = `updated ${new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })} · ${src}${stale} · tap to refresh`;
+    const noData = !Object.keys(live).length;
+    stamp.textContent = `${clockLabel()}${noData ? " · no live data" : ""}${cloudPicksStale ? " · ⚠ picks not reloaded" : ""} · tap to refresh`;
     stamp.classList.toggle("stale", cloudPicksStale);
     stamp.classList.remove("busy");
+    // Hidden whenever the strip is carrying the clock; shown on its own
+    // when there is no strip, so refresh is always reachable.
+    stamp.classList.toggle("hidden", !!document.getElementById("my-score")?.querySelector(".ms-refresh"));
   }
+}
+function clockLabel() {
+  return new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 document.getElementById("scoreboard-updated")?.addEventListener("click", (e) => {
   e.currentTarget.classList.add("busy");
@@ -1835,6 +1843,10 @@ function teamPickersHtml(cloudPicks, game, team, mode, label) {
   return `<span class="picker-line"><strong>${label}</strong> ${names.join(", ")}</span>`;
 }
 
+// Whether every game in the week is final. Set while the cards render and
+// read by the score strip a moment later, which is the only place that
+// fact is now shown.
+let boardAllFinal = false;
 // Which scorebugs the viewer has expanded to see the pick lists. Kept
 // across the 30s refresh so the board doesn't snap shut mid-read.
 const expandedGames = new Set();
@@ -1955,14 +1967,10 @@ function renderLiveScores(live, cloudPicks) {
   // kicked off). A red pulsing dot marks games that are live right now.
   const ordered = gamesByKickoff();
   const liveCount = ordered.filter((g) => { const l = live[g.id]; return isGameLocked(g) && l && l.found && l.state === "in" && !l.completed; }).length;
-  // Live count rides in the top bar title instead of a section heading.
-  const title = document.getElementById("scoreboard-title");
-  if (title) {
-    const allFinal = ordered.every((g) => { const l = live[g.id]; return l && l.found && l.completed; });
-    title.innerHTML = liveCount > 0
-      ? `📡 SCOREBOARD <span class="live-dot"></span> ${liveCount} LIVE`
-      : allFinal ? "🏁 FINAL SCOREBOARD" : "📡 LIVE SCOREBOARD";
-  }
+  // No title line. Which tab this is comes from the nav, how many games
+  // are live comes from the cards themselves, and the one fact neither
+  // shows, that the whole week is done, rides in the score strip.
+  boardAllFinal = ordered.length > 0 && ordered.every((g) => { const l = live[g.id]; return l && l.found && l.completed; });
 
   liveScoresList.innerHTML = `<div class="bug-grid ${liveCount > 0 ? "has-live" : ""}">` + ordered
     .map((game) => {
@@ -2488,10 +2496,21 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
     const pts = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
     if (pts > 0) inFlight += pts;
   }
-  el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ms-name">${me.name.toUpperCase()}</span><span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight} LIVE</span>` : ""}`;
+  // Where you stand on the left, the board's own state on the right, one
+  // row across the full width of the frame it caps. This replaces the two
+  // centred lines that used to sit above it.
+  const state = boardAllFinal ? `<span class="ms-state final">FINAL</span>` : "";
+  const clock = `<button class="ms-refresh${cloudPicksStale ? " stale" : ""}" type="button" title="${cloudPicksStale ? "Picks did not reload. Tap to try again" : "Tap to refresh"}">${cloudPicksStale ? "⚠ " : ""}${clockLabel()}<span class="ms-cyc">⟳</span></button>`;
+  el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ms-name">${me.name.toUpperCase()}</span><span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight}</span>` : ""}${state}${clock}`;
   el.classList.remove("hidden");
 }
-document.getElementById("my-score")?.addEventListener("click", () => {
+document.getElementById("my-score")?.addEventListener("click", (e) => {
+  const refresh = e.target.closest(".ms-refresh");
+  if (refresh) {
+    refresh.classList.add("busy");
+    withScrollPreserved(renderScoreboard);
+    return;
+  }
   const row = [...document.querySelectorAll(".ranking-row")].find((r) => r.querySelector(".ranking-name")?.textContent.startsWith((currentManager || "").toUpperCase()));
   row?.scrollIntoView({ block: "center", behavior: "smooth" });
 });
