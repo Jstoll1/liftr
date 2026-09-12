@@ -260,7 +260,10 @@ async function fetchAllPicks() {
     const res = await fetch(`${WORKER_URL}/picks?week=${currentWeek}&t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
-    return data.picks || {};
+    // A response without a picks object is a broken response, not an
+    // empty league. Returning {} for it made everyone read as 0/10.
+    if (!data || typeof data.picks !== "object" || data.picks === null) return null;
+    return data.picks;
   } catch {
     return null;
   }
@@ -947,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609161930";
+  tag.src = "admin.js?v=202609162100";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -978,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609161930";
+  tag.src = "console.js?v=202609162100";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1745,13 +1748,23 @@ function showScoreboard() {
 }
 
 
+// The last league-wide copy that actually came from the Worker. Falling
+// back to local storage was wrong: it holds this device's picks only, so
+// a failed fetch rendered nine managers as 0/10 as though nobody had
+// picked. Keeping the last good copy and saying it is stale is honest.
+let lastGoodCloudPicks = null;
+let cloudPicksStale = false;
+
 async function renderScoreboard() {
-  const rawPicks = (await fetchAllPicks()) || loadAll();
+  const fetched = await fetchAllPicks();
+  cloudPicksStale = fetched === null;
+  const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
   const cloudPicks = {};
   MANAGERS.forEach((name) => {
     const state = rawPicks[name];
     if (state) cloudPicks[name] = { ...state, picks: sanitizePicks(state.picks) };
   });
+  if (fetched !== null) lastGoodCloudPicks = rawPicks;
   const live = await fetchLiveScores();
   const results = computeLiveResults(live);
 
@@ -1765,7 +1778,9 @@ async function renderScoreboard() {
   const stamp = document.getElementById("scoreboard-updated");
   if (stamp) {
     const src = Object.keys(live).length ? "ESPN" : "no live data";
-    stamp.textContent = `updated ${new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })} · ${src} · tap to refresh`;
+    const stale = cloudPicksStale ? " · ⚠ picks not reloaded" : "";
+    stamp.textContent = `updated ${new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })} · ${src}${stale} · tap to refresh`;
+    stamp.classList.toggle("stale", cloudPicksStale);
     stamp.classList.remove("busy");
   }
 }
@@ -2039,7 +2054,10 @@ function renderScoreboardTable(cloudPicks, results, live = {}) {
     const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
     const tbVisible = isGameLocked(tiebreakerGame);
     const tbCell = tbVisible ? (state.tiebreaker || "—") : "🔒";
-    const submittedCount = Object.values(state.picks).filter(Boolean).length;
+    // Count only games on this week's slate. Counting every key in the
+    // picks object lets a leftover from another week inflate the number,
+    // so the leaderboard and the All Picks grid could disagree.
+    const submittedCount = GAMES.filter((g) => state.picks[g.id]).length;
 
     html += `<tr class="${name === currentManager ? "is-me" : ""}"><td class="manager-col">${name} <span class="ranking-lock">(${submittedCount}/${GAMES.length})</span></td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
   });
@@ -2296,7 +2314,10 @@ function renderRankings(cloudPicks, results, live = {}) {
 
   const rows = MANAGERS.map((name) => {
     const state = cloudPicks[name] || { picks: {} };
-    const submittedCount = Object.values(state.picks).filter(Boolean).length;
+    // Count only games on this week's slate. Counting every key in the
+    // picks object lets a leftover from another week inflate the number,
+    // so the leaderboard and the All Picks grid could disagree.
+    const submittedCount = GAMES.filter((g) => state.picks[g.id]).length;
     const tbRaw = String(state.tiebreaker ?? "").trim();
     const tbGuess = tbRaw === "" ? NaN : Number(tbRaw);
     const tbDiff = actualTotal !== null && Number.isFinite(tbGuess) ? Math.abs(tbGuess - actualTotal) : Infinity;
