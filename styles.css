@@ -2198,11 +2198,11 @@ html, body {
 .rd-pickteam { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11px; font-weight: 700; }
 .rd-logo { width: 18px; height: 18px; object-fit: contain; flex: none; }
 .rd-team { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rd-pickmeta { display: flex; align-items: center; gap: 6px; }
+.rd-pickmeta { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .rd-mode { font-family: 'Press Start 2P', monospace; font-size: 6px; padding: 2px 4px; border-radius: 3px; white-space: nowrap; }
 .rd-mode.ats { color: var(--neon-yellow); border: 1px solid rgba(255, 228, 94, .5); }
 .rd-mode.su { color: var(--neon-purple); border: 1px solid rgba(193, 60, 255, .5); }
-.rd-worth { font-size: 8px; font-weight: 600; color: var(--text-dim); letter-spacing: .04em; white-space: nowrap; }
+.rd-mode-pt { margin-left: 5px; font-size: 7px; opacity: .75; }
 .rd-result { text-align: center; }
 .rd-pts { display: inline-block; min-width: 40px; padding: 5px 0; border-radius: 6px; font-family: 'Press Start 2P', monospace; font-size: 8px; text-align: center; }
 .rd-pts.none { color: var(--text-dim); opacity: .5; }
