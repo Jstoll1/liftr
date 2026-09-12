@@ -864,6 +864,23 @@ html, body {
   margin-bottom: 2px;
 }
 
+/* What a not-yet-started game is on, so the board answers "where do I
+   watch this" without opening the card. */
+.bug-tv {
+  flex: none;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5.5px;
+  letter-spacing: .04em;
+  color: var(--text-dim);
+  white-space: nowrap;
+  max-width: 62px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .bug-gnum {
   font-family: 'Press Start 2P', monospace;
   font-size: 7px;

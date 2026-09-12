@@ -200,7 +200,11 @@
           conf: !!c.conferenceCompetition,
           note: (ev.competitions?.[0]?.notes || [])[0]?.headline || "",
           kickoff: ev.date,
-          tv: (c.broadcasts || []).flatMap((b) => b.names || [])[0] || "",
+          // ESPN files the network under broadcasts on some games and
+          // only under geoBroadcasts on others, so read both.
+          tv: (c.broadcasts || []).flatMap((b) => b.names || [])[0]
+            || (c.geoBroadcasts || []).map((b) => b.media?.shortName || b.media?.callLetters).find(Boolean)
+            || "",
           spread, favSide,
           hay: `${away.team?.displayName || ""} ${away.team?.shortDisplayName || ""} ${away.team?.abbreviation || ""} ${away.team?.location || ""} ${home.team?.displayName || ""} ${home.team?.shortDisplayName || ""} ${home.team?.abbreviation || ""} ${home.team?.location || ""}`.toLowerCase(),
         };

@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609170900";
+  tag.src = "admin.js?v=202609170930";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609170900";
+  tag.src = "console.js?v=202609170930";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1909,13 +1909,19 @@ function renderLiveScores(live, cloudPicks) {
       const isFinal = found && g.completed;
       const expanded = expandedGames.has(game.id);
 
+      // Every kickoff on the slate is Eastern and the label says so once
+      // at the top, so the per-card time drops the suffix to make room
+      // for the channel the game is on.
+      const timeOnly = game.kickoffLabel.replace(/^(Sat|Sun|Mon|Tue|Wed|Thu|Fri) /, "").replace(/ ET$/, "");
       const statusText = !locked
-        ? game.kickoffLabel.replace(/^(Sat|Sun) /, "")
+        ? timeOnly
         : isFinal
           ? "FINAL"
           : isLive
             ? (g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
-            : (found && g.state === "pre" ? game.kickoffLabel.replace(/^(Sat|Sun) /, "") : found ? (g.detail || "Scheduled") : "Waiting…");
+            : (found && g.state === "pre" ? timeOnly : found ? (g.detail || "Scheduled") : "Waiting…");
+      // The channel only matters for a game you might still go and watch.
+      const tvTag = !locked && game.tv ? `<span class="bug-tv">${escapeCd(game.tv)}</span>` : "";
 
       const awayScore = found ? g.awayScore ?? "–" : "–";
       const homeScore = found ? g.homeScore ?? "–" : "–";
@@ -1982,7 +1988,7 @@ function renderLiveScores(live, cloudPicks) {
         <div class="${cls}" data-game="${game.id}" role="button" tabindex="0" aria-expanded="${expanded}">
           <div class="bug-head">
             <span class="bug-gnum">G${game.id}</span>
-            <span class="bug-status">${statusText}</span>
+            <span class="bug-status">${statusText}</span>${tvTag}
             ${myPill}
           </div>
           ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop)}
