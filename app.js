@@ -934,7 +934,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609151400";
+  tag.src = "admin.js?v=202609160900";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -965,7 +965,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609151400";
+  tag.src = "console.js?v=202609160900";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1472,10 +1472,21 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
   const aS = src && Number.isFinite(src.awayScore) ? src.awayScore : null;
   const hS = src && Number.isFinite(src.homeScore) ? src.homeScore : null;
   const pickedSide = pick ? (pick.team === game.away ? "away" : "home") : null;
+  // The badge on the picked row carries the whole bet: which way, what
+  // number, what it pays. That is the same information the footer used to
+  // spell out in a sentence, in a third of the space and where the eye
+  // already is.
+  const betBadge = () => {
+    if (!pick) return "";
+    const isFav = pick.team === game.favorite;
+    const worth = pointValue(game, pick.team, pick.mode);
+    const terms = pick.mode === "ATS" ? `${isFav ? "-" : "+"}${game.spread}` : "SU";
+    return `<span class="lr-bet"><span class="lr-bet-check">✓</span>${terms}<span class="lr-bet-pts">${worth} PT</span></span>`;
+  };
   const row = (side, name, id, score, other) => `<div class="lr-team ${pickedSide === side ? "picked" : ""}">
       <img class="lr-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
       <span class="lr-name">${name}</span>
-      ${pickedSide === side ? `<span class="lr-you">YOUR PICK</span>` : ""}
+      ${pickedSide === side ? betBadge() : ""}
       <span class="lr-score ${finalRes && score !== null && score > other ? "win" : ""}">${score === null ? "–" : score}</span>
     </div>`;
   let foot;
@@ -1485,16 +1496,13 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
     const worth = pointValue(game, pick.team, pick.mode);
     const isFav = pick.team === game.favorite;
     const short = pick.team === game.away ? game.awayShort : game.homeShort;
-    const took = pick.mode === "ATS"
-      ? `<b>${short} ${isFav ? "-" : "+"}${game.spread}</b> against the spread`
-      : `<b>${short}</b> straight up${isFav ? "" : " (upset)"}`;
     const pickScore = pickedSide === "away" ? aS : hS;
     const otherScore = pickedSide === "away" ? hS : aS;
     const haveScore = pickScore !== null && otherScore !== null && (pickScore || otherScore);
     const diff = haveScore ? pickScore - otherScore : 0;
     const pts = finalRes ? scorePick(game, pick, finalRes) : null;
     const prov = !finalRes && liveG && haveScore ? scorePick(game, pick, { awayScore: aS, homeScore: hS }) : null;
-    let outcome = "", pill = `<span class="lr-worth">WORTH ${worth} PT</span>`;
+    let outcome = "", pill = "";
     const byTxt = diff === 0 ? "tied" : `${diff > 0 ? "won" : "lost"} by ${Math.abs(diff)}`;
     const liveByTxt = diff === 0 ? "tied" : `${diff > 0 ? "up" : "down"} ${Math.abs(diff)}`;
     if (pts !== null) {
@@ -1517,7 +1525,7 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
     }
     const when = pickTimeLabel(pick);
     foot = `<div class="lr-foot">
-      <div class="lr-lines"><span class="lr-took">You took ${took} for <b>${worth} PT</b>${when ? ` <span class="lr-when">· picked ${when}</span>` : ""}</span><span class="lr-outcome ${pts !== null ? (pts > 0 ? "hit" : "miss") : prov !== null ? (prov > 0 ? "hit" : "miss") : ""}">${outcome}</span></div>
+      <div class="lr-lines"><span class="lr-outcome ${pts !== null ? (pts > 0 ? "hit" : "miss") : prov !== null ? (prov > 0 ? "hit" : "miss") : ""}">${outcome}</span>${when ? `<span class="lr-when">picked ${when}</span>` : ""}</div>
       ${pill}
     </div>`;
   }
