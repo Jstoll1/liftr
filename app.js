@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609181100";
+  tag.src = "admin.js?v=202609181230";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609181100";
+  tag.src = "console.js?v=202609181230";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1433,7 +1433,7 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
   const suSelected = pickEqual(draft, { team, mode: "SU" });
   const chip = (mode, label, pts, on, tone) => `
     <button class="pick-mini-btn ${tone} ${on ? "selected" : ""}" type="button" data-team="${team}" data-mode="${mode}" title="${label} · ${pts} point${pts === 1 ? "" : "s"}">
-      <span class="pk-label">${label}</span><span class="pk-pips" aria-label="${pts} point${pts === 1 ? "" : "s"}">${"<i></i>".repeat(pts)}</span>
+      <span class="pk-label">${label}</span><span class="pk-pts">${pts}<i>PT</i></span>
     </button>`;
   return `
     <div class="tm-row ${atsSelected || suSelected ? "picked" : ""}">
