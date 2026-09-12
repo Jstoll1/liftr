@@ -1743,7 +1743,12 @@ html, body {
 /* One filled chip is the whole selected state: no extra glow, no
    underline, no check. */
 .pick-mini-btn.selected { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .2); color: #fff; }
-.pick-mini-btn.selected .pk-pts { color: #fff; }
+/* The point colour is what the point value means: yellow pays 2, green
+   pays 1, pink pays 3. Selection must not wash that out, or the one chip
+   you want to double-check is the one chip that stopped telling you what
+   it pays. Filled and bordered says selected; the colour keeps saying
+   what it is worth. */
+.pick-mini-btn.selected .pk-pts { font-weight: 700; }
 .pick-mini-btn:disabled { opacity: .4; cursor: default; }
 
 .pick-mini-btn:hover:not(:disabled) { border-color: rgba(5, 217, 232, .6); }
@@ -1764,9 +1769,12 @@ html, body {
   .tm-line { font-size: 12px; }
 }
 .pick-mini-btn.chalk .pk-pts { color: var(--neon-green); }
-.pick-mini-btn.upset .pk-pts { color: var(--neon-pink); }
-.pick-mini-btn.selected.chalk .pk-pts,
-.pick-mini-btn.selected.upset .pk-pts { color: #fff; }
+/* A lift off --neon-pink. The 3PT digit is 9px, and the selected chip's
+   cyan fill raises the ground under it: the full-saturation pink measures
+   3.37:1 there, the lift 4.73:1, so the value stays readable on the chip
+   you took. */
+.pick-mini-btn.upset .pk-pts { color: #ff6fa3; }
+
 
 .ghost-btn.small {
   padding: 6px 10px;
