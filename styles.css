@@ -2285,7 +2285,8 @@ html, body {
 .picks-mismatch-cta { color: var(--neon-cyan) !important; font-weight: 700; }
 
 .lr-when { font-size: 9px; color: var(--text-dim); font-weight: 500; }
-.rd-when { font-size: 8px; color: var(--text-dim); letter-spacing: .04em; }
+.rd-when { font-size: 8px; color: var(--text-dim); letter-spacing: .04em; white-space: nowrap; }
+.rd-when i { font-family: 'Press Start 2P', monospace; font-size: 5.5px; font-style: normal; opacity: .8; margin-right: 2px; }
 
 /* --- Four tabs --- */
 .nav-btn { width: auto; flex: 1 1 0; min-width: 0; padding: 6px 2px; }
