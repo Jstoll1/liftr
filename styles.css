@@ -833,6 +833,14 @@ html, body {
   .bug-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* Two cards across stops working around 340px: the head cannot hold a
+   clock, a channel and a stake pill, and something gets cut. One card
+   across costs scrolling and keeps every card readable, which is the
+   better trade on a screen that small. */
+@media (max-width: 340px) {
+  .bug-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 .scorebug {
   background: var(--card-bg);
   border: 2px solid var(--card-border);
@@ -2327,6 +2335,7 @@ html, body {
 .pick-cell.miss-none { opacity: .85; }
 @media (prefers-reduced-motion: reduce) { .stake-dot { animation: none !important; } }
 .scorebug.is-live .bug-tv { opacity: .6; }
+
 .bug-head .stake + .bug-caret { margin-left: 4px; }
 
 /* --- 1UP score strip --- */

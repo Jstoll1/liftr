@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609171330";
+  tag.src = "admin.js?v=202609171500";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609171330";
+  tag.src = "console.js?v=202609171500";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1921,6 +1921,23 @@ const NETWORK_SHORT = {
   "trutv": "TRUTV",
 };
 
+// ESPN's own short detail is not short: "End of 3rd Quarter" is nineteen
+// characters and gets cut off mid-word on a phone. Squeeze the phrases
+// it actually sends into scoreboard shorthand.
+function shortStatus(raw) {
+  let t = String(raw || "").trim();
+  if (!t) return "";
+  if (/^halftime$/i.test(t)) return "HALF";
+  if (/^end of (\d)(st|nd|rd|th) quarter$/i.test(t)) return t.replace(/^end of (\d)(st|nd|rd|th) quarter$/i, "END $1$2").toUpperCase();
+  if (/(1st|2nd) half$/i.test(t)) return t.replace(/.*?(1st|2nd) half$/i, (m, h) => "END " + h[0] + "H").toUpperCase();
+  if (/^delayed/i.test(t)) return "DELAY";
+  if (/^postponed/i.test(t)) return "PPD";
+  if (/^canceled|^cancelled/i.test(t)) return "CXL";
+  t = t.replace(/^(\d)(st|nd|rd|th)\s+OT/i, "$1OT");  // "2nd OT 0:42" -> "2OT 0:42"
+  t = t.replace(/\s+-\s+/g, " ");
+  return t;
+}
+
 function shortNetwork(raw) {
   const name = String(raw || "").trim();
   if (!name) return "";
@@ -1966,8 +1983,8 @@ function renderLiveScores(live, cloudPicks) {
         : isFinal
           ? "FINAL"
           : isLive
-            ? (g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
-            : (found && g.state === "pre" ? timeOnly : found ? (g.detail || "Scheduled") : "Waiting…");
+            ? shortStatus(g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
+            : (found && g.state === "pre" ? timeOnly : found ? shortStatus(g.detail || "Scheduled") : "Waiting…");
       // The channel matters right up to the final whistle, not just before
       // kickoff: on a ten game Saturday the question "which channel is
       // that one on" is asked most often about a game already in
