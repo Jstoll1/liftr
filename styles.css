@@ -691,10 +691,21 @@ html, body {
 }
 
 .tiebreaker-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   font-size: 10px;
   color: var(--text-dim);
   letter-spacing: 0.5px;
 }
+.tb-title { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-yellow); letter-spacing: .08em; }
+/* The game carries its marks, the same way every other card on the page
+   names a matchup. */
+.tb-game { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tb-logo { width: 22px; height: 22px; object-fit: contain; flex: none; }
+.tb-tm { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; color: var(--text); }
+.tb-at { font-size: 10px; color: var(--text-dim); }
+.tb-sub { font-size: 10px; color: var(--text-dim); }
 
 .tiebreaker-input {
   background: rgba(0, 0, 0, 0.3);
