@@ -691,21 +691,18 @@ html, body {
 }
 
 .tiebreaker-label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 10px;
-  color: var(--text-dim);
-  letter-spacing: 0.5px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6.5px;
+  line-height: 1.7;
+  color: var(--neon-yellow);
+  letter-spacing: .07em;
 }
-.tb-title { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-yellow); letter-spacing: .08em; }
-/* The game carries its marks, the same way every other card on the page
-   names a matchup. */
-.tb-game { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+/* The game and the guess share a line: marks and short names on the
+   left, the box you type into on the right. */
+.tb-game { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 auto; overflow: hidden; }
 .tb-logo { width: 22px; height: 22px; object-fit: contain; flex: none; }
-.tb-tm { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; color: var(--text); }
-.tb-at { font-size: 10px; color: var(--text-dim); }
-.tb-sub { font-size: 10px; color: var(--text-dim); }
+.tb-tm { min-width: 0; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-at { font-size: 9px; color: var(--text-dim); flex: none; }
 
 .tiebreaker-input {
   background: rgba(0, 0, 0, 0.3);
@@ -713,10 +710,15 @@ html, body {
   border-radius: 8px;
   color: var(--text);
   font-family: 'Orbitron', sans-serif;
+  font-weight: 800;
   font-size: 16px;
-  padding: 10px;
-  width: 120px;
+  text-align: center;
+  padding: 9px 6px;
+  width: 68px;
+  flex: none;
+  font-variant-numeric: tabular-nums;
 }
+.tiebreaker-input:focus { outline: none; border-color: var(--neon-cyan); }
 
 .tiebreaker-input:disabled { opacity: 0.6; }
 
@@ -1657,8 +1659,9 @@ html, body {
 
 .tiebreaker-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
+  justify-content: space-between;
 }
 
 .tiebreaker-status {

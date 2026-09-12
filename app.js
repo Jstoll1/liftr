@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609181530";
+  tag.src = "admin.js?v=202609181630";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609181530";
+  tag.src = "console.js?v=202609181630";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1634,11 +1634,13 @@ function renderPicksScreen() {
   // The label has to come from the slate: it named week 1's game while the
   // Worker was already serving a different week's tiebreaker.
   const tbLabel = document.querySelector("#picks-screen .tiebreaker-label");
-  if (tbLabel) {
+  if (tbLabel) tbLabel.textContent = `TIEBREAKER · G${tiebreakerGame.id} · TOTAL COMBINED POINTS`;
+  // The matchup sits on the same line as the box you type into, so the
+  // game being guessed and the guess are one thing to look at.
+  const tbGameEl = document.getElementById("tb-game");
+  if (tbGameEl) {
     const logo = (id) => `<img class="tb-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />`;
-    tbLabel.innerHTML = `<span class="tb-title">TIEBREAKER · G${tiebreakerGame.id}</span>
-      <span class="tb-game">${logo(tiebreakerGame.awayId)}<span class="tb-tm">${escapeCd(tiebreakerGame.awayShort)}</span><span class="tb-at">@</span>${logo(tiebreakerGame.homeId)}<span class="tb-tm">${escapeCd(tiebreakerGame.homeShort)}</span></span>
-      <span class="tb-sub">Total combined points</span>`;
+    tbGameEl.innerHTML = `${logo(tiebreakerGame.awayId)}<span class="tb-tm">${escapeCd(tiebreakerGame.awayShort)}</span><span class="tb-at">@</span>${logo(tiebreakerGame.homeId)}<span class="tb-tm">${escapeCd(tiebreakerGame.homeShort)}</span>`;
   }
   // Don't clobber a number someone is mid-typing on a background redraw.
   if (document.activeElement !== tiebreakerInput) {
