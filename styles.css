@@ -2278,7 +2278,7 @@ html, body {
 }
 .bug-head .stake b { font-size: 10px; color: var(--text); }
 /* The side you took, marked on the row rather than repeated in the pill. */
-.bug-row.mine { box-shadow: inset 3px 0 0 var(--neon-cyan); border-radius: 4px; background: rgba(5, 217, 232, .07); }
+.bug-row.mine { box-shadow: inset 2px 0 0 rgba(5, 217, 232, .8); border-radius: 3px; }
 .bug-row.mine .bug-team { color: var(--neon-cyan); }
 .stake-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: currentColor; }
 

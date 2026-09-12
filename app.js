@@ -947,7 +947,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609161300";
+  tag.src = "admin.js?v=202609161500";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -978,7 +978,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609161300";
+  tag.src = "console.js?v=202609161500";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1759,7 +1759,7 @@ async function renderScoreboard() {
   renderLiveScores(live, cloudPicks);
   renderScoreboardTable(cloudPicks, results, live);
   const ranked = renderRankings(cloudPicks, results, live);
-  renderMyScore(ranked);
+  renderMyScore(ranked, cloudPicks, live);
   renderWeekChamp(ranked, results);
   renderInsertCoin(cloudPicks);
   const stamp = document.getElementById("scoreboard-updated");
@@ -2339,12 +2339,26 @@ function renderWeekChamp(rows, results) {
 
 // "1UP" strip under the refresh line: the viewer's score and place, in
 // arcade type. Tap jumps to their leaderboard row.
-function renderMyScore(rows) {
+function renderMyScore(rows, cloudPicks = {}, live = {}) {
   const el = document.getElementById("my-score");
   if (!el) return;
   const me = currentManager && rows.find((r) => r.name === currentManager);
   if (!me) { el.classList.add("hidden"); return; }
-  el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ms-name">${me.name.toUpperCase()}</span><span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>`;
+  // Banked points sit at zero until games go final, which reads as a
+  // contradiction next to a scorebug saying a pick is covering. Count what
+  // is still in flight separately and show both.
+  let inFlight = 0;
+  const mine = cloudPicks[currentManager]?.picks || {};
+  for (const game of GAMES) {
+    const g = live[game.id];
+    if (!g || !g.found || g.state !== "in" || g.completed) continue;
+    if (!Number.isFinite(g.awayScore) || !Number.isFinite(g.homeScore)) continue;
+    const pick = mine[game.id];
+    if (!pick) continue;
+    const pts = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
+    if (pts > 0) inFlight += pts;
+  }
+  el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ms-name">${me.name.toUpperCase()}</span><span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight} LIVE</span>` : ""}`;
   el.classList.remove("hidden");
 }
 document.getElementById("my-score")?.addEventListener("click", () => {
