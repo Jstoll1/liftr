@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609171100";
+  tag.src = "admin.js?v=202609171200";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609171100";
+  tag.src = "console.js?v=202609171200";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2564,35 +2564,33 @@ function escapeCd(str) {
 // The same clock, shrunk into the header for every page except Picks,
 // which already carries the full strip above the slate. Tapping it goes
 // to Picks, since that is what the deadline is for.
+// The chip is a reminder, not a status display. It shows up only when the
+// viewer has something left to do before the slate locks: a game
+// unpicked or no tiebreaker. Games in progress are already reported by
+// the scoreboard title and the score strip, so it stays out of the way
+// once the week is underway.
 function renderHeaderCountdown() {
   const el = document.getElementById("header-countdown");
   if (!el) return;
-  const onPicks = !picksScreen.classList.contains("hidden");
-  if (onPicks || !currentManager) { el.classList.add("hidden"); return; }
-
-  // Once the ball is in the air a countdown is the wrong thing to show.
-  // Games in progress take over the chip, and tapping it goes to the
-  // board rather than to a slate that is already locked.
-  const liveNow = GAMES.filter((g) => {
-    const l = latestLive[g.id];
-    return isGameLocked(g) && l && l.found && l.state === "in" && !l.completed;
-  }).length;
-  if (liveNow) {
-    el.className = "head-cd live";
-    el.innerHTML = `<span class="hcd-dot"></span>${liveNow} LIVE`;
-    el.title = `${liveNow} game${liveNow === 1 ? "" : "s"} in progress`;
-    el.dataset.go = "scores";
-    el.classList.remove("hidden");
-    return;
-  }
+  const hide = () => { el.classList.add("hidden"); el.innerHTML = ""; };
+  if (!picksScreen.classList.contains("hidden") || !currentManager) return hide();
 
   const next = gamesByKickoff().find((g) => !isGameLocked(g));
-  const cd = next ? kickoffCountdown(next.kickoff) : null;
-  if (!cd || cd.past) { el.classList.add("hidden"); return; }
+  if (!next) return hide();
+  const cd = kickoffCountdown(next.kickoff);
+  if (!cd || cd.past) return hide();
+
+  const state = getManagerState(currentManager);
+  const unpicked = GAMES.filter((g) => !isGameLocked(g) && !state.picks[g.id]).length;
+  const noTb = !String(state.tiebreaker ?? "").trim();
+  if (!unpicked && !noTb) return hide();
+
+  const what = unpicked ? `${unpicked} TO PICK` : "NO TB";
   el.className = "head-cd" + (cd.ms < 3600000 ? " soon" : "");
-  el.innerHTML = `<span class="hcd-dot"></span>${escapeCd(cd.brief)}`;
-  el.title = `${next.awayShort} at ${next.homeShort} · ${next.kickoffLabel}`;
+  el.innerHTML = `<span class="hcd-dot"></span>${what}`;
+  el.title = `${cd.text} to ${next.awayShort} at ${next.homeShort}`;
   el.dataset.go = "picks";
+  el.classList.remove("hidden");
 }
 
 document.getElementById("header-countdown")?.addEventListener("click", (e) => {
