@@ -1658,137 +1658,78 @@ html, body {
 /* --- Matchup hero cards: team vs team, 2 pick buttons each ----------- */
 
 .matchup-cards-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.team-card {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 2px solid var(--card-border);
-  border-radius: 12px;
-  padding: 7px 6px;
+  gap: 4px;
 }
 
-/* Identity on one line — mark, name, number — so the card spends its
-   height on the two buttons that are actually tapped. */
-.team-card-id {
+/* A team is a row, not a boxed panel. Identity on the left, the two bets
+   as chips on the right, one line each. */
+.tm-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 6px;
-  min-height: 28px;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  background: rgba(255, 255, 255, .02);
 }
+.tm-row.picked { border-left-color: var(--neon-cyan); background: rgba(5, 217, 232, .07); }
 
-.team-card-logo {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 5px rgba(5, 217, 232, 0.35));
-}
-
-.team-card-name {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-dim);
-  line-height: 1.15;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.team-card-spread {
+.tm-id { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 7px; min-width: 0; }
+.tm-logo { width: 22px; height: 22px; object-fit: contain; }
+.tm-name {
   font-family: 'Press Start 2P', monospace;
-  font-size: 12px;
+  font-size: 9px;
+  letter-spacing: .04em;
   color: var(--text);
-  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.team-card-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5px;
-  width: 100%;
-  margin-top: auto;
+.tm-row.picked .tm-name { color: var(--neon-cyan); }
+.tm-line {
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--text-meta);
+  font-variant-numeric: tabular-nums;
 }
+
+.tm-chips { display: flex; gap: 5px; }
 
 .pick-mini-btn {
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 2px solid var(--card-border);
-  border-radius: 8px;
-  color: var(--text);
-  font-family: 'Orbitron', sans-serif;
-  padding: 5px 3px;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(255, 255, 255, .04);
+  color: var(--text-meta);
+  font-family: 'Press Start 2P', monospace;
   cursor: pointer;
-  transition: all 0.15s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
 }
+.pk-label { font-size: 6.5px; letter-spacing: .06em; }
+.pk-pts { font-size: 9px; color: var(--neon-yellow); }
 
-.pick-mini-btn.su.risk-low { border-bottom-color: var(--neon-green); border-bottom-width: 3px; }
-.pick-mini-btn.su.risk-high { border-bottom-color: var(--neon-pink); border-bottom-width: 3px; }
-.pick-mini-btn.ats { border-bottom-color: var(--neon-yellow); border-bottom-width: 3px; }
+/* One filled chip is the whole selected state: no extra glow, no
+   underline, no check. */
+.pick-mini-btn.selected { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .2); color: #fff; }
+.pick-mini-btn.selected .pk-pts { color: #fff; }
+.pick-mini-btn:disabled { opacity: .4; cursor: default; }
 
-.pick-mini-label {
-  font-size: 7px;
-  letter-spacing: 0.5px;
-  color: var(--text-dim);
-}
-
-.pick-mini-value {
-  font-size: 10.5px;
-  font-weight: 700;
-}
-
-.pick-mini-pts {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 7px;
-  color: var(--neon-yellow);
-  text-shadow: 0 0 4px var(--neon-yellow);
-}
-
-.pick-mini-btn:hover:not(:disabled) {
-  border-top-color: var(--neon-cyan);
-  border-left-color: var(--neon-cyan);
-  border-right-color: var(--neon-cyan);
-}
-
-.pick-mini-btn.selected {
-  border-color: var(--neon-purple);
-  background: rgba(193, 60, 255, 0.25);
-  box-shadow: 0 0 12px rgba(193, 60, 255, 0.5);
-}
-
-/* Pixel checkmark inline with the label — a second, unmissable signal
-   for "this is picked" that never collides with the label or the card
-   edge, whatever the button width. */
-.pick-mini-btn.selected .pick-mini-label {
-  color: var(--neon-yellow);
-}
-
-.pick-mini-btn.selected .pick-mini-label::before {
-  content: "✓ ";
-  font-family: 'Press Start 2P', monospace;
-  font-size: 7px;
-  color: var(--neon-yellow);
-  text-shadow: 0 0 5px var(--neon-yellow);
-}
-
-.pick-mini-btn.selected.su.risk-low { border-bottom-color: var(--neon-green); }
-.pick-mini-btn.selected.su.risk-high { border-bottom-color: var(--neon-pink); }
-.pick-mini-btn.selected.ats { border-bottom-color: var(--neon-yellow); }
-
-.pick-mini-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
+.pick-mini-btn:hover:not(:disabled) { border-color: rgba(5, 217, 232, .6); }
+.pick-mini-btn.chalk .pk-pts { color: var(--neon-green); }
+.pick-mini-btn.upset .pk-pts { color: var(--neon-pink); }
+.pick-mini-btn.selected.chalk .pk-pts,
+.pick-mini-btn.selected.upset .pk-pts { color: #fff; }
 
 .ghost-btn.small {
   padding: 6px 10px;

@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609180900";
+  tag.src = "admin.js?v=202609181000";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609180900";
+  tag.src = "console.js?v=202609181000";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1422,51 +1422,39 @@ function pickLabel(game, pick) {
 
 // Hero team-vs-team cards (logo + spread number + name up top, like a
 // sportsbook matchup card) with 2 pick buttons per team beneath: the
-// Straight Up buttons sit together in the middle (inner side, next to
-// each other across the center line) and the Spread buttons flank the
-// outer edges — so the two "modes" each read as one visual row.
-function teamCardHtml(game, team, teamId, isFavorite, side, draft) {
-  const spreadDisplay = isFavorite ? `-${game.spread}` : `+${game.spread}`;
+// One row per team: mark, name, line, then the two bets as flat chips.
+// No boxed sub-card, no repeated number, no stacked three-line buttons —
+// the label and what it pays on one line each, so a card reads top to
+// bottom in four lines instead of being scanned as a grid of panels.
+function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
+  const line = isFavorite ? `-${game.spread}` : `+${game.spread}`;
   const suPts = pointValue(game, team, "SU");
   const atsSelected = pickEqual(draft, { team, mode: "ATS" });
   const suSelected = pickEqual(draft, { team, mode: "SU" });
-
-  const atsBtn = `
-    <button class="pick-mini-btn ats ${atsSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="ATS">
-      <span class="pick-mini-label">SPREAD</span>
-      <span class="pick-mini-pts">2 PT</span>
-    </button>
-  `;
-  const suBtn = `
-    <button class="pick-mini-btn su ${isFavorite ? "risk-low" : "risk-high"} ${suSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="SU">
-      <span class="pick-mini-label">STRAIGHT UP</span>
-      <span class="pick-mini-value">${isFavorite ? "🟢 Chalk" : "🚨 Upset"}</span>
-      <span class="pick-mini-pts">${suPts} PT</span>
-    </button>
-  `;
-  // Away (left side): outer=ATS first, inner=SU second. Home (right
-  // side): inner=SU first, outer=ATS second — puts both SU buttons
-  // adjacent in the middle and both ATS buttons on the far edges.
-  const buttons = side === "away" ? atsBtn + suBtn : suBtn + atsBtn;
-
+  const chip = (mode, label, pts, on, tone) => `
+    <button class="pick-mini-btn ${tone} ${on ? "selected" : ""}" type="button" data-team="${team}" data-mode="${mode}">
+      <span class="pk-label">${label}</span><span class="pk-pts">${pts}</span>
+    </button>`;
   return `
-    <div class="team-card">
-      <div class="team-card-id">
-        <img class="team-card-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.display='none'" />
-        <span class="team-card-name">${team}</span>
-        <span class="team-card-spread">${spreadDisplay}</span>
+    <div class="tm-row ${atsSelected || suSelected ? "picked" : ""}">
+      <div class="tm-id">
+        <img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+        <span class="tm-name">${short}</span>
+        <span class="tm-line">${line}</span>
       </div>
-      <div class="team-card-buttons">${buttons}</div>
-    </div>
-  `;
+      <div class="tm-chips">
+        ${chip("ATS", "SPREAD", 2, atsSelected, "ats")}
+        ${chip("SU", isFavorite ? "CHALK" : "UPSET", suPts, suSelected, isFavorite ? "su chalk" : "su upset")}
+      </div>
+    </div>`;
 }
 
 function matchupCardsHtml(game, draft) {
   const awayIsFav = game.favorite === game.away;
   return `
     <div class="matchup-cards-row">
-      ${teamCardHtml(game, game.away, game.awayId, awayIsFav, "away", draft)}
-      ${teamCardHtml(game, game.home, game.homeId, !awayIsFav, "home", draft)}
+      ${teamRowHtml(game, game.away, game.awayId, awayIsFav, game.awayShort, draft)}
+      ${teamRowHtml(game, game.home, game.homeId, !awayIsFav, game.homeShort, draft)}
     </div>
   `;
 }
