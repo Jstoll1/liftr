@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609172300";
+  tag.src = "admin.js?v=202609180900";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609172300";
+  tag.src = "console.js?v=202609180900";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1434,7 +1434,6 @@ function teamCardHtml(game, team, teamId, isFavorite, side, draft) {
   const atsBtn = `
     <button class="pick-mini-btn ats ${atsSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="ATS">
       <span class="pick-mini-label">SPREAD</span>
-      <span class="pick-mini-value">${spreadDisplay}</span>
       <span class="pick-mini-pts">2 PT</span>
     </button>
   `;
@@ -1604,7 +1603,7 @@ function renderPicksScreen() {
     const noteVerb = justSavedGameId === game.id && justSavedKind === "updated" ? "Updated" : "Saved";
     const note = pick && (pendingPushFor(currentManager) || (justSavedGameId === game.id && syncStatus === "failed"))
       ? `⚠ ${pickLabel(game, pick)} is on this phone but has not reached the league yet`
-      : pick ? `✓ ${noteVerb}: ${pickLabel(game, pick)}${pickTimeLabel(pick) ? ` · ${pickTimeLabel(pick)}` : ""}` : "";
+      : pick ? `${noteVerb}${pickTimeLabel(pick) ? ` ${pickTimeLabel(pick)}` : ""}` : "";
 
     card.innerHTML = `
       <div class="game-meta">
