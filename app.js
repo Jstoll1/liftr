@@ -947,7 +947,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609161100";
+  tag.src = "admin.js?v=202609161300";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -978,7 +978,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609161100";
+  tag.src = "console.js?v=202609161300";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1948,15 +1948,18 @@ function renderLiveScores(live, cloudPicks) {
         const pts = isFinal && res ? scorePick(game, myPick, res) : null;
         const lean = !isFinal && isLive && res ? scorePick(game, myPick, res) : null;
         const pushed = res && myPick.mode === "ATS" && resultOutcome(game, res)?.push;
-        let tone = "pending", dot = "", tail = `<b>${worth}</b>`;
+        // Points only. The line is already on the row beside the
+        // favourite, and the side you took is marked down its edge, so
+        // repeating either here just makes the pill wide.
+        let tone = "pending", dot = "", face = `${worth}<span class="stake-u">PT</span>`;
         if (pts !== null) {
           tone = pushed ? "push" : pts > 0 ? "hit" : "miss";
-          tail = pushed ? "<b>P</b>" : pts > 0 ? `<b>+${pts}</b>` : `<b>${worth}</b>`;
+          face = pushed ? "P" : pts > 0 ? `+${pts}` : `${worth}<span class="stake-u">PT</span>`;
         } else if (lean !== null) {
           tone = lean > 0 ? "covering" : "slipping";
           dot = `<span class="stake-dot"></span>`;
         }
-        myPill = `<span class="stake ${tone}" title="You took ${mine} ${terms} for ${worth} pt">${dot}${terms} ${tail}</span>`;
+        myPill = `<span class="stake ${tone}" title="You took ${mine} ${terms} for ${worth} pt">${dot}${face}</span>`;
       }
       return `
         <div class="${cls}" data-game="${game.id}" role="button" tabindex="0" aria-expanded="${expanded}">
