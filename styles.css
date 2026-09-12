@@ -864,8 +864,9 @@ html, body {
   margin-bottom: 2px;
 }
 
-/* What a not-yet-started game is on, so the board answers "where do I
-   watch this" without opening the card. */
+/* Which channel a game is on, so the board answers "where do I watch
+   that" without opening the card. Stays through the live period and
+   recedes so the clock keeps the emphasis. */
 .bug-tv {
   flex: none;
   padding: 1px 4px;
@@ -2325,6 +2326,7 @@ html, body {
 /* A game that kicked off with nothing submitted is a settled zero. */
 .pick-cell.miss-none { opacity: .85; }
 @media (prefers-reduced-motion: reduce) { .stake-dot { animation: none !important; } }
+.scorebug.is-live .bug-tv { opacity: .6; }
 .bug-head .stake + .bug-caret { margin-left: 4px; }
 
 /* --- 1UP score strip --- */
@@ -2664,12 +2666,23 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-stat span { font-family: 'Press Start 2P', monospace; font-size: 5.5px; line-height: 1.6; color: var(--text-dim); letter-spacing: .05em; }
 .pot-note { font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.8; color: var(--text-dim); letter-spacing: .05em; }
 .pot-live { align-self: flex-start; padding: 3px 8px; border: 1px solid rgba(255, 228, 94, .5); border-radius: 999px; background: rgba(255, 228, 94, .08); color: var(--neon-yellow); font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .06em; }
-.pot-livemark { color: var(--neon-yellow); margin-left: 3px; font-size: 14px; line-height: 0; }
+.pot-pts { display: flex; align-items: baseline; justify-content: flex-end; gap: 2px; }
+.pot-pts b { font-weight: 700; }
+/* The live marker keeps a slot on every row, so a column of numbers does
+   not shuffle sideways depending on which rows have one. */
+.pot-livemark { flex: none; width: 6px; font-style: normal; color: var(--neon-yellow); font-size: 13px; line-height: 0; }
 .pot-warn { padding: 8px 10px; border: 2px solid rgba(255, 92, 138, .6); border-radius: 8px; background: rgba(255, 92, 138, .08); color: var(--neon-pink); font-size: 11px; line-height: 1.5; }
 .pot-table { display: flex; flex-direction: column; border: 2px solid var(--card-border); border-radius: 10px; overflow: hidden; }
-.pot-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 34px 52px 62px; align-items: center; gap: 6px; padding: 8px 8px; border-top: 1px solid rgba(255, 255, 255, .05); font-size: 12px; }
+.pot-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 42px 52px 62px; align-items: center; gap: 6px; padding: 8px 8px; border-top: 1px solid rgba(255, 255, 255, .05); font-size: 12px; }
 .pot-row:first-child { border-top: 0; }
 .pot-row.head { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); letter-spacing: .06em; background: rgba(255, 255, 255, .03); }
+/* The labels have to sit over their own numbers: PTS and EARNED are
+   right aligned like their values, WON is centred like its trophies. */
+.pot-row.head > :nth-child(3), .pot-row.head > :nth-child(5) { text-align: right; }
+/* PTS values reserve a slot for the live marker, so its label carries the
+   same trailing space and the two right edges line up. */
+.pot-row.head > :nth-child(3) { padding-right: 8px; }
+.pot-row.head > :nth-child(4) { text-align: center; }
 .pot-row.me { background: rgba(5, 217, 232, .1); box-shadow: inset 3px 0 0 var(--neon-cyan); }
 .pot-row.inmoney .pot-name { color: var(--neon-yellow); }
 .pot-place { font-family: 'Press Start 2P', monospace; font-size: 7px; white-space: nowrap; color: var(--text-dim); }
@@ -2679,4 +2692,4 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-won { font-size: 10px; text-align: center; white-space: nowrap; }
 .pot-earned { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; color: var(--neon-green); text-align: right; }
 .pot-empty { font-size: 11px; color: var(--text-dim); text-align: center; padding: 4px 0; }
-@media (max-width: 360px) { .pot-row { grid-template-columns: 20px minmax(0, 1fr) 30px 44px 56px; font-size: 11px; } }
+@media (max-width: 360px) { .pot-row { grid-template-columns: 20px minmax(0, 1fr) 38px 44px 56px; font-size: 11px; } }

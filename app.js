@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609171200";
+  tag.src = "admin.js?v=202609171330";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609171200";
+  tag.src = "console.js?v=202609171330";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1968,8 +1968,11 @@ function renderLiveScores(live, cloudPicks) {
           : isLive
             ? (g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
             : (found && g.state === "pre" ? timeOnly : found ? (g.detail || "Scheduled") : "Waiting…");
-      // The channel only matters for a game you might still go and watch.
-      const tvTag = !locked && game.tv
+      // The channel matters right up to the final whistle, not just before
+      // kickoff: on a ten game Saturday the question "which channel is
+      // that one on" is asked most often about a game already in
+      // progress. It only stops mattering once the game is over.
+      const tvTag = !isFinal && game.tv
         ? `<span class="bug-tv" title="${escapeCd(game.tv)}">${escapeCd(shortNetwork(game.tv))}</span>`
         : "";
 
@@ -2320,7 +2323,7 @@ function renderPayouts() {
       ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}">
         <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
         <span class="pot-name">${r.name.toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
-        <span class="pot-pts">${r.points}${r.livePoints ? `<span class="pot-livemark">•</span>` : ""}</span>
+        <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
         <span class="pot-won">${r.weeksWon ? "🏆".repeat(Math.min(r.weeksWon, 3)) + (r.weeksWon > 3 ? `×${r.weeksWon}` : "") : "–"}</span>
         <span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>
       </div>`).join("")}
