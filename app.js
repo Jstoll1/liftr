@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609172200";
+  tag.src = "admin.js?v=202609172300";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609172200";
+  tag.src = "console.js?v=202609172300";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2172,7 +2172,7 @@ function playerBreakdownHtml(name, state, results, live) {
     let pickHtml, ptsHtml = `<span class="rd-pts none">–</span>`;
     let pickedSide = null;
     if (!locked) {
-      pickHtml = `<span class="rd-pickcard locked">🔒 LOCKED</span>`;
+      pickHtml = `<span class="rd-pickcard hidden-pick">🔒 HIDDEN</span>`;
     } else if (!pick) {
       pickHtml = `<span class="rd-pickcard nopick${isFinal ? " lost" : ""}">NO PICK</span>`;
       // A kicked-off game with nothing submitted scores nothing, so it is
