@@ -1965,6 +1965,37 @@ html, body {
 .claim-skip { margin-top: 10px; font-size: 10px; opacity: 0.7; }
 
 /* Identity pill: who this device is, on every screen, top right */
+/* Sits in the header's left slot, same geometry as the countdown chip it
+   replaces on scroll. Only ever rendered in the compact header, so it is
+   sized for that. */
+.head-score {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .04);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--text);
+  cursor: pointer;
+  z-index: 4;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.head-score.hidden { display: none; }
+.head-score .ms-score { font-size: 8px; gap: 4px; }
+.head-score .ms-live { padding: 1px 5px; font-size: 6.5px; gap: 3px; }
+/* A full week banked and a full week in flight is the widest this can get,
+   and at 320px that ran into the wordmark. The wordmark yields, since the
+   score is the thing you scrolled down reading. */
+.home-header.compact.has-score .home-logo-img { height: 20px; }
+
 .me-pill {
   position: absolute;
   right: 10px;

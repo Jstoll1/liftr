@@ -746,6 +746,25 @@ function syncHeaderSize() {
   if (next === headerCompact) return;
   headerCompact = next;
   homeHeader.classList.toggle("compact", next);
+  renderHeadScore();
+}
+
+// Your score, in the header's left slot, once the board has scrolled past
+// the strip that normally carries it. Scoped to the scoreboard: week
+// points mean nothing on Trivia or History, and the strip only exists
+// here. The countdown chip shares the slot and yields, which is the right
+// trade — what you owe matters when you land, what you are scoring
+// matters while you read.
+let headScoreHtml = "";
+function renderHeadScore() {
+  const el = document.getElementById("head-score");
+  if (!el) return;
+  const show = headerCompact && activeScreenName === "scoreboard" && !!headScoreHtml;
+  el.innerHTML = show ? headScoreHtml : "";
+  el.classList.toggle("hidden", !show);
+  // The wordmark gives up a few pixels while the score is beside it.
+  homeHeader.classList.toggle("has-score", show);
+  if (show) renderHeaderCountdown();
 }
 appScroll.addEventListener("scroll", syncHeaderSize, { passive: true });
 const savedScroll = {};
@@ -760,8 +779,9 @@ function enterScreen(name) {
   const y = savedScroll[name] ?? 0;
   appScroll.scrollTop = y;
   // async renders can grow the page after this tick; pin again once painted
-  requestAnimationFrame(() => { appScroll.scrollTop = savedScroll[name] ?? 0; syncHeaderSize(); });
+  requestAnimationFrame(() => { appScroll.scrollTop = savedScroll[name] ?? 0; syncHeaderSize(); renderHeadScore(); });
   renderHeaderCountdown();
+  renderHeadScore();
 }
 
 // Leaving the splash: if this device already knows who you are, skip the
@@ -950,7 +970,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609191200";
+  tag.src = "admin.js?v=202609191330";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +1001,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609191200";
+  tag.src = "console.js?v=202609191330";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2481,7 +2501,7 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   const el = document.getElementById("my-score");
   if (!el) return;
   const me = currentManager && rows.find((r) => r.name === currentManager);
-  if (!me) { el.classList.add("hidden"); return; }
+  if (!me) { el.classList.add("hidden"); headScoreHtml = ""; renderHeadScore(); return; }
   // Banked points sit at zero until games go final, which reads as a
   // contradiction next to a scorebug saying a pick is covering. Count what
   // is still in flight separately and show both.
@@ -2501,8 +2521,18 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // centred lines that used to sit above it.
   const state = boardAllFinal ? `<span class="ms-state final">FINAL</span>` : "";
   const clock = `<button class="ms-refresh${cloudPicksStale ? " stale" : ""}" type="button" title="${cloudPicksStale ? "Picks did not reload. Tap to try again" : "Tap to refresh"}">${cloudPicksStale ? "⚠ " : ""}${clockLabel()}<span class="ms-cyc">⟳</span></button>`;
-  el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ms-name">${me.name.toUpperCase()}</span><span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight}</span>` : ""}${state}${clock}`;
+  // No name here. The header's own pill says who you are eight pixels
+  // above, and the room it gives back pays for LIVE on the pill, which
+  // reads better than a bare +6.
+  const banked = `<span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>`;
+  const livePill = inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight} LIVE</span>` : "";
+  el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${livePill}${state}${clock}`;
   el.classList.remove("hidden");
+  // Same numbers, ready for the header to pick up on scroll. The word
+  // LIVE stays behind: the strip has room for it, the header's left slot
+  // does not, and 30 PTS +30 LIVE ran under the wordmark at 320px.
+  headScoreHtml = `${banked}${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight}</span>` : ""}`;
+  renderHeadScore();
 }
 document.getElementById("my-score")?.addEventListener("click", (e) => {
   const refresh = e.target.closest(".ms-refresh");
@@ -2619,13 +2649,15 @@ function escapeCd(str) {
 // The chip is a reminder, not a status display. It shows up only when the
 // viewer has something left to do before the slate locks: a game
 // unpicked or no tiebreaker. Games in progress are already reported by
-// the scoreboard title and the score strip, so it stays out of the way
-// once the week is underway.
+// the score strip, so it stays out of the way once the week is underway.
 function renderHeaderCountdown() {
   const el = document.getElementById("header-countdown");
   if (!el) return;
   const hide = () => { el.classList.add("hidden"); el.innerHTML = ""; };
   if (!picksScreen.classList.contains("hidden") || !currentManager) return hide();
+  // One chip in the left slot at a time. Scrolled down the board, the
+  // score wins it.
+  if (!document.getElementById("head-score")?.classList.contains("hidden")) return hide();
 
   const next = gamesByKickoff().find((g) => !isGameLocked(g));
   if (!next) return hide();
@@ -2644,6 +2676,11 @@ function renderHeaderCountdown() {
   el.dataset.go = "picks";
   el.classList.remove("hidden");
 }
+
+// Tapping it goes back to the strip it came from.
+document.getElementById("head-score")?.addEventListener("click", () => {
+  document.getElementById("my-score")?.scrollIntoView({ block: "start", behavior: "smooth" });
+});
 
 document.getElementById("header-countdown")?.addEventListener("click", (e) => {
   if (e.currentTarget.dataset.go === "scores") navScoreboardBtn?.click();
