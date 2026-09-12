@@ -970,7 +970,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609191430";
+  tag.src = "admin.js?v=202609191600";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1001,7 +1001,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609191430";
+  tag.src = "console.js?v=202609191600";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1074,6 +1074,7 @@ navPicksBtn.addEventListener("click", () => {
   setActiveNav("picks");
   enterScreen("picks");
   syncManagerFromCloud(currentManager).then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
+  refreshPicksStanding();
 });
 
 function showHistory() {
@@ -1393,6 +1394,7 @@ async function selectManager(name) {
   setActiveNav("picks");
   enterScreen("picks");
   syncManagerFromCloud(currentManager).then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
+  refreshPicksStanding();
   await syncManagerFromCloud(name);
   withScrollPreserved(renderPicksScreen);
 }
@@ -1564,11 +1566,72 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
   </div>`;
 }
 
+
+// Where you stand, and who you are chasing, on the screen where you are
+// making the picks. The full table is 499px and lives on the board; two
+// copies of it 2000px apart would be a duplicate nobody scrolls to, so
+// this is one line and a way to get to the real thing.
+//
+// Its own data: renderScoreboard only runs while the board is on screen,
+// so a cold open straight to Picks has no standings yet. Cached between
+// renders so switching tabs does not re-fetch, and refreshed on entry.
+let picksStandingRows = null;
+// Whether any game in the week has a final score. Banked points stay at
+// zero while games are merely in progress, so "has anyone scored" is the
+// wrong test for whether there is a standing worth showing; "has anything
+// finished" is the right one.
+let picksStandingFinals = false;
+function renderPicksStanding() {
+  const el = document.getElementById("picks-standing");
+  if (!el) return;
+  const rows = picksStandingRows;
+  const me = rows && currentManager && rows.find((r) => r.name === currentManager);
+  // Nothing to stand on until somebody has scored: a board of ten zeroes
+  // says less than no board at all.
+  if (!me || !picksStandingFinals) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const leader = rows[0];
+  const chasing = me.place === 1
+    // Leading: the gap that matters is to whoever is closest behind you.
+    ? rows.find((r) => r.score < me.score)
+    : leader;
+  const right = chasing
+    ? `<span class="ps-label">${me.place === 1 ? "AHEAD OF" : "CHASING"}</span><span class="ps-who">${escapeCd(chasing.name.toUpperCase())}</span><span class="ps-gap">${Math.abs(me.score - chasing.score)}</span>`
+    : `<span class="ps-label">CLEAR</span>`;
+  el.innerHTML = `<span class="ps-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ps-score">${String(me.score).padStart(2, "0")} PTS</span>${right}`;
+  el.classList.remove("hidden");
+}
+
+// One fetch for the picks screen, the same two sources the board uses.
+async function refreshPicksStanding() {
+  if (!currentManager) return;
+  const fetched = await fetchAllPicks();
+  if (fetched === null) return; // keep whatever was on screen
+  const cloudPicks = {};
+  MANAGERS.forEach((name) => {
+    const state = fetched[name];
+    if (state) cloudPicks[name] = { ...state, picks: sanitizePicks(state.picks) };
+  });
+  const results = computeLiveResults(await fetchLiveScores());
+  picksStandingFinals = Object.keys(results).length > 0;
+  picksStandingRows = rankManagers(cloudPicks, results);
+  if (!picksScreen.classList.contains("hidden")) {
+    renderPicksStanding();
+    // The row arrives a beat after the page, so the progress line above it
+    // has to be told to stop repeating the score.
+    updatePicksProgress(getManagerState(currentManager));
+  }
+}
+
+document.getElementById("picks-standing")?.addEventListener("click", () => {
+  navScoreboardBtn?.click();
+});
+
 function renderPicksScreen() {
   const state = getManagerState(currentManager);
   lastLockSignature = lockSignature();
   renderPicksCountdown();
   renderSyncBanner();
+  renderPicksStanding();
 
   gamesList.innerHTML = "";
   // Kickoff order, not the order the commissioner happened to tap them
@@ -1693,10 +1756,13 @@ function updatePicksProgress(state) {
   const results = computeLiveResults(latestLive);
   const allFinal = GAMES.every((g) => results[g.id]);
   const allLocked = GAMES.every(isGameLocked);
+  // Once the standings row is on screen it is saying the score, so this
+  // line stops repeating it and keeps only the state of the week.
+  const standingShown = !document.getElementById("picks-standing")?.classList.contains("hidden");
   picksProgress.textContent = allFinal
-    ? `${WEEK_LABEL} is final · you scored ${computeScore(state, results)} pts`
+    ? `${WEEK_LABEL} is final` + (standingShown ? "" : ` · you scored ${computeScore(state, results)} pts`)
     : allLocked
-      ? `${WEEK_LABEL} is locked · ${computeScore(state, results)} pts so far`
+      ? `${WEEK_LABEL} is locked` + (standingShown ? "" : ` · ${computeScore(state, results)} pts so far`)
       : `${totalPicked} of ${GAMES.length} games picked` + (state.tiebreaker ? " · tiebreaker set" : " · tiebreaker MISSING");
 
   // The tiebreaker decides who takes a week, and ten managers on ten games
@@ -1792,6 +1858,10 @@ async function renderScoreboard() {
   renderScoreboardTable(cloudPicks, results, live);
   const ranked = renderRankings(cloudPicks, results, live);
   liveWeekRows = ranked;
+  // The picks screen shows a one-line version of exactly these standings,
+  // so it takes the board's copy rather than fetching its own again.
+  picksStandingRows = ranked;
+  picksStandingFinals = Object.keys(results).length > 0;
   liveWeekFinal = GAMES.length > 0 && GAMES.every((g) => results[g.id]);
   renderMyScore(ranked, cloudPicks, live);
   renderWeekChamp(ranked, results);
@@ -2444,7 +2514,10 @@ function trophiesFor(name) {
   return `<span class="rank-trophies" title="${label}" aria-label="${label}">${face}</span>`;
 }
 
-function renderRankings(cloudPicks, results, live = {}) {
+// The standings themselves, with no DOM in them. Two screens show these
+// now, the board's full table and the picks screen's one-line summary, and
+// they must never disagree about who is leading.
+function rankManagers(cloudPicks, results) {
   const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
   const tbResult = results[tiebreakerGame.id];
   const actualTotal = tbResult ? tbResult.awayScore + tbResult.homeScore : null;
@@ -2476,7 +2549,11 @@ function renderRankings(cloudPicks, results, live = {}) {
     row.tied = (rows[i - 1] && rows[i - 1].place === row.place) || (next && next.place === row.place);
     row.subline = rankingSubline(row, actualTotal, tiebreakerGame);
   });
+  return rows;
+}
 
+function renderRankings(cloudPicks, results, live = {}) {
+  const rows = rankManagers(cloudPicks, results);
   rankingsList.innerHTML = "";
   renderRankingRows(rows, cloudPicks, results, live);
   return rows;
@@ -2733,6 +2810,25 @@ window.addEventListener("pageshow", (e) => {
   if (e.persisted && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
 });
 
+
+// The leaderboard folds like the two sections under it, so the three read
+// as one system. It starts open, because it is the headline of the board
+// rather than a detail you go looking for, and the choice is remembered.
+(() => {
+  const toggle = document.getElementById("leaderboard-toggle");
+  const list = document.getElementById("rankings-list");
+  if (!toggle || !list) return;
+  const KEY = "brochiefs_leaderboard_open_v1";
+  let open = true;
+  try { open = localStorage.getItem(KEY) !== "0"; } catch { /* private mode */ }
+  const paint = () => { list.classList.toggle("hidden", !open); toggle.classList.toggle("open", open); toggle.setAttribute("aria-expanded", String(open)); };
+  toggle.addEventListener("click", () => {
+    open = !open;
+    paint();
+    try { localStorage.setItem(KEY, open ? "1" : "0"); } catch { /* private mode */ }
+  });
+  paint();
+})();
 
 // All Picks starts collapsed: the scorebugs and the leaderboard are the
 // point of the board, the full grid is there when someone wants it.

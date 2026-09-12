@@ -2372,6 +2372,39 @@ html, body {
 .ms-score { color: var(--neon-green); text-shadow: 0 0 6px var(--neon-green); }
 .ms-rank { color: var(--neon-yellow); }
 
+/* One line of standings on the picks screen. Same grammar as the board's
+   score strip, so the two read as the same object at two sizes. */
+.picks-standing {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .035);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.picks-standing.hidden { display: none; }
+.ps-rank { color: var(--neon-yellow); }
+.ps-score { color: var(--neon-green); text-shadow: 0 0 6px var(--neon-green); }
+/* The gap to whoever matters sits at the right edge, away from your own
+   numbers, so the two do not read as one figure. */
+.ps-label { margin-left: auto; font-size: 6.5px; letter-spacing: .08em; color: var(--text-dim); }
+.ps-who { color: var(--neon-cyan); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ps-gap { flex: none; padding: 2px 6px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .18); font-size: 8px; color: var(--text-meta); }
+@media (max-width: 340px) {
+  .picks-standing { font-size: 8px; gap: 6px; }
+  .ps-label { font-size: 6px; }
+}
+
 /* --- Scoreboard top: tighter stack --- */
 #scoreboard-screen .wrap { gap: 8px; }
 /* The board starts at the top of the screen. The header is right above

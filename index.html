@@ -21,8 +21,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202609191430" />
-  <link rel="stylesheet" href="history.css?v=202609191430" />
+  <link rel="stylesheet" href="styles.css?v=202609191600" />
+  <link rel="stylesheet" href="history.css?v=202609191600" />
 </head>
 <body>
 
@@ -157,6 +157,11 @@
 
       <div id="picks-countdown" class="picks-countdown hidden" aria-live="off"></div>
 
+      <!-- Where you stand and who you are chasing, in one line. The full
+           table stays on the Scoreboard, one copy; tapping this goes
+           there. -->
+      <button id="picks-standing" class="picks-standing hidden" type="button" aria-label="Standings, tap for the full leaderboard"></button>
+
       <div id="games-list" class="games-list"></div>
 
       <div class="tiebreaker-card">
@@ -184,7 +189,7 @@
 
       <div id="live-scores-list" class="live-scores-list"></div>
 
-      <span class="rules-heading section-heading">🏆 LEADERBOARD</span>
+      <button id="leaderboard-toggle" class="rules-heading section-heading all-picks-toggle" type="button" aria-expanded="true">🏆 LEADERBOARD <span class="all-picks-caret">▾</span></button>
       <div id="rankings-list" class="rankings-list"></div>
 
       <button id="all-picks-toggle" class="rules-heading section-heading all-picks-toggle" type="button" aria-expanded="false">📋 ALL PICKS <span class="all-picks-caret">▾</span></button>
@@ -486,8 +491,8 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=202609191430"></script>
+  <script src="app.js?v=202609191600"></script>
   <script src="attract-facts.js?v=202609052030"></script>
-  <script src="history.js?v=202609191430"></script>
+  <script src="history.js?v=202609191600"></script>
 </body>
 </html>
