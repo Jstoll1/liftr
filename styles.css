@@ -920,14 +920,14 @@ html, body {
 
 .bug-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 26px 24px;
+  grid-template-columns: 16px minmax(0, 1fr) 33px 24px;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   padding: 2px 0 2px 4px;
   border-left: 2px solid transparent;
 }
 
-.bug-logo { width: 18px; height: 18px; object-fit: contain; }
+.bug-logo { width: 16px; height: 16px; object-fit: contain; }
 
 .bug-team {
   font-size: 10.5px;
@@ -943,6 +943,9 @@ html, body {
   font-size: 6.5px;
   color: var(--text-dim);
   text-align: right;
+  /* The line is reference and the score is the news, so keep air between
+     them rather than letting -16.5 collide with 28. */
+  padding-right: 8px;
 }
 
 .bug-score {
