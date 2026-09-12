@@ -947,7 +947,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609161830";
+  tag.src = "admin.js?v=202609161930";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -978,7 +978,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609161830";
+  tag.src = "console.js?v=202609161930";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2471,16 +2471,36 @@ function renderHeaderCountdown() {
   const el = document.getElementById("header-countdown");
   if (!el) return;
   const onPicks = !picksScreen.classList.contains("hidden");
+  if (onPicks || !currentManager) { el.classList.add("hidden"); return; }
+
+  // Once the ball is in the air a countdown is the wrong thing to show.
+  // Games in progress take over the chip, and tapping it goes to the
+  // board rather than to a slate that is already locked.
+  const liveNow = GAMES.filter((g) => {
+    const l = latestLive[g.id];
+    return isGameLocked(g) && l && l.found && l.state === "in" && !l.completed;
+  }).length;
+  if (liveNow) {
+    el.className = "head-cd live";
+    el.innerHTML = `<span class="hcd-dot"></span>${liveNow} LIVE`;
+    el.title = `${liveNow} game${liveNow === 1 ? "" : "s"} in progress`;
+    el.dataset.go = "scores";
+    el.classList.remove("hidden");
+    return;
+  }
+
   const next = gamesByKickoff().find((g) => !isGameLocked(g));
   const cd = next ? kickoffCountdown(next.kickoff) : null;
-  if (onPicks || !currentManager || !cd || cd.past) { el.classList.add("hidden"); return; }
+  if (!cd || cd.past) { el.classList.add("hidden"); return; }
   el.className = "head-cd" + (cd.ms < 3600000 ? " soon" : "");
   el.innerHTML = `<span class="hcd-dot"></span>${escapeCd(cd.brief)}`;
   el.title = `${next.awayShort} at ${next.homeShort} · ${next.kickoffLabel}`;
+  el.dataset.go = "picks";
 }
 
-document.getElementById("header-countdown")?.addEventListener("click", () => {
-  navPicksBtn?.click();
+document.getElementById("header-countdown")?.addEventListener("click", (e) => {
+  if (e.currentTarget.dataset.go === "scores") navScoreboardBtn?.click();
+  else navPicksBtn?.click();
 });
 
 // Its own second-by-second timer, separate from the 20s refresh: the clock
@@ -2509,6 +2529,10 @@ setInterval(() => {
   if (!scoreboardScreen.classList.contains("hidden")) {
     withScrollPreserved(renderScoreboard);
     renderPayouts();
+  } else if (picksScreen.classList.contains("hidden") && GAMES.some((g) => isGameLocked(g))) {
+    // Nowhere near the board, but the header chip still reports live
+    // games, so keep the numbers behind it honest.
+    fetchLiveScores().then(renderHeaderCountdown);
   }
   flushPendingPush();
 }, 20000);
