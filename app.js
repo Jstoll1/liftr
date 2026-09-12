@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609181915";
+  tag.src = "admin.js?v=202609182015";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609181915";
+  tag.src = "console.js?v=202609182015";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1427,7 +1427,12 @@ function pickLabel(game, pick) {
 // the label and what it pays on one line each, so a card reads top to
 // bottom in four lines instead of being scanned as a grid of panels.
 function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
-  const line = isFavorite ? `-${game.spread}` : `+${game.spread}`;
+  const sign = isFavorite ? "-" : "+";
+  const line = `${sign}${game.spread}`;
+  // The sign gets its own fixed box. Orbitron's plus is five pixels wider
+  // than its minus, which was enough to make the underdog's spread chip
+  // start five pixels left of the favourite's on the row below it.
+  const lineHtml = `<span class="pk-line"><i class="pk-sign">${sign}</i>${game.spread}</span>`;
   const suPts = pointValue(game, team, "SU");
   const atsSelected = pickEqual(draft, { team, mode: "ATS" });
   const suSelected = pickEqual(draft, { team, mode: "SU" });
@@ -1440,7 +1445,7 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
       </div>
       <div class="tm-chips">
         <button class="pick-mini-btn ats ${atsSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="ATS" title="${short} ${line} against the spread, 2 points">
-          <span class="pk-line">${line}</span>${pts(2)}
+          ${lineHtml}${pts(2)}
         </button>
         <button class="pick-mini-btn su ${isFavorite ? "chalk" : "upset"} ${suSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="SU" title="${short} to win outright, ${suPts} points">
           <span class="pk-label">WIN</span>${pts(suPts)}

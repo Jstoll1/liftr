@@ -1735,6 +1735,9 @@ html, body {
    points never are, so the two numbers on a chip cannot be confused. */
 .pk-line { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text); }
 .pick-mini-btn.selected .pk-line { color: #fff; }
+/* Both signs occupy the same width, so the two spread chips in a card are
+   the same size and line up with each other and with the WIN chips. */
+.pk-sign { font-style: normal; display: inline-block; width: .58em; text-align: center; }
 /* What a chip pays. The unit is spelled out so the number cannot be read
    as another line, and set small so the digit carries. */
 .pk-pts { display: inline-flex; align-items: baseline; font-size: 9px; color: var(--neon-yellow); }
