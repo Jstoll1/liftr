@@ -958,7 +958,10 @@ html, body {
 
 .bug-row {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) 33px 24px;
+  /* The spread column was 33px and the widest line on a slate, -27.5, needs
+     26 with its gutter. The five spare pixels go to the team name, which
+     is what the football took when it joined the row. */
+  grid-template-columns: 16px minmax(0, 1fr) 28px 24px;
   align-items: center;
   gap: 2px;
   padding: 2px 0 2px 4px;
@@ -968,12 +971,72 @@ html, body {
 .bug-logo { width: 16px; height: 16px; object-fit: contain; }
 
 .bug-team {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  min-width: 0;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: -.02em;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+/* The name is the part that gives way when the row runs out of room; the
+   rank and the ball are one glyph each and always fit. */
+.tm-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Between 341 and 380 the grid is still two across but the cards are at
+   their narrowest, and a live row carrying the ball ran Miami OH and
+   Wyoming into an ellipsis. Half a point off the name buys back more than
+   the ball costs. Below 341 the grid drops to one column and the problem
+   goes away on its own. */
+@media (min-width: 341px) and (max-width: 380px) {
+  .bug-team { font-size: 9.5px; }
+}
+
+/* On a scorebug the rank rides the corner of the logo instead of sitting
+   in the name. The name cell is about 82px on a two-across card and the
+   longest short names need 84px of it, so an 18px badge inline was the
+   difference between Alabama and Alabam…. On the corner it costs nothing.
+   This is also where broadcast graphics put it. */
+.bug-mark { position: relative; display: block; width: 16px; height: 16px; }
+.bug-mark .bug-logo { width: 100%; height: 100%; }
+.bug-mark .tm-rank {
+  position: absolute;
+  left: -3px;
+  bottom: -4px;
+  padding: 0 1px;
+  border-radius: 2px;
+  background: var(--bg);
+  font-size: 7px;
+  line-height: 1.1;
+}
+.bug-mark .tm-rank::before { content: none; }
+
+/* AP poll position. Quiet, because it is context for the name rather than
+   a number anyone is scoring, and prefixed so it cannot be read as a
+   score or a line. */
+.tm-rank {
+  flex: none;
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 8px;
+  color: var(--text-meta);
+  letter-spacing: 0;
+}
+.tm-rank::before { content: "#"; opacity: .6; }
+/* Who has the ball, on a game being played. It only ever appears on one
+   side of one row, so it can be small and still be found. */
+/* The ball sits at the end of the team name, between the name and the
+   spread, which is where it reads as "these guys have it". It costs the
+   name cell about ten pixels on a two-across card, so it stays small and
+   the gap before it stays tight. */
+.tm-ball {
+  flex: none;
+  font-style: normal;
+  font-size: 8.5px;
+  line-height: 1;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, .55));
 }
 
 .bug-fav {
@@ -982,8 +1045,10 @@ html, body {
   color: var(--text-meta);
   text-align: right;
   /* The line is reference and the score is the news, so keep air between
-     them rather than letting -16.5 collide with 28. */
-  padding-right: 8px;
+     them rather than letting -16.5 collide with 28. Six rather than eight
+     since the ball joined the row: the gap still reads and the name keeps
+     the two pixels. */
+  padding-right: 6px;
 }
 
 .bug-score {
@@ -1690,14 +1755,18 @@ html, body {
 .tm-id { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; }
 .tm-logo { width: 22px; height: 22px; object-fit: contain; }
 .tm-name {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
   font-family: 'Press Start 2P', monospace;
   font-size: 9px;
   letter-spacing: .04em;
   color: var(--text);
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
+.tm-name .tm-rank { font-size: 7.5px; }
 .tm-row.picked .tm-name { color: var(--neon-cyan); }
 .tm-line {
   font-family: 'Orbitron', system-ui, sans-serif;
@@ -2241,7 +2310,9 @@ html, body {
 .lr-team { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; align-items: center; column-gap: 8px; padding: 6px 8px; border-radius: 8px; border: 1px solid transparent; }
 .lr-team.picked { border-color: rgba(5, 217, 232, .55); background: rgba(5, 217, 232, .1); box-shadow: inset 3px 0 0 var(--neon-cyan); }
 .lr-logo { width: 26px; height: 26px; object-fit: contain; }
-.lr-name { font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lr-name { display: flex; align-items: baseline; gap: 5px; font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; white-space: nowrap; }
+.lr-name .tm-rank { font-size: 9px; }
+.lr-name .tm-ball { font-size: 11px; }
 .lr-team.picked .lr-name { color: var(--neon-cyan); }
 /* The bet itself, on the row it belongs to: which side, what number,
    what it pays. */

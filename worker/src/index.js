@@ -1594,9 +1594,20 @@ async function handleLive(corsHeaders, env) {
           winProb = { home: prob.homeWinPercentage, away: prob.awayWinPercentage };
         }
 
+        // Same two fields the browser reads, so the fallback path shows the
+        // same board: who has the ball, and each side's poll position.
+        const possId = comp.situation?.possession != null ? Number(comp.situation.possession) : null;
+        const possession = possId === null ? null
+          : possId === Number(away?.team?.id) ? "away"
+          : possId === Number(home?.team?.id) ? "home" : null;
+        const rankOf = (side) => { const n = Number(side?.curatedRank?.current); return Number.isFinite(n) && n >= 1 && n <= 25 ? n : null; };
+
         return {
           id: g.id,
           found: true,
+          possession,
+          awayRank: rankOf(away),
+          homeRank: rankOf(home),
           state: statusType.state || "pre", // "pre" | "in" | "post"
           completed: !!statusType.completed,
           detail: statusType.shortDetail || statusType.detail || "",
