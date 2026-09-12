@@ -947,7 +947,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609161500";
+  tag.src = "admin.js?v=202609161600";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -978,7 +978,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609161500";
+  tag.src = "console.js?v=202609161600";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1965,7 +1965,7 @@ function renderLiveScores(live, cloudPicks) {
         <div class="${cls}" data-game="${game.id}" role="button" tabindex="0" aria-expanded="${expanded}">
           <div class="bug-head">
             <span class="bug-gnum">G${game.id}</span>
-            <span class="bug-status">${isLive ? '<span class="live-dot"></span>' : ""}${statusText}</span>
+            <span class="bug-status">${statusText}</span>
             ${myPill}
           </div>
           ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop)}
