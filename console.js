@@ -107,21 +107,26 @@
         </div>`;
       }).join("")}
       <div class="con-actions"><button id="con-reseal" class="admin-btn" type="button">Re-seal every week</button></div>
-      <p class="admin-intro">Re-sealing recomputes each week from the slate, picks and finals in KV. It is safe to run any time — a week already sealed keeps its original date, and a trophy is never counted twice.</p>`;
+      <div class="con-actions"><button id="con-reseal-force" class="admin-btn ghost" type="button">Reopen and re-seal, including frozen weeks</button></div>
+      <p class="admin-intro">Re-sealing recomputes each week from the slate, picks and finals in KV, then freezes a week whose last game is final so the Ledger tab keeps the picks as they were graded. A frozen week is skipped by the plain re-seal; reopening one rebuilds it against whatever the slate says now, so only use it after a correction you meant to make.</p>`;
 
-    el("con-reseal").addEventListener("click", async () => {
+    const reseal = async (force) => {
+      if (force && !confirm("Reopen frozen weeks? Their picks get graded again against the slate as it stands now. Only do this after a correction you meant to make.")) return;
       say("Re-sealing…");
       try {
-        const res = await fetch(`${WORKER_URL}/weeks?key=${encodeURIComponent(key())}`, { method: "POST" });
+        const res = await fetch(`${WORKER_URL}/weeks?key=${encodeURIComponent(key())}${force ? "&force=1" : ""}`, { method: "POST" });
         const out = await res.json();
         if (!res.ok) { say(out.error || "Could not re-seal.", "bad"); return; }
-        say(`Sealed ${out.sealed.length} week${out.sealed.length === 1 ? "" : "s"}.`, "ok");
+        const froze = (out.sealed || []).filter((w) => w.frozen).length;
+        say(`Sealed ${out.sealed.length} week${out.sealed.length === 1 ? "" : "s"}${froze ? `, ${froze} frozen` : ""}.`, "ok");
         window.appRefreshWeeks?.();
         renderTab();
       } catch {
         say("Could not reach the Worker.", "bad");
       }
-    });
+    };
+    el("con-reseal").addEventListener("click", () => reseal(false));
+    el("con-reseal-force").addEventListener("click", () => reseal(true));
   }
 
   // --- Logins ---------------------------------------------------------
@@ -260,7 +265,71 @@
     });
   }
 
-  const TABS = { picks: renderPicks, season: renderSeason, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate };
+  // --- Season ledger --------------------------------------------------
+  // Every pick of every manager, every week, right or wrong, with the line
+  // it was taken at. Read from the frozen week summaries rather than from
+  // live picks, so a re-saved slate cannot move a spread under a pick
+  // already graded. Downloadable, because the season record should not
+  // live only in a Worker.
+  async function renderLedger() {
+    const data = await get("/weeks?detail=1");
+    const summaries = data.summaries || {};
+    const weeks = (data.weeks?.list || []).slice().sort((a, b) => b - a).filter((n) => summaries[n]);
+    if (!weeks.length) { body.innerHTML = `<div class="admin-empty">No week has been sealed yet, so there is nothing to show. Seal one from the Season tab.</div>`; return; }
+
+    const flat = [];
+    for (const n of weeks) {
+      const s = summaries[n];
+      for (const r of s.rows || []) for (const e of r.ledger || []) flat.push({ week: n, label: s.label, frozen: !!s.frozen, who: r.name, ...e });
+    }
+    const graded = flat.filter((e) => e.result !== "pending");
+    const counts = { hit: 0, miss: 0, push: 0, nopick: 0 };
+    for (const e of graded) counts[e.result] = (counts[e.result] || 0) + 1;
+
+    const mark = { hit: "✓", miss: "✗", push: "P", nopick: "—", pending: "·" };
+    body.innerHTML = `<div class="con-summary">
+        <span>${flat.length} pick slot${flat.length === 1 ? "" : "s"} across ${weeks.length} week${weeks.length === 1 ? "" : "s"}</span>
+        <span>${counts.hit} right · ${counts.miss} wrong · ${counts.push} push · ${counts.nopick} no pick</span>
+      </div>
+      ${weeks.map((n) => {
+        const s = summaries[n];
+        // Every manager, including anyone who picked nothing: a blank week
+        // is part of the record and decides who was owed what.
+        const rows = s.rows || [];
+        const withPicks = rows.filter((r) => r.picked > 0).length;
+        return `<details class="con-group"><summary class="con-group-head">
+            <b>${esc(s.label)}</b><span>${s.frozen ? "frozen" : s.complete ? "complete" : `${s.played}/${s.games} final`} · ${withPicks}/${rows.length} picked</span>
+          </summary>
+          ${rows.length ? rows.map((r) => `<div class="con-row${r.picked ? "" : " warn"}">
+            <div class="con-row-head"><b>${r.won ? "🏆 " : ""}${esc(r.name)}</b><span>${r.score} pts · ${r.hits}/${r.picked}</span></div>
+            ${(r.ledger || []).map((e) => `<div class="con-line led ${esc(e.result)}">
+                <span class="led-mark">${mark[e.result] || "·"}</span>
+                <span class="led-game">G${e.g} ${esc(e.matchup)}</span>
+                <span class="led-pick">${e.team ? `${esc(e.team)} ${esc(e.line)}` : "no pick"}</span>
+                <span class="led-pts">${e.pts === null ? "" : e.pts}</span>
+              </div>${e.late ? `<div class="con-line dim">saved after kickoff · ${when(e.savedAt)}</div>` : ""}`).join("")}
+          </div>`).join("") : `<div class="con-line dim">Nobody picked this week.</div>`}
+        </details>`;
+      }).join("")}
+      <div class="con-actions"><button id="con-ledger-csv" class="admin-btn" type="button">Download the season as CSV</button></div>
+      <p class="admin-intro">One row per manager per game. A week shown as frozen is the record: re-sealing it will not change it unless the Season tab reopens it deliberately.</p>`;
+
+    el("con-ledger-csv").addEventListener("click", () => {
+      const head = ["week", "label", "frozen", "manager", "game", "matchup", "favorite", "spread", "picked_team", "mode", "line", "worth", "result", "points", "final_score", "saved_at_utc", "after_kickoff"];
+      const cell = (v) => { const t = v === null || v === undefined ? "" : String(v); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+      const lines = [head.join(",")];
+      for (const e of flat) lines.push([e.week, e.label, e.frozen, e.who, e.g, e.matchup, e.favorite, e.spread,
+        e.team, e.mode, e.line, e.worth, e.result, e.pts, e.score, e.savedAt ? new Date(e.savedAt).toISOString() : "", e.late].map(cell).join(","));
+      const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = `brochiefs-picks-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      say(`${flat.length} rows downloaded.`, "ok");
+    });
+  }
+
+  const TABS = { picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate };
 
   async function renderTab() {
     body.innerHTML = `<div class="admin-empty">Loading…</div>`;

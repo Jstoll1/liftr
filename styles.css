@@ -2526,6 +2526,27 @@ html, body {
 .con-row-head span { color: var(--text-dim); font-size: 10px; }
 .con-line { font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
 .con-line.dim { color: var(--text-dim); font-size: 10px; }
+
+/* One ledger row: outcome, game, the pick, what it paid. Fixed columns so
+   ten managers' worth of rows read down rather than zig-zagging. */
+.con-line.led {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1.35fr) minmax(0, 1fr) 22px;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .05);
+}
+.led-mark { font-weight: 700; text-align: center; }
+.led-game { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.led-pick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.led-pts { text-align: right; font-variant-numeric: tabular-nums; }
+.con-line.led.hit .led-mark, .con-line.led.hit .led-pts { color: var(--neon-green); }
+.con-line.led.miss .led-mark { color: #ff6fa3; }
+.con-line.led.miss .led-pick { color: var(--text-dim); }
+.con-line.led.push .led-mark { color: var(--neon-yellow); }
+.con-line.led.nopick { color: var(--text-dim); }
+.con-line.led.nopick .led-mark { color: #ff6fa3; }
 .con-tag { font-family: 'Press Start 2P', monospace; font-size: 6px; padding: 2px 4px; border-radius: 3px; border: 1px solid currentColor; }
 .con-tag.bad { color: var(--neon-pink); }
 .con-tag.warn { color: #ffb347; }

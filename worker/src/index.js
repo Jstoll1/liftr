@@ -1026,9 +1026,9 @@ async function handlePicks(request, env, corsHeaders, url) {
 // friend group, same as the rest of this app); anyone can enter a score
 // once it's known. The scoreboard uses this plus everyone's picks to
 // compute point totals and rankings.
-// Every change to a manager's picks is written to KV (30 days) so a
-// disputed score can be traced: which game, from what to what, when, and
-// whether that game had already kicked off.
+// Every change to a manager's picks is written to KV and kept for the
+// season so a disputed score can be traced: which game, from what to what,
+// when, and whether that game had already kicked off.
 async function logPickChanges(env, manager, before, after, admin, week = 1, kickoffs = null, unauth = false) {
   try {
     const changes = [];
@@ -1042,7 +1042,7 @@ async function logPickChanges(env, manager, before, after, admin, week = 1, kick
     if (String(before?.tiebreaker ?? "") !== String(after?.tiebreaker ?? "")) changes.push({ game: 0, from: String(before?.tiebreaker ?? ""), to: String(after?.tiebreaker ?? ""), afterKickoff: false });
     if (!changes.length) return;
     const ts = Date.now();
-    await env.LIFTR_KV.put(`picks-log:${String(9999999999999 - ts)}`, JSON.stringify({ ts, week, manager, admin, ...(unauth ? { unauth: true } : {}), changes }), { expirationTtl: 30 * 24 * 3600 });
+    await env.LIFTR_KV.put(`picks-log:${String(9999999999999 - ts)}`, JSON.stringify({ ts, week, manager, admin, ...(unauth ? { unauth: true } : {}), changes }), { expirationTtl: 400 * 24 * 3600 });
   } catch (err) {
     console.error("pick log failed", err);
   }
@@ -1229,7 +1229,7 @@ function seasonScorePick(game, pick, result) {
 // One week's standings. Same order as the board: points, then whoever came
 // closest on the tiebreaker; anyone still level shares the place and, at
 // the top, shares the win.
-function buildSummary(week, slate, results, picks) {
+function buildSummary(week, slate, results, picks, kickoffs = null) {
   const games = slate?.games || [];
   if (!games.length) return null;
   const played = games.filter((g) => results?.[g.id]);
@@ -1241,17 +1241,38 @@ function buildSummary(week, slate, results, picks) {
   const rows = PICKS_MANAGERS.map((name) => {
     const state = picks?.[name] || { picks: {}, tiebreaker: "" };
     let score = 0, hits = 0, misses = 0, picked = 0;
+    // Every pick, one line each, right or wrong, with the line it was
+    // taken at. The aggregate below is derivable from this; the reverse is
+    // not, which is the whole point of writing it down.
+    const ledger = [];
     for (const g of games) {
       const pick = state.picks?.[g.id];
       if (pick) picked += 1;
       const pts = seasonScorePick(g, pick, results?.[g.id]);
+      const outcome = seasonOutcome(g, results?.[g.id]);
+      const ko = kickoffs?.[g.id] || null;
+      ledger.push({
+        g: Number(g.id),
+        matchup: `${g.awayShort} at ${g.homeShort}`,
+        favorite: g.favorite,
+        spread: g.spread,
+        team: pick?.team ?? null,
+        mode: pick?.mode ?? null,
+        line: pick ? (pick.mode === "SU" ? "SU" : `${pick.team === g.favorite ? "-" : "+"}${g.spread}`) : null,
+        worth: pick ? seasonPointValue(g, pick.team, pick.mode) : null,
+        pts,
+        result: pts === null ? "pending" : !pick ? "nopick" : outcome?.push && pick.mode === "ATS" ? "push" : pts > 0 ? "hit" : "miss",
+        score: results?.[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : null,
+        savedAt: pick?.savedAt ?? null,
+        late: !!(ko && pick?.savedAt && pick.savedAt >= ko),
+      });
       if (pts === null) continue;
       if (pts > 0) { score += pts; hits += 1; } else if (pick) misses += 1;
     }
     const raw = String(state.tiebreaker ?? "").trim();
     const guess = raw === "" ? null : Number(raw);
     const tbDiff = actualTotal !== null && Number.isFinite(guess) ? Math.abs(guess - actualTotal) : null;
-    return { name, score, hits, misses, picked, tbGuess: Number.isFinite(guess) ? guess : null, tbDiff };
+    return { name, score, hits, misses, picked, tbGuess: Number.isFinite(guess) ? guess : null, tbDiff, ledger };
   }).sort((a, b) => b.score - a.score || (a.tbDiff ?? Infinity) - (b.tbDiff ?? Infinity));
 
   let place = 0;
@@ -1276,22 +1297,35 @@ function buildSummary(week, slate, results, picks) {
     winners: complete ? top.map((r) => r.name) : [],
     tiebreaker: tbGame ? { game: tbGame.id, matchup: `${tbGame.awayShort} at ${tbGame.homeShort}`, actual: actualTotal } : null,
     rows,
+    // Frozen copies. The archive must not be read back through whatever
+    // the slate says later: a commissioner can re-save a week, and a
+    // moved spread would silently rescore every pick already made
+    // against the old one.
+    slate: games.map((g) => ({ id: Number(g.id), away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort,
+      favorite: g.favorite, spread: g.spread, kickoff: g.kickoff, tiebreakerGame: !!g.tiebreakerGame })),
+    finals: Object.fromEntries(games.filter((g) => results?.[g.id]).map((g) => [g.id, results[g.id]])),
     sealedAt: Date.now(),
   };
 }
 
 // Writes the summary for a week, and keeps the sealed-at stamp from the
 // first sealing so a later correction does not look like a new week.
-async function sealWeek(env, week) {
+async function sealWeek(env, week, { force = false } = {}) {
+  const prior = await env.LIFTR_KV.get(summaryKey(week), "json");
+  // A week sealed complete is the season's record of it. Later reads must
+  // not rescore it: the slate can be re-saved and a moved spread would
+  // rewrite history. Only the owner's console, passing force, reopens one.
+  if (prior?.frozen && !force) return prior;
   const [slate, results, ...picksRows] = await Promise.all([
     env.LIFTR_KV.get(gamesKey(week), "json"),
     env.LIFTR_KV.get(resultsKey(week), "json"),
     ...PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(pickKey(week, m), "json")]),
   ]);
-  const summary = buildSummary(week, slate, results || {}, Object.fromEntries(picksRows.filter(([, v]) => v)));
+  const kickoffs = await kickoffsFor(env, week);
+  const summary = buildSummary(week, slate, results || {}, Object.fromEntries(picksRows.filter(([, v]) => v)), kickoffs);
   if (!summary) return null;
-  const prior = await env.LIFTR_KV.get(summaryKey(week), "json");
   if (prior?.sealedAt && summary.complete) summary.sealedAt = prior.sealedAt;
+  if (summary.complete) summary.frozen = true;
   await env.LIFTR_KV.put(summaryKey(week), JSON.stringify(summary));
   summariesCache = null;
   return summary;
@@ -1309,21 +1343,27 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
     const weeks = await readWeeks(env);
     const asked = Number(url.searchParams.get("week"));
     const list = Number.isInteger(asked) ? [asked] : weeks.list;
+    const force = url.searchParams.get("force") === "1";
     const done = [];
-    for (const n of list) { const s = await sealWeek(env, n); if (s) done.push({ week: n, complete: s.complete, winners: s.winners }); }
+    for (const n of list) { const s = await sealWeek(env, n, { force }); if (s) done.push({ week: n, complete: s.complete, frozen: !!s.frozen, winners: s.winners }); }
     return json({ ok: true, sealed: done }, 200, corsHeaders);
   }
   if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, corsHeaders);
   const now = Date.now();
-  if (summariesCache && now - summariesCache.at < 60000) return json({ ...summariesCache.data, cached: true }, 200, corsHeaders);
+  const wantDetail = url.searchParams.get("detail") === "1";
+  if (summariesCache && summariesCache.detail === wantDetail && now - summariesCache.at < 60000) return json({ ...summariesCache.data, cached: true }, 200, corsHeaders);
   const weeks = await readWeeks(env);
   const rows = await Promise.all(weeks.list.map(async (n) => [n, await env.LIFTR_KV.get(summaryKey(n), "json")]));
-  const summaries = Object.fromEntries(rows.filter(([, v]) => v));
+  // The ledger is every pick of every manager, which the board does not
+  // need to draw a trophy. It comes back only when asked for.
+  const detail = url.searchParams.get("detail") === "1";
+  const lean = (s) => ({ ...s, rows: (s.rows || []).map(({ ledger, ...r }) => r), slate: undefined, finals: undefined });
+  const summaries = Object.fromEntries(rows.filter(([, v]) => v).map(([n, v]) => [n, detail ? v : lean(v)]));
   // One trophy per week won, which is what the leaderboard draws.
   const trophies = {};
   for (const s of Object.values(summaries)) for (const w of s.winners || []) trophies[w] = (trophies[w] || 0) + 1;
   const data = { weeks, summaries, trophies };
-  summariesCache = { at: now, data };
+  summariesCache = { at: now, detail: wantDetail, data };
   return json(data, 200, corsHeaders);
 }
 
@@ -1380,16 +1420,27 @@ async function handleSeason(request, env, corsHeaders, url) {
 
 async function handlePicksLog(request, env, corsHeaders, url) {
   if (!env.ARCHIVE_LOG_KEY || url.searchParams.get("key") !== env.ARCHIVE_LOG_KEY) return new Response("Not found", { status: 404 });
-  const list = await env.LIFTR_KV.list({ prefix: "picks-log:", limit: 500 });
-  const rows = (await Promise.all(list.keys.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
+  // Kept for the season now, so one page of keys no longer covers it.
+  const keys = [];
+  let cursor;
+  do {
+    const page = await env.LIFTR_KV.list({ prefix: "picks-log:", limit: 1000, ...(cursor ? { cursor } : {}) });
+    keys.push(...page.keys);
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor && keys.length < 20000);
+  const rows = (await Promise.all(keys.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
   if (url.searchParams.get("format") === "json") return json({ changes: rows }, 200, corsHeaders);
   // Current state check: any pick stamped after its game's kickoff is a
   // change that should not have been possible.
   const flagged = [];
-  for (const manager of PICKS_MANAGERS) {
-    const st = await env.LIFTR_KV.get(`picks:${manager}`, "json");
-    for (const [id, p] of Object.entries(st?.picks || {})) {
-      if (p?.updatedAt && PICKS_KICKOFF[id] && p.updatedAt > PICKS_KICKOFF[id]) flagged.push({ manager, game: Number(id), pick: `${p.team} ${p.mode}`, at: p.updatedAt });
+  for (const week of (await readWeeks(env)).list) {
+    const kickoffs = await kickoffsFor(env, week);
+    for (const manager of PICKS_MANAGERS) {
+      const st = await env.LIFTR_KV.get(pickKey(week, manager), "json");
+      for (const [id, p] of Object.entries(st?.picks || {})) {
+        const at = p?.savedAt || p?.updatedAt;
+        if (at && kickoffs[id] && at > kickoffs[id]) flagged.push({ week, manager, game: Number(id), pick: `${p.team} ${p.mode}`, at });
+      }
     }
   }
   const fmt = (t) => new Date(t).toLocaleString("en-US", { timeZone: "America/New_York" });
@@ -1399,7 +1450,7 @@ async function handlePicksLog(request, env, corsHeaders, url) {
 .c{margin-left:8px}.late{color:#ff2079;font-weight:700}.adm{color:#05d9e8}h3{margin:18px 0 8px}</style>
 <h2>Picks log · ${rows.length} changes</h2>
 <h3>Current picks stamped after kickoff (${flagged.length})</h3>` +
-    (flagged.length ? flagged.map((f) => `<div class="r late">${escapeHtml(f.manager)} · G${f.game} · ${escapeHtml(f.pick)} · ${fmt(f.at)}</div>`).join("") : `<div class="m">None.</div>`) +
+    (flagged.length ? flagged.map((f) => `<div class="r late">W${f.week} · ${escapeHtml(f.manager)} · G${f.game} · ${escapeHtml(f.pick)} · ${fmt(f.at)}</div>`).join("") : `<div class="m">None.</div>`) +
     `<h3>Change history (newest first)</h3>` +
     rows.map((r) => `<div class="r"><div class="m">${fmt(r.ts)} · <span class="who">${escapeHtml(r.manager)}</span>${r.admin ? ' · <span class="adm">admin repair</span>' : ""}${r.unauth ? ' · <span class="late">not signed in</span>' : ""}</div>` +
       r.changes.map((c) => `<div class="c">${c.game ? `G${c.game}` : "Tiebreaker"}: ${escapeHtml(c.from ?? "none")} → ${escapeHtml(c.to ?? "none")}${c.afterKickoff ? ' <span class="late">after kickoff</span>' : ""}</div>`).join("") + `</div>`).join("");
