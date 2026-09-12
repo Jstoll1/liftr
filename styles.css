@@ -1717,19 +1717,21 @@ html, body {
   transition: background .12s ease, border-color .12s ease, color .12s ease;
 }
 .pk-label { font-size: 6.5px; letter-spacing: .06em; }
-.pk-pts { font-size: 9px; color: var(--neon-yellow); }
+/* What a chip pays, as pips rather than a digit: the row already carries
+   -10.5 and +10.5, and a third numeral beside them reads as another
+   line. One, two or three squares is countable at a glance. */
+.pk-pips { display: inline-flex; align-items: center; gap: 2px; }
+.pk-pips i { width: 4px; height: 4px; background: var(--neon-yellow); box-shadow: 0 0 4px currentColor; }
 
 /* One filled chip is the whole selected state: no extra glow, no
    underline, no check. */
 .pick-mini-btn.selected { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .2); color: #fff; }
-.pick-mini-btn.selected .pk-pts { color: #fff; }
+.pick-mini-btn.selected .pk-pips i { background: #fff; }
 .pick-mini-btn:disabled { opacity: .4; cursor: default; }
 
 .pick-mini-btn:hover:not(:disabled) { border-color: rgba(5, 217, 232, .6); }
-.pick-mini-btn.chalk .pk-pts { color: var(--neon-green); }
-.pick-mini-btn.upset .pk-pts { color: var(--neon-pink); }
-.pick-mini-btn.selected.chalk .pk-pts,
-.pick-mini-btn.selected.upset .pk-pts { color: #fff; }
+.pick-mini-btn.chalk .pk-pips i { background: var(--neon-green); }
+.pick-mini-btn.upset .pk-pips i { background: var(--neon-pink); }
 
 .ghost-btn.small {
   padding: 6px 10px;
