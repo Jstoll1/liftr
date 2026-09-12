@@ -887,7 +887,7 @@ html, body {
   font-size: 7px;
   letter-spacing: 0.5px;
 }
-.scorebug.is-live .bug-status { color: #ff3b5c; text-shadow: 0 0 5px rgba(255, 59, 92, 0.7); }
+.scorebug.is-live .bug-status { color: #ff5c8a; }
 .scorebug.is-final .bug-status { color: var(--neon-yellow); }
 
 /* Arcade score pop: a number that just changed flashes and scales */
@@ -920,16 +920,19 @@ html, body {
 
 .bug-row {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  grid-template-columns: 18px minmax(0, 1fr) 26px 24px;
   align-items: center;
-  gap: 5px;
+  gap: 3px;
+  padding: 2px 0 2px 4px;
+  border-left: 2px solid transparent;
 }
 
-.bug-logo { width: 20px; height: 20px; object-fit: contain; }
+.bug-logo { width: 18px; height: 18px; object-fit: contain; }
 
 .bug-team {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
+  letter-spacing: -.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -937,29 +940,26 @@ html, body {
 
 .bug-fav {
   font-family: 'Press Start 2P', monospace;
-  font-size: 7px;
-  color: var(--neon-pink);
-  text-shadow: 0 0 4px var(--neon-pink);
-  min-width: 26px;
+  font-size: 6.5px;
+  color: var(--text-dim);
   text-align: right;
 }
 
 .bug-score {
   font-family: 'Press Start 2P', monospace;
   font-size: 12px;
-  color: var(--neon-yellow);
-  text-shadow: 0 0 4px var(--neon-yellow);
-  min-width: 24px;
+  color: var(--text-dim);
   text-align: right;
 }
 
 .scorebug.upcoming .bug-score { opacity: 0.3; }
 
-.bug-row.leading .bug-team,
-.bug-row.leading .bug-score {
-  color: var(--neon-green);
-  text-shadow: 0 0 4px var(--neon-green);
-}
+/* Scores are one family, not two colours: the leader is bright and the
+   other recedes, so the eye reads the margin instead of decoding a
+   palette. Colour on this card means something specific: cyan is the
+   side you took, and the stake pill is the only green or pink. */
+.bug-row.leading .bug-score { color: #fff; text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+.scorebug.is-final .bug-row.leading .bug-score { color: var(--neon-green); text-shadow: 0 0 6px rgba(0, 255, 143, .45); }
 
 .bug-detail {
   margin-top: 6px;
@@ -2278,7 +2278,7 @@ html, body {
 }
 .bug-head .stake b { font-size: 10px; color: var(--text); }
 /* The side you took, marked on the row rather than repeated in the pill. */
-.bug-row.mine { box-shadow: inset 2px 0 0 rgba(5, 217, 232, .8); border-radius: 3px; }
+.bug-row.mine { border-left-color: var(--neon-cyan); }
 .bug-row.mine .bug-team { color: var(--neon-cyan); }
 .stake-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: currentColor; }
 
