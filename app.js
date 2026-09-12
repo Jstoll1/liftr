@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609181400";
+  tag.src = "admin.js?v=202609181530";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609181400";
+  tag.src = "console.js?v=202609181530";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1431,20 +1431,20 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
   const suPts = pointValue(game, team, "SU");
   const atsSelected = pickEqual(draft, { team, mode: "ATS" });
   const suSelected = pickEqual(draft, { team, mode: "SU" });
-  const chip = (mode, label, pts, on, tone) => `
-    <button class="pick-mini-btn ${tone} ${on ? "selected" : ""}" type="button" data-team="${team}" data-mode="${mode}" title="${label} · ${pts} point${pts === 1 ? "" : "s"}">
-      <span class="pk-label">${label}</span><span class="pk-pts">${pts}<i>PT</i></span>
-    </button>`;
+  const pts = (n) => `<span class="pk-pts">${n}<i>PT</i></span>`;
   return `
     <div class="tm-row ${atsSelected || suSelected ? "picked" : ""}">
       <div class="tm-id">
         <img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
         <span class="tm-name">${short}</span>
-        <span class="tm-line">${line}</span>
       </div>
       <div class="tm-chips">
-        ${chip("ATS", "SPREAD", 2, atsSelected, "ats")}
-        ${chip("SU", isFavorite ? "CHALK" : "UPSET", suPts, suSelected, isFavorite ? "su chalk" : "su upset")}
+        <button class="pick-mini-btn ats ${atsSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="ATS" title="${short} ${line} against the spread, 2 points">
+          <span class="pk-line">${line}</span>${pts(2)}
+        </button>
+        <button class="pick-mini-btn su ${isFavorite ? "chalk" : "upset"} ${suSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="SU" title="${short} to win outright, ${suPts} points">
+          <span class="pk-label">WIN</span>${pts(suPts)}
+        </button>
       </div>
     </div>`;
 }

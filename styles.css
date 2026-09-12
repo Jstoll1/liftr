@@ -1688,7 +1688,7 @@ html, body {
 }
 .tm-row.picked { border-left-color: var(--neon-cyan); background: rgba(5, 217, 232, .07); }
 
-.tm-id { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 7px; min-width: 0; }
+.tm-id { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; }
 .tm-logo { width: 22px; height: 22px; object-fit: contain; }
 .tm-name {
   font-family: 'Press Start 2P', monospace;
@@ -1728,6 +1728,10 @@ html, body {
   transition: background .12s ease, border-color .12s ease, color .12s ease;
 }
 .pk-label { font-size: 6.5px; letter-spacing: .06em; }
+/* The number you are taking, on the chip that takes it. Signed, which
+   points never are, so the two numbers on a chip cannot be confused. */
+.pk-line { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text); }
+.pick-mini-btn.selected .pk-line { color: #fff; }
 /* What a chip pays. The unit is spelled out so the number cannot be read
    as another line, and set small so the digit carries. */
 .pk-pts { display: inline-flex; align-items: baseline; font-size: 9px; color: var(--neon-yellow); }
