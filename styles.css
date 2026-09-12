@@ -2276,17 +2276,18 @@ html, body {
    live dot while it plays, struck through once it is lost. */
 .bug-head .stake {
   margin: 0 0 0 auto; flex: none;
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 6px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 1px 5px; border-radius: 999px;
   border: 1px solid var(--card-border); background: rgba(255, 255, 255, .04);
-  font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 9px;
-  color: var(--text-dim); letter-spacing: .02em; white-space: nowrap;
+  font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 10px;
+  color: var(--text); line-height: 1.4; white-space: nowrap;
 }
-.bug-head .stake b { font-size: 10px; color: var(--text); }
+/* The unit rides small so the number carries the pill. */
+.stake-u { font-size: 6px; font-weight: 700; opacity: .7; margin-left: 1px; }
 /* The side you took, marked on the row rather than repeated in the pill. */
 .bug-row.mine { border-left-color: var(--neon-cyan); }
 .bug-row.mine .bug-team { color: var(--neon-cyan); }
-.stake-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: currentColor; }
+.stake-dot { width: 5px; height: 5px; border-radius: 50%; flex: none; background: currentColor; }
 
 .stake.covering { border-color: rgba(0, 255, 143, .7); background: rgba(0, 255, 143, .12); color: var(--neon-green); }
 .stake.covering .stake-dot { animation: stake-pulse 1.2s ease-in-out infinite; }
@@ -2296,6 +2297,16 @@ html, body {
 .stake.push { border-color: rgba(255, 228, 94, .7); background: rgba(255, 228, 94, .12); color: var(--neon-yellow); }
 .stake.miss { border-color: rgba(255, 92, 138, .5); color: var(--neon-pink); text-decoration: line-through; text-decoration-thickness: 1.5px; opacity: .75; }
 @keyframes stake-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+/* Points still in flight, beside the banked total in the score strip. */
+.ms-live { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(0, 255, 143, .6); background: rgba(0, 255, 143, .1); font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-green); letter-spacing: .04em; }
+.ms-live .stake-dot { animation: stake-pulse 1.2s ease-in-out infinite; }
+
+/* A board running on the last copy the Worker actually served. */
+.updated-stamp.stale { color: var(--neon-pink); }
+
+/* A game that kicked off with nothing submitted is a settled zero. */
+.pick-cell.miss-none { opacity: .85; }
 @media (prefers-reduced-motion: reduce) { .stake-dot { animation: none !important; } }
 .bug-head .stake + .bug-caret { margin-left: 4px; }
 
@@ -2635,6 +2646,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-stat b { font-family: 'Orbitron', system-ui, sans-serif; font-size: 15px; color: var(--neon-green); }
 .pot-stat span { font-family: 'Press Start 2P', monospace; font-size: 5.5px; line-height: 1.6; color: var(--text-dim); letter-spacing: .05em; }
 .pot-note { font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.8; color: var(--text-dim); letter-spacing: .05em; }
+.pot-live { padding: 8px 10px; border: 1px solid rgba(255, 228, 94, .5); border-radius: 8px; background: rgba(255, 228, 94, .07); color: var(--neon-yellow); font-size: 11px; line-height: 1.5; }
+.pot-livemark { color: var(--neon-yellow); margin-left: 3px; font-size: 14px; line-height: 0; }
 .pot-warn { padding: 8px 10px; border: 2px solid rgba(255, 92, 138, .6); border-radius: 8px; background: rgba(255, 92, 138, .08); color: var(--neon-pink); font-size: 11px; line-height: 1.5; }
 .pot-table { display: flex; flex-direction: column; border: 2px solid var(--card-border); border-radius: 10px; overflow: hidden; }
 .pot-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 34px 52px 62px; align-items: center; gap: 6px; padding: 8px 8px; border-top: 1px solid rgba(255, 255, 255, .05); font-size: 12px; }

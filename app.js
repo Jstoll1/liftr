@@ -950,7 +950,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609162100";
+  tag.src = "admin.js?v=202609170900";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -981,7 +981,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609162100";
+  tag.src = "console.js?v=202609170900";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1772,6 +1772,8 @@ async function renderScoreboard() {
   renderLiveScores(live, cloudPicks);
   renderScoreboardTable(cloudPicks, results, live);
   const ranked = renderRankings(cloudPicks, results, live);
+  liveWeekRows = ranked;
+  liveWeekFinal = GAMES.length > 0 && GAMES.every((g) => results[g.id]);
   renderMyScore(ranked, cloudPicks, live);
   renderWeekChamp(ranked, results);
   renderInsertCoin(cloudPicks);
@@ -2021,7 +2023,9 @@ function renderScoreboardTable(cloudPicks, results, live = {}) {
         return `<td class="pick-cell hidden-pick">🔒</td>`;
       }
       if (!pick) {
-        return `<td class="pick-cell pending">—</td>`;
+        // The game has kicked off and nothing was submitted, so this is a
+        // settled zero, not a pending cell.
+        return `<td class="pick-cell miss-none" title="No pick submitted"><span class="pick-pill miss">✗</span></td>`;
       }
       const pts = scorePick(game, pick, results[game.id]);
       if (pts) total += pts;
@@ -2190,6 +2194,11 @@ const money = (n) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: n 
 // Earnings come from the sealed summaries, which are the Worker's own
 // record rather than anything a phone computed. A week with co-winners
 // splits that week's money, though the tiebreaker should prevent it.
+// This week's standings, handed over by the board so the pot can show a
+// week in progress. Sealed weeks are the Worker's record; this is not.
+let liveWeekRows = [];
+let liveWeekFinal = false;
+
 function payoutLedger() {
   const sealed = Object.values(weekSummaries).filter((s) => s && s.complete);
   const rows = new Map(MANAGERS.map((n) => [n, { name: n, weeksWon: 0, earned: 0, points: 0, played: 0 }]));
@@ -2202,6 +2211,16 @@ function payoutLedger() {
     for (const row of s.rows || []) {
       const r = rows.get(row.name); if (!r) continue;
       r.points += row.score || 0; r.played += 1;
+    }
+  }
+  // A week that has not sealed yet contributes points but no money, so
+  // the table is not a wall of zeros all Saturday while games play.
+  const sealedWeeks = new Set(sealed.map((s) => s.week));
+  const liveWeek = !sealedWeeks.has(currentWeek) && liveWeekRows.length ? currentWeek : null;
+  if (liveWeek) {
+    for (const r of liveWeekRows) {
+      const row = rows.get(r.name);
+      if (row) { row.livePoints = r.score || 0; row.points += r.score || 0; }
     }
   }
   const list = [...rows.values()].sort((a, b) => b.points - a.points || b.earned - a.earned || a.name.localeCompare(b.name));
@@ -2220,13 +2239,13 @@ function payoutLedger() {
     r.seasonPrize = POT.season[place - 1] || 0;
   });
   const contested = POT.season.length > 0 && list.some((r) => r.tied && r.seasonPrize);
-  return { list, sealed: sealed.length, done, contested };
+  return { list, sealed: sealed.length, done, contested, liveWeek, liveWeekFinal };
 }
 
 function renderPayouts() {
   const panel = document.getElementById("payouts-panel");
   if (!panel || panel.classList.contains("hidden")) return;
-  const { list, sealed, done, contested } = payoutLedger();
+  const { list, sealed, done, contested, liveWeek, liveWeekFinal } = payoutLedger();
   const paid = list.reduce((a, r) => a + r.earned, 0);
   const left = POT.total - paid - POT.seasonTotal;
   panel.innerHTML = `
@@ -2238,13 +2257,16 @@ function renderPayouts() {
         : `<div class="pot-stat"><b>1ST ONLY</b><span>${POT.total === POT.weeklyTotal ? "winner takes the week" : money(POT.total - POT.weeklyTotal) + " unallocated"}</span></div>`}
     </div>
     <div class="pot-note">${sealed} of ${POT.weeks} weeks settled · ${money(paid)} paid out · ${money(Math.max(0, left))} still to play for${POT.season.length && !done ? " weekly · season money is a projection" : ""}</div>
+    ${liveWeek ? `<div class="pot-live">${liveWeekFinal
+      ? `Week ${liveWeek} is final and counted below, but not sealed yet. Open the scoreboard once to bank it.`
+      : `Week ${liveWeek} is still playing. Its points count below; the ${money(POT.weekly)} lands when the last game is final.`}</div>` : ""}
     ${contested ? `<div class="pot-warn">⚠ Season places are tied on points where the money sits. The weekly tiebreaker does not settle the season, so the league needs a rule for this before the last week.</div>` : ""}
     <div class="pot-table">
       <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>WON</span><span>EARNED</span></div>
       ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}">
         <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
         <span class="pot-name">${r.name.toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
-        <span class="pot-pts">${r.points}</span>
+        <span class="pot-pts">${r.points}${r.livePoints ? `<span class="pot-livemark">•</span>` : ""}</span>
         <span class="pot-won">${r.weeksWon ? "🏆".repeat(Math.min(r.weeksWon, 3)) + (r.weeksWon > 3 ? `×${r.weeksWon}` : "") : "–"}</span>
         <span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>
       </div>`).join("")}
