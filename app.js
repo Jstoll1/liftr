@@ -293,6 +293,15 @@ function espnScoreboardDates() {
 // A team's poll position, drawn the same way everywhere it appears. It
 // comes from the live ESPN feed, so it is simply absent when the feed has
 // nothing to say: an unranked team gets no badge.
+// Colour says how many points, on every surface and in every state. The
+// border says whether it is settled: solid once the game is final, dashed
+// while it is still being played. Before this, green meant "one point" on a
+// finished pick and "ahead right now" on a live one, so the same colour
+// answered two different questions on the same screen.
+function ptsTier(points) {
+  return points >= 3 ? "upset" : points === 2 ? "hit2" : points > 0 ? "hit" : "miss";
+}
+
 function rankBadge(rank) {
   return rank ? `<i class="tm-rank" title="AP rank">${rank}</i>` : "";
 }
@@ -984,7 +993,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609202230";
+  tag.src = "admin.js?v=202609210930";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1015,7 +1024,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609202230";
+  tag.src = "console.js?v=202609210930";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1557,13 +1566,13 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
       outcome = pick.mode === "ATS"
         ? `${short} ${byTxt} · ${pushed ? "push, nobody scores" : hit ? "covered the number" : "did not cover"}`
         : `${short} ${byTxt} · ${hit ? "won outright" : "lost outright"}`;
-      pill = pushed ? `<span class="rd-pts push">PUSH</span>` : `<span class="rd-pts ${pts >= 3 ? "upset" : pts === 2 ? "hit2" : hit ? "hit" : "miss"}">${hit ? "+" + pts : "0"} PTS</span>`;
+      pill = pushed ? `<span class="rd-pts push">PUSH</span>` : `<span class="rd-pts ${ptsTier(pts)}">${hit ? "+" + pts : "0"} PTS</span>`;
     } else if (prov !== null) {
       const hit = prov > 0;
       outcome = pick.mode === "ATS"
         ? `${short} ${liveByTxt} · ${resultOutcome(game, { awayScore: aS, homeScore: hS })?.push ? "on the number, a push right now" : hit ? "covering" : "not covering"} right now`
         : `${short} ${liveByTxt} · ${hit ? "winning" : "trailing"} right now`;
-      pill = `<span class="rd-pts ${hit ? "lean-hit" : "lean-miss"}">${hit ? "+" + worth : "0"}?</span>`;
+      pill = `<span class="rd-pts lean ${hit ? ptsTier(worth) : "miss"}">${hit ? "+" + worth : "0"}?</span>`;
     } else {
       outcome = pick.mode === "ATS"
         ? (isFav ? `Needs ${short} to win by more than ${game.spread}` : `Needs ${short} to win or lose by less than ${game.spread}`)
@@ -1993,7 +2002,7 @@ function bugSideDetail(cloudPicks, game, team, short, finalRes) {
     const outcome = resultOutcome(game, finalRes);
     if (mode === "ATS" && outcome && outcome.push) return `<span class="pick-pill push">PUSH</span>`;
     const pts = scorePick(game, { team, mode }, finalRes);
-    return pts > 0 ? `<span class="pick-pill ${pts >= 3 ? "upset" : pts === 2 ? "hit2" : "hit"}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
+    return pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
   };
   const rows = [];
   if (ats.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag ats">SPREAD ${spreadTxt}</span>${pill("ATS")}</span><div class="pick-chips">${nameChips(ats)}</div></div>`);
@@ -2172,9 +2181,12 @@ function renderLiveScores(live, cloudPicks) {
         // Points only. The line is already on the row beside the
         // favourite, and the side you took is marked down its edge, so
         // repeating either here just makes the pill wide.
+        // Same two rules as every other pill: the colour is the point
+        // value, the border says whether it is settled. Before kickoff it
+        // states the stake instead, since there is no result to colour.
         let tone = "pending", face = `${worth}<span class="stake-u">PT</span>`;
         if (pts !== null) {
-          tone = pushed ? "push" : pts > 0 ? "hit" : "miss";
+          tone = pushed ? "push" : ptsTier(pts);
           // A final says what you scored, not what you no longer have. A
           // hit reads +2, so a miss reads 0, and the pill is the same
           // shape either way. The struck-through stake it replaces put a
@@ -2182,7 +2194,8 @@ function renderLiveScores(live, cloudPicks) {
           // something closer to 4 PT.
           face = pushed ? "P" : pts > 0 ? `+${pts}` : "0";
         } else if (lean !== null) {
-          tone = lean > 0 ? "covering" : "slipping";
+          tone = `lean ${lean > 0 ? ptsTier(worth) : "miss"}`;
+          face = lean > 0 ? `+${worth}?` : "0?";
         }
         myPill = `<span class="stake ${tone}" title="You took ${mine} ${terms} for ${worth} pt">${face}</span>`;
       }
@@ -2258,7 +2271,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}) {
       // Final: logo with a small result pill under it and no spread line.
       // Live or upcoming: logo with the spread (if ATS) and a lean dot.
       const pushed = pts !== null && pick.mode === "ATS" && resultOutcome(game, results[game.id])?.push;
-      const pill = pts === null ? "" : pushed ? `<span class="pick-pill push">P</span>` : pts >= 3 ? `<span class="pick-pill upset">+3</span>` : pts === 2 ? `<span class="pick-pill hit2">+2</span>` : pts > 0 ? `<span class="pick-pill hit">+1</span>` : `<span class="pick-pill miss">✗</span>`;
+      const pill = pts === null ? "" : pushed ? `<span class="pick-pill push">P</span>` : pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
       const under = pts === null ? spreadTag : pill;
       return `<td class="pick-cell ${cls}" title="${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}"><span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
     }).join("");
@@ -2326,12 +2339,12 @@ function playerBreakdownHtml(name, state, results, live) {
       if (pts !== null) {
         banked += pts;
         const pushed = pick.mode === "ATS" && resultOutcome(game, results[game.id])?.push;
-        ptsHtml = pushed ? `<span class="rd-pts push">PUSH</span>` : pts >= 3 ? `<span class="rd-pts upset">+3</span>` : pts === 2 ? `<span class="rd-pts hit2">+2</span>` : pts > 0 ? `<span class="rd-pts hit">+1</span>` : `<span class="rd-pts miss">0</span>`;
+        ptsHtml = pushed ? `<span class="rd-pts push">PUSH</span>` : pts > 0 ? `<span class="rd-pts ${ptsTier(pts)}">+${pts}</span>` : `<span class="rd-pts miss">0</span>`;
       } else if (isLive && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore) && (g.awayScore || g.homeScore)) {
         const prov = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
         liveOpen += 1;
-        if (prov > 0) { liveCovering += 1; ptsHtml = `<span class="rd-pts lean-hit">+${worth}?</span>`; }
-        else ptsHtml = `<span class="rd-pts lean-miss">0?</span>`;
+        if (prov > 0) { liveCovering += 1; ptsHtml = `<span class="rd-pts lean ${ptsTier(worth)}">+${worth}?</span>`; }
+        else ptsHtml = `<span class="rd-pts lean miss">0?</span>`;
       }
     }
     const src = isFinal ? results[game.id] : isLive ? g : null;

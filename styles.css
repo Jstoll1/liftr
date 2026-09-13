@@ -2320,8 +2320,9 @@ html, body {
 .rd-pts.hit2 { background: rgba(5, 217, 232, .18); color: var(--neon-cyan); border: 1px solid rgba(5, 217, 232, .6); }
 .rd-pts.upset { background: rgba(255, 228, 94, .25); color: var(--neon-yellow); border: 1px solid var(--neon-yellow); box-shadow: 0 0 6px rgba(255, 228, 94, .5); }
 .rd-pts.miss { background: rgba(255, 32, 121, .14); color: var(--neon-pink); border: 1px solid rgba(255, 32, 121, .5); }
-.rd-pts.lean-hit { color: var(--neon-green); border: 1px dashed rgba(57, 255, 136, .6); }
-.rd-pts.lean-miss { color: var(--neon-pink); border: 1px dashed rgba(255, 32, 121, .5); }
+/* Same idea on the breakdown: the tier gives the colour, .lean says the
+   game has not finished. */
+.rd-pts.lean { background: none; border-style: dashed; }
 .rd-summary { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: flex-start; margin-top: 6px; padding-top: 7px; border-top: 1px solid rgba(5, 217, 232, .35); font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1.6; color: var(--text-dim); }
 .rd-summary b { color: var(--neon-green); font-weight: 400; }
 
@@ -2440,14 +2441,22 @@ html, body {
    the pill only has to say whether you are covering, which its colour
    does. Two live markers on one card, one of them blinking, was most of
    what made the board feel busy. */
-.stake.covering { border-color: rgba(0, 255, 143, .7); background: rgba(0, 255, 143, .12); color: var(--neon-green); }
-.stake.slipping { border-color: rgba(255, 92, 138, .7); background: rgba(255, 92, 138, .12); color: var(--neon-pink); }
+/* Colour is the point value, the same three tiers the breakdown and All
+   Picks use: 1 green, 2 cyan, 3 gold. The board used one green for any
+   win, so a three-pointer was gold in the breakdown and green here. */
 .stake.hit { border-color: rgba(0, 255, 143, .75); background: rgba(0, 255, 143, .16); color: var(--neon-green); }
-.stake.push { border-color: rgba(255, 228, 94, .7); background: rgba(255, 228, 94, .12); color: var(--neon-yellow); }
+.stake.hit2 { border-color: rgba(5, 217, 232, .75); background: rgba(5, 217, 232, .16); color: var(--neon-cyan); }
+.stake.upset { border-color: var(--neon-yellow); background: rgba(255, 228, 94, .22); color: var(--neon-yellow); }
+/* Push pays nobody, so it cannot be gold now that gold means three
+   points. Neutral and dashed, like the push pill everywhere else. */
+.stake.push { border: 1px dashed rgba(244, 240, 255, .4); background: rgba(244, 240, 255, .08); color: var(--text-dim); }
 /* No strikethrough. A line across Orbitron at 10px does not read as
    "crossed out", it reads as a broken glyph, and the pill says 0 now
    anyway. */
 .stake.miss { border-color: rgba(255, 92, 138, .5); background: rgba(255, 92, 138, .1); color: var(--neon-pink); }
+/* Still being played: same colour, dashed edge, no fill. Comes last so it
+   overrides the tier's solid border without touching its colour. */
+.stake.lean { background: none; border-style: dashed; }
 
 /* Points still in flight, beside the banked total in the score strip. */
 .ms-live { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(0, 255, 143, .6); background: rgba(0, 255, 143, .1); font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-green); letter-spacing: .04em; }
