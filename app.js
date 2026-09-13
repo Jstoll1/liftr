@@ -2983,7 +2983,7 @@ let renderRecap = function () {
   if (r.best) {
     const b = r.best;
     cards.push(["PICK OF THE WEEK", "hit", `<b>${esc(who(b.who))}</b> took ${esc(b.pick)}`,
-      `Only ${b.takers} of ${b.of} did. ${esc(b.final || b.score)}. +${b.pts} pts.`]);
+      `Only ${b.takers} of ${b.of} ${b.takers === 1 ? "did" : `were on ${esc(b.team || b.pick)}`}. ${esc(b.final || b.score)}. +${b.pts} pts.`]);
   }
   if (r.worst) {
     const w = r.worst;

@@ -44,16 +44,17 @@ for (const wk of weeks) {
     continue;
   }
 
-  // Pick of the week: a hit, taken by the fewest, worth the most among those, then biggest spread.
-  const count = new Map();
-  for (const l of settled) { const k = `${l.g}|${l.team}|${l.mode}`; count.set(k, (count.get(k) || 0) + 1); }
-  const hits = settled.filter((l) => l.result === "hit");
-  const fewest = Math.min(...hits.map((l) => count.get(`${l.g}|${l.team}|${l.mode}`)));
-  const cands = hits.filter((l) => count.get(`${l.g}|${l.team}|${l.mode}`) === fewest);
-  const bestPts = Math.max(...cands.map((l) => l.pts));
-  const bestSpread = Math.max(...cands.filter((l) => l.pts === bestPts).map((l) => l.spread));
-  const bestOk = cands.some((l) => l.pts === bestPts && l.spread === bestSpread && r.best?.who?.includes(l.who) && r.best.takers === fewest && r.best.pts === l.pts);
-  bestOk ? ok(wk, `pick of the week ${r.best.who.join("/")} ${r.best.pick}`) : fail(wk, `pick of the week ${JSON.stringify(r.best)}; expected among ${cands.filter((l) => l.pts === bestPts && l.spread === bestSpread).map((l) => `${l.who} ${l.team} ${l.line}`).join(", ")}`);
+  // Pick of the week: the winning team fewest people were on, then the
+  // best-paid hit on it, then the bigger spread. Anyone in that hit group qualifies.
+  const teams = new Map();
+  for (const l of settled) { const k = `${l.g}|${l.team}`; if (!teams.has(k)) teams.set(k, { takers: 0, hits: [] }); const t = teams.get(k); t.takers += 1; if (l.result === "hit") t.hits.push(l); }
+  const bestTeams = [...teams.values()].filter((t) => t.hits.length).map((t) => ({ takers: t.takers, pts: Math.max(...t.hits.map((h) => h.pts)), spread: t.hits[0].spread, hits: t.hits }))
+    .sort((a, b) => a.takers - b.takers || b.pts - a.pts || b.spread - a.spread);
+  const bt = bestTeams[0];
+  const okBest = bestTeams.filter((t) => t.takers === bt.takers && t.pts === bt.pts && t.spread === bt.spread)
+    .some((t) => t.hits.filter((h) => h.pts === t.pts).some((h) => r.best?.who?.includes(h.who)) && r.best.takers === t.takers && r.best.pts === t.pts);
+  okBest ? ok(wk, `pick of the week ${r.best.who.join("/")} ${r.best.pick}, ${r.best.takers} on the team`)
+    : fail(wk, `pick of the week ${JSON.stringify(r.best)}; expected team with ${bt.takers} takers paying ${bt.pts}: ${bt.hits.filter((h) => h.pts === bt.pts).map((h) => `${h.who} ${h.team} ${h.line}`).join(", ")}`);
 
   // Worst pick: the loser group with the most takers. A team that lost
   // outright groups every mode; a team that won but missed the cover groups by line.

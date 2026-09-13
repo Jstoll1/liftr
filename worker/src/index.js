@@ -1207,7 +1207,7 @@ const summaryKey = (week) => `week-summary:w${week}`;
 // Bump this whenever a summary gains or changes a field. A stored summary
 // behind this number is rebuilt on the next read, so a Worker deploy never
 // needs a re-seal by hand.
-const SUMMARY_VERSION = 7;
+const SUMMARY_VERSION = 8;
 // Played for the trophy only. No money, no season points, and no bearing
 // on the next week's movement card.
 const EXHIBITION_WEEKS = new Set([1]);
@@ -1372,10 +1372,26 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
     if (a === h) return { winner: null, text: `tied ${a}-${h}` };
     return a > h ? { winner: g.awayShort, text: `${g.awayShort} won ${a}-${h}` } : { winner: g.homeShort, text: `${g.homeShort} won ${h}-${a}` };
   };
-  const card = (l) => ({ who: l.who, pick: l.mixed && new Set(all.filter((x) => x.g === l.g && x.team === l.team).map((x) => x.mode)).size > 1 ? short(byId.get(l.g), l.team) : line(l),
-    matchup: l.matchup, score: l.score, final: finalOf(l)?.text || null, takers: l.who.length, of: N, pts: l.result === "hit" ? l.pts : l.worth });
+  const card = (l) => ({ who: l.who, team: short(byId.get(l.g), l.team),
+    pick: l.mixed && new Set(all.filter((x) => x.g === l.g && x.team === l.team).map((x) => x.mode)).size > 1 ? short(byId.get(l.g), l.team) : line(l),
+    matchup: l.matchup, score: l.score, final: finalOf(l)?.text || null, takers: l.teamTakers ?? l.who.length, of: N, pts: l.result === "hit" ? l.pts : l.worth });
 
-  const best = all.filter((l) => l.result === "hit").sort((a, b) => a.who.length - b.who.length || b.pts - a.pts || b.spread - a.spread)[0];
+  // Pick of the week is about the team, not the line. Three people on
+  // Georgia State, two straight up and one at +8.5, is one bold call by
+  // three people, and the straight-up pair earned the most for it. So:
+  // the winning team fewest people were on, then the best-paid way to
+  // have been on it, then the bigger spread.
+  const teams = new Map();
+  for (const l of all) {
+    const k = `${l.g}|${l.team}`;
+    if (!teams.has(k)) teams.set(k, { takers: 0, hits: [] });
+    const t = teams.get(k);
+    t.takers += l.who.length;
+    if (l.result === "hit") t.hits.push(l);
+  }
+  const best = [...teams.values()].filter((t) => t.hits.length)
+    .map((t) => { const top = [...t.hits].sort((a, b) => b.pts - a.pts)[0]; return { ...top, teamTakers: t.takers }; })
+    .sort((a, b) => a.teamTakers - b.teamTakers || b.pts - a.pts || b.spread - a.spread)[0];
   // Group losers by team, not line. When a team loses outright, the
   // straight-up and the spread takers went down together, and "6 of 10"
   // under a game seven people took reads wrong. Where the team won but

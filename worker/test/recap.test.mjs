@@ -49,6 +49,20 @@ test("tiebreaker credits everyone tied for closest", () => {
   assert.equal(r.tb.off, 1);
 });
 
+test("pick of the week groups by team: Georgia State three ways", () => {
+  const rows = [
+    row("Robert", 1, 0, 0, [{ ...L(1, "Oklahoma", "SU", "SU", "hit", 3, 3, "31-17"), spread: 8.5 }]),
+    row("Conlan", 2, 0, 0, [{ ...L(1, "Oklahoma", "SU", "SU", "hit", 3, 3, "31-17"), spread: 8.5 }]),
+    row("Dewitt", 3, 0, 0, [{ ...L(1, "Oklahoma", "ATS", "+8.5", "hit", 2, 2, "31-17"), spread: 8.5 }]),
+    row("Jake", 4, 0, 0, [{ ...L(2, "A", "ATS", "+1.5", "hit", 2, 2, "20-10"), spread: 1.5 }]),
+    ...["a", "b", "c", "d", "e", "f"].map((n) => row(n, 5, 0, 0, [{ ...L(2, "A", "SU", "SU", "hit", 1, 1, "20-10"), spread: 1.5 }])),
+  ];
+  const r = buildRecap(games, rows, 30, games[1], null);
+  assert.deepEqual(r.best.who.sort(), ["Conlan", "Robert"]);
+  assert.equal(r.best.takers, 3, "everyone on the team, not just the line");
+  assert.equal(r.best.pts, 3);
+});
+
 test("pick of the week prefers the higher-value solo hit, then the bigger spread", () => {
   const rows = [
     row("d", 1, 0, 0, [{ ...L(1, "Oklahoma", "ATS", "+8.5", "hit", 2, 2, "31-17"), spread: 8.5 }]),
@@ -57,8 +71,12 @@ test("pick of the week prefers the higher-value solo hit, then the bigger spread
   ];
   const r = buildRecap(games, rows, 30, games[1], null);
   assert.equal(r.best.who[0], "d");
+  // Fewest on the team comes first: adding a second person to A leaves d alone on top.
   const rows2 = [...rows, row("s", 4, 0, 0, [L(2, "A", "SU", "SU", "hit", 3, 3, "20-10")])];
-  assert.equal(buildRecap(games, rows2, 30, games[1], null).best.who[0], "s", "a 3-point dog SU beats a 2-point cover");
+  assert.equal(buildRecap(games, rows2, 30, games[1], null).best.who[0], "d", "two on A, one on Oklahoma");
+  // Alone on a 3-point dog SU beats alone on a 2-point cover.
+  const rows3 = [rows[0], row("s", 4, 0, 0, [L(2, "A", "SU", "SU", "hit", 3, 3, "20-10")]), rows[2]];
+  assert.equal(buildRecap(games, rows3, 30, games[1], null).best.who[0], "s");
 });
 
 test("movement is season rank before and after the week", () => {
