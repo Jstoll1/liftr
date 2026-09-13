@@ -2971,34 +2971,44 @@ let renderRecap = function () {
   const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
   const cards = [];
   const chips = (w) => nameChips(Array.isArray(w) ? w : [w]);
+  // 8x8 pixel icons in the card's colour, so they sit with the pixel type
+  // instead of fighting the logos the way native emoji did.
+  const px = (rows) => `<svg class="recap-icon" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${rows.flatMap((row, y) => [...row].map((c, x) => c === "#" ? `<rect x="${x}" y="${y}" width="1" height="1"/>` : "")).join("")}</svg>`;
+  const ICON = {
+    target: px(["..####..", ".#....#.", "#..##..#", "#.####.#", "#.####.#", "#..##..#", ".#....#.", "..####.."]),
+    skull: px([".######.", "########", "##.##.##", "##.##.##", "########", ".##..##.", "..####..", "..#..#.."]),
+    up: px(["...##...", "..####..", ".######.", "###..###", "#..##..#", "...##...", "...##...", "...##..."]),
+    coin: px(["..####..", ".#....#.", "#..##..#", "#.#..#.#", "#.#..#.#", "#..##..#", ".#....#.", "..####.."]),
+    hash: px(["..#..#..", "..#..#..", "########", "..#..#..", "..#..#..", "########", "..#..#..", "..#..#.."]),
+  };
   const logo = (id, alt = "") => id ? `<img class="recap-logo" src="${logoUrl(id)}" alt="${esc(alt)}" loading="lazy">` : `<span class="recap-logo blank"></span>`;
   const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);
   // [label, class, art, headline, sub, stat, statLabel, isMe]
   if (r.best) {
     const b = r.best;
-    cards.push(["🎯 PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${esc(b.pick)}</span>`,
+    cards.push([ICON.target + "PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${esc(b.pick)}</span>`,
       `Only ${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : `were on ${esc(b.team || b.pick)}`} · ${esc(b.final || b.score)}`, `+${b.pts}`, "PTS", mine(b.who)]);
   }
   if (r.worst) {
     const w = r.worst;
-    cards.push(["💀 WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${esc(w.pick)}</span>`,
-      `${w.takers} of ${w.of} took it · ${esc(w.final || w.score)}`, `${w.takers}×`, "ZERO", mine(w.who)]);
+    cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${esc(w.pick)}</span>`,
+      `All ${w.takers} got zero · ${esc(w.final || w.score)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who)]);
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
-    cards.push(["📈 MOVEMENT", "move", `<span class="recap-logo arrow">▲</span>`, `${chips([u.name])}<span class="recap-pick">to #${u.to} on the season</span>`,
+    cards.push([ICON.up + "MOVEMENT", "move", `<span class="recap-logo arrow">▲</span>`, `${chips([u.name])}<span class="recap-pick">to #${u.to} on the season</span>`,
       d ? `${esc(d.name)} fell ${d.to - d.from} to #${d.to}` : "Nobody fell", `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean))]);
   }
   if (r.consensus?.sides?.length > 1) {
     const c = r.consensus;
     const [a, b] = c.sides;
-    cards.push(["🪙 COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="recap-pick">${esc(c.matchup)}</span>`,
+    cards.push([ICON.coin + "COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="recap-pick">${esc(c.matchup)}</span>`,
       `${esc(a.team)} ${a.n} · ${esc(b.team)} ${b.n} · ${esc(c.final || c.score)}`, `${a.n}-${b.n}`, "SPLIT", false]);
   }
   if (r.tb) {
     const t = r.tb;
     const guess = [...new Set(t.guesses || [t.guess])].join(" & ");
-    cards.push(["🎱 TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `${chips(t.who)}<span class="recap-pick">said ${esc(guess)}</span>`,
+    cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `${chips(t.who)}<span class="recap-pick">said ${esc(guess)}</span>`,
       `${esc(t.matchup)} came in at ${t.actual}`, t.off === 0 ? "🎯" : `${t.off}`, t.off === 0 ? "EXACT" : "OFF", mine(t.who)]);
   }
   const key = `${last.week}|${cards.length}|${currentManager}`;
@@ -3010,7 +3020,7 @@ let renderRecap = function () {
     `<div class="recap-card ${cls}${me ? " me" : ""}" style="--i:${i}">
       <div class="recap-art">${art}</div>
       <div class="recap-body">
-        <div class="recap-head"><span class="recap-icon">${h.split(" ")[0]}</span>${h.slice(h.indexOf(" ") + 1)}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
+        <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
         <div class="recap-main">${main}</div>
         <div class="recap-sub">${sub}</div>
       </div>
