@@ -1003,7 +1003,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609221300";
+  tag.src = "admin.js?v=202609221330";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1034,7 +1034,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609221300";
+  tag.src = "console.js?v=202609221330";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2920,6 +2920,7 @@ setInterval(() => {
     // Only while someone is looking at it. It is collapsed by default, and
     // rendering into a hidden panel every twenty seconds bought nothing.
     if (!document.getElementById("payouts-panel")?.classList.contains("hidden")) renderPayouts();
+  renderRecap(); // memoised: only the Thursday cutoff can change anything here
   }
   // The off-board branch that fetched live scores here every tick is gone.
   // It fed the header chip back when the chip reported live games; the
@@ -2940,15 +2941,37 @@ window.addEventListener("pageshow", (e) => {
 });
 
 
+// The recap runs from the seal until 6 AM Eastern on the following
+// Thursday, when the league's attention turns to the new slate.
+function recapExpiry(summary) {
+  const sealed = Number(summary.sealedAt) || 0;
+  if (!sealed) return 0;
+  const fmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", timeZoneName: "shortOffset" });
+  for (let i = 0; i < 8; i++) {
+    const day = sealed + i * 86400000;
+    const parts = Object.fromEntries(fmt.formatToParts(new Date(day)).map((p) => [p.type, p.value]));
+    if (parts.weekday !== "Thu") continue;
+    // 6 AM that day in New York, built from the day's own UTC offset.
+    const off = Number((parts.timeZoneName.match(/[+-]\d+/) || ["-4"])[0]);
+    const thu6 = thursdaySixAM(day, off);
+    if (thu6 > sealed) return thu6;
+  }
+  return sealed + 4 * 86400000;
+}
+function thursdaySixAM(ms, offsetHours) {
+  // The New York calendar date of `ms`, then 06:00 local expressed in UTC.
+  const d = new Date(ms + offsetHours * 3600000);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 6 - offsetHours);
+}
+
 // Last sealed week in five lines, computed by the Worker at seal time.
-// Sits above the leaderboard, open by default until the next week kicks
-// off, then folded, because by Saturday it is old news.
+// Leads the board, open, until Thursday morning, then it is gone.
 let renderRecap = function () {
   const toggle = document.getElementById("recap-toggle");
   const panel = document.getElementById("recap-panel");
   if (!toggle || !panel) return;
   const last = Object.values(weekSummaries).filter((s) => s?.complete && s.recap).sort((a, b) => b.week - a.week)[0];
-  if (!last) { toggle.classList.add("hidden"); panel.classList.add("hidden"); return; }
+  if (!last || Date.now() >= recapExpiry(last)) { toggle.classList.add("hidden"); panel.classList.add("hidden"); return; }
   const r = last.recap;
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
@@ -2973,8 +2996,7 @@ let renderRecap = function () {
   panel.innerHTML = `${last.winners?.length ? `<div class="recap-won">Won by <b>${esc(names(last.winners))}</b> with ${last.highScore} pts</div>` : ""}${cards.map(([h, cls, main, sub]) => `<div class="recap-card ${cls}"><div class="recap-head">${h}</div><div class="recap-main">${main}</div><div class="recap-sub">${sub}</div></div>`).join("")}`;
 };
 
-// Folds like the sections under it. Open until the week's first kickoff,
-// remembered from there.
+// Folds like the sections under it. Starts open; the choice is remembered.
 (() => {
   const toggle = document.getElementById("recap-toggle");
   const panel = document.getElementById("recap-panel");
@@ -2985,10 +3007,7 @@ let renderRecap = function () {
   const paint = () => {
     // Before the first kickoff the board is empty and last week is the
     // story, so the recap leads. Once games start it steps below them.
-    const pre = !GAMES.some(isGameLocked);
-    const anchor = document.getElementById(pre ? "live-scores-list" : "leaderboard-toggle");
-    if (anchor && anchor.previousElementSibling !== panel) { anchor.before(toggle); anchor.before(panel); }
-    const isOpen = open === null ? pre : open === "1";
+    const isOpen = open === null ? true : open === "1";
     panel.classList.toggle("hidden", !isOpen || toggle.classList.contains("hidden"));
     toggle.classList.toggle("open", isOpen); toggle.setAttribute("aria-expanded", String(isOpen));
   };
