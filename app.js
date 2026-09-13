@@ -3104,29 +3104,45 @@ function showUpdateBar() {
   document.getElementById("update-bar")?.classList.remove("hidden");
 }
 
-async function checkForUpdate() {
+// A plain reload can be served the same cached index.html, which would
+// leave the bar showing and nothing changed. A fresh query cannot.
+function reloadFresh() {
+  location.replace(location.pathname + `?r=${Date.now()}` + location.hash);
+}
+
+// `quiet` is true at the two moments nobody is mid-tap: first paint, and
+// the app coming back to the foreground. A stale build then reloads
+// itself. Found mid-session, it shows the bar and waits for the tap.
+const RELOADED_KEY = "brochiefs_reloaded_for";
+async function checkForUpdate(quiet = false) {
   if (!APP_VERSION) return; // no stamp to compare against, so nothing to say
   try {
     // Cache-busted, or the check itself is the stale thing.
     const res = await fetch(`version.json?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return;
     const data = await res.json();
-    if (data && typeof data.v === "string" && data.v && data.v !== APP_VERSION) showUpdateBar();
+    if (!(data && typeof data.v === "string" && data.v && data.v !== APP_VERSION)) return;
+    let already = "";
+    try { already = sessionStorage.getItem(RELOADED_KEY) || ""; } catch { /* private mode */ }
+    // One automatic reload per build. If the cache still hands back the
+    // old index.html after that, the bar takes over rather than a loop.
+    if (quiet && already !== data.v) {
+      try { sessionStorage.setItem(RELOADED_KEY, data.v); } catch { /* private mode */ }
+      reloadFresh();
+      return;
+    }
+    showUpdateBar();
   } catch { /* offline, or the file is not there yet: say nothing */ }
 }
 
-document.getElementById("update-bar")?.addEventListener("click", () => {
-  // A plain reload can be served the same cached index.html, which would
-  // leave the bar showing and nothing changed. A fresh query cannot.
-  const url = location.pathname + `?r=${Date.now()}` + location.hash;
-  location.replace(url);
-});
+document.getElementById("update-bar")?.addEventListener("click", reloadFresh);
 
-checkForUpdate();
+checkForUpdate(true);
 // Standalone apps are suspended rather than closed, so coming back to one
-// is the moment a new build is most likely to be waiting.
-document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(); });
-setInterval(checkForUpdate, 15 * 60 * 1000);
+// is the moment a new build is most likely to be waiting, and the moment
+// a reload costs nothing.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(true); });
+setInterval(() => checkForUpdate(false), 15 * 60 * 1000);
 
 // The splash shows once per 12 hours per device. Inside that window the
 // app opens straight to where the tap would have landed.
