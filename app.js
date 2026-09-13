@@ -1840,7 +1840,12 @@ function updatePicksProgress(state) {
     : "One pick per game: straight up (1 pt favorite, 3 pt underdog) or against the spread (2 pts). Tap to save — change it any time until that game kicks off.";
   let warn = document.getElementById("picks-mismatch");
   if (!warn) { warn = document.createElement("button"); warn.id = "picks-mismatch"; warn.type = "button"; warn.className = "picks-mismatch"; picksProgress.insertAdjacentElement("afterend", warn); warn.addEventListener("click", () => restorePhonePicks(currentManager)); }
-  if (lockedMismatch.length && phoneSnapshot[currentManager]) {
+  // A repair tool, not a message for the league. It only shows on a
+  // device that has opened the admin console this session, which is the
+  // only device that can act on it.
+  let adminHere = false;
+  try { adminHere = !!sessionStorage.getItem(ADMIN_KEY_STORE); } catch { /* private mode */ }
+  if (adminHere && lockedMismatch.length && phoneSnapshot[currentManager]) {
     const lines = lockedMismatch.map((m) => `G${m.id}: phone ${m.phone ? pickLabel(GAMES.find((g) => g.id === m.id), m.phone) : "none"} · cloud ${m.cloud ? pickLabel(GAMES.find((g) => g.id === m.id), m.cloud) : "none"}`);
     warn.innerHTML = `<b>⚠ This phone and the scoreboard disagree on ${lockedMismatch.length} locked game${lockedMismatch.length === 1 ? "" : "s"}</b><span>${lines.join("<br>")}</span><span class="picks-mismatch-cta">Tap to make this phone's picks the record (needs the admin key)</span>`;
     warn.classList.remove("hidden");
