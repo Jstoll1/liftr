@@ -998,7 +998,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609201230";
+  tag.src = "admin.js?v=202609201400";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1029,7 +1029,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609201230";
+  tag.src = "console.js?v=202609201400";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2070,7 +2070,11 @@ function shortStatus(raw) {
   if (/^canceled|^cancelled/i.test(t)) return "CXL";
   t = t.replace(/^(\d)(st|nd|rd|th)\s+OT/i, "$1OT");  // "2nd OT 0:42" -> "2OT 0:42"
   t = t.replace(/\s+-\s+/g, " ");
-  return t;
+  // ESPN's running-clock form is "11:38 - 3rd Quarter", not "11:38 - 3rd".
+  // The word never fitted: at 375 and 390 the head clipped it to "3r",
+  // which reads as a typo rather than a quarter.
+  t = t.replace(/\s*\b(quarter|qtr)s?\.?/i, "");
+  return t.trim();
 }
 
 function shortNetwork(raw) {

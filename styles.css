@@ -1099,8 +1099,12 @@ html, body {
    other recedes, so the eye reads the margin instead of decoding a
    palette. Colour on this card means something specific: cyan is the
    side you took, and the stake pill is the only green or pink. */
-.bug-row.leading .bug-score { color: #fff; text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
-.scorebug.is-final .bug-row.leading .bug-score { color: var(--neon-green); text-shadow: 0 0 6px rgba(0, 255, 143, .45); }
+/* A 6px glow around a 12px pixel digit does not make it glow, it fills the
+   counters and softens the edges, so the leading score was the blurriest
+   number on the board and the one bleeding into the spread beside it. Two
+   pixels reads as a lit number and leaves the glyph square. */
+.bug-row.leading .bug-score { color: #fff; text-shadow: 0 0 2px rgba(255, 255, 255, .45); }
+.scorebug.is-final .bug-row.leading .bug-score { color: var(--neon-green); text-shadow: 0 0 2px rgba(0, 255, 143, .5); }
 
 .bug-detail {
   margin-top: 6px;
