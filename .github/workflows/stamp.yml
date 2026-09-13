@@ -1,0 +1,44 @@
+# Every push to main that touches the site gets a fresh cache stamp, written
+# back as one commit. The update bar on phones reads version.json, so this
+# is what makes a deploy reach everyone.
+name: Stamp version
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "app.js"
+      - "styles.css"
+      - "history.css"
+      - "history.js"
+      - "console.js"
+      - "admin.js"
+      - "icons/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stamp
+  cancel-in-progress: false
+
+jobs:
+  stamp:
+    # The stamp commit touches index.html too; do not chase our own tail.
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Write the stamp
+        run: node scripts/stamp.mjs
+      - name: Commit it
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then echo "already stamped"; exit 0; fi
+          git commit -am "Stamp $(node -p "require('./version.json').v") [skip ci]"
+          git push

@@ -13,6 +13,9 @@ import { HISTORY } from "./history-data.js";
 import { MATCHUPS } from "./matchup-data.js";
 
 export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sealFromEspn(env).then((r) => console.log("scheduled seal", JSON.stringify(r))));
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     // ALLOWED_ORIGIN can be a single origin or a comma-separated list (e.g.
@@ -1201,6 +1204,10 @@ let seasonCache = null;
 // 3, a push on the number pays nobody, and a pick scores only if it is
 // fully right.
 const summaryKey = (week) => `week-summary:w${week}`;
+// Bump this whenever a summary gains or changes a field. A stored summary
+// behind this number is rebuilt on the next read, so a Worker deploy never
+// needs a re-seal by hand.
+const SUMMARY_VERSION = 3;
 
 function seasonPointValue(game, team, mode) {
   if (mode === "ATS") return 2;
@@ -1289,6 +1296,7 @@ function buildSummary(week, slate, results, picks, kickoffs = null, prior = null
 
   return {
     week,
+    version: SUMMARY_VERSION,
     label: slate?.label || `Week ${week}`,
     complete,
     games: games.length,
@@ -1420,7 +1428,13 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
   const wantDetail = url.searchParams.get("detail") === "1";
   if (summariesCache && summariesCache.detail === wantDetail && now - summariesCache.at < 60000) return json({ ...summariesCache.data, cached: true }, 200, corsHeaders);
   const weeks = await readWeeks(env);
-  const rows = await Promise.all(weeks.list.map(async (n) => [n, await env.LIFTR_KV.get(summaryKey(n), "json")]));
+  const rows = await Promise.all(weeks.list.map(async (n) => {
+    let s = await env.LIFTR_KV.get(summaryKey(n), "json");
+    // Written by an older Worker: rebuild it from the stored picks and
+    // finals. The seal stamp survives, so nothing about the week moves.
+    if (s && s.version !== SUMMARY_VERSION) s = (await sealWeek(env, n, { force: true })) || s;
+    return [n, s];
+  }));
   // The ledger is every pick of every manager, which the board does not
   // need to draw a trophy. It comes back only when asked for.
   const detail = url.searchParams.get("detail") === "1";
@@ -1602,8 +1616,8 @@ const etDay = (iso) => {
   return new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
 };
 
-async function liveTargets(env) {
-  const week = (await readWeeks(env)).current;
+async function liveTargets(env, week = null) {
+  if (week === null) week = (await readWeeks(env)).current;
   const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
   const games = (slate?.games || []).map((g) => ({ id: g.id, awayId: Number(g.awayId), homeId: Number(g.homeId) }));
   const dates = [...new Set((slate?.games || []).map((g) => etDay(g.kickoff)).filter(Boolean))].sort();
@@ -1612,8 +1626,17 @@ async function liveTargets(env) {
 
 async function handleLive(corsHeaders, env) {
   try {
-    const { games: targets, dates } = await liveTargets(env);
-    if (!targets.length) return json({ games: [], debug: [{ note: "no slate stored for the current week" }] }, 200, corsHeaders);
+    return json(await liveGames(env), 200, corsHeaders);
+  } catch (err) {
+    console.error("Live scores error", err?.stack || String(err));
+    return json({ games: [] }, 200, corsHeaders); // never break the client over this
+  }
+}
+
+async function liveGames(env, week = null) {
+  {
+    const { games: targets, dates } = await liveTargets(env, week);
+    if (!targets.length) return { games: [], debug: [{ note: "no slate stored for the current week" }] };
     const events = [];
     const debug = [];
     for (const date of dates) {
@@ -1690,11 +1713,39 @@ async function handleLive(corsHeaders, env) {
       }
     });
 
-    return json({ games, debug }, 200, corsHeaders);
-  } catch (err) {
-    console.error("Live scores error", err?.stack || String(err));
-    return json({ games: [] }, 200, corsHeaders); // never break the client over this
+    return { games, debug };
   }
+}
+
+// The backstop. Phones post finals when they see the last game end, but
+// nobody may open the board after a late Saturday game. Every Monday
+// morning the Worker asks ESPN itself for any week not yet frozen, stores
+// the finals it finds, and seals.
+async function sealFromEspn(env) {
+  const weeks = await readWeeks(env);
+  const out = [];
+  for (const week of weeks.list) {
+    const prior = await env.LIFTR_KV.get(summaryKey(week), "json");
+    if (prior?.frozen) continue;
+    const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
+    if (!slate?.games?.length) continue;
+    if (!slate.games.some((g) => new Date(g.kickoff).getTime() < Date.now())) continue; // not started
+    const { games } = await liveGames(env, week);
+    const finals = {};
+    for (const g of games) {
+      if (!g.found || !g.completed) continue;
+      if (!Number.isInteger(g.awayScore) || !Number.isInteger(g.homeScore)) continue;
+      finals[g.id] = { awayScore: g.awayScore, homeScore: g.homeScore };
+    }
+    if (Object.keys(finals).length) {
+      const stored = (await env.LIFTR_KV.get(resultsKey(week), "json")) || {};
+      await env.LIFTR_KV.put(resultsKey(week), JSON.stringify({ ...stored, ...finals }));
+      seasonCache = null;
+    }
+    const sealed = await sealWeek(env, week);
+    out.push({ week, finals: Object.keys(finals).length, complete: !!sealed?.complete });
+  }
+  return out;
 }
 
 // Player avatar overrides — one KV entry per manager (avatar:<manager>)

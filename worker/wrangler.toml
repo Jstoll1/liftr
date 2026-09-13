@@ -43,3 +43,8 @@ AUTH_MODE = "off"
 [[kv_namespaces]]
 binding = "LIFTR_KV"
 id = "2b89a5d262d84832801fe39e3cdc8301"
+
+# Monday 10:00 UTC, which is 6 AM Eastern in the fall. Seals any week that
+# is still open by fetching finals from ESPN, in case no phone did.
+[triggers]
+crons = ["0 10 * * 1"]
