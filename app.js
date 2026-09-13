@@ -1000,7 +1000,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609211730";
+  tag.src = "admin.js?v=202609211830";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1031,7 +1031,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609211730";
+  tag.src = "console.js?v=202609211830";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2403,15 +2403,19 @@ function playerBreakdownHtml(name, state, results, live) {
 // game: it says who still has work to do, not what they chose. The
 // tiebreaker guess is a number to bid against, so it stays sealed for
 // everyone until that game kicks off.
+// Three fields, always the same three, in the same order. It used to be a
+// sentence that grew and shrank per manager: the picks made only appeared
+// when somebody had missed one, so nine rows read "TB 55 · OFF BY 8" and
+// the tenth read "9/10 PICKED · TB 35 · OFF BY 12". Nothing lined up and
+// the odd row out looked like a different kind of row rather than the same
+// row with worse news. A dash holds a slot that has no value yet, so every
+// line has the same shape whatever the week is doing.
 function rankingSubline(row, actualTotal, tbGame) {
-  const parts = [];
-  if (row.submittedCount < GAMES.length) parts.push(`${row.submittedCount}/${GAMES.length} PICKED`);
-  if (isGameLocked(tbGame)) {
-    if (row.tbGuess === null) parts.push("NO TIEBREAKER");
-    else if (actualTotal === null) parts.push(`TB ${row.tbGuess}`);
-    else parts.push(`TB ${row.tbGuess} · OFF BY ${row.tbDiff}`);
-  }
-  return parts.join(" · ");
+  const picked = `${row.submittedCount}/${GAMES.length}`;
+  if (!isGameLocked(tbGame)) return picked;
+  const guess = row.tbGuess === null ? "TB –" : `TB ${row.tbGuess}`;
+  const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
+  return `${picked} · ${guess} · ${off}`;
 }
 
 function ordinal(n) {
