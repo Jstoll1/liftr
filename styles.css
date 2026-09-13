@@ -3017,6 +3017,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .recap-vs .recap-logo + .recap-logo { margin-left: -12px; }
 .recap-body { min-width: 0; }
 .recap-head { display: flex; align-items: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--c); margin-bottom: 5px; }
+.recap-icon { font-family: system-ui, sans-serif; font-size: 15px; line-height: 1; margin-right: 2px; }
 .recap-you { padding: 2px 5px; border-radius: 999px; background: var(--c); color: #12002b; font-size: 5.5px; letter-spacing: .1em; }
 .recap-main { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 13px; line-height: 1.25; }
 .recap-main .pick-chip { font-size: 12px; }

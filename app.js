@@ -3010,7 +3010,7 @@ let renderRecap = function () {
     `<div class="recap-card ${cls}${me ? " me" : ""}" style="--i:${i}">
       <div class="recap-art">${art}</div>
       <div class="recap-body">
-        <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
+        <div class="recap-head"><span class="recap-icon">${h.split(" ")[0]}</span>${h.slice(h.indexOf(" ") + 1)}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
         <div class="recap-main">${main}</div>
         <div class="recap-sub">${sub}</div>
       </div>
