@@ -290,18 +290,11 @@ function espnScoreboardDates() {
   }
   return [...days].sort();
 }
-// A team's poll position and who has the ball, drawn the same way
-// everywhere they appear. Both come from the live ESPN feed, so both are
-// simply absent when the feed has nothing to say: an unranked team gets no
-// badge, and possession only exists while a game is being played.
+// A team's poll position, drawn the same way everywhere it appears. It
+// comes from the live ESPN feed, so it is simply absent when the feed has
+// nothing to say: an unranked team gets no badge.
 function rankBadge(rank) {
   return rank ? `<i class="tm-rank" title="AP rank">${rank}</i>` : "";
-}
-function ballMark(hasBall) {
-  // Drawn in CSS rather than set as the football emoji. The emoji renders
-  // as the platform's full-colour artwork, which is glossy, detailed, and
-  // the wrong size on a row of pixel type.
-  return hasBall ? `<i class="tm-ball" role="img" aria-label="has the ball"></i>` : "";
 }
 
 function parseEspnEvents(events) {
@@ -332,12 +325,6 @@ function parseEspnEvents(events) {
     const winProb = prob && Number.isFinite(prob.homeWinPercentage) && Number.isFinite(prob.awayWinPercentage)
       ? { home: prob.homeWinPercentage * 100, away: prob.awayWinPercentage * 100 }
       : null;
-    // Who has the ball. ESPN gives a team id in situation.possession and
-    // only while a game is in progress, so this is null everywhere else.
-    const possId = comp.situation?.possession != null ? Number(comp.situation.possession) : null;
-    const possession = possId === null ? null
-      : possId === Number(away?.team?.id) ? "away"
-      : possId === Number(home?.team?.id) ? "home" : null;
     // AP / CFP poll position. ESPN files an unranked team as 99, which is
     // not a rank, so it becomes null rather than a number nobody wants to
     // see. Read live rather than frozen into the slate, because a team's
@@ -346,7 +333,6 @@ function parseEspnEvents(events) {
     byId[game.id] = {
       id: game.id,
       found: true,
-      possession,
       awayRank: rankOf(away),
       homeRank: rankOf(home),
       state: statusType.state || "pre",
@@ -998,7 +984,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609202100";
+  tag.src = "admin.js?v=202609202230";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1029,7 +1015,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609202100";
+  tag.src = "console.js?v=202609202230";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1545,7 +1531,7 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
   };
   const row = (side, name, id, score, other) => `<div class="lr-team ${pickedSide === side ? "picked" : ""}">
       <img class="lr-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
-      <span class="lr-name">${rankBadge(side === "away" ? liveG?.awayRank : liveG?.homeRank)}<span class="tm-nm">${name}</span>${ballMark(liveG && !finalRes && liveG.state === "in" && liveG.possession === side)}</span>
+      <span class="lr-name">${rankBadge(side === "away" ? liveG?.awayRank : liveG?.homeRank)}<span class="tm-nm">${name}</span></span>
       ${pickedSide === side ? betBadge() : ""}
       <span class="lr-score ${finalRes && score !== null && score > other ? "win" : ""}">${score === null ? "–" : score}</span>
     </div>`;
@@ -2143,13 +2129,13 @@ function renderLiveScores(live, cloudPicks) {
       const homeLead = hasScores && g.homeScore > g.awayScore;
       const awayFav = game.favorite === game.away;
 
-      const row = (team, short, id, score, lead, fav, pop, rank, ball) => `
+      const row = (team, short, id, score, lead, fav, pop, rank) => `
         <div class="bug-row ${lead ? "leading" : ""} ${myPick && myPick.team === team ? "mine" : ""}">
           <span class="bug-mark">
             <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
             ${rankBadge(rank)}
           </span>
-          <span class="bug-team"><span class="tm-nm">${short}</span>${ballMark(ball)}</span>
+          <span class="bug-team"><span class="tm-nm">${short}</span></span>
           ${fav ? `<span class="bug-fav">-${game.spread}</span>` : `<span class="bug-fav dog"></span>`}
           <span class="bug-score ${pop ? "pop" : ""}">${score}</span>
         </div>`;
@@ -2207,8 +2193,8 @@ function renderLiveScores(live, cloudPicks) {
             <span class="bug-status">${statusText}</span>${tvTag}
             ${myPill}
           </div>
-          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop, feed?.awayRank ?? null, isLive && g.possession === "away")}
-          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop, feed?.homeRank ?? null, isLive && g.possession === "home")}
+          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop, feed?.awayRank ?? null)}
+          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop, feed?.homeRank ?? null)}
 
           ${detail}
         </div>

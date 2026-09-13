@@ -995,10 +995,9 @@ html, body {
    rank and the ball are one glyph each and always fit. */
 .tm-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* Between 341 and 380 the grid is still two across but the cards are at
-   their narrowest, and a live row carrying the ball ran Miami OH and
-   Wyoming into an ellipsis. Half a point off the name buys back more than
-   the ball costs. Below 341 the grid drops to one column and the problem
-   goes away on its own. */
+   their narrowest, and the longest short names run into an ellipsis at
+   full size. Half a point buys them back. Below 341 the grid drops to one
+   column and the room is there already. */
 @media (min-width: 341px) and (max-width: 380px) {
   .bug-team { font-size: 9.5px; }
 }
@@ -1056,36 +1055,6 @@ html, body {
   letter-spacing: 0;
 }
 .tm-rank::before { content: "#"; opacity: .55; font-weight: 600; }
-/* Who has the ball, on a game being played. It sits at the end of the team
-   name, between the name and the spread, which is where it reads as
-   "these guys have it". It only ever appears on one side of one row, so it
-   can be small and still be found.
-
-   Drawn here rather than set as the football emoji. The emoji is the
-   platform's own artwork: glossy, shaded, sized to a text glyph, and
-   nothing like the flat pixel type it sits in. This is six pixels of flat
-   colour with two laces, which is a football at this size and matches the
-   rest of the board. */
-.tm-ball {
-  /* Pixel art, not a smooth ellipse and not the emoji. One 1.5px pixel is
-     the element itself, the rest are box-shadows on a five by three grid,
-     so the edges stay square the way the type around them is square:
-
-       . # # # .
-       # # L # #      L is the lace pixel
-       . # # # .
-
-     A five by three grid, drawn as an SVG with crispEdges so the squares
-     stay square at any size. Box-shadow pixels could not do this: whole
-     pixels were too wide on a four-wide grid and read as a cross, and a
-     fractional size left gaps between them. Eight by not-quite-five,
-     narrower and half the height of the emoji it replaces. */
-  flex: none;
-  display: inline-block;
-  width: 8px;
-  height: 4.8px;
-  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'><path fill='%23d2782f' d='M1 0h3v1H1z M0 1h5v1H0z M1 2h3v1H1z'/><rect fill='%23ffe9c7' x='2' y='1' width='1' height='1'/></svg>") no-repeat center / 100% 100%;
-}
 
 .bug-fav {
   font-family: 'Press Start 2P', monospace;
@@ -2369,9 +2338,6 @@ html, body {
 .lr-logo { width: 26px; height: 26px; object-fit: contain; }
 .lr-name { display: flex; align-items: baseline; gap: 5px; font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; white-space: nowrap; }
 .lr-name .tm-rank { font-size: 9px; }
-/* Roomier card, so it can be a touch bigger without costing a name
-   anything. */
-.lr-name .tm-ball { width: 10px; height: 6px; }
 .lr-team.picked .lr-name { color: var(--neon-cyan); }
 /* The bet itself, on the row it belongs to: which side, what number,
    what it pays. */
