@@ -962,10 +962,10 @@ html, body {
 
 .bug-row {
   display: grid;
-  /* The spread column was 33px and the widest line on a slate, -27.5, needs
-     26 with its gutter. The five spare pixels go to the team name, which
-     is what the football took when it joined the row. */
-  grid-template-columns: 14px minmax(0, 1fr) 27px 24px;
+  /* The line is reference and the score is the news. The spread column is
+     sized to -27.5, the widest line on a slate, plus a gutter wide enough
+     that a two-digit score never reads as touching it. */
+  grid-template-columns: 20px minmax(0, 1fr) 29px 24px;
   align-items: center;
   gap: 2px;
   padding: 2px 0 2px 4px;
@@ -1013,7 +1013,7 @@ html, body {
    three pixels off the logo with nothing behind it. It is a badge now:
    tucked into the logo's corner, on its own ground, in the yellow this
    app uses for standings. */
-.bug-mark { position: relative; display: block; width: 14px; height: 14px; }
+.bug-mark { position: relative; display: block; width: 20px; height: 20px; }
 .bug-mark .bug-logo { width: 100%; height: 100%; }
 /* Just the number, over the logo. No pill, no fill, no notch cut out of
    the mark: a filled bubble at this size reads as a button and fights the
@@ -1024,8 +1024,8 @@ html, body {
 .bug-mark .tm-rank {
   position: absolute;
   left: -3px;
-  bottom: -4px;
-  font-size: 7px;
+  bottom: -1px;
+  font-size: 7.5px;
   font-weight: 700;
   line-height: 1;
   /* Secondary information, so it recedes rather than competing with the
@@ -1086,11 +1086,7 @@ html, body {
   font-size: 6.5px;
   color: var(--text-meta);
   text-align: right;
-  /* The line is reference and the score is the news, so keep air between
-     them rather than letting -16.5 collide with 28. Six rather than eight
-     since the ball joined the row: the gap still reads and the name keeps
-     the two pixels. */
-  padding-right: 6px;
+  padding-right: 8px;
 }
 
 .bug-score {
