@@ -1696,6 +1696,13 @@ html, body {
 .game-card.game-submitted {
   border-color: var(--neon-green);
 }
+/* Green on a card means "your pick is in", which is worth saying while
+   the slate is open and misleading once it is not: a green frame around a
+   finished card reads as a green tick on the result. Once a game locks,
+   the frame steps back and lets the card say how it went. */
+.game-card.game-locked.game-submitted {
+  border-color: var(--card-border);
+}
 
 .game-status.submitted {
   color: var(--neon-green);
@@ -2321,7 +2328,10 @@ html, body {
    below still blinks, because that one is a transient state you want to
    notice. */
 .game-status.live { color: #fff; border: 1px solid rgba(255, 255, 255, .7); }
-.game-status.final { color: var(--neon-green); border: 1px solid var(--neon-green); }
+/* Finished, not won. Green here said "correct" on a card whose own
+   sentence underneath said the pick lost. Yellow is what the board already
+   uses for a final, so the two screens agree. */
+.game-status.final { color: var(--neon-yellow); border: 1px solid rgba(255, 228, 94, .6); }
 .locked-result { display: flex; flex-direction: column; gap: 4px; padding: 6px 2px 2px; }
 .lr-team { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; align-items: center; column-gap: 8px; padding: 6px 8px; border-radius: 8px; border: 1px solid transparent; }
 .lr-team.picked { border-color: rgba(5, 217, 232, .55); background: rgba(5, 217, 232, .1); box-shadow: inset 3px 0 0 var(--neon-cyan); }
@@ -2332,8 +2342,10 @@ html, body {
 /* The bet itself, on the row it belongs to: which side, what number,
    what it pays. */
 .lr-bet { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 999px; border: 1px solid rgba(5, 217, 232, .6); background: rgba(5, 217, 232, .12); font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 12px; color: var(--neon-cyan); white-space: nowrap; }
-.lr-bet-check { font-size: 10px; color: var(--neon-green); }
-.lr-bet-pts { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-yellow); letter-spacing: .04em; }
+/* What the pick is worth, not how it went, so it stays quiet. Yellow made
+   it a third coloured thing on a card that already colours the result
+   sentence and the points pill. */
+.lr-bet-pts { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-meta); letter-spacing: .04em; }
 .lr-score { font-family: 'Press Start 2P', monospace; font-size: 15px; color: var(--text); min-width: 34px; text-align: right; }
 .locked-result.live .lr-score { color: var(--neon-yellow); text-shadow: 0 0 6px rgba(255, 228, 94, .5); }
 .lr-score.win { color: var(--neon-green); text-shadow: 0 0 6px rgba(57, 255, 136, .6); }

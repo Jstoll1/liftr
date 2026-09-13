@@ -1000,7 +1000,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609211500";
+  tag.src = "admin.js?v=202609211630";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1031,7 +1031,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609211500";
+  tag.src = "console.js?v=202609211630";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1543,7 +1543,11 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
     const isFav = pick.team === game.favorite;
     const worth = pointValue(game, pick.team, pick.mode);
     const terms = pick.mode === "ATS" ? `${isFav ? "-" : "+"}${game.spread}` : "SU";
-    return `<span class="lr-bet"><span class="lr-bet-check">✓</span>${terms}<span class="lr-bet-pts">${worth} PT</span></span>`;
+    // No tick. It marked the side you took, not a correct answer, but a
+    // green check on a losing pick reads as "you got this one", and the
+    // card already says otherwise twice underneath. The cyan frame and the
+    // bar down the row are what say this side is yours.
+    return `<span class="lr-bet">${terms}<span class="lr-bet-pts">${worth} PT</span></span>`;
   };
   const row = (side, name, id, score, other) => `<div class="lr-team ${pickedSide === side ? "picked" : ""}">
       <img class="lr-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
