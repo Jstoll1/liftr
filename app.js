@@ -293,13 +293,12 @@ function espnScoreboardDates() {
 // A team's poll position, drawn the same way everywhere it appears. It
 // comes from the live ESPN feed, so it is simply absent when the feed has
 // nothing to say: an unranked team gets no badge.
-// Colour says how many points, on every surface and in every state. The
-// border says whether it is settled: solid once the game is final, dashed
-// while it is still being played. Before this, green meant "one point" on a
-// finished pick and "ahead right now" on a live one, so the same colour
-// answered two different questions on the same screen.
+// Two states, and the number carries the rest. Green paid, pink did not,
+// a dashed edge means the game has not finished. Colouring by value as
+// well, green 1, cyan 2, gold 3, meant four colours of pill scattered over
+// ten cards, and the digit beside them already said how many.
 function ptsTier(points) {
-  return points >= 3 ? "upset" : points === 2 ? "hit2" : points > 0 ? "hit" : "miss";
+  return points > 0 ? "hit" : "miss";
 }
 
 function rankBadge(rank) {
@@ -993,7 +992,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609210930";
+  tag.src = "admin.js?v=202609211045";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1024,7 +1023,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609210930";
+  tag.src = "console.js?v=202609211045";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
