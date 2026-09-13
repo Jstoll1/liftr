@@ -1454,12 +1454,13 @@ html, body {
    as the same list rather than as a coincidentally similar one. */
 .scoreboard-table .ap-place {
   display: inline-block;
-  min-width: 30px;
-  margin-right: 5px;
+  min-width: 12px;
+  margin-right: 6px;
   font-family: 'Press Start 2P', monospace;
-  font-size: 7px;
+  font-size: 8px;
   color: var(--neon-yellow);
-  letter-spacing: .04em;
+  text-align: right;
+  letter-spacing: 0;
 }
 .scoreboard-table tr.is-me .ap-who { color: var(--neon-cyan); }
 

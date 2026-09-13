@@ -1000,7 +1000,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609212330";
+  tag.src = "admin.js?v=202609220930";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1031,7 +1031,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609212330";
+  tag.src = "console.js?v=202609220930";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2256,7 +2256,12 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
   // order it used before is the order the names were written down in,
   // which tells you nothing about the week.
   const order = ranked ? ranked.map((r) => r.name) : MANAGERS;
-  const placeOf = new Map((ranked || []).map((r) => [r.name, `${r.tied ? "T-" : ""}${ordinal(r.place)}`]));
+  // A bare number, not 1ST or T-8TH. The grid is ten columns wide and the
+  // manager column was eating the room they need; the ordinal suffix and
+  // the tie prefix are four characters that say nothing the digit does not.
+  // Tied managers simply repeat a number, which is what a standings list
+  // does anyway.
+  const placeOf = new Map((ranked || []).map((r) => [r.name, String(r.place)]));
   order.forEach((name) => {
     const state = cloudPicks[name] || { picks: {}, tiebreaker: "" };
     let total = 0;
@@ -2313,7 +2318,11 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
     // included, so the two read as one list.
     const place = placeOf.get(name);
     const rankTag = place ? `<span class="ap-place">${place}</span>` : "";
-    html += `<tr class="${name === currentManager ? "is-me" : ""}"><td class="manager-col">${rankTag}<span class="ap-who">${name}</span> <span class="ranking-lock">(${submittedCount}/${GAMES.length})</span></td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
+    // No picks count here. Every pick this manager made is on the row
+    // beside it, a missing one already shows as a red cross, and the
+    // leaderboard above states the count outright, so it was a second line
+    // of cell saying what the first line was already showing.
+    html += `<tr class="${name === currentManager ? "is-me" : ""}"><td class="manager-col">${rankTag}<span class="ap-who">${name}</span></td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
   });
 
   html += "</tbody>";
