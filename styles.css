@@ -1092,6 +1092,11 @@ html, body {
   font-size: 6.5px;
   color: var(--text-meta);
   text-align: right;
+  /* Gutters on both sides, and they are part of the column because it
+     sizes to max-content, so neither can be squeezed away. Without the
+     left one the name column, being 1fr, grows until the name or the
+     football is two pixels off the line. */
+  padding-left: 10px;
   padding-right: 8px;
 }
 
