@@ -7,7 +7,7 @@ const args = process.argv.slice(2);
 let data;
 if (args[0] === "--json") data = JSON.parse(await import("node:fs").then(fs => fs.readFileSync(args[1], "utf8")));
 else data = await (await fetch(`${WORKER}/weeks?detail=1&t=${Date.now()}`)).json();
-const weeks = data.weeks ?? data.summaries ?? data;
+const weeks = data.summaries ?? data.weeks ?? data;
 const list = Object.values(weeks).filter(Boolean).sort((a, b) => b.week - a.week);
 const wanted = args.find(a => /^\d+$/.test(a));
 const wk = wanted ? list.find(w => String(w.week) === wanted) : list.find(w => w.complete) ?? list[0];
