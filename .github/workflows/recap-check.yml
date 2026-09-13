@@ -1,0 +1,44 @@
+# Two guards on the weekly recap. On every Worker change, the card builder's
+# unit tests. Every Monday after the seal cron, a live check of each sealed
+# week's cards against its own ledger. A failure turns the run red, and
+# GitHub emails the repo owner; a pass is silent.
+name: Recap check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker/**"
+      - "scripts/recap-check.mjs"
+      - ".github/workflows/recap-check.yml"
+  schedule:
+    - cron: "30 11 * * 1"   # Monday 07:30 ET, ninety minutes after the seal cron
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test worker/test/*.test.mjs
+
+  live:
+    # The scheduled run is the weekly audit. A push runs it too, since a
+    # Worker change is exactly when the cards might have moved.
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Wait for the Worker deploy to land
+        if: github.event_name == 'push'
+        run: sleep 90
+      - run: node scripts/recap-check.mjs

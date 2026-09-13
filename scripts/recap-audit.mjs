@@ -2,7 +2,7 @@
 // against the ledger by eye.
 //   node scripts/recap-audit.mjs        # latest sealed week
 //   node scripts/recap-audit.mjs 2
-const WORKER = "https://liftr-ai.jhs797.workers.dev";
+const WORKER = process.env.WORKER_URL || "https://liftr-ai.jhs797.workers.dev";
 const data = await (await fetch(`${WORKER}/weeks?detail=1&t=${Date.now()}`)).json();
 const list = Object.values(data.summaries || {}).filter((w) => w?.complete).sort((a, b) => b.week - a.week);
 const asked = process.argv[2];
