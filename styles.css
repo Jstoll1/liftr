@@ -122,6 +122,42 @@ html, body {
    comes back the moment you return to the top. */
 .home-header.compact { padding: max(3px, env(safe-area-inset-top)) 12px 3px; }
 .head-row { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; }
+
+/* The standalone app has no browser chrome, so this is the only reload
+   there is. It sits under the header rather than in it: the left slot is
+   already shared by the countdown chip and the score chip, and this is a
+   message about the app rather than about the week. Sticky just beneath
+   the header so it stays reachable on a long board. */
+.update-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 1px solid rgba(5, 217, 232, .45);
+  background: rgba(5, 217, 232, .12);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7.5px;
+  letter-spacing: .1em;
+  color: var(--neon-cyan);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.update-bar.hidden { display: none; }
+.update-bar .ub-mark { color: var(--neon-yellow); font-size: 8px; }
+.update-bar .ub-text { text-align: center; }
+@media (max-width: 360px) {
+  .update-bar { font-size: 6.5px; gap: 7px; }
+}
 .home-header.compact .home-logo-btn { padding: 2px; }
 .home-header.compact .home-logo-img { height: 26px; }
 @media (prefers-reduced-motion: reduce) {

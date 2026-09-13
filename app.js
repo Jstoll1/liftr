@@ -1000,7 +1000,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609212030";
+  tag.src = "admin.js?v=202609212145";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1031,7 +1031,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609212030";
+  tag.src = "console.js?v=202609212145";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2927,6 +2927,45 @@ window.addEventListener("pageshow", (e) => {
   toggle.addEventListener("click", () => { open = !open; paint(); if (open) track("pot-open", { event: true }); });
   paint();
 })();
+
+// --- Update check -----------------------------------------------------
+// Added to the Home Screen the app runs standalone: no Safari chrome, so
+// no reload button, so no way to pick up a new build short of force
+// quitting. The app knows its own version from the stamp on its script
+// tag, and version.json carries whatever is deployed; when they differ
+// there is something to reload and the bar says so.
+const APP_VERSION = (() => {
+  try { return new URL(document.currentScript.src).searchParams.get("v") || ""; }
+  catch { return ""; }
+})();
+
+function showUpdateBar() {
+  document.getElementById("update-bar")?.classList.remove("hidden");
+}
+
+async function checkForUpdate() {
+  if (!APP_VERSION) return; // no stamp to compare against, so nothing to say
+  try {
+    // Cache-busted, or the check itself is the stale thing.
+    const res = await fetch(`version.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && typeof data.v === "string" && data.v && data.v !== APP_VERSION) showUpdateBar();
+  } catch { /* offline, or the file is not there yet: say nothing */ }
+}
+
+document.getElementById("update-bar")?.addEventListener("click", () => {
+  // A plain reload can be served the same cached index.html, which would
+  // leave the bar showing and nothing changed. A fresh query cannot.
+  const url = location.pathname + `?r=${Date.now()}` + location.hash;
+  location.replace(url);
+});
+
+checkForUpdate();
+// Standalone apps are suspended rather than closed, so coming back to one
+// is the moment a new build is most likely to be waiting.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(); });
+setInterval(checkForUpdate, 15 * 60 * 1000);
 
 // The splash shows once per 12 hours per device. Inside that window the
 // app opens straight to where the tap would have landed.
