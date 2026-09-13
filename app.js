@@ -1003,7 +1003,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609221200";
+  tag.src = "admin.js?v=202609221300";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1034,7 +1034,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609221200";
+  tag.src = "console.js?v=202609221300";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2595,6 +2595,7 @@ async function loadWeekSummaries() {
     const data = await res.json();
     weekTrophies = data.trophies || {};
     weekSummaries = data.summaries || {};
+    renderRecap();
   } catch {
     // Leave whatever we had; trophies are decoration, not the score.
   }
@@ -2938,6 +2939,68 @@ window.addEventListener("pageshow", (e) => {
   if (e.persisted && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
 });
 
+
+// Last sealed week in five lines, computed by the Worker at seal time.
+// Sits above the leaderboard, open by default until the next week kicks
+// off, then folded, because by Saturday it is old news.
+let renderRecap = function () {
+  const toggle = document.getElementById("recap-toggle");
+  const panel = document.getElementById("recap-panel");
+  if (!toggle || !panel) return;
+  const last = Object.values(weekSummaries).filter((s) => s?.complete && s.recap).sort((a, b) => b.week - a.week)[0];
+  if (!last) { toggle.classList.add("hidden"); panel.classList.add("hidden"); return; }
+  const r = last.recap;
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
+  const cards = [];
+  if (r.best) cards.push(["PICK OF THE WEEK", "hit", `<b>${esc(names(r.best.who))}</b> · ${esc(r.best.pick)}`, `${esc(r.best.matchup)} ${esc(r.best.score)} · ${r.best.takers} of ${r.best.of} took it · +${r.best.pts}`]);
+  if (r.worst) cards.push(["WORST PICK", "miss", `<b>${esc(r.worst.pick)}</b>`, `${esc(r.worst.matchup)} ${esc(r.worst.score)} · ${r.worst.takers} of ${r.worst.of} rode it · ${r.worst.pts} each, gone`]);
+  if (r.movement?.up) {
+    const u = r.movement.up, d = r.movement.down;
+    cards.push(["MOVEMENT", "move", `<b>${esc(u.name)}</b> up ${u.from - u.to} to #${u.to}`, d ? `${esc(d.name)} slid ${d.to - d.from} to #${d.to}` : "Nobody fell"]);
+  }
+  if (r.consensus) {
+    const c = r.consensus;
+    const split = c.sides.map((x) => `${esc(x.team)} ${x.n}`).join(" · ");
+    cards.push(["CHALK VS CHAOS", "split", `<b>${c.pct}%</b> went with the crowd`, `Closest split: ${esc(c.matchup)} (${split})${c.cashed ? ` · ${esc(c.cashed)} cashed ${esc(c.score)}` : ""}`]);
+  }
+  if (r.tb) cards.push(["TB SNIPER", "tb", `<b>${esc(r.tb.who)}</b> said ${r.tb.guess}, actual ${r.tb.actual}`, `${esc(r.tb.matchup)} · off by ${r.tb.off}`]);
+  const key = `${last.week}|${cards.length}`;
+  toggle.classList.remove("hidden");
+  toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
+  if (panel.dataset.drawn === key) return;
+  panel.dataset.drawn = key;
+  panel.innerHTML = `${last.winners?.length ? `<div class="recap-won">Won by <b>${esc(names(last.winners))}</b> with ${last.highScore} pts</div>` : ""}${cards.map(([h, cls, main, sub]) => `<div class="recap-card ${cls}"><div class="recap-head">${h}</div><div class="recap-main">${main}</div><div class="recap-sub">${sub}</div></div>`).join("")}`;
+};
+
+// Folds like the sections under it. Open until the week's first kickoff,
+// remembered from there.
+(() => {
+  const toggle = document.getElementById("recap-toggle");
+  const panel = document.getElementById("recap-panel");
+  if (!toggle || !panel) return;
+  const KEY = "brochiefs_recap_open_v1";
+  let open = null;
+  try { open = localStorage.getItem(KEY); } catch { /* private mode */ }
+  const paint = () => {
+    // Before the first kickoff the board is empty and last week is the
+    // story, so the recap leads. Once games start it steps below them.
+    const pre = !GAMES.some(isGameLocked);
+    const anchor = document.getElementById(pre ? "live-scores-list" : "leaderboard-toggle");
+    if (anchor && anchor.previousElementSibling !== panel) { anchor.before(toggle); anchor.before(panel); }
+    const isOpen = open === null ? pre : open === "1";
+    panel.classList.toggle("hidden", !isOpen || toggle.classList.contains("hidden"));
+    toggle.classList.toggle("open", isOpen); toggle.setAttribute("aria-expanded", String(isOpen));
+  };
+  toggle.addEventListener("click", () => {
+    open = toggle.classList.contains("open") ? "0" : "1";
+    paint();
+    try { localStorage.setItem(KEY, open); } catch { /* private mode */ }
+  });
+  paint();
+  const orig = renderRecap;
+  renderRecap = (...a) => { orig(...a); paint(); };
+})();
 
 // The leaderboard folds like the two sections under it, so the three read
 // as one system. It starts open, because it is the headline of the board

@@ -2988,3 +2988,19 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-earned { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; color: var(--neon-green); text-align: right; }
 .pot-empty { font-size: 11px; color: var(--text-dim); text-align: center; padding: 4px 0; }
 @media (max-width: 360px) { .pot-row { grid-template-columns: 20px minmax(0, 1fr) 38px 44px 56px; font-size: 11px; } }
+
+/* Week recap: five short cards above the leaderboard. */
+.recap-panel { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.recap-panel.hidden { display: none; }
+.recap-won { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-yellow); letter-spacing: .06em; padding: 2px 0 4px; }
+.recap-won b { font-weight: 400; text-shadow: 0 0 6px rgba(255, 228, 94, .55); }
+.recap-card { padding: 8px 10px; border: 1px solid var(--card-border); border-left-width: 3px; border-radius: 8px; background: rgba(0, 0, 0, .25); }
+.recap-card.hit { border-left-color: var(--neon-green); }
+.recap-card.miss { border-left-color: var(--neon-pink); }
+.recap-card.move { border-left-color: var(--neon-cyan); }
+.recap-card.split { border-left-color: var(--neon-purple, #c13cff); }
+.recap-card.tb { border-left-color: var(--neon-yellow); }
+.recap-head { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--text-dim); margin-bottom: 4px; }
+.recap-main { font-size: 13px; line-height: 1.3; }
+.recap-main b { color: #fff; }
+.recap-sub { font-size: 11px; line-height: 1.35; color: var(--text-dim); margin-top: 2px; }

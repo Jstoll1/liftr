@@ -1229,7 +1229,7 @@ function seasonScorePick(game, pick, result) {
 // One week's standings. Same order as the board: points, then whoever came
 // closest on the tiebreaker; anyone still level shares the place and, at
 // the top, shares the win.
-function buildSummary(week, slate, results, picks, kickoffs = null) {
+function buildSummary(week, slate, results, picks, kickoffs = null, prior = null) {
   const games = slate?.games || [];
   if (!games.length) return null;
   const played = games.filter((g) => results?.[g.id]);
@@ -1305,7 +1305,70 @@ function buildSummary(week, slate, results, picks, kickoffs = null) {
       favorite: g.favorite, spread: g.spread, kickoff: g.kickoff, tiebreakerGame: !!g.tiebreakerGame })),
     finals: Object.fromEntries(games.filter((g) => results?.[g.id]).map((g) => [g.id, results[g.id]])),
     sealedAt: Date.now(),
+    // The week in five lines, written once here so every phone tells the
+    // same story. Only a complete week gets one.
+    recap: complete ? buildRecap(games, rows, actualTotal, tbGame, prior) : null,
   };
+}
+
+// Five cards from the ledger: the lone correct call, the crowd's miss,
+// who moved, how much the league agreed, and the tiebreaker shot. Team
+// names come from the slate's short form so the cards fit a phone.
+function buildRecap(games, rows, actualTotal, tbGame, prior) {
+  const N = rows.length;
+  const byId = new Map(games.map((g) => [Number(g.id), g]));
+  const short = (g, team) => (team === g.home ? g.homeShort : team === g.away ? g.awayShort : team);
+  const groups = new Map();
+  for (const r of rows) for (const l of r.ledger) {
+    if (l.result !== "hit" && l.result !== "miss") continue;
+    const k = `${l.g}|${l.team}|${l.mode}`;
+    if (!groups.has(k)) groups.set(k, { ...l, who: [] });
+    groups.get(k).who.push(r.name);
+  }
+  const all = [...groups.values()];
+  const line = (l) => `${short(byId.get(l.g), l.team)} ${l.line}`;
+  const card = (l) => ({ who: l.who, pick: line(l), matchup: l.matchup, score: l.score, takers: l.who.length, of: N, pts: l.result === "hit" ? l.pts : l.worth });
+
+  const best = all.filter((l) => l.result === "hit").sort((a, b) => a.who.length - b.who.length || b.pts - a.pts || b.spread - a.spread)[0];
+  const worst = all.filter((l) => l.result === "miss").sort((a, b) => b.who.length - a.who.length || b.worth - a.worth)[0];
+
+  let movement = null;
+  if (prior?.rows?.length) {
+    const was = new Map(prior.rows.map((r) => [r.name, r.place]));
+    const d = rows.filter((r) => was.has(r.name)).map((r) => ({ name: r.name, from: was.get(r.name), to: r.place }));
+    const up = [...d].sort((a, b) => (b.from - b.to) - (a.from - a.to))[0];
+    const down = [...d].sort((a, b) => (a.from - a.to) - (b.from - b.to))[0];
+    if (up && up.from > up.to) movement = { up, down: down && down.to > down.from ? down : null };
+  }
+
+  const splits = games.map((g) => {
+    const sides = {};
+    let n = 0, hit = null, score = null;
+    for (const r of rows) {
+      const l = r.ledger.find((x) => x.g === Number(g.id));
+      if (!l?.team) continue;
+      n += 1; sides[l.team] = (sides[l.team] || 0) + 1;
+      if (l.result === "hit") hit = l.team;
+      score = l.score;
+    }
+    const top = Object.entries(sides).sort((a, b) => b[1] - a[1]);
+    return { g, n, top, hit, score };
+  }).filter((x) => x.n);
+  const agreed = splits.reduce((s, x) => s + (x.top[0]?.[1] || 0), 0);
+  const total = splits.reduce((s, x) => s + x.n, 0);
+  const closest = [...splits].sort((a, b) => Math.abs((a.top[0]?.[1] || 0) - (a.top[1]?.[1] || 0)) - Math.abs((b.top[0]?.[1] || 0) - (b.top[1]?.[1] || 0)) || b.n - a.n)[0];
+  const consensus = total ? {
+    pct: Math.round((agreed / total) * 100),
+    matchup: `${closest.g.awayShort} at ${closest.g.homeShort}`,
+    sides: closest.top.map(([team, n]) => ({ team: short(closest.g, team), n })),
+    cashed: closest.hit ? short(closest.g, closest.hit) : null,
+    score: closest.score,
+  } : null;
+
+  const tbRow = rows.filter((r) => r.tbDiff !== null).sort((a, b) => a.tbDiff - b.tbDiff)[0];
+  const tb = tbRow && tbGame && actualTotal !== null ? { who: tbRow.name, guess: tbRow.tbGuess, actual: actualTotal, off: tbRow.tbDiff, matchup: `${tbGame.awayShort} at ${tbGame.homeShort}` } : null;
+
+  return { best: best ? card(best) : null, worst: worst ? card(worst) : null, movement, consensus, tb };
 }
 
 // Writes the summary for a week, and keeps the sealed-at stamp from the
@@ -1322,7 +1385,8 @@ async function sealWeek(env, week, { force = false } = {}) {
     ...PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(pickKey(week, m), "json")]),
   ]);
   const kickoffs = await kickoffsFor(env, week);
-  const summary = buildSummary(week, slate, results || {}, Object.fromEntries(picksRows.filter(([, v]) => v)), kickoffs);
+  const before = week > 1 ? await env.LIFTR_KV.get(summaryKey(week - 1), "json") : null;
+  const summary = buildSummary(week, slate, results || {}, Object.fromEntries(picksRows.filter(([, v]) => v)), kickoffs, before);
   if (!summary) return null;
   if (prior?.sealedAt && summary.complete) summary.sealedAt = prior.sealedAt;
   if (summary.complete) summary.frozen = true;
