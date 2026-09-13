@@ -1341,8 +1341,11 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
     // correction, and it is how a week already played gets caught up.
     if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
     const weeks = await readWeeks(env);
-    const asked = Number(url.searchParams.get("week"));
-    const list = Number.isInteger(asked) ? [asked] : weeks.list;
+    // Number(null) is 0, which would "seal" a week that does not exist
+    // and skip every real one, so only an explicit ?week=N narrows the run.
+    const rawWeek = url.searchParams.get("week");
+    const asked = rawWeek === null ? NaN : Number(rawWeek);
+    const list = Number.isInteger(asked) && asked >= 1 ? [asked] : weeks.list;
     const force = url.searchParams.get("force") === "1";
     const done = [];
     for (const n of list) { const s = await sealWeek(env, n, { force }); if (s) done.push({ week: n, complete: s.complete, frozen: !!s.frozen, winners: s.winners }); }
