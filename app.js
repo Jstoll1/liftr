@@ -1000,7 +1000,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609211930";
+  tag.src = "admin.js?v=202609212030";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1031,7 +1031,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609211930";
+  tag.src = "console.js?v=202609212030";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1895,8 +1895,11 @@ async function renderScoreboard() {
 
   archiveWeekIfFinal(results);
   renderLiveScores(live, cloudPicks);
-  renderScoreboardTable(cloudPicks, results, live);
-  const ranked = renderRankings(cloudPicks, results, live);
+  // Ranked once and handed to both, so the table and the leaderboard
+  // cannot end up in different orders.
+  const ranked = rankManagers(cloudPicks, results);
+  renderScoreboardTable(cloudPicks, results, live, ranked);
+  renderRankings(cloudPicks, results, live, ranked);
   liveWeekRows = ranked;
   // The picks screen shows a one-line version of exactly these standings,
   // so it takes the board's copy rather than fetching its own again.
@@ -2237,14 +2240,19 @@ function renderLiveScores(live, cloudPicks) {
   });
 }
 
-function renderScoreboardTable(cloudPicks, results, live = {}) {
+function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
   // One ordered list for the header and every row, so the columns read
   // left to right in kickoff order and stay aligned with their labels.
   const ordered = gamesByKickoff();
   const headCells = ordered.map((g) => `<th class="${results[g.id] ? "final" : isGameLocked(g) ? "live" : ""}">G${g.id}</th>`).join("");
   let html = `<thead><tr><th class="manager-col">Team</th>${headCells}<th>TB</th><th>PTS</th></tr></thead><tbody>`;
 
-  MANAGERS.forEach((name) => {
+  // Standings order, the same order the leaderboard is in, so scanning
+  // from one to the other does not mean re-finding everybody. The roster
+  // order it used before is the order the names were written down in,
+  // which tells you nothing about the week.
+  const order = ranked ? ranked.map((r) => r.name) : MANAGERS;
+  order.forEach((name) => {
     const state = cloudPicks[name] || { picks: {}, tiebreaker: "" };
     let total = 0;
     const cells = ordered.map((game) => {
@@ -2615,8 +2623,8 @@ function rankManagers(cloudPicks, results) {
   return rows;
 }
 
-function renderRankings(cloudPicks, results, live = {}) {
-  const rows = rankManagers(cloudPicks, results);
+function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
+  const rows = precomputed || rankManagers(cloudPicks, results);
   rankingsList.innerHTML = "";
   renderRankingRows(rows, cloudPicks, results, live);
   return rows;
