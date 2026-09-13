@@ -1000,7 +1000,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609212230";
+  tag.src = "admin.js?v=202609212330";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1031,7 +1031,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609212230";
+  tag.src = "console.js?v=202609212330";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1630,8 +1630,12 @@ function renderPicksStanding() {
     // Leading: the gap that matters is to whoever is closest behind you.
     ? rows.find((r) => r.score < me.score)
     : leader;
+  // The gap carries its unit. A bare number next to a name reads as that
+  // person's score, or their rank, or anything but the six points between
+  // you and them.
+  const gap = chasing ? Math.abs(me.score - chasing.score) : 0;
   const right = chasing
-    ? `<span class="ps-label">${me.place === 1 ? "AHEAD OF" : "CHASING"}</span><span class="ps-who">${escapeCd(chasing.name.toUpperCase())}</span><span class="ps-gap">${Math.abs(me.score - chasing.score)}</span>`
+    ? `<span class="ps-label">${me.place === 1 ? "AHEAD OF" : "CHASING"}</span><span class="ps-who">${escapeCd(chasing.name.toUpperCase())}</span><span class="ps-gap">${gap} ${me.place === 1 ? "UP" : "BACK"}</span>`
     : `<span class="ps-label">CLEAR</span>`;
   el.innerHTML = `<span class="ps-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ps-score">${String(me.score).padStart(2, "0")} PTS</span>${right}`;
   el.classList.remove("hidden");
