@@ -998,7 +998,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609201030";
+  tag.src = "admin.js?v=202609201130";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1029,7 +1029,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609201030";
+  tag.src = "console.js?v=202609201130";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2141,7 +2141,7 @@ function renderLiveScores(live, cloudPicks) {
 
       const row = (team, short, id, score, lead, fav, pop, rank, ball) => `
         <div class="bug-row ${lead ? "leading" : ""} ${myPick && myPick.team === team ? "mine" : ""}">
-          <span class="bug-mark${rank ? " ranked" : ""}">
+          <span class="bug-mark">
             <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
             ${rankBadge(rank)}
           </span>
