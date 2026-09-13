@@ -2304,6 +2304,10 @@ html, body {
 .rd-pts { display: inline-block; min-width: 40px; padding: 5px 0; border-radius: 6px; font-family: 'Press Start 2P', monospace; font-size: 8px; text-align: center; }
 .rd-pts.none { color: var(--text-dim); opacity: .5; }
 .rd-pts.hit { background: rgba(57, 255, 136, .18); color: var(--neon-green); border: 1px solid rgba(57, 255, 136, .5); }
+/* Only here. On the breakdown you are reading one manager's ten picks at
+   once and what each was worth is the point, so the chip carries it. */
+.rd-pts.hit2 { background: rgba(5, 217, 232, .18); color: var(--neon-cyan); border: 1px solid rgba(5, 217, 232, .6); }
+.rd-pts.upset { background: rgba(255, 228, 94, .25); color: var(--neon-yellow); border: 1px solid var(--neon-yellow); }
 .rd-pts.miss { background: rgba(255, 32, 121, .14); color: var(--neon-pink); border: 1px solid rgba(255, 32, 121, .5); }
 /* Same idea on the breakdown: the tier gives the colour, .lean says the
    game has not finished. */

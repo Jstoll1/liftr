@@ -301,6 +301,14 @@ function ptsTier(points) {
   return points > 0 ? "hit" : "miss";
 }
 
+// The breakdown is one manager's ten picks read side by side, where what
+// each was worth is the interesting part, so its chips colour by value:
+// 1 green, 2 cyan, 3 gold. The board does not, because ten cards of
+// four-colour pills is noise and the digit already says how many.
+function ptsValueTier(points) {
+  return points >= 3 ? "upset" : points === 2 ? "hit2" : points > 0 ? "hit" : "miss";
+}
+
 function rankBadge(rank) {
   return rank ? `<i class="tm-rank" title="AP rank">${rank}</i>` : "";
 }
@@ -992,7 +1000,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609211045";
+  tag.src = "admin.js?v=202609211200";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1023,7 +1031,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609211045";
+  tag.src = "console.js?v=202609211200";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1565,13 +1573,13 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
       outcome = pick.mode === "ATS"
         ? `${short} ${byTxt} · ${pushed ? "push, nobody scores" : hit ? "covered the number" : "did not cover"}`
         : `${short} ${byTxt} · ${hit ? "won outright" : "lost outright"}`;
-      pill = pushed ? `<span class="rd-pts push">PUSH</span>` : `<span class="rd-pts ${ptsTier(pts)}">${hit ? "+" + pts : "0"} PTS</span>`;
+      pill = pushed ? `<span class="rd-pts push">PUSH</span>` : `<span class="rd-pts ${ptsValueTier(pts)}">${hit ? "+" + pts : "0"} PTS</span>`;
     } else if (prov !== null) {
       const hit = prov > 0;
       outcome = pick.mode === "ATS"
         ? `${short} ${liveByTxt} · ${resultOutcome(game, { awayScore: aS, homeScore: hS })?.push ? "on the number, a push right now" : hit ? "covering" : "not covering"} right now`
         : `${short} ${liveByTxt} · ${hit ? "winning" : "trailing"} right now`;
-      pill = `<span class="rd-pts lean ${hit ? ptsTier(worth) : "miss"}">${hit ? "+" + worth : "0"}?</span>`;
+      pill = `<span class="rd-pts lean ${hit ? ptsValueTier(worth) : "miss"}">${hit ? "+" + worth : "0"}?</span>`;
     } else {
       outcome = pick.mode === "ATS"
         ? (isFav ? `Needs ${short} to win by more than ${game.spread}` : `Needs ${short} to win or lose by less than ${game.spread}`)
@@ -2338,11 +2346,11 @@ function playerBreakdownHtml(name, state, results, live) {
       if (pts !== null) {
         banked += pts;
         const pushed = pick.mode === "ATS" && resultOutcome(game, results[game.id])?.push;
-        ptsHtml = pushed ? `<span class="rd-pts push">PUSH</span>` : pts > 0 ? `<span class="rd-pts ${ptsTier(pts)}">+${pts}</span>` : `<span class="rd-pts miss">0</span>`;
+        ptsHtml = pushed ? `<span class="rd-pts push">PUSH</span>` : pts > 0 ? `<span class="rd-pts ${ptsValueTier(pts)}">+${pts}</span>` : `<span class="rd-pts miss">0</span>`;
       } else if (isLive && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore) && (g.awayScore || g.homeScore)) {
         const prov = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
         liveOpen += 1;
-        if (prov > 0) { liveCovering += 1; ptsHtml = `<span class="rd-pts lean ${ptsTier(worth)}">+${worth}?</span>`; }
+        if (prov > 0) { liveCovering += 1; ptsHtml = `<span class="rd-pts lean ${ptsValueTier(worth)}">+${worth}?</span>`; }
         else ptsHtml = `<span class="rd-pts lean miss">0?</span>`;
       }
     }
