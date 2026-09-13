@@ -962,12 +962,16 @@ html, body {
 
 .bug-row {
   display: grid;
-  /* The line is reference and the score is the news. The spread column is
-     sized to -27.5, the widest line on a slate, plus a gutter wide enough
-     that a two-digit score never reads as touching it. The score column is
-     22, which holds a two-digit score with room to spare and a three-digit
-     one exactly; nobody has scored a hundred. */
-  grid-template-columns: 20px minmax(0, 1fr) 29px 22px;
+  /* The spread and the score size themselves. Both are set in Press Start
+     2P, which is one em per character, so -27.5 is 32.5px at 6.5px and a
+     two-digit score is 24px at 12px. Hard pixel widths here were guesses
+     against whatever font happened to be measuring, and when they came up
+     short the two numbers overlapped, right-aligned text spilling left out
+     of its own column into its neighbour. max-content asks the browser for
+     the real width in the real font on the real device, so they cannot
+     collide whatever the type is doing. The name takes what is left and
+     ellipsises, which is the right thing to give up. */
+  grid-template-columns: 20px minmax(0, 1fr) max-content max-content;
   align-items: center;
   gap: 2px;
   padding: 2px 0 2px 4px;
