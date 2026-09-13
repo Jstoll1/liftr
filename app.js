@@ -1889,6 +1889,7 @@ let lastGoodCloudPicks = null;
 let cloudPicksStale = false;
 
 async function renderScoreboard() {
+  renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   const fetched = await fetchAllPicks();
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
@@ -2969,39 +2970,52 @@ let renderRecap = function () {
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
   const cards = [];
-  const who = (w) => Array.isArray(w) ? names(w) : w;
+  const chips = (w) => nameChips(Array.isArray(w) ? w : [w]);
+  const logo = (id, alt = "") => id ? `<img class="recap-logo" src="${logoUrl(id)}" alt="${esc(alt)}" loading="lazy">` : `<span class="recap-logo blank"></span>`;
+  const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);
+  // [label, class, art, headline, sub, stat, statLabel, isMe]
   if (r.best) {
     const b = r.best;
-    cards.push(["PICK OF THE WEEK", "hit", `<b>${esc(who(b.who))}</b> took ${esc(b.pick)}`,
-      `Only ${b.takers} of ${b.of} ${b.takers === 1 ? "did" : `were on ${esc(b.team || b.pick)}`}. ${esc(b.final || b.score)}. +${b.pts} pts.`]);
+    cards.push(["🎯 PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${esc(b.pick)}</span>`,
+      `Only ${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : `were on ${esc(b.team || b.pick)}`} · ${esc(b.final || b.score)}`, `+${b.pts}`, "PTS", mine(b.who)]);
   }
   if (r.worst) {
     const w = r.worst;
-    cards.push(["WORST PICK", "miss", `<b>${esc(w.pick)}</b>`,
-      `${w.takers} of ${w.of} took it. ${esc(w.final || w.score)}. All ${w.takers} got zero.`]);
+    cards.push(["💀 WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${esc(w.pick)}</span>`,
+      `${w.takers} of ${w.of} took it · ${esc(w.final || w.score)}`, `${w.takers}×`, "ZERO", mine(w.who)]);
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
-    cards.push(["MOVEMENT", "move", `<b>${esc(u.name)}</b> climbed ${u.from - u.to} to #${u.to} on the season`, d ? `${esc(d.name)} fell ${d.to - d.from} to #${d.to}.` : "Nobody fell."]);
+    cards.push(["📈 MOVEMENT", "move", `<span class="recap-logo arrow">▲</span>`, `${chips([u.name])}<span class="recap-pick">to #${u.to} on the season</span>`,
+      d ? `${esc(d.name)} fell ${d.to - d.from} to #${d.to}` : "Nobody fell", `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean))]);
   }
   if (r.consensus?.sides?.length > 1) {
     const c = r.consensus;
     const [a, b] = c.sides;
-    cards.push(["COIN FLIP", "split", `<b>${esc(c.matchup)}</b>`,
-      `Split ${a.n} to ${b.n}, ${esc(a.team)} vs ${esc(b.team)}. ${esc(c.final || c.score)}.`]);
+    cards.push(["🪙 COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="recap-pick">${esc(c.matchup)}</span>`,
+      `${esc(a.team)} ${a.n} · ${esc(b.team)} ${b.n} · ${esc(c.final || c.score)}`, `${a.n}-${b.n}`, "SPLIT", false]);
   }
   if (r.tb) {
     const t = r.tb;
-    const guess = [...new Set(t.guesses || [t.guess])].join(" and ");
-    cards.push(["TIEBREAKER", "tb", `<b>${esc(who(t.who))}</b> said ${esc(guess)}`,
-      `${esc(t.matchup)} came in at ${t.actual}. Off by ${t.off}.`]);
+    const guess = [...new Set(t.guesses || [t.guess])].join(" & ");
+    cards.push(["🎱 TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `${chips(t.who)}<span class="recap-pick">said ${esc(guess)}</span>`,
+      `${esc(t.matchup)} came in at ${t.actual}`, t.off === 0 ? "🎯" : `${t.off}`, t.off === 0 ? "EXACT" : "OFF", mine(t.who)]);
   }
-  const key = `${last.week}|${cards.length}`;
+  const key = `${last.week}|${cards.length}|${currentManager}`;
   toggle.classList.remove("hidden");
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
   if (panel.dataset.drawn === key) return;
   panel.dataset.drawn = key;
-  panel.innerHTML = `${cards.map(([h, cls, main, sub]) => `<div class="recap-card ${cls}"><div class="recap-head">${h}</div><div class="recap-main">${main}</div><div class="recap-sub">${sub}</div></div>`).join("")}`;
+  panel.innerHTML = cards.map(([h, cls, art, main, sub, stat, statLabel, me], i) =>
+    `<div class="recap-card ${cls}${me ? " me" : ""}" style="--i:${i}">
+      <div class="recap-art">${art}</div>
+      <div class="recap-body">
+        <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
+        <div class="recap-main">${main}</div>
+        <div class="recap-sub">${sub}</div>
+      </div>
+      <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div>
+    </div>`).join("");
 };
 
 // Folds like the sections under it. Starts open; the choice is remembered.

@@ -1207,7 +1207,7 @@ const summaryKey = (week) => `week-summary:w${week}`;
 // Bump this whenever a summary gains or changes a field. A stored summary
 // behind this number is rebuilt on the next read, so a Worker deploy never
 // needs a re-seal by hand.
-const SUMMARY_VERSION = 8;
+const SUMMARY_VERSION = 9;
 // Played for the trophy only. No money, no season points, and no bearing
 // on the next week's movement card.
 const EXHIBITION_WEEKS = new Set([1]);
@@ -1354,6 +1354,8 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
   const N = rows.length;
   const byId = new Map(games.map((g) => [Number(g.id), g]));
   const short = (g, team) => (team === g.home ? g.homeShort : team === g.away ? g.awayShort : team);
+  // ESPN team id, so the card can carry the logo the board already shows.
+  const idOf = (g, team) => (team === g.home ? g.homeId : team === g.away ? g.awayId : null) ?? null;
   const groups = new Map();
   for (const r of rows) for (const l of r.ledger) {
     if (l.result !== "hit" && l.result !== "miss") continue;
@@ -1372,7 +1374,7 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
     if (a === h) return { winner: null, text: `tied ${a}-${h}` };
     return a > h ? { winner: g.awayShort, text: `${g.awayShort} won ${a}-${h}` } : { winner: g.homeShort, text: `${g.homeShort} won ${h}-${a}` };
   };
-  const card = (l) => ({ who: l.who, team: short(byId.get(l.g), l.team),
+  const card = (l) => ({ who: l.who, team: short(byId.get(l.g), l.team), teamId: idOf(byId.get(l.g), l.team),
     pick: l.mixed && new Set(all.filter((x) => x.g === l.g && x.team === l.team).map((x) => x.mode)).size > 1 ? short(byId.get(l.g), l.team) : line(l),
     matchup: l.matchup, score: l.score, final: finalOf(l)?.text || null, takers: l.teamTakers ?? l.who.length, of: N, pts: l.result === "hit" ? l.pts : l.worth });
 
@@ -1427,7 +1429,7 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
   const consensus = total ? {
     pct: Math.round((agreed / total) * 100),
     matchup: `${closest.g.awayShort} at ${closest.g.homeShort}`,
-    sides: closest.top.map(([team, n]) => ({ team: short(closest.g, team), n })),
+    sides: closest.top.map(([team, n]) => ({ team: short(closest.g, team), id: idOf(closest.g, team), n })),
     cashed: closest.hit ? short(closest.g, closest.hit) : null,
     score: closest.score,
     final: finalOf({ g: Number(closest.g.id), score: closest.score })?.text || null,
@@ -1437,7 +1439,7 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
   const guessed = rows.filter((r) => r.tbDiff !== null).sort((a, b) => a.tbDiff - b.tbDiff);
   const closestTb = guessed.filter((r) => r.tbDiff === guessed[0]?.tbDiff);
   const tb = closestTb.length && tbGame && actualTotal !== null
-    ? { who: closestTb.map((r) => r.name), guesses: closestTb.map((r) => r.tbGuess), actual: actualTotal, off: closestTb[0].tbDiff, matchup: `${tbGame.awayShort} at ${tbGame.homeShort}` }
+    ? { who: closestTb.map((r) => r.name), guesses: closestTb.map((r) => r.tbGuess), actual: actualTotal, off: closestTb[0].tbDiff, matchup: `${tbGame.awayShort} at ${tbGame.homeShort}`, awayId: tbGame.awayId ?? null, homeId: tbGame.homeId ?? null }
     : null;
 
   return { best: best ? card(best) : null, worst: worst ? card(worst) : null, movement, consensus, tb };

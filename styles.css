@@ -2989,18 +2989,36 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-empty { font-size: 11px; color: var(--text-dim); text-align: center; padding: 4px 0; }
 @media (max-width: 360px) { .pot-row { grid-template-columns: 20px minmax(0, 1fr) 38px 44px 56px; font-size: 11px; } }
 
-/* Week recap: five short cards above the leaderboard. */
+/* Week recap: five cards, each with a logo, the people on it, and one
+   big number. They deal in one at a time when the panel opens. */
 .recap-panel { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .recap-panel.hidden { display: none; }
-.recap-won { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-yellow); letter-spacing: .06em; padding: 2px 0 4px; }
-.recap-won b { font-weight: 400; text-shadow: 0 0 6px rgba(255, 228, 94, .55); }
-.recap-card { padding: 8px 10px; border: 1px solid var(--card-border); border-left-width: 3px; border-radius: 8px; background: rgba(0, 0, 0, .25); }
-.recap-card.hit { border-left-color: var(--neon-green); }
-.recap-card.miss { border-left-color: var(--neon-pink); }
-.recap-card.move { border-left-color: var(--neon-cyan); }
-.recap-card.split { border-left-color: var(--neon-purple, #c13cff); }
-.recap-card.tb { border-left-color: var(--neon-yellow); }
-.recap-head { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--text-dim); margin-bottom: 4px; }
-.recap-main { font-size: 14px; line-height: 1.3; }
-.recap-main b { color: #fff; }
-.recap-sub { font-size: 12.5px; line-height: 1.4; color: var(--text-meta); margin-top: 3px; }
+.recap-card { --c: var(--neon-cyan); display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px 10px 10px; border: 1px solid var(--card-border); border-radius: 10px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 10%, transparent), rgba(0, 0, 0, .25) 45%); box-shadow: inset 3px 0 0 var(--c);
+  animation: recap-deal .45s cubic-bezier(.2, .9, .3, 1.2) both; animation-delay: calc(var(--i, 0) * 110ms); }
+.recap-card.hit { --c: var(--neon-green); }
+.recap-card.miss { --c: var(--neon-pink); }
+.recap-card.move { --c: var(--neon-cyan); }
+.recap-card.split { --c: var(--neon-purple); }
+.recap-card.tb { --c: var(--neon-yellow); }
+.recap-card.me { border-color: color-mix(in srgb, var(--c) 55%, var(--card-border)); box-shadow: inset 3px 0 0 var(--c), 0 0 14px color-mix(in srgb, var(--c) 28%, transparent); }
+@keyframes recap-deal { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .recap-card { animation: none; } }
+.recap-art { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; }
+.recap-logo { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(0, 0, 0, .6)); }
+.recap-logo.blank { width: 44px; height: 44px; }
+.recap-logo.arrow { display: flex; align-items: center; justify-content: center; font-family: 'Orbitron', sans-serif; font-size: 30px; color: var(--c); text-shadow: 0 0 10px var(--c); }
+.recap-vs { display: flex; align-items: center; }
+.recap-vs .recap-logo { width: 32px; height: 32px; }
+.recap-vs .recap-logo + .recap-logo { margin-left: -12px; }
+.recap-body { min-width: 0; }
+.recap-head { display: flex; align-items: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--c); margin-bottom: 5px; }
+.recap-you { padding: 2px 5px; border-radius: 999px; background: var(--c); color: #12002b; font-size: 5.5px; letter-spacing: .1em; }
+.recap-main { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 14px; line-height: 1.25; }
+.recap-main .pick-chip { font-size: 12px; }
+.recap-pick { font-weight: 700; color: #fff; }
+.recap-sub { font-size: 12px; line-height: 1.35; color: var(--text-meta); margin-top: 3px; }
+.recap-stat { display: flex; flex-direction: column; align-items: center; min-width: 46px; padding-left: 8px; border-left: 1px solid rgba(255, 255, 255, .08); }
+.recap-stat b { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 22px; line-height: 1; color: var(--c); text-shadow: 0 0 10px color-mix(in srgb, var(--c) 60%, transparent); }
+.recap-stat span { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .12em; color: var(--text-dim); margin-top: 5px; }
+@media (max-width: 360px) { .recap-card { grid-template-columns: 44px minmax(0, 1fr) auto; } .recap-logo { width: 38px; height: 38px; } .recap-stat b { font-size: 19px; } }
