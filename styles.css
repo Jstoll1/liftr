@@ -2452,7 +2452,10 @@ html, body {
 .stake.slipping .stake-dot { animation: stake-pulse 1.2s ease-in-out infinite; }
 .stake.hit { border-color: rgba(0, 255, 143, .75); background: rgba(0, 255, 143, .16); color: var(--neon-green); }
 .stake.push { border-color: rgba(255, 228, 94, .7); background: rgba(255, 228, 94, .12); color: var(--neon-yellow); }
-.stake.miss { border-color: rgba(255, 92, 138, .5); color: var(--neon-pink); text-decoration: line-through; text-decoration-thickness: 1.5px; opacity: .75; }
+/* No strikethrough. A line across Orbitron at 10px does not read as
+   "crossed out", it reads as a broken glyph, and the pill says 0 now
+   anyway. */
+.stake.miss { border-color: rgba(255, 92, 138, .5); background: rgba(255, 92, 138, .1); color: var(--neon-pink); }
 @keyframes stake-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
 
 /* Points still in flight, beside the banked total in the score strip. */

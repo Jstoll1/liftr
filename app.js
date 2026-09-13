@@ -998,7 +998,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609192145";
+  tag.src = "admin.js?v=202609201030";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1029,7 +1029,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609192145";
+  tag.src = "console.js?v=202609201030";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2185,7 +2185,12 @@ function renderLiveScores(live, cloudPicks) {
         let tone = "pending", dot = "", face = `${worth}<span class="stake-u">PT</span>`;
         if (pts !== null) {
           tone = pushed ? "push" : pts > 0 ? "hit" : "miss";
-          face = pushed ? "P" : pts > 0 ? `+${pts}` : `${worth}<span class="stake-u">PT</span>`;
+          // A final says what you scored, not what you no longer have. A
+          // hit reads +2, so a miss reads 0, and the pill is the same
+          // shape either way. The struck-through stake it replaces put a
+          // 1.5px line across a 10px digit, which turned 1 PT into
+          // something closer to 4 PT.
+          face = pushed ? "P" : pts > 0 ? `+${pts}` : "0";
         } else if (lean !== null) {
           tone = lean > 0 ? "covering" : "slipping";
           dot = `<span class="stake-dot"></span>`;
