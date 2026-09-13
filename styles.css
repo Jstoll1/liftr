@@ -1450,6 +1450,18 @@ html, body {
 .scoreboard-table tr.is-me td.manager-col { background: #0f1a2a; }
 
 .scoreboard-table .ranking-lock { display: block; font-size: 8px; margin-top: 1px; }
+/* The place, in the leaderboard's own type and colour, so the grid reads
+   as the same list rather than as a coincidentally similar one. */
+.scoreboard-table .ap-place {
+  display: inline-block;
+  min-width: 30px;
+  margin-right: 5px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--neon-yellow);
+  letter-spacing: .04em;
+}
+.scoreboard-table tr.is-me .ap-who { color: var(--neon-cyan); }
 
 .pick-cell-logo {
   width: 20px;
