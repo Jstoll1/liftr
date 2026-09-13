@@ -1,0 +1,27 @@
+<!-- The 16 and 32 pixel favicons. The full icon has a horizon grid and
+     four sun slots, which at sixteen pixels is roughly two pixels of mud.
+     Same palette, same subject, everything non-essential removed: the sun
+     fills the square and the ball crosses it. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2b0546"/>
+      <stop offset="100%" stop-color="#12002b"/>
+    </linearGradient>
+    <linearGradient id="sun2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe45e"/>
+      <stop offset="45%" stop-color="#ff9d3d"/>
+      <stop offset="100%" stop-color="#ff2079"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#sky2)"/>
+  <circle cx="512" cy="512" r="430" fill="url(#sun2)"/>
+  <g transform="translate(512 512) rotate(-20)">
+    <path d="M -330 0 C -180 -215 180 -215 330 0 C 180 215 -180 215 -330 0 Z" fill="#fff6e6"/>
+    <g stroke="#ff2079" stroke-width="46" stroke-linecap="butt">
+      <line x1="-120" y1="0" x2="120" y2="0"/>
+      <line x1="-58" y1="-46" x2="-58" y2="46"/>
+      <line x1="30"  y1="-46" x2="30"  y2="46"/>
+    </g>
+  </g>
+</svg>

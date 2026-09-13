@@ -1,0 +1,83 @@
+<!-- Home screen icon. Full bleed on purpose: the old one was a football
+     floating on near-black, which reads as a sticker at 60px and wastes
+     most of the square. This is the app's own splash in miniature, the
+     arcade sun over a horizon grid, with a pixel football crossing it so
+     the thing is identifiably a football pool and not a synthwave album.
+     Everything that matters sits inside the middle 60% so a maskable
+     circle crop on Android cannot cut it. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#12002b"/>
+      <stop offset="45%" stop-color="#2b0546"/>
+      <stop offset="72%" stop-color="#5c0d5e"/>
+      <stop offset="100%" stop-color="#1a0332"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe45e"/>
+      <stop offset="38%" stop-color="#ff9d3d"/>
+      <stop offset="72%" stop-color="#ff2079"/>
+      <stop offset="100%" stop-color="#c13cff"/>
+    </linearGradient>
+    <linearGradient id="ball" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff6e6"/>
+      <stop offset="100%" stop-color="#ffd9a3"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff2079" stop-opacity=".55"/>
+      <stop offset="100%" stop-color="#ff2079" stop-opacity="0"/>
+    </radialGradient>
+    <!-- the sun, minus the slots that make it read as retro rather than
+         as a plain circle -->
+    <mask id="slots">
+      <rect x="0" y="0" width="1024" height="1024" fill="#fff"/>
+      <rect x="0" y="492" width="1024" height="20" fill="#000"/>
+      <rect x="0" y="540" width="1024" height="26" fill="#000"/>
+      <rect x="0" y="594" width="1024" height="33" fill="#000"/>
+      <rect x="0" y="654" width="1024" height="42" fill="#000"/>
+    </mask>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#sky)"/>
+  <circle cx="512" cy="488" r="450" fill="url(#glow)"/>
+  <circle cx="512" cy="470" r="278" fill="url(#sun)" mask="url(#slots)"/>
+
+  <!-- horizon and the grid running off to it -->
+  <g stroke="#05d9e8" fill="none">
+    <line x1="0" y1="742" x2="1024" y2="742" stroke-width="7" opacity=".9"/>
+    <g stroke-width="5" opacity=".42">
+      <line x1="512" y1="742" x2="-360" y2="1024"/>
+      <line x1="512" y1="742" x2="-30" y2="1024"/>
+      <line x1="512" y1="742" x2="266" y2="1024"/>
+      <line x1="512" y1="742" x2="512" y2="1024"/>
+      <line x1="512" y1="742" x2="758" y2="1024"/>
+      <line x1="512" y1="742" x2="1054" y2="1024"/>
+      <line x1="512" y1="742" x2="1384" y2="1024"/>
+    </g>
+    <g stroke-width="5" opacity=".42">
+      <line x1="0" y1="790" x2="1024" y2="790"/>
+      <line x1="0" y1="858" x2="1024" y2="858"/>
+      <line x1="0" y1="952" x2="1024" y2="952"/>
+    </g>
+  </g>
+
+  <!-- The football, drawn as a proper pointed ellipse. Built from pixel
+       blocks first, which is right at eight pixels in a row of type and
+       wrong here: at icon size three stacked bars read as three bars, not
+       as a ball. A silhouette reads instantly at 29px, which is the size
+       that actually has to work. -->
+  <g transform="translate(512 470) rotate(-20) scale(1.1)">
+    <path d="M -232 0 C -128 -150 128 -150 232 0 C 128 150 -128 150 -232 0 Z"
+          fill="#0a0014" opacity=".45" transform="translate(10 14)"/>
+    <path d="M -232 0 C -128 -150 128 -150 232 0 C 128 150 -128 150 -232 0 Z"
+          fill="url(#ball)" stroke="#5c1a00" stroke-width="6" stroke-opacity=".35"/>
+    <!-- laces, the one detail that makes it a football and not a lozenge -->
+    <g stroke="#ff2079" stroke-width="17" stroke-linecap="butt">
+      <line x1="-92" y1="0" x2="92" y2="0"/>
+      <line x1="-62" y1="-30" x2="-62" y2="30"/>
+      <line x1="-16" y1="-34" x2="-16" y2="34"/>
+      <line x1="30"  y1="-34" x2="30"  y2="34"/>
+      <line x1="76"  y1="-30" x2="76"  y2="30"/>
+    </g>
+  </g>
+</svg>
