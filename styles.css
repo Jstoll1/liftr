@@ -1013,8 +1013,10 @@ html, body {
 .bug-mark .bug-logo { width: 100%; height: 100%; }
 /* Just the number, over the logo. No pill, no fill, no notch cut out of
    the mark: a filled bubble at this size reads as a button and fights the
-   logo it sits on. It is carried by an outline instead, so it stays legible
-   over whatever colour a team's crest happens to be. */
+   logo it sits on. It is carried by a dark outline instead, so it stays
+   legible over whatever colour a team's crest happens to be. White,
+   because yellow is the standings colour on this board and a poll rank is
+   not a standing. */
 .bug-mark .tm-rank {
   position: absolute;
   left: -2px;
@@ -1022,7 +1024,7 @@ html, body {
   font-size: 7.5px;
   font-weight: 800;
   line-height: 1;
-  color: var(--neon-yellow);
+  color: #fff;
   text-shadow:
     0 0 2px #0a0014, 0 0 2px #0a0014,
     1px 0 0 #0a0014, -1px 0 0 #0a0014,
@@ -1037,7 +1039,7 @@ html, body {
   font-style: normal;
   font-weight: 800;
   font-size: 9px;
-  color: var(--neon-yellow);
+  color: #fff;
   letter-spacing: 0;
 }
 .tm-rank::before { content: "#"; opacity: .55; font-weight: 600; }
