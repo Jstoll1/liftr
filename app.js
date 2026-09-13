@@ -1000,7 +1000,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609220930";
+  tag.src = "admin.js?v=202609221030";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1031,7 +1031,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609220930";
+  tag.src = "console.js?v=202609221030";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2256,12 +2256,11 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
   // order it used before is the order the names were written down in,
   // which tells you nothing about the week.
   const order = ranked ? ranked.map((r) => r.name) : MANAGERS;
-  // A bare number, not 1ST or T-8TH. The grid is ten columns wide and the
-  // manager column was eating the room they need; the ordinal suffix and
-  // the tie prefix are four characters that say nothing the digit does not.
-  // Tied managers simply repeat a number, which is what a standings list
-  // does anyway.
-  const placeOf = new Map((ranked || []).map((r) => [r.name, String(r.place)]));
+  // The place reads like a poll rank on a team: the name first, then a
+  // small number after it. T marks a tie. The ordinal suffix is dropped
+  // because the grid is ten game columns wide and 1ST or T-8TH is four
+  // characters saying nothing the digit does not.
+  const placeOf = new Map((ranked || []).map((r) => [r.name, `${r.tied ? "T" : ""}${r.place}`]));
   order.forEach((name) => {
     const state = cloudPicks[name] || { picks: {}, tiebreaker: "" };
     let total = 0;
@@ -2322,7 +2321,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
     // beside it, a missing one already shows as a red cross, and the
     // leaderboard above states the count outright, so it was a second line
     // of cell saying what the first line was already showing.
-    html += `<tr class="${name === currentManager ? "is-me" : ""}"><td class="manager-col">${rankTag}<span class="ap-who">${name}</span></td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
+    html += `<tr class="${name === currentManager ? "is-me" : ""}"><td class="manager-col"><span class="ap-who">${name}</span>${rankTag}</td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
   });
 
   html += "</tbody>";

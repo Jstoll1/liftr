@@ -1452,15 +1452,17 @@ html, body {
 .scoreboard-table .ranking-lock { display: block; font-size: 8px; margin-top: 1px; }
 /* The place, in the leaderboard's own type and colour, so the grid reads
    as the same list rather than as a coincidentally similar one. */
+/* Set like a poll rank on a team: after the name, small, quiet, in the
+   same Orbitron the college ranks use rather than the pixel face, so it
+   reads as a rank rather than as another score. */
 .scoreboard-table .ap-place {
-  display: inline-block;
-  min-width: 12px;
-  margin-right: 6px;
-  font-family: 'Press Start 2P', monospace;
+  margin-left: 4px;
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-weight: 800;
   font-size: 8px;
-  color: var(--neon-yellow);
-  text-align: right;
+  color: rgba(255, 255, 255, .78);
   letter-spacing: 0;
+  vertical-align: 2px;
 }
 .scoreboard-table tr.is-me .ap-who { color: var(--neon-cyan); }
 
