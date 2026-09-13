@@ -876,8 +876,12 @@ html, body {
    played". White says now and nothing about the outcome, which the stake
    pill and the scores are there to say. */
 .scorebug.is-live {
-  border-color: rgba(255, 255, 255, .8);
-  box-shadow: 0 0 12px rgba(255, 255, 255, .18);
+  /* On a Saturday most of the board is live at once, and a bright ring on
+     six of ten cards marks nothing: everything shouts, so nothing carries.
+     Quiet enough to read as "this one is being played", not so loud that
+     it competes with the scores inside it. The glow is gone for the same
+     reason the score's glow went. */
+  border-color: rgba(255, 255, 255, .42);
 }
 
 .scorebug.is-final { opacity: 1; }
@@ -1019,12 +1023,15 @@ html, body {
    not a standing. */
 .bug-mark .tm-rank {
   position: absolute;
-  left: -2px;
-  bottom: -3px;
-  font-size: 7.5px;
-  font-weight: 800;
+  left: -3px;
+  bottom: -4px;
+  font-size: 7px;
+  font-weight: 700;
   line-height: 1;
-  color: #fff;
+  /* Secondary information, so it recedes rather than competing with the
+     crest it sits on. Bold white at full strength covered half of
+     Tennessee's T. */
+  color: rgba(255, 255, 255, .78);
   text-shadow:
     0 0 2px #0a0014, 0 0 2px #0a0014,
     1px 0 0 #0a0014, -1px 0 0 #0a0014,
@@ -2239,7 +2246,7 @@ html, body {
 .pick-cell.incorrect .pick-cell-spread { opacity: .5; }
 .pick-cell.correct .pick-cell-spread { color: var(--neon-green); text-shadow: 0 0 4px rgba(57, 255, 136, .5); }
 .scoreboard-table th.final::after { content: ""; display: block; width: 14px; height: 2px; margin: 3px auto 0; background: var(--neon-green); box-shadow: 0 0 4px var(--neon-green); }
-.scoreboard-table th.live::after { content: ""; display: block; width: 6px; height: 6px; margin: 2px auto 0; border-radius: 50%; background: #fff; box-shadow: 0 0 5px rgba(255, 255, 255, .8); animation: live-blink 1.1s ease-in-out infinite; }
+.scoreboard-table th.live::after { content: ""; display: block; width: 6px; height: 6px; margin: 2px auto 0; border-radius: 50%; background: #fff; box-shadow: 0 0 5px rgba(255, 255, 255, .8); }
 .pick-cell-pts { display: none; }
 
 .updated-stamp { display: block; margin: 4px auto 10px; background: none; border: 0; color: var(--text-dim); font-family: 'Orbitron', sans-serif; font-size: 9px; letter-spacing: .04em; cursor: pointer; }
@@ -2343,7 +2350,11 @@ html, body {
 .rd-summary b { color: var(--neon-green); font-weight: 400; }
 
 /* --- Picks: locked cards become scorebugs --- */
-.game-status.live { color: #fff; border: 1px solid rgba(255, 255, 255, .7); animation: live-blink 1.1s ease-in-out infinite; }
+/* Live is said by the colour and the clock inside it. A blinking pill on
+   every locked card was noise on a screen full of them. The saving pill
+   below still blinks, because that one is a transient state you want to
+   notice. */
+.game-status.live { color: #fff; border: 1px solid rgba(255, 255, 255, .7); }
 .game-status.final { color: var(--neon-green); border: 1px solid var(--neon-green); }
 .locked-result { display: flex; flex-direction: column; gap: 4px; padding: 6px 2px 2px; }
 .lr-team { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; align-items: center; column-gap: 8px; padding: 6px 8px; border-radius: 8px; border: 1px solid transparent; }
@@ -2452,28 +2463,29 @@ html, body {
 .bug-row.mine .bug-team { color: var(--neon-cyan); }
 .stake-dot { width: 5px; height: 5px; border-radius: 50%; flex: none; background: currentColor; }
 
+/* No dot and no pulse. The card's ring already says the game is live, so
+   the pill only has to say whether you are covering, which its colour
+   does. Two live markers on one card, one of them blinking, was most of
+   what made the board feel busy. */
 .stake.covering { border-color: rgba(0, 255, 143, .7); background: rgba(0, 255, 143, .12); color: var(--neon-green); }
-.stake.covering .stake-dot { animation: stake-pulse 1.2s ease-in-out infinite; }
 .stake.slipping { border-color: rgba(255, 92, 138, .7); background: rgba(255, 92, 138, .12); color: var(--neon-pink); }
-.stake.slipping .stake-dot { animation: stake-pulse 1.2s ease-in-out infinite; }
 .stake.hit { border-color: rgba(0, 255, 143, .75); background: rgba(0, 255, 143, .16); color: var(--neon-green); }
 .stake.push { border-color: rgba(255, 228, 94, .7); background: rgba(255, 228, 94, .12); color: var(--neon-yellow); }
 /* No strikethrough. A line across Orbitron at 10px does not read as
    "crossed out", it reads as a broken glyph, and the pill says 0 now
    anyway. */
 .stake.miss { border-color: rgba(255, 92, 138, .5); background: rgba(255, 92, 138, .1); color: var(--neon-pink); }
-@keyframes stake-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
 
 /* Points still in flight, beside the banked total in the score strip. */
 .ms-live { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(0, 255, 143, .6); background: rgba(0, 255, 143, .1); font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-green); letter-spacing: .04em; }
-.ms-live .stake-dot { animation: stake-pulse 1.2s ease-in-out infinite; }
+/* The dot stays as the marker for points still in flight; the pulse does
+   not. Nothing on this board blinks now. */
 
 /* A board running on the last copy the Worker actually served. */
 .updated-stamp.stale { color: var(--neon-pink); }
 
 /* A game that kicked off with nothing submitted is a settled zero. */
 .pick-cell.miss-none { opacity: .85; }
-@media (prefers-reduced-motion: reduce) { .stake-dot { animation: none !important; } }
 .scorebug.is-live .bug-tv { opacity: .6; }
 
 .bug-head .stake + .bug-caret { margin-left: 4px; }
