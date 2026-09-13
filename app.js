@@ -441,7 +441,7 @@ async function restorePhonePicks(name) {
 
 async function syncManagerFromCloud(name) {
   const cloud = await fetchAllPicks();
-  if (!cloud) return;
+  if (!cloud) return null;
   const all = loadAll();
   const local = all[name] || { picks: {}, tiebreaker: "" };
   const remote = cloud[name] ? { ...cloud[name], picks: sanitizePicks(cloud[name].picks) } : null;
@@ -467,6 +467,9 @@ async function syncManagerFromCloud(name) {
   saveAll(all);
   // If local held an open-game pick the cloud did not, send it up.
   if (remote && JSON.stringify(merged.picks) !== JSON.stringify(remote.picks)) pushManagerState(name, merged);
+  // Handed back so the standings row can rank from the same payload
+  // instead of asking the Worker for it a second time.
+  return cloud;
 }
 
 // --- Screens / navigation -------------------------------------------------
@@ -1000,7 +1003,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609221130";
+  tag.src = "admin.js?v=202609221200";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1031,7 +1034,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609221130";
+  tag.src = "console.js?v=202609221200";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1094,6 +1097,14 @@ navPicksBtn.addEventListener("click", () => {
     goHome();
     return;
   }
+  showPicksScreen();
+});
+
+// Land on the picks screen and bring it up to date. Draws from what is on
+// the phone first so the screen is not blank while the cloud answers, then
+// one sync and one redraw. Login used to do the sync twice, back to back,
+// once un-awaited and once awaited, and redraw for each.
+function showPicksScreen() {
   rememberScroll();
   historyScreen.classList.add("hidden");
   triviaScreen.classList.add("hidden");
@@ -1103,9 +1114,14 @@ navPicksBtn.addEventListener("click", () => {
   renderPicksScreen();
   setActiveNav("picks");
   enterScreen("picks");
-  syncManagerFromCloud(currentManager).then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
-  refreshPicksStanding();
-});
+  return syncManagerFromCloud(currentManager).then((cloud) => {
+    if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
+    // Same payload feeds the standings row. cloud is null when the fetch
+    // failed, and then the row fetches for itself, which will fail the
+    // same way and leave whatever was on screen.
+    refreshPicksStanding(cloud);
+  });
+}
 
 function showHistory() {
   if (!currentManager) openClaimPrompt();
@@ -1414,21 +1430,9 @@ identityConfirmBtn.addEventListener("click", async () => {
 });
 
 async function selectManager(name) {
-  rememberScroll();
-  historyScreen.classList.add("hidden");
-  triviaScreen.classList.add("hidden");
   currentManager = name;
   saveMe(name);
-  loginScreen.classList.add("hidden");
-  scoreboardScreen.classList.add("hidden");
-  picksScreen.classList.remove("hidden");
-  renderPicksScreen();
-  setActiveNav("picks");
-  enterScreen("picks");
-  syncManagerFromCloud(currentManager).then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
-  refreshPicksStanding();
-  await syncManagerFromCloud(name);
-  withScrollPreserved(renderPicksScreen);
+  await showPicksScreen();
 }
 
 // Re-render without yanking the page: capture scroll, redraw, restore.
@@ -1642,9 +1646,9 @@ function renderPicksStanding() {
 }
 
 // One fetch for the picks screen, the same two sources the board uses.
-async function refreshPicksStanding() {
+async function refreshPicksStanding(prefetched = null) {
   if (!currentManager) return;
-  const fetched = await fetchAllPicks();
+  const fetched = prefetched ?? await fetchAllPicks();
   if (fetched === null) return; // keep whatever was on screen
   const cloudPicks = {};
   MANAGERS.forEach((name) => {
@@ -2843,7 +2847,7 @@ function escapeCd(str) {
 function renderHeaderCountdown() {
   const el = document.getElementById("header-countdown");
   if (!el) return;
-  const hide = () => { el.classList.add("hidden"); el.innerHTML = ""; };
+  const hide = () => { el.classList.add("hidden"); el.innerHTML = ""; delete el.dataset.drawn; };
   if (!picksScreen.classList.contains("hidden") || !currentManager) return hide();
   // One chip in the left slot at a time. Scrolled down the board, the
   // score wins it.
@@ -2860,9 +2864,19 @@ function renderHeaderCountdown() {
   if (!unpicked && !noTb) return hide();
 
   const what = unpicked ? `${unpicked} TO PICK` : "NO TB";
-  el.className = "head-cd" + (cd.ms < 3600000 ? " soon" : "");
+  const cls = "head-cd" + (cd.ms < 3600000 ? " soon" : "");
+  // The tooltip uses the coarse form on purpose: a seconds clock in the
+  // key would defeat the memo below.
+  const title = `${cd.brief} to ${next.awayShort} at ${next.homeShort}`;
+  // Called every second for the countdown, but the words change once a
+  // minute at most and the chip itself changes when a pick goes in. Touch
+  // the DOM only when something it shows has actually moved.
+  const key = `${cls}|${what}|${title}`;
+  if (el.dataset.drawn === key && !el.classList.contains("hidden")) return;
+  el.dataset.drawn = key;
+  el.className = cls;
   el.innerHTML = `<span class="hcd-dot"></span>${what}`;
-  el.title = `${cd.text} to ${next.awayShort} at ${next.homeShort}`;
+  el.title = title;
   el.dataset.go = "picks";
   el.classList.remove("hidden");
 }
@@ -2902,12 +2916,13 @@ setInterval(() => {
   }
   if (!scoreboardScreen.classList.contains("hidden")) {
     withScrollPreserved(renderScoreboard);
-    renderPayouts();
-  } else if (picksScreen.classList.contains("hidden") && GAMES.some((g) => isGameLocked(g))) {
-    // Nowhere near the board, but the header chip still reports live
-    // games, so keep the numbers behind it honest.
-    fetchLiveScores().then(renderHeaderCountdown);
+    // Only while someone is looking at it. It is collapsed by default, and
+    // rendering into a hidden panel every twenty seconds bought nothing.
+    if (!document.getElementById("payouts-panel")?.classList.contains("hidden")) renderPayouts();
   }
+  // The off-board branch that fetched live scores here every tick is gone.
+  // It fed the header chip back when the chip reported live games; the
+  // chip is a to-do reminder now and reads nothing from the feed.
   flushPendingPush();
 }, 20000);
 
