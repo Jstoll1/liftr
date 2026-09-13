@@ -1455,6 +1455,13 @@ html, body {
 /* Set like a poll rank on a team: after the name, small, quiet, in the
    same Orbitron the college ranks use rather than the pixel face, so it
    reads as a rank rather than as another score. */
+/* How far off the tiebreaker was. Neutral, because being nearest only
+   matters when two managers are level on points, and an exact hit is the
+   one worth looking up for. */
+.scoreboard-table .tb-off { font-variant-numeric: tabular-nums; }
+.scoreboard-table .tb-off.none { color: var(--text-dim); opacity: .6; }
+.scoreboard-table .tb-off.exact { color: var(--neon-green); }
+
 .scoreboard-table .ap-place {
   margin-left: 4px;
   font-family: 'Orbitron', system-ui, sans-serif;

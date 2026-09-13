@@ -1000,7 +1000,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202609221030";
+  tag.src = "admin.js?v=202609221130";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1031,7 +1031,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202609221030";
+  tag.src = "console.js?v=202609221130";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2249,7 +2249,18 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
   // left to right in kickoff order and stay aligned with their labels.
   const ordered = gamesByKickoff();
   const headCells = ordered.map((g) => `<th class="${results[g.id] ? "final" : isGameLocked(g) ? "live" : ""}">G${g.id}</th>`).join("");
-  let html = `<thead><tr><th class="manager-col">Team</th>${headCells}<th>TB</th><th>PTS</th></tr></thead><tbody>`;
+  // The tiebreaker is one game and one total, so work it out once rather
+  // than per manager.
+  const tbGame = GAMES.find((g) => g.tiebreakerGame);
+  const tbOpen = tbGame ? isGameLocked(tbGame) : false;
+  const tbResult = tbGame ? results[tbGame.id] : null;
+  const tbActual = tbResult ? tbResult.awayScore + tbResult.homeScore : null;
+
+  // The column holds a distance now, so the label says so, and the actual
+  // total the distances are measured from rides in the tooltip.
+  const tbHead = tbActual === null ? "TB" : `TB &plusmn;`;
+  const tbTitle = tbActual === null ? "Tiebreaker guess" : `Distance from the actual total, ${tbActual}`;
+  let html = `<thead><tr><th class="manager-col">Team</th>${headCells}<th title="${tbTitle}">${tbHead}</th><th>PTS</th></tr></thead><tbody>`;
 
   // Standings order, the same order the leaderboard is in, so scanning
   // from one to the other does not mean re-finding everybody. The roster
@@ -2304,9 +2315,22 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
       return `<td class="pick-cell ${cls}" title="${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}"><span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
     }).join("");
 
-    const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
-    const tbVisible = isGameLocked(tiebreakerGame);
-    const tbCell = tbVisible ? (state.tiebreaker || "—") : "🔒";
+    // How far off, not what they said. A column of raw guesses is a column
+    // of numbers you have to subtract the actual total from in your head,
+    // ten times, to find who is closest. Signed, so over and under read
+    // apart at a glance, and the exact hit shows as a zero rather than as
+    // a number that happens to match.
+    const tbRaw = String(state.tiebreaker ?? "").trim();
+    const tbGuess = tbRaw === "" ? null : Number(tbRaw);
+    let tbCell;
+    if (!tbOpen) tbCell = "🔒";
+    else if (tbGuess === null || !Number.isFinite(tbGuess)) tbCell = `<span class="tb-off none">–</span>`;
+    else if (tbActual === null) tbCell = `<span class="tb-off pending" title="Guessed ${tbGuess}">${tbGuess}</span>`;
+    else {
+      const diff = tbGuess - tbActual;
+      const face = diff === 0 ? "0" : `${diff > 0 ? "+" : "−"}${Math.abs(diff)}`;
+      tbCell = `<span class="tb-off${diff === 0 ? " exact" : ""}" title="Guessed ${tbGuess}, actual ${tbActual}">${face}</span>`;
+    }
     // Count only games on this week's slate. Counting every key in the
     // picks object lets a leftover from another week inflate the number,
     // so the leaderboard and the All Picks grid could disagree.
