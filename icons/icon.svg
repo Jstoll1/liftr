@@ -61,23 +61,58 @@
     </g>
   </g>
 
-  <!-- The football, drawn as a proper pointed ellipse. Built from pixel
-       blocks first, which is right at eight pixels in a row of type and
-       wrong here: at icon size three stacked bars read as three bars, not
-       as a ball. A silhouette reads instantly at 29px, which is the size
-       that actually has to work. -->
-  <g transform="translate(512 470) rotate(-20) scale(1.1)">
-    <path d="M -232 0 C -128 -150 128 -150 232 0 C 128 150 -128 150 -232 0 Z"
-          fill="#0a0014" opacity=".45" transform="translate(10 14)"/>
-    <path d="M -232 0 C -128 -150 128 -150 232 0 C 128 150 -128 150 -232 0 Z"
-          fill="url(#ball)" stroke="#5c1a00" stroke-width="6" stroke-opacity=".35"/>
-    <!-- laces, the one detail that makes it a football and not a lozenge -->
-    <g stroke="#ff2079" stroke-width="17" stroke-linecap="butt">
-      <line x1="-92" y1="0" x2="92" y2="0"/>
-      <line x1="-62" y1="-30" x2="-62" y2="30"/>
-      <line x1="-16" y1="-34" x2="-16" y2="34"/>
-      <line x1="30"  y1="-34" x2="30"  y2="34"/>
-      <line x1="76"  y1="-30" x2="76"  y2="30"/>
+  <!-- The football as a sprite on a 20 by 11 grid. Two earlier versions
+       were wrong in opposite directions: a 5 by 3 grid is too coarse to
+       taper and reads as three stacked bars, and a smooth silhouette reads
+       fine but looks like any sports app when everything around it is
+       pixel type on a synthwave grid.
+       Unrotated, because tilting a sprite anti-aliases the grid it is made
+       of. Flat tones rather than a gradient, because a gradient fill runs
+       per rect and repeats itself on every row. -->
+  <g transform="translate(512 470)" shape-rendering="crispEdges">
+    <g>
+      <rect x="-64" y="-127" width="157" height="27" fill="#0a0014" opacity=".38"/>
+      <rect x="-116" y="-101" width="261" height="27" fill="#0a0014" opacity=".38"/>
+      <rect x="-168" y="-75" width="365" height="27" fill="#0a0014" opacity=".38"/>
+      <rect x="-194" y="-49" width="417" height="27" fill="#0a0014" opacity=".38"/>
+      <rect x="-220" y="-23" width="469" height="27" fill="#0a0014" opacity=".38"/>
+      <rect x="-246" y="3" width="521" height="27" fill="#0a0014" opacity=".38"/>
+      <rect x="-220" y="29" width="469" height="27" fill="#0a0014" opacity=".38"/>
+      <rect x="-194" y="55" width="417" height="27" fill="#0a0014" opacity=".38"/>
+      <rect x="-168" y="81" width="365" height="27" fill="#0a0014" opacity=".38"/>
+      <rect x="-116" y="107" width="261" height="27" fill="#0a0014" opacity=".38"/>
+      <rect x="-64" y="133" width="157" height="27" fill="#0a0014" opacity=".38"/>
+    </g>
+    <g>
+      <rect x="-78" y="-143" width="157" height="27" fill="#fff6e6"/>
+      <rect x="-130" y="-117" width="261" height="27" fill="#fff6e6"/>
+      <rect x="-182" y="-91" width="365" height="27" fill="#fff6e6"/>
+      <rect x="-208" y="-65" width="417" height="27" fill="#fff6e6"/>
+      <rect x="-234" y="-39" width="157" height="27" fill="#fff6e6"/>
+      <rect x="-78" y="-39" width="27" height="27" fill="#ff2079"/>
+      <rect x="-52" y="-39" width="27" height="27" fill="#fff6e6"/>
+      <rect x="-26" y="-39" width="27" height="27" fill="#ff2079"/>
+      <rect x="0" y="-39" width="27" height="27" fill="#fff6e6"/>
+      <rect x="26" y="-39" width="27" height="27" fill="#ff2079"/>
+      <rect x="52" y="-39" width="27" height="27" fill="#fff6e6"/>
+      <rect x="78" y="-39" width="27" height="27" fill="#ff2079"/>
+      <rect x="104" y="-39" width="131" height="27" fill="#fff6e6"/>
+      <rect x="-260" y="-13" width="157" height="27" fill="#ffe9c9"/>
+      <rect x="-104" y="-13" width="209" height="27" fill="#ff2079"/>
+      <rect x="104" y="-13" width="157" height="27" fill="#ffe9c9"/>
+      <rect x="-234" y="13" width="157" height="27" fill="#ffe9c9"/>
+      <rect x="-78" y="13" width="27" height="27" fill="#ff2079"/>
+      <rect x="-52" y="13" width="27" height="27" fill="#ffe9c9"/>
+      <rect x="-26" y="13" width="27" height="27" fill="#ff2079"/>
+      <rect x="0" y="13" width="27" height="27" fill="#ffe9c9"/>
+      <rect x="26" y="13" width="27" height="27" fill="#ff2079"/>
+      <rect x="52" y="13" width="27" height="27" fill="#ffe9c9"/>
+      <rect x="78" y="13" width="27" height="27" fill="#ff2079"/>
+      <rect x="104" y="13" width="131" height="27" fill="#ffe9c9"/>
+      <rect x="-208" y="39" width="417" height="27" fill="#e7c08a"/>
+      <rect x="-182" y="65" width="365" height="27" fill="#e7c08a"/>
+      <rect x="-130" y="91" width="261" height="27" fill="#e7c08a"/>
+      <rect x="-78" y="117" width="157" height="27" fill="#e7c08a"/>
     </g>
   </g>
 </svg>
