@@ -2504,10 +2504,13 @@ let liveWeekRows = [];
 let liveWeekFinal = false;
 
 function payoutLedger() {
-  const sealed = Object.values(weekSummaries).filter((s) => s && s.complete);
+  const allSealed = Object.values(weekSummaries).filter((s) => s && s.complete);
+  // An exhibition week keeps its picks, points and trophy, but pays
+  // nothing and does not count toward the weeks the pot is spread over.
+  const sealed = allSealed.filter((s) => !s.exhibition);
   const rows = new Map(MANAGERS.map((n) => [n, { name: n, weeksWon: 0, earned: 0, points: 0, played: 0 }]));
-  for (const s of sealed) {
-    const share = (s.winners || []).length ? POT.weekly / s.winners.length : 0;
+  for (const s of allSealed) {
+    const share = s.exhibition || !(s.winners || []).length ? 0 : POT.weekly / s.winners.length;
     for (const w of s.winners || []) {
       const r = rows.get(w); if (!r) continue;
       r.weeksWon += 1; r.earned += share;

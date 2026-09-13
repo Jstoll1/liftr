@@ -1207,7 +1207,10 @@ const summaryKey = (week) => `week-summary:w${week}`;
 // Bump this whenever a summary gains or changes a field. A stored summary
 // behind this number is rebuilt on the next read, so a Worker deploy never
 // needs a re-seal by hand.
-const SUMMARY_VERSION = 5;
+const SUMMARY_VERSION = 6;
+// Played for the trophy only. No money, no season points, and no bearing
+// on the next week's movement card.
+const EXHIBITION_WEEKS = new Set([1]);
 
 function seasonPointValue(game, team, mode) {
   if (mode === "ATS") return 2;
@@ -1297,6 +1300,7 @@ function buildSummary(week, slate, results, picks, kickoffs = null, prior = null
   return {
     week,
     version: SUMMARY_VERSION,
+    exhibition: EXHIBITION_WEEKS.has(Number(week)),
     label: slate?.label || `Week ${week}`,
     complete,
     games: games.length,
@@ -1421,7 +1425,7 @@ async function sealWeek(env, week, { force = false } = {}) {
     ...PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(pickKey(week, m), "json")]),
   ]);
   const kickoffs = await kickoffsFor(env, week);
-  const before = week > 1 ? await env.LIFTR_KV.get(summaryKey(week - 1), "json") : null;
+  const before = week > 1 && !EXHIBITION_WEEKS.has(week - 1) ? await env.LIFTR_KV.get(summaryKey(week - 1), "json") : null;
   const summary = buildSummary(week, slate, results || {}, Object.fromEntries(picksRows.filter(([, v]) => v)), kickoffs, before);
   if (!summary) return null;
   if (prior?.sealedAt && summary.complete) summary.sealedAt = prior.sealedAt;

@@ -75,15 +75,15 @@ for (const wk of weeks) {
 
   // Movement: only when the prior week is sealed; then the biggest climb must be right.
   const prev = data.summaries[String(wk.week - 1)];
-  if (prev?.complete) {
+  if (prev?.complete && !prev.exhibition) {
     const was = new Map(prev.rows.map((x) => [x.name, x.place]));
     const climbs = rows.map((x) => ({ name: x.name, d: (was.get(x.name) ?? x.place) - x.place }));
     const top = Math.max(...climbs.map((x) => x.d));
     const expectUp = top > 0 ? climbs.filter((x) => x.d === top).map((x) => x.name) : [];
     if (!expectUp.length) r.movement ? fail(wk, "movement card with nobody climbing") : ok(wk, "movement: nobody climbed");
     else expectUp.includes(r.movement?.up?.name) && (r.movement.up.from - r.movement.up.to) === top ? ok(wk, `movement ${r.movement.up.name} +${top}`) : fail(wk, `movement ${JSON.stringify(r.movement)}; expected ${expectUp.join("/")} +${top}`);
-  } else if (r.movement) fail(wk, "movement card without a sealed prior week");
-  else ok(wk, "movement: no prior week, card absent");
+  } else if (r.movement) fail(wk, "movement card without a sealed, counting prior week");
+  else ok(wk, `movement: ${prev?.exhibition ? "prior week was an exhibition" : "no prior week"}, card absent`);
 }
 console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
 process.exit(failures ? 1 : 0);
