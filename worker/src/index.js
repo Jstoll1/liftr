@@ -1207,7 +1207,7 @@ const summaryKey = (week) => `week-summary:w${week}`;
 // Bump this whenever a summary gains or changes a field. A stored summary
 // behind this number is rebuilt on the next read, so a Worker deploy never
 // needs a re-seal by hand.
-const SUMMARY_VERSION = 3;
+const SUMMARY_VERSION = 4;
 
 function seasonPointValue(game, team, mode) {
   if (mode === "ATS") return 2;
@@ -1335,7 +1335,16 @@ function buildRecap(games, rows, actualTotal, tbGame, prior) {
   }
   const all = [...groups.values()];
   const line = (l) => `${short(byId.get(l.g), l.team)} ${l.line}`;
-  const card = (l) => ({ who: l.who, pick: line(l), matchup: l.matchup, score: l.score, takers: l.who.length, of: N, pts: l.result === "hit" ? l.pts : l.worth });
+  // "Michigan won 17-10" reads; "10-17" next to "Oklahoma at Michigan"
+  // makes the reader do the work.
+  const finalOf = (l) => {
+    const g = byId.get(l.g);
+    const [a, h] = String(l.score || "").split("-").map(Number);
+    if (!g || !Number.isFinite(a) || !Number.isFinite(h)) return null;
+    if (a === h) return { winner: null, text: `tied ${a}-${h}` };
+    return a > h ? { winner: g.awayShort, text: `${g.awayShort} won ${a}-${h}` } : { winner: g.homeShort, text: `${g.homeShort} won ${h}-${a}` };
+  };
+  const card = (l) => ({ who: l.who, pick: line(l), matchup: l.matchup, score: l.score, final: finalOf(l)?.text || null, takers: l.who.length, of: N, pts: l.result === "hit" ? l.pts : l.worth });
 
   const best = all.filter((l) => l.result === "hit").sort((a, b) => a.who.length - b.who.length || b.pts - a.pts || b.spread - a.spread)[0];
   const worst = all.filter((l) => l.result === "miss").sort((a, b) => b.who.length - a.who.length || b.worth - a.worth)[0];
@@ -1371,10 +1380,15 @@ function buildRecap(games, rows, actualTotal, tbGame, prior) {
     sides: closest.top.map(([team, n]) => ({ team: short(closest.g, team), n })),
     cashed: closest.hit ? short(closest.g, closest.hit) : null,
     score: closest.score,
+    final: finalOf({ g: Number(closest.g.id), score: closest.score })?.text || null,
   } : null;
 
-  const tbRow = rows.filter((r) => r.tbDiff !== null).sort((a, b) => a.tbDiff - b.tbDiff)[0];
-  const tb = tbRow && tbGame && actualTotal !== null ? { who: tbRow.name, guess: tbRow.tbGuess, actual: actualTotal, off: tbRow.tbDiff, matchup: `${tbGame.awayShort} at ${tbGame.homeShort}` } : null;
+  // Everyone who tied for closest, since two people one off is common.
+  const guessed = rows.filter((r) => r.tbDiff !== null).sort((a, b) => a.tbDiff - b.tbDiff);
+  const closestTb = guessed.filter((r) => r.tbDiff === guessed[0]?.tbDiff);
+  const tb = closestTb.length && tbGame && actualTotal !== null
+    ? { who: closestTb.map((r) => r.name), guesses: closestTb.map((r) => r.tbGuess), actual: actualTotal, off: closestTb[0].tbDiff, matchup: `${tbGame.awayShort} at ${tbGame.homeShort}` }
+    : null;
 
   return { best: best ? card(best) : null, worst: worst ? card(worst) : null, movement, consensus, tb };
 }

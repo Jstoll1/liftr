@@ -2976,24 +2976,39 @@ let renderRecap = function () {
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
   const cards = [];
-  if (r.best) cards.push(["PICK OF THE WEEK", "hit", `<b>${esc(names(r.best.who))}</b> · ${esc(r.best.pick)}`, `${esc(r.best.matchup)} ${esc(r.best.score)} · ${r.best.takers} of ${r.best.of} took it · +${r.best.pts}`]);
-  if (r.worst) cards.push(["WORST PICK", "miss", `<b>${esc(r.worst.pick)}</b>`, `${esc(r.worst.matchup)} ${esc(r.worst.score)} · ${r.worst.takers} of ${r.worst.of} rode it · ${r.worst.pts} each, gone`]);
+  const who = (w) => Array.isArray(w) ? names(w) : w;
+  if (r.best) {
+    const b = r.best;
+    cards.push(["PICK OF THE WEEK", "hit", `<b>${esc(who(b.who))}</b> took ${esc(b.pick)}`,
+      `Only ${b.takers} of ${b.of} did. ${esc(b.final || b.score)}. +${b.pts} pts.`]);
+  }
+  if (r.worst) {
+    const w = r.worst;
+    cards.push(["WORST PICK", "miss", `<b>${esc(w.pick)}</b>`,
+      `${w.takers} of ${w.of} took it. ${esc(w.final || w.score)}. All ${w.takers} got zero.`]);
+  }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
-    cards.push(["MOVEMENT", "move", `<b>${esc(u.name)}</b> up ${u.from - u.to} to #${u.to}`, d ? `${esc(d.name)} slid ${d.to - d.from} to #${d.to}` : "Nobody fell"]);
+    cards.push(["MOVEMENT", "move", `<b>${esc(u.name)}</b> climbed ${u.from - u.to} to #${u.to}`, d ? `${esc(d.name)} fell ${d.to - d.from} to #${d.to}.` : "Nobody fell."]);
   }
-  if (r.consensus) {
+  if (r.consensus?.sides?.length > 1) {
     const c = r.consensus;
-    const split = c.sides.map((x) => `${esc(x.team)} ${x.n}`).join(" · ");
-    cards.push(["CHALK VS CHAOS", "split", `<b>${c.pct}%</b> went with the crowd`, `Closest split: ${esc(c.matchup)} (${split})${c.cashed ? ` · ${esc(c.cashed)} cashed ${esc(c.score)}` : ""}`]);
+    const [a, b] = c.sides;
+    cards.push(["COIN FLIP", "split", `<b>${esc(c.matchup)}</b>`,
+      `Split ${a.n} to ${b.n}, ${esc(a.team)} vs ${esc(b.team)}. ${esc(c.final || c.score)}.`]);
   }
-  if (r.tb) cards.push(["TB SNIPER", "tb", `<b>${esc(r.tb.who)}</b> said ${r.tb.guess}, actual ${r.tb.actual}`, `${esc(r.tb.matchup)} · off by ${r.tb.off}`]);
+  if (r.tb) {
+    const t = r.tb;
+    const guess = [...new Set(t.guesses || [t.guess])].join(" and ");
+    cards.push(["TIEBREAKER", "tb", `<b>${esc(who(t.who))}</b> said ${esc(guess)}`,
+      `${esc(t.matchup)} came in at ${t.actual}. Off by ${t.off}.`]);
+  }
   const key = `${last.week}|${cards.length}`;
   toggle.classList.remove("hidden");
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
   if (panel.dataset.drawn === key) return;
   panel.dataset.drawn = key;
-  panel.innerHTML = `${last.winners?.length ? `<div class="recap-won">Won by <b>${esc(names(last.winners))}</b> with ${last.highScore} pts</div>` : ""}${cards.map(([h, cls, main, sub]) => `<div class="recap-card ${cls}"><div class="recap-head">${h}</div><div class="recap-main">${main}</div><div class="recap-sub">${sub}</div></div>`).join("")}`;
+  panel.innerHTML = `${cards.map(([h, cls, main, sub]) => `<div class="recap-card ${cls}"><div class="recap-head">${h}</div><div class="recap-main">${main}</div><div class="recap-sub">${sub}</div></div>`).join("")}`;
 };
 
 // Folds like the sections under it. Starts open; the choice is remembered.
