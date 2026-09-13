@@ -85,14 +85,14 @@ html, body {
   position: sticky;
   top: 0;
   z-index: 3;
-  display: flex;
-  justify-content: center;
+  display: block;
   /* The page is viewport-fit=cover, so it runs under the status bar and
-     the Dynamic Island. The splash screen already reserved that strip; the
-     sticky header never did, and it only showed once Safari collapsed its
-     toolbar on scroll and the header reached the true top of the screen.
-     max() keeps the old padding where there is no inset to reserve, on a
-     desktop or an older phone. */
+     the Dynamic Island, and this strip is what keeps the header clear of
+     them. max() leaves the old padding where there is no inset to reserve,
+     on a desktop or an older phone. The chips inside are positioned
+     against .head-row rather than this element: absolute positioning
+     resolves against the padding box, so anchored here they centred inside
+     the inset and climbed into the status bar instead of clearing it. */
   padding: max(8px, env(safe-area-inset-top)) 12px 8px;
   transition: padding .18s ease;
   background: rgba(10, 0, 20, 0.98);
@@ -121,6 +121,7 @@ html, body {
    you are reading a list, so it shrinks out of the way on the way down and
    comes back the moment you return to the top. */
 .home-header.compact { padding: max(3px, env(safe-area-inset-top)) 12px 3px; }
+.head-row { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; }
 .home-header.compact .home-logo-btn { padding: 2px; }
 .home-header.compact .home-logo-img { height: 26px; }
 @media (prefers-reduced-motion: reduce) {
