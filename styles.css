@@ -964,8 +964,10 @@ html, body {
   display: grid;
   /* The line is reference and the score is the news. The spread column is
      sized to -27.5, the widest line on a slate, plus a gutter wide enough
-     that a two-digit score never reads as touching it. */
-  grid-template-columns: 20px minmax(0, 1fr) 29px 24px;
+     that a two-digit score never reads as touching it. The score column is
+     22, which holds a two-digit score with room to spare and a three-digit
+     one exactly; nobody has scored a hundred. */
+  grid-template-columns: 20px minmax(0, 1fr) 29px 22px;
   align-items: center;
   gap: 2px;
   padding: 2px 0 2px 4px;
