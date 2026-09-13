@@ -199,12 +199,14 @@
            is, and the board's state now rides in the score strip below.
            The standalone stamp is the fallback for when there is no strip
            to put the clock in. -->
+      <!-- The recap leads while it runs; the score strip and the board
+           sit under it. -->
+      <button id="recap-toggle" class="rules-heading section-heading all-picks-toggle hidden" type="button" aria-expanded="true">📰 RECAP <span class="all-picks-caret">▾</span></button>
+      <div id="recap-panel" class="recap-panel hidden"></div>
+
       <button id="scoreboard-updated" class="updated-stamp" type="button" title="Tap to refresh">updating…</button>
       <button id="insert-coin" class="insert-coin hidden" type="button"></button>
       <div id="my-score" class="my-score hidden" role="button" tabindex="0" title="Jump to your row"></div>
-
-      <button id="recap-toggle" class="rules-heading section-heading all-picks-toggle hidden" type="button" aria-expanded="true">📰 RECAP <span class="all-picks-caret">▾</span></button>
-      <div id="recap-panel" class="recap-panel hidden"></div>
 
       <div id="live-scores-list" class="live-scores-list"></div>
 
