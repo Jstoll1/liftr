@@ -2563,7 +2563,7 @@ function renderPayouts() {
         ? `<div class="pot-stat"><b>${POT.season.map(money).join(" / ")}</b><span>season ${POT.season.length > 1 ? "1st / 2nd" : "champion"}</span></div>`
         : `<div class="pot-stat"><b>1ST ONLY</b><span>${POT.total === POT.weeklyTotal ? "winner takes the week" : money(POT.total - POT.weeklyTotal) + " unallocated"}</span></div>`}
     </div>
-    <div class="pot-note">${sealed} of ${POT.weeks} weeks settled · ${money(paid)} paid out · ${money(Math.max(0, left))} still to play${POT.season.length && !done ? " weekly · season money is a projection" : ""}</div>
+    <div class="pot-note">${sealed} of ${POT.weeks} weeks settled · ${money(paid)} paid out · ${money(Math.max(0, left))} in play${POT.season.length && !done ? " weekly · season money is a projection" : ""}</div>
     ${liveWeek ? `<div class="pot-live">${liveWeekFinal ? `WEEK ${liveWeek} UNSEALED` : `WEEK ${liveWeek} ACTIVE`}</div>` : ""}
     ${contested ? `<div class="pot-warn">⚠ Season places are tied on points where the money sits. The weekly tiebreaker does not settle the season, so the league needs a rule for this before the last week.</div>` : ""}
     <div class="pot-table">
@@ -2623,16 +2623,6 @@ async function archiveWeekIfFinal(results) {
   } catch {
     // Try again on the next refresh.
   }
-}
-
-// One 🏆 per week won, and a count once there are too many to read at a
-// glance.
-function trophiesFor(name) {
-  const n = weekTrophies[name] || 0;
-  if (!n) return "";
-  const label = `${n} week${n === 1 ? "" : "s"} won`;
-  const face = n <= 4 ? "🏆".repeat(n) : `🏆<span class="rank-trophy-x">×${n}</span>`;
-  return `<span class="rank-trophies" title="${label}" aria-label="${label}">${face}</span>`;
 }
 
 // The standings themselves, with no DOM in them. Two screens show these
@@ -2751,7 +2741,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     div.innerHTML = `
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place">${row.tied ? "T-" : ""}${ordinal(row.place)}</span>
-        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${row.name.toUpperCase()}</span>${trophiesFor(row.name)}</span><span class="ranking-lock">${row.subline}</span></span>
+        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${row.name.toUpperCase()}</span></span><span class="ranking-lock">${row.subline}</span></span>
         <span class="ranking-dots" aria-hidden="true"></span>
         <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
         <span class="ranking-caret">${open ? "▴" : "▾"}</span>
