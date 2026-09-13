@@ -6,7 +6,16 @@
 const WORKER = process.env.WORKER_URL || "https://liftr-ai.jhs797.workers.dev";
 const data = await (await fetch(`${WORKER}/weeks?detail=1&t=${Date.now()}`)).json();
 const asked = process.argv[2];
-const weeks = Object.values(data.summaries || {}).filter((w) => w?.complete && (!asked || String(w.week) === asked)).sort((a, b) => a.week - b.week);
+const weeksAll = Object.values(data.summaries || {}).filter((w) => w?.complete).sort((a, b) => a.week - b.week);
+const weeks = weeksAll.filter((w) => !asked || String(w.week) === asked);
+function seasonRanks(list) {
+  const pts = new Map();
+  for (const w of list) for (const r of w.rows || []) pts.set(r.name, (pts.get(r.name) || 0) + (r.score || 0));
+  const sorted = [...pts.entries()].sort((a, b) => b[1] - a[1]);
+  const out = new Map(); let place = 0;
+  sorted.forEach(([name, p], i) => { if (!i || sorted[i - 1][1] !== p) place = i + 1; out.set(name, place); });
+  return out;
+}
 if (!weeks.length) { console.log("no sealed week to check"); process.exit(asked ? 1 : 0); }
 
 let failures = 0;
@@ -73,17 +82,20 @@ for (const wk of weeks) {
   (r.tb?.who || []).slice().sort().join() === closest && r.tb?.off === minOff && r.tb?.actual === wk.tiebreaker?.actual
     ? ok(wk, `tiebreaker ${closest} off by ${minOff}`) : fail(wk, `tiebreaker ${JSON.stringify(r.tb)}; expected ${closest} off by ${minOff}`);
 
-  // Movement: only when the prior week is sealed; then the biggest climb must be right.
-  const prev = data.summaries[String(wk.week - 1)];
-  if (prev?.complete && !prev.exhibition) {
-    const was = new Map(prev.rows.map((x) => [x.name, x.place]));
-    const climbs = rows.map((x) => ({ name: x.name, d: (was.get(x.name) ?? x.place) - x.place }));
+  // Movement: season rank through the previous counting week vs through this one.
+  const earlier = weeksAll.filter((w) => w.week < wk.week && w.complete && !w.exhibition);
+  if (wk.exhibition) r.movement ? fail(wk, "movement card on an exhibition") : ok(wk, "movement: exhibition, card absent");
+  else if (!earlier.length) r.movement ? fail(wk, "movement card on the first counting week") : ok(wk, "movement: first counting week, card absent");
+  else {
+    const before = seasonRanks(earlier), after = seasonRanks([...earlier, wk]);
+    const climbs = rows.filter((x) => before.has(x.name)).map((x) => ({ name: x.name, d: before.get(x.name) - after.get(x.name), from: before.get(x.name), to: after.get(x.name) }));
     const top = Math.max(...climbs.map((x) => x.d));
-    const expectUp = top > 0 ? climbs.filter((x) => x.d === top).map((x) => x.name) : [];
+    const expectUp = top > 0 ? climbs.filter((x) => x.d === top) : [];
     if (!expectUp.length) r.movement ? fail(wk, "movement card with nobody climbing") : ok(wk, "movement: nobody climbed");
-    else expectUp.includes(r.movement?.up?.name) && (r.movement.up.from - r.movement.up.to) === top ? ok(wk, `movement ${r.movement.up.name} +${top}`) : fail(wk, `movement ${JSON.stringify(r.movement)}; expected ${expectUp.join("/")} +${top}`);
-  } else if (r.movement) fail(wk, "movement card without a sealed, counting prior week");
-  else ok(wk, `movement: ${prev?.exhibition ? "prior week was an exhibition" : "no prior week"}, card absent`);
+    else expectUp.some((x) => x.name === r.movement?.up?.name && x.from === r.movement.up.from && x.to === r.movement.up.to)
+      ? ok(wk, `movement ${r.movement.up.name} #${r.movement.up.from} to #${r.movement.up.to} on the season`)
+      : fail(wk, `movement ${JSON.stringify(r.movement)}; expected ${expectUp.map((x) => `${x.name} #${x.from}→#${x.to}`).join(" or ")}`);
+  }
 }
 console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
 process.exit(failures ? 1 : 0);

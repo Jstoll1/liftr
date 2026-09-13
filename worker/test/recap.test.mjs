@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const src = readFileSync(new URL("../src/index.js", import.meta.url), "utf8");
-const buildRecap = new Function(src.match(/function buildRecap[\s\S]*?\n}\n\n\/\/ Writes the summary/)[0].replace(/\n\/\/ Writes the summary$/, "") + "; return buildRecap;")();
+const grab = (name) => src.match(new RegExp(`function ${name}\\([\\s\\S]*?\\n}\\n`))[0];
+const { buildRecap, seasonMovement } = new Function(grab("seasonRanks") + grab("seasonMovement") + grab("buildRecap") + "; return { buildRecap, seasonMovement };")();
 
 const games = [
   { id: 1, away: "Oklahoma", home: "Michigan", awayShort: "Oklahoma", homeShort: "Michigan" },
@@ -60,7 +61,12 @@ test("pick of the week prefers the higher-value solo hit, then the bigger spread
   assert.equal(buildRecap(games, rows2, 30, games[1], null).best.who[0], "s", "a 3-point dog SU beats a 2-point cover");
 });
 
-test("movement is skipped without a prior week", () => {
-  const r = buildRecap(games, [row("a", 1, 0, 0, [L(2, "B", "ATS", "-3", "hit", 2, 2, "10-20")])], 30, games[1], null);
-  assert.equal(r.movement, null);
+test("movement is season rank before and after the week", () => {
+  const wk = (a, b, c) => ({ rows: [{ name: "A", score: a }, { name: "B", score: b }, { name: "C", score: c }] });
+  // Through last week: A 20, B 15, C 10. This week: C 12, A 0, B 3 -> A 20, C 22, B 18.
+  const m = seasonMovement([wk(10, 5, 4), wk(10, 10, 6)], wk(0, 3, 12).rows, false);
+  assert.deepEqual(m.up, { name: "C", from: 3, to: 1 });
+  assert.deepEqual(m.down, { name: "A", from: 1, to: 2 });
+  assert.equal(seasonMovement([], wk(1, 2, 3).rows, false), null, "first counting week");
+  assert.equal(seasonMovement([wk(1, 2, 3)], wk(1, 2, 3).rows, true), null, "exhibition");
 });

@@ -2992,7 +2992,7 @@ let renderRecap = function () {
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
-    cards.push(["MOVEMENT", "move", `<b>${esc(u.name)}</b> climbed ${u.from - u.to} to #${u.to}`, d ? `${esc(d.name)} fell ${d.to - d.from} to #${d.to}.` : "Nobody fell."]);
+    cards.push(["MOVEMENT", "move", `<b>${esc(u.name)}</b> climbed ${u.from - u.to} to #${u.to} on the season`, d ? `${esc(d.name)} fell ${d.to - d.from} to #${d.to}.` : "Nobody fell."]);
   }
   if (r.consensus?.sides?.length > 1) {
     const c = r.consensus;

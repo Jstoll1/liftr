@@ -1207,7 +1207,7 @@ const summaryKey = (week) => `week-summary:w${week}`;
 // Bump this whenever a summary gains or changes a field. A stored summary
 // behind this number is rebuilt on the next read, so a Worker deploy never
 // needs a re-seal by hand.
-const SUMMARY_VERSION = 6;
+const SUMMARY_VERSION = 7;
 // Played for the trophy only. No money, no season points, and no bearing
 // on the next week's movement card.
 const EXHIBITION_WEEKS = new Set([1]);
@@ -1239,7 +1239,7 @@ function seasonScorePick(game, pick, result) {
 // One week's standings. Same order as the board: points, then whoever came
 // closest on the tiebreaker; anyone still level shares the place and, at
 // the top, shares the win.
-function buildSummary(week, slate, results, picks, kickoffs = null, prior = null) {
+function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []) {
   const games = slate?.games || [];
   if (!games.length) return null;
   const played = games.filter((g) => results?.[g.id]);
@@ -1319,14 +1319,38 @@ function buildSummary(week, slate, results, picks, kickoffs = null, prior = null
     sealedAt: Date.now(),
     // The week in five lines, written once here so every phone tells the
     // same story. Only a complete week gets one.
-    recap: complete ? buildRecap(games, rows, actualTotal, tbGame, prior) : null,
+    recap: complete ? buildRecap(games, rows, actualTotal, tbGame, seasonMovement(earlier, rows, EXHIBITION_WEEKS.has(Number(week)))) : null,
   };
 }
 
 // Five cards from the ledger: the lone correct call, the crowd's miss,
 // who moved, how much the league agreed, and the tiebreaker shot. Team
 // names come from the slate's short form so the cards fit a phone.
-function buildRecap(games, rows, actualTotal, tbGame, prior) {
+// Season rank, competition style, from a list of week summaries.
+function seasonRanks(weeks) {
+  const pts = new Map();
+  for (const w of weeks) for (const r of w.rows || []) pts.set(r.name, (pts.get(r.name) || 0) + (r.score || 0));
+  const list = [...pts.entries()].sort((a, b) => b[1] - a[1]);
+  const out = new Map();
+  let place = 0;
+  list.forEach(([name, p], i) => { if (!i || list[i - 1][1] !== p) place = i + 1; out.set(name, place); });
+  return out;
+}
+
+// Where everyone stood on the season before this week, and after it.
+// Nothing to say on the first counting week or on an exhibition.
+function seasonMovement(earlier, rows, exhibition) {
+  if (exhibition || !earlier.length) return null;
+  const before = seasonRanks(earlier);
+  const after = seasonRanks([...earlier, { rows }]);
+  const d = rows.filter((r) => before.has(r.name)).map((r) => ({ name: r.name, from: before.get(r.name), to: after.get(r.name) }));
+  const up = [...d].sort((a, b) => (b.from - b.to) - (a.from - a.to))[0];
+  const down = [...d].sort((a, b) => (a.from - a.to) - (b.from - b.to))[0];
+  if (!up || up.from <= up.to) return null;
+  return { up, down: down && down.to > down.from ? down : null };
+}
+
+function buildRecap(games, rows, actualTotal, tbGame, movement) {
   const N = rows.length;
   const byId = new Map(games.map((g) => [Number(g.id), g]));
   const short = (g, team) => (team === g.home ? g.homeShort : team === g.away ? g.awayShort : team);
@@ -1367,14 +1391,6 @@ function buildRecap(games, rows, actualTotal, tbGame, prior) {
   }
   const worst = [...losers.values()].sort((a, b) => b.who.length - a.who.length || b.worth - a.worth)[0];
 
-  let movement = null;
-  if (prior?.rows?.length) {
-    const was = new Map(prior.rows.map((r) => [r.name, r.place]));
-    const d = rows.filter((r) => was.has(r.name)).map((r) => ({ name: r.name, from: was.get(r.name), to: r.place }));
-    const up = [...d].sort((a, b) => (b.from - b.to) - (a.from - a.to))[0];
-    const down = [...d].sort((a, b) => (a.from - a.to) - (b.from - b.to))[0];
-    if (up && up.from > up.to) movement = { up, down: down && down.to > down.from ? down : null };
-  }
 
   const splits = games.map((g) => {
     const sides = {};
@@ -1425,8 +1441,15 @@ async function sealWeek(env, week, { force = false } = {}) {
     ...PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(pickKey(week, m), "json")]),
   ]);
   const kickoffs = await kickoffsFor(env, week);
-  const before = week > 1 && !EXHIBITION_WEEKS.has(week - 1) ? await env.LIFTR_KV.get(summaryKey(week - 1), "json") : null;
-  const summary = buildSummary(week, slate, results || {}, Object.fromEntries(picksRows.filter(([, v]) => v)), kickoffs, before);
+  // Season standings through the previous counting week, for the
+  // movement card. Exhibition weeks and the week being sealed are out.
+  const earlier = [];
+  for (const n of (await readWeeks(env)).list) {
+    if (n >= week || EXHIBITION_WEEKS.has(n)) continue;
+    const s = await env.LIFTR_KV.get(summaryKey(n), "json");
+    if (s?.complete) earlier.push(s);
+  }
+  const summary = buildSummary(week, slate, results || {}, Object.fromEntries(picksRows.filter(([, v]) => v)), kickoffs, earlier);
   if (!summary) return null;
   if (prior?.sealedAt && summary.complete) summary.sealedAt = prior.sealedAt;
   if (summary.complete) summary.frozen = true;
