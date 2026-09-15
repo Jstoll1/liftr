@@ -2899,6 +2899,27 @@ setInterval(() => {
   renderHeaderCountdown();
 }, 1000);
 
+// A new week, or a corrected line, is published from the commissioner's
+// phone; every other phone has to notice on its own. Once a minute, and
+// whenever the app comes back to the front, ask for the slate and adopt
+// it if anything about it changed. The slate is what everything else on
+// screen hangs off, so a change redraws whichever screen is showing.
+const slateSignature = () => `${currentWeek}|` + GAMES.map((g) => `${g.id}:${g.favorite}:${g.spread}:${g.kickoff}`).join(",");
+let lastSlateSignature = slateSignature();
+async function refreshSlateIfChanged() {
+  const was = lastSlateSignature;
+  if (!(await loadSlate())) return;
+  const now = slateSignature();
+  if (now === was) return;
+  lastSlateSignature = now;
+  if (currentManager) await syncManagerFromCloud(currentManager);
+  if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
+  if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
+  refreshPicksStanding();
+}
+setInterval(refreshSlateIfChanged, 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshSlateIfChanged(); });
+
 // Re-render periodically so games auto-lock the moment kickoff passes,
 // and the scoreboard/rankings stay live without a manual refresh.
 // Background refresh. The picks list only redraws when a game's lock
@@ -3168,6 +3189,7 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
   // week's games flash past. The splash covers the wait. Whether login is
   // live, and who has claimed a name, comes down in the same breath.
   await Promise.all([loadSlate(), refreshAuthState(), loadWeekSummaries()]);
+  lastSlateSignature = slateSignature();
   lastLockSignature = lockSignature();
   renderManagerPicker();
 
