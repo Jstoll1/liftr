@@ -2963,8 +2963,8 @@ window.addEventListener("pageshow", (e) => {
 });
 
 
-// The recap runs from the seal until 6 AM Eastern on the following
-// Thursday, when the league's attention turns to the new slate.
+// The recap runs from the seal until the next week's slate is published,
+// with 6 AM Eastern on the following Thursday as the latest it can stay.
 function recapExpiry(summary) {
   const sealed = Number(summary.sealedAt) || 0;
   if (!sealed) return 0;
@@ -2993,7 +2993,8 @@ let renderRecap = function () {
   const panel = document.getElementById("recap-panel");
   if (!toggle || !panel) return;
   const last = Object.values(weekSummaries).filter((s) => s?.complete && s.recap).sort((a, b) => b.week - a.week)[0];
-  if (!last || Date.now() >= recapExpiry(last)) { toggle.classList.add("hidden"); panel.classList.add("hidden"); return; }
+  // Gone once the next slate is up, or Thursday morning, whichever first.
+  if (!last || currentWeek > last.week || Date.now() >= recapExpiry(last)) { toggle.classList.add("hidden"); panel.classList.add("hidden"); return; }
   const r = last.recap;
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
