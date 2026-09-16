@@ -1823,12 +1823,14 @@ function updatePicksProgress(state) {
     tbWarn.className = "tb-required hidden";
     picksProgress.insertAdjacentElement("afterend", tbWarn);
   }
-  const needsTb = !allLocked && !String(state.tiebreaker ?? "").trim();
+  // One quiet line, and only once the card is otherwise done: while picks
+  // are still going in, the header chip already says NO TB, and a boxed
+  // warning at the top of every visit was too much.
+  const needsTb = !allLocked && totalPicked >= GAMES.length && !String(state.tiebreaker ?? "").trim();
   tbWarn.classList.toggle("hidden", !needsTb);
   if (needsTb) {
-    const done = totalPicked >= GAMES.length;
-    tbWarn.innerHTML = `<b>⚠ No tiebreaker set.</b> ${done ? "Your card is otherwise complete." : ""} Ties are decided by the closest guess at the tiebreaker game's total, so leaving it blank forfeits every tie this week.
-      <button class="tb-jump" type="button">SET IT NOW</button>`;
+    tbWarn.innerHTML = `Card complete, no tiebreaker. Blank forfeits ties.
+      <button class="tb-jump" type="button">SET IT</button>`;
     tbWarn.querySelector(".tb-jump")?.addEventListener("click", () => {
       tiebreakerInput.scrollIntoView({ block: "center", behavior: "smooth" });
       tiebreakerInput.focus();
