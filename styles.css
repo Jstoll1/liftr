@@ -2618,6 +2618,8 @@ html, body {
    uses the width the grid below it uses. */
 #scoreboard-screen .my-score { justify-content: flex-start; gap: 10px; padding: 7px 10px; }
 .ms-state { margin-left: auto; font-size: 7px; letter-spacing: .08em; color: var(--neon-yellow); }
+.ms-state.kick { color: var(--text-dim); }
+.ms-state.kick .ms-kick { font-weight: 400; color: var(--neon-cyan); }
 .ms-refresh {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;

@@ -2715,8 +2715,14 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // Where you stand on the left, the board's own state on the right, one
   // row across the full width of the frame it caps. This replaces the two
   // centred lines that used to sit above it.
-  const state = boardAllFinal ? `<span class="ms-state final">FINAL</span>` : "";
-  const clock = `<button class="ms-refresh${cloudPicksStale ? " stale" : ""}" type="button" title="${cloudPicksStale ? "Picks did not reload. Tap to try again" : "Tap to refresh"}">${cloudPicksStale ? "⚠ " : ""}${clockLabel()}<span class="ms-cyc">⟳</span></button>`;
+  // Before the first kickoff the board has nothing live to say, so the
+  // right side counts down to the opener instead. The 1s timer keeps it
+  // moving; see renderBoardCountdown.
+  const next = gamesByKickoff().find((g) => !isGameLocked(g));
+  const pre = next && !GAMES.some(isGameLocked);
+  const state = boardAllFinal ? `<span class="ms-state final">FINAL</span>`
+    : pre ? `<span class="ms-state kick" title="${next.awayShort} at ${next.homeShort}">KICK <b class="ms-kick">${kickoffCountdown(next.kickoff)?.brief || ""}</b></span>` : "";
+  const clock = `<button class="ms-refresh${cloudPicksStale ? " stale" : ""}" type="button" title="${cloudPicksStale ? "Picks did not reload. Tap to try again" : "Tap to refresh"}">${cloudPicksStale ? "⚠ " : ""}${pre ? "" : clockLabel()}<span class="ms-cyc">⟳</span></button>`;
   // No name here. The header's own pill says who you are eight pixels
   // above, and the room it gives back pays for LIVE on the pill, which
   // reads better than a bare +6.
@@ -2729,6 +2735,15 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // does not, and 30 PTS +30 LIVE ran under the wordmark at 320px.
   headScoreHtml = `${banked}${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight}</span>` : ""}`;
   renderHeadScore();
+}
+// Ticks the strip's countdown without redrawing the strip.
+function renderBoardCountdown() {
+  const el = document.querySelector("#my-score .ms-kick");
+  if (!el) return;
+  const next = gamesByKickoff().find((g) => !isGameLocked(g));
+  const cd = next && kickoffCountdown(next.kickoff);
+  const text = cd && !cd.past ? cd.brief : "";
+  if (el.textContent !== text) el.textContent = text;
 }
 document.getElementById("my-score")?.addEventListener("click", (e) => {
   const refresh = e.target.closest(".ms-refresh");
@@ -2898,6 +2913,7 @@ document.getElementById("header-countdown")?.addEventListener("click", (e) => {
 setInterval(() => {
   if (!currentManager) return;
   if (!picksScreen.classList.contains("hidden")) renderPicksCountdown();
+  if (!scoreboardScreen.classList.contains("hidden")) renderBoardCountdown();
   renderHeaderCountdown();
 }, 1000);
 
