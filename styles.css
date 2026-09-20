@@ -3031,3 +3031,24 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .recap-stat b { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 22px; line-height: 1; color: var(--c); text-shadow: 0 0 10px color-mix(in srgb, var(--c) 60%, transparent); }
 .recap-stat span { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .12em; color: var(--text-dim); margin-top: 5px; }
 @media (max-width: 360px) { .recap-card { grid-template-columns: 44px minmax(0, 1fr) auto; } .recap-logo { width: 38px; height: 38px; } .recap-stat b { font-size: 19px; } }
+
+/* League vote modal. */
+.poll-modal { z-index: 12; }
+.poll-modal .modal-card { border-color: var(--neon-yellow); box-shadow: 0 0 30px rgba(255, 228, 94, .35); gap: 12px; }
+.poll-kicker { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .18em; color: var(--neon-yellow); text-align: center; }
+.poll-modal .modal-title { font-size: 12px; line-height: 1.5; }
+.poll-options { display: flex; flex-direction: column; gap: 8px; }
+.poll-pill { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; padding: 10px 14px; border-radius: 999px; border: 2px solid var(--card-border); background: rgba(255, 255, 255, .03); color: var(--text); font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.poll-pill-head { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .06em; color: #fff; }
+.poll-pill-body { font-size: 12px; line-height: 1.35; color: var(--text-meta); }
+.poll-pill[aria-checked="true"] { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .12); box-shadow: 0 0 10px rgba(5, 217, 232, .35); }
+.poll-pill[aria-checked="true"] .poll-pill-head { color: var(--neon-cyan); }
+.poll-pill:disabled { cursor: default; opacity: .75; }
+.poll-tally { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.poll-bar { display: grid; grid-template-columns: 92px minmax(0, 1fr) 24px; align-items: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); }
+.poll-bar i { display: block; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.poll-bar i b { display: block; height: 100%; background: var(--neon-cyan); transition: width .3s ease; }
+.poll-bar.lead { color: var(--text); }
+.poll-bar span:last-child { text-align: right; color: #fff; }
+.poll-count { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .1em; color: var(--text-dim); text-align: center; }
+.poll-fine { font-size: 9.5px; color: var(--text-dim); text-align: center; }

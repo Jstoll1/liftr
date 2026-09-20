@@ -1114,6 +1114,7 @@ function showPicksScreen() {
   renderPicksScreen();
   setActiveNav("picks");
   enterScreen("picks");
+  maybeOpenPoll();
   return syncManagerFromCloud(currentManager).then((cloud) => {
     if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
     // Same payload feeds the standings row. cloud is null when the fetch
@@ -3001,6 +3002,74 @@ function thursdaySixAM(ms, offsetHours) {
   const d = new Date(ms + offsetHours * 3600000);
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 6 - offsetHours);
 }
+
+// --- League vote -------------------------------------------------------
+// The Sweatpants Amendment: lock every pick at the week's first kickoff,
+// or keep per-game locks. Opens once per manager on the Picks screen,
+// from Tuesday 6 AM Eastern once the week 4 slate is up. A vote is final
+// and goes to the Worker; the tally under the button is live.
+const POLL_ID = "sweatpants";
+const POLL_OPENS = Date.parse("2026-09-22T10:00:00Z"); // Tue 6 AM ET
+const POLL_WEEK = 4;
+const POLL_SEEN_KEY = `brochiefs_poll_${POLL_ID}_seen`;
+const POLL_LABEL = { lock: "LOCK IT ALL", flex: "GAME BY GAME" };
+let pollChoice = null;
+let pollAsked = false;
+async function maybeOpenPoll() {
+  if (pollAsked || !currentManager || !WORKER_URL) return;
+  if (Date.now() < POLL_OPENS || currentWeek < POLL_WEEK) return;
+  let seen = false;
+  try { seen = !!localStorage.getItem(POLL_SEEN_KEY); } catch { /* private mode */ }
+  if (seen) return;
+  pollAsked = true;
+  try {
+    const res = await fetch(`${WORKER_URL}/poll?id=${POLL_ID}&manager=${encodeURIComponent(currentManager)}&t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) { pollAsked = false; return; }
+    const data = await res.json();
+    if (data.mine) { try { localStorage.setItem(POLL_SEEN_KEY, "1"); } catch { /* private mode */ } return; }
+    openPoll(data);
+  } catch { pollAsked = false; }
+}
+function openPoll(data) {
+  const modal = document.getElementById("poll-modal");
+  if (!modal) return;
+  pollChoice = null;
+  modal.querySelectorAll(".poll-pill").forEach((b) => { b.setAttribute("aria-checked", "false"); b.disabled = false; });
+  const vote = document.getElementById("poll-vote");
+  vote.disabled = true; vote.textContent = "VOTE";
+  renderPollTally(data);
+  modal.classList.remove("hidden");
+}
+function renderPollTally(data) {
+  const el = document.getElementById("poll-tally");
+  if (!el || !data?.tally) return;
+  const total = Math.max(1, data.voted || 0);
+  const top = Math.max(...Object.values(data.tally));
+  el.innerHTML = Object.entries(data.tally).map(([k, n]) => `<div class="poll-bar${n && n === top ? " lead" : ""}"><span>${POLL_LABEL[k] || k}</span><i><b style="width:${Math.round((n / total) * 100)}%"></b></i><span>${n}</span></div>`).join("")
+    + `<div class="poll-count">${data.voted} OF ${data.of} VOTED</div>`;
+}
+document.querySelectorAll("#poll-modal .poll-pill").forEach((b) => b.addEventListener("click", () => {
+  pollChoice = b.dataset.choice;
+  document.querySelectorAll("#poll-modal .poll-pill").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+  document.getElementById("poll-vote").disabled = false;
+}));
+document.getElementById("poll-vote")?.addEventListener("click", async (e) => {
+  if (!pollChoice || !currentManager) return;
+  const btn = e.currentTarget;
+  btn.disabled = true; btn.textContent = "SENDING…";
+  try {
+    const res = await fetch(`${WORKER_URL}/poll?id=${POLL_ID}`, { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify({ manager: currentManager, choice: pollChoice }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "vote failed");
+    renderPollTally(data);
+    document.querySelectorAll("#poll-modal .poll-pill").forEach((x) => { x.disabled = true; });
+    btn.textContent = "VOTED ✓";
+    try { localStorage.setItem(POLL_SEEN_KEY, "1"); } catch { /* private mode */ }
+    setTimeout(() => document.getElementById("poll-modal")?.classList.add("hidden"), 1600);
+  } catch {
+    btn.disabled = false; btn.textContent = "VOTE · TRY AGAIN";
+  }
+});
 
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.

@@ -107,6 +107,28 @@
     </div>
   </div>
 
+  <!-- LEAGUE VOTE: one question, one vote each, shown once. -->
+  <div id="poll-modal" class="modal-overlay poll-modal hidden" role="dialog" aria-labelledby="poll-title">
+    <div class="modal-card">
+      <span class="poll-kicker">LEAGUE VOTE</span>
+      <span id="poll-title" class="modal-title">THE SWEATPANTS AMENDMENT</span>
+      <span class="modal-subtext">When should picks lock? One vote each, and it's final.</span>
+      <div class="poll-options" role="radiogroup" aria-label="Options">
+        <button type="button" class="poll-pill" data-choice="lock" role="radio" aria-checked="false">
+          <span class="poll-pill-head">LOCK IT ALL</span>
+          <span class="poll-pill-body">Every pick locks at the week's first kickoff.</span>
+        </button>
+        <button type="button" class="poll-pill" data-choice="flex" role="radio" aria-checked="false">
+          <span class="poll-pill-head">GAME BY GAME</span>
+          <span class="poll-pill-body">Each pick can change until that game kicks off.</span>
+        </button>
+      </div>
+      <button id="poll-vote" class="primary-btn" type="button" disabled>VOTE</button>
+      <div id="poll-tally" class="poll-tally"></div>
+      <span class="poll-fine">Tie: commissioner holds the tiebreaker.</span>
+    </div>
+  </div>
+
   <!-- QUICK CLAIM: shown when a device has no saved identity -->
   <div id="claim-modal" class="modal-overlay hidden">
     <div class="modal-card">
