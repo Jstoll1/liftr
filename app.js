@@ -120,6 +120,11 @@ const MANAGERS = [
 
 const AVATAR_COLORS = ["#ff2079", "#05d9e8", "#c13cff", "#ffe45e", "#39ff88"];
 
+// What a manager is called on screen. The key stays what every stored
+// pick, ledger row, login and vote hangs off; only the label changes.
+const NAME_SHOWN = { Conlan: "Connie" };
+const shown = (n) => NAME_SHOWN[n] || n;
+
 function loadAll() {
   try {
     return JSON.parse(localStorage.getItem(storageKey())) || {};
@@ -501,8 +506,8 @@ function updateMePill() {
   if (!me) { pill.classList.add("hidden"); return; }
   const idx = MANAGERS.indexOf(me);
   const accent = AVATAR_COLORS[(idx >= 0 ? idx : 0) % AVATAR_COLORS.length];
-  const av = (typeof avatarOverrides !== "undefined" && avatarOverrides[me]) || me[0];
-  pill.innerHTML = `<span class="me-pill-avatar" style="--accent:${accent}">${av}</span><span class="me-pill-name">${me.toUpperCase()}</span>`;
+  const av = (typeof avatarOverrides !== "undefined" && avatarOverrides[me]) || shown(me)[0];
+  pill.innerHTML = `<span class="me-pill-avatar" style="--accent:${accent}">${av}</span><span class="me-pill-name">${shown(me).toUpperCase()}</span>`;
   pill.classList.remove("hidden");
 }
 
@@ -617,9 +622,9 @@ function requireOwnerAuth(name) {
   if (!modal) return Promise.resolve(true);
   document.getElementById("code-title").textContent = claimed ? "🔑 YOUR CODE" : "🔑 SET YOUR CODE";
   document.getElementById("code-subtext").textContent = claimed
-    ? `Enter the code you set for ${name}.`
-    : `Nobody has claimed ${name} yet. Pick a code of six characters or more — you will need it on every device.`;
-  document.getElementById("code-owner").textContent = name.toUpperCase();
+    ? `Enter the code you set for ${shown(name)}.`
+    : `Nobody has claimed ${shown(name)} yet. Pick a code of six characters or more — you will need it on every device.`;
+  document.getElementById("code-owner").textContent = shown(name).toUpperCase();
   const input = document.getElementById("code-input");
   input.value = "";
   input.placeholder = claimed ? "your code" : "at least 6 characters";
@@ -1236,7 +1241,7 @@ async function renderManagerPicker() {
     const isChamp = name === "Jake";
     const isMe = name === currentManager;
     const accent = AVATAR_COLORS[i % AVATAR_COLORS.length];
-    const avatarContent = avatarOverrides[name] || name[0];
+    const avatarContent = avatarOverrides[name] || shown(name)[0];
 
     const btn = document.createElement("button");
     btn.className = "manager-card" + (complete ? " has-picks" : "") + (partial ? " partial-picks" : "") + (isChamp ? " defending-champ" : "") + (isMe ? " is-me" : "");
@@ -1248,7 +1253,7 @@ async function renderManagerPicker() {
         <span class="manager-avatar">${avatarContent}</span>
       </span>
       <span class="manager-name-plate">
-        <span class="manager-name">${name}</span>
+        <span class="manager-name">${shown(name)}</span>
         <span class="manager-pick-status">${scored ? `${computeScore(state || { picks: {} }, pickerResults)} PTS` : complete ? "✓ All in" : partial ? `${submittedCount}/${GAMES.length} in` : ""}</span>
       </span>
     `;
@@ -1296,7 +1301,7 @@ let editingAvatarManager = null;
 function openAvatarEditor(name, accent) {
   editingAvatarManager = name;
   const current = avatarOverrides[name] || "";
-  avatarEditPreview.textContent = current || name[0];
+  avatarEditPreview.textContent = current || shown(name)[0];
   avatarEditPreview.style.setProperty("--accent", accent);
   avatarEmojiInput.value = current;
   avatarModal.classList.remove("hidden");
@@ -1350,8 +1355,8 @@ let openClaimPrompt = function () {
   if (loadMe() || claimSkippedThisVisit) return false;
   claimGrid.innerHTML = MANAGERS.map((name, idx) => {
     const accent = AVATAR_COLORS[idx % AVATAR_COLORS.length];
-    const av = avatarOverrides[name] || name[0];
-    return `<button type="button" class="claim-btn" data-name="${name}"><span class="claim-avatar" style="--accent:${accent}">${av}</span>${name}</button>`;
+    const av = avatarOverrides[name] || shown(name)[0];
+    return `<button type="button" class="claim-btn" data-name="${name}"><span class="claim-avatar" style="--accent:${accent}">${av}</span>${shown(name)}</button>`;
   }).join("");
   claimGrid.querySelectorAll(".claim-btn").forEach((btn) => btn.addEventListener("click", async () => {
     const name = btn.dataset.name;
@@ -1374,8 +1379,8 @@ function openOwnerPicker() {
   claimSkipBtn.textContent = "Cancel";
   claimGrid.innerHTML = MANAGERS.map((name, idx) => {
     const accent = AVATAR_COLORS[idx % AVATAR_COLORS.length];
-    const av = avatarOverrides[name] || name[0];
-    return `<button type="button" class="claim-btn${name === me ? " current" : ""}" data-name="${name}"><span class="claim-avatar" style="--accent:${accent}">${av}</span>${name}${name === me ? '<span class="claim-you">YOU</span>' : ""}</button>`;
+    const av = avatarOverrides[name] || shown(name)[0];
+    return `<button type="button" class="claim-btn${name === me ? " current" : ""}" data-name="${name}"><span class="claim-avatar" style="--accent:${accent}">${av}</span>${shown(name)}${name === me ? '<span class="claim-you">YOU</span>' : ""}</button>`;
   }).join("");
   claimGrid.querySelectorAll(".claim-btn").forEach((btn) => btn.addEventListener("click", async () => {
     const name = btn.dataset.name;
@@ -1403,12 +1408,12 @@ claimModal.addEventListener("click", (e) => { if (e.target === claimModal) { cla
 
 function openIdentityConfirm(name, accent) {
   pendingIdentity = name;
-  identityPreview.textContent = avatarOverrides[name] || name[0];
+  identityPreview.textContent = avatarOverrides[name] || shown(name)[0];
   identityPreview.style.setProperty("--accent", accent);
   identityText.textContent = currentManager
-    ? `Switch from ${currentManager} to ${name}? This device will remember ${name} from now on.`
-    : `Lock in as ${name}? This device will remember you — use SWITCH later if you need to change.`;
-  identityConfirmBtn.textContent = currentManager ? `Switch to ${name}` : `That's me`;
+    ? `Switch from ${shown(currentManager)} to ${shown(name)}? This device will remember ${shown(name)} from now on.`
+    : `Lock in as ${shown(name)}? This device will remember you — use SWITCH later if you need to change.`;
+  identityConfirmBtn.textContent = currentManager ? `Switch to ${shown(name)}` : `That's me`;
   identityModal.classList.remove("hidden");
 }
 
@@ -1640,7 +1645,7 @@ function renderPicksStanding() {
   // you and them.
   const gap = chasing ? Math.abs(me.score - chasing.score) : 0;
   const right = chasing
-    ? `<span class="ps-label">${me.place === 1 ? "AHEAD OF" : "CHASING"}</span><span class="ps-who">${escapeCd(chasing.name.toUpperCase())}</span><span class="ps-gap">${gap} ${me.place === 1 ? "UP" : "BACK"}</span>`
+    ? `<span class="ps-label">${me.place === 1 ? "AHEAD OF" : "CHASING"}</span><span class="ps-who">${escapeCd(shown(chasing.name).toUpperCase())}</span><span class="ps-gap">${gap} ${me.place === 1 ? "UP" : "BACK"}</span>`
     : `<span class="ps-label">CLEAR</span>`;
   el.innerHTML = `<span class="ps-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ps-score">${String(me.score).padStart(2, "0")} PTS</span>${right}`;
   el.classList.remove("hidden");
@@ -2005,7 +2010,7 @@ const lastScores = {};
 
 function namesListHtml(names) {
   if (names.length === 0) return `<span class="bug-name-line none">&mdash;</span>`;
-  return names.map((n) => `<span class="bug-name-line${n === currentManager ? " me" : ""}">${n}</span>`).join("");
+  return names.map((n) => `<span class="bug-name-line${n === currentManager ? " me" : ""}">${shown(n)}</span>`).join("");
 }
 
 // Name chips: avatar initial (or emoji) plus name, wrapping as a unit.
@@ -2013,8 +2018,8 @@ function nameChips(names) {
   return names.map((n) => {
     const idx = MANAGERS.indexOf(n);
     const accent = AVATAR_COLORS[(idx >= 0 ? idx : 0) % AVATAR_COLORS.length];
-    const av = avatarOverrides[n] || n[0];
-    return `<span class="pick-chip${n === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${n}</span>`;
+    const av = avatarOverrides[n] || shown(n)[0];
+    return `<span class="pick-chip${n === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
   }).join("");
 }
 
@@ -2358,7 +2363,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
     // beside it, a missing one already shows as a red cross, and the
     // leaderboard above states the count outright, so it was a second line
     // of cell saying what the first line was already showing.
-    html += `<tr class="${name === currentManager ? "is-me" : ""}"><td class="manager-col"><span class="ap-who">${name}</span>${rankTag}</td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
+    html += `<tr class="${name === currentManager ? "is-me" : ""}"><td class="manager-col"><span class="ap-who">${shown(name)}</span>${rankTag}</td>${cells}<td>${tbCell}</td><td><strong>${total}</strong></td></tr>`;
   });
 
   html += "</tbody>";
@@ -2579,7 +2584,7 @@ function renderPayouts() {
       <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>WON</span><span>EARNED</span></div>
       ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}">
         <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
-        <span class="pot-name">${r.name.toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
+        <span class="pot-name">${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
         <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
         <span class="pot-won">${r.weeksWon ? "🏆".repeat(Math.min(r.weeksWon, 3)) + (r.weeksWon > 3 ? `×${r.weeksWon}` : "") : "–"}</span>
         <span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>
@@ -2687,7 +2692,7 @@ function renderWeekChamp(rows, results) {
   const allFinal = GAMES.every((g) => results[g.id]);
   if (!allFinal || !rows.length) { el.classList.add("hidden"); return; }
   const top = rows.filter((r) => r.place === rows[0].place);
-  const names = top.map((r) => r.name.toUpperCase()).join(" & ");
+  const names = top.map((r) => shown(r.name).toUpperCase()).join(" & ");
   el.innerHTML = `<span class="wc-label"><span class="wc-rule"></span>${WEEK_LABEL.toUpperCase()} HIGH SCORE<span class="wc-rule"></span></span><span class="wc-line"><span class="wc-name">${names}</span><span class="wc-pts">${String(rows[0].score).padStart(2, "0")}<small>PTS</small></span></span>`;
   el.classList.remove("hidden");
 }
@@ -2765,7 +2770,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     div.innerHTML = `
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place">${row.tied ? "T-" : ""}${ordinal(row.place)}</span>
-        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${row.name.toUpperCase()}</span></span><span class="ranking-lock">${row.subline}</span></span>
+        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span></span><span class="ranking-lock">${row.subline}</span></span>
         <span class="ranking-dots" aria-hidden="true"></span>
         <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
         <span class="ranking-caret">${open ? "▴" : "▾"}</span>
@@ -3037,7 +3042,8 @@ function openPoll(data) {
   modal.querySelectorAll(".poll-pill").forEach((b) => { b.setAttribute("aria-checked", "false"); b.disabled = false; });
   const vote = document.getElementById("poll-vote");
   vote.disabled = true; vote.textContent = "VOTE";
-  renderPollTally(data);
+  // The count waits until the vote is in, so nobody picks the winning side.
+  document.getElementById("poll-tally").innerHTML = "";
   modal.classList.remove("hidden");
 }
 function renderPollTally(data) {
@@ -3111,7 +3117,7 @@ let renderRecap = function () {
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
     cards.push([ICON.up + "MOVEMENT", "move", `<span class="recap-logo arrow">▲</span>`, `${chips([u.name])}<span class="recap-pick">to #${u.to} on the season</span>`,
-      d ? `${esc(d.name)} fell ${d.to - d.from} to #${d.to}` : "Nobody fell", `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean))]);
+      d ? `${esc(shown(d.name))} fell ${d.to - d.from} to #${d.to}` : "Nobody fell", `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean))]);
   }
   if (r.consensus?.sides?.length > 1) {
     const c = r.consensus;

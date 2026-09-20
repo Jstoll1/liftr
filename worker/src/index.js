@@ -2597,7 +2597,7 @@ const OWNER_ALIASES = {
   Logan: ["logan"],
   Curt: ["curt", "stark"],
   Jordan: ["jordan", "woods"],
-  Conlan: ["conlan"],
+  Connie: ["connie", "conlan"],
   Andrew: ["andrew", "steioff"],
   Nissan: ["nissan", "john nissan"],
   Robert: ["robert", "rob "],
@@ -2619,7 +2619,7 @@ function selectContext(question, asker) {
   for (const [owner, aliases] of Object.entries(OWNER_ALIASES)) {
     if (aliases.some((a) => q.includes(a))) owners.add(owner);
   }
-  if (/\btyler\b/.test(q) && owners.size === 0) ["Dewitt", "Conlan", "Cerone"].forEach((o) => owners.add(o));
+  if (/\btyler\b/.test(q) && owners.size === 0) ["Dewitt", "Connie", "Cerone"].forEach((o) => owners.add(o));
 
   const years = new Set((question.match(/\b20(1[4-9]|2[0-5])\b/g) || []).map(Number));
   if (/last (year|season)|most recent|latest/.test(q)) years.add(2025);

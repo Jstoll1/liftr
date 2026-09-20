@@ -165,7 +165,7 @@
     const claimed = new Set(auth.claimed || []);
     body.innerHTML = `<p class="admin-intro">Each owner claims their own name with a code they choose. Reset frees a name so it can be claimed again — for a forgotten code, or when the wrong person got there first.</p>
       <div class="admin-owners-list">${OWNERS.map((name) => `<div class="admin-owner${claimed.has(name) ? " on" : ""}">
-        <span class="ao-name">${esc(name)}</span>
+        <span class="ao-name">${esc(name === "Conlan" ? "Connie" : name)}</span>
         <span class="ao-state">${claimed.has(name) ? "claimed" : "not claimed"}</span>
         ${claimed.has(name) ? `<button class="admin-btn ao-reset" type="button" data-name="${esc(name)}">Reset</button>` : ""}
       </div>`).join("")}</div>`;
