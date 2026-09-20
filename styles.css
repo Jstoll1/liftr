@@ -3038,9 +3038,10 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .poll-kicker { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .18em; color: var(--neon-yellow); text-align: center; }
 .poll-modal .modal-title { font-size: 12px; line-height: 1.5; }
 .poll-options { display: flex; flex-direction: column; gap: 8px; }
-.poll-pill { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; padding: 10px 14px; border-radius: 999px; border: 2px solid var(--card-border); background: rgba(255, 255, 255, .03); color: var(--text); font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-.poll-pill-head { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .06em; color: #fff; }
-.poll-pill-body { font-size: 12px; line-height: 1.35; color: var(--text-meta); }
+.poll-pill { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 2px solid var(--card-border); background: rgba(255, 255, 255, .03); color: var(--text); font-family: inherit; cursor: pointer; white-space: nowrap; overflow: hidden; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.poll-pill-head { flex: none; font-family: 'Press Start 2P', monospace; font-size: 7.5px; letter-spacing: .04em; color: #fff; }
+.poll-pill-body { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; color: var(--text-meta); }
+@media (max-width: 340px) { .poll-pill { gap: 7px; padding: 8px 10px; } .poll-pill-body { font-size: 10px; } .poll-pill-head { font-size: 6.5px; letter-spacing: 0; } .poll-modal .modal-card { padding: 18px 14px; } }
 .poll-pill[aria-checked="true"] { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .12); box-shadow: 0 0 10px rgba(5, 217, 232, .35); }
 .poll-pill[aria-checked="true"] .poll-pill-head { color: var(--neon-cyan); }
 .poll-pill:disabled { cursor: default; opacity: .75; }
