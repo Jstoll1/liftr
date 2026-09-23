@@ -3045,6 +3045,7 @@ function openPoll(data) {
   vote.disabled = true; vote.textContent = "VOTE";
   // The count waits until the vote is in, so nobody picks the winning side.
   document.getElementById("poll-tally").innerHTML = "";
+  document.getElementById("poll-brief")?.classList.add("hidden");
   modal.classList.remove("hidden");
 }
 function renderPollTally(data) {
@@ -3055,11 +3056,51 @@ function renderPollTally(data) {
   el.innerHTML = Object.entries(data.tally).map(([k, n]) => `<div class="poll-bar${n && n === top ? " lead" : ""}"><span>${POLL_LABEL[k] || k}</span><i><b style="width:${Math.round((n / total) * 100)}%"></b></i><span>${n}</span></div>`).join("")
     + `<div class="poll-count">${data.voted} OF ${data.of} VOTED</div>`;
 }
-document.querySelectorAll("#poll-modal .poll-pill").forEach((b) => b.addEventListener("click", () => {
+// The case for each side, shown when its pill is tapped and dismissed
+// by a tap anywhere else. Selection stands either way.
+const POLL_BRIEF = {
+  lock: {
+    title: "BRIEF FOR THE MOTION",
+    merits: [
+      "A pick'em rewards foresight. One deadline keeps it that way.",
+      "A lead earned by noon cannot be undone by afternoon underdog flips.",
+      "One closing time for everyone. Nothing to police.",
+    ],
+    grounds: "All picks close at the week's first kickoff. Every manager holds the same information, including Saturday morning news, up to that moment.",
+  },
+  flex: {
+    title: "BRIEF IN OPPOSITION",
+    merits: [
+      "Every pick is made on the freshest information: injuries, weather, the line.",
+      "A late flip is variance, not edge. The trailer takes worse odds, not better ones.",
+      "It is the rule the league picked under. Changing it midseason moves the goalposts.",
+    ],
+    grounds: "Each game is its own contract and closes at its own kickoff. Adjusting late is open to all ten managers equally.",
+  },
+};
+function showPollBrief(choice) {
+  const el = document.getElementById("poll-brief");
+  const b = POLL_BRIEF[choice];
+  if (!el || !b) return;
+  el.innerHTML = `<div class="poll-brief-title">${b.title}</div>
+    <div class="poll-brief-h">MERITS</div><ol>${b.merits.map((m) => `<li>${m}</li>`).join("")}</ol>
+    <div class="poll-brief-h">GROUNDS</div><p>${b.grounds}</p>`;
+  el.classList.remove("hidden");
+}
+document.querySelectorAll("#poll-modal .poll-pill").forEach((b) => b.addEventListener("click", (e) => {
   pollChoice = b.dataset.choice;
   document.querySelectorAll("#poll-modal .poll-pill").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
   document.getElementById("poll-vote").disabled = false;
+  showPollBrief(pollChoice);
+  e.stopPropagation();
 }));
+// Any tap that is not on the brief itself or a pill closes it.
+document.addEventListener("click", (e) => {
+  const el = document.getElementById("poll-brief");
+  if (!el || el.classList.contains("hidden")) return;
+  if (e.target.closest("#poll-brief") || e.target.closest(".poll-pill")) return;
+  el.classList.add("hidden");
+});
 document.getElementById("poll-vote")?.addEventListener("click", async (e) => {
   if (!pollChoice || !currentManager) return;
   const btn = e.currentTarget;

@@ -3059,3 +3059,12 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .poll-results.hidden { display: none; }
 .poll-results-head { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--neon-yellow); margin-bottom: 2px; }
 .poll-results .poll-bar.mine span:first-child { color: var(--neon-cyan); }
+
+/* The case for a side, under the pills. */
+.poll-brief { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(5, 217, 232, .4); background: rgba(5, 217, 232, .06); font-size: 11.5px; line-height: 1.4; color: var(--text); }
+.poll-brief.hidden { display: none; }
+.poll-brief-title { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .12em; color: var(--neon-cyan); margin-bottom: 6px; }
+.poll-brief-h { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .12em; color: var(--text-dim); margin: 6px 0 3px; }
+.poll-brief ol { margin: 0; padding-left: 18px; }
+.poll-brief li { margin: 0 0 3px; }
+.poll-brief p { margin: 0; color: var(--text-meta); }
