@@ -1903,6 +1903,7 @@ let cloudPicksStale = false;
 
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
+  renderPollResults();
   const fetched = await fetchAllPicks();
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
@@ -3068,6 +3069,7 @@ document.getElementById("poll-vote")?.addEventListener("click", async (e) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "vote failed");
     renderPollTally(data);
+    pollResultsData = data; pollResultsAt = Date.now(); renderPollResults();
     document.querySelectorAll("#poll-modal .poll-pill").forEach((x) => { x.disabled = true; });
     btn.textContent = "VOTED ✓";
     try { localStorage.setItem(POLL_SEEN_KEY, "1"); } catch { /* private mode */ }
@@ -3076,6 +3078,31 @@ document.getElementById("poll-vote")?.addEventListener("click", async (e) => {
     btn.disabled = false; btn.textContent = "VOTE · TRY AGAIN";
   }
 });
+
+// The tally at the top of the board for anyone who has voted, until the
+// week's first kickoff. Fetched at most once a minute.
+let pollResultsAt = 0;
+let pollResultsData = null;
+async function renderPollResults() {
+  const el = document.getElementById("poll-results");
+  if (!el) return;
+  const live = currentManager && WORKER_URL && Date.now() >= POLL_OPENS && currentWeek >= POLL_WEEK && !GAMES.some(isGameLocked);
+  if (!live) { el.classList.add("hidden"); return; }
+  if (Date.now() - pollResultsAt > 60000) {
+    pollResultsAt = Date.now();
+    try {
+      const res = await fetch(`${WORKER_URL}/poll?id=${POLL_ID}&manager=${encodeURIComponent(currentManager)}&t=${Date.now()}`, { cache: "no-store" });
+      if (res.ok) pollResultsData = await res.json();
+    } catch { /* keep what we had */ }
+  }
+  const d = pollResultsData;
+  if (!d?.mine) { el.classList.add("hidden"); return; }
+  const total = Math.max(1, d.voted || 0);
+  const top = Math.max(...Object.values(d.tally));
+  const bars = Object.entries(d.tally).map(([k, n]) => `<div class="poll-bar${n && n === top ? " lead" : ""}${k === d.mine ? " mine" : ""}"><span>${POLL_LABEL[k] || k}${k === d.mine ? " ✓" : ""}</span><i><b style="width:${Math.round((n / total) * 100)}%"></b></i><span>${n}</span></div>`).join("");
+  el.innerHTML = `<div class="poll-results-head">SWEATPANTS AMENDMENT · ${d.voted} OF ${d.of} VOTED</div>${bars}`;
+  el.classList.remove("hidden");
+}
 
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.

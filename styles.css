@@ -3053,3 +3053,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .poll-bar span:last-child { text-align: right; color: #fff; }
 .poll-count { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .1em; color: var(--text-dim); text-align: center; }
 .poll-fine { font-size: 9.5px; color: var(--text-dim); text-align: center; }
+
+/* Vote tally on the board, before kickoff, for those who have voted. */
+.poll-results { display: flex; flex-direction: column; gap: 6px; margin: 2px 0 10px; padding: 8px 12px; border: 1px solid rgba(255, 228, 94, .45); border-radius: 10px; background: rgba(255, 228, 94, .05); }
+.poll-results.hidden { display: none; }
+.poll-results-head { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--neon-yellow); margin-bottom: 2px; }
+.poll-results .poll-bar.mine span:first-child { color: var(--neon-cyan); }
