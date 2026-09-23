@@ -3299,6 +3299,85 @@ let renderRecap = function () {
   paint();
 })();
 
+// --- Season stats ------------------------------------------------------
+// Five leaderboards from the ledger of every counting week. The ledger
+// comes down only when the panel is opened, and is kept for five minutes.
+let seasonLedgerAt = 0;
+let seasonLedger = null;
+async function fetchSeasonLedger() {
+  if (!WORKER_URL) return null;
+  if (seasonLedger && Date.now() - seasonLedgerAt < 5 * 60 * 1000) return seasonLedger;
+  try {
+    const res = await fetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return seasonLedger;
+    const data = await res.json();
+    seasonLedger = Object.values(data.summaries || {}).filter((w) => w?.complete && !w.exhibition && Array.isArray(w.rows)).sort((a, b) => a.week - b.week);
+    seasonLedgerAt = Date.now();
+  } catch { /* keep what we had */ }
+  return seasonLedger;
+}
+
+// Pure: the five boards from a list of counting weeks.
+function seasonStats(weeks) {
+  const by = new Map(MANAGERS.map((n) => [n, { name: n, atsW: 0, atsL: 0, dogHits: 0, fades: 0, picks: 0, tbSum: 0, tbN: 0, bestWeek: null }]));
+  for (const w of weeks) for (const r of w.rows) {
+    const m = by.get(r.name); if (!m) continue;
+    if (r.tbDiff !== null && r.tbDiff !== undefined) { m.tbSum += r.tbDiff; m.tbN += 1; }
+    if (!m.bestWeek || r.score > m.bestWeek.score) m.bestWeek = { week: w.week, score: r.score };
+    for (const l of r.ledger || []) {
+      if (!l.team || l.result === "pending") continue;
+      m.picks += 1;
+      const dog = l.team !== l.favorite;
+      if (dog) m.fades += 1;
+      if (l.mode === "ATS") { if (l.result === "hit") m.atsW += 1; else if (l.result === "miss") m.atsL += 1; }
+      if (l.mode === "SU" && dog && l.result === "hit") m.dogHits += 1;
+    }
+  }
+  const all = [...by.values()];
+  const pct = (w, l) => (w + l ? w / (w + l) : 0);
+  return {
+    ats: all.filter((m) => m.atsW + m.atsL >= 3).sort((a, b) => pct(b.atsW, b.atsL) - pct(a.atsW, a.atsL) || b.atsW - a.atsW).map((m) => ({ name: m.name, value: `${m.atsW}-${m.atsL}`, sub: `${Math.round(pct(m.atsW, m.atsL) * 100)}%` })),
+    dogs: all.filter((m) => m.dogHits).sort((a, b) => b.dogHits - a.dogHits).map((m) => ({ name: m.name, value: String(m.dogHits), sub: `${m.dogHits * 3} pts` })),
+    fader: all.filter((m) => m.picks >= 5).sort((a, b) => b.fades / b.picks - a.fades / a.picks).map((m) => ({ name: m.name, value: `${Math.round((m.fades / m.picks) * 100)}%`, sub: `${m.fades} of ${m.picks}` })),
+    tb: all.filter((m) => m.tbN).sort((a, b) => a.tbSum / a.tbN - b.tbSum / b.tbN).map((m) => ({ name: m.name, value: (m.tbSum / m.tbN).toFixed(1), sub: `${m.tbN} wk${m.tbN === 1 ? "" : "s"}` })),
+    best: all.filter((m) => m.bestWeek).sort((a, b) => b.bestWeek.score - a.bestWeek.score).map((m) => ({ name: m.name, value: String(m.bestWeek.score), sub: `Week ${m.bestWeek.week}` })),
+  };
+}
+
+async function renderSeasonStats() {
+  const panel = document.getElementById("season-panel");
+  if (!panel || panel.classList.contains("hidden")) return;
+  const weeks = await fetchSeasonLedger();
+  if (!weeks) { panel.innerHTML = `<div class="pot-empty">Could not reach the record. Try again in a moment.</div>`; return; }
+  if (!weeks.length) { panel.innerHTML = `<div class="pot-empty">Nothing on the record yet. Stats appear once a week seals.</div>`; return; }
+  const s = seasonStats(weeks);
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const board = (label, note, rows, cls) => `<div class="ss-card ${cls}">
+    <div class="ss-head"><span>${label}</span><small>${note}</small></div>
+    ${rows.length ? rows.slice(0, 3).map((r, i) => `<div class="ss-row${r.name === currentManager ? " me" : ""}"><span class="ss-rank">${i + 1}</span><span class="ss-name">${esc(shown(r.name).toUpperCase())}</span><span class="ss-sub">${esc(r.sub)}</span><b class="ss-val">${esc(r.value)}</b></div>`).join("") : `<div class="ss-row none">Nobody qualifies yet</div>`}
+  </div>`;
+  panel.innerHTML = `<div class="ss-note">${weeks.length} counting week${weeks.length === 1 ? "" : "s"} · top three on each</div>
+    ${board("BEST ATS RECORD", "spread picks, min 3", s.ats, "hit")}
+    ${board("MOST DOG HITS", "underdogs straight up, 3 pts each", s.dogs, "upset")}
+    ${board("FAVOURITE FADER", "share of picks against the favourite", s.fader, "split")}
+    ${board("TIEBREAKER SNIPER", "average miss, lower is better", s.tb, "tb")}
+    ${board("BEST WEEK", "highest single-week score", s.best, "move")}`;
+}
+(() => {
+  const toggle = document.getElementById("season-toggle");
+  const panel = document.getElementById("season-panel");
+  if (!toggle || !panel) return;
+  let open = false;
+  const paint = () => {
+    panel.classList.toggle("hidden", !open);
+    toggle.classList.toggle("open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+    if (open) { panel.innerHTML = `<div class="pot-empty">Reading the record…</div>`; renderSeasonStats(); }
+  };
+  toggle.addEventListener("click", () => { open = !open; paint(); });
+  paint();
+})();
+
 // --- Update check -----------------------------------------------------
 // Added to the Home Screen the app runs standalone: no Safari chrome, so
 // no reload button, so no way to pick up a new build short of force
