@@ -3046,7 +3046,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .poll-pill[aria-checked="true"] .poll-pill-head { color: var(--neon-cyan); }
 .poll-pill:disabled { cursor: default; opacity: .75; }
 .poll-tally { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
-.poll-bar { display: grid; grid-template-columns: 92px minmax(0, 1fr) 24px; align-items: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); }
+.poll-bar { display: grid; grid-template-columns: 104px minmax(0, 1fr) 24px; align-items: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); }
 .poll-bar i { display: block; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .06); overflow: hidden; }
 .poll-bar i b { display: block; height: 100%; background: var(--neon-cyan); transition: width .3s ease; }
 .poll-bar.lead { color: var(--text); }
@@ -3058,7 +3058,12 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .poll-results { display: flex; flex-direction: column; gap: 6px; margin: 2px 0 10px; padding: 8px 12px; border: 1px solid rgba(255, 228, 94, .45); border-radius: 10px; background: rgba(255, 228, 94, .05); }
 .poll-results.hidden { display: none; }
 .poll-results-head { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--neon-yellow); margin-bottom: 2px; }
+.poll-results .poll-bar { width: 100%; background: none; border: 0; padding: 2px 0; font-family: 'Press Start 2P', monospace; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.poll-results .poll-bar span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .poll-results .poll-bar.mine span:first-child { color: var(--neon-cyan); }
+.poll-results .poll-bar em { font-style: normal; margin-left: 4px; }
+.poll-results .poll-brief { margin-top: 4px; }
+.poll-results-hint { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .12em; color: var(--text-dim); text-align: center; margin-top: 2px; }
 
 /* The case for a side, under the pills. */
 .poll-brief { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(5, 217, 232, .4); background: rgba(5, 217, 232, .06); font-size: 11.5px; line-height: 1.4; color: var(--text); }

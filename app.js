@@ -3078,8 +3078,7 @@ const POLL_BRIEF = {
     grounds: "Each game is its own contract and closes at its own kickoff. Adjusting late is open to all ten managers equally.",
   },
 };
-function showPollBrief(choice) {
-  const el = document.getElementById("poll-brief");
+function showPollBrief(choice, el = document.getElementById("poll-brief")) {
   const b = POLL_BRIEF[choice];
   if (!el || !b) return;
   el.innerHTML = `<div class="poll-brief-title">${b.title}</div>
@@ -3094,12 +3093,22 @@ document.querySelectorAll("#poll-modal .poll-pill").forEach((b) => b.addEventLis
   showPollBrief(pollChoice);
   e.stopPropagation();
 }));
-// Any tap that is not on the brief itself or a pill closes it.
+// Any tap that is not on a brief itself, a pill, or a tally row closes
+// whichever brief is open.
 document.addEventListener("click", (e) => {
-  const el = document.getElementById("poll-brief");
-  if (!el || el.classList.contains("hidden")) return;
-  if (e.target.closest("#poll-brief") || e.target.closest(".poll-pill")) return;
-  el.classList.add("hidden");
+  if (e.target.closest(".poll-brief") || e.target.closest(".poll-pill") || e.target.closest(".poll-bar")) return;
+  document.querySelectorAll(".poll-brief:not(.hidden)").forEach((el) => el.classList.add("hidden"));
+});
+// The tally on the board: tap a row for that side's brief.
+document.getElementById("poll-results")?.addEventListener("click", (e) => {
+  const row = e.target.closest(".poll-bar");
+  if (!row) return;
+  const el = document.getElementById("poll-results-brief");
+  if (!el) return;
+  if (!el.classList.contains("hidden") && el.dataset.choice === row.dataset.choice) { el.classList.add("hidden"); return; }
+  el.dataset.choice = row.dataset.choice;
+  showPollBrief(row.dataset.choice, el);
+  e.stopPropagation();
 });
 document.getElementById("poll-vote")?.addEventListener("click", async (e) => {
   if (!pollChoice || !currentManager) return;
@@ -3140,8 +3149,11 @@ async function renderPollResults() {
   if (!d?.mine) { el.classList.add("hidden"); return; }
   const total = Math.max(1, d.voted || 0);
   const top = Math.max(...Object.values(d.tally));
-  const bars = Object.entries(d.tally).map(([k, n]) => `<div class="poll-bar${n && n === top ? " lead" : ""}${k === d.mine ? " mine" : ""}"><span>${POLL_LABEL[k] || k}${k === d.mine ? " ✓" : ""}</span><i><b style="width:${Math.round((n / total) * 100)}%"></b></i><span>${n}</span></div>`).join("");
-  el.innerHTML = `<div class="poll-results-head">SWEATPANTS AMENDMENT · ${d.voted} OF ${d.of} VOTED</div>${bars}`;
+  const bars = Object.entries(d.tally).map(([k, n]) => `<button type="button" class="poll-bar${n && n === top ? " lead" : ""}${k === d.mine ? " mine" : ""}" data-choice="${k}" title="Tap for the case"><span>${POLL_LABEL[k] || k}${k === d.mine ? "<em>✓</em>" : ""}</span><i><b style="width:${Math.round((n / total) * 100)}%"></b></i><span>${n}</span></button>`).join("");
+  const brief = el.querySelector("#poll-results-brief");
+  const open = brief && !brief.classList.contains("hidden") ? brief.dataset.choice : null;
+  el.innerHTML = `<div class="poll-results-head">SWEATPANTS AMENDMENT · ${d.voted} OF ${d.of} VOTED</div>${bars}<div id="poll-results-brief" class="poll-brief hidden"></div><div class="poll-results-hint">TAP A SIDE FOR ITS CASE</div>`;
+  if (open) { const b = el.querySelector("#poll-results-brief"); b.dataset.choice = open; showPollBrief(open, b); }
   el.classList.remove("hidden");
 }
 
