@@ -159,6 +159,22 @@
         </div>`).join("");
   }
 
+  // --- Vote -----------------------------------------------------------
+  // Who voted which way on the league question, and who has not voted.
+  const SHOWN = { Conlan: "Connie" };
+  const LABEL = { lock: "Lock it all", flex: "Game by game" };
+  async function renderPoll() {
+    const d = await get("/poll?id=sweatpants");
+    const votes = d.votes || {};
+    const voted = Object.entries(votes).sort((a, b) => a[1].ts - b[1].ts);
+    const missing = OWNERS.filter((n) => !votes[n]);
+    const lead = d.tally.lock === d.tally.flex ? "Tied" : d.tally.lock > d.tally.flex ? LABEL.lock : LABEL.flex;
+    body.innerHTML = `<div class="con-summary"><span>Sweatpants Amendment</span><span>${LABEL.lock} ${d.tally.lock} · ${LABEL.flex} ${d.tally.flex}</span></div>
+      <div class="con-ok">${d.voted} of ${d.of} voted · ${lead}${d.tally.lock === d.tally.flex && d.voted ? " · commissioner decides" : " leads"}</div>
+      ${voted.map(([name, v]) => `<div class="con-row"><div class="con-row-head"><b>${esc(SHOWN[name] || name)}</b><span>${when(v.ts)}</span><span class="con-tag ${v.choice === "lock" ? "adm" : "warn"}">${esc(LABEL[v.choice] || v.choice)}</span></div></div>`).join("")}
+      ${missing.length ? `<div class="con-row bad"><div class="con-line">Not voted: ${esc(missing.map((n) => SHOWN[n] || n).join(", "))}</div></div>` : `<div class="con-ok">Everyone has voted.</div>`}`;
+  }
+
   // --- Owners ---------------------------------------------------------
   async function renderOwners() {
     const auth = await get("/auth");
@@ -329,7 +345,7 @@
     });
   }
 
-  const TABS = { picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate };
+  const TABS = { picks: renderPicks, poll: renderPoll, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate };
 
   async function renderTab() {
     body.innerHTML = `<div class="admin-empty">Loading…</div>`;
