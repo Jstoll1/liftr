@@ -3060,21 +3060,5 @@ body.sheet-open #admin-overlay { overflow: hidden; }
    is baked in, so the card is painted the same colour and the art gets a
    soft mask so no rectangle shows. */
 .boner-art { width: 280px; max-width: 100%; height: auto; -webkit-mask-image: radial-gradient(ellipse 48% 50% at 50% 52%, #000 62%, transparent 100%); mask-image: radial-gradient(ellipse 48% 50% at 50% 52%, #000 62%, transparent 100%); }
-/* The GIF only flickers the flames, so the cackle is done here: three
-   quick head-throws with a beat between, pivoting from the jaw. */
-.boner-art img { display: block; width: 100%; height: auto; transform-origin: 50% 78%; animation: boner-cackle 1.6s steps(1, end) infinite; }
-@keyframes boner-cackle {
-  0%   { transform: rotate(0deg) translateY(0); }
-  8%   { transform: rotate(-9deg) translateY(-8px) scale(1.04); }
-  16%  { transform: rotate(7deg) translateY(2px); }
-  24%  { transform: rotate(-8deg) translateY(-7px) scale(1.04); }
-  32%  { transform: rotate(6deg) translateY(2px); }
-  40%  { transform: rotate(-7deg) translateY(-6px) scale(1.03); }
-  48%  { transform: rotate(0deg) translateY(0); }
-  100% { transform: rotate(0deg) translateY(0); }
-}
-.boner-title { font-family: 'Press Start 2P', monospace; font-size: 11px; line-height: 1.8; text-align: center; color: var(--neon-pink); text-shadow: 0 0 10px rgba(255, 32, 121, .8); }
-.boner-luck { font-family: 'Press Start 2P', monospace; font-size: 16px; color: var(--neon-yellow); text-shadow: 0 0 12px rgba(255, 228, 94, .8); animation: boner-blink 1s steps(1) infinite; }
-@keyframes boner-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: .25; } }
-.boner-tap { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .14em; color: var(--text-dim); margin-top: 4px; }
-/* Deliberately not gated on reduced motion: it is the whole joke, once. */
+.boner-art img { display: block; width: 100%; height: auto; }
+@media (prefers-reduced-motion: reduce) { .boner-card, .boner-luck { animation: none; } }
