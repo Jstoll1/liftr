@@ -1128,6 +1128,7 @@ function showPicksScreen() {
   renderPicksScreen();
   setActiveNav("picks");
   enterScreen("picks");
+  maybeShowBoner();
   return syncManagerFromCloud(currentManager).then((cloud) => {
     if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
     // Same payload feeds the standings row. cloud is null when the fetch
@@ -3017,18 +3018,17 @@ function thursdaySixAM(ms, offsetHours) {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 6 - offsetHours);
 }
 
-// --- The Boner Amendment, announced once ------------------------------
-// Week 4 only, on the board, once the week has locked. Shown once per
-// device; a tap anywhere closes it.
-const BONER_KEY = "brochiefs_boner_seen_v1";
+// --- The Boner Amendment, announced on every open this weekend ---------
+// Week 4 only, once the week has locked, through Monday night. Once per
+// page load, whichever screen the app opens on; a tap anywhere closes it.
+const BONER_UNTIL = Date.parse("2026-09-29T03:59:00Z"); // Mon 11:59 PM ET
+let bonerShownThisLoad = false;
 function maybeShowBoner() {
   const el = document.getElementById("boner-modal");
-  if (!el || !currentManager || currentWeek !== 4 || !GAMES.length || !GAMES.every(isGameLocked)) return;
-  let seen = false;
-  try { seen = !!localStorage.getItem(BONER_KEY); } catch { /* private mode */ }
-  if (seen) return;
+  if (!el || bonerShownThisLoad || !currentManager) return;
+  if (currentWeek !== 4 || Date.now() >= BONER_UNTIL || !GAMES.length || !GAMES.every(isGameLocked)) return;
+  bonerShownThisLoad = true;
   el.classList.remove("hidden");
-  try { localStorage.setItem(BONER_KEY, "1"); } catch { /* private mode */ }
 }
 document.getElementById("boner-modal")?.addEventListener("click", () => document.getElementById("boner-modal").classList.add("hidden"));
 
