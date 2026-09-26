@@ -2494,7 +2494,7 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
   const picked = `${row.submittedCount}/${GAMES.length}`;
   if (!isGameLocked(tbGame)) return picked;
   const guess = row.tbGuess === null ? "TB –" : `TB ${row.tbGuess}`;
-  if (actualTotal === null && inFlight !== null && results) {
+  if (inFlight !== null && results) {
     // Record on games already final, the most this card can still reach,
     // and what is in flight this minute.
     let w = 0, l = 0, max = row.score;
