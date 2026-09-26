@@ -3077,4 +3077,4 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .boner-luck { font-family: 'Press Start 2P', monospace; font-size: 16px; color: var(--neon-yellow); text-shadow: 0 0 12px rgba(255, 228, 94, .8); animation: boner-blink 1s steps(1) infinite; }
 @keyframes boner-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: .25; } }
 .boner-tap { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .14em; color: var(--text-dim); margin-top: 4px; }
-@media (prefers-reduced-motion: reduce) { .boner-card, .boner-luck, .boner-art img { animation: none; } }
+/* Deliberately not gated on reduced motion: it is the whole joke, once. */
