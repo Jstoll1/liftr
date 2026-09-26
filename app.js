@@ -160,10 +160,10 @@ function setManagerState(name, state) {
   saveAll(all);
 }
 
-// The Sweatpants Amendment, carried 2026-09-24: from week 5, every pick
+// The Sweatpants Amendment, carried 2026-09-24: from week 4, every pick
 // locks at the week's first kickoff. Before that, each game locked at
 // its own. The Worker applies the same rule when it grades a late save.
-const LOCK_ALL_FROM_WEEK = 5;
+const LOCK_ALL_FROM_WEEK = 4;
 function weekLockTime() {
   if (currentWeek < LOCK_ALL_FROM_WEEK || !GAMES.length) return null;
   return Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));

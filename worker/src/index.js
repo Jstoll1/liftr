@@ -903,10 +903,10 @@ const PICKS_CACHE_MS = 5000;
 
 // Kickoff times for a week, read from that week's stored games. Week 1
 // predates the games store, so its hardcoded table below is the fallback.
-// The Sweatpants Amendment, carried 2026-09-24: from week 5 every pick
+// The Sweatpants Amendment, carried 2026-09-24: from week 4 every pick
 // locks at the week's first kickoff, so every game's lock time is the
 // earliest kickoff. Before that, each game locked at its own.
-const LOCK_ALL_FROM_WEEK = 5;
+const LOCK_ALL_FROM_WEEK = 4;
 async function kickoffsFor(env, week) {
   const wk = await env.LIFTR_KV.get(gamesKey(week), "json");
   if (wk && Array.isArray(wk.games) && wk.games.length) {
