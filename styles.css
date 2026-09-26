@@ -3070,3 +3070,6 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 @keyframes boner-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: .25; } }
 .boner-tap { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .14em; color: var(--text-dim); margin-top: 4px; }
 @media (prefers-reduced-motion: reduce) { .boner-card, .boner-luck { animation: none; } }
+
+/* In-flight points on a leaderboard row while games are live. */
+.rank-inflight { color: var(--neon-green); text-shadow: 0 0 6px rgba(57, 255, 136, .5); }

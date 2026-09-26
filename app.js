@@ -2488,10 +2488,13 @@ function playerBreakdownHtml(name, state, results, live) {
 // the odd row out looked like a different kind of row rather than the same
 // row with worse news. A dash holds a slot that has no value yet, so every
 // line has the same shape whatever the week is doing.
-function rankingSubline(row, actualTotal, tbGame) {
+// While games are in progress the third slot carries what that manager
+// has in flight, in green, instead of a dash waiting on the tiebreaker.
+function rankingSubline(row, actualTotal, tbGame, inFlight = null) {
   const picked = `${row.submittedCount}/${GAMES.length}`;
   if (!isGameLocked(tbGame)) return picked;
   const guess = row.tbGuess === null ? "TB –" : `TB ${row.tbGuess}`;
+  if (actualTotal === null && inFlight !== null) return `${picked} · ${guess} · <span class="rank-inflight">+${inFlight}</span>`;
   const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
   return `${picked} · ${guess} · ${off}`;
 }
@@ -2689,6 +2692,12 @@ function rankManagers(cloudPicks, results) {
 
 function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
   const rows = precomputed || rankManagers(cloudPicks, results);
+  if (anyGameLive(live)) {
+    const tbGame = GAMES.find((g) => g.tiebreakerGame) || GAMES[0];
+    const tbRes = tbGame && results[tbGame.id];
+    const actualTotal = tbRes ? tbRes.awayScore + tbRes.homeScore : null;
+    for (const row of rows) row.subline = rankingSubline(row, actualTotal, tbGame, inFlightPoints(cloudPicks[row.name]?.picks || {}, live));
+  }
   rankingsList.innerHTML = "";
   renderRankingRows(rows, cloudPicks, results, live);
   return rows;
@@ -2707,6 +2716,26 @@ function renderWeekChamp(rows, results) {
   el.classList.remove("hidden");
 }
 
+// Points a set of picks would bank if every game in progress ended as it
+// stands. Games that are final are already in the score; games not yet
+// started have nothing to say.
+function inFlightPoints(picks, live) {
+  let pts = 0;
+  for (const game of GAMES) {
+    const g = live[game.id];
+    if (!g || !g.found || g.state !== "in" || g.completed) continue;
+    if (!Number.isFinite(g.awayScore) || !Number.isFinite(g.homeScore)) continue;
+    const pick = picks[game.id];
+    if (!pick) continue;
+    const p = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
+    if (p > 0) pts += p;
+  }
+  return pts;
+}
+function anyGameLive(live) {
+  return GAMES.some((game) => { const g = live[game.id]; return g && g.found && g.state === "in" && !g.completed; });
+}
+
 // "1UP" strip under the refresh line: the viewer's score and place, in
 // arcade type. Tap jumps to their leaderboard row.
 function renderMyScore(rows, cloudPicks = {}, live = {}) {
@@ -2717,17 +2746,7 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // Banked points sit at zero until games go final, which reads as a
   // contradiction next to a scorebug saying a pick is covering. Count what
   // is still in flight separately and show both.
-  let inFlight = 0;
-  const mine = cloudPicks[currentManager]?.picks || {};
-  for (const game of GAMES) {
-    const g = live[game.id];
-    if (!g || !g.found || g.state !== "in" || g.completed) continue;
-    if (!Number.isFinite(g.awayScore) || !Number.isFinite(g.homeScore)) continue;
-    const pick = mine[game.id];
-    if (!pick) continue;
-    const pts = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
-    if (pts > 0) inFlight += pts;
-  }
+  const inFlight = inFlightPoints(cloudPicks[currentManager]?.picks || {}, live);
   // Where you stand on the left, the board's own state on the right, one
   // row across the full width of the frame it caps. This replaces the two
   // centred lines that used to sit above it.
