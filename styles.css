@@ -3073,3 +3073,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 
 /* In-flight points on a leaderboard row while games are live. */
 .rank-inflight { color: var(--neon-green); text-shadow: 0 0 6px rgba(57, 255, 136, .5); }
+
+/* A section heading that no longer folds. */
+.all-picks-toggle.static { cursor: default; }
+.all-picks-toggle.static .all-picks-caret { display: none; }
+.all-picks-toggle.static:disabled { opacity: 1; }
