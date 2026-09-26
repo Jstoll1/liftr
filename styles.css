@@ -3061,4 +3061,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
    soft mask so no rectangle shows. */
 .boner-art { width: 280px; max-width: 100%; height: auto; -webkit-mask-image: radial-gradient(ellipse 48% 50% at 50% 52%, #000 62%, transparent 100%); mask-image: radial-gradient(ellipse 48% 50% at 50% 52%, #000 62%, transparent 100%); }
 .boner-art img { display: block; width: 100%; height: auto; }
+.boner-title { font-family: 'Press Start 2P', monospace; font-size: 11px; line-height: 1.8; text-align: center; color: var(--neon-pink); text-shadow: 0 0 10px rgba(255, 32, 121, .8); }
+.boner-luck { font-family: 'Press Start 2P', monospace; font-size: 16px; color: var(--neon-yellow); text-shadow: 0 0 12px rgba(255, 228, 94, .8); animation: boner-blink 1s steps(1) infinite; }
+@keyframes boner-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: .25; } }
+.boner-tap { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .14em; color: var(--text-dim); margin-top: 4px; }
 @media (prefers-reduced-motion: reduce) { .boner-card, .boner-luck { animation: none; } }
