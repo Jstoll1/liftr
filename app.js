@@ -2494,7 +2494,7 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null) {
   const picked = `${row.submittedCount}/${GAMES.length}`;
   if (!isGameLocked(tbGame)) return picked;
   const guess = row.tbGuess === null ? "TB –" : `TB ${row.tbGuess}`;
-  if (actualTotal === null && inFlight !== null) return `${picked} · ${guess} · <span class="rank-inflight">+${inFlight}</span>`;
+  if (actualTotal === null && inFlight !== null) return `${picked} · <span class="rank-inflight">+${inFlight} LIVE</span>`;
   const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
   return `${picked} · ${guess} · ${off}`;
 }
