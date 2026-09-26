@@ -2490,11 +2490,21 @@ function playerBreakdownHtml(name, state, results, live) {
 // line has the same shape whatever the week is doing.
 // While games are in progress the third slot carries what that manager
 // has in flight, in green, instead of a dash waiting on the tiebreaker.
-function rankingSubline(row, actualTotal, tbGame, inFlight = null) {
+function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = null) {
   const picked = `${row.submittedCount}/${GAMES.length}`;
   if (!isGameLocked(tbGame)) return picked;
   const guess = row.tbGuess === null ? "TB –" : `TB ${row.tbGuess}`;
-  if (actualTotal === null && inFlight !== null) return `${picked} · <span class="rank-inflight">+${inFlight} LIVE</span>`;
+  if (actualTotal === null && inFlight !== null && results) {
+    // Record on games already final, the most this card can still reach,
+    // and what is in flight this minute.
+    let w = 0, l = 0, max = row.score;
+    for (const g of GAMES) {
+      const pick = row.state.picks[g.id];
+      if (results[g.id]) { if (pick) { const p = scorePick(g, pick, results[g.id]); if (p > 0) w += 1; else l += 1; } }
+      else if (pick) max += pointValue(g, pick.team, pick.mode);
+    }
+    return `${w}-${l} · MAX ${max} · <span class="rank-inflight">+${inFlight} LIVE</span>`;
+  }
   const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
   return `${picked} · ${guess} · ${off}`;
 }
@@ -2696,7 +2706,7 @@ function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
     const tbGame = GAMES.find((g) => g.tiebreakerGame) || GAMES[0];
     const tbRes = tbGame && results[tbGame.id];
     const actualTotal = tbRes ? tbRes.awayScore + tbRes.homeScore : null;
-    for (const row of rows) row.subline = rankingSubline(row, actualTotal, tbGame, inFlightPoints(cloudPicks[row.name]?.picks || {}, live));
+    for (const row of rows) row.subline = rankingSubline(row, actualTotal, tbGame, inFlightPoints(cloudPicks[row.name]?.picks || {}, live), results);
   }
   rankingsList.innerHTML = "";
   renderRankingRows(rows, cloudPicks, results, live);
