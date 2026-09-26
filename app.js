@@ -1911,6 +1911,7 @@ let cloudPicksStale = false;
 
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
+  maybeShowBoner();
   const fetched = await fetchAllPicks();
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
@@ -3015,6 +3016,21 @@ function thursdaySixAM(ms, offsetHours) {
   const d = new Date(ms + offsetHours * 3600000);
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 6 - offsetHours);
 }
+
+// --- The Boner Amendment, announced once ------------------------------
+// Week 4 only, on the board, once the week has locked. Shown once per
+// device; a tap anywhere closes it.
+const BONER_KEY = "brochiefs_boner_seen_v1";
+function maybeShowBoner() {
+  const el = document.getElementById("boner-modal");
+  if (!el || !currentManager || currentWeek !== 4 || !GAMES.length || !GAMES.every(isGameLocked)) return;
+  let seen = false;
+  try { seen = !!localStorage.getItem(BONER_KEY); } catch { /* private mode */ }
+  if (seen) return;
+  el.classList.remove("hidden");
+  try { localStorage.setItem(BONER_KEY, "1"); } catch { /* private mode */ }
+}
+document.getElementById("boner-modal")?.addEventListener("click", () => document.getElementById("boner-modal").classList.add("hidden"));
 
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
