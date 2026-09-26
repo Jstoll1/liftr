@@ -3030,7 +3030,20 @@ function maybeShowBoner() {
   bonerShownThisLoad = true;
   el.classList.remove("hidden");
 }
-document.getElementById("boner-modal")?.addEventListener("click", () => document.getElementById("boner-modal").classList.add("hidden"));
+// Any touch, click or key anywhere closes it; the first one wins and
+// does not fall through to whatever was under it.
+(() => {
+  const el = document.getElementById("boner-modal");
+  if (!el) return;
+  const close = (e) => {
+    if (el.classList.contains("hidden")) return;
+    el.classList.add("hidden");
+    e.preventDefault(); e.stopPropagation();
+  };
+  document.addEventListener("pointerdown", close, true);
+  document.addEventListener("touchstart", close, { capture: true, passive: false });
+  document.addEventListener("keydown", close, true);
+})();
 
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
