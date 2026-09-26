@@ -2500,8 +2500,13 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
     let w = 0, l = 0, max = row.score;
     for (const g of GAMES) {
       const pick = row.state.picks[g.id];
-      if (results[g.id]) { if (pick) { const p = scorePick(g, pick, results[g.id]); if (p > 0) w += 1; else l += 1; } }
-      else if (pick) max += pointValue(g, pick.team, pick.mode);
+      if (results[g.id]) {
+        if (!pick) continue;
+        // A push on the spread is neither a win nor a loss.
+        const o = resultOutcome(g, results[g.id]);
+        if (pick.mode === "ATS" && o?.push) continue;
+        if (scorePick(g, pick, results[g.id]) > 0) w += 1; else l += 1;
+      } else if (pick) max += pointValue(g, pick.team, pick.mode);
     }
     return `${w}-${l} · MAX ${max} · <span class="rank-inflight">+${inFlight} LIVE</span>`;
   }
