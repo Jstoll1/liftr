@@ -160,8 +160,17 @@ function setManagerState(name, state) {
   saveAll(all);
 }
 
+// The Sweatpants Amendment, carried 2026-09-24: from week 5, every pick
+// locks at the week's first kickoff. Before that, each game locked at
+// its own. The Worker applies the same rule when it grades a late save.
+const LOCK_ALL_FROM_WEEK = 5;
+function weekLockTime() {
+  if (currentWeek < LOCK_ALL_FROM_WEEK || !GAMES.length) return null;
+  return Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
+}
 function isGameLocked(game) {
-  return Date.now() >= new Date(game.kickoff).getTime();
+  const all = weekLockTime();
+  return Date.now() >= (all ?? new Date(game.kickoff).getTime());
 }
 
 // --- Worker sync (cross-device picks + results) --------------------------
@@ -1119,7 +1128,6 @@ function showPicksScreen() {
   renderPicksScreen();
   setActiveNav("picks");
   enterScreen("picks");
-  maybeOpenPoll();
   return syncManagerFromCloud(currentManager).then((cloud) => {
     if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
     // Same payload feeds the standings row. cloud is null when the fetch
@@ -1845,7 +1853,7 @@ function updatePicksProgress(state) {
   const hint = document.querySelector("#picks-screen .picks-hint");
   if (hint) hint.textContent = allLocked
     ? `${WEEK_LABEL} has kicked off and your card is locked. Scores and results update below as games finish.`
-    : "One pick per game: straight up (1 pt favorite, 3 pt underdog) or against the spread (2 pts). Tap to save — change it any time until that game kicks off.";
+    : `One pick per game: straight up (1 pt favorite, 3 pt underdog) or against the spread (2 pts). Tap to save — change it any time until ${weekLockTime() ? "the week's first kickoff" : "that game kicks off"}.`;
   let warn = document.getElementById("picks-mismatch");
   if (!warn) { warn = document.createElement("button"); warn.id = "picks-mismatch"; warn.type = "button"; warn.className = "picks-mismatch"; picksProgress.insertAdjacentElement("afterend", warn); warn.addEventListener("click", () => restorePhonePicks(currentManager)); }
   // A repair tool, not a message for the league. It only shows on a
@@ -1903,7 +1911,6 @@ let cloudPicksStale = false;
 
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
-  renderPollResults();
   const fetched = await fetchAllPicks();
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
@@ -3007,154 +3014,6 @@ function thursdaySixAM(ms, offsetHours) {
   // The New York calendar date of `ms`, then 06:00 local expressed in UTC.
   const d = new Date(ms + offsetHours * 3600000);
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 6 - offsetHours);
-}
-
-// --- League vote -------------------------------------------------------
-// The Sweatpants Amendment: lock every pick at the week's first kickoff,
-// or keep per-game locks. Opens once per manager on the Picks screen,
-// from Tuesday 6 AM Eastern once the week 4 slate is up. A vote is final
-// and goes to the Worker; the tally under the button is live.
-const POLL_ID = "sweatpants";
-const POLL_OPENS = Date.parse("2026-09-22T10:00:00Z"); // Tue 6 AM ET
-const POLL_WEEK = 4;
-const POLL_SEEN_KEY = `brochiefs_poll_${POLL_ID}_seen`;
-const POLL_LABEL = { lock: "LOCK IT ALL", flex: "GAME BY GAME" };
-let pollChoice = null;
-let pollAsked = false;
-async function maybeOpenPoll() {
-  if (pollAsked || !currentManager || !WORKER_URL) return;
-  if (Date.now() < POLL_OPENS || currentWeek < POLL_WEEK) return;
-  let seen = false;
-  try { seen = !!localStorage.getItem(POLL_SEEN_KEY); } catch { /* private mode */ }
-  if (seen) return;
-  pollAsked = true;
-  try {
-    const res = await fetch(`${WORKER_URL}/poll?id=${POLL_ID}&manager=${encodeURIComponent(currentManager)}&t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) { pollAsked = false; return; }
-    const data = await res.json();
-    if (data.mine) { try { localStorage.setItem(POLL_SEEN_KEY, "1"); } catch { /* private mode */ } return; }
-    openPoll(data);
-  } catch { pollAsked = false; }
-}
-function openPoll(data) {
-  const modal = document.getElementById("poll-modal");
-  if (!modal) return;
-  pollChoice = null;
-  modal.querySelectorAll(".poll-pill").forEach((b) => { b.setAttribute("aria-checked", "false"); b.disabled = false; });
-  const vote = document.getElementById("poll-vote");
-  vote.disabled = true; vote.textContent = "VOTE";
-  // The count waits until the vote is in, so nobody picks the winning side.
-  document.getElementById("poll-tally").innerHTML = "";
-  document.getElementById("poll-brief")?.classList.add("hidden");
-  modal.classList.remove("hidden");
-}
-function renderPollTally(data) {
-  const el = document.getElementById("poll-tally");
-  if (!el || !data?.tally) return;
-  const total = Math.max(1, data.voted || 0);
-  const top = Math.max(...Object.values(data.tally));
-  el.innerHTML = Object.entries(data.tally).map(([k, n]) => `<div class="poll-bar${n && n === top ? " lead" : ""}"><span>${POLL_LABEL[k] || k}</span><i><b style="width:${Math.round((n / total) * 100)}%"></b></i><span>${n}</span></div>`).join("")
-    + `<div class="poll-count">${data.voted} OF ${data.of} VOTED</div>`;
-}
-// The case for each side, shown when its pill is tapped and dismissed
-// by a tap anywhere else. Selection stands either way.
-const POLL_BRIEF = {
-  lock: {
-    title: "BRIEF FOR THE MOTION",
-    merits: [
-      "A pick'em rewards foresight. One deadline keeps it that way.",
-      "A lead earned by noon cannot be undone by afternoon underdog flips.",
-      "One closing time for everyone. Nothing to police.",
-    ],
-    grounds: "All picks close at the week's first kickoff. Every manager holds the same information, including Saturday morning news, up to that moment.",
-  },
-  flex: {
-    title: "BRIEF IN OPPOSITION",
-    merits: [
-      "Every pick is made on the freshest information: injuries, weather, the line.",
-      "A late flip is variance, not edge. The trailer takes worse odds, not better ones.",
-      "It is the rule the league picked under. Changing it midseason moves the goalposts.",
-    ],
-    grounds: "Each game is its own contract and closes at its own kickoff. Adjusting late is open to all ten managers equally.",
-  },
-};
-function showPollBrief(choice, el = document.getElementById("poll-brief")) {
-  const b = POLL_BRIEF[choice];
-  if (!el || !b) return;
-  el.innerHTML = `<div class="poll-brief-title">${b.title}</div>
-    <div class="poll-brief-h">MERITS</div><ol>${b.merits.map((m) => `<li>${m}</li>`).join("")}</ol>
-    <div class="poll-brief-h">GROUNDS</div><p>${b.grounds}</p>`;
-  el.classList.remove("hidden");
-}
-document.querySelectorAll("#poll-modal .poll-pill").forEach((b) => b.addEventListener("click", (e) => {
-  pollChoice = b.dataset.choice;
-  document.querySelectorAll("#poll-modal .poll-pill").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
-  document.getElementById("poll-vote").disabled = false;
-  showPollBrief(pollChoice);
-  e.stopPropagation();
-}));
-// Any tap that is not on a brief itself, a pill, or a tally row closes
-// whichever brief is open.
-document.addEventListener("click", (e) => {
-  if (e.target.closest(".poll-brief") || e.target.closest(".poll-pill") || e.target.closest(".poll-bar")) return;
-  document.querySelectorAll(".poll-brief:not(.hidden)").forEach((el) => el.classList.add("hidden"));
-});
-// The tally on the board: tap a row for that side's brief.
-document.getElementById("poll-results")?.addEventListener("click", (e) => {
-  const row = e.target.closest(".poll-bar");
-  if (!row) return;
-  const el = document.getElementById("poll-results-brief");
-  if (!el) return;
-  if (!el.classList.contains("hidden") && el.dataset.choice === row.dataset.choice) { el.classList.add("hidden"); return; }
-  el.dataset.choice = row.dataset.choice;
-  showPollBrief(row.dataset.choice, el);
-  e.stopPropagation();
-});
-document.getElementById("poll-vote")?.addEventListener("click", async (e) => {
-  if (!pollChoice || !currentManager) return;
-  const btn = e.currentTarget;
-  btn.disabled = true; btn.textContent = "SENDING…";
-  try {
-    const res = await fetch(`${WORKER_URL}/poll?id=${POLL_ID}`, { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify({ manager: currentManager, choice: pollChoice }) });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "vote failed");
-    renderPollTally(data);
-    pollResultsData = data; pollResultsAt = Date.now(); renderPollResults();
-    document.querySelectorAll("#poll-modal .poll-pill").forEach((x) => { x.disabled = true; });
-    btn.textContent = "VOTED ✓";
-    try { localStorage.setItem(POLL_SEEN_KEY, "1"); } catch { /* private mode */ }
-    setTimeout(() => document.getElementById("poll-modal")?.classList.add("hidden"), 1600);
-  } catch {
-    btn.disabled = false; btn.textContent = "VOTE · TRY AGAIN";
-  }
-});
-
-// The tally at the top of the board for anyone who has voted, until the
-// week's first kickoff. Fetched at most once a minute.
-let pollResultsAt = 0;
-let pollResultsData = null;
-async function renderPollResults() {
-  const el = document.getElementById("poll-results");
-  if (!el) return;
-  const live = currentManager && WORKER_URL && Date.now() >= POLL_OPENS && currentWeek >= POLL_WEEK && !GAMES.some(isGameLocked);
-  if (!live) { el.classList.add("hidden"); return; }
-  if (Date.now() - pollResultsAt > 60000) {
-    pollResultsAt = Date.now();
-    try {
-      const res = await fetch(`${WORKER_URL}/poll?id=${POLL_ID}&manager=${encodeURIComponent(currentManager)}&t=${Date.now()}`, { cache: "no-store" });
-      if (res.ok) pollResultsData = await res.json();
-    } catch { /* keep what we had */ }
-  }
-  const d = pollResultsData;
-  if (!d?.mine) { el.classList.add("hidden"); return; }
-  const total = Math.max(1, d.voted || 0);
-  const top = Math.max(...Object.values(d.tally));
-  const bars = Object.entries(d.tally).map(([k, n]) => `<button type="button" class="poll-bar${n && n === top ? " lead" : ""}${k === d.mine ? " mine" : ""}" data-choice="${k}" title="Tap for the case"><span>${POLL_LABEL[k] || k}${k === d.mine ? "<em>✓</em>" : ""}</span><i><b style="width:${Math.round((n / total) * 100)}%"></b></i><span>${n}</span></button>`).join("");
-  const brief = el.querySelector("#poll-results-brief");
-  const open = brief && !brief.classList.contains("hidden") ? brief.dataset.choice : null;
-  el.innerHTML = `<div class="poll-results-head">SWEATPANTS AMENDMENT · ${d.voted} OF ${d.of} VOTED</div>${bars}<div id="poll-results-brief" class="poll-brief hidden"></div><div class="poll-results-hint">TAP A SIDE FOR ITS CASE</div>`;
-  if (open) { const b = el.querySelector("#poll-results-brief"); b.dataset.choice = open; showPollBrief(open, b); }
-  el.classList.remove("hidden");
 }
 
 // Last sealed week in five lines, computed by the Worker at seal time.

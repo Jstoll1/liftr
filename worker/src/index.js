@@ -93,9 +93,6 @@ export default {
     if (url.pathname === "/avatars") {
       return handleAvatars(request, env, corsHeaders, url);
     }
-    if (url.pathname === "/poll") {
-      return handlePoll(request, env, corsHeaders, url);
-    }
 
     if (request.method !== "POST") {
       return json({ error: "Method not allowed" }, 405, corsHeaders);
@@ -906,12 +903,25 @@ const PICKS_CACHE_MS = 5000;
 
 // Kickoff times for a week, read from that week's stored games. Week 1
 // predates the games store, so its hardcoded table below is the fallback.
+// The Sweatpants Amendment, carried 2026-09-24: from week 5 every pick
+// locks at the week's first kickoff, so every game's lock time is the
+// earliest kickoff. Before that, each game locked at its own.
+const LOCK_ALL_FROM_WEEK = 5;
 async function kickoffsFor(env, week) {
   const wk = await env.LIFTR_KV.get(gamesKey(week), "json");
   if (wk && Array.isArray(wk.games) && wk.games.length) {
-    return Object.fromEntries(wk.games.map((g) => [String(g.id), new Date(g.kickoff).getTime()]));
+    const times = wk.games.map((g) => new Date(g.kickoff).getTime());
+    const first = Math.min(...times);
+    return Object.fromEntries(wk.games.map((g, i) => [String(g.id), week >= LOCK_ALL_FROM_WEEK ? first : times[i]]));
   }
   return week === 1 ? PICKS_KICKOFF : {};
+}
+
+async function tiebreakerLocked(env, week, kickoffs, now) {
+  const wk = await env.LIFTR_KV.get(gamesKey(week), "json");
+  const tbGame = (wk?.games || []).find((g) => g.tiebreakerGame);
+  const at = tbGame ? kickoffs[String(tbGame.id)] : null;
+  return !!at && now >= at;
 }
 
 const PICKS_KICKOFF = Object.fromEntries(Object.entries({
@@ -1009,7 +1019,10 @@ async function handlePicks(request, env, corsHeaders, url) {
       const ta = stored.tiebreakerUpdatedAt || 0, tb = incoming.tiebreakerUpdatedAt || 0;
       const incomingHas = String(incoming.tiebreaker || "").trim() !== "";
       const storedHas = String(stored.tiebreaker || "").trim() !== "";
-      const useIncoming = tb > ta || !storedHas || (tb === ta && incomingHas);
+      // The guess locks with its game. Under the amendment that is the
+      // week's first kickoff, the same as every pick.
+      const tbLocked = await tiebreakerLocked(env, week, kickoffs, now);
+      const useIncoming = !tbLocked && (tb > ta || !storedHas || (tb === ta && incomingHas));
       merged.tiebreaker = useIncoming ? (incoming.tiebreaker ?? "") : stored.tiebreaker;
       merged.tiebreakerUpdatedAt = Math.max(ta, tb);
       await env.LIFTR_KV.put(pickKey(week, manager), JSON.stringify(merged));
@@ -1828,43 +1841,6 @@ async function sealFromEspn(env) {
 // holding a single emoji string, set by long-pressing their card in the
 // app. GET returns all of them in one shot; POST sets one; DELETE resets
 // one back to its default letter avatar.
-// League votes. One entry per manager per poll, first vote stands. GET
-// returns the tally and, with ?manager=, that manager's own vote. The
-// vote itself is logged with a timestamp so the record shows who said
-// what and when.
-const POLLS = {
-  sweatpants: { options: ["lock", "flex"] },
-};
-const pollKey = (id) => `poll:${id}`;
-async function handlePoll(request, env, corsHeaders, url) {
-  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
-  const id = url.searchParams.get("id") || "";
-  const spec = POLLS[id];
-  if (!spec) return json({ error: "Unknown poll" }, 404, corsHeaders);
-  const votes = (await env.LIFTR_KV.get(pollKey(id), "json")) || {};
-  const tally = Object.fromEntries(spec.options.map((o) => [o, 0]));
-  for (const v of Object.values(votes)) if (tally[v.choice] !== undefined) tally[v.choice] += 1;
-  if (request.method === "GET") {
-    const manager = url.searchParams.get("manager");
-    const mine = manager && votes[manager] ? votes[manager].choice : null;
-    // Who voted is public inside the league; the full log is behind the admin key.
-    const detail = isAdmin(env, url) ? votes : undefined;
-    return json({ id, options: spec.options, tally, voted: Object.keys(votes).length, of: PICKS_MANAGERS.length, mine, ...(detail ? { votes: detail } : {}) }, 200, corsHeaders);
-  }
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
-  let body;
-  try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
-  const manager = String(body?.manager || "");
-  const choice = String(body?.choice || "");
-  if (!PICKS_MANAGERS.includes(manager)) return json({ error: "Unknown manager" }, 400, corsHeaders);
-  if (!spec.options.includes(choice)) return json({ error: "Unknown option" }, 400, corsHeaders);
-  if (votes[manager]) return json({ ok: true, already: true, tally, voted: Object.keys(votes).length, of: PICKS_MANAGERS.length, mine: votes[manager].choice }, 200, corsHeaders);
-  votes[manager] = { choice, ts: Date.now() };
-  await env.LIFTR_KV.put(pollKey(id), JSON.stringify(votes));
-  tally[choice] += 1;
-  return json({ ok: true, tally, voted: Object.keys(votes).length, of: PICKS_MANAGERS.length, mine: choice }, 200, corsHeaders);
-}
-
 async function handleAvatars(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) {
     console.error("LIFTR_KV binding missing");
