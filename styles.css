@@ -3054,13 +3054,15 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 
 /* The Boner Amendment: pinball skull, flames, one tap. */
 .boner-modal { z-index: 14; background: rgba(5, 0, 12, .9); cursor: pointer; }
-.boner-card { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 26px 22px 22px; width: 100%; max-width: 360px; border: 2px solid var(--neon-pink); border-radius: 14px; background: var(--bg2); box-shadow: 0 0 40px rgba(255, 32, 121, .55), inset 0 0 30px rgba(255, 32, 121, .12); animation: boner-in .5s cubic-bezier(.2, .9, .3, 1.3) both; }
+.boner-card { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 26px 22px 22px; width: 100%; max-width: 360px; border: 2px solid var(--neon-pink); border-radius: 14px; background: #190122; box-shadow: 0 0 40px rgba(255, 32, 121, .55), inset 0 0 30px rgba(255, 32, 121, .12); animation: boner-in .5s cubic-bezier(.2, .9, .3, 1.3) both; }
 @keyframes boner-in { from { opacity: 0; transform: scale(.6) rotate(-6deg); } to { opacity: 1; transform: none; } }
-.boner-art { width: 280px; max-width: 100%; height: auto; filter: drop-shadow(0 0 18px rgba(255, 32, 121, .55)); animation: boner-breathe 1.6s ease-in-out infinite; transform-origin: 50% 85%; }
+/* The GIF carries its own motion, so nothing else moves. Its background
+   is baked in, so the card is painted the same colour and the art gets a
+   soft mask so no rectangle shows. */
+.boner-art { width: 280px; max-width: 100%; height: auto; -webkit-mask-image: radial-gradient(ellipse 48% 50% at 50% 52%, #000 62%, transparent 100%); mask-image: radial-gradient(ellipse 48% 50% at 50% 52%, #000 62%, transparent 100%); }
 .boner-art img { display: block; width: 100%; height: auto; }
-@keyframes boner-breathe { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 14px rgba(255, 32, 121, .45)); } 50% { transform: scale(1.04); filter: drop-shadow(0 0 26px rgba(255, 157, 61, .75)); } }
 .boner-title { font-family: 'Press Start 2P', monospace; font-size: 11px; line-height: 1.8; text-align: center; color: var(--neon-pink); text-shadow: 0 0 10px rgba(255, 32, 121, .8); }
 .boner-luck { font-family: 'Press Start 2P', monospace; font-size: 16px; color: var(--neon-yellow); text-shadow: 0 0 12px rgba(255, 228, 94, .8); animation: boner-blink 1s steps(1) infinite; }
 @keyframes boner-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: .25; } }
 .boner-tap { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .14em; color: var(--text-dim); margin-top: 4px; }
-@media (prefers-reduced-motion: reduce) { .boner-card, .boner-art, .boner-luck { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .boner-card, .boner-luck { animation: none; } }
