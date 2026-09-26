@@ -3043,6 +3043,10 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ss-row { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto 44px; align-items: center; gap: 8px; padding: 4px 0; font-size: 11px; border-top: 1px solid rgba(255, 255, 255, .05); }
 .ss-row:first-of-type { border-top: 0; }
 .ss-row.me .ss-name { color: var(--neon-cyan); }
+.ss-row.lead .ss-name { color: #fff; }
+.ss-row.lead .ss-rank { color: var(--c); }
+.ss-gap { font-size: 10px; letter-spacing: .3em; color: var(--text-dim); text-align: center; padding: 1px 0; }
+.ss-card.miss { --c: var(--neon-pink); }
 .ss-row.none { display: block; color: var(--text-dim); font-size: 10.5px; }
 .ss-rank { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); }
 .ss-name { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .04em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
