@@ -3277,14 +3277,10 @@ async function renderSeasonStats() {
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const row = (r, i, cls) => `<div class="ss-row${r.name === currentManager ? " me" : ""}${i === 0 ? " lead" : ""}"><span class="ss-rank">${i + 1}</span><span class="ss-name">${esc(shown(r.name).toUpperCase())}</span><span class="ss-sub">${esc(r.sub)}</span><b class="ss-val">${esc(r.value)}</b></div>`;
   const board = (label, note, rows, cls) => {
-    const meAt = rows.findIndex((r) => r.name === currentManager);
     const top = rows.slice(0, 3).map((r, i) => row(r, i, cls)).join("");
-    // The viewer's own line when they are not in the top three, so every
-    // board answers "where am I" without a tap.
-    const mine = meAt >= 3 ? `<div class="ss-gap">···</div>${row(rows[meAt], meAt, cls)}` : "";
-    return `<div class="ss-card ${cls}"><div class="ss-head"><span>${label}</span><small>${note}</small></div>${rows.length ? top + mine : `<div class="ss-row none">Nobody qualifies yet</div>`}</div>`;
+    return `<div class="ss-card ${cls}"><div class="ss-head"><span>${label}</span><small>${note}</small></div>${rows.length ? top : `<div class="ss-row none">Nobody qualifies yet</div>`}</div>`;
   };
-  panel.innerHTML = `<div class="ss-note">${weeks.length} counting week${weeks.length === 1 ? "" : "s"} · top three, and you</div>
+  panel.innerHTML = `<div class="ss-note">${weeks.length} counting week${weeks.length === 1 ? "" : "s"} · top three on each</div>
     ${board("BEST ATS RECORD", "spread picks, min 3", s.ats, "hit")}
     ${board("HOT HAND", "correct picks in a row, right now", s.streak, "hit")}
     ${board("MOST DOG HITS", "underdogs straight up, 3 pts each", s.dogs, "upset")}
