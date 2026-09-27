@@ -3100,10 +3100,10 @@ function renderH2H() {
   const results = computeLiveResults(live);
   const rows = liveWeekRows || rankManagers(picks, results);
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  // Name pickers: every manager as a chip, ranked order, the chosen one lit.
-  modal.querySelectorAll(".h2h-picker").forEach((el) => {
+  // Name pickers: native selects, ranked order, with each side's score.
+  modal.querySelectorAll(".h2h-select").forEach((el) => {
     const side = el.dataset.side;
-    el.innerHTML = rows.map((r) => `<button type="button" class="h2h-chip${h2h[side] === r.name ? " on" : ""}${r.name === h2h[side === "a" ? "b" : "a"] ? " taken" : ""}" data-name="${esc(r.name)}">${esc(shown(r.name).toUpperCase())}</button>`).join("");
+    el.innerHTML = rows.map((r) => `<option value="${esc(r.name)}"${h2h[side] === r.name ? " selected" : ""}>${esc(shown(r.name).toUpperCase())} · ${r.score}</option>`).join("");
   });
   const A = rows.find((r) => r.name === h2h.a), B = rows.find((r) => r.name === h2h.b);
   const body = document.getElementById("h2h-body");
@@ -3148,9 +3148,11 @@ function renderH2H() {
     lastBand = band;
     const score = results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : live[g.id]?.state === "in" ? `${live[g.id].awayScore ?? 0}-${live[g.id].homeScore ?? 0}` : "";
     return `${header}<div class="h2h-row${same ? " wash" : ""}">
-      <span class="h2h-pick a ${sa.cls}"><b>${sa.txt}</b>${lineOf(g, pa)}</span>
-      <span class="h2h-game"><span class="h2h-g">G${g.id}</span>${esc(g.awayShort)} at ${esc(g.homeShort)}${score ? `<small>${score}</small>` : ""}</span>
-      <span class="h2h-pick b ${sb.cls}">${lineOf(g, pb)}<b>${sb.txt}</b></span>
+      <div class="h2h-game"><span class="h2h-g">G${g.id}</span>${esc(g.awayShort)} at ${esc(g.homeShort)}${score ? `<small>${score}</small>` : ""}</div>
+      <div class="h2h-sides">
+        <span class="h2h-pick a ${sa.cls}"><b>${sa.txt}</b>${lineOf(g, pa)}</span>
+        <span class="h2h-pick b ${sb.cls}">${lineOf(g, pb)}<b>${sb.txt}</b></span>
+      </div>
     </div>`;
   }).join("");
   // The swing: on games still to play where they differ, the most either can gain on the other.
@@ -3173,15 +3175,14 @@ function renderH2H() {
 document.getElementById("h2h-open")?.addEventListener("click", openH2H);
 document.getElementById("h2h-close")?.addEventListener("click", () => document.getElementById("h2h-modal").classList.add("hidden"));
 document.getElementById("h2h-modal")?.addEventListener("click", (e) => {
-  if (e.target === e.currentTarget) { e.currentTarget.classList.add("hidden"); return; }
-  const chip = e.target.closest(".h2h-chip");
-  if (!chip) return;
-  const side = chip.closest(".h2h-picker").dataset.side;
-  const other = side === "a" ? "b" : "a";
-  if (h2h[other] === chip.dataset.name) h2h[other] = h2h[side];
-  h2h[side] = chip.dataset.name;
-  renderH2H();
+  if (e.target === e.currentTarget) e.currentTarget.classList.add("hidden");
 });
+document.querySelectorAll(".h2h-select").forEach((el) => el.addEventListener("change", () => {
+  const side = el.dataset.side, other = side === "a" ? "b" : "a";
+  if (h2h[other] === el.value) h2h[other] = h2h[side]; // picking the other card swaps them
+  h2h[side] = el.value;
+  renderH2H();
+}));
 
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
