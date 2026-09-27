@@ -2394,7 +2394,7 @@ const expandedRankings = new Set();
 
 function playerBreakdownHtml(name, state, results, live) {
   const ordered = gamesByKickoff();
-  let banked = 0, liveCovering = 0, liveOpen = 0;
+  let banked = 0, liveCovering = 0, liveOpen = 0, wins = 0, losses = 0, liveFly = 0;
   const rows = ordered.map((game) => {
     const locked = isGameLocked(game);
     const pick = state.picks[game.id];
@@ -2428,11 +2428,12 @@ function playerBreakdownHtml(name, state, results, live) {
       if (pts !== null) {
         banked += pts;
         const pushed = pick.mode === "ATS" && resultOutcome(game, results[game.id])?.push;
+        if (!pushed) { if (pts > 0) wins += 1; else losses += 1; }
         ptsHtml = pushed ? `<span class="rd-pts push">PUSH</span>` : pts > 0 ? `<span class="rd-pts ${ptsValueTier(pts)}">+${pts}</span>` : `<span class="rd-pts miss">0</span>`;
       } else if (isLive && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore) && (g.awayScore || g.homeScore)) {
         const prov = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
         liveOpen += 1;
-        if (prov > 0) { liveCovering += 1; ptsHtml = `<span class="rd-pts lean ${ptsValueTier(worth)}">+${worth}?</span>`; }
+        if (prov > 0) { liveCovering += 1; liveFly += worth; ptsHtml = `<span class="rd-pts lean ${ptsValueTier(worth)}">+${worth}?</span>`; }
         else ptsHtml = `<span class="rd-pts lean miss">0?</span>`;
       }
     }
@@ -2460,20 +2461,20 @@ function playerBreakdownHtml(name, state, results, live) {
   // Every guess stays sealed until the game kicks off, including your
   // own: a screen shared over someone's shoulder leaks it just the same.
   const tbSealed = !isGameLocked(tbGame);
-  let tbStatus;
-  if (tbSealed) tbStatus = `<span class="rd-tb-miss wait">SEALED UNTIL KICKOFF</span>`;
-  else if (tbGuess === null) tbStatus = `<span class="rd-tb-miss none">NO GUESS</span>`;
-  else if (tbRes) tbStatus = `<span class="rd-tb-miss">FINAL ${actual} · OFF BY <b>${Math.abs(tbGuess - actual)}</b></span>`;
-  else if (tbLive) tbStatus = `<span class="rd-tb-miss live">NOW ${actual} · OFF BY ${Math.abs(tbGuess - actual)}</span>`;
-  else tbStatus = `<span class="rd-tb-miss wait">WAITING ON KICKOFF</span>`;
-  // Built on the same columns as the rows above it, so the label sits
-  // under GAME and the guess under PICK rather than the two being flung
-  // to opposite edges of a box.
+  // Two plain lines: which game, then guess, actual and miss in order.
+  let tbLine;
+  if (tbSealed) tbLine = `Guess sealed until kickoff`;
+  else if (tbGuess === null) tbLine = `<em>No guess entered</em>`;
+  else if (tbRes) tbLine = `Guessed <b>${tbGuess}</b> · Final <b>${actual}</b> · Off by <b class="${Math.abs(tbGuess - actual) === 0 ? "exact" : ""}">${Math.abs(tbGuess - actual)}</b>`;
+  else if (tbLive) tbLine = `Guessed <b>${tbGuess}</b> · Now <b>${actual}</b> · Off by <b>${Math.abs(tbGuess - actual)}</b>`;
+  else tbLine = `Guessed <b>${tbGuess}</b> · Waiting on kickoff`;
   const tbRow = `<div class="rd-tb">
-    <span class="rd-tb-label">TIEBREAKER<br /><b>G${tbGame.id} ${tbGame.awayShort} @ ${tbGame.homeShort}</b> TOTAL</span>
-    <span class="rd-tb-right"><span class="rd-tb-guess">${tbSealed ? "🔒" : tbGuess === null ? "–" : tbGuess}</span>${tbStatus}</span>
+    <span class="rd-tb-label">TIEBREAKER · ${tbGame.awayShort} @ ${tbGame.homeShort} total</span>
+    <span class="rd-tb-line">${tbLine}</span>
   </div>`;
-  const summary = `<div class="rd-summary"><span>BANKED <b>${banked}</b></span>${liveOpen ? `<span>LIVE <b>${liveCovering}/${liveOpen}</b> COVERING</span>` : ""}</div>`;
+  // One line on the week: settled points and record, plus what is in
+  // flight while games are on.
+  const summary = `<div class="rd-summary"><span><b>${banked}</b> PTS</span><span>${wins}-${losses}</span>${liveOpen ? `<span class="live"><b>+${liveFly}</b> LIVE · ${liveCovering} OF ${liveOpen} COVERING</span>` : ""}</div>`;
   return `<div class="rank-detail"><div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
 }
 
