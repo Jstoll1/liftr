@@ -3145,7 +3145,8 @@ function renderH2H() {
     return `<i class="soon">${k.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" }).toUpperCase()} ${k.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric" }).replace(" ", "")}</i>`;
   };
   const cell = (g, pick, st, side) => {
-    const team = `<span class="h2h-team">${pick ? esc(short(g, pick.team)) : "<em>none</em>"}</span>`;
+    const id = pick ? (pick.team === g.home ? g.homeId : pick.team === g.away ? g.awayId : null) : null;
+    const team = `<span class="h2h-team">${id ? `<img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : ""}<span class="h2h-nm">${pick ? esc(short(g, pick.team)) : "<em>none</em>"}</span></span>`;
     const line = `<span class="h2h-line">${pick ? (pick.mode === "SU" ? "SU" : (pick.team === g.favorite ? "-" : "+") + g.spread) : ""}</span>`;
     const pts = `<b>${st.txt}</b>`;
     // The right card mirrors the left: points nearest the middle, team at the edge.

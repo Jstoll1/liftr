@@ -3113,8 +3113,10 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .h2h-table tbody tr.is-live { background: rgba(5, 217, 232, .04); }
 .h2h-td { display: grid; grid-template-columns: minmax(0, 1fr) auto 22px; align-items: center; column-gap: 5px; height: 30px; font-size: 11px; color: var(--text); }
 .h2h-td.b { grid-template-columns: 22px auto minmax(0, 1fr); }
-.h2h-team { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.h2h-td.b .h2h-team { text-align: right; }
+.h2h-team { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.h2h-td.b .h2h-team { flex-direction: row-reverse; }
+.h2h-nm { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.h2h-logo { width: 17px; height: 17px; object-fit: contain; flex: none; }
 .h2h-line { font-size: 9px; color: var(--text-dim); }
 .h2h-td b { font-family: 'Press Start 2P', monospace; font-size: 7.5px; text-align: center; color: var(--text-dim); }
 .h2h-td.hit b, .h2h-td.live-hit b { color: var(--neon-green); }
