@@ -1025,9 +1025,17 @@ async function handlePicks(request, env, corsHeaders, url) {
       const useIncoming = !tbLocked && (tb > ta || !storedHas || (tb === ta && incomingHas));
       merged.tiebreaker = useIncoming ? (incoming.tiebreaker ?? "") : stored.tiebreaker;
       merged.tiebreakerUpdatedAt = Math.max(ta, tb);
+      // Worker clock on the guess, same as picks carry savedAt.
+      merged.tiebreakerSavedAt = String(merged.tiebreaker ?? "") !== String(stored.tiebreaker ?? "") ? now : (stored.tiebreakerSavedAt || null);
+      // A guess this write did not take is still worth a line in the log,
+      // so "I entered one" can be checked against what arrived and why it
+      // was turned away.
+      const incomingTb = String(incoming.tiebreaker ?? "").trim();
+      const tbRejected = incomingTb !== String(merged.tiebreaker ?? "").trim() && incomingTb !== String(stored.tiebreaker ?? "").trim()
+        ? { from: String(stored.tiebreaker ?? ""), to: incomingTb, reason: tbLocked ? "locked" : "older than the saved guess" } : null;
       await env.LIFTR_KV.put(pickKey(week, manager), JSON.stringify(merged));
       picksCache = null;
-      await logPickChanges(env, manager, stored, merged, false, week, kickoffs, !authed);
+      await logPickChanges(env, manager, stored, merged, false, week, kickoffs, !authed, tbRejected);
       return json({ ok: true, week, state: merged, signedIn: owner === manager }, 200, corsHeaders);
     } catch (err) {
       console.error("Picks write error", err?.stack || String(err));
@@ -1048,9 +1056,10 @@ async function handlePicks(request, env, corsHeaders, url) {
 // Every change to a manager's picks is written to KV and kept for the
 // season so a disputed score can be traced: which game, from what to what,
 // when, and whether that game had already kicked off.
-async function logPickChanges(env, manager, before, after, admin, week = 1, kickoffs = null, unauth = false) {
+async function logPickChanges(env, manager, before, after, admin, week = 1, kickoffs = null, unauth = false, tbRejected = null) {
   try {
     const changes = [];
+    if (tbRejected) changes.push({ game: 0, from: tbRejected.from, to: tbRejected.to, rejected: true, reason: tbRejected.reason, afterKickoff: tbRejected.reason === "locked" });
     const ids = new Set([...Object.keys(before?.picks || {}), ...Object.keys(after?.picks || {})]);
     for (const id of ids) {
       const a = before?.picks?.[id], b = after?.picks?.[id];
@@ -1623,7 +1632,7 @@ async function handlePicksLog(request, env, corsHeaders, url) {
     (flagged.length ? flagged.map((f) => `<div class="r late">W${f.week} · ${escapeHtml(f.manager)} · G${f.game} · ${escapeHtml(f.pick)} · ${fmt(f.at)}</div>`).join("") : `<div class="m">None.</div>`) +
     `<h3>Change history (newest first)</h3>` +
     rows.map((r) => `<div class="r"><div class="m">${fmt(r.ts)} · <span class="who">${escapeHtml(r.manager)}</span>${r.admin ? ' · <span class="adm">admin repair</span>' : ""}${r.unauth ? ' · <span class="late">not signed in</span>' : ""}</div>` +
-      r.changes.map((c) => `<div class="c">${c.game ? `G${c.game}` : "Tiebreaker"}: ${escapeHtml(c.from ?? "none")} → ${escapeHtml(c.to ?? "none")}${c.afterKickoff ? ' <span class="late">after kickoff</span>' : ""}</div>`).join("") + `</div>`).join("");
+      r.changes.map((c) => `<div class="c">${c.game ? `G${c.game}` : "Tiebreaker"}: ${escapeHtml(c.from ?? "none")} → ${escapeHtml(c.to ?? "none")}${c.rejected ? ` <span class="late">REJECTED · ${escapeHtml(c.reason || "")}</span>` : c.afterKickoff ? ' <span class="late">after kickoff</span>' : ""}</div>`).join("") + `</div>`).join("");
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders } });
 }
 

@@ -208,6 +208,9 @@ function pendingPushFor(manager) {
   try { return localStorage.getItem(PENDING_KEY) === manager; } catch { return false; }
 }
 
+// The state the Worker sent back on the last successful push, so the
+// tiebreaker card can confirm what the cloud actually holds.
+let lastPushEcho = null;
 async function pushManagerState(manager, state, { attempts = 3 } = {}) {
   if (!WORKER_URL) return false;
   setSyncStatus("saving");
@@ -244,6 +247,7 @@ async function pushManagerState(manager, state, { attempts = 3 } = {}) {
         return false;
       }
       if (res.ok) {
+        try { lastPushEcho = (await res.json())?.state || null; } catch { lastPushEcho = null; }
         try { localStorage.removeItem(PENDING_KEY); } catch {}
         setSyncStatus("saved");
         return true;
@@ -477,10 +481,15 @@ async function syncManagerFromCloud(name) {
     if (remote && remote.picks[game.id]) merged.picks[game.id] = remote.picks[game.id];
     else delete merged.picks[game.id];
   });
+  // The cloud's guess is confirmed by definition; a newer one on this
+  // phone stays unconfirmed until the Worker echoes it back.
+  const mergedTb = String(merged.tiebreaker ?? "").trim();
+  if (remote && String(remote.tiebreaker ?? "").trim() === mergedTb) merged.tiebreakerSavedToCloud = mergedTb;
+  else delete merged.tiebreakerSavedToCloud;
   all[name] = merged;
   saveAll(all);
-  // If local held an open-game pick the cloud did not, send it up.
-  if (remote && JSON.stringify(merged.picks) !== JSON.stringify(remote.picks)) pushManagerState(name, merged);
+  // If local held an open-game pick or a newer guess the cloud did not, send it up.
+  if (remote && (JSON.stringify(merged.picks) !== JSON.stringify(remote.picks) || merged.tiebreakerSavedToCloud !== mergedTb)) pushManagerState(name, merged);
   // Handed back so the standings row can rank from the same payload
   // instead of asking the Worker for it a second time.
   return cloud;
@@ -1804,12 +1813,18 @@ function renderPicksScreen() {
   const tbActual = tbFinal ? tbFinal.awayScore + tbFinal.homeScore : tbLiveG && Number.isFinite(tbLiveG.awayScore) && Number.isFinite(tbLiveG.homeScore) ? tbLiveG.awayScore + tbLiveG.homeScore : null;
   const guess = String(state.tiebreaker ?? "").trim();
   let tbText;
-  if (!tiebreakerLocked) tbText = guess ? `✓ Saved: ${guess}` : "Required — ties go to whoever is closest, and no guess loses every tie.";
+  if (!tiebreakerLocked) tbText = !guess ? "Required — ties go to whoever is closest, and no guess loses every tie."
+    : state.tiebreakerSavedToCloud === guess ? `✓ Saved to cloud: ${guess}`
+    : `${guess} on this phone — tap SAVE to confirm it reached the cloud`;
   else if (!guess) tbText = `No tiebreaker entered — locked. Any tie this week is lost.${tbActual !== null ? ` · ${tbFinal ? "final" : "now"} ${tbActual}` : ""}`;
   else if (tbFinal) tbText = `Your guess: ${guess} · Final: ${tbActual} · off by ${Math.abs(Number(guess) - tbActual)}`;
   else if (tbLiveG && tbActual !== null) tbText = `Your guess: ${guess} · Now: ${tbActual} · off by ${Math.abs(Number(guess) - tbActual)}`;
   else tbText = `Your guess: ${guess} · waiting on kickoff`;
   tiebreakerStatus.textContent = tbText;
+  tiebreakerStatus.classList.toggle("warn", !tiebreakerLocked && (!guess || state.tiebreakerSavedToCloud !== guess));
+  tiebreakerStatus.classList.remove("busy");
+  const saveBtn = document.getElementById("tiebreaker-save");
+  if (saveBtn) saveBtn.classList.toggle("hidden", tiebreakerLocked);
 
   updatePicksProgress(state);
 }
@@ -1871,21 +1886,58 @@ function updatePicksProgress(state) {
   }
 }
 
-// Tiebreaker saves as you type (debounced), no button.
+// Tiebreaker saves as you type (debounced) and on the SAVE button, and
+// the status line only says "saved" once the Worker has echoed the guess
+// back. A tap away from the app flushes any pending save first.
 let tiebreakerSaveTimer = null;
+const tiebreakerSave = document.getElementById("tiebreaker-save");
+function setTbStatus(text, tone) {
+  tiebreakerStatus.textContent = text;
+  tiebreakerStatus.classList.toggle("warn", tone === "warn");
+  tiebreakerStatus.classList.toggle("busy", tone === "busy");
+}
+async function saveTiebreakerNow() {
+  clearTimeout(tiebreakerSaveTimer);
+  tiebreakerSaveTimer = null;
+  if (!currentManager) return;
+  const s = getManagerState(currentManager);
+  const guess = tiebreakerInput.value.trim();
+  if (guess === String(s.tiebreaker ?? "").trim() && s.tiebreakerSavedToCloud === guess) {
+    setTbStatus(guess ? `✓ Saved to cloud: ${guess}` : "Required — ties go to whoever is closest, and no guess loses every tie.", guess ? "" : "warn");
+    return;
+  }
+  s.tiebreaker = guess;
+  s.tiebreakerUpdatedAt = Date.now();
+  delete s.tiebreakerSavedToCloud;
+  setManagerState(currentManager, s);
+  updatePicksProgress(s);
+  setTbStatus(guess ? `Saving ${guess}…` : "Saving…", "busy");
+  lastPushEcho = null;
+  const ok = await pushManagerState(currentManager, s);
+  if (tiebreakerInput.value.trim() !== guess) return; // typed again meanwhile
+  const cloud = lastPushEcho ? String(lastPushEcho.tiebreaker ?? "").trim() : null;
+  if (ok && cloud === guess) {
+    const now = getManagerState(currentManager);
+    now.tiebreakerSavedToCloud = guess;
+    setManagerState(currentManager, now);
+    setTbStatus(guess ? `✓ Saved to cloud: ${guess}` : "Cleared. Required — no guess loses every tie.", guess ? "" : "warn");
+  } else if (ok && cloud !== null) {
+    setTbStatus(cloud ? `Locked — the cloud kept ${cloud}` : "Locked — the cloud has no guess for you", "warn");
+  } else {
+    setTbStatus(`⚠ Not saved to the cloud yet — kept on this phone, tap SAVE to retry`, "warn");
+  }
+}
 tiebreakerInput.addEventListener("input", () => {
   clearTimeout(tiebreakerSaveTimer);
-  tiebreakerSaveTimer = setTimeout(() => {
-    if (!currentManager) return;
-    const s = getManagerState(currentManager);
-    s.tiebreaker = tiebreakerInput.value.trim();
-    s.tiebreakerUpdatedAt = Date.now();
-    setManagerState(currentManager, s);
-    pushManagerState(currentManager, s);
-    tiebreakerStatus.textContent = s.tiebreaker ? `✓ Saved: ${s.tiebreaker}` : "Saves as you type";
-    updatePicksProgress(s);
-  }, 500);
+  setTbStatus(tiebreakerInput.value.trim() ? "Tap SAVE, or wait a second" : "", "busy");
+  tiebreakerSaveTimer = setTimeout(saveTiebreakerNow, 700);
 });
+tiebreakerInput.addEventListener("change", saveTiebreakerNow);
+tiebreakerInput.addEventListener("blur", () => { if (tiebreakerSaveTimer) saveTiebreakerNow(); });
+if (tiebreakerSave) tiebreakerSave.addEventListener("click", () => { tiebreakerInput.blur(); saveTiebreakerNow(); });
+tiebreakerInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); tiebreakerInput.blur(); saveTiebreakerNow(); } });
+document.addEventListener("visibilitychange", () => { if (document.hidden && tiebreakerSaveTimer) saveTiebreakerNow(); });
+window.addEventListener("pagehide", () => { if (tiebreakerSaveTimer) saveTiebreakerNow(); });
 
 
 // --- Scoreboard ------------------------------------------------------------

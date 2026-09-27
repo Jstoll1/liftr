@@ -1827,6 +1827,21 @@ html, body {
   font-size: 10px;
   color: var(--neon-green);
 }
+.tiebreaker-status.warn { color: var(--neon-pink, #ff2079); }
+.tiebreaker-status.busy { color: var(--text-dim); }
+.tiebreaker-save {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  padding: 10px 12px;
+  border: 2px solid var(--neon-yellow);
+  border-radius: 8px;
+  background: rgba(255, 228, 94, .12);
+  color: var(--neon-yellow);
+  cursor: pointer;
+  flex: none;
+}
+.tiebreaker-save:active { background: var(--neon-yellow); color: #190122; }
+.tiebreaker-save.hidden { display: none; }
 
 /* --- Matchup hero cards: team vs team, 2 pick buttons each ----------- */
 
