@@ -3140,7 +3140,7 @@ function renderH2H() {
   const mid = (g) => {
     if (results[g.id]) return `<i>${results[g.id].awayScore}-${results[g.id].homeScore}</i>`;
     const lv = live[g.id];
-    if (lv?.state === "in") return `<i class="live">${lv.awayScore ?? 0}-${lv.homeScore ?? 0}</i>`;
+    if (lv?.state === "in") return `<i class="live"><u></u>${lv.awayScore ?? 0}-${lv.homeScore ?? 0}</i>`;
     const k = new Date(g.kickoff);
     return `<i class="soon">${k.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" }).toUpperCase()} ${k.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric" }).replace(" ", "")}</i>`;
   };
@@ -3155,9 +3155,11 @@ function renderH2H() {
   const trs = games.map((g) => {
     const pa = a.st.picks[g.id], pb = b.st.picks[g.id];
     const same = pa && pb && pa.team === pb.team && pa.mode === pb.mode;
-    // A row where the two cards differ is the only kind that can move the
-    // gap, so it is the one that gets marked.
-    return `<tr class="${same ? "" : "diff"}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, stateOf(g, pa), "a")}<td class="h2h-mid"><span>G${g.id}</span>${mid(g)}</td>${cell(g, pb, stateOf(g, pb), "b")}</tr>`;
+    const sa = stateOf(g, pa), sb = stateOf(g, pb);
+    // Marked only where it matters: a settled game where the points came
+    // out different, or an unsettled one where the picks could.
+    const diff = order(g) === 2 ? !same : sa.txt !== sb.txt;
+    return `<tr class="${diff ? "diff" : ""}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, sa, "a")}<td class="h2h-mid"><span>G${g.id}</span>${mid(g)}</td>${cell(g, pb, sb, "b")}</tr>`;
   }).join("");
   // The swing: on games still to play where they differ, the most either can gain on the other.
   let swingA = 0, swingB = 0;
@@ -3177,7 +3179,7 @@ function renderH2H() {
     <tbody>${trs}</tbody>
   </table>
   <div class="h2h-verdict">${verdict}</div>
-  <div class="h2h-key"><i></i> = picks differ, only these can move the gap</div>`;
+  <div class="h2h-key"><i></i> = where the two cards split · <u></u> live</div>`;
 }
 document.getElementById("h2h-open")?.addEventListener("click", openH2H);
 document.getElementById("h2h-close")?.addEventListener("click", () => document.getElementById("h2h-modal").classList.add("hidden"));
