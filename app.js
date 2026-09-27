@@ -3159,7 +3159,11 @@ function renderH2H() {
     // Marked only where it matters: a settled game where the points came
     // out different, or an unsettled one where the picks could.
     const diff = order(g) === 2 ? !same : sa.txt !== sb.txt;
-    return `<div class="h2h-tr${diff ? " diff" : ""}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, sa, "a")}<div class="h2h-mid"><span>G${g.id}</span>${mid(g)}</div>${cell(g, pb, sb, "b")}</div>`;
+    // Where the points split, an arrow from the centre points at the card
+    // that has the edge on this game.
+    const na = Number(sa.txt) || 0, nb = Number(sb.txt) || 0;
+    const arrow = diff && order(g) !== 2 && na !== nb ? (na > nb ? `<em class="h2h-arr l">◀</em>` : `<em class="h2h-arr r">▶</em>`) : "";
+    return `<div class="h2h-tr${diff ? " diff" : ""}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, sa, "a")}<div class="h2h-mid">${arrow}<span>G${g.id}</span>${mid(g)}</div>${cell(g, pb, sb, "b")}</div>`;
   }).join("");
   // The swing: on games still to play where they differ, the most either can gain on the other.
   let swingA = 0, swingB = 0;
@@ -3183,8 +3187,7 @@ function renderH2H() {
     <div class="h2h-tr h2h-head">${sideHead(A, a, "a")}<div class="h2h-mid h2h-th-mid">VS</div>${sideHead(B, b, "b")}</div>
     ${trs}
   </div>
-  <div class="h2h-verdict">${verdict}</div>
-  <div class="h2h-key"><i></i> = where the two cards split · <u></u> live</div>`;
+  <div class="h2h-verdict">${verdict}</div>`;
 }
 document.getElementById("h2h-open")?.addEventListener("click", openH2H);
 document.getElementById("h2h-close")?.addEventListener("click", () => document.getElementById("h2h-modal").classList.add("hidden"));
