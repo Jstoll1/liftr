@@ -2797,7 +2797,8 @@ function renderWeekChamp(rows, results) {
   if (!allFinal || !rows.length) { el.classList.add("hidden"); return; }
   const top = rows.filter((r) => r.place === rows[0].place);
   const names = top.map((r) => shown(r.name).toUpperCase()).join(" & ");
-  el.innerHTML = `<span class="wc-label"><span class="wc-rule"></span>${WEEK_LABEL.toUpperCase()} HIGH SCORE<span class="wc-rule"></span></span><span class="wc-line"><span class="wc-name">${names}</span><span class="wc-pts">${String(rows[0].score).padStart(2, "0")}<small>PTS</small></span></span>`;
+  const trophy = `<svg class="wc-trophy" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${["########", "#.####.#", "#.####.#", ".######.", "..####..", "...##...", "..####..", ".######."].flatMap((row, y) => [...row].map((c, x) => c === "#" ? `<rect x="${x}" y="${y}" width="1" height="1"/>` : "")).join("")}</svg>`;
+  el.innerHTML = `<span class="wc-label"><span class="wc-rule"></span>${WEEK_LABEL.toUpperCase()} HIGH SCORE<span class="wc-rule"></span></span><span class="wc-line">${trophy}<span class="wc-name">${names}</span><span class="wc-pts">${String(rows[0].score).padStart(2, "0")}<small>PTS</small></span>${trophy}</span>`;
   el.classList.remove("hidden");
 }
 
