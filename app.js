@@ -3298,7 +3298,14 @@ let renderRecap = function () {
   const KEY = "brochiefs_leaderboard_open_v2";
   let open = true;
   try { open = localStorage.getItem(KEY) !== "0"; } catch { /* private mode */ }
-  const paint = () => { list.classList.toggle("hidden", !open); toggle.classList.toggle("open", open); toggle.setAttribute("aria-expanded", String(open)); };
+  const h2hBtn = document.getElementById("h2h-open");
+  const paint = () => {
+    list.classList.toggle("hidden", !open);
+    toggle.classList.toggle("open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+    // The compare button belongs to the list, so it folds with it.
+    h2hBtn?.classList.toggle("hidden", !open);
+  };
   toggle.addEventListener("click", () => {
     open = !open;
     paint();
