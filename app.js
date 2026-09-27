@@ -3155,7 +3155,9 @@ function renderH2H() {
   const trs = games.map((g) => {
     const pa = a.st.picks[g.id], pb = b.st.picks[g.id];
     const same = pa && pb && pa.team === pb.team && pa.mode === pb.mode;
-    return `<tr class="${same ? "wash" : ""}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, stateOf(g, pa), "a")}<td class="h2h-mid"><span>G${g.id}</span>${mid(g)}</td>${cell(g, pb, stateOf(g, pb), "b")}</tr>`;
+    // A row where the two cards differ is the only kind that can move the
+    // gap, so it is the one that gets marked.
+    return `<tr class="${same ? "" : "diff"}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, stateOf(g, pa), "a")}<td class="h2h-mid"><span>G${g.id}</span>${mid(g)}</td>${cell(g, pb, stateOf(g, pb), "b")}</tr>`;
   }).join("");
   // The swing: on games still to play where they differ, the most either can gain on the other.
   let swingA = 0, swingB = 0;
@@ -3174,7 +3176,8 @@ function renderH2H() {
     <thead><tr>${sideHead(A, a, "a")}<th class="h2h-mid h2h-th-mid">VS</th>${sideHead(B, b, "b")}</tr></thead>
     <tbody>${trs}</tbody>
   </table>
-  <div class="h2h-verdict">${verdict}</div>`;
+  <div class="h2h-verdict">${verdict}</div>
+  <div class="h2h-key"><i></i> = picks differ, only these can move the gap</div>`;
 }
 document.getElementById("h2h-open")?.addEventListener("click", openH2H);
 document.getElementById("h2h-close")?.addEventListener("click", () => document.getElementById("h2h-modal").classList.add("hidden"));
