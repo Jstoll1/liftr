@@ -2495,8 +2495,8 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
   const picked = `${row.submittedCount}/${GAMES.length}`;
   if (!isGameLocked(tbGame)) return picked;
   const guess = row.tbGuess === null ? "TB –" : `TB ${row.tbGuess}`;
-  // Once the tiebreaker is final its line moves up beside the name (see
-  // rankingTbTag) and this line carries the week's record instead.
+  // Once the tiebreaker is final: record, guess and miss on one short
+  // line. Picked count only matters when someone left picks blank.
   if (actualTotal !== null && results) {
     let w = 0, l = 0;
     for (const g of GAMES) {
@@ -2506,7 +2506,11 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
       if (pick.mode === "ATS" && o?.push) continue;
       if (scorePick(g, pick, results[g.id]) > 0) w += 1; else l += 1;
     }
-    return `${picked} · ${w}-${l}`;
+    const lead = row.submittedCount < GAMES.length ? `${picked} · ` : "";
+    const tb = row.tbGuess === null
+      ? `<span class="sub-tb none">NO TB</span>`
+      : `TB ${row.tbGuess} · <span class="sub-tb${row.tbDiff === 0 ? " exact" : ""}">OFF ${row.tbDiff}</span>`;
+    return `${lead}${w}-${l} · ${tb}`;
   }
   if (inFlight !== null && results) {
     // Record on games already final, the most this card can still reach,
@@ -2526,13 +2530,6 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
   }
   const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
   return `${picked} · ${guess} · ${off}`;
-}
-
-// Beside the name once the tiebreaker game is final: the guess and the miss.
-function rankingTbTag(row, actualTotal) {
-  if (actualTotal === null) return "";
-  if (row.tbGuess === null) return `<span class="rank-tb none">NO TB</span>`;
-  return `<span class="rank-tb${row.tbDiff === 0 ? " exact" : ""}">TB ${row.tbGuess} · OFF ${row.tbDiff}</span>`;
 }
 
 function ordinal(n) {
@@ -2722,7 +2719,6 @@ function rankManagers(cloudPicks, results) {
     const next = rows[i + 1];
     row.tied = (rows[i - 1] && rows[i - 1].place === row.place) || (next && next.place === row.place);
     row.subline = rankingSubline(row, actualTotal, tiebreakerGame, null, results);
-    row.tbTag = rankingTbTag(row, actualTotal);
   });
   return rows;
 }
@@ -2836,7 +2832,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     div.innerHTML = `
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place">${row.tied ? "T-" : ""}${ordinal(row.place)}</span>
-        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span>${row.tbTag || ""}</span><span class="ranking-lock">${row.subline}</span></span>
+        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span></span><span class="ranking-lock">${row.subline}</span></span>
         <span class="ranking-dots" aria-hidden="true"></span>
         <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
         <span class="ranking-caret">${open ? "▴" : "▾"}</span>
