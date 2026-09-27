@@ -3137,3 +3137,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .h2h-mid > i.live { color: var(--neon-cyan); }
 .h2h-mid > i.soon { color: var(--text-dim); font-size: 8.5px; }
 .h2h-verdict { font-size: 10.5px; line-height: 1.35; text-align: center; color: var(--text-meta); padding: 8px 0 0; border-top: 1px solid rgba(255, 255, 255, .07); margin-top: 2px; }
+
+/* Tiebreaker result beside the name once its game is final. */
+.rank-tb { margin-left: 8px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .04em; color: var(--text-dim); white-space: nowrap; }
+.rank-tb.exact { color: var(--neon-green); }
+.rank-tb.none { color: rgba(255, 32, 121, .8); }
+@media (max-width: 340px) { .rank-nameline { flex-wrap: wrap; row-gap: 2px; } .rank-tb { margin-left: 0; } }
