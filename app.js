@@ -3079,6 +3079,110 @@ function maybeShowBoner() {
   document.addEventListener("keydown", close, true);
 })();
 
+// --- Head to head -------------------------------------------------------
+// Two cards side by side for the week: where each stands, then every
+// game with both picks, settled ones graded, live ones as they stand,
+// and the ones still to come with what is riding on them. Games where
+// both took the same side are a wash and are shown dimmed.
+let h2h = { a: null, b: null };
+function openH2H() {
+  const rows = liveWeekRows || [];
+  if (!h2h.a) h2h.a = currentManager && rows.some((r) => r.name === currentManager) ? currentManager : rows[0]?.name || MANAGERS[0];
+  if (!h2h.b || h2h.b === h2h.a) h2h.b = rows.find((r) => r.name !== h2h.a)?.name || MANAGERS.find((n) => n !== h2h.a);
+  renderH2H();
+  document.getElementById("h2h-modal")?.classList.remove("hidden");
+}
+function renderH2H() {
+  const modal = document.getElementById("h2h-modal");
+  if (!modal) return;
+  const picks = lastGoodCloudPicks || {};
+  const live = latestLive || {};
+  const results = computeLiveResults(live);
+  const rows = liveWeekRows || rankManagers(picks, results);
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // Name pickers: every manager as a chip, ranked order, the chosen one lit.
+  modal.querySelectorAll(".h2h-picker").forEach((el) => {
+    const side = el.dataset.side;
+    el.innerHTML = rows.map((r) => `<button type="button" class="h2h-chip${h2h[side] === r.name ? " on" : ""}${r.name === h2h[side === "a" ? "b" : "a"] ? " taken" : ""}" data-name="${esc(r.name)}">${esc(shown(r.name).toUpperCase())}</button>`).join("");
+  });
+  const A = rows.find((r) => r.name === h2h.a), B = rows.find((r) => r.name === h2h.b);
+  const body = document.getElementById("h2h-body");
+  if (!A || !B) { body.innerHTML = ""; return; }
+  const sideOf = (row) => {
+    const st = row.state || picks[row.name] || { picks: {} };
+    let w = 0, l = 0, max = row.score, left = 0;
+    for (const g of GAMES) {
+      const pick = st.picks[g.id];
+      if (results[g.id]) { if (pick) { const o = resultOutcome(g, results[g.id]); if (!(pick.mode === "ATS" && o?.push)) { if (scorePick(g, pick, results[g.id]) > 0) w += 1; else l += 1; } } }
+      else if (pick) { max += pointValue(g, pick.team, pick.mode); left += 1; }
+    }
+    return { st, w, l, max, left, fly: inFlightPoints(st.picks, live) };
+  };
+  const a = sideOf(A), b = sideOf(B);
+  const short = (g, team) => team === g.home ? g.homeShort : team === g.away ? g.awayShort : team;
+  const lineOf = (g, pick) => !pick ? `<i class="h2h-none">no pick</i>` : `${esc(short(g, pick.team))} <small>${pick.mode === "SU" ? "SU" : (pick.team === g.favorite ? "-" : "+") + g.spread}</small>`;
+  // What each pick is doing right now: points banked, in flight, or at stake.
+  const stateOf = (g, pick) => {
+    if (!pick) return { cls: "none", txt: "–" };
+    const res = results[g.id];
+    const lv = live[g.id];
+    if (res) { const p = scorePick(g, pick, res); return p > 0 ? { cls: "hit", txt: `+${p}` } : { cls: "miss", txt: "0" }; }
+    if (lv && lv.found && lv.state === "in" && Number.isFinite(lv.awayScore) && Number.isFinite(lv.homeScore)) {
+      const p = scorePick(g, pick, { awayScore: lv.awayScore, homeScore: lv.homeScore });
+      return p > 0 ? { cls: "live-hit", txt: `+${p}` } : { cls: "live-miss", txt: "0" };
+    }
+    return { cls: "open", txt: `${pointValue(g, pick.team, pick.mode)}` };
+  };
+  const head = (row, x, cls) => `<div class="h2h-side ${cls}"><div class="h2h-name">${esc(shown(row.name).toUpperCase())}</div><div class="h2h-score">${String(row.score).padStart(2, "0")}</div><div class="h2h-meta">${x.w}-${x.l} · <span class="rank-max">MAX <b>${x.max}</b></span>${x.fly ? ` · <span class="rank-inflight">+${x.fly}</span>` : ""}</div></div>`;
+  // Games in kickoff order: settled, then live, then still to come.
+  const order = (g) => results[g.id] ? 0 : (live[g.id]?.state === "in" ? 1 : 2);
+  const games = gamesByKickoff().slice().sort((x, y) => order(x) - order(y));
+  let lastBand = -1;
+  const bandName = ["SETTLED", "LIVE", "STILL TO PLAY"];
+  const rowsHtml = games.map((g) => {
+    const pa = a.st.picks[g.id], pb = b.st.picks[g.id];
+    const same = pa && pb && pa.team === pb.team && pa.mode === pb.mode;
+    const sa = stateOf(g, pa), sb = stateOf(g, pb);
+    const band = order(g);
+    const header = band !== lastBand ? `<div class="h2h-band">${bandName[band]}</div>` : "";
+    lastBand = band;
+    const score = results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : live[g.id]?.state === "in" ? `${live[g.id].awayScore ?? 0}-${live[g.id].homeScore ?? 0}` : "";
+    return `${header}<div class="h2h-row${same ? " wash" : ""}">
+      <span class="h2h-pick a ${sa.cls}"><b>${sa.txt}</b>${lineOf(g, pa)}</span>
+      <span class="h2h-game"><span class="h2h-g">G${g.id}</span>${esc(g.awayShort)} at ${esc(g.homeShort)}${score ? `<small>${score}</small>` : ""}</span>
+      <span class="h2h-pick b ${sb.cls}">${lineOf(g, pb)}<b>${sb.txt}</b></span>
+    </div>`;
+  }).join("");
+  // The swing: on games still to play where they differ, the most either can gain on the other.
+  let swingA = 0, swingB = 0;
+  for (const g of GAMES) {
+    if (results[g.id]) continue;
+    const pa = a.st.picks[g.id], pb = b.st.picks[g.id];
+    if (pa && pb && pa.team === pb.team && pa.mode === pb.mode) continue;
+    if (pa) swingA += pointValue(g, pa.team, pa.mode);
+    if (pb) swingB += pointValue(g, pb.team, pb.mode);
+  }
+  const gap = A.score - B.score;
+  const verdict = a.left + b.left === 0 ? "All settled." : gap === 0 ? `Level. ${esc(shown(A.name))} can gain ${swingA}, ${esc(shown(B.name))} ${swingB}, where they differ.`
+    : `${esc(shown(gap > 0 ? A.name : B.name))} leads by ${Math.abs(gap)}. ${esc(shown(gap > 0 ? B.name : A.name))} can still gain ${gap > 0 ? swingB : swingA} where they differ${(gap > 0 ? swingB : swingA) < Math.abs(gap) ? ", not enough on their own" : ""}.`;
+  body.innerHTML = `<div class="h2h-heads">${head(A, a, "a")}<span class="h2h-vs2">VS</span>${head(B, b, "b")}</div>
+    <div class="h2h-verdict">${verdict}</div>
+    <div class="h2h-rows">${rowsHtml}</div>
+    <div class="h2h-key">dimmed = same pick · green = has it · pink = not · grey = at stake</div>`;
+}
+document.getElementById("h2h-open")?.addEventListener("click", openH2H);
+document.getElementById("h2h-close")?.addEventListener("click", () => document.getElementById("h2h-modal").classList.add("hidden"));
+document.getElementById("h2h-modal")?.addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) { e.currentTarget.classList.add("hidden"); return; }
+  const chip = e.target.closest(".h2h-chip");
+  if (!chip) return;
+  const side = chip.closest(".h2h-picker").dataset.side;
+  const other = side === "a" ? "b" : "a";
+  if (h2h[other] === chip.dataset.name) h2h[other] = h2h[side];
+  h2h[side] = chip.dataset.name;
+  renderH2H();
+});
+
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
 let renderRecap = function () {

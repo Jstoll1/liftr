@@ -117,6 +117,22 @@
     </div>
   </div>
 
+  <!-- HEAD TO HEAD: two cards side by side, game by game. -->
+  <div id="h2h-modal" class="modal-overlay h2h-modal hidden" role="dialog" aria-labelledby="h2h-title">
+    <div class="modal-card h2h-card">
+      <div class="h2h-top">
+        <span id="h2h-title" class="modal-title">HEAD TO HEAD</span>
+        <button id="h2h-close" class="h2h-x" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="h2h-pickers">
+        <div class="h2h-picker" data-side="a"></div>
+        <span class="h2h-vs">VS</span>
+        <div class="h2h-picker" data-side="b"></div>
+      </div>
+      <div id="h2h-body" class="h2h-body"></div>
+    </div>
+  </div>
+
   <!-- QUICK CLAIM: shown when a device has no saved identity -->
   <div id="claim-modal" class="modal-overlay hidden">
     <div class="modal-card">
@@ -223,7 +239,10 @@
 
       <div id="live-scores-list" class="live-scores-list"></div>
 
-      <button id="leaderboard-toggle" class="rules-heading section-heading all-picks-toggle" type="button" aria-expanded="true">🏆 LEADERBOARD <span class="all-picks-caret">▾</span></button>
+      <div class="lb-head">
+        <button id="leaderboard-toggle" class="rules-heading section-heading all-picks-toggle" type="button" aria-expanded="true">🏆 LEADERBOARD <span class="all-picks-caret">▾</span></button>
+        <button id="h2h-open" class="h2h-btn" type="button" title="Compare two cards">H2H</button>
+      </div>
       <div id="rankings-list" class="rankings-list"></div>
 
       <button id="all-picks-toggle" class="rules-heading section-heading all-picks-toggle" type="button" aria-expanded="false">📋 ALL PICKS <span class="all-picks-caret">▾</span></button>
