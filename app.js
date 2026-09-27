@@ -3103,7 +3103,7 @@ function renderH2H() {
   // Name pickers: native selects, ranked order, with each side's score.
   modal.querySelectorAll(".h2h-select").forEach((el) => {
     const side = el.dataset.side;
-    el.innerHTML = rows.map((r) => `<option value="${esc(r.name)}"${h2h[side] === r.name ? " selected" : ""}>${esc(shown(r.name).toUpperCase())} · ${r.score}</option>`).join("");
+    el.innerHTML = rows.map((r) => `<option value="${esc(r.name)}"${h2h[side] === r.name ? " selected" : ""}>${esc(shown(r.name).toUpperCase())}</option>`).join("");
   });
   const A = rows.find((r) => r.name === h2h.a), B = rows.find((r) => r.name === h2h.b);
   const body = document.getElementById("h2h-body");
@@ -3133,27 +3133,28 @@ function renderH2H() {
     }
     return { cls: "open", txt: `${pointValue(g, pick.team, pick.mode)}` };
   };
-  const head = (row, x, cls) => `<div class="h2h-side ${cls}"><div class="h2h-name">${esc(shown(row.name).toUpperCase())}</div><div class="h2h-score">${String(row.score).padStart(2, "0")}</div><div class="h2h-meta">${x.w}-${x.l} · <span class="rank-max">MAX <b>${x.max}</b></span>${x.fly ? ` · <span class="rank-inflight">+${x.fly}</span>` : ""}</div></div>`;
-  // Games in kickoff order: settled, then live, then still to come.
+  // One line per game. Left card, centre column with the game number and
+  // where it stands, right card. Same pick on both sides is dimmed.
   const order = (g) => results[g.id] ? 0 : (live[g.id]?.state === "in" ? 1 : 2);
   const games = gamesByKickoff().slice().sort((x, y) => order(x) - order(y));
-  let lastBand = -1;
-  const bandName = ["SETTLED", "LIVE", "STILL TO PLAY"];
-  const rowsHtml = games.map((g) => {
+  const mid = (g) => {
+    if (results[g.id]) return `<i>${results[g.id].awayScore}-${results[g.id].homeScore}</i>`;
+    const lv = live[g.id];
+    if (lv?.state === "in") return `<i class="live">${lv.awayScore ?? 0}-${lv.homeScore ?? 0}</i>`;
+    const k = new Date(g.kickoff);
+    return `<i class="soon">${k.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" }).toUpperCase()} ${k.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric" }).replace(" ", "")}</i>`;
+  };
+  const cell = (g, pick, st, side) => {
+    const team = `<span class="h2h-team">${pick ? esc(short(g, pick.team)) : "<em>none</em>"}</span>`;
+    const line = `<span class="h2h-line">${pick ? (pick.mode === "SU" ? "SU" : (pick.team === g.favorite ? "-" : "+") + g.spread) : ""}</span>`;
+    const pts = `<b>${st.txt}</b>`;
+    // The right card mirrors the left: points nearest the middle, team at the edge.
+    return `<td class="h2h-td ${side} ${st.cls}">${side === "a" ? team + line + pts : pts + line + team}</td>`;
+  };
+  const trs = games.map((g) => {
     const pa = a.st.picks[g.id], pb = b.st.picks[g.id];
     const same = pa && pb && pa.team === pb.team && pa.mode === pb.mode;
-    const sa = stateOf(g, pa), sb = stateOf(g, pb);
-    const band = order(g);
-    const header = band !== lastBand ? `<div class="h2h-band">${bandName[band]}</div>` : "";
-    lastBand = band;
-    const score = results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : live[g.id]?.state === "in" ? `${live[g.id].awayScore ?? 0}-${live[g.id].homeScore ?? 0}` : "";
-    return `${header}<div class="h2h-row${same ? " wash" : ""}">
-      <div class="h2h-game"><span class="h2h-g">G${g.id}</span>${esc(g.awayShort)} at ${esc(g.homeShort)}${score ? `<small>${score}</small>` : ""}</div>
-      <div class="h2h-sides">
-        <span class="h2h-pick a ${sa.cls}"><b>${sa.txt}</b>${lineOf(g, pa)}</span>
-        <span class="h2h-pick b ${sb.cls}">${lineOf(g, pb)}<b>${sb.txt}</b></span>
-      </div>
-    </div>`;
+    return `<tr class="${same ? "wash" : ""}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, stateOf(g, pa), "a")}<td class="h2h-mid"><span>G${g.id}</span>${mid(g)}</td>${cell(g, pb, stateOf(g, pb), "b")}</tr>`;
   }).join("");
   // The swing: on games still to play where they differ, the most either can gain on the other.
   let swingA = 0, swingB = 0;
@@ -3165,12 +3166,14 @@ function renderH2H() {
     if (pb) swingB += pointValue(g, pb.team, pb.mode);
   }
   const gap = A.score - B.score;
-  const verdict = a.left + b.left === 0 ? "All settled." : gap === 0 ? `Level. ${esc(shown(A.name))} can gain ${swingA}, ${esc(shown(B.name))} ${swingB}, where they differ.`
-    : `${esc(shown(gap > 0 ? A.name : B.name))} leads by ${Math.abs(gap)}. ${esc(shown(gap > 0 ? B.name : A.name))} can still gain ${gap > 0 ? swingB : swingA} where they differ${(gap > 0 ? swingB : swingA) < Math.abs(gap) ? ", not enough on their own" : ""}.`;
-  body.innerHTML = `<div class="h2h-heads">${head(A, a, "a")}<span class="h2h-vs2">VS</span>${head(B, b, "b")}</div>
-    <div class="h2h-verdict">${verdict}</div>
-    <div class="h2h-rows">${rowsHtml}</div>
-    <div class="h2h-key">dimmed = same pick · green = has it · pink = not · grey = at stake</div>`;
+  const verdict = a.left + b.left === 0 ? "All settled." : gap === 0 ? `Level. ${esc(shown(A.name))} +${swingA} / ${esc(shown(B.name))} +${swingB} still possible where they differ.`
+    : `${esc(shown(gap > 0 ? A.name : B.name))} by ${Math.abs(gap)}. ${esc(shown(gap > 0 ? B.name : A.name))} can gain ${gap > 0 ? swingB : swingA} where they differ${(gap > 0 ? swingB : swingA) < Math.abs(gap) ? ", short" : ""}.`;
+  const sideHead = (row, x, cls) => `<th class="h2h-th ${cls}"><span class="h2h-name">${esc(shown(row.name).toUpperCase())}</span><span class="h2h-score">${String(row.score).padStart(2, "0")}</span><span class="h2h-meta">${x.w}-${x.l} · MAX ${x.max}${x.fly ? ` · <em>+${x.fly}</em>` : ""}</span></th>`;
+  body.innerHTML = `<table class="h2h-table">
+    <thead><tr>${sideHead(A, a, "a")}<th class="h2h-mid h2h-th-mid">VS</th>${sideHead(B, b, "b")}</tr></thead>
+    <tbody>${trs}</tbody>
+  </table>
+  <div class="h2h-verdict">${verdict}</div>`;
 }
 document.getElementById("h2h-open")?.addEventListener("click", openH2H);
 document.getElementById("h2h-close")?.addEventListener("click", () => document.getElementById("h2h-modal").classList.add("hidden"));
