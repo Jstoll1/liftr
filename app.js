@@ -3150,7 +3150,7 @@ function renderH2H() {
     const line = `<span class="h2h-line">${pick ? (pick.mode === "SU" ? "SU" : (pick.team === g.favorite ? "-" : "+") + g.spread) : ""}</span>`;
     const pts = `<b>${st.txt}</b>`;
     // The right card mirrors the left: points nearest the middle, team at the edge.
-    return `<td class="h2h-td ${side} ${st.cls}">${side === "a" ? team + line + pts : pts + line + team}</td>`;
+    return `<div class="h2h-td ${side} ${st.cls}">${side === "a" ? team + line + pts : pts + line + team}</div>`;
   };
   const trs = games.map((g) => {
     const pa = a.st.picks[g.id], pb = b.st.picks[g.id];
@@ -3159,7 +3159,7 @@ function renderH2H() {
     // Marked only where it matters: a settled game where the points came
     // out different, or an unsettled one where the picks could.
     const diff = order(g) === 2 ? !same : sa.txt !== sb.txt;
-    return `<tr class="${diff ? "diff" : ""}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, sa, "a")}<td class="h2h-mid"><span>G${g.id}</span>${mid(g)}</td>${cell(g, pb, sb, "b")}</tr>`;
+    return `<div class="h2h-tr${diff ? " diff" : ""}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, sa, "a")}<div class="h2h-mid"><span>G${g.id}</span>${mid(g)}</div>${cell(g, pb, sb, "b")}</div>`;
   }).join("");
   // The swing: on games still to play where they differ, the most either can gain on the other.
   let swingA = 0, swingB = 0;
@@ -3171,13 +3171,18 @@ function renderH2H() {
     if (pb) swingB += pointValue(g, pb.team, pb.mode);
   }
   const gap = A.score - B.score;
-  const verdict = a.left + b.left === 0 ? "All settled." : gap === 0 ? `Level. ${esc(shown(A.name))} +${swingA} / ${esc(shown(B.name))} +${swingB} still possible where they differ.`
-    : `${esc(shown(gap > 0 ? A.name : B.name))} by ${Math.abs(gap)}. ${esc(shown(gap > 0 ? B.name : A.name))} can gain ${gap > 0 ? swingB : swingA} where they differ${(gap > 0 ? swingB : swingA) < Math.abs(gap) ? ", short" : ""}.`;
-  const sideHead = (row, x, cls) => `<th class="h2h-th ${cls}"><span class="h2h-name">${esc(shown(row.name).toUpperCase())}</span><span class="h2h-score">${String(row.score).padStart(2, "0")}</span><span class="h2h-meta">${x.w}-${x.l} · MAX ${x.max}${x.fly ? ` · <em>+${x.fly}</em>` : ""}</span></th>`;
-  body.innerHTML = `<table class="h2h-table">
-    <thead><tr>${sideHead(A, a, "a")}<th class="h2h-mid h2h-th-mid">VS</th>${sideHead(B, b, "b")}</tr></thead>
-    <tbody>${trs}</tbody>
-  </table>
+  const leader = gap > 0 ? A : gap < 0 ? B : null, trailer = gap > 0 ? B : A;
+  const trailSwing = gap > 0 ? swingB : swingA;
+  let verdict;
+  if (a.left + b.left === 0) verdict = leader ? `Final. ${esc(shown(leader.name))} by ${Math.abs(gap)}.` : "Final. Dead level.";
+  else if (!leader) verdict = `Level. Where they split, ${esc(shown(A.name))} has ${swingA} in play and ${esc(shown(B.name))} has ${swingB}.`;
+  else if (trailSwing === 0) verdict = `${esc(shown(leader.name))} by ${Math.abs(gap)}. Nothing left where they split, so that holds.`;
+  else verdict = `${esc(shown(leader.name))} by ${Math.abs(gap)}. ${esc(shown(trailer.name))} has ${trailSwing} in play where they split${trailSwing < Math.abs(gap) ? ", not enough alone" : ""}.`;
+  const sideHead = (row, x, cls) => `<div class="h2h-th ${cls}"><span class="h2h-name">${esc(shown(row.name).toUpperCase())}</span><span class="h2h-score">${String(row.score).padStart(2, "0")}</span><span class="h2h-meta">${x.w}-${x.l} · MAX ${x.max}${x.fly ? ` · <em>+${x.fly}</em>` : ""}</span></div>`;
+  body.innerHTML = `<div class="h2h-grid">
+    <div class="h2h-tr h2h-head">${sideHead(A, a, "a")}<div class="h2h-mid h2h-th-mid">VS</div>${sideHead(B, b, "b")}</div>
+    ${trs}
+  </div>
   <div class="h2h-verdict">${verdict}</div>
   <div class="h2h-key"><i></i> = where the two cards split · <u></u> live</div>`;
 }
