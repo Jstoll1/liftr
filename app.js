@@ -3234,7 +3234,7 @@ async function fetchSeasonLedger() {
 
 // Pure: the boards from a list of counting weeks. Every board carries
 // everyone, ranked, so the panel can show the top three and the viewer.
-function seasonStats(weeks) {
+function seasonStats(weeks, liveBlanks = {}) {
   const by = new Map(MANAGERS.map((n) => [n, { name: n, atsW: 0, atsL: 0, dogHits: 0, fades: 0, picks: 0, blanks: 0, lone: 0, tbSum: 0, tbN: 0, bestWeek: null, streak: 0, pts: 0 }]));
   // How many were on each team in each game, for the lone-wolf board.
   const onTeam = new Map();
@@ -3257,6 +3257,9 @@ function seasonStats(weeks) {
       if (l.result === "hit") m.streak += 1; else if (l.result === "miss") m.streak = 0;
     }
   }
+  // This week's blanks count the moment the card locks, so a no-show is
+  // on the board on Saturday rather than after the Monday seal.
+  for (const [name, n] of Object.entries(liveBlanks)) { const m = by.get(name); if (m) m.blanks += n; }
   const all = [...by.values()];
   const pct = (w, l) => (w + l ? w / (w + l) : 0);
   const sameTbN = new Set(all.filter((m) => m.tbN).map((m) => m.tbN)).size === 1;
@@ -3277,8 +3280,20 @@ async function renderSeasonStats() {
   if (!panel || panel.classList.contains("hidden")) return;
   const weeks = await fetchSeasonLedger();
   if (!weeks) { panel.innerHTML = `<div class="pot-empty">Could not reach the record. Try again in a moment.</div>`; return; }
-  if (!weeks.length) { panel.innerHTML = `<div class="pot-empty">Nothing on the record yet. Stats appear once a week seals.</div>`; return; }
-  const s = seasonStats(weeks);
+  if (!weeks.length && !GAMES.some(isGameLocked)) { panel.innerHTML = `<div class="pot-empty">Nothing on the record yet. Stats appear once a week seals.</div>`; return; }
+  // Locked games with no pick in the week in progress, unless that week
+  // is already sealed and counted above.
+  const liveBlanks = {};
+  const sealedNow = weeks.some((w) => w.week === currentWeek);
+  if (!sealedNow) {
+    const picks = lastGoodCloudPicks || {};
+    for (const name of MANAGERS) {
+      const st = picks[name] || { picks: {} };
+      const n = GAMES.filter((g) => isGameLocked(g) && !st.picks?.[g.id]).length;
+      if (n) liveBlanks[name] = n;
+    }
+  }
+  const s = seasonStats(weeks, liveBlanks);
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const row = (r, i, cls) => `<div class="ss-row${r.name === currentManager ? " me" : ""}${i === 0 ? " lead" : ""}"><span class="ss-rank">${i + 1}</span><span class="ss-name">${esc(shown(r.name).toUpperCase())}</span><span class="ss-sub">${esc(r.sub)}</span><b class="ss-val">${esc(r.value)}</b></div>`;
   const board = (label, note, rows, cls) => {
