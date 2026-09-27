@@ -2508,7 +2508,7 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
         if (scorePick(g, pick, results[g.id]) > 0) w += 1; else l += 1;
       } else if (pick) max += pointValue(g, pick.team, pick.mode);
     }
-    return `${w}-${l} · MAX ${max} · <span class="rank-inflight">+${inFlight} LIVE</span>`;
+    return `${w}-${l} · <span class="rank-max">MAX <b>${max}</b></span> · <span class="rank-inflight">+${inFlight} LIVE</span>`;
   }
   const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
   return `${picked} · ${guess} · ${off}`;

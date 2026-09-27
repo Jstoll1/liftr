@@ -3078,3 +3078,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .all-picks-toggle.static { cursor: default; }
 .all-picks-toggle.static .all-picks-caret { display: none; }
 .all-picks-toggle.static:disabled { opacity: 1; }
+
+/* The ceiling on a live row: yellow like the rank, with the number lit. */
+.rank-max { color: rgba(255, 228, 94, .7); }
+.rank-max b { font-weight: 400; color: var(--neon-yellow); text-shadow: 0 0 6px rgba(255, 228, 94, .6); }
