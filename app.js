@@ -3287,16 +3287,22 @@ let renderRecap = function () {
   renderRecap = (...a) => { orig(...a); paint(); };
 })();
 
-// The leaderboard stays open. It is the headline of the board, and the
-// fold was being left shut by accident more than used.
+// The leaderboard folds like the sections under it. It starts open, and
+// the choice is remembered on the device.
 (() => {
   const toggle = document.getElementById("leaderboard-toggle");
   const list = document.getElementById("rankings-list");
   if (!toggle || !list) return;
-  list.classList.remove("hidden");
-  toggle.classList.add("open", "static");
-  toggle.setAttribute("aria-expanded", "true");
-  toggle.disabled = true;
+  const KEY = "brochiefs_leaderboard_open_v2";
+  let open = true;
+  try { open = localStorage.getItem(KEY) !== "0"; } catch { /* private mode */ }
+  const paint = () => { list.classList.toggle("hidden", !open); toggle.classList.toggle("open", open); toggle.setAttribute("aria-expanded", String(open)); };
+  toggle.addEventListener("click", () => {
+    open = !open;
+    paint();
+    try { localStorage.setItem(KEY, open ? "1" : "0"); } catch { /* private mode */ }
+  });
+  paint();
 })();
 
 // All Picks starts collapsed: the scorebugs and the leaderboard are the
