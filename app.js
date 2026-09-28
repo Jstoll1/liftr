@@ -2011,7 +2011,6 @@ let cloudPicksStale = false;
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
-  maybeShowGridCheck();
   const fetched = await fetchAllPicks();
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
@@ -3174,23 +3173,26 @@ function thursdaySixAM(ms, offsetHours) {
 // Week 4 only, once the week has locked, through Monday night. Once per
 // page load, whichever screen the app opens on; a tap anywhere closes it.
 // --- Grid check --------------------------------------------------------
-// In the last two days before the week locks, one look at the card on
-// arrival: picks in, tiebreaker in, points riding, and a clock to the
-// first kickoff. Shown at most once per twelve hours per week.
-const GRID_WINDOW_MS = 48 * 3600 * 1000;
+// Opening the picks page while the week is open: are you in, part in,
+// or not in at all, plus a clock to the lock. Once per twelve hours per
+// week, and always if something is still blank inside the last day.
 const GRID_REPEAT_MS = 12 * 3600 * 1000;
+const GRID_NAG_MS = 24 * 3600 * 1000;
 let gridTimer = null;
 function gridKey() { return `brochiefs_grid_v1_w${currentWeek}`; }
 function maybeShowGridCheck(force = false) {
   const el = document.getElementById("grid-modal");
   if (!el || !currentManager || !GAMES.length) return;
-  const lockAt = weekLockTime();
-  const ms = lockAt === null ? Infinity : lockAt - Date.now();
-  if (ms <= 0 || ms > GRID_WINDOW_MS) return;
+  const lockAt = weekLockTime() ?? Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
+  const ms = lockAt - Date.now();
+  if (ms <= 0) return;
   if (!force) {
+    const st = getManagerState(currentManager);
+    const incomplete = GAMES.some((g) => !st.picks[g.id]) || !String(st.tiebreaker ?? "").trim();
     let last = 0;
     try { last = Number(localStorage.getItem(gridKey()) || 0); } catch {}
-    if (Date.now() - last < GRID_REPEAT_MS) return;
+    const repeat = incomplete && ms < GRID_NAG_MS ? 2 * 3600 * 1000 : GRID_REPEAT_MS;
+    if (Date.now() - last < repeat) return;
     try { localStorage.setItem(gridKey(), String(Date.now())); } catch {}
   }
   renderGridCheck();
@@ -3207,7 +3209,7 @@ function renderGridCheck() {
   const picked = GAMES.filter((g) => state.picks[g.id]).length;
   const tb = String(state.tiebreaker ?? "").trim();
   const riding = GAMES.reduce((n, g) => n + (state.picks[g.id] ? pointValue(g, state.picks[g.id].team, state.picks[g.id].mode) : 0), 0);
-  const lockAt = weekLockTime();
+  const lockAt = weekLockTime() ?? Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
   const ms = Math.max(0, lockAt - Date.now());
   const total = Math.floor(ms / 1000);
   const d = Math.floor(total / 86400), h = Math.floor((total % 86400) / 3600), m = Math.floor((total % 3600) / 60), sec = total % 60;
@@ -3229,8 +3231,11 @@ function renderGridCheck() {
   row("#grid-row-tb", tb ? tb : "MISSING", !!tb, "Blank forfeits ties");
   row("#grid-row-pts", `${riding} PT`, riding > 0, "Nothing riding yet");
   const ready = picksOk && !!tb;
+  const verdict = el.querySelector("#grid-verdict");
+  verdict.textContent = ready ? "SUBMITTED" : picked === 0 ? "NOTHING IN" : "PARTIAL";
+  verdict.className = `grid-verdict ${ready ? "ok" : picked === 0 ? "none" : "part"}`;
   const go = el.querySelector("#grid-go");
-  go.textContent = ready ? "READY TO RACE" : "GO TO PICKS";
+  go.textContent = ready ? "READY TO RACE" : picked === 0 ? "START PICKING" : "FILL THE BLANKS";
   go.classList.toggle("ready", ready);
 }
 (() => {
@@ -3241,7 +3246,6 @@ function renderGridCheck() {
   el.querySelector("#grid-go")?.addEventListener("click", () => {
     close();
     if (el.querySelector("#grid-go").classList.contains("ready")) return;
-    showPicksScreen();
     setTimeout(() => {
       const state = getManagerState(currentManager);
       const blank = GAMES.find((g) => !state.picks[g.id]);

@@ -3182,6 +3182,10 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .grid-flag.bottom { margin-top: 4px; }
 .grid-title { margin-top: 8px; font-size: 18px; letter-spacing: .06em; color: #fff; text-shadow: 2px 2px 0 #e0102a, 0 0 14px rgba(224, 16, 42, .6); transform: skewX(-8deg); }
 .grid-sub { font-size: 6.5px; letter-spacing: .14em; color: var(--text-dim); padding: 0 14px; }
+.grid-verdict { margin-top: 4px; padding: 6px 14px; border-radius: 6px; font-size: 11px; letter-spacing: .12em; color: #fff; transform: skewX(-6deg); }
+.grid-verdict.ok { background: var(--neon-green); color: #052010; box-shadow: 0 0 14px rgba(57, 255, 136, .5); }
+.grid-verdict.part { background: var(--neon-yellow); color: #2a1e00; box-shadow: 0 0 14px rgba(255, 228, 94, .5); }
+.grid-verdict.none { background: #e0102a; box-shadow: 0 0 14px rgba(224, 16, 42, .6); }
 .grid-lights { display: flex; gap: 8px; margin-top: 4px; padding: 6px 10px; border-radius: 20px; background: #000; border: 1px solid #333; }
 .grid-lights i { width: 14px; height: 14px; border-radius: 50%; background: #3a0810; border: 1px solid #5a1020; transition: background .3s, box-shadow .3s; }
 .grid-lights i.on { background: #ff2a3a; box-shadow: 0 0 8px #ff2a3a, 0 0 16px rgba(255, 42, 58, .6); }
