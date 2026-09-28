@@ -3369,11 +3369,11 @@ async function openInsights(gameId) {
 
   // 1. Injuries, one column per team.
   const statusCls = (st) => `st-${String(st || "").toLowerCase().replace(/[^a-z]/g, "")}`;
-  const col = (label, list, ok, teamId) => `<div class="ins-col"><div class="ins-team">${lg(teamId)}${esc(label)}</div>` + (list?.length
+  const col = (label, list, ok, teamId, err) => `<div class="ins-col"><div class="ins-team">${lg(teamId)}${esc(label)}</div>` + (list?.length
     ? `<ul class="ins-inj">${list.slice(0, 7).map((i) => `<li><b class="${statusCls(i.status)}">${esc(i.status)}</b><span class="ins-who">${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}</span>${i.detail ? `<span class="ins-det">${esc(i.detail)}</span>` : ""}</li>`).join("")}</ul>`
-    : `<div class="ins-empty small">${ok === false ? "Feed unavailable." : "No one listed."}</div>`) + `</div>`;
+    : `<div class="ins-empty small">${ok === false ? `Feed unavailable.${err ? ` <i class="ins-err">${esc(err)}</i>` : ""}` : "No one listed."}</div>`) + `</div>`;
   html += `<div class="ins-h">INJURIES</div>`;
-  html += injuries ? `<div class="ins-cols">${col(game.awayShort, injuries.away, snap?.feeds?.awayInjuries, game.awayId)}${col(game.homeShort, injuries.home, snap?.feeds?.homeInjuries, game.homeId)}</div>` : `<div class="ins-empty">Could not reach the injury feeds. Team reports are in the links below.</div>`;
+  html += injuries ? `<div class="ins-cols">${col(game.awayShort, injuries.away, snap?.feeds?.awayInjuries, game.awayId, snap?.feeds?.awayInjuriesError)}${col(game.homeShort, injuries.home, snap?.feeds?.homeInjuries, game.homeId, snap?.feeds?.homeInjuriesError)}</div>` : `<div class="ins-empty">Could not reach the injury feeds. Team reports are in the links below.</div>`;
 
   // 2. Line: sealed to now as a day-by-day timeline.
   html += `<div class="ins-h">LINE</div>`;
@@ -3389,7 +3389,7 @@ async function openInsights(gameId) {
     html += `<div class="ins-timeline">${shown.map((st, i) => `<div class="ins-step ${st.cls}"><span class="ins-step-l">${esc(st.label)}</span><span class="ins-step-v">${fmt(st.v)}</span></div>${i < shown.length - 1 ? `<span class="ins-step-arrow ${shown[i + 1].v > st.v ? "up" : shown[i + 1].v < st.v ? "down" : ""}">${shown[i + 1].v > st.v ? "▲" : shown[i + 1].v < st.v ? "▼" : "›"}</span>` : ""}`).join("")}</div>
       <div class="ins-verdict">${verdict}${mv.overUnder !== null ? ` <span class="ins-ou">O/U ${mv.overUnder}</span>` : ""}</div>`;
   } else {
-    html += `<div class="ins-empty">No line on the feed right now. You score against the sealed ${esc(favShort)} -${game.spread} either way.</div>`;
+    html += `<div class="ins-empty">No line on the feed right now. You score against the sealed ${esc(favShort)} -${game.spread} either way.${snap && !snap.feeds?.liveFound ? ` <i class="ins-err">game not on the scoreboard feed</i>` : ""}</div>`;
   }
 
   // 3. Insights: the numbers, then the written brief.
@@ -3407,7 +3407,7 @@ async function openInsights(gameId) {
     if (glance.leaders?.away?.length || glance.leaders?.home?.length) html += `<div class="ins-leads">${lead(game.awayShort, glance.leaders.away, game.awayId)}${lead(game.homeShort, glance.leaders.home, game.homeId)}</div>`;
   }
   if (brief?.summary?.length) html += `<ul class="ins-brief">${brief.summary.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
-  else if (!glance) html += `<div class="ins-empty">ESPN has not published this week's game page yet. Numbers land here once it does.</div>`;
+  else if (!glance) html += `<div class="ins-empty">ESPN has not published this week's game page yet. Numbers land here once it does.${snap?.feeds?.summaryError ? ` <i class="ins-err">${esc(snap.feeds.summaryError)}</i>` : ""}</div>`;
   const newsRows = news ? [...(news.away || []).map((n) => ({ ...n, team: game.awayShort })), ...(news.home || []).map((n) => ({ ...n, team: game.homeShort }))] : [];
   if (newsRows.length) html += `<div class="ins-h">HEADLINES</div><ul class="ins-news">${newsRows.slice(0, 6).map((n) => `<li>${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}<span class="ins-det">${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
 

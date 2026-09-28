@@ -77,8 +77,10 @@ async function fetchJsonCached(env, url, ttlSec = 7200) {
     if (hit && hit.at && Date.now() - hit.at < ttlSec * 1000) return { data: hit.data, cached: true };
   } catch {}
   const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, cf: { cacheTtl: 0 } });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
+  const text = await res.text();
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${text.slice(0, 80).replace(/\s+/g, " ")}`);
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error(`not JSON: ${text.slice(0, 80).replace(/\s+/g, " ")}`); }
   try { await env.LIFTR_KV.put(key, JSON.stringify({ at: Date.now(), data }), { expirationTtl: ttlSec }); } catch {}
   return { data, cached: false };
 }
@@ -139,7 +141,14 @@ export function parseSummary(data, game) {
     }).filter((x) => x && x.name);
   };
   const away = side("away"), home = side("home");
+  // The summary also lists injuries per team and the book's current line,
+  // which cover for the team endpoints when those are missing.
+  const injBlock = (teamId) => (data.injuries || []).find((b) => Number(b?.team?.id) === Number(teamId));
+  const injuries = { away: parseInjuries({ injuries: injBlock(away.team?.id ?? game?.awayId)?.injuries || [] }), home: parseInjuries({ injuries: injBlock(home.team?.id ?? game?.homeId)?.injuries || [] }) };
+  const pc = Array.isArray(data.pickcenter) ? data.pickcenter[0] : null;
+  const odds = pc ? parseOdds({ odds: [pc] }) : null;
   return {
+    injuries, odds, injuriesListed: Array.isArray(data.injuries),
     records: { away: rec(away), home: rec(home) },
     ats: { away: ats(away.team?.id ?? game?.awayId), home: ats(home.team?.id ?? game?.homeId) },
     fpi, weather, venue,
@@ -321,15 +330,24 @@ export async function gameSnapshot(env, deps, week, gameId) {
   ]);
   const log = (await env.LIFTR_KV.get(linesKey(week), "json")) || {};
   const samples = (log[g.id] || []).slice();
-  if (live?.odds && live.odds.spread !== null) samples.push({ at: Date.now(), spread: live.odds.spread, favoriteSide: live.odds.favoriteSide, overUnder: live.odds.overUnder, live: true });
+  const glance = summary.ok ? summary.items : null;
+  const nowOdds = live?.odds && live.odds.spread !== null ? live.odds : glance?.odds && glance.odds.spread !== null ? glance.odds : null;
+  if (nowOdds) samples.push({ at: Date.now(), spread: nowOdds.spread, favoriteSide: nowOdds.favoriteSide, overUnder: nowOdds.overUnder, live: true });
+  const pickInj = (side) => side.injuries.ok ? side.injuries.items : glance?.injuriesListed ? glance.injuries[side === away ? "away" : "home"] : null;
   const snap = {
     at: Date.now(), week, game: g.id, eventId,
-    injuries: { away: away.injuries.items, home: home.injuries.items },
+    injuries: { away: pickInj(away), home: pickInj(home) },
     news: { away: away.news.items, home: home.news.items },
-    glance: summary.ok ? summary.items : null,
+    glance,
     movement: lineMovement(g, samples),
     samples,
-    feeds: { awayInjuries: away.injuries.ok, homeInjuries: home.injuries.ok, summary: summary.ok, summaryError: summary.error || null },
+    feeds: {
+      awayInjuries: away.injuries.ok || !!glance?.injuriesListed, homeInjuries: home.injuries.ok || !!glance?.injuriesListed,
+      awayInjuriesError: away.injuries.error || null, homeInjuriesError: home.injuries.error || null,
+      summary: summary.ok, summaryError: summary.error || null,
+      lineSource: live?.odds && live.odds.spread !== null ? "scoreboard" : glance?.odds ? "summary" : null,
+      liveFound: !!live,
+    },
   };
   try { await env.LIFTR_KV.put(snapKey(week, g.id), JSON.stringify(snap), { expirationTtl: 7 * 24 * 3600 }); } catch {}
   return snap;
