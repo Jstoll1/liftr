@@ -1147,6 +1147,7 @@ function showPicksScreen() {
   setActiveNav("picks");
   enterScreen("picks");
   maybeShowBoner();
+  maybeShowGridCheck();
   return syncManagerFromCloud(currentManager).then((cloud) => {
     if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
     // Same payload feeds the standings row. cloud is null when the fetch
@@ -1728,6 +1729,7 @@ function renderPicksScreen() {
     const pick = state.picks[game.id];
 
     const card = document.createElement("div");
+    card.dataset.gameId = game.id;
     card.className =
       "game-card" +
       (gameLocked ? " game-locked" : "") +
@@ -2009,6 +2011,7 @@ let cloudPicksStale = false;
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
+  maybeShowGridCheck();
   const fetched = await fetchAllPicks();
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
@@ -3170,6 +3173,85 @@ function thursdaySixAM(ms, offsetHours) {
 // --- The Boner Amendment, announced on every open this weekend ---------
 // Week 4 only, once the week has locked, through Monday night. Once per
 // page load, whichever screen the app opens on; a tap anywhere closes it.
+// --- Grid check --------------------------------------------------------
+// In the last two days before the week locks, one look at the card on
+// arrival: picks in, tiebreaker in, points riding, and a clock to the
+// first kickoff. Shown at most once per twelve hours per week.
+const GRID_WINDOW_MS = 48 * 3600 * 1000;
+const GRID_REPEAT_MS = 12 * 3600 * 1000;
+let gridTimer = null;
+function gridKey() { return `brochiefs_grid_v1_w${currentWeek}`; }
+function maybeShowGridCheck(force = false) {
+  const el = document.getElementById("grid-modal");
+  if (!el || !currentManager || !GAMES.length) return;
+  const lockAt = weekLockTime();
+  const ms = lockAt === null ? Infinity : lockAt - Date.now();
+  if (ms <= 0 || ms > GRID_WINDOW_MS) return;
+  if (!force) {
+    let last = 0;
+    try { last = Number(localStorage.getItem(gridKey()) || 0); } catch {}
+    if (Date.now() - last < GRID_REPEAT_MS) return;
+    try { localStorage.setItem(gridKey(), String(Date.now())); } catch {}
+  }
+  renderGridCheck();
+  el.classList.remove("hidden");
+  clearInterval(gridTimer);
+  gridTimer = setInterval(() => {
+    if (el.classList.contains("hidden")) { clearInterval(gridTimer); return; }
+    renderGridCheck();
+  }, 1000);
+}
+function renderGridCheck() {
+  const el = document.getElementById("grid-modal");
+  const state = getManagerState(currentManager);
+  const picked = GAMES.filter((g) => state.picks[g.id]).length;
+  const tb = String(state.tiebreaker ?? "").trim();
+  const riding = GAMES.reduce((n, g) => n + (state.picks[g.id] ? pointValue(g, state.picks[g.id].team, state.picks[g.id].mode) : 0), 0);
+  const lockAt = weekLockTime();
+  const ms = Math.max(0, lockAt - Date.now());
+  const total = Math.floor(ms / 1000);
+  const d = Math.floor(total / 86400), h = Math.floor((total % 86400) / 3600), m = Math.floor((total % 3600) / 60), sec = total % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  el.querySelector("#grid-sub").textContent = `${WEEK_LABEL.toUpperCase()} · ALL PICKS LOCK AT FIRST KICKOFF`;
+  el.querySelector("#grid-clock").innerHTML = d ? `${d}<small>D</small> ${pad(h)}:${pad(m)}:${pad(sec)}` : `${pad(h)}:${pad(m)}:${pad(sec)}`;
+  // Five starting lights: one more lit for each of the last five hours.
+  const lit = ms <= 0 ? 5 : Math.max(0, 5 - Math.ceil(ms / 3600000));
+  el.querySelectorAll("#grid-lights i").forEach((i, k) => i.classList.toggle("on", k < lit));
+  const row = (id, v, ok, warn) => {
+    const r = el.querySelector(id);
+    r.querySelector(".gr-v").textContent = v;
+    r.querySelector(".gr-s").textContent = ok ? "✓" : "!";
+    r.classList.toggle("ok", ok); r.classList.toggle("warn", !ok);
+    r.title = ok ? "" : warn;
+  };
+  const picksOk = picked === GAMES.length;
+  row("#grid-row-picks", `${picked} / ${GAMES.length}`, picksOk, `${GAMES.length - picked} left blank`);
+  row("#grid-row-tb", tb ? tb : "MISSING", !!tb, "Blank forfeits ties");
+  row("#grid-row-pts", `${riding} PT`, riding > 0, "Nothing riding yet");
+  const ready = picksOk && !!tb;
+  const go = el.querySelector("#grid-go");
+  go.textContent = ready ? "READY TO RACE" : "GO TO PICKS";
+  go.classList.toggle("ready", ready);
+}
+(() => {
+  const el = document.getElementById("grid-modal");
+  if (!el) return;
+  const close = () => { el.classList.add("hidden"); clearInterval(gridTimer); };
+  el.addEventListener("click", (e) => { if (e.target === el) close(); });
+  el.querySelector("#grid-go")?.addEventListener("click", () => {
+    close();
+    if (el.querySelector("#grid-go").classList.contains("ready")) return;
+    showPicksScreen();
+    setTimeout(() => {
+      const state = getManagerState(currentManager);
+      const blank = GAMES.find((g) => !state.picks[g.id]);
+      const target = blank ? document.querySelector(`.game-card[data-game-id="${blank.id}"]`) : document.getElementById("tiebreaker-input");
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 250);
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !el.classList.contains("hidden")) close(); });
+})();
+
 const BONER_UNTIL = Date.parse("2026-09-29T03:59:00Z"); // Mon 11:59 PM ET
 let bonerShownThisLoad = false;
 function maybeShowBoner() {
