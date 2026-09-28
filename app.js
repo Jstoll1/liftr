@@ -3551,11 +3551,54 @@ async function openInsights(gameId) {
     html += `<div class="ins-empty">No line on the feed right now. You score against the sealed ${esc(favShort)} -${game.spread} either way.</div>`;
   }
 
-  // Preview story, inline, first paragraphs with a tap to expand.
+  // Preview story. ESPN's auto previews open with a date line and an
+  // "Opening Line / Against the spread" line; those become chips (and feed
+  // the ATS row), labeled sections become tagged rows, and the first real
+  // paragraph leads.
+  let previewAts = null;
   if (direct?.preview) {
     const pv = direct.preview;
-    html += `<div class="ins-h">PREVIEW</div>${pv.headline ? `<div class="ins-pv-h">${esc(pv.headline)}</div>` : ""}${pv.byline ? `<div class="ins-det">${esc(pv.byline)}</div>` : ""}`;
-    if (pv.paras.length) html += `<div class="ins-pv">${pv.paras.slice(0, 2).map((t) => `<p>${esc(t)}</p>`).join("")}${pv.paras.length > 2 ? `<details class="ins-more"><summary>READ THE REST</summary>${pv.paras.slice(2).map((t) => `<p>${esc(t)}</p>`).join("")}</details>` : ""}</div>`;
+    const sideOf = (name) => {
+      const n = String(name || "").toLowerCase().replace(/\(.*?\)/g, "").trim();
+      const hit = (side) => [side === "away" ? game.away : game.home, side === "away" ? game.awayShort : game.homeShort, abbrOf(side)]
+        .map((x) => String(x || "").toLowerCase().replace(/^#\d+\s+/, "").trim()).filter(Boolean)
+        .some((x) => n.includes(x) || x.includes(n) || (n.length >= 4 && x.startsWith(n.slice(0, 4))));
+      return hit("away") ? "away" : hit("home") ? "home" : null;
+    };
+    const chips = [];
+    const lede = [], sections = [];
+    for (const t of pv.paras) {
+      if (/^opening line:/i.test(t)) {
+        const open = t.match(/opening line:\s*(.+?)\s+by\s+(\d+(?:\.\d+)?)/i);
+        if (open) { const sd = sideOf(open[1]); chips.push({ k: "OPENED", v: `${sd ? abbrOf(sd) : open[1]} -${open[2]}` }); }
+        const ats = t.match(/against the spread:\s*(.+?)\s+(\d+-\d+(?:-\d+)?),\s*(.+?)\s+(\d+-\d+(?:-\d+)?)/i);
+        if (ats) {
+          previewAts = {};
+          [[ats[1], ats[2]], [ats[3], ats[4]]].forEach(([n, r]) => { const sd = sideOf(n); if (sd) previewAts[sd] = r; });
+          chips.push({ k: "ATS", v: `${abbrOf("away")} ${previewAts.away || "—"} · ${abbrOf("home")} ${previewAts.home || "—"}` });
+        }
+        continue;
+      }
+      // Date line: "Team (4-0) at Team (4-0), Oct. 2 at 7 p.m. EDT."
+      if (/\bat\b.*\d{1,2}(:\d\d)?\s*[ap]\.?m\.?/i.test(t) && t.length < 140) continue;
+      const lab = t.match(/^([A-Z][A-Z0-9 .'&/-]{2,40}):\s*(.+)$/);
+      if (lab) sections.push({ k: lab[1].trim(), v: lab[2] });
+      else lede.push(t);
+    }
+    if (mv) chips.push({ k: "NOW", v: `${esc(mv.nowFavorite === game.homeShort ? abbrOf("home") : abbrOf("away"))} -${mv.now}` });
+    html += `<div class="ins-h">PREVIEW</div><div class="pv-card">`;
+    html += `<div class="pv-top">${lg(game.awayId)}<b class="pv-head">${esc(pv.headline || `${game.awayShort} at ${game.homeShort}`)}</b>${lg(game.homeId)}</div>`;
+    if (chips.length) html += `<div class="pv-chips">${chips.map((c) => `<span><em>${esc(c.k)}</em>${esc(c.v)}</span>`).join("")}</div>`;
+    // No plain paragraph: lead with the bottom line (or the first section).
+    if (!lede.length && sections.length) {
+      const i = Math.max(0, sections.findIndex((x) => /bottom line/i.test(x.k)));
+      const lead = sections.splice(i, 1)[0];
+      html += `<div class="pv-lede pv-sec"><em>${esc(lead.k)}</em><span>${esc(lead.v)}</span></div>`;
+    } else if (lede.length) html += `<p class="pv-lede">${esc(lede[0])}</p>`;
+    const rest = [...sections.map((x) => `<div class="pv-sec"><em>${esc(x.k)}</em><span>${esc(x.v)}</span></div>`), ...lede.slice(1).map((t) => `<p>${esc(t)}</p>`)];
+    if (rest.length) html += `<details class="ins-more pv-more"><summary>READ THE REST</summary>${rest.join("")}</details>`;
+    if (!lede.length && !sections.length && !chips.length) html += `<p class="pv-lede">${esc(pv.paras[0] || "")}</p>`;
+    html += `</div>`;
   }
 
   // 3. Insights: the numbers, then the written brief.
@@ -3565,7 +3608,7 @@ async function openInsights(gameId) {
     const w = glance.weather ? [glance.weather.temp !== null ? `${glance.weather.temp}°` : null, glance.weather.text, glance.weather.precip ? `${glance.weather.precip}% rain` : null].filter(Boolean).join(" · ") : null;
     html += `<div class="ins-glance"><div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(game.awayShort)}</span><span>${lg(game.homeId)}${esc(game.homeShort)}</span></div>`
       + cell("RECORD", glance.records?.away?.overall, glance.records?.home?.overall)
-      + cell("ATS", glance.ats?.away, glance.ats?.home)
+      + cell("ATS", glance.ats?.away || previewAts?.away, glance.ats?.home || previewAts?.home)
       + cell("ESPN FPI", glance.fpi ? `${glance.fpi.away}%` : null, glance.fpi ? `${glance.fpi.home}%` : null, glance.fpi && glance.fpi.away > glance.fpi.home ? "lead" : "", glance.fpi && glance.fpi.home > glance.fpi.away ? "lead" : "")
       + `</div>`
       + (w || glance.venue ? `<div class="ins-wx">${w ? `<span>${esc(w)}</span>` : ""}${glance.venue?.name ? `<span>${esc(glance.venue.name)}${glance.venue.indoor ? " · indoors" : ""}</span>` : ""}</div>` : "");
