@@ -1520,6 +1520,7 @@ function pickLabel(game, pick) {
 function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
   const sign = isFavorite ? "-" : "+";
   const line = `${sign}${game.spread}`;
+  const isHome = teamId === game.homeId;
   // The sign gets its own fixed box. Orbitron's plus is five pixels wider
   // than its minus, which was enough to make the underdog's spread chip
   // start five pixels left of the favourite's on the row below it.
@@ -1532,7 +1533,7 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
     <div class="tm-row ${atsSelected || suSelected ? "picked" : ""}">
       <div class="tm-id">
         <img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
-        <span class="tm-name">${rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank)}<span class="tm-nm">${short}</span></span>
+        <span class="tm-name">${isHome ? `<i class="tm-at">@</i>` : ""}${rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank)}<span class="tm-nm">${short}</span><span class="tm-spread ${isFavorite ? "fav" : "dog"}">${line}</span></span>
       </div>
       <div class="tm-chips">
         <button class="pick-mini-btn ats ${atsSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="ATS" title="${short} ${line} against the spread, 2 points">
@@ -1545,12 +1546,16 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
     </div>`;
 }
 
+// Underdog on top, favourite on the bottom on every card, so the eye
+// lands on the same row for the same kind of bet. The home side is marked
+// with an @ since the order no longer says who hosts.
 function matchupCardsHtml(game, draft) {
   const awayIsFav = game.favorite === game.away;
+  const away = teamRowHtml(game, game.away, game.awayId, awayIsFav, game.awayShort, draft);
+  const home = teamRowHtml(game, game.home, game.homeId, !awayIsFav, game.homeShort, draft);
   return `
     <div class="matchup-cards-row">
-      ${teamRowHtml(game, game.away, game.awayId, awayIsFav, game.awayShort, draft)}
-      ${teamRowHtml(game, game.home, game.homeId, !awayIsFav, game.homeShort, draft)}
+      ${awayIsFav ? home + away : away + home}
     </div>
   `;
 }
