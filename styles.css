@@ -3387,3 +3387,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .sim-line.banner { text-align: center; }
 @keyframes sim-in { from { opacity: 0; transform: translateX(-4px); } }
 .sim-note { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .12em; color: var(--text-dim); }
+.ins-stats .ins-g { grid-template-columns: minmax(0, 1.3fr) 1fr 1fr; padding: 5px 8px; }
+.ins-gk.plain { font-family: system-ui, sans-serif; font-size: 10.5px; letter-spacing: 0; color: var(--text-dim); line-height: 1.2; }
+.ins-stats .ins-gv { font-size: 12px; }
+.ins-form { grid-template-columns: 64px minmax(0, 1fr); }
+.ins-cat { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-cyan); margin-right: 5px; letter-spacing: .06em; }

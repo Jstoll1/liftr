@@ -1792,7 +1792,9 @@ function renderPicksScreen() {
       ${gameLocked || !note ? "" : `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>`}
     `;
 
-    card.querySelector(".insights-btn")?.addEventListener("click", (e) => { e.stopPropagation(); openInsights(game.id); });
+    const infoBtn = card.querySelector(".insights-btn");
+    infoBtn?.addEventListener("pointerdown", () => { const id = latestLive[game.id]?.eventId; if (id) fetchEspnSummary(id); }, { passive: true });
+    infoBtn?.addEventListener("click", (e) => { e.stopPropagation(); openInsights(game.id); });
     card.querySelectorAll(".pick-mini-btn").forEach((btn) => {
       const team = btn.dataset.team;
       const mode = btn.dataset.mode;
@@ -3343,14 +3345,14 @@ const summaryCache = {};
 async function fetchEspnSummary(eventId) {
   if (!eventId) return null;
   const hit = summaryCache[eventId];
-  if (hit && Date.now() - hit.at < 15 * 60 * 1000) return hit.data;
-  try {
-    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}&t=${Math.floor(Date.now() / 900000)}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    summaryCache[eventId] = { at: Date.now(), data };
-    return data;
-  } catch { return null; }
+  if (hit && Date.now() - hit.at < 15 * 60 * 1000) return hit.promise;
+  // Share one request between the touch prefetch and the tap.
+  const promise = fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}&t=${Math.floor(Date.now() / 900000)}`)
+    .then((res) => res.ok ? res.json() : null)
+    .catch(() => null)
+    .then((data) => { if (!data) delete summaryCache[eventId]; return data; });
+  summaryCache[eventId] = { at: Date.now(), promise };
+  return promise;
 }
 function parseSummaryClient(data, game) {
   if (!data || typeof data !== "object" || !data.header) return null;
@@ -3474,6 +3476,10 @@ function movementFrom(game, samples) {
   const dogShort = game.favorite === game.home ? game.awayShort : game.homeShort;
   return { sealed, sealedFavorite: favShort, now: Math.abs(nowV), nowFavorite: nowV >= 0 ? favShort : dogShort, overUnder: last.overUnder ?? null, delta, toward: delta === 0 ? null : delta > 0 ? favShort : dogShort, points: pts };
 }
+let insightsOpenToken = 0;
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([promise, new Promise((r) => setTimeout(() => r(fallback), ms))]);
+}
 async function fetchGameSnapshot(gameId) {
   if (!WORKER_URL) return null;
   try {
@@ -3497,11 +3503,15 @@ async function openInsights(gameId) {
   const links = () => `<div class="ins-h">MORE</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
   body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
   modal.classList.remove("hidden");
-  // The scoreboard gives the event id; without one yet, fetch it now.
-  if (!latestLive[gameId]?.eventId) { try { await fetchLiveScores(); } catch {} }
-  const eventId = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
-  const [data, snap, summaryRaw, awayNews, homeNews, wider] = await Promise.all([fetchInsights(), fetchGameSnapshot(gameId), fetchEspnSummary(eventId), fetchTeamNews(game.awayId), fetchTeamNews(game.homeId), fetchWiderNews(gameId)]);
-  if (modal.classList.contains("hidden")) return;
+  // Paint as each source lands instead of waiting for the slowest. The
+  // ESPN game page (from the phone) fills most of the sheet; news and the
+  // Worker's extras slot in after, and slow Worker calls are capped.
+  const token = ++insightsOpenToken;
+  let data = null, snap = null, summaryRaw = null, awayNews = [], homeNews = [], wider = [];
+  const pend = { summary: true, news: true, wider: true };
+  const alive = () => token === insightsOpenToken && !modal.classList.contains("hidden");
+  const land = (promise, set, key) => promise.then((v) => { set(v); }).catch(() => {}).finally(() => { if (key) pend[key] = false; if (alive()) paint(); });
+  const paint = () => {
   const brief = data?.briefs?.[gameId] || null;
   const direct = parseSummaryClient(summaryRaw, game);
   // Browser-fetched summary first (ESPN lets phones in where it turns the
@@ -3517,6 +3527,12 @@ async function openInsights(gameId) {
   const mv = movementFrom(game, samples) || snap?.movement || brief?.movement || null;
   const feedErr = (side) => direct ? null : snap?.feeds?.[side];
   let html = `<button type="button" class="ins-sim" id="ins-sim">▶ SIMULATE GAME</button>`;
+  const hdrComps = summaryRaw?.header?.competitions?.[0]?.competitors || [];
+  const abbrOf = (side) => {
+    const id = side === "away" ? game.awayId : game.homeId;
+    const c = hdrComps.find((x) => Number(x.team?.id) === Number(id));
+    return c?.team?.abbreviation || (side === "away" ? game.awayShort : game.homeShort);
+  };
 
   // 2. Line: sealed to now as a day-by-day timeline.
   html += `<div class="ins-h">LINE</div>`;
@@ -3553,24 +3569,32 @@ async function openInsights(gameId) {
       + cell("ESPN FPI", glance.fpi ? `${glance.fpi.away}%` : null, glance.fpi ? `${glance.fpi.home}%` : null, glance.fpi && glance.fpi.away > glance.fpi.home ? "lead" : "", glance.fpi && glance.fpi.home > glance.fpi.away ? "lead" : "")
       + `</div>`
       + (w || glance.venue ? `<div class="ins-wx">${w ? `<span>${esc(w)}</span>` : ""}${glance.venue?.name ? `<span>${esc(glance.venue.name)}${glance.venue.indoor ? " · indoors" : ""}</span>` : ""}</div>` : "");
-    const lead = (label, list, teamId) => list?.length ? `<div class="ins-lead"><b>${lg(teamId)}${esc(label)}</b>${list.map((l) => `<span>${esc(l.cat)} · ${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>` : "";
+    const catShort = (c) => /pass/i.test(c) ? "PASS" : /rush/i.test(c) ? "RUSH" : /receiv/i.test(c) ? "REC" : /tackle/i.test(c) ? "TKL" : /sack/i.test(c) ? "SACK" : String(c).toUpperCase().slice(0, 5);
+    const lead = (label, list, teamId) => list?.length ? `<div class="ins-lead"><b>${lg(teamId)}${esc(label)}</b>${list.map((l) => `<span><em class="ins-cat">${esc(catShort(l.cat))}</em>${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>` : "";
     if (glance.leaders?.away?.length || glance.leaders?.home?.length) html += `<div class="ins-leads">${lead(game.awayShort, glance.leaders.away, game.awayId)}${lead(game.homeShort, glance.leaders.home, game.homeId)}</div>`;
   }
   // Form: last five results per team.
   const form = direct?.lastFive;
   if (form && (form.away.length || form.home.length)) {
-    const row = (label, teamId, list) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}${esc(label)}</span><span class="ins-form-r">${list.map((e) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}" title="${esc(`${e.at || ""} ${e.opp || ""} ${e.score || ""}`)}"><b>${esc(e.result || "·")}</b><i>${esc(e.at === "@" ? "@" : "")}${esc(e.opp || "")}</i><i>${esc(e.score || "")}</i></span>`).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
+    const row = (label, teamId, list) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}${esc(abbrOf(teamId === game.awayId ? "away" : "home"))}</span><span class="ins-form-r">${list.map((e) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}" title="${esc(`${e.at || ""} ${e.opp || ""} ${e.score || ""}`)}"><b>${esc(e.result || "·")}</b><i>${esc(e.at === "@" ? "@" : "")}${esc(e.opp || "")}</i><i>${esc(e.score || "")}</i></span>`).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
     html += `<div class="ins-sub-h">LAST FIVE</div>${row(game.awayShort, game.awayId, form.away)}${row(game.homeShort, game.homeId, form.home)}`;
   }
   // Team stats, side by side, the better number not judged: labels vary.
   if (direct?.teamStats?.length) {
-    html += `<div class="ins-sub-h">TEAM STATS</div><div class="ins-glance">${direct.teamStats.map((r) => `<div class="ins-g"><span class="ins-gk">${esc(String(r.label).toUpperCase())}</span><span class="ins-gv">${esc(r.away)}</span><span class="ins-gv">${esc(r.home)}</span></div>`).join("")}</div>`;
+    const better = (label, a, h) => {
+      const x = parseFloat(String(a).replace(/[^0-9.\-]/g, "")), y = parseFloat(String(h).replace(/[^0-9.\-]/g, ""));
+      if (!Number.isFinite(x) || !Number.isFinite(y) || x === y) return [false, false];
+      const lowerWins = /allow|against|turnover(?!.*margin)|penalt|sack(?:s)? allowed|interception/i.test(label);
+      return lowerWins ? [x < y, y < x] : [x > y, y > x];
+    };
+    html += `<div class="ins-sub-h">TEAM STATS</div><div class="ins-glance ins-stats"><div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(abbrOf("away"))}</span><span>${lg(game.homeId)}${esc(abbrOf("home"))}</span></div>${direct.teamStats.map((r) => { const [ab, hb] = better(r.label, r.away, r.home); return `<div class="ins-g"><span class="ins-gk plain">${esc(r.label)}</span><span class="ins-gv${ab ? " lead" : ""}">${esc(r.away)}</span><span class="ins-gv${hb ? " lead" : ""}">${esc(r.home)}</span></div>`; }).join("")}</div>`;
   }
   // Series history.
   if (direct?.series?.length) {
     html += `<div class="ins-sub-h">SERIES</div><ul class="ins-news">${direct.series.map((e) => `<li>${esc(e.summary || "")}${e.score ? `<span class="ins-det">${esc(e.score)}${e.date ? ` · ${esc(new Date(e.date).getFullYear())}` : ""}</span>` : ""}</li>`).join("")}</ul>`;
   }
   if (brief?.summary?.length) html += `<ul class="ins-brief">${brief.summary.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
+  else if (!glance && pend.summary) html += `<div class="ins-loading">Loading ESPN's game page…</div>`;
   else if (!glance) html += `<div class="ins-empty">ESPN has not published this week's game page yet. Numbers land here once it does.${!eventId ? ` <i class="ins-err">game not on the scoreboard feed yet</i>` : ""}</div>`;
   // Mix sources: game-specific first, then alternate the wider press with
   // ESPN so no single outlet fills the list.
@@ -3578,17 +3602,23 @@ async function openInsights(gameId) {
   const norm = (h) => String(h || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 70);
   const aboutLabel = (a) => a === "game" ? "This game" : a === "away" ? game.awayShort : a === "home" ? game.homeShort : a;
   const others = wider.map((n) => ({ ...n, team: aboutLabel(n.about) }));
+  // Keep only stories that name one of the two teams; ESPN's related list
+  // pads with league-wide pieces.
+  const names = [game.away, game.home, game.awayShort, game.homeShort, abbrOf("away"), abbrOf("home")]
+    .map((n) => String(n || "").replace(/^#\d+\s+/, "").trim().toLowerCase()).filter((n) => n.length >= 3);
+  const mentions = (n) => { const t = `${n.headline} ${n.blurb || ""}`.toLowerCase(); return names.some((x) => t.includes(x)); };
   const espn = [
     ...(direct?.related || []).map((n) => ({ ...n, team: "This game" })),
     ...(news?.away || []).map((n) => ({ ...n, team: game.awayShort })),
     ...(news?.home || []).map((n) => ({ ...n, team: game.homeShort })),
-  ];
+  ].filter(mentions);
   const mixed = [];
   const gameFirst = [...others.filter((n) => n.about === "game"), ...espn.filter((n) => n.team === "This game")];
   const restO = others.filter((n) => n.about !== "game"), restE = espn.filter((n) => n.team !== "This game");
   mixed.push(...gameFirst);
   for (let i = 0; i < Math.max(restO.length, restE.length); i++) { if (restO[i]) mixed.push(restO[i]); if (i % 2 === 1 && restE[(i - 1) / 2]) mixed.push(restE[(i - 1) / 2]); }
   const newsRows = mixed.filter((n) => { const k = norm(n.headline); if (!k || seen.has(k)) return false; seen.add(k); return true; });
+  if (!newsRows.length && (pend.news || pend.wider)) html += `<div class="ins-h">NEWS</div><div class="ins-loading">Loading news…</div>`;
   if (newsRows.length) html += `<div class="ins-h">NEWS</div><ul class="ins-news">${newsRows.slice(0, 12).map((n) => `<li><b class="ins-nh">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det"><em class="ins-src">${esc(n.source || "")}</em>${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
 
   // 1. Injuries, one column per team.
@@ -3620,6 +3650,16 @@ async function openInsights(gameId) {
     total: mv?.overUnder ?? direct?.odds?.overUnder ?? 52,
   };
   body.querySelector("#ins-sim")?.addEventListener("click", () => window.openSim?.(simCtx));
+  };
+  // Cached summary paints at once; otherwise the first paint waits for it.
+  land(withTimeout(fetchInsights(), 3500, null), (v) => { data = v; });
+  land(withTimeout(fetchGameSnapshot(gameId), 3500, null), (v) => { snap = v; });
+  land(withTimeout(fetchWiderNews(gameId), 6000, []), (v) => { wider = v || []; }, "wider");
+  land(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), ([a, h]) => { awayNews = a; homeNews = h; }, "news");
+  const eventIdNow = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
+  const summaryP = (eventIdNow ? Promise.resolve(eventIdNow) : fetchLiveScores().catch(() => {}).then(() => latestLive[gameId]?.eventId || null))
+    .then((id) => fetchEspnSummary(id));
+  land(summaryP, (v) => { summaryRaw = v; }, "summary");
 }
 (() => {
   const modal = document.getElementById("insights-modal");
