@@ -139,21 +139,22 @@
       if (pass) {
         const tgt = pick(p.targets, p.targets.map((_, i) => i === 0 ? 5 : i === 1 ? 3 : 2));
         const text = yds === 0 && !isLast ? `${p.qb} PASS INCOMPLETE` : `${p.qb} PASS TO ${tgt.pos} ${tgt.name} · ${yd(yds)}`;
-        out.push({ type: "play", side, pos, qtr, clock: tick(), text: tdNow ? `${text} · TOUCHDOWN!` : text, td: tdNow });
+        const comp = !(yds === 0 && !isLast);
+        out.push({ type: "play", side, pos, qtr, clock: tick(), text: tdNow ? `${text} · TOUCHDOWN!` : text, td: tdNow, stat: { kind: "pass", qb: p.qb, tgt: tgt.name, yds: comp ? yds : 0, comp, td: tdNow } });
       } else {
         const rb = pick(p.rbs, p.rbs.map((_, i) => i === 0 ? 4 : 1));
         const text = yds < 0 ? `${rb} RUN · LOSS OF ${-yds}` : yds === 0 ? `${rb} RUN · NO GAIN` : `${rb} RUN · ${yd(yds)}`;
-        out.push({ type: "play", side, pos, qtr, clock: tick(), text: tdNow ? `${text} · TOUCHDOWN!` : text, td: tdNow });
+        out.push({ type: "play", side, pos, qtr, clock: tick(), text: tdNow ? `${text} · TOUCHDOWN!` : text, td: tdNow, stat: { kind: "run", rb, yds, td: tdNow } });
       }
       if (tdNow) break;
     }
     if (kind === "td") {
       score[side] += 7;
-      out.push({ type: "score", side, pos: 100, qtr, clock: t, text: "EXTRA POINT GOOD", big: "TOUCHDOWN!", score: { ...score } });
+      out.push({ type: "score", side, pos: 100, qtr, clock: t, text: "EXTRA POINT GOOD", big: "TOUCHDOWN!", score: { ...score }, pts: 7 });
     } else if (kind === "fg") {
       const dist = 100 - pos + 17;
       score[side] += 3;
-      out.push({ type: "score", side, pos, qtr, clock: tick(), text: `${p.k ? `${p.k} ` : ""}${dist} YD FIELD GOAL · GOOD`, big: "FIELD GOAL", score: { ...score } });
+      out.push({ type: "score", side, pos, qtr, clock: tick(), text: `${p.k ? `${p.k} ` : ""}${dist} YD FIELD GOAL · GOOD`, big: "FIELD GOAL", score: { ...score }, pts: 3 });
     } else {
       const end = pick(["PUNT", "PUNT", "PUNT", "INTERCEPTED", "FUMBLE LOST", "MISSED FG", "DOWNS"], null);
       const text = end === "PUNT" ? `PUNT · ${irand(36, 52)} YDS`
@@ -184,6 +185,7 @@
           <div class="sim-board"></div>
           <div class="sim-field"><div class="sim-ez l"></div><div class="sim-lines"></div><div class="sim-ez r"></div><div class="sim-ball"></div><div class="sim-flash"></div></div>
           <div class="sim-log"></div>
+          <div class="sim-panel"></div>
         </div>
       </div>
       <div class="gb-brand"><b>BROCHIEFS</b> <i>GAME BOX</i><sup>™</sup></div>
@@ -228,6 +230,49 @@
     const target = drawScore(ctx);
     const game = buildGame(ctx, target, { away, home });
     const cur = { away: 0, home: 0, qtr: 1, clock: 900, side: null };
+    const panel = el.querySelector(".sim-panel");
+    const blank = () => ({ q: [0, 0, 0, 0, 0], pass: {}, rush: {}, rec: {}, passYds: 0, rushYds: 0 });
+    const st = { away: blank(), home: blank() };
+    const bump = (o, k, f) => { o[k] = o[k] || { n: 0, a: 0, yds: 0, td: 0 }; f(o[k]); };
+    const apply = (ev) => {
+      const t = st[ev.side];
+      if (!t) return;
+      if (ev.type === "score") t.q[Math.min(ev.qtr, 5) - 1] += ev.pts || 0;
+      const x = ev.stat;
+      if (!x) return;
+      if (x.kind === "pass") {
+        bump(t.pass, x.qb, (r) => { r.a += 1; if (x.comp) { r.n += 1; r.yds += x.yds; } if (x.td) r.td += 1; });
+        if (x.comp) { bump(t.rec, x.tgt, (r) => { r.n += 1; r.yds += x.yds; if (x.td) r.td += 1; }); t.passYds += x.yds; }
+      } else {
+        bump(t.rush, x.rb, (r) => { r.n += 1; r.yds += x.yds; if (x.td) r.td += 1; });
+        t.rushYds += x.yds;
+      }
+    };
+    const top = (o) => Object.entries(o).sort((a, b) => b[1].yds - a[1].yds)[0] || null;
+    const drawPanel = (final) => {
+      const ot = st.away.q[4] || st.home.q[4];
+      const cols = ot ? [0, 1, 2, 3, 4] : [0, 1, 2, 3];
+      const row = (side) => `<tr><th>${esc((side === "away" ? ctx.away : ctx.home).abbr)}</th>${cols.map((i) => `<td>${i < cur.qtr || final ? st[side].q[i] : "·"}</td>`).join("")}<td class="t">${cur[side]}</td></tr>`;
+      let html = `<table class="sim-ls"><tr><th></th>${cols.map((i) => `<td>${i === 4 ? "OT" : i + 1}</td>`).join("")}<td class="t">T</td></tr>${row("away")}${row("home")}</table>`;
+      if (!final) {
+        html += `<div class="sim-ts">${["away", "home"].map((side) => `<div><b>${esc((side === "away" ? ctx.away : ctx.home).abbr)}</b><span>PASS ${st[side].passYds}</span><span>RUSH ${st[side].rushYds}</span></div>`).join("")}</div>`;
+      } else {
+        const line = (side) => {
+          const q = top(st[side].pass), r = top(st[side].rush);
+          return `<div class="sim-bx"><b>${esc((side === "away" ? ctx.away : ctx.home).abbr)}</b>${q ? `<span>${esc(q[0])} ${q[1].n}/${q[1].a} ${q[1].yds}${q[1].td ? ` ${q[1].td}TD` : ""}</span>` : ""}${r ? `<span>${esc(r[0])} ${r[1].n}-${r[1].yds}${r[1].td ? ` ${r[1].td}TD` : ""}</span>` : ""}</div>`;
+        };
+        // Player of the game: best stat line on the winning side.
+        const win = cur.home > cur.away ? "home" : "away";
+        const cands = [
+          ...Object.entries(st[win].pass).map(([n, r]) => ({ n, v: r.yds / 25 + r.td * 4, t: `${r.n}/${r.a} ${r.yds} YDS${r.td ? ` ${r.td} TD` : ""}` })),
+          ...Object.entries(st[win].rush).map(([n, r]) => ({ n, v: r.yds / 10 + r.td * 6, t: `${r.n} CAR ${r.yds} YDS${r.td ? ` ${r.td} TD` : ""}` })),
+          ...Object.entries(st[win].rec).map(([n, r]) => ({ n, v: r.yds / 10 + r.td * 6, t: `${r.n} REC ${r.yds} YDS${r.td ? ` ${r.td} TD` : ""}` })),
+        ].sort((a, b) => b.v - a.v);
+        html += `${line("away")}${line("home")}`;
+        if (cands[0]) html += `<div class="sim-pog"><em>PLAYER OF THE GAME</em><b>${esc(cands[0].n)}</b><span>${esc(cands[0].t)}</span></div>`;
+      }
+      panel.innerHTML = html;
+    };
     const drawBoard = () => {
       board.innerHTML = `<div class="sim-tm${cur.side === "away" ? " poss" : ""}" ><img src="${ctx.away.logo}" alt=""><span>${esc(ctx.away.abbr)}</span><b>${cur.away}</b></div>
         <div class="sim-mid"><span>${cur.final ? "FINAL" : cur.qtr > 4 ? "OT" : `${cur.qtr}${["", "ST", "ND", "RD", "TH"][cur.qtr]} QTR`}</span><b>${cur.final ? (game.events.some((e) => e.qtr === 5) ? "OT" : "0:00") : fmtClock(cur.clock)}</b></div>
@@ -246,13 +291,19 @@
     log.innerHTML = "";
     drawBoard();
     let i = 0;
+    drawPanel(false);
     const finish = () => {
       clearTimeout(timer);
+      while (i < game.events.length) apply(game.events[i++]);
+      cur.qtr = Math.max(...game.events.map((e) => e.qtr || 0));
+      log.innerHTML = "";
+      game.events.filter((e) => e.type === "play" || e.type === "score" || e.type === "end").slice(-4).forEach((e) => pushLine(e.text, e.type === "score" || e.td ? "td" : e.turnover ? "to" : ""));
       cur.away = game.score.away; cur.home = game.score.home; cur.clock = 0; cur.side = null; cur.final = true;
       drawBoard();
       const winner = cur.home > cur.away ? ctx.home : ctx.away;
       const w = Math.max(cur.home, cur.away), l = Math.min(cur.home, cur.away);
       pushLine(`FINAL · ${winner.short.toUpperCase()} WINS ${w}-${l}`, "final");
+      drawPanel(true);
       showBig(`FINAL ${w}-${l}`);
       const a = el.querySelector('[data-act="skip"]');
       if (a) { a.dataset.act = "again"; a.setAttribute("aria-label", "Sim again"); }
@@ -283,7 +334,9 @@
         pushLine(ev.text, ev.turnover ? "to" : "dim");
         wait = ev.turnover ? 700 : 320;
       }
+      apply(ev);
       drawBoard();
+      drawPanel(false);
       timer = setTimeout(step, wait);
     };
     const actions = el.querySelector(".sim-actions");

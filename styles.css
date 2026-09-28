@@ -3377,7 +3377,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .sim-flash { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--g0); background: var(--g3); opacity: 0; pointer-events: none; letter-spacing: .06em; text-align: center; }
 .sim-flash.on { animation: sim-flash 1.1s steps(4) both; }
 @keyframes sim-flash { 0% { opacity: 0; } 15%, 75% { opacity: 1; } 100% { opacity: 0; } }
-.sim-log { display: flex; flex-direction: column; gap: 3px; min-height: 124px; }
+.sim-log { display: flex; flex-direction: column; gap: 3px; min-height: 96px; }
 .sim-line { font-size: 6.5px; line-height: 1.5; color: var(--g3); letter-spacing: .02em; }
 .sim-line:last-child { animation: sim-in .2s steps(3); }
 .sim-line:not(:last-child) { color: var(--g2); }
@@ -3392,3 +3392,20 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-stats .ins-gv { font-size: 12px; }
 .ins-form { grid-template-columns: 64px minmax(0, 1fr); }
 .ins-cat { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-cyan); margin-right: 5px; letter-spacing: .06em; }
+.sim-panel { margin-top: auto; padding-top: 5px; border-top: 2px dashed var(--g2); display: flex; flex-direction: column; gap: 5px; }
+.sim-ls { width: 100%; border-collapse: collapse; font-size: 6.5px; color: var(--g3); }
+.sim-ls th { text-align: left; font-weight: normal; padding: 1px 2px; }
+.sim-ls td { text-align: center; padding: 2px 0; color: var(--g2); }
+.sim-ls tr:not(:first-child) td { color: var(--g3); }
+.sim-ls td.t { font-size: 8px; color: var(--g3); background: var(--g1); }
+.sim-ls tr:first-child td { font-size: 5.5px; }
+.sim-ts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 5.5px; color: var(--g2); }
+.sim-ts div { display: flex; flex-direction: column; gap: 2px; }
+.sim-ts b { color: var(--g3); font-weight: normal; font-size: 6.5px; }
+.sim-bx { display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 5.5px; color: var(--g2); }
+.sim-bx b { color: var(--g3); font-weight: normal; width: 100%; font-size: 6.5px; }
+.sim-pog { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px; background: var(--g3); color: var(--g0); animation: sim-blink 1s steps(2) infinite; }
+.sim-pog em { font-style: normal; font-size: 5.5px; letter-spacing: .1em; }
+.sim-pog b { font-weight: normal; font-size: 8px; }
+.sim-pog span { font-size: 6px; }
+@keyframes sim-blink { 50% { background: var(--g2); } }
