@@ -76,7 +76,7 @@ async function fetchJsonCached(env, url, ttlSec = 7200) {
     const hit = await env.LIFTR_KV.get(key, "json");
     if (hit && hit.at && Date.now() - hit.at < ttlSec * 1000) return { data: hit.data, cached: true };
   } catch {}
-  const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, cf: { cacheTtl: 0 } });
+  const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json, text/plain, */*", "Accept-Language": "en-US,en;q=0.9", Referer: "https://www.espn.com/", Origin: "https://www.espn.com" }, cf: { cacheTtl: 0 } });
   const text = await res.text();
   if (!res.ok) throw new Error(`HTTP ${res.status} ${text.slice(0, 80).replace(/\s+/g, " ")}`);
   let data;

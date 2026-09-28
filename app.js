@@ -3332,6 +3332,78 @@ function sparkline(series) {
 function fmtWhen(t) {
   return new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" });
 }
+// ESPN's edge turns away Cloudflare's servers on some paths, so the game
+// summary is fetched from the browser, the same way the scoreboard is.
+// It carries both injury lists, the current line, records, ATS, FPI,
+// weather, venue and leaders in one call.
+const summaryCache = {};
+async function fetchEspnSummary(eventId) {
+  if (!eventId) return null;
+  const hit = summaryCache[eventId];
+  if (hit && Date.now() - hit.at < 15 * 60 * 1000) return hit.data;
+  try {
+    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}&t=${Math.floor(Date.now() / 900000)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    summaryCache[eventId] = { at: Date.now(), data };
+    return data;
+  } catch { return null; }
+}
+function parseSummaryClient(data, game) {
+  if (!data || typeof data !== "object" || !data.header) return null;
+  const comp = data.header?.competitions?.[0] || {};
+  const side = (ha) => (comp.competitors || []).find((c) => c.homeAway === ha) || {};
+  const rec = (c) => {
+    const list = Array.isArray(c.record) ? c.record : [];
+    return { overall: list.find((r) => r.type === "total" || r.name === "overall")?.summary || list[0]?.summary || null };
+  };
+  const ats = (teamId) => {
+    const row = (data.againstTheSpread || []).find((r) => Number(r?.team?.id) === Number(teamId));
+    const r = row?.records?.find((x) => /overall/i.test(x?.type || x?.name || "")) || row?.records?.[0];
+    return r?.summary || null;
+  };
+  const pr = data.predictor;
+  const h = Number(pr?.homeTeam?.gameProjection), a = Number(pr?.awayTeam?.gameProjection);
+  const fpi = Number.isFinite(h) && Number.isFinite(a) ? { home: Math.round(h), away: Math.round(a) } : null;
+  const w = data.weather || comp.weather || null;
+  const weather = w ? { text: w.displayValue || null, temp: Number.isFinite(Number(w.temperature)) ? Number(w.temperature) : null, precip: Number.isFinite(Number(w.precipitation)) ? Number(w.precipitation) : null } : null;
+  const venue = data.gameInfo?.venue ? { name: data.gameInfo.venue.fullName || null, indoor: !!data.gameInfo.venue.indoor } : null;
+  const inj = (teamId) => {
+    const block = (data.injuries || []).find((b) => Number(b?.team?.id) === Number(teamId));
+    return (block?.injuries || []).map((i) => ({ name: i?.athlete?.displayName || null, pos: i?.athlete?.position?.abbreviation || null, status: i?.status || i?.type?.description || null, detail: i?.shortComment || i?.details?.detail || null })).filter((i) => i.name && i.status).slice(0, 12);
+  };
+  const leaders = (teamId) => {
+    const block = (data.leaders || []).find((l) => Number(l?.team?.id) === Number(teamId));
+    return (block?.leaders || []).slice(0, 3).map((cat) => { const top = cat?.leaders?.[0]; return top ? { cat: cat.displayName || cat.name || "", name: top.athlete?.displayName || "", line: top.displayValue || "" } : null; }).filter((x) => x && x.name);
+  };
+  const pc = Array.isArray(data.pickcenter) ? data.pickcenter[0] : null;
+  const pcSpread = Number(pc?.spread);
+  const odds = pc ? { spread: Number.isFinite(pcSpread) ? Math.abs(pcSpread) : null, favoriteSide: pc.homeTeamOdds?.favorite === true ? "home" : pc.awayTeamOdds?.favorite === true ? "away" : Number.isFinite(pcSpread) ? (pcSpread < 0 ? "home" : "away") : null, overUnder: Number.isFinite(Number(pc.overUnder)) ? Number(pc.overUnder) : null } : null;
+  const away = side("away"), home = side("home");
+  return {
+    injuriesListed: Array.isArray(data.injuries),
+    injuries: { away: inj(away.team?.id ?? game.awayId), home: inj(home.team?.id ?? game.homeId) },
+    records: { away: rec(away), home: rec(home) },
+    ats: { away: ats(away.team?.id ?? game.awayId), home: ats(home.team?.id ?? game.homeId) },
+    fpi, weather, venue, odds,
+    leaders: { away: leaders(away.team?.id ?? game.awayId), home: leaders(home.team?.id ?? game.homeId) },
+  };
+}
+// Sealed line to the latest number, signed from the sealed favourite.
+function movementFrom(game, samples) {
+  if (!samples.length) return null;
+  const favSide = game.favorite === game.home ? "home" : "away";
+  const signed = (x) => x.spread === null || x.favoriteSide === null ? null : x.favoriteSide === favSide ? x.spread : -x.spread;
+  const pts = samples.map((x) => ({ at: x.at, v: signed(x), live: !!x.live })).filter((x) => x.v !== null);
+  if (!pts.length) return null;
+  const last = samples[samples.length - 1];
+  const sealed = Number(game.spread) || 0;
+  const nowV = pts[pts.length - 1].v;
+  const delta = Math.round((nowV - sealed) * 2) / 2;
+  const favShort = game.favorite === game.home ? game.homeShort : game.awayShort;
+  const dogShort = game.favorite === game.home ? game.awayShort : game.homeShort;
+  return { sealed, sealedFavorite: favShort, now: Math.abs(nowV), nowFavorite: nowV >= 0 ? favShort : dogShort, overUnder: last.overUnder ?? null, delta, toward: delta === 0 ? null : delta > 0 ? favShort : dogShort, points: pts };
+}
 async function fetchGameSnapshot(gameId) {
   if (!WORKER_URL) return null;
   try {
@@ -3355,16 +3427,25 @@ async function openInsights(gameId) {
   const links = () => `<div class="ins-h">LINKS</div><div class="ins-links">${insightsLinks(game).map((l) => `<a class="ins-link" href="${l.href}" target="_blank" rel="noopener"><span class="ins-link-l">${esc(l.label)}</span><span class="ins-link-s">${esc(l.sub)}</span><span class="ins-link-a">›</span></a>`).join("")}</div>`;
   body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
   modal.classList.remove("hidden");
-  const [data, snap] = await Promise.all([fetchInsights(), fetchGameSnapshot(gameId)]);
+  // The scoreboard gives the event id; without one yet, fetch it now.
+  if (!latestLive[gameId]?.eventId) { try { await fetchLiveScores(); } catch {} }
+  const eventId = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
+  const [data, snap, summaryRaw] = await Promise.all([fetchInsights(), fetchGameSnapshot(gameId), fetchEspnSummary(eventId)]);
   if (modal.classList.contains("hidden")) return;
   const brief = data?.briefs?.[gameId] || null;
-  // The snapshot is fresher for feeds and the line; the brief adds the
-  // written summary. Either one alone still fills the sheet.
-  const injuries = snap?.injuries || brief?.injuries || null;
-  const glance = snap?.glance || brief?.glance || null;
-  const mv = snap?.movement || brief?.movement || null;
+  const direct = parseSummaryClient(summaryRaw, game);
+  // Browser-fetched summary first (ESPN lets phones in where it turns the
+  // Worker away), then the Worker's snapshot, then the stored brief.
+  const injuries = direct?.injuriesListed ? direct.injuries : snap?.injuries || brief?.injuries || null;
+  const glance = direct || snap?.glance || brief?.glance || null;
   const news = snap?.news || brief?.news || null;
   if (snap?.eventId) insightsCache.eventIds = { ...(insightsCache.eventIds || {}), [gameId]: snap.eventId };
+  // Line: the Worker's logged samples plus whatever the browser sees now.
+  const samples = (snap?.samples || []).filter((x) => !x.live).slice();
+  const nowOdds = latestLive[gameId]?.odds && latestLive[gameId].odds.spread !== null ? latestLive[gameId].odds : direct?.odds && direct.odds.spread !== null ? direct.odds : null;
+  if (nowOdds) samples.push({ ...nowOdds, at: Date.now(), live: true });
+  const mv = movementFrom(game, samples) || snap?.movement || brief?.movement || null;
+  const feedErr = (side) => direct ? null : snap?.feeds?.[side];
   let html = "";
 
   // 1. Injuries, one column per team.
@@ -3373,7 +3454,7 @@ async function openInsights(gameId) {
     ? `<ul class="ins-inj">${list.slice(0, 7).map((i) => `<li><b class="${statusCls(i.status)}">${esc(i.status)}</b><span class="ins-who">${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}</span>${i.detail ? `<span class="ins-det">${esc(i.detail)}</span>` : ""}</li>`).join("")}</ul>`
     : `<div class="ins-empty small">${ok === false ? `Feed unavailable.${err ? ` <i class="ins-err">${esc(err)}</i>` : ""}` : "No one listed."}</div>`) + `</div>`;
   html += `<div class="ins-h">INJURIES</div>`;
-  html += injuries ? `<div class="ins-cols">${col(game.awayShort, injuries.away, snap?.feeds?.awayInjuries, game.awayId, snap?.feeds?.awayInjuriesError)}${col(game.homeShort, injuries.home, snap?.feeds?.homeInjuries, game.homeId, snap?.feeds?.homeInjuriesError)}</div>` : `<div class="ins-empty">Could not reach the injury feeds. Team reports are in the links below.</div>`;
+  html += injuries ? `<div class="ins-cols">${col(game.awayShort, injuries.away, direct ? true : snap?.feeds?.awayInjuries, game.awayId, feedErr("awayInjuriesError"))}${col(game.homeShort, injuries.home, direct ? true : snap?.feeds?.homeInjuries, game.homeId, feedErr("homeInjuriesError"))}</div>` : `<div class="ins-empty">Could not reach the injury feeds${eventId ? "" : " (game not on ESPN's scoreboard yet)"}. Team reports are in the links below.</div>`;
 
   // 2. Line: sealed to now as a day-by-day timeline.
   html += `<div class="ins-h">LINE</div>`;
@@ -3389,7 +3470,7 @@ async function openInsights(gameId) {
     html += `<div class="ins-timeline">${shown.map((st, i) => `<div class="ins-step ${st.cls}"><span class="ins-step-l">${esc(st.label)}</span><span class="ins-step-v">${fmt(st.v)}</span></div>${i < shown.length - 1 ? `<span class="ins-step-arrow ${shown[i + 1].v > st.v ? "up" : shown[i + 1].v < st.v ? "down" : ""}">${shown[i + 1].v > st.v ? "▲" : shown[i + 1].v < st.v ? "▼" : "›"}</span>` : ""}`).join("")}</div>
       <div class="ins-verdict">${verdict}${mv.overUnder !== null ? ` <span class="ins-ou">O/U ${mv.overUnder}</span>` : ""}</div>`;
   } else {
-    html += `<div class="ins-empty">No line on the feed right now. You score against the sealed ${esc(favShort)} -${game.spread} either way.${snap && !snap.feeds?.liveFound ? ` <i class="ins-err">game not on the scoreboard feed</i>` : ""}</div>`;
+    html += `<div class="ins-empty">No line on the feed right now. You score against the sealed ${esc(favShort)} -${game.spread} either way.</div>`;
   }
 
   // 3. Insights: the numbers, then the written brief.
@@ -3407,7 +3488,7 @@ async function openInsights(gameId) {
     if (glance.leaders?.away?.length || glance.leaders?.home?.length) html += `<div class="ins-leads">${lead(game.awayShort, glance.leaders.away, game.awayId)}${lead(game.homeShort, glance.leaders.home, game.homeId)}</div>`;
   }
   if (brief?.summary?.length) html += `<ul class="ins-brief">${brief.summary.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
-  else if (!glance) html += `<div class="ins-empty">ESPN has not published this week's game page yet. Numbers land here once it does.${snap?.feeds?.summaryError ? ` <i class="ins-err">${esc(snap.feeds.summaryError)}</i>` : ""}</div>`;
+  else if (!glance) html += `<div class="ins-empty">ESPN has not published this week's game page yet. Numbers land here once it does.${!eventId ? ` <i class="ins-err">game not on the scoreboard feed yet</i>` : ""}</div>`;
   const newsRows = news ? [...(news.away || []).map((n) => ({ ...n, team: game.awayShort })), ...(news.home || []).map((n) => ({ ...n, team: game.homeShort }))] : [];
   if (newsRows.length) html += `<div class="ins-h">HEADLINES</div><ul class="ins-news">${newsRows.slice(0, 6).map((n) => `<li>${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}<span class="ins-det">${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
 
