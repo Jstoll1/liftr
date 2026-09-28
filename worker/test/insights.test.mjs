@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -91,4 +91,28 @@ test("runInsights does nothing once the week has kicked off", async () => {
   const r = await runInsights({ LIFTR_KV: kv }, { currentWeek: async () => 5, readSlate: async (e, w) => e.LIFTR_KV.get(`games:w${w}`, "json"), liveGames: async () => ({ games: [] }) }, {});
   assert.equal(r.skipped, 1);
   assert.equal(kv.writes.length, 0);
+});
+
+test("parseSummary pulls records, ATS, FPI, weather, venue and leaders from ESPN's game summary", () => {
+  const data = {
+    header: { competitions: [{ competitors: [
+      { homeAway: "away", team: { id: "324" }, record: [{ type: "total", summary: "3-1" }, { type: "road", summary: "1-1" }] },
+      { homeAway: "home", team: { id: "290" }, record: [{ type: "total", summary: "2-2" }, { type: "home", summary: "2-0" }] },
+    ] }] },
+    againstTheSpread: [{ team: { id: "324" }, records: [{ type: "overall", summary: "3-1-0" }] }, { team: { id: "290" }, records: [{ type: "overall", summary: "1-3-0" }] }],
+    predictor: { homeTeam: { gameProjection: "58.4" }, awayTeam: { gameProjection: "41.6" } },
+    weather: { displayValue: "Partly cloudy", temperature: 74, precipitation: 20 },
+    gameInfo: { venue: { fullName: "Paulson Stadium", address: { city: "Statesboro", state: "GA" }, indoor: false } },
+    leaders: [{ team: { id: "290", homeAway: "home" }, leaders: [{ displayName: "Passing Yards", leaders: [{ displayValue: "812 YDS, 7 TD", athlete: { displayName: "J. French" } }] }] }],
+  };
+  const g = parseSummary(data, game);
+  assert.equal(g.records.away.overall, "3-1");
+  assert.equal(g.records.home.split, "2-0");
+  assert.deepEqual(g.ats, { away: "3-1-0", home: "1-3-0" });
+  assert.deepEqual(g.fpi, { home: 58, away: 42 });
+  assert.equal(g.weather.temp, 74);
+  assert.equal(g.venue.city, "Statesboro, GA");
+  assert.deepEqual(g.leaders.home, [{ cat: "Passing Yards", name: "J. French", line: "812 YDS, 7 TD" }]);
+  assert.deepEqual(g.leaders.away, []);
+  assert.equal(parseSummary(null, game), null);
 });

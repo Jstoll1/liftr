@@ -104,6 +104,48 @@ export function parseNews(data) {
   })).filter((a) => a.headline).slice(0, 8);
 }
 
+// ESPN's per-game summary: records, ATS records, FPI, weather, venue and
+// the statistical leaders, all in one call keyed by the event id.
+export function parseSummary(data, game) {
+  if (!data || typeof data !== "object") return null;
+  const comp = data.header?.competitions?.[0] || {};
+  const side = (homeAway) => (comp.competitors || []).find((c) => c.homeAway === homeAway) || {};
+  const rec = (c) => {
+    const list = Array.isArray(c.record) ? c.record : [];
+    const overall = list.find((r) => r.type === "total" || r.name === "overall")?.summary || list[0]?.summary || null;
+    const split = list.find((r) => r.type === "home" || r.type === "road" || r.name === "Home" || r.name === "Road")?.summary || null;
+    return { overall, split };
+  };
+  const ats = (teamId) => {
+    const row = (data.againstTheSpread || []).find((r) => Number(r?.team?.id) === Number(teamId));
+    const r = row?.records?.find((x) => /overall/i.test(x?.type || x?.name || "")) || row?.records?.[0];
+    return r?.summary || null;
+  };
+  const fpi = (() => {
+    const p = data.predictor;
+    if (!p) return null;
+    const h = Number(p.homeTeam?.gameProjection), a = Number(p.awayTeam?.gameProjection);
+    return Number.isFinite(h) && Number.isFinite(a) ? { home: Math.round(h), away: Math.round(a) } : null;
+  })();
+  const w = data.weather || comp.weather || null;
+  const weather = w ? { text: w.displayValue || w.conditionId || null, temp: Number.isFinite(Number(w.temperature)) ? Number(w.temperature) : null, precip: Number.isFinite(Number(w.precipitation)) ? Number(w.precipitation) : null } : null;
+  const venue = data.gameInfo?.venue ? { name: data.gameInfo.venue.fullName || null, city: [data.gameInfo.venue.address?.city, data.gameInfo.venue.address?.state].filter(Boolean).join(", ") || null, indoor: !!data.gameInfo.venue.indoor } : null;
+  const leaders = (homeAway) => {
+    const block = (data.leaders || []).find((l) => (l?.team?.homeAway || "").toLowerCase() === homeAway || Number(l?.team?.id) === Number(homeAway === "home" ? game?.homeId : game?.awayId));
+    return (block?.leaders || []).slice(0, 3).map((cat) => {
+      const top = cat?.leaders?.[0];
+      return top ? { cat: cat.displayName || cat.name || "", name: top.athlete?.displayName || top.athlete?.shortName || "", line: top.displayValue || "" } : null;
+    }).filter((x) => x && x.name);
+  };
+  const away = side("away"), home = side("home");
+  return {
+    records: { away: rec(away), home: rec(home) },
+    ats: { away: ats(away.team?.id ?? game?.awayId), home: ats(home.team?.id ?? game?.homeId) },
+    fpi, weather, venue,
+    leaders: { away: leaders("away"), home: leaders("home") },
+  };
+}
+
 async function feed(env, url, parse) {
   try {
     const { data, cached } = await fetchJsonCached(env, url);
@@ -127,7 +169,7 @@ export async function fetchTeamFeeds(env, teamId) {
 export function briefPrompt() {
   return [
     "You write a short pre-game brief for a college football pick'em league.",
-    "Use only the facts in the JSON you are given: the sealed line, how the line has moved, the injury list and the news headlines for both teams.",
+    "Use only the facts in the JSON you are given: the sealed line, how the line has moved, the at-a-glance numbers (records, against-the-spread records, ESPN FPI win chance, weather), the injury list and the news headlines for both teams.",
     "Write 3 to 5 plain sentences, each under 30 words, that a friend would read in ten seconds: the notable injuries with status, what the line has done, and any headline that matters to this game.",
     "Report; never recommend a side, never say who will win or cover, never use the words pick, bet, lean, lock or value.",
     "If a feed is empty say so in one short clause such as 'No injury report on the feed.' Do not invent players, numbers or news.",
@@ -197,21 +239,27 @@ export async function runInsights(env, deps, { week = null, force = false, brief
       const batch = queue.splice(0, 3);
       await Promise.all(batch.map(async (g) => {
         try {
-          const [away, home] = await Promise.all([fetchTeamFeeds(env, g.awayId), fetchTeamFeeds(env, g.homeId)]);
+          const eventId = liveById[g.id]?.eventId || null;
+          const [away, home, summary] = await Promise.all([
+            fetchTeamFeeds(env, g.awayId), fetchTeamFeeds(env, g.homeId),
+            eventId ? feed(env, `${ESPN}/summary?event=${eventId}`, (d) => parseSummary(d, g)) : Promise.resolve({ ok: false, error: "no event id", items: null }),
+          ]);
+          const glance = summary.ok ? summary.items : null;
           const movement = lineMovement(g, log[g.id]);
           const payload = {
             game: `${g.awayShort} at ${g.homeShort}`, kickoff: g.kickoffLabel || g.kickoff,
             sealedLine: `${g.favorite === g.home ? g.homeShort : g.awayShort} -${g.spread}`,
             lineNow: movement ? `${movement.nowFavorite} -${movement.now}${movement.delta ? ` (moved ${Math.abs(movement.delta)} toward ${movement.toward})` : " (unchanged)"}` : "no line feed",
             total: movement?.overUnder ?? null,
+            glance: glance ? { records: glance.records, ats: glance.ats, fpi: glance.fpi, weather: glance.weather } : null,
             injuries: { [g.awayShort]: away.injuries.items, [g.homeShort]: home.injuries.items },
             news: { [g.awayShort]: away.news.items.map((n) => n.headline), [g.homeShort]: home.news.items.map((n) => n.headline) },
           };
-          const summary = await writeBrief(env, payload);
+          const written = await writeBrief(env, payload);
           const brief = {
-            week: w, game: g.id, updatedAt: now, eventId: liveById[g.id]?.eventId || null,
-            summary: summary.lines, summaryError: summary.error || null,
-            movement,
+            week: w, game: g.id, updatedAt: now, eventId,
+            summary: written.lines, summaryError: written.error || null,
+            movement, glance,
             injuries: { away: away.injuries.items, home: home.injuries.items },
             news: { away: away.news.items, home: home.news.items },
             feeds: {
@@ -219,6 +267,7 @@ export async function runInsights(env, deps, { week = null, force = false, brief
               homeInjuries: { ok: home.injuries.ok, error: home.injuries.error || null, cached: !!home.injuries.cached },
               awayNews: { ok: away.news.ok, error: away.news.error || null },
               homeNews: { ok: home.news.ok, error: home.news.error || null },
+              summary: { ok: summary.ok, error: summary.error || null },
             },
           };
           await env.LIFTR_KV.put(briefKey(w, g.id), JSON.stringify(brief), { expirationTtl: 60 * 24 * 3600 });

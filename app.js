@@ -3350,6 +3350,21 @@ async function openInsights(gameId) {
   const mv = brief?.movement || null;
   const live = latestLive[gameId];
   let html = "";
+  // At a glance: the numbers people ask for first, in one grid.
+  const gl = brief?.glance || null;
+  if (gl) {
+    const cell = (k, a, h, aCls = "", hCls = "") => `<div class="ins-g"><span class="ins-gk">${k}</span><span class="ins-gv ${aCls}">${esc(a ?? "—")}</span><span class="ins-gv ${hCls}">${esc(h ?? "—")}</span></div>`;
+    const fpiA = gl.fpi ? `${gl.fpi.away}%` : null, fpiH = gl.fpi ? `${gl.fpi.home}%` : null;
+    const w = gl.weather ? [gl.weather.temp !== null ? `${gl.weather.temp}°` : null, gl.weather.text, gl.weather.precip ? `${gl.weather.precip}% rain` : null].filter(Boolean).join(" · ") : null;
+    html += `<div class="ins-glance"><div class="ins-g head"><span></span><span>${esc(game.awayShort)}</span><span>${esc(game.homeShort)}</span></div>`
+      + cell("RECORD", gl.records?.away?.overall, gl.records?.home?.overall)
+      + cell("ATS", gl.ats?.away, gl.ats?.home)
+      + cell("ESPN FPI", fpiA, fpiH, gl.fpi && gl.fpi.away > gl.fpi.home ? "lead" : "", gl.fpi && gl.fpi.home > gl.fpi.away ? "lead" : "")
+      + `</div>`
+      + (w || gl.venue ? `<div class="ins-wx">${w ? `<span>${esc(w)}</span>` : ""}${gl.venue?.name ? `<span>${esc(gl.venue.name)}${gl.venue.indoor ? " · indoors" : ""}</span>` : ""}</div>` : "");
+    const lead = (label, list) => list?.length ? `<div class="ins-lead"><b>${esc(label)}</b>${list.map((l) => `<span>${esc(l.cat)} · ${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>` : "";
+    if (gl.leaders?.away?.length || gl.leaders?.home?.length) html += `<div class="ins-leads">${lead(game.awayShort, gl.leaders.away)}${lead(game.homeShort, gl.leaders.home)}</div>`;
+  }
   // Brief
   if (brief?.summary?.length) {
     html += `<div class="ins-h">BRIEF <span class="ins-stamp">AUTO-SUMMARY FROM ESPN FEEDS · ${esc(fmtWhen(brief.updatedAt).toUpperCase())}</span></div><ul class="ins-brief">${brief.summary.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
