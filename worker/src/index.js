@@ -1,4 +1,4 @@
-import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey } from "./insights.js";
+import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, linesKey } from "./insights.js";
 // Liftr AI Worker
 //
 // Holds the OpenAI API key server-side (never exposed to the browser) and
@@ -99,6 +99,33 @@ export default {
       } catch (err) {
         console.error("insights game", err?.stack || String(err));
         return json({ error: "Snapshot failed" }, 500, corsHeaders);
+      }
+    }
+    // Phones report the line they see; the Worker keeps one sample per six
+    // hours per game while the week is open, which builds the day-by-day
+    // history ESPN will not serve the Worker directly. Display only.
+    if (url.pathname === "/insights/line" && request.method === "POST") {
+      try {
+        const week = url.searchParams.get("week") ? Number(url.searchParams.get("week")) : (await readWeeks(env)).current;
+        const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
+        const games = slate?.games || [];
+        const g = games.find((x) => Number(x.id) === Number(url.searchParams.get("game")));
+        if (!g) return json({ error: "no such game" }, 404, corsHeaders);
+        const firstKick = Math.min(...games.map((x) => new Date(x.kickoff).getTime()));
+        if (Date.now() >= firstKick) return json({ ok: false, locked: true }, 200, corsHeaders);
+        let b = {};
+        try { b = await request.json(); } catch {}
+        const spread = Number(b.spread), ou = b.overUnder == null ? null : Number(b.overUnder);
+        const side = b.favoriteSide === "home" || b.favoriteSide === "away" ? b.favoriteSide : null;
+        if (!Number.isFinite(spread) || spread < 0 || spread > 70 || !side || (ou !== null && !(ou > 10 && ou < 130))) return json({ error: "bad sample" }, 400, corsHeaders);
+        const log = (await env.LIFTR_KV.get(linesKey(week), "json")) || {};
+        const before = log[g.id]?.length || 0;
+        const next = appendLineSample(log, g.id, { spread, favoriteSide: side, overUnder: ou }, Date.now());
+        if ((next[g.id]?.length || 0) > before) await env.LIFTR_KV.put(linesKey(week), JSON.stringify(next));
+        return json({ ok: true, samples: next[g.id]?.length || 0 }, 200, corsHeaders);
+      } catch (err) {
+        console.error("insights line", err?.stack || String(err));
+        return json({ error: "Line failed" }, 200, corsHeaders);
       }
     }
     if (url.pathname === "/insights/preview") {

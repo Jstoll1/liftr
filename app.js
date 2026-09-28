@@ -3477,6 +3477,14 @@ function movementFrom(game, samples) {
   return { sealed, sealedFavorite: favShort, now: Math.abs(nowV), nowFavorite: nowV >= 0 ? favShort : dogShort, overUnder: last.overUnder ?? null, delta, toward: delta === 0 ? null : delta > 0 ? favShort : dogShort, points: pts };
 }
 let insightsOpenToken = 0;
+const lineReported = new Set();
+function reportLine(gameId, odds) {
+  if (!WORKER_URL || !odds || odds.spread == null || !odds.favoriteSide) return;
+  const key = `${currentWeek}:${gameId}`;
+  if (lineReported.has(key)) return;
+  lineReported.add(key);
+  fetch(`${WORKER_URL}/insights/line?week=${currentWeek}&game=${gameId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ spread: odds.spread, favoriteSide: odds.favoriteSide, overUnder: odds.overUnder ?? null }) }).catch(() => {});
+}
 const aiPreviewCache = {};
 async function fetchAiPreview(game, d) {
   if (!WORKER_URL || !d) return null;
@@ -3554,7 +3562,7 @@ async function openInsights(gameId) {
   // Line: the Worker's logged samples plus whatever the browser sees now.
   const samples = (snap?.samples || []).filter((x) => !x.live).slice();
   const nowOdds = latestLive[gameId]?.odds && latestLive[gameId].odds.spread !== null ? latestLive[gameId].odds : direct?.odds && direct.odds.spread !== null ? direct.odds : null;
-  if (nowOdds) samples.push({ ...nowOdds, at: Date.now(), live: true });
+  if (nowOdds) { samples.push({ ...nowOdds, at: Date.now(), live: true }); reportLine(gameId, nowOdds); }
   const mv = movementFrom(game, samples) || snap?.movement || brief?.movement || null;
   const feedErr = (side) => direct ? null : snap?.feeds?.[side];
   let html = `<button type="button" class="ins-sim" id="ins-sim" aria-label="Simulate game"><span class="ins-sim-gb" aria-hidden="true"><i></i></span><span class="ins-sim-txt"><b>SIMULATE GAME</b><em>▶ PRESS START</em></span><span class="ins-sim-vs" aria-hidden="true">${lg(game.awayId, "sm").replace("/500-dark/", "/500/")}<i>VS</i>${lg(game.homeId, "sm").replace("/500-dark/", "/500/")}</span></button>`;
@@ -3582,30 +3590,44 @@ async function openInsights(gameId) {
       openV = isDog ? -Number(openTxt[2]) : Number(openTxt[2]);
     }
     const nowV = mv ? (mv.nowFavorite === favShort ? mv.now : -mv.now) : null;
-    const lineOf = (v) => `${lg(v >= 0 ? favId : dogId, "sm")}<span>${v === 0 ? "PK" : `-${Math.abs(v)}`}</span>`;
-    const step = (label, v, cls) => `<div class="ln-step ${cls}"><em>${label}</em><b>${lineOf(v)}</b></div>`;
-    const move = (from, to) => {
-      const d = Math.round((to - from) * 2) / 2;
-      if (d === 0) return `<div class="ln-move flat"><i>—</i><span>no change</span></div>`;
-      return `<div class="ln-move ${d > 0 ? "fav" : "dog"}"><i>${d > 0 ? "▶" : "▶"}</i><span>${Math.abs(d)} to ${esc(d > 0 ? favShort : dogShort)}</span></div>`;
-    };
-    const stops = [];
-    if (openV !== null) stops.push(step("OPENED", openV, "open"));
-    if (openV !== null) stops.push(move(openV, sealedV));
-    stops.push(step("SEALED", sealedV, "seal"));
-    if (nowV !== null) { stops.push(move(sealedV, nowV)); stops.push(step("NOW", nowV, "now")); }
-    html += `<div class="ln-track">${stops.join("")}</div>`;
+    // Trend chart: one line, up = the sealed favourite getting bigger.
+    const series = [];
+    if (openV !== null) series.push({ label: "OPENED", v: openV, cls: "open" });
+    series.push({ label: "SEALED", v: sealedV, cls: "seal" });
+    for (const p of (mv?.points || []).filter((p) => !p.live)) series.push({ label: dayLabel(p.at), v: p.v, cls: "day" });
+    if (nowV !== null) series.push({ label: "NOW", v: nowV, cls: "now" });
+    // Drop consecutive repeats in the middle so the line only bends at moves.
+    const pts = series.filter((p, i) => i === 0 || i === series.length - 1 || p.cls === "seal" || p.v !== series[i - 1].v);
+    const W = 300, H = 112, L = 44, R = 18, T = 22, B = 24;
+    const vs = pts.map((p) => p.v);
+    let lo = Math.min(...vs), hi = Math.max(...vs);
+    if (hi - lo < 2) { const mid = (hi + lo) / 2; lo = mid - 1; hi = mid + 1; }
+    const pad = (hi - lo) * 0.15; lo -= pad; hi += pad;
+    const x = (i) => pts.length === 1 ? (L + W - R) / 2 : L + (i * (W - L - R)) / (pts.length - 1);
+    const y = (v) => T + ((hi - v) * (H - T - B)) / (hi - lo);
+    const path = pts.map((p, i) => i ? `H${x(i).toFixed(1)} V${y(p.v).toFixed(1)}` : `M${x(0).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+    const zero = lo < 0 && hi > 0 ? `<line class="ln-zero" x1="${L}" x2="${W - R}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}"/><text class="ln-zl" x="${W - R}" y="${(y(0) - 3).toFixed(1)}" text-anchor="end">PICK'EM</text>` : "";
+    const lab = (v) => v === 0 ? "PK" : `${v > 0 ? abbrOf(game.favorite === game.home ? "home" : "away") : abbrOf(game.favorite === game.home ? "away" : "home")} -${Math.abs(v)}`;
+    const dots = pts.map((p, i) => `<g class="ln-pt ${p.cls}"><title>${esc(p.label)}: ${esc(lab(p.v))}</title><rect x="${(x(i) - (p.cls === "day" ? 3 : 4)).toFixed(1)}" y="${(y(p.v) - (p.cls === "day" ? 3 : 4)).toFixed(1)}" width="${p.cls === "day" ? 6 : 8}" height="${p.cls === "day" ? 6 : 8}"/>${p.cls === "day" ? "" : `<text class="ln-v" x="${x(i).toFixed(1)}" y="${(y(p.v) - 9).toFixed(1)}" text-anchor="middle">${esc(lab(p.v))}</text>`}<text class="ln-x" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(p.label)}</text></g>`).join("");
+    const up = `<image href="${logoUrl(favId)}" x="2" y="${T - 6}" width="16" height="16"/><text class="ln-ax" x="10" y="${T + 18}" text-anchor="middle">▲</text>`;
+    const down = `<image href="${logoUrl(dogId)}" x="2" y="${H - B - 16}" width="16" height="16"/><text class="ln-ax" x="10" y="${H - B - 20}" text-anchor="middle">▼</text>`;
+    const chipTxt = (p) => `<span class="ln-chip ${p.cls}"><em>${esc(p.label)}</em>${esc(lab(p.v))}</span>`;
+    const key3 = [series.find((p) => p.cls === "open"), series.find((p) => p.cls === "seal"), series.find((p) => p.cls === "now")].filter(Boolean);
+    html += `<div class="ln-chips">${key3.map(chipTxt).join('<i class="ln-arrow">›</i>')}</div>`;
+    const daily = series.filter((p) => p.cls === "day").length;
+    let trendHtml = `<details class="ln-more"><summary><span>▶</span> DAY BY DAY${daily ? "" : " · HISTORY FILLS IN AS THE WEEK GOES"}</summary><div class="ln-crt"><svg class="ln-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Line movement: ${esc(pts.map((p) => `${p.label} ${lab(p.v)}`).join(", "))}">${zero}<line class="ln-base" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/>${up}${down}<path class="ln-glow" d="${path}"/><path class="ln-path" d="${path}"/>${dots}</svg></div></details>`;
     // One plain sentence.
-    const pts = (v) => `${Math.abs(v)} point${Math.abs(v) === 1 ? "" : "s"}`;
+    const ptsTxt = (v) => `${Math.abs(v)} point${Math.abs(v) === 1 ? "" : "s"}`;
     let say = "";
     if (nowV === null) say = `No live line right now. You score against ${esc(favShort)} -${sealedV}.`;
     else {
       const d = Math.round((nowV - sealedV) * 2) / 2;
-      say = d === 0 ? `No movement since we sealed it.` : `Moved ${pts(d)} toward ${esc(d > 0 ? favShort : dogShort)} since we sealed it.`;
-      if (openV !== null) { const w = Math.round((nowV - openV) * 2) / 2; if (w !== 0) say += ` ${pts(w)} toward ${esc(w > 0 ? favShort : dogShort)} since it opened.`; }
+      say = d === 0 ? `No movement since we sealed it.` : `Moved ${ptsTxt(d)} toward ${esc(d > 0 ? favShort : dogShort)} since we sealed it.`;
+      if (openV !== null) { const w = Math.round((nowV - openV) * 2) / 2; if (w !== 0) say += ` ${ptsTxt(w)} toward ${esc(w > 0 ? favShort : dogShort)} since it opened.`; }
     }
     const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
     html += `<div class="ln-say">${say}${ou !== null ? ` <span class="ins-ou">TOTAL ${ou}</span>` : ""}</div>`;
+    html += trendHtml;
   }
 
   // Preview: same layout as ever (headline, text, "Read the rest"). The
@@ -3703,7 +3725,9 @@ async function openInsights(gameId) {
   let injHtml = `<div class="ins-h">INJURIES</div>`;
   injHtml += injuries ? `<div class="ins-cols">${col(game.awayShort, injuries.away, direct ? true : snap?.feeds?.awayInjuries, game.awayId, feedErr("awayInjuriesError"))}${col(game.homeShort, injuries.home, direct ? true : snap?.feeds?.homeInjuries, game.homeId, feedErr("homeInjuriesError"))}</div>` : `<div class="ins-empty">Could not reach the injury feeds${eventId ? "" : " (game not on ESPN's scoreboard yet)"}. Team reports are in the links below.</div>`;
 
-  html += injHtml;
+  // Nobody listed on either side: leave the section out entirely.
+  const anyInj = injuries && ((injuries.away || []).length || (injuries.home || []).length);
+  if (anyInj) html += injHtml;
 
   // 4. Links out.
   html += links();
