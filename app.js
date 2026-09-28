@@ -3602,9 +3602,8 @@ async function openInsights(gameId) {
     }
     const headline = aiPv?.headline || pv.headline;
     const lead = aiPv?.text ? [aiPv.text] : pv.paras.slice(0, 2);
-    const rest = aiPv?.text ? pv.paras : pv.paras.slice(2);
     html += `<div class="ins-h">PREVIEW</div>${headline ? `<div class="ins-pv-h">${esc(headline)}</div>` : ""}`;
-    html += `<div class="ins-pv">${lead.map((t) => `<p>${esc(t)}</p>`).join("")}${!aiPv?.text && pend.ai ? `<p class="pv-wait">Writing a sharper preview…</p>` : ""}${rest.length ? `<details class="ins-more"><summary>READ THE REST</summary>${rest.map((t) => `<p>${esc(t)}</p>`).join("")}</details>` : ""}</div>`;
+    html += `<div class="ins-pv">${lead.map((t) => `<p>${esc(t)}</p>`).join("")}${!aiPv?.text && pend.ai ? `<p class="pv-wait">Writing a sharper preview…</p>` : ""}</div>`;
   }
 
   // 3. Insights: the numbers, then the written brief.
