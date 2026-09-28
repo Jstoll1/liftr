@@ -329,7 +329,33 @@
     });
   }
 
-  const TABS = { picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate };
+  // --- Feeds: the twice-daily insights run --------------------------------
+  async function renderFeeds() {
+    const data = await get("/insights");
+    const briefs = Object.values(data.briefs || {}).sort((a, b) => a.game - b.game);
+    const runs = data.lastRun ? [data.lastRun] : [];
+    const fmtRun = (r) => `${when(r.at)} · W${r.week} · ${r.sampled} line samples · ${r.briefs} briefs${r.skipped ? ` · ${r.skipped} skipped` : ""}${r.errors?.length ? ` · <span class="con-bad">${r.errors.length} error${r.errors.length === 1 ? "" : "s"}</span>` : ""}`;
+    const feedState = (f) => f?.ok ? `<span class="con-ok">ok${f.cached ? " (cached)" : ""}</span>` : `<span class="con-bad">${esc(f?.error || "failed")}</span>`;
+    body.innerHTML = `<p class="admin-intro">Line samples and game briefs for week ${data.week}. Runs at 7 AM and 7 PM ET while the week is open. Everything here is display only and never touches the sealed line.</p>
+      <div class="admin-row"><button class="admin-btn primary" id="feeds-run" type="button">Run now</button><span id="feeds-note" class="admin-note">${runs.length ? fmtRun(runs[0]) : "No run recorded for this week yet."}</span></div>
+      ${runs[0]?.errors?.length ? `<div class="admin-empty con-bad">${runs[0].errors.map(esc).join("<br>")}</div>` : ""}
+      ${briefs.length ? briefs.map((b) => `<details class="con-brief"><summary>G${b.game} · ${b.movement ? `${esc(b.movement.nowFavorite)} -${b.movement.now}${b.movement.delta ? ` (${b.movement.delta > 0 ? "+" : ""}${b.movement.delta})` : ""}` : "no line"} · ${b.summary?.length || 0} lines · ${when(b.updatedAt)}${b.summaryError ? ` · <span class="con-bad">${esc(b.summaryError)}</span>` : ""}</summary>
+          <div class="con-brief-body">
+            <div class="con-kv">away injuries ${feedState(b.feeds?.awayInjuries)} · home injuries ${feedState(b.feeds?.homeInjuries)} · away news ${feedState(b.feeds?.awayNews)} · home news ${feedState(b.feeds?.homeNews)}</div>
+            ${(b.summary || []).map((l) => `<div class="con-line">${esc(l)}</div>`).join("") || `<div class="admin-empty">No summary.</div>`}
+            <pre class="con-raw">${esc(JSON.stringify({ movement: b.movement, injuries: b.injuries, news: b.news }, null, 1))}</pre>
+          </div></details>`).join("") : `<div class="admin-empty">No briefs stored for this week.</div>`}`;
+    body.querySelector("#feeds-run").addEventListener("click", async (e) => {
+      e.target.disabled = true; say("Running… this takes about half a minute.");
+      try {
+        const res = await fetch(`${WORKER_URL}/insights/run?key=${encodeURIComponent(key())}&force=1`, { method: "POST" });
+        if (!res.ok) { say(`Run failed (${res.status}).`, "bad"); e.target.disabled = false; return; }
+        say("Done."); renderTab();
+      } catch (err) { say("Run failed.", "bad"); e.target.disabled = false; }
+    });
+  }
+
+  const TABS = { picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
 
   async function renderTab() {
     body.innerHTML = `<div class="admin-empty">Loading…</div>`;

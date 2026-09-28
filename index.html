@@ -137,6 +137,16 @@
   </div>
 
   <!-- HEAD TO HEAD: two cards side by side, game by game. -->
+  <div id="insights-modal" class="modal-overlay h2h-modal insights-modal hidden" role="dialog" aria-labelledby="insights-title">
+    <div class="modal-card h2h-card insights-card">
+      <div class="h2h-top">
+        <span id="insights-title" class="modal-title">GAME INFO</span>
+        <button id="insights-close" class="h2h-x" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="insights-sub" class="ins-sub"></div>
+      <div id="insights-body" class="ins-body"></div>
+    </div>
+  </div>
   <div id="h2h-modal" class="modal-overlay h2h-modal hidden" role="dialog" aria-labelledby="h2h-title">
     <div class="modal-card h2h-card">
       <div class="h2h-top">
@@ -383,6 +393,7 @@
           <button class="console-tab" type="button" data-tab="device">This device</button>
           <button class="console-tab" type="button" data-tab="mode">Login mode</button>
           <button class="console-tab" type="button" data-tab="slate">Slate</button>
+          <button class="console-tab" type="button" data-tab="feeds">Feeds</button>
         </div>
         <div id="console-status" class="admin-status"></div>
         <div id="console-body" class="console-body"></div>

@@ -19,3 +19,11 @@ for (const w of weeks) for (const r of w.rows) for (const l of r.ledger) {
 }
 writeFileSync(`${OUT}/picks.csv`, rows.join("\n") + "\n");
 console.log(`${weeks.length} week(s), ${rows.length - 1} pick rows written to ${OUT}/`);
+// Line samples and game briefs, one file for the season. Needs the admin
+// key; skipped quietly when it is not set so the ledger still archives.
+if (process.env.ARCHIVE_LOG_KEY) {
+  const ins = await (await fetch(`${WORKER}/insights?all=1&key=${encodeURIComponent(process.env.ARCHIVE_LOG_KEY)}&t=${Date.now()}`)).json();
+  const perWeek = Object.fromEntries(Object.entries(ins.weeks || {}).map(([w, d]) => [w, { lines: d.lines, briefs: Object.fromEntries(Object.values(d.briefs || {}).map((b) => [b.game, { updatedAt: b.updatedAt, summary: b.summary, movement: b.movement, injuries: b.injuries, news: b.news }])) }]));
+  writeFileSync(`${OUT}/insights.json`, JSON.stringify({ exported: new Date().toISOString().slice(0, 10), weeks: perWeek }, null, 1) + "\n");
+  console.log(`insights for ${Object.keys(perWeek).length} week(s) written`);
+}

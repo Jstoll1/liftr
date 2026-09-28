@@ -373,9 +373,19 @@ function parseEspnEvents(events) {
     // see. Read live rather than frozen into the slate, because a team's
     // rank moves every week and the slate does not.
     const rankOf = (side) => { const n = Number(side?.curatedRank?.current); return Number.isFinite(n) && n >= 1 && n <= 25 ? n : null; };
+    const o = comp.odds?.[0];
+    const oSpread = Number(o?.spread);
+    const odds = o ? {
+      details: typeof o.details === "string" ? o.details : null,
+      spread: Number.isFinite(oSpread) ? Math.abs(oSpread) : null,
+      favoriteSide: o.homeTeamOdds?.favorite === true ? "home" : o.awayTeamOdds?.favorite === true ? "away" : Number.isFinite(oSpread) ? (oSpread < 0 ? "home" : "away") : null,
+      overUnder: Number.isFinite(Number(o.overUnder)) ? Number(o.overUnder) : null,
+    } : null;
     byId[game.id] = {
       id: game.id,
       found: true,
+      eventId: event.id || null,
+      odds,
       awayRank: rankOf(away),
       homeRank: rankOf(home),
       state: statusType.state || "pre",
@@ -1776,12 +1786,13 @@ function renderPicksScreen() {
     card.innerHTML = `
       <div class="game-meta">
         <span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>
-        <span class="game-status ${statusClass}">${statusLabel}</span>
+        <span class="game-meta-right"><button type="button" class="insights-btn" data-insights="${game.id}" aria-label="Insights for ${game.awayShort} at ${game.homeShort}">INFO</button><span class="game-status ${statusClass}">${statusLabel}</span></span>
       </div>
       ${gameLocked ? lockedResultHtml(game, pick, finalRes, isLive ? g : null) : matchupCardsHtml(game, pick)}
       ${gameLocked || !note ? "" : `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>`}
     `;
 
+    card.querySelector(".insights-btn")?.addEventListener("click", (e) => { e.stopPropagation(); openInsights(game.id); });
     card.querySelectorAll(".pick-mini-btn").forEach((btn) => {
       const team = btn.dataset.team;
       const mode = btn.dataset.mode;
@@ -3278,6 +3289,102 @@ function maybeShowBoner() {
   document.addEventListener("pointerdown", close, true);
   document.addEventListener("touchstart", close, { capture: true, passive: false });
   document.addEventListener("keydown", close, true);
+})();
+
+// --- Game insights ------------------------------------------------------
+// One sheet per game: the auto brief, how the line has moved since the
+// seal, both injury reports, headlines, and links out. Data comes from
+// the Worker's twice-daily run; links need nothing but ids we already
+// hold, so the sheet is useful even before the first run.
+let insightsCache = { week: null, at: 0, data: null };
+async function fetchInsights() {
+  if (insightsCache.week === currentWeek && Date.now() - insightsCache.at < 5 * 60 * 1000) return insightsCache.data;
+  if (!WORKER_URL) return null;
+  try {
+    const res = await fetch(`${WORKER_URL}/insights?week=${currentWeek}&t=${Math.floor(Date.now() / 300000)}`);
+    if (!res.ok) return insightsCache.data;
+    const data = await res.json();
+    insightsCache = { week: currentWeek, at: Date.now(), data };
+    return data;
+  } catch { return insightsCache.data; }
+}
+function insightsLinks(game) {
+  const live = latestLive[game.id];
+  const eventId = live?.eventId || insightsCache.data?.briefs?.[game.id]?.eventId || null;
+  const q = encodeURIComponent(`${game.away} ${game.home} football`);
+  const links = [];
+  if (eventId) links.push({ label: "ESPN Gamecast", sub: "preview, odds tab, matchup stats", href: `https://www.espn.com/college-football/game/_/gameId/${eventId}` });
+  links.push({ label: `${game.awayShort} injuries`, sub: "ESPN team report", href: `https://www.espn.com/college-football/team/injuries/_/id/${game.awayId}` });
+  links.push({ label: `${game.homeShort} injuries`, sub: "ESPN team report", href: `https://www.espn.com/college-football/team/injuries/_/id/${game.homeId}` });
+  links.push({ label: "Latest news", sub: "Google News search", href: `https://news.google.com/search?q=${q}` });
+  links.push({ label: "Public betting splits", sub: "Action Network consensus", href: "https://www.actionnetwork.com/ncaaf/public-betting" });
+  links.push({ label: "Line shopping", sub: "ESPN odds board", href: "https://www.espn.com/college-football/odds" });
+  return links;
+}
+function sparkline(series) {
+  if (!series || series.length < 2) return "";
+  const min = Math.min(...series), max = Math.max(...series);
+  const span = max - min || 1;
+  const w = 120, h = 28;
+  const pts = series.map((v, i) => `${(i / (series.length - 1)) * w},${h - 3 - ((v - min) / span) * (h - 6)}`).join(" ");
+  return `<svg class="ins-spark" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${w}" cy="${pts.split(" ").pop().split(",")[1]}" r="2.5" fill="currentColor"/></svg>`;
+}
+function fmtWhen(t) {
+  return new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" });
+}
+async function openInsights(gameId) {
+  const modal = document.getElementById("insights-modal");
+  const game = GAMES.find((g) => g.id === gameId);
+  if (!modal || !game) return;
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const body = modal.querySelector("#insights-body");
+  modal.querySelector("#insights-title").textContent = `G${game.id} · ${game.awayShort} at ${game.homeShort}`;
+  modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv} · sealed ${game.favorite === game.home ? game.homeShort : game.awayShort} -${game.spread}`;
+  const links = () => `<div class="ins-h">LINKS</div><div class="ins-links">${insightsLinks(game).map((l) => `<a class="ins-link" href="${l.href}" target="_blank" rel="noopener"><span class="ins-link-l">${esc(l.label)}</span><span class="ins-link-s">${esc(l.sub)}</span><span class="ins-link-a">›</span></a>`).join("")}</div>`;
+  body.innerHTML = `<div class="ins-loading">Loading the brief…</div>${links()}`;
+  modal.classList.remove("hidden");
+  const data = await fetchInsights();
+  if (modal.classList.contains("hidden")) return;
+  const brief = data?.briefs?.[gameId] || null;
+  const samples = data?.lines?.[gameId] || [];
+  const mv = brief?.movement || null;
+  const live = latestLive[gameId];
+  let html = "";
+  // Brief
+  if (brief?.summary?.length) {
+    html += `<div class="ins-h">BRIEF <span class="ins-stamp">AUTO-SUMMARY FROM ESPN FEEDS · ${esc(fmtWhen(brief.updatedAt).toUpperCase())}</span></div><ul class="ins-brief">${brief.summary.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
+  } else {
+    html += `<div class="ins-h">BRIEF</div><div class="ins-empty">${brief ? "The feeds had nothing to say yet." : "No brief yet. It runs at 7 AM and 7 PM ET while the game is open."}</div>`;
+  }
+  // Line
+  const nowOdds = live?.odds && live.odds.spread !== null ? live.odds : null;
+  html += `<div class="ins-h">LINE</div>`;
+  if (mv) {
+    const moved = mv.delta === 0 ? `<span class="ins-flat">unchanged since the seal</span>` : `<span class="ins-move">moved ${Math.abs(mv.delta)} toward ${esc(mv.toward)}</span>`;
+    html += `<div class="ins-line"><div class="ins-line-nums"><span>SEALED <b>${esc(mv.sealedFavorite)} -${mv.sealed}</b></span><span>NOW <b>${esc(mv.nowFavorite)} -${mv.now}</b>${mv.overUnder !== null ? ` · O/U <b>${mv.overUnder}</b>` : ""}</span><span>${moved}</span></div>${sparkline(mv.series)}</div>`;
+  } else if (nowOdds) {
+    const favShort = nowOdds.favoriteSide === "home" ? game.homeShort : game.awayShort;
+    html += `<div class="ins-line"><div class="ins-line-nums"><span>SEALED <b>${esc(game.favorite === game.home ? game.homeShort : game.awayShort)} -${game.spread}</b></span><span>NOW <b>${esc(favShort)} -${nowOdds.spread}</b>${nowOdds.overUnder !== null ? ` · O/U <b>${nowOdds.overUnder}</b>` : ""}</span></div></div>`;
+  } else {
+    html += `<div class="ins-empty">No live line on the feed right now. You score against the sealed line either way.</div>`;
+  }
+  // Injuries
+  const inj = (label, list) => `<div class="ins-team">${esc(label)}</div>` + (list?.length ? `<ul class="ins-inj">${list.slice(0, 6).map((i) => `<li><b class="st-${esc((i.status || "").toLowerCase().replace(/[^a-z]/g, ""))}">${esc(i.status)}</b> ${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}${i.detail ? `<span class="ins-det">${esc(i.detail)}</span>` : ""}</li>`).join("")}</ul>` : `<div class="ins-empty small">Nothing listed on the feed.</div>`);
+  html += `<div class="ins-h">INJURIES</div>${brief ? inj(game.awayShort, brief.injuries?.away) + inj(game.homeShort, brief.injuries?.home) : `<div class="ins-empty">Arrives with the first brief. Team reports are in the links below.</div>`}`;
+  // News
+  const news = brief ? [...(brief.news?.away || []).map((n) => ({ ...n, team: game.awayShort })), ...(brief.news?.home || []).map((n) => ({ ...n, team: game.homeShort }))] : [];
+  if (news.length) html += `<div class="ins-h">HEADLINES</div><ul class="ins-news">${news.slice(0, 8).map((n) => `<li>${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}<span class="ins-det">${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
+  html += links(); // rebuilt now the brief may have supplied the event id
+  html += `<div class="ins-foot">Information only. Scoring uses the sealed line on your card.</div>`;
+  body.innerHTML = html;
+}
+(() => {
+  const modal = document.getElementById("insights-modal");
+  if (!modal) return;
+  const close = () => modal.classList.add("hidden");
+  modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
+  modal.querySelector("#insights-close")?.addEventListener("click", close);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.classList.contains("hidden")) close(); });
 })();
 
 // --- Head to head -------------------------------------------------------

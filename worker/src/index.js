@@ -1,3 +1,4 @@
+import { runInsights, readInsights, parseOdds } from "./insights.js";
 // Liftr AI Worker
 //
 // Holds the OpenAI API key server-side (never exposed to the browser) and
@@ -14,6 +15,12 @@ import { MATCHUPS } from "./matchup-data.js";
 
 export default {
   async scheduled(event, env, ctx) {
+    // Monday: seal the week. Tuesday to Saturday, twice a day: sample the
+    // lines and refresh the brief for every game still open.
+    if (event.cron === INSIGHTS_CRON) {
+      ctx.waitUntil(runInsights(env, INSIGHTS_DEPS).then((r) => console.log("scheduled insights", JSON.stringify(r))));
+      return;
+    }
     ctx.waitUntil(sealFromEspn(env).then((r) => console.log("scheduled seal", JSON.stringify(r))));
   },
   async fetch(request, env) {
@@ -80,6 +87,20 @@ export default {
     }
     if (url.pathname === "/results") {
       return handleResults(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/insights") {
+      return handleInsights(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/insights/run") {
+      if (!isAdmin(env, url)) return json({ error: "Not found" }, 404, corsHeaders);
+      const week = url.searchParams.get("week") ? Number(url.searchParams.get("week")) : null;
+      try {
+        const r = await runInsights(env, INSIGHTS_DEPS, { week, force: url.searchParams.get("force") === "1" });
+        return json(r, 200, corsHeaders);
+      } catch (err) {
+        console.error("insights run", err?.stack || String(err));
+        return json({ error: String(err?.message || err) }, 500, corsHeaders);
+      }
     }
     if (url.pathname === "/live") {
       return handleLive(corsHeaders, env);
@@ -1722,6 +1743,34 @@ async function liveTargets(env, week = null) {
   return { games, dates };
 }
 
+// --- Insights ---------------------------------------------------------
+const INSIGHTS_CRON = "0 11,23 * * 2-6";
+const INSIGHTS_DEPS = {
+  liveGames: (env, week) => liveGames(env, week),
+  readSlate: (env, week) => env.LIFTR_KV.get(gamesKey(week), "json"),
+  currentWeek: async (env) => (await readWeeks(env)).current,
+};
+// GET /insights?week=N -> { week, lines, briefs, lastRun }; ?all=1 with the
+// admin key returns every week for the archive.
+async function handleInsights(request, env, corsHeaders, url) {
+  if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  try {
+    if (url.searchParams.get("all") === "1") {
+      if (!isAdmin(env, url)) return json({ error: "Not found" }, 404, corsHeaders);
+      const weeks = (await readWeeks(env)).list;
+      const out = {};
+      for (const w of weeks) out[w] = await readInsights(env, w);
+      return json({ weeks: out }, 200, corsHeaders);
+    }
+    const week = url.searchParams.get("week") ? Number(url.searchParams.get("week")) : (await readWeeks(env)).current;
+    const data = await readInsights(env, week);
+    return json(data, 200, { ...corsHeaders, "Cache-Control": "public, max-age=300" });
+  } catch (err) {
+    console.error("insights read", err?.stack || String(err));
+    return json({ week: null, lines: {}, briefs: {}, lastRun: null }, 200, corsHeaders);
+  }
+}
+
 async function handleLive(corsHeaders, env) {
   try {
     return json(await liveGames(env), 200, corsHeaders);
@@ -1793,6 +1842,8 @@ async function liveGames(env, week = null) {
         return {
           id: g.id,
           found: true,
+          eventId: event.id || null,
+          odds: parseOdds(comp),
           possession,
           awayRank: rankOf(away),
           homeRank: rankOf(home),
