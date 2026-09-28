@@ -3565,21 +3565,47 @@ async function openInsights(gameId) {
     return c?.team?.abbreviation || (side === "away" ? game.awayShort : game.homeShort);
   };
 
-  // 2. Line: sealed to now as a day-by-day timeline.
+  // 2. Line: OPENED -> SEALED -> NOW, each step saying how far and toward
+  // whom, then one plain sentence. Values are signed from the sealed
+  // favourite: positive means they are favoured by that much.
   html += `<div class="ins-h">LINE</div>`;
-  if (mv) {
-    const pts = (mv.points || []).filter((p, i, arr) => i === arr.length - 1 || dayLabel(p.at) !== dayLabel(arr[i + 1].at) || p.v !== arr[i + 1].v);
+  {
     const favId = game.favorite === game.home ? game.homeId : game.awayId, dogId = game.favorite === game.home ? game.awayId : game.homeId;
-    const fmt = (v) => `${lg(v >= 0 ? favId : dogId, "sm")}-${Math.abs(v)}`;
-    const steps = [{ label: "SEALED", v: mv.sealed, cls: "seal" }, ...pts.map((p) => ({ label: p.live ? "NOW" : dayLabel(p.at), v: p.v, cls: p.live ? "now" : "" }))];
-    // Collapse a run of identical values to keep the row short.
-    const shown = steps.filter((st, i) => i === 0 || i === steps.length - 1 || st.v !== steps[i - 1].v);
-    const verdict = mv.delta === 0 ? `<span class="ins-flat">Has not moved since the seal.</span>`
-      : `<span class="ins-move">Moved <b>${Math.abs(mv.delta)}</b> toward <b>${esc(mv.toward)}</b>${mv.toward === favShort ? " (bigger favourite)" : (mv.nowFavorite !== favShort ? " (flipped)" : " (closer)")}.</span>`;
-    html += `<div class="ins-timeline">${shown.map((st, i) => `<div class="ins-step ${st.cls}"><span class="ins-step-l">${esc(st.label)}</span><span class="ins-step-v">${fmt(st.v)}</span></div>${i < shown.length - 1 ? `<span class="ins-step-arrow ${shown[i + 1].v > st.v ? "up" : shown[i + 1].v < st.v ? "down" : ""}">${shown[i + 1].v > st.v ? "▲" : shown[i + 1].v < st.v ? "▼" : "›"}</span>` : ""}`).join("")}</div>
-      <div class="ins-verdict">${verdict}${mv.overUnder !== null ? ` <span class="ins-ou">O/U ${mv.overUnder}</span>` : ""}</div>`;
-  } else {
-    html += `<div class="ins-empty">No line on the feed right now. You score against the sealed ${esc(favShort)} -${game.spread} either way.</div>`;
+    const dogShort = game.favorite === game.home ? game.awayShort : game.homeShort;
+    const sealedV = Number(game.spread) || 0;
+    // Opening line from ESPN's preview text: "Opening Line: Virginia Tech by 5.5."
+    let openV = null;
+    const openTxt = (direct?.preview?.paras || []).map((t) => t.match(/opening line:\s*(.+?)\s+by\s+(\d+(?:\.\d+)?)/i)).find(Boolean);
+    if (openTxt) {
+      const n = openTxt[1].toLowerCase();
+      const isDog = [game.favorite === game.home ? game.away : game.home, dogShort].some((x) => { const y = String(x || "").toLowerCase().replace(/^#\d+\s+/, ""); return y && (n.includes(y) || y.includes(n) || y.startsWith(n.slice(0, 4))); });
+      openV = isDog ? -Number(openTxt[2]) : Number(openTxt[2]);
+    }
+    const nowV = mv ? (mv.nowFavorite === favShort ? mv.now : -mv.now) : null;
+    const lineOf = (v) => `${lg(v >= 0 ? favId : dogId, "sm")}<span>${v === 0 ? "PK" : `-${Math.abs(v)}`}</span>`;
+    const step = (label, v, cls) => `<div class="ln-step ${cls}"><em>${label}</em><b>${lineOf(v)}</b></div>`;
+    const move = (from, to) => {
+      const d = Math.round((to - from) * 2) / 2;
+      if (d === 0) return `<div class="ln-move flat"><i>—</i><span>no change</span></div>`;
+      return `<div class="ln-move ${d > 0 ? "fav" : "dog"}"><i>${d > 0 ? "▶" : "▶"}</i><span>${Math.abs(d)} to ${esc(d > 0 ? favShort : dogShort)}</span></div>`;
+    };
+    const stops = [];
+    if (openV !== null) stops.push(step("OPENED", openV, "open"));
+    if (openV !== null) stops.push(move(openV, sealedV));
+    stops.push(step("SEALED", sealedV, "seal"));
+    if (nowV !== null) { stops.push(move(sealedV, nowV)); stops.push(step("NOW", nowV, "now")); }
+    html += `<div class="ln-track">${stops.join("")}</div>`;
+    // One plain sentence.
+    const pts = (v) => `${Math.abs(v)} point${Math.abs(v) === 1 ? "" : "s"}`;
+    let say = "";
+    if (nowV === null) say = `No live line right now. You score against ${esc(favShort)} -${sealedV}.`;
+    else {
+      const d = Math.round((nowV - sealedV) * 2) / 2;
+      say = d === 0 ? `No movement since we sealed it.` : `Moved ${pts(d)} toward ${esc(d > 0 ? favShort : dogShort)} since we sealed it.`;
+      if (openV !== null) { const w = Math.round((nowV - openV) * 2) / 2; if (w !== 0) say += ` ${pts(w)} toward ${esc(w > 0 ? favShort : dogShort)} since it opened.`; }
+    }
+    const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
+    html += `<div class="ln-say">${say}${ou !== null ? ` <span class="ins-ou">TOTAL ${ou}</span>` : ""}</div>`;
   }
 
   // Preview: same layout as ever (headline, text, "Read the rest"). The

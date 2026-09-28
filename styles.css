@@ -3463,3 +3463,17 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .sim-wp span { display: inline-flex; align-items: center; }
 .sim-wp .sim-plogo { width: 14px; height: 14px; margin: 0; }
 .ins-pv .pv-wait { font-size: 11px; color: var(--text-dim); animation: sim-blink-txt 1.2s steps(1) infinite; }
+/* Line tracker: OPENED -> SEALED -> NOW */
+.ln-track { display: flex; align-items: stretch; gap: 4px; margin-top: 4px; }
+.ln-step { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 4px; border-radius: 8px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .1); min-width: 0; }
+.ln-step em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: var(--text-dim); }
+.ln-step b { display: inline-flex; align-items: center; gap: 4px; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 15px; color: #fff; }
+.ln-step b .ins-logo { width: 18px; height: 18px; margin: 0; }
+.ln-step.seal { border-color: rgba(255, 228, 94, .55); } .ln-step.seal b { color: var(--neon-yellow); }
+.ln-step.now { border-color: rgba(5, 217, 232, .6); box-shadow: 0 0 10px rgba(5, 217, 232, .2); } .ln-step.now b { color: var(--neon-cyan); }
+.ln-move { flex: 0 0 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center; }
+.ln-move i { font-style: normal; font-size: 10px; color: var(--text-dim); }
+.ln-move span { font-size: 9px; line-height: 1.2; color: var(--text-dim); }
+.ln-move.fav i, .ln-move.fav span { color: var(--neon-yellow); }
+.ln-move.dog i, .ln-move.dog span { color: var(--neon-cyan); }
+.ln-say { margin-top: 7px; font-size: 12px; color: var(--text); line-height: 1.4; }
