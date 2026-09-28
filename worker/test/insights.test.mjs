@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -131,4 +131,17 @@ test("Google News RSS parses, strips the source suffix, and drops ESPN, video an
   assert.equal(items[0].source, "Pittsburgh Post-Gazette");
   const kept = filterNews(items);
   assert.deepEqual(kept.map((n) => n.source), ["Pittsburgh Post-Gazette"]);
+});
+
+test("Bing News RSS unwraps the redirect link, keeps Instagram, drops TikTok", () => {
+  const xml = `<rss><channel>
+    <item><title>Hokies' defense braces for Pitt's run game</title><link>https://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=https%3a%2f%2fwww.roanoke.com%2fsports%2fhokies-defense&amp;c=1</link><description>Virginia Tech has allowed 4.1 yards per carry.</description><pubDate>Tue, 29 Sep 2026 12:00:00 GMT</pubDate><News:Source>The Roanoke Times</News:Source></item>
+    <item><title>Pitt locker room celebration</title><link>https://www.bing.com/news/apiclick.aspx?url=https%3a%2f%2fwww.tiktok.com%2f%40pittfb%2fvideo%2f1</link><News:Source>TikTok</News:Source></item>
+    <item><title>Pitt football shares practice photos</title><link>https://www.bing.com/news/apiclick.aspx?url=https%3a%2f%2fwww.instagram.com%2fp%2fabc</link><News:Source>Instagram</News:Source></item>
+  </channel></rss>`;
+  const items = parseBingNewsRss(xml);
+  assert.equal(items[0].link, "https://www.roanoke.com/sports/hokies-defense");
+  assert.equal(items[0].source, "The Roanoke Times");
+  assert.equal(items[0].blurb, "Virginia Tech has allowed 4.1 yards per carry.");
+  assert.deepEqual(filterNews(items).map((n) => n.source), ["The Roanoke Times", "Instagram"]);
 });

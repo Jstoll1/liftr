@@ -357,7 +357,8 @@ export async function gameSnapshot(env, deps, week, gameId) {
 // Google News RSS for the matchup and each team, past week. Anything from
 // ESPN (the phone already shows ESPN's feed), video, podcasts and betting
 // promos is dropped, and duplicates across the three searches are merged.
-const SKIP_SOURCES = /espn|youtube|tiktok|podcast|draftkings|fanduel|betmgm|caesars|bet365|fanatics sportsbook/i;
+// Instagram is allowed; TikTok and YouTube are not.
+const SKIP_SOURCES = /espn|youtube|youtu\.be|tiktok|podcast|draftkings|fanduel|betmgm|caesars|bet365|fanatics sportsbook/i;
 const SKIP_TITLES = /\b(video|watch|podcast|live stream|how to watch|stream free|highlights|odds, picks|prediction(s)?,? odds|best bets?|promo code|bonus code)\b/i;
 function decode(x) {
   return String(x || "").replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -375,6 +376,24 @@ export function parseGoogleNewsRss(xml) {
     const published = tag("pubDate");
     if (!title || !link) continue;
     items.push({ headline: title, source: source || null, link, published: published ? new Date(published).toISOString() : null });
+  }
+  return items;
+}
+// Bing's feed: the outlet sits in <News:Source>, the link is a Bing
+// redirect whose url= parameter is the article itself.
+export function parseBingNewsRss(xml) {
+  const items = [];
+  for (const m of String(xml || "").matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+    const block = m[1];
+    const tag = (t) => decode((block.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)<\\/${t}>`, "i")) || [])[1]);
+    const title = tag("title");
+    let link = tag("link");
+    try { const u = new URL(link); const real = u.searchParams.get("url"); if (real) link = real; } catch {}
+    const source = tag("News:Source") || (() => { try { return new URL(link).hostname.replace(/^www\./, ""); } catch { return null; } })();
+    const published = tag("pubDate");
+    const blurb = tag("description");
+    if (!title || !link) continue;
+    items.push({ headline: title, source, link, blurb: blurb || null, published: published ? new Date(published).toISOString() : null });
   }
   return items;
 }
@@ -399,11 +418,20 @@ export async function gameNews(env, game) {
     { tag: "away", url: q(`"${game.away}" football`) },
     { tag: "home", url: q(`"${game.home}" football`) },
   ];
+  // Bing News as a second source for the same three searches, so one
+  // service turning the Worker away still leaves articles.
+  const bing = (s) => `https://www.bing.com/news/search?q=${encodeURIComponent(s)}&format=rss&qft=interval%3d%228%22`;
+  queries.push(
+    { tag: "game", url: bing(`"${game.away}" "${game.home}" football`), bing: true },
+    { tag: "away", url: bing(`"${game.away}" football`), bing: true },
+    { tag: "home", url: bing(`"${game.home}" football`), bing: true },
+  );
   const results = await Promise.all(queries.map(async (x) => {
     try {
       const res = await fetch(x.url, { headers: { "User-Agent": UA, Accept: "application/rss+xml, application/xml, text/xml" } });
       if (!res.ok) return { tag: x.tag, items: [], error: `HTTP ${res.status}` };
-      return { tag: x.tag, items: parseGoogleNewsRss(await res.text()).map((n) => ({ ...n, about: x.tag })) };
+      const xml = await res.text();
+      return { tag: x.tag, items: (x.bing ? parseBingNewsRss(xml) : parseGoogleNewsRss(xml)).map((n) => ({ ...n, about: x.tag })) };
     } catch (err) { return { tag: x.tag, items: [], error: String(err?.message || err) }; }
   }));
   const all = filterNews(results.flatMap((r) => r.items))

@@ -3429,11 +3429,14 @@ function parseSummaryClient(data, game) {
   };
 }
 // ESPN's feeds mix in clips; keep written stories only.
+// Written stories only: ESPN tags each item with a type, and anything
+// that is not a story type (clips, media, podcasts) is left out.
+const ARTICLE_TYPES = new Set(["story", "headlinenews", "recap", "preview", "dstory", "blog", "column", "feature", "news"]);
 function isVideoArticle(a) {
   const t = String(a?.type || "").toLowerCase();
-  if (t === "media" || t === "video" || t === "clip" || t === "podcast") return true;
+  if (t && !ARTICLE_TYPES.has(t)) return true;
   const href = a?.links?.web?.href || "";
-  return /\/video\/|\/watch\/|\/clip\//.test(href) || /^(watch|video)\b/i.test(a?.headline || "");
+  return /\/video\/|\/watch\/|\/clip\/|tiktok\.com/.test(href) || /^(watch|video)\b/i.test(a?.headline || "");
 }
 async function fetchWiderNews(gameId) {
   if (!WORKER_URL) return [];
