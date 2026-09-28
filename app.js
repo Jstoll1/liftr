@@ -1758,8 +1758,12 @@ function renderPicksScreen() {
       statusLabel = "UPDATED ✓";
       statusClass = "submitted updated";
     } else if (pick) {
-      statusLabel = "SAVED ✓";
-      statusClass = "submitted";
+      // The chip carries the bet, so ten cards scan as ten stakes:
+      // who, which way, and what it pays.
+      const short = pick.team === game.away ? game.awayShort : game.homeShort;
+      const way = pick.mode === "SU" ? "WIN" : (pick.team === game.favorite ? `-${game.spread}` : `+${game.spread}`);
+      statusLabel = `<span class="gs-bet">${short.toUpperCase()} ${way}</span><b>${pointValue(game, pick.team, pick.mode)}<i>PT</i></b> ✓`;
+      statusClass = "submitted bet";
     }
 
     const noteVerb = justSavedGameId === game.id && justSavedKind === "updated" ? "Updated" : "Saved";
@@ -1856,6 +1860,32 @@ function updatePicksProgress(state) {
     : allLocked
       ? `${WEEK_LABEL} is locked` + (standingShown ? "" : ` · ${computeScore(state, results)} pts so far`)
       : `${totalPicked} of ${GAMES.length} games picked` + (state.tiebreaker ? " · tiebreaker set" : " · tiebreaker MISSING");
+
+  // Total row under the cards: what the card pays if every pick lands,
+  // and once games settle, what has banked against what is still open.
+  let totalRow = document.getElementById("picks-total");
+  if (!totalRow) {
+    totalRow = document.createElement("div");
+    totalRow.id = "picks-total";
+    totalRow.className = "picks-total hidden";
+    document.getElementById("games-list")?.insertAdjacentElement("afterend", totalRow);
+  }
+  let maxPts = 0, banked = 0, openPts = 0;
+  for (const g of GAMES) {
+    const pick = state.picks[g.id];
+    if (!pick) continue;
+    const worth = pointValue(g, pick.team, pick.mode);
+    if (results[g.id]) banked += scorePick(g, pick, results[g.id]);
+    else openPts += worth;
+    maxPts += results[g.id] ? scorePick(g, pick, results[g.id]) : worth;
+  }
+  const missing = GAMES.length - totalPicked;
+  totalRow.classList.toggle("hidden", totalPicked === 0);
+  totalRow.innerHTML = allFinal
+    ? `<span class="pt-label">${WEEK_LABEL.toUpperCase()} TOTAL</span><span class="pt-val"><b>${banked}</b><i>PT</i></span>`
+    : allLocked || banked > 0 || GAMES.some((g) => results[g.id])
+      ? `<span class="pt-label">BANKED <b>${banked}</b><i>PT</i> · STILL OPEN <b>${openPts}</b><i>PT</i></span><span class="pt-val">MAX <b>${maxPts}</b><i>PT</i></span>`
+      : `<span class="pt-label">${totalPicked} OF ${GAMES.length} PICKED${missing ? ` · <em>${missing} BLANK</em>` : ""}</span><span class="pt-val">RIDING <b>${maxPts}</b><i>PT</i></span>`;
 
   // The tiebreaker decides who takes a week, and ten managers on ten games
   // tie constantly. Somebody who never enters one forfeits every tie, so

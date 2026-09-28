@@ -1778,6 +1778,10 @@ html, body {
   border: 1px solid var(--neon-green);
   transform-origin: right center;
 }
+.game-status.bet { display: inline-flex; align-items: baseline; gap: 5px; max-width: 60%; white-space: nowrap; }
+.game-status.bet .gs-bet { color: var(--neon-cyan); overflow: hidden; text-overflow: ellipsis; letter-spacing: .5px; }
+.game-status.bet b { color: var(--neon-yellow); font-weight: 800; }
+.game-status.bet b i { font-style: normal; font-size: 6.5px; margin-left: 1px; color: var(--text-dim); }
 
 /* Brief pulse on the SAVED badge of the card you just tapped — the
    feedback that replaces the old Submit button. */
@@ -1815,6 +1819,29 @@ html, body {
   font-size: 10px;
   color: var(--neon-green);
 }
+
+.picks-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 2px 0 10px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 228, 94, .45);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 228, 94, .07), rgba(255, 228, 94, .02));
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7.5px;
+  letter-spacing: .06em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.picks-total.hidden { display: none; }
+.picks-total b { color: var(--neon-yellow); font-size: 11px; }
+.picks-total i { font-style: normal; font-size: 6px; margin-left: 2px; color: var(--text-dim); }
+.picks-total em { font-style: normal; color: var(--neon-pink); }
+.picks-total .pt-val { color: var(--text); }
+.picks-total .pt-val b { font-size: 14px; text-shadow: 0 0 8px rgba(255, 228, 94, .5); }
 
 .tiebreaker-row {
   display: flex;
