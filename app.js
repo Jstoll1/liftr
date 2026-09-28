@@ -3591,7 +3591,7 @@ async function openInsights(gameId) {
   const favShort = game.favorite === game.home ? game.homeShort : game.awayShort;
   const lg = (id, cls = "") => `<img class="ins-logo ${cls}" src="${logoUrl(id)}" alt="" loading="lazy">`;
   modal.querySelector("#insights-title").innerHTML = `${lg(game.awayId, "hd")}<span>${esc(game.awayShort)}<i>at</i>${esc(game.homeShort)}</span>${lg(game.homeId, "hd")}`;
-  modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv} · sealed ${favShort} -${game.spread}`;
+  modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv}`;
   const links = () => `<div class="ins-h">MORE</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
   body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
   modal.classList.remove("hidden");
@@ -3665,11 +3665,18 @@ async function openInsights(gameId) {
     const dots = pts.map((p, i) => `<g class="ln-pt ${p.cls}"><title>${esc(p.label)}: ${esc(lab(p.v))}</title><rect x="${(x(i) - (p.cls === "day" ? 3 : 4)).toFixed(1)}" y="${(y(p.v) - (p.cls === "day" ? 3 : 4)).toFixed(1)}" width="${p.cls === "day" ? 6 : 8}" height="${p.cls === "day" ? 6 : 8}"/>${p.cls === "day" ? "" : `<text class="ln-v" x="${x(i).toFixed(1)}" y="${(y(p.v) - 9).toFixed(1)}" text-anchor="middle">${esc(lab(p.v))}</text>`}<text class="ln-x" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(p.label)}</text></g>`).join("");
     const up = `<image href="${logoUrl(favId)}" x="2" y="${T - 6}" width="16" height="16"/><text class="ln-ax" x="10" y="${T + 18}" text-anchor="middle">▲</text>`;
     const down = `<image href="${logoUrl(dogId)}" x="2" y="${H - B - 16}" width="16" height="16"/><text class="ln-ax" x="10" y="${H - B - 20}" text-anchor="middle">▼</text>`;
-    const chipTxt = (p) => `<span class="ln-chip ${p.cls}"><em>${esc(p.label)}</em>${esc(lab(p.v))}</span>`;
+    const chipTxt = (p) => `<span class="ln-chip ${p.cls}"><em>${esc(p.label === "OPENED" ? "OPEN" : p.label === "SEALED" ? "SEAL" : p.label)}</em>${esc(lab(p.v))}</span>`;
     const key3 = [series.find((p) => p.cls === "open"), series.find((p) => p.cls === "seal"), series.find((p) => p.cls === "now")].filter(Boolean);
-    html += `<div class="ln-chips">${key3.map(chipTxt).join('<i class="ln-arrow">›</i>')}</div>`;
+    const arrow = (a, b) => {
+      const d = Math.round((b.v - a.v) * 2) / 2;
+      if (d === 0) return `<i class="ln-arrow">›</i>`;
+      const who = d > 0 ? abbrOf(game.favorite === game.home ? "home" : "away") : abbrOf(game.favorite === game.home ? "away" : "home");
+      return `<i class="ln-arrow mv ${d > 0 ? "fav" : "dog"}" title="${Math.abs(d)} toward ${esc(who)}">${Math.abs(d)}<b>${d > 0 ? "▲" : "▼"}</b></i>`;
+    };
+    const ouChip = (mv?.overUnder ?? direct?.odds?.overUnder) != null ? `<span class="ln-chip ou"><em>O/U</em>${mv?.overUnder ?? direct?.odds?.overUnder}</span>` : "";
+    html += `<div class="ln-chips">${key3.map((p, i) => (i ? arrow(key3[i - 1], p) : "") + chipTxt(p)).join("")}${ouChip}</div>`;
     const daily = series.filter((p) => p.cls === "day").length;
-    let trendHtml = `<details class="ln-more"><summary><span>▶</span> DAY BY DAY${daily ? "" : " · HISTORY FILLS IN AS THE WEEK GOES"}</summary><div class="ln-crt"><svg class="ln-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Line movement: ${esc(pts.map((p) => `${p.label} ${lab(p.v)}`).join(", "))}">${zero}<line class="ln-base" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/>${up}${down}<path class="ln-glow" d="${path}"/><path class="ln-path" d="${path}"/>${dots}</svg></div></details>`;
+    let trendHtml = `<details class="ln-more"><summary><span>▶</span> TREND</summary><div class="ln-crt"><svg class="ln-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Line movement: ${esc(pts.map((p) => `${p.label} ${lab(p.v)}`).join(", "))}">${zero}<line class="ln-base" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/>${up}${down}<path class="ln-glow" d="${path}"/><path class="ln-path" d="${path}"/>${dots}</svg></div></details>`;
     // One plain sentence.
     const ptsTxt = (v) => `${Math.abs(v)} point${Math.abs(v) === 1 ? "" : "s"}`;
     let say = "";
@@ -3680,7 +3687,6 @@ async function openInsights(gameId) {
       if (openV !== null) { const w = Math.round((nowV - openV) * 2) / 2; if (w !== 0) say += ` ${ptsTxt(w)} toward ${esc(w > 0 ? favShort : dogShort)} since it opened.`; }
     }
     const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
-    html += `<div class="ln-say">${say}${ou !== null ? ` <span class="ins-ou">TOTAL ${ou}</span>` : ""}</div>`;
     html += trendHtml;
   }
 
@@ -3709,7 +3715,7 @@ async function openInsights(gameId) {
   }
 
   // 3. Insights: the numbers, then the written brief.
-  html += `<div class="ins-h">INSIGHTS${brief?.summary?.length ? `<span class="ins-stamp">BRIEF UPDATED ${esc(fmtWhen(brief.updatedAt).toUpperCase())}</span>` : ""}</div>`;
+  html += `<div class="ins-h">INSIGHTS</div>`;
   if (glance) {
     const cell = (k, a, h, aCls = "", hCls = "") => a == null && h == null ? "" : `<div class="ins-g"><span class="ins-gk">${k}</span><span class="ins-gv ${aCls}">${esc(a ?? "—")}</span><span class="ins-gv ${hCls}">${esc(h ?? "—")}</span></div>`;
     const w = glance.weather ? [glance.weather.temp !== null ? `${glance.weather.temp}°` : null, glance.weather.text, glance.weather.precip ? `${glance.weather.precip}% rain` : null].filter(Boolean).join(" · ") : null;
@@ -3718,7 +3724,8 @@ async function openInsights(gameId) {
       + cell("ATS", glance.ats?.away || previewAts?.away, glance.ats?.home || previewAts?.home)
       + cell("ESPN FPI", glance.fpi ? `${glance.fpi.away}%` : null, glance.fpi ? `${glance.fpi.home}%` : null, glance.fpi && glance.fpi.away > glance.fpi.home ? "lead" : "", glance.fpi && glance.fpi.home > glance.fpi.away ? "lead" : "")
       + `</div>`
-      + (w || glance.venue ? `<div class="ins-wx">${w ? `<span>${esc(w)}</span>` : ""}${glance.venue?.name ? `<span>${esc(glance.venue.name)}${glance.venue.indoor ? " · indoors" : ""}</span>` : ""}</div>` : "");
+      + (w ? `<div class="ins-wx"><span>${esc(w)}</span></div>` : "");
+    if (glance.venue?.name) modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv} · ${glance.venue.name}${glance.venue.indoor ? " (indoors)" : ""}`;
     const catShort = (c) => /pass/i.test(c) ? "PASS" : /rush/i.test(c) ? "RUSH" : /receiv/i.test(c) ? "REC" : /tackle/i.test(c) ? "TKL" : /sack/i.test(c) ? "SACK" : String(c).toUpperCase().slice(0, 5);
     const lead = (label, list, teamId) => list?.length ? `<div class="ins-lead"><b>${lg(teamId)}${esc(label)}</b>${list.map((l) => `<span><em class="ins-cat">${esc(catShort(l.cat))}</em>${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>` : "";
     if (glance.leaders?.away?.length || glance.leaders?.home?.length) html += `<div class="ins-leads">${lead(game.awayShort, glance.leaders.away, game.awayId)}${lead(game.homeShort, glance.leaders.home, game.homeId)}</div>`;

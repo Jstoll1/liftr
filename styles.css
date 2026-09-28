@@ -3510,3 +3510,25 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ln-glow { fill: none; stroke: var(--neon-cyan); stroke-width: 6; opacity: .22; filter: blur(2px); }
 .ln-chart { shape-rendering: crispEdges; }
 .ln-chart text { shape-rendering: auto; }
+/* Tighter sheet */
+.ins-h { margin-top: 12px; padding-bottom: 3px; }
+.ins-sub { margin-bottom: 2px; }
+.ins-sim { margin: 4px 0 0; padding: 7px 10px; }
+.ins-sim-gb { width: 22px; height: 30px; }
+.ins-sim-txt { gap: 4px; }
+.ins-sim-txt b { font-size: 10px; }
+.ln-chips { flex-wrap: nowrap; gap: 4px; }
+.ln-chip { flex: 0 1 auto; min-width: 0; padding: 4px 6px; font-size: 11px; white-space: nowrap; }
+.ln-chip.ou { margin-left: auto; font-size: 10px; color: var(--text-dim); }
+.ln-arrow { flex: none; font-size: 11px; }
+.ln-arrow.mv { display: inline-flex; flex-direction: column; align-items: center; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 8.5px; line-height: 1; }
+.ln-arrow.mv b { font-size: 7px; }
+.ln-arrow.fav { color: var(--neon-yellow); } .ln-arrow.dog { color: var(--neon-cyan); }
+.ln-more { margin-top: 6px; }
+.ins-pv-h { font-size: 12.5px; }
+.ins-pv p { margin: 4px 0 0; font-size: 12px; line-height: 1.45; }
+.ins-glance { gap: 3px; }
+.ins-g { padding: 5px 8px; }
+.ins-gv { font-size: 12px; }
+.ins-wx { margin-top: 3px; font-size: 10px; }
+.ins-leads { margin-top: 8px; }
