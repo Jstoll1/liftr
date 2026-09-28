@@ -3431,3 +3431,20 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .sim-panel { flex: none; height: 138px; overflow: hidden; margin-top: 0; }
 .sim-pog { padding: 3px 4px; gap: 2px; }
 .sim-bx { gap: 1px 8px; }
+/* True Game Boy proportions: the screen is 160x144, and the body keeps
+   its shape at any phone height. Only the play-by-play scrolls. */
+.gb { width: min(340px, 92vw); }
+.gb-screen { height: auto !important; aspect-ratio: 160 / 144; min-height: 0 !important; gap: 3px; padding: 5px; }
+.sim-field { height: 44px; }
+.sim-board .sim-tm b { font-size: 11px; }
+.sim-panel { height: 58px !important; padding-top: 3px; gap: 3px; }
+.sim-ls { font-size: 6px; }
+.sim-ls td { padding: 1px 0; }
+.sim-ls td.t { font-size: 7px; }
+.sim-ts { display: none; }
+.sim-bx { display: none; }
+.sim-pog { flex-direction: row; justify-content: center; gap: 6px; padding: 2px 4px; }
+.sim-pog em { font-size: 5px; }
+.sim-pog b { font-size: 6.5px; }
+.sim-pog span { font-size: 5px; }
+.sim-line { font-size: 6px; }
