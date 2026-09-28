@@ -1881,9 +1881,7 @@ html, body {
 }
 .tm-name .tm-rank { font-size: 7.5px; }
 .tm-name .tm-at { font-style: normal; font-size: 7.5px; color: var(--text-dim); margin-right: 1px; }
-.tm-spread { flex: none; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 11px; letter-spacing: 0; font-variant-numeric: tabular-nums; margin-left: 2px; }
-.tm-spread.fav { color: var(--neon-yellow); }
-.tm-spread.dog { color: var(--text-dim); }
+.tm-spread { flex: none; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 10px; letter-spacing: 0; font-variant-numeric: tabular-nums; margin-left: 2px; color: var(--text-dim); opacity: .8; }
 .tm-row.picked .tm-name { color: var(--neon-cyan); }
 .tm-line {
   font-family: 'Orbitron', system-ui, sans-serif;
