@@ -3448,3 +3448,5 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .sim-pog b { font-size: 6.5px; }
 .sim-pog span { font-size: 5px; }
 .sim-line { font-size: 6px; }
+/* Keep the tab bar tappable above sheets and popups. */
+.bottom-nav { z-index: 20; }

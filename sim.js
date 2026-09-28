@@ -213,6 +213,7 @@
     clearTimeout(timer);
     document.getElementById("sim-modal")?.classList.add("hidden");
   }
+  window.closeSim = close;
   const fmtClock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   window.openSim = async function openSim(ctx) {

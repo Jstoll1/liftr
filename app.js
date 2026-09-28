@@ -4130,3 +4130,20 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
     logoScreen.addEventListener("click", mark, { once: true });
   }
 })();
+
+// The bottom nav always wins: tapping a tab closes any sheet or popup that
+// is up (game info, head to head, grid check, the Game Box sim) and then
+// goes where the tab says. Sign-in and admin prompts are left alone.
+(() => {
+  const nav = document.getElementById("bottom-nav");
+  if (!nav) return;
+  const SHEETS = ["insights-modal", "h2h-modal", "grid-modal", "sim-modal", "rules-modal", "avatar-modal", "boner-modal"];
+  nav.addEventListener("click", (e) => {
+    if (!e.target.closest(".nav-btn")) return;
+    for (const id of SHEETS) {
+      const el = document.getElementById(id);
+      if (el && !el.classList.contains("hidden")) el.classList.add("hidden");
+    }
+    window.closeSim?.();
+  }, true);
+})();
