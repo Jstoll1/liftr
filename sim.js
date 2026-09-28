@@ -253,6 +253,17 @@
         t.rushYds += x.yds;
       }
     };
+    // Live drive and win probability for the bottom strip.
+    const drv = { plays: 0, yds: 0, start: 900 };
+    const homeEdge = ctx.favSide === "home" ? ctx.spread : -ctx.spread;
+    const phi = (z) => 1 / (1 + Math.exp(-1.702 * z));
+    const winHome = () => {
+      if (cur.qtr > 4) return cur.home === cur.away ? 0.5 : cur.home > cur.away ? 1 : 0;
+      const left = Math.max(0, (4 - cur.qtr) * 900 + cur.clock) / 3600;
+      const exp = (cur.home - cur.away) + homeEdge * left;
+      const sd = 13 * Math.sqrt(left) + 0.6;
+      return phi(exp / sd);
+    };
     const top = (o) => Object.entries(o).sort((a, b) => b[1].yds - a[1].yds)[0] || null;
     const drawPanel = (final) => {
       const ot = st.away.q[4] || st.home.q[4];
@@ -260,6 +271,12 @@
       const row = (side) => `<tr><th>${esc((side === "away" ? ctx.away : ctx.home).abbr)}</th>${cols.map((i) => `<td>${i < cur.qtr || final ? st[side].q[i] : "·"}</td>`).join("")}<td class="t">${cur[side]}</td></tr>`;
       let html = `<table class="sim-ls"><tr><th></th>${cols.map((i) => `<td>${i === 4 ? "OT" : i + 1}</td>`).join("")}<td class="t">T</td></tr>${row("away")}${row("home")}</table>`;
       if (!final) {
+        const wp = winHome();
+        const side = wp >= 0.5 ? ctx.home : ctx.away;
+        const pct = Math.round(Math.max(wp, 1 - wp) * 100);
+        const secs = Math.max(0, drv.start - cur.clock);
+        html += `<div class="sim-drv">${cur.side ? `DRIVE <b>${drv.plays}</b> PLAYS · <b>${drv.yds}</b> YDS · <b>${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}</b>` : "&nbsp;"}</div>`;
+        html += `<div class="sim-wp"><span>${esc(ctx.away.abbr)}</span><div class="sim-wp-bar"><i style="width:${Math.round((1 - wp) * 100)}%"></i></div><span>${esc(ctx.home.abbr)}</span><em>WIN ${esc(side.abbr)} ${pct}%</em></div>`;
         html += `<div class="sim-ts">${["away", "home"].map((side) => `<div><b>${esc((side === "away" ? ctx.away : ctx.home).abbr)}</b><span>PASS ${st[side].passYds}</span><span>RUSH ${st[side].rushYds}</span></div>`).join("")}</div>`;
       } else {
         const line = (side) => {
@@ -333,11 +350,14 @@
       if (ev.clock != null) cur.clock = ev.clock;
       if (ev.type === "banner") { showBig(ev.text); pushLine(ev.text, "banner"); wait = 1100; }
       else if (ev.type === "drive") {
+        drv.plays = 0; drv.yds = 0; drv.start = ev.clock ?? cur.clock;
         cur.side = ev.side;
         place(ev.side, ev.pos);
         pushLine(`${(ev.side === "away" ? ctx.away : ctx.home).abbr} BALL · OWN ${ev.pos}`, "dim");
         wait = 260;
       } else if (ev.type === "play") {
+        drv.plays += 1;
+        drv.yds += ev.stat ? ev.stat.yds : -(Number((ev.text.match(/-(\d+)/) || [])[1]) || 0);
         place(ev.side, Math.min(ev.pos, 100));
         pushLine(ev.text, ev.td ? "td" : "");
         if (ev.td) wait = 700;

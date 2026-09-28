@@ -3450,3 +3450,10 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .sim-line { font-size: 6px; }
 /* Keep the tab bar tappable above sheets and popups. */
 .bottom-nav { z-index: 20; }
+.sim-panel { height: 72px !important; }
+.sim-drv { font-size: 5.5px; color: var(--g2); letter-spacing: .04em; white-space: nowrap; }
+.sim-drv b { font-weight: normal; color: var(--g3); }
+.sim-wp { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 4px; font-size: 5.5px; color: var(--g3); }
+.sim-wp-bar { position: relative; height: 6px; background: var(--g3); border: 1px solid var(--g3); }
+.sim-wp-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--g0); transition: width .3s steps(5); }
+.sim-wp em { font-style: normal; color: var(--g2); margin-left: 2px; white-space: nowrap; }
