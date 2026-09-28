@@ -3516,7 +3516,7 @@ async function openInsights(gameId) {
   if (nowOdds) samples.push({ ...nowOdds, at: Date.now(), live: true });
   const mv = movementFrom(game, samples) || snap?.movement || brief?.movement || null;
   const feedErr = (side) => direct ? null : snap?.feeds?.[side];
-  let html = "";
+  let html = `<button type="button" class="ins-sim" id="ins-sim">▶ SIMULATE GAME</button>`;
 
   // 2. Line: sealed to now as a day-by-day timeline.
   html += `<div class="ins-h">LINE</div>`;
@@ -3605,6 +3605,21 @@ async function openInsights(gameId) {
   html += links();
   html += `<div class="ins-foot">Information only. Scoring uses the sealed line on your card.</div>`;
   body.innerHTML = html;
+  // Simulation context: names, logos, and the line it draws the score around.
+  const comps = summaryRaw?.header?.competitions?.[0]?.competitors || [];
+  const teamInfo = (id, shortName, side) => {
+    const c = comps.find((x) => Number(x.team?.id) === Number(id));
+    return { id, short: shortName, abbr: c?.team?.abbreviation || shortName.slice(0, 4).toUpperCase(), color: c?.team?.color ? `#${c.team.color}` : null, logo: logoUrl(id), leaders: glance?.leaders?.[side] || [] };
+  };
+  const favNowShort = mv ? mv.nowFavorite : favShort;
+  const simCtx = {
+    away: teamInfo(game.awayId, game.awayShort, "away"),
+    home: teamInfo(game.homeId, game.homeShort, "home"),
+    favSide: favNowShort === game.homeShort ? "home" : "away",
+    spread: mv ? mv.now : Number(game.spread) || 3,
+    total: mv?.overUnder ?? direct?.odds?.overUnder ?? 52,
+  };
+  body.querySelector("#ins-sim")?.addEventListener("click", () => window.openSim?.(simCtx));
 }
 (() => {
   const modal = document.getElementById("insights-modal");
