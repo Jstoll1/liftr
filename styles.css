@@ -3423,3 +3423,11 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 @keyframes sim-blink { 50% { background: var(--g2); } }
 .sim-ticker { display: flex; gap: 8px; align-items: baseline; min-height: 9px; font-size: 5.5px; color: var(--g2); letter-spacing: .04em; white-space: nowrap; overflow: hidden; }
 .sim-ticker b { font-weight: normal; font-size: 6.5px; color: var(--g3); }
+/* Fixed-size screen: the play-by-play scrolls, nothing else moves. */
+.gb-screen { height: min(440px, 54vh); min-height: 0; overflow: hidden; }
+.sim-board, .sim-ticker, .sim-field { flex: none; }
+.sim-log { flex: 1 1 auto; min-height: 0 !important; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-right: 2px; }
+.sim-log::-webkit-scrollbar { display: none; }
+.sim-panel { flex: none; height: 138px; overflow: hidden; margin-top: 0; }
+.sim-pog { padding: 3px 4px; gap: 2px; }
+.sim-bx { gap: 1px 8px; }

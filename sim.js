@@ -299,7 +299,8 @@
       d.className = `sim-line ${cls}`;
       d.textContent = text;
       log.appendChild(d);
-      while (log.children.length > 8) log.firstChild.remove();
+      while (log.children.length > 80) log.firstChild.remove();
+      log.scrollTop = log.scrollHeight;
     };
     const showBig = (text) => { flash.textContent = text; flash.classList.remove("on"); void flash.offsetWidth; flash.classList.add("on"); };
     log.innerHTML = "";
@@ -311,7 +312,7 @@
       while (i < game.events.length) apply(game.events[i++]);
       cur.qtr = Math.max(...game.events.map((e) => e.qtr || 0));
       log.innerHTML = "";
-      game.events.filter((e) => e.type === "play" || e.type === "score" || e.type === "end").slice(-4).forEach((e) => pushLine(e.text, e.type === "score" || e.td ? "td" : e.turnover ? "to" : ""));
+      game.events.filter((e) => e.type === "play" || e.type === "score" || e.type === "end").slice(-12).forEach((e) => pushLine(e.text, e.type === "score" || e.td ? "td" : e.turnover ? "to" : ""));
       cur.away = game.score.away; cur.home = game.score.home; cur.clock = 0; cur.side = null; cur.final = true;
       drawBoard();
       const winner = cur.home > cur.away ? ctx.home : ctx.away;
