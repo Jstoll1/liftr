@@ -268,7 +268,8 @@
     const drawPanel = (final) => {
       const ot = st.away.q[4] || st.home.q[4];
       const cols = ot ? [0, 1, 2, 3, 4] : [0, 1, 2, 3];
-      const row = (side) => `<tr><th>${esc((side === "away" ? ctx.away : ctx.home).abbr)}</th>${cols.map((i) => `<td>${i < cur.qtr || final ? st[side].q[i] : "·"}</td>`).join("")}<td class="t">${cur[side]}</td></tr>`;
+      const pxLogo = (t) => `<img class="sim-plogo" src="${t.logo}" alt="">`;
+      const row = (side) => `<tr><th>${pxLogo(side === "away" ? ctx.away : ctx.home)}${esc((side === "away" ? ctx.away : ctx.home).abbr)}</th>${cols.map((i) => `<td>${i < cur.qtr || final ? st[side].q[i] : "·"}</td>`).join("")}<td class="t">${cur[side]}</td></tr>`;
       let html = `<table class="sim-ls"><tr><th></th>${cols.map((i) => `<td>${i === 4 ? "OT" : i + 1}</td>`).join("")}<td class="t">T</td></tr>${row("away")}${row("home")}</table>`;
       if (!final) {
         const wp = winHome();
@@ -276,7 +277,7 @@
         const pct = Math.round(Math.max(wp, 1 - wp) * 100);
         const secs = Math.max(0, drv.start - cur.clock);
         html += `<div class="sim-drv">${cur.side ? `DRIVE <b>${drv.plays}</b> PLAYS · <b>${drv.yds}</b> YDS · <b>${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}</b>` : "&nbsp;"}</div>`;
-        html += `<div class="sim-wp"><span>${esc(ctx.away.abbr)}</span><div class="sim-wp-bar"><i style="width:${Math.round((1 - wp) * 100)}%"></i></div><span>${esc(ctx.home.abbr)}</span><em>WIN ${esc(side.abbr)} ${pct}%</em></div>`;
+        html += `<div class="sim-wp"><span>${pxLogo(ctx.away)}</span><div class="sim-wp-bar"><i style="width:${Math.round((1 - wp) * 100)}%"></i></div><span>${pxLogo(ctx.home)}</span><em>WIN ${esc(side.abbr)} ${pct}%</em></div>`;
         html += `<div class="sim-ts">${["away", "home"].map((side) => `<div><b>${esc((side === "away" ? ctx.away : ctx.home).abbr)}</b><span>PASS ${st[side].passYds}</span><span>RUSH ${st[side].rushYds}</span></div>`).join("")}</div>`;
       } else {
         const line = (side) => {
