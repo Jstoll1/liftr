@@ -3526,7 +3526,7 @@ async function openInsights(gameId) {
   if (nowOdds) samples.push({ ...nowOdds, at: Date.now(), live: true });
   const mv = movementFrom(game, samples) || snap?.movement || brief?.movement || null;
   const feedErr = (side) => direct ? null : snap?.feeds?.[side];
-  let html = `<button type="button" class="ins-sim" id="ins-sim">▶ SIMULATE GAME</button>`;
+  let html = `<button type="button" class="ins-sim" id="ins-sim" aria-label="Simulate game"><span class="ins-sim-gb" aria-hidden="true"><i></i></span><span class="ins-sim-txt"><b>SIMULATE GAME</b><em>▶ PRESS START</em></span><span class="ins-sim-vs" aria-hidden="true">${lg(game.awayId, "sm")}<i>VS</i>${lg(game.homeId, "sm")}</span></button>`;
   const hdrComps = summaryRaw?.header?.competitions?.[0]?.competitors || [];
   const abbrOf = (side) => {
     const id = side === "away" ? game.awayId : game.homeId;

@@ -3317,8 +3317,20 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-src:empty { display: none; }
 
 /* --- Game simulation on a Game Box ---------------------------------- */
-.ins-sim { width: 100%; margin: 4px 0 2px; padding: 11px 12px; border-radius: 8px; border: 2px solid var(--neon-green); background: rgba(57, 255, 136, .1); color: var(--neon-green); font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: .1em; cursor: pointer; box-shadow: 0 0 12px rgba(57, 255, 136, .25); }
-.ins-sim:active { background: var(--neon-green); color: #052010; }
+.ins-sim { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; margin: 6px 0 4px; padding: 10px 12px; border-radius: 10px; border: 3px solid #0f380f; background: #9bbc0f; color: #0f380f; cursor: pointer; overflow: hidden; box-shadow: 0 5px 0 #306230, 0 0 18px rgba(155, 188, 15, .35); text-align: left; transition: transform .06s, box-shadow .06s; }
+.ins-sim::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(15, 56, 15, .12) 0 1px, transparent 1px 3px); }
+.ins-sim:active { transform: translateY(4px); box-shadow: 0 1px 0 #306230, 0 0 10px rgba(155, 188, 15, .3); }
+.ins-sim-gb { flex: none; position: relative; width: 26px; height: 36px; border-radius: 3px 3px 9px 3px; background: #d8d5d0; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .2), 0 0 0 2px #0f380f; }
+.ins-sim-gb i { position: absolute; left: 4px; right: 4px; top: 4px; height: 14px; border-radius: 1px; background: #8bac0f; box-shadow: 0 0 0 2px #7a7c86; }
+.ins-sim-gb::before, .ins-sim-gb::after { content: ""; position: absolute; bottom: 7px; width: 5px; height: 5px; border-radius: 50%; background: #8c1d5c; }
+.ins-sim-gb::before { right: 4px; } .ins-sim-gb::after { right: 11px; bottom: 5px; }
+.ins-sim-txt { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; font-family: 'Press Start 2P', monospace; }
+.ins-sim-txt b { font-weight: normal; font-size: 11px; letter-spacing: .08em; }
+.ins-sim-txt em { font-style: normal; font-size: 7px; letter-spacing: .14em; color: #306230; animation: sim-blink-txt 1.1s steps(1) infinite; }
+@keyframes sim-blink-txt { 50% { opacity: 0; } }
+.ins-sim-vs { flex: none; display: flex; align-items: center; gap: 3px; font-family: 'Press Start 2P', monospace; font-size: 6px; color: #306230; }
+.ins-sim-vs img { width: 20px; height: 20px; filter: grayscale(1) contrast(1.3) brightness(.45) sepia(1) hue-rotate(45deg) saturate(2.5); margin: 0; }
+@media (prefers-reduced-motion: reduce) { .ins-sim-txt em { animation: none; } }
 .sim-modal { position: fixed; inset: 0; z-index: 16; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 14px; background: rgba(5, 0, 12, .92); overflow-y: auto; }
 .sim-modal.hidden { display: none; }
 .gb { --gb-body: #d8d5d0; --g0: #9bbc0f; --g1: #8bac0f; --g2: #306230; --g3: #0f380f;
