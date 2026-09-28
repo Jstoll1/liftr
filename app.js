@@ -3518,14 +3518,6 @@ async function openInsights(gameId) {
   const feedErr = (side) => direct ? null : snap?.feeds?.[side];
   let html = "";
 
-  // 1. Injuries, one column per team.
-  const statusCls = (st) => `st-${String(st || "").toLowerCase().replace(/[^a-z]/g, "")}`;
-  const col = (label, list, ok, teamId, err) => `<div class="ins-col"><div class="ins-team">${lg(teamId)}${esc(label)}</div>` + (list?.length
-    ? `<ul class="ins-inj">${list.slice(0, 7).map((i) => `<li><b class="${statusCls(i.status)}">${esc(i.status)}</b><span class="ins-who">${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}</span>${i.detail ? `<span class="ins-det">${esc(i.detail)}</span>` : ""}</li>`).join("")}</ul>`
-    : `<div class="ins-empty small">${ok === false ? `Feed unavailable.${err ? ` <i class="ins-err">${esc(err)}</i>` : ""}` : "Nothing reported. Most schools don't file injury reports."}</div>`) + `</div>`;
-  html += `<div class="ins-h">INJURIES</div>`;
-  html += injuries ? `<div class="ins-cols">${col(game.awayShort, injuries.away, direct ? true : snap?.feeds?.awayInjuries, game.awayId, feedErr("awayInjuriesError"))}${col(game.homeShort, injuries.home, direct ? true : snap?.feeds?.homeInjuries, game.homeId, feedErr("homeInjuriesError"))}</div>` : `<div class="ins-empty">Could not reach the injury feeds${eventId ? "" : " (game not on ESPN's scoreboard yet)"}. Team reports are in the links below.</div>`;
-
   // 2. Line: sealed to now as a day-by-day timeline.
   html += `<div class="ins-h">LINE</div>`;
   if (mv) {
@@ -3598,6 +3590,16 @@ async function openInsights(gameId) {
   for (let i = 0; i < Math.max(restO.length, restE.length); i++) { if (restO[i]) mixed.push(restO[i]); if (i % 2 === 1 && restE[(i - 1) / 2]) mixed.push(restE[(i - 1) / 2]); }
   const newsRows = mixed.filter((n) => { const k = norm(n.headline); if (!k || seen.has(k)) return false; seen.add(k); return true; });
   if (newsRows.length) html += `<div class="ins-h">NEWS</div><ul class="ins-news">${newsRows.slice(0, 12).map((n) => `<li><b class="ins-nh">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det"><em class="ins-src">${esc(n.source || "")}</em>${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
+
+  // 1. Injuries, one column per team.
+  const statusCls = (st) => `st-${String(st || "").toLowerCase().replace(/[^a-z]/g, "")}`;
+  const col = (label, list, ok, teamId, err) => `<div class="ins-col"><div class="ins-team">${lg(teamId)}${esc(label)}</div>` + (list?.length
+    ? `<ul class="ins-inj">${list.slice(0, 7).map((i) => `<li><b class="${statusCls(i.status)}">${esc(i.status)}</b><span class="ins-who">${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}</span>${i.detail ? `<span class="ins-det">${esc(i.detail)}</span>` : ""}</li>`).join("")}</ul>`
+    : `<div class="ins-empty small">${ok === false ? `Feed unavailable.${err ? ` <i class="ins-err">${esc(err)}</i>` : ""}` : "Nothing reported. Most schools don't file injury reports."}</div>`) + `</div>`;
+  let injHtml = `<div class="ins-h">INJURIES</div>`;
+  injHtml += injuries ? `<div class="ins-cols">${col(game.awayShort, injuries.away, direct ? true : snap?.feeds?.awayInjuries, game.awayId, feedErr("awayInjuriesError"))}${col(game.homeShort, injuries.home, direct ? true : snap?.feeds?.homeInjuries, game.homeId, feedErr("homeInjuriesError"))}</div>` : `<div class="ins-empty">Could not reach the injury feeds${eventId ? "" : " (game not on ESPN's scoreboard yet)"}. Team reports are in the links below.</div>`;
+
+  html += injHtml;
 
   // 4. Links out.
   html += links();
