@@ -3462,16 +3462,4 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .sim-ls th { white-space: nowrap; }
 .sim-wp span { display: inline-flex; align-items: center; }
 .sim-wp .sim-plogo { width: 14px; height: 14px; margin: 0; }
-/* Preview card */
-.pv-card { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding: 10px; border-radius: 10px; border: 1px solid rgba(255, 228, 94, .28); background: linear-gradient(180deg, rgba(255, 228, 94, .07), rgba(255, 255, 255, .02)); }
-.pv-top { display: grid; grid-template-columns: 26px 1fr 26px; align-items: center; gap: 8px; }
-.pv-top .ins-logo { width: 26px; height: 26px; margin: 0; }
-.pv-head { font-size: 13.5px; line-height: 1.3; color: #fff; text-align: center; }
-.pv-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-.pv-chips span { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 8px; border-radius: 20px; background: rgba(0, 0, 0, .3); border: 1px solid rgba(255, 255, 255, .1); font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 11px; color: #fff; }
-.pv-chips em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: var(--neon-yellow); }
-.pv-lede { margin: 0; padding-left: 10px; border-left: 3px solid var(--neon-cyan); font-size: 12.5px; line-height: 1.5; color: var(--text); }
-.pv-sec { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; font-size: 12px; line-height: 1.45; color: var(--text); }
-.pv-sec em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .1em; color: var(--neon-cyan); }
-.pv-more summary { text-align: center; }
-.pv-lede.pv-sec { margin-top: 0; }
+.ins-pv .pv-wait { font-size: 11px; color: var(--text-dim); animation: sim-blink-txt 1.2s steps(1) infinite; }

@@ -440,3 +440,49 @@ export async function gameNews(env, game) {
   try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 6 * 3600 }); } catch {}
   return out;
 }
+
+// --- Written preview -------------------------------------------------------
+// The phone reaches ESPN and the Worker does not, so the phone sends the
+// facts it already pulled and the Worker's model turns them into a short,
+// specific preview. One per game, cached six hours.
+export const previewKey = (week, gameId) => `preview:w${week}:g${gameId}`;
+export function previewPrompt() {
+  return [
+    "You are a sharp college football beat writer. Write a pregame preview from the JSON facts only.",
+    "Lead with a specific person or storyline, the way a good preview opens: e.g. 'John Mateer looks to get back in the win column as Oklahoma heads into Kroger Field.'",
+    "Use real names from the facts (quarterbacks, leading rushers and receivers), recent results and streaks, the stadium, notable injuries, and how the line has moved.",
+    "3 to 4 sentences, 70 to 100 words, vivid but factual. Also write a punchy headline under 9 words.",
+    "Never invent a player, stat, score or venue that is not in the facts. Never recommend a side, predict a winner, or mention betting picks.",
+    "Return JSON: {\"headline\": \"...\", \"text\": \"...\"}",
+  ].join(" ");
+}
+export async function writePreview(env, facts) {
+  if (!env.OPENAI_API_KEY) return { error: "no model key" };
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model: env.OPENAI_MODEL || "gpt-4o-mini",
+      messages: [{ role: "system", content: previewPrompt() }, { role: "user", content: JSON.stringify(facts).slice(0, 6000) }],
+      response_format: { type: "json_schema", json_schema: { name: "preview", strict: true, schema: { type: "object", additionalProperties: false, required: ["headline", "text"], properties: { headline: { type: "string" }, text: { type: "string" } } } } },
+      temperature: 0.6,
+    }),
+  });
+  if (!res.ok) return { error: `model ${res.status}` };
+  try {
+    const parsed = JSON.parse((await res.json()).choices?.[0]?.message?.content || "{}");
+    const headline = String(parsed.headline || "").trim().slice(0, 120);
+    const text = String(parsed.text || "").trim().slice(0, 900);
+    return text ? { headline, text } : { error: "empty" };
+  } catch { return { error: "bad model json" }; }
+}
+export async function gamePreview(env, week, game, facts) {
+  const key = previewKey(week, game.id);
+  const hit = await env.LIFTR_KV.get(key, "json");
+  if (hit && Date.now() - hit.at < 6 * 3600 * 1000) return hit;
+  const out = await writePreview(env, { game: `${game.away} at ${game.home}`, kickoff: game.kickoffLabel || game.kickoff, ...facts });
+  if (out.error) return { at: Date.now(), error: out.error };
+  const saved = { at: Date.now(), ...out };
+  try { await env.LIFTR_KV.put(key, JSON.stringify(saved), { expirationTtl: 3 * 24 * 3600 }); } catch {}
+  return saved;
+}

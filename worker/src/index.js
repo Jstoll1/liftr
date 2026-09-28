@@ -1,4 +1,4 @@
-import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews } from "./insights.js";
+import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey } from "./insights.js";
 // Liftr AI Worker
 //
 // Holds the OpenAI API key server-side (never exposed to the browser) and
@@ -99,6 +99,25 @@ export default {
       } catch (err) {
         console.error("insights game", err?.stack || String(err));
         return json({ error: "Snapshot failed" }, 500, corsHeaders);
+      }
+    }
+    if (url.pathname === "/insights/preview") {
+      try {
+        const week = url.searchParams.get("week") ? Number(url.searchParams.get("week")) : (await readWeeks(env)).current;
+        const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
+        const g = (slate?.games || []).find((x) => Number(x.id) === Number(url.searchParams.get("game")));
+        if (!g) return json({ error: "no such game" }, 404, corsHeaders);
+        if (request.method === "GET") {
+          const hit = await env.LIFTR_KV.get(previewKey(week, g.id), "json");
+          return json(hit || { error: "none" }, 200, corsHeaders);
+        }
+        let body = {};
+        try { body = await request.json(); } catch {}
+        const facts = body && typeof body.facts === "object" ? body.facts : {};
+        return json(await gamePreview(env, week, g, facts), 200, corsHeaders);
+      } catch (err) {
+        console.error("insights preview", err?.stack || String(err));
+        return json({ error: "Preview failed" }, 200, corsHeaders);
       }
     }
     if (url.pathname === "/insights/news") {

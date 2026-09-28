@@ -3477,6 +3477,36 @@ function movementFrom(game, samples) {
   return { sealed, sealedFavorite: favShort, now: Math.abs(nowV), nowFavorite: nowV >= 0 ? favShort : dogShort, overUnder: last.overUnder ?? null, delta, toward: delta === 0 ? null : delta > 0 ? favShort : dogShort, points: pts };
 }
 let insightsOpenToken = 0;
+const aiPreviewCache = {};
+async function fetchAiPreview(game, d) {
+  if (!WORKER_URL || !d) return null;
+  const key = `${currentWeek}:${game.id}`;
+  if (aiPreviewCache[key]) return aiPreviewCache[key];
+  const side = (list) => (list || []).slice(0, 5).map((x) => ({ ...x }));
+  const inj = (list) => (list || []).slice(0, 6).map((i) => `${i.name} (${i.pos || "?"}) ${i.status}`);
+  const live = latestLive[game.id]?.odds?.spread != null ? latestLive[game.id].odds : d.odds;
+  const favNow = live?.favoriteSide ? (live.favoriteSide === "home" ? game.home : game.away) : null;
+  const bottom = (d.preview?.paras || []).find((t) => /bottom line:/i.test(t)) || null;
+  const facts = {
+    away: game.away, home: game.home,
+    records: { [game.away]: d.records?.away?.overall, [game.home]: d.records?.home?.overall },
+    againstTheSpread: { [game.away]: d.ats?.away, [game.home]: d.ats?.home },
+    espnWinChance: d.fpi ? { [game.away]: `${d.fpi.away}%`, [game.home]: `${d.fpi.home}%` } : null,
+    venue: d.venue?.name || null,
+    weather: d.weather?.text ? `${d.weather.temp ?? ""}° ${d.weather.text}` : null,
+    seasonLeaders: { [game.away]: side(d.leaders?.away), [game.home]: side(d.leaders?.home) },
+    lastFive: { [game.away]: side(d.lastFive?.away), [game.home]: side(d.lastFive?.home) },
+    injuries: { [game.away]: inj(d.injuries?.away), [game.home]: inj(d.injuries?.home) },
+    line: { sealed: `${game.favorite} -${game.spread}`, now: favNow && live?.spread != null ? `${favNow} -${live.spread}` : null, total: live?.overUnder ?? null },
+    series: (d.series || []).slice(0, 3),
+    espnBottomLine: bottom ? bottom.replace(/^bottom line:\s*/i, "").slice(0, 400) : null,
+  };
+  const p = fetch(`${WORKER_URL}/insights/preview?week=${currentWeek}&game=${game.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ facts }) })
+    .then((r) => r.ok ? r.json() : null).then((j) => (j && j.text ? j : null)).catch(() => null)
+    .then((j) => { if (!j) delete aiPreviewCache[key]; return j; });
+  aiPreviewCache[key] = p;
+  return p;
+}
 function withTimeout(promise, ms, fallback) {
   return Promise.race([promise, new Promise((r) => setTimeout(() => r(fallback), ms))]);
 }
@@ -3508,7 +3538,8 @@ async function openInsights(gameId) {
   // Worker's extras slot in after, and slow Worker calls are capped.
   const token = ++insightsOpenToken;
   let data = null, snap = null, summaryRaw = null, awayNews = [], homeNews = [], wider = [];
-  const pend = { summary: true, news: true, wider: true };
+  const pend = { summary: true, news: true, wider: true, ai: true };
+  let aiPv = null;
   const alive = () => token === insightsOpenToken && !modal.classList.contains("hidden");
   const land = (promise, set, key) => promise.then((v) => { set(v); }).catch(() => {}).finally(() => { if (key) pend[key] = false; if (alive()) paint(); });
   const paint = () => {
@@ -3551,54 +3582,29 @@ async function openInsights(gameId) {
     html += `<div class="ins-empty">No line on the feed right now. You score against the sealed ${esc(favShort)} -${game.spread} either way.</div>`;
   }
 
-  // Preview story. ESPN's auto previews open with a date line and an
-  // "Opening Line / Against the spread" line; those become chips (and feed
-  // the ATS row), labeled sections become tagged rows, and the first real
-  // paragraph leads.
+  // Preview: same layout as ever (headline, text, "Read the rest"). The
+  // written preview supplies the headline and text when it is ready; ESPN's
+  // own paragraphs sit under "Read the rest". The ESPN opening-line
+  // paragraph still fills the ATS row in the grid below.
   let previewAts = null;
-  if (direct?.preview) {
-    const pv = direct.preview;
+  if (direct?.preview || aiPv?.text) {
+    const pv = direct?.preview || { headline: null, paras: [] };
     const sideOf = (name) => {
       const n = String(name || "").toLowerCase().replace(/\(.*?\)/g, "").trim();
-      const hit = (side) => [side === "away" ? game.away : game.home, side === "away" ? game.awayShort : game.homeShort, abbrOf(side)]
+      const hit = (sd) => [sd === "away" ? game.away : game.home, sd === "away" ? game.awayShort : game.homeShort, abbrOf(sd)]
         .map((x) => String(x || "").toLowerCase().replace(/^#\d+\s+/, "").trim()).filter(Boolean)
         .some((x) => n.includes(x) || x.includes(n) || (n.length >= 4 && x.startsWith(n.slice(0, 4))));
       return hit("away") ? "away" : hit("home") ? "home" : null;
     };
-    const chips = [];
-    const lede = [], sections = [];
     for (const t of pv.paras) {
-      if (/^opening line:/i.test(t)) {
-        const open = t.match(/opening line:\s*(.+?)\s+by\s+(\d+(?:\.\d+)?)/i);
-        if (open) { const sd = sideOf(open[1]); chips.push({ k: "OPENED", v: `${sd ? abbrOf(sd) : open[1]} -${open[2]}` }); }
-        const ats = t.match(/against the spread:\s*(.+?)\s+(\d+-\d+(?:-\d+)?),\s*(.+?)\s+(\d+-\d+(?:-\d+)?)/i);
-        if (ats) {
-          previewAts = {};
-          [[ats[1], ats[2]], [ats[3], ats[4]]].forEach(([n, r]) => { const sd = sideOf(n); if (sd) previewAts[sd] = r; });
-          chips.push({ k: "ATS", v: `${abbrOf("away")} ${previewAts.away || "—"} · ${abbrOf("home")} ${previewAts.home || "—"}` });
-        }
-        continue;
-      }
-      // Date line: "Team (4-0) at Team (4-0), Oct. 2 at 7 p.m. EDT."
-      if (/\bat\b.*\d{1,2}(:\d\d)?\s*[ap]\.?m\.?/i.test(t) && t.length < 140) continue;
-      const lab = t.match(/^([A-Z][A-Z0-9 .'&/-]{2,40}):\s*(.+)$/);
-      if (lab) sections.push({ k: lab[1].trim(), v: lab[2] });
-      else lede.push(t);
+      const ats = t.match(/against the spread:\s*(.+?)\s+(\d+-\d+(?:-\d+)?),\s*(.+?)\s+(\d+-\d+(?:-\d+)?)/i);
+      if (ats) { previewAts = {}; [[ats[1], ats[2]], [ats[3], ats[4]]].forEach(([n, r]) => { const sd = sideOf(n); if (sd) previewAts[sd] = r; }); }
     }
-    if (mv) chips.push({ k: "NOW", v: `${esc(mv.nowFavorite === game.homeShort ? abbrOf("home") : abbrOf("away"))} -${mv.now}` });
-    html += `<div class="ins-h">PREVIEW</div><div class="pv-card">`;
-    html += `<div class="pv-top">${lg(game.awayId)}<b class="pv-head">${esc(pv.headline || `${game.awayShort} at ${game.homeShort}`)}</b>${lg(game.homeId)}</div>`;
-    if (chips.length) html += `<div class="pv-chips">${chips.map((c) => `<span><em>${esc(c.k)}</em>${esc(c.v)}</span>`).join("")}</div>`;
-    // No plain paragraph: lead with the bottom line (or the first section).
-    if (!lede.length && sections.length) {
-      const i = Math.max(0, sections.findIndex((x) => /bottom line/i.test(x.k)));
-      const lead = sections.splice(i, 1)[0];
-      html += `<div class="pv-lede pv-sec"><em>${esc(lead.k)}</em><span>${esc(lead.v)}</span></div>`;
-    } else if (lede.length) html += `<p class="pv-lede">${esc(lede[0])}</p>`;
-    const rest = [...sections.map((x) => `<div class="pv-sec"><em>${esc(x.k)}</em><span>${esc(x.v)}</span></div>`), ...lede.slice(1).map((t) => `<p>${esc(t)}</p>`)];
-    if (rest.length) html += `<details class="ins-more pv-more"><summary>READ THE REST</summary>${rest.join("")}</details>`;
-    if (!lede.length && !sections.length && !chips.length) html += `<p class="pv-lede">${esc(pv.paras[0] || "")}</p>`;
-    html += `</div>`;
+    const headline = aiPv?.headline || pv.headline;
+    const lead = aiPv?.text ? [aiPv.text] : pv.paras.slice(0, 2);
+    const rest = aiPv?.text ? pv.paras : pv.paras.slice(2);
+    html += `<div class="ins-h">PREVIEW</div>${headline ? `<div class="ins-pv-h">${esc(headline)}</div>` : ""}`;
+    html += `<div class="ins-pv">${lead.map((t) => `<p>${esc(t)}</p>`).join("")}${!aiPv?.text && pend.ai ? `<p class="pv-wait">Writing a sharper preview…</p>` : ""}${rest.length ? `<details class="ins-more"><summary>READ THE REST</summary>${rest.map((t) => `<p>${esc(t)}</p>`).join("")}</details>` : ""}</div>`;
   }
 
   // 3. Insights: the numbers, then the written brief.
@@ -3703,6 +3709,7 @@ async function openInsights(gameId) {
   const summaryP = (eventIdNow ? Promise.resolve(eventIdNow) : fetchLiveScores().catch(() => {}).then(() => latestLive[gameId]?.eventId || null))
     .then((id) => fetchEspnSummary(id));
   land(summaryP, (v) => { summaryRaw = v; }, "summary");
+  land(withTimeout(summaryP.then((raw) => fetchAiPreview(game, parseSummaryClient(raw, game))), 15000, null), (v) => { aiPv = v; }, "ai");
 }
 (() => {
   const modal = document.getElementById("insights-modal");
