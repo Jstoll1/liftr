@@ -3293,3 +3293,21 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-lead b { display: flex; align-items: center; }
 .ins-step-v { display: inline-flex; align-items: center; }
 .ins-err { font-style: normal; font-size: 9px; color: rgba(255, 32, 121, .8); word-break: break-word; }
+.ins-sub-h { margin-top: 10px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--neon-cyan); }
+.ins-pv-h { font-size: 13px; font-weight: 700; color: #fff; line-height: 1.3; margin-top: 2px; }
+.ins-pv p, .ins-more p { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--text); }
+.ins-more summary { margin-top: 6px; cursor: pointer; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .1em; color: var(--neon-yellow); list-style: none; }
+.ins-more summary::-webkit-details-marker { display: none; }
+.ins-form { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 8px; margin-top: 5px; }
+.ins-form-t { display: flex; align-items: center; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ins-form-r { display: flex; gap: 4px; flex-wrap: wrap; }
+.ins-fchip { display: inline-flex; flex-direction: column; align-items: center; min-width: 40px; padding: 3px 4px; border-radius: 6px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .08); }
+.ins-fchip b { font-family: 'Press Start 2P', monospace; font-size: 8px; }
+.ins-fchip i { font-style: normal; font-size: 8.5px; color: var(--text-dim); white-space: nowrap; }
+.ins-fchip.w { border-color: rgba(57, 255, 136, .45); } .ins-fchip.w b { color: var(--neon-green); }
+.ins-fchip.l { border-color: rgba(255, 32, 121, .45); } .ins-fchip.l b { color: var(--neon-pink); }
+.ins-nh { font-weight: 700; color: #fff; font-size: 12px; }
+.ins-blurb { font-size: 11px; color: var(--text); opacity: .85; }
+.ins-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ins-chip { padding: 6px 9px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .04); color: var(--text-dim); font-size: 10.5px; text-decoration: none; }
+.ins-chip:active { background: rgba(255, 228, 94, .12); color: var(--neon-yellow); }

@@ -3383,7 +3383,43 @@ function parseSummaryClient(data, game) {
   const pcSpread = Number(pc?.spread);
   const odds = pc ? { spread: Number.isFinite(pcSpread) ? Math.abs(pcSpread) : null, favoriteSide: pc.homeTeamOdds?.favorite === true ? "home" : pc.awayTeamOdds?.favorite === true ? "away" : Number.isFinite(pcSpread) ? (pcSpread < 0 ? "home" : "away") : null, overUnder: Number.isFinite(Number(pc.overUnder)) ? Number(pc.overUnder) : null } : null;
   const away = side("away"), home = side("home");
+  const awayId = Number(away.team?.id ?? game.awayId), homeId = Number(home.team?.id ?? game.homeId);
+  // Preview story: ESPN files one per game once it is written.
+  const strip = (h) => String(h || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;/g, "'").replace(/&quot;|&ldquo;|&rdquo;/g, '"').replace(/\s+/g, " ").trim();
+  const art = data.article || null;
+  const paras = art?.story ? String(art.story).split(/<\/p>|\n\n/).map(strip).filter((t) => t.length > 40) : [];
+  const preview = art && (art.headline || paras.length) ? { headline: art.headline || null, byline: art.byline || null, paras: paras.slice(0, 8) } : null;
+  // Last five: result, score, opponent, home or away.
+  const lastFive = (teamId) => {
+    const block = (data.lastFiveGames || []).find((b) => Number(b?.team?.id) === teamId);
+    return (block?.events || []).slice(0, 5).map((e) => ({
+      result: e.gameResult || null, score: e.score || null,
+      opp: e.opponent?.abbreviation || e.opponent?.displayName || null, oppId: e.opponent?.id || null,
+      at: e.atVs || null, date: e.gameDate || null,
+    })).filter((e) => e.result || e.score);
+  };
+  // Team stats: whatever ESPN lists for both sides, matched by name.
+  const teamStats = (() => {
+    const teams = data.boxscore?.teams || [];
+    const t = (id) => teams.find((x) => Number(x?.team?.id) === id)?.statistics || [];
+    const a = t(awayId), h = t(homeId);
+    const rows = [];
+    for (const st of a) {
+      const other = h.find((x) => x.name === st.name);
+      if (!other || st.displayValue == null || other.displayValue == null) continue;
+      rows.push({ label: st.label || st.displayName || st.name, away: st.displayValue, home: other.displayValue });
+    }
+    return rows.slice(0, 10);
+  })();
+  // Series history and related articles.
+  const series = (data.seasonseries || data.headToHeadGames || []).flatMap((ss) => ss?.events || []).slice(0, 5).map((e) => {
+    const comps = e.competitors || [];
+    const win = comps.find((c) => c.winner);
+    return { date: e.date || e.gameDate || null, summary: e.summary || e.shortName || null, score: comps.map((c) => `${c.team?.abbreviation || ""} ${c.score ?? ""}`.trim()).join(" · ") || e.score || null, winner: win?.team?.abbreviation || null };
+  }).filter((e) => e.summary || e.score);
+  const related = (data.news?.articles || []).map((a) => ({ headline: a.headline || null, blurb: a.description || null, published: a.published || null, link: a.links?.web?.href || null })).filter((a) => a.headline).slice(0, 6);
   return {
+    preview, lastFive: { away: lastFive(awayId), home: lastFive(homeId) }, teamStats, series, related,
     injuriesListed: Array.isArray(data.injuries),
     injuries: { away: inj(away.team?.id ?? game.awayId), home: inj(home.team?.id ?? game.homeId) },
     records: { away: rec(away), home: rec(home) },
@@ -3391,6 +3427,19 @@ function parseSummaryClient(data, game) {
     fpi, weather, venue, odds,
     leaders: { away: leaders(away.team?.id ?? game.awayId), home: leaders(home.team?.id ?? game.homeId) },
   };
+}
+const teamNewsCache = {};
+async function fetchTeamNews(teamId) {
+  const hit = teamNewsCache[teamId];
+  if (hit && Date.now() - hit.at < 15 * 60 * 1000) return hit.items;
+  try {
+    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/news?team=${teamId}&limit=6`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = (data.articles || []).map((a) => ({ headline: a.headline || null, blurb: a.description || null, published: a.published || null, link: a.links?.web?.href || null })).filter((a) => a.headline);
+    teamNewsCache[teamId] = { at: Date.now(), items };
+    return items;
+  } catch { return []; }
 }
 // Sealed line to the latest number, signed from the sealed favourite.
 function movementFrom(game, samples) {
@@ -3427,13 +3476,13 @@ async function openInsights(gameId) {
   const lg = (id, cls = "") => `<img class="ins-logo ${cls}" src="${logoUrl(id)}" alt="" loading="lazy">`;
   modal.querySelector("#insights-title").innerHTML = `${lg(game.awayId, "hd")}<span>${esc(game.awayShort)}<i>at</i>${esc(game.homeShort)}</span>${lg(game.homeId, "hd")}`;
   modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv} · sealed ${favShort} -${game.spread}`;
-  const links = () => `<div class="ins-h">LINKS</div><div class="ins-links">${insightsLinks(game).map((l) => `<a class="ins-link" href="${l.href}" target="_blank" rel="noopener"><span class="ins-link-l">${esc(l.label)}</span><span class="ins-link-s">${esc(l.sub)}</span><span class="ins-link-a">›</span></a>`).join("")}</div>`;
+  const links = () => `<div class="ins-h">MORE</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
   body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
   modal.classList.remove("hidden");
   // The scoreboard gives the event id; without one yet, fetch it now.
   if (!latestLive[gameId]?.eventId) { try { await fetchLiveScores(); } catch {} }
   const eventId = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
-  const [data, snap, summaryRaw] = await Promise.all([fetchInsights(), fetchGameSnapshot(gameId), fetchEspnSummary(eventId)]);
+  const [data, snap, summaryRaw, awayNews, homeNews] = await Promise.all([fetchInsights(), fetchGameSnapshot(gameId), fetchEspnSummary(eventId), fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]);
   if (modal.classList.contains("hidden")) return;
   const brief = data?.briefs?.[gameId] || null;
   const direct = parseSummaryClient(summaryRaw, game);
@@ -3441,7 +3490,7 @@ async function openInsights(gameId) {
   // Worker away), then the Worker's snapshot, then the stored brief.
   const injuries = direct?.injuriesListed ? direct.injuries : snap?.injuries || brief?.injuries || null;
   const glance = direct || snap?.glance || brief?.glance || null;
-  const news = snap?.news || brief?.news || null;
+  const news = awayNews.length || homeNews.length ? { away: awayNews, home: homeNews } : snap?.news || brief?.news || null;
   if (snap?.eventId) insightsCache.eventIds = { ...(insightsCache.eventIds || {}), [gameId]: snap.eventId };
   // Line: the Worker's logged samples plus whatever the browser sees now.
   const samples = (snap?.samples || []).filter((x) => !x.live).slice();
@@ -3476,10 +3525,17 @@ async function openInsights(gameId) {
     html += `<div class="ins-empty">No line on the feed right now. You score against the sealed ${esc(favShort)} -${game.spread} either way.</div>`;
   }
 
+  // Preview story, inline, first paragraphs with a tap to expand.
+  if (direct?.preview) {
+    const pv = direct.preview;
+    html += `<div class="ins-h">PREVIEW</div>${pv.headline ? `<div class="ins-pv-h">${esc(pv.headline)}</div>` : ""}${pv.byline ? `<div class="ins-det">${esc(pv.byline)}</div>` : ""}`;
+    if (pv.paras.length) html += `<div class="ins-pv">${pv.paras.slice(0, 2).map((t) => `<p>${esc(t)}</p>`).join("")}${pv.paras.length > 2 ? `<details class="ins-more"><summary>READ THE REST</summary>${pv.paras.slice(2).map((t) => `<p>${esc(t)}</p>`).join("")}</details>` : ""}</div>`;
+  }
+
   // 3. Insights: the numbers, then the written brief.
   html += `<div class="ins-h">INSIGHTS${brief?.summary?.length ? `<span class="ins-stamp">BRIEF UPDATED ${esc(fmtWhen(brief.updatedAt).toUpperCase())}</span>` : ""}</div>`;
   if (glance) {
-    const cell = (k, a, h, aCls = "", hCls = "") => `<div class="ins-g"><span class="ins-gk">${k}</span><span class="ins-gv ${aCls}">${esc(a ?? "—")}</span><span class="ins-gv ${hCls}">${esc(h ?? "—")}</span></div>`;
+    const cell = (k, a, h, aCls = "", hCls = "") => a == null && h == null ? "" : `<div class="ins-g"><span class="ins-gk">${k}</span><span class="ins-gv ${aCls}">${esc(a ?? "—")}</span><span class="ins-gv ${hCls}">${esc(h ?? "—")}</span></div>`;
     const w = glance.weather ? [glance.weather.temp !== null ? `${glance.weather.temp}°` : null, glance.weather.text, glance.weather.precip ? `${glance.weather.precip}% rain` : null].filter(Boolean).join(" · ") : null;
     html += `<div class="ins-glance"><div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(game.awayShort)}</span><span>${lg(game.homeId)}${esc(game.homeShort)}</span></div>`
       + cell("RECORD", glance.records?.away?.overall, glance.records?.home?.overall)
@@ -3490,10 +3546,29 @@ async function openInsights(gameId) {
     const lead = (label, list, teamId) => list?.length ? `<div class="ins-lead"><b>${lg(teamId)}${esc(label)}</b>${list.map((l) => `<span>${esc(l.cat)} · ${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>` : "";
     if (glance.leaders?.away?.length || glance.leaders?.home?.length) html += `<div class="ins-leads">${lead(game.awayShort, glance.leaders.away, game.awayId)}${lead(game.homeShort, glance.leaders.home, game.homeId)}</div>`;
   }
+  // Form: last five results per team.
+  const form = direct?.lastFive;
+  if (form && (form.away.length || form.home.length)) {
+    const row = (label, teamId, list) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}${esc(label)}</span><span class="ins-form-r">${list.map((e) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}" title="${esc(`${e.at || ""} ${e.opp || ""} ${e.score || ""}`)}"><b>${esc(e.result || "·")}</b><i>${esc(e.at === "@" ? "@" : "")}${esc(e.opp || "")}</i><i>${esc(e.score || "")}</i></span>`).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
+    html += `<div class="ins-sub-h">LAST FIVE</div>${row(game.awayShort, game.awayId, form.away)}${row(game.homeShort, game.homeId, form.home)}`;
+  }
+  // Team stats, side by side, the better number not judged: labels vary.
+  if (direct?.teamStats?.length) {
+    html += `<div class="ins-sub-h">TEAM STATS</div><div class="ins-glance">${direct.teamStats.map((r) => `<div class="ins-g"><span class="ins-gk">${esc(String(r.label).toUpperCase())}</span><span class="ins-gv">${esc(r.away)}</span><span class="ins-gv">${esc(r.home)}</span></div>`).join("")}</div>`;
+  }
+  // Series history.
+  if (direct?.series?.length) {
+    html += `<div class="ins-sub-h">SERIES</div><ul class="ins-news">${direct.series.map((e) => `<li>${esc(e.summary || "")}${e.score ? `<span class="ins-det">${esc(e.score)}${e.date ? ` · ${esc(new Date(e.date).getFullYear())}` : ""}</span>` : ""}</li>`).join("")}</ul>`;
+  }
   if (brief?.summary?.length) html += `<ul class="ins-brief">${brief.summary.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
   else if (!glance) html += `<div class="ins-empty">ESPN has not published this week's game page yet. Numbers land here once it does.${!eventId ? ` <i class="ins-err">game not on the scoreboard feed yet</i>` : ""}</div>`;
-  const newsRows = news ? [...(news.away || []).map((n) => ({ ...n, team: game.awayShort })), ...(news.home || []).map((n) => ({ ...n, team: game.homeShort }))] : [];
-  if (newsRows.length) html += `<div class="ins-h">HEADLINES</div><ul class="ins-news">${newsRows.slice(0, 6).map((n) => `<li>${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}<span class="ins-det">${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
+  const seen = new Set();
+  const newsRows = [
+    ...(direct?.related || []).map((n) => ({ ...n, team: "This game" })),
+    ...(news?.away || []).map((n) => ({ ...n, team: game.awayShort })),
+    ...(news?.home || []).map((n) => ({ ...n, team: game.homeShort })),
+  ].filter((n) => !seen.has(n.headline) && seen.add(n.headline));
+  if (newsRows.length) html += `<div class="ins-h">NEWS</div><ul class="ins-news">${newsRows.slice(0, 8).map((n) => `<li><b class="ins-nh">${esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det">${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}${n.link ? ` · <a href="${esc(n.link)}" target="_blank" rel="noopener">full story</a>` : ""}</span></li>`).join("")}</ul>`;
 
   // 4. Links out.
   html += links();
