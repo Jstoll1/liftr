@@ -170,37 +170,6 @@
     return out;
   }
 
-  // --- Sprites --------------------------------------------------------------
-  // Hand-drawn pixel maps in the four Game Box greens: 3 darkest, 0 lightest.
-  const SHADES = { "0": "var(--g0)", "1": "var(--g1)", "2": "var(--g2)", "3": "var(--g3)" };
-  const sprite = (rows, cls) => {
-    const w = Math.max(...rows.map((r) => r.length));
-    return `<svg class="${cls}" viewBox="0 0 ${w} ${rows.length}" shape-rendering="crispEdges" aria-hidden="true">${rows.flatMap((row, y) => [...row].map((c, x) => SHADES[c] ? `<rect x="${x}" y="${y}" width="1" height="1" fill="${SHADES[c]}"/>` : "")).join("")}</svg>`;
-  };
-  const REF = sprite([
-    "3..............3", "33............33", ".3....3333....3.", ".33..333333..33.", "..3..300003..3..", "..33.300003.33..",
-    "...3..0000..3...", "...33333333333..", "....30303030....", "....03030303....", "....30303030....", "....03030303....",
-    "....30303030....", "....03030303....", "....33333333....", "....333..333....", "....333..333....", "....333..333....", "...3333..3333...",
-  ], "cut-ref");
-  const SPIKER = sprite([
-    "............22....", "...........2112...", "...........2112...", "............22....", "............3.....", "...........33.....",
-    "...........33.....", "....3333...33.....", "...333333.33......", "...300333333......", "...303333333......", "..33333333333.....",
-    "..3333333333......", "..33.333333.......", "..33.333333.......", "..3..333333.......", ".....33..33.......", ".....33..33.......",
-    "....333..333......",
-  ], "cut-player");
-  const KICKER = sprite([
-    ".....3333.....", "....333333....", "....300333....", "....333333....", ".....3333.....", "...33333333...", "..3333333333..",
-    "..33.3333.33..", ".....3333.....", ".....33.33....", ".....33..33...", "....333...333.", "....33.....33.",
-  ], "cut-kicker");
-  function cutscene(el, kind, name, team) {
-    const cut = el.querySelector(".sim-cut");
-    const scene = kind === "td"
-      ? `<div class="cut-crowd"></div><div class="cut-wall"></div><div class="cut-turf"></div>${REF}${SPIKER}`
-      : `<div class="cut-sky"><i></i><i></i><i></i></div><div class="cut-posts"><b></b><i></i></div><div class="cut-crowd low"></div><div class="cut-turf"></div>${REF}${KICKER}`;
-    cut.className = `sim-cut on ${kind}`;
-    cut.innerHTML = `<div class="cut-scene">${scene}</div><div class="cut-text"><b>${kind === "td" ? "TOUCH DOWN!" : "FIELD GOAL!"}</b><span>${esc(name || "")}</span><em>${esc(team || "")}</em></div>`;
-  }
-
   // --- Screen -------------------------------------------------------------
   let timer = null;
   function ensureModal() {
@@ -218,8 +187,7 @@
         <div class="gb-screen">
           <div class="sim-board"></div>
           <div class="sim-ticker"></div>
-          <div class="sim-field"><div class="sim-ez l"></div><div class="sim-lines"></div><div class="sim-ez r"></div><div class="sim-men"></div><div class="sim-ball"></div><div class="sim-flash"></div></div>
-          <div class="sim-cut"></div>
+          <div class="sim-field"><div class="sim-ez l"></div><div class="sim-lines"></div><div class="sim-ez r"></div><div class="sim-ball"></div><div class="sim-flash"></div></div>
           <div class="sim-log"></div>
           <div class="sim-panel"></div>
         </div>
@@ -325,22 +293,7 @@
         <div class="sim-tm r${cur.side === "home" ? " poss" : ""}" ><b>${cur.home}</b><span>${esc(ctx.home.abbr)}</span><img src="${ctx.home.logo}" alt=""></div>`;
     };
     // Away drives left to right, home right to left.
-    const men = el.querySelector(".sim-men");
-    // Seven a side, Tecmo style: line at the ball, backs behind, the
-    // defence across from them.
-    const OFF = [[-1.5, 22], [-1.5, 36], [-1.5, 50], [-1.5, 64], [-1.5, 78], [-5, 50], [-8.5, 50], [-1, 6], [-1, 94]];
-    const DEF = [[2, 30], [2, 50], [2, 70], [5.5, 20], [5.5, 50], [5.5, 80], [9, 10], [9, 90], [12, 50]];
-    men.innerHTML = [...OFF.map(() => `<i class="o"></i>`), ...DEF.map(() => `<i class="d"></i>`)].join("");
-    const place = (side, pos) => {
-      const x = side === "away" ? pos : 100 - pos;
-      const dir = side === "away" ? 1 : -1;
-      ball.style.left = `${x}%`;
-      [...men.children].forEach((m, k) => {
-        const [dx, y] = k < OFF.length ? OFF[k] : DEF[k - OFF.length];
-        m.style.left = `${Math.max(-7, Math.min(107, x + dx * dir))}%`;
-        m.style.top = `${y}%`;
-      });
-    };
+    const place = (side, pos) => { ball.style.left = `${side === "away" ? pos : 100 - pos}%`; };
     const pushLine = (text, cls = "") => {
       const d = document.createElement("div");
       d.className = `sim-line ${cls}`;
@@ -355,7 +308,6 @@
     drawPanel(false);
     const finish = () => {
       clearTimeout(timer);
-      el.querySelector(".sim-cut")?.classList.remove("on");
       while (i < game.events.length) apply(game.events[i++]);
       cur.qtr = Math.max(...game.events.map((e) => e.qtr || 0));
       log.innerHTML = "";
@@ -389,10 +341,9 @@
         if (ev.td) wait = 700;
       } else if (ev.type === "score") {
         cur.away = ev.score.away; cur.home = ev.score.home;
-        cutscene(el, ev.cut, ev.scorer, (ev.side === "away" ? ctx.away : ctx.home).short.toUpperCase());
+        showBig(ev.big);
         pushLine(ev.text, "td");
-        wait = 1900;
-        setTimeout(() => el.querySelector(".sim-cut")?.classList.remove("on"), 1750);
+        wait = 1000;
       } else if (ev.type === "end") {
         pushLine(ev.text, ev.turnover ? "to" : "dim");
         wait = ev.turnover ? 700 : 320;
