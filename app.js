@@ -1772,9 +1772,9 @@ function renderPicksScreen() {
     } else if (pick) {
       // The chip carries the bet, so ten cards scan as ten stakes:
       // who, which way, and what it pays.
-      const short = pick.team === game.away ? game.awayShort : game.homeShort;
+      const teamId = pick.team === game.away ? game.awayId : game.homeId;
       const way = pick.mode === "SU" ? "WIN" : (pick.team === game.favorite ? `-${game.spread}` : `+${game.spread}`);
-      statusLabel = `<span class="gs-bet">${short.toUpperCase()} ${way}</span><b>${pointValue(game, pick.team, pick.mode)}<i>PT</i></b> ✓`;
+      statusLabel = `<img class="gs-logo" src="${logoUrl(teamId)}" alt="${pick.team}"><span class="gs-bet">${way}</span><b>${pointValue(game, pick.team, pick.mode)}<i>PT</i></b> ✓`;
       statusClass = "submitted bet";
     }
 

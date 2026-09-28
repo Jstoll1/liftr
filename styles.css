@@ -1778,8 +1778,9 @@ html, body {
   border: 1px solid var(--neon-green);
   transform-origin: right center;
 }
-.game-status.bet { display: inline-flex; align-items: baseline; gap: 5px; max-width: 60%; white-space: nowrap; }
-.game-status.bet .gs-bet { color: var(--neon-cyan); overflow: hidden; text-overflow: ellipsis; letter-spacing: .5px; }
+.game-status.bet { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; padding-left: 5px; }
+.game-status.bet .gs-logo { width: 16px; height: 16px; object-fit: contain; }
+.game-status.bet .gs-bet { color: var(--neon-cyan); letter-spacing: .5px; }
 .game-status.bet b { color: var(--neon-yellow); font-weight: 800; }
 .game-status.bet b i { font-style: normal; font-size: 6.5px; margin-left: 1px; color: var(--text-dim); }
 
@@ -1893,7 +1894,7 @@ html, body {
 .tm-row.picked { border-left-color: var(--neon-cyan); background: rgba(5, 217, 232, .07); }
 
 .tm-id { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; }
-.tm-logo { width: 22px; height: 22px; object-fit: contain; }
+.tm-logo { width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, .55)); }
 .tm-name {
   display: flex;
   align-items: baseline;
