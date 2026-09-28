@@ -445,15 +445,16 @@ export async function gameNews(env, game) {
 // The phone reaches ESPN and the Worker does not, so the phone sends the
 // facts it already pulled and the Worker's model turns them into a short,
 // specific preview. One per game, cached six hours.
-export const previewKey = (week, gameId) => `preview:v2:w${week}:g${gameId}`;
+export const previewKey = (week, gameId) => `preview:v3:w${week}:g${gameId}`;
 export function previewPrompt() {
   return [
     "You are a sharp college football beat writer. Write a short pregame preview from the JSON facts only.",
-    "Exactly 2 sentences, 45 words at most, plain and easy to read. Open with a specific player or storyline, e.g. 'John Mateer looks to get back in the win column as Oklahoma heads into Kroger Field.'",
-    "Use real names from the facts. Use full team names, never abbreviations; if an opponent is only known by an abbreviation, leave that game out.",
-    "Mention an injury only if the facts list one. Mention the line only if it moved.",
-    "Also write a punchy headline under 7 words.",
-    "Never invent a player, stat, score or venue. Never recommend a side, predict a winner, or mention betting picks. No cliches like 'promises to be a thrilling clash'.",
+    "The facts include 'hooks': storylines already pulled from the data (bounce-backs, streaks, unbeaten runs, home or road splits, a starter out, matchup edges, rankings, a night kickoff, weather, the last meeting, line moves).",
+    "Pick the ONE most interesting hook and build the preview around it; add a second only if it creates tension (e.g. a hot offence against a leaky defence). Prefer contrast, stakes and change over plain stat lines.",
+    "Do NOT open with a quarterback's name followed by 'leads', 'heads', 'brings' or 'takes'. Do not open with the stadium. Open with the storyline itself.",
+    "Exactly 2 sentences, 45 words at most, plain and easy to read. Use real names from the facts and full team names, never abbreviations.",
+    "Also write a punchy headline under 7 words that names the storyline, not the venue.",
+    "Never invent a player, coach, stat, score, record or venue that is not in the facts. Never recommend a side, predict a winner, or mention betting picks. No cliches like 'promises to be a thrilling clash' or 'something has to give'.",
     "Return JSON: {\"headline\": \"...\", \"text\": \"...\"}",
   ].join(" ");
 }

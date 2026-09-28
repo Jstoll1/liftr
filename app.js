@@ -3396,7 +3396,7 @@ function parseSummaryClient(data, game) {
     const block = (data.lastFiveGames || []).find((b) => Number(b?.team?.id) === teamId);
     return (block?.events || []).slice(0, 5).map((e) => ({
       result: e.gameResult || null, score: e.score || null,
-      opp: e.opponent?.abbreviation || e.opponent?.displayName || null, oppId: e.opponent?.id || null,
+      opp: e.opponent?.abbreviation || e.opponent?.displayName || null, oppName: e.opponent?.displayName || e.opponent?.location || null, oppId: e.opponent?.id || null,
       at: e.atVs || null, date: e.gameDate || null,
     })).filter((e) => e.result || e.score);
   };
@@ -3495,7 +3495,61 @@ async function fetchAiPreview(game, d) {
   const live = latestLive[game.id]?.odds?.spread != null ? latestLive[game.id].odds : d.odds;
   const favNow = live?.favoriteSide ? (live.favoriteSide === "home" ? game.home : game.away) : null;
   const bottom = (d.preview?.paras || []).find((t) => /bottom line:/i.test(t)) || null;
+  // Storylines worth leading with, most interesting first. The model is
+  // told to build around one of these rather than "QB heads into X".
+  const hooks = [];
+  const nm = { away: game.away, home: game.home };
+  const byDate = (list) => (list || []).slice().sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  for (const side of ["away", "home"]) {
+    const games = byDate(d.lastFive?.[side]);
+    if (games.length) {
+      const g0 = games[0];
+      const opp = g0.oppName || null;
+      const [a, b] = String(g0.score || "").split("-").map(Number);
+      const margin = Number.isFinite(a) && Number.isFinite(b) ? Math.abs(a - b) : null;
+      if (margin !== null) g0.score = `${Math.max(a, b)}-${Math.min(a, b)}`;
+      if (g0.result === "L") hooks.push(`${nm[side]} are coming off a ${g0.score} loss${opp ? ` to ${opp}` : ""}${margin !== null && margin <= 7 ? " (one-score game)" : margin >= 21 ? " (blowout)" : ""}`);
+      else if (g0.result === "W" && margin !== null && margin >= 28) hooks.push(`${nm[side]} are coming off a ${g0.score} rout${opp ? ` of ${opp}` : ""}`);
+      let streak = 0; for (const x of games) { if (x.result === g0.result) streak += 1; else break; }
+      if (streak >= 3) hooks.push(`${nm[side]} have ${g0.result === "W" ? "won" : "lost"} ${streak} straight`);
+    }
+    const rec = d.records?.[side]?.overall || "";
+    if (/^\d+-0$/.test(rec) && Number(rec.split("-")[0]) >= 3) hooks.push(`${nm[side]} are unbeaten at ${rec}`);
+    if (/^0-\d+$/.test(rec) && Number(rec.split("-")[1]) >= 3) hooks.push(`${nm[side]} are still winless at ${rec}`);
+    const split = d.records?.[side]?.split;
+    if (split) hooks.push(`${nm[side]} are ${split} ${side === "home" ? "at home" : "on the road"}`);
+    const ats = d.ats?.[side];
+    if (ats && /^(\d+)-0|^0-(\d+)/.test(ats) && ats !== "0-0") hooks.push(`${nm[side]} are ${ats} against the spread`);
+    for (const i of d.injuries?.[side] || []) {
+      if (/^(QB|RB|WR)$/.test(i.pos || "") && /out|doubtful/i.test(i.status || "")) hooks.push(`${nm[side]} ${i.pos} ${i.name} is listed ${i.status}; a backup would take his snaps`);
+    }
+  }
+  // Matchup edge: best offence against the leakier defence.
+  const stat = (label) => (d.teamStats || []).find((r) => r.label && r.label.toLowerCase() === label);
+  const ppg = stat("points per game"), pa = stat("points allowed per game");
+  if (ppg && pa) {
+    const n = (v) => parseFloat(String(v).replace(/[^0-9.]/g, ""));
+    for (const [off, def] of [["away", "home"], ["home", "away"]]) {
+      const o = n(ppg[off]), dd = n(pa[def]);
+      if (o >= 38 && dd >= 24) hooks.push(`${nm[off]} score ${ppg[off]} a game; ${nm[def]} allow ${pa[def]}`);
+      if (o <= 20 && dd <= 15) hooks.push(`${nm[off]} score just ${ppg[off]} a game against a ${nm[def]} defence allowing ${pa[def]}`);
+    }
+  }
+  const rk = (side) => latestLive[game.id]?.[side === "away" ? "awayRank" : "homeRank"];
+  if (rk("away") && rk("home")) hooks.push(`Top-25 matchup: No. ${rk("away")} ${game.away} at No. ${rk("home")} ${game.home}`);
+  else if (rk("away") || rk("home")) { const sd = rk("away") ? "away" : "home"; hooks.push(`No. ${rk(sd)} ${nm[sd]} ${sd === "away" ? "go on the road" : "host an unranked opponent"}`); }
+  if (/\b(7|8|9|10|11):\d\d\s*PM/i.test(game.kickoffLabel || "") || /\b(7|8|9|10|11)\s*PM/i.test(game.kickoffLabel || "")) hooks.push(`Night kickoff (${game.kickoffLabel})`);
+  if (d.weather && ((d.weather.precip ?? 0) >= 40 || (d.weather.temp ?? 60) <= 40 || (d.weather.temp ?? 60) >= 90)) hooks.push(`Weather: ${d.weather.temp ?? ""}° ${d.weather.text || ""}${d.weather.precip ? `, ${d.weather.precip}% chance of rain` : ""}`);
+  const last = (d.series || [])[0];
+  if (last?.summary) hooks.push(`Last meeting: ${last.summary}${last.score ? ` (${last.score})` : ""}`);
+  if (live?.spread != null && favNow) {
+    const sealedFav = game.favorite === game.home ? "home" : "away";
+    const nowSigned = live.favoriteSide === sealedFav ? live.spread : -live.spread;
+    const moved = Math.round((nowSigned - Number(game.spread)) * 2) / 2;
+    if (Math.abs(moved) >= 1.5) hooks.push(`The line has moved ${Math.abs(moved)} points toward ${moved > 0 ? game.favorite : (game.favorite === game.home ? game.away : game.home)} this week`);
+  }
   const facts = {
+    hooks,
     away: game.away, home: game.home,
     records: { [game.away]: d.records?.away?.overall, [game.home]: d.records?.home?.overall },
     againstTheSpread: { [game.away]: d.ats?.away, [game.home]: d.ats?.home },
