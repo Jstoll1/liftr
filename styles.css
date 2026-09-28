@@ -3311,3 +3311,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ins-chip { padding: 6px 9px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .04); color: var(--text-dim); font-size: 10.5px; text-decoration: none; }
 .ins-chip:active { background: rgba(255, 228, 94, .12); color: var(--neon-yellow); }
+.ins-nh a { color: #fff; text-decoration: none; }
+.ins-nh a:active { color: var(--neon-cyan); }
+.ins-src { font-style: normal; color: var(--neon-yellow); margin-right: 6px; }
+.ins-src:empty { display: none; }

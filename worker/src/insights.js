@@ -352,3 +352,63 @@ export async function gameSnapshot(env, deps, week, gameId) {
   try { await env.LIFTR_KV.put(snapKey(week, g.id), JSON.stringify(snap), { expirationTtl: 7 * 24 * 3600 }); } catch {}
   return snap;
 }
+
+// --- Wider news -----------------------------------------------------------
+// Google News RSS for the matchup and each team, past week. Anything from
+// ESPN (the phone already shows ESPN's feed), video, podcasts and betting
+// promos is dropped, and duplicates across the three searches are merged.
+const SKIP_SOURCES = /espn|youtube|tiktok|podcast|draftkings|fanduel|betmgm|caesars|bet365|fanatics sportsbook/i;
+const SKIP_TITLES = /\b(video|watch|podcast|live stream|how to watch|stream free|highlights|odds, picks|prediction(s)?,? odds|best bets?|promo code|bonus code)\b/i;
+function decode(x) {
+  return String(x || "").replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+export function parseGoogleNewsRss(xml) {
+  const items = [];
+  for (const m of String(xml || "").matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+    const block = m[1];
+    const tag = (t) => decode((block.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)<\\/${t}>`)) || [])[1]);
+    const source = tag("source");
+    let title = tag("title");
+    // Google appends " - Source" to every title.
+    if (source && title.endsWith(` - ${source}`)) title = title.slice(0, -(source.length + 3));
+    const link = tag("link");
+    const published = tag("pubDate");
+    if (!title || !link) continue;
+    items.push({ headline: title, source: source || null, link, published: published ? new Date(published).toISOString() : null });
+  }
+  return items;
+}
+export function filterNews(items) {
+  const seen = new Set();
+  return items.filter((n) => {
+    if (SKIP_SOURCES.test(n.source || "") || SKIP_SOURCES.test(n.link || "")) return false;
+    if (SKIP_TITLES.test(n.headline)) return false;
+    const key = n.headline.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 70);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+export async function gameNews(env, game) {
+  const key = `news:g:${game.awayId}:${game.homeId}`;
+  const hit = await env.LIFTR_KV.get(key, "json");
+  if (hit && Date.now() - hit.at < 30 * 60 * 1000) return hit;
+  const q = (s) => `https://news.google.com/rss/search?q=${encodeURIComponent(s)}+when:7d&hl=en-US&gl=US&ceid=US:en`;
+  const queries = [
+    { tag: "game", url: q(`"${game.away}" "${game.home}" football`) },
+    { tag: "away", url: q(`"${game.away}" football`) },
+    { tag: "home", url: q(`"${game.home}" football`) },
+  ];
+  const results = await Promise.all(queries.map(async (x) => {
+    try {
+      const res = await fetch(x.url, { headers: { "User-Agent": UA, Accept: "application/rss+xml, application/xml, text/xml" } });
+      if (!res.ok) return { tag: x.tag, items: [], error: `HTTP ${res.status}` };
+      return { tag: x.tag, items: parseGoogleNewsRss(await res.text()).map((n) => ({ ...n, about: x.tag })) };
+    } catch (err) { return { tag: x.tag, items: [], error: String(err?.message || err) }; }
+  }));
+  const all = filterNews(results.flatMap((r) => r.items))
+    .sort((a, b) => (a.about === "game" ? 0 : 1) - (b.about === "game" ? 0 : 1) || String(b.published).localeCompare(String(a.published)));
+  const out = { at: Date.now(), items: all.slice(0, 18), errors: results.filter((r) => r.error).map((r) => `${r.tag}: ${r.error}`) };
+  try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 6 * 3600 }); } catch {}
+  return out;
+}

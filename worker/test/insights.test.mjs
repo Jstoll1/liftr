@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -115,4 +115,20 @@ test("parseSummary pulls records, ATS, FPI, weather, venue and leaders from ESPN
   assert.deepEqual(g.leaders.home, [{ cat: "Passing Yards", name: "J. French", line: "812 YDS, 7 TD" }]);
   assert.deepEqual(g.leaders.away, []);
   assert.equal(parseSummary(null, game), null);
+});
+
+test("Google News RSS parses, strips the source suffix, and drops ESPN, video and betting promos", () => {
+  const xml = `<rss><channel>
+    <item><title>Pitt's line reshuffled before Virginia Tech trip - Pittsburgh Post-Gazette</title><link>https://news.google.com/a1</link><pubDate>Tue, 29 Sep 2026 14:00:00 GMT</pubDate><source url="https://post-gazette.com">Pittsburgh Post-Gazette</source></item>
+    <item><title>Pitt vs Virginia Tech odds, picks and prediction - Covers</title><link>https://news.google.com/a2</link><source url="https://covers.com">Covers</source></item>
+    <item><title>Hokies QB update - ESPN</title><link>https://news.google.com/a3</link><source url="https://espn.com">ESPN</source></item>
+    <item><title>WATCH: Pitt practice highlights - YouTube</title><link>https://news.google.com/a4</link><source url="https://youtube.com">YouTube</source></item>
+    <item><title>Pitt&#39;s line reshuffled before Virginia Tech trip - Yahoo Sports</title><link>https://news.google.com/a5</link><source url="https://yahoo.com">Yahoo Sports</source></item>
+  </channel></rss>`;
+  const items = parseGoogleNewsRss(xml);
+  assert.equal(items.length, 5);
+  assert.equal(items[0].headline, "Pitt's line reshuffled before Virginia Tech trip");
+  assert.equal(items[0].source, "Pittsburgh Post-Gazette");
+  const kept = filterNews(items);
+  assert.deepEqual(kept.map((n) => n.source), ["Pittsburgh Post-Gazette"]);
 });

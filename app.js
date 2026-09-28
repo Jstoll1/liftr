@@ -3417,7 +3417,7 @@ function parseSummaryClient(data, game) {
     const win = comps.find((c) => c.winner);
     return { date: e.date || e.gameDate || null, summary: e.summary || e.shortName || null, score: comps.map((c) => `${c.team?.abbreviation || ""} ${c.score ?? ""}`.trim()).join(" · ") || e.score || null, winner: win?.team?.abbreviation || null };
   }).filter((e) => e.summary || e.score);
-  const related = (data.news?.articles || []).map((a) => ({ headline: a.headline || null, blurb: a.description || null, published: a.published || null, link: a.links?.web?.href || null })).filter((a) => a.headline).slice(0, 6);
+  const related = (data.news?.articles || []).filter((a) => !isVideoArticle(a)).map((a) => ({ headline: a.headline || null, blurb: a.description || null, published: a.published || null, link: a.links?.web?.href || null, source: "ESPN" })).filter((a) => a.headline).slice(0, 6);
   return {
     preview, lastFive: { away: lastFive(awayId), home: lastFive(homeId) }, teamStats, series, related,
     injuriesListed: Array.isArray(data.injuries),
@@ -3428,6 +3428,21 @@ function parseSummaryClient(data, game) {
     leaders: { away: leaders(away.team?.id ?? game.awayId), home: leaders(home.team?.id ?? game.homeId) },
   };
 }
+// ESPN's feeds mix in clips; keep written stories only.
+function isVideoArticle(a) {
+  const t = String(a?.type || "").toLowerCase();
+  if (t === "media" || t === "video" || t === "clip" || t === "podcast") return true;
+  const href = a?.links?.web?.href || "";
+  return /\/video\/|\/watch\/|\/clip\//.test(href) || /^(watch|video)\b/i.test(a?.headline || "");
+}
+async function fetchWiderNews(gameId) {
+  if (!WORKER_URL) return [];
+  try {
+    const res = await fetch(`${WORKER_URL}/insights/news?week=${currentWeek}&game=${gameId}&t=${Math.floor(Date.now() / 600000)}`);
+    if (!res.ok) return [];
+    return (await res.json()).items || [];
+  } catch { return []; }
+}
 const teamNewsCache = {};
 async function fetchTeamNews(teamId) {
   const hit = teamNewsCache[teamId];
@@ -3436,7 +3451,7 @@ async function fetchTeamNews(teamId) {
     const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/news?team=${teamId}&limit=6`);
     if (!res.ok) return [];
     const data = await res.json();
-    const items = (data.articles || []).map((a) => ({ headline: a.headline || null, blurb: a.description || null, published: a.published || null, link: a.links?.web?.href || null })).filter((a) => a.headline);
+    const items = (data.articles || []).filter((a) => !isVideoArticle(a)).map((a) => ({ headline: a.headline || null, blurb: a.description || null, published: a.published || null, link: a.links?.web?.href || null, source: "ESPN" })).filter((a) => a.headline);
     teamNewsCache[teamId] = { at: Date.now(), items };
     return items;
   } catch { return []; }
@@ -3482,7 +3497,7 @@ async function openInsights(gameId) {
   // The scoreboard gives the event id; without one yet, fetch it now.
   if (!latestLive[gameId]?.eventId) { try { await fetchLiveScores(); } catch {} }
   const eventId = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
-  const [data, snap, summaryRaw, awayNews, homeNews] = await Promise.all([fetchInsights(), fetchGameSnapshot(gameId), fetchEspnSummary(eventId), fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]);
+  const [data, snap, summaryRaw, awayNews, homeNews, wider] = await Promise.all([fetchInsights(), fetchGameSnapshot(gameId), fetchEspnSummary(eventId), fetchTeamNews(game.awayId), fetchTeamNews(game.homeId), fetchWiderNews(gameId)]);
   if (modal.classList.contains("hidden")) return;
   const brief = data?.briefs?.[gameId] || null;
   const direct = parseSummaryClient(summaryRaw, game);
@@ -3562,13 +3577,24 @@ async function openInsights(gameId) {
   }
   if (brief?.summary?.length) html += `<ul class="ins-brief">${brief.summary.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
   else if (!glance) html += `<div class="ins-empty">ESPN has not published this week's game page yet. Numbers land here once it does.${!eventId ? ` <i class="ins-err">game not on the scoreboard feed yet</i>` : ""}</div>`;
+  // Mix sources: game-specific first, then alternate the wider press with
+  // ESPN so no single outlet fills the list.
   const seen = new Set();
-  const newsRows = [
+  const norm = (h) => String(h || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 70);
+  const aboutLabel = (a) => a === "game" ? "This game" : a === "away" ? game.awayShort : a === "home" ? game.homeShort : a;
+  const others = wider.map((n) => ({ ...n, team: aboutLabel(n.about) }));
+  const espn = [
     ...(direct?.related || []).map((n) => ({ ...n, team: "This game" })),
     ...(news?.away || []).map((n) => ({ ...n, team: game.awayShort })),
     ...(news?.home || []).map((n) => ({ ...n, team: game.homeShort })),
-  ].filter((n) => !seen.has(n.headline) && seen.add(n.headline));
-  if (newsRows.length) html += `<div class="ins-h">NEWS</div><ul class="ins-news">${newsRows.slice(0, 8).map((n) => `<li><b class="ins-nh">${esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det">${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}${n.link ? ` · <a href="${esc(n.link)}" target="_blank" rel="noopener">full story</a>` : ""}</span></li>`).join("")}</ul>`;
+  ];
+  const mixed = [];
+  const gameFirst = [...others.filter((n) => n.about === "game"), ...espn.filter((n) => n.team === "This game")];
+  const restO = others.filter((n) => n.about !== "game"), restE = espn.filter((n) => n.team !== "This game");
+  mixed.push(...gameFirst);
+  for (let i = 0; i < Math.max(restO.length, restE.length); i++) { if (restO[i]) mixed.push(restO[i]); if (i % 2 === 1 && restE[(i - 1) / 2]) mixed.push(restE[(i - 1) / 2]); }
+  const newsRows = mixed.filter((n) => { const k = norm(n.headline); if (!k || seen.has(k)) return false; seen.add(k); return true; });
+  if (newsRows.length) html += `<div class="ins-h">NEWS</div><ul class="ins-news">${newsRows.slice(0, 12).map((n) => `<li><b class="ins-nh">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det"><em class="ins-src">${esc(n.source || "")}</em>${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
 
   // 4. Links out.
   html += links();
