@@ -3314,8 +3314,11 @@ function insightsLinks(game) {
   const q = encodeURIComponent(`${game.away} ${game.home} football`);
   const links = [];
   if (eventId) links.push({ label: "ESPN Gamecast", sub: "preview, odds tab, matchup stats", href: `https://www.espn.com/college-football/game/_/gameId/${eventId}` });
-  links.push({ label: `${game.awayShort} injuries`, sub: "ESPN team report", href: `https://www.espn.com/college-football/team/injuries/_/id/${game.awayId}` });
-  links.push({ label: `${game.homeShort} injuries`, sub: "ESPN team report", href: `https://www.espn.com/college-football/team/injuries/_/id/${game.homeId}` });
+  // ESPN's college injury pages are usually empty, so these search this
+  // week's news for injury reporting on each team instead.
+  const injQ = (team) => encodeURIComponent(`"${team}" football injury OR injured OR questionable OR "out for"`);
+  links.push({ label: `${game.awayShort} injury news`, sub: "Google News, past week", href: `https://news.google.com/search?q=${injQ(game.away)}+when:7d` });
+  links.push({ label: `${game.homeShort} injury news`, sub: "Google News, past week", href: `https://news.google.com/search?q=${injQ(game.home)}+when:7d` });
   links.push({ label: "Latest news", sub: "Google News search", href: `https://news.google.com/search?q=${q}` });
   links.push({ label: "Public betting splits", sub: "Action Network consensus", href: "https://www.actionnetwork.com/ncaaf/public-betting" });
   links.push({ label: "Line shopping", sub: "ESPN odds board", href: "https://www.espn.com/college-football/odds" });
@@ -3452,7 +3455,7 @@ async function openInsights(gameId) {
   const statusCls = (st) => `st-${String(st || "").toLowerCase().replace(/[^a-z]/g, "")}`;
   const col = (label, list, ok, teamId, err) => `<div class="ins-col"><div class="ins-team">${lg(teamId)}${esc(label)}</div>` + (list?.length
     ? `<ul class="ins-inj">${list.slice(0, 7).map((i) => `<li><b class="${statusCls(i.status)}">${esc(i.status)}</b><span class="ins-who">${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}</span>${i.detail ? `<span class="ins-det">${esc(i.detail)}</span>` : ""}</li>`).join("")}</ul>`
-    : `<div class="ins-empty small">${ok === false ? `Feed unavailable.${err ? ` <i class="ins-err">${esc(err)}</i>` : ""}` : "No one listed."}</div>`) + `</div>`;
+    : `<div class="ins-empty small">${ok === false ? `Feed unavailable.${err ? ` <i class="ins-err">${esc(err)}</i>` : ""}` : "Nothing reported. Most schools don't file injury reports."}</div>`) + `</div>`;
   html += `<div class="ins-h">INJURIES</div>`;
   html += injuries ? `<div class="ins-cols">${col(game.awayShort, injuries.away, direct ? true : snap?.feeds?.awayInjuries, game.awayId, feedErr("awayInjuriesError"))}${col(game.homeShort, injuries.home, direct ? true : snap?.feeds?.homeInjuries, game.homeId, feedErr("homeInjuriesError"))}</div>` : `<div class="ins-empty">Could not reach the injury feeds${eventId ? "" : " (game not on ESPN's scoreboard yet)"}. Team reports are in the links below.</div>`;
 
