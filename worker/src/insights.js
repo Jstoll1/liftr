@@ -65,6 +65,7 @@ export function lineMovement(game, samples) {
     now: latest.spread, nowFavorite: nowFavShort, overUnder: latest.overUnder, at: latest.at,
     delta, toward: delta === 0 ? null : delta > 0 ? favShort : dogShort,
     series: samples.map(signed).filter((v) => v !== null),
+    points: samples.map((x) => ({ at: x.at, v: signed(x), live: !!x.live })).filter((x) => x.v !== null),
   };
 }
 
@@ -298,4 +299,38 @@ export async function readInsights(env, week) {
   const log = (await env.LIFTR_KV.get(INSIGHTS_LOG_KEY, "json")) || [];
   const lastRun = log.find((r) => r.week === week) || null;
   return { week, lines, briefs, lastRun };
+}
+
+// On demand, for the sheet: both injury reports, the glance numbers and
+// the live line for one game, without waiting for the scheduled run and
+// without the model. Cached half an hour so ten people opening the same
+// game cost one set of feed calls.
+export const snapKey = (week, gameId) => `snap:w${week}:g${gameId}`;
+export async function gameSnapshot(env, deps, week, gameId) {
+  const cached = await env.LIFTR_KV.get(snapKey(week, gameId), "json");
+  if (cached && Date.now() - cached.at < 30 * 60 * 1000) return cached;
+  const slate = await deps.readSlate(env, week);
+  const g = (slate?.games || []).find((x) => Number(x.id) === Number(gameId));
+  if (!g) return null;
+  let live = null;
+  try { live = (await deps.liveGames(env, week)).games.find((x) => x.id === g.id) || null; } catch {}
+  const eventId = live?.eventId || cached?.eventId || null;
+  const [away, home, summary] = await Promise.all([
+    fetchTeamFeeds(env, g.awayId), fetchTeamFeeds(env, g.homeId),
+    eventId ? feed(env, `${ESPN}/summary?event=${eventId}`, (d) => parseSummary(d, g)) : Promise.resolve({ ok: false, error: "no event id", items: null }),
+  ]);
+  const log = (await env.LIFTR_KV.get(linesKey(week), "json")) || {};
+  const samples = (log[g.id] || []).slice();
+  if (live?.odds && live.odds.spread !== null) samples.push({ at: Date.now(), spread: live.odds.spread, favoriteSide: live.odds.favoriteSide, overUnder: live.odds.overUnder, live: true });
+  const snap = {
+    at: Date.now(), week, game: g.id, eventId,
+    injuries: { away: away.injuries.items, home: home.injuries.items },
+    news: { away: away.news.items, home: home.news.items },
+    glance: summary.ok ? summary.items : null,
+    movement: lineMovement(g, samples),
+    samples,
+    feeds: { awayInjuries: away.injuries.ok, homeInjuries: home.injuries.ok, summary: summary.ok, summaryError: summary.error || null },
+  };
+  try { await env.LIFTR_KV.put(snapKey(week, g.id), JSON.stringify(snap), { expirationTtl: 7 * 24 * 3600 }); } catch {}
+  return snap;
 }

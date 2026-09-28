@@ -1,4 +1,4 @@
-import { runInsights, readInsights, parseOdds } from "./insights.js";
+import { runInsights, readInsights, parseOdds, gameSnapshot } from "./insights.js";
 // Liftr AI Worker
 //
 // Holds the OpenAI API key server-side (never exposed to the browser) and
@@ -90,6 +90,16 @@ export default {
     }
     if (url.pathname === "/insights") {
       return handleInsights(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/insights/game") {
+      try {
+        const week = url.searchParams.get("week") ? Number(url.searchParams.get("week")) : (await readWeeks(env)).current;
+        const snap = await gameSnapshot(env, INSIGHTS_DEPS, week, Number(url.searchParams.get("game")));
+        return json(snap || { error: "no such game" }, snap ? 200 : 404, { ...corsHeaders, "Cache-Control": "public, max-age=300" });
+      } catch (err) {
+        console.error("insights game", err?.stack || String(err));
+        return json({ error: "Snapshot failed" }, 500, corsHeaders);
+      }
     }
     if (url.pathname === "/insights/run") {
       if (!isAdmin(env, url)) return json({ error: "Not found" }, 404, corsHeaders);

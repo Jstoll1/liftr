@@ -3265,3 +3265,29 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-lead b { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text); margin-bottom: 2px; }
 .ins-lead span { display: flex; flex-direction: column; line-height: 1.25; margin-bottom: 3px; }
 .ins-lead i { font-style: normal; color: var(--text); font-size: 10.5px; }
+.ins-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ins-col { min-width: 0; }
+.ins-cols .ins-inj li { flex-direction: column; align-items: flex-start; gap: 2px; }
+.ins-who { font-size: 11px; color: var(--text); }
+.ins-cols .ins-det { flex-basis: auto; }
+.ins-timeline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; margin-top: 4px; }
+.ins-step { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; }
+.ins-step-l { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .06em; color: var(--text-dim); }
+.ins-step-v { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 12px; color: #fff; padding: 4px 7px; border-radius: 6px; background: rgba(255, 255, 255, .06); white-space: nowrap; }
+.ins-step.seal .ins-step-v { border: 1px solid rgba(255, 228, 94, .5); color: var(--neon-yellow); }
+.ins-step.now .ins-step-v { border: 1px solid rgba(5, 217, 232, .6); color: var(--neon-cyan); box-shadow: 0 0 8px rgba(5, 217, 232, .3); }
+.ins-step-arrow { font-size: 10px; color: var(--text-dim); margin: 12px 5px 0; }
+.ins-step-arrow.up { color: var(--neon-yellow); }
+.ins-step-arrow.down { color: var(--neon-cyan); }
+.ins-verdict { margin-top: 6px; font-size: 11.5px; color: var(--text); }
+.ins-verdict b { color: var(--neon-cyan); }
+.ins-ou { margin-left: 8px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); }
+.ins-logo { width: 18px; height: 18px; object-fit: contain; vertical-align: middle; margin-right: 5px; flex: none; }
+.ins-logo.hd { width: 30px; height: 30px; margin: 0 8px; }
+.ins-logo.sm { width: 16px; height: 16px; margin-right: 3px; }
+#insights-title { display: inline-flex; align-items: center; justify-content: center; gap: 2px; }
+#insights-title i { font-style: normal; font-size: 8px; color: var(--text-dim); margin: 0 6px; }
+.ins-team { display: flex; align-items: center; }
+.ins-g.head span { display: inline-flex; align-items: center; justify-content: center; }
+.ins-lead b { display: flex; align-items: center; }
+.ins-step-v { display: inline-flex; align-items: center; }

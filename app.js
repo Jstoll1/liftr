@@ -3310,7 +3310,7 @@ async function fetchInsights() {
 }
 function insightsLinks(game) {
   const live = latestLive[game.id];
-  const eventId = live?.eventId || insightsCache.data?.briefs?.[game.id]?.eventId || null;
+  const eventId = live?.eventId || insightsCache.eventIds?.[game.id] || insightsCache.data?.briefs?.[game.id]?.eventId || null;
   const q = encodeURIComponent(`${game.away} ${game.home} football`);
   const links = [];
   if (eventId) links.push({ label: "ESPN Gamecast", sub: "preview, odds tab, matchup stats", href: `https://www.espn.com/college-football/game/_/gameId/${eventId}` });
@@ -3332,64 +3332,87 @@ function sparkline(series) {
 function fmtWhen(t) {
   return new Date(t).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" });
 }
+async function fetchGameSnapshot(gameId) {
+  if (!WORKER_URL) return null;
+  try {
+    const res = await fetch(`${WORKER_URL}/insights/game?week=${currentWeek}&game=${gameId}&t=${Math.floor(Date.now() / 300000)}`);
+    return res.ok ? await res.json() : null;
+  } catch { return null; }
+}
+function dayLabel(t) {
+  return new Date(t).toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" }).toUpperCase();
+}
 async function openInsights(gameId) {
   const modal = document.getElementById("insights-modal");
   const game = GAMES.find((g) => g.id === gameId);
   if (!modal || !game) return;
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const body = modal.querySelector("#insights-body");
-  modal.querySelector("#insights-title").textContent = `G${game.id} · ${game.awayShort} at ${game.homeShort}`;
-  modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv} · sealed ${game.favorite === game.home ? game.homeShort : game.awayShort} -${game.spread}`;
+  const favShort = game.favorite === game.home ? game.homeShort : game.awayShort;
+  const lg = (id, cls = "") => `<img class="ins-logo ${cls}" src="${logoUrl(id)}" alt="" loading="lazy">`;
+  modal.querySelector("#insights-title").innerHTML = `${lg(game.awayId, "hd")}<span>${esc(game.awayShort)}<i>at</i>${esc(game.homeShort)}</span>${lg(game.homeId, "hd")}`;
+  modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv} · sealed ${favShort} -${game.spread}`;
   const links = () => `<div class="ins-h">LINKS</div><div class="ins-links">${insightsLinks(game).map((l) => `<a class="ins-link" href="${l.href}" target="_blank" rel="noopener"><span class="ins-link-l">${esc(l.label)}</span><span class="ins-link-s">${esc(l.sub)}</span><span class="ins-link-a">›</span></a>`).join("")}</div>`;
-  body.innerHTML = `<div class="ins-loading">Loading the brief…</div>${links()}`;
+  body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
   modal.classList.remove("hidden");
-  const data = await fetchInsights();
+  const [data, snap] = await Promise.all([fetchInsights(), fetchGameSnapshot(gameId)]);
   if (modal.classList.contains("hidden")) return;
   const brief = data?.briefs?.[gameId] || null;
-  const samples = data?.lines?.[gameId] || [];
-  const mv = brief?.movement || null;
-  const live = latestLive[gameId];
+  // The snapshot is fresher for feeds and the line; the brief adds the
+  // written summary. Either one alone still fills the sheet.
+  const injuries = snap?.injuries || brief?.injuries || null;
+  const glance = snap?.glance || brief?.glance || null;
+  const mv = snap?.movement || brief?.movement || null;
+  const news = snap?.news || brief?.news || null;
+  if (snap?.eventId) insightsCache.eventIds = { ...(insightsCache.eventIds || {}), [gameId]: snap.eventId };
   let html = "";
-  // At a glance: the numbers people ask for first, in one grid.
-  const gl = brief?.glance || null;
-  if (gl) {
-    const cell = (k, a, h, aCls = "", hCls = "") => `<div class="ins-g"><span class="ins-gk">${k}</span><span class="ins-gv ${aCls}">${esc(a ?? "—")}</span><span class="ins-gv ${hCls}">${esc(h ?? "—")}</span></div>`;
-    const fpiA = gl.fpi ? `${gl.fpi.away}%` : null, fpiH = gl.fpi ? `${gl.fpi.home}%` : null;
-    const w = gl.weather ? [gl.weather.temp !== null ? `${gl.weather.temp}°` : null, gl.weather.text, gl.weather.precip ? `${gl.weather.precip}% rain` : null].filter(Boolean).join(" · ") : null;
-    html += `<div class="ins-glance"><div class="ins-g head"><span></span><span>${esc(game.awayShort)}</span><span>${esc(game.homeShort)}</span></div>`
-      + cell("RECORD", gl.records?.away?.overall, gl.records?.home?.overall)
-      + cell("ATS", gl.ats?.away, gl.ats?.home)
-      + cell("ESPN FPI", fpiA, fpiH, gl.fpi && gl.fpi.away > gl.fpi.home ? "lead" : "", gl.fpi && gl.fpi.home > gl.fpi.away ? "lead" : "")
-      + `</div>`
-      + (w || gl.venue ? `<div class="ins-wx">${w ? `<span>${esc(w)}</span>` : ""}${gl.venue?.name ? `<span>${esc(gl.venue.name)}${gl.venue.indoor ? " · indoors" : ""}</span>` : ""}</div>` : "");
-    const lead = (label, list) => list?.length ? `<div class="ins-lead"><b>${esc(label)}</b>${list.map((l) => `<span>${esc(l.cat)} · ${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>` : "";
-    if (gl.leaders?.away?.length || gl.leaders?.home?.length) html += `<div class="ins-leads">${lead(game.awayShort, gl.leaders.away)}${lead(game.homeShort, gl.leaders.home)}</div>`;
-  }
-  // Brief
-  if (brief?.summary?.length) {
-    html += `<div class="ins-h">BRIEF <span class="ins-stamp">AUTO-SUMMARY FROM ESPN FEEDS · ${esc(fmtWhen(brief.updatedAt).toUpperCase())}</span></div><ul class="ins-brief">${brief.summary.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
-  } else {
-    html += `<div class="ins-h">BRIEF</div><div class="ins-empty">${brief ? "The feeds had nothing to say yet." : "No brief yet. It runs at 7 AM and 7 PM ET while the game is open."}</div>`;
-  }
-  // Line
-  const nowOdds = live?.odds && live.odds.spread !== null ? live.odds : null;
+
+  // 1. Injuries, one column per team.
+  const statusCls = (st) => `st-${String(st || "").toLowerCase().replace(/[^a-z]/g, "")}`;
+  const col = (label, list, ok, teamId) => `<div class="ins-col"><div class="ins-team">${lg(teamId)}${esc(label)}</div>` + (list?.length
+    ? `<ul class="ins-inj">${list.slice(0, 7).map((i) => `<li><b class="${statusCls(i.status)}">${esc(i.status)}</b><span class="ins-who">${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}</span>${i.detail ? `<span class="ins-det">${esc(i.detail)}</span>` : ""}</li>`).join("")}</ul>`
+    : `<div class="ins-empty small">${ok === false ? "Feed unavailable." : "No one listed."}</div>`) + `</div>`;
+  html += `<div class="ins-h">INJURIES</div>`;
+  html += injuries ? `<div class="ins-cols">${col(game.awayShort, injuries.away, snap?.feeds?.awayInjuries, game.awayId)}${col(game.homeShort, injuries.home, snap?.feeds?.homeInjuries, game.homeId)}</div>` : `<div class="ins-empty">Could not reach the injury feeds. Team reports are in the links below.</div>`;
+
+  // 2. Line: sealed to now as a day-by-day timeline.
   html += `<div class="ins-h">LINE</div>`;
   if (mv) {
-    const moved = mv.delta === 0 ? `<span class="ins-flat">unchanged since the seal</span>` : `<span class="ins-move">moved ${Math.abs(mv.delta)} toward ${esc(mv.toward)}</span>`;
-    html += `<div class="ins-line"><div class="ins-line-nums"><span>SEALED <b>${esc(mv.sealedFavorite)} -${mv.sealed}</b></span><span>NOW <b>${esc(mv.nowFavorite)} -${mv.now}</b>${mv.overUnder !== null ? ` · O/U <b>${mv.overUnder}</b>` : ""}</span><span>${moved}</span></div>${sparkline(mv.series)}</div>`;
-  } else if (nowOdds) {
-    const favShort = nowOdds.favoriteSide === "home" ? game.homeShort : game.awayShort;
-    html += `<div class="ins-line"><div class="ins-line-nums"><span>SEALED <b>${esc(game.favorite === game.home ? game.homeShort : game.awayShort)} -${game.spread}</b></span><span>NOW <b>${esc(favShort)} -${nowOdds.spread}</b>${nowOdds.overUnder !== null ? ` · O/U <b>${nowOdds.overUnder}</b>` : ""}</span></div></div>`;
+    const pts = (mv.points || []).filter((p, i, arr) => i === arr.length - 1 || dayLabel(p.at) !== dayLabel(arr[i + 1].at) || p.v !== arr[i + 1].v);
+    const favId = game.favorite === game.home ? game.homeId : game.awayId, dogId = game.favorite === game.home ? game.awayId : game.homeId;
+    const fmt = (v) => `${lg(v >= 0 ? favId : dogId, "sm")}-${Math.abs(v)}`;
+    const steps = [{ label: "SEALED", v: mv.sealed, cls: "seal" }, ...pts.map((p) => ({ label: p.live ? "NOW" : dayLabel(p.at), v: p.v, cls: p.live ? "now" : "" }))];
+    // Collapse a run of identical values to keep the row short.
+    const shown = steps.filter((st, i) => i === 0 || i === steps.length - 1 || st.v !== steps[i - 1].v);
+    const verdict = mv.delta === 0 ? `<span class="ins-flat">Has not moved since the seal.</span>`
+      : `<span class="ins-move">Moved <b>${Math.abs(mv.delta)}</b> toward <b>${esc(mv.toward)}</b>${mv.toward === favShort ? " (bigger favourite)" : (mv.nowFavorite !== favShort ? " (flipped)" : " (closer)")}.</span>`;
+    html += `<div class="ins-timeline">${shown.map((st, i) => `<div class="ins-step ${st.cls}"><span class="ins-step-l">${esc(st.label)}</span><span class="ins-step-v">${fmt(st.v)}</span></div>${i < shown.length - 1 ? `<span class="ins-step-arrow ${shown[i + 1].v > st.v ? "up" : shown[i + 1].v < st.v ? "down" : ""}">${shown[i + 1].v > st.v ? "▲" : shown[i + 1].v < st.v ? "▼" : "›"}</span>` : ""}`).join("")}</div>
+      <div class="ins-verdict">${verdict}${mv.overUnder !== null ? ` <span class="ins-ou">O/U ${mv.overUnder}</span>` : ""}</div>`;
   } else {
-    html += `<div class="ins-empty">No live line on the feed right now. You score against the sealed line either way.</div>`;
+    html += `<div class="ins-empty">No line on the feed right now. You score against the sealed ${esc(favShort)} -${game.spread} either way.</div>`;
   }
-  // Injuries
-  const inj = (label, list) => `<div class="ins-team">${esc(label)}</div>` + (list?.length ? `<ul class="ins-inj">${list.slice(0, 6).map((i) => `<li><b class="st-${esc((i.status || "").toLowerCase().replace(/[^a-z]/g, ""))}">${esc(i.status)}</b> ${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}${i.detail ? `<span class="ins-det">${esc(i.detail)}</span>` : ""}</li>`).join("")}</ul>` : `<div class="ins-empty small">Nothing listed on the feed.</div>`);
-  html += `<div class="ins-h">INJURIES</div>${brief ? inj(game.awayShort, brief.injuries?.away) + inj(game.homeShort, brief.injuries?.home) : `<div class="ins-empty">Arrives with the first brief. Team reports are in the links below.</div>`}`;
-  // News
-  const news = brief ? [...(brief.news?.away || []).map((n) => ({ ...n, team: game.awayShort })), ...(brief.news?.home || []).map((n) => ({ ...n, team: game.homeShort }))] : [];
-  if (news.length) html += `<div class="ins-h">HEADLINES</div><ul class="ins-news">${news.slice(0, 8).map((n) => `<li>${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}<span class="ins-det">${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
-  html += links(); // rebuilt now the brief may have supplied the event id
+
+  // 3. Insights: the numbers, then the written brief.
+  html += `<div class="ins-h">INSIGHTS${brief?.summary?.length ? `<span class="ins-stamp">BRIEF UPDATED ${esc(fmtWhen(brief.updatedAt).toUpperCase())}</span>` : ""}</div>`;
+  if (glance) {
+    const cell = (k, a, h, aCls = "", hCls = "") => `<div class="ins-g"><span class="ins-gk">${k}</span><span class="ins-gv ${aCls}">${esc(a ?? "—")}</span><span class="ins-gv ${hCls}">${esc(h ?? "—")}</span></div>`;
+    const w = glance.weather ? [glance.weather.temp !== null ? `${glance.weather.temp}°` : null, glance.weather.text, glance.weather.precip ? `${glance.weather.precip}% rain` : null].filter(Boolean).join(" · ") : null;
+    html += `<div class="ins-glance"><div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(game.awayShort)}</span><span>${lg(game.homeId)}${esc(game.homeShort)}</span></div>`
+      + cell("RECORD", glance.records?.away?.overall, glance.records?.home?.overall)
+      + cell("ATS", glance.ats?.away, glance.ats?.home)
+      + cell("ESPN FPI", glance.fpi ? `${glance.fpi.away}%` : null, glance.fpi ? `${glance.fpi.home}%` : null, glance.fpi && glance.fpi.away > glance.fpi.home ? "lead" : "", glance.fpi && glance.fpi.home > glance.fpi.away ? "lead" : "")
+      + `</div>`
+      + (w || glance.venue ? `<div class="ins-wx">${w ? `<span>${esc(w)}</span>` : ""}${glance.venue?.name ? `<span>${esc(glance.venue.name)}${glance.venue.indoor ? " · indoors" : ""}</span>` : ""}</div>` : "");
+    const lead = (label, list, teamId) => list?.length ? `<div class="ins-lead"><b>${lg(teamId)}${esc(label)}</b>${list.map((l) => `<span>${esc(l.cat)} · ${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>` : "";
+    if (glance.leaders?.away?.length || glance.leaders?.home?.length) html += `<div class="ins-leads">${lead(game.awayShort, glance.leaders.away, game.awayId)}${lead(game.homeShort, glance.leaders.home, game.homeId)}</div>`;
+  }
+  if (brief?.summary?.length) html += `<ul class="ins-brief">${brief.summary.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
+  else if (!glance) html += `<div class="ins-empty">ESPN has not published this week's game page yet. Numbers land here once it does.</div>`;
+  const newsRows = news ? [...(news.away || []).map((n) => ({ ...n, team: game.awayShort })), ...(news.home || []).map((n) => ({ ...n, team: game.homeShort }))] : [];
+  if (newsRows.length) html += `<div class="ins-h">HEADLINES</div><ul class="ins-news">${newsRows.slice(0, 6).map((n) => `<li>${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}<span class="ins-det">${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
+
+  // 4. Links out.
+  html += links();
   html += `<div class="ins-foot">Information only. Scoring uses the sealed line on your card.</div>`;
   body.innerHTML = html;
 }
