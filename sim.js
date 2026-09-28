@@ -116,6 +116,7 @@
     const goal = kind === "td" ? 100 : kind === "fg" ? irand(62, 80) : irand(35, 62);
     let plays = 0;
     let t = clock;
+    let scorer = null;
     const tick = () => { t = Math.max(0, t - irand(22, 44)); return t; };
     out.push({ type: "drive", side, pos, qtr, clock: t });
     while (pos < goal && plays < 9) {
@@ -140,21 +141,23 @@
         const tgt = pick(p.targets, p.targets.map((_, i) => i === 0 ? 5 : i === 1 ? 3 : 2));
         const text = yds === 0 && !isLast ? `${p.qb} PASS INCOMPLETE` : `${p.qb} PASS TO ${tgt.pos} ${tgt.name} · ${yd(yds)}`;
         const comp = !(yds === 0 && !isLast);
+        if (tdNow) scorer = tgt.name;
         out.push({ type: "play", side, pos, qtr, clock: tick(), text: tdNow ? `${text} · TOUCHDOWN!` : text, td: tdNow, stat: { kind: "pass", qb: p.qb, tgt: tgt.name, yds: comp ? yds : 0, comp, td: tdNow } });
       } else {
         const rb = pick(p.rbs, p.rbs.map((_, i) => i === 0 ? 4 : 1));
         const text = yds < 0 ? `${rb} RUN · LOSS OF ${-yds}` : yds === 0 ? `${rb} RUN · NO GAIN` : `${rb} RUN · ${yd(yds)}`;
+        if (tdNow) scorer = rb;
         out.push({ type: "play", side, pos, qtr, clock: tick(), text: tdNow ? `${text} · TOUCHDOWN!` : text, td: tdNow, stat: { kind: "run", rb, yds, td: tdNow } });
       }
       if (tdNow) break;
     }
     if (kind === "td") {
       score[side] += 7;
-      out.push({ type: "score", side, pos: 100, qtr, clock: t, text: "EXTRA POINT GOOD", big: "TOUCHDOWN!", score: { ...score }, pts: 7 });
+      out.push({ type: "score", side, pos: 100, qtr, clock: t, text: "EXTRA POINT GOOD", big: "TOUCHDOWN!", score: { ...score }, pts: 7, scorer, cut: "td" });
     } else if (kind === "fg") {
       const dist = 100 - pos + 17;
       score[side] += 3;
-      out.push({ type: "score", side, pos, qtr, clock: tick(), text: `${p.k ? `${p.k} ` : ""}${dist} YD FIELD GOAL · GOOD`, big: "FIELD GOAL", score: { ...score }, pts: 3 });
+      out.push({ type: "score", side, pos, qtr, clock: tick(), text: `${p.k ? `${p.k} ` : ""}${dist} YD FIELD GOAL · GOOD`, big: "FIELD GOAL", score: { ...score }, pts: 3, scorer: p.k || "KICKER", cut: "fg" });
     } else {
       const end = pick(["PUNT", "PUNT", "PUNT", "INTERCEPTED", "FUMBLE LOST", "MISSED FG", "DOWNS"], null);
       const text = end === "PUNT" ? `PUNT · ${irand(36, 52)} YDS`
@@ -165,6 +168,37 @@
       out.push({ type: "end", side, pos, qtr, clock: tick(), text, turnover: end !== "PUNT" });
     }
     return out;
+  }
+
+  // --- Sprites --------------------------------------------------------------
+  // Hand-drawn pixel maps in the four Game Box greens: 3 darkest, 0 lightest.
+  const SHADES = { "0": "var(--g0)", "1": "var(--g1)", "2": "var(--g2)", "3": "var(--g3)" };
+  const sprite = (rows, cls) => {
+    const w = Math.max(...rows.map((r) => r.length));
+    return `<svg class="${cls}" viewBox="0 0 ${w} ${rows.length}" shape-rendering="crispEdges" aria-hidden="true">${rows.flatMap((row, y) => [...row].map((c, x) => SHADES[c] ? `<rect x="${x}" y="${y}" width="1" height="1" fill="${SHADES[c]}"/>` : "")).join("")}</svg>`;
+  };
+  const REF = sprite([
+    "3..............3", "33............33", ".3....3333....3.", ".33..333333..33.", "..3..300003..3..", "..33.300003.33..",
+    "...3..0000..3...", "...33333333333..", "....30303030....", "....03030303....", "....30303030....", "....03030303....",
+    "....30303030....", "....03030303....", "....33333333....", "....333..333....", "....333..333....", "....333..333....", "...3333..3333...",
+  ], "cut-ref");
+  const SPIKER = sprite([
+    "............22....", "...........2112...", "...........2112...", "............22....", "............3.....", "...........33.....",
+    "...........33.....", "....3333...33.....", "...333333.33......", "...300333333......", "...303333333......", "..33333333333.....",
+    "..3333333333......", "..33.333333.......", "..33.333333.......", "..3..333333.......", ".....33..33.......", ".....33..33.......",
+    "....333..333......",
+  ], "cut-player");
+  const KICKER = sprite([
+    ".....3333.....", "....333333....", "....300333....", "....333333....", ".....3333.....", "...33333333...", "..3333333333..",
+    "..33.3333.33..", ".....3333.....", ".....33.33....", ".....33..33...", "....333...333.", "....33.....33.",
+  ], "cut-kicker");
+  function cutscene(el, kind, name, team) {
+    const cut = el.querySelector(".sim-cut");
+    const scene = kind === "td"
+      ? `<div class="cut-crowd"></div><div class="cut-wall"></div><div class="cut-turf"></div>${REF}${SPIKER}`
+      : `<div class="cut-sky"><i></i><i></i><i></i></div><div class="cut-posts"><b></b><i></i></div><div class="cut-crowd low"></div><div class="cut-turf"></div>${REF}${KICKER}`;
+    cut.className = `sim-cut on ${kind}`;
+    cut.innerHTML = `<div class="cut-scene">${scene}</div><div class="cut-text"><b>${kind === "td" ? "TOUCH DOWN!" : "FIELD GOAL!"}</b><span>${esc(name || "")}</span><em>${esc(team || "")}</em></div>`;
   }
 
   // --- Screen -------------------------------------------------------------
@@ -183,7 +217,9 @@
         <div class="gb-led"><i></i>BATTERY</div>
         <div class="gb-screen">
           <div class="sim-board"></div>
-          <div class="sim-field"><div class="sim-ez l"></div><div class="sim-lines"></div><div class="sim-ez r"></div><div class="sim-ball"></div><div class="sim-flash"></div></div>
+          <div class="sim-ticker"></div>
+          <div class="sim-field"><div class="sim-ez l"></div><div class="sim-lines"></div><div class="sim-ez r"></div><div class="sim-men"></div><div class="sim-ball"></div><div class="sim-flash"></div></div>
+          <div class="sim-cut"></div>
           <div class="sim-log"></div>
           <div class="sim-panel"></div>
         </div>
@@ -273,13 +309,38 @@
       }
       panel.innerHTML = html;
     };
+    const ticker = el.querySelector(".sim-ticker");
+    const drawTicker = () => {
+      const side = cur.side;
+      if (!side) { ticker.textContent = ""; return; }
+      const lu = side === "away" ? away : home;
+      const r = st[side].pass[lu.qb];
+      const pct = r && r.a ? Math.round((r.n / r.a) * 100) : 0;
+      ticker.innerHTML = `<b>${esc(lu.qb)}</b><span>COMP ${pct}%</span><span>TD ${r ? r.td : 0}</span><span>YDS ${r ? r.yds : 0}</span>`;
+    };
     const drawBoard = () => {
+      drawTicker();
       board.innerHTML = `<div class="sim-tm${cur.side === "away" ? " poss" : ""}" ><img src="${ctx.away.logo}" alt=""><span>${esc(ctx.away.abbr)}</span><b>${cur.away}</b></div>
         <div class="sim-mid"><span>${cur.final ? "FINAL" : cur.qtr > 4 ? "OT" : `${cur.qtr}${["", "ST", "ND", "RD", "TH"][cur.qtr]} QTR`}</span><b>${cur.final ? (game.events.some((e) => e.qtr === 5) ? "OT" : "0:00") : fmtClock(cur.clock)}</b></div>
         <div class="sim-tm r${cur.side === "home" ? " poss" : ""}" ><b>${cur.home}</b><span>${esc(ctx.home.abbr)}</span><img src="${ctx.home.logo}" alt=""></div>`;
     };
     // Away drives left to right, home right to left.
-    const place = (side, pos) => { ball.style.left = `${side === "away" ? pos : 100 - pos}%`; };
+    const men = el.querySelector(".sim-men");
+    // Seven a side, Tecmo style: line at the ball, backs behind, the
+    // defence across from them.
+    const OFF = [[-1.5, 22], [-1.5, 36], [-1.5, 50], [-1.5, 64], [-1.5, 78], [-5, 50], [-8.5, 50], [-1, 6], [-1, 94]];
+    const DEF = [[2, 30], [2, 50], [2, 70], [5.5, 20], [5.5, 50], [5.5, 80], [9, 10], [9, 90], [12, 50]];
+    men.innerHTML = [...OFF.map(() => `<i class="o"></i>`), ...DEF.map(() => `<i class="d"></i>`)].join("");
+    const place = (side, pos) => {
+      const x = side === "away" ? pos : 100 - pos;
+      const dir = side === "away" ? 1 : -1;
+      ball.style.left = `${x}%`;
+      [...men.children].forEach((m, k) => {
+        const [dx, y] = k < OFF.length ? OFF[k] : DEF[k - OFF.length];
+        m.style.left = `${Math.max(-7, Math.min(107, x + dx * dir))}%`;
+        m.style.top = `${y}%`;
+      });
+    };
     const pushLine = (text, cls = "") => {
       const d = document.createElement("div");
       d.className = `sim-line ${cls}`;
@@ -294,6 +355,7 @@
     drawPanel(false);
     const finish = () => {
       clearTimeout(timer);
+      el.querySelector(".sim-cut")?.classList.remove("on");
       while (i < game.events.length) apply(game.events[i++]);
       cur.qtr = Math.max(...game.events.map((e) => e.qtr || 0));
       log.innerHTML = "";
@@ -327,9 +389,10 @@
         if (ev.td) wait = 700;
       } else if (ev.type === "score") {
         cur.away = ev.score.away; cur.home = ev.score.home;
-        showBig(ev.big);
+        cutscene(el, ev.cut, ev.scorer, (ev.side === "away" ? ctx.away : ctx.home).short.toUpperCase());
         pushLine(ev.text, "td");
-        wait = 1000;
+        wait = 1900;
+        setTimeout(() => el.querySelector(".sim-cut")?.classList.remove("on"), 1750);
       } else if (ev.type === "end") {
         pushLine(ev.text, ev.turnover ? "to" : "dim");
         wait = ev.turnover ? 700 : 320;

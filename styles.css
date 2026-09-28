@@ -3409,3 +3409,35 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .sim-pog b { font-weight: normal; font-size: 8px; }
 .sim-pog span { font-size: 6px; }
 @keyframes sim-blink { 50% { background: var(--g2); } }
+.sim-ticker { display: flex; gap: 8px; align-items: baseline; min-height: 9px; font-size: 5.5px; color: var(--g2); letter-spacing: .04em; white-space: nowrap; overflow: hidden; }
+.sim-ticker b { font-weight: normal; font-size: 6.5px; color: var(--g3); }
+.sim-men { position: absolute; inset: 0; pointer-events: none; }
+.sim-men i { position: absolute; width: 5px; height: 6px; margin: -3px 0 0 -2px; transition: left .28s steps(6), top .28s steps(6); background:
+  linear-gradient(var(--g3) 0 2px, transparent 2px 3px, var(--g3) 3px) center / 3px 6px no-repeat; }
+.sim-men i.o { background: linear-gradient(var(--g3) 0 2px, var(--g3) 2px) center / 5px 6px no-repeat; box-shadow: inset 0 2px 0 var(--g2); }
+.sim-men i.d { background: var(--g0); outline: 1px solid var(--g3); outline-offset: -1px; }
+.sim-cut { position: absolute; inset: 6px; z-index: 3; display: none; flex-direction: column; background: var(--g3); overflow: hidden; }
+.sim-cut.on { display: flex; animation: cut-in .18s steps(3); }
+@keyframes cut-in { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+.cut-scene { position: relative; flex: 1 1 60%; overflow: hidden; background: var(--g1); }
+.cut-crowd { position: absolute; left: 0; right: 0; top: 0; height: 52%; background: repeating-conic-gradient(var(--g2) 0 25%, var(--g3) 0 50%) 0 0 / 4px 4px; animation: crowd 0.3s steps(2) infinite; }
+.cut-crowd.low { top: 46%; height: 22%; }
+@keyframes crowd { 50% { background-position: 2px 0; } }
+.cut-wall { position: absolute; left: 0; right: 0; top: 52%; height: 7%; background: var(--g0); border-top: 2px solid var(--g3); }
+.cut-turf { position: absolute; left: 0; right: 0; bottom: 0; height: 32%; background: var(--g2); border-top: 2px solid var(--g3); }
+.cut-sky { position: absolute; left: 0; right: 0; top: 0; height: 46%; background: var(--g0); }
+.cut-sky i { position: absolute; width: 30px; height: 7px; background: var(--g1); border-radius: 0; box-shadow: 6px -3px 0 var(--g1), 14px -1px 0 var(--g1); }
+.cut-sky i:nth-child(1) { left: 8%; top: 22%; } .cut-sky i:nth-child(2) { left: 42%; top: 42%; } .cut-sky i:nth-child(3) { left: 70%; top: 18%; }
+.cut-posts { position: absolute; right: 12%; top: 4%; width: 34%; height: 54%; }
+.cut-posts b { position: absolute; right: 0; top: 0; bottom: 0; width: 4px; background: var(--g3); }
+.cut-posts i { position: absolute; left: 0; right: 0; bottom: 18%; height: 4px; background: var(--g3); transform: skewY(-12deg); }
+.cut-ref { position: absolute; left: 14%; bottom: 8%; height: 72%; animation: ref-arms .5s steps(1) infinite; }
+@keyframes ref-arms { 50% { transform: translateY(-2px); } }
+.cut-player { position: absolute; left: 48%; bottom: 6%; height: 78%; animation: spike .6s steps(2) infinite; }
+@keyframes spike { 50% { transform: translateY(-4px); } }
+.cut-kicker { position: absolute; left: 50%; bottom: 8%; height: 50%; }
+.cut-text { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 6px 10px; background: var(--g3); color: var(--g0); text-align: center; }
+.cut-text b { font-weight: normal; font-size: 13px; letter-spacing: .08em; }
+.cut-text span { font-size: 9px; letter-spacing: .1em; }
+.cut-text em { font-style: normal; font-size: 6px; color: var(--g1); letter-spacing: .14em; }
+.gb-screen { position: relative; }
