@@ -62,7 +62,7 @@ const storageKey = () => (currentWeek === 1 ? STORAGE_KEY_BASE : `${STORAGE_KEY_
 // Week 1 Saturday slate is Sept 5, 2026; the Louisville/Ole Miss "Music
 // City Kickoff" is Sunday, Sept 6, 2026.
 // ESPN team IDs, used to hotlink official logos from ESPN's CDN
-// (a.espncdn.com/i/teamlogos/ncaa/500/<id>.png) — nothing downloaded or
+// (a.espncdn.com/i/teamlogos/ncaa/500-dark/<id>.png) — nothing downloaded or
 // stored in this repo, just referenced by URL like any other <img src>.
 // The week-1 slate ships in the file so the app works before the Worker
 // answers, and as a fallback if it never does. From week 2 on the slate
@@ -109,9 +109,18 @@ function weekIsFinal() {
   return GAMES.every((g) => results[g.id]);
 }
 
+// ESPN ships a second cut of every logo drawn for dark backgrounds
+// (navy and black marks such as Penn State get a light outline or a
+// white fill). The app is dark everywhere, so that cut is the default;
+// an <img> that fails to load it falls back to the standard file below.
 function logoUrl(espnId) {
-  return `https://a.espncdn.com/i/teamlogos/ncaa/500/${espnId}.png`;
+  return `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${espnId}.png`;
 }
+document.addEventListener("error", (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.src.includes("/500-dark/")) return;
+  img.src = img.src.replace("/500-dark/", "/500/");
+}, true);
 
 const MANAGERS = [
   "Robert", "Logan", "Jordan", "Conlan", "Dewitt",
