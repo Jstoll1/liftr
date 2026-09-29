@@ -3396,7 +3396,7 @@ function parseSummaryClient(data, game) {
     const block = (data.lastFiveGames || []).find((b) => Number(b?.team?.id) === teamId);
     return (block?.events || []).slice(0, 5).map((e) => ({
       result: e.gameResult || null, score: e.score || null,
-      opp: e.opponent?.abbreviation || e.opponent?.displayName || null, oppName: e.opponent?.displayName || e.opponent?.location || null, oppId: e.opponent?.id || null,
+      opp: e.opponent?.abbreviation || e.opponent?.displayName || null, oppName: e.opponent?.displayName || e.opponent?.location || null, oppId: e.opponent?.id || null, oppLogo: e.opponent?.logo || e.opponent?.logos?.[0]?.href || null,
       at: e.atVs || null, date: e.gameDate || null,
     })).filter((e) => e.result || e.score);
   };
@@ -3719,42 +3719,43 @@ async function openInsights(gameId) {
 
   // 3. Insights: the numbers, then the written brief.
   html += `<div class="ins-h">INSIGHTS</div>`;
+  // Matchup: one table under one team header. Record, ATS and FPI first,
+  // then the season stats, the better number in green.
+  const better = (label, a, h) => {
+    const x = parseFloat(String(a).replace(/[^0-9.\-]/g, "")), y = parseFloat(String(h).replace(/[^0-9.\-]/g, ""));
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x === y) return [false, false];
+    const lowerWins = /allow|against|turnover(?!.*margin)|penalt|sack(?:s)? allowed|interception/i.test(label);
+    return lowerWins ? [x < y, y < x] : [x > y, y > x];
+  };
   if (glance) {
-    const cell = (k, a, h, aCls = "", hCls = "") => a == null && h == null ? "" : `<div class="ins-g"><span class="ins-gk">${k}</span><span class="ins-gv ${aCls}">${esc(a ?? "—")}</span><span class="ins-gv ${hCls}">${esc(h ?? "—")}</span></div>`;
+    const cell = (k, a, h, aCls = "", hCls = "", plain = false) => a == null && h == null ? "" : `<div class="ins-g"><span class="ins-gk${plain ? " plain" : ""}">${esc(k)}</span><span class="ins-gv ${aCls}">${esc(a ?? "—")}</span><span class="ins-gv ${hCls}">${esc(h ?? "—")}</span></div>`;
     const w = glance.weather ? [glance.weather.temp !== null ? `${glance.weather.temp}°` : null, glance.weather.text, glance.weather.precip ? `${glance.weather.precip}% rain` : null].filter(Boolean).join(" · ") : null;
-    html += `<div class="ins-glance"><div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(game.awayShort)}</span><span>${lg(game.homeId)}${esc(game.homeShort)}</span></div>`
+    const statRows = (direct?.teamStats || []).map((r) => { const [ab, hb] = better(r.label, r.away, r.home); return cell(r.label, r.away, r.home, ab ? "lead" : "", hb ? "lead" : "", true); }).join("");
+    html += `<div class="ins-glance ins-stats"><div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(abbrOf("away"))}</span><span>${lg(game.homeId)}${esc(abbrOf("home"))}</span></div>`
       + cell("RECORD", glance.records?.away?.overall, glance.records?.home?.overall)
       + cell("ATS", glance.ats?.away || previewAts?.away, glance.ats?.home || previewAts?.home)
       + cell("ESPN FPI", glance.fpi ? `${glance.fpi.away}%` : null, glance.fpi ? `${glance.fpi.home}%` : null, glance.fpi && glance.fpi.away > glance.fpi.home ? "lead" : "", glance.fpi && glance.fpi.home > glance.fpi.away ? "lead" : "")
+      + (statRows ? `<div class="ins-g divider"><span>SEASON</span></div>${statRows}` : "")
       + `</div>`
       + (w ? `<div class="ins-wx"><span>${esc(w)}</span></div>` : "");
     if (glance.venue?.name) modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv} · ${glance.venue.name}${glance.venue.indoor ? " (indoors)" : ""}`;
+    // Leaders: two columns in the same away/home order, logo only.
     const catShort = (c) => /pass/i.test(c) ? "PASS" : /rush/i.test(c) ? "RUSH" : /receiv/i.test(c) ? "REC" : /tackle/i.test(c) ? "TKL" : /sack/i.test(c) ? "SACK" : String(c).toUpperCase().slice(0, 5);
-    const lead = (label, list, teamId) => list?.length ? `<div class="ins-lead"><b>${lg(teamId)}${esc(label)}</b>${list.map((l) => `<span><em class="ins-cat">${esc(catShort(l.cat))}</em>${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>` : "";
-    if (glance.leaders?.away?.length || glance.leaders?.home?.length) html += `<div class="ins-leads">${lead(game.awayShort, glance.leaders.away, game.awayId)}${lead(game.homeShort, glance.leaders.home, game.homeId)}</div>`;
+    const lead = (list, teamId) => `<div class="ins-lead"><b>${lg(teamId)}</b>${(list || []).map((l) => `<span><em class="ins-cat">${esc(catShort(l.cat))}</em>${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>`;
+    if (glance.leaders?.away?.length || glance.leaders?.home?.length) html += `<div class="ins-sub-h">LEADERS</div><div class="ins-leads">${lead(glance.leaders.away, game.awayId)}${lead(glance.leaders.home, game.homeId)}</div>`;
   }
-  // Form: last five results per team.
+  // Last five: opponent logos, result and score; a small @ for road games.
   const form = direct?.lastFive;
   if (form && (form.away.length || form.home.length)) {
-    const row = (label, teamId, list) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}${esc(abbrOf(teamId === game.awayId ? "away" : "home"))}</span><span class="ins-form-r">${list.map((e) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}" title="${esc(`${e.at || ""} ${e.opp || ""} ${e.score || ""}`)}"><b>${esc(e.result || "·")}</b><i>${esc(e.at === "@" ? "@" : "")}${esc(e.opp || "")}</i><i>${esc(e.score || "")}</i></span>`).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
-    html += `<div class="ins-sub-h">LAST FIVE</div>${row(game.awayShort, game.awayId, form.away)}${row(game.homeShort, game.homeId, form.home)}`;
-  }
-  // Team stats, side by side, the better number not judged: labels vary.
-  if (direct?.teamStats?.length) {
-    const better = (label, a, h) => {
-      const x = parseFloat(String(a).replace(/[^0-9.\-]/g, "")), y = parseFloat(String(h).replace(/[^0-9.\-]/g, ""));
-      if (!Number.isFinite(x) || !Number.isFinite(y) || x === y) return [false, false];
-      const lowerWins = /allow|against|turnover(?!.*margin)|penalt|sack(?:s)? allowed|interception/i.test(label);
-      return lowerWins ? [x < y, y < x] : [x > y, y > x];
-    };
-    html += `<div class="ins-sub-h">TEAM STATS</div><div class="ins-glance ins-stats"><div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(abbrOf("away"))}</span><span>${lg(game.homeId)}${esc(abbrOf("home"))}</span></div>${direct.teamStats.map((r) => { const [ab, hb] = better(r.label, r.away, r.home); return `<div class="ins-g"><span class="ins-gk plain">${esc(r.label)}</span><span class="ins-gv${ab ? " lead" : ""}">${esc(r.away)}</span><span class="ins-gv${hb ? " lead" : ""}">${esc(r.home)}</span></div>`; }).join("")}</div>`;
+    const chip = (e) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}" title="${esc(`${e.result || ""} ${e.at === "@" ? "at" : "vs"} ${e.oppName || e.opp || ""} ${e.score || ""}`)}">${e.at === "@" ? `<u>@</u>` : ""}${e.oppId || e.oppLogo ? `<img src="${e.oppId ? logoUrl(e.oppId) : esc(e.oppLogo)}" alt="${esc(e.opp || "")}" loading="lazy">` : `<i>${esc(e.opp || "")}</i>`}<b>${esc(e.result || "·")}</b><i>${esc(e.score || "")}</i></span>`;
+    const row = (teamId, list) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}</span><span class="ins-form-r">${list.map(chip).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
+    html += `<div class="ins-sub-h">LAST FIVE</div>${row(game.awayId, form.away)}${row(game.homeId, form.home)}`;
   }
   // Series history.
   if (direct?.series?.length) {
     html += `<div class="ins-sub-h">SERIES</div><ul class="ins-news">${direct.series.map((e) => `<li>${esc(e.summary || "")}${e.score ? `<span class="ins-det">${esc(e.score)}${e.date ? ` · ${esc(new Date(e.date).getFullYear())}` : ""}</span>` : ""}</li>`).join("")}</ul>`;
   }
-
-  else if (!glance && pend.summary) html += `<div class="ins-loading">Loading ESPN's game page…</div>`;
+  if (!glance && pend.summary) html += `<div class="ins-loading">Loading ESPN's game page…</div>`;
   else if (!glance) html += `<div class="ins-empty">ESPN has not published this week's game page yet. Numbers land here once it does.${!eventId ? ` <i class="ins-err">game not on the scoreboard feed yet</i>` : ""}</div>`;
   // Mix sources: game-specific first, then alternate the wider press with
   // ESPN so no single outlet fills the list.
@@ -3832,6 +3833,29 @@ async function openInsights(gameId) {
   const close = () => modal.classList.add("hidden");
   modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
   modal.querySelector("#insights-close")?.addEventListener("click", close);
+  // Swipe down to close: only from the top of the sheet, so scrolling the
+  // content still works; the card follows the finger and snaps back if the
+  // pull is short.
+  const card = modal.querySelector(".insights-card");
+  let y0 = null, dy = 0;
+  modal.addEventListener("touchstart", (e) => {
+    if (modal.scrollTop > 2 || e.touches.length !== 1) { y0 = null; return; }
+    y0 = e.touches[0].clientY; dy = 0;
+    if (card) card.style.transition = "none";
+  }, { passive: true });
+  modal.addEventListener("touchmove", (e) => {
+    if (y0 === null) return;
+    dy = e.touches[0].clientY - y0;
+    if (dy <= 0) { if (card) card.style.transform = ""; return; }
+    if (card) { card.style.transform = `translateY(${dy * 0.85}px)`; card.style.opacity = String(Math.max(0.4, 1 - dy / 500)); }
+  }, { passive: true });
+  modal.addEventListener("touchend", () => {
+    if (y0 === null) return;
+    if (card) { card.style.transition = "transform .2s ease, opacity .2s ease"; }
+    if (dy > 110) { close(); }
+    if (card) { card.style.transform = ""; card.style.opacity = ""; }
+    y0 = null; dy = 0;
+  });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.classList.contains("hidden")) close(); });
 })();
 
