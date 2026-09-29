@@ -3928,3 +3928,11 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .picks-countdown .cd-top { align-items: center !important; }
 .picks-countdown .cd-left, .picks-countdown .cd-card { display: flex !important; flex-direction: column; justify-content: center !important; align-items: center; align-self: center !important; margin: 0; }
 .picks-countdown .cd-card { align-self: stretch !important; }
+/* Equal air above and below the clock row; the FIRST UP strip sits closer under it */
+.picks-countdown .cd-top { padding: 6px 0 4px; }
+.picks-countdown .cd-game { margin-top: 2px; padding-top: 6px; }
+.picks-countdown .cd-left { gap: 4px; }
+.picks-countdown .cd-cells { margin-top: 0; }
+/* Name scale trimmed so the longest one-word name still fits */
+.hz-nm, .hz-nm.lg, .hz-nm.xl { font-size: clamp(8px, 2.45cqw, 10.5px); }
+.hz-col .pick-mini-btn { width: clamp(66px, 21cqw, 88px); }
