@@ -3704,3 +3704,15 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .cd-fuse u { position: absolute; right: -3px; top: -3px; width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle, #fff 0 20%, var(--neon-yellow) 35%, rgba(255, 120, 0, .6) 60%, transparent 70%); animation: cd-spark .35s steps(2) infinite; }
 @keyframes cd-spark { 50% { transform: scale(1.4); opacity: .7; } }
 .picks-countdown.soon .cd-fuse i { background: linear-gradient(90deg, #5a0020, var(--neon-pink)); }
+/* Cards match the header's rhythm: less air in rows, between rows and
+   between cards. */
+.games-list { gap: 8px; }
+.game-card { padding: 8px 9px; gap: 5px; }
+.tm-row { padding: 3px 6px; }
+.matchup-cards-row { gap: 3px; }
+.pick-mini-btn { min-height: 28px; }
+.game-submit-row { margin-top: -2px; }
+.game-submit-note { font-size: 9.5px; }
+/* Three equal point tiles */
+.picks-pay .pp { flex: 1 1 0; min-width: 0; justify-content: center; }
+.picks-pay .pp em { white-space: nowrap; }
