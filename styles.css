@@ -3751,3 +3751,10 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .tm-logo-wrap .tm-logo { display: block; }
 .tm-logo-wrap .tm-rank { position: absolute; right: -7px; bottom: -4px; padding: 1px 2px; border-radius: 3px; background: #0b0014; border: 1px solid rgba(255, 255, 255, .25); font-size: 6px; line-height: 1; color: #fff; align-self: auto; margin: 0; }
 .tm-logo-wrap .tm-rank::before { opacity: .55; }
+/* Rank tag: readable on the logo corner */
+.tm-logo-wrap .tm-rank { right: -9px; bottom: -6px; padding: 2px 3px; font-size: 7.5px; font-weight: 800; color: var(--neon-yellow); border-color: rgba(255, 228, 94, .55); background: #12001c; box-shadow: 0 0 6px rgba(0, 0, 0, .8); }
+.tm-logo-wrap .tm-rank::before { opacity: .65; }
+.tm-id { gap: 12px; }
+/* FIRST UP strip: no hole before the kickoff tag */
+.picks-countdown .cd-game { justify-content: flex-start; gap: 8px; }
+.cd-when { margin-left: 4px; }
