@@ -3602,5 +3602,12 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rx.mine { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .12); }
 .rx b { font-family: 'Orbitron', system-ui, sans-serif; font-size: 10px; color: var(--text); }
 .rx:active { transform: scale(1.15); }
-.ranking-main { flex-wrap: wrap; row-gap: 4px; }
-.ranking-main .rank-wp { flex: 0 0 calc(100% - 42px - 58px); margin: 0 0 2px 42px; height: 10px; }
+/* Win chance sits in line, where the dotted leader runs. */
+.ranking-main .rank-wp { flex: 1 1 auto; min-width: 60px; display: flex; align-items: center; gap: 6px; height: auto; margin: 0; background: none; overflow: visible; }
+.rank-wp-bar { position: relative; flex: 1; height: 8px; border-radius: 2px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+.rank-wp-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgba(5, 217, 232, .5), var(--neon-cyan)); transition: width .6s steps(8); }
+.rank-wp.hot .rank-wp-bar i { background: linear-gradient(90deg, rgba(57, 255, 136, .5), var(--neon-green)); }
+.ranking-main .rank-wp b { position: static; transform: none; flex: none; min-width: 28px; text-align: right; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; color: var(--neon-cyan); text-shadow: none; }
+.ranking-main .rank-wp.hot b { color: var(--neon-green); }
+.wp-live .ranking-name { flex: 0 0 78px; min-width: 0; }
+.wp-live .rank-who { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
