@@ -3770,3 +3770,26 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .picks-countdown .cd-game .cd-logo { display: inline-block; }
 .cd-when { margin-left: 0; justify-self: end; }
 .picks-countdown .cd-game { align-self: stretch; width: 100%; }
+
+/* Prize board, arcade cabinet tiles: hatched face, big score + PTS, corner tier tag, coloured underline */
+.picks-pay { grid-template-columns: 1fr 1fr 1fr 44px; gap: 6px; padding: 0; background: none; border: 0; overflow: visible; border-radius: 0; }
+.picks-pay::after { display: none; }
+.picks-pay .pp { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 6px; padding: 7px 8px 7px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .1); border-bottom: 3px solid currentColor; background: #0b0614 repeating-linear-gradient(135deg, rgba(255, 255, 255, .045) 0 2px, transparent 2px 7px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 2px 0 rgba(0, 0, 0, .5), 0 0 12px -6px currentColor; overflow: hidden; }
+.picks-pay .pp::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, .4)); pointer-events: none; }
+.picks-pay .pp > * { position: relative; }
+.picks-pay .pp-tag { position: absolute; top: 5px; right: 6px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; letter-spacing: .1em; color: currentColor; opacity: .85; }
+.picks-pay .pp-num { display: flex; align-items: baseline; gap: 4px; }
+.picks-pay .pp b { min-width: 0; padding: 0; background: none; box-shadow: none; text-shadow: 0 0 10px rgba(255, 255, 255, .25); font-family: 'Press Start 2P', monospace; font-size: 22px; line-height: 1; color: #fff; }
+.picks-pay .pp small { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); letter-spacing: .06em; }
+.picks-pay .pp em { display: flex; align-items: center; gap: 5px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .08em; color: var(--text); white-space: nowrap; line-height: 1; }
+.picks-pay .pp em u { text-decoration: none; font-family: system-ui, sans-serif; font-size: 10px; line-height: 1; color: currentColor; }
+.picks-pay .pp.dog, .picks-pay .pp.ats, .picks-pay .pp.fav { color: var(--neon-pink); }
+.picks-pay .pp.ats { color: var(--neon-cyan); }
+.picks-pay .pp.fav { color: var(--neon-green); }
+.picks-pay .pp.q { align-items: center; justify-content: center; gap: 5px; padding: 6px 4px; color: var(--neon-yellow); background: #0b0614 repeating-linear-gradient(135deg, rgba(255, 228, 94, .07) 0 2px, transparent 2px 7px); cursor: pointer; }
+.picks-pay .pp.q b { font-size: 18px; color: var(--neon-yellow); text-shadow: 0 0 10px rgba(255, 228, 94, .55); }
+.picks-pay .pp.q em { font-size: 5px; }
+.picks-pay .pp:active { transform: translateY(2px); border-bottom-width: 1px; }
+.picks-pay .pp-num { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.picks-pay .pp.dog b, .picks-pay .pp.ats b, .picks-pay .pp.fav b { color: #fff; text-shadow: 0 0 10px rgba(255, 255, 255, .25); }
+.picks-pay .pp.q b { min-width: 0; padding: 0; background: none; box-shadow: none; }
