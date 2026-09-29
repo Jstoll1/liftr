@@ -3643,3 +3643,14 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .chalk-line span { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .12em; color: var(--neon-yellow); }
 .chalk-line b { font-weight: normal; font-size: 9px; margin-left: 4px; text-shadow: 0 0 6px rgba(255, 228, 94, .5); }
 .chalk-line em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .08em; color: var(--text-dim); }
+/* Tighter picks header */
+#picks-screen .wrap { gap: 12px; }
+.picks-pay { margin: 0 0 -4px; gap: 5px; }
+.picks-pay span { padding: 4px 8px; }
+.picks-q { width: 22px; height: 22px; font-size: 8px; }
+.picks-countdown { padding: 8px 12px; gap: 3px; }
+.picks-countdown .cd-left { gap: 3px; }
+.picks-countdown .cd-clock { font-size: 15px; }
+.picks-countdown .cd-game { font-size: 9.5px; }
+.picks-countdown .cd-status { gap: 3px; }
+.picks-countdown .cd-chip { padding: 4px 6px; min-width: 50px; font-size: 7px; }
