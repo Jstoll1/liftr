@@ -3579,3 +3579,12 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-sim-txt em { font-size: 6px; }
 .ins-sim-vs img { width: 16px; height: 16px; }
 .insights-card { will-change: transform; }
+/* Line row that fits a phone: three equal chips, arrows between, total below-right */
+.ln-chips { display: flex; flex-wrap: wrap; align-items: stretch; gap: 3px; }
+.ln-chip { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 3px; white-space: nowrap; }
+.ln-chip em { font-size: 5.5px; }
+.ln-chip b { display: inline-flex; align-items: center; gap: 3px; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 13px; }
+.ln-chip b .ins-logo { width: 16px; height: 16px; margin: 0; }
+.ln-arrow { align-self: center; min-width: 14px; text-align: center; }
+.ln-ou { flex-basis: 100%; text-align: right; font-family: 'Orbitron', system-ui, sans-serif; font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.ln-ou em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; margin-right: 4px; letter-spacing: .08em; }

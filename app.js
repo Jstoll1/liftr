@@ -3668,7 +3668,8 @@ async function openInsights(gameId) {
     const dots = pts.map((p, i) => `<g class="ln-pt ${p.cls}"><title>${esc(p.label)}: ${esc(lab(p.v))}</title><rect x="${(x(i) - (p.cls === "day" ? 3 : 4)).toFixed(1)}" y="${(y(p.v) - (p.cls === "day" ? 3 : 4)).toFixed(1)}" width="${p.cls === "day" ? 6 : 8}" height="${p.cls === "day" ? 6 : 8}"/>${p.cls === "day" ? "" : `<text class="ln-v" x="${x(i).toFixed(1)}" y="${(y(p.v) - 9).toFixed(1)}" text-anchor="middle">${esc(lab(p.v))}</text>`}<text class="ln-x" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(p.label)}</text></g>`).join("");
     const up = `<image href="${logoUrl(favId)}" x="2" y="${T - 6}" width="16" height="16"/><text class="ln-ax" x="10" y="${T + 18}" text-anchor="middle">▲</text>`;
     const down = `<image href="${logoUrl(dogId)}" x="2" y="${H - B - 16}" width="16" height="16"/><text class="ln-ax" x="10" y="${H - B - 20}" text-anchor="middle">▼</text>`;
-    const chipTxt = (p) => `<span class="ln-chip ${p.cls}"><em>${esc(p.label === "OPENED" ? "OPEN" : p.label === "SEALED" ? "SEAL" : p.label)}</em>${esc(lab(p.v))}</span>`;
+    // Logo + number keeps each chip narrow enough for a phone row.
+    const chipTxt = (p) => `<span class="ln-chip ${p.cls}" title="${esc(p.label)}: ${esc(lab(p.v))}"><em>${esc(p.label === "OPENED" ? "OPEN" : p.label === "SEALED" ? "SEAL" : p.label)}</em><b>${p.v === 0 ? "PK" : `${lg(p.v >= 0 ? favId : dogId, "sm")}-${Math.abs(p.v)}`}</b></span>`;
     const key3 = [series.find((p) => p.cls === "open"), series.find((p) => p.cls === "seal"), series.find((p) => p.cls === "now")].filter(Boolean);
     const arrow = (a, b) => {
       const d = Math.round((b.v - a.v) * 2) / 2;
@@ -3676,7 +3677,7 @@ async function openInsights(gameId) {
       const who = d > 0 ? abbrOf(game.favorite === game.home ? "home" : "away") : abbrOf(game.favorite === game.home ? "away" : "home");
       return `<i class="ln-arrow mv ${d > 0 ? "fav" : "dog"}" title="${Math.abs(d)} toward ${esc(who)}">${Math.abs(d)}<b>${d > 0 ? "▲" : "▼"}</b></i>`;
     };
-    const ouChip = (mv?.overUnder ?? direct?.odds?.overUnder) != null ? `<span class="ln-chip ou"><em>O/U</em>${mv?.overUnder ?? direct?.odds?.overUnder}</span>` : "";
+    const ouChip = (mv?.overUnder ?? direct?.odds?.overUnder) != null ? `<span class="ln-ou"><em>O/U</em>${mv?.overUnder ?? direct?.odds?.overUnder}</span>` : "";
     html += `<div class="ln-chips">${key3.map((p, i) => (i ? arrow(key3[i - 1], p) : "") + chipTxt(p)).join("")}${ouChip}</div>`;
     const daily = series.filter((p) => p.cls === "day").length;
     let trendHtml = `<details class="ln-more"><summary><span>▶</span> TREND</summary><div class="ln-crt"><svg class="ln-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Line movement: ${esc(pts.map((p) => `${p.label} ${lab(p.v)}`).join(", "))}">${zero}<line class="ln-base" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/>${up}${down}<path class="ln-glow" d="${path}"/><path class="ln-path" d="${path}"/>${dots}</svg></div></details>`;
