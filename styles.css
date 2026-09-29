@@ -3909,3 +3909,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .cd-label { justify-content: center; }
 .picks-countdown .cd-left { justify-content: center; align-self: stretch; }
 .picks-countdown .cd-card { justify-content: center; align-self: stretch; }
+/* NORTHWESTERN is the longest one-word name on the slate: chips give up 6px so it fits at one uniform size */
+.hz-col .pick-mini-btn { width: 76px; padding: 0 4px; }
+.hz-nm, .hz-nm.lg, .hz-nm.xl { font-size: 9px; letter-spacing: -.01em; }
+.hz-tm { overflow: visible; }
