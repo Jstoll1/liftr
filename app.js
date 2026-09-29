@@ -3144,7 +3144,13 @@ function renderPicksCountdown() {
   const status = st ? `<span class="cd-status">${chip(picked === GAMES.length, `${picked}/${GAMES.length}`)}${chip(tbSet, "TB")}</span>` : "";
   // Under an hour the whole slate is about to lock, so the strip goes hot.
   el.className = "picks-countdown" + (cd.ms < 3600000 ? " soon" : "");
-  el.innerHTML = `<span class="cd-top"><span class="cd-left"><span class="cd-label">${label}</span><span class="cd-clock">${cd.text}</span></span>${status}</span><span class="cd-game">${escapeCd(game)}</span>`;
+  // Scoreboard digits: DAYS / HRS / MIN / SEC boxes, days dropped at zero.
+  const tot = Math.max(0, Math.floor(cd.ms / 1000));
+  const parts = [["DAYS", Math.floor(tot / 86400)], ["HRS", Math.floor((tot % 86400) / 3600)], ["MIN", Math.floor((tot % 3600) / 60)], ["SEC", tot % 60]].filter(([k, v], i) => i > 0 || v > 0);
+  const cells = parts.map(([k, v]) => `<span class="cd-cell"><b>${String(v).padStart(2, "0")}</b><em>${k}</em></span>`).join('<i class="cd-colon">:</i>');
+  const logoImg = (id) => id ? `<img class="cd-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : "";
+  const match = `${logoImg(next.awayId)}<span>${escapeCd(next.awayShort)} <i>at</i> ${escapeCd(next.homeShort)}</span>${logoImg(next.homeId)}<span class="cd-when">${escapeCd(next.kickoffLabel)}</span>`;
+  el.innerHTML = `<span class="cd-top"><span class="cd-left"><span class="cd-label"><u></u>${label}</span><span class="cd-cells">${cells}</span></span>${status}</span><span class="cd-game">${match}</span>`;
   // The clock carries the card status, so the separate line hides.
   document.getElementById("picks-progress")?.classList.toggle("hidden", !!st);
 }
