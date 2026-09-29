@@ -3824,3 +3824,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .sim-ticker { gap: 6px; }
 .sim-ticker b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sim-ticker span { flex: none; }
+/* Game Box logos: dark ink on the green screen (multiply), so the mark's shape reads instead of a blob */
+.sim-tm img, .sim-plogo, .sim-ez img { filter: grayscale(1) contrast(2.4) brightness(1.05); mix-blend-mode: multiply; opacity: .92; image-rendering: auto; }
+.sim-tm img { width: 20px; height: 20px; }
+.sim-plogo { width: 14px; height: 14px; }
+.sim-ez img { width: 78%; opacity: .55; }
+.sim-tm.r.poss span::after { display: none; }
