@@ -2927,6 +2927,7 @@ function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
     rankingsList.appendChild(note);
   } else for (const row of rows) delete row.winPct;
   renderRankingRows(rows, cloudPicks, results, live);
+  drawChalkLine(rows, results);
   return rows;
 }
 
@@ -3018,6 +3019,32 @@ document.getElementById("my-score")?.addEventListener("click", (e) => {
   const row = [...document.querySelectorAll(".ranking-row")].find((r) => r.querySelector(".ranking-name")?.textContent.startsWith((currentManager || "").toUpperCase()));
   row?.scrollIntoView({ block: "center", behavior: "smooth" });
 });
+
+// Chalk line: what a card of every favorite against the spread would have
+// scored so far, drawn across the board like a golf cut line. Above it you
+// beat the chalk; on it counts as above. Shown once any game is final.
+function chalkScore(results) {
+  let pts = 0;
+  for (const g of GAMES) {
+    const res = results[g.id];
+    if (!res) continue;
+    pts += scorePick(g, { team: g.favorite, mode: "ATS" }, res) || 0;
+  }
+  return pts;
+}
+function drawChalkLine(rows, results) {
+  if (!GAMES.some((g) => results[g.id])) return;
+  const chalk = chalkScore(results);
+  const els = [...rankingsList.querySelectorAll(".ranking-row")];
+  const i = rows.findIndex((r) => r.score < chalk);
+  const beat = i === -1 ? rows.length : i;
+  const line = document.createElement("div");
+  line.className = "chalk-line";
+  line.title = "Score of a card with every favorite against the spread";
+  line.innerHTML = `<span>CHALK LINE <b>${String(chalk).padStart(2, "0")}</b></span><em>${beat} of ${rows.length} above</em>`;
+  if (i === -1 || !els[i]) rankingsList.appendChild(line);
+  else rankingsList.insertBefore(line, els[i]);
+}
 
 function renderRankingRows(rows, cloudPicks, results, live) {
   rows.forEach((row, i) => {

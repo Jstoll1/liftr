@@ -3638,3 +3638,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .picks-countdown .cd-chip { text-align: center; min-width: 58px; }
 .cd-chip.miss { animation: cd-pulse 1.2s steps(1) infinite; }
 @keyframes cd-pulse { 50% { opacity: .5; } }
+/* Chalk line: a golf-style cut line across the leaderboard */
+.chalk-line { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 2px; padding: 5px 10px; border-top: 2px dashed rgba(255, 228, 94, .7); border-bottom: 2px dashed rgba(255, 228, 94, .7); background: repeating-linear-gradient(135deg, rgba(255, 228, 94, .06) 0 6px, transparent 6px 12px); }
+.chalk-line span { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .12em; color: var(--neon-yellow); }
+.chalk-line b { font-weight: normal; font-size: 9px; margin-left: 4px; text-shadow: 0 0 6px rgba(255, 228, 94, .5); }
+.chalk-line em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .08em; color: var(--text-dim); }
