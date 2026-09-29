@@ -3925,3 +3925,6 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .hz-rec { font-size: clamp(5.5px, 1.8cqw, 7px); }
 .hz-at { font-size: clamp(5.5px, 1.8cqw, 7px); padding: clamp(3px, 1.2cqw, 5px) clamp(2px, 1cqw, 4px); }
 .lr-sc .lr-score { font-size: clamp(14px, 4.8cqw, 19px); }
+.picks-countdown .cd-top { align-items: center !important; }
+.picks-countdown .cd-left, .picks-countdown .cd-card { display: flex !important; flex-direction: column; justify-content: center !important; align-items: center; align-self: center !important; margin: 0; }
+.picks-countdown .cd-card { align-self: stretch !important; }
