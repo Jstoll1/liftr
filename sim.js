@@ -311,7 +311,7 @@
       const lu = side === "away" ? away : home;
       const r = st[side].pass[lu.qb];
       const pct = r && r.a ? Math.round((r.n / r.a) * 100) : 0;
-      ticker.innerHTML = `<b>${esc(lu.qb)}</b><span>COMP ${pct}%</span><span>TD ${r ? r.td : 0}</span><span>YDS ${r ? r.yds : 0}</span>`;
+      ticker.innerHTML = `<b>${esc(lu.qb.length > 13 ? lu.qb.slice(0, 12) + "." : lu.qb)}</b><span>COMP ${pct}%</span><span>TD ${r ? r.td : 0}</span><span>YDS ${r ? r.yds : 0}</span>`;
     };
     const drawBoard = () => {
       drawTicker();

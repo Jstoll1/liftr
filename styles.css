@@ -3816,3 +3816,11 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .picks-pay .pp.q { padding: 0; gap: 0; }
 .picks-pay .pp.q b { font-size: 14px; }
 .picks-pay .pp:active { transform: skewX(-8deg) translateY(1px); }
+/* Game Box board: pixel possession marker instead of a font glyph; ticker never overflows */
+.sim-tm.poss span::after, .sim-tm.r.poss span::before { content: ""; display: inline-block; width: 0; height: 0; margin: 0 0 0 3px; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-left: 4px solid var(--g3); vertical-align: middle; }
+.sim-tm.r.poss span::before { margin: 0 3px 0 0; border-left: 0; border-right: 4px solid var(--g3); }
+.sim-tm span { white-space: nowrap; }
+.sim-tm { min-width: 0; }
+.sim-ticker { gap: 6px; }
+.sim-ticker b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sim-ticker span { flex: none; }
