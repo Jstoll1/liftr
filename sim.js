@@ -159,7 +159,9 @@
       score[side] += 3;
       out.push({ type: "score", side, pos, qtr, clock: tick(), text: `${p.k ? `${p.k} ` : ""}${dist} YD FIELD GOAL · GOOD`, big: "FIELD GOAL", score: { ...score }, pts: 3, scorer: p.k || "KICKER", cut: "fg" });
     } else {
-      const end = pick(["PUNT", "PUNT", "PUNT", "INTERCEPTED", "FUMBLE LOST", "MISSED FG", "DOWNS"], null);
+      let end = pick(["PUNT", "PUNT", "PUNT", "INTERCEPTED", "FUMBLE LOST", "MISSED FG", "DOWNS"], null);
+      // Nobody tries a field goal from beyond about 60 yards.
+      if (end === "MISSED FG" && 100 - pos + 17 > 58) end = "PUNT";
       const text = end === "PUNT" ? `PUNT · ${irand(36, 52)} YDS`
         : end === "INTERCEPTED" ? `${p.qb} PASS INTERCEPTED!`
         : end === "FUMBLE LOST" ? `${pick(p.rbs)} FUMBLES · RECOVERED BY DEFENSE`
@@ -298,7 +300,7 @@
           ...Object.entries(st[win].rec).map(([n, r]) => ({ n, v: r.yds / 10 + r.td * 6, t: `${r.n} REC ${r.yds} YDS${r.td ? ` ${r.td} TD` : ""}` })),
         ].sort((a, b) => b.v - a.v);
         html += `${line("away")}${line("home")}`;
-        if (cands[0]) html += `<div class="sim-pog"><em>★ POG</em><b>${esc(cands[0].n)}</b><span>${esc(cands[0].t)}</span></div>`;
+        if (cands[0]) html += `<div class="sim-pog2"><em>★ PLAYER OF THE GAME ★</em><div><b>${esc(cands[0].n)}</b><span>${esc(cands[0].t)}</span></div></div>`;
       }
       panel.innerHTML = html;
     };
