@@ -3588,3 +3588,19 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ln-arrow { align-self: center; min-width: 14px; text-align: center; }
 .ln-ou { flex-basis: 100%; text-align: right; font-family: 'Orbitron', system-ui, sans-serif; font-size: 10px; color: var(--text-dim); margin-top: 2px; }
 .ln-ou em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; margin-right: 4px; letter-spacing: .08em; }
+/* Live chance to win the week */
+.wp-note { display: flex; align-items: center; gap: 6px; margin: 2px 4px 6px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: var(--neon-cyan); }
+.wp-note i { width: 6px; height: 6px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); animation: h2h-blink 1s steps(1) infinite; }
+.rank-wp { position: relative; display: block; margin-top: 4px; height: 9px; border-radius: 2px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.rank-wp i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgba(5, 217, 232, .55), var(--neon-cyan)); transition: width .6s steps(8); }
+.rank-wp.hot i { background: linear-gradient(90deg, rgba(57, 255, 136, .55), var(--neon-green)); }
+.rank-wp b { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6px; color: #fff; text-shadow: 0 0 3px #000, 0 0 2px #000; }
+/* Recap reactions */
+.recap-react { grid-column: 1 / -1; display: flex; gap: 5px; margin-top: 2px; padding-top: 6px; border-top: 1px dashed rgba(255, 255, 255, .08); }
+.rx { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .03); font-size: 12px; line-height: 1; cursor: pointer; filter: grayscale(.8); opacity: .7; }
+.rx.on { filter: none; opacity: 1; }
+.rx.mine { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .12); }
+.rx b { font-family: 'Orbitron', system-ui, sans-serif; font-size: 10px; color: var(--text); }
+.rx:active { transform: scale(1.15); }
+.ranking-main { flex-wrap: wrap; row-gap: 4px; }
+.ranking-main .rank-wp { flex: 0 0 calc(100% - 42px - 58px); margin: 0 0 2px 42px; height: 10px; }

@@ -2834,6 +2834,79 @@ function rankManagers(cloudPicks, results) {
   return rows;
 }
 
+// --- Live chance to win the week -------------------------------------------
+// From lock until every game is final: simulate the rest of the week a
+// couple of thousand times and count how often each manager finishes first.
+// Final games are fixed; live games start from the score and the clock;
+// games not yet started start from the line. The tiebreaker total is
+// simulated too, so ties split the way the rules split them.
+function weekIsLive(results) {
+  return GAMES.length > 0 && GAMES.some(isGameLocked) && !GAMES.every((g) => results[g.id]);
+}
+function gaussRand() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function timeLeftFrac(l) {
+  if (!l || l.state !== "in") return 1;
+  const p = Number(l.period) || 1;
+  if (p > 4) return 0.03;
+  const [m, sec] = String(l.clock || "15:00").split(":").map(Number);
+  const clk = (Number.isFinite(m) ? m : 15) * 60 + (Number.isFinite(sec) ? sec : 0);
+  return Math.min(1, Math.max(0.01, ((4 - p) * 900 + clk) / 3600));
+}
+let winChanceMemo = { key: "", out: null };
+function weekWinChances(cloudPicks, results, live) {
+  const key = JSON.stringify([GAMES.map((g) => { const l = live[g.id]; return [g.id, results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : l ? `${l.state}${l.awayScore}-${l.homeScore}@${l.period}${l.clock}` : ""]; }), MANAGERS.map((n) => JSON.stringify(cloudPicks[n]?.picks || {}) + (cloudPicks[n]?.tiebreaker ?? ""))]);
+  if (winChanceMemo.key === key) return winChanceMemo.out;
+  const N = 2000;
+  const tbGame = GAMES.find((g) => g.tiebreakerGame);
+  const guesses = MANAGERS.map((n) => { const raw = String(cloudPicks[n]?.tiebreaker ?? "").trim(); const v = Number(raw); return raw !== "" && Number.isFinite(v) ? v : null; });
+  const models = GAMES.map((g) => {
+    if (results[g.id]) return { g, fixed: results[g.id] };
+    const l = live[g.id];
+    const odds = l?.odds && l.odds.spread != null ? l.odds : null;
+    const homeEdge = odds ? (odds.favoriteSide === "home" ? odds.spread : -odds.spread) : (g.favorite === g.home ? Number(g.spread) : -Number(g.spread));
+    const rem = timeLeftFrac(l);
+    const inGame = l && l.state === "in";
+    return { g, rem, homeEdge, ou: odds?.overUnder ?? 52, curM: inGame ? (l.homeScore || 0) - (l.awayScore || 0) : 0, curT: inGame ? (l.homeScore || 0) + (l.awayScore || 0) : 0 };
+  });
+  // Each manager's pick on each game, with what it pays.
+  const picks = MANAGERS.map((n) => GAMES.map((g) => { const p = cloudPicks[n]?.picks?.[g.id]; return p ? { team: p.team, mode: p.mode, pts: pointValue(g, p.team, p.mode) } : null; }));
+  const wins = new Array(MANAGERS.length).fill(0);
+  const score = new Array(MANAGERS.length);
+  for (let s = 0; s < N; s++) {
+    score.fill(0);
+    let tbTotal = null;
+    for (let k = 0; k < models.length; k++) {
+      const m = models[k];
+      let res = m.fixed;
+      if (!res) {
+        const margin = m.curM + m.homeEdge * m.rem + gaussRand() * 13.5 * Math.sqrt(m.rem);
+        const total = Math.max(3, m.curT + (m.ou - 0) * m.rem + gaussRand() * 10 * Math.sqrt(m.rem));
+        let h = Math.max(0, Math.round((total + margin) / 2)), a = Math.max(0, Math.round((total - margin) / 2));
+        if (h === a) { if (Math.random() < 0.5) h += 3; else a += 3; }
+        res = { awayScore: a, homeScore: h };
+      }
+      if (m.g === tbGame) tbTotal = res.awayScore + res.homeScore;
+      const o = resultOutcome(m.g, res);
+      for (let i = 0; i < MANAGERS.length; i++) {
+        const p = picks[i][k];
+        if (!p) continue;
+        const winner = p.mode === "SU" ? o.suWinner : o.atsWinner;
+        if (winner && winner === p.team) score[i] += p.pts;
+      }
+    }
+    let best = -1, bestDiff = Infinity, lead = [];
+    for (let i = 0; i < MANAGERS.length; i++) {
+      const diff = guesses[i] === null || tbTotal === null ? Infinity : Math.abs(guesses[i] - tbTotal);
+      if (score[i] > best || (score[i] === best && diff < bestDiff)) { best = score[i]; bestDiff = diff; lead = [i]; }
+      else if (score[i] === best && diff === bestDiff) lead.push(i);
+    }
+    for (const i of lead) wins[i] += 1 / lead.length;
+  }
+  const out = Object.fromEntries(MANAGERS.map((n, i) => [n, wins[i] / N]));
+  winChanceMemo = { key, out };
+  return out;
+}
+
 function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
   const rows = precomputed || rankManagers(cloudPicks, results);
   if (anyGameLive(live)) {
@@ -2843,6 +2916,14 @@ function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
     for (const row of rows) row.subline = rankingSubline(row, actualTotal, tbGame, inFlightPoints(cloudPicks[row.name]?.picks || {}, live), results);
   }
   rankingsList.innerHTML = "";
+  if (weekIsLive(results)) {
+    const ch = weekWinChances(cloudPicks, results, live);
+    for (const row of rows) row.winPct = ch[row.name] ?? 0;
+    const note = document.createElement("div");
+    note.className = "wp-note";
+    note.innerHTML = `<i></i>LIVE · CHANCE TO WIN THE WEEK`;
+    rankingsList.appendChild(note);
+  } else for (const row of rows) delete row.winPct;
   renderRankingRows(rows, cloudPicks, results, live);
   return rows;
 }
@@ -2948,6 +3029,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
         <span class="ranking-dots" aria-hidden="true"></span>
         <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
         <span class="ranking-caret">${open ? "▴" : "▾"}</span>
+        ${row.winPct != null ? (() => { const pct = row.winPct * 100; const txt = pct >= 99.5 ? "99%+" : pct > 0 && pct < 1 ? "<1%" : `${Math.round(pct)}%`; return `<span class="rank-wp${pct >= 50 ? " hot" : ""}" title="Chance to win the week"><i style="width:${Math.max(pct, pct > 0 ? 1.5 : 0).toFixed(1)}%"></i><b>${txt}</b></span>`; })() : ""}
       </div>
       ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
     `;
@@ -4050,8 +4132,51 @@ let renderRecap = function () {
         <div class="recap-sub">${sub}</div>
       </div>
       <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div>
+      <div class="recap-react" data-card="${cls}"></div>
     </div>`).join("");
+  paintReactions(last.week);
 };
+
+// --- Recap reactions --------------------------------------------------------
+const REACTION_SET = ["🔥", "💀", "🤡", "😂", "👏"];
+let reactionState = { week: null, cards: {} };
+async function paintReactions(week, fresh = true) {
+  const panel = document.getElementById("recap-panel");
+  if (!panel) return;
+  if (fresh && WORKER_URL) {
+    try {
+      const r = await fetch(`${WORKER_URL}/reactions?week=${week}&t=${Date.now()}`, { cache: "no-store" });
+      if (r.ok) reactionState = { week, cards: (await r.json()).cards || {} };
+    } catch {}
+  }
+  panel.querySelectorAll(".recap-react").forEach((el) => {
+    const c = reactionState.week === week ? reactionState.cards[el.dataset.card] || {} : {};
+    el.innerHTML = REACTION_SET.map((e) => {
+      const who = c[e] || [];
+      const mine = currentManager && who.includes(currentManager);
+      return `<button type="button" class="rx${mine ? " mine" : ""}${who.length ? " on" : ""}" data-emoji="${e}" title="${who.map((n) => shown(n)).join(", ")}">${e}${who.length ? `<b>${who.length}</b>` : ""}</button>`;
+    }).join("");
+  });
+}
+document.getElementById("recap-panel")?.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".rx");
+  if (!btn) return;
+  e.stopPropagation();
+  const card = btn.closest(".recap-react")?.dataset.card;
+  const week = reactionState.week;
+  if (!card || !week || !currentManager || !WORKER_URL) return;
+  // Optimistic toggle, then the Worker's copy wins.
+  const c = reactionState.cards[card] = reactionState.cards[card] || {};
+  const list = new Set(c[btn.dataset.emoji] || []);
+  if (list.has(currentManager)) list.delete(currentManager); else list.add(currentManager);
+  c[btn.dataset.emoji] = [...list];
+  paintReactions(week, false);
+  try {
+    const r = await fetch(`${WORKER_URL}/reactions?week=${week}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manager: currentManager, card, emoji: btn.dataset.emoji, token: tokenFor(currentManager) || undefined }) });
+    if (r.ok) { reactionState = { week, cards: (await r.json()).cards || {} }; paintReactions(week, false); }
+    else if (r.status === 401) handleAuthFailure(currentManager);
+  } catch {}
+});
 
 // Folds like the sections under it. Starts open; the choice is remembered.
 (() => {

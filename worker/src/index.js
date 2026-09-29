@@ -88,6 +88,9 @@ export default {
     if (url.pathname === "/results") {
       return handleResults(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/reactions") {
+      return handleReactions(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/insights") {
       return handleInsights(request, env, corsHeaders, url);
     }
@@ -1809,6 +1812,37 @@ async function liveTargets(env, week = null) {
   const games = (slate?.games || []).map((g) => ({ id: g.id, awayId: Number(g.awayId), homeId: Number(g.homeId) }));
   const dates = [...new Set((slate?.games || []).map((g) => etDay(g.kickoff)).filter(Boolean))].sort();
   return { games, dates };
+}
+
+// --- Recap reactions ------------------------------------------------------
+// One KV entry per week: { cardKey: { emoji: [manager, ...] } }. A manager
+// toggles their own reaction; with owner login on, only the signed-in
+// owner can react as themselves.
+const REACTIONS = ["🔥", "💀", "🤡", "😂", "👏"];
+const reactionsKey = (week) => `reactions:w${week}`;
+async function handleReactions(request, env, corsHeaders, url) {
+  const week = Number(url.searchParams.get("week"));
+  if (!Number.isInteger(week) || week < 1 || week > 30) return json({ error: "Bad week" }, 400, corsHeaders);
+  if (request.method === "GET") {
+    return json({ week, cards: (await env.LIFTR_KV.get(reactionsKey(week), "json")) || {} }, 200, corsHeaders);
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body = {};
+  try { body = await request.json(); } catch {}
+  const { manager, card, emoji, token } = body || {};
+  if (!PICKS_MANAGERS.includes(manager)) return json({ error: "Invalid manager" }, 400, corsHeaders);
+  if (!REACTIONS.includes(emoji)) return json({ error: "Invalid reaction" }, 400, corsHeaders);
+  if (typeof card !== "string" || !/^[a-z]{2,12}$/.test(card)) return json({ error: "Invalid card" }, 400, corsHeaders);
+  if ((await authMode(env)) === "on" && (await tokenOwner(env, token)) !== manager) return json({ error: "Sign in to react", needsLogin: true }, 401, corsHeaders);
+  const all = (await env.LIFTR_KV.get(reactionsKey(week), "json")) || {};
+  const c = all[card] || {};
+  const list = new Set(c[emoji] || []);
+  if (list.has(manager)) list.delete(manager); else list.add(manager);
+  c[emoji] = [...list];
+  if (!c[emoji].length) delete c[emoji];
+  all[card] = c;
+  await env.LIFTR_KV.put(reactionsKey(week), JSON.stringify(all), { expirationTtl: 400 * 24 * 3600 });
+  return json({ week, cards: all }, 200, corsHeaders);
 }
 
 // --- Insights ---------------------------------------------------------
