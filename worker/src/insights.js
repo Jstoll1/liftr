@@ -408,23 +408,28 @@ export function filterNews(items) {
     return true;
   });
 }
+// Slate names carry poll ranks ("#4 Miami") and parentheses ("Miami (OH)");
+// neither appears in headlines, so strip them before searching.
+export const searchName = (n) => String(n || "").replace(/^#\d+\s+/, "").replace(/[()]/g, "").replace(/\s+/g, " ").trim();
 export async function gameNews(env, game) {
-  const key = `news:g:${game.awayId}:${game.homeId}`;
+  const key = `news:v2:g:${game.awayId}:${game.homeId}`;
   const hit = await env.LIFTR_KV.get(key, "json");
   if (hit && Date.now() - hit.at < 30 * 60 * 1000) return hit;
   const q = (s) => `https://news.google.com/rss/search?q=${encodeURIComponent(s)}+when:7d&hl=en-US&gl=US&ceid=US:en`;
+  const A = searchName(game.away), H = searchName(game.home);
   const queries = [
-    { tag: "game", url: q(`"${game.away}" "${game.home}" football`) },
-    { tag: "away", url: q(`"${game.away}" football`) },
-    { tag: "home", url: q(`"${game.home}" football`) },
+    { tag: "game", url: q(`"${A}" "${H}" football`) },
+    { tag: "game", url: q(`${A} ${H} football`) },
+    { tag: "away", url: q(`"${A}" football`) },
+    { tag: "home", url: q(`"${H}" football`) },
   ];
   // Bing News as a second source for the same three searches, so one
   // service turning the Worker away still leaves articles.
   const bing = (s) => `https://www.bing.com/news/search?q=${encodeURIComponent(s)}&format=rss&qft=interval%3d%228%22`;
   queries.push(
-    { tag: "game", url: bing(`"${game.away}" "${game.home}" football`), bing: true },
-    { tag: "away", url: bing(`"${game.away}" football`), bing: true },
-    { tag: "home", url: bing(`"${game.home}" football`), bing: true },
+    { tag: "game", url: bing(`${A} ${H} football`), bing: true },
+    { tag: "away", url: bing(`"${A}" football`), bing: true },
+    { tag: "home", url: bing(`"${H}" football`), bing: true },
   );
   const results = await Promise.all(queries.map(async (x) => {
     try {
@@ -437,7 +442,8 @@ export async function gameNews(env, game) {
   const all = filterNews(results.flatMap((r) => r.items))
     .sort((a, b) => (a.about === "game" ? 0 : 1) - (b.about === "game" ? 0 : 1) || String(b.published).localeCompare(String(a.published)));
   const out = { at: Date.now(), items: all.slice(0, 18), errors: results.filter((r) => r.error).map((r) => `${r.tag}: ${r.error}`) };
-  try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 6 * 3600 }); } catch {}
+  // Only cache a result that found something; an empty one retries next open.
+  if (out.items.length) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 6 * 3600 }); } catch {} }
   return out;
 }
 

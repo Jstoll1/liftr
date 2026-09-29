@@ -3445,7 +3445,10 @@ async function fetchWiderNews(gameId) {
   try {
     const res = await fetch(`${WORKER_URL}/insights/news?week=${currentWeek}&game=${gameId}&t=${Math.floor(Date.now() / 600000)}`);
     if (!res.ok) return [];
-    return (await res.json()).items || [];
+    const j = await res.json();
+    const items = j.items || [];
+    items.errors = j.errors || [];
+    return items;
   } catch { return []; }
 }
 const teamNewsCache = {};
@@ -3776,7 +3779,9 @@ async function openInsights(gameId) {
   for (let i = 0; i < Math.max(restO.length, restE.length); i++) { if (restO[i]) mixed.push(restO[i]); if (i % 2 === 1 && restE[(i - 1) / 2]) mixed.push(restE[(i - 1) / 2]); }
   const newsRows = mixed.filter((n) => { const k = norm(n.headline); if (!k || seen.has(k)) return false; seen.add(k); return true; });
   if (!newsRows.length && (pend.news || pend.wider)) html += `<div class="ins-h">NEWS</div><div class="ins-loading">Loading news…</div>`;
+  const newsErr = !pend.wider && !wider.length && (wider.errors || []).length ? `<div class="ins-empty small"><i class="ins-err">More sources unavailable: ${esc(wider.errors.slice(0, 2).join(" · "))}</i></div>` : "";
   if (newsRows.length) html += `<div class="ins-h">NEWS</div><ul class="ins-news">${newsRows.slice(0, 12).map((n) => `<li><b class="ins-nh">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det"><em class="ins-src">${esc(n.source || "")}</em>${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
+  if (newsErr) html += newsRows.length ? newsErr : `<div class="ins-h">NEWS</div>${newsErr}`;
 
   // 1. Injuries, one column per team.
   const statusCls = (st) => `st-${String(st || "").toLowerCase().replace(/[^a-z]/g, "")}`;

@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -144,4 +144,11 @@ test("Bing News RSS unwraps the redirect link, keeps Instagram, drops TikTok", (
   assert.equal(items[0].source, "The Roanoke Times");
   assert.equal(items[0].blurb, "Virginia Tech has allowed 4.1 yards per carry.");
   assert.deepEqual(filterNews(items).map((n) => n.source), ["The Roanoke Times", "Instagram"]);
+});
+
+test("searchName strips poll ranks and parentheses", () => {
+  assert.equal(searchName("#4 Miami"), "Miami");
+  assert.equal(searchName("#11 LSU"), "LSU");
+  assert.equal(searchName("Miami (OH)"), "Miami OH");
+  assert.equal(searchName("Clemson"), "Clemson");
 });
