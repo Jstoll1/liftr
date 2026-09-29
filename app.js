@@ -1544,8 +1544,8 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
   return `
     <div class="tm-row ${atsSelected || suSelected ? "picked" : ""}">
       <div class="tm-id">
-        <img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
-        <span class="tm-name">${isHome ? `<i class="tm-at">@</i>` : ""}${rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank)}<span class="tm-nm">${short}</span>${isFavorite ? `<span class="tm-spread">${line}</span>` : ""}</span>
+        <span class="tm-logo-wrap"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank)}</span>
+        <span class="tm-name">${isHome ? `<i class="tm-at">@</i>` : ""}<span class="tm-nm">${short}</span>${isFavorite ? `<span class="tm-spread">${line}</span>` : ""}</span>
       </div>
       <div class="tm-chips">
         <button class="pick-mini-btn ats ${atsSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="ATS" title="${short} ${line} against the spread, 2 points">
