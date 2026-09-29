@@ -1823,11 +1823,11 @@ function renderPicksScreen() {
 
     card.innerHTML = `
       <div class="game-meta">
-        <span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>
+        <span class="game-meta-left"><span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>${gameLocked || !note || note.startsWith("⚠") ? "" : `<span class="game-stamp">${note}</span>`}</span>
         <span class="game-meta-right"><button type="button" class="insights-btn" data-insights="${game.id}" aria-label="Insights for ${game.awayShort} at ${game.homeShort}">INFO</button><span class="game-status ${statusClass}">${statusLabel}</span></span>
       </div>
       ${gameLocked ? lockedResultHtml(game, pick, finalRes, isLive ? g : null) : matchupCardsHtml(game, pick)}
-      ${gameLocked || !note ? "" : note.startsWith("⚠") ? `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>` : `<div class="game-stamp">${note}</div>`}
+      ${gameLocked || !note || !note.startsWith("⚠") ? "" : `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>`}
     `;
 
     const infoBtn = card.querySelector(".insights-btn");

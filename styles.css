@@ -3876,3 +3876,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .lr-sc { justify-content: flex-start; min-height: 50px; }
 .hz-nm.lg { font-size: 9.5px; }
 .hz-nm.xl { font-size: 8px; letter-spacing: -.01em; }
+
+/* Saved stamp rides under the game line in the header, inside the height the buttons already take */
+.game-meta-left { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.game-meta-left .game-stamp { margin: 0; text-align: left; }
