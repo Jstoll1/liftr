@@ -3851,3 +3851,6 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .hz-nm { white-space: normal; overflow: visible; text-overflow: clip; text-align: center; line-height: 1.1; font-size: 11px; word-break: break-word; }
 .hz-col .pick-mini-btn { width: 78px; padding: 0 5px; }
 .hz-row { gap: 5px; }
+.hz-col .pick-mini-btn { width: 86px; }
+.hz-nm { font-size: 12px; }
+.hz-tm .tm-logo { width: 42px; height: 42px; }
