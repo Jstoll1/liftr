@@ -3913,3 +3913,15 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .hz-col .pick-mini-btn { width: 76px; padding: 0 4px; }
 .hz-nm, .hz-nm.lg, .hz-nm.xl { font-size: 9px; letter-spacing: -.01em; }
 .hz-tm { overflow: visible; }
+/* Fluid card: chips, logos, names and the AT pill scale with the card's width
+   (cqw = 1% of the card), clamped so tiny and huge phones both stay sane. */
+.game-card { container-type: inline-size; }
+.hz-row { gap: clamp(3px, 1.4cqw, 6px); }
+.hz-col .pick-mini-btn { width: clamp(68px, 22cqw, 90px); min-height: clamp(26px, 8cqw, 31px); }
+.hz-col .pick-mini-btn .pk-line { font-size: clamp(10px, 3.4cqw, 13px); }
+.hz-col .pick-mini-btn .pk-pts { font-size: clamp(7px, 2.4cqw, 9.5px); }
+.hz-tm .tm-logo { width: clamp(30px, 11cqw, 44px); height: clamp(30px, 11cqw, 44px); }
+.hz-nm, .hz-nm.lg, .hz-nm.xl { font-size: clamp(8px, 2.7cqw, 11px); }
+.hz-rec { font-size: clamp(5.5px, 1.8cqw, 7px); }
+.hz-at { font-size: clamp(5.5px, 1.8cqw, 7px); padding: clamp(3px, 1.2cqw, 5px) clamp(2px, 1cqw, 4px); }
+.lr-sc .lr-score { font-size: clamp(14px, 4.8cqw, 19px); }
