@@ -3141,7 +3141,8 @@ function renderPicksCountdown() {
   const picked = st ? GAMES.filter((g) => st.picks[g.id]).length : 0;
   const tbSet = !!(st && String(st.tiebreaker ?? "").trim());
   const chip = (ok, txt) => `<span class="cd-chip ${ok ? "ok" : "miss"}">${txt} ${ok ? "✓" : "!"}</span>`;
-  const status = st ? `<span class="cd-status">${chip(picked === GAMES.length, `${picked}/${GAMES.length}`)}${chip(tbSet, "TB")}</span>` : "";
+  const riding = st ? GAMES.reduce((n, g) => n + (st.picks[g.id] ? pointValue(g, st.picks[g.id].team, st.picks[g.id].mode) : 0), 0) : 0;
+  const status = st ? `<span class="cd-card"><em>YOUR CARD</em><span class="cd-riding"><b>${riding}</b><i>PT<br>RIDING</i></span><span class="cd-status">${chip(picked === GAMES.length, `${picked}/${GAMES.length}`)}${chip(tbSet, "TB")}</span></span>` : "";
   // Under an hour the whole slate is about to lock, so the strip goes hot.
   el.className = "picks-countdown" + (cd.ms < 3600000 ? " soon" : "");
   // Scoreboard digits: DAYS / HRS / MIN / SEC boxes, days dropped at zero.
@@ -3149,8 +3150,13 @@ function renderPicksCountdown() {
   const parts = [["DAYS", Math.floor(tot / 86400)], ["HRS", Math.floor((tot % 86400) / 3600)], ["MIN", Math.floor((tot % 3600) / 60)], ["SEC", tot % 60]].filter(([k, v], i) => i > 0 || v > 0);
   const cells = parts.map(([k, v]) => `<span class="cd-cell"><b>${String(v).padStart(2, "0")}</b><em>${k}</em></span>`).join('<i class="cd-colon">:</i>');
   const logoImg = (id) => id ? `<img class="cd-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : "";
-  const match = `${logoImg(next.awayId)}<span>${escapeCd(next.awayShort)} <i>at</i> ${escapeCd(next.homeShort)}</span>${logoImg(next.homeId)}<span class="cd-when">${escapeCd(next.kickoffLabel)}</span>`;
-  el.innerHTML = `<span class="cd-top"><span class="cd-left"><span class="cd-label"><u></u>${label}</span><span class="cd-cells">${cells}</span></span>${status}</span><span class="cd-game">${match}</span>`;
+  const match = `<em class="cd-first">${lockAll || next.id === first.id ? "FIRST UP" : "NEXT UP"}</em>${logoImg(next.awayId)}<span>${escapeCd(next.awayShort)} <i>at</i> ${escapeCd(next.homeShort)}</span>${logoImg(next.homeId)}<span class="cd-when">${escapeCd(next.kickoffLabel)}</span>`;
+  // Fuse: burns from when the slate opened (Monday's seal, 10:00 UTC) to lock.
+  const lockAt = new Date(next.kickoff).getTime();
+  const opened = (() => { const d = new Date(lockAt); const back = (d.getUTCDay() + 6) % 7; const m = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back, 10); return m < lockAt ? m : lockAt - 5 * 86400000; })();
+  const left = Math.max(0, Math.min(1, (lockAt - Date.now()) / Math.max(1, lockAt - opened)));
+  const fuse = `<span class="cd-fuse" aria-hidden="true"><i style="width:${(left * 100).toFixed(2)}%"><u></u></i></span>`;
+  el.innerHTML = `<span class="cd-top"><span class="cd-left"><span class="cd-label"><u></u>${label}</span><span class="cd-cells">${cells}</span></span>${status}</span><span class="cd-game">${match}</span>${fuse}`;
   // The clock carries the card status, so the separate line hides.
   document.getElementById("picks-progress")?.classList.toggle("hidden", !!st);
 }
