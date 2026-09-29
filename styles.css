@@ -3854,3 +3854,25 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .hz-col .pick-mini-btn { width: 86px; }
 .hz-nm { font-size: 12px; }
 .hz-tm .tm-logo { width: 42px; height: 42px; }
+
+/* Saved stamp: one small centred line instead of a full row */
+.game-stamp { margin-top: 5px; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .1em; color: var(--neon-green); opacity: .75; text-transform: uppercase; }
+/* Locked scorebug in the same scoreboard shape as the pick card */
+.lr-hz { grid-template-columns: 1fr auto auto auto 1fr; gap: 4px; padding: 4px 0 2px; }
+.lr-hz .hz-nm { font-size: 11px; }
+.lr-sc { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 44px; }
+.lr-sc .lr-score { min-width: 0; text-align: center; font-size: 18px; }
+.lr-sc.picked .lr-score { color: var(--neon-cyan); text-shadow: 0 0 6px rgba(5, 217, 232, .5); }
+.lr-sc.picked .lr-score.win { color: var(--neon-green); text-shadow: 0 0 6px rgba(57, 255, 136, .6); }
+.lr-sc .lr-bet { font-size: 9px; padding: 2px 5px; gap: 3px; }
+.lr-sc .lr-bet-pts { font-size: 5px; }
+.lr-mid { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); padding: 5px 5px; border: 1px solid rgba(255, 255, 255, .12); border-radius: 5px; background: rgba(255, 255, 255, .03); text-align: center; line-height: 1.4; max-width: 62px; }
+.locked-result.live .lr-mid { color: var(--neon-yellow); border-color: rgba(255, 228, 94, .4); }
+.locked-result.final .lr-mid { color: var(--text); }
+.lr-hz-tm.picked .hz-nm { color: var(--neon-cyan); }
+.lr-foot { padding-top: 6px; }
+.hz-nm { font-size: 11px; word-break: normal; overflow-wrap: normal; letter-spacing: 0; }
+.hz-col .pick-mini-btn { width: 82px; }
+.lr-sc { justify-content: flex-start; min-height: 50px; }
+.hz-nm.lg { font-size: 9.5px; }
+.hz-nm.xl { font-size: 8px; letter-spacing: -.01em; }

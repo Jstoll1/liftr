@@ -1563,6 +1563,12 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
 // Underdog on top, favourite on the bottom on every card, so the eye
 // lands on the same row for the same kind of bet. The home side is marked
 // with an @ since the order no longer says who hosts.
+// Long team names shrink instead of breaking mid-word on a phone column.
+function nameSizeClass(short) {
+  const longest = Math.max(...String(short || "").split(/\s+/).map((w) => w.length), 0);
+  return longest >= 11 ? " xl" : longest >= 8 ? " lg" : "";
+}
+
 function matchupCardsHtml(game, draft) {
   const awayIsFav = game.favorite === game.away;
   const live = latestLive[game.id] || {};
@@ -1576,7 +1582,7 @@ function matchupCardsHtml(game, draft) {
     const pts = (n) => `<span class="pk-pts">${n}<i>PT</i></span>`;
     const id = `<div class="hz-tm${atsSelected || suSelected ? " picked" : ""}">
         <img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
-        <span class="hz-nm">${short}</span>
+        <span class="hz-nm${nameSizeClass(short)}">${short}</span>
         <span class="hz-rec">${record ? String(record).replace(/[^0-9-]/g, "") : ""}${rank ? `<b>#${rank}</b>` : ""}</span>
       </div>`;
     const chips = `<div class="hz-col">
@@ -1625,11 +1631,14 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
     // bar down the row are what say this side is yours.
     return `<span class="lr-bet">${terms}<span class="lr-bet-pts">${worth} PT</span></span>`;
   };
-  const row = (side, name, id, score, other) => `<div class="lr-team ${pickedSide === side ? "picked" : ""}">
-      <img class="lr-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
-      <span class="lr-name">${rankBadge(side === "away" ? liveG?.awayRank : liveG?.homeRank)}<span class="tm-nm">${name}</span></span>
-      ${pickedSide === side ? betBadge() : ""}
+  const team = (side, name, id) => `<div class="hz-tm lr-hz-tm ${pickedSide === side ? "picked" : ""}">
+      <img class="tm-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+      <span class="hz-nm${nameSizeClass(name)}">${name}</span>
+      <span class="hz-rec">${(side === "away" ? liveG?.awayRecord : liveG?.homeRecord) ? String(side === "away" ? liveG.awayRecord : liveG.homeRecord).replace(/[^0-9-]/g, "") : ""}${(side === "away" ? liveG?.awayRank : liveG?.homeRank) ? `<b>#${side === "away" ? liveG.awayRank : liveG.homeRank}</b>` : ""}</span>
+    </div>`;
+  const scoreCell = (side, score, other) => `<div class="lr-sc ${pickedSide === side ? "picked" : ""}">
       <span class="lr-score ${finalRes && score !== null && score > other ? "win" : ""}">${score === null ? "–" : score}</span>
+      ${pickedSide === side ? betBadge() : ""}
     </div>`;
   let foot;
   if (!pick) {
@@ -1671,9 +1680,15 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
       ${pill}
     </div>`;
   }
+  const mid = finalRes ? "FINAL" : liveG?.detail ? String(liveG.detail).replace(/\s*-\s*/, " ").toUpperCase().slice(0, 12) : "LOCKED";
   return `<div class="locked-result ${finalRes ? "final" : liveG ? "live" : ""}">
-    ${row("away", game.away, game.awayId, aS, hS)}
-    ${row("home", game.home, game.homeId, hS, aS)}
+    <div class="hz-row lr-hz">
+      ${team("away", game.awayShort, game.awayId)}
+      ${scoreCell("away", aS, hS)}
+      <div class="lr-mid">${mid}</div>
+      ${scoreCell("home", hS, aS)}
+      ${team("home", game.homeShort, game.homeId)}
+    </div>
     ${foot}
   </div>`;
 }
@@ -1812,7 +1827,7 @@ function renderPicksScreen() {
         <span class="game-meta-right"><button type="button" class="insights-btn" data-insights="${game.id}" aria-label="Insights for ${game.awayShort} at ${game.homeShort}">INFO</button><span class="game-status ${statusClass}">${statusLabel}</span></span>
       </div>
       ${gameLocked ? lockedResultHtml(game, pick, finalRes, isLive ? g : null) : matchupCardsHtml(game, pick)}
-      ${gameLocked || !note ? "" : `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>`}
+      ${gameLocked || !note ? "" : note.startsWith("⚠") ? `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>` : `<div class="game-stamp">${note}</div>`}
     `;
 
     const infoBtn = card.querySelector(".insights-btn");
