@@ -18,7 +18,7 @@ export default {
     // Monday: seal the week. Tuesday to Saturday, twice a day: sample the
     // lines and refresh the brief for every game still open.
     if (event.cron === INSIGHTS_CRON) {
-      ctx.waitUntil(runInsights(env, INSIGHTS_DEPS).then((r) => console.log("scheduled insights", JSON.stringify(r))));
+      ctx.waitUntil(runInsights(env, INSIGHTS_DEPS, { briefs: false }).then((r) => console.log("scheduled insights", JSON.stringify(r))));
       return;
     }
     ctx.waitUntil(sealFromEspn(env).then((r) => console.log("scheduled seal", JSON.stringify(r))));

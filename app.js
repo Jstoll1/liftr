@@ -3753,7 +3753,7 @@ async function openInsights(gameId) {
   if (direct?.series?.length) {
     html += `<div class="ins-sub-h">SERIES</div><ul class="ins-news">${direct.series.map((e) => `<li>${esc(e.summary || "")}${e.score ? `<span class="ins-det">${esc(e.score)}${e.date ? ` · ${esc(new Date(e.date).getFullYear())}` : ""}</span>` : ""}</li>`).join("")}</ul>`;
   }
-  if (brief?.summary?.length) html += `<ul class="ins-brief">${brief.summary.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`;
+
   else if (!glance && pend.summary) html += `<div class="ins-loading">Loading ESPN's game page…</div>`;
   else if (!glance) html += `<div class="ins-empty">ESPN has not published this week's game page yet. Numbers land here once it does.${!eventId ? ` <i class="ins-err">game not on the scoreboard feed yet</i>` : ""}</div>`;
   // Mix sources: game-specific first, then alternate the wider press with
