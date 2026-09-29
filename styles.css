@@ -3907,3 +3907,5 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .picks-countdown .cd-left { align-items: center; text-align: center; }
 .cd-cells { justify-content: center; }
 .cd-label { justify-content: center; }
+.picks-countdown .cd-left { justify-content: center; align-self: stretch; }
+.picks-countdown .cd-card { justify-content: center; align-self: stretch; }
