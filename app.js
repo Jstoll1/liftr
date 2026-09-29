@@ -796,7 +796,6 @@ const brandSub = document.getElementById("brand-sub");
 
 const RULES_SEEN_KEY = "brochiefs_rules_seen_v1";
 
-document.addEventListener("click", (e) => { if (e.target.closest(".cd-q")) openRules(); });
 function openRules() {
   rulesModal.classList.remove("hidden");
 }
@@ -3156,7 +3155,7 @@ function renderPicksCountdown() {
   const opened = (() => { const d = new Date(lockAt); const back = (d.getUTCDay() + 6) % 7; const m = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back, 10); return m < lockAt ? m : lockAt - 5 * 86400000; })();
   const left = Math.max(0, Math.min(1, (lockAt - Date.now()) / Math.max(1, lockAt - opened)));
   const fuse = `<span class="cd-fuse" aria-hidden="true"><i style="width:${(left * 100).toFixed(2)}%"><u></u></i></span>`;
-  el.innerHTML = `<span class="cd-top"><span class="cd-left"><span class="cd-label"><u></u>${label}<button type="button" class="cd-q" aria-label="How scoring works">?</button></span><span class="cd-cells">${cells}</span></span>${status}</span><span class="cd-game">${match}</span>${fuse}`;
+  el.innerHTML = `<span class="cd-top"><span class="cd-left"><span class="cd-label"><u></u>${label}</span><span class="cd-cells">${cells}</span></span>${status}</span><span class="cd-game">${match}</span>${fuse}`;
   // The clock carries the card status, so the separate line hides.
   document.getElementById("picks-progress")?.classList.toggle("hidden", !!st);
 }
