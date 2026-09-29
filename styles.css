@@ -3901,3 +3901,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .lm-read em { font-style: normal; color: var(--neon-green); }
 .lm-ou { flex: none; color: var(--text-dim); } .lm-ou em { font-style: normal; color: var(--text-dim); margin-right: 4px; }
 .lm-end em { font-style: normal; }
+/* One name size on every card; long names wrap at the space, never shrink */
+.hz-nm, .hz-nm.lg, .hz-nm.xl { font-size: 10px; letter-spacing: 0; }
+/* Countdown block centred in its half of the board */
+.picks-countdown .cd-left { align-items: center; text-align: center; }
+.cd-cells { justify-content: center; }
+.cd-label { justify-content: center; }
