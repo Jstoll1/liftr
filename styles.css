@@ -3830,3 +3830,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .sim-plogo { width: 14px; height: 14px; }
 .sim-ez img { width: 78%; opacity: .55; }
 .sim-tm.r.poss span::after { display: none; }
+
+/* Prize board retired: payouts already sit on every pick button. Rules live on a small ? in the countdown label. */
+.cd-q { margin-left: 8px; width: 16px; height: 16px; padding: 0; border-radius: 50%; border: 1px solid rgba(255, 228, 94, .6); background: rgba(255, 228, 94, .1); color: var(--neon-yellow); font-family: 'Press Start 2P', monospace; font-size: 7px; line-height: 1; cursor: pointer; vertical-align: middle; }
+.cd-q:active { transform: translateY(1px); }
