@@ -3793,3 +3793,14 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .picks-pay .pp-num { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 .picks-pay .pp.dog b, .picks-pay .pp.ats b, .picks-pay .pp.fav b { color: #fff; text-shadow: 0 0 10px rgba(255, 255, 255, .25); }
 .picks-pay .pp.q b { min-width: 0; padding: 0; background: none; box-shadow: none; }
+/* Prize tiles need room once the pixel font loads: taller face, bigger digit, clearer tag */
+.picks-pay { gap: 7px; margin-bottom: 2px; }
+.picks-pay .pp { min-height: 68px; padding: 9px 9px 8px; gap: 9px; justify-content: space-between; }
+.picks-pay .pp b, .picks-pay .pp.dog b, .picks-pay .pp.ats b, .picks-pay .pp.fav b { font-size: 26px; }
+.picks-pay .pp small { font-size: 7px; }
+.picks-pay .pp-tag { top: 6px; right: 7px; font-size: 6px; opacity: 1; text-shadow: 0 0 6px currentColor; }
+.picks-pay .pp em { font-size: 6px; gap: 6px; }
+.picks-pay .pp em u { font-size: 12px; }
+.picks-pay .pp.q { min-height: 68px; padding: 8px 4px; }
+.picks-pay .pp.q b { font-size: 22px; }
+.picks-pay .pp.q em { font-size: 5.5px; }
