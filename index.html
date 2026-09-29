@@ -220,7 +220,12 @@
   <!-- PICKS SCREEN -->
   <main id="picks-screen" class="screen hidden">
     <div class="wrap wide">
-      <p class="picks-hint">One pick per game: straight up (1 pt favorite, 3 pt underdog) or against the spread (2 pts). Tap to save &mdash; change it any time until that game kicks off.</p>
+      <div class="picks-pay" aria-label="What each pick pays">
+        <span><em>WIN</em>FAV <b>1</b></span>
+        <span><em>SPREAD</em><b>2</b></span>
+        <span><em>WIN</em>DOG <b>3</b></span>
+        <button type="button" id="picks-rules-q" class="picks-q" aria-label="How it works">?</button>
+      </div>
 
       <div id="sync-banner" class="sync-banner hidden" role="status"></div>
 

@@ -796,6 +796,7 @@ const brandSub = document.getElementById("brand-sub");
 
 const RULES_SEEN_KEY = "brochiefs_rules_seen_v1";
 
+document.getElementById("picks-rules-q")?.addEventListener("click", () => openRules());
 function openRules() {
   rulesModal.classList.remove("hidden");
 }
@@ -3105,11 +3106,20 @@ function renderPicksCountdown() {
   if (!first || !next) { el.classList.add("hidden"); el.innerHTML = ""; return; }
   const cd = kickoffCountdown(next.kickoff);
   if (!cd || cd.past) { el.classList.add("hidden"); el.innerHTML = ""; return; }
-  const label = next.id === first.id ? "1ST KICKOFF" : "NEXT KICKOFF";
+  const lockAll = weekLockTime() !== null;
+  const label = lockAll ? "PICKS LOCK IN" : next.id === first.id ? "1ST KICKOFF" : "NEXT KICKOFF";
   const game = `${next.awayShort} at ${next.homeShort} · ${next.kickoffLabel}`;
+  // Your card at a glance, inside the clock: games picked and tiebreaker.
+  const st = currentManager ? getManagerState(currentManager) : null;
+  const picked = st ? GAMES.filter((g) => st.picks[g.id]).length : 0;
+  const tbSet = !!(st && String(st.tiebreaker ?? "").trim());
+  const chip = (ok, txt) => `<span class="cd-chip ${ok ? "ok" : "miss"}">${txt} ${ok ? "✓" : "!"}</span>`;
+  const status = st ? `<span class="cd-status">${chip(picked === GAMES.length, `${picked}/${GAMES.length}`)}${chip(tbSet, "TB")}</span>` : "";
   // Under an hour the whole slate is about to lock, so the strip goes hot.
   el.className = "picks-countdown" + (cd.ms < 3600000 ? " soon" : "");
-  el.innerHTML = `<span class="cd-label">${label}</span><span class="cd-clock">${cd.text}</span><span class="cd-game">${escapeCd(game)}</span>`;
+  el.innerHTML = `<span class="cd-top"><span class="cd-left"><span class="cd-label">${label}</span><span class="cd-clock">${cd.text}</span></span>${status}</span><span class="cd-game">${escapeCd(game)}</span>`;
+  // The clock carries the card status, so the separate line hides.
+  document.getElementById("picks-progress")?.classList.toggle("hidden", !!st);
 }
 
 function escapeCd(str) {

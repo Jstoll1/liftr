@@ -3611,3 +3611,25 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ranking-main .rank-wp.hot b { color: var(--neon-green); }
 .wp-live .ranking-name { flex: 0 0 78px; min-width: 0; }
 .wp-live .rank-who { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Picks header: pay chips, then the lock clock with your card status */
+.picks-pay { display: flex; justify-content: center; align-items: center; gap: 6px; margin: 6px 0 12px; }
+.picks-pay span { display: inline-flex; align-items: baseline; gap: 5px; padding: 6px 9px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .04); font-family: 'Orbitron', system-ui, sans-serif; font-size: 10.5px; color: var(--text); white-space: nowrap; }
+.picks-pay em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: var(--text-dim); }
+.picks-pay b { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--neon-yellow); }
+.picks-q { width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(5, 217, 232, .5); background: rgba(5, 217, 232, .08); color: var(--neon-cyan); font-family: 'Press Start 2P', monospace; font-size: 9px; cursor: pointer; flex: none; }
+.picks-countdown { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; }
+.picks-countdown .cd-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+.picks-countdown .cd-left { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+.picks-countdown .cd-status { display: flex; gap: 5px; flex: none; }
+.cd-chip { padding: 6px 8px; border-radius: 6px; font-family: 'Press Start 2P', monospace; font-size: 7.5px; letter-spacing: .04em; }
+.cd-chip.ok { color: var(--neon-green); border: 1px solid rgba(57, 255, 136, .5); background: rgba(57, 255, 136, .08); }
+.cd-chip.miss { color: var(--neon-pink); border: 1px solid rgba(255, 32, 121, .6); background: rgba(255, 32, 121, .1); animation: sim-blink-txt 1.2s steps(1) infinite; }
+.picks-countdown .cd-game { align-self: flex-start; }
+.picks-countdown { width: 100%; box-sizing: border-box; align-items: stretch; text-align: left; margin-top: 0; }
+.picks-countdown .cd-clock { font-size: 16px; }
+.picks-countdown .cd-game { font-size: 10px; }
+/* Picks header spacing: the screen's own padding plus the wrap's 20px
+   gap doubled every space here; pull the top block together. */
+#picks-screen { padding-top: 10px; }
+#picks-screen .wrap { padding-top: 0; }
+.picks-pay { margin: 0 0 -10px; }
