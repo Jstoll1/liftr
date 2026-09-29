@@ -372,6 +372,7 @@ function parseEspnEvents(events) {
     // not a rank, so it becomes null rather than a number nobody wants to
     // see. Read live rather than frozen into the slate, because a team's
     // rank moves every week and the slate does not.
+    const recordOf = (side) => { const r = side?.records?.find((x) => /total|overall/i.test(x?.type || x?.name || "")) || side?.records?.[0]; return typeof r?.summary === "string" ? r.summary : null; };
     const rankOf = (side) => { const n = Number(side?.curatedRank?.current); return Number.isFinite(n) && n >= 1 && n <= 25 ? n : null; };
     const o = comp.odds?.[0];
     const oSpread = Number(o?.spread);
@@ -388,6 +389,8 @@ function parseEspnEvents(events) {
       odds,
       awayRank: rankOf(away),
       homeRank: rankOf(home),
+      awayRecord: recordOf(away),
+      homeRecord: recordOf(home),
       state: statusType.state || "pre",
       completed: !!statusType.completed,
       rawStatus: { comp: { name: st1.name, state: st1.state, completed: st1.completed, detail: st1.shortDetail }, event: { name: st2.name, state: st2.state, completed: st2.completed, detail: st2.shortDetail } },
@@ -1562,11 +1565,31 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
 // with an @ since the order no longer says who hosts.
 function matchupCardsHtml(game, draft) {
   const awayIsFav = game.favorite === game.away;
-  const away = teamRowHtml(game, game.away, game.awayId, awayIsFav, game.awayShort, draft);
-  const home = teamRowHtml(game, game.home, game.homeId, !awayIsFav, game.homeShort, draft);
+  const live = latestLive[game.id] || {};
+  const side = (team, teamId, isFavorite, short, rank, record) => {
+    const sign = isFavorite ? "-" : "+";
+    const line = `${sign}${game.spread}`;
+    const lineHtml = `<span class="pk-line"><i class="pk-sign">${sign}</i>${game.spread}</span>`;
+    const suPts = pointValue(game, team, "SU");
+    const atsSelected = pickEqual(draft, { team, mode: "ATS" });
+    const suSelected = pickEqual(draft, { team, mode: "SU" });
+    const pts = (n) => `<span class="pk-pts">${n}<i>PT</i></span>`;
+    const id = `<div class="hz-tm${atsSelected || suSelected ? " picked" : ""}">
+        <img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+        <span class="hz-nm">${short}</span>
+        <span class="hz-rec">${record ? String(record).replace(/[^0-9-]/g, "") : ""}${rank ? `<b>#${rank}</b>` : ""}</span>
+      </div>`;
+    const chips = `<div class="hz-col">
+        <button class="pick-mini-btn ats ${atsSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="ATS" title="${short} ${line} against the spread, 2 points">${lineHtml}${pts(2)}</button>
+        <button class="pick-mini-btn su ${isFavorite ? "chalk" : "upset"} ${suSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="SU" title="${short} to win outright, ${suPts} points"><span class="pk-label">WIN</span>${pts(suPts)}</button>
+      </div>`;
+    return { id, chips };
+  };
+  const a = side(game.away, game.awayId, awayIsFav, game.awayShort, live.awayRank, live.awayRecord);
+  const h = side(game.home, game.homeId, !awayIsFav, game.homeShort, live.homeRank, live.homeRecord);
   return `
-    <div class="matchup-cards-row">
-      ${awayIsFav ? home + away : away + home}
+    <div class="matchup-cards-row hz-row">
+      ${a.id}${a.chips}<div class="hz-at">AT</div>${h.chips}${h.id}
     </div>
   `;
 }

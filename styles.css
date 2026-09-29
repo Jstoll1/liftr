@@ -3834,3 +3834,20 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* Prize board retired: payouts already sit on every pick button. Rules live on a small ? in the countdown label. */
 .cd-q { margin-left: 8px; width: 16px; height: 16px; padding: 0; border-radius: 50%; border: 1px solid rgba(255, 228, 94, .6); background: rgba(255, 228, 94, .1); color: var(--neon-yellow); font-family: 'Press Start 2P', monospace; font-size: 7px; line-height: 1; cursor: pointer; vertical-align: middle; }
 .cd-q:active { transform: translateY(1px); }
+
+/* Picks card, scoreboard layout: away on the left, home on the right, the
+   four chips face to face in the middle. */
+.hz-row { display: grid !important; grid-template-columns: 1fr auto auto auto 1fr; align-items: center; gap: 6px; }
+.hz-tm { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.hz-tm .tm-logo { width: 38px; height: 38px; object-fit: contain; }
+.hz-nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 12px; letter-spacing: .02em; color: var(--text); white-space: nowrap; text-transform: uppercase; }
+.hz-tm.picked .hz-nm { color: var(--neon-cyan); }
+.hz-rec { min-height: 9px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); white-space: nowrap; }
+.hz-rec b { font-weight: normal; color: var(--neon-yellow); margin-left: 4px; }
+.hz-col { display: flex; flex-direction: column; gap: 5px; }
+.hz-col .pick-mini-btn { justify-content: center; min-height: 29px; padding: 0 6px; width: 84px; }
+.hz-at { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); padding: 5px 4px; border: 1px solid rgba(255, 255, 255, .12); border-radius: 5px; background: rgba(255, 255, 255, .03); }
+@media (max-width: 360px) { .hz-col .pick-mini-btn { width: 76px; padding: 0 4px; } .hz-tm .tm-logo { width: 32px; height: 32px; } .hz-nm { font-size: 11px; } }
+.hz-nm { white-space: normal; overflow: visible; text-overflow: clip; text-align: center; line-height: 1.1; font-size: 11px; word-break: break-word; }
+.hz-col .pick-mini-btn { width: 78px; padding: 0 5px; }
+.hz-row { gap: 5px; }
