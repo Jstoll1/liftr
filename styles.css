@@ -3804,3 +3804,15 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .picks-pay .pp.q { min-height: 68px; padding: 8px 4px; }
 .picks-pay .pp.q b { font-size: 22px; }
 .picks-pay .pp.q em { font-size: 5.5px; }
+
+/* Prize strip v3: slim skewed arcade tiles, neon digit, label beside it */
+.picks-pay { grid-template-columns: 1fr 1fr 1fr 34px; gap: 6px; margin: 0 4px 2px; }
+.picks-pay .pp, .picks-pay .pp.q { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 7px; min-height: 0; height: 34px; padding: 0 6px; border: 1px solid currentColor; border-bottom-width: 1px; border-radius: 3px; background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(0, 0, 0, .55)), #07030d; box-shadow: 0 0 10px -3px currentColor, inset 0 0 8px -4px currentColor, inset 0 1px 0 rgba(255, 255, 255, .1); transform: skewX(-8deg); overflow: visible; }
+.picks-pay .pp::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, .25) 2px 3px); pointer-events: none; }
+.picks-pay .pp > * { position: relative; transform: skewX(8deg); }
+.picks-pay .pp b, .picks-pay .pp.dog b, .picks-pay .pp.ats b, .picks-pay .pp.fav b, .picks-pay .pp.q b { font-family: 'Press Start 2P', monospace; font-size: 16px; line-height: 1; color: currentColor; text-shadow: 0 0 6px currentColor, 0 0 14px currentColor; padding: 0; background: none; box-shadow: none; }
+.picks-pay .pp em { display: flex; flex-direction: row; align-items: center; gap: 4px; font-size: 5.5px; letter-spacing: .06em; color: #fff; text-shadow: 0 0 4px rgba(255, 255, 255, .35); line-height: 1; }
+.picks-pay .pp em u { font-size: 9px; color: currentColor; }
+.picks-pay .pp.q { padding: 0; gap: 0; }
+.picks-pay .pp.q b { font-size: 14px; }
+.picks-pay .pp:active { transform: skewX(-8deg) translateY(1px); }
