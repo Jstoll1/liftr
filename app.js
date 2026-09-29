@@ -3815,51 +3815,34 @@ async function openInsights(gameId) {
       openV = isDog ? -Number(openTxt[2]) : Number(openTxt[2]);
     }
     const nowV = mv ? (mv.nowFavorite === favShort ? mv.now : -mv.now) : null;
-    // Trend chart: one line, up = the sealed favourite getting bigger.
-    const series = [];
-    if (openV !== null) series.push({ label: "OPENED", v: openV, cls: "open" });
-    series.push({ label: "SEALED", v: sealedV, cls: "seal" });
-    for (const p of (mv?.points || []).filter((p) => !p.live)) series.push({ label: dayLabel(p.at), v: p.v, cls: "day" });
-    if (nowV !== null) series.push({ label: "NOW", v: nowV, cls: "now" });
-    // Drop consecutive repeats in the middle so the line only bends at moves.
-    const pts = series.filter((p, i) => i === 0 || i === series.length - 1 || p.cls === "seal" || p.v !== series[i - 1].v);
-    const W = 300, H = 112, L = 44, R = 18, T = 22, B = 24;
-    const vs = pts.map((p) => p.v);
-    let lo = Math.min(...vs), hi = Math.max(...vs);
-    if (hi - lo < 2) { const mid = (hi + lo) / 2; lo = mid - 1; hi = mid + 1; }
-    const pad = (hi - lo) * 0.15; lo -= pad; hi += pad;
-    const x = (i) => pts.length === 1 ? (L + W - R) / 2 : L + (i * (W - L - R)) / (pts.length - 1);
-    const y = (v) => T + ((hi - v) * (H - T - B)) / (hi - lo);
-    const path = pts.map((p, i) => i ? `H${x(i).toFixed(1)} V${y(p.v).toFixed(1)}` : `M${x(0).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
-    const zero = lo < 0 && hi > 0 ? `<line class="ln-zero" x1="${L}" x2="${W - R}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}"/><text class="ln-zl" x="${W - R}" y="${(y(0) - 3).toFixed(1)}" text-anchor="end">PICK'EM</text>` : "";
-    const lab = (v) => v === 0 ? "PK" : `${v > 0 ? abbrOf(game.favorite === game.home ? "home" : "away") : abbrOf(game.favorite === game.home ? "away" : "home")} -${Math.abs(v)}`;
-    const dots = pts.map((p, i) => `<g class="ln-pt ${p.cls}"><title>${esc(p.label)}: ${esc(lab(p.v))}</title><rect x="${(x(i) - (p.cls === "day" ? 3 : 4)).toFixed(1)}" y="${(y(p.v) - (p.cls === "day" ? 3 : 4)).toFixed(1)}" width="${p.cls === "day" ? 6 : 8}" height="${p.cls === "day" ? 6 : 8}"/>${p.cls === "day" ? "" : `<text class="ln-v" x="${x(i).toFixed(1)}" y="${(y(p.v) - 9).toFixed(1)}" text-anchor="middle">${esc(lab(p.v))}</text>`}<text class="ln-x" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(p.label)}</text></g>`).join("");
-    const up = `<image href="${logoUrl(favId)}" x="2" y="${T - 6}" width="16" height="16"/><text class="ln-ax" x="10" y="${T + 18}" text-anchor="middle">▲</text>`;
-    const down = `<image href="${logoUrl(dogId)}" x="2" y="${H - B - 16}" width="16" height="16"/><text class="ln-ax" x="10" y="${H - B - 20}" text-anchor="middle">▼</text>`;
-    // Logo + number keeps each chip narrow enough for a phone row.
-    const chipTxt = (p) => `<span class="ln-chip ${p.cls}" title="${esc(p.label)}: ${esc(lab(p.v))}"><em>${esc(p.label === "OPENED" ? "OPEN" : p.label === "SEALED" ? "SEAL" : p.label)}</em><b>${p.v === 0 ? "PK" : `${lg(p.v >= 0 ? favId : dogId, "sm")}-${Math.abs(p.v)}`}</b></span>`;
-    const key3 = [series.find((p) => p.cls === "open"), series.find((p) => p.cls === "seal"), series.find((p) => p.cls === "now")].filter(Boolean);
-    const arrow = (a, b) => {
-      const d = Math.round((b.v - a.v) * 2) / 2;
-      if (d === 0) return `<i class="ln-arrow">›</i>`;
-      const who = d > 0 ? abbrOf(game.favorite === game.home ? "home" : "away") : abbrOf(game.favorite === game.home ? "away" : "home");
-      return `<i class="ln-arrow mv ${d > 0 ? "fav" : "dog"}" title="${Math.abs(d)} toward ${esc(who)}">${Math.abs(d)}<b>${d > 0 ? "▲" : "▼"}</b></i>`;
-    };
-    const ouChip = (mv?.overUnder ?? direct?.odds?.overUnder) != null ? `<span class="ln-ou"><em>O/U</em>${mv?.overUnder ?? direct?.odds?.overUnder}</span>` : "";
-    html += `<div class="ln-chips">${key3.map((p, i) => (i ? arrow(key3[i - 1], p) : "") + chipTxt(p)).join("")}${ouChip}</div>`;
-    const daily = series.filter((p) => p.cls === "day").length;
-    let trendHtml = `<details class="ln-more"><summary><span>▶</span> TREND</summary><div class="ln-crt"><svg class="ln-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Line movement: ${esc(pts.map((p) => `${p.label} ${lab(p.v)}`).join(", "))}">${zero}<line class="ln-base" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/>${up}${down}<path class="ln-glow" d="${path}"/><path class="ln-path" d="${path}"/>${dots}</svg></div></details>`;
-    // One plain sentence.
-    const ptsTxt = (v) => `${Math.abs(v)} point${Math.abs(v) === 1 ? "" : "s"}`;
-    let say = "";
-    if (nowV === null) say = `No live line right now. You score against ${esc(favShort)} -${sealedV}.`;
-    else {
-      const d = Math.round((nowV - sealedV) * 2) / 2;
-      say = d === 0 ? `No movement since we sealed it.` : `Moved ${ptsTxt(d)} toward ${esc(d > 0 ? favShort : dogShort)} since we sealed it.`;
-      if (openV !== null) { const w = Math.round((nowV - openV) * 2) / 2; if (w !== 0) say += ` ${ptsTxt(w)} toward ${esc(w > 0 ? favShort : dogShort)} since it opened.`; }
-    }
+    // Line meter: one axis from the dog's side to the favourite's side.
+    // Every marker is a number on that axis, so a half point is one tick
+    // and the band between SEALED and NOW is the edge the market has moved.
+    const favAb = abbrOf(game.favorite === game.home ? "home" : "away"), dogAb = abbrOf(game.favorite === game.home ? "away" : "home");
+    const vals = [sealedV, openV, nowV].filter((v) => v !== null);
+    let lo = Math.min(...vals) - 1, hi = Math.max(...vals) + 1;
+    if (hi - lo < 4) { const mid = (hi + lo) / 2; lo = mid - 2; hi = mid + 2; }
+    lo = Math.floor(lo * 2) / 2; hi = Math.ceil(hi * 2) / 2;
+    const pos = (v) => (((v - lo) / (hi - lo)) * 100).toFixed(1);
+    const lab = (v) => v === 0 ? "PK" : `${v > 0 ? favAb : dogAb} -${Math.abs(v)}`;
+    const half = (v) => `${Math.abs(v)}`;
+    const ticks = Math.round((hi - lo) * 2);
+    const seal = `<i class="lm-pt seal" style="left:${pos(sealedV)}%"></i><span class="lm-lab seal up" style="left:${pos(sealedV)}%"><b>${esc(lab(sealedV))}</b>SEALED</span>`;
+    const open = openV !== null ? `<i class="lm-pt open" style="left:${pos(openV)}%"></i><span class="lm-lab open dn" style="left:${pos(openV)}%">OPEN<b>${esc(lab(openV))}</b></span>` : "";
+    const nowMoved = nowV !== null && nowV !== sealedV;
+    const now = nowV === null ? "" : `<i class="lm-pt now" style="left:${pos(nowV)}%"></i>${nowMoved && (openV === null || Math.abs(nowV - openV) >= 1) ? `<span class="lm-lab now dn" style="left:${pos(nowV)}%">NOW<b>${esc(lab(nowV))}</b></span>` : ""}`;
+    const band = nowMoved ? `<i class="lm-band" style="left:${pos(Math.min(sealedV, nowV))}%;width:${(Math.abs(nowV - sealedV) / (hi - lo) * 100).toFixed(1)}%"></i>` : "";
+    const zero = lo < 0 && hi > 0 ? `<i class="lm-zero" style="left:${pos(0)}%"></i>` : "";
+    // Two plain lines: since open, and what the move since seal means.
+    const dS = nowV === null ? null : Math.round((nowV - sealedV) * 2) / 2;
+    const dO = nowV === null || openV === null ? null : Math.round((nowV - openV) * 2) / 2;
+    const l1 = nowV === null ? `NO LIVE LINE · YOU SCORE AGAINST <em>${esc(favShort)} -${sealedV}</em>` : dO === null ? (dS === 0 ? `HOLDING AT <em>${esc(lab(sealedV))}</em>` : `NOW <em>${esc(lab(nowV))}</em>`) : dO === 0 ? `UNCHANGED SINCE OPEN` : `MOVED <em>${half(dO)} TOWARD ${esc(dO > 0 ? favShort : dogShort)}</em> SINCE OPEN`;
+    const l2 = nowV === null ? "" : dS === 0 ? `HOLDING AT SEAL · NO EDGE EITHER WAY` : `<em>+${half(dS)} EDGE</em> TO ${esc(dS > 0 ? favShort : dogShort)} BACKERS AT THE SEALED NUMBER`;
     const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
-    html += trendHtml;
+    html += `<div class="lm"><div class="lm-axis" style="--ticks:${ticks}">
+      <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
+      ${zero}${band}${open}${seal}${now}</div>
+      <div class="lm-read"><span>${l1}${l2 ? `<br>${l2}` : ""}</span>${ou !== null ? `<span class="lm-ou"><em>O/U</em>${ou}</span>` : ""}</div></div>`;
   }
 
   // Preview: same layout as ever (headline, text, "Read the rest"). The

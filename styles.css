@@ -3880,3 +3880,24 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* Saved stamp rides under the game line in the header, inside the height the buttons already take */
 .game-meta-left { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .game-meta-left .game-stamp { margin: 0; text-align: left; }
+
+/* Line meter: replaces the chips and the trend chart */
+.lm { padding: 8px 10px 8px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 8px; background: rgba(0, 0, 0, .35); }
+.lm-axis { position: relative; height: 6px; margin: 30px 44px 34px; border-radius: 3px; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .16) 0 1px, transparent 1px calc(100% / var(--ticks, 8))), rgba(255, 255, 255, .08); }
+.lm-band { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, var(--neon-yellow), var(--neon-cyan)); opacity: .85; }
+.lm-zero { position: absolute; top: -5px; bottom: -5px; width: 1px; background: rgba(255, 255, 255, .3); transform: translateX(-50%); }
+.lm-pt { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; border: 2px solid; border-radius: 2px; background: #07030d; }
+.lm-pt.open { border-color: var(--text-dim); width: 8px; height: 8px; }
+.lm-pt.seal { border-color: var(--neon-yellow); background: var(--neon-yellow); box-shadow: 0 0 8px rgba(255, 228, 94, .7); }
+.lm-pt.now { border-color: var(--neon-cyan); background: var(--neon-cyan); border-radius: 50%; box-shadow: 0 0 8px rgba(5, 217, 232, .7); }
+.lm-lab { position: absolute; transform: translateX(-50%); font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; white-space: nowrap; text-align: center; line-height: 1.6; }
+.lm-lab.up { bottom: 13px; } .lm-lab.dn { top: 13px; }
+.lm-lab b { display: block; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 11px; letter-spacing: 0; }
+.lm-lab.open { color: var(--text-dim); } .lm-lab.seal { color: var(--neon-yellow); } .lm-lab.now { color: var(--neon-cyan); }
+.lm-end { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--text-dim); }
+.lm-end img { width: 22px; height: 22px; object-fit: contain; }
+.lm-end.l { left: -40px; } .lm-end.r { right: -40px; }
+.lm-read { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px dashed rgba(255, 255, 255, .1); font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.7; color: var(--text); }
+.lm-read em { font-style: normal; color: var(--neon-green); }
+.lm-ou { flex: none; color: var(--text-dim); } .lm-ou em { font-style: normal; color: var(--text-dim); margin-right: 4px; }
+.lm-end em { font-style: normal; }
