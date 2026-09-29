@@ -296,7 +296,7 @@
           ...Object.entries(st[win].rec).map(([n, r]) => ({ n, v: r.yds / 10 + r.td * 6, t: `${r.n} REC ${r.yds} YDS${r.td ? ` ${r.td} TD` : ""}` })),
         ].sort((a, b) => b.v - a.v);
         html += `${line("away")}${line("home")}`;
-        if (cands[0]) html += `<div class="sim-pog"><em>PLAYER OF THE GAME</em><b>${esc(cands[0].n)}</b><span>${esc(cands[0].t)}</span></div>`;
+        if (cands[0]) html += `<div class="sim-pog"><em>★ POG</em><b>${esc(cands[0].n)}</b><span>${esc(cands[0].t)}</span></div>`;
       }
       panel.innerHTML = html;
     };
@@ -325,7 +325,8 @@
       while (log.children.length > 80) log.firstChild.remove();
       log.scrollTop = log.scrollHeight;
     };
-    const showBig = (text) => { flash.textContent = text; flash.classList.remove("on"); void flash.offsetWidth; flash.classList.add("on"); };
+    const showBig = (text) => { flash.classList.remove("hold"); flash.textContent = text; flash.classList.remove("on"); void flash.offsetWidth; flash.classList.add("on"); };
+    flash.classList.remove("on", "hold");
     log.innerHTML = "";
     drawBoard();
     let i = 0;
@@ -342,7 +343,10 @@
       const w = Math.max(cur.home, cur.away), l = Math.min(cur.home, cur.away);
       pushLine(`FINAL · ${winner.short.toUpperCase()} WINS ${w}-${l}`, "final");
       drawPanel(true);
-      showBig(`FINAL ${w}-${l}`);
+      // The final score stays up on the field, blinking.
+      flash.textContent = `FINAL ${w}-${l}`;
+      flash.classList.remove("on");
+      flash.classList.add("hold");
       const a = el.querySelector('[data-act="skip"]');
       if (a) { a.dataset.act = "again"; a.setAttribute("aria-label", "Sim again"); }
       el.querySelector(".gb-alabel").textContent = "A · AGAIN";

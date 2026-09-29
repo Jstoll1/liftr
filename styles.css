@@ -3532,3 +3532,15 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-gv { font-size: 12px; }
 .ins-wx { margin-top: 3px; font-size: 10px; }
 .ins-leads { margin-top: 8px; }
+.sim-flash.hold { opacity: 1; animation: sim-hold 1s steps(1) infinite; }
+@keyframes sim-hold { 50% { opacity: .25; } }
+.sim-pog { display: flex !important; flex-direction: row !important; align-items: baseline; justify-content: center; gap: 6px !important; padding: 4px 6px !important; white-space: nowrap; overflow: hidden; }
+.sim-pog em, .sim-pog b, .sim-pog span { font-size: 6px !important; line-height: 1.2; font-weight: normal; letter-spacing: .04em; }
+.sim-pog b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sim-pog span { flex: 0 0 auto; }
+.sim-pog em::after, .sim-pog b::after { content: " ·"; opacity: .7; }
+/* Even quarter columns in the Game Box line score. */
+.sim-ls { table-layout: fixed; }
+.sim-ls th { width: 34%; }
+.sim-ls td { width: auto; }
+.sim-ls td.t { width: 16%; }
