@@ -3633,3 +3633,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 #picks-screen { padding-top: 10px; }
 #picks-screen .wrap { padding-top: 0; }
 .picks-pay { margin: 0 0 -10px; }
+/* Card status chips stacked in a column on the right of the clock. */
+.picks-countdown .cd-status { flex-direction: column; align-items: stretch; gap: 4px; }
+.picks-countdown .cd-chip { text-align: center; min-width: 58px; }
+.cd-chip.miss { animation: cd-pulse 1.2s steps(1) infinite; }
+@keyframes cd-pulse { 50% { opacity: .5; } }
