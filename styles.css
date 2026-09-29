@@ -3716,3 +3716,13 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* Three equal point tiles */
 .picks-pay .pp { flex: 1 1 0; min-width: 0; justify-content: center; }
 .picks-pay .pp em { white-space: nowrap; }
+/* Dog WIN is the biggest swing on the card: a warmer resting state so the
+   eye finds it before the tap. Picked state still wins. */
+.pick-mini-btn.upset:not(.selected) { border-color: rgba(255, 32, 121, .45); background: rgba(255, 32, 121, .07); box-shadow: inset 0 0 10px rgba(255, 32, 121, .08); }
+.pick-mini-btn.upset:not(.selected) .pk-label { color: #ffd6e6; }
+/* Kickoff time as a right-aligned tag on the FIRST UP strip */
+.cd-when { margin-left: auto; display: inline-flex; align-items: baseline; gap: 5px; padding: 3px 7px; border-radius: 5px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(0, 0, 0, .3); font-size: 9.5px; color: var(--text); white-space: nowrap; }
+.cd-when i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; letter-spacing: .1em; color: var(--text-dim); }
+/* Rank badge seated beside the name: same baseline, a little more air */
+.tm-name .tm-rank { font-size: 8px; align-self: center; margin-right: 1px; padding: 1px 3px; border-radius: 3px; background: rgba(255, 255, 255, .08); color: var(--text); }
+.tm-rank::before { opacity: .5; }
