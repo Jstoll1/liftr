@@ -3150,7 +3150,7 @@ function renderPicksCountdown() {
   const parts = [["DAYS", Math.floor(tot / 86400)], ["HRS", Math.floor((tot % 86400) / 3600)], ["MIN", Math.floor((tot % 3600) / 60)], ["SEC", tot % 60]].filter(([k, v], i) => i > 0 || v > 0);
   const cells = parts.map(([k, v]) => `<span class="cd-cell"><b>${String(v).padStart(2, "0")}</b><em>${k}</em></span>`).join('<i class="cd-colon">:</i>');
   const logoImg = (id) => id ? `<img class="cd-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : "";
-  const match = `<em class="cd-first">${lockAll || next.id === first.id ? "FIRST UP" : "NEXT UP"}</em>${logoImg(next.awayId)}<span>${escapeCd(next.awayShort)} <i>at</i> ${escapeCd(next.homeShort)}</span>${logoImg(next.homeId)}<span class="cd-when"><i>KICK</i>${escapeCd(next.kickoffLabel.replace(/\s*ET$/, ""))}</span>`;
+  const match = `<em class="cd-first">${lockAll || next.id === first.id ? "FIRST UP" : "NEXT UP"}</em><span class="cd-match">${logoImg(next.awayId)}<span>${escapeCd(next.awayShort)} <i>at</i> ${escapeCd(next.homeShort)}</span>${logoImg(next.homeId)}</span><span class="cd-when"><i>KICK</i>${escapeCd(next.kickoffLabel.replace(/\s*ET$/, ""))}</span>`;
   // Fuse: burns from when the slate opened (Monday's seal, 10:00 UTC) to lock.
   const lockAt = new Date(next.kickoff).getTime();
   const opened = (() => { const d = new Date(lockAt); const back = (d.getUTCDay() + 6) % 7; const m = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back, 10); return m < lockAt ? m : lockAt - 5 * 86400000; })();

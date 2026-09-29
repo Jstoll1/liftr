@@ -3758,3 +3758,15 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* FIRST UP strip: no hole before the kickoff tag */
 .picks-countdown .cd-game { justify-content: flex-start; gap: 8px; }
 .cd-when { margin-left: 4px; }
+/* Countdown alignment: two columns share top and bottom edges; the strip
+   below is label | centered matchup | kickoff tag. */
+.picks-countdown .cd-top { display: grid; grid-template-columns: 1fr auto; align-items: stretch; gap: 12px; }
+.picks-countdown .cd-left { display: flex; flex-direction: column; justify-content: flex-start; gap: 5px; }
+.cd-card { display: flex; flex-direction: column; justify-content: flex-start; align-items: center; gap: 5px; padding-left: 12px; border-left: 1px dashed rgba(5, 217, 232, .3); }
+.cd-riding b { font-size: 16px; }
+.cd-cells { margin-top: 0; }
+.picks-countdown .cd-game { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+.cd-match { display: inline-flex; align-items: center; gap: 6px; justify-self: center; white-space: nowrap; }
+.picks-countdown .cd-game .cd-logo { display: inline-block; }
+.cd-when { margin-left: 0; justify-self: end; }
+.picks-countdown .cd-game { align-self: stretch; width: 100%; }
