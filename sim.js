@@ -214,6 +214,8 @@
     document.getElementById("sim-modal")?.classList.add("hidden");
   }
   window.closeSim = close;
+  // Playback pace: 1 is the original speed; lower is quicker.
+  const SPEED = 0.7;
   const fmtClock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   window.openSim = async function openSim(ctx) {
@@ -327,6 +329,7 @@
     };
     const showBig = (text) => { flash.classList.remove("hold"); flash.textContent = text; flash.classList.remove("on"); void flash.offsetWidth; flash.classList.add("on"); };
     flash.classList.remove("on", "hold");
+    el.querySelector(".sim-field")?.classList.remove("over");
     log.innerHTML = "";
     drawBoard();
     let i = 0;
@@ -347,6 +350,7 @@
       flash.textContent = `FINAL ${w}-${l}`;
       flash.classList.remove("on");
       flash.classList.add("hold");
+      el.querySelector(".sim-field")?.classList.add("over");
       const a = el.querySelector('[data-act="skip"]');
       if (a) { a.dataset.act = "again"; a.setAttribute("aria-label", "Sim again"); }
       el.querySelector(".gb-alabel").textContent = "A · AGAIN";
@@ -382,7 +386,7 @@
       apply(ev);
       drawBoard();
       drawPanel(false);
-      timer = setTimeout(step, wait);
+      timer = setTimeout(step, Math.round(wait * SPEED));
     };
     const actions = el.querySelector(".sim-actions");
     const btn = actions.querySelector(".sim-btn:not(.ghost)");

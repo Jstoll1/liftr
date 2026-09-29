@@ -3544,3 +3544,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .sim-ls th { width: 34%; }
 .sim-ls td { width: auto; }
 .sim-ls td.t { width: 16%; }
+/* Game over: the score replaces the field, only the text blinks. */
+.sim-flash.hold { opacity: 1 !important; animation: none !important; font-size: 14px; }
+.sim-field.over .sim-flash.hold { animation: sim-hold-text 1s steps(1) infinite !important; }
+@keyframes sim-hold-text { 50% { color: var(--g2); } }
+.sim-field.over .sim-ball, .sim-field.over .sim-lines { visibility: hidden; }
