@@ -4048,3 +4048,11 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 
 /* Grid sheet export: readable, wrapping, selectable */
 .con-grid { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.5; user-select: text; -webkit-user-select: text; }
+
+/* Grid card modal */
+.gridcard-modal { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .85); }
+.gridcard-modal.hidden { display: none; }
+.gridcard-box { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 100%; }
+.gridcard-box img { width: min(360px, 92vw); height: auto; border-radius: 8px; border: 2px solid var(--neon-yellow); box-shadow: 0 0 24px rgba(255, 228, 94, .35); }
+.gridcard-row { display: flex; gap: 8px; }
+.gridcard-hint { margin: 0; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); letter-spacing: .08em; }

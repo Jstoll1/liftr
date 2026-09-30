@@ -13,6 +13,8 @@ on:
       - "history.css"
       - "history.js"
       - "console.js"
+      - "sim.js"
+      - "gridcard.js"
       - "admin.js"
       - "icons/**"
 
