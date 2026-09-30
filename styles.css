@@ -3982,3 +3982,11 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .hz-col .pick-mini-btn.selected::before { content: "✓"; position: absolute; top: -6px; right: -6px; width: 14px; height: 14px; border-radius: 50%; background: #fff; color: #06121a; font-size: 9px; line-height: 14px; text-align: center; font-family: system-ui, sans-serif; font-weight: 700; box-shadow: 0 0 6px rgba(5, 217, 232, .8); }
 .hz-tm.picked .tm-logo { filter: drop-shadow(0 0 8px rgba(5, 217, 232, .8)); }
 .hz-tm.picked .hz-nm { text-shadow: 0 0 8px rgba(5, 217, 232, .6); }
+/* Middle ground: translucent cyan fill, firm border, white text, the check badge stays */
+.hz-col .pick-mini-btn.selected, .hz-col .pick-mini-btn.selected.upset, .hz-col .pick-mini-btn.selected.chalk { background: rgba(5, 217, 232, .22); border: 2px solid var(--neon-cyan); color: #fff; box-shadow: 0 0 10px rgba(5, 217, 232, .35); }
+.hz-col .pick-mini-btn.selected .pk-line, .hz-col .pick-mini-btn.selected .pk-label { color: #fff; text-shadow: none; }
+.hz-col .pick-mini-btn.selected .pk-pts, .hz-col .pick-mini-btn.selected .pk-pts i { color: var(--neon-yellow); }
+.hz-col .pick-mini-btn.selected.upset .pk-pts, .hz-col .pick-mini-btn.selected.upset .pk-pts i { color: #ff6fa3; }
+.hz-col .pick-mini-btn.selected::before { background: var(--neon-cyan); color: #06121a; box-shadow: 0 0 5px rgba(5, 217, 232, .7); }
+.hz-tm.picked .tm-logo { filter: none; }
+.hz-tm.picked .hz-nm { text-shadow: none; }
