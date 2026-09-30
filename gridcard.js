@@ -128,8 +128,9 @@
       }
       // Tiebreaker value.
       ctx.fillStyle = BGC; ctx.fillRect(px + 110, py + 112, 64, 26);
-      ctx.font = "700 18px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = r.tb ? "#fff" : "#8a93a6";
-      ctx.fillText(r.tb ? r.tb : "--", px + 162, py + 124);
+      // Yes or no only. The number itself stays private until kickoff.
+      ctx.font = "900 20px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = r.tb ? "#39ff88" : "#e0102a";
+      ctx.fillText(r.tb ? "✓" : "✗", px + 160, py + 124);
       // Flag box: border and a pixel flag in the state colour.
       ctx.fillStyle = BGC; ctx.fillRect(px + 154, py + 42, 80, 74);
       ctx.strokeStyle = fc; ctx.lineWidth = 4; ctx.strokeRect(px + 161, py + 48, 56, 60);
