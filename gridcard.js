@@ -78,6 +78,13 @@
 
   async function openGridCard() {
     const picks = (typeof fetchAllPicks === "function" ? await fetchAllPicks() : null) || lastGoodCloudPicks || {};
+    // Trophies: one per sealed week won this season, and who took last week.
+    if (typeof loadWeekSummaries === "function" && !Object.keys(weekSummaries || {}).length) { try { await loadWeekSummaries(); } catch {} }
+    const sealedWeeks = Object.entries(weekSummaries || {}).filter(([, v]) => v && v.complete).map(([k, v]) => ({ week: Number(k), winners: v.winners || [] })).sort((a, b) => a.week - b.week);
+    const wins = {};
+    for (const w of sealedWeeks) for (const n of w.winners) wins[n] = (wins[n] || 0) + 1;
+    const lastWeek = sealedWeeks.filter((w) => w.week < currentWeek).pop();
+    const lastWinners = new Set(lastWeek ? lastWeek.winners : []);
     const total = GAMES.length;
     const lockAt = weekLockTime() ?? Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
     const ms = Math.max(0, lockAt - Date.now());
@@ -87,7 +94,7 @@
       const st = picks[name] || { picks: {} };
       const n = GAMES.filter((g) => st.picks?.[g.id]).length;
       const tb = String(st.tiebreaker ?? "").trim();
-      return { name, n, tb, state: n === total && tb ? "go" : n === 0 && !tb ? "none" : "warn" };
+      return { name, n, tb, wins: wins[name] || 0, last: lastWinners.has(name), state: n === total && tb ? "go" : n === 0 && !tb ? "none" : "warn" };
     }).sort((a, b) => (b.n + (b.tb ? 1 : 0)) - (a.n + (a.tb ? 1 : 0)) || a.name.localeCompare(b.name));
     const ready = rows.filter((r) => r.state === "go").length;
 
@@ -115,6 +122,15 @@
       ctx.font = "900 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = "#fff";
       ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.85)"; ctx.lineJoin = "round";
       ctx.strokeText(shown(r.name).toUpperCase(), px + 20, py + 19); ctx.fillText(shown(r.name).toUpperCase(), px + 20, py + 19);
+      // Trophies for weeks won, right-aligned on the bar; the reigning champ gets a tag.
+      if (r.wins) { ctx.font = "18px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; ctx.textAlign = "right"; ctx.fillText("🏆".repeat(Math.min(r.wins, 4)) + (r.wins > 4 ? `×${r.wins}` : ""), px + 206, py + 19); }
+      if (r.last) {
+        const tag = lastWeek ? `WEEK ${lastWeek.week} CHAMP` : "LAST WEEK'S CHAMP";
+        ctx.font = "900 10px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left";
+        const tw = ctx.measureText(tag).width + 12;
+        ctx.fillStyle = "#ffe45e"; ctx.fillRect(px + 10, py - 12, tw, 16);
+        ctx.fillStyle = "#2a1e00"; ctx.fillText(tag, px + 16, py - 4);
+      }
       // Count, top left of the panel body.
       ctx.fillStyle = BGC; ctx.fillRect(px + 12, py + 46, 120, 28);
       ctx.font = "700 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = "#fff";
