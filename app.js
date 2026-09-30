@@ -4061,8 +4061,12 @@ function renderH2H() {
   const A = rows.find((r) => r.name === h2h.a), B = rows.find((r) => r.name === h2h.b);
   const body = document.getElementById("h2h-body");
   if (!A || !B) { body.innerHTML = ""; return; }
+  // Nobody sees another manager's pick before that game locks. The mask
+  // runs before any math so max, swing and the verdict cannot leak either.
+  const hiddenFor = (name, g) => !isGameLocked(g) && name !== currentManager;
+  const maskState = (name, st) => ({ ...st, picks: Object.fromEntries(Object.entries(st.picks || {}).filter(([gid]) => { const g = GAMES.find((x) => String(x.id) === String(gid)); return g && !hiddenFor(name, g); })) });
   const sideOf = (row) => {
-    const st = row.state || picks[row.name] || { picks: {} };
+    const st = maskState(row.name, row.state || picks[row.name] || { picks: {} });
     let w = 0, l = 0, max = row.score, left = 0;
     for (const g of GAMES) {
       const pick = st.picks[g.id];
@@ -4098,6 +4102,7 @@ function renderH2H() {
     return `<i class="soon">${k.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" }).toUpperCase()} ${k.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric" }).replace(" ", "")}</i>`;
   };
   const cell = (g, pick, st, side) => {
+    if (hiddenFor(side === "a" ? A.name : B.name, g)) return `<div class="h2h-td ${side} hidden-pick"><span class="h2h-team"><span class="h2h-nm"><em>🔒 locked at kick</em></span></span></div>`;
     const id = pick ? (pick.team === g.home ? g.homeId : pick.team === g.away ? g.awayId : null) : null;
     const team = `<span class="h2h-team">${id ? `<img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : ""}<span class="h2h-nm">${pick ? esc(short(g, pick.team)) : "<em>none</em>"}</span></span>`;
     const line = `<span class="h2h-line">${pick ? (pick.mode === "SU" ? "SU" : (pick.team === g.favorite ? "-" : "+") + g.spread) : ""}</span>`;
@@ -4111,7 +4116,7 @@ function renderH2H() {
     const sa = stateOf(g, pa), sb = stateOf(g, pb);
     // Marked only where it matters: a settled game where the points came
     // out different, or an unsettled one where the picks could.
-    const diff = order(g) === 2 ? !same : sa.txt !== sb.txt;
+    const diff = hiddenFor(A.name, g) || hiddenFor(B.name, g) ? false : order(g) === 2 ? !same : sa.txt !== sb.txt;
     // Where the points split, an arrow from the centre points at the card
     // that has the edge on this game.
     const na = Number(sa.txt) || 0, nb = Number(sb.txt) || 0;
