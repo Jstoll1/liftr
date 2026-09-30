@@ -3847,7 +3847,10 @@ async function openInsights(gameId) {
     const nowMoved = nowV !== null && nowV !== sealedV;
     // NOW is always labelled; OPEN yields its label when the two collide.
     const now = nowV === null ? "" : `<i class="lm-pt now" style="left:${pos(nowV)}%"></i><span class="lm-lab now dn" style="left:${pos(nowV)}%">NOW<b>${esc(lab(nowV))}</b></span>`;
-    const band = nowMoved ? `<i class="lm-band ${nowV > sealedV ? "r" : "l"}" style="left:${pos(Math.min(sealedV, nowV))}%;width:${(Math.abs(nowV - sealedV) / (hi - lo) * 100).toFixed(1)}%"></i>` : "";
+    const bandL = nowMoved ? pos(Math.min(sealedV, nowV)) : 0, bandW = nowMoved ? (Math.abs(nowV - sealedV) / (hi - lo) * 100).toFixed(1) : 0;
+    const band = nowMoved ? `<i class="lm-band ${nowV > sealedV ? "r" : "l"}" style="left:${bandL}%;width:${bandW}%"></i>` : "";
+    // Small indicator under the axis: an arrow spanning seal to now with the size of the move.
+    const move = nowMoved ? `<span class="lm-move ${nowV > sealedV ? "r" : "l"}" style="left:${bandL}%;width:${bandW}%"><b>${Math.abs(Math.round((nowV - sealedV) * 2) / 2)}</b></span>` : "";
     const zero = lo < 0 && hi > 0 ? `<i class="lm-zero" style="left:${pos(0)}%"></i>` : "";
     // Two plain lines: since open, and what the move since seal means.
     const dS = nowV === null ? null : Math.round((nowV - sealedV) * 2) / 2;
@@ -3859,7 +3862,7 @@ async function openInsights(gameId) {
     const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
     html += `<div class="lm"><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
-      ${zero}${band}${open}${seal}${now}</div>
+      ${zero}${band}${open}${seal}${now}${move}</div>
       <div class="lm-read"><span>${l1}${l2 ? `<br>${l2}` : ""}</span>${ou !== null ? `<span class="lm-ou"><em>O/U</em>${ou}</span>` : ""}</div></div>`;
   }
 

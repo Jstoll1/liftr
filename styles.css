@@ -3967,3 +3967,12 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 @keyframes lm-nudge-l { from { transform: translateY(-50%) translateX(0); } to { transform: translateY(-50%) translateX(-3px); } }
 .lm-lab.now { z-index: 3; }
 @media (prefers-reduced-motion: reduce) { .lm-band::after { animation: none; } }
+
+/* Move indicator beneath the axis: a thin arrow from SEALED to NOW carrying the size of the move */
+.lm-axis { margin-bottom: 50px; }
+.lm-move { position: absolute; top: 40px; height: 1px; min-width: 14px; background: var(--neon-cyan); opacity: .9; }
+.lm-move::after { content: ""; position: absolute; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+.lm-move.r::after { right: -5px; border-left: 6px solid var(--neon-cyan); }
+.lm-move.l::after { left: -5px; border-right: 6px solid var(--neon-cyan); }
+.lm-move b { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-cyan); font-weight: normal; white-space: nowrap; }
+.lm-move b::before { content: "+"; }
