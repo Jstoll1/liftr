@@ -118,7 +118,7 @@
       ctx.fillStyle = BGC; ctx.fillRect(px + 6, py + 77, 164, 28);
       for (let k = 0; k < total; k++) {
         const cx = px + 8 + k * 15.8;
-        ctx.fillStyle = k < r.n ? colour : "#4a5468"; ctx.fillRect(cx, py + 80, 13.5, 22);
+        ctx.fillStyle = k < r.n ? fc : "#4a5468"; ctx.fillRect(cx, py + 80, 13.5, 22);
         ctx.fillStyle = k < r.n ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)"; ctx.fillRect(cx, py + 80, 13.5, 5);
       }
       // Tiebreaker value.
