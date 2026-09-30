@@ -339,7 +339,7 @@
       log.scrollTop = log.scrollHeight;
     };
     const showBig = (text) => { flash.classList.remove("hold"); flash.textContent = text; flash.classList.remove("on"); void flash.offsetWidth; flash.classList.add("on"); };
-    flash.classList.remove("on", "hold");
+    flash.classList.remove("on", "hold", "upset");
     el.querySelector(".sim-field")?.classList.remove("over");
     log.innerHTML = "";
     drawBoard();
@@ -357,10 +357,15 @@
       const w = Math.max(cur.home, cur.away), l = Math.min(cur.home, cur.away);
       pushLine(`FINAL · ${winner.short.toUpperCase()} WINS ${w}-${l}`, "final");
       drawPanel(true);
-      // The final score stays up on the field, blinking.
-      flash.textContent = `FINAL ${w}-${l}`;
+      // The final score stays up on the field, blinking. A dog winning
+      // outright gets the siren instead: two lines, inverted, faster blink.
+      const winSide = cur.home > cur.away ? "home" : "away";
+      const upset = winSide !== ctx.favSide;
+      flash.innerHTML = upset ? `<span class="sim-upset"><b>🚨 UPSET ALERT 🚨</b><i>${winner.short.toUpperCase()} WINS ${w}-${l}!</i></span>` : `FINAL ${w}-${l}`;
       flash.classList.remove("on");
       flash.classList.add("hold");
+      flash.classList.toggle("upset", upset);
+      if (upset) pushLine(`🚨 UPSET ALERT · ${winner.short.toUpperCase()} WINS!`, "final");
       el.querySelector(".sim-field")?.classList.add("over");
       const a = el.querySelector('[data-act="skip"]');
       if (a) { a.dataset.act = "again"; a.setAttribute("aria-label", "Sim again"); }
