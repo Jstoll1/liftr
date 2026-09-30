@@ -51,7 +51,7 @@
   // Panel geometry on the background picture (1024x1536): five rows in two
   // columns, measured from the art. Everything drawn is relative to a
   // panel's name-bar corner.
-  const ROWS = [376, 597, 822, 1051, 1281], COLS = [254, 694];
+  const PANELS = [[265, 410], [263, 614], [259, 825], [256, 1047], [251, 1276], [697, 410], [705, 614], [715, 825], [724, 1047], [737, 1277]]; // measured from the art
   const BG = "assets/grid-bg.png";
   let bgImg = null;
   const loadBg = () => new Promise((res) => { if (bgImg) return res(bgImg); const im = new Image(); im.onload = () => { bgImg = im; res(im); }; im.onerror = () => res(null); im.src = BG; });
@@ -63,12 +63,15 @@
   const sat = (p) => Math.max(p[0], p[1], p[2]) - Math.min(p[0], p[1], p[2]);
   const bright = (p) => sat(p) > 100 && Math.max(p[0], p[1], p[2]) > 140;
   function findPanel(ctx, ex, ey) {
-    const strip = ctx.getImageData(ex - 40, ey + 18, 90, 1).data;
-    let x = ex;
-    for (let k = 0; k < 90; k++) { const p = strip.slice(k * 4, k * 4 + 3); if (bright(p) && bright(strip.slice(k * 4 + 12, k * 4 + 15))) { x = ex - 40 + k; break; } }
-    const col = ctx.getImageData(x + 10, ey - 30, 1, 70).data;
-    let y = ey;
-    for (let k = 0; k < 70; k++) { const p = col.slice(k * 4, k * 4 + 3); if (bright(p) && bright(col.slice(k * 4 + 12, k * 4 + 15))) { y = ey - 30 + k; break; } }
+    // Top-left corner of the name bar: bright here, bright to the right and
+    // below, dark to the left and above. Raster scan a window around the
+    // expected spot, so a panel drawn a little off still lands.
+    const x0 = ex - 20, y0 = ey - 34, w = 90, hgt = 70;
+    const img = ctx.getImageData(x0, y0, w, hgt).data;
+    const at = (x, y) => { const k = ((y - y0) * w + (x - x0)) * 4; return img.slice(k, k + 3); };
+    const ok = (x, y) => x >= x0 + 4 && y >= y0 + 4 && x < x0 + w - 6 && y < y0 + hgt - 6 && bright(at(x, y)) && bright(at(x + 5, y)) && bright(at(x, y + 5)) && bright(at(x + 5, y + 5)) && !bright(at(x - 4, y)) && !bright(at(x, y - 4));
+    let x = ex, y = ey, found = false;
+    for (let yy = y0 + 4; yy < y0 + hgt - 6 && !found; yy++) for (let xx = x0 + 4; xx < x0 + w - 6; xx++) if (ok(xx, yy)) { x = xx; y = yy; found = true; break; }
     const p = ctx.getImageData(x + 8, y + 18, 1, 1).data;
     return [x, y, `rgb(${p[0]},${p[1]},${p[2]})`];
   }
@@ -98,38 +101,40 @@
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.font = "700 20px 'Press Start 2P', monospace"; ctx.fillStyle = "#000";
     const line = `${WEEK_LABEL.toUpperCase()} · ${left} · ${ready}/${rows.length} ON THE GRID`;
-    ctx.fillRect(W / 2 - ctx.measureText(line).width / 2 - 16, 316, ctx.measureText(line).width + 32, 36);
-    ctx.fillStyle = "#ffe45e"; ctx.fillText(line, W / 2, 334);
+    ctx.fillRect(W / 2 - ctx.measureText(line).width / 2 - 16, 362, ctx.measureText(line).width + 32, 36);
+    ctx.fillStyle = "#ffe45e"; ctx.fillText(line, W / 2, 380);
 
     rows.forEach((r, i) => {
       // P1..P5 down the left column, P6..P10 down the right, like the art.
-      const [px, py, colour] = findPanel(ctx, COLS[Math.floor(i / 5)], ROWS[i % 5]);
+      const [px, py] = PANELS[i];
+      const p = ctx.getImageData(px + 8, py + 18, 1, 1).data;
+      const colour = `rgb(${p[0]},${p[1]},${p[2]})`;
       const fc = r.state === "go" ? "#39ff88" : r.state === "warn" ? "#ffe45e" : "#e0102a";
       // Name over the bar.
-      ctx.fillStyle = colour; ctx.fillRect(px + 12, py + 6, 205, 26);
+      ctx.fillStyle = colour; ctx.fillRect(px + 10, py + 7, 200, 24);
       ctx.font = "900 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = "#fff";
       ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.85)"; ctx.lineJoin = "round";
-      ctx.strokeText(shown(r.name).toUpperCase(), px + 22, py + 19); ctx.fillText(shown(r.name).toUpperCase(), px + 22, py + 19);
-      // Selections count.
-      ctx.fillStyle = BGC; ctx.fillRect(px + 140, py + 45, 76, 26);
-      ctx.font = "700 20px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#fff";
-      ctx.fillText(`${r.n} / ${total}`, px + 212, py + 58);
+      ctx.strokeText(shown(r.name).toUpperCase(), px + 20, py + 19); ctx.fillText(shown(r.name).toUpperCase(), px + 20, py + 19);
+      // Count, top left of the panel body.
+      ctx.fillStyle = BGC; ctx.fillRect(px + 12, py + 46, 120, 28);
+      ctx.font = "700 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = "#fff";
+      ctx.fillText(`${r.n} / ${total}`, px + 18, py + 60);
       // Ten cells.
-      ctx.fillStyle = BGC; ctx.fillRect(px + 6, py + 77, 164, 28);
+      ctx.fillStyle = BGC; ctx.fillRect(px + 8, py + 77, 146, 28);
       for (let k = 0; k < total; k++) {
-        const cx = px + 8 + k * 15.8;
-        ctx.fillStyle = k < r.n ? fc : "#4a5468"; ctx.fillRect(cx, py + 80, 13.5, 22);
-        ctx.fillStyle = k < r.n ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)"; ctx.fillRect(cx, py + 80, 13.5, 5);
+        const cx = px + 10 + k * 14;
+        ctx.fillStyle = k < r.n ? fc : "#4a5468"; ctx.fillRect(cx, py + 80, 12, 22);
+        ctx.fillStyle = k < r.n ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)"; ctx.fillRect(cx, py + 80, 12, 5);
       }
       // Tiebreaker value.
-      ctx.fillStyle = BGC; ctx.fillRect(px + 112, py + 116, 62, 26);
+      ctx.fillStyle = BGC; ctx.fillRect(px + 110, py + 112, 64, 26);
       ctx.font = "700 18px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = r.tb ? "#fff" : "#8a93a6";
-      ctx.fillText(r.tb ? r.tb : "--", px + 170, py + 129);
+      ctx.fillText(r.tb ? r.tb : "--", px + 162, py + 124);
       // Flag box: border and a pixel flag in the state colour.
-      ctx.fillStyle = BGC; ctx.fillRect(px + 172, py + 75, 70, 70);
-      ctx.strokeStyle = fc; ctx.lineWidth = 4; ctx.strokeRect(px + 178, py + 81, 52, 58);
-      px_(ctx, SMALL_FLAG, px + 188, py + 88, 5, { F: fc, P: "#ddd" });
-      if (r.state === "go") for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 8; xx++) if ((xx + yy) % 2) { ctx.fillStyle = "#052010"; ctx.fillRect(px + 188 + xx * 5, py + 88 + yy * 5, 5, 5); }
+      ctx.fillStyle = BGC; ctx.fillRect(px + 154, py + 42, 80, 74);
+      ctx.strokeStyle = fc; ctx.lineWidth = 4; ctx.strokeRect(px + 161, py + 48, 56, 60);
+      px_(ctx, SMALL_FLAG, px + 171, py + 56, 5, { F: fc, P: "#ddd" });
+      if (r.state === "go") for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 8; xx++) if ((xx + yy) % 2) { ctx.fillStyle = "#052010"; ctx.fillRect(px + 171 + xx * 5, py + 56 + yy * 5, 5, 5); }
     });
 
     // Modal with the picture and share/save.
