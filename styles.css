@@ -4045,3 +4045,6 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 @keyframes grid-none { to { background: #6a0f1c; box-shadow: 0 0 6px rgba(224, 16, 42, .45); } }
 .grid-verdict { font-size: 9px; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .grid-lights i { animation: none !important; } }
+
+/* Grid sheet export: readable, wrapping, selectable */
+.con-grid { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.5; user-select: text; -webkit-user-select: text; }

@@ -32,7 +32,7 @@
     return res.json();
   }
 
-  let tab = "picks";
+  let tab = "grid";
 
   // --- Pick changes ---------------------------------------------------
   async function renderPicks() {
@@ -355,7 +355,46 @@
     });
   }
 
-  const TABS = { picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
+  // Grid sheet: a plain-text Speed Racer checklist of who is in, for
+  // pasting into the group chat mid-week. Read-only, copy or share.
+  async function renderGrid() {
+    const data = await get(`/picks?week=${currentWeek}`);
+    const picks = data?.picks || {};
+    const total = GAMES.length;
+    const lockAt = weekLockTime() ?? Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
+    const ms = Math.max(0, lockAt - Date.now());
+    const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
+    const left = ms <= 0 ? "LOCKED" : d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`;
+    const rows = MANAGERS.map((name) => {
+      const st = picks[name] || { picks: {} };
+      const n = GAMES.filter((g) => st.picks?.[g.id]).length;
+      const tb = String(st.tiebreaker ?? "").trim() !== "";
+      const full = n === total && tb;
+      const none = n === 0 && !tb;
+      return { name, n, tb, full, none };
+    }).sort((a, b) => (b.n + (b.tb ? 1 : 0)) - (a.n + (a.tb ? 1 : 0)) || a.name.localeCompare(b.name));
+    const ready = rows.filter((r) => r.full), partial = rows.filter((r) => !r.full && !r.none), out = rows.filter((r) => r.none);
+    const line = (r) => `${r.full ? "🟢" : r.none ? "🔴" : "🟡"} ${shown(r.name)} · ${r.n}/${total}${r.tb ? " · TB ✓" : " · TB ✗"}`;
+    const text = [
+      `🏁 GRID CHECK · ${WEEK_LABEL.toUpperCase()}`,
+      `Lights out in ${left}`,
+      ``,
+      ...(ready.length ? [`READY TO RACE (${ready.length})`, ...ready.map(line), ``] : []),
+      ...(partial.length ? [`⚠️ INCOMPLETE (${partial.length})`, ...partial.map(line), ``] : []),
+      ...(out.length ? [`🚨 NOTHING IN (${out.length})`, ...out.map(line), ``] : []),
+      `${ready.length}/${rows.length} on the grid · brochiefs.com`,
+    ].join("\n");
+    body.innerHTML = `<p class="admin-intro">Who is in for week ${currentWeek}, as a message you can paste into the chat. Green is a full card with a tiebreaker, yellow is partial, red is nothing in.</p>
+      <div class="admin-row"><button class="admin-btn primary" id="grid-copy" type="button">Copy</button>${navigator.share ? `<button class="admin-btn" id="grid-share" type="button">Share…</button>` : ""}<span class="admin-note">${ready.length} ready · ${partial.length} partial · ${out.length} out</span></div>
+      <pre class="con-raw con-grid" id="grid-text">${esc(text)}</pre>`;
+    body.querySelector("#grid-copy").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(text); say("Copied."); }
+      catch { const r = document.createRange(); r.selectNodeContents(body.querySelector("#grid-text")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); say("Select all and copy.", "bad"); }
+    });
+    body.querySelector("#grid-share")?.addEventListener("click", async () => { try { await navigator.share({ text }); } catch {} });
+  }
+
+  const TABS = { grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
 
   async function renderTab() {
     body.innerHTML = `<div class="admin-empty">Loading…</div>`;
