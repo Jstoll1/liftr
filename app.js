@@ -3181,7 +3181,7 @@ function renderPicksCountdown() {
   const riding = st ? GAMES.reduce((n, g) => n + (st.picks[g.id] ? pointValue(g, st.picks[g.id].team, st.picks[g.id].mode) : 0), 0) : 0;
   const status = st ? `<span class="cd-card"><em>YOUR CARD</em><span class="cd-riding"><b>${riding}</b><i>PT<br>RIDING</i></span><span class="cd-status">${chip(picked === GAMES.length, `${picked}/${GAMES.length}`)}${chip(tbSet, "TB")}</span></span>` : "";
   // Under an hour the whole slate is about to lock, so the strip goes hot.
-  el.className = "picks-countdown" + (cd.ms < 3600000 ? " soon" : "");
+  el.classList.remove("hidden"); el.classList.toggle("soon", cd.ms < 3600000);
   // Scoreboard digits: DAYS / HRS / MIN / SEC boxes, days dropped at zero.
   const tot = Math.max(0, Math.floor(cd.ms / 1000));
   const parts = [["DAYS", Math.floor(tot / 86400)], ["HRS", Math.floor((tot % 86400) / 3600)], ["MIN", Math.floor((tot % 3600) / 60)], ["SEC", tot % 60]].filter(([k, v], i) => i > 0 || v > 0);
@@ -3193,7 +3193,21 @@ function renderPicksCountdown() {
   const opened = (() => { const d = new Date(lockAt); const back = (d.getUTCDay() + 6) % 7; const m = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back, 10); return m < lockAt ? m : lockAt - 5 * 86400000; })();
   const left = Math.max(0, Math.min(1, (lockAt - Date.now()) / Math.max(1, lockAt - opened)));
   const fuse = `<span class="cd-fuse" aria-hidden="true"><i style="width:${(left * 100).toFixed(2)}%"><u></u></i></span>`;
-  el.innerHTML = `<span class="cd-top"><span class="cd-left"><span class="cd-label"><u></u>${label}</span><span class="cd-cells">${cells}</span></span>${status}</span><span class="cd-game">${match}</span>${fuse}`;
+  // Only the digits and the fuse change from second to second. Rebuilding
+  // the whole board every tick reloaded the logos and made them flash, so
+  // the frame is built once and each tick just patches the numbers.
+  const frameKey = `${label}|${status}|${match}|${parts.length}`;
+  if (el.dataset.frame === frameKey && el.querySelectorAll(".cd-cell").length === parts.length) {
+    el.querySelectorAll(".cd-cell b").forEach((b, i) => {
+      const txt = String(parts[i][1]).padStart(2, "0");
+      if (b.textContent !== txt) { b.textContent = txt; b.classList.remove("tick"); void b.offsetWidth; b.classList.add("tick"); }
+    });
+    const f = el.querySelector(".cd-fuse i");
+    if (f) f.style.width = `${(left * 100).toFixed(2)}%`;
+  } else {
+    el.innerHTML = `<span class="cd-top"><span class="cd-left"><span class="cd-label"><u></u>${label}</span><span class="cd-cells">${cells}</span></span>${status}</span><span class="cd-game">${match}</span>${fuse}`;
+    el.dataset.frame = frameKey;
+  }
   // The clock carries the card status, so the separate line hides.
   document.getElementById("picks-progress")?.classList.toggle("hidden", !!st);
 }
