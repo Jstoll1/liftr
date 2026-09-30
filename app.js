@@ -3842,16 +3842,20 @@ async function openInsights(gameId) {
     const half = (v) => `${Math.abs(v)}`;
     const ticks = Math.round((hi - lo) * 2);
     const seal = `<i class="lm-pt seal" style="left:${pos(sealedV)}%"></i><span class="lm-lab seal up" style="left:${pos(sealedV)}%"><b>${esc(lab(sealedV))}</b>SEALED</span>`;
-    const open = openV !== null ? `<i class="lm-pt open" style="left:${pos(openV)}%"></i><span class="lm-lab open dn" style="left:${pos(openV)}%">OPEN<b>${esc(lab(openV))}</b></span>` : "";
+    const openCrowded = openV !== null && nowV !== null && Math.abs(nowV - openV) < 1;
+    const open = openV !== null ? `<i class="lm-pt open" style="left:${pos(openV)}%"></i>${openCrowded ? "" : `<span class="lm-lab open dn" style="left:${pos(openV)}%">OPEN<b>${esc(lab(openV))}</b></span>`}` : "";
     const nowMoved = nowV !== null && nowV !== sealedV;
-    const now = nowV === null ? "" : `<i class="lm-pt now" style="left:${pos(nowV)}%"></i>${nowMoved && (openV === null || Math.abs(nowV - openV) >= 1) ? `<span class="lm-lab now dn" style="left:${pos(nowV)}%">NOW<b>${esc(lab(nowV))}</b></span>` : ""}`;
-    const band = nowMoved ? `<i class="lm-band" style="left:${pos(Math.min(sealedV, nowV))}%;width:${(Math.abs(nowV - sealedV) / (hi - lo) * 100).toFixed(1)}%"></i>` : "";
+    // NOW is always labelled; OPEN yields its label when the two collide.
+    const now = nowV === null ? "" : `<i class="lm-pt now" style="left:${pos(nowV)}%"></i><span class="lm-lab now dn" style="left:${pos(nowV)}%">NOW<b>${esc(lab(nowV))}</b></span>`;
+    const band = nowMoved ? `<i class="lm-band ${nowV > sealedV ? "r" : "l"}" style="left:${pos(Math.min(sealedV, nowV))}%;width:${(Math.abs(nowV - sealedV) / (hi - lo) * 100).toFixed(1)}%"></i>` : "";
     const zero = lo < 0 && hi > 0 ? `<i class="lm-zero" style="left:${pos(0)}%"></i>` : "";
     // Two plain lines: since open, and what the move since seal means.
     const dS = nowV === null ? null : Math.round((nowV - sealedV) * 2) / 2;
     const dO = nowV === null || openV === null ? null : Math.round((nowV - openV) * 2) / 2;
-    const l1 = nowV === null ? `NO LIVE LINE · YOU SCORE AGAINST <em>${esc(favShort)} -${sealedV}</em>` : dO === null ? (dS === 0 ? `HOLDING AT <em>${esc(lab(sealedV))}</em>` : `NOW <em>${esc(lab(nowV))}</em>`) : dO === 0 ? `UNCHANGED SINCE OPEN` : `MOVED <em>${half(dO)} TOWARD ${esc(dO > 0 ? favShort : dogShort)}</em> SINCE OPEN`;
-    const l2 = nowV === null ? "" : dS === 0 ? `HOLDING AT SEAL · NO EDGE EITHER WAY` : `<em>+${half(dS)} EDGE</em> TO ${esc(dS > 0 ? favShort : dogShort)} BACKERS AT THE SEALED NUMBER`;
+    const arrowTo = (d) => d > 0 ? `${esc(favAb)} ▶` : `◀ ${esc(dogAb)}`;
+    const openNote = openCrowded ? ` · OPENED ${esc(lab(openV))}` : "";
+    const l1 = nowV === null ? `NO LIVE LINE · YOU SCORE AGAINST <em>${esc(lab(sealedV))}</em>` : dO === null ? (dS === 0 ? `HOLDING AT <em>${esc(lab(sealedV))}</em>` : `NOW <em>${esc(lab(nowV))}</em>`) : dO === 0 ? `UNCHANGED SINCE OPEN${openNote}` : `MOVED <em>${half(dO)} ${arrowTo(dO)}</em> SINCE OPEN${openNote}`;
+    const l2 = nowV === null ? "" : dS === 0 ? `HOLDING AT SEAL · NO EDGE EITHER WAY` : `<em>+${half(dS)} EDGE</em> TO ${esc(dS > 0 ? favAb : dogAb)} BACKERS AT THE SEALED NUMBER`;
     const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
     html += `<div class="lm"><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>

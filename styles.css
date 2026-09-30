@@ -3948,3 +3948,11 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .cd-colon { animation: cd-blink 1s steps(2) infinite; }
 @keyframes cd-blink { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .cd-cell b, .cd-cell b.tick, .cd-colon { animation: none !important; } }
+
+/* Line meter: the band carries an arrowhead at the NOW end, so direction reads without the labels */
+.lm-band::after { content: ""; position: absolute; top: 50%; width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; transform: translateY(-50%); }
+.lm-band.r::after { right: -7px; border-left: 8px solid var(--neon-cyan); }
+.lm-band.l::after { left: -7px; border-right: 8px solid var(--neon-cyan); }
+.lm-band { overflow: visible; }
+.lm-pt.now { z-index: 1; }
+.lm-read em { letter-spacing: .04em; }
