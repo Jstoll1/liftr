@@ -3956,3 +3956,14 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .lm-band { overflow: visible; }
 .lm-pt.now { z-index: 1; }
 .lm-read em { letter-spacing: .04em; }
+/* Direction: a big arrowhead just past the NOW dot, nudging in the direction of the move, and chevrons along the band */
+.lm-band::after { border-top-width: 8px; border-bottom-width: 8px; z-index: 2; filter: drop-shadow(0 0 4px rgba(5, 217, 232, .8)); animation: lm-nudge .9s ease-in-out infinite alternate; }
+.lm-band.r::after { right: -22px; border-left-width: 11px; }
+.lm-band.l::after { left: -22px; border-right-width: 11px; }
+.lm-band.r { background: linear-gradient(90deg, var(--neon-yellow), var(--neon-cyan)), repeating-linear-gradient(90deg, transparent 0 4px, rgba(0, 0, 0, .35) 4px 6px); background-blend-mode: multiply; }
+.lm-band.l { background: linear-gradient(270deg, var(--neon-yellow), var(--neon-cyan)), repeating-linear-gradient(90deg, transparent 0 4px, rgba(0, 0, 0, .35) 4px 6px); background-blend-mode: multiply; }
+@keyframes lm-nudge { from { transform: translateY(-50%) translateX(0); } to { transform: translateY(-50%) translateX(3px); } }
+.lm-band.l::after { animation-name: lm-nudge-l; }
+@keyframes lm-nudge-l { from { transform: translateY(-50%) translateX(0); } to { transform: translateY(-50%) translateX(-3px); } }
+.lm-lab.now { z-index: 3; }
+@media (prefers-reduced-motion: reduce) { .lm-band::after { animation: none; } }
