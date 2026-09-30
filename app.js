@@ -3411,9 +3411,15 @@ function renderGridCheck() {
   const pad = (n) => String(n).padStart(2, "0");
   el.querySelector("#grid-sub").textContent = `${WEEK_LABEL.toUpperCase()} · ALL PICKS LOCK AT FIRST KICKOFF`;
   el.querySelector("#grid-clock").innerHTML = d ? `${d}<small>D</small> ${pad(h)}:${pad(m)}:${pad(sec)}` : `${pad(h)}:${pad(m)}:${pad(sec)}`;
-  // Five starting lights: one more lit for each of the last five hours.
-  const lit = ms <= 0 ? 5 : Math.max(0, 5 - Math.ceil(ms / 3600000));
-  el.querySelectorAll("#grid-lights i").forEach((i, k) => i.classList.toggle("on", k < lit));
+  // Five starting lights read the card, not the clock: all green when the
+  // card is full, yellow and flashing while it is partly in, dark red
+  // when nothing is in. Four lights for picks, the fifth for the tiebreaker.
+  const picksOkL = picked === GAMES.length, tbOk = !!tb;
+  const lit = (picksOkL ? 4 : Math.floor((picked / GAMES.length) * 4)) + (tbOk ? 1 : 0);
+  const mode = picksOkL && tbOk ? "go" : picked === 0 && !tbOk ? "none" : "warn";
+  const lights = el.querySelector("#grid-lights");
+  lights.className = `grid-lights ${mode}`;
+  lights.querySelectorAll("i").forEach((i, k) => i.classList.toggle("on", mode === "go" || k < lit));
   const row = (id, v, ok, warn) => {
     const r = el.querySelector(id);
     r.querySelector(".gr-v").textContent = v;
@@ -3427,10 +3433,11 @@ function renderGridCheck() {
   row("#grid-row-pts", `${riding} PT`, riding > 0, "Nothing riding yet");
   const ready = picksOk && !!tb;
   const verdict = el.querySelector("#grid-verdict");
-  verdict.textContent = ready ? "SUBMITTED" : picked === 0 ? "NOTHING IN" : "PARTIAL";
-  verdict.className = `grid-verdict ${ready ? "ok" : picked === 0 ? "none" : "part"}`;
+  const nothing = picked === 0 && !tb;
+  verdict.textContent = ready ? "SUBMITTED · READY" : nothing ? "PENDING · PICKS + TIEBREAKER" : "INCOMPLETE";
+  verdict.className = `grid-verdict ${ready ? "ok" : nothing ? "none" : "part"}`;
   const go = el.querySelector("#grid-go");
-  go.textContent = ready ? "READY TO RACE" : picked === 0 ? "START PICKING" : "FILL THE BLANKS";
+  go.textContent = ready ? "READY TO RACE" : nothing ? "START PICKING" : "FILL THE BLANKS";
   go.classList.toggle("ready", ready);
 }
 (() => {
