@@ -43,10 +43,35 @@
     "P...........",
     "P...........",
   ];
-  const px = (ctx, map, x, y, s, colours) => {
+  const px_ = (ctx, map, x, y, s, colours) => {
     map.forEach((row, j) => [...row].forEach((ch, i) => { const c = colours[ch]; if (c) { ctx.fillStyle = c; ctx.fillRect(x + i * s, y + j * s, s, s); } }));
   };
   const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
+
+  // Panel geometry on the background picture (1024x1536): five rows in two
+  // columns, measured from the art. Everything drawn is relative to a
+  // panel's name-bar corner.
+  const ROWS = [376, 597, 822, 1051, 1281], COLS = [254, 694];
+  const BG = "assets/grid-bg.png";
+  let bgImg = null;
+  const loadBg = () => new Promise((res) => { if (bgImg) return res(bgImg); const im = new Image(); im.onload = () => { bgImg = im; res(im); }; im.onerror = () => res(null); im.src = BG; });
+  const SMALL_FLAG = ["FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "P.......", "P.......", "P......."];
+
+  // The art's panels drift a few pixels off a true grid, so each one's
+  // name-bar corner is found from the pixels near where it should be: the
+  // first strongly coloured pixel scanning in from the left, then up.
+  const sat = (p) => Math.max(p[0], p[1], p[2]) - Math.min(p[0], p[1], p[2]);
+  const bright = (p) => sat(p) > 100 && Math.max(p[0], p[1], p[2]) > 140;
+  function findPanel(ctx, ex, ey) {
+    const strip = ctx.getImageData(ex - 40, ey + 18, 90, 1).data;
+    let x = ex;
+    for (let k = 0; k < 90; k++) { const p = strip.slice(k * 4, k * 4 + 3); if (bright(p) && bright(strip.slice(k * 4 + 12, k * 4 + 15))) { x = ex - 40 + k; break; } }
+    const col = ctx.getImageData(x + 10, ey - 30, 1, 70).data;
+    let y = ey;
+    for (let k = 0; k < 70; k++) { const p = col.slice(k * 4, k * 4 + 3); if (bright(p) && bright(col.slice(k * 4 + 12, k * 4 + 15))) { y = ey - 30 + k; break; } }
+    const p = ctx.getImageData(x + 8, y + 18, 1, 1).data;
+    return [x, y, `rgb(${p[0]},${p[1]},${p[2]})`];
+  }
 
   async function openGridCard() {
     const picks = (typeof fetchAllPicks === "function" ? await fetchAllPicks() : null) || lastGoodCloudPicks || {};
@@ -55,57 +80,57 @@
     const ms = Math.max(0, lockAt - Date.now());
     const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
     const left = ms <= 0 ? "LIGHTS OUT" : `LIGHTS OUT IN ${d ? `${d}D ${h}H` : h ? `${h}H ${m}M` : `${m}M`}`;
-    const rows = MANAGERS.map((name, i) => {
+    const rows = MANAGERS.map((name) => {
       const st = picks[name] || { picks: {} };
       const n = GAMES.filter((g) => st.picks?.[g.id]).length;
-      const tb = String(st.tiebreaker ?? "").trim() !== "";
-      return { name, n, tb, colour: AVATAR_COLORS[i % AVATAR_COLORS.length], state: n === total && tb ? "go" : n === 0 && !tb ? "none" : "warn" };
+      const tb = String(st.tiebreaker ?? "").trim();
+      return { name, n, tb, state: n === total && tb ? "go" : n === 0 && !tb ? "none" : "warn" };
     }).sort((a, b) => (b.n + (b.tb ? 1 : 0)) - (a.n + (a.tb ? 1 : 0)) || a.name.localeCompare(b.name));
+    const ready = rows.filter((r) => r.state === "go").length;
 
-    // Canvas: 2x for a crisp share. A staggered two-column grid, pole on top left.
-    const W = 720, slotH = 150, top = 200, H = top + Math.ceil(rows.length / 2) * slotH + 90;
+    const bg = await loadBg();
+    const W = 1024, H = 1536;
     const c = document.createElement("canvas"); c.width = W; c.height = H;
     const ctx = c.getContext("2d");
-    ctx.fillStyle = "#0a0014"; ctx.fillRect(0, 0, W, H);
-    // Track: two dark lanes with a dashed centre line and grid boxes.
-    ctx.fillStyle = "#14101f"; ctx.fillRect(40, top - 20, W - 80, H - top - 50);
-    ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.setLineDash([14, 14]); ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(W / 2, top - 20); ctx.lineTo(W / 2, H - 70); ctx.stroke(); ctx.setLineDash([]);
-    // Checkered header strip.
-    for (let x = 0; x < W; x += 20) for (let y = 0; y < 40; y += 20) { ctx.fillStyle = ((x + y) / 20) % 2 ? "#fff" : "#111"; ctx.fillRect(x, y, 20, 20); }
+    if (bg) ctx.drawImage(bg, 0, 0, W, H); else { ctx.fillStyle = "#0a0014"; ctx.fillRect(0, 0, W, H); }
+    const BGC = "#0d1220";
+    // Week and clock on the track under the banner.
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = "italic 900 44px Orbitron, system-ui, sans-serif"; ctx.fillStyle = "#fff";
-    ctx.shadowColor = "#ff2a3a"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 0;
-    ctx.fillText("GRID CHECK", W / 2, 84);
-    ctx.shadowColor = "transparent"; ctx.shadowOffsetX = 0;
-    ctx.font = "700 18px 'Press Start 2P', monospace"; ctx.fillStyle = "#ffe45e";
-    ctx.fillText(`${WEEK_LABEL.toUpperCase()} · ${left}`, W / 2, 132);
-    const ready = rows.filter((r) => r.state === "go").length;
-    ctx.font = "14px 'Press Start 2P', monospace"; ctx.fillStyle = "#9a8bb8";
-    ctx.fillText(`${ready}/${rows.length} ON THE GRID`, W / 2, 164);
+    ctx.font = "700 20px 'Press Start 2P', monospace"; ctx.fillStyle = "#000";
+    const line = `${WEEK_LABEL.toUpperCase()} · ${left} · ${ready}/${rows.length} ON THE GRID`;
+    ctx.fillRect(W / 2 - ctx.measureText(line).width / 2 - 16, 316, ctx.measureText(line).width + 32, 36);
+    ctx.fillStyle = "#ffe45e"; ctx.fillText(line, W / 2, 334);
 
     rows.forEach((r, i) => {
-      const col = i % 2, row = Math.floor(i / 2);
-      const x0 = 40 + col * (W - 80) / 2, y0 = top + row * slotH + (col ? 30 : 0);
-      const cx = x0 + (W - 80) / 4;
-      // Grid box.
-      ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.lineWidth = 3;
-      ctx.strokeRect(cx - 120, y0 + 30, 240, 78);
-      ctx.fillStyle = "#0a0014"; ctx.fillRect(cx - 124, y0 + 30, 8, 78); ctx.fillRect(cx + 116, y0 + 30, 8, 78);
-      // Name.
-      ctx.font = "700 15px 'Press Start 2P', monospace"; ctx.fillStyle = r.colour; ctx.textAlign = "center";
-      ctx.fillText(`P${i + 1} ${shown(r.name).toUpperCase()}`, cx, y0 + 14);
-      // Car.
-      px(ctx, CAR, cx - 96, y0 + 34, 6, { B: r.colour, D: shade(r.colour, .55), W: "#111", H: "#fff" });
-      ctx.fillStyle = "#333"; [cx - 96 + 12, cx - 96 + 96].forEach((wx) => { ctx.fillRect(wx + 6, y0 + 34 + 42, 12, 6); });
-      // Flag.
+      // P1..P5 down the left column, P6..P10 down the right, like the art.
+      const [px, py, colour] = findPanel(ctx, COLS[Math.floor(i / 5)], ROWS[i % 5]);
       const fc = r.state === "go" ? "#39ff88" : r.state === "warn" ? "#ffe45e" : "#e0102a";
-      px(ctx, FLAG, cx + 62, y0 + 36, 5, { P: "#ddd", F: fc, C: r.state === "go" ? "#052010" : fc });
-      // Line under the car.
-      ctx.font = "700 13px 'Press Start 2P', monospace"; ctx.fillStyle = fc;
-      ctx.fillText(`${r.n}/${total} · TB ${r.tb ? "✓" : "✗"}`, cx, y0 + 126);
+      // Name over the bar.
+      ctx.fillStyle = colour; ctx.fillRect(px + 12, py + 6, 205, 26);
+      ctx.font = "900 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = "#fff";
+      ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.85)"; ctx.lineJoin = "round";
+      ctx.strokeText(shown(r.name).toUpperCase(), px + 22, py + 19); ctx.fillText(shown(r.name).toUpperCase(), px + 22, py + 19);
+      // Selections count.
+      ctx.fillStyle = BGC; ctx.fillRect(px + 140, py + 45, 76, 26);
+      ctx.font = "700 20px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#fff";
+      ctx.fillText(`${r.n} / ${total}`, px + 212, py + 58);
+      // Ten cells.
+      ctx.fillStyle = BGC; ctx.fillRect(px + 6, py + 77, 164, 28);
+      for (let k = 0; k < total; k++) {
+        const cx = px + 8 + k * 15.8;
+        ctx.fillStyle = k < r.n ? colour : "#4a5468"; ctx.fillRect(cx, py + 80, 13.5, 22);
+        ctx.fillStyle = k < r.n ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)"; ctx.fillRect(cx, py + 80, 13.5, 5);
+      }
+      // Tiebreaker value.
+      ctx.fillStyle = BGC; ctx.fillRect(px + 112, py + 116, 62, 26);
+      ctx.font = "700 18px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = r.tb ? "#fff" : "#8a93a6";
+      ctx.fillText(r.tb ? r.tb : "--", px + 170, py + 129);
+      // Flag box: border and a pixel flag in the state colour.
+      ctx.fillStyle = BGC; ctx.fillRect(px + 172, py + 75, 70, 70);
+      ctx.strokeStyle = fc; ctx.lineWidth = 4; ctx.strokeRect(px + 178, py + 81, 52, 58);
+      px_(ctx, SMALL_FLAG, px + 188, py + 88, 5, { F: fc, P: "#ddd" });
+      if (r.state === "go") for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 8; xx++) if ((xx + yy) % 2) { ctx.fillStyle = "#052010"; ctx.fillRect(px + 188 + xx * 5, py + 88 + yy * 5, 5, 5); }
     });
-    ctx.font = "12px 'Press Start 2P', monospace"; ctx.fillStyle = "#9a8bb8"; ctx.fillText("BROCHIEFS.COM", W / 2, H - 28);
 
     // Modal with the picture and share/save.
     let modal = document.getElementById("gridcard-modal");
