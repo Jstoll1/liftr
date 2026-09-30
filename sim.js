@@ -102,6 +102,15 @@
       const clockStart = 900 - Math.floor(((n / order.length) * 4 % 1) * 900);
       events.push(...drive(side, kind, lu[side], score, qtr, clockStart));
     });
+    // Clocks are assigned after the fact so the game clock runs down
+    // continuously and hits 0:00 on the final play of regulation. Every
+    // timed event gets an equal slice of the 3600 seconds.
+    const timed = events.filter((e) => e.clock != null && e.qtr <= 4);
+    timed.forEach((e, k) => {
+      const elapsed = Math.round((3600 * (k + 1)) / timed.length);
+      e.qtr = Math.min(4, Math.floor((elapsed - 1) / 900) + 1);
+      e.clock = Math.max(0, e.qtr * 900 - elapsed);
+    });
     if (score.away === score.home) {
       // Overtime: one field goal decides it, favourite a little likelier.
       const side = Math.random() < (ctx.favSide === "home" ? 0.58 : 0.42) ? "home" : "away";
@@ -119,15 +128,15 @@
     let scorer = null;
     const tick = () => { t = Math.max(0, t - irand(22, 44)); return t; };
     out.push({ type: "drive", side, pos, qtr, clock: t });
-    while (pos < goal && plays < 9) {
+    while (pos < goal && plays < 6) {
       plays += 1;
       const left = goal - pos;
-      const isLast = kind !== "empty" && (plays >= 7 || left <= 14);
+      const isLast = kind !== "empty" && (plays >= 5 || left <= 18);
       let yds;
       const pass = Math.random() < 0.55;
       if (isLast) yds = left;
-      else if (pass) yds = Math.random() < 0.28 ? 0 : Math.random() < 0.12 ? irand(30, 48) : irand(5, 22);
-      else yds = Math.random() < 0.08 ? irand(18, 38) : irand(-2, 9);
+      else if (pass) yds = Math.random() < 0.24 ? 0 : Math.random() < 0.15 ? irand(30, 48) : irand(7, 26);
+      else yds = Math.random() < 0.1 ? irand(18, 38) : irand(-1, 12);
       if (!isLast) yds = Math.min(yds, left - 1 > 0 ? left - 1 : yds);
       if (!isLast && Math.random() < 0.05) {
         const loss = irand(4, 9);
@@ -217,7 +226,7 @@
   }
   window.closeSim = close;
   // Playback pace: 1 is the original speed; lower is quicker.
-  const SPEED = 0.7;
+  const SPEED = 0.15; // whole game in about ten seconds
   const fmtClock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   window.openSim = async function openSim(ctx) {
@@ -388,7 +397,9 @@
       apply(ev);
       drawBoard();
       drawPanel(false);
-      timer = setTimeout(step, Math.round(wait * SPEED));
+      // Scores and banners keep a floor so the flash is readable at speed.
+      const floor = ev.type === "score" || ev.type === "banner" ? 360 : 0;
+      timer = setTimeout(step, Math.max(floor, Math.round(wait * SPEED)));
     };
     const actions = el.querySelector(".sim-actions");
     const btn = actions.querySelector(".sim-btn:not(.ghost)");
