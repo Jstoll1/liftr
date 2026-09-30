@@ -3976,3 +3976,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .lm-move.l::after { left: -5px; border-right: 6px solid var(--neon-cyan); }
 .lm-move b { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-cyan); font-weight: normal; white-space: nowrap; }
 .lm-move b::before { content: "+"; }
+/* A selected chip is unmistakable: solid cyan, dark text, glow, check. */
+.hz-col .pick-mini-btn.selected, .hz-col .pick-mini-btn.selected.upset, .hz-col .pick-mini-btn.selected.chalk { background: var(--neon-cyan); border-color: #fff; color: #06121a; box-shadow: 0 0 0 2px rgba(5, 217, 232, .35), 0 0 16px rgba(5, 217, 232, .75); }
+.hz-col .pick-mini-btn.selected .pk-line, .hz-col .pick-mini-btn.selected .pk-label, .hz-col .pick-mini-btn.selected .pk-pts, .hz-col .pick-mini-btn.selected .pk-pts i { color: #06121a; text-shadow: none; }
+.hz-col .pick-mini-btn.selected::before { content: "✓"; position: absolute; top: -6px; right: -6px; width: 14px; height: 14px; border-radius: 50%; background: #fff; color: #06121a; font-size: 9px; line-height: 14px; text-align: center; font-family: system-ui, sans-serif; font-weight: 700; box-shadow: 0 0 6px rgba(5, 217, 232, .8); }
+.hz-tm.picked .tm-logo { filter: drop-shadow(0 0 8px rgba(5, 217, 232, .8)); }
+.hz-tm.picked .hz-nm { text-shadow: 0 0 8px rgba(5, 217, 232, .6); }
