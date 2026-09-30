@@ -4012,3 +4012,18 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .lm-mv { position: absolute; top: -16px; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 6px; font-weight: normal; color: var(--neon-cyan); white-space: nowrap; pointer-events: none; }
 .lm-mv.good { color: var(--neon-green); } .lm-mv.bad { color: var(--neon-pink); }
 .lm-mv::before { content: "+"; }
+
+/* Line meter v3: flat band with a small head, never a blob; number lives in the text */
+.lm-band, .lm-band.r, .lm-band.l { top: 0; bottom: 0; height: auto; clip-path: none; border-radius: 3px; min-width: 6px; }
+.lm-band::after { display: block; content: ""; position: absolute; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; filter: none; animation: none; z-index: 1; }
+.lm-band.r::after { right: -9px; left: auto; border-left: 8px solid var(--neon-cyan); border-right: 0; }
+.lm-band.l::after { left: -9px; right: auto; border-right: 8px solid var(--neon-cyan); border-left: 0; }
+.lm-band.good::after { border-left-color: var(--neon-green); border-right-color: var(--neon-green); }
+.lm-band.bad::after { border-left-color: var(--neon-pink); border-right-color: var(--neon-pink); }
+.lm-band.r.good::after, .lm-band.l.good::after { border-left-color: var(--neon-green); border-right-color: var(--neon-green); }
+.lm-band.r.bad::after, .lm-band.l.bad::after { border-left-color: var(--neon-pink); border-right-color: var(--neon-pink); }
+.lm-band.r.good::after { border-right: 0; } .lm-band.l.good::after { border-left: 0; } .lm-band.r.bad::after { border-right: 0; } .lm-band.l.bad::after { border-left: 0; }
+.lm-pt.now { z-index: 2; }
+.lm-mv { display: none; }
+.lm-axis { margin-bottom: 34px; }
+.lm-read { font-size: 6.5px; line-height: 1.9; }

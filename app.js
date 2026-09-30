@@ -3857,20 +3857,23 @@ async function openInsights(gameId) {
     // smaller sealed number, and hurts the dog holder, and vice versa.
     const forMe = !myPick || !nowMoved ? null : (nowV > sealedV) === myFav;
     const tone = forMe === null ? "" : forMe ? " good" : " bad";
-    const band = nowMoved ? `<i class="lm-band ${nowV > sealedV ? "r" : "l"}${tone}" style="left:${bandL}%;width:${bandW}%"></i><b class="lm-mv${tone}" style="left:${bandL}%;width:${bandW}%">${Math.abs(Math.round((nowV - sealedV) * 2) / 2)}</b>` : "";
+    const band = nowMoved ? `<i class="lm-band ${nowV > sealedV ? "r" : "l"}${tone}" style="left:${bandL}%;width:${bandW}%"></i>` : "";
     // Small indicator under the axis: an arrow spanning seal to now with the size of the move.
     const move = "";
     const zero = lo < 0 && hi > 0 ? `<i class="lm-zero" style="left:${pos(0)}%"></i>` : "";
     // Two plain lines: since open, and what the move since seal means.
     const dS = nowV === null ? null : Math.round((nowV - sealedV) * 2) / 2;
     const dO = nowV === null || openV === null ? null : Math.round((nowV - openV) * 2) / 2;
-    const arrowTo = (d) => d > 0 ? `${esc(favAb)} ▶` : `◀ ${esc(dogAb)}`;
-    const openNote = openCrowded ? ` · OPENED ${esc(lab(openV))}` : "";
-    const l1 = nowV === null ? `NO LIVE LINE · YOU SCORE AGAINST <em>${esc(lab(sealedV))}</em>` : dO === null ? (dS === 0 ? `HOLDING AT <em>${esc(lab(sealedV))}</em>` : `NOW <em>${esc(lab(nowV))}</em>`) : dO === 0 ? `UNCHANGED SINCE OPEN${openNote}` : `MOVED <em>${half(dO)} ${arrowTo(dO)}</em> SINCE OPEN${openNote}`;
+    // Two short lines. First: where it was and where it is. Second: what
+    // that means for you, or for whoever holds the sealed number.
+    const l1 = nowV === null ? `NO LIVE LINE · SEALED <em>${esc(lab(sealedV))}</em>`
+      : openV === null ? `SEALED <em>${esc(lab(sealedV))}</em> · NOW <em>${esc(lab(nowV))}</em>`
+      : dO === 0 ? `OPEN ${esc(lab(openV))} · NOW <em>${esc(lab(nowV))}</em> · NO MOVE`
+      : `OPEN ${esc(lab(openV))} ▸ NOW <em>${esc(lab(nowV))}</em>`;
     const myLab = myPick ? `${esc(myPick.team === game.away ? abbrOf("away") : abbrOf("home"))} ${myPick.mode === "SU" ? "SU" : (myFav ? "-" : "+") + game.spread}` : "";
-    const l2 = nowV === null ? "" : dS === 0 ? (myPick ? `HOLDING AT SEAL · YOUR ${myLab} IS AT MARKET` : `HOLDING AT SEAL · NO EDGE EITHER WAY`)
-      : myPick ? (forMe ? `<em class="good">MARKET MOVING WITH YOUR ${myLab}</em> · +${half(dS)} BETTER THAN TODAY'S NUMBER` : `<em class="bad">MARKET MOVING AGAINST YOUR ${myLab}</em> · ${half(dS)} WORSE THAN TODAY'S NUMBER`)
-      : `<em>+${half(dS)} EDGE</em> TO ${esc(dS > 0 ? favAb : dogAb)} BACKERS AT THE SEALED NUMBER`;
+    const l2 = nowV === null ? "" : dS === 0 ? (myPick ? `YOUR ${myLab} · AT MARKET` : `SEAL AT MARKET · NO EDGE`)
+      : myPick ? (forMe ? `<em class="good">✓ GOOD FOR YOUR ${myLab}</em> · +${half(dS)}` : `<em class="bad">✗ BAD FOR YOUR ${myLab}</em> · -${half(dS)}`)
+      : `EDGE <em>+${half(dS)}</em> TO ${esc(dS > 0 ? favAb : dogAb)} BACKERS`;
     const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
     html += `<div class="lm"><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
