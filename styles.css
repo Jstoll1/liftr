@@ -4056,3 +4056,12 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gridcard-box img { width: min(360px, 92vw); height: auto; border-radius: 8px; border: 2px solid var(--neon-yellow); box-shadow: 0 0 24px rgba(255, 228, 94, .35); }
 .gridcard-row { display: flex; gap: 8px; }
 .gridcard-hint { margin: 0; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); letter-spacing: .08em; }
+
+/* Countdown animations live on the cell, never on the digit, so WebKit repaints the number */
+.cd-cell b, .cd-cell b.tick, .cd-cells .cd-cell:last-child b, .cd-cells .cd-cell:last-child b.tick { animation: none !important; transform: none !important; }
+.cd-cell.tick { animation: cd-cell-tick .22s steps(3) both; }
+@keyframes cd-cell-tick { 0% { transform: translateY(-4px); } 60% { transform: translateY(1px); } 100% { transform: none; } }
+.cd-cells .cd-cell:last-child { animation: cd-cell-breathe 1s ease-in-out infinite alternate; }
+@keyframes cd-cell-breathe { from { filter: drop-shadow(0 0 2px rgba(255, 228, 94, .3)); } to { filter: drop-shadow(0 0 7px rgba(255, 228, 94, .8)); } }
+.cd-cells .cd-cell:last-child.tick { animation: cd-cell-tick .22s steps(3) both, cd-cell-breathe 1s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .cd-cell, .cd-cell.tick { animation: none !important; } }

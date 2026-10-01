@@ -3200,7 +3200,9 @@ function renderPicksCountdown() {
   if (el.dataset.frame === frameKey && el.querySelectorAll(".cd-cell").length === parts.length) {
     el.querySelectorAll(".cd-cell b").forEach((b, i) => {
       const txt = String(parts[i][1]).padStart(2, "0");
-      if (b.textContent !== txt) { b.textContent = txt; b.classList.remove("tick"); void b.offsetWidth; b.classList.add("tick"); }
+      // A fresh node, not a text edit: Safari can skip repainting text that
+      // changes inside an animated element, which froze the clock on iPhone.
+      if (b.textContent !== txt) { const nb = document.createElement("b"); nb.textContent = txt; b.replaceWith(nb); const cell = nb.parentElement; cell.classList.remove("tick"); void cell.offsetWidth; cell.classList.add("tick"); }
     });
     const f = el.querySelector(".cd-fuse i");
     if (f) f.style.width = `${(left * 100).toFixed(2)}%`;
