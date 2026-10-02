@@ -613,11 +613,11 @@ export async function gameInjuries(env, week, game, fromPhone = null) {
   if (fresh && !(fromPhone && !(hit.away?.length || hit.home?.length))) return hit;
   const clean = (list) => (Array.isArray(list) ? list : []).filter((n) => n && typeof n.headline === "string").slice(0, 12).map((n) => ({ headline: String(n.headline).slice(0, 200), blurb: n.blurb ? String(n.blurb).slice(0, 400) : null, source: n.source ? String(n.source).slice(0, 60) : null, link: typeof n.link === "string" ? n.link.slice(0, 300) : null, published: n.published || null }));
   const [ownAway, ownHome] = await Promise.all([injuryNewsFor(game.away, env), injuryNewsFor(game.home, env)]);
-  const merge = (own, extra) => { const all = filterNews([...own, ...clean(extra)]); const kept = all.filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i.test(`${n.headline} ${n.blurb || ""}`)); kept.raw = own.raw; return kept.slice(0, 10); };
+  const merge = (own, extra) => { const all = filterNews([...own, ...clean(extra)]); const kept = all.filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i.test(`${n.headline} ${n.blurb || ""}`)).slice(0, 10); kept.raw = own.raw; kept.sent = clean(extra).length; return kept; };
   const awayNews = merge(ownAway, fromPhone?.away), homeNews = merge(ownHome, fromPhone?.home);
   const [away, home] = await Promise.all([extractInjuries(env, game.away, awayNews), extractInjuries(env, game.home, homeNews)]);
   const srcs = (items) => items.map((n) => ({ headline: n.headline, link: n.link, source: n.source, published: n.published })).slice(0, 4);
-  const out = { at: Date.now(), away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, found: { away: awayNews.length, home: homeNews.length, awaySources: awayNews.raw, homeSources: homeNews.raw }, error: away.error || home.error || null };
+  const out = { at: Date.now(), away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, found: { away: awayNews.length, home: homeNews.length, awaySources: awayNews.raw, homeSources: homeNews.raw, fromPhone: { away: awayNews.sent || 0, home: homeNews.sent || 0 } }, error: away.error || home.error || null };
   if (!out.error) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 24 * 3600 }); } catch {} }
   return out;
 }

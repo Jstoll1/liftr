@@ -3683,6 +3683,19 @@ async function fetchGdeltNews(game) {
   }));
   return out.flat();
 }
+// Feeds pulled by the scheduled GitHub Action and served from this site:
+// Google and Bing results the Worker cannot fetch for itself.
+let siteFeedsCache = null;
+async function fetchSiteFeeds() {
+  if (siteFeedsCache && siteFeedsCache.week === currentWeek && Date.now() - siteFeedsCache.loadedAt < 10 * 60 * 1000) return siteFeedsCache.data;
+  try {
+    const res = await fetch(`data/feeds/w${currentWeek}.json?t=${Math.floor(Date.now() / 600000)}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    siteFeedsCache = { week: currentWeek, loadedAt: Date.now(), data };
+    return data;
+  } catch { return null; }
+}
 const teamNewsCache = {};
 async function fetchTeamNews(teamId) {
   const hit = teamNewsCache[teamId];
@@ -3834,8 +3847,8 @@ async function openInsights(gameId) {
   // ESPN game page (from the phone) fills most of the sheet; news and the
   // Worker's extras slot in after, and slow Worker calls are capped.
   const token = ++insightsOpenToken;
-  let data = null, snap = null, summaryRaw = null, awayNews = [], homeNews = [], wider = [], newsInj = null, gdelt = [];
-  const pend = { summary: true, news: true, wider: true, ai: true, inj: true, gdelt: true };
+  let data = null, snap = null, summaryRaw = null, awayNews = [], homeNews = [], wider = [], newsInj = null, gdelt = [], siteFeed = null;
+  const pend = { summary: true, news: true, wider: true, ai: true, inj: true, gdelt: true, site: true };
   let aiPv = null;
   const alive = () => token === insightsOpenToken && !modal.classList.contains("hidden");
   const land = (promise, set, key) => promise.then((v) => { set(v); }).catch(() => {}).finally(() => { if (key) pend[key] = false; if (alive()) paint(); });
@@ -4016,7 +4029,7 @@ async function openInsights(gameId) {
     .map((n) => String(n || "").replace(/^#\d+\s+/, "").trim().toLowerCase()).filter((n) => n.length >= 3);
   const OTHER_SPORT = /\b(wrestling|basketball|hoops|volleyball|soccer|hockey|baseball|softball|lacrosse|golf|tennis|swimming|diving|track and field|cross country|gymnastics|rowing|field hockey|water polo|esports)\b/i;
   const mentions = (n) => { const h = String(n.headline || "").toLowerCase(); return !OTHER_SPORT.test(h) && names.some((x) => h.includes(x)); };
-  const others = [...wider, ...gdelt].filter(mentions).sort((a, b) => String(b.published || "").localeCompare(String(a.published || ""))).map((n) => ({ ...n, team: aboutLabel(n.about) }));
+  const others = [...(siteFeed?.news || []), ...wider, ...gdelt].filter(mentions).sort((a, b) => String(b.published || "").localeCompare(String(a.published || ""))).map((n) => ({ ...n, team: aboutLabel(n.about) }));
   const espn = [
     ...(direct?.related || []).map((n) => ({ ...n, team: "This game" })),
     ...(news?.away || []).map((n) => ({ ...n, team: game.awayShort })),
@@ -4028,8 +4041,8 @@ async function openInsights(gameId) {
   mixed.push(...gameFirst);
   for (let i = 0; i < Math.max(restO.length, restE.length); i++) { if (restO[i]) mixed.push(restO[i]); if (i % 2 === 1 && restE[(i - 1) / 2]) mixed.push(restE[(i - 1) / 2]); }
   const newsRows = mixed.filter((n) => { const k = norm(n.headline); if (!k || seen.has(k)) return false; seen.add(k); return true; });
-  if (!newsRows.length && (pend.news || pend.wider || pend.gdelt)) html += `<div class="ins-h">NEWS</div><div class="ins-loading">Loading news…</div>`;
-  const newsErr = !pend.wider && !pend.gdelt && !wider.length && !gdelt.length && (wider.errors || []).length ? `<div class="ins-empty small"><i class="ins-err">More sources unavailable: ${esc(wider.errors.slice(0, 2).join(" · "))}</i></div>` : "";
+  if (!newsRows.length && (pend.news || pend.wider || pend.gdelt || pend.site)) html += `<div class="ins-h">NEWS</div><div class="ins-loading">Loading news…</div>`;
+  const newsErr = !pend.wider && !pend.gdelt && !pend.site && !wider.length && !gdelt.length && !(siteFeed?.news || []).length && (wider.errors || []).length ? `<div class="ins-empty small"><i class="ins-err">More sources unavailable: ${esc(wider.errors.slice(0, 2).join(" · "))}</i></div>` : "";
   if (newsRows.length) html += `<div class="ins-h">NEWS</div><ul class="ins-news">${newsRows.slice(0, 12).map((n) => `<li><b class="ins-nh">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det"><em class="ins-src">${esc(n.source || "")}</em>${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
   if (newsErr) html += newsRows.length ? newsErr : `<div class="ins-h">NEWS</div>${newsErr}`;
 
@@ -4078,10 +4091,13 @@ async function openInsights(gameId) {
   // model calls, and a late answer still paints into the open sheet.
   const gdeltP = withTimeout(fetchGdeltNews(game), 6000, []);
   land(gdeltP, (v) => { gdelt = v || []; }, "gdelt");
-  // Injuries wait for the phone's own news so the Worker has articles to read.
-  const injItems = Promise.all([withTimeout(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), 6000, [[], []]), gdeltP]).then(([[a, h], g]) => ({
-    away: [...a, ...g.filter((n) => n.about === "away" || n.about === "game")],
-    home: [...h, ...g.filter((n) => n.about === "home" || n.about === "game")],
+  const siteP = withTimeout(fetchSiteFeeds(), 6000, null).then((f) => f?.games?.[gameId] || null);
+  land(siteP, (v) => { siteFeed = v; }, "site");
+  // Injuries wait for everything the phone can reach, so the Worker has
+  // articles to read: ESPN team news, GDELT, and the site's pulled feeds.
+  const injItems = Promise.all([withTimeout(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), 6000, [[], []]), gdeltP, siteP]).then(([[a, h], g, sf]) => ({
+    away: [...(sf?.injuries?.away || []), ...a, ...g.filter((n) => n.about === "away" || n.about === "game")],
+    home: [...(sf?.injuries?.home || []), ...h, ...g.filter((n) => n.about === "home" || n.about === "game")],
   }));
   land(withTimeout(injItems.then((items) => fetchNewsInjuries(gameId, items)), 40000, null), (v) => { newsInj = v; }, "inj");
   land(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), ([a, h]) => { awayNews = a; homeNews = h; }, "news");
