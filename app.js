@@ -4064,7 +4064,9 @@ async function openInsights(gameId) {
   land(withTimeout(fetchInsights(), 3500, null), (v) => { data = v; });
   land(withTimeout(fetchGameSnapshot(gameId), 3500, null), (v) => { snap = v; });
   land(withTimeout(fetchWiderNews(gameId), 6000, []), (v) => { wider = v || []; }, "wider");
-  land(withTimeout(fetchNewsInjuries(gameId), 12000, null), (v) => { newsInj = v; }, "inj");
+  // No short cap here: the first read of a game runs two searches and two
+  // model calls, and a late answer still paints into the open sheet.
+  land(withTimeout(fetchNewsInjuries(gameId), 40000, null), (v) => { newsInj = v; }, "inj");
   land(withTimeout(fetchGdeltNews(game), 6000, []), (v) => { gdelt = v || []; }, "gdelt");
   land(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), ([a, h]) => { awayNews = a; homeNews = h; }, "news");
   const eventIdNow = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;

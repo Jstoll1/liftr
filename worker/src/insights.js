@@ -554,11 +554,13 @@ async function injuryNewsFor(teamName) {
   const results = await Promise.all(urls.map(async (x) => {
     try {
       const r = await fetchText(x.url, x.gdelt ? "application/json" : "application/rss+xml, application/xml, text/xml");
-      if (!r.ok) return [];
+      if (!r.ok) { const e = []; e.error = r.error; return e; }
       return x.gdelt ? parseGdelt(JSON.parse(r.text)) : x.bing ? parseBingNewsRss(r.text) : parseGoogleNewsRss(r.text);
-    } catch { return []; }
+    } catch (err) { const e = []; e.error = String(err?.message || err); return e; }
   }));
-  return filterNews(results.flat()).filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return/i.test(`${n.headline} ${n.blurb || ""}`)).slice(0, 8);
+  const kept = filterNews(results.flat()).filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return/i.test(`${n.headline} ${n.blurb || ""}`)).slice(0, 8);
+  kept.raw = results.map((r) => r.error ? r.error : r.length);
+  return kept;
 }
 export async function extractInjuries(env, teamName, items) {
   if (!items.length) return { players: [] };
@@ -590,7 +592,7 @@ export async function gameInjuries(env, week, game) {
   const [awayNews, homeNews] = await Promise.all([injuryNewsFor(game.away), injuryNewsFor(game.home)]);
   const [away, home] = await Promise.all([extractInjuries(env, game.away, awayNews), extractInjuries(env, game.home, homeNews)]);
   const srcs = (items) => items.map((n) => ({ headline: n.headline, link: n.link, source: n.source, published: n.published })).slice(0, 4);
-  const out = { at: Date.now(), away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, error: away.error || home.error || null };
+  const out = { at: Date.now(), away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, found: { away: awayNews.length, home: homeNews.length, awaySources: awayNews.raw, homeSources: homeNews.raw }, error: away.error || home.error || null };
   if (!out.error) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 24 * 3600 }); } catch {} }
   return out;
 }
