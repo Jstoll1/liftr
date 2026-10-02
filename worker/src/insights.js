@@ -494,3 +494,74 @@ export async function gamePreview(env, week, game, facts) {
   try { await env.LIFTR_KV.put(key, JSON.stringify(saved), { expirationTtl: 3 * 24 * 3600 }); } catch {}
   return saved;
 }
+
+// --- Injuries from the news ------------------------------------------------
+// ESPN's injury feed is empty for college football, but beat writers file
+// availability reports all week. Search both news feeds for each team's
+// injury coverage, then have the model pull a structured list from the
+// headlines and blurbs. Cached three hours; only names with a stated
+// status come through, and every row carries the outlet it came from.
+export const injuriesKey = (week, gameId) => `inj:v1:w${week}:g${gameId}`;
+export const INJURY_STATUSES = ["OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "RETURNING", "SUSPENDED"];
+export function injuriesPrompt() {
+  return [
+    "You extract player availability for one college football team from news headlines and blurbs.",
+    "Return only players the text explicitly gives a status for: out, doubtful, questionable, probable, returning from injury, or suspended. Map the status to one of: " + INJURY_STATUSES.join(", ") + ".",
+    "Never guess, never add players not named with a status, never include the opponent's players. Skip coaches. If nothing qualifies, return an empty list.",
+    "For each: name as written, position abbreviation if given (QB, RB, WR, TE, OL, DL, DE, DT, LB, CB, S, K, P) else empty string, status, and a short detail (injury or reason, max 8 words) plus the outlet name.",
+    "Return JSON: {\"players\": [{\"name\": \"\", \"pos\": \"\", \"status\": \"\", \"detail\": \"\", \"source\": \"\"}]}",
+  ].join(" ");
+}
+async function injuryNewsFor(teamName) {
+  const T = searchName(teamName);
+  const q = (s) => `https://news.google.com/rss/search?q=${encodeURIComponent(s)}+when:7d&hl=en-US&gl=US&ceid=US:en`;
+  const bing = (s) => `https://www.bing.com/news/search?q=${encodeURIComponent(s)}&format=rss&qft=interval%3d%228%22`;
+  const urls = [
+    { url: q(`"${T}" football injury report`) },
+    { url: q(`"${T}" football injury OR questionable OR doubtful OR "ruled out"`) },
+    { url: bing(`"${T}" football injury report`), bing: true },
+  ];
+  const results = await Promise.all(urls.map(async (x) => {
+    try {
+      const res = await fetch(x.url, { headers: { "User-Agent": UA, Accept: "application/rss+xml, application/xml, text/xml" } });
+      if (!res.ok) return [];
+      const xml = await res.text();
+      return x.bing ? parseBingNewsRss(xml) : parseGoogleNewsRss(xml);
+    } catch { return []; }
+  }));
+  return filterNews(results.flat()).filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return/i.test(`${n.headline} ${n.blurb || ""}`)).slice(0, 8);
+}
+export async function extractInjuries(env, teamName, items) {
+  if (!items.length) return { players: [] };
+  if (!env.OPENAI_API_KEY) return { players: [], error: "no model key" };
+  const text = items.map((n) => `- [${n.source || "news"}] ${n.headline}${n.blurb ? ` — ${n.blurb}` : ""}`).join("\n").slice(0, 5000);
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model: env.OPENAI_MODEL || "gpt-4o-mini",
+      messages: [{ role: "system", content: injuriesPrompt() }, { role: "user", content: `Team: ${searchName(teamName)}\n${text}` }],
+      response_format: { type: "json_schema", json_schema: { name: "injuries", strict: true, schema: { type: "object", additionalProperties: false, required: ["players"], properties: { players: { type: "array", items: { type: "object", additionalProperties: false, required: ["name", "pos", "status", "detail", "source"], properties: { name: { type: "string" }, pos: { type: "string" }, status: { type: "string", enum: INJURY_STATUSES }, detail: { type: "string" }, source: { type: "string" } } } } } } } },
+      temperature: 0,
+    }),
+  });
+  if (!res.ok) return { players: [], error: `model ${res.status}` };
+  try {
+    const parsed = JSON.parse((await res.json()).choices?.[0]?.message?.content || "{}");
+    const seen = new Set();
+    const players = (parsed.players || []).filter((p) => p.name && INJURY_STATUSES.includes(p.status)).filter((p) => { const k = p.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 10)
+      .map((p) => ({ name: String(p.name).slice(0, 40), pos: String(p.pos || "").slice(0, 3), status: p.status, detail: String(p.detail || "").slice(0, 60), source: String(p.source || "").slice(0, 40) }));
+    return { players };
+  } catch { return { players: [], error: "bad model json" }; }
+}
+export async function gameInjuries(env, week, game) {
+  const key = injuriesKey(week, game.id);
+  const hit = await env.LIFTR_KV.get(key, "json");
+  if (hit && Date.now() - hit.at < 3 * 3600 * 1000) return hit;
+  const [awayNews, homeNews] = await Promise.all([injuryNewsFor(game.away), injuryNewsFor(game.home)]);
+  const [away, home] = await Promise.all([extractInjuries(env, game.away, awayNews), extractInjuries(env, game.home, homeNews)]);
+  const srcs = (items) => items.map((n) => ({ headline: n.headline, link: n.link, source: n.source, published: n.published })).slice(0, 4);
+  const out = { at: Date.now(), away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, error: away.error || home.error || null };
+  if (!out.error) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 24 * 3600 }); } catch {} }
+  return out;
+}

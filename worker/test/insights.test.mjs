@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -151,4 +151,30 @@ test("searchName strips poll ranks and parentheses", () => {
   assert.equal(searchName("#11 LSU"), "LSU");
   assert.equal(searchName("Miami (OH)"), "Miami OH");
   assert.equal(searchName("Clemson"), "Clemson");
+});
+
+test("extractInjuries keeps only named players with a known status and dedupes", async () => {
+  const items = [{ source: "On3", headline: "Two new players land on Pitt injury report vs Virginia Tech", blurb: "RB Ja'Kyrian Turner upgraded to probable; DE Zach Crothers doubtful." }];
+  globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ players: [
+    { name: "Ja'Kyrian Turner", pos: "RB", status: "PROBABLE", detail: "upgraded", source: "On3" },
+    { name: "Zach Crothers", pos: "DE", status: "DOUBTFUL", detail: "", source: "On3" },
+    { name: "Zach Crothers", pos: "DE", status: "DOUBTFUL", detail: "dupe", source: "On3" },
+    { name: "Nobody", pos: "", status: "MAYBE", detail: "", source: "" },
+  ] }) } }] }), { status: 200 });
+  const r = await extractInjuries({ OPENAI_API_KEY: "k" }, "Pitt", items);
+  assert.deepEqual(r.players.map((p) => `${p.name}:${p.status}`), ["Ja'Kyrian Turner:PROBABLE", "Zach Crothers:DOUBTFUL"]);
+  assert.deepEqual(await extractInjuries({}, "Pitt", []), { players: [] });
+});
+
+test("gameInjuries caches a clean read and never caches a model failure", async () => {
+  const kv = fakeKv();
+  const rss = `<rss><channel><item><title>Pitt injury report: Turner probable</title><link>https://news.google.com/x</link><source url="https://on3.com">On3</source></item></channel></rss>`;
+  globalThis.fetch = async (url) => /news\.google|bing\.com/.test(String(url)) ? new Response(rss, { status: 200 }) : new Response("nope", { status: 500 });
+  const r = await gameInjuries({ LIFTR_KV: kv, OPENAI_API_KEY: "k" }, 5, game);
+  assert.equal(r.error, "model 500");
+  assert.ok(!kv.writes.includes(injuriesKey(5, 3)));
+  globalThis.fetch = async (url) => /news\.google|bing\.com/.test(String(url)) ? new Response(rss, { status: 200 }) : new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ players: [{ name: "T. Turner", pos: "RB", status: "PROBABLE", detail: "", source: "On3" }] }) } }] }), { status: 200 });
+  const ok = await gameInjuries({ LIFTR_KV: kv, OPENAI_API_KEY: "k" }, 5, game);
+  assert.equal(ok.away[0].name, "T. Turner");
+  assert.ok(kv.writes.includes(injuriesKey(5, 3)));
 });

@@ -3642,6 +3642,16 @@ async function fetchWiderNews(gameId) {
     return items;
   } catch { return []; }
 }
+// Injuries read out of the news by the Worker's model, for schools that
+// file no report ESPN can see. Cached on the Worker for three hours.
+async function fetchNewsInjuries(gameId) {
+  if (!WORKER_URL) return null;
+  try {
+    const res = await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}&t=${Math.floor(Date.now() / 600000)}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
 const teamNewsCache = {};
 async function fetchTeamNews(teamId) {
   const hit = teamNewsCache[teamId];
@@ -3793,8 +3803,8 @@ async function openInsights(gameId) {
   // ESPN game page (from the phone) fills most of the sheet; news and the
   // Worker's extras slot in after, and slow Worker calls are capped.
   const token = ++insightsOpenToken;
-  let data = null, snap = null, summaryRaw = null, awayNews = [], homeNews = [], wider = [];
-  const pend = { summary: true, news: true, wider: true, ai: true };
+  let data = null, snap = null, summaryRaw = null, awayNews = [], homeNews = [], wider = [], newsInj = null;
+  const pend = { summary: true, news: true, wider: true, ai: true, inj: true };
   let aiPv = null;
   const alive = () => token === insightsOpenToken && !modal.classList.contains("hidden");
   const land = (promise, set, key) => promise.then((v) => { set(v); }).catch(() => {}).finally(() => { if (key) pend[key] = false; if (alive()) paint(); });
@@ -3803,10 +3813,19 @@ async function openInsights(gameId) {
   const direct = parseSummaryClient(summaryRaw, game);
   // Browser-fetched summary first (ESPN lets phones in where it turns the
   // Worker away), then the Worker's snapshot, then the stored brief.
-  const injuries = direct?.injuriesListed ? direct.injuries : snap?.injuries || brief?.injuries || null;
+  const feedInj = direct?.injuriesListed ? direct.injuries : snap?.injuries || brief?.injuries || null;
+  // ESPN's feed first, then whatever the beat writers reported, de-duplicated by name.
+  const mergeInj = (side) => {
+    const a = (feedInj?.[side] || []).slice();
+    const seen = new Set(a.map((i) => String(i.name).toLowerCase()));
+    for (const p of newsInj?.[side] || []) { const k = p.name.toLowerCase(); if (seen.has(k)) continue; seen.add(k); a.push({ name: p.name, pos: p.pos || null, status: p.status.charAt(0) + p.status.slice(1).toLowerCase(), detail: [p.detail, p.source ? `via ${p.source}` : ""].filter(Boolean).join(" · ") }); }
+    return a;
+  };
+  const injuries = feedInj || newsInj ? { away: mergeInj("away"), home: mergeInj("home") } : null;
   const glance = direct || snap?.glance || brief?.glance || null;
   const news = awayNews.length || homeNews.length ? { away: awayNews, home: homeNews } : snap?.news || brief?.news || null;
   if (snap?.eventId) insightsCache.eventIds = { ...(insightsCache.eventIds || {}), [gameId]: snap.eventId };
+  const eventId = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || snap?.eventId || null;
   // Line: the Worker's logged samples plus whatever the browser sees now.
   const samples = (snap?.samples || []).filter((x) => !x.live).slice();
   const nowOdds = latestLive[gameId]?.odds && latestLive[gameId].odds.spread !== null ? latestLive[gameId].odds : direct?.odds && direct.odds.spread !== null ? direct.odds : null;
@@ -3989,9 +4008,14 @@ async function openInsights(gameId) {
   let injHtml = `<div class="ins-h">INJURIES</div>`;
   injHtml += injuries ? `<div class="ins-cols">${col(game.awayShort, injuries.away, direct ? true : snap?.feeds?.awayInjuries, game.awayId, feedErr("awayInjuriesError"))}${col(game.homeShort, injuries.home, direct ? true : snap?.feeds?.homeInjuries, game.homeId, feedErr("homeInjuriesError"))}</div>` : `<div class="ins-empty">Could not reach the injury feeds${eventId ? "" : " (game not on ESPN's scoreboard yet)"}. Team reports are in the links below.</div>`;
 
-  // Nobody listed on either side: leave the section out entirely.
+  // Nobody listed on either side: leave the section out entirely, unless
+  // the news read is still on its way.
   const anyInj = injuries && ((injuries.away || []).length || (injuries.home || []).length);
-  if (anyInj) html += injHtml;
+  if (anyInj) {
+    const srcs = [...(newsInj?.sources?.away || []), ...(newsInj?.sources?.home || [])].slice(0, 3);
+    if (newsInj?.at) injHtml += `<div class="ins-det ins-injsrc">From the beat: ${srcs.map((n) => n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.source || "report")}</a>` : esc(n.source || "")).join(" · ")}${srcs.length ? " · " : ""}read ${esc(fmtWhen(new Date(newsInj.at).toISOString()))}</div>`;
+    html += injHtml;
+  } else if (pend.inj) html += `<div class="ins-h">INJURIES</div><div class="ins-loading">Reading the injury reports…</div>`;
 
   // 4. Links out.
   html += links();
@@ -4017,6 +4041,7 @@ async function openInsights(gameId) {
   land(withTimeout(fetchInsights(), 3500, null), (v) => { data = v; });
   land(withTimeout(fetchGameSnapshot(gameId), 3500, null), (v) => { snap = v; });
   land(withTimeout(fetchWiderNews(gameId), 6000, []), (v) => { wider = v || []; }, "wider");
+  land(withTimeout(fetchNewsInjuries(gameId), 12000, null), (v) => { newsInj = v; }, "inj");
   land(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), ([a, h]) => { awayNews = a; homeNews = h; }, "news");
   const eventIdNow = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
   const summaryP = (eventIdNow ? Promise.resolve(eventIdNow) : fetchLiveScores().catch(() => {}).then(() => latestLive[gameId]?.eventId || null))
