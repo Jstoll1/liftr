@@ -53,9 +53,14 @@ for (const g of games) {
   const tag = (list, about) => list.map((n) => ({ headline: n.headline, source: n.source, link: n.link, blurb: n.blurb || null, published: n.published, about }));
   // Names a headline can use for a team: the slate's short name, the
   // school's first word, and the mascot. "Pitt", "Pittsburgh", "Panthers".
-  const aliases = (full, short) => { const w = searchName(full).split(/\s+/); return [short, w[0], w[w.length - 1]].map((x) => String(x || "").toLowerCase()).filter((x) => x.length >= 4); };
+  // "Panthers" is also an NFL team and "Virginia" is also the Cavaliers, so
+  // the school name minus its mascot is the anchor, the short name joins
+  // it, and a mascot counts only when no other team uses it.
+  const SHARED = /^(panthers|tigers|eagles|bulldogs|wildcats|cardinals|cowboys|giants|lions|bears|rams|jets|ravens|falcons|saints|broncos|chiefs|colts|texans|titans|jaguars|dolphins|bills|patriots|steelers|bengals|browns|packers|vikings|commanders|buccaneers|chargers|seahawks|cavaliers|spartans|trojans|knights|warriors|bears|huskies|aggies|cougars|rebels|owls|hawks|rams|pirates|bobcats|mustangs|bruins)$/;
+  const aliases = (full, short) => { const w = searchName(full).toLowerCase().split(/\s+/); const school = w.length > 1 ? w.slice(0, -1).join(" ") : w[0]; const mascot = w.length > 1 ? w[w.length - 1] : ""; return [school, String(short || "").toLowerCase(), SHARED.test(mascot) ? "" : mascot].filter((x) => x.length >= 4); };
+  const wholeWord = (h, x) => new RegExp(`(^|[^a-z])${x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`).test(h);
   const aA = aliases(g.away, g.awayShort), aH = aliases(g.home, g.homeShort);
-  const names = (list, al) => list.filter((n) => { const h = String(n.headline).toLowerCase(); return al.some((x) => h.includes(x)); });
+  const names = (list, al) => list.filter((n) => { const h = String(n.headline).toLowerCase(); return al.some((x) => wholeWord(h, x)); });
   const injOnly = (list, al) => names(list, al).filter((n) => INJ.test(`${n.headline} ${n.blurb || ""}`));
   out.games[g.id] = {
     news: [...tag(names(got.game, [...aA, ...aH]), "game"), ...tag(names(got.away, aA), "away"), ...tag(names(got.home, aH), "home")].slice(0, 30),
