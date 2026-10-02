@@ -51,4 +51,5 @@ jobs:
           sleep 75
           for g in $(node -e "console.log(Object.keys(require('./$f').games).join(' '))"); do
             curl -sS --max-time 90 "https://liftr-ai.jhs797.workers.dev/insights/injuries?week=$week&game=$g" | head -c 300; echo
+            curl -sS --max-time 90 "https://liftr-ai.jhs797.workers.dev/insights/picks?week=$week&game=$g" | head -c 300; echo
           done

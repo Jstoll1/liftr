@@ -698,6 +698,100 @@ export async function extractInjuries(env, teamName, items) {
     return { players };
   } catch { return { players: [], error: "bad model json" }; }
 }
+
+// --- Expert picks ----------------------------------------------------------
+// The outlets that publish a pick for the game, one tile each. Articles
+// come from the site feed (the runner searches "prediction", "picks" and
+// "against the spread" per game and fetches the bodies). The model names
+// the outlet, the team it took, whether that is against the spread or
+// straight up, the line as written and a predicted score if the piece
+// gives one. A pick stands only when the team named is one of the two
+// in the game. Cached six hours, stale reads refreshed behind the response.
+export const picksKey = (week, gameId) => `pk:v1:w${week}:g${gameId}`;
+const PICK_TIER = [/cbs ?sports/i, /sports illustrated|\bsi\b/i, /the athletic/i, /\bcovers\b/i, /action network/i, /pickswise/i, /yahoo/i, /bleacher report/i, /fox sports/i, /usa today/i, /sportsline/i, /oddsshark/i, /dimers/i, /\bpff\b/i, /sporting news/i, /new york post|ny post/i, /on3/i, /247sports/i, /athlon/i, /saturday down south|saturday tradition|saturday blitz/i, /college football news/i, /betsided|fansided/i, /the spun/i];
+export const outletRank = (name) => { const i = PICK_TIER.findIndex((re) => re.test(String(name || ""))); return i < 0 ? PICK_TIER.length : i; };
+export function picksPrompt() {
+  return [
+    "You extract published game picks for one college football game from article headlines and bodies.",
+    "Return one entry per outlet (and per named picker when an outlet lists several, e.g. a staff picks table): the outlet name, the picker's name if given (else empty), the team picked exactly as one of the two teams given, whether the pick is against the spread ('ATS'), straight up ('SU') or the piece gives both ('BOTH'), the line as written for that team if stated (e.g. '-3.5', '+7') else empty, a predicted final score as 'AA-HH' (away first) if given else empty, and the reason in at most twelve words.",
+    "Only include a pick the text states plainly. Never guess from tone, never include a pick for another game, and never invent a line or score. If nothing qualifies, return an empty list.",
+    "Return JSON: {\"picks\": [{\"outlet\": \"\", \"picker\": \"\", \"team\": \"\", \"side\": \"ATS\", \"line\": \"\", \"score\": \"\", \"reason\": \"\"}]}",
+  ].join(" ");
+}
+// Which side of the game a team name means. The slate names schools
+// without mascots ("Virginia Tech", "Penn State") and the model is told to
+// answer with one of the two names given, so the full name and the short
+// name are the aliases, whole word, and anything matching both or neither
+// is refused.
+export function teamAliases(full, short) {
+  return [...new Set([searchName(full).toLowerCase(), String(short || "").toLowerCase()].filter((x) => x.length >= 2))];
+}
+export function sideOf(game, text) {
+  const t = String(text || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!t) return null;
+  const hit = (al) => al.some((x) => new RegExp(`(^|[^a-z])${x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`).test(t));
+  const a = hit(teamAliases(game.away, game.awayShort)), h = hit(teamAliases(game.home, game.homeShort));
+  return a && !h ? "away" : h && !a ? "home" : null;
+}
+export async function extractPicks(env, game, items) {
+  if (!items.length) return { picks: [] };
+  if (!env.OPENAI_API_KEY) return { picks: [], error: "no model key" };
+  const ordered = [...items].sort((a, b) => (b.blurb ? b.blurb.length : 0) - (a.blurb ? a.blurb.length : 0));
+  const text = ordered.map((n, i) => `- [#${i} ${n.source || "news"}] ${n.headline}${n.blurb ? ` — ${n.blurb.slice(0, 2500)}` : ""}`).join("\n").slice(0, 16000);
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model: env.OPENAI_MODEL || "gpt-4o-mini",
+      messages: [{ role: "system", content: picksPrompt() }, { role: "user", content: `Game: ${searchName(game.away)} (away) at ${searchName(game.home)} (home). Sealed line: ${searchName(game.favorite)} -${game.spread}.\n${text}` }],
+      response_format: { type: "json_schema", json_schema: { name: "picks", strict: true, schema: { type: "object", additionalProperties: false, required: ["picks"], properties: { picks: { type: "array", items: { type: "object", additionalProperties: false, required: ["outlet", "picker", "team", "side", "line", "score", "reason"], properties: { outlet: { type: "string" }, picker: { type: "string" }, team: { type: "string" }, side: { type: "string", enum: ["ATS", "SU", "BOTH"] }, line: { type: "string" }, score: { type: "string" }, reason: { type: "string" } } } } } } } },
+      temperature: 0,
+    }),
+  });
+  if (!res.ok) return { picks: [], error: `model ${res.status}` };
+  try {
+    const parsed = JSON.parse((await res.json()).choices?.[0]?.message?.content || "{}");
+    const seen = new Set();
+    const picks = (parsed.picks || []).map((p) => {
+      const side = sideOf(game, p.team);
+      if (!side || !p.outlet) return null;
+      const outlet = String(p.outlet).trim().slice(0, 40);
+      const item = ordered.find((n) => String(n.source || "").toLowerCase() === outlet.toLowerCase()) || ordered.find((n) => new RegExp(outlet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(n.source || "")) || null;
+      const score = /^\d{1,2}-\d{1,2}$/.test(String(p.score || "").trim()) ? String(p.score).trim() : "";
+      return { outlet, picker: String(p.picker || "").trim().slice(0, 40), side, type: p.side, line: String(p.line || "").trim().slice(0, 8), score, reason: String(p.reason || "").trim().slice(0, 90), link: item?.link || null };
+    }).filter(Boolean)
+      // One tile per outlet and picker.
+      .filter((p) => { const k = `${p.outlet}|${p.picker}`.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => outletRank(a.outlet) - outletRank(b.outlet)).slice(0, 12);
+    return { picks };
+  } catch { return { picks: [], error: "bad model json" }; }
+}
+export async function gamePicks(env, week, game, ctx = null) {
+  const key = picksKey(week, game.id);
+  const hit = await env.LIFTR_KV.get(key, "json");
+  const has = !!hit?.picks?.length;
+  const fresh = hit && Date.now() - hit.at < (has ? 6 * 3600 * 1000 : 30 * 60 * 1000);
+  if (fresh) return hit;
+  if (hit && has && ctx && !(hit.refreshing && Date.now() - hit.refreshing < 2 * 60 * 1000)) {
+    try { await env.LIFTR_KV.put(key, JSON.stringify({ ...hit, refreshing: Date.now() }), { expirationTtl: 24 * 3600 }); } catch {}
+    ctx.waitUntil(refreshPicks(env, week, game, key).catch((err) => console.error("picks refresh", String(err?.message || err))));
+    return { ...hit, stale: true };
+  }
+  return refreshPicks(env, week, game, key);
+}
+async function refreshPicks(env, week, game, key) {
+  let items = [], siteError = null;
+  try {
+    const r = await fetchText(`${env.FEEDS_URL || "https://raw.githubusercontent.com/Jstoll1/liftr/main/data/feeds"}/w${week}.json`, "application/json", null);
+    if (r.ok) items = JSON.parse(r.text)?.games?.[String(game.id)]?.picks || []; else siteError = r.error;
+  } catch (err) { siteError = String(err?.message || err).slice(0, 80); }
+  items = (Array.isArray(items) ? items : []).filter((n) => n && typeof n.headline === "string").slice(0, 12);
+  const r = await extractPicks(env, game, items);
+  const out = { at: Date.now(), picks: r.picks, articles: items.length, siteError, error: r.error || null };
+  if (!out.error) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 24 * 3600 }); } catch {} }
+  return out;
+}
+
 // `fromPhone` is what the phone could reach that the Worker cannot:
 // ESPN's team news and GDELT. It is merged with the Worker's own search.
 // A read that found players is good for three hours; an empty one is

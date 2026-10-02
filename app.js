@@ -3665,6 +3665,17 @@ async function fetchNewsInjuries(gameId, items) {
 // GDELT straight from the phone: a free news index whose API allows
 // browser requests, so wider news no longer hangs on the Worker reaching
 // Google. Same shape as the Worker's items.
+// Expert picks for the game, extracted by the Worker from the pieces the
+// feeds runner found. A warm cache answers at once; a stale one is
+// refreshed behind the response.
+async function fetchExpertPicks(gameId) {
+  if (!WORKER_URL) return null;
+  try {
+    const res = await fetch(`${WORKER_URL}/insights/picks?week=${currentWeek}&game=${gameId}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
 async function fetchGdeltNews(game) {
   const clean = (n) => String(n || "").replace(/^#\d+\s+/, "").replace(/[()]/g, "").trim();
   const A = clean(game.away), H = clean(game.home);
@@ -3850,7 +3861,8 @@ async function openInsights(gameId) {
   // Worker's extras slot in after, and slow Worker calls are capped.
   const token = ++insightsOpenToken;
   let data = null, snap = null, summaryRaw = null, awayNews = [], homeNews = [], wider = [], newsInj = null, gdelt = [], siteFeed = null;
-  const pend = { summary: true, news: true, wider: true, ai: true, inj: true, gdelt: true, site: true };
+  const pend = { summary: true, news: true, wider: true, ai: true, inj: true, gdelt: true, site: true, picks: true };
+  let xpicks = null;
   let aiPv = null;
   const alive = () => token === insightsOpenToken && !modal.classList.contains("hidden");
   const land = (promise, set, key) => promise.then((v) => { set(v); }).catch(() => {}).finally(() => { if (key) pend[key] = false; if (alive()) paint(); });
@@ -4050,6 +4062,27 @@ async function openInsights(gameId) {
   const injuryish = (n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|depth chart|starting|lineup/i.test(n.headline) ? 0 : 1;
   const rank = (n) => (n.team === "This game" || n.about === "game" ? 0 : 1) * 100 + injuryish(n) * 30 + tier(n) * 10 + (n.published ? Math.min(9, Math.floor((Date.now() - new Date(n.published).getTime()) / 86400000)) : 9);
   const newsRows = mixed.filter((n) => { const k = norm(n.headline); if (!k || seen.has(k)) return false; seen.add(k); return true; }).sort((x, y) => rank(x) - rank(y));
+  // Expert picks: a tile per outlet, four across, the picked team's logo
+  // and the line as written. Tap a tile for the piece.
+  {
+    const list = (xpicks?.picks || []).slice(0, 8);
+    if (list.length) {
+      const nA = list.filter((p) => p.side === "away").length, nH = list.length - nA;
+      const lead = nA >= nH ? { n: nA, short: game.awayShort } : { n: nH, short: game.homeShort };
+      const sum = nA && nH ? `${lead.n} OF ${list.length} ON ${esc(lead.short.toUpperCase())}` : `ALL ${list.length} ON ${esc(lead.short.toUpperCase())}`;
+      const tile = (p) => {
+        const id = p.side === "away" ? game.awayId : game.homeId, short = p.side === "away" ? game.awayShort : game.homeShort;
+        // Two tokens at most so the cell never overflows: the line as
+        // written (or SU when the piece picks a winner only), then a score.
+        const line = [p.line || (p.type === "SU" ? "SU" : "ATS"), p.score].filter(Boolean).join(" · ");
+        const who = p.picker ? `${p.outlet} · ${p.picker}` : p.outlet;
+        const inner = `<span class="xp-out" title="${esc(who)}">${esc(who)}</span><span class="xp-pick">${lg(id)}<b>${esc(short.toUpperCase())}</b></span><span class="xp-line">${esc(line)}</span>`;
+        return p.link ? `<a class="xp-tile ${p.side}" href="${esc(p.link)}" target="_blank" rel="noopener" title="${esc(p.reason || "")}">${inner}</a>` : `<span class="xp-tile ${p.side}" title="${esc(p.reason || "")}">${inner}</span>`;
+      };
+      html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid">${list.map(tile).join("")}</div>`;
+    } else if (pend.picks) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-loading">Checking the pickers…</div>`;
+    else html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-empty small">No published picks yet. The outlets usually call games Thursday and Friday.</div>`;
+  }
   if (!newsRows.length && (pend.news || pend.wider || pend.gdelt || pend.site)) html += `<div class="ins-h">NEWS</div><div class="ins-loading">Loading news…</div>`;
   const newsErr = !pend.wider && !pend.gdelt && !pend.site && !wider.length && !gdelt.length && !(siteFeed?.news || []).length && (wider.errors || []).length ? `<div class="ins-empty small"><i class="ins-err">More sources unavailable: ${esc(wider.errors.slice(0, 2).join(" · "))}</i></div>` : "";
   const newsLi = (n) => `<li><b class="ins-nh">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det"><em class="ins-src">${esc(n.source || "")}</em>${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`;
@@ -4126,6 +4159,7 @@ async function openInsights(gameId) {
   // Ask for the Worker's cached read first: a warm cache answers in a
   // few hundred milliseconds and paints at once. Only when that comes
   // back empty does the slow path run, with the articles the phone found.
+  land(withTimeout(fetchExpertPicks(gameId), 30000, null), (v) => { xpicks = v; }, "picks");
   const quickInj = withTimeout(fetchNewsInjuries(gameId, null), 4000, null);
   land(quickInj, (v) => { if (v && (v.away?.length || v.home?.length)) newsInj = v; });
   land(withTimeout(quickInj.then((q) => (q && (q.away?.length || q.home?.length) && !q.stale) ? q : injItems.then((items) => fetchNewsInjuries(gameId, items))), 40000, null), (v) => { if (v && (v.away?.length || v.home?.length || !newsInj)) newsInj = v; }, "inj");

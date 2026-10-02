@@ -6,7 +6,7 @@
 //
 // Read-only against the Worker; writes one JSON file. Run: node scripts/fetch-feeds.mjs
 import { writeFile, mkdir } from "node:fs/promises";
-import { parseGoogleNewsRss, parseBingNewsRss, filterNews, searchName } from "../worker/src/insights.js";
+import { parseGoogleNewsRss, parseBingNewsRss, filterNews, searchName, outletRank } from "../worker/src/insights.js";
 
 const WORKER = process.env.WORKER_URL || "https://liftr-ai.jhs797.workers.dev";
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
@@ -106,6 +106,7 @@ for (const g of games) {
     home: [rss(google(`"${H}" football`)), rss(bing(`"${H}" football`), true)],
     awayInj: [rss(google(`"${A}" football injury report`)), rss(google(`"${A}" football injury OR questionable OR doubtful OR "ruled out"`)), rss(bing(`${A} football injury report`), true)],
     homeInj: [rss(google(`"${H}" football injury report`)), rss(google(`"${H}" football injury OR questionable OR doubtful OR "ruled out"`)), rss(bing(`${H} football injury report`), true)],
+    picks: [rss(google(`"${A}" "${H}" prediction OR picks OR "against the spread"`)), rss(google(`"${A}" vs "${H}" prediction`)), rss(bing(`${A} ${H} prediction picks`), true)],
   };
   const got = {};
   for (const [k, ps] of Object.entries(pulls)) {
@@ -137,16 +138,25 @@ for (const g of games) {
     const texts = await Promise.all(list.map((n) => articleText(n.link, `g${g.id} ${n.source}: ${n.headline.slice(0, 40)}`)));
     list.forEach((n, i) => { if (texts[i]) n.blurb = texts[i]; });
   }
+  // Expert picks: pieces that name both teams and call the game, bodies
+  // fetched so the Worker's model can read the actual pick. Reputable
+  // outlets first.
+  const PICK = /predict|\bpicks?\b|against the spread|\bats\b|odds|best bets?|expert|preview/i;
+  const picks = tag(filterNews([...got.picks, ...got.game]).filter((n) => { const h = String(n.headline).toLowerCase(); return !NFL.test(h) && aA.some((x) => wholeWord(h, x)) && aH.some((x) => wholeWord(h, x)) && PICK.test(n.headline); }), "game")
+    .sort((x, y) => outletRank(x.source) - outletRank(y.source)).slice(0, 8);
+  {
+    const texts = await Promise.all(picks.map((n) => articleText(n.link, `g${g.id} picks ${n.source}: ${n.headline.slice(0, 40)}`)));
+    picks.forEach((n, i) => { if (texts[i]) n.blurb = texts[i]; });
+  }
   out.games[g.id] = {
+    picks,
     news: [...tag(names(got.game, [...aA, ...aH]), "game"), ...tag(names(got.away, aA), "away"), ...tag(names(got.home, aH), "home")].slice(0, 30),
     injuries: { away: injAway, home: injHome },
   };
-  console.log(`g${g.id} ${A} at ${H}: news ${out.games[g.id].news.length}, injury articles ${injAway.length}/${injHome.length}, with text ${injAway.filter((n) => n.blurb).length}/${injHome.filter((n) => n.blurb).length}`);
+  console.log(`g${g.id} ${A} at ${H}: news ${out.games[g.id].news.length}, pick pieces ${picks.length} (${picks.filter((n) => n.blurb).length} with text), injury articles ${injAway.length}/${injHome.length}, with text ${injAway.filter((n) => n.blurb).length}/${injHome.filter((n) => n.blurb).length}`);
   await sleep(800);
 }
 await mkdir("data/feeds", { recursive: true });
 await writeFile(`data/feeds/w${week}.json`, JSON.stringify(out));
 console.log(`wrote data/feeds/w${week}.json; ${out.errors.length} feed errors`);
 if (failures.length) console.log(`article bodies not read (${failures.length}):\n  ` + failures.join("\n  "));
-
-// Warm-up pass added to the workflow; this touch starts a run.

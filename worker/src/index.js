@@ -1,4 +1,4 @@
-import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, linesKey, gameInjuries } from "./insights.js";
+import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, linesKey, gameInjuries, gamePicks } from "./insights.js";
 // Liftr AI Worker
 //
 // Holds the OpenAI API key server-side (never exposed to the browser) and
@@ -160,6 +160,18 @@ export default {
       } catch (err) {
         console.error("insights news", err?.stack || String(err));
         return json({ items: [], error: "News failed" }, 200, corsHeaders);
+      }
+    }
+    if (url.pathname === "/insights/picks") {
+      try {
+        const week = url.searchParams.get("week") ? Number(url.searchParams.get("week")) : (await readWeeks(env)).current;
+        const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
+        const g = (slate?.games || []).find((x) => Number(x.id) === Number(url.searchParams.get("game")));
+        if (!g) return json({ picks: [], error: "no such game" }, 404, corsHeaders);
+        return json(await gamePicks(env, week, g, ctx), 200, { ...corsHeaders, "Cache-Control": "no-store" });
+      } catch (err) {
+        console.error("insights picks", err?.stack || String(err));
+        return json({ picks: [], error: "Picks failed" }, 200, corsHeaders);
       }
     }
     if (url.pathname === "/insights/injuries") {

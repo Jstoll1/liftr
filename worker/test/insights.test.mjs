@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { tidyNote, verifyQuote, parseRoster, fillPositions, parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { sideOf, extractPicks, gamePicks, picksKey, outletRank, tidyNote, verifyQuote, parseRoster, fillPositions, parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -251,4 +251,32 @@ test("gameInjuries answers a stale cached read at once and refreshes behind the 
   refreshed = null;
   const again = await gameInjuries({ LIFTR_KV: kv, OPENAI_API_KEY: "k" }, 5, game, null, ctx);
   assert.equal(again.away[0].status, "OUT"); assert.equal(refreshed, null);
+});
+
+test("sideOf maps a free-text team name to a side and refuses ambiguity", () => {
+  const g = { away: "Pitt", awayShort: "Pitt", home: "Virginia Tech", homeShort: "VT" };
+  assert.equal(sideOf(g, "Pitt"), "away");
+  assert.equal(sideOf(g, "Pittsburgh Panthers"), null);
+  assert.equal(sideOf(g, "Virginia Tech Hokies"), "home");
+  assert.equal(sideOf(g, "VT"), "home");
+  assert.equal(sideOf(g, "Virginia"), null);
+  assert.equal(sideOf(g, "Pitt and Virginia Tech"), null);
+  assert.ok(outletRank("CBS Sports") < outletRank("Some Blog"));
+});
+
+test("extractPicks keeps one validated pick per outlet and picker, reputable first, with the piece's link", async () => {
+  const g = { id: 3, away: "Pitt", awayShort: "Pitt", home: "Virginia Tech", homeShort: "VT", favorite: "Pitt", spread: 3.5 };
+  const items = [{ source: "fansided", headline: "Pitt vs Virginia Tech prediction", link: "https://f.com/1", blurb: "We like the Hokies." }, { source: "CBS Sports", headline: "Pitt vs. Virginia Tech picks", link: "https://cbs.com/2", blurb: "Pick: Pitt -3.5. Score 27-24." }];
+  globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ picks: [
+    { outlet: "FanSided", picker: "", team: "Virginia Tech", side: "ATS", line: "+3.5", score: "", reason: "home dog" },
+    { outlet: "CBS Sports", picker: "", team: "Pitt", side: "BOTH", line: "-3.5", score: "27-24", reason: "better quarterback" },
+    { outlet: "CBS Sports", picker: "", team: "Pitt", side: "ATS", line: "-3.5", score: "", reason: "dupe" },
+    { outlet: "Nowhere", picker: "", team: "Ohio State", side: "SU", line: "", score: "", reason: "wrong game" },
+  ] }) } }] }), { status: 200 });
+  const r = await extractPicks({ OPENAI_API_KEY: "k" }, g, items);
+  assert.deepEqual(r.picks.map((p) => `${p.outlet}:${p.side}:${p.type}:${p.line}:${p.score}:${p.link}`), ["CBS Sports:away:BOTH:-3.5:27-24:https://cbs.com/2", "FanSided:home:ATS:+3.5::https://f.com/1"]);
+  const kv = fakeKv();
+  globalThis.fetch = async (url) => /raw\.githubusercontent/.test(String(url)) ? new Response(JSON.stringify({ games: { 3: { picks: items } } }), { status: 200 }) : new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ picks: [{ outlet: "CBS Sports", picker: "", team: "Pitt", side: "ATS", line: "-3.5", score: "", reason: "" }] }) } }] }), { status: 200 });
+  const first = await gamePicks({ LIFTR_KV: kv, OPENAI_API_KEY: "k" }, 5, g);
+  assert.equal(first.picks.length, 1); assert.ok(kv.writes.includes(picksKey(5, 3)));
 });
