@@ -548,7 +548,7 @@ export async function gamePreview(env, week, game, facts) {
 // injury coverage, then have the model pull a structured list from the
 // headlines and blurbs. Cached three hours; only names with a stated
 // status come through, and every row carries the outlet it came from.
-export const injuriesKey = (week, gameId) => `inj:v4:w${week}:g${gameId}`;
+export const injuriesKey = (week, gameId) => `inj:v5:w${week}:g${gameId}`;
 export const INJURY_STATUSES = ["OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "RETURNING", "SUSPENDED"];
 export function injuriesPrompt() {
   return [
