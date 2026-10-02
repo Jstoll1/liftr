@@ -4071,7 +4071,11 @@ async function openInsights(gameId) {
       const lead = nA >= nH ? { n: nA, short: game.awayShort } : { n: nH, short: game.homeShort };
       const sum = nA && nH ? `${lead.n} OF ${list.length} ON ${esc(lead.short.toUpperCase())}` : `ALL ${list.length} ON ${esc(lead.short.toUpperCase())}`;
       const tile = (p) => {
-        const id = p.side === "away" ? game.awayId : game.homeId, short = p.side === "away" ? game.awayShort : game.homeShort;
+        // ESPN's abbreviation fits a quarter-width tile; a long slate name
+        // ("Virginia Tech") falls back to its initials rather than clipping.
+        const id = p.side === "away" ? game.awayId : game.homeId;
+        const raw = abbrOf(p.side) || "";
+        const short = raw.length <= 6 ? raw : raw.split(/[\s-]+/).length > 1 ? raw.split(/[\s-]+/).map((w) => w[0]).join("") : raw.slice(0, 5);
         // Two tokens at most so the cell never overflows: the line as
         // written (or SU when the piece picks a winner only), then a score.
         const line = [p.line || (p.type === "SU" ? "SU" : "ATS"), p.score].filter(Boolean).join(" · ");
