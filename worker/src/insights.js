@@ -612,14 +612,23 @@ export async function gameInjuries(env, week, game, fromPhone = null) {
   const key = injuriesKey(week, game.id);
   const hit = await env.LIFTR_KV.get(key, "json");
   const fresh = hit && Date.now() - hit.at < ((hit.away?.length || hit.home?.length) ? 3 * 3600 * 1000 : 15 * 60 * 1000);
-  if (fresh && !(fromPhone && !(hit.away?.length || hit.home?.length))) return hit;
+  if (fresh && (hit.away?.length || hit.home?.length)) return hit;
+  if (fresh && !fromPhone && hit.site) return hit;
   const clean = (list) => (Array.isArray(list) ? list : []).filter((n) => n && typeof n.headline === "string").slice(0, 12).map((n) => ({ headline: String(n.headline).slice(0, 200), blurb: n.blurb ? String(n.blurb).slice(0, 1800) : null, source: n.source ? String(n.source).slice(0, 60) : null, link: typeof n.link === "string" ? n.link.slice(0, 300) : null, published: n.published || null }));
+  // The site's feed file, pulled by the scheduled Action from a network the
+  // news hosts do not throttle, carries article bodies. Read it here too so
+  // the extraction does not depend on a phone forwarding it.
+  let siteInj = null;
+  try {
+    const r = await fetchText(`${env.SITE_URL || "https://brochiefs.com"}/data/feeds/w${week}.json`, "application/json", env);
+    if (r.ok) siteInj = JSON.parse(r.text)?.games?.[String(game.id)]?.injuries || null;
+  } catch {}
   const [ownAway, ownHome] = await Promise.all([injuryNewsFor(game.away, env), injuryNewsFor(game.home, env)]);
   const merge = (own, extra) => { const all = filterNews([...own, ...clean(extra)]); const kept = all.filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i.test(`${n.headline} ${n.blurb || ""}`)).slice(0, 10); kept.raw = own.raw; kept.sent = clean(extra).length; return kept; };
-  const awayNews = merge(ownAway, fromPhone?.away), homeNews = merge(ownHome, fromPhone?.home);
+  const awayNews = merge(ownAway, [...(siteInj?.away || []), ...(fromPhone?.away || [])]), homeNews = merge(ownHome, [...(siteInj?.home || []), ...(fromPhone?.home || [])]);
   const [away, home] = await Promise.all([extractInjuries(env, game.away, awayNews), extractInjuries(env, game.home, homeNews)]);
   const srcs = (items) => items.map((n) => ({ headline: n.headline, link: n.link, source: n.source, published: n.published })).slice(0, 4);
-  const out = { at: Date.now(), away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, found: { away: awayNews.length, home: homeNews.length, awaySources: awayNews.raw, homeSources: homeNews.raw, fromPhone: { away: awayNews.sent || 0, home: homeNews.sent || 0 } }, error: away.error || home.error || null };
+  const out = { at: Date.now(), site: !!siteInj, away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, found: { away: awayNews.length, home: homeNews.length, awaySources: awayNews.raw, homeSources: homeNews.raw, fromPhone: { away: awayNews.sent || 0, home: homeNews.sent || 0 } }, error: away.error || home.error || null };
   if (!out.error) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 24 * 3600 }); } catch {} }
   return out;
 }

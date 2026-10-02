@@ -105,8 +105,13 @@ for (const g of games) {
   const aA = aliases(g.away, g.awayShort), aH = aliases(g.home, g.homeShort);
   const names = (list, al) => list.filter((n) => { const h = String(n.headline).toLowerCase(); return !NFL.test(h) && al.some((x) => wholeWord(h, x)); });
   const injOnly = (list, al) => names(list, al).filter((n) => INJ.test(`${n.headline} ${n.blurb || ""}`));
-  const injAway = tag(injOnly([...got.awayInj, ...got.away], aA), "away").slice(0, 6);
-  const injHome = tag(injOnly([...got.homeInj, ...got.home], aH), "home").slice(0, 6);
+  // One pool of injury coverage for the game, filed under every team the
+  // headline names, so a conference availability report feeds both sides.
+  // Copies with a snippet win the dedupe, so Bing's blurb survives Google's
+  // bare title.
+  const pool = filterNews([...got.awayInj, ...got.homeInj, ...got.away, ...got.home, ...got.game].sort((x, y) => (y.blurb ? 1 : 0) - (x.blurb ? 1 : 0)));
+  const injAway = tag(injOnly(pool, aA), "away").slice(0, 6);
+  const injHome = tag(injOnly(pool, aH), "home").slice(0, 6);
   // Article bodies for the injury pieces, a few at a time.
   for (const list of [injAway, injHome]) {
     const texts = await Promise.all(list.map((n) => articleText(n.link, `g${g.id} ${n.source}: ${n.headline.slice(0, 40)}`)));
