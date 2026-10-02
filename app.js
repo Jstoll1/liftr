@@ -4059,7 +4059,11 @@ async function openInsights(gameId) {
   const statusCls = (st) => `st-${String(st || "").toLowerCase().replace(/[^a-z]/g, "")}`;
   const col = (label, list, ok, teamId, err) => `<div class="ins-col"><div class="ins-team">${lg(teamId)}${esc(label)}</div>` + (list?.length
     ? `<ul class="ins-inj">${list.slice(0, 7).map((i) => {
-        const row = `<b class="${statusCls(i.status)}">${esc(i.status)}</b><span class="ins-who">${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}</span>${i.detail ? `<span class="ins-det">${esc(i.detail)}</span>` : ""}`;
+        // The grey line earns its place only with a fact: "injury" alone or
+        // the status in other words ("still uncertain to play") is noise.
+        const weak = /^(injur(y|ed|ies)|unspecified|undisclosed( injury)?|not specified)\.?$|^(still |remains )?(uncertain|unsure|unlikely|likely|listed|questionable|doubtful|probable|out)( to (play|suit up))?\.?$|injury from (last|previous) (game|week)|not (yet )?specified/i;
+        const det = i.detail && !weak.test(i.detail.replace(/\s*·\s*via .*$/i, "").trim()) ? i.detail : i.detail && /via /i.test(i.detail) ? i.detail.replace(/^.*?·\s*(via .*)$/i, "$1") : "";
+        const row = `<b class="${statusCls(i.status)}">${esc(i.status)}</b><span class="ins-who">${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}</span>${det ? `<span class="ins-det">${esc(det)}</span>` : ""}`;
         // A beat-writer row with a verified sentence unfolds on tap to show it.
         if (!i.quote && !i.note) return `<li>${row}</li>`;
         const src = i.link ? `<a href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.source || "Read more")} ↗</a>` : i.source ? `<span>${esc(i.source)}</span>` : "";
