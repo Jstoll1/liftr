@@ -548,7 +548,7 @@ export async function gamePreview(env, week, game, facts) {
 // injury coverage, then have the model pull a structured list from the
 // headlines and blurbs. Cached three hours; only names with a stated
 // status come through, and every row carries the outlet it came from.
-export const injuriesKey = (week, gameId) => `inj:v9:w${week}:g${gameId}`;
+export const injuriesKey = (week, gameId) => `inj:v10:w${week}:g${gameId}`;
 export const INJURY_STATUSES = ["OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "RETURNING", "SUSPENDED"];
 export function injuriesPrompt() {
   return [
@@ -558,7 +558,7 @@ export function injuriesPrompt() {
     "For each: name as written, position, status, and a short detail (injury or reason, max 8 words) plus the outlet name.",
     "Every player needs a position abbreviation (QB, RB, WR, TE, OL, DL, DE, DT, EDGE, LB, CB, S, K, P, LS). Take it from the text first, including role words such as 'tight end', 'safety' or 'left tackle', and otherwise from what you know of that player on this team. Leave it empty only when you truly have no idea.",
     "Also copy, as 'quote', the one sentence from the text that states the player's status, verbatim and unedited (max 200 characters). Never paraphrase it; if no single sentence states it, use an empty string.",
-    "Also write 'note': one or two plain sentences (max 220 characters) giving what the text actually says about this player beyond the status: the injury or body part, when it happened, whether he has practiced, the expected timeline, and who fills in. Use only facts stated in the text about this player. No speculation, no repeating the status word alone. If the text gives nothing beyond the status, use an empty string.",
+    "Also write 'note': one or two plain sentences (max 220 characters) giving what the text actually says about this player beyond the status: the injury or body part, when it happened, whether he has practiced, the expected timeline, and who fills in. Use only facts stated in the text about this player. No speculation and no opinion. Never write a note that only restates the status ('is doubtful, indicating he may not play'); if the text gives nothing beyond the status, use an empty string.",
     "Return JSON: {\"players\": [{\"name\": \"\", \"pos\": \"\", \"status\": \"\", \"detail\": \"\", \"source\": \"\", \"quote\": \"\", \"note\": \"\"}]}",
   ].join(" ");
 }
@@ -650,7 +650,12 @@ const squash = (s) => String(s || "").toLowerCase().replace(/&#(\d+);/g, (_, d) 
 const STATUS_WORDS = /out|doubtful|questionable|probable|return|suspend|miss|sidelined|practice|injur|limited|available|expected|cleared/i;
 // The note is the model's reading of the article, so it is kept short and
 // dropped when it only restates the status.
-const tidyNote = (n) => { const t = String(n || "").replace(/\s+/g, " ").trim().slice(0, 240); return t.length >= 20 && !/^(out|doubtful|questionable|probable)\.?$/i.test(t) ? t : null; };
+// A note earns its place only with a concrete fact (a body part, a game,
+// practice, a timeline, a replacement). "Doubtful, indicating he may not
+// play" is the status again in more words, and opinion is not a fact.
+const NOTE_FACT = /injur|ankle|knee|hamstring|shoulder|head|concussion|foot|leg|hand|wrist|arm|hip|groin|calf|thigh|surgery|practic|quarter|half|against|since|miss|week|tent|downgrad|upgrad|travel|snaps|start|fill|replac|lineup|tackle|carries|targets|return from|season/i;
+const NOTE_FILLER = /\b(indicating|suggesting|meaning|signaling)\b|\bsignificant\b|\bimportant\b|\bkey (for|to)\b|\bbig (for|loss)\b|\bavailability is uncertain\b|\bstatus (is|remains) (doubtful|questionable|probable|uncertain)\b/i;
+export const tidyNote = (n) => { const t = String(n || "").replace(/\s+/g, " ").trim().slice(0, 240); return t.length >= 20 && NOTE_FACT.test(t) && !NOTE_FILLER.test(t) ? t : null; };
 export function verifyQuote(items, quote, name) {
   const tidy = (q) => String(q || "").replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d))).replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").replace(/\s+([,.;:])/g, "$1").trim().slice(0, 220);
   let q = tidy(quote), hit = null;

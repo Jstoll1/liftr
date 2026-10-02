@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { verifyQuote, parseRoster, fillPositions, parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { tidyNote, verifyQuote, parseRoster, fillPositions, parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -219,4 +219,13 @@ test("verifyQuote keeps only sentences really in the articles and attaches that 
   assert.ok(r && r.quote.startsWith("…") && !r.quote.includes("&#") && r.quote.includes("Cunningham was added later"), r?.quote);
   assert.ok(r.quote.indexOf("Cunningham") <= 72, r.quote);
   assert.equal(verifyQuote(messy, "Jones , Williams &#34;Snook&#34; Peterkin Kahlil Smith", "Kahlil Smith").quote, 'Jones, Williams "Snook" Peterkin Kahlil Smith');
+});
+
+test("tidyNote keeps notes with a concrete fact and drops status restatements and opinion", () => {
+  assert.equal(tidyNote("Terry went down with an injury in the second quarter against Maryland."), "Terry went down with an injury in the second quarter against Maryland.");
+  assert.equal(tidyNote("Dehnicke went to the blue medical tent and did not return to the game after a head injury against Indiana."), "Dehnicke went to the blue medical tent and did not return to the game after a head injury against Indiana.");
+  assert.equal(tidyNote("Turner is listed as doubtful, indicating he may not play."), null);
+  assert.equal(tidyNote("Brookins' availability is uncertain as the game approaches."), null);
+  assert.equal(tidyNote("Greene's potential return is significant for the offense."), null);
+  assert.equal(tidyNote(""), null);
 });
