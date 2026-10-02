@@ -420,7 +420,8 @@ async function fetchText(url, accept, env = null) {
     const res = await fetch(url, { headers: { "User-Agent": UA, Accept: accept, "Accept-Language": "en-US,en;q=0.9" } });
     if (res.ok) {
       const text = await res.text();
-      if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(key, JSON.stringify({ at: Date.now(), text: text.slice(0, 200000) }), { expirationTtl: 3600 }); } catch {} }
+      // Feed bodies are small; the site's feed file is not, so the cap is generous.
+      if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(key, JSON.stringify({ at: Date.now(), text: text.slice(0, 4000000) }), { expirationTtl: 3600 }); } catch {} }
       return { ok: true, text };
     }
     if (res.status !== 503 && res.status !== 429) return { ok: false, error: `HTTP ${res.status}` };
@@ -547,7 +548,7 @@ export async function gamePreview(env, week, game, facts) {
 // injury coverage, then have the model pull a structured list from the
 // headlines and blurbs. Cached three hours; only names with a stated
 // status come through, and every row carries the outlet it came from.
-export const injuriesKey = (week, gameId) => `inj:v3:w${week}:g${gameId}`;
+export const injuriesKey = (week, gameId) => `inj:v4:w${week}:g${gameId}`;
 export const INJURY_STATUSES = ["OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "RETURNING", "SUSPENDED"];
 export function injuriesPrompt() {
   return [

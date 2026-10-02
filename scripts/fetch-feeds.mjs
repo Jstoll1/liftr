@@ -60,9 +60,17 @@ async function articleText(link, label) {
   try {
     let url = link;
     if (/news\.google\.com/.test(url)) { url = await resolveGoogle(url); if (!url) { failures.push(`${label}: google decode failed`); return null; } }
-    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html", "Accept-Language": "en-US,en;q=0.9" }, redirect: "follow" });
-    if (!res.ok) { failures.push(`${label}: HTTP ${res.status} ${new URL(url).hostname}`); return null; }
-    const html = (await res.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, "");
+    let res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html", "Accept-Language": "en-US,en;q=0.9" }, redirect: "follow" });
+    let html = res.ok ? await res.text() : "";
+    // Hosts that refuse automated readers (On3, 247Sports) and pages that
+    // render only in a browser (MSN) go through a public reader proxy that
+    // returns the article as plain text.
+    if (!res.ok || /msn\.com/.test(url)) {
+      const alt = await fetch(`https://r.jina.ai/${url}`, { headers: { "User-Agent": UA, Accept: "text/plain", "X-Return-Format": "text" } });
+      if (alt.ok) { const t = (await alt.text()).replace(/\s+/g, " ").trim(); if (t.length > 200) return t.slice(0, 3000); }
+      if (!res.ok) { failures.push(`${label}: HTTP ${res.status} ${new URL(url).hostname}, reader ${alt.status}`); return null; }
+    }
+    html = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, "");
     // Paragraphs and list items, nav junk and repeats dropped, the ones that
     // carry a status first so the cap never eats the player list.
     const clean = (t) => t.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;|&#8217;/g, "'").replace(/&quot;|&ldquo;|&rdquo;/g, '"').replace(/\s+/g, " ").trim();
