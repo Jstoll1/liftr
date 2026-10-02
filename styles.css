@@ -4150,3 +4150,33 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .bug-foot .bug-hidden-note { text-align: left; flex: 1 1 auto; min-width: 0; }
 .bug-foot-txt { font-size: 9px; color: var(--text-dim); flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bug-foot .insights-btn { flex: 0 0 auto; }
+
+/* Live gamecast at the top of the INFO sheet. */
+.lv { margin: 2px 0 8px; padding: 8px 10px 9px; border-radius: 10px; border: 1px solid rgba(0, 229, 255, .35); background: linear-gradient(180deg, rgba(0, 229, 255, .08), rgba(0, 229, 255, .02)); box-shadow: 0 0 14px rgba(0, 229, 255, .12); }
+.lv.fin { border-color: rgba(255, 228, 94, .4); background: linear-gradient(180deg, rgba(255, 228, 94, .07), rgba(255, 228, 94, .02)); box-shadow: none; }
+.lv-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.lv-tag { display: inline-flex; align-items: center; gap: 5px; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .1em; color: var(--neon-cyan); }
+.lv.fin .lv-tag { color: var(--neon-yellow); }
+.lv-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); animation: lvblink 1.2s steps(2, start) infinite; }
+@keyframes lvblink { to { visibility: hidden; } }
+.lv-clock { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; letter-spacing: .06em; }
+.lv-rz { margin-left: auto; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: var(--neon-pink); border: 1px solid rgba(255, 32, 121, .5); border-radius: 4px; padding: 3px 5px; }
+.lv-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.lv-row img.lv-logo { width: 22px; height: 22px; }
+.lv-ab { font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: .04em; color: var(--text); }
+.lv-row.lead .lv-ab, .lv-row.lead .lv-sc { color: #fff; }
+.lv-poss { width: 7px; height: 7px; border-radius: 50%; background: var(--neon-yellow); box-shadow: 0 0 6px var(--neon-yellow); }
+.lv-sc { margin-left: auto; font-family: 'Press Start 2P', monospace; font-size: 14px; color: var(--text-dim); }
+.lv-row.lead .lv-sc { text-shadow: 0 0 8px rgba(255, 255, 255, .35); }
+.lv-sit { margin-top: 5px; font-size: 10.5px; color: var(--text); }
+.lv-sit em { font-style: normal; color: var(--text-dim); }
+.lv-last { margin-top: 4px; font-size: 10px; line-height: 1.35; color: var(--text-dim); }
+.lv-last b { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: var(--neon-cyan); margin-right: 4px; }
+.lv .win-prob-bar { margin-top: 7px; }
+.lv-sph { margin-top: 8px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: var(--text-dim); }
+.lv-sp { list-style: none; margin: 3px 0 0; padding: 0; }
+.lv-sp li { display: flex; align-items: center; gap: 6px; padding: 3px 0; border-top: 1px dashed rgba(255, 255, 255, .08); font-size: 10px; color: var(--text); }
+.lv-sp img.lv-splogo { width: 14px; height: 14px; flex: 0 0 auto; }
+.lv-spq { flex: 0 0 auto; font-size: 9px; color: var(--text-dim); min-width: 52px; }
+.lv-sptxt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lv-spsc { flex: 0 0 auto; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-yellow); }

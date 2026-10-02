@@ -406,6 +406,15 @@ function parseEspnEvents(events) {
       awayScore: away?.score != null ? Number(away.score) : null,
       homeScore: home?.score != null ? Number(home.score) : null,
       winProb,
+      // Where the ball is, for the live view on the sheet.
+      situation: comp.situation ? {
+        possessionId: comp.situation.possession != null ? Number(comp.situation.possession) : null,
+        downDistance: comp.situation.downDistanceText || comp.situation.shortDownDistanceText || null,
+        possessionText: comp.situation.possessionText || null,
+        isRedZone: !!comp.situation.isRedZone,
+        lastPlay: comp.situation.lastPlay?.text || null,
+        lastPlayTeamId: comp.situation.lastPlay?.team?.id != null ? Number(comp.situation.lastPlay.team.id) : null,
+      } : null,
     };
   });
   return byId;
@@ -3894,6 +3903,44 @@ async function openInsights(gameId) {
   if (nowOdds) { samples.push({ ...nowOdds, at: Date.now(), live: true }); reportLine(gameId, nowOdds); }
   const mv = movementFrom(game, samples) || snap?.movement || brief?.movement || null;
   const feedErr = (side) => direct ? null : snap?.feeds?.[side];
+  // Live or final: a gamecast in our theme at the top. Score and clock
+  // from the scoreboard, where the ball is and the last play from its
+  // situation, the current drive and scoring plays from ESPN's game page.
+  // Built as a function and prepended once abbrOf exists below.
+  const liveBlock = () => {
+  const lv = latestLive[gameId];
+  const liveNow = !!(lv && lv.found && lv.state === "in" && !lv.completed);
+  const finalNow = !!(lv && lv.found && lv.completed);
+  let liveHtml = "";
+  if (liveNow || finalNow) {
+    const sit = lv.situation || null;
+    const possA = sit?.possessionId != null && Number(sit.possessionId) === Number(game.awayId), possH = sit?.possessionId != null && Number(sit.possessionId) === Number(game.homeId);
+    const aS = lv.awayScore ?? 0, hS = lv.homeScore ?? 0;
+    const status = finalNow ? shortStatus(lv.detail || "Final") : shortStatus(lv.detail || `Q${lv.period ?? "?"} ${lv.clock ?? ""}`);
+    const row = (id, ab, sc, poss, lead) => `<div class="lv-row ${lead ? "lead" : ""}">${lg(id, "lv-logo")}<b class="lv-ab">${esc(ab)}</b>${poss && liveNow ? `<i class="lv-poss" title="Possession"></i>` : ""}<span class="lv-sc">${sc}</span></div>`;
+    const drives = summaryRaw?.drives || null;
+    const cur = liveNow ? drives?.current || null : null;
+    const curTeamId = cur?.team?.id != null ? Number(cur.team.id) : null;
+    const curAb = curTeamId === Number(game.awayId) ? abbrOf("away") : curTeamId === Number(game.homeId) ? abbrOf("home") : "";
+    const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
+    const spRows = sp.slice(-8).reverse().map((x) => {
+      const tid = x.team?.id != null ? Number(x.team.id) : null;
+      const ab = tid === Number(game.awayId) ? abbrOf("away") : tid === Number(game.homeId) ? abbrOf("home") : "";
+      return `<li>${tid ? lg(tid, "lv-splogo") : ""}<span class="lv-spq">Q${x.period?.number ?? "?"} ${esc(x.clock?.displayValue || "")}</span><span class="lv-sptxt">${esc(x.text || x.type?.text || "")}</span><b class="lv-spsc">${x.awayScore ?? ""}-${x.homeScore ?? ""}</b></li>`;
+    }).join("");
+    const wp = lv.winProb;
+    liveHtml = `<div class="lv ${liveNow ? "on" : "fin"}">
+      <div class="lv-head"><span class="lv-tag">${liveNow ? `<i class="lv-dot"></i>LIVE` : "FINAL"}</span><span class="lv-clock">${esc(status)}</span>${lv.detail && liveNow && sit?.isRedZone ? `<span class="lv-rz">RED ZONE</span>` : ""}</div>
+      ${row(game.awayId, abbrOf("away"), aS, possA, aS > hS)}
+      ${row(game.homeId, abbrOf("home"), hS, possH, hS > aS)}
+      ${liveNow && (sit?.downDistance || sit?.possessionText) ? `<div class="lv-sit">${esc([sit.downDistance, sit.possessionText].filter(Boolean).join(" · "))}${curAb && cur?.description ? ` <em>· ${esc(curAb)} drive: ${esc(cur.description)}</em>` : ""}</div>` : ""}
+      ${liveNow && sit?.lastPlay ? `<div class="lv-last"><b>LAST</b> ${esc(sit.lastPlay)}</div>` : ""}
+      ${wp && liveNow ? `<div class="win-prob-bar"><div class="win-prob-fill away" style="width:${wp.away}%"></div><div class="win-prob-fill home" style="width:${wp.home}%"></div></div><div class="win-prob-labels"><span>${Math.round(wp.away)}% ${esc(abbrOf("away"))}</span><span>${Math.round(wp.home)}% ${esc(abbrOf("home"))}</span></div>` : ""}
+      ${spRows ? `<div class="lv-sph">SCORING</div><ul class="lv-sp">${spRows}</ul>` : ""}
+    </div>`;
+  }
+  return liveHtml;
+  };
   let html = `<button type="button" class="ins-sim" id="ins-sim" aria-label="Simulate game"><span class="ins-sim-gb" aria-hidden="true"><i></i></span><span class="ins-sim-txt"><b>SIMULATE GAME</b><em>▶ PRESS START</em></span><span class="ins-sim-vs" aria-hidden="true">${lg(game.awayId, "sm").replace("/500-dark/", "/500/")}<i>VS</i>${lg(game.homeId, "sm").replace("/500-dark/", "/500/")}</span></button>`;
   const hdrComps = summaryRaw?.header?.competitions?.[0]?.competitors || [];
   const abbrOf = (side) => {
@@ -3905,6 +3952,7 @@ async function openInsights(gameId) {
   // 2. Line: OPENED -> SEALED -> NOW, each step saying how far and toward
   // whom, then one plain sentence. Values are signed from the sealed
   // favourite: positive means they are favoured by that much.
+  html = liveBlock() + html;
   html += `<div class="ins-h">LINE</div>`;
   {
     const favId = game.favorite === game.home ? game.homeId : game.awayId, dogId = game.favorite === game.home ? game.awayId : game.homeId;
@@ -4184,6 +4232,19 @@ async function openInsights(gameId) {
   };
   body.querySelector("#ins-sim")?.addEventListener("click", () => window.openSim?.(simCtx));
   };
+  // While the game is on, pull the scoreboard and the game page again
+  // every thirty seconds and repaint, so the sheet keeps up with the
+  // scorebug behind it. Stops the moment the sheet closes or the game ends.
+  const liveTick = async () => {
+    if (!alive()) { clearInterval(liveTimer); return; }
+    const l = latestLive[gameId];
+    if (!(l && l.found && l.state === "in" && !l.completed)) return;
+    try { await fetchLiveScores(); } catch {}
+    const id = latestLive[gameId]?.eventId || null;
+    if (id) { delete summaryCache[id]; try { const raw = await fetchEspnSummary(id); if (raw) summaryRaw = raw; } catch {} }
+    if (alive()) paint();
+  };
+  const liveTimer = setInterval(liveTick, 30000);
   // Cached summary paints at once; otherwise the first paint waits for it.
   land(withTimeout(fetchInsights(), 3500, null), (v) => { data = v; });
   land(withTimeout(fetchGameSnapshot(gameId), 3500, null), (v) => { snap = v; });
