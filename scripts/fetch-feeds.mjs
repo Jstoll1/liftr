@@ -30,16 +30,33 @@ const INJ = /injur|questionable|doubtful|ruled out|availability|probable|suspend
 // Headlines rarely name the players; the article does. Resolve Google's
 // redirect page to the real URL, fetch the article, and keep its
 // paragraphs, capped, so the model has names and statuses to read.
+// Google News article links are encoded. Older ones carry the URL in the
+// base64 id; newer ones need the article page's two tokens and a call to
+// Google's batch endpoint, which answers with the real URL.
+async function resolveGoogle(link) {
+  const id = (link.match(/articles\/([^?]+)/) || [])[1];
+  if (!id) return null;
+  try {
+    const raw = Buffer.from(id.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("latin1");
+    const m = raw.match(/https?:\/\/[^\x00-\x1f"'<> ]{10,300}/);
+    if (m && !/AU_yqL/.test(raw)) return m[0];
+  } catch {}
+  try {
+    const page = await (await fetch(`https://news.google.com/articles/${id}`, { headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" } })).text();
+    const sg = (page.match(/data-n-a-sg="([^"]+)"/) || [])[1], ts = (page.match(/data-n-a-ts="([^"]+)"/) || [])[1];
+    if (!sg || !ts) return null;
+    const inner = JSON.stringify(["garturlreq", [["X", "X", ["X", "X"], null, null, 1, 1, "US:en", null, 1, null, null, null, null, null, 0, 1], "X", "X", 1, [1, 1, 1], 1, 1, null, 0, 0, null, 0], id, Number(ts), sg]);
+    const body = new URLSearchParams({ "f.req": JSON.stringify([[["Fbv4je", inner, null, "generic"]]]) });
+    const res = await fetch("https://news.google.com/_/DotsSplashUi/data/batchexecute", { method: "POST", headers: { "User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body });
+    const txt = await res.text();
+    const m = txt.match(/garturlres\\",\\"(https?:[^\\"]+)/);
+    return m ? m[1] : null;
+  } catch { return null; }
+}
 async function articleText(link) {
   try {
     let url = link;
-    if (/news\.google\.com/.test(url)) {
-      const res = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
-      const html = await res.text();
-      const m = html.match(/https?:\/\/(?!(?:[a-z0-9-]+\.)*google\.[a-z]+|(?:[a-z0-9-]+\.)*gstatic\.com|(?:[a-z0-9-]+\.)*googleusercontent\.com)[^"'<> ]{12,300}/i);
-      if (!m) return null;
-      url = m[0].replace(/&amp;/g, "&");
-    }
+    if (/news\.google\.com/.test(url)) { url = await resolveGoogle(url); if (!url) return null; }
     const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, redirect: "follow" });
     if (!res.ok) return null;
     const html = (await res.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, "");
@@ -63,8 +80,8 @@ for (const g of games) {
     game: [rss(google(`"${A}" "${H}" football`)), rss(bing(`${A} ${H} football`), true)],
     away: [rss(google(`"${A}" football`)), rss(bing(`"${A}" football`), true)],
     home: [rss(google(`"${H}" football`)), rss(bing(`"${H}" football`), true)],
-    awayInj: [rss(google(`"${A}" football injury report`)), rss(google(`"${A}" football injury OR questionable OR doubtful OR "ruled out"`))],
-    homeInj: [rss(google(`"${H}" football injury report`)), rss(google(`"${H}" football injury OR questionable OR doubtful OR "ruled out"`))],
+    awayInj: [rss(google(`"${A}" football injury report`)), rss(google(`"${A}" football injury OR questionable OR doubtful OR "ruled out"`)), rss(bing(`${A} football injury report`), true)],
+    homeInj: [rss(google(`"${H}" football injury report`)), rss(google(`"${H}" football injury OR questionable OR doubtful OR "ruled out"`)), rss(bing(`${H} football injury report`), true)],
   };
   const got = {};
   for (const [k, ps] of Object.entries(pulls)) {
