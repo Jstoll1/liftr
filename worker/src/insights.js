@@ -411,15 +411,29 @@ export function parseGdelt(json) {
 }
 // One fetch with a single retry after a short pause when the host is
 // throttling (Google's RSS answers 503 to busy edges).
-async function fetchText(url, accept) {
+// Successful feed bodies are kept in KV for thirty minutes so repeat opens
+// of the same game do not hit the same throttled host again.
+async function fetchText(url, accept, env = null) {
+  const key = feedCacheKey(url);
+  if (env?.LIFTR_KV) { try { const hit = await env.LIFTR_KV.get(key, "json"); if (hit && hit.at && Date.now() - hit.at < 30 * 60 * 1000) return { ok: true, text: hit.text, cached: true }; } catch {} }
   for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: accept } });
-    if (res.ok) return { ok: true, text: await res.text() };
+    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: accept, "Accept-Language": "en-US,en;q=0.9" } });
+    if (res.ok) {
+      const text = await res.text();
+      if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(key, JSON.stringify({ at: Date.now(), text: text.slice(0, 200000) }), { expirationTtl: 3600 }); } catch {} }
+      return { ok: true, text };
+    }
     if (res.status !== 503 && res.status !== 429) return { ok: false, error: `HTTP ${res.status}` };
-    if (attempt === 0) await new Promise((r) => setTimeout(r, 700));
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 900 + Math.random() * 600));
     else return { ok: false, error: `HTTP ${res.status}` };
   }
   return { ok: false, error: "unreachable" };
+}
+// Yahoo's news search feed: plain RSS, no source tag, so the outlet is the
+// link's host.
+export const yahooUrl = (q) => `https://news.search.yahoo.com/rss?p=${encodeURIComponent(q)}`;
+export function parseYahooRss(xml) {
+  return parseGoogleNewsRss(xml).map((n) => ({ ...n, source: n.source || (() => { try { return new URL(n.link).hostname.replace(/^www\./, ""); } catch { return null; } })() }));
 }
 export function filterNews(items) {
   const seen = new Set();
@@ -459,12 +473,15 @@ export async function gameNews(env, game) {
     { tag: "game", url: gdeltUrl(`"${A}" "${H}" football`), gdelt: true },
     { tag: "away", url: gdeltUrl(`"${A}" football`), gdelt: true },
     { tag: "home", url: gdeltUrl(`"${H}" football`), gdelt: true },
+    { tag: "game", url: yahooUrl(`${A} ${H} football`), yahoo: true },
+    { tag: "away", url: yahooUrl(`${A} football`), yahoo: true },
+    { tag: "home", url: yahooUrl(`${H} football`), yahoo: true },
   );
   const results = await Promise.all(queries.map(async (x) => {
     try {
-      const r = await fetchText(x.url, x.gdelt ? "application/json" : "application/rss+xml, application/xml, text/xml");
+      const r = await fetchText(x.url, x.gdelt ? "application/json" : "application/rss+xml, application/xml, text/xml", env);
       if (!r.ok) return { tag: x.tag, items: [], error: r.error };
-      const items = x.gdelt ? parseGdelt(JSON.parse(r.text)) : x.bing ? parseBingNewsRss(r.text) : parseGoogleNewsRss(r.text);
+      const items = x.gdelt ? parseGdelt(JSON.parse(r.text)) : x.bing ? parseBingNewsRss(r.text) : x.yahoo ? parseYahooRss(r.text) : parseGoogleNewsRss(r.text);
       return { tag: x.tag, items: items.map((n) => ({ ...n, about: x.tag })) };
     } catch (err) { return { tag: x.tag, items: [], error: String(err?.message || err) }; }
   }));
@@ -541,7 +558,7 @@ export function injuriesPrompt() {
     "Return JSON: {\"players\": [{\"name\": \"\", \"pos\": \"\", \"status\": \"\", \"detail\": \"\", \"source\": \"\"}]}",
   ].join(" ");
 }
-async function injuryNewsFor(teamName) {
+async function injuryNewsFor(teamName, env = null) {
   const T = searchName(teamName);
   const q = (s) => `https://news.google.com/rss/search?q=${encodeURIComponent(s)}+when:7d&hl=en-US&gl=US&ceid=US:en`;
   const bing = (s) => `https://www.bing.com/news/search?q=${encodeURIComponent(s)}&format=rss&qft=interval%3d%228%22`;
@@ -550,12 +567,12 @@ async function injuryNewsFor(teamName) {
     { url: q(`"${T}" football injury OR questionable OR doubtful OR "ruled out"`) },
     { url: bing(`"${T}" football injury report`), bing: true },
   ];
-  urls.push({ url: gdeltUrl(`"${T}" football injury`), gdelt: true }, { url: gdeltUrl(`"${T}" football "injury report"`), gdelt: true });
+  urls.push({ url: gdeltUrl(`"${T}" football injury`), gdelt: true }, { url: yahooUrl(`${T} football injury report`), yahoo: true }, { url: yahooUrl(`${T} football injury`), yahoo: true });
   const results = await Promise.all(urls.map(async (x) => {
     try {
-      const r = await fetchText(x.url, x.gdelt ? "application/json" : "application/rss+xml, application/xml, text/xml");
+      const r = await fetchText(x.url, x.gdelt ? "application/json" : "application/rss+xml, application/xml, text/xml", env);
       if (!r.ok) { const e = []; e.error = r.error; return e; }
-      return x.gdelt ? parseGdelt(JSON.parse(r.text)) : x.bing ? parseBingNewsRss(r.text) : parseGoogleNewsRss(r.text);
+      return x.gdelt ? parseGdelt(JSON.parse(r.text)) : x.bing ? parseBingNewsRss(r.text) : x.yahoo ? parseYahooRss(r.text) : parseGoogleNewsRss(r.text);
     } catch (err) { const e = []; e.error = String(err?.message || err); return e; }
   }));
   const kept = filterNews(results.flat()).filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return/i.test(`${n.headline} ${n.blurb || ""}`)).slice(0, 8);
@@ -595,7 +612,7 @@ export async function gameInjuries(env, week, game, fromPhone = null) {
   const fresh = hit && Date.now() - hit.at < ((hit.away?.length || hit.home?.length) ? 3 * 3600 * 1000 : 15 * 60 * 1000);
   if (fresh && !(fromPhone && !(hit.away?.length || hit.home?.length))) return hit;
   const clean = (list) => (Array.isArray(list) ? list : []).filter((n) => n && typeof n.headline === "string").slice(0, 12).map((n) => ({ headline: String(n.headline).slice(0, 200), blurb: n.blurb ? String(n.blurb).slice(0, 400) : null, source: n.source ? String(n.source).slice(0, 60) : null, link: typeof n.link === "string" ? n.link.slice(0, 300) : null, published: n.published || null }));
-  const [ownAway, ownHome] = await Promise.all([injuryNewsFor(game.away), injuryNewsFor(game.home)]);
+  const [ownAway, ownHome] = await Promise.all([injuryNewsFor(game.away, env), injuryNewsFor(game.home, env)]);
   const merge = (own, extra) => { const all = filterNews([...own, ...clean(extra)]); const kept = all.filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i.test(`${n.headline} ${n.blurb || ""}`)); kept.raw = own.raw; return kept.slice(0, 10); };
   const awayNews = merge(ownAway, fromPhone?.away), homeNews = merge(ownHome, fromPhone?.home);
   const [away, home] = await Promise.all([extractInjuries(env, game.away, awayNews), extractInjuries(env, game.home, homeNews)]);
