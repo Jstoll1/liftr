@@ -1,2 +1,3 @@
 /insights/picks?week=5&game=1
 /insights/picks?week=5&game=5
+/insights/picks?week=5&game=2
