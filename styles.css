@@ -4095,3 +4095,11 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-more-news summary::-webkit-details-marker { display: none; }
 .ins-more-news summary span { display: inline-block; transition: transform .15s; margin-right: 4px; }
 .ins-more-news[open] summary span { transform: rotate(90deg); }
+/* Last Five fills the row: five equal tiles that grow with the sheet, logos and scores scaling with them */
+.ins-form-r { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(4px, 1.2vw, 10px); flex-wrap: nowrap; }
+.ins-fchip { min-width: 0; width: auto; padding: clamp(4px, 1.4vw, 10px) 2px clamp(3px, 1vw, 8px); gap: clamp(2px, .6vw, 5px); border-radius: clamp(6px, 1.6vw, 10px); }
+.ins-fchip img { width: clamp(20px, 7.5vw, 44px); height: clamp(20px, 7.5vw, 44px); }
+.ins-fchip b { font-size: clamp(7px, 2.2vw, 12px); }
+.ins-fchip i { font-size: clamp(8.5px, 2.6vw, 15px); }
+.ins-fchip u { font-size: clamp(6px, 1.8vw, 10px); }
+.ins-form-r .ins-det { grid-column: 1 / -1; }
