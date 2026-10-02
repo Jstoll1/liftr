@@ -177,7 +177,13 @@ function weekLockTime() {
   if (currentWeek < LOCK_ALL_FROM_WEEK || !GAMES.length) return null;
   return Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
 }
+// The slate flags the tiebreaker game. If a slate ever ships without the
+// flag, the last kickoff stands in, so nothing that needs it can crash.
+function tiebreakerGameOf() {
+  return GAMES.find((g) => g.tiebreakerGame) || gamesByKickoff().slice(-1)[0] || null;
+}
 function isGameLocked(game) {
+  if (!game) return false;
   const all = weekLockTime();
   return Date.now() >= (all ?? new Date(game.kickoff).getTime());
 }
@@ -1860,7 +1866,7 @@ function renderPicksScreen() {
     gamesList.appendChild(card);
   });
 
-  const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
+  const tiebreakerGame = tiebreakerGameOf();
   const tiebreakerLocked = isGameLocked(tiebreakerGame);
   // The label has to come from the slate: it named week 1's game while the
   // Worker was already serving a different week's tiebreaker.
@@ -2428,7 +2434,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
   const headCells = ordered.map((g) => `<th class="${results[g.id] ? "final" : isGameLocked(g) ? "live" : ""}">G${g.id}</th>`).join("");
   // The tiebreaker is one game and one total, so work it out once rather
   // than per manager.
-  const tbGame = GAMES.find((g) => g.tiebreakerGame);
+  const tbGame = tiebreakerGameOf();
   const tbOpen = tbGame ? isGameLocked(tbGame) : false;
   const tbResult = tbGame ? results[tbGame.id] : null;
   const tbActual = tbResult ? tbResult.awayScore + tbResult.homeScore : null;
@@ -2601,7 +2607,7 @@ function playerBreakdownHtml(name, state, results, live) {
   }).join("");
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.
-  const tbGame = GAMES.find((g) => g.tiebreakerGame);
+  const tbGame = tiebreakerGameOf();
   const tbRaw = String(state.tiebreaker ?? "").trim();
   const tbGuess = tbRaw === "" ? null : Number(tbRaw);
   const tbRes = results[tbGame.id];
@@ -2838,8 +2844,8 @@ async function archiveWeekIfFinal(results) {
 // now, the board's full table and the picks screen's one-line summary, and
 // they must never disagree about who is leading.
 function rankManagers(cloudPicks, results) {
-  const tiebreakerGame = GAMES.find((g) => g.tiebreakerGame);
-  const tbResult = results[tiebreakerGame.id];
+  const tiebreakerGame = tiebreakerGameOf();
+  const tbResult = tiebreakerGame ? results[tiebreakerGame.id] : null;
   const actualTotal = tbResult ? tbResult.awayScore + tbResult.homeScore : null;
 
   const rows = MANAGERS.map((name) => {
@@ -2895,7 +2901,7 @@ function weekWinChances(cloudPicks, results, live) {
   const key = JSON.stringify([GAMES.map((g) => { const l = live[g.id]; return [g.id, results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : l ? `${l.state}${l.awayScore}-${l.homeScore}@${l.period}${l.clock}` : ""]; }), MANAGERS.map((n) => JSON.stringify(cloudPicks[n]?.picks || {}) + (cloudPicks[n]?.tiebreaker ?? ""))]);
   if (winChanceMemo.key === key) return winChanceMemo.out;
   const N = 2000;
-  const tbGame = GAMES.find((g) => g.tiebreakerGame);
+  const tbGame = tiebreakerGameOf();
   const guesses = MANAGERS.map((n) => { const raw = String(cloudPicks[n]?.tiebreaker ?? "").trim(); const v = Number(raw); return raw !== "" && Number.isFinite(v) ? v : null; });
   const models = GAMES.map((g) => {
     if (results[g.id]) return { g, fixed: results[g.id] };
@@ -2948,7 +2954,7 @@ function weekWinChances(cloudPicks, results, live) {
 function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
   const rows = precomputed || rankManagers(cloudPicks, results);
   if (anyGameLive(live)) {
-    const tbGame = GAMES.find((g) => g.tiebreakerGame) || GAMES[0];
+    const tbGame = tiebreakerGameOf() || GAMES[0];
     const tbRes = tbGame && results[tbGame.id];
     const actualTotal = tbRes ? tbRes.awayScore + tbRes.homeScore : null;
     for (const row of rows) row.subline = rankingSubline(row, actualTotal, tbGame, inFlightPoints(cloudPicks[row.name]?.picks || {}, live), results);
