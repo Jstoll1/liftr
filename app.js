@@ -4075,7 +4075,9 @@ async function openInsights(gameId) {
         // Two tokens at most so the cell never overflows: the line as
         // written (or SU when the piece picks a winner only), then a score.
         const line = [p.line || (p.type === "SU" ? "SU" : "ATS"), p.score].filter(Boolean).join(" · ");
-        const who = p.picker ? `${p.outlet} · ${p.picker}` : p.outlet;
+        // A staff table can shout names in caps; print them as names.
+        const picker = p.picker && p.picker === p.picker.toUpperCase() ? p.picker.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : p.picker;
+        const who = picker ? `${p.outlet} · ${picker}` : p.outlet;
         const inner = `<span class="xp-out" title="${esc(who)}">${esc(who)}</span><span class="xp-pick">${lg(id)}<b>${esc(short.toUpperCase())}</b></span><span class="xp-line">${esc(line)}</span>`;
         return p.link ? `<a class="xp-tile ${p.side}" href="${esc(p.link)}" target="_blank" rel="noopener" title="${esc(p.reason || "")}">${inner}</a>` : `<span class="xp-tile ${p.side}" title="${esc(p.reason || "")}">${inner}</span>`;
       };
