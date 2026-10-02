@@ -3862,7 +3862,7 @@ async function openInsights(gameId) {
   const mergeInj = (side) => {
     const a = (feedInj?.[side] || []).slice();
     const seen = new Set(a.map((i) => String(i.name).toLowerCase()));
-    for (const p of newsInj?.[side] || []) { const k = p.name.toLowerCase(); if (seen.has(k)) continue; seen.add(k); a.push({ name: p.name, pos: p.pos || null, status: p.status.charAt(0) + p.status.slice(1).toLowerCase(), detail: [p.detail, p.source && !p.quote ? `via ${p.source}` : ""].filter(Boolean).join(" · "), quote: p.quote || null, link: p.link || null, source: p.source || null }); }
+    for (const p of newsInj?.[side] || []) { const k = p.name.toLowerCase(); if (seen.has(k)) continue; seen.add(k); a.push({ name: p.name, pos: p.pos || null, status: p.status.charAt(0) + p.status.slice(1).toLowerCase(), detail: [p.detail, p.source && !p.quote ? `via ${p.source}` : ""].filter(Boolean).join(" · "), quote: p.quote || null, note: p.note || null, link: p.link || null, source: p.source || null }); }
     return a;
   };
   const injuries = feedInj || newsInj ? { away: mergeInj("away"), home: mergeInj("home") } : null;
@@ -4061,9 +4061,12 @@ async function openInsights(gameId) {
     ? `<ul class="ins-inj">${list.slice(0, 7).map((i) => {
         const row = `<b class="${statusCls(i.status)}">${esc(i.status)}</b><span class="ins-who">${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}</span>${i.detail ? `<span class="ins-det">${esc(i.detail)}</span>` : ""}`;
         // A beat-writer row with a verified sentence unfolds on tap to show it.
-        if (!i.quote) return `<li>${row}</li>`;
+        if (!i.quote && !i.note) return `<li>${row}</li>`;
         const src = i.link ? `<a href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.source || "Read more")} ↗</a>` : i.source ? `<span>${esc(i.source)}</span>` : "";
-        return `<li class="ins-q"><details><summary>${row}<span class="ins-q-tap">▾</span></summary><div class="ins-quote">“${esc(i.quote)}”${src ? `<div class="ins-q-src">${src}</div>` : ""}</div></details></li>`;
+        // The note is what the report says in plain words; the verbatim
+        // sentence sits under it as the evidence, with the article link.
+        const body = (i.note ? `<div class="ins-note">${esc(i.note)}</div>` : "") + (i.quote ? `<div class="ins-quote-txt">“${esc(i.quote)}”</div>` : "");
+        return `<li class="ins-q"><details><summary>${row}<span class="ins-q-tap">▾</span></summary><div class="ins-quote">${body}${src ? `<div class="ins-q-src">${src}</div>` : ""}</div></details></li>`;
       }).join("")}</ul>`
     : `<div class="ins-empty small">${ok === false ? `Feed unavailable.${err ? ` <i class="ins-err">${esc(err)}</i>` : ""}` : "Nothing reported. Most schools don't file injury reports."}</div>`) + `</div>`;
   let injHtml = `<div class="ins-h">INJURIES</div>`;

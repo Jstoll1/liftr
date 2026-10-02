@@ -548,7 +548,7 @@ export async function gamePreview(env, week, game, facts) {
 // injury coverage, then have the model pull a structured list from the
 // headlines and blurbs. Cached three hours; only names with a stated
 // status come through, and every row carries the outlet it came from.
-export const injuriesKey = (week, gameId) => `inj:v8:w${week}:g${gameId}`;
+export const injuriesKey = (week, gameId) => `inj:v9:w${week}:g${gameId}`;
 export const INJURY_STATUSES = ["OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "RETURNING", "SUSPENDED"];
 export function injuriesPrompt() {
   return [
@@ -558,7 +558,8 @@ export function injuriesPrompt() {
     "For each: name as written, position, status, and a short detail (injury or reason, max 8 words) plus the outlet name.",
     "Every player needs a position abbreviation (QB, RB, WR, TE, OL, DL, DE, DT, EDGE, LB, CB, S, K, P, LS). Take it from the text first, including role words such as 'tight end', 'safety' or 'left tackle', and otherwise from what you know of that player on this team. Leave it empty only when you truly have no idea.",
     "Also copy, as 'quote', the one sentence from the text that states the player's status, verbatim and unedited (max 200 characters). Never paraphrase it; if no single sentence states it, use an empty string.",
-    "Return JSON: {\"players\": [{\"name\": \"\", \"pos\": \"\", \"status\": \"\", \"detail\": \"\", \"source\": \"\", \"quote\": \"\"}]}",
+    "Also write 'note': one or two plain sentences (max 220 characters) giving what the text actually says about this player beyond the status: the injury or body part, when it happened, whether he has practiced, the expected timeline, and who fills in. Use only facts stated in the text about this player. No speculation, no repeating the status word alone. If the text gives nothing beyond the status, use an empty string.",
+    "Return JSON: {\"players\": [{\"name\": \"\", \"pos\": \"\", \"status\": \"\", \"detail\": \"\", \"source\": \"\", \"quote\": \"\", \"note\": \"\"}]}",
   ].join(" ");
 }
 async function injuryNewsFor(teamName, env = null) {
@@ -647,6 +648,9 @@ function itemsNaming(items, name) {
 // status word, since that is lifted from the text by construction.
 const squash = (s) => String(s || "").toLowerCase().replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d))).replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/[\u2018\u2019\u201c\u201d]/g, "'").replace(/[^a-z0-9']+/g, " ").trim();
 const STATUS_WORDS = /out|doubtful|questionable|probable|return|suspend|miss|sidelined|practice|injur|limited|available|expected|cleared/i;
+// The note is the model's reading of the article, so it is kept short and
+// dropped when it only restates the status.
+const tidyNote = (n) => { const t = String(n || "").replace(/\s+/g, " ").trim().slice(0, 240); return t.length >= 20 && !/^(out|doubtful|questionable|probable)\.?$/i.test(t) ? t : null; };
 export function verifyQuote(items, quote, name) {
   const tidy = (q) => String(q || "").replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d))).replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").replace(/\s+([,.;:])/g, "$1").trim().slice(0, 220);
   let q = tidy(quote), hit = null;
@@ -676,7 +680,7 @@ export async function extractInjuries(env, teamName, items) {
     body: JSON.stringify({
       model: env.OPENAI_MODEL || "gpt-4o-mini",
       messages: [{ role: "system", content: injuriesPrompt() }, { role: "user", content: `Team: ${searchName(teamName)}\n${text}` }],
-      response_format: { type: "json_schema", json_schema: { name: "injuries", strict: true, schema: { type: "object", additionalProperties: false, required: ["players"], properties: { players: { type: "array", items: { type: "object", additionalProperties: false, required: ["name", "pos", "status", "detail", "source", "quote"], properties: { name: { type: "string" }, pos: { type: "string" }, status: { type: "string", enum: INJURY_STATUSES }, detail: { type: "string" }, source: { type: "string" }, quote: { type: "string" } } } } } } } },
+      response_format: { type: "json_schema", json_schema: { name: "injuries", strict: true, schema: { type: "object", additionalProperties: false, required: ["players"], properties: { players: { type: "array", items: { type: "object", additionalProperties: false, required: ["name", "pos", "status", "detail", "source", "quote", "note"], properties: { name: { type: "string" }, pos: { type: "string" }, status: { type: "string", enum: INJURY_STATUSES }, detail: { type: "string" }, source: { type: "string" }, quote: { type: "string" }, note: { type: "string" } } } } } } } },
       temperature: 0,
     }),
   });
@@ -685,7 +689,7 @@ export async function extractInjuries(env, teamName, items) {
     const parsed = JSON.parse((await res.json()).choices?.[0]?.message?.content || "{}");
     const seen = new Set();
     const players = (parsed.players || []).filter((p) => p.name && INJURY_STATUSES.includes(p.status)).filter((p) => { const k = p.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 10)
-      .map((p) => { const q = verifyQuote(items, p.quote, p.name); return { name: String(p.name).slice(0, 40), pos: normalisePos(p.pos) || inferPos(`${p.detail || ""} ${itemsNaming(items, p.name)}`), status: p.status, detail: String(p.detail || "").slice(0, 60), source: q?.source || String(p.source || "").slice(0, 40), quote: q?.quote || null, link: q?.link || null }; });
+      .map((p) => { const q = verifyQuote(items, p.quote, p.name); return { name: String(p.name).slice(0, 40), pos: normalisePos(p.pos) || inferPos(`${p.detail || ""} ${itemsNaming(items, p.name)}`), status: p.status, detail: String(p.detail || "").slice(0, 60), source: q?.source || String(p.source || "").slice(0, 40), quote: q?.quote || null, link: q?.link || null, note: tidyNote(p.note) }; });
     return { players };
   } catch { return { players: [], error: "bad model json" }; }
 }
