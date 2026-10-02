@@ -4009,12 +4009,14 @@ async function openInsights(gameId) {
   const seen = new Set();
   const norm = (h) => String(h || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 70);
   const aboutLabel = (a) => a === "game" ? "This game" : a === "away" ? game.awayShort : a === "home" ? game.homeShort : a;
-  const others = [...wider, ...gdelt].sort((a, b) => String(b.published || "").localeCompare(String(a.published || ""))).map((n) => ({ ...n, team: aboutLabel(n.about) }));
-  // Keep only stories that name one of the two teams; ESPN's related list
-  // pads with league-wide pieces.
+  // Every source, same rule: the headline itself has to name one of the
+  // two teams, and it cannot be another sport. GDELT searches full text,
+  // so a Stanford wrestling schedule that lists Pitt matched "Pitt".
   const names = [game.away, game.home, game.awayShort, game.homeShort, abbrOf("away"), abbrOf("home")]
     .map((n) => String(n || "").replace(/^#\d+\s+/, "").trim().toLowerCase()).filter((n) => n.length >= 3);
-  const mentions = (n) => { const t = `${n.headline} ${n.blurb || ""}`.toLowerCase(); return names.some((x) => t.includes(x)); };
+  const OTHER_SPORT = /\b(wrestling|basketball|hoops|volleyball|soccer|hockey|baseball|softball|lacrosse|golf|tennis|swimming|diving|track and field|cross country|gymnastics|rowing|field hockey|water polo|esports)\b/i;
+  const mentions = (n) => { const h = String(n.headline || "").toLowerCase(); return !OTHER_SPORT.test(h) && names.some((x) => h.includes(x)); };
+  const others = [...wider, ...gdelt].filter(mentions).sort((a, b) => String(b.published || "").localeCompare(String(a.published || ""))).map((n) => ({ ...n, team: aboutLabel(n.about) }));
   const espn = [
     ...(direct?.related || []).map((n) => ({ ...n, team: "This game" })),
     ...(news?.away || []).map((n) => ({ ...n, team: game.awayShort })),

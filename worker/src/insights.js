@@ -359,7 +359,7 @@ export async function gameSnapshot(env, deps, week, gameId) {
 // promos is dropped, and duplicates across the three searches are merged.
 // Instagram is allowed; TikTok and YouTube are not.
 const SKIP_SOURCES = /espn|youtube|youtu\.be|tiktok|podcast|draftkings|fanduel|betmgm|caesars|bet365|fanatics sportsbook/i;
-const SKIP_TITLES = /\b(video|watch|podcast|live stream|how to watch|stream free|highlights|odds, picks|prediction(s)?,? odds|best bets?|promo code|bonus code)\b/i;
+const SKIP_TITLES = /\b(video|watch|podcast|live stream|how to watch|stream free|highlights|odds, picks|prediction(s)?,? odds|best bets?|promo code|bonus code|wrestling|basketball|hoops|volleyball|soccer|hockey|baseball|softball|lacrosse|golf|tennis|swimming|gymnastics|rowing|field hockey|water polo)\b/i;
 function decode(x) {
   return String(x || "").replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
