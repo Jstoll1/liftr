@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -177,4 +177,10 @@ test("gameInjuries caches a clean read and never caches a model failure", async 
   const ok = await gameInjuries({ LIFTR_KV: kv, OPENAI_API_KEY: "k" }, 5, game);
   assert.equal(ok.away[0].name, "T. Turner");
   assert.ok(kv.writes.includes(injuriesKey(5, 3)));
+});
+
+test("parseGdelt maps the article list and its compact dates", () => {
+  const items = parseGdelt({ articles: [{ url: "https://www.post-gazette.com/a", title: "Pitt&#39;s line settles", seendate: "20261001T140000Z", domain: "www.post-gazette.com" }, { url: "", title: "junk" }] });
+  assert.deepEqual(items, [{ headline: "Pitt's line settles", source: "post-gazette.com", link: "https://www.post-gazette.com/a", blurb: null, published: "2026-10-01T14:00:00Z" }]);
+  assert.deepEqual(parseGdelt(null), []);
 });

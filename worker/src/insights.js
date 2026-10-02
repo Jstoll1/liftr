@@ -397,6 +397,30 @@ export function parseBingNewsRss(xml) {
   }
   return items;
 }
+// GDELT's article list: a free news index with a JSON API that answers
+// both servers and browsers. Fifteen minutes behind, but it never 503s a
+// Cloudflare address the way Google's RSS does.
+export const gdeltUrl = (q) => `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(`${q} sourcelang:english`)}&mode=artlist&format=json&maxrecords=25&sort=DateDesc&timespan=7d`;
+export function parseGdelt(json) {
+  const arts = Array.isArray(json?.articles) ? json.articles : [];
+  return arts.filter((a) => a?.url && a?.title).map((a) => {
+    const d = String(a.seendate || "");
+    const iso = /^\d{8}T\d{6}Z$/.test(d) ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T${d.slice(9, 11)}:${d.slice(11, 13)}:${d.slice(13, 15)}Z` : null;
+    return { headline: decode(a.title), source: a.domain ? String(a.domain).replace(/^www\./, "") : null, link: a.url, blurb: null, published: iso };
+  });
+}
+// One fetch with a single retry after a short pause when the host is
+// throttling (Google's RSS answers 503 to busy edges).
+async function fetchText(url, accept) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: accept } });
+    if (res.ok) return { ok: true, text: await res.text() };
+    if (res.status !== 503 && res.status !== 429) return { ok: false, error: `HTTP ${res.status}` };
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 700));
+    else return { ok: false, error: `HTTP ${res.status}` };
+  }
+  return { ok: false, error: "unreachable" };
+}
 export function filterNews(items) {
   const seen = new Set();
   return items.filter((n) => {
@@ -431,12 +455,17 @@ export async function gameNews(env, game) {
     { tag: "away", url: bing(`"${A}" football`), bing: true },
     { tag: "home", url: bing(`"${H}" football`), bing: true },
   );
+  queries.push(
+    { tag: "game", url: gdeltUrl(`"${A}" "${H}" football`), gdelt: true },
+    { tag: "away", url: gdeltUrl(`"${A}" football`), gdelt: true },
+    { tag: "home", url: gdeltUrl(`"${H}" football`), gdelt: true },
+  );
   const results = await Promise.all(queries.map(async (x) => {
     try {
-      const res = await fetch(x.url, { headers: { "User-Agent": UA, Accept: "application/rss+xml, application/xml, text/xml" } });
-      if (!res.ok) return { tag: x.tag, items: [], error: `HTTP ${res.status}` };
-      const xml = await res.text();
-      return { tag: x.tag, items: (x.bing ? parseBingNewsRss(xml) : parseGoogleNewsRss(xml)).map((n) => ({ ...n, about: x.tag })) };
+      const r = await fetchText(x.url, x.gdelt ? "application/json" : "application/rss+xml, application/xml, text/xml");
+      if (!r.ok) return { tag: x.tag, items: [], error: r.error };
+      const items = x.gdelt ? parseGdelt(JSON.parse(r.text)) : x.bing ? parseBingNewsRss(r.text) : parseGoogleNewsRss(r.text);
+      return { tag: x.tag, items: items.map((n) => ({ ...n, about: x.tag })) };
     } catch (err) { return { tag: x.tag, items: [], error: String(err?.message || err) }; }
   }));
   const all = filterNews(results.flatMap((r) => r.items))
@@ -521,12 +550,12 @@ async function injuryNewsFor(teamName) {
     { url: q(`"${T}" football injury OR questionable OR doubtful OR "ruled out"`) },
     { url: bing(`"${T}" football injury report`), bing: true },
   ];
+  urls.push({ url: gdeltUrl(`"${T}" football injury`), gdelt: true }, { url: gdeltUrl(`"${T}" football "injury report"`), gdelt: true });
   const results = await Promise.all(urls.map(async (x) => {
     try {
-      const res = await fetch(x.url, { headers: { "User-Agent": UA, Accept: "application/rss+xml, application/xml, text/xml" } });
-      if (!res.ok) return [];
-      const xml = await res.text();
-      return x.bing ? parseBingNewsRss(xml) : parseGoogleNewsRss(xml);
+      const r = await fetchText(x.url, x.gdelt ? "application/json" : "application/rss+xml, application/xml, text/xml");
+      if (!r.ok) return [];
+      return x.gdelt ? parseGdelt(JSON.parse(r.text)) : x.bing ? parseBingNewsRss(r.text) : parseGoogleNewsRss(r.text);
     } catch { return []; }
   }));
   return filterNews(results.flat()).filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return/i.test(`${n.headline} ${n.blurb || ""}`)).slice(0, 8);

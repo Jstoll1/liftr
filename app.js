@@ -3652,6 +3652,29 @@ async function fetchNewsInjuries(gameId) {
     return await res.json();
   } catch { return null; }
 }
+// GDELT straight from the phone: a free news index whose API allows
+// browser requests, so wider news no longer hangs on the Worker reaching
+// Google. Same shape as the Worker's items.
+async function fetchGdeltNews(game) {
+  const clean = (n) => String(n || "").replace(/^#\d+\s+/, "").replace(/[()]/g, "").trim();
+  const A = clean(game.away), H = clean(game.home);
+  const url = (q, about) => ({ about, url: `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(`${q} sourcelang:english`)}&mode=artlist&format=json&maxrecords=20&sort=DateDesc&timespan=7d` });
+  const qs = [url(`"${A}" "${H}" football`, "game"), url(`"${A}" football`, "away"), url(`"${H}" football`, "home")];
+  const skip = /espn\.com|youtube\.|tiktok\.|covers\.com|actionnetwork|oddsshark|pickdawgz|sportsbook|draftkings|fanduel|betmgm/i;
+  const out = await Promise.all(qs.map(async (x) => {
+    try {
+      const res = await fetch(x.url);
+      if (!res.ok) return [];
+      const j = await res.json();
+      return (j.articles || []).filter((a) => a?.url && a?.title && !skip.test(a.url)).map((a) => {
+        const d = String(a.seendate || "");
+        const iso = /^\d{8}T\d{6}Z$/.test(d) ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T${d.slice(9, 11)}:${d.slice(11, 13)}:${d.slice(13, 15)}Z` : null;
+        return { headline: a.title, source: String(a.domain || "").replace(/^www\./, ""), link: a.url, blurb: null, published: iso, about: x.about };
+      });
+    } catch { return []; }
+  }));
+  return out.flat();
+}
 const teamNewsCache = {};
 async function fetchTeamNews(teamId) {
   const hit = teamNewsCache[teamId];
@@ -3803,8 +3826,8 @@ async function openInsights(gameId) {
   // ESPN game page (from the phone) fills most of the sheet; news and the
   // Worker's extras slot in after, and slow Worker calls are capped.
   const token = ++insightsOpenToken;
-  let data = null, snap = null, summaryRaw = null, awayNews = [], homeNews = [], wider = [], newsInj = null;
-  const pend = { summary: true, news: true, wider: true, ai: true, inj: true };
+  let data = null, snap = null, summaryRaw = null, awayNews = [], homeNews = [], wider = [], newsInj = null, gdelt = [];
+  const pend = { summary: true, news: true, wider: true, ai: true, inj: true, gdelt: true };
   let aiPv = null;
   const alive = () => token === insightsOpenToken && !modal.classList.contains("hidden");
   const land = (promise, set, key) => promise.then((v) => { set(v); }).catch(() => {}).finally(() => { if (key) pend[key] = false; if (alive()) paint(); });
@@ -3978,7 +4001,7 @@ async function openInsights(gameId) {
   const seen = new Set();
   const norm = (h) => String(h || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 70);
   const aboutLabel = (a) => a === "game" ? "This game" : a === "away" ? game.awayShort : a === "home" ? game.homeShort : a;
-  const others = wider.map((n) => ({ ...n, team: aboutLabel(n.about) }));
+  const others = [...wider, ...gdelt].sort((a, b) => String(b.published || "").localeCompare(String(a.published || ""))).map((n) => ({ ...n, team: aboutLabel(n.about) }));
   // Keep only stories that name one of the two teams; ESPN's related list
   // pads with league-wide pieces.
   const names = [game.away, game.home, game.awayShort, game.homeShort, abbrOf("away"), abbrOf("home")]
@@ -3995,8 +4018,8 @@ async function openInsights(gameId) {
   mixed.push(...gameFirst);
   for (let i = 0; i < Math.max(restO.length, restE.length); i++) { if (restO[i]) mixed.push(restO[i]); if (i % 2 === 1 && restE[(i - 1) / 2]) mixed.push(restE[(i - 1) / 2]); }
   const newsRows = mixed.filter((n) => { const k = norm(n.headline); if (!k || seen.has(k)) return false; seen.add(k); return true; });
-  if (!newsRows.length && (pend.news || pend.wider)) html += `<div class="ins-h">NEWS</div><div class="ins-loading">Loading news…</div>`;
-  const newsErr = !pend.wider && !wider.length && (wider.errors || []).length ? `<div class="ins-empty small"><i class="ins-err">More sources unavailable: ${esc(wider.errors.slice(0, 2).join(" · "))}</i></div>` : "";
+  if (!newsRows.length && (pend.news || pend.wider || pend.gdelt)) html += `<div class="ins-h">NEWS</div><div class="ins-loading">Loading news…</div>`;
+  const newsErr = !pend.wider && !pend.gdelt && !wider.length && !gdelt.length && (wider.errors || []).length ? `<div class="ins-empty small"><i class="ins-err">More sources unavailable: ${esc(wider.errors.slice(0, 2).join(" · "))}</i></div>` : "";
   if (newsRows.length) html += `<div class="ins-h">NEWS</div><ul class="ins-news">${newsRows.slice(0, 12).map((n) => `<li><b class="ins-nh">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det"><em class="ins-src">${esc(n.source || "")}</em>${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
   if (newsErr) html += newsRows.length ? newsErr : `<div class="ins-h">NEWS</div>${newsErr}`;
 
@@ -4042,6 +4065,7 @@ async function openInsights(gameId) {
   land(withTimeout(fetchGameSnapshot(gameId), 3500, null), (v) => { snap = v; });
   land(withTimeout(fetchWiderNews(gameId), 6000, []), (v) => { wider = v || []; }, "wider");
   land(withTimeout(fetchNewsInjuries(gameId), 12000, null), (v) => { newsInj = v; }, "inj");
+  land(withTimeout(fetchGdeltNews(game), 6000, []), (v) => { gdelt = v || []; }, "gdelt");
   land(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), ([a, h]) => { awayNews = a; homeNews = h; }, "news");
   const eventIdNow = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
   const summaryP = (eventIdNow ? Promise.resolve(eventIdNow) : fetchLiveScores().catch(() => {}).then(() => latestLive[gameId]?.eventId || null))
