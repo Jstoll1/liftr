@@ -2451,7 +2451,7 @@ function renderLiveScores(live, cloudPicks) {
           face = pushed ? "P" : pts > 0 ? `+${pts}` : "0";
         } else if (lean !== null) {
           tone = `lean ${lean > 0 ? ptsTier(worth) : "miss"}`;
-          face = lean > 0 ? `+${worth}?` : "0?";
+          face = lean > 0 ? `+${worth}<span class="stake-q">?</span>` : `0<span class="stake-q">?</span>`;
         }
         myPill = `<span class="stake ${tone}" title="You took ${mine} ${terms} for ${worth} pt">${face}</span>`;
       }

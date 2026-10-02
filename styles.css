@@ -4358,3 +4358,14 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-stage .gc-chev { top: 72px; }
 .gc-stage .gc-num { bottom: 6px; font-size: 7px; }
 .gc-stage { margin-top: -26px; margin-bottom: 4px; perspective-origin: 50% 20%; }
+
+/* In flight: a soft solid pill, not a dashed box. Lighter fill and border
+   than a settled pill, and a small raised "?" says it is not final. */
+.stake.lean { border-style: solid !important; border-width: 1px; border-radius: 999px; opacity: .9; }
+.stake.lean.hit { background: rgba(0, 255, 143, .08); border-color: rgba(0, 255, 143, .4); }
+.stake.lean.miss { background: rgba(255, 92, 138, .07); border-color: rgba(255, 92, 138, .35); }
+.stake-q { font-size: .7em; opacity: .7; margin-left: 1px; vertical-align: super; line-height: 0; }
+
+/* The pill itself: room around the number so it reads as a pill. */
+.bug-head .stake { display: inline-flex; align-items: center; gap: 1px; margin-left: auto; padding: 3px 7px 3px; border: 1px solid rgba(244, 240, 255, .3); border-radius: 999px; font-family: 'Press Start 2P', monospace; font-size: 8px; line-height: 1; letter-spacing: .02em; white-space: nowrap; }
+.bug-head .stake.pending { color: var(--text-dim); background: rgba(244, 240, 255, .05); }
