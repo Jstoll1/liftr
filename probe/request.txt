@@ -1,0 +1,3 @@
+/weeks
+/insights/injuries?week=5&game=1
+/insights/news?week=5&game=1
