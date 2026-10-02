@@ -409,7 +409,12 @@ function parseEspnEvents(events) {
       homeScore: home?.score != null ? Number(home.score) : null,
       winProb,
       // Where the ball is, for the live view on the sheet.
+      awayColor: away?.team?.color ? `#${away.team.color}` : null,
+      homeColor: home?.team?.color ? `#${home.team.color}` : null,
       situation: comp.situation ? {
+        down: Number.isFinite(Number(comp.situation.down)) ? Number(comp.situation.down) : null,
+        distance: Number.isFinite(Number(comp.situation.distance)) ? Number(comp.situation.distance) : null,
+        yardLine: Number.isFinite(Number(comp.situation.yardLine)) ? Number(comp.situation.yardLine) : null,
         possessionId: comp.situation.possession != null ? Number(comp.situation.possession) : null,
         downDistance: comp.situation.downDistanceText || comp.situation.shortDownDistanceText || null,
         possessionText: comp.situation.possessionText || null,
@@ -3944,6 +3949,63 @@ async function openInsights(gameId) {
   // Live or final: a gamecast in our theme at the top. Score and clock
   // from the scoreboard, where the ball is and the last play from its
   // situation, the current drive and scoring plays from ESPN's game page.
+  const liveGame = () => { const l = latestLive[gameId]; return !!(l && l.found && l.state === "in" && !l.completed); };
+  // The live gamecast: scoreboard strip, a field with both end zones, the
+  // ball at the spot with the offence's logo over it and the line to
+  // gain, down and distance, then the last three plays and the scoring.
+  // Away defends the left goal, home the right, as on the scorebug.
+  const gamecastHtml = () => {
+    const lv = latestLive[gameId], sit = lv.situation || {};
+    const A = abbrOf("away"), H = abbrOf("home");
+    const sc = summaryRaw?.header?.competitions?.[0]?.competitors || [];
+    const colorOf = (id, fb) => { const c = sc.find((x) => Number(x.team?.id) === Number(id))?.team?.color; return c ? `#${c}` : fb || null; };
+    const aCol = colorOf(game.awayId, lv.awayColor) || "#05d9e8", hCol = colorOf(game.homeId, lv.homeColor) || "#ff2079";
+    const possA = sit.possessionId != null && Number(sit.possessionId) === Number(game.awayId);
+    const possH = sit.possessionId != null && Number(sit.possessionId) === Number(game.homeId);
+    // Where the ball is, 0 at the away goal to 100 at the home goal. ESPN's
+    // text says "at VT 34" (34 yards from VT's goal); its yardLine number
+    // is the same spot counted from the home goal on most feeds, so the
+    // text wins when both are present.
+    const dd = String(sit.downDistance || "");
+    let x = null;
+    const m = dd.match(/\bat\s+([A-Za-z&.' -]+?)\s+(\d{1,2})\s*$/);
+    if (m) { const who = m[1].trim().toUpperCase(), yd = Number(m[2]); x = who === String(H).toUpperCase() ? 100 - yd : who === String(A).toUpperCase() ? yd : null; }
+    else if (/\bat\s+50\b/.test(dd)) x = 50;
+    if (x === null && sit.yardLine != null) x = 100 - sit.yardLine;
+    const dir = possA ? 1 : possH ? -1 : 0;
+    const goalToGo = /goal/i.test(dd);
+    const dist = sit.distance != null ? sit.distance : (dd.match(/&\s*(\d+)/) ? Number(dd.match(/&\s*(\d+)/)[1]) : null);
+    const toGo = x !== null && dir && (dist != null || goalToGo) ? Math.max(0, Math.min(100, goalToGo ? (dir > 0 ? 100 : 0) : x + dir * dist)) : null;
+    const pct = (v) => (8 + v * 0.84).toFixed(2);
+    const ticks = Array.from({ length: 9 }, (_, i) => (i + 1) * 10).map((v) => `<i class="gc-yl${v === 50 ? " mid" : ""}" style="left:${pct(v)}%"></i><span class="gc-num" style="left:${pct(v)}%">${v <= 50 ? v : 100 - v}</span>`).join("");
+    const ball = x === null ? "" : `<div class="gc-spot" style="left:${pct(x)}%">${possA || possH ? `<img class="gc-off" src="${logoUrl(possA ? game.awayId : game.homeId)}" alt="">` : ""}<i class="gc-ball ${dir > 0 ? "r" : dir < 0 ? "l" : ""}"></i></div><i class="gc-los" style="left:${pct(x)}%"></i>`;
+    const gain = toGo === null ? "" : `<i class="gc-first" style="left:${pct(toGo)}%"></i>`;
+    const drive = x !== null && toGo !== null ? `<i class="gc-drive" style="left:${pct(Math.min(x, toGo))}%;width:${(Math.abs(toGo - x) * 0.84).toFixed(2)}%"></i>` : "";
+    const field = `<div class="gc-field">
+      <div class="gc-ez l" style="--tc:${aCol}"><span>${esc(A)}</span></div>
+      <div class="gc-ez r" style="--tc:${hCol}"><span>${esc(H)}</span></div>
+      ${ticks}${drive}${gain}${ball}
+    </div>`;
+    const status = shortStatus(lv.detail || `Q${lv.period ?? "?"} ${lv.clock ?? ""}`);
+    const aS = lv.awayScore ?? 0, hS = lv.homeScore ?? 0;
+    const team = (id, ab, s, poss, side) => `<div class="gc-tm ${side}${poss ? " poss" : ""}">${lg(id, "gc-logo")}<b>${esc(ab)}</b><span class="gc-sc">${s}</span>${poss ? `<i class="gc-pdot"></i>` : ""}</div>`;
+    const strip = `<div class="gc-strip">${team(game.awayId, A, aS, possA, "a")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span><b>${esc(status)}</b></div>${team(game.homeId, H, hS, possH, "h")}</div>`;
+    const ddLine = dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || "Between plays")}</b></div>`;
+    // Last three plays: the current drive first, the previous drive if the
+    // current one is too short, else the scoreboard's last play.
+    const drives = summaryRaw?.drives || {};
+    const pool = [...(drives.current?.plays || []), ...(drives.previous?.length ? drives.previous[drives.previous.length - 1].plays || [] : [])];
+    const ordered = [...(drives.current?.plays || [])].reverse().concat([...(drives.previous?.length ? drives.previous[drives.previous.length - 1].plays || [] : [])].reverse());
+    let plays = ordered.filter((p) => p && p.text).slice(0, 3).map((p) => ({ text: p.text, when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null }));
+    if (!plays.length && sit.lastPlay) plays = [{ text: sit.lastPlay, when: "", dd: "", tid: sit.lastPlayTeamId }];
+    const playsHtml = plays.length ? `<div class="gc-h">LAST PLAYS</div><ol class="gc-plays">${plays.map((p, i) => `<li class="${i === 0 ? "new" : ""}">${p.tid ? lg(p.tid, "gc-plogo") : ""}<div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}</span><span class="gc-ptxt">${esc(p.text)}</span></div></li>`).join("")}</ol>` : "";
+    void pool;
+    const wp = lv.winProb;
+    const wpHtml = wp ? `<div class="gc-h">WIN PROBABILITY</div><div class="win-prob-bar"><div class="win-prob-fill away" style="width:${wp.away}%;background:${aCol}"></div><div class="win-prob-fill home" style="width:${wp.home}%;background:${hCol}"></div></div><div class="win-prob-labels"><span>${Math.round(wp.away)}% ${esc(A)}</span><span>${Math.round(wp.home)}% ${esc(H)}</span></div>` : "";
+    const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
+    const spHtml = sp.length ? `<div class="gc-h">SCORING</div><ul class="lv-sp">${sp.slice().reverse().map((q) => { const tid = q.team?.id != null ? Number(q.team.id) : null; return `<li>${tid ? lg(tid, "lv-splogo") : ""}<span class="lv-spq">Q${q.period?.number ?? "?"} ${esc(q.clock?.displayValue || "")}</span><span class="lv-sptxt">${esc(q.text || q.type?.text || "")}</span><b class="lv-spsc">${q.awayScore ?? ""}-${q.homeScore ?? ""}</b></li>`; }).join("")}</ul>` : "";
+    return `<div class="gc">${strip}${field}${ddLine}${playsHtml}${wpHtml}${spHtml}</div>`;
+  };
   // Built as a function and prepended once abbrOf exists below.
   const liveBlock = () => {
   const lv = latestLive[gameId];
@@ -3990,6 +4052,10 @@ async function openInsights(gameId) {
   // 2. Line: OPENED -> SEALED -> NOW, each step saying how far and toward
   // whom, then one plain sentence. Values are signed from the sealed
   // favourite: positive means they are favoured by that much.
+  if (liveGame()) {
+    body.innerHTML = gamecastHtml() + links() + `<div class="ins-foot">Live from ESPN. Refreshes every 15 seconds.</div>`;
+    return;
+  }
   html = liveBlock() + html;
   html += `<div class="ins-h">LINE</div>`;
   {
@@ -4282,7 +4348,7 @@ async function openInsights(gameId) {
     if (id) { delete summaryCache[id]; try { const raw = await fetchEspnSummary(id); if (raw) summaryRaw = raw; } catch {} }
     if (alive()) paint();
   };
-  const liveTimer = setInterval(liveTick, 30000);
+  const liveTimer = setInterval(liveTick, 15000);
   // Cached summary paints at once; otherwise the first paint waits for it.
   land(withTimeout(fetchInsights(), 3500, null), (v) => { data = v; });
   land(withTimeout(fetchGameSnapshot(gameId), 3500, null), (v) => { snap = v; });
