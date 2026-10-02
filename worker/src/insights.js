@@ -654,7 +654,7 @@ const STATUS_WORDS = /out|doubtful|questionable|probable|return|suspend|miss|sid
 // A note earns its place only with a concrete fact (a body part, a game,
 // practice, a timeline, a replacement). "Doubtful, indicating he may not
 // play" is the status again in more words, and opinion is not a fact.
-const NOTE_FACT = /injur|ankle|knee|hamstring|shoulder|head|concussion|foot|leg|hand|wrist|arm|hip|groin|calf|thigh|surgery|practic|quarter|half|against|since|miss|week|tent|downgrad|upgrad|travel|snaps|start|fill|replac|lineup|tackle|carries|targets|return from|season/i;
+const NOTE_FACT = /injur|ankle|knee|hamstring|shoulder|head|concussion|foot|leg|hand|wrist|arm|hip|groin|calf|thigh|surgery|practic|quarter|half|against|since|miss|week|tent|downgrad|upgrad|travel|snaps|start|fill|replac|lineup|return from|season/i;
 const NOTE_FILLER = /\b(indicating|suggesting|meaning|signaling)\b|\bsignificant\b|\bimportant\b|\bkey (for|to)\b|\bbig (for|loss)\b|\bavailability is uncertain\b|\bstatus (is|remains) (doubtful|questionable|probable|uncertain)\b/i;
 export const tidyNote = (n) => { const t = String(n || "").replace(/\s+/g, " ").trim().slice(0, 240); return t.length >= 20 && NOTE_FACT.test(t) && !NOTE_FILLER.test(t) ? t : null; };
 export function verifyQuote(items, quote, name) {
