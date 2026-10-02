@@ -4180,3 +4180,44 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .lv-spq { flex: 0 0 auto; font-size: 9px; color: var(--text-dim); min-width: 52px; }
 .lv-sptxt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lv-spsc { flex: 0 0 auto; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-yellow); }
+
+/* Scorebug detail: one row per bet, a cashing light on each. */
+.bp { display: flex; flex-direction: column; gap: 6px; }
+.bp-head { display: flex; align-items: center; gap: 8px; }
+.bp-count { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .04em; white-space: nowrap; }
+.bp-count.away { color: var(--neon-cyan); }
+.bp-count.home { color: var(--neon-pink); }
+.bp-split { flex: 1 1 auto; display: flex; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 32, 121, .55); }
+.bp-split i.away { display: block; height: 100%; background: var(--neon-cyan); }
+.bp-row { border-radius: 8px; padding: 6px 7px 7px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .07); border-left: 3px solid rgba(0, 229, 255, .6); }
+.bp-row.home { border-left-color: rgba(255, 32, 121, .6); }
+.bp-bet { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.bp-bet b { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .03em; color: #fff; }
+.bp-logo { width: 16px; height: 16px; }
+.bp-terms { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-yellow); }
+.bp-bet .bp-pts, .bp-bet .pick-pill { margin-left: auto; }
+.bp-pts { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); }
+.bp-light { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, .18); flex: 0 0 auto; }
+.bp-row.up .bp-light { background: var(--neon-green); box-shadow: 0 0 6px var(--neon-green); }
+.bp-row.down .bp-light { background: var(--neon-pink); box-shadow: 0 0 6px var(--neon-pink); }
+.bp-row.push .bp-light { background: var(--neon-yellow); }
+.bp-row.live.up { background: rgba(57, 255, 136, .05); }
+.bp-row.live.down { background: rgba(255, 32, 121, .04); }
+.bp-row.down:not(.live) { opacity: .7; }
+.bp-chips { gap: 4px; }
+.bp-none { font-size: 9px; color: var(--text-dim); text-align: center; }
+.win-prob-labels .wp-cap { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .1em; color: var(--text-dim); align-self: center; }
+
+/* Compact chips inside the bet rows so a half-width card fits two or three per line. */
+.bp-row { padding: 5px 6px 6px; }
+.bp-bet { margin-bottom: 4px; gap: 5px; }
+.bp-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+.bp-chips .pick-chip { font-size: 9px; padding: 1px 6px 1px 1px; gap: 3px; min-height: 0; line-height: 1.3; }
+.bp-chips .pick-chip-av { width: 13px; height: 13px; font-size: 7px; }
+.bp-chips .pick-chip.me { box-shadow: 0 0 0 1px var(--neon-cyan), 0 0 6px rgba(0, 229, 255, .45); }
+
+/* Inside bet rows the chips drop their pill: initial + name, inline. */
+.bug-detail .bp-chips { gap: 2px 8px; }
+.bug-detail .bp-chips .pick-chip { border: 0; background: none; padding: 0; gap: 3px; font-size: 9.5px; box-shadow: none; }
+.bug-detail .bp-chips .pick-chip.me { color: var(--neon-cyan); text-shadow: 0 0 6px rgba(0, 229, 255, .6); background: none; box-shadow: none; }
+.bug-detail .bp-chips .pick-chip.me .pick-chip-av { box-shadow: 0 0 0 1.5px var(--neon-cyan); }

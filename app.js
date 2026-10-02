@@ -395,6 +395,8 @@ function parseEspnEvents(events) {
       odds,
       awayRank: rankOf(away),
       homeRank: rankOf(home),
+      awayAbbr: away?.team?.abbreviation || null,
+      homeAbbr: home?.team?.abbreviation || null,
       awayRecord: recordOf(away),
       homeRecord: recordOf(home),
       state: statusType.state || "pre",
@@ -2197,6 +2199,43 @@ function nameChips(names) {
   }).join("");
 }
 
+// The expanded scorebug, read top to bottom: who the room is on, then one
+// row per bet (team, terms, what it is worth, who holds it), each with a
+// light that says whether it is cashing on the current score. Before the
+// final the light is live (green cashing, pink not); after it the row
+// says what it paid. Win probability sits last as context.
+function bugPicksDetail(cloudPicks, game, res, isLive, isFinal, abbr) {
+  const A = abbr("away"), H = abbr("home");
+  const bets = [
+    { team: game.away, side: "away", mode: "SU" },
+    { team: game.away, side: "away", mode: "ATS" },
+    { team: game.home, side: "home", mode: "ATS" },
+    { team: game.home, side: "home", mode: "SU" },
+  ].map((b) => ({ ...b, names: pickersFor(cloudPicks, game.id, b.team, b.mode) })).filter((b) => b.names.length);
+  const nA = bets.filter((b) => b.side === "away").reduce((n, b) => n + b.names.length, 0);
+  const nH = bets.filter((b) => b.side === "home").reduce((n, b) => n + b.names.length, 0);
+  const tot = nA + nH;
+  const outcome = res ? resultOutcome(game, res) : null;
+  const row = (b) => {
+    const fav = b.team === game.favorite;
+    const terms = b.mode === "SU" ? "WIN" : `${fav ? "-" : "+"}${game.spread}`;
+    const worth = pointValue(game, b.team, b.mode);
+    let state = "", badge = `<span class="bp-pts">${worth} PT</span>`;
+    if (res && (isLive || isFinal)) {
+      const pushed = b.mode === "ATS" && outcome?.push;
+      const pts = scorePick(game, { team: b.team, mode: b.mode }, res);
+      state = pushed ? "push" : pts > 0 ? "up" : "down";
+      if (isFinal) badge = pushed ? `<span class="pick-pill push">PUSH</span>` : pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
+    }
+    return `<div class="bp-row ${b.side} ${state}${isLive ? " live" : ""}">
+      <div class="bp-bet"><i class="bp-light"></i><b>${b.side === "away" ? A : H}</b><span class="bp-terms">${terms}</span>${badge}</div>
+      <div class="pick-chips bp-chips">${nameChips(b.names)}</div>
+    </div>`;
+  };
+  const head = tot ? `<div class="bp-head"><span class="bp-count away">${nA} ${A}</span><span class="bp-split"><i class="away" style="width:${tot ? (100 * nA / tot).toFixed(0) : 50}%"></i><i class="home"></i></span><span class="bp-count home">${nH} ${H}</span></div>` : "";
+  return `<div class="bp">${head}${bets.length ? bets.map(row).join("") : `<div class="bp-none">No picks on this game</div>`}</div>`;
+}
+
 // Stacked breakdown: team header carrying the line, then one row per pick
 // type that has anyone on it. Empty rows are dropped.
 function bugSideDetail(cloudPicks, game, team, short, finalRes) {
@@ -2361,13 +2400,12 @@ function renderLiveScores(live, cloudPicks) {
 
       const winProbHtml = isLive && g.winProb
         ? `<div class="win-prob-bar"><div class="win-prob-fill away" style="width:${g.winProb.away}%"></div><div class="win-prob-fill home" style="width:${g.winProb.home}%"></div></div>
-           <div class="win-prob-labels"><span>${Math.round(g.winProb.away)}% ${game.awayShort}</span><span>${Math.round(g.winProb.home)}% ${game.homeShort}</span></div>`
+           <div class="win-prob-labels"><span>${Math.round(g.winProb.away)}% ${game.awayShort}</span><span class="wp-cap">WIN PROB</span><span>${Math.round(g.winProb.home)}% ${game.homeShort}</span></div>`
         : "";
 
       const detail = !expanded ? "" : locked
         ? `<div class="bug-detail">
-             ${bugSideDetail(cloudPicks, game, game.away, game.awayShort, isFinal ? { awayScore: g.awayScore, homeScore: g.homeScore } : null)}
-             ${bugSideDetail(cloudPicks, game, game.home, game.homeShort, isFinal ? { awayScore: g.awayScore, homeScore: g.homeScore } : null)}
+             ${bugPicksDetail(cloudPicks, game, hasScores ? { awayScore: g.awayScore, homeScore: g.homeScore } : null, isLive, isFinal, (side) => { const t = side === "away" ? (feed?.awayAbbr || game.awayShort) : (feed?.homeAbbr || game.homeShort); return (t.length > 6 && /\s/.test(t) ? t.split(/\s+/).map((w) => w[0]).join("") : t).toUpperCase(); })}
              ${winProbHtml}
              <div class="bug-foot"><span class="bug-foot-txt">${game.kickoffLabel} · ${game.tv || ""}</span><button type="button" class="insights-btn" data-insights="${game.id}" aria-label="Insights for ${game.awayShort} at ${game.homeShort}">INFO</button></div>
            </div>`
