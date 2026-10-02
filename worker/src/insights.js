@@ -614,7 +614,7 @@ export async function gameInjuries(env, week, game, fromPhone = null) {
   const fresh = hit && Date.now() - hit.at < ((hit.away?.length || hit.home?.length) ? 3 * 3600 * 1000 : 15 * 60 * 1000);
   if (fresh && (hit.away?.length || hit.home?.length)) return hit;
   if (fresh && !fromPhone && hit.site) return hit;
-  const clean = (list) => (Array.isArray(list) ? list : []).filter((n) => n && typeof n.headline === "string").slice(0, 12).map((n) => ({ headline: String(n.headline).slice(0, 200), blurb: n.blurb ? String(n.blurb).slice(0, 1800) : null, source: n.source ? String(n.source).slice(0, 60) : null, link: typeof n.link === "string" ? n.link.slice(0, 300) : null, published: n.published || null }));
+  const clean = (list) => (Array.isArray(list) ? list : []).filter((n) => n && typeof n.headline === "string").slice(0, 12).map((n) => ({ headline: String(n.headline).slice(0, 200), blurb: n.blurb ? String(n.blurb).slice(0, 3000) : null, source: n.source ? String(n.source).slice(0, 60) : null, link: typeof n.link === "string" ? n.link.slice(0, 300) : null, published: n.published || null }));
   // The site's feed file, pulled by the scheduled Action from a network the
   // news hosts do not throttle, carries article bodies. Read it here too so
   // the extraction does not depend on a phone forwarding it.

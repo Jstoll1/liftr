@@ -63,8 +63,17 @@ async function articleText(link, label) {
     const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html", "Accept-Language": "en-US,en;q=0.9" }, redirect: "follow" });
     if (!res.ok) { failures.push(`${label}: HTTP ${res.status} ${new URL(url).hostname}`); return null; }
     const html = (await res.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, "");
-    const paras = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;|&#8217;/g, "'").replace(/&quot;|&ldquo;|&rdquo;/g, '"').replace(/\s+/g, " ").trim()).filter((t) => t.length > 50);
-    const text = paras.join(" ").slice(0, 1800);
+    // Paragraphs and list items, nav junk and repeats dropped, the ones that
+    // carry a status first so the cap never eats the player list.
+    const clean = (t) => t.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;|&#8217;/g, "'").replace(/&quot;|&ldquo;|&rdquo;/g, '"').replace(/\s+/g, " ").trim();
+    const seen = new Set();
+    const navLike = (t) => { const w = t.split(" "); return w.length >= 4 && w.filter((x) => /^[A-Z][A-Z.]+$/.test(x)).length / w.length > 0.5; };
+    const paras = [...html.matchAll(/<(?:p|li|h[2-4])[^>]*>([\s\S]*?)<\/(?:p|li|h[2-4])>/gi)].map((m) => clean(m[1]))
+      .filter((t) => t.length > 30 && !navLike(t) && !/share on|preferred source|subscribe|newsletter|cookie|all rights reserved/i.test(t))
+      .filter((t) => { const k = t.slice(0, 80).toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+    const STATUS = /\b(out|questionable|doubtful|probable|available|unavailable|game-time|injur|return|limited|did not practice|dnp|suspend)\b/i;
+    const ordered = [...paras.filter((t) => STATUS.test(t)), ...paras.filter((t) => !STATUS.test(t))];
+    const text = ordered.join(" ").slice(0, 3000);
     if (text.length <= 120) failures.push(`${label}: only ${text.length} chars from ${new URL(url).hostname}`);
     return text.length > 120 ? text : null;
   } catch (err) { failures.push(`${label}: ${String(err?.message || err).slice(0, 60)}`); return null; }
