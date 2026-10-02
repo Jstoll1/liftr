@@ -56,7 +56,12 @@ async function resolveGoogle(link) {
     return m ? m[1] : null;
   } catch { return null; }
 }
-async function articleText(link, label) {
+// `opts.cap` bounds the text (3000 for an injury piece, where the status
+// paragraphs are moved first so the cap never eats the player list);
+// `opts.wholePage` keeps the page in its own order with a larger cap and
+// takes table cells too, for a staff picks piece where every picker's
+// block has to survive intact.
+async function articleText(link, label, opts = {}) {
   try {
     let url = link;
     if (/news\.google\.com/.test(url)) { url = await resolveGoogle(url); if (!url) { failures.push(`${label}: google decode failed`); return null; } }
@@ -79,12 +84,14 @@ async function articleText(link, label) {
     const clean = (t) => t.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;|&#8217;/g, "'").replace(/&quot;|&ldquo;|&rdquo;/g, '"').replace(/\s+/g, " ").trim();
     const seen = new Set();
     const navLike = (t) => { const w = t.split(" "); return w.length >= 4 && w.filter((x) => /^[A-Z][A-Z.]+$/.test(x)).length / w.length > 0.5; };
-    const paras = [...html.matchAll(/<(?:p|li|h[2-4])[^>]*>([\s\S]*?)<\/(?:p|li|h[2-4])>/gi)].map((m) => clean(m[1]))
-      .filter((t) => t.length > 30 && !navLike(t) && !/share on|preferred source|subscribe|newsletter|cookie|all rights reserved/i.test(t))
+    const tagRe = opts.wholePage ? /<(?:p|li|h[2-4]|td|th)[^>]*>([\s\S]*?)<\/(?:p|li|h[2-4]|td|th)>/gi : /<(?:p|li|h[2-4])[^>]*>([\s\S]*?)<\/(?:p|li|h[2-4])>/gi;
+    const minLen = opts.wholePage ? 12 : 30;
+    const paras = [...html.matchAll(tagRe)].map((m) => clean(m[1]))
+      .filter((t) => t.length > minLen && !navLike(t) && !/share on|preferred source|subscribe|newsletter|cookie|all rights reserved/i.test(t))
       .filter((t) => { const k = t.slice(0, 80).toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
     const STATUS = /\b(out|questionable|doubtful|probable|available|unavailable|game-time|injur|return|limited|did not practice|dnp|suspend)\b/i;
-    const ordered = [...paras.filter((t) => STATUS.test(t)), ...paras.filter((t) => !STATUS.test(t))];
-    const text = ordered.join(" ").slice(0, 3000);
+    const ordered = opts.wholePage ? paras : [...paras.filter((t) => STATUS.test(t)), ...paras.filter((t) => !STATUS.test(t))];
+    const text = ordered.join(" ").slice(0, opts.cap || 3000);
     if (text.length <= 120) failures.push(`${label}: only ${text.length} chars from ${url.startsWith("msn:") ? "msn api" : new URL(url).hostname}`);
     return text.length > 120 ? text : null;
   } catch (err) { failures.push(`${label}: ${String(err?.message || err).slice(0, 60)}`); return null; }
@@ -145,7 +152,7 @@ for (const g of games) {
   const picks = tag(filterNews([...got.picks, ...got.game]).filter((n) => { const h = String(n.headline).toLowerCase(); return !NFL.test(h) && aA.some((x) => wholeWord(h, x)) && aH.some((x) => wholeWord(h, x)) && PICK.test(n.headline); }), "game")
     .sort((x, y) => outletRank(x.source) - outletRank(y.source)).slice(0, 8);
   {
-    const texts = await Promise.all(picks.map((n) => articleText(n.link, `g${g.id} picks ${n.source}: ${n.headline.slice(0, 40)}`)));
+    const texts = await Promise.all(picks.map((n) => articleText(n.link, `g${g.id} picks ${n.source}: ${n.headline.slice(0, 40)}`, { wholePage: true, cap: 12000 })));
     picks.forEach((n, i) => { if (texts[i]) n.blurb = texts[i]; });
   }
   out.games[g.id] = {

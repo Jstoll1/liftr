@@ -4065,11 +4065,17 @@ async function openInsights(gameId) {
   // Expert picks: a tile per outlet, four across, the picked team's logo
   // and the line as written. Tap a tile for the piece.
   {
-    const list = (xpicks?.picks || []).slice(0, 8);
-    if (list.length) {
-      const nA = list.filter((p) => p.side === "away").length, nH = list.length - nA;
+    // Breadth first: one tile per outlet before any outlet's second picker,
+    // so a staff table never fills the grid alone. The rest fold below.
+    const all = xpicks?.picks || [];
+    const byOutlet = new Map();
+    for (const p of all) { const k = p.outlet.toLowerCase(); if (!byOutlet.has(k)) byOutlet.set(k, []); byOutlet.get(k).push(p); }
+    const ordered = []; for (let round = 0; ordered.length < all.length; round++) for (const q of byOutlet.values()) if (q[round]) ordered.push(q[round]);
+    const list = ordered.slice(0, 8), rest = ordered.slice(8, 24);
+    if (all.length) {
+      const nA = all.filter((p) => p.side === "away").length, nH = all.length - nA;
       const lead = nA >= nH ? { n: nA, short: game.awayShort } : { n: nH, short: game.homeShort };
-      const sum = nA && nH ? `${lead.n} OF ${list.length} ON ${esc(lead.short.toUpperCase())}` : `ALL ${list.length} ON ${esc(lead.short.toUpperCase())}`;
+      const sum = nA && nH ? `${lead.n} OF ${all.length} ON ${esc(lead.short.toUpperCase())}` : `ALL ${all.length} ON ${esc(lead.short.toUpperCase())}`;
       const tile = (p) => {
         // ESPN's abbreviation fits a quarter-width tile; a long slate name
         // ("Virginia Tech") falls back to its initials rather than clipping.
@@ -4086,6 +4092,7 @@ async function openInsights(gameId) {
         return p.link ? `<a class="xp-tile ${p.side}" href="${esc(p.link)}" target="_blank" rel="noopener" title="${esc(p.reason || "")}">${inner}</a>` : `<span class="xp-tile ${p.side}" title="${esc(p.reason || "")}">${inner}</span>`;
       };
       html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid">${list.map(tile).join("")}</div>`;
+      if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE PICKS (${rest.length})</summary><div class="xp-grid">${rest.map(tile).join("")}</div></details>`;
     } else if (pend.picks) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-loading">Checking the pickers…</div>`;
     else html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-empty small">No published picks yet. The outlets usually call games Thursday and Friday.</div>`;
   }

@@ -707,13 +707,13 @@ export async function extractInjuries(env, teamName, items) {
 // straight up, the line as written and a predicted score if the piece
 // gives one. A pick stands only when the team named is one of the two
 // in the game. Cached six hours, stale reads refreshed behind the response.
-export const picksKey = (week, gameId) => `pk:v1:w${week}:g${gameId}`;
+export const picksKey = (week, gameId) => `pk:v2:w${week}:g${gameId}`;
 const PICK_TIER = [/cbs ?sports/i, /sports illustrated|\bsi\b/i, /the athletic/i, /\bcovers\b/i, /action network/i, /pickswise/i, /yahoo/i, /bleacher report/i, /fox sports/i, /usa today/i, /sportsline/i, /oddsshark/i, /dimers/i, /\bpff\b/i, /sporting news/i, /new york post|ny post/i, /on3/i, /247sports/i, /athlon/i, /saturday down south|saturday tradition|saturday blitz/i, /college football news/i, /betsided|fansided/i, /the spun/i];
 export const outletRank = (name) => { const i = PICK_TIER.findIndex((re) => re.test(String(name || ""))); return i < 0 ? PICK_TIER.length : i; };
 export function picksPrompt() {
   return [
     "You extract published game picks for one college football game from article headlines and bodies.",
-    "Return one entry per outlet (and per named picker when an outlet lists several, e.g. a staff picks table): the outlet name, the picker's name if given (else empty), the team picked exactly as one of the two teams given, whether the pick is against the spread ('ATS'), straight up ('SU') or the piece gives both ('BOTH'), the line as written for that team if stated (e.g. '-3.5', '+7') else empty, a predicted final score as 'AA-HH' (away first) if given else empty, and the reason in at most twelve words.",
+    "Read each piece to its end. A staff picks piece lists several people, each with their own pick, line and score: return every one of them as a separate entry, never only the first. Return one entry per outlet and per named picker: the outlet name, the picker's name if given (else empty), the team picked exactly as one of the two teams given, whether the pick is against the spread ('ATS'), straight up ('SU') or the piece gives both ('BOTH'), the line as written for that team if stated (e.g. '-3.5', '+7') else empty, a predicted final score as 'AA-HH' (away first) if given else empty, and the reason in at most twelve words.",
     "Only include a pick the text states plainly. Never guess from tone, never include a pick for another game, and never invent a line or score. If nothing qualifies, return an empty list.",
     "Return JSON: {\"picks\": [{\"outlet\": \"\", \"picker\": \"\", \"team\": \"\", \"side\": \"ATS\", \"line\": \"\", \"score\": \"\", \"reason\": \"\"}]}",
   ].join(" ");
@@ -737,7 +737,7 @@ export async function extractPicks(env, game, items) {
   if (!items.length) return { picks: [] };
   if (!env.OPENAI_API_KEY) return { picks: [], error: "no model key" };
   const ordered = [...items].sort((a, b) => (b.blurb ? b.blurb.length : 0) - (a.blurb ? a.blurb.length : 0));
-  const text = ordered.map((n, i) => `- [#${i} ${n.source || "news"}] ${n.headline}${n.blurb ? ` — ${n.blurb.slice(0, 2500)}` : ""}`).join("\n").slice(0, 16000);
+  const text = ordered.map((n, i) => `- [#${i} ${n.source || "news"}] ${n.headline}${n.blurb ? ` — ${n.blurb.slice(0, 12000)}` : ""}`).join("\n").slice(0, 60000);
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
@@ -762,7 +762,7 @@ export async function extractPicks(env, game, items) {
     }).filter(Boolean)
       // One tile per outlet and picker.
       .filter((p) => { const k = `${p.outlet}|${p.picker}`.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
-      .sort((a, b) => outletRank(a.outlet) - outletRank(b.outlet)).slice(0, 12);
+      .sort((a, b) => outletRank(a.outlet) - outletRank(b.outlet)).slice(0, 16);
     return { picks };
   } catch { return { picks: [], error: "bad model json" }; }
 }

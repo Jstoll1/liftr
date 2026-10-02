@@ -4136,3 +4136,5 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .xp-pick img { width: 18px; height: 18px; flex: 0 0 auto; }
 .xp-pick b { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .xp-line { font-size: 9.5px; color: var(--text); text-align: center; line-height: 1.2; }
+.xp-more { margin-top: 4px; }
+.xp-more .xp-grid { margin-top: 6px; }
