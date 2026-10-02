@@ -4009,7 +4009,9 @@ async function openInsights(gameId) {
       </div><div class="gc-hpn"><span>${Math.round(wp.away)}%</span><span>${Math.round(wp.home)}%</span></div>` : "";
     // Your pick, called out under the HUD: the side and terms, what it is
     // worth, and whether it is cashing on this score and by how much.
-    const mine = currentManager ? getManagerState(currentManager).picks?.[game.id] || null : null;
+    const cloudAll = lastGoodCloudPicks || {};
+    const pickOf = (name) => sanitizePicks(cloudAll[name]?.picks || {})[game.id] || (name === currentManager ? getManagerState(name).picks?.[game.id] : null) || null;
+    const mine = currentManager ? pickOf(currentManager) : null;
     let mineHtml = "";
     if (mine) {
       const mySide = mine.team === game.away ? "away" : "home";
@@ -4072,7 +4074,25 @@ async function openInsights(gameId) {
     const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
     const spHtml = sp.length ? `<div class="gc-h">SCORING</div><ul class="lv-sp">${sp.slice().reverse().map((q) => { const tid = q.team?.id != null ? Number(q.team.id) : null; return `<li>${tid ? lg(tid, "lv-splogo") : ""}<span class="lv-spq">Q${q.period?.number ?? "?"} ${esc(q.clock?.displayValue || "")}</span><span class="lv-sptxt">${esc(q.text || q.type?.text || "")}</span><b class="lv-spsc">${q.awayScore ?? ""}-${q.homeScore ?? ""}</b></li>`; }).join("")}</ul>` : "";
-    return `<div class="gc">${strip}${mineHtml}${field}${ddLine}${playsHtml}${wpHtml}${spHtml}</div>`;
+    const room = MANAGERS.map((name) => ({ name, pick: pickOf(name) })).filter((r) => r.pick);
+    let roomHtml = "";
+    if (room.length) {
+      const res = { awayScore: aS, homeScore: hS };
+      const pushed = resultOutcome(game, res)?.push;
+      const rows = room.map((r) => {
+        const side = r.pick.team === game.away ? "away" : "home";
+        const fav = r.pick.team === game.favorite;
+        const terms = r.pick.mode === "SU" ? "WIN" : `${fav ? "-" : "+"}${game.spread}`;
+        const state = r.pick.mode === "ATS" && pushed ? "push" : scorePick(game, r.pick, res) > 0 ? "up" : "down";
+        return { ...r, side, terms, state, worth: pointValue(game, r.pick.team, r.pick.mode) };
+      });
+      const idx = (n) => MANAGERS.indexOf(n);
+      const chip = (r) => { const accent = AVATAR_COLORS[(idx(r.name) >= 0 ? idx(r.name) : 0) % AVATAR_COLORS.length]; const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
+      const up = rows.filter((r) => r.state === "up"), down = rows.filter((r) => r.state === "down"), push = rows.filter((r) => r.state === "push");
+      const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
+      roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
+    }
+    return `<div class="gc">${strip}${mineHtml}${field}${ddLine}${playsHtml}${roomHtml}${wpHtml}${spHtml}</div>`;
   };
   // Built as a function and prepended once abbrOf exists below.
   const liveBlock = () => {
@@ -4417,6 +4437,7 @@ async function openInsights(gameId) {
     if (alive()) paint();
   };
   const liveTimer = setInterval(liveTick, 15000);
+  fetchAllPicks().then((p) => { if (p) { lastGoodCloudPicks = p; if (alive()) paint(); } }).catch(() => {});
   // Cached summary paints at once; otherwise the first paint waits for it.
   land(withTimeout(fetchInsights(), 3500, null), (v) => { data = v; });
   land(withTimeout(fetchGameSnapshot(gameId), 3500, null), (v) => { snap = v; });

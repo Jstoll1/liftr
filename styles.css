@@ -4389,3 +4389,46 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-mine.up .gc-msay { color: var(--neon-green); }
 .gc-mine.down .gc-msay { color: var(--neon-pink); }
 .gc-mine.push .gc-msay { color: var(--neon-yellow); }
+
+/* HUD packed to the centre: portraits and scores hug the clock instead of
+   stretching to the card edges on a wide screen. */
+.gc-cab .gc-hp, .gc-cab .gc-hpn, .gc-cab .gc-strip { max-width: 440px; margin-left: auto; margin-right: auto; }
+.gc-cab .gc-strip { grid-template-columns: auto auto auto; justify-content: center; column-gap: 12px; }
+.gc-f { grid-template-columns: auto auto; column-gap: 8px; }
+.gc-f.h { grid-template-columns: auto auto; }
+.gc-f.a .gc-led.sc { justify-self: end; }
+.gc-f.h .gc-led.sc { justify-self: start; }
+.gc-f.a .gc-fid { justify-content: flex-end; }
+.gc-f.h .gc-fid { justify-content: flex-start; flex-direction: row; }
+.gc-f.h .gc-port { grid-column: 2; grid-row: 1 / span 2; }
+.gc-f.h .gc-fid, .gc-f.h .gc-led.sc { grid-column: 1; }
+.gc-f.h .gc-fid { grid-row: 1; }
+.gc-f.h .gc-led.sc { grid-row: 2; }
+.gc-cab > .gc-hp, .gc-cab > .gc-hpn { width: min(100%, 440px); max-width: none; margin-left: auto; margin-right: auto; }
+.gc-cab { display: flex; flex-direction: column; align-items: stretch; }
+
+/* The room: everyone's pick on this game, split by the live score. */
+.gc-room { display: flex; flex-direction: column; gap: 6px; }
+.gc-rcols { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.gc-rcol { border-radius: 8px; padding: 6px 6px 7px; border: 1px solid rgba(255, 255, 255, .08); background: rgba(255, 255, 255, .02); min-width: 0; }
+.gc-rcol.up { border-color: rgba(57, 255, 136, .45); background: linear-gradient(180deg, rgba(57, 255, 136, .09), rgba(57, 255, 136, .02)); }
+.gc-rcol.down { border-color: rgba(255, 32, 121, .4); background: linear-gradient(180deg, rgba(255, 32, 121, .08), rgba(255, 32, 121, .02)); }
+.gc-rcol.push { border-color: rgba(255, 228, 94, .4); }
+.gc-rh { display: flex; align-items: center; gap: 5px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .08em; margin-bottom: 5px; }
+.gc-rh i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
+.gc-rh span { margin-left: auto; font-size: 9px; }
+.gc-rcol.up .gc-rh { color: var(--neon-green); }
+.gc-rcol.down .gc-rh { color: var(--neon-pink); }
+.gc-rcol.push .gc-rh { color: var(--neon-yellow); }
+.gc-rcol ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.gc-rc { display: flex; align-items: center; gap: 5px; min-width: 0; padding: 2px 0; }
+.gc-rc .pick-chip-av { width: 14px; height: 14px; font-size: 7px; }
+.gc-rc b { font-size: 10px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.gc-rc.me b { color: var(--neon-cyan); text-shadow: 0 0 6px rgba(0, 229, 255, .6); }
+.gc-rt { display: inline-flex; align-items: center; gap: 3px; font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); white-space: nowrap; }
+.gc-rt img.gc-rlogo { width: 11px; height: 11px; }
+.gc-rpts { margin-left: auto; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6.5px; }
+.gc-rc.up .gc-rpts { color: var(--neon-green); }
+.gc-rc.down .gc-rpts { color: rgba(255, 32, 121, .7); }
+.gc-rc.down b { color: var(--text-dim); }
+.gc-rnone { font-size: 9px; color: var(--text-dim); }
