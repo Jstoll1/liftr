@@ -4369,3 +4369,23 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* The pill itself: room around the number so it reads as a pill. */
 .bug-head .stake { display: inline-flex; align-items: center; gap: 1px; margin-left: auto; padding: 3px 7px 3px; border: 1px solid rgba(244, 240, 255, .3); border-radius: 999px; font-family: 'Press Start 2P', monospace; font-size: 8px; line-height: 1; letter-spacing: .02em; white-space: nowrap; }
 .bug-head .stake.pending { color: var(--text-dim); background: rgba(244, 240, 255, .05); }
+
+/* Possession: a small pixel football beside the team, not the word BALL. */
+.gc-pball { position: relative; display: inline-block; width: 12px; height: 7px; border-radius: 50%; background: #8b4513; box-shadow: 0 0 0 1px #3a1a05, 0 0 6px rgba(255, 228, 94, .55); animation: gcbob 1s steps(2, start) infinite; }
+.gc-pball::after { content: ""; position: absolute; left: 3px; right: 3px; top: 3px; height: 1px; background: #fff; }
+@keyframes gcbob { 50% { transform: translateY(-1px); } }
+
+/* Your pick under the HUD */
+.gc-mine { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .03); }
+.gc-mine.up { border-color: rgba(57, 255, 136, .55); background: rgba(57, 255, 136, .07); box-shadow: 0 0 10px rgba(57, 255, 136, .15); }
+.gc-mine.down { border-color: rgba(255, 32, 121, .5); background: rgba(255, 32, 121, .06); }
+.gc-mine.push { border-color: rgba(255, 228, 94, .5); }
+.gc-mtag { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .1em; color: #0a0414; background: var(--neon-cyan); padding: 2px 4px; }
+.gc-mine img.gc-mlogo { width: 18px; height: 18px; }
+.gc-mine b { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; white-space: nowrap; }
+.gc-mpts { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); }
+.gc-msay { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .04em; white-space: nowrap; }
+.gc-msay i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
+.gc-mine.up .gc-msay { color: var(--neon-green); }
+.gc-mine.down .gc-msay { color: var(--neon-pink); }
+.gc-mine.push .gc-msay { color: var(--neon-yellow); }

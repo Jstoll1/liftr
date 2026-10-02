@@ -3998,7 +3998,7 @@ async function openInsights(gameId) {
     const per = lv.period ? (lv.period > 4 ? `OT${lv.period > 5 ? lv.period - 4 : ""}` : `Q${lv.period}`) : "";
     const fighter = (id, ab, sc, poss, side, tag) => `<div class="gc-f ${side}${poss ? " poss" : ""}">
         <span class="gc-port">${lg(id, "gc-logo")}</span>
-        <div class="gc-fid"><i class="gc-p">${tag}</i><b>${esc(ab)}</b>${poss ? `<em class="gc-ballt">BALL</em>` : ""}</div>
+        <div class="gc-fid"><i class="gc-p">${tag}</i><b>${esc(ab)}</b>${poss ? `<i class="gc-pball" title="Has the ball"></i>` : ""}</div>
         ${led(sc, "sc")}
       </div>`;
     const wp = lv.winProb;
@@ -4007,6 +4007,24 @@ async function openInsights(gameId) {
         <span class="gc-ko">WIN%</span>
         <div class="gc-bar h"><i style="width:${wp.home.toFixed(1)}%;--tc:${hCol}"></i></div>
       </div><div class="gc-hpn"><span>${Math.round(wp.away)}%</span><span>${Math.round(wp.home)}%</span></div>` : "";
+    // Your pick, called out under the HUD: the side and terms, what it is
+    // worth, and whether it is cashing on this score and by how much.
+    const mine = currentManager ? getManagerState(currentManager).picks?.[game.id] || null : null;
+    let mineHtml = "";
+    if (mine) {
+      const mySide = mine.team === game.away ? "away" : "home";
+      const fav = mine.team === game.favorite;
+      const terms = mine.mode === "SU" ? "TO WIN" : `${fav ? "-" : "+"}${game.spread}`;
+      const worth = pointValue(game, mine.team, mine.mode);
+      const mineS = mySide === "away" ? aS : hS, oppS = mySide === "away" ? hS : aS;
+      const margin = (mineS - oppS) + (mine.mode === "SU" ? 0 : (fav ? -1 : 1) * Number(game.spread));
+      const res = { awayScore: aS, homeScore: hS };
+      const pushed = mine.mode === "ATS" && resultOutcome(game, res)?.push;
+      const cash = pushed ? "push" : scorePick(game, mine, res) > 0 ? "up" : "down";
+      const by = Math.abs(margin) % 1 ? Math.abs(margin).toFixed(1) : String(Math.abs(margin));
+      const say = cash === "push" ? "PUSH RIGHT NOW" : cash === "up" ? (mine.mode === "SU" ? `WINNING BY ${by}` : `COVERING BY ${by}`) : (mine.mode === "SU" ? (margin === 0 ? "TIED" : `DOWN ${by}`) : `NEEDS ${by} MORE`);
+      mineHtml = `<div class="gc-mine ${cash}"><span class="gc-mtag">YOUR PICK</span>${lg(mySide === "away" ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(mySide === "away" ? A : H)} ${esc(terms)}</b><span class="gc-mpts">${worth} PT</span><span class="gc-msay"><i></i>${esc(say)}</span></div>`;
+    }
     const strip = `<div class="gc-cab">${hp}<div class="gc-strip">${fighter(game.awayId, A, aS, possA, "a", "P1")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${fighter(game.homeId, H, hS, possH, "h", "P2")}</div></div>`;
     const ddLine = dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || "Between plays")}</b></div>`;
     // Last three plays: the current drive first, the previous drive if the
@@ -4054,7 +4072,7 @@ async function openInsights(gameId) {
     const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
     const spHtml = sp.length ? `<div class="gc-h">SCORING</div><ul class="lv-sp">${sp.slice().reverse().map((q) => { const tid = q.team?.id != null ? Number(q.team.id) : null; return `<li>${tid ? lg(tid, "lv-splogo") : ""}<span class="lv-spq">Q${q.period?.number ?? "?"} ${esc(q.clock?.displayValue || "")}</span><span class="lv-sptxt">${esc(q.text || q.type?.text || "")}</span><b class="lv-spsc">${q.awayScore ?? ""}-${q.homeScore ?? ""}</b></li>`; }).join("")}</ul>` : "";
-    return `<div class="gc">${strip}${field}${ddLine}${playsHtml}${wpHtml}${spHtml}</div>`;
+    return `<div class="gc">${strip}${mineHtml}${field}${ddLine}${playsHtml}${wpHtml}${spHtml}</div>`;
   };
   // Built as a function and prepended once abbrOf exists below.
   const liveBlock = () => {
