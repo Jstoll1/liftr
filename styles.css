@@ -4109,3 +4109,15 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .lm-end { gap: 4px; }
 .lm-end.l { left: clamp(-44px, -12vw, -64px); } .lm-end.r { right: clamp(-44px, -12vw, -64px); }
 .ins-sim-vs img { width: clamp(22px, 6.5vw, 34px); height: clamp(22px, 6.5vw, 34px); }
+
+/* Injury rows with a verified sentence from the article unfold on tap. */
+.ins-inj li.ins-q { padding: 0; }
+.ins-inj li.ins-q details { width: 100%; }
+.ins-inj li.ins-q summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; padding: 4px 0; cursor: pointer; list-style: none; position: relative; -webkit-tap-highlight-color: transparent; }
+.ins-inj li.ins-q summary::-webkit-details-marker { display: none; }
+.ins-cols .ins-inj li.ins-q summary { flex-direction: column; align-items: flex-start; gap: 2px; }
+.ins-q-tap { position: absolute; right: 2px; top: 6px; font-size: 10px; color: var(--neon-cyan); opacity: .7; transition: transform .18s ease; }
+.ins-inj li.ins-q details[open] .ins-q-tap { transform: rotate(180deg); }
+.ins-quote { margin: 0 0 6px; padding: 6px 8px; border-left: 2px solid var(--neon-cyan); background: rgba(0, 229, 255, .06); font-size: 10.5px; line-height: 1.4; color: var(--text); font-style: italic; }
+.ins-q-src { margin-top: 4px; font-style: normal; font-size: 9.5px; color: var(--text-dim); }
+.ins-q-src a { color: var(--neon-cyan); text-decoration: none; }

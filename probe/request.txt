@@ -1,4 +1,2 @@
 /insights/injuries?week=5&game=1
-/insights/injuries?week=5&game=3
 /insights/injuries?week=5&game=2
-# v7 positions

@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseRoster, fillPositions, parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { verifyQuote, parseRoster, fillPositions, parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -197,4 +197,19 @@ test("every injury row gets a position: prose roles, roster lookup, then the mod
   const roster = parseRoster({ athletes: [{ position: "defense", items: [{ fullName: "Zach Crothers", position: { abbreviation: "DE" } }, { fullName: "A. Smith", position: { abbreviation: "S" } }, { fullName: "B. Smith", position: { abbreviation: "CB" } }] }] });
   const filled = fillPositions([...r.players, { name: "Smith", pos: "", status: "OUT", detail: "" }, { name: "Joe Nobody", pos: "", status: "OUT", detail: "the safety" }], roster);
   assert.deepEqual(filled.map((p) => p.pos), ["TE", "DE", "OL", "", "S"]);
+});
+
+test("verifyQuote keeps only sentences really in the articles and attaches that article's link", () => {
+  const items = [
+    { source: "On3", link: "https://on3.com/a", headline: "Ohio State injury report", blurb: "Jake Stoll suffered a sprained ankle and has not practiced. Another line here." },
+    { source: "SI", link: "https://si.com/b", headline: "Buckeyes notes", blurb: "Nothing about him." },
+  ];
+  const ok = verifyQuote(items, "Jake Stoll suffered a sprained ankle and has not practiced.", "Jake Stoll");
+  assert.deepEqual(ok, { quote: "Jake Stoll suffered a sprained ankle and has not practiced.", link: "https://on3.com/a", source: "On3" });
+  // Curly quotes and spacing do not break the match.
+  assert.ok(verifyQuote(items, "  Jake   Stoll suffered a sprained ankle and has not practiced ", "Jake Stoll"));
+  // A paraphrase is dropped, then the sentence naming the player stands in.
+  assert.equal(verifyQuote(items, "Stoll hurt his ankle and will sit", "Jake Stoll").quote, "Jake Stoll suffered a sprained ankle and has not practiced");
+  // A player the text never names with a status gets no quote at all.
+  assert.equal(verifyQuote(items, "Made up sentence about Bob Nobody being out", "Bob Nobody"), null);
 });
