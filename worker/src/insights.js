@@ -548,7 +548,7 @@ export async function gamePreview(env, week, game, facts) {
 // injury coverage, then have the model pull a structured list from the
 // headlines and blurbs. Cached three hours; only names with a stated
 // status come through, and every row carries the outlet it came from.
-export const injuriesKey = (week, gameId) => `inj:v5:w${week}:g${gameId}`;
+export const injuriesKey = (week, gameId) => `inj:v6:w${week}:g${gameId}`;
 export const INJURY_STATUSES = ["OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "RETURNING", "SUSPENDED"];
 export function injuriesPrompt() {
   return [
@@ -623,7 +623,7 @@ export async function gameInjuries(env, week, game, fromPhone = null) {
   // to a domain on its own Cloudflare zone is refused intermittently.
   let siteInj = null, siteError = null;
   try {
-    const r = await fetchText(`${env.FEEDS_URL || "https://raw.githubusercontent.com/Jstoll1/liftr/main/data/feeds"}/w${week}.json`, "application/json", env);
+    const r = await fetchText(`${env.FEEDS_URL || "https://raw.githubusercontent.com/Jstoll1/liftr/main/data/feeds"}/w${week}.json`, "application/json", null);
     if (r.ok) siteInj = JSON.parse(r.text)?.games?.[String(game.id)]?.injuries || null; else siteError = r.error;
   } catch (err) { siteError = String(err?.message || err).slice(0, 80); }
   const [ownAway, ownHome] = await Promise.all([injuryNewsFor(game.away, env), injuryNewsFor(game.home, env)]);
