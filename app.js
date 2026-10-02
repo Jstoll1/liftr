@@ -4065,34 +4065,43 @@ async function openInsights(gameId) {
   // Expert picks: a tile per outlet, four across, the picked team's logo
   // and the line as written. Tap a tile for the piece.
   {
-    // Breadth first: one tile per outlet before any outlet's second picker,
-    // so a staff table never fills the grid alone. The rest fold below.
+    // One tile per outlet. A staff page with four writers is one outlet
+    // with a count, not four look-alike tiles. The tile shows the side the
+    // outlet leans (and the split when writers disagree), one logo big
+    // enough to read, and the line as written. Rows always fill: four
+    // across, or fewer columns when there are fewer outlets, with any
+    // remainder beyond a full row folded under MORE.
     const all = xpicks?.picks || [];
-    const byOutlet = new Map();
-    for (const p of all) { const k = p.outlet.toLowerCase(); if (!byOutlet.has(k)) byOutlet.set(k, []); byOutlet.get(k).push(p); }
-    const ordered = []; for (let round = 0; ordered.length < all.length; round++) for (const q of byOutlet.values()) if (q[round]) ordered.push(q[round]);
-    const list = ordered.slice(0, 8), rest = ordered.slice(8, 24);
+    const outlets = [];
+    for (const p of all) { let o = outlets.find((x) => x.key === p.outlet.toLowerCase()); if (!o) { o = { key: p.outlet.toLowerCase(), outlet: p.outlet, picks: [] }; outlets.push(o); } o.picks.push(p); }
+    const tileOf = (o) => {
+      const nA = o.picks.filter((p) => p.side === "away").length, nH = o.picks.length - nA;
+      const side = nA > nH ? "away" : nH > nA ? "home" : o.picks[0].side;
+      const lead = side === "away" ? nA : nH;
+      const first = o.picks.find((p) => p.side === side) || o.picks[0];
+      const id = side === "away" ? game.awayId : game.homeId;
+      const raw = abbrOf(side) || "";
+      const short = raw.length <= 6 ? raw : raw.split(/[\s-]+/).length > 1 ? raw.split(/[\s-]+/).map((w) => w[0]).join("") : raw.slice(0, 5);
+      const count = o.picks.length > 1 ? (lead === o.picks.length ? `ALL ${o.picks.length}` : `${lead} OF ${o.picks.length}`) : "";
+      const line = first.line || (first.type === "SU" ? "SU" : "ATS");
+      const score = o.picks.length === 1 && first.score ? ` · ${first.score}` : "";
+      const names = o.picks.map((p) => p.picker && p.picker === p.picker.toUpperCase() ? p.picker.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : p.picker).filter(Boolean);
+      const title = [names.length ? names.join(", ") : "", first.reason || ""].filter(Boolean).join(" — ");
+      const inner = `<span class="xp-out">${esc(o.outlet.replace(/\s+on MSN$/i, ""))}</span>${lg(id, "xp-logo")}<span class="xp-team">${esc(short.toUpperCase())}${count ? ` <i>${esc(count)}</i>` : ""}</span><span class="xp-line">${esc(line)}${esc(score)}</span>`;
+      const href = first.link || o.picks.find((p) => p.link)?.link;
+      return href ? `<a class="xp-tile ${side}" href="${esc(href)}" target="_blank" rel="noopener" title="${esc(title)}">${inner}</a>` : `<span class="xp-tile ${side}" title="${esc(title)}">${inner}</span>`;
+    };
+    const n = outlets.length;
+    const cols = n <= 1 ? 1 : n <= 4 ? n : 4;
+    const shown = n <= 4 ? n : 4 * Math.floor(n / 4);
+    const list = outlets.slice(0, shown), rest = outlets.slice(shown, shown + 16);
     if (all.length) {
       const nA = all.filter((p) => p.side === "away").length, nH = all.length - nA;
       const lead = nA >= nH ? { n: nA, short: game.awayShort } : { n: nH, short: game.homeShort };
-      const sum = nA && nH ? `${lead.n} OF ${all.length} ON ${esc(lead.short.toUpperCase())}` : `ALL ${all.length} ON ${esc(lead.short.toUpperCase())}`;
-      const tile = (p) => {
-        // ESPN's abbreviation fits a quarter-width tile; a long slate name
-        // ("Virginia Tech") falls back to its initials rather than clipping.
-        const id = p.side === "away" ? game.awayId : game.homeId;
-        const raw = abbrOf(p.side) || "";
-        const short = raw.length <= 6 ? raw : raw.split(/[\s-]+/).length > 1 ? raw.split(/[\s-]+/).map((w) => w[0]).join("") : raw.slice(0, 5);
-        // Two tokens at most so the cell never overflows: the line as
-        // written (or SU when the piece picks a winner only), then a score.
-        const line = [p.line || (p.type === "SU" ? "SU" : "ATS"), p.score].filter(Boolean).join(" · ");
-        // A staff table can shout names in caps; print them as names.
-        const picker = p.picker && p.picker === p.picker.toUpperCase() ? p.picker.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : p.picker;
-        const who = picker ? `${p.outlet} · ${picker}` : p.outlet;
-        const inner = `<span class="xp-out" title="${esc(who)}">${esc(who)}</span><span class="xp-pick">${lg(id)}<b>${esc(short.toUpperCase())}</b></span><span class="xp-line">${esc(line)}</span>`;
-        return p.link ? `<a class="xp-tile ${p.side}" href="${esc(p.link)}" target="_blank" rel="noopener" title="${esc(p.reason || "")}">${inner}</a>` : `<span class="xp-tile ${p.side}" title="${esc(p.reason || "")}">${inner}</span>`;
-      };
-      html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid">${list.map(tile).join("")}</div>`;
-      if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE PICKS (${rest.length})</summary><div class="xp-grid">${rest.map(tile).join("")}</div></details>`;
+      const who = all.length === 1 ? "1 PICK" : `${all.length} PICKS`;
+      const sum = nA && nH ? `${lead.n} OF ${who} ON ${esc(lead.short.toUpperCase())}` : `ALL ${who} ON ${esc(lead.short.toUpperCase())}`;
+      html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${list.map(tileOf).join("")}</div>`;
+      if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE OUTLETS (${rest.length})</summary><div class="xp-grid" style="grid-template-columns:repeat(${Math.min(rest.length, 4)},minmax(0,1fr))">${rest.map(tileOf).join("")}</div></details>`;
     } else if (pend.picks) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-loading">Checking the pickers…</div>`;
     else html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-empty small">No published picks yet. The outlets usually call games Thursday and Friday.</div>`;
   }

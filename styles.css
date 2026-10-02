@@ -4125,16 +4125,16 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-q-src { margin-top: 4px; font-style: normal; font-size: 9.5px; color: var(--text-dim); }
 .ins-q-src a { color: var(--neon-cyan); text-decoration: none; }
 
-/* Expert picks: four tiles across, two rows at most. */
+/* Expert picks: one tile per outlet, rows always full. */
 .xp-sum { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .08em; color: var(--neon-yellow); margin: 2px 0 6px; }
 .xp-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0 0 4px; }
-.xp-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 7px 4px 6px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .04); color: var(--text); text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.xp-tile { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 5px; min-width: 0; padding: 7px 4px 7px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .04); color: var(--text); text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .xp-tile.away { border-color: rgba(0, 229, 255, .35); background: rgba(0, 229, 255, .07); }
 .xp-tile.home { border-color: rgba(255, 32, 121, .35); background: rgba(255, 32, 121, .07); }
-.xp-out { width: 100%; text-align: center; font-size: 8.5px; line-height: 1.15; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.xp-pick { display: flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; }
-.xp-pick img { width: 18px; height: 18px; flex: 0 0 auto; }
-.xp-pick b { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.xp-out { width: 100%; text-align: center; font-size: 8.5px; line-height: 1.15; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.3em; }
+.xp-tile img.xp-logo { width: 30px; height: 30px; margin: 1px 0; }
+.xp-team { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .02em; white-space: nowrap; }
+.xp-team i { font-style: normal; color: var(--text-dim); font-size: 6px; }
 .xp-line { font-size: 9.5px; color: var(--text); text-align: center; line-height: 1.2; }
 .xp-more { margin-top: 4px; }
 .xp-more .xp-grid { margin-top: 6px; }
