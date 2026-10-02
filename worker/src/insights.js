@@ -582,7 +582,9 @@ async function injuryNewsFor(teamName, env = null) {
 export async function extractInjuries(env, teamName, items) {
   if (!items.length) return { players: [] };
   if (!env.OPENAI_API_KEY) return { players: [], error: "no model key" };
-  const text = items.map((n) => `- [${n.source || "news"}] ${n.headline}${n.blurb ? ` — ${n.blurb}` : ""}`).join("\n").slice(0, 5000);
+  // Articles with a body first, since those carry the names.
+  const ordered = [...items].sort((a, b) => (b.blurb ? b.blurb.length : 0) - (a.blurb ? a.blurb.length : 0));
+  const text = ordered.map((n) => `- [${n.source || "news"}] ${n.headline}${n.blurb ? ` — ${n.blurb}` : ""}`).join("\n").slice(0, 12000);
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
@@ -611,7 +613,7 @@ export async function gameInjuries(env, week, game, fromPhone = null) {
   const hit = await env.LIFTR_KV.get(key, "json");
   const fresh = hit && Date.now() - hit.at < ((hit.away?.length || hit.home?.length) ? 3 * 3600 * 1000 : 15 * 60 * 1000);
   if (fresh && !(fromPhone && !(hit.away?.length || hit.home?.length))) return hit;
-  const clean = (list) => (Array.isArray(list) ? list : []).filter((n) => n && typeof n.headline === "string").slice(0, 12).map((n) => ({ headline: String(n.headline).slice(0, 200), blurb: n.blurb ? String(n.blurb).slice(0, 400) : null, source: n.source ? String(n.source).slice(0, 60) : null, link: typeof n.link === "string" ? n.link.slice(0, 300) : null, published: n.published || null }));
+  const clean = (list) => (Array.isArray(list) ? list : []).filter((n) => n && typeof n.headline === "string").slice(0, 12).map((n) => ({ headline: String(n.headline).slice(0, 200), blurb: n.blurb ? String(n.blurb).slice(0, 1800) : null, source: n.source ? String(n.source).slice(0, 60) : null, link: typeof n.link === "string" ? n.link.slice(0, 300) : null, published: n.published || null }));
   const [ownAway, ownHome] = await Promise.all([injuryNewsFor(game.away, env), injuryNewsFor(game.home, env)]);
   const merge = (own, extra) => { const all = filterNews([...own, ...clean(extra)]); const kept = all.filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i.test(`${n.headline} ${n.blurb || ""}`)).slice(0, 10); kept.raw = own.raw; kept.sent = clean(extra).length; return kept; };
   const awayNews = merge(ownAway, fromPhone?.away), homeNews = merge(ownHome, fromPhone?.home);

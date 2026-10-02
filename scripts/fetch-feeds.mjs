@@ -27,6 +27,28 @@ const google = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent
 const bing = (q) => `https://www.bing.com/news/search?q=${encodeURIComponent(q)}&format=rss&qft=interval%3d%228%22`;
 const INJ = /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i;
 
+// Headlines rarely name the players; the article does. Resolve Google's
+// redirect page to the real URL, fetch the article, and keep its
+// paragraphs, capped, so the model has names and statuses to read.
+async function articleText(link) {
+  try {
+    let url = link;
+    if (/news\.google\.com/.test(url)) {
+      const res = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
+      const html = await res.text();
+      const m = html.match(/https?:\/\/(?!(?:[a-z0-9-]+\.)*google\.[a-z]+|(?:[a-z0-9-]+\.)*gstatic\.com|(?:[a-z0-9-]+\.)*googleusercontent\.com)[^"'<> ]{12,300}/i);
+      if (!m) return null;
+      url = m[0].replace(/&amp;/g, "&");
+    }
+    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, redirect: "follow" });
+    if (!res.ok) return null;
+    const html = (await res.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, "");
+    const paras = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;|&#8217;/g, "'").replace(/&quot;|&ldquo;|&rdquo;/g, '"').replace(/\s+/g, " ").trim()).filter((t) => t.length > 50);
+    const text = paras.join(" ").slice(0, 1800);
+    return text.length > 120 ? text : null;
+  } catch { return null; }
+}
+
 const weeks = await (await fetch(`${WORKER}/weeks`)).json();
 const week = Number(process.env.WEEK || weeks?.weeks?.current);
 if (!week) { console.error("no current week"); process.exit(1); }
@@ -62,11 +84,18 @@ for (const g of games) {
   const aA = aliases(g.away, g.awayShort), aH = aliases(g.home, g.homeShort);
   const names = (list, al) => list.filter((n) => { const h = String(n.headline).toLowerCase(); return al.some((x) => wholeWord(h, x)); });
   const injOnly = (list, al) => names(list, al).filter((n) => INJ.test(`${n.headline} ${n.blurb || ""}`));
+  const injAway = tag(injOnly([...got.awayInj, ...got.away], aA), "away").slice(0, 6);
+  const injHome = tag(injOnly([...got.homeInj, ...got.home], aH), "home").slice(0, 6);
+  // Article bodies for the injury pieces, a few at a time.
+  for (const list of [injAway, injHome]) {
+    const texts = await Promise.all(list.map((n) => articleText(n.link)));
+    list.forEach((n, i) => { if (texts[i]) n.blurb = texts[i]; });
+  }
   out.games[g.id] = {
     news: [...tag(names(got.game, [...aA, ...aH]), "game"), ...tag(names(got.away, aA), "away"), ...tag(names(got.home, aH), "home")].slice(0, 30),
-    injuries: { away: tag(injOnly([...got.awayInj, ...got.away], aA), "away").slice(0, 10), home: tag(injOnly([...got.homeInj, ...got.home], aH), "home").slice(0, 10) },
+    injuries: { away: injAway, home: injHome },
   };
-  console.log(`g${g.id} ${A} at ${H}: news ${out.games[g.id].news.length}, injury articles ${out.games[g.id].injuries.away.length}/${out.games[g.id].injuries.home.length}`);
+  console.log(`g${g.id} ${A} at ${H}: news ${out.games[g.id].news.length}, injury articles ${injAway.length}/${injHome.length}, with text ${injAway.filter((n) => n.blurb).length}/${injHome.filter((n) => n.blurb).length}`);
   await sleep(800);
 }
 await mkdir("data/feeds", { recursive: true });
