@@ -4040,10 +4040,19 @@ async function openInsights(gameId) {
   const restO = others.filter((n) => n.about !== "game"), restE = espn.filter((n) => n.team !== "This game");
   mixed.push(...gameFirst);
   for (let i = 0; i < Math.max(restO.length, restE.length); i++) { if (restO[i]) mixed.push(restO[i]); if (i % 2 === 1 && restE[(i - 1) / 2]) mixed.push(restE[(i - 1) / 2]); }
-  const newsRows = mixed.filter((n) => { const k = norm(n.headline); if (!k || seen.has(k)) return false; seen.add(k); return true; });
+  // Rank: stories about this game first, then by outlet quality, then by
+  // recency. Beat outlets and wire services outrank aggregators.
+  const TIER1 = /espn|associated press|\bap\b|yahoo sports|athletic|cbs ?sports|si\.com|sports illustrated|on3|247|rivals|post-gazette|roanoke|tribune|times|gazette|herald|journal|dispatch|courier|news-|dot ?com$|\.com$/i;
+  const TIER0 = /espn|associated press|\bap\b|athletic|post-gazette|roanoke|on3|247sports|rivals|cbs ?sports|yahoo sports/i;
+  const tier = (n) => { const s = `${n.source || ""}`; return TIER0.test(s) ? 0 : TIER1.test(s) ? 1 : 2; };
+  const injuryish = (n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|depth chart|starting|lineup/i.test(n.headline) ? 0 : 1;
+  const rank = (n) => (n.team === "This game" || n.about === "game" ? 0 : 1) * 100 + injuryish(n) * 30 + tier(n) * 10 + (n.published ? Math.min(9, Math.floor((Date.now() - new Date(n.published).getTime()) / 86400000)) : 9);
+  const newsRows = mixed.filter((n) => { const k = norm(n.headline); if (!k || seen.has(k)) return false; seen.add(k); return true; }).sort((x, y) => rank(x) - rank(y));
   if (!newsRows.length && (pend.news || pend.wider || pend.gdelt || pend.site)) html += `<div class="ins-h">NEWS</div><div class="ins-loading">Loading news…</div>`;
   const newsErr = !pend.wider && !pend.gdelt && !pend.site && !wider.length && !gdelt.length && !(siteFeed?.news || []).length && (wider.errors || []).length ? `<div class="ins-empty small"><i class="ins-err">More sources unavailable: ${esc(wider.errors.slice(0, 2).join(" · "))}</i></div>` : "";
-  if (newsRows.length) html += `<div class="ins-h">NEWS</div><ul class="ins-news">${newsRows.slice(0, 12).map((n) => `<li><b class="ins-nh">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det"><em class="ins-src">${esc(n.source || "")}</em>${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`).join("")}</ul>`;
+  const newsLi = (n) => `<li><b class="ins-nh">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det"><em class="ins-src">${esc(n.source || "")}</em>${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`;
+  // Three at the top; the rest fold under MORE NEWS.
+  if (newsRows.length) html += `<div class="ins-h">NEWS</div><ul class="ins-news">${newsRows.slice(0, 3).map(newsLi).join("")}</ul>${newsRows.length > 3 ? `<details class="ins-more-news"><summary><span>▶</span> MORE NEWS (${Math.min(newsRows.length - 3, 12)})</summary><ul class="ins-news">${newsRows.slice(3, 15).map(newsLi).join("")}</ul></details>` : ""}`;
   if (newsErr) html += newsRows.length ? newsErr : `<div class="ins-h">NEWS</div>${newsErr}`;
 
   // 1. Injuries, one column per team.
