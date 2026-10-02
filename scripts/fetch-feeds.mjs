@@ -51,10 +51,15 @@ for (const g of games) {
     for (const r of rs) if (r.error) out.errors.push(`g${g.id} ${k}: ${r.error}`);
   }
   const tag = (list, about) => list.map((n) => ({ headline: n.headline, source: n.source, link: n.link, blurb: n.blurb || null, published: n.published, about }));
-  const injOnly = (list) => list.filter((n) => INJ.test(`${n.headline} ${n.blurb || ""}`));
+  // Names a headline can use for a team: the slate's short name, the
+  // school's first word, and the mascot. "Pitt", "Pittsburgh", "Panthers".
+  const aliases = (full, short) => { const w = searchName(full).split(/\s+/); return [short, w[0], w[w.length - 1]].map((x) => String(x || "").toLowerCase()).filter((x) => x.length >= 4); };
+  const aA = aliases(g.away, g.awayShort), aH = aliases(g.home, g.homeShort);
+  const names = (list, al) => list.filter((n) => { const h = String(n.headline).toLowerCase(); return al.some((x) => h.includes(x)); });
+  const injOnly = (list, al) => names(list, al).filter((n) => INJ.test(`${n.headline} ${n.blurb || ""}`));
   out.games[g.id] = {
-    news: [...tag(got.game, "game"), ...tag(got.away, "away"), ...tag(got.home, "home")].slice(0, 30),
-    injuries: { away: tag(injOnly([...got.awayInj, ...got.away]), "away").slice(0, 10), home: tag(injOnly([...got.homeInj, ...got.home]), "home").slice(0, 10) },
+    news: [...tag(names(got.game, [...aA, ...aH]), "game"), ...tag(names(got.away, aA), "away"), ...tag(names(got.home, aH), "home")].slice(0, 30),
+    injuries: { away: tag(injOnly([...got.awayInj, ...got.away], aA), "away").slice(0, 10), home: tag(injOnly([...got.homeInj, ...got.home], aH), "home").slice(0, 10) },
   };
   console.log(`g${g.id} ${A} at ${H}: news ${out.games[g.id].news.length}, injury articles ${out.games[g.id].injuries.away.length}/${out.games[g.id].injuries.home.length}`);
   await sleep(800);
