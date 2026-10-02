@@ -168,7 +168,9 @@ export default {
         const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
         const g = (slate?.games || []).find((x) => Number(x.id) === Number(url.searchParams.get("game")));
         if (!g) return json({ away: [], home: [], error: "no such game" }, 404, corsHeaders);
-        return json(await gameInjuries(env, week, g), 200, { ...corsHeaders, "Cache-Control": "public, max-age=600" });
+        let fromPhone = null;
+        if (request.method === "POST") { try { const body = await request.json(); fromPhone = body && typeof body.items === "object" ? body.items : null; } catch {} }
+        return json(await gameInjuries(env, week, g, fromPhone), 200, { ...corsHeaders, "Cache-Control": "no-store" });
       } catch (err) {
         console.error("insights injuries", err?.stack || String(err));
         return json({ away: [], home: [], error: "Injuries failed" }, 200, corsHeaders);

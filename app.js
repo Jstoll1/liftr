@@ -3650,10 +3650,12 @@ async function fetchWiderNews(gameId) {
 }
 // Injuries read out of the news by the Worker's model, for schools that
 // file no report ESPN can see. Cached on the Worker for three hours.
-async function fetchNewsInjuries(gameId) {
+// The phone sends along the articles it could reach (ESPN team news,
+// GDELT), since Google and Bing throttle the Worker's own searches.
+async function fetchNewsInjuries(gameId, items) {
   if (!WORKER_URL) return null;
   try {
-    const res = await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}&t=${Math.floor(Date.now() / 600000)}`);
+    const res = await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) });
     if (!res.ok) return null;
     return await res.json();
   } catch { return null; }
@@ -4072,8 +4074,14 @@ async function openInsights(gameId) {
   land(withTimeout(fetchWiderNews(gameId), 6000, []), (v) => { wider = v || []; }, "wider");
   // No short cap here: the first read of a game runs two searches and two
   // model calls, and a late answer still paints into the open sheet.
-  land(withTimeout(fetchNewsInjuries(gameId), 40000, null), (v) => { newsInj = v; }, "inj");
-  land(withTimeout(fetchGdeltNews(game), 6000, []), (v) => { gdelt = v || []; }, "gdelt");
+  const gdeltP = withTimeout(fetchGdeltNews(game), 6000, []);
+  land(gdeltP, (v) => { gdelt = v || []; }, "gdelt");
+  // Injuries wait for the phone's own news so the Worker has articles to read.
+  const injItems = Promise.all([withTimeout(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), 6000, [[], []]), gdeltP]).then(([[a, h], g]) => ({
+    away: [...a, ...g.filter((n) => n.about === "away" || n.about === "game")],
+    home: [...h, ...g.filter((n) => n.about === "home" || n.about === "game")],
+  }));
+  land(withTimeout(injItems.then((items) => fetchNewsInjuries(gameId, items)), 40000, null), (v) => { newsInj = v; }, "inj");
   land(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), ([a, h]) => { awayNews = a; homeNews = h; }, "news");
   const eventIdNow = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
   const summaryP = (eventIdNow ? Promise.resolve(eventIdNow) : fetchLiveScores().catch(() => {}).then(() => latestLive[gameId]?.eventId || null))

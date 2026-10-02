@@ -585,11 +585,19 @@ export async function extractInjuries(env, teamName, items) {
     return { players };
   } catch { return { players: [], error: "bad model json" }; }
 }
-export async function gameInjuries(env, week, game) {
+// `fromPhone` is what the phone could reach that the Worker cannot:
+// ESPN's team news and GDELT. It is merged with the Worker's own search.
+// A read that found players is good for three hours; an empty one is
+// retried after fifteen minutes, since the feeds come and go.
+export async function gameInjuries(env, week, game, fromPhone = null) {
   const key = injuriesKey(week, game.id);
   const hit = await env.LIFTR_KV.get(key, "json");
-  if (hit && Date.now() - hit.at < 3 * 3600 * 1000) return hit;
-  const [awayNews, homeNews] = await Promise.all([injuryNewsFor(game.away), injuryNewsFor(game.home)]);
+  const fresh = hit && Date.now() - hit.at < ((hit.away?.length || hit.home?.length) ? 3 * 3600 * 1000 : 15 * 60 * 1000);
+  if (fresh && !(fromPhone && !(hit.away?.length || hit.home?.length))) return hit;
+  const clean = (list) => (Array.isArray(list) ? list : []).filter((n) => n && typeof n.headline === "string").slice(0, 12).map((n) => ({ headline: String(n.headline).slice(0, 200), blurb: n.blurb ? String(n.blurb).slice(0, 400) : null, source: n.source ? String(n.source).slice(0, 60) : null, link: typeof n.link === "string" ? n.link.slice(0, 300) : null, published: n.published || null }));
+  const [ownAway, ownHome] = await Promise.all([injuryNewsFor(game.away), injuryNewsFor(game.home)]);
+  const merge = (own, extra) => { const all = filterNews([...own, ...clean(extra)]); const kept = all.filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i.test(`${n.headline} ${n.blurb || ""}`)); kept.raw = own.raw; return kept.slice(0, 10); };
+  const awayNews = merge(ownAway, fromPhone?.away), homeNews = merge(ownHome, fromPhone?.home);
   const [away, home] = await Promise.all([extractInjuries(env, game.away, awayNews), extractInjuries(env, game.home, homeNews)]);
   const srcs = (items) => items.map((n) => ({ headline: n.headline, link: n.link, source: n.source, published: n.published })).slice(0, 4);
   const out = { at: Date.now(), away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, found: { away: awayNews.length, home: homeNews.length, awaySources: awayNews.raw, homeSources: homeNews.raw }, error: away.error || home.error || null };
