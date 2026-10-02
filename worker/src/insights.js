@@ -618,11 +618,13 @@ export async function gameInjuries(env, week, game, fromPhone = null) {
   // The site's feed file, pulled by the scheduled Action from a network the
   // news hosts do not throttle, carries article bodies. Read it here too so
   // the extraction does not depend on a phone forwarding it.
-  let siteInj = null;
+  // Read from GitHub's raw URL rather than the site itself: a Worker fetch
+  // to a domain on its own Cloudflare zone is refused intermittently.
+  let siteInj = null, siteError = null;
   try {
-    const r = await fetchText(`${env.SITE_URL || "https://brochiefs.com"}/data/feeds/w${week}.json`, "application/json", env);
-    if (r.ok) siteInj = JSON.parse(r.text)?.games?.[String(game.id)]?.injuries || null;
-  } catch {}
+    const r = await fetchText(`${env.FEEDS_URL || "https://raw.githubusercontent.com/Jstoll1/liftr/main/data/feeds"}/w${week}.json`, "application/json", env);
+    if (r.ok) siteInj = JSON.parse(r.text)?.games?.[String(game.id)]?.injuries || null; else siteError = r.error;
+  } catch (err) { siteError = String(err?.message || err).slice(0, 80); }
   const [ownAway, ownHome] = await Promise.all([injuryNewsFor(game.away, env), injuryNewsFor(game.home, env)]);
   // Copies with a body go first so the dedupe keeps them over a bare
   // headline from the Worker's own search.
@@ -630,7 +632,7 @@ export async function gameInjuries(env, week, game, fromPhone = null) {
   const awayNews = merge(ownAway, [...(siteInj?.away || []), ...(fromPhone?.away || [])]), homeNews = merge(ownHome, [...(siteInj?.home || []), ...(fromPhone?.home || [])]);
   const [away, home] = await Promise.all([extractInjuries(env, game.away, awayNews), extractInjuries(env, game.home, homeNews)]);
   const srcs = (items) => items.map((n) => ({ headline: n.headline, link: n.link, source: n.source, published: n.published })).slice(0, 4);
-  const out = { at: Date.now(), site: !!siteInj, away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, found: { away: awayNews.length, home: homeNews.length, awaySources: awayNews.raw, homeSources: homeNews.raw, fromPhone: { away: awayNews.sent || 0, home: homeNews.sent || 0 } }, error: away.error || home.error || null };
+  const out = { at: Date.now(), site: !!siteInj, siteError, away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, found: { away: awayNews.length, home: homeNews.length, awaySources: awayNews.raw, homeSources: homeNews.raw, fromPhone: { away: awayNews.sent || 0, home: homeNews.sent || 0 } }, error: away.error || home.error || null };
   if (!out.error) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 24 * 3600 }); } catch {} }
   return out;
 }
