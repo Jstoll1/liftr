@@ -2360,8 +2360,11 @@ function renderLiveScores(live, cloudPicks) {
              ${bugSideDetail(cloudPicks, game, game.away, game.awayShort, isFinal ? { awayScore: g.awayScore, homeScore: g.homeScore } : null)}
              ${bugSideDetail(cloudPicks, game, game.home, game.homeShort, isFinal ? { awayScore: g.awayScore, homeScore: g.homeScore } : null)}
              ${winProbHtml}
+             <div class="bug-foot"><span class="bug-foot-txt">${game.kickoffLabel} · ${game.tv || ""}</span><button type="button" class="insights-btn" data-insights="${game.id}" aria-label="Insights for ${game.awayShort} at ${game.homeShort}">INFO</button></div>
            </div>`
-        : `<div class="bug-detail"><span class="bug-hidden-note">🔒 Picks reveal at kickoff (${game.kickoffLabel})</span></div>`;
+        // Before kickoff the detail is the lock note, with the same INFO
+        // pill beside it that the picks card carries.
+        : `<div class="bug-detail"><div class="bug-foot"><span class="bug-hidden-note">🔒 Picks reveal at kickoff (${game.kickoffLabel})</span><button type="button" class="insights-btn" data-insights="${game.id}" aria-label="Insights for ${game.awayShort} at ${game.homeShort}">INFO</button></div></div>`;
 
       const cls = ["scorebug", isLive ? "is-live" : "", isFinal ? "is-final" : "", !locked ? "upcoming" : "", expanded ? "expanded" : ""].join(" ");
       // What this game is worth to the viewer, top right. Before kickoff
@@ -2422,8 +2425,9 @@ function renderLiveScores(live, cloudPicks) {
       if (expandedGames.has(id)) expandedGames.delete(id); else { expandedGames.add(id); track("scorebug-expand", { event: true }); }
       withScrollPreserved(() => renderLiveScores(live, cloudPicks));
     };
-    el.addEventListener("click", toggle);
-    el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+    el.addEventListener("click", (e) => { if (e.target.closest(".insights-btn")) return; toggle(); });
+    el.addEventListener("keydown", (e) => { if (e.target.closest(".insights-btn")) return; if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+    el.querySelectorAll(".insights-btn").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); openInsights(id); }));
   });
 }
 

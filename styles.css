@@ -4144,3 +4144,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .xp-tile.home .xp-bar i { background: var(--neon-pink); }
 .xp-more { margin-top: 4px; }
 .xp-more .xp-grid { margin-top: 6px; }
+
+/* Scorebug footer: kickoff and TV on the left, the INFO pill on the right. */
+.bug-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.bug-foot .bug-hidden-note { text-align: left; flex: 1 1 auto; min-width: 0; }
+.bug-foot-txt { font-size: 9px; color: var(--text-dim); flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bug-foot .insights-btn { flex: 0 0 auto; }
