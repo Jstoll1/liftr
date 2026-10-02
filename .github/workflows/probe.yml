@@ -1,0 +1,21 @@
+# On-demand probe of a Worker route from a runner that can reach it, for
+# debugging feeds without a phone. Read-only: GET only, no secrets.
+name: Probe Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      path:
+        description: "Route and query, e.g. /insights/injuries?week=5&game=1"
+        required: true
+        default: "/weeks"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET the route
+        run: |
+          echo "GET https://liftr-ai.jhs797.workers.dev${{ inputs.path }}"
+          curl -sS --max-time 60 "https://liftr-ai.jhs797.workers.dev${{ inputs.path }}" | head -c 6000
+          echo
