@@ -39,3 +39,16 @@ jobs:
           git commit -m "Feeds $(date -u +%Y%m%d%H%M) [skip ci]"
           git pull --rebase origin main
           git push origin HEAD:main
+      # Read every game once so phones find a warm cache. The Worker reads
+      # the feed file from GitHub's raw URL, which can lag a push by a
+      # minute, hence the pause. Always runs, so a quiet pull still
+      # refreshes a cache that aged out.
+      - name: Warm the injury cache
+        if: always()
+        run: |
+          f=$(ls data/feeds/w*.json | sort -V | tail -1); [ -n "$f" ] || exit 0
+          week=$(node -e "console.log(require('./$f').week)")
+          sleep 75
+          for g in $(node -e "console.log(Object.keys(require('./$f').games).join(' '))"); do
+            curl -sS --max-time 90 "https://liftr-ai.jhs797.workers.dev/insights/injuries?week=$week&game=$g" | head -c 300; echo
+          done

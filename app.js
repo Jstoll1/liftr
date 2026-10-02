@@ -3655,7 +3655,9 @@ async function fetchWiderNews(gameId) {
 async function fetchNewsInjuries(gameId, items) {
   if (!WORKER_URL) return null;
   try {
-    const res = await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) });
+    const res = items
+      ? await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) })
+      : await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}`);
     if (!res.ok) return null;
     return await res.json();
   } catch { return null; }
@@ -4121,7 +4123,12 @@ async function openInsights(gameId) {
     away: [...(sf?.injuries?.away || []), ...a, ...g.filter((n) => n.about === "away" || n.about === "game")],
     home: [...(sf?.injuries?.home || []), ...h, ...g.filter((n) => n.about === "home" || n.about === "game")],
   }));
-  land(withTimeout(injItems.then((items) => fetchNewsInjuries(gameId, items)), 40000, null), (v) => { newsInj = v; }, "inj");
+  // Ask for the Worker's cached read first: a warm cache answers in a
+  // few hundred milliseconds and paints at once. Only when that comes
+  // back empty does the slow path run, with the articles the phone found.
+  const quickInj = withTimeout(fetchNewsInjuries(gameId, null), 4000, null);
+  land(quickInj, (v) => { if (v && (v.away?.length || v.home?.length)) newsInj = v; });
+  land(withTimeout(quickInj.then((q) => (q && (q.away?.length || q.home?.length) && !q.stale) ? q : injItems.then((items) => fetchNewsInjuries(gameId, items))), 40000, null), (v) => { if (v && (v.away?.length || v.home?.length || !newsInj)) newsInj = v; }, "inj");
   land(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), ([a, h]) => { awayNews = a; homeNews = h; }, "news");
   const eventIdNow = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
   const summaryP = (eventIdNow ? Promise.resolve(eventIdNow) : fetchLiveScores().catch(() => {}).then(() => latestLive[gameId]?.eventId || null))

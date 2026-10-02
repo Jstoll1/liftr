@@ -23,7 +23,7 @@ export default {
     }
     ctx.waitUntil(sealFromEspn(env).then((r) => console.log("scheduled seal", JSON.stringify(r))));
   },
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     // ALLOWED_ORIGIN can be a single origin or a comma-separated list (e.g.
     // both the GitHub Pages URL and a custom domain during a domain
@@ -170,7 +170,7 @@ export default {
         if (!g) return json({ away: [], home: [], error: "no such game" }, 404, corsHeaders);
         let fromPhone = null;
         if (request.method === "POST") { try { const body = await request.json(); fromPhone = body && typeof body.items === "object" ? body.items : null; } catch {} }
-        return json(await gameInjuries(env, week, g, fromPhone), 200, { ...corsHeaders, "Cache-Control": "no-store" });
+        return json(await gameInjuries(env, week, g, fromPhone, ctx), 200, { ...corsHeaders, "Cache-Control": "no-store" });
       } catch (err) {
         console.error("insights injuries", err?.stack || String(err));
         return json({ away: [], home: [], error: "Injuries failed" }, 200, corsHeaders);

@@ -702,12 +702,27 @@ export async function extractInjuries(env, teamName, items) {
 // ESPN's team news and GDELT. It is merged with the Worker's own search.
 // A read that found players is good for three hours; an empty one is
 // retried after fifteen minutes, since the feeds come and go.
-export async function gameInjuries(env, week, game, fromPhone = null) {
+// `ctx` (the Worker's execution context) lets a stale answer go out at
+// once while the refresh runs on after the response: the sheet paints
+// the last good read in a few hundred milliseconds instead of waiting
+// twenty seconds for two searches and two model calls.
+export async function gameInjuries(env, week, game, fromPhone = null, ctx = null) {
   const key = injuriesKey(week, game.id);
   const hit = await env.LIFTR_KV.get(key, "json");
-  const fresh = hit && Date.now() - hit.at < ((hit.away?.length || hit.home?.length) ? 3 * 3600 * 1000 : 15 * 60 * 1000);
-  if (fresh && (hit.away?.length || hit.home?.length)) return hit;
+  const hasRows = !!(hit?.away?.length || hit?.home?.length);
+  const fresh = hit && Date.now() - hit.at < (hasRows ? 3 * 3600 * 1000 : 15 * 60 * 1000);
+  if (fresh && hasRows) return hit;
   if (fresh && !fromPhone && hit.site) return hit;
+  if (hit && hasRows && ctx && !fromPhone && !(hit.refreshing && Date.now() - hit.refreshing < 2 * 60 * 1000)) {
+    // Stale but usable: answer now, refresh behind the response. The
+    // marker keeps a burst of opens from each starting a refresh.
+    try { await env.LIFTR_KV.put(key, JSON.stringify({ ...hit, refreshing: Date.now() }), { expirationTtl: 24 * 3600 }); } catch {}
+    ctx.waitUntil(refreshInjuries(env, week, game, key).catch((err) => console.error("injuries refresh", String(err?.message || err))));
+    return { ...hit, stale: true };
+  }
+  return refreshInjuries(env, week, game, key, fromPhone);
+}
+async function refreshInjuries(env, week, game, key, fromPhone = null) {
   const clean = (list) => (Array.isArray(list) ? list : []).filter((n) => n && typeof n.headline === "string").slice(0, 12).map((n) => ({ headline: String(n.headline).slice(0, 200), blurb: n.blurb ? String(n.blurb).slice(0, 3000) : null, source: n.source ? String(n.source).slice(0, 60) : null, link: typeof n.link === "string" ? n.link.slice(0, 300) : null, published: n.published || null }));
   // The site's feed file, pulled by the scheduled Action from a network the
   // news hosts do not throttle, carries article bodies. Read it here too so
@@ -719,7 +734,12 @@ export async function gameInjuries(env, week, game, fromPhone = null) {
     const r = await fetchText(`${env.FEEDS_URL || "https://raw.githubusercontent.com/Jstoll1/liftr/main/data/feeds"}/w${week}.json`, "application/json", null);
     if (r.ok) siteInj = JSON.parse(r.text)?.games?.[String(game.id)]?.injuries || null; else siteError = r.error;
   } catch (err) { siteError = String(err?.message || err).slice(0, 80); }
-  const [ownAway, ownHome] = await Promise.all([injuryNewsFor(game.away, env), injuryNewsFor(game.home, env)]);
+  // The Worker's own Google and Bing searches are throttled from its
+  // address range and mostly return headlines without bodies. When the
+  // site feed already carries articles for a team, skip them: that
+  // alone saves several seconds of retries on a cold read.
+  const own = (team, have) => have.length >= 2 ? Promise.resolve(Object.assign([], { raw: ["skipped: feed has articles"] })) : injuryNewsFor(team, env);
+  const [ownAway, ownHome] = await Promise.all([own(game.away, siteInj?.away || []), own(game.home, siteInj?.home || [])]);
   // Copies with a body go first so the dedupe keeps them over a bare
   // headline from the Worker's own search.
   const merge = (own, extra) => { const all = filterNews([...clean(extra), ...own].sort((a, b) => (b.blurb ? b.blurb.length : 0) - (a.blurb ? a.blurb.length : 0))); const kept = all.filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i.test(`${n.headline} ${n.blurb || ""}`)).slice(0, 10); kept.raw = own.raw; kept.sent = clean(extra).length; return kept; };

@@ -229,3 +229,26 @@ test("tidyNote keeps notes with a concrete fact and drops status restatements an
   assert.equal(tidyNote("Greene's potential return is significant for the offense."), null);
   assert.equal(tidyNote(""), null);
 });
+
+test("gameInjuries answers a stale cached read at once and refreshes behind the response", async () => {
+  const kv = fakeKv();
+  const old = { at: Date.now() - 5 * 3600 * 1000, site: true, away: [{ name: "T. Turner", pos: "RB", status: "PROBABLE", detail: "", source: "On3" }], home: [], sources: { away: [], home: [] } };
+  await kv.put(injuriesKey(5, 3), JSON.stringify(old));
+  let refreshed = null;
+  globalThis.fetch = async (url) => /raw\.githubusercontent/.test(String(url)) ? new Response(JSON.stringify({ games: { 3: { injuries: { away: [{ headline: "Pitt injury report", blurb: "RB T. Turner is out with a knee injury.", source: "On3", link: "https://on3.com/a" }, { headline: "Second report", blurb: "T. Turner will not play.", source: "SI", link: "https://si.com/b" }], home: [] } } } }), { status: 200 })
+    : /openai/.test(String(url)) ? new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ players: [{ name: "T. Turner", pos: "RB", status: "OUT", detail: "knee", source: "On3", quote: "RB T. Turner is out with a knee injury.", note: "" }] }) } }] }), { status: 200 })
+    : new Response("nope", { status: 500 });
+  const ctx = { waitUntil: (p) => { refreshed = p; } };
+  const r = await gameInjuries({ LIFTR_KV: kv, OPENAI_API_KEY: "k" }, 5, game, null, ctx);
+  assert.equal(r.stale, true);
+  assert.equal(r.away[0].status, "PROBABLE");
+  assert.ok(refreshed, "refresh scheduled");
+  await refreshed;
+  const now = await kv.get(injuriesKey(5, 3), "json");
+  assert.equal(now.away[0].status, "OUT");
+  assert.ok(!now.refreshing && !now.stale);
+  // Fresh now: served straight from the cache, no refresh.
+  refreshed = null;
+  const again = await gameInjuries({ LIFTR_KV: kv, OPENAI_API_KEY: "k" }, 5, game, null, ctx);
+  assert.equal(again.away[0].status, "OUT"); assert.equal(refreshed, null);
+});
