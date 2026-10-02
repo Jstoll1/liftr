@@ -3978,30 +3978,80 @@ async function openInsights(gameId) {
     const toGo = x !== null && dir && (dist != null || goalToGo) ? Math.max(0, Math.min(100, goalToGo ? (dir > 0 ? 100 : 0) : x + dir * dist)) : null;
     const pct = (v) => (8 + v * 0.84).toFixed(2);
     const ticks = Array.from({ length: 9 }, (_, i) => (i + 1) * 10).map((v) => `<i class="gc-yl${v === 50 ? " mid" : ""}" style="left:${pct(v)}%"></i><span class="gc-num" style="left:${pct(v)}%">${v <= 50 ? v : 100 - v}</span>`).join("");
-    const ball = x === null ? "" : `<div class="gc-spot" style="left:${pct(x)}%">${possA || possH ? `<img class="gc-off" src="${logoUrl(possA ? game.awayId : game.homeId)}" alt="">` : ""}<i class="gc-ball ${dir > 0 ? "r" : dir < 0 ? "l" : ""}"></i></div><i class="gc-los" style="left:${pct(x)}%"></i>`;
+    const ball = x === null ? "" : `<div class="gc-spot" style="left:${pct(x)}%">${possA || possH ? `<img class="gc-off" src="${logoUrl(possA ? game.awayId : game.homeId)}" alt="">` : ""}<i class="gc-ball"></i></div>${dir ? `<span class="gc-chev ${dir > 0 ? "r" : "l"}" style="left:${pct(x)}%">${dir > 0 ? "&gt;&gt;&gt;" : "&lt;&lt;&lt;"}</span>` : ""}<i class="gc-los" style="left:${pct(x)}%"></i>`;
     const gain = toGo === null ? "" : `<i class="gc-first" style="left:${pct(toGo)}%"></i>`;
     const drive = x !== null && toGo !== null ? `<i class="gc-drive" style="left:${pct(Math.min(x, toGo))}%;width:${(Math.abs(toGo - x) * 0.84).toFixed(2)}%"></i>` : "";
-    const field = `<div class="gc-field">
+    // Midfield: the home team's logo painted on the turf, as at the stadium.
+    const mid = `<img class="gc-mid" src="${logoUrl(game.homeId)}" alt="">`;
+    const field = `<div class="gc-stage"><div class="gc-field crt">${mid}
       <div class="gc-ez l" style="--tc:${aCol}"><span>${esc(A)}</span></div>
       <div class="gc-ez r" style="--tc:${hCol}"><span>${esc(H)}</span></div>
       ${ticks}${drive}${gain}${ball}
-    </div>`;
+    </div></div>`;
     const status = shortStatus(lv.detail || `Q${lv.period ?? "?"} ${lv.clock ?? ""}`);
     const aS = lv.awayScore ?? 0, hS = lv.homeScore ?? 0;
-    const team = (id, ab, s, poss, side) => `<div class="gc-tm ${side}${poss ? " poss" : ""}">${lg(id, "gc-logo")}<b>${esc(ab)}</b><span class="gc-sc">${s}</span>${poss ? `<i class="gc-pdot"></i>` : ""}</div>`;
-    const strip = `<div class="gc-strip">${team(game.awayId, A, aS, possA, "a")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span><b>${esc(status)}</b></div>${team(game.homeId, H, hS, possH, "h")}</div>`;
+    // Fighting-game header: P1 and P2 portraits, LED scores with ghost
+    // segments, the game clock as the round timer, win probability as two
+    // health bars draining toward the middle.
+    const led = (v, cls = "") => { const t = String(v); return `<span class="gc-led ${cls}" data-ghost="${"8".repeat(t.length)}">${esc(t)}</span>`; };
+    const clockOnly = /^\d{1,2}:\d{2}$/.test(String(lv.clock || "")) && !/half|end|ot|delay/i.test(status) ? lv.clock : null;
+    const per = lv.period ? (lv.period > 4 ? `OT${lv.period > 5 ? lv.period - 4 : ""}` : `Q${lv.period}`) : "";
+    const fighter = (id, ab, sc, poss, side, tag) => `<div class="gc-f ${side}${poss ? " poss" : ""}">
+        <span class="gc-port">${lg(id, "gc-logo")}</span>
+        <div class="gc-fid"><i class="gc-p">${tag}</i><b>${esc(ab)}</b>${poss ? `<em class="gc-ballt">BALL</em>` : ""}</div>
+        ${led(sc, "sc")}
+      </div>`;
+    const wp = lv.winProb;
+    const hp = wp ? `<div class="gc-hp">
+        <div class="gc-bar a"><i style="width:${wp.away.toFixed(1)}%;--tc:${aCol}"></i></div>
+        <span class="gc-ko">WIN%</span>
+        <div class="gc-bar h"><i style="width:${wp.home.toFixed(1)}%;--tc:${hCol}"></i></div>
+      </div><div class="gc-hpn"><span>${Math.round(wp.away)}%</span><span>${Math.round(wp.home)}%</span></div>` : "";
+    const strip = `<div class="gc-cab">${hp}<div class="gc-strip">${fighter(game.awayId, A, aS, possA, "a", "P1")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${fighter(game.homeId, H, hS, possH, "h", "P2")}</div></div>`;
     const ddLine = dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || "Between plays")}</b></div>`;
     // Last three plays: the current drive first, the previous drive if the
     // current one is too short, else the scoreboard's last play.
     const drives = summaryRaw?.drives || {};
     const pool = [...(drives.current?.plays || []), ...(drives.previous?.length ? drives.previous[drives.previous.length - 1].plays || [] : [])];
     const ordered = [...(drives.current?.plays || [])].reverse().concat([...(drives.previous?.length ? drives.previous[drives.previous.length - 1].plays || [] : [])].reverse());
-    let plays = ordered.filter((p) => p && p.text).slice(0, 3).map((p) => ({ text: p.text, when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null }));
-    if (!plays.length && sit.lastPlay) plays = [{ text: sit.lastPlay, when: "", dd: "", tid: sit.lastPlayTeamId }];
-    const playsHtml = plays.length ? `<div class="gc-h">LAST PLAYS</div><ol class="gc-plays">${plays.map((p, i) => `<li class="${i === 0 ? "new" : ""}">${p.tid ? lg(p.tid, "gc-plogo") : ""}<div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}</span><span class="gc-ptxt">${esc(p.text)}</span></div></li>`).join("")}</ol>` : "";
+    // ESPN's play text carries the clock, the formation, jersey numbers,
+    // the tacklers and mascot-glued yard lines ("Hokies49"). Strip it to
+    // the play itself and turn mascots into the abbreviations on screen.
+    const mascot = {};
+    for (const c of sc) { const nm = String(c.team?.name || "").trim(); if (nm) mascot[nm.toLowerCase()] = Number(c.team?.id) === Number(game.awayId) ? A : H; }
+    const tidy = (t) => String(t || "")
+      .replace(/^\(\d{1,2}:\d{2}\)\s*/, "")
+      .replace(/\b(No Huddle-?|Shotgun|Under Center|Pistol)\s*/gi, "")
+      .replace(/\s*\([^)]*#\d[^)]*\)/g, "")
+      .replace(/#\d{1,2}\s+/g, "")
+      .replace(/\b([A-Z][a-z]+)(\d{1,2})\b/g, (m0, w, n) => `${mascot[w.toLowerCase()] || w} ${n}`)
+      .replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").trim();
+    const badgeOf = (p) => {
+      const t = `${p.type?.text || ""} ${p.text || ""}`;
+      if (/touchdown|for a td\b/i.test(t)) return ["TD", "td"];
+      if (/intercept/i.test(t)) return ["INT", "to"];
+      if (/fumble/i.test(t) && /recover/i.test(t) && !/recovered by [^,]*\b(same|own)\b/i.test(t)) return ["FUM", "to"];
+      if (/field goal.*\bgood\b|\bfg\b.*good|kick is good/i.test(t) && !/extra point|kick\)/i.test(t)) return ["FG", "td"];
+      if (/no good|blocked|missed/i.test(t) && /field goal/i.test(t)) return ["NO GOOD", "to"];
+      if (/\bpunt/i.test(t)) return ["PUNT", "dim"];
+      if (/penalty/i.test(t)) return ["FLAG", "flag"];
+      if (/\bsack/i.test(t)) return ["SACK", "to"];
+      if (/incomplete/i.test(t)) return ["INC", "dim"];
+      const y = Number(p.statYardage);
+      const first = p.end?.down === 1 && p.start?.down > 0 && p.end?.team?.id && String(p.end.team.id) === String(p.start?.team?.id);
+      if (first) return [`1ST${Number.isFinite(y) && y ? ` +${y}` : ""}`, "first"];
+      if (Number.isFinite(y)) return [y > 0 ? `+${y}` : y < 0 ? `${y}` : "+0", y > 0 ? "gain" : y < 0 ? "loss" : "dim"];
+      return null;
+    };
+    let plays = ordered.filter((p) => p && p.text).slice(0, 3).map((p) => ({ key: p.id || p.text, text: tidy(p.text), when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p) }));
+    if (!plays.length && sit.lastPlay) plays = [{ key: sit.lastPlay, text: tidy(sit.lastPlay), when: "", dd: "", tid: sit.lastPlayTeamId, badge: null }];
+    // The newest play types itself in once, the first time it is seen.
+    const seen = (window.__gcSeen = window.__gcSeen || {});
+    const fresh = plays[0] && seen[gameId] !== plays[0].key;
+    if (plays[0]) seen[gameId] = plays[0].key;
+    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p, i) => `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${p.tid ? lg(p.tid, "gc-plogo") : ""}${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.badge ? `<b class="gc-badge ${p.badge[1]}">${esc(p.badge[0])}</b>` : ""}</span><span class="gc-ptxt">${esc(p.text)}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
-    const wp = lv.winProb;
-    const wpHtml = wp ? `<div class="gc-h">WIN PROBABILITY</div><div class="win-prob-bar"><div class="win-prob-fill away" style="width:${wp.away}%;background:${aCol}"></div><div class="win-prob-fill home" style="width:${wp.home}%;background:${hCol}"></div></div><div class="win-prob-labels"><span>${Math.round(wp.away)}% ${esc(A)}</span><span>${Math.round(wp.home)}% ${esc(H)}</span></div>` : "";
+    const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
     const spHtml = sp.length ? `<div class="gc-h">SCORING</div><ul class="lv-sp">${sp.slice().reverse().map((q) => { const tid = q.team?.id != null ? Number(q.team.id) : null; return `<li>${tid ? lg(tid, "lv-splogo") : ""}<span class="lv-spq">Q${q.period?.number ?? "?"} ${esc(q.clock?.displayValue || "")}</span><span class="lv-sptxt">${esc(q.text || q.type?.text || "")}</span><b class="lv-spsc">${q.awayScore ?? ""}-${q.homeScore ?? ""}</b></li>`; }).join("")}</ul>` : "";
     return `<div class="gc">${strip}${field}${ddLine}${playsHtml}${wpHtml}${spHtml}</div>`;

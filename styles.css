@@ -4269,3 +4269,92 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-plays div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .gc-pmeta { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; color: var(--text-dim); }
 .gc-ptxt { font-size: 10.5px; line-height: 1.35; color: var(--text); }
+
+/* ===== Gamecast, arcade cabinet ===== */
+/* Header: fighting-game HUD */
+.gc-cab { position: relative; padding: 8px 8px 9px; border-radius: 10px; border: 2px solid #2a1442; background: radial-gradient(120% 140% at 50% 0%, #1b0b33 0%, #0b0418 70%); box-shadow: inset 0 0 0 1px rgba(255, 228, 94, .18), 0 0 18px rgba(193, 60, 255, .18); overflow: hidden; }
+.gc-cab::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px); }
+.gc-hp { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; }
+.gc-bar { height: 10px; border: 2px solid #ffe45e; background: #3a0010; box-shadow: 0 0 6px rgba(255, 228, 94, .35); display: flex; }
+.gc-bar.a { justify-content: flex-end; }
+.gc-bar i { display: block; height: 100%; background: linear-gradient(180deg, #fff59a 0 30%, #ffd400 30% 70%, #e0a800 70%); box-shadow: inset 0 0 0 1px var(--tc, transparent); transition: width .8s steps(12); }
+.gc-ko { font-family: 'Press Start 2P', monospace; font-size: 6px; color: #ff3b3b; text-shadow: 0 0 6px rgba(255, 59, 59, .8); letter-spacing: .06em; }
+.gc-hpn { display: flex; justify-content: space-between; margin: 3px 0 2px; font-family: 'Press Start 2P', monospace; font-size: 6px; color: #ffe45e; }
+.gc-cab .gc-strip { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; padding: 4px 0 0; border: 0; background: none; }
+.gc-f { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 7px; min-width: 0; }
+.gc-f.h { grid-template-columns: 1fr auto; }
+.gc-port { grid-row: 1 / span 2; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: #0a0414; border: 2px solid #c13cff; box-shadow: 3px 3px 0 #2a1442, 0 0 10px rgba(193, 60, 255, .4); image-rendering: pixelated; }
+.gc-f.h .gc-port { grid-column: 2; border-color: #c13cff; }
+.gc-f.poss .gc-port { border-color: #ffe45e; box-shadow: 3px 3px 0 #2a1442, 0 0 12px rgba(255, 228, 94, .7); }
+.gc-port img.gc-logo { width: 28px; height: 28px; }
+.gc-fid { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.gc-f.h .gc-fid { grid-column: 1; grid-row: 1; justify-content: flex-end; flex-direction: row-reverse; }
+.gc-p { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: #0a0414; background: #05d9e8; padding: 2px 3px; }
+.gc-f.h .gc-p { background: #ff2079; }
+.gc-fid b { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #fff; white-space: nowrap; }
+.gc-ballt { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; color: #ffe45e; animation: lvblink 1s steps(2, start) infinite; }
+.gc-f .gc-led.sc { grid-column: 2; grid-row: 2; font-size: 20px; }
+.gc-f.h .gc-led.sc { grid-column: 1; justify-self: end; }
+/* LED digits with ghost segments, same family as the countdown */
+.gc-led { position: relative; display: inline-block; font-family: 'Press Start 2P', monospace; color: #ffb000; text-shadow: 0 0 6px rgba(255, 176, 0, .85), 0 0 14px rgba(255, 120, 0, .45); letter-spacing: .04em; line-height: 1; }
+.gc-led::before { content: attr(data-ghost); position: absolute; inset: 0; color: rgba(255, 176, 0, .1); text-shadow: none; }
+.gc-clock { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 6px; border: 2px solid #2a1442; background: #07020f; }
+.gc-per { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: #c13cff; }
+.gc-led.clk { font-size: 11px; color: #ff4040; text-shadow: 0 0 6px rgba(255, 64, 64, .8); }
+.gc-led.clk::before { color: rgba(255, 64, 64, .1); }
+.gc-stat { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #ff4040; }
+
+/* Field: pixel turf with a CRT finish */
+.gc-field.crt { height: 96px; border-radius: 6px; image-rendering: pixelated; background: repeating-linear-gradient(90deg, #1f7a32 0 4.2%, #1a6a2b 4.2% 8.4%); background-position: 8% 0; box-shadow: inset 0 0 0 3px #e8ffe8, 0 0 0 2px #0a0414, 0 0 16px rgba(57, 255, 136, .25); }
+.gc-field.crt::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 3; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .2) 0 1px, transparent 1px 3px), radial-gradient(120% 140% at 50% 50%, transparent 55%, rgba(0, 0, 0, .55) 100%); }
+.gc-field.crt .gc-ez { box-shadow: inset 0 0 0 3px #e8ffe8; }
+.gc-field.crt .gc-ez span { font-size: 7px; }
+.gc-field.crt .gc-yl { width: 2px; background: rgba(232, 255, 232, .55); }
+.gc-field.crt .gc-num { font-size: 6px; color: rgba(232, 255, 232, .8); text-shadow: 1px 1px 0 #0a3a14; }
+.gc-field.crt .gc-first { width: 3px; background: #ffe45e; box-shadow: 0 0 6px #ffe45e, 0 0 14px rgba(255, 228, 94, .8); animation: gclaser 1.4s ease-in-out infinite; }
+@keyframes gclaser { 50% { box-shadow: 0 0 3px #ffe45e, 0 0 8px rgba(255, 228, 94, .5); } }
+.gc-field.crt .gc-los { background: #4fc3ff; box-shadow: 0 0 6px #4fc3ff; }
+.gc-field.crt .gc-off { border-radius: 0; background: #0a0414; border: 2px solid #ffe45e; box-shadow: 2px 2px 0 rgba(0, 0, 0, .6); width: 26px; height: 26px; }
+.gc-field.crt .gc-ball { width: 14px; height: 8px; border-radius: 3px; background: #8b4513; box-shadow: 0 0 0 1px #3a1a05, 2px 2px 0 rgba(0, 0, 0, .5); }
+.gc-chev { position: absolute; top: 62px; z-index: 2; font-family: 'Press Start 2P', monospace; font-size: 7px; color: #ffe45e; text-shadow: 0 0 6px rgba(255, 228, 94, .9); animation: lvblink .7s steps(2, start) infinite; }
+.gc-chev.r { transform: translateX(8px); }
+.gc-chev.l { transform: translateX(calc(-100% - 8px)); }
+
+/* Play log: phosphor terminal */
+.gc-log { padding: 7px 8px 6px; border-radius: 8px; border: 1px solid rgba(57, 255, 136, .3); background: #031007; box-shadow: inset 0 0 18px rgba(57, 255, 136, .08); position: relative; overflow: hidden; }
+.gc-log::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .25) 0 1px, transparent 1px 3px); }
+.gc-logh { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .14em; color: #39ff88; margin-bottom: 5px; }
+.gc-log .gc-plays li { background: none; border: 0; border-radius: 0; padding: 4px 0; border-top: 1px dashed rgba(57, 255, 136, .15); gap: 6px; }
+.gc-log .gc-plays li:first-child { border-top: 0; }
+.gc-prompt { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #39ff88; margin-top: 2px; }
+.gc-log .gc-plays li.new .gc-prompt { animation: lvblink .8s steps(2, start) infinite; }
+.gc-log .gc-pmeta { display: flex; align-items: center; gap: 5px; color: rgba(57, 255, 136, .7); }
+.gc-log .gc-pmeta img.gc-plogo { width: 12px; height: 12px; margin: 0; }
+.gc-log .gc-ptxt { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px; line-height: 1.4; color: #b8ffd2; text-shadow: 0 0 4px rgba(57, 255, 136, .45); }
+.gc-log li.old1 .gc-ptxt { color: rgba(184, 255, 210, .6); text-shadow: none; }
+.gc-log li.old2 .gc-ptxt { color: rgba(184, 255, 210, .4); text-shadow: none; }
+.gc-log li.type .gc-ptxt { display: inline-block; animation: gctype 1.2s steps(36, end) both; clip-path: inset(0 100% 0 0); }
+@keyframes gctype { to { clip-path: inset(0 0 0 0); } }
+.gc-badge { margin-left: auto; font-family: 'Press Start 2P', monospace; font-size: 6px; padding: 2px 4px; color: #0a0414; background: #b8ffd2; }
+.gc-badge.gain { background: #39ff88; }
+.gc-badge.first { background: #ffe45e; }
+.gc-badge.loss, .gc-badge.to { background: #ff2079; color: #fff; }
+.gc-badge.td { background: #ffe45e; box-shadow: 0 0 8px rgba(255, 228, 94, .9); animation: lvblink .8s steps(2, start) 4; }
+.gc-badge.flag { background: #ffb000; }
+.gc-badge.dim { background: rgba(184, 255, 210, .35); color: #031007; }
+
+/* Broadcast-camera tilt: the far sideline recedes, the near one is close,
+   and the offence's logo and the ball stand up off the turf. */
+.gc-stage { perspective: 420px; perspective-origin: 50% 0%; padding: 6px 4px 0; margin-bottom: -10px; }
+.gc-stage .gc-field.crt { height: 118px; transform: rotateX(34deg); transform-origin: 50% 100%; transform-style: preserve-3d; border-radius: 4px; box-shadow: inset 0 0 0 3px #e8ffe8, 0 0 0 2px #0a0414, 0 14px 22px rgba(0, 0, 0, .65), 0 0 20px rgba(57, 255, 136, .22); background:
+  linear-gradient(180deg, rgba(0, 0, 0, .35) 0%, rgba(0, 0, 0, 0) 45%, rgba(255, 255, 255, .06) 100%),
+  repeating-linear-gradient(90deg, #1f7a32 0 4.2%, #1a6a2b 4.2% 8.4%); background-position: 0 0, 8% 0; }
+.gc-mid { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; transform: translate(-50%, -50%); opacity: .28; filter: saturate(.8); pointer-events: none; }
+/* Hash marks along both sides of every five yards */
+.gc-stage .gc-field.crt::before { content: ""; position: absolute; left: 8%; right: 8%; top: 30%; bottom: 30%; pointer-events: none; background: repeating-linear-gradient(90deg, rgba(232, 255, 232, .5) 0 2px, transparent 2px 4.2%); -webkit-mask: linear-gradient(180deg, #000 0 8%, transparent 8% 92%, #000 92%); mask: linear-gradient(180deg, #000 0 8%, transparent 8% 92%, #000 92%); }
+.gc-stage .gc-spot { top: 22px; transform: translateX(-50%) rotateX(-34deg); transform-origin: 50% 100%; }
+.gc-stage .gc-off { width: 30px; height: 30px; }
+.gc-stage .gc-ball { box-shadow: 0 0 0 1px #3a1a05, 0 4px 3px rgba(0, 0, 0, .55); }
+.gc-stage .gc-chev { top: 72px; }
+.gc-stage .gc-num { bottom: 6px; font-size: 7px; }
+.gc-stage { margin-top: -26px; margin-bottom: 4px; perspective-origin: 50% 20%; }
