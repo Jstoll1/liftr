@@ -148,3 +148,5 @@ await mkdir("data/feeds", { recursive: true });
 await writeFile(`data/feeds/w${week}.json`, JSON.stringify(out));
 console.log(`wrote data/feeds/w${week}.json; ${out.errors.length} feed errors`);
 if (failures.length) console.log(`article bodies not read (${failures.length}):\n  ` + failures.join("\n  "));
+
+// Warm-up pass added to the workflow; this touch starts a run.
