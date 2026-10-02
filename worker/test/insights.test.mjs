@@ -275,6 +275,10 @@ test("extractPicks keeps one validated pick per outlet and picker, reputable fir
   ] }) } }] }), { status: 200 });
   const r = await extractPicks({ OPENAI_API_KEY: "k" }, g, items);
   assert.deepEqual(r.picks.map((p) => `${p.outlet}:${p.side}:${p.type}:${p.line}:${p.score}:${p.link}`), ["CBS Sports:away:BOTH:-3.5:27-24:https://cbs.com/2", "FanSided:home:ATS:+3.5::https://f.com/1"]);
+  // A moneyline in the line field moves to ml and never shows as a spread.
+  globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ picks: [{ outlet: "Yahoo Sports", picker: "", team: "Virginia Tech", side: "SU", line: "-172", ml: "", score: "", reason: "" }] }) } }] }), { status: 200 });
+  const y = await extractPicks({ OPENAI_API_KEY: "k" }, g, items);
+  assert.equal(y.picks[0].line, ""); assert.equal(y.picks[0].ml, "-172");
   const kv = fakeKv();
   globalThis.fetch = async (url) => /raw\.githubusercontent/.test(String(url)) ? new Response(JSON.stringify({ games: { 3: { picks: items } } }), { status: 200 }) : new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ picks: [{ outlet: "CBS Sports", picker: "", team: "Pitt", side: "ATS", line: "-3.5", score: "", reason: "" }] }) } }] }), { status: 200 });
   const first = await gamePicks({ LIFTR_KV: kv, OPENAI_API_KEY: "k" }, 5, g);

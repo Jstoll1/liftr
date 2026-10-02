@@ -708,15 +708,15 @@ export async function extractInjuries(env, teamName, items, ctx = null) {
 // straight up, the line as written and a predicted score if the piece
 // gives one. A pick stands only when the team named is one of the two
 // in the game. Cached six hours, stale reads refreshed behind the response.
-export const picksKey = (week, gameId) => `pk:v2:w${week}:g${gameId}`;
+export const picksKey = (week, gameId) => `pk:v3:w${week}:g${gameId}`;
 const PICK_TIER = [/cbs ?sports/i, /sports illustrated|\bsi\b/i, /the athletic/i, /\bcovers\b/i, /action network/i, /pickswise/i, /yahoo/i, /bleacher report/i, /fox sports/i, /usa today/i, /sportsline/i, /oddsshark/i, /dimers/i, /\bpff\b/i, /sporting news/i, /new york post|ny post/i, /on3/i, /247sports/i, /athlon/i, /saturday down south|saturday tradition|saturday blitz/i, /college football news/i, /betsided|fansided/i, /the spun/i];
 export const outletRank = (name) => { const i = PICK_TIER.findIndex((re) => re.test(String(name || ""))); return i < 0 ? PICK_TIER.length : i; };
 export function picksPrompt() {
   return [
     "You extract published game picks for one college football game from article headlines and bodies.",
-    "Read each piece to its end. A staff picks piece lists several people, each with their own pick, line and score: return every one of them as a separate entry, never only the first. Return one entry per outlet and per named picker: the outlet name, the picker's name if given (else empty), the team picked exactly as one of the two teams given, whether the pick is against the spread ('ATS'), straight up ('SU') or the piece gives both ('BOTH'), the line as written for that team if stated (e.g. '-3.5', '+7') else empty, a predicted final score as 'AA-HH' (away first) if given else empty, and the reason in at most twelve words.",
+    "Read each piece to its end. A staff picks piece lists several people, each with their own pick, line and score: return every one of them as a separate entry, never only the first. Return one entry per outlet and per named picker: the outlet name, the picker's name if given (else empty), the team picked exactly as one of the two teams given, whether the pick is against the spread ('ATS'), straight up ('SU') or the piece gives both ('BOTH'), the point spread as written for that team if stated (e.g. '-3.5', '+7') else empty (a moneyline such as -172 is not a spread: put it in 'ml' instead, else empty), a predicted final score as 'AA-HH' (away first) if given else empty, and the reason in at most twelve words.",
     "Only include a pick the text states plainly. Never guess from tone, never include a pick for another game, and never invent a line or score. If nothing qualifies, return an empty list.",
-    "Return JSON: {\"picks\": [{\"outlet\": \"\", \"picker\": \"\", \"team\": \"\", \"side\": \"ATS\", \"line\": \"\", \"score\": \"\", \"reason\": \"\"}]}",
+    "Return JSON: {\"picks\": [{\"outlet\": \"\", \"picker\": \"\", \"team\": \"\", \"side\": \"ATS\", \"line\": \"\", \"ml\": \"\", \"score\": \"\", \"reason\": \"\"}]}",
   ].join(" ");
 }
 // Which side of the game a team name means. The slate names schools
@@ -745,7 +745,7 @@ export async function extractPicks(env, game, items) {
     body: JSON.stringify({
       model: env.OPENAI_MODEL || "gpt-4o-mini",
       messages: [{ role: "system", content: picksPrompt() }, { role: "user", content: `Game: ${searchName(game.away)} (away) at ${searchName(game.home)} (home). Sealed line: ${searchName(game.favorite)} -${game.spread}.\n${text}` }],
-      response_format: { type: "json_schema", json_schema: { name: "picks", strict: true, schema: { type: "object", additionalProperties: false, required: ["picks"], properties: { picks: { type: "array", items: { type: "object", additionalProperties: false, required: ["outlet", "picker", "team", "side", "line", "score", "reason"], properties: { outlet: { type: "string" }, picker: { type: "string" }, team: { type: "string" }, side: { type: "string", enum: ["ATS", "SU", "BOTH"] }, line: { type: "string" }, score: { type: "string" }, reason: { type: "string" } } } } } } } },
+      response_format: { type: "json_schema", json_schema: { name: "picks", strict: true, schema: { type: "object", additionalProperties: false, required: ["picks"], properties: { picks: { type: "array", items: { type: "object", additionalProperties: false, required: ["outlet", "picker", "team", "side", "line", "ml", "score", "reason"], properties: { outlet: { type: "string" }, picker: { type: "string" }, team: { type: "string" }, side: { type: "string", enum: ["ATS", "SU", "BOTH"] }, line: { type: "string" }, ml: { type: "string" }, score: { type: "string" }, reason: { type: "string" } } } } } } } },
       temperature: 0,
     }),
   });
@@ -759,7 +759,13 @@ export async function extractPicks(env, game, items) {
       const outlet = String(p.outlet).trim().slice(0, 40);
       const item = ordered.find((n) => String(n.source || "").toLowerCase() === outlet.toLowerCase()) || ordered.find((n) => new RegExp(outlet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(n.source || "")) || null;
       const score = /^\d{1,2}-\d{1,2}$/.test(String(p.score || "").trim()) ? String(p.score).trim() : "";
-      return { outlet, picker: String(p.picker || "").trim().slice(0, 40), side, type: p.side, line: String(p.line || "").trim().slice(0, 8), score, reason: String(p.reason || "").trim().slice(0, 90), link: item?.link || null };
+      // A spread is a small number with a half point at most; three digits
+      // is a moneyline whatever field the model put it in.
+      const num = (v) => { const t = String(v || "").trim().replace(/[^\d.+-]/g, ""); return /^[+-]?\d+(\.\d)?$/.test(t) ? t : ""; };
+      let line = num(p.line), ml = num(p.ml);
+      if (line && Math.abs(Number(line)) >= 30) { ml = ml || line; line = ""; }
+      if (line && !/^[+-]/.test(line)) line = `-${line}`;
+      return { outlet, picker: String(p.picker || "").trim().slice(0, 40), side, type: p.side, line: line.slice(0, 6), ml: ml.slice(0, 6), score, reason: String(p.reason || "").trim().slice(0, 90), link: item?.link || null };
     }).filter(Boolean)
       // One tile per outlet and picker.
       .filter((p) => { const k = `${p.outlet}|${p.picker}`.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
