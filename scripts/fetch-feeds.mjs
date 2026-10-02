@@ -26,6 +26,9 @@ async function rss(url, bing = false) {
 const google = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}+when:7d&hl=en-US&gl=US&ceid=US:en`;
 const bing = (q) => `https://www.bing.com/news/search?q=${encodeURIComponent(q)}&format=rss&qft=interval%3d%228%22`;
 const INJ = /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i;
+// NFL nicknames no college team shares, plus the league itself.
+const NFL = /\b(nfl|steelers|browns|bengals|ravens|packers|vikings|jets|dolphins|bills|patriots|chiefs|chargers|raiders|broncos|colts|texans|titans|jaguars|49ers|seahawks|saints|buccaneers|commanders)\b/i;
+const failures = [];
 
 // Headlines rarely name the players; the article does. Resolve Google's
 // redirect page to the real URL, fetch the article, and keep its
@@ -53,17 +56,18 @@ async function resolveGoogle(link) {
     return m ? m[1] : null;
   } catch { return null; }
 }
-async function articleText(link) {
+async function articleText(link, label) {
   try {
     let url = link;
-    if (/news\.google\.com/.test(url)) { url = await resolveGoogle(url); if (!url) return null; }
-    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, redirect: "follow" });
-    if (!res.ok) return null;
+    if (/news\.google\.com/.test(url)) { url = await resolveGoogle(url); if (!url) { failures.push(`${label}: google decode failed`); return null; } }
+    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html", "Accept-Language": "en-US,en;q=0.9" }, redirect: "follow" });
+    if (!res.ok) { failures.push(`${label}: HTTP ${res.status} ${new URL(url).hostname}`); return null; }
     const html = (await res.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, "");
     const paras = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;|&#8217;/g, "'").replace(/&quot;|&ldquo;|&rdquo;/g, '"').replace(/\s+/g, " ").trim()).filter((t) => t.length > 50);
     const text = paras.join(" ").slice(0, 1800);
+    if (text.length <= 120) failures.push(`${label}: only ${text.length} chars from ${new URL(url).hostname}`);
     return text.length > 120 ? text : null;
-  } catch { return null; }
+  } catch (err) { failures.push(`${label}: ${String(err?.message || err).slice(0, 60)}`); return null; }
 }
 
 const weeks = await (await fetch(`${WORKER}/weeks`)).json();
@@ -99,13 +103,13 @@ for (const g of games) {
   const aliases = (full, short) => { const w = searchName(full).toLowerCase().split(/\s+/); const school = w.length > 1 ? w.slice(0, -1).join(" ") : w[0]; const mascot = w.length > 1 ? w[w.length - 1] : ""; return [school, String(short || "").toLowerCase(), SHARED.test(mascot) ? "" : mascot].filter((x) => x.length >= 4); };
   const wholeWord = (h, x) => new RegExp(`(^|[^a-z])${x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`).test(h);
   const aA = aliases(g.away, g.awayShort), aH = aliases(g.home, g.homeShort);
-  const names = (list, al) => list.filter((n) => { const h = String(n.headline).toLowerCase(); return al.some((x) => wholeWord(h, x)); });
+  const names = (list, al) => list.filter((n) => { const h = String(n.headline).toLowerCase(); return !NFL.test(h) && al.some((x) => wholeWord(h, x)); });
   const injOnly = (list, al) => names(list, al).filter((n) => INJ.test(`${n.headline} ${n.blurb || ""}`));
   const injAway = tag(injOnly([...got.awayInj, ...got.away], aA), "away").slice(0, 6);
   const injHome = tag(injOnly([...got.homeInj, ...got.home], aH), "home").slice(0, 6);
   // Article bodies for the injury pieces, a few at a time.
   for (const list of [injAway, injHome]) {
-    const texts = await Promise.all(list.map((n) => articleText(n.link)));
+    const texts = await Promise.all(list.map((n) => articleText(n.link, `g${g.id} ${n.source}: ${n.headline.slice(0, 40)}`)));
     list.forEach((n, i) => { if (texts[i]) n.blurb = texts[i]; });
   }
   out.games[g.id] = {
@@ -118,3 +122,4 @@ for (const g of games) {
 await mkdir("data/feeds", { recursive: true });
 await writeFile(`data/feeds/w${week}.json`, JSON.stringify(out));
 console.log(`wrote data/feeds/w${week}.json; ${out.errors.length} feed errors`);
+if (failures.length) console.log(`article bodies not read (${failures.length}):\n  ` + failures.join("\n  "));

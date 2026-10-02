@@ -553,7 +553,7 @@ export function injuriesPrompt() {
   return [
     "You extract player availability for one college football team from news headlines and blurbs.",
     "Return only players the text explicitly gives a status for: out, doubtful, questionable, probable, returning from injury, or suspended. Map the status to one of: " + INJURY_STATUSES.join(", ") + ".",
-    "Never guess, never add players not named with a status, never include the opponent's players. Skip coaches. If nothing qualifies, return an empty list.",
+    "Never guess, never add players not named with a status, never include the opponent's players, and ignore anyone from another sport (volleyball, basketball, soccer) or from an NFL team. Skip coaches. If nothing qualifies, return an empty list.",
     "For each: name as written, position abbreviation if given (QB, RB, WR, TE, OL, DL, DE, DT, LB, CB, S, K, P) else empty string, status, and a short detail (injury or reason, max 8 words) plus the outlet name.",
     "Return JSON: {\"players\": [{\"name\": \"\", \"pos\": \"\", \"status\": \"\", \"detail\": \"\", \"source\": \"\"}]}",
   ].join(" ");
