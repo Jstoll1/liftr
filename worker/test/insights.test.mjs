@@ -212,4 +212,11 @@ test("verifyQuote keeps only sentences really in the articles and attaches that 
   assert.equal(verifyQuote(items, "Stoll hurt his ankle and will sit", "Jake Stoll").quote, "Jake Stoll suffered a sprained ankle and has not practiced");
   // A player the text never names with a status gets no quote at all.
   assert.equal(verifyQuote(items, "Made up sentence about Bob Nobody being out", "Bob Nobody"), null);
+  // Entities decode, stray spaces before commas go, and a stand-in that
+  // would start mid-list is trimmed to a capitalised word near the name.
+  const messy = [{ source: "SI", link: "https://si.com/c", headline: "Report", blurb: "Jones , Williams &#34;Snook&#34; Peterkin Kahlil Smith Bryan Keys There were three offensive linemen on the list, though Cunningham was added later after an injury in practice" }];
+  const r = verifyQuote(messy, "", "Montavious Cunningham");
+  assert.ok(r && r.quote.startsWith("…") && !r.quote.includes("&#") && r.quote.includes("Cunningham was added later"), r?.quote);
+  assert.ok(r.quote.indexOf("Cunningham") <= 72, r.quote);
+  assert.equal(verifyQuote(messy, "Jones , Williams &#34;Snook&#34; Peterkin Kahlil Smith", "Kahlil Smith").quote, 'Jones, Williams "Snook" Peterkin Kahlil Smith');
 });

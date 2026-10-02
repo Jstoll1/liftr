@@ -645,14 +645,20 @@ function itemsNaming(items, name) {
 // from supplies the row's link and outlet. Without a usable quote from the
 // model, the sentence that names the player stands in when it carries a
 // status word, since that is lifted from the text by construction.
-const squash = (s) => String(s || "").toLowerCase().replace(/[\u2018\u2019\u201c\u201d]/g, "'").replace(/[^a-z0-9']+/g, " ").trim();
+const squash = (s) => String(s || "").toLowerCase().replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d))).replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/[\u2018\u2019\u201c\u201d]/g, "'").replace(/[^a-z0-9']+/g, " ").trim();
 const STATUS_WORDS = /out|doubtful|questionable|probable|return|suspend|miss|sidelined|practice|injur|limited|available|expected|cleared/i;
 export function verifyQuote(items, quote, name) {
-  const tidy = (q) => String(q || "").replace(/\s+/g, " ").trim().slice(0, 220);
+  const tidy = (q) => String(q || "").replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d))).replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").replace(/\s+([,.;:])/g, "$1").trim().slice(0, 220);
   let q = tidy(quote), hit = null;
   if (q.length >= 15) hit = items.find((n) => squash(`${n.headline}. ${n.blurb || ""}`).includes(squash(q))) || null;
   if (!hit) {
-    const alt = tidy(itemsNaming(items, name));
+    // The stand-in sentence may begin mid-list when the body lacks
+    // punctuation, so it starts no more than 70 characters before the name,
+    // snapped to the next capitalised word.
+    let alt = tidy(itemsNaming(items, name));
+    const ln = String(name || "").trim().split(/\s+/).slice(-1)[0];
+    const at = ln ? alt.toLowerCase().indexOf(ln.toLowerCase()) : -1;
+    if (at > 70) { const head = alt.slice(at - 70, at); const cap = head.search(/\b[A-Z]/); alt = cap >= 0 ? "…" + head.slice(cap) + alt.slice(at) : "…" + alt.slice(at); }
     if (alt.length >= 15 && STATUS_WORDS.test(alt)) { q = alt; hit = items.find((n) => squash(`${n.headline}. ${n.blurb || ""}`).includes(squash(alt))) || null; }
   }
   if (!hit) return null;
