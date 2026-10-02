@@ -4046,7 +4046,10 @@ async function openInsights(gameId) {
       .replace(/#\d{1,2}\s+/g, "")
       .replace(/\b([A-Z][a-z]+)(\d{1,2})\b/g, (m0, w, n) => `${mascot[w.toLowerCase()] || w} ${n}`)
       .replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").trim();
+    // Quarter ends, timeouts and the like are markers, not plays: no badge.
+    const isMarker = (p) => /^(end of|end quarter|end period|end of half|end of game|timeout|two-minute|official timeout|kickoff\b.*coin)/i.test(String(p.text || "").trim()) || /end period|end of half|timeout|end of game|coin toss/i.test(p.type?.text || "");
     const badgeOf = (p) => {
+      if (isMarker(p)) return null;
       const t = `${p.type?.text || ""} ${p.text || ""}`;
       if (/touchdown|for a td\b/i.test(t)) return ["TD", "td"];
       if (/intercept/i.test(t)) return ["INT", "to"];
@@ -4063,13 +4066,13 @@ async function openInsights(gameId) {
       if (Number.isFinite(y)) return [y > 0 ? `+${y}` : y < 0 ? `${y}` : "+0", y > 0 ? "gain" : y < 0 ? "loss" : "dim"];
       return null;
     };
-    let plays = ordered.filter((p) => p && p.text).slice(0, 3).map((p) => ({ key: p.id || p.text, text: tidy(p.text), when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p) }));
+    let plays = ordered.filter((p) => p && p.text).slice(0, 3).map((p) => ({ key: p.id || p.text, text: tidy(p.text), when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
     if (!plays.length && sit.lastPlay) plays = [{ key: sit.lastPlay, text: tidy(sit.lastPlay), when: "", dd: "", tid: sit.lastPlayTeamId, badge: null }];
     // The newest play types itself in once, the first time it is seen.
     const seen = (window.__gcSeen = window.__gcSeen || {});
     const fresh = plays[0] && seen[gameId] !== plays[0].key;
     if (plays[0]) seen[gameId] = plays[0].key;
-    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p, i) => `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${p.tid ? lg(p.tid, "gc-plogo") : ""}${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.badge ? `<b class="gc-badge ${p.badge[1]}">${esc(p.badge[0])}</b>` : ""}</span><span class="gc-ptxt">${esc(p.text)}</span></div></li>`).join("")}</ol></div>` : "";
+    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p, i) => p.marker ? `<li class="gc-mark"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${p.tid ? lg(p.tid, "gc-plogo") : ""}${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.badge ? `<b class="gc-badge ${p.badge[1]}">${esc(p.badge[0])}</b>` : ""}</span><span class="gc-ptxt">${esc(p.text)}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
     const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];

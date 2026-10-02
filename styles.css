@@ -4432,3 +4432,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-rc.down .gc-rpts { color: rgba(255, 32, 121, .7); }
 .gc-rc.down b { color: var(--text-dim); }
 .gc-rnone { font-size: 9px; color: var(--text-dim); }
+
+.gc-log .gc-plays li.gc-mark { justify-content: center; padding: 3px 0; }
+.gc-log .gc-plays li.gc-mark span { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .12em; color: rgba(57, 255, 136, .55); }
+.gc-log .gc-plays li.gc-mark span::before, .gc-log .gc-plays li.gc-mark span::after { content: " ◆ "; }
