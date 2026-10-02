@@ -3946,6 +3946,9 @@ async function openInsights(gameId) {
     // A bigger favourite number helps whoever holds the favourite at the
     // smaller sealed number, and hurts the dog holder, and vice versa.
     const forMe = !myPick || !nowMoved ? null : (nowV > sealedV) === myFav;
+    // A straight-up pick never touches the spread, so for it the move is
+    // a signal, not points: the market agreeing with the side or cooling.
+    const mySU = !!myPick && myPick.mode === "SU";
     const tone = forMe === null ? "" : forMe ? " good" : " bad";
     const band = nowMoved ? `<i class="lm-band ${nowV > sealedV ? "r" : "l"}${tone}" style="left:${bandL}%;width:${bandW}%"></i>` : "";
     // Small indicator under the axis: an arrow spanning seal to now with the size of the move.
@@ -3962,6 +3965,7 @@ async function openInsights(gameId) {
       : `OPEN ${esc(lab(openV))} ▸ NOW <em>${esc(lab(nowV))}</em>`;
     const myLab = myPick ? `${esc(myPick.team === game.away ? abbrOf("away") : abbrOf("home"))} ${myPick.mode === "SU" ? "SU" : (myFav ? "-" : "+") + game.spread}` : "";
     const l2 = nowV === null ? "" : dS === 0 ? (myPick ? `YOUR ${myLab} · AT MARKET` : `SEAL AT MARKET · NO EDGE`)
+      : myPick && mySU ? (forMe ? `<em class="good">✓ MARKET AGREES · ${myLab}</em> · NOW ${esc(lab(nowV))}` : `<em class="bad">MARKET COOLING ON ${myLab}</em> · NOW ${esc(lab(nowV))}`)
       : myPick ? (forMe ? `<em class="good">✓ GOOD FOR YOUR ${myLab}</em> · +${half(dS)}` : `<em class="bad">✗ BAD FOR YOUR ${myLab}</em> · -${half(dS)}`)
       : `EDGE <em>+${half(dS)}</em> TO ${esc(dS > 0 ? favAb : dogAb)} BACKERS`;
     const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
