@@ -205,7 +205,7 @@ test("verifyQuote keeps only sentences really in the articles and attaches that 
     { source: "SI", link: "https://si.com/b", headline: "Buckeyes notes", blurb: "Nothing about him." },
   ];
   const ok = verifyQuote(items, "Jake Stoll suffered a sprained ankle and has not practiced.", "Jake Stoll");
-  assert.deepEqual(ok, { quote: "Jake Stoll suffered a sprained ankle and has not practiced.", link: "https://on3.com/a", source: "On3" });
+  assert.deepEqual(ok, { quote: "Jake Stoll suffered a sprained ankle and has not practiced.", link: "https://on3.com/a", source: "On3", published: null });
   // Curly quotes and spacing do not break the match.
   assert.ok(verifyQuote(items, "  Jake   Stoll suffered a sprained ankle and has not practiced ", "Jake Stoll"));
   // A paraphrase is dropped, then the sentence naming the player stands in.
@@ -279,4 +279,17 @@ test("extractPicks keeps one validated pick per outlet and picker, reputable fir
   globalThis.fetch = async (url) => /raw\.githubusercontent/.test(String(url)) ? new Response(JSON.stringify({ games: { 3: { picks: items } } }), { status: 200 }) : new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ picks: [{ outlet: "CBS Sports", picker: "", team: "Pitt", side: "ATS", line: "-3.5", score: "", reason: "" }] }) } }] }), { status: 200 });
   const first = await gamePicks({ LIFTR_KV: kv, OPENAI_API_KEY: "k" }, 5, g);
   assert.equal(first.picks.length, 1); assert.ok(kv.writes.includes(picksKey(5, 3)));
+});
+
+test("gameInjuries drops dated articles older than eight days before extraction", async () => {
+  const kv = fakeKv();
+  let sent = "";
+  const old = new Date(Date.now() - 20 * 24 * 3600 * 1000).toISOString(), fresh = new Date().toISOString();
+  globalThis.fetch = async (url, init) => /raw\.githubusercontent/.test(String(url)) ? new Response(JSON.stringify({ games: { 3: { injuries: { away: [{ headline: "Old report", blurb: "T. Turner out against Central Michigan.", source: "A", link: "https://a/1", published: old }, { headline: "This week report", blurb: "T. Turner is questionable.", source: "B", link: "https://b/2", published: fresh }], home: [] } } } }), { status: 200 })
+    : /openai/.test(String(url)) ? (sent += String(init?.body || ""), new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ players: [] }) } }] }), { status: 200 }))
+    : new Response("nope", { status: 500 });
+  await gameInjuries({ LIFTR_KV: kv, OPENAI_API_KEY: "k" }, 5, game);
+  assert.ok(sent.includes("This week report"), "fresh piece sent");
+  assert.ok(!sent.includes("Old report"), "stale piece dropped");
+  assert.ok(sent.includes("This week's game: Coastal Carolina at Georgia Southern"), "game named");
 });

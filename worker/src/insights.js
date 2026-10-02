@@ -548,13 +548,14 @@ export async function gamePreview(env, week, game, facts) {
 // injury coverage, then have the model pull a structured list from the
 // headlines and blurbs. Cached three hours; only names with a stated
 // status come through, and every row carries the outlet it came from.
-export const injuriesKey = (week, gameId) => `inj:v10:w${week}:g${gameId}`;
+export const injuriesKey = (week, gameId) => `inj:v11:w${week}:g${gameId}`;
 export const INJURY_STATUSES = ["OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "RETURNING", "SUSPENDED"];
 export function injuriesPrompt() {
   return [
     "You extract player availability for one college football team from news headlines and blurbs.",
     "Return only players the text explicitly gives a status for: out, doubtful, questionable, probable, returning from injury, or suspended. Map the status to one of: " + INJURY_STATUSES.join(", ") + ".",
     "Never guess, never add players not named with a status, never include the opponent's players, and ignore anyone from another sport (volleyball, basketball, soccer) or from an NFL team. Skip coaches. If nothing qualifies, return an empty list.",
+    "The status must be for THIS week's game, which is named in the message. A report about an earlier game or a different opponent ('expected to sit out against Central Michigan' when this week's opponent is Clemson) is old news: skip that player unless the text also gives a status for this game.",
     "For each: name as written, position, status, and a short detail (injury or reason, max 8 words) plus the outlet name.",
     "Every player needs a position abbreviation (QB, RB, WR, TE, OL, DL, DE, DT, EDGE, LB, CB, S, K, P, LS). Take it from the text first, including role words such as 'tight end', 'safety' or 'left tackle', and otherwise from what you know of that player on this team. Leave it empty only when you truly have no idea.",
     "Also copy, as 'quote', the one sentence from the text that states the player's status, verbatim and unedited (max 200 characters). Never paraphrase it; if no single sentence states it, use an empty string.",
@@ -671,9 +672,9 @@ export function verifyQuote(items, quote, name) {
     if (alt.length >= 15 && STATUS_WORDS.test(alt)) { q = alt; hit = items.find((n) => squash(`${n.headline}. ${n.blurb || ""}`).includes(squash(alt))) || null; }
   }
   if (!hit) return null;
-  return { quote: q, link: hit.link || null, source: String(hit.source || "").slice(0, 40) };
+  return { quote: q, link: hit.link || null, source: String(hit.source || "").slice(0, 40), published: hit.published || null };
 }
-export async function extractInjuries(env, teamName, items) {
+export async function extractInjuries(env, teamName, items, ctx = null) {
   if (!items.length) return { players: [] };
   if (!env.OPENAI_API_KEY) return { players: [], error: "no model key" };
   // Articles with a body first, since those carry the names.
@@ -684,7 +685,7 @@ export async function extractInjuries(env, teamName, items) {
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: JSON.stringify({
       model: env.OPENAI_MODEL || "gpt-4o-mini",
-      messages: [{ role: "system", content: injuriesPrompt() }, { role: "user", content: `Team: ${searchName(teamName)}\n${text}` }],
+      messages: [{ role: "system", content: injuriesPrompt() }, { role: "user", content: `Team: ${searchName(teamName)}${ctx ? `\nThis week's game: ${ctx.game}${ctx.kickoff ? ` (${ctx.kickoff})` : ""}. Today: ${new Date().toUTCString().slice(0, 16)}.` : ""}\n${text}` }],
       response_format: { type: "json_schema", json_schema: { name: "injuries", strict: true, schema: { type: "object", additionalProperties: false, required: ["players"], properties: { players: { type: "array", items: { type: "object", additionalProperties: false, required: ["name", "pos", "status", "detail", "source", "quote", "note"], properties: { name: { type: "string" }, pos: { type: "string" }, status: { type: "string", enum: INJURY_STATUSES }, detail: { type: "string" }, source: { type: "string" }, quote: { type: "string" }, note: { type: "string" } } } } } } } },
       temperature: 0,
     }),
@@ -694,7 +695,7 @@ export async function extractInjuries(env, teamName, items) {
     const parsed = JSON.parse((await res.json()).choices?.[0]?.message?.content || "{}");
     const seen = new Set();
     const players = (parsed.players || []).filter((p) => p.name && INJURY_STATUSES.includes(p.status)).filter((p) => { const k = p.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 10)
-      .map((p) => { const q = verifyQuote(items, p.quote, p.name); return { name: String(p.name).slice(0, 40), pos: normalisePos(p.pos) || inferPos(`${p.detail || ""} ${itemsNaming(items, p.name)}`), status: p.status, detail: String(p.detail || "").slice(0, 60), source: q?.source || String(p.source || "").slice(0, 40), quote: q?.quote || null, link: q?.link || null, note: tidyNote(p.note) }; });
+      .map((p) => { const q = verifyQuote(items, p.quote, p.name); return { name: String(p.name).slice(0, 40), pos: normalisePos(p.pos) || inferPos(`${p.detail || ""} ${itemsNaming(items, p.name)}`), status: p.status, detail: String(p.detail || "").slice(0, 60), source: q?.source || String(p.source || "").slice(0, 40), quote: q?.quote || null, link: q?.link || null, published: q?.published || null, note: tidyNote(p.note) }; });
     return { players };
   } catch { return { players: [], error: "bad model json" }; }
 }
@@ -838,7 +839,12 @@ async function refreshInjuries(env, week, game, key, fromPhone = null) {
   // headline from the Worker's own search.
   const merge = (own, extra) => { const all = filterNews([...clean(extra), ...own].sort((a, b) => (b.blurb ? b.blurb.length : 0) - (a.blurb ? a.blurb.length : 0))); const kept = all.filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i.test(`${n.headline} ${n.blurb || ""}`)).slice(0, 10); kept.raw = own.raw; kept.sent = clean(extra).length; return kept; };
   const awayNews = merge(ownAway, [...(siteInj?.away || []), ...(fromPhone?.away || [])]), homeNews = merge(ownHome, [...(siteInj?.home || []), ...(fromPhone?.home || [])]);
-  const [away, home, awayRoster, homeRoster] = await Promise.all([extractInjuries(env, game.away, awayNews), extractInjuries(env, game.home, homeNews), rosterPositions(env, game.awayId), rosterPositions(env, game.homeId)]);
+  // A dated piece older than eight days is about an earlier game; an
+  // undated one stays, and the prompt names this week's opponent so the
+  // model can tell old news apart in the text itself.
+  const recent = (list) => { const cut = Date.now() - 8 * 24 * 3600 * 1000; const kept = list.filter((n) => !n.published || isNaN(Date.parse(n.published)) || Date.parse(n.published) >= cut); kept.raw = list.raw; kept.sent = list.sent; return kept; };
+  const ctx = { game: `${searchName(game.away)} at ${searchName(game.home)}`, kickoff: game.kickoffLabel || game.kickoff || "" };
+  const [away, home, awayRoster, homeRoster] = await Promise.all([extractInjuries(env, game.away, recent(awayNews), ctx), extractInjuries(env, game.home, recent(homeNews), ctx), rosterPositions(env, game.awayId), rosterPositions(env, game.homeId)]);
   away.players = fillPositions(away.players, awayRoster); home.players = fillPositions(home.players, homeRoster);
   const srcs = (items) => items.map((n) => ({ headline: n.headline, link: n.link, source: n.source, published: n.published })).slice(0, 4);
   const out = { at: Date.now(), site: !!siteInj, siteError, away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, found: { away: awayNews.length, home: homeNews.length, awaySources: awayNews.raw, homeSources: homeNews.raw, fromPhone: { away: awayNews.sent || 0, home: homeNews.sent || 0 } }, error: away.error || home.error || null };

@@ -3876,7 +3876,7 @@ async function openInsights(gameId) {
   const mergeInj = (side) => {
     const a = (feedInj?.[side] || []).slice();
     const seen = new Set(a.map((i) => String(i.name).toLowerCase()));
-    for (const p of newsInj?.[side] || []) { const k = p.name.toLowerCase(); if (seen.has(k)) continue; seen.add(k); a.push({ name: p.name, pos: p.pos || null, status: p.status.charAt(0) + p.status.slice(1).toLowerCase(), detail: [p.detail, p.source && !p.quote ? `via ${p.source}` : ""].filter(Boolean).join(" · "), quote: p.quote || null, note: p.note || null, link: p.link || null, source: p.source || null }); }
+    for (const p of newsInj?.[side] || []) { const k = p.name.toLowerCase(); if (seen.has(k)) continue; seen.add(k); a.push({ name: p.name, pos: p.pos || null, status: p.status.charAt(0) + p.status.slice(1).toLowerCase(), detail: [p.detail, p.source && !p.quote ? `via ${p.source}` : ""].filter(Boolean).join(" · "), quote: p.quote || null, note: p.note || null, link: p.link || null, source: p.source || null, published: p.published || null }); }
     return a;
   };
   const injuries = feedInj || newsInj ? { away: mergeInj("away"), home: mergeInj("home") } : null;
@@ -4123,7 +4123,10 @@ async function openInsights(gameId) {
         const row = `<b class="${statusCls(i.status)}">${esc(i.status)}</b><span class="ins-who">${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}</span>${det ? `<span class="ins-det">${esc(det)}</span>` : ""}`;
         // A beat-writer row with a verified sentence unfolds on tap to show it.
         if (!i.quote && !i.note) return `<li>${row}</li>`;
-        const src = i.link ? `<a href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.source || "Read more")} ↗</a>` : i.source ? `<span>${esc(i.source)}</span>` : "";
+        // The article's date sits beside the outlet, so a report from an
+        // earlier week reads as what it is.
+        const when = i.published && !isNaN(Date.parse(i.published)) ? ` · ${new Date(i.published).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}` : "";
+        const src = i.link ? `<a href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.source || "Read more")} ↗</a>${esc(when)}` : i.source ? `<span>${esc(i.source)}${esc(when)}</span>` : "";
         // The note is what the report says in plain words; the verbatim
         // sentence sits under it as the evidence, with the article link.
         const body = (i.note ? `<div class="ins-note">${esc(i.note)}</div>` : "") + (i.quote ? `<div class="ins-quote-txt">“${esc(i.quote)}”</div>` : "");
