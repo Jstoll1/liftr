@@ -1,2 +1,2 @@
-/insights/injuries?week=5&game=2
 /insights/injuries?week=5&game=1
+/insights/injuries?week=5&game=2
