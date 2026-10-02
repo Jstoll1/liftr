@@ -4103,3 +4103,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-fchip i { font-size: clamp(8.5px, 2.6vw, 15px); }
 .ins-fchip u { font-size: clamp(6px, 1.8vw, 10px); }
 .ins-form-r .ins-det { grid-column: 1 / -1; }
+/* Line meter ends and the simulate button badge: logos sized to the sheet, not a fixed 22px */
+.lm-axis { margin-left: clamp(44px, 12vw, 64px); margin-right: clamp(44px, 12vw, 64px); }
+.lm-end img { width: clamp(26px, 8vw, 44px); height: clamp(26px, 8vw, 44px); }
+.lm-end { gap: 4px; }
+.lm-end.l { left: clamp(-44px, -12vw, -64px); } .lm-end.r { right: clamp(-44px, -12vw, -64px); }
+.ins-sim-vs img { width: clamp(22px, 6.5vw, 34px); height: clamp(22px, 6.5vw, 34px); }
