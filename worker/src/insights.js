@@ -548,14 +548,15 @@ export async function gamePreview(env, week, game, facts) {
 // injury coverage, then have the model pull a structured list from the
 // headlines and blurbs. Cached three hours; only names with a stated
 // status come through, and every row carries the outlet it came from.
-export const injuriesKey = (week, gameId) => `inj:v6:w${week}:g${gameId}`;
+export const injuriesKey = (week, gameId) => `inj:v7:w${week}:g${gameId}`;
 export const INJURY_STATUSES = ["OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "RETURNING", "SUSPENDED"];
 export function injuriesPrompt() {
   return [
     "You extract player availability for one college football team from news headlines and blurbs.",
     "Return only players the text explicitly gives a status for: out, doubtful, questionable, probable, returning from injury, or suspended. Map the status to one of: " + INJURY_STATUSES.join(", ") + ".",
     "Never guess, never add players not named with a status, never include the opponent's players, and ignore anyone from another sport (volleyball, basketball, soccer) or from an NFL team. Skip coaches. If nothing qualifies, return an empty list.",
-    "For each: name as written, position abbreviation if given (QB, RB, WR, TE, OL, DL, DE, DT, LB, CB, S, K, P) else empty string, status, and a short detail (injury or reason, max 8 words) plus the outlet name.",
+    "For each: name as written, position, status, and a short detail (injury or reason, max 8 words) plus the outlet name.",
+    "Every player needs a position abbreviation (QB, RB, WR, TE, OL, DL, DE, DT, EDGE, LB, CB, S, K, P, LS). Take it from the text first, including role words such as 'tight end', 'safety' or 'left tackle', and otherwise from what you know of that player on this team. Leave it empty only when you truly have no idea.",
     "Return JSON: {\"players\": [{\"name\": \"\", \"pos\": \"\", \"status\": \"\", \"detail\": \"\", \"source\": \"\"}]}",
   ].join(" ");
 }
@@ -580,6 +581,64 @@ async function injuryNewsFor(teamName, env = null) {
   kept.raw = results.map((r) => r.error ? r.error : r.length);
   return kept;
 }
+// Positions as the sheet prints them. Line spots collapse to OL/DL, and
+// a role spelled out in prose ("tight end", "left tackle") maps to its
+// abbreviation so a report that never uses one still gets a position.
+const POS_ALIAS = { OT: "OL", OG: "OL", G: "OL", C: "OL", IOL: "OL", T: "OL", NT: "DT", NG: "DT", DE: "DE", OLB: "LB", ILB: "LB", MLB: "LB", NB: "CB", DB: "CB", FS: "S", SS: "S", PK: "K", ATH: "ATH", HB: "RB", FB: "RB", RUSH: "EDGE" };
+const POS_WORDS = [
+  [/\bquarterback\b/i, "QB"], [/\b(running|tail|half)[ -]?back\b/i, "RB"], [/\bfullback\b/i, "RB"], [/\b(wide )?receiver\b|\bwideout\b/i, "WR"], [/\btight end\b/i, "TE"],
+  [/\b(offensive (line|lineman|tackle|guard)|left tackle|right tackle|left guard|right guard|center)\b/i, "OL"],
+  [/\bdefensive end\b/i, "DE"], [/\bdefensive tackle\b|\bnose (tackle|guard)\b/i, "DT"], [/\bedge( rusher)?\b|\bpass rusher\b/i, "EDGE"], [/\bdefensive (line|lineman)\b/i, "DL"],
+  [/\blinebacker\b/i, "LB"], [/\bcornerback\b|\bnickel\b/i, "CB"], [/\bsafety\b/i, "S"], [/\bdefensive back\b/i, "CB"],
+  [/\bkicker\b/i, "K"], [/\bpunter\b/i, "P"], [/\blong snapper\b/i, "LS"],
+];
+export function normalisePos(pos) {
+  const p = String(pos || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
+  if (!p) return "";
+  return POS_ALIAS[p] || p.slice(0, 4);
+}
+export function inferPos(text) {
+  for (const [re, pos] of POS_WORDS) if (re.test(text || "")) return pos;
+  return "";
+}
+// ESPN's roster, as a name → position map, so a player a beat writer
+// names without a position still gets one. Last names stand in when the
+// name is unique on the roster. Cached a day; a failed read is an empty map.
+const nameKey = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z ]/g, "").replace(/\s+/g, " ").trim();
+export function parseRoster(data) {
+  const groups = Array.isArray(data?.athletes) ? data.athletes : [];
+  const list = groups.flatMap((g) => Array.isArray(g?.items) ? g.items : [g]);
+  const full = new Map(), last = new Map();
+  for (const a of list) {
+    const name = a?.fullName || a?.displayName, pos = normalisePos(a?.position?.abbreviation);
+    if (!name || !pos) continue;
+    full.set(nameKey(name), pos);
+    const ln = nameKey(name).split(" ").slice(-1)[0];
+    last.set(ln, last.has(ln) && last.get(ln) !== pos ? null : pos);
+  }
+  return { full, last };
+}
+export async function rosterPositions(env, teamId) {
+  if (!teamId || !env?.LIFTR_KV) return { full: new Map(), last: new Map() };
+  try { return parseRoster((await fetchJsonCached(env, `${ESPN}/teams/${teamId}/roster`, 24 * 3600)).data); } catch { return { full: new Map(), last: new Map() }; }
+}
+export function fillPositions(players, roster) {
+  return players.map((p) => {
+    if (p.pos) return p;
+    const k = nameKey(p.name), parts = k.split(" ");
+    const pos = roster.full.get(k) || (parts.length > 1 ? roster.last.get(parts[parts.length - 1]) : null) || inferPos(p.detail) || "";
+    return { ...p, pos };
+  });
+}
+// The sentence of the source text that names the player, for a position
+// the model left blank ("...tight end Brandon Lagg is doubtful").
+function itemsNaming(items, name) {
+  const ln = String(name || "").trim().split(/\s+/).slice(-1)[0];
+  if (!ln || ln.length < 3) return "";
+  const re = new RegExp(`[^.!?\\n]{0,120}\\b${ln.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b[^.!?\\n]{0,40}`, "i");
+  for (const n of items) { const m = re.exec(`${n.headline}. ${n.blurb || ""}`); if (m) return m[0]; }
+  return "";
+}
 export async function extractInjuries(env, teamName, items) {
   if (!items.length) return { players: [] };
   if (!env.OPENAI_API_KEY) return { players: [], error: "no model key" };
@@ -601,7 +660,7 @@ export async function extractInjuries(env, teamName, items) {
     const parsed = JSON.parse((await res.json()).choices?.[0]?.message?.content || "{}");
     const seen = new Set();
     const players = (parsed.players || []).filter((p) => p.name && INJURY_STATUSES.includes(p.status)).filter((p) => { const k = p.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 10)
-      .map((p) => ({ name: String(p.name).slice(0, 40), pos: String(p.pos || "").slice(0, 3), status: p.status, detail: String(p.detail || "").slice(0, 60), source: String(p.source || "").slice(0, 40) }));
+      .map((p) => ({ name: String(p.name).slice(0, 40), pos: normalisePos(p.pos) || inferPos(`${p.detail || ""} ${itemsNaming(items, p.name)}`), status: p.status, detail: String(p.detail || "").slice(0, 60), source: String(p.source || "").slice(0, 40) }));
     return { players };
   } catch { return { players: [], error: "bad model json" }; }
 }
@@ -631,7 +690,8 @@ export async function gameInjuries(env, week, game, fromPhone = null) {
   // headline from the Worker's own search.
   const merge = (own, extra) => { const all = filterNews([...clean(extra), ...own].sort((a, b) => (b.blurb ? b.blurb.length : 0) - (a.blurb ? a.blurb.length : 0))); const kept = all.filter((n) => /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i.test(`${n.headline} ${n.blurb || ""}`)).slice(0, 10); kept.raw = own.raw; kept.sent = clean(extra).length; return kept; };
   const awayNews = merge(ownAway, [...(siteInj?.away || []), ...(fromPhone?.away || [])]), homeNews = merge(ownHome, [...(siteInj?.home || []), ...(fromPhone?.home || [])]);
-  const [away, home] = await Promise.all([extractInjuries(env, game.away, awayNews), extractInjuries(env, game.home, homeNews)]);
+  const [away, home, awayRoster, homeRoster] = await Promise.all([extractInjuries(env, game.away, awayNews), extractInjuries(env, game.home, homeNews), rosterPositions(env, game.awayId), rosterPositions(env, game.homeId)]);
+  away.players = fillPositions(away.players, awayRoster); home.players = fillPositions(home.players, homeRoster);
   const srcs = (items) => items.map((n) => ({ headline: n.headline, link: n.link, source: n.source, published: n.published })).slice(0, 4);
   const out = { at: Date.now(), site: !!siteInj, siteError, away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, found: { away: awayNews.length, home: homeNews.length, awaySources: awayNews.raw, homeSources: homeNews.raw, fromPhone: { away: awayNews.sent || 0, home: homeNews.sent || 0 } }, error: away.error || home.error || null };
   if (!out.error) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 24 * 3600 }); } catch {} }

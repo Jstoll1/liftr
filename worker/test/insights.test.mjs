@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { parseRoster, fillPositions, parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -183,4 +183,18 @@ test("parseGdelt maps the article list and its compact dates", () => {
   const items = parseGdelt({ articles: [{ url: "https://www.post-gazette.com/a", title: "Pitt&#39;s line settles", seendate: "20261001T140000Z", domain: "www.post-gazette.com" }, { url: "", title: "junk" }] });
   assert.deepEqual(items, [{ headline: "Pitt's line settles", source: "post-gazette.com", link: "https://www.post-gazette.com/a", blurb: null, published: "2026-10-01T14:00:00Z" }]);
   assert.deepEqual(parseGdelt(null), []);
+});
+
+test("every injury row gets a position: prose roles, roster lookup, then the model's own", async () => {
+  const items = [{ source: "On3", headline: "Pitt injury report", blurb: "Tight end Brandon Lagg is doubtful. Zach Crothers doubtful. Kenny Johnson questionable." }];
+  globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ players: [
+    { name: "Brandon Lagg", pos: "", status: "DOUBTFUL", detail: "hamstring", source: "On3" },
+    { name: "Zach Crothers", pos: "", status: "DOUBTFUL", detail: "", source: "On3" },
+    { name: "Kenny Johnson", pos: "ot", status: "QUESTIONABLE", detail: "", source: "On3" },
+  ] }) } }] }), { status: 200 });
+  const r = await extractInjuries({ OPENAI_API_KEY: "k" }, "Pitt", items);
+  assert.deepEqual(r.players.map((p) => p.pos), ["TE", "", "OL"]);
+  const roster = parseRoster({ athletes: [{ position: "defense", items: [{ fullName: "Zach Crothers", position: { abbreviation: "DE" } }, { fullName: "A. Smith", position: { abbreviation: "S" } }, { fullName: "B. Smith", position: { abbreviation: "CB" } }] }] });
+  const filled = fillPositions([...r.players, { name: "Smith", pos: "", status: "OUT", detail: "" }, { name: "Joe Nobody", pos: "", status: "OUT", detail: "the safety" }], roster);
+  assert.deepEqual(filled.map((p) => p.pos), ["TE", "DE", "OL", "", "S"]);
 });
