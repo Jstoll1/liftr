@@ -4082,12 +4082,19 @@ async function openInsights(gameId) {
       const id = side === "away" ? game.awayId : game.homeId;
       const raw = abbrOf(side) || "";
       const short = raw.length <= 6 ? raw : raw.split(/[\s-]+/).length > 1 ? raw.split(/[\s-]+/).map((w) => w[0]).join("") : raw.slice(0, 5);
-      const count = o.picks.length > 1 ? (lead === o.picks.length ? `ALL ${o.picks.length}` : `${lead} OF ${o.picks.length}`) : "";
-      const line = first.line || (first.type === "SU" ? "SU" : "ATS");
-      const score = o.picks.length === 1 && first.score ? ` · ${first.score}` : "";
+      // The logo says the team; beside it goes the number that matters
+      // (the line, else the predicted score, else WIN). The second line is
+      // who and how: the writer count or the writer, and ATS/SU. A staff
+      // that splits gets a bar showing the lean.
       const names = o.picks.map((p) => p.picker && p.picker === p.picker.toUpperCase() ? p.picker.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : p.picker).filter(Boolean);
+      const big = first.line || first.score || (first.type === "SU" ? "WIN" : "COVER");
+      const how = first.type === "SU" ? "SU" : "ATS";
+      const who = o.picks.length > 1 ? (lead === o.picks.length ? `ALL ${o.picks.length}` : `${lead} OF ${o.picks.length}`) : (outlets.length <= 3 ? names[0] || "" : "");
+      const extra = first.line && first.score && o.picks.length === 1 ? first.score : "";
+      const meta = [who, extra, how].filter(Boolean).join(" · ");
+      const split = o.picks.length > 1 && lead < o.picks.length ? `<span class="xp-bar"><i style="width:${Math.round(100 * lead / o.picks.length)}%"></i></span>` : "";
       const title = [names.length ? names.join(", ") : "", first.reason || ""].filter(Boolean).join(" — ");
-      const inner = `<span class="xp-out">${esc(o.outlet.replace(/\s+on MSN$/i, ""))}</span>${lg(id, "xp-logo")}<span class="xp-team">${esc(short.toUpperCase())}${count ? ` <i>${esc(count)}</i>` : ""}</span><span class="xp-line">${esc(line)}${esc(score)}</span>`;
+      const inner = `<span class="xp-out">${esc(o.outlet.replace(/\s+on MSN$/i, ""))}</span><span class="xp-main">${lg(id, "xp-logo")}<b>${esc(big)}</b></span><span class="xp-meta">${esc(meta)}</span>${split}`;
       const href = first.link || o.picks.find((p) => p.link)?.link;
       return href ? `<a class="xp-tile ${side}" href="${esc(href)}" target="_blank" rel="noopener" title="${esc(title)}">${inner}</a>` : `<span class="xp-tile ${side}" title="${esc(title)}">${inner}</span>`;
     };
