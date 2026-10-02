@@ -60,16 +60,19 @@ async function articleText(link, label) {
   try {
     let url = link;
     if (/news\.google\.com/.test(url)) { url = await resolveGoogle(url); if (!url) { failures.push(`${label}: google decode failed`); return null; } }
-    let res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html", "Accept-Language": "en-US,en;q=0.9" }, redirect: "follow" });
-    let html = res.ok ? await res.text() : "";
-    // Hosts that refuse automated readers (On3, 247Sports) and pages that
-    // render only in a browser (MSN) go through a public reader proxy that
-    // returns the article as plain text.
-    if (!res.ok || /msn\.com/.test(url)) {
-      const alt = await fetch(`https://r.jina.ai/${url}`, { headers: { "User-Agent": UA, Accept: "text/plain", "X-Return-Format": "text" } });
-      if (alt.ok) { const t = (await alt.text()).replace(/\s+/g, " ").trim(); if (t.length > 200) return t.slice(0, 3000); }
-      if (!res.ok) { failures.push(`${label}: HTTP ${res.status} ${new URL(url).hostname}, reader ${alt.status}`); return null; }
+    // MSN renders in the browser, but its content API returns the article
+    // body as HTML. On3 and others syndicate there, so this is the way to
+    // read outlets that refuse the runner directly.
+    const msnId = (url.match(/msn\.com\/.*\/ar-([A-Za-z0-9]+)/) || [])[1];
+    if (msnId) {
+      const api = await fetch(`https://assets.msn.com/content/view/v2/Detail/en-us/${msnId}`, { headers: { "User-Agent": UA, Accept: "application/json" } });
+      if (api.ok) { try { const j = await api.json(); const body = String(j.body || ""); if (body.length > 200) { url = `msn:${msnId}`; var htmlOverride = `<p>${body}</p>`; } } catch {} }
+      if (!htmlOverride) { failures.push(`${label}: msn api ${api.status}`); return null; }
     }
+    let res = htmlOverride ? { ok: true } : await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9" }, redirect: "follow" });
+    if (!res.ok && res.status === 406) res = await fetch(url, { headers: { "User-Agent": UA, Accept: "*/*" }, redirect: "follow" });
+    if (!res.ok) { failures.push(`${label}: HTTP ${res.status} ${new URL(url).hostname}`); return null; }
+    let html = htmlOverride || await res.text();
     html = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, "");
     // Paragraphs and list items, nav junk and repeats dropped, the ones that
     // carry a status first so the cap never eats the player list.
@@ -82,7 +85,7 @@ async function articleText(link, label) {
     const STATUS = /\b(out|questionable|doubtful|probable|available|unavailable|game-time|injur|return|limited|did not practice|dnp|suspend)\b/i;
     const ordered = [...paras.filter((t) => STATUS.test(t)), ...paras.filter((t) => !STATUS.test(t))];
     const text = ordered.join(" ").slice(0, 3000);
-    if (text.length <= 120) failures.push(`${label}: only ${text.length} chars from ${new URL(url).hostname}`);
+    if (text.length <= 120) failures.push(`${label}: only ${text.length} chars from ${url.startsWith("msn:") ? "msn api" : new URL(url).hostname}`);
     return text.length > 120 ? text : null;
   } catch (err) { failures.push(`${label}: ${String(err?.message || err).slice(0, 60)}`); return null; }
 }
