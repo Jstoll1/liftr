@@ -2333,7 +2333,6 @@ function teamPickersHtml(cloudPicks, game, team, mode, label) {
 let boardAllFinal = false;
 // Which scorebugs the viewer has expanded to see the pick lists. Kept
 // across the 30s refresh so the board doesn't snap shut mid-read.
-const expandedGames = new Set();
 // Last scores seen per game, so a changed number gets the arcade pop.
 const lastScores = {};
 
@@ -2350,43 +2349,6 @@ function nameChips(names) {
     const av = avatarOverrides[n] || shown(n)[0];
     return `<span class="pick-chip${n === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
   }).join("");
-}
-
-// The expanded scorebug, read top to bottom: who the room is on, then one
-// row per bet (team, terms, what it is worth, who holds it), each with a
-// light that says whether it is cashing on the current score. Before the
-// final the light is live (green cashing, pink not); after it the row
-// says what it paid. Win probability sits last as context.
-function bugPicksDetail(cloudPicks, game, res, isLive, isFinal, abbr) {
-  const A = abbr("away"), H = abbr("home");
-  const bets = [
-    { team: game.away, side: "away", mode: "SU" },
-    { team: game.away, side: "away", mode: "ATS" },
-    { team: game.home, side: "home", mode: "ATS" },
-    { team: game.home, side: "home", mode: "SU" },
-  ].map((b) => ({ ...b, names: pickersFor(cloudPicks, game.id, b.team, b.mode) })).filter((b) => b.names.length);
-  const nA = bets.filter((b) => b.side === "away").reduce((n, b) => n + b.names.length, 0);
-  const nH = bets.filter((b) => b.side === "home").reduce((n, b) => n + b.names.length, 0);
-  const tot = nA + nH;
-  const outcome = res ? resultOutcome(game, res) : null;
-  const row = (b) => {
-    const fav = b.team === game.favorite;
-    const terms = b.mode === "SU" ? "WIN" : `${fav ? "-" : "+"}${game.spread}`;
-    const worth = pointValue(game, b.team, b.mode);
-    let state = "", badge = `<span class="bp-pts">${worth} PT</span>`;
-    if (res && (isLive || isFinal)) {
-      const pushed = b.mode === "ATS" && outcome?.push;
-      const pts = scorePick(game, { team: b.team, mode: b.mode }, res);
-      state = pushed ? "push" : pts > 0 ? "up" : "down";
-      if (isFinal) badge = pushed ? `<span class="pick-pill push">PUSH</span>` : pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
-    }
-    return `<div class="bp-row ${b.side} ${state}${isLive ? " live" : ""}">
-      <div class="bp-bet"><i class="bp-light"></i><b>${b.side === "away" ? A : H}</b><span class="bp-terms">${terms}</span>${badge}</div>
-      <div class="pick-chips bp-chips">${nameChips(b.names)}</div>
-    </div>`;
-  };
-  const head = tot ? `<div class="bp-head"><span class="bp-count away">${nA} ${A}</span><span class="bp-split"><i class="away" style="width:${tot ? (100 * nA / tot).toFixed(0) : 50}%"></i><i class="home"></i></span><span class="bp-count home">${nH} ${H}</span></div>` : "";
-  return `<div class="bp">${head}${bets.length ? bets.map(row).join("") : `<div class="bp-none">No picks on this game</div>`}</div>`;
 }
 
 // Stacked breakdown: team header carrying the line, then one row per pick
@@ -2508,7 +2470,6 @@ function renderLiveScores(live, cloudPicks) {
       const feed = g && g.found ? g : null;
       const isLive = found && g.state === "in" && !g.completed;
       const isFinal = found && g.completed;
-      const expanded = expandedGames.has(game.id);
 
       // Every kickoff on the slate is Eastern and the label says so once
       // at the top, so the per-card time drops the suffix to make room
@@ -2551,21 +2512,7 @@ function renderLiveScores(live, cloudPicks) {
           <span class="bug-score ${pop ? "pop" : ""}">${score}</span>
         </div>`;
 
-      const winProbHtml = isLive && g.winProb
-        ? `<div class="win-prob-bar"><div class="win-prob-fill away" style="width:${g.winProb.away}%"></div><div class="win-prob-fill home" style="width:${g.winProb.home}%"></div></div>
-           <div class="win-prob-labels"><span>${Math.round(g.winProb.away)}% ${game.awayShort}</span><span class="wp-cap">WIN PROB</span><span>${Math.round(g.winProb.home)}% ${game.homeShort}</span></div>`
-        : "";
-
-      const detail = !expanded ? "" : locked
-        ? `<div class="bug-detail">
-             ${bugPicksDetail(cloudPicks, game, hasScores ? { awayScore: g.awayScore, homeScore: g.homeScore } : null, isLive, isFinal, (side) => { const t = side === "away" ? (feed?.awayAbbr || game.awayShort) : (feed?.homeAbbr || game.homeShort); return (t.length > 6 && /\s/.test(t) ? t.split(/\s+/).map((w) => w[0]).join("") : t).toUpperCase(); })}
-             <div class="bug-foot"><span class="bug-foot-txt">${game.kickoffLabel} · ${game.tv || ""}</span><button type="button" class="insights-btn" data-insights="${game.id}" aria-label="Insights for ${game.awayShort} at ${game.homeShort}">INFO</button></div>
-           </div>`
-        // Before kickoff the detail is the lock note, with the same INFO
-        // pill beside it that the picks card carries.
-        : `<div class="bug-detail"><div class="bug-foot"><span class="bug-hidden-note">🔒 Picks reveal at kickoff (${game.kickoffLabel})</span><button type="button" class="insights-btn" data-insights="${game.id}" aria-label="Insights for ${game.awayShort} at ${game.homeShort}">INFO</button></div></div>`;
-
-      const cls = ["scorebug", isLive ? "is-live" : "", isFinal ? "is-final" : "", !locked ? "upcoming" : "", expanded ? "expanded" : ""].join(" ");
+      const cls = ["scorebug", isLive ? "is-live" : "", isFinal ? "is-final" : "", !locked ? "upcoming" : ""].join(" ");
       // What this game is worth to the viewer, top right. Before kickoff
       // it just states the stake; live it carries a dot, green while the
       // pick is covering and red while it is not; at the final a miss is
@@ -2603,7 +2550,7 @@ function renderLiveScores(live, cloudPicks) {
         myPill = `<span class="stake ${tone}" title="You took ${mine} ${terms} for ${worth} pt">${face}</span>`;
       }
       return `
-        <div class="${cls}" data-game="${game.id}" role="button" tabindex="0" aria-expanded="${expanded}">
+        <div class="${cls}" data-game="${game.id}" role="button" tabindex="0" aria-label="Open ${game.awayShort} at ${game.homeShort}">
           <div class="bug-head">
             <span class="bug-gnum">G${game.id}</span>
             <span class="bug-status">${statusText}</span>${tvTag}
@@ -2611,37 +2558,18 @@ function renderLiveScores(live, cloudPicks) {
           </div>
           ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop, feed?.awayRank ?? null)}
           ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop, feed?.homeRank ?? null)}
-
-          ${detail}
         </div>
       `;
     })
     .join("") + `</div>`;
 
+  // One tap opens the game: info before kickoff, the gamecast live, the
+  // final view after. The old expand-in-place view is gone.
   liveScoresList.querySelectorAll(".scorebug").forEach((el) => {
     const id = Number(el.dataset.game);
-    const toggle = () => {
-      if (expandedGames.has(id)) expandedGames.delete(id); else { expandedGames.add(id); track("scorebug-expand", { event: true }); }
-      withScrollPreserved(() => renderLiveScores(live, cloudPicks));
-    };
-    // Double tap opens the INFO sheet (the gamecast while live). The card
-    // is rebuilt on every tap, so the browser's dblclick never fires; a
-    // second tap on the same game within 300ms is the double tap, and it
-    // undoes the first tap's expand so the card stays as it was.
-    el.addEventListener("click", (e) => {
-      if (e.target.closest(".insights-btn")) return;
-      const now = Date.now(), last = (window.__bugTap = window.__bugTap || {});
-      if (last.id === id && now - last.at < 300) {
-        last.id = null;
-        toggle();
-        openInsights(id);
-        return;
-      }
-      last.id = id; last.at = now;
-      toggle();
-    });
-    el.addEventListener("keydown", (e) => { if (e.target.closest(".insights-btn")) return; if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
-    el.querySelectorAll(".insights-btn").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); openInsights(id); }));
+    const open = () => { track("scorebug-open", { event: true }); openInsights(id); };
+    el.addEventListener("click", open);
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
   });
 }
 
