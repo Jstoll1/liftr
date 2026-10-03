@@ -4760,3 +4760,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rankings-list .rank-wp b { min-width: 4ch; text-align: right; }
 /* Fixed name column so every bar starts at the same x. */
 .rankings-list .ranking-name { flex: 0 0 42%; max-width: 42%; }
+/* No dead gap: names take what they need, the bar fills the rest. */
+.rankings-list .ranking-name { flex: 0 0 clamp(110px, 30%, 190px); max-width: clamp(110px, 30%, 190px); }
+.rankings-list .ranking-main .rank-wp { flex: 1 1 auto; min-width: 0; max-width: none; margin-left: 4px; gap: 8px; }
+.rankings-list .rank-wp-bar { flex: 1 1 auto; max-width: none; width: auto; }
+.rankings-list .ranking-name { flex: 0 0 clamp(96px, 26%, 136px); max-width: clamp(96px, 26%, 136px); }
