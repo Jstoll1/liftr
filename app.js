@@ -1488,9 +1488,11 @@ function accentDefault(name) {
   return AVATAR_COLORS[(i >= 0 ? i : 0) % AVATAR_COLORS.length];
 }
 
+let reopenOwnerAfterAvatar = false;
 function closeAvatarEditor() {
   avatarModal.classList.add("hidden");
   editingAvatarManager = null;
+  if (reopenOwnerAfterAvatar) { reopenOwnerAfterAvatar = false; openOwnerPicker(); }
 }
 
 avatarModal.addEventListener("click", (e) => {
@@ -1545,7 +1547,18 @@ let openClaimPrompt = function () {
     const av = avatarOverrides[name] || shown(name)[0];
     return `<button type="button" class="claim-btn" data-name="${name}"><span class="claim-avatar" style="--accent:${accent}">${av}</span>${shown(name)}</button>`;
   }).join("");
+  // Hold your own card to edit your avatar; the picker comes back after.
+  const mine = me && claimGrid.querySelector(`.claim-btn[data-name="${me}"]`);
+  let held = false;
+  if (mine) {
+    let t = null;
+    const cancel = () => clearTimeout(t);
+    mine.addEventListener("pointerdown", () => { held = false; t = setTimeout(() => { held = true; claimModal.classList.add("hidden"); reopenOwnerAfterAvatar = true; openAvatarEditor(me, accentFor(me)); }, 550); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => mine.addEventListener(ev, cancel));
+    mine.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
   claimGrid.querySelectorAll(".claim-btn").forEach((btn) => btn.addEventListener("click", async () => {
+    if (held && btn === mine) { held = false; return; }
     const name = btn.dataset.name;
     claimModal.classList.add("hidden");
     if (!(await requireOwnerAuth(name))) return;
@@ -1562,14 +1575,25 @@ claimSkipBtn.addEventListener("click", () => { claimSkippedThisVisit = true; cla
 function openOwnerPicker() {
   const me = loadMe();
   document.getElementById("claim-title").textContent = "SELECT YOUR OWNER";
-  document.getElementById("claim-subtext").textContent = me ? `This phone is ${me}. Tap a name to switch.` : "Tap your name.";
+  document.getElementById("claim-subtext").innerHTML = (me ? `This phone is ${shown(me)}. Tap a name to switch.` : "Tap your name.") + (me ? `<small class="claim-hint">Hold your name to change your avatar.</small>` : "");
   claimSkipBtn.textContent = "Cancel";
   claimGrid.innerHTML = MANAGERS.map((name, idx) => {
     const accent = accentFor(name);
     const av = avatarOverrides[name] || shown(name)[0];
     return `<button type="button" class="claim-btn${name === me ? " current" : ""}" data-name="${name}"><span class="claim-avatar" style="--accent:${accent}">${av}</span>${shown(name)}${name === me ? '<span class="claim-you">YOU</span>' : ""}</button>`;
   }).join("");
+  // Hold your own card to edit your avatar; the picker comes back after.
+  const mine = me && claimGrid.querySelector(`.claim-btn[data-name="${me}"]`);
+  let held = false;
+  if (mine) {
+    let t = null;
+    const cancel = () => clearTimeout(t);
+    mine.addEventListener("pointerdown", () => { held = false; t = setTimeout(() => { held = true; claimModal.classList.add("hidden"); reopenOwnerAfterAvatar = true; openAvatarEditor(me, accentFor(me)); }, 550); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => mine.addEventListener(ev, cancel));
+    mine.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
   claimGrid.querySelectorAll(".claim-btn").forEach((btn) => btn.addEventListener("click", async () => {
+    if (held && btn === mine) { held = false; return; }
     const name = btn.dataset.name;
     claimModal.classList.add("hidden");
     if (name === me) return;

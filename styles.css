@@ -4861,3 +4861,5 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .av-sw { aspect-ratio: 1; width: 100%; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .15); background: var(--c); padding: 0; cursor: pointer; }
 .av-sw.on { border-color: #fff; box-shadow: 0 0 0 2px var(--c), 0 0 10px var(--c); }
 .av-sw.def { background: repeating-linear-gradient(135deg, var(--c) 0 5px, rgba(0, 0, 0, .35) 5px 8px); }
+.claim-hint { display: block; margin-top: 4px; font-size: 10px; opacity: .6; letter-spacing: .02em; }
+.claim-btn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
