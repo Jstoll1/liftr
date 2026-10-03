@@ -2700,7 +2700,16 @@ function playerBreakdownHtml(name, state, results, live) {
   // One line on the week: settled points and record, plus what is in
   // flight while games are on.
   const summary = `<div class="rd-summary"><span><b>${banked}</b> PTS</span><span>${wins}-${losses}</span>${liveOpen ? `<span class="live"><b>+${liveFly}</b> LIVE · ${liveCovering} OF ${liveOpen} COVERING</span>` : ""}</div>`;
-  return `<div class="rank-detail"><div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
+  // The arithmetic behind the leaderboard percentage, for this manager.
+  let wpRow = "";
+  const wd = weekIsLive(results) ? winChanceMemo.detail?.[name] : null;
+  if (wd) {
+    const pc = (v) => { const x = v * 100; return x >= 99.5 ? "99%+" : x > 0 && x < 1 ? "<1%" : `${Math.round(x)}%`; };
+    const sw = wd.swing;
+    const lab = sw ? `${sw.pick.team === sw.game.away ? sw.game.awayShort : sw.game.homeShort} ${sw.pick.mode === "SU" ? "to win" : `${sw.pick.team === sw.game.favorite ? "-" : "+"}${sw.game.spread}`}` : "";
+    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${pc(wd.pct)}</b></span>${sw ? `<span class="rd-wp-line">Swing game: <b>${String(lab).replace(/[&<>"]/g, "")}</b> (${pc(sw.pHit)} to hit). If it hits <b class="up">${pc(sw.ifHit)}</b> · if it misses <b class="dn">${pc(sw.ifMiss)}</b></span>` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}</div>`;
+  }
+  return `<div class="rank-detail"><div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${wpRow}${summary}</div>`;
 }
 
 // Second line under a leaderboard name. How many picks are in is fair
@@ -2958,6 +2967,22 @@ function weekIsLive(results) {
   return GAMES.length > 0 && GAMES.some(isGameLocked) && !GAMES.every((g) => results[g.id]);
 }
 function gaussRand() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+// Inverse of the standard normal CDF (Acklam's approximation, |error| < 1.2e-9).
+function invNorm(p) {
+  const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239];
+  const b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572];
+  const c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+  const d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+  const q0 = Math.min(Math.max(p, 1e-9), 1 - 1e-9), pl = 0.02425;
+  if (q0 < pl) { const q = Math.sqrt(-2 * Math.log(q0)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  if (q0 > 1 - pl) { const q = Math.sqrt(-2 * Math.log(1 - q0)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  const q = q0 - 0.5, r = q * q;
+  return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+}
+// College football: final margins land about 16 points either side of the
+// line (one standard deviation), totals about 14. The share still to be
+// played scales both by the square root of the time left.
+const CFB_MARGIN_SD = 16, CFB_TOTAL_SD = 14;
 function timeLeftFrac(l) {
   if (!l || l.state !== "in") return 1;
   const p = Number(l.period) || 1;
@@ -2970,7 +2995,7 @@ let winChanceMemo = { key: "", out: null };
 function weekWinChances(cloudPicks, results, live) {
   const key = JSON.stringify([GAMES.map((g) => { const l = live[g.id]; return [g.id, results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : l ? `${l.state}${l.awayScore}-${l.homeScore}@${l.period}${l.clock}` : ""]; }), MANAGERS.map((n) => JSON.stringify(cloudPicks[n]?.picks || {}) + (cloudPicks[n]?.tiebreaker ?? ""))]);
   if (winChanceMemo.key === key) return winChanceMemo.out;
-  const N = 2000;
+  const N = 5000;
   const tbGame = tiebreakerGameOf();
   const guesses = MANAGERS.map((n) => { const raw = String(cloudPicks[n]?.tiebreaker ?? "").trim(); const v = Number(raw); return raw !== "" && Number.isFinite(v) ? v : null; });
   const models = GAMES.map((g) => {
@@ -2980,12 +3005,30 @@ function weekWinChances(cloudPicks, results, live) {
     const homeEdge = odds ? (odds.favoriteSide === "home" ? odds.spread : -odds.spread) : (g.favorite === g.home ? Number(g.spread) : -Number(g.spread));
     const rem = timeLeftFrac(l);
     const inGame = l && l.state === "in";
-    return { g, rem, homeEdge, ou: odds?.overUnder ?? 52, curM: inGame ? (l.homeScore || 0) - (l.awayScore || 0) : 0, curT: inGame ? (l.homeScore || 0) + (l.awayScore || 0) : 0 };
+    const curM = inGame ? (l.homeScore || 0) - (l.awayScore || 0) : 0;
+    // Expected final home margin: the score so far plus the line's share
+    // of the time left (before kickoff, just the line).
+    const meanM = curM + homeEdge * rem;
+    // Uncertainty: 16 points for a full game, scaled by sqrt(time left).
+    // Live, ESPN's win probability calibrates it: the spread that makes
+    // P(home wins) equal ESPN's number is sd = mean / invNorm(p), kept
+    // within 0.6x to 1.8x of the base so one odd reading cannot run away.
+    let sd = CFB_MARGIN_SD * Math.sqrt(rem);
+    if (inGame && l.winProb && Number.isFinite(l.winProb.home)) {
+      const z = invNorm(Math.min(0.995, Math.max(0.005, l.winProb.home / 100)));
+      if (Math.abs(z) > 0.05 && Math.abs(meanM) > 0.5 && Math.sign(z) === Math.sign(meanM)) sd = Math.min(1.8 * sd, Math.max(0.6 * sd, meanM / z));
+    }
+    return { g, rem, meanM, sd, ou: odds?.overUnder ?? 52, curT: inGame ? (l.homeScore || 0) + (l.awayScore || 0) : 0 };
   });
   // Each manager's pick on each game, with what it pays.
   const picks = MANAGERS.map((n) => GAMES.map((g) => { const p = cloudPicks[n]?.picks?.[g.id]; return p ? { team: p.team, mode: p.mode, pts: pointValue(g, p.team, p.mode) } : null; }));
   const wins = new Array(MANAGERS.length).fill(0);
   const score = new Array(MANAGERS.length);
+  // For each manager and each open game they picked: runs where the pick
+  // hit, and how many of those they won; same for misses.
+  const open = models.map((m) => !m.fixed);
+  const hitN = MANAGERS.map(() => new Array(models.length).fill(0)), hitW = MANAGERS.map(() => new Array(models.length).fill(0));
+  const hitThis = MANAGERS.map(() => new Array(models.length).fill(false));
   for (let s = 0; s < N; s++) {
     score.fill(0);
     let tbTotal = null;
@@ -2993,8 +3036,8 @@ function weekWinChances(cloudPicks, results, live) {
       const m = models[k];
       let res = m.fixed;
       if (!res) {
-        const margin = m.curM + m.homeEdge * m.rem + gaussRand() * 13.5 * Math.sqrt(m.rem);
-        const total = Math.max(3, m.curT + (m.ou - 0) * m.rem + gaussRand() * 10 * Math.sqrt(m.rem));
+        const margin = m.meanM + gaussRand() * m.sd;
+        const total = Math.max(m.curT + 0, Math.max(3, m.curT + m.ou * m.rem + gaussRand() * CFB_TOTAL_SD * Math.sqrt(m.rem)));
         let h = Math.max(0, Math.round((total + margin) / 2)), a = Math.max(0, Math.round((total - margin) / 2));
         if (h === a) { if (Math.random() < 0.5) h += 3; else a += 3; }
         res = { awayScore: a, homeScore: h };
@@ -3005,7 +3048,9 @@ function weekWinChances(cloudPicks, results, live) {
         const p = picks[i][k];
         if (!p) continue;
         const winner = p.mode === "SU" ? o.suWinner : o.atsWinner;
-        if (winner && winner === p.team) score[i] += p.pts;
+        const hit = !!(winner && winner === p.team);
+        if (hit) score[i] += p.pts;
+        hitThis[i][k] = hit;
       }
     }
     let best = -1, bestDiff = Infinity, lead = [];
@@ -3015,9 +3060,30 @@ function weekWinChances(cloudPicks, results, live) {
       else if (score[i] === best && diff === bestDiff) lead.push(i);
     }
     for (const i of lead) wins[i] += 1 / lead.length;
+    const share = new Array(MANAGERS.length).fill(0);
+    for (const i of lead) share[i] = 1 / lead.length;
+    for (let i = 0; i < MANAGERS.length; i++) for (let k = 0; k < models.length; k++) {
+      if (!open[k] || !picks[i][k]) continue;
+      if (hitThis[i][k]) { hitN[i][k]++; hitW[i][k] += share[i]; }
+    }
   }
+  // Swing game: the open pick whose result moves a manager's chance most.
+  // If it hits: wins-when-hit / runs-when-hit; if it misses: the rest.
+  const detail = {};
+  MANAGERS.forEach((n, i) => {
+    let best = null;
+    for (let k = 0; k < models.length; k++) {
+      if (!open[k] || !picks[i][k]) continue;
+      const hN = hitN[i][k], mN = N - hN;
+      if (hN < 50 || mN < 50) continue;
+      const ifHit = hitW[i][k] / hN, ifMiss = (wins[i] - hitW[i][k]) / mN;
+      const gap = Math.abs(ifHit - ifMiss);
+      if (!best || gap > best.gap) best = { gap, ifHit, ifMiss, pHit: hN / N, game: models[k].g, pick: picks[i][k] };
+    }
+    detail[n] = { pct: wins[i] / N, swing: best };
+  });
   const out = Object.fromEntries(MANAGERS.map((n, i) => [n, wins[i] / N]));
-  winChanceMemo = { key, out };
+  winChanceMemo = { key, out, detail };
   return out;
 }
 

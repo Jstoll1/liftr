@@ -4623,3 +4623,12 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .gc-slide { transition: none; } }
 /* TD and FG badges hold steady; no flashing. */
 .gc-badge.td { animation: none !important; }
+
+/* Breakdown: the arithmetic behind the chance to win */
+.rd-wp { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding: 7px 0 6px; border-top: 1px solid rgba(5, 217, 232, .35); }
+.rd-wp-label { font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.6; color: var(--neon-cyan); letter-spacing: .06em; }
+.rd-wp-label b { color: #fff; }
+.rd-wp-line { font-size: 11.5px; line-height: 1.45; color: var(--text-meta); }
+.rd-wp-line b { color: #fff; font-weight: 800; }
+.rd-wp-line b.up { color: var(--neon-green); }
+.rd-wp-line b.dn { color: var(--neon-pink); }
