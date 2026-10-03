@@ -4754,3 +4754,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rank-pct2.warm b { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0, 229, 255, .6); }
 .rank-pct2.hot b { color: #ffd23f; text-shadow: 0 0 8px rgba(255, 210, 63, .75); }
 .rank-pct2.out b { color: rgba(255, 255, 255, .3); }
+/* Progress bar back as the chance to win, filling the middle column. */
+.rankings-list .ranking-main .rank-wp { flex: 1 1 auto; min-width: 80px; }
+.rankings-list .rank-wp-bar { height: 9px; }
+.rankings-list .rank-wp b { min-width: 4ch; text-align: right; }
+/* Fixed name column so every bar starts at the same x. */
+.rankings-list .ranking-name { flex: 0 0 42%; max-width: 42%; }
