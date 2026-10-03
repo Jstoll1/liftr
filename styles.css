@@ -4831,3 +4831,15 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .stake.lean { border-style: dashed !important; border-width: 1.5px; background: none !important; }
 .stake.lean.hit { border-color: rgba(0, 255, 143, .75); }
 .stake.lean.miss { border-color: rgba(255, 92, 138, .65); }
+
+/* Live dot sits inside the clock, right of the time. */
+.ms-refresh .ms-onair { margin: 0 0 0 6px; vertical-align: middle; }
+/* Leaderboard: tighter frame, key and rows. */
+.rankings-list { padding: 4px 4px 6px; }
+.ranking-row.rank-hd { margin: 0 2px; }
+.ranking-row.rank-hd .ranking-main { padding-top: 4px; padding-bottom: 1px; }
+.ranking-row.rank-hd :is(.ranking-place, .ranking-name, .rank-live) { height: auto; min-height: 0; padding-top: 0; padding-bottom: 0; }
+.ranking-row.rank-hd .ranking-score { padding-top: 0; padding-bottom: 0; }
+.rankings-list .ranking-row .ranking-main { padding-top: 4px; padding-bottom: 4px; }
+.ranking-row { margin: 1px 2px; }
+.chalk-note { margin: 4px 4px 0; }

@@ -3201,8 +3201,8 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   const pre = next && !GAMES.some(isGameLocked);
   const state = boardAllFinal ? `<span class="ms-state final">FINAL</span>`
     : pre ? `<span class="ms-state kick" title="${next.awayShort} at ${next.homeShort}">KICK <b class="ms-kick">${kickoffCountdown(next.kickoff)?.brief || ""}</b></span>`
-    : anyGameLive(live) ? `<span class="ms-onair" title="Games in progress" aria-label="Live"><i></i></span>` : "";
-  const clock = `<button class="ms-refresh${cloudPicksStale ? " stale" : ""}" type="button" title="${cloudPicksStale ? "Picks did not reload. Tap to try again" : "Tap to refresh"}">${cloudPicksStale ? "⚠ " : ""}${pre ? "" : clockLabel()}<span class="ms-cyc">⟳</span></button>`;
+    : "";
+  const clock = `<button class="ms-refresh${cloudPicksStale ? " stale" : ""}" type="button" title="${cloudPicksStale ? "Picks did not reload. Tap to try again" : "Tap to refresh"}">${cloudPicksStale ? "⚠ " : ""}${pre ? "" : clockLabel()}${!pre && !boardAllFinal && anyGameLive(live) ? `<span class="ms-onair" title="Games in progress" aria-label="Live"><i></i></span>` : ""}<span class="ms-cyc">⟳</span></button>`;
   // No name here. The header's own pill says who you are eight pixels
   // above, and the room it gives back pays for LIVE on the pill, which
   // reads better than a bare +6.
