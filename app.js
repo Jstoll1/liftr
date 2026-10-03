@@ -3151,6 +3151,7 @@ function weekWinChances(cloudPicks, results, live) {
   const detail = {};
   MANAGERS.forEach((n, i) => {
     let best = null;
+    const all = [];
     for (let k = 0; k < models.length; k++) {
       if (!open[k] || !picks[i][k]) continue;
       const hN = hitN[i][k], mN = N - hN;
@@ -3161,13 +3162,76 @@ function weekWinChances(cloudPicks, results, live) {
       // A pick that is 97% in barely matters however big the gap, so
       // p(1-p) weighs it down; a coin flip with the same gap ranks first.
       const lev = gap * p * (1 - p);
-      if (!best || lev > best.lev) best = { gap, lev, ifHit, ifMiss, pHit: p, game: models[k].g, pick: picks[i][k] };
+      const entry = { gap, lev, ifHit, ifMiss, pHit: p, game: models[k].g, pick: picks[i][k] };
+      all.push(entry);
+      if (!best || lev > best.lev) best = entry;
     }
-    detail[n] = { pct: wins[i] / N, swing: best };
+    all.sort((x, y) => y.lev - x.lev);
+    detail[n] = { pct: wins[i] / N, swing: best, games: all };
   });
   const out = Object.fromEntries(MANAGERS.map((n, i) => [n, wins[i] / N]));
   winChanceMemo = { key, out, detail };
   return out;
+}
+
+// Double tap a player's chance: why they read what they read, right now.
+function openPlayerChance(name) {
+  const ctx = window.__wpCtx || {};
+  const rows = ctx.rows || [], picks = ctx.cloudPicks || {}, results = ctx.results || {};
+  const row = rows.find((r) => r.name === name);
+  const wd = winChanceMemo?.detail?.[name];
+  if (!row || !wd) return;
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const pc = (x) => x >= 0.995 ? "99%+" : x > 0 && x < 0.01 ? "<1%" : `${Math.round(x * 100)}%`;
+  const short = (g, t) => t === g.home ? g.homeShort : g.awayShort;
+  const terms = (g, pk) => pk.mode === "SU" ? "to win" : `${pk.team === g.favorite ? "-" : "+"}${g.spread}`;
+  const maxOf = (n) => { let m = rows.find((r) => r.name === n)?.score || 0; for (const g of GAMES) { const pk = picks[n]?.picks?.[g.id]; if (pk && !results[g.id]) m += pointValue(g, pk.team, pk.mode); } return m; };
+  const top = rows[0]?.score ?? 0;
+  const leaders = rows.filter((r) => r.score === top).map((r) => r.name);
+  const myMax = maxOf(name);
+  const bestRival = rows.filter((r) => r.name !== name).map((r) => ({ n: r.name, m: maxOf(r.name), pct: winChanceMemo.detail?.[r.name]?.pct ?? 0 })).sort((x, y) => y.pct - x.pct)[0];
+  // Standing, in one plain line.
+  const gap = top - row.score;
+  const stand = gap > 0 ? `${gap} back of the lead with ${myMax - row.score} still in play.` : leaders.length > 1 ? (leaders.length > 4 ? `Tied for the lead with ${leaders.length - 1} others.` : `Tied for the lead with ${leaders.filter((n) => n !== name).map(shown).join(", ")}.`) : `Leading by ${row.score - (rows[1]?.score ?? 0)}.`;
+  // Reasons, in order of weight.
+  const why = [];
+  if (myMax < top) why.push(`Your max (${myMax}) is below the lead (${top}). You can't catch up.`);
+  else if (bestRival && bestRival.m > myMax) why.push(`Your ceiling is ${myMax}; ${esc(shown(bestRival.n))} can still reach ${bestRival.m}.`);
+  else if (bestRival) why.push(`Your ceiling of ${myMax} is ${myMax >= bestRival.m ? "as high as anyone's" : "close to the top"}.`);
+  // Who else rides each open pick: shared picks move everyone together.
+  const open = GAMES.filter((g) => !results[g.id] && picks[name]?.picks?.[g.id]);
+  const share = open.map((g) => {
+    const pk = picks[name].picks[g.id];
+    const with_ = MANAGERS.filter((n) => n !== name && picks[n]?.picks?.[g.id]?.team === pk.team).length;
+    return { g, pk, with_ };
+  });
+  const lone = share.filter((x) => x.with_ <= 2), herd = share.filter((x) => x.with_ >= 6);
+  if (lone.length) why.push(`Different from the room on ${lone.map((x) => `<b>${esc(short(x.g, x.pk.team))}</b>`).join(", ")}: a hit there jumps you past people.`);
+  if (herd.length) why.push(`Most of the room shares ${herd.map((x) => esc(short(x.g, x.pk.team))).join(", ")}, so those barely move you.`);
+  const tb = tiebreakerGameOf?.();
+  const tbGuess = picks[name]?.tiebreaker;
+  if (tb && tbGuess && leaders.length > 1 && leaders.includes(name)) why.push(`Ties go to the tiebreaker: you guessed ${esc(tbGuess)} for ${esc(tb.awayShort)} at ${esc(tb.homeShort)}.`);
+  const games = (wd.games || []).slice(0, 3).map((x) => `<li><span>${esc(short(x.game, x.pick.team))} ${esc(terms(x.game, x.pick))}</span><em>hit <b class="up">${pc(x.ifHit)}</b> · miss <b class="dn">${pc(x.ifMiss)}</b></em></li>`).join("");
+  let m = document.getElementById("wp-player");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "wp-player";
+    m.className = "wpx-overlay hidden";
+    m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wpx-x")) m.classList.add("hidden"); });
+  }
+  m.innerHTML = `<div class="wpx-card wpp">
+    <button type="button" class="wpx-x" aria-label="Close">✕</button>
+    <div class="wpp-head"><span class="wpp-av" style="--accent:${accentFor(name)}">${esc(avatarOverrides[name] || shown(name)[0])}</span><div><b>${esc(shown(name).toUpperCase())}</b><small>${row.score} PTS · MAX ${myMax}</small></div><i>${pc(wd.pct)}</i></div>
+    <div class="wpp-stand">${stand}</div>
+    <div class="wpx-h">WHY ${pc(wd.pct)}</div>
+    <ul class="wpp-why">${why.map((w) => `<li>${w}</li>`).join("") || "<li>Nothing unusual: it comes down to the games left.</li>"}</ul>
+    ${games ? `<div class="wpx-h">GAMES THAT MOVE YOU MOST</div><ul class="wpp-games">${games}</ul>` : ""}
+    <div class="wpp-foot">Your chance to win the week if each pick hits or misses. Updates as games play.</div>
+  </div>`;
+  m.classList.remove("hidden");
+  track("wp-player", { event: true });
 }
 
 // How chance to win works: a small arcade sheet, opened by tapping a
@@ -3219,6 +3283,7 @@ function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
   if (weekIsLive(results)) {
     const ch = weekWinChances(cloudPicks, results, live);
     for (const row of rows) row.winPct = ch[row.name] ?? 0;
+    window.__wpCtx = { rows, cloudPicks, results };
   } else for (const row of rows) delete row.winPct;
   renderRankingRows(rows, cloudPicks, results, live);
   drawChalkLine(rows, results);
@@ -3393,10 +3458,23 @@ function renderRankingRows(rows, cloudPicks, results, live) {
       </div>
       ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
     `;
-    div.querySelector(".ranking-main").addEventListener("click", () => {
+    // Double tap the chance bar: that player's scenario. A single tap still
+    // opens the row, just a beat later so a second tap can cancel it.
+    div.querySelector(".ranking-main").addEventListener("click", (e) => {
+      if (e.target.closest(".rank-wp") && row.winPct != null) {
+        const t = (window.__wpTap = window.__wpTap || {});
+        if (t.name === row.name && Date.now() - t.at < 320) { clearTimeout(t.timer); t.name = null; openPlayerChance(row.name); return; }
+        clearTimeout(t.timer);
+        t.name = row.name; t.at = Date.now();
+        t.timer = setTimeout(() => { t.name = null; toggleRow(); }, 320);
+        return;
+      }
+      toggleRow();
+    });
+    const toggleRow = () => {
       if (expandedRankings.has(row.name)) expandedRankings.delete(row.name); else { expandedRankings.add(row.name); track("ranking-expand", { event: true }); }
       withScrollPreserved(() => renderRankings(cloudPicks, results, live));
-    });
+    };
     rankingsList.appendChild(div);
   });
 }
