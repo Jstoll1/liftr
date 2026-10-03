@@ -4436,3 +4436,26 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-log .gc-plays li.gc-mark { justify-content: center; padding: 3px 0; }
 .gc-log .gc-plays li.gc-mark span { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .12em; color: rgba(57, 255, 136, .55); }
 .gc-log .gc-plays li.gc-mark span::before, .gc-log .gc-plays li.gc-mark span::after { content: " ◆ "; }
+
+/* ===== Scoreboard row (replaces the portrait HUD) ===== */
+.gc-cab { padding: 10px 10px 8px; gap: 0; }
+.gc-cab::after { z-index: 0; opacity: .55; }
+.gc-cab > * { position: relative; z-index: 1; }
+.gc-row { display: grid; grid-template-columns: 1fr auto auto auto 1fr; align-items: center; column-gap: 10px; max-width: 420px; width: 100%; margin: 0 auto; }
+.gc-t { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.gc-t img.gc-tlogo { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--tc) 60%, transparent)); }
+.gc-t b { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text); letter-spacing: .04em; white-space: nowrap; }
+.gc-t.poss b { color: #fff; }
+.gc-t .gc-pball.off { visibility: hidden; animation: none; }
+.gc-row .gc-led.sc { font-size: 26px; min-width: 2ch; text-align: center; }
+.gc-row .gc-clock { padding: 5px 8px; border: 2px solid #2a1442; background: #07020f; box-shadow: inset 0 0 8px rgba(0, 0, 0, .8); }
+.gc-row .gc-led.clk { font-size: 12px; }
+/* Win probability: one bar in team colours with the split marked */
+.gc-wp { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; max-width: 420px; width: 100%; margin: 9px auto 0; }
+.gc-wpbar { display: flex; height: 8px; border: 2px solid #ffe45e; background: #0a0414; box-shadow: 0 0 6px rgba(255, 228, 94, .3); }
+.gc-wpbar i { display: block; height: 100%; background: var(--tc); transition: width .8s steps(12); }
+.gc-wpbar i.a { box-shadow: 2px 0 0 #0a0414; }
+.gc-wpbar i.h { flex: 1 1 auto; }
+.gc-wpn { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #ffe45e; min-width: 3ch; }
+.gc-wpn.h { text-align: right; }
+.gc-wpcap { text-align: center; margin-top: 4px; font-family: 'Press Start 2P', monospace; font-size: 5px; letter-spacing: .14em; color: var(--text-dim); }

@@ -3996,17 +3996,13 @@ async function openInsights(gameId) {
     const led = (v, cls = "") => { const t = String(v); return `<span class="gc-led ${cls}" data-ghost="${"8".repeat(t.length)}">${esc(t)}</span>`; };
     const clockOnly = /^\d{1,2}:\d{2}$/.test(String(lv.clock || "")) && !/half|end|ot|delay/i.test(status) ? lv.clock : null;
     const per = lv.period ? (lv.period > 4 ? `OT${lv.period > 5 ? lv.period - 4 : ""}` : `Q${lv.period}`) : "";
-    const fighter = (id, ab, sc, poss, side, tag) => `<div class="gc-f ${side}${poss ? " poss" : ""}">
-        <span class="gc-port">${lg(id, "gc-logo")}</span>
-        <div class="gc-fid"><b>${esc(ab)}</b>${poss ? `<i class="gc-pball" title="Has the ball"></i>` : ""}</div>
-        ${led(sc, "sc")}
-      </div>`;
+    // One scoreboard row: logo, score, clock, score, logo. Names sit under
+    // the logos with the possession football beneath; the win probability
+    // bar runs under the row. Scanlines live behind the content.
+    const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<b>${esc(ab)}</b><i class="gc-pball${poss ? "" : " off"}" title="${poss ? "Has the ball" : ""}"></i></div>`;
     const wp = lv.winProb;
-    const hp = wp ? `<div class="gc-hp">
-        <div class="gc-bar a"><i style="width:${wp.away.toFixed(1)}%;--tc:${aCol}"></i></div>
-        <span class="gc-ko">WIN%</span>
-        <div class="gc-bar h"><i style="width:${wp.home.toFixed(1)}%;--tc:${hCol}"></i></div>
-      </div><div class="gc-hpn"><span>${Math.round(wp.away)}%</span><span>${Math.round(wp.home)}%</span></div>` : "";
+    const hp = wp ? `<div class="gc-wp"><span class="gc-wpn a">${Math.round(wp.away)}%</span><div class="gc-wpbar"><i class="a" style="width:${wp.away.toFixed(1)}%;--tc:${aCol}"></i><i class="h" style="--tc:${hCol}"></i></div><span class="gc-wpn h">${Math.round(wp.home)}%</span></div><div class="gc-wpcap">WIN PROBABILITY</div>` : "";
+    const strip = `<div class="gc-cab"><div class="gc-row">${tm(game.awayId, A, possA, "a")}${led(aS, "sc")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${led(hS, "sc")}${tm(game.homeId, H, possH, "h")}</div>${hp}</div>`;
     // Your pick, called out under the HUD: the side and terms, what it is
     // worth, and whether it is cashing on this score and by how much.
     const cloudAll = lastGoodCloudPicks || {};
@@ -4027,7 +4023,6 @@ async function openInsights(gameId) {
       const say = cash === "push" ? "PUSH RIGHT NOW" : cash === "up" ? (mine.mode === "SU" ? `WINNING BY ${by}` : `COVERING BY ${by}`) : (mine.mode === "SU" ? (margin === 0 ? "TIED" : `DOWN ${by}`) : `NEEDS ${by} MORE`);
       mineHtml = `<div class="gc-mine ${cash}"><span class="gc-mtag">YOUR PICK</span>${lg(mySide === "away" ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(mySide === "away" ? A : H)} ${esc(terms)}</b><span class="gc-mpts">${worth} PT</span><span class="gc-msay"><i></i>${esc(say)}</span></div>`;
     }
-    const strip = `<div class="gc-cab">${hp}<div class="gc-strip">${fighter(game.awayId, A, aS, possA, "a", "P1")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${fighter(game.homeId, H, hS, possH, "h", "P2")}</div></div>`;
     const ddLine = dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || "Between plays")}</b></div>`;
     // Last three plays: the current drive first, the previous drive if the
     // current one is too short, else the scoreboard's last play.
