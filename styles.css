@@ -4765,3 +4765,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rankings-list .ranking-main .rank-wp { flex: 1 1 auto; min-width: 0; max-width: none; margin-left: 4px; gap: 8px; }
 .rankings-list .rank-wp-bar { flex: 1 1 auto; max-width: none; width: auto; }
 .rankings-list .ranking-name { flex: 0 0 clamp(96px, 26%, 136px); max-width: clamp(96px, 26%, 136px); }
+
+/* Live points under each score: +6 green while cashing, +0 dim, a dash when nothing is live. */
+.ranking-scorecol { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.rank-live { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .04em; color: rgba(255, 255, 255, .28); }
+.rank-live.zero { color: rgba(255, 255, 255, .4); }
+.rank-live.on { color: var(--neon-green); text-shadow: 0 0 6px rgba(57, 255, 136, .7); }

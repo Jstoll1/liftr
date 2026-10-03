@@ -3096,8 +3096,9 @@ function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
     const tbGame = tiebreakerGameOf() || GAMES[0];
     const tbRes = tbGame && results[tbGame.id];
     const actualTotal = tbRes ? tbRes.awayScore + tbRes.homeScore : null;
-    for (const row of rows) row.subline = rankingSubline(row, actualTotal, tbGame, inFlightPoints(cloudPicks[row.name]?.picks || {}, live), results);
+    for (const row of rows) { row.inFlight = inFlightPoints(cloudPicks[row.name]?.picks || {}, live); row.subline = rankingSubline(row, actualTotal, tbGame, null, results); }
   }
+  if (!anyGameLive(live)) for (const row of rows) delete row.inFlight;
   rankingsList.innerHTML = "";
   rankingsList.classList.toggle("wp-live", weekIsLive(results));
   if (weekIsLive(results)) {
@@ -3261,7 +3262,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
           void strip;
           return pct != null ? `<span class="rank-wp${pct >= 50 ? " hot" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>` : `<span class="ranking-dots" aria-hidden="true"></span>`;
         })()}
-        <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
+        <span class="ranking-scorecol"><span class="ranking-score">${String(row.score).padStart(2, "0")}</span><i class="rank-live${row.inFlight > 0 ? " on" : row.inFlight === 0 ? " zero" : ""}" title="${row.inFlight != null ? "Points from live games if they ended now" : "No games live"}">${row.inFlight != null ? `+${row.inFlight}` : "–"}</i></span>
       </div>
       ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
     `;
