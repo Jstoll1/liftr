@@ -4471,3 +4471,20 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-wpbar2 span { position: relative; z-index: 1; padding: 0 6px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: #fff; white-space: nowrap; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
 .gc-wpout { display: flex; justify-content: space-between; margin-top: 4px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: #ffe45e; }
 .gc-wp2 .gc-wpcap { margin-top: 5px; }
+
+/* Win probability v3: LED numbers, thin neon bar, notch at the split. */
+.gc-wp3 { display: grid; grid-template-columns: 1fr 1fr; align-items: end; row-gap: 6px; max-width: 420px; width: 100%; margin: 12px auto 0; }
+.gc-wpl { display: flex; align-items: center; gap: 6px; }
+.gc-wpl.h { justify-content: flex-end; }
+.gc-wpl img.gc-wplogo { width: 18px; height: 18px; object-fit: contain; }
+.gc-led.wpn { font-size: 11px; }
+.gc-wpl.a .gc-led.wpn { color: #05d9e8; text-shadow: 0 0 6px rgba(5, 217, 232, .85); }
+.gc-wpl.a .gc-led.wpn::before { color: rgba(5, 217, 232, .1); }
+.gc-wpl.h .gc-led.wpn { color: #ff2079; text-shadow: 0 0 6px rgba(255, 32, 121, .85); }
+.gc-wpl.h .gc-led.wpn::before { color: rgba(255, 32, 121, .1); }
+.gc-wpline { grid-column: 1 / -1; position: relative; display: flex; height: 6px; border-radius: 3px; background: #0a0414; }
+.gc-wpline i { display: block; height: 100%; transition: width .8s ease; }
+.gc-wpline i.a { background: #05d9e8; box-shadow: 0 0 8px rgba(5, 217, 232, .8); border-radius: 3px 0 0 3px; }
+.gc-wpline i.h { flex: 1 1 auto; background: #ff2079; box-shadow: 0 0 8px rgba(255, 32, 121, .8); border-radius: 0 3px 3px 0; }
+.gc-wpnotch { position: absolute; top: -4px; bottom: -4px; width: 3px; transform: translateX(-1.5px); background: #fff; box-shadow: 0 0 6px #fff, 0 0 12px rgba(255, 255, 255, .7); transition: left .8s ease; }
+.gc-wp3 .gc-wpcap { grid-column: 1 / -1; margin-top: 2px; }

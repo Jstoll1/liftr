@@ -4000,11 +4000,16 @@ async function openInsights(gameId) {
     // bar runs under the row. Scanlines live behind the content.
     const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<b>${esc(ab)}</b><i class="gc-pball${poss ? "" : " off"}" title="${poss ? "Has the ball" : ""}"></i></div>`;
     const wp = lv.winProb;
-    // Chunky segmented bar, team colours brightened so a navy or maroon
-    // still reads on the dark cabinet; each side's name and number sit
-    // inside its own segment. A side under 18% shows its label outside.
+    // Win probability: amber LED numbers with each logo at the ends, a
+    // thin neon bar in the app's cyan and pink, and a bright notch where
+    // the two meet. Nothing printed inside the bar.
     const wA = Math.round(wp?.away ?? 0), wH = 100 - wA;
-    const hp = wp ? `<div class="gc-wp2"><div class="gc-wpbar2"><i class="a" style="width:${wp.away.toFixed(1)}%;--tc:${aCol}">${wA >= 18 ? `<span>${esc(A)} ${wA}%</span>` : ""}</i><i class="h" style="--tc:${hCol}">${wH >= 18 ? `<span>${wH}% ${esc(H)}</span>` : ""}</i></div>${wA < 18 || wH < 18 ? `<div class="gc-wpout"><span>${wA < 18 ? `${esc(A)} ${wA}%` : ""}</span><span>${wH < 18 ? `${wH}% ${esc(H)}` : ""}</span></div>` : ""}<div class="gc-wpcap">WIN PROBABILITY</div></div>` : "";
+    const hp = wp ? `<div class="gc-wp3">
+        <div class="gc-wpl a">${lg(game.awayId, "gc-wplogo")}${led(`${wA}%`, "wpn")}</div>
+        <div class="gc-wpl h">${led(`${wH}%`, "wpn")}${lg(game.homeId, "gc-wplogo")}</div>
+        <div class="gc-wpline"><i class="a" style="width:${wp.away.toFixed(1)}%"></i><i class="h"></i><b class="gc-wpnotch" style="left:${wp.away.toFixed(1)}%"></b></div>
+        <div class="gc-wpcap">WIN PROBABILITY</div>
+      </div>` : "";
     const strip = `<div class="gc-cab"><div class="gc-row">${tm(game.awayId, A, possA, "a")}${led(aS, "sc")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${led(hS, "sc")}${tm(game.homeId, H, possH, "h")}</div>${hp}</div>`;
     // Your pick, called out under the HUD: the side and terms, what it is
     // worth, and whether it is cashing on this score and by how much.
