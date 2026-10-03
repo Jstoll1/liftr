@@ -2707,7 +2707,7 @@ function playerBreakdownHtml(name, state, results, live) {
     const pc = (v) => { const x = v * 100; return x >= 99.5 ? "99%+" : x > 0 && x < 1 ? "<1%" : `${Math.round(x)}%`; };
     const sw = wd.swing;
     const lab = sw ? `${sw.pick.team === sw.game.away ? sw.game.awayShort : sw.game.homeShort} ${sw.pick.mode === "SU" ? "to win" : `${sw.pick.team === sw.game.favorite ? "-" : "+"}${sw.game.spread}`}` : "";
-    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${pc(wd.pct)}</b></span>${sw ? `<span class="rd-wp-line">Swing game: <b>${String(lab).replace(/[&<>"]/g, "")}</b> (${pc(sw.pHit)} to hit). If it hits <b class="up">${pc(sw.ifHit)}</b> · if it misses <b class="dn">${pc(sw.ifMiss)}</b></span>` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}</div>`;
+    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${pc(wd.pct)}</b></span>${sw ? `<span class="rd-wp-line">Biggest game left: <b>${String(lab).replace(/[&<>"]/g, "")}</b></span><span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}</div>`;
   }
   return `<div class="rank-detail"><div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${wpRow}${summary}</div>`;
 }
@@ -3114,7 +3114,7 @@ function openWinChanceExplainer() {
       <div class="wpx-h">WHAT MOVES YOUR %</div>
       <div class="wpx-chips"><span>YOUR MAX POINTS</span><span>LIVE SCORES</span><span>TIME LEFT</span><span>THE LINE</span><span>EVERYONE ELSE'S PICKS</span></div>
       <div class="wpx-ex"><b>EXAMPLE</b> Favourite up 7 on a 7.5 line. With 8:00 left they cover about <em>39%</em> of the time. With 1:00 left, about <em>8%</em>: they'd need one more score.</div>
-      <div class="wpx-foot">Can't catch the leader? You read 0%. Tap your row to see your <b>swing game</b>.</div>
+      <div class="wpx-foot">Can't catch the leader? You read 0%. Tap your row to see the pick that matters most for you.</div>
     </div>`;
     document.body.appendChild(m);
     const close = () => m.classList.add("hidden");
