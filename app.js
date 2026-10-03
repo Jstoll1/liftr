@@ -2476,7 +2476,22 @@ function renderLiveScores(live, cloudPicks) {
       if (expandedGames.has(id)) expandedGames.delete(id); else { expandedGames.add(id); track("scorebug-expand", { event: true }); }
       withScrollPreserved(() => renderLiveScores(live, cloudPicks));
     };
-    el.addEventListener("click", (e) => { if (e.target.closest(".insights-btn")) return; toggle(); });
+    // Double tap opens the INFO sheet (the gamecast while live). The card
+    // is rebuilt on every tap, so the browser's dblclick never fires; a
+    // second tap on the same game within 300ms is the double tap, and it
+    // undoes the first tap's expand so the card stays as it was.
+    el.addEventListener("click", (e) => {
+      if (e.target.closest(".insights-btn")) return;
+      const now = Date.now(), last = (window.__bugTap = window.__bugTap || {});
+      if (last.id === id && now - last.at < 300) {
+        last.id = null;
+        toggle();
+        openInsights(id);
+        return;
+      }
+      last.id = id; last.at = now;
+      toggle();
+    });
     el.addEventListener("keydown", (e) => { if (e.target.closest(".insights-btn")) return; if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
     el.querySelectorAll(".insights-btn").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); openInsights(id); }));
   });
