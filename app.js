@@ -4001,7 +4001,11 @@ async function openInsights(gameId) {
     // bar runs under the row. Scanlines live behind the content.
     const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<b>${esc(ab)}</b><i class="gc-pball${poss ? "" : " off"}" title="${poss ? "Has the ball" : ""}"></i></div>`;
     const wp = lv.winProb;
-    const hp = wp ? `<div class="gc-wp"><span class="gc-wpn a">${Math.round(wp.away)}%</span><div class="gc-wpbar"><i class="a" style="width:${wp.away.toFixed(1)}%;--tc:${aCol}"></i><i class="h" style="--tc:${hCol}"></i></div><span class="gc-wpn h">${Math.round(wp.home)}%</span></div><div class="gc-wpcap">WIN PROBABILITY</div>` : "";
+    // Chunky segmented bar, team colours brightened so a navy or maroon
+    // still reads on the dark cabinet; each side's name and number sit
+    // inside its own segment. A side under 18% shows its label outside.
+    const wA = Math.round(wp?.away ?? 0), wH = 100 - wA;
+    const hp = wp ? `<div class="gc-wp2"><div class="gc-wpbar2"><i class="a" style="width:${wp.away.toFixed(1)}%;--tc:${aCol}">${wA >= 18 ? `<span>${esc(A)} ${wA}%</span>` : ""}</i><i class="h" style="--tc:${hCol}">${wH >= 18 ? `<span>${wH}% ${esc(H)}</span>` : ""}</i></div>${wA < 18 || wH < 18 ? `<div class="gc-wpout"><span>${wA < 18 ? `${esc(A)} ${wA}%` : ""}</span><span>${wH < 18 ? `${wH}% ${esc(H)}` : ""}</span></div>` : ""}<div class="gc-wpcap">WIN PROBABILITY</div></div>` : "";
     const strip = `<div class="gc-cab"><div class="gc-row">${tm(game.awayId, A, possA, "a")}${led(aS, "sc")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${led(hS, "sc")}${tm(game.homeId, H, possH, "h")}</div>${hp}</div>`;
     // Your pick, called out under the HUD: the side and terms, what it is
     // worth, and whether it is cashing on this score and by how much.

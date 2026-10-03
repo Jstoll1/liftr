@@ -4459,3 +4459,15 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-wpn { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #ffe45e; min-width: 3ch; }
 .gc-wpn.h { text-align: right; }
 .gc-wpcap { text-align: center; margin-top: 4px; font-family: 'Press Start 2P', monospace; font-size: 5px; letter-spacing: .14em; color: var(--text-dim); }
+
+/* Win probability: chunky pixel bar, readable on the dark cabinet. */
+.gc-wp2 { max-width: 420px; width: 100%; margin: 10px auto 0; }
+.gc-wpbar2 { position: relative; display: flex; height: 20px; border: 3px solid #ffe45e; background: #0a0414; box-shadow: 0 0 0 2px #0a0414, 0 0 10px rgba(255, 228, 94, .35); }
+.gc-wpbar2 i { position: relative; display: flex; align-items: center; height: 100%; min-width: 0; overflow: hidden; background: color-mix(in srgb, var(--tc) 72%, #ffffff 28%); transition: width .8s steps(12); }
+.gc-wpbar2 i.h { flex: 1 1 auto; justify-content: flex-end; }
+.gc-wpbar2 i.a { border-right: 3px solid #0a0414; }
+/* pixel segments and a bright top edge */
+.gc-wpbar2 i::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 255, 255, .35) 0 3px, transparent 3px), repeating-linear-gradient(90deg, transparent 0 9px, rgba(10, 4, 20, .55) 9px 11px); pointer-events: none; }
+.gc-wpbar2 span { position: relative; z-index: 1; padding: 0 6px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: #fff; white-space: nowrap; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+.gc-wpout { display: flex; justify-content: space-between; margin-top: 4px; font-family: 'Press Start 2P', monospace; font-size: 7px; color: #ffe45e; }
+.gc-wp2 .gc-wpcap { margin-top: 5px; }
