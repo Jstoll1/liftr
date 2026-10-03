@@ -4488,3 +4488,10 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-wpline i.h { flex: 1 1 auto; background: #ff2079; box-shadow: 0 0 8px rgba(255, 32, 121, .8); border-radius: 0 3px 3px 0; }
 .gc-wpnotch { position: absolute; top: -4px; bottom: -4px; width: 3px; transform: translateX(-1.5px); background: #fff; box-shadow: 0 0 6px #fff, 0 0 12px rgba(255, 255, 255, .7); transition: left .8s ease; }
 .gc-wp3 .gc-wpcap { grid-column: 1 / -1; margin-top: 2px; }
+
+/* Win probability as an arcade power gauge: 20 lit pixel blocks. */
+.gc-wpblocks { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; padding: 3px; background: #07020f; border: 2px solid #2a1442; box-shadow: inset 0 0 6px rgba(0, 0, 0, .9); }
+.gc-wpblocks i { display: block; height: 12px; image-rendering: pixelated; }
+.gc-wpblocks i.a { background: #05d9e8; box-shadow: inset 0 3px 0 rgba(255, 255, 255, .45), inset 0 -3px 0 rgba(0, 0, 0, .35), 0 0 6px rgba(5, 217, 232, .7); }
+.gc-wpblocks i.h { background: #ff2079; box-shadow: inset 0 3px 0 rgba(255, 255, 255, .4), inset 0 -3px 0 rgba(0, 0, 0, .35), 0 0 6px rgba(255, 32, 121, .7); }
+.gc-wpblocks i.edge { animation: lvblink 1s steps(2, start) infinite; }
