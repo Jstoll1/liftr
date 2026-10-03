@@ -4515,3 +4515,16 @@ body.sheet-open #admin-overlay { overflow: hidden; }
    visible at rest; only opacity animates. */
 .gc-log li.type .gc-ptxt { clip-path: none !important; animation: gcflick .6s steps(6, end) both; }
 @keyframes gcflick { 0% { opacity: 0; } 20% { opacity: .9; } 35% { opacity: .2; } 55% { opacity: 1; } 70% { opacity: .5; } 100% { opacity: 1; } }
+
+/* Type-on is done in script now; no CSS animation on the text. */
+.gc-log li.type .gc-ptxt { clip-path: none !important; animation: none !important; opacity: 1 !important; }
+.gc-ptxt.typing::after { content: "█"; margin-left: 1px; color: #39ff88; animation: lvblink .5s steps(2, start) infinite; }
+/* While live, the scoreboard names the matchup; the sheet's title does not repeat it. */
+#insights-modal.gc-mode #insights-title, #insights-modal.gc-mode #insights-sub { display: none; }
+
+/* Play rows span the full log width so badges sit at the right edge. */
+.gc-log .gc-plays li > div { flex: 1 1 auto; min-width: 0; }
+.gc-log .gc-pmeta { width: 100%; }
+/* Nothing in the gamecast may push the sheet sideways. */
+#insights-body { overflow-x: hidden; }
+.gc, .gc-stage { max-width: 100%; overflow-x: clip; }

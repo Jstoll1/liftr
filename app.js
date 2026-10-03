@@ -4005,7 +4005,7 @@ async function openInsights(gameId) {
     // the two meet. Nothing printed inside the bar.
     const wA = Math.round(wp?.away ?? 0), wH = 100 - wA;
     const hp = wp ? `<div class="gc-wp4"><span class="gc-led wpn a" data-ghost="88%">${wA}%</span><div class="gc-seg2" style="--wa:${wA}%"></div><span class="gc-led wpn h" data-ghost="88%">${wH}%</span></div><div class="gc-wpcap">WIN PROBABILITY</div>` : "";
-    const strip = `<div class="gc-cab"><div class="gc-row">${tm(game.awayId, A, possA, "a")}${led(aS, "sc")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${led(hS, "sc")}${tm(game.homeId, H, possH, "h")}</div>${hp}</div>`;
+    const strip = `<div class="gc-cab"><div class="gc-row">${tm(game.awayId, A, possA, "a")}${led(aS, "sc")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${led(hS, "sc")}${tm(game.homeId, H, possH, "h")}</div></div>`;
     // Your pick, called out under the HUD: the side and terms, what it is
     // worth, and whether it is cashing on this score and by how much.
     const cloudAll = lastGoodCloudPicks || {};
@@ -4064,7 +4064,10 @@ async function openInsights(gameId) {
       if (Number.isFinite(y)) return [y > 0 ? `+${y}` : y < 0 ? `${y}` : "+0", y > 0 ? "gain" : y < 0 ? "loss" : "dim"];
       return null;
     };
-    let plays = ordered.filter((p) => p && p.text).slice(0, 3).map((p) => ({ key: p.id || p.text, text: tidy(p.text), when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
+    // The current and previous drive can share a play (a kickoff, a score),
+    // so drop repeats before taking three.
+    const seenP = new Set();
+    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, 3).map((p) => ({ key: p.id || p.text, text: tidy(p.text), when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
     if (!plays.length && sit.lastPlay) plays = [{ key: sit.lastPlay, text: tidy(sit.lastPlay), when: "", dd: "", tid: sit.lastPlayTeamId, badge: null }];
     // The newest play types itself in once, the first time it is seen.
     const seen = (window.__gcSeen = window.__gcSeen || {});
@@ -4141,8 +4144,17 @@ async function openInsights(gameId) {
   // 2. Line: OPENED -> SEALED -> NOW, each step saying how far and toward
   // whom, then one plain sentence. Values are signed from the sealed
   // favourite: positive means they are favoured by that much.
+  modal.classList.toggle("gc-mode", liveGame());
   if (liveGame()) {
     body.innerHTML = gamecastHtml() + links() + `<div class="ins-foot">Live from ESPN. Refreshes every 15 seconds.</div>`;
+    // Type the newest play on, a character at a time. Done in script so it
+    // renders the same on every browser (Safari never ran the CSS version).
+    const tp = body.querySelector(".gc-log li.type .gc-ptxt");
+    if (tp) {
+      const full = tp.textContent; tp.textContent = ""; tp.classList.add("typing");
+      let n = 0; const step = Math.max(1, Math.round(full.length / 45));
+      const t = setInterval(() => { n += step; tp.textContent = full.slice(0, n); if (n >= full.length || !tp.isConnected) { clearInterval(t); tp.textContent = full; tp.classList.remove("typing"); } }, 28);
+    }
     return;
   }
   html = liveBlock() + html;
