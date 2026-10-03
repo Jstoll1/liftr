@@ -4562,3 +4562,16 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* Possession football sits beside the name, on the side facing the score. */
 .gc-tn { display: inline-flex; align-items: center; gap: 5px; }
 .gc-tn .gc-pball { flex: 0 0 auto; }
+
+/* VS scoreboard, tightened */
+.gc-cab.vs { padding: 9px 10px; }
+.gc-cab.vs .gc-row { column-gap: 8px; max-width: 380px; }
+.gc-cab.vs .gc-t { gap: 3px; }
+.gc-cab.vs .gc-t img.gc-tlogo { width: 40px; height: 40px; }
+.gc-cab.vs .gc-t b { font-size: 7px; }
+.gc-cab.vs .gc-led.sc { font-size: 22px; padding: 6px 6px 4px; min-width: 2.4ch; border-width: 1.5px; }
+.gc-cab.vs .gc-clock { padding: 4px 8px; gap: 3px; }
+.gc-cab.vs .gc-led.clk { font-size: 11px; }
+.gc-cab.vs .gc-live { font-size: 5.5px; }
+.gc-cab.vs .gc-per { font-size: 5.5px; }
+#insights-modal.gc-mode #insights-body { padding-top: 14px; }
