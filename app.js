@@ -4052,7 +4052,10 @@ async function openInsights(gameId) {
     const out = resultOutcome(game, res);
     const favAb = game.favorite === game.away ? A : H, dogAb = game.favorite === game.away ? H : A;
     const favMargin = (game.favorite === game.home ? hS - aS : aS - hS);
-    const cover = out?.push ? `PUSH ON ${favAb} -${game.spread}` : favMargin > Number(game.spread) ? `${favAb} -${game.spread} COVERED BY ${Math.abs(favMargin - game.spread)}` : `${dogAb} +${game.spread} COVERED BY ${Math.abs(favMargin - game.spread)}`;
+    // Which side covered, then the game margin people actually watched
+    // (not the margin over the spread, which reads oddly on a scoreboard).
+    const winAb = aS > hS ? A : H, by = Math.abs(aS - hS);
+    const cover = out?.push ? `PUSH ON ${favAb} -${game.spread} · ${winAb} WON BY ${by}` : favMargin > Number(game.spread) ? `${favAb} -${game.spread} COVERED · ${winAb} WON BY ${by}` : `${dogAb} +${game.spread} COVERED · ${winAb} WON BY ${by}`;
     const upset = favMargin < 0 ? `<em>UPSET</em>` : "";
     const lineHtml = `<div class="gc-settle"><b>${esc(cover)}</b>${upset}</div>`;
     // Your pick and the room.
