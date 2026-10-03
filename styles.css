@@ -4664,3 +4664,20 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-settle { flex-wrap: nowrap; justify-content: center; gap: 8px; padding: 7px 8px; }
 .gc-settle b { white-space: nowrap; font-size: 8px; }
 .gc-settle em { flex: 0 0 auto; font-size: 6px; padding: 3px 5px; }
+
+/* ===== Leaderboard, cleaner read ===== */
+/* No header row; the layout says rank, player, score. */
+.rankings-list::before { content: none; display: none; }
+/* Rank: one compact token (1, T1, T5), never wrapping. */
+.ranking-place { white-space: nowrap; font-size: 11px; letter-spacing: 0; min-width: 2.6ch; }
+/* Only the leader glows; everyone else is plain with how far back. */
+.ranking-row .ranking-score { position: relative; display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; color: #f4f0ff; text-shadow: none; }
+.ranking-row.leads .ranking-score { color: #ffd23f; text-shadow: 0 0 10px rgba(255, 210, 63, .85), 0 0 2px rgba(255, 210, 63, .9); }
+.rank-back { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--neon-pink); opacity: .85; letter-spacing: .04em; }
+/* No row arrows; the whole row is the tap target. */
+.ranking-caret { display: none; }
+/* Tiers: a thin rule wherever the score changes. */
+.ranking-row.tier-break { border-top: 1px solid rgba(193, 60, 255, .35); margin-top: 4px; padding-top: 4px; }
+/* The line under a name wraps rather than cutting off. */
+.ranking-name { min-width: 0; }
+.ranking-name .ranking-lock { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.5; }
