@@ -4509,3 +4509,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-seg i.h { background: #ff2079; box-shadow: 0 0 4px rgba(255, 32, 121, .75); }
 .gc-cab .gc-wpcap { margin-top: 5px; opacity: .7; }
 .gc-seg2 { height: 8px; background: linear-gradient(90deg, #05d9e8 0 var(--wa), #ff2079 var(--wa) 100%); -webkit-mask: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px); mask: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px); filter: drop-shadow(0 0 3px rgba(255, 255, 255, .35)); }
+
+/* Newest play: a CRT flicker-in instead of a clip-path type-on, which
+   Safari never animated and left the text invisible. The text is always
+   visible at rest; only opacity animates. */
+.gc-log li.type .gc-ptxt { clip-path: none !important; animation: gcflick .6s steps(6, end) both; }
+@keyframes gcflick { 0% { opacity: 0; } 20% { opacity: .9; } 35% { opacity: .2; } 55% { opacity: 1; } 70% { opacity: .5; } 100% { opacity: 1; } }
