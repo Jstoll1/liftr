@@ -4805,3 +4805,4 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .wpx-foot { font-size: 11px; line-height: 1.45; color: var(--text-dim); text-align: center; }
 .wpx-foot b { color: var(--neon-cyan); }
 @media (prefers-reduced-motion: reduce) { .wpx-card { animation: none; } }
+.rankings-list .rank-wp { cursor: pointer; }

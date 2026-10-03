@@ -3305,7 +3305,6 @@ function renderRankingRows(rows, cloudPicks, results, live) {
       </div>
       ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
     `;
-    div.querySelector(".rank-wp")?.addEventListener("click", (e) => { e.stopPropagation(); openWinChanceExplainer(); });
     div.querySelector(".ranking-main").addEventListener("click", () => {
       if (expandedRankings.has(row.name)) expandedRankings.delete(row.name); else { expandedRankings.add(row.name); track("ranking-expand", { event: true }); }
       withScrollPreserved(() => renderRankings(cloudPicks, results, live));
