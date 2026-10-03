@@ -26,7 +26,8 @@ function pointValue(game, team, mode) {
 function resultOutcome(game, result) {
   if (!result || !Number.isFinite(result.awayScore) || !Number.isFinite(result.homeScore)) return null;
   const { awayScore, homeScore } = result;
-  const suWinner = awayScore > homeScore ? game.away : game.home;
+  // Level (only possible mid game) has no winner yet, so nobody cashes.
+  const suWinner = awayScore === homeScore ? null : awayScore > homeScore ? game.away : game.home;
   const favMargin = game.favorite === game.home ? homeScore - awayScore : awayScore - homeScore;
   const underdog = game.favorite === game.away ? game.home : game.away;
   // A push (favorite wins by exactly the spread) pays nobody on the
