@@ -2411,7 +2411,6 @@ function renderLiveScores(live, cloudPicks) {
       const detail = !expanded ? "" : locked
         ? `<div class="bug-detail">
              ${bugPicksDetail(cloudPicks, game, hasScores ? { awayScore: g.awayScore, homeScore: g.homeScore } : null, isLive, isFinal, (side) => { const t = side === "away" ? (feed?.awayAbbr || game.awayShort) : (feed?.homeAbbr || game.homeShort); return (t.length > 6 && /\s/.test(t) ? t.split(/\s+/).map((w) => w[0]).join("") : t).toUpperCase(); })}
-             ${winProbHtml}
              <div class="bug-foot"><span class="bug-foot-txt">${game.kickoffLabel} · ${game.tv || ""}</span><button type="button" class="insights-btn" data-insights="${game.id}" aria-label="Insights for ${game.awayShort} at ${game.homeShort}">INFO</button></div>
            </div>`
         // Before kickoff the detail is the lock note, with the same INFO
