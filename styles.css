@@ -4745,3 +4745,12 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rankings-list .ranking-name .ranking-lock { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rankings-list .rank-max { white-space: nowrap; }
 .rankings-list .rank-strip { max-width: 150px; min-width: 90px; gap: 2px; }
+
+/* Chance to win: one clear number with a label, in the middle column. */
+.rank-pct2 { flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 3px; margin-left: auto; padding-right: 4px; }
+.rank-pct2.none { flex: 1 1 auto; }
+.rank-pct2 b { font-family: 'Press Start 2P', monospace; font-size: 13px; color: var(--text-meta); letter-spacing: .02em; }
+.rank-pct2 i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; letter-spacing: .14em; color: var(--text-dim); }
+.rank-pct2.warm b { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0, 229, 255, .6); }
+.rank-pct2.hot b { color: #ffd23f; text-shadow: 0 0 8px rgba(255, 210, 63, .75); }
+.rank-pct2.out b { color: rgba(255, 255, 255, .3); }

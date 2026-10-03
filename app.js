@@ -3256,7 +3256,8 @@ function renderRankingRows(rows, cloudPicks, results, live) {
           }).join("");
           const pct = row.winPct != null ? row.winPct * 100 : null;
           const txt = pct == null ? "" : pct >= 99.5 ? "99%+" : pct > 0 && pct < 1 ? "<1%" : `${Math.round(pct)}%`;
-          return `<span class="rank-strip" aria-hidden="true">${strip}</span>${pct != null ? `<b class="rank-pct${pct >= 50 ? " hot" : pct >= 15 ? " warm" : ""}" title="Chance to win the week">${txt}</b>` : ""}`;
+          void strip;
+          return pct != null ? `<span class="rank-pct2${pct >= 50 ? " hot" : pct >= 15 ? " warm" : pct < 1 ? " out" : ""}" title="Chance to win the week"><b>${txt}</b><i>TO WIN</i></span>` : `<span class="rank-pct2 none"></span>`;
         })()}
         <span class="ranking-score">${String(row.score).padStart(2, "0")}${top > 0 && row.score < top ? `<i class="rank-back">−${top - row.score}</i>` : ""}</span>
       </div>
