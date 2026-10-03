@@ -2967,6 +2967,8 @@ function rankManagers(cloudPicks, results) {
 function weekIsLive(results) {
   return GAMES.length > 0 && GAMES.some(isGameLocked) && !GAMES.every((g) => results[g.id]);
 }
+// Poisson draw (Knuth), fine for the handful of scores left in a game.
+function poissonRand(lam) { if (!(lam > 0)) return 0; const L = Math.exp(-lam); let k = 0, p = 1; do { k++; p *= Math.random(); } while (p > L); return k - 1; }
 function gaussRand() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 // Inverse of the standard normal CDF (Acklam's approximation, |error| < 1.2e-9).
 function invNorm(p) {
@@ -3006,20 +3008,19 @@ function weekWinChances(cloudPicks, results, live) {
     const homeEdge = odds ? (odds.favoriteSide === "home" ? odds.spread : -odds.spread) : (g.favorite === g.home ? Number(g.spread) : -Number(g.spread));
     const rem = timeLeftFrac(l);
     const inGame = l && l.state === "in";
-    const curM = inGame ? (l.homeScore || 0) - (l.awayScore || 0) : 0;
-    // Expected final home margin: the score so far plus the line's share
-    // of the time left (before kickoff, just the line).
-    const meanM = curM + homeEdge * rem;
-    // Uncertainty: 16 points for a full game, scaled by sqrt(time left).
-    // Live, ESPN's win probability calibrates it: the spread that makes
-    // P(home wins) equal ESPN's number is sd = mean / invNorm(p), kept
-    // within 0.6x to 1.8x of the base so one odd reading cannot run away.
-    let sd = CFB_MARGIN_SD * Math.sqrt(rem);
-    if (inGame && l.winProb && Number.isFinite(l.winProb.home)) {
-      const z = invNorm(Math.min(0.995, Math.max(0.005, l.winProb.home / 100)));
-      if (Math.abs(z) > 0.05 && Math.abs(meanM) > 0.5 && Math.sign(z) === Math.sign(meanM)) sd = Math.min(1.8 * sd, Math.max(0.6 * sd, meanM / z));
-    }
-    return { g, rem, meanM, sd, ou: odds?.overUnder ?? 52, curT: inGame ? (l.homeScore || 0) + (l.awayScore || 0) : 0 };
+    // The rest of the game is played as scoring plays, because a margin
+    // only moves by a field goal or a touchdown. Expected points still to
+    // come are the over/under times the share of the game left; at about
+    // 5.4 points a score (60% touchdowns, 40% field goals) that sets how
+    // many scores to draw. Each score goes to the home side with
+    // probability 0.5 + edge / (2 x over/under), so on average the line is
+    // what the remaining time is worth. A full game comes out about 16 to
+    // 18 points either side of the line, matching college results; late
+    // in a game it correctly makes "needs one more score" unlikely.
+    const ou = odds?.overUnder ?? 52;
+    const lam = Math.max(0, (ou * rem) / 5.4);
+    const pHome = Math.min(0.95, Math.max(0.05, 0.5 + homeEdge / (2 * Math.max(30, ou))));
+    return { g, rem, lam, pHome, curA: inGame ? (l.awayScore || 0) : 0, curH: inGame ? (l.homeScore || 0) : 0 };
   });
   // Each manager's pick on each game, with what it pays.
   const picks = MANAGERS.map((n) => GAMES.map((g) => { const p = cloudPicks[n]?.picks?.[g.id]; return p ? { team: p.team, mode: p.mode, pts: pointValue(g, p.team, p.mode) } : null; }));
@@ -3037,10 +3038,11 @@ function weekWinChances(cloudPicks, results, live) {
       const m = models[k];
       let res = m.fixed;
       if (!res) {
-        const margin = m.meanM + gaussRand() * m.sd;
-        const total = Math.max(m.curT + 0, Math.max(3, m.curT + m.ou * m.rem + gaussRand() * CFB_TOTAL_SD * Math.sqrt(m.rem)));
-        let h = Math.max(0, Math.round((total + margin) / 2)), a = Math.max(0, Math.round((total - margin) / 2));
-        if (h === a) { if (Math.random() < 0.5) h += 3; else a += 3; }
+        let h = m.curH, a = m.curA;
+        const n = poissonRand(m.lam);
+        for (let q = 0; q < n; q++) { const pts = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += pts; else a += pts; }
+        // Level at the end: overtime, decided by a score for one side.
+        if (h === a) { const pts = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += pts; else a += pts; }
         res = { awayScore: a, homeScore: h };
       }
       if (m.g === tbGame) tbTotal = res.awayScore + res.homeScore;
