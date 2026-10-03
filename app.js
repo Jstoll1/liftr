@@ -4005,7 +4005,7 @@ async function openInsights(gameId) {
     // the two meet. Nothing printed inside the bar.
     const wA = Math.round(wp?.away ?? 0), wH = 100 - wA;
     const hp = wp ? `<div class="gc-wp4"><span class="gc-led wpn a" data-ghost="88%">${wA}%</span><div class="gc-seg2" style="--wa:${wA}%"></div><span class="gc-led wpn h" data-ghost="88%">${wH}%</span></div><div class="gc-wpcap">WIN PROBABILITY</div>` : "";
-    const strip = `<div class="gc-cab"><div class="gc-row">${tm(game.awayId, A, possA, "a")}${led(aS, "sc")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${led(hS, "sc")}${tm(game.homeId, H, possH, "h")}</div></div>`;
+    const strip = `<div class="gc-cab vs" style="--ac:${aCol};--hc:${hCol}"><i class="gc-sweep"></i><div class="gc-row">${tm(game.awayId, A, possA, "a")}${led(aS, "sc")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${led(hS, "sc")}${tm(game.homeId, H, possH, "h")}</div></div>`;
     // Your pick, called out under the HUD: the side and terms, what it is
     // worth, and whether it is cashing on this score and by how much.
     const cloudAll = lastGoodCloudPicks || {};

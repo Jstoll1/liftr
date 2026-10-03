@@ -4528,3 +4528,34 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* Nothing in the gamecast may push the sheet sideways. */
 #insights-body { overflow-x: hidden; }
 .gc, .gc-stage { max-width: 100%; overflow-x: clip; }
+
+/* ===== VS-screen scoreboard ===== */
+.gc-cab.vs { position: relative; overflow: hidden; padding: 14px 12px; border: 0; border-radius: 12px;
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--ac) 70%, #0a0414) 0%, color-mix(in srgb, var(--ac) 35%, #0a0414) 30%, #0a0414 44%, #0a0414 56%, color-mix(in srgb, var(--hc) 35%, #0a0414) 70%, color-mix(in srgb, var(--hc) 70%, #0a0414) 100%);
+  box-shadow: 0 0 0 2px #0a0414, 0 0 0 4px transparent, 0 10px 24px rgba(0, 0, 0, .55); }
+/* neon frame: pink to cyan, drawn as a masked gradient border */
+.gc-cab.vs::before { content: ""; position: absolute; inset: 0; border-radius: 12px; padding: 2px; background: linear-gradient(90deg, #05d9e8, #c13cff 50%, #ff2079); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; filter: drop-shadow(0 0 6px rgba(193, 60, 255, .7)); pointer-events: none; z-index: 2; }
+/* diagonal speed stripes on each team side, and soft scanlines */
+.gc-cab.vs::after { content: ""; position: absolute; inset: 0; z-index: 0; opacity: 1; pointer-events: none;
+  background:
+    repeating-linear-gradient(105deg, rgba(255, 255, 255, .06) 0 2px, transparent 2px 14px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, .18) 0 1px, transparent 1px 3px);
+  -webkit-mask: linear-gradient(90deg, #000 0 36%, transparent 46% 54%, #000 64%); mask: linear-gradient(90deg, #000 0 36%, transparent 46% 54%, #000 64%); }
+/* a slow light sweep across the board */
+.gc-sweep { position: absolute; top: 0; bottom: 0; left: -40%; width: 30%; z-index: 1; pointer-events: none; background: linear-gradient(105deg, transparent, rgba(255, 255, 255, .09), transparent); animation: gcsweep 5.5s ease-in-out infinite; }
+@keyframes gcsweep { 0% { left: -40%; } 55%, 100% { left: 120%; } }
+.gc-cab.vs .gc-row { position: relative; z-index: 3; }
+/* logos bigger, dropped onto their colour */
+.gc-cab.vs .gc-t img.gc-tlogo { width: 50px; height: 50px; filter: drop-shadow(0 3px 0 rgba(0, 0, 0, .55)) drop-shadow(0 0 10px rgba(255, 255, 255, .18)); }
+.gc-cab.vs .gc-t b { font-size: 8px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .6); }
+/* scores in dark LED plates, no blurry ghost digits */
+.gc-cab.vs .gc-led.sc { font-size: 28px; padding: 8px 8px 6px; background: rgba(7, 2, 15, .85); border: 2px solid rgba(255, 176, 0, .35); border-radius: 6px; box-shadow: inset 0 0 12px rgba(0, 0, 0, .9), 0 0 12px rgba(255, 176, 0, .18); min-width: 2.6ch; }
+.gc-cab.vs .gc-led.sc::before { content: none; }
+/* clock as a lit marquee chip */
+.gc-cab.vs .gc-clock { padding: 6px 10px; border: 2px solid #ff4040; border-radius: 6px; background: #12020a; box-shadow: 0 0 12px rgba(255, 64, 64, .45), inset 0 0 10px rgba(0, 0, 0, .9); }
+.gc-cab.vs .gc-led.clk { font-size: 13px; }
+.gc-cab.vs .gc-led.clk::before { content: none; }
+.gc-cab.vs .gc-live { color: #fff; }
+.gc-cab.vs .gc-per { color: #ffb000; }
+@media (prefers-reduced-motion: reduce) { .gc-sweep { animation: none; display: none; } }
