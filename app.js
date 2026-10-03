@@ -1691,7 +1691,7 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
       outcome = pick.mode === "ATS"
         ? `${short} ${liveByTxt} · ${resultOutcome(game, { awayScore: aS, homeScore: hS })?.push ? "on the number, a push right now" : hit ? "covering" : "not covering"} right now`
         : `${short} ${liveByTxt} · ${hit ? "winning" : "trailing"} right now`;
-      pill = `<span class="rd-pts lean ${hit ? ptsValueTier(worth) : "miss"}">${hit ? "+" + worth : "0"}?</span>`;
+      pill = `<span class="rd-pts lean ${hit ? ptsValueTier(worth) : "miss"}">${hit ? "+" + worth : "0"}</span>`;
     } else {
       outcome = pick.mode === "ATS"
         ? (isFav ? `Needs ${short} to win by more than ${game.spread}` : `Needs ${short} to win or lose by less than ${game.spread}`)
@@ -2451,7 +2451,7 @@ function renderLiveScores(live, cloudPicks) {
           face = pushed ? "P" : pts > 0 ? `+${pts}` : "0";
         } else if (lean !== null) {
           tone = `lean ${lean > 0 ? ptsTier(worth) : "miss"}`;
-          face = lean > 0 ? `+${worth}<span class="stake-q">?</span>` : `0<span class="stake-q">?</span>`;
+          face = lean > 0 ? `+${worth}` : "0";
         }
         myPill = `<span class="stake ${tone}" title="You took ${mine} ${terms} for ${worth} pt">${face}</span>`;
       }
@@ -2659,8 +2659,8 @@ function playerBreakdownHtml(name, state, results, live) {
       } else if (isLive && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore) && (g.awayScore || g.homeScore)) {
         const prov = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
         liveOpen += 1;
-        if (prov > 0) { liveCovering += 1; liveFly += worth; ptsHtml = `<span class="rd-pts lean ${ptsValueTier(worth)}">+${worth}?</span>`; }
-        else ptsHtml = `<span class="rd-pts lean miss">0?</span>`;
+        if (prov > 0) { liveCovering += 1; liveFly += worth; ptsHtml = `<span class="rd-pts lean ${ptsValueTier(worth)}">+${worth}</span>`; }
+        else ptsHtml = `<span class="rd-pts lean miss">0</span>`;
       }
     }
     const src = isFinal ? results[game.id] : isLive ? g : null;

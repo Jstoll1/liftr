@@ -4827,3 +4827,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ranking-row.rank-hd .rank-hd-wp { pointer-events: auto; cursor: pointer; }
 .chalk-note { font-size: 8.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; margin: 8px 4px 2px; }
 .ms-onair { margin-right: 6px; gap: 0; }
+/* Live, not yet banked: dashed outline instead of a question mark. */
+.stake.lean { border-style: dashed !important; border-width: 1.5px; background: none !important; }
+.stake.lean.hit { border-color: rgba(0, 255, 143, .75); }
+.stake.lean.miss { border-color: rgba(255, 92, 138, .65); }
