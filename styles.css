@@ -4853,3 +4853,4 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* H2H live points: crisp, no glow. A dashed outline says not banked yet,
    same as the scoreboard pills. */
 .h2h-td.live-hit b, .h2h-td.live-miss b { text-shadow: none; filter: none; border: 1.5px dashed currentColor; border-radius: 999px; padding: 1px 6px; line-height: 1.2; }
+.rank-detail > .rd-wp:first-child { margin: 0 0 8px; padding: 2px 0 8px; border-top: 0; border-bottom: 1px solid rgba(5, 217, 232, .35); }
