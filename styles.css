@@ -4863,3 +4863,36 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .av-sw.def { background: repeating-linear-gradient(135deg, var(--c) 0 5px, rgba(0, 0, 0, .35) 5px 8px); }
 .claim-hint { display: block; margin-top: 4px; font-size: 10px; opacity: .6; letter-spacing: .02em; }
 .claim-btn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+/* ===== Season stats: arcade high score cabinet ===== */
+.season-panel { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 12px 8px 10px; border-radius: 12px; background: radial-gradient(120% 70% at 50% 0%, #1a0838 0%, #07020f 70%); box-shadow: 0 10px 26px rgba(0, 0, 0, .55); overflow: hidden; }
+.season-panel::before { content: ""; position: absolute; inset: 0; border-radius: 12px; padding: 2px; background: linear-gradient(90deg, #05d9e8, #c13cff 50%, #ff2079); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+.season-panel::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 3px); pointer-events: none; }
+.ss-marquee { text-align: center; padding: 4px 0 2px; }
+.ss-marquee span { display: block; font-family: 'Press Start 2P', monospace; font-size: 13px; letter-spacing: .12em; color: var(--neon-yellow); text-shadow: 2px 2px 0 #ff2079, 0 0 12px rgba(255, 228, 94, .45); animation: ss-blink 2.4s steps(1) infinite; }
+.ss-marquee small { display: block; margin-top: 7px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .14em; color: var(--neon-cyan); opacity: .75; }
+@keyframes ss-blink { 92% { opacity: 1; } 96% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .ss-marquee span { animation: none; } }
+.ss-card { --c: var(--neon-cyan); position: relative; padding: 0 0 4px; border: 2px solid var(--c); border-radius: 8px; background: rgba(0, 0, 0, .45); box-shadow: 0 0 0 1px rgba(0, 0, 0, .6), 4px 4px 0 rgba(0, 0, 0, .55), inset 0 0 18px rgba(0, 0, 0, .7); }
+.ss-head { display: flex; align-items: center; gap: 8px; margin: 0; padding: 7px 10px; background: var(--c); color: #0a0414; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .1em; border-radius: 5px 5px 0 0; text-shadow: none; }
+.ss-ico { font-style: normal; font-size: 13px; line-height: 1; filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, .35)); }
+.ss-desc { padding: 5px 10px 2px; font-size: 9.5px; color: var(--text-dim); letter-spacing: .02em; }
+.ss-table { padding: 0 8px; }
+.ss-row { display: grid; grid-template-columns: 30px 22px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 6px 2px; border-top: 1px dashed rgba(255, 255, 255, .08); font-size: 11px; }
+.ss-row:first-child { border-top: 0; }
+.ss-rank { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .02em; color: var(--text-dim); }
+.ss-rank.m1 { color: #ffd23f; text-shadow: 0 0 6px rgba(255, 210, 63, .6); }
+.ss-rank.m2 { color: #cfd6e4; }
+.ss-rank.m3 { color: #e09a5a; }
+.ss-av { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; background: var(--accent); color: #0a0414; font-family: 'Press Start 2P', monospace; font-size: 9px; line-height: 1; box-shadow: 2px 2px 0 rgba(0, 0, 0, .5); }
+.ss-name { font-family: 'Press Start 2P', monospace; font-size: 7.5px; letter-spacing: .05em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ss-row.lead .ss-name { color: #fff; }
+.ss-row.me .ss-name { color: var(--neon-cyan); }
+.ss-row.lead { background: linear-gradient(90deg, rgba(255, 210, 63, .1), transparent 70%); border-radius: 4px; }
+.ss-sub { font-size: 9.5px; color: var(--text-dim); white-space: nowrap; }
+.ss-val { min-width: 46px; padding: 5px 6px 4px; text-align: center; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 10px; color: var(--c); background: #07020f; border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); border-radius: 4px; box-shadow: inset 0 0 8px rgba(0, 0, 0, .9); text-shadow: 0 0 5px color-mix(in srgb, var(--c) 55%, transparent); }
+.ss-row.none { display: block; padding: 10px 2px; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .1em; color: var(--text-dim); }
+.ss-note { display: none; }
+.ss-head { justify-content: flex-start; }
+.ss-row.lead .ss-rank.m1 { color: #ffd23f; }
+.ss-row { padding: 5px 2px; }

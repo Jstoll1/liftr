@@ -5359,20 +5359,24 @@ async function renderSeasonStats() {
   }
   const s = seasonStats(weeks, liveBlanks);
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const row = (r, i, cls) => `<div class="ss-row${r.name === currentManager ? " me" : ""}${i === 0 ? " lead" : ""}"><span class="ss-rank">${i + 1}</span><span class="ss-name">${esc(shown(r.name).toUpperCase())}</span><span class="ss-sub">${esc(r.sub)}</span><b class="ss-val">${esc(r.value)}</b></div>`;
-  const board = (label, note, rows, cls) => {
-    const top = rows.slice(0, 3).map((r, i) => row(r, i, cls)).join("");
-    return `<div class="ss-card ${cls}"><div class="ss-head"><span>${label}</span><small>${note}</small></div>${rows.length ? top : `<div class="ss-row none">Nobody qualifies yet</div>`}</div>`;
+  const ORD = ["1ST", "2ND", "3RD"];
+  const row = (r, i) => {
+    const av = avatarOverrides[r.name] || shown(r.name)[0];
+    return `<div class="ss-row${r.name === currentManager ? " me" : ""}${i === 0 ? " lead" : ""}"><span class="ss-rank m${i + 1}">${ORD[i]}</span><span class="ss-av" style="--accent:${accentFor(r.name)}">${esc(av)}</span><span class="ss-name">${esc(shown(r.name).toUpperCase())}</span><span class="ss-sub">${esc(r.sub)}</span><b class="ss-val">${esc(r.value)}</b></div>`;
   };
-  panel.innerHTML = `<div class="ss-note">${weeks.length} counting week${weeks.length === 1 ? "" : "s"} · top three on each</div>
-    ${board("BEST ATS RECORD", "spread picks, min 3", s.ats, "hit")}
-    ${board("HOT HAND", "correct picks in a row, right now", s.streak, "hit")}
-    ${board("MOST DOG HITS", "underdogs straight up, 3 pts each", s.dogs, "upset")}
-    ${board("LONE WOLF", "correct with 3 or fewer on the team", s.lone, "upset")}
-    ${board("FAVOURITE FADER", "share of picks against the favourite", s.fader, "split")}
-    ${board("TIEBREAKER SNIPER", "average miss, lower is better", s.tb, "tb")}
-    ${board("BEST WEEK", "highest single-week score", s.best, "move")}
-    ${s.blanks.length ? board("NO-SHOWS", "games left unpicked", s.blanks, "miss") : ""}`;
+  const board = (icon, label, note, rows, cls) => {
+    const top = rows.slice(0, 3).map((r, i) => row(r, i)).join("");
+    return `<div class="ss-card ${cls}"><div class="ss-head"><i class="ss-ico">${icon}</i><span>${label}</span></div><div class="ss-desc">${note}</div><div class="ss-table">${rows.length ? top : `<div class="ss-row none">NOBODY QUALIFIES · INSERT COIN</div>`}</div></div>`;
+  };
+  panel.innerHTML = `<div class="ss-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} ON THE RECORD</small></div>
+    ${board("🎯", "BEST ATS RECORD", "Spread picks, min 3", s.ats, "hit")}
+    ${board("🔥", "HOT HAND", "Correct picks in a row, right now", s.streak, "hit")}
+    ${board("🐶", "MOST DOG HITS", "Underdogs straight up, 3 pts each", s.dogs, "upset")}
+    ${board("🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "upset")}
+    ${board("🙃", "FAVORITE FADER", "Share of picks against the favorite", s.fader, "split")}
+    ${board("📏", "TIEBREAKER SNIPER", "Average miss, lower is better", s.tb, "tb")}
+    ${board("🏆", "BEST WEEK", "Highest single week score", s.best, "move")}
+    ${s.blanks.length ? board("💤", "NO SHOWS", "Games left unpicked", s.blanks, "miss") : ""}`;
 }
 (() => {
   const toggle = document.getElementById("season-toggle");
