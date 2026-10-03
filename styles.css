@@ -4896,3 +4896,26 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ss-head { justify-content: flex-start; }
 .ss-row.lead .ss-rank.m1 { color: #ffd23f; }
 .ss-row { padding: 5px 2px; }
+
+/* Pregame INFO: who has which side. */
+.rp { margin: 0 0 10px; padding: 8px; border: 1px solid rgba(193, 60, 255, .45); border-radius: 10px; background: rgba(0, 0, 0, .35); }
+.rp-h { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .12em; color: var(--neon-cyan); margin: 2px 2px 8px; }
+.rp-lock { font-size: 11px; color: var(--text-dim); padding: 2px; }
+.rp-lock b { color: var(--neon-cyan); font-weight: 700; }
+.rp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rp-col { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.rp-team { display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 6px; background: rgba(255, 255, 255, .06); font-weight: 700; font-size: 12px; color: #fff; }
+.rp-team span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rp-team b { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--neon-yellow); }
+.rp-logo { width: 20px; height: 20px; object-fit: contain; }
+.rp-bet { padding: 0 2px; }
+.rp-bh { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; }
+.rp-bh b { font-family: 'Press Start 2P', monospace; font-size: 7.5px; color: var(--neon-cyan); font-weight: normal; }
+.rp-bh em { font-style: normal; font-size: 9.5px; color: var(--text-dim); }
+.rp-bh i { margin-left: auto; font-style: normal; font-size: 10px; color: var(--text-dim); }
+.rp-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.rp-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px 2px 2px; border-radius: 999px; background: rgba(255, 255, 255, .06); font-size: 11px; color: var(--text); }
+.rp-chip.me { color: var(--neon-cyan); box-shadow: inset 0 0 0 1px rgba(5, 217, 232, .5); }
+.rp-chip .pick-chip-av { width: 16px; height: 16px; font-size: 9px; }
+.rp-none { font-size: 10.5px; color: var(--text-dim); padding: 0 2px; }
+.rp-np { margin-top: 8px; font-size: 10px; color: var(--text-dim); }

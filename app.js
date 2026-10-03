@@ -4497,7 +4497,30 @@ async function openInsights(gameId) {
   }
   return liveHtml;
   };
-  let html = `<button type="button" class="ins-sim" id="ins-sim" aria-label="Simulate game"><span class="ins-sim-gb" aria-hidden="true"><i></i></span><span class="ins-sim-txt"><b>SIMULATE GAME</b><em>▶ PRESS START</em></span><span class="ins-sim-vs" aria-hidden="true">${lg(game.awayId, "sm").replace("/500-dark/", "/500/")}<i>VS</i>${lg(game.homeId, "sm").replace("/500-dark/", "/500/")}</span></button>`;
+  // Before kickoff: who is on which side, one column per team, one row per
+  // bet. Other cards stay hidden until the game locks.
+  const roomPre = (() => {
+    const all = lastGoodCloudPicks || {};
+    const locked = isGameLocked(game);
+    const chip = (n) => `<span class="rp-chip${n === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accentFor(n)}">${esc(avatarOverrides[n] || shown(n)[0])}</span>${esc(shown(n))}</span>`;
+    if (!locked) {
+      const mine = all[currentManager]?.picks?.[game.id];
+      const inN = MANAGERS.filter((n) => all[n]?.picks?.[game.id]).length;
+      return `<div class="rp"><div class="rp-h">THE ROOM</div><div class="rp-lock">🔒 Picks reveal at kickoff · ${inN} of ${MANAGERS.length} in${mine ? ` · you: <b>${esc(mine.team === game.away ? game.awayShort : game.homeShort)} ${mine.mode === "SU" ? "WIN" : (mine.team === game.favorite ? "-" : "+") + game.spread}</b>` : ""}</div></div>`;
+    }
+    const side = (team, short, id) => {
+      const bets = [["ATS", `${team === game.favorite ? "-" : "+"}${game.spread}`], ["SU", "WIN"]].map(([mode, label]) => {
+        const who = MANAGERS.filter((n) => { const pk = all[n]?.picks?.[game.id]; return pk && pk.team === team && pk.mode === mode; });
+        if (!who.length) return "";
+        return `<div class="rp-bet"><div class="rp-bh"><b>${esc(label)}</b><em>${pointValue(game, team, mode)} PT</em><i>${who.length}</i></div><div class="rp-chips">${who.map(chip).join("")}</div></div>`;
+      }).join("");
+      const n = MANAGERS.filter((m) => all[m]?.picks?.[game.id]?.team === team).length;
+      return `<div class="rp-col"><div class="rp-team">${lg(id, "rp-logo")}<span>${esc(short)}</span><b>${n}</b></div>${bets || `<div class="rp-none">Nobody</div>`}</div>`;
+    };
+    const none = MANAGERS.filter((n) => !all[n]?.picks?.[game.id]);
+    return `<div class="rp"><div class="rp-h">THE ROOM · WHO HAS WHAT</div><div class="rp-cols">${side(game.away, game.awayShort, game.awayId)}${side(game.home, game.homeShort, game.homeId)}</div>${none.length ? `<div class="rp-np">NO PICK · ${none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}</div>`;
+  })();
+  let html = roomPre + `<button type="button" class="ins-sim" id="ins-sim" aria-label="Simulate game"><span class="ins-sim-gb" aria-hidden="true"><i></i></span><span class="ins-sim-txt"><b>SIMULATE GAME</b><em>▶ PRESS START</em></span><span class="ins-sim-vs" aria-hidden="true">${lg(game.awayId, "sm").replace("/500-dark/", "/500/")}<i>VS</i>${lg(game.homeId, "sm").replace("/500-dark/", "/500/")}</span></button>`;
   const hdrComps = summaryRaw?.header?.competitions?.[0]?.competitors || [];
   const abbrOf = (side) => {
     const id = side === "away" ? game.awayId : game.homeId;
