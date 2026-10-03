@@ -3237,7 +3237,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     div.className = "ranking-row" + (i === 0 && row.score > 0 ? " rank-1" : "") + (leads ? " leads" : "") + (tierBreak ? " tier-break" : "") + (row.name === currentManager ? " is-me" : "") + (open ? " open" : "");
     div.innerHTML = `
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
-        <span class="ranking-place">${row.tied ? "T" : ""}${row.place}</span>
+        <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
         <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span></span><span class="ranking-lock">${row.subline}</span></span>
         ${row.winPct != null ? (() => { const pct = row.winPct * 100; const txt = pct >= 99.5 ? "99%+" : pct > 0 && pct < 1 ? "<1%" : `${Math.round(pct)}%`; return `<span class="rank-wp${pct >= 50 ? " hot" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>`; })() : `<span class="ranking-dots" aria-hidden="true"></span>`}
         <span class="ranking-score">${String(row.score).padStart(2, "0")}${top > 0 && row.score < top ? `<i class="rank-back">−${top - row.score}</i>` : ""}</span>
