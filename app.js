@@ -3974,11 +3974,18 @@ async function openInsights(gameId) {
     const m = dd.match(/\bat\s+([A-Za-z&.' -]+?)\s+(\d{1,2})\s*$/);
     if (m) { const who = m[1].trim().toUpperCase(), yd = Number(m[2]); x = who === String(H).toUpperCase() ? 100 - yd : who === String(A).toUpperCase() ? yd : null; }
     else if (/\bat\s+50\b/.test(dd)) x = 50;
+    // Between plays there is no "at VT 34" text. The last play says where
+    // it ended ("to the VT 25"), which is the spot; ESPN's raw yardLine
+    // number is not reliable for which goal it counts from, so it is only
+    // used as a last resort, and then without a line to gain.
+    const fromText = (t) => { const mm = String(t || "").match(/\bto the ([A-Za-z]+)\s?(\d{1,2})\b(?![^]*\bto the [A-Za-z]+\s?\d)/); if (!mm) return null; const who = mm[1].toUpperCase(), yd = Number(mm[2]); const nm = (summaryRaw?.header?.competitions?.[0]?.competitors || []).map((c) => ({ id: Number(c.team?.id), keys: [c.team?.abbreviation, c.team?.name, c.team?.location, c.team?.shortDisplayName].filter(Boolean).map((k) => String(k).toUpperCase()) })); const t1 = nm.find((c) => c.keys.includes(who)); const isHome = (t1 ? t1.id === Number(game.homeId) : who === String(H).toUpperCase()); const isAway = (t1 ? t1.id === Number(game.awayId) : who === String(A).toUpperCase()); if (yd === 50) return 50; return isHome ? 100 - yd : isAway ? yd : null; };
+    const between = x === null;
+    if (x === null) x = fromText(sit.lastPlay);
     if (x === null && sit.yardLine != null) x = 100 - sit.yardLine;
     const dir = possA ? 1 : possH ? -1 : 0;
     const goalToGo = /goal/i.test(dd);
     const dist = sit.distance != null ? sit.distance : (dd.match(/&\s*(\d+)/) ? Number(dd.match(/&\s*(\d+)/)[1]) : null);
-    const toGo = x !== null && dir && (dist != null || goalToGo) ? Math.max(0, Math.min(100, goalToGo ? (dir > 0 ? 100 : 0) : x + dir * dist)) : null;
+    const toGo = !between && x !== null && dir && (dist != null || goalToGo) ? Math.max(0, Math.min(100, goalToGo ? (dir > 0 ? 100 : 0) : x + dir * dist)) : null;
     const pct = (v) => (8 + v * 0.84).toFixed(2);
     const ticks = Array.from({ length: 9 }, (_, i) => (i + 1) * 10).map((v) => `<i class="gc-yl${v === 50 ? " mid" : ""}" style="left:${pct(v)}%"></i><span class="gc-num" style="left:${pct(v)}%">${v <= 50 ? v : 100 - v}</span>`).join("");
     // Slide, don't jump: each marker is drawn where it was last refresh
@@ -4071,6 +4078,7 @@ async function openInsights(gameId) {
       .replace(/\.?\s*The previous play is under (?:automatic )?review[\s\S]*?(CALL (?:OVERTURNED|STANDS|CONFIRMED))[\s\S]*$/i, " · $1")
       .replace(/,?\s*clock\s+\d{1,2}:\d{2}/gi, "")
       .replace(/(TOUCHDOWN[^.]*?),?\s*1ST DOWN/i, "$1")
+      .replace(/\s*\(\s*\)/g, "")
       .replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").trim();
     // Quarter ends, timeouts and the like are markers, not plays: no badge.
     const isMarker = (p) => /^(end of|end quarter|end period|end of half|end of game|timeout|two-minute|official timeout|kickoff\b.*coin)/i.test(String(p.text || "").trim()) || /end period|end of half|timeout|end of game|coin toss/i.test(p.type?.text || "");
@@ -4106,18 +4114,25 @@ async function openInsights(gameId) {
     let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, 5).map((p) => ({ key: p.id || p.text, text: tidy(p.text), when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
     // The scoreboard feed updates faster than the game page. If its last
     // play is not the log's newest, put it on top.
+    // Two feeds word the same play differently ("J.Turner rush right for
+    // 5 yards gain" vs "Jalen Turner run for 5 yds"), so a play counts as
+    // the same when its words and numbers mostly overlap.
+    const words = (t) => new Set(tidy(t).toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter((w) => w.length > 1 && !/^(the|to|for|at|a|of|and|yds?|yards?|gain)$/.test(w)));
+    const samePlay = (x, y) => { const A = words(x), B = words(y); if (!A.size || !B.size) return false; let n = 0; for (const w of A) if (B.has(w)) n++; const nums = (t) => [...new Set((String(t).match(/\d+/g) || []).map(Number))].sort((a, b) => a - b).join(","); return nums(tidy(x)) === nums(tidy(y)) && n / Math.min(A.size, B.size) >= 0.5; };
     if (sit.lastPlay) {
-      const norm = (t) => tidy(t).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 60);
       const lp = tidy(sit.lastPlay);
-      if (!plays.length || (lp && norm(sit.lastPlay) !== norm(plays[0].text) && !plays.slice(0, 3).some((p) => norm(p.text) === norm(sit.lastPlay)))) {
+      if (!plays.length || (lp && !plays.slice(0, 5).some((p) => samePlay(p.text, sit.lastPlay)))) {
         const t0 = { type: { text: "" }, text: sit.lastPlay };
         plays = [{ key: sit.lastPlay, text: lp, when: status || "", dd: "", tid: sit.lastPlayTeamId, badge: badgeOf(t0), marker: isMarker(t0) }, ...plays].slice(0, 5);
       }
     }
     // The newest play types itself in once, the first time it is seen.
-    const seen = (window.__gcSeen = window.__gcSeen || {});
-    const fresh = plays[0] && seen[gameId] !== plays[0].key;
-    if (plays[0]) seen[gameId] = plays[0].key;
+    plays = plays.filter((p, i) => p.marker || !plays.slice(0, i).some((q) => !q.marker && samePlay(q.text, p.text)));
+    const seenAll = (window.__gcSeen = window.__gcSeen || {});
+    const typed = (seenAll[gameId] = Array.isArray(seenAll[gameId]) ? seenAll[gameId] : []);
+    const fresh = !!plays[0] && !typed.some((t) => samePlay(t, plays[0].text));
+    for (const p of plays) if (!typed.some((t) => samePlay(t, p.text))) typed.push(p.text);
+    if (typed.length > 60) typed.splice(0, typed.length - 60);
     const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p, i) => p.marker ? `<li class="gc-mark"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${p.tid ? lg(p.tid, "gc-plogo") : ""}${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.badge ? `<b class="gc-badge ${p.badge[1]}">${esc(p.badge[0])}</b>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
     const wpHtml = "";
