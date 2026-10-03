@@ -3594,12 +3594,15 @@ function fmtWhen(t) {
 // It carries both injury lists, the current line, records, ATS, FPI,
 // weather, venue and leaders in one call.
 const summaryCache = {};
-async function fetchEspnSummary(eventId) {
+async function fetchEspnSummary(eventId, fresh = false) {
   if (!eventId) return null;
   const hit = summaryCache[eventId];
-  if (hit && Date.now() - hit.at < 15 * 60 * 1000) return hit.promise;
-  // Share one request between the touch prefetch and the tap.
-  const promise = fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}&t=${Math.floor(Date.now() / 900000)}`)
+  if (!fresh && hit && Date.now() - hit.at < 15 * 60 * 1000) return hit.promise;
+  // Share one request between the touch prefetch and the tap. A live
+  // refresh asks for a copy no CDN has seen (the old 15-minute stamp kept
+  // the play log a drive behind the scoreboard).
+  const stamp = fresh ? Date.now() : Math.floor(Date.now() / 900000);
+  const promise = fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}&t=${stamp}`, fresh ? { cache: "no-store" } : undefined)
     .then((res) => res.ok ? res.json() : null)
     .catch(() => null)
     .then((data) => { if (!data) delete summaryCache[eventId]; return data; });
@@ -4094,7 +4097,16 @@ async function openInsights(gameId) {
     // so drop repeats before taking three.
     const seenP = new Set();
     let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, 5).map((p) => ({ key: p.id || p.text, text: tidy(p.text), when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
-    if (!plays.length && sit.lastPlay) plays = [{ key: sit.lastPlay, text: tidy(sit.lastPlay), when: "", dd: "", tid: sit.lastPlayTeamId, badge: null }];
+    // The scoreboard feed updates faster than the game page. If its last
+    // play is not the log's newest, put it on top.
+    if (sit.lastPlay) {
+      const norm = (t) => tidy(t).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 60);
+      const lp = tidy(sit.lastPlay);
+      if (!plays.length || (lp && norm(sit.lastPlay) !== norm(plays[0].text) && !plays.slice(0, 3).some((p) => norm(p.text) === norm(sit.lastPlay)))) {
+        const t0 = { type: { text: "" }, text: sit.lastPlay };
+        plays = [{ key: sit.lastPlay, text: lp, when: status || "", dd: "", tid: sit.lastPlayTeamId, badge: badgeOf(t0), marker: isMarker(t0) }, ...plays].slice(0, 5);
+      }
+    }
     // The newest play types itself in once, the first time it is seen.
     const seen = (window.__gcSeen = window.__gcSeen || {});
     const fresh = plays[0] && seen[gameId] !== plays[0].key;
@@ -4475,10 +4487,15 @@ async function openInsights(gameId) {
     if (!(l && l.found && l.state === "in" && !l.completed)) return;
     try { await fetchLiveScores(); } catch {}
     const id = latestLive[gameId]?.eventId || null;
-    if (id) { delete summaryCache[id]; try { const raw = await fetchEspnSummary(id); if (raw) summaryRaw = raw; } catch {} }
+    if (id) { try { const raw = await fetchEspnSummary(id, true); if (raw) summaryRaw = raw; } catch {} }
     if (alive()) paint();
   };
-  const liveTimer = setInterval(liveTick, 15000);
+  // Every 8 seconds while the sheet is on screen; nothing while the phone
+  // is locked or the app is in the background, and an immediate catch-up
+  // the moment it comes back.
+  const liveTimer = setInterval(() => { if (!document.hidden) liveTick(); }, 8000);
+  const onVis = () => { if (!alive()) { document.removeEventListener("visibilitychange", onVis); return; } if (!document.hidden) liveTick(); };
+  document.addEventListener("visibilitychange", onVis);
   fetchAllPicks().then((p) => { if (p) { lastGoodCloudPicks = p; if (alive()) paint(); } }).catch(() => {});
   // Cached summary paints at once; otherwise the first paint waits for it.
   land(withTimeout(fetchInsights(), 3500, null), (v) => { data = v; });
