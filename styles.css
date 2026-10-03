@@ -4495,3 +4495,17 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-wpblocks i.a { background: #05d9e8; box-shadow: inset 0 3px 0 rgba(255, 255, 255, .45), inset 0 -3px 0 rgba(0, 0, 0, .35), 0 0 6px rgba(5, 217, 232, .7); }
 .gc-wpblocks i.h { background: #ff2079; box-shadow: inset 0 3px 0 rgba(255, 255, 255, .4), inset 0 -3px 0 rgba(0, 0, 0, .35), 0 0 6px rgba(255, 32, 121, .7); }
 .gc-wpblocks i.edge { animation: lvblink 1s steps(2, start) infinite; }
+
+/* Win probability, sleek: one line under the scores. */
+.gc-wp4 { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; max-width: 360px; width: 100%; margin: 10px auto 0; }
+.gc-wp4 .gc-led.wpn { font-size: 9px; }
+.gc-wp4 .gc-led.wpn.a { color: #05d9e8; text-shadow: 0 0 6px rgba(5, 217, 232, .8); }
+.gc-wp4 .gc-led.wpn.a::before { color: rgba(5, 217, 232, .1); }
+.gc-wp4 .gc-led.wpn.h { color: #ff2079; text-shadow: 0 0 6px rgba(255, 32, 121, .8); }
+.gc-wp4 .gc-led.wpn.h::before { color: rgba(255, 32, 121, .1); }
+.gc-seg { display: grid; grid-template-columns: repeat(40, 1fr); gap: 2px; height: 8px; }
+.gc-seg i { display: block; height: 100%; }
+.gc-seg i.a { background: #05d9e8; box-shadow: 0 0 4px rgba(5, 217, 232, .75); }
+.gc-seg i.h { background: #ff2079; box-shadow: 0 0 4px rgba(255, 32, 121, .75); }
+.gc-cab .gc-wpcap { margin-top: 5px; opacity: .7; }
+.gc-seg2 { height: 8px; background: linear-gradient(90deg, #05d9e8 0 var(--wa), #ff2079 var(--wa) 100%); -webkit-mask: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px); mask: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px); filter: drop-shadow(0 0 3px rgba(255, 255, 255, .35)); }

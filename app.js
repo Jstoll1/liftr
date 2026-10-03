@@ -4004,12 +4004,7 @@ async function openInsights(gameId) {
     // thin neon bar in the app's cyan and pink, and a bright notch where
     // the two meet. Nothing printed inside the bar.
     const wA = Math.round(wp?.away ?? 0), wH = 100 - wA;
-    const hp = wp ? `<div class="gc-wp3">
-        <div class="gc-wpl a">${lg(game.awayId, "gc-wplogo")}${led(`${wA}%`, "wpn")}</div>
-        <div class="gc-wpl h">${led(`${wH}%`, "wpn")}${lg(game.homeId, "gc-wplogo")}</div>
-        <div class="gc-wpblocks">${Array.from({ length: 20 }, (_, i) => `<i class="${i < Math.round(wA / 5) ? "a" : "h"}${i === Math.round(wA / 5) - 1 || i === Math.round(wA / 5) ? " edge" : ""}"></i>`).join("")}</div>
-        <div class="gc-wpcap">WIN PROBABILITY</div>
-      </div>` : "";
+    const hp = wp ? `<div class="gc-wp4"><span class="gc-led wpn a" data-ghost="88%">${wA}%</span><div class="gc-seg2" style="--wa:${wA}%"></div><span class="gc-led wpn h" data-ghost="88%">${wH}%</span></div><div class="gc-wpcap">WIN PROBABILITY</div>` : "";
     const strip = `<div class="gc-cab"><div class="gc-row">${tm(game.awayId, A, possA, "a")}${led(aS, "sc")}<div class="gc-clock"><span class="gc-live"><i class="lv-dot"></i>LIVE</span>${clockOnly ? `<i class="gc-per">${esc(per)}</i>${led(clockOnly, "clk")}` : `<b class="gc-stat">${esc(status)}</b>`}</div>${led(hS, "sc")}${tm(game.homeId, H, possH, "h")}</div>${hp}</div>`;
     // Your pick, called out under the HUD: the side and terms, what it is
     // worth, and whether it is cashing on this score and by how much.
