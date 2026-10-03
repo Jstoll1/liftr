@@ -3239,7 +3239,25 @@ function renderRankingRows(rows, cloudPicks, results, live) {
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
         <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span></span><span class="ranking-lock">${row.subline}</span></span>
-        ${row.winPct != null ? (() => { const pct = row.winPct * 100; const txt = pct >= 99.5 ? "99%+" : pct > 0 && pct < 1 ? "<1%" : `${Math.round(pct)}%`; return `<span class="rank-wp${pct >= 50 ? " hot" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>`; })() : `<span class="ranking-dots" aria-hidden="true"></span>`}
+        ${(() => {
+          // The week at a glance: one square per game in kickoff order.
+          // Green cashed, pink missed, yellow push, pulsing while live
+          // (green covering, pink not), dim not started, empty no pick.
+          // A gold edge marks a 3-point pick. Never shows a team.
+          const strip = gamesByKickoff().map((g) => {
+            const pk = row.state.picks?.[g.id];
+            if (!pk) return `<i class="sq none"></i>`;
+            const big = pointValue(g, pk.team, pk.mode) >= 3 ? " big" : "";
+            const fin = results?.[g.id];
+            if (fin) { const o = resultOutcome(g, fin); if (pk.mode === "ATS" && o?.push) return `<i class="sq push${big}"></i>`; return `<i class="sq ${scorePick(g, pk, fin) > 0 ? "hit" : "miss"}${big}"></i>`; }
+            const l = live?.[g.id];
+            if (l && l.found && l.state === "in" && l.awayScore != null) return `<i class="sq live ${scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) > 0 ? "up" : "dn"}${big}"></i>`;
+            return `<i class="sq wait${big}"></i>`;
+          }).join("");
+          const pct = row.winPct != null ? row.winPct * 100 : null;
+          const txt = pct == null ? "" : pct >= 99.5 ? "99%+" : pct > 0 && pct < 1 ? "<1%" : `${Math.round(pct)}%`;
+          return `<span class="rank-strip" aria-hidden="true">${strip}</span>${pct != null ? `<b class="rank-pct${pct >= 50 ? " hot" : pct >= 15 ? " warm" : ""}" title="Chance to win the week">${txt}</b>` : ""}`;
+        })()}
         <span class="ranking-score">${String(row.score).padStart(2, "0")}${top > 0 && row.score < top ? `<i class="rank-back">−${top - row.score}</i>` : ""}</span>
       </div>
       ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
