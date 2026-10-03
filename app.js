@@ -875,7 +875,13 @@ function rememberScroll() {
 }
 // Call rememberScroll() BEFORE hiding the current screen: once it's
 // hidden the page shrinks and the browser clamps scrollY to the top.
+// Re-tapping the tab you are already on sends you to the top of it.
+let navToTop = false;
+[["nav-picks-btn", "picks"], ["nav-scoreboard-btn", "scoreboard"], ["nav-history-btn", "history"], ["nav-trivia-btn", "trivia"]].forEach(([id, name]) => {
+  document.getElementById(id)?.addEventListener("click", () => { navToTop = activeScreenName === name; }, true);
+});
 function enterScreen(name) {
+  if (navToTop) { savedScroll[name] = 0; navToTop = false; }
   activeScreenName = name;
   const y = savedScroll[name] ?? 0;
   appScroll.scrollTop = y;
@@ -3079,10 +3085,14 @@ function weekWinChances(cloudPicks, results, live) {
     for (let k = 0; k < models.length; k++) {
       if (!open[k] || !picks[i][k]) continue;
       const hN = hitN[i][k], mN = N - hN;
-      if (hN < 50 || mN < 50) continue;
+      if (hN < 100 || mN < 100) continue;
       const ifHit = hitW[i][k] / hN, ifMiss = (wins[i] - hitW[i][k]) / mN;
-      const gap = Math.abs(ifHit - ifMiss);
-      if (!best || gap > best.gap) best = { gap, ifHit, ifMiss, pHit: hN / N, game: models[k].g, pick: picks[i][k] };
+      const gap = Math.abs(ifHit - ifMiss), p = hN / N;
+      // Leverage: how far the result moves you, times how open it still is.
+      // A pick that is 97% in barely matters however big the gap, so
+      // p(1-p) weighs it down; a coin flip with the same gap ranks first.
+      const lev = gap * p * (1 - p);
+      if (!best || lev > best.lev) best = { gap, lev, ifHit, ifMiss, pHit: p, game: models[k].g, pick: picks[i][k] };
     }
     detail[n] = { pct: wins[i] / N, swing: best };
   });
