@@ -4033,6 +4033,70 @@ async function openInsights(gameId) {
   // from the scoreboard, where the ball is and the last play from its
   // situation, the current drive and scoring plays from ESPN's game page.
   const liveGame = () => { const l = latestLive[gameId]; return !!(l && l.found && l.state === "in" && !l.completed); };
+  const finalGame = () => { const l = latestLive[gameId]; return !!(l && l.found && l.completed && l.awayScore != null && l.homeScore != null); };
+  // FINAL: the score on the VS board, how the line settled, your pick and
+  // the room as CASHED or MISSED, the game's top performers, ESPN's recap
+  // and the scoring plays. Nothing about the build-up (preview, line
+  // movement, sim) once it is over.
+  const finalHtml = () => {
+    const lv = latestLive[gameId];
+    const A = abbrOf("away"), H = abbrOf("home");
+    const sc = summaryRaw?.header?.competitions?.[0]?.competitors || [];
+    const colorOf = (id, fb) => { const c = sc.find((x) => Number(x.team?.id) === Number(id))?.team?.color; return c ? `#${c}` : fb || null; };
+    const aCol = colorOf(game.awayId, lv.awayColor) || "#05d9e8", hCol = colorOf(game.homeId, lv.homeColor) || "#ff2079";
+    const aS = lv.awayScore, hS = lv.homeScore, res = { awayScore: aS, homeScore: hS };
+    const led = (v, cls = "") => `<span class="gc-led ${cls}">${esc(String(v))}</span>`;
+    const tm = (id, ab, side, won) => `<div class="gc-t ${side}${won ? " won" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<span class="gc-tn"><b>${esc(ab)}</b></span></div>`;
+    const board = `<div class="gc-cab vs fin" style="--ac:${aCol};--hc:${hCol}"><div class="gc-row">${tm(game.awayId, A, "a", aS > hS)}${led(aS, "sc" + (aS > hS ? " win" : " lose"))}<div class="gc-clock"><b class="gc-final">FINAL</b>${/OT/i.test(String(lv.detail || "")) ? `<i class="gc-per">${esc(shortStatus(lv.detail).replace(/^FINAL\s*/i, "") || "OT")}</i>` : ""}</div>${led(hS, "sc" + (hS > aS ? " win" : " lose"))}${tm(game.homeId, H, "h", hS > aS)}</div></div>`;
+    // How the sealed line settled.
+    const out = resultOutcome(game, res);
+    const favAb = game.favorite === game.away ? A : H, dogAb = game.favorite === game.away ? H : A;
+    const favMargin = (game.favorite === game.home ? hS - aS : aS - hS);
+    const cover = out?.push ? `PUSH ON ${favAb} -${game.spread}` : favMargin > Number(game.spread) ? `${favAb} -${game.spread} COVERED BY ${Math.abs(favMargin - game.spread)}` : `${dogAb} +${game.spread} COVERED BY ${Math.abs(favMargin - game.spread)}`;
+    const upset = favMargin < 0 ? `<em>UPSET · ${esc(dogAb)} WON OUTRIGHT</em>` : "";
+    const lineHtml = `<div class="gc-settle"><span class="gc-settle-h">THE LINE</span><b>${esc(cover)}</b>${upset}</div>`;
+    // Your pick and the room.
+    const cloudAll = lastGoodCloudPicks || {};
+    const pickOf = (name) => sanitizePicks(cloudAll[name]?.picks || {})[game.id] || (name === currentManager ? getManagerState(name).picks?.[game.id] : null) || null;
+    const termsOf = (pk) => pk.mode === "SU" ? "TO WIN" : `${pk.team === game.favorite ? "-" : "+"}${game.spread}`;
+    const abOf = (pk) => pk.team === game.away ? A : H;
+    const mine = currentManager ? pickOf(currentManager) : null;
+    let mineHtml = "";
+    if (mine) {
+      const pts = scorePick(game, mine, res), pushed = mine.mode === "ATS" && out?.push;
+      const st = pushed ? "push" : pts > 0 ? "up" : "down";
+      mineHtml = `<div class="gc-mine ${st}"><span class="gc-mtag">YOUR PICK</span>${lg(mine.team === game.away ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(abOf(mine))} ${esc(termsOf(mine))}</b><span class="gc-msay"><i></i>${pushed ? "PUSH · 0 PT" : pts > 0 ? `CASHED · +${pts} PT${pts === 1 ? "" : "S"}` : "MISSED · 0 PT"}</span></div>`;
+    }
+    const room = MANAGERS.map((name) => ({ name, pick: pickOf(name) })).filter((r) => r.pick).map((r) => { const pts = scorePick(game, r.pick, res); const pushed = r.pick.mode === "ATS" && out?.push; return { ...r, pts, state: pushed ? "push" : pts > 0 ? "up" : "down" }; });
+    let roomHtml = "";
+    if (room.length) {
+      const idx = (n) => MANAGERS.indexOf(n);
+      const chip = (r) => { const accent = AVATAR_COLORS[(idx(r.name) >= 0 ? idx(r.name) : 0) % AVATAR_COLORS.length]; const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : "0"}</i></li>`; };
+      const up = room.filter((r) => r.state === "up").sort((x, y) => y.pts - x.pts), down = room.filter((r) => r.state === "down"), push = room.filter((r) => r.state === "push");
+      const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
+      roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
+    }
+    // Top performers: this game's leaders from ESPN, one row per category.
+    const lb = Array.isArray(summaryRaw?.leaders) ? summaryRaw.leaders : [];
+    const topOf = (teamId) => { const blk = lb.find((x) => Number(x?.team?.id) === Number(teamId)); return (blk?.leaders || []).map((cat) => { const t = cat?.leaders?.[0]; return t ? { cat: String(cat.displayName || cat.name || "").replace(/ ?Yards$/i, "").toUpperCase(), name: t.athlete?.displayName || t.athlete?.shortName || "", shot: t.athlete?.headshot?.href || null, line: t.displayValue || "" } : null; }).filter((x) => x && x.name); };
+    const tA = topOf(game.awayId), tH = topOf(game.homeId);
+    const cats = [...new Set([...tA, ...tH].map((x) => x.cat))].slice(0, 3);
+    const perf = (x, side) => x ? `<div class="gc-pf ${side}">${x.shot ? `<img class="gc-pfshot" src="${esc(x.shot)}" alt="" loading="lazy">` : lg(side === "a" ? game.awayId : game.homeId, "gc-pfshot")}<div><b>${esc(x.name)}</b><span>${esc(x.line)}</span></div></div>` : `<div class="gc-pf ${side} none">-</div>`;
+    const perfHtml = cats.length ? `<div class="gc-h">TOP PERFORMERS</div><div class="gc-perf">${cats.map((c) => `<div class="gc-pfrow"><span class="gc-pfcat">${esc(c)}</span>${perf(tA.find((x) => x.cat === c), "a")}${perf(tH.find((x) => x.cat === c), "h")}</div>`).join("")}</div>` : "";
+    // Recap: ESPN's article once it is the recap (filed after kickoff).
+    const art = summaryRaw?.article || null;
+    const kick = Date.parse(game.kickoff || "");
+    const isRecap = art && (/recap/i.test(String(art.type || "")) || (art.published && Number.isFinite(kick) && Date.parse(art.published) > kick));
+    const strip = (h) => String(h || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;/g, "'").replace(/&quot;|&ldquo;|&rdquo;/g, '"').replace(/\s+/g, " ").trim();
+    const paras = isRecap && art.story ? String(art.story).split(/<\/p>|\n\n/).map(strip).filter((t) => t.length > 40).slice(0, 3) : [];
+    const recapHtml = isRecap && (art.headline || paras.length) ? `<div class="gc-h">RECAP</div><div class="gc-recap">${art.headline ? `<b>${esc(art.headline)}</b>` : ""}${paras.map((t) => `<p>${esc(t)}</p>`).join("")}</div>` : "";
+    // Scoring plays, cleaned, newest last for a read top to bottom.
+    const spl = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
+    const clean = (t) => String(t || "").replace(/\s*\([^)]*\)\s*$/, "").replace(/\s+for\s+(\d+)\s+yds?/i, ", $1 yds").replace(/,?\s*for a TD\b/i, " TOUCHDOWN").replace(/\s{2,}/g, " ").trim();
+    const gold = (h) => h.replace(/\b(TOUCHDOWN|Field Goal|FG GOOD|SAFETY)\b/g, '<b class="gc-score">$1</b>');
+    const spHtml = spl.length ? `<div class="gc-h">SCORING</div><ul class="lv-sp">${spl.map((q) => { const tid = q.team?.id != null ? Number(q.team.id) : null; return `<li>${tid ? lg(tid, "lv-splogo") : ""}<span class="lv-spq">Q${q.period?.number ?? "?"} ${esc(q.clock?.displayValue || "")}</span><span class="lv-sptxt">${gold(esc(clean(q.text || q.type?.text || "")))}</span><b class="lv-spsc">${q.awayScore ?? ""}-${q.homeScore ?? ""}</b></li>`; }).join("")}</ul>` : "";
+    return `<div class="gc gc-fin">${board}${lineHtml}${mineHtml}${roomHtml}${perfHtml}${recapHtml}${spHtml}</div>`;
+  };
   // The live gamecast: scoreboard strip, a field with both end zones, the
   // ball at the spot with the offence's logo over it and the line to
   // gain, down and distance, then the last three plays and the scoring.
@@ -4288,7 +4352,11 @@ async function openInsights(gameId) {
   // 2. Line: OPENED -> SEALED -> NOW, each step saying how far and toward
   // whom, then one plain sentence. Values are signed from the sealed
   // favourite: positive means they are favoured by that much.
-  modal.classList.toggle("gc-mode", liveGame());
+  modal.classList.toggle("gc-mode", liveGame() || finalGame());
+  if (finalGame()) {
+    body.innerHTML = finalHtml() + links() + `<div class="ins-foot">Final from ESPN.</div>`;
+    return;
+  }
   if (liveGame()) {
     body.innerHTML = gamecastHtml() + links() + `<div class="ins-foot">Live from ESPN. Refreshes every 8 seconds.</div>`;
     const sliders = body.querySelectorAll(".gc-slide[data-to]");
@@ -4628,7 +4696,7 @@ async function openInsights(gameId) {
   land(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), ([a, h]) => { awayNews = a; homeNews = h; }, "news");
   const eventIdNow = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
   const summaryP = (eventIdNow ? Promise.resolve(eventIdNow) : fetchLiveScores().catch(() => {}).then(() => latestLive[gameId]?.eventId || null))
-    .then((id) => fetchEspnSummary(id));
+    .then((id) => fetchEspnSummary(id, !!(latestLive[gameId]?.found && (latestLive[gameId].completed || latestLive[gameId].state === "in"))));
   land(summaryP, (v) => { summaryRaw = v; }, "summary");
   land(withTimeout(summaryP.then((raw) => fetchAiPreview(game, parseSummaryClient(raw, game))), 15000, null), (v) => { aiPv = v; }, "ai");
 }

@@ -4632,3 +4632,31 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rd-wp-line b { color: #fff; font-weight: 800; }
 .rd-wp-line b.up { color: var(--neon-green); }
 .rd-wp-line b.dn { color: var(--neon-pink); }
+
+/* ===== FINAL takeover ===== */
+.gc-fin .gc-cab.vs .gc-led.sc.lose { color: rgba(255, 176, 0, .45); text-shadow: none; }
+.gc-fin .gc-cab.vs .gc-led.sc.win { color: #ffd23f; text-shadow: 0 0 10px rgba(255, 210, 63, .9); }
+.gc-fin .gc-cab.vs .gc-clock { border-color: #ffe45e; box-shadow: 0 0 12px rgba(255, 228, 94, .45), inset 0 0 10px rgba(0, 0, 0, .9); }
+.gc-final { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #ffe45e; text-shadow: 0 0 8px rgba(255, 228, 94, .8); letter-spacing: .06em; }
+.gc-fin .gc-t:not(.won) img.gc-tlogo { opacity: .55; filter: grayscale(.4); }
+.gc-settle { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(255, 228, 94, .3); background: rgba(255, 228, 94, .04); }
+.gc-settle-h { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .12em; color: var(--text-dim); }
+.gc-settle b { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #ffe45e; }
+.gc-settle em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: #fff; background: #ff2079; padding: 3px 5px; box-shadow: 0 0 8px rgba(255, 32, 121, .6); }
+/* Top performers: category, then each team's leader with a headshot */
+.gc-perf { display: flex; flex-direction: column; gap: 6px; }
+.gc-pfrow { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; position: relative; padding-top: 12px; }
+.gc-pfcat { position: absolute; top: 0; left: 0; right: 0; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .12em; color: var(--text-dim); }
+.gc-pf { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 6px 7px; border-radius: 8px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .08); }
+.gc-pf.h { flex-direction: row-reverse; text-align: right; }
+.gc-pf.none { justify-content: center; color: var(--text-dim); }
+.gc-pf img.gc-pfshot { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #0a0414; border: 1px solid rgba(255, 255, 255, .15); flex: 0 0 auto; }
+.gc-pf > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gc-pf b { font-size: 11px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gc-pf span { font-size: 10px; line-height: 1.3; color: var(--text-meta); }
+/* Recap */
+.gc-recap { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .08); background: rgba(255, 255, 255, .02); }
+.gc-recap b { font-size: 13px; line-height: 1.3; color: #fff; }
+.gc-recap p { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--text-meta); }
+.gc-fin .lv-sptxt { white-space: normal; overflow: visible; }
+.gc-fin .lv-sptxt b.gc-score { color: #ffd23f; font-weight: inherit; }
