@@ -4058,6 +4058,7 @@ async function openInsights(gameId) {
       .replace(/#\d{1,2}\s+/g, "")
       .replace(/\b([A-Z][a-z]+)(\d{1,2})\b/g, (m0, w, n) => `${mascot[w.toLowerCase()] || w} ${n}`)
       .replace(/\bthe\s+[A-Z&.]{2,6}\s+00\b/g, "the end zone")
+      .replace(/\.?\s*The previous play is under (?:automatic )?review[\s\S]*?(CALL (?:OVERTURNED|STANDS|CONFIRMED))[\s\S]*$/i, " · $1")
       .replace(/,?\s*clock\s+\d{1,2}:\d{2}/gi, "")
       .replace(/(TOUCHDOWN[^.]*?),?\s*1ST DOWN/i, "$1")
       .replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").trim();
@@ -4068,6 +4069,10 @@ async function openInsights(gameId) {
     const badgeOf = (p) => {
       if (isMarker(p)) return null;
       const t = `${p.type?.text || ""} ${p.text || ""}`;
+      // Badges only for points: a touchdown or a made field goal.
+      if (/touchdown|for a td\b/i.test(t) && !/overturned[^.]*no touchdown/i.test(t)) return ["TD", "td"];
+      if (/field goal.*\bgood\b|\bfg\b.*good/i.test(t) && !/no good|blocked|missed/i.test(t)) return ["FG", "td"];
+      return null;
       if (/touchdown|for a td\b/i.test(t)) return ["TD", "td"];
       if (/intercept/i.test(t)) return ["INT", "to"];
       if (/fumble/i.test(t) && /recover/i.test(t) && !/recovered by [^,]*\b(same|own)\b/i.test(t)) return ["FUM", "to"];
