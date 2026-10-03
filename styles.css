@@ -4856,3 +4856,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rank-detail > .rd-wp:first-child { margin: 0 0 8px; padding: 2px 0 8px; border-top: 0; border-bottom: 1px solid rgba(5, 217, 232, .35); }
 .h2h-td.live-hit b, .h2h-td.live-miss b { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 14px; min-width: 20px; padding: 0 4px; border-width: 1px; line-height: 1; justify-self: center; }
 #me-pill { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+/* Avatar editor: background colour palette. */
+.avatar-palette { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; width: 100%; max-width: 210px; margin: 10px auto 2px; }
+.av-sw { aspect-ratio: 1; width: 100%; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .15); background: var(--c); padding: 0; cursor: pointer; }
+.av-sw.on { border-color: #fff; box-shadow: 0 0 0 2px var(--c), 0 0 10px var(--c); }
+.av-sw.def { background: repeating-linear-gradient(135deg, var(--c) 0 5px, rgba(0, 0, 0, .35) 5px 8px); }

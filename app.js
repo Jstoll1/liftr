@@ -129,6 +129,21 @@ const MANAGERS = [
 ];
 
 const AVATAR_COLORS = ["#ff2079", "#05d9e8", "#c13cff", "#ffe45e", "#39ff88"];
+// Full palette for the avatar editor: neon, warm, cool, deep and neutral.
+const AVATAR_PALETTE = [
+  "#ff2079", "#ff5c8a", "#ff3b3b", "#ff7a1a", "#ffb000", "#ffe45e",
+  "#c6ff3d", "#39ff88", "#00c48c", "#05d9e8", "#3da5ff", "#2f5bff",
+  "#7b5cff", "#c13cff", "#ff4fd8", "#b5179e", "#8b1e3f", "#7a4b2a",
+  "#1f7a4d", "#14506e", "#2b2d6e", "#ffffff", "#9aa0b5", "#3a3a4a",
+];
+// A player's avatar colour: their own pick if they set one, else the
+// roster default by position.
+function accentFor(name) {
+  const own = typeof avatarColors !== "undefined" && avatarColors[name];
+  if (own) return own;
+  const i = MANAGERS.indexOf(name);
+  return AVATAR_COLORS[(i >= 0 ? i : 0) % AVATAR_COLORS.length];
+}
 
 // What a manager is called on screen. The key stays what every stored
 // pick, ledger row, login and vote hangs off; only the label changes.
@@ -568,7 +583,7 @@ function updateMePill() {
   const me = loadMe();
   if (!me) { pill.classList.add("hidden"); return; }
   const idx = MANAGERS.indexOf(me);
-  const accent = AVATAR_COLORS[(idx >= 0 ? idx : 0) % AVATAR_COLORS.length];
+  const accent = accentFor(me);
   const av = (typeof avatarOverrides !== "undefined" && avatarOverrides[me]) || shown(me)[0];
   pill.innerHTML = `<span class="me-pill-avatar" style="--accent:${accent}">${av}</span><span class="me-pill-name">${shown(me).toUpperCase()}</span>`;
   pill.classList.remove("hidden");
@@ -1177,7 +1192,7 @@ bottomNav.addEventListener("click", () => {
     timer = setTimeout(() => {
       fired = true;
       const idx = MANAGERS.indexOf(me);
-      openAvatarEditor(me, AVATAR_COLORS[(idx >= 0 ? idx : 0) % AVATAR_COLORS.length]);
+      openAvatarEditor(me, accentFor(me));
     }, 550);
   });
   ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => pill.addEventListener(ev, cancel));
@@ -1282,52 +1297,68 @@ async function fetchAvatars() {
     return null;
   }
 }
+async function fetchAvatarsAll() {
+  if (!WORKER_URL) return null;
+  try {
+    const res = await fetch(`${WORKER_URL}/avatars`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return { avatars: data.avatars || {}, colors: data.colors || {} };
+  } catch {
+    return null;
+  }
+}
 
 // Changes that have not reached the Worker yet, kept on the phone and
 // retried on the next sync so a save made offline still lands everywhere.
-// { manager: emoji } to set, { manager: null } to reset.
-const AVATAR_PENDING_KEY = "brochiefs_avatars_pending_v1";
+// { manager: { emoji?, color? } }, where null clears that field.
+const AVATAR_PENDING_KEY = "brochiefs_avatars_pending_v2";
+const AVATAR_COLOR_KEY = "brochiefs_avatar_colors_v1";
+let avatarColors = (() => { try { return JSON.parse(localStorage.getItem(AVATAR_COLOR_KEY)) || {}; } catch { return {}; } })();
 function loadPendingAvatars() { try { return JSON.parse(localStorage.getItem(AVATAR_PENDING_KEY)) || {}; } catch { return {}; } }
 function savePendingAvatars(p) { try { localStorage.setItem(AVATAR_PENDING_KEY, JSON.stringify(p)); } catch { /* private mode */ } }
+function saveAvatarColors() { try { localStorage.setItem(AVATAR_COLOR_KEY, JSON.stringify(avatarColors)); } catch { /* private mode */ } }
 
-async function sendAvatar(manager, emoji) {
+async function sendAvatar(manager, patch) {
   if (!WORKER_URL) return false;
   try {
-    const res = emoji == null
-      ? await fetch(`${WORKER_URL}/avatars?manager=${encodeURIComponent(manager)}`, { method: "DELETE" })
-      : await fetch(`${WORKER_URL}/avatars`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manager, emoji }) });
+    const res = await fetch(`${WORKER_URL}/avatars`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manager, ...patch }) });
     return res.ok;
   } catch {
     return false;
   }
 }
-async function queueAvatar(manager, emoji) {
-  const pending = loadPendingAvatars();
-  pending[manager] = emoji;
-  savePendingAvatars(pending);
-  if (await sendAvatar(manager, emoji)) {
+async function flushAvatar(manager) {
+  const patch = loadPendingAvatars()[manager];
+  if (!patch) return;
+  const sent = JSON.stringify(patch);
+  if (await sendAvatar(manager, patch)) {
     const now = loadPendingAvatars();
-    if (now[manager] === emoji) { delete now[manager]; savePendingAvatars(now); }
+    if (JSON.stringify(now[manager]) === sent) { delete now[manager]; savePendingAvatars(now); }
   }
 }
-const pushAvatar = (manager, emoji) => queueAvatar(manager, emoji);
-const resetAvatar = (manager) => queueAvatar(manager, null);
+async function queueAvatar(manager, patch) {
+  const pending = loadPendingAvatars();
+  pending[manager] = { ...(pending[manager] || {}), ...patch };
+  savePendingAvatars(pending);
+  await flushAvatar(manager);
+}
 
 // The Worker is the source of truth: what it holds wins, so a reset on one
-// phone clears the emoji on every other. Unsent local changes ride on top
-// until they go through.
+// phone clears it on every other. Unsent local changes ride on top until
+// they go through.
 async function syncAvatars() {
-  const pending = loadPendingAvatars();
-  for (const [m, e] of Object.entries(pending)) {
-    if (await sendAvatar(m, e)) { const now = loadPendingAvatars(); if (now[m] === e) { delete now[m]; savePendingAvatars(now); } }
-  }
-  const cloud = await fetchAvatars();
+  for (const m of Object.keys(loadPendingAvatars())) await flushAvatar(m);
+  const cloud = await fetchAvatarsAll();
   if (!cloud) return false;
-  const merged = { ...cloud };
-  for (const [m, e] of Object.entries(loadPendingAvatars())) { if (e == null) delete merged[m]; else merged[m] = e; }
-  const changed = JSON.stringify(merged) !== JSON.stringify(avatarOverrides);
-  avatarOverrides = merged;
-  saveAvatars(avatarOverrides);
+  const emojis = { ...cloud.avatars }, colors = { ...cloud.colors };
+  for (const [m, p] of Object.entries(loadPendingAvatars())) {
+    if ("emoji" in p) { if (p.emoji == null) delete emojis[m]; else emojis[m] = p.emoji; }
+    if ("color" in p) { if (p.color == null) delete colors[m]; else colors[m] = p.color; }
+  }
+  const changed = JSON.stringify([emojis, colors]) !== JSON.stringify([avatarOverrides, avatarColors]);
+  avatarOverrides = emojis; avatarColors = colors;
+  saveAvatars(avatarOverrides); saveAvatarColors();
   if (changed) {
     updateMePill();
     if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
@@ -1359,7 +1390,7 @@ async function renderManagerPicker() {
 
     const isChamp = name === "Jake";
     const isMe = name === currentManager;
-    const accent = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    const accent = accentFor(name);
     const avatarContent = avatarOverrides[name] || shown(name)[0];
 
     const btn = document.createElement("button");
@@ -1423,8 +1454,38 @@ function openAvatarEditor(name, accent) {
   avatarEditPreview.textContent = current || shown(name)[0];
   avatarEditPreview.style.setProperty("--accent", accent);
   avatarEmojiInput.value = current;
+  editingColor = avatarColors[name] || null;
+  renderAvatarPalette(accent);
   avatarModal.classList.remove("hidden");
   avatarEmojiInput.focus();
+}
+
+// Background colour picker under the emoji field. null = roster default.
+let editingColor = null;
+function renderAvatarPalette(accent) {
+  let pal = document.getElementById("avatar-palette");
+  if (!pal) {
+    pal = document.createElement("div");
+    pal.id = "avatar-palette";
+    pal.className = "avatar-palette";
+    avatarEmojiInput.insertAdjacentElement("afterend", pal);
+    pal.addEventListener("click", (e) => {
+      const sw = e.target.closest("[data-color]");
+      if (!sw) return;
+      editingColor = sw.dataset.color || null;
+      const show = editingColor || accentDefault(editingAvatarManager);
+      avatarEditPreview.style.setProperty("--accent", show);
+      pal.querySelectorAll("[data-color]").forEach((b) => b.classList.toggle("on", (b.dataset.color || null) === editingColor));
+    });
+  }
+  const def = accentDefault(editingAvatarManager);
+  pal.innerHTML = `<button type="button" class="av-sw def${editingColor ? "" : " on"}" data-color="" style="--c:${def}" title="Default" aria-label="Default colour"></button>` +
+    AVATAR_PALETTE.map((c) => `<button type="button" class="av-sw${editingColor === c ? " on" : ""}" data-color="${c}" style="--c:${c}" aria-label="${c}"></button>`).join("");
+  avatarEditPreview.style.setProperty("--accent", editingColor || def || accent);
+}
+function accentDefault(name) {
+  const i = MANAGERS.indexOf(name);
+  return AVATAR_COLORS[(i >= 0 ? i : 0) % AVATAR_COLORS.length];
 }
 
 function closeAvatarEditor() {
@@ -1443,11 +1504,15 @@ avatarEmojiInput.addEventListener("input", () => {
 avatarSaveBtn.addEventListener("click", async () => {
   if (!editingAvatarManager) return;
   const val = avatarEmojiInput.value.trim();
-  if (val) {
-    avatarOverrides[editingAvatarManager] = val;
-    saveAvatars(avatarOverrides);
-    await pushAvatar(editingAvatarManager, val);
+  const who = editingAvatarManager;
+  const patch = {};
+  if (val && val !== avatarOverrides[who]) { avatarOverrides[who] = val; saveAvatars(avatarOverrides); patch.emoji = val; }
+  if ((editingColor || null) !== (avatarColors[who] || null)) {
+    if (editingColor) avatarColors[who] = editingColor; else delete avatarColors[who];
+    saveAvatarColors();
+    patch.color = editingColor || null;
   }
+  if (Object.keys(patch).length) await queueAvatar(who, patch);
   closeAvatarEditor();
   renderManagerPicker();
   updateMePill();
@@ -1455,9 +1520,10 @@ avatarSaveBtn.addEventListener("click", async () => {
 
 avatarResetBtn.addEventListener("click", async () => {
   if (!editingAvatarManager) return;
-  delete avatarOverrides[editingAvatarManager];
-  saveAvatars(avatarOverrides);
-  await resetAvatar(editingAvatarManager);
+  const who = editingAvatarManager;
+  delete avatarOverrides[who]; delete avatarColors[who];
+  saveAvatars(avatarOverrides); saveAvatarColors();
+  await queueAvatar(who, { emoji: null, color: null });
   closeAvatarEditor();
   renderManagerPicker();
   updateMePill();
@@ -1475,7 +1541,7 @@ let pendingIdentity = null;
 let openClaimPrompt = function () {
   if (loadMe() || claimSkippedThisVisit) return false;
   claimGrid.innerHTML = MANAGERS.map((name, idx) => {
-    const accent = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+    const accent = accentFor(name);
     const av = avatarOverrides[name] || shown(name)[0];
     return `<button type="button" class="claim-btn" data-name="${name}"><span class="claim-avatar" style="--accent:${accent}">${av}</span>${shown(name)}</button>`;
   }).join("");
@@ -1499,7 +1565,7 @@ function openOwnerPicker() {
   document.getElementById("claim-subtext").textContent = me ? `This phone is ${me}. Tap a name to switch.` : "Tap your name.";
   claimSkipBtn.textContent = "Cancel";
   claimGrid.innerHTML = MANAGERS.map((name, idx) => {
-    const accent = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+    const accent = accentFor(name);
     const av = avatarOverrides[name] || shown(name)[0];
     return `<button type="button" class="claim-btn${name === me ? " current" : ""}" data-name="${name}"><span class="claim-avatar" style="--accent:${accent}">${av}</span>${shown(name)}${name === me ? '<span class="claim-you">YOU</span>' : ""}</button>`;
   }).join("");
@@ -2256,7 +2322,7 @@ function namesListHtml(names) {
 function nameChips(names) {
   return names.map((n) => {
     const idx = MANAGERS.indexOf(n);
-    const accent = AVATAR_COLORS[(idx >= 0 ? idx : 0) % AVATAR_COLORS.length];
+    const accent = accentFor(n);
     const av = avatarOverrides[n] || shown(n)[0];
     return `<span class="pick-chip${n === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
   }).join("");
@@ -4209,7 +4275,7 @@ async function openInsights(gameId) {
     let roomHtml = "";
     if (room.length) {
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = AVATAR_COLORS[(idx(r.name) >= 0 ? idx(r.name) : 0) % AVATAR_COLORS.length]; const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = room.filter((r) => r.state === "up").sort((x, y) => y.pts - x.pts), down = room.filter((r) => r.state === "down"), push = room.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -4437,7 +4503,7 @@ async function openInsights(gameId) {
         return { ...r, side, terms, state, worth: pointValue(game, r.pick.team, r.pick.mode) };
       });
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = AVATAR_COLORS[(idx(r.name) >= 0 ? idx(r.name) : 0) % AVATAR_COLORS.length]; const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = rows.filter((r) => r.state === "up"), down = rows.filter((r) => r.state === "down"), push = rows.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;

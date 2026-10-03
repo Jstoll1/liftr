@@ -2038,10 +2038,11 @@ async function handleAvatars(request, env, corsHeaders, url) {
   if (request.method === "GET") {
     try {
       const entries = await Promise.all(
-        PICKS_MANAGERS.map(async (manager) => [manager, await env.LIFTR_KV.get(`avatar:${manager}`)])
+        PICKS_MANAGERS.map(async (manager) => [manager, await env.LIFTR_KV.get(`avatar:${manager}`), await env.LIFTR_KV.get(`avatarColor:${manager}`)])
       );
-      const avatars = Object.fromEntries(entries.filter(([, value]) => value));
-      return json({ avatars }, 200, corsHeaders);
+      const avatars = Object.fromEntries(entries.filter(([, value]) => value).map(([m, v]) => [m, v]));
+      const colors = Object.fromEntries(entries.filter(([, , c]) => c).map(([m, , c]) => [m, c]));
+      return json({ avatars, colors }, 200, corsHeaders);
     } catch (err) {
       console.error("Avatars read error", err?.stack || String(err));
       return json({ error: "Read failed" }, 500, corsHeaders);
@@ -2060,10 +2061,23 @@ async function handleAvatars(request, env, corsHeaders, url) {
     if (!PICKS_MANAGERS.includes(manager)) {
       return json({ error: "Invalid or missing manager" }, 400, corsHeaders);
     }
-    if (typeof emoji !== "string" || emoji.length === 0 || emoji.length > 16) {
+    // emoji: a string sets it, null clears it, absent leaves it alone.
+    // color: a #rrggbb sets the avatar background, null clears it.
+    const hasEmoji = "emoji" in (body || {}), hasColor = "color" in (body || {});
+    if (hasEmoji && emoji !== null && (typeof emoji !== "string" || emoji.length === 0 || emoji.length > 16)) {
       return json({ error: "Invalid emoji" }, 400, corsHeaders);
     }
+    const color = body?.color;
+    if (hasColor && color !== null && !/^#[0-9a-f]{6}$/i.test(String(color))) {
+      return json({ error: "Invalid color" }, 400, corsHeaders);
+    }
     try {
+      if (hasColor) {
+        if (color === null) await env.LIFTR_KV.delete(`avatarColor:${manager}`);
+        else await env.LIFTR_KV.put(`avatarColor:${manager}`, color.toLowerCase());
+      }
+      if (!hasEmoji) return json({ ok: true }, 200, corsHeaders);
+      if (emoji === null) { await env.LIFTR_KV.delete(`avatar:${manager}`); return json({ ok: true }, 200, corsHeaders); }
       await env.LIFTR_KV.put(`avatar:${manager}`, emoji);
       return json({ ok: true }, 200, corsHeaders);
     } catch (err) {
