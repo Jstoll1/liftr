@@ -4053,8 +4053,8 @@ async function openInsights(gameId) {
     const favAb = game.favorite === game.away ? A : H, dogAb = game.favorite === game.away ? H : A;
     const favMargin = (game.favorite === game.home ? hS - aS : aS - hS);
     const cover = out?.push ? `PUSH ON ${favAb} -${game.spread}` : favMargin > Number(game.spread) ? `${favAb} -${game.spread} COVERED BY ${Math.abs(favMargin - game.spread)}` : `${dogAb} +${game.spread} COVERED BY ${Math.abs(favMargin - game.spread)}`;
-    const upset = favMargin < 0 ? `<em>UPSET · ${esc(dogAb)} WON OUTRIGHT</em>` : "";
-    const lineHtml = `<div class="gc-settle"><span class="gc-settle-h">THE LINE</span><b>${esc(cover)}</b>${upset}</div>`;
+    const upset = favMargin < 0 ? `<em>UPSET</em>` : "";
+    const lineHtml = `<div class="gc-settle"><b>${esc(cover)}</b>${upset}</div>`;
     // Your pick and the room.
     const cloudAll = lastGoodCloudPicks || {};
     const pickOf = (name) => sanitizePicks(cloudAll[name]?.picks || {})[game.id] || (name === currentManager ? getManagerState(name).picks?.[game.id] : null) || null;

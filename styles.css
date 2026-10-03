@@ -4660,3 +4660,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-recap p { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--text-meta); }
 .gc-fin .lv-sptxt { white-space: normal; overflow: visible; }
 .gc-fin .lv-sptxt b.gc-score { color: #ffd23f; font-weight: inherit; }
+/* Line result on one line: the cover, then a small UPSET tag. */
+.gc-settle { flex-wrap: nowrap; justify-content: center; gap: 8px; padding: 7px 8px; }
+.gc-settle b { white-space: nowrap; font-size: 8px; }
+.gc-settle em { flex: 0 0 auto; font-size: 6px; padding: 3px 5px; }
