@@ -3998,7 +3998,7 @@ async function openInsights(gameId) {
     const per = lv.period ? (lv.period > 4 ? `OT${lv.period > 5 ? lv.period - 4 : ""}` : `Q${lv.period}`) : "";
     const fighter = (id, ab, sc, poss, side, tag) => `<div class="gc-f ${side}${poss ? " poss" : ""}">
         <span class="gc-port">${lg(id, "gc-logo")}</span>
-        <div class="gc-fid"><i class="gc-p">${tag}</i><b>${esc(ab)}</b>${poss ? `<i class="gc-pball" title="Has the ball"></i>` : ""}</div>
+        <div class="gc-fid"><b>${esc(ab)}</b>${poss ? `<i class="gc-pball" title="Has the ball"></i>` : ""}</div>
         ${led(sc, "sc")}
       </div>`;
     const wp = lv.winProb;
