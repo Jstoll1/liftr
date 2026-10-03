@@ -3959,8 +3959,9 @@ async function openInsights(gameId) {
     const sc = summaryRaw?.header?.competitions?.[0]?.competitors || [];
     const colorOf = (id, fb) => { const c = sc.find((x) => Number(x.team?.id) === Number(id))?.team?.color; return c ? `#${c}` : fb || null; };
     const aCol = colorOf(game.awayId, lv.awayColor) || "#05d9e8", hCol = colorOf(game.homeId, lv.homeColor) || "#ff2079";
-    const possA = sit.possessionId != null && Number(sit.possessionId) === Number(game.awayId);
-    const possH = sit.possessionId != null && Number(sit.possessionId) === Number(game.homeId);
+    const atBreak = /^(HALF|END \d)/i.test(shortStatus(lv.detail || "")) || /halftime|end of/i.test(String(lv.detail || ""));
+    const possA = !atBreak && sit.possessionId != null && Number(sit.possessionId) === Number(game.awayId);
+    const possH = !atBreak && sit.possessionId != null && Number(sit.possessionId) === Number(game.homeId);
     // Where the ball is, 0 at the away goal to 100 at the home goal. ESPN's
     // text says "at VT 34" (34 yards from VT's goal); its yardLine number
     // is the same spot counted from the home goal on most feeds, so the
@@ -3982,10 +3983,15 @@ async function openInsights(gameId) {
     const drive = x !== null && toGo !== null ? `<i class="gc-drive" style="left:${pct(Math.min(x, toGo))}%;width:${(Math.abs(toGo - x) * 0.84).toFixed(2)}%"></i>` : "";
     // Midfield: the home team's logo painted on the turf, as at the stadium.
     const mid = `<img class="gc-mid" src="${logoUrl(game.homeId)}" alt="">`;
-    const field = `<div class="gc-stage"><div class="gc-field crt">${mid}
+    // A break in play (halftime, end of a quarter): the last drive's ball
+    // and lines are stale, so the field dims under a banner instead.
+    const st0 = shortStatus(lv.detail || "");
+    const brk = /^(HALF|END \d|END \dH)/i.test(st0) || /halftime|end of/i.test(String(lv.detail || ""));
+    const brkLabel = /half/i.test(st0) || /halftime/i.test(String(lv.detail || "")) ? "HALFTIME" : (st0 || "BREAK");
+    const field = `<div class="gc-stage">${brk ? `<div class="gc-brk"><span>${esc(brkLabel)}</span></div>` : ""}<div class="gc-field crt${brk ? " brk" : ""}">${mid}
       <div class="gc-ez l" style="--tc:${aCol}"><span>${esc(A)}</span></div>
       <div class="gc-ez r" style="--tc:${hCol}"><span>${esc(H)}</span></div>
-      ${ticks}${drive}${gain}${ball}
+      ${ticks}${brk ? "" : drive + gain + ball}
     </div></div>`;
     const status = shortStatus(lv.detail || `Q${lv.period ?? "?"} ${lv.clock ?? ""}`);
     const aS = lv.awayScore ?? 0, hS = lv.homeScore ?? 0;
@@ -4026,7 +4032,12 @@ async function openInsights(gameId) {
       const say = cash === "push" ? "PUSH RIGHT NOW" : cash === "up" ? (mine.mode === "SU" ? `WINNING BY ${by}` : `COVERING BY ${by}`) : (mine.mode === "SU" ? (margin === 0 ? "TIED" : `DOWN ${by}`) : `NEEDS ${by} MORE`);
       mineHtml = `<div class="gc-mine ${cash}"><span class="gc-mtag">YOUR PICK</span>${lg(mySide === "away" ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(mySide === "away" ? A : H)} ${esc(terms)}</b><span class="gc-mpts">${worth} PT</span><span class="gc-msay"><i></i>${esc(say)}</span></div>`;
     }
-    const ddLine = dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || "Between plays")}</b></div>`;
+    // At a break, a mini box score replaces down and distance.
+    const bsTeams = summaryRaw?.boxscore?.teams || [];
+    const stat = (id, ...names) => { const t = bsTeams.find((x) => Number(x.team?.id) === Number(id)); const st = (t?.statistics || []).find((x) => names.includes(x.name)); return st?.displayValue ?? null; };
+    const bsRow = (label, ...names) => { const a = stat(game.awayId, ...names), h = stat(game.homeId, ...names); return a == null && h == null ? "" : `<div class="gc-bs-r"><b>${esc(a ?? "-")}</b><span>${label}</span><b>${esc(h ?? "-")}</b></div>`; };
+    const boxHtml = brk ? (() => { const rows = bsRow("TOTAL YARDS", "totalYards") + bsRow("PASSING", "netPassingYards", "passingYards") + bsRow("RUSHING", "rushingYards") + bsRow("TURNOVERS", "turnovers") + bsRow("POSSESSION", "possessionTime"); return rows ? `<div class="gc-bs"><div class="gc-bs-h"><span>${esc(A)}</span><span>${esc(brkLabel === "HALFTIME" ? "FIRST HALF" : "SO FAR")}</span><span>${esc(H)}</span></div>${rows}</div>` : ""; })() : "";
+    const ddLine = brk ? boxHtml : dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || "Between plays")}</b></div>`;
     // Last three plays: the current drive first, the previous drive if the
     // current one is too short, else the scoreboard's last play.
     const drives = summaryRaw?.drives || {};
@@ -4053,7 +4064,7 @@ async function openInsights(gameId) {
     // Quarter ends, timeouts and the like are markers, not plays: no badge.
     const isMarker = (p) => /^(end of|end quarter|end period|end of half|end of game|timeout|two-minute|official timeout|kickoff\b.*coin)/i.test(String(p.text || "").trim()) || /end period|end of half|timeout|end of game|coin toss/i.test(p.type?.text || "");
     // The scoring word in a play, gold, bold and underlined.
-    const hiScore = (h) => h.replace(/\b(TOUCHDOWN|touchdown|for a TD|FIELD GOAL GOOD|field goal is good|FG GOOD|Field Goal GOOD|SAFETY)\b/g, '<b class="gc-score">$1</b>');
+    const hiScore = (h) => h.replace(/\b(TOUCHDOWN|touchdown|for a TD|FIELD GOAL GOOD|field goal is good|FG GOOD|Field Goal GOOD|SAFETY|yd FG GOOD)\b/g, '<b class="gc-score">$1</b>');
     const badgeOf = (p) => {
       if (isMarker(p)) return null;
       const t = `${p.type?.text || ""} ${p.text || ""}`;
@@ -4062,6 +4073,8 @@ async function openInsights(gameId) {
       if (/fumble/i.test(t) && /recover/i.test(t) && !/recovered by [^,]*\b(same|own)\b/i.test(t)) return ["FUM", "to"];
       if (/field goal.*\bgood\b|\bfg\b.*good|kick is good/i.test(t) && !/extra point|kick\)/i.test(t)) return ["FG", "td"];
       if (/no good|blocked|missed/i.test(t) && /field goal/i.test(t)) return ["NO GOOD", "to"];
+      if (/touchback/i.test(t)) return ["TB", "dim"];
+      if (/kickoff|kicks off/i.test(t)) return ["KO", "dim"];
       if (/\bpunt/i.test(t)) return ["PUNT", "dim"];
       if (/penalty/i.test(t)) return ["FLAG", "flag"];
       if (/\bsack/i.test(t)) return ["SACK", "to"];
@@ -4085,7 +4098,10 @@ async function openInsights(gameId) {
     void pool;
     const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
-    const spHtml = sp.length ? `<div class="gc-h">SCORING</div><ul class="lv-sp">${sp.slice().reverse().map((q) => { const tid = q.team?.id != null ? Number(q.team.id) : null; return `<li>${tid ? lg(tid, "lv-splogo") : ""}<span class="lv-spq">Q${q.period?.number ?? "?"} ${esc(q.clock?.displayValue || "")}</span><span class="lv-sptxt">${esc(q.text || q.type?.text || "")}</span><b class="lv-spsc">${q.awayScore ?? ""}-${q.homeScore ?? ""}</b></li>`; }).join("")}</ul>` : "";
+    // "M. Heintschel pass to C. Hicks for 22 yds, for a TD (A. Chadha KICK)"
+    // becomes "M. Heintschel pass to C. Hicks, 22 yds TOUCHDOWN".
+    const cleanScore = (t) => String(t || "").replace(/\s*\([^)]*\)\s*$/, "").replace(/\s+for\s+(\d+)\s+yds?/i, ", $1 yds").replace(/,?\s*for a TD\b/i, " TOUCHDOWN").replace(/\bFG GOOD\b/i, "FIELD GOAL GOOD").replace(/\s{2,}/g, " ").trim();
+    const spHtml = sp.length ? `<div class="gc-h">SCORING</div><ul class="lv-sp">${sp.slice().reverse().map((q) => { const tid = q.team?.id != null ? Number(q.team.id) : null; return `<li>${tid ? lg(tid, "lv-splogo") : ""}<span class="lv-spq">Q${q.period?.number ?? "?"} ${esc(q.clock?.displayValue || "")}</span><span class="lv-sptxt">${hiScore(esc(cleanScore(q.text || q.type?.text || "")))}</span><b class="lv-spsc">${q.awayScore ?? ""}-${q.homeScore ?? ""}</b></li>`; }).join("")}</ul>` : "";
     const room = MANAGERS.map((name) => ({ name, pick: pickOf(name) })).filter((r) => r.pick);
     let roomHtml = "";
     if (room.length) {
