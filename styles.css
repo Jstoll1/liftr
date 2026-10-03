@@ -4575,3 +4575,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-cab.vs .gc-live { font-size: 5.5px; }
 .gc-cab.vs .gc-per { font-size: 5.5px; }
 #insights-modal.gc-mode #insights-body { padding-top: 14px; }
+.gc-log li.old3 .gc-ptxt { color: rgba(184, 255, 210, .32); text-shadow: none; }
+.gc-log li.old4 .gc-ptxt { color: rgba(184, 255, 210, .26); text-shadow: none; }
+/* The scoring word in a play: gold, bold, underlined. */
+.gc-log .gc-ptxt b.gc-score { color: #ffd23f; font-weight: 800; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-shadow: 0 0 8px rgba(255, 210, 63, .7); }
+.gc-log li.old1 .gc-ptxt b.gc-score, .gc-log li.old2 .gc-ptxt b.gc-score, .gc-log li.old3 .gc-ptxt b.gc-score, .gc-log li.old4 .gc-ptxt b.gc-score { color: rgba(255, 210, 63, .75); text-shadow: none; }

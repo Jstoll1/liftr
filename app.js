@@ -4031,7 +4031,10 @@ async function openInsights(gameId) {
     // current one is too short, else the scoreboard's last play.
     const drives = summaryRaw?.drives || {};
     const pool = [...(drives.current?.plays || []), ...(drives.previous?.length ? drives.previous[drives.previous.length - 1].plays || [] : [])];
-    const ordered = [...(drives.current?.plays || [])].reverse().concat([...(drives.previous?.length ? drives.previous[drives.previous.length - 1].plays || [] : [])].reverse());
+    // Newest first: the current drive, then earlier drives back as far as
+    // it takes to fill the log.
+    const prevDrives = Array.isArray(drives.previous) ? drives.previous : [];
+    const ordered = [...(drives.current?.plays || [])].reverse().concat(...prevDrives.slice(-4).reverse().map((d) => [...(d.plays || [])].reverse()));
     // ESPN's play text carries the clock, the formation, jersey numbers,
     // the tacklers and mascot-glued yard lines ("Hokies49"). Strip it to
     // the play itself and turn mascots into the abbreviations on screen.
@@ -4043,9 +4046,14 @@ async function openInsights(gameId) {
       .replace(/\s*\([^)]*#\d[^)]*\)/g, "")
       .replace(/#\d{1,2}\s+/g, "")
       .replace(/\b([A-Z][a-z]+)(\d{1,2})\b/g, (m0, w, n) => `${mascot[w.toLowerCase()] || w} ${n}`)
+      .replace(/\bthe\s+[A-Z&.]{2,6}\s+00\b/g, "the end zone")
+      .replace(/,?\s*clock\s+\d{1,2}:\d{2}/gi, "")
+      .replace(/(TOUCHDOWN[^.]*?),?\s*1ST DOWN/i, "$1")
       .replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").trim();
     // Quarter ends, timeouts and the like are markers, not plays: no badge.
     const isMarker = (p) => /^(end of|end quarter|end period|end of half|end of game|timeout|two-minute|official timeout|kickoff\b.*coin)/i.test(String(p.text || "").trim()) || /end period|end of half|timeout|end of game|coin toss/i.test(p.type?.text || "");
+    // The scoring word in a play, gold, bold and underlined.
+    const hiScore = (h) => h.replace(/\b(TOUCHDOWN|touchdown|for a TD|FIELD GOAL GOOD|field goal is good|FG GOOD|Field Goal GOOD|SAFETY)\b/g, '<b class="gc-score">$1</b>');
     const badgeOf = (p) => {
       if (isMarker(p)) return null;
       const t = `${p.type?.text || ""} ${p.text || ""}`;
@@ -4067,13 +4075,13 @@ async function openInsights(gameId) {
     // The current and previous drive can share a play (a kickoff, a score),
     // so drop repeats before taking three.
     const seenP = new Set();
-    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, 3).map((p) => ({ key: p.id || p.text, text: tidy(p.text), when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
+    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, 5).map((p) => ({ key: p.id || p.text, text: tidy(p.text), when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
     if (!plays.length && sit.lastPlay) plays = [{ key: sit.lastPlay, text: tidy(sit.lastPlay), when: "", dd: "", tid: sit.lastPlayTeamId, badge: null }];
     // The newest play types itself in once, the first time it is seen.
     const seen = (window.__gcSeen = window.__gcSeen || {});
     const fresh = plays[0] && seen[gameId] !== plays[0].key;
     if (plays[0]) seen[gameId] = plays[0].key;
-    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p, i) => p.marker ? `<li class="gc-mark"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${p.tid ? lg(p.tid, "gc-plogo") : ""}${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.badge ? `<b class="gc-badge ${p.badge[1]}">${esc(p.badge[0])}</b>` : ""}</span><span class="gc-ptxt">${esc(p.text)}</span></div></li>`).join("")}</ol></div>` : "";
+    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p, i) => p.marker ? `<li class="gc-mark"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${p.tid ? lg(p.tid, "gc-plogo") : ""}${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.badge ? `<b class="gc-badge ${p.badge[1]}">${esc(p.badge[0])}</b>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
     const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
@@ -4151,9 +4159,9 @@ async function openInsights(gameId) {
     // renders the same on every browser (Safari never ran the CSS version).
     const tp = body.querySelector(".gc-log li.type .gc-ptxt");
     if (tp) {
-      const full = tp.textContent; tp.textContent = ""; tp.classList.add("typing");
+      const full = tp.textContent, html = tp.innerHTML; tp.textContent = ""; tp.classList.add("typing");
       let n = 0; const step = Math.max(1, Math.round(full.length / 45));
-      const t = setInterval(() => { n += step; tp.textContent = full.slice(0, n); if (n >= full.length || !tp.isConnected) { clearInterval(t); tp.textContent = full; tp.classList.remove("typing"); } }, 28);
+      const t = setInterval(() => { n += step; tp.textContent = full.slice(0, n); if (n >= full.length || !tp.isConnected) { clearInterval(t); tp.innerHTML = html; tp.classList.remove("typing"); } }, 28);
     }
     return;
   }
