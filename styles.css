@@ -4989,3 +4989,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .wpp-th .pick-chip-av { width: 18px; height: 18px; font-size: 9px; }
 .wpp-th b { color: var(--neon-pink); margin-left: 2px; }
 .wpp { max-height: 86vh; overflow-y: auto; }
+.wpp-fin-h span { white-space: nowrap; }
+.wpp-fin-r.rest > b { font-family: inherit; font-size: 10px; color: var(--text-dim); }
+.wpp-fin-r.rest .wpp-bar i { background: rgba(255, 255, 255, .12); }
+.wpp-why em { font-style: normal; color: var(--neon-pink); }

@@ -3238,7 +3238,18 @@ function openPlayerChance(name) {
   // Most likely finishes, shown in points order; the bar is how often.
   const fins = (wd.finals || []).filter((f) => f.p >= 0.03).sort((x, y) => y.p - x.p).slice(0, 5).sort((x, y) => x.pts - y.pts);
   const fmax = Math.max(...fins.map((f) => f.p), 0.01);
-  const finHtml = fins.map((f) => `<div class="wpp-fin-r${f.win >= 0.5 ? " good" : ""}"><b>${f.pts}</b><span class="wpp-bar"><i style="width:${(f.p / fmax * 100).toFixed(0)}%"></i><em>${pc(f.p)}</em></span><strong>${pc(f.win)}</strong></div>`).join("");
+  // Everything not shown folds into one row, so the column adds to 100%.
+  const restP = Math.max(0, 1 - fins.reduce((a, f) => a + f.p, 0));
+  const shownSet = new Set(fins.map((f) => f.pts));
+  const rest = (wd.finals || []).filter((f) => !shownSet.has(f.pts));
+  const restWin = restP > 0 ? rest.reduce((a, f) => a + f.p * f.win, 0) / restP : 0;
+  // More points can win less often: the results that get you there tend to
+  // lift the rest of the room too. Say so when the table shows it.
+  const dips = fins.some((f, i) => i > 0 && f.win + 0.02 < fins[i - 1].win);
+  const backfire = (wd.games || []).filter((x) => x.ifHit + 0.01 < x.ifMiss);
+  if (dips) why.push(`Finishing higher doesn't always help: your big totals come from results that lift others more (see the table).`);
+  if (backfire.length) why.push(`${backfire.map((x) => `<b>${esc(short(x.game, x.pick.team))}</b>`).join(", ")} hitting actually <em>lowers</em> your chance: rivals ride the same result for more points.`);
+  const finHtml = fins.map((f) => `<div class="wpp-fin-r${f.win >= 0.5 ? " good" : ""}"><b>${f.pts}</b><span class="wpp-bar"><i style="width:${(f.p / fmax * 100).toFixed(0)}%"></i><em>${pc(f.p)}</em></span><strong>${pc(f.win)}</strong></div>`).join("") + (restP >= 0.005 ? `<div class="wpp-fin-r rest"><b>other</b><span class="wpp-bar"><i style="width:${Math.min(100, restP / fmax * 100).toFixed(0)}%"></i><em>${pc(restP)}</em></span><strong>${pc(restWin)}</strong></div>` : "");
   const threatHtml = (wd.threats || []).map((t) => `<span class="wpp-th"><span class="pick-chip-av" style="--accent:${accentFor(t.name)}">${esc(avatarOverrides[t.name] || shown(t.name)[0])}</span>${esc(shown(t.name))}<b>${pc(t.p)}</b></span>`).join("");
   let m = document.getElementById("wp-player");
   if (!m) {
@@ -3256,7 +3267,7 @@ function openPlayerChance(name) {
     <div class="wpx-h">WHY ${pc(wd.pct)}</div>
     <ul class="wpp-why">${why.map((w) => `<li>${w}</li>`).join("") || "<li>Nothing unusual: it comes down to the games left.</li>"}</ul>
     <div class="wpp-math"><span><b>${pc(wd.top)}</b>finish with most pts</span><span><b>${pc(wd.tb)}</b>win via tiebreak</span><span><b>±${(wd.moe * 100).toFixed(1)}%</b>sampling range</span></div>
-    ${finHtml ? `<div class="wpx-h">WHERE YOU FINISH</div><div class="wpp-fin"><div class="wpp-fin-h"><span>FINAL PTS</span><span>HOW OFTEN</span><span>WIN WHEN YOU DO</span></div>${finHtml}</div>` : ""}
+    ${finHtml ? `<div class="wpx-h">WHERE YOU FINISH</div><div class="wpp-fin"><div class="wpp-fin-h"><span>PTS</span><span>HOW OFTEN YOU END THERE</span><span>THEN WIN</span></div>${finHtml}</div>` : ""}
     ${games ? `<div class="wpx-h">GAMES THAT MOVE YOU MOST</div><div class="wpp-gh"><span>PICK</span><span>HITS</span><span>IF HIT</span><span>IF MISS</span></div><ul class="wpp-games">${games}</ul>` : ""}
     ${threatHtml ? `<div class="wpx-h">WHEN YOU DON'T WIN, WHO DOES</div><div class="wpp-thr">${threatHtml}</div>` : ""}
     <div class="wpp-foot">From ${wd.runs.toLocaleString()} simulated finishes of this week, using live scores and the betting lines. Sampling range is the 95% band from running 5,000 times, not 5 million. Tap ? on WIN% for the method.</div>
