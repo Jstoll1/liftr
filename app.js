@@ -3140,13 +3140,6 @@ function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
   if (weekIsLive(results)) {
     const ch = weekWinChances(cloudPicks, results, live);
     for (const row of rows) row.winPct = ch[row.name] ?? 0;
-    const note = document.createElement("div");
-    note.className = "wp-note";
-    note.innerHTML = `<i></i>LIVE · CHANCE TO WIN THE WEEK <b class="wp-note-q">?</b>`;
-    note.setAttribute("role", "button");
-    note.tabIndex = 0;
-    note.addEventListener("click", openWinChanceExplainer);
-    rankingsList.appendChild(note);
   } else for (const row of rows) delete row.winPct;
   renderRankingRows(rows, cloudPicks, results, live);
   drawChalkLine(rows, results);
@@ -3207,7 +3200,8 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   const next = gamesByKickoff().find((g) => !isGameLocked(g));
   const pre = next && !GAMES.some(isGameLocked);
   const state = boardAllFinal ? `<span class="ms-state final">FINAL</span>`
-    : pre ? `<span class="ms-state kick" title="${next.awayShort} at ${next.homeShort}">KICK <b class="ms-kick">${kickoffCountdown(next.kickoff)?.brief || ""}</b></span>` : "";
+    : pre ? `<span class="ms-state kick" title="${next.awayShort} at ${next.homeShort}">KICK <b class="ms-kick">${kickoffCountdown(next.kickoff)?.brief || ""}</b></span>`
+    : anyGameLive(live) ? `<span class="ms-onair" title="Games in progress"><i></i>LIVE</span>` : "";
   const clock = `<button class="ms-refresh${cloudPicksStale ? " stale" : ""}" type="button" title="${cloudPicksStale ? "Picks did not reload. Tap to try again" : "Tap to refresh"}">${cloudPicksStale ? "⚠ " : ""}${pre ? "" : clockLabel()}<span class="ms-cyc">⟳</span></button>`;
   // No name here. The header's own pill says who you are eight pixels
   // above, and the room it gives back pays for LIVE on the pill, which
@@ -3280,7 +3274,8 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     const hd = document.createElement("div");
     hd.className = "ranking-row rank-hd";
     hd.setAttribute("aria-hidden", "true");
-    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span><i class="rank-live mid">LIVE</i>${anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b>WIN%</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
+    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span><i class="rank-live mid">LIVE</i>${anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b class="rank-hd-wp" role="button" tabindex="0" title="How chance to win is worked out">WIN% ?</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
+    hd.querySelector(".rank-hd-wp")?.addEventListener("click", openWinChanceExplainer);
     rankingsList.appendChild(hd);
   }
   rows.forEach((row, i) => {
