@@ -4850,3 +4850,6 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .h2h-tr.split { box-shadow: inset 2px 0 0 var(--neon-cyan), inset -2px 0 0 var(--neon-pink); }
 .h2h-tr.is-live:not(.same) { background: rgba(5, 217, 232, .06); }
 .h2h-tr.is-live.same { background: none; box-shadow: none; }
+/* H2H live points: crisp, no glow. A dashed outline says not banked yet,
+   same as the scoreboard pills. */
+.h2h-td.live-hit b, .h2h-td.live-miss b { text-shadow: none; filter: none; border: 1.5px dashed currentColor; border-radius: 999px; padding: 1px 6px; line-height: 1.2; }
