@@ -4826,3 +4826,4 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* WIN% key opens the explainer. */
 .ranking-row.rank-hd .rank-hd-wp { pointer-events: auto; cursor: pointer; }
 .chalk-note { font-size: 8.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; margin: 8px 4px 2px; }
+.ms-onair { margin-right: 6px; gap: 0; }
