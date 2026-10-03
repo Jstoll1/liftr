@@ -3256,7 +3256,7 @@ function chalkScore(results) {
 function drawChalkLine(rows, results) {
   if (!GAMES.some((g) => results[g.id])) return;
   const chalk = chalkScore(results);
-  const els = [...rankingsList.querySelectorAll(".ranking-row")];
+  const els = [...rankingsList.querySelectorAll(".ranking-row:not(.rank-hd)")];
   const i = rows.findIndex((r) => r.score < chalk);
   const beat = i === -1 ? rows.length : i;
   const line = document.createElement("div");
@@ -3273,6 +3273,15 @@ function drawChalkLine(rows, results) {
 
 function renderRankingRows(rows, cloudPicks, results, live) {
   const top = rows.length ? rows[0].score : 0;
+  // A quiet column key, same flex layout as the rows so labels line up.
+  if (rows.length) {
+    const anyWp = rows.some((r) => r.winPct != null);
+    const hd = document.createElement("div");
+    hd.className = "ranking-row rank-hd";
+    hd.setAttribute("aria-hidden", "true");
+    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span><i class="rank-live mid">LIVE</i>${anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b>WIN%</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
+    rankingsList.appendChild(hd);
+  }
   rows.forEach((row, i) => {
     const open = expandedRankings.has(row.name);
     const div = document.createElement("div");

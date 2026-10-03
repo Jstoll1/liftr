@@ -4808,3 +4808,11 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rankings-list .rank-wp { cursor: pointer; }
 
 .chalk-note{margin:10px 4px 2px;font-size:10px;line-height:1.4;opacity:.55;letter-spacing:.02em}
+
+/* Column key: tiny dim labels, no plates or glow. */
+.ranking-row.rank-hd { background: none !important; border: 0 !important; box-shadow: none !important; pointer-events: none; padding-top: 0; padding-bottom: 0; }
+.ranking-row.rank-hd .ranking-main { padding-top: 2px; padding-bottom: 4px; min-height: 0; cursor: default; }
+.ranking-row.rank-hd :is(.ranking-place, .ranking-name, .rank-live, .rank-wp b, .ranking-score) { background: none !important; border: 0 !important; box-shadow: none !important; text-shadow: none !important; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: rgba(255, 255, 255, .32) !important; }
+.ranking-row.rank-hd .ranking-place { height: auto; }
+.ranking-row.rank-hd .rank-wp-bar { visibility: hidden; }
+.ranking-row.rank-hd .ranking-score::before, .ranking-row.rank-hd .ranking-score::after { display: none !important; }
