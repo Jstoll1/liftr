@@ -2727,7 +2727,7 @@ function playerBreakdownHtml(name, state, results, live) {
 // has in flight, in green, instead of a dash waiting on the tiebreaker.
 function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = null) {
   const picked = `${row.submittedCount}/${GAMES.length}`;
-  if (!isGameLocked(tbGame)) return picked;
+  if (!GAMES.some(isGameLocked)) return picked;
   const guess = row.tbGuess === null ? "TB –" : `TB ${row.tbGuess}`;
   // Once the tiebreaker is final: record, guess and miss on one short
   // line. Picked count only matters when someone left picks blank.
@@ -2746,7 +2746,7 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
       : `TB ${row.tbGuess} · <span class="sub-tb${row.tbDiff === 0 ? " exact" : ""}">OFF ${row.tbDiff}</span>`;
     return `${lead}${w}-${l} · ${tb}`;
   }
-  if (inFlight !== null && results) {
+  if (results) {
     // Record on games already final, the most this card can still reach,
     // and what is in flight this minute.
     let w = 0, l = 0, max = row.score;
@@ -2760,7 +2760,8 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
         if (scorePick(g, pick, results[g.id]) > 0) w += 1; else l += 1;
       } else if (pick) max += pointValue(g, pick.team, pick.mode);
     }
-    return `${w}-${l} · <span class="rank-max">MAX <b>${max}</b></span> · <span class="rank-inflight">+${inFlight} LIVE</span>`;
+    const lead = row.submittedCount < GAMES.length ? `${picked} · ` : "";
+    return `${lead}${w}-${l} · <span class="rank-max">MAX <b>${max}</b></span>${inFlight ? ` · <span class="rank-inflight">+${inFlight} LIVE</span>` : ""}`;
   }
   const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
   return `${picked} · ${guess} · ${off}`;
