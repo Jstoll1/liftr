@@ -1164,7 +1164,29 @@ window.lockAdminSurfaces = lockAdmin;
 bottomNav.addEventListener("click", () => {
   if (!adminOverlay?.classList.contains("hidden")) closeAdmin();
 }, true);
-document.getElementById("me-pill")?.addEventListener("click", openOwnerPicker);
+// Tap the pill to switch owner; hold it (550ms) to change your avatar.
+(() => {
+  const pill = document.getElementById("me-pill");
+  if (!pill) return;
+  let timer = null, fired = false;
+  const cancel = () => clearTimeout(timer);
+  pill.addEventListener("pointerdown", () => {
+    fired = false;
+    const me = loadMe();
+    if (!me) return;
+    timer = setTimeout(() => {
+      fired = true;
+      const idx = MANAGERS.indexOf(me);
+      openAvatarEditor(me, AVATAR_COLORS[(idx >= 0 ? idx : 0) % AVATAR_COLORS.length]);
+    }, 550);
+  });
+  ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => pill.addEventListener(ev, cancel));
+  pill.addEventListener("contextmenu", (e) => e.preventDefault());
+  pill.addEventListener("click", (e) => {
+    if (fired) { e.preventDefault(); fired = false; return; }
+    openOwnerPicker();
+  });
+})();
 
 navPicksBtn.addEventListener("click", () => {
   if (!currentManager) {
@@ -1401,6 +1423,7 @@ avatarSaveBtn.addEventListener("click", async () => {
   }
   closeAvatarEditor();
   renderManagerPicker();
+  updateMePill();
 });
 
 avatarResetBtn.addEventListener("click", async () => {
@@ -1410,6 +1433,7 @@ avatarResetBtn.addEventListener("click", async () => {
   await resetAvatar(editingAvatarManager);
   closeAvatarEditor();
   renderManagerPicker();
+  updateMePill();
 });
 
 // --- "Who are you?" confirm --------------------------------------------
