@@ -4588,3 +4588,5 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 #insights-modal.gc-mode .h2h-top .h2h-x { position: absolute; top: 0; right: 0; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; border-radius: 50%; background: rgba(10, 4, 20, .85); border: 1px solid rgba(255, 255, 255, .25); color: #fff; }
 #insights-modal.gc-mode #insights-body { padding-top: 0; margin-top: 0; }
 #insights-modal.gc-mode .gc { margin-top: 0; }
+/* Scoring word: gold only, no bold or underline. */
+.gc-log .gc-ptxt b.gc-score { font-weight: inherit; text-decoration: none; }
