@@ -3090,6 +3090,41 @@ function weekWinChances(cloudPicks, results, live) {
   return out;
 }
 
+// How chance to win works: a small arcade sheet, opened by tapping a
+// chance bar or the LIVE note above the board.
+function openWinChanceExplainer() {
+  let m = document.getElementById("wp-explain");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "wp-explain";
+    m.className = "wpx-overlay hidden";
+    m.setAttribute("role", "dialog");
+    m.setAttribute("aria-label", "How chance to win works");
+    m.innerHTML = `<div class="wpx-card">
+      <button type="button" class="wpx-x" aria-label="Close">✕</button>
+      <div class="wpx-title"><span>HOW</span> CHANCE TO WIN <span>WORKS</span></div>
+      <div class="wpx-big">We play the rest of the week <b>5,000</b> times.<br>Your % is how often you finish <b>1st</b>.</div>
+      <ol class="wpx-steps">
+        <li><i>1</i><div><b>LOCK WHAT'S DONE</b><span>Final games count as they ended. Live games start from the real score and clock.</span></div></li>
+        <li><i>2</i><div><b>PLAY OUT THE REST</b><span>Each game is played as scoring drives: about one score per 5.4 points of the over/under still to play. 60% are touchdowns, 40% field goals.</span></div></li>
+        <li><i>3</i><div><b>FOLLOW THE LINE</b><span>Each score goes to the favourite a little more often than the underdog, so on average the betting line holds.</span></div></li>
+        <li><i>4</i><div><b>SCORE EVERY CARD</b><span>Your real picks and point values. Ties go to the tiebreaker; an exact tie splits the win.</span></div></li>
+        <li><i>5</i><div><b>COUNT THE WINS</b><span>Finish 1st in 1,500 of 5,000 runs and you read 30%. Everyone adds up to 100%.</span></div></li>
+      </ol>
+      <div class="wpx-h">WHAT MOVES YOUR %</div>
+      <div class="wpx-chips"><span>YOUR MAX POINTS</span><span>LIVE SCORES</span><span>TIME LEFT</span><span>THE LINE</span><span>EVERYONE ELSE'S PICKS</span></div>
+      <div class="wpx-ex"><b>EXAMPLE</b> Favourite up 7 on a 7.5 line. With 8:00 left they cover about <em>39%</em> of the time. With 1:00 left, about <em>8%</em>: they'd need one more score.</div>
+      <div class="wpx-foot">Can't catch the leader? You read 0%. Tap your row to see your <b>swing game</b>.</div>
+    </div>`;
+    document.body.appendChild(m);
+    const close = () => m.classList.add("hidden");
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wpx-x")) close(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  }
+  m.classList.remove("hidden");
+  track("wp-explain", { event: true });
+}
+
 function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
   const rows = precomputed || rankManagers(cloudPicks, results);
   if (anyGameLive(live)) {
@@ -3106,7 +3141,10 @@ function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
     for (const row of rows) row.winPct = ch[row.name] ?? 0;
     const note = document.createElement("div");
     note.className = "wp-note";
-    note.innerHTML = `<i></i>LIVE · CHANCE TO WIN THE WEEK`;
+    note.innerHTML = `<i></i>LIVE · CHANCE TO WIN THE WEEK <b class="wp-note-q">?</b>`;
+    note.setAttribute("role", "button");
+    note.tabIndex = 0;
+    note.addEventListener("click", openWinChanceExplainer);
     rankingsList.appendChild(note);
   } else for (const row of rows) delete row.winPct;
   renderRankingRows(rows, cloudPicks, results, live);
@@ -3267,6 +3305,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
       </div>
       ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
     `;
+    div.querySelector(".rank-wp")?.addEventListener("click", (e) => { e.stopPropagation(); openWinChanceExplainer(); });
     div.querySelector(".ranking-main").addEventListener("click", () => {
       if (expandedRankings.has(row.name)) expandedRankings.delete(row.name); else { expandedRankings.add(row.name); track("ranking-expand", { event: true }); }
       withScrollPreserved(() => renderRankings(cloudPicks, results, live));

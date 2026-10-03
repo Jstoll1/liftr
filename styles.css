@@ -4774,3 +4774,34 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* Live points sit between the name and the chance bar. */
 .rank-live.mid { flex: 0 0 auto; min-width: 26px; text-align: center; font-size: 8px; padding: 3px 4px; border-radius: 4px; }
 .rank-live.mid.on { background: rgba(57, 255, 136, .1); border: 1px solid rgba(57, 255, 136, .4); }
+
+/* ===== Chance-to-win explainer ===== */
+.wp-note { cursor: pointer; }
+.wp-note-q { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; margin-left: 6px; border-radius: 50%; border: 1px solid var(--neon-cyan); font-size: 6px; color: var(--neon-cyan); }
+.rankings-list .rank-wp { cursor: help; }
+.wpx-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 1, 10, .78); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.wpx-overlay.hidden { display: none; }
+.wpx-card { position: relative; width: min(420px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; padding: 18px 16px 14px; border-radius: 14px; background: radial-gradient(120% 80% at 50% 0%, #1b0b36 0%, #07020f 70%); box-shadow: 0 18px 40px rgba(0, 0, 0, .6); animation: wpxin .22s steps(4, end); }
+.wpx-card::before { content: ""; position: absolute; inset: 0; border-radius: 14px; padding: 2px; background: linear-gradient(90deg, #05d9e8, #c13cff 50%, #ff2079); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; filter: drop-shadow(0 0 8px rgba(193, 60, 255, .6)); pointer-events: none; }
+.wpx-card::after { content: ""; position: absolute; inset: 0; border-radius: 14px; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .16) 0 1px, transparent 1px 3px); }
+@keyframes wpxin { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.wpx-x { position: absolute; top: 8px; right: 8px; z-index: 2; width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); background: rgba(10, 4, 20, .85); color: #fff; font-size: 13px; line-height: 1; cursor: pointer; }
+.wpx-title { font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: .08em; color: #ffe45e; text-shadow: 0 0 10px rgba(255, 228, 94, .7); text-align: center; margin: 2px 24px 12px; line-height: 1.6; }
+.wpx-title span { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0, 229, 255, .6); }
+.wpx-big { text-align: center; font-size: 13px; line-height: 1.5; color: var(--text); padding: 10px; border-radius: 8px; border: 1px solid rgba(0, 229, 255, .3); background: rgba(0, 229, 255, .06); margin-bottom: 12px; }
+.wpx-big b { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #ffd23f; text-shadow: 0 0 6px rgba(255, 210, 63, .6); }
+.wpx-steps { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.wpx-steps li { display: flex; gap: 10px; align-items: flex-start; }
+.wpx-steps li > i { flex: 0 0 auto; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 9px; color: #0a0414; background: linear-gradient(180deg, #7ff3ff, #05d9e8); box-shadow: 2px 2px 0 rgba(0, 0, 0, .5), 0 0 8px rgba(5, 217, 232, .5); }
+.wpx-steps li > div { display: flex; flex-direction: column; gap: 3px; }
+.wpx-steps b { font-family: 'Press Start 2P', monospace; font-size: 7.5px; letter-spacing: .06em; color: #fff; }
+.wpx-steps span { font-size: 11.5px; line-height: 1.45; color: var(--text-meta); }
+.wpx-h { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--neon-pink); margin: 4px 0 6px; }
+.wpx-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+.wpx-chips span { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .06em; padding: 5px 7px; color: var(--neon-cyan); border: 1px solid rgba(0, 229, 255, .4); background: rgba(0, 229, 255, .06); }
+.wpx-ex { font-size: 11.5px; line-height: 1.5; color: var(--text); padding: 9px 10px; border-left: 3px solid #ffd23f; background: rgba(255, 210, 63, .06); margin-bottom: 10px; }
+.wpx-ex b { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: #ffd23f; margin-right: 6px; }
+.wpx-ex em { font-style: normal; color: #ffd23f; font-weight: 800; }
+.wpx-foot { font-size: 11px; line-height: 1.45; color: var(--text-dim); text-align: center; }
+.wpx-foot b { color: var(--neon-cyan); }
+@media (prefers-reduced-motion: reduce) { .wpx-card { animation: none; } }
