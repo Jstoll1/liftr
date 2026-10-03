@@ -4559,3 +4559,6 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-cab.vs .gc-live { color: #fff; }
 .gc-cab.vs .gc-per { color: #ffb000; }
 @media (prefers-reduced-motion: reduce) { .gc-sweep { animation: none; display: none; } }
+/* Possession football sits beside the name, on the side facing the score. */
+.gc-tn { display: inline-flex; align-items: center; gap: 5px; }
+.gc-tn .gc-pball { flex: 0 0 auto; }

@@ -3998,7 +3998,7 @@ async function openInsights(gameId) {
     // One scoreboard row: logo, score, clock, score, logo. Names sit under
     // the logos with the possession football beneath; the win probability
     // bar runs under the row. Scanlines live behind the content.
-    const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<b>${esc(ab)}</b><i class="gc-pball${poss ? "" : " off"}" title="${poss ? "Has the ball" : ""}"></i></div>`;
+    const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<span class="gc-tn">${side === "h" && poss ? `<i class="gc-pball" title="Has the ball"></i>` : ""}<b>${esc(ab)}</b>${side === "a" && poss ? `<i class="gc-pball" title="Has the ball"></i>` : ""}</span></div>`;
     const wp = lv.winProb;
     // Win probability: amber LED numbers with each logo at the ends, a
     // thin neon bar in the app's cyan and pink, and a bright notch where
