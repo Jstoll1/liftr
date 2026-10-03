@@ -1257,7 +1257,7 @@ navScoreboardBtn.addEventListener("click", () => {
 // avatar for an emoji. Persisted locally and synced through the Worker
 // (/avatars) so the choice shows up for everyone, on every device.
 const AVATAR_STORAGE_KEY = "brochiefs_avatars_v1";
-let avatarOverrides = {};
+let avatarOverrides = loadAvatars();
 
 function loadAvatars() {
   try {
@@ -1283,26 +1283,56 @@ async function fetchAvatars() {
   }
 }
 
-async function pushAvatar(manager, emoji) {
-  if (!WORKER_URL) return;
+// Changes that have not reached the Worker yet, kept on the phone and
+// retried on the next sync so a save made offline still lands everywhere.
+// { manager: emoji } to set, { manager: null } to reset.
+const AVATAR_PENDING_KEY = "brochiefs_avatars_pending_v1";
+function loadPendingAvatars() { try { return JSON.parse(localStorage.getItem(AVATAR_PENDING_KEY)) || {}; } catch { return {}; } }
+function savePendingAvatars(p) { try { localStorage.setItem(AVATAR_PENDING_KEY, JSON.stringify(p)); } catch { /* private mode */ } }
+
+async function sendAvatar(manager, emoji) {
+  if (!WORKER_URL) return false;
   try {
-    await fetch(`${WORKER_URL}/avatars`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ manager, emoji }),
-    });
+    const res = emoji == null
+      ? await fetch(`${WORKER_URL}/avatars?manager=${encodeURIComponent(manager)}`, { method: "DELETE" })
+      : await fetch(`${WORKER_URL}/avatars`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manager, emoji }) });
+    return res.ok;
   } catch {
-    // Offline or worker unreachable — local copy still saved, fine.
+    return false;
   }
 }
-
-async function resetAvatar(manager) {
-  if (!WORKER_URL) return;
-  try {
-    await fetch(`${WORKER_URL}/avatars?manager=${encodeURIComponent(manager)}`, { method: "DELETE" });
-  } catch {
-    // Offline or worker unreachable.
+async function queueAvatar(manager, emoji) {
+  const pending = loadPendingAvatars();
+  pending[manager] = emoji;
+  savePendingAvatars(pending);
+  if (await sendAvatar(manager, emoji)) {
+    const now = loadPendingAvatars();
+    if (now[manager] === emoji) { delete now[manager]; savePendingAvatars(now); }
   }
+}
+const pushAvatar = (manager, emoji) => queueAvatar(manager, emoji);
+const resetAvatar = (manager) => queueAvatar(manager, null);
+
+// The Worker is the source of truth: what it holds wins, so a reset on one
+// phone clears the emoji on every other. Unsent local changes ride on top
+// until they go through.
+async function syncAvatars() {
+  const pending = loadPendingAvatars();
+  for (const [m, e] of Object.entries(pending)) {
+    if (await sendAvatar(m, e)) { const now = loadPendingAvatars(); if (now[m] === e) { delete now[m]; savePendingAvatars(now); } }
+  }
+  const cloud = await fetchAvatars();
+  if (!cloud) return false;
+  const merged = { ...cloud };
+  for (const [m, e] of Object.entries(loadPendingAvatars())) { if (e == null) delete merged[m]; else merged[m] = e; }
+  const changed = JSON.stringify(merged) !== JSON.stringify(avatarOverrides);
+  avatarOverrides = merged;
+  saveAvatars(avatarOverrides);
+  if (changed) {
+    updateMePill();
+    if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
+  }
+  return true;
 }
 
 async function renderManagerPicker() {
@@ -1316,10 +1346,7 @@ async function renderManagerPicker() {
   const pickerResults = firstKickoffPassed() ? computeLiveResults(latestLive) : {};
   const scored = Object.keys(pickerResults).length > 0;
 
-  const localAvatars = loadAvatars();
-  const cloudAvatars = await fetchAvatars();
-  avatarOverrides = cloudAvatars ? { ...localAvatars, ...cloudAvatars } : localAvatars;
-  saveAvatars(avatarOverrides);
+  await syncAvatars();
   updateMePill();
 
   managerPicker.innerHTML = "";
@@ -5368,3 +5395,8 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
     window.closeSim?.();
   }, true);
 })();
+
+// Avatars live on the Worker; pull them on open and whenever the app comes
+// back to the front, so a change on one phone shows on every other.
+syncAvatars();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) syncAvatars(); });
