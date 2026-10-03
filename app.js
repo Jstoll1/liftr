@@ -3242,6 +3242,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
         <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span></span><span class="ranking-lock">${row.subline}</span></span>
+        <i class="rank-live mid${row.inFlight > 0 ? " on" : row.inFlight === 0 ? " zero" : ""}" title="${row.inFlight != null ? "Points from live games if they ended now" : "No games live"}">${row.inFlight != null ? `+${row.inFlight}` : "–"}</i>
         ${(() => {
           // The week at a glance: one square per game in kickoff order.
           // Green cashed, pink missed, yellow push, pulsing while live
@@ -3262,7 +3263,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
           void strip;
           return pct != null ? `<span class="rank-wp${pct >= 50 ? " hot" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>` : `<span class="ranking-dots" aria-hidden="true"></span>`;
         })()}
-        <span class="ranking-scorecol"><span class="ranking-score">${String(row.score).padStart(2, "0")}</span><i class="rank-live${row.inFlight > 0 ? " on" : row.inFlight === 0 ? " zero" : ""}" title="${row.inFlight != null ? "Points from live games if they ended now" : "No games live"}">${row.inFlight != null ? `+${row.inFlight}` : "–"}</i></span>
+        <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
       </div>
       ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
     `;

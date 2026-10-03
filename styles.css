@@ -4771,3 +4771,6 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rank-live { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .04em; color: rgba(255, 255, 255, .28); }
 .rank-live.zero { color: rgba(255, 255, 255, .4); }
 .rank-live.on { color: var(--neon-green); text-shadow: 0 0 6px rgba(57, 255, 136, .7); }
+/* Live points sit between the name and the chance bar. */
+.rank-live.mid { flex: 0 0 auto; min-width: 26px; text-align: center; font-size: 8px; padding: 3px 4px; border-radius: 4px; }
+.rank-live.mid.on { background: rgba(57, 255, 136, .1); border: 1px solid rgba(57, 255, 136, .4); }
