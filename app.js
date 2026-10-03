@@ -4989,7 +4989,8 @@ function renderH2H() {
     // The right card mirrors the left: points nearest the middle, team at the edge.
     return `<div class="h2h-td ${side} ${st.cls}">${side === "a" ? team + line + pts : pts + line + team}</div>`;
   };
-  const trs = games.map((g) => {
+  const sameGames = games.filter((g) => { const pa = a.st.picks[g.id], pb = b.st.picks[g.id]; return pa && pb && pa.team === pb.team && pa.mode === pb.mode; });
+  const trs = games.filter((g) => !sameGames.includes(g)).map((g) => {
     const pa = a.st.picks[g.id], pb = b.st.picks[g.id];
     const same = pa && pb && pa.team === pb.team && pa.mode === pb.mode;
     const sa = stateOf(g, pa), sb = stateOf(g, pb);
@@ -4999,7 +5000,7 @@ function renderH2H() {
     // Where the points split, an arrow from the centre points at the card
     // that has the edge on this game.
     const na = Number(sa.txt) || 0, nb = Number(sb.txt) || 0;
-    const arrow = diff && order(g) !== 2 && na !== nb ? (na > nb ? `<em class="h2h-arr l">◀</em>` : `<em class="h2h-arr r">▶</em>`) : "";
+    const arrow = "";
     return `<div class="h2h-tr${diff ? " diff" : ""}${same ? " same" : ""}${pa && pb && !same && !hiddenFor(A.name, g) && !hiddenFor(B.name, g) ? " split" : ""}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, sa, "a")}<div class="h2h-mid">${arrow}<span>${same ? "SAME" : `G${g.id}`}</span>${mid(g)}</div>${cell(g, pb, sb, "b")}</div>`;
   }).join("");
   // The swing: on games still to play where they differ, the most either can gain on the other.
@@ -5019,11 +5020,31 @@ function renderH2H() {
   else if (!leader) verdict = `Level. Where they split, ${esc(shown(A.name))} has ${swingA} in play and ${esc(shown(B.name))} has ${swingB}.`;
   else if (trailSwing === 0) verdict = `${esc(shown(leader.name))} by ${Math.abs(gap)}. Nothing left where they split, so that holds.`;
   else verdict = `${esc(shown(leader.name))} by ${Math.abs(gap)}. ${esc(shown(trailer.name))} has ${trailSwing} in play where they split${trailSwing < Math.abs(gap) ? ", not enough alone" : ""}.`;
+  // One strip for the games they agree on: nothing there moves the gap.
+  const sameStrip = sameGames.length ? `<div class="h2h-same"><div class="h2h-same-h">SAME PICK · NO SWING</div><div class="h2h-same-l">${sameGames.map((g) => {
+    const pk = a.st.picks[g.id], st = stateOf(g, pk);
+    const id = pk.team === g.home ? g.homeId : g.awayId;
+    return `<span class="h2h-same-c ${st.cls}"><img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">${esc(short(g, pk.team))} <small>${pk.mode === "SU" ? "WIN" : (pk.team === g.favorite ? "-" : "+") + g.spread}</small><b>${st.txt}</b></span>`;
+  }).join("")}</div></div>` : "";
+  // Fighter cards up top: avatar, name, score, record. The native select
+  // sits invisibly over each card, so a tap still changes the player.
+  const fill = (side, row, x) => {
+    const card = modal.querySelector(`.h2h-fighter.${side}`);
+    if (!card) return;
+    const av = card.querySelector(".h2h-f-av");
+    av.textContent = avatarOverrides[row.name] || shown(row.name)[0];
+    av.style.setProperty("--accent", accentFor(row.name));
+    card.querySelector(".h2h-f-name").textContent = shown(row.name).toUpperCase();
+    card.querySelector(".h2h-f-meta").innerHTML = `${x.w}-${x.l} · MAX ${x.max}${x.fly ? ` · <em>+${x.fly}</em>` : ""}`;
+    card.querySelector(".h2h-f-score").textContent = String(row.score).padStart(2, "0");
+    card.classList.toggle("ahead", row.score > (side === "a" ? B : A).score);
+  };
+  fill("a", A, a); fill("b", B, b);
   const sideHead = (row, x, cls) => `<div class="h2h-th ${cls}"><span class="h2h-score">${String(row.score).padStart(2, "0")}</span><span class="h2h-meta">${x.w}-${x.l} · MAX ${x.max}${x.fly ? ` · <em>+${x.fly}</em>` : ""}</span></div>`;
-  body.innerHTML = `<div class="h2h-grid">
-    <div class="h2h-tr h2h-head">${sideHead(A, a, "a")}<div class="h2h-mid h2h-th-mid"></div>${sideHead(B, b, "b")}</div>
+  body.innerHTML = `${trs ? `<div class="h2h-sec">SPLITS · WHERE IT'S DECIDED</div>` : ""}<div class="h2h-grid">
     ${trs}
   </div>
+  ${sameStrip}
   <div class="h2h-verdict">${verdict}</div>`;
 }
 document.getElementById("h2h-open")?.addEventListener("click", openH2H);
