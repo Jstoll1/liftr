@@ -3262,7 +3262,7 @@ function drawChalkLine(rows, results) {
   else rankingsList.insertBefore(line, els[i]);
   const note = document.createElement("p");
   note.className = "chalk-note";
-  note.textContent = "* Chalk line: what a card of every favorite against the spread would score so far (2 pts per cover, final games only).";
+  note.textContent = "* Chalk line: every favorite ATS, 2 pts per cover, finals only";
   rankingsList.appendChild(note);
 }
 
