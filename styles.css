@@ -4843,3 +4843,10 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rankings-list .ranking-row .ranking-main { padding-top: 4px; padding-bottom: 4px; }
 .ranking-row { margin: 1px 2px; }
 .chalk-note { margin: 4px 4px 0; }
+
+/* H2H: same picks fade back and say SAME; splits stay bright with a neon edge. */
+.h2h-tr.same .h2h-td { opacity: .38; }
+.h2h-tr.same .h2h-mid > span { color: rgba(255, 255, 255, .45); text-shadow: none; letter-spacing: .08em; }
+.h2h-tr.split { box-shadow: inset 2px 0 0 var(--neon-cyan), inset -2px 0 0 var(--neon-pink); }
+.h2h-tr.is-live:not(.same) { background: rgba(5, 217, 232, .06); }
+.h2h-tr.is-live.same { background: none; box-shadow: none; }

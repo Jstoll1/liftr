@@ -4898,7 +4898,7 @@ function renderH2H() {
     // that has the edge on this game.
     const na = Number(sa.txt) || 0, nb = Number(sb.txt) || 0;
     const arrow = diff && order(g) !== 2 && na !== nb ? (na > nb ? `<em class="h2h-arr l">◀</em>` : `<em class="h2h-arr r">▶</em>`) : "";
-    return `<div class="h2h-tr${diff ? " diff" : ""}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, sa, "a")}<div class="h2h-mid">${arrow}<span>G${g.id}</span>${mid(g)}</div>${cell(g, pb, sb, "b")}</div>`;
+    return `<div class="h2h-tr${diff ? " diff" : ""}${same ? " same" : ""}${pa && pb && !same && !hiddenFor(A.name, g) && !hiddenFor(B.name, g) ? " split" : ""}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, sa, "a")}<div class="h2h-mid">${arrow}<span>${same ? "SAME" : `G${g.id}`}</span>${mid(g)}</div>${cell(g, pb, sb, "b")}</div>`;
   }).join("");
   // The swing: on games still to play where they differ, the most either can gain on the other.
   let swingA = 0, swingB = 0;
@@ -4917,9 +4917,9 @@ function renderH2H() {
   else if (!leader) verdict = `Level. Where they split, ${esc(shown(A.name))} has ${swingA} in play and ${esc(shown(B.name))} has ${swingB}.`;
   else if (trailSwing === 0) verdict = `${esc(shown(leader.name))} by ${Math.abs(gap)}. Nothing left where they split, so that holds.`;
   else verdict = `${esc(shown(leader.name))} by ${Math.abs(gap)}. ${esc(shown(trailer.name))} has ${trailSwing} in play where they split${trailSwing < Math.abs(gap) ? ", not enough alone" : ""}.`;
-  const sideHead = (row, x, cls) => `<div class="h2h-th ${cls}"><span class="h2h-name">${esc(shown(row.name).toUpperCase())}</span><span class="h2h-score">${String(row.score).padStart(2, "0")}</span><span class="h2h-meta">${x.w}-${x.l} · MAX ${x.max}${x.fly ? ` · <em>+${x.fly}</em>` : ""}</span></div>`;
+  const sideHead = (row, x, cls) => `<div class="h2h-th ${cls}"><span class="h2h-score">${String(row.score).padStart(2, "0")}</span><span class="h2h-meta">${x.w}-${x.l} · MAX ${x.max}${x.fly ? ` · <em>+${x.fly}</em>` : ""}</span></div>`;
   body.innerHTML = `<div class="h2h-grid">
-    <div class="h2h-tr h2h-head">${sideHead(A, a, "a")}<div class="h2h-mid h2h-th-mid">VS</div>${sideHead(B, b, "b")}</div>
+    <div class="h2h-tr h2h-head">${sideHead(A, a, "a")}<div class="h2h-mid h2h-th-mid"></div>${sideHead(B, b, "b")}</div>
     ${trs}
   </div>
   <div class="h2h-verdict">${verdict}</div>`;
