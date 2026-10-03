@@ -1,1 +1,2 @@
-/insights/injuries?week=5&game=10
+/games?week=5
+/results?week=5
