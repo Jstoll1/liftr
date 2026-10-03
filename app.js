@@ -3981,8 +3981,15 @@ async function openInsights(gameId) {
     const toGo = x !== null && dir && (dist != null || goalToGo) ? Math.max(0, Math.min(100, goalToGo ? (dir > 0 ? 100 : 0) : x + dir * dist)) : null;
     const pct = (v) => (8 + v * 0.84).toFixed(2);
     const ticks = Array.from({ length: 9 }, (_, i) => (i + 1) * 10).map((v) => `<i class="gc-yl${v === 50 ? " mid" : ""}" style="left:${pct(v)}%"></i><span class="gc-num" style="left:${pct(v)}%">${v <= 50 ? v : 100 - v}</span>`).join("");
-    const ball = x === null ? "" : `<div class="gc-spot" style="left:${pct(x)}%">${possA || possH ? `<img class="gc-off" src="${logoUrl(possA ? game.awayId : game.homeId)}" alt="">` : ""}<i class="gc-ball"></i></div>${dir ? `<span class="gc-chev ${dir > 0 ? "r" : "l"}" style="left:${pct(x)}%">${dir > 0 ? "&gt;&gt;&gt;" : "&lt;&lt;&lt;"}</span>` : ""}<i class="gc-los" style="left:${pct(x)}%"></i>`;
-    const gain = toGo === null ? "" : `<i class="gc-first" style="left:${pct(toGo)}%"></i>`;
+    // Slide, don't jump: each marker is drawn where it was last refresh
+    // and moved to its new spot after paint (data-to). Remembered per game.
+    const mem = { ...((window.__gcSpot = window.__gcSpot || {})[gameId] || {}) };
+    const at = (key, v) => { const prev = mem[key]; return `style="left:${prev != null ? prev : v}%" data-to="${v}"`; };
+    (window.__gcSpot[gameId] = window.__gcSpot[gameId] || {});
+    if (x !== null) window.__gcSpot[gameId].spot = pct(x);
+    if (toGo !== null) window.__gcSpot[gameId].first = pct(toGo);
+    const ball = x === null ? "" : `<div class="gc-spot gc-slide" ${at("spot", pct(x))}>${possA || possH ? `<img class="gc-off" src="${logoUrl(possA ? game.awayId : game.homeId)}" alt="">` : ""}<i class="gc-ball"></i></div>${dir ? `<span class="gc-chev gc-slide ${dir > 0 ? "r" : "l"}" ${at("spot", pct(x))}>${dir > 0 ? "&gt;&gt;&gt;" : "&lt;&lt;&lt;"}</span>` : ""}<i class="gc-los gc-slide" ${at("spot", pct(x))}></i>`;
+    const gain = toGo === null ? "" : `<i class="gc-first gc-slide" ${at("first", pct(toGo))}></i>`;
     const drive = x !== null && toGo !== null ? `<i class="gc-drive" style="left:${pct(Math.min(x, toGo))}%;width:${(Math.abs(toGo - x) * 0.84).toFixed(2)}%"></i>` : "";
     // Midfield: the home team's logo painted on the turf, as at the stadium.
     const mid = `<img class="gc-mid" src="${logoUrl(game.homeId)}" alt="">`;
@@ -4187,7 +4194,9 @@ async function openInsights(gameId) {
   // favourite: positive means they are favoured by that much.
   modal.classList.toggle("gc-mode", liveGame());
   if (liveGame()) {
-    body.innerHTML = gamecastHtml() + links() + `<div class="ins-foot">Live from ESPN. Refreshes every 15 seconds.</div>`;
+    body.innerHTML = gamecastHtml() + links() + `<div class="ins-foot">Live from ESPN. Refreshes every 8 seconds.</div>`;
+    const sliders = body.querySelectorAll(".gc-slide[data-to]");
+    if (sliders.length) { void body.offsetWidth; requestAnimationFrame(() => sliders.forEach((el) => { el.style.left = `${el.dataset.to}%`; })); }
     // Type the newest play on, a character at a time. Done in script so it
     // renders the same on every browser (Safari never ran the CSS version).
     const tp = body.querySelector(".gc-log li.type .gc-ptxt");

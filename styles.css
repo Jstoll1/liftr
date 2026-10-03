@@ -4617,3 +4617,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-stage { position: relative; }
 .gc-stage > .gc-brk { position: absolute; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; pointer-events: none; transform: none; }
 .gc-stage > .gc-brk span { animation: none; }
+
+/* Markers glide to their new spot on each refresh. */
+.gc-slide { transition: left 1.1s cubic-bezier(.33, .9, .3, 1); }
+@media (prefers-reduced-motion: reduce) { .gc-slide { transition: none; } }
+/* TD and FG badges hold steady; no flashing. */
+.gc-badge.td { animation: none !important; }
