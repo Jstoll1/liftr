@@ -4966,3 +4966,26 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .wpp-games em { font-style: normal; color: var(--text-dim); white-space: nowrap; }
 .wpp-games .up { color: var(--neon-green); } .wpp-games .dn { color: var(--neon-pink); }
 .wpp-foot { font-size: 10px; color: var(--text-dim); }
+.wpp-math { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.wpp-math span { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px; border-radius: 6px; background: rgba(255, 255, 255, .05); font-size: 9.5px; color: var(--text-dim); text-align: center; }
+.wpp-math b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 10px; color: #fff; }
+.wpp-fin { display: flex; flex-direction: column; gap: 4px; }
+.wpp-fin-h, .wpp-gh { display: grid; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .08em; color: var(--text-dim); }
+.wpp-fin-h { grid-template-columns: 34px 1fr 72px; gap: 8px; }
+.wpp-fin-h span:last-child { text-align: right; }
+.wpp-fin-r { display: grid; grid-template-columns: 34px 1fr 72px; gap: 8px; align-items: center; font-size: 12px; }
+.wpp-fin-r > b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 10px; color: var(--neon-yellow); }
+.wpp-bar { position: relative; height: 14px; border-radius: 3px; background: rgba(255, 255, 255, .05); overflow: hidden; }
+.wpp-bar i { position: absolute; inset: 0 auto 0 0; background: rgba(5, 217, 232, .35); }
+.wpp-bar em { position: relative; font-style: normal; font-size: 10px; padding-left: 5px; line-height: 14px; color: #fff; }
+.wpp-fin-r strong { text-align: right; color: var(--text-dim); font-weight: 700; }
+.wpp-fin-r.good strong { color: var(--neon-green); }
+.wpp-gh { grid-template-columns: 1fr 44px 50px 50px; gap: 6px; padding: 0 8px; }
+.wpp-gh span:not(:first-child) { text-align: right; }
+.wpp-games li { display: grid; grid-template-columns: 1fr 44px 50px 50px; gap: 6px; align-items: center; }
+.wpp-games li > em, .wpp-games li > b { text-align: right; }
+.wpp-thr { display: flex; flex-wrap: wrap; gap: 6px; }
+.wpp-th { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 3px; border-radius: 999px; background: rgba(255, 255, 255, .06); font-size: 12px; }
+.wpp-th .pick-chip-av { width: 18px; height: 18px; font-size: 9px; }
+.wpp-th b { color: var(--neon-pink); margin-left: 2px; }
+.wpp { max-height: 86vh; overflow-y: auto; }
