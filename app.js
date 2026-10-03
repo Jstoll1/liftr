@@ -3265,6 +3265,10 @@ function drawChalkLine(rows, results) {
   line.innerHTML = `<span>CHALK LINE <b>${String(chalk).padStart(2, "0")}</b></span><em>${beat} of ${rows.length} above</em>`;
   if (i === -1 || !els[i]) rankingsList.appendChild(line);
   else rankingsList.insertBefore(line, els[i]);
+  const note = document.createElement("p");
+  note.className = "chalk-note";
+  note.textContent = "* Chalk line: what a card of every favorite against the spread would score so far (2 pts per cover, final games only).";
+  rankingsList.appendChild(note);
 }
 
 function renderRankingRows(rows, cloudPicks, results, live) {
