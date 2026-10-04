@@ -5057,3 +5057,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rh b { right: -3px; bottom: -5px; min-width: 0; padding: 1px 1.5px; font-size: 5px; }
 .rh { aspect-ratio: 1; height: auto; max-height: 22px; }
 .rh img { width: 100%; height: 100%; max-height: none; }
+/* Week over: the live column is gone, so the logos start right after the name. */
+.week-done .rank-hits:not(.hd) { justify-content: flex-start; gap: 5px; padding-left: 2px; }
+.week-done .rank-hits.hd { justify-content: flex-start; padding-left: 2px; }
+.week-done .rh { flex: 0 1 24px; max-height: 24px; }
+.week-done .rank-hits:not(.hd) { gap: 4px; min-width: 0; }
+.week-done .rh { min-width: 0; }
