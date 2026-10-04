@@ -1,3 +1,2 @@
 /story?week=5
 /story?week=4
-/story?week=3
