@@ -1535,7 +1535,9 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
     if (l.result === "hit") t.hits.push(l);
   }
   const best = [...teams.values()].filter((t) => t.hits.length)
-    .map((t) => { const top = [...t.hits].sort((a, b) => b.pts - a.pts)[0]; return { ...top, teamTakers: t.takers }; })
+    // Everyone who cashed on that team gets named, not just the best-paid
+    // line; the label falls back to the team when they took different lines.
+    .map((t) => { const top = [...t.hits].sort((a, b) => b.pts - a.pts)[0]; return { ...top, who: [...new Set(t.hits.flatMap((h) => h.who))], mixed: new Set(t.hits.map((h) => h.mode)).size > 1, teamTakers: t.takers }; })
     .sort((a, b) => a.teamTakers - b.teamTakers || b.pts - a.pts || b.spread - a.spread)[0];
   // Group losers by team, not line. When a team loses outright, the
   // straight-up and the spread takers went down together, and "6 of 10"

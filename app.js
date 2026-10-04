@@ -5259,7 +5259,7 @@ let renderRecap = function () {
   if (r.best) {
     const b = r.best;
     cards.push([ICON.target + "PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${esc(b.pick)}</span>`,
-      `Only ${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : `were on ${esc(b.team || b.pick)}`} · ${esc(b.final || b.score)}`, `+${b.pts}`, "PTS", mine(b.who)]);
+      `Only ${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : `were on ${esc(b.team || b.pick)}`}${Array.isArray(b.who) && b.who.length < b.takers ? ` · ${b.who.length} cashed` : ""} · ${esc(b.final || b.score)}`, `+${b.pts}`, Array.isArray(b.who) && b.who.length > 1 ? "PTS TOP" : "PTS", mine(b.who)]);
   }
   if (r.worst) {
     const w = r.worst;
