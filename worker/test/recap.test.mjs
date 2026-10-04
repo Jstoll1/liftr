@@ -58,8 +58,9 @@ test("pick of the week groups by team: Georgia State three ways", () => {
     ...["a", "b", "c", "d", "e", "f"].map((n) => row(n, 5, 0, 0, [{ ...L(2, "A", "SU", "SU", "hit", 1, 1, "20-10"), spread: 1.5 }])),
   ];
   const r = buildRecap(games, rows, 30, games[1], null);
-  assert.deepEqual(r.best.who.sort(), ["Conlan", "Robert"]);
+  assert.deepEqual(r.best.who.sort(), ["Conlan", "Dewitt", "Robert"], "everyone who cashed on the team is named");
   assert.equal(r.best.takers, 3, "everyone on the team, not just the line");
+  assert.equal(r.best.pick, "Oklahoma", "mixed lines read as the team");
   assert.equal(r.best.pts, 3);
 });
 
