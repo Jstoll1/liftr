@@ -2909,6 +2909,13 @@ function renderPayouts() {
   const { list, sealed, done, contested, liveWeek, liveWeekFinal } = payoutLedger();
   const paid = list.reduce((a, r) => a + r.earned, 0);
   const left = POT.total - paid - POT.seasonTotal;
+  // Season pick record: every correct and missed pick across the weeks on
+  // the record (pushes and blanks count neither way).
+  const rec = {};
+  for (const w of Object.values(weekSummaries)) {
+    if (!w?.complete || w.exhibition) continue;
+    for (const r of w.rows || []) { const x = rec[r.name] = rec[r.name] || { w: 0, l: 0 }; x.w += r.hits || 0; x.l += r.misses || 0; }
+  }
   panel.innerHTML = `
     <div class="pot-head">
       <div class="pot-stat"><b>${money(POT.total)}</b><span>${POT.members} × ${money(POT.buyIn)}</span></div>
@@ -2921,11 +2928,12 @@ function renderPayouts() {
     ${liveWeek ? `<div class="pot-live">${liveWeekFinal ? `WEEK ${liveWeek} UNSEALED` : `WEEK ${liveWeek} ACTIVE`}</div>` : ""}
     ${contested ? `<div class="pot-warn">⚠ Season places are tied on points where the money sits. The weekly tiebreaker does not settle the season, so the league needs a rule for this before the last week.</div>` : ""}
     <div class="pot-table">
-      <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>WON</span><span>EARNED</span></div>
+      <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>REC</span><span>WON</span><span>EARNED</span></div>
       ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}">
         <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
         <span class="pot-name">${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
         <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
+        <span class="pot-rec">${rec[r.name] ? `${rec[r.name].w}-${rec[r.name].l}` : "–"}</span>
         <span class="pot-won">${r.weeksWon ? "🏆".repeat(Math.min(r.weeksWon, 3)) + (r.weeksWon > 3 ? `×${r.weeksWon}` : "") : "–"}</span>
         <span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>
       </div>`).join("")}
@@ -5304,16 +5312,9 @@ let renderRecap = function () {
   const nextG = currentWeek > last.week && GAMES.length ? (GAMES.find((g) => g.tiebreakerGame) || gamesByKickoff()[0]) : null;
   const upNext = nextG ? `<div class="story-next"><b>UP NEXT</b>${lg2(nextG.awayId)}<span>${esc(nextG.awayShort)} at ${esc(nextG.homeShort)}</span>${lg2(nextG.homeId)}<em>${esc(nextG.kickoffLabel || "")}${nextG.tv ? ` · ${esc(nextG.tv)}` : ""}</em></div>` : "";
   const storyHtml = `<article class="story" data-week="${last.week}"><div class="story-kicker">THE BROCHIEFS REPORT</div><div class="story-body loading">Rolling the presses…</div>${upNext}</article>`;
-  panel.innerHTML = storyHtml + `<div class="recap-marquee"><span>★ ${esc(String(last.label || `WEEK ${last.week}`).toUpperCase())} REPLAY ★</span><small>GAME OVER · FINAL STATS</small></div>` + cards.map(([h, cls, art, main, sub, stat, statLabel, me], i) =>
-    `<div class="recap-card arc ${cls}${me ? " me" : ""}" style="--i:${i}">
-      <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
-      <div class="recap-art">${art}</div>
-      <div class="recap-body">
-        <div class="recap-main">${main}</div>
-        <div class="recap-sub">${sub}</div>
-      </div>
-      <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div>
-    </div>`).join("");
+  // Just the story now; the stat cards were a poor fit.
+  panel.innerHTML = storyHtml;
+  void cards;
   paintStory(last.week);
 };
 function lg2(id) { return id ? `<img class="story-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : ""; }

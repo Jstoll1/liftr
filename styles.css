@@ -5078,3 +5078,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .story-next b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; letter-spacing: .1em; color: #fff; background: #c8102e; padding: 4px 5px; border-radius: 3px; }
 .story-next em { font-style: normal; font-weight: 500; color: #6b5f4f; }
 .story-logo { width: 18px; height: 18px; object-fit: contain; }
+.pot-row { grid-template-columns: 22px minmax(0, 1fr) 36px 44px 46px 56px; }
+.pot-rec { text-align: center; font-variant-numeric: tabular-nums; color: var(--text-dim); font-size: 11px; }
+.pot-row.head .pot-rec, .pot-row.head span:nth-child(4) { text-align: center; }
+@media (max-width: 360px) { .pot-row { grid-template-columns: 20px minmax(0, 1fr) 32px 40px 40px 50px; } }
