@@ -5288,11 +5288,11 @@ let renderRecap = function () {
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
   if (panel.dataset.drawn === key) return;
   panel.dataset.drawn = key;
-  panel.innerHTML = cards.map(([h, cls, art, main, sub, stat, statLabel, me], i) =>
-    `<div class="recap-card ${cls}${me ? " me" : ""}" style="--i:${i}">
+  panel.innerHTML = `<div class="recap-marquee"><span>★ ${esc(String(last.label || `WEEK ${last.week}`).toUpperCase())} REPLAY ★</span><small>GAME OVER · FINAL STATS</small></div>` + cards.map(([h, cls, art, main, sub, stat, statLabel, me], i) =>
+    `<div class="recap-card arc ${cls}${me ? " me" : ""}" style="--i:${i}">
+      <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
       <div class="recap-art">${art}</div>
       <div class="recap-body">
-        <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
         <div class="recap-main">${main}</div>
         <div class="recap-sub">${sub}</div>
       </div>
