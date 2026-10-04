@@ -3507,6 +3507,9 @@ function renderRankingRows(rows, cloudPicks, results, live) {
   // A quiet column key, same flex layout as the rows so labels line up.
   const weekDone = GAMES.length > 0 && GAMES.every((g) => results?.[g.id]);
   rankingsList.classList.toggle("week-done", weekDone);
+  // Same number of slots on every row (the most anyone hit), so logos
+  // are one size and line up in columns down the board.
+  if (weekDone) rankingsList.style.setProperty("--hits", Math.max(1, ...rows.map((r) => gamesByKickoff().filter((g) => { const pk = r.state.picks?.[g.id]; return pk && scorePick(g, pk, results[g.id]) > 0; }).length)));
   if (rows.length) {
     const anyWp = rows.some((r) => r.winPct != null);
     const hd = document.createElement("div");

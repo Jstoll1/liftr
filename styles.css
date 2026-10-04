@@ -5063,3 +5063,6 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .week-done .rh { flex: 0 1 24px; max-height: 24px; }
 .week-done .rank-hits:not(.hd) { gap: 4px; min-width: 0; }
 .week-done .rh { min-width: 0; }
+/* Even columns: every row has the same slots, every logo the same size. */
+.week-done .rank-hits:not(.hd) { display: grid; grid-template-columns: repeat(var(--hits, 8), minmax(0, 1fr)); justify-items: center; gap: 0 3px; }
+.week-done .rh { width: min(24px, 100%); max-height: none; flex: none; }
