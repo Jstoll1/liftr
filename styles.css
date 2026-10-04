@@ -5087,7 +5087,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 #scores-toggle { display: none; }
 #scoreboard-screen.week-over #scores-toggle { display: flex; }
 #scoreboard-screen.week-over #recap-toggle:not(.hidden) { display: flex !important; }
-#live-scores-list.folded { display: none; }
+#scoreboard-screen.week-over #live-scores-list.folded { display: none; }
 #scoreboard-screen.week-over > .wrap { display: flex; flex-direction: column; }
 #scoreboard-screen.week-over > .wrap > * { order: 50; }
 #scoreboard-screen.week-over #week-champ { order: 0; }
