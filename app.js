@@ -2805,23 +2805,6 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
   const picked = `${row.submittedCount}/${GAMES.length}`;
   if (!GAMES.some(isGameLocked)) return picked;
   const guess = row.tbGuess === null ? "TB –" : `TB ${row.tbGuess}`;
-  // Once the tiebreaker is final: record, guess and miss on one short
-  // line. Picked count only matters when someone left picks blank.
-  if (actualTotal !== null && results) {
-    let w = 0, l = 0;
-    for (const g of GAMES) {
-      const pick = row.state.picks[g.id];
-      if (!results[g.id] || !pick) continue;
-      const o = resultOutcome(g, results[g.id]);
-      if (pick.mode === "ATS" && o?.push) continue;
-      if (scorePick(g, pick, results[g.id]) > 0) w += 1; else l += 1;
-    }
-    const lead = row.submittedCount < GAMES.length ? `${picked} · ` : "";
-    const tb = row.tbGuess === null
-      ? `<span class="sub-tb none">NO TB</span>`
-      : `TB ${row.tbGuess} · <span class="sub-tb${row.tbDiff === 0 ? " exact" : ""}">OFF ${row.tbDiff}</span>`;
-    return `${lead}${w}-${l} · ${tb}`;
-  }
   if (results) {
     // Record on games already final, the most this card can still reach,
     // and what is in flight this minute.
