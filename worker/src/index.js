@@ -1649,7 +1649,9 @@ async function writeStory(env, facts) {
     "Use ONLY the facts in the JSON. Never invent players, scores, quotes or stats. Names are league members, not athletes.",
     "Headline: under 9 words, title case, a hook. Byline: 'By The Brochiefs Desk'.",
     "Body: 4 to 5 sentences in this order: who won and with how many points; the deciding game and what it came down to (use decidingGame, or the tiebreaker if decidedByTiebreaker); one sentence on the slate (upsets, favorites covering); one league-wide stat (average score or pick hit rate); one good-natured, snarky line about the last place finisher(s).",
-    "No em dashes or hyphens as punctuation. Plain sentences. Return JSON {headline, byline, body}.",
+    "Write like a sharp magazine columnist: vivid verbs, specific numbers, short sentences mixed with one longer one. Lead with the winner's name.",
+    "Banned: 'rollercoaster', 'this week's slate', 'took the crown', 'across the league', 'impressive', exclamation marks, and any city, stadium, nickname or detail not in the facts.",
+    "No em dashes or hyphens as punctuation. Return JSON {headline, byline, body}.",
   ].join(" ");
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -1669,7 +1671,7 @@ async function writeStory(env, facts) {
   } catch { return null; }
 }
 
-const storyKey = (week) => `story:w${week}:v1`;
+const storyKey = (week) => `story:w${week}:v2`;
 async function handleStory(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   const week = Number(url.searchParams.get("week"));
