@@ -5066,3 +5066,15 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* Even columns: every row has the same slots, every logo the same size. */
 .week-done .rank-hits:not(.hd) { display: grid; grid-template-columns: repeat(var(--hits, 8), minmax(0, 1fr)); justify-items: center; gap: 0 3px; }
 .week-done .rh { width: min(24px, 100%); max-height: none; flex: none; }
+/* Week story: a magazine page inside the arcade frame. */
+.story { position: relative; z-index: 1; padding: 14px 14px 12px; border-radius: 8px; background: #f4efe4; color: #15110c; box-shadow: 4px 4px 0 rgba(0, 0, 0, .55); }
+.story-kicker { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .14em; color: #c8102e; padding-bottom: 6px; border-bottom: 2px solid #15110c; margin-bottom: 8px; }
+.story h3 { margin: 0 0 4px; font-family: Georgia, 'Times New Roman', serif; font-size: 22px; line-height: 1.12; font-weight: 800; letter-spacing: -.01em; color: #15110c; }
+.story-by { font-family: Georgia, serif; font-style: italic; font-size: 11px; color: #6b5f4f; margin-bottom: 8px; }
+.story p { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 14px; line-height: 1.5; color: #241d15; }
+.story p::first-letter { float: left; font-size: 40px; line-height: .9; font-weight: 800; padding: 4px 6px 0 0; color: #c8102e; }
+.story-body.loading { font-family: Georgia, serif; font-style: italic; font-size: 12px; color: #6b5f4f; }
+.story-next { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(21, 17, 12, .25); font-size: 12px; font-weight: 700; color: #15110c; }
+.story-next b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; letter-spacing: .1em; color: #fff; background: #c8102e; padding: 4px 5px; border-radius: 3px; }
+.story-next em { font-style: normal; font-weight: 500; color: #6b5f4f; }
+.story-logo { width: 18px; height: 18px; object-fit: contain; }

@@ -61,6 +61,9 @@ export default {
     if (url.pathname === "/games") {
       return handleGames(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/story") {
+      return handleStory(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/weeks") {
       return handleWeekSummaries(request, env, corsHeaders, url);
     }
@@ -1588,6 +1591,97 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
     : null;
 
   return { best: best ? card(best) : null, worst: worst ? card(worst) : null, movement, consensus, tb };
+}
+
+// --- Week story -----------------------------------------------------------
+// A magazine-style write-up of a finished week: headline, byline, a few
+// sentences. Facts are worked out here from the frozen summary so the
+// model only writes; it is told to use nothing else. Written once, kept.
+function storyFacts(s) {
+  const rows = [...(s.rows || [])].sort((a, b) => b.score - a.score);
+  const slate = s.slate || [], finals = s.finals || {};
+  const byId = new Map(slate.map((g) => [Number(g.id), g]));
+  const shortOf = (g, t) => t === g.home ? g.homeShort : t === g.away ? g.awayShort : t;
+  const games = slate.filter((g) => finals[g.id]).map((g) => {
+    const f = finals[g.id], favHome = g.favorite === g.home;
+    const favMargin = favHome ? f.homeScore - f.awayScore : f.awayScore - f.homeScore;
+    const winner = f.homeScore > f.awayScore ? g.homeShort : g.awayShort;
+    return { id: g.id, matchup: `${g.awayShort} at ${g.homeShort}`, final: `${winner} won ${Math.max(f.homeScore, f.awayScore)}-${Math.min(f.homeScore, f.awayScore)}`,
+      favorite: shortOf(g, g.favorite), spread: g.spread, upset: favMargin < 0, covered: favMargin > g.spread };
+  });
+  const winners = (s.winners || []);
+  const top = rows[0], second = rows.find((r) => !winners.includes(r.name));
+  // Deciding game: where the winner and the runner-up's picks paid most differently.
+  let deciding = null;
+  if (top && second) {
+    for (const l of top.ledger || []) {
+      const o = (second.ledger || []).find((x) => x.g === l.g);
+      const gap = (l.pts || 0) - (o?.pts || 0);
+      if (gap > 0 && (!deciding || gap > deciding.gap)) {
+        const g = byId.get(l.g);
+        deciding = { gap, matchup: l.matchup, winnerPick: l.team ? `${shortOf(g, l.team)} ${l.line}` : null, runnerUpPick: o?.team ? `${shortOf(g, o.team)} ${o.line}` : "no pick", final: games.find((x) => x.id === l.g)?.final };
+      }
+    }
+  }
+  const allPicks = rows.flatMap((r) => (r.ledger || []).filter((l) => l.result === "hit" || l.result === "miss"));
+  const hitRate = allPicks.length ? Math.round(100 * allPicks.filter((l) => l.result === "hit").length / allPicks.length) : null;
+  const avg = rows.length ? Math.round(10 * rows.reduce((a, r) => a + r.score, 0) / rows.length) / 10 : null;
+  const last = rows[rows.length - 1];
+  const lastTied = rows.filter((r) => r.score === last?.score).map((r) => r.name);
+  const upsets = games.filter((g) => g.upset);
+  return {
+    week: s.label || `Week ${s.week}`,
+    winners, winningScore: top?.score, runnerUp: second ? { name: second.name, score: second.score } : null,
+    decidedByTiebreaker: winners.length === 1 && second && second.score === top.score,
+    tiebreaker: s.tiebreaker ? { matchup: s.tiebreaker.matchup, actualTotal: s.tiebreaker.actual, winnerGuess: top?.tbGuess ?? null } : null,
+    decidingGame: deciding,
+    slate: { games: games.length, upsets: upsets.map((g) => `${g.final} (${g.favorite} was favored by ${g.spread})`), favoritesCovered: games.filter((g) => g.covered).length },
+    league: { players: rows.length, averageScore: avg, pickHitRatePct: hitRate },
+    lastPlace: last ? { names: lastTied, score: last.score, correct: (last.ledger || []).filter((l) => l.result === "hit").length } : null,
+    standings: rows.slice(0, 4).map((r) => ({ name: r.name, score: r.score })),
+  };
+}
+
+async function writeStory(env, facts) {
+  if (!env.OPENAI_API_KEY) return null;
+  const system = [
+    "You write the weekly recap for a friends' college football pick'em league, in the voice of a classic sports magazine column: confident, punchy, a little wry.",
+    "Use ONLY the facts in the JSON. Never invent players, scores, quotes or stats. Names are league members, not athletes.",
+    "Headline: under 9 words, title case, a hook. Byline: 'By The Brochiefs Desk'.",
+    "Body: 4 to 5 sentences in this order: who won and with how many points; the deciding game and what it came down to (use decidingGame, or the tiebreaker if decidedByTiebreaker); one sentence on the slate (upsets, favorites covering); one league-wide stat (average score or pick hit rate); one good-natured, snarky line about the last place finisher(s).",
+    "No em dashes or hyphens as punctuation. Plain sentences. Return JSON {headline, byline, body}.",
+  ].join(" ");
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model: env.OPENAI_MODEL_ARCHIVE || env.OPENAI_MODEL_PLAN || env.OPENAI_MODEL || "gpt-4o-mini",
+      messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify(facts) }],
+      response_format: { type: "json_schema", json_schema: { name: "story", strict: true, schema: { type: "object", additionalProperties: false, required: ["headline", "byline", "body"], properties: { headline: { type: "string" }, byline: { type: "string" }, body: { type: "string" } } } } },
+      temperature: 0.7,
+    }),
+  });
+  if (!res.ok) return null;
+  try {
+    const o = JSON.parse((await res.json()).choices?.[0]?.message?.content || "{}");
+    const clean = (t) => String(t || "").replace(/\s[—–-]\s/g, ", ").replace(/[—–]/g, ", ").trim();
+    return o.headline && o.body ? { headline: clean(o.headline), byline: clean(o.byline) || "By The Brochiefs Desk", body: clean(o.body) } : null;
+  } catch { return null; }
+}
+
+const storyKey = (week) => `story:w${week}:v1`;
+async function handleStory(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  const week = Number(url.searchParams.get("week"));
+  if (!Number.isInteger(week) || week < 1) return json({ error: "Bad week" }, 400, corsHeaders);
+  const fresh = url.searchParams.get("fresh") === "1" && isAdmin(env, url);
+  if (!fresh) { const kept = await env.LIFTR_KV.get(storyKey(week), "json"); if (kept) return json({ story: kept }, 200, corsHeaders); }
+  const s = await env.LIFTR_KV.get(summaryKey(week), "json");
+  if (!s?.complete) return json({ story: null }, 200, corsHeaders);
+  const story = await writeStory(env, storyFacts(s));
+  if (!story) return json({ story: null }, 200, corsHeaders);
+  await env.LIFTR_KV.put(storyKey(week), JSON.stringify(story));
+  return json({ story }, 200, corsHeaders);
 }
 
 function fixBestWho(s) {

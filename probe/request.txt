@@ -1,2 +1,1 @@
-/games?week=5
-/results?week=5
+/story?week=5
