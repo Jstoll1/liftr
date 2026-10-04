@@ -5297,51 +5297,8 @@ let renderRecap = function () {
         <div class="recap-sub">${sub}</div>
       </div>
       <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div>
-      <div class="recap-react" data-card="${cls}"></div>
     </div>`).join("");
-  paintReactions(last.week);
 };
-
-// --- Recap reactions --------------------------------------------------------
-const REACTION_SET = ["🔥", "💀", "🤡", "😂", "👏"];
-let reactionState = { week: null, cards: {} };
-async function paintReactions(week, fresh = true) {
-  const panel = document.getElementById("recap-panel");
-  if (!panel) return;
-  if (fresh && WORKER_URL) {
-    try {
-      const r = await fetch(`${WORKER_URL}/reactions?week=${week}&t=${Date.now()}`, { cache: "no-store" });
-      if (r.ok) reactionState = { week, cards: (await r.json()).cards || {} };
-    } catch {}
-  }
-  panel.querySelectorAll(".recap-react").forEach((el) => {
-    const c = reactionState.week === week ? reactionState.cards[el.dataset.card] || {} : {};
-    el.innerHTML = REACTION_SET.map((e) => {
-      const who = c[e] || [];
-      const mine = currentManager && who.includes(currentManager);
-      return `<button type="button" class="rx${mine ? " mine" : ""}${who.length ? " on" : ""}" data-emoji="${e}" title="${who.map((n) => shown(n)).join(", ")}">${e}${who.length ? `<b>${who.length}</b>` : ""}</button>`;
-    }).join("");
-  });
-}
-document.getElementById("recap-panel")?.addEventListener("click", async (e) => {
-  const btn = e.target.closest(".rx");
-  if (!btn) return;
-  e.stopPropagation();
-  const card = btn.closest(".recap-react")?.dataset.card;
-  const week = reactionState.week;
-  if (!card || !week || !currentManager || !WORKER_URL) return;
-  // Optimistic toggle, then the Worker's copy wins.
-  const c = reactionState.cards[card] = reactionState.cards[card] || {};
-  const list = new Set(c[btn.dataset.emoji] || []);
-  if (list.has(currentManager)) list.delete(currentManager); else list.add(currentManager);
-  c[btn.dataset.emoji] = [...list];
-  paintReactions(week, false);
-  try {
-    const r = await fetch(`${WORKER_URL}/reactions?week=${week}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manager: currentManager, card, emoji: btn.dataset.emoji, token: tokenFor(currentManager) || undefined }) });
-    if (r.ok) { reactionState = { week, cards: (await r.json()).cards || {} }; paintReactions(week, false); }
-    else if (r.status === 401) handleAuthFailure(currentManager);
-  } catch {}
-});
 
 // Folds like the sections under it. Starts open; the choice is remembered.
 (() => {
