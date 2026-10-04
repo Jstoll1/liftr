@@ -1462,7 +1462,7 @@ function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []
     sealedAt: Date.now(),
     // The week in five lines, written once here so every phone tells the
     // same story. Only a complete week gets one.
-    recap: complete ? buildRecap(games, rows, actualTotal, tbGame, seasonMovement(earlier, rows, EXHIBITION_WEEKS.has(Number(week)))) : null,
+    recap: complete ? { ...buildRecap(games, rows, actualTotal, tbGame, seasonMovement(earlier, rows, EXHIBITION_WEEKS.has(Number(week)))), bestWhoFixed: true } : null,
   };
 }
 
@@ -1590,6 +1590,19 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
   return { best: best ? card(best) : null, worst: worst ? card(worst) : null, movement, consensus, tb };
 }
 
+function fixBestWho(s) {
+  const b = s?.recap?.best;
+  if (!b || s.recap.bestWhoFixed || !Array.isArray(s.rows)) return false;
+  const lines = s.rows.flatMap((r) => (r.ledger || []).map((l) => ({ ...l, name: r.name })));
+  const mine = lines.find((l) => (Array.isArray(b.who) ? b.who : [b.who]).includes(l.name) && l.matchup === b.matchup && l.result === "hit");
+  if (!mine) { s.recap.bestWhoFixed = true; return true; }
+  const hits = lines.filter((l) => l.g === mine.g && l.team === mine.team && l.result === "hit");
+  b.who = [...new Set(hits.map((l) => l.name))];
+  if (new Set(hits.map((l) => l.mode)).size > 1) b.pick = b.team;
+  s.recap.bestWhoFixed = true;
+  return true;
+}
+
 // Writes the summary for a week, and keeps the sealed-at stamp from the
 // first sealing so a later correction does not look like a new week.
 async function sealWeek(env, week, { force = false } = {}) {
@@ -1651,6 +1664,10 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
     // Written by an older Worker: rebuild it from the stored picks and
     // finals. The seal stamp survives, so nothing about the week moves.
     if (s && s.version !== SUMMARY_VERSION) s = (await sealWeek(env, n, { force: true })) || s;
+    // Frozen weeks keep their recap as written. Pick of the week used to
+    // name only the best-paid line; re-name everyone who cashed on that
+    // team from the stored ledger. Nothing is rescored.
+    if (s && fixBestWho(s)) await env.LIFTR_KV.put(summaryKey(n), JSON.stringify(s));
     return [n, s];
   }));
   // The ledger is every pick of every manager, which the board does not
