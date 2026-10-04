@@ -3251,29 +3251,41 @@ function openPlayerChance(name) {
       return list.map((o) => ({ ...o, res: favHome ? { homeScore: 30 + o.m, awayScore: 30 } : { awayScore: 30 + o.m, homeScore: 30 } }));
     };
     const lines = [];
-    let gain = 0;
+    let gain = 0, theirGain = 0, nSame = 0, nLeft = 0;
+    const splits = [];
     for (const g of GAMES) {
       if (results[g.id]) continue;
       const mine = picks[name]?.picks?.[g.id], theirs = picks[rivalName]?.picks?.[g.id];
       if (!mine && !theirs) continue;
-      let best = null;
+      let best = null, worst = null;
       for (const o of outcomes(g)) {
         const net = (mine ? scorePick(g, mine, o.res) : 0) - (theirs ? scorePick(g, theirs, o.res) : 0);
         if (!best || net > best.net) best = { net, txt: o.txt };
+        if (!worst || net < worst.net) worst = { net, txt: o.txt };
       }
       gain += Math.max(0, best.net);
+      theirGain += Math.max(0, -worst.net);
       const same = mine && theirs && mine.team === theirs.team && mine.mode === theirs.mode;
+      nLeft++;
+      if (same) nSame++; else splits.push({ g, mine, theirs, best, worst });
       const lab = (pk) => pk ? `${esc(short(g, pk.team))} ${esc(terms(g, pk))}` : "–";
       lines.push(`<li class="${same ? "same" : best.net > 0 ? "edge" : "dead"}"><span>${lab(mine)}</span><span>${lab(theirs)}</span><b>${same ? "same" : best.net > 0 ? `+${best.net}` : "0"}</b><em>${same ? "" : best.net > 0 ? `if ${esc(best.txt)}` : "can't gain here"}</em></li>`);
     }
     const back = (rRow?.score ?? 0) - row.score;
     const R = esc(shown(rivalName));
-    if (back > 0 && gain < back) verdict = `You can't pass ${R}. You're ${back} back, and even if every game breaks your way you gain at most ${gain} on them.`;
-    else if (back > 0 && gain === back) verdict = `Best case you tie ${R}: you're ${back} back and can gain exactly ${back}. Then it goes to the tiebreaker.`;
-    else if (back > 0) verdict = `You're ${back} back of ${R} and can gain up to ${gain} on them, but only if the games below break your way.`;
-    else if (back === 0) verdict = `Level with ${R}. The games where you split decide it.`;
-    else verdict = `You're ${-back} ahead of ${R}, your biggest threat.`;
-    if (wd.pct === 0 && back > 0 && gain > back) verdict += ` The combinations that get you there also lift someone else, so it never happens in the simulation.`;
+    // Step by step, in words: what is shared, what is split, what that adds up to.
+    const nm = (x) => `${esc(short(x.g, (x.mine || x.theirs).team))}`;
+    const sameTxt = nSame ? `${nSame} of your ${nLeft} games left are the same pick as ${R}, so they can't change the gap. ` : "";
+    const splitTxt = splits.length
+      ? `${splits.length === 1 ? "That leaves one split" : `That leaves ${splits.length} splits`}: ${splits.map((x) => `<b>${nm(x)}</b> (up to +${Math.max(0, x.best.net)} for you)`).join(", ")}, so the most you can gain on ${R} is <b>${gain}</b>. `
+      : `You have no splits with ${R}, so the gap can't move. `;
+    const need = splits.filter((x) => x.best.net > 0).map((x) => esc(x.best.txt));
+    if (back > 0 && gain < back) verdict = `${sameTxt}${splitTxt}You're ${back} back, so you can't catch them.`;
+    else if (back > 0 && gain === back) verdict = `${sameTxt}${splitTxt}You're ${back} back, so the best case is a tie, settled by the tiebreaker. That needs: ${need.join(" and ")}.`;
+    else if (back > 0) verdict = `${sameTxt}${splitTxt}You're ${back} back, so you can pass them if ${need.join(" and ")}.`;
+    else if (back === 0) verdict = `You're level with ${R}. ${sameTxt}${splits.length ? `It's decided on ${splits.map((x) => `<b>${nm(x)}</b>`).join(", ")}: you can gain up to ${gain}, they can gain up to ${theirGain}.` : "The tiebreaker decides it."}`;
+    else verdict = `You lead ${R} by ${-back}. ${sameTxt}${splits.length ? `On the splits they can gain up to ${theirGain} on you${theirGain < -back ? ", not enough to catch you" : theirGain === -back ? ", enough to tie" : ""}.` : "They can't gain on you."}`;
+    if (wd.pct === 0 && back > 0 && gain > back) verdict += ` But whenever that happens someone else finishes above you, so it never happens in the simulation.`;
     else if (wd.pct === 0 && back <= 0) verdict += ` But in every simulated finish someone else ends on top of you.`;
     vsHtml = `<div class="wpx-h">YOU VS ${R.toUpperCase()} · GAMES LEFT</div><div class="wpp-vs-h"><span>YOU</span><span>${R.toUpperCase()}</span><span>BEST FOR YOU</span></div><ul class="wpp-vs">${lines.join("")}</ul>`;
   }
