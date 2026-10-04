@@ -5050,3 +5050,10 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rh b { position: absolute; right: -5px; bottom: -4px; min-width: 14px; padding: 1px 2px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 5.5px; line-height: 1.2; text-align: center; color: #0a0414; background: var(--neon-cyan); box-shadow: 1px 1px 0 rgba(0, 0, 0, .6); }
 .rh b.t1 { background: #9aa0b5; }
 .rh b.t3 { background: var(--neon-yellow); }
+/* One line, always: logos shrink to fit instead of wrapping. */
+.rank-hits { flex-wrap: nowrap; gap: 4px; overflow: visible; }
+.rh { flex: 0 1 22px; min-width: 12px; width: auto; height: 22px; }
+.rh img { width: 100%; height: auto; max-height: 22px; }
+.rh b { right: -3px; bottom: -5px; min-width: 0; padding: 1px 1.5px; font-size: 5px; }
+.rh { aspect-ratio: 1; height: auto; max-height: 22px; }
+.rh img { width: 100%; height: 100%; max-height: none; }
