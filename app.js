@@ -5255,9 +5255,7 @@ let renderRecap = function () {
   if (!toggle || !panel) return;
   const last = Object.values(weekSummaries).filter((s) => s?.complete && s.recap).sort((a, b) => b.week - a.week)[0];
   // Gone once the next slate is up, or Thursday morning, whichever first.
-  // Stays up once next week's slate is posted, so the story can preview it,
-  // until that week kicks off or Thursday morning, whichever first.
-  if (!last || (currentWeek > last.week && GAMES.some(isGameLocked)) || Date.now() >= recapExpiry(last)) { toggle.classList.add("hidden"); panel.classList.add("hidden"); return; }
+  if (!last || currentWeek > last.week || Date.now() >= recapExpiry(last)) { toggle.classList.add("hidden"); panel.classList.add("hidden"); return; }
   const r = last.recap;
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
@@ -5308,29 +5306,17 @@ let renderRecap = function () {
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
   if (panel.dataset.drawn === key) return;
   panel.dataset.drawn = key;
-  // Magazine story on top, filled in when the Worker answers.
-  const nextG = currentWeek > last.week && GAMES.length ? (GAMES.find((g) => g.tiebreakerGame) || gamesByKickoff()[0]) : null;
-  const upNext = nextG ? `<div class="story-next"><b>UP NEXT</b>${lg2(nextG.awayId)}<span>${esc(nextG.awayShort)} at ${esc(nextG.homeShort)}</span>${lg2(nextG.homeId)}<em>${esc(nextG.kickoffLabel || "")}${nextG.tv ? ` · ${esc(nextG.tv)}` : ""}</em></div>` : "";
-  const storyHtml = `<article class="story" data-week="${last.week}"><div class="story-kicker">THE BROCHIEFS REPORT</div><div class="story-body loading">Rolling the presses…</div>${upNext}</article>`;
-  // Just the story now; the stat cards were a poor fit.
-  panel.innerHTML = storyHtml;
-  void cards;
-  paintStory(last.week);
+  panel.innerHTML = `<div class="recap-marquee"><span>★ ${esc(String(last.label || `WEEK ${last.week}`).toUpperCase())} REPLAY ★</span><small>GAME OVER · FINAL STATS</small></div>` + cards.map(([h, cls, art, main, sub, stat, statLabel, me], i) =>
+    `<div class="recap-card arc ${cls}${me ? " me" : ""}" style="--i:${i}">
+      <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
+      <div class="recap-art">${art}</div>
+      <div class="recap-body">
+        <div class="recap-main">${main}</div>
+        <div class="recap-sub">${sub}</div>
+      </div>
+      <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div>
+    </div>`).join("");
 };
-function lg2(id) { return id ? `<img class="story-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : ""; }
-const storyCache = {};
-async function paintStory(week) {
-  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  if (!(week in storyCache) && WORKER_URL) {
-    try { const r = await fetch(`${WORKER_URL}/story?week=${week}`); storyCache[week] = r.ok ? (await r.json()).story : null; } catch { storyCache[week] = null; }
-  }
-  const el = document.querySelector(`#recap-panel .story[data-week="${week}"] .story-body`);
-  if (!el) return;
-  const st = storyCache[week];
-  if (!st) { el.closest(".story").querySelector(".story-kicker")?.remove(); el.remove(); return; }
-  el.classList.remove("loading");
-  el.innerHTML = `<h3>${esc(st.headline)}</h3><div class="story-by">${esc(st.byline)}</div><p>${esc(st.body)}</p>`;
-}
 
 // Folds like the sections under it. Starts open; the choice is remembered.
 (() => {
