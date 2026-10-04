@@ -5011,3 +5011,12 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .wpp-more summary::before { content: "▸ "; }
 .wpp-more[open] summary::before { content: "▾ "; }
 .wpp-more[open] { display: flex; flex-direction: column; gap: 10px; }
+.wpp-vh { display: block; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; color: var(--neon-yellow); margin-bottom: 6px; line-height: 1.4; }
+.wpp-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.wpp-lines li { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: 6px; background: rgba(255, 255, 255, .05); font-size: 12.5px; }
+.wpp-lines li b { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+.wpp-lines .up { color: var(--neon-green); }
+.wpp-lines .dn { color: var(--neon-pink); }
+.wpp-bottom { font-size: 13px; color: #fff; padding: 2px 2px; }
+.wpp-zero { font-size: 12px; color: var(--neon-pink); }
+.wpp-same { font-size: 11px; color: var(--text-dim); }

@@ -3273,21 +3273,30 @@ function openPlayerChance(name) {
     }
     const back = (rRow?.score ?? 0) - row.score;
     const R = esc(shown(rivalName));
-    // Step by step, in words: what is shared, what is split, what that adds up to.
-    const nm = (x) => `${esc(short(x.g, (x.mine || x.theirs).team))}`;
-    const sameTxt = nSame ? `${nSame} of your ${nLeft} games left are the same pick as ${R}, so they can't change the gap. ` : "";
-    const splitTxt = splits.length
-      ? `${splits.length === 1 ? "That leaves one split" : `That leaves ${splits.length} splits`}: ${splits.map((x) => `<b>${nm(x)}</b> (up to +${Math.max(0, x.best.net)} for you)`).join(", ")}, so the most you can gain on ${R} is <b>${gain}</b>. `
-      : `You have no splits with ${R}, so the gap can't move. `;
-    const need = splits.filter((x) => x.best.net > 0).map((x) => esc(x.best.txt));
-    if (back > 0 && gain < back) verdict = `${sameTxt}${splitTxt}You're ${back} back, so you can't catch them.`;
-    else if (back > 0 && gain === back) verdict = `${sameTxt}${splitTxt}You're ${back} back, so the best case is a tie, settled by the tiebreaker. That needs: ${need.join(" and ")}.`;
-    else if (back > 0) verdict = `${sameTxt}${splitTxt}You're ${back} back, so you can pass them if ${need.join(" and ")}.`;
-    else if (back === 0) verdict = `You're level with ${R}. ${sameTxt}${splits.length ? `It's decided on ${splits.map((x) => `<b>${nm(x)}</b>`).join(", ")}: you can gain up to ${gain}, they can gain up to ${theirGain}.` : "The tiebreaker decides it."}`;
-    else verdict = `You lead ${R} by ${-back}. ${sameTxt}${splits.length ? `On the splits they can gain up to ${theirGain} on you${theirGain < -back ? ", not enough to catch you" : theirGain === -back ? ", enough to tie" : ""}.` : "They can't gain on you."}`;
-    if (wd.pct === 0 && back > 0 && gain > back) verdict += ` But whenever that happens someone else finishes above you, so it never happens in the simulation.`;
-    else if (wd.pct === 0 && back <= 0) verdict += ` But in every simulated finish someone else ends on top of you.`;
-    vsHtml = `<div class="wpx-h">YOU VS ${R.toUpperCase()} · GAMES LEFT</div><div class="wpp-vs-h"><span>YOU</span><span>${R.toUpperCase()}</span><span>BEST FOR YOU</span></div><ul class="wpp-vs">${lines.join("")}</ul>`;
+    // Plain words, scoreboard style: a short headline, one line per game
+    // that can separate you, the same-pick games in one line, and a bottom line.
+    const sameGames = [];
+    for (const g of GAMES) {
+      if (results[g.id]) continue;
+      const a1 = picks[name]?.picks?.[g.id], b1 = picks[rivalName]?.picks?.[g.id];
+      if (a1 && b1 && a1.team === b1.team && a1.mode === b1.mode) sameGames.push(esc(short(g, a1.team)));
+    }
+    const n = splits.length;
+    const head = back > 0 ? `${back} back of ${R}.` : back === 0 ? `Tied with ${R}.` : `${-back} ahead of ${R}.`;
+    const sub = n === 0 ? "Every pick left is the same, so nothing can change the gap." : `${n === 1 ? "One game" : `${n} games`} can change that.`;
+    const gameLines = splits.map((x) => {
+      const you = x.best.net > 0 ? `<span class="up">${esc(x.best.txt)} → you +${x.best.net}</span>` : "";
+      const them = x.worst.net < 0 ? `<span class="dn">${esc(x.worst.txt)} → ${R} +${-x.worst.net}</span>` : "";
+      return `<li><b>${esc(x.g.awayShort)} at ${esc(x.g.homeShort)}</b>${you}${them}</li>`;
+    }).join("");
+    let bottom;
+    if (back > 0 && gain < back) bottom = `The most you can gain is ${gain}. Not enough to catch ${R}.`;
+    else if (back > 0) bottom = `You need +${back + 1} from these to pass ${R} (+${back} ties, then the tiebreaker). The most you can get is +${gain}.`;
+    else if (back === 0) bottom = n ? `Whoever gains more on ${n === 1 ? "this game" : "these games"} finishes ahead. Even means the tiebreaker.` : "The tiebreaker decides it.";
+    else bottom = theirGain > -back ? `${R} needs +${-back + 1} from these to pass you. The most they can get is +${theirGain}.` : `${R} can gain at most ${theirGain}. They can't pass you on points.`;
+    const zero = wd.pct === 0 ? `<div class="wpp-zero">Why 0%: whenever these break your way, someone else in the league still finishes higher.</div>` : "";
+    verdict = `<b class="wpp-vh">${head}</b> ${sub}`;
+    vsHtml = `${n ? `<ul class="wpp-lines">${gameLines}</ul>` : ""}<div class="wpp-bottom">${bottom}</div>${zero}${sameGames.length ? `<div class="wpp-same">Same pick, no effect: ${sameGames.join(", ")}</div>` : ""}`;
   }
   let m = document.getElementById("wp-player");
   if (!m) {
@@ -3303,7 +3312,7 @@ function openPlayerChance(name) {
     <div class="wpp-head"><span class="wpp-av" style="--accent:${accentFor(name)}">${esc(avatarOverrides[name] || shown(name)[0])}</span><div><b>${esc(shown(name).toUpperCase())}</b><small>${row.score} PTS · MAX ${myMax}</small></div><i>${pc(wd.pct)}</i></div>
     <div class="wpp-verdict">${verdict || stand}</div>
     ${vsHtml}
-    ${games ? `<div class="wpx-h">YOUR GAMES THAT MATTER MOST</div><div class="wpp-gh"><span>PICK</span><span>HITS</span><span>IF HIT</span><span>IF MISS</span></div><ul class="wpp-games">${games}</ul><div class="wpp-note">Your chance to win the week if that pick hits, or misses.</div>` : ""}
+    ${games ? `<div class="wpx-h">YOUR WEEK IF EACH PICK HITS OR MISSES</div><div class="wpp-gh"><span>PICK</span><span>HITS</span><span>IF HIT</span><span>IF MISS</span></div><ul class="wpp-games">${games}</ul>` : ""}
     ${threatHtml ? `<div class="wpx-h">WHO WINS WHEN YOU DON'T</div><div class="wpp-thr">${threatHtml}</div>` : ""}
     <details class="wpp-more"><summary>SHOW THE MATH</summary>
       <div class="wpp-stand">${stand}</div>
