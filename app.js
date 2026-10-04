@@ -2916,22 +2916,34 @@ function renderPayouts() {
     if (!w?.complete || w.exhibition) continue;
     for (const r of w.rows || []) { const x = rec[r.name] = rec[r.name] || { w: 0, l: 0 }; x.w += r.hits || 0; x.l += r.misses || 0; }
   }
+  // One LED segment per week of the season: settled weeks carry the
+  // winner's avatar, the live week pulses, the rest wait.
+  const settled = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition).sort((x, y) => x.week - y.week);
+  const avOf = (n) => `<span class="ps-av" style="--accent:${accentFor(n)}" title="${shown(n)}">${avatarOverrides[n] || shown(n)[0]}</span>`;
+  const seasonSegs = Array.from({ length: POT.weeks }, (_, i) => {
+    const w = settled[i];
+    if (w) return `<span class="ps-seg won">${(w.winners || []).slice(0, 2).map(avOf).join("")}</span>`;
+    if (i === settled.length && liveWeek) return `<span class="ps-seg live"></span>`;
+    return `<span class="ps-seg"></span>`;
+  }).join("");
   panel.innerHTML = `
-    <div class="pot-head">
-      <div class="pot-stat"><b>${money(POT.total)}</b><span>${POT.members} × ${money(POT.buyIn)}</span></div>
-      <div class="pot-stat"><b>${money(POT.weekly)}</b><span>per week · ${POT.weeks} weeks</span></div>
-      ${POT.season.length
-        ? `<div class="pot-stat"><b>${POT.season.map(money).join(" / ")}</b><span>season ${POT.season.length > 1 ? "1st / 2nd" : "champion"}</span></div>`
-        : `<div class="pot-stat"><b>1ST ONLY</b><span>${POT.total === POT.weeklyTotal ? "winner takes the week" : money(POT.total - POT.weeklyTotal) + " unallocated"}</span></div>`}
+    <div class="pot-jackpot">
+      <div class="pj-label">★ JACKPOT · STILL IN PLAY ★</div>
+      <div class="pj-amount">${money(Math.max(0, left + (POT.seasonTotal || 0)))}</div>
+      <div class="pj-sub">${money(POT.total)} pot · ${POT.members} × ${money(POT.buyIn)} · ${money(POT.weekly)} a week${POT.season.length ? ` · season ${POT.season.map(money).join(" / ")}` : " · 1st only"}</div>
     </div>
-    <div class="pot-note">${sealed} of ${POT.weeks} weeks settled · ${money(paid)} paid out · ${money(Math.max(0, left))} in play${POT.season.length && !done ? " weekly · season money is a projection" : ""}</div>
+    <div class="pot-season">
+      <div class="ps-head"><span>SEASON</span><b>${sealed} / ${POT.weeks}</b></div>
+      <div class="ps-bar">${seasonSegs}</div>
+      <div class="pot-note">${money(paid)} paid out${POT.season.length && !done ? " · season money is a projection" : ""}</div>
+    </div>
     ${liveWeek ? `<div class="pot-live">${liveWeekFinal ? `WEEK ${liveWeek} UNSEALED` : `WEEK ${liveWeek} ACTIVE`}</div>` : ""}
     ${contested ? `<div class="pot-warn">⚠ Season places are tied on points where the money sits. The weekly tiebreaker does not settle the season, so the league needs a rule for this before the last week.</div>` : ""}
     <div class="pot-table">
       <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>REC</span><span>WON</span><span>EARNED</span></div>
-      ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}">
+      ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}">
         <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
-        <span class="pot-name">${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
+        <span class="pot-name"><span class="pot-av" style="--accent:${accentFor(r.name)}">${avatarOverrides[r.name] || shown(r.name)[0]}</span>${r.seasonPlace === 1 && r.points > 0 ? `<i class="pot-crown">♛</i>` : ""}${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
         <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
         <span class="pot-rec">${rec[r.name] ? `${rec[r.name].w}-${rec[r.name].l}` : "–"}</span>
         <span class="pot-won">${r.weeksWon ? "🏆".repeat(Math.min(r.weeksWon, 3)) + (r.weeksWon > 3 ? `×${r.weeksWon}` : "") : "–"}</span>

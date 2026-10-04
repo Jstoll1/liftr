@@ -5113,3 +5113,24 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .week-done .rh { width: min(28px, 100%); }
 /* Same name width on every row so the logo columns still line up. */
 .week-done .ranking-row .ranking-name { flex: 0 0 76px; width: 76px; max-width: 76px; }
+
+/* ===== The Pot: jackpot, season bar, avatars ===== */
+.pot-jackpot { position: relative; text-align: center; padding: 14px 10px 12px; border: 2px solid var(--neon-yellow); border-radius: 10px; background: radial-gradient(120% 90% at 50% 0%, #2a1a00 0%, #07020f 75%); box-shadow: 4px 4px 0 rgba(0, 0, 0, .55), 0 0 22px rgba(255, 210, 63, .25), inset 0 0 18px rgba(0, 0, 0, .7); overflow: hidden; }
+.pot-jackpot::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 3px); pointer-events: none; }
+.pj-label { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .14em; color: var(--neon-pink); animation: ss-blink 2.4s steps(1) infinite; }
+.pj-amount { margin: 10px 0 8px; font-family: 'Press Start 2P', monospace; font-size: 30px; line-height: 1; color: #ffd23f; text-shadow: 3px 3px 0 #b5179e, 0 0 16px rgba(255, 210, 63, .6); }
+.pj-sub { font-size: 10.5px; color: var(--text-dim); }
+.pot-season { display: flex; flex-direction: column; gap: 6px; }
+.ps-head { display: flex; justify-content: space-between; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .12em; color: var(--neon-cyan); }
+.ps-head b { font-weight: normal; color: #fff; }
+.ps-bar { display: grid; grid-template-columns: repeat(14, 1fr); gap: 3px; }
+.ps-seg { position: relative; height: 22px; border-radius: 3px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08); display: flex; align-items: center; justify-content: center; }
+.ps-seg.won { background: linear-gradient(180deg, #ffe45e, #c9900a); border-color: #ffe45e; box-shadow: 0 0 6px rgba(255, 210, 63, .45); }
+.ps-seg.live { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .15); animation: h2h-blink 1s steps(1) infinite; }
+.ps-av { width: 14px; height: 14px; border-radius: 3px; background: var(--accent); color: #0a0414; font-family: 'Press Start 2P', monospace; font-size: 6px; display: inline-flex; align-items: center; justify-content: center; line-height: 1; box-shadow: 1px 1px 0 rgba(0, 0, 0, .5); }
+.ps-av + .ps-av { margin-left: -6px; }
+.pot-name { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.pot-av { flex: none; width: 20px; height: 20px; border-radius: 5px; background: var(--accent); color: #0a0414; font-family: 'Press Start 2P', monospace; font-size: 8px; display: inline-flex; align-items: center; justify-content: center; line-height: 1; box-shadow: 2px 2px 0 rgba(0, 0, 0, .5); }
+.pot-crown { font-style: normal; color: #ffd23f; text-shadow: 0 0 6px rgba(255, 210, 63, .7); margin-right: -3px; }
+.pot-row.leader { background: linear-gradient(90deg, rgba(255, 210, 63, .14), transparent 75%); box-shadow: inset 3px 0 0 #ffd23f; }
+.pot-row.leader .pot-name, .pot-row.leader .pot-pts b { color: #ffd23f; }
