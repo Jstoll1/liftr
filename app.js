@@ -5311,7 +5311,9 @@ let renderRecap = function () {
   const paint = () => {
     // Before the first kickoff the board is empty and last week is the
     // story, so the recap leads. Once games start it steps below them.
-    const isOpen = open === null ? true : open === "1";
+    // The REPLAY marquee is the title now, so the fold heading is gone and
+    // the recap always shows while it is current.
+    const isOpen = true;
     panel.classList.toggle("hidden", !isOpen || toggle.classList.contains("hidden"));
     toggle.classList.toggle("open", isOpen); toggle.setAttribute("aria-expanded", String(isOpen));
   };
