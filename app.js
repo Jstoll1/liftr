@@ -3510,11 +3510,33 @@ function drawChalkLine(rows, results) {
   rankingsList.appendChild(note);
 }
 
+// Week over: the board reads top to bottom as recap, the pot, the
+// leaderboard, then the game scores, all open and each foldable. The
+// first time a finished week is seen, the pot opens itself.
+let weekOverSeen = null;
+function setWeekOverLayout(on) {
+  const screen = document.getElementById("scoreboard-screen");
+  if (!screen) return;
+  screen.classList.toggle("week-over", on);
+  if (on && weekOverSeen !== currentWeek) {
+    weekOverSeen = currentWeek;
+    const pot = document.getElementById("payouts-toggle");
+    if (pot && !pot.classList.contains("open")) pot.click();
+  }
+}
+document.getElementById("scores-toggle")?.addEventListener("click", (e) => {
+  const t = e.currentTarget, list = document.getElementById("live-scores-list");
+  const open = !t.classList.contains("open");
+  t.classList.toggle("open", open); t.setAttribute("aria-expanded", String(open));
+  list?.classList.toggle("folded", !open);
+});
+
 function renderRankingRows(rows, cloudPicks, results, live) {
   const top = rows.length ? rows[0].score : 0;
   // A quiet column key, same flex layout as the rows so labels line up.
   const weekDone = GAMES.length > 0 && GAMES.every((g) => results?.[g.id]);
   rankingsList.classList.toggle("week-done", weekDone);
+  setWeekOverLayout(weekDone);
   // Same number of slots on every row (the most anyone hit), so logos
   // are one size and line up in columns down the board.
   if (weekDone) rankingsList.style.setProperty("--hits", Math.max(1, ...rows.map((r) => gamesByKickoff().filter((g) => { const pk = r.state.picks?.[g.id]; return pk && scorePick(g, pk, results[g.id]) > 0; }).length)));
@@ -5331,7 +5353,7 @@ let renderRecap = function () {
     // story, so the recap leads. Once games start it steps below them.
     // The REPLAY marquee is the title now, so the fold heading is gone and
     // the recap always shows while it is current.
-    const isOpen = true;
+    const isOpen = open === null ? true : open === "1";
     panel.classList.toggle("hidden", !isOpen || toggle.classList.contains("hidden"));
     toggle.classList.toggle("open", isOpen); toggle.setAttribute("aria-expanded", String(isOpen));
   };

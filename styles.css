@@ -5082,3 +5082,25 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-rec { text-align: center; font-variant-numeric: tabular-nums; color: var(--text-dim); font-size: 11px; }
 .pot-row.head .pot-rec, .pot-row.head span:nth-child(4) { text-align: center; }
 @media (max-width: 360px) { .pot-row { grid-template-columns: 20px minmax(0, 1fr) 32px 40px 40px 50px; } }
+
+/* ===== Week over: recap, pot, leaderboard, scores, in that order ===== */
+#scores-toggle { display: none; }
+#scoreboard-screen.week-over #scores-toggle { display: flex; }
+#scoreboard-screen.week-over #recap-toggle:not(.hidden) { display: flex !important; }
+#live-scores-list.folded { display: none; }
+#scoreboard-screen.week-over > .wrap { display: flex; flex-direction: column; }
+#scoreboard-screen.week-over > .wrap > * { order: 50; }
+#scoreboard-screen.week-over #week-champ { order: 0; }
+#scoreboard-screen.week-over #scoreboard-updated, #scoreboard-screen.week-over #insert-coin, #scoreboard-screen.week-over #my-score { order: 1; }
+#scoreboard-screen.week-over #recap-toggle { order: 2; }
+#scoreboard-screen.week-over #recap-panel { order: 3; }
+#scoreboard-screen.week-over #payouts-toggle { order: 4; }
+#scoreboard-screen.week-over #payouts-panel { order: 5; }
+#scoreboard-screen.week-over .lb-head { order: 6; }
+#scoreboard-screen.week-over #rankings-list { order: 7; }
+#scoreboard-screen.week-over #scores-toggle { order: 8; }
+#scoreboard-screen.week-over #live-scores-list { order: 9; }
+#scoreboard-screen.week-over #all-picks-toggle { order: 10; }
+#scoreboard-screen.week-over .scoreboard-table-wrap { order: 11; }
+#scoreboard-screen.week-over #season-toggle { order: 12; }
+#scoreboard-screen.week-over #season-panel { order: 13; }
