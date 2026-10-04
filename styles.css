@@ -5040,3 +5040,13 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .recap-card.arc .recap-stat b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 16px; color: var(--c); text-shadow: 0 0 6px color-mix(in srgb, var(--c) 60%, transparent); }
 .recap-card.arc .recap-stat span { display: block; margin-top: 6px; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .1em; color: var(--text-dim); }
 #recap-toggle { display: none !important; }
+/* Week over: correct picks as logos with a points badge, centred. */
+.week-done .rank-live.mid { display: none; }
+.rank-hits { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 5px; }
+.rank-hits.hd { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: rgba(255, 255, 255, .32); }
+.rank-hits em { font-style: normal; font-size: 10px; color: var(--text-dim); }
+.rh { position: relative; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+.rh img { width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .6)); }
+.rh b { position: absolute; right: -5px; bottom: -4px; min-width: 14px; padding: 1px 2px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 5.5px; line-height: 1.2; text-align: center; color: #0a0414; background: var(--neon-cyan); box-shadow: 1px 1px 0 rgba(0, 0, 0, .6); }
+.rh b.t1 { background: #9aa0b5; }
+.rh b.t3 { background: var(--neon-yellow); }

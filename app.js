@@ -3505,12 +3505,14 @@ function drawChalkLine(rows, results) {
 function renderRankingRows(rows, cloudPicks, results, live) {
   const top = rows.length ? rows[0].score : 0;
   // A quiet column key, same flex layout as the rows so labels line up.
+  const weekDone = GAMES.length > 0 && GAMES.every((g) => results?.[g.id]);
+  rankingsList.classList.toggle("week-done", weekDone);
   if (rows.length) {
     const anyWp = rows.some((r) => r.winPct != null);
     const hd = document.createElement("div");
     hd.className = "ranking-row rank-hd";
     hd.setAttribute("aria-hidden", "true");
-    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span><i class="rank-live mid">LIVE</i>${anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b class="rank-hd-wp" role="button" tabindex="0" title="How chance to win is worked out">WIN% ?</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
+    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span>${weekDone ? `<span class="rank-hits hd">CORRECT PICKS</span>` : `<i class="rank-live mid">LIVE</i>`}${weekDone ? "" : anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b class="rank-hd-wp" role="button" tabindex="0" title="How chance to win is worked out">WIN% ?</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
     hd.querySelector(".rank-hd-wp")?.addEventListener("click", openWinChanceExplainer);
     rankingsList.appendChild(hd);
   }
@@ -3544,6 +3546,11 @@ function renderRankingRows(rows, cloudPicks, results, live) {
           const pct = row.winPct != null ? row.winPct * 100 : null;
           const txt = pct == null ? "" : pct >= 99.5 ? "99%+" : pct > 0 && pct < 1 ? "<1%" : `${Math.round(pct)}%`;
           void strip;
+          // Week over: the picks that cashed, in kickoff order, logo plus points.
+          if (weekDone) {
+            const hits = gamesByKickoff().map((g) => { const pk = row.state.picks?.[g.id]; const p = pk && results?.[g.id] ? scorePick(g, pk, results[g.id]) : 0; return p > 0 ? { g, pk, p } : null; }).filter(Boolean);
+            return `<span class="rank-hits">${hits.map((h) => `<span class="rh" title="${h.pk.team} ${h.pk.mode === "SU" ? "to win" : "ATS"} · +${h.p}"><img src="${logoUrl(h.pk.team === h.g.home ? h.g.homeId : h.g.awayId)}" alt="" loading="lazy"><b class="t${h.p}">+${h.p}</b></span>`).join("") || `<em>No hits</em>`}</span>`;
+          }
           return pct != null ? `<span class="rank-wp${pct >= 50 ? " hot" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>` : `<span class="ranking-dots" aria-hidden="true"></span>`;
         })()}
         <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
