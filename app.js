@@ -3234,6 +3234,49 @@ function openPlayerChance(name) {
   if (backfire.length) why.push(`${backfire.map((x) => `<b>${esc(short(x.game, x.pick.team))}</b>`).join(", ")} hitting actually <em>lowers</em> your chance: rivals ride the same result for more points.`);
   const finHtml = fins.map((f) => `<div class="wpp-fin-r${f.win >= 0.5 ? " good" : ""}"><b>${f.pts}</b><span class="wpp-bar"><i style="width:${(f.p / fmax * 100).toFixed(0)}%"></i><em>${pc(f.p)}</em></span><strong>${pc(f.win)}</strong></div>`).join("") + (restP >= 0.005 ? `<div class="wpp-fin-r rest"><b>other</b><span class="wpp-bar"><i style="width:${Math.min(100, restP / fmax * 100).toFixed(0)}%"></i><em>${pc(restP)}</em></span><strong>${pc(restWin)}</strong></div>` : "");
   const threatHtml = (wd.threats || []).map((t) => `<span class="wpp-th"><span class="pick-chip-av" style="--accent:${accentFor(t.name)}">${esc(avatarOverrides[t.name] || shown(t.name)[0])}</span>${esc(shown(t.name))}<b>${pc(t.p)}</b></span>`).join("");
+  // You versus the one player who beats you most often: every game left,
+  // what each of you has on it, and the best that game can do for you
+  // against them. Summed, that is the most you can still gain on them.
+  const rivalName = (wd.threats || [])[0]?.name || (leaders[0] !== name ? leaders[0] : rows.find((r) => r.name !== name)?.name);
+  let vsHtml = "", verdict = "";
+  if (rivalName) {
+    const rRow = rows.find((r) => r.name === rivalName);
+    const outcomes = (g) => {
+      const sp = Number(g.spread) || 0, favHome = g.favorite === g.home;
+      const dog = favHome ? g.awayShort : g.homeShort, fav = favHome ? g.homeShort : g.awayShort;
+      const list = [{ m: Math.floor(sp) + 1, txt: `${fav} covers ${sp ? "-" + sp : ""}`.trim() }];
+      if (Math.floor(sp) >= 1) list.push({ m: 1, txt: `${fav} wins, no cover` });
+      if (Number.isInteger(sp) && sp > 0) list.push({ m: sp, txt: `${fav} by exactly ${sp}` });
+      list.push({ m: -1, txt: `${dog} wins` });
+      return list.map((o) => ({ ...o, res: favHome ? { homeScore: 30 + o.m, awayScore: 30 } : { awayScore: 30 + o.m, homeScore: 30 } }));
+    };
+    const lines = [];
+    let gain = 0;
+    for (const g of GAMES) {
+      if (results[g.id]) continue;
+      const mine = picks[name]?.picks?.[g.id], theirs = picks[rivalName]?.picks?.[g.id];
+      if (!mine && !theirs) continue;
+      let best = null;
+      for (const o of outcomes(g)) {
+        const net = (mine ? scorePick(g, mine, o.res) : 0) - (theirs ? scorePick(g, theirs, o.res) : 0);
+        if (!best || net > best.net) best = { net, txt: o.txt };
+      }
+      gain += Math.max(0, best.net);
+      const same = mine && theirs && mine.team === theirs.team && mine.mode === theirs.mode;
+      const lab = (pk) => pk ? `${esc(short(g, pk.team))} ${esc(terms(g, pk))}` : "–";
+      lines.push(`<li class="${same ? "same" : best.net > 0 ? "edge" : "dead"}"><span>${lab(mine)}</span><span>${lab(theirs)}</span><b>${same ? "same" : best.net > 0 ? `+${best.net}` : "0"}</b><em>${same ? "" : best.net > 0 ? `if ${esc(best.txt)}` : "can't gain here"}</em></li>`);
+    }
+    const back = (rRow?.score ?? 0) - row.score;
+    const R = esc(shown(rivalName));
+    if (back > 0 && gain < back) verdict = `You can't pass ${R}. You're ${back} back, and even if every game breaks your way you gain at most ${gain} on them.`;
+    else if (back > 0 && gain === back) verdict = `Best case you tie ${R}: you're ${back} back and can gain exactly ${back}. Then it goes to the tiebreaker.`;
+    else if (back > 0) verdict = `You're ${back} back of ${R} and can gain up to ${gain} on them, but only if the games below break your way.`;
+    else if (back === 0) verdict = `Level with ${R}. The games where you split decide it.`;
+    else verdict = `You're ${-back} ahead of ${R}, your biggest threat.`;
+    if (wd.pct === 0 && back > 0 && gain > back) verdict += ` The combinations that get you there also lift someone else, so it never happens in the simulation.`;
+    else if (wd.pct === 0 && back <= 0) verdict += ` But in every simulated finish someone else ends on top of you.`;
+    vsHtml = `<div class="wpx-h">YOU VS ${R.toUpperCase()} · GAMES LEFT</div><div class="wpp-vs-h"><span>YOU</span><span>${R.toUpperCase()}</span><span>BEST FOR YOU</span></div><ul class="wpp-vs">${lines.join("")}</ul>`;
+  }
   let m = document.getElementById("wp-player");
   if (!m) {
     m = document.createElement("div");
@@ -3246,14 +3289,17 @@ function openPlayerChance(name) {
   m.innerHTML = `<div class="wpx-card wpp">
     <button type="button" class="wpx-x" aria-label="Close">✕</button>
     <div class="wpp-head"><span class="wpp-av" style="--accent:${accentFor(name)}">${esc(avatarOverrides[name] || shown(name)[0])}</span><div><b>${esc(shown(name).toUpperCase())}</b><small>${row.score} PTS · MAX ${myMax}</small></div><i>${pc(wd.pct)}</i></div>
-    <div class="wpp-stand">${stand}</div>
-    <div class="wpx-h">WHY ${pc(wd.pct)}</div>
-    <ul class="wpp-why">${why.map((w) => `<li>${w}</li>`).join("") || "<li>Nothing unusual: it comes down to the games left.</li>"}</ul>
-    <div class="wpp-math"><span><b>${pc(wd.top)}</b>finish with most pts</span><span><b>${pc(wd.tb)}</b>win via tiebreak</span><span><b>±${(wd.moe * 100).toFixed(1)}%</b>sampling range</span></div>
-    ${finHtml ? `<div class="wpx-h">WHERE YOU FINISH</div><div class="wpp-fin"><div class="wpp-fin-h"><span>PTS</span><span>HOW OFTEN YOU END THERE</span><span>THEN WIN</span></div>${finHtml}</div>` : ""}
-    ${games ? `<div class="wpx-h">GAMES THAT MOVE YOU MOST</div><div class="wpp-gh"><span>PICK</span><span>HITS</span><span>IF HIT</span><span>IF MISS</span></div><ul class="wpp-games">${games}</ul>` : ""}
-    ${threatHtml ? `<div class="wpx-h">WHEN YOU DON'T WIN, WHO DOES</div><div class="wpp-thr">${threatHtml}</div>` : ""}
-    <div class="wpp-foot">From ${wd.runs.toLocaleString()} simulated finishes of this week, using live scores and the betting lines. Sampling range is the 95% band from running 5,000 times, not 5 million. Tap ? on WIN% for the method.</div>
+    <div class="wpp-verdict">${verdict || stand}</div>
+    ${vsHtml}
+    ${games ? `<div class="wpx-h">YOUR GAMES THAT MATTER MOST</div><div class="wpp-gh"><span>PICK</span><span>HITS</span><span>IF HIT</span><span>IF MISS</span></div><ul class="wpp-games">${games}</ul><div class="wpp-note">Your chance to win the week if that pick hits, or misses.</div>` : ""}
+    ${threatHtml ? `<div class="wpx-h">WHO WINS WHEN YOU DON'T</div><div class="wpp-thr">${threatHtml}</div>` : ""}
+    <details class="wpp-more"><summary>SHOW THE MATH</summary>
+      <div class="wpp-stand">${stand}</div>
+      <ul class="wpp-why">${why.map((w) => `<li>${w}</li>`).join("")}</ul>
+      <div class="wpp-math"><span><b>${pc(wd.top)}</b>finish with most pts</span><span><b>${pc(wd.tb)}</b>win via tiebreak</span><span><b>±${(wd.moe * 100).toFixed(1)}%</b>sampling range</span></div>
+      ${finHtml ? `<div class="wpx-h">WHERE YOU FINISH</div><div class="wpp-fin"><div class="wpp-fin-h"><span>PTS</span><span>HOW OFTEN YOU END THERE</span><span>THEN WIN</span></div>${finHtml}</div>` : ""}
+      <div class="wpp-foot">From ${wd.runs.toLocaleString()} simulated finishes of this week, using live scores and the betting lines. Sampling range is the 95% band. Tap ? on WIN% for the method.</div>
+    </details>
   </div>`;
   m.classList.remove("hidden");
   track("wp-player", { event: true });

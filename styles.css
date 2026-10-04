@@ -4993,3 +4993,21 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .wpp-fin-r.rest > b { font-family: inherit; font-size: 10px; color: var(--text-dim); }
 .wpp-fin-r.rest .wpp-bar i { background: rgba(255, 255, 255, .12); }
 .wpp-why em { font-style: normal; color: var(--neon-pink); }
+.wpp-verdict { font-size: 14px; line-height: 1.45; color: #fff; padding: 9px 10px; border-left: 3px solid var(--neon-yellow); background: rgba(255, 228, 94, .07); border-radius: 0 6px 6px 0; }
+.wpp-vs-h { display: grid; grid-template-columns: 1fr 1fr 74px; gap: 6px; padding: 0 8px; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .08em; color: var(--text-dim); }
+.wpp-vs-h span:last-child { text-align: right; }
+.wpp-vs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.wpp-vs li { display: grid; grid-template-columns: 1fr 1fr 74px; gap: 2px 6px; align-items: center; padding: 6px 8px; border-radius: 6px; background: rgba(255, 255, 255, .05); font-size: 12px; }
+.wpp-vs li > b { text-align: right; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; color: var(--text-dim); }
+.wpp-vs li > em { grid-column: 1 / -1; font-style: normal; font-size: 10px; color: var(--text-dim); }
+.wpp-vs li > em:empty { display: none; }
+.wpp-vs li.edge > b { color: var(--neon-green); }
+.wpp-vs li.edge { box-shadow: inset 3px 0 0 var(--neon-green); }
+.wpp-vs li.same { opacity: .45; }
+.wpp-note { font-size: 10px; color: var(--text-dim); }
+.wpp-more { border-top: 1px dashed rgba(255, 255, 255, .12); padding-top: 8px; }
+.wpp-more summary { cursor: pointer; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .1em; color: var(--neon-cyan); list-style: none; }
+.wpp-more summary::-webkit-details-marker { display: none; }
+.wpp-more summary::before { content: "▸ "; }
+.wpp-more[open] summary::before { content: "▾ "; }
+.wpp-more[open] { display: flex; flex-direction: column; gap: 10px; }
