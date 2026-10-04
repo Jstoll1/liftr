@@ -5108,3 +5108,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .recap-panel.folded .recap-card { display: none; }
 .recap-caret { font-style: normal; display: inline-block; margin-left: 4px; transition: transform .15s; }
 .recap-panel.folded .recap-caret { transform: rotate(-90deg); }
+/* Week over: the name column hugs the name, the logos take the rest. */
+.week-done .rank-hits:not(.hd) { gap: 0 2px; }
+.week-done .rh { width: min(28px, 100%); }
+/* Same name width on every row so the logo columns still line up. */
+.week-done .ranking-row .ranking-name { flex: 0 0 76px; width: 76px; max-width: 76px; }
