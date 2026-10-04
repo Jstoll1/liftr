@@ -5328,7 +5328,7 @@ let renderRecap = function () {
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
   if (panel.dataset.drawn === key) return;
   panel.dataset.drawn = key;
-  panel.innerHTML = `<div class="recap-marquee"><span>★ ${esc(String(last.label || `WEEK ${last.week}`).toUpperCase())} REPLAY ★</span><small>GAME OVER · FINAL STATS</small></div>` + cards.map(([h, cls, art, main, sub, stat, statLabel, me], i) =>
+  panel.innerHTML = `<div class="recap-marquee" role="button" tabindex="0" aria-expanded="true" title="Tap to fold"><span>★ ${esc(String(last.label || `WEEK ${last.week}`).toUpperCase())} REPLAY ★</span><small>GAME OVER · FINAL STATS <i class="recap-caret">▾</i></small></div>` + cards.map(([h, cls, art, main, sub, stat, statLabel, me], i) =>
     `<div class="recap-card arc ${cls}${me ? " me" : ""}" style="--i:${i}">
       <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
       <div class="recap-art">${art}</div>
@@ -5339,6 +5339,18 @@ let renderRecap = function () {
       <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div>
     </div>`).join("");
 };
+
+// The REPLAY marquee is the fold: tap it to tuck the cards away.
+document.getElementById("recap-panel")?.addEventListener("click", (e) => {
+  const mq = e.target.closest(".recap-marquee");
+  if (!mq) return;
+  const panel = e.currentTarget;
+  const folded = !panel.classList.contains("folded");
+  panel.classList.toggle("folded", folded);
+  mq.setAttribute("aria-expanded", String(!folded));
+  try { localStorage.setItem("brochiefs_recap_folded_v1", folded ? "1" : "0"); } catch {}
+});
+try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.getElementById("recap-panel")?.classList.add("folded"); } catch {}
 
 // Folds like the sections under it. Starts open; the choice is remembered.
 (() => {
@@ -5353,7 +5365,7 @@ let renderRecap = function () {
     // story, so the recap leads. Once games start it steps below them.
     // The REPLAY marquee is the title now, so the fold heading is gone and
     // the recap always shows while it is current.
-    const isOpen = open === null ? true : open === "1";
+    const isOpen = true;
     panel.classList.toggle("hidden", !isOpen || toggle.classList.contains("hidden"));
     toggle.classList.toggle("open", isOpen); toggle.setAttribute("aria-expanded", String(isOpen));
   };

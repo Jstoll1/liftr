@@ -5086,7 +5086,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 /* ===== Week over: recap, pot, leaderboard, scores, in that order ===== */
 #scores-toggle { display: none; }
 #scoreboard-screen.week-over #scores-toggle { display: flex; }
-#scoreboard-screen.week-over #recap-toggle:not(.hidden) { display: flex !important; }
+
 #scoreboard-screen.week-over #live-scores-list.folded { display: none; }
 #scoreboard-screen.week-over > .wrap { display: flex; flex-direction: column; }
 #scoreboard-screen.week-over > .wrap > * { order: 50; }
@@ -5104,3 +5104,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 #scoreboard-screen.week-over .scoreboard-table-wrap { order: 11; }
 #scoreboard-screen.week-over #season-toggle { order: 12; }
 #scoreboard-screen.week-over #season-panel { order: 13; }
+.recap-marquee { cursor: pointer; }
+.recap-panel.folded .recap-card { display: none; }
+.recap-caret { font-style: normal; display: inline-block; margin-left: 4px; transition: transform .15s; }
+.recap-panel.folded .recap-caret { transform: rotate(-90deg); }
