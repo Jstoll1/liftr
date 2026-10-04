@@ -5089,19 +5089,13 @@ async function openInsights(gameId) {
   land(summaryP, (v) => { summaryRaw = v; }, "summary");
   land(withTimeout(summaryP.then((raw) => fetchAiPreview(game, parseSummaryClient(raw, game))), 15000, null), (v) => { aiPv = v; }, "ai");
 }
-(() => {
-  const modal = document.getElementById("insights-modal");
-  if (!modal) return;
-  const close = () => modal.classList.add("hidden");
-  modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
-  modal.querySelector("#insights-close")?.addEventListener("click", close);
-  // Swipe down to close: only from the top of the sheet, so scrolling the
-  // content still works; the card follows the finger and snaps back if the
-  // pull is short.
-  const card = modal.querySelector(".insights-card");
+// Swipe down to close a sheet: only from the top of the sheet, so
+// scrolling the content still works; the card follows the finger and
+// snaps back if the pull is short.
+function swipeToClose(modal, card, close) {
   let y0 = null, dy = 0;
   modal.addEventListener("touchstart", (e) => {
-    if (modal.scrollTop > 2 || e.touches.length !== 1) { y0 = null; return; }
+    if (modal.scrollTop > 2 || e.touches.length !== 1 || e.target.closest("select")) { y0 = null; return; }
     y0 = e.touches[0].clientY; dy = 0;
     if (card) card.style.transition = "none";
   }, { passive: true });
@@ -5113,11 +5107,23 @@ async function openInsights(gameId) {
   }, { passive: true });
   modal.addEventListener("touchend", () => {
     if (y0 === null) return;
-    if (card) { card.style.transition = "transform .2s ease, opacity .2s ease"; }
-    if (dy > 110) { close(); }
+    if (card) card.style.transition = "transform .2s ease, opacity .2s ease";
+    if (dy > 110) close();
     if (card) { card.style.transform = ""; card.style.opacity = ""; }
     y0 = null; dy = 0;
   });
+}
+(() => {
+  const m = document.getElementById("h2h-modal");
+  if (m) swipeToClose(m, m.querySelector(".h2h-card"), () => m.classList.add("hidden"));
+})();
+(() => {
+  const modal = document.getElementById("insights-modal");
+  if (!modal) return;
+  const close = () => modal.classList.add("hidden");
+  modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
+  modal.querySelector("#insights-close")?.addEventListener("click", close);
+  swipeToClose(modal, modal.querySelector(".insights-card"), close);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.classList.contains("hidden")) close(); });
 })();
 
