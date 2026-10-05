@@ -4030,7 +4030,7 @@ async function maybeShowQotw() {
     m.innerHTML = `<div class="wpx-card qotw">
       <div class="qotw-kicker">★ BROCHIEFS QUESTION OF THE WEEK ★</div>
       <div class="qotw-q">${QOTW.qHtml || QOTW.q}</div>
-      <textarea class="qotw-in" rows="4" placeholder="Your answer…"></textarea>
+      <div class="qotw-field"><textarea class="qotw-in" rows="4" placeholder="Your answer…"></textarea></div>
       <div class="qotw-err" hidden></div>
       <div class="qotw-btns"><button type="button" class="qotw-cop">Cop out: I have no clue</button><button type="button" class="qotw-go">Submit</button></div>
     </div>`;
@@ -4048,7 +4048,28 @@ async function maybeShowQotw() {
       } catch (e) { err.hidden = false; err.textContent = e.message || "Didn't save. Try again."; m.querySelectorAll("button").forEach((b) => (b.disabled = false)); }
     };
     m.querySelector(".qotw-go").addEventListener("click", () => send(false));
-    m.querySelector(".qotw-cop").addEventListener("click", () => send(true));
+    // The cop out button plays hard to get: the first tap sends it to the
+    // top right of the text box, the second next to Submit, and only the
+    // third actually cops out. Each hop slides from where it was (FLIP).
+    let dodges = 0;
+    const cop = m.querySelector(".qotw-cop");
+    const hop = (place) => {
+      const a = cop.getBoundingClientRect();
+      place();
+      const b = cop.getBoundingClientRect();
+      cop.style.transition = "none";
+      cop.style.transform = `translate(${a.left - b.left}px, ${a.top - b.top}px)`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        cop.style.transition = "transform .45s cubic-bezier(.2, 1.4, .4, 1)";
+        cop.style.transform = "";
+      }));
+    };
+    cop.addEventListener("click", () => {
+      dodges += 1;
+      if (dodges === 1) return hop(() => { cop.classList.add("at-corner"); m.querySelector(".qotw-field").appendChild(cop); });
+      if (dodges === 2) return hop(() => { cop.classList.remove("at-corner"); cop.classList.add("at-right"); m.querySelector(".qotw-btns").appendChild(cop); });
+      send(true);
+    });
   }
 }
 
