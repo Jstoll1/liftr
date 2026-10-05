@@ -1700,7 +1700,7 @@ async function handleQotw(request, env, corsHeaders, url) {
     const id = String(url.searchParams.get("id") || "").slice(0, 40);
     if (!id) return json({ error: "Missing id" }, 400, corsHeaders);
     if (url.searchParams.get("all") === "1") {
-      if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+      if (!isAdmin(env, url) && !isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
       const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(key(id, m), "json")]));
       return json({ answers: Object.fromEntries(rows.filter(([, v]) => v)) }, 200, corsHeaders);
     }

@@ -150,6 +150,35 @@
     }
   }
 
+  // Question of the week: every answer on file, with a copy-all button so
+  // they can be kept anywhere.
+  async function showQotw() {
+    const box = el("admin-qotw");
+    const key = await verifyKey();
+    if (!key) return;
+    const q = window.QOTW || { id: "gooey-belly", q: "" };
+    box.classList.remove("hidden");
+    box.textContent = "Loading answers…";
+    try {
+      const res = await fetch(`${WORKER_URL}/qotw?id=${encodeURIComponent(q.id)}&all=1&key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) throw new Error(String(res.status));
+      const answers = (await res.json()).answers || {};
+      const names = typeof MANAGERS !== "undefined" ? MANAGERS : Object.keys(answers);
+      const label = (n) => (typeof shown === "function" ? shown(n) : n);
+      const lines = names.map((n) => { const a = answers[n]; return { n, txt: !a ? "(no answer yet)" : a.copout ? "Cop out: no clue" : a.answer }; });
+      const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      const done = Object.keys(answers).length;
+      box.innerHTML = `<div class="aq-head"><b>${esc(q.q)}</b><span>${done} of ${names.length} in</span></div>` +
+        lines.map((l) => `<div class="aq-row${answers[l.n] ? "" : " none"}"><b>${esc(label(l.n))}</b><span>${esc(l.txt)}</span></div>`).join("") +
+        `<button type="button" class="admin-btn link aq-copy">Copy all</button>`;
+      box.querySelector(".aq-copy").addEventListener("click", () => {
+        const text = `${q.q}\n\n` + lines.map((l) => `${label(l.n)}: ${l.txt}`).join("\n");
+        navigator.clipboard?.writeText(text).then(() => say("Answers copied.", "good"), () => say("Copy failed.", "bad"));
+      });
+    } catch (e) { box.textContent = `Could not load answers (${e.message}).`; }
+  }
+  el("admin-qotw-btn")?.addEventListener("click", showQotw);
+
   function syncGate() {
     const has = !!getKey().trim();
     el("admin-load").disabled = !has;

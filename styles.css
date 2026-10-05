@@ -5194,3 +5194,10 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .qotw-btns button { flex: 1; padding: 11px 8px; border-radius: 8px; font-family: 'Press Start 2P', monospace; font-size: 7.5px; letter-spacing: .06em; cursor: pointer; }
 .qotw-cop { background: none; border: 1px solid rgba(255, 255, 255, .25); color: var(--text-dim); }
 .qotw-go { background: var(--neon-green); border: 0; color: #0a0414; box-shadow: 3px 3px 0 rgba(0, 0, 0, .5); }
+.admin-qotw { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; padding: 10px; border: 1px solid rgba(255, 255, 255, .15); border-radius: 8px; background: rgba(0, 0, 0, .3); font-size: 12px; }
+.admin-qotw.hidden { display: none; }
+.aq-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.aq-head span { color: var(--text-dim); white-space: nowrap; }
+.aq-row { display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 5px 0; border-top: 1px solid rgba(255, 255, 255, .06); }
+.aq-row span { white-space: pre-wrap; word-break: break-word; }
+.aq-row.none span { color: var(--text-dim); font-style: italic; }
