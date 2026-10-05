@@ -1016,6 +1016,13 @@ homeLogoBtn.addEventListener("click", () => {
   adminTapTimer = setTimeout(() => { adminTaps = 0; }, ADMIN_TAP_WINDOW_MS);
 });
 
+// brochiefs.com/admin lands here as /?admin=1: open the key prompt straight
+// away, then tidy the address bar so a refresh is just the app.
+if (/[?&]admin(=|&|$)/.test(location.search) || location.hash === "#admin") {
+  history.replaceState(null, "", location.pathname);
+  window.addEventListener("load", () => setTimeout(() => requestAdmin(), 600));
+}
+
 // Already unlocked in this tab: straight back to that surface. Otherwise
 // the key decides.
 function requestAdmin() {
