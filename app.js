@@ -4032,7 +4032,7 @@ async function maybeShowQotw() {
       <div class="qotw-q">${QOTW.qHtml || QOTW.q}</div>
       <div class="qotw-field"><textarea class="qotw-in" rows="4" placeholder="Your answer…"></textarea></div>
       <div class="qotw-err" hidden></div>
-      <div class="qotw-btns"><button type="button" class="qotw-cop">Cop out: I have no clue</button><button type="button" class="qotw-go">Submit</button></div>
+      <div class="qotw-btns"><button type="button" class="qotw-cop">COP OUT:<br>I have no clue!</button><button type="button" class="qotw-go">Submit</button></div>
     </div>`;
     document.body.appendChild(m);
     const send = async (copout) => {

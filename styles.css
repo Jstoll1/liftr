@@ -5208,3 +5208,4 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .qotw-cop.at-corner { position: absolute; top: -12px; right: -8px; flex: none; padding: 7px 9px; font-size: 6px; background: #07020f; border-color: var(--neon-pink); color: var(--neon-pink); z-index: 2; box-shadow: 2px 2px 0 rgba(0, 0, 0, .5); }
 .qotw-cop.at-right { flex: 0 1 auto; }
 .qotw-cop { font-family: 'Press Start 2P', monospace; letter-spacing: .06em; border-radius: 8px; cursor: pointer; }
+.qotw-cop { line-height: 1.6; }
