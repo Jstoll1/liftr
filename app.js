@@ -4011,7 +4011,7 @@ function maybeShowBoner() {
 // --- Question of the week ------------------------------------------------
 // Pops up on every open until this manager answers or cops out. Change
 // QOTW to ask a new one; the id keeps answers apart.
-const QOTW = { id: "gooey-belly", q: "What do you think a gooey belly is?" };
+const QOTW = { id: "gooey-belly", q: "What actually is a “gooey belly”?" };
 let qotwShownThisLoad = false;
 async function maybeShowQotw() {
   if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW) return;
