@@ -1702,7 +1702,9 @@ async function handleQotw(request, env, corsHeaders, url) {
     if (url.searchParams.get("all") === "1") {
       if (!isAdmin(env, url) && !isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
       const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(key(id, m), "json")]));
-      return json({ answers: Object.fromEntries(rows.filter(([, v]) => v)) }, 200, corsHeaders);
+      const log = (await env.LIFTR_KV.get(`qotwlog:${id}`, "json")) || [];
+      const answers = Object.fromEntries(rows.filter(([, v]) => v).map(([m, v]) => [m, { manager: m, ...v }]));
+      return json({ answered: Object.keys(answers).length, of: PICKS_MANAGERS.length, waitingOn: PICKS_MANAGERS.filter((m) => !answers[m]), answers, log }, 200, corsHeaders);
     }
     const m = url.searchParams.get("manager");
     if (!PICKS_MANAGERS.includes(m)) return json({ error: "Invalid manager" }, 400, corsHeaders);
@@ -1715,7 +1717,15 @@ async function handleQotw(request, env, corsHeaders, url) {
   if ((await authMode(env)) === "on" && (await tokenOwner(env, token)) !== manager) return json({ error: "Sign in to answer", needsLogin: true }, 401, corsHeaders);
   const text = String(answer || "").trim();
   if (!copout && !text) return json({ error: "Empty answer" }, 400, corsHeaders);
-  await env.LIFTR_KV.put(key(String(id).slice(0, 40), manager), JSON.stringify({ answer: copout ? null : text.slice(0, 20000), copout: !!copout, at: Date.now() }));
+  const qid = String(id).slice(0, 40);
+  const entry = { manager, answer: copout ? null : text.slice(0, 20000), copout: !!copout, at: Date.now() };
+  await env.LIFTR_KV.put(key(qid, manager), JSON.stringify(entry));
+  // Append-only log too, so every submission is kept even if one is ever
+  // overwritten or a key goes missing.
+  const logKey = `qotwlog:${qid}`;
+  const log = (await env.LIFTR_KV.get(logKey, "json")) || [];
+  log.push(entry);
+  await env.LIFTR_KV.put(logKey, JSON.stringify(log.slice(-500)));
   return json({ ok: true }, 200, corsHeaders);
 }
 
