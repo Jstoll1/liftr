@@ -5163,3 +5163,4 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .ww-top li span::before { content: counter(t) ". "; color: var(--text-dim); }
 .ww-top li.me { background: rgba(255, 210, 63, .12); color: #ffd23f; }
 .ww-top b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 9px; }
+.ps-seg.won.exh { background: linear-gradient(180deg, #ffffff, #8b94a8); border-color: #e6ebf5; box-shadow: none; margin-right: 4px; }

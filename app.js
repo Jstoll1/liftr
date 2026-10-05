@@ -2920,7 +2920,10 @@ function renderPayouts() {
   // winner's avatar, the live week pulses, the rest wait.
   const settled = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition).sort((x, y) => x.week - y.week);
   const avOf = (n) => `<span class="ps-av" style="--accent:${accentFor(n)}" title="${shown(n)}">${avatarOverrides[n] || shown(n)[0]}</span>`;
-  const seasonSegs = Array.from({ length: POT.weeks }, (_, i) => {
+  // Exhibition weeks lead the bar in silver: a trophy, no money.
+  const exh = Object.values(weekSummaries).filter((w) => w?.complete && w.exhibition).sort((x, y) => x.week - y.week);
+  const exhSegs = exh.map((w) => `<button type="button" class="ps-seg won exh" data-week="${w.week}" data-name="${(w.winners || [])[0] || ""}" title="Week ${w.week} · exhibition">${(w.winners || []).slice(0, 2).map(avOf).join("")}</button>`).join("");
+  const seasonSegs = exhSegs + Array.from({ length: POT.weeks }, (_, i) => {
     const w = settled[i];
     if (w) return `<button type="button" class="ps-seg won" data-week="${w.week}" data-name="${(w.winners || [])[0] || ""}">${(w.winners || []).slice(0, 2).map(avOf).join("")}</button>`;
     if (i === settled.length && liveWeek) return `<span class="ps-seg live"></span>`;
@@ -2934,7 +2937,7 @@ function renderPayouts() {
     </div>
     <div class="pot-season">
       <div class="ps-head"><span>SEASON</span><b>${sealed} / ${POT.weeks}</b></div>
-      <div class="ps-bar">${seasonSegs}</div>
+      <div class="ps-bar" style="grid-template-columns: repeat(${POT.weeks + exh.length}, 1fr)">${seasonSegs}</div>
       <div class="pot-note">${money(paid)} paid out${POT.season.length && !done ? " · season money is a projection" : ""}</div>
     </div>
     ${liveWeek ? `<div class="pot-live">${liveWeekFinal ? `WEEK ${liveWeek} UNSEALED` : `WEEK ${liveWeek} ACTIVE`}</div>` : ""}
