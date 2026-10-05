@@ -394,7 +394,23 @@
     body.querySelector("#grid-share")?.addEventListener("click", async () => { try { await navigator.share({ text }); } catch {} });
   }
 
-  const TABS = { grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
+  // --- Question of the week ---------------------------------------------
+  async function renderQotw() {
+    const q = window.QOTW || { id: "gooey-belly", q: "" };
+    const d = await get(`/qotw?id=${encodeURIComponent(q.id)}&all=1`);
+    const a = d.answers || {};
+    const label = (n) => (typeof window.shown === "function" ? window.shown(n) : n);
+    const txt = (n) => !a[n] ? null : a[n].copout ? "Cop out: no clue" : a[n].answer;
+    body.innerHTML = `<div class="con-summary"><span>${esc(q.q)}</span><span>${d.answered ?? Object.keys(a).length} of ${OWNERS.length} in</span></div>` +
+      OWNERS.map((n) => `<div class="con-row${a[n] ? "" : " warn"}"><div class="con-row-head"><span><b>${esc(label(n))}</b></span><span>${a[n] ? when(a[n].at) : "waiting"}</span></div><div class="con-line" style="white-space:pre-wrap">${a[n] ? esc(txt(n)) : "<i>no answer yet</i>"}</div></div>`).join("") +
+      `<button type="button" class="admin-btn link" id="qotw-copy">Copy all</button>`;
+    el("qotw-copy").addEventListener("click", () => {
+      const text = `${q.q}\n\n` + OWNERS.map((n) => `${label(n)}: ${txt(n) ?? "(no answer yet)"}`).join("\n");
+      navigator.clipboard?.writeText(text).then(() => say("Answers copied.", "good"), () => say("Copy failed.", "bad"));
+    });
+  }
+
+  const TABS = { qotw: renderQotw, grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
 
   async function renderTab() {
     body.innerHTML = `<div class="admin-empty">Loading…</div>`;
