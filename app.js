@@ -1,3 +1,5 @@
+// Arrived via brochiefs.com/admin: set before anything else runs.
+window.__adminEntry = /[?&]admin(=|&|$)/.test(location.search) || location.hash === "#admin";
 // Brochiefs 2026 College Football Pick'em — retro arcade pick app.
 // Picks are cached per-manager in localStorage and, when configured,
 // synced through a small Cloudflare Worker (worker/src/index.js, the
@@ -1018,7 +1020,7 @@ homeLogoBtn.addEventListener("click", () => {
 
 // brochiefs.com/admin lands here as /?admin=1: open the key prompt straight
 // away, then tidy the address bar so a refresh is just the app.
-if (/[?&]admin(=|&|$)/.test(location.search) || location.hash === "#admin") {
+if (window.__adminEntry) {
   history.replaceState(null, "", location.pathname);
   window.addEventListener("load", () => setTimeout(() => requestAdmin(), 600));
 }
@@ -1069,6 +1071,7 @@ async function submitAdminKey() {
   // and the Worker refuses to guess which role was meant.
   if (!role) { setAdminGateStatus(status === 403 ? "That key is not right." : err || "The Worker could not check that key.", "bad"); return; }
   adminRole = role;
+  window.__adminOpen = true;
   adminKeyHeld = key;
   setAdminGateStatus(role === "app" ? "App console…" : "Slate editor…", "ok");
   // admin.js reads the key from here rather than from a field on screen.
@@ -4022,7 +4025,8 @@ const QOTW = { id: "gooey-belly", q: "What actually is a “gooey belly”?", qH
 window.QOTW = QOTW;
 let qotwShownThisLoad = false;
 async function maybeShowQotw() {
-  if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW) return;
+  // Not on the way into the admin panel: the prompt would sit on top of the key gate.
+  if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW || window.__adminEntry || window.__adminOpen) return;
   const doneKey = `brochiefs_qotw_${QOTW.id}_${currentManager}`;
   try { if (localStorage.getItem(doneKey)) return; } catch {}
   qotwShownThisLoad = true;
