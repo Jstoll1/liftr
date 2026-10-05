@@ -3549,6 +3549,8 @@ function renderRankingRows(rows, cloudPicks, results, live) {
   const weekDone = GAMES.length > 0 && GAMES.every((g) => results?.[g.id]);
   rankingsList.classList.toggle("week-done", weekDone);
   setWeekOverLayout(weekDone);
+  const lbt = document.getElementById("leaderboard-toggle");
+  if (lbt?.firstChild && currentWeek) lbt.firstChild.textContent = `🏆 WEEK ${currentWeek} LEADERBOARD `;
   // Same number of slots on every row (the most anyone hit), so logos
   // are one size and line up in columns down the board.
   if (weekDone) rankingsList.style.setProperty("--hits", Math.max(1, ...rows.map((r) => gamesByKickoff().filter((g) => { const pk = r.state.picks?.[g.id]; return pk && scorePick(g, pk, results[g.id]) > 0; }).length)));
