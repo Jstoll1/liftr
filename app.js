@@ -2922,7 +2922,7 @@ function renderPayouts() {
   const avOf = (n) => `<span class="ps-av" style="--accent:${accentFor(n)}" title="${shown(n)}">${avatarOverrides[n] || shown(n)[0]}</span>`;
   const seasonSegs = Array.from({ length: POT.weeks }, (_, i) => {
     const w = settled[i];
-    if (w) return `<span class="ps-seg won">${(w.winners || []).slice(0, 2).map(avOf).join("")}</span>`;
+    if (w) return `<button type="button" class="ps-seg won" data-week="${w.week}" data-name="${(w.winners || [])[0] || ""}">${(w.winners || []).slice(0, 2).map(avOf).join("")}</button>`;
     if (i === settled.length && liveWeek) return `<span class="ps-seg live"></span>`;
     return `<span class="ps-seg"></span>`;
   }).join("");
@@ -2946,7 +2946,7 @@ function renderPayouts() {
         <span class="pot-name"><span class="pot-av" style="--accent:${accentFor(r.name)}">${avatarOverrides[r.name] || shown(r.name)[0]}</span>${r.seasonPlace === 1 && r.points > 0 ? `<i class="pot-crown">♛</i>` : ""}${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
         <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
         <span class="pot-rec">${rec[r.name] ? `${rec[r.name].w}-${rec[r.name].l}` : "–"}</span>
-        <span class="pot-won">${r.weeksWon ? "🏆".repeat(Math.min(r.weeksWon, 3)) + (r.weeksWon > 3 ? `×${r.weeksWon}` : "") : "–"}</span>
+        <span class="pot-won">${(() => { const wk = Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(r.name)).sort((x, y) => x.week - y.week); return wk.length ? wk.map((w) => `<button type="button" class="pot-tro${w.exhibition ? " exh" : ""}" data-week="${w.week}" data-name="${r.name}" title="Week ${w.week} win">🏆</button>`).join("") : "–"; })()}</span>
         <span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>
       </div>`).join("")}
     </div>
@@ -5448,6 +5448,70 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
   toggle.addEventListener("click", () => { open = !open; paint(); if (open) track("pot-open", { event: true }); });
   paint();
 })();
+
+// --- Week win card --------------------------------------------------------
+// Tap a trophy in The Pot (or a gold week on the season bar): how that
+// week was won, from the frozen record.
+let weekDetailAll = null;
+async function fetchWeekDetail() {
+  if (weekDetailAll) return weekDetailAll;
+  try {
+    const res = await fetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
+    if (res.ok) weekDetailAll = (await res.json()).summaries || {};
+  } catch {}
+  return weekDetailAll || {};
+}
+async function openWeekWin(week, name) {
+  const all = await fetchWeekDetail();
+  const w = all[week] || weekSummaries[week];
+  if (!w) return;
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const rows = [...(w.rows || [])].sort((a, b) => b.score - a.score);
+  const me = rows.find((r) => r.name === name) || rows[0];
+  const winners = w.winners || [];
+  const next = rows.find((r) => !winners.includes(r.name));
+  const slate = new Map((w.slate || []).map((g) => [Number(g.id), g]));
+  const shortOf = (gid, t) => { const g = slate.get(Number(gid)); return !g ? t : t === g.home ? g.homeShort : t === g.away ? g.awayShort : t; };
+  const hits = (me.ledger || []).filter((l) => l.result === "hit");
+  // Where the win was made: the game where this card out-earned the runner-up most.
+  let deciding = null;
+  if (next) for (const l of me.ledger || []) {
+    const o = (next.ledger || []).find((x) => x.g === l.g);
+    const gap = (l.pts || 0) - (o?.pts || 0);
+    if (gap > 0 && (!deciding || gap > deciding.gap)) deciding = { gap, l, o };
+  }
+  const margin = next ? me.score - next.score : null;
+  const tb = w.tiebreaker;
+  const howWon = !next ? "Everyone tied for the week." :
+    margin > 0 ? `Won by <b>${margin}</b> over ${esc(shown(next.name))} (${next.score}).` :
+    `Tied ${esc(shown(next.name))} on ${me.score} and took it on the tiebreaker${tb && me.tbGuess != null ? `: guessed <b>${me.tbGuess}</b>, ${esc(tb.matchup)} came in at <b>${tb.actual}</b>` : ""}.`;
+  const shared = winners.length > 1 ? ` Shared with ${winners.filter((n) => n !== me.name).map((n) => esc(shown(n))).join(", ")}.` : "";
+  const prize = w.exhibition ? `<span class="ww-prize exh">TROPHY ONLY</span>` : `<span class="ww-prize">${money(Math.round(POT.weekly / Math.max(1, winners.length)))}</span>`;
+  let m = document.getElementById("week-win");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "week-win"; m.className = "wpx-overlay hidden"; m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wpx-x")) m.classList.add("hidden"); });
+  }
+  m.innerHTML = `<div class="wpx-card ww">
+    <button type="button" class="wpx-x" aria-label="Close">✕</button>
+    <div class="ww-kicker">🏆 ${esc(String(w.label || `Week ${w.week}`).toUpperCase())} CHAMPION${w.exhibition ? " · EXHIBITION" : ""}</div>
+    <div class="ww-head"><span class="wpp-av" style="--accent:${accentFor(me.name)}">${esc(avatarOverrides[me.name] || shown(me.name)[0])}</span><div><b>${esc(shown(me.name).toUpperCase())}</b><small>${me.score} PTS · ${me.hits}-${me.misses}</small></div>${prize}</div>
+    <div class="ww-how">${howWon}${shared}</div>
+    ${deciding ? `<div class="wpx-h">WHERE IT WAS WON</div><div class="ww-dec"><b>${esc(deciding.l.matchup)}</b><span>${esc(shortOf(deciding.l.g, deciding.l.team))} ${esc(deciding.l.line)} <em class="up">+${deciding.l.pts}</em></span><span class="dim">${esc(shown(next.name))}: ${deciding.o?.team ? `${esc(shortOf(deciding.l.g, deciding.o.team))} ${esc(deciding.o.line)}` : "no pick"} <em class="dn">+${deciding.o?.pts || 0}</em></span><span class="dim">Final: ${esc(deciding.l.score || "")}</span></div>` : ""}
+    ${hits.length ? `<div class="wpx-h">CORRECT PICKS</div><div class="ww-hits">${hits.map((l) => `<span>${esc(shortOf(l.g, l.team))} <small>${esc(l.line)}</small><b>+${l.pts}</b></span>`).join("")}</div>` : ""}
+    <div class="wpx-h">TOP OF THE BOARD</div>
+    <ol class="ww-top">${rows.slice(0, 4).map((r) => `<li class="${r.name === me.name ? "me" : ""}"><span>${esc(shown(r.name))}</span><b>${r.score}</b></li>`).join("")}</ol>
+  </div>`;
+  m.classList.remove("hidden");
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest(".pot-tro, .ps-seg.won");
+  if (!b) return;
+  e.stopPropagation();
+  openWeekWin(Number(b.dataset.week), b.dataset.name);
+});
 
 // --- Season stats ------------------------------------------------------
 // Five leaderboards from the ledger of every counting week. The ledger

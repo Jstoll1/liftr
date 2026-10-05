@@ -5134,3 +5134,32 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-crown { font-style: normal; color: #ffd23f; text-shadow: 0 0 6px rgba(255, 210, 63, .7); margin-right: -3px; }
 .pot-row.leader { background: linear-gradient(90deg, rgba(255, 210, 63, .14), transparent 75%); box-shadow: inset 3px 0 0 #ffd23f; }
 .pot-row.leader .pot-name, .pot-row.leader .pot-pts b { color: #ffd23f; }
+/* Trophies are buttons now. */
+.pot-tro { background: none; border: 0; padding: 0 1px; font-size: inherit; cursor: pointer; line-height: 1; }
+.pot-tro.exh { filter: grayscale(.6) brightness(.9); }
+button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
+/* Week win card */
+.ww { gap: 10px; }
+.ww-kicker { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .12em; color: #ffd23f; padding-right: 28px; }
+.ww-head { display: flex; align-items: center; gap: 10px; }
+.ww-head > div { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.ww-head b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; color: #fff; }
+.ww-head small { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); }
+.ww-prize { font-family: 'Press Start 2P', monospace; font-size: 14px; color: #ffd23f; text-shadow: 2px 2px 0 #b5179e; }
+.ww-prize.exh { font-size: 7px; color: var(--text-dim); text-shadow: none; }
+.ww-how { font-size: 13px; line-height: 1.45; color: #fff; }
+.ww-how b { color: #ffd23f; }
+.ww-dec { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 6px; background: rgba(255, 255, 255, .05); font-size: 12px; }
+.ww-dec b { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+.ww-dec .dim { color: var(--text-dim); }
+.ww-dec em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 8px; margin-left: 4px; }
+.ww-dec .up { color: var(--neon-green); } .ww-dec .dn { color: var(--neon-pink); }
+.ww-hits { display: flex; flex-wrap: wrap; gap: 5px; }
+.ww-hits span { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; background: rgba(57, 255, 136, .08); border: 1px solid rgba(57, 255, 136, .3); font-size: 11px; }
+.ww-hits small { color: var(--text-dim); }
+.ww-hits b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 7px; color: var(--neon-green); }
+.ww-top { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; counter-reset: t; }
+.ww-top li { display: flex; justify-content: space-between; padding: 5px 8px; border-radius: 5px; background: rgba(255, 255, 255, .04); font-size: 12px; counter-increment: t; }
+.ww-top li span::before { content: counter(t) ". "; color: var(--text-dim); }
+.ww-top li.me { background: rgba(255, 210, 63, .12); color: #ffd23f; }
+.ww-top b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 9px; }
