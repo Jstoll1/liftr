@@ -61,6 +61,9 @@ export default {
     if (url.pathname === "/games") {
       return handleGames(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/qotw") {
+      return handleQotw(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/story") {
       return handleStory(request, env, corsHeaders, url);
     }
@@ -1684,6 +1687,36 @@ async function handleStory(request, env, corsHeaders, url) {
   if (!story) return json({ story: null }, 200, corsHeaders);
   await env.LIFTR_KV.put(storyKey(week), JSON.stringify(story));
   return json({ story }, 200, corsHeaders);
+}
+
+// --- Question of the week -----------------------------------------------
+// One free-text answer per manager per question id. GET ?id=&manager= says
+// whether that manager has answered; GET ?id=&all=1 lists every answer
+// (owner console, admin only); POST stores an answer or a cop-out.
+async function handleQotw(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  const key = (id, m) => `qotw:${id}:${m}`;
+  if (request.method === "GET") {
+    const id = String(url.searchParams.get("id") || "").slice(0, 40);
+    if (!id) return json({ error: "Missing id" }, 400, corsHeaders);
+    if (url.searchParams.get("all") === "1") {
+      if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+      const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(key(id, m), "json")]));
+      return json({ answers: Object.fromEntries(rows.filter(([, v]) => v)) }, 200, corsHeaders);
+    }
+    const m = url.searchParams.get("manager");
+    if (!PICKS_MANAGERS.includes(m)) return json({ error: "Invalid manager" }, 400, corsHeaders);
+    return json({ answered: !!(await env.LIFTR_KV.get(key(id, m))) }, 200, corsHeaders);
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const { manager, id, answer, copout, token } = body || {};
+  if (!PICKS_MANAGERS.includes(manager) || !id) return json({ error: "Invalid" }, 400, corsHeaders);
+  if ((await authMode(env)) === "on" && (await tokenOwner(env, token)) !== manager) return json({ error: "Sign in to answer", needsLogin: true }, 401, corsHeaders);
+  const text = String(answer || "").trim();
+  if (!copout && !text) return json({ error: "Empty answer" }, 400, corsHeaders);
+  await env.LIFTR_KV.put(key(String(id).slice(0, 40), manager), JSON.stringify({ answer: copout ? null : text.slice(0, 20000), copout: !!copout, at: Date.now() }));
+  return json({ ok: true }, 200, corsHeaders);
 }
 
 function fixBestWho(s) {

@@ -1226,6 +1226,7 @@ function showPicksScreen() {
   setActiveNav("picks");
   enterScreen("picks");
   maybeShowBoner();
+  maybeShowQotw();
   maybeShowGridCheck();
   return syncManagerFromCloud(currentManager).then((cloud) => {
     if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
@@ -2232,6 +2233,7 @@ let cloudPicksStale = false;
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
+  maybeShowQotw();
   const fetched = await fetchAllPicks();
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
@@ -4005,6 +4007,49 @@ function maybeShowBoner() {
   document.addEventListener("touchstart", close, { capture: true, passive: false });
   document.addEventListener("keydown", close, true);
 })();
+
+// --- Question of the week ------------------------------------------------
+// Pops up on every open until this manager answers or cops out. Change
+// QOTW to ask a new one; the id keeps answers apart.
+const QOTW = { id: "gooey-belly", q: "What do you think a gooey belly is?" };
+let qotwShownThisLoad = false;
+async function maybeShowQotw() {
+  if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW) return;
+  const doneKey = `brochiefs_qotw_${QOTW.id}_${currentManager}`;
+  try { if (localStorage.getItem(doneKey)) return; } catch {}
+  qotwShownThisLoad = true;
+  try {
+    const r = await fetch(`${WORKER_URL}/qotw?id=${encodeURIComponent(QOTW.id)}&manager=${encodeURIComponent(currentManager)}`);
+    if (r.ok && (await r.json()).answered) { try { localStorage.setItem(doneKey, "1"); } catch {} return; }
+  } catch { return; }
+  let m = document.getElementById("qotw-modal");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "qotw-modal"; m.className = "wpx-overlay"; m.setAttribute("role", "dialog");
+    m.innerHTML = `<div class="wpx-card qotw">
+      <div class="qotw-kicker">★ BROCHIEFS QUESTION OF THE WEEK ★</div>
+      <div class="qotw-q">${QOTW.q}</div>
+      <textarea class="qotw-in" rows="4" placeholder="Your answer…"></textarea>
+      <div class="qotw-err" hidden></div>
+      <div class="qotw-btns"><button type="button" class="qotw-cop">Cop out: I have no clue</button><button type="button" class="qotw-go">Submit</button></div>
+    </div>`;
+    document.body.appendChild(m);
+    const send = async (copout) => {
+      const text = m.querySelector(".qotw-in").value.trim();
+      const err = m.querySelector(".qotw-err");
+      if (!copout && !text) { err.hidden = false; err.textContent = "Type an answer, or cop out."; return; }
+      m.querySelectorAll("button").forEach((b) => (b.disabled = true));
+      try {
+        const r = await fetch(`${WORKER_URL}/qotw`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manager: currentManager, id: QOTW.id, answer: text, copout, token: tokenFor(currentManager) || undefined }) });
+        if (!r.ok) throw new Error(r.status === 401 ? "Sign in first, then answer." : "Didn't save. Try again.");
+        try { localStorage.setItem(doneKey, "1"); } catch {}
+        m.remove();
+      } catch (e) { err.hidden = false; err.textContent = e.message || "Didn't save. Try again."; m.querySelectorAll("button").forEach((b) => (b.disabled = false)); }
+    };
+    m.querySelector(".qotw-go").addEventListener("click", () => send(false));
+    m.querySelector(".qotw-cop").addEventListener("click", () => send(true));
+  }
+}
 
 // --- Game insights ------------------------------------------------------
 // One sheet per game: the auto brief, how the line has moved since the
