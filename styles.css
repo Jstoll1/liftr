@@ -5177,3 +5177,9 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 /* Tighter run between sections. */
 #scoreboard-screen .all-picks-toggle.section-heading { margin-top: 14px; }
 #scoreboard-screen .lb-head { margin-top: 14px; }
+/* Header cells match the six columns under them: # · NAME · PTS · REC · WON · EARNED. */
+.pot-row.head > :nth-child(3) { text-align: right; padding-right: 0; }
+.pot-row.head > :nth-child(4), .pot-row.head > :nth-child(5) { text-align: center; }
+.pot-row.head > :nth-child(6) { text-align: right; }
+.pot-won { display: flex; justify-content: center; align-items: center; gap: 1px; text-align: center; }
+.pot-row > .pot-pts { justify-content: flex-end; }
