@@ -4011,7 +4011,7 @@ function maybeShowBoner() {
 // --- Question of the week ------------------------------------------------
 // Pops up on every open until this manager answers or cops out. Change
 // QOTW to ask a new one; the id keeps answers apart.
-const QOTW = { id: "gooey-belly", q: "What actually is a “gooey belly”?" };
+const QOTW = { id: "gooey-belly", q: "What actually is a “gooey belly”?", qHtml: `What actually is a<span class="qotw-pop">“gooey belly”?</span>` };
 window.QOTW = QOTW;
 let qotwShownThisLoad = false;
 async function maybeShowQotw() {
@@ -4029,7 +4029,7 @@ async function maybeShowQotw() {
     m.id = "qotw-modal"; m.className = "wpx-overlay"; m.setAttribute("role", "dialog");
     m.innerHTML = `<div class="wpx-card qotw">
       <div class="qotw-kicker">★ BROCHIEFS QUESTION OF THE WEEK ★</div>
-      <div class="qotw-q">${QOTW.q}</div>
+      <div class="qotw-q">${QOTW.qHtml || QOTW.q}</div>
       <textarea class="qotw-in" rows="4" placeholder="Your answer…"></textarea>
       <div class="qotw-err" hidden></div>
       <div class="qotw-btns"><button type="button" class="qotw-cop">Cop out: I have no clue</button><button type="button" class="qotw-go">Submit</button></div>
