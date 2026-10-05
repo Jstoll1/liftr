@@ -5172,3 +5172,8 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 #scoreboard-screen .lb-head { margin-top: 22px; }
 #scoreboard-screen .lb-head .all-picks-toggle.section-heading { margin-top: 0; padding-right: 58px; }
 #scoreboard-screen .lb-head .h2h-btn { right: 2px; }
+/* Final games: the loser steps back, just barely. */
+.scorebug.is-final .bug-row:not(.leading) { opacity: .86; }
+/* Tighter run between sections. */
+#scoreboard-screen .all-picks-toggle.section-heading { margin-top: 14px; }
+#scoreboard-screen .lb-head { margin-top: 14px; }

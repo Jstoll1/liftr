@@ -2507,7 +2507,7 @@ function renderLiveScores(live, cloudPicks) {
             <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
             ${rankBadge(rank)}
           </span>
-          <span class="bug-team"><span class="tm-nm">${short}</span></span>
+          <span class="bug-team"><span class="tm-nm">${short.length > 12 ? short.replace(/^(South|North|East|West|Central)\s/, (m, d) => d[0] + " ") : short}</span></span>
           ${fav ? `<span class="bug-fav">-${game.spread}</span>` : `<span class="bug-fav dog"></span>`}
           <span class="bug-score ${pop ? "pop" : ""}">${score}</span>
         </div>`;
