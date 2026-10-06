@@ -5235,3 +5235,6 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .picks-countdown .cd-top { justify-content: space-between !important; gap: 8px; }
 .picks-countdown .cd-top > :first-child { flex: 0 1 auto; min-width: 0; }
 .picks-countdown .cd-card { padding-left: 10px; margin-right: 0; }
+/* Kick pill: small dim KICK label, centered against the time. */
+.picks-countdown .cd-when { align-items: center !important; gap: 6px; padding: 4px 8px; }
+.picks-countdown .cd-when i { font-size: 6px !important; line-height: 1; letter-spacing: .12em; color: var(--text-dim) !important; transform: translateY(.5px); }
