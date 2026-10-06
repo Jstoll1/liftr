@@ -46,10 +46,11 @@
   .exhibit { position: absolute; left: 6%; right: 6%; top: 6%; padding: 12px; background: #fffef6; color: var(--ink); border: 5px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 rgba(27,16,48,.35); transform: translateY(-140%) rotate(-2deg); transition: transform .55s cubic-bezier(.3,1.5,.5,1); }
   .exhibit.on { transform: rotate(-1.5deg); }
   .exhibit .tag { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #8a7a5a; letter-spacing: .1em; }
-  .exhibit .q { margin: 6px 0 8px; font-size: clamp(15px, 4.2vw, 21px); font-weight: 700; line-height: 1.25; }
+  .exhibit .q { margin: 6px 0 8px; font-size: clamp(13px, 3.6vw, 18px); font-weight: 700; line-height: 1.25; }
   .exhibit .by { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .exhibit .avs { display: flex; flex: none; } .exhibit .avs .av + .av { margin-left: -8px; }
   .exhibit .av { width: 30px; height: 30px; border-radius: 8px; border: 3px solid var(--ink); display: grid; place-items: center; font-family: 'Press Start 2P', monospace; font-size: 11px; color: var(--ink); }
-  .stamp { position: absolute; right: 10px; bottom: 10px; padding: 4px 8px; border: 4px solid #e0102a; color: #e0102a; border-radius: 6px; font-family: 'Press Start 2P', monospace; font-size: 9px; transform: rotate(-12deg) scale(1.8); opacity: 0; transition: transform .25s ease-in, opacity .25s; }
+  .stamp { position: absolute; right: 10px; top: 8px; padding: 4px 8px; border: 4px solid #e0102a; color: #e0102a; border-radius: 6px; font-family: 'Press Start 2P', monospace; font-size: 9px; transform: rotate(-12deg) scale(1.8); opacity: 0; transition: transform .25s ease-in, opacity .25s; }
   .stamp.on { transform: rotate(-12deg) scale(1); opacity: .9; }
   /* Title and end cards */
   .card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; background: radial-gradient(circle at 50% 40%, #ff7ec0, #7a2fd1 70%); border: 0; opacity: 0; pointer-events: none; transition: opacity .4s; }
@@ -66,6 +67,10 @@
   .prog i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .3s; }
   .cc { position: absolute; left: 0; right: 0; bottom: 44px; text-align: center; font-size: 11px; color: rgba(27,16,48,.55); font-weight: 700; }
   .soon { text-align: center; padding: 30px; }
+  /* Captions sit low over the desks so faces stay in view; the tail points up at the speaker. */
+  .bubble { top: auto; bottom: 52px; font-size: clamp(12px, 3.4vw, 16px); min-height: 0; padding: 9px 12px; }
+  .bubble::after { bottom: auto; top: -22px; border-top-color: transparent; border-bottom: 14px solid var(--ink); }
+  .char { bottom: 22%; width: 40%; }
 </style>
 </head>
 <body>
@@ -135,6 +140,9 @@
     return;
   }
   $("t-h").textContent = ep.title;
+  // League colours and display names for the SUBMITTED BY badges.
+  const COLORS = { Robert: "#ff2079", Logan: "#05d9e8", Jordan: "#c13cff", Conlan: "#ffe45e", Dewitt: "#39ff88", Nissan: "#ff2079", Skills: "#05d9e8", Jake: "#c13cff", Curt: "#ffe45e", Andrew: "#39ff88" };
+  const NAMES = { Conlan: "Connie" };
 
   // The script: a list of beats. say = [speaker, line]; the HR rep is "hr".
   const beats = [];
@@ -144,13 +152,13 @@
   say("hr", ep.title.replace("So… ", "So, "));
   say("rookie", "I… have no idea.");
   say("hr", "Neither did the league. So we asked them. Let's review the exhibits.");
-  ep.answers.forEach((a, i) => {
-    const tag = `EXHIBIT ${String.fromCharCode(65 + i)}`;
-    if (a.copout) say("hr", `${a.who} was asked directly.`, { exhibit: { tag, text: "“I have no clue.”", who: a.who, color: a.color, stamp: true } });
-    else say("hr", `${a.who} says: ${a.text}`, { exhibit: { tag, text: `“${a.text}”`, who: a.who, color: a.color } });
-    if (a.react) say("rookie", a.react, { react: a.copout ? "shock" : "bounce" });
+  const list = ep.exhibits || (ep.answers || []).map((a) => ({ who: [a.who], board: a.copout ? "“I have no clue.”" : `“${a.text}”`, say: a.copout ? `${a.who} was asked directly.` : `${a.who} says: ${a.text}`, react: a.react, stamp: a.copout ? "DECLINED TO COMMENT" : null }));
+  list.forEach((x, i) => {
+    const who = Array.isArray(x.who) ? x.who : [x.who];
+    say("hr", x.say, { exhibit: { tag: `EXHIBIT ${String.fromCharCode(65 + i)}`, text: x.board, who, stamp: x.stamp } });
+    if (x.react) say("rookie", x.react, { react: x.stamp ? "shock" : "bounce" });
   });
-  if (ep.definition) say("hr", `Per ${ep.office}: ${ep.definition}`, { exhibit: { tag: "OFFICIAL RULING", text: ep.definition, who: ep.office, color: "#ffcf3f" } });
+  if (ep.definition) say("hr", `After reviewing all testimony, ${ep.office} rules: ${ep.definition}`, { exhibit: { tag: "OFFICIAL RULING", text: ep.definition, who: ["Office of Gooey Bellies"] } });
   else say("hr", `${ep.office} has reviewed all testimony and remains… divided.`);
   say("rookie", "So I'm… onboarded?");
   say("hr", "Welcome to the team.");
@@ -183,9 +191,10 @@
       setTimeout(() => {
         $("ex-tag").textContent = beat.exhibit.tag;
         $("ex-q").textContent = beat.exhibit.text;
-        $("ex-by").innerHTML = `<span class="av" style="background:${beat.exhibit.color}">${(beat.exhibit.who || "?")[0]}</span><span>SUBMITTED BY ${beat.exhibit.who.toUpperCase()}</span>`;
+        const who = [].concat(beat.exhibit.who || []);
+        $("ex-by").innerHTML = `<span class="avs">${who.map((n) => `<span class="av" style="background:${COLORS[n] || "#ffcf3f"}">${n[0]}</span>`).join("")}</span><span>SUBMITTED BY ${who.map((n) => (NAMES[n] || n).toUpperCase()).join(", ")}</span>`;
         ex.classList.add("on");
-        if (beat.exhibit.stamp) setTimeout(() => $("ex-stamp").classList.add("on"), 700);
+        if (beat.exhibit.stamp) { $("ex-stamp").textContent = beat.exhibit.stamp; setTimeout(() => $("ex-stamp").classList.add("on"), 700); }
       }, 120);
     }
     const b = $("bubble");
