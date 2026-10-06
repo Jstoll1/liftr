@@ -5221,3 +5221,7 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .admin-overlay .admin-intro { overflow-wrap: anywhere; }
 .con-raw.con-grid { max-height: none; overflow: visible; overflow-wrap: anywhere; font-size: clamp(11px, 3.4vw, 14px); }
 .admin-overlay .admin-row { flex-wrap: wrap; }
+/* Card preview fills the phone: as wide as the screen allows while the buttons still fit below. */
+.gridcard-modal { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); }
+.gridcard-box { gap: 8px; }
+.gridcard-box img { width: min(100vw - 16px, (100dvh - 96px) * 2 / 3); max-width: none; border-width: 1px; }
