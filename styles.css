@@ -5233,5 +5233,5 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .picks-countdown .cd-card .cd-chip { padding: 3px 4px; font-size: 6px; }
 /* Balance: clock hugs the left edge, YOUR CARD the right, equal margins, the spare space sits between them. */
 .picks-countdown .cd-top { justify-content: space-between !important; gap: 8px; }
-.picks-countdown .cd-top > :first-child { flex: 0 1 auto; min-width: 0; align-items: flex-start !important; }
+.picks-countdown .cd-top > :first-child { flex: 0 1 auto; min-width: 0; }
 .picks-countdown .cd-card { padding-left: 10px; margin-right: 0; }
