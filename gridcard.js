@@ -130,7 +130,8 @@
       ctx.font = "900 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
       ctx.fillStyle = dark ? "#111" : "#fff";
       ctx.fillText(shown(r.name).toUpperCase(), bx + 16, by + 20);
-      if (r.wins) { ctx.font = "18px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; ctx.textAlign = "right"; ctx.fillText("🏆".repeat(Math.min(r.wins, 4)) + (r.wins > 4 ? `×${r.wins}` : ""), bx + 228, by + 20); }
+      // One trophy on the card: last week's winner only, not a season tally.
+      if (r.last) { ctx.font = "18px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; ctx.textAlign = "right"; ctx.fillText("🏆", bx + bw - 10, by + 20); }
       if (r.last) {
         const tag = lastWeek ? `WEEK ${lastWeek.week} CHAMP` : "LAST WEEK'S CHAMP";
         ctx.font = "900 11px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left";
