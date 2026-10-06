@@ -5225,3 +5225,9 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .gridcard-modal { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); }
 .gridcard-box { gap: 8px; }
 .gridcard-box img { width: min(100vw - 16px, (100dvh - 96px) * 2 / 3); max-width: none; border-width: 1px; }
+/* Countdown: let the clock give a little so YOUR CARD's pills stay on screen. */
+.picks-countdown .cd-top { gap: 6px; }
+.picks-countdown .cd-top > :first-child { flex: 1 1 auto; min-width: 0; }
+.picks-countdown .cd-card { flex: 0 0 auto; padding-left: 8px; margin-right: 2px; }
+.picks-countdown .cd-riding b { font-size: 14px; }
+.picks-countdown .cd-card .cd-chip { padding: 3px 4px; font-size: 6px; }
