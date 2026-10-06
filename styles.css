@@ -5212,3 +5212,6 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 #admin-gate-form { margin: 0; width: 100%; }
 .admin-remember { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); cursor: pointer; margin-top: 2px; }
 .admin-remember input { width: 16px; height: 16px; accent-color: var(--neon-cyan); }
+.lm-mkt { margin-top: 8px; padding: 8px 10px; border-radius: 6px; background: rgba(5, 217, 232, .06); border-left: 3px solid var(--neon-cyan); font-size: 12px; line-height: 1.5; color: var(--text); }
+.lm-mkt b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; letter-spacing: .1em; color: var(--neon-cyan); margin-right: 4px; }
+.lm-mkt em { font-style: normal; color: #fff; font-weight: 700; }

@@ -4938,11 +4938,32 @@ async function openInsights(gameId) {
       : myPick && mySU ? (forMe ? `<em class="good">✓ MARKET AGREES · ${myLab}</em> · NOW ${esc(lab(nowV))}` : `<em class="bad">MARKET COOLING ON ${myLab}</em> · NOW ${esc(lab(nowV))}`)
       : myPick ? (forMe ? `<em class="good">✓ GOOD FOR YOUR ${myLab}</em> · +${half(dS)}` : `<em class="bad">✗ BAD FOR YOUR ${myLab}</em> · -${half(dS)}`)
       : `EDGE <em>+${half(dS)}</em> TO ${esc(dS > 0 ? favAb : dogAb)} BACKERS`;
+    // The market read: what the move since open says about the game, not
+    // just about anyone's sealed number. Direction (who the money is on),
+    // size, the key numbers it crossed, and the win odds it implies.
+    const read = (() => {
+      if (nowV === null || openV === null || dO === 0) return "";
+      const toFav = dO > 0;
+      const who = toFav ? favAb : dogAb;
+      const size = Math.abs(dO) >= 2 ? "Big move" : Math.abs(dO) >= 1 ? "Solid move" : "Nudge";
+      // College margins pile up on 3, 7, 10 and 14; crossing one matters more than the half points around it.
+      const keys = [3, 7, 10, 14].filter((k) => (Math.min(openV, nowV) < k && Math.max(openV, nowV) > k) || Math.abs(nowV) === k);
+      const cdf = (x) => { const t = 1 / (1 + 0.2316419 * Math.abs(x)); const d = 0.3989423 * Math.exp(-x * x / 2); const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; };
+      const wp = (v) => Math.round(cdf(v / 15) * 100);
+      const flip = Math.sign(openV) !== Math.sign(nowV) && openV !== 0 && nowV !== 0;
+      const bits = [];
+      bits.push(`${size} toward <em>${esc(who)}</em>: ${toFav ? `the market likes ${esc(favAb)} more than it did` : `${esc(favAb)}'s edge is shrinking (money or news on ${esc(dogAb)})`}`);
+      if (flip) bits.push("the favorite flipped");
+      if (keys.length) bits.push(`crossed key number ${keys.join(" & ")}`);
+      else if (Math.abs(nowV) % 1 === 0.5 && [3, 7].includes(Math.abs(nowV) - 0.5)) bits.push(`sits a hook off ${Math.abs(nowV) - 0.5}`);
+      bits.push(`${esc(favAb)} win odds ${wp(openV)}% → ${wp(nowV)}%`);
+      return `<div class="lm-mkt"><b>MARKET READ</b> ${bits.join(" · ")}</div>`;
+    })();
     const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
     html += `<div class="lm"><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
       ${zero}${band}${open}${seal}${now}${move}</div>
-      <div class="lm-read"><span>${l1}${l2 ? `<br>${l2}` : ""}</span>${ou !== null ? `<span class="lm-ou"><em>O/U</em>${ou}</span>` : ""}</div></div>`;
+      <div class="lm-read"><span>${l1}${l2 ? `<br>${l2}` : ""}</span>${ou !== null ? `<span class="lm-ou"><em>O/U</em>${ou}</span>` : ""}</div>${read}</div>`;
   }
 
   // Preview: same layout as ever (headline, text, "Read the rest"). The
