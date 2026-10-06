@@ -52,7 +52,7 @@
   // columns, measured from the art. Everything drawn is relative to a
   // panel's name-bar corner.
   const PANELS = [[265, 410], [263, 614], [259, 825], [256, 1047], [251, 1276], [697, 410], [705, 614], [715, 825], [724, 1047], [737, 1277]]; // measured from the art
-  const BG = "assets/grid-bg.png";
+  const BG = "assets/fight-bg.webp";
   let bgImg = null;
   const loadBg = () => new Promise((res) => { if (bgImg) return res(bgImg); const im = new Image(); im.onload = () => { bgImg = im; res(im); }; im.onerror = () => res(null); im.src = BG; });
   const SMALL_FLAG = ["FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "P.......", "P.......", "P......."];
@@ -89,7 +89,7 @@
     const lockAt = weekLockTime() ?? Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
     const ms = Math.max(0, lockAt - Date.now());
     const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
-    const left = ms <= 0 ? "LIGHTS OUT" : `LIGHTS OUT IN ${d ? `${d}D ${h}H` : h ? `${h}H ${m}M` : `${m}M`}`;
+    const left = ms <= 0 ? "FIGHT!" : `FIGHT IN ${d ? `${d}D ${h}H` : h ? `${h}H ${m}M` : `${m}M`}`;
     const rows = MANAGERS.map((name) => {
       const st = picks[name] || { picks: {} };
       const n = GAMES.filter((g) => st.picks?.[g.id]).length;
@@ -103,55 +103,62 @@
     const c = document.createElement("canvas"); c.width = W; c.height = H;
     const ctx = c.getContext("2d");
     if (bg) ctx.drawImage(bg, 0, 0, W, H); else { ctx.fillStyle = "#0a0014"; ctx.fillRect(0, 0, W, H); }
-    const BGC = "#0d1220";
-    // Week and clock on the track under the banner.
+    // Name-bar top-left corners on the fighting-game art (1024x1536), left
+    // column then right, measured from the picture.
+    const BARS = [[244, 460, 241], [245, 664, 239], [247, 876, 237], [248, 1080, 238], [247, 1295, 238], [763, 459, 238], [765, 663, 236], [771, 877, 231], [769, 1080, 234], [773, 1295, 231]];
+    const BODY = "rgb(17,21,38)";
+    // "ROUND 1" plate becomes the week, the ready count rides under it.
+    ctx.fillStyle = "rgb(2,22,60)"; ctx.fillRect(392, 302, 248, 36);
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = "700 20px 'Press Start 2P', monospace"; ctx.fillStyle = "#000";
-    const line = `${WEEK_LABEL.toUpperCase()} · ${left} · ${ready}/${rows.length} ON THE GRID`;
-    ctx.fillRect(W / 2 - ctx.measureText(line).width / 2 - 16, 362, ctx.measureText(line).width + 32, 36);
-    ctx.fillStyle = "#ffe45e"; ctx.fillText(line, W / 2, 380);
+    ctx.font = "900 28px Orbitron, system-ui, sans-serif"; ctx.fillStyle = "#e8eefc";
+    ctx.fillText(WEEK_LABEL.toUpperCase(), 516, 321);
+    const sub = `${left} · ${ready}/${rows.length} READY TO FIGHT`;
+    ctx.font = "700 15px 'Press Start 2P', monospace";
+    const sw = ctx.measureText(sub).width + 28;
+    ctx.fillStyle = "rgba(0,0,0,.85)"; ctx.fillRect(512 - sw / 2, 418, sw, 30);
+    ctx.fillStyle = "#ffe45e"; ctx.fillText(sub, 512, 434);
 
     rows.forEach((r, i) => {
-      // P1..P5 down the left column, P6..P10 down the right, like the art.
-      const [px, py] = PANELS[i];
-      const p = ctx.getImageData(px + 8, py + 18, 1, 1).data;
+      const [bx, by, bw] = BARS[i];
+      const fx = bx + bw - 62; // flag box left edge, tucked inside this panel
+      const p = ctx.getImageData(bx + 6, by + 6, 1, 1).data;
       const colour = `rgb(${p[0]},${p[1]},${p[2]})`;
+      const dark = (p[0] * 0.299 + p[1] * 0.587 + p[2] * 0.114) > 170;
       const fc = r.state === "go" ? "#39ff88" : r.state === "warn" ? "#ffe45e" : "#e0102a";
-      // Name over the bar.
-      ctx.fillStyle = colour; ctx.fillRect(px + 10, py + 7, 200, 24);
-      ctx.font = "900 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = "#fff";
-      ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.85)"; ctx.lineJoin = "round";
-      ctx.strokeText(shown(r.name).toUpperCase(), px + 20, py + 19); ctx.fillText(shown(r.name).toUpperCase(), px + 20, py + 19);
-      // Trophies for weeks won, right-aligned on the bar; the reigning champ gets a tag.
-      if (r.wins) { ctx.font = "18px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; ctx.textAlign = "right"; ctx.fillText("🏆".repeat(Math.min(r.wins, 4)) + (r.wins > 4 ? `×${r.wins}` : ""), px + 206, py + 19); }
+      // Name over the "USER N" bar.
+      ctx.fillStyle = colour; ctx.fillRect(bx + 6, by + 4, 226, 30);
+      ctx.font = "900 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillStyle = dark ? "#111" : "#fff";
+      ctx.fillText(shown(r.name).toUpperCase(), bx + 16, by + 20);
+      if (r.wins) { ctx.font = "18px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; ctx.textAlign = "right"; ctx.fillText("🏆".repeat(Math.min(r.wins, 4)) + (r.wins > 4 ? `×${r.wins}` : ""), bx + 228, by + 20); }
       if (r.last) {
         const tag = lastWeek ? `WEEK ${lastWeek.week} CHAMP` : "LAST WEEK'S CHAMP";
-        ctx.font = "900 10px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left";
+        ctx.font = "900 11px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left";
         const tw = ctx.measureText(tag).width + 12;
-        ctx.fillStyle = "#ffe45e"; ctx.fillRect(px + 10, py - 12, tw, 16);
-        ctx.fillStyle = "#2a1e00"; ctx.fillText(tag, px + 16, py - 4);
+        ctx.fillStyle = "#ffe45e"; ctx.fillRect(bx + 6, by - 14, tw, 16);
+        ctx.fillStyle = "#2a1e00"; ctx.fillText(tag, bx + 12, by - 6);
       }
-      // Count, top left of the panel body.
-      ctx.fillStyle = BGC; ctx.fillRect(px + 12, py + 46, 120, 28);
-      ctx.font = "700 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = "#fff";
-      ctx.fillText(`${r.n} / ${total}`, px + 18, py + 60);
+      // Selections count.
+      ctx.fillStyle = BODY; ctx.fillRect(bx + bw - 90, by + 46, 80, 26);
+      ctx.font = "700 20px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#fff";
+      ctx.fillText(`${r.n} / ${total}`, bx + bw - 14, by + 59);
       // Ten cells.
-      ctx.fillStyle = BGC; ctx.fillRect(px + 8, py + 77, 146, 28);
+      ctx.fillStyle = BODY; ctx.fillRect(bx + 10, by + 73, fx - bx - 16, 32);
+      const step = (fx - 10 - (bx + 13)) / total, cw = step - 2.4;
       for (let k = 0; k < total; k++) {
-        const cx = px + 10 + k * 14;
-        ctx.fillStyle = k < r.n ? fc : "#4a5468"; ctx.fillRect(cx, py + 80, 12, 22);
-        ctx.fillStyle = k < r.n ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)"; ctx.fillRect(cx, py + 80, 12, 5);
+        const cx = bx + 13 + k * step;
+        ctx.fillStyle = k < r.n ? fc : "#4a5468"; ctx.fillRect(cx, by + 76, cw, 26);
+        ctx.fillStyle = k < r.n ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)"; ctx.fillRect(cx, by + 76, cw, 5);
       }
-      // Tiebreaker value.
-      ctx.fillStyle = BGC; ctx.fillRect(px + 110, py + 112, 64, 26);
-      // Yes or no only. The number itself stays private until kickoff.
+      // Tiebreaker in or not; the number stays private until kickoff.
+      ctx.fillStyle = BODY; ctx.fillRect(bx + 112, by + 112, 60, 26);
       ctx.font = "900 20px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = r.tb ? "#39ff88" : "#e0102a";
-      ctx.fillText(r.tb ? "✓" : "✗", px + 160, py + 124);
-      // Flag box: border and a pixel flag in the state colour.
-      ctx.fillStyle = BGC; ctx.fillRect(px + 154, py + 42, 80, 74);
-      ctx.strokeStyle = fc; ctx.lineWidth = 4; ctx.strokeRect(px + 161, py + 48, 56, 60);
-      px_(ctx, SMALL_FLAG, px + 171, py + 56, 5, { F: fc, P: "#ddd" });
-      if (r.state === "go") for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 8; xx++) if ((xx + yy) % 2) { ctx.fillStyle = "#052010"; ctx.fillRect(px + 171 + xx * 5, py + 56 + yy * 5, 5, 5); }
+      ctx.fillText(r.tb ? "✓" : "✗", bx + 160, by + 125);
+      // Flag box in the state colour.
+      ctx.fillStyle = BODY; ctx.fillRect(fx - 6, by + 70, 72, 76);
+      ctx.strokeStyle = fc; ctx.lineWidth = 5; ctx.strokeRect(fx, by + 77, 58, 62);
+      px_(ctx, SMALL_FLAG, fx + 10, by + 86, 5, { F: fc, P: "#ddd" });
+      if (r.state === "go") for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 8; xx++) if ((xx + yy) % 2) { ctx.fillStyle = "#052010"; ctx.fillRect(fx + 10 + xx * 5, by + 86 + yy * 5, 5, 5); }
     });
 
     // Modal with the picture and share/save.
