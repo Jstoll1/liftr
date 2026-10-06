@@ -5246,3 +5246,9 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 /* Spread across the full width again: FIRST UP left, matchup centre, KICK right. */
 .picks-countdown .cd-game { justify-content: space-between !important; width: 100%; gap: 8px; }
 .picks-countdown .cd-game .cd-match { flex: 1 1 auto; justify-content: center; min-width: 0; }
+/* Clock scales with the screen so it never runs past the box edge (iOS draws the
+   pixel font wider). Starts at the left padding, never clipped. */
+.picks-countdown .cd-cells { justify-content: flex-start !important; gap: clamp(2px, .8vw, 5px); min-width: 0; }
+.picks-countdown .cd-cell b { font-size: clamp(14px, 4.6vw, 21px) !important; min-width: 0 !important; padding: clamp(4px, 1.2vw, 6px) clamp(3px, 1vw, 5px) !important; }
+.picks-countdown .cd-colon { font-size: clamp(10px, 3vw, 16px) !important; }
+.picks-countdown .cd-top > :first-child { overflow: visible; }
