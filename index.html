@@ -433,7 +433,13 @@
     <div class="modal-card">
       <span class="modal-title">🔒 ADMIN KEY</span>
       <span class="modal-subtext">The slate editor is behind the league admin key.</span>
-      <input type="password" id="admin-gate-key" class="admin-gate-input" placeholder="ADMIN KEY" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" />
+      <form id="admin-gate-form" onsubmit="return false" autocomplete="on">
+        <!-- A fixed username lets iCloud Keychain / Google Password Manager save
+             the key and fill it back with Face ID or Touch ID. -->
+        <input type="text" name="username" value="brochiefs-admin" autocomplete="username" readonly hidden />
+        <input type="password" id="admin-gate-key" name="password" class="admin-gate-input" placeholder="ADMIN KEY" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" />
+      </form>
+      <label class="admin-remember"><input type="checkbox" id="admin-remember" /> Remember this device</label>
       <span id="admin-gate-status" class="admin-status"></span>
       <div class="modal-actions">
         <button id="admin-gate-cancel" class="ghost-btn" type="button">Never mind</button>

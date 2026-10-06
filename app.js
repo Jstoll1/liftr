@@ -1030,10 +1030,15 @@ if (window.__adminEntry) {
 function requestAdmin() {
   if (adminRole) { openRole(adminRole); return; }
   if (!adminGate) return;
+  let saved = null;
+  try { saved = localStorage.getItem(ADMIN_REMEMBER_KEY); } catch {}
+  const rem = document.getElementById("admin-remember");
+  if (rem) rem.checked = !!saved;
   const input = document.getElementById("admin-gate-key");
   if (input) input.value = "";
   setAdminGateStatus("");
   adminGate.classList.remove("hidden");
+  if (saved) { setAdminGateStatus("Remembered device…"); submitAdminKey(saved); return; }
   setTimeout(() => input?.focus(), 50);
 }
 
@@ -1048,9 +1053,12 @@ function closeAdminGate() {
 
 // The Worker is the authority: /admin-check says whether the key is good
 // and which console it opens, without handing anything back.
-async function submitAdminKey() {
+const ADMIN_REMEMBER_KEY = "brochiefs_admin_remember_v1";
+let rememberedTry = false;
+async function submitAdminKey(remembered) {
   const input = document.getElementById("admin-gate-key");
-  const key = input?.value.trim();
+  rememberedTry = typeof remembered === "string";
+  const key = rememberedTry ? remembered : input?.value.trim();
   if (!key) { setAdminGateStatus("Enter the key.", "bad"); return; }
   const okBtn = document.getElementById("admin-gate-ok");
   if (okBtn) okBtn.disabled = true;
@@ -1069,9 +1077,20 @@ async function submitAdminKey() {
   if (!reachable) { setAdminGateStatus("Could not reach the Worker to check the key.", "bad"); return; }
   // 403 is a wrong key; 409 means the two keys are set to the same value
   // and the Worker refuses to guess which role was meant.
-  if (!role) { setAdminGateStatus(status === 403 ? "That key is not right." : err || "The Worker could not check that key.", "bad"); return; }
+  if (!role) {
+    if (rememberedTry && status === 403) { try { localStorage.removeItem(ADMIN_REMEMBER_KEY); } catch {} setAdminGateStatus("The saved key no longer works. Enter it again.", "bad"); return; }
+    setAdminGateStatus(status === 403 ? "That key is not right." : err || "The Worker could not check that key.", "bad"); return;
+  }
   adminRole = role;
   window.__adminOpen = true;
+  // Remember this device: keep the verified key on this phone so the next
+  // visit skips the prompt. Unticked, any key saved earlier is dropped.
+  try {
+    if (document.getElementById("admin-remember")?.checked) localStorage.setItem(ADMIN_REMEMBER_KEY, key);
+    else if (!rememberedTry) localStorage.removeItem(ADMIN_REMEMBER_KEY);
+  } catch {}
+  // Hands the key to the browser's password manager (Face ID / Touch ID fill).
+  try { if (window.PasswordCredential) navigator.credentials.store(new PasswordCredential({ id: "brochiefs-admin", password: key, name: "Brochiefs admin" })); } catch {}
   adminKeyHeld = key;
   setAdminGateStatus(role === "app" ? "App console…" : "Slate editor…", "ok");
   // admin.js reads the key from here rather than from a field on screen.
@@ -1086,7 +1105,7 @@ function openRole(role) {
   else openAdmin();
 }
 
-document.getElementById("admin-gate-ok")?.addEventListener("click", submitAdminKey);
+document.getElementById("admin-gate-ok")?.addEventListener("click", () => submitAdminKey());
 document.getElementById("admin-gate-cancel")?.addEventListener("click", closeAdminGate);
 document.getElementById("admin-gate-key")?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") { e.preventDefault(); submitAdminKey(); }
