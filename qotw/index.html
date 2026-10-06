@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brochiefs QOTW</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #1b1030; --sky: #8fd3ff; --wall: #f7e6c4; --floor: #c99a6b; --pink: #ff4fa0; --teal: #2fd1c5; --gold: #ffcf3f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #12091f; color: #fff; font-family: Fredoka, system-ui, sans-serif; }
+  body { display: flex; align-items: center; justify-content: center; padding: 10px; }
+  .tv { position: relative; width: min(100%, 560px); aspect-ratio: 9 / 14; border-radius: 22px; overflow: hidden; border: 5px solid var(--ink); box-shadow: 0 0 0 4px #ffcf3f, 0 18px 50px rgba(0,0,0,.6); background: var(--wall); }
+  /* Office set: wall, window with sky, floor, poster. Flat, thick outlines. */
+  .set { position: absolute; inset: 0; }
+  .wall { position: absolute; inset: 0 0 32% 0; background: linear-gradient(#ffe9c7, #f3d7a6); border-bottom: 5px solid var(--ink); }
+  .window { position: absolute; left: 7%; top: 7%; width: 34%; height: 26%; background: linear-gradient(#7ccfff, #c9ecff); border: 5px solid var(--ink); border-radius: 10px; overflow: hidden; }
+  .window::before, .window::after { content: ""; position: absolute; background: #fff; border: 4px solid var(--ink); border-radius: 30px; }
+  .window::before { width: 46%; height: 22%; left: 10%; top: 20%; }
+  .window::after { width: 34%; height: 18%; left: 54%; top: 52%; }
+  .poster { position: absolute; right: 7%; top: 6%; width: 38%; padding: 8px; background: #fff; border: 5px solid var(--ink); border-radius: 8px; transform: rotate(3deg); font-weight: 700; color: var(--ink); text-align: center; font-size: clamp(9px, 2.6vw, 13px); line-height: 1.2; }
+  .poster b { display: block; color: var(--pink); font-size: 1.2em; }
+  .floor { position: absolute; inset: 68% 0 0 0; background: repeating-linear-gradient(90deg, #d7a877 0 60px, #c99a6b 60px 120px); }
+  /* Characters */
+  .char { position: absolute; bottom: 16%; width: 44%; transition: transform .5s cubic-bezier(.3,1.4,.5,1); }
+  .char svg { width: 100%; height: auto; overflow: visible; }
+  #hr { left: 2%; }
+  #rookie { right: 2%; }
+  .char.talk .mouth-open { animation: flap .16s steps(2) infinite; }
+  @keyframes flap { 50% { opacity: 0; } }
+  .char .lids { animation: blink 4.2s infinite; transform-origin: center 38%; }
+  @keyframes blink { 0%, 94%, 100% { transform: scaleY(0); } 96% { transform: scaleY(1); } }
+  .char.bounce { animation: bob .5s ease-in-out 2; }
+  @keyframes bob { 50% { transform: translateY(-8px); } }
+  .char.shock svg { animation: shake .08s linear 6; }
+  @keyframes shake { 50% { transform: translateX(3px); } }
+  /* Speech bubble */
+  .bubble { position: absolute; left: 4%; right: 4%; top: 36%; padding: 12px 14px; background: #fff; color: var(--ink); border: 5px solid var(--ink); border-radius: 20px; font-size: clamp(14px, 3.9vw, 19px); font-weight: 600; line-height: 1.3; min-height: 3.6em; opacity: 0; transform: scale(.9); transition: opacity .2s, transform .2s; }
+  .bubble.on { opacity: 1; transform: none; }
+  .bubble::after { content: ""; position: absolute; bottom: -22px; width: 0; height: 0; border: 12px solid transparent; border-top: 14px solid var(--ink); }
+  .bubble.left::after { left: 22%; } .bubble.right::after { right: 22%; }
+  .bubble .who { display: block; font-size: .7em; letter-spacing: .06em; color: var(--pink); text-transform: uppercase; margin-bottom: 2px; }
+  /* Exhibit board for each answer */
+  .exhibit { position: absolute; left: 6%; right: 6%; top: 6%; padding: 12px; background: #fffef6; color: var(--ink); border: 5px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 rgba(27,16,48,.35); transform: translateY(-140%) rotate(-2deg); transition: transform .55s cubic-bezier(.3,1.5,.5,1); }
+  .exhibit.on { transform: rotate(-1.5deg); }
+  .exhibit .tag { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #8a7a5a; letter-spacing: .1em; }
+  .exhibit .q { margin: 6px 0 8px; font-size: clamp(15px, 4.2vw, 21px); font-weight: 700; line-height: 1.25; }
+  .exhibit .by { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .exhibit .av { width: 30px; height: 30px; border-radius: 8px; border: 3px solid var(--ink); display: grid; place-items: center; font-family: 'Press Start 2P', monospace; font-size: 11px; color: var(--ink); }
+  .stamp { position: absolute; right: 10px; bottom: 10px; padding: 4px 8px; border: 4px solid #e0102a; color: #e0102a; border-radius: 6px; font-family: 'Press Start 2P', monospace; font-size: 9px; transform: rotate(-12deg) scale(1.8); opacity: 0; transition: transform .25s ease-in, opacity .25s; }
+  .stamp.on { transform: rotate(-12deg) scale(1); opacity: .9; }
+  /* Title and end cards */
+  .card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; background: radial-gradient(circle at 50% 40%, #ff7ec0, #7a2fd1 70%); border: 0; opacity: 0; pointer-events: none; transition: opacity .4s; }
+  .card.on { opacity: 1; pointer-events: auto; }
+  .card .kick { font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: .14em; color: #fff3a0; }
+  .card h1 { margin: 0; font-size: clamp(26px, 8vw, 42px); line-height: 1.05; color: #fff; -webkit-text-stroke: 2px var(--ink); text-shadow: 4px 4px 0 var(--ink); }
+  .card p { margin: 0; font-size: 16px; font-weight: 600; }
+  .cert { background: #fffef6; color: var(--ink); border: 6px double var(--ink); border-radius: 10px; padding: 18px; max-width: 92%; }
+  .cert h2 { margin: 4px 0; font-size: 20px; }
+  .btn { font-family: 'Press Start 2P', monospace; font-size: 11px; padding: 14px 18px; border-radius: 12px; border: 4px solid var(--ink); background: var(--gold); color: var(--ink); cursor: pointer; box-shadow: 4px 4px 0 var(--ink); }
+  .hud { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: rgba(27,16,48,.85); }
+  .hud button { background: none; border: 2px solid rgba(255,255,255,.35); color: #fff; border-radius: 8px; padding: 6px 10px; font-family: inherit; font-weight: 700; cursor: pointer; }
+  .prog { flex: 1; height: 6px; border-radius: 4px; background: rgba(255,255,255,.2); overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .3s; }
+  .cc { position: absolute; left: 0; right: 0; bottom: 44px; text-align: center; font-size: 11px; color: rgba(27,16,48,.55); font-weight: 700; }
+  .soon { text-align: center; padding: 30px; }
+</style>
+</head>
+<body>
+<div class="tv" id="tv">
+  <div class="set">
+    <div class="wall"></div>
+    <div class="window"></div>
+    <div class="poster"><b>BROCHIEFS HR</b>Ask questions.<br>Then ask fewer.</div>
+    <div class="floor"></div>
+  </div>
+
+  <!-- HR rep: tall hair, cat-eye glasses, clipboard. Original character. -->
+  <div class="char" id="hr"><svg viewBox="0 0 200 300" aria-hidden="true">
+    <g stroke="#1b1030" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M60 300 L70 190 Q100 175 130 190 L140 300 Z" fill="#7a2fd1"/>
+      <path d="M85 185 L100 210 L115 185" fill="#fff"/>
+      <rect x="128" y="200" width="44" height="58" rx="5" fill="#c58a4a" transform="rotate(-10 150 230)"/>
+      <rect x="136" y="210" width="28" height="36" fill="#fff" transform="rotate(-10 150 230)"/>
+      <path d="M40 90 Q30 20 100 18 Q172 20 160 95 Q170 140 150 150 L50 150 Q30 140 40 90 Z" fill="#e8452f"/>
+      <ellipse cx="100" cy="115" rx="50" ry="56" fill="#ffd2b0"/>
+      <path d="M52 92 Q80 60 150 88 Q140 50 100 46 Q60 48 52 92 Z" fill="#e8452f"/>
+      <ellipse cx="80" cy="112" rx="18" ry="22" fill="#fff"/><ellipse cx="122" cy="112" rx="18" ry="22" fill="#fff"/>
+      <circle cx="84" cy="116" r="7" fill="#1b1030" stroke="none"/><circle cx="118" cy="116" r="7" fill="#1b1030" stroke="none"/>
+      <path d="M58 104 Q80 88 100 104 Q120 88 144 104" fill="none"/>
+      <g class="lids"><ellipse cx="80" cy="112" rx="19" ry="23" fill="#ffd2b0"/><ellipse cx="122" cy="112" rx="19" ry="23" fill="#ffd2b0"/></g>
+      <path d="M84 150 Q100 160 116 150" fill="none"/>
+      <path class="mouth-open" d="M86 148 Q100 172 114 148 Z" fill="#7a1530"/>
+    </g></svg></div>
+
+  <!-- New hire: big eyes, oversized tie, lanyard. Original character. -->
+  <div class="char" id="rookie"><svg viewBox="0 0 200 300" aria-hidden="true">
+    <g stroke="#1b1030" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M58 300 L66 196 Q100 182 134 196 L142 300 Z" fill="#2fd1c5"/>
+      <path d="M100 196 L90 214 L100 270 L110 214 Z" fill="#ff4fa0"/>
+      <rect x="112" y="226" width="22" height="28" rx="3" fill="#fff"/>
+      <path d="M100 196 L123 226" fill="none"/>
+      <ellipse cx="100" cy="120" rx="58" ry="62" fill="#ffd9b8"/>
+      <path d="M42 108 Q44 48 100 46 Q160 46 160 104 Q140 76 112 82 Q100 60 76 78 Q58 74 42 108 Z" fill="#6b3b1d"/>
+      <ellipse cx="78" cy="118" rx="22" ry="28" fill="#fff"/><ellipse cx="124" cy="118" rx="22" ry="28" fill="#fff"/>
+      <circle cx="82" cy="124" r="9" fill="#2b6fff" stroke="none"/><circle cx="120" cy="124" r="9" fill="#2b6fff" stroke="none"/>
+      <circle cx="84" cy="121" r="3" fill="#fff" stroke="none"/><circle cx="122" cy="121" r="3" fill="#fff" stroke="none"/>
+      <g class="lids"><ellipse cx="78" cy="118" rx="23" ry="29" fill="#ffd9b8"/><ellipse cx="124" cy="118" rx="23" ry="29" fill="#ffd9b8"/></g>
+      <path d="M88 160 Q100 166 112 160" fill="none"/>
+      <path class="mouth-open" d="M86 158 Q100 182 114 158 Z" fill="#7a1530"/>
+      <rect x="92" y="156" width="16" height="7" fill="#fff" stroke-width="3"/>
+    </g></svg></div>
+
+  <div class="exhibit" id="exhibit"><div class="tag" id="ex-tag">EXHIBIT A</div><div class="q" id="ex-q"></div><div class="by" id="ex-by"></div><div class="stamp" id="ex-stamp">DECLINED TO COMMENT</div></div>
+  <div class="bubble left" id="bubble"><span class="who" id="b-who"></span><span id="b-text"></span></div>
+  <div class="cc" id="cc"></div>
+
+  <div class="card on" id="title"><div class="kick">BROCHIEFS HUMAN RESOURCES PRESENTS</div><h1 id="t-h">Loading…</h1><p>New Employee Onboarding · Module 1</p><button class="btn" id="play">▶ PRESS START</button></div>
+  <div class="card" id="end"><div class="cert"><div class="kick" style="color:#7a2fd1">CERTIFICATE OF COMPLETION</div><h2 id="e-office"></h2><p id="e-def"></p><p style="font-size:13px;margin-top:8px">The new hire has been fully briefed. Probably.</p></div><button class="btn" id="again">↺ WATCH AGAIN</button></div>
+
+  <div class="hud"><button id="pause">❚❚</button><div class="prog"><i id="bar"></i></div><button id="skip">SKIP ▸</button><button id="mute">🔊</button></div>
+</div>
+
+<script src="/qotw/episodes.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const eps = window.QOTW_EPISODES || [];
+  const ep = eps.find((e) => e.id === params.get("ep")) || eps.find((e) => e.released) || (params.has("preview") ? eps[0] : null);
+  if (!ep || (!ep.released && !params.has("preview"))) {
+    $("tv").innerHTML = `<div class="card on"><div class="kick">BROCHIEFS HUMAN RESOURCES</div><h1>Coming Soon</h1><p>This training module is still in production.</p></div>`;
+    return;
+  }
+  $("t-h").textContent = ep.title;
+
+  // The script: a list of beats. say = [speaker, line]; the HR rep is "hr".
+  const beats = [];
+  const say = (who, text, extra = {}) => beats.push({ who, text, ...extra });
+  say("hr", "Welcome to Brochiefs! Before you touch a pick'em card, there is one question every new hire must understand.");
+  say("rookie", "Okay…");
+  say("hr", ep.title.replace("So… ", "So, "));
+  say("rookie", "I… have no idea.");
+  say("hr", "Neither did the league. So we asked them. Let's review the exhibits.");
+  ep.answers.forEach((a, i) => {
+    const tag = `EXHIBIT ${String.fromCharCode(65 + i)}`;
+    if (a.copout) say("hr", `${a.who} was asked directly.`, { exhibit: { tag, text: "“I have no clue.”", who: a.who, color: a.color, stamp: true } });
+    else say("hr", `${a.who} says: ${a.text}`, { exhibit: { tag, text: `“${a.text}”`, who: a.who, color: a.color } });
+    if (a.react) say("rookie", a.react, { react: a.copout ? "shock" : "bounce" });
+  });
+  if (ep.definition) say("hr", `Per ${ep.office}: ${ep.definition}`, { exhibit: { tag: "OFFICIAL RULING", text: ep.definition, who: ep.office, color: "#ffcf3f" } });
+  else say("hr", `${ep.office} has reviewed all testimony and remains… divided.`);
+  say("rookie", "So I'm… onboarded?");
+  say("hr", "Welcome to the team.");
+
+  // Voices: two distinct browser voices, the HR rep brighter, the new hire lower.
+  let voices = [];
+  const loadVoices = () => { voices = speechSynthesis?.getVoices?.() || []; };
+  loadVoices(); if (window.speechSynthesis) speechSynthesis.onvoiceschanged = loadVoices;
+  const pick = (pref) => voices.find((v) => /en[-_]US/i.test(v.lang) && pref.test(v.name)) || voices.find((v) => /en/i.test(v.lang));
+  let muted = false, paused = false, i = 0, timer = null, run = 0;
+
+  function speak(beat, done) {
+    $("cc").textContent = "";
+    if (muted || !window.speechSynthesis) { timer = setTimeout(done, Math.max(1800, beat.text.length * 55)); return; }
+    const u = new SpeechSynthesisUtterance(beat.text.replace(/[“”]/g, ""));
+    const v = beat.who === "hr" ? pick(/samantha|female|zira|karen|victoria/i) : pick(/daniel|male|alex|fred|david/i);
+    if (v) u.voice = v;
+    u.pitch = beat.who === "hr" ? 1.25 : 0.9; u.rate = beat.who === "hr" ? 1.04 : 1.0;
+    let ended = false; const fin = () => { if (!ended) { ended = true; done(); } };
+    u.onend = fin; u.onerror = fin;
+    // Some phones never fire onend; fall back on a timer.
+    timer = setTimeout(fin, Math.max(2500, beat.text.length * 85));
+    speechSynthesis.speak(u);
+  }
+
+  function show(beat) {
+    const ex = $("exhibit");
+    if (beat.exhibit) {
+      ex.classList.remove("on"); $("ex-stamp").classList.remove("on");
+      setTimeout(() => {
+        $("ex-tag").textContent = beat.exhibit.tag;
+        $("ex-q").textContent = beat.exhibit.text;
+        $("ex-by").innerHTML = `<span class="av" style="background:${beat.exhibit.color}">${(beat.exhibit.who || "?")[0]}</span><span>SUBMITTED BY ${beat.exhibit.who.toUpperCase()}</span>`;
+        ex.classList.add("on");
+        if (beat.exhibit.stamp) setTimeout(() => $("ex-stamp").classList.add("on"), 700);
+      }, 120);
+    }
+    const b = $("bubble");
+    b.classList.remove("on", "left", "right");
+    b.classList.add(beat.who === "hr" ? "left" : "right");
+    $("b-who").textContent = beat.who === "hr" ? "HR · Brenda" : "New Hire · Kevin";
+    $("b-text").textContent = beat.text;
+    requestAnimationFrame(() => b.classList.add("on"));
+    for (const id of ["hr", "rookie"]) $(id).classList.toggle("talk", id === beat.who);
+    if (beat.react) { const r = $("rookie"); r.classList.remove("bounce", "shock"); void r.offsetWidth; r.classList.add(beat.react); }
+    $("bar").style.width = `${((i + 1) / beats.length) * 100}%`;
+  }
+
+  function next() {
+    clearTimeout(timer);
+    if (paused) return;
+    if (i >= beats.length) { finish(); return; }
+    const beat = beats[i];
+    show(beat);
+    const me = ++run;
+    speak(beat, () => { if (me !== run) return; $(beat.who).classList.remove("talk"); i += 1; setTimeout(() => { if (me === run) next(); }, 450); });
+  }
+  function finish() {
+    speechSynthesis?.cancel();
+    $("e-office").textContent = ep.office;
+    $("e-def").textContent = ep.definition || "Definition pending. Stay gooey.";
+    $("end").classList.add("on");
+  }
+  $("play").addEventListener("click", () => { $("title").classList.remove("on"); i = 0; next(); });
+  $("again").addEventListener("click", () => { run++; $("end").classList.remove("on"); $("exhibit").classList.remove("on"); i = 0; next(); });
+  $("pause").addEventListener("click", () => {
+    paused = !paused; $("pause").textContent = paused ? "▶" : "❚❚";
+    if (paused) { run++; clearTimeout(timer); speechSynthesis?.cancel(); } else next();
+  });
+  $("skip").addEventListener("click", () => { run++; clearTimeout(timer); speechSynthesis?.cancel(); i += 1; paused = false; $("pause").textContent = "❚❚"; next(); });
+  $("mute").addEventListener("click", () => { muted = !muted; $("mute").textContent = muted ? "🔇" : "🔊"; if (muted) speechSynthesis?.cancel(); });
+})();
+</script>
+</body>
+</html>
