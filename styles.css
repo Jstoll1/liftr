@@ -5215,3 +5215,9 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .lm-mkt { margin-top: 8px; padding: 8px 10px; border-radius: 6px; background: rgba(5, 217, 232, .06); border-left: 3px solid var(--neon-cyan); font-size: 12px; line-height: 1.5; color: var(--text); }
 .lm-mkt b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; letter-spacing: .1em; color: var(--neon-cyan); margin-right: 4px; }
 .lm-mkt em { font-style: normal; color: #fff; font-weight: 700; }
+/* App console: fit the screen, no inner scroll box on the who's-in message. */
+.admin-overlay { overflow-x: hidden; }
+.admin-overlay .wrap, .admin-overlay .console-body { max-width: 100%; min-width: 0; box-sizing: border-box; }
+.admin-overlay .admin-intro { overflow-wrap: anywhere; }
+.con-raw.con-grid { max-height: none; overflow: visible; overflow-wrap: anywhere; font-size: clamp(11px, 3.4vw, 14px); }
+.admin-overlay .admin-row { flex-wrap: wrap; }
