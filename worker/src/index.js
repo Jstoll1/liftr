@@ -1007,10 +1007,15 @@ async function handleAuth(request, env, corsHeaders, url) {
   return json({ error: "Unknown action" }, 400, corsHeaders);
 }
 
+// Nearly every request starts here, so keep it in memory for a bit.
+// A slate save in this isolate clears it; others catch up within 30s.
+let weeksCache = null;
 async function readWeeks(env) {
+  if (weeksCache && Date.now() - weeksCache.at < 30000) return weeksCache.data;
   const stored = await env.LIFTR_KV.get(WEEKS_KEY, "json");
-  if (stored && Array.isArray(stored.list) && stored.list.length) return stored;
-  return { current: 1, list: [1] };
+  const data = stored && Array.isArray(stored.list) && stored.list.length ? stored : { current: 1, list: [1] };
+  weeksCache = { at: Date.now(), data };
+  return data;
 }
 
 // The week a request is about: an explicit ?week=N, else the current one.
@@ -1023,7 +1028,7 @@ async function weekFrom(env, url) {
 
 // Per-isolate cache of the assembled picks map (see GET /picks).
 let picksCache = null;
-const PICKS_CACHE_MS = 5000;
+const PICKS_CACHE_MS = 15000;
 
 // Kickoff times for a week, read from that week's stored games. Week 1
 // predates the games store, so its hardcoded table below is the fallback.
@@ -1331,6 +1336,7 @@ async function handleGames(request, env, corsHeaders, url) {
     const list = [...new Set([...weeks.list, checked.week])].sort((a, b) => a - b);
     const current = body.makeCurrent === false ? weeks.current : checked.week;
     await env.LIFTR_KV.put(WEEKS_KEY, JSON.stringify({ current, list }));
+    weeksCache = null;
     gamesCache = null;
     return json({ ok: true, week: checked.week, current, list, games: checked.games.length }, 200, corsHeaders);
   }
@@ -2187,6 +2193,7 @@ async function sealFromEspn(env) {
 // holding a single emoji string, set by long-pressing their card in the
 // app. GET returns all of them in one shot; POST sets one; DELETE resets
 // one back to its default letter avatar.
+let avatarsCache = null;
 async function handleAvatars(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) {
     console.error("LIFTR_KV binding missing");
@@ -2195,11 +2202,15 @@ async function handleAvatars(request, env, corsHeaders, url) {
 
   if (request.method === "GET") {
     try {
+      // Twenty reads per call, and every phone asks on open. Avatars
+      // change rarely, so a minute in memory is plenty.
+      if (avatarsCache && Date.now() - avatarsCache.at < 60000) return json(avatarsCache.data, 200, corsHeaders);
       const entries = await Promise.all(
         PICKS_MANAGERS.map(async (manager) => [manager, await env.LIFTR_KV.get(`avatar:${manager}`), await env.LIFTR_KV.get(`avatarColor:${manager}`)])
       );
       const avatars = Object.fromEntries(entries.filter(([, value]) => value).map(([m, v]) => [m, v]));
       const colors = Object.fromEntries(entries.filter(([, , c]) => c).map(([m, , c]) => [m, c]));
+      avatarsCache = { at: Date.now(), data: { avatars, colors } };
       return json({ avatars, colors }, 200, corsHeaders);
     } catch (err) {
       console.error("Avatars read error", err?.stack || String(err));
@@ -2208,6 +2219,7 @@ async function handleAvatars(request, env, corsHeaders, url) {
   }
 
   if (request.method === "POST" || request.method === "PUT") {
+    avatarsCache = null;
     let body;
     try {
       body = await request.json();
@@ -2245,6 +2257,7 @@ async function handleAvatars(request, env, corsHeaders, url) {
   }
 
   if (request.method === "DELETE") {
+    avatarsCache = null;
     const manager = url.searchParams.get("manager");
     if (!PICKS_MANAGERS.includes(manager)) {
       return json({ error: "Invalid or missing manager" }, 400, corsHeaders);
