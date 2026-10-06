@@ -5238,3 +5238,8 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 /* Kick pill: small dim KICK label, centered against the time. */
 .picks-countdown .cd-when { align-items: center !important; gap: 6px; padding: 4px 8px; }
 .picks-countdown .cd-when i { font-size: 6px !important; line-height: 1; letter-spacing: .12em; color: var(--text-dim) !important; transform: translateY(.5px); }
+/* One line, one centre: FIRST UP, the matchup and the KICK pill all on the same middle. */
+.picks-countdown .cd-game { display: flex !important; align-items: center !important; }
+.picks-countdown .cd-game > * { align-self: center !important; margin-top: 0 !important; margin-bottom: 0 !important; }
+.picks-countdown .cd-when, .picks-countdown .cd-when i, .picks-countdown .cd-when { line-height: 1 !important; }
+.picks-countdown .cd-when i { transform: none; display: inline-block; }
