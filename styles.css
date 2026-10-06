@@ -5243,3 +5243,6 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .picks-countdown .cd-game > * { align-self: center !important; margin-top: 0 !important; margin-bottom: 0 !important; }
 .picks-countdown .cd-when, .picks-countdown .cd-when i, .picks-countdown .cd-when { line-height: 1 !important; }
 .picks-countdown .cd-when i { transform: none; display: inline-block; }
+/* Spread across the full width again: FIRST UP left, matchup centre, KICK right. */
+.picks-countdown .cd-game { justify-content: space-between !important; width: 100%; gap: 8px; }
+.picks-countdown .cd-game .cd-match { flex: 1 1 auto; justify-content: center; min-width: 0; }
