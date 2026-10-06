@@ -3759,13 +3759,33 @@ function renderPicksCountdown() {
     });
     const f = el.querySelector(".cd-fuse i");
     if (f) f.style.width = `${(left * 100).toFixed(2)}%`;
+    if (!el.dataset.fit) fitCountdown(el);
   } else {
     el.innerHTML = `<span class="cd-top"><span class="cd-left"><span class="cd-label"><u></u>${label}</span><span class="cd-cells">${cells}</span></span>${status}</span><span class="cd-game">${match}</span>${fuse}`;
     el.dataset.frame = frameKey;
+    delete el.dataset.fit;
+    fitCountdown(el);
   }
   // The clock carries the card status, so the separate line hides.
   document.getElementById("picks-progress")?.classList.toggle("hidden", !!st);
 }
+
+// Measure, don't guess: the pixel font is wider on iPhone than anywhere we
+// can test, so after drawing, shrink the digits until the clock fits the
+// space left of YOUR CARD. Runs again once the web font has loaded.
+function fitCountdown(el) {
+  const cells = el?.querySelector(".cd-cells"), left = el?.querySelector(".cd-left");
+  if (!cells || !left || !left.clientWidth) return;
+  cells.style.setProperty("--cd-k", "1");
+  el.dataset.fit = "1";
+  let k = 1;
+  for (let i = 0; i < 12 && cells.scrollWidth > left.clientWidth + 0.5 && k > 0.55; i++) {
+    k -= 0.05;
+    cells.style.setProperty("--cd-k", k.toFixed(2));
+  }
+}
+document.fonts?.ready.then(() => fitCountdown(document.getElementById("picks-countdown") || document.querySelector(".picks-countdown")));
+window.addEventListener("resize", () => fitCountdown(document.querySelector(".picks-countdown")));
 
 function escapeCd(str) {
   return String(str).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));

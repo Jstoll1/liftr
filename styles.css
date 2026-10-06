@@ -5252,3 +5252,8 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .picks-countdown .cd-cell b { font-size: clamp(14px, 4.6vw, 21px) !important; min-width: 0 !important; padding: clamp(4px, 1.2vw, 6px) clamp(3px, 1vw, 5px) !important; }
 .picks-countdown .cd-colon { font-size: clamp(10px, 3vw, 16px) !important; }
 .picks-countdown .cd-top > :first-child { overflow: visible; }
+/* Fitted by fitCountdown(): --cd-k shrinks the digits until the clock fits its column. */
+.picks-countdown .cd-left { min-width: 0; max-width: 100%; overflow: hidden; align-items: center; }
+.picks-countdown .cd-cells { --cd-k: 1; justify-content: center !important; }
+.picks-countdown .cd-cell b { font-size: calc(21px * var(--cd-k)) !important; padding: calc(6px * var(--cd-k)) calc(5px * var(--cd-k)) !important; }
+.picks-countdown .cd-colon { font-size: calc(16px * var(--cd-k)) !important; }
