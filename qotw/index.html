@@ -544,7 +544,7 @@
     replayBtn.addEventListener('click', startSequence);
 
     // Unreleased: only ?preview=1 shows it until RELEASED flips to true.
-    const RELEASED = false;
+    const RELEASED = true;
     if (RELEASED || new URLSearchParams(location.search).has('preview')) setTimeout(startSequence, 600);
     else document.body.classList.add('locked');
   </script>
