@@ -410,7 +410,36 @@
     });
   }
 
-  const TABS = { qotw: renderQotw, grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
+  // --- Expert picks graded ---------------------------------------------
+  async function renderExperts() {
+    const d = await get(`/expert-record`);
+    const rec = (t) => t ? `${t.W}-${t.L}${t.P ? `-${t.P}` : ""}` : "0-0";
+    const pc = (v) => v == null ? "—" : `${Math.round(v * 1000) / 10}%`;
+    const t = d.total || {};
+    const outlets = d.outlets || [];
+    const backfill = `<button type="button" class="admin-btn link" id="xp-backfill">Backfill week 5 from the pre kickoff feed</button>`;
+    const wire = () => el("xp-backfill")?.addEventListener("click", async () => {
+      say("Backfilling… this reads every game, give it a minute.");
+      try {
+        const res = await fetch(`${WORKER_URL}/expert-record?week=5&sha=830a979&key=${encodeURIComponent(key())}`, { method: "POST" });
+        const r = await res.json();
+        if (!res.ok) { say(r.error || `Failed (${res.status})`, "bad"); return; }
+        say(`Week 5: ${r.done.filter((x) => x.picks != null).length} games archived.`, "good");
+        renderTab();
+      } catch (err) { say(`Failed: ${err.message}`, "bad"); }
+    });
+    if (!outlets.length) { body.innerHTML = `<div class="admin-empty">No archived expert picks yet. Picks are archived the last time they are read before each kickoff.</div>` + backfill; wire(); return; }
+    const pending = (d.graded || []).filter((g) => !g.final).length;
+    body.innerHTML = `<div class="con-summary"><span>All outlets ${rec(t)}</span><span>${pc(t.pct)}${pending ? ` · ${pending} pending` : ""}</span></div>
+      <p class="admin-intro">Picks as they stood at kickoff. ATS uses the outlet's own line when it wrote one, else the sealed line. Pushes are left out of the percentage.</p>` +
+      outlets.map((o) => `<div class="con-row"><div class="con-row-head"><span><b>${esc(o.outlet)}</b></span><span>${pc(o.pct)}</span></div><div class="con-line">ALL ${rec(o.ALL)} · ATS ${rec(o.ATS)} · SU ${rec(o.SU)} · ${o.picks} pick${o.picks === 1 ? "" : "s"}</div></div>`).join("") +
+      `<details class="ins-more-news"><summary>Every pick (${(d.graded || []).length})</summary>` +
+      (d.graded || []).map((g) => `<div class="con-line">W${g.week} ${esc(g.matchup)} · ${esc(g.outlet)}${g.picker ? ` (${esc(g.picker)})` : ""}: ${esc(g.team)} ${esc(g.type)} → ${g.final ? g.grades.map((x) => `${x.kind}${x.kind === "ATS" ? ` ${x.line > 0 ? "+" : ""}${x.line}` : ""} ${x.result}`).join(", ") + ` (${esc(g.final)})` : "pending"}</div>`).join("") +
+      `</details>` + backfill;
+    wire();
+  }
+
+  const TABS = { qotw: renderQotw, experts: renderExperts, grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
 
   async function renderTab() {
     body.innerHTML = `<div class="admin-empty">Loading…</div>`;

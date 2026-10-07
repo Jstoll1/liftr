@@ -796,8 +796,14 @@ async function refreshPicks(env, week, game, key) {
   const r = await extractPicks(env, game, items);
   const out = { at: Date.now(), picks: r.picks, articles: items.length, siteError, error: r.error || null };
   if (!out.error) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 24 * 3600 }); } catch {} }
+  // The last read before kickoff is the record the expert tally grades.
+  // It never expires; a read after kickoff never touches it.
+  if (!out.error && out.picks.length && Date.now() < new Date(game.kickoff).getTime()) {
+    try { await env.LIFTR_KV.put(pickArchiveKey(week, game.id), JSON.stringify({ at: out.at, picks: out.picks })); } catch {}
+  }
   return out;
 }
+export const pickArchiveKey = (week, gameId) => `pkarc:w${week}:g${gameId}`;
 
 // `fromPhone` is what the phone could reach that the Worker cannot:
 // ESPN's team news and GDELT. It is merged with the Worker's own search.

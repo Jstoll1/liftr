@@ -1,4 +1,5 @@
-import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, linesKey, gameInjuries, gamePicks } from "./insights.js";
+import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
+import { expertRecord } from "./experts.js";
 // Liftr AI Worker
 //
 // Holds the OpenAI API key server-side (never exposed to the browser) and
@@ -60,6 +61,9 @@ export default {
     }
     if (url.pathname === "/games") {
       return handleGames(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/expert-record") {
+      return handleExpertRecord(request, env, corsHeaders, url);
     }
     if (url.pathname === "/qotw") {
       return handleQotw(request, env, corsHeaders, url);
@@ -3110,4 +3114,43 @@ function selectContext(question, asker) {
   if (ERA_WORDS.test(q)) slice.eras = HISTORY.eras;
   if (FORMER_WORDS.test(q)) slice.formerMemberDetails = HISTORY.formerMembers;
   return slice;
+}
+
+// Admin only: expert picks as archived before kickoff, graded on the
+// finals. POST backfills a week from a dated copy of the feed file in the
+// repo (?sha=), refused when that copy postdates the week's first kickoff
+// and never over a game that already has an archive.
+async function handleExpertRecord(request, env, corsHeaders, url) {
+  if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+  if (request.method === "POST") {
+    const week = Number(url.searchParams.get("week"));
+    const sha = String(url.searchParams.get("sha") || "");
+    if (!Number.isInteger(week) || !/^[0-9a-f]{7,40}$/.test(sha)) return json({ error: "week and sha required" }, 400, corsHeaders);
+    const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
+    const games = slate?.games || [];
+    if (!games.length) return json({ error: "no slate" }, 404, corsHeaders);
+    const res = await fetch(`https://raw.githubusercontent.com/Jstoll1/liftr/${sha}/data/feeds/w${week}.json`);
+    if (!res.ok) return json({ error: `feed ${res.status}` }, 502, corsHeaders);
+    const feed = await res.json();
+    const firstKick = Math.min(...games.map((g) => new Date(g.kickoff).getTime()));
+    if (!(feed?.at < firstKick)) return json({ error: "feed copy is not from before kickoff", feedAt: feed?.at, firstKick }, 400, corsHeaders);
+    const done = [];
+    for (const g of games) {
+      if (await env.LIFTR_KV.get(pickArchiveKey(week, g.id))) { done.push({ game: g.id, skipped: "archived" }); continue; }
+      const items = (feed.games?.[String(g.id)]?.picks || []).filter((n) => n && typeof n.headline === "string").slice(0, 12);
+      const r = await extractPicks(env, g, items);
+      if (r.error) { done.push({ game: g.id, error: r.error }); continue; }
+      await env.LIFTR_KV.put(pickArchiveKey(week, g.id), JSON.stringify({ at: feed.at, backfill: sha, picks: r.picks }));
+      done.push({ game: g.id, picks: r.picks.length });
+    }
+    return json({ ok: true, week, done }, 200, corsHeaders);
+  }
+  const weeks = (await readWeeks(env)).list;
+  const rows = [];
+  for (const week of weeks) {
+    const [slate, results] = await Promise.all([env.LIFTR_KV.get(gamesKey(week), "json"), env.LIFTR_KV.get(resultsKey(week), "json")]);
+    const arcs = await Promise.all((slate?.games || []).map(async (g) => [g, await env.LIFTR_KV.get(pickArchiveKey(week, g.id), "json")]));
+    for (const [game, arc] of arcs) if (arc?.picks?.length) rows.push({ week, game, picks: arc.picks, final: results?.[game.id] || null });
+  }
+  return json(expertRecord(rows), 200, corsHeaders);
 }
