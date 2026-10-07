@@ -5106,14 +5106,19 @@ async function openInsights(gameId) {
       // who and how: the writer count or the writer, and ATS/SU. A staff
       // that splits gets a bar showing the lean.
       const names = o.picks.map((p) => p.picker && p.picker === p.picker.toUpperCase() ? p.picker.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : p.picker).filter(Boolean);
-      // The big number is a spread or a predicted score, never a
-      // moneyline: -172 beside another tile's -3.5 reads as a spread.
+      // An outlet's own line feeds the ML label only; a moneyline is never
+      // shown as a spread.
       const spread = first.line && Math.abs(Number(first.line)) < 30 ? first.line : "";
       const ml = first.ml || (first.line && !spread ? first.line : "");
-      const big = spread || first.score || (first.type === "SU" ? "WIN" : "COVER");
+      // Every tile shows the same thing: the picked team's number on our
+      // sealed line, so the row reads like the pick'em. ATS or SU and any
+      // predicted score go underneath.
+      const favSide = game.favorite === game.home ? "home" : "away";
+      const sealed = Number(game.spread) || 0;
+      const big = sealed === 0 ? "PK" : side === favSide ? `-${sealed}` : `+${sealed}`;
       const how = first.type === "SU" ? (ml && outlets.length <= 3 ? `ML ${ml}` : "SU") : "ATS";
       const who = o.picks.length > 1 ? (lead === o.picks.length ? `ALL ${o.picks.length}` : `${lead} OF ${o.picks.length}`) : (outlets.length <= 3 ? names[0] || "" : "");
-      const extra = spread && first.score && o.picks.length === 1 ? first.score : "";
+      const extra = first.score && o.picks.length === 1 ? first.score : "";
       const meta = [who, extra, how].filter(Boolean).join(" · ");
       const split = o.picks.length > 1 && lead < o.picks.length ? `<span class="xp-bar"><i style="width:${Math.round(100 * lead / o.picks.length)}%"></i></span>` : "";
       const title = [names.length ? names.join(", ") : "", first.reason || ""].filter(Boolean).join(" — ");
