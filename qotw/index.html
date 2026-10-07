@@ -285,6 +285,12 @@
       transition: opacity 0.4s;
     }
     .replay-hint.show { opacity: 1; }
+    .vote { position:absolute; right:.9rem; bottom:.8rem; background:none; border:1px solid var(--border); color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:.68rem; letter-spacing:.08em; padding:.25rem .65rem; border-radius:999px; cursor:pointer; transition:all .15s; }
+    .vote:hover { border-color:var(--pink); color:var(--pink); }
+    .answer.voted { border-color:var(--pink); box-shadow:0 0 0 1px var(--pink); }
+    .answer.voted .vote { background:var(--pink); border-color:var(--pink); color:#0b0614; }
+    .answer .body { padding-right:4.5rem; }
+    .vote-note { text-align:center; font-family:'IBM Plex Mono',monospace; font-size:.72rem; color:var(--muted); margin:-1.2rem 0 1.4rem; min-height:1em; }
     .red { background:#000; color:#000; padding:0 4px; border-radius:2px; font-size:.8em; letter-spacing:1px; user-select:none; }
     .soon { display:none; text-align:center; margin-top:30vh; font-family:'IBM Plex Mono',monospace; color:var(--accent2); letter-spacing:.12em; line-height:2; }
     body.locked .poster { display:none; } body.locked .soon { display:block; }
@@ -332,9 +338,10 @@
       <p class="subtitle">The people have spoken. <span>Science remains inconclusive.</span></p>
     </header>
 
+    <div class="vote-note" id="voteNote"></div>
     <div class="answers" id="answers">
       <div class="answer" data-index="0">
-        <div class="answer-header">
+        <div class="answer-header" data-who="Robert">
           <span class="name robert">Robert</span>
           <span class="time">10/6, 8:15 AM</span>
         </div>
@@ -342,7 +349,7 @@
       </div>
 
       <div class="answer" data-index="1">
-        <div class="answer-header">
+        <div class="answer-header" data-who="Logan">
           <span class="name logan">Logan</span>
           <span class="time">10/6, 8:09 AM</span>
         </div>
@@ -350,7 +357,7 @@
       </div>
 
       <div class="answer" data-index="2">
-        <div class="answer-header">
+        <div class="answer-header" data-who="Jordan">
           <span class="name jordan">Jordan</span>
           <span class="time">10/6, 12:17 PM</span>
         </div>
@@ -358,7 +365,7 @@
       </div>
 
       <div class="answer highlight" data-index="3">
-        <div class="answer-header">
+        <div class="answer-header" data-who="Conlan">
           <span class="name conian">Connie</span>
           <span class="time">10/6, 12:36 PM</span>
         </div>
@@ -366,7 +373,7 @@
       </div>
 
       <div class="answer" data-index="4">
-        <div class="answer-header">
+        <div class="answer-header" data-who="Dewitt">
           <span class="name dewitt">Dewitt</span>
           <span class="time">10/6, 12:30 PM</span>
         </div>
@@ -374,7 +381,7 @@
       </div>
 
       <div class="answer highlight" data-index="5">
-        <div class="answer-header">
+        <div class="answer-header" data-who="Nissan">
           <span class="name nissen">Nissan</span>
           <span class="time">10/6, 1:39 PM</span>
         </div>
@@ -382,7 +389,7 @@
       </div>
 
       <div class="answer" data-index="6">
-        <div class="answer-header">
+        <div class="answer-header" data-who="Skills">
           <span class="name skills">Skills</span>
           <span class="time">10/6, 12:09 PM</span>
         </div>
@@ -390,7 +397,7 @@
       </div>
 
       <div class="answer highlight" data-index="7">
-        <div class="answer-header">
+        <div class="answer-header" data-who="Jake">
           <span class="name jake">Jake</span>
           <span class="time">10/6, 8:21 AM</span>
         </div>
@@ -398,7 +405,7 @@
       </div>
 
       <div class="answer" data-index="8">
-        <div class="answer-header">
+        <div class="answer-header" data-who="Curt">
           <span class="name curt">Curt</span>
           <span class="time">10/6, 8:08 AM</span>
         </div>
@@ -406,7 +413,7 @@
       </div>
 
       <div class="answer highlight" data-index="9">
-        <div class="answer-header">
+        <div class="answer-header" data-who="Andrew">
           <span class="name andrew">Andrew</span>
           <span class="time">10/6, 7:55 AM</span>
         </div>
@@ -542,6 +549,42 @@
     });
 
     replayBtn.addEventListener('click', startSequence);
+
+    // Favourite answer: one vote per manager, changeable, not your own.
+    // Who you are and your sign-in come from the pick'em on this device.
+    // Only you see your vote here; the tally lives in the admin console.
+    (function votes() {
+      const W = 'https://liftr-ai.jhs797.workers.dev';
+      const QID = 'gooey-belly';
+      const note = document.getElementById('voteNote');
+      let me = null, token;
+      try { me = localStorage.getItem('brochiefs_me_v1'); const a = JSON.parse(localStorage.getItem('brochiefs_token_v1') || 'null'); if (a && a.manager === me) token = a.token; } catch {}
+      if (!me) { note.innerHTML = 'Pick your name in the <a href="/" style="color:var(--accent)">app</a> on this device to vote for a favorite.'; return; }
+      const show = (who) => cards.forEach((c) => c.classList.toggle('voted', c.dataset.who === who));
+      cards.forEach((c) => {
+        if (c.dataset.who === me) return;
+        const b = document.createElement('button');
+        b.className = 'vote'; b.type = 'button'; b.textContent = '♥ VOTE';
+        b.addEventListener('click', async () => {
+          note.textContent = 'Saving…';
+          try {
+            const r = await fetch(W + '/qotw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'vote', manager: me, id: QID, for: c.dataset.who, token }) });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) { note.textContent = d.needsLogin ? 'Sign in on the app first, then vote.' : (d.error || 'Vote failed.'); return; }
+            show(d.vote); b.textContent = '♥ VOTED'; cards.forEach((x) => { const y = x.querySelector('.vote'); if (y && x !== c) y.textContent = '♥ VOTE'; });
+            note.textContent = 'Vote saved. You can change it any time.';
+          } catch { note.textContent = 'Vote failed. Try again.'; }
+        });
+        c.appendChild(b);
+      });
+      note.textContent = 'Vote for your favorite answer.';
+      fetch(W + '/qotw?id=' + QID + '&manager=' + encodeURIComponent(me)).then((r) => r.json()).then((d) => {
+        if (!d.vote) return;
+        show(d.vote);
+        const v = cards.find((c) => c.dataset.who === d.vote)?.querySelector('.vote'); if (v) v.textContent = '♥ VOTED';
+        note.textContent = 'Your vote is in. Tap another to change it.';
+      }).catch(() => {});
+    })();
 
     // Unreleased: only ?preview=1 shows it until RELEASED flips to true.
     const RELEASED = true;

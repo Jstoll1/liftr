@@ -403,6 +403,15 @@
     const txt = (n) => !a[n] ? null : a[n].copout ? "Cop out: no clue" : a[n].answer;
     body.innerHTML = `<div class="con-summary"><span>${esc(q.q)}</span><span>${d.answered ?? Object.keys(a).length} of ${OWNERS.length} in</span></div>` +
       OWNERS.map((n) => `<div class="con-row${a[n] ? "" : " warn"}"><div class="con-row-head"><span><b>${esc(label(n))}</b></span><span>${a[n] ? when(a[n].at) : "waiting"}</span></div><div class="con-line" style="white-space:pre-wrap">${a[n] ? esc(txt(n)) : "<i>no answer yet</i>"}</div></div>`).join("") +
+      (() => {
+        const v = d.votes || {};
+        const tally = {};
+        for (const [, x] of Object.entries(v)) tally[x.for] = (tally[x.for] || 0) + 1;
+        const rows = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+        const voted = Object.keys(v).length;
+        return `<div class="con-summary"><span>FAVORITE ANSWER VOTES</span><span>${voted} of ${OWNERS.length} voted</span></div>` +
+          (rows.length ? rows.map(([n, c]) => `<div class="con-row"><div class="con-row-head"><span><b>${esc(label(n))}</b></span><span>${c} vote${c === 1 ? "" : "s"}</span></div><div class="con-line">from ${Object.entries(v).filter(([, x]) => x.for === n).map(([m]) => esc(label(m))).join(", ")}</div></div>`).join("") : `<div class="admin-empty">No votes yet.</div>`);
+      })() +
       `<button type="button" class="admin-btn link" id="qotw-copy">Copy all</button>`;
     el("qotw-copy").addEventListener("click", () => {
       const text = `${q.q}\n\n` + OWNERS.map((n) => `${label(n)}: ${txt(n) ?? "(no answer yet)"}`).join("\n");
