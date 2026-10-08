@@ -5371,3 +5371,31 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .lm-term .lm-read em { font-family: inherit; font-weight: 700; }
 .lm-term .lm-read em.good { color: var(--ph); } .lm-term .lm-read em.bad { color: var(--red); }
 .lm-term .lm-small { font-size: 11px; color: var(--text-dim); }
+
+/* Simulate: a slim outlined button under the line, not the loudest thing on the sheet */
+.ins-sim { margin: 8px 0 2px; padding: 6px 10px; gap: 8px; border: 1px solid rgba(155, 188, 15, .55); border-radius: 8px; background: rgba(155, 188, 15, .06); color: #b8d82a; box-shadow: none; }
+.ins-sim::after { display: none; }
+.ins-sim:active { transform: none; box-shadow: none; background: rgba(155, 188, 15, .14); }
+.ins-sim-gb { width: 12px; height: 17px; box-shadow: 0 0 0 1px #0f380f; }
+.ins-sim-gb i { height: 6px; top: 2px; left: 2px; right: 2px; }
+.ins-sim-gb::before, .ins-sim-gb::after { display: none; }
+.ins-sim-txt b { font-size: 8px; }
+.ins-sim-txt em { font-size: 6px; color: rgba(184, 216, 42, .6); }
+.ins-sim-vs { color: rgba(184, 216, 42, .6); }
+.ins-sim-vs img { width: 18px; height: 18px; filter: none; }
+
+/* Last five: one compact row per team, logo and score in each chip, win or loss by colour */
+.ins-form { grid-template-columns: 26px minmax(0, 1fr); gap: 6px; margin-top: 4px; }
+.ins-form-t .ins-logo { width: 20px; height: 20px; }
+.ins-form-r { gap: 4px; }
+.ins-fchip { flex-direction: row; justify-content: center; gap: 3px; padding: 3px 2px; border-radius: 6px; }
+.ins-fchip img { width: 16px; height: 16px; }
+.ins-fchip b { display: none; }
+.ins-fchip i { font-size: 10px; color: var(--text); }
+.ins-fchip.w { background: rgba(57, 255, 136, .08); } .ins-fchip.l { background: rgba(255, 32, 121, .1); }
+.ins-fchip.l i { color: var(--neon-pink); }
+.ins-fchip u { position: static; font-size: 8px; }
+
+/* More stats fold sits flush under the four key rows */
+.ins-more-stats { margin-top: 4px; }
+.ins-more-stats .ins-glance { margin-top: 4px; }

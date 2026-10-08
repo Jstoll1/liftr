@@ -5043,13 +5043,22 @@ async function openInsights(gameId) {
   if (glance) {
     const cell = (k, a, h, aCls = "", hCls = "", plain = false) => a == null && h == null ? "" : `<div class="ins-g"><span class="ins-gk${plain ? " plain" : ""}">${esc(k)}</span><span class="ins-gv ${aCls}">${esc(a ?? "—")}</span><span class="ins-gv ${hCls}">${esc(h ?? "—")}</span></div>`;
     const w = glance.weather ? [glance.weather.temp !== null ? `${glance.weather.temp}°` : null, glance.weather.text, glance.weather.precip ? `${glance.weather.precip}% rain` : null].filter(Boolean).join(" · ") : null;
-    const statRows = (direct?.teamStats || []).map((r) => { const [ab, hb] = better(r.label, r.away, r.home); return cell(r.label, r.away, r.home, ab ? "lead" : "", hb ? "lead" : "", true); }).join("");
+    // Four rows that say the most; the rest fold under MORE STATS.
+    const KEY = [/^points per game/i, /^points allowed/i, /^total yards$|^yards per game|^total offense/i, /^yards allowed$|^total yards allowed|^total defense/i];
+    const allStats = direct?.teamStats || [];
+    const isKey = (r) => KEY.some((re) => re.test(r.label));
+    const statRow = (r) => { const [ab, hb] = better(r.label, r.away, r.home); return cell(r.label, r.away, r.home, ab ? "lead" : "", hb ? "lead" : "", true); };
+    const keyStats = allStats.filter(isKey).sort((a, b) => KEY.findIndex((re) => re.test(a.label)) - KEY.findIndex((re) => re.test(b.label)));
+    const restStats = allStats.filter((r) => !isKey(r));
+    const statRows = (keyStats.length ? keyStats : allStats.slice(0, 4)).map(statRow).join("");
+    const moreStats = (keyStats.length ? restStats : allStats.slice(4)).map(statRow).join("");
     html += `<div class="ins-glance ins-stats"><div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(abbrOf("away"))}</span><span>${lg(game.homeId)}${esc(abbrOf("home"))}</span></div>`
       + cell("RECORD", glance.records?.away?.overall, glance.records?.home?.overall)
       + cell("ATS", glance.ats?.away || previewAts?.away, glance.ats?.home || previewAts?.home)
       + cell("ESPN FPI", glance.fpi ? `${glance.fpi.away}%` : null, glance.fpi ? `${glance.fpi.home}%` : null, glance.fpi && glance.fpi.away > glance.fpi.home ? "lead" : "", glance.fpi && glance.fpi.home > glance.fpi.away ? "lead" : "")
       + (statRows ? `<div class="ins-g divider"><span>SEASON</span></div>${statRows}` : "")
       + `</div>`
+      + (moreStats ? `<details class="ins-more-news ins-more-stats"><summary><span>▶</span> MORE STATS</summary><div class="ins-glance ins-stats">${moreStats}</div></details>` : "")
       + (w ? `<div class="ins-wx"><span>${esc(w)}</span></div>` : "");
     if (glance.venue?.name) modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv} · ${glance.venue.name}${glance.venue.indoor ? " (indoors)" : ""}`;
     // Leaders: two columns in the same away/home order, logo only.
@@ -5151,11 +5160,12 @@ async function openInsights(gameId) {
       const sc = call.sc;
       const scoreLab = sc ? `${abbrOf(win)} ${Math.max(sc.away, sc.home)}-${Math.min(sc.away, sc.home)}` : "";
       // One short word for the call, on the same line as the score.
-      const short = call.tone === "cov" ? "COVERS" : call.tone === "up" ? "UPSET" : call.tag === "PUSH" ? "PUSH" : "SU";
+      // With a score shown, a cover is just a check mark so four tiles fit.
+      const short = call.tone === "cov" ? (scoreLab ? "✓" : "COVERS") : call.tone === "up" ? "UPSET" : call.tag === "PUSH" ? "PUSH" : "SU";
       const who = o.picks.length > 1 ? (lead === o.picks.length ? `ALL ${o.picks.length}` : `${lead} OF ${o.picks.length}`) : (outlets.length <= 3 ? names[0] || "" : "");
       const split = o.picks.length > 1 && lead < o.picks.length ? `<span class="xp-bar"><i style="width:${Math.round(100 * lead / o.picks.length)}%"></i></span>` : "";
       const title = [names.length ? names.join(", ") : "", first.reason || ""].filter(Boolean).join(" — ");
-      const meta = [scoreLab, short, who].filter(Boolean).join(" · ");
+      const meta = [short === "✓" ? `${scoreLab} ✓` : [scoreLab, short].filter(Boolean).join(" · "), who].filter(Boolean).join(" · ");
       const inner = `<span class="xp-out">${esc(o.outlet.replace(/\s+on MSN$/i, ""))}</span><span class="xp-main">${lg(id, "xp-logo")}<b>${esc(big)}</b></span><span class="xp-meta">${esc(meta)}</span>${split}`;
       const href = first.link || o.picks.find((p) => p.link)?.link;
       return href ? `<a class="xp-tile ${win}" href="${esc(href)}" target="_blank" rel="noopener" title="${esc(title)}">${inner}</a>` : `<span class="xp-tile ${win}" title="${esc(title)}">${inner}</span>`;
@@ -5185,7 +5195,7 @@ async function openInsights(gameId) {
   }
   if (!newsRows.length && (pend.news || pend.wider || pend.gdelt || pend.site)) html += `<div class="ins-h">NEWS</div><div class="ins-loading">Loading news…</div>`;
   const newsErr = !pend.wider && !pend.gdelt && !pend.site && !wider.length && !gdelt.length && !(siteFeed?.news || []).length && (wider.errors || []).length ? `<div class="ins-empty small"><i class="ins-err">More sources unavailable: ${esc(wider.errors.slice(0, 2).join(" · "))}</i></div>` : "";
-  const newsLi = (n) => `<li><b class="ins-nh">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det"><em class="ins-src">${esc(n.source || "")}</em>${esc(n.team)}${n.published ? ` · ${esc(fmtWhen(n.published))}` : ""}</span></li>`;
+  const newsLi = (n) => `<li><b class="ins-nh">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.headline)}</a>` : esc(n.headline)}</b>${n.blurb ? `<span class="ins-blurb">${esc(n.blurb)}</span>` : ""}<span class="ins-det"><em class="ins-src">${esc(n.source || "")}</em>${n.team && n.team !== "This game" ? esc(n.team) : ""}${n.published ? `${n.team && n.team !== "This game" ? " · " : ""}${esc(fmtWhen(n.published))}` : ""}</span></li>`;
   // Three at the top; the rest fold under MORE NEWS.
   if (newsRows.length) html += `<div class="ins-h">NEWS</div><ul class="ins-news">${newsRows.slice(0, 3).map(newsLi).join("")}</ul>${newsRows.length > 3 ? `<details class="ins-more-news"><summary><span>▶</span> MORE NEWS (${Math.min(newsRows.length - 3, 12)})</summary><ul class="ins-news">${newsRows.slice(3, 15).map(newsLi).join("")}</ul></details>` : ""}`;
   if (newsErr) html += newsRows.length ? newsErr : `<div class="ins-h">NEWS</div>${newsErr}`;
@@ -5196,7 +5206,7 @@ async function openInsights(gameId) {
     ? `<ul class="ins-inj">${list.slice(0, 7).map((i) => {
         // The grey line earns its place only with a fact: "injury" alone or
         // the status in other words ("still uncertain to play") is noise.
-        const weak = /^(injur(y|ed|ies)|unspecified|undisclosed( injury)?|not specified)\.?$|^(still |remains )?(uncertain|unsure|unlikely|likely|listed|questionable|doubtful|probable|out)( to (play|suit up))?\.?$|injury from (last|previous) (game|week)|not (yet )?specified/i;
+        const weak = /^(injur(y|ed|ies)|unspecified|undisclosed( injury)?|not specified)\.?$|^(still |remains )?(uncertain|unsure|unlikely|likely|listed|questionable|doubtful|probable|out)( to (play|suit up))?\.?$|injury from (last|previous) (game|week)|not (yet )?specified|^injury status( for (this|the) week'?s game)?\.?$|^status for (this|the) week'?s game\.?$/i;
         const det = i.detail && !weak.test(i.detail.replace(/\s*·\s*via .*$/i, "").trim()) ? i.detail : i.detail && /via /i.test(i.detail) ? i.detail.replace(/^.*?·\s*(via .*)$/i, "$1") : "";
         const row = `<b class="${statusCls(i.status)}">${esc(i.status)}</b><span class="ins-who">${esc(i.name)}${i.pos ? ` <i>${esc(i.pos)}</i>` : ""}</span>${det ? `<span class="ins-det">${esc(det)}</span>` : ""}`;
         // A beat-writer row with a verified sentence unfolds on tap to show it.
@@ -5208,7 +5218,7 @@ async function openInsights(gameId) {
         // The note is what the report says in plain words; the verbatim
         // sentence sits under it as the evidence, with the article link.
         const body = (i.note ? `<div class="ins-note">${esc(i.note)}</div>` : "") + (i.quote ? `<div class="ins-quote-txt">“${esc(i.quote)}”</div>` : "");
-        return `<li class="ins-q"><details><summary>${row}<span class="ins-q-tap">▾</span></summary><div class="ins-quote">${body}${src ? `<div class="ins-q-src">${src}</div>` : ""}</div></details></li>`;
+        return `<li class="ins-q"><details><summary>${row}</summary><div class="ins-quote">${body}${src ? `<div class="ins-q-src">${src}</div>` : ""}</div></details></li>`;
       }).join("")}</ul>`
     : `<div class="ins-empty small">${ok === false ? `Feed unavailable.${err ? ` <i class="ins-err">${esc(err)}</i>` : ""}` : "Nothing reported. Most schools don't file injury reports."}</div>`) + `</div>`;
   let injHtml = `<div class="ins-h">INJURIES</div>`;
@@ -5227,6 +5237,25 @@ async function openInsights(gameId) {
   html += links();
   html += `<div class="ins-foot">Information only. Scoring uses the sealed line on your card.</div>`;
   body.innerHTML = html;
+  // Order by what changes a pick: line, the experts, injuries, then the
+  // background. Each section is its heading plus everything up to the next
+  // heading; anything before the first heading (the room) stays on top,
+  // and the simulate button sits under the line.
+  (() => {
+    const ORDER = ["LINE", "EXPERT PICKS", "INJURIES", "PREVIEW", "INSIGHTS", "NEWS", "MORE"];
+    const head = [], secs = {}, tail = [];
+    let cur = null;
+    for (const el of [...body.children]) {
+      if (el.classList.contains("ins-h")) { cur = el.textContent.trim(); (secs[cur] ||= []).push(el); continue; }
+      if (el.classList.contains("ins-foot")) { tail.push(el); continue; }
+      if (cur === null) head.push(el); else secs[cur].push(el);
+    }
+    const sim = head.find((el) => el.id === "ins-sim");
+    const out = head.filter((el) => el !== sim);
+    if (sim && !secs.LINE) out.push(sim);
+    for (const k of [...ORDER.filter((k) => secs[k]), ...Object.keys(secs).filter((k) => !ORDER.includes(k))]) { out.push(...secs[k]); if (k === "LINE" && sim) out.push(sim); }
+    body.replaceChildren(...out, ...tail);
+  })();
   // Simulation context: names, logos, and the line it draws the score around.
   const comps = summaryRaw?.header?.competitions?.[0]?.competitors || [];
   const teamInfo = (id, shortName, side) => {
