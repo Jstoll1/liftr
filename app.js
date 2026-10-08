@@ -5920,12 +5920,15 @@ async function checkForUpdate(quiet = false) {
     try { already = sessionStorage.getItem(RELOADED_KEY) || ""; } catch { /* private mode */ }
     // One automatic reload per build. If the cache still hands back the
     // old index.html after that, the bar takes over rather than a loop.
-    if (quiet && already !== data.v) {
+    // Found mid-session: reload too, but only once the person is idle, so
+    // nobody is yanked out of a pick or a sheet. Until then the bar shows.
+    if (already !== data.v && (quiet || !userBusy())) {
       try { sessionStorage.setItem(RELOADED_KEY, data.v); } catch { /* private mode */ }
       reloadFresh();
       return;
     }
     showUpdateBar();
+    if (already !== data.v) updateWaiting = true;
   } catch { /* offline, or the file is not there yet: say nothing */ }
 }
 
@@ -5936,7 +5939,20 @@ checkForUpdate(true);
 // is the moment a new build is most likely to be waiting, and the moment
 // a reload costs nothing.
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(true); });
-setInterval(() => checkForUpdate(false), 15 * 60 * 1000);
+// Idle means: no sheet or popup open, not typing, no touch or scroll in
+// the last 20 seconds. A waiting build reloads at the first idle moment.
+let lastInteract = Date.now(), updateWaiting = false;
+["pointerdown", "keydown", "scroll", "touchmove"].forEach((ev) => addEventListener(ev, () => { lastInteract = Date.now(); }, { passive: true, capture: true }));
+function userBusy() {
+  if (Date.now() - lastInteract < 20000) return true;
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
+  return !![...document.querySelectorAll(".modal-overlay, .wpx-overlay, .np-screen, #sim-modal")].find((el) => !el.classList.contains("hidden") && el.offsetParent !== null);
+}
+// Once a minute: cheap (a tiny static file), and a deploy reaches an open
+// screen within a minute or two of going live.
+setInterval(() => checkForUpdate(false), 60 * 1000);
+setInterval(() => { if (updateWaiting && !userBusy()) checkForUpdate(false); }, 10 * 1000);
 
 // The splash shows once per 12 hours per device. Inside that window the
 // app opens straight to where the tap would have landed.
