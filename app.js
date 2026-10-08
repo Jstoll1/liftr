@@ -4992,10 +4992,14 @@ async function openInsights(gameId) {
     const l1 = say, l2 = small ? `<small class="lm-small">${small}</small>` : "";
     const open = "", move = "";
     const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
-    html += `<div class="lm"><div class="lm-axis" style="--ticks:${ticks}">
+    // Ticker strip across the top, like a quote line on an old terminal:
+    // the market number, the move since your seal and which way it went.
+    const tk = nowV === null ? `<b>${esc(lab(sealedV))}</b> <i>NO QUOTE</i>`
+      : `<b>${esc(lab(nowV))}</b> <i class="${tone.trim() || "flat"}">${nowMoved ? `${forMe === false ? "▼" : "▲"} ${dS}` : "■ 0.0"}</i>`;
+    html += `<div class="lm lm-term"><div class="lm-tick"><span>${esc(favAb)}/${esc(dogAb)} SPRD</span>${tk}${ou !== null ? `<span>O/U ${ou}</span>` : ""}<span class="lm-cur">█</span></div><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
       ${zero}${band}${open}${seal}${now}${move}</div>
-      <div class="lm-read"><span><span>${l1}</span>${l2}</span>${ou !== null ? `<span class="lm-ou"><em>O/U</em>${ou}</span>` : ""}</div>${read}</div>`;
+      <div class="lm-read"><span><span>${l1}</span>${l2}</span></div>${read}</div>`;
   }
 
   // Preview: same layout as ever (headline, text, "Read the rest"). The
