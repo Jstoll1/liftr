@@ -5307,3 +5307,25 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .xp-tag.su { color: var(--text); border: 1px solid rgba(255, 255, 255, .3); }
 .xp-score { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #fff; letter-spacing: .04em; margin-top: 2px; }
 .xp-pts { display: none; }
+
+/* Game sheet header: the sealed line beside the favourite, same line, no extra height */
+#insights-title .ins-ln { font-weight: inherit; font-size: .82em; color: var(--neon-yellow); text-shadow: 0 0 8px rgba(255, 228, 94, .55); margin-left: 2px; }
+
+/* Line meter, v2: bigger logos, a glowing rail, chunkier markers */
+.lm { padding: 12px 12px 10px; background: radial-gradient(120% 90% at 50% 0%, rgba(193, 60, 255, .10), rgba(0, 0, 0, .35) 60%); }
+.lm-axis { height: 10px; margin: 42px 60px 48px; border-radius: 5px;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .22) 0 1px, transparent 1px calc(100% / var(--ticks, 8))), linear-gradient(180deg, #1b1230, #0c0716);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .8), 0 0 0 1px rgba(255, 255, 255, .06), 0 0 18px rgba(193, 60, 255, .15); }
+.lm-end { gap: 4px; font-size: 6px; letter-spacing: .08em; }
+.lm-end img { width: 40px; height: 40px; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .7)); }
+.lm-end.l { left: -56px; } .lm-end.r { right: -56px; }
+.lm-band { border-radius: 5px; box-shadow: 0 0 12px currentColor; }
+.lm-band.good { color: rgba(57, 255, 136, .6); } .lm-band.bad { color: rgba(255, 32, 121, .6); }
+.lm-pt { width: 16px; height: 16px; border-width: 2px; }
+.lm-pt.seal { border-radius: 4px; box-shadow: 0 0 0 3px rgba(255, 228, 94, .18), 0 0 14px rgba(255, 228, 94, .8); }
+.lm-pt.now { box-shadow: 0 0 0 3px rgba(5, 217, 232, .18), 0 0 14px rgba(5, 217, 232, .9); animation: lm-ping 1.6s ease-out infinite; }
+@keyframes lm-ping { 0% { box-shadow: 0 0 0 0 rgba(5, 217, 232, .55), 0 0 14px rgba(5, 217, 232, .9); } 100% { box-shadow: 0 0 0 10px rgba(5, 217, 232, 0), 0 0 14px rgba(5, 217, 232, .9); } }
+.lm-lab { font-size: 6.5px; letter-spacing: .1em; }
+.lm-lab b { font-size: 15px; margin: 1px 0; }
+.lm-lab.up { bottom: 17px; } .lm-lab.dn { top: 17px; }
+.lm-band::after { display: none; }

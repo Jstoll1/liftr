@@ -4522,7 +4522,9 @@ async function openInsights(gameId) {
   const body = modal.querySelector("#insights-body");
   const favShort = game.favorite === game.home ? game.homeShort : game.awayShort;
   const lg = (id, cls = "") => `<img class="ins-logo ${cls}" src="${logoUrl(id)}" alt="" loading="lazy">`;
-  modal.querySelector("#insights-title").innerHTML = `${lg(game.awayId, "hd")}<span>${esc(game.awayShort)}<i>at</i>${esc(game.homeShort)}</span>${lg(game.homeId, "hd")}`;
+  // The sealed line rides next to the favourite's name: "Indiana -7 at Nebraska".
+  const ln = (team) => team === game.favorite && Number(game.spread) ? ` <b class="ins-ln">-${esc(game.spread)}</b>` : "";
+  modal.querySelector("#insights-title").innerHTML = `${lg(game.awayId, "hd")}<span>${esc(game.awayShort)}${ln(game.away)}<i>at</i>${esc(game.homeShort)}${ln(game.home)}</span>${lg(game.homeId, "hd")}`;
   modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv}`;
   const links = () => `<div class="ins-h">MORE</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
   body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
