@@ -4969,8 +4969,9 @@ async function openInsights(gameId) {
     // smaller sealed number and hurts the dog holder, and vice versa.
     const forMe = !myPick || !nowMoved ? null : (nowV > sealedV) === myFav;
     const tone = forMe === null ? "" : forMe ? " good" : " bad";
-    const seal = `<i class="lm-pt seal" style="left:${pos(sealedV)}%"></i><span class="lm-lab seal up" style="left:${pos(sealedV)}%"><b>${esc(lab(sealedV))}</b>${myPick ? "YOUR PICK" : "SEALED"}</span>`;
-    const now = nowV === null ? "" : `<i class="lm-pt now" style="left:${pos(nowV)}%"></i><span class="lm-lab now dn" style="left:${pos(nowV)}%">MARKET NOW<b>${esc(lab(nowV))}</b></span>`;
+    // The numbers live in the strip above; the rail only says where.
+    const seal = `<i class="lm-pt seal" style="left:${pos(sealedV)}%"></i><span class="lm-lab seal up" style="left:${pos(sealedV)}%">${!nowMoved && nowV !== null ? (myPick ? "YOU = MKT" : "SEAL = MKT") : myPick ? "YOU" : "SEAL"}</span>`;
+    const now = nowV === null || !nowMoved ? "" : `<i class="lm-pt now" style="left:${pos(nowV)}%"></i><span class="lm-lab now dn" style="left:${pos(nowV)}%">MKT</span>`;
     const bandL = nowMoved ? pos(Math.min(sealedV, nowV)) : 0, bandW = nowMoved ? (Math.abs(nowV - sealedV) / (hi - lo) * 100).toFixed(1) : 0;
     const band = nowMoved ? `<i class="lm-band ${nowV > sealedV ? "r" : "l"}${tone}" style="left:${bandL}%;width:${bandW}%"></i>` : "";
     const zero = lo < 0 && hi > 0 ? `<i class="lm-zero" style="left:${pos(0)}%"></i>` : "";
@@ -4982,11 +4983,13 @@ async function openInsights(gameId) {
     const wp = (v) => Math.round(cdf((dogView ? -v : v) / 15) * 100);
     const oddsAb = myPick ? myAb : favAb;
     // The one sentence: what the move means for you.
-    const say = nowV === null ? `No live line yet. ${myPick ? "Your pick" : "The sealed line"}: <em>${esc(lab(sealedV))}</em>.`
-      : !nowMoved ? (myPick ? `The market is right on your number, <em>${esc(lab(sealedV))}</em>. No edge either way.` : `The market matches the sealed line, <em>${esc(lab(sealedV))}</em>.`)
-      : mySU ? (forMe ? `<em class="good">✓ Market likes ${esc(myAb)} more</em> than when you picked. Good sign for your win pick.` : `<em class="bad">✗ Market likes ${esc(myAb)} less</em> than when you picked. Your win pick got harder.`)
-      : myPick ? (forMe ? `<em class="good">✓ Line moved your way.</em> You locked <b>${esc(lab(sealedV))}</b>; the market now says <b>${esc(lab(nowV))}</b>. ${pts} better than the market.` : `<em class="bad">✗ Line moved against you.</em> You locked <b>${esc(lab(sealedV))}</b>; the market now says <b>${esc(lab(nowV))}</b>. ${pts} worse than the market.`)
-      : `Market moved to <b>${esc(lab(nowV))}</b> from the sealed <b>${esc(lab(sealedV))}</b>. ${pts} better for ${esc(nowV > sealedV ? favAb : dogAb)} pickers.`;
+    // One short verdict; the strip above already carries both numbers.
+    const pickTeam = myPick ? esc(myAb) : "";
+    const say = nowV === null ? `No live line yet.`
+      : !nowMoved ? `At market. No edge either way.`
+      : mySU ? (forMe ? `<em class="good">✓ Market likes ${pickTeam} more</em> than when you picked.` : `<em class="bad">✗ Market likes ${pickTeam} less</em> than when you picked.`)
+      : myPick ? (forMe ? `<em class="good">✓ Moved your way:</em> ${pts.toLowerCase()} better than the market.` : `<em class="bad">✗ Moved against you:</em> ${pts.toLowerCase()} worse than the market.`)
+      : `${pts} better for ${esc(nowV > sealedV ? favAb : dogAb)} pickers.`;
     const small = [nowV !== null && nowMoved ? `${esc(oddsAb)} win odds ${wp(sealedV)}% → ${wp(nowV)}%` : "", openV !== null ? `Opened ${esc(lab(openV))}` : ""].filter(Boolean).join(" · ");
     const read = "";
     const l1 = say, l2 = small ? `<small class="lm-small">${small}</small>` : "";
@@ -4994,9 +4997,10 @@ async function openInsights(gameId) {
     const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
     // Ticker strip across the top, like a quote line on an old terminal:
     // the market number, the move since your seal and which way it went.
-    const tk = nowV === null ? `<b>${esc(lab(sealedV))}</b> <i>NO QUOTE</i>`
-      : `<b>${esc(lab(nowV))}</b> <i class="${tone.trim() || "flat"}">${nowMoved ? `${forMe === false ? "▼" : "▲"} ${dS}` : "■ 0.0"}</i>`;
-    html += `<div class="lm lm-term"><div class="lm-tick"><span>${esc(favAb)}/${esc(dogAb)} SPRD</span>${tk}${ou !== null ? `<span>O/U ${ou}</span>` : ""}<span class="lm-cur">█</span></div><div class="lm-axis" style="--ticks:${ticks}">
+    const chip = nowV === null ? "" : nowMoved ? `<i class="${tone.trim() || "flat"}">${forMe === false ? "▼" : "▲"}${dS}</i>` : `<i class="flat">■ 0</i>`;
+    const tk = `<span class="k">${myPick ? "YOU" : "SEAL"}</span><b class="you">${esc(lab(sealedV))}</b>`
+      + (nowV === null ? `<span class="k">NO QUOTE</span>` : `<span class="k">MKT</span><b class="mkt">${esc(lab(nowV))}</b>${chip}`);
+    html += `<div class="lm lm-term"><div class="lm-tick">${tk}${ou !== null ? `<span class="ou">O/U ${ou}</span>` : ""}</div><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
       ${zero}${band}${open}${seal}${now}${move}</div>
       <div class="lm-read"><span><span>${l1}</span>${l2}</span></div>${read}</div>`;
