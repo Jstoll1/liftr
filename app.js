@@ -4894,9 +4894,9 @@ async function openInsights(gameId) {
       const mineTerms = mine ? (mine.mode === "SU" ? "WIN" : `${mine.team === game.favorite ? "-" : "+"}${game.spread}`) : "";
       const minePts = mine ? pointValue(game, mine.team, mine.mode === "SU" ? "SU" : "ATS") : 0;
       const badge = mine
-        ? `<span class="rp-mine">${lg(mineId, "sm")}<b>${esc(mineTeam)} ${esc(mineTerms)}</b><i>${mine.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${minePts} PT${minePts === 1 ? "" : "S"}</i></span>`
+        ? `<span class="rp-mine">${lg(mineId, "sm")}<span class="rp-mine-t"><b>${esc(mineTeam)} ${esc(mineTerms)}</b><i>${mine.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${minePts} PT${minePts === 1 ? "" : "S"}</i></span></span>`
         : `<span class="rp-mine none"><b>NO PICK YET</b></span>`;
-      return `<div class="rp rp-pre"><div class="rp-top"><div class="rp-h">THE ROOM</div><div class="rp-lock">🔒 Reveal at kickoff · ${inN}/${MANAGERS.length} in</div></div><div class="rp-you"><span class="rp-you-k">YOUR PICK</span>${badge}</div></div>`;
+      return `<div class="rp rp-pre"><div class="rp-top"><div class="rp-h">THE ROOM</div><div class="rp-lock" title="Picks reveal at kickoff">🔒 ${inN}/${MANAGERS.length} in</div></div><div class="rp-you"><span class="rp-you-k">YOUR PICK</span>${badge}</div></div>`;
     }
     const side = (team, short, id) => {
       const bets = [["ATS", `${team === game.favorite ? "-" : "+"}${game.spread}`], ["SU", "WIN"]].map(([mode, label]) => {
