@@ -4910,7 +4910,8 @@ async function openInsights(gameId) {
     const none = MANAGERS.filter((n) => !all[n]?.picks?.[game.id]);
     return `<div class="rp"><div class="rp-h">THE ROOM · WHO HAS WHAT</div><div class="rp-cols">${side(game.away, game.awayShort, game.awayId)}${side(game.home, game.homeShort, game.homeId)}</div>${none.length ? `<div class="rp-np">NO PICK · ${none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}</div>`;
   })();
-  let html = roomPre + `<button type="button" class="ins-sim" id="ins-sim" aria-label="Simulate game"><span class="ins-sim-gb" aria-hidden="true"><i></i></span><span class="ins-sim-txt"><b>SIMULATE GAME</b><em>▶ PRESS START</em></span><span class="ins-sim-vs" aria-hidden="true">${lg(game.awayId, "sm").replace("/500-dark/", "/500/")}<i>VS</i>${lg(game.homeId, "sm").replace("/500-dark/", "/500/")}</span></button>`;
+  // Simulate is a pre-lock toy: once picks lock, it goes away.
+  let html = roomPre + (isGameLocked(game) ? "" : `<button type="button" class="ins-sim" id="ins-sim" aria-label="Simulate game"><span class="ins-sim-gb" aria-hidden="true"><i></i></span><span class="ins-sim-txt"><b>SIMULATE GAME</b><em>▶ PRESS START</em></span><span class="ins-sim-vs" aria-hidden="true">${lg(game.awayId, "sm").replace("/500-dark/", "/500/")}<i>VS</i>${lg(game.homeId, "sm").replace("/500-dark/", "/500/")}</span></button>`);
   const hdrComps = summaryRaw?.header?.competitions?.[0]?.competitors || [];
   const abbrOf = (side) => {
     const id = side === "away" ? game.awayId : game.homeId;
