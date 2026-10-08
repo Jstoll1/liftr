@@ -4911,7 +4911,7 @@ async function openInsights(gameId) {
     return `<div class="rp"><div class="rp-h">THE ROOM · WHO HAS WHAT</div><div class="rp-cols">${side(game.away, game.awayShort, game.awayId)}${side(game.home, game.homeShort, game.homeId)}</div>${none.length ? `<div class="rp-np">NO PICK · ${none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}</div>`;
   })();
   // Simulate is a pre-lock toy: once picks lock, it goes away.
-  let html = roomPre + (isGameLocked(game) ? "" : `<button type="button" class="ins-sim" id="ins-sim" aria-label="Simulate game"><span class="ins-sim-gb" aria-hidden="true"><i></i></span><span class="ins-sim-txt"><b>SIMULATE GAME</b><em>▶ PRESS START</em></span><span class="ins-sim-vs" aria-hidden="true">${lg(game.awayId, "sm").replace("/500-dark/", "/500/")}<i>VS</i>${lg(game.homeId, "sm").replace("/500-dark/", "/500/")}</span></button>`);
+  let html = roomPre + (isGameLocked(game) ? "" : `<button type="button" class="ins-sim ins-sim-pill" id="ins-sim" aria-label="Simulate game" title="Simulate game"><span class="ins-sim-gb" aria-hidden="true"><i></i></span><b>SIM</b></button>`);
   const hdrComps = summaryRaw?.header?.competitions?.[0]?.competitors || [];
   const abbrOf = (side) => {
     const id = side === "away" ? game.awayId : game.homeId;
@@ -4922,6 +4922,8 @@ async function openInsights(gameId) {
   // 2. Line: OPENED -> SEALED -> NOW, each step saying how far and toward
   // whom, then one plain sentence. Values are signed from the sealed
   // favourite: positive means they are favoured by that much.
+  // The simulate pill lives in the header; clear the last one first.
+  modal.querySelector(".h2h-top #ins-sim")?.remove();
   modal.classList.toggle("gc-mode", liveGame() || finalGame());
   if (finalGame()) {
     body.innerHTML = finalHtml() + links() + `<div class="ins-foot">Final from ESPN.</div>`;
@@ -5261,7 +5263,9 @@ async function openInsights(gameId) {
       if (cur === null) head.push(el); else secs[cur].push(el);
     }
     const sim = head.find((el) => el.id === "ins-sim");
-    const out = [...head.filter((el) => el !== sim), ...(sim ? [sim] : [])];
+    // Simulate rides in the header, opposite the close button.
+    if (sim) modal.querySelector(".h2h-top")?.prepend(sim);
+    const out = head.filter((el) => el !== sim);
     for (const k of [...ORDER.filter((k) => secs[k]), ...Object.keys(secs).filter((k) => !ORDER.includes(k))]) out.push(...secs[k]);
     body.replaceChildren(...out, ...tail);
   })();
@@ -5279,7 +5283,7 @@ async function openInsights(gameId) {
     spread: mv ? mv.now : Number(game.spread) || 3,
     total: mv?.overUnder ?? direct?.odds?.overUnder ?? 52,
   };
-  body.querySelector("#ins-sim")?.addEventListener("click", () => window.openSim?.(simCtx));
+  modal.querySelector("#ins-sim")?.addEventListener("click", () => window.openSim?.(simCtx));
   };
   // While the game is on, pull the scoreboard and the game page again
   // every thirty seconds and repaint, so the sheet keeps up with the

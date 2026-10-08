@@ -5436,3 +5436,18 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .rp-mine.none { border-color: var(--neon-pink); background: rgba(255, 32, 121, .1); box-shadow: none; padding: 4px 10px; }
 .rp-mine.none b { color: var(--neon-pink); }
 
+
+/* Simulate as a Game Boy pill in the game sheet header, opposite the close button */
+#insights-modal .h2h-top { padding: 0 34px; }
+#insights-title { white-space: nowrap; min-width: 0; }
+#insights-title > span { overflow: hidden; text-overflow: ellipsis; }
+.ins-sim.ins-sim-pill { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 0; margin: 0; padding: 0; border-radius: 999px; border: 1px solid rgba(155, 188, 15, .6); background: rgba(155, 188, 15, .1); color: #b8d82a; box-shadow: 0 0 8px rgba(155, 188, 15, .25); }
+.ins-sim.ins-sim-pill::after { display: none; }
+.ins-sim.ins-sim-pill .ins-sim-gb { width: 12px; height: 17px; border-radius: 2px 2px 4px 2px; box-shadow: 0 0 0 1px #0f380f; }
+.ins-sim.ins-sim-pill .ins-sim-gb i { left: 2px; right: 2px; top: 2px; height: 5px; box-shadow: none; }
+.ins-sim.ins-sim-pill .ins-sim-gb::before, .ins-sim.ins-sim-pill .ins-sim-gb::after { display: none; }
+.ins-sim.ins-sim-pill b { display: none; }
+.ins-sim.ins-sim-pill { animation: sim-pill-glow 2.4s ease-in-out infinite; }
+@keyframes sim-pill-glow { 50% { box-shadow: 0 0 14px rgba(155, 188, 15, .6); } }
+.ins-sim.ins-sim-pill:active { transform: translateY(-50%) scale(.94); }
+#insights-title .ins-logo.hd { width: 26px; height: 26px; margin: 0 4px; }
