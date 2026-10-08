@@ -5399,4 +5399,3 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 /* More stats fold sits flush under the four key rows */
 .ins-more-stats { margin-top: 4px; }
 .ins-more-stats .ins-glance { margin-top: 4px; }
-.ins-body > .ins-sim:first-child { margin: 0 0 8px; }

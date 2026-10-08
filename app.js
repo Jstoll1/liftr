@@ -5237,7 +5237,7 @@ async function openInsights(gameId) {
   html += links();
   html += `<div class="ins-foot">Information only. Scoring uses the sealed line on your card.</div>`;
   body.innerHTML = html;
-  // Simulate first, under the header, then the room. After that, what
+  // The room, then simulate, then the line. After that, what
   // changes a pick: line and experts, then the background, with injuries
   // after last five and just before news. Each section is its heading plus
   // everything up to the next heading.
@@ -5251,7 +5251,7 @@ async function openInsights(gameId) {
       if (cur === null) head.push(el); else secs[cur].push(el);
     }
     const sim = head.find((el) => el.id === "ins-sim");
-    const out = [...(sim ? [sim] : []), ...head.filter((el) => el !== sim)];
+    const out = [...head.filter((el) => el !== sim), ...(sim ? [sim] : [])];
     for (const k of [...ORDER.filter((k) => secs[k]), ...Object.keys(secs).filter((k) => !ORDER.includes(k))]) out.push(...secs[k]);
     body.replaceChildren(...out, ...tail);
   })();
