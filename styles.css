@@ -5499,3 +5499,11 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .lm-cmd .lm-cur { margin-left: 3px; font-size: 16px; animation: npblink 1s steps(2, end) infinite; }
 .lm-still .lm-small { display: block; margin-top: 5px; font-family: system-ui, -apple-system, sans-serif; font-size: 11px; color: var(--text-dim); }
 .lm-cmd { white-space: nowrap; overflow: hidden; }
+
+/* Scores: tighter run from the status strip to the heading to the cards, and inside each card */
+#scoreboard-screen #scores-toggle.section-heading { margin-top: 2px; padding: 0 2px; }
+#scoreboard-screen #scores-toggle + .live-scores-list { margin-top: -4px; }
+#scoreboard-screen .lb-head { margin-top: 10px; }
+.scorebug { padding: 5px 8px 6px; gap: 2px; }
+.bug-head { margin-bottom: 0; }
+.bug-row { padding-top: 1px; padding-bottom: 1px; }
