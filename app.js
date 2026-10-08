@@ -5237,12 +5237,12 @@ async function openInsights(gameId) {
   html += links();
   html += `<div class="ins-foot">Information only. Scoring uses the sealed line on your card.</div>`;
   body.innerHTML = html;
-  // Order by what changes a pick: line, the experts, injuries, then the
-  // background. Each section is its heading plus everything up to the next
-  // heading; anything before the first heading (the room) stays on top,
-  // and the simulate button sits under the line.
+  // Simulate first, under the header, then the room. After that, what
+  // changes a pick: line and experts, then the background, with injuries
+  // after last five and just before news. Each section is its heading plus
+  // everything up to the next heading.
   (() => {
-    const ORDER = ["LINE", "EXPERT PICKS", "INJURIES", "PREVIEW", "INSIGHTS", "NEWS", "MORE"];
+    const ORDER = ["LINE", "EXPERT PICKS", "PREVIEW", "INSIGHTS", "INJURIES", "NEWS", "MORE"];
     const head = [], secs = {}, tail = [];
     let cur = null;
     for (const el of [...body.children]) {
@@ -5251,9 +5251,8 @@ async function openInsights(gameId) {
       if (cur === null) head.push(el); else secs[cur].push(el);
     }
     const sim = head.find((el) => el.id === "ins-sim");
-    const out = head.filter((el) => el !== sim);
-    if (sim && !secs.LINE) out.push(sim);
-    for (const k of [...ORDER.filter((k) => secs[k]), ...Object.keys(secs).filter((k) => !ORDER.includes(k))]) { out.push(...secs[k]); if (k === "LINE" && sim) out.push(sim); }
+    const out = [...(sim ? [sim] : []), ...head.filter((el) => el !== sim)];
+    for (const k of [...ORDER.filter((k) => secs[k]), ...Object.keys(secs).filter((k) => !ORDER.includes(k))]) out.push(...secs[k]);
     body.replaceChildren(...out, ...tail);
   })();
   // Simulation context: names, logos, and the line it draws the score around.
