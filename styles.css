@@ -5482,3 +5482,12 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .ins-mypick .k { font-size: 5.5px; }
 /* Expert tiles: a few outlets stay tile-sized and centred */
 .xp-grid { justify-content: center; }
+
+/* Line, slim: no strip, smaller logos, the rail and one verdict line */
+.lm.lm-slim { padding: 0 10px 6px; }
+.lm-slim .lm-axis { margin: 24px 38px 22px; }
+.lm-slim .lm-end img, .lm-slim .lm-end img.ins-logo { width: 24px; height: 24px; }
+.lm-slim .lm-end { font-size: 11px; }
+.lm-slim .lm-end.l { left: -34px; } .lm-slim .lm-end.r { right: -34px; }
+.lm-slim .lm-lab.up { bottom: 9px; } .lm-slim .lm-lab.dn { top: 9px; }
+.lm-slim .lm-read { padding-top: 5px; font-size: 12.5px; }
