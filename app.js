@@ -1257,6 +1257,7 @@ function showPicksScreen() {
   maybeShowBoner();
   maybeShowQotw();
   maybeShowGridCheck();
+  maybeShowNowPlaying();
   return syncManagerFromCloud(currentManager).then((cloud) => {
     if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
     // Same payload feeds the standings row. cloud is null when the fetch
@@ -2263,6 +2264,7 @@ async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
   maybeShowQotw();
+  maybeShowNowPlaying();
   const fetched = await fetchAllPicks();
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
@@ -4056,6 +4058,35 @@ function maybeShowBoner() {
   document.addEventListener("touchstart", close, { capture: true, passive: false });
   document.addEventListener("keydown", close, true);
 })();
+
+// --- Now playing ----------------------------------------------------------
+// Once a day per device: the first time the app opens on a new calendar
+// day, after any other popup is out of the way. Swap NOW_PLAYING to
+// change the feature; a new id shows it again today.
+const NOW_PLAYING = { id: "history-of-the-eagles", where: "Netflix", title: "History of the Eagles", poster: "assets/now-playing-eagles.jpg", link: "https://www.netflix.com/search?q=History%20of%20the%20Eagles" };
+function maybeShowNowPlaying() {
+  if (!NOW_PLAYING || !currentManager || window.__adminEntry || window.__adminOpen) return;
+  // Another popup first; this one waits for the next screen change.
+  const busy = ["grid-modal", "boner-modal"].some((id) => { const x = document.getElementById(id); return x && !x.classList.contains("hidden"); }) || document.getElementById("qotw-modal");
+  if (busy) return;
+  const today = new Date().toLocaleDateString("en-CA");
+  const key = `brochiefs_nowplaying_${NOW_PLAYING.id}`;
+  try { if (localStorage.getItem(key) === today) return; localStorage.setItem(key, today); } catch { return; }
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const m = document.createElement("div");
+  m.className = "wpx-overlay np-overlay"; m.setAttribute("role", "dialog");
+  m.innerHTML = `<div class="wpx-card np-card">
+    <div class="np-kicker">▶ NOW PLAYING ON ${esc(NOW_PLAYING.where.toUpperCase())}</div>
+    <img class="np-poster" src="${esc(NOW_PLAYING.poster)}" alt="${esc(NOW_PLAYING.title)} poster">
+    <div class="np-title">${esc(NOW_PLAYING.title)}</div>
+    <div class="np-btns"><a class="np-go" href="${esc(NOW_PLAYING.link)}" target="_blank" rel="noopener">WATCH NOW</a><button type="button" class="np-x">LATER</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  const close = () => m.remove();
+  m.querySelector(".np-x").addEventListener("click", close);
+  m.querySelector(".np-go").addEventListener("click", () => setTimeout(close, 0));
+  m.addEventListener("click", (e) => { if (e.target === m) close(); });
+}
 
 // --- Question of the week ------------------------------------------------
 // Pops up on every open until this manager answers or cops out. Change

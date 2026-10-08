@@ -5257,3 +5257,13 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .picks-countdown .cd-cells { --cd-k: 1; justify-content: center !important; }
 .picks-countdown .cd-cell b { font-size: calc(21px * var(--cd-k)) !important; padding: calc(6px * var(--cd-k)) calc(5px * var(--cd-k)) !important; }
 .picks-countdown .cd-colon { font-size: calc(16px * var(--cd-k)) !important; }
+
+/* Now playing popup */
+.np-card { text-align: center; width: min(360px, 100%); }
+.np-kicker { font-family: "Press Start 2P", monospace; font-size: 10px; letter-spacing: 1px; color: #ff2079; text-shadow: 0 0 8px rgba(255, 32, 121, .6); margin: 2px 0 12px; }
+.np-poster { display: block; width: 100%; max-height: 58vh; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .6); }
+.np-title { font-family: "Press Start 2P", monospace; font-size: 12px; color: #ffe45e; margin: 12px 0 12px; line-height: 1.5; }
+.np-btns { display: flex; gap: 10px; position: relative; z-index: 1; }
+.np-btns > * { flex: 1; padding: 11px 8px; border-radius: 8px; font-family: "Press Start 2P", monospace; font-size: 10px; text-decoration: none; cursor: pointer; }
+.np-go { background: #e50914; color: #fff; border: 0; }
+.np-x { background: transparent; color: #c9b8ff; border: 1px solid #3d2a6e; }
