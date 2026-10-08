@@ -5421,3 +5421,4 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .ins-lead b { margin-bottom: 2px; }
 .ins-more-news { margin: 0 0 2px; }
 .ins-more-news summary { padding: 4px 0; }
+.rp-lock { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }

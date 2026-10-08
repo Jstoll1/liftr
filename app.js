@@ -4887,7 +4887,7 @@ async function openInsights(gameId) {
     if (!locked) {
       const mine = all[currentManager]?.picks?.[game.id];
       const inN = MANAGERS.filter((n) => all[n]?.picks?.[game.id]).length;
-      return `<div class="rp"><div class="rp-h">THE ROOM</div><div class="rp-lock">🔒 Picks reveal at kickoff · ${inN} of ${MANAGERS.length} in${mine ? ` · you: <b>${esc(mine.team === game.away ? game.awayShort : game.homeShort)} ${mine.mode === "SU" ? "WIN" : (mine.team === game.favorite ? "-" : "+") + game.spread}</b>` : ""}</div></div>`;
+      return `<div class="rp"><div class="rp-h">THE ROOM</div><div class="rp-lock">🔒 Reveal at kickoff · ${inN}/${MANAGERS.length} in${mine ? ` · you <b>${esc(mine.team === game.away ? game.awayShort : game.homeShort)} ${mine.mode === "SU" ? "WIN" : (mine.team === game.favorite ? "-" : "+") + game.spread}</b>` : ""}</div></div>`;
     }
     const side = (team, short, id) => {
       const bets = [["ATS", `${team === game.favorite ? "-" : "+"}${game.spread}`], ["SU", "WIN"]].map(([mode, label]) => {
