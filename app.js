@@ -4061,7 +4061,7 @@ function maybeShowBoner() {
 // A full-screen poster between the splash and the app, once a day per
 // device. Tap anywhere to carry on. Swap NOW_PLAYING to feature something
 // else; a new id shows again the same day.
-const NOW_PLAYING = { id: "history-of-the-eagles", where: "Netflix", title: "History of the Eagles", poster: "assets/now-playing-eagles.jpg", link: "https://www.netflix.com/search?q=History%20of%20the%20Eagles" };
+const NOW_PLAYING = { id: "history-of-the-eagles", where: "Netflix", title: "History of the Eagles", poster: "assets/now-playing-eagles.jpg", link: "https://www.netflix.com/title/70267553" };
 function showNowPlaying(then) {
   const key = `brochiefs_nowplaying_${NOW_PLAYING?.id}`;
   const today = new Date().toLocaleDateString("en-CA");
