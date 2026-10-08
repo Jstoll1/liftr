@@ -22,3 +22,11 @@ test("no final, no grade; record tallies", () => {
   assert.equal(r.total.W, 2); assert.equal(r.total.L, 1);
   assert.equal(r.outlets[0].outlet, "CBS");
 });
+
+test("SU pick with a score is graded ATS on the side the score covers", () => {
+  const g = { id: 2, away: "Nebraska", home: "Indiana", favorite: "Indiana", spread: 7 };
+  const r = gradePick(g, { side: "home", type: "SU", score: "24-27" }, { awayScore: 20, homeScore: 24 });
+  assert.equal(r.find((x) => x.kind === "SU").result, "W");
+  const ats = r.find((x) => x.kind === "ATS");
+  assert.equal(ats.side, "away"); assert.equal(ats.line, 7); assert.equal(ats.result, "W");
+});

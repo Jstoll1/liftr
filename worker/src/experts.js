@@ -24,6 +24,21 @@ export function gradePick(game, pick, final) {
   if (pick.type === "SU" || pick.type === "BOTH") {
     out.push({ kind: "SU", result: mine > theirs ? "W" : mine < theirs ? "L" : "P" });
   }
+  // A straight-up pick with a predicted score still makes a spread call:
+  // IU 27-24 with IU laying 7 is NEB covering. Grade that side on the
+  // sealed line, the same call the expert tile shows.
+  const sc = /^(\d{1,2})-(\d{1,2})$/.exec(String(pick.score || ""));
+  if (pick.type === "SU" && sc) {
+    const favSide = game.favorite === game.home ? "home" : "away";
+    const pred = { away: Number(sc[1]), home: Number(sc[2]) };
+    const favBy = pred[favSide] - pred[favSide === "home" ? "away" : "home"];
+    const s = Number(game.spread) || 0;
+    if (favBy !== s) {
+      const side = favBy > s ? favSide : favSide === "home" ? "away" : "home";
+      const m = (side === "away" ? final.awayScore - final.homeScore : final.homeScore - final.awayScore) + sealedLine(game, side);
+      out.push({ kind: "ATS", line: sealedLine(game, side), lineFrom: "score", side, result: m > 0 ? "W" : m < 0 ? "L" : "P" });
+    }
+  }
   return out;
 }
 
@@ -41,7 +56,7 @@ export function expertRecord(rows) {
       const o = (outlets[p.outlet] ||= { outlet: p.outlet, picks: 0 });
       o.picks += 1;
       for (const g of grades) { tally(o, g.kind, g.result); tally(o, "ALL", g.result); }
-      graded.push({ week, gameId: game.id, matchup: `${game.awayShort || game.away} @ ${game.homeShort || game.home}`, outlet: p.outlet, picker: p.picker || "", team: p.side === "away" ? (game.awayShort || game.away) : (game.homeShort || game.home), type: p.type, final: final ? `${final.awayScore}-${final.homeScore}` : null, grades });
+      graded.push({ week, gameId: game.id, matchup: `${game.awayShort || game.away} @ ${game.homeShort || game.home}`, outlet: p.outlet, picker: p.picker || "", team: p.side === "away" ? (game.awayShort || game.away) : (game.homeShort || game.home), type: p.type, final: final ? `${final.awayScore}-${final.homeScore}` : null, grades: grades.map((g) => g.side ? { ...g, team: g.side === "away" ? (game.awayShort || game.away) : (game.homeShort || game.home) } : g) });
     }
   }
   const pct = (t) => (t && t.W + t.L ? t.W / (t.W + t.L) : null);

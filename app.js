@@ -5096,48 +5096,62 @@ async function openInsights(gameId) {
     const all = xpicks?.picks || [];
     const outlets = [];
     for (const p of all) { let o = outlets.find((x) => x.key === p.outlet.toLowerCase()); if (!o) { o = { key: p.outlet.toLowerCase(), outlet: p.outlet, picks: [] }; outlets.push(o); } o.picks.push(p); }
+    // Every tile answers one question: who covers our sealed line? A pick
+    // against the spread says so directly. A predicted score decides it
+    // too: "IU 27-24" with IU laying 7 is a NEB cover, whatever the piece
+    // calls the winner. A straight-up pick with no score says nothing
+    // about the spread, so it shows as WIN ONLY.
+    const favSide = game.favorite === game.home ? "home" : "away", dogSide = favSide === "home" ? "away" : "home";
+    const sealed = Number(game.spread) || 0;
+    const lineOf = (side) => sealed === 0 ? "PK" : side === favSide ? `-${sealed}` : `+${sealed}`;
+    const scoreOf = (p) => { const m = /^(\d{1,2})-(\d{1,2})$/.exec(String(p.score || "")); return m ? { away: Number(m[1]), home: Number(m[2]) } : null; };
+    const coverOf = (p) => {
+      const sc = scoreOf(p);
+      if (sc) { const favBy = sc[favSide] - sc[dogSide]; return favBy > sealed ? favSide : favBy < sealed ? dogSide : "push"; }
+      return p.type === "SU" ? null : p.side;
+    };
     const tileOf = (o) => {
-      const nA = o.picks.filter((p) => p.side === "away").length, nH = o.picks.length - nA;
-      const side = nA > nH ? "away" : nH > nA ? "home" : o.picks[0].side;
+      const covers = o.picks.map(coverOf);
+      const nA = covers.filter((c) => c === "away").length, nH = covers.filter((c) => c === "home").length, known = nA + nH;
+      const side = known ? (nA > nH ? "away" : nH > nA ? "home" : covers.find((c) => c === "away" || c === "home")) : null;
       const lead = side === "away" ? nA : nH;
-      const first = o.picks.find((p) => p.side === side) || o.picks[0];
-      const id = side === "away" ? game.awayId : game.homeId;
-      const raw = abbrOf(side) || "";
-      const short = raw.length <= 6 ? raw : raw.split(/[\s-]+/).length > 1 ? raw.split(/[\s-]+/).map((w) => w[0]).join("") : raw.slice(0, 5);
-      // The logo says the team; beside it goes the number that matters
-      // (the line, else the predicted score, else WIN). The second line is
-      // who and how: the writer count or the writer, and ATS/SU. A staff
-      // that splits gets a bar showing the lean.
+      const first = (side && o.picks.find((p, i) => covers[i] === side)) || o.picks[0];
+      const shownSide = side || first.side;
+      const id = shownSide === "away" ? game.awayId : game.homeId;
       const names = o.picks.map((p) => p.picker && p.picker === p.picker.toUpperCase() ? p.picker.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : p.picker).filter(Boolean);
-      // An outlet's own line feeds the ML label only; a moneyline is never
-      // shown as a spread.
-      const spread = first.line && Math.abs(Number(first.line)) < 30 ? first.line : "";
-      const ml = first.ml || (first.line && !spread ? first.line : "");
-      // Every tile shows the same thing: the picked team's number on our
-      // sealed line, so the row reads like the pick'em. ATS or SU and any
-      // predicted score go underneath.
-      const favSide = game.favorite === game.home ? "home" : "away";
-      const sealed = Number(game.spread) || 0;
-      const big = sealed === 0 ? "PK" : side === favSide ? `-${sealed}` : `+${sealed}`;
-      const how = first.type === "SU" ? (ml && outlets.length <= 3 ? `ML ${ml}` : "SU") : "ATS";
-      const who = o.picks.length > 1 ? (lead === o.picks.length ? `ALL ${o.picks.length}` : `${lead} OF ${o.picks.length}`) : (outlets.length <= 3 ? names[0] || "" : "");
-      const extra = first.score && o.picks.length === 1 ? first.score : "";
-      const meta = [who, extra, how].filter(Boolean).join(" · ");
-      const split = o.picks.length > 1 && lead < o.picks.length ? `<span class="xp-bar"><i style="width:${Math.round(100 * lead / o.picks.length)}%"></i></span>` : "";
+      const big = side ? lineOf(side) : covers.includes("push") ? "PUSH" : "WIN";
+      const sc = o.picks.length === 1 ? scoreOf(first) : null;
+      // When the predicted winner is not the side that covers, say so, so
+      // the tile never reads as a contradiction of the article.
+      const winSide = sc ? (sc.away > sc.home ? "away" : sc.home > sc.away ? "home" : null) : null;
+      // The score reads winner first ("IU 27-24"), so a NEB +7 tile with an
+      // IU win under it says exactly what the article said.
+      const scoreLab = sc ? (winSide ? `${abbrOf(winSide)} ${Math.max(sc.away, sc.home)}-${Math.min(sc.away, sc.home)}` : `TIE ${sc.away}-${sc.home}`) : "";
+      const note = !side ? "WIN ONLY" : sc ? "" : first.type === "SU" ? "SU" : "ATS";
+      const who = o.picks.length > 1 ? (known && lead === o.picks.length ? `ALL ${o.picks.length}` : known ? `${lead} OF ${o.picks.length}` : `${o.picks.length} PICKS`) : (outlets.length <= 3 ? names[0] || "" : "");
+      const meta = [who, scoreLab, note].filter(Boolean).join(" · ");
+      const split = o.picks.length > 1 && known && lead < o.picks.length ? `<span class="xp-bar"><i style="width:${Math.round(100 * lead / o.picks.length)}%"></i></span>` : "";
       const title = [names.length ? names.join(", ") : "", first.reason || ""].filter(Boolean).join(" — ");
       const inner = `<span class="xp-out">${esc(o.outlet.replace(/\s+on MSN$/i, ""))}</span><span class="xp-main">${lg(id, "xp-logo")}<b>${esc(big)}</b></span><span class="xp-meta">${esc(meta)}</span>${split}`;
       const href = first.link || o.picks.find((p) => p.link)?.link;
-      return href ? `<a class="xp-tile ${side}" href="${esc(href)}" target="_blank" rel="noopener" title="${esc(title)}">${inner}</a>` : `<span class="xp-tile ${side}" title="${esc(title)}">${inner}</span>`;
+      const cls = `xp-tile ${shownSide}${side ? "" : " su-only"}`;
+      return href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener" title="${esc(title)}">${inner}</a>` : `<span class="${cls}" title="${esc(title)}">${inner}</span>`;
     };
     const n = outlets.length;
     const cols = n <= 1 ? 1 : n <= 4 ? n : 4;
     const shown = n <= 4 ? n : 4 * Math.floor(n / 4);
     const list = outlets.slice(0, shown), rest = outlets.slice(shown, shown + 16);
     if (all.length) {
-      const nA = all.filter((p) => p.side === "away").length, nH = all.length - nA;
-      const lead = nA >= nH ? { n: nA, short: game.awayShort } : { n: nH, short: game.homeShort };
-      const who = all.length === 1 ? "1 PICK" : `${all.length} PICKS`;
-      const sum = nA && nH ? `${lead.n} OF ${who} ON ${esc(lead.short.toUpperCase())}` : `ALL ${who} ON ${esc(lead.short.toUpperCase())}`;
+      // The headline counts covers on our line, the same thing the tiles show.
+      const cv = all.map(coverOf);
+      const nA = cv.filter((c) => c === "away").length, nH = cv.filter((c) => c === "home").length, other = all.length - nA - nH;
+      const leadSide = nA >= nH ? "away" : "home", leadN = Math.max(nA, nH);
+      const tag = `${esc(String(abbrOf(leadSide)).toUpperCase())} ${lineOf(leadSide)}`;
+      const tagOf = (sd) => `${esc(String(abbrOf(sd)).toUpperCase())} ${lineOf(sd)}`;
+      const sum = !(nA + nH) ? `${all.length === 1 ? "1 PICK" : `${all.length} PICKS`} · WIN ONLY, NO SPREAD CALL`
+        : (nA && nH && nA === nH ? `SPLIT: ${nA} ON ${tagOf("away")}, ${nH} ON ${tagOf("home")}`
+          : nA && nH ? `${leadN} OF ${nA + nH} ON ${tag}`
+          : leadN === 1 ? `1 PICK ON ${tag}` : `ALL ${leadN} ON ${tag}`) + (other ? ` · ${other} WIN ONLY` : "");
       html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${list.map(tileOf).join("")}</div>`;
       if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE OUTLETS (${rest.length})</summary><div class="xp-grid" style="grid-template-columns:repeat(${Math.min(rest.length, 4)},minmax(0,1fr))">${rest.map(tileOf).join("")}</div></details>`;
     } else if (pend.picks) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-loading">Checking the pickers…</div>`;
