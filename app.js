@@ -4073,16 +4073,23 @@ function showNowPlaying(then) {
   if (!NOW_PLAYING || seen || window.__adminEntry) return then();
   try { localStorage.setItem(key, today); } catch {}
   const m = document.createElement("div");
-  m.className = "np-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", `Now playing on ${NOW_PLAYING.where}: ${NOW_PLAYING.title}`);
-  m.innerHTML = `<div class="np-kicker">▶ NOW PLAYING ON ${NOW_PLAYING.where.toUpperCase()}</div>
-    <img class="np-poster" src="${NOW_PLAYING.poster}" alt="${NOW_PLAYING.title}">
-    <a class="np-go" href="${NOW_PLAYING.link}" target="_blank" rel="noopener">WATCH ON ${NOW_PLAYING.where.toUpperCase()} ↗</a>
-    <div class="np-tap">TAP TO CONTINUE</div>`;
+  m.className = "np-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", `Coming attraction: ${NOW_PLAYING.title} on ${NOW_PLAYING.where}`);
+  // A theatre lobby one-sheet: marquee lights round the frame, the poster
+  // in a gilt case, a ticket to watch. Any tap that is not the ticket closes it.
+  m.innerHTML = `<button type="button" class="np-close" aria-label="Close">✕</button>
+    <div class="np-marquee"><span>★ COMING ATTRACTION ★</span></div>
+    <div class="np-case"><img class="np-poster" src="${NOW_PLAYING.poster}" alt="${NOW_PLAYING.title}" draggable="false"></div>
+    <div class="np-bill">NOW SHOWING ON <b>${NOW_PLAYING.where.toUpperCase()}</b></div>
+    <a class="np-go" href="${NOW_PLAYING.link}" target="_blank" rel="noopener"><span>ADMIT ONE</span>WATCH NOW ↗</a>
+    <div class="np-tap">TAP ANYWHERE TO SKIP</div>`;
   document.body.appendChild(m);
   let done = false;
   const go = () => { if (done) return; done = true; m.classList.add("out"); setTimeout(() => m.remove(), 250); then(); };
   m.querySelector(".np-go").addEventListener("click", (e) => { e.stopPropagation(); setTimeout(go, 0); });
-  m.addEventListener("click", go);
+  // pointerup closes on the first lift anywhere, poster included; click is
+  // the fallback for browsers that skip pointer events.
+  m.addEventListener("pointerup", (e) => { if (!e.target.closest(".np-go")) { e.preventDefault(); go(); } });
+  m.addEventListener("click", (e) => { if (!e.target.closest(".np-go")) go(); });
 }
 
 // --- Question of the week ------------------------------------------------

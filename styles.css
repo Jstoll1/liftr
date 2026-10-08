@@ -5258,14 +5258,35 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .picks-countdown .cd-cell b { font-size: calc(21px * var(--cd-k)) !important; padding: calc(6px * var(--cd-k)) calc(5px * var(--cd-k)) !important; }
 .picks-countdown .cd-colon { font-size: calc(16px * var(--cd-k)) !important; }
 
-/* Now playing: full-screen poster between the splash and the app */
-.np-screen { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); background: #000; cursor: pointer; animation: npin .35s ease-out; }
+/* Now playing: a coming-attraction one-sheet between the splash and the app */
+.np-screen { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom)); cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none;
+  background: radial-gradient(ellipse at 50% 30%, #3a0d0d 0%, #170404 55%, #050101 100%); animation: npin .4s ease-out; }
+/* Velvet curtain folds down both sides */
+.np-screen::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, rgba(0,0,0,.35) 0 10px, rgba(255,60,60,.06) 10px 22px, rgba(0,0,0,.35) 22px 30px); -webkit-mask: linear-gradient(90deg, #000 0 12%, transparent 22% 78%, #000 88%); mask: linear-gradient(90deg, #000 0 12%, transparent 22% 78%, #000 88%); }
+/* Film grain and flicker over everything */
+.np-screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px); animation: npflick 3s steps(1) infinite; }
 .np-screen.out { opacity: 0; transition: opacity .25s; }
 @keyframes npin { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: none; } }
-.np-kicker { font-family: "Press Start 2P", monospace; font-size: 10px; letter-spacing: 1px; color: #e50914; text-shadow: 0 0 8px rgba(229, 9, 20, .6); }
-.np-poster { display: block; max-width: 100%; max-height: calc(100vh - 150px); max-height: calc(100dvh - 150px); object-fit: contain; border-radius: 6px; box-shadow: 0 10px 40px rgba(0, 0, 0, .8); }
-.np-go { font-family: "Press Start 2P", monospace; font-size: 10px; color: #fff; background: #e50914; padding: 10px 14px; border-radius: 6px; text-decoration: none; }
-.np-tap { font-family: "Press Start 2P", monospace; font-size: 9px; color: #9b8bb8; animation: npblink 1.2s steps(2, end) infinite; }
+@keyframes npflick { 0%, 100% { opacity: 1; } 47% { opacity: .7; } 48% { opacity: 1; } 82% { opacity: .85; } }
+.np-close { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 14px; z-index: 2; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255, 215, 120, .5); background: rgba(0, 0, 0, .5); color: #ffd778; font-size: 16px; cursor: pointer; }
+/* Marquee sign with chasing bulbs */
+.np-marquee { position: relative; z-index: 1; padding: 9px 18px; border-radius: 6px; background: #1a0a00; border: 2px solid #c9952b;
+  box-shadow: 0 0 0 4px #1a0a00, 0 0 0 6px #c9952b, 0 0 24px rgba(255, 200, 80, .35); }
+.np-marquee::before { content: ""; position: absolute; inset: -9px; border-radius: 10px; pointer-events: none;
+  background: radial-gradient(circle, #fff6c8 0 2px, #ffcc4d 2.5px, transparent 3.5px) 0 0 / 12px 12px; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; padding: 4px; animation: npchase .6s steps(2) infinite; filter: drop-shadow(0 0 3px #ffcc4d); }
+@keyframes npchase { to { background-position: 6px 0; } }
+.np-marquee span { font-family: "Press Start 2P", monospace; font-size: 11px; letter-spacing: 2px; color: #ffe9a8; text-shadow: 0 0 6px #ffb627, 0 0 14px rgba(255, 140, 0, .6); }
+/* Gilt poster case */
+.np-case { position: relative; z-index: 1; padding: 8px; border-radius: 4px; background: linear-gradient(135deg, #f6d27a, #9c6b17 40%, #f2cf74 60%, #7a4f0c); box-shadow: 0 14px 40px rgba(0, 0, 0, .8), inset 0 0 0 2px rgba(0, 0, 0, .4); }
+.np-poster { display: block; max-width: calc(100vw - 52px); max-height: calc(100vh - 250px); max-height: calc(100dvh - 250px); object-fit: contain; pointer-events: none; filter: sepia(.25) contrast(1.05) saturate(.9); box-shadow: inset 0 0 40px rgba(0, 0, 0, .5); }
+.np-bill { position: relative; z-index: 1; font-family: "Press Start 2P", monospace; font-size: 8px; letter-spacing: 1px; color: #e8cfa0; }
+.np-bill b { font-weight: normal; color: #e50914; text-shadow: 0 0 8px rgba(229, 9, 20, .7); }
+/* Ticket stub */
+.np-go { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 9px 26px; font-family: "Press Start 2P", monospace; font-size: 10px; color: #2a0505; text-decoration: none; background: #f2c14e;
+  -webkit-mask: radial-gradient(circle 7px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 7px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle 7px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 7px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat; }
+.np-go span { font-size: 6px; letter-spacing: 2px; color: #8a1a1a; border-bottom: 1px dashed #8a1a1a; padding-bottom: 3px; }
+.np-tap { position: relative; z-index: 1; font-family: "Press Start 2P", monospace; font-size: 7px; color: #b89a72; animation: npblink 1.2s steps(2, end) infinite; }
 @keyframes npblink { 50% { opacity: 0; } }
 
 /* Line meter, plain-language read: one sentence about your pick, small print under it */
