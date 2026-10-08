@@ -297,3 +297,17 @@ test("gameInjuries drops dated articles older than eight days before extraction"
   assert.ok(!sent.includes("Old report"), "stale piece dropped");
   assert.ok(sent.includes("This week's game: Coastal Carolina at Georgia Southern"), "game named");
 });
+
+test("expert pick links open on the prediction when the quote is really in the piece", async () => {
+  const { findPassage, textFragmentLink } = await import("../src/insights.js");
+  const items = [{ source: "SI", link: "https://si.com/a#top", blurb: "At the end of the show, he gives his final score prediction: Indiana 27, Nebraska 24. He sees it as close." }];
+  const f = findPassage(items, "his final score prediction: Indiana 27, Nebraska 24");
+  assert.equal(f.text, "his final score prediction: Indiana 27, Nebraska 24");
+  assert.equal(textFragmentLink(f.item.link, f.text), "https://si.com/a#:~:text=his%20final%20score%20prediction%3A%20Indiana%2027%2C%20Nebraska%2024");
+  assert.equal(textFragmentLink("https://x.com/p", "Indiana 31-17"), "https://x.com/p#:~:text=Indiana%2031%2D17");
+  assert.equal(findPassage(items, "Nebraska wins 30-20 in a stunner"), null);
+  // Curly apostrophes on the page are kept so the fragment matches it.
+  const c = findPassage([{ link: "u", blurb: "We’re taking Indiana 31-17 here." }], "We're taking Indiana 31-17");
+  assert.equal(c.text, "We’re taking Indiana 31-17");
+  assert.match(textFragmentLink("https://x.com/p", "one two three four five six seven eight nine ten eleven twelve"), /#:~:text=one%20two%20three%20four,nine%20ten%20eleven%20twelve$/);
+});
