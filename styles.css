@@ -5317,7 +5317,7 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
   background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .22) 0 1px, transparent 1px calc(100% / var(--ticks, 8))), linear-gradient(180deg, #1b1230, #0c0716);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, .8), 0 0 0 1px rgba(255, 255, 255, .06), 0 0 18px rgba(193, 60, 255, .15); }
 .lm-end { gap: 4px; font-size: 6px; letter-spacing: .08em; }
-.lm-end img { width: 40px; height: 40px; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .7)); }
+.lm-end img, .lm-end img.ins-logo { width: 40px; height: 40px; margin: 0; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .7)); }
 .lm-end.l { left: -56px; } .lm-end.r { right: -56px; }
 .lm-band { border-radius: 5px; box-shadow: 0 0 12px currentColor; }
 .lm-band.good { color: rgba(57, 255, 136, .6); } .lm-band.bad { color: rgba(255, 32, 121, .6); }
