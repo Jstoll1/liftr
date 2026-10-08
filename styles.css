@@ -5436,14 +5436,3 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .rp-mine.none { border-color: var(--neon-pink); background: rgba(255, 32, 121, .1); box-shadow: none; padding: 4px 10px; }
 .rp-mine.none b { color: var(--neon-pink); }
 
-/* Room and simulate side by side before kickoff: one row, no extra depth */
-.ins-toprow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: stretch; }
-.ins-toprow .rp { margin: 0; gap: 5px; }
-.ins-toprow .rp-top { gap: 6px; }
-.ins-toprow .rp-you-k { display: none; }
-.ins-toprow .ins-sim { flex-direction: column; justify-content: center; align-items: center; gap: 4px; width: 84px; padding: 6px 4px; margin: 0; }
-.ins-toprow .ins-sim-gb { width: 14px; height: 20px; }
-.ins-toprow .ins-sim-txt { flex-direction: column; align-items: center; gap: 4px; flex: none; }
-.ins-toprow .ins-sim-txt b { font-size: 7px; letter-spacing: .06em; }
-.ins-toprow .ins-sim-txt em { font-size: 5.5px; }
-.ins-toprow .ins-sim-vs { display: none; }

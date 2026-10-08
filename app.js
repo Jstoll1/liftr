@@ -5261,11 +5261,7 @@ async function openInsights(gameId) {
       if (cur === null) head.push(el); else secs[cur].push(el);
     }
     const sim = head.find((el) => el.id === "ins-sim");
-    // Before kickoff the room is small, so it and simulate share one row.
-    const room = head.find((el) => el.classList.contains("rp-pre"));
-    let pair = null;
-    if (room && sim) { pair = document.createElement("div"); pair.className = "ins-toprow"; pair.append(room, sim); }
-    const out = pair ? [...head.filter((el) => el !== sim && el !== room), pair] : [...head.filter((el) => el !== sim), ...(sim ? [sim] : [])];
+    const out = [...head.filter((el) => el !== sim), ...(sim ? [sim] : [])];
     for (const k of [...ORDER.filter((k) => secs[k]), ...Object.keys(secs).filter((k) => !ORDER.includes(k))]) out.push(...secs[k]);
     body.replaceChildren(...out, ...tail);
   })();
