@@ -1256,9 +1256,11 @@ function showPicksScreen() {
   enterScreen("picks");
   maybeShowBoner();
   maybeShowQotw();
-  maybeShowGridCheck();
   return syncManagerFromCloud(currentManager).then((cloud) => {
     if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
+    // After the sync, so a phone that has not seen its picks yet does not
+    // nag someone whose card is already full on another device.
+    if (!picksScreen.classList.contains("hidden")) maybeShowGridCheck();
     // Same payload feeds the standings row. cloud is null when the fetch
     // failed, and then the row fetches for itself, which will fail the
     // same way and leave whatever was on screen.
@@ -3944,8 +3946,8 @@ function thursdaySixAM(ms, offsetHours) {
 // page load, whichever screen the app opens on; a tap anywhere closes it.
 // --- Grid check --------------------------------------------------------
 // Opening the picks page while the week is open: are you in, part in,
-// or not in at all, plus a clock to the lock. Once per twelve hours per
-// week, and always if something is still blank inside the last day.
+// or not in at all, plus a clock to the lock. Only while something is
+// still blank: once per twelve hours per week, every two inside the last day.
 const GRID_REPEAT_MS = 12 * 3600 * 1000;
 const GRID_NAG_MS = 24 * 3600 * 1000;
 let gridTimer = null;
@@ -3959,6 +3961,7 @@ function maybeShowGridCheck(force = false) {
   if (!force) {
     const st = getManagerState(currentManager);
     const incomplete = GAMES.some((g) => !st.picks[g.id]) || !String(st.tiebreaker ?? "").trim();
+    if (!incomplete) return;
     let last = 0;
     try { last = Number(localStorage.getItem(gridKey()) || 0); } catch {}
     const repeat = incomplete && ms < GRID_NAG_MS ? 2 * 3600 * 1000 : GRID_REPEAT_MS;
