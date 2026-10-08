@@ -4524,7 +4524,15 @@ async function openInsights(gameId) {
   const lg = (id, cls = "") => `<img class="ins-logo ${cls}" src="${logoUrl(id)}" alt="" loading="lazy">`;
   // The sealed line rides next to the favourite's name: "Indiana -7 at Nebraska".
   const ln = (team) => team === game.favorite && Number(game.spread) ? ` <b class="ins-ln">-${esc(game.spread)}</b>` : "";
-  modal.querySelector("#insights-title").innerHTML = `${lg(game.awayId, "hd")}<span>${esc(game.awayShort)}${ln(game.away)}<i>at</i>${esc(game.homeShort)}${ln(game.home)}</span>${lg(game.homeId, "hd")}`;
+  const titleEl = modal.querySelector("#insights-title");
+  titleEl.innerHTML = `${lg(game.awayId, "hd")}<span>${esc(game.awayShort)}${ln(game.away)}<i>at</i>${esc(game.homeShort)}${ln(game.home)}</span>${lg(game.homeId, "hd")}`;
+  // Long matchups shrink to fit on one line rather than cut off the line.
+  titleEl.style.fontSize = "";
+  requestAnimationFrame(() => {
+    const t = titleEl.querySelector("span");
+    let px = parseFloat(getComputedStyle(titleEl).fontSize) || 11;
+    while (t && t.scrollWidth > t.clientWidth + 1 && px > 7) { px -= 0.5; titleEl.style.fontSize = `${px}px`; }
+  });
   modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv}`;
   const links = () => `<div class="ins-h">MORE</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
   body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
@@ -5011,7 +5019,7 @@ async function openInsights(gameId) {
     // the market number, the move since your seal and which way it went.
     const chip = nowV === null ? "" : nowMoved ? `<i class="${tone.trim() || "flat"}">${forMe === false ? "▼" : "▲"}${dS}</i>` : `<i class="flat">■ 0</i>`;
     const tk = `<span class="k">${myPick && !mySU ? "YOU" : "LINE"}</span><b class="you">${esc(lab(sealedV))}</b>`
-      + (nowV === null ? `<span class="k">NO QUOTE</span>` : `<span class="k">MKT</span><b class="mkt">${esc(lab(nowV))}</b>${chip}`);
+      + (nowV === null ? `<span class="k">NO QUOTE</span>` : !nowMoved ? `<i class="flat">AT MARKET</i>` : `<span class="k">MKT</span><b class="mkt">${esc(lab(nowV))}</b>${chip}`);
     html += `<div class="lm lm-term"><div class="lm-tick">${tk}${ou !== null ? `<span class="ou">O/U ${ou}</span>` : ""}</div><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
       ${zero}${band}${open}${seal}${now}${move}</div>
@@ -5173,11 +5181,11 @@ async function openInsights(gameId) {
       const scoreLab = sc ? `${abbrOf(win)} ${Math.max(sc.away, sc.home)}-${Math.min(sc.away, sc.home)}` : "";
       // One short word for the call, on the same line as the score.
       // With a score shown, a cover is just a check mark so four tiles fit.
-      const short = call.tone === "cov" ? (scoreLab ? "✓" : "COVERS") : call.tone === "up" ? "UPSET" : call.tag === "PUSH" ? "PUSH" : "SU";
+      const short = call.tone === "cov" ? (scoreLab ? "✓" : "COVERS") : call.tone === "up" ? (scoreLab ? "" : "UPSET") : call.tag === "PUSH" ? "PUSH" : "SU";
       const who = o.picks.length > 1 ? (lead === o.picks.length ? `ALL ${o.picks.length}` : `${lead} OF ${o.picks.length}`) : (outlets.length <= 3 ? names[0] || "" : "");
       const split = o.picks.length > 1 && lead < o.picks.length ? `<span class="xp-bar"><i style="width:${Math.round(100 * lead / o.picks.length)}%"></i></span>` : "";
       const title = [names.length ? names.join(", ") : "", first.reason || ""].filter(Boolean).join(" — ");
-      const meta = [short === "✓" ? `${scoreLab} ✓` : [scoreLab, short].filter(Boolean).join(" · "), who].filter(Boolean).join(" · ");
+      const meta = [short === "✓" ? `${scoreLab} ✓` : [scoreLab, short].filter(Boolean).join(" · "), who].filter(Boolean).join(" · ") || " ";
       const inner = `<span class="xp-out">${esc(o.outlet.replace(/\s+on MSN$/i, ""))}</span><span class="xp-main">${lg(id, "xp-logo")}<b>${esc(big)}</b></span><span class="xp-meta">${esc(meta)}</span>${split}`;
       const href = first.link || o.picks.find((p) => p.link)?.link;
       return href ? `<a class="xp-tile ${win}" href="${esc(href)}" target="_blank" rel="noopener" title="${esc(title)}">${inner}</a>` : `<span class="xp-tile ${win}" title="${esc(title)}">${inner}</span>`;
@@ -5187,19 +5195,19 @@ async function openInsights(gameId) {
     const shown = n <= 4 ? n : 4 * Math.floor(n / 4);
     const list = outlets.slice(0, shown), rest = outlets.slice(shown, shown + 16);
     if (all.length) {
-      // The headline: who the experts pick to win, and how many of those
-      // have them covering.
+      // The headline: which team the experts back (to win, or to cover as
+      // the dog), then how: outright wins for a dog, covers for a favourite.
       const every = all.map(callOf).filter(Boolean);
-      const cs = every.filter((c) => !c.dogCover), dogCov = every.length - cs.length;
-      const nA = cs.filter((c) => c.win === "away").length, nH = cs.length - nA;
-      const lw = nA >= nH ? "away" : "home", ln = Math.max(nA, nH);
-      const lab = esc(String(abbrOf(lw)).toUpperCase());
-      const cov = cs.filter((c) => c.win === lw && c.tone === "cov").length;
-      const who = ln === cs.length ? (cs.length === 1 ? "1 PICK:" : `ALL ${cs.length} PICK`) : `${ln} OF ${cs.length} PICK`;
-      const tail = lw === dogSide ? " · UPSET" : cov === ln ? (ln === 1 ? ` · COVERS ${lineOf(favSide)}` : ` · ALL COVER ${lineOf(favSide)}`) : cov ? ` · ${cov} COVER ${lineOf(favSide)}` : " · NO COVER";
-      const extra = dogCov ? `${cs.length ? " · " : ""}${dogCov} TAKE ${esc(String(abbrOf(dogSide)).toUpperCase())} ${lineOf(dogSide)}` : "";
-      const split = cs.length > 1 && nA === nH ? `SPLIT: ${nA} ${esc(String(abbrOf("away")).toUpperCase())}, ${nH} ${esc(String(abbrOf("home")).toUpperCase())} TO WIN` : "";
-      const sum = (split || (cs.length ? `${who} ${lab} TO WIN${tail}` : "")) + extra || "NO CALL";
+      const T = (sd) => esc(String(abbrOf(sd)).toUpperCase());
+      const backs = (sd) => every.filter((c) => c.win === sd).length;
+      const bA = backs("away"), bH = backs("home"), tot = every.length;
+      const lw = bA >= bH ? "away" : "home", ln = Math.max(bA, bH);
+      const wins = every.filter((c) => c.win === lw && !c.dogCover).length;
+      const cov = every.filter((c) => c.win === lw && c.tone === "cov" && !c.dogCover).length;
+      const how = lw === dogSide ? (wins ? ` · ${wins === ln ? (ln === 1 ? "OUTRIGHT WIN" : "ALL SAY OUTRIGHT WIN") : `${wins} SAY OUTRIGHT WIN`}` : ` · COVER ${lineOf(dogSide)}`)
+        : cov === ln ? ` · ${ln === 1 ? "COVERS" : "ALL COVER"} ${lineOf(favSide)}` : cov ? ` · ${cov} COVER ${lineOf(favSide)}` : ` · NONE COVER ${lineOf(favSide)}`;
+      const sum = !tot ? "NO CALL" : bA === bH ? `SPLIT: ${bA} ${T("away")}, ${bH} ${T("home")}`
+        : `${ln === tot ? (tot === 1 ? "1 PICK:" : `ALL ${tot} BACK`) : `${ln} OF ${tot} BACK`} ${T(lw)}${how}`;
       html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${list.map(tileOf).join("")}</div>`;
       if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE OUTLETS (${rest.length})</summary><div class="xp-grid" style="grid-template-columns:repeat(${Math.min(rest.length, 4)},minmax(0,1fr))">${rest.map(tileOf).join("")}</div></details>`;
     } else if (pend.picks) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-loading">Checking the pickers…</div>`;
