@@ -4941,77 +4941,52 @@ async function openInsights(gameId) {
     // Every marker is a number on that axis, so a half point is one tick
     // and the band between SEALED and NOW is the edge the market has moved.
     const favAb = abbrOf(game.favorite === game.home ? "home" : "away"), dogAb = abbrOf(game.favorite === game.home ? "away" : "home");
-    const vals = [sealedV, openV, nowV].filter((v) => v !== null);
+    // One comparison: the line you locked (the sealed line) against where
+    // the market sits now. The opening line is small print, not a marker.
+    const myPick = currentManager ? getManagerState(currentManager).picks?.[game.id] : null;
+    const myFav = myPick ? myPick.team === game.favorite : null;
+    const mySU = !!myPick && myPick.mode === "SU";
+    // Numbers read from your side when you took the dog: NEB +7, not IU -7.
+    const dogView = myPick && !myFav;
+    const lab = (v) => v === 0 ? "PK" : dogView ? `${dogAb} ${v > 0 ? "+" : "-"}${Math.abs(v)}` : `${v > 0 ? favAb : dogAb} -${Math.abs(v)}`;
+    const vals = [sealedV, nowV].filter((v) => v !== null);
     let lo = Math.min(...vals) - 0.5, hi = Math.max(...vals) + 0.5;
     if (hi - lo < 3) { const mid = (hi + lo) / 2; lo = mid - 1.5; hi = mid + 1.5; }
     lo = Math.floor(lo * 2) / 2; hi = Math.ceil(hi * 2) / 2;
     const pos = (v) => (((v - lo) / (hi - lo)) * 100).toFixed(1);
-    const lab = (v) => v === 0 ? "PK" : `${v > 0 ? favAb : dogAb} -${Math.abs(v)}`;
-    const half = (v) => `${Math.abs(v)}`;
     const ticks = Math.round((hi - lo) * 2);
-    const seal = `<i class="lm-pt seal" style="left:${pos(sealedV)}%"></i><span class="lm-lab seal up" style="left:${pos(sealedV)}%"><b>${esc(lab(sealedV))}</b>SEALED</span>`;
-    const openCrowded = openV !== null && nowV !== null && Math.abs(nowV - openV) < 1;
-    const open = openV !== null ? `<i class="lm-pt open" style="left:${pos(openV)}%"></i>${openCrowded ? "" : `<span class="lm-lab open dn" style="left:${pos(openV)}%">OPEN<b>${esc(lab(openV))}</b></span>`}` : "";
     const nowMoved = nowV !== null && nowV !== sealedV;
-    // NOW is always labelled; OPEN yields its label when the two collide.
-    const now = nowV === null ? "" : `<i class="lm-pt now" style="left:${pos(nowV)}%"></i><span class="lm-lab now dn" style="left:${pos(nowV)}%">NOW<b>${esc(lab(nowV))}</b></span>`;
-    const bandL = nowMoved ? pos(Math.min(sealedV, nowV)) : 0, bandW = nowMoved ? (Math.abs(nowV - sealedV) / (hi - lo) * 100).toFixed(1) : 0;
-    // Your pick decides the colour: green when the market moved your way
-    // (your sealed number is now the better one), pink when it moved
-    // against you, cyan when you have no pick on this game.
-    const myPick = currentManager ? getManagerState(currentManager).picks?.[game.id] : null;
-    const myFav = myPick ? myPick.team === game.favorite : null;
     // A bigger favourite number helps whoever holds the favourite at the
-    // smaller sealed number, and hurts the dog holder, and vice versa.
+    // smaller sealed number and hurts the dog holder, and vice versa.
     const forMe = !myPick || !nowMoved ? null : (nowV > sealedV) === myFav;
-    // A straight-up pick never touches the spread, so for it the move is
-    // a signal, not points: the market agreeing with the side or cooling.
-    const mySU = !!myPick && myPick.mode === "SU";
     const tone = forMe === null ? "" : forMe ? " good" : " bad";
+    const seal = `<i class="lm-pt seal" style="left:${pos(sealedV)}%"></i><span class="lm-lab seal up" style="left:${pos(sealedV)}%"><b>${esc(lab(sealedV))}</b>${myPick ? "YOUR PICK" : "SEALED"}</span>`;
+    const now = nowV === null ? "" : `<i class="lm-pt now" style="left:${pos(nowV)}%"></i><span class="lm-lab now dn" style="left:${pos(nowV)}%">MARKET NOW<b>${esc(lab(nowV))}</b></span>`;
+    const bandL = nowMoved ? pos(Math.min(sealedV, nowV)) : 0, bandW = nowMoved ? (Math.abs(nowV - sealedV) / (hi - lo) * 100).toFixed(1) : 0;
     const band = nowMoved ? `<i class="lm-band ${nowV > sealedV ? "r" : "l"}${tone}" style="left:${bandL}%;width:${bandW}%"></i>` : "";
-    // Small indicator under the axis: an arrow spanning seal to now with the size of the move.
-    const move = "";
     const zero = lo < 0 && hi > 0 ? `<i class="lm-zero" style="left:${pos(0)}%"></i>` : "";
-    // Two plain lines: since open, and what the move since seal means.
-    const dS = nowV === null ? null : Math.round((nowV - sealedV) * 2) / 2;
-    const dO = nowV === null || openV === null ? null : Math.round((nowV - openV) * 2) / 2;
-    // Two short lines. First: where it was and where it is. Second: what
-    // that means for you, or for whoever holds the sealed number.
-    const l1 = nowV === null ? `NO LIVE LINE · SEALED <em>${esc(lab(sealedV))}</em>`
-      : openV === null ? `SEALED <em>${esc(lab(sealedV))}</em> · NOW <em>${esc(lab(nowV))}</em>`
-      : dO === 0 ? `OPEN ${esc(lab(openV))} · NOW <em>${esc(lab(nowV))}</em> · NO MOVE`
-      : `OPEN ${esc(lab(openV))} ▸ NOW <em>${esc(lab(nowV))}</em>`;
-    const myLab = myPick ? `${esc(myPick.team === game.away ? abbrOf("away") : abbrOf("home"))} ${myPick.mode === "SU" ? "SU" : (myFav ? "-" : "+") + game.spread}` : "";
-    const l2 = nowV === null ? "" : dS === 0 ? (myPick ? `YOUR ${myLab} · AT MARKET` : `SEAL AT MARKET · NO EDGE`)
-      : myPick && mySU ? (forMe ? `<em class="good">✓ MARKET AGREES · ${myLab}</em> · NOW ${esc(lab(nowV))}` : `<em class="bad">MARKET COOLING ON ${myLab}</em> · NOW ${esc(lab(nowV))}`)
-      : myPick ? (forMe ? `<em class="good">✓ GOOD FOR YOUR ${myLab}</em> · +${half(dS)}` : `<em class="bad">✗ BAD FOR YOUR ${myLab}</em> · -${half(dS)}`)
-      : `EDGE <em>+${half(dS)}</em> TO ${esc(dS > 0 ? favAb : dogAb)} BACKERS`;
-    // The market read: what the move since open says about the game, not
-    // just about anyone's sealed number. Direction (who the money is on),
-    // size, the key numbers it crossed, and the win odds it implies.
-    const read = (() => {
-      if (nowV === null || openV === null || dO === 0) return "";
-      const toFav = dO > 0;
-      const who = toFav ? favAb : dogAb;
-      const size = Math.abs(dO) >= 2 ? "Big move" : Math.abs(dO) >= 1 ? "Solid move" : "Nudge";
-      // College margins pile up on 3, 7, 10 and 14; crossing one matters more than the half points around it.
-      const keys = [3, 7, 10, 14].filter((k) => (Math.min(openV, nowV) < k && Math.max(openV, nowV) > k) || Math.abs(nowV) === k);
-      const cdf = (x) => { const t = 1 / (1 + 0.2316419 * Math.abs(x)); const d = 0.3989423 * Math.exp(-x * x / 2); const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; };
-      const wp = (v) => Math.round(cdf(v / 15) * 100);
-      const flip = Math.sign(openV) !== Math.sign(nowV) && openV !== 0 && nowV !== 0;
-      const bits = [];
-      bits.push(`${size} toward <em>${esc(who)}</em>: ${toFav ? `the market likes ${esc(favAb)} more than it did` : `${esc(favAb)}'s edge is shrinking (money or news on ${esc(dogAb)})`}`);
-      if (flip) bits.push("the favorite flipped");
-      if (keys.length) bits.push(`crossed key number ${keys.join(" & ")}`);
-      else if (Math.abs(nowV) % 1 === 0.5 && [3, 7].includes(Math.abs(nowV) - 0.5)) bits.push(`sits a hook off ${Math.abs(nowV) - 0.5}`);
-      bits.push(`${esc(favAb)} win odds ${wp(openV)}% → ${wp(nowV)}%`);
-      return `<div class="lm-mkt"><b>MARKET READ</b> ${bits.join(" · ")}</div>`;
-    })();
+    const dS = nowV === null ? 0 : Math.round(Math.abs(nowV - sealedV) * 2) / 2;
+    const pts = dS === 0.5 ? "Half a point" : dS === 1 ? "1 point" : `${dS} points`;
+    const myAb = myPick ? (myFav ? favAb : dogAb) : "";
+    // Win odds for your team (or the favourite) at the sealed line and now.
+    const cdf = (x) => { const t = 1 / (1 + 0.2316419 * Math.abs(x)); const d = 0.3989423 * Math.exp(-x * x / 2); const q = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - q : q; };
+    const wp = (v) => Math.round(cdf((dogView ? -v : v) / 15) * 100);
+    const oddsAb = myPick ? myAb : favAb;
+    // The one sentence: what the move means for you.
+    const say = nowV === null ? `No live line yet. ${myPick ? "Your pick" : "The sealed line"}: <em>${esc(lab(sealedV))}</em>.`
+      : !nowMoved ? (myPick ? `The market is right on your number, <em>${esc(lab(sealedV))}</em>. No edge either way.` : `The market matches the sealed line, <em>${esc(lab(sealedV))}</em>.`)
+      : mySU ? (forMe ? `<em class="good">✓ Market likes ${esc(myAb)} more</em> than when you picked. Good sign for your win pick.` : `<em class="bad">✗ Market likes ${esc(myAb)} less</em> than when you picked. Your win pick got harder.`)
+      : myPick ? (forMe ? `<em class="good">✓ Line moved your way.</em> You locked <b>${esc(lab(sealedV))}</b>; the market now says <b>${esc(lab(nowV))}</b>. ${pts} better than the market.` : `<em class="bad">✗ Line moved against you.</em> You locked <b>${esc(lab(sealedV))}</b>; the market now says <b>${esc(lab(nowV))}</b>. ${pts} worse than the market.`)
+      : `Market moved to <b>${esc(lab(nowV))}</b> from the sealed <b>${esc(lab(sealedV))}</b>. ${pts} better for ${esc(nowV > sealedV ? favAb : dogAb)} pickers.`;
+    const small = [nowV !== null && nowMoved ? `${esc(oddsAb)} win odds ${wp(sealedV)}% → ${wp(nowV)}%` : "", openV !== null ? `Opened ${esc(lab(openV))}` : ""].filter(Boolean).join(" · ");
+    const read = "";
+    const l1 = say, l2 = small ? `<small class="lm-small">${small}</small>` : "";
+    const open = "", move = "";
     const ou = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
     html += `<div class="lm"><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
       ${zero}${band}${open}${seal}${now}${move}</div>
-      <div class="lm-read"><span>${l1}${l2 ? `<br>${l2}` : ""}</span>${ou !== null ? `<span class="lm-ou"><em>O/U</em>${ou}</span>` : ""}</div>${read}</div>`;
+      <div class="lm-read"><span><span>${l1}</span>${l2}</span>${ou !== null ? `<span class="lm-ou"><em>O/U</em>${ou}</span>` : ""}</div>${read}</div>`;
   }
 
   // Preview: same layout as ever (headline, text, "Read the rest"). The
