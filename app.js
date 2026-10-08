@@ -4901,10 +4901,11 @@ async function openInsights(gameId) {
       const mineId = mine ? (mine.team === game.away ? game.awayId : game.homeId) : null;
       const mineTerms = mine ? (mine.mode === "SU" ? "WIN" : `${mine.team === game.favorite ? "-" : "+"}${game.spread}`) : "";
       const minePts = mine ? pointValue(game, mine.team, mine.mode === "SU" ? "SU" : "ATS") : 0;
-      const badge = mine
-        ? `<span class="rp-mine">${lg(mineId, "sm")}<span class="rp-mine-t"><b>${esc(mineTeam)} ${esc(mineTerms)}</b><i>${mine.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${minePts} PT${minePts === 1 ? "" : "S"}</i></span></span>`
-        : `<span class="rp-mine none"><b>NO PICK YET</b></span>`;
-      return `<div class="rp rp-pre"><div class="rp-top"><div class="rp-h">THE ROOM</div><div class="rp-lock" title="Picks reveal at kickoff">🔒 ${inN}/${MANAGERS.length} in</div></div><div class="rp-you"><span class="rp-you-k">YOUR PICK</span>${badge}</div></div>`;
+      // Before kickoff there is nothing to reveal, so no room box: just
+      // your own pick on one slim line under the header.
+      return mine
+        ? `<div class="ins-mypick"><span class="k">YOUR PICK</span>${lg(mineId, "sm")}<b>${esc(mineTeam)} ${esc(mineTerms)}</b><i>${mine.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${minePts} PT${minePts === 1 ? "" : "S"}</i></div>`
+        : `<button type="button" class="ins-mypick none" id="ins-mypick-go"><span class="k">YOUR PICK</span><b>NO PICK YET</b><i>TAP TO PICK ›</i></button>`;
     }
     const side = (team, short, id) => {
       const bets = [["ATS", `${team === game.favorite ? "-" : "+"}${game.spread}`], ["SU", "WIN"]].map(([mode, label]) => {
@@ -5292,6 +5293,8 @@ async function openInsights(gameId) {
     total: mv?.overUnder ?? direct?.odds?.overUnder ?? 52,
   };
   modal.querySelector("#ins-sim")?.addEventListener("click", () => window.openSim?.(simCtx));
+  // No pick yet: one tap closes the sheet and goes to the picks screen.
+  body.querySelector("#ins-mypick-go")?.addEventListener("click", () => { modal.querySelector("#insights-close")?.click(); navPicksBtn?.click(); });
   };
   // While the game is on, pull the scoreboard and the game page again
   // every thirty seconds and repaint, so the sheet keeps up with the

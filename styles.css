@@ -5464,3 +5464,12 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .rp.rp-pre .rp-mine b { font-size: 8.5px; overflow: hidden; text-overflow: ellipsis; }
 .rp.rp-pre .rp-mine i { font-size: 9.5px; }
 .rp.rp-pre .rp-mine .ins-logo { width: 24px; height: 24px; }
+
+/* Before kickoff: your pick on one slim centered line under the header */
+.ins-mypick { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(5, 217, 232, .5); background: rgba(5, 217, 232, .08); box-shadow: 0 0 10px rgba(5, 217, 232, .15); font: inherit; color: var(--text); white-space: nowrap; overflow: hidden; }
+.ins-mypick .k { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: var(--text-dim); }
+.ins-mypick .ins-logo { width: 20px; height: 20px; margin: 0; }
+.ins-mypick b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8.5px; color: #fff; overflow: hidden; text-overflow: ellipsis; }
+.ins-mypick i { font-style: normal; font-size: 10px; color: var(--neon-cyan); }
+.ins-mypick.none { border-color: var(--neon-pink); background: rgba(255, 32, 121, .1); box-shadow: none; cursor: pointer; }
+.ins-mypick.none b { color: var(--neon-pink); } .ins-mypick.none i { color: var(--text-dim); }
