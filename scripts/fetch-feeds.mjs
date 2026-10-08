@@ -126,9 +126,12 @@ for (const g of games) {
   // school's first word, and the mascot. "Pitt", "Pittsburgh", "Panthers".
   // "Panthers" is also an NFL team and "Virginia" is also the Cavaliers, so
   // the school name minus its mascot is the anchor, the short name joins
-  // it, and a mascot counts only when no other team uses it.
+  // it, and a mascot counts only when no other team uses it. Three letters
+  // is enough: USC, LSU, TCU and SMU are names, matched as whole words.
   const SHARED = /^(panthers|tigers|eagles|bulldogs|wildcats|cardinals|cowboys|giants|lions|bears|rams|jets|ravens|falcons|saints|broncos|chiefs|colts|texans|titans|jaguars|dolphins|bills|patriots|steelers|bengals|browns|packers|vikings|commanders|buccaneers|chargers|seahawks|cavaliers|spartans|trojans|knights|warriors|bears|huskies|aggies|cougars|rebels|owls|hawks|rams|pirates|bobcats|mustangs|bruins)$/;
-  const aliases = (full, short) => { const w = searchName(full).toLowerCase().split(/\s+/); const school = w.length > 1 ? w.slice(0, -1).join(" ") : w[0]; const mascot = w.length > 1 ? w[w.length - 1] : ""; return [school, String(short || "").toLowerCase(), SHARED.test(mascot) ? "" : mascot].filter((x) => x.length >= 4); };
+  // Words that are part of many school names and identify none of them.
+  const GENERIC = /^(state|tech|college|university|a&m|st\.?|southern|northern|eastern|western|central|west|east|north|south)$/;
+  const aliases = (full, short) => { const w = searchName(full).toLowerCase().split(/\s+/); const school = w.length > 1 ? w.slice(0, -1).join(" ") : w[0]; const mascot = w.length > 1 ? w[w.length - 1] : ""; return [school, String(short || "").toLowerCase(), SHARED.test(mascot) || GENERIC.test(mascot) ? "" : mascot].filter((x) => x.length >= 3 && !GENERIC.test(x)); };
   const wholeWord = (h, x) => new RegExp(`(^|[^a-z])${x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`).test(h);
   const aA = aliases(g.away, g.awayShort), aH = aliases(g.home, g.homeShort);
   const names = (list, al) => list.filter((n) => { const h = String(n.headline).toLowerCase(); return !NFL.test(h) && al.some((x) => wholeWord(h, x)); });
