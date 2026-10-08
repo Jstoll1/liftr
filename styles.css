@@ -5258,12 +5258,12 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .picks-countdown .cd-cell b { font-size: calc(21px * var(--cd-k)) !important; padding: calc(6px * var(--cd-k)) calc(5px * var(--cd-k)) !important; }
 .picks-countdown .cd-colon { font-size: calc(16px * var(--cd-k)) !important; }
 
-/* Now playing popup */
-.np-card { text-align: center; width: min(360px, 100%); }
-.np-kicker { font-family: "Press Start 2P", monospace; font-size: 10px; letter-spacing: 1px; color: #ff2079; text-shadow: 0 0 8px rgba(255, 32, 121, .6); margin: 2px 0 12px; }
-.np-poster { display: block; width: 100%; max-height: 58vh; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .6); }
-.np-title { font-family: "Press Start 2P", monospace; font-size: 12px; color: #ffe45e; margin: 12px 0 12px; line-height: 1.5; }
-.np-btns { display: flex; gap: 10px; position: relative; z-index: 1; }
-.np-btns > * { flex: 1; padding: 11px 8px; border-radius: 8px; font-family: "Press Start 2P", monospace; font-size: 10px; text-decoration: none; cursor: pointer; }
-.np-go { background: #e50914; color: #fff; border: 0; }
-.np-x { background: transparent; color: #c9b8ff; border: 1px solid #3d2a6e; }
+/* Now playing: full-screen poster between the splash and the app */
+.np-screen { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); background: #000; cursor: pointer; animation: npin .35s ease-out; }
+.np-screen.out { opacity: 0; transition: opacity .25s; }
+@keyframes npin { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: none; } }
+.np-kicker { font-family: "Press Start 2P", monospace; font-size: 10px; letter-spacing: 1px; color: #e50914; text-shadow: 0 0 8px rgba(229, 9, 20, .6); }
+.np-poster { display: block; max-width: 100%; max-height: calc(100vh - 150px); max-height: calc(100dvh - 150px); object-fit: contain; border-radius: 6px; box-shadow: 0 10px 40px rgba(0, 0, 0, .8); }
+.np-go { font-family: "Press Start 2P", monospace; font-size: 10px; color: #fff; background: #e50914; padding: 10px 14px; border-radius: 6px; text-decoration: none; }
+.np-tap { font-family: "Press Start 2P", monospace; font-size: 9px; color: #9b8bb8; animation: npblink 1.2s steps(2, end) infinite; }
+@keyframes npblink { 50% { opacity: 0; } }

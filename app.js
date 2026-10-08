@@ -980,7 +980,7 @@ function goHome() {
   enterScreen("home");
 }
 
-logoScreen.addEventListener("click", goToPlayerSelect);
+logoScreen.addEventListener("click", () => showNowPlaying(goToPlayerSelect));
 
 
 rulesOpenBtn.addEventListener("click", openRules);
@@ -1257,7 +1257,6 @@ function showPicksScreen() {
   maybeShowBoner();
   maybeShowQotw();
   maybeShowGridCheck();
-  maybeShowNowPlaying();
   return syncManagerFromCloud(currentManager).then((cloud) => {
     if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
     // Same payload feeds the standings row. cloud is null when the fetch
@@ -2264,7 +2263,6 @@ async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
   maybeShowQotw();
-  maybeShowNowPlaying();
   const fetched = await fetchAllPicks();
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
@@ -4060,32 +4058,28 @@ function maybeShowBoner() {
 })();
 
 // --- Now playing ----------------------------------------------------------
-// Once a day per device: the first time the app opens on a new calendar
-// day, after any other popup is out of the way. Swap NOW_PLAYING to
-// change the feature; a new id shows it again today.
+// A full-screen poster between the splash and the app, once a day per
+// device. Tap anywhere to carry on. Swap NOW_PLAYING to feature something
+// else; a new id shows again the same day.
 const NOW_PLAYING = { id: "history-of-the-eagles", where: "Netflix", title: "History of the Eagles", poster: "assets/now-playing-eagles.jpg", link: "https://www.netflix.com/search?q=History%20of%20the%20Eagles" };
-function maybeShowNowPlaying() {
-  if (!NOW_PLAYING || !currentManager || window.__adminEntry || window.__adminOpen) return;
-  // Another popup first; this one waits for the next screen change.
-  const busy = ["grid-modal", "boner-modal"].some((id) => { const x = document.getElementById(id); return x && !x.classList.contains("hidden"); }) || document.getElementById("qotw-modal");
-  if (busy) return;
+function showNowPlaying(then) {
+  const key = `brochiefs_nowplaying_${NOW_PLAYING?.id}`;
   const today = new Date().toLocaleDateString("en-CA");
-  const key = `brochiefs_nowplaying_${NOW_PLAYING.id}`;
-  try { if (localStorage.getItem(key) === today) return; localStorage.setItem(key, today); } catch { return; }
-  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  let seen = true;
+  try { seen = localStorage.getItem(key) === today; } catch {}
+  if (!NOW_PLAYING || seen || window.__adminEntry) return then();
+  try { localStorage.setItem(key, today); } catch {}
   const m = document.createElement("div");
-  m.className = "wpx-overlay np-overlay"; m.setAttribute("role", "dialog");
-  m.innerHTML = `<div class="wpx-card np-card">
-    <div class="np-kicker">▶ NOW PLAYING ON ${esc(NOW_PLAYING.where.toUpperCase())}</div>
-    <img class="np-poster" src="${esc(NOW_PLAYING.poster)}" alt="${esc(NOW_PLAYING.title)} poster">
-    <div class="np-title">${esc(NOW_PLAYING.title)}</div>
-    <div class="np-btns"><a class="np-go" href="${esc(NOW_PLAYING.link)}" target="_blank" rel="noopener">WATCH NOW</a><button type="button" class="np-x">LATER</button></div>
-  </div>`;
+  m.className = "np-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", `Now playing on ${NOW_PLAYING.where}: ${NOW_PLAYING.title}`);
+  m.innerHTML = `<div class="np-kicker">▶ NOW PLAYING ON ${NOW_PLAYING.where.toUpperCase()}</div>
+    <img class="np-poster" src="${NOW_PLAYING.poster}" alt="${NOW_PLAYING.title}">
+    <a class="np-go" href="${NOW_PLAYING.link}" target="_blank" rel="noopener">WATCH ON ${NOW_PLAYING.where.toUpperCase()} ↗</a>
+    <div class="np-tap">TAP TO CONTINUE</div>`;
   document.body.appendChild(m);
-  const close = () => m.remove();
-  m.querySelector(".np-x").addEventListener("click", close);
-  m.querySelector(".np-go").addEventListener("click", () => setTimeout(close, 0));
-  m.addEventListener("click", (e) => { if (e.target === m) close(); });
+  let done = false;
+  const go = () => { if (done) return; done = true; m.classList.add("out"); setTimeout(() => m.remove(), 250); then(); };
+  m.querySelector(".np-go").addEventListener("click", (e) => { e.stopPropagation(); setTimeout(go, 0); });
+  m.addEventListener("click", go);
 }
 
 // --- Question of the week ------------------------------------------------
@@ -5880,7 +5874,7 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
   const fresh = Date.now() - last < SPLASH_TTL;
   const mark = () => { try { localStorage.setItem(SPLASH_KEY, String(Date.now())); } catch {} };
   if (fresh && loadMe()) {
-    goToPlayerSelect();
+    showNowPlaying(goToPlayerSelect);
   } else {
     track("/splash");
     logoScreen.addEventListener("click", mark, { once: true });
