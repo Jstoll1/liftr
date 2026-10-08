@@ -5491,3 +5491,11 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .lm-slim .lm-end.l { left: -34px; } .lm-slim .lm-end.r { right: -34px; }
 .lm-slim .lm-lab.up { bottom: 9px; } .lm-slim .lm-lab.dn { top: 9px; }
 .lm-slim .lm-read { padding-top: 5px; font-size: 12.5px; }
+
+/* Line with no movement: a single terminal line, cursor blinking */
+.lm.lm-still { padding: 9px 12px 8px; }
+.lm-cmd { font-family: 'VT323', monospace; font-size: 19px; line-height: 1; color: var(--ph); text-shadow: 0 0 6px rgba(57, 255, 106, .6); letter-spacing: .04em; }
+.lm-cmd .p { color: var(--amb); }
+.lm-cmd .lm-cur { margin-left: 3px; font-size: 16px; animation: npblink 1s steps(2, end) infinite; }
+.lm-still .lm-small { display: block; margin-top: 5px; font-family: system-ui, -apple-system, sans-serif; font-size: 11px; color: var(--text-dim); }
+.lm-cmd { white-space: nowrap; overflow: hidden; }

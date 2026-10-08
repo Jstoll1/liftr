@@ -5027,6 +5027,11 @@ async function openInsights(gameId) {
     // No quote strip: your pick is in the chip above the line, and the
     // market number sits on its marker.
     void tk;
+    // Nothing moved (or no quote yet): no rail, just a terminal line.
+    if (!nowMoved) {
+      const msg = nowV === null ? "NO LIVE LINE YET" : `NO CHANGE · ${esc(lab(sealedV))}`;
+      html += `<div class="lm lm-term lm-slim lm-still"><div class="lm-cmd"><span class="p">&gt;</span> ${msg}<span class="lm-cur">█</span></div>${small ? `<div class="lm-small">${small}</div>` : ""}</div>`;
+    } else
     html += `<div class="lm lm-term lm-slim"><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
       ${zero}${band}${open}${seal}${now}${move}</div>
