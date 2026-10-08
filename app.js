@@ -5947,7 +5947,7 @@ function userBusy() {
   if (Date.now() - lastInteract < 20000) return true;
   const a = document.activeElement;
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
-  return !![...document.querySelectorAll(".modal-overlay, .wpx-overlay, .np-screen, #sim-modal")].find((el) => !el.classList.contains("hidden") && el.offsetParent !== null);
+  return !![...document.querySelectorAll(".modal-overlay, .wpx-overlay, .np-screen, #sim-modal")].find((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none");
 }
 // Once a minute: cheap (a tiny static file), and a deploy reaches an open
 // screen within a minute or two of going live.
