@@ -5473,3 +5473,12 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .ins-mypick i { font-style: normal; font-size: 10px; color: var(--neon-cyan); }
 .ins-mypick.none { border-color: var(--neon-pink); background: rgba(255, 32, 121, .1); box-shadow: none; cursor: pointer; }
 .ins-mypick.none b { color: var(--neon-pink); } .ins-mypick.none i { color: var(--text-dim); }
+
+/* Your pick: a compact centered chip, not a full-width bar */
+.ins-mypick { width: auto; align-self: center; gap: 6px; padding: 3px 10px 3px 8px; border-color: rgba(5, 217, 232, .35); box-shadow: none; }
+.ins-mypick .ins-logo { width: 16px; height: 16px; }
+.ins-mypick b { font-size: 7.5px; }
+.ins-mypick i { font-size: 9.5px; }
+.ins-mypick .k { font-size: 5.5px; }
+/* Expert tiles: a few outlets stay tile-sized and centred */
+.xp-grid { justify-content: center; }

@@ -4899,12 +4899,14 @@ async function openInsights(gameId) {
       // (WIN or the spread) and what it pays, so it is never hunted for.
       const mineTeam = mine ? (mine.team === game.away ? game.awayShort : game.homeShort) : "";
       const mineId = mine ? (mine.team === game.away ? game.awayId : game.homeId) : null;
+      // The short name, as the line and the expert tiles use it.
+      const mineAb = mine ? ((summaryRaw?.header?.competitions?.[0]?.competitors || []).find((c) => Number(c.team?.id) === Number(mineId))?.team?.abbreviation || mineTeam) : "";
       const mineTerms = mine ? (mine.mode === "SU" ? "WIN" : `${mine.team === game.favorite ? "-" : "+"}${game.spread}`) : "";
       const minePts = mine ? pointValue(game, mine.team, mine.mode === "SU" ? "SU" : "ATS") : 0;
       // Before kickoff there is nothing to reveal, so no room box: just
       // your own pick on one slim line under the header.
       return mine
-        ? `<div class="ins-mypick"><span class="k">YOUR PICK</span>${lg(mineId, "sm")}<b>${esc(mineTeam)} ${esc(mineTerms)}</b><i>${mine.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${minePts} PT${minePts === 1 ? "" : "S"}</i></div>`
+        ? `<div class="ins-mypick"><span class="k">YOUR PICK</span>${lg(mineId, "sm")}<b>${esc(mineAb)} ${esc(mineTerms)}</b><i>${mine.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${minePts} PT${minePts === 1 ? "" : "S"}</i></div>`
         : `<button type="button" class="ins-mypick none" id="ins-mypick-go"><span class="k">YOUR PICK</span><b>NO PICK YET</b><i>TAP TO PICK ›</i></button>`;
     }
     const side = (team, short, id) => {
@@ -5209,8 +5211,8 @@ async function openInsights(gameId) {
         : cov === ln ? ` · ${ln === 1 ? "COVERS" : "ALL COVER"} ${lineOf(favSide)}` : cov ? ` · ${cov} COVER ${lineOf(favSide)}` : ` · NONE COVER ${lineOf(favSide)}`;
       const sum = !tot ? "NO CALL" : bA === bH ? `SPLIT: ${bA} ${T("away")}, ${bH} ${T("home")}`
         : `${ln === tot ? (tot === 1 ? "1 PICK:" : `ALL ${tot} BACK`) : `${ln} OF ${tot} BACK`} ${T(lw)}${how}`;
-      html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${list.map(tileOf).join("")}</div>`;
-      if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE OUTLETS (${rest.length})</summary><div class="xp-grid" style="grid-template-columns:repeat(${Math.min(rest.length, 4)},minmax(0,1fr))">${rest.map(tileOf).join("")}</div></details>`;
+      html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,${cols >= 4 ? "1fr" : "112px"}))">${list.map(tileOf).join("")}</div>`;
+      if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE OUTLETS (${rest.length})</summary><div class="xp-grid" style="grid-template-columns:repeat(${Math.min(rest.length, 4)},minmax(0,${rest.length >= 4 ? "1fr" : "112px"}))">${rest.map(tileOf).join("")}</div></details>`;
     } else if (pend.picks) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-loading">Checking the pickers…</div>`;
     else html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-empty small">No published picks yet. The outlets usually call games Thursday and Friday.</div>`;
   }
