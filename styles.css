@@ -5422,3 +5422,16 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .ins-more-news { margin: 0 0 2px; }
 .ins-more-news summary { padding: 4px 0; }
 .rp-lock { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* The room before kickoff: your own pick as a badge, easy to find */
+.rp.rp-pre { display: flex; flex-direction: column; gap: 6px; }
+.rp-top { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.rp-top .rp-h { margin: 0; flex: none; }
+.rp-you { display: flex; align-items: center; gap: 8px; }
+.rp-you-k { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: var(--text-dim); flex: none; }
+.rp-mine { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 999px; border: 1px solid var(--neon-cyan); background: rgba(5, 217, 232, .1); box-shadow: 0 0 10px rgba(5, 217, 232, .25); min-width: 0; }
+.rp-mine .ins-logo { width: 20px; height: 20px; margin: 0; }
+.rp-mine b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 9px; color: #fff; white-space: nowrap; }
+.rp-mine i { font-style: normal; font-size: 10px; color: var(--neon-cyan); white-space: nowrap; }
+.rp-mine.none { border-color: var(--neon-pink); background: rgba(255, 32, 121, .1); box-shadow: none; padding: 4px 10px; }
+.rp-mine.none b { color: var(--neon-pink); }

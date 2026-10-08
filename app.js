@@ -4887,7 +4887,16 @@ async function openInsights(gameId) {
     if (!locked) {
       const mine = all[currentManager]?.picks?.[game.id];
       const inN = MANAGERS.filter((n) => all[n]?.picks?.[game.id]).length;
-      return `<div class="rp"><div class="rp-h">THE ROOM</div><div class="rp-lock">🔒 Reveal at kickoff · ${inN}/${MANAGERS.length} in${mine ? ` · you <b>${esc(mine.team === game.away ? game.awayShort : game.homeShort)} ${mine.mode === "SU" ? "WIN" : (mine.team === game.favorite ? "-" : "+") + game.spread}</b>` : ""}</div></div>`;
+      // Your own pick gets its own badge: team logo, the pick in words
+      // (WIN or the spread) and what it pays, so it is never hunted for.
+      const mineTeam = mine ? (mine.team === game.away ? game.awayShort : game.homeShort) : "";
+      const mineId = mine ? (mine.team === game.away ? game.awayId : game.homeId) : null;
+      const mineTerms = mine ? (mine.mode === "SU" ? "WIN" : `${mine.team === game.favorite ? "-" : "+"}${game.spread}`) : "";
+      const minePts = mine ? pointValue(game, mine.team, mine.mode === "SU" ? "SU" : "ATS") : 0;
+      const badge = mine
+        ? `<span class="rp-mine">${lg(mineId, "sm")}<b>${esc(mineTeam)} ${esc(mineTerms)}</b><i>${mine.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${minePts} PT${minePts === 1 ? "" : "S"}</i></span>`
+        : `<span class="rp-mine none"><b>NO PICK YET</b></span>`;
+      return `<div class="rp rp-pre"><div class="rp-top"><div class="rp-h">THE ROOM</div><div class="rp-lock">🔒 Reveal at kickoff · ${inN}/${MANAGERS.length} in</div></div><div class="rp-you"><span class="rp-you-k">YOUR PICK</span>${badge}</div></div>`;
     }
     const side = (team, short, id) => {
       const bets = [["ATS", `${team === game.favorite ? "-" : "+"}${game.spread}`], ["SU", "WIN"]].map(([mode, label]) => {
@@ -4970,7 +4979,7 @@ async function openInsights(gameId) {
     const forMe = !myPick || !nowMoved ? null : (nowV > sealedV) === myFav;
     const tone = forMe === null ? "" : forMe ? " good" : " bad";
     // The numbers live in the strip above; the rail only says where.
-    const seal = `<i class="lm-pt seal" style="left:${pos(sealedV)}%"></i><span class="lm-lab seal up" style="left:${pos(sealedV)}%">${!nowMoved && nowV !== null ? (myPick ? "YOU = MKT" : "SEAL = MKT") : myPick ? "YOU" : "SEAL"}</span>`;
+    const seal = `<i class="lm-pt seal" style="left:${pos(sealedV)}%"></i><span class="lm-lab seal up" style="left:${pos(sealedV)}%">${!nowMoved && nowV !== null ? (myPick && !mySU ? "YOU = MKT" : "LINE = MKT") : myPick && !mySU ? "YOU" : "LINE"}</span>`;
     const now = nowV === null || !nowMoved ? "" : `<i class="lm-pt now" style="left:${pos(nowV)}%"></i><span class="lm-lab now dn" style="left:${pos(nowV)}%">MKT</span>`;
     const bandL = nowMoved ? pos(Math.min(sealedV, nowV)) : 0, bandW = nowMoved ? (Math.abs(nowV - sealedV) / (hi - lo) * 100).toFixed(1) : 0;
     const band = nowMoved ? `<i class="lm-band ${nowV > sealedV ? "r" : "l"}${tone}" style="left:${bandL}%;width:${bandW}%"></i>` : "";
@@ -4998,7 +5007,7 @@ async function openInsights(gameId) {
     // Ticker strip across the top, like a quote line on an old terminal:
     // the market number, the move since your seal and which way it went.
     const chip = nowV === null ? "" : nowMoved ? `<i class="${tone.trim() || "flat"}">${forMe === false ? "▼" : "▲"}${dS}</i>` : `<i class="flat">■ 0</i>`;
-    const tk = `<span class="k">${myPick ? "YOU" : "SEAL"}</span><b class="you">${esc(lab(sealedV))}</b>`
+    const tk = `<span class="k">${myPick && !mySU ? "YOU" : "LINE"}</span><b class="you">${esc(lab(sealedV))}</b>`
       + (nowV === null ? `<span class="k">NO QUOTE</span>` : `<span class="k">MKT</span><b class="mkt">${esc(lab(nowV))}</b>${chip}`);
     html += `<div class="lm lm-term"><div class="lm-tick">${tk}${ou !== null ? `<span class="ou">O/U ${ou}</span>` : ""}</div><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
