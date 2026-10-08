@@ -5277,3 +5277,5 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .lm-ou { font-family: 'Press Start 2P', monospace; font-size: 6px; padding-top: 4px; }
 /* Expert pick with no spread call (straight up, no score): dimmed, WIN ONLY */
 .xp-tile.su-only { opacity: .6; border-style: dashed; }
+.xp-pts { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); margin-left: 4px; align-self: flex-end; padding-bottom: 4px; white-space: nowrap; }
+.xp-tile.su-only { opacity: 1; border-style: solid; }

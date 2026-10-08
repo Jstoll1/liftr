@@ -5096,62 +5096,68 @@ async function openInsights(gameId) {
     const all = xpicks?.picks || [];
     const outlets = [];
     for (const p of all) { let o = outlets.find((x) => x.key === p.outlet.toLowerCase()); if (!o) { o = { key: p.outlet.toLowerCase(), outlet: p.outlet, picks: [] }; outlets.push(o); } o.picks.push(p); }
-    // Every tile answers one question: who covers our sealed line? A pick
-    // against the spread says so directly. A predicted score decides it
-    // too: "IU 27-24" with IU laying 7 is a NEB cover, whatever the piece
-    // calls the winner. A straight-up pick with no score says nothing
-    // about the spread, so it shows as WIN ONLY.
+    // Every tile is the best-paying pick'em pick the article supports:
+    // an underdog win (3) beats a cover (2) beats a favourite win (1).
+    // A predicted score decides both questions: IU 27-24 with IU laying 7
+    // is an IU win (1) but a NEB cover (2), so the tile is NEB +7.
     const favSide = game.favorite === game.home ? "home" : "away", dogSide = favSide === "home" ? "away" : "home";
     const sealed = Number(game.spread) || 0;
     const lineOf = (side) => sealed === 0 ? "PK" : side === favSide ? `-${sealed}` : `+${sealed}`;
     const scoreOf = (p) => { const m = /^(\d{1,2})-(\d{1,2})$/.exec(String(p.score || "")); return m ? { away: Number(m[1]), home: Number(m[2]) } : null; };
-    const coverOf = (p) => {
+    const callOf = (p) => {
       const sc = scoreOf(p);
-      if (sc) { const favBy = sc[favSide] - sc[dogSide]; return favBy > sealed ? favSide : favBy < sealed ? dogSide : "push"; }
-      return p.type === "SU" ? null : p.side;
+      if (sc) {
+        const favBy = sc[favSide] - sc[dogSide];
+        if (favBy < 0) return { side: dogSide, kind: "SU", pts: 3 };
+        if (favBy > sealed) return { side: favSide, kind: "ATS", pts: 2 };
+        if (favBy < sealed) return { side: dogSide, kind: "ATS", pts: 2 };
+        return favBy > 0 ? { side: favSide, kind: "SU", pts: 1 } : null;
+      }
+      if (p.side === dogSide && (p.type === "SU" || p.type === "BOTH")) return { side: dogSide, kind: "SU", pts: 3 };
+      if (p.type === "ATS" || p.type === "BOTH") return { side: p.side, kind: "ATS", pts: 2 };
+      return { side: p.side, kind: "SU", pts: 1 };
     };
+    const callKey = (c) => c ? `${c.side}:${c.kind}` : "";
+    const callLab = (c) => c.kind === "SU" ? "WIN" : lineOf(c.side);
     const tileOf = (o) => {
-      const covers = o.picks.map(coverOf);
-      const nA = covers.filter((c) => c === "away").length, nH = covers.filter((c) => c === "home").length, known = nA + nH;
-      const side = known ? (nA > nH ? "away" : nH > nA ? "home" : covers.find((c) => c === "away" || c === "home")) : null;
-      const lead = side === "away" ? nA : nH;
-      const first = (side && o.picks.find((p, i) => covers[i] === side)) || o.picks[0];
-      const shownSide = side || first.side;
-      const id = shownSide === "away" ? game.awayId : game.homeId;
+      const calls = o.picks.map(callOf);
+      // A staff with several writers shows the call most of them make.
+      const counts = {};
+      calls.forEach((c) => { const k = callKey(c); if (k) counts[k] = (counts[k] || 0) + 1; });
+      const topKey = Object.keys(counts).sort((x, y) => counts[y] - counts[x] || (calls.find((c) => callKey(c) === y).pts - calls.find((c) => callKey(c) === x).pts))[0];
+      const i0 = Math.max(0, calls.findIndex((c) => callKey(c) === topKey));
+      const call = calls[i0], first = o.picks[i0];
+      const lead = counts[topKey] || 0;
+      const side = call ? call.side : first.side;
+      const id = side === "away" ? game.awayId : game.homeId;
       const names = o.picks.map((p) => p.picker && p.picker === p.picker.toUpperCase() ? p.picker.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : p.picker).filter(Boolean);
-      const big = side ? lineOf(side) : covers.includes("push") ? "PUSH" : "WIN";
+      const big = call ? callLab(call) : "PUSH";
       const sc = o.picks.length === 1 ? scoreOf(first) : null;
-      // When the predicted winner is not the side that covers, say so, so
-      // the tile never reads as a contradiction of the article.
       const winSide = sc ? (sc.away > sc.home ? "away" : sc.home > sc.away ? "home" : null) : null;
-      // The score reads winner first ("IU 27-24"), so a NEB +7 tile with an
-      // IU win under it says exactly what the article said.
+      // Winner first, so "IU 27-24" under a NEB +7 tile reads as the article did.
       const scoreLab = sc ? (winSide ? `${abbrOf(winSide)} ${Math.max(sc.away, sc.home)}-${Math.min(sc.away, sc.home)}` : `TIE ${sc.away}-${sc.home}`) : "";
-      const note = !side ? "WIN ONLY" : sc ? "" : first.type === "SU" ? "SU" : "ATS";
-      const who = o.picks.length > 1 ? (known && lead === o.picks.length ? `ALL ${o.picks.length}` : known ? `${lead} OF ${o.picks.length}` : `${o.picks.length} PICKS`) : (outlets.length <= 3 ? names[0] || "" : "");
-      const meta = [who, scoreLab, note].filter(Boolean).join(" · ");
-      const split = o.picks.length > 1 && known && lead < o.picks.length ? `<span class="xp-bar"><i style="width:${Math.round(100 * lead / o.picks.length)}%"></i></span>` : "";
+      const who = o.picks.length > 1 ? (lead === o.picks.length ? `ALL ${o.picks.length}` : `${lead} OF ${o.picks.length}`) : (outlets.length <= 3 ? names[0] || "" : "");
+      const meta = [who, scoreLab].filter(Boolean).join(" · ");
+      const split = o.picks.length > 1 && lead < o.picks.length ? `<span class="xp-bar"><i style="width:${Math.round(100 * lead / o.picks.length)}%"></i></span>` : "";
       const title = [names.length ? names.join(", ") : "", first.reason || ""].filter(Boolean).join(" — ");
-      const inner = `<span class="xp-out">${esc(o.outlet.replace(/\s+on MSN$/i, ""))}</span><span class="xp-main">${lg(id, "xp-logo")}<b>${esc(big)}</b></span><span class="xp-meta">${esc(meta)}</span>${split}`;
+      const pts = call ? `<i class="xp-pts">${call.pts} PT${call.pts === 1 ? "" : "S"}</i>` : "";
+      const inner = `<span class="xp-out">${esc(o.outlet.replace(/\s+on MSN$/i, ""))}</span><span class="xp-main">${lg(id, "xp-logo")}<b>${esc(big)}</b>${pts}</span><span class="xp-meta">${esc(meta)}</span>${split}`;
       const href = first.link || o.picks.find((p) => p.link)?.link;
-      const cls = `xp-tile ${shownSide}${side ? "" : " su-only"}`;
-      return href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener" title="${esc(title)}">${inner}</a>` : `<span class="${cls}" title="${esc(title)}">${inner}</span>`;
+      return href ? `<a class="xp-tile ${side}" href="${esc(href)}" target="_blank" rel="noopener" title="${esc(title)}">${inner}</a>` : `<span class="xp-tile ${side}" title="${esc(title)}">${inner}</span>`;
     };
     const n = outlets.length;
     const cols = n <= 1 ? 1 : n <= 4 ? n : 4;
     const shown = n <= 4 ? n : 4 * Math.floor(n / 4);
     const list = outlets.slice(0, shown), rest = outlets.slice(shown, shown + 16);
     if (all.length) {
-      // The headline counts covers on our line, the same thing the tiles show.
-      const cv = all.map(coverOf);
-      const nA = cv.filter((c) => c === "away").length, nH = cv.filter((c) => c === "home").length, other = all.length - nA - nH;
-      const leadSide = nA >= nH ? "away" : "home", leadN = Math.max(nA, nH);
-      const tag = `${esc(String(abbrOf(leadSide)).toUpperCase())} ${lineOf(leadSide)}`;
-      const tagOf = (sd) => `${esc(String(abbrOf(sd)).toUpperCase())} ${lineOf(sd)}`;
-      const sum = !(nA + nH) ? `${all.length === 1 ? "1 PICK" : `${all.length} PICKS`} · WIN ONLY, NO SPREAD CALL`
-        : (nA && nH && nA === nH ? `SPLIT: ${nA} ON ${tagOf("away")}, ${nH} ON ${tagOf("home")}`
-          : nA && nH ? `${leadN} OF ${nA + nH} ON ${tag}`
-          : leadN === 1 ? `1 PICK ON ${tag}` : `ALL ${leadN} ON ${tag}`) + (other ? ` · ${other} WIN ONLY` : "");
+      // The headline counts the same calls the tiles show.
+      const tally = {};
+      all.map(callOf).forEach((c) => { if (c) { const k = callKey(c); tally[k] = tally[k] || { c, n: 0 }; tally[k].n += 1; } });
+      const rows = Object.values(tally).sort((x, y) => y.n - x.n || y.c.pts - x.c.pts);
+      const tagOf = (c) => `${esc(String(abbrOf(c.side)).toUpperCase())} ${callLab(c)}`;
+      const total = rows.reduce((t, r) => t + r.n, 0);
+      const sum = !rows.length ? "NO CALL" : rows.length === 1 ? (total === 1 ? `1 PICK: ${tagOf(rows[0].c)}` : `ALL ${total} ON ${tagOf(rows[0].c)}`)
+        : `${rows[0].n} OF ${total} ON ${tagOf(rows[0].c)}`;
       html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${list.map(tileOf).join("")}</div>`;
       if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE OUTLETS (${rest.length})</summary><div class="xp-grid" style="grid-template-columns:repeat(${Math.min(rest.length, 4)},minmax(0,1fr))">${rest.map(tileOf).join("")}</div></details>`;
     } else if (pend.picks) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-loading">Checking the pickers…</div>`;
