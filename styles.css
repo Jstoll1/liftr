@@ -5399,3 +5399,25 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 /* More stats fold sits flush under the four key rows */
 .ins-more-stats { margin-top: 4px; }
 .ins-more-stats .ins-glance { margin-top: 4px; }
+
+/* Game sheet: tighter vertical rhythm */
+.ins-body { gap: 4px; }
+.ins-h { margin-top: 8px; padding-bottom: 3px; }
+.rp { margin: 0; padding: 6px 8px; }
+.rp-h { margin: 0 0 4px; }
+.rp:has(> .rp-lock) { display: flex; align-items: baseline; gap: 10px; }
+.rp:has(> .rp-lock) .rp-h { margin: 0; flex: none; }
+.rp-lock { padding: 0; }
+.ins-sim { margin: 0; }
+.xp-sum { margin: 0 0 4px; }
+.ins-pv-h { margin-top: 0; }
+.ins-pv p { margin: 3px 0 0; line-height: 1.4; }
+.ins-glance { gap: 2px; margin-top: 2px; }
+.ins-g { padding: 3px 8px; }
+.ins-g.divider { padding: 5px 8px 1px; }
+.ins-sub-h { margin-top: 6px; }
+.ins-leads { margin-top: 4px; gap: 6px; }
+.ins-lead span { margin-bottom: 1px; line-height: 1.2; }
+.ins-lead b { margin-bottom: 2px; }
+.ins-more-news { margin: 0 0 2px; }
+.ins-more-news summary { padding: 4px 0; }
