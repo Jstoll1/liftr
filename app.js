@@ -2507,7 +2507,10 @@ function renderLiveScores(live, cloudPicks) {
       // Every kickoff on the slate is Eastern and the label says so once
       // at the top, so the per-card time drops the suffix to make room
       // for the channel the game is on.
-      const timeOnly = game.kickoffLabel.replace(/^(Sat|Sun|Mon|Tue|Wed|Thu|Fri) /, "").replace(/ ET$/, "");
+      // Time then day, "7:00 Fri": the day matters on a slate that starts
+      // Thursday or Friday, and the AM/PM is clear enough for football.
+      const kl = game.kickoffLabel.match(/^(Sat|Sun|Mon|Tue|Wed|Thu|Fri) (\d{1,2}:\d{2})/);
+      const timeOnly = kl ? `${kl[2]} ${kl[1]}` : game.kickoffLabel.replace(/^(Sat|Sun|Mon|Tue|Wed|Thu|Fri) /, "").replace(/ ET$/, "");
       const statusText = !locked
         ? timeOnly
         : isFinal
