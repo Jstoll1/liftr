@@ -877,7 +877,8 @@ let headScoreHtml = "";
 function renderHeadScore() {
   const el = document.getElementById("head-score");
   if (!el) return;
-  const show = headerCompact && activeScreenName === "scoreboard" && !!headScoreHtml;
+  // On the scoreboard it is always there: it replaces the strip.
+  const show = activeScreenName === "scoreboard" && !!headScoreHtml;
   el.innerHTML = show ? headScoreHtml : "";
   el.classList.toggle("hidden", !show);
   // The wordmark gives up a few pixels while the score is beside it.
@@ -3505,21 +3506,26 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   const banked = `<span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>`;
   const livePill = inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight} LIVE</span>` : "";
   el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${livePill}${state}${clock}`;
-  el.classList.remove("hidden");
+  // The strip stays built (its refresh and countdown hooks still run) but
+  // is not shown: the header carries the same thing now.
+  el.classList.add("hidden");
   // Same numbers, ready for the header to pick up on scroll. The word
   // LIVE stays behind: the strip has room for it, the header's left slot
   // does not, and 30 PTS +30 LIVE ran under the wordmark at 320px.
-  headScoreHtml = `${banked}${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight}</span>` : ""}`;
+  // Before the first kickoff everyone is tied at zero, so the header shows
+  // the countdown instead; after it, your place and points.
+  headScoreHtml = pre
+    ? `<span class="ms-state kick" title="${next.awayShort} at ${next.homeShort}">KICK <b class="ms-kick">${kickoffCountdown(next.kickoff)?.brief || ""}</b></span>`
+    : `${cloudPicksStale ? `<span class="ms-warn" title="Picks did not reload">⚠</span>` : ""}<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight}</span>` : ""}${boardAllFinal ? `<span class="ms-state final">FINAL</span>` : ""}`;
   renderHeadScore();
 }
 // Ticks the strip's countdown without redrawing the strip.
 function renderBoardCountdown() {
-  const el = document.querySelector("#my-score .ms-kick");
-  if (!el) return;
   const next = gamesByKickoff().find((g) => !isGameLocked(g));
   const cd = next && kickoffCountdown(next.kickoff);
   const text = cd && !cd.past ? cd.brief : "";
-  if (el.textContent !== text) el.textContent = text;
+  document.querySelectorAll("#my-score .ms-kick, #head-score .ms-kick").forEach((el) => { if (el.textContent !== text) el.textContent = text; });
+  headScoreHtml = headScoreHtml.replace(/(<b class="ms-kick">)[^<]*(<\/b>)/, `$1${text}$2`);
 }
 document.getElementById("my-score")?.addEventListener("click", (e) => {
   const refresh = e.target.closest(".ms-refresh");
