@@ -5542,5 +5542,8 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .picks-countdown { padding: 6px 12px; gap: 2px; }
 .picks-countdown .cd-label { font-size: 7px; }
 
-/* iOS home-screen apps: drop the nav into the strip the viewport leaves under it (set by fixStandaloneGap) */
-.bottom-nav { bottom: calc(-1 * var(--vp-gap, 0px)); }
+/* iOS home-screen apps with a short viewport (fixStandaloneGap): the home bar sits in the strip
+   below the viewport, so the nav loses its home-bar padding and the strip takes the nav's colour. */
+html.vp-gap { background: rgb(10, 0, 20); }
+html.vp-gap .bottom-nav { padding-bottom: 6px; }
+html.vp-gap { --nav-h: 63px; }

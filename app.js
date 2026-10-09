@@ -1186,14 +1186,20 @@ window.appConsoleKey = () => (adminRole === "app" ? adminKeyHeld : "");
 // iOS home-screen apps can report a viewport shorter than the screen (873
 // tall on a 932 screen: the status bar's 59 taken off the bottom), so a nav
 // pinned to bottom: 0 floats with an empty band under it. Measure the
-// shortfall and let the nav drop into it. Only in the home-screen app, and
+// shortfall and close the gap. Only in the home-screen app, and
 // only for a plausible gap, so a browser tab is never touched.
 function fixStandaloneGap() {
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
   const portrait = innerHeight >= innerWidth;
   const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
   const gap = standalone ? full - innerHeight : 0;
-  document.documentElement.style.setProperty("--vp-gap", gap > 10 && gap < 120 ? `${gap}px` : "0px");
+  // iOS will not paint fixed elements in that strip (only the page
+  // background), so the nav cannot move into it. Instead the nav drops the
+  // home-bar padding it no longer needs, and the strip takes the nav's
+  // colour so the two read as one bar to the screen edge.
+  const on = gap > 10 && gap < 120;
+  document.documentElement.style.setProperty("--vp-gap", on ? `${gap}px` : "0px");
+  document.documentElement.classList.toggle("vp-gap", on);
 }
 fixStandaloneGap();
 addEventListener("resize", fixStandaloneGap);
