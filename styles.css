@@ -5510,3 +5510,4 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 
 /* The scores heading shows all week now, so its fold has to work all week. */
 #scoreboard-screen #live-scores-list.folded { display: none; }
+.bug-status .ampm { font-size: .62em; letter-spacing: 0; margin: 0 3px 0 1px; opacity: .75; vertical-align: .08em; }

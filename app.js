@@ -2510,7 +2510,8 @@ function renderLiveScores(live, cloudPicks) {
       // The time as before, with the day after it ("7:00 PM Fri"), so a
       // Thursday or Friday game stands out from the Saturday slate.
       const kl = game.kickoffLabel.match(/^(Sat|Sun|Mon|Tue|Wed|Thu|Fri) (.+?)(?: ET)?$/);
-      const timeOnly = kl ? `${kl[2]} ${kl[1]}` : game.kickoffLabel.replace(/ ET$/, "");
+      // AM/PM shrinks to a tiny suffix so the hour and the day carry it.
+      const timeOnly = (kl ? `${kl[2]} ${kl[1]}` : game.kickoffLabel.replace(/ ET$/, "")).replace(/\s?(AM|PM)\b/, '<small class="ampm">$1</small>');
       const statusText = !locked
         ? timeOnly
         : isFinal
