@@ -1202,6 +1202,17 @@ window.appDiagnostics = () => {
     "Login token": loadAuth() ? `held for ${loadAuth().manager}` : "none",
     "Login mode": authState.mode,
     "Worker": WORKER_URL || "not configured",
+    // Layout numbers, for chasing gaps at the screen edges on a phone.
+    "Screen": (() => {
+      const probe = document.createElement("div");
+      probe.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);visibility:hidden";
+      document.body.appendChild(probe);
+      const cs = getComputedStyle(probe), sa = `${parseFloat(cs.paddingTop)}/${parseFloat(cs.paddingBottom)}`;
+      probe.remove();
+      const nav = document.getElementById("bottom-nav")?.getBoundingClientRect();
+      const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+      return `${innerWidth}×${innerHeight} · visual ${Math.round(visualViewport?.height || 0)} · screen ${screen.width}×${screen.height} · safe top/bottom ${sa} · nav ${nav ? `${Math.round(nav.top)}–${Math.round(nav.bottom)}` : "—"} · ${standalone ? "home-screen app" : "browser"}`;
+    })(),
   };
 };
 window.appResync = async () => {
