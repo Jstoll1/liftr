@@ -131,8 +131,20 @@
 
   // --- Logins ---------------------------------------------------------
   async function renderLogins() {
+    // App opens first: who has been in, and when.
+    let opens = "";
+    try {
+      const { visits } = await get("/visit");
+      const all = Object.entries(visits || {}).flatMap(([m, list]) => list.map((v) => ({ m, ...v })));
+      const fmt = (t) => new Date(t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      const day = Date.now() - 86400000;
+      const rows = OWNERS.map((n) => { const l = visits?.[n] || []; return { n, last: l[0]?.at || 0, today: l.filter((v) => v.at > day).length }; }).sort((a, b) => b.last - a.last);
+      opens = `<div class="con-summary"><span>APP OPENS</span><span>${rows.filter((r) => r.today).length} of ${OWNERS.length} in the last 24h</span></div>`
+        + rows.map((r) => `<div class="con-row${r.last ? "" : " warn"}"><div class="con-row-head"><span><b>${esc(r.n)}</b></span><span>${r.last ? fmt(r.last) : "never"}</span></div>${r.today ? `<div class="con-line">${r.today} open${r.today === 1 ? "" : "s"} in the last 24h</div>` : ""}</div>`).join("")
+        + `<details class="con-more"><summary>Every open (${all.length})</summary>${all.sort((a, b) => b.at - a.at).slice(0, 200).map((v) => `<div class="con-line">${fmt(v.at)} · <b>${esc(v.m)}</b> · ${v.app === "home" ? "home-screen app" : "browser"}${v.screen ? ` · ${esc(v.screen)}` : ""}</div>`).join("")}</details>`;
+    } catch {}
     const { events } = await get("/auth-log?format=json");
-    if (!events.length) { body.innerHTML = `<div class="admin-empty">No logins yet. Nobody has claimed a name.</div>`; return; }
+    if (!events.length) { body.innerHTML = opens + `<div class="admin-empty">No sign-ins yet. Nobody has claimed a name with a code.</div>`; return; }
     // One browser signing in as two owners is the signal worth chasing.
     const byDevice = new Map();
     for (const e of events) {
@@ -149,7 +161,7 @@
       ...Object.entries(failed.reduce((acc, e) => ({ ...acc, [e.manager]: (acc[e.manager] || 0) + 1 }), {}))
         .filter(([, n]) => n >= 3).map(([m, n]) => `${esc(m)}: ${n} failed codes`),
     ];
-    body.innerHTML = `<div class="con-summary"><span>${events.length} event${events.length === 1 ? "" : "s"}</span><span class="${failed.length ? "warn" : ""}">${failed.length} failed</span></div>`
+    body.innerHTML = opens + `<div class="con-summary"><span>${events.length} event${events.length === 1 ? "" : "s"}</span><span class="${failed.length ? "warn" : ""}">${failed.length} failed</span></div>`
       + (alerts.length ? alerts.map((a) => `<div class="con-row bad"><div class="con-line">⚠ ${a}</div></div>`).join("") : `<div class="con-ok">Nothing unusual.</div>`)
       + events.map((e) => `<div class="con-row${e.ok ? "" : " warn"}">
           <div class="con-row-head"><b>${esc(e.manager)}</b><span>${when(e.ts)} · ${esc(e.kind)}</span>

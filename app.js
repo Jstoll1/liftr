@@ -962,6 +962,23 @@ function goToPlayerSelect() {
 
 // Analytics: one page view per screen, plus a few named events. Wrapped
 // so a blocked or slow script never affects the app.
+// Stamp an app open for whoever this device is: on open, and on coming
+// back after 15 minutes away. Fire and forget; it never blocks anything.
+const VISIT_KEY = "brochiefs_visit_v1";
+function stampVisit() {
+  const me = loadMe();
+  if (!me || !WORKER_URL || window.__adminEntry) return;
+  let last = 0;
+  try { last = Number(localStorage.getItem(VISIT_KEY)) || 0; } catch {}
+  if (Date.now() - last < 15 * 60 * 1000) return;
+  try { localStorage.setItem(VISIT_KEY, String(Date.now())); } catch {}
+  const d = deviceDetails();
+  const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+  fetch(`${WORKER_URL}/visit`, { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true, body: JSON.stringify({ manager: me, device: deviceId().slice(0, 12), screen: d.screen, tz: d.tz, standalone }) }).catch(() => {});
+}
+setTimeout(stampVisit, 1500);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) stampVisit(); });
+
 function track(path, extra) {
   try {
     if (!window.goatcounter || typeof window.goatcounter.count !== "function") return;
