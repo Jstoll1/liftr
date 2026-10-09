@@ -4065,6 +4065,11 @@ function maybeShowBoner() {
 // device. Tap anywhere to carry on. Swap NOW_PLAYING to feature something
 // else; a new id shows again the same day.
 const NOW_PLAYING = { id: "history-of-the-eagles", where: "Netflix", title: "History of the Eagles", poster: "assets/now-playing-eagles.jpg", link: "https://www.netflix.com/title/70267553" };
+// Whether the poster still has its once-a-day showing to make.
+function nowPlayingDue() {
+  if (!NOW_PLAYING || window.__adminEntry) return false;
+  try { return localStorage.getItem(`brochiefs_nowplaying_${NOW_PLAYING.id}`) !== new Date().toLocaleDateString("en-CA"); } catch { return false; }
+}
 function showNowPlaying(then) {
   const key = `brochiefs_nowplaying_${NOW_PLAYING?.id}`;
   const today = new Date().toLocaleDateString("en-CA");
@@ -5971,8 +5976,10 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
   try { last = Number(localStorage.getItem(SPLASH_KEY)) || 0; } catch {}
   const fresh = Date.now() - last < SPLASH_TTL;
   const mark = () => { try { localStorage.setItem(SPLASH_KEY, String(Date.now())); } catch {} };
-  if (fresh && loadMe()) {
-    showNowPlaying(goToPlayerSelect);
+  // Skip the splash only when nothing else is due. The day's poster
+  // follows the splash tap; it never jumps in over an untapped splash.
+  if (fresh && loadMe() && !nowPlayingDue()) {
+    goToPlayerSelect();
   } else {
     track("/splash");
     logoScreen.addEventListener("click", mark, { once: true });
