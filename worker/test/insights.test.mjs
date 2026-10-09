@@ -311,3 +311,13 @@ test("expert pick links open on the prediction when the quote is really in the p
   assert.equal(c.text, "We’re taking Indiana 31-17");
   assert.match(textFragmentLink("https://x.com/p", "one two three four five six seven eight nine ten eleven twelve"), /#:~:text=one%20two%20three%20four,nine%20ten%20eleven%20twelve$/);
 });
+
+test("an opponent's player named in a game piece stays off this team's injury list", async () => {
+  const { ownPlayersOnly } = await import("../src/insights.js");
+  const ucla = { full: new Map([["aaron flowers", "S"]]) }, oregon = { full: new Map([["dante moore", "QB"]]) };
+  const list = [{ name: "Dante Moore", status: "Out" }, { name: "Aaron Flowers", status: "Doubtful" }, { name: "Walk On", status: "Out" }];
+  assert.deepEqual(ownPlayersOnly(list, ucla, oregon).map((p) => p.name), ["Aaron Flowers", "Walk On"]);
+  assert.deepEqual(ownPlayersOnly(list, oregon, ucla).map((p) => p.name), ["Dante Moore", "Walk On"]);
+  // No rosters to check against: nothing is dropped.
+  assert.equal(ownPlayersOnly(list, { full: new Map() }, { full: new Map() }).length, 3);
+});

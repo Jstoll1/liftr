@@ -548,7 +548,7 @@ export async function gamePreview(env, week, game, facts) {
 // injury coverage, then have the model pull a structured list from the
 // headlines and blurbs. Cached three hours; only names with a stated
 // status come through, and every row carries the outlet it came from.
-export const injuriesKey = (week, gameId) => `inj:v11:w${week}:g${gameId}`;
+export const injuriesKey = (week, gameId) => `inj:v12:w${week}:g${gameId}`;
 export const INJURY_STATUSES = ["OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "RETURNING", "SUSPENDED"];
 export function injuriesPrompt() {
   return [
@@ -624,6 +624,15 @@ export function parseRoster(data) {
 export async function rosterPositions(env, teamId) {
   if (!teamId || !env?.LIFTR_KV) return { full: new Map(), last: new Map() };
   try { return parseRoster((await fetchJsonCached(env, `${ESPN}/teams/${teamId}/roster`, 24 * 3600)).data); } catch { return { full: new Map(), last: new Map() }; }
+}
+// A game preview names players from both teams, so a team's list can pick
+// up the opponent's quarterback. Drop anyone on the other team's roster who
+// is not on this one. Full names only: a shared surname proves nothing.
+export function ownPlayersOnly(players, own, other) {
+  return players.filter((p) => {
+    const k = nameKey(p.name);
+    return !(other?.full?.has(k) && !own?.full?.has(k));
+  });
 }
 export function fillPositions(players, roster) {
   return players.map((p) => {
@@ -885,7 +894,7 @@ async function refreshInjuries(env, week, game, key, fromPhone = null) {
   const recent = (list) => { const cut = Date.now() - 8 * 24 * 3600 * 1000; const kept = list.filter((n) => !n.published || isNaN(Date.parse(n.published)) || Date.parse(n.published) >= cut); kept.raw = list.raw; kept.sent = list.sent; return kept; };
   const ctx = { game: `${searchName(game.away)} at ${searchName(game.home)}`, kickoff: game.kickoffLabel || game.kickoff || "" };
   const [away, home, awayRoster, homeRoster] = await Promise.all([extractInjuries(env, game.away, recent(awayNews), ctx), extractInjuries(env, game.home, recent(homeNews), ctx), rosterPositions(env, game.awayId), rosterPositions(env, game.homeId)]);
-  away.players = fillPositions(away.players, awayRoster); home.players = fillPositions(home.players, homeRoster);
+  away.players = fillPositions(ownPlayersOnly(away.players, awayRoster, homeRoster), awayRoster); home.players = fillPositions(ownPlayersOnly(home.players, homeRoster, awayRoster), homeRoster);
   const srcs = (items) => items.map((n) => ({ headline: n.headline, link: n.link, source: n.source, published: n.published })).slice(0, 4);
   const out = { at: Date.now(), site: !!siteInj, siteError, away: away.players, home: home.players, sources: { away: srcs(awayNews), home: srcs(homeNews) }, found: { away: awayNews.length, home: homeNews.length, awaySources: awayNews.raw, homeSources: homeNews.raw, fromPhone: { away: awayNews.sent || 0, home: homeNews.sent || 0 } }, error: away.error || home.error || null };
   if (!out.error) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 24 * 3600 }); } catch {} }
