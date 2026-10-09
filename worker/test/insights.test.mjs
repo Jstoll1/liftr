@@ -321,3 +321,16 @@ test("an opponent's player named in a game piece stays off this team's injury li
   // No rosters to check against: nothing is dropped.
   assert.equal(ownPlayersOnly(list, { full: new Map() }, { full: new Map() }).length, 3);
 });
+
+test("logins and app opens answer only the app owner's key, never the slate key", async () => {
+  const W = (await import("../src/index.js")).default;
+  const store = new Map();
+  const kv = { get: async (k, t) => { const v = store.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; }, put: async (k, v) => store.set(k, v), delete: async (k) => store.delete(k), list: async () => ({ keys: [] }) };
+  const env = { LIFTR_KV: kv, ARCHIVE_LOG_KEY: "ADMIN", SLATE_KEY: "SLATE" };
+  for (const path of ["/auth-log?format=json", "/visit"]) {
+    const call = async (k) => (await W.fetch(new Request(`https://w${path}${path.includes("?") ? "&" : "?"}key=${k}`), env, { waitUntil() {} })).status;
+    assert.equal(await call("ADMIN"), 200, path);
+    assert.notEqual(await call("SLATE"), 200, path);
+    assert.notEqual(await call(""), 200, path);
+  }
+});
