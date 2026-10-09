@@ -5521,10 +5521,14 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .head-score .ms-state { margin-left: 0; font-size: 7.5px; }
 .head-score .ms-state .ms-kick { color: var(--neon-cyan); }
 .head-score .ms-warn { color: var(--neon-yellow); font-size: 8px; }
-.home-header.has-score .home-logo-img { max-width: 44vw; }
+
 @media (max-width: 360px) {
   .head-score { left: 6px; padding: 3px 6px; gap: 4px; }
   .head-score .ms-rank, .head-score .ms-score { font-size: 6.5px; }
   .head-score .ms-state { font-size: 6.5px; }
-  .home-header.has-score .home-logo-img { max-width: 40vw; }
 }
+
+/* Poll rank: bottom right of the logo, clear of the pick bar on the left */
+.bug-mark .tm-rank { left: auto; right: -5px; bottom: -2px; }
+.bug-team { padding-left: 4px; }
+.home-logo-img { object-fit: contain; }

@@ -883,8 +883,28 @@ function renderHeadScore() {
   el.classList.toggle("hidden", !show);
   // The wordmark gives up a few pixels while the score is beside it.
   homeHeader.classList.toggle("has-score", show);
+  fitHeaderLogo();
   if (show) renderHeaderCountdown();
 }
+// The wordmark sits centred between the left chip and the name pill. The
+// chip changes width (KICK 21H 22M, T-1ST 06 PTS +4), so instead of a
+// guessed max size the logo is measured to whatever room the chips leave,
+// with a small gap either side. No chip on the left, no limit.
+function fitHeaderLogo() {
+  const img = homeHeader.querySelector(".home-logo-img");
+  if (!img) return;
+  img.style.maxWidth = "";
+  const left = [document.getElementById("head-score"), document.getElementById("header-countdown")].find((el) => el && !el.classList.contains("hidden"));
+  if (!left) return;
+  const row = homeHeader.querySelector(".head-row") || homeHeader;
+  const rb = row.getBoundingClientRect(), mid = rb.left + rb.width / 2;
+  const lEdge = left.getBoundingClientRect().right;
+  const pill = document.getElementById("me-pill");
+  const rEdge = pill && !pill.classList.contains("hidden") ? pill.getBoundingClientRect().left : rb.right;
+  const room = 2 * Math.min(mid - lEdge, rEdge - mid) - 16;
+  if (room > 40) img.style.maxWidth = `${Math.floor(room)}px`;
+}
+addEventListener("resize", fitHeaderLogo);
 appScroll.addEventListener("scroll", syncHeaderSize, { passive: true });
 const savedScroll = {};
 let activeScreenName = null;
@@ -3524,7 +3544,9 @@ function renderBoardCountdown() {
   const next = gamesByKickoff().find((g) => !isGameLocked(g));
   const cd = next && kickoffCountdown(next.kickoff);
   const text = cd && !cd.past ? cd.brief : "";
-  document.querySelectorAll("#my-score .ms-kick, #head-score .ms-kick").forEach((el) => { if (el.textContent !== text) el.textContent = text; });
+  let changed = false;
+  document.querySelectorAll("#my-score .ms-kick, #head-score .ms-kick").forEach((el) => { if (el.textContent !== text) { el.textContent = text; changed = true; } });
+  if (changed) fitHeaderLogo();
   headScoreHtml = headScoreHtml.replace(/(<b class="ms-kick">)[^<]*(<\/b>)/, `$1${text}$2`);
 }
 document.getElementById("my-score")?.addEventListener("click", (e) => {
@@ -3813,7 +3835,7 @@ function escapeCd(str) {
 function renderHeaderCountdown() {
   const el = document.getElementById("header-countdown");
   if (!el) return;
-  const hide = () => { el.classList.add("hidden"); el.innerHTML = ""; delete el.dataset.drawn; };
+  const hide = () => { if (!el.classList.contains("hidden")) { el.classList.add("hidden"); el.innerHTML = ""; delete el.dataset.drawn; fitHeaderLogo(); } };
   if (!picksScreen.classList.contains("hidden") || !currentManager) return hide();
   // One chip in the left slot at a time. Scrolled down the board, the
   // score wins it.
@@ -3845,6 +3867,7 @@ function renderHeaderCountdown() {
   el.title = title;
   el.dataset.go = "picks";
   el.classList.remove("hidden");
+  fitHeaderLogo();
 }
 
 // Tapping it goes back to the strip it came from.
