@@ -1197,7 +1197,7 @@ window.appDiagnostics = () => {
     "Signed in as": currentManager || "nobody",
     "Picks on this device": mine ? `${Object.keys(mine.picks).length} of ${GAMES.length}${mine.tiebreaker !== "" ? ` · TB ${mine.tiebreaker}` : ""}` : "—",
     "Cached locally": cached.length ? cached.join(", ") : "nothing",
-    "Live feed": latestLiveAt ? `${Object.keys(latestLive).length} games · ${latestLiveSource} · ${new Date(latestLiveAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : "not fetched yet",
+    "Live feed": Object.keys(latestLive).length ? `${Object.keys(latestLive).length} games` : "not fetched yet",
     "Sync": syncStatus + (queued ? ` · queued for ${queued}` : ""),
     "Login token": loadAuth() ? `held for ${loadAuth().manager}` : "none",
     "Login mode": authState.mode,
