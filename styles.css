@@ -5507,3 +5507,6 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .scorebug { padding: 5px 8px 6px; gap: 2px; }
 .bug-head { margin-bottom: 0; }
 .bug-row { padding-top: 1px; padding-bottom: 1px; }
+
+/* The scores heading shows all week now, so its fold has to work all week. */
+#scoreboard-screen #live-scores-list.folded { display: none; }
