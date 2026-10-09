@@ -5534,8 +5534,8 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 .home-logo-img { object-fit: contain; }
 
 /* Picks countdown: smaller clock, slimmer box */
-.picks-countdown .cd-cell b { font-size: calc(16px * var(--cd-k)) !important; padding: calc(4px * var(--cd-k)) calc(4px * var(--cd-k)) !important; }
-.picks-countdown .cd-colon { font-size: calc(12px * var(--cd-k)) !important; }
+.picks-countdown .cd-cell b { font-size: calc(20px * var(--cd-k)) !important; padding: calc(2px * var(--cd-k)) calc(4px * var(--cd-k)) calc(1px * var(--cd-k)) !important; line-height: 1.05; }
+.picks-countdown .cd-colon { font-size: calc(14px * var(--cd-k)) !important; }
 .picks-countdown .cd-cell { gap: 2px; }
 .picks-countdown .cd-cell em { font-size: 5.5px; }
 .picks-countdown .cd-top { padding: 2px 0 1px; gap: 10px; }
