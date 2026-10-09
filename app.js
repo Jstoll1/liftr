@@ -1183,6 +1183,22 @@ function openAppConsole() {
 // of this device, and the few actions that belong to the app rather than
 // the Worker.
 window.appConsoleKey = () => (adminRole === "app" ? adminKeyHeld : "");
+// iOS home-screen apps can report a viewport shorter than the screen (873
+// tall on a 932 screen: the status bar's 59 taken off the bottom), so a nav
+// pinned to bottom: 0 floats with an empty band under it. Measure the
+// shortfall and let the nav drop into it. Only in the home-screen app, and
+// only for a plausible gap, so a browser tab is never touched.
+function fixStandaloneGap() {
+  const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+  const portrait = innerHeight >= innerWidth;
+  const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+  const gap = standalone ? full - innerHeight : 0;
+  document.documentElement.style.setProperty("--vp-gap", gap > 10 && gap < 120 ? `${gap}px` : "0px");
+}
+fixStandaloneGap();
+addEventListener("resize", fixStandaloneGap);
+addEventListener("orientationchange", () => setTimeout(fixStandaloneGap, 300));
+
 window.appDiagnostics = () => {
   const all = loadAll();
   const cached = Object.keys(all).filter((n) => Object.keys(sanitizePicks(all[n]?.picks)).length);
@@ -1211,7 +1227,7 @@ window.appDiagnostics = () => {
       probe.remove();
       const nav = document.getElementById("bottom-nav")?.getBoundingClientRect();
       const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
-      return `${innerWidth}×${innerHeight} · visual ${Math.round(visualViewport?.height || 0)} · screen ${screen.width}×${screen.height} · safe top/bottom ${sa} · nav ${nav ? `${Math.round(nav.top)}–${Math.round(nav.bottom)}` : "—"} · ${standalone ? "home-screen app" : "browser"}`;
+      return `gap fix ${getComputedStyle(document.documentElement).getPropertyValue("--vp-gap").trim() || "0px"} · ${innerWidth}×${innerHeight} · visual ${Math.round(visualViewport?.height || 0)} · screen ${screen.width}×${screen.height} · safe top/bottom ${sa} · nav ${nav ? `${Math.round(nav.top)}–${Math.round(nav.bottom)}` : "—"} · ${standalone ? "home-screen app" : "browser"}`;
     })(),
   };
 };
