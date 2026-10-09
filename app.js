@@ -3532,10 +3532,10 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // Same numbers, ready for the header to pick up on scroll. The word
   // LIVE stays behind: the strip has room for it, the header's left slot
   // does not, and 30 PTS +30 LIVE ran under the wordmark at 320px.
-  // Before the first kickoff everyone is tied at zero, so the header shows
-  // the countdown instead; after it, your place and points.
+  // Before kickoff the header carries nothing on the left (the picks
+  // screen has the countdown); from kickoff on, your place and points.
   headScoreHtml = pre
-    ? `<span class="ms-state kick" title="${next.awayShort} at ${next.homeShort}">KICK <b class="ms-kick">${kickoffCountdown(next.kickoff)?.brief || ""}</b></span>`
+    ? ""
     : `${cloudPicksStale ? `<span class="ms-warn" title="Picks did not reload">⚠</span>` : ""}<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight}</span>` : ""}${boardAllFinal ? `<span class="ms-state final">FINAL</span>` : ""}`;
   renderHeadScore();
 }
