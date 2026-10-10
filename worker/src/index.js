@@ -2145,7 +2145,20 @@ async function liveGames(env, week = null) {
 
         // Same two fields the browser reads, so the fallback path shows the
         // same board: who has the ball, and each side's poll position.
-        const possId = comp.situation?.possession != null ? Number(comp.situation.possession) : null;
+        // ESPN drops situation.possession at times mid-game (seen on a
+        // live Texas game at 9:36 of the 3rd), so fall back to who holds
+        // the ball at the end of the last play.
+        const lp = comp.situation?.lastPlay;
+        const lpEnd = lp?.end?.team?.id != null ? Number(lp.end.team.id) : null;
+        const lpTeam = lp?.team?.id != null ? Number(lp.team.id) : null;
+        const lpFlip = /punt|kickoff|interception|fumble recovery \(opp|turnover on downs|blocked (punt|field goal)|missed field goal|safety/i.test(String(lp?.type?.text || ""));
+        const other = (id) => id === Number(away?.team?.id) ? Number(home?.team?.id) : id === Number(home?.team?.id) ? Number(away?.team?.id) : null;
+        const live = (statusType.state === "in") && !statusType.completed;
+        const possId = comp.situation?.possession != null ? Number(comp.situation.possession)
+          : !live ? null
+          : lpEnd != null ? lpEnd
+          : lpTeam != null ? (lpFlip ? other(lpTeam) : lpTeam) : null;
+        const possSrc = comp.situation?.possession != null ? "espn" : possId == null ? null : lpEnd != null ? "lastPlay.end" : "lastPlay.team";
         const possession = possId === null ? null
           : possId === Number(away?.team?.id) ? "away"
           : possId === Number(home?.team?.id) ? "home" : null;
@@ -2158,6 +2171,8 @@ async function liveGames(env, week = null) {
           odds: parseOdds(comp),
           possession,
           redZone: possession ? !!comp.situation?.isRedZone : false,
+          possSrc,
+          lastPlayDbg: live && lp ? { type: lp.type?.text || null, team: lpTeam, start: lp.start?.team?.id ?? null, end: lpEnd } : null,
           awayRank: rankOf(away),
           homeRank: rankOf(home),
           state: statusType.state || "pre", // "pre" | "in" | "post"

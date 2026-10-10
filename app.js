@@ -433,7 +433,10 @@ function parseEspnEvents(events) {
         down: Number.isFinite(Number(comp.situation.down)) ? Number(comp.situation.down) : null,
         distance: Number.isFinite(Number(comp.situation.distance)) ? Number(comp.situation.distance) : null,
         yardLine: Number.isFinite(Number(comp.situation.yardLine)) ? Number(comp.situation.yardLine) : null,
-        possessionId: comp.situation.possession != null ? Number(comp.situation.possession) : null,
+        // ESPN drops possession at times mid-game; then the team holding
+        // the ball at the end of the last play, else the team that ran it
+        // (flipped when the play hands the ball over).
+        possessionId: comp.situation.possession != null ? Number(comp.situation.possession) : possFromLastPlay(comp.situation.lastPlay, away?.team?.id, home?.team?.id, statusType),
         downDistance: comp.situation.downDistanceText || comp.situation.shortDownDistanceText || null,
         possessionText: comp.situation.possessionText || null,
         isRedZone: !!comp.situation.isRedZone,
@@ -445,6 +448,15 @@ function parseEspnEvents(events) {
   return byId;
 }
 
+function possFromLastPlay(lp, awayId, homeId, st) {
+  if (!lp || st?.state !== "in" || st?.completed) return null;
+  if (lp.end?.team?.id != null) return Number(lp.end.team.id);
+  const t = lp.team?.id != null ? Number(lp.team.id) : null;
+  if (t == null) return null;
+  const flip = /punt|kickoff|interception|fumble recovery \(opp|turnover on downs|blocked (punt|field goal)|missed field goal|safety/i.test(String(lp.type?.text || ""));
+  if (!flip) return t;
+  return t === Number(awayId) ? Number(homeId) : t === Number(homeId) ? Number(awayId) : null;
+}
 async function fetchLiveFromEspn() {
   const events = [];
   for (const date of espnScoreboardDates()) {
