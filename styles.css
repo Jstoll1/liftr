@@ -5568,3 +5568,13 @@ html.vp-gap { --nav-h: 63px; }
 .gc-cab .gc-pball.gc-pfloat { position: absolute; top: 50%; margin-top: -3.5px; }
 .gc-cab .gc-t.a .gc-pball.gc-pfloat { left: calc(100% + 5px); }
 .gc-cab .gc-t.h .gc-pball.gc-pfloat { right: calc(100% + 5px); }
+
+/* Arcade popups: the neon frame and scanlines are backgrounds of the card
+   itself, not pseudo-elements, so they stay put while the card scrolls
+   (an absolute ::before in a scroller scrolls away with the content). The
+   close button sticks to the top so it is always one tap away. */
+.wpx-card { border: 2px solid transparent; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .16) 0 1px, transparent 1px 3px) padding-box, radial-gradient(120% 80% at 50% 0%, #1b0b36 0%, #07020f 70%) padding-box, linear-gradient(90deg, #05d9e8, #c13cff 50%, #ff2079) border-box; box-shadow: 0 18px 40px rgba(0, 0, 0, .6), 0 0 10px rgba(193, 60, 255, .45); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.wpx-card::before, .wpx-card::after { content: none; }
+.wpx-card > .wpx-x { position: sticky; top: -8px; float: right; margin: -8px -6px -26px 0; }
+.wpx-overlay { padding: max(16px, calc(env(safe-area-inset-top) + 8px)) 16px max(16px, calc(env(safe-area-inset-bottom) + 8px)); }
+.wpx-card, .wpx-card.wpp { max-height: 100%; }
