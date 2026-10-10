@@ -1,2 +1,1 @@
-/picks?week=6
-/games?week=6
+/live
