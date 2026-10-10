@@ -5547,3 +5547,10 @@ button.ps-seg { padding: 0; cursor: pointer; font: inherit; }
 html.vp-gap { background: rgb(10, 0, 20); }
 html.vp-gap .bottom-nav { padding-bottom: 6px; }
 html.vp-gap { --nav-h: 63px; }
+
+/* Win % sheet, simplified: pick, if it hits, if it misses */
+.wpp-gh.wpp-gh3, .wpp-games3 li { grid-template-columns: 1fr 64px 72px; }
+.wpp-games3 li > b { font-size: 13px; }
+.wpp-verdict b { color: var(--neon-cyan); }
+.wpp-verdict.small { font-size: 12px; padding: 6px 8px; }
+.wpp-cap { font-size: 11px; color: var(--text-dim); margin: -2px 0 4px; }

@@ -3348,7 +3348,7 @@ function openPlayerChance(name) {
   const tb = tiebreakerGameOf?.();
   const tbGuess = picks[name]?.tiebreaker;
   if (tb && tbGuess && leaders.length > 1 && leaders.includes(name)) why.push(`Ties go to the tiebreaker: you guessed ${esc(tbGuess)} for ${esc(tb.awayShort)} at ${esc(tb.homeShort)}.`);
-  const games = (wd.games || []).filter((x) => x.gap >= 0.005).slice(0, 4).map((x) => `<li><span>${esc(short(x.game, x.pick.team))} ${esc(terms(x.game, x.pick))}</span><em>${pc(x.pHit)}</em><b class="up">${pc(x.ifHit)}</b><b class="dn">${pc(x.ifMiss)}</b></li>`).join("");
+  const games = (wd.games || []).filter((x) => x.gap >= 0.005).slice(0, 3).map((x) => `<li><span>${esc(short(x.game, x.pick.team))} ${esc(terms(x.game, x.pick))}</span><b class="up">${pc(x.ifHit)}</b><b class="dn">${pc(x.ifMiss)}</b></li>`).join("");
   // Most likely finishes, shown in points order; the bar is how often.
   const fins = (wd.finals || []).filter((f) => f.p >= 0.03).sort((x, y) => y.p - x.p).slice(0, 5).sort((x, y) => x.pts - y.pts);
   const fmax = Math.max(...fins.map((f) => f.p), 0.01);
@@ -3370,6 +3370,9 @@ function openPlayerChance(name) {
   // against them. Summed, that is the most you can still gain on them.
   const rivalName = (wd.threats || [])[0]?.name || (leaders[0] !== name ? leaders[0] : rows.find((r) => r.name !== name)?.name);
   let vsHtml = "", verdict = "";
+  // Someone else's card speaks in their name, not "you".
+  const isMe = name === currentManager;
+  const N = esc(shown(name));
   if (rivalName) {
     const rRow = rows.find((r) => r.name === rivalName);
     const outcomes = (g) => {
@@ -3416,7 +3419,7 @@ function openPlayerChance(name) {
     const head = back > 0 ? `${back} back of ${R}.` : back === 0 ? `Tied with ${R}.` : `${-back} ahead of ${R}.`;
     const sub = n === 0 ? "Every pick left is the same, so nothing can change the gap." : `${n === 1 ? "One game" : `${n} games`} can change that.`;
     const gameLines = splits.map((x) => {
-      const you = x.best.net > 0 ? `<span class="up">${esc(x.best.txt)} → you +${x.best.net}</span>` : "";
+      const you = x.best.net > 0 ? `<span class="up">${esc(x.best.txt)} → ${isMe ? "you" : esc(shown(name))} +${x.best.net}</span>` : "";
       const them = x.worst.net < 0 ? `<span class="dn">${esc(x.worst.txt)} → ${R} +${-x.worst.net}</span>` : "";
       return `<li><b>${esc(x.g.awayShort)} at ${esc(x.g.homeShort)}</b>${you}${them}</li>`;
     }).join("");
@@ -3441,12 +3444,12 @@ function openPlayerChance(name) {
   m.innerHTML = `<div class="wpx-card wpp">
     <button type="button" class="wpx-x" aria-label="Close">✕</button>
     <div class="wpp-head"><span class="wpp-av" style="--accent:${accentFor(name)}">${esc(avatarOverrides[name] || shown(name)[0])}</span><div><b>${esc(shown(name).toUpperCase())}</b><small>${row.score} PTS · MAX ${myMax}</small></div><i>${pc(wd.pct)}</i></div>
-    <div class="wpp-verdict">${verdict || stand}</div>
-    ${vsHtml}
-    ${games ? `<div class="wpx-h">YOUR WEEK IF EACH PICK HITS OR MISSES</div><div class="wpp-gh"><span>PICK</span><span>HITS</span><span>IF HIT</span><span>IF MISS</span></div><ul class="wpp-games">${games}</ul>` : ""}
-    ${threatHtml ? `<div class="wpx-h">WHO WINS WHEN YOU DON'T</div><div class="wpp-thr">${threatHtml}</div>` : ""}
+    <div class="wpp-verdict">${isMe ? "You win" : `${N} wins`} the week in <b>${pc(wd.pct)}</b> of simulated finishes.</div>
+    ${games ? `<div class="wpx-h">THE PICKS THAT MATTER MOST</div><div class="wpp-cap">${isMe ? "Your" : `${N}'s`} chance to win the week if each one hits or misses.</div><div class="wpp-gh wpp-gh3"><span>PICK</span><span>IF IT HITS</span><span>IF IT MISSES</span></div><ul class="wpp-games wpp-games3">${games}</ul>` : ""}
+    ${threatHtml ? `<div class="wpx-h">MOST LIKELY TO BEAT ${isMe ? "YOU" : N.toUpperCase()}</div><div class="wpp-thr">${threatHtml}</div>` : ""}
     <details class="wpp-more"><summary>SHOW THE MATH</summary>
       <div class="wpp-stand">${stand}</div>
+      ${verdict ? `<div class="wpx-h">HEAD TO HEAD</div><div class="wpp-verdict small">${verdict}</div>${vsHtml}` : ""}
       <ul class="wpp-why">${why.map((w) => `<li>${w}</li>`).join("")}</ul>
       <div class="wpp-math"><span><b>${pc(wd.top)}</b>finish with most pts</span><span><b>${pc(wd.tb)}</b>win via tiebreak</span><span><b>±${(wd.moe * 100).toFixed(1)}%</b>sampling range</span></div>
       ${finHtml ? `<div class="wpx-h">WHERE YOU FINISH</div><div class="wpp-fin"><div class="wpp-fin-h"><span>PTS</span><span>HOW OFTEN YOU END THERE</span><span>THEN WIN</span></div>${finHtml}</div>` : ""}
