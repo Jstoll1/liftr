@@ -2177,7 +2177,6 @@ async function liveGames(env, week = null) {
           possession,
           redZone: possession ? !!comp.situation?.isRedZone : false,
           possSrc,
-          lastPlayDbg: live && lp ? { type: lp.type?.text || null, team: lpTeam, start: lp.start?.team?.id ?? null, end: lpEnd } : null,
           awayRank: rankOf(away),
           homeRank: rankOf(home),
           state: statusType.state || "pre", // "pre" | "in" | "post"

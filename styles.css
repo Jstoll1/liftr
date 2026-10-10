@@ -5600,3 +5600,10 @@ html.vp-gap { --nav-h: 63px; }
 .gc-log .gc-plays li.gc-drv + li { border-top: 0; }
 .gc-psc { margin-left: 6px; font-style: normal; color: #ffe45e; }
 .gc-pmeta:empty { display: none; }
+
+/* Summary pills on each play: what happened in a word or three, right
+   aligned on the meta line; a first down or a flag rides as a second. */
+.gc-pills { margin-left: auto; display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px; }
+.gc-pills .gc-badge { margin-left: 0; white-space: nowrap; line-height: 1.3; }
+.gc-badge.gain { background: #39ff88; color: #031007; }
+.gc-badge.loss { background: #ff2079; color: #fff; }

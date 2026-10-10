@@ -4959,6 +4959,9 @@ async function openInsights(gameId) {
       const m = String(t).match(/^([\s\S]*?\bTOUCHDOWN\b)([\s\S]*)$/);
       if (!m) return t;
       const rest = m[2];
+      // A score wiped out by a flag keeps its whole text: the "NO PLAY"
+      // is the point.
+      if (/\bno play\b/i.test(rest)) return t;
       const tryRes = /two.?point|2.?pt/i.test(rest) ? (/fail|no good|incomplete|intercept/i.test(rest) ? "2PT FAILED" : /good|success|complete/i.test(rest) ? "2PT GOOD" : "")
         : /(kick|extra point|pat)[^.]*?(no good|blocked|missed)/i.test(rest) ? "PAT MISSED"
         : /(kick|extra point|pat)[^.]*?good/i.test(rest) ? "PAT GOOD" : "";
@@ -4968,30 +4971,52 @@ async function openInsights(gameId) {
     const isMarker = (p) => /^(end of|end quarter|end period|end of half|end of game|timeout|two-minute|official timeout|kickoff\b.*coin)/i.test(String(p.text || "").trim()) || /end period|end of half|timeout|end of game|coin toss/i.test(p.type?.text || "");
     // The scoring word in a play, gold, bold and underlined.
     const hiScore = (h) => h.replace(/\b(TOUCHDOWN|touchdown|for a TD|FIELD GOAL GOOD|field goal is good|FG GOOD|Field Goal GOOD|SAFETY|yd FG GOOD)\b/g, '<b class="gc-score">$1</b>');
+    // A summary pill on every play: what happened, in a word or three,
+    // so the log reads without parsing ESPN's sentence. "COMPLETE · 23
+    // YDS", "RUSH · 1 YD LOSS", "SACK · 7 YD LOSS", "PENALTY · OU 15 YDS",
+    // "TD CALLED BACK", "FG NO GOOD". A first down gets its own small pill,
+    // and a flag on a play that still counted rides as a second pill.
+    const yds = (n) => `${n} YD${n === 1 ? "" : "S"}`;
+    const yardsOf = (p, t) => {
+      const y = Number(p.statYardage);
+      if (p.statYardage != null && Number.isFinite(y)) return y;
+      if (/for no gain|no gain/i.test(t)) return 0;
+      const loss = t.match(/for a loss of (\d+)|for (\d+) (?:yds?|yards?) loss|loss of (\d+)/i);
+      if (loss) return -Number(loss[1] || loss[2] || loss[3]);
+      const g = t.match(/for (-?\d+) (?:yds?|yards?)/i);
+      return g ? Number(g[1]) : null;
+    };
     const badgeOf = (p) => {
       if (isMarker(p)) return null;
-      const t = `${p.type?.text || ""} ${p.text || ""}`;
-      // Badges only for points: a touchdown or a made field goal.
-      if (/touchdown|for a td\b/i.test(t) && !/overturned[^.]*no touchdown/i.test(t)) return ["TD", "td"];
-      if (/field goal.*\bgood\b|\bfg\b.*good/i.test(t) && !/no good|blocked|missed/i.test(t)) return ["FG", "td"];
-      if (/^\s*penalty\b|\bno play\b/i.test(String(p.text || "")) || /^penalty$/i.test(p.type?.text || "")) return ["FLAG", "flag"];
-      return null;
-      if (/touchdown|for a td\b/i.test(t)) return ["TD", "td"];
-      if (/intercept/i.test(t)) return ["INT", "to"];
-      if (/fumble/i.test(t) && /recover/i.test(t) && !/recovered by [^,]*\b(same|own)\b/i.test(t)) return ["FUM", "to"];
-      if (/field goal.*\bgood\b|\bfg\b.*good|kick is good/i.test(t) && !/extra point|kick\)/i.test(t)) return ["FG", "td"];
-      if (/no good|blocked|missed/i.test(t) && /field goal/i.test(t)) return ["NO GOOD", "to"];
-      if (/touchback/i.test(t)) return ["TB", "dim"];
-      if (/kickoff|kicks off/i.test(t)) return ["KO", "dim"];
-      if (/\bpunt/i.test(t)) return ["PUNT", "dim"];
-      if (/penalty/i.test(t)) return ["FLAG", "flag"];
-      if (/\bsack/i.test(t)) return ["SACK", "to"];
-      if (/incomplete/i.test(t)) return ["INC", "dim"];
-      const y = Number(p.statYardage);
-      const first = p.end?.down === 1 && p.start?.down > 0 && p.end?.team?.id && String(p.end.team.id) === String(p.start?.team?.id);
-      if (first) return [`1ST${Number.isFinite(y) && y ? ` +${y}` : ""}`, "first"];
-      if (Number.isFinite(y)) return [y > 0 ? `+${y}` : y < 0 ? `${y}` : "+0", y > 0 ? "gain" : y < 0 ? "loss" : "dim"];
-      return null;
+      const txt = String(p.text || ""), type = String(p.type?.text || ""), t = `${type} ${txt}`;
+      const pills = [];
+      const pen = txt.match(/PENALTY\s+([A-Z&.]{2,6})\b[^0-9]*?(\d+)\s*(?:yds?|yards?)/i);
+      const penText = pen ? `PENALTY · ${pen[1].toUpperCase()} ${yds(Number(pen[2]))}` : "PENALTY";
+      const noPlay = /\bno play\b/i.test(txt);
+      const td = /touchdown|for a td\b/i.test(t) && !/overturned[^.]*no touchdown/i.test(t);
+      const first = /1ST DOWN/i.test(txt) || (p.end?.down === 1 && p.start?.down > 0 && p.end?.team?.id != null && String(p.end.team.id) === String(p.start?.team?.id) && !/kickoff|punt/i.test(t));
+      const y = yardsOf(p, txt);
+      const fl = /declined/i.test(txt) ? ["FLAG DECLINED", "dim"] : /offsetting/i.test(txt) ? ["OFFSETTING FLAGS", "flag"] : null;
+      if (noPlay && td) return [["TD CALLED BACK", "to"], [penText, "flag"]];
+      if (noPlay || /^penalty$/i.test(type) || /^\s*penalty\b/i.test(txt)) return [fl || [`${penText}${noPlay ? " · NO PLAY" : ""}`, "flag"]];
+      if (/safety/i.test(t)) pills.push(["SAFETY", "td"]);
+      else if (td) pills.push(["TOUCHDOWN", "td"]);
+      else if (/field goal|\bfg\b/i.test(t)) pills.push(/blocked/i.test(t) ? ["FG BLOCKED", "to"] : /no good|missed|wide (left|right)/i.test(t) ? ["FG NO GOOD", "to"] : ["FG GOOD", "td"]);
+      else if (/two.?point|2.?pt conversion/i.test(t)) pills.push(/fail|no good|incomplete|intercept/i.test(t) ? ["2PT FAILED", "to"] : ["2PT GOOD", "td"]);
+      else if (/extra point|kick attempt|\bpat\b/i.test(t)) pills.push(/no good|blocked|missed/i.test(t) ? ["PAT MISSED", "to"] : ["PAT GOOD", "dim"]);
+      else if (/intercept/i.test(t)) pills.push(["INTERCEPTED", "to"]);
+      else if (/fumble/i.test(t)) pills.push(/opponent/i.test(type) || (p.end?.team?.id != null && p.start?.team?.id != null && String(p.end.team.id) !== String(p.start.team.id)) ? ["FUMBLE LOST", "to"] : ["FUMBLE · KEPT", "dim"]);
+      else if (/\bsack/i.test(t)) pills.push([y != null && y < 0 ? `SACK · ${yds(-y)} LOSS` : "SACK", "loss"]);
+      else if (/\bpunt/i.test(t)) { const n = txt.match(/punts?\s+(?:for\s+)?(\d+)\s*(?:yds?|yards?)/i); pills.push([`PUNT${n ? ` · ${yds(Number(n[1]))}` : ""}${/touchback/i.test(txt) ? " · TOUCHBACK" : /fair catch/i.test(txt) ? " · FAIR CATCH" : /blocked/i.test(txt) ? " · BLOCKED" : ""}`, "dim"]); }
+      else if (/kickoff|kicks off|on-?side/i.test(t)) pills.push([/on-?side/i.test(t) ? "ONSIDE KICK" : /touchback/i.test(txt) ? "KICKOFF · TOUCHBACK" : (() => { const r = txt.match(/return(?:ed)?\s+(?:for\s+)?(\d+)\s*(?:yds?|yards?)/i); return r ? `KICKOFF · ${yds(Number(r[1]))} RETURN` : "KICKOFF"; })(), "dim"]);
+      else if (/kneel/i.test(t)) pills.push(["KNEEL", "dim"]);
+      else if (/incomplete/i.test(t)) pills.push(["INCOMPLETE", "dim"]);
+      else if (/pass|complete/i.test(t)) pills.push(y == null ? ["COMPLETE", "gain"] : y < 0 ? [`COMPLETE · ${yds(-y)} LOSS`, "loss"] : [`COMPLETE · ${yds(y)}`, "gain"]);
+      else if (/rush|run|scramble/i.test(t)) pills.push(y == null ? ["RUSH", "gain"] : y < 0 ? [`RUSH · ${yds(-y)} LOSS`, "loss"] : y === 0 ? ["RUSH · NO GAIN", "dim"] : [`RUSH · ${yds(y)}`, "gain"]);
+      else if (y != null) pills.push([y < 0 ? `${yds(-y)} LOSS` : `${yds(y)}`, y < 0 ? "loss" : "gain"]);
+      if (first && !td) pills.push(["1ST DOWN", "first"]);
+      if (/penalty/i.test(txt) && !noPlay && !td) pills.push(fl || [penText, "flag"]);
+      return pills.length ? pills : null;
     };
     const secsOf = (c) => { const mm = String(c || "").match(/^(\d{1,2}):(\d{2})$/); return mm ? Number(mm[1]) * 60 + Number(mm[2]) : null; };
     // The current and previous drive can share a play (a kickoff, a score),
@@ -5060,7 +5085,7 @@ async function openInsights(gameId) {
     const fresh = !!real[0] && !typed.some((t) => samePlay(t, real[0].text));
     for (const p of plays) if (!typed.some((t) => samePlay(t, p.text))) typed.push(p.text);
     if (typed.length > 60) typed.splice(0, typed.length - 60);
-    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<b class="gc-badge ${p.badge[1]}">${esc(p.badge[0])}</b>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
+    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<span class="gc-pills">${p.badge.map(([bt, bc]) => `<b class="gc-badge ${bc}">${esc(bt)}</b>`).join("")}</span>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
     const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
