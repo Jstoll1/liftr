@@ -3184,9 +3184,60 @@ function timeLeftFrac(l) {
   const clk = (Number.isFinite(m) ? m : 15) * 60 + (Number.isFinite(sec) ? sec : 0);
   return Math.min(1, Math.max(0.01, ((4 - p) * 900 + clk) / 3600));
 }
+// The scoring engine below, solved exactly instead of sampled: the chance
+// the home side wins from margin m (home minus away) with lam scores left,
+// each going home with probability p, worth 7 (60%) or 3 (40%). Level at
+// the end goes to one more score, home with probability p.
+function engineHomeWin(lam, p, m) {
+  let nmax = 0, term = Math.exp(-lam), cdf = term;
+  while (cdf < 1 - 1e-9 && nmax < 60) { nmax++; term *= lam / nmax; cdf += term; }
+  const R = 7 * nmax + Math.abs(m) + 1, W = 2 * R + 1;
+  let cur = new Float64Array(W), nxt = new Float64Array(W);
+  cur[R + m] = 1;
+  const steps = [[7, p * 0.6], [3, p * 0.4], [-3, (1 - p) * 0.4], [-7, (1 - p) * 0.6]];
+  let win = 0, tie = 0, pn = Math.exp(-lam);
+  for (let n = 0; n <= nmax; n++) {
+    let w = 0;
+    for (let d = R + 1; d < W; d++) w += cur[d];
+    win += pn * w; tie += pn * cur[R];
+    nxt.fill(0);
+    for (let d = 0; d < W; d++) { const v = cur[d]; if (!v) continue; for (const [st, q] of steps) { const e = d + st; if (e >= 0 && e < W) nxt[e] += v * q; } }
+    [cur, nxt] = [nxt, cur];
+    pn *= lam / (n + 1);
+  }
+  return win + tie * p;
+}
+// Live games: tune the engine to ESPN's live win probability, which knows
+// what a scoreboard does not (who has the ball, where, the timeouts). The
+// split of the remaining scores is solved so the engine's chance of the
+// home side winning equals ESPN's. When even a 97/3 split cannot get
+// there (a team on the goal line late), the market is saying a score is
+// likelier than the clock alone implies, so the scores left rise until it
+// does. Before kickoff, and whenever ESPN has no number, the line rules.
+const calibrateMemo = new Map();
+function calibrateLive(lam, m, target) {
+  const key = `${lam.toFixed(4)}|${m}|${target.toFixed(4)}`;
+  if (calibrateMemo.has(key)) return calibrateMemo.get(key);
+  if (calibrateMemo.size > 200) calibrateMemo.clear();
+  const out = calibrateLiveRaw(lam, m, target);
+  calibrateMemo.set(key, out);
+  return out;
+}
+function calibrateLiveRaw(lam, m, target) {
+  const t = Math.min(0.995, Math.max(0.005, target));
+  const LO = 0.03, HI = 0.97;
+  const solveP = (L) => { let a = LO, b = HI; for (let i = 0; i < 40; i++) { const mid = (a + b) / 2; if (engineHomeWin(L, mid, m) < t) a = mid; else b = mid; } return (a + b) / 2; };
+  if (engineHomeWin(lam, LO, m) <= t && t <= engineHomeWin(lam, HI, m)) return { lam, p: solveP(lam) };
+  const pb = t > engineHomeWin(lam, HI, m) ? HI : LO;
+  const reach = (L) => pb === HI ? engineHomeWin(L, HI, m) >= t : engineHomeWin(L, LO, m) <= t;
+  let a = lam, b = lam + 8;
+  if (!reach(b)) return { lam: b, p: pb };
+  for (let i = 0; i < 30; i++) { const mid = (a + b) / 2; if (reach(mid)) b = mid; else a = mid; }
+  return { lam: b, p: solveP(b) };
+}
 let winChanceMemo = { key: "", out: null };
 function weekWinChances(cloudPicks, results, live) {
-  const key = JSON.stringify([GAMES.map((g) => { const l = live[g.id]; return [g.id, results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : l ? `${l.state}${l.awayScore}-${l.homeScore}@${l.period}${l.clock}` : ""]; }), MANAGERS.map((n) => JSON.stringify(cloudPicks[n]?.picks || {}) + (cloudPicks[n]?.tiebreaker ?? ""))]);
+  const key = JSON.stringify([GAMES.map((g) => { const l = live[g.id]; return [g.id, results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : l ? `${l.state}${l.awayScore}-${l.homeScore}@${l.period}${l.clock}~${l.winProb ? Math.round(l.winProb.home * 10) : ""}` : ""]; }), MANAGERS.map((n) => JSON.stringify(cloudPicks[n]?.picks || {}) + (cloudPicks[n]?.tiebreaker ?? ""))]);
   if (winChanceMemo.key === key) return winChanceMemo.out;
   const N = 5000;
   const tbGame = tiebreakerGameOf();
@@ -3210,7 +3261,10 @@ function weekWinChances(cloudPicks, results, live) {
     const ou = odds?.overUnder ?? 52;
     const lam = Math.max(0, (ou * rem) / 5.4);
     const pHome = Math.min(0.95, Math.max(0.05, 0.5 + homeEdge / (2 * Math.max(30, ou))));
-    return { g, rem, lam, pHome, curA: inGame ? (l.awayScore || 0) : 0, curH: inGame ? (l.homeScore || 0) : 0 };
+    const curA = inGame ? (l.awayScore || 0) : 0, curH = inGame ? (l.homeScore || 0) : 0;
+    const espnWp = inGame && l.winProb && Number.isFinite(l.winProb.home) ? l.winProb.home / 100 : null;
+    if (espnWp != null) { const c = calibrateLive(lam, curH - curA, espnWp); return { g, rem, lam: c.lam, pHome: c.p, curA, curH, espn: espnWp }; }
+    return { g, rem, lam, pHome, curA, curH };
   });
   // Each manager's pick on each game, with what it pays.
   const picks = MANAGERS.map((n) => GAMES.map((g) => { const p = cloudPicks[n]?.picks?.[g.id]; return p ? { team: p.team, mode: p.mode, pts: pointValue(g, p.team, p.mode) } : null; }));
@@ -3453,7 +3507,7 @@ function openPlayerChance(name) {
       <ul class="wpp-why">${why.map((w) => `<li>${w}</li>`).join("")}</ul>
       <div class="wpp-math"><span><b>${pc(wd.top)}</b>finish with most pts</span><span><b>${pc(wd.tb)}</b>win via tiebreak</span><span><b>±${(wd.moe * 100).toFixed(1)}%</b>sampling range</span></div>
       ${finHtml ? `<div class="wpx-h">WHERE YOU FINISH</div><div class="wpp-fin"><div class="wpp-fin-h"><span>PTS</span><span>HOW OFTEN YOU END THERE</span><span>THEN WIN</span></div>${finHtml}</div>` : ""}
-      <div class="wpp-foot">From ${wd.runs.toLocaleString()} simulated finishes of this week, using live scores and the betting lines. Sampling range is the 95% band. Tap ? on WIN% for the method.</div>
+      <div class="wpp-foot">From ${wd.runs.toLocaleString()} simulated finishes of this week, using live scores, ESPN's live win probability and the betting lines. Sampling range is the 95% band. Tap ? on WIN% for the method.</div>
     </details>
   </div>`;
   m.classList.remove("hidden");
@@ -3477,12 +3531,12 @@ function openWinChanceExplainer() {
       <ol class="wpx-steps">
         <li><i>1</i><div><b>LOCK WHAT'S DONE</b><span>Final games count as they ended. Live games start from the real score and clock.</span></div></li>
         <li><i>2</i><div><b>PLAY OUT THE REST</b><span>Each game is played as scoring drives: about one score per 5.4 points of the over/under still to play. 60% are touchdowns, 40% field goals.</span></div></li>
-        <li><i>3</i><div><b>FOLLOW THE LINE</b><span>Each score goes to the favourite a little more often than the underdog, so on average the betting line holds.</span></div></li>
+        <li><i>3</i><div><b>FOLLOW THE MARKET</b><span>Before kickoff each score goes to the favourite a little more often, so on average the betting line holds. Once a game is live, the split is tuned until it matches ESPN's live win probability, which knows who has the ball and where.</span></div></li>
         <li><i>4</i><div><b>SCORE EVERY CARD</b><span>Your real picks and point values. Ties go to the tiebreaker; an exact tie splits the win.</span></div></li>
         <li><i>5</i><div><b>COUNT THE WINS</b><span>Finish 1st in 1,500 of 5,000 runs and you read 30%. Everyone adds up to 100%.</span></div></li>
       </ol>
       <div class="wpx-h">WHAT MOVES YOUR %</div>
-      <div class="wpx-chips"><span>YOUR MAX POINTS</span><span>LIVE SCORES</span><span>TIME LEFT</span><span>THE LINE</span><span>EVERYONE ELSE'S PICKS</span></div>
+      <div class="wpx-chips"><span>YOUR MAX POINTS</span><span>LIVE SCORES</span><span>TIME LEFT</span><span>THE LINE</span><span>ESPN WIN %</span><span>EVERYONE ELSE'S PICKS</span></div>
       <div class="wpx-ex"><b>EXAMPLE</b> Favourite up 7 on a 7.5 line. With 8:00 left they cover about <em>39%</em> of the time. With 1:00 left, about <em>8%</em>: they'd need one more score.</div>
       <div class="wpx-foot">Can't catch the leader? You read 0%. Tap your row to see the pick that matters most for you.</div>
     </div>`;
