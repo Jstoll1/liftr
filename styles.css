@@ -5590,3 +5590,13 @@ html.vp-gap { --nav-h: 63px; }
 .bug-rz { flex: none; align-self: center; margin-left: 3px; padding: 1px 2px 0; border-radius: 2px; background: rgba(255, 45, 85, .18); color: #ff5c7a; font-family: 'Press Start 2P', monospace; font-size: 5px; font-weight: normal; letter-spacing: .04em; line-height: 1.2; }
 @keyframes bugrz { 50% { box-shadow: 0 0 0 1px #3a1a05, 0 0 2px rgba(255, 45, 85, .4); } }
 @media (prefers-reduced-motion: reduce) { .bug-ball.rz { animation: none; } }
+
+/* Play log grouped by possession: a header with the team's logo above
+   each run of plays by one side. */
+.gc-log .gc-plays li.gc-drv { display: flex; align-items: center; gap: 6px; padding: 8px 0 2px; border-top: 1px solid rgba(57, 255, 136, .28); }
+.gc-log .gc-plays li.gc-drv:first-child { border-top: 0; padding-top: 2px; }
+.gc-log .gc-plays li.gc-drv img.gc-dlogo { width: 14px; height: 14px; object-fit: contain; }
+.gc-log .gc-plays li.gc-drv span { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: #b8ffd2; }
+.gc-log .gc-plays li.gc-drv + li { border-top: 0; }
+.gc-psc { margin-left: 6px; font-style: normal; color: #ffe45e; }
+.gc-pmeta:empty { display: none; }
