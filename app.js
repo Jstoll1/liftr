@@ -450,7 +450,12 @@ function parseEspnEvents(events) {
 
 function possFromLastPlay(lp, awayId, homeId, st) {
   if (!lp || st?.state !== "in" || st?.completed) return null;
-  if (lp.end?.team?.id != null) return Number(lp.end.team.id);
+  // A timeout names the team that called it as the "end" team, so for
+  // stoppages the "start" team, the offence, is the one with the ball.
+  const pause = /timeout|end period|end of (half|game)|two.?minute|official/i.test(String(lp.type?.text || ""));
+  const endTeam = pause ? lp.start?.team?.id : lp.end?.team?.id;
+  if (endTeam != null) return Number(endTeam);
+  if (pause) return null;
   const t = lp.team?.id != null ? Number(lp.team.id) : null;
   if (t == null) return null;
   const flip = /punt|kickoff|interception|fumble recovery \(opp|turnover on downs|blocked (punt|field goal)|missed field goal|safety/i.test(String(lp.type?.text || ""));
@@ -4822,7 +4827,8 @@ async function openInsights(gameId) {
     // often drops it) the team holding it after the game page's newest
     // play, else the team on the current drive.
     const curPlays = summaryRaw?.drives?.current?.plays || [];
-    const lastEnd = curPlays.length ? curPlays[curPlays.length - 1]?.end?.team?.id : null;
+    const lastP = curPlays.length ? curPlays[curPlays.length - 1] : null;
+    const lastEnd = !lastP ? null : /timeout|end period|end of (half|game)|two.?minute|official/i.test(String(lastP.type?.text || "")) ? lastP.start?.team?.id : lastP.end?.team?.id;
     const possId = sit.possessionId ?? summaryRaw?.situation?.possession ?? lastEnd ?? summaryRaw?.drives?.current?.team?.id ?? null;
     const possA = !atBreak && possId != null && Number(possId) === Number(game.awayId);
     const possH = !atBreak && possId != null && Number(possId) === Number(game.homeId);

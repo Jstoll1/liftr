@@ -2149,7 +2149,12 @@ async function liveGames(env, week = null) {
         // live Texas game at 9:36 of the 3rd), so fall back to who holds
         // the ball at the end of the last play.
         const lp = comp.situation?.lastPlay;
-        const lpEnd = lp?.end?.team?.id != null ? Number(lp.end.team.id) : null;
+        // A timeout or other stoppage names the team that called it as the
+        // "end" team (an Oklahoma timeout read as Oklahoma's ball while
+        // Texas had it), so for those the "start" team, the offence, wins.
+        const lpPause = /timeout|end period|end of (half|game)|two.?minute|official/i.test(String(lp?.type?.text || ""));
+        const lpEndRaw = lpPause ? lp?.start?.team?.id : lp?.end?.team?.id;
+        const lpEnd = lpEndRaw != null ? Number(lpEndRaw) : null;
         const lpTeam = lp?.team?.id != null ? Number(lp.team.id) : null;
         const lpFlip = /punt|kickoff|interception|fumble recovery \(opp|turnover on downs|blocked (punt|field goal)|missed field goal|safety/i.test(String(lp?.type?.text || ""));
         const other = (id) => id === Number(away?.team?.id) ? Number(home?.team?.id) : id === Number(home?.team?.id) ? Number(away?.team?.id) : null;
@@ -2157,7 +2162,7 @@ async function liveGames(env, week = null) {
         const possId = comp.situation?.possession != null ? Number(comp.situation.possession)
           : !live ? null
           : lpEnd != null ? lpEnd
-          : lpTeam != null ? (lpFlip ? other(lpTeam) : lpTeam) : null;
+          : lpTeam != null && !lpPause ? (lpFlip ? other(lpTeam) : lpTeam) : null;
         const possSrc = comp.situation?.possession != null ? "espn" : possId == null ? null : lpEnd != null ? "lastPlay.end" : "lastPlay.team";
         const possession = possId === null ? null
           : possId === Number(away?.team?.id) ? "away"
