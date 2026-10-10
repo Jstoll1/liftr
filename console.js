@@ -32,7 +32,8 @@
     return res.json();
   }
 
-  let tab = "grid";
+  // Opens on who has been in the app, most recent first.
+  let tab = "logins";
 
   // --- Pick changes ---------------------------------------------------
   async function renderPicks() {
@@ -137,10 +138,11 @@
       const { visits } = await get("/visit");
       const all = Object.entries(visits || {}).flatMap(([m, list]) => list.map((v) => ({ m, ...v })));
       const fmt = (t) => new Date(t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
       const day = Date.now() - 86400000;
       const rows = OWNERS.map((n) => { const l = visits?.[n] || []; return { n, last: l[0]?.at || 0, today: l.filter((v) => v.at > day).length }; }).sort((a, b) => b.last - a.last);
-      opens = `<div class="con-summary"><span>APP OPENS</span><span>${rows.filter((r) => r.today).length} of ${OWNERS.length} in the last 24h</span></div>`
-        + rows.map((r) => `<div class="con-row${r.last ? "" : " warn"}"><div class="con-row-head"><span><b>${esc(r.n)}</b></span><span>${r.last ? fmt(r.last) : "never"}</span></div>${r.today ? `<div class="con-line">${r.today} open${r.today === 1 ? "" : "s"} in the last 24h</div>` : ""}</div>`).join("")
+      opens = `<div class="con-summary"><span>LAST IN THE APP · MOST RECENT FIRST</span><span>${rows.filter((r) => r.today).length} of ${OWNERS.length} in the last 24h</span></div>`
+        + rows.map((r) => `<div class="con-row${r.last ? "" : " warn"}"><div class="con-row-head"><span><b>${esc(r.n)}</b></span><span>${r.last ? `${fmt(r.last)} · ${ago(r.last)}` : "never"}</span></div>${r.today ? `<div class="con-line">${r.today} open${r.today === 1 ? "" : "s"} in the last 24h</div>` : ""}</div>`).join("")
         + `<details class="con-more"><summary>Every open (${all.length})</summary>${all.sort((a, b) => b.at - a.at).slice(0, 200).map((v) => `<div class="con-line">${fmt(v.at)} · <b>${esc(v.m)}</b> · ${v.app === "home" ? "home-screen app" : "browser"}${v.screen ? ` · ${esc(v.screen)}` : ""}</div>`).join("")}</details>`;
     } catch {}
     const { events } = await get("/auth-log?format=json");
@@ -492,6 +494,9 @@
 
   // app.js calls this each time the gesture opens the console.
   window.showAppConsole = () => {
+    // Every entry lands on Logins, whatever tab was open last time.
+    tab = "logins";
+    el("console-tabs").querySelectorAll(".console-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === "logins"));
     root.classList.remove("hidden");
     document.body.classList.add("admin-open");
     root.scrollTop = 0;
