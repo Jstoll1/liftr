@@ -1,2 +1,2 @@
-/story?week=5
-/story?week=4
+/picks?week=6
+/games?week=6
