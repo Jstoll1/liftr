@@ -1,2 +1,2 @@
 /live
-/live?t=2
+/live?fix=timeout
