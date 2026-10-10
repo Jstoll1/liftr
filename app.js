@@ -5540,10 +5540,11 @@ async function openInsights(gameId) {
 // scrolling the content still works; the card follows the finger and
 // snaps back if the pull is short.
 function swipeToClose(modal, card, close) {
-  let y0 = null, dy = 0;
+  let y0 = null, dy = 0, t0 = 0;
+  modal.dataset.swipe = "own";
   modal.addEventListener("touchstart", (e) => {
     if (modal.scrollTop > 2 || e.touches.length !== 1 || e.target.closest("select")) { y0 = null; return; }
-    y0 = e.touches[0].clientY; dy = 0;
+    y0 = e.touches[0].clientY; dy = 0; t0 = Date.now();
     if (card) card.style.transition = "none";
   }, { passive: true });
   modal.addEventListener("touchmove", (e) => {
@@ -5555,11 +5556,55 @@ function swipeToClose(modal, card, close) {
   modal.addEventListener("touchend", () => {
     if (y0 === null) return;
     if (card) card.style.transition = "transform .2s ease, opacity .2s ease";
-    if (dy > 110) close();
+    if (dy > 110 || (dy > 50 && Date.now() - t0 < 250)) close();
     if (card) { card.style.transform = ""; card.style.opacity = ""; }
     y0 = null; dy = 0;
   });
 }
+// Every other window that has a way out swipes down to close too: the
+// arcade popups, the grid check, the rules and the Game Box. A swipe does
+// exactly what that window's own close does (its ✕, or a tap outside), so
+// any cleanup still runs. Windows that must be answered (sign in, the
+// question of the week, admin keys) have no way out and are left alone.
+// Only from the top: if anything under the finger is scrolled down, the
+// pull scrolls it back up instead; a sideways drag never closes.
+(() => {
+  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #sim-modal, #gridcard-modal";
+  const CLOSE = '.wpx-x, [data-act="close"], #rules-close-btn, [aria-label="Close"]';
+  let st = null;
+  const reset = (card) => { if (card) { card.style.transform = ""; card.style.opacity = ""; } };
+  document.addEventListener("touchstart", (e) => {
+    st = null;
+    if (e.touches.length !== 1) return;
+    const ov = e.target.closest?.(SEL);
+    if (!ov || ov.dataset.swipe === "own" || ov.classList.contains("hidden")) return;
+    if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+    for (let el = e.target; el && el !== document.body; el = el.parentElement) { if (el.scrollTop > 2) return; if (el === ov) break; }
+    const card = [...ov.children].find((c) => !c.matches(CLOSE)) || null;
+    st = { ov, card, x0: e.touches[0].clientX, y0: e.touches[0].clientY, t0: Date.now(), dy: 0, dir: null };
+    if (card) card.style.transition = "none";
+  }, { passive: true, capture: true });
+  document.addEventListener("touchmove", (e) => {
+    if (!st) return;
+    const dx = e.touches[0].clientX - st.x0, dy = e.touches[0].clientY - st.y0;
+    if (!st.dir && Math.hypot(dx, dy) > 8) st.dir = Math.abs(dy) > Math.abs(dx) && dy > 0 ? "down" : "other";
+    if (st.dir !== "down") { reset(st.card); if (st.dir === "other") st = null; return; }
+    st.dy = Math.max(0, dy);
+    if (st.card) { st.card.style.transform = `translateY(${st.dy * 0.85}px)`; st.card.style.opacity = String(Math.max(0.4, 1 - st.dy / 500)); }
+  }, { passive: true, capture: true });
+  const end = () => {
+    if (!st) return;
+    const { ov, card, dy, t0 } = st; st = null;
+    if (card) card.style.transition = "transform .2s ease, opacity .2s ease";
+    if (dy > 110 || (dy > 50 && Date.now() - t0 < 250)) {
+      const btn = ov.querySelector(CLOSE);
+      if (btn) btn.click(); else ov.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    }
+    reset(card);
+  };
+  document.addEventListener("touchend", end, { capture: true });
+  document.addEventListener("touchcancel", end, { capture: true });
+})();
 (() => {
   const m = document.getElementById("h2h-modal");
   if (m) swipeToClose(m, m.querySelector(".h2h-card"), () => m.classList.add("hidden"));
