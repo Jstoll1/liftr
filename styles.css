@@ -5578,3 +5578,5 @@ html.vp-gap { --nav-h: 63px; }
 .wpx-card > .wpx-x { position: sticky; top: -8px; float: right; margin: -8px -6px -26px 0; }
 .wpx-overlay { padding: max(16px, calc(env(safe-area-inset-top) + 8px)) 16px max(16px, calc(env(safe-area-inset-bottom) + 8px)); }
 .wpx-card, .wpx-card.wpp { max-height: 100%; }
+/* Finishes that come up in under 2% of runs: shown, but quieter. */
+.wpp-fin-r.thin { opacity: .55; }

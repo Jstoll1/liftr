@@ -3403,21 +3403,19 @@ function openPlayerChance(name) {
   const tbGuess = picks[name]?.tiebreaker;
   if (tb && tbGuess && leaders.length > 1 && leaders.includes(name)) why.push(`Ties go to the tiebreaker: you guessed ${esc(tbGuess)} for ${esc(tb.awayShort)} at ${esc(tb.homeShort)}.`);
   const games = (wd.games || []).filter((x) => x.gap >= 0.005).slice(0, 3).map((x) => `<li><span>${esc(short(x.game, x.pick.team))} ${esc(terms(x.game, x.pick))}</span><b class="up">${pc(x.ifHit)}</b><b class="dn">${pc(x.ifMiss)}</b></li>`).join("");
-  // Most likely finishes, shown in points order; the bar is how often.
-  const fins = (wd.finals || []).filter((f) => f.p >= 0.03).sort((x, y) => y.p - x.p).slice(0, 5).sort((x, y) => x.pts - y.pts);
+  // Every point total still reachable, highest first; the bar is how
+  // often. Nothing folded away, so the column adds to 100%.
+  const fins = (wd.finals || []).filter((f) => f.p > 0).sort((x, y) => y.pts - x.pts);
   const fmax = Math.max(...fins.map((f) => f.p), 0.01);
-  // Everything not shown folds into one row, so the column adds to 100%.
-  const restP = Math.max(0, 1 - fins.reduce((a, f) => a + f.p, 0));
-  const shownSet = new Set(fins.map((f) => f.pts));
-  const rest = (wd.finals || []).filter((f) => !shownSet.has(f.pts));
-  const restWin = restP > 0 ? rest.reduce((a, f) => a + f.p * f.win, 0) / restP : 0;
   // More points can win less often: the results that get you there tend to
-  // lift the rest of the room too. Say so when the table shows it.
-  const dips = fins.some((f, i) => i > 0 && f.win + 0.02 < fins[i - 1].win);
+  // lift the rest of the room too. Say so when the table shows it (rows
+  // under 2% of runs are too thin to count).
+  const solid = fins.filter((f) => f.p >= 0.02);
+  const dips = solid.some((f, i) => i < solid.length - 1 && f.win + 0.02 < solid[i + 1].win);
   const backfire = (wd.games || []).filter((x) => x.ifHit + 0.01 < x.ifMiss);
   if (dips) why.push(`Finishing higher doesn't always help: your big totals come from results that lift others more (see the table).`);
   if (backfire.length) why.push(`${backfire.map((x) => `<b>${esc(short(x.game, x.pick.team))}</b>`).join(", ")} hitting actually <em>lowers</em> your chance: rivals ride the same result for more points.`);
-  const finHtml = fins.map((f) => `<div class="wpp-fin-r${f.win >= 0.5 ? " good" : ""}"><b>${f.pts}</b><span class="wpp-bar"><i style="width:${(f.p / fmax * 100).toFixed(0)}%"></i><em>${pc(f.p)}</em></span><strong>${pc(f.win)}</strong></div>`).join("") + (restP >= 0.005 ? `<div class="wpp-fin-r rest"><b>other</b><span class="wpp-bar"><i style="width:${Math.min(100, restP / fmax * 100).toFixed(0)}%"></i><em>${pc(restP)}</em></span><strong>${pc(restWin)}</strong></div>` : "");
+  const finHtml = fins.map((f) => `<div class="wpp-fin-r${f.win >= 0.5 ? " good" : ""}${f.p < 0.02 ? " thin" : ""}"><b>${f.pts}</b><span class="wpp-bar"><i style="width:${Math.max(2, f.p / fmax * 100).toFixed(0)}%"></i><em>${pc(f.p)}</em></span><strong>${pc(f.win)}</strong></div>`).join("");
   const threatHtml = (wd.threats || []).map((t) => `<span class="wpp-th"><span class="pick-chip-av" style="--accent:${accentFor(t.name)}">${esc(avatarOverrides[t.name] || shown(t.name)[0])}</span>${esc(shown(t.name))}<b>${pc(t.p)}</b></span>`).join("");
   // You versus the one player who beats you most often: every game left,
   // what each of you has on it, and the best that game can do for you
