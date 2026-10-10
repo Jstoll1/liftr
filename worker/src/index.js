@@ -2157,6 +2157,7 @@ async function liveGames(env, week = null) {
           eventId: event.id || null,
           odds: parseOdds(comp),
           possession,
+          redZone: possession ? !!comp.situation?.isRedZone : false,
           awayRank: rankOf(away),
           homeRank: rankOf(home),
           state: statusType.state || "pre", // "pre" | "in" | "post"

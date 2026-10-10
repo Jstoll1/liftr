@@ -2609,13 +2609,23 @@ function renderLiveScores(live, cloudPicks) {
       const homeLead = hasScores && g.homeScore > g.awayScore;
       const awayFav = game.favorite === game.away;
 
-      const row = (team, short, id, score, lead, fav, pop, rank) => `
+      // Who has the ball, live only and not at a break (the last drive's
+      // team means nothing at halftime). Inside the 20 the ball glows and
+      // an RZ tag rides with it. Red stays off the card's ring, which in
+      // this app means a miss, so the red zone lives on the ball itself.
+      const brkNow = /^(HALF|END)/i.test(String(statusText)) || /halftime|end of/i.test(String(g?.detail || ""));
+      const possSide = !isLive || brkNow ? null
+        : g.situation?.possessionId != null ? (Number(g.situation.possessionId) === Number(game.awayId) ? "away" : Number(g.situation.possessionId) === Number(game.homeId) ? "home" : null)
+        : g.possession || null;
+      const inRz = !!possSide && !!(g.situation?.isRedZone ?? g.redZone);
+      const ballHtml = (side) => possSide === side ? `<i class="bug-ball${inRz ? " rz" : ""}" title="${inRz ? "Has the ball in the red zone" : "Has the ball"}"></i>${inRz ? `<b class="bug-rz">RZ</b>` : ""}` : "";
+      const row = (team, short, id, score, lead, fav, pop, rank, side) => `
         <div class="bug-row ${lead ? "leading" : ""} ${myPick && myPick.team === team ? "mine" : ""}">
           <span class="bug-mark">
             <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
             ${rankBadge(rank)}
           </span>
-          <span class="bug-team"><span class="tm-nm">${short.length > 12 ? short.replace(/^(South|North|East|West|Central)\s/, (m, d) => d[0] + " ") : short}</span></span>
+          <span class="bug-team"><span class="tm-nm">${short.length > 12 ? short.replace(/^(South|North|East|West|Central)\s/, (m, d) => d[0] + " ") : short}</span>${ballHtml(side)}</span>
           ${fav ? `<span class="bug-fav">-${game.spread}</span>` : `<span class="bug-fav dog"></span>`}
           <span class="bug-score ${pop ? "pop" : ""}">${score}</span>
         </div>`;
@@ -2664,8 +2674,8 @@ function renderLiveScores(live, cloudPicks) {
             <span class="bug-status">${statusText}</span>${tvTag}
             ${myPill}
           </div>
-          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop, feed?.awayRank ?? null)}
-          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop, feed?.homeRank ?? null)}
+          ${row(game.away, game.awayShort, game.awayId, awayScore, awayLead, awayFav, awayPop, feed?.awayRank ?? null, "away")}
+          ${row(game.home, game.homeShort, game.homeId, homeScore, homeLead, !awayFav, homePop, feed?.homeRank ?? null, "home")}
         </div>
       `;
     })

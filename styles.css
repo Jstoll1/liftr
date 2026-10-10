@@ -5580,3 +5580,13 @@ html.vp-gap { --nav-h: 63px; }
 .wpx-card, .wpx-card.wpp { max-height: 100%; }
 /* Finishes that come up in under 2% of runs: shown, but quieter. */
 .wpp-fin-r.thin { opacity: .55; }
+
+/* Possession on the live scoreboard cards: a small football after the
+   team with the ball. In the red zone it glows red and an RZ tag rides
+   with it; the card's ring stays as it is (red there means a miss). */
+.bug-ball { flex: none; align-self: center; position: relative; display: inline-block; width: 10px; height: 6px; margin-left: 4px; border-radius: 50%; background: #8b4513; box-shadow: 0 0 0 1px #3a1a05, 0 0 5px rgba(255, 228, 94, .5); }
+.bug-ball::after { content: ""; position: absolute; left: 3px; right: 3px; top: 2.5px; height: 1px; background: #fff; }
+.bug-ball.rz { box-shadow: 0 0 0 1px #3a1a05, 0 0 6px rgba(255, 45, 85, .95); animation: bugrz 1.1s steps(2, start) infinite; }
+.bug-rz { flex: none; align-self: center; margin-left: 3px; padding: 1px 2px 0; border-radius: 2px; background: rgba(255, 45, 85, .18); color: #ff5c7a; font-family: 'Press Start 2P', monospace; font-size: 5px; font-weight: normal; letter-spacing: .04em; line-height: 1.2; }
+@keyframes bugrz { 50% { box-shadow: 0 0 0 1px #3a1a05, 0 0 2px rgba(255, 45, 85, .4); } }
+@media (prefers-reduced-motion: reduce) { .bug-ball.rz { animation: none; } }
