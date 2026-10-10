@@ -5554,3 +5554,17 @@ html.vp-gap { --nav-h: 63px; }
 .wpp-verdict b { color: var(--neon-cyan); }
 .wpp-verdict.small { font-size: 12px; padding: 6px 8px; }
 .wpp-cap { font-size: 11px; color: var(--text-dim); margin: -2px 0 4px; }
+
+/* Play log milestones: quarter ends, halftime, two minute warning. An
+   amber banner with rules either side, so they read as breaks, not plays. */
+.gc-log .gc-plays li.gc-mark.ms { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.gc-log .gc-plays li.gc-mark.ms::before, .gc-log .gc-plays li.gc-mark.ms::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 210, 63, .55), transparent); }
+.gc-log .gc-plays li.gc-mark.ms span { font-size: 7px; color: #ffd23f; text-shadow: 0 0 6px rgba(255, 210, 63, .45); white-space: nowrap; }
+.gc-log .gc-plays li.gc-mark.ms span::before, .gc-log .gc-plays li.gc-mark.ms span::after { content: " ▸ "; color: rgba(255, 210, 63, .6); }
+.gc-log .gc-plays li.gc-mark.ms span::after { content: " ◂ "; }
+/* Possession football beside the team name, out of flow so the header
+   stays symmetric. */
+.gc-cab .gc-tn { position: relative; }
+.gc-cab .gc-pball.gc-pfloat { position: absolute; top: 50%; margin-top: -3.5px; }
+.gc-cab .gc-t.a .gc-pball.gc-pfloat { left: calc(100% + 5px); }
+.gc-cab .gc-t.h .gc-pball.gc-pfloat { right: calc(100% + 5px); }

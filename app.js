@@ -4744,8 +4744,14 @@ async function openInsights(gameId) {
     const colorOf = (id, fb) => { const c = sc.find((x) => Number(x.team?.id) === Number(id))?.team?.color; return c ? `#${c}` : fb || null; };
     const aCol = colorOf(game.awayId, lv.awayColor) || "#05d9e8", hCol = colorOf(game.homeId, lv.homeColor) || "#ff2079";
     const atBreak = /^(HALF|END \d)/i.test(shortStatus(lv.detail || "")) || /halftime|end of/i.test(String(lv.detail || ""));
-    const possA = !atBreak && sit.possessionId != null && Number(sit.possessionId) === Number(game.awayId);
-    const possH = !atBreak && sit.possessionId != null && Number(sit.possessionId) === Number(game.homeId);
+    // Who has the ball: the scoreboard's situation, else (between plays it
+    // often drops it) the team holding it after the game page's newest
+    // play, else the team on the current drive.
+    const curPlays = summaryRaw?.drives?.current?.plays || [];
+    const lastEnd = curPlays.length ? curPlays[curPlays.length - 1]?.end?.team?.id : null;
+    const possId = sit.possessionId ?? summaryRaw?.situation?.possession ?? lastEnd ?? summaryRaw?.drives?.current?.team?.id ?? null;
+    const possA = !atBreak && possId != null && Number(possId) === Number(game.awayId);
+    const possH = !atBreak && possId != null && Number(possId) === Number(game.homeId);
     // Where the ball is, 0 at the away goal to 100 at the home goal. ESPN's
     // text says "at VT 34" (34 yards from VT's goal); its yardLine number
     // is the same spot counted from the home goal on most feeds, so the
@@ -4802,7 +4808,11 @@ async function openInsights(gameId) {
     // One scoreboard row: logo, score, clock, score, logo. Names sit under
     // the logos with the possession football beneath; the win probability
     // bar runs under the row. Scanlines live behind the content.
-    const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<span class="gc-tn">${side === "h" && poss ? `<i class="gc-pball" title="Has the ball"></i>` : ""}<b>${esc(ab)}</b>${side === "a" && poss ? `<i class="gc-pball" title="Has the ball"></i>` : ""}</span></div>`;
+    // The football floats on the inside of the name, toward the clock, out
+    // of the flow, so the names stay centred under their logos and nothing
+    // moves when the ball changes hands.
+    const pb = (poss) => poss ? `<i class="gc-pball gc-pfloat" title="Has the ball"></i>` : "";
+    const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<span class="gc-tn">${side === "h" ? pb(poss) : ""}<b>${esc(ab)}</b>${side === "a" ? pb(poss) : ""}</span></div>`;
     const wp = lv.winProb;
     // Win probability: amber LED numbers with each logo at the ends, a
     // thin neon bar in the app's cyan and pink, and a bright notch where
@@ -4835,7 +4845,7 @@ async function openInsights(gameId) {
     const stat = (id, ...names) => { const t = bsTeams.find((x) => Number(x.team?.id) === Number(id)); const st = (t?.statistics || []).find((x) => names.includes(x.name)); return st?.displayValue ?? null; };
     const bsRow = (label, ...names) => { const a = stat(game.awayId, ...names), h = stat(game.homeId, ...names); return a == null && h == null ? "" : `<div class="gc-bs-r"><b>${esc(a ?? "-")}</b><span>${label}</span><b>${esc(h ?? "-")}</b></div>`; };
     const boxHtml = brk ? (() => { const rows = bsRow("TOTAL YARDS", "totalYards") + bsRow("PASSING", "netPassingYards", "passingYards") + bsRow("RUSHING", "rushingYards") + bsRow("TURNOVERS", "turnovers") + bsRow("POSSESSION", "possessionTime"); return rows ? `<div class="gc-bs"><div class="gc-bs-h"><span>${esc(A)}</span><span>${esc(brkLabel === "HALFTIME" ? "FIRST HALF" : "SO FAR")}</span><span>${esc(H)}</span></div>${rows}</div>` : ""; })() : "";
-    const ddLine = brk ? boxHtml : dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || "Between plays")}</b></div>`;
+    const ddLine = brk ? boxHtml : dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || (possA ? `${A} ball · between plays` : possH ? `${H} ball · between plays` : "Between plays"))}</b></div>`;
     // Last three plays: the current drive first, the previous drive if the
     // current one is too short, else the scoreboard's last play.
     const drives = summaryRaw?.drives || {};
@@ -4889,10 +4899,11 @@ async function openInsights(gameId) {
       if (Number.isFinite(y)) return [y > 0 ? `+${y}` : y < 0 ? `${y}` : "+0", y > 0 ? "gain" : y < 0 ? "loss" : "dim"];
       return null;
     };
+    const secsOf = (c) => { const mm = String(c || "").match(/^(\d{1,2}):(\d{2})$/); return mm ? Number(mm[1]) * 60 + Number(mm[2]) : null; };
     // The current and previous drive can share a play (a kickoff, a score),
     // so drop repeats before taking three.
     const seenP = new Set();
-    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, 5).map((p) => ({ key: p.id || p.text, text: tidy(p.text), when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
+    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, 5).map((p) => ({ key: p.id || p.text, per: Number(p.period?.number) || null, secs: secsOf(p.clock?.displayValue), text: tidy(p.text), when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
     // The scoreboard feed updates faster than the game page. If its last
     // play is not the log's newest, put it on top.
     // Two feeds word the same play differently ("J.Turner rush right for
@@ -4904,17 +4915,43 @@ async function openInsights(gameId) {
       const lp = tidy(sit.lastPlay);
       if (!plays.length || (lp && !plays.slice(0, 5).some((p) => samePlay(p.text, sit.lastPlay)))) {
         const t0 = { type: { text: "" }, text: sit.lastPlay };
-        plays = [{ key: sit.lastPlay, text: lp, when: status || "", dd: "", tid: sit.lastPlayTeamId, badge: badgeOf(t0), marker: isMarker(t0) }, ...plays].slice(0, 5);
+        plays = [{ key: sit.lastPlay, per: Number(lv.period) || null, secs: secsOf(lv.clock), text: lp, when: status || "", dd: "", tid: sit.lastPlayTeamId, badge: badgeOf(t0), marker: isMarker(t0) }, ...plays].slice(0, 5);
       }
     }
     // The newest play types itself in once, the first time it is seen.
     plays = plays.filter((p, i) => p.marker || !plays.slice(0, i).some((q) => !q.marker && samePlay(q.text, p.text)));
+    // Milestones the feed skips: the end of each quarter, halftime and the
+    // two minute warning, read off the period and clock between plays (and
+    // off the live clock above the newest one). ESPN's own marker wins.
+    {
+      const endLabel = (n) => n === 2 ? "HALFTIME" : n === 4 ? "END OF REGULATION" : n > 4 ? `END OF OT${n > 5 ? n - 4 : ""}` : `END OF ${["", "1ST", "", "3RD"][n]} QUARTER`;
+      const has = (re, n) => plays.some((p) => p.marker && p.per === n && re.test(p.text));
+      const endRe = /end|half/i, twoRe = /two.?minute|2.?minute/i;
+      const mk = (text, per) => ({ key: `ms:${text}:${per}`, text, per, secs: null, marker: true, ms: true });
+      const out = [];
+      const livePer = Number(lv.period) || null, liveSecs = secsOf(lv.clock);
+      const top = plays.find((p) => !p.marker && p.per);
+      if (top && livePer) {
+        if (brk && top.per === livePer && !has(endRe, livePer)) out.push(mk(endLabel(livePer), livePer));
+        else if (!brk && livePer > top.per && !has(endRe, top.per)) out.push(mk(endLabel(top.per), top.per));
+        if (!brk && (livePer === 2 || livePer === 4) && liveSecs != null && liveSecs <= 120 && top.per === livePer && top.secs != null && top.secs > 120 && !has(twoRe, livePer)) out.unshift(mk("TWO MINUTE WARNING", livePer));
+      }
+      plays.forEach((p, i) => {
+        out.push(p);
+        const q = plays.slice(i + 1).find((x) => !x.marker);
+        if (p.marker || !q || !p.per || !q.per) return;
+        if (q.per < p.per && !has(endRe, q.per)) out.push(mk(endLabel(q.per), q.per));
+        else if (q.per === p.per && (p.per === 2 || p.per === 4) && p.secs != null && q.secs != null && p.secs <= 120 && q.secs > 120 && !has(twoRe, p.per)) out.push(mk("TWO MINUTE WARNING", p.per));
+      });
+      plays = out.filter((p, i) => !(p.ms && out.findIndex((x) => x.key === p.key) !== i));
+    }
     const seenAll = (window.__gcSeen = window.__gcSeen || {});
     const typed = (seenAll[gameId] = Array.isArray(seenAll[gameId]) ? seenAll[gameId] : []);
-    const fresh = !!plays[0] && !typed.some((t) => samePlay(t, plays[0].text));
+    const real = plays.filter((p) => !p.marker);
+    const fresh = !!real[0] && !typed.some((t) => samePlay(t, real[0].text));
     for (const p of plays) if (!typed.some((t) => samePlay(t, p.text))) typed.push(p.text);
     if (typed.length > 60) typed.splice(0, typed.length - 60);
-    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p, i) => p.marker ? `<li class="gc-mark"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${p.tid ? lg(p.tid, "gc-plogo") : ""}${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.badge ? `<b class="gc-badge ${p.badge[1]}">${esc(p.badge[0])}</b>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
+    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${p.tid ? lg(p.tid, "gc-plogo") : ""}${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.badge ? `<b class="gc-badge ${p.badge[1]}">${esc(p.badge[0])}</b>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
     const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
