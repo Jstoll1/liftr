@@ -1,2 +1,3 @@
-/live
-/live?fix=timeout
+/visit
+/auth-log?format=json
+/visit?key=wrong
