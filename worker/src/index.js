@@ -3210,6 +3210,8 @@ async function handleVisit(request, env, corsHeaders, url) {
   const entry = { at: Date.now(), app: body.standalone ? "home" : "browser", device: String(body.device || "").slice(0, 12), screen: String(body.screen || "").slice(0, 12), tz: String(body.tz || "").slice(0, 40) };
   const list = (await env.LIFTR_KV.get(key(m), "json")) || [];
   list.unshift(entry);
-  await env.LIFTR_KV.put(key(m), JSON.stringify(list.slice(0, 100)));
+  // 400 opens: weeks of history for the admin dashboard; one write per
+  // open either way, and the throttled opens keep a list well under 64 KB.
+  await env.LIFTR_KV.put(key(m), JSON.stringify(list.slice(0, 400)));
   return json({ ok: true }, 200, corsHeaders);
 }
