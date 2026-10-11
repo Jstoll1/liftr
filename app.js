@@ -56,6 +56,40 @@ function scorePick(game, pick, result) {
 // show picks made on that same device.
 const WORKER_URL = "https://liftr-ai.jhs797.workers.dev";
 
+// App health, for the admin dashboard: errors, data loads that failed or
+// crawled (ESPN vs our Worker), and how long until the first screen had
+// data. Counted in memory and sent with the session beacon when the app
+// is put away; a counter bump per event, nothing on the network.
+const appHealth = { e: 0, em: [], ff: { espn: 0, worker: 0 }, sl: { espn: 0, worker: 0 }, ld: null };
+const healthT0 = performance.now();
+function noteError(msg) {
+  appHealth.e++;
+  const m = String(msg || "error").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim().slice(0, 80);
+  if (m && appHealth.em.length < 3 && !appHealth.em.includes(m)) appHealth.em.push(m);
+}
+addEventListener("error", (e) => { if (e?.message) noteError(e.message); });
+addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?.reason || "unhandled rejection"));
+function markUsable() { if (appHealth.ld == null) appHealth.ld = Math.round(performance.now() - healthT0); }
+(() => {
+  const raw = window.fetch?.bind(window);
+  if (!raw) return;
+  window.fetch = async (input, init) => {
+    const url = typeof input === "string" ? input : input?.url || "";
+    const b = /espn\.com|espncdn/.test(url) ? "espn" : url.startsWith(WORKER_URL) ? "worker" : null;
+    if (!b) return raw(input, init);
+    const t0 = performance.now();
+    try {
+      const r = await raw(input, init);
+      if (r.status >= 500 || r.status === 429) appHealth.ff[b]++;
+      if (performance.now() - t0 > 4000) appHealth.sl[b]++;
+      return r;
+    } catch (err) {
+      if (err?.name !== "AbortError") appHealth.ff[b]++;
+      throw err;
+    }
+  };
+})();
+
 const STORAGE_KEY_BASE = "brochiefs_picks_v1";
 // Local picks are namespaced per week from week 2 on, so a device holding
 // last week's card cannot leak it into the new one.
@@ -175,6 +209,17 @@ function sanitizePicks(picks) {
   return clean;
 }
 
+// For the room's view of other owners: keeps the server's hidden
+// placeholders ({ hidden: true }, an unlocked pick we may not see) so pick
+// counts stay right, alongside real picks. Never used for our own state.
+function sanitizeRoomPicks(picks) {
+  const clean = {};
+  Object.entries(picks || {}).forEach(([gameId, pick]) => {
+    if (pick && typeof pick === "object" && (pick.hidden === true || (pick.team && pick.mode))) clean[gameId] = pick.hidden === true ? { hidden: true } : pick;
+  });
+  return clean;
+}
+
 function getManagerState(name) {
   const all = loadAll();
   const state = all[name] || { picks: {}, tiebreaker: "" };
@@ -252,7 +297,7 @@ async function pushManagerState(manager, state, { attempts = 3 } = {}) {
   // Locked games are always taken from the cloud.
   let toSend = state;
   try {
-    const cloud = await fetchAllPicks();
+    const cloud = await fetchAllPicks(manager);
     const remote = cloud && cloud[manager] ? { ...cloud[manager], picks: sanitizePicks(cloud[manager].picks) } : null;
     if (remote) {
       toSend = mergeStates(remote, state);
@@ -305,10 +350,13 @@ async function flushPendingPush() {
   if (ok && manager === currentManager && !picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
 }
 
-async function fetchAllPicks() {
+// Other owners' picks come back hidden until each game locks; ours come
+// back whole because we say who we are (and prove it once login is on).
+async function fetchAllPicks(who = currentManager || loadMe()) {
   if (!WORKER_URL) return null;
   try {
-    const res = await fetch(`${WORKER_URL}/picks?week=${currentWeek}&t=${Date.now()}`, { cache: "no-store" });
+    const me = who && MANAGERS.includes(who) ? `&me=${encodeURIComponent(who)}${tokenFor(who) ? `&token=${encodeURIComponent(tokenFor(who))}` : ""}` : "";
+    const res = await fetch(`${WORKER_URL}/picks?week=${currentWeek}${me}&t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
     // A response without a picks object is a broken response, not an
@@ -537,7 +585,7 @@ async function restorePhonePicks(name) {
 }
 
 async function syncManagerFromCloud(name) {
-  const cloud = await fetchAllPicks();
+  const cloud = await fetchAllPicks(name);
   if (!cloud) return null;
   const all = loadAll();
   const local = all[name] || { picks: {}, tiebreaker: "" };
@@ -1006,14 +1054,27 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) stam
 const sessionUse = new Set();
 let sessionStart = document.hidden ? null : Date.now();
 function noteUse(key) { if (key) sessionUse.add(String(key).replace(/^\//, "")); }
+// Minutes on each game's live view: started when a live game cast opens,
+// stopped when the sheet closes or the app is put away.
+let gcTime = {}, gcOpen = null;
+function gcStart(id) { gcStop(); gcOpen = { id, t: Date.now() }; }
+function gcStop() { if (!gcOpen) return; const k = `g${gcOpen.id}`; gcTime[k] = (gcTime[k] || 0) + (Date.now() - gcOpen.t); gcOpen = null; }
+(() => {
+  const m = document.getElementById("insights-modal");
+  if (m && window.MutationObserver) new MutationObserver(() => { if (m.classList.contains("hidden")) gcStop(); }).observe(m, { attributes: true, attributeFilter: ["class"] });
+})();
 function endSession() {
   if (sessionStart == null) return;
   const start = sessionStart, dur = Date.now() - start;
   sessionStart = null;
+  gcStop();
   const f = [...sessionUse]; sessionUse.clear();
+  const gt = gcTime; gcTime = {};
+  const h = { e: appHealth.e, em: appHealth.em.slice(), ff: { ...appHealth.ff }, sl: { ...appHealth.sl }, ld: appHealth.ld };
+  appHealth.e = 0; appHealth.em = []; appHealth.ff = { espn: 0, worker: 0 }; appHealth.sl = { espn: 0, worker: 0 }; appHealth.ld = -1; // load time only once per page
   const me = loadMe();
   if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || dur < 3000) return;
-  const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, v: typeof APP_VERSION === "string" ? APP_VERSION : "" });
+  const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, gt, h: h.ld === -1 ? { ...h, ld: null } : h, v: typeof APP_VERSION === "string" ? APP_VERSION : "" });
   try {
     // text/plain keeps the beacon a simple request (no CORS preflight).
     if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/visit`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/visit`, { method: "POST", body, keepalive: true }).catch(() => {});
@@ -1227,6 +1288,44 @@ function lockAdmin() {
 window.closeSlateEditor = closeAdmin;
 // and the console opens it from its Slate tab.
 window.openSlateEditor = openAdmin;
+
+// --- Admin heads-up before lock -------------------------------------------
+// On a phone that remembers an admin key: when picks lock within three
+// hours and anyone is short, a banner says who, with the nudge message one
+// tap away. Counts only (the server hides unlocked picks), checked on open,
+// on return to the app and every ten minutes; dismissable for the visit.
+const LOCK_ALERT_DISMISS = "brochiefs_lockalert_dismissed";
+async function adminLockAlert() {
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  let saved = null;
+  try { saved = localStorage.getItem(ADMIN_REMEMBER_KEY); } catch {}
+  const old = document.getElementById("lock-alert");
+  if (!saved || !GAMES.length || document.hidden) { old?.remove(); return; }
+  const lock = weekLockTime() ?? Math.min(...GAMES.map((g) => Date.parse(g.kickoff)));
+  const left = lock - Date.now();
+  let dismissed = null;
+  try { dismissed = sessionStorage.getItem(LOCK_ALERT_DISMISS); } catch {}
+  if (!(left > 0 && left <= 3 * 3600000) || dismissed === String(lock)) { old?.remove(); return; }
+  const all = await fetchAllPicks();
+  if (!all) return;
+  const short = MANAGERS.map((n) => ({ n, k: GAMES.filter((g) => all[n]?.picks?.[g.id]).length, tb: String(all[n]?.tiebreaker ?? "").trim() !== "" })).filter((x) => x.k < GAMES.length || !x.tb);
+  if (!short.length) { old?.remove(); return; }
+  const h = Math.floor(left / 3600000), m = Math.floor((left % 3600000) / 60000);
+  const when = h ? `${h}h ${m}m` : `${m}m`;
+  const msg = `🏈 Picks lock in ${when}!\n${short.map((x) => `• ${shown(x.n)}: ${x.k < GAMES.length ? `${GAMES.length - x.k} pick${GAMES.length - x.k === 1 ? "" : "s"} left` : ""}${x.k < GAMES.length && !x.tb ? " + " : ""}${!x.tb ? "tiebreaker" : ""}`).join("\n")}\nbrochiefs.com`;
+  const el = old || Object.assign(document.createElement("div"), { id: "lock-alert", className: "lock-alert" });
+  el.innerHTML = `<div><b>⚠ ${short.length} SHORT · LOCK IN ${esc(when)}</b><span>${short.map((x) => `${esc(shown(x.n))} ${x.k}/${GAMES.length}${x.tb ? "" : " · no TB"}`).join(" · ")}</span></div>
+    <button type="button" class="la-nudge">NUDGE</button><button type="button" class="la-x" aria-label="Dismiss">✕</button>`;
+  el.querySelector(".la-nudge").onclick = async (e) => {
+    const b = e.currentTarget;
+    try { if (navigator.share) await navigator.share({ text: msg }); else { await navigator.clipboard.writeText(msg); b.textContent = "COPIED"; } } catch { try { await navigator.clipboard.writeText(msg); b.textContent = "COPIED"; } catch {} }
+  };
+  el.querySelector(".la-x").onclick = () => { try { sessionStorage.setItem(LOCK_ALERT_DISMISS, String(lock)); } catch {} el.remove(); };
+  if (!old) document.body.appendChild(el);
+}
+setTimeout(() => adminLockAlert().catch(() => {}), 4000);
+setInterval(() => adminLockAlert().catch(() => {}), 10 * 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) adminLockAlert().catch(() => {}); });
 
 // --- The app console (the app owner's key only) -----------------------
 function openAppConsole() {
@@ -1530,7 +1629,7 @@ async function renderManagerPicker() {
   managerPicker.innerHTML = "";
   MANAGERS.forEach((name, i) => {
     const state = all[name];
-    const submittedCount = state ? Object.keys(sanitizePicks(state.picks)).length : 0;
+    const submittedCount = state ? Object.keys(sanitizeRoomPicks(state.picks)).length : 0;
     const tiebreakerDone = !!(state && String(state.tiebreaker || "").trim() !== "");
     const complete = submittedCount === GAMES.length && tiebreakerDone;
     const partial = !complete && (submittedCount > 0 || tiebreakerDone);
@@ -2057,7 +2156,7 @@ async function refreshPicksStanding(prefetched = null) {
   const cloudPicks = {};
   MANAGERS.forEach((name) => {
     const state = fetched[name];
-    if (state) cloudPicks[name] = { ...state, picks: sanitizePicks(state.picks) };
+    if (state) cloudPicks[name] = { ...state, picks: name === currentManager ? sanitizePicks(state.picks) : sanitizeRoomPicks(state.picks) };
   });
   const hadLive = Object.keys(latestLive).length > 0;
   const results = computeLiveResults(await fetchLiveScores());
@@ -2079,6 +2178,7 @@ document.getElementById("picks-standing")?.addEventListener("click", () => {
 });
 
 function renderPicksScreen() {
+  markUsable();
   const state = getManagerState(currentManager);
   lastLockSignature = lockSignature();
   renderPicksCountdown();
@@ -2386,7 +2486,7 @@ async function renderScoreboard() {
   const cloudPicks = {};
   MANAGERS.forEach((name) => {
     const state = rawPicks[name];
-    if (state) cloudPicks[name] = { ...state, picks: sanitizePicks(state.picks) };
+    if (state) cloudPicks[name] = { ...state, picks: name === currentManager ? sanitizePicks(state.picks) : sanitizeRoomPicks(state.picks) };
   });
   if (fetched !== null) lastGoodCloudPicks = rawPicks;
   const live = await fetchLiveScores();
@@ -2597,6 +2697,7 @@ function shortNetwork(raw) {
 }
 
 function renderLiveScores(live, cloudPicks) {
+  markUsable();
   // Compact scorebugs in a 2-up grid, every game from the start. Tap a
   // bug to expand the who-picked-what lists (only once that game has
   // kicked off). A red pulsing dot marks games that are live right now.
@@ -4715,7 +4816,7 @@ async function openInsights(gameId) {
   const modal = document.getElementById("insights-modal");
   const game = GAMES.find((g) => g.id === gameId);
   if (!modal || !game) return;
-  { const l = latestLive[gameId]; const kind = l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"; noteUse(kind); if (kind === "gamecast") noteUse(`gamecast-g${gameId}`); }
+  { const l = latestLive[gameId]; const kind = l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"; noteUse(kind); if (kind === "gamecast") { noteUse(`gamecast-g${gameId}`); gcStart(gameId); } }
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const body = modal.querySelector("#insights-body");
   const favShort = game.favorite === game.home ? game.homeShort : game.awayShort;

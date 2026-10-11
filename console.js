@@ -157,7 +157,7 @@
   const ldFeat = (k) => LD_FEATURES[String(k).replace(/-g\d+$/, "")] || null;
 
   function buildLoginDash(src) {
-    const { visits, sessions, picksNow, season, pickLog, buildNow, names, ago } = src;
+    const { visits, sessions, picksNow, season, pickLog, buildNow, names, ago, rollups, nudgeLog } = src;
     const DAY = 86400000, HR = 3600000, now = Date.now();
     const day0 = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
     const today0 = day0(now);
@@ -192,8 +192,14 @@
       const sess = [];
       for (const x of segs) {
         const last = sess[sess.length - 1];
-        if (last && x.at - (last.at + last.dur) < 5 * 60000) { last.dur = x.at + x.dur - last.at; for (const f of x.f || []) if (!last.f.includes(f)) last.f.push(f); if (x.v) last.v = x.v; }
-        else sess.push({ at: x.at, dur: x.dur, f: [...(x.f || [])], v: x.v || "" });
+        const hx = x.h || {};
+        if (last && x.at - (last.at + last.dur) < 5 * 60000) {
+          last.dur = x.at + x.dur - last.at; for (const f of x.f || []) if (!last.f.includes(f)) last.f.push(f); if (x.v) last.v = x.v;
+          for (const [k, ms] of Object.entries(x.gt || {})) last.gt[k] = (last.gt[k] || 0) + ms;
+          last.h.e += hx.e || 0; for (const m of hx.em || []) if (!last.h.em.includes(m)) last.h.em.push(m);
+          for (const b of ["espn", "worker"]) { last.h.ff[b] += hx.ff?.[b] || 0; last.h.sl[b] += hx.sl?.[b] || 0; }
+          if (last.h.ld == null && Number.isFinite(hx.ld)) last.h.ld = hx.ld;
+        } else sess.push({ at: x.at, dur: x.dur, f: [...(x.f || [])], v: x.v || "", gt: { ...(x.gt || {}) }, h: { e: hx.e || 0, em: [...(hx.em || [])], ff: { espn: hx.ff?.espn || 0, worker: hx.ff?.worker || 0 }, sl: { espn: hx.sl?.espn || 0, worker: hx.sl?.worker || 0 }, ld: Number.isFinite(hx.ld) ? hx.ld : null } });
       }
       const days = new Set([...opens.map((v) => day0(v.at)), ...sess.map((x) => day0(x.at))]);
       const lastAt = Math.max(0, ...opens.map((v) => v.at), ...sess.map((x) => x.at + x.dur));
@@ -236,7 +242,12 @@
       const cmax = Math.max(1, ...conc.map((c) => c.length));
       const peakI = conc.reduce((bi, c, i) => c.length > conc[bi].length ? i : bi, 0);
       const inDuring = people.filter((p) => p.opens.some((v) => wins.some((w) => v.at >= w.a && v.at < w.b)) || p.sess.some((x) => wins.some((w) => x.at < w.b && x.at + x.dur > w.a)));
-      const watch = wins.map((w) => ({ w, who: people.filter((p) => p.sess.some((x) => x.at < w.b + HR && x.at + x.dur > w.a && x.f.includes(`gamecast-g${w.id}`))).map((p) => p.n) }));
+      const watch = wins.map((w) => {
+        const near = (x) => x.at < w.b + HR && x.at + x.dur > w.a;
+        const who = people.filter((p) => p.sess.some((x) => near(x) && x.f.includes(`gamecast-g${w.id}`))).map((p) => p.n);
+        const ms = people.reduce((a, p) => a + p.sess.filter(near).reduce((s2, x) => s2 + (x.gt?.[`g${w.id}`] || 0), 0), 0);
+        return { w, who, ms };
+      });
       const tGame = people.map((p) => ({ p, ms: p.sess.reduce((a, x) => a + wins.reduce((s, w) => s + Math.max(0, Math.min(x.at + x.dur, w.b) - Math.max(x.at, w.a)), 0), 0) }));
       const hasSess = people.some((p) => p.sess.some((x) => x.at >= A && x.at < Bend));
       const lanes = wins.map((w, i) => `<i class="ld-gw" style="left:${xp(Math.max(w.a, A))}%;width:${Math.max(1, (Math.min(w.b, Bend) - Math.max(w.a, A)) / span * 100)}%;top:${(i % 3) * 9}px" ${tip(`G${w.id} ${w.label} · kickoff ${timeLab(w.a)}`)}><span>G${w.id}</span></i>`).join("");
@@ -248,7 +259,7 @@
       const bandHtml = merged.map((w) => `<i class="lvz-band" style="left:${xp(Math.max(w.a, A))}%;width:${(Math.min(w.b, Bend) - Math.max(w.a, A)) / span * 100}%"></i>`).join("");
       const strips = people.map((p) => `<span class="lvz-nm">${esc(p.n)}</span><div class="lvz-strip">${bandHtml}${p.sess.filter((x) => x.at < Bend && x.at + x.dur > A).map((x) => `<i class="lvz-seg" style="left:${xp(Math.max(x.at, A))}%;width:${Math.max(0.6, (Math.min(x.at + x.dur, Bend) - Math.max(x.at, A)) / span * 100)}%"></i>`).join("")}${p.opens.filter((v) => v.at >= A && v.at < Bend).map((v) => `<i class="lvz-dot${inGame(v.at) ? " live" : ""}" style="left:${xp(v.at)}%" ${tip(`${p.n} · ${timeLab(v.at)}${inGame(v.at) ? " · during a game" : ""}`)}></i>`).join("")}</div>`).join("");
       const wmax = Math.max(1, ...watch.map((x) => x.who.length));
-      const watchHtml = watch.some((x) => x.who.length) ? watch.slice().sort((a, b) => b.who.length - a.who.length).map((x) => `<div class="lvz-fb" ${tip(`${x.w.label} · watched live by ${x.who.length ? x.who.join(", ") : "nobody"}`)}><span>${esc(x.w.label)}</span><i><b style="width:${(x.who.length / wmax * 100).toFixed(0)}%"></b></i><em>${x.who.length}/${N}</em></div>`).join("") : `<div class="lvz-empty">${hasSess ? "Nobody opened a live game cast." : "Per-game viewing is recorded from the new build on; this Saturday is the first it will show."}</div>`;
+      const watchHtml = watch.some((x) => x.who.length) ? watch.slice().sort((a, b) => b.who.length - a.who.length).map((x) => `<div class="lvz-fb wide" ${tip(`${x.w.label} · watched live by ${x.who.length ? x.who.join(", ") : "nobody"}${x.ms ? ` · ${dur(x.ms)} on its live view in all` : ""}`)}><span>${esc(x.w.label)}</span><i><b style="width:${(x.who.length / wmax * 100).toFixed(0)}%"></b></i><em>${x.who.length}/${N}${x.ms ? ` · ${dur(x.ms)}` : ""}</em></div>`).join("") : `<div class="lvz-empty">${hasSess ? "Nobody opened a live game cast." : "Per-game viewing is recorded from the new build on; this Saturday is the first it will show."}</div>`;
       const most = watch.slice().sort((a, b) => b.who.length - a.who.length)[0];
       const facts = {
         peak: conc[peakI]?.length || 0, peakAt: A + peakI * STEP, peakWho: conc[peakI] || [],
@@ -264,7 +275,7 @@
         <div class="ld-conc"><div class="ld-cbars">${bars}</div><div class="ld-glanes">${lanes}</div><div class="lvz-tlax">${ax}</div></div>
         <div class="lvz-h">WHO WAS IN · <i class="lvz-key-band"></i> GAME ON · <i class="lvz-key-seg"></i> IN THE APP</div>
         <div class="lvz-tl">${strips}</div>
-        <div class="lvz-h">LIVE GAME CASTS WATCHED · PEOPLE PER GAME</div>
+        <div class="lvz-h">LIVE GAME CASTS WATCHED · PEOPLE · MINUTES ON IT</div>
         <div class="lvz-feat">${watchHtml}</div>`;
       return { html, facts };
     };
@@ -375,9 +386,126 @@
 
     // Nudges, ready for the chat.
     const nudges = [];
-    if (lockNow && lockNow > now && picksNow) { const total = slateOf(curWeek).length; for (const n of names) { const k = slateOf(curWeek).filter((g) => picksNow[n]?.picks?.[g.id]).length; if (k < total) nudges.push({ n, why: `${k}/${total} picks`, msg: `${n}, ${total - k} pick${total - k === 1 ? "" : "s"} left before lock` }); } }
-    for (const p of quiet) if (!nudges.some((x) => x.n === p.n)) nudges.push({ n: p.n, why: p.lastAt ? `last in ${ago(p.lastAt)}` : "never opened it", msg: `${p.n}, haven't seen you in the app${p.lastAt ? ` since ${dayLong(p.lastAt)}` : ""}` });
+    if (lockNow && lockNow > now && picksNow) { const total = slateOf(curWeek).length; for (const n of names) { const k = slateOf(curWeek).filter((g) => picksNow[n]?.picks?.[g.id]).length; if (k < total) nudges.push({ n, kind: "picks", why: `${k}/${total} picks`, msg: `${n}, ${total - k} pick${total - k === 1 ? "" : "s"} left before lock` }); } }
+    for (const p of quiet) if (!nudges.some((x) => x.n === p.n)) nudges.push({ n: p.n, kind: "quiet", why: p.lastAt ? `last in ${ago(p.lastAt)}` : "never opened it", msg: `${p.n}, haven't seen you in the app${p.lastAt ? ` since ${dayLong(p.lastAt)}` : ""}` });
     const nudgeText = nudges.length ? `🏈 Brochiefs check-in:\n${nudges.map((x) => `• ${x.msg}`).join("\n")}${lockNow && lockNow > now ? `\nPicks lock ${new Date(lockNow).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}.` : ""}\nbrochiefs.com` : "";
+
+    // ---- Releases: when each build was first seen in the league ----
+    const firstSeen = new Map();
+    for (const p of people) for (const x of [...p.opens, ...p.sess]) if (x.v && (!firstSeen.has(x.v) || x.at < firstSeen.get(x.v))) firstSeen.set(x.v, x.at);
+    const buildLab = (v) => `${v.slice(4, 6)}/${v.slice(6, 8)} ${v.slice(8, 10)}:${v.slice(10, 12)}`;
+    const releases = [...firstSeen.entries()].filter(([, t]) => t >= d28[0]).sort((a, b) => a[1] - b[1]);
+    const relMarks = releases.map(([v, t]) => `<i class="ld-rel" style="left:${((t - d28[0]) / (28 * DAY) * 100).toFixed(2)}%" ${tip(`New build ${buildLab(v)} first seen ${dayLong(t)} ${timeLab(t)}`)}></i>`).join("");
+
+    // ---- Time in the app per day, 28 days (sessions) ----
+    const tpd = d28.map((d) => people.reduce((a, p) => a + p.sess.filter((x) => x.at >= d && x.at < d + DAY).reduce((s2, x) => s2 + x.dur, 0), 0));
+    const tmax = Math.max(1, ...tpd);
+    const tpdHtml = d28.map((d, i) => `<i class="ld-db${gdSet.has(d) ? " gd" : ""}${d === today0 ? " today" : ""}" ${tip(`${dayLong(d)}${gdSet.has(d) ? " · game day" : ""} · ${dur(tpd[i])} in the app${d < day0(sessSince) ? " (before time was tracked)" : ""}`)}><b style="height:${(tpd[i] / tmax * 100).toFixed(0)}%"></b></i>`).join("");
+
+    // ---- Season, week by week (saved rollups, plus this week live) ----
+    const etKey = (t) => { const d = new Date(t); const dow = (d.getDay() + 6) % 7; d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dow); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+    const rk = Object.keys(rollups || {}).sort();
+    const thisKey = etKey(now);
+    const thisWeekLive = (() => {
+      const a = Date.parse(`${thisKey}T00:00:00`), out = { days: 0, opens: 0, timeMs: 0, active: 0 };
+      for (const p of people) { const op = p.opens.filter((v) => v.at >= a), ss = p.sess.filter((x) => x.at >= a); if (op.length || ss.length) out.active++; out.opens += op.length; out.timeMs += ss.reduce((s2, x) => s2 + x.dur, 0); }
+      return out;
+    })();
+    const trend = [...rk.slice(-11).map((k) => ({ k, live: false, partial: !!rollups[k].partial, active: rollups[k].league?.active || 0, opens: rollups[k].league?.opens || 0, timeMs: rollups[k].league?.timeMs || 0 })), { k: thisKey, live: true, partial: true, ...thisWeekLive }];
+    const trMax = N;
+    const wkLab = (k) => { const [, m, d] = k.split("-"); return `${Number(m)}/${Number(d)}`; };
+    const trendHtml = trend.map((w) => `<i class="ld-tw${w.live ? " live" : ""}${w.partial && !w.live ? " part" : ""}" ${tip(`Week of ${wkLab(w.k)}${w.live ? " (so far)" : w.partial ? " (tracking started mid-week)" : ""} · ${w.active} of ${N} in · ${w.opens} opens · ${dur(w.timeMs)} in the app`)}><b style="height:${(w.active / trMax * 100).toFixed(0)}%"></b><span>${wkLab(w.k)}</span></i>`).join("");
+
+    // ---- A past week, from its rollup, against the week before ----
+    const pastWeekView = (k) => {
+      const r = rollups?.[k]; if (!r) return `<div class="lvz-empty">No saved totals for that week.</div>`;
+      const prevK = rk[rk.indexOf(k) - 1], pr = prevK ? rollups[prevK] : null;
+      const sum = (rr, f) => names.reduce((a, n) => a + (f(rr?.people?.[n] || {}) || 0), 0);
+      const act = r.league?.active || 0, actP = pr?.league?.active;
+      const days = sum(r, (x) => x.days) / N, daysP = pr ? sum(pr, (x) => x.days) / N : null;
+      const kp = (label, val, d, tipTxt) => `<div ${tip(tipTxt)}><b>${val}</b><span>${label}</span>${chip(d)}</div>`;
+      const rows = names.map((n) => ({ n, x: r.people?.[n] || {}, px: pr?.people?.[n] })).sort((a, b) => (b.x.days || 0) - (a.x.days || 0) || (b.x.opens || 0) - (a.x.opens || 0));
+      const topF = (x) => { const e = Object.entries(x.features || {}).filter(([f]) => ldFeat(f)).sort((a, b) => b[1] - a[1])[0]; return e ? ldFeat(e[0]) : "-"; };
+      return `${r.partial ? `<div class="lvz-cap">Tracking started partway through this week, so it undercounts.</div>` : ""}
+        <div class="ld-kpis">
+          ${kp(`active (of ${N})`, act, actP != null ? act - actP : null, `People in at least once that week${pr ? `; week before: ${actP}` : ""}`)}
+          ${kp("days in, per person", days.toFixed(1), daysP != null ? Math.round((days - daysP) * 10) / 10 : null, "Average days in the app out of 7")}
+          ${kp("opens", r.league?.opens || 0, pr ? pct(r.league?.opens || 0, pr.league?.opens || 0) : null, "App opens that week")}
+          ${kp("time in app", dur(r.league?.timeMs || 0), pr && pr.league?.timeMs ? pct(r.league?.timeMs || 0, pr.league.timeMs) : null, "Total time in the app that week")}
+        </div>
+        <div class="ld-fh five"><span>OWNER</span><span>DAYS</span><span>OPENS</span><span>TIME</span><span>MOST USED</span></div>
+        ${rows.map(({ n, x, px }) => `<div class="ld-fr five" ${tip(`${n} · week of ${wkLab(k)} · ${x.days || 0} days, ${x.opens || 0} opens, ${dur(x.timeMs || 0)}${px ? ` · week before: ${px.days || 0} days` : ""}${x.fails ? ` · ${x.fails} failed loads` : ""}`)}><span>${esc(n)}</span><em>${x.days || 0}/7${px && px.days != null && x.days !== px.days ? ` <i class="ld-d ${x.days > px.days ? "up" : "dn"}">${x.days > px.days ? "▲" : "▼"}${Math.abs((x.days || 0) - (px.days || 0))}</i>` : ""}</em><em>${x.opens || 0}</em><em>${dur(x.timeMs || 0)}</em><em>${esc(topF(x))}</em></div>`).join("")}`;
+    };
+    const pastKeys = rk.slice(-6).reverse();
+
+    // ---- Nudges: did they work? ----
+    const nudgeOut = (nudgeLog || []).slice(0, 8).map((ng) => {
+      const end = ng.at + 12 * HR;
+      const res = (ng.who || []).map((w) => {
+        const p = people.find((x) => x.n === w.n);
+        const back = !!p && (p.opens.some((v) => v.at > ng.at && v.at <= end) || p.sess.some((x) => x.at > ng.at && x.at <= end));
+        const picked = w.why === "picks" ? log.some((r) => r.manager === w.n && r.ts > ng.at && r.ts <= end) : null;
+        return { ...w, back, picked };
+      });
+      return { ng, res };
+    });
+    const nTot = nudgeOut.reduce((a, x) => a + x.res.length, 0), nBack = nudgeOut.reduce((a, x) => a + x.res.filter((r) => r.back).length, 0);
+    const nPk = nudgeOut.flatMap((x) => x.res.filter((r) => r.why === "picks")), nPkDone = nPk.filter((r) => r.picked).length;
+    const nudgeHtml = nudgeOut.length ? `<div class="lvz-h">DID THE NUDGES WORK · WITHIN 12 HOURS</div>
+      <div class="lvz-cap">${nBack} of ${nTot} nudged came back${nPk.length ? `; ${nPkDone} of ${nPk.length} short on picks saved some` : ""}.</div>
+      ${nudgeOut.map(({ ng, res }) => `<div class="ld-ng"><span>${esc(dayLong(ng.at))} ${esc(timeLab(ng.at))}</span><div>${res.map((r) => `<em class="${r.back ? "ok" : "no"}" ${tip(`${r.n} · nudged for ${r.why === "picks" ? "picks" : "being quiet"} · ${r.back ? "came back" : "didn't come back"} within 12h${r.picked != null ? ` · ${r.picked ? "saved picks" : "no picks saved"}` : ""}`)}>${esc(r.n)} ${r.back ? "✓" : "✗"}${r.picked != null ? (r.picked ? " · picks ✓" : " · picks ✗") : ""}</em>`).join("")}</div></div>`).join("")}` : "";
+
+    // ---- HEALTH: errors, failed and slow loads, time to usable ----
+    const sAll = people.flatMap((p) => p.sess.map((x) => ({ p, x })));
+    const s7h = sAll.filter(({ x }) => x.at >= today0 - 6 * DAY), s7p = sAll.filter(({ x }) => x.at >= today0 - 13 * DAY && x.at < today0 - 6 * DAY);
+    const errPct = (arr) => arr.length ? Math.round(arr.filter(({ x }) => x.h.e).length / arr.length * 100) : null;
+    const fails = (arr, b) => arr.reduce((a, { x }) => a + (b ? x.h.ff[b] : x.h.ff.espn + x.h.ff.worker), 0);
+    const slows = (arr) => arr.reduce((a, { x }) => a + x.h.sl.espn + x.h.sl.worker, 0);
+    const ldMed = (arr) => median(arr.map(({ x }) => x.h.ld).filter(Number.isFinite));
+    const sec = (ms) => ms == null ? "-" : `${(ms / 1000).toFixed(1)}s`;
+    const fpd = d28.map((d) => sAll.filter(({ x }) => x.at >= d && x.at < d + DAY));
+    const fmaxD = Math.max(1, ...fpd.map((a) => fails(a)));
+    const failBars = d28.map((d, i) => { const e = fails(fpd[i], "espn"), w = fails(fpd[i], "worker"); return `<i class="ld-fb2${gdSet.has(d) ? " gd" : ""}" ${tip(`${dayLong(d)} · ${e} ESPN and ${w} server load${e + w === 1 ? "" : "s"} failed · ${fpd[i].length} visits${fpd[i].filter(({ x }) => x.h.e).length ? ` · ${fpd[i].filter(({ x }) => x.h.e).length} with an error` : ""}`)}><b class="e" style="height:${(e / fmaxD * 100).toFixed(0)}%"></b><b class="w" style="height:${(w / fmaxD * 100).toFixed(0)}%"></b></i>`; }).join("");
+    const s28 = sAll.filter(({ x }) => x.at >= d28[0]);
+    const byBuild = new Map();
+    for (const it of s28) { const k = it.x.v || "unknown"; const e = byBuild.get(k) || []; e.push(it); byBuild.set(k, e); }
+    const buildRows = [...byBuild.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([v, arr]) => `<div class="ld-fr five" ${tip(`Build ${v === "unknown" ? "unknown" : buildLab(v)} · ${new Set(arr.map(({ p }) => p.n)).size} people (${[...new Set(arr.map(({ p }) => p.n))].join(", ")}) · ${arr.length} visits`)}><span>${v === "unknown" ? "unknown" : esc(buildLab(v))}${v === buildNow ? ` <i class="ld-cur">CURRENT</i>` : ""}</span><em>${new Set(arr.map(({ p }) => p.n)).size}</em><em>${errPct(arr) ?? "-"}%</em><em>${fails(arr)}</em><em>${sec(ldMed(arr))}</em></div>`).join("");
+    const personH = people.map((p) => { const arr = s28.filter((it) => it.p === p); return { p, arr }; }).sort((a, b) => fails(b.arr) + b.arr.filter(({ x }) => x.h.e).length - fails(a.arr) - a.arr.filter(({ x }) => x.h.e).length);
+    const personRows = personH.map(({ p, arr }) => `<div class="ld-fr five" ${tip(`${p.n} · ${arr.length} visits in 28 days · ${p.appKind}${p.device ? ` · device ${p.device.slice(0, 6)}` : ""}${p.ver ? ` · build ${buildLab(p.ver)}` : ""}`)}><span>${esc(p.n)}</span><em>${arr.filter(({ x }) => x.h.e).length}</em><em>${fails(arr, "espn")}</em><em>${fails(arr, "worker")}</em><em>${sec(ldMed(arr))}</em></div>`).join("");
+    const errMsgs = new Map();
+    for (const { p, x } of s28) for (const m of x.h.em) { const e = errMsgs.get(m) || { n: 0, last: 0, who: new Set(), v: new Set() }; e.n++; e.last = Math.max(e.last, x.at); e.who.add(p.n); if (x.v) e.v.add(x.v); errMsgs.set(m, e); }
+    const errHtml = errMsgs.size ? [...errMsgs.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 8).map(([m, e]) => `<div class="ld-err" ${tip(`Seen in ${e.n} visit${e.n === 1 ? "" : "s"} · ${[...e.who].join(", ")} · builds ${[...e.v].map(buildLab).join(", ") || "unknown"} · last ${dayLong(e.last)} ${timeLab(e.last)}`)}><code>${esc(m)}</code><em>${e.n}× · ${esc(dayLong(e.last))}</em></div>`).join("") : `<div class="lvz-empty">No errors recorded${sAll.length ? "" : " yet (health is recorded from the new build on)"}.</div>`;
+    const healthView = `<div class="ld-kpis">
+        <div ${tip(`Share of visits in the last 7 days with at least one app error. Week before: ${errPct(s7p) ?? "-"}%.`)}><b>${errPct(s7h) ?? "-"}${errPct(s7h) != null ? "<small>%</small>" : ""}</b><span>visits with an error</span>${s7p.length ? chip(errPct(s7h) != null && errPct(s7p) != null ? errPct(s7h) - errPct(s7p) : null, " pts", true) : chip(null)}</div>
+        <div ${tip(`Data loads that failed in 7 days: ${fails(s7h, "espn")} from ESPN, ${fails(s7h, "worker")} from our server.`)}><b>${fails(s7h)}</b><span>failed loads · ESPN ${fails(s7h, "espn")} · server ${fails(s7h, "worker")}</span>${s7p.length ? chip(fails(s7h) - fails(s7p), "", true) : chip(null)}</div>
+        <div ${tip("Median time from opening the app to the first screen with data, over 7 days.")}><b>${sec(ldMed(s7h))}</b><span>to usable (median)</span>${s7p.length && ldMed(s7h) != null && ldMed(s7p) != null ? chip(Math.round((ldMed(s7h) - ldMed(s7p)) / 100) / 10, "s", true) : chip(null)}</div>
+        <div ${tip("Loads that took longer than 4 seconds, over 7 days.")}><b>${slows(s7h)}</b><span>slow loads (over 4s)</span>${s7p.length ? chip(slows(s7h) - slows(s7p), "", true) : chip(null)}</div>
+      </div>
+      <div class="lvz-h">FAILED LOADS EACH DAY · <i class="ld-key-e"></i> ESPN · <i class="ld-key-w"></i> SERVER · <i class="ld-key-gd"></i> GAME DAY</div>
+      <div class="ld-dau"><div class="ld-dbars fail">${failBars}</div><div class="lvz-tlax"><span>${dayLong(d28[0]).toUpperCase()}</span><span>${dayLong(d28[14]).toUpperCase()}</span><span>TODAY</span></div></div>
+      <div class="lvz-h">BY BUILD · 28 DAYS</div>
+      <div class="ld-fh five"><span>BUILD</span><span>PEOPLE</span><span>ERR VISITS</span><span>FAILS</span><span>TO USABLE</span></div>${buildRows || `<div class="lvz-empty">No visits on record yet.</div>`}
+      <div class="lvz-h">BY PERSON · 28 DAYS</div>
+      <div class="ld-fh five"><span>OWNER</span><span>ERR VISITS</span><span>ESPN FAILS</span><span>SERVER FAILS</span><span>TO USABLE</span></div>${personRows}
+      <div class="lvz-h">ERRORS SEEN</div>${errHtml}
+      <div class="lvz-cap">Health is recorded from the new build on (since ${esc(dayLong(sessSince))}). Phones that are offline count as failed loads too.</div>
+      <div class="lvz-h">EXPORT</div>
+      <div class="ld-sort">${[["opens", "OPENS CSV"], ["sessions", "VISITS CSV"], ["weekly", "WEEKLY CSV"]].map(([k, l]) => `<button type="button" data-csv="${k}">${l}</button>`).join("")}</div>`;
+    // Health in the story.
+    if (fails(s7h) >= 5) add(fails(s7h, "espn") > fails(s7h, "worker") ? "TREND" : "ACTION", 62, `${fails(s7h)} data loads failed this week (ESPN ${fails(s7h, "espn")}, our server ${fails(s7h, "worker")})${s7p.length ? `, against ${fails(s7p)} the week before` : ""}.`);
+    const curErr = buildNow && byBuild.get(buildNow) ? errPct(byBuild.get(buildNow)) : null;
+    if (curErr != null && curErr >= 10) add("ACTION", 66, `The current build has an error in ${curErr}% of visits; see HEALTH.`);
+    if (releases.length) { const [v, t] = releases[releases.length - 1]; const before = people.reduce((a, p) => a + p.sess.filter((x) => x.at >= t - 7 * DAY && x.at < t).reduce((s2, x) => s2 + x.dur, 0), 0), after = people.reduce((a, p) => a + p.sess.filter((x) => x.at >= t && x.at < t + 7 * DAY).reduce((s2, x) => s2 + x.dur, 0), 0); if (before > 0 && now - t >= 3 * DAY) add("NOTE", 34, `Since the ${buildLab(v)} build, time in the app is ${after >= before ? "up" : "down"} ${Math.abs(pct(after, before))}% against the week before it.`); }
+    story.sort((a, b) => tagOrder[a.tag] - tagOrder[b.tag] || b.w - a.w);
+
+    // ---- CSV export ----
+    const csvEsc = (v) => { const t = String(v ?? ""); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+    const toCsv = (rows) => rows.map((r) => r.map(csvEsc).join(",")).join("\n");
+    const csv = (kind) => {
+      if (kind === "opens") return toCsv([["owner", "time", "app", "build", "device"], ...people.flatMap((p) => p.opens.map((v) => [p.n, new Date(v.at).toISOString(), v.app || "", v.v || "", v.device || ""]))]);
+      if (kind === "sessions") return toCsv([["owner", "start", "seconds", "features", "build", "errors", "espn_fails", "server_fails", "load_ms"], ...people.flatMap((p) => p.sess.map((x) => [p.n, new Date(x.at).toISOString(), Math.round(x.dur / 1000), x.f.join(" "), x.v || "", x.h.e, x.h.ff.espn, x.h.ff.worker, x.h.ld ?? ""]))]);
+      return toCsv([["week_of", "owner", "days", "opens", "minutes", "visits", "error_visits", "failed_loads", "load_ms", "partial"], ...rk.flatMap((k) => names.map((n) => { const x = rollups[k].people?.[n] || {}; return [k, n, x.days || 0, x.opens || 0, Math.round((x.timeMs || 0) / 60000), x.sessions || 0, x.errSessions || 0, x.fails || 0, x.loadMs ?? "", rollups[k].partial ? "yes" : ""]; }))]);
+    };
 
     // ---- PULSE ----
     const dmax = N;
@@ -389,18 +517,24 @@
     const wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const punchHtml = punch.map((row, d) => `<span class="lvz-pd">${wd[d].slice(0, 2).toUpperCase()}</span>${row.map((n, h) => `<i class="lvz-p s${pstep(n)}" ${tip(`${wd[d]} ${hourLab(h)}-${hourLab((h + 1) % 24)} · ${n} open${n === 1 ? "" : "s"} on record`)}></i>`).join("")}`).join("");
     const tagCls = { ACTION: "act", TREND: "trend", NOTE: "note" };
-    const pulse = `<div class="ld-kpis">
+    const pulseLive = `<div class="ld-kpis">
         <div ${tip(`People with at least one day in the app in the last 7 days. Prior week: ${priorCovered ? wauP : "not tracked yet"}.`)}><b>${wau}<small>/${N}</small></b><span>active this week</span>${chip(priorCovered ? wau - wauP : null)}</div>
         <div ${tip("Average number of days each person was in, out of the last 7.")}><b>${avgL7.toFixed(1)}<small>/7</small></b><span>days in, per person</span>${chip(priorCovered ? Math.round((avgL7 - avgL7p) * 10) / 10 : null)}</div>
         <div ${tip(`App opens in the last 7 days. Prior week: ${priorCovered ? opensP7 : "not tracked yet"}.`)}><b>${opens7}</b><span>opens, 7 days</span>${chip(priorCovered ? pct(opens7, opensP7) : null, "%")}</div>
         <div ${tip(`Total time in the app over 7 days, from sessions (tracked since ${dayLong(sessSince)}).`)}><b>${dur(time7)}</b><span>time in app${sess7.length ? ` · ${dur(avgVisit)} a visit` : ""}</span>${chip(priorSessCovered ? pct(time7, timeP7) : null, "%")}</div>
       </div>
       ${story.length ? `<div class="lvz-h">THIS WEEK'S STORY</div><ul class="ld-story">${story.slice(0, 9).map((s) => `<li><em class="ld-tag ${tagCls[s.tag]}">${s.tag}</em><span>${s.html}</span></li>`).join("")}</ul>` : ""}
-      ${nudges.length ? `<div class="lvz-nudge"><div class="lvz-h">WHO TO NUDGE</div>${nudges.map((x) => `<div class="lvz-nr"><b>${esc(x.n)}</b><span>${esc(x.why)}</span></div>`).join("")}<button type="button" class="admin-btn lvz-copy" data-text="${esc(nudgeText)}">Copy message for the chat</button></div>` : ""}
+      ${nudges.length ? `<div class="lvz-nudge"><div class="lvz-h">WHO TO NUDGE</div>${nudges.map((x) => `<div class="lvz-nr"><b>${esc(x.n)}</b><span>${esc(x.why)}</span></div>`).join("")}<button type="button" class="admin-btn lvz-copy" data-text="${esc(nudgeText)}" data-who="${esc(JSON.stringify(nudges.map((x) => ({ n: x.n, why: x.kind }))))}">Copy message for the chat</button></div>` : ""}
+      ${nudgeHtml}
       <div class="lvz-h">PEOPLE IN EACH DAY · LAST 28 DAYS · <i class="ld-key-gd"></i> GAME DAY</div>
-      <div class="ld-dau"><div class="ld-dbars">${dauHtml}</div><div class="lvz-tlax"><span>${dayLong(d28[0]).toUpperCase()}</span><span>${dayLong(d28[14]).toUpperCase()}</span><span>TODAY</span></div></div>
+      <div class="ld-dau"><div class="ld-dbars">${dauHtml}</div><div class="ld-rels">${relMarks}</div><div class="lvz-tlax"><span>${dayLong(d28[0]).toUpperCase()}</span><span>${dayLong(d28[14]).toUpperCase()}</span><span>TODAY</span></div></div>
+      <div class="lvz-h">TIME IN THE APP EACH DAY · <i class="ld-key-rel"></i> NEW BUILD</div>
+      <div class="ld-dau"><div class="ld-dbars">${tpdHtml}</div><div class="ld-rels">${relMarks}</div><div class="lvz-tlax"><span>${dayLong(d28[0]).toUpperCase()}</span><span>${dayLong(d28[14]).toUpperCase()}</span><span>TODAY</span></div></div>
+      <div class="lvz-h">SEASON · PEOPLE IN EACH WEEK</div>
+      <div class="ld-trend">${trendHtml}</div>
       <div class="lvz-h">WHEN THE LEAGUE IS IN · DAY BY HOUR, SINCE ${esc(dayLong(opensSince).toUpperCase())}</div>
       <div class="lvz-punch">${punchHtml}<span></span><div class="lvz-pax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div></div>`;
+    const pulse = `${pastKeys.length ? `<div class="ld-sort"><span>WEEK</span><button type="button" data-pulseweek="live" class="on">THIS WEEK</button>${pastKeys.map((k) => `<button type="button" data-pulseweek="${k}">WK OF ${wkLab(k)}</button>`).join("")}</div>` : ""}<div class="ld-pulse-live">${pulseLive}</div><div class="ld-pulse-past" hidden></div>`;
 
     // ---- PEOPLE ----
     const peopleRow = (p) => {
@@ -477,15 +611,16 @@
       <div class="lvz-cap">Usual lead: median time between the last save and lock. Switches paid: points from the final pick minus what the first pick would have scored, on finished games.</div>`;
 
     const html = `<div class="lvz ld">
-      <div class="ld-tabs">${[["pulse", "PULSE"], ["people", "PEOPLE"], ["gameday", "GAME DAY"], ["features", "FEATURES"], ["picks", "PICKS"]].map(([k, l], i) => `<button type="button" data-ldtab="${k}" class="${i === 0 ? "on" : ""}">${l}</button>`).join("")}</div>
+      <div class="ld-tabs">${[["pulse", "PULSE"], ["people", "PEOPLE"], ["gameday", "GAME DAY"], ["features", "FEATURES"], ["picks", "PICKS"], ["health", "HEALTH"]].map(([k, l], i) => `<button type="button" data-ldtab="${k}" class="${i === 0 ? "on" : ""}">${l}</button>`).join("")}</div>
       <section data-ldview="pulse">${pulse}</section>
       <section data-ldview="people" hidden>${peopleView}</section>
       <section data-ldview="gameday" hidden>${gameView}</section>
       <section data-ldview="features" hidden>${featView}</section>
       <section data-ldview="picks" hidden>${picksView}</section>
+      <section data-ldview="health" hidden>${healthView}</section>
       <div class="lvz-tip" aria-live="polite">Tap any bar, square, dot or row for the details.</div>
     </div>`;
-    return { html, drill, gameDayView, pickWeekView };
+    return { html, drill, gameDayView, pickWeekView, pastWeekView, csv };
   }
 
   // One listener for the whole dashboard: tabs, sorting, drill-downs,
@@ -521,7 +656,28 @@
       if (gd) { gd.parentElement.querySelectorAll("[data-gameday]").forEach((b) => b.classList.toggle("on", b === gd)); box.querySelector(".ld-gdbody").innerHTML = dash.gameDayView(Number(gd.dataset.gameday)).html; return; }
       const pw = t.closest?.("[data-pickweek]");
       if (pw) { pw.parentElement.querySelectorAll("[data-pickweek]").forEach((b) => b.classList.toggle("on", b === pw)); box.querySelector(".ld-pkbody").innerHTML = dash.pickWeekView(Number(pw.dataset.pickweek)); return; }
+      const pwk = t.closest?.("[data-pulseweek]");
+      if (pwk) {
+        pwk.parentElement.querySelectorAll("[data-pulseweek]").forEach((b) => b.classList.toggle("on", b === pwk));
+        const live = box.querySelector(".ld-pulse-live"), past = box.querySelector(".ld-pulse-past");
+        if (pwk.dataset.pulseweek === "live") { live.hidden = false; past.hidden = true; }
+        else { past.innerHTML = dash.pastWeekView(pwk.dataset.pulseweek); live.hidden = true; past.hidden = false; }
+        return;
+      }
+      const cv = t.closest?.("[data-csv]");
+      if (cv) {
+        const blob = new Blob([dash.csv(cv.dataset.csv)], { type: "text/csv" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob); a.download = `brochiefs-${cv.dataset.csv}-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        return;
+      }
       const cp = t.closest?.(".lvz-copy");
+      // Copying the nudge records who was on it, for the follow-through.
+      if (cp && cp.dataset.who && !cp.dataset.logged) {
+        cp.dataset.logged = "1";
+        try { fetch(`${WORKER_URL}/nudge?key=${encodeURIComponent(key())}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ who: JSON.parse(cp.dataset.who), week: typeof currentWeek !== "undefined" ? currentWeek : null }) }).catch(() => {}); } catch {}
+      }
       if (cp) { const text = cp.dataset.text || ""; try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); cp.textContent = "Copied ✓"; } } catch { try { await navigator.clipboard.writeText(text); cp.textContent = "Copied ✓"; } catch {} } return; }
       if (pr) { const d = pr.nextElementSibling; if (d.hidden && !d.innerHTML) d.innerHTML = dash.drill(pr.dataset.person); d.hidden = !d.hidden; pr.classList.toggle("open", !d.hidden); }
       show(t.closest?.("[data-tip]"));
@@ -535,12 +691,14 @@
     body.innerHTML = `<div class="admin-empty">Loading the league dashboard…</div>`;
     try {
       const now = Date.now();
-      const [vis, pk, season, plog, ver] = await Promise.allSettled([
+      const [vis, pk, season, plog, ver, roll, ndg] = await Promise.allSettled([
         get("/visit"),
         get(`/picks?week=${currentWeek}`),
-        fetch(`${WORKER_URL}/season?t=${now}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
+        get("/season"),
         get(`/picks-log?format=json&since=${now - 120 * 86400000}`),
         fetch(`version.json?t=${now}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
+        get("/rollups"),
+        get("/nudge"),
       ]);
       const val = (x) => x.status === "fulfilled" ? x.value : null;
       const v = val(vis) || {};
@@ -548,7 +706,7 @@
       const visits = keep(v.visits), sessions = keep(v.sessions);
       const fmt = (t) => new Date(t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
       const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
-      dash = buildLoginDash({ visits, sessions, picksNow: val(pk)?.picks || null, season: val(season), pickLog: val(plog)?.changes || [], buildNow: String(val(ver)?.v || ""), names: TRACKED, ago });
+      dash = buildLoginDash({ visits, sessions, picksNow: val(pk)?.picks || null, season: val(season), pickLog: val(plog)?.changes || [], buildNow: String(val(ver)?.v || ""), names: TRACKED, ago, rollups: Object.fromEntries(Object.entries(val(roll)?.rollups || {}).map(([k, r]) => [k, { ...r, people: keep(r.people) }])), nudgeLog: val(ndg)?.nudges || [] });
       const all = Object.entries(visits).flatMap(([m, list]) => list.map((x) => ({ m, ...x })));
       opens = dash.html + `<details class="con-more"><summary>Every open (${all.length})</summary>${all.sort((a, b) => b.at - a.at).slice(0, 200).map((x) => `<div class="con-line">${fmt(x.at)} · <b>${esc(x.m)}</b> · ${x.app === "home" ? "home-screen app" : "browser"}${x.screen ? ` · ${esc(x.screen)}` : ""}</div>`).join("")}</details>`;
     } catch (err) { console.error("login dashboard", err); opens = `<div class="admin-empty">The dashboard couldn't load.</div>`; }

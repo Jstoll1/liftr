@@ -24,6 +24,7 @@ export default {
       return;
     }
     ctx.waitUntil(sealFromEspn(env).then((r) => console.log("scheduled seal", JSON.stringify(r))));
+    ctx.waitUntil(fillRollups(env).then((r) => console.log("scheduled rollups", Object.keys(r || {}).length)).catch((err) => console.error("rollups", err)));
   },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -89,6 +90,12 @@ export default {
     }
     if (url.pathname === "/visit") {
       return handleVisit(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/rollups") {
+      return handleRollups(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/nudge") {
+      return handleNudge(request, env, corsHeaders, url);
     }
     if (url.pathname === "/auth-log") {
       return handleAuthLog(request, env, corsHeaders, url);
@@ -1067,6 +1074,40 @@ const PICKS_KICKOFF = Object.fromEntries(Object.entries({
   6: "2026-09-05T19:30:00Z", 7: "2026-09-05T22:00:00Z", 8: "2026-09-05T23:30:00Z", 9: "2026-09-05T16:00:00Z", 10: "2026-09-06T23:30:00Z",
 }).map(([id, iso]) => [id, new Date(iso).getTime()]));
 
+// Who is asking for picks: { all: true } for the admin key, else the
+// owner whose own picks may come back unmasked (null for nobody).
+async function picksViewer(env, url) {
+  if (isAdmin(env, url)) return { all: true, me: null };
+  const owner = await tokenOwner(env, url.searchParams.get("token"));
+  if (owner) return { all: false, me: owner };
+  const me = url.searchParams.get("me");
+  // With owner login off nobody is proved, which is also how saving works
+  // today; once it is on, only a token unlocks your own picks.
+  const mode = await authMode(env);
+  return { all: false, me: mode !== "on" && PICKS_MANAGERS.includes(me) ? me : null };
+}
+
+// Hide other owners' picks on games that haven't locked, and their
+// tiebreaker until the first kickoff. A hidden pick is { hidden: true }:
+// truthy, so counts of picks in still work, but no team, mode or time.
+export function maskPicks(picks, kickoffs, now, viewer) {
+  if (viewer?.all) return picks;
+  const ks = Object.values(kickoffs || {}).filter(Number.isFinite);
+  const firstKick = ks.length ? Math.min(...ks) : null;
+  const out = {};
+  for (const [m, st] of Object.entries(picks || {})) {
+    if (!st || m === viewer?.me) { out[m] = st; continue; }
+    const p = {};
+    for (const [id, pick] of Object.entries(st.picks || {})) {
+      const ko = kickoffs?.[id];
+      p[id] = Number.isFinite(ko) && now >= ko ? pick : { hidden: true };
+    }
+    const tbOpen = firstKick == null || now < firstKick;
+    out[m] = { ...st, picks: p, ...(tbOpen && String(st.tiebreaker ?? "").trim() !== "" ? { tiebreaker: "hidden" } : {}) };
+  }
+  return out;
+}
+
 async function handlePicks(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) {
     console.error("LIFTR_KV binding missing");
@@ -1081,18 +1122,25 @@ async function handlePicks(request, env, corsHeaders, url) {
       // that; a save clears it so nobody waits more than a few seconds.
       const now = Date.now();
       const week = await weekFrom(env, url);
+      // Before a game locks, nobody sees anyone else's pick on it. The
+      // caller's own picks come back whole (?me=, proved by ?token= once
+      // owner login is on); everyone else's unlocked picks come back as a
+      // placeholder that still counts toward "7/10 in" but carries no team.
+      // The admin key sees everything.
+      const viewer = await picksViewer(env, url);
       if (picksCache && picksCache.week === week && now - picksCache.at < PICKS_CACHE_MS) {
-        return json({ week, picks: picksCache.picks, cached: true }, 200, corsHeaders);
+        return json({ week, picks: maskPicks(picksCache.picks, picksCache.kickoffs, now, viewer), cached: true }, 200, corsHeaders);
       }
-      const entries = await Promise.all(
-        PICKS_MANAGERS.map(async (manager) => {
+      const [entries, kickoffs] = await Promise.all([
+        Promise.all(PICKS_MANAGERS.map(async (manager) => {
           const stored = await env.LIFTR_KV.get(pickKey(week, manager));
           return [manager, stored ? JSON.parse(stored) : null];
-        })
-      );
+        })),
+        kickoffsFor(env, week),
+      ]);
       const picks = Object.fromEntries(entries.filter(([, value]) => value !== null));
-      picksCache = { at: now, week, picks };
-      return json({ week, picks }, 200, corsHeaders);
+      picksCache = { at: now, week, picks, kickoffs };
+      return json({ week, picks: maskPicks(picks, kickoffs, now, viewer) }, 200, corsHeaders);
     } catch (err) {
       console.error("Picks read error", err?.stack || String(err));
       return json({ error: "Read failed" }, 500, corsHeaders);
@@ -1123,7 +1171,11 @@ async function handlePicks(request, env, corsHeaders, url) {
       // the other games cannot wipe a pick made elsewhere. Picks without a
       // timestamp (older clients) lose to timestamped ones and otherwise
       // the incoming pick wins, which is the old behaviour.
-      const incoming = body.state || {};
+      const incoming = { ...(body.state || {}) };
+      // A masked placeholder ({ hidden: true }) or a "hidden" tiebreaker is
+      // never a real pick: drop them so they can't overwrite one.
+      incoming.picks = Object.fromEntries(Object.entries(incoming.picks || {}).filter(([, p]) => p && typeof p === "object" && !p.hidden && p.team && p.mode));
+      if (incoming.tiebreaker === "hidden") delete incoming.tiebreaker;
       const week = Number.isInteger(body.week) && body.week >= 1 ? body.week : await weekFrom(env, url);
       const kickoffs = await kickoffsFor(env, week);
       const stored = JSON.parse((await env.LIFTR_KV.get(pickKey(week, manager))) || "null") || { picks: {} };
@@ -1881,7 +1933,20 @@ async function handleSeason(request, env, corsHeaders, url) {
   if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, corsHeaders);
 
   const now = Date.now();
-  if (seasonCache && now - seasonCache.at < 30000) return json({ ...seasonCache.data, cached: true }, 200, corsHeaders);
+  // Same rule as /picks: unlocked picks stay hidden unless it's the admin.
+  const seasonOut = async (data) => {
+    if (isAdmin(env, url)) return data;
+    const season = {};
+    for (const [n, wk] of Object.entries(data.season || {})) {
+      const ks = Object.fromEntries((wk.games || []).map((g) => [String(g.id), Date.parse(g.kickoff)]));
+      const lockAll = Number(n) >= LOCK_ALL_FROM_WEEK && Object.values(ks).some(Number.isFinite);
+      const first = lockAll ? Math.min(...Object.values(ks).filter(Number.isFinite)) : null;
+      const kicks = lockAll ? Object.fromEntries(Object.keys(ks).map((id) => [id, first])) : (Number(n) === 1 && !wk.games ? PICKS_KICKOFF : ks);
+      season[n] = { ...wk, picks: maskPicks(wk.picks, kicks, now, { all: false, me: null }) };
+    }
+    return { ...data, season };
+  };
+  if (seasonCache && now - seasonCache.at < 30000) return json({ ...(await seasonOut(seasonCache.data)), cached: true }, 200, corsHeaders);
   const weeks = await readWeeks(env);
   const out = { weeks, season: {} };
   for (const n of weeks.list) {
@@ -1898,7 +1963,7 @@ async function handleSeason(request, env, corsHeaders, url) {
     };
   }
   seasonCache = { at: now, data: out };
-  return json(out, 200, corsHeaders);
+  return json(await seasonOut(out), 200, corsHeaders);
 }
 
 async function handlePicksLog(request, env, corsHeaders, url) {
@@ -3203,6 +3268,93 @@ async function handleExpertRecord(request, env, corsHeaders, url) {
 // One key per manager holding the latest 100, so a visit costs one read and
 // one write.
 const VISITS_NOT_TRACKED = new Set(["Jake"]);
+
+// --- Weekly rollups ----------------------------------------------------
+// Raw opens and sessions are capped per owner, so a season-long view needs
+// the week's totals saved once the week is over. Weeks run Monday to
+// Sunday, Eastern. GET /rollups (admin) fills in any finished week that is
+// missing from what raw data still holds, and returns them all; the Monday
+// cron does the same, so nothing depends on someone opening the console.
+const ROLLUP_TZ = "America/New_York";
+const etParts = (ms) => { const o = {}; for (const p of new Intl.DateTimeFormat("en-US", { timeZone: ROLLUP_TZ, year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" }).formatToParts(new Date(ms))) o[p.type] = p.value; return o; };
+const etDate = (ms) => { const o = etParts(ms); return `${o.year}-${o.month}-${o.day}`; };
+function etWeekKey(ms) {
+  const o = etParts(ms);
+  const dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(o.weekday);
+  const d = new Date(Date.UTC(Number(o.year), Number(o.month) - 1, Number(o.day)));
+  d.setUTCDate(d.getUTCDate() - Math.max(0, dow));
+  return d.toISOString().slice(0, 10);
+}
+export function rollupFrom(visitsBy, sessionsBy, key) {
+  const people = {};
+  const league = { active: 0, opens: 0, timeMs: 0, sessions: 0, errSessions: 0, fails: 0 };
+  for (const m of Object.keys({ ...visitsBy, ...sessionsBy })) {
+    const op = (visitsBy[m] || []).filter((v) => Number.isFinite(v.at) && etWeekKey(v.at) === key);
+    const ss = (sessionsBy[m] || []).filter((x) => Number.isFinite(x.at) && etWeekKey(x.at) === key);
+    if (!op.length && !ss.length) { people[m] = { days: 0, opens: 0, timeMs: 0, sessions: 0 }; continue; }
+    const days = new Set([...op.map((v) => etDate(v.at)), ...ss.map((x) => etDate(x.at))]).size;
+    const features = {};
+    for (const x of ss) for (const f of new Set((x.f || []).map((y) => String(y).replace(/-g\d+$/, "")))) features[f] = (features[f] || 0) + 1;
+    const lds = ss.map((x) => x.h?.ld).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+    const p = {
+      days, opens: op.length, timeMs: ss.reduce((a, x) => a + (x.dur || 0), 0), sessions: ss.length, features,
+      errSessions: ss.filter((x) => x.h?.e).length, fails: ss.reduce((a, x) => a + (x.h?.ff?.espn || 0) + (x.h?.ff?.worker || 0), 0),
+      ...(lds.length ? { loadMs: lds[Math.floor((lds.length - 1) / 2)] } : {}),
+      builds: [...new Set([...op.map((v) => v.v), ...ss.map((x) => x.v)].filter(Boolean))],
+      app: op.length ? (op.every((v) => v.app === "home") ? "home" : op.every((v) => v.app !== "home") ? "browser" : "both") : null,
+    };
+    people[m] = p;
+    league.active += 1; league.opens += p.opens; league.timeMs += p.timeMs; league.sessions += p.sessions; league.errSessions += p.errSessions; league.fails += p.fails;
+  }
+  return { week: key, people, league };
+}
+async function readUsage(env) {
+  const who = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m));
+  const [v, ss] = await Promise.all([
+    Promise.all(who.map(async (m) => [m, (await env.LIFTR_KV.get(`visits:${m}`, "json")) || []])),
+    Promise.all(who.map(async (m) => [m, (await env.LIFTR_KV.get(sessKey(m), "json")) || []])),
+  ]);
+  return { visits: Object.fromEntries(v), sessions: Object.fromEntries(ss) };
+}
+async function fillRollups(env) {
+  const have = (await env.LIFTR_KV.get("rollups", "json")) || {};
+  const { visits, sessions } = await readUsage(env);
+  const all = [...Object.values(visits).flat(), ...Object.values(sessions).flat()].map((x) => x.at).filter(Number.isFinite);
+  if (!all.length) return have;
+  const thisWeek = etWeekKey(Date.now());
+  // Every finished week the raw data still reaches, oldest week only if it
+  // looks complete (data before its Monday is gone, so it would undercount).
+  const keys = [...new Set(all.map((t) => etWeekKey(t)))].filter((k) => k < thisWeek).sort();
+  let changed = false;
+  for (const k of keys) {
+    if (have[k]) continue;
+    have[k] = { ...rollupFrom(visits, sessions, k), at: Date.now(), partial: k === keys[0] };
+    changed = true;
+  }
+  if (changed) await env.LIFTR_KV.put("rollups", JSON.stringify(have));
+  return have;
+}
+async function handleRollups(request, env, corsHeaders, url) {
+  if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+  try { return json({ rollups: await fillRollups(env) }, 200, corsHeaders); }
+  catch (err) { console.error("rollups", err?.stack || String(err)); return json({ error: "Rollups failed" }, 500, corsHeaders); }
+}
+
+// --- Nudges ------------------------------------------------------------
+// When the admin copies the nudge message, the console records who was on
+// it and why, so the dashboard can say whether nudges work.
+async function handleNudge(request, env, corsHeaders, url) {
+  if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+  const list = (await env.LIFTR_KV.get("nudges", "json")) || [];
+  if (request.method === "GET") return json({ nudges: list }, 200, corsHeaders);
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let b; try { b = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const who = (Array.isArray(b?.who) ? b.who : []).filter((x) => x && PICKS_MANAGERS.includes(x.n)).slice(0, 12).map((x) => ({ n: x.n, why: x.why === "picks" ? "picks" : "quiet" }));
+  if (!who.length) return json({ error: "Nobody to nudge" }, 400, corsHeaders);
+  list.unshift({ at: Date.now(), week: Number(b?.week) || null, who });
+  await env.LIFTR_KV.put("nudges", JSON.stringify(list.slice(0, 200)));
+  return json({ ok: true }, 200, corsHeaders);
+}
 const sessKey = (m) => `sessions:${m}`;
 async function handleVisit(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
@@ -3232,7 +3384,15 @@ async function handleVisit(request, env, corsHeaders, url) {
     const start = Number(body.start), dur = Number(body.dur);
     if (!Number.isFinite(start) || !Number.isFinite(dur) || dur < 3000 || start > now + 60000 || start < now - 7 * 86400000) return json({ ok: false }, 200, corsHeaders);
     const f = Array.isArray(body.f) ? [...new Set(body.f.map((x) => String(x).toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 24)).filter(Boolean))].slice(0, 24) : [];
-    const rec = { at: Math.round(start), dur: Math.round(Math.min(dur, 6 * 3600000)), f, ...(ver ? { v: ver } : {}) };
+    const int = (x, max) => { const n = Math.round(Number(x)); return Number.isFinite(n) && n > 0 ? Math.min(n, max) : 0; };
+    // Minutes per game's live view ({ g5: ms }) and app health.
+    const gt = {};
+    for (const [k, ms] of Object.entries(body.gt && typeof body.gt === "object" ? body.gt : {}).slice(0, 20)) if (/^g\d{1,2}$/.test(k) && int(ms, 6 * 3600000)) gt[k] = int(ms, 6 * 3600000);
+    const hb = body.h && typeof body.h === "object" ? body.h : {};
+    const pair = (o) => ({ espn: int(o?.espn, 999), worker: int(o?.worker, 999) });
+    const h = { e: int(hb.e, 999), em: (Array.isArray(hb.em) ? hb.em : []).slice(0, 3).map((x) => String(x).replace(/[<>]/g, "").slice(0, 80)).filter(Boolean), ff: pair(hb.ff), sl: pair(hb.sl), ...(int(hb.ld, 120000) ? { ld: int(hb.ld, 120000) } : {}) };
+    const hasH = h.e || h.ff.espn || h.ff.worker || h.sl.espn || h.sl.worker || h.ld;
+    const rec = { at: Math.round(start), dur: Math.round(Math.min(dur, 6 * 3600000)), f, ...(Object.keys(gt).length ? { gt } : {}), ...(hasH ? { h } : {}), ...(ver ? { v: ver } : {}) };
     const list = (await env.LIFTR_KV.get(sessKey(m), "json")) || [];
     list.unshift(rec);
     await env.LIFTR_KV.put(sessKey(m), JSON.stringify(list.slice(0, 1500)));

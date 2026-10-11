@@ -5821,3 +5821,50 @@ html.vp-gap { --nav-h: 63px; }
 .ld-ppl { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; }
 .ld-ppl i { height: 9px; border-radius: 50%; background: rgba(255, 255, 255, .08); }
 .ld-ppl i.on { background: #1ab8cc; }
+/* League dashboard, round two: health, releases, season trend, nudges. */
+.ld-tabs { grid-template-columns: repeat(6, 1fr); }
+.ld-tabs button { font-size: 5.5px; letter-spacing: .03em; }
+.ld-dau { position: relative; }
+.ld-rels { position: relative; height: 0; }
+.ld-rel { position: absolute; bottom: 14px; width: 2px; height: 78px; margin-left: -1px; background: repeating-linear-gradient(0deg, rgba(193, 60, 255, .85) 0 3px, transparent 3px 6px); cursor: pointer; }
+.ld-rel::after { content: "▲"; position: absolute; bottom: -9px; left: -4px; font-size: 7px; color: #c13cff; }
+.ld-rel.on { background: #c13cff; }
+.ld-key-rel { display: inline-block; width: 2px; height: 9px; margin: 0 3px; vertical-align: middle; background: #c13cff; }
+.ld-trend { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; height: 84px; align-items: end; }
+.ld-tw { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 3px; cursor: pointer; }
+.ld-tw b { display: block; min-height: 2px; border-radius: 3px 3px 0 0; background: #168a9c; }
+.ld-tw.live b { background: repeating-linear-gradient(135deg, #1ab8cc 0 4px, #13586a 4px 8px); }
+.ld-tw.part b { opacity: .55; }
+.ld-tw span { font-size: 8px; color: var(--text-dim); text-align: center; white-space: nowrap; }
+.ld-tw.on b { outline: 2px solid #fff; }
+.ld-fh.five, .ld-fr.five { grid-template-columns: minmax(64px, 1.3fr) repeat(3, minmax(34px, .7fr)) minmax(56px, 1fr); }
+.ld-fr.five em { text-align: right; }
+.ld-fr.five em:last-child { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ld-fh.five span:not(:first-child) { text-align: right; }
+.ld-fr em i.ld-d { font-style: normal; padding: 0 4px; margin-left: 3px; font-size: 8.5px; }
+.ld-ng { display: grid; grid-template-columns: 96px 1fr; gap: 8px; padding: 5px 0; border-top: 1px solid rgba(255, 255, 255, .05); font-size: 10px; color: var(--text-dim); }
+.ld-ng div { display: flex; flex-wrap: wrap; gap: 4px; }
+.ld-ng em { font-style: normal; padding: 2px 6px; border-radius: 9px; font-size: 9.5px; cursor: pointer; }
+.ld-ng em.ok { color: #39ff88; background: rgba(57, 255, 136, .1); }
+.ld-ng em.no { color: #ff5c8a; background: rgba(255, 32, 121, .1); }
+.ld-dbars.fail .ld-fb2 { position: relative; height: 100%; display: flex; flex-direction: column-reverse; justify-content: flex-start; cursor: pointer; }
+.ld-fb2 b { display: block; width: 100%; }
+.ld-fb2 b.e { background: #ffb347; border-radius: 0; }
+.ld-fb2 b.w { background: #ff5c8a; border-radius: 3px 3px 0 0; }
+.ld-fb2.gd::after { content: ""; position: absolute; left: 15%; right: 15%; bottom: -5px; height: 3px; border-radius: 2px; background: #ffe45e; }
+.ld-fb2.on { outline: 1px solid #fff; }
+.ld-key-e, .ld-key-w { display: inline-block; width: 8px; height: 8px; margin: 0 2px; vertical-align: middle; border-radius: 2px; background: #ffb347; }
+.ld-key-w { background: #ff5c8a; }
+.ld-err { display: flex; flex-direction: column; gap: 2px; padding: 5px 0; border-top: 1px solid rgba(255, 255, 255, .05); cursor: pointer; }
+.ld-err code { font-size: 10px; color: #ffb347; word-break: break-word; }
+.ld-err em { font-style: normal; font-size: 9.5px; color: var(--text-dim); }
+.ld-cur { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 4.5px; padding: 2px 3px; border-radius: 3px; color: #031007; background: #39ff88; vertical-align: middle; }
+.lvz-fb.wide { grid-template-columns: minmax(96px, 38%) 1fr 70px; }
+/* Admin heads-up before lock (only on a phone that remembers an admin key). */
+.lock-alert { position: fixed; left: 10px; right: 10px; top: calc(env(safe-area-inset-top) + 8px); z-index: 900; display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; border: 1px solid rgba(255, 179, 71, .6); background: rgba(26, 14, 0, .95); box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
+.lock-alert > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.lock-alert b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 7px; color: #ffb347; letter-spacing: .04em; }
+.lock-alert span { font-size: 10.5px; color: var(--text); line-height: 1.35; }
+.lock-alert .la-nudge { flex: none; padding: 7px 9px; border: 0; border-radius: 7px; background: #ffb347; color: #1a0f00; font-family: 'Press Start 2P', monospace; font-size: 6.5px; cursor: pointer; }
+.lock-alert .la-x { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); background: none; color: #fff; cursor: pointer; }
+.ld-rel { bottom: 0; height: 72px; }
