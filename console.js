@@ -131,6 +131,63 @@
   }
 
   // --- Logins ---------------------------------------------------------
+  // The picture first: who has been in each of the last seven days (a
+  // grid, one row per owner, brighter for more opens) and when the league
+  // opens the app (a bar per hour of the day). Local time on this phone.
+  // One cyan ramp in four steps (1, 2-3, 4-7, 8+), checked for even steps
+  // and contrast against the console's dark surface. Tap any square or bar
+  // for the exact count; the list below stays as the table view.
+  function loginViz(visits, rows, ago) {
+    const DAY = 86400000;
+    const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const days = Array.from({ length: 7 }, (_, i) => t0.getTime() - (6 - i) * DAY);
+    const since = days[0];
+    const step = (n) => n <= 0 ? 0 : n === 1 ? 1 : n <= 3 ? 2 : n <= 7 ? 3 : 4;
+    const dayLab = (t) => new Date(t).toLocaleDateString([], { weekday: "short" }).slice(0, 2).toUpperCase();
+    const dayLong = (t) => new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+    const hourLab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
+    const hours = new Array(24).fill(0);
+    let total = 0;
+    const grid = rows.map((r) => {
+      const list = (visits[r.n] || []).filter((v) => v.at >= since);
+      const per = days.map((d) => list.filter((v) => v.at >= d && v.at < d + DAY));
+      for (const v of list) { hours[new Date(v.at).getHours()]++; total++; }
+      return { ...r, per };
+    });
+    const hmax = Math.max(1, ...hours);
+    const peak = hours.indexOf(Math.max(...hours));
+    const inToday = grid.filter((r) => r.per[6].length).length;
+    const active7 = grid.filter((r) => r.per.some((d) => d.length)).length;
+    const tip = (s) => `data-tip="${esc(s)}"`;
+    const head = `<span></span>${days.map((d, i) => `<span class="lvz-dh${i === 6 ? " today" : ""}">${i === 6 ? "TODAY" : dayLab(d)}</span>`).join("")}<span class="lvz-dh">LAST</span>`;
+    const body = grid.map((r) => `<span class="lvz-nm">${esc(r.n)}</span>${r.per.map((list, i) => {
+      const n = list.length, lastAt = n ? Math.max(...list.map((v) => v.at)) : 0;
+      return `<i class="lvz-c s${step(n)}" ${tip(`${r.n} · ${dayLong(days[i])} · ${n ? `${n} open${n === 1 ? "" : "s"} · last ${new Date(lastAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "not in"}`)}></i>`;
+    }).join("")}<span class="lvz-ago${r.last && Date.now() - r.last < DAY ? " fresh" : ""}">${r.last ? esc(ago(r.last).replace(" ago", "")) : "never"}</span>`).join("");
+    const bars = hours.map((n, h) => `<span class="lvz-b" ${tip(`${hourLab(h)} to ${hourLab((h + 1) % 24)} · ${n} open${n === 1 ? "" : "s"} in the last 7 days`)}><i style="height:${n ? Math.max(4, Math.round(n / hmax * 100)) : 0}%"></i></span>`).join("");
+    return `<div class="lvz">
+      <div class="lvz-tiles">
+        <div><b>${inToday}<small>/${OWNERS.length}</small></b><span>in today</span></div>
+        <div><b>${active7}<small>/${OWNERS.length}</small></b><span>in this week</span></div>
+        <div><b>${total ? hourLab(peak).toUpperCase() : "-"}</b><span>busiest hour</span></div>
+      </div>
+      <div class="lvz-h">WHO'S BEEN IN · LAST 7 DAYS</div>
+      <div class="lvz-grid">${head}${body}</div>
+      <div class="lvz-key"><span>OPENS A DAY</span><i class="lvz-c s0"></i>0<i class="lvz-c s1"></i>1<i class="lvz-c s2"></i>2-3<i class="lvz-c s3"></i>4-7<i class="lvz-c s4"></i>8+</div>
+      <div class="lvz-h">WHEN THE LEAGUE OPENS IT · BY HOUR</div>
+      <div class="lvz-hours">${bars}</div>
+      <div class="lvz-ax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div>
+      <div class="lvz-tip" aria-live="polite">Tap a square or a bar for the count.</div>
+    </div>`;
+  }
+  // One readout under the charts follows the finger or the pointer.
+  function wireLoginViz(root) {
+    const out = root.querySelector(".lvz-tip");
+    if (!out) return;
+    let on = null;
+    const show = (t) => { if (!t || t === on) return; on?.classList.remove("on"); on = t; t.classList.add("on"); out.textContent = t.dataset.tip; };
+    root.querySelectorAll(".lvz [data-tip]").forEach((t) => { t.addEventListener("pointerenter", () => show(t)); t.addEventListener("click", () => show(t)); });
+  }
   async function renderLogins() {
     // App opens first: who has been in, and when.
     let opens = "";
@@ -141,12 +198,12 @@
       const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
       const day = Date.now() - 86400000;
       const rows = OWNERS.map((n) => { const l = visits?.[n] || []; return { n, last: l[0]?.at || 0, today: l.filter((v) => v.at > day).length }; }).sort((a, b) => b.last - a.last);
-      opens = `<div class="con-summary"><span>LAST IN THE APP · MOST RECENT FIRST</span><span>${rows.filter((r) => r.today).length} of ${OWNERS.length} in the last 24h</span></div>`
+      opens = loginViz(visits || {}, rows, ago) + `<div class="con-summary"><span>LAST IN THE APP · MOST RECENT FIRST</span><span>${rows.filter((r) => r.today).length} of ${OWNERS.length} in the last 24h</span></div>`
         + rows.map((r) => `<div class="con-row${r.last ? "" : " warn"}"><div class="con-row-head"><span><b>${esc(r.n)}</b></span><span>${r.last ? `${fmt(r.last)} · ${ago(r.last)}` : "never"}</span></div>${r.today ? `<div class="con-line">${r.today} open${r.today === 1 ? "" : "s"} in the last 24h</div>` : ""}</div>`).join("")
         + `<details class="con-more"><summary>Every open (${all.length})</summary>${all.sort((a, b) => b.at - a.at).slice(0, 200).map((v) => `<div class="con-line">${fmt(v.at)} · <b>${esc(v.m)}</b> · ${v.app === "home" ? "home-screen app" : "browser"}${v.screen ? ` · ${esc(v.screen)}` : ""}</div>`).join("")}</details>`;
     } catch {}
     const { events } = await get("/auth-log?format=json");
-    if (!events.length) { body.innerHTML = opens + `<div class="admin-empty">No sign-ins yet. Nobody has claimed a name with a code.</div>`; return; }
+    if (!events.length) { body.innerHTML = opens + `<div class="admin-empty">No sign-ins yet. Nobody has claimed a name with a code.</div>`; wireLoginViz(body); return; }
     // One browser signing in as two owners is the signal worth chasing.
     const byDevice = new Map();
     for (const e of events) {
@@ -171,6 +228,7 @@
           <div class="con-line dim">${esc(where(e))}${e.asOrg ? ` · ${esc(e.asOrg)}` : ""} · ${esc(e.ipShort || "—")}</div>
           <div class="con-line dim">${esc(what(e))}${e.device ? ` ${esc(e.device)}` : ""}${e.screen ? ` · ${esc(e.screen)}` : ""}${e.deviceId ? ` · ${esc(e.deviceId.slice(0, 8))}…` : ""}</div>
         </div>`).join("");
+    wireLoginViz(body);
   }
 
   // --- Owners ---------------------------------------------------------
