@@ -4933,6 +4933,8 @@ async function openInsights(gameId) {
     // Newest first: the current drive, then earlier drives back as far as
     // it takes to fill the log.
     const prevDrives = Array.isArray(drives.previous) ? drives.previous : [];
+    const driveOfPlay = new Map();
+    for (const d of [...prevDrives, ...(drives.current ? [drives.current] : [])]) for (const pl of d?.plays || []) if (pl?.id != null) driveOfPlay.set(String(pl.id), d === drives.current ? { ...d, live: true } : d);
     const ordered = [...(drives.current?.plays || [])].reverse().concat(...prevDrives.slice(-4).reverse().map((d) => [...(d.plays || [])].reverse()));
     // ESPN's play text carries the clock, the formation, jersey numbers,
     // the tacklers and mascot-glued yard lines ("Hokies49"). Strip it to
@@ -5004,6 +5006,7 @@ async function openInsights(gameId) {
       else if (/field goal|\bfg\b/i.test(t)) pills.push(/blocked/i.test(t) ? ["FG BLOCKED", "to"] : /no good|missed|wide (left|right)/i.test(t) ? ["FG NO GOOD", "to"] : ["FG GOOD", "td"]);
       else if (/two.?point|2.?pt conversion/i.test(t)) pills.push(/fail|no good|incomplete|intercept/i.test(t) ? ["2PT FAILED", "to"] : ["2PT GOOD", "td"]);
       else if (/extra point|kick attempt|\bpat\b/i.test(t)) pills.push(/no good|blocked|missed/i.test(t) ? ["PAT MISSED", "to"] : ["PAT GOOD", "dim"]);
+      else if (/turnover on downs/i.test(t)) pills.push(["TURNOVER ON DOWNS", "to"]);
       else if (/intercept/i.test(t)) pills.push(["INTERCEPTED", "to"]);
       else if (/fumble/i.test(t)) pills.push(/opponent/i.test(type) || (p.end?.team?.id != null && p.start?.team?.id != null && String(p.end.team.id) !== String(p.start.team.id)) ? ["FUMBLE LOST", "to"] : ["FUMBLE · KEPT", "dim"]);
       else if (/\bsack/i.test(t)) pills.push([y != null && y < 0 ? `SACK · ${yds(-y)} LOSS` : "SACK", "loss"]);
@@ -5022,7 +5025,7 @@ async function openInsights(gameId) {
     // The current and previous drive can share a play (a kickoff, a score),
     // so drop repeats before taking three.
     const seenP = new Set();
-    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, 5).map((p) => ({ key: p.id || p.text, per: Number(p.period?.number) || null, secs: secsOf(p.clock?.displayValue), text: shortScore(tidy(p.text)), sc: p.scoringPlay && p.awayScore != null && p.homeScore != null ? `${A} ${p.awayScore} · ${H} ${p.homeScore}` : "", when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
+    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, 5).map((p) => ({ key: p.id || p.text, drv: p.id != null ? driveOfPlay.get(String(p.id)) || null : null, per: Number(p.period?.number) || null, secs: secsOf(p.clock?.displayValue), text: shortScore(tidy(p.text)), sc: p.scoringPlay && p.awayScore != null && p.homeScore != null ? `${A} ${p.awayScore} · ${H} ${p.homeScore}` : "", when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
     // The scoreboard feed updates faster than the game page. If its last
     // play is not the log's newest, put it on top.
     // Two feeds word the same play differently ("J.Turner rush right for
@@ -5068,12 +5071,26 @@ async function openInsights(gameId) {
     // each run of plays by one side, so a change of hands reads at a
     // glance. And a clock time that repeats the row above is dropped
     // (ESPN often stamps a whole sequence with one time).
+    // Headers name drives ("UK DRIVE · DOWNS"), not who has the ball now.
+    // Who has it now is a lit row on top: when the side with the ball has
+    // no plays in the log yet (a turnover on downs, a punt, a pick), it
+    // reads "LSU BALL · NOW" above the drive that just ended, so the log
+    // never shows the old offence as if it still had it.
     {
-      const out = []; let cur = null, lastWhen = null;
+      const abOf = (t) => t === Number(game.awayId) ? A : t === Number(game.homeId) ? H : "";
+      const nowT = possA ? Number(game.awayId) : possH ? Number(game.homeId) : null;
+      const resOf = (d) => { const r = String(d?.displayResult || d?.result || "").trim(); return d?.live || !r ? "" : r.toUpperCase().replace(/^END OF (HALF|GAME)$/, "END OF $1"); };
+      const out = []; let cur = null, lastWhen = null, first = true;
       for (const p of plays) {
         if (p.marker) { out.push(p); continue; }
         const t = p.tid != null ? Number(p.tid) : null;
-        if (t != null && t !== cur) { out.push({ key: `drv:${t}:${p.key}`, marker: true, drive: true, tid: t, text: `${t === Number(game.awayId) ? A : t === Number(game.homeId) ? H : ""} BALL` }); cur = t; }
+        if (t != null && t !== cur) {
+          if (first && nowT != null && t !== nowT) out.push({ key: `now:${nowT}`, marker: true, drive: true, now: true, tid: nowT, text: `${abOf(nowT)} BALL · NOW` });
+          const isNow = first && t === nowT;
+          const res = resOf(p.drv);
+          out.push({ key: `drv:${t}:${p.key}`, marker: true, drive: true, now: isNow, tid: t, text: isNow ? `${abOf(t)} BALL · NOW` : `${abOf(t)} DRIVE${res ? ` · ${res}` : ""}` });
+          cur = t; first = false;
+        }
         out.push({ ...p, when: p.when === lastWhen ? "" : p.when });
         lastWhen = p.when;
       }
@@ -5085,7 +5102,7 @@ async function openInsights(gameId) {
     const fresh = !!real[0] && !typed.some((t) => samePlay(t, real[0].text));
     for (const p of plays) if (!typed.some((t) => samePlay(t, p.text))) typed.push(p.text);
     if (typed.length > 60) typed.splice(0, typed.length - 60);
-    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<span class="gc-pills">${p.badge.map(([bt, bc]) => `<b class="gc-badge ${bc}">${esc(bt)}</b>`).join("")}</span>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
+    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv${p.now ? " now" : ""}">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<span class="gc-pills">${p.badge.map(([bt, bc]) => `<b class="gc-badge ${bc}">${esc(bt)}</b>`).join("")}</span>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
     const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];

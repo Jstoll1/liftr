@@ -5607,3 +5607,9 @@ html.vp-gap { --nav-h: 63px; }
 .gc-pills .gc-badge { margin-left: 0; white-space: nowrap; line-height: 1.3; }
 .gc-badge.gain { background: #39ff88; color: #031007; }
 .gc-badge.loss { background: #ff2079; color: #fff; }
+/* The side with the ball right now: lit, so it can't be mistaken for a
+   past drive's header. */
+.gc-log .gc-plays li.gc-drv.now span { color: #ffe45e; text-shadow: 0 0 6px rgba(255, 228, 94, .55); }
+.gc-log .gc-plays li.gc-drv.now { border-top-color: rgba(255, 228, 94, .45); }
+.gc-log .gc-plays li.gc-drv.now::before { content: "▶"; font-size: 8px; color: #ffe45e; animation: lvblink .8s steps(2, start) infinite; }
+@media (prefers-reduced-motion: reduce) { .gc-log .gc-plays li.gc-drv.now::before { animation: none; } }
