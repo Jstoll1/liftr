@@ -4715,7 +4715,7 @@ async function openInsights(gameId) {
   const modal = document.getElementById("insights-modal");
   const game = GAMES.find((g) => g.id === gameId);
   if (!modal || !game) return;
-  { const l = latestLive[gameId]; noteUse(l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"); }
+  { const l = latestLive[gameId]; const kind = l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"; noteUse(kind); if (kind === "gamecast") noteUse(`gamecast-g${gameId}`); }
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const body = modal.querySelector("#insights-body");
   const favShort = game.favorite === game.home ? game.homeShort : game.awayShort;

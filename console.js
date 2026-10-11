@@ -134,365 +134,428 @@
     el("con-reseal-force").addEventListener("click", () => reseal(true));
   }
 
-  // --- Logins ---------------------------------------------------------
-  // The login dashboard, top to bottom: what stands out in plain words and
-  // who to nudge; six tiles; a timeline (last game day, 48 hours or 7
-  // days) with one strip per owner and the game windows shaded; week by
-  // week; the last 7 days; what they use; pick behaviour; engagement
-  // against results; a day-by-hour punchcard; then a profile per owner.
-  // Local time on this phone. One cyan ramp in four steps, checked for
-  // even steps and contrast on the console's dark surface. Tap any mark for
-  // the exact numbers; the list below stays as the table view. The pick log,
-  // season points and app version load after the rest is on screen.
-  const LVZ_FEATURES = {
+  // --- Logins: the league dashboard -----------------------------------
+  // Five views, each answering one question:
+  //   PULSE     how is the league using the app this week, and what changed
+  //   PEOPLE    who is in, who is slipping, and each owner up close
+  //   GAME DAY  what a Saturday looks like: who was in, when, watching what
+  //   FEATURES  what gets used, what doesn't, and where visits start
+  //   PICKS     when picks get made, how often they change, and whether
+  //             changing them paid off
+  // Everything is computed here from the admin-only data (opens, sessions,
+  // the pick log) plus the season's slates and results. Local time. One
+  // cyan ramp in four steps for magnitude, checked for even steps and
+  // contrast on the dark surface; gold marks games; green and pink only on
+  // up/down chips, always with an arrow. Tap any mark for exact numbers.
+  const LD_FEATURES = {
     picks: "Picks screen", scoreboard: "Scores screen", history: "History", trivia: "Trivia", home: "Home",
-    gamecast: "Live game cast", "game-info": "Game info (pre-game)", "game-final": "Final game recap",
+    gamecast: "Live game cast", "game-info": "Game info", "game-final": "Final recap",
     h2h: "Head to head", "wp-player": "Win % breakdown", "wp-explain": "How win % works", sim: "Game sim",
     "grid-card": "Grid card", "pot-open": "The pot", "all-picks-open": "Everyone's picks",
     "ranking-expand": "Leaderboard row", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
   };
-  const lvzFeat = (k) => LVZ_FEATURES[k] || null;
-  function loginViz(visits, sessionsRaw, rows, ago, picks) {
+  const ldFeat = (k) => LD_FEATURES[String(k).replace(/-g\d+$/, "")] || null;
+
+  function buildLoginDash(src) {
+    const { visits, sessions, picksNow, season, pickLog, buildNow, names, ago } = src;
     const DAY = 86400000, HR = 3600000, now = Date.now();
-    const t0 = new Date(); t0.setHours(0, 0, 0, 0);
-    const today0 = t0.getTime();
-    const days = Array.from({ length: 7 }, (_, i) => today0 - (6 - i) * DAY);
-    const since7 = days[0];
-    const step = (n) => n <= 0 ? 0 : n === 1 ? 1 : n <= 3 ? 2 : n <= 7 ? 3 : 4;
+    const day0 = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const today0 = day0(now);
     const dayLab = (t) => new Date(t).toLocaleDateString([], { weekday: "short" }).slice(0, 2).toUpperCase();
     const dayLong = (t) => new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
     const hourLab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
     const timeLab = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    const mins = (ms) => ms < 60000 ? `${Math.max(1, Math.round(ms / 1000))}s` : ms < 3600000 ? `${Math.round(ms / 60000)}m` : `${(ms / 3600000).toFixed(1)}h`;
+    const dur = (ms) => !ms ? "0m" : ms < 60000 ? `${Math.max(1, Math.round(ms / 1000))}s` : ms < HR ? `${Math.round(ms / 60000)}m` : `${(ms / HR).toFixed(1)}h`;
+    const lead = (ms) => ms < HR ? `${Math.max(1, Math.round(ms / 60000))} min` : ms < 2 * DAY ? `${Math.round(ms / HR)} hr` : `${Math.round(ms / DAY)} days`;
     const tip = (str) => `data-tip="${esc(str)}"`;
-    const names = (list) => list.length <= 2 ? list.join(" and ") : `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
-    const N = TRACKED.length;
-    const games = (typeof GAMES !== "undefined" ? GAMES : []).map((g) => Date.parse(g.kickoff)).filter(Number.isFinite).sort((a, b) => a - b);
-    const windows = [];
-    for (const k of games) { const w = [k, k + 3.5 * HR]; const last = windows[windows.length - 1]; if (last && w[0] <= last[1]) last[1] = Math.max(last[1], w[1]); else windows.push(w); }
-    const inGame = (t) => windows.some(([a, b]) => t >= a && t < b);
-    const lockAt = typeof weekLockTime === "function" ? (weekLockTime() ?? games[0] ?? null) : games[0] ?? null;
-    const all = Object.values(visits).flat().map((v) => v.at).filter(Number.isFinite);
-    const firstSeen = all.length ? Math.min(...all) : now;
+    const list = (xs) => xs.length <= 2 ? xs.join(" and ") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
+    const B = (n) => `<b>${esc(n)}</b>`;
+    const N = names.length;
+    const median = (xs) => { const a = xs.filter(Number.isFinite).sort((x, y) => x - y); return a.length ? a[Math.floor((a.length - 1) / 2)] : null; };
+    const chip = (d, unit = "", invert = false) => d == null ? `<em class="ld-d new">new</em>` : d === 0 ? `<em class="ld-d flat">= same</em>` : `<em class="ld-d ${(d > 0) !== invert ? "up" : "dn"}">${d > 0 ? "▲" : "▼"} ${Math.abs(d)}${unit}</em>`;
 
-    // Sessions: segments the app sends when it is put away, joined when
-    // the gap between them is under five minutes (a quick app switch).
-    const sessionsOf = (n) => {
-      const segs = (sessionsRaw?.[n] || []).filter((x) => Number.isFinite(x.at) && Number.isFinite(x.dur)).sort((a, b) => a.at - b.at);
-      const out = [];
+    // Season: slates (kickoffs, matchups), results and final picks by week.
+    const weekNums = (season?.weeks?.list || []).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+    const curWeek = typeof currentWeek !== "undefined" ? Number(currentWeek) : weekNums[weekNums.length - 1];
+    const slateOf = (w) => (w === curWeek && typeof GAMES !== "undefined" ? GAMES : season?.season?.[w]?.games) || [];
+    const lockOf = (w) => { const ks = slateOf(w).map((g) => Date.parse(g.kickoff)).filter(Number.isFinite); return ks.length ? Math.min(...ks) : null; };
+    const gameWins = [];
+    for (const w of weekNums) for (const g of slateOf(w)) { const k = Date.parse(g.kickoff); if (Number.isFinite(k)) gameWins.push({ w, id: Number(g.id), a: k, b: k + 3.5 * HR, label: `${g.awayShort || g.away} at ${g.homeShort || g.home}` }); }
+    const inGame = (t) => gameWins.some((x) => t >= x.a && t < x.b);
+    const gameDays = [...new Set(gameWins.map((x) => day0(x.a)))].filter((d) => d <= now).sort((a, b) => a - b);
+
+    // Per owner: opens, sessions (segments joined across quick app
+    // switches, features kept in first-use order), active days.
+    const people = names.map((n) => {
+      const opens = (visits[n] || []).filter((v) => Number.isFinite(v.at)).sort((a, b) => a.at - b.at);
+      const segs = (sessions[n] || []).filter((x) => Number.isFinite(x.at) && Number.isFinite(x.dur)).sort((a, b) => a.at - b.at);
+      const sess = [];
       for (const x of segs) {
-        const last = out[out.length - 1];
-        if (last && x.at - (last.at + last.dur) < 5 * 60000) { last.dur = x.at + x.dur - last.at; for (const f of x.f || []) last.f.add(f); if (x.v) last.v = x.v; }
-        else out.push({ at: x.at, dur: x.dur, f: new Set(x.f || []), v: x.v || "" });
+        const last = sess[sess.length - 1];
+        if (last && x.at - (last.at + last.dur) < 5 * 60000) { last.dur = x.at + x.dur - last.at; for (const f of x.f || []) if (!last.f.includes(f)) last.f.push(f); if (x.v) last.v = x.v; }
+        else sess.push({ at: x.at, dur: x.dur, f: [...(x.f || [])], v: x.v || "" });
       }
-      return out.reverse();
-    };
-
-    // Last game day: the most recent Saturday 8 AM to Sunday 3 AM.
-    const sat = new Date(); sat.setHours(8, 0, 0, 0);
-    while (sat.getDay() !== 6 || sat.getTime() > now) sat.setDate(sat.getDate() - 1);
-    const gdA = sat.getTime(), gdB = Math.min(now, gdA + 19 * HR);
-
-    const owners = rows.map((r) => {
-      const list = (visits[r.n] || []).filter((v) => Number.isFinite(v.at)).sort((a, b) => b.at - a.at);
-      const per = days.map((d) => list.filter((v) => v.at >= d && v.at < d + DAY));
-      const wk = list.filter((v) => v.at >= since7);
-      let streak = 0;
-      for (let i = 6; i >= 0; i--) { if (per[i].length) streak++; else if (i === 6) continue; else break; }
-      const blocks = new Array(8).fill(0); for (const v of list) blocks[Math.floor(new Date(v.at).getHours() / 3)]++;
-      const bi = blocks.indexOf(Math.max(...blocks));
-      const usual = list.length ? ["late night", "early morning", "morning", "midday", "afternoon", "evening", "night", "late evening"][bi] + ` (${hourLab(bi * 3)}-${hourLab((bi * 3 + 3) % 24)})` : "-";
-      const home = list.filter((v) => v.app === "home").length;
-      const appKind = !list.length ? "-" : home === list.length ? "home-screen app" : home === 0 ? "browser only" : "app and browser";
-      const pk = picks?.[r.n]?.picks || null;
-      const pIn = pk ? (typeof GAMES !== "undefined" ? GAMES.filter((g) => pk[g.id]).length : Object.keys(pk).length) : null;
-      const pLast = pk ? Math.max(0, ...Object.values(pk).map((x) => Number(x?.savedAt) || 0)) : 0;
-      const sess = sessionsOf(r.n);
-      const s7 = sess.filter((x) => x.at >= since7);
-      const time7 = s7.reduce((a, x) => a + x.dur, 0);
-      const gdTime = sess.filter((x) => x.at < gdB && x.at + x.dur > gdA).reduce((a, x) => a + Math.min(x.at + x.dur, gdB) - Math.max(x.at, gdA), 0);
-      const feat = new Map();
-      for (const x of sess.filter((y) => y.at >= now - 14 * DAY)) for (const f of x.f) if (lvzFeat(f)) feat.set(f, (feat.get(f) || 0) + 1);
-      const ver = sess.find((x) => x.v)?.v || list.find((v) => v.v)?.v || "";
-      return { ...r, list, per, wk, streak, usual, appKind, device: list[0]?.device || "", gameOpens: wk.filter((v) => inGame(v.at)).length, pIn, pLast, sess, s7, time7, gdTime, feat, ver };
+      const days = new Set([...opens.map((v) => day0(v.at)), ...sess.map((x) => day0(x.at))]);
+      const lastAt = Math.max(0, ...opens.map((v) => v.at), ...sess.map((x) => x.at + x.dur));
+      const inWin = (a, b) => ({ opens: opens.filter((v) => v.at >= a && v.at < b), sess: sess.filter((x) => x.at >= a && x.at < b) });
+      const L = (endDay) => { let c = 0; for (let i = 0; i < 7; i++) if (days.has(endDay - i * DAY)) c++; return c; };
+      const w7 = inWin(today0 - 6 * DAY, now + 1), p7 = inWin(today0 - 13 * DAY, today0 - 6 * DAY);
+      const ver = [...sess].reverse().find((x) => x.v)?.v || [...opens].reverse().find((v) => v.v)?.v || "";
+      const appKind = !opens.length ? "-" : opens.every((v) => v.app === "home") ? "home-screen app" : opens.every((v) => v.app !== "home") ? "browser only" : "app and browser";
+      return { n, opens, sess, days, lastAt, L7: L(today0), L7p: L(today0 - 7 * DAY), w7, p7, time7: w7.sess.reduce((a, x) => a + x.dur, 0), timeP7: p7.sess.reduce((a, x) => a + x.dur, 0), ver, appKind, device: opens[opens.length - 1]?.device || "" };
     });
-    const total7 = owners.reduce((a, o) => a + o.wk.length, 0);
-    const game7 = owners.reduce((a, o) => a + o.gameOpens, 0);
-    const winMs7 = windows.reduce((a, [x, y]) => a + Math.max(0, Math.min(y, now) - Math.max(x, since7)), 0);
-    const inToday = owners.filter((o) => o.per[6].length).length;
-    const active7 = owners.filter((o) => o.wk.length).length;
-    const allS7 = owners.flatMap((o) => o.s7);
-    const avgSess = allS7.length ? allS7.reduce((a, x) => a + x.dur, 0) / allS7.length : 0;
-    const gdTotal = owners.reduce((a, o) => a + o.gdTime, 0);
+    const opensSince = Math.min(now, ...people.flatMap((p) => p.opens.map((v) => v.at)));
+    const sessSince = Math.min(now, ...people.flatMap((p) => p.sess.map((x) => x.at)));
+    const priorCovered = opensSince <= today0 - 13 * DAY;
+    const priorSessCovered = sessSince <= today0 - 13 * DAY;
 
-    // Punchcard.
+    // League KPIs and deltas.
+    const wau = people.filter((p) => p.L7).length, wauP = people.filter((p) => p.L7p).length;
+    const avgL7 = people.reduce((a, p) => a + p.L7, 0) / Math.max(1, N), avgL7p = people.reduce((a, p) => a + p.L7p, 0) / Math.max(1, N);
+    const opens7 = people.reduce((a, p) => a + p.w7.opens.length, 0), opensP7 = people.reduce((a, p) => a + p.p7.opens.length, 0);
+    const time7 = people.reduce((a, p) => a + p.time7, 0), timeP7 = people.reduce((a, p) => a + p.timeP7, 0);
+    const sess7 = people.flatMap((p) => p.w7.sess);
+    const avgVisit = sess7.length ? time7 / sess7.length : 0;
+    const pct = (a, b) => b ? Math.round((a - b) / b * 100) : null;
+
+    // Daily active, last 28 days.
+    const d28 = Array.from({ length: 28 }, (_, i) => today0 - (27 - i) * DAY);
+    const dau = d28.map((d) => people.filter((p) => p.days.has(d)).map((p) => p.n));
+    const gdSet = new Set(gameDays);
+
+    // Game day: the chosen day's games, who was in and when, how many at
+    // once, and which live games got watched.
+    const gameDayView = (D) => {
+      const wins = gameWins.filter((x) => day0(x.a) === D).sort((a, b) => a.a - b.a);
+      const A = wins.length ? Math.min(...wins.map((x) => x.a)) - HR : D + 10 * HR;
+      const Bend = Math.min(now, wins.length ? Math.max(...wins.map((x) => x.b)) + HR : D + 26 * HR);
+      const span = Math.max(HR, Bend - A);
+      const xp = (t) => ((t - A) / span * 100).toFixed(2);
+      const STEP = 10 * 60000, nb = Math.ceil(span / STEP);
+      const conc = Array.from({ length: nb }, (_, i) => { const t = A + i * STEP; return people.filter((p) => p.sess.some((x) => x.at < t + STEP && x.at + x.dur > t) || p.opens.some((v) => v.at >= t && v.at < t + STEP)).map((p) => p.n); });
+      const cmax = Math.max(1, ...conc.map((c) => c.length));
+      const peakI = conc.reduce((bi, c, i) => c.length > conc[bi].length ? i : bi, 0);
+      const inDuring = people.filter((p) => p.opens.some((v) => wins.some((w) => v.at >= w.a && v.at < w.b)) || p.sess.some((x) => wins.some((w) => x.at < w.b && x.at + x.dur > w.a)));
+      const watch = wins.map((w) => ({ w, who: people.filter((p) => p.sess.some((x) => x.at < w.b + HR && x.at + x.dur > w.a && x.f.includes(`gamecast-g${w.id}`))).map((p) => p.n) }));
+      const tGame = people.map((p) => ({ p, ms: p.sess.reduce((a, x) => a + wins.reduce((s, w) => s + Math.max(0, Math.min(x.at + x.dur, w.b) - Math.max(x.at, w.a)), 0), 0) }));
+      const hasSess = people.some((p) => p.sess.some((x) => x.at >= A && x.at < Bend));
+      const lanes = wins.map((w, i) => `<i class="ld-gw" style="left:${xp(Math.max(w.a, A))}%;width:${Math.max(1, (Math.min(w.b, Bend) - Math.max(w.a, A)) / span * 100)}%;top:${(i % 3) * 9}px" ${tip(`G${w.id} ${w.label} · kickoff ${timeLab(w.a)}`)}><span>G${w.id}</span></i>`).join("");
+      const bars = conc.map((c, i) => `<i class="ld-cb${i === peakI && c.length ? " pk" : ""}" style="height:${(c.length / cmax * 100).toFixed(0)}%" ${tip(`${timeLab(A + i * STEP)} · ${c.length} in the app${c.length ? `: ${c.join(", ")}` : ""}`)}></i>`).join("");
+      const ax = [0, 0.25, 0.5, 0.75, 1].map((f) => `<span>${timeLab(A + f * span).replace(":00", "")}</span>`).join("");
+      // Overlapping games shade as one band, so the strip doesn't stack to solid.
+      const merged = [];
+      for (const w of wins) { const l = merged[merged.length - 1]; if (l && w.a <= l.b) l.b = Math.max(l.b, w.b); else merged.push({ a: w.a, b: w.b }); }
+      const bandHtml = merged.map((w) => `<i class="lvz-band" style="left:${xp(Math.max(w.a, A))}%;width:${(Math.min(w.b, Bend) - Math.max(w.a, A)) / span * 100}%"></i>`).join("");
+      const strips = people.map((p) => `<span class="lvz-nm">${esc(p.n)}</span><div class="lvz-strip">${bandHtml}${p.sess.filter((x) => x.at < Bend && x.at + x.dur > A).map((x) => `<i class="lvz-seg" style="left:${xp(Math.max(x.at, A))}%;width:${Math.max(0.6, (Math.min(x.at + x.dur, Bend) - Math.max(x.at, A)) / span * 100)}%"></i>`).join("")}${p.opens.filter((v) => v.at >= A && v.at < Bend).map((v) => `<i class="lvz-dot${inGame(v.at) ? " live" : ""}" style="left:${xp(v.at)}%" ${tip(`${p.n} · ${timeLab(v.at)}${inGame(v.at) ? " · during a game" : ""}`)}></i>`).join("")}</div>`).join("");
+      const wmax = Math.max(1, ...watch.map((x) => x.who.length));
+      const watchHtml = watch.some((x) => x.who.length) ? watch.slice().sort((a, b) => b.who.length - a.who.length).map((x) => `<div class="lvz-fb" ${tip(`${x.w.label} · watched live by ${x.who.length ? x.who.join(", ") : "nobody"}`)}><span>${esc(x.w.label)}</span><i><b style="width:${(x.who.length / wmax * 100).toFixed(0)}%"></b></i><em>${x.who.length}/${N}</em></div>`).join("") : `<div class="lvz-empty">${hasSess ? "Nobody opened a live game cast." : "Per-game viewing is recorded from the new build on; this Saturday is the first it will show."}</div>`;
+      const most = watch.slice().sort((a, b) => b.who.length - a.who.length)[0];
+      const facts = {
+        peak: conc[peakI]?.length || 0, peakAt: A + peakI * STEP, peakWho: conc[peakI] || [],
+        inDuring: inDuring.length, most: most && most.who.length ? most : null,
+        topTime: tGame.sort((a, b) => b.ms - a.ms)[0], hasSess, wins: wins.length,
+      };
+      const html = `<div class="ld-kpis three">
+          <div><b>${facts.inDuring}<small>/${N}</small></b><span>in during games</span></div>
+          <div><b>${facts.peak || "-"}</b><span>most at once${facts.peak ? ` · ${timeLab(facts.peakAt)}` : ""}</span></div>
+          <div><b>${facts.topTime?.ms ? dur(facts.topTime.ms) : "-"}</b><span>${facts.topTime?.ms ? `${esc(facts.topTime.p.n)}, most time in games` : "time in games"}</span></div>
+        </div>
+        <div class="lvz-h">IN THE APP AT ONCE · 10-MINUTE STEPS${hasSess ? "" : " · FROM OPENS ONLY"}</div>
+        <div class="ld-conc"><div class="ld-cbars">${bars}</div><div class="ld-glanes">${lanes}</div><div class="lvz-tlax">${ax}</div></div>
+        <div class="lvz-h">WHO WAS IN · <i class="lvz-key-band"></i> GAME ON · <i class="lvz-key-seg"></i> IN THE APP</div>
+        <div class="lvz-tl">${strips}</div>
+        <div class="lvz-h">LIVE GAME CASTS WATCHED · PEOPLE PER GAME</div>
+        <div class="lvz-feat">${watchHtml}</div>`;
+      return { html, facts };
+    };
+    const lastGD = gameDays.filter((d) => d <= today0).slice(-1)[0] ?? null;
+    const gdFacts = lastGD != null ? gameDayView(lastGD).facts : null;
+
+    // Features: adoption (people), depth (share of visits), first stop.
+    const s14 = people.flatMap((p) => p.sess.filter((x) => x.at >= now - 14 * DAY).map((x) => ({ p, x })));
+    const fmap = new Map();
+    for (const { p, x } of s14) x.f.forEach((f, i) => { const k = String(f).replace(/-g\d+$/, ""); if (!ldFeat(k)) return; const e = fmap.get(k) || { k, ppl: new Set(), n: 0, first: 0 }; e.ppl.add(p.n); e.n++; if (i === 0 || x.f.slice(0, i).every((y) => !ldFeat(y))) e.first++; fmap.set(k, e); });
+    const fr = [...fmap.values()].sort((a, b) => b.ppl.size - a.ppl.size || b.n - a.n);
+    const unused = Object.keys(LD_FEATURES).filter((k) => !fmap.has(k) && !/^pick-|ranking-expand|wp-explain/.test(k)).map((k) => LD_FEATURES[k]);
+    const firstStop = [...fr].sort((a, b) => b.first - a.first)[0];
+
+    // Picks: lead time to lock, edits, and whether changes paid off.
+    const log = (pickLog || []).filter((r) => names.includes(r.manager) && !r.admin);
+    const flips = new Map(); // manager -> { helped, hurt, net, n }
+    const chain = new Map();
+    for (const r of [...log].sort((a, b) => a.ts - b.ts)) for (const c of r.changes || []) {
+      if (!c.game || c.rejected || c.afterKickoff) continue;
+      const k = `${r.week}|${r.manager}|${c.game}`;
+      // The original pick is the first one ever saved (a first save has no
+      // "from"); the final one is wherever the last change landed.
+      const e = chain.get(k) || { w: Number(r.week), m: r.manager, g: Number(c.game), from: c.from ?? c.to, to: c.to };
+      e.to = c.to; chain.set(k, e);
+    }
+    const parse = (s) => { const m = String(s || "").match(/^(.*)\s(SU|ATS)$/); return m ? { team: m[1], mode: m[2] } : null; };
+    for (const e of chain.values()) {
+      const a = parse(e.from), b = parse(e.to);
+      if (!a || !b || (a.team === b.team && a.mode === b.mode)) continue;
+      const game = slateOf(e.w).find((g) => Number(g.id) === e.g), res = season?.season?.[e.w]?.results?.[e.g];
+      if (!game || !res || typeof scorePick !== "function") continue;
+      const d = scorePick(game, b, res) - scorePick(game, a, res);
+      const f = flips.get(e.m) || { helped: 0, hurt: 0, net: 0, n: 0 };
+      f.n++; f.net += d; if (d > 0) f.helped++; else if (d < 0) f.hurt++;
+      flips.set(e.m, f);
+    }
+    const leadBy = new Map(); // manager -> [ms before lock per week]
+    const editsBy = new Map();
+    for (const w of new Set(log.map((r) => Number(r.week)))) {
+      const lk = lockOf(w); if (!lk) continue;
+      for (const n of names) {
+        const mine = log.filter((r) => Number(r.week) === w && r.manager === n && r.ts <= lk);
+        if (mine.length) (leadBy.get(n) || leadBy.set(n, []).get(n)).push(lk - Math.max(...mine.map((r) => r.ts)));
+        const ed = mine.reduce((a, r) => a + (r.changes || []).filter((c) => c.game && c.from).length, 0);
+        (editsBy.get(n) || editsBy.set(n, []).get(n)).push(ed);
+      }
+    }
+    const pickWeekView = (w) => {
+      const lk = lockOf(w) || now;
+      const wk = log.filter((r) => Number(r.week) === w);
+      const A = Math.min(lk - 6 * DAY, ...wk.map((r) => r.ts)), Bend = lk + 2 * HR, span = Bend - A;
+      const xp = (t) => (Math.max(0, Math.min(1, (t - A) / span)) * 100).toFixed(2);
+      const rows = names.map((n) => {
+        const mine = wk.filter((r) => r.manager === n).sort((a, b) => a.ts - b.ts);
+        const before = mine.filter((r) => r.ts <= lk);
+        const last = before.length ? before[before.length - 1].ts : null;
+        return `<span class="lvz-nm">${esc(n)}</span><div class="lvz-strip pk"><i class="lvz-lock" style="left:${xp(lk)}%"></i>${mine.map((r) => { const late = (r.changes || []).some((c) => c.afterKickoff || c.rejected), ed = (r.changes || []).some((c) => c.game && c.from); return `<i class="lvz-tick${late ? " late" : ed ? " edit" : ""}" style="left:${xp(r.ts)}%" ${tip(`${n} · ${dayLong(r.ts)} ${timeLab(r.ts)} · ${(r.changes || []).map((c) => `${c.game ? `G${c.game}` : "TB"} ${c.from ? `${c.from} → ` : ""}${c.to ?? "cleared"}`).join("; ")}${late ? " · blocked, after kickoff" : ""}`)}></i>`; }).join("")}</div><span class="lvz-ago">${last ? lead(lk - last) : "-"}</span>`;
+      }).join("");
+      const ax = [0, 0.5, 1].map((f) => `<span>${new Date(A + f * span).toLocaleDateString([], { weekday: "short" }).toUpperCase()}</span>`).join("");
+      return wk.length ? `<div class="lvz-pkgrid">${rows}<span></span><div class="lvz-tlax">${ax}</div><span></span></div><div class="lvz-key"><i class="lvz-tick k"></i>saved<i class="lvz-tick k edit"></i>changed a pick<i class="lvz-tick k late"></i>blocked after kickoff<i class="lvz-lock k"></i>lock · right: last save before lock</div>` : `<div class="lvz-empty">No pick saves logged for week ${w}.</div>`;
+    };
+    const pickWeeks = [...new Set(log.map((r) => Number(r.week)))].sort((a, b) => b - a);
+
+    // Season points, for context and the engagement read.
+    const pts = new Map();
+    for (const w of weekNums) { const sw = season?.season?.[w]; if (!sw?.games || !sw.results) continue; for (const n of names) { const pk = sw.picks?.[n]?.picks || {}; let s = 0; for (const g of sw.games) { const r = sw.results[g.id], p = pk[g.id]; if (r && p && typeof scorePick === "function") s += scorePick(g, p, r); } pts.set(n, (pts.get(n) || 0) + s); } }
+
+    // The story: ranked insights, each tagged ACTION, TREND or NOTE.
+    const story = [];
+    const add = (tag, w, html) => story.push({ tag, w, html });
+    const lockNow = lockOf(curWeek);
+    if (lockNow && lockNow > now && picksNow) {
+      const total = slateOf(curWeek).length;
+      const short = names.map((n) => ({ n, k: slateOf(curWeek).filter((g) => picksNow[n]?.picks?.[g.id]).length })).filter((x) => x.k < total);
+      if (short.length) add("ACTION", 100, `Picks not in before lock (${lead(lockNow - now)} left): ${short.map((x) => `${B(x.n)} ${x.k}/${total}`).join(", ")}.`);
+    }
+    const quiet = people.filter((p) => !p.lastAt || now - p.lastAt > 3 * DAY);
+    if (quiet.length) add("ACTION", 90, `${list(quiet.map((p) => B(p.n)))} ${quiet.length === 1 ? "hasn't" : "haven't"} been in for 3+ days${quiet.length === 1 && quiet[0].lastAt ? ` (last ${dayLong(quiet[0].lastAt)})` : ""}.`);
+    const stale = buildNow ? people.filter((p) => p.ver && p.ver !== buildNow) : [];
+    if (stale.length) add("ACTION", 60, `${list(stale.map((p) => B(p.n)))} ${stale.length === 1 ? "is" : "are"} on an older build; reopening the app updates it.`);
+    if (priorCovered) {
+      const slip = people.filter((p) => p.L7p >= 3 && p.L7 <= 1);
+      if (slip.length) add("TREND", 80, `Slipping: ${list(slip.map((p) => `${B(p.n)} (${p.L7p} days last week, ${p.L7} this week)`))}.`);
+      if (wau !== wauP) add("TREND", 70, `${wau} of ${N} were in this week, ${wau > wauP ? "up" : "down"} from ${wauP} the week before.`);
+      const mv = [...people].map((p) => ({ p, d: p.L7 - p.L7p })).sort((a, b) => b.d - a.d);
+      if (mv[0]?.d >= 2) add("TREND", 65, `${B(mv[0].p.n)} is in more: ${mv[0].p.L7} days this week against ${mv[0].p.L7p} the week before.`);
+    }
+    const fl = [...flips.entries()].filter(([, f]) => f.n >= 2).sort((a, b) => a[1].net - b[1].net);
+    if (fl.length) {
+      const [wn, wf] = fl[0], [bn, bf] = fl[fl.length - 1];
+      if (wf.net < 0) add("TREND", 58, `Second-guessing has cost ${B(wn)} ${-wf.net} point${wf.net === -1 ? "" : "s"} this season (${wf.n} changed picks: ${wf.helped} helped, ${wf.hurt} hurt).`);
+      if (bf.net > 0 && bn !== wn) add("NOTE", 50, `${B(bn)}'s pick changes have paid off: +${bf.net} points from ${bf.n} switches.`);
+    }
+    if (gdFacts?.most) add("NOTE", 52, `Most-watched live game on ${dayLong(lastGD)}: ${esc(gdFacts.most.w.label)}, ${gdFacts.most.who.length} of ${N} had it open.`);
+    if (gdFacts?.peak >= 2) add("NOTE", 50, `Peak on ${dayLong(lastGD)}: ${gdFacts.peak} in the app at once around ${timeLab(gdFacts.peakAt)} (${list(gdFacts.peakWho.map(esc))}).`);
+    const g7 = people.reduce((a, p) => a + p.w7.opens.filter((v) => inGame(v.at)).length, 0);
+    const gameMs7 = gameWins.reduce((a, x) => a + Math.max(0, Math.min(x.b, now) - Math.max(x.a, today0 - 6 * DAY)), 0);
+    if (opens7 >= 5 && gameMs7 > 0) add("NOTE", 45, `${Math.round(g7 / opens7 * 100)}% of this week's opens came while games were on, which is ${Math.round(gameMs7 / (7 * DAY) * 100)}% of the week.`);
+    const ld = names.map((n) => ({ n, m: median(leadBy.get(n) || []) })).filter((x) => x.m != null);
+    if (ld.length >= 3) { ld.sort((a, b) => a.m - b.m); add("NOTE", 44, `Pick timing: ${B(ld[ld.length - 1].n)} usually locks in ${lead(ld[ld.length - 1].m)} early; ${B(ld[0].n)} usually waits until ${lead(ld[0].m)} before lock.`); }
+    if (fr.length) add("NOTE", 40, `Most-used: ${fr.slice(0, 3).map((e) => `${esc(ldFeat(e.k))} (${e.ppl.size} of ${N})`).join(", ")}${unused.length ? `. Nobody used ${list(unused.slice(0, 4).map(esc))} in 14 days` : ""}.`);
+    if (firstStop?.first >= 3) add("NOTE", 35, `Visits usually start on ${esc(ldFeat(firstStop.k))} (${Math.round(firstStop.first / Math.max(1, s14.length) * 100)}% of visits).`);
+    const br = people.filter((p) => p.appKind === "browser only");
+    if (br.length) add("NOTE", 30, `${list(br.map((p) => B(p.n)))} only use${br.length === 1 ? "s" : ""} the browser, not the home-screen app.`);
+    const tagOrder = { ACTION: 0, TREND: 1, NOTE: 2 };
+    story.sort((a, b) => tagOrder[a.tag] - tagOrder[b.tag] || b.w - a.w);
+
+    // Nudges, ready for the chat.
+    const nudges = [];
+    if (lockNow && lockNow > now && picksNow) { const total = slateOf(curWeek).length; for (const n of names) { const k = slateOf(curWeek).filter((g) => picksNow[n]?.picks?.[g.id]).length; if (k < total) nudges.push({ n, why: `${k}/${total} picks`, msg: `${n}, ${total - k} pick${total - k === 1 ? "" : "s"} left before lock` }); } }
+    for (const p of quiet) if (!nudges.some((x) => x.n === p.n)) nudges.push({ n: p.n, why: p.lastAt ? `last in ${ago(p.lastAt)}` : "never opened it", msg: `${p.n}, haven't seen you in the app${p.lastAt ? ` since ${dayLong(p.lastAt)}` : ""}` });
+    const nudgeText = nudges.length ? `🏈 Brochiefs check-in:\n${nudges.map((x) => `• ${x.msg}`).join("\n")}${lockNow && lockNow > now ? `\nPicks lock ${new Date(lockNow).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}.` : ""}\nbrochiefs.com` : "";
+
+    // ---- PULSE ----
+    const dmax = N;
+    const dauHtml = d28.map((d, i) => { const c = dau[i].length; return `<i class="ld-db${gdSet.has(d) ? " gd" : ""}${d === today0 ? " today" : ""}" ${tip(`${dayLong(d)}${gdSet.has(d) ? " · game day" : ""} · ${c} of ${N} in${c ? `: ${dau[i].join(", ")}` : ""}`)}><b style="height:${(c / dmax * 100).toFixed(0)}%"></b></i>`; }).join("");
     const punch = Array.from({ length: 7 }, () => new Array(24).fill(0));
-    for (const t of all) { const d = new Date(t); punch[(d.getDay() + 6) % 7][d.getHours()]++; }
+    for (const p of people) for (const v of p.opens) { const d = new Date(v.at); punch[(d.getDay() + 6) % 7][d.getHours()]++; }
     const pmax = Math.max(1, ...punch.flat());
     const pstep = (n) => n <= 0 ? 0 : Math.min(4, 1 + Math.floor((n / pmax) * 3.999));
-    let best = { n: -1 };
-    punch.forEach((row, d) => row.forEach((n, h) => { const w = n + (row[(h + 1) % 24] || 0) + (row[(h + 2) % 24] || 0); if (w > best.n) best = { n: w, d, h }; }));
-    const wdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-    // Week by week: the last six weeks, Monday to Sunday.
-    const mon = new Date(today0); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
-    const weeks = Array.from({ length: 6 }, (_, i) => mon.getTime() - (5 - i) * 7 * DAY);
-    const wstep = (n) => n <= 0 ? 0 : n <= 5 ? 1 : n <= 15 ? 2 : n <= 30 ? 3 : 4;
-    const byWeek = owners.map((o) => ({ o, per: weeks.map((w) => o.list.filter((v) => v.at >= w && v.at < w + 7 * DAY).length) }));
-    const covered = weeks.map((w) => w + 7 * DAY > firstSeen);
-
-    // Feature use across the league, share of sessions in 14 days.
-    const s14 = owners.flatMap((o) => o.sess.filter((x) => x.at >= now - 14 * DAY));
-    const featAll = new Map();
-    for (const x of s14) for (const f of x.f) if (lvzFeat(f)) featAll.set(f, (featAll.get(f) || 0) + 1);
-    const featRank = [...featAll.entries()].sort((a, b) => b[1] - a[1]);
-
-    // What stands out, in words.
-    const said = [];
-    const top = [...owners].sort((a, b) => b.wk.length - a.wk.length)[0];
-    if (top?.wk.length) said.push(`<b>${esc(top.n)}</b> is in the most: ${top.wk.length} opens in 7 days${top.streak >= 7 ? ", every day" : top.streak >= 2 ? `, ${top.streak} days running` : ""}.`);
-    const quiet = owners.filter((o) => !o.last || now - o.last > 3 * DAY);
-    if (quiet.length) said.push(`${names(quiet.map((o) => `<b>${esc(o.n)}</b>`))} ${quiet.length === 1 ? "hasn't" : "haven't"} opened the app in 3+ days.`);
-    const short = lockAt && lockAt > now && typeof GAMES !== "undefined" ? owners.filter((o) => o.pIn != null && o.pIn < GAMES.length) : [];
-    if (short.length) said.push(`Picks not done before lock: ${short.map((o) => `<b>${esc(o.n)}</b> ${o.pIn}/${GAMES.length}${o.last && now - o.last > DAY ? ` (last in ${esc(ago(o.last))})` : ""}`).join(", ")}.`);
-    if (total7 && winMs7 > 0) { const share = game7 / total7, timeShare = winMs7 / (7 * DAY); said.push(`${Math.round(share * 100)}% of this week's opens came during games, which take up ${Math.round(timeShare * 100)}% of the week${share > timeShare * 2 ? ": game time is when the app gets used" : ""}.`); }
-    if (allS7.length >= 5) { const longest = [...owners].sort((a, b) => b.time7 - a.time7)[0]; said.push(`A visit lasts ${mins(avgSess)} on average; <b>${esc(longest.n)}</b> spent the most time in the app this week (${mins(longest.time7)}).`); }
-    if (featRank.length) said.push(`Most used: ${featRank.slice(0, 3).map(([k, n]) => `${esc(lvzFeat(k))} (${Math.round(n / Math.max(1, s14.length) * 100)}% of visits)`).join(", ")}.`);
-    const browser = owners.filter((o) => o.appKind === "browser only");
-    if (browser.length) said.push(`${names(browser.map((o) => `<b>${esc(o.n)}</b>`))} only ${browser.length === 1 ? "uses" : "use"} the browser, not the home-screen app.`);
-    if (best.n > 0) said.push(`Busiest stretch on record: ${wdays[best.d]} ${hourLab(best.h)}-${hourLab((best.h + 3) % 24)}.`);
-
-    // Nudges: who to ping, with a message ready for the group chat.
-    const nudgeRows = [
-      ...short.map((o) => ({ n: o.n, why: `${o.pIn}/${GAMES.length} picks in`, msg: `${o.n}, you've got ${GAMES.length - o.pIn} pick${GAMES.length - o.pIn === 1 ? "" : "s"} left before lock` })),
-      ...quiet.filter((o) => !short.includes(o)).map((o) => ({ n: o.n, why: o.last ? `last in ${ago(o.last)}` : "never opened the app", msg: `${o.n}, haven't seen you in the app${o.last ? ` since ${dayLong(o.last)}` : ""}` })),
-    ];
-    const lockTxt = lockAt && lockAt > now ? ` Picks lock ${new Date(lockAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}.` : "";
-    const nudgeText = nudgeRows.length ? `🏈 Brochiefs check-in:\n${nudgeRows.map((x) => `• ${x.msg}`).join("\n")}${lockTxt ? `\n${lockTxt.trim()}` : ""}\nbrochiefs.com` : "";
-
-    // Timeline: one strip per owner over a chosen range.
-    const ranges = { gameday: [gdA, gdB, "LAST GAME DAY"], h48: [now - 48 * HR, now, "48 HOURS"], d7: [now - 7 * DAY, now, "7 DAYS"] };
-    const strips = (key) => {
-      const [A, B] = ranges[key], span = Math.max(1, B - A);
-      const xp = (t) => ((t - A) / span * 100).toFixed(2);
-      const bands = windows.filter(([a, b]) => b > A && a < B).map(([a, b]) => `<i class="lvz-band" style="left:${xp(Math.max(a, A))}%;width:${(Math.min(b, B) - Math.max(a, A)) / span * 100}%"></i>`).join("");
-      const mids = [];
-      const md = new Date(A); md.setHours(0, 0, 0, 0); md.setDate(md.getDate() + 1);
-      for (let t = md.getTime(); t < B; t += DAY) mids.push(`<i class="lvz-mid" style="left:${xp(t)}%"></i>`);
-      const rowsHtml = owners.map((o) => {
-        const segs = o.sess.filter((x) => x.at < B && x.at + x.dur > A).map((x) => `<i class="lvz-seg" style="left:${xp(Math.max(x.at, A))}%;width:${Math.max(0.6, (Math.min(x.at + x.dur, B) - Math.max(x.at, A)) / span * 100)}%"></i>`).join("");
-        const dots = o.list.filter((v) => v.at >= A && v.at < B).map((v) => `<i class="lvz-dot${inGame(v.at) ? " live" : ""}" style="left:${xp(v.at)}%" ${tip(`${o.n} · ${dayLong(v.at)} ${timeLab(v.at)}${inGame(v.at) ? " · during a game" : ""} · ${v.app === "home" ? "home-screen app" : "browser"}`)}></i>`).join("");
-        return `<span class="lvz-nm">${esc(o.n)}</span><div class="lvz-strip">${bands}${mids.join("")}${segs}${dots}</div>`;
-      }).join("");
-      const ax = [0, 0.25, 0.5, 0.75, 1].map((f) => { const t = A + f * span; return `<span>${f === 1 && B >= now - 60000 ? "NOW" : `${dayLab(t)} ${hourLab(new Date(t).getHours())}`}</span>`; }).join("");
-      return `${rowsHtml}<span></span><div class="lvz-tlax">${ax}</div>`;
-    };
-    const defRange = now - gdA < 7 * DAY ? "gameday" : "h48";
-
-    // 7-day grid.
-    const head = `<span></span>${days.map((d, i) => `<span class="lvz-dh${i === 6 ? " today" : ""}">${i === 6 ? "TODAY" : dayLab(d)}</span>`).join("")}<span class="lvz-dh">LAST</span>`;
-    const gridRows = owners.map((o) => `<span class="lvz-nm">${esc(o.n)}</span>${o.per.map((list, i) => {
-      const n = list.length;
-      return `<i class="lvz-c s${step(n)}" ${tip(`${o.n} · ${dayLong(days[i])} · ${n ? `${n} open${n === 1 ? "" : "s"}, last ${timeLab(Math.max(...list.map((v) => v.at)))}` : "not in"}`)}></i>`;
-    }).join("")}<span class="lvz-ago${o.last && now - o.last < DAY ? " fresh" : ""}">${o.last ? esc(ago(o.last).replace(" ago", "")) : "never"}</span>`).join("");
-
-    // Week by week rows, ranked by the six-week total.
-    const wkHead = `<span></span>${weeks.map((w, i) => `<span class="lvz-dh${i === 5 ? " today" : ""}">${i === 5 ? "THIS WK" : new Date(w).toLocaleDateString([], { month: "numeric", day: "numeric" })}</span>`).join("")}<span class="lvz-dh">TOTAL</span>`;
-    const wkRows = [...byWeek].sort((a, b) => b.per.reduce((x, y) => x + y, 0) - a.per.reduce((x, y) => x + y, 0)).map(({ o, per }) => `<span class="lvz-nm">${esc(o.n)}</span>${per.map((n, i) => covered[i] ? `<i class="lvz-c s${wstep(n)}" ${tip(`${o.n} · week of ${dayLong(weeks[i])} · ${n} open${n === 1 ? "" : "s"}`)}></i>` : `<i class="lvz-c na" ${tip("Before tracking started")}></i>`).join("")}<span class="lvz-ago fresh">${per.reduce((x, y) => x + y, 0)}</span>`).join("");
-
-    // Punchcard rows.
-    const punchRows = punch.map((row, d) => `<span class="lvz-pd">${wdays[d].slice(0, 2).toUpperCase()}</span>${row.map((n, h) => `<i class="lvz-p s${pstep(n)}" ${tip(`${wdays[d]} ${hourLab(h)}-${hourLab((h + 1) % 24)} · ${n} open${n === 1 ? "" : "s"} on record`)}></i>`).join("")}`).join("");
-
-    // Feature bars.
-    const fmax = Math.max(1, ...featRank.map(([, n]) => n));
-    const featHtml = featRank.length ? featRank.slice(0, 10).map(([k, n]) => `<div class="lvz-fb" ${tip(`${lvzFeat(k)} · used in ${n} of ${s14.length} visits in 14 days`)}><span>${esc(lvzFeat(k))}</span><i><b style="width:${(n / fmax * 100).toFixed(0)}%"></b></i><em>${Math.round(n / Math.max(1, s14.length) * 100)}%</em></div>`).join("") : `<div class="lvz-empty">Fills in as people use the app on the new build.</div>`;
-
-    // Profiles.
-    const prof = [...owners].sort((a, b) => b.wk.length - a.wk.length || (b.last || 0) - (a.last || 0)).map((o) => {
-      const spark = o.per.map((l) => `<i style="height:${l.length ? Math.max(15, Math.min(100, l.length / 8 * 100)) : 6}%" class="${l.length ? "" : "z"}"></i>`).join("");
-      const pk = o.pIn == null || typeof GAMES === "undefined" ? "" : `<em class="${o.pIn === GAMES.length ? "ok" : "short"}">${o.pIn}/${GAMES.length} picks${o.pLast ? ` · last change ${esc(dayLong(o.pLast))}` : ""}</em>`;
-      const topF = [...o.feat.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => lvzFeat(k)).filter(Boolean);
-      return `<div class="lvz-pr" data-owner="${esc(o.n)}" ${tip(`${o.n} · ${o.wk.length} opens in 7 days · ${o.gameOpens} during games · last ${o.last ? `${dayLong(o.last)} ${timeLab(o.last)}` : "never"}${o.device ? ` · ${o.device}` : ""}`)}>
-        <div class="lvz-pr1"><b>${esc(o.n)}</b><span class="lvz-spark">${spark}</span><strong>${o.wk.length}</strong></div>
-        <div class="lvz-pr2"><span>${o.streak ? `${o.streak}-day streak` : "no streak"}</span><span>${esc(o.usual)}</span><span>${esc(o.appKind)}</span>${o.s7.length ? `<span>${mins(o.time7 / o.s7.length)} a visit · ${mins(o.time7)} this week</span>` : ""}${pk}<span class="lvz-ver" data-ver="${esc(o.ver)}">${o.ver ? `build ${esc(o.ver.slice(4, 8))}·${esc(o.ver.slice(8, 12))}` : "build unknown"}</span></div>
-        ${topF.length ? `<div class="lvz-pr3">${topF.map((f) => `<span>${esc(f)}</span>`).join("")}</div>` : ""}
-      </div>`;
-    }).join("");
-
-    const html = `<div class="lvz">
-      ${said.length ? `<div class="lvz-h">WHAT STANDS OUT</div><ul class="lvz-said">${said.map((x) => `<li>${x}</li>`).join("")}</ul>` : ""}
-      ${nudgeRows.length ? `<div class="lvz-nudge"><div class="lvz-h">WHO TO NUDGE</div>${nudgeRows.map((x) => `<div class="lvz-nr"><b>${esc(x.n)}</b><span>${esc(x.why)}</span></div>`).join("")}<button type="button" class="admin-btn lvz-copy" data-text="${esc(nudgeText)}">Copy message for the chat</button></div>` : ""}
-      <div class="lvz-tiles six">
-        <div><b>${inToday}<small>/${N}</small></b><span>in today</span></div>
-        <div><b>${active7}<small>/${N}</small></b><span>in this week</span></div>
-        <div><b>${total7}</b><span>opens, 7 days</span></div>
-        <div><b>${total7 && winMs7 ? `${Math.round(game7 / total7 * 100)}%` : "-"}</b><span>during games</span></div>
-        <div><b>${allS7.length ? mins(avgSess) : "-"}</b><span>avg visit</span></div>
-        <div><b>${gdTotal ? mins(gdTotal) : "-"}</b><span>league time, last game day</span></div>
+    const wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const punchHtml = punch.map((row, d) => `<span class="lvz-pd">${wd[d].slice(0, 2).toUpperCase()}</span>${row.map((n, h) => `<i class="lvz-p s${pstep(n)}" ${tip(`${wd[d]} ${hourLab(h)}-${hourLab((h + 1) % 24)} · ${n} open${n === 1 ? "" : "s"} on record`)}></i>`).join("")}`).join("");
+    const tagCls = { ACTION: "act", TREND: "trend", NOTE: "note" };
+    const pulse = `<div class="ld-kpis">
+        <div ${tip(`People with at least one day in the app in the last 7 days. Prior week: ${priorCovered ? wauP : "not tracked yet"}.`)}><b>${wau}<small>/${N}</small></b><span>active this week</span>${chip(priorCovered ? wau - wauP : null)}</div>
+        <div ${tip("Average number of days each person was in, out of the last 7.")}><b>${avgL7.toFixed(1)}<small>/7</small></b><span>days in, per person</span>${chip(priorCovered ? Math.round((avgL7 - avgL7p) * 10) / 10 : null)}</div>
+        <div ${tip(`App opens in the last 7 days. Prior week: ${priorCovered ? opensP7 : "not tracked yet"}.`)}><b>${opens7}</b><span>opens, 7 days</span>${chip(priorCovered ? pct(opens7, opensP7) : null, "%")}</div>
+        <div ${tip(`Total time in the app over 7 days, from sessions (tracked since ${dayLong(sessSince)}).`)}><b>${dur(time7)}</b><span>time in app${sess7.length ? ` · ${dur(avgVisit)} a visit` : ""}</span>${chip(priorSessCovered ? pct(time7, timeP7) : null, "%")}</div>
       </div>
-      <div class="lvz-hrow"><div class="lvz-h">TIMELINE · <i class="lvz-key-band"></i> GAMES ON · <i class="lvz-key-seg"></i> IN THE APP</div>
-        <div class="lvz-seg-btns">${Object.entries(ranges).map(([k, r]) => `<button type="button" data-range="${k}" class="${k === defRange ? "on" : ""}">${r[2]}</button>`).join("")}</div></div>
-      <div class="lvz-tl">${strips(defRange)}</div>
-      <div class="lvz-h">WEEK BY WEEK · OPENS, MOST ACTIVE FIRST</div>
-      <div class="lvz-grid wk">${wkHead}${wkRows}</div>
-      <div class="lvz-key"><span>OPENS A WEEK</span><i class="lvz-c s0"></i>0<i class="lvz-c s1"></i>1-5<i class="lvz-c s2"></i>6-15<i class="lvz-c s3"></i>16-30<i class="lvz-c s4"></i>31+</div>
-      <div class="lvz-h">WHO'S BEEN IN · LAST 7 DAYS</div>
-      <div class="lvz-grid">${head}${gridRows}</div>
-      <div class="lvz-key"><span>OPENS A DAY</span><i class="lvz-c s0"></i>0<i class="lvz-c s1"></i>1<i class="lvz-c s2"></i>2-3<i class="lvz-c s3"></i>4-7<i class="lvz-c s4"></i>8+</div>
-      <div class="lvz-h">WHAT THEY USE · SHARE OF VISITS, 14 DAYS</div>
-      <div class="lvz-feat">${featHtml}</div>
-      <div class="lvz-h">PICK BEHAVIOR · WEEK ${esc(String(typeof currentWeek !== "undefined" ? currentWeek : ""))}</div>
-      <div class="lvz-picks" id="lvz-picks"><div class="lvz-empty">Loading the pick log…</div></div>
-      <div class="lvz-h">ENGAGEMENT VS RESULTS</div>
-      <div class="lvz-scatter" id="lvz-scatter"><div class="lvz-empty">Loading season points…</div></div>
-      <div class="lvz-h">WHEN THE LEAGUE OPENS IT · DAY BY HOUR, SINCE ${esc(dayLong(firstSeen).toUpperCase())}</div>
-      <div class="lvz-punch">${punchRows}<span></span><div class="lvz-pax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div></div>
-      <div class="lvz-h">EVERY OWNER · MOST ACTIVE FIRST</div>
-      <div class="lvz-prof">${prof}</div>
-      <div class="lvz-tip" aria-live="polite">Tap any square, dot or row for the details.</div>
-    </div>`;
-    return { html, strips, owners, lockAt, said };
-  }
+      ${story.length ? `<div class="lvz-h">THIS WEEK'S STORY</div><ul class="ld-story">${story.slice(0, 9).map((s) => `<li><em class="ld-tag ${tagCls[s.tag]}">${s.tag}</em><span>${s.html}</span></li>`).join("")}</ul>` : ""}
+      ${nudges.length ? `<div class="lvz-nudge"><div class="lvz-h">WHO TO NUDGE</div>${nudges.map((x) => `<div class="lvz-nr"><b>${esc(x.n)}</b><span>${esc(x.why)}</span></div>`).join("")}<button type="button" class="admin-btn lvz-copy" data-text="${esc(nudgeText)}">Copy message for the chat</button></div>` : ""}
+      <div class="lvz-h">PEOPLE IN EACH DAY · LAST 28 DAYS · <i class="ld-key-gd"></i> GAME DAY</div>
+      <div class="ld-dau"><div class="ld-dbars">${dauHtml}</div><div class="lvz-tlax"><span>${dayLong(d28[0]).toUpperCase()}</span><span>${dayLong(d28[14]).toUpperCase()}</span><span>TODAY</span></div></div>
+      <div class="lvz-h">WHEN THE LEAGUE IS IN · DAY BY HOUR, SINCE ${esc(dayLong(opensSince).toUpperCase())}</div>
+      <div class="lvz-punch">${punchHtml}<span></span><div class="lvz-pax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div></div>`;
 
-  // After the dashboard is on screen: the pick log for this week, season
-  // points for the engagement chart, and which build is current. Each one
-  // fills its own panel when it lands; a failure leaves a note, not a gap.
-  async function fillLoginExtras(root, ctx) {
-    const { owners, lockAt } = ctx;
-    const DAY = 86400000, HR = 3600000, now = Date.now();
-    const tip = (str) => `data-tip="${esc(str)}"`;
-    const dayLong = (t) => new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
-    const timeLab = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    const lead = (ms) => ms < HR ? `${Math.max(1, Math.round(ms / 60000))} min` : ms < 2 * DAY ? `${Math.round(ms / HR)} hr` : `${Math.round(ms / DAY)} days`;
-    const addSaid = (h) => { const ul = root.querySelector(".lvz-said"); if (ul) ul.insertAdjacentHTML("beforeend", `<li>${h}</li>`); };
-    const tracked = new Set(owners.map((o) => o.n));
-
-    // Build currency: version.json is what's deployed right now.
-    fetch(`version.json?t=${now}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null).then((d) => {
-      const cur = String(d?.v || "");
-      if (!cur) return;
-      const stale = [];
-      root.querySelectorAll(".lvz-ver").forEach((el) => {
-        const v = el.dataset.ver;
-        if (!v) return;
-        if (v === cur) { el.classList.add("ok"); el.textContent += " · current"; }
-        else { el.classList.add("old"); el.textContent += " · behind"; stale.push(el.closest(".lvz-pr")?.dataset.owner); }
-      });
-      if (stale.filter(Boolean).length) addSaid(`Running an older build: ${stale.filter(Boolean).map((n) => `<b>${esc(n)}</b>`).join(", ")}. Reopening the app updates it.`);
-    }).catch(() => {});
-
-    // Pick behaviour from the change log (newest 35 days).
-    get(`/picks-log?format=json&since=${now - 35 * DAY}`).then(({ changes }) => {
-      const el = root.querySelector("#lvz-picks");
-      if (!el) return;
-      const rows = (changes || []).filter((r) => tracked.has(r.manager) && !r.admin);
-      const wk = typeof currentWeek !== "undefined" ? currentWeek : null;
-      const thisWk = rows.filter((r) => Number(r.week) === Number(wk));
-      const lock = lockAt || now;
-      const A = Math.min(lock - 6 * DAY, ...thisWk.map((r) => r.ts)), B = Math.max(lock + 2 * HR, Math.min(now, lock + 2 * HR));
-      const span = Math.max(1, B - A);
-      const xp = (t) => (Math.max(0, Math.min(1, (t - A) / span)) * 100).toFixed(2);
-      const per = owners.map((o) => {
-        const mine = thisWk.filter((r) => r.manager === o.n).sort((a, b) => a.ts - b.ts);
-        const edits = mine.reduce((a, r) => a + (r.changes || []).filter((c) => c.game && c.from).length, 0);
-        const blocked = mine.reduce((a, r) => a + (r.changes || []).filter((c) => c.rejected || c.afterKickoff).length, 0);
-        const before = mine.filter((r) => r.ts <= lock);
-        const last = before.length ? before[before.length - 1].ts : null;
-        const first = mine.length ? mine[0].ts : null;
-        const weeksSeen = new Set(rows.filter((r) => r.manager === o.n).map((r) => r.week)).size || 1;
-        const editsAll = rows.filter((r) => r.manager === o.n).reduce((a, r) => a + (r.changes || []).filter((c) => c.game && c.from).length, 0);
-        return { o, mine, edits, blocked, last, first, editsPerWeek: editsAll / weeksSeen };
-      });
-      const strips = per.map((p) => `<span class="lvz-nm">${esc(p.o.n)}</span><div class="lvz-strip pk"><i class="lvz-lock" style="left:${xp(lock)}%"></i>${p.mine.map((r) => { const n = (r.changes || []).length; const late = (r.changes || []).some((c) => c.afterKickoff || c.rejected); return `<i class="lvz-tick${late ? " late" : (r.changes || []).some((c) => c.game && c.from) ? " edit" : ""}" style="left:${xp(r.ts)}%" ${tip(`${p.o.n} · ${dayLong(r.ts)} ${timeLab(r.ts)} · ${n} change${n === 1 ? "" : "s"}${late ? " · after kickoff, blocked" : ""} · ${r.ts <= lock ? `${lead(lock - r.ts)} before lock` : `${lead(r.ts - lock)} after lock`}`)}></i>`; }).join("")}</div><span class="lvz-ago">${p.last ? lead(lock - p.last) : "-"}</span>`).join("");
-      const ax = [0, 0.5, 1].map((f) => { const t = A + f * span; return `<span>${new Date(t).toLocaleDateString([], { weekday: "short" }).toUpperCase()}</span>`; }).join("");
-      el.innerHTML = thisWk.length ? `<div class="lvz-pkgrid">${strips}<span></span><div class="lvz-tlax">${ax}</div><span></span></div>
-        <div class="lvz-key"><i class="lvz-tick k"></i>pick saved<i class="lvz-tick k edit"></i>a pick changed<i class="lvz-tick k late"></i>blocked after kickoff<i class="lvz-lock k"></i>lock · right column: last save before lock</div>`
-        : `<div class="lvz-empty">No pick saves logged for week ${esc(String(wk))} yet.</div>`;
-      // Words.
-      const withLast = per.filter((p) => p.last);
-      if (withLast.length >= 3) {
-        const late = [...withLast].sort((a, b) => (lock - a.last) - (lock - b.last))[0];
-        const early = [...withLast].sort((a, b) => (lock - b.last) - (lock - a.last))[0];
-        addSaid(`Picks: <b>${esc(early.o.n)}</b> locked in earliest (${lead(lock - early.last)} before lock); <b>${esc(late.o.n)}</b> went to the wire (${lead(lock - late.last)}).`);
-      }
-      const tinker = [...per].sort((a, b) => b.editsPerWeek - a.editsPerWeek)[0];
-      if (tinker && tinker.editsPerWeek >= 2) addSaid(`<b>${esc(tinker.o.n)}</b> changes picks the most: about ${Math.round(tinker.editsPerWeek)} a week.`);
-      const blk = per.filter((p) => p.blocked);
-      if (blk.length) addSaid(`Tried to change a pick after kickoff this week (blocked): ${blk.map((p) => `<b>${esc(p.o.n)}</b>`).join(", ")}.`);
-    }).catch(() => { const el = root.querySelector("#lvz-picks"); if (el) el.innerHTML = `<div class="lvz-empty">Couldn't load the pick log.</div>`; });
-
-    // Engagement against results: opens since tracking began vs season
-    // points from the weeks that count. Nine dots; a pattern, not a cause.
-    fetch(`${WORKER_URL}/weeks?detail=1&t=${now}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null).then((data) => {
-      const el = root.querySelector("#lvz-scatter");
-      if (!el) return;
-      const weeks = Object.values(data?.summaries || {}).filter((w) => w?.complete && !w.exhibition && Array.isArray(w.rows));
-      const pts = new Map();
-      for (const w of weeks) for (const r of w.rows) pts.set(r.name, (pts.get(r.name) || 0) + (r.score || 0));
-      const dots = owners.map((o) => ({ n: o.n, x: o.list.length, y: pts.get(o.n) ?? null })).filter((d) => d.y != null);
-      if (dots.length < 4 || !weeks.length) { el.innerHTML = `<div class="lvz-empty">Needs a few finished weeks.</div>`; return; }
-      const xs = dots.map((d) => d.x), ys = dots.map((d) => d.y);
-      const xMax = Math.max(1, ...xs), yMin = Math.min(...ys), yMax = Math.max(...ys), yr = Math.max(1, yMax - yMin);
+    // ---- PEOPLE ----
+    const peopleRow = (p) => {
+      const dots = Array.from({ length: 7 }, (_, i) => `<i class="${p.days.has(today0 - (6 - i) * DAY) ? "on" : ""}"></i>`).join("");
+      const f = flips.get(p.n);
+      return `<button type="button" class="ld-pr" data-person="${esc(p.n)}" data-sort-l7="${p.L7}" data-sort-last="${p.lastAt}" data-sort-time="${p.time7}" data-sort-pts="${pts.get(p.n) ?? -1}">
+        <b>${esc(p.n)}</b><span class="ld-l7" ${tip(`${p.n} · in ${p.L7} of the last 7 days`)}>${dots}</span>${priorCovered ? chip(p.L7 - p.L7p) : `<em class="ld-d flat"></em>`}<span class="ld-num">${p.w7.opens.length}</span><span class="ld-num">${dur(p.time7)}</span><span class="ld-ago">${p.lastAt ? esc(ago(p.lastAt).replace(" ago", "")) : "never"}</span>
+      </button><div class="ld-drill" data-for="${esc(p.n)}" hidden></div>`;
+    };
+    const drill = (n) => {
+      const p = people.find((x) => x.n === n); if (!p) return "";
+      const cal = Array.from({ length: 28 }, (_, i) => { const d = today0 - (27 - i) * DAY; const c = p.opens.filter((v) => day0(v.at) === d).length; return `<i class="lvz-c s${c <= 0 ? 0 : c === 1 ? 1 : c <= 3 ? 2 : c <= 7 ? 3 : 4}${gdSet.has(d) ? " gd" : ""}" ${tip(`${dayLong(d)} · ${c} open${c === 1 ? "" : "s"}${gdSet.has(d) ? " · game day" : ""}`)}></i>`; }).join("");
+      const hrs = new Array(24).fill(0); for (const v of p.opens) hrs[new Date(v.at).getHours()]++;
+      const hm = Math.max(1, ...hrs);
+      const hourBars = hrs.map((c, h) => `<i ${tip(`${hourLab(h)} · ${c} open${c === 1 ? "" : "s"}`)}><b style="height:${(c / hm * 100).toFixed(0)}%"></b></i>`).join("");
+      const fu = new Map(); for (const x of p.sess.filter((y) => y.at >= now - 14 * DAY)) for (const k of new Set(x.f.map((y) => String(y).replace(/-g\d+$/, "")))) if (ldFeat(k)) fu.set(k, (fu.get(k) || 0) + 1);
+      const feats = [...fu.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, c]) => `<span>${esc(ldFeat(k))} · ${c}</span>`).join("") || `<span class="dim">no sessions yet on the new build</span>`;
+      const f = flips.get(n), lm = median(leadBy.get(n) || []), ed = editsBy.get(n) || [];
+      const pk = picksNow?.[n]?.picks || {}, tot = slateOf(curWeek).length, have = slateOf(curWeek).filter((g) => pk[g.id]).length;
+      const rank = [...pts.entries()].sort((a, b) => b[1] - a[1]).findIndex(([m]) => m === n) + 1;
+      const facts = [
+        ["Last in", p.lastAt ? `${dayLong(p.lastAt)} ${timeLab(p.lastAt)}` : "never"],
+        ["Days in", `${p.L7}/7 this week${priorCovered ? `, ${p.L7p}/7 last week` : ""}`],
+        ["Visits", p.w7.sess.length ? `${p.w7.sess.length} this week, ${dur(p.time7 / p.w7.sess.length)} each` : `${p.w7.opens.length} opens this week`],
+        ["Device", `${p.appKind}${p.device ? ` · ${p.device.slice(0, 6)}` : ""}`],
+        ["Build", p.ver ? `${p.ver.slice(4, 8)}·${p.ver.slice(8, 12)}${buildNow ? (p.ver === buildNow ? " · current" : " · behind") : ""}` : "unknown"],
+        ["Picks", `${have}/${tot} for week ${curWeek}`],
+        ["Lead time", lm != null ? `${lead(lm)} before lock (median)` : "-"],
+        ["Changes", ed.length ? `${(ed.reduce((a, b) => a + b, 0) / ed.length).toFixed(1)} a week${f ? ` · net ${f.net >= 0 ? "+" : ""}${f.net} pts from ${f.n} switch${f.n === 1 ? "" : "es"}` : ""}` : "-"],
+        ["Season", pts.has(n) ? `${pts.get(n)} pts${rank ? ` · ${rank}${["th", "st", "nd", "rd"][rank % 10 > 3 || [11, 12, 13].includes(rank % 100) ? 0 : rank % 10]}` : ""}` : "-"],
+      ];
+      return `<div class="ld-dgrid">${facts.map(([k, v]) => `<span>${k}</span><b>${esc(v)}</b>`).join("")}</div>
+        <div class="lvz-h">LAST 28 DAYS</div><div class="ld-cal">${cal}</div>
+        <div class="lvz-h">TIME OF DAY</div><div class="ld-hours">${hourBars}</div><div class="lvz-pax solo"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div>
+        <div class="lvz-h">USES MOST · VISITS, 14 DAYS</div><div class="lvz-pr3">${feats}</div>`;
+    };
+    // Engagement against results.
+    const dots = people.map((p) => ({ n: p.n, x: p.opens.length, y: pts.get(p.n) })).filter((d) => Number.isFinite(d.y));
+    let scatter = `<div class="lvz-empty">Needs finished weeks with results.</div>`, rWord = "";
+    if (dots.length >= 4) {
+      const xs = dots.map((d) => d.x), ys = dots.map((d) => d.y), xMax = Math.max(1, ...xs), yMin = Math.min(...ys), yr = Math.max(1, Math.max(...ys) - yMin);
       const mx = xs.reduce((a, b) => a + b, 0) / xs.length, my = ys.reduce((a, b) => a + b, 0) / ys.length;
-      const cov = dots.reduce((a, d) => a + (d.x - mx) * (d.y - my), 0), vx = dots.reduce((a, d) => a + (d.x - mx) ** 2, 0), vy = dots.reduce((a, d) => a + (d.y - my) ** 2, 0);
-      const r = vx && vy ? cov / Math.sqrt(vx * vy) : 0;
-      const word = Math.abs(r) < 0.2 ? "no real link" : Math.abs(r) < 0.5 ? (r > 0 ? "a weak positive link" : "a weak negative link") : (r > 0 ? "a fairly strong positive link" : "a fairly strong negative link");
-      const px = (x) => (6 + x / xMax * 88).toFixed(1), py = (y) => (90 - (y - yMin) / yr * 80).toFixed(1);
-      el.innerHTML = `<div class="lvz-sc">
-          <span class="lvz-sc-y">${yMax}</span><span class="lvz-sc-y lo">${yMin}</span>
-          ${dots.map((d) => `<i class="lvz-sd" style="left:${px(d.x)}%;top:${py(d.y)}%" ${tip(`${d.n} · ${d.x} opens since tracking began · ${d.y} season points`)}><b>${esc(d.n.slice(0, 3).toUpperCase())}</b></i>`).join("")}
-        </div>
+      const cv = dots.reduce((a, d) => a + (d.x - mx) * (d.y - my), 0), vx = dots.reduce((a, d) => a + (d.x - mx) ** 2, 0), vy = dots.reduce((a, d) => a + (d.y - my) ** 2, 0);
+      const r = vx && vy ? cv / Math.sqrt(vx * vy) : 0;
+      rWord = Math.abs(r) < 0.2 ? "no real link" : `${Math.abs(r) < 0.5 ? "a weak" : "a fairly strong"} ${r > 0 ? "positive" : "negative"} link`;
+      scatter = `<div class="lvz-sc"><span class="lvz-sc-y">${Math.max(...ys)}</span><span class="lvz-sc-y lo">${yMin}</span>${dots.map((d) => `<i class="lvz-sd" style="left:${(6 + d.x / xMax * 88).toFixed(1)}%;top:${(90 - (d.y - yMin) / yr * 80).toFixed(1)}%" ${tip(`${d.n} · ${d.x} opens · ${d.y} season points`)}><b>${esc(d.n.slice(0, 3).toUpperCase())}</b></i>`).join("")}</div>
         <div class="lvz-sc-x"><span>0 opens</span><span>${xMax} opens</span></div>
-        <div class="lvz-cap">Season points (up) against app opens since tracking began (across). ${dots.length} owners, r = ${r.toFixed(2)}: ${word}. A pattern, not a cause, and opens only go back to ${esc(dayLong(Math.min(...owners.flatMap((o) => o.list.map((v) => v.at)).concat(now))))}.</div>`;
-    }).catch(() => { const el = root.querySelector("#lvz-scatter"); if (el) el.innerHTML = `<div class="lvz-empty">Couldn't load season points.</div>`; });
+        <div class="lvz-cap">Season points (up) against app opens since ${esc(dayLong(opensSince))} (across). ${dots.length} owners, r = ${r.toFixed(2)}: ${rWord}. A pattern, not a cause.</div>`;
+    }
+    const peopleView = `<div class="ld-sort"><span>SORT</span>${[["l7", "DAYS IN"], ["last", "LAST SEEN"], ["time", "TIME"], ["pts", "POINTS"]].map(([k, l], i) => `<button type="button" data-sort="${k}" class="${i === 0 ? "on" : ""}">${l}</button>`).join("")}</div>
+      <div class="ld-ph"><span>OWNER</span><span>LAST 7 DAYS</span><span>VS LAST WK</span><span>OPENS</span><span>TIME</span><span>LAST</span></div>
+      <div class="ld-people">${[...people].sort((a, b) => b.L7 - a.L7 || b.lastAt - a.lastAt).map(peopleRow).join("")}</div>
+      <div class="lvz-cap">Tap a name for their full picture.</div>
+      <div class="lvz-h">ENGAGEMENT VS RESULTS</div>${scatter}`;
+
+    // ---- GAME DAY ----
+    const gdChoices = gameDays.slice(-4).reverse();
+    const gameView = gdChoices.length ? `<div class="ld-sort"><span>DAY</span>${gdChoices.map((d, i) => `<button type="button" data-gameday="${d}" class="${i === 0 ? "on" : ""}">${esc(dayLong(d).toUpperCase())}</button>`).join("")}</div><div class="ld-gdbody">${gameDayView(gdChoices[0]).html}</div>` : `<div class="lvz-empty">No game days on record yet.</div>`;
+
+    // ---- FEATURES ----
+    const fmaxN = N;
+    const featView = fr.length ? `<div class="ld-fh"><span>FEATURE</span><span>PEOPLE WHO USED IT</span><span>VISITS</span></div>${fr.map((e) => `<div class="ld-fr" ${tip(`${ldFeat(e.k)} · ${e.ppl.size} of ${N} people (${[...e.ppl].join(", ")}) · in ${e.n} of ${s14.length} visits · first stop in ${e.first}`)}><span>${esc(ldFeat(e.k))}</span><span class="ld-ppl">${names.map((n) => `<i class="${e.ppl.has(n) ? "on" : ""}"></i>`).join("")}</span><em>${Math.round(e.n / Math.max(1, s14.length) * 100)}%</em></div>`).join("")}
+      ${unused.length ? `<div class="lvz-cap">Not used by anyone in 14 days: ${esc(unused.join(", "))}.</div>` : ""}
+      <div class="lvz-h">WHERE VISITS START</div>
+      <div class="lvz-feat">${[...fr].filter((e) => e.first).sort((a, b) => b.first - a.first).slice(0, 6).map((e, i, arr) => `<div class="lvz-fb" ${tip(`${e.first} visits started on ${ldFeat(e.k)}`)}><span>${esc(ldFeat(e.k))}</span><i><b style="width:${(e.first / Math.max(1, arr[0].first) * 100).toFixed(0)}%"></b></i><em>${Math.round(e.first / Math.max(1, s14.length) * 100)}%</em></div>`).join("")}</div>
+      <div class="lvz-cap">From ${s14.length} visit${s14.length === 1 ? "" : "s"} in 14 days on the new build (sessions since ${esc(dayLong(sessSince))}).</div>` : `<div class="lvz-empty">Feature use is recorded from the new build on (since ${esc(dayLong(sessSince))}). It fills in as people use the app.</div>`;
+
+    // ---- PICKS ----
+    const flipRows = names.map((n) => ({ n, f: flips.get(n), lm: median(leadBy.get(n) || []), ed: editsBy.get(n) || [] })).sort((a, b) => (a.lm ?? Infinity) - (b.lm ?? Infinity));
+    const picksView = `${pickWeeks.length ? `<div class="ld-sort"><span>WEEK</span>${pickWeeks.slice(0, 5).map((w, i) => `<button type="button" data-pickweek="${w}" class="${i === 0 ? "on" : ""}">W${w}</button>`).join("")}</div><div class="ld-pkbody">${pickWeekView(pickWeeks[0])}</div>` : `<div class="lvz-empty">No pick saves in the log yet.</div>`}
+      <div class="lvz-h">HABITS · ALL LOGGED WEEKS</div>
+      <div class="ld-fh four"><span>OWNER</span><span>USUAL LEAD</span><span>CHANGES/WK</span><span>SWITCHES PAID</span></div>
+      ${flipRows.map((x) => `<div class="ld-fr four" ${tip(`${x.n} · ${x.f ? `${x.f.n} switched picks with results: ${x.f.helped} helped, ${x.f.hurt} hurt, net ${x.f.net >= 0 ? "+" : ""}${x.f.net}` : "no switched picks with results yet"}`)}><span>${esc(x.n)}</span><em>${x.lm != null ? lead(x.lm) : "-"}</em><em>${x.ed.length ? (x.ed.reduce((a, b) => a + b, 0) / x.ed.length).toFixed(1) : "-"}</em>${x.f ? `<em class="ld-d ${x.f.net > 0 ? "up" : x.f.net < 0 ? "dn" : "flat"}">${x.f.net > 0 ? "▲ +" : x.f.net < 0 ? "▼ " : "= "}${x.f.net} pts</em>` : `<em>-</em>`}</div>`).join("")}
+      <div class="lvz-cap">Usual lead: median time between the last save and lock. Switches paid: points from the final pick minus what the first pick would have scored, on finished games.</div>`;
+
+    const html = `<div class="lvz ld">
+      <div class="ld-tabs">${[["pulse", "PULSE"], ["people", "PEOPLE"], ["gameday", "GAME DAY"], ["features", "FEATURES"], ["picks", "PICKS"]].map(([k, l], i) => `<button type="button" data-ldtab="${k}" class="${i === 0 ? "on" : ""}">${l}</button>`).join("")}</div>
+      <section data-ldview="pulse">${pulse}</section>
+      <section data-ldview="people" hidden>${peopleView}</section>
+      <section data-ldview="gameday" hidden>${gameView}</section>
+      <section data-ldview="features" hidden>${featView}</section>
+      <section data-ldview="picks" hidden>${picksView}</section>
+      <div class="lvz-tip" aria-live="polite">Tap any bar, square, dot or row for the details.</div>
+    </div>`;
+    return { html, drill, gameDayView, pickWeekView };
   }
 
-  // One readout under the charts follows the finger or the pointer; one
-  // listener on the dashboard, so panels filled in later work too.
-  function wireLoginViz(root, ctx) {
-    const box = root.querySelector(".lvz");
+  // One listener for the whole dashboard: tabs, sorting, drill-downs,
+  // day and week switches, the copy button, and the details readout.
+  function wireLoginDash(root, dash) {
+    const box = root.querySelector(".ld");
     const out = root.querySelector(".lvz-tip");
-    if (!box || !out) return;
+    if (!box || !out || !dash) return;
     let on = null;
-    const show = (t) => { if (!t || t === on) return; on?.classList.remove("on"); on = t; t.classList.add("on"); out.textContent = t.dataset.tip; };
+    const show = (t) => { if (!t || t === on || !t.dataset.tip) return; on?.classList.remove("on"); on = t; t.classList.add("on"); out.textContent = t.dataset.tip; };
     box.addEventListener("pointerover", (e) => show(e.target.closest?.("[data-tip]")));
     box.addEventListener("click", async (e) => {
-      const rb = e.target.closest?.("[data-range]");
-      if (rb && ctx) {
-        box.querySelectorAll("[data-range]").forEach((b) => b.classList.toggle("on", b === rb));
-        const tl = box.querySelector(".lvz-tl"); if (tl) tl.innerHTML = ctx.strips(rb.dataset.range);
+      const t = e.target;
+      const tab = t.closest?.("[data-ldtab]");
+      if (tab) { box.querySelectorAll("[data-ldtab]").forEach((b) => b.classList.toggle("on", b === tab)); box.querySelectorAll("[data-ldview]").forEach((s) => { s.hidden = s.dataset.ldview !== tab.dataset.ldtab; }); return; }
+      const so = t.closest?.("[data-sort]");
+      if (so) {
+        so.parentElement.querySelectorAll("[data-sort]").forEach((b) => b.classList.toggle("on", b === so));
+        const wrap = box.querySelector(".ld-people"); const k = so.dataset.sort;
+        const pairs = [...wrap.querySelectorAll(".ld-pr")].map((r) => [r, r.nextElementSibling]);
+        pairs.sort((a, b) => Number(b[0].dataset[`sort${k[0].toUpperCase()}${k.slice(1)}`]) - Number(a[0].dataset[`sort${k[0].toUpperCase()}${k.slice(1)}`]));
+        for (const [r, d] of pairs) wrap.append(r, d);
         return;
       }
-      const cp = e.target.closest?.(".lvz-copy");
-      if (cp) {
-        const text = cp.dataset.text || "";
-        try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); cp.textContent = "Copied ✓"; } } catch { try { await navigator.clipboard.writeText(text); cp.textContent = "Copied ✓"; } catch {} }
+      const pr = t.closest?.(".ld-pr");
+      if (pr && !t.closest("[data-tip]")) {
+        const d = pr.nextElementSibling;
+        if (d.hidden && !d.innerHTML) d.innerHTML = dash.drill(pr.dataset.person);
+        d.hidden = !d.hidden; pr.classList.toggle("open", !d.hidden);
         return;
       }
-      show(e.target.closest?.("[data-tip]"));
+      const gd = t.closest?.("[data-gameday]");
+      if (gd) { gd.parentElement.querySelectorAll("[data-gameday]").forEach((b) => b.classList.toggle("on", b === gd)); box.querySelector(".ld-gdbody").innerHTML = dash.gameDayView(Number(gd.dataset.gameday)).html; return; }
+      const pw = t.closest?.("[data-pickweek]");
+      if (pw) { pw.parentElement.querySelectorAll("[data-pickweek]").forEach((b) => b.classList.toggle("on", b === pw)); box.querySelector(".ld-pkbody").innerHTML = dash.pickWeekView(Number(pw.dataset.pickweek)); return; }
+      const cp = t.closest?.(".lvz-copy");
+      if (cp) { const text = cp.dataset.text || ""; try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); cp.textContent = "Copied ✓"; } } catch { try { await navigator.clipboard.writeText(text); cp.textContent = "Copied ✓"; } catch {} } return; }
+      if (pr) { const d = pr.nextElementSibling; if (d.hidden && !d.innerHTML) d.innerHTML = dash.drill(pr.dataset.person); d.hidden = !d.hidden; pr.classList.toggle("open", !d.hidden); }
+      show(t.closest?.("[data-tip]"));
     });
-    if (ctx) fillLoginExtras(box, ctx);
   }
+
   async function renderLogins() {
-    // App opens first: who has been in, and when.
-    let opens = "", lvzCtx = null;
+    // The dashboard first, then sign-ins. Everything it needs loads in
+    // parallel; any one source failing leaves its panel empty, not the page.
+    let opens = "", dash = null;
+    body.innerHTML = `<div class="admin-empty">Loading the league dashboard…</div>`;
     try {
-      const [{ visits: rawVisits, sessions: rawSessions }, pk] = await Promise.all([get("/visit"), get(`/picks?week=${currentWeek}`).catch(() => null)]);
-      const visits = Object.fromEntries(Object.entries(rawVisits || {}).filter(([m]) => !NOT_TRACKED.has(m)));
-      const all = Object.entries(visits || {}).flatMap(([m, list]) => list.map((v) => ({ m, ...v })));
+      const now = Date.now();
+      const [vis, pk, season, plog, ver] = await Promise.allSettled([
+        get("/visit"),
+        get(`/picks?week=${currentWeek}`),
+        fetch(`${WORKER_URL}/season?t=${now}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
+        get(`/picks-log?format=json&since=${now - 120 * 86400000}`),
+        fetch(`version.json?t=${now}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
+      ]);
+      const val = (x) => x.status === "fulfilled" ? x.value : null;
+      const v = val(vis) || {};
+      const keep = (o) => Object.fromEntries(Object.entries(o || {}).filter(([m]) => !NOT_TRACKED.has(m)));
+      const visits = keep(v.visits), sessions = keep(v.sessions);
       const fmt = (t) => new Date(t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
       const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
-      const day = Date.now() - 86400000;
-      const rows = TRACKED.map((n) => { const l = visits?.[n] || []; return { n, last: l[0]?.at || 0, today: l.filter((v) => v.at > day).length }; }).sort((a, b) => b.last - a.last);
-      lvzCtx = loginViz(visits || {}, rawSessions || {}, rows, ago, pk?.picks || null);
-      opens = lvzCtx.html + `<div class="con-summary"><span>LAST IN THE APP · MOST RECENT FIRST</span><span>${rows.filter((r) => r.today).length} of ${TRACKED.length} in the last 24h</span></div>`
-        + rows.map((r) => `<div class="con-row${r.last ? "" : " warn"}"><div class="con-row-head"><span><b>${esc(r.n)}</b></span><span>${r.last ? `${fmt(r.last)} · ${ago(r.last)}` : "never"}</span></div>${r.today ? `<div class="con-line">${r.today} open${r.today === 1 ? "" : "s"} in the last 24h</div>` : ""}</div>`).join("")
-        + `<details class="con-more"><summary>Every open (${all.length})</summary>${all.sort((a, b) => b.at - a.at).slice(0, 200).map((v) => `<div class="con-line">${fmt(v.at)} · <b>${esc(v.m)}</b> · ${v.app === "home" ? "home-screen app" : "browser"}${v.screen ? ` · ${esc(v.screen)}` : ""}</div>`).join("")}</details>`;
-    } catch {}
+      dash = buildLoginDash({ visits, sessions, picksNow: val(pk)?.picks || null, season: val(season), pickLog: val(plog)?.changes || [], buildNow: String(val(ver)?.v || ""), names: TRACKED, ago });
+      const all = Object.entries(visits).flatMap(([m, list]) => list.map((x) => ({ m, ...x })));
+      opens = dash.html + `<details class="con-more"><summary>Every open (${all.length})</summary>${all.sort((a, b) => b.at - a.at).slice(0, 200).map((x) => `<div class="con-line">${fmt(x.at)} · <b>${esc(x.m)}</b> · ${x.app === "home" ? "home-screen app" : "browser"}${x.screen ? ` · ${esc(x.screen)}` : ""}</div>`).join("")}</details>`;
+    } catch (err) { console.error("login dashboard", err); opens = `<div class="admin-empty">The dashboard couldn't load.</div>`; }
     let rawEvents = [];
     try { ({ events: rawEvents } = await get("/auth-log?format=json")); } catch {}
     const events = (rawEvents || []).filter((e) => !NOT_TRACKED.has(e.manager));
-    if (!events.length) { body.innerHTML = opens + `<div class="admin-empty">No sign-ins yet. Nobody has claimed a name with a code.</div>`; wireLoginViz(body, lvzCtx); return; }
+    if (!events.length) { body.innerHTML = opens + `<div class="admin-empty">No sign-ins yet. Nobody has claimed a name with a code.</div>`; wireLoginDash(body, dash); return; }
     // One browser signing in as two owners is the signal worth chasing.
     const byDevice = new Map();
     for (const e of events) {
@@ -517,7 +580,7 @@
           <div class="con-line dim">${esc(where(e))}${e.asOrg ? ` · ${esc(e.asOrg)}` : ""} · ${esc(e.ipShort || "—")}</div>
           <div class="con-line dim">${esc(what(e))}${e.device ? ` ${esc(e.device)}` : ""}${e.screen ? ` · ${esc(e.screen)}` : ""}${e.deviceId ? ` · ${esc(e.deviceId.slice(0, 8))}…` : ""}</div>
         </div>`).join("");
-    wireLoginViz(body, lvzCtx);
+    wireLoginDash(body, dash);
   }
 
   // --- Owners ---------------------------------------------------------
