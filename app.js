@@ -4988,19 +4988,67 @@ async function openInsights(gameId) {
       const g = t.match(/for (-?\d+) (?:yds?|yards?)/i);
       return g ? Number(g[1]) : null;
     };
+    // Who a flag helps, from the side with the ball: the spot moving
+    // toward the end zone (ESPN's yardsToEndzone before and after) is the
+    // surest read; else the flagged team matched against the offence;
+    // else ESPN's own signed yardage. Returns signed yards for the
+    // offence, or null when it can't tell.
+    const teamKeys = new Map(sc.map((c) => [Number(c.team?.id), [c.team?.abbreviation, c.team?.name, c.team?.location, c.team?.shortDisplayName, c.team?.displayName].filter(Boolean).map((k) => String(k).toUpperCase())]));
+    teamKeys.set(Number(game.awayId), [...(teamKeys.get(Number(game.awayId)) || []), String(A).toUpperCase()]);
+    teamKeys.set(Number(game.homeId), [...(teamKeys.get(Number(game.homeId)) || []), String(H).toUpperCase()]);
+    const teamOfAb = (ab, txt) => {
+      const k = String(ab || "").toUpperCase();
+      for (const [id, ks] of teamKeys) if (ks.includes(k)) return id;
+      // ESPN's play text has its own abbreviations ("UT" for a Texas the
+      // scorebug calls TEX). If the text names the other side somewhere,
+      // in a spot like "OU30", an unknown one is the team that isn't it.
+      if (txt) {
+        const ids = [Number(game.awayId), Number(game.homeId)];
+        const seen = new Set();
+        for (const m of String(txt).toUpperCase().matchAll(/\b([A-Z&]{2,6})(?=\s?\d{1,2}\b)/g)) { if (m[1] === k) continue; for (const id of ids) if ((teamKeys.get(id) || []).includes(m[1])) seen.add(id); }
+        if (seen.size === 1) return ids.find((id) => !seen.has(id)) ?? null;
+      }
+      return null;
+    };
+    const abOfId = (id) => Number(id) === Number(game.awayId) ? A : Number(id) === Number(game.homeId) ? H : "";
+    const penSigned = (p, penAb, n, wholePlay) => {
+      const off = p.start?.team?.id != null ? Number(p.start.team.id) : null;
+      const s0 = Number(p.start?.yardsToEndzone), s1 = Number(p.end?.yardsToEndzone);
+      if (wholePlay && Number.isFinite(s0) && Number.isFinite(s1) && s0 !== s1 && String(p.end?.team?.id ?? off) === String(off)) return s0 - s1;
+      const pid = teamOfAb(penAb, p.text);
+      if (pid != null && off != null && n != null) return pid === off ? -n : n;
+      const y = Number(p.statYardage);
+      return wholePlay && p.statYardage != null && Number.isFinite(y) && y ? y : null;
+    };
+    // "PENALTY ON OU · TEX +15": who was flagged, then the yards for the
+    // side with the ball. Green when it helps the offence, pink when it
+    // hurts it, the same as a gain or a loss.
+    const penPill = (p, txt, wholePlay) => {
+      const m = txt.match(/PENALTY\s+([A-Z&.]{2,6})\b[^0-9]*?(\d+)\s*(?:yds?|yards?)/i);
+      if (!m) return ["PENALTY", "flag"];
+      const ab = m[1].toUpperCase(), n = Number(m[2]);
+      const pid = teamOfAb(ab, txt);
+      const who = pid != null ? abOfId(pid) || ab : ab;
+      const off = p.start?.team?.id != null ? Number(p.start.team.id) : null;
+      const v = penSigned(p, ab, n, wholePlay);
+      if (v == null || off == null || !abOfId(off)) return [`PENALTY ON ${who} · ${yds(n)}`, "flag"];
+      return [`PENALTY ON ${who} · ${abOfId(off)} ${v > 0 ? "+" : "-"}${Math.abs(v)}`, v > 0 ? "flag up" : "flag dn"];
+    };
     const badgeOf = (p) => {
       if (isMarker(p)) return null;
       const txt = String(p.text || ""), type = String(p.type?.text || ""), t = `${type} ${txt}`;
       const pills = [];
-      const pen = txt.match(/PENALTY\s+([A-Z&.]{2,6})\b[^0-9]*?(\d+)\s*(?:yds?|yards?)/i);
-      const penText = pen ? `PENALTY · ${pen[1].toUpperCase()} ${yds(Number(pen[2]))}` : "PENALTY";
       const noPlay = /\bno play\b/i.test(txt);
       const td = /touchdown|for a td\b/i.test(t) && !/overturned[^.]*no touchdown/i.test(t);
       const first = /1ST DOWN/i.test(txt) || (p.end?.down === 1 && p.start?.down > 0 && p.end?.team?.id != null && String(p.end.team.id) === String(p.start?.team?.id) && !/kickoff|punt/i.test(t));
       const y = yardsOf(p, txt);
       const fl = /declined/i.test(txt) ? ["FLAG DECLINED", "dim"] : /offsetting/i.test(txt) ? ["OFFSETTING FLAGS", "flag"] : null;
-      if (noPlay && td) return [["TD CALLED BACK", "to"], [penText, "flag"]];
-      if (noPlay || /^penalty$/i.test(type) || /^\s*penalty\b/i.test(txt)) return [fl || [`${penText}${noPlay ? " · NO PLAY" : ""}`, "flag"]];
+      if (noPlay && td) return [["TD CALLED BACK", "to"], penPill(p, txt, false)];
+      if (noPlay || /^penalty$/i.test(type) || /^\s*penalty\b/i.test(txt)) {
+        if (fl) return [fl];
+        const pp = penPill(p, txt, true);
+        return [pp, ...(noPlay ? [["NO PLAY", "dim"]] : []), ...(/1ST DOWN/i.test(txt) && /\bup\b/.test(pp[1]) ? [["1ST DOWN", "first"]] : [])];
+      }
       if (/safety/i.test(t)) pills.push(["SAFETY", "td"]);
       else if (td) pills.push(["TOUCHDOWN", "td"]);
       else if (/field goal|\bfg\b/i.test(t)) pills.push(/blocked/i.test(t) ? ["FG BLOCKED", "to"] : /no good|missed|wide (left|right)/i.test(t) ? ["FG NO GOOD", "to"] : ["FG GOOD", "td"]);
@@ -5018,7 +5066,7 @@ async function openInsights(gameId) {
       else if (/rush|run|scramble/i.test(t)) pills.push(y == null ? ["RUSH", "gain"] : y < 0 ? [`RUSH · ${yds(-y)} LOSS`, "loss"] : y === 0 ? ["RUSH · NO GAIN", "dim"] : [`RUSH · ${yds(y)}`, "gain"]);
       else if (y != null) pills.push([y < 0 ? `${yds(-y)} LOSS` : `${yds(y)}`, y < 0 ? "loss" : "gain"]);
       if (first && !td) pills.push(["1ST DOWN", "first"]);
-      if (/penalty/i.test(txt) && !noPlay && !td) pills.push(fl || [penText, "flag"]);
+      if (/penalty/i.test(txt) && !noPlay && !td) pills.push(fl || penPill(p, txt, false));
       return pills.length ? pills : null;
     };
     const secsOf = (c) => { const mm = String(c || "").match(/^(\d{1,2}):(\d{2})$/); return mm ? Number(mm[1]) * 60 + Number(mm[2]) : null; };

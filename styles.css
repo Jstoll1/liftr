@@ -5613,3 +5613,7 @@ html.vp-gap { --nav-h: 63px; }
 .gc-log .gc-plays li.gc-drv.now { border-top-color: rgba(255, 228, 94, .45); }
 .gc-log .gc-plays li.gc-drv.now::before { content: "▶"; font-size: 8px; color: #ffe45e; animation: lvblink .8s steps(2, start) infinite; }
 @media (prefers-reduced-motion: reduce) { .gc-log .gc-plays li.gc-drv.now::before { animation: none; } }
+/* Flags read by who they help: green for the side with the ball, pink
+   against it, an amber edge so they still read as flags. */
+.gc-badge.flag.up { background: #39ff88; color: #031007; box-shadow: inset 3px 0 0 #ffb000; padding-left: 6px; }
+.gc-badge.flag.dn { background: #ff2079; color: #fff; box-shadow: inset 3px 0 0 #ffb000; padding-left: 6px; }
