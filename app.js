@@ -984,7 +984,8 @@ function goToPlayerSelect() {
 const VISIT_KEY = "brochiefs_visit_v1";
 function stampVisit() {
   const me = loadMe();
-  if (!me || !WORKER_URL || window.__adminEntry) return;
+  // Jake is the admin: his opens don't count toward the league's.
+  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry) return;
   let last = 0;
   try { last = Number(localStorage.getItem(VISIT_KEY)) || 0; } catch {}
   if (Date.now() - last < 15 * 60 * 1000) return;

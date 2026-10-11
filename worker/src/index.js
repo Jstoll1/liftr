@@ -3195,18 +3195,22 @@ async function handleExpertRecord(request, env, corsHeaders, url) {
 // coming back after 15 minutes away); GET with the console key lists them.
 // One key per manager holding the latest 100, so a visit costs one read and
 // one write.
+const VISITS_NOT_TRACKED = new Set(["Jake"]);
 async function handleVisit(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   const key = (m) => `visits:${m}`;
   if (request.method === "GET") {
     if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
-    const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, (await env.LIFTR_KV.get(key(m), "json")) || []]));
+    const rows = await Promise.all(PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m)).map(async (m) => [m, (await env.LIFTR_KV.get(key(m), "json")) || []]));
     return json({ visits: Object.fromEntries(rows) }, 200, corsHeaders);
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
   const m = body?.manager;
   if (!PICKS_MANAGERS.includes(m)) return json({ error: "Invalid manager" }, 400, corsHeaders);
+  // The admin's own opens aren't league usage; accept and drop them (no
+  // KV write), so an older copy of the app still gets its ok.
+  if (VISITS_NOT_TRACKED.has(m)) return json({ ok: true, tracked: false }, 200, corsHeaders);
   const entry = { at: Date.now(), app: body.standalone ? "home" : "browser", device: String(body.device || "").slice(0, 12), screen: String(body.screen || "").slice(0, 12), tz: String(body.tz || "").slice(0, 40) };
   const list = (await env.LIFTR_KV.get(key(m), "json")) || [];
   list.unshift(entry);

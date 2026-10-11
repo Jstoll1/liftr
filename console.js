@@ -15,10 +15,14 @@
   const el = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const body = el("console-body");
+  // Jake runs the league and the app; his own opens and sign-ins say
+  // nothing about how the league uses it, so login data leaves him out.
+  const NOT_TRACKED = new Set(["Jake"]);
   const OWNERS = [
     "Robert", "Logan", "Jordan", "Conlan", "Dewitt",
     "Nissan", "Skills", "Jake", "Curt", "Andrew",
   ];
+  const TRACKED = OWNERS.filter((n) => !NOT_TRACKED.has(n));
 
   // The console is opened with a verified key; app.js hands it over rather
   // than asking again.
@@ -152,7 +156,7 @@
     const timeLab = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     const tip = (str) => `data-tip="${esc(str)}"`;
     const names = (list) => list.length <= 2 ? list.join(" and ") : `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
-    const N = OWNERS.length;
+    const N = TRACKED.length;
     // This week's game windows: kickoff to about three and a half hours on.
     const games = (typeof GAMES !== "undefined" ? GAMES : []).map((g) => Date.parse(g.kickoff)).filter(Number.isFinite).sort((a, b) => a - b);
     const windows = [];
@@ -270,17 +274,19 @@
     // App opens first: who has been in, and when.
     let opens = "";
     try {
-      const [{ visits }, pk] = await Promise.all([get("/visit"), get(`/picks?week=${currentWeek}`).catch(() => null)]);
+      const [{ visits: rawVisits }, pk] = await Promise.all([get("/visit"), get(`/picks?week=${currentWeek}`).catch(() => null)]);
+      const visits = Object.fromEntries(Object.entries(rawVisits || {}).filter(([m]) => !NOT_TRACKED.has(m)));
       const all = Object.entries(visits || {}).flatMap(([m, list]) => list.map((v) => ({ m, ...v })));
       const fmt = (t) => new Date(t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
       const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
       const day = Date.now() - 86400000;
-      const rows = OWNERS.map((n) => { const l = visits?.[n] || []; return { n, last: l[0]?.at || 0, today: l.filter((v) => v.at > day).length }; }).sort((a, b) => b.last - a.last);
-      opens = loginViz(visits || {}, rows, ago, pk?.picks || null) + `<div class="con-summary"><span>LAST IN THE APP · MOST RECENT FIRST</span><span>${rows.filter((r) => r.today).length} of ${OWNERS.length} in the last 24h</span></div>`
+      const rows = TRACKED.map((n) => { const l = visits?.[n] || []; return { n, last: l[0]?.at || 0, today: l.filter((v) => v.at > day).length }; }).sort((a, b) => b.last - a.last);
+      opens = loginViz(visits || {}, rows, ago, pk?.picks || null) + `<div class="con-summary"><span>LAST IN THE APP · MOST RECENT FIRST</span><span>${rows.filter((r) => r.today).length} of ${TRACKED.length} in the last 24h</span></div>`
         + rows.map((r) => `<div class="con-row${r.last ? "" : " warn"}"><div class="con-row-head"><span><b>${esc(r.n)}</b></span><span>${r.last ? `${fmt(r.last)} · ${ago(r.last)}` : "never"}</span></div>${r.today ? `<div class="con-line">${r.today} open${r.today === 1 ? "" : "s"} in the last 24h</div>` : ""}</div>`).join("")
         + `<details class="con-more"><summary>Every open (${all.length})</summary>${all.sort((a, b) => b.at - a.at).slice(0, 200).map((v) => `<div class="con-line">${fmt(v.at)} · <b>${esc(v.m)}</b> · ${v.app === "home" ? "home-screen app" : "browser"}${v.screen ? ` · ${esc(v.screen)}` : ""}</div>`).join("")}</details>`;
     } catch {}
-    const { events } = await get("/auth-log?format=json");
+    const { events: rawEvents } = await get("/auth-log?format=json");
+    const events = (rawEvents || []).filter((e) => !NOT_TRACKED.has(e.manager));
     if (!events.length) { body.innerHTML = opens + `<div class="admin-empty">No sign-ins yet. Nobody has claimed a name with a code.</div>`; wireLoginViz(body); return; }
     // One browser signing in as two owners is the signal worth chasing.
     const byDevice = new Map();
