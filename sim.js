@@ -230,6 +230,7 @@
   const fmtClock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   window.openSim = async function openSim(ctx) {
+    try { window.noteUse?.("sim"); } catch {}
     // The Game Box screen is light, so use ESPN's standard logos (drawn for
     // light backgrounds) rather than the app's dark-background cut.
     const lightLogo = (u) => String(u || "").replace("/500-dark/", "/500/");

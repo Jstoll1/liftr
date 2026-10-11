@@ -993,12 +993,37 @@ function stampVisit() {
   try { localStorage.setItem(VISIT_KEY, String(Date.now())); } catch {}
   const d = deviceDetails();
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
-  fetch(`${WORKER_URL}/visit`, { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true, body: JSON.stringify({ manager: me, device: deviceId().slice(0, 12), screen: d.screen, tz: d.tz, standalone }) }).catch(() => {});
+  fetch(`${WORKER_URL}/visit`, { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true, body: JSON.stringify({ manager: me, device: deviceId().slice(0, 12), screen: d.screen, tz: d.tz, standalone, v: typeof APP_VERSION === "string" ? APP_VERSION : "" }) }).catch(() => {});
 }
 setTimeout(stampVisit, 1500);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) stampVisit(); });
 
+// Sessions, for the admin dashboard: how long the app was on screen and
+// which screens and sheets were used, sent once when the app is put away.
+// In memory until then (a Set add per use), and the send is a background
+// beacon the browser handles after the page has gone, so nothing here
+// touches load or scrolling.
+const sessionUse = new Set();
+let sessionStart = document.hidden ? null : Date.now();
+function noteUse(key) { if (key) sessionUse.add(String(key).replace(/^\//, "")); }
+function endSession() {
+  if (sessionStart == null) return;
+  const start = sessionStart, dur = Date.now() - start;
+  sessionStart = null;
+  const f = [...sessionUse]; sessionUse.clear();
+  const me = loadMe();
+  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || dur < 3000) return;
+  const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, v: typeof APP_VERSION === "string" ? APP_VERSION : "" });
+  try {
+    // text/plain keeps the beacon a simple request (no CORS preflight).
+    if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/visit`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/visit`, { method: "POST", body, keepalive: true }).catch(() => {});
+  } catch {}
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) endSession(); else if (sessionStart == null) sessionStart = Date.now(); });
+addEventListener("pagehide", endSession);
+
 function track(path, extra) {
+  noteUse(path);
   try {
     if (!window.goatcounter || typeof window.goatcounter.count !== "function") return;
     window.goatcounter.count({ path, title: extra?.title || path, event: !!extra?.event });
@@ -4690,6 +4715,7 @@ async function openInsights(gameId) {
   const modal = document.getElementById("insights-modal");
   const game = GAMES.find((g) => g.id === gameId);
   if (!modal || !game) return;
+  { const l = latestLive[gameId]; noteUse(l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"); }
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const body = modal.querySelector("#insights-body");
   const favShort = game.favorite === game.home ? game.homeShort : game.awayShort;
@@ -5775,6 +5801,7 @@ function swipeToClose(modal, card, close) {
 // both took the same side are a wash and are shown dimmed.
 let h2h = { a: null, b: null };
 function openH2H() {
+  noteUse("h2h");
   const rows = liveWeekRows || [];
   if (!h2h.a) h2h.a = currentManager && rows.some((r) => r.name === currentManager) ? currentManager : rows[0]?.name || MANAGERS[0];
   if (!h2h.b || h2h.b === h2h.a) h2h.b = rows.find((r) => r.name !== h2h.a)?.name || MANAGERS.find((n) => n !== h2h.a);

@@ -77,6 +77,7 @@
   }
 
   async function openGridCard() {
+    try { window.noteUse?.("grid-card"); } catch {}
     const picks = (typeof fetchAllPicks === "function" ? await fetchAllPicks() : null) || lastGoodCloudPicks || {};
     // Trophies: one per sealed week won this season, and who took last week.
     if (typeof loadWeekSummaries === "function" && !Object.keys(weekSummaries || {}).length) { try { await loadWeekSummaries(); } catch {} }

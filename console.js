@@ -135,15 +135,24 @@
   }
 
   // --- Logins ---------------------------------------------------------
-  // The login dashboard, top to bottom: what stands out in plain words;
-  // four tiles; the last 48 hours as one strip per owner with the game
-  // windows shaded (who watches live); the last 7 days as a grid; a
-  // day-by-hour punchcard of every recorded open; then a profile per owner
-  // (streak, usual time, home-screen app or browser, picks in). Local time
-  // on this phone. One cyan ramp in four steps (1, 2-3, 4-7, 8+), checked
-  // for even steps and contrast on the console's dark surface. Tap any mark
-  // for the exact numbers; the list below stays as the table view.
-  function loginViz(visits, rows, ago, picks) {
+  // The login dashboard, top to bottom: what stands out in plain words and
+  // who to nudge; six tiles; a timeline (last game day, 48 hours or 7
+  // days) with one strip per owner and the game windows shaded; week by
+  // week; the last 7 days; what they use; pick behaviour; engagement
+  // against results; a day-by-hour punchcard; then a profile per owner.
+  // Local time on this phone. One cyan ramp in four steps, checked for
+  // even steps and contrast on the console's dark surface. Tap any mark for
+  // the exact numbers; the list below stays as the table view. The pick log,
+  // season points and app version load after the rest is on screen.
+  const LVZ_FEATURES = {
+    picks: "Picks screen", scoreboard: "Scores screen", history: "History", trivia: "Trivia", home: "Home",
+    gamecast: "Live game cast", "game-info": "Game info (pre-game)", "game-final": "Final game recap",
+    h2h: "Head to head", "wp-player": "Win % breakdown", "wp-explain": "How win % works", sim: "Game sim",
+    "grid-card": "Grid card", "pot-open": "The pot", "all-picks-open": "Everyone's picks",
+    "ranking-expand": "Leaderboard row", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
+  };
+  const lvzFeat = (k) => LVZ_FEATURES[k] || null;
+  function loginViz(visits, sessionsRaw, rows, ago, picks) {
     const DAY = 86400000, HR = 3600000, now = Date.now();
     const t0 = new Date(); t0.setHours(0, 0, 0, 0);
     const today0 = t0.getTime();
@@ -154,10 +163,10 @@
     const dayLong = (t) => new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
     const hourLab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
     const timeLab = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const mins = (ms) => ms < 60000 ? `${Math.max(1, Math.round(ms / 1000))}s` : ms < 3600000 ? `${Math.round(ms / 60000)}m` : `${(ms / 3600000).toFixed(1)}h`;
     const tip = (str) => `data-tip="${esc(str)}"`;
     const names = (list) => list.length <= 2 ? list.join(" and ") : `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
     const N = TRACKED.length;
-    // This week's game windows: kickoff to about three and a half hours on.
     const games = (typeof GAMES !== "undefined" ? GAMES : []).map((g) => Date.parse(g.kickoff)).filter(Number.isFinite).sort((a, b) => a - b);
     const windows = [];
     for (const k of games) { const w = [k, k + 3.5 * HR]; const last = windows[windows.length - 1]; if (last && w[0] <= last[1]) last[1] = Math.max(last[1], w[1]); else windows.push(w); }
@@ -165,6 +174,24 @@
     const lockAt = typeof weekLockTime === "function" ? (weekLockTime() ?? games[0] ?? null) : games[0] ?? null;
     const all = Object.values(visits).flat().map((v) => v.at).filter(Number.isFinite);
     const firstSeen = all.length ? Math.min(...all) : now;
+
+    // Sessions: segments the app sends when it is put away, joined when
+    // the gap between them is under five minutes (a quick app switch).
+    const sessionsOf = (n) => {
+      const segs = (sessionsRaw?.[n] || []).filter((x) => Number.isFinite(x.at) && Number.isFinite(x.dur)).sort((a, b) => a.at - b.at);
+      const out = [];
+      for (const x of segs) {
+        const last = out[out.length - 1];
+        if (last && x.at - (last.at + last.dur) < 5 * 60000) { last.dur = x.at + x.dur - last.at; for (const f of x.f || []) last.f.add(f); if (x.v) last.v = x.v; }
+        else out.push({ at: x.at, dur: x.dur, f: new Set(x.f || []), v: x.v || "" });
+      }
+      return out.reverse();
+    };
+
+    // Last game day: the most recent Saturday 8 AM to Sunday 3 AM.
+    const sat = new Date(); sat.setHours(8, 0, 0, 0);
+    while (sat.getDay() !== 6 || sat.getTime() > now) sat.setDate(sat.getDate() - 1);
+    const gdA = sat.getTime(), gdB = Math.min(now, gdA + 19 * HR);
 
     const owners = rows.map((r) => {
       const list = (visits[r.n] || []).filter((v) => Number.isFinite(v.at)).sort((a, b) => b.at - a.at);
@@ -180,15 +207,25 @@
       const pk = picks?.[r.n]?.picks || null;
       const pIn = pk ? (typeof GAMES !== "undefined" ? GAMES.filter((g) => pk[g.id]).length : Object.keys(pk).length) : null;
       const pLast = pk ? Math.max(0, ...Object.values(pk).map((x) => Number(x?.savedAt) || 0)) : 0;
-      return { ...r, list, per, wk, streak, usual, appKind, device: list[0]?.device || "", gameOpens: wk.filter((v) => inGame(v.at)).length, pIn, pLast };
+      const sess = sessionsOf(r.n);
+      const s7 = sess.filter((x) => x.at >= since7);
+      const time7 = s7.reduce((a, x) => a + x.dur, 0);
+      const gdTime = sess.filter((x) => x.at < gdB && x.at + x.dur > gdA).reduce((a, x) => a + Math.min(x.at + x.dur, gdB) - Math.max(x.at, gdA), 0);
+      const feat = new Map();
+      for (const x of sess.filter((y) => y.at >= now - 14 * DAY)) for (const f of x.f) if (lvzFeat(f)) feat.set(f, (feat.get(f) || 0) + 1);
+      const ver = sess.find((x) => x.v)?.v || list.find((v) => v.v)?.v || "";
+      return { ...r, list, per, wk, streak, usual, appKind, device: list[0]?.device || "", gameOpens: wk.filter((v) => inGame(v.at)).length, pIn, pLast, sess, s7, time7, gdTime, feat, ver };
     });
     const total7 = owners.reduce((a, o) => a + o.wk.length, 0);
     const game7 = owners.reduce((a, o) => a + o.gameOpens, 0);
     const winMs7 = windows.reduce((a, [x, y]) => a + Math.max(0, Math.min(y, now) - Math.max(x, since7)), 0);
     const inToday = owners.filter((o) => o.per[6].length).length;
     const active7 = owners.filter((o) => o.wk.length).length;
+    const allS7 = owners.flatMap((o) => o.s7);
+    const avgSess = allS7.length ? allS7.reduce((a, x) => a + x.dur, 0) / allS7.length : 0;
+    const gdTotal = owners.reduce((a, o) => a + o.gdTime, 0);
 
-    // Punchcard: every recorded open by weekday and hour.
+    // Punchcard.
     const punch = Array.from({ length: 7 }, () => new Array(24).fill(0));
     for (const t of all) { const d = new Date(t); punch[(d.getDay() + 6) % 7][d.getHours()]++; }
     const pmax = Math.max(1, ...punch.flat());
@@ -197,97 +234,265 @@
     punch.forEach((row, d) => row.forEach((n, h) => { const w = n + (row[(h + 1) % 24] || 0) + (row[(h + 2) % 24] || 0); if (w > best.n) best = { n: w, d, h }; }));
     const wdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+    // Week by week: the last six weeks, Monday to Sunday.
+    const mon = new Date(today0); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+    const weeks = Array.from({ length: 6 }, (_, i) => mon.getTime() - (5 - i) * 7 * DAY);
+    const wstep = (n) => n <= 0 ? 0 : n <= 5 ? 1 : n <= 15 ? 2 : n <= 30 ? 3 : 4;
+    const byWeek = owners.map((o) => ({ o, per: weeks.map((w) => o.list.filter((v) => v.at >= w && v.at < w + 7 * DAY).length) }));
+    const covered = weeks.map((w) => w + 7 * DAY > firstSeen);
+
+    // Feature use across the league, share of sessions in 14 days.
+    const s14 = owners.flatMap((o) => o.sess.filter((x) => x.at >= now - 14 * DAY));
+    const featAll = new Map();
+    for (const x of s14) for (const f of x.f) if (lvzFeat(f)) featAll.set(f, (featAll.get(f) || 0) + 1);
+    const featRank = [...featAll.entries()].sort((a, b) => b[1] - a[1]);
+
     // What stands out, in words.
     const said = [];
     const top = [...owners].sort((a, b) => b.wk.length - a.wk.length)[0];
     if (top?.wk.length) said.push(`<b>${esc(top.n)}</b> is in the most: ${top.wk.length} opens in 7 days${top.streak >= 7 ? ", every day" : top.streak >= 2 ? `, ${top.streak} days running` : ""}.`);
     const quiet = owners.filter((o) => !o.last || now - o.last > 3 * DAY);
     if (quiet.length) said.push(`${names(quiet.map((o) => `<b>${esc(o.n)}</b>`))} ${quiet.length === 1 ? "hasn't" : "haven't"} opened the app in 3+ days.`);
-    if (lockAt && lockAt > now && typeof GAMES !== "undefined") {
-      const short = owners.filter((o) => o.pIn != null && o.pIn < GAMES.length);
-      if (short.length) said.push(`Picks not done before lock: ${short.map((o) => `<b>${esc(o.n)}</b> ${o.pIn}/${GAMES.length}${o.last && now - o.last > DAY ? ` (last in ${esc(ago(o.last))})` : ""}`).join(", ")}.`);
-    }
+    const short = lockAt && lockAt > now && typeof GAMES !== "undefined" ? owners.filter((o) => o.pIn != null && o.pIn < GAMES.length) : [];
+    if (short.length) said.push(`Picks not done before lock: ${short.map((o) => `<b>${esc(o.n)}</b> ${o.pIn}/${GAMES.length}${o.last && now - o.last > DAY ? ` (last in ${esc(ago(o.last))})` : ""}`).join(", ")}.`);
     if (total7 && winMs7 > 0) { const share = game7 / total7, timeShare = winMs7 / (7 * DAY); said.push(`${Math.round(share * 100)}% of this week's opens came during games, which take up ${Math.round(timeShare * 100)}% of the week${share > timeShare * 2 ? ": game time is when the app gets used" : ""}.`); }
+    if (allS7.length >= 5) { const longest = [...owners].sort((a, b) => b.time7 - a.time7)[0]; said.push(`A visit lasts ${mins(avgSess)} on average; <b>${esc(longest.n)}</b> spent the most time in the app this week (${mins(longest.time7)}).`); }
+    if (featRank.length) said.push(`Most used: ${featRank.slice(0, 3).map(([k, n]) => `${esc(lvzFeat(k))} (${Math.round(n / Math.max(1, s14.length) * 100)}% of visits)`).join(", ")}.`);
     const browser = owners.filter((o) => o.appKind === "browser only");
     if (browser.length) said.push(`${names(browser.map((o) => `<b>${esc(o.n)}</b>`))} only ${browser.length === 1 ? "uses" : "use"} the browser, not the home-screen app.`);
     if (best.n > 0) said.push(`Busiest stretch on record: ${wdays[best.d]} ${hourLab(best.h)}-${hourLab((best.h + 3) % 24)}.`);
 
-    // Last 48 hours, one strip per owner, games shaded, now at the right.
-    const tlA = now - 48 * HR, span = now - tlA;
-    const xp = (t) => ((t - tlA) / span * 100).toFixed(2);
-    const bands = windows.filter(([a, b]) => b > tlA && a < now).map(([a, b]) => `<i class="lvz-band" style="left:${xp(Math.max(a, tlA))}%;width:${(Math.min(b, now) - Math.max(a, tlA)) / span * 100}%"></i>`).join("");
-    const mids = [];
-    for (let t = Math.ceil(tlA / DAY) * DAY; t < now; t += DAY) { const d = new Date(t); d.setHours(0, 0, 0, 0); if (d.getTime() > tlA) mids.push(d.getTime()); }
-    const midLines = [...new Set(mids)].map((t) => `<i class="lvz-mid" style="left:${xp(t)}%"></i>`).join("");
-    const strips = owners.map((o) => `<span class="lvz-nm">${esc(o.n)}</span><div class="lvz-strip">${bands}${midLines}${o.list.filter((v) => v.at >= tlA).map((v) => `<i class="lvz-dot${inGame(v.at) ? " live" : ""}" style="left:${xp(v.at)}%" ${tip(`${o.n} · ${dayLong(v.at)} ${timeLab(v.at)}${inGame(v.at) ? " · during a game" : ""} · ${v.app === "home" ? "home-screen app" : "browser"}`)}></i>`).join("")}</div>`).join("");
-    const tlAxis = [0, 12, 24, 36, 48].map((h) => { const t = tlA + h * HR; return `<span>${h === 48 ? "NOW" : `${dayLab(t)} ${hourLab(new Date(t).getHours())}`}</span>`; }).join("");
+    // Nudges: who to ping, with a message ready for the group chat.
+    const nudgeRows = [
+      ...short.map((o) => ({ n: o.n, why: `${o.pIn}/${GAMES.length} picks in`, msg: `${o.n}, you've got ${GAMES.length - o.pIn} pick${GAMES.length - o.pIn === 1 ? "" : "s"} left before lock` })),
+      ...quiet.filter((o) => !short.includes(o)).map((o) => ({ n: o.n, why: o.last ? `last in ${ago(o.last)}` : "never opened the app", msg: `${o.n}, haven't seen you in the app${o.last ? ` since ${dayLong(o.last)}` : ""}` })),
+    ];
+    const lockTxt = lockAt && lockAt > now ? ` Picks lock ${new Date(lockAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}.` : "";
+    const nudgeText = nudgeRows.length ? `🏈 Brochiefs check-in:\n${nudgeRows.map((x) => `• ${x.msg}`).join("\n")}${lockTxt ? `\n${lockTxt.trim()}` : ""}\nbrochiefs.com` : "";
 
-    // Last 7 days grid.
+    // Timeline: one strip per owner over a chosen range.
+    const ranges = { gameday: [gdA, gdB, "LAST GAME DAY"], h48: [now - 48 * HR, now, "48 HOURS"], d7: [now - 7 * DAY, now, "7 DAYS"] };
+    const strips = (key) => {
+      const [A, B] = ranges[key], span = Math.max(1, B - A);
+      const xp = (t) => ((t - A) / span * 100).toFixed(2);
+      const bands = windows.filter(([a, b]) => b > A && a < B).map(([a, b]) => `<i class="lvz-band" style="left:${xp(Math.max(a, A))}%;width:${(Math.min(b, B) - Math.max(a, A)) / span * 100}%"></i>`).join("");
+      const mids = [];
+      const md = new Date(A); md.setHours(0, 0, 0, 0); md.setDate(md.getDate() + 1);
+      for (let t = md.getTime(); t < B; t += DAY) mids.push(`<i class="lvz-mid" style="left:${xp(t)}%"></i>`);
+      const rowsHtml = owners.map((o) => {
+        const segs = o.sess.filter((x) => x.at < B && x.at + x.dur > A).map((x) => `<i class="lvz-seg" style="left:${xp(Math.max(x.at, A))}%;width:${Math.max(0.6, (Math.min(x.at + x.dur, B) - Math.max(x.at, A)) / span * 100)}%"></i>`).join("");
+        const dots = o.list.filter((v) => v.at >= A && v.at < B).map((v) => `<i class="lvz-dot${inGame(v.at) ? " live" : ""}" style="left:${xp(v.at)}%" ${tip(`${o.n} · ${dayLong(v.at)} ${timeLab(v.at)}${inGame(v.at) ? " · during a game" : ""} · ${v.app === "home" ? "home-screen app" : "browser"}`)}></i>`).join("");
+        return `<span class="lvz-nm">${esc(o.n)}</span><div class="lvz-strip">${bands}${mids.join("")}${segs}${dots}</div>`;
+      }).join("");
+      const ax = [0, 0.25, 0.5, 0.75, 1].map((f) => { const t = A + f * span; return `<span>${f === 1 && B >= now - 60000 ? "NOW" : `${dayLab(t)} ${hourLab(new Date(t).getHours())}`}</span>`; }).join("");
+      return `${rowsHtml}<span></span><div class="lvz-tlax">${ax}</div>`;
+    };
+    const defRange = now - gdA < 7 * DAY ? "gameday" : "h48";
+
+    // 7-day grid.
     const head = `<span></span>${days.map((d, i) => `<span class="lvz-dh${i === 6 ? " today" : ""}">${i === 6 ? "TODAY" : dayLab(d)}</span>`).join("")}<span class="lvz-dh">LAST</span>`;
     const gridRows = owners.map((o) => `<span class="lvz-nm">${esc(o.n)}</span>${o.per.map((list, i) => {
       const n = list.length;
       return `<i class="lvz-c s${step(n)}" ${tip(`${o.n} · ${dayLong(days[i])} · ${n ? `${n} open${n === 1 ? "" : "s"}, last ${timeLab(Math.max(...list.map((v) => v.at)))}` : "not in"}`)}></i>`;
     }).join("")}<span class="lvz-ago${o.last && now - o.last < DAY ? " fresh" : ""}">${o.last ? esc(ago(o.last).replace(" ago", "")) : "never"}</span>`).join("");
 
-    // Punchcard.
+    // Week by week rows, ranked by the six-week total.
+    const wkHead = `<span></span>${weeks.map((w, i) => `<span class="lvz-dh${i === 5 ? " today" : ""}">${i === 5 ? "THIS WK" : new Date(w).toLocaleDateString([], { month: "numeric", day: "numeric" })}</span>`).join("")}<span class="lvz-dh">TOTAL</span>`;
+    const wkRows = [...byWeek].sort((a, b) => b.per.reduce((x, y) => x + y, 0) - a.per.reduce((x, y) => x + y, 0)).map(({ o, per }) => `<span class="lvz-nm">${esc(o.n)}</span>${per.map((n, i) => covered[i] ? `<i class="lvz-c s${wstep(n)}" ${tip(`${o.n} · week of ${dayLong(weeks[i])} · ${n} open${n === 1 ? "" : "s"}`)}></i>` : `<i class="lvz-c na" ${tip("Before tracking started")}></i>`).join("")}<span class="lvz-ago fresh">${per.reduce((x, y) => x + y, 0)}</span>`).join("");
+
+    // Punchcard rows.
     const punchRows = punch.map((row, d) => `<span class="lvz-pd">${wdays[d].slice(0, 2).toUpperCase()}</span>${row.map((n, h) => `<i class="lvz-p s${pstep(n)}" ${tip(`${wdays[d]} ${hourLab(h)}-${hourLab((h + 1) % 24)} · ${n} open${n === 1 ? "" : "s"} on record`)}></i>`).join("")}`).join("");
+
+    // Feature bars.
+    const fmax = Math.max(1, ...featRank.map(([, n]) => n));
+    const featHtml = featRank.length ? featRank.slice(0, 10).map(([k, n]) => `<div class="lvz-fb" ${tip(`${lvzFeat(k)} · used in ${n} of ${s14.length} visits in 14 days`)}><span>${esc(lvzFeat(k))}</span><i><b style="width:${(n / fmax * 100).toFixed(0)}%"></b></i><em>${Math.round(n / Math.max(1, s14.length) * 100)}%</em></div>`).join("") : `<div class="lvz-empty">Fills in as people use the app on the new build.</div>`;
 
     // Profiles.
     const prof = [...owners].sort((a, b) => b.wk.length - a.wk.length || (b.last || 0) - (a.last || 0)).map((o) => {
       const spark = o.per.map((l) => `<i style="height:${l.length ? Math.max(15, Math.min(100, l.length / 8 * 100)) : 6}%" class="${l.length ? "" : "z"}"></i>`).join("");
       const pk = o.pIn == null || typeof GAMES === "undefined" ? "" : `<em class="${o.pIn === GAMES.length ? "ok" : "short"}">${o.pIn}/${GAMES.length} picks${o.pLast ? ` · last change ${esc(dayLong(o.pLast))}` : ""}</em>`;
-      return `<div class="lvz-pr" ${tip(`${o.n} · ${o.wk.length} opens in 7 days · ${o.gameOpens} during games · last ${o.last ? `${dayLong(o.last)} ${timeLab(o.last)}` : "never"}${o.device ? ` · ${o.device}` : ""}`)}>
+      const topF = [...o.feat.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => lvzFeat(k)).filter(Boolean);
+      return `<div class="lvz-pr" data-owner="${esc(o.n)}" ${tip(`${o.n} · ${o.wk.length} opens in 7 days · ${o.gameOpens} during games · last ${o.last ? `${dayLong(o.last)} ${timeLab(o.last)}` : "never"}${o.device ? ` · ${o.device}` : ""}`)}>
         <div class="lvz-pr1"><b>${esc(o.n)}</b><span class="lvz-spark">${spark}</span><strong>${o.wk.length}</strong></div>
-        <div class="lvz-pr2"><span>${o.streak ? `${o.streak}-day streak` : "no streak"}</span><span>${esc(o.usual)}</span><span>${esc(o.appKind)}</span>${pk}</div>
+        <div class="lvz-pr2"><span>${o.streak ? `${o.streak}-day streak` : "no streak"}</span><span>${esc(o.usual)}</span><span>${esc(o.appKind)}</span>${o.s7.length ? `<span>${mins(o.time7 / o.s7.length)} a visit · ${mins(o.time7)} this week</span>` : ""}${pk}<span class="lvz-ver" data-ver="${esc(o.ver)}">${o.ver ? `build ${esc(o.ver.slice(4, 8))}·${esc(o.ver.slice(8, 12))}` : "build unknown"}</span></div>
+        ${topF.length ? `<div class="lvz-pr3">${topF.map((f) => `<span>${esc(f)}</span>`).join("")}</div>` : ""}
       </div>`;
     }).join("");
 
-    return `<div class="lvz">
+    const html = `<div class="lvz">
       ${said.length ? `<div class="lvz-h">WHAT STANDS OUT</div><ul class="lvz-said">${said.map((x) => `<li>${x}</li>`).join("")}</ul>` : ""}
-      <div class="lvz-tiles four">
+      ${nudgeRows.length ? `<div class="lvz-nudge"><div class="lvz-h">WHO TO NUDGE</div>${nudgeRows.map((x) => `<div class="lvz-nr"><b>${esc(x.n)}</b><span>${esc(x.why)}</span></div>`).join("")}<button type="button" class="admin-btn lvz-copy" data-text="${esc(nudgeText)}">Copy message for the chat</button></div>` : ""}
+      <div class="lvz-tiles six">
         <div><b>${inToday}<small>/${N}</small></b><span>in today</span></div>
         <div><b>${active7}<small>/${N}</small></b><span>in this week</span></div>
         <div><b>${total7}</b><span>opens, 7 days</span></div>
         <div><b>${total7 && winMs7 ? `${Math.round(game7 / total7 * 100)}%` : "-"}</b><span>during games</span></div>
+        <div><b>${allS7.length ? mins(avgSess) : "-"}</b><span>avg visit</span></div>
+        <div><b>${gdTotal ? mins(gdTotal) : "-"}</b><span>league time, last game day</span></div>
       </div>
-      <div class="lvz-h">LAST 48 HOURS · <i class="lvz-key-band"></i> GAMES ON</div>
-      <div class="lvz-tl">${strips}<span></span><div class="lvz-tlax">${tlAxis}</div></div>
+      <div class="lvz-hrow"><div class="lvz-h">TIMELINE · <i class="lvz-key-band"></i> GAMES ON · <i class="lvz-key-seg"></i> IN THE APP</div>
+        <div class="lvz-seg-btns">${Object.entries(ranges).map(([k, r]) => `<button type="button" data-range="${k}" class="${k === defRange ? "on" : ""}">${r[2]}</button>`).join("")}</div></div>
+      <div class="lvz-tl">${strips(defRange)}</div>
+      <div class="lvz-h">WEEK BY WEEK · OPENS, MOST ACTIVE FIRST</div>
+      <div class="lvz-grid wk">${wkHead}${wkRows}</div>
+      <div class="lvz-key"><span>OPENS A WEEK</span><i class="lvz-c s0"></i>0<i class="lvz-c s1"></i>1-5<i class="lvz-c s2"></i>6-15<i class="lvz-c s3"></i>16-30<i class="lvz-c s4"></i>31+</div>
       <div class="lvz-h">WHO'S BEEN IN · LAST 7 DAYS</div>
       <div class="lvz-grid">${head}${gridRows}</div>
       <div class="lvz-key"><span>OPENS A DAY</span><i class="lvz-c s0"></i>0<i class="lvz-c s1"></i>1<i class="lvz-c s2"></i>2-3<i class="lvz-c s3"></i>4-7<i class="lvz-c s4"></i>8+</div>
+      <div class="lvz-h">WHAT THEY USE · SHARE OF VISITS, 14 DAYS</div>
+      <div class="lvz-feat">${featHtml}</div>
+      <div class="lvz-h">PICK BEHAVIOR · WEEK ${esc(String(typeof currentWeek !== "undefined" ? currentWeek : ""))}</div>
+      <div class="lvz-picks" id="lvz-picks"><div class="lvz-empty">Loading the pick log…</div></div>
+      <div class="lvz-h">ENGAGEMENT VS RESULTS</div>
+      <div class="lvz-scatter" id="lvz-scatter"><div class="lvz-empty">Loading season points…</div></div>
       <div class="lvz-h">WHEN THE LEAGUE OPENS IT · DAY BY HOUR, SINCE ${esc(dayLong(firstSeen).toUpperCase())}</div>
       <div class="lvz-punch">${punchRows}<span></span><div class="lvz-pax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div></div>
-      <div class="lvz-h">EVERY OWNER · MOST ACTIVE FIRST · OPENS LAST 7 DAYS</div>
+      <div class="lvz-h">EVERY OWNER · MOST ACTIVE FIRST</div>
       <div class="lvz-prof">${prof}</div>
       <div class="lvz-tip" aria-live="polite">Tap any square, dot or row for the details.</div>
     </div>`;
+    return { html, strips, owners, lockAt, said };
   }
-  // One readout under the charts follows the finger or the pointer.
-  function wireLoginViz(root) {
+
+  // After the dashboard is on screen: the pick log for this week, season
+  // points for the engagement chart, and which build is current. Each one
+  // fills its own panel when it lands; a failure leaves a note, not a gap.
+  async function fillLoginExtras(root, ctx) {
+    const { owners, lockAt } = ctx;
+    const DAY = 86400000, HR = 3600000, now = Date.now();
+    const tip = (str) => `data-tip="${esc(str)}"`;
+    const dayLong = (t) => new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+    const timeLab = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const lead = (ms) => ms < HR ? `${Math.max(1, Math.round(ms / 60000))} min` : ms < 2 * DAY ? `${Math.round(ms / HR)} hr` : `${Math.round(ms / DAY)} days`;
+    const addSaid = (h) => { const ul = root.querySelector(".lvz-said"); if (ul) ul.insertAdjacentHTML("beforeend", `<li>${h}</li>`); };
+    const tracked = new Set(owners.map((o) => o.n));
+
+    // Build currency: version.json is what's deployed right now.
+    fetch(`version.json?t=${now}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null).then((d) => {
+      const cur = String(d?.v || "");
+      if (!cur) return;
+      const stale = [];
+      root.querySelectorAll(".lvz-ver").forEach((el) => {
+        const v = el.dataset.ver;
+        if (!v) return;
+        if (v === cur) { el.classList.add("ok"); el.textContent += " · current"; }
+        else { el.classList.add("old"); el.textContent += " · behind"; stale.push(el.closest(".lvz-pr")?.dataset.owner); }
+      });
+      if (stale.filter(Boolean).length) addSaid(`Running an older build: ${stale.filter(Boolean).map((n) => `<b>${esc(n)}</b>`).join(", ")}. Reopening the app updates it.`);
+    }).catch(() => {});
+
+    // Pick behaviour from the change log (newest 35 days).
+    get(`/picks-log?format=json&since=${now - 35 * DAY}`).then(({ changes }) => {
+      const el = root.querySelector("#lvz-picks");
+      if (!el) return;
+      const rows = (changes || []).filter((r) => tracked.has(r.manager) && !r.admin);
+      const wk = typeof currentWeek !== "undefined" ? currentWeek : null;
+      const thisWk = rows.filter((r) => Number(r.week) === Number(wk));
+      const lock = lockAt || now;
+      const A = Math.min(lock - 6 * DAY, ...thisWk.map((r) => r.ts)), B = Math.max(lock + 2 * HR, Math.min(now, lock + 2 * HR));
+      const span = Math.max(1, B - A);
+      const xp = (t) => (Math.max(0, Math.min(1, (t - A) / span)) * 100).toFixed(2);
+      const per = owners.map((o) => {
+        const mine = thisWk.filter((r) => r.manager === o.n).sort((a, b) => a.ts - b.ts);
+        const edits = mine.reduce((a, r) => a + (r.changes || []).filter((c) => c.game && c.from).length, 0);
+        const blocked = mine.reduce((a, r) => a + (r.changes || []).filter((c) => c.rejected || c.afterKickoff).length, 0);
+        const before = mine.filter((r) => r.ts <= lock);
+        const last = before.length ? before[before.length - 1].ts : null;
+        const first = mine.length ? mine[0].ts : null;
+        const weeksSeen = new Set(rows.filter((r) => r.manager === o.n).map((r) => r.week)).size || 1;
+        const editsAll = rows.filter((r) => r.manager === o.n).reduce((a, r) => a + (r.changes || []).filter((c) => c.game && c.from).length, 0);
+        return { o, mine, edits, blocked, last, first, editsPerWeek: editsAll / weeksSeen };
+      });
+      const strips = per.map((p) => `<span class="lvz-nm">${esc(p.o.n)}</span><div class="lvz-strip pk"><i class="lvz-lock" style="left:${xp(lock)}%"></i>${p.mine.map((r) => { const n = (r.changes || []).length; const late = (r.changes || []).some((c) => c.afterKickoff || c.rejected); return `<i class="lvz-tick${late ? " late" : (r.changes || []).some((c) => c.game && c.from) ? " edit" : ""}" style="left:${xp(r.ts)}%" ${tip(`${p.o.n} · ${dayLong(r.ts)} ${timeLab(r.ts)} · ${n} change${n === 1 ? "" : "s"}${late ? " · after kickoff, blocked" : ""} · ${r.ts <= lock ? `${lead(lock - r.ts)} before lock` : `${lead(r.ts - lock)} after lock`}`)}></i>`; }).join("")}</div><span class="lvz-ago">${p.last ? lead(lock - p.last) : "-"}</span>`).join("");
+      const ax = [0, 0.5, 1].map((f) => { const t = A + f * span; return `<span>${new Date(t).toLocaleDateString([], { weekday: "short" }).toUpperCase()}</span>`; }).join("");
+      el.innerHTML = thisWk.length ? `<div class="lvz-pkgrid">${strips}<span></span><div class="lvz-tlax">${ax}</div><span></span></div>
+        <div class="lvz-key"><i class="lvz-tick k"></i>pick saved<i class="lvz-tick k edit"></i>a pick changed<i class="lvz-tick k late"></i>blocked after kickoff<i class="lvz-lock k"></i>lock · right column: last save before lock</div>`
+        : `<div class="lvz-empty">No pick saves logged for week ${esc(String(wk))} yet.</div>`;
+      // Words.
+      const withLast = per.filter((p) => p.last);
+      if (withLast.length >= 3) {
+        const late = [...withLast].sort((a, b) => (lock - a.last) - (lock - b.last))[0];
+        const early = [...withLast].sort((a, b) => (lock - b.last) - (lock - a.last))[0];
+        addSaid(`Picks: <b>${esc(early.o.n)}</b> locked in earliest (${lead(lock - early.last)} before lock); <b>${esc(late.o.n)}</b> went to the wire (${lead(lock - late.last)}).`);
+      }
+      const tinker = [...per].sort((a, b) => b.editsPerWeek - a.editsPerWeek)[0];
+      if (tinker && tinker.editsPerWeek >= 2) addSaid(`<b>${esc(tinker.o.n)}</b> changes picks the most: about ${Math.round(tinker.editsPerWeek)} a week.`);
+      const blk = per.filter((p) => p.blocked);
+      if (blk.length) addSaid(`Tried to change a pick after kickoff this week (blocked): ${blk.map((p) => `<b>${esc(p.o.n)}</b>`).join(", ")}.`);
+    }).catch(() => { const el = root.querySelector("#lvz-picks"); if (el) el.innerHTML = `<div class="lvz-empty">Couldn't load the pick log.</div>`; });
+
+    // Engagement against results: opens since tracking began vs season
+    // points from the weeks that count. Nine dots; a pattern, not a cause.
+    fetch(`${WORKER_URL}/weeks?detail=1&t=${now}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null).then((data) => {
+      const el = root.querySelector("#lvz-scatter");
+      if (!el) return;
+      const weeks = Object.values(data?.summaries || {}).filter((w) => w?.complete && !w.exhibition && Array.isArray(w.rows));
+      const pts = new Map();
+      for (const w of weeks) for (const r of w.rows) pts.set(r.name, (pts.get(r.name) || 0) + (r.score || 0));
+      const dots = owners.map((o) => ({ n: o.n, x: o.list.length, y: pts.get(o.n) ?? null })).filter((d) => d.y != null);
+      if (dots.length < 4 || !weeks.length) { el.innerHTML = `<div class="lvz-empty">Needs a few finished weeks.</div>`; return; }
+      const xs = dots.map((d) => d.x), ys = dots.map((d) => d.y);
+      const xMax = Math.max(1, ...xs), yMin = Math.min(...ys), yMax = Math.max(...ys), yr = Math.max(1, yMax - yMin);
+      const mx = xs.reduce((a, b) => a + b, 0) / xs.length, my = ys.reduce((a, b) => a + b, 0) / ys.length;
+      const cov = dots.reduce((a, d) => a + (d.x - mx) * (d.y - my), 0), vx = dots.reduce((a, d) => a + (d.x - mx) ** 2, 0), vy = dots.reduce((a, d) => a + (d.y - my) ** 2, 0);
+      const r = vx && vy ? cov / Math.sqrt(vx * vy) : 0;
+      const word = Math.abs(r) < 0.2 ? "no real link" : Math.abs(r) < 0.5 ? (r > 0 ? "a weak positive link" : "a weak negative link") : (r > 0 ? "a fairly strong positive link" : "a fairly strong negative link");
+      const px = (x) => (6 + x / xMax * 88).toFixed(1), py = (y) => (90 - (y - yMin) / yr * 80).toFixed(1);
+      el.innerHTML = `<div class="lvz-sc">
+          <span class="lvz-sc-y">${yMax}</span><span class="lvz-sc-y lo">${yMin}</span>
+          ${dots.map((d) => `<i class="lvz-sd" style="left:${px(d.x)}%;top:${py(d.y)}%" ${tip(`${d.n} · ${d.x} opens since tracking began · ${d.y} season points`)}><b>${esc(d.n.slice(0, 3).toUpperCase())}</b></i>`).join("")}
+        </div>
+        <div class="lvz-sc-x"><span>0 opens</span><span>${xMax} opens</span></div>
+        <div class="lvz-cap">Season points (up) against app opens since tracking began (across). ${dots.length} owners, r = ${r.toFixed(2)}: ${word}. A pattern, not a cause, and opens only go back to ${esc(dayLong(Math.min(...owners.flatMap((o) => o.list.map((v) => v.at)).concat(now))))}.</div>`;
+    }).catch(() => { const el = root.querySelector("#lvz-scatter"); if (el) el.innerHTML = `<div class="lvz-empty">Couldn't load season points.</div>`; });
+  }
+
+  // One readout under the charts follows the finger or the pointer; one
+  // listener on the dashboard, so panels filled in later work too.
+  function wireLoginViz(root, ctx) {
+    const box = root.querySelector(".lvz");
     const out = root.querySelector(".lvz-tip");
-    if (!out) return;
+    if (!box || !out) return;
     let on = null;
     const show = (t) => { if (!t || t === on) return; on?.classList.remove("on"); on = t; t.classList.add("on"); out.textContent = t.dataset.tip; };
-    root.querySelectorAll(".lvz [data-tip]").forEach((t) => { t.addEventListener("pointerenter", () => show(t)); t.addEventListener("click", () => show(t)); });
+    box.addEventListener("pointerover", (e) => show(e.target.closest?.("[data-tip]")));
+    box.addEventListener("click", async (e) => {
+      const rb = e.target.closest?.("[data-range]");
+      if (rb && ctx) {
+        box.querySelectorAll("[data-range]").forEach((b) => b.classList.toggle("on", b === rb));
+        const tl = box.querySelector(".lvz-tl"); if (tl) tl.innerHTML = ctx.strips(rb.dataset.range);
+        return;
+      }
+      const cp = e.target.closest?.(".lvz-copy");
+      if (cp) {
+        const text = cp.dataset.text || "";
+        try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); cp.textContent = "Copied ✓"; } } catch { try { await navigator.clipboard.writeText(text); cp.textContent = "Copied ✓"; } catch {} }
+        return;
+      }
+      show(e.target.closest?.("[data-tip]"));
+    });
+    if (ctx) fillLoginExtras(box, ctx);
   }
   async function renderLogins() {
     // App opens first: who has been in, and when.
-    let opens = "";
+    let opens = "", lvzCtx = null;
     try {
-      const [{ visits: rawVisits }, pk] = await Promise.all([get("/visit"), get(`/picks?week=${currentWeek}`).catch(() => null)]);
+      const [{ visits: rawVisits, sessions: rawSessions }, pk] = await Promise.all([get("/visit"), get(`/picks?week=${currentWeek}`).catch(() => null)]);
       const visits = Object.fromEntries(Object.entries(rawVisits || {}).filter(([m]) => !NOT_TRACKED.has(m)));
       const all = Object.entries(visits || {}).flatMap(([m, list]) => list.map((v) => ({ m, ...v })));
       const fmt = (t) => new Date(t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
       const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
       const day = Date.now() - 86400000;
       const rows = TRACKED.map((n) => { const l = visits?.[n] || []; return { n, last: l[0]?.at || 0, today: l.filter((v) => v.at > day).length }; }).sort((a, b) => b.last - a.last);
-      opens = loginViz(visits || {}, rows, ago, pk?.picks || null) + `<div class="con-summary"><span>LAST IN THE APP · MOST RECENT FIRST</span><span>${rows.filter((r) => r.today).length} of ${TRACKED.length} in the last 24h</span></div>`
+      lvzCtx = loginViz(visits || {}, rawSessions || {}, rows, ago, pk?.picks || null);
+      opens = lvzCtx.html + `<div class="con-summary"><span>LAST IN THE APP · MOST RECENT FIRST</span><span>${rows.filter((r) => r.today).length} of ${TRACKED.length} in the last 24h</span></div>`
         + rows.map((r) => `<div class="con-row${r.last ? "" : " warn"}"><div class="con-row-head"><span><b>${esc(r.n)}</b></span><span>${r.last ? `${fmt(r.last)} · ${ago(r.last)}` : "never"}</span></div>${r.today ? `<div class="con-line">${r.today} open${r.today === 1 ? "" : "s"} in the last 24h</div>` : ""}</div>`).join("")
         + `<details class="con-more"><summary>Every open (${all.length})</summary>${all.sort((a, b) => b.at - a.at).slice(0, 200).map((v) => `<div class="con-line">${fmt(v.at)} · <b>${esc(v.m)}</b> · ${v.app === "home" ? "home-screen app" : "browser"}${v.screen ? ` · ${esc(v.screen)}` : ""}</div>`).join("")}</details>`;
     } catch {}
-    const { events: rawEvents } = await get("/auth-log?format=json");
+    let rawEvents = [];
+    try { ({ events: rawEvents } = await get("/auth-log?format=json")); } catch {}
     const events = (rawEvents || []).filter((e) => !NOT_TRACKED.has(e.manager));
-    if (!events.length) { body.innerHTML = opens + `<div class="admin-empty">No sign-ins yet. Nobody has claimed a name with a code.</div>`; wireLoginViz(body); return; }
+    if (!events.length) { body.innerHTML = opens + `<div class="admin-empty">No sign-ins yet. Nobody has claimed a name with a code.</div>`; wireLoginViz(body, lvzCtx); return; }
     // One browser signing in as two owners is the signal worth chasing.
     const byDevice = new Map();
     for (const e of events) {
@@ -312,7 +517,7 @@
           <div class="con-line dim">${esc(where(e))}${e.asOrg ? ` · ${esc(e.asOrg)}` : ""} · ${esc(e.ipShort || "—")}</div>
           <div class="con-line dim">${esc(what(e))}${e.device ? ` ${esc(e.device)}` : ""}${e.screen ? ` · ${esc(e.screen)}` : ""}${e.deviceId ? ` · ${esc(e.deviceId.slice(0, 8))}…` : ""}</div>
         </div>`).join("");
-    wireLoginViz(body);
+    wireLoginViz(body, lvzCtx);
   }
 
   // --- Owners ---------------------------------------------------------

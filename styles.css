@@ -5688,3 +5688,50 @@ html.vp-gap { --nav-h: 63px; }
 .lvz-pr2 em { font-style: normal; }
 .lvz-pr2 em.ok { color: var(--neon-green); }
 .lvz-pr2 em.short { color: #ffb347; }
+/* Login dashboard, enriched: nudges, six tiles, range switch, sessions on
+   the timeline, week by week, feature use, pick behaviour, scatter. */
+.lvz-tiles.six { grid-template-columns: repeat(3, 1fr); }
+.lvz-tiles.six b { font-size: 11px; }
+.lvz-tiles.six span { font-size: 8.5px; text-align: center; }
+.lvz-nudge { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 8px; border: 1px solid rgba(255, 179, 71, .35); background: rgba(255, 179, 71, .06); }
+.lvz-nudge .lvz-h { margin-top: 0; color: #ffb347; }
+.lvz-nr { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; }
+.lvz-nr b { color: #fff; }
+.lvz-nr span { color: var(--text-dim); }
+.lvz-copy { align-self: flex-start; margin-top: 4px; }
+.lvz-hrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; }
+.lvz-hrow .lvz-h { margin-top: 0; }
+.lvz-seg-btns { display: inline-flex; border: 1px solid rgba(255, 255, 255, .15); border-radius: 6px; overflow: hidden; }
+.lvz-seg-btns button { padding: 4px 7px; border: 0; background: none; color: var(--text-dim); font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; cursor: pointer; }
+.lvz-seg-btns button.on { background: rgba(26, 184, 204, .25); color: #fff; }
+.lvz-key-seg { display: inline-block; width: 10px; height: 4px; margin: 0 2px; vertical-align: middle; background: rgba(122, 243, 255, .35); }
+.lvz-seg { position: absolute; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: rgba(122, 243, 255, .35); pointer-events: none; }
+.lvz-c.na { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .05) 0 3px, transparent 3px 6px); }
+.lvz-feat { display: flex; flex-direction: column; gap: 3px; }
+.lvz-fb { display: grid; grid-template-columns: minmax(96px, 40%) 1fr 34px; align-items: center; gap: 6px; font-size: 10.5px; color: var(--text); cursor: pointer; }
+.lvz-fb i { display: block; height: 10px; border-radius: 0 4px 4px 0; background: rgba(255, 255, 255, .04); }
+.lvz-fb i b { display: block; height: 100%; border-radius: 0 4px 4px 0; background: #1ab8cc; }
+.lvz-fb em { font-style: normal; text-align: right; color: var(--text-dim); font-size: 10px; }
+.lvz-fb.on i b { background: #7af3ff; }
+.lvz-empty { font-size: 10.5px; color: var(--text-dim); padding: 4px 0; }
+.lvz-pkgrid { display: grid; grid-template-columns: minmax(52px, 72px) 1fr 44px; gap: 3px 4px; align-items: center; }
+.lvz-strip.pk { overflow: visible; }
+.lvz-lock { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: #ffe45e; }
+.lvz-tick { position: absolute; top: 3px; bottom: 3px; width: 3px; margin-left: -1px; border-radius: 1px; background: #1ab8cc; cursor: pointer; }
+.lvz-tick.edit { background: #7af3ff; }
+.lvz-tick.late { background: #ff2079; }
+.lvz-tick.on { outline: 2px solid #fff; }
+.lvz-key .lvz-tick.k, .lvz-key .lvz-lock.k { position: static; display: inline-block; width: 3px; height: 10px; margin: 0 2px 0 8px; vertical-align: middle; }
+.lvz-sc { position: relative; height: 170px; border-left: 1px solid rgba(255, 255, 255, .15); border-bottom: 1px solid rgba(255, 255, 255, .15); margin-left: 22px; }
+.lvz-sc-y { position: absolute; left: -24px; top: 8%; font-size: 9px; color: var(--text-dim); }
+.lvz-sc-y.lo { top: auto; bottom: 6%; }
+.lvz-sd { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #1ab8cc; box-shadow: 0 0 0 2px #0b0618; cursor: pointer; }
+.lvz-sd b { position: absolute; left: 12px; top: -3px; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 5.5px; color: var(--text); white-space: nowrap; pointer-events: none; }
+.lvz-sd.on { background: #7af3ff; }
+.lvz-sc-x { display: flex; justify-content: space-between; margin-left: 22px; font-size: 9px; color: var(--text-dim); }
+.lvz-cap { font-size: 10px; line-height: 1.4; color: var(--text-dim); }
+.lvz-pr3 { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.lvz-pr3 span { padding: 2px 6px; border-radius: 10px; background: rgba(26, 184, 204, .14); font-size: 9px; color: #b8f6ff; }
+.lvz-ver.ok { color: var(--neon-green); }
+.lvz-ver.old { color: #ffb347; }
+.lvz-grid.wk { grid-template-columns: minmax(52px, 72px) repeat(6, minmax(0, 1fr)) 34px; }

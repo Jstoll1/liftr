@@ -1904,14 +1904,19 @@ async function handleSeason(request, env, corsHeaders, url) {
 async function handlePicksLog(request, env, corsHeaders, url) {
   if (!env.ARCHIVE_LOG_KEY || url.searchParams.get("key") !== env.ARCHIVE_LOG_KEY) return new Response("Not found", { status: 404 });
   // Kept for the season now, so one page of keys no longer covers it.
+  const since = Number(url.searchParams.get("since")) || 0;
+  const tsOfLogKey = (name) => 9999999999999 - Number(String(name).split(":")[1] || 0);
   const keys = [];
   let cursor;
   do {
     const page = await env.LIFTR_KV.list({ prefix: "picks-log:", limit: 1000, ...(cursor ? { cursor } : {}) });
     keys.push(...page.keys);
     cursor = page.list_complete ? null : page.cursor;
-  } while (cursor && keys.length < 20000);
-  const rows = (await Promise.all(keys.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
+  } while (cursor && keys.length < 20000 && !(since && keys.length && tsOfLogKey(keys[keys.length - 1].name) < since));
+  // since: only changes newer than this (keys run newest first), and at
+  // most 900 fetched, so the dashboard's read stays quick all season.
+  const pick = since ? keys.filter((k) => tsOfLogKey(k.name) >= since).slice(0, 900) : keys;
+  const rows = (await Promise.all(pick.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
   if (url.searchParams.get("format") === "json") return json({ changes: rows }, 200, corsHeaders);
   // Current state check: any pick stamped after its game's kickoff is a
   // change that should not have been possible.
@@ -3198,13 +3203,18 @@ async function handleExpertRecord(request, env, corsHeaders, url) {
 // One key per manager holding the latest 100, so a visit costs one read and
 // one write.
 const VISITS_NOT_TRACKED = new Set(["Jake"]);
+const sessKey = (m) => `sessions:${m}`;
 async function handleVisit(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   const key = (m) => `visits:${m}`;
   if (request.method === "GET") {
     if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
-    const rows = await Promise.all(PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m)).map(async (m) => [m, (await env.LIFTR_KV.get(key(m), "json")) || []]));
-    return json({ visits: Object.fromEntries(rows) }, 200, corsHeaders);
+    const who = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m));
+    const [rows, sess] = await Promise.all([
+      Promise.all(who.map(async (m) => [m, (await env.LIFTR_KV.get(key(m), "json")) || []])),
+      Promise.all(who.map(async (m) => [m, (await env.LIFTR_KV.get(sessKey(m), "json")) || []])),
+    ]);
+    return json({ visits: Object.fromEntries(rows), sessions: Object.fromEntries(sess) }, 200, corsHeaders);
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
@@ -3213,7 +3223,22 @@ async function handleVisit(request, env, corsHeaders, url) {
   // The admin's own opens aren't league usage; accept and drop them (no
   // KV write), so an older copy of the app still gets its ok.
   if (VISITS_NOT_TRACKED.has(m)) return json({ ok: true, tracked: false }, 200, corsHeaders);
-  const entry = { at: Date.now(), app: body.standalone ? "home" : "browser", device: String(body.device || "").slice(0, 12), screen: String(body.screen || "").slice(0, 12), tz: String(body.tz || "").slice(0, 40) };
+  const ver = /^[0-9]{6,14}$/.test(String(body.v || "")) ? String(body.v) : "";
+  // A session ends: the app was put away. When it started, how long it was
+  // on screen, which screens and sheets were used, and which build it ran.
+  // Sent as a background beacon, so the phone never waits on it.
+  if (body.kind === "session") {
+    const now = Date.now();
+    const start = Number(body.start), dur = Number(body.dur);
+    if (!Number.isFinite(start) || !Number.isFinite(dur) || dur < 3000 || start > now + 60000 || start < now - 7 * 86400000) return json({ ok: false }, 200, corsHeaders);
+    const f = Array.isArray(body.f) ? [...new Set(body.f.map((x) => String(x).toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 24)).filter(Boolean))].slice(0, 24) : [];
+    const rec = { at: Math.round(start), dur: Math.round(Math.min(dur, 6 * 3600000)), f, ...(ver ? { v: ver } : {}) };
+    const list = (await env.LIFTR_KV.get(sessKey(m), "json")) || [];
+    list.unshift(rec);
+    await env.LIFTR_KV.put(sessKey(m), JSON.stringify(list.slice(0, 1500)));
+    return json({ ok: true }, 200, corsHeaders);
+  }
+  const entry = { at: Date.now(), app: body.standalone ? "home" : "browser", device: String(body.device || "").slice(0, 12), screen: String(body.screen || "").slice(0, 12), tz: String(body.tz || "").slice(0, 40), ...(ver ? { v: ver } : {}) };
   const list = (await env.LIFTR_KV.get(key(m), "json")) || [];
   list.unshift(entry);
   // 1,000 opens: weeks of history for the admin dashboard at the 5-minute
