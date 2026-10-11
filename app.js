@@ -980,7 +980,7 @@ function goToPlayerSelect() {
 // Analytics: one page view per screen, plus a few named events. Wrapped
 // so a blocked or slow script never affects the app.
 // Stamp an app open for whoever this device is: on open, and on coming
-// back after 15 minutes away. Fire and forget; it never blocks anything.
+// back after 5 minutes away. Fire and forget; it never blocks anything.
 const VISIT_KEY = "brochiefs_visit_v1";
 function stampVisit() {
   const me = loadMe();
@@ -988,7 +988,8 @@ function stampVisit() {
   if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry) return;
   let last = 0;
   try { last = Number(localStorage.getItem(VISIT_KEY)) || 0; } catch {}
-  if (Date.now() - last < 15 * 60 * 1000) return;
+  // One open per five minutes at most (paid plan: writes are cheap now).
+  if (Date.now() - last < 5 * 60 * 1000) return;
   try { localStorage.setItem(VISIT_KEY, String(Date.now())); } catch {}
   const d = deviceDetails();
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;

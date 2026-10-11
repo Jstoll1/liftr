@@ -2,7 +2,7 @@
 // that a run never touches the slate, results or picks. Run: node --test worker/test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sideOf, extractPicks, gamePicks, picksKey, outletRank, tidyNote, verifyQuote, parseRoster, fillPositions, parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
+import { sideOf, extractPicks, gamePicks, picksKey, outletRank, tidyNote, verifyQuote, parseRoster, fillPositions, parseGdelt, extractInjuries, gameInjuries, injuriesKey, searchName, parseBingNewsRss, parseGoogleNewsRss, filterNews, parseSummary, parseOdds, appendLineSample, lineSampleAdded, lineMovement, parseInjuries, parseNews, runInsights, linesKey, briefKey } from "../src/insights.js";
 
 const game = { id: 3, away: "Coastal Carolina", home: "Georgia Southern", awayShort: "Coastal", homeShort: "GA Southern", awayId: 324, homeId: 290, favorite: "Georgia Southern", spread: 2.5, kickoff: "2099-10-03T23:00:00Z", kickoffLabel: "Sat 7:00 PM ET" };
 
@@ -13,17 +13,22 @@ test("parseOdds reads ESPN's home-relative spread and favourite flags", () => {
   assert.equal(parseOdds({}), null);
 });
 
-test("appendLineSample skips an unchanged line inside six hours and keeps the last forty", () => {
+test("appendLineSample keeps every change, an hourly heartbeat, and the last two hundred", () => {
   const s = { spread: 3.5, favoriteSide: "home", overUnder: 55 };
   let log = appendLineSample({}, 3, s, 1000);
-  log = appendLineSample(log, 3, s, 1000 + 3600 * 1000);
+  log = appendLineSample(log, 3, s, 1000 + 30 * 60 * 1000);
   assert.equal(log[3].length, 1);
   log = appendLineSample(log, 3, { ...s, spread: 4 }, 2000);
   assert.equal(log[3].length, 2);
-  log = appendLineSample(log, 3, s, 1000 + 7 * 3600 * 1000);
+  log = appendLineSample(log, 3, { ...s, spread: 4 }, 2000 + 61 * 60 * 1000);
   assert.equal(log[3].length, 3);
-  for (let i = 0; i < 50; i++) log = appendLineSample(log, 3, { ...s, spread: i }, 1e12 + i);
-  assert.equal(log[3].length, 40);
+  for (let i = 0; i < 250; i++) log = appendLineSample(log, 3, { ...s, spread: i % 60 }, 1e12 + i);
+  assert.equal(log[3].length, 200);
+  const before = log;
+  const after = appendLineSample(log, 3, { ...s, spread: 61 }, 2e12);
+  assert.equal(after[3].length, 200);
+  assert.ok(lineSampleAdded(before, after, 3));
+  assert.ok(!lineSampleAdded(after, appendLineSample(after, 3, { ...s, spread: 61 }, 2e12 + 1000), 3));
 });
 
 test("lineMovement is signed from the sealed favourite and names who it moved toward", () => {

@@ -1,4 +1,4 @@
-import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
+import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
 // Liftr AI Worker
 //
@@ -16,9 +16,10 @@ import { MATCHUPS } from "./matchup-data.js";
 
 export default {
   async scheduled(event, env, ctx) {
-    // Monday: seal the week. Tuesday to Saturday, twice a day: sample the
-    // lines and refresh the brief for every game still open.
-    if (event.cron === INSIGHTS_CRON) {
+    // Monday: seal the week. Every other schedule (every two hours Tuesday
+    // to Friday, hourly on Saturday) samples the lines for every game
+    // still open.
+    if (event.cron !== SEAL_CRON) {
       ctx.waitUntil(runInsights(env, INSIGHTS_DEPS, { briefs: false }).then((r) => console.log("scheduled insights", JSON.stringify(r))));
       return;
     }
@@ -117,8 +118,8 @@ export default {
         return json({ error: "Snapshot failed" }, 500, corsHeaders);
       }
     }
-    // Phones report the line they see; the Worker keeps one sample per six
-    // hours per game while the week is open, which builds the day-by-day
+    // Phones report the line they see; the Worker keeps every change and an
+    // hourly heartbeat per game while the week is open, which builds the day-by-day
     // history ESPN will not serve the Worker directly. Display only.
     if (url.pathname === "/insights/line" && request.method === "POST") {
       try {
@@ -135,9 +136,8 @@ export default {
         const side = b.favoriteSide === "home" || b.favoriteSide === "away" ? b.favoriteSide : null;
         if (!Number.isFinite(spread) || spread < 0 || spread > 70 || !side || (ou !== null && !(ou > 10 && ou < 130))) return json({ error: "bad sample" }, 400, corsHeaders);
         const log = (await env.LIFTR_KV.get(linesKey(week), "json")) || {};
-        const before = log[g.id]?.length || 0;
         const next = appendLineSample(log, g.id, { spread, favoriteSide: side, overUnder: ou }, Date.now());
-        if ((next[g.id]?.length || 0) > before) await env.LIFTR_KV.put(linesKey(week), JSON.stringify(next));
+        if (lineSampleAdded(log, next, g.id)) await env.LIFTR_KV.put(linesKey(week), JSON.stringify(next));
         return json({ ok: true, samples: next[g.id]?.length || 0 }, 200, corsHeaders);
       } catch (err) {
         console.error("insights line", err?.stack || String(err));
@@ -1035,7 +1035,9 @@ async function weekFrom(env, url) {
 
 // Per-isolate cache of the assembled picks map (see GET /picks).
 let picksCache = null;
-const PICKS_CACHE_MS = 15000;
+// Five seconds: on the paid plan KV reads are no longer scarce, so a pick
+// saved on one phone shows on the others almost at once.
+const PICKS_CACHE_MS = 5000;
 
 // Kickoff times for a week, read from that week's stored games. Week 1
 // predates the games store, so its hardcoded table below is the fallback.
@@ -2056,7 +2058,7 @@ async function handleReactions(request, env, corsHeaders, url) {
 }
 
 // --- Insights ---------------------------------------------------------
-const INSIGHTS_CRON = "0 11,23 * * 2-6";
+const SEAL_CRON = "0 10 * * 1";
 const INSIGHTS_DEPS = {
   liveGames: (env, week) => liveGames(env, week),
   readSlate: (env, week) => env.LIFTR_KV.get(gamesKey(week), "json"),
@@ -3214,8 +3216,8 @@ async function handleVisit(request, env, corsHeaders, url) {
   const entry = { at: Date.now(), app: body.standalone ? "home" : "browser", device: String(body.device || "").slice(0, 12), screen: String(body.screen || "").slice(0, 12), tz: String(body.tz || "").slice(0, 40) };
   const list = (await env.LIFTR_KV.get(key(m), "json")) || [];
   list.unshift(entry);
-  // 400 opens: weeks of history for the admin dashboard; one write per
-  // open either way, and the throttled opens keep a list well under 64 KB.
-  await env.LIFTR_KV.put(key(m), JSON.stringify(list.slice(0, 400)));
+  // 1,000 opens: weeks of history for the admin dashboard at the 5-minute
+  // throttle; one write per open either way, about 100 KB at the cap.
+  await env.LIFTR_KV.put(key(m), JSON.stringify(list.slice(0, 1000)));
   return json({ ok: true }, 200, corsHeaders);
 }

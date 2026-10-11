@@ -34,15 +34,26 @@ export function parseOdds(comp) {
 // --- Line log -------------------------------------------------------------
 // One sample per game per run, skipped when nothing moved inside six hours
 // so a quiet week stays a handful of points rather than a wall of repeats.
+// A changed line is kept at once; an unchanged one at most hourly, as a
+// heartbeat that shows time passing on the chart. Two hundred per game is
+// over a week of hourly samples (paid plan: writes are no longer scarce).
+export const LINE_HEARTBEAT_MS = 3600 * 1000;
+export const LINE_SAMPLES_MAX = 200;
 export function appendLineSample(log, gameId, sample, now) {
   const next = { ...(log || {}) };
   const list = Array.isArray(next[gameId]) ? next[gameId].slice() : [];
   const last = list[list.length - 1];
   const same = last && last.spread === sample.spread && last.favoriteSide === sample.favoriteSide && last.overUnder === sample.overUnder;
-  if (same && now - last.at < 6 * 3600 * 1000) return next;
+  if (same && now - last.at < LINE_HEARTBEAT_MS) return next;
   list.push({ at: now, spread: sample.spread, favoriteSide: sample.favoriteSide, overUnder: sample.overUnder });
-  next[gameId] = list.slice(-40);
+  next[gameId] = list.slice(-LINE_SAMPLES_MAX);
   return next;
+}
+// Whether appendLineSample added a sample (the list can sit at its cap, so
+// its length alone can't tell).
+export function lineSampleAdded(before, after, gameId) {
+  const a = before?.[gameId], b = after?.[gameId];
+  return (b?.[b.length - 1]?.at ?? null) !== (a?.[a.length - 1]?.at ?? null);
 }
 
 // From the sealed line to the latest sample: how far, and toward whom.
@@ -236,9 +247,9 @@ export async function runInsights(env, deps, { week = null, force = false, brief
   for (const g of openGames) {
     const odds = liveById[g.id]?.odds;
     if (!odds || odds.spread === null) continue;
-    const before = log[g.id]?.length || 0;
+    const prev = log;
     log = appendLineSample(log, g.id, odds, now);
-    if ((log[g.id]?.length || 0) > before) out.sampled += 1;
+    if (lineSampleAdded(prev, log, g.id)) out.sampled += 1;
   }
   await env.LIFTR_KV.put(linesKey(w), JSON.stringify(log));
 
