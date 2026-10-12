@@ -5868,3 +5868,24 @@ html.vp-gap { --nav-h: 63px; }
 .lock-alert .la-nudge { flex: none; padding: 7px 9px; border: 0; border-radius: 7px; background: #ffb347; color: #1a0f00; font-family: 'Press Start 2P', monospace; font-size: 6.5px; cursor: pointer; }
 .lock-alert .la-x { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); background: none; color: #fff; cursor: pointer; }
 .ld-rel { bottom: 0; height: 72px; }
+/* Dashboard polish: solid tab bar, headline per chart, capped bar widths,
+   build markers in their own row, a week-vs-week card until the season
+   chart has three weeks. */
+.ld-tabs { background: #140b26; border: 1px solid rgba(255, 255, 255, .08); box-shadow: 0 6px 14px rgba(7, 2, 15, .85); backdrop-filter: none; top: -1px; }
+.ld-head { font-size: 11.5px; line-height: 1.45; color: var(--text); margin: -2px 0 2px; }
+.ld-head b { color: #fff; }
+.ld-db { justify-content: center; }
+.ld-db b { max-width: 26px; margin: 0 auto; }
+.ld-relrow { display: grid; gap: 2px; height: 12px; margin-top: 7px; }
+.ld-relrow i { display: flex; justify-content: center; cursor: pointer; font-style: normal; }
+.ld-relrow b { font-size: 8px; line-height: 1; color: #c13cff; font-weight: 700; }
+.ld-relrow i.on b { color: #fff; }
+.ld-rels, .ld-rel { display: none; }
+.ld-wkcmp { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ld-wkcmp > div { display: flex; flex-direction: column; gap: 3px; padding: 9px 10px; border-radius: 9px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .06); }
+.ld-wkcmp > div.now { border-color: rgba(26, 184, 204, .4); }
+.ld-wkcmp span { font-size: 9.5px; color: var(--text-dim); }
+.ld-wkcmp b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 14px; color: #fff; }
+.ld-wkcmp b small { font-size: 7px; color: var(--text-dim); }
+.ld-wkcmp em { font-style: normal; font-size: 10px; color: var(--text-dim); }
+.ld-tw { max-width: 56px; justify-self: center; width: 100%; }

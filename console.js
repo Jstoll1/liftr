@@ -224,8 +224,13 @@
     const avgVisit = sess7.length ? time7 / sess7.length : 0;
     const pct = (a, b) => b ? Math.round((a - b) / b * 100) : null;
 
-    // Daily active, last 28 days.
-    const d28 = Array.from({ length: 28 }, (_, i) => today0 - (27 - i) * DAY);
+    // Daily charts span from the first day on record (at least a week, at
+    // most 28 days), so a new tracker isn't three weeks of empty bars.
+    const spanD = Math.max(7, Math.min(28, Math.round((today0 - day0(Math.min(opensSince, now))) / DAY) + 1));
+    const d28 = Array.from({ length: spanD }, (_, i) => today0 - (spanD - 1 - i) * DAY);
+    const winLab = spanD < 28 ? `SINCE ${dayLong(d28[0]).toUpperCase()}` : "LAST 28 DAYS";
+    const colsStyle = `style="grid-template-columns:repeat(${spanD},minmax(0,1fr))"`;
+    const dayAxis = () => `<div class="lvz-tlax"><span>${dayLong(d28[0]).toUpperCase()}</span>${spanD >= 14 ? `<span>${dayLong(d28[Math.floor(spanD / 2)]).toUpperCase()}</span>` : ""}<span>TODAY</span></div>`;
     const dau = d28.map((d) => people.filter((p) => p.days.has(d)).map((p) => p.n));
     const gdSet = new Set(gameDays);
 
@@ -395,7 +400,7 @@
     for (const p of people) for (const x of [...p.opens, ...p.sess]) if (x.v && (!firstSeen.has(x.v) || x.at < firstSeen.get(x.v))) firstSeen.set(x.v, x.at);
     const buildLab = (v) => `${v.slice(4, 6)}/${v.slice(6, 8)} ${v.slice(8, 10)}:${v.slice(10, 12)}`;
     const releases = [...firstSeen.entries()].filter(([, t]) => t >= d28[0]).sort((a, b) => a[1] - b[1]);
-    const relMarks = releases.map(([v, t]) => `<i class="ld-rel" style="left:${((t - d28[0]) / (28 * DAY) * 100).toFixed(2)}%" ${tip(`New build ${buildLab(v)} first seen ${dayLong(t)} ${timeLab(t)}`)}></i>`).join("");
+    const relRow = releases.length ? `<div class="ld-relrow" ${colsStyle}>${d28.map((d) => { const vs = releases.filter(([, t]) => day0(t) === d); return vs.length ? `<i ${tip(`${vs.length} new build${vs.length === 1 ? "" : "s"} ${dayLong(d)}: ${vs.map(([v, t]) => `${buildLab(v)} (first seen ${timeLab(t)})`).join(", ")}`)}><b>▲${vs.length > 1 ? vs.length : ""}</b></i>` : "<i></i>"; }).join("")}</div>` : "";
 
     // ---- Time in the app per day, 28 days (sessions) ----
     const tpd = d28.map((d) => people.reduce((a, p) => a + p.sess.filter((x) => x.at >= d && x.at < d + DAY).reduce((s2, x) => s2 + x.dur, 0), 0));
@@ -482,10 +487,10 @@
         <div ${tip("Loads that took longer than 4 seconds, over 7 days.")}><b>${slows(s7h)}</b><span>slow loads (over 4s)</span>${s7p.length ? chip(slows(s7h) - slows(s7p), "", true) : chip(null)}</div>
       </div>
       <div class="lvz-h">FAILED LOADS EACH DAY · <i class="ld-key-e"></i> ESPN · <i class="ld-key-w"></i> SERVER · <i class="ld-key-gd"></i> GAME DAY</div>
-      <div class="ld-dau"><div class="ld-dbars fail">${failBars}</div><div class="lvz-tlax"><span>${dayLong(d28[0]).toUpperCase()}</span><span>${dayLong(d28[14]).toUpperCase()}</span><span>TODAY</span></div></div>
-      <div class="lvz-h">BY BUILD · 28 DAYS</div>
+      <div class="ld-dau"><div class="ld-dbars fail" ${colsStyle}>${failBars}</div>${dayAxis()}</div>
+      <div class="lvz-h">BY BUILD · ${winLab}</div>
       <div class="ld-fh five"><span>BUILD</span><span>PEOPLE</span><span>ERR VISITS</span><span>FAILS</span><span>TO USABLE</span></div>${buildRows || `<div class="lvz-empty">No visits on record yet.</div>`}
-      <div class="lvz-h">BY PERSON · 28 DAYS</div>
+      <div class="lvz-h">BY PERSON · ${winLab}</div>
       <div class="ld-fh five"><span>OWNER</span><span>ERR VISITS</span><span>ESPN FAILS</span><span>SERVER FAILS</span><span>TO USABLE</span></div>${personRows}
       <div class="lvz-h">ERRORS SEEN</div>${errHtml}
       <div class="lvz-cap">Health is recorded from the new build on (since ${esc(dayLong(sessSince))}). Phones that are offline count as failed loads too.</div>
@@ -507,6 +512,22 @@
       return toCsv([["week_of", "owner", "days", "opens", "minutes", "visits", "error_visits", "failed_loads", "load_ms", "partial"], ...rk.flatMap((k) => names.map((n) => { const x = rollups[k].people?.[n] || {}; return [k, n, x.days || 0, x.opens || 0, Math.round((x.timeMs || 0) / 60000), x.sessions || 0, x.errSessions || 0, x.fails || 0, x.loadMs ?? "", rollups[k].partial ? "yes" : ""]; }))]);
     };
 
+    // ---- Chart headlines: each chart leads with what it shows ----
+    const dauBest = d28.map((d, i) => ({ d, c: dau[i].length })).sort((a, b) => b.c - a.c || b.d - a.d)[0];
+    const dauAvg = d28.length ? dau.reduce((a, x) => a + x.length, 0) / d28.length : 0;
+    const gdDays = d28.filter((d) => gdSet.has(d) && d <= today0);
+    const gdAvg = gdDays.length ? gdDays.reduce((a, d) => a + dau[d28.indexOf(d)].length, 0) / gdDays.length : null;
+    const otherDays = d28.filter((d) => !gdSet.has(d));
+    const offAvg = otherDays.length ? otherDays.reduce((a, d) => a + dau[d28.indexOf(d)].length, 0) / otherDays.length : null;
+    const dauHead = dauBest?.c ? `Busiest: <b>${esc(dayLong(dauBest.d))}</b>, ${dauBest.c} of ${N} in.${gdAvg != null && offAvg != null ? ` Game days average <b>${gdAvg.toFixed(1)}</b> people, other days <b>${offAvg.toFixed(1)}</b>.` : ` A typical day: ${dauAvg.toFixed(1)}.`}` : "Nobody in yet.";
+    const tAll = tpd.reduce((a, b) => a + b, 0), tGd = d28.reduce((a, d, i) => a + (gdSet.has(d) ? tpd[i] : 0), 0);
+    const tpdHead = tAll ? `<b>${dur(tAll)}</b> in the app since ${esc(dayLong(Math.max(d28[0], sessSince)))}${tGd ? `; <b>${Math.round(tGd / tAll * 100)}%</b> of it on game days` : ""}.` : `Time in the app is tracked from ${esc(dayLong(sessSince))} on.`;
+    const punchHeadOf = (grid) => { let b = { n: 0 }; grid.forEach((row, d) => row.forEach((n, h) => { const w = n + (row[(h + 1) % 24] || 0) + (row[(h + 2) % 24] || 0); if (w > b.n) b = { n: w, d, h }; })); return b.n > 0 ? `Busiest stretch: <b>${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][b.d]} ${hourLab(b.h)}-${hourLab((b.h + 3) % 24)}</b>, ${b.n} opens on record.` : ""; };
+    const fullWeeks = trend.filter((w) => !w.live && !w.partial);
+    const seasonHtml = fullWeeks.length >= 3
+      ? `<div class="ld-trend">${trendHtml}</div>`
+      : (() => { const lw = trend.filter((w) => !w.live).slice(-1)[0]; const tw = trend.find((w) => w.live); return `<div class="ld-wkcmp">${lw ? `<div><span>Week of ${wkLab(lw.k)}${lw.partial ? ` (from ${esc(dayLong(opensSince).replace(/^\w+, /, ""))})` : ""}</span><b>${lw.active}<small>/${N}</small></b><em>${lw.opens} opens · ${dur(lw.timeMs)}</em></div>` : ""}${tw ? `<div class="now"><span>This week so far</span><b>${tw.active}<small>/${N}</small></b><em>${tw.opens} opens · ${dur(tw.timeMs)}</em></div>` : ""}</div><div class="lvz-cap">The week-by-week chart appears once three full weeks are on record.</div>`; })();
+
     // ---- PULSE ----
     const dmax = N;
     const dauHtml = d28.map((d, i) => { const c = dau[i].length; return `<i class="ld-db${gdSet.has(d) ? " gd" : ""}${d === today0 ? " today" : ""}" ${tip(`${dayLong(d)}${gdSet.has(d) ? " · game day" : ""} · ${c} of ${N} in${c ? `: ${dau[i].join(", ")}` : ""}`)}><b style="height:${(c / dmax * 100).toFixed(0)}%"></b></i>`; }).join("");
@@ -526,13 +547,16 @@
       ${story.length ? `<div class="lvz-h">THIS WEEK'S STORY</div><ul class="ld-story">${story.slice(0, 9).map((s) => `<li><em class="ld-tag ${tagCls[s.tag]}">${s.tag}</em><span>${s.html}</span></li>`).join("")}</ul>` : ""}
       ${nudges.length ? `<div class="lvz-nudge"><div class="lvz-h">WHO TO NUDGE</div>${nudges.map((x) => `<div class="lvz-nr"><b>${esc(x.n)}</b><span>${esc(x.why)}</span></div>`).join("")}<button type="button" class="admin-btn lvz-copy" data-text="${esc(nudgeText)}" data-who="${esc(JSON.stringify(nudges.map((x) => ({ n: x.n, why: x.kind }))))}">Copy message for the chat</button></div>` : ""}
       ${nudgeHtml}
-      <div class="lvz-h">PEOPLE IN EACH DAY · LAST 28 DAYS · <i class="ld-key-gd"></i> GAME DAY</div>
-      <div class="ld-dau"><div class="ld-dbars">${dauHtml}</div><div class="ld-rels">${relMarks}</div><div class="lvz-tlax"><span>${dayLong(d28[0]).toUpperCase()}</span><span>${dayLong(d28[14]).toUpperCase()}</span><span>TODAY</span></div></div>
-      <div class="lvz-h">TIME IN THE APP EACH DAY · <i class="ld-key-rel"></i> NEW BUILD</div>
-      <div class="ld-dau"><div class="ld-dbars">${tpdHtml}</div><div class="ld-rels">${relMarks}</div><div class="lvz-tlax"><span>${dayLong(d28[0]).toUpperCase()}</span><span>${dayLong(d28[14]).toUpperCase()}</span><span>TODAY</span></div></div>
-      <div class="lvz-h">SEASON · PEOPLE IN EACH WEEK</div>
-      <div class="ld-trend">${trendHtml}</div>
+      <div class="lvz-h">PEOPLE IN EACH DAY · ${winLab} · <i class="ld-key-gd"></i> GAME DAY${releases.length ? ` · <i class="ld-key-rel"></i> NEW BUILD` : ""}</div>
+      <div class="ld-head">${dauHead}</div>
+      <div class="ld-dau"><div class="ld-dbars" ${colsStyle}>${dauHtml}</div>${relRow}${dayAxis()}</div>
+      <div class="lvz-h">TIME IN THE APP EACH DAY</div>
+      <div class="ld-head">${tpdHead}</div>
+      <div class="ld-dau"><div class="ld-dbars" ${colsStyle}>${tpdHtml}</div>${relRow}${dayAxis()}</div>
+      <div class="lvz-h">SEASON · WEEK BY WEEK</div>
+      ${seasonHtml}
       <div class="lvz-h">WHEN THE LEAGUE IS IN · DAY BY HOUR, SINCE ${esc(dayLong(opensSince).toUpperCase())}</div>
+      ${punchHeadOf(punch) ? `<div class="ld-head">${punchHeadOf(punch)}</div>` : ""}
       <div class="lvz-punch">${punchHtml}<span></span><div class="lvz-pax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div></div>`;
     const pulse = `${pastKeys.length ? `<div class="ld-sort"><span>WEEK</span><button type="button" data-pulseweek="live" class="on">THIS WEEK</button>${pastKeys.map((k) => `<button type="button" data-pulseweek="${k}">WK OF ${wkLab(k)}</button>`).join("")}</div>` : ""}<div class="ld-pulse-live">${pulseLive}</div><div class="ld-pulse-past" hidden></div>`;
 
@@ -546,7 +570,7 @@
     };
     const drill = (n) => {
       const p = people.find((x) => x.n === n); if (!p) return "";
-      const cal = Array.from({ length: 28 }, (_, i) => { const d = today0 - (27 - i) * DAY; const c = p.opens.filter((v) => day0(v.at) === d).length; return `<i class="lvz-c s${c <= 0 ? 0 : c === 1 ? 1 : c <= 3 ? 2 : c <= 7 ? 3 : 4}${gdSet.has(d) ? " gd" : ""}" ${tip(`${dayLong(d)} · ${c} open${c === 1 ? "" : "s"}${gdSet.has(d) ? " · game day" : ""}`)}></i>`; }).join("");
+      const cal = d28.map((d) => { const c = p.opens.filter((v) => day0(v.at) === d).length; return `<i class="lvz-c s${c <= 0 ? 0 : c === 1 ? 1 : c <= 3 ? 2 : c <= 7 ? 3 : 4}${gdSet.has(d) ? " gd" : ""}" ${tip(`${dayLong(d)} · ${c} open${c === 1 ? "" : "s"}${gdSet.has(d) ? " · game day" : ""}`)}></i>`; }).join("");
       const hrs = new Array(24).fill(0); for (const v of p.opens) hrs[new Date(v.at).getHours()]++;
       const hm = Math.max(1, ...hrs);
       const hourBars = hrs.map((c, h) => `<i ${tip(`${hourLab(h)} · ${c} open${c === 1 ? "" : "s"}`)}><b style="height:${(c / hm * 100).toFixed(0)}%"></b></i>`).join("");
@@ -567,7 +591,7 @@
         ["Season", pts.has(n) ? `${pts.get(n)} pts${rank ? ` · ${rank}${["th", "st", "nd", "rd"][rank % 10 > 3 || [11, 12, 13].includes(rank % 100) ? 0 : rank % 10]}` : ""}` : "-"],
       ];
       return `<div class="ld-dgrid">${facts.map(([k, v]) => `<span>${k}</span><b>${esc(v)}</b>`).join("")}</div>
-        <div class="lvz-h">LAST 28 DAYS</div><div class="ld-cal">${cal}</div>
+        <div class="lvz-h">${winLab}</div><div class="ld-cal" style="grid-template-columns:repeat(${Math.min(14, spanD)},minmax(0,1fr))">${cal}</div>
         <div class="lvz-h">TIME OF DAY</div><div class="ld-hours">${hourBars}</div><div class="lvz-pax solo"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div>
         <div class="lvz-h">USES MOST · VISITS, 14 DAYS</div><div class="lvz-pr3">${feats}</div>`;
     };
