@@ -5946,3 +5946,11 @@ html.vp-gap { --nav-h: 63px; }
 .wi-legend .k { position: static; display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
 .wi-legend .wi-sess.k { height: 4px; }
 .wi-tip { padding: 6px 9px; border-radius: 7px; background: rgba(255, 255, 255, .05); font-size: 10.5px; color: var(--text); }
+/* Game day, round two: packed game lanes, round-hour axis, gold dots. */
+.ld-gw { height: 9px; }
+.ld-gw span { top: 0; font-size: 4.5px; line-height: 9px; }
+.ld-hax { position: relative; height: 12px; }
+.ld-hax span { position: absolute; top: 2px; transform: translateX(-50%); font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--text-dim); white-space: nowrap; }
+.lvz-tl .ld-hax { grid-column: 2; }
+.lvz-dot.gm { background: #ffe45e; }
+.ld-key-dotg { display: inline-block; width: 8px; height: 8px; margin: 0 2px; vertical-align: middle; border-radius: 50%; background: #ffe45e; }

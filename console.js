@@ -255,31 +255,47 @@
       });
       const tGame = people.map((p) => ({ p, ms: p.sess.reduce((a, x) => a + wins.reduce((s, w) => s + Math.max(0, Math.min(x.at + x.dur, w.b) - Math.max(x.at, w.a)), 0), 0) }));
       const hasSess = people.some((p) => p.sess.some((x) => x.at >= A && x.at < Bend));
-      const lanes = wins.map((w, i) => `<i class="ld-gw" style="left:${xp(Math.max(w.a, A))}%;width:${Math.max(1, (Math.min(w.b, Bend) - Math.max(w.a, A)) / span * 100)}%;top:${(i % 3) * 9}px" ${tip(`G${w.id} ${w.label} · kickoff ${timeLab(w.a)}`)}><span>G${w.id}</span></i>`).join("");
+      // Games packed into as few rows as fit without overlap.
+      const rowEnd = [];
+      const laneOf = wins.map((w) => { let r = rowEnd.findIndex((e) => e <= w.a); if (r < 0) { r = rowEnd.length; rowEnd.push(0); } rowEnd[r] = w.b; return r; });
+      const lanes = wins.map((w, i) => `<i class="ld-gw" style="left:${xp(Math.max(w.a, A))}%;width:${Math.max(1, (Math.min(w.b, Bend) - Math.max(w.a, A)) / span * 100)}%;top:${laneOf[i] * 11}px" ${tip(`G${w.id} ${w.label} · kickoff ${timeLab(w.a)}`)}><span>G${w.id}</span></i>`).join("");
+      const laneH = Math.max(1, rowEnd.length) * 11 + 2;
+      // Before visit lengths were tracked, "at once" can't be known: show
+      // opens per half hour instead, and say so.
+      const HALF = 30 * 60000, nh = Math.ceil(span / HALF);
+      const halves = Array.from({ length: nh }, (_, i) => { const t = A + i * HALF; return people.map((p) => ({ n: p.n, c: p.opens.filter((v) => v.at >= t && v.at < t + HALF).length })).filter((x) => x.c); });
+      const hmax = Math.max(1, ...halves.map((h) => h.reduce((a, x) => a + x.c, 0)));
+      const peakH = halves.reduce((bi, h, i) => h.reduce((a, x) => a + x.c, 0) > halves[bi].reduce((a, x) => a + x.c, 0) ? i : bi, 0);
+      const halfBars = halves.map((h, i) => { const c = h.reduce((a, x) => a + x.c, 0); return `<i class="ld-cb${i === peakH && c ? " pk" : ""}" style="height:${(c / hmax * 100).toFixed(0)}%" ${tip(`${timeLab(A + i * HALF)} to ${timeLab(A + (i + 1) * HALF)} · ${c} open${c === 1 ? "" : "s"}${c ? `: ${h.map((x) => `${x.n}${x.c > 1 ? ` ×${x.c}` : ""}`).join(", ")}` : ""}`)}></i>`; }).join("");
+      // Round-hour axis: a label every three hours.
+      const h0 = new Date(A); h0.setMinutes(0, 0, 0); while (h0.getTime() < A || h0.getHours() % 3) h0.setHours(h0.getHours() + 1);
+      const ticks = []; for (let t = h0.getTime(); t <= Bend; t += 3 * HR) ticks.push(t);
+      const hourAx = `<div class="ld-hax">${ticks.map((t) => `<span style="left:${xp(t)}%">${hourLab(new Date(t).getHours())}</span>`).join("")}</div>`;
+      const opensInGames = people.reduce((a, p) => a + p.opens.filter((v) => wins.some((w) => v.at >= w.a && v.at < w.b)).length, 0);
       const bars = conc.map((c, i) => `<i class="ld-cb${i === peakI && c.length ? " pk" : ""}" style="height:${(c.length / cmax * 100).toFixed(0)}%" ${tip(`${timeLab(A + i * STEP)} · ${c.length} in the app${c.length ? `: ${c.join(", ")}` : ""}`)}></i>`).join("");
-      const ax = [0, 0.25, 0.5, 0.75, 1].map((f) => `<span>${timeLab(A + f * span).replace(":00", "")}</span>`).join("");
       // Overlapping games shade as one band, so the strip doesn't stack to solid.
       const merged = [];
       for (const w of wins) { const l = merged[merged.length - 1]; if (l && w.a <= l.b) l.b = Math.max(l.b, w.b); else merged.push({ a: w.a, b: w.b }); }
       const bandHtml = merged.map((w) => `<i class="lvz-band" style="left:${xp(Math.max(w.a, A))}%;width:${(Math.min(w.b, Bend) - Math.max(w.a, A)) / span * 100}%"></i>`).join("");
-      const strips = people.map((p) => `<span class="lvz-nm">${esc(p.n)}</span><div class="lvz-strip">${bandHtml}${p.sess.filter((x) => x.at < Bend && x.at + x.dur > A).map((x) => `<i class="lvz-seg" style="left:${xp(Math.max(x.at, A))}%;width:${Math.max(0.6, (Math.min(x.at + x.dur, Bend) - Math.max(x.at, A)) / span * 100)}%"></i>`).join("")}${p.opens.filter((v) => v.at >= A && v.at < Bend).map((v) => `<i class="lvz-dot${inGame(v.at) ? " live" : ""}" style="left:${xp(v.at)}%" ${tip(`${p.n} · ${timeLab(v.at)}${inGame(v.at) ? " · during a game" : ""}`)}></i>`).join("")}</div>`).join("");
+      const strips = people.map((p) => `<span class="lvz-nm">${esc(p.n)}</span><div class="lvz-strip">${ticks.map((t) => `<i class="lvz-mid" style="left:${xp(t)}%"></i>`).join("")}${p.sess.filter((x) => x.at < Bend && x.at + x.dur > A).map((x) => `<i class="lvz-seg" style="left:${xp(Math.max(x.at, A))}%;width:${Math.max(0.6, (Math.min(x.at + x.dur, Bend) - Math.max(x.at, A)) / span * 100)}%"></i>`).join("")}${p.opens.filter((v) => v.at >= A && v.at < Bend).map((v) => `<i class="lvz-dot${inGame(v.at) ? " gm" : ""}" style="left:${xp(v.at)}%" ${tip(`${p.n} · ${timeLab(v.at)}${inGame(v.at) ? " · during a game" : ""}`)}></i>`).join("")}</div>`).join("");
       const wmax = Math.max(1, ...watch.map((x) => x.who.length));
       const watchHtml = watch.some((x) => x.who.length) ? watch.slice().sort((a, b) => b.who.length - a.who.length).map((x) => `<div class="lvz-fb wide" ${tip(`${x.w.label} · watched live by ${x.who.length ? x.who.join(", ") : "nobody"}${x.ms ? ` · ${dur(x.ms)} on its live view in all` : ""}`)}><span>${esc(x.w.label)}</span><i><b style="width:${(x.who.length / wmax * 100).toFixed(0)}%"></b></i><em>${x.who.length}/${N}${x.ms ? ` · ${dur(x.ms)}` : ""}</em></div>`).join("") : `<div class="lvz-empty">${hasSess ? "Nobody opened a live game cast." : "Per-game viewing is recorded from the new build on; this Saturday is the first it will show."}</div>`;
       const most = watch.slice().sort((a, b) => b.who.length - a.who.length)[0];
       const facts = {
-        peak: conc[peakI]?.length || 0, peakAt: A + peakI * STEP, peakWho: conc[peakI] || [],
+        peak: hasSess ? conc[peakI]?.length || 0 : 0, peakAt: A + peakI * STEP, peakWho: conc[peakI] || [],
         inDuring: inDuring.length, most: most && most.who.length ? most : null,
         topTime: tGame.sort((a, b) => b.ms - a.ms)[0], hasSess, wins: wins.length,
       };
       const html = `<div class="ld-kpis three">
           <div><b>${facts.inDuring}<small>/${N}</small></b><span>in during games</span></div>
-          <div><b>${facts.peak || "-"}</b><span>most at once${facts.peak ? ` · ${timeLab(facts.peakAt)}` : ""}</span></div>
-          <div><b>${facts.topTime?.ms ? dur(facts.topTime.ms) : "-"}</b><span>${facts.topTime?.ms ? `${esc(facts.topTime.p.n)}, most time in games` : "time in games"}</span></div>
+          ${hasSess ? `<div><b>${facts.peak || "-"}</b><span>most at once${facts.peak ? ` · ${timeLab(facts.peakAt)}` : ""}</span></div>` : `<div><b>${halves[peakH]?.reduce((a, x) => a + x.c, 0) || "-"}</b><span>opens in the busiest half hour${halves[peakH]?.length ? ` · ${timeLab(A + peakH * HALF)}` : ""}</span></div>`}
+          ${hasSess ? `<div><b>${facts.topTime?.ms ? dur(facts.topTime.ms) : "-"}</b><span>${facts.topTime?.ms ? `${esc(facts.topTime.p.n)}, most time in games` : "time in games"}</span></div>` : `<div><b>${opensInGames}</b><span>opens during games</span></div>`}
         </div>
-        <div class="lvz-h">IN THE APP AT ONCE · 10-MINUTE STEPS${hasSess ? "" : " · FROM OPENS ONLY"}</div>
-        <div class="ld-conc"><div class="ld-cbars">${bars}</div><div class="ld-glanes">${lanes}</div><div class="lvz-tlax">${ax}</div></div>
-        <div class="lvz-h">WHO WAS IN · <i class="lvz-key-band"></i> GAME ON · <i class="lvz-key-seg"></i> IN THE APP</div>
-        <div class="lvz-tl">${strips}</div>
+        <div class="lvz-h">${hasSess ? "IN THE APP AT ONCE" : "OPENS EACH HALF HOUR"}</div>
+        ${hasSess ? "" : `<div class="lvz-cap">Visit lengths are tracked from ${esc(dayLong(sessSince))} on, so for this day it's opens, not people in at once.</div>`}
+        <div class="ld-conc"><div class="ld-cbars">${hasSess ? bars : halfBars}</div><div class="ld-glanes" style="height:${laneH}px">${lanes}</div>${hourAx}</div>
+        <div class="lvz-h">WHO WAS IN · <i class="ld-key-dotg"></i> OPENED DURING A GAME</div>
+        <div class="lvz-tl">${strips}<span></span>${hourAx}</div>
         <div class="lvz-h">LIVE GAME CASTS WATCHED · PEOPLE · MINUTES ON IT</div>
         <div class="lvz-feat">${watchHtml}</div>`;
       return { html, facts };
@@ -663,7 +679,7 @@
     box.addEventListener("click", async (e) => {
       const t = e.target;
       const tab = t.closest?.("[data-ldtab]");
-      if (tab) { box.querySelectorAll("[data-ldtab]").forEach((b) => b.classList.toggle("on", b === tab)); box.querySelectorAll("[data-ldview]").forEach((s) => { s.hidden = s.dataset.ldview !== tab.dataset.ldtab; }); return; }
+      if (tab) { out.textContent = "Tap any bar, square, dot or row for the details."; on?.classList.remove("on"); on = null; box.querySelectorAll("[data-ldtab]").forEach((b) => b.classList.toggle("on", b === tab)); box.querySelectorAll("[data-ldview]").forEach((s) => { s.hidden = s.dataset.ldview !== tab.dataset.ldtab; }); return; }
       const so = t.closest?.("[data-sort]");
       if (so) {
         so.parentElement.querySelectorAll("[data-sort]").forEach((b) => b.classList.toggle("on", b === so));
