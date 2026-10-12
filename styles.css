@@ -5889,3 +5889,9 @@ html.vp-gap { --nav-h: 63px; }
 .ld-wkcmp b small { font-size: 7px; color: var(--text-dim); }
 .ld-wkcmp em { font-style: normal; font-size: 10px; color: var(--text-dim); }
 .ld-tw { max-width: 56px; justify-self: center; width: 100%; }
+/* The tab bar scrolls with the page: sticky inside the console left text
+   showing above and behind it. */
+.ld-tabs { position: static; box-shadow: none; }
+.ld-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 9.5px; color: var(--text-dim); margin-top: -2px; }
+.ld-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.ld-legend b { color: #c13cff; font-size: 8px; }

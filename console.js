@@ -382,10 +382,13 @@
     if (opens7 >= 5 && gameMs7 > 0) add("NOTE", 45, `${Math.round(g7 / opens7 * 100)}% of this week's opens came while games were on, which is ${Math.round(gameMs7 / (7 * DAY) * 100)}% of the week.`);
     const ld = names.map((n) => ({ n, m: median(leadBy.get(n) || []) })).filter((x) => x.m != null);
     if (ld.length >= 3) { ld.sort((a, b) => a.m - b.m); add("NOTE", 44, `Pick timing: ${B(ld[ld.length - 1].n)} usually locks in ${lead(ld[ld.length - 1].m)} early; ${B(ld[0].n)} usually waits until ${lead(ld[0].m)} before lock.`); }
-    if (fr.length) add("NOTE", 40, `Most-used: ${fr.slice(0, 3).map((e) => `${esc(ldFeat(e.k))} (${e.ppl.size} of ${N})`).join(", ")}${unused.length ? `. Nobody used ${list(unused.slice(0, 4).map(esc))} in 14 days` : ""}.`);
+    if (fr.length) add("NOTE", 40, `Most-used: ${fr.slice(0, 3).map((e) => `${esc(ldFeat(e.k))} (${e.ppl.size} of ${N})`).join(", ")}${unused.length ? `. Nobody used ${list(unused.slice(0, 4).map(esc))} ${sessSince > now - 14 * DAY ? `since ${esc(dayLong(sessSince))}, when this started being tracked` : "in 14 days"}` : ""}.`);
     if (firstStop?.first >= 3) add("NOTE", 35, `Visits usually start on ${esc(ldFeat(firstStop.k))} (${Math.round(firstStop.first / Math.max(1, s14.length) * 100)}% of visits).`);
     const br = people.filter((p) => p.appKind === "browser only");
-    if (br.length) add("NOTE", 30, `${list(br.map((p) => B(p.n)))} only use${br.length === 1 ? "s" : ""} the browser, not the home-screen app.`);
+    const inApp = people.filter((p) => p.opens.length);
+    if (br.length && br.length === inApp.length) add("NOTE", 30, `Nobody has added the app to their home screen; everyone opens it in the browser.`);
+    else if (br.length > inApp.length / 2) add("NOTE", 30, `Only ${list(inApp.filter((p) => !br.includes(p)).map((p) => B(p.n)))} use${inApp.length - br.length === 1 ? "s" : ""} the home-screen app; everyone else opens it in the browser.`);
+    else if (br.length) add("NOTE", 30, `${list(br.map((p) => B(p.n)))} only use${br.length === 1 ? "s" : ""} the browser, not the home-screen app.`);
     const tagOrder = { ACTION: 0, TREND: 1, NOTE: 2 };
     story.sort((a, b) => tagOrder[a.tag] - tagOrder[b.tag] || b.w - a.w);
 
@@ -547,9 +550,10 @@
       ${story.length ? `<div class="lvz-h">THIS WEEK'S STORY</div><ul class="ld-story">${story.slice(0, 9).map((s) => `<li><em class="ld-tag ${tagCls[s.tag]}">${s.tag}</em><span>${s.html}</span></li>`).join("")}</ul>` : ""}
       ${nudges.length ? `<div class="lvz-nudge"><div class="lvz-h">WHO TO NUDGE</div>${nudges.map((x) => `<div class="lvz-nr"><b>${esc(x.n)}</b><span>${esc(x.why)}</span></div>`).join("")}<button type="button" class="admin-btn lvz-copy" data-text="${esc(nudgeText)}" data-who="${esc(JSON.stringify(nudges.map((x) => ({ n: x.n, why: x.kind }))))}">Copy message for the chat</button></div>` : ""}
       ${nudgeHtml}
-      <div class="lvz-h">PEOPLE IN EACH DAY · ${winLab} · <i class="ld-key-gd"></i> GAME DAY${releases.length ? ` · <i class="ld-key-rel"></i> NEW BUILD` : ""}</div>
+      <div class="lvz-h">PEOPLE IN EACH DAY · ${winLab}</div>
       <div class="ld-head">${dauHead}</div>
       <div class="ld-dau"><div class="ld-dbars" ${colsStyle}>${dauHtml}</div>${relRow}${dayAxis()}</div>
+      <div class="ld-legend"><span><i class="ld-key-gd"></i>game day</span>${releases.length ? `<span><b>▲</b>new build (tap for which)</span>` : ""}</div>
       <div class="lvz-h">TIME IN THE APP EACH DAY</div>
       <div class="ld-head">${tpdHead}</div>
       <div class="ld-dau"><div class="ld-dbars" ${colsStyle}>${tpdHtml}</div>${relRow}${dayAxis()}</div>
@@ -621,7 +625,7 @@
     // ---- FEATURES ----
     const fmaxN = N;
     const featView = fr.length ? `<div class="ld-fh"><span>FEATURE</span><span>PEOPLE WHO USED IT</span><span>VISITS</span></div>${fr.map((e) => `<div class="ld-fr" ${tip(`${ldFeat(e.k)} · ${e.ppl.size} of ${N} people (${[...e.ppl].join(", ")}) · in ${e.n} of ${s14.length} visits · first stop in ${e.first}`)}><span>${esc(ldFeat(e.k))}</span><span class="ld-ppl">${names.map((n) => `<i class="${e.ppl.has(n) ? "on" : ""}"></i>`).join("")}</span><em>${Math.round(e.n / Math.max(1, s14.length) * 100)}%</em></div>`).join("")}
-      ${unused.length ? `<div class="lvz-cap">Not used by anyone in 14 days: ${esc(unused.join(", "))}.</div>` : ""}
+      ${unused.length ? `<div class="lvz-cap">Not used by anyone ${sessSince > now - 14 * DAY ? `since ${esc(dayLong(sessSince))}` : "in 14 days"}: ${esc(unused.join(", "))}.</div>` : ""}
       <div class="lvz-h">WHERE VISITS START</div>
       <div class="lvz-feat">${[...fr].filter((e) => e.first).sort((a, b) => b.first - a.first).slice(0, 6).map((e, i, arr) => `<div class="lvz-fb" ${tip(`${e.first} visits started on ${ldFeat(e.k)}`)}><span>${esc(ldFeat(e.k))}</span><i><b style="width:${(e.first / Math.max(1, arr[0].first) * 100).toFixed(0)}%"></b></i><em>${Math.round(e.first / Math.max(1, s14.length) * 100)}%</em></div>`).join("")}</div>
       <div class="lvz-cap">From ${s14.length} visit${s14.length === 1 ? "" : "s"} in 14 days on the new build (sessions since ${esc(dayLong(sessSince))}).</div>` : `<div class="lvz-empty">Feature use is recorded from the new build on (since ${esc(dayLong(sessSince))}). It fills in as people use the app.</div>`;
