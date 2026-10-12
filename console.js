@@ -37,7 +37,7 @@
   }
 
   // Opens on who has been in the app, most recent first.
-  let tab = "logins";
+  let tab = "whosin";
 
   // --- Pick changes ---------------------------------------------------
   async function renderPicks() {
@@ -712,6 +712,82 @@
     });
   }
 
+  // --- Who's in -------------------------------------------------------
+  // The first thing the console shows: the nine owners, who is in the app
+  // now, and every open in the last seven days on one strip per person.
+  // Each strip is seven equal days, overnight (midnight to 7am) shaded so
+  // the time of day reads at a glance, games in gold, one dot per open and
+  // a bar for time in the app. Tap a name for the day-by-day list.
+  async function renderWhosIn() {
+    body.innerHTML = `<div class="admin-empty">Loading who's been in…</div>`;
+    const [vis, season] = await Promise.allSettled([get("/visit"), get("/season")]);
+    const v = vis.status === "fulfilled" ? vis.value : null;
+    if (!v) { body.innerHTML = `<div class="admin-empty">Couldn't load logins.</div>`; return; }
+    const DAY = 86400000, HR = 3600000, now = Date.now();
+    const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const today0 = t0.getTime(), A = today0 - 6 * DAY, B = today0 + DAY, span = B - A;
+    const days = Array.from({ length: 7 }, (_, i) => A + i * DAY);
+    const xp = (t) => ((t - A) / span * 100).toFixed(3);
+    const dayLab = (t, i) => i === 6 ? "TODAY" : new Date(t).toLocaleDateString([], { weekday: "short" }).toUpperCase();
+    const dayLong = (t) => new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+    const timeLab = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).replace(":00", "").replace(" ", "").toLowerCase();
+    const ago = (t) => { const m = Math.round((now - t) / 60000); return m < 2 ? "just now" : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
+    const dur = (ms) => ms < 60000 ? `${Math.max(1, Math.round(ms / 1000))}s` : ms < HR ? `${Math.round(ms / 60000)}m` : `${(ms / HR).toFixed(1)}h`;
+    const tip = (s) => `data-tip="${esc(s)}"`;
+    // Games in the window, from every saved slate.
+    const wins = [];
+    for (const wk of Object.values((season.status === "fulfilled" && season.value?.season) || {})) for (const g of wk.games || []) { const k = Date.parse(g.kickoff); if (Number.isFinite(k) && k + 3.5 * HR > A && k < B) wins.push([k, k + 3.5 * HR]); }
+    wins.sort((a, b) => a[0] - b[0]);
+    const merged = []; for (const w of wins) { const l = merged[merged.length - 1]; if (l && w[0] <= l[1]) l[1] = Math.max(l[1], w[1]); else merged.push([...w]); }
+    const inGame = (t) => merged.some(([a, b]) => t >= a && t < b);
+    const shade = days.map((d) => `<i class="wi-night" style="left:${xp(d)}%;width:${(7 * HR / span * 100).toFixed(3)}%"></i>`).join("")
+      + merged.map(([a, b]) => `<i class="wi-game" style="left:${xp(Math.max(a, A))}%;width:${((Math.min(b, B) - Math.max(a, A)) / span * 100).toFixed(3)}%"></i>`).join("")
+      + days.slice(1).map((d) => `<i class="wi-div" style="left:${xp(d)}%"></i>`).join("")
+      + `<i class="wi-now" style="left:${xp(now)}%"></i>`;
+    const people = TRACKED.map((n) => {
+      const opens = (v.visits?.[n] || []).filter((x) => Number.isFinite(x.at) && x.at >= A).sort((a, b) => a.at - b.at);
+      const allOpens = (v.visits?.[n] || []).filter((x) => Number.isFinite(x.at));
+      const sess = (v.sessions?.[n] || []).filter((x) => Number.isFinite(x.at) && x.at + (x.dur || 0) >= A);
+      const last = Math.max(0, ...allOpens.map((x) => x.at), ...(v.sessions?.[n] || []).map((x) => (x.at || 0) + (x.dur || 0)));
+      const daysIn = days.filter((d) => opens.some((x) => x.at >= d && x.at < d + DAY) || sess.some((x) => x.at >= d && x.at < d + DAY)).length;
+      const time = sess.filter((x) => x.at >= A).reduce((a, x) => a + (x.dur || 0), 0);
+      return { n, opens, sess, last, daysIn, time, today: opens.some((x) => x.at >= today0) || sess.some((x) => x.at >= today0), now: now - last < 10 * 60000 };
+    }).sort((a, b) => b.last - a.last);
+    const inNow = people.filter((p) => p.now), inToday = people.filter((p) => p.today), inWeek = people.filter((p) => p.daysIn), out = people.filter((p) => !p.daysIn);
+    const av = (n) => { const acc = typeof accentFor === "function" ? accentFor(n) : "#1ab8cc"; const a = (typeof avatarOverrides !== "undefined" && avatarOverrides?.[n]) || n[0]; return `<span class="wi-av" style="--accent:${acc}">${esc(a)}</span>`; };
+    const rows = people.map((p) => {
+      const sessHtml = p.sess.map((x) => `<i class="wi-sess" style="left:${xp(Math.max(x.at, A))}%;width:${Math.max(0.35, (Math.min(x.at + x.dur, B) - Math.max(x.at, A)) / span * 100).toFixed(3)}%"></i>`).join("");
+      const dots = p.opens.map((x) => `<i class="wi-dot${inGame(x.at) ? " g" : ""}" style="left:${xp(x.at)}%" ${tip(`${p.n} · ${dayLong(x.at)} ${timeLab(x.at)}${inGame(x.at) ? " · during a game" : ""} · ${x.app === "home" ? "home-screen app" : "browser"}`)}></i>`).join("");
+      const list = days.slice().reverse().map((d) => { const o = p.opens.filter((x) => x.at >= d && x.at < d + DAY); const t = p.sess.filter((x) => x.at >= d && x.at < d + DAY).reduce((a, x) => a + (x.dur || 0), 0); return o.length || t ? `<div class="wi-day"><b>${esc(dayLong(d))}</b><span>${o.length} open${o.length === 1 ? "" : "s"}${t ? ` · ${dur(t)} in app` : ""}</span><em>${o.map((x) => timeLab(x.at)).join(" · ")}</em></div>` : ""; }).join("") || `<div class="wi-day"><span>No opens in the last 7 days.</span></div>`;
+      return `<button type="button" class="wi-row${p.now ? " live" : ""}" data-wi="${esc(p.n)}">
+          <span class="wi-who">${av(p.n)}<span><b>${esc(p.n)}</b><small>${p.now ? `<i class="wi-pulse"></i>in now` : p.last ? esc(ago(p.last)) : "never"}</small></span></span>
+          <span class="wi-strip">${shade}${sessHtml}${dots}</span>
+          <span class="wi-count${p.daysIn ? "" : " zero"}"><b>${p.daysIn}</b>/7</span>
+        </button>
+        <div class="wi-more" data-for="${esc(p.n)}" hidden>${list}</div>`;
+    }).join("");
+    const axis = `<div class="wi-axrow"><span></span><span class="wi-axis">${days.map((d, i) => `<span${i === 6 ? ' class="t"' : ""}>${dayLab(d, i)}</span>`).join("")}</span><span class="wi-axd">DAYS</span></div>`;
+    body.innerHTML = `<div class="wi">
+      <div class="wi-tiles">
+        <div class="${inNow.length ? "hot" : ""}"><b>${inNow.length}</b><span>in now</span></div>
+        <div><b>${inToday.length}<small>/${TRACKED.length}</small></b><span>in today</span></div>
+        <div><b>${inWeek.length}<small>/${TRACKED.length}</small></b><span>in this week</span></div>
+      </div>
+      ${out.length ? `<div class="wi-out">Not in for 7 days: ${out.map((p) => `<b>${esc(p.n)}</b>`).join(", ")}</div>` : `<div class="wi-out ok">All ${TRACKED.length} have been in this week.</div>`}
+      <div class="wi-grid">${axis}${rows}</div>
+      <div class="wi-legend"><span><i class="wi-dot"></i>opened the app</span><span><i class="wi-sess k"></i>time in app</span><span><i class="wi-game k"></i>game on</span><span><i class="wi-night k"></i>overnight</span></div>
+      <div class="wi-tip">Tap a dot for the time, a name for their week.</div>
+    </div>`;
+    const tipEl = body.querySelector(".wi-tip");
+    let on = null;
+    body.querySelector(".wi").addEventListener("click", (e) => {
+      const d = e.target.closest(".wi-dot[data-tip]");
+      if (d) { on?.classList.remove("on"); on = d; d.classList.add("on"); tipEl.textContent = d.dataset.tip; return; }
+      const r = e.target.closest(".wi-row");
+      if (r) { const m = r.nextElementSibling; m.hidden = !m.hidden; r.classList.toggle("open", !m.hidden); }
+    });
+  }
+
   async function renderLogins() {
     // The dashboard first, then sign-ins. Everything it needs loads in
     // parallel; any one source failing leaves its panel empty, not the page.
@@ -1058,7 +1134,7 @@
     wire();
   }
 
-  const TABS = { qotw: renderQotw, experts: renderExperts, grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
+  const TABS = { whosin: renderWhosIn, qotw: renderQotw, experts: renderExperts, grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
 
   async function renderTab() {
     body.innerHTML = `<div class="admin-empty">Loading…</div>`;
@@ -1091,8 +1167,8 @@
   // app.js calls this each time the gesture opens the console.
   window.showAppConsole = () => {
     // Every entry lands on Logins, whatever tab was open last time.
-    tab = "logins";
-    el("console-tabs").querySelectorAll(".console-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === "logins"));
+    tab = "whosin";
+    el("console-tabs").querySelectorAll(".console-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === "whosin"));
     root.classList.remove("hidden");
     document.body.classList.add("admin-open");
     root.scrollTop = 0;

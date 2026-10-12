@@ -5895,3 +5895,54 @@ html.vp-gap { --nav-h: 63px; }
 .ld-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 9.5px; color: var(--text-dim); margin-top: -2px; }
 .ld-legend span { display: inline-flex; align-items: center; gap: 4px; }
 .ld-legend b { color: #c13cff; font-size: 8px; }
+
+/* ===== Admin: Who's in (last 7 days, one strip per owner) ===== */
+.wi { display: flex; flex-direction: column; gap: 10px; }
+.wi-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.wi-tiles div { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border-radius: 10px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .07); }
+.wi-tiles div.hot { border-color: rgba(57, 255, 136, .5); background: rgba(57, 255, 136, .07); }
+.wi-tiles b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 16px; color: #fff; }
+.wi-tiles b small { font-size: 8px; color: var(--text-dim); }
+.wi-tiles span { font-size: 10px; color: var(--text-dim); }
+.wi-out { font-size: 11px; color: #ffb347; }
+.wi-out b { color: #fff; }
+.wi-out.ok { color: var(--neon-green); }
+.wi-grid { display: flex; flex-direction: column; gap: 4px; }
+.wi-axrow, .wi-row { display: grid; grid-template-columns: 92px 1fr 34px; gap: 8px; align-items: center; }
+.wi-axis { display: grid; grid-template-columns: repeat(7, 1fr); }
+.wi-axis span { text-align: center; font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); }
+.wi-axis span.t { color: #fff; }
+.wi-axd { font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--text-dim); text-align: right; }
+.wi-row { width: 100%; padding: 6px 6px; border: 1px solid rgba(255, 255, 255, .06); border-radius: 10px; background: rgba(255, 255, 255, .03); color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.wi-row.live { border-color: rgba(57, 255, 136, .45); }
+.wi-row.open { border-color: rgba(26, 184, 204, .55); background: rgba(26, 184, 204, .07); }
+.wi-who { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.wi-who > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.wi-who b { font-size: 11.5px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wi-who small { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; color: var(--text-dim); white-space: nowrap; }
+.wi-av { flex: none; width: 24px; height: 24px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #0a0414; font-family: 'Press Start 2P', monospace; font-size: 9px; }
+.wi-pulse { width: 7px; height: 7px; border-radius: 50%; background: #39ff88; box-shadow: 0 0 6px #39ff88; animation: lvblink 1s steps(2, start) infinite; }
+.wi-strip { position: relative; height: 30px; border-radius: 6px; background: rgba(255, 255, 255, .045); overflow: hidden; }
+.wi-night { position: absolute; top: 0; bottom: 0; background: rgba(0, 0, 0, .35); }
+.wi-game { position: absolute; top: 0; bottom: 0; background: rgba(255, 228, 94, .16); border-left: 1px solid rgba(255, 228, 94, .45); }
+.wi-div { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255, 255, 255, .14); }
+.wi-now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: rgba(122, 243, 255, .7); }
+.wi-sess { position: absolute; bottom: 5px; height: 4px; border-radius: 2px; background: rgba(122, 243, 255, .55); }
+.wi-dot { position: absolute; top: 9px; width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: #1ab8cc; box-shadow: 0 0 0 1.5px #0b0618; cursor: pointer; }
+.wi-dot.g { background: #ffe45e; }
+.wi-dot.on { outline: 2px solid #fff; outline-offset: 1px; }
+.wi-count { text-align: right; font-size: 9px; color: var(--text-dim); }
+.wi-count b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; color: #fff; }
+.wi-count.zero b { color: #ff5c8a; }
+.wi-more { margin: -2px 0 4px; padding: 6px 10px 8px; border: 1px solid rgba(26, 184, 204, .35); border-top: 0; border-radius: 0 0 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+.wi-more[hidden] { display: none; }
+.wi-day { display: flex; flex-direction: column; gap: 1px; font-size: 10.5px; }
+.wi-day b { color: #fff; font-size: 10.5px; }
+.wi-day span { color: var(--text-dim); }
+.wi-day em { font-style: normal; color: #b8f6ff; font-size: 10px; line-height: 1.4; }
+.wi-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 9.5px; color: var(--text-dim); }
+.wi-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.wi-legend .wi-dot { position: static; margin: 0; }
+.wi-legend .k { position: static; display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
+.wi-legend .wi-sess.k { height: 4px; }
+.wi-tip { padding: 6px 9px; border-radius: 7px; background: rgba(255, 255, 255, .05); font-size: 10.5px; color: var(--text); }
