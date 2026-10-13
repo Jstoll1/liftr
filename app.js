@@ -121,23 +121,41 @@ let WEEK_LABEL = "Week 1";
 let currentWeek = 1;
 let weekList = [1];
 
-// Pull the current slate from the Worker. Keeps the built-in week 1 if the
-// Worker is unreachable or has nothing stored, so the app never shows an
-// empty board.
+// Pull the current slate from the Worker. The last good slate is kept on
+// the phone, so with no signal the app opens on this week's games rather
+// than the built-in week 1 below, which stays as the last resort.
+const SLATE_CACHE_KEY = "brochiefs_slate_v1";
+let slateFromNetwork = false;
+function restoreCachedSlate() {
+  if (slateFromNetwork) return;
+  try {
+    const c = JSON.parse(localStorage.getItem(SLATE_CACHE_KEY) || "null");
+    if (!c || !Array.isArray(c.games) || !c.games.length) return;
+    GAMES = c.games;
+    currentWeek = c.week || currentWeek;
+    WEEK_LABEL = c.label || `Week ${currentWeek}`;
+    if (Array.isArray(c.list)) weekList = c.list;
+  } catch { /* private mode or a bad copy: keep what is there */ }
+}
 async function loadSlate(week) {
   if (!WORKER_URL) return false;
   try {
     const q = week ? `?week=${week}&` : "?";
     const res = await fetch(`${WORKER_URL}/games${q}t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) return false;
+    if (!res.ok) { if (!week) restoreCachedSlate(); return false; }
     const data = await res.json();
     if (data.weeks && Array.isArray(data.weeks.list)) weekList = data.weeks.list;
     if (!Array.isArray(data.games) || !data.games.length) return false;
     GAMES = data.games;
     currentWeek = data.week || currentWeek;
     WEEK_LABEL = data.label || `Week ${currentWeek}`;
+    if (!week) {
+      slateFromNetwork = true;
+      try { localStorage.setItem(SLATE_CACHE_KEY, JSON.stringify({ games: GAMES, week: currentWeek, label: WEEK_LABEL, list: weekList })); } catch {}
+    }
     return true;
   } catch {
+    if (!week) restoreCachedSlate();
     return false;
   }
 }
@@ -6485,6 +6503,15 @@ async function checkForUpdate(quiet = false) {
 }
 
 document.getElementById("update-bar")?.addEventListener("click", reloadFresh);
+
+// Offline shell (sw.js). It serves the page network first and stamped
+// files by stamp, so the update check above keeps working unchanged.
+// updateViaCache "none" means a fix to sw.js reaches phones on the next
+// visit rather than after the HTTP cache expires.
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  const registerSw = () => navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
+  if (document.readyState === "complete") registerSw(); else addEventListener("load", registerSw);
+}
 
 checkForUpdate(true);
 // Standalone apps are suspended rather than closed, so coming back to one
