@@ -5957,3 +5957,37 @@ html.vp-gap { --nav-h: 63px; }
 
 /* Dashboard: where each tab's numbers come from, and how fresh. */
 .ld-asof { font-size: 9.5px; line-height: 1.4; color: var(--text-dim); margin: 0 0 8px; }
+
+/* Dashboard: two weeks, person by day. One row per owner, Monday first;
+   cells on the same cyan ramp as the hour grid, a dot for saved picks,
+   gold under game days, hatching before tracking began. */
+.ld-rl { margin: 0 0 8px; padding-left: 15px; font-size: 11.5px; line-height: 1.45; color: var(--text); }
+.ld-rl li { margin: 2px 0; }
+.ld-rl b { color: #fff; }
+.ld-rg { display: grid; grid-template-columns: 56px repeat(7, minmax(0, 1fr)) 3px repeat(7, minmax(0, 1fr)) 40px; gap: 3px 2px; align-items: center; }
+.ld-rw { grid-column: span 7; font-family: 'Press Start 2P', monospace; font-size: 5px; letter-spacing: .05em; color: var(--text-dim); }
+.ld-rw.r, .ld-rh.r { grid-column: auto; text-align: right; }
+.ld-rh { position: relative; padding-bottom: 5px; font-family: 'Press Start 2P', monospace; font-size: 6px; text-align: center; color: var(--text-dim); cursor: pointer; }
+.ld-rh.r { font-size: 5px; cursor: default; }
+.ld-rh.today { color: #fff; }
+.ld-rh.gd::after { content: ""; position: absolute; left: 12%; right: 12%; bottom: 0; height: 3px; border-radius: 2px; background: #ffe45e; }
+.ld-rh b { position: absolute; left: 0; right: 0; top: -9px; font-size: 6px; font-weight: normal; color: #c58bff; }
+.ld-rn { font-size: 10.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ld-rn.dim { font-size: 8.5px; color: var(--text-dim); }
+.ld-rc { position: relative; display: block; height: 15px; border-radius: 3px; cursor: pointer; }
+.ld-rc.s0 { background: rgba(255, 255, 255, .05); }
+.ld-rc.s1 { background: #13586a; }
+.ld-rc.s2 { background: #168a9c; }
+.ld-rc.s3 { background: #1ab8cc; }
+.ld-rc.s4 { background: #7af3ff; }
+.ld-rc.fut { background: transparent; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); cursor: default; }
+.ld-rc.nt { background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .07) 0 2px, transparent 2px 4px); }
+.ld-rc.pk::after { content: ""; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px #0a0014; }
+.ld-rc.on { outline: 1.5px solid #fff; outline-offset: 1px; }
+.ld-rt { font-style: normal; font-size: 10px; text-align: right; color: var(--text); white-space: nowrap; }
+.ld-rt small { color: var(--text-dim); }
+.ld-rf { font-size: 9px; text-align: center; color: var(--text-dim); cursor: pointer; }
+.ld-rf.all { color: #7af3ff; }
+.ld-rkey { flex-wrap: wrap; }
+.ld-rkey i.ld-rc { display: inline-block; width: 10px; height: 10px; margin-right: 2px; vertical-align: middle; border-radius: 2px; }
+.ld-rkey i.ld-rc.pk::after { width: 4px; height: 4px; margin: -2px 0 0 -2px; box-shadow: none; }

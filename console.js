@@ -252,7 +252,6 @@
     const winLab = spanD < 28 ? `SINCE ${dayLong(d28[0]).toUpperCase()}` : "LAST 28 DAYS";
     const colsStyle = `style="grid-template-columns:repeat(${spanD},minmax(0,1fr))"`;
     const dayAxis = () => `<div class="lvz-tlax"><span>${dayLong(d28[0]).toUpperCase()}</span>${spanD >= 14 ? `<span>${dayLong(d28[Math.floor(spanD / 2)]).toUpperCase()}</span>` : ""}<span>TODAY</span></div>`;
-    const dau = d28.map((d) => people.filter((p) => p.days.has(d)).map((p) => p.n));
     const gdSet = new Set(gameDays);
 
     // Game day: the chosen day's games, who was in and when, how many at
@@ -476,12 +475,8 @@
     for (const p of people) for (const x of [...p.opens, ...p.sess]) if (x.v && (!firstSeen.has(x.v) || x.at < firstSeen.get(x.v))) firstSeen.set(x.v, x.at);
     const buildLab = (v) => `${v.slice(4, 6)}/${v.slice(6, 8)} ${v.slice(8, 10)}:${v.slice(10, 12)}`;
     const releases = [...firstSeen.entries()].filter(([, t]) => t >= d28[0]).sort((a, b) => a[1] - b[1]);
-    const relRow = releases.length ? `<div class="ld-relrow" ${colsStyle}>${d28.map((d) => { const vs = releases.filter(([, t]) => day0(t) === d); return vs.length ? `<i ${tip(`${vs.length} new build${vs.length === 1 ? "" : "s"} ${dayLong(d)}: ${vs.map(([v, t]) => `${buildLab(v)} (first seen ${timeLab(t)})`).join(", ")}`)}><b>▲${vs.length > 1 ? vs.length : ""}</b></i>` : "<i></i>"; }).join("")}</div>` : "";
 
     // ---- Time in the app per day, 28 days (sessions) ----
-    const tpd = d28.map((d) => people.reduce((a, p) => a + p.sess.filter((x) => x.at >= d && x.at < d + DAY).reduce((s2, x) => s2 + x.dur, 0), 0));
-    const tmax = Math.max(1, ...tpd);
-    const tpdHtml = d28.map((d, i) => `<i class="ld-db${gdSet.has(d) ? " gd" : ""}${d === today0 ? " today" : ""}" ${tip(`${dayLong(d)}${gdSet.has(d) ? " · game day" : ""} · ${dur(tpd[i])} in the app${d < day0(sessSince) ? " (before time was tracked)" : ""}`)}><b style="height:${(tpd[i] / tmax * 100).toFixed(0)}%"></b></i>`).join("");
 
     // ---- Season, week by week (saved rollups, plus this week live) ----
     const etKey = (t) => { const d = new Date(t); const dow = (d.getDay() + 6) % 7; d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dow); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -607,24 +602,72 @@
     };
 
     // ---- Chart headlines: each chart leads with what it shows ----
-    const dauBest = d28.map((d, i) => ({ d, c: dau[i].length })).sort((a, b) => b.c - a.c || b.d - a.d)[0];
-    const dauAvg = d28.length ? dau.reduce((a, x) => a + x.length, 0) / d28.length : 0;
-    const gdDays = d28.filter((d) => gdSet.has(d) && d <= today0);
-    const gdAvg = gdDays.length ? gdDays.reduce((a, d) => a + dau[d28.indexOf(d)].length, 0) / gdDays.length : null;
-    const otherDays = d28.filter((d) => !gdSet.has(d));
-    const offAvg = otherDays.length ? otherDays.reduce((a, d) => a + dau[d28.indexOf(d)].length, 0) / otherDays.length : null;
-    const dauHead = dauBest?.c ? `Busiest: <b>${esc(dayLong(dauBest.d))}</b>, ${dauBest.c} of ${N} in.${gdAvg != null && offAvg != null ? ` Game days average <b>${gdAvg.toFixed(1)}</b> people, other days <b>${offAvg.toFixed(1)}</b>.` : ` A typical day: ${dauAvg.toFixed(1)}.`}` : "Nobody in yet.";
-    const tAll = tpd.reduce((a, b) => a + b, 0), tGd = d28.reduce((a, d, i) => a + (gdSet.has(d) ? tpd[i] : 0), 0);
-    const tpdHead = tAll ? `<b>${dur(tAll)}</b> in the app since ${esc(dayLong(Math.max(d28[0], sessSince)))}${tGd ? `; <b>${Math.round(tGd / tAll * 100)}%</b> of it on game days` : ""}.` : `Time in the app is tracked from ${esc(dayLong(sessSince))} on.`;
     const punchHeadOf = (grid) => { let b = { n: 0 }; grid.forEach((row, d) => row.forEach((n, h) => { const w = n + (row[(h + 1) % 24] || 0) + (row[(h + 2) % 24] || 0); if (w > b.n) b = { n: w, d, h }; })); return b.n > 0 ? `Busiest stretch: <b>${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][b.d]} ${hourLab(b.h)}-${hourLab((b.h + 3) % 24)}</b>, ${b.n} opens on record.` : ""; };
     const fullWeeks = trend.filter((w) => !w.live && !w.partial);
     const seasonHtml = fullWeeks.length >= 3
       ? `<div class="ld-trend">${trendHtml}</div>`
       : (() => { const lw = trend.filter((w) => !w.live).slice(-1)[0]; const tw = trend.find((w) => w.live); return `<div class="ld-wkcmp">${lw ? `<div><span>Week of ${wkLab(lw.k)}${lw.partial ? ` (from ${esc(dayLong(opensSince).replace(/^\w+, /, ""))})` : ""}</span><b>${lw.active}<small>/${N}</small></b><em>${lw.opens} opens · ${dur(lw.timeMs)}</em></div>` : ""}${tw ? `<div class="now"><span>This week so far</span><b>${tw.active}<small>/${N}</small></b><em>${tw.opens} opens · ${dur(tw.timeMs)}</em></div>` : ""}</div><div class="lvz-cap">The week-by-week chart appears once three full weeks are on record.</div>`; })();
 
+    // ---- The two weeks, person by day ----
+    // Last week and this week, Monday first, one row per owner. Each cell is
+    // shaded by time in the app that day (one cyan ramp, four steps); a dot
+    // means they saved picks that day. Game days are underlined in gold,
+    // days before tracking began are hatched so they never read as "out".
+    const rDays = Array.from({ length: 14 }, (_, i) => { const d = new Date(wkP0); d.setDate(d.getDate() + i); return d.getTime(); });
+    const trackedFrom = day0(Math.min(opensSince, now));
+    const tStep = (inDay, ms) => !inDay ? 0 : ms >= 30 * 60000 ? 4 : ms >= 10 * 60000 ? 3 : ms >= 2 * 60000 ? 2 : 1;
+    const cellOf = (p, d) => {
+      const e = d + DAY;
+      const o = p.opens.filter((v) => v.at >= d && v.at < e).length;
+      const ss = p.sess.filter((x) => x.at >= d && x.at < e);
+      const ms = ss.reduce((a, x) => a + x.dur, 0);
+      const pk = log.filter((r) => r.manager === p.n && r.ts >= d && r.ts < e).length;
+      const gc = ss.some((x) => x.f.includes("gamecast"));
+      return { d, in: p.days.has(d), o, ms, pk, gc };
+    };
+    const rRows = people.map((p) => {
+      const cells = rDays.map((d) => cellOf(p, d));
+      return { p, cells, tw: cells.slice(7).filter((c) => c.in).length, lw: cells.slice(0, 7).filter((c) => c.in).length };
+    }).sort((a, b) => b.tw - a.tw || b.lw - a.lw || names.indexOf(a.p.n) - names.indexOf(b.p.n));
+    const rCount = rDays.map((d, i) => rRows.filter((r) => r.cells[i].in));
+    const rHead = rDays.map((d, i) => {
+      const rel = releases.filter(([, t]) => day0(t) === d);
+      return `<span class="ld-rh${gdSet.has(d) ? " gd" : ""}${d === today0 ? " today" : ""}" ${tip(`${dayLong(d)}${gdSet.has(d) ? " · game day" : ""}${rel.length ? ` · new build ${rel.map(([v]) => buildLab(v)).join(", ")}` : ""}`)}>${rel.length ? "<b>▲</b>" : ""}${new Date(d).toLocaleDateString([], { weekday: "narrow" })}</span>${i === 6 ? "<span></span>" : ""}`;
+    }).join("");
+    const rBody = rRows.map((r) => `<span class="ld-rn">${esc(r.p.n)}</span>${r.cells.map((c, i) => {
+      const fut = c.d > today0, nt = c.d < trackedFrom;
+      const cls = fut ? "fut" : nt ? "nt" : `s${tStep(c.in, c.ms)}`;
+      const t = fut ? `${r.p.n} · ${dayLong(c.d)} · still to come` : nt ? `${r.p.n} · ${dayLong(c.d)} · before tracking began` : !c.in ? `${r.p.n} · ${dayLong(c.d)} · not in` : `${r.p.n} · ${dayLong(c.d)} · ${c.o} open${c.o === 1 ? "" : "s"}${c.ms ? ` · ${dur(c.ms)} in the app` : ""}${c.pk ? ` · saved picks (${c.pk})` : ""}${c.gc ? " · watched a gamecast" : ""}`;
+      return `<i class="ld-rc ${cls}${c.pk && !fut ? " pk" : ""}" ${tip(nt && c.pk ? `${t} · saved picks (${c.pk})` : t)}></i>${i === 6 ? "<span></span>" : ""}`;
+    }).join("")}<em class="ld-rt" ${tip(`${r.p.n} · ${r.lw} of 7 days last week · ${r.tw} of ${dayN} so far this week`)}>${r.lw}<small> · </small>${r.tw}</em>`).join("");
+    const rFoot = rDays.map((d, i) => { const c = rCount[i].length, fut = d > today0, nt = d < trackedFrom; const ms = rRows.reduce((a, r) => a + r.cells[i].ms, 0); return `<span class="ld-rf${c === N ? " all" : ""}" ${tip(fut || nt ? dayLong(d) : `${dayLong(d)} · ${c} of ${N} in${c ? `: ${rCount[i].map((r) => r.p.n).join(", ")}` : ""}${ms ? ` · ${dur(ms)} in all` : ""}`)}>${fut || nt ? "" : c}</span>${i === 6 ? "<span></span>" : ""}`; }).join("");
+    // What the grid says, in plain lines. Tracked, finished-or-today days only.
+    const rSeen = rDays.map((d, i) => ({ d, i })).filter(({ d }) => d >= trackedFrom && d <= today0);
+    const rGd = rSeen.filter(({ d }) => gdSet.has(d)), rOff = rSeen.filter(({ d }) => !gdSet.has(d) && d < today0);
+    const avgIn = (xs) => xs.length ? xs.reduce((a, { i }) => a + rCount[i].length, 0) / xs.length : null;
+    const gdOnly = rRows.filter((r) => { const ins = rSeen.filter(({ i }) => r.cells[i].in); return ins.length && ins.every(({ d }) => gdSet.has(d)); }).map((r) => r.p.n);
+    const steady = rRows.filter((r) => rSeen.length >= 5 && rSeen.filter(({ i }) => r.cells[i].in).length >= Math.ceil(rSeen.length * 0.6)).map((r) => r.p.n);
+    const absent = rRows.filter((r) => rSeen.length && !rSeen.some(({ i }) => r.cells[i].in)).map((r) => r.p.n);
+    const saveDow = new Array(7).fill(0); for (const r of log) if (Number.isFinite(r.ts)) saveDow[(new Date(r.ts).getDay() + 6) % 7]++;
+    const saveTot = saveDow.reduce((a, b) => a + b, 0), saveTop = saveDow.indexOf(Math.max(...saveDow));
+    const rLines = [
+      rGd.length && rOff.length ? `Game days bring in <b>${avgIn(rGd).toFixed(1)}</b> of ${N} on average; other days <b>${avgIn(rOff).toFixed(1)}</b>.` : "",
+      gdOnly.length ? `Only on game days: ${list(gdOnly.map(B))}. They aren't checking picks or scores during the week.` : "",
+      steady.length ? `In most days: ${list(steady.map(B))}.` : "",
+      absent.length ? `Not in at all ${rSeen.length < 14 ? `since ${esc(dayLong(rSeen[0].d))}` : "in two weeks"}: ${list(absent.map(B))}.` : "",
+      saveTot >= 5 ? `Picks get saved most on <b>${["Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays"][saveTop]}</b> (${share(saveDow[saveTop], saveTot, "saves")}).` : "",
+    ].filter(Boolean);
+    const rhythmHtml = `<div class="lvz-h">TWO WEEKS, PERSON BY DAY</div>
+      ${rLines.length ? `<ul class="ld-rl">${rLines.map((l) => `<li>${l}</li>`).join("")}</ul>` : ""}
+      <div class="ld-rg">
+        <span></span><span class="ld-rw">LAST WEEK</span><span></span><span class="ld-rw">THIS WEEK</span><span class="ld-rw r">DAYS</span>
+        <span></span>${rHead}<span class="ld-rh r">LW · TW</span>
+        ${rBody}
+        <span class="ld-rn dim">people in</span>${rFoot}<span></span>
+      </div>
+      <div class="ld-legend ld-rkey"><span><i class="ld-rc s1"></i><i class="ld-rc s2"></i><i class="ld-rc s3"></i><i class="ld-rc s4"></i>under 2m to 30m+</span><span><i class="ld-rc s2 pk"></i>saved picks</span><span><i class="ld-key-gd"></i>game day</span><span><i class="ld-rc nt"></i>not tracked yet</span></div>`;
+
     // ---- PULSE ----
-    const dmax = N;
-    const dauHtml = d28.map((d, i) => { const c = dau[i].length; return `<i class="ld-db${gdSet.has(d) ? " gd" : ""}${d === today0 ? " today" : ""}" ${tip(`${dayLong(d)}${gdSet.has(d) ? " · game day" : ""} · ${c} of ${N} in${c ? `: ${dau[i].join(", ")}` : ""}`)}><b style="height:${(c / dmax * 100).toFixed(0)}%"></b></i>`; }).join("");
     const punch = Array.from({ length: 7 }, () => new Array(24).fill(0));
     for (const p of people) for (const v of p.opens) { const d = new Date(v.at); punch[(d.getDay() + 6) % 7][d.getHours()]++; }
     const pmax = Math.max(1, ...punch.flat());
@@ -643,13 +686,7 @@
       ${story.length ? `<div class="lvz-h">THIS WEEK'S STORY</div><ul class="ld-story">${story.slice(0, 9).map((s) => `<li><em class="ld-tag ${tagCls[s.tag]}">${s.tag}</em><span>${s.html}</span></li>`).join("")}</ul>` : ""}
       ${nudges.length ? `<div class="lvz-nudge"><div class="lvz-h">WHO TO NUDGE</div>${nudges.map((x) => `<div class="lvz-nr"><b>${esc(x.n)}</b><span>${esc(x.why)}</span></div>`).join("")}<button type="button" class="admin-btn lvz-copy" data-text="${esc(nudgeText)}" data-who="${esc(JSON.stringify(nudges.map((x) => ({ n: x.n, why: x.kind }))))}">Copy message for the chat</button></div>` : ""}
       ${nudgeHtml}
-      <div class="lvz-h">PEOPLE IN EACH DAY · ${winLab}</div>
-      <div class="ld-head">${dauHead}</div>
-      <div class="ld-dau"><div class="ld-dbars" ${colsStyle}>${dauHtml}</div>${relRow}${dayAxis()}</div>
-      <div class="ld-legend"><span><i class="ld-key-gd"></i>game day</span>${releases.length ? `<span><b>▲</b>new build (tap for which)</span>` : ""}</div>
-      <div class="lvz-h">TIME IN THE APP EACH DAY</div>
-      <div class="ld-head">${tpdHead}</div>
-      <div class="ld-dau"><div class="ld-dbars" ${colsStyle}>${tpdHtml}</div>${relRow}${dayAxis()}</div>
+      ${rhythmHtml}
       <div class="lvz-h">SEASON · WEEK BY WEEK</div>
       ${seasonHtml}
       <div class="lvz-h">WHEN THE LEAGUE IS IN · DAY BY HOUR, SINCE ${esc(dayLong(opensSince).toUpperCase())}</div>
