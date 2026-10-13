@@ -329,7 +329,10 @@
     // Once per visit: "gamecast" and "gamecast-g3" are the same feature.
     for (const { p, x } of s14) [...new Set(x.f.map((f) => String(f).replace(/-g\d+$/, "")).filter(ldFeat))].forEach((k, i) => { const e = fmap.get(k) || { k, ppl: new Set(), n: 0, first: 0 }; e.ppl.add(p.n); e.n++; if (i === 0) e.first++; fmap.set(k, e); });
     const fr = [...fmap.values()].sort((a, b) => b.ppl.size - a.ppl.size || b.n - a.n);
-    const unused = Object.keys(LD_FEATURES).filter((k) => !fmap.has(k) && !/^pick-|ranking-expand|wp-explain/.test(k)).map((k) => LD_FEATURES[k]);
+    // The gamecast and final recap need a game to have been played; with no
+    // games since visit records began, nobody using them says nothing.
+    const gamesSinceSess = gameWins.some((w) => w.a >= sessSince && w.a <= now);
+    const unused = Object.keys(LD_FEATURES).filter((k) => !fmap.has(k) && !/^pick-|ranking-expand|wp-explain/.test(k) && (gamesSinceSess || !/^(gamecast|game-final)$/.test(k))).map((k) => LD_FEATURES[k]);
     const firstStop = [...fr].sort((a, b) => b.first - a.first)[0];
 
     // Gamecast: does anyone open it at all? Every session on record, since
@@ -429,8 +432,14 @@
     }
     const quiet = people.filter((p) => !p.lastAt || now - p.lastAt > 3 * DAY);
     if (quiet.length) add("ACTION", 90, `${list(quiet.map((p) => B(p.n)))} ${quiet.length === 1 ? "hasn't" : "haven't"} been in for 3+ days${quiet.length === 1 && quiet[0].lastAt ? ` (last ${dayLong(quiet[0].lastAt)})` : ""}.`);
-    const stale = buildNow ? people.filter((p) => p.ver && p.ver !== buildNow) : [];
-    if (stale.length) add("ACTION", 60, `${list(stale.map((p) => B(p.n)))} ${stale.length === 1 ? "is" : "are"} on an older build; reopening the app updates it.`);
+    // An older build only matters if they came in after the update shipped
+    // and still ran the old one; not having opened since is not a problem.
+    // The stamp is the deploy time (UTC, YYYYMMDDHHMM). Fifteen minutes of
+    // grace for GitHub Pages to publish it.
+    const stampAt = (v) => /^\d{12}$/.test(v || "") ? Date.UTC(+v.slice(0, 4), +v.slice(4, 6) - 1, +v.slice(6, 8), +v.slice(8, 10), +v.slice(10, 12)) : null;
+    const nowBuildAt = stampAt(buildNow);
+    const stale = nowBuildAt ? people.filter((p) => { const after = [...p.opens, ...p.sess].filter((x) => x.v && x.at > nowBuildAt + 15 * 60000); return after.length >= 2 && !after.some((x) => x.v >= buildNow); }) : [];
+    if (stale.length) add("ACTION", 60, `${list(stale.map((p) => B(p.n)))} opened the app since the last update but ${stale.length === 1 ? "is" : "are"} still on an older build. The update isn't reaching ${stale.length === 1 ? "that phone" : "those phones"}; closing the app fully and reopening fixes it.`);
     if (priorCovered) {
       const slip = people.filter((p) => p.L7p >= 3 && p.L7 <= 1);
       if (slip.length) add("TREND", 80, `Slipping: ${list(slip.map((p) => `${B(p.n)} (${p.L7p} of the 7 days before, ${p.L7} of the last 7)`))}.`);
@@ -636,8 +645,9 @@
     }).join("");
     const rBody = rRows.map((r) => `<span class="ld-rn">${esc(r.p.n)}</span>${r.cells.map((c, i) => {
       const fut = c.d > today0, nt = c.d < trackedFrom;
-      const cls = fut ? "fut" : nt ? "nt" : `s${tStep(c.in, c.ms)}`;
-      const t = fut ? `${r.p.n} · ${dayLong(c.d)} · still to come` : nt ? `${r.p.n} · ${dayLong(c.d)} · before tracking began` : !c.in ? `${r.p.n} · ${dayLong(c.d)} · not in` : `${r.p.n} · ${dayLong(c.d)} · ${c.o} open${c.o === 1 ? "" : "s"}${c.ms ? ` · ${dur(c.ms)} in the app` : ""}${c.pk ? ` · saved picks (${c.pk})` : ""}${c.gc ? " · watched a gamecast" : ""}`;
+      const noRec = c.in && c.d < day0(sessSince);
+      const cls = fut ? "fut" : nt ? "nt" : noRec ? "nr" : `s${tStep(c.in, c.ms)}`;
+      const t = fut ? `${r.p.n} · ${dayLong(c.d)} · still to come` : nt ? `${r.p.n} · ${dayLong(c.d)} · before tracking began` : !c.in ? `${r.p.n} · ${dayLong(c.d)} · not in` : `${r.p.n} · ${dayLong(c.d)} · ${c.o} open${c.o === 1 ? "" : "s"}${noRec ? " · time not recorded yet" : c.ms ? ` · ${dur(c.ms)} in the app` : ""}${c.pk ? ` · saved picks (${c.pk})` : ""}${c.gc ? " · watched a gamecast" : ""}`;
       return `<i class="ld-rc ${cls}${c.pk && !fut ? " pk" : ""}" ${tip(nt && c.pk ? `${t} · saved picks (${c.pk})` : t)}></i>${i === 6 ? "<span></span>" : ""}`;
     }).join("")}<em class="ld-rt" ${tip(`${r.p.n} · ${r.lw} of 7 days last week · ${r.tw} of ${dayN} so far this week`)}>${r.lw}<small> · </small>${r.tw}</em>`).join("");
     const rFoot = rDays.map((d, i) => { const c = rCount[i].length, fut = d > today0, nt = d < trackedFrom; const ms = rRows.reduce((a, r) => a + r.cells[i].ms, 0); return `<span class="ld-rf${c === N ? " all" : ""}" ${tip(fut || nt ? dayLong(d) : `${dayLong(d)} · ${c} of ${N} in${c ? `: ${rCount[i].map((r) => r.p.n).join(", ")}` : ""}${ms ? ` · ${dur(ms)} in all` : ""}`)}>${fut || nt ? "" : c}</span>${i === 6 ? "<span></span>" : ""}`; }).join("");
@@ -645,15 +655,19 @@
     const rSeen = rDays.map((d, i) => ({ d, i })).filter(({ d }) => d >= trackedFrom && d <= today0);
     const rGd = rSeen.filter(({ d }) => gdSet.has(d)), rOff = rSeen.filter(({ d }) => !gdSet.has(d) && d < today0);
     const avgIn = (xs) => xs.length ? xs.reduce((a, { i }) => a + rCount[i].length, 0) / xs.length : null;
-    const gdOnly = rRows.filter((r) => { const ins = rSeen.filter(({ i }) => r.cells[i].in); return ins.length && ins.every(({ d }) => gdSet.has(d)); }).map((r) => r.p.n);
-    const steady = rRows.filter((r) => rSeen.length >= 5 && rSeen.filter(({ i }) => r.cells[i].in).length >= Math.ceil(rSeen.length * 0.6)).map((r) => r.p.n);
+    // Patterns need enough days to mean anything: "only on game days" needs
+    // three finished days without a game; "most days" a full tracked week
+    // and five of its last seven.
+    const gdOnly = rOff.length >= 3 ? rRows.filter((r) => { const ins = rSeen.filter(({ i }) => r.cells[i].in); return ins.length && ins.every(({ d }) => gdSet.has(d)); }).map((r) => r.p.n) : [];
+    const last7 = rSeen.slice(-7);
+    const steady = last7.length >= 7 ? rRows.filter((r) => last7.filter(({ i }) => r.cells[i].in).length >= 5).map((r) => r.p.n) : [];
     const absent = rRows.filter((r) => rSeen.length && !rSeen.some(({ i }) => r.cells[i].in)).map((r) => r.p.n);
     const saveDow = new Array(7).fill(0); for (const r of log) if (Number.isFinite(r.ts)) saveDow[(new Date(r.ts).getDay() + 6) % 7]++;
     const saveTot = saveDow.reduce((a, b) => a + b, 0), saveTop = saveDow.indexOf(Math.max(...saveDow));
     const rLines = [
       rGd.length && rOff.length ? `Game days bring in <b>${avgIn(rGd).toFixed(1)}</b> of ${N} on average; other days <b>${avgIn(rOff).toFixed(1)}</b>.` : "",
-      gdOnly.length ? `Only on game days: ${list(gdOnly.map(B))}. They aren't checking picks or scores during the week.` : "",
-      steady.length ? `In most days: ${list(steady.map(B))}.` : "",
+      gdOnly.length ? `Only on game days: ${list(gdOnly.map(B))}, across ${rOff.length} other days on record.` : "",
+      steady.length ? `In 5 or more of the last 7 days: ${list(steady.map(B))}.` : "",
       absent.length ? `Not in at all ${rSeen.length < 14 ? `since ${esc(dayLong(rSeen[0].d))}` : "in two weeks"}: ${list(absent.map(B))}.` : "",
       saveTot >= 5 ? `Picks get saved most on <b>${["Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays"][saveTop]}</b> (${share(saveDow[saveTop], saveTot, "saves")}).` : "",
     ].filter(Boolean);
@@ -665,7 +679,7 @@
         ${rBody}
         <span class="ld-rn dim">people in</span>${rFoot}<span></span>
       </div>
-      <div class="ld-legend ld-rkey"><span><i class="ld-rc s1"></i><i class="ld-rc s2"></i><i class="ld-rc s3"></i><i class="ld-rc s4"></i>under 2m to 30m+</span><span><i class="ld-rc s2 pk"></i>saved picks</span><span><i class="ld-key-gd"></i>game day</span><span><i class="ld-rc nt"></i>not tracked yet</span></div>`;
+      <div class="ld-legend ld-rkey"><span><i class="ld-rc s1"></i><i class="ld-rc s2"></i><i class="ld-rc s3"></i><i class="ld-rc s4"></i>under 2m to 30m+</span><span><i class="ld-rc s2 pk"></i>saved picks</span><span><i class="ld-key-gd"></i>game day</span>${rRows.some((r) => r.cells.some((c) => c.in && c.d < day0(sessSince) && c.d >= trackedFrom)) ? `<span><i class="ld-rc nr"></i>in, time not recorded</span>` : ""}<span><i class="ld-rc nt"></i>not tracked yet</span></div>`;
 
     // ---- PULSE ----
     const punch = Array.from({ length: 7 }, () => new Array(24).fill(0));

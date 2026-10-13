@@ -5991,3 +5991,5 @@ html.vp-gap { --nav-h: 63px; }
 .ld-rkey { flex-wrap: wrap; }
 .ld-rkey i.ld-rc { display: inline-block; width: 10px; height: 10px; margin-right: 2px; vertical-align: middle; border-radius: 2px; }
 .ld-rkey i.ld-rc.pk::after { width: 4px; height: 4px; margin: -2px 0 0 -2px; box-shadow: none; }
+.ld-rc.nr { background: repeating-linear-gradient(135deg, #168a9c 0 3px, #13586a 3px 6px); }
+.ld-rkey { margin-top: 6px; }
