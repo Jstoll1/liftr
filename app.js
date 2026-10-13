@@ -69,6 +69,9 @@ if (PREVIEW) {
   window.fetch = (input, init = {}) => {
     const url = typeof input === "string" ? input : input?.url || "";
     const method = String(init.method || (typeof input === "string" ? "GET" : input?.method) || "GET").toUpperCase();
+    // Demo scenarios (preview.js) answer the slate, picks and live scores.
+    const demo = window.__previewDemo?.handle(url, method, init.body);
+    if (demo) return Promise.resolve(demo);
     if (url.startsWith(WORKER_URL) && method !== "GET" && method !== "HEAD" && !readOnlyPost.test(new URL(url).pathname)) {
       let echo = {};
       try { echo = JSON.parse(init.body || "{}"); } catch {}
@@ -79,6 +82,7 @@ if (PREVIEW) {
   };
   if (navigator.sendBeacon) { const realBeacon = navigator.sendBeacon.bind(navigator); navigator.sendBeacon = (url, data) => String(url).startsWith(WORKER_URL) ? true : realBeacon(url, data); }
   addEventListener("DOMContentLoaded", () => {
+    if (window.__previewDemo) return; // preview.js shows its own flag, with the scenario switch
     const flag = Object.assign(document.createElement("div"), { className: "preview-flag", textContent: "PREVIEW · NOTHING HERE IS SAVED" });
     document.body.appendChild(flag);
   });

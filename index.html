@@ -37,6 +37,7 @@
         document.documentElement.setAttribute("data-theme", "sf");
         document.write('<link rel="stylesheet" href="themes/sf.css?v=202610132042" />');
       }
+      if (preview) document.write('<script src="preview.js?v=202610132042"><\/script>');
       if (preview && navigator.serviceWorker) {
         navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
         if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { if (/^brochiefs-/.test(k)) caches.delete(k); }); }).catch(function () {});
