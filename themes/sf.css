@@ -1,0 +1,307 @@
+/* Street Fighter style theme ("sf"), loaded only when it is switched on
+   (see the theme script in index.html): ?theme=sf on any device, and on by
+   default on the preview site. Everything is scoped to html[data-theme=sf]
+   and layered over styles.css, so switching it off restores the arcade
+   look untouched.
+   The look is the 1991 cabinet: indigo stage with a repeating wordmark,
+   navy panels framed in gold, flame-gradient titles with a hard black edge,
+   yellow health bars over red, white pixel menus, the red 1P cursor. No
+   game logos, names or character art: the league's owners are the fighters. */
+
+@font-face {
+  font-family: "Jersey 10";
+  src: url("fonts/jersey10-latin.woff2") format("woff2");
+  font-display: swap;
+}
+/* The app's body face, Orbitron, is re-pointed at the arcade face, so every
+   rule that names it follows without being restated here. Jersey runs
+   small for its size, so it is scaled up to sit where Orbitron sat. */
+@font-face {
+  font-family: "Orbitron";
+  src: url("fonts/jersey10-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  size-adjust: 128%;
+  font-display: swap;
+}
+
+html[data-theme="sf"] {
+  --bg: #241a86;
+  --bg2: #120c52;
+  --neon-pink: #ff3b3b;
+  --neon-cyan: #8fd3ff;
+  --neon-purple: #6f62ff;
+  --neon-yellow: #ffd23f;
+  --neon-green: #7dff7a;
+  --text: #ffffff;
+  --text-dim: #b7bdf5;
+  --text-meta: #d3d7ff;
+  --card-bg: linear-gradient(180deg, #17208a 0%, #0c1260 100%);
+  --card-border: #e9b949;
+  --sf-gold: #f2c94c;
+  --sf-gold-dk: #9a6a12;
+  --sf-navy: #0c1260;
+  --sf-navy2: #17208a;
+  --sf-red: #d7141e;
+  --sf-red-dk: #7c0710;
+  --sf-hp: #f8e231;
+  --sf-steel: #c8cdf0;
+  --sf-panel: linear-gradient(180deg, #1b259a 0%, #0e1468 55%, #0a0f52 100%);
+  --sf-flame: linear-gradient(180deg, #fffbc2 0%, #ffe14a 30%, #ff9f1c 62%, #e6301c 100%);
+  --sf-edge: 0 2px 0 #2a0600, 2px 0 0 #2a0600, -2px 0 0 #2a0600, 0 -2px 0 #2a0600, 2px 2px 0 #2a0600, -2px 2px 0 #2a0600, 2px -2px 0 #2a0600, -2px -2px 0 #2a0600, 0 4px 0 #120300;
+}
+
+/* ---- Stage ---- */
+html[data-theme="sf"], html[data-theme="sf"] body {
+  background-color: #241a86;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22420%22 height=%22230%22 viewBox=%220 0 420 230%22%3E%3Cg transform=%22rotate%28-14 210 115%29%22 font-family=%22Impact, %27Arial Black%27, sans-serif%22 font-style=%22italic%22 font-weight=%22900%22 font-size=%2266%22 fill=%22%238f86ff%22 fill-opacity=%22.13%22 stroke=%22%23c9c4ff%22 stroke-opacity=%22.08%22 stroke-width=%222%22%3E%3Ctext x=%22-30%22 y=%2295%22%3EBROCHIEFS%3C/text%3E%3Ctext x=%22180%22 y=%22200%22%3EBROCHIEFS%3C/text%3E%3C/g%3E%3C/svg%3E"), radial-gradient(120% 80% at 50% 0%, #3b2fc0 0%, #2a1f98 45%, #1b136e 100%);
+  background-size: 420px 230px, 100% 100%;
+  background-attachment: fixed, fixed;
+}
+html[data-theme="sf"] body { font-family: "Jersey 10", "Orbitron", system-ui, sans-serif; }
+/* The arcade face has one weight; a faked bold smears it. Never synthesize. */
+html[data-theme="sf"], html[data-theme="sf"] * { font-synthesis: none; }
+html[data-theme="sf"] .screen,
+html[data-theme="sf"] .logo-screen,
+html[data-theme="sf"] #logo-screen { background: transparent !important; }
+html[data-theme="sf"] .synth-grid,
+html[data-theme="sf"] .arcade-horizon-grid { display: none; }
+html[data-theme="sf"] .scanlines { opacity: .35; }
+html[data-theme="sf"] meta { color: inherit; }
+
+/* ---- Panels: navy, framed in gold, square corners, a hard drop ---- */
+html[data-theme="sf"] .game-card,
+html[data-theme="sf"] .scorebug,
+html[data-theme="sf"] .tiebreaker-card,
+html[data-theme="sf"] .picks-standing,
+html[data-theme="sf"] .my-score,
+html[data-theme="sf"] .recap-panel,
+html[data-theme="sf"] .payouts-panel,
+html[data-theme="sf"] .season-panel,
+html[data-theme="sf"] .scoreboard-table-wrap,
+html[data-theme="sf"] .rankings-list,
+html[data-theme="sf"] .modal-card,
+html[data-theme="sf"] .modal-box,
+html[data-theme="sf"] .sheet,
+html[data-theme="sf"] .picks-total {
+  background: var(--sf-panel) !important;
+  border: 2px solid var(--sf-gold) !important;
+  border-radius: 3px !important;
+  box-shadow: inset 0 0 0 2px #070a3a, inset 0 3px 0 2px rgba(255, 255, 255, .12), 0 4px 0 #070a3a, 0 6px 14px rgba(0, 0, 0, .45) !important;
+}
+html[data-theme="sf"] .game-card::before,
+html[data-theme="sf"] .game-card::after,
+html[data-theme="sf"] .scorebug::before,
+html[data-theme="sf"] .scorebug::after,
+html[data-theme="sf"] .rankings-list::before,
+html[data-theme="sf"] .rankings-list::after { display: none !important; }
+
+/* ---- Titles: flame gradient, black edge ---- */
+html[data-theme="sf"] .section-heading,
+html[data-theme="sf"] .rules-heading,
+html[data-theme="sf"] .brand-mark,
+html[data-theme="sf"] .logo-text,
+html[data-theme="sf"] .sf-title {
+  font-family: "Jersey 10", sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #ffe14a !important;
+  background: var(--sf-flame);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(2px 0 0 #2a0600) drop-shadow(-2px 0 0 #2a0600) drop-shadow(0 2px 0 #2a0600) drop-shadow(0 -2px 0 #2a0600) drop-shadow(0 3px 0 #120300);
+  text-shadow: none !important;
+  animation: none !important;
+}
+html[data-theme="sf"] .section-heading *,
+html[data-theme="sf"] .rules-heading * { -webkit-text-fill-color: initial; }
+html[data-theme="sf"] .all-picks-caret { color: var(--sf-gold) !important; filter: none; }
+
+/* ---- Header: a HUD bar ---- */
+html[data-theme="sf"] .home-header {
+  background: linear-gradient(180deg, #0e1470 0%, #0a0f52 100%) !important;
+  border-bottom: 3px solid var(--sf-gold) !important;
+  box-shadow: 0 3px 0 #070a3a, 0 8px 18px rgba(0, 0, 0, .4) !important;
+}
+html[data-theme="sf"] .home-logo-img { display: none; }
+html[data-theme="sf"] .home-logo-btn::after {
+  content: "BROCHIEFS";
+  display: inline-block;
+  font-family: "Jersey 10", sans-serif;
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: .02em;
+  transform: skewX(-10deg);
+  background: var(--sf-flame);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(2px 0 0 #2a0600) drop-shadow(-2px 0 0 #2a0600) drop-shadow(0 2px 0 #2a0600) drop-shadow(0 -2px 0 #2a0600) drop-shadow(0 4px 0 #120300);
+}
+html[data-theme="sf"] .home-header.compact .home-logo-btn::after { font-size: 22px; }
+html[data-theme="sf"] .me-pill {
+  background: linear-gradient(180deg, #1b259a, #0c1260) !important;
+  border: 2px solid var(--sf-gold) !important;
+  border-radius: 3px !important;
+  color: #fff !important;
+  box-shadow: 0 3px 0 #070a3a !important;
+}
+html[data-theme="sf"] .me-pill-avatar { border-radius: 2px !important; box-shadow: 0 0 0 2px var(--sf-red) !important; }
+html[data-theme="sf"] .me-pill-name { font-family: "Press Start 2P", monospace !important; font-size: 10px !important; color: #fff !important; text-shadow: 0 2px 0 #070a3a; }
+html[data-theme="sf"] .head-score,
+html[data-theme="sf"] .head-cd {
+  background: #070a3a !important;
+  border: 2px solid var(--sf-steel) !important;
+  border-radius: 3px !important;
+  color: var(--sf-hp) !important;
+}
+
+/* ---- Bottom nav: the select bar ---- */
+html[data-theme="sf"] .bottom-nav {
+  background: linear-gradient(180deg, #121a7e 0%, #0a0f52 100%) !important;
+  border-top: 3px solid var(--sf-gold) !important;
+  box-shadow: 0 -3px 0 #070a3a !important;
+}
+html[data-theme="sf"] .nav-btn { color: #b7bdf5 !important; }
+html[data-theme="sf"] .nav-btn svg { filter: none !important; }
+html[data-theme="sf"] .nav-btn-label { font-family: "Press Start 2P", monospace !important; font-size: 8px !important; letter-spacing: .02em; text-shadow: 0 2px 0 #070a3a; }
+html[data-theme="sf"] .nav-btn.active { color: var(--sf-hp) !important; }
+html[data-theme="sf"] .nav-btn.active .nav-btn-label::before { content: "["; color: var(--sf-red); margin-right: 3px; }
+html[data-theme="sf"] .nav-btn.active .nav-btn-label::after { content: "]"; color: var(--sf-red); margin-left: 3px; }
+html[data-theme="sf"] .nav-btn.active svg { color: var(--sf-hp); filter: drop-shadow(0 2px 0 #070a3a) !important; }
+
+/* ---- Game cards (picks) ---- */
+html[data-theme="sf"] .game-meta,
+html[data-theme="sf"] .game-meta-left { color: var(--sf-steel) !important; font-family: "Press Start 2P", monospace; font-size: 8px; }
+html[data-theme="sf"] .hz-nm { font-family: "Press Start 2P", monospace !important; font-size: 10px !important; font-weight: 400 !important; -webkit-text-stroke: 0 !important; color: #fff !important; text-shadow: 0 2px 0 #070a3a; letter-spacing: .02em; }
+html[data-theme="sf"] .hz-tm.picked .hz-nm,
+html[data-theme="sf"] .lr-hz-tm.picked .hz-nm { color: var(--sf-hp) !important; }
+html[data-theme="sf"] .tm-logo,
+html[data-theme="sf"] .bug-logo {
+  background: radial-gradient(circle at 50% 35%, #2c39c8, #0b1157) !important;
+  border: 2px solid var(--sf-steel);
+  border-radius: 2px !important;
+  padding: 3px;
+  box-shadow: 0 2px 0 #070a3a;
+  filter: none !important;
+}
+html[data-theme="sf"] .hz-tm.picked .tm-logo,
+html[data-theme="sf"] .lr-hz-tm.picked .tm-logo,
+html[data-theme="sf"] .bug-row.mine .bug-logo { border-color: var(--sf-red); box-shadow: 0 0 0 2px var(--sf-red), 0 2px 0 #070a3a; }
+html[data-theme="sf"] .lr-score,
+html[data-theme="sf"] .bug-score {
+  font-family: "Jersey 10", sans-serif !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  background: linear-gradient(180deg, #ffffff 0%, #dfe4ff 45%, #8d97d8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 0 #070a3a);
+  text-shadow: none !important;
+}
+html[data-theme="sf"] .lr-score.win { background: var(--sf-flame); -webkit-background-clip: text; background-clip: text; }
+html[data-theme="sf"] .lr-mid {
+  font-family: "Jersey 10", sans-serif !important;
+  font-weight: 700;
+  color: var(--sf-hp) !important;
+  background: #070a3a !important;
+  border: 2px solid var(--sf-steel) !important;
+  border-radius: 2px !important;
+}
+html[data-theme="sf"] .bug-status { font-family: "Press Start 2P", monospace !important; color: var(--sf-hp) !important; background: none !important; border: 0 !important; box-shadow: none !important; text-shadow: 0 2px 0 #070a3a !important; }
+html[data-theme="sf"] .game-status {
+  font-family: "Press Start 2P", monospace !important;
+  color: #fff !important;
+  background: #070a3a !important;
+  border: 2px solid var(--sf-steel) !important;
+  border-radius: 2px !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+html[data-theme="sf"] .game-status.final { color: var(--sf-hp) !important; border-color: var(--sf-gold) !important; }
+html[data-theme="sf"] .insights-btn,
+html[data-theme="sf"] .h2h-btn,
+html[data-theme="sf"] .ms-refresh {
+  font-family: "Press Start 2P", monospace !important;
+  color: #fff !important;
+  background: linear-gradient(180deg, #3a49e0 0%, #1b259a 55%, #121a7e 100%) !important;
+  border: 2px solid var(--sf-steel) !important;
+  border-radius: 3px !important;
+  box-shadow: 0 3px 0 #070a3a !important;
+  text-shadow: 0 2px 0 #070a3a;
+}
+html[data-theme="sf"] .lr-outcome.hit { color: var(--neon-green) !important; }
+html[data-theme="sf"] .lr-foot { border-top: 2px dashed rgba(200, 205, 240, .35) !important; }
+html[data-theme="sf"] .rd-pts,
+html[data-theme="sf"] .stake {
+  font-family: "Press Start 2P", monospace !important;
+  border-radius: 2px !important;
+  background: #070a3a !important;
+  border: 2px solid var(--sf-steel) !important;
+  color: #fff !important;
+}
+html[data-theme="sf"] .rd-pts.hit2,
+html[data-theme="sf"] .stake.hit { background: linear-gradient(180deg, #ffe14a, #f2a516) !important; border-color: #fff4b0 !important; color: #2a0600 !important; }
+html[data-theme="sf"] .stake.miss { border-color: var(--sf-red) !important; color: #ff9a9a !important; }
+
+/* ---- Score bugs (scores) ---- */
+html[data-theme="sf"] .bug-head { border-bottom: 2px solid rgba(200, 205, 240, .25) !important; }
+html[data-theme="sf"] .bug-gnum { font-family: "Press Start 2P", monospace !important; color: var(--sf-hp) !important; }
+html[data-theme="sf"] .tm-nm { font-family: "Press Start 2P", monospace !important; font-size: 9.5px !important; font-weight: 400 !important; -webkit-text-stroke: 0 !important; color: #fff !important; text-shadow: 0 2px 0 #070a3a; }
+html[data-theme="sf"] .bug-row.mine .tm-nm { color: var(--sf-hp) !important; }
+html[data-theme="sf"] .bug-row.mine { box-shadow: inset 3px 0 0 var(--sf-red) !important; border: 0 !important; }
+html[data-theme="sf"] .bug-fav,
+html[data-theme="sf"] .bug-tv { color: var(--sf-steel) !important; border-color: rgba(200, 205, 240, .4) !important; }
+html[data-theme="sf"] .scorebug.is-live { border-color: #fff !important; box-shadow: inset 0 0 0 2px #070a3a, 0 0 0 2px var(--sf-red), 0 4px 0 #070a3a !important; }
+
+/* ---- Leaderboard: the high-score table ---- */
+html[data-theme="sf"] .ranking-row { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+html[data-theme="sf"] .ranking-row + .ranking-row { border-top: 2px solid rgba(200, 205, 240, .12) !important; }
+html[data-theme="sf"] .ranking-row.rank-hd * { font-family: "Press Start 2P", monospace !important; color: var(--sf-gold) !important; }
+html[data-theme="sf"] .ranking-row.rank-1 { background: linear-gradient(180deg, #e0242c 0%, #b0101a 60%, #8a0a13 100%) !important; box-shadow: inset 0 0 0 2px #ff8c8c, 0 3px 0 #070a3a !important; }
+html[data-theme="sf"] .ranking-row.is-me:not(.rank-1) { box-shadow: inset 0 0 0 2px var(--sf-hp) !important; }
+html[data-theme="sf"] .ranking-name { font-family: "Press Start 2P", monospace !important; color: #fff !important; text-shadow: 0 2px 0 #070a3a; }
+html[data-theme="sf"] .ranking-place { font-family: "Press Start 2P", monospace !important; color: var(--sf-hp) !important; background: none !important; border: 0 !important; box-shadow: none !important; text-shadow: 0 2px 0 #070a3a; }
+html[data-theme="sf"] .ranking-score { font-family: "Press Start 2P", monospace !important; color: #fff !important; background: #070a3a !important; border: 2px solid var(--sf-steel) !important; border-radius: 2px !important; text-shadow: none !important; }
+/* Win chance as a health bar: yellow over red. */
+html[data-theme="sf"] .rank-wp-bar { background: var(--sf-red) !important; border: 2px solid #fff !important; border-radius: 0 !important; box-shadow: 0 2px 0 #070a3a !important; }
+html[data-theme="sf"] .rank-wp-bar * { background: var(--sf-hp) !important; border-radius: 0 !important; box-shadow: none !important; }
+
+/* ---- Player select ---- */
+html[data-theme="sf"] #login-screen .brand-mark { font-size: 30px !important; }
+html[data-theme="sf"] .brand-sub { color: #fff !important; font-family: "Press Start 2P", monospace; font-size: 8px !important; line-height: 1.6; text-shadow: 0 2px 0 #070a3a; }
+html[data-theme="sf"] .manager-card {
+  background: radial-gradient(circle at 50% 30%, #3a49e0 0%, #1b259a 45%, #0c1260 100%) !important;
+  border: 3px solid var(--sf-gold) !important;
+  border-radius: 2px !important;
+  box-shadow: inset 0 0 0 2px #070a3a, 0 4px 0 #070a3a !important;
+  clip-path: none !important;
+}
+html[data-theme="sf"] .manager-card::before,
+html[data-theme="sf"] .manager-card::after { display: none !important; }
+html[data-theme="sf"] .manager-card:hover,
+html[data-theme="sf"] .manager-card:focus-visible,
+html[data-theme="sf"] .manager-card.is-me { border-color: var(--sf-red) !important; box-shadow: inset 0 0 0 2px #070a3a, 0 0 0 3px #ff8c8c, 0 4px 0 #070a3a !important; }
+html[data-theme="sf"] .player-tag { font-family: "Press Start 2P", monospace !important; background: var(--sf-red) !important; color: #fff !important; border-radius: 0 !important; border: 2px solid #fff; }
+html[data-theme="sf"] .manager-avatar-ring { border-radius: 2px !important; background: #070a3a !important; box-shadow: 0 0 0 3px var(--sf-steel), 0 4px 0 #070a3a !important; }
+html[data-theme="sf"] .manager-avatar { border-radius: 0 !important; font-family: "Jersey 10", sans-serif !important; font-weight: 700 !important; }
+html[data-theme="sf"] .manager-name-plate { background: #070a3a !important; border-top: 2px solid var(--sf-gold) !important; }
+html[data-theme="sf"] .manager-name { font-family: "Press Start 2P", monospace !important; color: #fff !important; font-size: 11px !important; text-shadow: 0 2px 0 #000; }
+html[data-theme="sf"] .manager-pick-status { font-family: "Press Start 2P", monospace !important; color: var(--sf-hp) !important; font-size: 8px !important; }
+
+/* ---- Title screen ---- */
+html[data-theme="sf"] .arcade-sun { display: none; }
+html[data-theme="sf"] .logo-text { font-size: clamp(44px, 14vw, 72px) !important; transform: skewX(-10deg); }
+html[data-theme="sf"] .logo-text::before,
+html[data-theme="sf"] .logo-text::after { display: none !important; }
+html[data-theme="sf"] .arcade-tag { font-family: "Press Start 2P", monospace !important; color: #fff !important; text-shadow: 0 2px 0 #070a3a !important; }
+html[data-theme="sf"] .logo-hint { font-family: "Press Start 2P", monospace !important; color: var(--sf-hp) !important; opacity: 1 !important; text-shadow: 0 2px 0 #070a3a !important; }
+html[data-theme="sf"] .arcade-copyright { font-family: "Press Start 2P", monospace; font-size: 8px; color: #fff !important; text-shadow: 0 2px 0 #070a3a; }
+
+/* Body copy: the pixel face at its real weights only, no glow or stroke. */
+html[data-theme="sf"] .lr-outcome,
+html[data-theme="sf"] .lr-when,
+html[data-theme="sf"] .picks-progress { font-weight: 400 !important; -webkit-text-stroke: 0 !important; text-shadow: 0 2px 0 #070a3a !important; letter-spacing: .02em; }

@@ -23,6 +23,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=202610132042" />
   <link rel="stylesheet" href="history.css?v=202610132042" />
+  <script>
+    // Themes. ?theme=sf turns the Street Fighter style theme on for this
+    // device, ?theme=off turns it off; the choice is remembered. On the
+    // preview site (brochiefs-preview.pages.dev) it is on unless turned
+    // off. Written into the head so the page never paints in the old look.
+    // The preview site also skips the offline cache, so every preview push
+    // shows up on the next open.
+    (function () {
+      var KEY = "brochiefs_theme_v1", preview = /(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname), t = preview ? "sf" : "";
+      try { var q = new URLSearchParams(location.search).get("theme"); if (q) localStorage.setItem(KEY, q); t = localStorage.getItem(KEY) || t; } catch (e) {}
+      if (t === "sf") {
+        document.documentElement.setAttribute("data-theme", "sf");
+        document.write('<link rel="stylesheet" href="themes/sf.css?v=202610132042" />');
+      }
+      if (preview && navigator.serviceWorker) {
+        navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
+        if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { if (/^brochiefs-/.test(k)) caches.delete(k); }); }).catch(function () {});
+      }
+    })();
+  </script>
 </head>
 <body>
 

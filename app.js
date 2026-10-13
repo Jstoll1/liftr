@@ -1901,7 +1901,8 @@ let pendingIdentity = null;
 // entry from the splash and again if they head for Picks, Scores or
 // History without choosing. "Just looking" hides it for this visit.
 let openClaimPrompt = function () {
-  if (loadMe() || claimSkippedThisVisit) return false;
+  const me = loadMe();
+  if (me || claimSkippedThisVisit) return false;
   claimGrid.innerHTML = MANAGERS.map((name, idx) => {
     const accent = accentFor(name);
     const av = avatarOverrides[name] || shown(name)[0];
@@ -6575,7 +6576,7 @@ document.getElementById("update-bar")?.addEventListener("click", reloadFresh);
 // files by stamp, so the update check above keeps working unchanged.
 // updateViaCache "none" means a fix to sw.js reaches phones on the next
 // visit rather than after the HTTP cache expires.
-if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+if ("serviceWorker" in navigator && !PREVIEW && (location.protocol === "https:" || location.hostname === "localhost")) {
   const registerSw = () => navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
   if (document.readyState === "complete") registerSw(); else addEventListener("load", registerSw);
 }
