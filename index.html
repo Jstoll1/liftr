@@ -13,16 +13,16 @@
   <meta name="apple-mobile-web-app-title" content="Pick'em" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0a0014" />
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=202610132042" />
-  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=202610132042" />
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png?v=202610132042" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=202610132136" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=202610132136" />
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png?v=202610132136" />
   <link rel="manifest" href="manifest.json" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=202610132042" />
-  <link rel="stylesheet" href="history.css?v=202610132042" />
+  <link rel="stylesheet" href="styles.css?v=202610132136" />
+  <link rel="stylesheet" href="history.css?v=202610132136" />
   <script>
     // Themes. ?theme=sf turns the Street Fighter style theme on for this
     // device, ?theme=off turns it off; the choice is remembered. On the
@@ -35,9 +35,9 @@
       try { var q = new URLSearchParams(location.search).get("theme"); if (q) localStorage.setItem(KEY, q); t = localStorage.getItem(KEY) || t; } catch (e) {}
       if (t === "sf") {
         document.documentElement.setAttribute("data-theme", "sf");
-        document.write('<link rel="stylesheet" href="themes/sf.css?v=202610132042" />');
+        document.write('<link rel="stylesheet" href="themes/sf.css?v=202610132136" />');
       }
-      if (preview) document.write('<script src="preview.js?v=202610132042"><\/script>');
+      if (preview) document.write('<script src="preview.js?v=202610132136"><\/script>');
       if (preview && navigator.serviceWorker) {
         navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
         if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { if (/^brochiefs-/.test(k)) caches.delete(k); }); }).catch(function () {});
@@ -611,10 +611,10 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=202610132042"></script>
-  <script src="sim.js?v=202610132042"></script>
-  <script src="gridcard.js?v=202610132042"></script>
-  <script src="attract-facts.js?v=202610132042"></script>
-  <script src="history.js?v=202610132042"></script>
+  <script src="app.js?v=202610132136"></script>
+  <script src="sim.js?v=202610132136"></script>
+  <script src="gridcard.js?v=202610132136"></script>
+  <script src="attract-facts.js?v=202610132136"></script>
+  <script src="history.js?v=202610132136"></script>
 </body>
 </html>
