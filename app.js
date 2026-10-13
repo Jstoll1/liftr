@@ -327,6 +327,7 @@ async function pushManagerState(manager, state, { attempts = 3 } = {}) {
       if (res.ok) {
         try { lastPushEcho = (await res.json())?.state || null; } catch { lastPushEcho = null; }
         try { localStorage.removeItem(PENDING_KEY); } catch {}
+        boardPicks.at = 0;
         setSyncStatus("saved");
         return true;
       }
@@ -512,6 +513,7 @@ function possFromLastPlay(lp, awayId, homeId, st) {
 }
 async function fetchLiveFromEspn() {
   const events = [];
+  let ok = 0;
   for (const date of espnScoreboardDates()) {
     const res = await fetch(
       `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300&t=${Date.now()}`,
@@ -519,15 +521,18 @@ async function fetchLiveFromEspn() {
     );
     if (!res.ok) continue;
     const data = await res.json();
+    ok++;
     if (Array.isArray(data?.events)) events.push(...data.events);
   }
+  // No date answered: throw so the caller falls back and retries soon.
+  if (!ok) throw new Error("espn scoreboard unavailable");
   return parseEspnEvents(events);
 }
 
 async function fetchLiveFromWorker() {
   if (!WORKER_URL) return {};
   const res = await fetch(`${WORKER_URL}/live?t=${Date.now()}`, { cache: "no-store" });
-  if (!res.ok) return {};
+  if (!res.ok) throw new Error(`worker live ${res.status}`);
   const data = await res.json();
   const byId = {};
   (data.games || []).forEach((g) => {
@@ -539,18 +544,36 @@ async function fetchLiveFromWorker() {
 // Latest live map, shared with the picks screen so locked games there show
 // the score without their own fetch.
 let latestLive = {};
-async function fetchLiveScores() {
-  let live = {};
+// How long a live-scores fetch stays good. Every time while a game is on
+// (or might be: kicked off within five hours and not final), every minute
+// in the two hours before a kickoff, every five minutes otherwise. A
+// Tuesday no longer polls ESPN every ten seconds. Coming back to the app
+// always fetches fresh.
+let liveFetchedAt = 0;
+function liveTtl() {
+  const now = Date.now();
+  if (Object.values(latestLive).some((l) => l?.found && l.state === "in" && !l.completed)) return 0;
+  const ks = GAMES.map((g) => ({ g, k: Date.parse(g.kickoff) })).filter((x) => Number.isFinite(x.k));
+  if (ks.some(({ g, k }) => now >= k - 10 * 60000 && now < k + 5 * 3600000 && !latestLive[g.id]?.completed)) return 0;
+  if (ks.some(({ k }) => k > now && k - now < 2 * 3600000)) return 60000;
+  return 5 * 60000;
+}
+async function fetchLiveScores(force = false) {
+  if (!force && liveFetchedAt && Date.now() - liveFetchedAt < liveTtl()) return latestLive;
+  let live = {}, answered = false;
   try {
     live = await fetchLiveFromEspn();
+    answered = true;
   } catch (err) {
     console.warn("ESPN direct fetch failed, falling back to Worker", err);
   }
   if (!Object.keys(live).length) {
-    try { live = await fetchLiveFromWorker(); } catch { live = {}; }
+    try { live = await fetchLiveFromWorker(); answered = true; } catch { live = {}; }
   }
   if (Object.keys(live).length) latestLive = live;
-  return live;
+  // A failed fetch is never reused; an answer (even "no games yet") is.
+  if (answered) liveFetchedAt = Date.now();
+  return Object.keys(live).length ? live : latestLive;
 }
 
 // Cloud is the source of truth across devices — pull once per manager
@@ -2476,11 +2499,27 @@ function showScoreboard() {
 let lastGoodCloudPicks = null;
 let cloudPicksStale = false;
 
+// The board's picks, re-used for two minutes except in the last two hours
+// before lock (every 20s, when counts move). Our own save, and coming back
+// to the app, clear it. Saving and syncing always read fresh.
+let boardPicks = { at: 0, data: null };
+function boardPicksTtl() {
+  const lock = weekLockTime() ?? (GAMES.length ? Math.min(...GAMES.map((g) => Date.parse(g.kickoff))) : null);
+  const now = Date.now();
+  return lock && lock > now && lock - now < 2 * 3600000 ? 20000 : 120000;
+}
+async function fetchBoardPicks() {
+  if (boardPicks.data && Date.now() - boardPicks.at < boardPicksTtl()) return boardPicks.data;
+  const d = await fetchAllPicks();
+  if (d) boardPicks = { at: Date.now(), data: d };
+  return d;
+}
+
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
   maybeShowQotw();
-  const fetched = await fetchAllPicks();
+  const fetched = await fetchBoardPicks();
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
   const cloudPicks = {};
@@ -4143,7 +4182,7 @@ document.getElementById("header-countdown")?.addEventListener("click", (e) => {
 // Its own second-by-second timer, separate from the 20s refresh: the clock
 // has to move, but nothing else on the page needs redrawing that often.
 setInterval(() => {
-  if (!currentManager) return;
+  if (!currentManager || document.hidden) return;
   if (!picksScreen.classList.contains("hidden")) renderPicksCountdown();
   if (!scoreboardScreen.classList.contains("hidden")) renderBoardCountdown();
   renderHeaderCountdown();
@@ -4167,7 +4206,7 @@ async function refreshSlateIfChanged() {
   if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
   refreshPicksStanding();
 }
-setInterval(refreshSlateIfChanged, 60 * 1000);
+setInterval(() => { if (!document.hidden) refreshSlateIfChanged(); }, 60 * 1000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshSlateIfChanged(); });
 
 // Re-render periodically so games auto-lock the moment kickoff passes,
@@ -4177,6 +4216,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
 // under someone mid-scroll for no reason. The board is meant to be live,
 // so it refreshes every tick, but keeps the scroll position.
 setInterval(() => {
+  if (document.hidden) return;
   if (currentManager && !picksScreen.classList.contains("hidden")) {
     if (lockSignature() !== lastLockSignature) {
       withScrollPreserved(renderPicksScreen);
@@ -4202,6 +4242,7 @@ setInterval(() => {
 // Refresh the moment it comes back so the board never shows stale scores.
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
+  liveFetchedAt = 0; boardPicks.at = 0;
   flushPendingPush();
   if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
   if (currentManager && !picksScreen.classList.contains("hidden")) fetchLiveScores().then(() => withScrollPreserved(renderPicksScreen));
@@ -4336,6 +4377,8 @@ function maybeShowBoner() {
   if (!el || bonerShownThisLoad || !currentManager) return;
   if (currentWeek !== 4 || Date.now() >= BONER_UNTIL || !GAMES.length || !GAMES.every(isGameLocked)) return;
   bonerShownThisLoad = true;
+  // The GIF is half a megabyte; fetch it only when the popup actually shows.
+  const art = el.querySelector("img[data-src]"); if (art && !art.src) art.src = art.dataset.src;
   el.classList.remove("hidden");
 }
 // Any touch, click or key anywhere closes it; the first one wins and
@@ -6454,7 +6497,7 @@ function userBusy() {
 }
 // Once a minute: cheap (a tiny static file), and a deploy reaches an open
 // screen within a minute or two of going live.
-setInterval(() => checkForUpdate(false), 60 * 1000);
+setInterval(() => { if (!document.hidden) checkForUpdate(false); }, 60 * 1000);
 setInterval(() => { if (updateWaiting && !userBusy()) checkForUpdate(false); }, 10 * 1000);
 
 // The splash shows once per 12 hours per device. Inside that window the
