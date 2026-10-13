@@ -306,10 +306,43 @@
     // Features: adoption (people), depth (share of visits), first stop.
     const s14 = people.flatMap((p) => p.sess.filter((x) => x.at >= now - 14 * DAY).map((x) => ({ p, x })));
     const fmap = new Map();
-    for (const { p, x } of s14) x.f.forEach((f, i) => { const k = String(f).replace(/-g\d+$/, ""); if (!ldFeat(k)) return; const e = fmap.get(k) || { k, ppl: new Set(), n: 0, first: 0 }; e.ppl.add(p.n); e.n++; if (i === 0 || x.f.slice(0, i).every((y) => !ldFeat(y))) e.first++; fmap.set(k, e); });
+    // Once per visit: "gamecast" and "gamecast-g3" are the same feature.
+    for (const { p, x } of s14) [...new Set(x.f.map((f) => String(f).replace(/-g\d+$/, "")).filter(ldFeat))].forEach((k, i) => { const e = fmap.get(k) || { k, ppl: new Set(), n: 0, first: 0 }; e.ppl.add(p.n); e.n++; if (i === 0) e.first++; fmap.set(k, e); });
     const fr = [...fmap.values()].sort((a, b) => b.ppl.size - a.ppl.size || b.n - a.n);
     const unused = Object.keys(LD_FEATURES).filter((k) => !fmap.has(k) && !/^pick-|ranking-expand|wp-explain/.test(k)).map((k) => LD_FEATURES[k]);
     const firstStop = [...fr].sort((a, b) => b.first - a.first)[0];
+
+    // Gamecast: does anyone open it at all? Every session on record, since
+    // it only matters on game days. Live is the gamecast proper (with time
+    // on it); info and final are the same sheet before kickoff and after.
+    // Time is matched to a game by its id and the hours around kickoff.
+    const gcSess = people.flatMap((p) => p.sess.map((x) => ({ p, x })));
+    const nearGame = (x, w) => x.at < w.b + HR && x.at + x.dur > w.a - HR;
+    const gcGameDays = gameDays.filter((d) => d >= day0(sessSince) && d <= today0);
+    const inGameSess = gcSess.filter(({ x }) => gameWins.some((w) => x.at < w.b && x.at + x.dur > w.a));
+    const gcPeople = names.map((n) => {
+      const mine = gcSess.filter((e) => e.p.n === n);
+      const has = (k) => mine.filter(({ x }) => x.f.includes(k));
+      const live = has("gamecast");
+      const ms = mine.reduce((a, { x }) => a + Object.values(x.gt || {}).reduce((s2, v) => s2 + (Number(v) || 0), 0), 0);
+      return { n, live: live.length, info: has("game-info").length, fin: has("game-final").length, ms, last: Math.max(0, ...live.map(({ x }) => x.at)) };
+    });
+    const gcUsers = gcPeople.filter((x) => x.live);
+    const gcMs = gcPeople.reduce((a, x) => a + x.ms, 0);
+    const gcInGame = inGameSess.filter(({ x }) => x.f.includes("gamecast")).length;
+    const gcGames = new Map(); // "week-id" -> { w, ppl, ms }
+    for (const { p, x } of gcSess) for (const [k, ms] of Object.entries(x.gt || {})) {
+      const id = Number(String(k).replace(/^g/, ""));
+      const w = gameWins.filter((g) => g.id === id && nearGame(x, g)).sort((a, b) => Math.abs(a.a - x.at) - Math.abs(b.a - x.at))[0];
+      if (!w) continue;
+      const e = gcGames.get(`${w.w}-${w.id}`) || { w, ppl: new Set(), ms: 0 };
+      e.ppl.add(p.n); e.ms += Number(ms) || 0; gcGames.set(`${w.w}-${w.id}`, e);
+    }
+    const gcTop = [...gcGames.values()].sort((a, b) => b.ppl.size - a.ppl.size || b.ms - a.ms);
+    const gcByDay = gcGameDays.map((d) => {
+      const day = gcSess.filter(({ x }) => day0(x.at) === d);
+      return { d, ppl: new Set(day.filter(({ x }) => x.f.includes("gamecast")).map(({ p }) => p.n)), ms: day.reduce((a, { x }) => a + Object.values(x.gt || {}).reduce((s2, v) => s2 + (Number(v) || 0), 0), 0), inN: new Set(day.map(({ p }) => p.n)).size };
+    });
 
     // Picks: lead time to lock, edits, and whether changes paid off.
     const log = (pickLog || []).filter((r) => names.includes(r.manager) && !r.admin);
@@ -391,6 +424,9 @@
       if (wf.net < 0) add("TREND", 58, `Second-guessing has cost ${B(wn)} ${-wf.net} point${wf.net === -1 ? "" : "s"} this season (${wf.n} changed picks: ${wf.helped} helped, ${wf.hurt} hurt).`);
       if (bf.net > 0 && bn !== wn) add("NOTE", 50, `${B(bn)}'s pick changes have paid off: +${bf.net} points from ${bf.n} switches.`);
     }
+    if (gcGameDays.length) add(gcUsers.length ? "NOTE" : "TREND", 51, gcUsers.length
+      ? `Live gamecast: ${gcUsers.length} of ${N} have opened one (${list(gcUsers.map((x) => B(x.n)))}), ${dur(gcMs)} watched in all; ${gcInGame} of ${inGameSess.length} visits while games were on included one.`
+      : `Nobody has opened a live gamecast across ${gcGameDays.length} game day${gcGameDays.length === 1 ? "" : "s"} since ${esc(dayLong(sessSince))} (${inGameSess.length} visits while games were on).`);
     if (gdFacts?.most) add("NOTE", 52, `Most-watched live game on ${dayLong(lastGD)}: ${esc(gdFacts.most.w.label)}, ${gdFacts.most.who.length} of ${N} had it open.`);
     if (gdFacts?.peak >= 2) add("NOTE", 50, `Peak on ${dayLong(lastGD)}: ${gdFacts.peak} in the app at once around ${timeLab(gdFacts.peakAt)} (${list(gdFacts.peakWho.map(esc))}).`);
     const g7 = people.reduce((a, p) => a + p.w7.opens.filter((v) => inGame(v.at)).length, 0);
@@ -640,6 +676,26 @@
 
     // ---- FEATURES ----
     const fmaxN = N;
+    const gcHead = !gcGameDays.length
+      ? `No games have been played since sessions started recording (${esc(dayLong(sessSince))}). This fills in after the next game day.`
+      : gcUsers.length
+        ? `${B(`${gcUsers.length} of ${N}`)} have opened a live gamecast. ${inGameSess.length ? `${Math.round(gcInGame / inGameSess.length * 100)}% of visits during games included one.` : ""}`
+        : `${B("Nobody")} has opened a live gamecast yet, across ${gcGameDays.length} game day${gcGameDays.length === 1 ? "" : "s"} and ${inGameSess.length} visit${inGameSess.length === 1 ? "" : "s"} while games were on.`;
+    const gcMaxDay = Math.max(1, ...gcByDay.map((x) => x.ms));
+    const gcView = `<div class="lvz-h">GAMECAST · DOES ANYONE OPEN IT</div>
+      <div class="ld-head">${gcHead}</div>
+      <div class="lvz-tiles">
+        <div ${tip(`Opened a live gamecast at least once: ${gcUsers.map((x) => x.n).join(", ") || "nobody"}`)}><b>${gcUsers.length}<small>/${N}</small></b><span>people</span></div>
+        <div ${tip(`${gcInGame} of ${inGameSess.length} visits that overlapped a game opened a live gamecast`)}><b>${inGameSess.length ? Math.round(gcInGame / inGameSess.length * 100) : 0}<small>%</small></b><span>of in-game visits</span></div>
+        <div ${tip("Total time with a live gamecast open, everyone")}><b>${dur(gcMs)}</b><span>watched</span></div>
+      </div>
+      <div class="ld-fh five"><span>OWNER</span><span>LIVE</span><span>PRE</span><span>FINAL</span><span>TIME ON</span></div>
+      ${[...gcPeople].sort((a, b) => b.live - a.live || b.ms - a.ms || b.info + b.fin - a.info - a.fin).map((x) => `<div class="ld-fr five" ${tip(`${x.n} · live gamecast in ${x.live} visit${x.live === 1 ? "" : "s"}${x.last ? `, last ${dayLong(x.last)} ${timeLab(x.last)}` : ""} · game info before kickoff in ${x.info} · final recap in ${x.fin}`)}><span>${esc(x.n)}</span><em>${x.live || "-"}</em><em>${x.info || "-"}</em><em>${x.fin || "-"}</em><em>${x.ms ? dur(x.ms) : "-"}</em></div>`).join("")}
+      ${gcByDay.length ? `<div class="lvz-h">BY GAME DAY · MINUTES WATCHED · PEOPLE</div>
+      <div class="lvz-feat">${gcByDay.slice(-6).reverse().map((x) => `<div class="lvz-fb" ${tip(`${dayLong(x.d)} · ${x.ppl.size} of the ${x.inN} who were in opened a live gamecast${x.ppl.size ? ` (${[...x.ppl].join(", ")})` : ""} · ${dur(x.ms)} watched`)}><span>${esc(dayLong(x.d))}</span><i><b style="width:${(x.ms / gcMaxDay * 100).toFixed(0)}%"></b></i><em>${x.ppl.size}/${x.inN}</em></div>`).join("")}</div>` : ""}
+      ${gcTop.length ? `<div class="lvz-cap">Most watched: ${gcTop.slice(0, 3).map((e) => `${esc(e.w.label)} (W${e.w.w}, ${e.ppl.size} ${e.ppl.size === 1 ? "person" : "people"}, ${dur(e.ms)})`).join("; ")}.</div>` : ""}
+      <div class="lvz-cap">Live: visits that opened the gamecast while the game was on. Pre and final: the same sheet opened before kickoff or after the final. Counted once per visit, sessions since ${esc(dayLong(sessSince))}.</div>
+      <div class="lvz-h">ALL FEATURES · LAST 14 DAYS</div>`;
     const featView = fr.length ? `<div class="ld-fh"><span>FEATURE</span><span>PEOPLE WHO USED IT</span><span>VISITS</span></div>${fr.map((e) => `<div class="ld-fr" ${tip(`${ldFeat(e.k)} · ${e.ppl.size} of ${N} people (${[...e.ppl].join(", ")}) · in ${e.n} of ${s14.length} visits · first stop in ${e.first}`)}><span>${esc(ldFeat(e.k))}</span><span class="ld-ppl">${names.map((n) => `<i class="${e.ppl.has(n) ? "on" : ""}"></i>`).join("")}</span><em>${Math.round(e.n / Math.max(1, s14.length) * 100)}%</em></div>`).join("")}
       ${unused.length ? `<div class="lvz-cap">Not used by anyone ${sessSince > now - 14 * DAY ? `since ${esc(dayLong(sessSince))}` : "in 14 days"}: ${esc(unused.join(", "))}.</div>` : ""}
       <div class="lvz-h">WHERE VISITS START</div>
@@ -659,7 +715,7 @@
       <section data-ldview="pulse">${pulse}</section>
       <section data-ldview="people" hidden>${peopleView}</section>
       <section data-ldview="gameday" hidden>${gameView}</section>
-      <section data-ldview="features" hidden>${featView}</section>
+      <section data-ldview="features" hidden>${gcView}${featView}</section>
       <section data-ldview="picks" hidden>${picksView}</section>
       <section data-ldview="health" hidden>${healthView}</section>
       <div class="lvz-tip" aria-live="polite">Tap any bar, square, dot or row for the details.</div>
