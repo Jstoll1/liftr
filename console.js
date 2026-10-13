@@ -892,8 +892,9 @@
   // a bar for time in the app. Tap a name for the day-by-day list.
   async function renderWhosIn() {
     body.innerHTML = `<div class="admin-empty">Loading who's been in…</div>`;
-    const [vis, season] = await Promise.allSettled([get("/visit"), get("/season")]);
+    const [vis, season, pk] = await Promise.allSettled([get("/visit"), get("/season"), get(`/picks?week=${currentWeek}`)]);
     const v = vis.status === "fulfilled" ? vis.value : null;
+    const picksNow = pk.status === "fulfilled" ? pk.value?.picks || null : null;
     if (!v) { body.innerHTML = `<div class="admin-empty">Couldn't load logins.</div>`; return; }
     const DAY = 86400000, HR = 3600000, now = Date.now();
     const t0 = new Date(); t0.setHours(0, 0, 0, 0);
@@ -913,10 +914,15 @@
     wins.sort((a, b) => a[0] - b[0]);
     const merged = []; for (const w of wins) { const l = merged[merged.length - 1]; if (l && w[0] <= l[1]) l[1] = Math.max(l[1], w[1]); else merged.push([...w]); }
     const inGame = (t) => merged.some(([a, b]) => t >= a && t < b);
-    const shade = days.map((d) => `<i class="wi-night" style="left:${xp(d)}%;width:${(7 * HR / span * 100).toFixed(3)}%"></i>`).join("")
+    const shade = days.map((d) => `<i class="wi-night" style="left:${xp(d)}%;width:${(7 * HR / span * 100).toFixed(3)}%"></i><i class="wi-noon" style="left:${xp(d + 12 * HR)}%"></i>`).join("")
       + merged.map(([a, b]) => `<i class="wi-game" style="left:${xp(Math.max(a, A))}%;width:${((Math.min(b, B) - Math.max(a, A)) / span * 100).toFixed(3)}%"></i>`).join("")
       + days.slice(1).map((d) => `<i class="wi-div" style="left:${xp(d)}%"></i>`).join("")
       + `<i class="wi-now" style="left:${xp(now)}%"></i>`;
+    // Strip width on this screen (the page caps at 920px; name and count
+    // columns take about 180px), and the time one 16px marker covers.
+    const stripPx = Math.max(180, Math.min(body.clientWidth || innerWidth, 920) - 180);
+    const gapMs = span * 16 / stripPx;
+    const multiDay = (c) => new Date(c.items[0].at).toDateString() !== new Date(c.last).toDateString();
     const people = TRACKED.map((n) => {
       const opens = (v.visits?.[n] || []).filter((x) => Number.isFinite(x.at) && x.at >= A).sort((a, b) => a.at - b.at);
       const allOpens = (v.visits?.[n] || []).filter((x) => Number.isFinite(x.at));
@@ -924,24 +930,43 @@
       const last = Math.max(0, ...allOpens.map((x) => x.at), ...(v.sessions?.[n] || []).map((x) => (x.at || 0) + (x.dur || 0)));
       const daysIn = days.filter((d) => opens.some((x) => x.at >= d && x.at < d + DAY) || sess.some((x) => x.at >= d && x.at < d + DAY)).length;
       const time = sess.filter((x) => x.at >= A).reduce((a, x) => a + (x.dur || 0), 0);
-      return { n, opens, sess, last, daysIn, time, today: opens.some((x) => x.at >= today0) || sess.some((x) => x.at >= today0), wk: opens.some((x) => x.at >= wk0) || sess.some((x) => x.at >= wk0), now: now - last < 10 * 60000 };
+      // This week's card: games picked (hidden placeholders don't count) and the tiebreaker.
+      const card = picksNow?.[n];
+      const k = GAMES.filter((g) => { const x = card?.picks?.[g.id]; return x && !x.hidden && x.team; }).length;
+      const tb = String(card?.tiebreaker ?? "").trim() !== "" && card?.tiebreaker !== "hidden";
+      // Opens that would land within one marker's width of each other on
+      // this screen are one marker with a count, at their average time: a
+      // few hours apart on a desktop, most of a day on a phone. Tapping
+      // one still lists every time.
+      const clusters = [];
+      for (const x of opens) { const c = clusters[clusters.length - 1]; if (c && x.at - c.last < gapMs) { c.items.push(x); c.last = x.at; } else clusters.push({ last: x.at, items: [x] }); }
+      for (const c of clusters) c.at = c.items.reduce((a, x) => a + x.at, 0) / c.items.length;
+      return { n, opens, sess, last, daysIn, time, k, tb, clusters, today: opens.some((x) => x.at >= today0) || sess.some((x) => x.at >= today0), wk: opens.some((x) => x.at >= wk0) || sess.some((x) => x.at >= wk0), now: now - last < 10 * 60000 };
     }).sort((a, b) => b.last - a.last);
+    const total = GAMES.length;
+    const lockAt = (typeof weekLockTime === "function" && weekLockTime()) || (total ? Math.min(...GAMES.map((g) => Date.parse(g.kickoff))) : null);
+    const open = !!lockAt && lockAt > now;
+    const left = (ms) => { const h = Math.floor(ms / HR), d = Math.floor(h / 24); return d ? `${d}d ${h % 24}h` : h ? `${h}h ${Math.floor((ms % HR) / 60000)}m` : `${Math.max(1, Math.round(ms / 60000))}m`; };
+    const done = (p) => p.k >= total && p.tb;
+    const short = picksNow && total ? people.filter((p) => !done(p)) : [];
     // The week tile is the calendar week (from Monday); the strip and the
     // "not in" line are the rolling last 7 days, and say so.
     const inNow = people.filter((p) => p.now), inToday = people.filter((p) => p.today), inWeek = people.filter((p) => p.wk), out = people.filter((p) => !p.daysIn);
     const av = (n) => { const acc = typeof accentFor === "function" ? accentFor(n) : "#1ab8cc"; const a = (typeof avatarOverrides !== "undefined" && avatarOverrides?.[n]) || n[0]; return `<span class="wi-av" style="--accent:${acc}">${esc(a)}</span>`; };
     const rows = people.map((p) => {
       const sessHtml = p.sess.map((x) => `<i class="wi-sess" style="left:${xp(Math.max(x.at, A))}%;width:${Math.max(0.35, (Math.min(x.at + x.dur, B) - Math.max(x.at, A)) / span * 100).toFixed(3)}%"></i>`).join("");
-      const dots = p.opens.map((x) => `<i class="wi-dot${inGame(x.at) ? " g" : ""}" style="left:${xp(x.at)}%" ${tip(`${p.n} · ${dayLong(x.at)} ${timeLab(x.at)}${inGame(x.at) ? " · during a game" : ""} · ${x.app === "home" ? "home-screen app" : "browser"}`)}></i>`).join("");
+      const dots = p.clusters.map((c) => { const g = c.items.some((x) => inGame(x.at)), m = c.items.length; return `<i class="wi-dot${g ? " g" : ""}${m > 1 ? " n" : ""}" style="left:${xp(c.at)}%" ${tip(`${p.n} · ${multiDay(c) ? `${dayLong(c.items[0].at)} to ${dayLong(c.last)}` : dayLong(c.at)} · ${m > 1 ? `${m} opens: ${multiDay(c) ? c.items.map((x) => `${new Date(x.at).toLocaleDateString([], { weekday: "short" })} ${timeLab(x.at)}`).join(", ") : c.items.map((x) => timeLab(x.at)).join(", ")}` : timeLab(c.at)}${g ? " · during a game" : ""} · ${c.items[c.items.length - 1].app === "home" ? "home-screen app" : "browser"}`)}>${m > 1 ? m : ""}</i>`; }).join("");
+      const pkCls = !picksNow || !total ? "" : done(p) ? "ok" : open ? "short" : "late";
+      const pkTxt = !picksNow || !total ? "" : `${done(p) ? "✓ " : ""}${p.k}/${total}${p.tb ? "" : " · no TB"}`;
       const list = days.slice().reverse().map((d) => { const o = p.opens.filter((x) => x.at >= d && x.at < d + DAY); const t = p.sess.filter((x) => x.at >= d && x.at < d + DAY).reduce((a, x) => a + (x.dur || 0), 0); return o.length || t ? `<div class="wi-day"><b>${esc(dayLong(d))}</b><span>${o.length} open${o.length === 1 ? "" : "s"}${t ? ` · ${dur(t)} in app` : ""}</span><em>${o.map((x) => timeLab(x.at)).join(" · ")}</em></div>` : ""; }).join("") || `<div class="wi-day"><span>No opens in the last 7 days.</span></div>`;
       return `<button type="button" class="wi-row${p.now ? " live" : ""}" data-wi="${esc(p.n)}">
           <span class="wi-who">${av(p.n)}<span><b>${esc(p.n)}</b><small>${p.now ? `<i class="wi-pulse"></i>in now` : p.last ? esc(ago(p.last)) : "never"}</small></span></span>
           <span class="wi-strip">${shade}${sessHtml}${dots}</span>
-          <span class="wi-count${p.daysIn ? "" : " zero"}"><b>${p.daysIn}</b>/7</span>
+          <span class="wi-count${p.daysIn ? "" : " zero"}"><span><b>${p.daysIn}</b>/7</span>${pkTxt ? `<em class="wi-pk ${pkCls}" ${tip(`${p.n} · ${p.k} of ${total} picks${p.tb ? ", tiebreaker in" : ", no tiebreaker"}${open ? ` · lock in ${left(lockAt - now)}` : " · locked"}`)}>${pkTxt}</em>` : ""}</span>
         </button>
         <div class="wi-more" data-for="${esc(p.n)}" hidden>${list}</div>`;
     }).join("");
-    const axis = `<div class="wi-axrow"><span></span><span class="wi-axis">${days.map((d, i) => `<span${i === 6 ? ' class="t"' : ""}>${dayLab(d, i)}</span>`).join("")}</span><span class="wi-axd">DAYS</span></div>`;
+    const axis = `<div class="wi-axrow"><span></span><span class="wi-axis">${days.map((d, i) => `<span${i === 6 ? ' class="t"' : ""}>${dayLab(d, i)}</span>`).join("")}</span><span class="wi-axd">DAYS${picksNow && total ? "<br>PICKS" : ""}</span></div>`;
     const allOpens = Object.values(v.visits || {}).flat().map((x) => x?.at).filter(Number.isFinite);
     const firstOpen = allOpens.length ? Math.min(...allOpens) : null;
     body.innerHTML = `<div class="wi">
@@ -950,10 +975,12 @@
         <div class="${inNow.length ? "hot" : ""}"><b>${inNow.length}</b><span>in now</span></div>
         <div><b>${inToday.length}<small>/${TRACKED.length}</small></b><span>in today</span></div>
         <div><b>${inWeek.length}<small>/${TRACKED.length}</small></b><span>${wk0 === today0 ? "in since Mon (today)" : "in since Mon"}</span></div>
+        ${picksNow && total ? `<div class="${open && short.length ? "warn" : ""}"><b>${TRACKED.length - short.length}<small>/${TRACKED.length}</small></b><span>picks in · ${open ? `lock in ${esc(left(lockAt - now))}` : "locked"}</span></div>` : ""}
       </div>
+      ${open && short.length ? `<div class="wi-out">Picks not in yet: ${short.map((p) => `<b>${esc(p.n)}</b> ${p.k}/${total}${p.tb ? "" : " no TB"}`).join(", ")}</div>` : ""}
       ${out.length ? `<div class="wi-out">Not in for 7 days: ${out.map((p) => `<b>${esc(p.n)}</b>`).join(", ")}</div>` : `<div class="wi-out ok">All ${TRACKED.length} have been in within the last 7 days.</div>`}
       <div class="wi-grid">${axis}${rows}</div>
-      <div class="wi-legend"><span><i class="wi-dot"></i>opened the app</span><span><i class="wi-sess k"></i>time in app</span><span><i class="wi-game k"></i>game on</span><span><i class="wi-night k"></i>overnight</span></div>
+      <div class="wi-legend"><span><i class="wi-dot"></i>opened the app</span><span><i class="wi-dot n">3</i>opens close together</span><span><i class="wi-sess k"></i>time in app</span><span><i class="wi-game k"></i>game on</span><span><i class="wi-night k"></i>overnight</span></div>
       <div class="wi-tip">Tap a dot for the time, a name for their week.</div>
     </div>`;
     const tipEl = body.querySelector(".wi-tip");
