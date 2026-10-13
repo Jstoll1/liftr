@@ -3356,6 +3356,15 @@ async function handleNudge(request, env, corsHeaders, url) {
   return json({ ok: true }, 200, corsHeaders);
 }
 const sessKey = (m) => `sessions:${m}`;
+// An open the phone made with no signal and sent later carries its own
+// time. Taken only when flagged as queued and within the last seven days;
+// anything else is stamped on arrival, as live opens always are.
+export function queuedOpenAt(body, now) {
+  if (!body || !body.q) return null;
+  const at = Math.round(Number(body.at));
+  return Number.isFinite(at) && at <= now + 60000 && at >= now - 7 * 86400000 ? Math.min(at, now) : null;
+}
+
 async function handleVisit(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   const key = (m) => `visits:${m}`;
@@ -3398,7 +3407,8 @@ async function handleVisit(request, env, corsHeaders, url) {
     await env.LIFTR_KV.put(sessKey(m), JSON.stringify(list.slice(0, 1500)));
     return json({ ok: true }, 200, corsHeaders);
   }
-  const entry = { at: Date.now(), app: body.standalone ? "home" : "browser", device: String(body.device || "").slice(0, 12), screen: String(body.screen || "").slice(0, 12), tz: String(body.tz || "").slice(0, 40), ...(ver ? { v: ver } : {}) };
+  const qAt = queuedOpenAt(body, Date.now());
+  const entry = { at: qAt ?? Date.now(), ...(qAt != null ? { q: 1 } : {}), app: body.standalone ? "home" : "browser", device: String(body.device || "").slice(0, 12), screen: String(body.screen || "").slice(0, 12), tz: String(body.tz || "").slice(0, 40), ...(ver ? { v: ver } : {}) };
   const list = (await env.LIFTR_KV.get(key(m), "json")) || [];
   list.unshift(entry);
   // 1,000 opens: weeks of history for the admin dashboard at the 5-minute

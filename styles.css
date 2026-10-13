@@ -5954,3 +5954,6 @@ html.vp-gap { --nav-h: 63px; }
 .lvz-tl .ld-hax { grid-column: 2; }
 .lvz-dot.gm { background: #ffe45e; }
 .ld-key-dotg { display: inline-block; width: 8px; height: 8px; margin: 0 2px; vertical-align: middle; border-radius: 50%; background: #ffe45e; }
+
+/* Dashboard: where each tab's numbers come from, and how fresh. */
+.ld-asof { font-size: 9.5px; line-height: 1.4; color: var(--text-dim); margin: 0 0 8px; }

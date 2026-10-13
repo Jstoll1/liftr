@@ -1088,9 +1088,46 @@ function stampVisit() {
   try { localStorage.setItem(VISIT_KEY, String(Date.now())); } catch {}
   const d = deviceDetails();
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
-  fetch(`${WORKER_URL}/visit`, { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true, body: JSON.stringify({ manager: me, device: deviceId().slice(0, 12), screen: d.screen, tz: d.tz, standalone, v: typeof APP_VERSION === "string" ? APP_VERSION : "" }) }).catch(() => {});
+  const body = { manager: me, device: deviceId().slice(0, 12), screen: d.screen, tz: d.tz, standalone, v: typeof APP_VERSION === "string" ? APP_VERSION : "" };
+  if (navigator.onLine === false) { queueTele({ ...body, q: 1, at: Date.now() }); return; }
+  fetch(`${WORKER_URL}/visit`, { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true, body: JSON.stringify(body) })
+    .then((res) => { if (res.ok) flushTele(); })
+    .catch(() => queueTele({ ...body, q: 1, at: Date.now() }));
 }
+
+// Opens and visits made with no signal wait on the phone and go out when
+// it is back, so the dashboard doesn't lose the stadium. Capped and kept a
+// week at most, which is all the Worker accepts.
+const TELE_Q_KEY = "brochiefs_tele_q_v1";
+function readTeleQ() {
+  try { const q = JSON.parse(localStorage.getItem(TELE_Q_KEY) || "[]"); return Array.isArray(q) ? q : []; } catch { return []; }
+}
+function queueTele(body) {
+  try { localStorage.setItem(TELE_Q_KEY, JSON.stringify([...readTeleQ(), body].slice(-40))); } catch {}
+}
+let teleFlushing = false;
+async function flushTele() {
+  if (teleFlushing || navigator.onLine === false || !WORKER_URL) return;
+  const orig = readTeleQ();
+  const q = orig.filter((b) => Date.now() - (Number(b.at ?? b.start) || 0) < 7 * 86400000);
+  if (!q.length) { try { localStorage.removeItem(TELE_Q_KEY); } catch {} return; }
+  teleFlushing = true;
+  const left = [];
+  for (const b of q) {
+    try {
+      // text/plain: a simple request, no CORS preflight, as the beacon is.
+      const res = await fetch(`${WORKER_URL}/visit`, { method: "POST", body: JSON.stringify(b), keepalive: true });
+      if (!res.ok && res.status >= 500) left.push(b);
+    } catch { left.push(b); }
+  }
+  // Anything queued while this ran is kept too.
+  const added = readTeleQ().slice(orig.length);
+  try { const rest = [...left, ...added]; if (rest.length) localStorage.setItem(TELE_Q_KEY, JSON.stringify(rest)); else localStorage.removeItem(TELE_Q_KEY); } catch {}
+  teleFlushing = false;
+}
+addEventListener("online", () => flushTele());
 setTimeout(stampVisit, 1500);
+setTimeout(flushTele, 4000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) stampVisit(); });
 
 // Sessions, for the admin dashboard: how long the app was on screen and
@@ -1124,7 +1161,9 @@ function endSession() {
   const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, gt, h: h.ld === -1 ? { ...h, ld: null } : h, v: typeof APP_VERSION === "string" ? APP_VERSION : "" });
   try {
     // text/plain keeps the beacon a simple request (no CORS preflight).
-    if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/visit`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/visit`, { method: "POST", body, keepalive: true }).catch(() => {});
+    // With no signal a beacon is accepted and then lost; keep it instead.
+    if (navigator.onLine === false) { queueTele(JSON.parse(body)); return; }
+    if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/visit`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/visit`, { method: "POST", body, keepalive: true }).catch(() => queueTele(JSON.parse(body)));
   } catch {}
 }
 document.addEventListener("visibilitychange", () => { if (document.hidden) endSession(); else if (sessionStart == null) sessionStart = Date.now(); });
