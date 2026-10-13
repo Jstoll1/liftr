@@ -5993,3 +5993,7 @@ html.vp-gap { --nav-h: 63px; }
 .ld-rkey i.ld-rc.pk::after { width: 4px; height: 4px; margin: -2px 0 0 -2px; box-shadow: none; }
 .ld-rc.nr { background: repeating-linear-gradient(135deg, #168a9c 0 3px, #13586a 3px 6px); }
 .ld-rkey { margin-top: 6px; }
+
+/* Preview site only (brochiefs-preview.pages.dev): a fixed flag so a
+   preview tab is never mistaken for the live app. */
+.preview-flag { position: fixed; z-index: 9999; left: 50%; top: calc(env(safe-area-inset-top) + 4px); transform: translateX(-50%); padding: 3px 9px; border-radius: 999px; background: #ffe45e; color: #0a0014; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .04em; pointer-events: none; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); }

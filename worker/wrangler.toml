@@ -6,7 +6,9 @@ compatibility_date = "2024-11-01"
 # Comma-separated — the pick'em app now lives at brochiefs.com, but the
 # raw GitHub Pages URL still works too, so both are allowed.
 [vars]
-ALLOWED_ORIGIN = "https://brochiefs.com,https://www.brochiefs.com,https://jstoll1.github.io"
+# The preview site (Cloudflare Pages, preview branch) reads real data; the
+# app writes nothing from there. *.host allows its per-branch addresses.
+ALLOWED_ORIGIN = "https://brochiefs.com,https://www.brochiefs.com,https://jstoll1.github.io,https://brochiefs-preview.pages.dev,https://*.brochiefs-preview.pages.dev"
 # Shared default for chat/swap/opening — cheap, fast, plenty good for
 # conversational replies and one-exercise substitutions.
 OPENAI_MODEL = "gpt-4o-mini"

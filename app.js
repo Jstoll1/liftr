@@ -56,6 +56,34 @@ function scorePick(game, pick, result) {
 // show picks made on that same device.
 const WORKER_URL = "https://liftr-ai.jhs797.workers.dev";
 
+// Preview site: the preview branch, published by Cloudflare Pages at
+// brochiefs-preview.pages.dev, for trying changes before they go live. It
+// reads the real slate, picks and scores, but writes nothing: picks, logins,
+// usage, avatars, QOTW and admin saves are answered on the phone ("ok") and
+// never sent, and no usage is counted. Game insights and the archive, which
+// ask with POST but only read, still go through. brochiefs.com is untouched.
+const PREVIEW = /(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname);
+if (PREVIEW) {
+  const realFetch = window.fetch.bind(window);
+  const readOnlyPost = /^\/(insights\/|history-ask$)/;
+  window.fetch = (input, init = {}) => {
+    const url = typeof input === "string" ? input : input?.url || "";
+    const method = String(init.method || (typeof input === "string" ? "GET" : input?.method) || "GET").toUpperCase();
+    if (url.startsWith(WORKER_URL) && method !== "GET" && method !== "HEAD" && !readOnlyPost.test(new URL(url).pathname)) {
+      let echo = {};
+      try { echo = JSON.parse(init.body || "{}"); } catch {}
+      console.info("[preview] not sent:", method, url);
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, preview: true, state: echo?.state ?? null }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    }
+    return realFetch(input, init);
+  };
+  if (navigator.sendBeacon) { const realBeacon = navigator.sendBeacon.bind(navigator); navigator.sendBeacon = (url, data) => String(url).startsWith(WORKER_URL) ? true : realBeacon(url, data); }
+  addEventListener("DOMContentLoaded", () => {
+    const flag = Object.assign(document.createElement("div"), { className: "preview-flag", textContent: "PREVIEW · NOTHING HERE IS SAVED" });
+    document.body.appendChild(flag);
+  });
+}
+
 // App health, for the admin dashboard: errors, data loads that failed or
 // crawled (ESPN vs our Worker), and how long until the first screen had
 // data. Counted in memory and sent with the session beacon when the app
@@ -1172,7 +1200,7 @@ addEventListener("pagehide", endSession);
 function track(path, extra) {
   noteUse(path);
   try {
-    if (!window.goatcounter || typeof window.goatcounter.count !== "function") return;
+    if (PREVIEW || !window.goatcounter || typeof window.goatcounter.count !== "function") return;
     window.goatcounter.count({ path, title: extra?.title || path, event: !!extra?.event });
   } catch {}
 }

@@ -36,7 +36,7 @@ export default {
     const requestOrigin = request.headers.get("Origin");
     const allowOrigin = allowedOrigins.includes("*")
       ? "*"
-      : allowedOrigins.includes(requestOrigin)
+      : originAllowed(allowedOrigins, requestOrigin)
         ? requestOrigin
         : allowedOrigins[0];
     const corsHeaders = {
@@ -2924,7 +2924,7 @@ async function handleHistoryAsk(request, env, corsHeaders) {
   // is on the allowed list (skipped when ALLOWED_ORIGIN is "*").
   const allowed = (env.ALLOWED_ORIGIN || "*").split(",").map((o) => o.trim());
   const origin = request.headers.get("Origin") || "";
-  if (!allowed.includes("*") && !allowed.includes(origin)) {
+  if (!allowed.includes("*") && !originAllowed(allowed, origin)) {
     return json({ error: "The archive only answers from brochiefs.com." }, 403, corsHeaders);
   }
 
@@ -3356,6 +3356,17 @@ async function handleNudge(request, env, corsHeaders, url) {
   return json({ ok: true }, 200, corsHeaders);
 }
 const sessKey = (m) => `sessions:${m}`;
+// An allowed origin is listed exactly, or as https://*.host for any one
+// subdomain of host (the preview site's per-branch addresses).
+export function originAllowed(allowed, origin) {
+  if (!origin) return false;
+  return allowed.some((a) => {
+    if (a === origin) return true;
+    const m = /^https:\/\/\*\.([a-z0-9.-]+)$/i.exec(a);
+    return !!m && /^https:\/\/[a-z0-9-]+\./i.test(origin) && origin.toLowerCase().endsWith(`.${m[1].toLowerCase()}`) && !origin.slice(8, -(m[1].length + 1)).includes(".");
+  });
+}
+
 // An open the phone made with no signal and sent later carries its own
 // time. Taken only when flagged as queued and within the last seven days;
 // anything else is stamped on arrival, as live opens always are.
