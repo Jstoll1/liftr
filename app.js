@@ -150,13 +150,19 @@ function weekIsFinal() {
 // (navy and black marks such as Penn State get a light outline or a
 // white fill). The app is dark everywhere, so that cut is the default;
 // an <img> that fails to load it falls back to the standard file below.
+// Logos come through ESPN's image resizer at 160px, enough for the largest
+// 50px logo on a 3x screen and about a sixth of the 500px file's weight.
+// A failed resized logo falls back to the full file, then to the light cut.
+const LOGO_PX = 160;
 function logoUrl(espnId) {
-  return `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${espnId}.png`;
+  return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${espnId}.png&w=${LOGO_PX}&h=${LOGO_PX}`;
 }
 document.addEventListener("error", (e) => {
   const img = e.target;
-  if (!(img instanceof HTMLImageElement) || !img.src.includes("/500-dark/")) return;
-  img.src = img.src.replace("/500-dark/", "/500/");
+  if (!(img instanceof HTMLImageElement) || !img.src.includes("a.espncdn.com/")) return;
+  const m = img.src.match(/combiner\/i\?img=([^&]+)/);
+  if (m) { img.src = `https://a.espncdn.com${decodeURIComponent(m[1])}`; return; }
+  if (img.src.includes("/500-dark/")) img.src = img.src.replace("/500-dark/", "/500/");
 }, true);
 
 const MANAGERS = [
