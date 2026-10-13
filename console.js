@@ -184,6 +184,17 @@
     const inGame = (t) => gameWins.some((x) => t >= x.a && t < x.b);
     const gameDays = [...new Set(gameWins.map((x) => day0(x.a)))].filter((d) => d <= now).sort((a, b) => a - b);
 
+    // "This week" is the calendar week: Monday 00:00 to now, local time, the
+    // same weeks the saved weekly totals use. It is compared with last week
+    // up to the same point (Monday to this time last week), never with a
+    // whole week. Rolling seven-day numbers are labeled "last 7 days".
+    const wk0 = (() => { const d = new Date(today0); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return d.getTime(); })();
+    const wkP0 = (() => { const d = new Date(wk0); d.setDate(d.getDate() - 7); return d.getTime(); })();
+    const nowP = now - (wk0 - wkP0);
+    const wkDays = Array.from({ length: Math.round((today0 - wk0) / DAY) + 1 }, (_, i) => { const d = new Date(wk0); d.setDate(d.getDate() + i); return d.getTime(); });
+    const wkDaysP = wkDays.map((t) => { const d = new Date(t); d.setDate(d.getDate() - 7); return d.getTime(); });
+    const dayN = wkDays.length;
+
     // Per owner: opens, sessions (segments joined across quick app
     // switches, features kept in first-use order), active days.
     const people = names.map((n) => {
@@ -206,9 +217,10 @@
       const inWin = (a, b) => ({ opens: opens.filter((v) => v.at >= a && v.at < b), sess: sess.filter((x) => x.at >= a && x.at < b) });
       const L = (endDay) => { let c = 0; for (let i = 0; i < 7; i++) if (days.has(endDay - i * DAY)) c++; return c; };
       const w7 = inWin(today0 - 6 * DAY, now + 1), p7 = inWin(today0 - 13 * DAY, today0 - 6 * DAY);
+      const wk = inWin(wk0, now + 1), wkP = inWin(wkP0, nowP);
       const ver = [...sess].reverse().find((x) => x.v)?.v || [...opens].reverse().find((v) => v.v)?.v || "";
       const appKind = !opens.length ? "-" : opens.every((v) => v.app === "home") ? "home-screen app" : opens.every((v) => v.app !== "home") ? "browser only" : "app and browser";
-      return { n, opens, sess, days, lastAt, L7: L(today0), L7p: L(today0 - 7 * DAY), w7, p7, time7: w7.sess.reduce((a, x) => a + x.dur, 0), timeP7: p7.sess.reduce((a, x) => a + x.dur, 0), ver, appKind, device: opens[opens.length - 1]?.device || "" };
+      return { n, opens, sess, days, lastAt, L7: L(today0), L7p: L(today0 - 7 * DAY), w7, p7, wk, wkP, dW: wkDays.filter((d) => days.has(d)).length, dWP: wkDaysP.filter((d) => days.has(d)).length, time7: w7.sess.reduce((a, x) => a + x.dur, 0), timeP7: p7.sess.reduce((a, x) => a + x.dur, 0), ver, appKind, device: opens[opens.length - 1]?.device || "" };
     });
     const opensSince = Math.min(now, ...people.flatMap((p) => p.opens.map((v) => v.at)));
     const sessSince = Math.min(now, ...people.flatMap((p) => p.sess.map((x) => x.at)));
@@ -216,12 +228,15 @@
     const priorSessCovered = sessSince <= today0 - 13 * DAY;
 
     // League KPIs and deltas.
-    const wau = people.filter((p) => p.L7).length, wauP = people.filter((p) => p.L7p).length;
-    const avgL7 = people.reduce((a, p) => a + p.L7, 0) / Math.max(1, N), avgL7p = people.reduce((a, p) => a + p.L7p, 0) / Math.max(1, N);
-    const opens7 = people.reduce((a, p) => a + p.w7.opens.length, 0), opensP7 = people.reduce((a, p) => a + p.p7.opens.length, 0);
-    const time7 = people.reduce((a, p) => a + p.time7, 0), timeP7 = people.reduce((a, p) => a + p.timeP7, 0);
-    const sess7 = people.flatMap((p) => p.w7.sess);
-    const avgVisit = sess7.length ? time7 / sess7.length : 0;
+    // Calendar week so far, and last week to the same point.
+    const priorWk = opensSince <= wkP0, priorWkSess = sessSince <= wkP0;
+    const actW = people.filter((p) => p.dW).length, actWP = people.filter((p) => p.dWP).length;
+    const avgW = people.reduce((a, p) => a + p.dW, 0) / Math.max(1, N), avgWP = people.reduce((a, p) => a + p.dWP, 0) / Math.max(1, N);
+    const opensW = people.reduce((a, p) => a + p.wk.opens.length, 0), opensWP = people.reduce((a, p) => a + p.wkP.opens.length, 0);
+    const timeW = people.reduce((a, p) => a + p.wk.sess.reduce((s2, x) => s2 + x.dur, 0), 0), timeWP = people.reduce((a, p) => a + p.wkP.sess.reduce((s2, x) => s2 + x.dur, 0), 0);
+    const sessW = people.flatMap((p) => p.wk.sess);
+    const sinceMon = dayN === 1 ? "today (Monday)" : "since Monday";
+    const opens7 = people.reduce((a, p) => a + p.w7.opens.length, 0);
     const pct = (a, b) => b ? Math.round((a - b) / b * 100) : null;
     // Nine people: under ten of anything, a percentage swings on one
     // person, so show the count instead.
@@ -419,10 +434,10 @@
     if (stale.length) add("ACTION", 60, `${list(stale.map((p) => B(p.n)))} ${stale.length === 1 ? "is" : "are"} on an older build; reopening the app updates it.`);
     if (priorCovered) {
       const slip = people.filter((p) => p.L7p >= 3 && p.L7 <= 1);
-      if (slip.length) add("TREND", 80, `Slipping: ${list(slip.map((p) => `${B(p.n)} (${p.L7p} days last week, ${p.L7} this week)`))}.`);
-      if (wau !== wauP) add("TREND", 70, `${wau} of ${N} were in this week, ${wau > wauP ? "up" : "down"} from ${wauP} the week before.`);
+      if (slip.length) add("TREND", 80, `Slipping: ${list(slip.map((p) => `${B(p.n)} (${p.L7p} of the 7 days before, ${p.L7} of the last 7)`))}.`);
+      if (priorWk && actW !== actWP) add("TREND", 70, `${actW} of ${N} have been in ${sinceMon}, ${actW > actWP ? "up" : "down"} from ${actWP} by this point last week.`);
       const mv = [...people].map((p) => ({ p, d: p.L7 - p.L7p })).sort((a, b) => b.d - a.d);
-      if (mv[0]?.d >= 2) add("TREND", 65, `${B(mv[0].p.n)} is in more: ${mv[0].p.L7} days this week against ${mv[0].p.L7p} the week before.`);
+      if (mv[0]?.d >= 2) add("TREND", 65, `${B(mv[0].p.n)} is in more: ${mv[0].p.L7} of the last 7 days against ${mv[0].p.L7p} of the 7 before.`);
     }
     const fl = [...flips.entries()].filter(([, f]) => f.n >= 2).sort((a, b) => a[1].net - b[1].net);
     if (fl.length) {
@@ -437,7 +452,7 @@
     if (gdFacts?.peak >= 2) add("NOTE", 50, `Peak on ${dayLong(lastGD)}: ${gdFacts.peak} in the app at once around ${timeLab(gdFacts.peakAt)} (${list(gdFacts.peakWho.map(esc))}).`);
     const g7 = people.reduce((a, p) => a + p.w7.opens.filter((v) => inGame(v.at)).length, 0);
     const gameMs7 = gameWins.reduce((a, x) => a + Math.max(0, Math.min(x.b, now) - Math.max(x.a, today0 - 6 * DAY)), 0);
-    if (opens7 >= 5 && gameMs7 > 0) add("NOTE", 45, `${share(g7, opens7, "opens this week")} came while games were on, which is ${Math.round(gameMs7 / (7 * DAY) * 100)}% of the week.`);
+    if (opens7 >= 5 && gameMs7 > 0) add("NOTE", 45, `${share(g7, opens7, "opens in the last 7 days")} came while games were on, which is ${Math.round(gameMs7 / (7 * DAY) * 100)}% of that time.`);
     const ld = names.map((n) => ({ n, m: median(leadBy.get(n) || []) })).filter((x) => x.m != null);
     if (ld.length >= 3) { ld.sort((a, b) => a.m - b.m); add("NOTE", 44, `Pick timing: ${B(ld[ld.length - 1].n)} usually locks in ${lead(ld[ld.length - 1].m)} early; ${B(ld[0].n)} usually waits until ${lead(ld[0].m)} before lock.`); }
     if (fr.length) add("NOTE", 40, `Most-used: ${fr.slice(0, 3).map((e) => `${esc(ldFeat(e.k))} (${e.ppl.size} of ${N})`).join(", ")}${unused.length ? `. Nobody used ${list(unused.slice(0, 4).map(esc))} ${sessSince > now - 14 * DAY ? `since ${esc(dayLong(sessSince))}, when this started being tracked` : "in 14 days"}` : ""}.`);
@@ -560,7 +575,7 @@
     for (const { p, x } of s28) for (const m of x.h.em) { const e = errMsgs.get(m) || { n: 0, last: 0, who: new Set(), v: new Set() }; e.n++; e.last = Math.max(e.last, x.at); e.who.add(p.n); if (x.v) e.v.add(x.v); errMsgs.set(m, e); }
     const errHtml = errMsgs.size ? [...errMsgs.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 8).map(([m, e]) => `<div class="ld-err" ${tip(`Seen in ${e.n} visit${e.n === 1 ? "" : "s"} · ${[...e.who].join(", ")} · builds ${[...e.v].map(buildLab).join(", ") || "unknown"} · last ${dayLong(e.last)} ${timeLab(e.last)}`)}><code>${esc(m)}</code><em>${e.n}× · ${esc(dayLong(e.last))}</em></div>`).join("") : `<div class="lvz-empty">No errors recorded${sAll.length ? "" : " yet (health is recorded from the new build on)"}.</div>`;
     const healthView = `${covHtml}<div class="lvz-h">ERRORS AND LOADS</div><div class="ld-kpis">
-        <div ${tip(`Visits in the last 7 days with at least one app error: ${errN(s7h)} of ${s7h.length}. Week before: ${errN(s7p)} of ${s7p.length}.`)}><b>${shareTile(errN(s7h), s7h.length)}</b><span>visits with an error</span>${!s7p.length ? chip(null) : s7h.length >= 10 && s7p.length >= 10 ? chip(errPct(s7h) - errPct(s7p), " pts", true) : chip(errN(s7h) - errN(s7p), "", true)}</div>
+        <div ${tip(`Visits in the last 7 days with at least one app error: ${errN(s7h)} of ${s7h.length}. The 7 days before: ${errN(s7p)} of ${s7p.length}.`)}><b>${shareTile(errN(s7h), s7h.length)}</b><span>visits with an error</span>${!s7p.length ? chip(null) : s7h.length >= 10 && s7p.length >= 10 ? chip(errPct(s7h) - errPct(s7p), " pts", true) : chip(errN(s7h) - errN(s7p), "", true)}</div>
         <div ${tip(`Data loads that failed in 7 days: ${fails(s7h, "espn")} from ESPN, ${fails(s7h, "worker")} from our server.`)}><b>${fails(s7h)}</b><span>failed loads · ESPN ${fails(s7h, "espn")} · server ${fails(s7h, "worker")}</span>${s7p.length ? chip(fails(s7h) - fails(s7p), "", true) : chip(null)}</div>
         <div ${tip("Median time from opening the app to the first screen with data, over 7 days.")}><b>${sec(ldMed(s7h))}</b><span>to usable (median)</span>${s7p.length && ldMed(s7h) != null && ldMed(s7p) != null ? chip(Math.round((ldMed(s7h) - ldMed(s7p)) / 100) / 10, "s", true) : chip(null)}</div>
         <div ${tip("Loads that took longer than 4 seconds, over 7 days.")}><b>${slows(s7h)}</b><span>slow loads (over 4s)</span>${s7p.length ? chip(slows(s7h) - slows(s7p), "", true) : chip(null)}</div>
@@ -576,7 +591,7 @@
       <div class="lvz-h">EXPORT</div>
       <div class="ld-sort">${[["opens", "OPENS CSV"], ["sessions", "VISITS CSV"], ["weekly", "WEEKLY CSV"]].map(([k, l]) => `<button type="button" data-csv="${k}">${l}</button>`).join("")}</div>`;
     // Health in the story.
-    if (fails(s7h) >= 5) add(fails(s7h, "espn") > fails(s7h, "worker") ? "TREND" : "ACTION", 62, `${fails(s7h)} data loads failed this week (ESPN ${fails(s7h, "espn")}, our server ${fails(s7h, "worker")})${s7p.length ? `, against ${fails(s7p)} the week before` : ""}.`);
+    if (fails(s7h) >= 5) add(fails(s7h, "espn") > fails(s7h, "worker") ? "TREND" : "ACTION", 62, `${fails(s7h)} data loads failed in the last 7 days (ESPN ${fails(s7h, "espn")}, our server ${fails(s7h, "worker")})${s7p.length ? `, against ${fails(s7p)} in the 7 days before` : ""}.`);
     const curB = buildNow ? byBuild.get(buildNow) : null;
     if (curB && errN(curB) >= 2 && errN(curB) / curB.length >= 0.1) add("ACTION", 66, `The current build has an error in ${share(errN(curB), curB.length, "visits")}; see HEALTH.`);
     if (releases.length) { const [v, t] = releases[releases.length - 1]; const before = people.reduce((a, p) => a + p.sess.filter((x) => x.at >= t - 7 * DAY && x.at < t).reduce((s2, x) => s2 + x.dur, 0), 0), after = people.reduce((a, p) => a + p.sess.filter((x) => x.at >= t && x.at < t + 7 * DAY).reduce((s2, x) => s2 + x.dur, 0), 0); if (before > 0 && now - t >= 3 * DAY) add("NOTE", 34, `Since the ${buildLab(v)} build, time in the app is ${after >= before ? "up" : "down"} ${Math.abs(pct(after, before))}% against the week before it.`); }
@@ -617,11 +632,13 @@
     const wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const punchHtml = punch.map((row, d) => `<span class="lvz-pd">${wd[d].slice(0, 2).toUpperCase()}</span>${row.map((n, h) => `<i class="lvz-p s${pstep(n)}" ${tip(`${wd[d]} ${hourLab(h)}-${hourLab((h + 1) % 24)} · ${n} open${n === 1 ? "" : "s"} on record`)}></i>`).join("")}`).join("");
     const tagCls = { ACTION: "act", TREND: "trend", NOTE: "note" };
-    const pulseLive = `<div class="ld-kpis">
-        <div ${tip(`People with at least one day in the app in the last 7 days. Prior week: ${priorCovered ? wauP : "not tracked yet"}.`)}><b>${wau}<small>/${N}</small></b><span>active this week</span>${chip(priorCovered ? wau - wauP : null)}</div>
-        <div ${tip("Average number of days each person was in, out of the last 7.")}><b>${avgL7.toFixed(1)}<small>/7</small></b><span>days in, per person</span>${chip(priorCovered ? Math.round((avgL7 - avgL7p) * 10) / 10 : null)}</div>
-        <div ${tip(`App opens in the last 7 days. Prior week: ${priorCovered ? opensP7 : "not tracked yet"}.`)}><b>${opens7}</b><span>opens, 7 days</span>${priorCovered ? countChip(opens7, opensP7) : chip(null)}</div>
-        <div ${tip(`Total time in the app over 7 days, from sessions (tracked since ${dayLong(sessSince)}).`)}><b>${dur(time7)}</b><span>time in app${sess7.length ? ` · ${dur(avgVisit)} a visit` : ""}</span>${chip(priorSessCovered ? pct(time7, timeP7) : null, "%")}</div>
+    const lastWkTo = `${new Date(nowP).toLocaleDateString([], { weekday: "short" })} ${timeLab(nowP)}`;
+    const pulseLive = `<div class="lvz-h">THIS WEEK · ${esc(dayLong(wk0).toUpperCase())} TO NOW · VS LAST WEEK TO ${esc(lastWkTo.toUpperCase())}</div>
+      <div class="ld-kpis">
+        <div ${tip(`People in at least once ${sinceMon}. Last week by ${lastWkTo}: ${priorWk ? actWP : "not tracked yet"}.`)}><b>${actW}<small>/${N}</small></b><span>active ${sinceMon}</span>${chip(priorWk ? actW - actWP : null)}</div>
+        <div ${tip(`Average days each person was in, out of the ${dayN} day${dayN === 1 ? "" : "s"} so far this week. Last week by ${lastWkTo}: ${priorWk ? avgWP.toFixed(1) : "not tracked yet"}.`)}><b>${avgW.toFixed(1)}<small>/${dayN}</small></b><span>days in, per person</span>${chip(priorWk ? Math.round((avgW - avgWP) * 10) / 10 : null)}</div>
+        <div ${tip(`App opens ${sinceMon}. Last week by ${lastWkTo}: ${priorWk ? opensWP : "not tracked yet"}.`)}><b>${opensW}</b><span>opens ${sinceMon}</span>${priorWk ? countChip(opensW, opensWP) : chip(null)}</div>
+        <div ${tip(`Time in the app ${sinceMon}, from visit records. Last week by ${lastWkTo}: ${priorWkSess ? dur(timeWP) : "not tracked yet"}.`)}><b>${dur(timeW)}</b><span>time in app${sessW.length ? ` · ${dur(timeW / sessW.length)} a visit` : ""}</span>${chip(priorWkSess && timeWP ? pct(timeW, timeWP) : null, "%")}</div>
       </div>
       ${story.length ? `<div class="lvz-h">THIS WEEK'S STORY</div><ul class="ld-story">${story.slice(0, 9).map((s) => `<li><em class="ld-tag ${tagCls[s.tag]}">${s.tag}</em><span>${s.html}</span></li>`).join("")}</ul>` : ""}
       ${nudges.length ? `<div class="lvz-nudge"><div class="lvz-h">WHO TO NUDGE</div>${nudges.map((x) => `<div class="lvz-nr"><b>${esc(x.n)}</b><span>${esc(x.why)}</span></div>`).join("")}<button type="button" class="admin-btn lvz-copy" data-text="${esc(nudgeText)}" data-who="${esc(JSON.stringify(nudges.map((x) => ({ n: x.n, why: x.kind }))))}">Copy message for the chat</button></div>` : ""}
@@ -661,8 +678,9 @@
       const rank = [...pts.entries()].sort((a, b) => b[1] - a[1]).findIndex(([m]) => m === n) + 1;
       const facts = [
         ["Last in", p.lastAt ? `${dayLong(p.lastAt)} ${timeLab(p.lastAt)}` : "never"],
-        ["Days in", `${p.L7}/7 this week${priorCovered ? `, ${p.L7p}/7 last week` : ""}`],
-        ["Visits", p.w7.sess.length ? `${p.w7.sess.length} this week, ${dur(p.time7 / p.w7.sess.length)} each` : `${p.w7.opens.length} opens this week`],
+        ["Days in", `${p.L7}/7 in the last 7 days${priorCovered ? `, ${p.L7p}/7 in the 7 before` : ""}`],
+        ["This week", `${p.dW}/${dayN} days since Monday${priorWk ? `, ${p.dWP}/${dayN} by this point last week` : ""}`],
+        ["Visits", p.w7.sess.length ? `${p.w7.sess.length} in the last 7 days, ${dur(p.time7 / p.w7.sess.length)} each` : `${p.w7.opens.length} opens in the last 7 days`],
         ["Device", `${p.appKind}${p.device ? ` · ${p.device.slice(0, 6)}` : ""}`],
         ["Build", p.ver ? `${p.ver.slice(4, 8)}·${p.ver.slice(8, 12)}${buildNow ? (p.ver === buildNow ? " · current" : " · behind") : ""}` : "unknown"],
         ["Picks", `${have}/${tot} for week ${curWeek}`],
@@ -829,6 +847,7 @@
     const DAY = 86400000, HR = 3600000, now = Date.now();
     const t0 = new Date(); t0.setHours(0, 0, 0, 0);
     const today0 = t0.getTime(), A = today0 - 6 * DAY, B = today0 + DAY, span = B - A;
+    const wk0 = (() => { const d = new Date(today0); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return d.getTime(); })();
     const days = Array.from({ length: 7 }, (_, i) => A + i * DAY);
     const xp = (t) => ((t - A) / span * 100).toFixed(3);
     const dayLab = (t, i) => i === 6 ? "TODAY" : new Date(t).toLocaleDateString([], { weekday: "short" }).toUpperCase();
@@ -854,9 +873,11 @@
       const last = Math.max(0, ...allOpens.map((x) => x.at), ...(v.sessions?.[n] || []).map((x) => (x.at || 0) + (x.dur || 0)));
       const daysIn = days.filter((d) => opens.some((x) => x.at >= d && x.at < d + DAY) || sess.some((x) => x.at >= d && x.at < d + DAY)).length;
       const time = sess.filter((x) => x.at >= A).reduce((a, x) => a + (x.dur || 0), 0);
-      return { n, opens, sess, last, daysIn, time, today: opens.some((x) => x.at >= today0) || sess.some((x) => x.at >= today0), now: now - last < 10 * 60000 };
+      return { n, opens, sess, last, daysIn, time, today: opens.some((x) => x.at >= today0) || sess.some((x) => x.at >= today0), wk: opens.some((x) => x.at >= wk0) || sess.some((x) => x.at >= wk0), now: now - last < 10 * 60000 };
     }).sort((a, b) => b.last - a.last);
-    const inNow = people.filter((p) => p.now), inToday = people.filter((p) => p.today), inWeek = people.filter((p) => p.daysIn), out = people.filter((p) => !p.daysIn);
+    // The week tile is the calendar week (from Monday); the strip and the
+    // "not in" line are the rolling last 7 days, and say so.
+    const inNow = people.filter((p) => p.now), inToday = people.filter((p) => p.today), inWeek = people.filter((p) => p.wk), out = people.filter((p) => !p.daysIn);
     const av = (n) => { const acc = typeof accentFor === "function" ? accentFor(n) : "#1ab8cc"; const a = (typeof avatarOverrides !== "undefined" && avatarOverrides?.[n]) || n[0]; return `<span class="wi-av" style="--accent:${acc}">${esc(a)}</span>`; };
     const rows = people.map((p) => {
       const sessHtml = p.sess.map((x) => `<i class="wi-sess" style="left:${xp(Math.max(x.at, A))}%;width:${Math.max(0.35, (Math.min(x.at + x.dur, B) - Math.max(x.at, A)) / span * 100).toFixed(3)}%"></i>`).join("");
@@ -877,9 +898,9 @@
       <div class="wi-tiles">
         <div class="${inNow.length ? "hot" : ""}"><b>${inNow.length}</b><span>in now</span></div>
         <div><b>${inToday.length}<small>/${TRACKED.length}</small></b><span>in today</span></div>
-        <div><b>${inWeek.length}<small>/${TRACKED.length}</small></b><span>in this week</span></div>
+        <div><b>${inWeek.length}<small>/${TRACKED.length}</small></b><span>${wk0 === today0 ? "in since Mon (today)" : "in since Mon"}</span></div>
       </div>
-      ${out.length ? `<div class="wi-out">Not in for 7 days: ${out.map((p) => `<b>${esc(p.n)}</b>`).join(", ")}</div>` : `<div class="wi-out ok">All ${TRACKED.length} have been in this week.</div>`}
+      ${out.length ? `<div class="wi-out">Not in for 7 days: ${out.map((p) => `<b>${esc(p.n)}</b>`).join(", ")}</div>` : `<div class="wi-out ok">All ${TRACKED.length} have been in within the last 7 days.</div>`}
       <div class="wi-grid">${axis}${rows}</div>
       <div class="wi-legend"><span><i class="wi-dot"></i>opened the app</span><span><i class="wi-sess k"></i>time in app</span><span><i class="wi-game k"></i>game on</span><span><i class="wi-night k"></i>overnight</span></div>
       <div class="wi-tip">Tap a dot for the time, a name for their week.</div>
