@@ -1901,7 +1901,8 @@ let pendingIdentity = null;
 // entry from the splash and again if they head for Picks, Scores or
 // History without choosing. "Just looking" hides it for this visit.
 let openClaimPrompt = function () {
-  if (loadMe() || claimSkippedThisVisit) return false;
+  const me = loadMe();
+  if (me || claimSkippedThisVisit) return false;
   claimGrid.innerHTML = MANAGERS.map((name, idx) => {
     const accent = accentFor(name);
     const av = avatarOverrides[name] || shown(name)[0];
