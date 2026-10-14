@@ -56,7 +56,9 @@
           const sideWon = scorePick(g, { team: p.team, mode: "SU" }, r) > 0;
           const withMe = Object.entries(sides).filter(([m, t]) => m !== n && t === p.team).length;
           const others = pickers - 1;
-          rows.push({ n, w: Number(w), g, p, kind, scored, other, sideWon, worth: worth(g, kind), room: others > 0 ? withMe / others : null, spread: Math.abs(Number(g.spread) || 0) });
+          // How often the picked team should win outright, from the spread.
+          const winP = p.team === g.favorite ? favWinP(g) : 1 - favWinP(g);
+          rows.push({ n, w: Number(w), g, p, kind, scored, other, sideWon, winP, worth: worth(g, kind), room: others > 0 ? withMe / others : null, spread: Math.abs(Number(g.spread) || 0) });
         }
       }
     }
@@ -148,12 +150,16 @@
         evidence: `${mine.length} picks` });
     }
 
-    // 5. Picking winners: did the team you picked win the game?
+    // 5. Picking winners, against what the spreads expected. An owner who
+    // takes underdogs wins fewer games by design, so the bar is how often
+    // the teams they picked should have won, not everyone else's rate.
     if (mine.length >= 20) {
-      const won = mine.filter((r) => r.sideWon).length, restWon = rest.filter((r) => r.sideWon).length;
-      const d = won / mine.length - (rest.length ? restWon / rest.length : 0);
-      if (Math.abs(d) >= 0.05) add({ key: "side", tone: d > 0 ? "strong" : "weak", weight: Math.abs(d) * mine.length * 1.5,
-        text: `The team you picked won the game ${share(won, mine.length)} of the time; everyone else's won ${pct(restWon, rest.length)}%. ${d > 0 ? "You're reading games well." : "The picks themselves, not just the modes, are where the points go."}`,
+      const won = mine.filter((r) => r.sideWon).length, exp = sum(mine, (r) => r.winP);
+      const d = (won - exp) / mine.length;
+      if (Math.abs(d) >= 0.06) add({ key: "side", tone: d > 0 ? "strong" : "weak", weight: Math.abs(d) * mine.length * 1.5,
+        text: d > 0
+          ? `The teams you pick win more than the spreads say they should: ${share(won, mine.length)} won outright, against about ${pct(exp, mine.length)}% expected. You're reading games better than the line.`
+          : `The teams you pick win less than the spreads say they should: ${share(won, mine.length)} won outright, against about ${pct(exp, mine.length)}% expected. The picks themselves, not the modes, are where points go.`,
         evidence: `${mine.length} picks` });
     }
 
@@ -207,8 +213,13 @@
     // Strongest first; at least one strength when there is one worth saying.
     out.sort((a, b) => b.weight - a.weight);
     let pick = out.slice(0, 4);
-    const strength = out.find((x) => x.tone === "strong" && x.weight >= 2);
-    if (strength && !pick.includes(strength)) pick = [...pick.slice(0, 3), strength];
+    // At least one strength and one weakness when each is real, so the
+    // leader still hears what to fix and the last place what's working.
+    for (const t of ["strong", "weak"]) {
+      const best = out.find((x) => x.tone === t && x.weight >= 2);
+      if (best && !pick.includes(best)) { const drop = [...pick].reverse().find((x) => x.tone !== t && pick.filter((y) => y.tone === x.tone).length > 1); pick = drop ? [...pick.filter((x) => x !== drop), best] : [...pick, best]; }
+    }
+    pick.sort((a, b) => b.weight - a.weight);
     pick = pick.filter((x) => x.weight >= 1.5).slice(0, 5);
 
     // Luck: scored against what the picks were worth.

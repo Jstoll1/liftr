@@ -1356,9 +1356,9 @@
     if (!reps.length) { body.innerHTML = `<div class="admin-empty">No finished games with picks yet.</div>`; return; }
     const tone = { weak: ["WEAKNESS", "wk"], strong: ["STRENGTH", "st"] };
     const luckChip = (r) => `<em class="sc-luck ${Math.abs(r.luck) < 3 ? "even" : r.luck < 0 ? "cold" : "hot"}">${Math.abs(r.luck) < 3 ? "on par" : `${r.luck > 0 ? "+" : "−"}${Math.round(Math.abs(r.luck))} luck`}</em>`;
-    const asText = (r) => [`SCOUTING REPORT · ${r.name.toUpperCase()}`, `${r.scored} points · ${ordinal(r.rank)} of ${r.of} · ${r.picks} picks over ${r.weeks} weeks`, "", r.luckLine, "", ...r.insights.map((x) => `${x.tone === "strong" ? "+" : "-"} ${x.text}`)].join("\n");
+    const asText = (r) => [`SCOUTING REPORT · ${r.name.toUpperCase()}`, `${r.scored} points · ${ordinal(r.rank).toLowerCase()} of ${r.of} · ${r.picks} picks over ${r.weeks} weeks`, "", r.luckLine, "", ...r.insights.map((x) => `${x.tone === "strong" ? "+" : "-"} ${x.text}`)].join("\n");
     const one = (r) => `<div class="sc-card">
-        <div class="sc-head"><b>${esc(r.name)}</b><span>${r.scored} pts · ${ordinal(r.rank)} of ${r.of} · ${r.picks} picks, ${r.weeks} weeks</span>${luckChip(r)}</div>
+        <div class="sc-head"><b>${esc(r.name)}</b><span>${r.scored} pts · ${ordinal(r.rank).toLowerCase()} of ${r.of} · ${r.picks} picks, ${r.weeks} weeks</span>${luckChip(r)}</div>
         <div class="sc-luckline">${esc(r.luckLine)}</div>
         <ol class="sc-list">${r.insights.map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span>${esc(x.text)}</span><small>${esc(x.evidence)}</small></li>`).join("") || `<li><span>Not enough picks yet for anything that isn't noise.</span></li>`}</ol>
         <div class="sc-kinds"><span>MODE</span><span>PICKS</span><span>HIT</span><span>PTS/PICK</span><span>LEAGUE</span>${r.kinds.map((k) => `<span>${esc(k.label)}</span><span>${k.n}</span><span>${k.n ? `${k.hit}/${k.n}` : "-"}</span><span>${k.n ? k.per.toFixed(2) : "-"}</span><span>${k.restPer.toFixed(2)}</span>`).join("")}</div>
