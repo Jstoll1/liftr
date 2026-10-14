@@ -1360,7 +1360,7 @@
     const asText = (r) => [`SCOUTING REPORT: ${r.name.toUpperCase()}`, `${r.scored} points, ${ordinal(r.rank).toLowerCase()} of ${r.of}`, "", ...(r.fix ? [`ONE THING TO CHANGE: ${r.fix}`, ""] : []), `${r.luckBox.head.toUpperCase()}: ${r.luckBox.line}`, "", "VS THE LEAGUE", ...r.vs.map((st) => `${st.label}: ${st.text}${st.rank ? ` (${ordinal(st.rank).toLowerCase()} of ${st.of})` : ` (league avg ${st.avgText})`}`), "", ...r.insights.map((x) => `${x.tone === "strong" ? "✅" : "⚠️"} ${x.head}: ${x.line}`)].join("\n");
     const one = (r) => `<div class="sc-card">
         <div class="sc-head"><b>${esc(r.name)}</b><span>${r.scored} pts · ${ordinal(r.rank).toLowerCase()} of ${r.of} · ${r.picks} picks, ${r.weeks} weeks</span>${luckChip(r)}</div>
-        ${r.fix ? `<div class="sc-fix"><em>ONE THING TO CHANGE</em><b>${esc(r.fix)}</b></div>` : `<div class="sc-fix ok"><em>ONE THING TO CHANGE</em><b>No change needed in how you pick.</b></div>`}
+        ${r.fix ? `<div class="sc-fix"><em>ONE THING TO CHANGE</em><b>${esc(r.fix)}</b></div>` : `<div class="sc-fix ok"><em>ONE THING TO CHANGE</em><b>Nothing to change.</b></div>`}
         <div class="sc-luckline"><b>${esc(r.luckBox.head)}.</b> ${esc(r.luckBox.line)}</div>
         <div class="sc-vs">
           <div class="sc-mix-h">VS THE LEAGUE · <i class="sc-k-me"></i> ${esc(r.name)} · <i class="sc-k-avg"></i> league average</div>
@@ -1384,7 +1384,7 @@
       <div class="ld-asof">Admin only, for review · ${esc(String(Math.max(...reps.map((r) => r.weeks))))} weeks of finished games</div>
       ${pickNames}
       <div class="sc-cards${focus ? " one" : ""}">${shownReps.map(one).join("")}</div>
-      <div class="lvz-cap">How it's worked out: the spread says how likely each pick was to hit, so every pick has a fair value before kickoff; luck is points scored minus that value. Findings about what to do differently come first. Findings that only describe the past have to pass a 1 in 10 fluke test to show. Each lists its count. Nothing here is visible to the league.</div>
+      <div class="lvz-cap">Luck is points scored minus what picks like these usually score, based on the spreads. A finding only shows when there's enough data behind it. Only you can see this page.</div>
     </div>`;
     body.querySelector(".sc").addEventListener("click", async (e) => {
       const b = e.target.closest("button");

@@ -118,8 +118,8 @@
       // of share or more) and it has cost real points (3 or more).
       if (favs.length / mine.length >= restFavShare + 0.1 && alt - actual >= 3) add({ key: "fav1", act: true, tone: "weak", weight: Math.max(alt - actual, sum(favs, (r) => 1 - r.worth)),
         head: "Too many 1-point picks",
-        line: `${share(favs.length, mine.length)} of your picks are the 1-point favorite pick (league: ${pct(restFavShare * 100, 100)}%). The 2-point spread pick on those same teams would have scored ${alt} instead of ${actual}.`,
-        fix: "Swap 1-point favorite picks for the 2-point spread pick on the same team. Over time it pays more.",
+        line: `${share(favs.length, mine.length)} of your picks were 1-point favorites (league ${pct(restFavShare * 100, 100)}%). The spread pick on those teams would have scored ${alt}, not ${actual}.`,
+        fix: "Pick the spread instead of 1-point favorites.",
         evidence: `${favs.length} picks` });
     }
 
@@ -132,12 +132,12 @@
       const gain = sum(close.filter((r) => r.kind !== "dog"), (r) => worth(r.g, "dog") - r.worth);
       if (ms >= Math.max(0.35, rs)) add({ key: "dogs", act: true, tone: "strong", weight: dogs * 0.3,
         head: "Smart on upset picks",
-        line: `In close games (spread 6 or less) you take the 3-point upset ${share(dogs, close.length)} of the time (league: ${pct(restDogs, restClose.length)}%). That's the best-paying pick on the card over time.`,
+        line: `You take the 3-point upset in ${share(dogs, close.length)} of close games (league ${pct(restDogs, restClose.length)}%). It's the best-paying pick.`,
         evidence: `${close.length} close games` });
       else if (gain >= 2) add({ key: "dogs", act: true, tone: "weak", weight: gain,
-        head: "Skipping the best bet on the card",
-        line: `In close games (spread 6 or less) the 3-point upset pick wins about 4 times in 10, which pays more than any other pick over time. You took it ${dogs} of ${close.length} times (league: ${pct(restDogs, restClose.length)}%).`,
-        fix: "In close games (spread 6 or less), take the 3-point upset more often.",
+        head: "Take more upsets",
+        line: `In close games, the 3-point upset pays best over time. You took it ${dogs} of ${close.length} times (league ${pct(restDogs, restClose.length)}%).`,
+        fix: "Take the 3-point upset more in close games.",
         evidence: `${close.length} close games` });
     }
 
@@ -145,8 +145,8 @@
     const miss = missed?.[name] || 0;
     if (miss >= 2) add({ key: "missed", act: true, tone: "weak", weight: miss * per(rest, (r) => r.scored),
       head: "Leaving picks blank",
-      line: `${miss} games left empty. That's ${pts(miss * per(rest, (r) => r.scored))} at the league's average.`,
-      fix: "Fill in every game. A blank always scores zero.",
+      line: `${miss} games left blank. That's about ${pts(miss * per(rest, (r) => r.scored))} lost.`,
+      fix: "Fill in every game.",
       evidence: `${miss} games` });
 
     // Changed picks.
@@ -154,9 +154,9 @@
     if (fl && fl.n >= 4 && Math.abs(fl.net) >= 3) add({ key: "flips", act: true, tone: fl.net > 0 ? "strong" : "weak", weight: Math.abs(fl.net),
       head: fl.net > 0 ? "Second looks pay off" : "Trust your first pick",
       line: fl.net > 0
-        ? `You changed ${fl.n} picks: ${fl.helped} helped, ${fl.hurt} hurt, ${pts(fl.net)} gained.`
-        : `You changed ${fl.n} picks: ${fl.hurt} hurt, ${fl.helped} helped, ${pts(fl.net)} lost.`,
-      fix: fl.net > 0 ? null : "Stick with your first pick. Changes have cost you more than they've won.",
+        ? `You changed ${fl.n} picks: ${fl.helped} helped, ${fl.hurt} hurt. Net +${Math.round(fl.net)} points.`
+        : `You changed ${fl.n} picks: ${fl.hurt} hurt, ${fl.helped} helped. Net −${Math.round(-fl.net)} points.`,
+      fix: fl.net > 0 ? null : "Stick with your first pick.",
       evidence: `${fl.n} changes` });
 
     // Spread picks: a coin flip is the bar.
@@ -165,7 +165,7 @@
       const hit = ats.filter((r) => r.scored > 0).length, z = zOf(hit, ats.length / 2, ats.length / 4);
       if (Math.abs(z) >= CLEAR) add({ key: "ats", act: false, tone: z > 0 ? "strong" : "weak", weight: Math.abs(hit - ats.length / 2) * 2,
         head: z > 0 ? "Beating the spread" : "Spread picks are missing",
-        line: `Your 2-point spread picks hit ${hit} of ${ats.length}. A coin flip would hit about ${Math.round(ats.length / 2)}.`,
+        line: `Your spread picks hit ${hit} of ${ats.length} (${pct(hit, ats.length)}%). A coin flip hits 50%.`,
         evidence: `${ats.length} picks` });
     }
 
@@ -175,11 +175,11 @@
       const better = diff.filter((r) => r.other > r.scored).length, z = zOf(better, diff.length / 2, diff.length / 4);
       const net = sum(mine, (r) => r.other - r.scored);
       if (Math.abs(z) >= CLEAR) add({ key: "type", act: false, tone: z > 0 ? "weak" : "strong", weight: Math.abs(net),
-        head: z > 0 ? "Right team, wrong pick" : "Plays each team the right way",
+        head: z > 0 ? "Wrong pick on the right team" : "Good at win vs. spread",
         line: z > 0
-          ? `When you had the right team, picking it the other way (to win instead of the spread, or the reverse) would have paid more ${better} times and less only ${diff.length - better} times. That left ${pts(net)} on the table.`
-          : `When you like a team, you choose well between picking it to win and picking the spread: your choice paid more ${diff.length - better} times, the other way only ${better} times.`,
-        evidence: `${diff.length} games where it mattered` });
+          ? `You had the right team but the wrong pick ${better} times (right ${diff.length - better}). That cost ${pts(net)}.`
+          : `When choosing win or spread on a team, you chose right ${diff.length - better} times and wrong ${better}.`,
+        evidence: `${diff.length} games` });
     }
 
     // Order: things to do differently first, then the rest by size.
@@ -200,16 +200,12 @@
     // expected. Over a few weeks this is mostly luck, so it explains the
     // luck line rather than standing as a skill of its own.
     const won = mine.filter((r) => r.sideWon).length, wonExp = sum(mine, (r) => r.winP);
-    const wk = `${weeks} week${weeks === 1 ? "" : "s"}`;
-    const usual = `Picks like yours usually score about ${Math.round(expected)} over ${wk}; you have ${scored}.`;
-    const why = Math.abs(won - wonExp) < 3 ? "" : won > wonExp
-      ? ` More of the teams you picked won than the odds said they would (${won}, when about ${Math.round(wonExp)} were likely).`
-      : ` Fewer of the teams you picked won than the odds said they would (${won}, when about ${Math.round(wonExp)} were likely).`;
+    const why = Math.abs(won - wonExp) < 3 ? "" : won > wonExp ? " More of your teams won than the odds expected." : " Fewer of your teams won than the odds expected.";
     const luckBox = Math.abs(luck) < 3
-      ? { head: "Right on pace", line: `${usual} Your score is a fair read of your picks.` }
+      ? { head: "No luck either way", line: `Your ${scored} points are a fair score for your picks.` }
       : luck < 0
-        ? { head: "Bad luck", line: `Down about ${pts(luck)} on luck. ${usual}${why} Your picks are better than your score.` }
-        : { head: "Running hot", line: `Up about ${pts(luck)} on luck. ${usual}${why} That tends to even out.` };
+        ? { head: "Unlucky", line: `About ${pts(luck)} lost so far.${why} Your picks are better than your score.` }
+        : { head: "Lucky", line: `About ${Math.round(luck)} of your ${scored} points are luck.${why} Expect it to even out.` };
 
     const kinds = ["fav", "ats", "dog"].map((k) => {
       const a = mine.filter((r) => r.kind === k), b = rest.filter((r) => r.kind === k);
@@ -225,7 +221,7 @@
       { k: "ppw", label: "Points a week", better: "high", fmt: (v) => v.toFixed(1) },
       { k: "hit", label: "Picks that hit", better: "high", fmt: (v) => `${Math.round(v * 100)}%` },
       { k: "ppp", label: "Points per pick", better: "high", fmt: (v) => v.toFixed(2) },
-      { k: "value", label: "Pick value", note: "what the picks were worth before kickoff", better: "high", fmt: (v) => v.toFixed(2) },
+      { k: "value", label: "Pick quality", note: "how good the picks were before kickoff, from the spreads", better: "high", fmt: (v) => v.toFixed(2) },
       { k: "luck", label: "Luck", note: "points scored minus pick value", better: "high", neutral: true, fmt: (v) => `${v >= 0 ? "+" : "−"}${Math.round(Math.abs(v))}` },
       { k: "upset", label: "Upset picks", note: "share of picks that are 3-point upsets", better: null, fmt: (v) => `${Math.round(v * 100)}%` },
     ];

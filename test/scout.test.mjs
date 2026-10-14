@@ -53,7 +53,7 @@ test("report totals add up to the app's scoring", () => {
 test("the favorites-for-1 habit is called out; the close-underdog habit is a strength", () => {
   const fav = S.report("Fav"), dog = S.report("Dog");
   assert.ok(fav.insights.some((x) => x.key === "fav1" && x.tone === "weak"));
-  assert.match(fav.fix, /spread pick|upset/);
+  assert.match(fav.fix, /spread|upset/);
   assert.ok(dog.all.some((x) => x.key === "dogs" && x.tone === "strong"));
   assert.ok(dog.expected > fav.expected);
 });
