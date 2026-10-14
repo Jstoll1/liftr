@@ -6114,3 +6114,15 @@ html.vp-gap { --nav-h: 63px; }
 .sc-vv small { font-size: 9.5px; color: var(--text-dim); }
 .sc-vv.good small { color: #39ff88; }
 .sc-vv.bad small { color: #ff5c8a; }
+/* Scouting: the luck pill and its explainer. */
+button.sc-luck { background: none; font: inherit; font-size: 10px; cursor: pointer; }
+button.sc-luck:hover { filter: brightness(1.2); }
+.sc-luckx { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 9px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .12); }
+.sc-luckx[hidden] { display: none; }
+.sc-luckx em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); letter-spacing: .05em; }
+.sc-luckx p { margin: 0; font-size: 12px; line-height: 1.45; color: var(--text); }
+.sc-luckx-n { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; padding: 6px 0; font-size: 12.5px; color: var(--text); border-top: 1px solid rgba(255, 255, 255, .07); border-bottom: 1px solid rgba(255, 255, 255, .07); }
+.sc-luckx-n b { text-align: right; color: #fff; font-weight: 600; }
+.sc-luckx-n b.up { color: #ffb347; }
+.sc-luckx-n b.down { color: #8fd3ff; }
+.sc-luckx p.sc-luckx-m { color: #fff; font-weight: 600; }

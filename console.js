@@ -1355,11 +1355,21 @@
     const reps = OWNERS.map((n) => S.report(n)).filter((r) => !r.empty).sort((a, b) => b.scored - a.scored);
     if (!reps.length) { body.innerHTML = `<div class="admin-empty">No finished games with picks yet.</div>`; return; }
     const tone = { weak: ["WEAKNESS", "wk"], strong: ["STRENGTH", "st"] };
-    const luckChip = (r) => `<em class="sc-luck ${Math.abs(r.luck) < 3 ? "even" : r.luck < 0 ? "cold" : "hot"}">${Math.abs(r.luck) < 3 ? "on par" : `${r.luck > 0 ? "+" : "−"}${Math.round(Math.abs(r.luck))} luck`}</em>`;
+    // The luck pill opens a short explainer with the owner's own numbers.
+    const luckChip = (r) => `<button type="button" class="sc-luck ${Math.abs(r.luck) < 3 ? "even" : r.luck < 0 ? "cold" : "hot"}" data-sc-luck="${esc(r.name)}" aria-expanded="false">${Math.abs(r.luck) < 3 ? "no luck" : `${r.luck > 0 ? "+" : "−"}${Math.round(Math.abs(r.luck))} luck`} ⓘ</button>`;
+    const luckSign = (r) => Math.abs(r.luck) < 3 ? "even" : r.luck > 0 ? "up" : "down";
+    const luckExplain = (r) => `<div class="sc-luckx" data-sc-luckx="${esc(r.name)}" hidden>
+        <em>WHAT IS LUCK?</em>
+        <p>Luck is the gap between how good your picks were and the points they actually earned.</p>
+        <div class="sc-luckx-n"><span>Picks like yours usually score</span><b>~${Math.round(r.expected)}</b><span>You scored</span><b>${r.scored}</b><span>Luck</span><b class="${luckSign(r)}">${Math.abs(r.luck) < 0.5 ? "0" : `${r.luck > 0 ? "+" : "−"}${Math.round(Math.abs(r.luck))}`}</b></div>
+        <p>The spread gives every pick its odds, so we know what picks like yours usually score. The difference is games breaking for or against you.</p>
+        <p class="sc-luckx-m">${luckSign(r) === "up" ? "Your picks were good and the games broke your way too. Those breaks usually even out, so this lead is shakier than it looks." : luckSign(r) === "down" ? "Your picks were good but the games went the wrong way. Don't change much: it usually evens out." : "Your score is a fair reflection of your picks."}</p>
+      </div>`;
     // Plain text for a group chat or a direct message.
     const asText = (r) => [`SCOUTING REPORT: ${r.name.toUpperCase()}`, `${r.scored} points, ${ordinal(r.rank).toLowerCase()} of ${r.of}`, "", ...(r.fix ? [`ONE THING TO CHANGE: ${r.fix}`, ""] : []), `${r.luckBox.head.toUpperCase()}: ${r.luckBox.line}`, "", "VS THE LEAGUE", ...r.vs.map((st) => `${st.label}: ${st.text}${st.rank ? ` (${ordinal(st.rank).toLowerCase()} of ${st.of})` : ` (league avg ${st.avgText})`}`), "", ...r.insights.map((x) => `${x.tone === "strong" ? "✅" : "⚠️"} ${x.head}: ${x.line}`)].join("\n");
     const one = (r) => `<div class="sc-card">
         <div class="sc-head"><b>${esc(r.name)}</b><span>${r.scored} pts · ${ordinal(r.rank).toLowerCase()} of ${r.of} · ${r.picks} picks, ${r.weeks} weeks</span>${luckChip(r)}</div>
+        ${luckExplain(r)}
         ${r.fix ? `<div class="sc-fix"><em>ONE THING TO CHANGE</em><b>${esc(r.fix)}</b></div>` : `<div class="sc-fix ok"><em>ONE THING TO CHANGE</em><b>Nothing to change.</b></div>`}
         <div class="sc-luckline"><b>${esc(r.luckBox.head)}.</b> ${esc(r.luckBox.line)}</div>
         <div class="sc-vs">
@@ -1390,6 +1400,7 @@
       const b = e.target.closest("button");
       if (!b) return;
       if (b.dataset.sc !== undefined) return renderScouting(b.dataset.sc || null);
+      if (b.dataset.scLuck) { const m = body.querySelector(`[data-sc-luckx="${CSS.escape(b.dataset.scLuck)}"]`); if (m) { m.hidden = !m.hidden; b.setAttribute("aria-expanded", String(!m.hidden)); } return; }
       if (b.dataset.scAll) { const m = body.querySelector(`[data-sc-more="${CSS.escape(b.dataset.scAll)}"]`); if (m) m.hidden = !m.hidden; return; }
       if (b.dataset.scCopy) {
         const r = reps.find((x) => x.name === b.dataset.scCopy);
