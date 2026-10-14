@@ -5752,7 +5752,10 @@ async function openInsights(gameId) {
     const favSide = game.favorite === game.home ? "home" : "away", dogSide = favSide === "home" ? "away" : "home";
     const sealed = Number(game.spread) || 0;
     const lineOf = (side) => sealed === 0 ? "PK" : side === favSide ? `-${sealed}` : `+${sealed}`;
-    const scoreOf = (p) => { const m = /^(\d{1,2})-(\d{1,2})$/.exec(String(p.score || "")); return m ? { away: Number(m[1]), home: Number(m[2]) } : null; };
+    // Scores are away-home. A pick to win outright must have its own side
+    // winning: an older cached answer could be the wrong way round, and the
+    // number order alone is never trusted over the team the expert named.
+    const scoreOf = (p) => { const m = /^(\d{1,2})-(\d{1,2})$/.exec(String(p.score || "")); if (!m) return null; let a = Number(m[1]), h = Number(m[2]); if ((p.type === "SU" || p.type === "BOTH") && a !== h && (a > h ? "away" : "home") !== p.side) [a, h] = [h, a]; return { away: a, home: h }; };
     // { win: side, by: margin or null, tag, tone }
     const callOf = (p) => {
       const sc = scoreOf(p);
