@@ -1339,7 +1339,50 @@
     wire();
   }
 
-  const TABS = { whosin: renderWhosIn, qotw: renderQotw, experts: renderExperts, grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
+  // --- Scouting report: why each owner is winning or losing -------------
+  // The numbers come from scout.js (plain arithmetic, no model); this tab
+  // only lays them out. Admin only while it's reviewed. Jake is an owner
+  // here: picks, unlike logins, are league data.
+  async function renderScouting(focus = null) {
+    body.innerHTML = `<div class="admin-empty">Scouting the league…</div>`;
+    if (!window.Scout) await new Promise((ok, bad) => { const s = document.createElement("script"); s.src = `scout.js?v=${typeof APP_VERSION === "string" ? APP_VERSION : Date.now()}`; s.onload = ok; s.onerror = bad; document.head.appendChild(s); }).catch(() => {});
+    const [season, plog] = await Promise.allSettled([get("/season"), get(`/picks-log?format=json&since=${Date.now() - 200 * 86400000}`)]);
+    if (!window.Scout || season.status !== "fulfilled") { body.innerHTML = `<div class="admin-empty">Couldn't load the season.</div>`; return; }
+    const S = window.Scout.build({ season: season.value, log: plog.status === "fulfilled" ? plog.value?.changes || [] : [], names: OWNERS, scorePick });
+    const reps = OWNERS.map((n) => S.report(n)).filter((r) => !r.empty).sort((a, b) => b.scored - a.scored);
+    if (!reps.length) { body.innerHTML = `<div class="admin-empty">No finished games with picks yet.</div>`; return; }
+    const tone = { weak: ["WEAKNESS", "wk"], strong: ["STRENGTH", "st"] };
+    const luckChip = (r) => `<em class="sc-luck ${Math.abs(r.luck) < 3 ? "even" : r.luck < 0 ? "cold" : "hot"}">${Math.abs(r.luck) < 3 ? "on par" : `${r.luck > 0 ? "+" : "−"}${Math.round(Math.abs(r.luck))} luck`}</em>`;
+    const asText = (r) => [`SCOUTING REPORT · ${r.name.toUpperCase()}`, `${r.scored} points · ${ordinal(r.rank)} of ${r.of} · ${r.picks} picks over ${r.weeks} weeks`, "", r.luckLine, "", ...r.insights.map((x) => `${x.tone === "strong" ? "+" : "-"} ${x.text}`)].join("\n");
+    const one = (r) => `<div class="sc-card">
+        <div class="sc-head"><b>${esc(r.name)}</b><span>${r.scored} pts · ${ordinal(r.rank)} of ${r.of} · ${r.picks} picks, ${r.weeks} weeks</span>${luckChip(r)}</div>
+        <div class="sc-luckline">${esc(r.luckLine)}</div>
+        <ol class="sc-list">${r.insights.map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span>${esc(x.text)}</span><small>${esc(x.evidence)}</small></li>`).join("") || `<li><span>Not enough picks yet for anything that isn't noise.</span></li>`}</ol>
+        <div class="sc-kinds"><span>MODE</span><span>PICKS</span><span>HIT</span><span>PTS/PICK</span><span>LEAGUE</span>${r.kinds.map((k) => `<span>${esc(k.label)}</span><span>${k.n}</span><span>${k.n ? `${k.hit}/${k.n}` : "-"}</span><span>${k.n ? k.per.toFixed(2) : "-"}</span><span>${k.restPer.toFixed(2)}</span>`).join("")}</div>
+        <div class="sc-actions"><button type="button" class="admin-btn" data-sc-copy="${esc(r.name)}">Copy report</button>${r.all.length > r.insights.length ? `<button type="button" class="admin-btn link" data-sc-all="${esc(r.name)}">All ${r.all.length} findings</button>` : ""}</div>
+        <ol class="sc-list sc-more" data-sc-more="${esc(r.name)}" hidden>${r.all.filter((x) => !r.insights.includes(x)).map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span>${esc(x.text)}</span><small>${esc(x.evidence)} · weight ${x.weight.toFixed(1)}</small></li>`).join("")}</ol>
+      </div>`;
+    const pickNames = `<div class="ld-sort sc-pick"><span>OWNER</span><button type="button" data-sc="" class="${focus ? "" : "on"}">ALL</button>${reps.map((r) => `<button type="button" data-sc="${esc(r.name)}" class="${focus === r.name ? "on" : ""}">${esc(r.name.toUpperCase())}</button>`).join("")}</div>`;
+    const shownReps = focus ? reps.filter((r) => r.name === focus) : reps;
+    body.innerHTML = `<div class="sc">
+      <div class="ld-asof">Admin only, for review · finished games through ${esc(String(Math.max(...reps.map((r) => r.weeks))))} weeks · worth = points x chance from the spread</div>
+      ${pickNames}
+      ${shownReps.map(one).join("")}
+      <div class="lvz-cap">How it's worked out: what each pick was worth going in comes from its spread (the favorite wins outright with probability Phi(spread / 15), either side covers half the time), so luck is points scored minus points the picks were worth. A finding needs enough picks behind it to show, and each lists its count. Nothing here is visible to the league.</div>
+    </div>`;
+    body.querySelector(".sc").addEventListener("click", async (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      if (b.dataset.sc !== undefined) return renderScouting(b.dataset.sc || null);
+      if (b.dataset.scAll) { const m = body.querySelector(`[data-sc-more="${CSS.escape(b.dataset.scAll)}"]`); if (m) m.hidden = !m.hidden; return; }
+      if (b.dataset.scCopy) {
+        const r = reps.find((x) => x.name === b.dataset.scCopy);
+        try { await navigator.clipboard.writeText(asText(r)); b.textContent = "Copied"; } catch { window.prompt("Copy the report:", asText(r)); }
+      }
+    });
+  }
+
+  const TABS = { scouting: () => renderScouting(), whosin: renderWhosIn, qotw: renderQotw, experts: renderExperts, grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
 
   async function renderTab() {
     body.innerHTML = `<div class="admin-empty">Loading…</div>`;
