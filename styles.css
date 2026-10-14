@@ -6030,3 +6030,53 @@ html.vp-gap { --nav-h: 63px; }
   .wi-tiles b { font-size: 18px; }
   .wi-tiles span, .wi-out, .wi-legend, .wi-tip { font-size: 11.5px; }
 }
+
+/* Admin console: scouting reports. */
+.sc { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 920px; margin: 0 auto; }
+.sc-pick { flex-wrap: wrap; }
+.sc-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, .035); border: 1px solid rgba(255, 255, 255, .08); }
+.sc-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.sc-head b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 12px; color: #fff; }
+.sc-head span { font-size: 11px; color: var(--text-dim); }
+.sc-luck { margin-left: auto; font-style: normal; font-size: 10px; padding: 2px 7px; border-radius: 999px; border: 1px solid; }
+.sc-luck.cold { color: #8fd3ff; border-color: rgba(143, 211, 255, .45); }
+.sc-luck.hot { color: #ffb347; border-color: rgba(255, 179, 71, .45); }
+.sc-luck.even { color: var(--text-dim); border-color: rgba(255, 255, 255, .15); }
+.sc-luckline { font-size: 12px; line-height: 1.45; color: #fff; padding: 7px 9px; border-radius: 8px; background: rgba(255, 255, 255, .04); }
+.sc-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.sc-list li { display: grid; grid-template-columns: 74px 1fr; gap: 2px 8px; font-size: 12px; line-height: 1.45; color: var(--text); }
+.sc-list li em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; padding-top: 4px; }
+.sc-list li.wk em { color: #ff5c8a; }
+.sc-list li.st em { color: #39ff88; }
+.sc-list li small { grid-column: 2; font-size: 10px; color: var(--text-dim); }
+.sc-more[hidden] { display: none; }
+.sc-kinds { display: grid; grid-template-columns: minmax(0, 1.8fr) repeat(4, minmax(0, 1fr)); gap: 3px 8px; font-size: 10.5px; color: var(--text); padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, .07); }
+.sc-kinds span:nth-child(-n+5) { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); }
+.sc-kinds span:not(:nth-child(5n+1)) { text-align: right; }
+.sc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (min-width: 900px) { .sc-list li, .sc-luckline { font-size: 13px; } .sc-head b { font-size: 14px; } }
+
+/* Admin console on a desktop: tabs become a sidebar, the content gets a
+   readable width and is scaled up as a whole (the console's type is sized
+   for a phone), and wide pages use two columns. A phone is unchanged. */
+.ld-cols { display: block; }
+@media (min-width: 1100px) {
+  body:has(#console-overlay:not(.hidden)) .bottom-nav,
+  body:has(#console-overlay:not(.hidden)) .home-header { display: none; }
+  #console-overlay { bottom: 0; }
+  #console-overlay .screen { padding: 0 28px 24px; }
+  #console-overlay .wrap.wide { max-width: 1500px; width: 100%; margin: 0 auto; display: grid; grid-template-columns: 200px minmax(0, 1fr); grid-template-areas: "top top" "tabs status" "tabs body" "tabs foot"; column-gap: 28px; align-items: start; }
+  #console-overlay .topbar { grid-area: top; justify-content: flex-start; padding-bottom: 6px; }
+  #console-overlay .console-tabs { grid-area: tabs; position: sticky; top: 12px; flex-direction: column; flex-wrap: nowrap; gap: 5px; padding-top: 4px; }
+  #console-overlay .console-tab { width: 100%; text-align: left; min-height: 40px; padding: 10px 12px; font-size: 9.5px; }
+  #console-overlay .topbar .manager-badge { font-size: 12px; }
+  #console-overlay #console-status { grid-area: status; }
+  #console-overlay .console-body { grid-area: body; zoom: 1.3; min-width: 0; }
+  #console-overlay .admin-foot { grid-area: foot; }
+  #console-overlay .wi, #console-overlay .sc { max-width: 1040px; margin: 0; }
+  .ld-cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0 22px; align-items: start; }
+  .ld-col { min-width: 0; }
+  .sc-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+  .sc-cards.one { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 1700px) { #console-overlay .console-body { zoom: 1.45; } }

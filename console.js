@@ -690,7 +690,9 @@
     const punchHtml = punch.map((row, d) => `<span class="lvz-pd">${wd[d].slice(0, 2).toUpperCase()}</span>${row.map((n, h) => `<i class="lvz-p s${pstep(n)}" ${tip(`${wd[d]} ${hourLab(h)}-${hourLab((h + 1) % 24)} · ${n} open${n === 1 ? "" : "s"} on record`)}></i>`).join("")}`).join("");
     const tagCls = { ACTION: "act", TREND: "trend", NOTE: "note" };
     const lastWkTo = `${new Date(nowP).toLocaleDateString([], { weekday: "short" })} ${timeLab(nowP)}`;
-    const pulseLive = `<div class="lvz-h">THIS WEEK · ${esc(dayLong(wk0).toUpperCase())} TO NOW · VS LAST WEEK TO ${esc(lastWkTo.toUpperCase())}</div>
+    // Two columns on a desktop (the week and its story; who to nudge and
+    // whether it worked); one column, same order, on a phone.
+    const pulseLive = `<div class="ld-cols"><div class="ld-col"><div class="lvz-h">THIS WEEK · ${esc(dayLong(wk0).toUpperCase())} TO NOW · VS LAST WEEK TO ${esc(lastWkTo.toUpperCase())}</div>
       <div class="ld-kpis">
         <div ${tip(`People in at least once ${sinceMon}. Last week by ${lastWkTo}: ${priorWk ? actWP : "not tracked yet"}.`)}><b>${actW}<small>/${N}</small></b><span>active ${sinceMon}</span>${chip(priorWk ? actW - actWP : null)}</div>
         <div ${tip(`Average days each person was in, out of the ${dayN} day${dayN === 1 ? "" : "s"} so far this week. Last week by ${lastWkTo}: ${priorWk ? avgWP.toFixed(1) : "not tracked yet"}.`)}><b>${avgW.toFixed(1)}<small>/${dayN}</small></b><span>days in, per person</span>${chip(priorWk ? Math.round((avgW - avgWP) * 10) / 10 : null)}</div>
@@ -698,8 +700,9 @@
         <div ${tip(`Time in the app ${sinceMon}, from visit records. Last week by ${lastWkTo}: ${priorWkSess ? dur(timeWP) : "not tracked yet"}.`)}><b>${dur(timeW)}</b><span>time in app${sessW.length ? ` · ${dur(timeW / sessW.length)} a visit` : ""}</span>${chip(priorWkSess && timeWP ? pct(timeW, timeWP) : null, "%")}</div>
       </div>
       ${story.length ? `<div class="lvz-h">THIS WEEK'S STORY</div><ul class="ld-story">${story.slice(0, 9).map((s) => `<li><em class="ld-tag ${tagCls[s.tag]}">${s.tag}</em><span>${s.html}</span></li>`).join("")}</ul>` : ""}
+      </div><div class="ld-col">
       ${nudges.length ? `<div class="lvz-nudge"><div class="lvz-h">WHO TO NUDGE</div>${nudges.map((x) => `<div class="lvz-nr"><b>${esc(x.n)}</b><span>${esc(x.why)}</span></div>`).join("")}<button type="button" class="admin-btn lvz-copy" data-text="${esc(nudgeText)}" data-who="${esc(JSON.stringify(nudges.map((x) => ({ n: x.n, why: x.kind }))))}">Copy message for the chat</button></div>` : ""}
-      ${nudgeHtml}
+      ${nudgeHtml}</div></div>
       ${rhythmHtml}
       <div class="lvz-h">SEASON · WEEK BY WEEK</div>
       ${seasonHtml}
@@ -1339,7 +1342,50 @@
     wire();
   }
 
-  const TABS = { whosin: renderWhosIn, qotw: renderQotw, experts: renderExperts, grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
+  // --- Scouting report: why each owner is winning or losing -------------
+  // The numbers come from scout.js (plain arithmetic, no model); this tab
+  // only lays them out. Admin only while it's reviewed. Jake is an owner
+  // here: picks, unlike logins, are league data.
+  async function renderScouting(focus = null) {
+    body.innerHTML = `<div class="admin-empty">Scouting the league…</div>`;
+    if (!window.Scout) await new Promise((ok, bad) => { const s = document.createElement("script"); s.src = `scout.js?v=${typeof APP_VERSION === "string" ? APP_VERSION : Date.now()}`; s.onload = ok; s.onerror = bad; document.head.appendChild(s); }).catch(() => {});
+    const [season, plog] = await Promise.allSettled([get("/season"), get(`/picks-log?format=json&since=${Date.now() - 200 * 86400000}`)]);
+    if (!window.Scout || season.status !== "fulfilled") { body.innerHTML = `<div class="admin-empty">Couldn't load the season.</div>`; return; }
+    const S = window.Scout.build({ season: season.value, log: plog.status === "fulfilled" ? plog.value?.changes || [] : [], names: OWNERS, scorePick });
+    const reps = OWNERS.map((n) => S.report(n)).filter((r) => !r.empty).sort((a, b) => b.scored - a.scored);
+    if (!reps.length) { body.innerHTML = `<div class="admin-empty">No finished games with picks yet.</div>`; return; }
+    const tone = { weak: ["WEAKNESS", "wk"], strong: ["STRENGTH", "st"] };
+    const luckChip = (r) => `<em class="sc-luck ${Math.abs(r.luck) < 3 ? "even" : r.luck < 0 ? "cold" : "hot"}">${Math.abs(r.luck) < 3 ? "on par" : `${r.luck > 0 ? "+" : "−"}${Math.round(Math.abs(r.luck))} luck`}</em>`;
+    const asText = (r) => [`SCOUTING REPORT · ${r.name.toUpperCase()}`, `${r.scored} points · ${ordinal(r.rank)} of ${r.of} · ${r.picks} picks over ${r.weeks} weeks`, "", r.luckLine, "", ...r.insights.map((x) => `${x.tone === "strong" ? "+" : "-"} ${x.text}`)].join("\n");
+    const one = (r) => `<div class="sc-card">
+        <div class="sc-head"><b>${esc(r.name)}</b><span>${r.scored} pts · ${ordinal(r.rank)} of ${r.of} · ${r.picks} picks, ${r.weeks} weeks</span>${luckChip(r)}</div>
+        <div class="sc-luckline">${esc(r.luckLine)}</div>
+        <ol class="sc-list">${r.insights.map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span>${esc(x.text)}</span><small>${esc(x.evidence)}</small></li>`).join("") || `<li><span>Not enough picks yet for anything that isn't noise.</span></li>`}</ol>
+        <div class="sc-kinds"><span>MODE</span><span>PICKS</span><span>HIT</span><span>PTS/PICK</span><span>LEAGUE</span>${r.kinds.map((k) => `<span>${esc(k.label)}</span><span>${k.n}</span><span>${k.n ? `${k.hit}/${k.n}` : "-"}</span><span>${k.n ? k.per.toFixed(2) : "-"}</span><span>${k.restPer.toFixed(2)}</span>`).join("")}</div>
+        <div class="sc-actions"><button type="button" class="admin-btn" data-sc-copy="${esc(r.name)}">Copy report</button>${r.all.length > r.insights.length ? `<button type="button" class="admin-btn link" data-sc-all="${esc(r.name)}">All ${r.all.length} findings</button>` : ""}</div>
+        <ol class="sc-list sc-more" data-sc-more="${esc(r.name)}" hidden>${r.all.filter((x) => !r.insights.includes(x)).map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span>${esc(x.text)}</span><small>${esc(x.evidence)} · weight ${x.weight.toFixed(1)}</small></li>`).join("")}</ol>
+      </div>`;
+    const pickNames = `<div class="ld-sort sc-pick"><span>OWNER</span><button type="button" data-sc="" class="${focus ? "" : "on"}">ALL</button>${reps.map((r) => `<button type="button" data-sc="${esc(r.name)}" class="${focus === r.name ? "on" : ""}">${esc(r.name.toUpperCase())}</button>`).join("")}</div>`;
+    const shownReps = focus ? reps.filter((r) => r.name === focus) : reps;
+    body.innerHTML = `<div class="sc">
+      <div class="ld-asof">Admin only, for review · finished games through ${esc(String(Math.max(...reps.map((r) => r.weeks))))} weeks · worth = points x chance from the spread</div>
+      ${pickNames}
+      <div class="sc-cards${focus ? " one" : ""}">${shownReps.map(one).join("")}</div>
+      <div class="lvz-cap">How it's worked out: what each pick was worth going in comes from its spread (the favorite wins outright with probability Phi(spread / 15), either side covers half the time), so luck is points scored minus points the picks were worth. A finding needs enough picks behind it to show, and each lists its count. Nothing here is visible to the league.</div>
+    </div>`;
+    body.querySelector(".sc").addEventListener("click", async (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      if (b.dataset.sc !== undefined) return renderScouting(b.dataset.sc || null);
+      if (b.dataset.scAll) { const m = body.querySelector(`[data-sc-more="${CSS.escape(b.dataset.scAll)}"]`); if (m) m.hidden = !m.hidden; return; }
+      if (b.dataset.scCopy) {
+        const r = reps.find((x) => x.name === b.dataset.scCopy);
+        try { await navigator.clipboard.writeText(asText(r)); b.textContent = "Copied"; } catch { window.prompt("Copy the report:", asText(r)); }
+      }
+    });
+  }
+
+  const TABS = { scouting: () => renderScouting(), whosin: renderWhosIn, qotw: renderQotw, experts: renderExperts, grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
 
   async function renderTab() {
     body.innerHTML = `<div class="admin-empty">Loading…</div>`;

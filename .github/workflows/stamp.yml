@@ -16,6 +16,7 @@ on:
       - "sim.js"
       - "gridcard.js"
       - "admin.js"
+      - "scout.js"
       - "icons/**"
 
 permissions:
