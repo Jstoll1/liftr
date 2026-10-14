@@ -72,7 +72,7 @@ test("an owner with no finished picks gets an empty report", () => {
 test("taking underdogs isn't called a failure to pick winners", () => {
   // Dog's picked teams win less often by design; judged against the spreads, not the league.
   const dog = S.report("Dog");
-  const side = dog.all.find((x) => x.key === "side");
-  assert.ok(!side || /Going by the spreads/.test(side.line));
+  // Winning more or less than the spreads expected is explained in the luck line, not graded.
+  assert.ok(!dog.all.some((x) => x.key === "side"));
   for (const n of names) { const r = S.report(n); const tones = new Set(r.insights.map((x) => x.tone)); if (r.all.some((x) => x.tone === "weak" && x.weight >= 2)) assert.ok(tones.has("weak")); }
 });

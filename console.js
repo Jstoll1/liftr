@@ -1365,7 +1365,7 @@
         <div class="sc-vs">
           <div class="sc-mix-h">VS THE LEAGUE · <i class="sc-k-me"></i> ${esc(r.name)} · <i class="sc-k-avg"></i> league average</div>
           ${r.vs.map((st) => { const lo = Math.min(...st.vals.map((x) => x.v)), hi = Math.max(...st.vals.map((x) => x.v)), span = hi - lo || 1, x = (v) => (4 + (v - lo) / span * 92).toFixed(1);
-            const good = st.better && st.rank <= Math.ceil(st.of / 3), bad = st.better && st.rank > st.of - Math.ceil(st.of / 3);
+            const good = st.better && !st.neutral && st.rank <= Math.ceil(st.of / 3), bad = st.better && !st.neutral && st.rank > st.of - Math.ceil(st.of / 3);
             return `<div class="sc-vrow" ${st.note ? `title="${esc(st.note)}"` : ""}><span class="sc-vl">${esc(st.label)}</span><span class="sc-track"><i class="sc-avg" style="left:${x(st.avg)}%"></i>${st.vals.filter((v) => v.n !== r.name).map((v) => `<i class="sc-dot" style="left:${x(v.v)}%" title="${esc(v.n)}: ${esc(st.fmt(v.v))}"></i>`).join("")}<i class="sc-dot me" style="left:${x(st.me)}%"></i></span><span class="sc-vv ${good ? "good" : bad ? "bad" : ""}"><b>${esc(st.text)}</b>${st.rank ? `<small>${ordinal(st.rank).toLowerCase()}</small>` : `<small>avg ${esc(st.avgText)}</small>`}</span></div>`; }).join("")}
         </div>
         <ol class="sc-list">${r.insights.map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span><b>${esc(x.head)}</b>${esc(x.line)}</span><small>${esc(x.evidence)}</small></li>`).join("") || `<li><span>Not enough picks yet for anything that isn't noise.</span></li>`}</ol>

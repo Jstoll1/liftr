@@ -159,16 +159,6 @@
       fix: fl.net > 0 ? null : "Stick with your first pick. Changes have cost you more than they've won.",
       evidence: `${fl.n} changes` });
 
-    // Do the teams you pick win more than the spreads say they should?
-    if (mine.length >= 20) {
-      const won = mine.filter((r) => r.sideWon).length, exp = sum(mine, (r) => r.winP), v = sum(mine, (r) => r.winP * (1 - r.winP));
-      const z = zOf(won, exp, v);
-      if (Math.abs(z) >= CLEAR) add({ key: "side", act: false, tone: z > 0 ? "strong" : "weak", weight: Math.abs(won - exp) * 1.5,
-        head: z > 0 ? "Picks winners better than Vegas" : "Your teams keep losing",
-        line: `The teams you picked won ${won} of ${mine.length} games. Going by the spreads, about ${Math.round(exp)} should have.`,
-        evidence: `${mine.length} picks` });
-    }
-
     // Spread picks: a coin flip is the bar.
     const ats = mine.filter((r) => r.kind === "ats");
     if (ats.length >= 10) {
@@ -206,11 +196,16 @@
 
     // Luck: scored against what the picks were worth.
     const luck = scored - expected;
+    // Why: how many games the picked teams won against what the spreads
+    // expected. Over a few weeks this is mostly luck, so it explains the
+    // luck line rather than standing as a skill of its own.
+    const won = mine.filter((r) => r.sideWon).length, wonExp = sum(mine, (r) => r.winP);
+    const why = Math.abs(won - wonExp) >= 3 ? ` Your teams won ${won} of ${mine.length} games when the spreads expected about ${Math.round(wonExp)}.` : "";
     const luckBox = Math.abs(luck) < 3
       ? { head: "Right on pace", line: `Your picks were worth about ${Math.round(expected)} points and scored ${scored}. No luck either way: what you see is what you've earned.` }
       : luck < 0
-        ? { head: "Bad luck", line: `Your picks were worth about ${Math.round(expected)} points but scored ${scored}. The bounces have cost you about ${pts(luck)}.` }
-        : { head: "Running hot", line: `Your picks were worth about ${Math.round(expected)} points but scored ${scored}. About ${pts(luck)} of that is luck, and luck tends to even out.` };
+        ? { head: "Bad luck", line: `Your picks were worth about ${Math.round(expected)} points but scored ${scored}.${why} The bounces have cost you about ${pts(luck)}.` }
+        : { head: "Running hot", line: `Your picks were worth about ${Math.round(expected)} points but scored ${scored}.${why} About ${pts(luck)} of that is luck, and luck tends to even out.` };
 
     const kinds = ["fav", "ats", "dog"].map((k) => {
       const a = mine.filter((r) => r.kind === k), b = rest.filter((r) => r.kind === k);
@@ -227,7 +222,7 @@
       { k: "hit", label: "Picks that hit", better: "high", fmt: (v) => `${Math.round(v * 100)}%` },
       { k: "ppp", label: "Points per pick", better: "high", fmt: (v) => v.toFixed(2) },
       { k: "value", label: "Pick value", note: "what the picks were worth before kickoff", better: "high", fmt: (v) => v.toFixed(2) },
-      { k: "luck", label: "Luck", note: "points scored minus pick value", better: "high", fmt: (v) => `${v >= 0 ? "+" : "−"}${Math.round(Math.abs(v))}` },
+      { k: "luck", label: "Luck", note: "points scored minus pick value", better: "high", neutral: true, fmt: (v) => `${v >= 0 ? "+" : "−"}${Math.round(Math.abs(v))}` },
       { k: "upset", label: "Upset picks", note: "share of picks that are 3-point upsets", better: null, fmt: (v) => `${Math.round(v * 100)}%` },
     ];
     const vs = STATS.map((st) => {
