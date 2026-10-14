@@ -200,12 +200,16 @@
     // expected. Over a few weeks this is mostly luck, so it explains the
     // luck line rather than standing as a skill of its own.
     const won = mine.filter((r) => r.sideWon).length, wonExp = sum(mine, (r) => r.winP);
-    const why = Math.abs(won - wonExp) >= 3 ? ` Your teams won ${won} of ${mine.length} games when the spreads expected about ${Math.round(wonExp)}.` : "";
+    const wk = `${weeks} week${weeks === 1 ? "" : "s"}`;
+    const usual = `Picks like yours usually score about ${Math.round(expected)} over ${wk}; you have ${scored}.`;
+    const why = Math.abs(won - wonExp) < 3 ? "" : won > wonExp
+      ? ` More of the teams you picked won than the odds said they would (${won}, when about ${Math.round(wonExp)} were likely).`
+      : ` Fewer of the teams you picked won than the odds said they would (${won}, when about ${Math.round(wonExp)} were likely).`;
     const luckBox = Math.abs(luck) < 3
-      ? { head: "Right on pace", line: `Your picks were worth about ${Math.round(expected)} points and scored ${scored}. No luck either way: what you see is what you've earned.` }
+      ? { head: "Right on pace", line: `${usual} Your score is a fair read of your picks.` }
       : luck < 0
-        ? { head: "Bad luck", line: `Your picks were worth about ${Math.round(expected)} points but scored ${scored}.${why} The bounces have cost you about ${pts(luck)}.` }
-        : { head: "Running hot", line: `Your picks were worth about ${Math.round(expected)} points but scored ${scored}.${why} About ${pts(luck)} of that is luck, and luck tends to even out.` };
+        ? { head: "Bad luck", line: `Down about ${pts(luck)} on luck. ${usual}${why} Your picks are better than your score.` }
+        : { head: "Running hot", line: `Up about ${pts(luck)} on luck. ${usual}${why} That tends to even out.` };
 
     const kinds = ["fav", "ats", "dog"].map((k) => {
       const a = mine.filter((r) => r.kind === k), b = rest.filter((r) => r.kind === k);
