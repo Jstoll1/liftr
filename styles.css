@@ -6080,3 +6080,20 @@ html.vp-gap { --nav-h: 63px; }
 .sc-fix b { font-size: 13px; line-height: 1.4; color: #fff; font-weight: 600; }
 .sc-luckline b { color: #fff; }
 .sc-list li span b { display: block; color: #fff; font-size: 12.5px; margin-bottom: 1px; }
+/* Scouting: pick mix as two bars (owner, league) and a hit line per pick. */
+.sc-mix { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, .07); }
+.sc-mix-h { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); letter-spacing: .05em; }
+.sc-bar { display: grid; grid-template-columns: 62px 1fr; gap: 8px; align-items: center; font-size: 11px; color: var(--text); }
+.sc-bar span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-bar i { display: flex; gap: 2px; height: 18px; font-style: normal; }
+.sc-bar b { display: flex; align-items: center; justify-content: center; border-radius: 3px; font-size: 10px; font-weight: 600; color: #0a0414; min-width: 0; overflow: hidden; }
+.t-fav { background: #3987e5; }
+.t-ats { background: #d95926; }
+.t-dog { background: #199e70; }
+.sc-key { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 10px; color: var(--text-dim); padding-left: 70px; }
+.sc-key span, .sc-hits span { display: inline-flex; align-items: center; gap: 5px; }
+.sc-key i, .sc-hits i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.sc-hits { display: flex; flex-direction: column; gap: 3px; padding-top: 4px; }
+.sc-hits div { display: grid; grid-template-columns: minmax(0, 1fr) auto 72px; gap: 8px; align-items: center; font-size: 11.5px; color: var(--text); }
+.sc-hits b { font-weight: 600; color: #fff; text-align: right; }
+.sc-hits em { font-style: normal; font-size: 10px; color: var(--text-dim); text-align: right; }

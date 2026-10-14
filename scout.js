@@ -114,8 +114,9 @@
     const restFavShare = rest.length ? rest.filter((r) => r.kind === "fav").length / rest.length : 0;
     if (favs.length >= 5) {
       const actual = sum(favs, (r) => r.scored), alt = sum(favs, (r) => r.other);
-      // Only when they lean on it at least as much as the league does.
-      if (favs.length / mine.length >= restFavShare && (alt - actual >= 2 || favs.length / mine.length >= restFavShare + 0.1)) add({ key: "fav1", act: true, tone: "weak", weight: Math.max(alt - actual, sum(favs, (r) => 1 - r.worth)),
+      // Only when they clearly lean on it more than the league (10 points
+      // of share or more) and it has cost real points (3 or more).
+      if (favs.length / mine.length >= restFavShare + 0.1 && alt - actual >= 3) add({ key: "fav1", act: true, tone: "weak", weight: Math.max(alt - actual, sum(favs, (r) => 1 - r.worth)),
         head: "Too many 1-point picks",
         line: `${share(favs.length, mine.length)} of your picks are the 1-point favorite pick (league: ${pct(restFavShare * 100, 100)}%). The 2-point spread pick on those same teams would have scored ${alt} instead of ${actual}.`,
         fix: "Swap 1-point favorite picks for the 2-point spread pick on the same team. Over time it pays more.",
@@ -184,10 +185,10 @@
       const better = diff.filter((r) => r.other > r.scored).length, z = zOf(better, diff.length / 2, diff.length / 4);
       const net = sum(mine, (r) => r.other - r.scored);
       if (Math.abs(z) >= CLEAR) add({ key: "type", act: false, tone: z > 0 ? "weak" : "strong", weight: Math.abs(net),
-        head: z > 0 ? "Right team, wrong pick" : "Picks the right pick type",
+        head: z > 0 ? "Right team, wrong pick" : "Plays each team the right way",
         line: z > 0
-          ? `${better} times the other pick on your team would have paid more, only ${diff.length - better} times less. That's ${pts(net)} left behind.`
-          : `Only ${better} times would the other pick on your team have paid more, against ${diff.length - better} times less.`,
+          ? `When you had the right team, picking it the other way (to win instead of the spread, or the reverse) would have paid more ${better} times and less only ${diff.length - better} times. That left ${pts(net)} on the table.`
+          : `When you like a team, you choose well between picking it to win and picking the spread: your choice paid more ${diff.length - better} times, the other way only ${better} times.`,
         evidence: `${diff.length} games where it mattered` });
     }
 
@@ -199,7 +200,9 @@
       if (best && !pick.includes(best)) { const drop = [...pick].reverse().find((x) => x.tone !== t && pick.filter((y) => y.tone === x.tone).length > 1); pick = drop ? [...pick.filter((x) => x !== drop), best] : [...pick, best]; }
     }
     pick = pick.filter((x) => x.weight >= 1.5).sort((a, b) => (b.act - a.act) || (b.weight - a.weight)).slice(0, 5);
-    const fixFrom = out.filter((x) => x.act && x.tone === "weak" && x.fix).sort((a, b) => b.weight - a.weight)[0];
+    // The one thing to change has to matter: at least 4 points, or about a
+    // point a week. Otherwise there's nothing worth changing.
+    const fixFrom = out.filter((x) => x.act && x.tone === "weak" && x.fix && x.weight >= Math.max(4, weeks)).sort((a, b) => b.weight - a.weight)[0];
 
     // Luck: scored against what the picks were worth.
     const luck = scored - expected;
@@ -211,7 +214,8 @@
 
     const kinds = ["fav", "ats", "dog"].map((k) => {
       const a = mine.filter((r) => r.kind === k), b = rest.filter((r) => r.kind === k);
-      return { k, label: TYPE_SHORT[k], n: a.length, hit: a.filter((r) => r.scored > 0).length, pts: sum(a, (r) => r.scored), per: per(a, (r) => r.scored), restPer: per(b, (r) => r.scored) };
+      return { k, label: TYPE_SHORT[k], n: a.length, hit: a.filter((r) => r.scored > 0).length, pts: sum(a, (r) => r.scored), per: per(a, (r) => r.scored), restPer: per(b, (r) => r.scored),
+        share: a.length / mine.length, restShare: rest.length ? b.length / rest.length : 0, restHit: b.length ? b.filter((r) => r.scored > 0).length / b.length : null };
     });
     return { name, picks: mine.length, scored, expected, luck, luckBox, luckLine: `${luckBox.head}. ${luckBox.line}`, fix: fixFrom ? fixFrom.fix : null, rank, of: totals.length, weeks, insights: pick, all: out, kinds };
   }

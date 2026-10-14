@@ -1363,7 +1363,12 @@
         ${r.fix ? `<div class="sc-fix"><em>ONE THING TO CHANGE</em><b>${esc(r.fix)}</b></div>` : `<div class="sc-fix ok"><em>ONE THING TO CHANGE</em><b>No change needed in how you pick.</b></div>`}
         <div class="sc-luckline"><b>${esc(r.luckBox.head)}.</b> ${esc(r.luckBox.line)}</div>
         <ol class="sc-list">${r.insights.map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span><b>${esc(x.head)}</b>${esc(x.line)}</span><small>${esc(x.evidence)}</small></li>`).join("") || `<li><span>Not enough picks yet for anything that isn't noise.</span></li>`}</ol>
-        <div class="sc-kinds"><span>PICK</span><span>TAKEN</span><span>HIT</span><span>PTS EACH</span><span>LEAGUE</span>${r.kinds.map((k) => `<span>${esc(k.label)}</span><span>${k.n}</span><span>${k.n ? `${k.hit}/${k.n}` : "-"}</span><span>${k.n ? k.per.toFixed(2) : "-"}</span><span>${k.restPer.toFixed(2)}</span>`).join("")}</div>
+        <div class="sc-mix">
+          <div class="sc-mix-h">HOW THEY PICK</div>
+          ${[["You", (k) => k.share], ["League", (k) => k.restShare]].map(([who, f]) => `<div class="sc-bar"><span>${who === "You" ? esc(r.name) : who}</span><i>${r.kinds.map((k) => { const v = f(k); return v > 0 ? `<b class="t-${k.k}" style="width:${(v * 100).toFixed(1)}%">${v >= 0.12 ? `${Math.round(v * 100)}%` : ""}</b>` : ""; }).join("")}</i></div>`).join("")}
+          <div class="sc-key">${r.kinds.map((k) => `<span><i class="t-${k.k}"></i>${esc(k.label)}</span>`).join("")}</div>
+          <div class="sc-hits">${r.kinds.map((k) => `<div><span><i class="t-${k.k}"></i>${esc(k.label)}</span><b>${k.n ? `${k.hit} of ${k.n} hit · ${Math.round(k.hit / k.n * 100)}%` : "none taken"}</b><em>${k.restHit != null ? `league ${Math.round(k.restHit * 100)}%` : ""}</em></div>`).join("")}</div>
+        </div>
         <div class="sc-actions"><button type="button" class="admin-btn" data-sc-copy="${esc(r.name)}">Copy report</button>${r.all.length > r.insights.length ? `<button type="button" class="admin-btn link" data-sc-all="${esc(r.name)}">All ${r.all.length} findings</button>` : ""}</div>
         <ol class="sc-list sc-more" data-sc-more="${esc(r.name)}" hidden>${r.all.filter((x) => !r.insights.includes(x)).map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span><b>${esc(x.head)}</b>${esc(x.line)}</span><small>${esc(x.evidence)} · weight ${x.weight.toFixed(1)}</small></li>`).join("")}</ol>
       </div>`;
