@@ -1357,11 +1357,17 @@
     const tone = { weak: ["WEAKNESS", "wk"], strong: ["STRENGTH", "st"] };
     const luckChip = (r) => `<em class="sc-luck ${Math.abs(r.luck) < 3 ? "even" : r.luck < 0 ? "cold" : "hot"}">${Math.abs(r.luck) < 3 ? "on par" : `${r.luck > 0 ? "+" : "−"}${Math.round(Math.abs(r.luck))} luck`}</em>`;
     // Plain text for a group chat or a direct message.
-    const asText = (r) => [`SCOUTING REPORT: ${r.name.toUpperCase()}`, `${r.scored} points, ${ordinal(r.rank).toLowerCase()} of ${r.of}`, "", ...(r.fix ? [`ONE THING TO CHANGE: ${r.fix}`, ""] : []), `${r.luckBox.head.toUpperCase()}: ${r.luckBox.line}`, "", ...r.insights.map((x) => `${x.tone === "strong" ? "✅" : "⚠️"} ${x.head}: ${x.line}`)].join("\n");
+    const asText = (r) => [`SCOUTING REPORT: ${r.name.toUpperCase()}`, `${r.scored} points, ${ordinal(r.rank).toLowerCase()} of ${r.of}`, "", ...(r.fix ? [`ONE THING TO CHANGE: ${r.fix}`, ""] : []), `${r.luckBox.head.toUpperCase()}: ${r.luckBox.line}`, "", "VS THE LEAGUE", ...r.vs.map((st) => `${st.label}: ${st.text}${st.rank ? ` (${ordinal(st.rank).toLowerCase()} of ${st.of})` : ` (league avg ${st.avgText})`}`), "", ...r.insights.map((x) => `${x.tone === "strong" ? "✅" : "⚠️"} ${x.head}: ${x.line}`)].join("\n");
     const one = (r) => `<div class="sc-card">
         <div class="sc-head"><b>${esc(r.name)}</b><span>${r.scored} pts · ${ordinal(r.rank).toLowerCase()} of ${r.of} · ${r.picks} picks, ${r.weeks} weeks</span>${luckChip(r)}</div>
         ${r.fix ? `<div class="sc-fix"><em>ONE THING TO CHANGE</em><b>${esc(r.fix)}</b></div>` : `<div class="sc-fix ok"><em>ONE THING TO CHANGE</em><b>No change needed in how you pick.</b></div>`}
         <div class="sc-luckline"><b>${esc(r.luckBox.head)}.</b> ${esc(r.luckBox.line)}</div>
+        <div class="sc-vs">
+          <div class="sc-mix-h">VS THE LEAGUE · <i class="sc-k-me"></i> ${esc(r.name)} · <i class="sc-k-avg"></i> league average</div>
+          ${r.vs.map((st) => { const lo = Math.min(...st.vals.map((x) => x.v)), hi = Math.max(...st.vals.map((x) => x.v)), span = hi - lo || 1, x = (v) => (4 + (v - lo) / span * 92).toFixed(1);
+            const good = st.better && st.rank <= Math.ceil(st.of / 3), bad = st.better && st.rank > st.of - Math.ceil(st.of / 3);
+            return `<div class="sc-vrow" ${st.note ? `title="${esc(st.note)}"` : ""}><span class="sc-vl">${esc(st.label)}</span><span class="sc-track"><i class="sc-avg" style="left:${x(st.avg)}%"></i>${st.vals.filter((v) => v.n !== r.name).map((v) => `<i class="sc-dot" style="left:${x(v.v)}%" title="${esc(v.n)}: ${esc(st.fmt(v.v))}"></i>`).join("")}<i class="sc-dot me" style="left:${x(st.me)}%"></i></span><span class="sc-vv ${good ? "good" : bad ? "bad" : ""}"><b>${esc(st.text)}</b>${st.rank ? `<small>${ordinal(st.rank).toLowerCase()}</small>` : `<small>avg ${esc(st.avgText)}</small>`}</span></div>`; }).join("")}
+        </div>
         <ol class="sc-list">${r.insights.map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span><b>${esc(x.head)}</b>${esc(x.line)}</span><small>${esc(x.evidence)}</small></li>`).join("") || `<li><span>Not enough picks yet for anything that isn't noise.</span></li>`}</ol>
         <div class="sc-mix">
           <div class="sc-mix-h">HOW THEY PICK</div>

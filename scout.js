@@ -217,7 +217,28 @@
       return { k, label: TYPE_SHORT[k], n: a.length, hit: a.filter((r) => r.scored > 0).length, pts: sum(a, (r) => r.scored), per: per(a, (r) => r.scored), restPer: per(b, (r) => r.scored),
         share: a.length / mine.length, restShare: rest.length ? b.length / rest.length : 0, restHit: b.length ? b.filter((r) => r.scored > 0).length / b.length : null };
     });
-    return { name, picks: mine.length, scored, expected, luck, luckBox, luckLine: `${luckBox.head}. ${luckBox.line}`, fix: fixFrom ? fixFrom.fix : null, rank, of: totals.length, weeks, insights: pick, all: out, kinds };
+    // Where they sit among the owners, stat by stat. better: which way is
+    // good ("high", "low"), or null for a style with no right answer.
+    const statOf = (n) => { const xs = rows.filter((r) => r.n === n); if (!xs.length) return null; const wk = new Set(xs.map((r) => r.w)).size || 1, sc = sum(xs, (r) => r.scored), wo = sum(xs, (r) => r.worth);
+      return { ppw: sc / wk, hit: xs.filter((r) => r.scored > 0).length / xs.length, ppp: sc / xs.length, value: wo / xs.length, luck: sc - wo, upset: xs.filter((r) => r.kind === "dog").length / xs.length }; };
+    const stats = names.map((n) => ({ n, s: statOf(n) })).filter((x) => x.s);
+    const STATS = [
+      { k: "ppw", label: "Points a week", better: "high", fmt: (v) => v.toFixed(1) },
+      { k: "hit", label: "Picks that hit", better: "high", fmt: (v) => `${Math.round(v * 100)}%` },
+      { k: "ppp", label: "Points per pick", better: "high", fmt: (v) => v.toFixed(2) },
+      { k: "value", label: "Pick value", note: "what the picks were worth before kickoff", better: "high", fmt: (v) => v.toFixed(2) },
+      { k: "luck", label: "Luck", note: "points scored minus pick value", better: "high", fmt: (v) => `${v >= 0 ? "+" : "−"}${Math.round(Math.abs(v))}` },
+      { k: "upset", label: "Upset picks", note: "share of picks that are 3-point upsets", better: null, fmt: (v) => `${Math.round(v * 100)}%` },
+    ];
+    const vs = STATS.map((st) => {
+      const vals = stats.map((x) => ({ n: x.n, v: x.s[st.k] }));
+      const me = vals.find((x) => x.n === name)?.v;
+      if (me == null) return null;
+      const avg = vals.reduce((a, x) => a + x.v, 0) / vals.length;
+      const rank = st.better ? 1 + vals.filter((x) => st.better === "high" ? x.v > me + 1e-9 : x.v < me - 1e-9).length : null;
+      return { ...st, me, avg, rank, of: vals.length, vals, text: st.fmt(me), avgText: st.fmt(avg) };
+    }).filter(Boolean);
+    return { name, picks: mine.length, scored, expected, luck, luckBox, vs, luckLine: `${luckBox.head}. ${luckBox.line}`, fix: fixFrom ? fixFrom.fix : null, rank, of: totals.length, weeks, insights: pick, all: out, kinds };
   }
 
   function build({ season, log, names, scorePick }) {
