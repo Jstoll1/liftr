@@ -690,7 +690,9 @@
     const punchHtml = punch.map((row, d) => `<span class="lvz-pd">${wd[d].slice(0, 2).toUpperCase()}</span>${row.map((n, h) => `<i class="lvz-p s${pstep(n)}" ${tip(`${wd[d]} ${hourLab(h)}-${hourLab((h + 1) % 24)} · ${n} open${n === 1 ? "" : "s"} on record`)}></i>`).join("")}`).join("");
     const tagCls = { ACTION: "act", TREND: "trend", NOTE: "note" };
     const lastWkTo = `${new Date(nowP).toLocaleDateString([], { weekday: "short" })} ${timeLab(nowP)}`;
-    const pulseLive = `<div class="lvz-h">THIS WEEK · ${esc(dayLong(wk0).toUpperCase())} TO NOW · VS LAST WEEK TO ${esc(lastWkTo.toUpperCase())}</div>
+    // Two columns on a desktop (the week and its story; who to nudge and
+    // whether it worked); one column, same order, on a phone.
+    const pulseLive = `<div class="ld-cols"><div class="ld-col"><div class="lvz-h">THIS WEEK · ${esc(dayLong(wk0).toUpperCase())} TO NOW · VS LAST WEEK TO ${esc(lastWkTo.toUpperCase())}</div>
       <div class="ld-kpis">
         <div ${tip(`People in at least once ${sinceMon}. Last week by ${lastWkTo}: ${priorWk ? actWP : "not tracked yet"}.`)}><b>${actW}<small>/${N}</small></b><span>active ${sinceMon}</span>${chip(priorWk ? actW - actWP : null)}</div>
         <div ${tip(`Average days each person was in, out of the ${dayN} day${dayN === 1 ? "" : "s"} so far this week. Last week by ${lastWkTo}: ${priorWk ? avgWP.toFixed(1) : "not tracked yet"}.`)}><b>${avgW.toFixed(1)}<small>/${dayN}</small></b><span>days in, per person</span>${chip(priorWk ? Math.round((avgW - avgWP) * 10) / 10 : null)}</div>
@@ -698,8 +700,9 @@
         <div ${tip(`Time in the app ${sinceMon}, from visit records. Last week by ${lastWkTo}: ${priorWkSess ? dur(timeWP) : "not tracked yet"}.`)}><b>${dur(timeW)}</b><span>time in app${sessW.length ? ` · ${dur(timeW / sessW.length)} a visit` : ""}</span>${chip(priorWkSess && timeWP ? pct(timeW, timeWP) : null, "%")}</div>
       </div>
       ${story.length ? `<div class="lvz-h">THIS WEEK'S STORY</div><ul class="ld-story">${story.slice(0, 9).map((s) => `<li><em class="ld-tag ${tagCls[s.tag]}">${s.tag}</em><span>${s.html}</span></li>`).join("")}</ul>` : ""}
+      </div><div class="ld-col">
       ${nudges.length ? `<div class="lvz-nudge"><div class="lvz-h">WHO TO NUDGE</div>${nudges.map((x) => `<div class="lvz-nr"><b>${esc(x.n)}</b><span>${esc(x.why)}</span></div>`).join("")}<button type="button" class="admin-btn lvz-copy" data-text="${esc(nudgeText)}" data-who="${esc(JSON.stringify(nudges.map((x) => ({ n: x.n, why: x.kind }))))}">Copy message for the chat</button></div>` : ""}
-      ${nudgeHtml}
+      ${nudgeHtml}</div></div>
       ${rhythmHtml}
       <div class="lvz-h">SEASON · WEEK BY WEEK</div>
       ${seasonHtml}
@@ -1367,7 +1370,7 @@
     body.innerHTML = `<div class="sc">
       <div class="ld-asof">Admin only, for review · finished games through ${esc(String(Math.max(...reps.map((r) => r.weeks))))} weeks · worth = points x chance from the spread</div>
       ${pickNames}
-      ${shownReps.map(one).join("")}
+      <div class="sc-cards${focus ? " one" : ""}">${shownReps.map(one).join("")}</div>
       <div class="lvz-cap">How it's worked out: what each pick was worth going in comes from its spread (the favorite wins outright with probability Phi(spread / 15), either side covers half the time), so luck is points scored minus points the picks were worth. A finding needs enough picks behind it to show, and each lists its count. Nothing here is visible to the league.</div>
     </div>`;
     body.querySelector(".sc").addEventListener("click", async (e) => {
