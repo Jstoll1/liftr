@@ -6135,3 +6135,26 @@ button.sc-luck:hover { filter: brightness(1.2); }
 .wi-upd-l b { color: #fff; }
 .wi-upd-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .wi-upd-note { font-size: 10px; line-height: 1.4; color: var(--text-dim); }
+/* Who's in: trend. */
+.wi-tr { font-style: normal; font-size: 9px; margin-left: 4px; padding: 0 3px; border-radius: 3px; }
+.wi-tr.up { color: #39ff88; background: rgba(57, 255, 136, .1); }
+.wi-tr.dn { color: #ff5c8a; background: rgba(255, 92, 138, .1); }
+.wi-tr.eq { color: var(--text-dim); }
+.wi-trend { display: flex; flex-wrap: wrap; gap: 3px 14px; font-size: 11px; color: var(--text); }
+.wi-trend.dim { color: var(--text-dim); }
+.wi-trend .up { color: #39ff88; }
+.wi-trend .dn { color: #ff5c8a; }
+.wi-trend b { color: #fff; }
+.wi-trend small { flex-basis: 100%; font-size: 9.5px; color: var(--text-dim); }
+.wi-wk { display: flex; flex-direction: column; gap: 5px; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, .07); }
+.wi-wk em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); }
+.wi-wkbars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 280px; }
+.wi-wkbars div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.wi-wkbars i { display: flex; align-items: flex-end; width: 22px; height: 34px; border-radius: 3px; background: rgba(255, 255, 255, .05); }
+.wi-wkbars b { display: block; width: 100%; border-radius: 3px; background: #1ab8cc; }
+.wi-wkbars div:last-child b { background: #7af3ff; }
+.wi-wkbars div.part i { background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .07) 0 2px, transparent 2px 4px); }
+.wi-wkbars div.nt i { background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .07) 0 2px, transparent 2px 4px); opacity: .6; }
+.wi-wkbars span { font-size: 11px; color: #fff; }
+.wi-wkbars small { font-size: 9px; color: var(--text-dim); }
+.wi-wknote { font-size: 9.5px; color: var(--text-dim); }

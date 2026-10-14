@@ -937,12 +937,27 @@
     const stripPx = Math.max(180, Math.min(body.clientWidth || innerWidth, 920) - 180);
     const gapMs = span * 16 / stripPx;
     const multiDay = (c) => new Date(c.items[0].at).toDateString() !== new Date(c.last).toDateString();
+    // Trend: days in per rolling week, the last four weeks (this one first),
+    // against the week before it. Weeks before tracking began are marked,
+    // never counted as zero.
+    const dayStart = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const trackOpens = Object.values(v.visits || {}).flat().map((x) => x?.at).filter(Number.isFinite);
+    const trackDay = trackOpens.length ? dayStart(Math.min(...trackOpens)) : today0;
+    const wkDays = (k) => Array.from({ length: 7 }, (_, i) => { const d = new Date(today0); d.setDate(d.getDate() - 7 * k - 6 + i); return d.getTime(); });
+    const WEEKS = [0, 1, 2, 3].map((k) => { const ds = wkDays(k); const covered = ds.filter((d) => d >= trackDay).length; return { k, ds, from: ds[0], covered, full: covered === 7, none: covered === 0 }; });
+    // The week before can be partly tracked: with 3 or more tracked days it
+    // is scaled to 7 and the trend is marked early; with fewer, no trend yet.
+    const priorOk = WEEKS[1].covered >= 3, early = priorOk && !WEEKS[1].full;
+    const trendFrom = (() => { const d = new Date(trackDay); d.setDate(d.getDate() + 9); return d.getTime(); })();
     const people = TRACKED.map((n) => {
       const opens = (v.visits?.[n] || []).filter((x) => Number.isFinite(x.at) && x.at >= A).sort((a, b) => a.at - b.at);
       const allOpens = (v.visits?.[n] || []).filter((x) => Number.isFinite(x.at));
       const sess = (v.sessions?.[n] || []).filter((x) => Number.isFinite(x.at) && x.at + (x.dur || 0) >= A);
       const last = Math.max(0, ...allOpens.map((x) => x.at), ...(v.sessions?.[n] || []).map((x) => (x.at || 0) + (x.dur || 0)));
       const daysIn = days.filter((d) => opens.some((x) => x.at >= d && x.at < d + DAY) || sess.some((x) => x.at >= d && x.at < d + DAY)).length;
+      const inDays = new Set([...(v.visits?.[n] || []), ...(v.sessions?.[n] || [])].filter((x) => Number.isFinite(x.at)).map((x) => dayStart(x.at)));
+      const weeks = WEEKS.map((w) => ({ ...w, n: w.ds.filter((d) => inDays.has(d)).length }));
+      const delta = priorOk ? Math.round(weeks[0].n - weeks[1].n * 7 / WEEKS[1].covered) : null;
       const time = sess.filter((x) => x.at >= A).reduce((a, x) => a + (x.dur || 0), 0);
       // This week's card: games picked (hidden placeholders don't count) and the tiebreaker.
       const card = picksNow?.[n];
@@ -956,7 +971,7 @@
       for (const x of opens) { const c = clusters[clusters.length - 1]; if (c && x.at - c.last < gapMs) { c.items.push(x); c.last = x.at; } else clusters.push({ last: x.at, items: [x] }); }
       for (const c of clusters) c.at = c.items.reduce((a, x) => a + x.at, 0) / c.items.length;
       const latestV = [...(v.sessions?.[n] || []), ...(v.visits?.[n] || [])].filter((x) => x.v && Number.isFinite(x.at)).sort((a, b) => b.at - a.at)[0];
-      return { n, opens, sess, last, daysIn, time, k, tb, clusters, build: latestV?.v || "", buildAt: latestV?.at || 0, today: opens.some((x) => x.at >= today0) || sess.some((x) => x.at >= today0), wk: opens.some((x) => x.at >= wk0) || sess.some((x) => x.at >= wk0), now: now - last < 10 * 60000 };
+      return { n, opens, sess, last, daysIn, time, k, tb, clusters, weeks, delta, build: latestV?.v || "", buildAt: latestV?.at || 0, today: opens.some((x) => x.at >= today0) || sess.some((x) => x.at >= today0), wk: opens.some((x) => x.at >= wk0) || sess.some((x) => x.at >= wk0), now: now - last < 10 * 60000 };
     }).sort((a, b) => b.last - a.last);
     const total = GAMES.length;
     const lockAt = (typeof weekLockTime === "function" && weekLockTime()) || (total ? Math.min(...GAMES.map((g) => Date.parse(g.kickoff))) : null);
@@ -977,9 +992,11 @@
       return `<button type="button" class="wi-row${p.now ? " live" : ""}" data-wi="${esc(p.n)}">
           <span class="wi-who">${av(p.n)}<span><b>${esc(p.n)}</b><small>${p.now ? `<i class="wi-pulse"></i>in now` : p.last ? esc(ago(p.last)) : "never"}</small></span></span>
           <span class="wi-strip">${shade}${sessHtml}${dots}</span>
-          <span class="wi-count${p.daysIn ? "" : " zero"}"><span><b>${p.daysIn}</b>/7</span>${pkTxt ? `<em class="wi-pk ${pkCls}" ${tip(`${p.n} · ${p.k} of ${total} picks${p.tb ? ", tiebreaker in" : ", no tiebreaker"}${open ? ` · lock in ${left(lockAt - now)}` : " · locked"}`)}>${pkTxt}</em>` : ""}</span>
+          <span class="wi-count${p.daysIn ? "" : " zero"}"><span><b>${p.daysIn}</b>/7${p.delta == null ? "" : `<i class="wi-tr ${p.delta > 0 ? "up" : p.delta < 0 ? "dn" : "eq"}" ${tip(`${p.n} · ${p.weeks[0].n} days in the last 7, ${p.weeks[1].n} in the ${WEEKS[1].covered} tracked days before${early ? " (early: scaled to a week)" : ""}`)}>${p.delta > 0 ? `▲${p.delta}` : p.delta < 0 ? `▼${-p.delta}` : "="}</i>`}</span>${pkTxt ? `<em class="wi-pk ${pkCls}" ${tip(`${p.n} · ${p.k} of ${total} picks${p.tb ? ", tiebreaker in" : ", no tiebreaker"}${open ? ` · lock in ${left(lockAt - now)}` : " · locked"}`)}>${pkTxt}</em>` : ""}</span>
         </button>
-        <div class="wi-more" data-for="${esc(p.n)}" hidden>${list}</div>`;
+        <div class="wi-more" data-for="${esc(p.n)}" hidden>
+          <div class="wi-wk"><em>DAYS IN, LAST 4 WEEKS</em><div class="wi-wkbars">${[...p.weeks].reverse().map((w) => `<div class="${w.none ? "nt" : w.full ? "" : "part"}"><i><b style="height:${w.none ? 0 : (w.n / 7 * 100).toFixed(0)}%"></b></i><span>${w.none ? "–" : w.n}</span><small>${["this wk", "last wk", "2 wks ago", "3 wks ago"][w.k]}</small></div>`).join("")}</div>${p.weeks.some((w) => w.none || !w.full) ? `<small class="wi-wknote">Tracking began ${esc(dayLong(trackDay))}; earlier weeks are partial or not tracked.</small>` : ""}</div>
+          ${list}</div>`;
     }).join("");
     const axis = `<div class="wi-axrow"><span></span><span class="wi-axis">${days.map((d, i) => `<span${i === 6 ? ' class="t"' : ""}>${dayLab(d, i)}</span>`).join("")}</span><span class="wi-axd">DAYS${picksNow && total ? "<br>PICKS" : ""}</span></div>`;
     const allOpens = Object.values(v.visits || {}).flat().map((x) => x?.at).filter(Number.isFinite);
@@ -993,6 +1010,12 @@
         ${picksNow && total ? `<div class="${open && short.length ? "warn" : ""}"><b>${TRACKED.length - short.length}<small>/${TRACKED.length}</small></b><span>picks in · ${open ? `lock in ${esc(left(lockAt - now))}` : "locked"}</span></div>` : ""}
       </div>
       ${open && short.length ? `<div class="wi-out">Picks not in yet: ${short.map((p) => `<b>${esc(p.n)}</b> ${p.k}/${total}${p.tb ? "" : " no TB"}`).join(", ")}</div>` : ""}
+      ${(() => {
+        if (!priorOk) return `<div class="wi-trend dim">Trend starts ${esc(dayLong(trendFrom))}, once there's enough tracking to compare against the week before.</div>`;
+        const up = people.filter((p) => p.delta >= 2).sort((a, b) => b.delta - a.delta), dn = people.filter((p) => p.delta <= -2).sort((a, b) => a.delta - b.delta);
+        if (!up.length && !dn.length) return `<div class="wi-trend dim">Steady: nobody's days in moved by 2 or more against the week before.</div>`;
+        return `<div class="wi-trend">${up.length ? `<span class="up">▲ Moving up: ${up.map((p) => `<b>${esc(p.n)}</b> +${p.delta}`).join(", ")}</span>` : ""}${dn.length ? `<span class="dn">▼ Slipping: ${dn.map((p) => `<b>${esc(p.n)}</b> −${-p.delta}`).join(", ")}</span>` : ""}<small>days in, last 7 days vs the 7 before${early ? ` (early: the week before is only partly tracked, so it's scaled up)` : ""}</small></div>`;
+      })()}
       ${out.length ? `<div class="wi-out">Not in for 7 days: ${out.map((p) => `<b>${esc(p.n)}</b>`).join(", ")}</div>` : `<div class="wi-out ok">All ${TRACKED.length} have been in within the last 7 days.</div>`}
       <div class="wi-grid">${axis}${rows}</div>
       ${(() => {
