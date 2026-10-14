@@ -6073,3 +6073,10 @@ html.vp-gap { --nav-h: 63px; }
   .sc-cards.one { grid-template-columns: minmax(0, 1fr); }
 }
 @media (min-width: 1700px) { #console-overlay .console-body { zoom: 1.45; } }
+.sc-fix { display: flex; flex-direction: column; gap: 4px; padding: 9px 11px; border-radius: 9px; border: 1px solid rgba(255, 179, 71, .5); background: rgba(255, 179, 71, .08); }
+.sc-fix.ok { border-color: rgba(57, 255, 136, .35); background: rgba(57, 255, 136, .06); }
+.sc-fix em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: #ffb347; letter-spacing: .05em; }
+.sc-fix.ok em { color: #39ff88; }
+.sc-fix b { font-size: 13px; line-height: 1.4; color: #fff; font-weight: 600; }
+.sc-luckline b { color: #fff; }
+.sc-list li span b { display: block; color: #fff; font-size: 12.5px; margin-bottom: 1px; }

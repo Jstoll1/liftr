@@ -1356,22 +1356,24 @@
     if (!reps.length) { body.innerHTML = `<div class="admin-empty">No finished games with picks yet.</div>`; return; }
     const tone = { weak: ["WEAKNESS", "wk"], strong: ["STRENGTH", "st"] };
     const luckChip = (r) => `<em class="sc-luck ${Math.abs(r.luck) < 3 ? "even" : r.luck < 0 ? "cold" : "hot"}">${Math.abs(r.luck) < 3 ? "on par" : `${r.luck > 0 ? "+" : "−"}${Math.round(Math.abs(r.luck))} luck`}</em>`;
-    const asText = (r) => [`SCOUTING REPORT · ${r.name.toUpperCase()}`, `${r.scored} points · ${ordinal(r.rank).toLowerCase()} of ${r.of} · ${r.picks} picks over ${r.weeks} weeks`, "", r.luckLine, "", ...r.insights.map((x) => `${x.tone === "strong" ? "+" : "-"} ${x.text}`)].join("\n");
+    // Plain text for a group chat or a direct message.
+    const asText = (r) => [`SCOUTING REPORT: ${r.name.toUpperCase()}`, `${r.scored} points, ${ordinal(r.rank).toLowerCase()} of ${r.of}`, "", ...(r.fix ? [`ONE THING TO CHANGE: ${r.fix}`, ""] : []), `${r.luckBox.head.toUpperCase()}: ${r.luckBox.line}`, "", ...r.insights.map((x) => `${x.tone === "strong" ? "✅" : "⚠️"} ${x.head}: ${x.line}`)].join("\n");
     const one = (r) => `<div class="sc-card">
         <div class="sc-head"><b>${esc(r.name)}</b><span>${r.scored} pts · ${ordinal(r.rank).toLowerCase()} of ${r.of} · ${r.picks} picks, ${r.weeks} weeks</span>${luckChip(r)}</div>
-        <div class="sc-luckline">${esc(r.luckLine)}</div>
-        <ol class="sc-list">${r.insights.map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span>${esc(x.text)}</span><small>${esc(x.evidence)}</small></li>`).join("") || `<li><span>Not enough picks yet for anything that isn't noise.</span></li>`}</ol>
-        <div class="sc-kinds"><span>MODE</span><span>PICKS</span><span>HIT</span><span>PTS/PICK</span><span>LEAGUE</span>${r.kinds.map((k) => `<span>${esc(k.label)}</span><span>${k.n}</span><span>${k.n ? `${k.hit}/${k.n}` : "-"}</span><span>${k.n ? k.per.toFixed(2) : "-"}</span><span>${k.restPer.toFixed(2)}</span>`).join("")}</div>
+        ${r.fix ? `<div class="sc-fix"><em>ONE THING TO CHANGE</em><b>${esc(r.fix)}</b></div>` : `<div class="sc-fix ok"><em>ONE THING TO CHANGE</em><b>No change needed in how you pick.</b></div>`}
+        <div class="sc-luckline"><b>${esc(r.luckBox.head)}.</b> ${esc(r.luckBox.line)}</div>
+        <ol class="sc-list">${r.insights.map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span><b>${esc(x.head)}</b>${esc(x.line)}</span><small>${esc(x.evidence)}</small></li>`).join("") || `<li><span>Not enough picks yet for anything that isn't noise.</span></li>`}</ol>
+        <div class="sc-kinds"><span>PICK</span><span>TAKEN</span><span>HIT</span><span>PTS EACH</span><span>LEAGUE</span>${r.kinds.map((k) => `<span>${esc(k.label)}</span><span>${k.n}</span><span>${k.n ? `${k.hit}/${k.n}` : "-"}</span><span>${k.n ? k.per.toFixed(2) : "-"}</span><span>${k.restPer.toFixed(2)}</span>`).join("")}</div>
         <div class="sc-actions"><button type="button" class="admin-btn" data-sc-copy="${esc(r.name)}">Copy report</button>${r.all.length > r.insights.length ? `<button type="button" class="admin-btn link" data-sc-all="${esc(r.name)}">All ${r.all.length} findings</button>` : ""}</div>
-        <ol class="sc-list sc-more" data-sc-more="${esc(r.name)}" hidden>${r.all.filter((x) => !r.insights.includes(x)).map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span>${esc(x.text)}</span><small>${esc(x.evidence)} · weight ${x.weight.toFixed(1)}</small></li>`).join("")}</ol>
+        <ol class="sc-list sc-more" data-sc-more="${esc(r.name)}" hidden>${r.all.filter((x) => !r.insights.includes(x)).map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span><b>${esc(x.head)}</b>${esc(x.line)}</span><small>${esc(x.evidence)} · weight ${x.weight.toFixed(1)}</small></li>`).join("")}</ol>
       </div>`;
     const pickNames = `<div class="ld-sort sc-pick"><span>OWNER</span><button type="button" data-sc="" class="${focus ? "" : "on"}">ALL</button>${reps.map((r) => `<button type="button" data-sc="${esc(r.name)}" class="${focus === r.name ? "on" : ""}">${esc(r.name.toUpperCase())}</button>`).join("")}</div>`;
     const shownReps = focus ? reps.filter((r) => r.name === focus) : reps;
     body.innerHTML = `<div class="sc">
-      <div class="ld-asof">Admin only, for review · finished games through ${esc(String(Math.max(...reps.map((r) => r.weeks))))} weeks · worth = points x chance from the spread</div>
+      <div class="ld-asof">Admin only, for review · ${esc(String(Math.max(...reps.map((r) => r.weeks))))} weeks of finished games</div>
       ${pickNames}
       <div class="sc-cards${focus ? " one" : ""}">${shownReps.map(one).join("")}</div>
-      <div class="lvz-cap">How it's worked out: what each pick was worth going in comes from its spread (the favorite wins outright with probability Phi(spread / 15), either side covers half the time), so luck is points scored minus points the picks were worth. A finding needs enough picks behind it to show, and each lists its count. Nothing here is visible to the league.</div>
+      <div class="lvz-cap">How it's worked out: the spread says how likely each pick was to hit, so every pick has a fair value before kickoff; luck is points scored minus that value. Findings about what to do differently come first. Findings that only describe the past have to pass a 1 in 10 fluke test to show. Each lists its count. Nothing here is visible to the league.</div>
     </div>`;
     body.querySelector(".sc").addEventListener("click", async (e) => {
       const b = e.target.closest("button");
