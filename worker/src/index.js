@@ -97,6 +97,9 @@ export default {
     if (url.pathname === "/nudge") {
       return handleNudge(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/app-control") {
+      return handleAppControl(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/auth-log") {
       return handleAuthLog(request, env, corsHeaders, url);
     }
@@ -3354,6 +3357,19 @@ async function handleNudge(request, env, corsHeaders, url) {
   list.unshift({ at: Date.now(), week: Number(b?.week) || null, who });
   await env.LIFTR_KV.put("nudges", JSON.stringify(list.slice(0, 200)));
   return json({ ok: true }, 200, corsHeaders);
+}
+// Force refresh. Every phone reads the flush time when the app opens or
+// comes back; a newer one than it last acted on makes it drop its offline
+// copy and reload fresh. Anyone can read it; only the admin key sets it.
+async function handleAppControl(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  const cur = (await env.LIFTR_KV.get("app:control", "json")) || { flush: 0 };
+  if (request.method === "GET") return json({ flush: Number(cur.flush) || 0 }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+  const next = { flush: Date.now() };
+  await env.LIFTR_KV.put("app:control", JSON.stringify(next));
+  return json({ ok: true, ...next }, 200, corsHeaders);
 }
 const sessKey = (m) => `sessions:${m}`;
 // An allowed origin is listed exactly, or as https://*.host for any one

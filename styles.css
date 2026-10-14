@@ -6126,3 +6126,12 @@ button.sc-luck:hover { filter: brightness(1.2); }
 .sc-luckx-n b.up { color: #ffb347; }
 .sc-luckx-n b.down { color: #8fd3ff; }
 .sc-luckx p.sc-luckx-m { color: #fff; font-weight: 600; }
+/* Who's in: app updates and the force refresh button. */
+.wi-upd { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .08); background: rgba(255, 255, 255, .03); }
+.wi-upd-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.wi-upd-h b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 7px; color: var(--text-dim); letter-spacing: .05em; }
+.wi-upd-h span, .wi-upd-row span { font-size: 10.5px; color: var(--text-dim); }
+.wi-upd-l { font-size: 11.5px; line-height: 1.45; color: var(--text); }
+.wi-upd-l b { color: #fff; }
+.wi-upd-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.wi-upd-note { font-size: 10px; line-height: 1.4; color: var(--text-dim); }

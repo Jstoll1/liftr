@@ -438,7 +438,16 @@
     // grace for GitHub Pages to publish it.
     const stampAt = (v) => /^\d{12}$/.test(v || "") ? Date.UTC(+v.slice(0, 4), +v.slice(4, 6) - 1, +v.slice(6, 8), +v.slice(8, 10), +v.slice(10, 12)) : null;
     const nowBuildAt = stampAt(buildNow);
-    const stale = nowBuildAt ? people.filter((p) => { const after = [...p.opens, ...p.sess].filter((x) => x.v && x.at > nowBuildAt + 15 * 60000); return after.length >= 2 && !after.some((x) => x.v >= buildNow); }) : [];
+    // Real use of an old build: two visits of a minute or more, ten minutes
+    // or more apart, after the update, and none on the new build. Opens
+    // alone don't count: the old copy logs one, then updates itself seconds
+    // later without logging another (opens are stamped once per 5 minutes).
+    const stale = nowBuildAt ? people.filter((p) => {
+      const after = p.sess.filter((x) => x.v && x.at > nowBuildAt + 15 * 60000);
+      if (after.some((x) => x.v >= buildNow)) return false;
+      const old = after.filter((x) => x.dur >= 60000).sort((a, b) => a.at - b.at);
+      return old.length >= 2 && old[old.length - 1].at - old[0].at >= 10 * 60000;
+    }) : [];
     if (stale.length) add("ACTION", 60, `${list(stale.map((p) => B(p.n)))} opened the app since the last update but ${stale.length === 1 ? "is" : "are"} still on an older build. The update isn't reaching ${stale.length === 1 ? "that phone" : "those phones"}; closing the app fully and reopening fixes it.`);
     if (priorCovered) {
       const slip = people.filter((p) => p.L7p >= 3 && p.L7 <= 1);
@@ -895,7 +904,9 @@
   // a bar for time in the app. Tap a name for the day-by-day list.
   async function renderWhosIn() {
     body.innerHTML = `<div class="admin-empty">Loading who's been in…</div>`;
-    const [vis, season, pk] = await Promise.allSettled([get("/visit"), get("/season"), get(`/picks?week=${currentWeek}`)]);
+    const [vis, season, pk, verRes, ctlRes] = await Promise.allSettled([get("/visit"), get("/season"), get(`/picks?week=${currentWeek}`), fetch(`version.json?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null), fetch(`${WORKER_URL}/app-control?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null)]);
+    const buildNow = verRes.status === "fulfilled" ? String(verRes.value?.v || "") : "";
+    const lastFlush = ctlRes.status === "fulfilled" ? Number(ctlRes.value?.flush) || 0 : 0;
     const v = vis.status === "fulfilled" ? vis.value : null;
     const picksNow = pk.status === "fulfilled" ? pk.value?.picks || null : null;
     if (!v) { body.innerHTML = `<div class="admin-empty">Couldn't load logins.</div>`; return; }
@@ -944,7 +955,8 @@
       const clusters = [];
       for (const x of opens) { const c = clusters[clusters.length - 1]; if (c && x.at - c.last < gapMs) { c.items.push(x); c.last = x.at; } else clusters.push({ last: x.at, items: [x] }); }
       for (const c of clusters) c.at = c.items.reduce((a, x) => a + x.at, 0) / c.items.length;
-      return { n, opens, sess, last, daysIn, time, k, tb, clusters, today: opens.some((x) => x.at >= today0) || sess.some((x) => x.at >= today0), wk: opens.some((x) => x.at >= wk0) || sess.some((x) => x.at >= wk0), now: now - last < 10 * 60000 };
+      const latestV = [...(v.sessions?.[n] || []), ...(v.visits?.[n] || [])].filter((x) => x.v && Number.isFinite(x.at)).sort((a, b) => b.at - a.at)[0];
+      return { n, opens, sess, last, daysIn, time, k, tb, clusters, build: latestV?.v || "", buildAt: latestV?.at || 0, today: opens.some((x) => x.at >= today0) || sess.some((x) => x.at >= today0), wk: opens.some((x) => x.at >= wk0) || sess.some((x) => x.at >= wk0), now: now - last < 10 * 60000 };
     }).sort((a, b) => b.last - a.last);
     const total = GAMES.length;
     const lockAt = (typeof weekLockTime === "function" && weekLockTime()) || (total ? Math.min(...GAMES.map((g) => Date.parse(g.kickoff))) : null);
@@ -983,12 +995,34 @@
       ${open && short.length ? `<div class="wi-out">Picks not in yet: ${short.map((p) => `<b>${esc(p.n)}</b> ${p.k}/${total}${p.tb ? "" : " no TB"}`).join(", ")}</div>` : ""}
       ${out.length ? `<div class="wi-out">Not in for 7 days: ${out.map((p) => `<b>${esc(p.n)}</b>`).join(", ")}</div>` : `<div class="wi-out ok">All ${TRACKED.length} have been in within the last 7 days.</div>`}
       <div class="wi-grid">${axis}${rows}</div>
+      ${(() => {
+        const buildLab = (b) => /^\d{12}$/.test(b) ? `${b.slice(4, 6)}/${b.slice(6, 8)} ${b.slice(8, 10)}:${b.slice(10, 12)}` : "unknown";
+        const seen = people.filter((p) => p.build);
+        const onNow = seen.filter((p) => p.build >= buildNow), behind = seen.filter((p) => buildNow && p.build < buildNow);
+        return `<div class="wi-upd">
+          <div class="wi-upd-h"><b>APP UPDATES</b><span>Live build ${esc(buildLab(buildNow))} UTC</span></div>
+          <div class="wi-upd-l">${onNow.length} of ${seen.length} last seen on it.${behind.length ? ` Last seen on an older build: ${behind.map((p) => `<b>${esc(p.n)}</b> (${esc(ago(p.buildAt))})`).join(", ")}. Each updates by itself the next time they open the app.` : ""}</div>
+          <div class="wi-upd-row"><button type="button" class="admin-btn" data-wi-flush="1">Force everyone to refresh</button><span>${lastFlush ? `Last forced ${esc(dayLong(lastFlush))} ${esc(timeLab(lastFlush))}` : "Never used"}</span></div>
+          <div class="wi-upd-note">Only needed if someone's app looks broken or stuck. Every phone clears its saved copy and reloads the next time it opens or comes back to the app.</div>
+        </div>`;
+      })()}
       <div class="wi-legend"><span><i class="wi-dot"></i>opened the app</span><span><i class="wi-dot n">3</i>opens close together</span><span><i class="wi-sess k"></i>time in app</span><span><i class="wi-game k"></i>game on</span><span><i class="wi-night k"></i>overnight</span></div>
       <div class="wi-tip">Tap a dot for the time, a name for their week.</div>
     </div>`;
     const tipEl = body.querySelector(".wi-tip");
     let on = null;
-    body.querySelector(".wi").addEventListener("click", (e) => {
+    body.querySelector(".wi").addEventListener("click", async (e) => {
+      const fb = e.target.closest("button[data-wi-flush]");
+      if (fb) {
+        if (!window.confirm("Force every phone to clear its saved copy and reload the next time it opens the app?")) return;
+        fb.disabled = true; fb.textContent = "Sending…";
+        try {
+          const res = await fetch(`${WORKER_URL}/app-control?key=${encodeURIComponent(key())}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", cache: "no-store" });
+          fb.textContent = res.ok ? "Sent ✓" : "Not sent (key?)";
+          if (res.ok) fb.nextElementSibling.textContent = "Sent just now. Phones refresh as they next open the app.";
+        } catch { fb.textContent = "Not sent (offline?)"; fb.disabled = false; }
+        return;
+      }
       const d = e.target.closest(".wi-dot[data-tip]");
       if (d) { on?.classList.remove("on"); on = d; d.classList.add("on"); tipEl.textContent = d.dataset.tip; return; }
       const r = e.target.closest(".wi-row");

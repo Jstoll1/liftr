@@ -6581,11 +6581,34 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
   if (document.readyState === "complete") registerSw(); else addEventListener("load", registerSw);
 }
 
+// Force refresh, from the admin console. The Worker holds a flush time;
+// a newer one than this phone last acted on makes it drop its offline copy
+// (service worker and caches) and reload fresh. Only at the quiet moments
+// below, never mid-pick. A phone that sees the switch for the first time
+// just remembers it, so shipping this reloads nobody.
+const FLUSH_KEY = "brochiefs_flush_applied";
+async function checkForFlush() {
+  if (!WORKER_URL) return;
+  try {
+    const res = await fetch(`${WORKER_URL}/app-control?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const flush = Number((await res.json())?.flush) || 0;
+    if (!flush) return;
+    let applied = null;
+    try { applied = localStorage.getItem(FLUSH_KEY); localStorage.setItem(FLUSH_KEY, String(flush)); } catch { return; } // can't remember it: never risk a loop
+    if (applied === null || Number(applied) >= flush) return;
+    try { for (const r of (await navigator.serviceWorker?.getRegistrations()) || []) await r.unregister(); } catch {}
+    try { if (window.caches) for (const k of await caches.keys()) if (/^brochiefs-/.test(k)) await caches.delete(k); } catch {}
+    reloadFresh();
+  } catch { /* offline: next time */ }
+}
+
 checkForUpdate(true);
+checkForFlush();
 // Standalone apps are suspended rather than closed, so coming back to one
 // is the moment a new build is most likely to be waiting, and the moment
 // a reload costs nothing.
-document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(true); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { checkForUpdate(true); checkForFlush(); } });
 // Idle means: no sheet or popup open, not typing, no touch or scroll in
 // the last 20 seconds. A waiting build reloads at the first idle moment.
 let lastInteract = Date.now(), updateWaiting = false;
