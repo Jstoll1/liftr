@@ -438,7 +438,16 @@
     // grace for GitHub Pages to publish it.
     const stampAt = (v) => /^\d{12}$/.test(v || "") ? Date.UTC(+v.slice(0, 4), +v.slice(4, 6) - 1, +v.slice(6, 8), +v.slice(8, 10), +v.slice(10, 12)) : null;
     const nowBuildAt = stampAt(buildNow);
-    const stale = nowBuildAt ? people.filter((p) => { const after = [...p.opens, ...p.sess].filter((x) => x.v && x.at > nowBuildAt + 15 * 60000); return after.length >= 2 && !after.some((x) => x.v >= buildNow); }) : [];
+    // Real use of an old build: two visits of a minute or more, ten minutes
+    // or more apart, after the update, and none on the new build. Opens
+    // alone don't count: the old copy logs one, then updates itself seconds
+    // later without logging another (opens are stamped once per 5 minutes).
+    const stale = nowBuildAt ? people.filter((p) => {
+      const after = p.sess.filter((x) => x.v && x.at > nowBuildAt + 15 * 60000);
+      if (after.some((x) => x.v >= buildNow)) return false;
+      const old = after.filter((x) => x.dur >= 60000).sort((a, b) => a.at - b.at);
+      return old.length >= 2 && old[old.length - 1].at - old[0].at >= 10 * 60000;
+    }) : [];
     if (stale.length) add("ACTION", 60, `${list(stale.map((p) => B(p.n)))} opened the app since the last update but ${stale.length === 1 ? "is" : "are"} still on an older build. The update isn't reaching ${stale.length === 1 ? "that phone" : "those phones"}; closing the app fully and reopening fixes it.`);
     if (priorCovered) {
       const slip = people.filter((p) => p.L7p >= 3 && p.L7 <= 1);
@@ -895,7 +904,9 @@
   // a bar for time in the app. Tap a name for the day-by-day list.
   async function renderWhosIn() {
     body.innerHTML = `<div class="admin-empty">Loading who's been in…</div>`;
-    const [vis, season, pk] = await Promise.allSettled([get("/visit"), get("/season"), get(`/picks?week=${currentWeek}`)]);
+    const [vis, season, pk, verRes, ctlRes] = await Promise.allSettled([get("/visit"), get("/season"), get(`/picks?week=${currentWeek}`), fetch(`version.json?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null), fetch(`${WORKER_URL}/app-control?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : null)]);
+    const buildNow = verRes.status === "fulfilled" ? String(verRes.value?.v || "") : "";
+    const lastFlush = ctlRes.status === "fulfilled" ? Number(ctlRes.value?.flush) || 0 : 0;
     const v = vis.status === "fulfilled" ? vis.value : null;
     const picksNow = pk.status === "fulfilled" ? pk.value?.picks || null : null;
     if (!v) { body.innerHTML = `<div class="admin-empty">Couldn't load logins.</div>`; return; }
@@ -926,12 +937,27 @@
     const stripPx = Math.max(180, Math.min(body.clientWidth || innerWidth, 920) - 180);
     const gapMs = span * 16 / stripPx;
     const multiDay = (c) => new Date(c.items[0].at).toDateString() !== new Date(c.last).toDateString();
+    // Trend: days in per rolling week, the last four weeks (this one first),
+    // against the week before it. Weeks before tracking began are marked,
+    // never counted as zero.
+    const dayStart = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const trackOpens = Object.values(v.visits || {}).flat().map((x) => x?.at).filter(Number.isFinite);
+    const trackDay = trackOpens.length ? dayStart(Math.min(...trackOpens)) : today0;
+    const wkDays = (k) => Array.from({ length: 7 }, (_, i) => { const d = new Date(today0); d.setDate(d.getDate() - 7 * k - 6 + i); return d.getTime(); });
+    const WEEKS = [0, 1, 2, 3].map((k) => { const ds = wkDays(k); const covered = ds.filter((d) => d >= trackDay).length; return { k, ds, from: ds[0], covered, full: covered === 7, none: covered === 0 }; });
+    // The week before can be partly tracked: with 3 or more tracked days it
+    // is scaled to 7 and the trend is marked early; with fewer, no trend yet.
+    const priorOk = WEEKS[1].covered >= 3, early = priorOk && !WEEKS[1].full;
+    const trendFrom = (() => { const d = new Date(trackDay); d.setDate(d.getDate() + 9); return d.getTime(); })();
     const people = TRACKED.map((n) => {
       const opens = (v.visits?.[n] || []).filter((x) => Number.isFinite(x.at) && x.at >= A).sort((a, b) => a.at - b.at);
       const allOpens = (v.visits?.[n] || []).filter((x) => Number.isFinite(x.at));
       const sess = (v.sessions?.[n] || []).filter((x) => Number.isFinite(x.at) && x.at + (x.dur || 0) >= A);
       const last = Math.max(0, ...allOpens.map((x) => x.at), ...(v.sessions?.[n] || []).map((x) => (x.at || 0) + (x.dur || 0)));
       const daysIn = days.filter((d) => opens.some((x) => x.at >= d && x.at < d + DAY) || sess.some((x) => x.at >= d && x.at < d + DAY)).length;
+      const inDays = new Set([...(v.visits?.[n] || []), ...(v.sessions?.[n] || [])].filter((x) => Number.isFinite(x.at)).map((x) => dayStart(x.at)));
+      const weeks = WEEKS.map((w) => ({ ...w, n: w.ds.filter((d) => inDays.has(d)).length }));
+      const delta = priorOk ? Math.round(weeks[0].n - weeks[1].n * 7 / WEEKS[1].covered) : null;
       const time = sess.filter((x) => x.at >= A).reduce((a, x) => a + (x.dur || 0), 0);
       // This week's card: games picked (hidden placeholders don't count) and the tiebreaker.
       const card = picksNow?.[n];
@@ -944,7 +970,8 @@
       const clusters = [];
       for (const x of opens) { const c = clusters[clusters.length - 1]; if (c && x.at - c.last < gapMs) { c.items.push(x); c.last = x.at; } else clusters.push({ last: x.at, items: [x] }); }
       for (const c of clusters) c.at = c.items.reduce((a, x) => a + x.at, 0) / c.items.length;
-      return { n, opens, sess, last, daysIn, time, k, tb, clusters, today: opens.some((x) => x.at >= today0) || sess.some((x) => x.at >= today0), wk: opens.some((x) => x.at >= wk0) || sess.some((x) => x.at >= wk0), now: now - last < 10 * 60000 };
+      const latestV = [...(v.sessions?.[n] || []), ...(v.visits?.[n] || [])].filter((x) => x.v && Number.isFinite(x.at)).sort((a, b) => b.at - a.at)[0];
+      return { n, opens, sess, last, daysIn, time, k, tb, clusters, weeks, delta, build: latestV?.v || "", buildAt: latestV?.at || 0, today: opens.some((x) => x.at >= today0) || sess.some((x) => x.at >= today0), wk: opens.some((x) => x.at >= wk0) || sess.some((x) => x.at >= wk0), now: now - last < 10 * 60000 };
     }).sort((a, b) => b.last - a.last);
     const total = GAMES.length;
     const lockAt = (typeof weekLockTime === "function" && weekLockTime()) || (total ? Math.min(...GAMES.map((g) => Date.parse(g.kickoff))) : null);
@@ -965,9 +992,11 @@
       return `<button type="button" class="wi-row${p.now ? " live" : ""}" data-wi="${esc(p.n)}">
           <span class="wi-who">${av(p.n)}<span><b>${esc(p.n)}</b><small>${p.now ? `<i class="wi-pulse"></i>in now` : p.last ? esc(ago(p.last)) : "never"}</small></span></span>
           <span class="wi-strip">${shade}${sessHtml}${dots}</span>
-          <span class="wi-count${p.daysIn ? "" : " zero"}"><span><b>${p.daysIn}</b>/7</span>${pkTxt ? `<em class="wi-pk ${pkCls}" ${tip(`${p.n} · ${p.k} of ${total} picks${p.tb ? ", tiebreaker in" : ", no tiebreaker"}${open ? ` · lock in ${left(lockAt - now)}` : " · locked"}`)}>${pkTxt}</em>` : ""}</span>
+          <span class="wi-count${p.daysIn ? "" : " zero"}"><span><b>${p.daysIn}</b>/7${p.delta == null ? "" : `<i class="wi-tr ${p.delta > 0 ? "up" : p.delta < 0 ? "dn" : "eq"}" ${tip(`${p.n} · ${p.weeks[0].n} days in the last 7, ${p.weeks[1].n} in the ${WEEKS[1].covered} tracked days before${early ? " (early: scaled to a week)" : ""}`)}>${p.delta > 0 ? `▲${p.delta}` : p.delta < 0 ? `▼${-p.delta}` : "="}</i>`}</span>${pkTxt ? `<em class="wi-pk ${pkCls}" ${tip(`${p.n} · ${p.k} of ${total} picks${p.tb ? ", tiebreaker in" : ", no tiebreaker"}${open ? ` · lock in ${left(lockAt - now)}` : " · locked"}`)}>${pkTxt}</em>` : ""}</span>
         </button>
-        <div class="wi-more" data-for="${esc(p.n)}" hidden>${list}</div>`;
+        <div class="wi-more" data-for="${esc(p.n)}" hidden>
+          <div class="wi-wk"><em>DAYS IN, LAST 4 WEEKS</em><div class="wi-wkbars">${[...p.weeks].reverse().map((w) => `<div class="${w.none ? "nt" : w.full ? "" : "part"}"><i><b style="height:${w.none ? 0 : (w.n / 7 * 100).toFixed(0)}%"></b></i><span>${w.none ? "–" : w.n}</span><small>${["this wk", "last wk", "2 wks ago", "3 wks ago"][w.k]}</small></div>`).join("")}</div>${p.weeks.some((w) => w.none || !w.full) ? `<small class="wi-wknote">Tracking began ${esc(dayLong(trackDay))}; earlier weeks are partial or not tracked.</small>` : ""}</div>
+          ${list}</div>`;
     }).join("");
     const axis = `<div class="wi-axrow"><span></span><span class="wi-axis">${days.map((d, i) => `<span${i === 6 ? ' class="t"' : ""}>${dayLab(d, i)}</span>`).join("")}</span><span class="wi-axd">DAYS${picksNow && total ? "<br>PICKS" : ""}</span></div>`;
     const allOpens = Object.values(v.visits || {}).flat().map((x) => x?.at).filter(Number.isFinite);
@@ -981,14 +1010,42 @@
         ${picksNow && total ? `<div class="${open && short.length ? "warn" : ""}"><b>${TRACKED.length - short.length}<small>/${TRACKED.length}</small></b><span>picks in · ${open ? `lock in ${esc(left(lockAt - now))}` : "locked"}</span></div>` : ""}
       </div>
       ${open && short.length ? `<div class="wi-out">Picks not in yet: ${short.map((p) => `<b>${esc(p.n)}</b> ${p.k}/${total}${p.tb ? "" : " no TB"}`).join(", ")}</div>` : ""}
+      ${(() => {
+        if (!priorOk) return `<div class="wi-trend dim">Trend starts ${esc(dayLong(trendFrom))}, once there's enough tracking to compare against the week before.</div>`;
+        const up = people.filter((p) => p.delta >= 2).sort((a, b) => b.delta - a.delta), dn = people.filter((p) => p.delta <= -2).sort((a, b) => a.delta - b.delta);
+        if (!up.length && !dn.length) return `<div class="wi-trend dim">Steady: nobody's days in moved by 2 or more against the week before.</div>`;
+        return `<div class="wi-trend">${up.length ? `<span class="up">▲ Moving up: ${up.map((p) => `<b>${esc(p.n)}</b> +${p.delta}`).join(", ")}</span>` : ""}${dn.length ? `<span class="dn">▼ Slipping: ${dn.map((p) => `<b>${esc(p.n)}</b> −${-p.delta}`).join(", ")}</span>` : ""}<small>days in, last 7 days vs the 7 before${early ? ` (early: the week before is only partly tracked, so it's scaled up)` : ""}</small></div>`;
+      })()}
       ${out.length ? `<div class="wi-out">Not in for 7 days: ${out.map((p) => `<b>${esc(p.n)}</b>`).join(", ")}</div>` : `<div class="wi-out ok">All ${TRACKED.length} have been in within the last 7 days.</div>`}
       <div class="wi-grid">${axis}${rows}</div>
+      ${(() => {
+        const buildLab = (b) => /^\d{12}$/.test(b) ? `${b.slice(4, 6)}/${b.slice(6, 8)} ${b.slice(8, 10)}:${b.slice(10, 12)}` : "unknown";
+        const seen = people.filter((p) => p.build);
+        const onNow = seen.filter((p) => p.build >= buildNow), behind = seen.filter((p) => buildNow && p.build < buildNow);
+        return `<div class="wi-upd">
+          <div class="wi-upd-h"><b>APP UPDATES</b><span>Live build ${esc(buildLab(buildNow))} UTC</span></div>
+          <div class="wi-upd-l">${onNow.length} of ${seen.length} last seen on it.${behind.length ? ` Last seen on an older build: ${behind.map((p) => `<b>${esc(p.n)}</b> (${esc(ago(p.buildAt))})`).join(", ")}. Each updates by itself the next time they open the app.` : ""}</div>
+          <div class="wi-upd-row"><button type="button" class="admin-btn" data-wi-flush="1">Force everyone to refresh</button><span>${lastFlush ? `Last forced ${esc(dayLong(lastFlush))} ${esc(timeLab(lastFlush))}` : "Never used"}</span></div>
+          <div class="wi-upd-note">Only needed if someone's app looks broken or stuck. Every phone clears its saved copy and reloads the next time it opens or comes back to the app.</div>
+        </div>`;
+      })()}
       <div class="wi-legend"><span><i class="wi-dot"></i>opened the app</span><span><i class="wi-dot n">3</i>opens close together</span><span><i class="wi-sess k"></i>time in app</span><span><i class="wi-game k"></i>game on</span><span><i class="wi-night k"></i>overnight</span></div>
       <div class="wi-tip">Tap a dot for the time, a name for their week.</div>
     </div>`;
     const tipEl = body.querySelector(".wi-tip");
     let on = null;
-    body.querySelector(".wi").addEventListener("click", (e) => {
+    body.querySelector(".wi").addEventListener("click", async (e) => {
+      const fb = e.target.closest("button[data-wi-flush]");
+      if (fb) {
+        if (!window.confirm("Force every phone to clear its saved copy and reload the next time it opens the app?")) return;
+        fb.disabled = true; fb.textContent = "Sending…";
+        try {
+          const res = await fetch(`${WORKER_URL}/app-control?key=${encodeURIComponent(key())}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", cache: "no-store" });
+          fb.textContent = res.ok ? "Sent ✓" : "Not sent (key?)";
+          if (res.ok) fb.nextElementSibling.textContent = "Sent just now. Phones refresh as they next open the app.";
+        } catch { fb.textContent = "Not sent (offline?)"; fb.disabled = false; }
+        return;
+      }
       const d = e.target.closest(".wi-dot[data-tip]");
       if (d) { on?.classList.remove("on"); on = d; d.classList.add("on"); tipEl.textContent = d.dataset.tip; return; }
       const r = e.target.closest(".wi-row");
@@ -1355,28 +1412,52 @@
     const reps = OWNERS.map((n) => S.report(n)).filter((r) => !r.empty).sort((a, b) => b.scored - a.scored);
     if (!reps.length) { body.innerHTML = `<div class="admin-empty">No finished games with picks yet.</div>`; return; }
     const tone = { weak: ["WEAKNESS", "wk"], strong: ["STRENGTH", "st"] };
-    const luckChip = (r) => `<em class="sc-luck ${Math.abs(r.luck) < 3 ? "even" : r.luck < 0 ? "cold" : "hot"}">${Math.abs(r.luck) < 3 ? "on par" : `${r.luck > 0 ? "+" : "−"}${Math.round(Math.abs(r.luck))} luck`}</em>`;
-    const asText = (r) => [`SCOUTING REPORT · ${r.name.toUpperCase()}`, `${r.scored} points · ${ordinal(r.rank)} of ${r.of} · ${r.picks} picks over ${r.weeks} weeks`, "", r.luckLine, "", ...r.insights.map((x) => `${x.tone === "strong" ? "+" : "-"} ${x.text}`)].join("\n");
+    // The luck pill opens a short explainer with the owner's own numbers.
+    const luckChip = (r) => `<button type="button" class="sc-luck ${Math.abs(r.luck) < 3 ? "even" : r.luck < 0 ? "cold" : "hot"}" data-sc-luck="${esc(r.name)}" aria-expanded="false">${Math.abs(r.luck) < 3 ? "no luck" : `${r.luck > 0 ? "+" : "−"}${Math.round(Math.abs(r.luck))} luck`} ⓘ</button>`;
+    const luckSign = (r) => Math.abs(r.luck) < 3 ? "even" : r.luck > 0 ? "up" : "down";
+    const luckExplain = (r) => `<div class="sc-luckx" data-sc-luckx="${esc(r.name)}" hidden>
+        <em>WHAT IS LUCK?</em>
+        <p>Luck is the gap between how good your picks were and the points they actually earned.</p>
+        <div class="sc-luckx-n"><span>Picks like yours usually score</span><b>~${Math.round(r.expected)}</b><span>You scored</span><b>${r.scored}</b><span>Luck</span><b class="${luckSign(r)}">${Math.abs(r.luck) < 0.5 ? "0" : `${r.luck > 0 ? "+" : "−"}${Math.round(Math.abs(r.luck))}`}</b></div>
+        <p>The spread gives every pick its odds, so we know what picks like yours usually score. The difference is games breaking for or against you.</p>
+        <p class="sc-luckx-m">${luckSign(r) === "up" ? "Your picks were good and the games broke your way too. Those breaks usually even out, so this lead is shakier than it looks." : luckSign(r) === "down" ? "Your picks were good but the games went the wrong way. Don't change much: it usually evens out." : "Your score is a fair reflection of your picks."}</p>
+      </div>`;
+    // Plain text for a group chat or a direct message.
+    const asText = (r) => [`SCOUTING REPORT: ${r.name.toUpperCase()}`, `${r.scored} points, ${ordinal(r.rank).toLowerCase()} of ${r.of}`, "", ...(r.fix ? [`ONE THING TO CHANGE: ${r.fix}`, ""] : []), `${r.luckBox.head.toUpperCase()}: ${r.luckBox.line}`, "", "VS THE LEAGUE", ...r.vs.map((st) => `${st.label}: ${st.text}${st.rank ? ` (${ordinal(st.rank).toLowerCase()} of ${st.of})` : ` (league avg ${st.avgText})`}`), "", ...r.insights.map((x) => `${x.tone === "strong" ? "✅" : "⚠️"} ${x.head}: ${x.line}`)].join("\n");
     const one = (r) => `<div class="sc-card">
-        <div class="sc-head"><b>${esc(r.name)}</b><span>${r.scored} pts · ${ordinal(r.rank)} of ${r.of} · ${r.picks} picks, ${r.weeks} weeks</span>${luckChip(r)}</div>
-        <div class="sc-luckline">${esc(r.luckLine)}</div>
-        <ol class="sc-list">${r.insights.map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span>${esc(x.text)}</span><small>${esc(x.evidence)}</small></li>`).join("") || `<li><span>Not enough picks yet for anything that isn't noise.</span></li>`}</ol>
-        <div class="sc-kinds"><span>MODE</span><span>PICKS</span><span>HIT</span><span>PTS/PICK</span><span>LEAGUE</span>${r.kinds.map((k) => `<span>${esc(k.label)}</span><span>${k.n}</span><span>${k.n ? `${k.hit}/${k.n}` : "-"}</span><span>${k.n ? k.per.toFixed(2) : "-"}</span><span>${k.restPer.toFixed(2)}</span>`).join("")}</div>
+        <div class="sc-head"><b>${esc(r.name)}</b><span>${r.scored} pts · ${ordinal(r.rank).toLowerCase()} of ${r.of} · ${r.picks} picks, ${r.weeks} weeks</span>${luckChip(r)}</div>
+        ${luckExplain(r)}
+        ${r.fix ? `<div class="sc-fix"><em>ONE THING TO CHANGE</em><b>${esc(r.fix)}</b></div>` : `<div class="sc-fix ok"><em>ONE THING TO CHANGE</em><b>Nothing to change.</b></div>`}
+        <div class="sc-luckline"><b>${esc(r.luckBox.head)}.</b> ${esc(r.luckBox.line)}</div>
+        <div class="sc-vs">
+          <div class="sc-mix-h">VS THE LEAGUE · <i class="sc-k-me"></i> ${esc(r.name)} · <i class="sc-k-avg"></i> league average</div>
+          ${r.vs.map((st) => { const lo = Math.min(...st.vals.map((x) => x.v)), hi = Math.max(...st.vals.map((x) => x.v)), span = hi - lo || 1, x = (v) => (4 + (v - lo) / span * 92).toFixed(1);
+            const good = st.better && !st.neutral && st.rank <= Math.ceil(st.of / 3), bad = st.better && !st.neutral && st.rank > st.of - Math.ceil(st.of / 3);
+            return `<div class="sc-vrow" ${st.note ? `title="${esc(st.note)}"` : ""}><span class="sc-vl">${esc(st.label)}</span><span class="sc-track"><i class="sc-avg" style="left:${x(st.avg)}%"></i>${st.vals.filter((v) => v.n !== r.name).map((v) => `<i class="sc-dot" style="left:${x(v.v)}%" title="${esc(v.n)}: ${esc(st.fmt(v.v))}"></i>`).join("")}<i class="sc-dot me" style="left:${x(st.me)}%"></i></span><span class="sc-vv ${good ? "good" : bad ? "bad" : ""}"><b>${esc(st.text)}</b>${st.rank ? `<small>${ordinal(st.rank).toLowerCase()}</small>` : `<small>avg ${esc(st.avgText)}</small>`}</span></div>`; }).join("")}
+        </div>
+        <ol class="sc-list">${r.insights.map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span><b>${esc(x.head)}</b>${esc(x.line)}</span><small>${esc(x.evidence)}</small></li>`).join("") || `<li><span>Not enough picks yet for anything that isn't noise.</span></li>`}</ol>
+        <div class="sc-mix">
+          <div class="sc-mix-h">HOW THEY PICK</div>
+          ${[["You", (k) => k.share], ["League", (k) => k.restShare]].map(([who, f]) => `<div class="sc-bar"><span>${who === "You" ? esc(r.name) : who}</span><i>${r.kinds.map((k) => { const v = f(k); return v > 0 ? `<b class="t-${k.k}" style="width:${(v * 100).toFixed(1)}%">${v >= 0.12 ? `${Math.round(v * 100)}%` : ""}</b>` : ""; }).join("")}</i></div>`).join("")}
+          <div class="sc-key">${r.kinds.map((k) => `<span><i class="t-${k.k}"></i>${esc(k.label)}</span>`).join("")}</div>
+          <div class="sc-hits">${r.kinds.map((k) => `<div><span><i class="t-${k.k}"></i>${esc(k.label)}</span><b>${k.n ? `${k.hit} of ${k.n} hit · ${Math.round(k.hit / k.n * 100)}%` : "none taken"}</b><em>${k.restHit != null ? `league ${Math.round(k.restHit * 100)}%` : ""}</em></div>`).join("")}</div>
+        </div>
         <div class="sc-actions"><button type="button" class="admin-btn" data-sc-copy="${esc(r.name)}">Copy report</button>${r.all.length > r.insights.length ? `<button type="button" class="admin-btn link" data-sc-all="${esc(r.name)}">All ${r.all.length} findings</button>` : ""}</div>
-        <ol class="sc-list sc-more" data-sc-more="${esc(r.name)}" hidden>${r.all.filter((x) => !r.insights.includes(x)).map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span>${esc(x.text)}</span><small>${esc(x.evidence)} · weight ${x.weight.toFixed(1)}</small></li>`).join("")}</ol>
+        <ol class="sc-list sc-more" data-sc-more="${esc(r.name)}" hidden>${r.all.filter((x) => !r.insights.includes(x)).map((x) => `<li class="${tone[x.tone][1]}"><em>${tone[x.tone][0]}</em><span><b>${esc(x.head)}</b>${esc(x.line)}</span><small>${esc(x.evidence)} · weight ${x.weight.toFixed(1)}</small></li>`).join("")}</ol>
       </div>`;
     const pickNames = `<div class="ld-sort sc-pick"><span>OWNER</span><button type="button" data-sc="" class="${focus ? "" : "on"}">ALL</button>${reps.map((r) => `<button type="button" data-sc="${esc(r.name)}" class="${focus === r.name ? "on" : ""}">${esc(r.name.toUpperCase())}</button>`).join("")}</div>`;
     const shownReps = focus ? reps.filter((r) => r.name === focus) : reps;
     body.innerHTML = `<div class="sc">
-      <div class="ld-asof">Admin only, for review · finished games through ${esc(String(Math.max(...reps.map((r) => r.weeks))))} weeks · worth = points x chance from the spread</div>
+      <div class="ld-asof">Admin only, for review · ${esc(String(Math.max(...reps.map((r) => r.weeks))))} weeks of finished games</div>
       ${pickNames}
       <div class="sc-cards${focus ? " one" : ""}">${shownReps.map(one).join("")}</div>
-      <div class="lvz-cap">How it's worked out: what each pick was worth going in comes from its spread (the favorite wins outright with probability Phi(spread / 15), either side covers half the time), so luck is points scored minus points the picks were worth. A finding needs enough picks behind it to show, and each lists its count. Nothing here is visible to the league.</div>
+      <div class="lvz-cap">Luck is points scored minus what picks like these usually score, based on the spreads. A finding only shows when there's enough data behind it. Only you can see this page.</div>
     </div>`;
     body.querySelector(".sc").addEventListener("click", async (e) => {
       const b = e.target.closest("button");
       if (!b) return;
       if (b.dataset.sc !== undefined) return renderScouting(b.dataset.sc || null);
+      if (b.dataset.scLuck) { const m = body.querySelector(`[data-sc-luckx="${CSS.escape(b.dataset.scLuck)}"]`); if (m) { m.hidden = !m.hidden; b.setAttribute("aria-expanded", String(!m.hidden)); } return; }
       if (b.dataset.scAll) { const m = body.querySelector(`[data-sc-more="${CSS.escape(b.dataset.scAll)}"]`); if (m) m.hidden = !m.hidden; return; }
       if (b.dataset.scCopy) {
         const r = reps.find((x) => x.name === b.dataset.scCopy);

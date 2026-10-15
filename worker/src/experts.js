@@ -1,3 +1,5 @@
+import { orientStored } from "./insights.js";
+
 // Grades archived expert picks against the finals. A pick against the
 // spread uses the line the outlet wrote when it gave one, else the
 // sealed line. A straight-up pick is graded on the winner. BOTH counts
@@ -10,8 +12,11 @@ function sealedLine(game, side) {
   return side === favSide ? -s : s;
 }
 
-export function gradePick(game, pick, final) {
+export function gradePick(game, rawPick, final) {
   if (!final) return [];
+  // Picks archived before scores were placed by the named winner can be
+  // the wrong way round; a pick to win outright fixes its own score.
+  const pick = orientStored(rawPick);
   const mine = pick.side === "away" ? final.awayScore : final.homeScore;
   const theirs = pick.side === "away" ? final.homeScore : final.awayScore;
   const out = [];

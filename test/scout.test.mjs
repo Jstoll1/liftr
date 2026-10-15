@@ -53,7 +53,7 @@ test("report totals add up to the app's scoring", () => {
 test("the favorites-for-1 habit is called out; the close-underdog habit is a strength", () => {
   const fav = S.report("Fav"), dog = S.report("Dog");
   assert.ok(fav.insights.some((x) => x.key === "fav1" && x.tone === "weak"));
-  assert.ok(fav.insights.some((x) => x.key === "value" && x.tone === "weak"));
+  assert.match(fav.fix, /spread|upset/);
   assert.ok(dog.all.some((x) => x.key === "dogs" && x.tone === "strong"));
   assert.ok(dog.expected > fav.expected);
 });
@@ -61,10 +61,18 @@ test("the favorites-for-1 habit is called out; the close-underdog habit is a str
 test("blanks are counted; every shown insight carries its evidence", () => {
   const mid = S.report("Mid");
   assert.ok(mid.all.some((x) => x.key === "missed" && /10 games/.test(x.evidence)));
-  for (const n of names) for (const x of S.report(n).insights) { assert.ok(x.evidence); assert.ok(x.text.length > 20); }
+  for (const n of names) for (const x of S.report(n).insights) { assert.ok(x.evidence); assert.ok(x.head.length > 5 && x.head.length < 40); assert.ok(x.line.length > 20 && x.line.length < 260); assert.doesNotMatch(x.line, /\bATS\b|\bSU\b|mode/); }
   assert.ok(S.report("Fav").insights.length <= 5);
 });
 
 test("an owner with no finished picks gets an empty report", () => {
   assert.equal(Scout.build({ season: { season: {} }, log: [], names, scorePick }).report("Fav").empty, true);
+});
+
+test("taking underdogs isn't called a failure to pick winners", () => {
+  // Dog's picked teams win less often by design; judged against the spreads, not the league.
+  const dog = S.report("Dog");
+  // Winning more or less than the spreads expected is explained in the luck line, not graded.
+  assert.ok(!dog.all.some((x) => x.key === "side"));
+  for (const n of names) { const r = S.report(n); const tones = new Set(r.insights.map((x) => x.tone)); if (r.all.some((x) => x.tone === "weak" && x.weight >= 2)) assert.ok(tones.has("weak")); }
 });

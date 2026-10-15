@@ -728,16 +728,17 @@ export async function extractInjuries(env, teamName, items, ctx = null) {
 // straight up, the line as written and a predicted score if the piece
 // gives one. A pick stands only when the team named is one of the two
 // in the game. Cached six hours, stale reads refreshed behind the response.
-export const picksKey = (week, gameId) => `pk:v4:w${week}:g${gameId}`;
+// v5: scores are placed by the named winner, not by number order.
+export const picksKey = (week, gameId) => `pk:v5:w${week}:g${gameId}`;
 const PICK_TIER = [/cbs ?sports/i, /sports illustrated|\bsi\b/i, /the athletic/i, /\bcovers\b/i, /action network/i, /pickswise/i, /yahoo/i, /bleacher report/i, /fox sports/i, /usa today/i, /sportsline/i, /oddsshark/i, /dimers/i, /\bpff\b/i, /sporting news/i, /new york post|ny post/i, /on3/i, /247sports/i, /athlon/i, /saturday down south|saturday tradition|saturday blitz/i, /college football news/i, /betsided|fansided/i, /the spun/i];
 export const outletRank = (name) => { const i = PICK_TIER.findIndex((re) => re.test(String(name || ""))); return i < 0 ? PICK_TIER.length : i; };
 export function picksPrompt() {
   return [
     "You extract published game picks for one college football game from article headlines and bodies.",
-    "Read each piece to its end. A staff picks piece lists several people, each with their own pick, line and score: return every one of them as a separate entry, never only the first. Return one entry per outlet and per named picker: the outlet name, the picker's name if given (else empty), the team picked exactly as one of the two teams given, whether the pick is against the spread ('ATS'), straight up ('SU') or the piece gives both ('BOTH'), the point spread as written for that team if stated (e.g. '-3.5', '+7') else empty (a moneyline such as -172 is not a spread: put it in 'ml' instead, else empty), a predicted final score as 'AA-HH' (away first) if given else empty, and the reason in at most twelve words.",
+    "Read each piece to its end. A staff picks piece lists several people, each with their own pick, line and score: return every one of them as a separate entry, never only the first. Return one entry per outlet and per named picker: the outlet name, the picker's name if given (else empty), the team picked exactly as one of the two teams given, whether the pick is against the spread ('ATS'), straight up ('SU') or the piece gives both ('BOTH'), the point spread as written for that team if stated (e.g. '-3.5', '+7') else empty (a moneyline such as -172 is not a spread: put it in 'ml' instead, else empty), a predicted final score as the winner's points first then the loser's ('41-10') with the predicted winner named exactly as one of the two teams given in 'winner' (both empty if no score is given), and the reason in at most twelve words. Name the winner from the words next to the score, never from the order of the numbers.",
     "Only include a pick the text states plainly. Never guess from tone, never include a pick for another game, and never invent a line or score. If nothing qualifies, return an empty list.",
     "Also copy, character for character from the text, the one short passage (at most twenty words) where the piece states the predicted score, or the pick itself if it gives no score, as 'quote'. Copy it exactly as written, never paraphrase; empty if there is no such passage.",
-    "Return JSON: {\"picks\": [{\"outlet\": \"\", \"picker\": \"\", \"team\": \"\", \"side\": \"ATS\", \"line\": \"\", \"ml\": \"\", \"score\": \"\", \"reason\": \"\", \"quote\": \"\"}]}",
+    "Return JSON: {\"picks\": [{\"outlet\": \"\", \"picker\": \"\", \"team\": \"\", \"side\": \"ATS\", \"line\": \"\", \"ml\": \"\", \"score\": \"\", \"winner\": \"\", \"reason\": \"\", \"quote\": \"\"}]}",
   ].join(" ");
 }
 // Which side of the game a team name means. The slate names schools
@@ -747,6 +748,27 @@ export function picksPrompt() {
 // is refused.
 export function teamAliases(full, short) {
   return [...new Set([searchName(full).toLowerCase(), String(short || "").toLowerCase()].filter((x) => x.length >= 2))];
+}
+// A predicted score, stored away-home. The numbers go where the named
+// winner says, never by their order (articles write the winner first:
+// "Georgia 41, Auburn 10" for a home Georgia). With no winner named, a
+// pick to win outright means the picked side is the winner. Anything
+// still unclear is dropped rather than shown the wrong way round.
+export function scoreAwayHome(game, { score, winner, side, type }) {
+  const m = /^(\d{1,2})\s*-\s*(\d{1,2})$/.exec(String(score || "").trim());
+  if (!m) return "";
+  const hi = Math.max(Number(m[1]), Number(m[2])), lo = Math.min(Number(m[1]), Number(m[2]));
+  const w = sideOf(game, winner) || (type === "SU" || type === "BOTH" ? side : null);
+  if (!w) return "";
+  return w === "away" ? `${hi}-${lo}` : `${lo}-${hi}`;
+}
+// A stored away-home score for a pick to win outright must have the picked
+// side winning; picks stored before v5 could be the wrong way round.
+export function orientStored(pick) {
+  const m = /^(\d{1,2})-(\d{1,2})$/.exec(String(pick?.score || ""));
+  if (!m || !(pick.type === "SU" || pick.type === "BOTH") || m[1] === m[2]) return pick;
+  const awayWins = Number(m[1]) > Number(m[2]);
+  return (awayWins ? "away" : "home") === pick.side ? pick : { ...pick, score: `${m[2]}-${m[1]}` };
 }
 export function sideOf(game, text) {
   const t = String(text || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -789,7 +811,7 @@ export async function extractPicks(env, game, items) {
     body: JSON.stringify({
       model: env.OPENAI_MODEL || "gpt-4o-mini",
       messages: [{ role: "system", content: picksPrompt() }, { role: "user", content: `Game: ${searchName(game.away)} (away) at ${searchName(game.home)} (home). Sealed line: ${searchName(game.favorite)} -${game.spread}.\n${text}` }],
-      response_format: { type: "json_schema", json_schema: { name: "picks", strict: true, schema: { type: "object", additionalProperties: false, required: ["picks"], properties: { picks: { type: "array", items: { type: "object", additionalProperties: false, required: ["outlet", "picker", "team", "side", "line", "ml", "score", "reason", "quote"], properties: { outlet: { type: "string" }, picker: { type: "string" }, team: { type: "string" }, side: { type: "string", enum: ["ATS", "SU", "BOTH"] }, line: { type: "string" }, ml: { type: "string" }, score: { type: "string" }, reason: { type: "string" }, quote: { type: "string" } } } } } } } },
+      response_format: { type: "json_schema", json_schema: { name: "picks", strict: true, schema: { type: "object", additionalProperties: false, required: ["picks"], properties: { picks: { type: "array", items: { type: "object", additionalProperties: false, required: ["outlet", "picker", "team", "side", "line", "ml", "score", "winner", "reason", "quote"], properties: { outlet: { type: "string" }, picker: { type: "string" }, team: { type: "string" }, side: { type: "string", enum: ["ATS", "SU", "BOTH"] }, line: { type: "string" }, ml: { type: "string" }, score: { type: "string" }, winner: { type: "string" }, reason: { type: "string" }, quote: { type: "string" } } } } } } } },
       temperature: 0,
     }),
   });
@@ -802,7 +824,7 @@ export async function extractPicks(env, game, items) {
       if (!side || !p.outlet) return null;
       const outlet = String(p.outlet).trim().slice(0, 40);
       const item = ordered.find((n) => String(n.source || "").toLowerCase() === outlet.toLowerCase()) || ordered.find((n) => new RegExp(outlet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(n.source || "")) || null;
-      const score = /^\d{1,2}-\d{1,2}$/.test(String(p.score || "").trim()) ? String(p.score).trim() : "";
+      const score = scoreAwayHome(game, { score: p.score, winner: p.winner, side, type: p.side });
       // A spread is a small number with a half point at most; three digits
       // is a moneyline whatever field the model put it in.
       const num = (v) => { const t = String(v || "").trim().replace(/[^\d.+-]/g, ""); return /^[+-]?\d+(\.\d)?$/.test(t) ? t : ""; };
@@ -826,7 +848,7 @@ export async function gamePicks(env, week, game, ctx = null) {
   const hit = await env.LIFTR_KV.get(key, "json");
   const has = !!hit?.picks?.length;
   const fresh = hit && Date.now() - hit.at < (has ? 6 * 3600 * 1000 : 30 * 60 * 1000);
-  if (fresh) return hit;
+  if (fresh) return { ...hit, picks: (hit.picks || []).map(orientStored) };
   if (hit && has && ctx && !(hit.refreshing && Date.now() - hit.refreshing < 2 * 60 * 1000)) {
     try { await env.LIFTR_KV.put(key, JSON.stringify({ ...hit, refreshing: Date.now() }), { expirationTtl: 24 * 3600 }); } catch {}
     ctx.waitUntil(refreshPicks(env, week, game, key).catch((err) => console.error("picks refresh", String(err?.message || err))));

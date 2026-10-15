@@ -1,6 +1,1 @@
-https://a.espncdn.com/i/teamlogos/ncaa/500-dark/333.png
-https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/333.png&w=80&h=80
-https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/333.png&w=80&h=80
-https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/2335.png&w=80&h=80
-https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2335.png&w=80&h=80
-https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/99999.png&w=80&h=80
+/insights/picks?week=7&game=5

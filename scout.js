@@ -28,9 +28,7 @@
   const favWinP = (g) => phi(Math.abs(Number(g.spread) || 0) / SD);
   const kindOf = (g, p) => p.mode === "ATS" ? "ats" : p.team === g.favorite ? "fav" : "dog";
   const worth = (g, kind) => kind === "ats" ? 1 : kind === "fav" ? favWinP(g) : 3 * (1 - favWinP(g));
-  const KIND = { fav: "favorite to win (1 pt)", ats: "against the spread (2 pts)", dog: "underdog to win (3 pts)" };
   const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
-  const f1 = (x) => (Math.round(x * 10) / 10).toFixed(1);
   const pts = (x) => `${Math.round(Math.abs(x))} point${Math.round(Math.abs(x)) === 1 ? "" : "s"}`;
   const share = (a, b) => b >= 10 ? `${pct(a, b)}%` : `${a} of ${b}`;
 
@@ -56,7 +54,9 @@
           const sideWon = scorePick(g, { team: p.team, mode: "SU" }, r) > 0;
           const withMe = Object.entries(sides).filter(([m, t]) => m !== n && t === p.team).length;
           const others = pickers - 1;
-          rows.push({ n, w: Number(w), g, p, kind, scored, other, sideWon, worth: worth(g, kind), room: others > 0 ? withMe / others : null, spread: Math.abs(Number(g.spread) || 0) });
+          // How often the picked team should win outright, from the spread.
+          const winP = p.team === g.favorite ? favWinP(g) : 1 - favWinP(g);
+          rows.push({ n, w: Number(w), g, p, kind, scored, other, sideWon, winP, worth: worth(g, kind), room: others > 0 ? withMe / others : null, spread: Math.abs(Number(g.spread) || 0) });
         }
       }
     }
@@ -88,142 +88,152 @@
 
   const sum = (xs, f) => xs.reduce((a, x) => a + f(x), 0);
 
+  // Plain names for the three picks, as the pick buttons show them.
+  const TYPE_SHORT = { fav: "1-pt favorite", ats: "2-pt spread", dog: "3-pt upset" };
+  // How surprising a count is: (seen - expected) / spread of chance. Over
+  // 1.65 either way is roughly a 1 in 10 fluke, the bar for showing a
+  // finding that only describes the past.
+  const zOf = (seen, exp, varSum) => varSum > 0 ? (seen - exp) / Math.sqrt(varSum) : 0;
+  const CLEAR = 1.65;
+
   function report(name, ctx) {
     const { rows, missed, flips, names } = ctx;
     const mine = rows.filter((r) => r.n === name), rest = rows.filter((r) => r.n !== name);
     if (!mine.length) return { name, empty: true };
     const scored = sum(mine, (r) => r.scored), expected = sum(mine, (r) => r.worth);
+    const weeks = new Set(mine.map((r) => r.w)).size || 1;
     const per = (xs, f) => xs.length ? sum(xs, f) / xs.length : 0;
-    // League totals, for the standings line.
     const totals = names.map((n) => ({ n, s: sum(rows.filter((r) => r.n === n), (r) => r.scored) })).sort((a, b) => b.s - a.s);
     const rank = totals.findIndex((x) => x.n === name) + 1;
     const out = [];
+    // act: something to do differently. fix: the one-line instruction.
     const add = (o) => out.push(o);
 
-    // 1. The choices themselves: worth per pick against the league.
-    const evMe = per(mine, (r) => r.worth), evRest = per(rest, (r) => r.worth);
-    if (mine.length >= 15) {
-      const edge = (evMe - evRest) * mine.length;
-      add({ key: "value", tone: edge >= 0 ? "strong" : "weak", weight: Math.abs(edge),
-        text: edge >= 0
-          ? `Your picks are good value: worth ${f1(evMe)} points each going in, against ${f1(evRest)} for everyone else. That's about ${pts(edge)} over the season before a ball is snapped.`
-          : `Your picks are worth less going in: ${f1(evMe)} points each, against ${f1(evRest)} for everyone else. That costs about ${pts(edge)} over the season, whatever happens on the field.`,
-        evidence: `${mine.length} picks` });
-    }
-
-    // 2. Favorites to win for 1 point: the spread on the same team is worth more.
+    // 1-point favorite picks: the 2-point spread pick on the same team.
     const favs = mine.filter((r) => r.kind === "fav");
+    const restFavShare = rest.length ? rest.filter((r) => r.kind === "fav").length / rest.length : 0;
     if (favs.length >= 5) {
-      const gap = sum(favs, (r) => 1 - r.worth);
       const actual = sum(favs, (r) => r.scored), alt = sum(favs, (r) => r.other);
-      const restShare = rest.length ? rest.filter((r) => r.kind === "fav").length / rest.length : 0;
-      add({ key: "fav1", tone: "weak", weight: gap + Math.max(0, alt - actual) / 2,
-        text: `${share(favs.length, mine.length)} of your picks are favorites to win for 1 point (the league: ${pct(restShare * 100, 100)}%). The spread on the same team is worth more on average: a full point a pick against ${f1(per(favs, (r) => r.worth))}. On these picks you scored ${actual}; the spread would have scored ${alt}.`,
-        evidence: `${favs.length} favorite picks` });
+      // Only when they clearly lean on it more than the league (10 points
+      // of share or more) and it has cost real points (3 or more).
+      if (favs.length / mine.length >= restFavShare + 0.1 && alt - actual >= 3) add({ key: "fav1", act: true, tone: "weak", weight: Math.max(alt - actual, sum(favs, (r) => 1 - r.worth)),
+        head: "Too many 1-point picks",
+        line: `${share(favs.length, mine.length)} of your picks were 1-point favorites (league ${pct(restFavShare * 100, 100)}%). The spread pick on those teams would have scored ${alt}, not ${actual}.`,
+        fix: "Pick the spread instead of 1-point favorites.",
+        evidence: `${favs.length} picks` });
     }
 
-    // 3. Close games: the underdog to win is the best value on the board.
+    // Close games: the 3-point upset pick.
     const close = mine.filter((r) => r.spread > 0 && r.spread <= 6);
     if (close.length >= 6) {
       const dogs = close.filter((r) => r.kind === "dog").length;
       const restClose = rest.filter((r) => r.spread > 0 && r.spread <= 6), restDogs = restClose.filter((r) => r.kind === "dog").length;
-      const mineShare = dogs / close.length, restShare = restClose.length ? restDogs / restClose.length : 0;
+      const ms = dogs / close.length, rs = restClose.length ? restDogs / restClose.length : 0;
       const gain = sum(close.filter((r) => r.kind !== "dog"), (r) => worth(r.g, "dog") - r.worth);
-      add({ key: "dogs", tone: mineShare >= Math.max(0.35, restShare) ? "strong" : "weak", weight: mineShare >= Math.max(0.35, restShare) ? dogs * 0.3 : gain,
-        text: mineShare >= Math.max(0.35, restShare)
-          ? `You take the underdog outright in close games (spread 6 or less) ${share(dogs, close.length)} of the time. At 3 points and roughly a 40% chance, that's the best value on the board.`
-          : `In close games (spread 6 or less) the underdog to win pays 3 and wins about 40% of the time, worth about 1.2 a pick, more than anything else on the card. You took it ${dogs} of ${close.length} times${restClose.length ? ` (the league: ${pct(restDogs, restClose.length)}%)` : ""}.`,
+      if (ms >= Math.max(0.35, rs)) add({ key: "dogs", act: true, tone: "strong", weight: dogs * 0.3,
+        head: "Smart on upset picks",
+        line: `You take the 3-point upset in ${share(dogs, close.length)} of close games (league ${pct(restDogs, restClose.length)}%). It's the best-paying pick.`,
+        evidence: `${close.length} close games` });
+      else if (gain >= 2) add({ key: "dogs", act: true, tone: "weak", weight: gain,
+        head: "Take more upsets",
+        line: `In close games, the 3-point upset pays best over time. You took it ${dogs} of ${close.length} times (league ${pct(restDogs, restClose.length)}%).`,
+        fix: "Take the 3-point upset more in close games.",
         evidence: `${close.length} close games` });
     }
 
-    // 4. Right team, wrong mode: what the other mode on the same team would have scored.
-    if (mine.length >= 15) {
-      const net = sum(mine, (r) => r.other - r.scored), netRest = per(rest, (r) => r.other - r.scored) * mine.length;
-      const better = mine.filter((r) => r.other > r.scored).length, worse = mine.filter((r) => r.other < r.scored).length;
-      const d = net - netRest;
-      if (Math.abs(d) >= 2) add({ key: "mode", tone: d > 0 ? "weak" : "strong", weight: Math.abs(d),
-        text: d > 0
-          ? `Right team, wrong mode: the other mode on the same team would have scored more ${better} times and less ${worse} times, ${pts(net)} net. A typical owner loses about ${pts(netRest)} this way.`
-          : `Your mode calls are sharp: switching mode on the same team would have scored more only ${better} times and less ${worse} times. You've banked about ${pts(-d)} more from the choice than a typical owner.`,
-        evidence: `${mine.length} picks` });
-    }
-
-    // 5. Picking winners: did the team you picked win the game?
-    if (mine.length >= 20) {
-      const won = mine.filter((r) => r.sideWon).length, restWon = rest.filter((r) => r.sideWon).length;
-      const d = won / mine.length - (rest.length ? restWon / rest.length : 0);
-      if (Math.abs(d) >= 0.05) add({ key: "side", tone: d > 0 ? "strong" : "weak", weight: Math.abs(d) * mine.length * 1.5,
-        text: `The team you picked won the game ${share(won, mine.length)} of the time; everyone else's won ${pct(restWon, rest.length)}%. ${d > 0 ? "You're reading games well." : "The picks themselves, not just the modes, are where the points go."}`,
-        evidence: `${mine.length} picks` });
-    }
-
-    // 6. Hit rate by mode, against the league's on the same mode.
-    for (const k of ["ats", "dog", "fav"]) {
-      const a = mine.filter((r) => r.kind === k), b = rest.filter((r) => r.kind === k);
-      if (a.length < 8 || b.length < 10) continue;
-      const ha = a.filter((r) => r.scored > 0).length, hb = b.filter((r) => r.scored > 0).length;
-      const d = ha / a.length - hb / b.length, val = k === "ats" ? 2 : k === "dog" ? 3 : 1;
-      if (Math.abs(d) >= 0.1) add({ key: `hit-${k}`, tone: d > 0 ? "strong" : "weak", weight: Math.abs(d) * a.length * val,
-        text: `${k === "ats" ? "Spread picks" : k === "dog" ? "Underdogs to win" : "Favorites to win"}: ${share(ha, a.length)} hit, against ${pct(hb, b.length)}% for everyone else.`,
-        evidence: `${a.length} picks` });
-    }
-
-    // 7. Against the room: picks where few others were on the same team.
-    const alone = mine.filter((r) => r.room !== null && r.room <= 0.25), crowd = mine.filter((r) => r.room !== null && r.room > 0.25);
-    if (alone.length >= 6 && crowd.length >= 6) {
-      const pa = per(alone, (r) => r.scored), pc = per(crowd, (r) => r.scored);
-      const d = (pa - pc) * alone.length;
-      if (Math.abs(d) >= 2) add({ key: "room", tone: d > 0 ? "strong" : "weak", weight: Math.abs(d),
-        text: d > 0
-          ? `Going against the room pays for you: ${f1(pa)} points a pick when few others are on your team, ${f1(pc)} when you're with the crowd.`
-          : `Going against the room hasn't paid: ${f1(pa)} points a pick when few others are on your team, ${f1(pc)} when you're with the crowd.`,
-        evidence: `${alone.length} lone picks` });
-    }
-
-    // 8. Big spreads: covering double digits.
-    const big = mine.filter((r) => r.kind === "ats" && r.spread >= 10);
-    if (big.length >= 6) {
-      const hit = big.filter((r) => r.scored > 0).length;
-      const d = (hit / big.length - 0.5) * big.length * 2;
-      if (Math.abs(d) >= 2) add({ key: "big", tone: d > 0 ? "strong" : "weak", weight: Math.abs(d),
-        text: `Double-digit spreads: your spread picks there hit ${share(hit, big.length)}${d < 0 ? ". A coin flip would have done better; big numbers are where your card leaks." : ", well above a coin flip."}`,
-        evidence: `${big.length} picks` });
-    }
-
-    // 9. Second-guessing.
-    const fl = flips?.[name];
-    if (fl && fl.n >= 3 && Math.abs(fl.net) >= 2) add({ key: "flips", tone: fl.net > 0 ? "strong" : "weak", weight: Math.abs(fl.net),
-      text: fl.net > 0
-        ? `Changing your mind pays: ${fl.n} changed picks gained ${pts(fl.net)} (${fl.helped} helped, ${fl.hurt} hurt).`
-        : `Second-guessing costs you: ${fl.n} changed picks lost ${pts(fl.net)} (${fl.helped} helped, ${fl.hurt} hurt). The first pick was usually right.`,
-      evidence: `${fl.n} changes` });
-
-    // 10. Blanks.
+    // Blanks.
     const miss = missed?.[name] || 0;
-    if (miss >= 2) add({ key: "missed", tone: "weak", weight: miss * per(rest, (r) => r.scored),
-      text: `${miss} games left blank, worth about ${pts(miss * per(rest, (r) => r.scored))} at the league's average.`,
+    if (miss >= 2) add({ key: "missed", act: true, tone: "weak", weight: miss * per(rest, (r) => r.scored),
+      head: "Leaving picks blank",
+      line: `${miss} games left blank. That's about ${pts(miss * per(rest, (r) => r.scored))} lost.`,
+      fix: "Fill in every game.",
       evidence: `${miss} games` });
 
-    // Strongest first; at least one strength when there is one worth saying.
-    out.sort((a, b) => b.weight - a.weight);
+    // Changed picks.
+    const fl = flips?.[name];
+    if (fl && fl.n >= 4 && Math.abs(fl.net) >= 3) add({ key: "flips", act: true, tone: fl.net > 0 ? "strong" : "weak", weight: Math.abs(fl.net),
+      head: fl.net > 0 ? "Second looks pay off" : "Trust your first pick",
+      line: fl.net > 0
+        ? `You changed ${fl.n} picks: ${fl.helped} helped, ${fl.hurt} hurt. Net +${Math.round(fl.net)} points.`
+        : `You changed ${fl.n} picks: ${fl.hurt} hurt, ${fl.helped} helped. Net −${Math.round(-fl.net)} points.`,
+      fix: fl.net > 0 ? null : "Stick with your first pick.",
+      evidence: `${fl.n} changes` });
+
+    // Spread picks: a coin flip is the bar.
+    const ats = mine.filter((r) => r.kind === "ats");
+    if (ats.length >= 10) {
+      const hit = ats.filter((r) => r.scored > 0).length, z = zOf(hit, ats.length / 2, ats.length / 4);
+      if (Math.abs(z) >= CLEAR) add({ key: "ats", act: false, tone: z > 0 ? "strong" : "weak", weight: Math.abs(hit - ats.length / 2) * 2,
+        head: z > 0 ? "Beating the spread" : "Spread picks are missing",
+        line: `Your spread picks hit ${hit} of ${ats.length} (${pct(hit, ats.length)}%). A coin flip hits 50%.`,
+        evidence: `${ats.length} picks` });
+    }
+
+    // Right team, other pick type: more often better or worse than a fair split?
+    const diff = mine.filter((r) => r.other !== r.scored);
+    if (diff.length >= 12) {
+      const better = diff.filter((r) => r.other > r.scored).length, z = zOf(better, diff.length / 2, diff.length / 4);
+      const net = sum(mine, (r) => r.other - r.scored);
+      if (Math.abs(z) >= CLEAR) add({ key: "type", act: false, tone: z > 0 ? "weak" : "strong", weight: Math.abs(net),
+        head: z > 0 ? "Wrong pick on the right team" : "Good at win vs. spread",
+        line: z > 0
+          ? `You had the right team but the wrong pick ${better} times (right ${diff.length - better}). That cost ${pts(net)}.`
+          : `When choosing win or spread on a team, you chose right ${diff.length - better} times and wrong ${better}.`,
+        evidence: `${diff.length} games` });
+    }
+
+    // Order: things to do differently first, then the rest by size.
+    out.sort((a, b) => (b.act - a.act) || (b.weight - a.weight));
     let pick = out.slice(0, 4);
-    const strength = out.find((x) => x.tone === "strong" && x.weight >= 2);
-    if (strength && !pick.includes(strength)) pick = [...pick.slice(0, 3), strength];
-    pick = pick.filter((x) => x.weight >= 1.5).slice(0, 5);
+    for (const t of ["strong", "weak"]) {
+      const best = out.find((x) => x.tone === t && x.weight >= 2);
+      if (best && !pick.includes(best)) { const drop = [...pick].reverse().find((x) => x.tone !== t && pick.filter((y) => y.tone === x.tone).length > 1); pick = drop ? [...pick.filter((x) => x !== drop), best] : [...pick, best]; }
+    }
+    pick = pick.filter((x) => x.weight >= 1.5).sort((a, b) => (b.act - a.act) || (b.weight - a.weight)).slice(0, 5);
+    // The one thing to change has to matter: at least 4 points, or about a
+    // point a week. Otherwise there's nothing worth changing.
+    const fixFrom = out.filter((x) => x.act && x.tone === "weak" && x.fix && x.weight >= Math.max(4, weeks)).sort((a, b) => b.weight - a.weight)[0];
 
     // Luck: scored against what the picks were worth.
     const luck = scored - expected;
-    const luckLine = Math.abs(luck) < 3
-      ? `Right on what your picks were worth: ${scored} points scored, about ${Math.round(expected)} expected.`
+    // Why: how many games the picked teams won against what the spreads
+    // expected. Over a few weeks this is mostly luck, so it explains the
+    // luck line rather than standing as a skill of its own.
+    const won = mine.filter((r) => r.sideWon).length, wonExp = sum(mine, (r) => r.winP);
+    const why = Math.abs(won - wonExp) < 3 ? "" : won > wonExp ? " More of your teams won than the odds expected." : " Fewer of your teams won than the odds expected.";
+    const luckBox = Math.abs(luck) < 3
+      ? { head: "No luck either way", line: `Your ${scored} points are a fair score for your picks.` }
       : luck < 0
-        ? `Unlucky: your picks were worth about ${Math.round(expected)} points; they scored ${scored}. About ${pts(luck)} of the gap is the ball bouncing the wrong way, not the picks.`
-        : `Running hot: your picks were worth about ${Math.round(expected)} points and scored ${scored}. About ${pts(luck)} of that is good fortune that may not last.`;
+        ? { head: "Unlucky", line: `About ${pts(luck)} lost so far.${why} Your picks are better than your score.` }
+        : { head: "Lucky", line: `About ${Math.round(luck)} of your ${scored} points are luck.${why} Expect it to even out.` };
 
     const kinds = ["fav", "ats", "dog"].map((k) => {
       const a = mine.filter((r) => r.kind === k), b = rest.filter((r) => r.kind === k);
-      return { k, label: KIND[k], n: a.length, hit: a.filter((r) => r.scored > 0).length, pts: sum(a, (r) => r.scored), per: per(a, (r) => r.scored), restPer: per(b, (r) => r.scored), restShare: rest.length ? b.length / rest.length : 0 };
+      return { k, label: TYPE_SHORT[k], n: a.length, hit: a.filter((r) => r.scored > 0).length, pts: sum(a, (r) => r.scored), per: per(a, (r) => r.scored), restPer: per(b, (r) => r.scored),
+        share: a.length / mine.length, restShare: rest.length ? b.length / rest.length : 0, restHit: b.length ? b.filter((r) => r.scored > 0).length / b.length : null };
     });
-    return { name, picks: mine.length, scored, expected, luck, luckLine, rank, of: totals.length, weeks: new Set(mine.map((r) => r.w)).size, insights: pick, all: out, kinds };
+    // Where they sit among the owners, stat by stat. better: which way is
+    // good ("high", "low"), or null for a style with no right answer.
+    const statOf = (n) => { const xs = rows.filter((r) => r.n === n); if (!xs.length) return null; const wk = new Set(xs.map((r) => r.w)).size || 1, sc = sum(xs, (r) => r.scored), wo = sum(xs, (r) => r.worth);
+      return { ppw: sc / wk, hit: xs.filter((r) => r.scored > 0).length / xs.length, ppp: sc / xs.length, value: wo / xs.length, luck: sc - wo, upset: xs.filter((r) => r.kind === "dog").length / xs.length }; };
+    const stats = names.map((n) => ({ n, s: statOf(n) })).filter((x) => x.s);
+    const STATS = [
+      { k: "ppw", label: "Points a week", better: "high", fmt: (v) => v.toFixed(1) },
+      { k: "hit", label: "Picks that hit", better: "high", fmt: (v) => `${Math.round(v * 100)}%` },
+      { k: "ppp", label: "Points per pick", better: "high", fmt: (v) => v.toFixed(2) },
+      { k: "value", label: "Pick quality", note: "how good the picks were before kickoff, from the spreads", better: "high", fmt: (v) => v.toFixed(2) },
+      { k: "luck", label: "Luck", note: "points scored minus pick value", better: "high", neutral: true, fmt: (v) => `${v >= 0 ? "+" : "−"}${Math.round(Math.abs(v))}` },
+      { k: "upset", label: "Upset picks", note: "share of picks that are 3-point upsets", better: null, fmt: (v) => `${Math.round(v * 100)}%` },
+    ];
+    const vs = STATS.map((st) => {
+      const vals = stats.map((x) => ({ n: x.n, v: x.s[st.k] }));
+      const me = vals.find((x) => x.n === name)?.v;
+      if (me == null) return null;
+      const avg = vals.reduce((a, x) => a + x.v, 0) / vals.length;
+      const rank = st.better ? 1 + vals.filter((x) => st.better === "high" ? x.v > me + 1e-9 : x.v < me - 1e-9).length : null;
+      return { ...st, me, avg, rank, of: vals.length, vals, text: st.fmt(me), avgText: st.fmt(avg) };
+    }).filter(Boolean);
+    return { name, picks: mine.length, scored, expected, luck, luckBox, vs, luckLine: `${luckBox.head}. ${luckBox.line}`, fix: fixFrom ? fixFrom.fix : null, rank, of: totals.length, weeks, insights: pick, all: out, kinds };
   }
 
   function build({ season, log, names, scorePick }) {

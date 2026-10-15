@@ -1382,7 +1382,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202610141850";
+  tag.src = "admin.js?v=202610142341";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1451,7 +1451,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202610141850";
+  tag.src = "console.js?v=202610142341";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -5756,7 +5756,10 @@ async function openInsights(gameId) {
     const favSide = game.favorite === game.home ? "home" : "away", dogSide = favSide === "home" ? "away" : "home";
     const sealed = Number(game.spread) || 0;
     const lineOf = (side) => sealed === 0 ? "PK" : side === favSide ? `-${sealed}` : `+${sealed}`;
-    const scoreOf = (p) => { const m = /^(\d{1,2})-(\d{1,2})$/.exec(String(p.score || "")); return m ? { away: Number(m[1]), home: Number(m[2]) } : null; };
+    // Scores are away-home. A pick to win outright must have its own side
+    // winning: an older cached answer could be the wrong way round, and the
+    // number order alone is never trusted over the team the expert named.
+    const scoreOf = (p) => { const m = /^(\d{1,2})-(\d{1,2})$/.exec(String(p.score || "")); if (!m) return null; let a = Number(m[1]), h = Number(m[2]); if ((p.type === "SU" || p.type === "BOTH") && a !== h && (a > h ? "away" : "home") !== p.side) [a, h] = [h, a]; return { away: a, home: h }; };
     // { win: side, by: margin or null, tag, tone }
     const callOf = (p) => {
       const sc = scoreOf(p);
@@ -6585,11 +6588,34 @@ if ("serviceWorker" in navigator && !PREVIEW && (location.protocol === "https:" 
   if (document.readyState === "complete") registerSw(); else addEventListener("load", registerSw);
 }
 
+// Force refresh, from the admin console. The Worker holds a flush time;
+// a newer one than this phone last acted on makes it drop its offline copy
+// (service worker and caches) and reload fresh. Only at the quiet moments
+// below, never mid-pick. A phone that sees the switch for the first time
+// just remembers it, so shipping this reloads nobody.
+const FLUSH_KEY = "brochiefs_flush_applied";
+async function checkForFlush() {
+  if (!WORKER_URL) return;
+  try {
+    const res = await fetch(`${WORKER_URL}/app-control?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const flush = Number((await res.json())?.flush) || 0;
+    if (!flush) return;
+    let applied = null;
+    try { applied = localStorage.getItem(FLUSH_KEY); localStorage.setItem(FLUSH_KEY, String(flush)); } catch { return; } // can't remember it: never risk a loop
+    if (applied === null || Number(applied) >= flush) return;
+    try { for (const r of (await navigator.serviceWorker?.getRegistrations()) || []) await r.unregister(); } catch {}
+    try { if (window.caches) for (const k of await caches.keys()) if (/^brochiefs-/.test(k)) await caches.delete(k); } catch {}
+    reloadFresh();
+  } catch { /* offline: next time */ }
+}
+
 checkForUpdate(true);
+checkForFlush();
 // Standalone apps are suspended rather than closed, so coming back to one
 // is the moment a new build is most likely to be waiting, and the moment
 // a reload costs nothing.
-document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(true); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { checkForUpdate(true); checkForFlush(); } });
 // Idle means: no sheet or popup open, not typing, no touch or scroll in
 // the last 20 seconds. A waiting build reloads at the first idle moment.
 let lastInteract = Date.now(), updateWaiting = false;
