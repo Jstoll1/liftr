@@ -3174,10 +3174,10 @@ function playerBreakdownHtml(name, state, results, live) {
   let wpRow = "";
   const wd = weekIsLive(results) ? winChanceMemo.detail?.[name] : null;
   if (wd) {
-    const pc = (v) => { const x = v * 100; return x >= 99.5 ? "99%+" : x > 0 && x < 1 ? "<1%" : `${Math.round(x)}%`; };
+    const pc = (v) => winChanceLabel(v, { alive: true });
     const sw = wd.swing;
     const lab = sw ? `${sw.pick.team === sw.game.away ? sw.game.awayShort : sw.game.homeShort} ${sw.pick.mode === "SU" ? "to win" : `${sw.pick.team === sw.game.favorite ? "-" : "+"}${sw.game.spread}`}` : "";
-    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${pc(wd.pct)}</b></span>${sw ? `<span class="rd-wp-line">Biggest game left: <b>${String(lab).replace(/[&<>"]/g, "")}</b></span><span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}</div>`;
+    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${sw ? `<span class="rd-wp-line">Biggest game left: <b>${String(lab).replace(/[&<>"]/g, "")}</b></span><span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}</div>`;
   }
   return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
 }
@@ -3521,6 +3521,164 @@ function calibrateLiveRaw(lam, m, target) {
   for (let i = 0; i < 30; i++) { const mid = (a + b) / 2; if (reach(mid)) b = mid; else a = mid; }
   return { lam: b, p: solveP(b) };
 }
+// The ways a game can still end, as far as any pick cares: the favorite
+// covers, wins by exactly the spread, wins without covering, or the
+// underdog wins. Each has a stand in score (30 + margin against 30), and
+// two that pay every pick the same count once (a 1 point favorite winning
+// by 1 is the push, not a win without a cover).
+const catSig = (g, o) => `${o.suWinner}|${o.push ? "push" : o.atsWinner}`;
+function gameCats(g) {
+  const sp = Number(g.spread) || 0, favHome = g.favorite === g.home;
+  const dog = favHome ? g.awayShort : g.homeShort, fav = favHome ? g.homeShort : g.awayShort;
+  const list = [{ m: Math.floor(sp) + 1, txt: sp ? `${fav} covers -${sp}` : `${fav} wins` }];
+  if (Number.isInteger(sp) && sp > 0) list.push({ m: sp, txt: `${fav} by exactly ${sp}` });
+  if (Math.floor(sp) >= 1) list.push({ m: 1, txt: `${fav} wins, no cover` });
+  list.push({ m: -1, txt: `${dog} wins` });
+  const seen = new Set(), out = [];
+  for (const o of list) {
+    const res = favHome ? { homeScore: 30 + o.m, awayScore: 30 } : { awayScore: 30 + o.m, homeScore: 30 };
+    const sig = catSig(g, resultOutcome(g, res));
+    if (!seen.has(sig)) { seen.add(sig); out.push({ ...o, res, sig }); }
+  }
+  return out;
+}
+
+// The week's win chance as shown. Never "0%": a manager the simulation
+// never saw win is either out (no way left to finish first, checked
+// exactly) or a long shot the 5,000 runs were too few to catch.
+function winChanceLabel(x, d) {
+  if (x > 0) return x >= 0.995 ? "99%+" : x < 0.01 ? "<1%" : `${Math.round(x * 100)}%`;
+  return d?.alive === false ? "OUT" : "<1%";
+}
+
+// Exact check for managers the simulation never saw win. Every open game
+// can still end each of its few ways (gameCats), so walking every
+// combination answers "is there any way left?" for certain, where 5,000
+// random runs can only say "not seen". The walk drops a branch as soon as a
+// manager's ceiling falls below someone's points already banked, so even
+// a full slate is quick. Among the ways that work it keeps the likeliest
+// (each way's odds come from the simulation), then frees every game whose
+// result does not matter to it, leaving the short list a manager needs.
+// Ties go through the tiebreaker as the league plays it: closest guess to
+// the total wins, an exact tie or no guesses shares. An open tiebreaker
+// game can still land on any total from its current one up.
+function exactPaths(targets, models, picks, guesses, tbGame, catN, N) {
+  const M = picks.length;
+  const base = new Array(M).fill(0);
+  const games = [];
+  let tbFixed = null, tbCur = null;
+  models.forEach((m, k) => {
+    if (m.fixed) {
+      for (let i = 0; i < M; i++) if (picks[i][k]) base[i] += scorePick(m.g, picks[i][k], m.fixed);
+      if (m.g === tbGame) tbFixed = m.fixed.awayScore + m.fixed.homeScore;
+      return;
+    }
+    if (m.g === tbGame) tbCur = (m.curA || 0) + (m.curH || 0);
+    const raw = gameCats(m.g).map((c, ci) => ({ ...c, n: Math.max(catN[k]?.[ci] || 0, 0.5) }));
+    const tot = raw.reduce((s, c) => s + c.n, 0);
+    const cats = raw.map((c) => ({ ...c, p: c.n / tot, lp: Math.log(c.n / tot), pts: picks.map((row) => row[k] ? scorePick(m.g, row[k], c.res) : 0) })).sort((a, b) => b.p - a.p);
+    games.push({ g: m.g, cats });
+  });
+  const D = games.length;
+  const remMax = Array.from({ length: D + 1 }, () => new Array(M).fill(0)), remLog = new Array(D + 1).fill(0);
+  for (let d = D - 1; d >= 0; d--) {
+    for (let i = 0; i < M; i++) remMax[d][i] = remMax[d + 1][i] + Math.max(...games[d].cats.map((c) => c.pts[i]));
+    remLog[d] = remLog[d + 1] + games[d].cats[0].lp;
+  }
+  // 2: wins the tie outright, 1: shares it, 0: loses it.
+  let tbRange = null;
+  if (tbFixed != null) tbRange = [tbFixed];
+  else if (tbCur != null) {
+    const hi = Math.max(tbCur, ...guesses.filter((v) => v != null)) + 2;
+    tbRange = [];
+    for (let t = tbCur; t <= hi && tbRange.length < 400; t++) tbRange.push(t);
+  }
+  const tbMemo = new Map();
+  const tbFor = (i, T) => {
+    const key = `${i}:${T.join(",")}`;
+    if (tbMemo.has(key)) return tbMemo.get(key);
+    let r = tbRange ? 0 : 1;
+    if (tbRange) for (const t of tbRange) {
+      const dist = (j) => guesses[j] == null ? Infinity : Math.abs(guesses[j] - t);
+      const mine = dist(i);
+      let alone = true, beat = false;
+      for (const j of T) if (j !== i) { const dj = dist(j); if (dj < mine) { beat = true; break; } if (dj === mine) alone = false; }
+      if (!beat) { r = Math.max(r, alone ? 2 : 1); if (r === 2) break; }
+    }
+    tbMemo.set(key, r);
+    return r;
+  };
+  // Does manager i finish first (or share it) with these points?
+  const firstWith = (i, score) => {
+    let top = -1;
+    for (const s of score) if (s > top) top = s;
+    if (score[i] !== top) return 0;
+    const T = [];
+    for (let j = 0; j < M; j++) if (score[j] === top) T.push(j);
+    return T.length === 1 ? 2 : tbFor(i, T);
+  };
+  const best = new Map();
+  const assign = new Int8Array(D);
+  const score = base.slice();
+  let nodes = 0, blown = false;
+  const BUDGET = 2e6;
+  const dfs = (d, lp, live) => {
+    if (++nodes > BUDGET) { blown = true; return; }
+    let top = -1, topI = -1, second = -1;
+    for (let j = 0; j < M; j++) { if (score[j] > top) { second = top; top = score[j]; topI = j; } else if (score[j] > second) second = score[j]; }
+    const next = live.filter((i) => score[i] + remMax[d][i] >= (i === topI ? second : top) && !(best.has(i) && lp + remLog[d] <= best.get(i).lp));
+    if (!next.length) return;
+    if (d === D) {
+      for (const i of next) { const r = firstWith(i, score); if (r) best.set(i, { lp, assign: assign.slice(), tie: r === 1 || score.filter((s) => s === score[i]).length > 1 }); }
+      return;
+    }
+    const cats = games[d].cats;
+    for (let c = 0; c < cats.length && !blown; c++) {
+      const pts = cats[c].pts;
+      for (let i = 0; i < M; i++) score[i] += pts[i];
+      assign[d] = c;
+      dfs(d + 1, lp + cats[c].lp, next);
+      for (let i = 0; i < M; i++) score[i] -= pts[i];
+    }
+  };
+  dfs(0, 0, targets.slice());
+  const out = {};
+  for (const i of targets) {
+    if (blown) { out[i] = { alive: best.has(i) ? true : undefined }; if (!best.has(i)) continue; }
+    const b = best.get(i);
+    if (!b) { out[i] = { alive: false }; continue; }
+    // Free each game the win doesn't depend on: every way it can end, with
+    // the games already freed also free, still leaves i first.
+    const free = [];
+    const holds = (fr) => {
+      const sc = base.slice();
+      const fixedOf = (d) => games[d].cats[b.assign[d]].pts;
+      for (let d = 0; d < D; d++) if (!fr.includes(d)) { const p = fixedOf(d); for (let j = 0; j < M; j++) sc[j] += p[j]; }
+      const walk = (x) => {
+        if (x === fr.length) return firstWith(i, sc) > 0;
+        for (const c of games[fr[x]].cats) {
+          for (let j = 0; j < M; j++) sc[j] += c.pts[j];
+          const ok = walk(x + 1);
+          for (let j = 0; j < M; j++) sc[j] -= c.pts[j];
+          if (!ok) return false;
+        }
+        return true;
+      };
+      return walk(0);
+    };
+    let combos = 1;
+    for (let d = 0; d < D; d++) {
+      const n = games[d].cats.length;
+      if (combos * n > 20000) break;
+      if (holds([...free, d])) { free.push(d); combos *= n; }
+    }
+    const need = [];
+    for (let d = 0; d < D; d++) if (!free.includes(d)) need.push({ g: games[d].g, txt: games[d].cats[b.assign[d]].txt, p: games[d].cats[b.assign[d]].p });
+    out[i] = { alive: true, path: { need, p: need.reduce((s, x) => s * x.p, 1), tie: b.tie } };
+  }
+  return out;
+}
+
 let winChanceMemo = { key: "", out: null };
 function weekWinChances(cloudPicks, results, live) {
   const key = JSON.stringify([GAMES.map((g) => { const l = live[g.id]; return [g.id, results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : l ? `${l.state}${l.awayScore}-${l.homeScore}@${l.period}${l.clock}~${l.winProb ? Math.round(l.winProb.home * 10) : ""}` : ""]; }), MANAGERS.map((n) => JSON.stringify(cloudPicks[n]?.picks || {}) + (cloudPicks[n]?.tiebreaker ?? ""))]);
@@ -3567,6 +3725,9 @@ function weekWinChances(cloudPicks, results, live) {
   const finN = MANAGERS.map(() => ({})), finW = MANAGERS.map(() => ({}));
   const topN = new Array(MANAGERS.length).fill(0), tbW = new Array(MANAGERS.length).fill(0);
   const lostTo = MANAGERS.map(() => new Array(MANAGERS.length).fill(0));
+  // How often each open game ended each of its ways, for the exact check.
+  const catIx = models.map((m) => m.fixed ? null : new Map(gameCats(m.g).map((c, ci) => [c.sig, ci])));
+  const catN = models.map((m, k) => m.fixed ? null : new Array(catIx[k].size).fill(0));
   for (let s = 0; s < N; s++) {
     score.fill(0);
     let tbTotal = null;
@@ -3583,6 +3744,7 @@ function weekWinChances(cloudPicks, results, live) {
       }
       if (m.g === tbGame) tbTotal = res.awayScore + res.homeScore;
       const o = resultOutcome(m.g, res);
+      if (!m.fixed) { const c = catIx[k].get(catSig(m.g, o)); if (c != null) catN[k][c]++; }
       for (let i = 0; i < MANAGERS.length; i++) {
         const p = picks[i][k];
         if (!p) continue;
@@ -3617,6 +3779,8 @@ function weekWinChances(cloudPicks, results, live) {
   // Swing game: the open pick whose result moves a manager's chance most.
   // If it hits: wins-when-hit / runs-when-hit; if it misses: the rest.
   const detail = {};
+  const zeroes = MANAGERS.map((_, i) => i).filter((i) => wins[i] === 0);
+  const exact = zeroes.length ? exactPaths(zeroes, models, picks, guesses, tbGame, catN, N) : {};
   MANAGERS.forEach((n, i) => {
     let best = null;
     const all = [];
@@ -3639,7 +3803,7 @@ function weekWinChances(cloudPicks, results, live) {
     const finals = Object.keys(finN[i]).map(Number).sort((x, y) => x - y).map((f) => ({ pts: f, p: finN[i][f] / N, win: finW[i][f] / finN[i][f] }));
     const threats = MANAGERS.map((m, j) => ({ name: m, p: lostTo[i][j] / N })).filter((x) => x.p > 0).sort((x, y) => y.p - x.p).slice(0, 3);
     const pct = wins[i] / N;
-    detail[n] = { pct, swing: best, games: all, finals, top: topN[i] / N, tb: tbW[i] / N, threats, moe: 1.96 * Math.sqrt(pct * (1 - pct) / N), runs: N };
+    detail[n] = { pct, swing: best, games: all, finals, top: topN[i] / N, tb: tbW[i] / N, threats, moe: 1.96 * Math.sqrt(pct * (1 - pct) / N), runs: N, alive: wins[i] > 0 ? true : exact[i]?.alive, path: exact[i]?.path || null };
   });
   const out = Object.fromEntries(MANAGERS.map((n, i) => [n, wins[i] / N]));
   winChanceMemo = { key, out, detail };
@@ -3654,7 +3818,7 @@ function openPlayerChance(name) {
   const wd = winChanceMemo?.detail?.[name];
   if (!row || !wd) return;
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const pc = (x) => x >= 0.995 ? "99%+" : x > 0 && x < 0.01 ? "<1%" : `${Math.round(x * 100)}%`;
+  const pc = (x) => winChanceLabel(x, { alive: true });
   const short = (g, t) => t === g.home ? g.homeShort : g.awayShort;
   const terms = (g, pk) => pk.mode === "SU" ? "to win" : `${pk.team === g.favorite ? "-" : "+"}${g.spread}`;
   const maxOf = (n) => { let m = rows.find((r) => r.name === n)?.score || 0; for (const g of GAMES) { const pk = picks[n]?.picks?.[g.id]; if (pk && !results[g.id]) m += pointValue(g, pk.team, pk.mode); } return m; };
@@ -3673,7 +3837,8 @@ function openPlayerChance(name) {
     if (hi && hi.m > myMax) why.push(`Your ceiling is ${myMax}; ${esc(shown(hi.n))} can still reach ${hi.m}.`);
     else if (hi) why.push(`Your ceiling of ${myMax} is as high as anyone's.`);
   }
-  if (wd.pct === 0 && wd.top === 0 && myMax >= top) why.unshift(`In none of the ${wd.runs.toLocaleString()} runs do you finish with the most points: someone sharing your best outcomes always scores more.`);
+  if (wd.pct === 0 && wd.alive === false && myMax >= top) why.unshift(`Every way the games left can finish, someone else ends with more points or wins the tiebreaker.`);
+  else if (wd.pct === 0 && wd.top === 0 && myMax >= top) why.unshift(`In none of the ${wd.runs.toLocaleString()} runs do you finish with the most points, but it can still happen (see the best path).`);
   else if (wd.top > 0 && wd.pct < wd.top * 0.6) why.push(`You tie for the most points in ${pc(wd.top)} of runs but win only ${pc(wd.pct)}: the tiebreaker usually goes against you.`);
   // Who else rides each open pick: shared picks move everyone together.
   const open = GAMES.filter((g) => !results[g.id] && picks[name]?.picks?.[g.id]);
@@ -3713,15 +3878,7 @@ function openPlayerChance(name) {
   const N = esc(shown(name));
   if (rivalName) {
     const rRow = rows.find((r) => r.name === rivalName);
-    const outcomes = (g) => {
-      const sp = Number(g.spread) || 0, favHome = g.favorite === g.home;
-      const dog = favHome ? g.awayShort : g.homeShort, fav = favHome ? g.homeShort : g.awayShort;
-      const list = [{ m: Math.floor(sp) + 1, txt: `${fav} covers ${sp ? "-" + sp : ""}`.trim() }];
-      if (Math.floor(sp) >= 1) list.push({ m: 1, txt: `${fav} wins, no cover` });
-      if (Number.isInteger(sp) && sp > 0) list.push({ m: sp, txt: `${fav} by exactly ${sp}` });
-      list.push({ m: -1, txt: `${dog} wins` });
-      return list.map((o) => ({ ...o, res: favHome ? { homeScore: 30 + o.m, awayScore: 30 } : { awayScore: 30 + o.m, homeScore: 30 } }));
-    };
+    const outcomes = gameCats;
     const lines = [];
     let gain = 0, theirGain = 0, nSame = 0, nLeft = 0;
     const splits = [];
@@ -3762,13 +3919,32 @@ function openPlayerChance(name) {
       return `<li><b>${esc(x.g.awayShort)} at ${esc(x.g.homeShort)}</b>${you}${them}</li>`;
     }).join("");
     let bottom;
-    if (back > 0 && gain < back) bottom = `The most you can gain is ${gain}. Not enough to catch ${R}.`;
-    else if (back > 0) bottom = `You need +${back + 1} from these to pass ${R} (+${back} ties, then the tiebreaker). The most you can get is +${gain}.`;
+    const you = isMe ? "you" : N, You = isMe ? "You" : N;
+    if (back > 0 && gain < back) bottom = `The most ${you} can gain is ${gain}. Not enough to catch ${R}.`;
+    else if (back > 0) bottom = `${You} ${isMe ? "need" : "needs"} +${back + 1} from these to pass ${R} (+${back} ties, then the tiebreaker). The most ${you} can get is +${gain}.`;
     else if (back === 0) bottom = n ? `Whoever gains more on ${n === 1 ? "this game" : "these games"} finishes ahead. Even means the tiebreaker.` : "The tiebreaker decides it.";
-    else bottom = theirGain > -back ? `${R} needs +${-back + 1} from these to pass you. The most they can get is +${theirGain}.` : `${R} can gain at most ${theirGain}. They can't pass you on points.`;
-    const zero = wd.pct === 0 ? `<div class="wpp-zero">Why 0%: whenever these break your way, someone else in the league still finishes higher.</div>` : "";
+    else bottom = theirGain > -back ? `${R} needs +${-back + 1} from these to pass ${you}. The most they can get is +${theirGain}.` : `${R} can gain at most ${theirGain}. They can't pass ${you} on points.`;
+    const zero = wd.pct === 0 && wd.alive === false ? `<div class="wpp-zero">Why OUT: every way the games left can finish, someone else in the league still ends higher.</div>` : "";
     verdict = `<b class="wpp-vh">${head}</b> ${sub}`;
     vsHtml = `${n ? `<ul class="wpp-lines">${gameLines}</ul>` : ""}<div class="wpp-bottom">${bottom}</div>${zero}${sameGames.length ? `<div class="wpp-same">Same pick, no effect: ${sameGames.join(", ")}</div>` : ""}`;
+  }
+  // Zero wins in the simulation is two different things: out for certain,
+  // or a long shot the runs missed. The exact check says which, and for a
+  // long shot, the likeliest set of results that still gets there.
+  let verdictTop = `${isMe ? "You win" : `${N} wins`} the week in <b>${pc(wd.pct)}</b> of simulated finishes.`;
+  let pathHtml = "";
+  if (wd.pct === 0 && wd.alive === false) verdictTop = `${isMe ? "You're" : `${N} is`} <b>out</b> this week: no way the games left can finish puts ${isMe ? "you" : "them"} first.`;
+  else if (wd.pct === 0) {
+    verdictTop = `${isMe ? "You" : N} won none of the ${wd.runs.toLocaleString()} simulated finishes, but ${isMe ? "you're" : "they're"} <b>not out</b>.`;
+    const pt = wd.path;
+    if (pt) {
+      // Each result's odds come from 5,000 runs, so past 1 in 10,000 the
+      // product is too fine to state.
+      const oneIn = pt.p > 0 ? Math.max(2, Math.round(1 / pt.p)) : null;
+      const list = [...pt.need].sort((a, b) => (Date.parse(a.g.kickoff) || 0) - (Date.parse(b.g.kickoff) || 0)).map((x) => `<li><span>${esc(x.txt)}</span><b>${pc(x.p)}</b></li>`).join("");
+      const rest = `${pt.need.length ? "Every other game can go either way." : "Any results work."}${pt.tie ? ` It ends in a tie on points, so the tiebreaker has to go ${isMe ? "your" : "their"} way too.` : ""}`;
+      pathHtml = `<div class="wpx-h">BEST PATH TO WIN</div><div class="wpp-cap">The likeliest results that still put ${isMe ? "you" : N} first. ${rest}</div>${list ? `<ul class="wpp-path">${list}</ul>` : ""}${oneIn ? `<div class="wpp-bottom">All of these together: ${oneIn > 10000 ? "<b>rarer than 1 in 10,000</b>" : `about <b>1 in ${oneIn.toLocaleString()}</b>`}.</div>` : ""}`;
+    }
   }
   let m = document.getElementById("wp-player");
   if (!m) {
@@ -3781,8 +3957,9 @@ function openPlayerChance(name) {
   }
   m.innerHTML = `<div class="wpx-card wpp">
     <button type="button" class="wpx-x" aria-label="Close">✕</button>
-    <div class="wpp-head"><span class="wpp-av" style="--accent:${accentFor(name)}">${esc(avatarOverrides[name] || shown(name)[0])}</span><div><b>${esc(shown(name).toUpperCase())}</b><small>${row.score} PTS · MAX ${myMax}</small></div><i>${pc(wd.pct)}</i></div>
-    <div class="wpp-verdict">${isMe ? "You win" : `${N} wins`} the week in <b>${pc(wd.pct)}</b> of simulated finishes.</div>
+    <div class="wpp-head"><span class="wpp-av" style="--accent:${accentFor(name)}">${esc(avatarOverrides[name] || shown(name)[0])}</span><div><b>${esc(shown(name).toUpperCase())}</b><small>${row.score} PTS · MAX ${myMax}</small></div><i>${winChanceLabel(wd.pct, wd)}</i></div>
+    <div class="wpp-verdict">${verdictTop}</div>
+    ${pathHtml}
     ${games ? `<div class="wpx-h">THE PICKS THAT MATTER MOST</div><div class="wpp-cap">${isMe ? "Your" : `${N}'s`} chance to win the week if each one hits or misses.</div><div class="wpp-gh wpp-gh3"><span>PICK</span><span>IF IT HITS</span><span>IF IT MISSES</span></div><ul class="wpp-games wpp-games3">${games}</ul>` : ""}
     ${threatHtml ? `<div class="wpx-h">MOST LIKELY TO BEAT ${isMe ? "YOU" : N.toUpperCase()}</div><div class="wpp-thr">${threatHtml}</div>` : ""}
     <details class="wpp-more"><summary>SHOW THE MATH</summary>
@@ -3822,7 +3999,7 @@ function openWinChanceExplainer() {
       <div class="wpx-h">WHAT MOVES YOUR %</div>
       <div class="wpx-chips"><span>YOUR MAX POINTS</span><span>LIVE SCORES</span><span>TIME LEFT</span><span>THE LINE</span><span>ESPN WIN %</span><span>EVERYONE ELSE'S PICKS</span></div>
       <div class="wpx-ex"><b>EXAMPLE</b> Favourite up 7 on a 7.5 line. With 8:00 left they cover about <em>39%</em> of the time. With 1:00 left, about <em>8%</em>: they'd need one more score.</div>
-      <div class="wpx-foot">Can't catch the leader? You read 0%. Tap your row to see the pick that matters most for you.</div>
+      <div class="wpx-foot">No way left to finish first? You read OUT. Still a way, but too rare to show up in 5,000 runs? You read &lt;1%. Tap your row to see the pick that matters most for you.</div>
     </div>`;
     document.body.appendChild(m);
     const close = () => m.classList.add("hidden");
@@ -4050,14 +4227,14 @@ function renderRankingRows(rows, cloudPicks, results, live) {
             return `<i class="sq wait${big}"></i>`;
           }).join("");
           const pct = row.winPct != null ? row.winPct * 100 : null;
-          const txt = pct == null ? "" : pct >= 99.5 ? "99%+" : pct > 0 && pct < 1 ? "<1%" : `${Math.round(pct)}%`;
+          const txt = pct == null ? "" : winChanceLabel(row.winPct, winChanceMemo.detail?.[row.name]);
           void strip;
           // Week over: the picks that cashed, in kickoff order, logo plus points.
           if (weekDone) {
             const hits = gamesByKickoff().map((g) => { const pk = row.state.picks?.[g.id]; const p = pk && results?.[g.id] ? scorePick(g, pk, results[g.id]) : 0; return p > 0 ? { g, pk, p } : null; }).filter(Boolean);
             return `<span class="rank-hits">${hits.map((h) => `<span class="rh" title="${h.pk.team} ${h.pk.mode === "SU" ? "to win" : "ATS"} · +${h.p}"><img src="${logoUrl(h.pk.team === h.g.home ? h.g.homeId : h.g.awayId)}" alt="" loading="lazy"><b class="t${h.p}">+${h.p}</b></span>`).join("") || `<em>No hits</em>`}</span>`;
           }
-          return pct != null ? `<span class="rank-wp${pct >= 50 ? " hot" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>` : `<span class="ranking-dots" aria-hidden="true"></span>`;
+          return pct != null ? `<span class="rank-wp${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>` : `<span class="ranking-dots" aria-hidden="true"></span>`;
         })()}
         <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
       </div>
