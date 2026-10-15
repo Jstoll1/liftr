@@ -69,6 +69,9 @@ name = "liftr-nfl"
 SPORT = "nfl"
 # The members until the admin saves a list in the console (Owners tab).
 DEFAULT_ROSTER = "Ben,Nathan,Jake"
+# News and expert-pick articles come from the NFL branch's own feed files,
+# never the college ones (the code's default reads main).
+FEEDS_URL = "https://raw.githubusercontent.com/Jstoll1/liftr/nfl/data/feeds"
 ALLOWED_ORIGIN = "https://nfl.brochiefs.com,https://liftr-1h0.pages.dev,https://*.liftr-1h0.pages.dev"
 OPENAI_MODEL = "gpt-4o-mini"
 OPENAI_MODEL_PLAN = "gpt-4o"
