@@ -209,9 +209,11 @@ function logoUrl(espnId) {
 document.addEventListener("error", (e) => {
   const img = e.target;
   if (!(img instanceof HTMLImageElement) || !img.src.includes("a.espncdn.com/")) return;
+  // When there is a fallback to try, the error stops here: an <img> whose
+  // own onerror hides it would otherwise hide the fallback as it loads.
   const m = img.src.match(/combiner\/i\?img=([^&]+)/);
-  if (m) { img.src = `https://a.espncdn.com${decodeURIComponent(m[1])}`; return; }
-  if (img.src.includes("/500-dark/")) img.src = img.src.replace("/500-dark/", "/500/");
+  if (m) { e.stopPropagation(); img.src = `https://a.espncdn.com${decodeURIComponent(m[1])}`; return; }
+  if (img.src.includes("/500-dark/")) { e.stopPropagation(); img.src = img.src.replace("/500-dark/", "/500/"); }
 }, true);
 
 // The members. College is a fixed ten. The NFL league's members are set by
