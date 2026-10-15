@@ -2323,6 +2323,11 @@ function renderPicksScreen() {
   renderPicksStanding();
 
   gamesList.innerHTML = "";
+  // NFL: the slate builds itself from ESPN as lines are posted, so an
+  // empty week is "not yet", not broken.
+  if (!GAMES.length) {
+    gamesList.innerHTML = `<div class="games-empty">This week's games show up here as soon as ESPN posts the betting lines.</div>`;
+  }
   // Kickoff order, not the order the commissioner happened to tap them
   // in: the card at the top is always the next one to lock, which is what
   // the countdown above is counting down to.

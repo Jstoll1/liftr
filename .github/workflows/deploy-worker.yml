@@ -16,8 +16,10 @@ on:
       - ".github/workflows/deploy-worker.yml"
   workflow_dispatch:
 
+# Each league deploys in its own queue: an NFL deploy never waits on, or
+# holds up, a college one.
 concurrency:
-  group: deploy-worker
+  group: deploy-worker-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:

@@ -36,6 +36,7 @@ export default {
     // to Friday, hourly on Saturday) samples the lines for every game
     // still open.
     if (!SEAL_CRONS.has(event.cron)) {
+      if (SPORT === "nfl") ctx.waitUntil(autoSlate(env, { force: true }).then((r) => console.log("scheduled slate", JSON.stringify(r))).catch((err) => console.error("autoSlate", err)));
       ctx.waitUntil(runInsights(env, INSIGHTS_DEPS, { briefs: false }).then((r) => console.log("scheduled insights", JSON.stringify(r))));
       return;
     }
@@ -1407,6 +1408,112 @@ function validateSlate(body) {
   return { week, label: typeof body.label === "string" && body.label.trim() ? body.label.trim() : `Week ${week}`, games: clean };
 }
 
+// --- NFL: the slate builds itself ------------------------------------------
+// The NFL league plays every game, so nobody picks a slate. The Worker reads
+// ESPN's NFL scoreboard (its current week) and keeps that week's slate in
+// step: every game with a betting line, the last kickoff (Monday night) as
+// the tiebreaker. Fair to everyone already in:
+//   - a game's line follows ESPN only until someone picks that game; from
+//     the first pick it stays where it was, for everybody.
+//   - a game that has kicked off is never touched.
+//   - the tiebreaker game stays put once anyone has entered a guess.
+// A game ESPN has no line for yet is left out and added when one appears.
+// Runs on the schedule and, at most every 15 minutes, when the app asks for
+// the slate. College never runs this.
+const AUTO_SLATE_AT = "autoslate:at";
+const ESPN_HEADERS = {
+  "Cache-Control": "no-cache",
+  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+  Accept: "application/json",
+};
+async function autoSlate(env, { force = false } = {}) {
+  if (SPORT !== "nfl" || !env.LIFTR_KV) return { skipped: "not nfl" };
+  const last = Number(await env.LIFTR_KV.get(AUTO_SLATE_AT)) || 0;
+  if (!force && Date.now() - last < 15 * 60e3) return { skipped: "fresh" };
+  await env.LIFTR_KV.put(AUTO_SLATE_AT, String(Date.now()));
+  let data;
+  try {
+    const res = await fetch(`${ESPN_BASE.nfl}/scoreboard?limit=100`, { cf: { cacheTtl: 0, cacheEverything: false }, headers: ESPN_HEADERS });
+    if (!res.ok) return { error: `ESPN ${res.status}` };
+    data = await res.json();
+  } catch (err) { return { error: String(err?.message || err) }; }
+  const week = Number(data?.week?.number);
+  const type = Number(data?.season?.type ?? data?.leagues?.[0]?.season?.type?.type);
+  if (!Number.isInteger(week) || week < 1 || week > 18 || type !== 2) return { skipped: `ESPN week ${week}, season type ${type}` };
+  const rows = (data.events || []).map((ev) => buildNflRow(ev)).filter(Boolean);
+  const stored = await env.LIFTR_KV.get(gamesKey(week), "json");
+  const games = (stored?.games || []).map((g) => ({ ...g }));
+  // Which games have a pick on them, and whether any tiebreaker guess is in.
+  const states = await Promise.all(PICKS_MANAGERS.map((m) => env.LIFTR_KV.get(pickKey(week, m), "json")));
+  const picked = new Set();
+  let guessed = false;
+  for (const st of states) {
+    for (const id of Object.keys(st?.picks || {})) picked.add(Number(id));
+    if (st && String(st.tiebreaker ?? "").trim() !== "") guessed = true;
+  }
+  const now = Date.now();
+  const used = new Set(games.map((g) => g.id));
+  let added = 0, moved = 0;
+  for (const r of rows) {
+    const g = games.find((x) => x.awayId === r.awayId && x.homeId === r.homeId);
+    if (g) {
+      if (now >= Date.parse(g.kickoff)) continue;
+      // A flexed kickoff always follows ESPN; the line only until the first pick.
+      if (g.kickoff !== r.kickoff) { g.kickoff = r.kickoff; delete g.kickoffLabel; }
+      if (r.tv) g.tv = r.tv;
+      if (!picked.has(g.id) && (g.spread !== r.spread || g.favorite !== r.favorite)) { g.spread = r.spread; g.favorite = r.favorite; moved++; }
+      continue;
+    }
+    let id = 1;
+    while (used.has(id)) id++;
+    if (id > 16) break;
+    used.add(id);
+    games.push({ id, ...r });
+    added++;
+  }
+  if (!games.length) return { week, skipped: "no lines yet" };
+  games.sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff) || a.id - b.id);
+  const held = games.find((g) => g.tiebreakerGame);
+  if (!(held && guessed)) {
+    for (const g of games) delete g.tiebreakerGame;
+    games[games.length - 1].tiebreakerGame = true;
+  }
+  const checked = validateSlate({ week, label: `Week ${week}`, games });
+  if (typeof checked === "string") return { week, error: checked };
+  if (stored && JSON.stringify(stored) === JSON.stringify(checked)) return { week, unchanged: true };
+  await env.LIFTR_KV.put(gamesKey(week), JSON.stringify(checked));
+  const weeks = await env.LIFTR_KV.get(WEEKS_KEY, "json");
+  const list = [...new Set([...(Array.isArray(weeks?.list) ? weeks.list : []), week])].sort((a, b) => a - b);
+  const current = Math.max(Number(weeks?.current) || 0, week);
+  await env.LIFTR_KV.put(WEEKS_KEY, JSON.stringify({ current, list }));
+  weeksCache = null;
+  gamesCache = null;
+  return { week, games: checked.games.length, added, moved };
+}
+// One ESPN event as a slate game, or null when it has no line yet. ESPN
+// signs the spread from the home side (negative: home is laying points).
+function buildNflRow(ev) {
+  const c = ev?.competitions?.[0] || {};
+  const away = (c.competitors || []).find((x) => x.homeAway === "away");
+  const home = (c.competitors || []).find((x) => x.homeAway === "home");
+  const odds = (c.odds || [])[0];
+  if (!away?.team || !home?.team || !odds) return null;
+  const raw = Number(odds.spread);
+  if (!Number.isFinite(raw)) return null;
+  const favSide = odds.homeTeamOdds?.favorite ? "home" : odds.awayTeamOdds?.favorite ? "away" : raw > 0 ? "away" : "home";
+  const awayName = away.team.displayName || away.team.name || "", homeName = home.team.displayName || home.team.name || "";
+  return {
+    away: awayName, home: homeName,
+    awayShort: away.team.shortDisplayName || away.team.abbreviation || awayName,
+    homeShort: home.team.shortDisplayName || home.team.abbreviation || homeName,
+    awayId: Number(away.team.id), homeId: Number(home.team.id),
+    favorite: favSide === "home" ? homeName : awayName,
+    spread: Math.round(Math.abs(raw) * 2) / 2,
+    kickoff: new Date(ev.date).toISOString(),
+    tv: (c.broadcasts || []).flatMap((b) => b.names || [])[0] || "",
+  };
+}
+
 function kickoffLabelFor(ms) {
   const d = new Date(ms);
   const day = d.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" });
@@ -1423,6 +1530,10 @@ async function handleGames(request, env, corsHeaders, url) {
     if (url.searchParams.get("check")) {
       if (!isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
       return json({ ok: true, role: keyRole(env, url) }, 200, corsHeaders);
+    }
+    // NFL: bring this week's slate up to date first (throttled).
+    if (SPORT === "nfl" && !url.searchParams.get("week")) {
+      try { await autoSlate(env); } catch (err) { console.error("autoSlate", err?.stack || String(err)); }
     }
     const weeks = await readWeeks(env);
     if (url.searchParams.get("all")) {

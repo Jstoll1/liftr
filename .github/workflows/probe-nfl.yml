@@ -1,0 +1,24 @@
+# NFL branch only: GET the NFL Worker's public routes listed in
+# probe/nfl.txt and print the answers, to check the deployed NFL Worker
+# from a runner that can reach it. Read only, no secrets. Never touches
+# the college Worker.
+name: Probe NFL Worker
+
+on:
+  push:
+    branches: [nfl]
+    paths: ["probe/nfl.txt"]
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: GET each route in probe/nfl.txt
+        run: |
+          while IFS= read -r p; do
+            [ -z "$p" ] && continue
+            echo "=== GET $p"
+            curl -sS --max-time 60 "https://liftr-nfl.jhs797.workers.dev$p" | head -c 6000
+            echo
+          done < probe/nfl.txt

@@ -6183,3 +6183,4 @@ html[data-sport="nfl"] .console-tab[data-tab="experts"] { display: none !importa
    than the screen (sections folded, an early week) then floated down and
    left a blank band under the header, so these read from the top. */
 #scoreboard-screen, #picks-screen { align-items: flex-start; }
+.games-empty { padding: 28px 18px; text-align: center; color: var(--text-dim); font-size: 14px; line-height: 1.5; border: 1px dashed rgba(193, 60, 255, .4); border-radius: 12px; }
