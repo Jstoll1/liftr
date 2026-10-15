@@ -1,2 +1,3 @@
 /roster
 /games
+/games?week=8
