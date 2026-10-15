@@ -24,6 +24,13 @@ jobs:
               https://a.espncdn.com/*)
                 curl -sS --max-time 30 -o /tmp/probe.bin -w "%{http_code} %{content_type} %{size_download}B\n" "$p"
                 file /tmp/probe.bin ;;
+              # ESPN pages: size, then what looks like pick data.
+              https://www.espn.com/*|https://site.web.api.espn.com/*|https://site.api.espn.com/*)
+                curl -sSL --max-time 30 -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15" -o /tmp/page.html -w "%{http_code} %{content_type} %{size_download}B\n" "$p"
+                grep -o '"expert[A-Za-z]*"[^]]\{0,300\}' /tmp/page.html | head -5
+                grep -oi 'pick[a-z]*"[^,]\{0,120\}' /tmp/page.html | head -8
+                grep -o '"__espnfitt__"\|window\[.__espnfitt__.\]' /tmp/page.html | head -2
+                head -c 1500 /tmp/page.html | tr -d '\n' | cut -c1-1500 ;;
               *)
                 curl -sS --max-time 60 "https://liftr-nfl.jhs797.workers.dev$p" | head -c 6000 ;;
             esac
