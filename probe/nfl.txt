@@ -1,2 +1,1 @@
-https://www.espn.com/nfl/picks
-https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=401772835
+browser:https://www.espn.com/nfl/picks

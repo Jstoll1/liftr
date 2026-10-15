@@ -14,10 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Open browser: lines in headless Chrome
+        run: |
+          if grep -q '^browser:' probe/nfl.txt; then
+            npm i --no-save playwright@1.47.2 >/dev/null 2>&1 && npx playwright install --with-deps chromium >/dev/null 2>&1
+            grep '^browser:' probe/nfl.txt | sed 's/^browser://' | while read -r u; do echo "=== BROWSER $u"; node probe/browser.mjs "$u" || true; done
+          fi
       - name: GET each route in probe/nfl.txt
         run: |
           while IFS= read -r p; do
             [ -z "$p" ] && continue
+            case "$p" in browser:*) continue ;; esac
             echo "=== GET $p"
             case "$p" in
               # ESPN image CDN: status, type, size and dimensions only.
