@@ -8,7 +8,12 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import { parseGoogleNewsRss, parseBingNewsRss, filterNews, searchName, outletRank } from "../worker/src/insights.js";
 
-const WORKER = process.env.WORKER_URL || "https://liftr-ai.jhs797.workers.dev";
+// SPORT=nfl (the feeds-nfl job) searches the NFL league's slate on the
+// NFL Worker; otherwise this is the college run, unchanged.
+const NFL_RUN = process.env.SPORT === "nfl";
+const WORKER = process.env.WORKER_URL || (NFL_RUN ? "https://liftr-nfl.jhs797.workers.dev" : "https://liftr-ai.jhs797.workers.dev");
+// The word that keeps a search on the right sport.
+const SPORTWORD = NFL_RUN ? "NFL" : "football";
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -27,6 +32,8 @@ const google = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent
 const bing = (q) => `https://www.bing.com/news/search?q=${encodeURIComponent(q)}&format=rss&qft=interval%3d%228%22`;
 const INJ = /injur|questionable|doubtful|ruled out|availability|probable|suspend|return|status|limited|practice/i;
 // NFL nicknames no college team shares, plus the league itself.
+// An NFL run keeps NFL stories and drops college ones instead.
+const COLLEGE = /\b(college|ncaa|ncaaf|cfb|fbs|heisman|recruit(s|ing)?|commit(s|ment)?|transfer portal|bowl game|freshman|sophomore)\b/i;
 const NFL = /\b(nfl|steelers|browns|bengals|ravens|packers|vikings|jets|dolphins|bills|patriots|chiefs|chargers|raiders|broncos|colts|texans|titans|jaguars|49ers|seahawks|saints|buccaneers|commanders)\b/i;
 const failures = [];
 
@@ -108,11 +115,11 @@ const out = { at: Date.now(), week, games: {}, errors: [] };
 for (const g of games) {
   const A = searchName(g.away), H = searchName(g.home);
   const pulls = {
-    game: [rss(google(`"${A}" "${H}" football`)), rss(bing(`${A} ${H} football`), true)],
-    away: [rss(google(`"${A}" football`)), rss(bing(`"${A}" football`), true)],
-    home: [rss(google(`"${H}" football`)), rss(bing(`"${H}" football`), true)],
-    awayInj: [rss(google(`"${A}" football injury report`)), rss(google(`"${A}" football injury OR questionable OR doubtful OR "ruled out"`)), rss(bing(`${A} football injury report`), true)],
-    homeInj: [rss(google(`"${H}" football injury report`)), rss(google(`"${H}" football injury OR questionable OR doubtful OR "ruled out"`)), rss(bing(`${H} football injury report`), true)],
+    game: [rss(google(`"${A}" "${H}" ${SPORTWORD}`)), rss(bing(`${A} ${H} ${SPORTWORD}`), true)],
+    away: [rss(google(`"${A}" ${SPORTWORD}`)), rss(bing(`"${A}" ${SPORTWORD}`), true)],
+    home: [rss(google(`"${H}" ${SPORTWORD}`)), rss(bing(`"${H}" ${SPORTWORD}`), true)],
+    awayInj: [rss(google(`"${A}" ${SPORTWORD} injury report`)), rss(google(`"${A}" ${SPORTWORD} injury OR questionable OR doubtful OR "ruled out"`)), rss(bing(`${A} ${SPORTWORD} injury report`), true)],
+    homeInj: [rss(google(`"${H}" ${SPORTWORD} injury report`)), rss(google(`"${H}" ${SPORTWORD} injury OR questionable OR doubtful OR "ruled out"`)), rss(bing(`${H} ${SPORTWORD} injury report`), true)],
     picks: [rss(google(`"${A}" "${H}" prediction OR picks OR "against the spread"`)), rss(google(`"${A}" vs "${H}" prediction`)), rss(bing(`${A} ${H} prediction picks`), true)],
   };
   const got = {};
@@ -133,8 +140,12 @@ for (const g of games) {
   const GENERIC = /^(state|tech|college|university|a&m|st\.?|southern|northern|eastern|western|central|west|east|north|south)$/;
   const aliases = (full, short) => { const w = searchName(full).toLowerCase().split(/\s+/); const school = w.length > 1 ? w.slice(0, -1).join(" ") : w[0]; const mascot = w.length > 1 ? w[w.length - 1] : ""; return [school, String(short || "").toLowerCase(), SHARED.test(mascot) || GENERIC.test(mascot) ? "" : mascot].filter((x) => x.length >= 3 && !GENERIC.test(x)); };
   const wholeWord = (h, x) => new RegExp(`(^|[^a-z])${x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`).test(h);
-  const aA = aliases(g.away, g.awayShort), aH = aliases(g.home, g.homeShort);
-  const names = (list, al) => list.filter((n) => { const h = String(n.headline).toLowerCase(); return !NFL.test(h) && al.some((x) => wholeWord(h, x)); });
+  // NFL: the nickname is the name ("Seahawks"); cities are shared (two New
+  // York teams, two in Los Angeles), so they never count on their own.
+  const nflAliases = (full, short) => [String(short || "").toLowerCase(), searchName(full).toLowerCase().split(/\s+/).pop()].filter((x, i, a) => x.length >= 3 && a.indexOf(x) === i);
+  const aA = NFL_RUN ? nflAliases(g.away, g.awayShort) : aliases(g.away, g.awayShort), aH = NFL_RUN ? nflAliases(g.home, g.homeShort) : aliases(g.home, g.homeShort);
+  const offSport = (h) => (NFL_RUN ? COLLEGE.test(h) : NFL.test(h));
+  const names = (list, al) => list.filter((n) => { const h = String(n.headline).toLowerCase(); return !offSport(h) && al.some((x) => wholeWord(h, x)); });
   const injOnly = (list, al) => names(list, al).filter((n) => INJ.test(`${n.headline} ${n.blurb || ""}`));
   // One pool of injury coverage for the game, filed under every team the
   // headline names, so a conference availability report feeds both sides.
@@ -152,7 +163,7 @@ for (const g of games) {
   // fetched so the Worker's model can read the actual pick. Reputable
   // outlets first.
   const PICK = /predict|\bpicks?\b|against the spread|\bats\b|odds|best bets?|expert|preview/i;
-  const picks = tag(filterNews([...got.picks, ...got.game]).filter((n) => { const h = String(n.headline).toLowerCase(); return !NFL.test(h) && aA.some((x) => wholeWord(h, x)) && aH.some((x) => wholeWord(h, x)) && PICK.test(n.headline); }), "game")
+  const picks = tag(filterNews([...got.picks, ...got.game]).filter((n) => { const h = String(n.headline).toLowerCase(); return !offSport(h) && aA.some((x) => wholeWord(h, x)) && aH.some((x) => wholeWord(h, x)) && PICK.test(n.headline); }), "game")
     .sort((x, y) => outletRank(x.source) - outletRank(y.source)).slice(0, 8);
   {
     const texts = await Promise.all(picks.map((n) => articleText(n.link, `g${g.id} picks ${n.source}: ${n.headline.slice(0, 40)}`, { wholePage: true, cap: 12000 })));

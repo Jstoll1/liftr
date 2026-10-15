@@ -44,5 +44,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if git diff --quiet; then echo "already stamped"; exit 0; fi
-          git commit -am "Stamp $(node -p "require('./version.json').v") [skip ci]"
+          # Cloudflare Pages (the NFL site) skips publishing any commit marked
+          # [skip ci], so the nfl branch's stamp goes out unmarked; pushes made
+          # with this job's token never start another workflow either way.
+          git commit -am "Stamp $(node -p "require('./version.json').v")${{ github.ref_name == 'nfl' && '' || ' [skip ci]' }}"
           git push
