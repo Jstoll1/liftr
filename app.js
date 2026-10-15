@@ -2445,9 +2445,12 @@ function renderPicksScreen() {
   const tbActual = tbFinal ? tbFinal.awayScore + tbFinal.homeScore : tbLiveG && Number.isFinite(tbLiveG.awayScore) && Number.isFinite(tbLiveG.homeScore) ? tbLiveG.awayScore + tbLiveG.homeScore : null;
   const guess = String(state.tiebreaker ?? "").trim();
   let tbText;
-  if (!tiebreakerLocked) tbText = !guess ? "Required — ties go to whoever is closest, and no guess loses every tie."
+  // An empty box must read as empty, not as a number already filled in
+  // (the old "45" placeholder looked like an answer and got skipped).
+  document.querySelector("#picks-screen .tiebreaker-card")?.classList.toggle("tb-missing", !tiebreakerLocked && !guess);
+  if (!tiebreakerLocked) tbText = !guess ? "Not entered yet. Guess the total points both teams score. Ties go to the closest guess; no guess loses every tie."
     : state.tiebreakerSavedToCloud === guess ? `✓ Saved to cloud: ${guess}`
-    : `${guess} on this phone — tap SAVE to confirm it reached the cloud`;
+    : `${guess} on this phone. Tap SAVE to confirm it reached the cloud.`;
   else if (!guess) tbText = `No tiebreaker entered — locked. Any tie this week is lost.${tbActual !== null ? ` · ${tbFinal ? "final" : "now"} ${tbActual}` : ""}`;
   else if (tbFinal) tbText = `Your guess: ${guess} · Final: ${tbActual} · off by ${Math.abs(Number(guess) - tbActual)}`;
   else if (tbLiveG && tbActual !== null) tbText = `Your guess: ${guess} · Now: ${tbActual} · off by ${Math.abs(Number(guess) - tbActual)}`;
