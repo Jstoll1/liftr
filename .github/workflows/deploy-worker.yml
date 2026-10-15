@@ -6,9 +6,11 @@
 # live on Cloudflare and are untouched by deploys.
 name: Deploy Worker
 
+# The nfl branch deploys the NFL Worker (liftr-nfl, wrangler env "nfl");
+# main deploys the college one.
 on:
   push:
-    branches: [main]
+    branches: [main, nfl]
     paths:
       - "worker/**"
       - ".github/workflows/deploy-worker.yml"
@@ -28,4 +30,4 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
-          command: deploy
+          command: deploy${{ github.ref_name == 'nfl' && ' --env nfl' || '' }}

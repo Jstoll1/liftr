@@ -1,4 +1,4 @@
-import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
+import { setSport, runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
 // Liftr AI Worker
 //
@@ -14,12 +14,28 @@ const MINUTES_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 6 };
 import { HISTORY } from "./history-data.js";
 import { MATCHUPS } from "./matchup-data.js";
 
+// Which league this deployment serves. The college Worker (liftr-ai) sets
+// no SPORT; the NFL Worker (liftr-nfl, wrangler env "nfl") sets SPORT =
+// "nfl" and has its own storage, so the two never share a key. Read once
+// at the start of every request and schedule.
+let SPORT = "cfb";
+const ESPN_BASE = { cfb: "https://site.api.espn.com/apis/site/v2/sports/football/college-football", nfl: "https://site.api.espn.com/apis/site/v2/sports/football/nfl" };
+async function useLeague(env) {
+  SPORT = env.SPORT === "nfl" ? "nfl" : "cfb";
+  setSport(SPORT);
+  // College: from week 4 every pick locks at the first kickoff. NFL: each
+  // game locks at its own kickoff, all season.
+  LOCK_ALL_FROM_WEEK = SPORT === "nfl" ? Infinity : 4;
+  if (SPORT === "nfl") await loadRoster(env);
+}
+
 export default {
   async scheduled(event, env, ctx) {
+    await useLeague(env);
     // Monday: seal the week. Every other schedule (every two hours Tuesday
     // to Friday, hourly on Saturday) samples the lines for every game
     // still open.
-    if (event.cron !== SEAL_CRON) {
+    if (!SEAL_CRONS.has(event.cron)) {
       ctx.waitUntil(runInsights(env, INSIGHTS_DEPS, { briefs: false }).then((r) => console.log("scheduled insights", JSON.stringify(r))));
       return;
     }
@@ -28,6 +44,7 @@ export default {
   },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    await useLeague(env);
     // ALLOWED_ORIGIN can be a single origin or a comma-separated list (e.g.
     // both the GitHub Pages URL and a custom domain during a domain
     // migration) — reflect back whichever one the request actually came
@@ -60,6 +77,9 @@ export default {
     }
     if (url.pathname === "/library") {
       return handleLibrary(request, env, corsHeaders);
+    }
+    if (url.pathname === "/roster") {
+      return handleRoster(request, env, corsHeaders, url);
     }
     if (url.pathname === "/games") {
       return handleGames(request, env, corsHeaders, url);
@@ -625,6 +645,45 @@ const PICKS_MANAGERS = [
   "Nissan", "Skills", "Jake", "Curt", "Andrew",
 ];
 
+// The NFL league's members are set by the admin (console, Owners tab) and
+// kept in KV; every check against PICKS_MANAGERS then reads that list. The
+// array is changed in place. A copy is held for 30 seconds per isolate, so
+// a change reaches every request within half a minute.
+const ROSTER_KEY = "roster";
+let rosterReadAt = 0;
+async function loadRoster(env, force = false) {
+  if (!force && Date.now() - rosterReadAt < 30000) return;
+  const names = await env.LIFTR_KV.get(ROSTER_KEY, "json");
+  PICKS_MANAGERS.splice(0, PICKS_MANAGERS.length, ...(Array.isArray(names) ? names : []));
+  rosterReadAt = Date.now();
+}
+// GET /roster -> { names }. POST /roster?key=<admin> { names } sets the
+// NFL league's members (the college list is fixed in code).
+async function handleRoster(request, env, corsHeaders, url) {
+  if (request.method === "GET") return json({ names: PICKS_MANAGERS }, 200, corsHeaders);
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  if (!isAdmin(env, url)) return json({ error: "Admin key required." }, 403, corsHeaders);
+  if (SPORT !== "nfl") return json({ error: "The college league's members are fixed." }, 400, corsHeaders);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
+  const raw = Array.isArray(body?.names) ? body.names : null;
+  if (!raw) return json({ error: "Send { names: [...] }." }, 400, corsHeaders);
+  const names = [], seen = new Set();
+  for (const n of raw) {
+    const name = String(n ?? "").trim().replace(/\s+/g, " ");
+    if (!name) continue;
+    if (name.length > 20 || !/^[\p{L}\p{N} .'-]+$/u.test(name)) return json({ error: `"${name.slice(0, 24)}" is not a usable name: letters, numbers, spaces, dots, apostrophes and dashes, 20 at most.` }, 400, corsHeaders);
+    if (seen.has(name.toLowerCase())) return json({ error: `${name} is listed twice.` }, 400, corsHeaders);
+    seen.add(name.toLowerCase());
+    names.push(name);
+  }
+  if (names.length > 40) return json({ error: "40 members at most." }, 400, corsHeaders);
+  await env.LIFTR_KV.put(ROSTER_KEY, JSON.stringify(names));
+  PICKS_MANAGERS.splice(0, PICKS_MANAGERS.length, ...names);
+  rosterReadAt = Date.now();
+  return json({ names }, 200, corsHeaders);
+}
+
 // Kickoffs (ms since epoch) for the 2026 Week 1 slate, same values as
 // GAMES in app.js. A pick for a game past its kickoff can no longer be
 // added or changed through /picks.
@@ -1054,7 +1113,7 @@ const PICKS_CACHE_MS = 5000;
 // The Sweatpants Amendment, carried 2026-09-24: from week 4 every pick
 // locks at the week's first kickoff, so every game's lock time is the
 // earliest kickoff. Before that, each game locked at its own.
-const LOCK_ALL_FROM_WEEK = 4;
+let LOCK_ALL_FROM_WEEK = 4;
 async function kickoffsFor(env, week) {
   const wk = await env.LIFTR_KV.get(gamesKey(week), "json");
   if (wk && Array.isArray(wk.games) && wk.games.length) {
@@ -1718,7 +1777,7 @@ function storyFacts(s) {
 async function writeStory(env, facts) {
   if (!env.OPENAI_API_KEY) return null;
   const system = [
-    "You write the weekly recap for a friends' college football pick'em league, in the voice of a classic sports magazine column: confident, punchy, a little wry.",
+    `You write the weekly recap for a friends' ${SPORT === "nfl" ? "NFL" : "college football"} pick'em league, in the voice of a classic sports magazine column: confident, punchy, a little wry.`,
     "Use ONLY the facts in the JSON. Never invent players, scores, quotes or stats. Names are league members, not athletes.",
     "Headline: under 9 words, title case, a hook. Byline: 'By The Brochiefs Desk'.",
     "Body: 4 to 5 sentences in this order: who won and with how many points; the deciding game and what it came down to (use decidingGame, or the tiebreaker if decidedByTiebreaker); one sentence on the slate (upsets, favorites covering); one league-wide stat (average score or pick hit rate); one good-natured, snarky line about the last place finisher(s).",
@@ -2131,7 +2190,9 @@ async function handleReactions(request, env, corsHeaders, url) {
 }
 
 // --- Insights ---------------------------------------------------------
-const SEAL_CRON = "0 10 * * 1";
+// Monday 10:00 UTC seals a college week. The NFL week ends Monday night,
+// so its Worker seals Tuesday 10:00 UTC instead (wrangler env "nfl").
+const SEAL_CRONS = new Set(["0 10 * * 1", "0 10 * * 2"]);
 const INSIGHTS_DEPS = {
   liveGames: (env, week) => liveGames(env, week),
   readSlate: (env, week) => env.LIFTR_KV.get(gamesKey(week), "json"),
@@ -2174,7 +2235,7 @@ async function liveGames(env, week = null) {
     const events = [];
     const debug = [];
     for (const date of dates) {
-      const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300`;
+      const url = `${ESPN_BASE[SPORT]}/scoreboard?dates=${date}${SPORT === "nfl" ? "" : "&groups=80"}&limit=300`;
       try {
         const res = await fetch(url, {
           cf: { cacheTtl: 0, cacheEverything: false },

@@ -8,7 +8,8 @@
 // keyRole() in the Worker. Fetched on first unlock, so none of it ships
 // with the app the league loads.
 (() => {
-  const WORKER_URL = "https://liftr-ai.jhs797.workers.dev";
+  const WORKER_URL = window.LEAGUE?.worker || "https://liftr-ai.jhs797.workers.dev";
+  const NFL = window.LEAGUE?.sport === "nfl";
   const root = document.getElementById("console-overlay");
   if (!root) return;
 
@@ -18,7 +19,8 @@
   // Jake runs the league and the app; his own opens and sign-ins say
   // nothing about how the league uses it, so login data leaves him out.
   const NOT_TRACKED = new Set(["Jake"]);
-  const OWNERS = [
+  // The app's own member list: fixed for college, set below for the NFL.
+  const OWNERS = typeof MANAGERS !== "undefined" ? MANAGERS : [
     "Robert", "Logan", "Jordan", "Conlan", "Dewitt",
     "Nissan", "Skills", "Jake", "Curt", "Andrew",
   ];
@@ -486,7 +488,7 @@
     const nudges = [];
     if (lockNow && lockNow > now && picksNow) { const total = slateOf(curWeek).length; for (const n of names) { const k = slateOf(curWeek).filter((g) => picksNow[n]?.picks?.[g.id]).length; if (k < total) nudges.push({ n, kind: "picks", why: `${k}/${total} picks`, msg: `${n}, ${total - k} pick${total - k === 1 ? "" : "s"} left before lock` }); } }
     for (const p of quiet) if (!nudges.some((x) => x.n === p.n)) nudges.push({ n: p.n, kind: "quiet", why: p.lastAt ? `last in ${ago(p.lastAt)}` : "never opened it", msg: `${p.n}, haven't seen you in the app${p.lastAt ? ` since ${dayLong(p.lastAt)}` : ""}` });
-    const nudgeText = nudges.length ? `🏈 Brochiefs check-in:\n${nudges.map((x) => `• ${x.msg}`).join("\n")}${lockNow && lockNow > now ? `\nPicks lock ${new Date(lockNow).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}.` : ""}\nbrochiefs.com` : "";
+    const nudgeText = nudges.length ? `🏈 Brochiefs check-in:\n${nudges.map((x) => `• ${x.msg}`).join("\n")}${lockNow && lockNow > now ? `\nPicks lock ${new Date(lockNow).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}.` : ""}\n${location.host}` : "";
 
     // ---- Releases: when each build was first seen in the league ----
     const firstSeen = new Map();
@@ -1114,12 +1116,33 @@
   async function renderOwners() {
     const auth = await get("/auth");
     const claimed = new Set(auth.claimed || []);
-    body.innerHTML = `<p class="admin-intro">Each owner claims their own name with a code they choose. Reset frees a name so it can be claimed again — for a forgotten code, or when the wrong person got there first.</p>
+    // NFL: the admin sets who is in the league. One name per line; each
+    // name is what that member taps to sign in and what their picks are
+    // stored under, so renaming someone starts them fresh.
+    const rosterHtml = NFL ? `<div class="wpx-h">MEMBERS</div>
+      <p class="admin-intro">One name per line, as it should appear in the app. Removing or renaming someone hides the picks saved under the old name.</p>
+      <textarea id="con-roster" class="admin-input" rows="${Math.max(6, OWNERS.length + 2)}" style="width:100%;font-size:15px" spellcheck="false">${esc(OWNERS.join("\n"))}</textarea>
+      <div class="con-actions"><button id="con-roster-save" class="admin-btn primary" type="button">Save members</button></div>` : "";
+    body.innerHTML = rosterHtml + `<p class="admin-intro">Each owner claims their own name with a code they choose. Reset frees a name so it can be claimed again — for a forgotten code, or when the wrong person got there first.</p>
       <div class="admin-owners-list">${OWNERS.map((name) => `<div class="admin-owner${claimed.has(name) ? " on" : ""}">
         <span class="ao-name">${esc(name === "Conlan" ? "Connie" : name)}</span>
         <span class="ao-state">${claimed.has(name) ? "claimed" : "not claimed"}</span>
         ${claimed.has(name) ? `<button class="admin-btn ao-reset" type="button" data-name="${esc(name)}">Reset</button>` : ""}
       </div>`).join("")}</div>`;
+    el("con-roster-save")?.addEventListener("click", async () => {
+      const names = [...new Set(el("con-roster").value.split("\n").map((n) => n.trim()).filter(Boolean))];
+      const gone = OWNERS.filter((n) => !names.includes(n));
+      if (gone.length && !confirm(`Remove ${gone.join(", ")}? Their saved picks stop showing.`)) return;
+      try {
+        const res = await fetch(`${WORKER_URL}/roster?key=${encodeURIComponent(key())}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ names }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { say(data.error || "Could not save the members.", "bad"); return; }
+        OWNERS.splice(0, OWNERS.length, ...data.names);
+        try { localStorage.setItem("brochiefs_roster_v1", JSON.stringify(data.names)); } catch {}
+        say(`${data.names.length} members saved.`, "ok");
+        renderTab();
+      } catch { say("Could not reach the Worker.", "bad"); }
+    });
     body.querySelectorAll(".ao-reset").forEach((btn) => btn.addEventListener("click", async () => {
       const name = btn.dataset.name;
       if (!confirm(`Clear ${name}'s code? The next person to tap ${name} sets a new one.`)) return;
@@ -1333,7 +1356,7 @@
       ...(ready.length ? [`READY TO RACE (${ready.length})`, ...ready.map(line), ``] : []),
       ...(partial.length ? [`⚠️ INCOMPLETE (${partial.length})`, ...partial.map(line), ``] : []),
       ...(out.length ? [`🚨 NOTHING IN (${out.length})`, ...out.map(line), ``] : []),
-      `${ready.length}/${rows.length} on the grid · brochiefs.com`,
+      `${ready.length}/${rows.length} on the grid · ${location.host}`,
     ].join("\n");
     body.innerHTML = `<p class="admin-intro">Who is in for week ${currentWeek}, as a message you can paste into the chat. Green is a full card with a tiebreaker, yellow is partial, red is nothing in.</p>
       <div class="admin-row"><button class="admin-btn primary" id="grid-copy" type="button">Copy</button>${navigator.share ? `<button class="admin-btn" id="grid-share" type="button">Share…</button>` : ""}<span class="admin-note">${ready.length} ready · ${partial.length} partial · ${out.length} out</span></div>

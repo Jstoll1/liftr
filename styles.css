@@ -6165,3 +6165,21 @@ button.sc-luck:hover { filter: brightness(1.2); }
 .wpp-path { list-style: none; margin: 4px 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .wpp-path li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; border-radius: 6px; background: rgba(255, 255, 255, .05); font-size: 12.5px; }
 .wpp-path li b { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+
+/* NFL build (sport.js sets data-sport): the college league's history,
+   trivia, question of the week and pot stay out of it. */
+html[data-sport="nfl"] #nav-history-btn,
+html[data-sport="nfl"] #nav-trivia-btn,
+html[data-sport="nfl"] #payouts-toggle,
+html[data-sport="nfl"] #payouts-panel,
+html[data-sport="nfl"] #admin-qotw-btn,
+html[data-sport="nfl"] #admin-qotw,
+html[data-sport="nfl"] .console-tab[data-tab="qotw"],
+html[data-sport="nfl"] .console-tab[data-tab="ledger"],
+html[data-sport="nfl"] .console-tab[data-tab="feeds"],
+html[data-sport="nfl"] .console-tab[data-tab="experts"] { display: none !important; }
+
+/* Screens centre their content, which suits the splash. A board shorter
+   than the screen (sections folded, an early week) then floated down and
+   left a blank band under the header, so these read from the top. */
+#scoreboard-screen, #picks-screen { align-items: flex-start; }

@@ -1,16 +1,601 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="robots" content="noindex" />
-  <title>Brochiefs NFL</title>
-  <style>
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0b0820; color: #fff; font: 600 18px/1.5 system-ui, sans-serif; text-align: center; padding: 16px; }
-    b { display: block; font-size: 28px; letter-spacing: .08em; color: #ffd23f; }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>Brochiefs Pick'em</title>
+  <script src="sport.js?v=202610150318"></script>
+
+  <!-- iOS "Add to Home Screen" behavior: launches full-screen with no Safari
+       chrome, uses this title, and status-bar text sits over our own dark
+       background (translucent) rather than a forced white/black bar. -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Pick'em" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0a0014" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=202610150318" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=202610150318" />
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png?v=202610150318" />
+  <link rel="manifest" href="manifest.json" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=202610150318" />
+  <link rel="stylesheet" href="history.css?v=202610150318" />
 </head>
 <body>
-  <div><b>BROCHIEFS NFL</b>Coming soon.</div>
+
+  <div class="synth-grid" aria-hidden="true"></div>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- APP SCROLLER: the body never scrolls; this container does. That keeps
+       the fixed bottom nav rock-steady on iOS, which otherwise lets fixed
+       elements drift during rubber-band scrolling and toolbar collapse. -->
+  <div id="app-scroll" class="app-scroll">
+
+  <!-- WORDMARK HEADER: sits above every screen except the splash itself,
+       tap to jump back to player select -->
+  <header id="home-header" class="home-header hidden">
+    <!-- The row exists so the chips have something to be positioned
+         against that is not the header's padding box. Absolute positioning
+         resolves against the padding box, so with a safe-area inset on the
+         header the chips centred inside the inset and climbed into the
+         status bar. They centre on this instead, which is the content. -->
+    <div class="head-row">
+    <button id="header-countdown" class="head-cd hidden" type="button" aria-label="Time to the next kickoff"></button>
+    <!-- Takes the same left slot as the countdown chip, but only once the
+         board has scrolled past the score strip. Your score is then always
+         on screen without ever being in two places at once. -->
+    <button id="head-score" class="head-score hidden" type="button" aria-label="Your score this week"></button>
+    <button id="me-pill" class="me-pill hidden" type="button" aria-label="Who you are"></button>
+    <button id="home-logo-btn" class="home-logo-btn" type="button" aria-label="Home">
+      <img class="home-logo-img" src="icons/wordmark.png" alt="Brochiefs Football" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'home-logo-fallback',textContent:'BROCHIEFS'}))" />
+    </button>
+    </div>
+  </header>
+
+  <!-- Added to the Home Screen the app runs standalone, which means no
+       Safari toolbar and so no reload button. This is the replacement, and
+       it only appears when there is actually something to reload. -->
+  <button id="update-bar" class="update-bar hidden" type="button">
+    <span class="ub-mark">&#9733;</span>
+    <span class="ub-text">UPDATE AVAILABLE &middot; TAP TO RELOAD</span>
+    <span class="ub-mark">&#9733;</span>
+  </button>
+
+  <!-- LOGO / SPLASH SCREEN -->
+  <main id="logo-screen" class="screen logo-screen">
+    <div class="arcade-horizon-grid" aria-hidden="true"></div>
+    <div class="splash-stage">
+      <div class="arcade-sun-wrap">
+        <div class="arcade-sun" aria-hidden="true"></div>
+        <div class="logo-overlay">
+          <span class="arcade-tag">2026 FANTASY FOOTBALL PICK'EM</span>
+          <h1 class="logo-text" data-text="BROCHIEFS" aria-label="Brochiefs">BROCHIEFS</h1>
+          <span class="logo-hint blink">TAP TO CONTINUE</span>
+        </div>
+      </div>
+      <span class="arcade-copyright">&copy; 2026 BROCHIEFS FOOTBALL LEAGUE</span>
+    </div>
+  </main>
+
+  <!-- PLAYER SELECT SCREEN -->
+  <main id="login-screen" class="screen hidden">
+    <div class="wrap">
+      <div class="brand">
+        <span class="brand-mark">CHOOSE YOUR PLAYER</span>
+        <span id="brand-sub" class="brand-sub">Tap your name &mdash; this device will remember you</span>
+      </div>
+      <div id="manager-picker" class="manager-picker"></div>
+      <span class="avatar-hint">Long-press your card to set an emoji avatar</span>
+      <button id="rules-open-btn" class="link-btn rules-link" type="button">📜 How It Works</button>
+    </div>
+  </main>
+
+  <!-- AVATAR EDITOR MODAL -->
+  <div id="avatar-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <span class="modal-title">CHOOSE AVATAR</span>
+      <span class="modal-subtext">Pick an emoji with your keyboard, then a background. Shows for everyone, on every phone.</span>
+      <span id="avatar-edit-preview" class="avatar-edit-preview"></span>
+      <input type="text" id="avatar-emoji-input" class="avatar-emoji-input" maxlength="8" placeholder="🧑‍🔬" />
+      <div class="modal-actions">
+        <button id="avatar-reset-btn" class="ghost-btn" type="button">Reset</button>
+        <button id="avatar-save-btn" class="primary-btn" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- THE BONER AMENDMENT: one-time pinball skull, week 4 only. -->
+  <div id="grid-modal" class="modal-overlay grid-modal hidden" role="dialog" aria-label="Pre-race check">
+    <div class="grid-card">
+      <div class="grid-flag" aria-hidden="true"></div>
+      <div class="grid-title">GRID CHECK</div>
+      <div class="grid-sub" id="grid-sub">WEEK 5 · ALL PICKS LOCK AT FIRST KICKOFF</div>
+      <div class="grid-verdict" id="grid-verdict">PARTIAL</div>
+      <div class="grid-lights" id="grid-lights" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="grid-clock-label">LIGHTS OUT IN</div>
+      <div class="grid-clock" id="grid-clock">--:--:--</div>
+      <div class="grid-rows">
+        <div class="grid-row" id="grid-row-picks"><span class="gr-k">PICKS</span><span class="gr-v">0 / 10</span><span class="gr-s"></span></div>
+        <div class="grid-row" id="grid-row-tb"><span class="gr-k">TIEBREAKER</span><span class="gr-v">—</span><span class="gr-s"></span></div>
+        <div class="grid-row" id="grid-row-pts"><span class="gr-k">RIDING</span><span class="gr-v">0 PT</span><span class="gr-s"></span></div>
+      </div>
+      <button type="button" id="grid-go" class="grid-go">FILL THE BLANKS</button>
+      <div class="grid-tap">TAP OUTSIDE TO CLOSE</div>
+      <div class="grid-flag bottom" aria-hidden="true"></div>
+    </div>
+  </div>
+  <div id="boner-modal" class="modal-overlay boner-modal hidden" role="dialog" aria-label="All picks locked">
+    <div class="boner-card">
+      <div class="boner-art" aria-hidden="true"><img data-src="images/boner-skull.gif" alt="" width="280" height="240"></div>
+      <div class="boner-title">THE BONER AMENDMENT<br>HAS LOCKED ALL PICKS</div>
+      <div class="boner-luck">GOOD LUCK</div>
+      <div class="boner-tap">TAP TO CONTINUE</div>
+    </div>
+  </div>
+
+  <!-- HEAD TO HEAD: two cards side by side, game by game. -->
+  <div id="insights-modal" class="modal-overlay h2h-modal insights-modal hidden" role="dialog" aria-labelledby="insights-title">
+    <div class="modal-card h2h-card insights-card">
+      <div class="h2h-top">
+        <span id="insights-title" class="modal-title">GAME INFO</span>
+        <button id="insights-close" class="h2h-x" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="insights-sub" class="ins-sub"></div>
+      <div id="insights-body" class="ins-body"></div>
+    </div>
+  </div>
+  <div id="h2h-modal" class="modal-overlay h2h-modal hidden" role="dialog" aria-labelledby="h2h-title">
+    <div class="modal-card h2h-card">
+      <div class="h2h-top">
+        <span id="h2h-title" class="modal-title">HEAD TO HEAD</span>
+        <button id="h2h-close" class="h2h-x" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="h2h-pickers">
+        <label class="h2h-fighter a"><span class="h2h-f-av"></span><span class="h2h-f-txt"><b class="h2h-f-name"></b><small class="h2h-f-meta"></small></span><i class="h2h-f-score"></i><select class="h2h-select a" data-side="a" aria-label="Left card"></select></label>
+        <span class="h2h-vs">VS</span>
+        <label class="h2h-fighter b"><i class="h2h-f-score"></i><span class="h2h-f-txt"><b class="h2h-f-name"></b><small class="h2h-f-meta"></small></span><span class="h2h-f-av"></span><select class="h2h-select b" data-side="b" aria-label="Right card"></select></label>
+      </div>
+      <div id="h2h-body" class="h2h-body"></div>
+    </div>
+  </div>
+
+  <!-- QUICK CLAIM: shown when a device has no saved identity -->
+  <div id="claim-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <span id="claim-title" class="modal-title">WHO ARE YOU?</span>
+      <span id="claim-subtext" class="modal-subtext">Pick your name once and this phone will remember you.</span>
+      <div id="claim-grid" class="claim-grid"></div>
+      <button id="claim-skip-btn" class="link-btn claim-skip" type="button">Just looking for now</button>
+    </div>
+  </div>
+
+  <!-- WHO ARE YOU? / SWITCH CONFIRM MODAL -->
+  <div id="identity-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <span class="modal-title">WHO ARE YOU?</span>
+      <span id="identity-preview" class="avatar-edit-preview"></span>
+      <span id="identity-text" class="modal-subtext"></span>
+      <div class="modal-actions">
+        <button id="identity-cancel-btn" class="ghost-btn" type="button">Not me</button>
+        <button id="identity-confirm-btn" class="primary-btn" type="button">That's me</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RULES MODAL -->
+  <div id="rules-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <span class="modal-title">🏈 HOW IT WORKS</span>
+      <span class="modal-subtext">Year 13 &mdash; this weekend's picks decide fantasy draft order. 1st place picks any draft slot first, 2nd picks next, and so on.</span>
+
+      <div class="rules-section">
+        <span class="rules-heading">⚡ Scoring &mdash; pick ONE per game</span>
+        <ul class="rules-list">
+          <li>🟢 Favorite, Straight Up &mdash; <strong>1 pt</strong></li>
+          <li>🔥 Either team, Against the Spread &mdash; <strong>2 pts</strong> (a push on the number pays nobody)</li>
+          <li>🚨 Underdog, Straight Up &mdash; <strong>3 pts</strong></li>
+        </ul>
+        <span class="rules-example">e.g. LSU -10 vs Clemson: LSU SU = 1, LSU -10 or Clemson +10 = 2, Clemson SU = 3</span>
+      </div>
+
+      <div class="rules-section">
+        <span class="rules-heading">🎯 Tiebreaker</span>
+        <span class="rules-example">Guess the total combined points in Clemson @ LSU. Closest wins ties &mdash; going over is allowed.</span>
+      </div>
+
+      <div class="rules-section">
+        <span class="rules-heading">🔒 Locking</span>
+        <span class="rules-example">Resubmit any pick as many times as you want &mdash; it locks automatically the moment that game kicks off.</span>
+      </div>
+
+      <span class="rules-max">Max possible score: 30 PTS</span>
+
+      <button id="rules-close-btn" class="primary-btn">LET'S GO 🏈🍻</button>
+    </div>
+  </div>
+
+  <!-- PICKS SCREEN -->
+  <main id="picks-screen" class="screen hidden">
+    <div class="wrap wide">
+
+      <div id="sync-banner" class="sync-banner hidden" role="status"></div>
+
+      <span id="picks-progress" class="picks-progress"></span>
+
+      <div id="picks-countdown" class="picks-countdown hidden" aria-live="off"></div>
+
+      <!-- Where you stand and who you are chasing, in one line. The full
+           table stays on the Scoreboard, one copy; tapping this goes
+           there. -->
+      <button id="picks-standing" class="picks-standing hidden" type="button" aria-label="Standings, tap for the full leaderboard"></button>
+
+      <div id="games-list" class="games-list"></div>
+
+      <div class="tiebreaker-card">
+        <span class="tiebreaker-label">TIEBREAKER &middot; TOTAL COMBINED POINTS</span>
+        <div class="tiebreaker-row">
+          <span id="tb-game" class="tb-game"></span>
+          <input type="number" id="tiebreaker-input" class="tiebreaker-input" inputmode="numeric" min="0" max="150" placeholder="45" />
+          <button type="button" id="tiebreaker-save" class="tiebreaker-save">SAVE</button>
+        </div>
+        <span id="tiebreaker-status" class="tiebreaker-status"></span>
+      </div>
+    </div>
+  </main>
+
+  <!-- SCOREBOARD SCREEN -->
+  <main id="scoreboard-screen" class="screen hidden">
+    <div class="wrap wide">
+      <div id="week-champ" class="week-champ hidden" aria-live="polite"></div>
+      <!-- No screen title here: the bottom nav already says which tab this
+           is, and the board's state now rides in the score strip below.
+           The standalone stamp is the fallback for when there is no strip
+           to put the clock in. -->
+      <!-- The standing rule, one line. -->
+
+      <!-- The recap leads while it runs; the score strip and the board
+           sit under it. -->
+      <button id="recap-toggle" class="rules-heading section-heading all-picks-toggle hidden" type="button" aria-expanded="true">📰 RECAP <span class="all-picks-caret">▾</span></button>
+      <div id="recap-panel" class="recap-panel hidden"></div>
+
+      <button id="scoreboard-updated" class="updated-stamp" type="button" title="Tap to refresh">updating…</button>
+      <button id="insert-coin" class="insert-coin hidden" type="button"></button>
+      <div id="my-score" class="my-score hidden" role="button" tabindex="0" title="Jump to your row"></div>
+
+      <button id="scores-toggle" class="rules-heading section-heading all-picks-toggle open" type="button" aria-expanded="true">🏈 SCORES <span class="all-picks-caret">▾</span></button>
+      <div id="live-scores-list" class="live-scores-list"></div>
+
+      <div class="lb-head">
+        <button id="leaderboard-toggle" class="rules-heading section-heading all-picks-toggle" type="button" aria-expanded="true">🏆 LEADERBOARD <span class="all-picks-caret">▾</span></button>
+        <button id="h2h-open" class="h2h-btn" type="button" title="Compare two cards">VS</button>
+      </div>
+      <div id="rankings-list" class="rankings-list"></div>
+
+      <button id="all-picks-toggle" class="rules-heading section-heading all-picks-toggle" type="button" aria-expanded="false">📋 ALL PICKS <span class="all-picks-caret">▾</span></button>
+      <div class="scoreboard-table-wrap hidden">
+        <table id="scoreboard-table" class="scoreboard-table"></table>
+      </div>
+
+      <button id="payouts-toggle" class="rules-heading section-heading all-picks-toggle" type="button" aria-expanded="false">💵 THE POT <span class="all-picks-caret">▾</span></button>
+      <div id="payouts-panel" class="payouts-panel hidden"></div>
+
+      <button id="season-toggle" class="rules-heading section-heading all-picks-toggle" type="button" aria-expanded="false">📊 SEASON STATS <span class="all-picks-caret">▾</span></button>
+      <div id="season-panel" class="season-panel hidden"></div>
+    </div>
+  </main>
+
+  <!-- LEAGUE HISTORY SCREEN (archive rendered by history.js) -->
+  <main id="history-screen" class="screen history-screen hidden">
+    <div class="archive-main">
+    <section class="archive-hero" id="top">
+      <div>
+        <div class="hero-content">
+          <span class="eyebrow">BroChiefs Football League · Official Record</span>
+          <h1>League History</h1>
+          <span class="hero-years">2014–2025 · 12 completed seasons</span>
+          <p class="hero-copy">Twelve seasons have crowned twelve champions, and every title, finish and name is preserved here.</p>
+        </div>
+
+        <form id="archive-ask" class="archive-ask" autocomplete="off">
+          <label class="archive-ask-label" for="archive-q">ASK THE ARCHIVE ANYTHING</label>
+          <div class="archive-ask-line">
+            <span class="archive-ask-prompt">&gt;</span>
+            <div class="archive-ask-field">
+              <div class="archive-ask-render" aria-hidden="true"><span id="archive-mirror-text"></span><span class="archive-ask-cursor"></span><span id="archive-ghost" class="archive-ask-ghost">ask about any season, owner or record</span></div>
+              <textarea id="archive-q" class="archive-ask-input" rows="1" maxlength="300" enterkeyhint="send" aria-label="Ask the archive" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+            </div>
+          </div>
+          <div id="archive-a" class="archive-ask-answer hidden"></div>
+          <div id="archive-receipts" class="archive-receipts hidden" aria-label="Receipts"></div>
+          <div id="archive-followups" class="archive-followups hidden" aria-label="Ask next"></div>
+        </form>
+
+        <div class="hero-stat-grid" aria-label="League history summary">
+          <div class="hero-stat"><strong>12</strong><span>Completed seasons</span></div>
+          <div class="hero-stat"><strong>10</strong><span>Active franchises · Andrew, commissioner since 2014</span></div>
+          <div class="hero-stat"><strong>8</strong><span>Different champions</span></div>
+          <div class="hero-stat"><strong>893</strong><span>Games played</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="archive-section" id="lineage">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Championship lineage</span><h2>The trophy, year by year.</h2><p>Every completed season produced one champion, and the repeat winners show up fast.</p></div></div>
+      <div class="lineage-wrap"><div id="lineage-track" class="lineage-track"></div></div>
+    </section>
+
+    <section class="archive-section" id="record-book">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Active franchises only</span><h2>The Record Book</h2><p>Regular-season results run from 2014 through 2025, while postseason finish is tracked separately through titles, finals and podiums.</p></div></div>
+      <div class="ledger-controls" aria-label="Sort record book"><button class="active" type="button" data-sort="titles">Titles</button><button type="button" data-sort="wins">Wins</button><button type="button" data-sort="pct">Win %</button><button type="button" data-sort="podiums">Podiums</button></div>
+      <div class="table-shell"><table class="ledger-table"><thead><tr><th>RK</th><th>Owner</th><th>W-L</th><th>Win %</th><th>Titles</th><th>Finals</th><th>Podiums</th></tr></thead><tbody id="ledger-body"></tbody></table></div>
+    </section>
+
+    <section class="archive-section" id="franchises">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Active franchise résumés</span><h2>Twelve years on one card.</h2><p>Each owner stays the historical entity, so team names change while the record follows the owner.</p></div></div>
+      <div class="grid-toolbar"><button id="franchise-expand" class="expand-tag" type="button">TAP TO EXPAND <span class="expand-tag-caret">▾</span></button></div>
+      <div id="franchise-grid" class="franchise-grid"></div>
+    </section>
+
+    <section class="archive-section" id="seasons">
+      <div class="section-heading-row">
+        <div class="section-heading"><span class="eyebrow">Season archive</span><h2>The league, one year at a time.</h2><p>Open any season for the podium, the full final standings, the regular-season record and a short note from the record.</p></div>
+        <button id="expand-all" class="section-action" type="button">Expand all seasons</button>
+      </div>
+      <div id="history-eras"></div>
+    </section>
+
+    <section class="archive-section" id="records">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">League records</span><h2>The numbers that stayed.</h2><p>Some records show dominance and some show persistence, and the archive does not choose favorites.</p></div></div>
+      <div class="records-grid">
+        <article class="record-card commish"><span>Commissioner</span><strong>12 yrs</strong><small>Andrew · founded the league in 2014 and has run every season since</small></article>
+        <article class="record-card featured"><span>Most championships</span><strong>3</strong><small>Dewitt · 2014, 2018, 2020</small></article>
+        <article class="record-card"><span>Most career wins</span><strong>90</strong><small>Dewitt · 90–59</small></article>
+        <article class="record-card"><span>Best regular season</span><strong>11–2</strong><small>Jake · 2021 · Champion</small></article>
+        <article class="record-card"><span>Most podiums</span><strong>7</strong><small>Dewitt · 3 titles, 2 seconds, 2 thirds</small></article>
+        <article class="record-card"><span>Most runner-up finishes</span><strong>3</strong><small>Jordan · 2015, 2020, 2021</small></article>
+        <article class="record-card"><span>Most third-place finishes</span><strong>3</strong><small>Andrew · 2015, 2018, 2019</small></article>
+        <article class="record-card"><span>Best season without a title</span><strong>10–2</strong><small>Nissan · 2018 · Runner-up</small></article>
+        <article class="record-card"><span>Worst regular season</span><strong>2–11</strong><small>Andrew · 2023 · High Energy Daddys</small></article>
+      </div>
+    </section>
+
+    <section class="archive-section" id="names">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Archive editorial</span><h2>Top 10 Team Names</h2><p>The data can prove wins but it cannot prove taste, and this ranking is the exception.</p></div></div>
+      <div id="name-ranking" class="name-ranking"></div>
+    </section>
+
+    <section class="memoriam-section" id="memoriam">
+      <div class="memoriam-heading"><span class="eyebrow">Former league members</span><h2>In Memoriam</h2><p>They are gone from the BroChiefs but still in the record.</p></div>
+      <div id="memoriam-grid" class="memoriam-grid"></div>
+    </section>
+
+    <footer class="methodology"><strong>Record note</strong><p>Regular-season records, points for and points against come from ESPN season standings. Final standing, championship, runner-up and third-place finish come from ESPN league history. The active Record Book excludes former members. Former members remain part of season history and league-wide records. Raw scoring totals are not adjusted for scoring changes across eras.</p></footer>
+  </div>
+  </main>
+
+  <!-- APP CONSOLE (the app owner's key). Tabbed: pick changes, logins,
+       owners, this device, login mode, and the slate editor. Fetched only
+       after a key with the "app" role checks out. -->
+  <div id="console-overlay" class="admin-overlay hidden">
+    <main class="screen">
+      <div class="wrap wide">
+        <div class="topbar centered"><span class="manager-badge">🛠 APP CONSOLE</span></div>
+        <div id="console-tabs" class="console-tabs" role="tablist">
+          <button class="console-tab active" type="button" data-tab="whosin">Who's in</button>
+          <button class="console-tab" type="button" data-tab="logins">Insights</button>
+          <button class="console-tab" type="button" data-tab="scouting">Scouting</button>
+          <button class="console-tab" type="button" data-tab="grid">Grid sheet</button>
+          <button class="console-tab" type="button" data-tab="picks">Pick changes</button>
+          <button class="console-tab" type="button" data-tab="season">Season</button>
+          <button class="console-tab" type="button" data-tab="ledger">Ledger</button>
+          <button class="console-tab" type="button" data-tab="owners">Owners</button>
+          <button class="console-tab" type="button" data-tab="device">This device</button>
+          <button class="console-tab" type="button" data-tab="mode">Login mode</button>
+          <button class="console-tab" type="button" data-tab="slate">Slate</button>
+          <button class="console-tab" type="button" data-tab="feeds">Feeds</button>
+          <button class="console-tab" type="button" data-tab="qotw">QOTW</button>
+          <button class="console-tab" type="button" data-tab="experts">EXPERTS</button>
+        </div>
+        <div id="console-status" class="admin-status"></div>
+        <div id="console-body" class="console-body"></div>
+        <div class="admin-foot">
+          <button id="console-refresh" class="admin-btn" type="button">Refresh</button>
+          <button id="console-exit" class="admin-btn primary" type="button">Exit</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- SLATE EDITOR (commissioner only). No page of its own and no link:
+       three taps on the header wordmark asks for the admin key, and
+       admin.js is only fetched once that key checks out, so nothing here
+       loads for the league. -->
+  <!-- OWNER CODE: claim a name the first time, sign in after that. Only
+       ever shown when the Worker says login is live (AUTH_MODE), or with
+       ?auth=1 for a dry run. -->
+  <div id="code-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <span id="code-title" class="modal-title">🔑 YOUR CODE</span>
+      <span id="code-owner" class="code-owner"></span>
+      <span id="code-subtext" class="modal-subtext"></span>
+      <input type="password" id="code-input" class="code-input" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" />
+      <span id="code-status" class="code-status"></span>
+      <div class="modal-actions">
+        <button id="code-cancel" class="ghost-btn" type="button">Cancel</button>
+        <button id="code-ok" class="primary-btn" type="button">Sign in</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- The key gate. Three taps on the wordmark opens this, and only a key
+       the Worker accepts opens the editor behind it. -->
+  <div id="admin-gate" class="modal-overlay admin-gate hidden">
+    <div class="modal-card">
+      <span class="modal-title">🔒 ADMIN KEY</span>
+      <span class="modal-subtext">The slate editor is behind the league admin key.</span>
+      <form id="admin-gate-form" onsubmit="return false" autocomplete="on">
+        <!-- A fixed username lets iCloud Keychain / Google Password Manager save
+             the key and fill it back with Face ID or Touch ID. -->
+        <input type="text" name="username" value="brochiefs-admin" autocomplete="username" readonly hidden />
+        <input type="password" id="admin-gate-key" name="password" class="admin-gate-input" placeholder="ADMIN KEY" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" />
+      </form>
+      <label class="admin-remember"><input type="checkbox" id="admin-remember" /> Remember this device</label>
+      <span id="admin-gate-status" class="admin-status"></span>
+      <div class="modal-actions">
+        <button id="admin-gate-cancel" class="ghost-btn" type="button">Never mind</button>
+        <button id="admin-gate-ok" class="primary-btn" type="button">Unlock</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="admin-overlay" class="admin-overlay hidden">
+    <main id="admin-screen" class="screen">
+      <div class="wrap wide">
+        <div class="topbar centered"><span class="manager-badge">🛠 SLATE EDITOR</span></div>
+        <p class="admin-intro">Tap the games the league is playing, up to ten, and mark one as the tiebreaker. Spreads and favorites come from ESPN.</p>
+
+        <div class="admin-week">
+          <label class="admin-field">Week<select id="admin-espn-week"></select></label>
+          <button id="admin-load" class="admin-btn icon" type="button" title="Reload this week from ESPN" aria-label="Reload this week from ESPN">↻</button>
+        </div>
+        <div id="admin-when" class="admin-when"></div>
+        <div id="admin-season-note" class="admin-season-note"></div>
+
+        <button id="admin-suggest-btn" class="admin-btn primary wide" type="button">★ SUGGEST 10 GAMES</button>
+
+        <div class="admin-filter-row">
+          <label class="admin-search"><input id="admin-search" type="search" inputmode="search" enterkeyhint="search" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Filter by team, e.g. van" /></label>
+          <button id="admin-clear" class="admin-btn link" type="button">Clear</button>
+        </div>
+        <div class="admin-listhead"><span>ESPN slate</span><span id="admin-shown"></span></div>
+        <input id="admin-year" type="hidden" />
+        <div id="admin-games" class="admin-games"></div>
+
+        <button id="admin-qotw-btn" class="admin-btn wide" type="button">❓ QUESTION OF THE WEEK ANSWERS</button>
+        <div id="admin-qotw" class="admin-qotw hidden"></div>
+
+        <div class="admin-foot">
+          <div id="admin-status" class="admin-status"></div>
+          <button id="admin-save" class="admin-btn primary" type="button">Save slate</button>
+          <button id="admin-exit" class="admin-btn" type="button">Exit</button>
+          <label class="admin-check-row"><input id="admin-current" type="checkbox" checked /> Live week</label>
+          <button id="admin-preview-btn" class="admin-btn link" type="button">👁 Preview</button>
+          <span id="admin-count" class="admin-count">0 of 10 selected</span>
+        </div>
+
+
+      </div>
+    </main>
+  </div>
+
+  <!-- TRIVIA SCREEN -->
+  <main id="trivia-screen" class="screen history-screen hidden">
+    <div class="archive-main">
+      <header class="archive-hero trivia-hero"><span class="eyebrow">BroChiefs Football League · Arcade</span><h1>TRIVIA</h1><span class="hero-years">12 questions · 4 choices · 1 shot</span></header>
+    <section class="archive-section" id="trivia">
+      <div class="section-heading-row"><div class="section-heading"><span class="eyebrow">Insert coin</span><h2>How well do you know the league?</h2><p>Every answer comes straight from the archive. No peeking at the History tab.</p></div></div>
+      <div id="trivia-game" class="trivia-game">
+        <div id="trivia-start" class="trivia-start">
+          <div class="trivia-marquee">12 QUESTIONS · 4 CHOICES · 1 SHOT</div>
+          <button id="trivia-resume" class="trivia-btn primary hidden" type="button">▶ CONTINUE</button>
+          <button id="trivia-start-btn" class="trivia-btn primary" type="button">▶ START</button>
+          <div id="trivia-best" class="trivia-best hidden"></div>
+        </div>
+        <div id="trivia-play" class="trivia-play hidden">
+          <div class="trivia-top"><span id="trivia-count" class="trivia-count"></span><span id="trivia-score" class="trivia-score"></span></div>
+          <div id="trivia-q" class="trivia-q"></div>
+          <div id="trivia-opts" class="trivia-opts"></div>
+          <div id="trivia-feedback" class="trivia-feedback hidden"></div>
+          <button id="trivia-next" class="trivia-btn hidden" type="button">NEXT ▸</button>
+        </div>
+        <div id="trivia-end" class="trivia-end hidden">
+          <div class="trivia-marquee">GAME OVER</div>
+          <div id="trivia-final" class="trivia-final"></div>
+          <div id="trivia-rank" class="trivia-rank"></div>
+          <div id="trivia-posted" class="trivia-posted hidden"></div>
+          <button id="trivia-again" class="trivia-btn primary" type="button">↻ PLAY AGAIN</button>
+        </div>
+      </div>
+      <div class="trivia-hs">
+        <div class="trivia-hs-head">🏆 LEAGUE HIGH SCORES</div>
+        <div id="trivia-hs-list" class="trivia-hs-list"><div class="trivia-hs-empty">Loading…</div></div>
+      </div>
+    </section>
+
+    </div>
+  </main>
+
+  </div><!-- /app-scroll -->
+
+  <!-- BOTTOM NAV: matches the wordmark header, sits on every screen
+       except the splash -->
+  <nav id="bottom-nav" class="bottom-nav hidden">
+    <button id="nav-picks-btn" class="nav-btn" type="button">
+      <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M6 1h4v1h2v1h1v1h1v2h1v4h-1v2h-1v1h-1v1h-2v1H6v-1H4v-1H3v-1H2v-2H1V6h1V4h1V3h1V2h2zm0 2H5v1H4v1H3v6h1v1h1v1h6v-1h1v-1h1V5h-1V4h-1V3zm1 2h2v1h1v1h1v2h-1v1h-1v1H7v-1H6V9H5V7h1V6h1zm0 2v2h2V7z"/></svg>
+      <span class="nav-btn-label">Picks</span>
+    </button>
+    <button id="nav-scoreboard-btn" class="nav-btn" type="button">
+      <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 9h3v5H2zm4.5-6h3v11h-3zm4.5 3h3v8h-3zM1 14h14v1H1z"/></svg>
+      <span class="nav-btn-label">Scores</span>
+    </button>
+    <button id="nav-history-btn" class="nav-btn" type="button">
+      <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M4 1h8v1h2v1h1v3h-1v1h-1v1h-1v1h-1v1H9v2h2v1h1v1H4v-1h1v-1h2v-2H6V9H5V8H4V7H3V6H2V3h1V2h1zm0 2H3v2h1v1h1V3zm8 0v3h1V5h1V3z"/></svg>
+      <span class="nav-btn-label">History</span>
+    </button>
+    <button id="nav-trivia-btn" class="nav-btn" type="button">
+      <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M3 4h10v1h1v1h1v5h-1v1h-1v1h-2v-1H5v1H3v-1H2v-1H1V6h1V5h1zm1 2v2H3v1h1v2h1V9h1V8H5V6zm7 0v1h1v1h-1v1h1v-1h1V7h-1V6zm-2 2v1h1V8z"/></svg>
+      <span class="nav-btn-label">Trivia</span>
+    </button>
+  </nav>
+
+  <!-- GoatCounter analytics: no cookies, no personal data. The app is a
+       single page, so app.js reports each screen change as a page view. -->
+  <!-- Sheets live at body level: inside #admin-overlay their z-index is
+       trapped in that overlay's stacking context and lands under the nav. -->
+  <div id="admin-preview" class="sg-scrim hidden">
+    <div class="sg-card" role="dialog" aria-modal="true" aria-label="Current lineup">
+      <div class="sg-head">👁 CURRENT LINEUP <span id="admin-preview-count" class="lp-count"></span></div>
+      <div id="admin-preview-list" class="sg-list lp-list"></div>
+      <div class="sg-foot">
+        <button id="admin-preview-close" class="admin-btn primary" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="admin-override" class="sg-scrim ov-scrim hidden">
+    <div class="sg-card ov-card" role="dialog" aria-modal="true" aria-label="Override picks">
+      <div class="sg-head">⚠ OVERRIDE PICKS</div>
+      <div id="admin-override-body" class="sg-list ov-body"></div>
+      <div class="sg-foot">
+        <button id="admin-override-ok" class="admin-btn primary" type="button">Override</button>
+        <button id="admin-override-cancel" class="admin-btn" type="button">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="admin-suggest" class="sg-scrim hidden">
+    <div class="sg-card" role="dialog" aria-modal="true" aria-label="Recommended games">
+      <div class="sg-head">★ TOP 10 TO CONSIDER</div>
+      <p class="sg-intro">Ranked on matchup quality: teams in the poll, how close the line is, kickoff window, network, and conference stakes. Spread across days so the week is not all one afternoon. Tap any row to drop it. Taking the rest replaces the slate, and you get a chance to see what changes first.</p>
+      <div id="admin-suggest-list" class="sg-list"></div>
+      <div class="sg-foot">
+        <button id="admin-suggest-use" class="admin-btn primary" type="button">Use these 10</button>
+        <button id="admin-suggest-close" class="admin-btn" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script data-goatcounter="https://brochiefs.goatcounter.com/count"
+          data-goatcounter-settings='{"no_onload": true}'
+          async src="https://gc.zgo.at/count.js"></script>
+  <script src="app.js?v=202610150318"></script>
+  <script src="sim.js?v=202610150318"></script>
+  <script src="gridcard.js?v=202610150318"></script>
+  <script src="attract-facts.js?v=202610150318"></script>
+  <script src="history.js?v=202610150318"></script>
 </body>
 </html>

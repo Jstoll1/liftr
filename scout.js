@@ -17,7 +17,7 @@
 //     2 x 1/2 = 1, underdog to win 3 x (1 - P).
 //   Worth minus scored is luck; worth itself is the skill in the choices.
 (function (root) {
-  const SD = 15;
+  const SD = (typeof window !== "undefined" && window.LEAGUE?.marginSd) || 15;
   const erf = (x) => { // Abramowitz and Stegun 7.1.26, |error| < 1.5e-7
     const s = Math.sign(x); x = Math.abs(x);
     const t = 1 / (1 + 0.3275911 * x);

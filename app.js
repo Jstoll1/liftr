@@ -54,7 +54,7 @@ function scorePick(game, pick, result) {
 // "https://liftr-ai.<your-subdomain>.workers.dev". Left blank, the app
 // works fine on a single device/browser but the scoreboard can only ever
 // show picks made on that same device.
-const WORKER_URL = "https://liftr-ai.jhs797.workers.dev";
+const WORKER_URL = window.LEAGUE?.worker || "https://liftr-ai.jhs797.workers.dev";
 
 // Preview site: the preview branch, published by Cloudflare Pages at
 // brochiefs-preview.pages.dev, for trying changes before they go live. It
@@ -144,6 +144,9 @@ let GAMES = [
   { id: 9, away: "East Carolina", awayId: 151, awayShort: "ECU", homeShort: "Alabama", home: "#13 Alabama", homeId: 333, favorite: "#13 Alabama", spread: 27.5, kickoff: "2026-09-05T16:00:00Z", kickoffLabel: "Sat 12:00 PM ET", tv: "ABC" },
   { id: 10, away: "#24 Louisville", awayId: 97, awayShort: "Louisville", homeShort: "Ole Miss", home: "#9 Ole Miss", homeId: 145, favorite: "#9 Ole Miss", spread: 7, kickoffLabel: "Sun 7:30 PM ET", kickoff: "2026-09-06T23:30:00Z", tv: "ABC" },
 ];
+// The built in games are a college week; the NFL build starts empty and
+// waits for the slate the admin saves.
+if (window.LEAGUE?.sport === "nfl") GAMES = [];
 
 let WEEK_LABEL = "Week 1";
 let currentWeek = 1;
@@ -201,7 +204,7 @@ function weekIsFinal() {
 // A failed resized logo falls back to the full file, then to the light cut.
 const LOGO_PX = 160;
 function logoUrl(espnId) {
-  return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${espnId}.png&w=${LOGO_PX}&h=${LOGO_PX}`;
+  return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${window.LEAGUE?.logos || "ncaa"}/500-dark/${espnId}.png&w=${LOGO_PX}&h=${LOGO_PX}`;
 }
 document.addEventListener("error", (e) => {
   const img = e.target;
@@ -211,10 +214,29 @@ document.addEventListener("error", (e) => {
   if (img.src.includes("/500-dark/")) img.src = img.src.replace("/500-dark/", "/500/");
 }, true);
 
-const MANAGERS = [
-  "Robert", "Logan", "Jordan", "Conlan", "Dewitt",
-  "Nissan", "Skills", "Jake", "Curt", "Andrew",
-];
+// The members. College is a fixed ten. The NFL league's members are set by
+// the admin and kept on the Worker, so the list starts from the last copy
+// this phone saw and loadRoster() refreshes it on open; the array is only
+// ever changed in place so everything holding it sees the update.
+const ROSTER_CACHE_KEY = "brochiefs_roster_v1";
+const MANAGERS = (() => {
+  if (window.LEAGUE?.roster) return window.LEAGUE.roster.slice();
+  try { const c = JSON.parse(localStorage.getItem(ROSTER_CACHE_KEY) || "null"); if (Array.isArray(c)) return c.filter((n) => typeof n === "string"); } catch {}
+  return [];
+})();
+async function loadRoster() {
+  if (window.LEAGUE?.roster || !WORKER_URL) return false;
+  try {
+    const res = await fetch(`${WORKER_URL}/roster?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return false;
+    const names = (await res.json())?.names;
+    if (!Array.isArray(names)) return false;
+    const same = names.length === MANAGERS.length && names.every((n, i) => n === MANAGERS[i]);
+    MANAGERS.splice(0, MANAGERS.length, ...names);
+    try { localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(names)); } catch {}
+    return !same;
+  } catch { return false; }
+}
 
 const AVATAR_COLORS = ["#ff2079", "#05d9e8", "#c13cff", "#ffe45e", "#39ff88"];
 // Full palette for the avatar editor: neon, warm, cool, deep and neutral.
@@ -287,7 +309,7 @@ function setManagerState(name, state) {
 // The Sweatpants Amendment, carried 2026-09-24: from week 4, every pick
 // locks at the week's first kickoff. Before that, each game locked at
 // its own. The Worker applies the same rule when it grades a late save.
-const LOCK_ALL_FROM_WEEK = 4;
+const LOCK_ALL_FROM_WEEK = window.LEAGUE?.lockAllFromWeek ?? 4;
 function weekLockTime() {
   if (currentWeek < LOCK_ALL_FROM_WEEK || !GAMES.length) return null;
   return Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
@@ -568,7 +590,7 @@ async function fetchLiveFromEspn() {
   let ok = 0;
   for (const date of espnScoreboardDates()) {
     const res = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300&t=${Date.now()}`,
+      `${window.ESPN_API}/scoreboard?dates=${date}${window.LEAGUE?.groups ?? "&groups=80"}&limit=300&t=${Date.now()}`,
       { cache: "no-store" }
     );
     if (!res.ok) continue;
@@ -1200,7 +1222,7 @@ addEventListener("pagehide", endSession);
 function track(path, extra) {
   noteUse(path);
   try {
-    if (PREVIEW || !window.goatcounter || typeof window.goatcounter.count !== "function") return;
+    if (PREVIEW || window.LEAGUE?.features?.analytics === false || !window.goatcounter || typeof window.goatcounter.count !== "function") return;
     window.goatcounter.count({ path, title: extra?.title || path, event: !!extra?.event });
   } catch {}
 }
@@ -1426,7 +1448,7 @@ async function adminLockAlert() {
   if (!short.length) { old?.remove(); return; }
   const h = Math.floor(left / 3600000), m = Math.floor((left % 3600000) / 60000);
   const when = h ? `${h}h ${m}m` : `${m}m`;
-  const msg = `🏈 Picks lock in ${when}!\n${short.map((x) => `• ${shown(x.n)}: ${x.k < GAMES.length ? `${GAMES.length - x.k} pick${GAMES.length - x.k === 1 ? "" : "s"} left` : ""}${x.k < GAMES.length && !x.tb ? " + " : ""}${!x.tb ? "tiebreaker" : ""}`).join("\n")}\nbrochiefs.com`;
+  const msg = `🏈 Picks lock in ${when}!\n${short.map((x) => `• ${shown(x.n)}: ${x.k < GAMES.length ? `${GAMES.length - x.k} pick${GAMES.length - x.k === 1 ? "" : "s"} left` : ""}${x.k < GAMES.length && !x.tb ? " + " : ""}${!x.tb ? "tiebreaker" : ""}`).join("\n")}\n${location.host}`;
   const el = old || Object.assign(document.createElement("div"), { id: "lock-alert", className: "lock-alert" });
   el.innerHTML = `<div><b>⚠ ${short.length} SHORT · LOCK IN ${esc(when)}</b><span>${short.map((x) => `${esc(shown(x.n))} ${x.k}/${GAMES.length}${x.tb ? "" : " · no TB"}`).join(" · ")}</span></div>
     <button type="button" class="la-nudge">NUDGE</button><button type="button" class="la-x" aria-label="Dismiss">✕</button>`;
@@ -1512,7 +1534,7 @@ window.appDiagnostics = () => {
   };
 };
 window.appResync = async () => {
-  await Promise.all([loadSlate(), fetchLiveScores(), refreshAuthState()]);
+  await Promise.all([loadSlate(), fetchLiveScores(), refreshAuthState(), loadRoster()]);
   if (currentManager) await syncManagerFromCloud(currentManager);
   if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
   if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
@@ -1748,7 +1770,7 @@ async function renderManagerPicker() {
     const complete = submittedCount === GAMES.length && tiebreakerDone;
     const partial = !complete && (submittedCount > 0 || tiebreakerDone);
 
-    const isChamp = name === "Jake";
+    const isChamp = window.LEAGUE?.features?.champ !== false && name === "Jake";
     const isMe = name === currentManager;
     const accent = accentFor(name);
     const avatarContent = avatarOverrides[name] || shown(name)[0];
@@ -3702,7 +3724,7 @@ function weekWinChances(cloudPicks, results, live) {
     // what the remaining time is worth. A full game comes out about 16 to
     // 18 points either side of the line, matching college results; late
     // in a game it correctly makes "needs one more score" unlikely.
-    const ou = odds?.overUnder ?? 52;
+    const ou = odds?.overUnder ?? (window.LEAGUE?.ouDefault || 52);
     const lam = Math.max(0, (ou * rem) / 5.4);
     const pHome = Math.min(0.95, Math.max(0.05, 0.5 + homeEdge / (2 * Math.max(30, ou))));
     const curA = inGame ? (l.awayScore || 0) : 0, curH = inGame ? (l.homeScore || 0) : 0;
@@ -4466,6 +4488,8 @@ const slateSignature = () => `${currentWeek}|` + GAMES.map((g) => `${g.id}:${g.f
 let lastSlateSignature = slateSignature();
 async function refreshSlateIfChanged() {
   const was = lastSlateSignature;
+  // A member added or removed in the NFL league shows up without a reload.
+  if (await loadRoster()) renderManagerPicker();
   if (!(await loadSlate())) return;
   const now = slateSignature();
   if (now === was) return;
@@ -4644,7 +4668,7 @@ let bonerShownThisLoad = false;
 function maybeShowBoner() {
   const el = document.getElementById("boner-modal");
   if (!el || bonerShownThisLoad || !currentManager) return;
-  if (currentWeek !== 4 || Date.now() >= BONER_UNTIL || !GAMES.length || !GAMES.every(isGameLocked)) return;
+  if (window.LEAGUE?.features?.boner === false || currentWeek !== 4 || Date.now() >= BONER_UNTIL || !GAMES.length || !GAMES.every(isGameLocked)) return;
   bonerShownThisLoad = true;
   // The GIF is half a megabyte; fetch it only when the popup actually shows.
   const art = el.querySelector("img[data-src]"); if (art && !art.src) art.src = art.dataset.src;
@@ -4706,7 +4730,7 @@ function showNowPlaying(then) {
 // --- Question of the week ------------------------------------------------
 // Pops up on every open until this manager answers or cops out. Change
 // QOTW to ask a new one; the id keeps answers apart.
-const QOTW = { id: "gooey-belly", q: "What actually is a “gooey belly”?", qHtml: `What actually is a<span class="qotw-pop">“gooey belly”?</span>` };
+const QOTW = window.LEAGUE?.features?.qotw === false ? null : { id: "gooey-belly", q: "What actually is a “gooey belly”?", qHtml: `What actually is a<span class="qotw-pop">“gooey belly”?</span>` };
 window.QOTW = QOTW;
 let qotwShownThisLoad = false;
 async function maybeShowQotw() {
@@ -4791,7 +4815,7 @@ function insightsLinks(game) {
   const eventId = live?.eventId || insightsCache.eventIds?.[game.id] || insightsCache.data?.briefs?.[game.id]?.eventId || null;
   const q = encodeURIComponent(`${game.away} ${game.home} football`);
   const links = [];
-  if (eventId) links.push({ label: "ESPN Gamecast", sub: "preview, odds tab, matchup stats", href: `https://www.espn.com/college-football/game/_/gameId/${eventId}` });
+  if (eventId) links.push({ label: "ESPN Gamecast", sub: "preview, odds tab, matchup stats", href: `https://www.espn.com/${window.LEAGUE?.espnWeb || "college-football"}/game/_/gameId/${eventId}` });
   // ESPN's college injury pages are usually empty, so these search this
   // week's news for injury reporting on each team instead.
   const injQ = (team) => encodeURIComponent(`"${team}" football injury OR injured OR questionable OR "out for"`);
@@ -4799,7 +4823,7 @@ function insightsLinks(game) {
   links.push({ label: `${game.homeShort} injury news`, sub: "Google News, past week", href: `https://news.google.com/search?q=${injQ(game.home)}+when:7d` });
   links.push({ label: "Latest news", sub: "Google News search", href: `https://news.google.com/search?q=${q}` });
   links.push({ label: "Public betting splits", sub: "Action Network consensus", href: "https://www.actionnetwork.com/ncaaf/public-betting" });
-  links.push({ label: "Line shopping", sub: "ESPN odds board", href: "https://www.espn.com/college-football/odds" });
+  links.push({ label: "Line shopping", sub: "ESPN odds board", href: `https://www.espn.com/${window.LEAGUE?.espnWeb || "college-football"}/odds` });
   return links;
 }
 function sparkline(series) {
@@ -4826,7 +4850,7 @@ async function fetchEspnSummary(eventId, fresh = false) {
   // refresh asks for a copy no CDN has seen (the old 15-minute stamp kept
   // the play log a drive behind the scoreboard).
   const stamp = fresh ? Date.now() : Math.floor(Date.now() / 900000);
-  const promise = fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}&t=${stamp}`, fresh ? { cache: "no-store" } : undefined)
+  const promise = fetch(`${window.ESPN_API}/summary?event=${eventId}&t=${stamp}`, fresh ? { cache: "no-store" } : undefined)
     .then((res) => res.ok ? res.json() : null)
     .catch(() => null)
     .then((data) => { if (!data) delete summaryCache[eventId]; return data; });
@@ -4996,7 +5020,7 @@ async function fetchTeamNews(teamId) {
   const hit = teamNewsCache[teamId];
   if (hit && Date.now() - hit.at < 15 * 60 * 1000) return hit.items;
   try {
-    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/news?team=${teamId}&limit=6`);
+    const res = await fetch(`${window.ESPN_API}/news?team=${teamId}&limit=6`);
     if (!res.ok) return [];
     const data = await res.json();
     const items = (data.articles || []).filter((a) => !isVideoArticle(a)).map((a) => ({ headline: a.headline || null, blurb: a.description || null, published: a.published || null, link: a.links?.web?.href || null, source: "ESPN" })).filter((a) => a.headline);
@@ -6073,7 +6097,7 @@ async function openInsights(gameId) {
     home: teamInfo(game.homeId, game.homeShort, "home"),
     favSide: favNowShort === game.homeShort ? "home" : "away",
     spread: mv ? mv.now : Number(game.spread) || 3,
-    total: mv?.overUnder ?? direct?.odds?.overUnder ?? 52,
+    total: mv?.overUnder ?? direct?.odds?.overUnder ?? (window.LEAGUE?.ouDefault || 52),
   };
   modal.querySelector("#ins-sim")?.addEventListener("click", () => window.openSim?.(simCtx));
   // No pick yet: one tap closes the sheet and goes to the picks screen.
@@ -6812,7 +6836,7 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
   // Fetch this week's slate before anything renders, so nobody sees last
   // week's games flash past. The splash covers the wait. Whether login is
   // live, and who has claimed a name, comes down in the same breath.
-  await Promise.all([loadSlate(), refreshAuthState(), loadWeekSummaries()]);
+  await Promise.all([loadSlate(), refreshAuthState(), loadWeekSummaries(), loadRoster()]);
   lastSlateSignature = slateSignature();
   lastLockSignature = lockSignature();
   renderManagerPicker();

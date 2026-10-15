@@ -9,7 +9,16 @@ export const briefKey = (week, gameId) => `brief:w${week}:g${gameId}`;
 export const feedCacheKey = (url) => `feedcache:${url}`;
 export const INSIGHTS_LOG_KEY = "insights:log";
 
-const ESPN = "https://site.api.espn.com/apis/site/v2/sports/football/college-football";
+// The college Worker reads ESPN's college feeds; the NFL Worker (env SPORT
+// = "nfl") switches every feed and every prompt here to the NFL. index.js
+// calls setSport() at the start of each request and schedule.
+let ESPN = "https://site.api.espn.com/apis/site/v2/sports/football/college-football";
+let SPORT_WORDS = "college football";
+export function setSport(sport) {
+  const nfl = sport === "nfl";
+  ESPN = `https://site.api.espn.com/apis/site/v2/sports/football/${nfl ? "nfl" : "college-football"}`;
+  SPORT_WORDS = nfl ? "NFL" : "college football";
+}
 const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 
 // --- Odds ---------------------------------------------------------------
@@ -189,7 +198,7 @@ export async function fetchTeamFeeds(env, teamId) {
 // come straight from the feeds so every line on the sheet has a source.
 export function briefPrompt() {
   return [
-    "You write a short pre-game brief for a college football pick'em league.",
+    `You write a short pre-game brief for a ${SPORT_WORDS} pick'em league.`,
     "Use only the facts in the JSON you are given: the sealed line, how the line has moved, the at-a-glance numbers (records, against-the-spread records, ESPN FPI win chance, weather), the injury list and the news headlines for both teams.",
     "Write 3 to 5 plain sentences, each under 30 words, that a friend would read in ten seconds: the notable injuries with status, what the line has done, and any headline that matters to this game.",
     "Report; never recommend a side, never say who will win or cover, never use the words pick, bet, lean, lock or value.",
@@ -512,7 +521,7 @@ export async function gameNews(env, game) {
 export const previewKey = (week, gameId) => `preview:v3:w${week}:g${gameId}`;
 export function previewPrompt() {
   return [
-    "You are a sharp college football beat writer. Write a short pregame preview from the JSON facts only.",
+    `You are a sharp ${SPORT_WORDS} beat writer. Write a short pregame preview from the JSON facts only.`,
     "The facts include 'hooks': storylines already pulled from the data (bounce-backs, streaks, unbeaten runs, home or road splits, a starter out, matchup edges, rankings, a night kickoff, weather, the last meeting, line moves).",
     "Pick the ONE most interesting hook and build the preview around it; add a second only if it creates tension (e.g. a hot offence against a leaky defence). Prefer contrast, stakes and change over plain stat lines.",
     "Do NOT open with a quarterback's name followed by 'leads', 'heads', 'brings' or 'takes'. Do not open with the stadium. Open with the storyline itself.",
@@ -563,7 +572,7 @@ export const injuriesKey = (week, gameId) => `inj:v12:w${week}:g${gameId}`;
 export const INJURY_STATUSES = ["OUT", "DOUBTFUL", "QUESTIONABLE", "PROBABLE", "RETURNING", "SUSPENDED"];
 export function injuriesPrompt() {
   return [
-    "You extract player availability for one college football team from news headlines and blurbs.",
+    `You extract player availability for one ${SPORT_WORDS} team from news headlines and blurbs.`,
     "Return only players the text explicitly gives a status for: out, doubtful, questionable, probable, returning from injury, or suspended. Map the status to one of: " + INJURY_STATUSES.join(", ") + ".",
     "Never guess, never add players not named with a status, never include the opponent's players, and ignore anyone from another sport (volleyball, basketball, soccer) or from an NFL team. Skip coaches. If nothing qualifies, return an empty list.",
     "The status must be for THIS week's game, which is named in the message. A report about an earlier game or a different opponent ('expected to sit out against Central Michigan' when this week's opponent is Clemson) is old news: skip that player unless the text also gives a status for this game.",
@@ -734,7 +743,7 @@ const PICK_TIER = [/cbs ?sports/i, /sports illustrated|\bsi\b/i, /the athletic/i
 export const outletRank = (name) => { const i = PICK_TIER.findIndex((re) => re.test(String(name || ""))); return i < 0 ? PICK_TIER.length : i; };
 export function picksPrompt() {
   return [
-    "You extract published game picks for one college football game from article headlines and bodies.",
+    `You extract published game picks for one ${SPORT_WORDS} game from article headlines and bodies.`,
     "Read each piece to its end. A staff picks piece lists several people, each with their own pick, line and score: return every one of them as a separate entry, never only the first. Return one entry per outlet and per named picker: the outlet name, the picker's name if given (else empty), the team picked exactly as one of the two teams given, whether the pick is against the spread ('ATS'), straight up ('SU') or the piece gives both ('BOTH'), the point spread as written for that team if stated (e.g. '-3.5', '+7') else empty (a moneyline such as -172 is not a spread: put it in 'ml' instead, else empty), a predicted final score as the winner's points first then the loser's ('41-10') with the predicted winner named exactly as one of the two teams given in 'winner' (both empty if no score is given), and the reason in at most twelve words. Name the winner from the words next to the score, never from the order of the numbers.",
     "Only include a pick the text states plainly. Never guess from tone, never include a pick for another game, and never invent a line or score. If nothing qualifies, return an empty list.",
     "Also copy, character for character from the text, the one short passage (at most twenty words) where the piece states the predicted score, or the pick itself if it gives no score, as 'quote'. Copy it exactly as written, never paraphrase; empty if there is no such passage.",

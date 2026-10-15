@@ -9,14 +9,17 @@
 // a date's college slate (the Worker cannot, Cloudflare's IPs are blocked),
 // lists the games, and the commissioner taps the ones the league is playing.
 (() => {
-  const WORKER_URL = "https://liftr-ai.jhs797.workers.dev";
+  const WORKER_URL = window.LEAGUE?.worker || "https://liftr-ai.jhs797.workers.dev";
+  const ESPN = window.ESPN_API || "https://site.api.espn.com/apis/site/v2/sports/football/college-football";
+  const NFL = window.LEAGUE?.sport === "nfl";
+  const WEEKS = window.LEAGUE?.seasonWeeks || 16;
   const KEY_STORE = "brochiefs_admin_key";
   const root = document.getElementById("admin-screen");
   if (!root) return;
 
   const el = (id) => document.getElementById(id);
   const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const MAX_PICKS = 10;   // the league plays ten games a week
+  const MAX_PICKS = window.LEAGUE?.maxGames || 10;   // college plays ten games a week, the NFL league all of them
   let found = [];         // games ESPN returned for the chosen week
   let picked = new Map(); // espn event id -> { spread, favSide, tiebreaker }
 
@@ -41,7 +44,7 @@
 
   function renderWeekOptions(selected) {
     const sel = el("admin-espn-week");
-    sel.innerHTML = Array.from({ length: 16 }, (_, i) => {
+    sel.innerHTML = Array.from({ length: WEEKS }, (_, i) => {
       const n = i + 1;
       const r = weekRangeText(n);
       return `<option value="${n}">Week ${n}${r ? ` · ${r}` : ""}</option>`;
@@ -81,18 +84,18 @@
     // ESPN knows what week it is, and ships the season calendar alongside,
     // so the dropdown can carry real dates instead of bare numbers.
     try {
-      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?limit=1&t=${Date.now()}`, { cache: "no-store" });
+      const res = await fetch(`${ESPN}/scoreboard?limit=1&t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       const wk = Number(data?.week?.number) || Number(data?.leagues?.[0]?.season?.type?.week?.number);
       const yr = Number(data?.season?.year) || Number(data?.leagues?.[0]?.season?.year);
-      if (Number.isInteger(wk) && wk >= 1 && wk <= 16) week = wk;
+      if (Number.isInteger(wk) && wk >= 1 && wk <= WEEKS) week = wk;
       if (Number.isInteger(yr) && yr >= 2000) year = yr;
       readCalendar(data?.leagues?.[0]?.calendar);
     } catch {
       try {
         const res = await fetch(`${WORKER_URL}/games?t=${Date.now()}`, { cache: "no-store" });
         const list = (await res.json())?.weeks?.list;
-        if (Array.isArray(list) && list.length) week = Math.min(16, Math.max(...list) + 1);
+        if (Array.isArray(list) && list.length) week = Math.min(WEEKS, Math.max(...list) + 1);
       } catch {}
     }
     renderWeekOptions(week);
@@ -196,7 +199,7 @@
     if (!Number.isInteger(year) || year < 2000) { say("Enter the season year.", "bad"); return; }
     say(`Asking ESPN for ${year} week ${wk}…`);
     try {
-      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${year}&seasontype=2&week=${wk}&groups=80&limit=500&t=${Date.now()}`, { cache: "no-store" });
+      const res = await fetch(`${ESPN}/scoreboard?dates=${year}&seasontype=2&week=${wk}${window.LEAGUE?.groups ?? "&groups=80"}&limit=500&t=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
       found = (data.events || []).map((ev) => {
@@ -248,6 +251,15 @@
         return;
       }
       const restored = await preselectSaved();
+      // The NFL league plays every game, so a week with nothing saved yet
+      // comes up with every game that has a line selected and the last
+      // kickoff (Monday night) as the tiebreaker. Untap any game to drop it.
+      if (NFL && !picked.size) {
+        const lined = found.filter((g) => g.spread !== null).slice(0, MAX_PICKS);
+        for (const g of lined) picked.set(g.key, { tiebreaker: false });
+        const last = lined[lined.length - 1];
+        if (last) picked.get(last.key).tiebreaker = true;
+      }
       const note = restored === null ? ""
         : restored.missing ? ` ${restored.count} already saved, ${restored.missing === 1 ? "one of which is" : `${restored.missing} of which are`} not in this ESPN week.`
         : restored.count ? ` ${restored.count} already saved and re-checked.` : "";

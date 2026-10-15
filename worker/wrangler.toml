@@ -53,3 +53,33 @@ id = "2b89a5d262d84832801fe39e3cdc8301"
 # game still open: every two hours Tuesday to Friday, hourly on Saturday
 # until the first kickoff (after that a run finds nothing open and stops).
 crons = ["0 10 * * 1", "0 */2 * * 2-5", "0 * * * 6"]
+
+# --- NFL league -------------------------------------------------------
+# A second Worker, liftr-nfl, from the same code: `wrangler deploy --env
+# nfl` (the deploy workflow does this for pushes to the nfl branch). SPORT
+# switches the ESPN feeds, prompts, lock rule and member list; its own KV
+# namespace keeps every NFL pick, login and log apart from the college
+# league. Vars, KV and crons do not carry over from the top of this file,
+# so each is set again here. Its secrets (ARCHIVE_LOG_KEY, SLATE_KEY,
+# AUTH_SECRET, OPENAI_API_KEY) are set on the liftr-nfl Worker itself.
+[env.nfl]
+name = "liftr-nfl"
+
+[env.nfl.vars]
+SPORT = "nfl"
+ALLOWED_ORIGIN = "https://nfl.brochiefs.com,https://liftr-1h0.pages.dev,https://*.liftr-1h0.pages.dev"
+OPENAI_MODEL = "gpt-4o-mini"
+OPENAI_MODEL_PLAN = "gpt-4o"
+# A new league starts with logins required: each member claims their name
+# with a code the first time they open the app.
+AUTH_MODE = "on"
+
+[[env.nfl.kv_namespaces]]
+binding = "LIFTR_KV"
+id = "44e880a55bcc406890b700ca487025e1"
+
+# Tuesday 10:00 UTC seals the week, after Monday night. The rest sample
+# the lines for every game still open: every two hours Tuesday to
+# Saturday, hourly on Sunday.
+[env.nfl.triggers]
+crons = ["0 10 * * 2", "0 */2 * * 2-6", "0 * * * 0"]
