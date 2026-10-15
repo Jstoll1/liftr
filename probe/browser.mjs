@@ -15,5 +15,7 @@ const shape = (o, d = 0) => {
   return JSON.stringify(o)?.slice(0, 60);
 };
 console.log("SHAPE", shape(pd));
-console.log("SAMPLE", JSON.stringify(pd).slice(0, 6000));
+console.log("HEADER", JSON.stringify(pd?.header).slice(0, 3000));
+console.log("ROW1", JSON.stringify(pd?.rows?.[0]).slice(0, 800));
+console.log("KEYS", Object.keys(pd || {}).join(","));
 await b.close();
