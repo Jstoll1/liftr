@@ -740,7 +740,8 @@ export async function extractInjuries(env, teamName, items, ctx = null) {
 // v5: scores are placed by the named winner, not by number order.
 // v6: the score comes from the quote when it prints one (49ers fix).
 // v7: ESPN analysts from the NFL feed.
-export const picksKey = (week, gameId) => `pk:v7:w${week}:g${gameId}`;
+// v8: totals bets dropped.
+export const picksKey = (week, gameId) => `pk:v8:w${week}:g${gameId}`;
 const PICK_TIER = [/cbs ?sports/i, /sports illustrated|\bsi\b/i, /the athletic/i, /\bcovers\b/i, /action network/i, /pickswise/i, /yahoo/i, /bleacher report/i, /fox sports/i, /usa today/i, /sportsline/i, /oddsshark/i, /dimers/i, /\bpff\b/i, /sporting news/i, /new york post|ny post/i, /on3/i, /247sports/i, /athlon/i, /saturday down south|saturday tradition|saturday blitz/i, /college football news/i, /betsided|fansided/i, /the spun/i];
 export const outletRank = (name) => { const i = PICK_TIER.findIndex((re) => re.test(String(name || ""))); return i < 0 ? PICK_TIER.length : i; };
 export function picksPrompt() {
@@ -846,6 +847,9 @@ export async function extractPicks(env, game, items) {
     const picks = (parsed.picks || []).map((p) => {
       const side = sideOf(game, p.team);
       if (!side || !p.outlet) return null;
+      // A totals bet ("UNDER 41.5") picks no side; the model sometimes
+      // files it under a team anyway.
+      if (/\b(over|under)\s+\d/i.test(String(p.quote || "")) && !/\b(win|cover|[+-]\d)/i.test(String(p.quote || "").replace(/\(([+-]\d+)\)/g, ""))) return null;
       const outlet = String(p.outlet).trim().slice(0, 40);
       const item = ordered.find((n) => String(n.source || "").toLowerCase() === outlet.toLowerCase()) || ordered.find((n) => new RegExp(outlet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(n.source || "")) || null;
       const score = scoreAwayHome(game, { score: scoreFromQuote(game, p.quote) || p.score, winner: p.winner, side, type: p.side });
