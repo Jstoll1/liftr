@@ -27,7 +27,10 @@
     espn: "football/nfl",          // site.api.espn.com/apis/site/v2/sports/<espn>
     espnWeb: "nfl",                // www.espn.com/<espnWeb>/game/...
     groups: "",                    // the NFL scoreboard needs no division filter
-    logos: "nfl",                  // a.espncdn.com/i/teamlogos/<logos>/500/<abbr>.png
+    logos: "nfl",                  // a.espncdn.com/i/teamlogos/<logos>/<logoCut>/<team id>.png
+    // ESPN's dark-background cut is filed by abbreviation only for the NFL;
+    // by team id it is missing (404), so the NFL uses the standard cut.
+    logoCut: "500",
     worker: "https://liftr-nfl.jhs797.workers.dev",
     // Members are added by the admin and stored on the Worker; the app
     // reads them on open (see loadRoster in app.js).

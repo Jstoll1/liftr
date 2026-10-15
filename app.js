@@ -204,7 +204,7 @@ function weekIsFinal() {
 // A failed resized logo falls back to the full file, then to the light cut.
 const LOGO_PX = 160;
 function logoUrl(espnId) {
-  return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${window.LEAGUE?.logos || "ncaa"}/500-dark/${espnId}.png&w=${LOGO_PX}&h=${LOGO_PX}`;
+  return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${window.LEAGUE?.logos || "ncaa"}/${window.LEAGUE?.logoCut || "500-dark"}/${espnId}.png&w=${LOGO_PX}&h=${LOGO_PX}`;
 }
 document.addEventListener("error", (e) => {
   const img = e.target;
