@@ -6165,3 +6165,12 @@ button.sc-luck:hover { filter: brightness(1.2); }
 .wpp-path { list-style: none; margin: 4px 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .wpp-path li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; border-radius: 6px; background: rgba(255, 255, 255, .05); font-size: 12.5px; }
 .wpp-path li b { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+
+/* Tiebreaker not entered: the card and the box say so, so nobody reads an
+   empty box as already filled in. */
+.tiebreaker-card.tb-missing { border-color: var(--neon-pink); box-shadow: 0 0 0 1px rgba(255, 32, 121, .35), 0 0 14px rgba(255, 32, 121, .25); }
+.tiebreaker-card.tb-missing .tiebreaker-label::after { content: " · NOT SET"; color: var(--neon-pink); }
+.tiebreaker-card.tb-missing .tiebreaker-input { border-color: var(--neon-pink); border-style: dashed; animation: tb-nudge 1.6s ease-in-out infinite; }
+.tiebreaker-input::placeholder { color: rgba(255, 255, 255, .28); font-weight: 400; }
+@keyframes tb-nudge { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 32, 121, 0); } 50% { box-shadow: 0 0 0 4px rgba(255, 32, 121, .25); } }
+@media (prefers-reduced-motion: reduce) { .tiebreaker-card.tb-missing .tiebreaker-input { animation: none; } }
