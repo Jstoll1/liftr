@@ -849,7 +849,7 @@ export async function extractPicks(env, game, items) {
       if (!side || !p.outlet) return null;
       // A totals bet ("UNDER 41.5") picks no side; the model sometimes
       // files it under a team anyway.
-      if (/\b(over|under)\s+\d/i.test(String(p.quote || "")) && !/\b(win|cover|[+-]\d)/i.test(String(p.quote || "").replace(/\(([+-]\d+)\)/g, ""))) return null;
+      if (/\b(over|under)\s+\d/i.test(String(p.quote || "")) && !/\b(win|wins|cover|covers)\b|(^|\s)[+-]\d/i.test(String(p.quote || "").replace(/\(([+-]\d+)\)/g, ""))) return null;
       const outlet = String(p.outlet).trim().slice(0, 40);
       const item = ordered.find((n) => String(n.source || "").toLowerCase() === outlet.toLowerCase()) || ordered.find((n) => new RegExp(outlet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(n.source || "")) || null;
       const score = scoreAwayHome(game, { score: scoreFromQuote(game, p.quote) || p.score, winner: p.winner, side, type: p.side });
