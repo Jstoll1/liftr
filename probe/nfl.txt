@@ -1,6 +1,2 @@
-https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500-dark/26.png&w=160&h=160
-https://a.espncdn.com/i/teamlogos/nfl/500-dark/26.png
-https://a.espncdn.com/i/teamlogos/nfl/500/26.png
-https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/26.png&w=160&h=160
-https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500-dark/sea.png&w=160&h=160
-https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/sea.png&w=160&h=160
+/insights/picks?week=6&game=1
+/insights/picks?week=6&game=14
