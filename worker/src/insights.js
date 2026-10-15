@@ -739,7 +739,8 @@ export async function extractInjuries(env, teamName, items, ctx = null) {
 // in the game. Cached six hours, stale reads refreshed behind the response.
 // v5: scores are placed by the named winner, not by number order.
 // v6: the score comes from the quote when it prints one (49ers fix).
-export const picksKey = (week, gameId) => `pk:v6:w${week}:g${gameId}`;
+// v7: ESPN analysts from the NFL feed.
+export const picksKey = (week, gameId) => `pk:v7:w${week}:g${gameId}`;
 const PICK_TIER = [/cbs ?sports/i, /sports illustrated|\bsi\b/i, /the athletic/i, /\bcovers\b/i, /action network/i, /pickswise/i, /yahoo/i, /bleacher report/i, /fox sports/i, /usa today/i, /sportsline/i, /oddsshark/i, /dimers/i, /\bpff\b/i, /sporting news/i, /new york post|ny post/i, /on3/i, /247sports/i, /athlon/i, /saturday down south|saturday tradition|saturday blitz/i, /college football news/i, /betsided|fansided/i, /the spun/i];
 export const outletRank = (name) => { const i = PICK_TIER.findIndex((re) => re.test(String(name || ""))); return i < 0 ? PICK_TIER.length : i; };
 export function picksPrompt() {
@@ -880,14 +881,19 @@ export async function gamePicks(env, week, game, ctx = null) {
   return refreshPicks(env, week, game, key);
 }
 async function refreshPicks(env, week, game, key) {
-  let items = [], siteError = null;
+  let items = [], espn = null, siteError = null;
   try {
     const r = await fetchText(`${env.FEEDS_URL || "https://raw.githubusercontent.com/Jstoll1/liftr/main/data/feeds"}/w${week}.json`, "application/json", null);
-    if (r.ok) items = JSON.parse(r.text)?.games?.[String(game.id)]?.picks || []; else siteError = r.error;
+    if (r.ok) { const g = JSON.parse(r.text)?.games?.[String(game.id)]; items = g?.picks || []; espn = g?.espn || null; } else siteError = r.error;
   } catch (err) { siteError = String(err?.message || err).slice(0, 80); }
   items = (Array.isArray(items) ? items : []).filter((n) => n && typeof n.headline === "string").slice(0, 12);
   const r = await extractPicks(env, game, items);
-  const out = { at: Date.now(), picks: r.picks, articles: items.length, siteError, error: r.error || null };
+  // ESPN's analysts (NFL feed only): read straight from ESPN's own picks
+  // data, so no model is involved. They replace any ESPN pick the model
+  // found in an article.
+  const fromEspn = espnPicks(espn);
+  const picks = fromEspn.length ? [...fromEspn, ...r.picks.filter((p) => !/^espn\b/i.test(p.outlet || ""))] : r.picks;
+  const out = { at: Date.now(), picks, articles: items.length, siteError, error: fromEspn.length ? null : r.error || null };
   if (!out.error) { try { await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 24 * 3600 }); } catch {} }
   // The last read before kickoff is the record the expert tally grades.
   // It never expires; a read after kickoff never touches it.
@@ -895,6 +901,13 @@ async function refreshPicks(env, week, game, key) {
     try { await env.LIFTR_KV.put(pickArchiveKey(week, game.id), JSON.stringify({ at: out.at, picks: out.picks })); } catch {}
   }
   return out;
+}
+export function espnPicks(espn) {
+  if (!espn || !Array.isArray(espn.picks)) return [];
+  return espn.picks.filter((p) => p && p.name && (p.side === "away" || p.side === "home")).slice(0, 16).map((p) => ({
+    outlet: "ESPN", picker: String(p.name).slice(0, 40), side: p.side, type: "SU", line: "", ml: "", score: "",
+    reason: p.record ? `Season record ${String(p.record).slice(0, 12)}` : "", link: espn.link || "https://www.espn.com/nfl/picks", quote: "",
+  }));
 }
 export const pickArchiveKey = (week, gameId) => `pkarc:w${week}:g${gameId}`;
 
