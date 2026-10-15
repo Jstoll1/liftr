@@ -33,10 +33,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      # News, article picks and ESPN's analysts' picks; the steps live in
+      # the nfl branch's scripts/feeds-nfl.sh so they change there, not here.
       - name: Pull the NFL feeds
-        env:
-          SPORT: nfl
-        run: node scripts/fetch-feeds.mjs
+        run: bash scripts/feeds-nfl.sh
       - name: Commit to the nfl branch if changed
         run: |
           git config user.name "github-actions[bot]"
