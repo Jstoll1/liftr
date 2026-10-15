@@ -653,8 +653,10 @@ const ROSTER_KEY = "roster";
 let rosterReadAt = 0;
 async function loadRoster(env, force = false) {
   if (!force && Date.now() - rosterReadAt < 30000) return;
+  // Until the admin saves a list, the league starts with DEFAULT_ROSTER.
   const names = await env.LIFTR_KV.get(ROSTER_KEY, "json");
-  PICKS_MANAGERS.splice(0, PICKS_MANAGERS.length, ...(Array.isArray(names) ? names : []));
+  const start = String(env.DEFAULT_ROSTER || "").split(",").map((n) => n.trim()).filter(Boolean);
+  PICKS_MANAGERS.splice(0, PICKS_MANAGERS.length, ...(Array.isArray(names) ? names : start));
   rosterReadAt = Date.now();
 }
 // GET /roster -> { names }. POST /roster?key=<admin> { names } sets the
