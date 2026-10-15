@@ -738,7 +738,8 @@ export async function extractInjuries(env, teamName, items, ctx = null) {
 // gives one. A pick stands only when the team named is one of the two
 // in the game. Cached six hours, stale reads refreshed behind the response.
 // v5: scores are placed by the named winner, not by number order.
-export const picksKey = (week, gameId) => `pk:v5:w${week}:g${gameId}`;
+// v6: the score comes from the quote when it prints one (49ers fix).
+export const picksKey = (week, gameId) => `pk:v6:w${week}:g${gameId}`;
 const PICK_TIER = [/cbs ?sports/i, /sports illustrated|\bsi\b/i, /the athletic/i, /\bcovers\b/i, /action network/i, /pickswise/i, /yahoo/i, /bleacher report/i, /fox sports/i, /usa today/i, /sportsline/i, /oddsshark/i, /dimers/i, /\bpff\b/i, /sporting news/i, /new york post|ny post/i, /on3/i, /247sports/i, /athlon/i, /saturday down south|saturday tradition|saturday blitz/i, /college football news/i, /betsided|fansided/i, /the spun/i];
 export const outletRank = (name) => { const i = PICK_TIER.findIndex((re) => re.test(String(name || ""))); return i < 0 ? PICK_TIER.length : i; };
 export function picksPrompt() {
@@ -770,6 +771,19 @@ export function scoreAwayHome(game, { score, winner, side, type }) {
   const w = sideOf(game, winner) || (type === "SU" || type === "BOTH" ? side : null);
   if (!w) return "";
   return w === "away" ? `${hi}-${lo}` : `${lo}-${hi}`;
+}
+// The score as the quote prints it ("49ers 31, Commanders 23"), when the
+// quote has exactly two: a number inside a team's name (49ers) or a signed
+// line ("(-8)") is never a score. The model, left alone, read the 49 of
+// 49ers as points. Returns "31-23" style (order fixed by scoreAwayHome).
+export function scoreFromQuote(game, quote) {
+  let t = String(quote || "");
+  for (const n of [game.away, game.home, game.awayShort, game.homeShort]) {
+    for (const w of String(n || "").split(/\s+/)) if (/\d/.test(w)) t = t.replace(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), " ");
+  }
+  t = t.replace(/(\d)\s*[-\u2013]\s*(\d)/g, "$1 to $2"); // "35-20" is a score, "(-8)" is a line
+  const nums = [...t.matchAll(/(^|[^\d.+\-\w])(\d{1,2})(?![\d.%\w])/g)].map((m) => m[2]);
+  return nums.length === 2 ? `${nums[0]}-${nums[1]}` : "";
 }
 // A stored away-home score for a pick to win outright must have the picked
 // side winning; picks stored before v5 could be the wrong way round.
@@ -833,7 +847,7 @@ export async function extractPicks(env, game, items) {
       if (!side || !p.outlet) return null;
       const outlet = String(p.outlet).trim().slice(0, 40);
       const item = ordered.find((n) => String(n.source || "").toLowerCase() === outlet.toLowerCase()) || ordered.find((n) => new RegExp(outlet.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(n.source || "")) || null;
-      const score = scoreAwayHome(game, { score: p.score, winner: p.winner, side, type: p.side });
+      const score = scoreAwayHome(game, { score: scoreFromQuote(game, p.quote) || p.score, winner: p.winner, side, type: p.side });
       // A spread is a small number with a half point at most; three digits
       // is a moneyline whatever field the model put it in.
       const num = (v) => { const t = String(v || "").trim().replace(/[^\d.+-]/g, ""); return /^[+-]?\d+(\.\d)?$/.test(t) ? t : ""; };
