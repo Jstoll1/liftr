@@ -19,6 +19,13 @@ jobs:
           while IFS= read -r p; do
             [ -z "$p" ] && continue
             echo "=== GET $p"
-            curl -sS --max-time 60 "https://liftr-nfl.jhs797.workers.dev$p" | head -c 6000
+            case "$p" in
+              # ESPN image CDN: status, type, size and dimensions only.
+              https://a.espncdn.com/*)
+                curl -sS --max-time 30 -o /tmp/probe.bin -w "%{http_code} %{content_type} %{size_download}B\n" "$p"
+                file /tmp/probe.bin ;;
+              *)
+                curl -sS --max-time 60 "https://liftr-nfl.jhs797.workers.dev$p" | head -c 6000 ;;
+            esac
             echo
           done < probe/nfl.txt
