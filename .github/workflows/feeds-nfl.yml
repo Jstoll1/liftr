@@ -1,0 +1,48 @@
+# NFL league only (nfl.brochiefs.com). Every two hours: game news, injury
+# coverage and expert-pick articles for the NFL slate, written to
+# data/feeds on the nfl branch, where the NFL site and the NFL Worker read
+# them. It checks out the nfl branch, runs that branch's script with
+# SPORT=nfl, and pushes only to nfl. It changes no file on main and nothing
+# the college pick'em (brochiefs.com, the liftr-ai Worker, feeds.yml) uses.
+# It lives on main only because GitHub runs scheduled jobs from the
+# default branch.
+name: Fetch NFL feeds
+
+on:
+  schedule:
+    - cron: "47 */2 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/feeds-nfl.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: feeds-nfl
+  cancel-in-progress: false
+
+jobs:
+  feeds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: nfl
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Pull the NFL feeds
+        env:
+          SPORT: nfl
+        run: node scripts/fetch-feeds.mjs
+      - name: Commit to the nfl branch if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/feeds
+          git diff --cached --quiet && echo "no change" && exit 0
+          git commit -m "NFL feeds $(date -u +%Y%m%d%H%M)"
+          git pull --rebase origin nfl
+          git push origin HEAD:nfl
