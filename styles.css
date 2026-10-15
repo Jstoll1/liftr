@@ -6165,3 +6165,10 @@ button.sc-luck:hover { filter: brightness(1.2); }
 .wi-wkbars span { font-size: 11px; color: #fff; }
 .wi-wkbars small { font-size: 9px; color: var(--text-dim); }
 .wi-wknote { font-size: 9.5px; color: var(--text-dim); }
+
+/* Win chance audit: OUT reads dim; the best path to win lists the results
+   a long shot still needs, each with how likely it is. */
+.ranking-main .rank-wp.out b { color: var(--text-dim); }
+.wpp-path { list-style: none; margin: 4px 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.wpp-path li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; border-radius: 6px; background: rgba(255, 255, 255, .05); font-size: 12.5px; }
+.wpp-path li b { font-size: 11px; color: var(--text-dim); font-weight: 600; }
