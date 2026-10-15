@@ -1,0 +1,45 @@
+{
+  "name": "Brochiefs NFL",
+  "short_name": "NFL Pick'em",
+  "description": "Retro arcade NFL pick'em for the Brochiefs.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#020b24",
+  "theme_color": "#020b24",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/nfl/favicon-16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/nfl/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/nfl/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/nfl/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/nfl/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/nfl/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
