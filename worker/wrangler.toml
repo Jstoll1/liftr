@@ -80,6 +80,7 @@ id = "44e880a55bcc406890b700ca487025e1"
 
 # Tuesday 10:00 UTC seals the week, after Monday night. The rest sample
 # the lines for every game still open: every two hours Tuesday to
-# Saturday, hourly on Sunday.
+# Saturday, hourly on Sunday. Days by name: Cloudflare numbers weekdays
+# 1 to 7, so names cannot be misread.
 [env.nfl.triggers]
-crons = ["0 10 * * 2", "0 */2 * * 2-6", "0 * * * 0"]
+crons = ["0 10 * * TUE", "0 */2 * * TUE-SAT", "0 * * * SUN"]

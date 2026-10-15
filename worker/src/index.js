@@ -2192,7 +2192,7 @@ async function handleReactions(request, env, corsHeaders, url) {
 // --- Insights ---------------------------------------------------------
 // Monday 10:00 UTC seals a college week. The NFL week ends Monday night,
 // so its Worker seals Tuesday 10:00 UTC instead (wrangler env "nfl").
-const SEAL_CRONS = new Set(["0 10 * * 1", "0 10 * * 2"]);
+const SEAL_CRONS = new Set(["0 10 * * 1", "0 10 * * TUE"]);
 const INSIGHTS_DEPS = {
   liveGames: (env, week) => liveGames(env, week),
   readSlate: (env, week) => env.LIFTR_KV.get(gamesKey(week), "json"),
