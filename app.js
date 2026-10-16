@@ -956,6 +956,26 @@ document.getElementById("code-modal")?.addEventListener("click", (e) => {
 function firstKickoffPassed() {
   return GAMES.some((g) => isGameLocked(g));
 }
+// NFL games lock one at a time from Thursday to Monday, so "the week has
+// started" is not the moment to stop opening on picks. Open on the
+// scoreboard while a game is being played; otherwise on picks while this
+// player still has an open game unpicked or no tiebreaker, and on the
+// scoreboard once their card is done and the week is under way.
+function nflOpensOnScoreboard(me) {
+  if (!GAMES.length) return false;
+  const now = Date.now();
+  const results = computeLiveResults(latestLive);
+  const live = GAMES.some((g) => {
+    const l = latestLive[g.id];
+    if (l && l.found) return l.state === "in";
+    const k = Date.parse(g.kickoff);
+    return now >= k && now < k + 4 * 3600 * 1000 && !results[g.id];
+  });
+  if (live) return true;
+  const st = getManagerState(me);
+  const owes = GAMES.some((g) => !isGameLocked(g) && !st.picks[g.id]) || (!isGameLocked(tiebreakerGameOf()) && !String(st.tiebreaker ?? "").trim());
+  return !owes && firstKickoffPassed();
+}
 
 const logoScreen = document.getElementById("logo-screen");
 const loginScreen = document.getElementById("login-screen");
@@ -1107,7 +1127,7 @@ function goToPlayerSelect() {
   const me = loadMe();
   if (me) {
     currentManager = me;
-    if (firstKickoffPassed()) {
+    if (window.LEAGUE?.sport === "nfl" ? nflOpensOnScoreboard(me) : firstKickoffPassed()) {
       loginScreen.classList.add("hidden");
       showScoreboard();
     } else {
