@@ -1578,9 +1578,18 @@ bottomNav.addEventListener("click", () => {
   });
   ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => pill.addEventListener(ev, cancel));
   pill.addEventListener("contextmenu", (e) => e.preventDefault());
+  // NFL: three quick taps open the grid check card (the college card opens
+  // from the bottom nav, which the NFL build trims). A tap waits a moment
+  // to see whether more follow; one or two still open the owner picker.
+  const nflCard = window.LEAGUE?.sport === "nfl";
+  let taps = 0, tapTimer = null;
   pill.addEventListener("click", (e) => {
     if (fired) { e.preventDefault(); fired = false; return; }
-    openOwnerPicker();
+    if (!nflCard) { openOwnerPicker(); return; }
+    taps += 1;
+    clearTimeout(tapTimer);
+    if (taps >= 3) { taps = 0; window.openGridCard?.(); return; }
+    tapTimer = setTimeout(() => { taps = 0; openOwnerPicker(); }, 380);
   });
 })();
 
