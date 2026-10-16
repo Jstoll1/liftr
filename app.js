@@ -2667,6 +2667,7 @@ async function renderScoreboard() {
   renderMyScore(ranked, cloudPicks, live);
   renderWeekChamp(ranked, results);
   renderInsertCoin(cloudPicks);
+  maybeShowPathIntro();
   // The clock lives inside the strip when there is one, so the board does
   // not spend a whole line on it. Seconds are gone: the poll is every 30,
   // so second-level precision was never true.
@@ -3185,6 +3186,70 @@ function swingMatchupHtml(name, sw, m) {
 }
 
 // --- Path to win ------------------------------------------------------
+// The new feature pop-up.
+// Once per phone, on the scoreboard while the week is live and a path can
+// be run: a small card showing where to tap, drawn from the real board.
+// Never over another popup. SHOW ME opens your row and pulses the button.
+const PATH_INTRO_KEY = "brochiefs_new_pathtowin_v1";
+let pathIntroShownThisLoad = false;
+function maybeShowPathIntro(force = false) {
+  if (!force) {
+    if (pathIntroShownThisLoad || !currentManager || window.__adminEntry || window.__adminOpen) return;
+    if (window.LEAGUE?.sport === "nfl") return; // college only for now
+    try { if (localStorage.getItem(PATH_INTRO_KEY)) return; } catch { return; }
+    const results = computeLiveResults(latestLive);
+    const wd = winChanceMemo.detail?.[currentManager];
+    if (!weekIsLive(results) || !wd || wd.alive === false || scoreboardScreen.classList.contains("hidden")) return;
+    if ([...document.querySelectorAll(".modal-overlay, .pr-screen, .np-screen")].some((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none")) return;
+  }
+  pathIntroShownThisLoad = true;
+  setTimeout(() => showPathIntro(), force ? 0 : 900);
+}
+function showPathIntro() {
+  if (document.querySelector(".pi-screen")) return;
+  const me = currentManager;
+  const rows = liveWeekRows.length ? liveWeekRows : MANAGERS.map((name, i) => ({ name, score: 0, place: i + 1 }));
+  const at = Math.max(0, rows.findIndex((r) => r.name === me));
+  const pick = rows.slice(Math.max(0, Math.min(at - 1, rows.length - 3)), Math.max(0, Math.min(at - 1, rows.length - 3)) + 3);
+  const pct = (n) => { const v = winChanceMemo.out?.[n]; return v == null ? null : v; };
+  const mini = pick.map((r) => {
+    const p = pct(r.name), w = p == null ? 0 : Math.max(3, Math.min(100, p * 100));
+    return `<div class="pi-row${r.name === me ? " me" : ""}"><span class="pi-rk">${r.tied ? "T" : ""}${r.place || ""}</span><span class="pi-nm">${escapeCd(shown(r.name).toUpperCase())}</span><span class="pi-bar"><i style="width:${w.toFixed(0)}%"></i></span><span class="pi-pt">${String(r.score ?? 0).padStart(2, "0")}</span>${r.name === me ? `<span class="pi-tap" aria-hidden="true"></span>` : ""}</div>`;
+  }).join("");
+  const myPct = pct(me);
+  const m = document.createElement("div");
+  m.className = "pi-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: path to win");
+  m.innerHTML = `<div class="pi-card">
+    <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title">PATH TO WIN</span></div>
+    <p class="pi-lede">See exactly which results you need to win the week, played out game by game.</p>
+    <div class="pi-step"><b>1</b><span>Tap your name on the leaderboard</span></div>
+    <div class="pi-mini">${mini}</div>
+    <div class="pi-step"><b>2</b><span>Tap the button on your card</span></div>
+    <div class="pi-mini pi-card2"><div class="pi-card2-top"><span class="pi-cap">CHANCE TO WIN THE WEEK · <b>${myPct == null ? "--" : winChanceLabel(myPct, winChanceMemo.detail?.[me])}</b></span><span class="pi-btnwrap"><span class="rd-path-btn pi-demo"><span class="rd-path-play">▶</span>MY PATH TO WIN</span></span></div><div class="pi-card2-sk"><i></i><i></i></div></div>
+    <div class="pi-actions"><button type="button" class="pi-ok">GOT IT</button><button type="button" class="pi-go">SHOW ME ▸</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  const done = () => { try { localStorage.setItem(PATH_INTRO_KEY, String(Date.now())); } catch {} m.classList.add("out"); setTimeout(() => m.remove(), 220); };
+  m.querySelector(".pi-ok").addEventListener("click", done);
+  m.addEventListener("click", (e) => { if (e.target === m) done(); });
+  m.querySelector(".pi-go").addEventListener("click", () => {
+    done();
+    track("path-intro-show-me", { event: true });
+    // Open your row on the real board, bring it into view, pulse the button.
+    if (!expandedRankings.has(me)) { expandedRankings.add(me); renderRankings(lastGoodCloudPicks ? Object.fromEntries(Object.entries(lastGoodCloudPicks).map(([n, st]) => [n, { ...st, picks: n === me ? sanitizePicks(st.picks) : sanitizeRoomPicks(st.picks) }])) : {}, computeLiveResults(latestLive), latestLive); }
+    setTimeout(() => {
+      const btn = [...document.querySelectorAll(".rd-path-btn")].find((b) => b.dataset.path === me);
+      if (!btn) return;
+      btn.scrollIntoView({ behavior: "smooth", block: "center" });
+      btn.classList.add("pi-pulse");
+      setTimeout(() => btn.classList.remove("pi-pulse"), 4200);
+    }, 120);
+  });
+  track("path-intro", { event: true });
+}
+// For a preview from the console: previewPathIntro().
+window.previewPathIntro = () => maybeShowPathIntro(true);
+
 // The likeliest way the games left can finish with this manager first,
 // played out like a DOS program: the standings on the left, each game on
 // the right one at a time with its logos and result, points and places
