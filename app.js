@@ -3199,12 +3199,16 @@ function pathScenario(name) {
   return { ...r.path, all: [...r.path.all].sort((a, b) => order.get(a.g.id) - order.get(b.g.id)), guess: ctx.guesses[i], tbGame: ctx.tbGame };
 }
 let pathRunToken = 0;
-// Which paths this phone has already watched run, per week: those open
-// straight on the finished path, with RUN AGAIN to watch it play.
+// Which paths this phone has already watched run, and with which games
+// final at the time. A path opens straight on its card until another game
+// goes final; then the next open plays the full run again, since the path
+// may have changed.
 const PATH_SEEN_KEY = () => `brochiefs_pathseen_w${currentWeek}`;
-function pathSeen(name) { try { return JSON.parse(localStorage.getItem(PATH_SEEN_KEY()) || "[]").includes(name); } catch { return false; } }
+function finalsSig() { const r = computeLiveResults(latestLive); return GAMES.filter((g) => r[g.id]).map((g) => g.id).sort((x, y) => x - y).join(","); }
+function pathSeenMap() { try { const v = JSON.parse(localStorage.getItem(PATH_SEEN_KEY()) || "{}"); return v && !Array.isArray(v) && typeof v === "object" ? v : {}; } catch { return {}; } }
+function pathSeen(name) { return pathSeenMap()[name] === finalsSig(); }
 function markPathSeen(name) {
-  try { const l = JSON.parse(localStorage.getItem(PATH_SEEN_KEY()) || "[]"); if (!l.includes(name)) { l.push(name); localStorage.setItem(PATH_SEEN_KEY(), JSON.stringify(l)); } } catch {}
+  try { const v = pathSeenMap(); v[name] = finalsSig(); localStorage.setItem(PATH_SEEN_KEY(), JSON.stringify(v)); } catch {}
   document.querySelectorAll(".rd-path-btn").forEach((b) => { if (b.dataset.path === name) b.querySelector(".rd-path-new")?.remove(); });
 }
 // Once a path has been watched, the button opens this instead: a small
