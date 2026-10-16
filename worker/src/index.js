@@ -1,5 +1,9 @@
 import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
+import { LiveRoom } from "./live.js";
+
+// The live room has to be exported from the main module for Cloudflare.
+export { LiveRoom };
 // Liftr AI Worker
 //
 // Holds the OpenAI API key server-side (never exposed to the browser) and
@@ -90,6 +94,9 @@ export default {
     }
     if (url.pathname === "/visit") {
       return handleVisit(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/presence") {
+      return handlePresence(request, env, corsHeaders, url);
     }
     if (url.pathname === "/rollups") {
       return handleRollups(request, env, corsHeaders, url);
@@ -3390,6 +3397,27 @@ export function queuedOpenAt(body, now) {
   if (!body || !body.q) return null;
   const at = Math.round(Number(body.at));
   return Number.isFinite(at) && at <= now + 60000 && at >= now - 7 * 86400000 ? Math.min(at, now) : null;
+}
+
+// Presence: phones report what's open and what's being used (POST, no key,
+// like /visit); the admin's live page reads the room (GET, admin key).
+// Both go to the one Durable Object that holds it.
+async function handlePresence(request, env, corsHeaders, url) {
+  if (!env.LIVE) return json({ error: "Live not configured" }, 500, corsHeaders);
+  const room = env.LIVE.get(env.LIVE.idFromName("league"));
+  if (request.method === "GET") {
+    if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+    const res = await room.fetch("https://live/room");
+    return json(await res.json(), 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  // text/plain from a beacon, so read the text and parse it.
+  let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const m = body?.manager;
+  if (!PICKS_MANAGERS.includes(m)) return json({ error: "Invalid manager" }, 400, corsHeaders);
+  if (VISITS_NOT_TRACKED.has(m)) return json({ ok: true, tracked: false }, 200, corsHeaders);
+  await room.fetch("https://live/beat", { method: "POST", body: JSON.stringify({ manager: m, bye: !!body.bye, screen: body.screen, app: body.app, events: body.events }) });
+  return json({ ok: true }, 200, corsHeaders);
 }
 
 async function handleVisit(request, env, corsHeaders, url) {

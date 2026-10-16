@@ -1179,6 +1179,39 @@ setTimeout(stampVisit, 1500);
 setTimeout(flushTele, 4000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) stampVisit(); });
 
+// Presence, for the admin's live page: what's open and what's being used.
+// Uses go out a moment after they happen (batched), a still-here beat
+// every 30 seconds while the app is on screen, and a goodbye when it's put
+// away. Beacons only, never awaited, so nothing here can slow the app.
+// Jake, the admin console and the preview site aren't reported; nor is
+// which team anyone picked.
+const presenceQ = [];
+let presenceT = null, presenceScreen = "";
+const presenceApp = (window.navigator.standalone || matchMedia("(display-mode: standalone)").matches) ? "home" : "browser";
+function presenceNote(key, detail) {
+  const k = String(key || "").replace(/^\//, "");
+  if (!k) return;
+  if (/^(picks|scoreboard|history|trivia|home|roster|splash)$/.test(k)) presenceScreen = k;
+  presenceQ.push({ k, d: detail == null ? undefined : String(detail), t: Date.now() });
+  if (presenceQ.length > 30) presenceQ.shift();
+  clearTimeout(presenceT);
+  presenceT = setTimeout(() => presenceSend(false), 1500);
+}
+function presenceSend(bye) {
+  clearTimeout(presenceT); presenceT = null;
+  const me = loadMe();
+  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || PREVIEW || navigator.onLine === false) { presenceQ.length = 0; return; }
+  const now = Date.now();
+  const body = JSON.stringify({ manager: me, bye, screen: presenceScreen, app: presenceApp, events: presenceQ.splice(0).map((e) => ({ k: e.k, d: e.d, ago: now - e.t })) });
+  try {
+    if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/presence`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/presence`, { method: "POST", body, keepalive: true }).catch(() => {});
+  } catch {}
+}
+setTimeout(() => { if (!document.hidden) presenceSend(false); }, 2500);
+setInterval(() => { if (!document.hidden) presenceSend(false); }, 30000);
+document.addEventListener("visibilitychange", () => presenceSend(document.hidden));
+addEventListener("pagehide", () => presenceSend(true));
+
 // Sessions, for the admin dashboard: how long the app was on screen and
 // which screens and sheets were used, sent once when the app is put away.
 // In memory until then (a Set add per use), and the send is a background
@@ -1186,7 +1219,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) stam
 // touches load or scrolling.
 const sessionUse = new Set();
 let sessionStart = document.hidden ? null : Date.now();
-function noteUse(key) { if (key) sessionUse.add(String(key).replace(/^\//, "")); }
+function noteUse(key, detail) { if (key) { sessionUse.add(String(key).replace(/^\//, "")); presenceNote(key, detail); } }
 // Minutes on each game's live view: started when a live game cast opens,
 // stopped when the sheet closes or the app is put away.
 let gcTime = {}, gcOpen = null;
@@ -1219,7 +1252,7 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) endSe
 addEventListener("pagehide", endSession);
 
 function track(path, extra) {
-  noteUse(path);
+  noteUse(path, extra?.d);
   try {
     if (PREVIEW || !window.goatcounter || typeof window.goatcounter.count !== "function") return;
     window.goatcounter.count({ path, title: extra?.title || path, event: !!extra?.event });
@@ -2990,7 +3023,7 @@ function renderLiveScores(live, cloudPicks) {
   // final view after. The old expand-in-place view is gone.
   liveScoresList.querySelectorAll(".scorebug").forEach((el) => {
     const id = Number(el.dataset.game);
-    const open = () => { track("scorebug-open", { event: true }); openInsights(id); };
+    const open = () => { track("scorebug-open", { event: true, d: id }); openInsights(id); };
     el.addEventListener("click", open);
     el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
   });
@@ -4854,7 +4887,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
       toggleRow();
     });
     const toggleRow = () => {
-      if (expandedRankings.has(row.name)) expandedRankings.delete(row.name); else { expandedRankings.add(row.name); track("ranking-expand", { event: true }); }
+      if (expandedRankings.has(row.name)) expandedRankings.delete(row.name); else { expandedRankings.add(row.name); track("ranking-expand", { event: true, d: row.name }); }
       withScrollPreserved(() => renderRankings(cloudPicks, results, live));
     };
     rankingsList.appendChild(div);
@@ -5729,7 +5762,7 @@ async function openInsights(gameId) {
   const modal = document.getElementById("insights-modal");
   const game = GAMES.find((g) => g.id === gameId);
   if (!modal || !game) return;
-  { const l = latestLive[gameId]; const kind = l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"; noteUse(kind); if (kind === "gamecast") { noteUse(`gamecast-g${gameId}`); gcStart(gameId); } }
+  { const l = latestLive[gameId]; const kind = l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"; noteUse(kind, gameId); if (kind === "gamecast") { sessionUse.add(`gamecast-g${gameId}`); gcStart(gameId); } }
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const body = modal.querySelector("#insights-body");
   const favShort = game.favorite === game.home ? game.homeShort : game.awayShort;

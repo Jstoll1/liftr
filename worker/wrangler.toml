@@ -42,6 +42,16 @@ AUTH_MODE = "off"
 # Cross-device sync storage. Create the namespace once with:
 #   npx wrangler kv namespace create LIFTR_KV
 # then replace the id below with the one it prints, and redeploy.
+# The live room (worker/src/live.js): who is in the app now, for the
+# admin's live page. One Durable Object, SQLite backed.
+[[durable_objects.bindings]]
+name = "LIVE"
+class_name = "LiveRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LiveRoom"]
+
 [[kv_namespaces]]
 binding = "LIFTR_KV"
 id = "2b89a5d262d84832801fe39e3cdc8301"

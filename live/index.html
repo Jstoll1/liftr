@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0a0414">
+<title>Brochiefs Live</title>
+<link rel="icon" href="../icons/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* The admin's live page: who is in the app right now and what they are
+   using, newest first. Reads the Worker's /presence room every few
+   seconds with the admin key. The console stays the report. */
+:root {
+  --bg: #0a0414; --panel: rgba(255, 255, 255, .035); --line: rgba(255, 255, 255, .08);
+  --text: #f4f0ff; --meta: #b9b0d6; --dim: #7d7499;
+  --green: #39ff88; --cyan: #05d9e8; --gold: #ffe45e; --pink: #ff2079;
+  --pixel: 'Press Start 2P', monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+body { min-height: 100vh; padding: max(14px, env(safe-area-inset-top)) 16px 40px; }
+.wrap { max-width: 1180px; margin: 0 auto; }
+button { font: inherit; color: inherit; }
+
+header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; padding: 6px 0 14px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--pixel); font-size: 13px; letter-spacing: .04em; }
+.brand .b1 { color: var(--gold); text-shadow: 0 0 12px rgba(255, 228, 94, .35); }
+.brand .b2 { color: var(--green); text-shadow: 0 0 12px rgba(57, 255, 136, .4); }
+.beat { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: beat 1.6s ease-in-out infinite; }
+.stale .beat { background: #ffb347; box-shadow: 0 0 10px #ffb347; }
+@keyframes beat { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+.age { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.tools { margin-left: auto; display: flex; gap: 8px; }
+.tool { padding: 6px 10px; font-size: 12px; color: var(--meta); background: none; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.tool.on { color: var(--green); border-color: rgba(57, 255, 136, .45); }
+
+h2 { display: flex; align-items: baseline; gap: 10px; margin: 22px 0 10px; font-family: var(--pixel); font-weight: normal; font-size: 9px; letter-spacing: .08em; color: var(--dim); }
+h2 b { color: var(--text); font-weight: normal; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 28px; }
+@media (min-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); } }
+
+.av { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: var(--c, var(--cyan)); color: #0a0414; font-family: var(--pixel); font-size: 12px; }
+.av.sm { width: 22px; height: 22px; border-radius: 6px; font-size: 9px; }
+
+.now { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.card { padding: 12px; border-radius: 12px; background: rgba(57, 255, 136, .05); border: 1px solid rgba(57, 255, 136, .35); box-shadow: 0 0 22px rgba(57, 255, 136, .06); }
+.card.fresh { animation: arrive 1.8s ease-out; }
+@keyframes arrive { 0% { box-shadow: 0 0 0 2px var(--green), 0 0 30px rgba(57, 255, 136, .5); } 100% { box-shadow: 0 0 22px rgba(57, 255, 136, .06); } }
+.card-h { display: flex; align-items: center; gap: 10px; }
+.card-h b { font-size: 16px; }
+.card-h small { display: block; font-size: 11.5px; color: var(--meta); }
+.clock { margin-left: auto; font-family: var(--pixel); font-size: 10px; color: var(--green); font-variant-numeric: tabular-nums; }
+.card ul { margin: 10px 0 0; padding: 8px 0 0; list-style: none; border-top: 1px solid var(--line); }
+.card li { display: flex; gap: 8px; font-size: 12px; color: var(--meta); padding: 2px 0; }
+.card li time { flex: none; width: 42px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.empty { padding: 14px; border-radius: 12px; border: 1px dashed var(--line); color: var(--dim); font-size: 13px; }
+
+.who { display: flex; flex-direction: column; gap: 4px; }
+.row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; background: var(--panel); border: 1px solid transparent; cursor: pointer; text-align: left; width: 100%; }
+.row.sel { border-color: rgba(5, 217, 232, .55); }
+.row b { font-size: 13.5px; }
+.row .st { margin-left: auto; font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.row.in .st { color: var(--green); }
+.row .dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, .15); }
+.row.in .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+.feedh { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 10px; }
+.chip { padding: 4px 10px; font-size: 12px; color: var(--meta); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; }
+.chip.on { color: #0a0414; background: var(--cyan); border-color: var(--cyan); }
+.feed { display: flex; flex-direction: column; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
+.ev { display: grid; grid-template-columns: 74px 22px minmax(0, 1fr); align-items: center; gap: 10px; padding: 8px 12px; font-size: 13px; }
+.ev + .ev { border-top: 1px solid rgba(255, 255, 255, .05); }
+.ev time { font-size: 11.5px; color: var(--dim); text-align: right; font-variant-numeric: tabular-nums; }
+.ev b { color: #fff; }
+.ev span { color: var(--meta); min-width: 0; }
+.ev .av, .ev.in .av, .ev.out .av { color: #0a0414; }
+.ev em { font-style: normal; color: var(--cyan); }
+.ev.in span { color: var(--green); }
+.ev.in b { color: var(--green); }
+.ev.out span { color: var(--dim); }
+.ev.new { animation: flash 2.4s ease-out; }
+@keyframes flash { 0%, 25% { background: rgba(57, 255, 136, .16); } 100% { background: transparent; } }
+.gap { padding: 5px 12px; font-size: 10.5px; color: var(--dim); background: rgba(0, 0, 0, .25); }
+.more { margin-top: 8px; padding: 0; font-size: 12.5px; color: var(--cyan); background: none; border: 0; cursor: pointer; }
+.note { margin-top: 26px; font-size: 11.5px; color: var(--dim); max-width: 720px; }
+
+.gate { max-width: 360px; margin: 18vh auto 0; display: flex; flex-direction: column; gap: 12px; }
+.gate h1 { margin: 0 0 6px; font-family: var(--pixel); font-weight: normal; font-size: 14px; color: var(--green); }
+.gate p { margin: 0; color: var(--meta); font-size: 13px; }
+.gate input { padding: 12px; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.gate button { padding: 12px; font-family: var(--pixel); font-size: 10px; color: #0a0414; background: var(--green); border: 0; border-radius: 10px; cursor: pointer; }
+.gate .err { color: #ff5c8a; font-size: 12.5px; min-height: 1em; }
+@media (prefers-reduced-motion: reduce) { .beat, .card.fresh, .ev.new { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+(() => {
+  const WORKER = "https://liftr-ai.jhs797.workers.dev";
+  const KEY_STORE = "brochiefs_live_key";
+  const COLORS = ["#ff2079", "#ffe45e", "#c13cff", "#ffd23f", "#39ff88", "#ff5c5c", "#1ab8cc", "#05d9e8", "#3df58a", "#ff9d3d"];
+  const SHOWN = { Conlan: "Connie" };
+  const SCREENS = { picks: "Picks", scoreboard: "Scores", history: "History", trivia: "Trivia", home: "Home", roster: "the roster", splash: "the splash screen" };
+  const app = document.getElementById("app");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  let key = ""; try { key = localStorage.getItem(KEY_STORE) || ""; } catch {}
+
+  const st = { room: null, visits: null, games: {}, seen: null, fresh: new Set(), arrived: new Set(), filter: null, all: false, at: 0, ok: true, alert: false, wake: null, names: [] };
+
+  // --- Formatting --------------------------------------------------------
+  const name = (n) => SHOWN[n] || n;
+  const color = (n) => COLORS[[...n].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % COLORS.length];
+  const av = (n, sm) => `<span class="av${sm ? " sm" : ""}" style="--c:${color(n)}">${esc(name(n)[0])}</span>`;
+  const clock = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? `${h}:${String(m).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${m}:${String(s % 60).padStart(2, "0")}`; };
+  const dur = (ms) => ms < 60000 ? `${Math.max(1, Math.round(ms / 1000))}s` : ms < 3600000 ? `${Math.round(ms / 60000)}m` : `${(ms / 3600000).toFixed(1)}h`;
+  const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
+  const hms = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+  const hm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).replace(/\s?[AP]M$/i, "");
+  const gameName = (id) => { const g = st.games[String(id)]; return g ? `${g.awayShort || g.away} @ ${g.homeShort || g.home}` : ""; };
+  const nameFrom = (slug) => st.names.find((n) => n.toLowerCase() === slug) || slug.charAt(0).toUpperCase() + slug.slice(1);
+
+  // What one feed entry says: the action, and a detail in cyan.
+  function says(e, feed) {
+    const g = gameName(e.d);
+    const fixed = {
+      in: ["came in", e.d === "home" ? "home screen app" : "browser"], out: ["left", `after ${dur(Number(e.d) || 0)}`],
+      "game-info": ["opened game info", g], gamecast: ["opened the live game cast", g], "game-final": ["opened a final recap", g],
+      "scorebug-open": ["tapped a score", g], "ranking-expand": ["opened a leaderboard card", e.d ? name(e.d) : ""],
+      "path-share": ["shared a Path to Win"], "path-intro": ["saw the Path to Win intro"],
+      "wp-player": ["opened a win % breakdown"], "wp-explain": ["read how win % works"], h2h: ["opened head to head"],
+      "pot-open": ["opened the pot"], "all-picks-open": ["opened everyone's picks"], "pick-saved": ["saved a pick"], "pick-updated": ["changed a pick"],
+      sim: ["ran a game sim"], "grid-card": ["opened a grid card"],
+    };
+    if (e.k === "path-run" || e.k === "path-card") {
+      const of = feed.find((x) => x.n === e.n && /^path-of-/.test(x.k) && Math.abs(x.at - e.at) < 3000);
+      return [e.k === "path-run" ? "ran Path to Win" : "opened a Path to Win card", of ? `for ${name(nameFrom(of.k.slice(8)))}` : ""];
+    }
+    if (fixed[e.k]) return fixed[e.k];
+    if (SCREENS[e.k]) return [`went to ${SCREENS[e.k]}`];
+    return [e.k.replace(/-/g, " ")];
+  }
+  // path-of-x rides along with path-run and path-card; it isn't its own line.
+  const visible = (feed) => feed.filter((e) => !/^path-of-/.test(e.k));
+
+  // --- Data --------------------------------------------------------------
+  const get = (path) => fetch(`${WORKER}${path}${path.includes("?") ? "&" : "?"}key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" });
+  async function poll() {
+    try {
+      const res = await get("/presence");
+      if (res.status === 403) { try { localStorage.removeItem(KEY_STORE); } catch {} gate("That key didn't work."); return; }
+      if (!res.ok) throw new Error(res.status);
+      const room = await res.json();
+      const ids = new Set(room.feed.map((e) => `${e.n}|${e.at}|${e.k}`));
+      if (st.seen) {
+        for (const id of ids) if (!st.seen.has(id)) st.fresh.add(id);
+        for (const [n, p] of Object.entries(room.people)) if (p.in && !st.room?.people?.[n]?.in) { st.arrived.add(n); notify(n); }
+      }
+      st.seen = ids; st.room = room; st.at = Date.now(); st.ok = true;
+      for (const n of Object.keys(room.people)) if (!st.names.includes(n)) st.names.push(n);
+    } catch { st.ok = false; }
+    if (st.gated) return;
+    render();
+    setTimeout(() => { st.fresh.clear(); st.arrived.clear(); }, 2600);
+    clearTimeout(poll.t);
+    poll.t = setTimeout(poll, document.hidden ? 30000 : 3000);
+  }
+  async function slow() {
+    // Last open for everyone, and this week's games for their names.
+    try { const r = await get("/visit"); if (r.ok) { st.visits = await r.json(); for (const n of Object.keys(st.visits.visits || {})) if (!st.names.includes(n)) st.names.push(n); } } catch {}
+    try { const r = await fetch(`${WORKER}/games?t=${Date.now()}`, { cache: "no-store" }); if (r.ok) { const s = await r.json(); st.games = Object.fromEntries((s.games || []).map((g) => [String(g.id), g])); } } catch {}
+    if (st.gated) return;
+    render();
+    clearTimeout(slow.t);
+    slow.t = setTimeout(slow, 60000);
+  }
+  function lastSeen(n) {
+    const v = st.visits, p = st.room?.people?.[n];
+    return Math.max(p?.last || 0, ...((v?.visits?.[n] || []).map((x) => x.at || 0)), ...((v?.sessions?.[n] || []).map((x) => (x.at || 0) + (x.dur || 0))));
+  }
+
+  // --- Alerts and screen ---------------------------------------------------
+  function notify(n) {
+    if (!st.alert || !document.hidden || !("Notification" in window) || Notification.permission !== "granted") return;
+    try { new Notification(`${name(n)} is in`, { body: "Brochiefs", tag: `in-${n}`, icon: "../icons/icon-192.png" }); } catch {}
+  }
+  async function keepAwake() {
+    if (document.hidden || st.wake || !navigator.wakeLock) return;
+    try { st.wake = await navigator.wakeLock.request("screen"); st.wake.addEventListener("release", () => { st.wake = null; }); } catch {}
+  }
+
+  // --- Render ------------------------------------------------------------
+  function render() {
+    if (st.gated) return;
+    const room = st.room;
+    if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
+    const now = Date.now(), feed = room.feed;
+    const inNow = Object.entries(room.people).filter(([, p]) => p.in).sort((a, b) => a[1].since - b[1].since);
+    document.title = inNow.length ? `(${inNow.length} in) Brochiefs Live` : "Brochiefs Live";
+    const cards = inNow.map(([n, p]) => {
+      const mine = visible(feed.filter((e) => e.n === n && e.at >= p.since - 1000)).filter((e) => e.k !== "in").slice(0, 4);
+      return `<div class="card${st.arrived.has(n) ? " fresh" : ""}">
+        <div class="card-h">${av(n)}<div><b>${esc(name(n))}</b><small>${p.screen && SCREENS[p.screen] ? `on ${esc(SCREENS[p.screen])}` : "in the app"} · ${p.app === "home" ? "home screen app" : "browser"}</small></div><span class="clock" data-since="${p.since}">${clock(now - p.since)}</span></div>
+        ${mine.length ? `<ul>${mine.map((e) => { const [a, d] = says(e, feed); return `<li><time>${esc(hm(e.at))}</time><span>${esc(a)}${d ? ` · ${esc(d)}` : ""}</span></li>`; }).join("")}</ul>` : ""}
+      </div>`;
+    }).join("");
+    const lastIn = st.names.map((n) => [n, lastSeen(n)]).filter(([, t]) => t).sort((a, b) => b[1] - a[1])[0];
+    const everyone = st.names.slice().sort((a, b) => (room.people[b]?.in ? 1 : 0) - (room.people[a]?.in ? 1 : 0) || lastSeen(b) - lastSeen(a)).map((n) => {
+      const p = room.people[n], t = lastSeen(n);
+      return `<button type="button" class="row${p?.in ? " in" : ""}${st.filter === n ? " sel" : ""}" data-n="${esc(n)}">${av(n, true)}<b>${esc(name(n))}</b><span class="st">${p?.in ? "in now" : t ? ago(t) : "not seen"}</span><i class="dot"></i></button>`;
+    }).join("");
+    const shownFeed = visible(feed).filter((e) => !st.filter || e.n === st.filter);
+    const LIMIT = st.all ? 400 : 60;
+    let prev = null;
+    const rows = shownFeed.slice(0, LIMIT).map((e) => {
+      const [a, d] = says(e, feed), id = `${e.n}|${e.at}|${e.k}`;
+      const gap = prev && prev - e.at > 20 * 60000 ? `<div class="gap">${esc(dur(prev - e.at))} quiet</div>` : "";
+      prev = e.at;
+      return `${gap}<div class="ev ${e.k === "in" ? "in" : e.k === "out" ? "out" : ""}${st.fresh.has(id) ? " new" : ""}"><time>${esc(hms(e.at))}</time>${av(e.n, true)}<span><b>${esc(name(e.n))}</b> ${esc(a)}${d ? ` <em>${esc(d)}</em>` : ""}</span></div>`;
+    }).join("");
+    const people = [...new Set(visible(feed).map((e) => e.n))];
+    app.innerHTML = `
+      <header class="${st.ok ? "" : "stale"}">
+        <div class="brand"><i class="beat"></i><span class="b1">BROCHIEFS</span><span class="b2">LIVE</span></div>
+        <span class="age" id="age">${st.ok ? "updated just now" : "can't reach the server, retrying"}</span>
+        <div class="tools">
+          ${"Notification" in window ? `<button type="button" class="tool${st.alert ? " on" : ""}" data-alert="1">${st.alert ? "Alerts on" : "Alert me"}</button>` : ""}
+          <button type="button" class="tool" data-signout="1">Sign out</button>
+        </div>
+      </header>
+      <h2>IN NOW <b>${inNow.length}</b></h2>
+      ${cards ? `<div class="now">${cards}</div>` : `<div class="empty">Nobody's in right now.${lastIn ? ` Last in: <b>${esc(name(lastIn[0]))}</b>, ${esc(ago(lastIn[1]))}.` : ""}</div>`}
+      <div class="grid">
+        <section><h2>EVERYONE</h2><div class="who">${everyone || `<div class="empty">Loading…</div>`}</div></section>
+        <section><h2>ACTIVITY <span>last 24 hours</span></h2>
+          ${people.length > 1 ? `<div class="feedh"><button type="button" class="chip${st.filter ? "" : " on"}" data-f="">Everyone</button>${people.map((n) => `<button type="button" class="chip${st.filter === n ? " on" : ""}" data-f="${esc(n)}">${esc(name(n))}</button>`).join("")}</div>` : ""}
+          ${rows ? `<div class="feed">${rows}</div>` : `<div class="empty">Nothing yet. Activity shows here as people use the app.</div>`}
+          ${shownFeed.length > LIMIT || st.all ? `<button type="button" class="more" data-all="1">${st.all ? "Show less" : `Show all ${shownFeed.length}`}</button>` : ""}
+        </section>
+      </div>
+      <p class="note">Someone is in while their app is on screen; they drop out when they put it away, or about a minute after their phone goes quiet. Shows screens and features used, never which team anyone picked. Jake isn't tracked.</p>`;
+  }
+
+  // Clocks and the "updated" line tick every second between polls.
+  setInterval(() => {
+    const a = document.getElementById("age");
+    if (a && st.ok && st.at) a.textContent = `updated ${Math.round((Date.now() - st.at) / 1000)}s ago`;
+    document.querySelectorAll("[data-since]").forEach((x) => { x.textContent = clock(Date.now() - Number(x.dataset.since)); });
+  }, 1000);
+
+  app.addEventListener("click", async (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.f !== undefined) { st.filter = b.dataset.f || null; render(); return; }
+    if (b.dataset.n) { st.filter = st.filter === b.dataset.n ? null : b.dataset.n; render(); return; }
+    if (b.dataset.all) { st.all = !st.all; render(); return; }
+    if (b.dataset.signout) { try { localStorage.removeItem(KEY_STORE); } catch {} location.reload(); return; }
+    if (b.dataset.alert) {
+      if (!st.alert && Notification.permission !== "granted") { try { await Notification.requestPermission(); } catch {} }
+      st.alert = !st.alert && Notification.permission === "granted";
+      render();
+    }
+  });
+
+  function gate(err = "") {
+    st.gated = true;
+    clearTimeout(poll.t); clearTimeout(slow.t);
+    app.innerHTML = `<form class="gate"><h1>BROCHIEFS LIVE</h1><p>Enter the admin key.</p><input type="password" autocomplete="current-password" placeholder="Admin key" required><button>GO LIVE</button><div class="err">${esc(err)}</div></form>`;
+    app.querySelector("form").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      key = app.querySelector("input").value.trim();
+      try { localStorage.setItem(KEY_STORE, key); } catch {}
+      start();
+    });
+  }
+  function start() { st.gated = false; st.seen = null; st.room = null; render(); poll(); slow(); keepAwake(); }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && key) { keepAwake(); poll(); } });
+  if (key) start(); else gate();
+})();
+</script>
+</body>
+</html>
