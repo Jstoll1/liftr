@@ -3209,7 +3209,6 @@ function pathSeenMap() { try { const v = JSON.parse(localStorage.getItem(PATH_SE
 function pathSeen(name) { return pathSeenMap()[name] === finalsSig(); }
 function markPathSeen(name) {
   try { const v = pathSeenMap(); v[name] = finalsSig(); localStorage.setItem(PATH_SEEN_KEY(), JSON.stringify(v)); } catch {}
-  document.querySelectorAll(".rd-path-btn").forEach((b) => { if (b.dataset.path === name) b.querySelector(".rd-path-new")?.remove(); });
 }
 // A result the path needs that pays this manager nothing is there to stop
 // someone: the rival it costs most, the one highest in the standings whose
@@ -3518,7 +3517,7 @@ function playerBreakdownHtml(name, state, results, live) {
     const sw = wd.swing;
     const why = wd.alive === false ? outReason(name, results) : "";
     const canPath = wd.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((row) => row.some((p) => p?.hidden));
-    wpRow = `<div class="rd-wp"><span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN${pathSeen(name) ? "" : `<i class="rd-path-new">NEW</i>`}</button>` : ""}</span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
+    wpRow = `<div class="rd-wp"><span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
   }
   return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rows}${tbRow}${summary}</div>`;
 }
