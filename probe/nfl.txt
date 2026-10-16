@@ -1,1 +1,10 @@
-/insights/picks?week=6&game=1
+time:/games
+time:/weeks
+time:/picks?week=6
+time:/live?week=6
+time:/season
+time:/avatars
+time:/auth
+time:/roster
+time:/app-control
+time:/insights?week=6

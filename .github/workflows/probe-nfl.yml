@@ -38,6 +38,10 @@ jobs:
                 grep -oi 'pick[a-z]*"[^,]\{0,120\}' /tmp/page.html | head -8
                 grep -o '"__espnfitt__"\|window\[.__espnfitt__.\]' /tmp/page.html | head -2
                 head -c 1500 /tmp/page.html | tr -d '\n' | cut -c1-1500 ;;
+              # time:/route prints only how long the NFL Worker took.
+              time:*)
+                r="${p#time:}"
+                for i in 1 2; do curl -sS -o /tmp/t.out --max-time 60 -w "  try $i: %{http_code} %{time_total}s %{size_download}B\n" "https://liftr-nfl.jhs797.workers.dev$r"; done ;;
               *)
                 curl -sS --max-time 60 "https://liftr-nfl.jhs797.workers.dev$p" | head -c 6000 ;;
             esac
