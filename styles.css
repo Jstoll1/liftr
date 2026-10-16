@@ -6263,6 +6263,7 @@ button.sc-luck:hover { filter: brightness(1.2); }
 .pr-gcur { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: #39ff88; text-shadow: 0 0 8px rgba(57, 255, 136, .7); animation: pr-blink .3s steps(2) infinite; pointer-events: none; }
 .pr-line.g.typing.wipe .pr-gcur { left: calc(100% - 12px); transition: left .38s steps(22, end); animation: none; }
 .pr-line.g:not(.typing) .pr-gcur { display: none; }
+.pr-term.typing .pr-cursor { visibility: hidden; }
 .pr-gl { display: flex; align-items: center; }
 .pr-gl .pr-logo { width: 18px; height: 18px; object-fit: contain; }
 .pr-gl .pr-logo + .pr-logo { margin-left: 2px; }
