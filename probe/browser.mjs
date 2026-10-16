@@ -9,7 +9,9 @@ const ctx = await b.newContext({ viewport: { width: 430, height: 932 }, userAgen
 await ctx.route(/liftr-nfl\.jhs797\.workers\.dev/, (r) => r.request().method() === "GET" ? r.continue() : r.fulfill({ status: 200, body: "{}" }));
 const p = await ctx.newPage();
 const reqs = [];
-p.on("requestfinished", async (q) => { const t = q.timing(); reqs.push({ u: q.url().replace(/\?.*/, "").replace(/^https?:\/\//, "").slice(0, 90), ms: Math.round(t.responseEnd) }); });
+const T0 = Date.now();
+p.on("request", (q) => { q.__at = Date.now() - T0; });
+p.on("requestfinished", async (q) => { const t = q.timing(); const r = await q.response().catch(() => null); reqs.push({ at: q.__at, u: q.url().replace(/&t=\d+/, "").replace(/^https?:\/\//, "").slice(0, 110), ms: Math.round(t.responseEnd), st: r?.status() }); });
 p.on("requestfailed", (q) => reqs.push({ u: "FAILED " + q.url().slice(0, 90), ms: -1 }));
 await p.addInitScript(() => {
   localStorage.setItem("brochiefs_me_v1", "Jake"); localStorage.setItem("brochiefs_rules_seen_v1", "1"); localStorage.setItem("brochiefs_splash_seen_v1", String(Date.now()));
@@ -28,7 +30,7 @@ await p.waitForTimeout(1500);
 const timing = await p.evaluate(() => ({ long: window.__long, total: window.__long.reduce((s, x) => s + x[1], 0) }));
 console.log(`screen up after ${shown} ms; leaderboard with win% after ${board} ms more`);
 console.log(`long script tasks: ${timing.long.length}, ${timing.total} ms total; biggest: ${JSON.stringify(timing.long.sort((a, b) => b[1] - a[1]).slice(0, 8))}`);
-console.log("slowest requests:"); for (const r of reqs.sort((a, b) => b.ms - a.ms).slice(0, 14)) console.log(`  ${String(r.ms).padStart(6)} ms  ${r.u}`);
+console.log("data requests in order:"); for (const r of reqs.filter((x) => !/espncdn|fonts|zgo|\.(js|css|png|webp|json)(\?|$)/.test(x.u) || /espn\.com|workers\.dev/.test(x.u)).sort((a, b) => a.at - b.at)) console.log(`  +${String(r.at).padStart(5)}ms ${String(r.ms).padStart(5)}ms ${r.st ?? "-"} ${r.u}`);
 // Where the time goes inside the win chance math.
 const prof = await p.evaluate(() => { try { const t = performance.now(); winChanceMemo = { key: "", out: null }; const ctx = window.__wpCtx || {}; weekWinChances(ctx.cloudPicks || {}, ctx.results || {}, latestLive || {}); return Math.round(performance.now() - t); } catch (e) { return "err " + e.message; } });
 console.log(`one weekWinChances run: ${prof} ms; live games: ${await p.evaluate(() => Object.values(latestLive || {}).filter((l) => l && l.state === "in").length)}`);
