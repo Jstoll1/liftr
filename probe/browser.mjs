@@ -12,7 +12,8 @@ const reqs = [];
 const T0 = Date.now();
 p.on("request", (q) => { q.__at = Date.now() - T0; });
 p.on("requestfinished", async (q) => { const t = q.timing(); const r = await q.response().catch(() => null); reqs.push({ at: q.__at, u: q.url().replace(/&t=\d+/, "").replace(/^https?:\/\//, "").slice(0, 110), ms: Math.round(t.responseEnd), st: r?.status() }); });
-p.on("requestfailed", (q) => reqs.push({ u: "FAILED " + q.url().slice(0, 90), ms: -1 }));
+p.on("requestfailed", (q) => reqs.push({ at: q.__at, u: "FAILED (" + (q.failure()?.errorText || "?") + ") " + q.url().slice(0, 100), ms: -1 }));
+p.on("console", (m) => { if (/espn|fail|cors|refused/i.test(m.text())) console.log("console:", m.type(), m.text().slice(0, 300)); });
 await p.addInitScript(() => {
   localStorage.setItem("brochiefs_me_v1", "Jake"); localStorage.setItem("brochiefs_rules_seen_v1", "1"); localStorage.setItem("brochiefs_splash_seen_v1", String(Date.now()));
   window.__long = [];

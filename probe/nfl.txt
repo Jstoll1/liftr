@@ -1,3 +1,1 @@
-headers:https://nfl.brochiefs.com https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=20261015&limit=300
-headers:https://brochiefs.com https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=20261015&groups=80&limit=300
-headers:https://nfl.brochiefs.com https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard
+browser:https://nfl.brochiefs.com/
