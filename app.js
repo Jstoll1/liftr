@@ -3388,88 +3388,11 @@ function stopsWho(g, res, name, standing, all = lastGoodCloudPicks || {}) {
   });
   return hurt.sort((a, b) => (standing[b] || 0) - (standing[a] || 0))[0] || null;
 }
-// The run's finish: each needed game in the terminal lifts out as a copy
-// and glides, one after another, onto its row in the card; the run window
-// fades away beneath, and the win, the odds and the buttons pop in last.
-function assemblePathCard(m, from, run) {
-  const card = m.querySelector(".pc-card");
-  const rows = [...m.querySelectorAll(".pc-row")];
-  const tail = [...m.querySelectorAll(".pc-free, .pc-tie, .pc-win, .pc-foot")];
-  if (!card.animate || matchMedia("(prefers-reduced-motion: reduce)").matches || rows.length !== from.length) { run.remove(); return; }
-  const EASE = "cubic-bezier(.22, 1, .36, 1)";
-  m.classList.add("assembling");
-  rows.forEach((r) => { r.style.opacity = "0"; });
-  tail.forEach((t) => { t.style.opacity = "0"; });
-  // Lift copies of the needed rows first, at exactly where they sit, so
-  // they float free of the run window as it fades.
-  const ghosts = from.map((src) => {
-    const r = src.getBoundingClientRect();
-    const g = src.cloneNode(true);
-    g.classList.add("pr-ghost");
-    Object.assign(g.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
-    document.body.appendChild(g);
-    return { g, r };
-  });
-  // Every landing spot is measured now, before the card starts to move.
-  const targets = rows.map((row) => row.getBoundingClientRect());
-  // One header throughout: the run's title bar lifts off and glides onto
-  // the card's, which only shows once it lands.
-  const barSrc = run.querySelector(".pr-bar"), barDst = card.querySelector(".pr-bar");
-  let barFlight = Promise.resolve();
-  if (barSrc && barDst) {
-    const r = barSrc.getBoundingClientRect(), t = barDst.getBoundingClientRect();
-    const g = barSrc.cloneNode(true);
-    g.classList.add("pr-ghost-bar");
-    g.querySelectorAll("button").forEach((b) => b.remove());
-    Object.assign(g.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
-    document.body.appendChild(g);
-    barSrc.style.visibility = "hidden";
-    barDst.style.opacity = "0";
-    const kx = t.width / r.width, ky = t.height / r.height;
-    barFlight = g.animate([
-      { transform: "translate(0, 0) scale(1, 1)" },
-      { transform: `translate(${t.left - r.left}px, ${t.top - r.top}px) scale(${kx}, ${ky})` },
-    ], { duration: 560, easing: "cubic-bezier(.22, 1, .36, 1)", fill: "forwards" }).finished.then(() => {
-      barDst.style.opacity = "";
-      // Hand over a frame later, so a header is always on screen.
-      requestAnimationFrame(() => requestAnimationFrame(() => g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: "forwards" }).finished.then(() => g.remove(), () => g.remove())));
-    }, () => g.remove());
-  }
-  // One dim behind it all: the card's. The run window fades out alone,
-  // then the card rises in a beat later, so the two never cross.
-  run.style.background = "transparent";
-  const win = run.querySelector(".pr-win") || run;
-  win.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: "ease-out", fill: "forwards" }).finished.then(() => run.remove(), () => run.remove());
-  // The card's body fades up under the arriving header; no movement, so
-  // the rows' landing spots stay true.
-  card.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 160, easing: "ease-out", fill: "backwards" });
-  // Each copy glides onto its row, scaled evenly to the card's width and
-  // centred on the row, then hands over to the real row.
-  const flights = ghosts.map(({ g, r }, i) => {
-    const t = targets[i];
-    const k = t.width / r.width;
-    const dx = t.left - r.left, dy = t.top + (t.height - r.height * k) / 2 - r.top;
-    return g.animate([
-      { transform: "translate(0, 0) scale(1)", opacity: 1 },
-      { transform: `translate(${dx}px, ${dy}px) scale(${k})`, opacity: 1 },
-    ], { duration: 620, delay: 120 + i * 70, easing: EASE, fill: "forwards" }).finished.then(() => {
-      rows[i].style.opacity = "";
-      rows[i].animate([{ opacity: 0 }, { opacity: 1 }], { duration: 140, easing: "linear" });
-      g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: "linear", fill: "forwards" }).finished.then(() => g.remove(), () => g.remove());
-    }, () => g.remove());
-  });
-  Promise.all([...flights, barFlight]).then(() => {
-    // "assembling" stays: removing it would replay the card's open fade from
-    // zero, a one-frame blink right at the finish.
-    tail.forEach((t, k) => t.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 360, delay: 60 + k * 90, easing: EASE, fill: "backwards" }).finished.then(() => { t.style.opacity = ""; }, () => { t.style.opacity = ""; }));
-    tail.forEach((t) => { t.style.opacity = ""; });
-  });
-}
 // Once a path has been watched, the button opens this instead: a small
 // card with only the games that must go a certain way, the team's logo,
 // the result, and what it pays, then the win at the bottom.
-function openPathCard(name, { from = null, run = null } = {}) {
-  document.querySelectorAll(".pr-screen").forEach((el) => { if (el !== run) el.remove(); });
+function openPathCard(name) {
+  document.querySelector(".pr-screen")?.remove();
   const sc = pathScenario(name);
   const all = lastGoodCloudPicks || {};
   const me = shown(name).toUpperCase();
@@ -3504,7 +3427,6 @@ function openPathCard(name, { from = null, run = null } = {}) {
   m.addEventListener("click", (e) => { if (e.target === m) close(); });
   m.querySelector(".pc-replay")?.addEventListener("click", () => openPathRun(name, true));
   m.querySelector(".pc-share")?.addEventListener("click", () => { track("path-share", { event: true }); sharePath(name, sc); });
-  if (from && run) assemblePathCard(m, from, run);
   let y0 = null, dy = 0;
   card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
   card.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) card.style.transform = `translateY(${dy}px)`; }, { passive: true });
@@ -3651,12 +3573,55 @@ function openPathRun(name, replay = false) {
     markPathSeen(name);
     m.querySelector(".pr-skip")?.remove();
     m.querySelector(".pr-cursor")?.remove();
-    // The finish: games that could go either way fade out, then the ones
-    // that matter lift out of the terminal and gather into the path card.
-    lines.querySelectorAll(".pr-line.g.free").forEach((el) => el.classList.add("fading"));
-    await wait(fast ? 0 : 450);
+    // The finish, in place: everything but the games that matter folds
+    // away, the window closes up around them, and the result fades in at
+    // the bottom. One window throughout, nothing flying across it.
+    const top = Math.max(...Object.values(pts)), tied = MANAGERS.filter((n) => pts[n] === top).length > 1;
+    const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
+    const free = sc.all.length - sc.need.length;
+    const foot = document.createElement("div");
+    foot.className = "pr-end";
+    foot.innerHTML = `${free ? `<div class="pc-free">The other ${free} game${free === 1 ? "" : "s"} can go either way.</div>` : ""}
+      ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : ""}
+      <div class="pc-win">${escapeCd(me)} WINS THE WEEK</div>
+      <div class="pc-foot"><span>${oneIn ? (oneIn > 10000 ? "Rarer than 1 in 10,000" : `About 1 in ${oneIn.toLocaleString()}`) : ""}</span><span class="pc-btns"><button type="button" class="pc-share">↗ Share</button><button type="button" class="pc-replay">▶ Replay</button></span></div>`;
+    foot.querySelector(".pc-replay").addEventListener("click", () => openPathRun(name, true));
+    foot.querySelector(".pc-share").addEventListener("click", () => { track("path-share", { event: true }); sharePath(name, sc); });
+    const folding = [m.querySelector(".pr-meter"), m.querySelector(".pr-stand"), ...lines.querySelectorAll(".pr-line.g.free, .pr-line.cmd, .pr-line.dim")].filter(Boolean);
+    const still = fast || matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (still) {
+      folding.forEach((el) => el.remove());
+      lines.appendChild(foot);
+      m.classList.add("ended");
+      term.scrollTop = 0;
+      return;
+    }
+    // 1. Fold: each piece eases from its own height to nothing.
+    const winEl = m.querySelector(".pr-win");
+    const h0 = winEl.getBoundingClientRect().height;
+    m.classList.add("ending");
+    winEl.style.height = `${h0}px`;
+    term.scrollTo({ top: 0, behavior: "smooth" });
+    folding.forEach((el) => { el.style.maxHeight = `${el.scrollHeight}px`; });
+    void winEl.offsetHeight;
+    folding.forEach((el) => el.classList.add("fold"));
+    await new Promise((r) => setTimeout(r, 480));
     if (!alive()) return;
-    openPathCard(name, { from: [...lines.querySelectorAll(".pr-line.g.need")], run: m });
+    folding.forEach((el) => el.remove());
+    // 2. Close up: the window eases to fit what is left plus the result.
+    foot.style.opacity = "0";
+    lines.appendChild(foot);
+    term.scrollTop = 0;
+    const bar = m.querySelector(".pr-bar");
+    const cs = getComputedStyle(term);
+    const want = bar.getBoundingClientRect().height + lines.scrollHeight + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + 2;
+    const h1 = Math.min(want, h0);
+    winEl.animate([{ height: `${h0}px` }, { height: `${h1}px` }], { duration: 460, easing: "cubic-bezier(.22, 1, .36, 1)" });
+    winEl.style.height = `${h1}px`;
+    // 3. The result fades in as it settles.
+    foot.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 380, delay: 240, easing: "cubic-bezier(.22, 1, .36, 1)", fill: "backwards" }).finished.then(() => { foot.style.opacity = ""; }, () => { foot.style.opacity = ""; });
+    foot.style.opacity = "";
+    m.classList.add("ended");
   })();
   track("path-run", { event: true });
   noteUse(`path-of-${name}`);
