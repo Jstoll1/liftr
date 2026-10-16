@@ -4095,12 +4095,12 @@ function weekWinChances(cloudPicks, results, live) {
         const p = picks[i][k];
         if (!p) continue;
         const winner = p.mode === "SU" ? o.suWinner : o.atsWinner;
-        const hit = !!(winner && winner === (p.hidden ? (Math.random() < 0.5 ? m.g.home : m.g.away) : p.team));
+        const hit = !!(winner && winner === (p.hidden ? (rnd() < 0.5 ? m.g.home : m.g.away) : p.team));
         if (hit) score[i] += p.pts;
         hitThis[i][k] = hit;
       }
     }
-    for (let i = 0; i < MANAGERS.length; i++) if (sealedTb[i]) guesses[i] = Math.round(tbExpected + (Math.random() * 2 - 1) * 10);
+    for (let i = 0; i < MANAGERS.length; i++) if (sealedTb[i]) guesses[i] = Math.round(tbExpected + (rnd() * 2 - 1) * 10);
     let best = -1, bestDiff = Infinity, lead = [];
     for (let i = 0; i < MANAGERS.length; i++) {
       const diff = guesses[i] === null || tbTotal === null ? Infinity : Math.abs(guesses[i] - tbTotal);
