@@ -53,8 +53,9 @@ const out = await p.evaluate((who) => {
   if (typeof swingMatchupHtml === "function") {
     const box = document.createElement("div");
     box.innerHTML = playerBreakdownHtml(who, { picks: picks[who]?.picks || {}, tiebreaker: picks[who]?.tiebreaker ?? "" }, results0, live0);
+    L.push("header: " + box.querySelector(".rd-head span:last-child")?.textContent);
     L.push("card: " + [...box.querySelectorAll(".rd-wp > span")].map((e) => e.textContent.replace(/\s+/g, " ").trim()).join(" | "));
-    L.push("sway: " + [...box.querySelectorAll(".rd-row")].map((r) => { const n = r.querySelector(".rd-sway-n"); return n ? `${r.querySelector(".rd-gline")?.textContent.trim().split(" ")[0]} ${n.textContent}` : null; }).filter(Boolean).join(", "));
+    L.push("sway: " + [...box.querySelectorAll(".rd-row")].map((r) => { const b = r.querySelector(".rd-sway"); return b ? `${r.querySelector(".rd-gline")?.textContent.trim().split(" ")[0]} ${b.querySelectorAll("i.on").length}/5${b.classList.contains("top") ? " top" : ""}` : null; }).filter(Boolean).join(", "));
   } else L.push("card: old build still served");
   return L.join("\n");
 }, who);
