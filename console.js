@@ -153,7 +153,7 @@
     h2h: "Head to head", "wp-player": "Win % breakdown", "wp-explain": "How win % works", sim: "Game sim",
     "grid-card": "Grid card", "pot-open": "The pot", "all-picks-open": "Everyone's picks",
     "ranking-expand": "Leaderboard row", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
-    "path-run": "Path to win (full run)", "path-card": "Path to win (card)",
+    "path-run": "Path to win (full run)", "path-card": "Path to win (card)", "path-share": "Path to win (shared)",
   };
   const ldFeat = (k) => LD_FEATURES[String(k).replace(/-g\d+$/, "")] || null;
 

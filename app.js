@@ -3198,6 +3198,105 @@ function pathScenario(name) {
   const order = new Map(gamesByKickoff().map((g, k) => [g.id, k]));
   return { ...r.path, all: [...r.path.all].sort((a, b) => order.get(a.g.id) - order.get(b.g.id)), guess: ctx.guesses[i], tbGame: ctx.tbGame };
 }
+// The chance this manager wins the week with some games already decided
+// the way the path says, the rest played out as in the week's simulation.
+// Drives the meter that climbs as the run plays.
+function pathChance(name, fixed, tbTotal = null, N = 1500) {
+  const ctx = winChanceMemo.ctx, i = MANAGERS.indexOf(name);
+  if (!ctx || i < 0) return null;
+  const rnd = seededRandom(`${name}|${[...fixed.keys()].join(",")}`);
+  const M = MANAGERS.length, score = new Array(M);
+  let wins = 0;
+  for (let s = 0; s < N; s++) {
+    score.fill(0);
+    let tb = null;
+    ctx.models.forEach((m, k) => {
+      let res = m.fixed || fixed.get(m.g.id);
+      if (!res) {
+        let h = m.curH, a = m.curA;
+        const n = poissonRand(m.lam, rnd);
+        for (let q = 0; q < n; q++) { const v = rnd() < 0.6 ? 7 : 3; if (rnd() < m.pHome) h += v; else a += v; }
+        if (h === a) { const v = rnd() < 0.6 ? 7 : 3; if (rnd() < m.pHome) h += v; else a += v; }
+        res = { awayScore: a, homeScore: h };
+      }
+      if (m.g === ctx.tbGame) tb = !m.fixed && fixed.has(m.g.id) && tbTotal != null ? tbTotal : res.awayScore + res.homeScore;
+      const o = resultOutcome(m.g, res);
+      for (let j = 0; j < M; j++) {
+        const p = ctx.picks[j][k];
+        if (!p || p.hidden) continue;
+        const w = p.mode === "SU" ? o.suWinner : o.atsWinner;
+        if (w && w === p.team) score[j] += p.pts;
+      }
+    });
+    const top = Math.max(...score);
+    if (score[i] !== top) continue;
+    const T = []; for (let j = 0; j < M; j++) if (score[j] === top) T.push(j);
+    if (T.length === 1) { wins++; continue; }
+    const d = (j) => ctx.guesses[j] == null || tb == null ? Infinity : Math.abs(ctx.guesses[j] - tb);
+    const best = Math.min(...T.map(d)), lead = T.filter((j) => d(j) === best);
+    if (lead.includes(i)) wins += 1 / lead.length;
+  }
+  return wins / N;
+}
+// The team a result line is about, by the name it starts with.
+function pathTeamOf(g, txt) {
+  const a = txt.startsWith(g.awayShort), h = txt.startsWith(g.homeShort);
+  return h && (!a || g.homeShort.length > g.awayShort.length) ? g.homeId : g.awayId;
+}
+// A picture of the path to share: each result that must happen with its
+// team's logo and what it pays, then the win and the odds.
+async function sharePath(name, sc) {
+  if (!sc) return;
+  const all = lastGoodCloudPicks || {};
+  const results = computeLiveResults(latestLive);
+  const pts = Object.fromEntries(MANAGERS.map((n) => [n, GAMES.reduce((t, g) => t + (results[g.id] ? scorePick(g, all[n]?.picks?.[g.id], results[g.id]) || 0 : 0), 0)]));
+  for (const st of sc.all) for (const n of MANAGERS) pts[n] += scorePick(st.g, all[n]?.picks?.[st.g.id], st.res) || 0;
+  const need = sc.all.filter((st) => st.need);
+  const me = shown(name).toUpperCase();
+  try { await document.fonts?.load?.("40px VT323"); } catch {}
+  const load = (src) => new Promise((r) => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => r(im); im.onerror = () => r(null); im.src = src; });
+  const logos = await Promise.all(need.map((st) => load(logoUrl(pathTeamOf(st.g, st.txt)))));
+  const W = 1080, rowH = 104, H = 360 + need.length * rowH + 330;
+  const draw = (withLogos) => {
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const x = c.getContext("2d");
+    x.fillStyle = "#06020f"; x.fillRect(0, 0, W, H);
+    x.fillStyle = "#1414a8"; x.fillRect(0, 0, W, 130);
+    x.fillStyle = "#fff"; x.font = "64px VT323, monospace"; x.textBaseline = "middle";
+    x.fillText("PATH TO WIN", 60, 68);
+    x.fillStyle = "#ffe45e"; x.textAlign = "right"; x.fillText(me, W - 60, 68); x.textAlign = "left";
+    x.fillStyle = "rgba(214,240,226,.6)"; x.font = "40px VT323, monospace";
+    x.fillText(`${WEEK_LABEL.toUpperCase()} · RESULTS THAT MUST HAPPEN`, 60, 200);
+    need.forEach((st, k) => {
+      const y = 260 + k * rowH;
+      x.fillStyle = "#ffb000"; x.fillRect(60, y, 5, rowH - 22);
+      if (withLogos && logos[k]) x.drawImage(logos[k], 90, y + 6, 70, 70);
+      const p = scorePick(st.g, all[name]?.picks?.[st.g.id], st.res) || 0;
+      x.fillStyle = "#ffcf5c"; x.font = "52px VT323, monospace"; x.fillText(st.txt, 190, y + 32);
+      if (!p) { const w = stopsWho(st.g, st.res, name, pts); if (w) { x.fillStyle = "rgba(255,176,0,.65)"; x.font = "34px VT323, monospace"; x.fillText(`stops ${shown(w)}`, 190, y + 70); } }
+      x.textAlign = "right"; x.font = "52px VT323, monospace"; x.fillStyle = p ? "#39ff88" : "rgba(214,240,226,.35)"; x.fillText(p ? `+${p}` : "0", W - 60, y + 32); x.textAlign = "left";
+    });
+    let y = 260 + need.length * rowH + 20;
+    const free = sc.all.length - need.length;
+    x.fillStyle = "rgba(214,240,226,.55)"; x.font = "38px VT323, monospace";
+    if (free) { x.fillText(`The other ${free} game${free === 1 ? "" : "s"} can go either way.`, 60, y); y += 60; }
+    let fs = 92; x.font = `${fs}px VT323, monospace`;
+    while (fs > 40 && x.measureText(`${me} WINS THE WEEK`).width > W - 120) { fs -= 4; x.font = `${fs}px VT323, monospace`; }
+    x.fillStyle = "#ffe45e"; x.fillText(`${me} WINS THE WEEK`, 60, y + 60);
+    const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
+    x.fillStyle = "rgba(214,240,226,.75)"; x.font = "44px VT323, monospace";
+    x.fillText(oneIn ? (oneIn > 10000 ? "Rarer than 1 in 10,000" : `About 1 in ${oneIn.toLocaleString()}`) : "", 60, y + 140);
+    x.fillStyle = "rgba(214,240,226,.4)"; x.textAlign = "right"; x.fillText(location.host.toUpperCase(), W - 60, H - 50);
+    return c;
+  };
+  const blobOf = (c) => new Promise((r) => { try { c.toBlob((b) => r(b), "image/png"); } catch { r(null); } });
+  let blob = await blobOf(draw(true));
+  if (!blob) blob = await blobOf(draw(false)); // a logo host without CORS taints the canvas
+  if (!blob) return;
+  const file = new File([blob], `path-to-win-${name.toLowerCase()}.png`, { type: "image/png" });
+  if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], text: `${shown(name)}'s path to win · ${WEEK_LABEL}` }); } catch {} return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
 let pathRunToken = 0;
 // Which paths this phone has already watched run, and with which games
 // final at the time. A path opens straight on its card until another game
@@ -3233,11 +3332,7 @@ function openPathCard(name) {
   const me = shown(name).toUpperCase();
   const results = computeLiveResults(latestLive);
   const pts = Object.fromEntries(MANAGERS.map((n) => [n, GAMES.reduce((t, g) => t + (results[g.id] ? scorePick(g, all[n]?.picks?.[g.id], results[g.id]) || 0 : 0), 0)]));
-  // The team a result is about, by the name it starts with.
-  const teamOf = (g, txt) => {
-    const a = txt.startsWith(g.awayShort), h = txt.startsWith(g.homeShort);
-    return h && (!a || g.homeShort.length > g.awayShort.length) ? g.homeId : g.awayId;
-  };
+  const teamOf = pathTeamOf;
   let body;
   if (!sc) body = `<div class="pc-none">No path left: ${escapeCd(shown(name))} can't finish first.</div>`;
   else {
@@ -3254,7 +3349,7 @@ function openPathCard(name) {
       ${free ? `<div class="pc-free">The other ${free} game${free === 1 ? "" : "s"} can go either way.</div>` : ""}
       ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : ""}
       <div class="pc-win">${escapeCd(me)} WINS THE WEEK</div>
-      <div class="pc-foot"><span>${oneIn ? (oneIn > 10000 ? "Rarer than 1 in 10,000" : `About 1 in ${oneIn.toLocaleString()}`) : ""}</span><button type="button" class="pc-replay">▶ Replay</button></div>`;
+      <div class="pc-foot"><span>${oneIn ? (oneIn > 10000 ? "Rarer than 1 in 10,000" : `About 1 in ${oneIn.toLocaleString()}`) : ""}</span><span class="pc-btns"><button type="button" class="pc-share">↗ Share</button><button type="button" class="pc-replay">▶ Replay</button></span></div>`;
   }
   const m = document.createElement("div");
   m.className = "pr-screen pc"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", `Path to win for ${shown(name)}`);
@@ -3265,6 +3360,7 @@ function openPathCard(name) {
   m.querySelector(".pr-close").addEventListener("click", close);
   m.addEventListener("click", (e) => { if (e.target === m) close(); });
   m.querySelector(".pc-replay")?.addEventListener("click", () => openPathRun(name, true));
+  m.querySelector(".pc-share")?.addEventListener("click", () => { track("path-share", { event: true }); sharePath(name, sc); });
   let y0 = null, dy = 0;
   card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
   card.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) card.style.transform = `translateY(${dy}px)`; }, { passive: true });
@@ -3289,6 +3385,7 @@ function openPathRun(name, replay = false) {
   // the standings, then the terminal.
   m.innerHTML = `<div class="pr-win">
     <div class="pr-bar"><span class="pr-grip" aria-hidden="true"></span><span class="pr-bar-t">PATH TO WIN <i>·</i> ${escapeCd(me)}</span>${fast ? "" : `<button type="button" class="pr-skip">SKIP</button>`}<button type="button" class="pr-close" aria-label="Close">✕</button></div>
+    <div class="pr-meter"><span class="pr-meter-l">WIN CHANCE</span><span class="pr-meter-bar"><i></i></span><b class="pr-meter-v">--</b></div>
     <div class="pr-stand"><div class="pr-stand-h"><span>#</span><span>STANDINGS</span>${MANAGERS.length > 5 ? `<button type="button" class="pr-more" aria-expanded="false">ALL ▾</button>` : ""}<span>PTS</span></div><ol class="pr-board"></ol></div>
     <div class="pr-term"><div class="pr-lines"></div><span class="pr-cursor">█</span></div>
   </div>`;
@@ -3335,6 +3432,23 @@ function openPathRun(name, replay = false) {
     order.forEach((n) => place(n, shownOrder.indexOf(n)));
   };
   paint();
+  // The win chance meter: today's number, then recomputed as each game in
+  // the path is decided, counting up to WIN at the end.
+  const meterBar = m.querySelector(".pr-meter-bar i"), meterVal = m.querySelector(".pr-meter-v");
+  let meterNow = 0;
+  const pctText = (v) => v >= 0.995 ? "99%+" : v > 0 && v < 0.01 ? "<1%" : `${Math.round(v * 100)}%`;
+  const setMeter = (v, done = false) => {
+    meterBar.style.width = `${Math.max(2, Math.min(100, v * 100)).toFixed(1)}%`;
+    m.querySelector(".pr-meter").classList.toggle("won", done);
+    if (done) { meterVal.textContent = "WIN"; meterNow = 1; return; }
+    const from = meterNow; meterNow = v;
+    if (fast) { meterVal.textContent = pctText(v); return; }
+    const t0 = performance.now();
+    const step = (t) => { const k = Math.min(1, (t - t0) / 450); meterVal.textContent = pctText(from + (v - from) * k); if (k < 1 && alive()) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  };
+  setMeter(winChanceMemo.detail?.[name]?.pct ?? pathChance(name, new Map()) ?? 0);
+  const decided = new Map();
   m.querySelector(".pr-more")?.addEventListener("click", (e) => {
     const open = SHOW < MANAGERS.length;
     SHOW = open ? MANAGERS.length : Math.min(5, MANAGERS.length);
@@ -3365,22 +3479,26 @@ function openPathRun(name, replay = false) {
     if (!alive()) return;
     if (!sc) { dots.textContent = "SIMULATING..."; line(`No path left: ${escapeCd(shown(name))} can't finish first.`, "bad"); m.querySelector(".pr-skip")?.remove(); return; }
     dots.textContent = `SIMULATING ${sc.all.length} GAME${sc.all.length === 1 ? "" : "S"}...`;
+    // The whole slate waits in line, dimmed, and each game lights up and
+    // types its result when its turn comes.
+    const queue = sc.all.map((st) => line(`<span class="pr-gc"><span class="pr-gl">${logo(st.g.awayId)}${logo(st.g.homeId)}</span><span class="pr-gt">${escapeCd(st.g.awayShort)} @ ${escapeCd(st.g.homeShort)}</span><span class="pr-gp"></span></span>`, "g queued"));
     await wait(400);
-    // One line a game: the two logos, then the result once it lands, then
-    // what it paid this manager. Results the path needs are lit; games
-    // that can go either way are dimmed.
-    for (const st of sc.all) {
+    for (const [qi, st] of sc.all.entries()) {
       if (!alive()) return;
-      const g = st.g;
+      const g = st.g, row = queue[qi];
       // The line types itself: a block cursor blinks, then sweeps right,
       // printing the logos, the result and the points in steps behind it.
       const gains = {};
       for (const n of MANAGERS) { const p = scorePick(g, all[n]?.picks?.[g.id], st.res) || 0; if (p) gains[n] = p; }
-      const row = line(`<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}${(() => { const w = st.need && !gains[name] ? stopsWho(g, st.res, name, pts) : null; return w ? `<small class="pr-why">stops ${escapeCd(shown(w))}</small>` : ""; })()}</span><span class="pr-gp${gains[name] ? "" : " zero"}">${gains[name] ? `+${gains[name]}` : st.need ? "0" : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`, `g ${st.need ? "need" : "free"}${fast ? "" : " typing"}`);
-      if (!fast) term.scrollTop = term.scrollHeight;
+      row.className = `pr-line g ${st.need ? "need" : "free"}${fast ? "" : " typing"}`;
+      row.innerHTML = `<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}${(() => { const w = st.need && !gains[name] ? stopsWho(g, st.res, name, pts) : null; return w ? `<small class="pr-why">stops ${escapeCd(shown(w))}</small>` : ""; })()}</span><span class="pr-gp${gains[name] ? "" : " zero"}">${gains[name] ? `+${gains[name]}` : st.need ? "0" : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`;
+      if (!fast) term.scrollTop = Math.max(0, row.offsetTop - term.clientHeight + row.offsetHeight + 60);
       // One cursor at a time: the terminal's resting cursor hides while a line types.
       if (!fast) { term.classList.add("typing"); await wait(320); row.classList.add("wipe"); await wait(420); row.classList.remove("typing", "wipe"); term.classList.remove("typing"); }
       for (const n in gains) pts[n] += gains[n];
+      decided.set(g.id, st.res);
+      const last = qi === sc.all.length - 1;
+      if (!fast || last) last ? setMeter(1, true) : setMeter(pathChance(name, decided, sc.guess) ?? meterNow);
       await paint(fast ? {} : gains, true);
       await wait(st.need ? 700 : 350);
     }
@@ -3393,13 +3511,14 @@ function openPathRun(name, replay = false) {
     const tie = atTop.length > 1 && sc.guess != null && sc.tbGame ? `<div class="pr-foot-tie">Tied at ${top}: wins it on the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : "";
     foot.innerHTML = `${tie}<div class="pr-foot-win">${escapeCd(me)} WINS THE WEEK</div>
       <div class="pr-foot-sum">${sc.need.length} result${sc.need.length === 1 ? "" : "s"} must happen · ${oneIn ? (oneIn > 10000 ? "rarer than 1 in 10,000" : `about 1 in ${oneIn.toLocaleString()}`) : "-"}</div>
-      <div class="pr-foot-row"><span class="pr-key"><i class="k-need"></i>must happen <i class="k-free"></i>either way</span><button type="button" class="pr-again">↻ RUN AGAIN</button></div>`;
+      <div class="pr-foot-row"><span class="pr-key"><i class="k-need"></i>must happen <i class="k-free"></i>either way</span><span class="pr-foot-btns"><button type="button" class="pr-share">↗ SHARE</button><button type="button" class="pr-again">↻ RUN AGAIN</button></span></div>`;
     await wait(250);
     lines.appendChild(foot);
     // The DOS chrome did its job while the run played; once the result is
     // in, the command and status lines fold away and the games lead.
     lines.querySelectorAll(".pr-line.cmd, .pr-line.dim").forEach((el) => el.classList.add("gone"));
     foot.querySelector(".pr-again").addEventListener("click", () => openPathRun(name, true));
+    foot.querySelector(".pr-share").addEventListener("click", () => { track("path-share", { event: true }); sharePath(name, sc); });
     m.querySelector(".pr-skip")?.remove();
     m.querySelector(".pr-cursor")?.remove();
     markPathSeen(name);
