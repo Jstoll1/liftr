@@ -3171,6 +3171,16 @@ function mirrorLine(name, sw, results, all = lastGoodCloudPicks || {}) {
 function playerBreakdownHtml(name, state, results, live) {
   const ordered = gamesByKickoff();
   let banked = 0, liveCovering = 0, liveOpen = 0, wins = 0, losses = 0, liveFly = 0;
+  // How far each open pick's result moves this manager's win chance, from
+  // the same simulation: the gap between winning the week when it hits and
+  // when it misses, in percentage points, as five pixels and a number.
+  const wd = weekIsLive(results) ? winChanceMemo.detail?.[name] : null;
+  const sway = Object.fromEntries((wd?.games || []).map((e) => [e.game.id, e]));
+  const swayHtml = (e) => {
+    const n = Math.round(e.gap * 100), lit = n < 1 ? 0 : Math.min(5, Math.ceil(n / 10));
+    const top = wd.swing && e.game.id === wd.swing.game.id;
+    return `<span class="rd-sway${top ? " top" : n < 3 ? " low" : ""}" title="Hit it: ${winChanceLabel(e.ifHit, { alive: true })} · Miss it: ${winChanceLabel(e.ifMiss, { alive: true })}"><span class="rd-sway-n">±${n < 1 ? "<1" : n}</span><span class="rd-sway-bar">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= lit ? "on" : ""}"></i>`).join("")}</span></span>`;
+  };
   const rows = ordered.map((game) => {
     const locked = isGameLocked(game);
     const pick = state.picks[game.id];
@@ -3213,6 +3223,7 @@ function playerBreakdownHtml(name, state, results, live) {
         else ptsHtml = `<span class="rd-pts lean miss">0</span>`;
       }
     }
+    if (!isFinal && !isLive && sway[game.id] && ptsHtml.includes("rd-pts none")) ptsHtml = swayHtml(sway[game.id]);
     const src = isFinal ? results[game.id] : isLive ? g : null;
     const aS = src && Number.isFinite(src.awayScore) ? src.awayScore : null;
     const hS = src && Number.isFinite(src.homeScore) ? src.homeScore : null;
@@ -3253,13 +3264,12 @@ function playerBreakdownHtml(name, state, results, live) {
   const summary = `<div class="rd-summary"><span><b>${banked}</b> PTS</span><span>${wins}-${losses}</span>${liveOpen ? `<span class="live"><b>+${liveFly}</b> LIVE · ${liveCovering} OF ${liveOpen} COVERING</span>` : ""}</div>`;
   // The arithmetic behind the leaderboard percentage, for this manager.
   let wpRow = "";
-  const wd = weekIsLive(results) ? winChanceMemo.detail?.[name] : null;
   if (wd) {
     const pc = (v) => winChanceLabel(v, { alive: true });
     const sw = wd.swing;
     const lab = sw ? `${sw.pick.team === sw.game.away ? sw.game.awayShort : sw.game.homeShort} ${sw.pick.mode === "SU" ? "to win" : `${sw.pick.team === sw.game.favorite ? "-" : "+"}${sw.game.spread}`}` : "";
     const why = wd.alive === false ? outReason(name, results) : "";
-    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? `<span class="rd-wp-line">Biggest game left: <b>${String(lab).replace(/[&<>"]/g, "")}</b></span><span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${(() => { const m = mirrorLine(name, sw, results); return m ? `<span class="rd-wp-why">${m}</span>` : ""; })()}` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}</div>`;
+    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? `<span class="rd-wp-line">Biggest game left: <b>${String(lab).replace(/[&<>"]/g, "")}</b></span><span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${(() => { const m = mirrorLine(name, sw, results); return m ? `<span class="rd-wp-why">${m}</span>` : ""; })()}` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">± by each game: how far its result moves the ${winChanceLabel(wd.pct, wd)}</span>` : ""}</div>`;
   }
   return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
 }

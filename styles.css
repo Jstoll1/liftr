@@ -4636,6 +4636,17 @@ body.sheet-open #admin-overlay { overflow: hidden; }
    arcade amber so it reads as the answer, not more odds. */
 .rd-wp-why { font-size: 11.5px; line-height: 1.45; color: #ffb000; }
 .rd-wp-why b { color: #ffe45e; font-weight: 800; }
+.rd-wp-key { font-size: 10px; line-height: 1.4; color: var(--text-dim); }
+/* Per game sway: a number over five pixels, cyan; the biggest one amber. */
+.rd-sway { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; min-width: 40px; padding: 3px 0; }
+.rd-sway-n { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-cyan); letter-spacing: .02em; }
+.rd-sway-bar { display: flex; gap: 2px; }
+.rd-sway-bar i { width: 5px; height: 5px; background: rgba(5, 217, 232, .16); }
+.rd-sway-bar i.on { background: var(--neon-cyan); box-shadow: 0 0 4px rgba(5, 217, 232, .55); }
+.rd-sway.top .rd-sway-n { color: #ffb000; }
+.rd-sway.top .rd-sway-bar i { background: rgba(255, 176, 0, .16); }
+.rd-sway.top .rd-sway-bar i.on { background: #ffb000; box-shadow: 0 0 4px rgba(255, 176, 0, .6); }
+.rd-sway.low { opacity: .5; }
 
 /* ===== FINAL takeover ===== */
 .gc-fin .gc-cab.vs .gc-led.sc.lose { color: rgba(255, 176, 0, .45); text-shadow: none; }
