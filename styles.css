@@ -4634,8 +4634,9 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rd-wp-line b.dn { color: var(--neon-pink); }
 /* Why the miss matters: same size and left edge as the lines above, in
    arcade amber so it reads as the answer, not more odds. */
-.rd-wp-why { font-size: 11.5px; line-height: 1.45; color: #ffb000; }
-.rd-wp-why b { color: #ffe45e; font-weight: 800; }
+.rd-wp-why { font-size: 11.5px; line-height: 1.45; color: var(--text-meta); }
+.rd-wp-why b { color: #fff; font-weight: 800; }
+.rd-wp-must { color: #ffb000; font-weight: 800; }
 /* The swing game as a matchup: two logos, this manager's side lit amber
    with their pick, a rival on the other side in pink. */
 .rd-sw-label { font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.6; color: var(--text-dim); letter-spacing: .06em; margin-top: 2px; }
