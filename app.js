@@ -3221,7 +3221,7 @@ function openPathRun(name, replay = false) {
   // A DOS window: the title bar on top (drag it down, or tap X, to close),
   // the standings, then the terminal.
   m.innerHTML = `<div class="pr-win">
-    <div class="pr-bar"><span class="pr-grip" aria-hidden="true"></span><span class="pr-bar-t">PATH.EXE <i>·</i> ${escapeCd(me)}</span>${fast ? "" : `<button type="button" class="pr-skip">SKIP</button>`}<button type="button" class="pr-close" aria-label="Close">✕</button></div>
+    <div class="pr-bar"><span class="pr-grip" aria-hidden="true"></span><span class="pr-bar-t">PATH TO WIN <i>·</i> ${escapeCd(me)}</span>${fast ? "" : `<button type="button" class="pr-skip">SKIP</button>`}<button type="button" class="pr-close" aria-label="Close">✕</button></div>
     <div class="pr-stand"><div class="pr-stand-h"><span>#</span><span>STANDINGS</span><span>PTS</span></div><ol class="pr-board"></ol></div>
     <div class="pr-term"><div class="pr-lines"></div><span class="pr-cursor">█</span></div>
   </div>`;
@@ -3278,40 +3278,45 @@ function openPathRun(name, replay = false) {
   win.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; win.style.transition = ""; if (dy > 110) { win.style.transform = "translateY(100%)"; close(); } else win.style.transform = ""; });
   const logo = (id) => `<img class="pr-logo" src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'" />`;
   (async () => {
-    await type(`C:\\BROCHIEFS> PATH ${me}.EXE`, "cmd");
-    await wait(250);
-    const dots = line("RUNNING SIMULATION", "dim");
-    for (let k = 0; k < 9 && alive() && !fast; k++) { dots.textContent = `RUNNING SIMULATION${".".repeat(1 + (k % 3))}`; await wait(260); }
+    await type(`C:\\> PATH ${me}`, "cmd");
+    const dots = line("SIMULATING", "dim");
+    for (let k = 0; k < 9 && alive() && !fast; k++) { dots.textContent = `SIMULATING${".".repeat(1 + (k % 3))}`; await wait(240); }
     if (!alive()) return;
-    if (!sc) { dots.textContent = "RUNNING SIMULATION..."; line(`NO PATH LEFT: ${escapeCd(me)} CANNOT FINISH FIRST.`, "bad"); m.querySelector(".pr-skip")?.remove(); return; }
-    dots.textContent = `RUNNING SIMULATION... ${sc.all.length} GAME${sc.all.length === 1 ? "" : "S"} LEFT`;
-    await wait(500);
+    if (!sc) { dots.textContent = "SIMULATING..."; line(`No path left: ${escapeCd(shown(name))} can't finish first.`, "bad"); m.querySelector(".pr-skip")?.remove(); return; }
+    dots.textContent = `SIMULATING ${sc.all.length} GAME${sc.all.length === 1 ? "" : "S"}...`;
+    await wait(400);
+    // One line a game: the two logos, then the result once it lands, then
+    // what it paid this manager. Results the path needs are lit; games
+    // that can go either way are dimmed.
     for (const st of sc.all) {
       if (!alive()) return;
       const g = st.g;
-      line(`${logo(g.awayId)}<span class="pr-tm">${escapeCd(g.awayShort)}</span><span class="pr-at">@</span>${logo(g.homeId)}<span class="pr-tm">${escapeCd(g.homeShort)}</span>`, "game");
-      await wait(450);
+      const row = line(`<span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt"><span class="pr-gm">${escapeCd(g.awayShort)} @ ${escapeCd(g.homeShort)}</span></span><span class="pr-gp"></span>`, `g ${st.need ? "need" : "free"} pending`);
+      await wait(420);
       const gains = {};
       for (const n of MANAGERS) { const p = scorePick(g, all[n]?.picks?.[g.id], st.res) || 0; if (p) { gains[n] = p; pts[n] += p; } }
-      const mine = gains[name];
-      line(`<span class="pr-arrow">&gt;</span> ${escapeCd(st.txt.toUpperCase())}${mine ? ` <b class="pr-plus">+${mine}</b>` : ""}${st.need ? "" : ` <span class="pr-any">· ANY RESULT OK</span>`}`, st.need ? "res need" : "res free");
+      row.querySelector(".pr-gt").textContent = st.txt;
+      row.querySelector(".pr-gp").textContent = gains[name] ? `+${gains[name]}` : "";
+      row.classList.remove("pending");
+      if (!fast) term.scrollTop = term.scrollHeight;
       await paint(fast ? {} : gains, true);
-      await wait(st.need ? 800 : 450);
+      await wait(st.need ? 700 : 350);
     }
     if (!alive()) return;
     paint();
     const top = Math.max(...Object.values(pts)), atTop = MANAGERS.filter((n) => pts[n] === top);
-    if (atTop.length > 1 && sc.guess != null && sc.tbGame) {
-      await wait(300);
-      line(`TIE AT ${top} · TIEBREAKER: ${escapeCd(sc.tbGame.awayShort.toUpperCase())} @ ${escapeCd(sc.tbGame.homeShort.toUpperCase())} TOTAL NEAR ${sc.guess}`, "res need");
-    }
-    await wait(400);
-    line(`${escapeCd(me)} WINS THE WEEK`, "win");
+    const foot = document.createElement("div");
+    foot.className = "pr-foot";
     const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
-    line(`${sc.need.length} RESULT${sc.need.length === 1 ? "" : "S"} NEEDED · ${oneIn ? (oneIn > 10000 ? "RARER THAN 1 IN 10,000" : `ABOUT 1 IN ${oneIn.toLocaleString()}`) : "-"}`, "dim");
-    const again = line(`<button type="button" class="pr-again">▶ RUN AGAIN</button>`, "again");
-    again.querySelector("button").addEventListener("click", () => openPathRun(name, true));
+    const tie = atTop.length > 1 && sc.guess != null && sc.tbGame ? `<div class="pr-foot-tie">Tied at ${top}: wins it on the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : "";
+    foot.innerHTML = `${tie}<div class="pr-foot-win">${escapeCd(me)} WINS THE WEEK</div>
+      <div class="pr-foot-sum">${sc.need.length} result${sc.need.length === 1 ? "" : "s"} must happen · ${oneIn ? (oneIn > 10000 ? "rarer than 1 in 10,000" : `about 1 in ${oneIn.toLocaleString()}`) : "-"}</div>
+      <div class="pr-foot-row"><span class="pr-key"><i class="k-need"></i>must happen <i class="k-free"></i>either way</span><button type="button" class="pr-again">↻ RUN AGAIN</button></div>`;
+    await wait(250);
+    lines.appendChild(foot);
+    foot.querySelector(".pr-again").addEventListener("click", () => openPathRun(name, true));
     m.querySelector(".pr-skip")?.remove();
+    m.querySelector(".pr-cursor")?.remove();
     markPathSeen(name);
     if (!fast) term.scrollTop = term.scrollHeight;
   })();
