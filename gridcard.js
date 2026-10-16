@@ -133,9 +133,10 @@
     return [x, y, `rgb(${p[0]},${p[1]},${p[2]})`];
   }
 
-  async function openGridCard() {
-    try { window.noteUse?.("grid-card"); } catch {}
-    const picks = (typeof fetchAllPicks === "function" ? await fetchAllPicks() : null) || lastGoodCloudPicks || {};
+  // The card as a canvas, for the share sheet here and the console's Grid
+  // tab. `picksIn` lets the console pass the admin's full view.
+  async function buildGridCard(picksIn = null) {
+    const picks = picksIn || (typeof fetchAllPicks === "function" ? await fetchAllPicks() : null) || lastGoodCloudPicks || {};
     // Trophies: one per sealed week won this season, and who took last week.
     if (typeof loadWeekSummaries === "function" && !Object.keys(weekSummaries || {}).length) { try { await loadWeekSummaries(); } catch {} }
     const sealedWeeks = Object.entries(weekSummaries || {}).filter(([, v]) => v && v.complete).map(([k, v]) => ({ week: Number(k), winners: v.winners || [] })).sort((a, b) => a.week - b.week);
@@ -231,6 +232,12 @@
 
     }
 
+    return c;
+  }
+
+  async function openGridCard() {
+    try { window.noteUse?.("grid-card"); } catch {}
+    const c = await buildGridCard();
     // Modal with the picture and share/save.
     let modal = document.getElementById("gridcard-modal");
     if (!modal) {
@@ -251,4 +258,5 @@
     if (typeof track === "function") track("grid-card");
   }
   window.openGridCard = openGridCard;
+  window.buildGridCard = buildGridCard;
 })();

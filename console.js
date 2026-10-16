@@ -1358,7 +1358,9 @@
       ...(out.length ? [`🚨 NOTHING IN (${out.length})`, ...out.map(line), ``] : []),
       `${ready.length}/${rows.length} on the grid · ${location.host}`,
     ].join("\n");
-    body.innerHTML = `<p class="admin-intro">Who is in for week ${currentWeek}, as a message you can paste into the chat. Green is a full card with a tiebreaker, yellow is partial, red is nothing in.</p>
+    body.innerHTML = `${NFL && typeof window.buildGridCard === "function" ? `<div class="wpx-h">PICTURE</div><p class="admin-intro">The same check as the Triple Threat card, to send to the chat.</p>
+      <div class="admin-row"><button class="admin-btn primary" id="grid-pic-share" type="button">Share picture</button><a class="admin-btn" id="grid-pic-save" download="grid-check.png">Save</a></div>
+      <img id="grid-pic" alt="Grid check card" style="display:block;width:100%;max-width:420px;margin:10px auto 18px;border-radius:10px">` : ""}<div class="wpx-h">MESSAGE</div><p class="admin-intro">Who is in for week ${currentWeek}, as a message you can paste into the chat. Green is a full card with a tiebreaker, yellow is partial, red is nothing in.</p>
       <div class="admin-row"><button class="admin-btn primary" id="grid-copy" type="button">Copy</button>${navigator.share ? `<button class="admin-btn" id="grid-share" type="button">Share…</button>` : ""}<span class="admin-note">${ready.length} ready · ${partial.length} partial · ${out.length} out</span></div>
       <pre class="con-raw con-grid" id="grid-text">${esc(text)}</pre>`;
     body.querySelector("#grid-copy").addEventListener("click", async () => {
@@ -1366,6 +1368,21 @@
       catch { const r = document.createRange(); r.selectNodeContents(body.querySelector("#grid-text")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); say("Select all and copy.", "bad"); }
     });
     body.querySelector("#grid-share")?.addEventListener("click", async () => { try { await navigator.share({ text }); } catch {} });
+    // NFL: the Triple Threat picture, drawn from the admin's view of the picks.
+    const pic = body.querySelector("#grid-pic");
+    if (pic) {
+      try {
+        const c = await window.buildGridCard(picks);
+        const url = c.toDataURL("image/png");
+        pic.src = url;
+        body.querySelector("#grid-pic-save").href = url;
+        body.querySelector("#grid-pic-share").addEventListener("click", () => c.toBlob(async (blob) => {
+          const file = new File([blob], "grid-check.png", { type: "image/png" });
+          if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], text: `Grid check · ${WEEK_LABEL}` }); } catch {} }
+          else say("Sharing is not available here. Save the picture or long-press it.", "bad");
+        }));
+      } catch { say("Could not draw the picture.", "bad"); }
+    }
   }
 
   // --- Question of the week ---------------------------------------------
