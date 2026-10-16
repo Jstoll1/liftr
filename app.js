@@ -3270,13 +3270,15 @@ function openPathRun(name, replay = false) {
   // the standings, then the terminal.
   m.innerHTML = `<div class="pr-win">
     <div class="pr-bar"><span class="pr-grip" aria-hidden="true"></span><span class="pr-bar-t">PATH TO WIN <i>·</i> ${escapeCd(me)}</span>${fast ? "" : `<button type="button" class="pr-skip">SKIP</button>`}<button type="button" class="pr-close" aria-label="Close">✕</button></div>
-    <div class="pr-stand"><div class="pr-stand-h"><span>#</span><span>STANDINGS</span><span>PTS</span></div><ol class="pr-board"></ol></div>
+    <div class="pr-stand"><div class="pr-stand-h"><span>#</span><span>STANDINGS</span>${MANAGERS.length > 5 ? `<button type="button" class="pr-more" aria-expanded="false">ALL ▾</button>` : ""}<span>PTS</span></div><ol class="pr-board"></ol></div>
     <div class="pr-term"><div class="pr-lines"></div><span class="pr-cursor">█</span></div>
   </div>`;
   document.body.appendChild(m);
   const win = m.querySelector(".pr-win"), board = m.querySelector(".pr-board"), lines = m.querySelector(".pr-lines"), term = m.querySelector(".pr-term");
   // Five rows: the top five, or the top four and this manager below a gap.
-  const ROW = 24, SHOW = Math.min(5, MANAGERS.length);
+  // ALL ▾ opens every row; the terminal shrinks to its last few lines.
+  const ROW = 24;
+  let SHOW = Math.min(5, MANAGERS.length);
   const rows = Object.fromEntries(MANAGERS.map((n) => {
     const li = document.createElement("li");
     li.className = `pr-row${n === name ? " me" : ""}`;
@@ -3296,12 +3298,15 @@ function openPathRun(name, replay = false) {
     const order = [...MANAGERS].sort((a, b) => pts[b] - pts[a] || (a === name ? -1 : b === name ? 1 : 0) || MANAGERS.indexOf(a) - MANAGERS.indexOf(b));
     const myAt = order.indexOf(name);
     const shownOrder = myAt < SHOW ? order.slice(0, SHOW) : [...order.slice(0, SHOW - 1), name];
+    board.style.height = `${SHOW * ROW}px`;
     order.forEach((n) => {
       const li = rows[n], rank = 1 + order.findIndex((x) => pts[x] === pts[n]), tied = order.filter((x) => pts[x] === pts[n]).length > 1;
       li.querySelector(".pr-rk").textContent = `${tied ? "T" : ""}${rank}`;
       li.querySelector(".pr-pt").textContent = String(pts[n]).padStart(2, "0");
       li.querySelector(".pr-gain").textContent = gains[n] ? `+${gains[n]}` : "";
-      li.classList.toggle("gained", !!gains[n]);
+      // Restart the pop every game, even for a row that gained last game too.
+      li.classList.remove("gained");
+      if (gains[n]) { void li.offsetWidth; li.classList.add("gained"); }
     });
     rows[name].classList.toggle("jump", myAt >= SHOW);
     if (staged && !fast) {
@@ -3311,6 +3316,15 @@ function openPathRun(name, replay = false) {
     order.forEach((n) => place(n, shownOrder.indexOf(n)));
   };
   paint();
+  m.querySelector(".pr-more")?.addEventListener("click", (e) => {
+    const open = SHOW < MANAGERS.length;
+    SHOW = open ? MANAGERS.length : Math.min(5, MANAGERS.length);
+    m.classList.toggle("all", open);
+    e.currentTarget.textContent = open ? "TOP 5 ▴" : "ALL ▾";
+    e.currentTarget.setAttribute("aria-expanded", String(open));
+    paint();
+    term.scrollTop = term.scrollHeight;
+  });
   const alive = () => token === pathRunToken && document.body.contains(m);
   const wait = (ms) => new Promise((r) => setTimeout(r, fast ? 0 : ms));
   const line = (html, cls = "") => { const d = document.createElement("div"); d.className = `pr-line ${cls}`; d.innerHTML = html; lines.appendChild(d); if (!fast) term.scrollTop = term.scrollHeight; return d; };
