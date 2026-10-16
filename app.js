@@ -3270,6 +3270,8 @@ function openPathCard(name) {
   card.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) card.style.transform = `translateY(${dy}px)`; }, { passive: true });
   card.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; card.style.transition = ""; if (dy > 90) { card.style.transform = "translateY(120%)"; close(); } else card.style.transform = ""; });
   track("path-card", { event: true });
+  // Whose path was opened, for the console's path to win tracker.
+  noteUse(`path-of-${name}`);
 }
 function openPathRun(name, replay = false) {
   if (!replay && pathSeen(name)) return openPathCard(name);
@@ -3404,6 +3406,7 @@ function openPathRun(name, replay = false) {
     if (!fast) term.scrollTop = term.scrollHeight;
   })();
   track("path-run", { event: true });
+  noteUse(`path-of-${name}`);
 }
 // The button lives inside a card the board redraws, so one listener here.
 document.addEventListener("click", (e) => {

@@ -153,6 +153,7 @@
     h2h: "Head to head", "wp-player": "Win % breakdown", "wp-explain": "How win % works", sim: "Game sim",
     "grid-card": "Grid card", "pot-open": "The pot", "all-picks-open": "Everyone's picks",
     "ranking-expand": "Leaderboard row", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
+    "path-run": "Path to win (full run)", "path-card": "Path to win (card)",
   };
   const ldFeat = (k) => LD_FEATURES[String(k).replace(/-g\d+$/, "")] || null;
 
@@ -787,6 +788,33 @@
         ? `${B(`${gcUsers.length} of ${N}`)} have opened a live gamecast. ${inGameSess.length ? `${share(gcInGame, inGameSess.length, "visits during games")} included one.` : ""}`
         : `${B("Nobody")} has opened a live gamecast yet, across ${gcGameDays.length} game day${gcGameDays.length === 1 ? "" : "s"} and ${inGameSess.length} visit${inGameSess.length === 1 ? "" : "s"} while games were on.`;
     const gcMaxDay = Math.max(1, ...gcByDay.map((x) => x.ms));
+    // Path to win: who opens it, run or card, and whose paths they look at.
+    // Each visit lists path-run / path-card once, and path-of-<name> for
+    // every player's path opened in it (lowercased by the Worker).
+    const byLower = new Map(names.map((n) => [n.toLowerCase(), n]));
+    const pathPeople = people.map((p) => {
+      const vs = p.sess.filter((x) => x.f.some((f) => /^path-/.test(f)));
+      const of = new Map();
+      for (const x of vs) for (const f of x.f) { const m = /^path-of-(.+)$/.exec(f); if (m) { const who = byLower.get(m[1]) || m[1]; of.set(who, (of.get(who) || 0) + 1); } }
+      return { n: p.n, visits: vs.length, runs: vs.filter((x) => x.f.includes("path-run")).length, cards: vs.filter((x) => x.f.includes("path-card")).length, of, last: Math.max(0, ...vs.map((x) => x.at)) };
+    });
+    const pathUsers = pathPeople.filter((x) => x.visits);
+    const pathOf = new Map();
+    for (const x of pathUsers) for (const [who, c] of x.of) pathOf.set(who, (pathOf.get(who) || 0) + c);
+    const pathTop = [...pathOf.entries()].sort((a, b) => b[1] - a[1]);
+    const pathVisits = pathUsers.reduce((a, x) => a + x.visits, 0);
+    const pathView = `<div class="lvz-h">PATH TO WIN · WHO USES IT</div>
+      <div class="ld-head">${pathUsers.length ? `${B(`${pathUsers.length} of ${N}`)} have opened a path to win, in ${pathVisits} visit${pathVisits === 1 ? "" : "s"}.${pathTop.length ? ` Most looked-at path: ${B(pathTop[0][0])} (${pathTop[0][1]}).` : ""}` : `${B("Nobody")} has opened a path to win yet. It counts from the build that added it.`}</div>
+      <div class="lvz-tiles">
+        <div ${tip(`Opened a path at least once: ${pathUsers.map((x) => x.n).join(", ") || "nobody"}`)}><b>${pathUsers.length}<small>/${N}</small></b><span>people</span></div>
+        <div ${tip("Visits that played the full run")}><b>${pathPeople.reduce((a, x) => a + x.runs, 0)}</b><span>full runs</span></div>
+        <div ${tip("Visits that opened the summary card")}><b>${pathPeople.reduce((a, x) => a + x.cards, 0)}</b><span>cards</span></div>
+      </div>
+      ${pathUsers.length ? `<div class="ld-fh five"><span>OWNER</span><span>RUNS</span><span>CARDS</span><span>PATHS</span><span>LAST</span></div>
+      ${[...pathUsers].sort((a, b) => b.visits - a.visits || b.last - a.last).map((x) => { const whose = [...x.of.entries()].sort((a, b) => b[1] - a[1]); const own = x.of.get(x.n) || 0; return `<div class="ld-fr five" ${tip(`${x.n} · ${x.visits} visit${x.visits === 1 ? "" : "s"} with a path · full run in ${x.runs}, card in ${x.cards} · paths opened: ${whose.map(([w, c]) => `${w}${w === x.n ? " (own)" : ""} ${c}`).join(", ") || "-"} · last ${dayLong(x.last)} ${timeLab(x.last)}`)}><span>${esc(x.n)}</span><em>${x.runs || "-"}</em><em>${x.cards || "-"}</em><em>${whose.length}${own ? "·own" : ""}</em><em>${esc(dayLong(x.last))}</em></div>`; }).join("")}` : ""}
+      ${pathTop.length ? `<div class="lvz-cap">Paths opened, by player: ${pathTop.map(([w, c]) => `${esc(w)} ${c}`).join(", ")}.</div>` : ""}
+      <div class="lvz-cap">Counted once per visit. Runs: the full simulation played; cards: the summary opened. Paths: how many players' paths they opened (own marks their own). Tap a row for whose.</div>
+    `;
     const gcView = `<div class="lvz-h">GAMECAST · DOES ANYONE OPEN IT</div>
       <div class="ld-head">${gcHead}</div>
       <div class="lvz-tiles">
@@ -827,7 +855,7 @@
       <section data-ldview="pulse">${asOf(srcO, srcV)}${pulse}</section>
       <section data-ldview="people" hidden>${asOf(srcO, srcV)}${peopleView}</section>
       <section data-ldview="gameday" hidden>${asOf(srcO, srcV)}${gameView}</section>
-      <section data-ldview="features" hidden>${asOf(srcV)}${gcView}${featView}</section>
+      <section data-ldview="features" hidden>${asOf(srcV)}${pathView}${gcView}${featView}</section>
       <section data-ldview="picks" hidden>${asOf(srcP)}${picksView}</section>
       <section data-ldview="health" hidden>${asOf(srcV)}${healthView}</section>
       <div class="lvz-tip" aria-live="polite">Tap any bar, square, dot or row for the details.</div>
