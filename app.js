@@ -3189,7 +3189,7 @@ function swingMatchupHtml(name, sw, m) {
 // The new feature pop-up.
 // Once per phone, on the scoreboard while the week is live and a path can
 // be run: a small card showing where to tap, drawn from the real board.
-// Never over another popup. SHOW ME opens your row and pulses the button.
+// Never over another popup. GOT IT, the X, or a swipe down closes it.
 const PATH_INTRO_KEY = "brochiefs_new_pathtowin_v1";
 let pathIntroShownThisLoad = false;
 function maybeShowPathIntro(force = false) {
@@ -3220,30 +3220,34 @@ function showPathIntro() {
   const m = document.createElement("div");
   m.className = "pi-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: path to win");
   m.innerHTML = `<div class="pi-card">
-    <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title">PATH TO WIN</span></div>
+    <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title">PATH TO WIN</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
     <p class="pi-lede">See exactly which results you need to win the week, played out game by game.</p>
     <div class="pi-step"><b>1</b><span>Tap your name on the leaderboard</span></div>
     <div class="pi-mini">${mini}</div>
     <div class="pi-step"><b>2</b><span>Tap the button on your card</span></div>
     <div class="pi-mini pi-card2"><div class="pi-card2-top"><span class="pi-cap">CHANCE TO WIN THE WEEK · <b>${myPct == null ? "--" : winChanceLabel(myPct, winChanceMemo.detail?.[me])}</b></span><span class="pi-btnwrap"><span class="rd-path-btn pi-demo"><span class="rd-path-play">▶</span>MY PATH TO WIN</span></span></div><div class="pi-card2-sk"><i></i><i></i></div></div>
-    <div class="pi-actions"><button type="button" class="pi-ok">GOT IT</button><button type="button" class="pi-go">SHOW ME ▸</button></div>
+    <button type="button" class="pi-ok">GOT IT</button>
   </div>`;
   document.body.appendChild(m);
   const done = () => { try { localStorage.setItem(PATH_INTRO_KEY, String(Date.now())); } catch {} m.classList.add("out"); setTimeout(() => m.remove(), 220); };
   m.querySelector(".pi-ok").addEventListener("click", done);
+  m.querySelector(".pi-x").addEventListener("click", done);
   m.addEventListener("click", (e) => { if (e.target === m) done(); });
-  m.querySelector(".pi-go").addEventListener("click", () => {
-    done();
-    track("path-intro-show-me", { event: true });
-    // Open your row on the real board, bring it into view, pulse the button.
-    if (!expandedRankings.has(me)) { expandedRankings.add(me); renderRankings(lastGoodCloudPicks ? Object.fromEntries(Object.entries(lastGoodCloudPicks).map(([n, st]) => [n, { ...st, picks: n === me ? sanitizePicks(st.picks) : sanitizeRoomPicks(st.picks) }])) : {}, computeLiveResults(latestLive), latestLive); }
-    setTimeout(() => {
-      const btn = [...document.querySelectorAll(".rd-path-btn")].find((b) => b.dataset.path === me);
-      if (!btn) return;
-      btn.scrollIntoView({ behavior: "smooth", block: "center" });
-      btn.classList.add("pi-pulse");
-      setTimeout(() => btn.classList.remove("pi-pulse"), 4200);
-    }, 120);
+  // Swipe the card down to close it.
+  const card = m.querySelector(".pi-card");
+  let y0 = null, dy = 0;
+  card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
+  card.addEventListener("touchmove", (e) => {
+    if (y0 == null) return;
+    dy = Math.max(0, e.touches[0].clientY - y0);
+    card.style.transform = `translateY(${dy}px)`;
+    card.style.opacity = String(Math.max(0.4, 1 - dy / 400));
+  }, { passive: true });
+  card.addEventListener("touchend", () => {
+    if (y0 == null) return;
+    y0 = null;
+    card.style.transition = "transform .2s ease-out, opacity .2s ease-out";
+    if (dy > 80) { card.style.transform = "translateY(100vh)"; done(); } else { card.style.transform = ""; card.style.opacity = ""; }
   });
   track("path-intro", { event: true });
 }

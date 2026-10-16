@@ -6356,8 +6356,10 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
    showing where to tap, then GOT IT or SHOW ME. */
 .pi-screen { position: fixed; inset: 0; z-index: 9100; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(3, 0, 8, .78); animation: pr-fade .2s ease-out; }
 .pi-screen.out { opacity: 0; transition: opacity .2s; }
-.pi-card { width: 100%; max-width: 380px; padding: 18px 18px 16px; border-radius: 14px; background: #0a0418; border: 1px solid rgba(255, 176, 0, .45); box-shadow: 0 18px 50px rgba(0, 0, 0, .6), 0 0 24px rgba(255, 176, 0, .12); animation: pr-up .26s cubic-bezier(.22, 1, .36, 1); }
+.pi-card { touch-action: pan-x; width: 100%; max-width: 380px; padding: 18px 18px 16px; border-radius: 14px; background: #0a0418; border: 1px solid rgba(255, 176, 0, .45); box-shadow: 0 18px 50px rgba(0, 0, 0, .6), 0 0 24px rgba(255, 176, 0, .12); animation: pr-up .26s cubic-bezier(.22, 1, .36, 1); }
 .pi-head { display: flex; align-items: center; gap: 10px; }
+.pi-x { margin-left: auto; width: 32px; height: 32px; margin-right: -8px; margin-top: -6px; display: grid; place-items: center; font-size: 14px; color: var(--text-meta); background: none; border: 0; border-radius: 50%; cursor: pointer; }
+.pi-x:hover { color: #fff; background: rgba(255, 255, 255, .08); }
 .pi-new { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #fff; background: var(--neon-pink); padding: 4px 6px; border-radius: 3px; box-shadow: 0 0 10px rgba(255, 32, 121, .55); }
 .pi-title { font-family: 'Press Start 2P', monospace; font-size: 12px; letter-spacing: .04em; color: #ffe45e; text-shadow: 0 0 10px rgba(255, 228, 94, .35); }
 .pi-lede { margin: 10px 0 14px; font-size: 13px; line-height: 1.45; color: var(--text-meta); }
@@ -6390,11 +6392,6 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .pi-card2-sk { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
 .pi-card2-sk i { display: block; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .06); }
 .pi-card2-sk i:last-child { width: 70%; }
-.pi-actions { display: flex; gap: 10px; margin-top: 16px; }
-.pi-actions button { flex: 1; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .05em; padding: 12px 8px; border-radius: 8px; cursor: pointer; }
-.pi-ok { color: var(--text-meta); background: none; border: 1px solid rgba(244, 240, 255, .25); }
-.pi-go { color: #140a00; background: linear-gradient(180deg, #ffe45e, #ffb000); border: 0; box-shadow: 0 0 12px rgba(255, 176, 0, .35); }
+.pi-ok { display: block; width: 100%; margin-top: 16px; padding: 12px 8px; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .05em; color: #140a00; background: linear-gradient(180deg, #ffe45e, #ffb000); border: 0; border-radius: 8px; box-shadow: 0 0 12px rgba(255, 176, 0, .35); cursor: pointer; }
 /* SHOW ME: the real button pulses on your card for a few seconds. */
-.rd-path-btn.pi-pulse { animation: pi-btn 0.9s ease-in-out 4; }
-@keyframes pi-btn { 50% { box-shadow: 0 0 0 4px rgba(255, 255, 255, .55), 0 0 26px rgba(255, 176, 0, .9); transform: scale(1.06); } }
-@media (prefers-reduced-motion: reduce) { .pi-tap::after, .pi-btnwrap::after, .rd-path-btn.pi-pulse { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pi-tap::after, .pi-btnwrap::after { animation: none; } }
