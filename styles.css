@@ -6346,9 +6346,8 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 
 /* The finish, in place: pieces fold to nothing, the window closes up
    around the games that matter, centered, and the result fades in. */
-.pr-screen.ending { align-items: center; }
-.pr-screen.ending .pr-win { flex: none; width: 100%; }
-@media (min-width: 700px) { .pr-screen.ending .pr-win { width: 460px; } }
-.pr-meter.fold, .pr-stand.fold, .pr-line.fold { max-height: 0 !important; opacity: 0; padding-top: 0 !important; padding-bottom: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important; border-width: 0 !important; overflow: hidden; transition: max-height .46s cubic-bezier(.22, 1, .36, 1), opacity .22s ease-out, padding .46s cubic-bezier(.22, 1, .36, 1), margin .46s cubic-bezier(.22, 1, .36, 1); }
+/* Phone: the window keeps its place at the top and is moved by the
+   finish itself; a computer keeps it centred. */
+@media (max-width: 699px) { .pr-screen.ending .pr-win { flex: none; align-self: flex-start; width: 100%; } }
 .pr-end { padding-top: 6px; }
 .pr-end .pc-win { margin-top: 10px; }
