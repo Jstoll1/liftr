@@ -3181,6 +3181,36 @@ function computeScore(state, results) {
 // Which rankings rows are open to show that player's game-by-game picks.
 const expandedRankings = new Set();
 
+// One plain line on why a manager is out of the week. First the simple
+// case, a ceiling below points someone has already banked. Otherwise the
+// best case: every open pick of theirs hits, each game ending the way that
+// pays them most and their rivals least, and who still finishes ahead.
+function outReason(name, results, all = lastGoodCloudPicks || {}) {
+  const pickOf = (n, g) => { const p = all[n]?.picks?.[g.id]; return p && p.team && p.mode ? p : null; };
+  const pts = (n, g, res) => scorePick(g, pickOf(n, g), res) || 0;
+  const now = Object.fromEntries(MANAGERS.map((n) => [n, GAMES.reduce((t, g) => t + (results[g.id] ? pts(n, g, results[g.id]) : 0), 0)]));
+  const open = GAMES.filter((g) => !results[g.id]);
+  const others = MANAGERS.filter((n) => n !== name);
+  let max = now[name];
+  for (const g of open) { const p = pickOf(name, g); if (p) max += pointValue(g, p.team, p.mode); }
+  const banked = others.filter((n) => now[n] > max).sort((a, b) => now[b] - now[a])[0];
+  if (banked) return `Max ${max} can't reach ${shown(banked)}'s ${now[banked]} already banked.`;
+  const best = { ...now };
+  for (const g of open) {
+    const cats = gameCats(g);
+    const top = Math.max(...cats.map((c) => pts(name, g, c.res)));
+    const res = cats.filter((c) => pts(name, g, c.res) === top)
+      .map((c) => ({ c, r: Math.max(0, ...others.map((n) => pts(n, g, c.res))) }))
+      .sort((a, b) => a.r - b.r)[0].c.res;
+    for (const n of MANAGERS) best[n] += pts(n, g, res);
+  }
+  const rival = others.sort((a, b) => best[b] - best[a])[0];
+  if (!rival) return "";
+  if (best[rival] > best[name]) return `Even if every open pick hits (${best[name]}), ${shown(rival)}'s picks on the same games take ${shown(rival)} to ${best[rival]}.`;
+  if (best[rival] === best[name]) return `At best a ${best[name]} point tie with ${shown(rival)}, and the tiebreaker goes ${shown(rival)}'s way.`;
+  return `No mix of results left puts ${shown(name)} first.`;
+}
+
 function playerBreakdownHtml(name, state, results, live) {
   const ordered = gamesByKickoff();
   let banked = 0, liveCovering = 0, liveOpen = 0, wins = 0, losses = 0, liveFly = 0;
@@ -3271,7 +3301,8 @@ function playerBreakdownHtml(name, state, results, live) {
     const pc = (v) => winChanceLabel(v, { alive: true });
     const sw = wd.swing;
     const lab = sw ? `${sw.pick.team === sw.game.away ? sw.game.awayShort : sw.game.homeShort} ${sw.pick.mode === "SU" ? "to win" : `${sw.pick.team === sw.game.favorite ? "-" : "+"}${sw.game.spread}`}` : "";
-    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${sw ? `<span class="rd-wp-line">Biggest game left: <b>${String(lab).replace(/[&<>"]/g, "")}</b></span><span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}</div>`;
+    const why = wd.alive === false ? outReason(name, results) : "";
+    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? `<span class="rd-wp-line">Biggest game left: <b>${String(lab).replace(/[&<>"]/g, "")}</b></span><span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}</div>`;
   }
   return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
 }
@@ -4034,7 +4065,7 @@ function openPlayerChance(name) {
     else if (back > 0) bottom = `${You} ${isMe ? "need" : "needs"} +${back + 1} from these to pass ${R} (+${back} ties, then the tiebreaker). The most ${you} can get is +${gain}.`;
     else if (back === 0) bottom = n ? `Whoever gains more on ${n === 1 ? "this game" : "these games"} finishes ahead. Even means the tiebreaker.` : "The tiebreaker decides it.";
     else bottom = theirGain > -back ? `${R} needs +${-back + 1} from these to pass ${you}. The most they can get is +${theirGain}.` : `${R} can gain at most ${theirGain}. They can't pass ${you} on points.`;
-    const zero = wd.pct === 0 && wd.alive === false ? `<div class="wpp-zero">Why OUT: every way the games left can finish, someone else in the league still ends higher.</div>` : "";
+    const zero = wd.pct === 0 && wd.alive === false ? `<div class="wpp-zero">Why OUT: ${esc(outReason(name, results, picks) || "every way the games left can finish, someone else in the league still ends higher.")}</div>` : "";
     verdict = `<b class="wpp-vh">${head}</b> ${sub}`;
     vsHtml = `${n ? `<ul class="wpp-lines">${gameLines}</ul>` : ""}<div class="wpp-bottom">${bottom}</div>${zero}${sameGames.length ? `<div class="wpp-same">Same pick, no effect: ${sameGames.join(", ")}</div>` : ""}`;
   }

@@ -82,3 +82,25 @@ test("labels never read 0%", () => {
   assert.equal(winChanceLabel(0.42, {}), "42%");
   assert.equal(winChanceLabel(0.999, {}), "99%+");
 });
+
+// The one line under OUT: why a manager can no longer finish first.
+const outReasonOf = (GAMES, MANAGERS, picks) => new Function("GAMES", "MANAGERS", "lastGoodCloudPicks",
+  `${span("function pointValue", "// Fill this in")}\n${span("const catSig", "let winChanceMemo")}\nconst shown = (n) => n;\n${span("function outReason", "function playerBreakdownHtml")}\nreturn outReason;`)(GAMES, MANAGERS, picks);
+
+test("out line: a ceiling below points already banked", () => {
+  const g = [mk(1, 3), mk(2, 3)];
+  // The underdog won game 1 outright: Robert banks it, Logan's ceiling is game 2's one point.
+  const picks = { Logan: { picks: { 1: { team: "H1", mode: "SU" }, 2: { team: "H2", mode: "SU" } } }, Robert: { picks: { 1: { team: "A1", mode: "SU" }, 2: { team: "H2", mode: "SU" } } } };
+  const results = { 1: { awayScore: 40, homeScore: 10 } };
+  const why = outReasonOf(g, ["Logan", "Robert"], picks)("Logan", results);
+  assert.match(why, /^Max \d+ can't reach Robert's \d+ already banked\.$/);
+});
+
+test("out line: the same picks as a rival who already leads", () => {
+  const g = [mk(1, 3), mk(2, 3), mk(3, 7)];
+  const same = { 2: { team: "H2", mode: "ATS" }, 3: { team: "A3", mode: "ATS" } };
+  const picks = { Logan: { picks: { 1: { team: "A1", mode: "ATS" }, ...same } }, Robert: { picks: { 1: { team: "H1", mode: "SU" }, ...same } } };
+  const results = { 1: { awayScore: 3, homeScore: 6 } }; // home by 3: Robert's SU hits, Logan's A1 +3 pushes
+  const why = outReasonOf(g, ["Logan", "Robert"], picks)("Logan", results);
+  assert.match(why, /^Even if every open pick hits \(\d+\), Robert's picks on the same games take Robert to \d+\.$/);
+});
