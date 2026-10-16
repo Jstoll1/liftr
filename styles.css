@@ -3578,7 +3578,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-sim-txt b { font-size: 9px; }
 .ins-sim-txt em { font-size: 6px; }
 .ins-sim-vs img { width: 16px; height: 16px; }
-.insights-card { will-change: transform; }
+.insights-card { will-change: transform, opacity; transform-origin: 0 0; }
 /* Line row that fits a phone: three equal chips, arrows between, total below-right */
 .ln-chips { display: flex; flex-wrap: wrap; align-items: stretch; gap: 3px; }
 .ln-chip { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 3px; white-space: nowrap; }
@@ -6340,9 +6340,11 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 
 /* The finish: either-way games fade, needed games fly into the card. */
 .pr-line.g.fading { opacity: .08; transition: opacity .45s ease; }
-.pr-screen.pc.assembling { background: transparent; animation: none; }
+.pr-screen.pc.assembling { animation: none; }
 .pr-screen.pc.assembling .pc-card { animation: none; }
-.pr-ghost { position: fixed; z-index: 9500; margin: 0; box-sizing: border-box; pointer-events: none; font-family: 'VT323', monospace; font-size: 18px; line-height: 1.3; background: #06020f; border-radius: 4px; box-shadow: 0 6px 18px rgba(0, 0, 0, .55), 0 0 12px rgba(255, 176, 0, .18); will-change: transform; }
+.pr-ghost { position: fixed; z-index: 9500; margin: 0; box-sizing: border-box; pointer-events: none; font-family: 'VT323', monospace; font-size: 18px; line-height: 1.3; background: #06020f; border-radius: 4px; box-shadow: 0 6px 18px rgba(0, 0, 0, .55), 0 0 12px rgba(255, 176, 0, .18); will-change: transform, opacity; transform-origin: 0 0; }
 .pc-foot { flex-wrap: wrap; row-gap: 8px; }
 .pc-foot > span:first-child { white-space: nowrap; }
 .pc-share, .pc-replay { white-space: nowrap; }
+.pr-ghost-bar { position: fixed; z-index: 9600; margin: 0; box-sizing: border-box; pointer-events: none; border-radius: 10px 10px 0 0; transform-origin: 0 0; will-change: transform; }
+.pr-ghost-bar .pr-grip { display: none; }

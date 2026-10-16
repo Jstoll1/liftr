@@ -3330,29 +3330,73 @@ function assemblePathCard(m, from, run) {
   const rows = [...m.querySelectorAll(".pc-row")];
   const tail = [...m.querySelectorAll(".pc-free, .pc-tie, .pc-win, .pc-foot")];
   if (!card.animate || matchMedia("(prefers-reduced-motion: reduce)").matches || rows.length !== from.length) { run.remove(); return; }
+  const EASE = "cubic-bezier(.22, 1, .36, 1)";
   m.classList.add("assembling");
   rows.forEach((r) => { r.style.opacity = "0"; });
   tail.forEach((t) => { t.style.opacity = "0"; });
-  card.animate([{ opacity: 0, transform: "scale(.97)" }, { opacity: 1, transform: "none" }], { duration: 260, easing: "ease-out" });
-  run.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 520, delay: 120, easing: "ease-in", fill: "forwards" }).finished.then(() => run.remove(), () => run.remove());
-  const flights = from.map((src, i) => {
-    const s0 = src.getBoundingClientRect(), t = rows[i].getBoundingClientRect();
-    const ghost = src.cloneNode(true);
-    ghost.classList.add("pr-ghost");
-    Object.assign(ghost.style, { left: `${s0.left}px`, top: `${s0.top}px`, width: `${s0.width}px`, height: `${s0.height}px` });
-    document.body.appendChild(ghost);
-    const go = ghost.animate([
-      { transform: "translate(0, 0)", opacity: 1 },
-      { transform: `translate(${t.left - s0.left}px, ${t.top - s0.top}px)`, opacity: 1 },
-    ], { duration: 560, delay: 160 + i * 90, easing: "cubic-bezier(.2, .8, .2, 1)", fill: "forwards" });
-    return go.finished.then(() => {
-      rows[i].animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, fill: "forwards" }).finished.then(() => { rows[i].style.opacity = ""; });
-      ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" }).finished.then(() => ghost.remove());
-    }, () => ghost.remove());
+  // Lift copies of the needed rows first, at exactly where they sit, so
+  // they float free of the run window as it fades.
+  const ghosts = from.map((src) => {
+    const r = src.getBoundingClientRect();
+    const g = src.cloneNode(true);
+    g.classList.add("pr-ghost");
+    Object.assign(g.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+    document.body.appendChild(g);
+    return { g, r };
   });
-  Promise.all(flights).then(() => {
-    m.classList.remove("assembling");
-    tail.forEach((t, k) => t.animate([{ opacity: 0, transform: "translateY(6px) scale(.98)" }, { opacity: 1, transform: "none" }], { duration: 320, delay: 80 + k * 110, easing: "cubic-bezier(.2, .8, .2, 1)", fill: "forwards" }).finished.then(() => { t.style.opacity = ""; }));
+  // Every landing spot is measured now, before the card starts to move.
+  const targets = rows.map((row) => row.getBoundingClientRect());
+  // One header throughout: the run's title bar lifts off and glides onto
+  // the card's, which only shows once it lands.
+  const barSrc = run.querySelector(".pr-bar"), barDst = card.querySelector(".pr-bar");
+  let barFlight = Promise.resolve();
+  if (barSrc && barDst) {
+    const r = barSrc.getBoundingClientRect(), t = barDst.getBoundingClientRect();
+    const g = barSrc.cloneNode(true);
+    g.classList.add("pr-ghost-bar");
+    g.querySelectorAll("button").forEach((b) => b.remove());
+    Object.assign(g.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+    document.body.appendChild(g);
+    barSrc.style.visibility = "hidden";
+    barDst.style.opacity = "0";
+    const kx = t.width / r.width, ky = t.height / r.height;
+    barFlight = g.animate([
+      { transform: "translate(0, 0) scale(1, 1)" },
+      { transform: `translate(${t.left - r.left}px, ${t.top - r.top}px) scale(${kx}, ${ky})` },
+    ], { duration: 560, easing: "cubic-bezier(.22, 1, .36, 1)", fill: "forwards" }).finished.then(() => {
+      barDst.style.opacity = "";
+      // Hand over a frame later, so a header is always on screen.
+      requestAnimationFrame(() => requestAnimationFrame(() => g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: "forwards" }).finished.then(() => g.remove(), () => g.remove())));
+    }, () => g.remove());
+  }
+  // One dim behind it all: the card's. The run window fades out alone,
+  // then the card rises in a beat later, so the two never cross.
+  run.style.background = "transparent";
+  const win = run.querySelector(".pr-win") || run;
+  win.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: "ease-out", fill: "forwards" }).finished.then(() => run.remove(), () => run.remove());
+  // The card's body fades up under the arriving header; no movement, so
+  // the rows' landing spots stay true.
+  card.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 160, easing: "ease-out", fill: "backwards" });
+  // Each copy glides onto its row, scaled evenly to the card's width and
+  // centred on the row, then hands over to the real row.
+  const flights = ghosts.map(({ g, r }, i) => {
+    const t = targets[i];
+    const k = t.width / r.width;
+    const dx = t.left - r.left, dy = t.top + (t.height - r.height * k) / 2 - r.top;
+    return g.animate([
+      { transform: "translate(0, 0) scale(1)", opacity: 1 },
+      { transform: `translate(${dx}px, ${dy}px) scale(${k})`, opacity: 1 },
+    ], { duration: 620, delay: 120 + i * 70, easing: EASE, fill: "forwards" }).finished.then(() => {
+      rows[i].style.opacity = "";
+      rows[i].animate([{ opacity: 0 }, { opacity: 1 }], { duration: 140, easing: "linear" });
+      g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: "linear", fill: "forwards" }).finished.then(() => g.remove(), () => g.remove());
+    }, () => g.remove());
+  });
+  Promise.all([...flights, barFlight]).then(() => {
+    // "assembling" stays: removing it would replay the card's open fade from
+    // zero, a one-frame blink right at the finish.
+    tail.forEach((t, k) => t.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 360, delay: 60 + k * 90, easing: EASE, fill: "backwards" }).finished.then(() => { t.style.opacity = ""; }, () => { t.style.opacity = ""; }));
+    tail.forEach((t) => { t.style.opacity = ""; });
   });
 }
 // Once a path has been watched, the button opens this instead: a small
@@ -3544,7 +3588,7 @@ function openPathRun(name, replay = false) {
     // The finish: games that could go either way fade out, then the ones
     // that matter lift out of the terminal and gather into the path card.
     lines.querySelectorAll(".pr-line.g.free").forEach((el) => el.classList.add("fading"));
-    await wait(fast ? 0 : 650);
+    await wait(fast ? 0 : 450);
     if (!alive()) return;
     openPathCard(name, { from: [...lines.querySelectorAll(".pr-line.g.need")], run: m });
   })();
