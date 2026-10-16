@@ -3184,6 +3184,115 @@ function swingMatchupHtml(name, sw, m) {
   return `<span class="rd-sw-label">BIGGEST GAME LEFT</span><span class="rd-swing">${side(g.away, g.awayId, g.awayShort)}<span class="rd-sw-at">@</span>${side(g.home, g.homeId, g.homeShort)}</span>`;
 }
 
+// --- Path to win ------------------------------------------------------
+// The likeliest way the games left can finish with this manager first,
+// played out like a DOS program: the standings on the left, each game on
+// the right one at a time with its logos and result, points and places
+// moving after every game. The path comes from the exact walk behind the
+// win chance (exactPaths), so it is a real way to win, not a guess.
+function pathScenario(name) {
+  const ctx = winChanceMemo.ctx, i = MANAGERS.indexOf(name);
+  if (!ctx || i < 0) return null;
+  const r = exactPaths([i], ctx.models, ctx.picks, ctx.guesses, ctx.tbGame, ctx.catN, ctx.N)[i];
+  if (!r?.path) return null;
+  const order = new Map(gamesByKickoff().map((g, k) => [g.id, k]));
+  return { ...r.path, all: [...r.path.all].sort((a, b) => order.get(a.g.id) - order.get(b.g.id)), guess: ctx.guesses[i], tbGame: ctx.tbGame };
+}
+let pathRunToken = 0;
+function openPathRun(name) {
+  const sc = pathScenario(name);
+  const token = ++pathRunToken;
+  const all = lastGoodCloudPicks || {};
+  const results = computeLiveResults(latestLive);
+  const pts = Object.fromEntries(MANAGERS.map((n) => [n, GAMES.reduce((t, g) => t + (results[g.id] ? scorePick(g, all[n]?.picks?.[g.id], results[g.id]) || 0 : 0), 0)]));
+  const me = shown(name).toUpperCase();
+  const m = document.createElement("div");
+  m.className = "pr-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", `Path to win for ${shown(name)}`);
+  m.innerHTML = `<div class="pr-top"><span class="pr-title">PATH TO WIN · ${escapeCd(me)}</span><button type="button" class="pr-skip">SKIP ▸▸</button><button type="button" class="pr-close" aria-label="Close">✕</button></div>
+    <div class="pr-body"><ol class="pr-board"></ol><div class="pr-term"><div class="pr-lines"></div><span class="pr-cursor">█</span></div></div>`;
+  document.body.appendChild(m);
+  const board = m.querySelector(".pr-board"), lines = m.querySelector(".pr-lines"), term = m.querySelector(".pr-term");
+  // Portrait phone: the standings sit on top in two columns (1 to 5, 6 to
+  // 10) so the terminal keeps most of the screen; wider screens put them
+  // side by side in one column.
+  const wide = innerWidth >= 600;
+  const ROW = wide ? 26 : 22, cols = !wide && MANAGERS.length > 5 ? 2 : 1, perCol = Math.ceil(MANAGERS.length / cols);
+  m.classList.toggle("wide", wide);
+  const rows = Object.fromEntries(MANAGERS.map((n) => {
+    const li = document.createElement("li");
+    li.className = `pr-row${n === name ? " me" : ""}`;
+    li.innerHTML = `<span class="pr-rk"></span><span class="pr-nm">${escapeCd(shown(n).toUpperCase())}</span><span class="pr-pt"></span><span class="pr-gain"></span>`;
+    board.appendChild(li);
+    return [n, li];
+  }));
+  board.style.height = `${perCol * ROW}px`;
+  board.style.setProperty("--pr-cols", cols);
+  const paint = (gains = {}) => {
+    const order = [...MANAGERS].sort((a, b) => pts[b] - pts[a] || (a === name ? -1 : b === name ? 1 : 0) || MANAGERS.indexOf(a) - MANAGERS.indexOf(b));
+    order.forEach((n, k) => {
+      const li = rows[n], rank = 1 + order.findIndex((x) => pts[x] === pts[n]), tied = order.filter((x) => pts[x] === pts[n]).length > 1;
+      li.style.transform = `translate(${Math.floor(k / perCol) * 100}%, ${(k % perCol) * ROW}px)`;
+      li.querySelector(".pr-rk").textContent = `${tied ? "T" : ""}${rank}`;
+      li.querySelector(".pr-pt").textContent = String(pts[n]).padStart(2, "0");
+      const gEl = li.querySelector(".pr-gain");
+      gEl.textContent = gains[n] ? `+${gains[n]}` : "";
+      li.classList.toggle("gained", !!gains[n]);
+    });
+  };
+  paint();
+  let fast = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const alive = () => token === pathRunToken && document.body.contains(m);
+  const wait = (ms) => new Promise((r) => setTimeout(r, fast ? 0 : ms));
+  const line = (html, cls = "") => { const d = document.createElement("div"); d.className = `pr-line ${cls}`; d.innerHTML = html; lines.appendChild(d); term.scrollTop = term.scrollHeight; return d; };
+  const type = async (text, cls = "") => { const d = line("", cls); for (let k = 1; k <= text.length; k++) { if (!alive()) return d; d.textContent = text.slice(0, k); if (!fast) await wait(28); } return d; };
+  const close = () => { pathRunToken++; m.classList.add("out"); setTimeout(() => m.remove(), 200); };
+  m.querySelector(".pr-close").addEventListener("click", close);
+  m.querySelector(".pr-skip").addEventListener("click", (e) => { fast = true; e.currentTarget.remove(); });
+  const logo = (id) => `<img class="pr-logo" src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'" />`;
+  (async () => {
+    await type(`C:\\BROCHIEFS> PATH ${me}.EXE`, "cmd");
+    await wait(250);
+    const dots = line("RUNNING SIMULATION", "dim");
+    for (let k = 0; k < 9 && alive(); k++) { dots.textContent = `RUNNING SIMULATION${".".repeat(1 + (k % 3))}`; await wait(260); }
+    if (!alive()) return;
+    if (!sc) { line(`NO PATH LEFT: ${escapeCd(me)} CANNOT FINISH FIRST.`, "bad"); m.querySelector(".pr-skip")?.remove(); return; }
+    dots.textContent = `RUNNING SIMULATION... ${sc.all.length} GAME${sc.all.length === 1 ? "" : "S"} LEFT`;
+    await wait(500);
+    for (const st of sc.all) {
+      if (!alive()) return;
+      const g = st.g;
+      line(`${logo(g.awayId)}<span class="pr-tm">${escapeCd(g.awayShort)}</span><span class="pr-at">@</span>${logo(g.homeId)}<span class="pr-tm">${escapeCd(g.homeShort)}</span>`, "game");
+      await wait(450);
+      const gains = {};
+      for (const n of MANAGERS) { const p = scorePick(g, all[n]?.picks?.[g.id], st.res) || 0; if (p) { gains[n] = p; pts[n] += p; } }
+      const mine = gains[name];
+      line(`<span class="pr-arrow">&gt;</span> ${escapeCd(st.txt.toUpperCase())}${st.need ? "" : ` <span class="pr-any">(ANY RESULT WORKS)</span>`}${mine ? ` <b class="pr-plus">${escapeCd(me)} +${mine}</b>` : ""}`, st.need ? "res need" : "res free");
+      paint(gains);
+      await wait(st.need ? 1100 : 700);
+    }
+    if (!alive()) return;
+    paint();
+    const top = Math.max(...Object.values(pts)), atTop = MANAGERS.filter((n) => pts[n] === top);
+    if (atTop.length > 1 && sc.guess != null && sc.tbGame) {
+      await wait(300);
+      line(`TIE AT ${top} · TIEBREAKER: ${escapeCd(sc.tbGame.awayShort.toUpperCase())} @ ${escapeCd(sc.tbGame.homeShort.toUpperCase())} TOTAL NEAR ${sc.guess}`, "res need");
+    }
+    await wait(400);
+    line(`${escapeCd(me)} WINS THE WEEK`, "win");
+    const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
+    line(`${sc.need.length} RESULT${sc.need.length === 1 ? "" : "S"} NEEDED · THIS PATH: ${oneIn ? (oneIn > 10000 ? "RARER THAN 1 IN 10,000" : `ABOUT 1 IN ${oneIn.toLocaleString()}`) : "-"}`, "dim");
+    m.querySelector(".pr-skip")?.remove();
+  })();
+  track("path-run", { event: true });
+}
+// The button lives inside a card the board redraws, so one listener here.
+document.addEventListener("click", (e) => {
+  const b = e.target.closest?.(".rd-path-btn");
+  if (!b) return;
+  e.stopPropagation();
+  openPathRun(b.dataset.path);
+}, true);
+
 function playerBreakdownHtml(name, state, results, live) {
   const ordered = gamesByKickoff();
   let banked = 0, liveCovering = 0, liveOpen = 0, wins = 0, losses = 0, liveFly = 0;
@@ -3287,7 +3396,8 @@ function playerBreakdownHtml(name, state, results, live) {
     const pc = (v) => winChanceLabel(v, { alive: true });
     const sw = wd.swing;
     const why = wd.alive === false ? outReason(name, results) : "";
-    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
+    const canPath = wd.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((row) => row.some((p) => p?.hidden));
+    wpRow = `<div class="rd-wp"><span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}">PATH TO WIN ▸</button>` : ""}</span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
   }
   return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rows}${tbRow}${summary}</div>`;
 }
@@ -3784,7 +3894,10 @@ function exactPaths(targets, models, picks, guesses, tbGame, catN, N) {
     }
     const need = [];
     for (let d = 0; d < D; d++) if (!free.includes(d)) need.push({ g: games[d].g, txt: games[d].cats[b.assign[d]].txt, p: games[d].cats[b.assign[d]].p });
-    out[i] = { alive: true, path: { need, p: need.reduce((s, x) => s * x.p, 1), tie: b.tie } };
+    // Every open game in the path: the needed result, or for a game that
+    // does not matter, its likeliest result (any result keeps i first).
+    const all = games.map((G, d) => { const free_ = free.includes(d), c = free_ ? G.cats[0] : G.cats[b.assign[d]]; return { g: G.g, need: !free_, txt: c.txt, res: c.res, p: c.p }; });
+    out[i] = { alive: true, path: { need, all, p: need.reduce((s, x) => s * x.p, 1), tie: b.tie } };
   }
   return out;
 }
@@ -3916,7 +4029,7 @@ function weekWinChances(cloudPicks, results, live) {
     detail[n] = { pct, swing: best, games: all, finals, top: topN[i] / N, tb: tbW[i] / N, threats, moe: 1.96 * Math.sqrt(pct * (1 - pct) / N), runs: N, alive: wins[i] > 0 ? true : exact[i]?.alive, path: exact[i]?.path || null };
   });
   const out = Object.fromEntries(MANAGERS.map((n, i) => [n, wins[i] / N]));
-  winChanceMemo = { key, out, detail };
+  winChanceMemo = { key, out, detail, ctx: { models, picks, guesses, tbGame, catN, N } };
   return out;
 }
 
