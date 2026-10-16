@@ -104,3 +104,19 @@ test("out line: the same picks as a rival who already leads", () => {
   const why = outReasonOf(g, ["Logan", "Robert"], picks)("Logan", results);
   assert.match(why, /^Even if every open pick hits \(\d+\), Robert's picks on the same games take Robert to \d+\.$/);
 });
+
+// The line under hit it / miss it when one rival mirrors a manager.
+test("mirror line: the rival on the other side who matches everywhere else", () => {
+  const GAMES = [mk(1, 6), mk(2, 3), mk(3, 7), mk(4, 2)];
+  const rest = { 2: { team: "H2", mode: "ATS" }, 3: { team: "A3", mode: "ATS" }, 4: { team: "H4", mode: "SU" } };
+  const all = {
+    Dewitt: { picks: { 1: { team: "H1", mode: "ATS" }, ...rest } },
+    Curt: { picks: { 1: { team: "A1", mode: "ATS" }, ...rest } },
+    Jordan: { picks: { 1: { team: "A1", mode: "SU" }, 2: { team: "A2", mode: "SU" } } },
+  };
+  const mirrorLine = new Function("GAMES", "MANAGERS", "lastGoodCloudPicks", "currentManager",
+    `const shown = (n) => n;\n${span("function escapeCd", "\n}\n")}\n}\n${span("function mirrorLine", "function playerBreakdownHtml")}\nreturn mirrorLine;`)(GAMES, ["Dewitt", "Curt", "Jordan"], all, "Jake");
+  const sw = { game: GAMES[0], ifMiss: 0.007 };
+  assert.equal(mirrorLine("Dewitt", sw, {}), "Must hit: <b>Curt</b> took <b>A1 +6</b> and matches Dewitt's other 3 open picks.");
+  assert.equal(mirrorLine("Dewitt", { ...sw, ifMiss: 0.2 }, {}), "", "no line while a miss still leaves a real chance");
+});
