@@ -6,7 +6,11 @@ const url = process.argv[2];
 const b = await chromium.launch();
 const ctx = await b.newContext({ viewport: { width: 430, height: 932 }, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1" });
 // Never write anything to the league from the probe.
-await ctx.route(/liftr-nfl\.jhs797\.workers\.dev/, (r) => r.request().method() === "GET" ? r.continue() : r.fulfill({ status: 200, body: "{}" }));
+// Either Worker: only these read routes go through; anything else (app
+// opens, visits, saves) is answered here and never reaches the league.
+const READS = /^\/(games|auth|weeks|picks|live|avatars|app-control|trivia|roster|season|insights|experts|qotw)(\?|$)/;
+await ctx.route(/liftr-(nfl|ai)\.jhs797\.workers\.dev/, (r) => { const u = new URL(r.request().url()); return r.request().method() === "GET" && READS.test(u.pathname + u.search.slice(0, 1)) ? r.continue() : r.fulfill({ status: 200, contentType: "application/json", body: "{}" }); });
+await ctx.route(/goatcounter|zgo\.at/, (r) => r.abort());
 const p = await ctx.newPage();
 const reqs = [];
 const T0 = Date.now();
@@ -15,7 +19,7 @@ p.on("requestfinished", async (q) => { const t = q.timing(); const r = await q.r
 p.on("requestfailed", (q) => reqs.push({ at: q.__at, u: "FAILED (" + (q.failure()?.errorText || "?") + ") " + q.url().slice(0, 100), ms: -1 }));
 p.on("console", (m) => { if (/espn|fail|cors|refused/i.test(m.text())) console.log("console:", m.type(), m.text().slice(0, 300)); });
 await p.addInitScript(() => {
-  localStorage.setItem("brochiefs_me_v1", "Jake"); localStorage.setItem("brochiefs_rules_seen_v1", "1"); localStorage.setItem("brochiefs_splash_seen_v1", String(Date.now()));
+  localStorage.setItem("brochiefs_me_v1", "Jake"); localStorage.setItem("brochiefs_rules_seen_v1", "1");
   window.__long = [];
   try { new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__long.push([Math.round(e.startTime), Math.round(e.duration)]); }).observe({ type: "longtask", buffered: true }); } catch {}
 });
