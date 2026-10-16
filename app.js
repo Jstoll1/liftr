@@ -3747,6 +3747,11 @@ function weekWinChances(cloudPicks, results, live) {
   const N = 5000;
   const tbGame = tiebreakerGameOf();
   const guesses = MANAGERS.map((n) => { const raw = String(cloudPicks[n]?.tiebreaker ?? "").trim(); const v = Number(raw); return raw !== "" && Number.isFinite(v) ? v : null; });
+  // A tiebreaker still sealed ("hidden" until its game kicks off) is a
+  // guess we cannot see, not a missing one: each run draws it near the
+  // expected total. Read as no guess, it gave the viewer every tie.
+  const sealedTb = MANAGERS.map((n) => String(cloudPicks[n]?.tiebreaker ?? "").trim() === "hidden");
+  const tbExpected = (() => { const g = tiebreakerGameOf(), l = g && live[g.id]; return Number(l?.odds?.overUnder) || window.LEAGUE?.ouDefault || 52; })();
   const models = GAMES.map((g) => {
     if (results[g.id]) return { g, fixed: results[g.id] };
     const l = live[g.id];
@@ -3772,7 +3777,13 @@ function weekWinChances(cloudPicks, results, live) {
     return { g, rem, lam, pHome, curA, curH };
   });
   // Each manager's pick on each game, with what it pays.
-  const picks = MANAGERS.map((n) => GAMES.map((g) => { const p = cloudPicks[n]?.picks?.[g.id]; return p ? { team: p.team, mode: p.mode, pts: pointValue(g, p.team, p.mode) } : null; }));
+  // A pick still hidden from this phone (its game has not kicked off; the
+  // NFL locks game by game) is unknown, not a miss: each run it backs a
+  // side at random against the spread for 2 points. Scored as a miss it
+  // handed the viewer the week, since nobody else could score on a game
+  // that had not started.
+  const picks = MANAGERS.map((n) => GAMES.map((g) => { const p = cloudPicks[n]?.picks?.[g.id]; return !p ? null : p.hidden ? { hidden: true, mode: "ATS", pts: 2 } : { team: p.team, mode: p.mode, pts: pointValue(g, p.team, p.mode) }; }));
+  const anyHidden = picks.some((row) => row.some((p) => p?.hidden));
   const wins = new Array(MANAGERS.length).fill(0);
   const score = new Array(MANAGERS.length);
   // For each manager and each open game they picked: runs where the pick
@@ -3810,11 +3821,12 @@ function weekWinChances(cloudPicks, results, live) {
         const p = picks[i][k];
         if (!p) continue;
         const winner = p.mode === "SU" ? o.suWinner : o.atsWinner;
-        const hit = !!(winner && winner === p.team);
+        const hit = !!(winner && winner === (p.hidden ? (Math.random() < 0.5 ? m.g.home : m.g.away) : p.team));
         if (hit) score[i] += p.pts;
         hitThis[i][k] = hit;
       }
     }
+    for (let i = 0; i < MANAGERS.length; i++) if (sealedTb[i]) guesses[i] = Math.round(tbExpected + (Math.random() * 2 - 1) * 10);
     let best = -1, bestDiff = Infinity, lead = [];
     for (let i = 0; i < MANAGERS.length; i++) {
       const diff = guesses[i] === null || tbTotal === null ? Infinity : Math.abs(guesses[i] - tbTotal);
@@ -3840,13 +3852,13 @@ function weekWinChances(cloudPicks, results, live) {
   // Swing game: the open pick whose result moves a manager's chance most.
   // If it hits: wins-when-hit / runs-when-hit; if it misses: the rest.
   const detail = {};
-  const zeroes = MANAGERS.map((_, i) => i).filter((i) => wins[i] === 0);
+  const zeroes = anyHidden || sealedTb.some(Boolean) ? [] : MANAGERS.map((_, i) => i).filter((i) => wins[i] === 0);
   const exact = zeroes.length ? exactPaths(zeroes, models, picks, guesses, tbGame, catN, N) : {};
   MANAGERS.forEach((n, i) => {
     let best = null;
     const all = [];
     for (let k = 0; k < models.length; k++) {
-      if (!open[k] || !picks[i][k]) continue;
+      if (!open[k] || !picks[i][k] || picks[i][k].hidden) continue; // a hidden pick has no team to show
       const hN = hitN[i][k], mN = N - hN;
       if (hN < 100 || mN < 100) continue;
       const ifHit = hitW[i][k] / hN, ifMiss = (wins[i] - hitW[i][k]) / mN;
