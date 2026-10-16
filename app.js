@@ -3429,7 +3429,8 @@ function openPathRun(name, replay = false) {
       for (const n of MANAGERS) { const p = scorePick(g, all[n]?.picks?.[g.id], st.res) || 0; if (p) gains[n] = p; }
       const row = line(`<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}</span><span class="pr-gp">${gains[name] ? `+${gains[name]}` : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`, `g ${st.need ? "need" : "free"}${fast ? "" : " typing"}`);
       if (!fast) term.scrollTop = term.scrollHeight;
-      if (!fast) { await wait(320); row.classList.add("wipe"); await wait(420); row.classList.remove("typing", "wipe"); }
+      // One cursor at a time: the terminal's resting cursor hides while a line types.
+      if (!fast) { term.classList.add("typing"); await wait(320); row.classList.add("wipe"); await wait(420); row.classList.remove("typing", "wipe"); term.classList.remove("typing"); }
       for (const n in gains) pts[n] += gains[n];
       await paint(fast ? {} : gains, true);
       await wait(st.need ? 700 : 350);
