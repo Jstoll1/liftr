@@ -85,7 +85,7 @@ test("labels never read 0%", () => {
 
 // The one line under OUT: why a manager can no longer finish first.
 const outReasonOf = (GAMES, MANAGERS, picks) => new Function("GAMES", "MANAGERS", "lastGoodCloudPicks",
-  `${span("function pointValue", "// Fill this in")}\n${span("const catSig", "let winChanceMemo")}\nconst shown = (n) => n;\n${span("function outReason", "function playerBreakdownHtml")}\nreturn outReason;`)(GAMES, MANAGERS, picks);
+  `${span("function pointValue", "// Fill this in")}\n${span("const catSig", "let winChanceMemo")}\nconst shown = (n) => n;\n${span("function outReason", "// --- Path to win")}\nreturn outReason;`)(GAMES, MANAGERS, picks);
 
 test("out line: a ceiling below points already banked", () => {
   const g = [mk(1, 3), mk(2, 3)];
@@ -121,4 +121,31 @@ test("mirror line: the rival on the other side who matches everywhere else", () 
   assert.equal(m.n, "Curt");
   assert.equal(mirrorLine("Dewitt", m, GAMES[0]), `<span class="rd-wp-must">Must hit:</span> <b>Curt</b> has <b>A1 +6</b> and matches Dewitt's other 3 open picks.`);
   assert.equal(mirrorOf("Dewitt", { ...sw, ifMiss: 0.2 }, {}), null, "no rival named while a miss still leaves a real chance");
+});
+
+// The path to win plays out every open game; replaying it must leave the
+// manager on top (alone, or level and through to the tiebreaker).
+test("path to win: replaying the whole path puts the manager first", () => {
+  let seed = 23, checked = 0;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let trial = 0; trial < 200; trial++) {
+    const G = 3 + Math.floor(rnd() * 4), M = 3 + Math.floor(rnd() * 6);
+    const games = Array.from({ length: G }, (_, k) => mk(k, [0, 1, 3, 3.5, 7, 7.5, 14][Math.floor(rnd() * 7)], rnd() < 0.5));
+    const nFixed = Math.floor(rnd() * (G - 1));
+    const models = games.map((g, k) => (k < nFixed ? { g, fixed: { awayScore: Math.floor(rnd() * 40), homeScore: 1 + Math.floor(rnd() * 40) } } : { g, curA: 0, curH: 0 }));
+    const picks = Array.from({ length: M }, () => games.map((g) => ({ team: rnd() < 0.5 ? g.home : g.away, mode: rnd() < 0.5 ? "SU" : "ATS" })));
+    const guesses = picks.map(() => 30 + Math.floor(rnd() * 40));
+    const catN = models.map((m) => (m.fixed ? null : gameCats(m.g).map(() => 1 + Math.floor(rnd() * 100))));
+    const ex = exactPaths(picks.map((_, i) => i), models, picks, guesses, games[G - 1], catN, 5000);
+    for (let i = 0; i < M; i++) {
+      const path = ex[i]?.path;
+      if (!path) continue;
+      assert.equal(path.all.length, G - nFixed, "every open game is in the path");
+      const res = new Map(path.all.map((s) => [s.g.id, s.res]));
+      const score = picks.map((row) => models.reduce((t, m, k) => t + (scorePick(m.g, row[k], m.fixed || res.get(m.g.id)) || 0), 0));
+      assert.equal(score[i], Math.max(...score), `trial ${trial}, manager ${i} finishes top`);
+      checked++;
+    }
+  }
+  assert.ok(checked > 50, `checked ${checked} paths`);
 });
