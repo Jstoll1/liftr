@@ -1543,7 +1543,7 @@ window.appForgetDevice = () => {
   updateMePill();
 };
 window.appClearPicks = () => {
-  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(PENDING_KEY); } catch {}
+  try { localStorage.removeItem(storageKey()); localStorage.removeItem(PENDING_KEY); } catch {}
   if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
 };
 window.appRefreshAuth = () => refreshAuthState();
@@ -3282,6 +3282,7 @@ function playerBreakdownHtml(name, state, results, live) {
   if (wd) {
     const pc = (v) => winChanceLabel(v, { alive: true });
     const sw = wd.swing;
+    const why = wd.alive === false ? outReason(name, results) : "";
     wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">± by each game: how far its result moves the ${winChanceLabel(wd.pct, wd)}</span>` : ""}</div>`;
   }
   return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
