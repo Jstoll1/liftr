@@ -3442,6 +3442,9 @@ function openPathRun(name, replay = false) {
       <div class="pr-foot-row"><span class="pr-key"><i class="k-need"></i>must happen <i class="k-free"></i>either way</span><button type="button" class="pr-again">↻ RUN AGAIN</button></div>`;
     await wait(250);
     lines.appendChild(foot);
+    // The DOS chrome did its job while the run played; once the result is
+    // in, the command and status lines fold away and the games lead.
+    lines.querySelectorAll(".pr-line.cmd, .pr-line.dim").forEach((el) => el.classList.add("gone"));
     foot.querySelector(".pr-again").addEventListener("click", () => openPathRun(name, true));
     m.querySelector(".pr-skip")?.remove();
     m.querySelector(".pr-cursor")?.remove();
