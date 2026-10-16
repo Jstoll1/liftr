@@ -3423,14 +3423,14 @@ function openPathRun(name, replay = false) {
     for (const st of sc.all) {
       if (!alive()) return;
       const g = st.g;
-      const row = line(`<span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt"><span class="pr-gm">${escapeCd(g.awayShort)} @ ${escapeCd(g.homeShort)}</span></span><span class="pr-gp"></span>`, `g ${st.need ? "need" : "free"} pending`);
-      await wait(420);
+      // The line types itself: a block cursor blinks, then sweeps right,
+      // printing the logos, the result and the points in steps behind it.
       const gains = {};
-      for (const n of MANAGERS) { const p = scorePick(g, all[n]?.picks?.[g.id], st.res) || 0; if (p) { gains[n] = p; pts[n] += p; } }
-      row.querySelector(".pr-gt").textContent = st.txt;
-      row.querySelector(".pr-gp").textContent = gains[name] ? `+${gains[name]}` : "";
-      row.classList.remove("pending");
+      for (const n of MANAGERS) { const p = scorePick(g, all[n]?.picks?.[g.id], st.res) || 0; if (p) gains[n] = p; }
+      const row = line(`<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}</span><span class="pr-gp">${gains[name] ? `+${gains[name]}` : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`, `g ${st.need ? "need" : "free"}${fast ? "" : " typing"}`);
       if (!fast) term.scrollTop = term.scrollHeight;
+      if (!fast) { await wait(320); row.classList.add("wipe"); await wait(420); row.classList.remove("typing", "wipe"); }
+      for (const n in gains) pts[n] += gains[n];
       await paint(fast ? {} : gains, true);
       await wait(st.need ? 700 : 350);
     }

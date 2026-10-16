@@ -6273,17 +6273,25 @@ html[data-sport="nfl"] .console-tab[data-tab="experts"] { display: none !importa
 .pr-line { min-height: 1.3em; }
 .pr-line.cmd { color: #c8ffd9; }
 .pr-line.dim { color: rgba(57, 255, 136, .55); margin-bottom: 6px; }
-.pr-line.g { animation: pr-bump .28s ease-out; display: grid; grid-template-columns: 38px minmax(0, 1fr) 28px; align-items: center; gap: 8px; padding: 6px 0 6px 8px; border-left: 2px solid transparent; border-bottom: 1px solid rgba(255, 255, 255, .05); white-space: nowrap; transition: opacity .25s; }
+.pr-line.g { position: relative; padding: 6px 0 6px 8px; border-left: 2px solid transparent; border-bottom: 1px solid rgba(255, 255, 255, .05); transition: border-color .2s; }
+.pr-gc { display: grid; grid-template-columns: 38px minmax(0, 1fr) 28px; align-items: center; gap: 8px; white-space: nowrap; }
+/* Typed in: the content hides behind a blinking block cursor, then the
+   cursor sweeps right in character steps and prints it all behind it. */
+.pr-line.g.typing .pr-gc { clip-path: inset(0 100% 0 0); }
+.pr-line.g.typing.wipe .pr-gc { clip-path: inset(0 0 0 0); transition: clip-path .38s steps(22, end); }
+.pr-gcur { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: #39ff88; text-shadow: 0 0 8px rgba(57, 255, 136, .7); animation: pr-blink .3s steps(2) infinite; pointer-events: none; }
+.pr-line.g.typing.wipe .pr-gcur { left: calc(100% - 12px); transition: left .38s steps(22, end); animation: none; }
+.pr-line.g:not(.typing) .pr-gcur { display: none; }
 .pr-gl { display: flex; align-items: center; }
 .pr-gl .pr-logo { width: 18px; height: 18px; object-fit: contain; }
 .pr-gl .pr-logo + .pr-logo { margin-left: 2px; }
 .pr-gt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .pr-gm { color: rgba(255, 255, 255, .5); }
 .pr-gp { text-align: right; color: var(--neon-green); }
-.pr-line.g.pending .pr-gt::after { content: " ..."; color: rgba(255, 255, 255, .35); }
-.pr-line.g.need:not(.pending) { border-left-color: #ffb000; color: #ffcf5c; }
-.pr-line.g.free:not(.pending) { color: rgba(214, 240, 226, .42); }
-.pr-line.g.free:not(.pending) .pr-gl { opacity: .45; }
+.pr-line.g.need { color: #ffcf5c; }
+.pr-line.g.need:not(.typing) { border-left-color: #ffb000; }
+.pr-line.g.free { color: rgba(214, 240, 226, .42); }
+.pr-line.g.free .pr-gl { opacity: .45; }
 .pr-line.bad { margin-top: 10px; color: var(--neon-pink); }
 .pr-foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255, 228, 94, .25); animation: pr-fade .3s ease-out; }
 .pr-foot-tie { font-size: 16px; color: #ffcf5c; margin-bottom: 6px; }
