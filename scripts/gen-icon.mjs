@@ -57,17 +57,33 @@ for (let x = 9; x <= 15; x++) lacesBig.push([x, 12]);
 for (const x of [9, 11, 13, 15]) lacesBig.push([x, 11], [x, 13]);
 const BIG = { grid: 25, cx: 12.5, cy: 12.5, a: 9.5, b: 6.5, laces: lacesBig, glow: 26, scan: 0.1 };
 
-// Favicons: 16 cells, one cell a pixel at 16px and two at 32px, so the
-// edges stay sharp. No glow or scanlines; they would only blur.
-const lacesSmall = [];
-for (let x = 6; x <= 9; x++) lacesSmall.push([x, 8]);
-for (const x of [6, 9]) lacesSmall.push([x, 7], [x, 9]);
-const SMALL = { grid: 16, cx: 8, cy: 8.5, a: 7, b: 4.5, laces: lacesSmall, glow: 0, scan: 0, round: 160 };
+// Favicons: drawn by hand on 16 pixels, since the outline ball shrunk to a
+// browser tab blurs into a blob. A solid ball in the gradient fills the
+// tile, with a white seam and stitches; at 32px each pixel is doubled.
+function favicon(p) {
+  const C = 64; // 1024 / 16
+  const rows = { 4: [6, 9], 5: [3, 12], 6: [2, 13], 7: [1, 14], 8: [1, 14], 9: [2, 13], 10: [3, 12], 11: [6, 9] };
+  const lace = new Set();
+  for (let x = 4; x <= 11; x++) lace.add(`${x},7`);
+  for (const x of [5, 7, 8, 10]) lace.add(`${x},6`), lace.add(`${x},8`);
+  let ball = "", laces = "";
+  for (const [y, [x0, x1]] of Object.entries(rows)) for (let x = x0; x <= x1; x++) {
+    const cell = `<rect x="${x * C}" y="${y * C}" width="${C}" height="${C}" fill="${lace.has(`${x},${y}`) ? p.lace : "url(#g)"}"/>`;
+    if (lace.has(`${x},${y}`)) laces += cell; else ball += cell;
+  }
+  const stops = p.grad.map((c, i) => `<stop offset="${(i / (p.grad.length - 1)) * 100}%" stop-color="${c}"/>`).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" shape-rendering="crispEdges">
+<defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="${4 * C}" x2="0" y2="${12 * C}">${stops}</linearGradient></defs>
+<rect width="1024" height="1024" rx="192" fill="${p.bg1}"/>
+${ball}${laces}
+</svg>
+`;
+}
 
 const sport = process.argv[2] === "nfl" ? "nfl" : "cfb";
 const dir = sport === "nfl" ? "icons/nfl" : "icons";
 fs.mkdirSync(dir, { recursive: true });
-const big = icon(PAL[sport], BIG), small = icon(PAL[sport], SMALL);
+const big = icon(PAL[sport], BIG), small = favicon(PAL[sport]);
 fs.writeFileSync(`${dir}/icon.svg`, big);
 fs.writeFileSync(`${dir}/icon-small.svg`, small);
 
