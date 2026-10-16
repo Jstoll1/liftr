@@ -6340,11 +6340,15 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 
 /* The finish: either-way games fade, needed games fly into the card. */
 .pr-line.g.fading { opacity: .08; transition: opacity .45s ease; }
-.pr-screen.pc.assembling { animation: none; }
-.pr-screen.pc.assembling .pc-card { animation: none; }
-.pr-ghost { position: fixed; z-index: 9500; margin: 0; box-sizing: border-box; pointer-events: none; font-family: 'VT323', monospace; font-size: 18px; line-height: 1.3; background: #06020f; border-radius: 4px; box-shadow: 0 6px 18px rgba(0, 0, 0, .55), 0 0 12px rgba(255, 176, 0, .18); will-change: transform, opacity; transform-origin: 0 0; }
 .pc-foot { flex-wrap: wrap; row-gap: 8px; }
 .pc-foot > span:first-child { white-space: nowrap; }
 .pc-share, .pc-replay { white-space: nowrap; }
-.pr-ghost-bar { position: fixed; z-index: 9600; margin: 0; box-sizing: border-box; pointer-events: none; border-radius: 10px 10px 0 0; transform-origin: 0 0; will-change: transform; }
-.pr-ghost-bar .pr-grip { display: none; }
+
+/* The finish, in place: pieces fold to nothing, the window closes up
+   around the games that matter, centered, and the result fades in. */
+.pr-screen.ending { align-items: center; }
+.pr-screen.ending .pr-win { flex: none; width: 100%; }
+@media (min-width: 700px) { .pr-screen.ending .pr-win { width: 460px; } }
+.pr-meter.fold, .pr-stand.fold, .pr-line.fold { max-height: 0 !important; opacity: 0; padding-top: 0 !important; padding-bottom: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important; border-width: 0 !important; overflow: hidden; transition: max-height .46s cubic-bezier(.22, 1, .36, 1), opacity .22s ease-out, padding .46s cubic-bezier(.22, 1, .36, 1), margin .46s cubic-bezier(.22, 1, .36, 1); }
+.pr-end { padding-top: 6px; }
+.pr-end .pc-win { margin-top: 10px; }
