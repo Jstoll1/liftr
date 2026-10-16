@@ -3199,63 +3199,91 @@ function pathScenario(name) {
   return { ...r.path, all: [...r.path.all].sort((a, b) => order.get(a.g.id) - order.get(b.g.id)), guess: ctx.guesses[i], tbGame: ctx.tbGame };
 }
 let pathRunToken = 0;
-function openPathRun(name) {
+// Which paths this phone has already watched run, per week: those open
+// straight on the finished path, with RUN AGAIN to watch it play.
+const PATH_SEEN_KEY = () => `brochiefs_pathseen_w${currentWeek}`;
+function pathSeen(name) { try { return JSON.parse(localStorage.getItem(PATH_SEEN_KEY()) || "[]").includes(name); } catch { return false; } }
+function markPathSeen(name) {
+  try { const l = JSON.parse(localStorage.getItem(PATH_SEEN_KEY()) || "[]"); if (!l.includes(name)) { l.push(name); localStorage.setItem(PATH_SEEN_KEY(), JSON.stringify(l)); } } catch {}
+  document.querySelectorAll(".rd-path-btn").forEach((b) => { if (b.dataset.path === name) b.querySelector(".rd-path-new")?.remove(); });
+}
+function openPathRun(name, replay = false) {
+  document.querySelector(".pr-screen")?.remove();
   const sc = pathScenario(name);
   const token = ++pathRunToken;
   const all = lastGoodCloudPicks || {};
   const results = computeLiveResults(latestLive);
   const pts = Object.fromEntries(MANAGERS.map((n) => [n, GAMES.reduce((t, g) => t + (results[g.id] ? scorePick(g, all[n]?.picks?.[g.id], results[g.id]) || 0 : 0), 0)]));
   const me = shown(name).toUpperCase();
+  let fast = (!replay && pathSeen(name)) || matchMedia("(prefers-reduced-motion: reduce)").matches;
   const m = document.createElement("div");
   m.className = "pr-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", `Path to win for ${shown(name)}`);
-  m.innerHTML = `<div class="pr-top"><span class="pr-title">PATH TO WIN · ${escapeCd(me)}</span><button type="button" class="pr-skip">SKIP ▸▸</button><button type="button" class="pr-close" aria-label="Close">✕</button></div>
-    <div class="pr-body"><ol class="pr-board"></ol><div class="pr-term"><div class="pr-lines"></div><span class="pr-cursor">█</span></div></div>`;
+  // A DOS window: the title bar on top (drag it down, or tap X, to close),
+  // the standings, then the terminal.
+  m.innerHTML = `<div class="pr-win">
+    <div class="pr-bar"><span class="pr-grip" aria-hidden="true"></span><span class="pr-bar-t">PATH.EXE <i>·</i> ${escapeCd(me)}</span>${fast ? "" : `<button type="button" class="pr-skip">SKIP</button>`}<button type="button" class="pr-close" aria-label="Close">✕</button></div>
+    <div class="pr-stand"><div class="pr-stand-h"><span>#</span><span>STANDINGS</span><span>PTS</span></div><ol class="pr-board"></ol></div>
+    <div class="pr-term"><div class="pr-lines"></div><span class="pr-cursor">█</span></div>
+  </div>`;
   document.body.appendChild(m);
-  const board = m.querySelector(".pr-board"), lines = m.querySelector(".pr-lines"), term = m.querySelector(".pr-term");
-  // Portrait phone: the standings sit on top in two columns (1 to 5, 6 to
-  // 10) so the terminal keeps most of the screen; wider screens put them
-  // side by side in one column.
-  const wide = innerWidth >= 600;
-  const ROW = wide ? 26 : 22, cols = !wide && MANAGERS.length > 5 ? 2 : 1, perCol = Math.ceil(MANAGERS.length / cols);
-  m.classList.toggle("wide", wide);
+  const win = m.querySelector(".pr-win"), board = m.querySelector(".pr-board"), lines = m.querySelector(".pr-lines"), term = m.querySelector(".pr-term");
+  // Five rows: the top five, or the top four and this manager below a gap.
+  const ROW = 24, SHOW = Math.min(5, MANAGERS.length);
   const rows = Object.fromEntries(MANAGERS.map((n) => {
     const li = document.createElement("li");
     li.className = `pr-row${n === name ? " me" : ""}`;
-    li.innerHTML = `<span class="pr-rk"></span><span class="pr-nm">${escapeCd(shown(n).toUpperCase())}</span><span class="pr-pt"></span><span class="pr-gain"></span>`;
+    li.innerHTML = `<span class="pr-rk"></span><span class="pr-nm">${escapeCd(shown(n).toUpperCase())}</span><span class="pr-gain"></span><span class="pr-pt"></span>`;
     board.appendChild(li);
     return [n, li];
   }));
-  board.style.height = `${perCol * ROW}px`;
-  board.style.setProperty("--pr-cols", cols);
-  const paint = (gains = {}) => {
+  board.style.height = `${SHOW * ROW}px`;
+  // Each game moves the board in two beats: this manager slides to their
+  // new place first, then everyone else settles around them.
+  const place = (n, slot) => {
+    const li = rows[n];
+    li.classList.toggle("off", slot < 0);
+    li.style.transform = `translateY(${(slot < 0 ? SHOW : slot) * ROW}px)`;
+  };
+  const paint = async (gains = {}, staged = false) => {
     const order = [...MANAGERS].sort((a, b) => pts[b] - pts[a] || (a === name ? -1 : b === name ? 1 : 0) || MANAGERS.indexOf(a) - MANAGERS.indexOf(b));
-    order.forEach((n, k) => {
+    const myAt = order.indexOf(name);
+    const shownOrder = myAt < SHOW ? order.slice(0, SHOW) : [...order.slice(0, SHOW - 1), name];
+    order.forEach((n) => {
       const li = rows[n], rank = 1 + order.findIndex((x) => pts[x] === pts[n]), tied = order.filter((x) => pts[x] === pts[n]).length > 1;
-      li.style.transform = `translate(${Math.floor(k / perCol) * 100}%, ${(k % perCol) * ROW}px)`;
       li.querySelector(".pr-rk").textContent = `${tied ? "T" : ""}${rank}`;
       li.querySelector(".pr-pt").textContent = String(pts[n]).padStart(2, "0");
-      const gEl = li.querySelector(".pr-gain");
-      gEl.textContent = gains[n] ? `+${gains[n]}` : "";
+      li.querySelector(".pr-gain").textContent = gains[n] ? `+${gains[n]}` : "";
       li.classList.toggle("gained", !!gains[n]);
     });
+    rows[name].classList.toggle("jump", myAt >= SHOW);
+    if (staged && !fast) {
+      place(name, shownOrder.indexOf(name));
+      await new Promise((r) => setTimeout(r, 550));
+    }
+    order.forEach((n) => place(n, shownOrder.indexOf(n)));
   };
   paint();
-  let fast = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const alive = () => token === pathRunToken && document.body.contains(m);
   const wait = (ms) => new Promise((r) => setTimeout(r, fast ? 0 : ms));
-  const line = (html, cls = "") => { const d = document.createElement("div"); d.className = `pr-line ${cls}`; d.innerHTML = html; lines.appendChild(d); term.scrollTop = term.scrollHeight; return d; };
+  const line = (html, cls = "") => { const d = document.createElement("div"); d.className = `pr-line ${cls}`; d.innerHTML = html; lines.appendChild(d); if (!fast) term.scrollTop = term.scrollHeight; return d; };
   const type = async (text, cls = "") => { const d = line("", cls); for (let k = 1; k <= text.length; k++) { if (!alive()) return d; d.textContent = text.slice(0, k); if (!fast) await wait(28); } return d; };
-  const close = () => { pathRunToken++; m.classList.add("out"); setTimeout(() => m.remove(), 200); };
+  const close = () => { pathRunToken++; m.classList.add("out"); setTimeout(() => m.remove(), 220); };
   m.querySelector(".pr-close").addEventListener("click", close);
-  m.querySelector(".pr-skip").addEventListener("click", (e) => { fast = true; e.currentTarget.remove(); });
+  m.querySelector(".pr-skip")?.addEventListener("click", (e) => { fast = true; markPathSeen(name); e.currentTarget.remove(); });
+  // Drag down from the title bar or the standings, or from the top of the
+  // terminal, to close; a short drag springs back.
+  let y0 = null, dy = 0;
+  win.addEventListener("touchstart", (e) => { const fromTop = !!e.target.closest(".pr-bar, .pr-stand"); y0 = fromTop || term.scrollTop <= 0 ? e.touches[0].clientY : null; dy = 0; win.style.transition = "none"; }, { passive: true });
+  win.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) win.style.transform = `translateY(${dy}px)`; }, { passive: true });
+  win.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; win.style.transition = ""; if (dy > 110) { win.style.transform = "translateY(100%)"; close(); } else win.style.transform = ""; });
   const logo = (id) => `<img class="pr-logo" src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'" />`;
   (async () => {
     await type(`C:\\BROCHIEFS> PATH ${me}.EXE`, "cmd");
     await wait(250);
     const dots = line("RUNNING SIMULATION", "dim");
-    for (let k = 0; k < 9 && alive(); k++) { dots.textContent = `RUNNING SIMULATION${".".repeat(1 + (k % 3))}`; await wait(260); }
+    for (let k = 0; k < 9 && alive() && !fast; k++) { dots.textContent = `RUNNING SIMULATION${".".repeat(1 + (k % 3))}`; await wait(260); }
     if (!alive()) return;
-    if (!sc) { line(`NO PATH LEFT: ${escapeCd(me)} CANNOT FINISH FIRST.`, "bad"); m.querySelector(".pr-skip")?.remove(); return; }
+    if (!sc) { dots.textContent = "RUNNING SIMULATION..."; line(`NO PATH LEFT: ${escapeCd(me)} CANNOT FINISH FIRST.`, "bad"); m.querySelector(".pr-skip")?.remove(); return; }
     dots.textContent = `RUNNING SIMULATION... ${sc.all.length} GAME${sc.all.length === 1 ? "" : "S"} LEFT`;
     await wait(500);
     for (const st of sc.all) {
@@ -3266,9 +3294,9 @@ function openPathRun(name) {
       const gains = {};
       for (const n of MANAGERS) { const p = scorePick(g, all[n]?.picks?.[g.id], st.res) || 0; if (p) { gains[n] = p; pts[n] += p; } }
       const mine = gains[name];
-      line(`<span class="pr-arrow">&gt;</span> ${escapeCd(st.txt.toUpperCase())}${st.need ? "" : ` <span class="pr-any">(ANY RESULT WORKS)</span>`}${mine ? ` <b class="pr-plus">${escapeCd(me)} +${mine}</b>` : ""}`, st.need ? "res need" : "res free");
-      paint(gains);
-      await wait(st.need ? 1100 : 700);
+      line(`<span class="pr-arrow">&gt;</span> ${escapeCd(st.txt.toUpperCase())}${mine ? ` <b class="pr-plus">+${mine}</b>` : ""}${st.need ? "" : ` <span class="pr-any">· ANY RESULT OK</span>`}`, st.need ? "res need" : "res free");
+      await paint(fast ? {} : gains, true);
+      await wait(st.need ? 800 : 450);
     }
     if (!alive()) return;
     paint();
@@ -3280,8 +3308,12 @@ function openPathRun(name) {
     await wait(400);
     line(`${escapeCd(me)} WINS THE WEEK`, "win");
     const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
-    line(`${sc.need.length} RESULT${sc.need.length === 1 ? "" : "S"} NEEDED · THIS PATH: ${oneIn ? (oneIn > 10000 ? "RARER THAN 1 IN 10,000" : `ABOUT 1 IN ${oneIn.toLocaleString()}`) : "-"}`, "dim");
+    line(`${sc.need.length} RESULT${sc.need.length === 1 ? "" : "S"} NEEDED · ${oneIn ? (oneIn > 10000 ? "RARER THAN 1 IN 10,000" : `ABOUT 1 IN ${oneIn.toLocaleString()}`) : "-"}`, "dim");
+    const again = line(`<button type="button" class="pr-again">▶ RUN AGAIN</button>`, "again");
+    again.querySelector("button").addEventListener("click", () => openPathRun(name, true));
     m.querySelector(".pr-skip")?.remove();
+    markPathSeen(name);
+    if (!fast) term.scrollTop = term.scrollHeight;
   })();
   track("path-run", { event: true });
 }
@@ -3397,7 +3429,7 @@ function playerBreakdownHtml(name, state, results, live) {
     const sw = wd.swing;
     const why = wd.alive === false ? outReason(name, results) : "";
     const canPath = wd.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((row) => row.some((p) => p?.hidden));
-    wpRow = `<div class="rd-wp"><span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}">PATH TO WIN ▸</button>` : ""}</span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
+    wpRow = `<div class="rd-wp"><span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN${pathSeen(name) ? "" : `<i class="rd-path-new">NEW</i>`}</button>` : ""}</span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
   }
   return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rows}${tbRow}${summary}</div>`;
 }
@@ -3664,7 +3696,16 @@ function weekIsLive(results) {
   return GAMES.length > 0 && GAMES.some(isGameLocked) && !GAMES.every((g) => results[g.id]);
 }
 // Poisson draw (Knuth), fine for the handful of scores left in a game.
-function poissonRand(lam) { if (!(lam > 0)) return 0; const L = Math.exp(-lam); let k = 0, p = 1; do { k++; p *= Math.random(); } while (p > L); return k - 1; }
+function poissonRand(lam, rnd = Math.random) { if (!(lam > 0)) return 0; const L = Math.exp(-lam); let k = 0, p = 1; do { k++; p *= rnd(); } while (p > L); return k - 1; }
+// A seeded random stream (mulberry32). The week's simulation draws from
+// one seeded by the picks and scores, so the same board always gives the
+// same chances and the same path to win, until a result actually moves.
+function seededRandom(text) {
+  let h = 2166136261;
+  for (let k = 0; k < text.length; k++) { h ^= text.charCodeAt(k); h = Math.imul(h, 16777619); }
+  let a = h >>> 0;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
 function gaussRand() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 // Inverse of the standard normal CDF (Acklam's approximation, |error| < 1.2e-9).
 function invNorm(p) {
@@ -3907,6 +3948,7 @@ function weekWinChances(cloudPicks, results, live) {
   const key = JSON.stringify([GAMES.map((g) => { const l = live[g.id]; return [g.id, results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : l ? `${l.state}${l.awayScore}-${l.homeScore}@${l.period}${l.clock}~${l.winProb ? Math.round(l.winProb.home * 10) : ""}` : ""]; }), MANAGERS.map((n) => JSON.stringify(cloudPicks[n]?.picks || {}) + (cloudPicks[n]?.tiebreaker ?? ""))]);
   if (winChanceMemo.key === key) return winChanceMemo.out;
   const N = 5000;
+  const rnd = seededRandom(key);
   const tbGame = tiebreakerGameOf();
   const guesses = MANAGERS.map((n) => { const raw = String(cloudPicks[n]?.tiebreaker ?? "").trim(); const v = Number(raw); return raw !== "" && Number.isFinite(v) ? v : null; });
   const models = GAMES.map((g) => {
@@ -3959,10 +4001,10 @@ function weekWinChances(cloudPicks, results, live) {
       let res = m.fixed;
       if (!res) {
         let h = m.curH, a = m.curA;
-        const n = poissonRand(m.lam);
-        for (let q = 0; q < n; q++) { const pts = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += pts; else a += pts; }
+        const n = poissonRand(m.lam, rnd);
+        for (let q = 0; q < n; q++) { const pts = rnd() < 0.6 ? 7 : 3; if (rnd() < m.pHome) h += pts; else a += pts; }
         // Level at the end: overtime, decided by a score for one side.
-        if (h === a) { const pts = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += pts; else a += pts; }
+        if (h === a) { const pts = rnd() < 0.6 ? 7 : 3; if (rnd() < m.pHome) h += pts; else a += pts; }
         res = { awayScore: a, homeScore: h };
       }
       if (m.g === tbGame) tbTotal = res.awayScore + res.homeScore;
