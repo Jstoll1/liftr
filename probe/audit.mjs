@@ -48,6 +48,14 @@ const out = await p.evaluate((who) => {
   }).sort((a, b) => b.max - a.max);
   L.push(`open games: ${GAMES.filter((x) => !results0[x.id]).length}`);
   for (const r of rows) L.push(`  ${r.n.padEnd(8)} banked ${String(r.banked).padStart(2)} max ${String(r.max).padStart(2)} · on swing game: ${r.swingPick.padEnd(16)} · same open picks as ${who}: ${r.same} · tb ${r.tb ? "set" : "none"}`);
+  // The card itself, as text, as the league sees it.
+  run(live0);
+  if (typeof swingMatchupHtml === "function") {
+    const box = document.createElement("div");
+    box.innerHTML = playerBreakdownHtml(who, { picks: picks[who]?.picks || {}, tiebreaker: picks[who]?.tiebreaker ?? "" }, results0, live0);
+    L.push("card: " + [...box.querySelectorAll(".rd-wp > span")].map((e) => e.textContent.replace(/\s+/g, " ").trim()).join(" | "));
+    L.push("sway: " + [...box.querySelectorAll(".rd-row")].map((r) => { const n = r.querySelector(".rd-sway-n"); return n ? `${r.querySelector(".rd-gline")?.textContent.trim().split(" ")[0]} ${n.textContent}` : null; }).filter(Boolean).join(", "));
+  } else L.push("card: old build still served");
   return L.join("\n");
 }, who);
 console.log(out);
