@@ -3213,9 +3213,9 @@ function outReason(name, results, all = lastGoodCloudPicks || {}) {
 
 // When missing the swing pick all but ends a manager's week, the usual
 // reason is one rival on the other side of that game who matches them
-// nearly everywhere else. Names that rival in one line, or returns "".
-function mirrorLine(name, sw, results, all = lastGoodCloudPicks || {}) {
-  if (!sw || sw.ifMiss >= 0.01) return "";
+// nearly everywhere else. Returns that rival, or null.
+function mirrorOf(name, sw, results, all = lastGoodCloudPicks || {}) {
+  if (!sw || sw.ifMiss >= 0.01) return null;
   const g = sw.game, mine = all[name]?.picks || {};
   const same = (a, b) => a && b && a.team && a.team === b.team && a.mode === b.mode;
   const others = GAMES.filter((x) => x.id !== g.id && !results[x.id] && mine[x.id]?.team);
@@ -3225,13 +3225,28 @@ function mirrorLine(name, sw, results, all = lastGoodCloudPicks || {}) {
     const theirs = all[n]?.picks || {}, tp = theirs[g.id];
     if (!tp?.team || same(tp, mine[g.id])) continue;
     const k = others.filter((x) => same(theirs[x.id], mine[x.id])).length;
-    if (!best || k > best.k) best = { n, k, tp };
+    if (!best || k > best.k) best = { n, k, tp, total: others.length };
   }
-  if (!best || !others.length || best.k < Math.ceil(others.length / 2)) return "";
-  const side = `${best.tp.team === g.away ? g.awayShort : g.homeShort} ${best.tp.mode === "SU" ? "to win" : `${best.tp.team === g.favorite ? "-" : "+"}${g.spread}`}`;
+  return best && best.total && best.k >= Math.ceil(best.total / 2) ? best : null;
+}
+// The one line under the matchup naming that rival.
+function mirrorLine(name, m) {
+  if (!m) return "";
   const whose = name === currentManager ? "your" : `${shown(name)}'s`;
-  const match = best.k === others.length ? `matches ${whose} other ${others.length} open picks` : `matches ${best.k} of ${whose} other ${others.length} open picks`;
-  return `Must hit: <b>${escapeCd(shown(best.n))}</b> took <b>${escapeCd(side)}</b> and ${escapeCd(match)}.`;
+  const match = m.k === m.total ? `matches ${whose} other ${m.total} open picks` : `matches ${m.k} of ${whose} other ${m.total} open picks`;
+  return `Must hit: <b>${escapeCd(shown(m.n))}</b> has the other side and ${escapeCd(match)}.`;
+}
+// The swing game drawn as the matchup: both logos, this manager's side lit
+// with their pick, and the mirroring rival's name on the other side.
+function swingMatchupHtml(name, sw, m) {
+  const g = sw.game, pk = sw.pick;
+  const terms = (p) => p.mode === "SU" ? "SU" : `${p.team === g.favorite ? "-" : "+"}${g.spread}`;
+  const side = (team, id, short) => {
+    const mine = pk.team === team, rival = m && m.tp.team === team;
+    const tag = mine ? `${shown(name)} ${terms(pk)}` : rival ? `${shown(m.n)} ${terms(m.tp)}` : "";
+    return `<span class="rd-sw-team${mine ? " mine" : rival ? " rival" : ""}"><img class="rd-sw-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-sw-name">${escapeCd(short)}</span>${tag ? `<span class="rd-sw-tag">${escapeCd(tag.toUpperCase())}</span>` : `<span class="rd-sw-tag none">&nbsp;</span>`}</span>`;
+  };
+  return `<span class="rd-sw-label">BIGGEST GAME LEFT</span><span class="rd-swing">${side(g.away, g.awayId, g.awayShort)}<span class="rd-sw-at">@</span>${side(g.home, g.homeId, g.homeShort)}</span>`;
 }
 
 function playerBreakdownHtml(name, state, results, live) {
@@ -3333,9 +3348,7 @@ function playerBreakdownHtml(name, state, results, live) {
   if (wd) {
     const pc = (v) => winChanceLabel(v, { alive: true });
     const sw = wd.swing;
-    const lab = sw ? `${sw.pick.team === sw.game.away ? sw.game.awayShort : sw.game.homeShort} ${sw.pick.mode === "SU" ? "to win" : `${sw.pick.team === sw.game.favorite ? "-" : "+"}${sw.game.spread}`}` : "";
-    const why = wd.alive === false ? outReason(name, results) : "";
-    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? `<span class="rd-wp-line">Biggest game left: <b>${String(lab).replace(/[&<>"]/g, "")}</b></span><span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${(() => { const m = mirrorLine(name, sw, results); return m ? `<span class="rd-wp-why">${m}</span>` : ""; })()}` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">± by each game: how far its result moves the ${winChanceLabel(wd.pct, wd)}</span>` : ""}</div>`;
+    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">± by each game: how far its result moves the ${winChanceLabel(wd.pct, wd)}</span>` : ""}</div>`;
   }
   return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
 }
