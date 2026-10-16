@@ -3263,7 +3263,10 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
   if (results) {
     // Record on games already final, the most this card can still reach,
     // and what is in flight this minute.
-    let w = 0, l = 0, max = row.score;
+    // A pick this phone cannot see yet (its game has not kicked off) has an
+    // unknown value, so MAX reads "?" until it unlocks rather than counting
+    // it at the best case.
+    let w = 0, l = 0, max = row.score, unseen = false;
     for (const g of GAMES) {
       const pick = row.state.picks[g.id];
       if (results[g.id]) {
@@ -3272,10 +3275,11 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
         const o = resultOutcome(g, results[g.id]);
         if (pick.mode === "ATS" && o?.push) continue;
         if (scorePick(g, pick, results[g.id]) > 0) w += 1; else l += 1;
-      } else if (pick) max += pointValue(g, pick.team, pick.mode);
+      } else if (pick?.hidden) unseen = true;
+      else if (pick) max += pointValue(g, pick.team, pick.mode);
     }
     const lead = row.submittedCount < GAMES.length ? `${picked} · ` : "";
-    return `${lead}${w}-${l} · <span class="rank-max">MAX <b>${max}</b></span>${inFlight ? ` · <span class="rank-inflight">+${inFlight} LIVE</span>` : ""}`;
+    return `${lead}${w}-${l} · <span class="rank-max"${unseen ? ` title="Some picks are hidden until their games kick off"` : ""}>MAX <b>${unseen ? "?" : max}</b></span>${inFlight ? ` · <span class="rank-inflight">+${inFlight} LIVE</span>` : ""}`;
   }
   const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
   return `${picked} · ${guess} · ${off}`;
@@ -4030,7 +4034,7 @@ function openPlayerChance(name) {
   }
   m.innerHTML = `<div class="wpx-card wpp">
     <button type="button" class="wpx-x" aria-label="Close">✕</button>
-    <div class="wpp-head"><span class="wpp-av" style="--accent:${accentFor(name)}">${esc(avatarOverrides[name] || shown(name)[0])}</span><div><b>${esc(shown(name).toUpperCase())}</b><small>${row.score} PTS · MAX ${myMax}</small></div><i>${winChanceLabel(wd.pct, wd)}</i></div>
+    <div class="wpp-head"><span class="wpp-av" style="--accent:${accentFor(name)}">${esc(avatarOverrides[name] || shown(name)[0])}</span><div><b>${esc(shown(name).toUpperCase())}</b><small>${row.score} PTS · MAX ${GAMES.some((g) => !results[g.id] && picks[name]?.picks?.[g.id]?.hidden) ? "?" : myMax}</small></div><i>${winChanceLabel(wd.pct, wd)}</i></div>
     <div class="wpp-verdict">${verdictTop}</div>
     ${pathHtml}
     ${games ? `<div class="wpx-h">THE PICKS THAT MATTER MOST</div><div class="wpp-cap">${isMe ? "Your" : `${N}'s`} chance to win the week if each one hits or misses.</div><div class="wpp-gh wpp-gh3"><span>PICK</span><span>IF IT HITS</span><span>IF IT MISSES</span></div><ul class="wpp-games wpp-games3">${games}</ul>` : ""}
@@ -6328,7 +6332,9 @@ function renderH2H() {
       if (results[g.id]) { if (pick) { const o = resultOutcome(g, results[g.id]); if (!(pick.mode === "ATS" && o?.push)) { if (scorePick(g, pick, results[g.id]) > 0) w += 1; else l += 1; } } }
       else if (pick) { max += pointValue(g, pick.team, pick.mode); left += 1; }
     }
-    return { st, w, l, max, left, fly: inFlightPoints(st.picks, live) };
+    const raw = (row.state || picks[row.name] || { picks: {} }).picks || {};
+    const unseen = GAMES.some((g) => !results[g.id] && raw[g.id] && (raw[g.id].hidden || hiddenFor(row.name, g)));
+    return { st, w, l, max: unseen ? "?" : max, left, fly: inFlightPoints(st.picks, live) };
   };
   const a = sideOf(A), b = sideOf(B);
   const short = (g, team) => team === g.home ? g.homeShort : team === g.away ? g.awayShort : team;
