@@ -3493,7 +3493,7 @@ function openPathRun(name, replay = false) {
     rows[name].classList.toggle("jump", myAt >= SHOW);
     if (staged && !fast) {
       place(name, shownOrder.indexOf(name));
-      await new Promise((r) => setTimeout(r, 550));
+      await new Promise((r) => setTimeout(r, 380));
     }
     order.forEach((n) => place(n, shownOrder.indexOf(n)));
   };
@@ -3541,7 +3541,7 @@ function openPathRun(name, replay = false) {
   (async () => {
     await type(`C:\\> PATH ${me}`, "cmd");
     const dots = line("SIMULATING", "dim");
-    for (let k = 0; k < 9 && alive() && !fast; k++) { dots.textContent = `SIMULATING${".".repeat(1 + (k % 3))}`; await wait(240); }
+    for (let k = 0; k < 6 && alive() && !fast; k++) { dots.textContent = `SIMULATING${".".repeat(1 + (k % 3))}`; await wait(220); }
     if (!alive()) return;
     if (!sc) { dots.textContent = "SIMULATING..."; line(`No path left: ${escapeCd(shown(name))} can't finish first.`, "bad"); m.querySelector(".pr-skip")?.remove(); return; }
     dots.textContent = `SIMULATING ${sc.all.length} GAME${sc.all.length === 1 ? "" : "S"}...`;
@@ -3560,13 +3560,13 @@ function openPathRun(name, replay = false) {
       row.innerHTML = `<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}${(() => { const w = st.need && !gains[name] ? stopsWho(g, st.res, name, pts) : null; return w ? `<small class="pr-why">stops ${escapeCd(shown(w))}</small>` : ""; })()}</span><span class="pr-gp${gains[name] ? "" : " zero"}">${gains[name] ? `+${gains[name]}` : st.need ? "0" : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`;
       if (!fast) term.scrollTop = Math.max(0, row.offsetTop - term.clientHeight + row.offsetHeight + 60);
       // One cursor at a time: the terminal's resting cursor hides while a line types.
-      if (!fast) { term.classList.add("typing"); await wait(320); row.classList.add("wipe"); await wait(420); row.classList.remove("typing", "wipe"); term.classList.remove("typing"); }
+      if (!fast) { term.classList.add("typing"); await wait(200); row.classList.add("wipe"); await wait(390); row.classList.remove("typing", "wipe"); term.classList.remove("typing"); }
       for (const n in gains) pts[n] += gains[n];
       decided.set(g.id, st.res);
       const last = qi === sc.all.length - 1;
       if (!fast || last) last ? setMeter(1, true) : setMeter(pathChance(name, decided, sc.guess) ?? meterNow);
       await paint(fast ? {} : gains, true);
-      await wait(st.need ? 700 : 350);
+      await wait(st.need ? 300 : 150);
     }
     if (!alive()) return;
     paint();
@@ -3596,30 +3596,51 @@ function openPathRun(name, replay = false) {
       term.scrollTop = 0;
       return;
     }
-    // 1. Fold: each piece eases from its own height to nothing.
+    // One motion: the pieces fold, the window shrinks to fit and glides to
+    // centre, and the result fades up, all on the same curve together.
     const winEl = m.querySelector(".pr-win");
-    const h0 = winEl.getBoundingClientRect().height;
+    // Ease in and out: a soft start, a glide, a gentle landing.
+    const D = 820, EASE = "cubic-bezier(.65, 0, .35, 1)";
+    const r0 = winEl.getBoundingClientRect(), h0 = r0.height;
     m.classList.add("ending");
     winEl.style.height = `${h0}px`;
-    term.scrollTo({ top: 0, behavior: "smooth" });
-    folding.forEach((el) => { el.style.maxHeight = `${el.scrollHeight}px`; });
-    void winEl.offsetHeight;
-    folding.forEach((el) => el.classList.add("fold"));
-    await new Promise((r) => setTimeout(r, 480));
-    if (!alive()) return;
-    folding.forEach((el) => el.remove());
-    // 2. Close up: the window eases to fit what is left plus the result.
     foot.style.opacity = "0";
     lines.appendChild(foot);
-    term.scrollTop = 0;
-    const bar = m.querySelector(".pr-bar");
-    const cs = getComputedStyle(term);
-    const want = bar.getBoundingClientRect().height + lines.scrollHeight + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + 2;
-    const h1 = Math.min(want, h0);
-    winEl.animate([{ height: `${h0}px` }, { height: `${h1}px` }], { duration: 460, easing: "cubic-bezier(.22, 1, .36, 1)" });
+    // Measure the end state in a single frame, then put everything back.
+    const sizes = folding.map((el) => el.getBoundingClientRect().height);
+    const keepScroll = term.scrollTop;
+    folding.forEach((el) => { el.style.display = "none"; });
+    winEl.style.height = "auto";
+    const h1 = Math.min(winEl.getBoundingClientRect().height, h0);
+    folding.forEach((el) => { el.style.display = ""; });
+    winEl.style.height = `${h0}px`;
+    term.scrollTop = keepScroll;
+    // On a phone the window sits at the top; it glides down to centre as it
+    // shrinks. On a computer it is already centred and stays so.
+    const phone = innerWidth < 700;
+    const shift = phone ? Math.max(0, (innerHeight - h1) / 2 - r0.top) : 0;
+    term.style.overflow = "hidden";
+    term.scrollTo({ top: 0, behavior: "smooth" });
+    folding.forEach((el, k) => {
+      el.style.overflow = "hidden";
+      el.animate([
+        { maxHeight: `${sizes[k]}px`, opacity: 1 },
+        { opacity: 0, offset: 0.35 },
+        { maxHeight: "0px", opacity: 0, paddingTop: "0px", paddingBottom: "0px", marginTop: "0px", marginBottom: "0px", borderTopWidth: "0px", borderBottomWidth: "0px" },
+      ], { duration: D, easing: EASE, fill: "forwards" });
+    });
+    const shrink = winEl.animate([
+      { height: `${h0}px`, transform: "translateY(0)" },
+      { height: `${h1}px`, transform: `translateY(${shift}px)` },
+    ], { duration: D, easing: EASE, fill: "forwards" });
+    foot.animate([{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }], { duration: 460, delay: D * 0.6, easing: "cubic-bezier(.22, 1, .36, 1)", fill: "both" });
+    await shrink.finished.catch(() => {});
+    if (!alive()) return;
+    folding.forEach((el) => el.remove());
     winEl.style.height = `${h1}px`;
-    // 3. The result fades in as it settles.
-    foot.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 380, delay: 240, easing: "cubic-bezier(.22, 1, .36, 1)", fill: "backwards" }).finished.then(() => { foot.style.opacity = ""; }, () => { foot.style.opacity = ""; });
+    winEl.style.transform = shift ? `translateY(${shift}px)` : "";
+    shrink.cancel();
+    term.style.overflow = "";
     foot.style.opacity = "";
     m.classList.add("ended");
   })();
