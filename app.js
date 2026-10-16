@@ -3273,7 +3273,55 @@ function markPathSeen(name) {
   try { const l = JSON.parse(localStorage.getItem(PATH_SEEN_KEY()) || "[]"); if (!l.includes(name)) { l.push(name); localStorage.setItem(PATH_SEEN_KEY(), JSON.stringify(l)); } } catch {}
   document.querySelectorAll(".rd-path-btn").forEach((b) => { if (b.dataset.path === name) b.querySelector(".rd-path-new")?.remove(); });
 }
+// Once a path has been watched, the button opens this instead: a small
+// card with only the games that must go a certain way, the team's logo,
+// the result, and what it pays, then the win at the bottom.
+function openPathCard(name) {
+  document.querySelector(".pr-screen")?.remove();
+  const sc = pathScenario(name);
+  const all = lastGoodCloudPicks || {};
+  const me = shown(name).toUpperCase();
+  const results = computeLiveResults(latestLive);
+  const pts = Object.fromEntries(MANAGERS.map((n) => [n, GAMES.reduce((t, g) => t + (results[g.id] ? scorePick(g, all[n]?.picks?.[g.id], results[g.id]) || 0 : 0), 0)]));
+  // The team a result is about, by the name it starts with.
+  const teamOf = (g, txt) => {
+    const a = txt.startsWith(g.awayShort), h = txt.startsWith(g.homeShort);
+    return h && (!a || g.homeShort.length > g.awayShort.length) ? g.homeId : g.awayId;
+  };
+  let body;
+  if (!sc) body = `<div class="pc-none">No path left: ${escapeCd(shown(name))} can't finish first.</div>`;
+  else {
+    for (const st of sc.all) for (const n of MANAGERS) pts[n] += scorePick(st.g, all[n]?.picks?.[st.g.id], st.res) || 0;
+    const top = Math.max(...Object.values(pts)), tied = MANAGERS.filter((n) => pts[n] === top).length > 1;
+    const rowsHtml = sc.all.filter((st) => st.need).map((st) => {
+      const p = scorePick(st.g, all[name]?.picks?.[st.g.id], st.res) || 0;
+      return `<li class="pc-row"><img class="pc-logo" src="${logoUrl(teamOf(st.g, st.txt))}" alt="" onerror="this.style.visibility='hidden'" /><span class="pc-txt">${escapeCd(st.txt)}</span><span class="pc-pts${p ? "" : " zero"}">${p ? `+${p}` : "–"}</span></li>`;
+    }).join("");
+    const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
+    const free = sc.all.length - sc.need.length;
+    body = `<ul class="pc-list">${rowsHtml}</ul>
+      ${free ? `<div class="pc-free">The other ${free} game${free === 1 ? "" : "s"} can go either way.</div>` : ""}
+      ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : ""}
+      <div class="pc-win">${escapeCd(me)} WINS THE WEEK</div>
+      <div class="pc-foot"><span>${oneIn ? (oneIn > 10000 ? "Rarer than 1 in 10,000" : `About 1 in ${oneIn.toLocaleString()}`) : ""}</span><button type="button" class="pc-replay">▶ Replay</button></div>`;
+  }
+  const m = document.createElement("div");
+  m.className = "pr-screen pc"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", `Path to win for ${shown(name)}`);
+  m.innerHTML = `<div class="pc-card"><div class="pr-bar"><span class="pr-grip" aria-hidden="true"></span><span class="pr-bar-t">PATH TO WIN <i>·</i> ${escapeCd(me)}</span><button type="button" class="pr-close" aria-label="Close">✕</button></div><div class="pc-body">${body}</div></div>`;
+  document.body.appendChild(m);
+  const card = m.querySelector(".pc-card");
+  const close = () => { m.classList.add("out"); setTimeout(() => m.remove(), 220); };
+  m.querySelector(".pr-close").addEventListener("click", close);
+  m.addEventListener("click", (e) => { if (e.target === m) close(); });
+  m.querySelector(".pc-replay")?.addEventListener("click", () => openPathRun(name, true));
+  let y0 = null, dy = 0;
+  card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
+  card.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) card.style.transform = `translateY(${dy}px)`; }, { passive: true });
+  card.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; card.style.transition = ""; if (dy > 90) { card.style.transform = "translateY(120%)"; close(); } else card.style.transform = ""; });
+  track("path-card", { event: true });
+}
 function openPathRun(name, replay = false) {
+  if (!replay && pathSeen(name)) return openPathCard(name);
   document.querySelector(".pr-screen")?.remove();
   const sc = pathScenario(name);
   const token = ++pathRunToken;
