@@ -3322,11 +3322,44 @@ function stopsWho(g, res, name, standing, all = lastGoodCloudPicks || {}) {
   });
   return hurt.sort((a, b) => (standing[b] || 0) - (standing[a] || 0))[0] || null;
 }
+// The run's finish: each needed game in the terminal lifts out as a copy
+// and glides, one after another, onto its row in the card; the run window
+// fades away beneath, and the win, the odds and the buttons pop in last.
+function assemblePathCard(m, from, run) {
+  const card = m.querySelector(".pc-card");
+  const rows = [...m.querySelectorAll(".pc-row")];
+  const tail = [...m.querySelectorAll(".pc-free, .pc-tie, .pc-win, .pc-foot")];
+  if (!card.animate || matchMedia("(prefers-reduced-motion: reduce)").matches || rows.length !== from.length) { run.remove(); return; }
+  m.classList.add("assembling");
+  rows.forEach((r) => { r.style.opacity = "0"; });
+  tail.forEach((t) => { t.style.opacity = "0"; });
+  card.animate([{ opacity: 0, transform: "scale(.97)" }, { opacity: 1, transform: "none" }], { duration: 260, easing: "ease-out" });
+  run.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 520, delay: 120, easing: "ease-in", fill: "forwards" }).finished.then(() => run.remove(), () => run.remove());
+  const flights = from.map((src, i) => {
+    const s0 = src.getBoundingClientRect(), t = rows[i].getBoundingClientRect();
+    const ghost = src.cloneNode(true);
+    ghost.classList.add("pr-ghost");
+    Object.assign(ghost.style, { left: `${s0.left}px`, top: `${s0.top}px`, width: `${s0.width}px`, height: `${s0.height}px` });
+    document.body.appendChild(ghost);
+    const go = ghost.animate([
+      { transform: "translate(0, 0)", opacity: 1 },
+      { transform: `translate(${t.left - s0.left}px, ${t.top - s0.top}px)`, opacity: 1 },
+    ], { duration: 560, delay: 160 + i * 90, easing: "cubic-bezier(.2, .8, .2, 1)", fill: "forwards" });
+    return go.finished.then(() => {
+      rows[i].animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, fill: "forwards" }).finished.then(() => { rows[i].style.opacity = ""; });
+      ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" }).finished.then(() => ghost.remove());
+    }, () => ghost.remove());
+  });
+  Promise.all(flights).then(() => {
+    m.classList.remove("assembling");
+    tail.forEach((t, k) => t.animate([{ opacity: 0, transform: "translateY(6px) scale(.98)" }, { opacity: 1, transform: "none" }], { duration: 320, delay: 80 + k * 110, easing: "cubic-bezier(.2, .8, .2, 1)", fill: "forwards" }).finished.then(() => { t.style.opacity = ""; }));
+  });
+}
 // Once a path has been watched, the button opens this instead: a small
 // card with only the games that must go a certain way, the team's logo,
 // the result, and what it pays, then the win at the bottom.
-function openPathCard(name) {
-  document.querySelector(".pr-screen")?.remove();
+function openPathCard(name, { from = null, run = null } = {}) {
+  document.querySelectorAll(".pr-screen").forEach((el) => { if (el !== run) el.remove(); });
   const sc = pathScenario(name);
   const all = lastGoodCloudPicks || {};
   const me = shown(name).toUpperCase();
@@ -3361,6 +3394,7 @@ function openPathCard(name) {
   m.addEventListener("click", (e) => { if (e.target === m) close(); });
   m.querySelector(".pc-replay")?.addEventListener("click", () => openPathRun(name, true));
   m.querySelector(".pc-share")?.addEventListener("click", () => { track("path-share", { event: true }); sharePath(name, sc); });
+  if (from && run) assemblePathCard(m, from, run);
   let y0 = null, dy = 0;
   card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
   card.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) card.style.transform = `translateY(${dy}px)`; }, { passive: true });
@@ -3504,25 +3538,15 @@ function openPathRun(name, replay = false) {
     }
     if (!alive()) return;
     paint();
-    const top = Math.max(...Object.values(pts)), atTop = MANAGERS.filter((n) => pts[n] === top);
-    const foot = document.createElement("div");
-    foot.className = "pr-foot";
-    const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
-    const tie = atTop.length > 1 && sc.guess != null && sc.tbGame ? `<div class="pr-foot-tie">Tied at ${top}: wins it on the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : "";
-    foot.innerHTML = `${tie}<div class="pr-foot-win">${escapeCd(me)} WINS THE WEEK</div>
-      <div class="pr-foot-sum">${sc.need.length} result${sc.need.length === 1 ? "" : "s"} must happen · ${oneIn ? (oneIn > 10000 ? "rarer than 1 in 10,000" : `about 1 in ${oneIn.toLocaleString()}`) : "-"}</div>
-      <div class="pr-foot-row"><span class="pr-key"><i class="k-need"></i>must happen <i class="k-free"></i>either way</span><span class="pr-foot-btns"><button type="button" class="pr-share">↗ SHARE</button><button type="button" class="pr-again">↻ RUN AGAIN</button></span></div>`;
-    await wait(250);
-    lines.appendChild(foot);
-    // The DOS chrome did its job while the run played; once the result is
-    // in, the command and status lines fold away and the games lead.
-    lines.querySelectorAll(".pr-line.cmd, .pr-line.dim").forEach((el) => el.classList.add("gone"));
-    foot.querySelector(".pr-again").addEventListener("click", () => openPathRun(name, true));
-    foot.querySelector(".pr-share").addEventListener("click", () => { track("path-share", { event: true }); sharePath(name, sc); });
+    markPathSeen(name);
     m.querySelector(".pr-skip")?.remove();
     m.querySelector(".pr-cursor")?.remove();
-    markPathSeen(name);
-    if (!fast) term.scrollTop = term.scrollHeight;
+    // The finish: games that could go either way fade out, then the ones
+    // that matter lift out of the terminal and gather into the path card.
+    lines.querySelectorAll(".pr-line.g.free").forEach((el) => el.classList.add("fading"));
+    await wait(fast ? 0 : 650);
+    if (!alive()) return;
+    openPathCard(name, { from: [...lines.querySelectorAll(".pr-line.g.need")], run: m });
   })();
   track("path-run", { event: true });
   noteUse(`path-of-${name}`);
