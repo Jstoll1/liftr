@@ -4636,6 +4636,19 @@ body.sheet-open #admin-overlay { overflow: hidden; }
    arcade amber so it reads as the answer, not more odds. */
 .rd-wp-why { font-size: 11.5px; line-height: 1.45; color: #ffb000; }
 .rd-wp-why b { color: #ffe45e; font-weight: 800; }
+/* The swing game as a matchup: two logos, this manager's side lit amber
+   with their pick, a rival on the other side in pink. */
+.rd-sw-label { font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.6; color: var(--text-dim); letter-spacing: .06em; margin-top: 2px; }
+.rd-swing { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin: 2px 0 4px; }
+.rd-sw-at { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); }
+.rd-sw-team { display: grid; grid-template-columns: 26px 1fr; grid-template-rows: auto auto; column-gap: 8px; row-gap: 3px; align-items: center; padding: 6px 9px; border: 1px solid rgba(244, 240, 255, .12); border-radius: 8px; background: rgba(255, 255, 255, .02); opacity: .7; }
+.rd-sw-logo { grid-row: 1 / span 2; width: 26px; height: 26px; object-fit: contain; }
+.rd-sw-name { font-size: 12px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-sw-tag { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .04em; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-sw-team.mine { opacity: 1; border-color: #ffb000; background: rgba(255, 176, 0, .08); box-shadow: 0 0 10px rgba(255, 176, 0, .25); }
+.rd-sw-team.mine .rd-sw-tag { color: #ffb000; }
+.rd-sw-team.rival { opacity: 1; border-color: rgba(255, 32, 121, .6); background: rgba(255, 32, 121, .06); }
+.rd-sw-team.rival .rd-sw-tag { color: var(--neon-pink); }
 .rd-wp-key { font-size: 10px; line-height: 1.4; color: var(--text-dim); }
 /* Per game sway: a number over five pixels, cyan; the biggest one amber. */
 .rd-sway { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; min-width: 40px; padding: 3px 0; }

@@ -114,9 +114,11 @@ test("mirror line: the rival on the other side who matches everywhere else", () 
     Curt: { picks: { 1: { team: "A1", mode: "ATS" }, ...rest } },
     Jordan: { picks: { 1: { team: "A1", mode: "SU" }, 2: { team: "A2", mode: "SU" } } },
   };
-  const mirrorLine = new Function("GAMES", "MANAGERS", "lastGoodCloudPicks", "currentManager",
-    `const shown = (n) => n;\n${span("function escapeCd", "\n}\n")}\n}\n${span("function mirrorLine", "function playerBreakdownHtml")}\nreturn mirrorLine;`)(GAMES, ["Dewitt", "Curt", "Jordan"], all, "Jake");
+  const { mirrorOf, mirrorLine } = new Function("GAMES", "MANAGERS", "lastGoodCloudPicks", "currentManager",
+    `const shown = (n) => n;\n${span("function escapeCd", "\n}\n")}\n}\n${span("function mirrorOf", "// The swing game drawn")}\nreturn { mirrorOf, mirrorLine };`)(GAMES, ["Dewitt", "Curt", "Jordan"], all, "Jake");
   const sw = { game: GAMES[0], ifMiss: 0.007 };
-  assert.equal(mirrorLine("Dewitt", sw, {}), "Must hit: <b>Curt</b> took <b>A1 +6</b> and matches Dewitt's other 3 open picks.");
-  assert.equal(mirrorLine("Dewitt", { ...sw, ifMiss: 0.2 }, {}), "", "no line while a miss still leaves a real chance");
+  const m = mirrorOf("Dewitt", sw, {});
+  assert.equal(m.n, "Curt");
+  assert.equal(mirrorLine("Dewitt", m), "Must hit: <b>Curt</b> has the other side and matches Dewitt's other 3 open picks.");
+  assert.equal(mirrorOf("Dewitt", { ...sw, ifMiss: 0.2 }, {}), null, "no rival named while a miss still leaves a real chance");
 });
