@@ -3163,12 +3163,13 @@ function mirrorOf(name, sw, results, all = lastGoodCloudPicks || {}) {
   }
   return best && best.total && best.k >= Math.ceil(best.total / 2) ? best : null;
 }
-// The one line under the matchup naming that rival.
-function mirrorLine(name, m) {
+// The one line under the matchup naming that rival and their side.
+function mirrorLine(name, m, g) {
   if (!m) return "";
+  const side = `${m.tp.team === g.away ? g.awayShort : g.homeShort} ${m.tp.mode === "SU" ? "to win" : `${m.tp.team === g.favorite ? "-" : "+"}${g.spread}`}`;
   const whose = name === currentManager ? "your" : `${shown(name)}'s`;
   const match = m.k === m.total ? `matches ${whose} other ${m.total} open picks` : `matches ${m.k} of ${whose} other ${m.total} open picks`;
-  return `Must hit: <b>${escapeCd(shown(m.n))}</b> has the other side and ${escapeCd(match)}.`;
+  return `<span class="rd-wp-must">Must hit:</span> <b>${escapeCd(shown(m.n))}</b> has <b>${escapeCd(side)}</b> and ${escapeCd(match)}.`;
 }
 // The swing game drawn as the matchup: both logos, this manager's side lit
 // with their pick, and the mirroring rival's name on the other side.
@@ -3284,7 +3285,7 @@ function playerBreakdownHtml(name, state, results, live) {
     const pc = (v) => winChanceLabel(v, { alive: true });
     const sw = wd.swing;
     const why = wd.alive === false ? outReason(name, results) : "";
-    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">± by each game: how far its result moves the ${winChanceLabel(wd.pct, wd)}</span>` : ""}</div>`;
+    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">± by each game: how far its result moves the ${winChanceLabel(wd.pct, wd)}</span>` : ""}</div>`;
   }
   return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
 }

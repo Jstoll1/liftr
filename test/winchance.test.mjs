@@ -119,6 +119,6 @@ test("mirror line: the rival on the other side who matches everywhere else", () 
   const sw = { game: GAMES[0], ifMiss: 0.007 };
   const m = mirrorOf("Dewitt", sw, {});
   assert.equal(m.n, "Curt");
-  assert.equal(mirrorLine("Dewitt", m), "Must hit: <b>Curt</b> has the other side and matches Dewitt's other 3 open picks.");
+  assert.equal(mirrorLine("Dewitt", m, GAMES[0]), `<span class="rd-wp-must">Must hit:</span> <b>Curt</b> has <b>A1 +6</b> and matches Dewitt's other 3 open picks.`);
   assert.equal(mirrorOf("Dewitt", { ...sw, ifMiss: 0.2 }, {}), null, "no rival named while a miss still leaves a real chance");
 });
