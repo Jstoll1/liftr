@@ -3190,7 +3190,8 @@ function playerBreakdownHtml(name, state, results, live) {
   // the same simulation: the gap between winning the week when it hits and
   // when it misses, in percentage points, as five pixels and a number.
   const wd = weekIsLive(results) ? winChanceMemo.detail?.[name] : null;
-  const sway = Object.fromEntries((wd?.games || []).map((e) => [e.game.id, e]));
+  // Nothing moves an OUT manager's chance, so no sway is drawn for them.
+  const sway = wd?.alive === false ? {} : Object.fromEntries((wd?.games || []).map((e) => [e.game.id, e]));
   const swayHtml = (e) => {
     const n = Math.round(e.gap * 100), lit = n < 1 ? 0 : Math.min(5, Math.ceil(n / 10));
     const top = wd.swing && e.game.id === wd.swing.game.id;
