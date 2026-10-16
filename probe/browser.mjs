@@ -29,6 +29,7 @@ await p.waitForFunction(() => document.querySelectorAll("#rankings-list .ranking
 const board = Date.now() - t1;
 await p.waitForTimeout(1500);
 const timing = await p.evaluate(() => ({ long: window.__long, total: window.__long.reduce((s, x) => s + x[1], 0) }));
+console.log(`new build: ${await p.evaluate(() => typeof fetchCapped === "function")}`);
 console.log(`screen up after ${shown} ms; leaderboard with win% after ${board} ms more`);
 console.log(`long script tasks: ${timing.long.length}, ${timing.total} ms total; biggest: ${JSON.stringify(timing.long.sort((a, b) => b[1] - a[1]).slice(0, 8))}`);
 console.log("data requests in order:"); for (const r of reqs.filter((x) => !/espncdn|fonts|zgo|\.(js|css|png|webp|json)(\?|$)/.test(x.u) || /espn\.com|workers\.dev/.test(x.u)).sort((a, b) => a.at - b.at)) console.log(`  +${String(r.at).padStart(5)}ms ${String(r.ms).padStart(5)}ms ${r.st ?? "-"} ${r.u}`);
