@@ -3211,6 +3211,29 @@ function outReason(name, results, all = lastGoodCloudPicks || {}) {
   return `No mix of results left puts ${shown(name)} first.`;
 }
 
+// When missing the swing pick all but ends a manager's week, the usual
+// reason is one rival on the other side of that game who matches them
+// nearly everywhere else. Names that rival in one line, or returns "".
+function mirrorLine(name, sw, results, all = lastGoodCloudPicks || {}) {
+  if (!sw || sw.ifMiss >= 0.01) return "";
+  const g = sw.game, mine = all[name]?.picks || {};
+  const same = (a, b) => a && b && a.team && a.team === b.team && a.mode === b.mode;
+  const others = GAMES.filter((x) => x.id !== g.id && !results[x.id] && mine[x.id]?.team);
+  let best = null;
+  for (const n of MANAGERS) {
+    if (n === name) continue;
+    const theirs = all[n]?.picks || {}, tp = theirs[g.id];
+    if (!tp?.team || same(tp, mine[g.id])) continue;
+    const k = others.filter((x) => same(theirs[x.id], mine[x.id])).length;
+    if (!best || k > best.k) best = { n, k, tp };
+  }
+  if (!best || !others.length || best.k < Math.ceil(others.length / 2)) return "";
+  const side = `${best.tp.team === g.away ? g.awayShort : g.homeShort} ${best.tp.mode === "SU" ? "to win" : `${best.tp.team === g.favorite ? "-" : "+"}${g.spread}`}`;
+  const whose = name === currentManager ? "your" : `${shown(name)}'s`;
+  const match = best.k === others.length ? `matches ${whose} other ${others.length} open picks` : `matches ${best.k} of ${whose} other ${others.length} open picks`;
+  return `Must hit: <b>${escapeCd(shown(best.n))}</b> took <b>${escapeCd(side)}</b> and ${escapeCd(match)}.`;
+}
+
 function playerBreakdownHtml(name, state, results, live) {
   const ordered = gamesByKickoff();
   let banked = 0, liveCovering = 0, liveOpen = 0, wins = 0, losses = 0, liveFly = 0;
@@ -3302,7 +3325,7 @@ function playerBreakdownHtml(name, state, results, live) {
     const sw = wd.swing;
     const lab = sw ? `${sw.pick.team === sw.game.away ? sw.game.awayShort : sw.game.homeShort} ${sw.pick.mode === "SU" ? "to win" : `${sw.pick.team === sw.game.favorite ? "-" : "+"}${sw.game.spread}`}` : "";
     const why = wd.alive === false ? outReason(name, results) : "";
-    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? `<span class="rd-wp-line">Biggest game left: <b>${String(lab).replace(/[&<>"]/g, "")}</b></span><span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}</div>`;
+    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? `<span class="rd-wp-line">Biggest game left: <b>${String(lab).replace(/[&<>"]/g, "")}</b></span><span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${(() => { const m = mirrorLine(name, sw, results); return m ? `<span class="rd-wp-why">${m}</span>` : ""; })()}` : `<span class="rd-wp-line">No open pick moves it much now.</span>`}</div>`;
   }
   return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
 }
