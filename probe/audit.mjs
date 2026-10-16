@@ -60,4 +60,15 @@ const out = await p.evaluate((who) => {
   return L.join("\n");
 }, who);
 console.log(out);
+// The path to win, run on the live board and skipped to the end.
+const ran = await p.evaluate(async (who) => {
+  if (typeof openPathRun !== "function") return "path: old build still served";
+  openPathRun(who);
+  await new Promise((r) => setTimeout(r, 300));
+  document.querySelector(".pr-skip")?.click();
+  for (let k = 0; k < 60 && !document.querySelector(".pr-line.win, .pr-line.bad"); k++) await new Promise((r) => setTimeout(r, 100));
+  const board = [...document.querySelectorAll(".pr-row")].map((r) => ({ y: new DOMMatrix(getComputedStyle(r).transform).m42 + new DOMMatrix(getComputedStyle(r).transform).m41 * 100, t: r.textContent.replace(/\s+/g, " ").trim() })).sort((a, b) => a.y - b.y).map((x) => x.t);
+  return "path:\n  " + [...document.querySelectorAll(".pr-line")].map((l) => l.textContent.replace(/\s+/g, " ").trim()).join("\n  ") + "\n  standings: " + board.join(" | ");
+}, who);
+console.log(ran);
 await b.close();
