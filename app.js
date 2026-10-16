@@ -409,7 +409,7 @@ async function fetchAllPicks(who = currentManager || loadMe()) {
   if (!WORKER_URL) return null;
   try {
     const me = who && MANAGERS.includes(who) ? `&me=${encodeURIComponent(who)}${tokenFor(who) ? `&token=${encodeURIComponent(tokenFor(who))}` : ""}` : "";
-    const res = await fetch(`${WORKER_URL}/picks?week=${currentWeek}${me}&t=${Date.now()}`, { cache: "no-store" });
+    const res = await fetchCapped(`${WORKER_URL}/picks?week=${currentWeek}${me}&t=${Date.now()}`, { cache: "no-store" }, 8000);
     if (!res.ok) return null;
     const data = await res.json();
     // A response without a picks object is a broken response, not an
@@ -563,16 +563,29 @@ function possFromLastPlay(lp, awayId, homeId, st) {
   if (!flip) return t;
   return t === Number(awayId) ? Number(homeId) : t === Number(homeId) ? Number(awayId) : null;
 }
+// A request that has not answered in this long is treated as failed, so a
+// stalled connection can never hold the board blank.
+function fetchCapped(url, opts = {}, ms = 5000) {
+  const ctl = typeof AbortController === "function" ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), ms) : null;
+  return fetch(url, ctl ? { ...opts, signal: ctl.signal } : opts).finally(() => clearTimeout(timer));
+}
 async function fetchLiveFromEspn() {
   const events = [];
   let ok = 0;
-  for (const date of espnScoreboardDates()) {
-    const res = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300&t=${Date.now()}`,
-      { cache: "no-store" }
-    );
-    if (!res.ok) continue;
-    const data = await res.json();
+  // Every day at once, not one after another: a Thursday to Saturday
+  // slate is three requests, and the slowest sets the wait.
+  const answers = await Promise.all(espnScoreboardDates().map(async (date) => {
+    try {
+      const res = await fetchCapped(
+        `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300&t=${Date.now()}`,
+        { cache: "no-store" }, 4000
+      );
+      return res.ok ? await res.json() : null;
+    } catch { return null; }
+  }));
+  for (const data of answers) {
+    if (!data) continue;
     ok++;
     if (Array.isArray(data?.events)) events.push(...data.events);
   }
@@ -583,7 +596,7 @@ async function fetchLiveFromEspn() {
 
 async function fetchLiveFromWorker() {
   if (!WORKER_URL) return {};
-  const res = await fetch(`${WORKER_URL}/live?t=${Date.now()}`, { cache: "no-store" });
+  const res = await fetchCapped(`${WORKER_URL}/live?t=${Date.now()}`, { cache: "no-store" }, 8000);
   if (!res.ok) throw new Error(`worker live ${res.status}`);
   const data = await res.json();
   const byId = {};
@@ -610,8 +623,16 @@ function liveTtl() {
   if (ks.some(({ k }) => k > now && k - now < 2 * 3600000)) return 60000;
   return 5 * 60000;
 }
-async function fetchLiveScores(force = false) {
-  if (!force && liveFetchedAt && Date.now() - liveFetchedAt < liveTtl()) return latestLive;
+// One request at a time: the board, the picks screen and the timers all
+// ask for live scores, and two callers at once now share one answer.
+let liveInFlight = null;
+function fetchLiveScores(force = false) {
+  if (!force && liveFetchedAt && Date.now() - liveFetchedAt < liveTtl()) return Promise.resolve(latestLive);
+  if (liveInFlight) return liveInFlight;
+  liveInFlight = fetchLiveScoresNow().finally(() => { liveInFlight = null; });
+  return liveInFlight;
+}
+async function fetchLiveScoresNow() {
   let live = {}, answered = false;
   try {
     live = await fetchLiveFromEspn();
@@ -2603,18 +2624,23 @@ function boardPicksTtl() {
   const now = Date.now();
   return lock && lock > now && lock - now < 2 * 3600000 ? 20000 : 120000;
 }
-async function fetchBoardPicks() {
-  if (boardPicks.data && Date.now() - boardPicks.at < boardPicksTtl()) return boardPicks.data;
-  const d = await fetchAllPicks();
-  if (d) boardPicks = { at: Date.now(), data: d };
-  return d;
+let boardPicksInFlight = null;
+function fetchBoardPicks() {
+  if (boardPicks.data && Date.now() - boardPicks.at < boardPicksTtl()) return Promise.resolve(boardPicks.data);
+  if (boardPicksInFlight) return boardPicksInFlight;
+  boardPicksInFlight = fetchAllPicks().then((d) => {
+    if (d) boardPicks = { at: Date.now(), data: d };
+    return d;
+  }).finally(() => { boardPicksInFlight = null; });
+  return boardPicksInFlight;
 }
 
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
   maybeShowQotw();
-  const fetched = await fetchBoardPicks();
+  // Picks and scores together, not picks and then scores.
+  const [fetched, live] = await Promise.all([fetchBoardPicks(), fetchLiveScores()]);
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
   const cloudPicks = {};
@@ -2623,7 +2649,6 @@ async function renderScoreboard() {
     if (state) cloudPicks[name] = { ...state, picks: name === currentManager ? sanitizePicks(state.picks) : sanitizeRoomPicks(state.picks) };
   });
   if (fetched !== null) lastGoodCloudPicks = rawPicks;
-  const live = await fetchLiveScores();
   const results = computeLiveResults(live);
 
   archiveWeekIfFinal(results);
@@ -6808,14 +6833,22 @@ setInterval(() => { if (!document.hidden) checkForUpdate(false); }, 60 * 1000);
 setInterval(() => { if (updateWaiting && !userBusy()) checkForUpdate(false); }, 10 * 1000);
 
 // The splash shows once per 12 hours per device. Inside that window the
-// app opens straight to where the tap would have landed.
+// app opens straight to where the tap would have landed, and from the
+// week's first kickoff on it never shows to a known player.
 const SPLASH_KEY = "brochiefs_splash_seen_v1";
 const SPLASH_TTL = 12 * 60 * 60 * 1000;
 (async () => {
   // Fetch this week's slate before anything renders, so nobody sees last
   // week's games flash past. The splash covers the wait. Whether login is
   // live, and who has claimed a name, comes down in the same breath.
-  await Promise.all([loadSlate(), refreshAuthState(), loadWeekSummaries()]);
+  // The week's trophies are decoration and draw themselves when they land,
+  // so nothing waits on them. Once the slate is in, the board's picks and
+  // scores start loading at once, so a game day open finds them ready.
+  loadWeekSummaries();
+  await Promise.all([
+    loadSlate().then(() => { if (firstKickoffPassed()) { fetchLiveScores().catch(() => {}); fetchBoardPicks().catch(() => {}); } }),
+    refreshAuthState(),
+  ]);
   lastSlateSignature = slateSignature();
   lastLockSignature = lockSignature();
   renderManagerPicker();
@@ -6826,7 +6859,9 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
   const mark = () => { try { localStorage.setItem(SPLASH_KEY, String(Date.now())); } catch {} };
   // Skip the splash only when nothing else is due. The day's poster
   // follows the splash tap; it never jumps in over an untapped splash.
-  if (fresh && loadMe() && !nowPlayingDue()) {
+  // Once the week's first game has kicked off, a known player skips the
+  // splash entirely and lands on the scoreboard.
+  if (loadMe() && (firstKickoffPassed() || (fresh && !nowPlayingDue()))) {
     goToPlayerSelect();
   } else {
     track("/splash");

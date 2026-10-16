@@ -2173,7 +2173,8 @@ async function liveGames(env, week = null) {
     if (!targets.length) return { games: [], debug: [{ note: "no slate stored for the current week" }] };
     const events = [];
     const debug = [];
-    for (const date of dates) {
+    // Every day at once: the slowest ESPN answer sets the wait, not the sum.
+    const answers = await Promise.all(dates.map(async (date) => {
       const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300`;
       try {
         const res = await fetch(url, {
@@ -2189,14 +2190,13 @@ async function liveGames(env, week = null) {
         let data = null;
         try { data = JSON.parse(text); } catch { data = null; }
         const count = Array.isArray(data?.events) ? data.events.length : 0;
-        debug.push({ date, status: res.status, events: count, sample: count ? "" : text.slice(0, 160) });
-        if (!res.ok || !data) continue;
-        if (Array.isArray(data.events)) events.push(...data.events);
+        return { dbg: { date, status: res.status, events: count, sample: count ? "" : text.slice(0, 160) }, events: res.ok && data && Array.isArray(data.events) ? data.events : [] };
       } catch (err) {
-        debug.push({ date, error: String(err?.message || err) });
         console.error(`ESPN scoreboard fetch failed for ${date}`, err?.stack || String(err));
+        return { dbg: { date, error: String(err?.message || err) }, events: [] };
       }
-    }
+    }));
+    for (const a of answers) { debug.push(a.dbg); events.push(...a.events); }
 
     const games = targets.map((g) => {
       try {
