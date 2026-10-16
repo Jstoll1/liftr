@@ -3624,9 +3624,11 @@ function openPathRun(name, replay = false) {
     folding.forEach((el, k) => {
       el.style.overflow = "hidden";
       el.animate([
-        { maxHeight: `${sizes[k]}px`, opacity: 1 },
+        { maxHeight: `${sizes[k]}px`, minHeight: "0px", opacity: 1 },
         { opacity: 0, offset: 0.35 },
-        { maxHeight: "0px", opacity: 0, paddingTop: "0px", paddingBottom: "0px", marginTop: "0px", marginBottom: "0px", borderTopWidth: "0px", borderBottomWidth: "0px" },
+        // min-height too: a line's own min-height would otherwise hold it
+        // open until it is removed, and the rows would jump at the end.
+        { maxHeight: "0px", minHeight: "0px", opacity: 0, paddingTop: "0px", paddingBottom: "0px", marginTop: "0px", marginBottom: "0px", borderTopWidth: "0px", borderBottomWidth: "0px" },
       ], { duration: D, easing: EASE, fill: "forwards" });
     });
     const shrink = winEl.animate([
