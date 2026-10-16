@@ -3277,6 +3277,19 @@ function markPathSeen(name) {
   try { const v = pathSeenMap(); v[name] = finalsSig(); localStorage.setItem(PATH_SEEN_KEY(), JSON.stringify(v)); } catch {}
   document.querySelectorAll(".rd-path-btn").forEach((b) => { if (b.dataset.path === name) b.querySelector(".rd-path-new")?.remove(); });
 }
+// A result the path needs that pays this manager nothing is there to stop
+// someone: the rival it costs most, the one highest in the standings whose
+// pick on that game misses here but would have paid another way.
+function stopsWho(g, res, name, standing, all = lastGoodCloudPicks || {}) {
+  const cats = gameCats(g);
+  const hurt = MANAGERS.filter((n) => {
+    if (n === name) return false;
+    const pk = all[n]?.picks?.[g.id];
+    if (!pk || (scorePick(g, pk, res) || 0) > 0) return false;
+    return cats.some((c) => (scorePick(g, pk, c.res) || 0) > 0);
+  });
+  return hurt.sort((a, b) => (standing[b] || 0) - (standing[a] || 0))[0] || null;
+}
 // Once a path has been watched, the button opens this instead: a small
 // card with only the games that must go a certain way, the team's logo,
 // the result, and what it pays, then the win at the bottom.
@@ -3299,7 +3312,8 @@ function openPathCard(name) {
     const top = Math.max(...Object.values(pts)), tied = MANAGERS.filter((n) => pts[n] === top).length > 1;
     const rowsHtml = sc.all.filter((st) => st.need).map((st) => {
       const p = scorePick(st.g, all[name]?.picks?.[st.g.id], st.res) || 0;
-      return `<li class="pc-row"><img class="pc-logo" src="${logoUrl(teamOf(st.g, st.txt))}" alt="" onerror="this.style.visibility='hidden'" /><span class="pc-txt">${escapeCd(st.txt)}</span><span class="pc-pts${p ? "" : " zero"}">${p ? `+${p}` : "–"}</span></li>`;
+      const stop = p ? null : stopsWho(st.g, st.res, name, pts);
+      return `<li class="pc-row"><img class="pc-logo" src="${logoUrl(teamOf(st.g, st.txt))}" alt="" onerror="this.style.visibility='hidden'" /><span class="pc-txt">${escapeCd(st.txt)}${stop ? `<small class="pc-why">stops ${escapeCd(shown(stop))}</small>` : ""}</span><span class="pc-pts${p ? "" : " zero"}">${p ? `+${p}` : "0"}</span></li>`;
     }).join("");
     const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
     const free = sc.all.length - sc.need.length;
@@ -3427,7 +3441,7 @@ function openPathRun(name, replay = false) {
       // printing the logos, the result and the points in steps behind it.
       const gains = {};
       for (const n of MANAGERS) { const p = scorePick(g, all[n]?.picks?.[g.id], st.res) || 0; if (p) gains[n] = p; }
-      const row = line(`<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}</span><span class="pr-gp">${gains[name] ? `+${gains[name]}` : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`, `g ${st.need ? "need" : "free"}${fast ? "" : " typing"}`);
+      const row = line(`<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}${(() => { const w = st.need && !gains[name] ? stopsWho(g, st.res, name, pts) : null; return w ? `<small class="pr-why">stops ${escapeCd(shown(w))}</small>` : ""; })()}</span><span class="pr-gp${gains[name] ? "" : " zero"}">${gains[name] ? `+${gains[name]}` : st.need ? "0" : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`, `g ${st.need ? "need" : "free"}${fast ? "" : " typing"}`);
       if (!fast) term.scrollTop = term.scrollHeight;
       // One cursor at a time: the terminal's resting cursor hides while a line types.
       if (!fast) { term.classList.add("typing"); await wait(320); row.classList.add("wipe"); await wait(420); row.classList.remove("typing", "wipe"); term.classList.remove("typing"); }

@@ -6289,6 +6289,8 @@ html[data-sport="nfl"] .console-tab[data-tab="experts"] { display: none !importa
 .pr-gt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .pr-gm { color: rgba(255, 255, 255, .5); }
 .pr-gp { text-align: right; color: var(--neon-green); }
+.pr-gp.zero { color: rgba(214, 240, 226, .35); }
+.pr-why, .pc-why { display: block; font-size: 14px; line-height: 1.1; color: rgba(255, 176, 0, .65); }
 .pr-line.g.need { color: #ffcf5c; }
 .pr-line.g.need:not(.typing) { border-left-color: #ffb000; }
 .pr-line.g.free { color: rgba(214, 240, 226, .42); }
