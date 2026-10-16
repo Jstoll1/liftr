@@ -3253,16 +3253,18 @@ function swingMatchupHtml(name, sw, m) {
 function playerBreakdownHtml(name, state, results, live) {
   const ordered = gamesByKickoff();
   let banked = 0, liveCovering = 0, liveOpen = 0, wins = 0, losses = 0, liveFly = 0;
-  // How far each open pick's result moves this manager's win chance, from
-  // the same simulation: the gap between winning the week when it hits and
-  // when it misses, in percentage points, as five pixels and a number.
+  // How much each open pick matters to this manager's week, from the same
+  // simulation and ranked the way the biggest game is (how far the result
+  // moves their chance, weighted by how open it still is). Five pixels,
+  // scaled to their own biggest game, which is lit amber. No numbers.
   const wd = weekIsLive(results) ? winChanceMemo.detail?.[name] : null;
-  // Nothing moves an OUT manager's chance, so no sway is drawn for them.
+  // Nothing moves an OUT manager's chance, so no impact is drawn for them.
   const sway = wd?.alive === false ? {} : Object.fromEntries((wd?.games || []).map((e) => [e.game.id, e]));
+  const topLev = Math.max(0, ...Object.values(sway).map((e) => e.lev));
   const swayHtml = (e) => {
-    const n = Math.round(e.gap * 100), lit = n < 1 ? 0 : Math.min(5, Math.ceil(n / 10));
+    const lit = topLev > 0 ? Math.max(e.gap >= 0.01 ? 1 : 0, Math.round(5 * e.lev / topLev)) : 0;
     const top = wd.swing && e.game.id === wd.swing.game.id;
-    return `<span class="rd-sway${top ? " top" : n < 3 ? " low" : ""}" title="Hit it: ${winChanceLabel(e.ifHit, { alive: true })} · Miss it: ${winChanceLabel(e.ifMiss, { alive: true })}"><span class="rd-sway-n">↕${n < 1 ? "<1" : n}</span><span class="rd-sway-bar">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= lit ? "on" : ""}"></i>`).join("")}</span></span>`;
+    return `<span class="rd-sway${top ? " top" : ""}" title="Hit it: ${winChanceLabel(e.ifHit, { alive: true })} · Miss it: ${winChanceLabel(e.ifMiss, { alive: true })}"><span class="rd-sway-bar">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= lit ? "on" : ""}"></i>`).join("")}</span></span>`;
   };
   const rows = ordered.map((game) => {
     const locked = isGameLocked(game);
@@ -3351,9 +3353,9 @@ function playerBreakdownHtml(name, state, results, live) {
     const pc = (v) => winChanceLabel(v, { alive: true });
     const sw = wd.swing;
     const why = wd.alive === false ? outReason(name, results) : "";
-    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">↕ by each game: the gap in win chance between hitting and missing it</span>` : ""}</div>`;
+    wpRow = `<div class="rd-wp"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
   }
-  return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>PTS</span></div>${rows}${tbRow}${summary}</div>`;
+  return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rows}${tbRow}${summary}</div>`;
 }
 
 // Second line under a leaderboard name. How many picks are in is fair
