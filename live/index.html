@@ -6,6 +6,13 @@
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0b0716">
 <title>Brochiefs Live</title>
+<!-- A home screen app on iPhone and iPad; the desktop layout from 880px. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Live">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
 <link rel="icon" href="../icons/favicon-32.png">
 <link rel="preconnect" href="https://liftr-ai.jhs797.workers.dev" crossorigin>
 <style>
@@ -27,6 +34,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* Top bar */
 .top { position: sticky; top: 0; z-index: 5; background: rgba(11, 7, 22, .92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .top-in { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 12px; padding: max(12px, env(safe-area-inset-top)) 16px 12px; }
+.brand { padding: 0; background: none; border: 0; -webkit-tap-highlight-color: transparent; }
 .brand { display: flex; align-items: center; gap: 9px; font: 700 14px/1 var(--mono); letter-spacing: .14em; }
 .brand b { color: var(--gold); }
 .brand span { color: var(--green); }
@@ -42,7 +50,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (max-width: 560px) { .age { display: none; } .tool { padding: 6px 9px; font-size: 12.5px; } }
 
 /* Page */
-.page { max-width: 1200px; margin: 0 auto; padding: 18px 16px 48px; display: grid; gap: 22px; grid-template-columns: minmax(0, 1fr); }
+.page { max-width: 1200px; margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); display: grid; gap: 22px; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 880px) { .page { grid-template-columns: 270px minmax(0, 1fr); align-items: start; } .side { position: sticky; top: 74px; } }
 .label { margin: 0 0 8px; font: 600 11px/1 var(--mono); letter-spacing: .12em; color: var(--dim); text-transform: uppercase; }
 
@@ -125,12 +133,12 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   body.pv-open .pv { top: 61px; width: 430px; border-left: 1px solid var(--line); background: #0d0919; }
   body.pv-open #app .page { margin-right: 430px; }
 }
-.pv-h { display: flex; align-items: flex-start; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.pv-h { display: flex; align-items: flex-start; gap: 8px; padding: max(12px, env(safe-area-inset-top)) 14px 12px; border-bottom: 1px solid var(--line); }
 .pv-t { flex: 1; min-width: 0; font-size: 14px; }
 .pv-t span { display: block; font-size: 13px; color: var(--meta); }
 .pv-h a.tool { text-decoration: none; }
 .pv-note { padding: 7px 14px; font-size: 12px; color: var(--dim); background: rgba(0, 0, 0, .2); }
-.pv-frame { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 12px; }
+.pv-frame { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 12px 12px max(12px, env(safe-area-inset-bottom)); }
 .pv-frame iframe { width: 100%; max-width: 400px; height: 100%; border: 1px solid var(--line); border-radius: 18px; background: #0a0414; }
 .pv-none { margin: 16px; padding: 16px; border-radius: 12px; border: 1px dashed var(--line); display: flex; flex-direction: column; gap: 6px; color: var(--meta); font-size: 14px; }
 .pv-none b { color: var(--text); }
@@ -336,7 +344,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 
     app.innerHTML = `
       <div class="top${st.ok ? "" : " stale"}"><div class="top-in">
-        <div class="brand"><i class="beat"></i><b>BROCHIEFS</b><span>LIVE</span></div>
+        <button type="button" class="brand" data-reload="1" aria-label="Refresh"><i class="beat"></i><b>BROCHIEFS</b><span>LIVE</span></button>
         <span class="age num" id="age">${st.cached ? "refreshing…" : st.ok ? "live" : "can't reach the server, retrying"}</span>
         <div class="tools">
           ${"Notification" in window ? `<button type="button" class="tool${st.alert ? " on" : ""}" data-alert="1">${st.alert ? "Alerts on" : "Alert me"}</button>` : ""}
@@ -371,6 +379,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     if (b.dataset.n !== undefined) { st.filter = b.dataset.n && st.filter !== b.dataset.n ? b.dataset.n : null; st.shown = 20; render(); window.scrollTo({ top: 0 }); return; }
     if (b.dataset.open) { st.open.has(b.dataset.open) ? st.open.delete(b.dataset.open) : st.open.add(b.dataset.open); render(); return; }
     if (b.dataset.older) { st.shown += 20; render(); return; }
+    if (b.dataset.reload) { location.reload(); return; }
     if (b.dataset.copy) {
       const id = b.dataset.copy;
       const text = id === "*" ? `Brochiefs Live · ${st.filter ? name(st.filter) : "everyone"} · last 24 hours\n\n${[...st.texts.values()].join("\n\n")}` : st.texts.get(id) || "";
@@ -451,7 +460,23 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     poll(true);
     keepAwake();
   }
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && (device || key) && !st.gated) { keepAwake(); poll(false); } });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && (device || key) && !st.gated) { keepAwake(); poll(false); checkVersion(); } });
+
+  // New versions: a home screen app has no reload, so this page compares
+  // itself with the copy on the site now and then and on coming back, and
+  // reloads onto a new one (never while a preview is open). Tapping the
+  // title reloads too.
+  let mine = null;
+  async function checkVersion() {
+    try {
+      const text = await (await fetch(`./?t=${Date.now()}`, { cache: "no-store" })).text();
+      let h = 7; for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
+      if (mine === null) mine = h;
+      else if (h !== mine && !st.pv && !document.hidden) location.reload();
+    } catch {}
+  }
+  checkVersion();
+  setInterval(() => { if (!document.hidden) checkVersion(); }, 5 * 60000);
   // A key saved by the first version of this page is traded for a device
   // token, then dropped.
   const oldKey = store.get(KEY_STORE);
