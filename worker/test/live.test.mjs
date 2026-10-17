@@ -44,3 +44,15 @@ test("a remembered device: its token works until it expires, and only for its ke
   assert.equal(await deviceTokenOk("k1", "", t), false);
   assert.equal(await deviceTokenOk("", token, t), false);
 });
+
+test("the room keeps a week; the page reads a day unless it asks for the week", () => {
+  const r = emptyRoom(), D = 86400000;
+  applyBeat(r, { manager: "Curt", events: [{ k: "scoreboard" }] }, t - 3 * D);
+  applyBeat(r, { manager: "Curt", bye: true }, t - 3 * D + 60000);
+  applyBeat(r, { manager: "Nissan", events: [{ k: "picks" }] }, t - 8 * D);
+  applyBeat(r, { manager: "Logan", events: [{ k: "h2h" }] }, t);
+  assert.ok(r.feed.every((e) => e.n !== "Nissan"));
+  assert.deepEqual([...new Set(roomView(r, t + 1000).feed.map((e) => e.n))], ["Logan"]);
+  assert.deepEqual([...new Set(roomView(r, t + 1000, "7").feed.map((e) => e.n))].sort(), ["Curt", "Logan"]);
+  assert.equal(roomView(r, t + 1000, "99").feed.length, roomView(r, t + 1000, 7).feed.length);
+});

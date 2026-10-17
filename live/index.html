@@ -99,6 +99,7 @@ body.pv-open .tabs { display: none; }
   display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "tl" "feed" "rail"; }
 @media (min-width: 1024px) { .page { padding-bottom: calc(48px + env(safe-area-inset-bottom)); grid-template-columns: minmax(0, 1fr) 330px; grid-template-areas: "kpi kpi" "tl tl" "feed rail"; align-items: start; } .rail { position: sticky; top: 76px; } }
 @media (min-width: 1100px) { body.pv-open .page { margin-right: 430px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "tl" "feed" "rail"; } body.pv-open .rail { position: static; } }
+.kpis, .tl, .feed, .rail { scroll-margin-top: 84px; }
 .kpis { grid-area: kpi; } .tl { grid-area: tl; } .feed { grid-area: feed; min-width: 0; } .rail { grid-area: rail; display: flex; flex-direction: column; gap: 16px; }
 .panel { position: relative; padding: 14px 16px 16px; border-radius: 16px; background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .012)), var(--panel); border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 10px 30px rgba(0, 0, 0, .25); }
 .ph { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 12px; }
@@ -165,6 +166,31 @@ body.pv-open .tabs { display: none; }
 .tl-ax { grid-column: 2; position: relative; height: 22px; }
 .tl-ax span { position: absolute; top: 6px; transform: translateX(-50%); font: 11px var(--mono); color: var(--dim); white-space: nowrap; }
 .tl-ax span.nowl { transform: translateX(-100%); color: var(--green); font-weight: 700; }
+
+/* Range switch */
+.seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255, 255, 255, .03); }
+.ph .seg { margin-left: auto; }
+.ph .key + .seg { margin-left: 12px; }
+.seg button { padding: 4px 10px; font: 600 12px/1.2 var(--mono); color: var(--dim); background: none; border: 0; border-radius: 7px; }
+.seg button.on { color: var(--text); background: rgba(139, 108, 255, .25); box-shadow: inset 0 0 0 1px rgba(139, 108, 255, .5); }
+.sub2 { margin: 0 0 8px; font: 600 11px/1.3 var(--mono); letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
+
+/* The week: who by day */
+.hm { display: grid; grid-template-columns: var(--lab, 148px) repeat(7, minmax(0, 1fr)); gap: 4px; align-items: center; }
+@media (max-width: 640px) { .hm { --lab: 112px; gap: 3px; } }
+.hm-h { text-align: center; font: 600 11px/1.2 var(--mono); color: var(--dim); text-transform: uppercase; }
+.hm-h small { display: block; font-size: 10px; opacity: .7; }
+.hm-h.t { color: var(--green); }
+.hm-c { height: 34px; display: grid; place-items: center; border-radius: 7px; font: 700 11.5px var(--mono); font-style: normal; color: #fff; background: rgba(255, 255, 255, .03); cursor: default; transition: filter .15s, opacity .15s; }
+.hm-c.z { color: transparent; }
+.hm-c:hover { filter: brightness(1.25); }
+.hm-c.dim { opacity: .25; }
+@media (max-width: 640px) { .hm-c { font-size: 10px; } }
+.ln-l.dl { cursor: default; }
+.ln-l.dl:hover { background: none; }
+.ln-l.dl.in .nm { color: var(--green); }
+.blk.wk { opacity: .85; }
+.nowtick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--green); box-shadow: 0 0 8px var(--green); }
 
 /* Feed */
 .fh { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin-bottom: 4px; }
@@ -306,7 +332,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { range: store.get("brochiefs_live_range") === "7d" ? "7d" : "24h", wk: null, sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
 
   // --- Formatting --------------------------------------------------------
   const name = (n) => SHOWN[n] || n;
@@ -414,11 +440,14 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   async function poll(full) {
     clearTimeout(poll.t);
     try {
-      const res = await fetch(`${WORKER}/presence?${auth()}${full ? "&seen=1" : ""}&t=${Date.now()}`, { cache: "no-store" });
+      const wantWeek = st.range === "7d" && (full || !st.wk || Date.now() - st.wk.at > 60000);
+      const res = await fetch(`${WORKER}/presence?${auth()}${full ? "&seen=1" : ""}${wantWeek ? "&days=7" : ""}&t=${Date.now()}`, { cache: "no-store" });
       if (res.status === 403) { const was = device; forget(); gate(was ? "This computer's sign-in has expired. Enter the key again." : "That key didn't work."); return; }
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
+      // The week comes with seven days of taps; the live view keeps one.
+      if (r.week) { st.wk = { sessions: r.week, feed: r.feed, at: Date.now() }; r.feed = r.feed.filter((e) => Date.now() - e.at < 86400000); }
       const ids = new Set(r.feed.map(evId));
       if (st.known && !st.cached) {
         for (const id of ids) if (!st.known.has(id)) st.fresh.add(id);
@@ -452,7 +481,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.wk?.at, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -461,9 +490,25 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const inNow = names.filter((n) => people[n]?.in).sort((a, b) => people[a].since - people[b].since);
     document.title = inNow.length ? `(${inNow.length} in) Brochiefs Live` : "Brochiefs Live";
     const order = names.slice().sort((a, b) => (people[b]?.in ? 1 : 0) - (people[a]?.in ? 1 : 0) || lastSeen(b) - lastSeen(a));
+    const laneLabel = (n) => { const on = people[n]?.in, t = lastSeen(n), sel = st.filter === n; return `<button type="button" class="ln-l${on ? " in" : ""}${sel ? " sel" : ""}${t ? "" : " idle"}" data-n="${esc(n)}">${av(n, "sm", on)}<span class="t"><span class="nm">${esc(name(n))}</span><span class="st num"${on ? ` data-since="${people[n].since}"` : ""}>${on ? clock(now - people[n].since) : t ? ago(t) : "not seen"}</span></span></button>`; };
     const vs = visits(feed, people);
     const vEnd = (v) => (v.live ? now : Math.max(v.end, v.start + 1000));
     const actions = feed.filter((e) => e.k !== "in" && e.k !== "out" && !/^path-of-/.test(e.k) && e.at >= from);
+
+    // The week: every visit of the last 7 days from the session log, plus
+    // whoever is in now (their visit isn't logged until it ends).
+    const wk = st.range === "7d" ? st.wk : null;
+    const wFrom = today0 - 6 * DAY;
+    const wv = wk ? [
+      ...Object.entries(wk.sessions).flatMap(([n, list]) => list.map(([at, ms, f]) => ({ n, start: at, end: at + Math.max(ms, 1000), f: f || [] }))),
+      ...inNow.map((n) => ({ n, start: people[n].since, end: now, f: [], live: true })),
+    ].filter((v) => v.end >= wFrom).sort((a, b) => b.start - a.start) : [];
+    const wTime = (v, a = wFrom, b = now) => Math.max(0, Math.min(v.end, b) - Math.max(v.start, a));
+    const featLab = (k) => { k = String(k).replace(/-g\d+$/, ""); return SCREENS[k] || /^(path-of-|splash$)/.test(k) ? null : says({ k, n: "", d: "" }, [])[0]; };
+    const dayList = Array.from({ length: 7 }, (_, i) => dayOf(wFrom + i * DAY + 3 * HOUR));
+    const dShort = (d) => (d === today0 ? "Today" : new Date(d).toLocaleDateString([], { weekday: "short" }));
+    const dLong = (d) => (d === today0 ? "Today" : d === today0 - DAY ? "Yesterday" : new Date(d).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }));
+    const mins = (ms) => (ms >= HOUR ? `${(ms / HOUR).toFixed(1)}h` : ms >= 60000 ? `${Math.round(ms / 60000)}m` : ms > 0 ? "<1m" : "");
 
     // Headline numbers.
     const inToday = names.filter((n) => lastSeen(n) >= today0 || vs.some((v) => v.n === n && vEnd(v) >= today0));
@@ -476,10 +521,18 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       <div class="kpi now${inNow.length ? " on" : ""}"><em>In now</em><b class="num">${inNow.length}</b>
         ${inNow.length ? `<div class="avs">${inNow.map((n) => `<span class="inp">${av(n, "sm", true)}${esc(name(n))}<small class="num" data-since="${people[n].since}">${clock(now - people[n].since)}</small></span>`).join("")}</div>` : `<span>${last ? `Last in: ${esc(name(last))}, ${esc(ago(lastSeen(last)))}` : "Nobody yet"}</span>`}</div>
       <div class="kpi"><em>In today</em><b class="num">${inToday.length}<small>/${names.length}</small></b><span>${inToday.length ? esc(inToday.slice(0, 4).map(name).join(", ")) + (inToday.length > 4 ? ` +${inToday.length - 4}` : "") : "Nobody yet"}</span></div>
-      <div class="kpi"><em>Visits · 24h</em><b class="num">${vs.length}</b><span>${new Set(vs.map((v) => v.n)).size} people</span></div>
+      ${wk ? (() => {
+        const t = wv.reduce((a, v) => a + wTime(v), 0);
+        const byDay = dayList.map((d) => ({ d, ms: wv.reduce((a, v) => a + wTime(v, d, d + DAY), 0), who: new Set(wv.filter((v) => wTime(v, d, d + DAY)).map((v) => v.n)) }));
+        const best = byDay.reduce((m, x) => (x.ms > m.ms ? x : m), { ms: 0 });
+        return `<div class="kpi"><em>Visits · 7 days</em><b class="num">${wv.length}</b><span>${new Set(wv.map((v) => v.n)).size} people</span></div>
+      <div class="kpi"><em>Time in app</em><b class="num">${t >= HOUR ? `${(t / HOUR).toFixed(1)}<small>h</small>` : `${Math.round(t / 60000)}<small>m</small>`}</b><span>last 7 days</span></div>
+      <div class="kpi"><em>Avg visit</em><b class="num">${wv.length ? (() => { const m = t / wv.length; return m >= 60000 ? `${Math.round(m / 60000)}<small>m</small>` : `${Math.round(m / 1000)}<small>s</small>`; })() : "–"}</b><span>${(wv.length / 7).toFixed(1)} visits a day</span></div>
+      <div class="kpi"><em>Busiest day</em><b class="num">${best.ms ? esc(new Date(best.d).toLocaleDateString([], { weekday: "short" })) : "–"}</b><span>${best.ms ? `${mins(best.ms)} · ${best.who.size} ${best.who.size === 1 ? "person" : "people"}` : "no visits yet"}</span></div>`;
+      })() : `<div class="kpi"><em>Visits · 24h</em><b class="num">${vs.length}</b><span>${new Set(vs.map((v) => v.n)).size} people</span></div>
       <div class="kpi"><em>Time in app</em><b class="num">${time >= HOUR ? `${(time / HOUR).toFixed(1)}<small>h</small>` : `${Math.round(time / 60000)}<small>m</small>`}</b><span>last 24 hours</span></div>
       <div class="kpi"><em>Avg visit</em><b class="num">${vs.length ? (() => { const m = time / vs.length; return m >= 60000 ? `${Math.round(m / 60000)}<small>m</small>` : `${Math.round(m / 1000)}<small>s</small>`; })() : "–"}</b><span>${actions.length} actions</span></div>
-      <div class="kpi"><em>Peak hour</em><b class="num">${peak.n ? hourLab(peak.start) : "–"}</b><span>${peak.n ? `${peak.n} actions · ${peak.who.size} ${peak.who.size === 1 ? "person" : "people"}` : "no activity yet"}</span></div>
+      <div class="kpi"><em>Peak hour</em><b class="num">${peak.n ? hourLab(peak.start) : "–"}</b><span>${peak.n ? `${peak.n} actions · ${peak.who.size} ${peak.who.size === 1 ? "person" : "people"}` : "no activity yet"}</span></div>`}
     </section>`;
 
     // The timeline: one lane per player, a block per visit.
@@ -496,12 +549,42 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         const tip = `<b>${esc(name(n))}${v.live ? " · in now" : ""}</b>${esc(hm(v.start))}${v.live ? "" : ` to ${esc(hm(v.end))}`} · ${esc(dur(vEnd(v) - v.start))}<br>${v.acts.length} action${v.acts.length === 1 ? "" : "s"}${v.app ? ` · ${v.app === "home" ? "home screen app" : "browser"}` : ""}`;
         return `<i class="blk${v.live ? " live" : ""}${st.focus === id ? " focus" : ""}" style="${v.live ? `right:0;width:max(10px, ${(100 - xp(v.start)).toFixed(3)}%)` : `left:${xp(v.start)}%;width:${(xp(vEnd(v)) - xp(v.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}"></i>`;
       }).join("");
-      const sel = st.filter === n;
-      return `<button type="button" class="ln-l${on ? " in" : ""}${sel ? " sel" : ""}${t ? "" : " idle"}" data-n="${esc(n)}">${av(n, "sm", on)}<span class="t"><span class="nm">${esc(name(n))}</span><span class="st num"${on ? ` data-since="${people[n].since}"` : ""}>${on ? clock(now - people[n].since) : t ? ago(t) : "not seen"}</span></span></button><div class="ln-t${sel ? " sel" : ""}">${blocks}</div>`;
+      return `${laneLabel(n)}<div class="ln-t${st.filter === n ? " sel" : ""}">${blocks}</div>`;
     }).join("");
     const axis = marks.filter((t) => new Date(t).getHours() % 3 === 0 && xp(t) < 94).map((t) => `<span style="left:${xp(t)}%">${hourLab(t)}</span>`).join("") + `<span class="nowl" style="left:100%">NOW</span>`;
-    const timeline = `<section class="tl panel" id="sec-tl">
-      <div class="ph"><h2>Last 24 hours</h2><span class="sub">a block per visit · tap a name to see only theirs</span><span class="end key"><i></i>visit <i class="lv"></i>live</span></div>
+    const seg = `<span class="seg end" role="group" aria-label="Range"><button type="button" class="${st.range === "24h" ? "on" : ""}" data-range="24h">24h</button><button type="button" class="${st.range === "7d" ? "on" : ""}" data-range="7d">7 days</button></span>`;
+    const weekView = () => {
+      if (!wk) return `<div class="note">Loading the week…</div>`;
+      // Who, which day: minutes in the app, darker for more.
+      const cell = (n, d) => { const mine = wv.filter((v) => v.n === n && wTime(v, d, d + DAY) > 0); return { n: mine.length, ms: mine.reduce((a, v) => a + wTime(v, d, d + DAY), 0), f: [...new Set(mine.flatMap((v) => v.f.map(featLab)).filter(Boolean))] }; };
+      const grid = order.map((n) => dayList.map((d) => cell(n, d)));
+      const maxMs = Math.max(1, ...grid.flat().map((c) => c.ms));
+      const hmHtml = `<div class="hm">
+        <span></span>${dayList.map((d) => `<span class="hm-h${d === today0 ? " t" : ""}">${esc(dShort(d))}<small>${new Date(d).getDate()}</small></span>`).join("")}
+        ${order.map((n, r) => laneLabel(n) + dayList.map((d, c) => { const x = grid[r][c], a = x.ms ? 0.16 + 0.74 * Math.sqrt(x.ms / maxMs) : 0; return `<i class="hm-c${x.ms ? "" : " z"}${st.filter && st.filter !== n ? " dim" : ""}" style="${x.ms ? `background:rgba(139, 108, 255, ${a.toFixed(2)})` : ""}" data-tip="${esc(`<b>${name(n)} · ${dLong(d)}</b>${x.n ? `${x.n} visit${x.n === 1 ? "" : "s"} · ${mins(x.ms)}${x.f.length ? `<br>${x.f.slice(0, 5).join(", ")}` : ""}` : "Not in"}`)}">${mins(x.ms)}</i>`; }).join("")).join("")}
+      </div>`;
+      // A lane per day: when in the day each visit was.
+      const lanesW = [...dayList].reverse().map((d) => {
+        const mine = wv.filter((v) => wTime(v, d, d + DAY) > 0 && (!st.filter || v.n === st.filter));
+        const blocks = mine.map((v) => { const a = Math.max(v.start, d), b = Math.min(v.end, d + DAY, now); return `<i class="blk wk${v.live ? " live" : ""}" style="left:${(((a - d) / DAY) * 100).toFixed(3)}%;width:${(((b - a) / DAY) * 100).toFixed(3)}%" data-n="${esc(v.n)}" data-tip="${esc(`<b>${name(v.n)}${v.live ? " · in now" : ""}</b>${hm(v.start)}${v.live ? "" : ` to ${hm(v.end)}`} · ${dur(v.end - v.start)}${v.f.length ? `<br>${[...new Set(v.f.map(featLab).filter(Boolean))].slice(0, 5).join(", ")}` : ""}`)}"></i>`; }).join("");
+        return `<div class="ln-l dl${d === today0 ? " in" : ""}"><span class="t"><span class="nm">${esc(dLong(d).replace(/, .*/, ""))}</span><span class="st num">${mine.length} visit${mine.length === 1 ? "" : "s"}</span></span></div><div class="ln-t">${blocks}${d === today0 ? `<i class="nowtick" style="left:${(((now - d) / DAY) * 100).toFixed(3)}%"></i>` : ""}</div>`;
+      }).join("");
+      const q = (h) => `${((h / 24) * 100).toFixed(3)}%`;
+      const firstTap = (wk.feed || []).reduce((m, e) => Math.min(m, e.at), now);
+      return `<div class="sub2">Who was in, day by day ${st.filter ? "" : "· tap a name to follow one person"}</div>${hmHtml}
+        <div class="sub2" style="margin-top:18px">When in the day${st.filter ? ` · ${esc(name(st.filter))}` : " · everyone"}</div>
+        <div class="tl-grid">
+          <div class="tl-over">${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<i class="hr${i === 4 ? " mid" : ""}" style="left:${q(i * 3)}"></i>`).join("")}<i class="night" style="left:0;width:${q(7)}"></i></div>
+          ${lanesW}
+          <div class="tl-ax">${["12a", "3a", "6a", "9a", "12p", "3p", "6p", "9p"].map((l, i) => `<span style="left:${q(i * 3)}">${l}</span>`).join("")}</div>
+        </div>
+        ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:8px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}`;
+    };
+    const timeline = wk || st.range === "7d" ? `<section class="tl panel" id="sec-tl">
+      <div class="ph"><h2>Last 7 days</h2>${seg}</div>
+      ${weekView()}
+    </section>` : `<section class="tl panel" id="sec-tl">
+      <div class="ph"><h2>Last 24 hours</h2><span class="sub">a block per visit · tap a name to see only theirs</span><span class="end key"><i></i>visit <i class="lv"></i>live</span>${seg.replace(' end"', '"')}</div>
       <div class="tl-grid">
         <div class="tl-over">${nights.map(([a, b]) => `<i class="night" style="left:${xp(a)}%;width:${(xp(b) - xp(a)).toFixed(3)}%"></i>`).join("")}${marks.map((t) => `<i class="hr${new Date(t).getHours() === 0 ? " mid" : ""}" style="left:${xp(t)}%"></i>`).join("")}<i class="now"></i></div>
         ${lanes}
@@ -510,12 +593,31 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     </section>`;
 
     // Side charts: actions by hour, what got used most, how they open it.
+    // The week: visits by hour of the day, and what most visits used.
+    const railWeek = () => {
+      const byH = Array.from({ length: 24 }, (_, h) => ({ h, n: 0, who: new Set() }));
+      for (const v of wv) { const h = new Date(v.start).getHours(); byH[h].n++; byH[h].who.add(v.n); }
+      const mx = Math.max(1, ...byH.map((x) => x.n)), curH = new Date(now).getHours();
+      const used = new Map();
+      for (const v of wv) for (const l of new Set(v.f.map(featLab).filter(Boolean))) used.set(l, (used.get(l) || 0) + 1);
+      const tp = [...used.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), mf = tp[0]?.[1] || 1;
+      const lab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
+      return `<aside class="rail" id="sec-stats">
+      <section class="panel"><div class="ph"><h2>Visits by hour</h2><span class="sub">time of day, last 7 days</span></div>
+        <div class="bars">${byH.map((x) => `<i class="${x.n ? "" : "zero"}${x.h === curH ? " cur" : ""}" data-tip="${esc(`<b>${lab(x.h)}</b>${x.n} visit${x.n === 1 ? "" : "s"}${x.who.size ? ` · ${[...x.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((x.n / mx) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
+        <div class="bars-ax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>
+      </section>
+      <section class="panel"><div class="ph"><h2>Most used</h2><span class="sub">visits that used it, 7 days</span></div>
+        ${tp.length ? `<div class="rank">${tp.map(([a, n]) => `<div><span>${esc(a)}</span><b>${n}</b><i><s style="width:${((n / mf) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>` : `<div class="note">Nothing used yet.</div>`}
+      </section>
+    </aside>`;
+    };
     const maxH = Math.max(1, ...hours.map((h) => h.n));
     const counts = new Map();
     for (const e of actions) { if (SCREENS[e.k]) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), maxF = top[0]?.[1] || 1;
     const home = vs.filter((v) => v.app === "home").length, web = vs.filter((v) => v.app === "browser").length;
-    const rail = `<aside class="rail" id="sec-stats">
+    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">
       <section class="panel"><div class="ph"><h2>Activity by hour</h2><span class="sub">actions, last 24h</span></div>
         <div class="bars">${hours.map((h, i) => `<i class="${h.n ? "" : "zero"}${i === 23 ? " cur" : ""}" data-tip="${esc(`<b>${hourLab(h.start)}${i === 23 ? " · this hour" : ""}</b>${h.n} action${h.n === 1 ? "" : "s"}${h.who.size ? ` · ${[...h.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((h.n / maxH) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>${hourLab(hours[0].start)}</span><span>${hourLab(hours[6].start)}</span><span>${hourLab(hours[12].start)}</span><span>${hourLab(hours[18].start)}</span><span>now</span></div>
@@ -530,7 +632,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     </aside>`;
 
     // The feed: one card per visit, newest first.
-    const all = vs.filter((s) => !st.filter || s.n === st.filter);
+    const all = (wk ? visits(wk.feed || [], people) : vs).filter((s) => !st.filter || s.n === st.filter);
     // Each visit as plain text, for Copy: who, when, how long, and every
     // line in order.
     st.texts = new Map();
@@ -611,6 +713,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     // Any tap outside the open menu closes it.
     if (st.menu && !e.target.closest(".menu, [data-menu]")) { st.menu = false; render(); }
     const blk = e.target.closest(".blk");
+    if (blk && blk.dataset.n) { st.filter = st.filter === blk.dataset.n ? null : blk.dataset.n; render(); return; }
     if (blk) {
       const id = blk.dataset.v, who = id.split("|")[0];
       st.filter = who; st.focus = id; st.shown = Math.max(st.shown, 20); render();
@@ -632,6 +735,11 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       if (!text || !(await copyText(text))) { b.textContent = "Couldn't copy"; return; }
       st.copied = id; st.menu = false; render();
       clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; render(); }, 1600);
+      return;
+    }
+    if (b.dataset.range) {
+      st.range = b.dataset.range; store.set("brochiefs_live_range", st.range); render();
+      if (st.range === "7d" && (!st.wk || Date.now() - st.wk.at > 60000)) poll(false);
       return;
     }
     if (b.dataset.menu) { st.menu = !st.menu; render(); return; }

@@ -3421,6 +3421,18 @@ async function presenceExtra(env) {
   return { names, seen: Object.fromEntries(seen), games };
 }
 
+// The week, for the live page's 7 day view: every visit each player ended
+// in the last 7 days, from the session log (start, length, what was used).
+// Kept compact: [start, ms, [features]].
+async function presenceWeek(env, now) {
+  const names = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m)), from = now - 7 * 86400000;
+  const rows = await Promise.all(names.map(async (m) => {
+    const s = (await env.LIFTR_KV.get(sessKey(m), { type: "json", cacheTtl: 60 })) || [];
+    return [m, s.filter((x) => Number(x.at) + (Number(x.dur) || 0) >= from).map((x) => [Number(x.at), Number(x.dur) || 0, (x.f || []).slice(0, 24)])];
+  }));
+  return Object.fromEntries(rows);
+}
+
 async function handlePresence(request, env, corsHeaders, url) {
   if (!env.LIVE) return json({ error: "Live not configured" }, 500, corsHeaders);
   const room = env.LIVE.get(env.LIVE.idFromName("league"));
@@ -3430,8 +3442,11 @@ async function handlePresence(request, env, corsHeaders, url) {
     // ?seen=1 (on open, then once a minute) adds what the room can't know:
     // everyone tracked, when each was last in from the logs, and this
     // week's games by id. One small answer instead of the full logs.
-    const [res, extra] = await Promise.all([room.fetch("https://live/room"), url.searchParams.get("seen") ? presenceExtra(env) : null]);
-    return json({ ...(await res.json()), ...(extra || {}) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+    // ?days=7 adds the week: seven days of taps from the room, and every
+    // visit from the session log.
+    const week = url.searchParams.get("days") === "7";
+    const [res, extra, sessions] = await Promise.all([room.fetch(`https://live/room${week ? "?days=7" : ""}`), url.searchParams.get("seen") ? presenceExtra(env) : null, week ? presenceWeek(env, Date.now()) : null]);
+    return json({ ...(await res.json()), ...(extra || {}), ...(sessions ? { week: sessions } : {}) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   // text/plain from a beacon, so read the text and parse it.

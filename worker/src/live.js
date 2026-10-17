@@ -9,7 +9,9 @@
 // without a goodbye drops out after GONE_MS.
 
 export const GONE_MS = 75000;
-const FEED_MAX = 400, FEED_AGE = 24 * 3600000;
+// Seven days of taps are kept; the page reads the last day unless it asks
+// for the week.
+const DAY_MS = 24 * 3600000, FEED_MAX = 3000, FEED_AGE = 7 * DAY_MS;
 
 export const cleanKey = (x) => String(x ?? "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32);
 const cleanDetail = (x) => (x == null || x === "" ? undefined : String(x).replace(/[<>]/g, "").slice(0, 40));
@@ -47,11 +49,12 @@ export function applyBeat(room, b, now) {
   return room;
 }
 
-// What the live page reads: each person's state and the feed, newest first.
-export function roomView(room, now) {
-  const people = {};
+// What the live page reads: each person's state and the feed, newest first,
+// for the last day or (days = 7) the week.
+export function roomView(room, now, days = 1) {
+  const people = {}, age = Math.min(Math.max(Number(days) || 1, 1), 7) * DAY_MS;
   for (const [n, p] of Object.entries(room.people)) people[n] = { in: p.on && now - p.last < GONE_MS, since: p.since, last: p.last, screen: p.screen || "", app: p.app || "" };
-  return { now, people, feed: room.feed.filter((e) => now - e.at < FEED_AGE) };
+  return { now, people, feed: room.feed.filter((e) => now - e.at < age) };
 }
 
 export class LiveRoom {
@@ -67,7 +70,7 @@ export class LiveRoom {
       await this.ctx.storage.put("room", room);
       return Response.json({ ok: true });
     }
-    return Response.json(roomView(room, now));
+    return Response.json(roomView(room, now, new URL(request.url).searchParams.get("days")));
   }
 }
 
