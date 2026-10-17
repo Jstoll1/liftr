@@ -173,6 +173,9 @@ body.pv-open .tabs { display: none; }
 .ph .key + .seg { margin-left: 12px; }
 .seg button { padding: 4px 10px; font: 600 12px/1.2 var(--mono); color: var(--dim); background: none; border: 0; border-radius: 7px; }
 .seg button.on { color: var(--text); background: rgba(139, 108, 255, .25); box-shadow: inset 0 0 0 1px rgba(139, 108, 255, .5); }
+.tl-hint { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: -4px 0 12px; font-size: 12px; color: var(--dim); }
+.ln-l.quiet { opacity: .45; }
+.ln-t.quiet { opacity: .5; }
 .sub2 { margin: 0 0 8px; font: 600 11px/1.3 var(--mono); letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
 
 /* The week: when in the day, a punch card */
@@ -383,7 +386,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: store.get("brochiefs_live_range") === "7d" ? "7d" : "24h", wk: null, sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "6h", "12h", "24h", "7d"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "6h", wk: null, sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
 
   // --- Formatting --------------------------------------------------------
   const name = (n) => SHOWN[n] || n;
@@ -589,23 +592,31 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     </section>`;
 
     // The timeline: one lane per player, a block per visit.
-    const xp = (t) => (((Math.min(Math.max(t, from), now) - from) / DAY) * 100).toFixed(3);
+    // The timeline's window: 3, 6, 12 or 24 hours back to now (6 to start),
+    // so a busy afternoon gets the width instead of a sliver by the now line.
+    const spanH = { "3h": 3, "6h": 6, "12h": 12 }[st.range] || 24, tSpan = spanH * HOUR, tFrom = now - tSpan;
+    const xp = (t) => (((Math.min(Math.max(t, tFrom), now) - tFrom) / tSpan) * 100).toFixed(3);
+    const step = spanH <= 3 ? HOUR / 2 : HOUR, every = spanH <= 6 ? 1 : spanH <= 12 ? 2 : 3;
     const marks = [];
-    const h0 = new Date(from); h0.setMinutes(0, 0, 0);
-    for (let t = h0.getTime() + HOUR; t < now; t += HOUR) marks.push(t);
+    const h0 = new Date(tFrom); h0.setMinutes(spanH <= 3 && h0.getMinutes() >= 30 ? 30 : 0, 0, 0);
+    for (let t = h0.getTime() + step; t < now; t += step) marks.push(t);
     const nights = [];
-    for (let d = dayOf(from); d < now; d += DAY) { const a = Math.max(d, from), b = Math.min(d + 7 * HOUR, now); if (b > a) nights.push([a, b]); }
+    for (let d = dayOf(tFrom); d < now; d += DAY) { const a = Math.max(d, tFrom), b = Math.min(d + 7 * HOUR, now); if (b > a) nights.push([a, b]); }
+    const tickLab = (t) => { const d = new Date(t), h = d.getHours(), m = d.getMinutes(); return m ? `${h % 12 || 12}:${String(m).padStart(2, "0")}` : hourLab(t); };
     const lanes = order.map((n) => {
-      const on = people[n]?.in, t = lastSeen(n), mine = vs.filter((v) => v.n === n);
+      const mine = vs.filter((v) => v.n === n && vEnd(v) >= tFrom);
       const blocks = mine.map((v) => {
         const id = `${v.n}|${v.start}`;
         const tip = `<b>${esc(name(n))}${v.live ? " · in now" : ""}</b>${esc(hm(v.start))}${v.live ? "" : ` to ${esc(hm(v.end))}`} · ${esc(dur(vEnd(v) - v.start))}<br>${v.acts.length} action${v.acts.length === 1 ? "" : "s"}${v.app ? ` · ${v.app === "home" ? "home screen app" : "browser"}` : ""}`;
         return `<i class="blk${v.live ? " live" : ""}${st.focus === id ? " focus" : ""}" style="${v.live ? `right:0;width:max(10px, ${(100 - xp(v.start)).toFixed(3)}%)` : `left:${xp(v.start)}%;width:${(xp(vEnd(v)) - xp(v.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}"></i>`;
       }).join("");
-      return `${laneLabel(n)}<div class="ln-t${st.filter === n ? " sel" : ""}">${blocks}</div>`;
+      // Nobody in the window: the lane steps back.
+      return `${laneLabel(n).replace('class="ln-l', `class="ln-l${mine.length ? "" : " quiet"}`)}<div class="ln-t${st.filter === n ? " sel" : ""}${mine.length ? "" : " quiet"}">${blocks}</div>`;
     }).join("");
-    const axis = marks.filter((t) => new Date(t).getHours() % 3 === 0 && xp(t) < 94).map((t) => `<span style="left:${xp(t)}%">${hourLab(t)}</span>`).join("") + `<span class="nowl" style="left:100%">NOW</span>`;
-    const seg = `<span class="seg end" role="group" aria-label="Range"><button type="button" class="${st.range === "24h" ? "on" : ""}" data-range="24h">24h</button><button type="button" class="${st.range === "7d" ? "on" : ""}" data-range="7d">7 days</button></span>`;
+    // Labels on the hour at the window's step, and the half hours at 3h.
+    const labelled = (t) => { const d = new Date(t); return d.getMinutes() ? spanH <= 3 : d.getHours() % every === 0; };
+    const axis = marks.filter((t) => labelled(t) && xp(t) < 87 && xp(t) > 4).map((t) => `<span style="left:${xp(t)}%">${tickLab(t)}</span>`).join("") + `<span class="nowl" style="left:100%">NOW</span>`;
+    const seg = `<span class="seg end" role="group" aria-label="Range">${["3h", "6h", "12h", "24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
     const weekView = () => {
       if (!wk) return `<div class="note">Loading the week…</div>`;
       // Who, which day: visits (or minutes, by the switch), darker for more;
@@ -644,7 +655,8 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       <div class="ph"><h2>Last 7 days</h2>${seg}</div>
       ${weekView()}
     </section>` : `<section class="tl panel" id="sec-tl">
-      <div class="ph"><h2>Last 24 hours</h2><span class="sub">a block per visit · tap a name to see only theirs</span><span class="end key"><i></i>visit <i class="lv"></i>live</span>${seg.replace(' end"', '"')}</div>
+      <div class="ph"><h2>Last ${spanH} hours</h2>${seg}</div>
+      <div class="tl-hint"><span>a block per visit · tap a name to see only theirs</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
       <div class="tl-grid">
         <div class="tl-over">${nights.map(([a, b]) => `<i class="night" style="left:${xp(a)}%;width:${(xp(b) - xp(a)).toFixed(3)}%"></i>`).join("")}${marks.map((t) => `<i class="hr${new Date(t).getHours() === 0 ? " mid" : ""}" style="left:${xp(t)}%"></i>`).join("")}<i class="now"></i></div>
         ${lanes}
