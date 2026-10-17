@@ -6341,6 +6341,9 @@ button.sc-luck:hover { filter: brightness(1.2); }
 .pc-txt { font-size: 20px; color: #f4f0ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pc-pts { font-size: 20px; text-align: right; color: var(--neon-green); }
 .pc-pts.zero { color: rgba(244, 240, 255, .3); }
+.pr-stale { flex: none; padding: 5px 14px; font-family: 'VT323', monospace; font-size: 15px; color: #ffb000; background: rgba(255, 176, 0, .08); }
+.pc .pr-stale { margin-top: 10px; padding: 4px 8px; border-radius: 4px; }
+.rd-path-btn.busy { opacity: .6; }
 .pc-free, .pc-tie { margin-top: 10px; font-size: 16px; color: rgba(214, 240, 226, .55); }
 .pc-tie { color: #ffcf5c; }
 .pc-win { margin-top: 14px; font-size: 26px; letter-spacing: .04em; color: #ffe45e; text-shadow: 0 0 10px rgba(255, 228, 94, .4); }

@@ -594,6 +594,7 @@ async function fetchLiveFromEspn() {
   }
   // No date answered: throw so the caller falls back and retries soon.
   if (!ok) throw new Error("espn scoreboard unavailable");
+  espnPartial = ok < answers.length;
   return parseEspnEvents(events);
 }
 
@@ -611,7 +612,10 @@ async function fetchLiveFromWorker() {
 
 // Latest live map, shared with the picks screen so locked games there show
 // the score without their own fetch.
-let latestLive = {};
+let latestLive = {}, latestLiveWeek = null;
+// Whether the last read answered (the board's copy is fresh), and whether
+// ESPN answered for only some of the slate's days.
+let liveLastOk = false, espnPartial = false;
 // How long a live-scores fetch stays good. Every time while a game is on
 // (or might be: kicked off within five hours and not final), every minute
 // in the two hours before a kickoff, every five minutes otherwise. A
@@ -645,10 +649,17 @@ async function fetchLiveScoresNow() {
   }
   if (!Object.keys(live).length) {
     try { live = await fetchLiveFromWorker(); answered = true; } catch { live = {}; }
+  } else if (espnPartial) {
+    // A day that timed out would leave its games blank; the Worker fills them.
+    try { const w = await fetchLiveFromWorker(); for (const [id, g] of Object.entries(w)) if (!live[id]) live[id] = g; } catch {}
   }
-  if (Object.keys(live).length) latestLive = live;
+  // A game this phone already saw finish stays finished: a read that
+  // missed it is no reason to play it out again.
+  if (Object.keys(live).length && latestLiveWeek === currentWeek) for (const [id, g] of Object.entries(latestLive)) if (g?.completed && !live[id]) live[id] = g;
+  if (Object.keys(live).length) { latestLive = live; latestLiveWeek = currentWeek; }
   // A failed fetch is never reused; an answer (even "no games yet") is.
   if (answered) liveFetchedAt = Date.now();
+  liveLastOk = answered;
   return Object.keys(live).length ? live : latestLive;
 }
 
@@ -2689,23 +2700,29 @@ async function renderScoreboard() {
   maybeShowQotw();
   if (bootBoard) {
     const b = bootBoard; bootBoard = null;
-    if (!Object.keys(latestLive).length) latestLive = b.live;
+    if (!Object.keys(latestLive).length) { latestLive = b.live; latestLiveWeek = b.week; }
     try { paintScoreboard(b.picks, b.live, true); } catch (err) { console.warn("cached board", err); }
   }
   // Picks and scores together, not picks and then scores.
   const [fetched, live] = await Promise.all([fetchBoardPicks(), fetchLiveScores()]);
   paintScoreboard(fetched, live, false);
 }
-function paintScoreboard(fetched, live, cached) {
-  cloudPicksStale = fetched === null;
-  const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
+function boardCloudPicks(rawPicks) {
   const cloudPicks = {};
   MANAGERS.forEach((name) => {
     const state = rawPicks[name];
     if (state) cloudPicks[name] = { ...state, picks: name === currentManager ? sanitizePicks(state.picks) : sanitizeRoomPicks(state.picks) };
   });
+  return cloudPicks;
+}
+function paintScoreboard(fetched, live, cached) {
+  cloudPicksStale = fetched === null;
+  const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
+  const cloudPicks = boardCloudPicks(rawPicks);
   if (fetched !== null && !cached) lastGoodCloudPicks = rawPicks;
-  if (!cached && fetched !== null && Object.keys(live || {}).length) { try { localStorage.setItem(BOARD_CACHE_KEY, JSON.stringify({ week: currentWeek, at: Date.now(), picks: rawPicks, live })); } catch {} }
+  // Saved only from a read that answered, so old scores are never saved
+  // again as if they were new.
+  if (!cached && liveLastOk && fetched !== null && Object.keys(live || {}).length) { try { localStorage.setItem(BOARD_CACHE_KEY, JSON.stringify({ week: currentWeek, at: Date.now(), picks: rawPicks, live })); } catch {} }
   const results = computeLiveResults(live);
 
   if (!cached) archiveWeekIfFinal(results);
@@ -2731,7 +2748,7 @@ function paintScoreboard(fetched, live, cached) {
   const stamp = document.getElementById("scoreboard-updated");
   if (stamp) {
     const noData = !Object.keys(live).length;
-    stamp.textContent = cached ? "updating…" : `${clockLabel()}${noData ? " · no live data" : ""}${cloudPicksStale ? " · ⚠ picks not reloaded" : ""} · tap to refresh`;
+    stamp.textContent = cached ? "updating…" : `${clockLabel()}${noData ? " · no live data" : !liveLastOk ? " · scores not updated" : ""}${cloudPicksStale ? " · ⚠ picks not reloaded" : ""} · tap to refresh`;
     stamp.classList.toggle("stale", cloudPicksStale);
     stamp.classList.remove("busy");
     // Hidden whenever the strip is carrying the clock; shown on its own
@@ -3451,6 +3468,8 @@ function stopsWho(g, res, name, standing, all = lastGoodCloudPicks || {}) {
   });
   return hurt.sort((a, b) => (standing[b] || 0) - (standing[a] || 0))[0] || null;
 }
+// When the fresh read failed, the path says its scores may be behind.
+const pathStaleNote = () => (liveLastOk || window.__liveView ? "" : `<div class="pr-stale">Scores didn't refresh, so a game that just ended may still show.</div>`);
 // Once a path has been watched, the button opens this instead: a small
 // card with only the games that must go a certain way, the team's logo,
 // the result, and what it pays, then the win at the bottom.
@@ -3475,7 +3494,7 @@ function openPathCard(name) {
     const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
     const free = sc.all.length - sc.need.length;
     body = `<ul class="pc-list">${rowsHtml}</ul>
-      ${free ? `<div class="pc-free">The other ${free} game${free === 1 ? "" : "s"} can go either way.</div>` : ""}
+      ${pathStaleNote()}${free ? `<div class="pc-free">The other ${free} game${free === 1 ? "" : "s"} can go either way.</div>` : ""}
       ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : ""}
       <div class="pc-win">${escapeCd(me)} WINS THE WEEK</div>
       <div class="pc-foot"><span>${oneIn ? (oneIn > 10000 ? "Rarer than 1 in 10,000" : `About 1 in ${oneIn.toLocaleString()}`) : ""}</span><span class="pc-btns"><button type="button" class="pc-share">↗ Share</button><button type="button" class="pc-replay">▶ Replay</button></span></div>`;
@@ -3516,7 +3535,7 @@ function openPathRun(name, replay = false) {
   // the standings, then the terminal.
   m.innerHTML = `<div class="pr-win">
     <div class="pr-bar"><span class="pr-grip" aria-hidden="true"></span><span class="pr-bar-t">PATH TO WIN <i>·</i> ${escapeCd(me)}</span>${fast ? "" : `<button type="button" class="pr-skip">SKIP</button>`}<button type="button" class="pr-close" aria-label="Close">✕</button></div>
-    <div class="pr-meter"><span class="pr-meter-l">WIN CHANCE</span><span class="pr-meter-bar"><i></i></span><b class="pr-meter-v">--</b></div>
+    <div class="pr-meter"><span class="pr-meter-l">WIN CHANCE</span><span class="pr-meter-bar"><i></i></span><b class="pr-meter-v">--</b></div>${pathStaleNote()}
     <div class="pr-stand"><div class="pr-stand-h"><span>#</span><span>STANDINGS</span>${MANAGERS.length > 5 ? `<button type="button" class="pr-more" aria-expanded="false">ALL ▾</button>` : ""}<span>PTS</span></div><ol class="pr-board"></ol></div>
     <div class="pr-term"><div class="pr-lines"></div><span class="pr-cursor">█</span></div>
   </div>`;
@@ -3714,12 +3733,26 @@ function openPathRun(name, replay = false) {
   track("path-run", { event: true });
   noteUse(`path-of-${name}`);
 }
+// The path is worked out from the board's numbers, which on opening can be
+// the copy saved on the last visit. Before a path shows, the scores are
+// read fresh and the odds worked out from them, so a game that has
+// finished since is never played out again.
+async function pathFresh() {
+  if (!lastGoodCloudPicks) { const d = await fetchBoardPicks().catch(() => null); if (d) lastGoodCloudPicks = d; }
+  const old = liveFetchedAt;
+  if (!liveFetchedAt || Date.now() - liveFetchedAt > 60000) await fetchLiveScores(true).catch(() => {});
+  if (lastGoodCloudPicks) weekWinChances(boardCloudPicks(lastGoodCloudPicks), computeLiveResults(latestLive), latestLive);
+  if (liveFetchedAt !== old && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
+}
 // The button lives inside a card the board redraws, so one listener here.
+let pathOpening = false;
 document.addEventListener("click", (e) => {
   const b = e.target.closest?.(".rd-path-btn");
   if (!b) return;
   e.stopPropagation();
-  openPathRun(b.dataset.path);
+  if (pathOpening) return;
+  pathOpening = true; b.classList.add("busy");
+  pathFresh().finally(() => { pathOpening = false; b.classList.remove("busy"); openPathRun(b.dataset.path); });
 }, true);
 
 function playerBreakdownHtml(name, state, results, live) {
