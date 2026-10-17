@@ -84,6 +84,12 @@ html, body {
 }
 
 .hidden { display: none !important; }
+/* A signed-in player opening the app: no splash, the board's frame from
+   the first paint; the app takes over (and drops the class) at once. */
+html.known #logo-screen { display: none !important; }
+html.known #home-header.hidden { display: block !important; }
+html.known #bottom-nav.hidden { display: flex !important; }
+html.known #scoreboard-screen.hidden { display: flex !important; }
 
 .home-header {
   position: sticky;

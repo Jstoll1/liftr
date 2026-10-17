@@ -2672,12 +2672,31 @@ function fetchBoardPicks() {
   return boardPicksInFlight;
 }
 
+// The board as last seen on this phone (picks as the Worker served them,
+// so nothing hidden before lock is here), drawn once on open while the
+// fresh copy loads, so the scoreboard is there at once.
+const BOARD_CACHE_KEY = "brochiefs_board_v1";
+let bootBoard = null;
+function loadBootBoard() {
+  try {
+    const c = JSON.parse(localStorage.getItem(BOARD_CACHE_KEY) || "null");
+    if (c && c.week === currentWeek && c.picks && c.live && Date.now() - c.at < 7 * 86400000) bootBoard = c;
+  } catch {}
+}
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
   maybeShowQotw();
+  if (bootBoard) {
+    const b = bootBoard; bootBoard = null;
+    if (!Object.keys(latestLive).length) latestLive = b.live;
+    try { paintScoreboard(b.picks, b.live, true); } catch (err) { console.warn("cached board", err); }
+  }
   // Picks and scores together, not picks and then scores.
   const [fetched, live] = await Promise.all([fetchBoardPicks(), fetchLiveScores()]);
+  paintScoreboard(fetched, live, false);
+}
+function paintScoreboard(fetched, live, cached) {
   cloudPicksStale = fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
   const cloudPicks = {};
@@ -2685,10 +2704,11 @@ async function renderScoreboard() {
     const state = rawPicks[name];
     if (state) cloudPicks[name] = { ...state, picks: name === currentManager ? sanitizePicks(state.picks) : sanitizeRoomPicks(state.picks) };
   });
-  if (fetched !== null) lastGoodCloudPicks = rawPicks;
+  if (fetched !== null && !cached) lastGoodCloudPicks = rawPicks;
+  if (!cached && fetched !== null && Object.keys(live || {}).length) { try { localStorage.setItem(BOARD_CACHE_KEY, JSON.stringify({ week: currentWeek, at: Date.now(), picks: rawPicks, live })); } catch {} }
   const results = computeLiveResults(live);
 
-  archiveWeekIfFinal(results);
+  if (!cached) archiveWeekIfFinal(results);
   renderLiveScores(live, cloudPicks);
   // Ranked once and handed to both, so the table and the leaderboard
   // cannot end up in different orders.
@@ -2704,14 +2724,14 @@ async function renderScoreboard() {
   renderMyScore(ranked, cloudPicks, live);
   renderWeekChamp(ranked, results);
   renderInsertCoin(cloudPicks);
-  maybeShowPathIntro();
+  if (!cached) maybeShowPathIntro();
   // The clock lives inside the strip when there is one, so the board does
   // not spend a whole line on it. Seconds are gone: the poll is every 30,
   // so second-level precision was never true.
   const stamp = document.getElementById("scoreboard-updated");
   if (stamp) {
     const noData = !Object.keys(live).length;
-    stamp.textContent = `${clockLabel()}${noData ? " · no live data" : ""}${cloudPicksStale ? " · ⚠ picks not reloaded" : ""} · tap to refresh`;
+    stamp.textContent = cached ? "updating…" : `${clockLabel()}${noData ? " · no live data" : ""}${cloudPicksStale ? " · ⚠ picks not reloaded" : ""} · tap to refresh`;
     stamp.classList.toggle("stale", cloudPicksStale);
     stamp.classList.remove("busy");
     // Hidden whenever the strip is carrying the clock; shown on its own
@@ -7486,7 +7506,27 @@ setInterval(() => { if (updateWaiting && !userBusy()) checkForUpdate(false); }, 
 // week's first kickoff on it never shows to a known player.
 const SPLASH_KEY = "brochiefs_splash_seen_v1";
 const SPLASH_TTL = 12 * 60 * 60 * 1000;
+// A signed-in player goes straight to the scoreboard: this week's games
+// and the last board from this phone draw at once, and fresh ones replace
+// them as they land. No splash, at any point in the week.
+function goToScoresNow() {
+  logoScreen.classList.add("hidden");
+  loginScreen.classList.add("hidden");
+  homeHeader.classList.remove("hidden");
+  bottomNav.classList.remove("hidden");
+  currentManager = loadMe();
+  updateMePill();
+  showScoreboard();
+  document.documentElement.classList.remove("known");
+}
 (async () => {
+  const fast = !!loadMe() && !window.__adminEntry && !window.__liveView;
+  if (fast) {
+    restoreCachedSlate();
+    lastSlateSignature = slateSignature();
+    if (GAMES.length) { loadBootBoard(); goToScoresNow(); }
+  }
+  const routed = fast && GAMES.length > 0;
   // Fetch this week's slate before anything renders, so nobody sees last
   // week's games flash past. The splash covers the wait. Whether login is
   // live, and who has claimed a name, comes down in the same breath.
@@ -7498,9 +7538,17 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
     loadSlate().then(() => { if (firstKickoffPassed()) { fetchLiveScores().catch(() => {}); fetchBoardPicks().catch(() => {}); } }),
     refreshAuthState(),
   ]);
+  const slateChanged = routed && slateSignature() !== lastSlateSignature;
   lastSlateSignature = slateSignature();
   lastLockSignature = lockSignature();
   renderManagerPicker();
+  if (routed) {
+    // Already on the board: redraw only if the network's slate differs
+    // from the one this phone had (a new week, a changed game).
+    if (slateChanged && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
+    return;
+  }
+  if (fast) { goToScoresNow(); return; }
 
   let last = 0;
   try { last = Number(localStorage.getItem(SPLASH_KEY)) || 0; } catch {}

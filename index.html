@@ -18,9 +18,18 @@
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png?v=202610172034" />
   <link rel="manifest" href="manifest.json" />
 
+  <!-- A signed-in player goes straight to the scoreboard: marked here,
+       before anything paints, so the splash never shows. -->
+  <script>try{if(localStorage.getItem("brochiefs_me_v1")&&!/[?&](admin|view)(=|&|$)|#admin/.test(location.search+location.hash))document.documentElement.classList.add("known")}catch(e){}</script>
+  <link rel="preconnect" href="https://liftr-ai.jhs797.workers.dev" crossorigin />
+  <link rel="preconnect" href="https://site.api.espn.com" crossorigin />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" />
+  <!-- Fonts don't hold up the first paint: the page draws at once and the
+       arcade faces swap in (they're cached after the first visit). -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="styles.css?v=202610172034" />
   <link rel="stylesheet" href="history.css?v=202610172034" />
 </head>
