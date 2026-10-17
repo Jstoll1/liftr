@@ -7012,11 +7012,11 @@ function renderH2H() {
   const cell = (g, pick, st, side) => {
     if (hiddenFor(side === "a" ? A.name : B.name, g)) return `<div class="h2h-td ${side} hidden-pick"><span class="h2h-team"><span class="h2h-nm"><em>🔒 locked at kick</em></span></span></div>`;
     const id = pick ? (pick.team === g.home ? g.homeId : pick.team === g.away ? g.awayId : null) : null;
-    const team = `<span class="h2h-team">${id ? `<img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : ""}<span class="h2h-nm">${pick ? esc(short(g, pick.team)) : "<em>none</em>"}</span></span>`;
-    const line = `<span class="h2h-line">${pick ? (pick.mode === "SU" ? "SU" : (pick.team === g.favorite ? "-" : "+") + g.spread) : ""}</span>`;
-    const pts = `<b>${st.txt}</b>`;
-    // The right card mirrors the left: points nearest the middle, team at the edge.
-    return `<div class="h2h-td ${side} ${st.cls}">${side === "a" ? team + line + pts : pts + line + team}</div>`;
+    // Name on top with the whole width; the line and the points under it,
+    // points toward the middle. The right card mirrors the left in CSS.
+    const line = pick ? (pick.mode === "SU" ? "SU" : (pick.team === g.favorite ? "-" : "+") + g.spread) : "";
+    const logo = id ? `<img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
+    return `<div class="h2h-td ${side} ${st.cls}">${logo}<span class="h2h-tx"><span class="h2h-nm">${pick ? esc(short(g, pick.team)) : "<em>none</em>"}</span><span class="h2h-sub"><span class="h2h-line">${line}</span><b>${st.txt}</b></span></span></div>`;
   };
   const sameGames = games.filter((g) => { const pa = a.st.picks[g.id], pb = b.st.picks[g.id]; return pa && pb && pa.team === pb.team && pa.mode === pb.mode; });
   const trs = games.filter((g) => !sameGames.includes(g)).map((g) => {
@@ -7053,7 +7053,7 @@ function renderH2H() {
   const sameStrip = sameGames.length ? `<div class="h2h-same"><div class="h2h-same-h">SAME PICK · NO SWING</div><div class="h2h-same-l">${sameGames.map((g) => {
     const pk = a.st.picks[g.id], st = stateOf(g, pk);
     const id = pk.team === g.home ? g.homeId : g.awayId;
-    return `<span class="h2h-same-c ${st.cls}"><img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">${esc(short(g, pk.team))} <small>${pk.mode === "SU" ? "WIN" : (pk.team === g.favorite ? "-" : "+") + g.spread}</small><b>${st.txt}</b></span>`;
+    return `<span class="h2h-same-c ${st.cls}"><img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy"><span class="h2h-same-nm">${esc(short(g, pk.team))}</span><small>${pk.mode === "SU" ? "WIN" : (pk.team === g.favorite ? "-" : "+") + g.spread}</small><b>${st.txt}</b></span>`;
   }).join("")}</div></div>` : "";
   // Fighter cards up top: avatar, name, score, record. The native select
   // sits invisibly over each card, so a tap still changes the player.
@@ -7064,7 +7064,7 @@ function renderH2H() {
     av.textContent = avatarOverrides[row.name] || shown(row.name)[0];
     av.style.setProperty("--accent", accentFor(row.name));
     card.querySelector(".h2h-f-name").textContent = shown(row.name).toUpperCase();
-    card.querySelector(".h2h-f-meta").innerHTML = `${x.w}-${x.l} · MAX ${x.max}${x.fly ? ` · <em>+${x.fly}</em>` : ""}`;
+    card.querySelector(".h2h-f-meta").innerHTML = `<span>${x.w}-${x.l}</span><span>MAX ${x.max}</span>${x.fly ? `<em>+${x.fly} LIVE</em>` : ""}`;
     card.querySelector(".h2h-f-score").textContent = String(row.score).padStart(2, "0");
     card.classList.toggle("ahead", row.score > (side === "a" ? B : A).score);
   };

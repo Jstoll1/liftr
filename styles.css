@@ -5012,6 +5012,44 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 .h2h-same-c b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 7px; margin-left: 2px; }
 .h2h-same-c.hit b, .h2h-same-c.live-hit b { color: var(--neon-green); }
 .h2h-same-c.miss b, .h2h-same-c.live-miss b { color: var(--neon-pink); }
+/* H2H, balanced: the fighter cards put name and score on one line and the
+   record on its own line underneath, mirrored; each pick shows the line
+   under the team so the name has room; the same pick strip is two even
+   columns. */
+.h2h-fighter { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "av name score" "meta meta meta"; column-gap: 7px; row-gap: 7px; padding: 8px; }
+.h2h-fighter.b { grid-template-columns: auto minmax(0, 1fr) 28px; grid-template-areas: "score name av" "meta meta meta"; }
+.h2h-f-txt { display: contents; }
+.h2h-f-av { grid-area: av; width: 28px; height: 28px; font-size: 11px; }
+.h2h-f-name { grid-area: name; font-size: 7.5px; letter-spacing: .02em; }
+.h2h-f-score { grid-area: score; font-size: 15px; line-height: 1; color: rgba(255, 255, 255, .72); }
+.h2h-f-meta { grid-area: meta; display: flex; gap: 8px; align-items: center; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--c) 30%, transparent); font-size: 6px; }
+.h2h-fighter.b .h2h-f-meta { justify-content: flex-end; }
+.h2h-f-meta span + span::before { content: "·"; margin-right: 8px; opacity: .6; }
+.h2h-f-meta em { margin-left: auto; }
+.h2h-fighter.b .h2h-f-meta em { order: -1; margin: 0 auto 0 0; }
+.h2h-tr { grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr); min-height: 46px; }
+.h2h-td { display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 46px; padding: 5px 4px 5px 8px; }
+.h2h-td.b { flex-direction: row-reverse; padding: 5px 8px 5px 4px; }
+.h2h-logo { width: 20px; height: 20px; }
+.h2h-tx { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.h2h-td.b .h2h-tx { text-align: right; }
+.h2h-nm { display: block; font-size: 13px; line-height: 1.1; }
+.h2h-sub { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.h2h-td.b .h2h-sub { flex-direction: row-reverse; }
+.h2h-line { font-size: 10.5px; line-height: 1; opacity: .75; }
+.h2h-td b { font-size: 8px; min-width: 20px; }
+@media (max-width: 380px) {
+  .h2h-f-name { font-size: 7px; }
+  .h2h-f-name::after { content: none; }
+  .h2h-nm { font-size: 12px; }
+  .h2h-logo { width: 17px; height: 17px; }
+  .h2h-td { gap: 5px; padding-left: 6px; }
+  .h2h-td.b { padding: 5px 6px 5px 4px; }
+}
+.h2h-same-l { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.h2h-same-c { min-width: 0; padding: 4px 8px 4px 5px; }
+.h2h-same-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.h2h-same-c b { margin-left: auto; padding-left: 4px; }
 .h2h-sec { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .12em; color: var(--neon-yellow); margin: 6px 2px 4px; }
 
 /* Player chance popup */
