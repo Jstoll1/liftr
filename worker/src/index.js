@@ -3402,13 +3402,30 @@ export function queuedOpenAt(body, now) {
 // Presence: phones report what's open and what's being used (POST, no key,
 // like /visit); the admin's live page reads the room (GET, admin key).
 // Both go to the one Durable Object that holds it.
+async function presenceExtra(env) {
+  const names = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m));
+  const opt = { type: "json", cacheTtl: 60 };
+  const [seen, games] = await Promise.all([
+    Promise.all(names.map(async (m) => {
+      // Both logs are newest first; a few from the top cover a late queued open.
+      const [v, s] = await Promise.all([env.LIFTR_KV.get(`visits:${m}`, opt), env.LIFTR_KV.get(sessKey(m), opt)]);
+      return [m, Math.max(0, ...(v || []).slice(0, 5).map((x) => Number(x.at) || 0), ...(s || []).slice(0, 5).map((x) => (Number(x.at) || 0) + (Number(x.dur) || 0)))];
+    })),
+    readWeeks(env).then((w) => env.LIFTR_KV.get(gamesKey(w.current), opt)).then((sl) => Object.fromEntries((sl?.games || []).map((g) => [g.id, `${g.awayShort || g.away} @ ${g.homeShort || g.home}`]))).catch(() => ({})),
+  ]);
+  return { names, seen: Object.fromEntries(seen), games };
+}
+
 async function handlePresence(request, env, corsHeaders, url) {
   if (!env.LIVE) return json({ error: "Live not configured" }, 500, corsHeaders);
   const room = env.LIVE.get(env.LIVE.idFromName("league"));
   if (request.method === "GET") {
     if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
-    const res = await room.fetch("https://live/room");
-    return json(await res.json(), 200, { ...corsHeaders, "Cache-Control": "no-store" });
+    // ?seen=1 (on open, then once a minute) adds what the room can't know:
+    // everyone tracked, when each was last in from the logs, and this
+    // week's games by id. One small answer instead of the full logs.
+    const [res, extra] = await Promise.all([room.fetch("https://live/room"), url.searchParams.get("seen") ? presenceExtra(env) : null]);
+    return json({ ...(await res.json()), ...(extra || {}) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   // text/plain from a beacon, so read the text and parse it.
