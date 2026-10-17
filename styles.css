@@ -4332,6 +4332,22 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .gc-plays.full { max-height: 55vh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 4px; position: relative; z-index: 1; }
 .gc-plays.full::-webkit-scrollbar { width: 4px; }
 .gc-plays.full::-webkit-scrollbar-thumb { background: rgba(57, 255, 136, .35); border-radius: 2px; }
+/* Full screen: the sheet becomes the whole screen (a centred tall panel on
+   a wide one), the score strip and the down stay on top as they are, and
+   the log fills the rest. Everything else in the sheet waits until the
+   log is closed. */
+#insights-modal.gc-full { padding: 0; }
+/* The sheet sits under the tab bar's layer, so the bar steps aside while the log has the screen. */
+body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
+#insights-modal.gc-full .insights-card { width: 100%; max-width: none; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0; padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); overflow: hidden; gap: 0; }
+@media (min-width: 700px) { #insights-modal.gc-full { padding: 20px; } #insights-modal.gc-full .insights-card { max-width: 640px; height: calc(100dvh - 40px); border: 2px solid var(--neon-yellow); border-radius: 14px; } }
+#insights-modal.gc-full #insights-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+#insights-modal.gc-full #insights-body > :not(.gc) { display: none; }
+#insights-modal.gc-full .gc-fs { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+#insights-modal.gc-full .gc-fs .gc-log { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#insights-modal.gc-full .gc-plays.full { flex: 1; min-height: 0; max-height: none; }
+#insights-modal.gc-full .gc-logh { font-size: 7px; margin-bottom: 8px; }
+#insights-modal.gc-full .gc-more { font-size: 7px; padding: 7px 9px; }
 .gc-log .gc-plays li { background: none; border: 0; border-radius: 0; padding: 4px 0; border-top: 1px dashed rgba(57, 255, 136, .15); gap: 6px; }
 .gc-log .gc-plays li:first-child { border-top: 0; }
 .gc-prompt { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #39ff88; margin-top: 2px; }
