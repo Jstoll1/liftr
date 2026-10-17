@@ -149,10 +149,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .sh .nm { font-size: 16px; font-weight: 700; }
 .sh .meta { font-size: 13px; color: var(--meta); }
 .sh-r { margin-left: auto; flex: none; display: flex; flex-direction: row-reverse; align-items: center; gap: 8px; }
-@media (max-width: 560px) { .sh-r { flex-direction: column; align-items: flex-end; gap: 6px; } .sh-r .cp { min-height: 30px; padding: 5px 11px; } }
-.cp { flex: none; min-height: 32px; padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--cyan); background: rgba(79, 227, 240, .08); border: 1px solid rgba(79, 227, 240, .3); border-radius: 999px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-.cp:active { transform: scale(.96); }
-.cp.ok { color: #0b0716; background: var(--green); border-color: var(--green); }
+@media (max-width: 560px) { .sh-r { flex-direction: column; align-items: flex-end; gap: 2px; } }
+/* Copy: a quiet icon until it's wanted. The tap area stays 32px. */
+.cp { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 32px; min-height: 32px; padding: 0 6px; font-size: 12px; font-weight: 600; color: var(--dim); background: none; border: 0; border-radius: 8px; opacity: .55; transition: opacity .15s, color .15s, background .15s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.cp svg { width: 15px; height: 15px; }
+.cp:hover, .cp:focus-visible { opacity: 1; color: var(--meta); background: rgba(255, 255, 255, .05); outline: none; }
+.sess:hover .cp { opacity: .85; }
+.cp:active { transform: scale(.94); }
+.cp.ok { opacity: 1; color: var(--green); }
 .fh .cp { margin-left: auto; }
 .badge { flex: none; padding: 4px 9px; border-radius: 999px; font: 700 12px/1 var(--mono); }
 .sess.live .badge { color: #0b0716; background: var(--green); box-shadow: 0 0 12px rgba(61, 252, 143, .5); }
@@ -281,6 +285,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   const evId = (e) => `${e.n}|${e.at}|${e.k}`;
 
   // One action in plain words, with its detail (a game, a person) apart.
+  const COPY_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 3.5v-.5a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3v5A1.5 1.5 0 0 0 4 9.5h.5"/></svg>`;
   const SAYS = {
     "game-info": "Opened game info", gamecast: "Watched the live game cast", "game-final": "Opened a final recap",
     "scorebug-open": "Tapped a score", "ranking-expand": "Opened a leaderboard card",
@@ -475,7 +480,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${span}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
       return `${head}<div class="sess${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
-        <div class="sh">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}</div><div class="meta num">${esc(meta)}</div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(now - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit">${st.copied === id ? "Copied ✓" : "Copy"}</button></div></div>
+        <div class="sh">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}</div><div class="meta num">${esc(meta)}</div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(now - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button></div></div>
         ${s.acts.length ? `<ul class="acts">${s.acts.length > LIM && !open ? `<li class="quiet"><span></span><span>${s.acts.length - LIM} earlier</span></li>` : ""}${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
         ${s.acts.length > LIM ? `<button type="button" class="more" data-open="${esc(id)}">${open ? "Show less" : `Show all ${s.acts.length}`}</button>` : ""}
       </div>`;
@@ -483,7 +488,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const shownN = Math.min(all.length, st.shown);
     const feedHtml = `<main class="feed">
       <div class="fh"><h2>VISITS</h2>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
-        ${all.length ? `<button type="button" class="cp${st.copied === "*" ? " ok" : ""}" data-copy="*">${st.copied === "*" ? "Copied ✓" : `Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"} ${shownN} visit${shownN === 1 ? "" : "s"}`}</button>` : ""}</div>
+        ${all.length ? `<button type="button" class="cp${st.copied === "*" ? " ok" : ""}" data-copy="*" title="Copy every visit shown">${st.copied === "*" ? "✓ Copied" : `${COPY_ICON}Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"}`}</button>` : ""}</div>
       ${cards || `<div class="empty" style="margin-top:12px">${st.filter ? `No visits from ${esc(name(st.filter))} in the last 24 hours.` : "No visits in the last 24 hours yet. They show here as people use the app."}</div>`}
       ${all.length > st.shown ? `<button type="button" class="older" data-older="1">Show ${Math.min(20, all.length - st.shown)} more</button>` : ""}
       <p class="note">A visit is live while the app is on screen and ends when it's put away, or about a minute after a phone goes quiet. Shows screens and features, never which team anyone picked. Jake isn't tracked.</p>
