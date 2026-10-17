@@ -6228,7 +6228,11 @@ async function openInsights(gameId) {
     const fresh = !!real[0] && !typed.some((t) => samePlay(t, real[0].text));
     for (const p of plays) if (!typed.some((t) => samePlay(t, p.text))) typed.push(p.text);
     if (typed.length > 60) typed.splice(0, typed.length - 60);
-    const more = totalPlays > 5 ? `<button type="button" class="gc-more" data-gcfull="1" aria-expanded="${full}">${full ? "✕ CLOSE LOG" : `FULL GAME LOG ▾ ${totalPlays}`}</button>` : "";
+    // Two corners facing apart to open the full log, facing in to close it.
+    const corners = full
+      ? `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1v5H1M10 15v-5h5"/></svg>`
+      : `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 6V1h5M15 10v5h-5"/></svg>`;
+    const more = totalPlays > 5 ? `<button type="button" class="gc-more" data-gcfull="1" aria-expanded="${full}" aria-label="${full ? "Close the full game log" : `Open the full game log, ${totalPlays} plays`}" title="${full ? "Close full log" : "Full game log"}">${corners}</button>` : "";
     const playsHtml = plays.length ? `<div class="gc-log${full ? " full" : ""}"><div class="gc-logh"><span>PLAY LOG${full ? ` · ALL ${totalPlays}` : ""}</span>${more}</div><ol class="gc-plays${full ? " full" : ""}">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv${p.now ? " now" : ""}">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<span class="gc-pills">${p.badge.map(([bt, bc]) => `<b class="gc-badge ${bc}">${esc(bt)}</b>`).join("")}</span>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
     const wpHtml = "";
