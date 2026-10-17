@@ -274,15 +274,31 @@ body.pv-open .tabs { display: none; }
 
 /* The preview panel: a phone-width frame at the right on a wide screen,
    a full screen sheet on a narrow one. */
-.pv { display: none; }
-body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-index: 20; top: 0; right: 0; bottom: 0; width: 100%; background: var(--bg); }
-@media (min-width: 1100px) { body.pv-open .pv { top: 61px; width: 430px; border-left: 1px solid var(--line); background: #0d0919; } }
-.pv-h { display: flex; align-items: flex-start; gap: 8px; padding: max(12px, env(safe-area-inset-top)) 14px 12px; border-bottom: 1px solid var(--line); }
-.pv-t { flex: 1; min-width: 0; font-size: 14px; }
-.pv-t span { display: block; font-size: 13px; color: var(--meta); }
-.pv-h a.tool { text-decoration: none; }
+/* A sheet from the bottom on a phone (drag it down, tap behind it, or
+   Done to close), a floating panel on a tablet, a side panel on a wide
+   screen. The page stays in view behind the first two. */
+.pv, .pv-back { display: none; }
+body.pv-open .pv-back { display: block; position: fixed; inset: 0; z-index: 19; background: rgba(3, 0, 8, .62); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: fadein .2s ease-out; }
+@keyframes fadein { from { opacity: 0; } }
+body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; height: min(86vh, 900px); background: #0d0919; border-top: 1px solid var(--line2); border-radius: 20px 20px 0 0; box-shadow: 0 -20px 60px rgba(0, 0, 0, .6); animation: sheetup .28s cubic-bezier(.22, 1, .36, 1); }
+@keyframes sheetup { from { transform: translateY(100%); } }
+@media (max-width: 1099px) { body.pv-open { overflow: hidden; } }
+@media (min-width: 700px) { body.pv-open .pv { left: auto; top: max(12px, env(safe-area-inset-top)); right: 12px; bottom: 12px; width: 430px; height: auto; border: 1px solid var(--line2); border-radius: 20px; animation: pop .18s ease-out; } }
+@media (min-width: 1100px) {
+  body.pv-open .pv-back { display: none; }
+  body.pv-open .pv { top: 61px; right: 0; bottom: 0; border: 0; border-left: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+}
+.pv-grab { display: flex; justify-content: center; padding: 8px 0 2px; touch-action: none; cursor: grab; }
+.pv-grab i { width: 40px; height: 5px; border-radius: 3px; background: var(--line2); }
+@media (min-width: 700px) { .pv-grab { display: none; } }
+.pv-h { display: flex; align-items: center; gap: 10px; padding: 8px 12px 12px; border-bottom: 1px solid var(--line); touch-action: none; }
+@media (min-width: 700px) { .pv-h { padding-top: 12px; } }
+.pv-done { flex: none; min-height: 36px; padding: 0 14px; font-weight: 700; font-size: 14px; color: #0b0716; background: var(--green); border: 0; border-radius: 10px; }
+.pv-t { flex: 1; min-width: 0; font-size: 14px; line-height: 1.3; }
+.pv-t span { display: block; font-size: 13px; color: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-h a.tool { flex: none; text-decoration: none; min-height: 36px; display: inline-flex; align-items: center; }
 .pv-note { padding: 7px 14px; font-size: 12px; color: var(--dim); background: rgba(0, 0, 0, .2); }
-.pv-frame { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 12px 12px max(12px, env(safe-area-inset-bottom)); }
+.pv-frame { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 10px 10px max(10px, env(safe-area-inset-bottom)); }
 .pv-frame iframe { width: 100%; max-width: 400px; height: 100%; border: 1px solid var(--line); border-radius: 18px; background: #0a0414; }
 .pv-none { margin: 16px; padding: 16px; border-radius: 12px; border: 1px dashed var(--line); display: flex; flex-direction: column; gap: 6px; color: var(--meta); font-size: 14px; }
 .pv-none b { color: var(--text); }
@@ -302,7 +318,8 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 </head>
 <body>
 <div id="app"></div>
-<aside id="pv" class="pv" aria-label="Preview"></aside>
+<div class="pv-back" id="pv-back"></div>
+<aside id="pv" class="pv" aria-label="Preview" role="dialog"></aside>
 <div id="tip" class="tip" role="tooltip"></div>
 <script>
 (() => {
@@ -789,14 +806,29 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const body = d.go === "picks"
       ? `<div class="pv-none"><b>No preview of someone's picks</b><span>Picks stay private until each game locks, so this shows nothing here. Their saved picks appear on the scoreboard once games lock.</span></div>`
       : `<div class="pv-frame"><iframe title="Preview" src="../index.html?view=${d.go}"></iframe></div>`;
-    pv.innerHTML = `<div class="pv-h"><div class="pv-t"><b>${esc(name(d.who))}</b> · ${esc(when)}<span>${esc(d.what)}</span></div>
-        ${d.go === "picks" ? "" : `<a class="tool" href="../index.html?view=${d.go}" target="_blank" rel="noopener">Open ↗</a>`}<button type="button" class="tool pv-x" aria-label="Close preview">✕</button></div>
+    pv.innerHTML = `<div class="pv-grab" aria-hidden="true"><i></i></div>
+      <div class="pv-h"><button type="button" class="pv-done pv-x">Done</button><div class="pv-t"><b>${esc(name(d.who))}</b> · ${esc(when)}<span>${esc(d.what)}</span></div>
+        ${d.go === "picks" ? "" : `<a class="tool" href="../index.html?view=${d.go}" target="_blank" rel="noopener">Open ↗</a>`}</div>
       ${d.go === "picks" ? "" : `<div class="pv-note">How it looks now, not when ${esc(name(d.who))} saw it</div>`}${body}`;
     pv.querySelector(".pv-x").addEventListener("click", closePreview);
+    pv.style.transform = "";
     document.body.classList.add("pv-open");
     st.sig = ""; render();
   }
-  function closePreview() { st.pv = null; pv.innerHTML = ""; document.body.classList.remove("pv-open"); st.sig = ""; render(); }
+  function closePreview() { st.pv = null; pv.innerHTML = ""; pv.style.transform = ""; pv.style.transition = ""; document.body.classList.remove("pv-open"); st.sig = ""; render(); }
+  document.getElementById("pv-back").addEventListener("click", closePreview);
+  // Drag the sheet down by its handle or header to close it; a short drag
+  // springs back.
+  {
+    let y0 = null, dy = 0;
+    pv.addEventListener("touchstart", (e) => { if (!e.target.closest(".pv-grab, .pv-h") || e.target.closest("a, button") || innerWidth >= 700) return; y0 = e.touches[0].clientY; dy = 0; pv.style.transition = "none"; }, { passive: true });
+    pv.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); pv.style.transform = `translateY(${dy}px)`; }, { passive: true });
+    pv.addEventListener("touchend", () => {
+      if (y0 == null) return;
+      y0 = null; pv.style.transition = "transform .22s ease-out";
+      if (dy > 90) { pv.style.transform = "translateY(100%)"; setTimeout(closePreview, 200); } else pv.style.transform = "";
+    });
+  }
   document.addEventListener("keydown", (e) => { if (e.key !== "Escape") return; if (st.menu) { st.menu = false; render(); } else if (st.pv) closePreview(); });
 
   function gate(err = "") {
