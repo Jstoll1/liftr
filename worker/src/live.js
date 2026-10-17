@@ -70,3 +70,25 @@ export class LiveRoom {
     return Response.json(roomView(room, now));
   }
 }
+
+// Remember this device: the live page swaps the admin key, once, for a
+// token signed with it that lasts DEVICE_DAYS, so the key itself is never
+// kept in the browser. Changing the admin key signs every device out.
+export const DEVICE_DAYS = 180;
+const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+async function deviceSig(secret, exp) {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return b64url(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(`live-device|${exp}`)));
+}
+export async function deviceToken(secret, now) {
+  const exp = now + DEVICE_DAYS * 86400000;
+  return { token: `${exp}.${await deviceSig(secret, exp)}`, exp };
+}
+export async function deviceTokenOk(secret, token, now) {
+  const m = /^(\d{13})\.([A-Za-z0-9_-]{43})$/.exec(String(token || ""));
+  if (!secret || !m || Number(m[1]) < now) return false;
+  const want = await deviceSig(secret, m[1]);
+  let diff = 0;
+  for (let i = 0; i < want.length; i++) diff |= want.charCodeAt(i) ^ m[2].charCodeAt(i);
+  return diff === 0;
+}

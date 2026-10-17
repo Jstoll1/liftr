@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyBeat, roomView, emptyRoom, GONE_MS } from "../src/live.js";
+import { applyBeat, roomView, emptyRoom, GONE_MS, deviceToken, deviceTokenOk, DEVICE_DAYS } from "../src/live.js";
 
 const t = 1_800_000_000_000;
 
@@ -31,4 +31,16 @@ test("keys are cleaned, odd times clamped, a goodbye from nobody adds nothing", 
   const r = emptyRoom();
   applyBeat(r, { manager: "Logan", bye: true, events: [{ k: "<b>Path-Run</b>", ago: 9e9 }, { k: "" }] }, t);
   assert.deepEqual(r.feed.map((e) => [e.k, e.at]), [["bpath-runb", t - 60000]]);
+});
+
+test("a remembered device: its token works until it expires, and only for its key", async () => {
+  const { token, exp } = await deviceToken("k1", t);
+  assert.equal(exp, t + DEVICE_DAYS * 86400000);
+  assert.equal(await deviceTokenOk("k1", token, t + 1000), true);
+  assert.equal(await deviceTokenOk("k1", token, exp + 1), false);
+  assert.equal(await deviceTokenOk("k2", token, t), false);
+  assert.equal(await deviceTokenOk("k1", token.replace(/.$/, (c) => (c === "A" ? "B" : "A")), t), false);
+  assert.equal(await deviceTokenOk("k1", `${exp + 86400000}.${token.split(".")[1]}`, t), false);
+  assert.equal(await deviceTokenOk("k1", "", t), false);
+  assert.equal(await deviceTokenOk("", token, t), false);
 });

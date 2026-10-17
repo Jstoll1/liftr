@@ -1,6 +1,6 @@
 import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
-import { LiveRoom } from "./live.js";
+import { LiveRoom, deviceToken, deviceTokenOk } from "./live.js";
 
 // The live room has to be exported from the main module for Cloudflare.
 export { LiveRoom };
@@ -97,6 +97,11 @@ export default {
     }
     if (url.pathname === "/presence") {
       return handlePresence(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/presence-device") {
+      if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+      if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+      return json(await deviceToken(env.ARCHIVE_LOG_KEY, Date.now()), 200, { ...corsHeaders, "Cache-Control": "no-store" });
     }
     if (url.pathname === "/rollups") {
       return handleRollups(request, env, corsHeaders, url);
@@ -3420,7 +3425,8 @@ async function handlePresence(request, env, corsHeaders, url) {
   if (!env.LIVE) return json({ error: "Live not configured" }, 500, corsHeaders);
   const room = env.LIVE.get(env.LIVE.idFromName("league"));
   if (request.method === "GET") {
-    if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+    // The admin key, or a device it signed (remember this device).
+    if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
     // ?seen=1 (on open, then once a minute) adds what the room can't know:
     // everyone tracked, when each was last in from the logs, and this
     // week's games by id. One small answer instead of the full logs.

@@ -1,5 +1,8 @@
 // Arrived via brochiefs.com/admin: set before anything else runs.
 window.__adminEntry = /[?&]admin(=|&|$)/.test(location.search) || location.hash === "#admin";
+// Opened by the admin's live page as a preview (?view=game&x=401): a quiet
+// look at one screen, nobody signed in, no popups, nothing reported.
+window.__liveView = new URLSearchParams(location.search).get("view") || "";
 // Brochiefs 2026 College Football Pick'em — retro arcade pick app.
 // Picks are cached per-manager in localStorage and, when configured,
 // synced through a small Cloudflare Worker (worker/src/index.js, the
@@ -1129,7 +1132,7 @@ const VISIT_KEY = "brochiefs_visit_v1";
 function stampVisit() {
   const me = loadMe();
   // Jake is the admin: his opens don't count toward the league's.
-  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry) return;
+  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || window.__liveView) return;
   let last = 0;
   try { last = Number(localStorage.getItem(VISIT_KEY)) || 0; } catch {}
   // One open per five minutes at most (paid plan: writes are cheap now).
@@ -1200,7 +1203,7 @@ function presenceNote(key, detail) {
 function presenceSend(bye) {
   clearTimeout(presenceT); presenceT = null;
   const me = loadMe();
-  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || PREVIEW || navigator.onLine === false) { presenceQ.length = 0; return; }
+  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || window.__liveView || PREVIEW || navigator.onLine === false) { presenceQ.length = 0; return; }
   const now = Date.now();
   const body = JSON.stringify({ manager: me, bye, screen: presenceScreen, app: presenceApp, events: presenceQ.splice(0).map((e) => ({ k: e.k, d: e.d, ago: now - e.t })) });
   try {
@@ -1239,7 +1242,7 @@ function endSession() {
   const h = { e: appHealth.e, em: appHealth.em.slice(), ff: { ...appHealth.ff }, sl: { ...appHealth.sl }, ld: appHealth.ld };
   appHealth.e = 0; appHealth.em = []; appHealth.ff = { espn: 0, worker: 0 }; appHealth.sl = { espn: 0, worker: 0 }; appHealth.ld = -1; // load time only once per page
   const me = loadMe();
-  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || dur < 3000) return;
+  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || window.__liveView || dur < 3000) return;
   const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, gt, h: h.ld === -1 ? { ...h, ld: null } : h, v: typeof APP_VERSION === "string" ? APP_VERSION : "" });
   try {
     // text/plain keeps the beacon a simple request (no CORS preflight).
@@ -1254,7 +1257,7 @@ addEventListener("pagehide", endSession);
 function track(path, extra) {
   noteUse(path, extra?.d);
   try {
-    if (PREVIEW || !window.goatcounter || typeof window.goatcounter.count !== "function") return;
+    if (PREVIEW || window.__liveView || !window.goatcounter || typeof window.goatcounter.count !== "function") return;
     window.goatcounter.count({ path, title: extra?.title || path, event: !!extra?.event });
   } catch {}
 }
@@ -2025,6 +2028,7 @@ function openOwnerPicker() {
 // Restore the first-visit wording whenever the claim prompt is used again
 const _openClaimPrompt = openClaimPrompt;
 openClaimPrompt = function () {
+  if (window.__liveView) return;
   document.getElementById("claim-title").textContent = "WHO ARE YOU?";
   document.getElementById("claim-subtext").textContent = "Pick your name once and this phone will remember you.";
   claimSkipBtn.textContent = "Just looking for now";
@@ -3227,7 +3231,7 @@ const PATH_INTRO_KEY = "brochiefs_new_pathtowin_v1";
 let pathIntroShownThisLoad = false;
 function maybeShowPathIntro(force = false) {
   if (!force) {
-    if (pathIntroShownThisLoad || !currentManager || window.__adminEntry || window.__adminOpen) return;
+    if (pathIntroShownThisLoad || !currentManager || window.__adminEntry || window.__adminOpen || window.__liveView) return;
     if (window.LEAGUE?.sport === "nfl") return; // college only for now
     try { if (localStorage.getItem(PATH_INTRO_KEY)) return; } catch { return; }
     const results = computeLiveResults(latestLive);
@@ -5281,7 +5285,7 @@ const BONER_UNTIL = Date.parse("2026-09-29T03:59:00Z"); // Mon 11:59 PM ET
 let bonerShownThisLoad = false;
 function maybeShowBoner() {
   const el = document.getElementById("boner-modal");
-  if (!el || bonerShownThisLoad || !currentManager) return;
+  if (!el || bonerShownThisLoad || !currentManager || window.__liveView) return;
   if (currentWeek !== 4 || Date.now() >= BONER_UNTIL || !GAMES.length || !GAMES.every(isGameLocked)) return;
   bonerShownThisLoad = true;
   // The GIF is half a megabyte; fetch it only when the popup actually shows.
@@ -5349,7 +5353,7 @@ window.QOTW = QOTW;
 let qotwShownThisLoad = false;
 async function maybeShowQotw() {
   // Not on the way into the admin panel: the prompt would sit on top of the key gate.
-  if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW || window.__adminEntry || window.__adminOpen) return;
+  if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW || window.__adminEntry || window.__adminOpen || window.__liveView) return;
   const doneKey = `brochiefs_qotw_${QOTW.id}_${currentManager}`;
   try { if (localStorage.getItem(doneKey)) return; } catch {}
   qotwShownThisLoad = true;
@@ -7357,6 +7361,8 @@ function showUpdateBar() {
 // A plain reload can be served the same cached index.html, which would
 // leave the bar showing and nothing changed. A fresh query cannot.
 function reloadFresh() {
+  // A live page preview keeps what it was showing.
+  if (window.__liveView) { const u = new URL(location.href); u.searchParams.set("r", String(Date.now())); location.replace(u.href); return; }
   location.replace(location.pathname + `?r=${Date.now()}` + location.hash);
 }
 
@@ -7471,13 +7477,40 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
   // follows the splash tap; it never jumps in over an untapped splash.
   // Once the week's first game has kicked off, a known player skips the
   // splash entirely and lands on the scoreboard.
-  if (loadMe() && (firstKickoffPassed() || (fresh && !nowPlayingDue()))) {
+  if (window.__liveView) {
+    startLiveView();
+  } else if (loadMe() && (firstKickoffPassed() || (fresh && !nowPlayingDue()))) {
     goToPlayerSelect();
   } else {
     track("/splash");
     logoScreen.addEventListener("click", mark, { once: true });
   }
 })();
+
+// The live page's preview: straight to the screen or sheet it names, as
+// someone just looking would see it now. view: scoreboard, history,
+// trivia, game (x = game id), card or path (x = a manager), h2h.
+async function startLiveView() {
+  const view = window.__liveView, x = new URLSearchParams(location.search).get("x") || "";
+  document.body.classList.add("live-view");
+  logoScreen.classList.add("hidden");
+  homeHeader.classList.remove("hidden");
+  bottomNav.classList.remove("hidden");
+  currentManager = null;
+  if (view === "history") return showHistory();
+  if (view === "trivia") return showTrivia();
+  showScoreboard();
+  const until = async (ok, ms = 10000) => { const t0 = Date.now(); while (!ok() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100)); return ok(); };
+  if (!(await until(() => liveWeekRows.length))) return;
+  const who = MANAGERS.find((n) => n === x);
+  if (view === "game" && GAMES.some((g) => String(g.id) === x)) openInsights(Number(x));
+  else if (view === "card" && who) {
+    expandedRankings.add(who);
+    await renderScoreboard();
+    document.querySelector(`.rd-path-btn[data-path="${CSS.escape(who)}"]`)?.closest(".ranking-row")?.scrollIntoView({ block: "start" });
+  } else if (view === "path" && who && (await until(() => winChanceMemo.ctx))) openPathCard(who);
+  else if (view === "h2h") openH2H();
+}
 
 // The bottom nav always wins: tapping a tab closes any sheet or popup that
 // is up (game info, head to head, grid check, the Game Box sim) and then

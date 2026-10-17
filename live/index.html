@@ -102,6 +102,32 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .older { margin-top: 4px; padding: 10px 14px; width: 100%; color: var(--cyan); background: none; border: 1px solid var(--line); border-radius: 12px; }
 .note { margin-top: 26px; font-size: 12.5px; color: var(--dim); }
 
+/* Lines that open a preview */
+.acts li.go { cursor: pointer; border-radius: 8px; margin: 0 -8px; padding: 5px 8px; }
+.acts li.go:hover, .acts li.go:focus-visible { background: rgba(79, 227, 240, .08); outline: none; }
+.acts li.go.on { background: rgba(79, 227, 240, .14); box-shadow: inset 2px 0 0 var(--cyan); }
+.acts li .peek { margin-left: 8px; font-style: normal; font-size: 11px; color: var(--dim); opacity: 0; transition: opacity .15s; }
+.acts li.go:hover .peek, .acts li.go.on .peek { opacity: 1; color: var(--cyan); }
+@media (hover: none) { .acts li .peek { opacity: .7; } }
+
+/* The preview panel: a phone-width frame at the right on a wide screen,
+   a full screen sheet on a narrow one. */
+.pv { display: none; }
+body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-index: 20; top: 0; right: 0; bottom: 0; width: 100%; background: var(--bg); }
+@media (min-width: 1100px) {
+  body.pv-open .pv { top: 61px; width: 430px; border-left: 1px solid var(--line); background: #0d0919; }
+  body.pv-open #app .page { margin-right: 430px; }
+}
+.pv-h { display: flex; align-items: flex-start; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.pv-t { flex: 1; min-width: 0; font-size: 14px; }
+.pv-t span { display: block; font-size: 13px; color: var(--meta); }
+.pv-h a.tool { text-decoration: none; }
+.pv-note { padding: 7px 14px; font-size: 12px; color: var(--dim); background: rgba(0, 0, 0, .2); }
+.pv-frame { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 12px; }
+.pv-frame iframe { width: 100%; max-width: 400px; height: 100%; border: 1px solid var(--line); border-radius: 18px; background: #0a0414; }
+.pv-none { margin: 16px; padding: 16px; border-radius: 12px; border: 1px dashed var(--line); display: flex; flex-direction: column; gap: 6px; color: var(--meta); font-size: 14px; }
+.pv-none b { color: var(--text); }
+
 /* Key */
 .gate { max-width: 340px; margin: 18vh auto 0; padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
 .gate h1 { margin: 0; font: 700 16px/1 var(--mono); letter-spacing: .14em; color: var(--green); }
@@ -109,25 +135,44 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .gate input { padding: 12px; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
 .gate button { padding: 12px; font-weight: 700; color: #0b0716; background: var(--green); border: 0; border-radius: 10px; }
 .gate .err { color: #ff6b93; font-size: 13px; min-height: 1em; }
+.gate .rem { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--meta); cursor: pointer; }
+.gate .rem input { width: 16px; height: 16px; accent-color: var(--green); }
+.gate button:disabled { opacity: .6; }
 @media (prefers-reduced-motion: reduce) { .beat, .sess.fresh, .acts li.new { animation: none; } }
 </style>
 </head>
 <body>
 <div id="app"></div>
+<aside id="pv" class="pv" aria-label="Preview"></aside>
 <script>
 (() => {
   const WORKER = "https://liftr-ai.jhs797.workers.dev";
-  const KEY_STORE = "brochiefs_live_key", SNAP_STORE = "brochiefs_live_snap";
+  // Signed in either as a remembered device (a token the Worker signed,
+  // kept on this computer for 180 days) or with the key for this browser
+  // session only. The key itself is never kept.
+  const KEY_STORE = "brochiefs_live_key", DEVICE_STORE = "brochiefs_live_device", SNAP_STORE = "brochiefs_live_snap";
   const COLORS = ["#ff4f9a", "#ffe45e", "#c77dff", "#ffb347", "#3dfc8f", "#ff6b6b", "#4fe3f0", "#7aa2ff", "#9cf27a", "#ff9d3d"];
   const SHOWN = { Conlan: "Connie" };
   const SCREENS = { picks: "Picks", scoreboard: "Scores", history: "History", trivia: "Trivia", home: "Home", roster: "the roster", splash: "the splash screen" };
   const app = document.getElementById("app");
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }, del: (k) => { try { localStorage.removeItem(k); } catch {} } };
-  let key = store.get(KEY_STORE) || "";
+  const session = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch {} }, del: (k) => { try { sessionStorage.removeItem(k); } catch {} } };
+  let device = store.get(DEVICE_STORE) || "", key = session.get(KEY_STORE) || "";
+  const auth = () => (device ? `device=${encodeURIComponent(device)}` : `key=${encodeURIComponent(key)}`);
+  async function remember(k) {
+    try {
+      const r = await fetch(`${WORKER}/presence-device?key=${encodeURIComponent(k)}`, { method: "POST", cache: "no-store" });
+      if (!r.ok) return r.status;
+      device = (await r.json()).token || "";
+      if (device) store.set(DEVICE_STORE, device);
+      return device ? 200 : 500;
+    } catch { return 0; }
+  }
+  function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
 
   // --- Formatting --------------------------------------------------------
   const name = (n) => SHOWN[n] || n;
@@ -161,6 +206,21 @@ button { font: inherit; color: inherit; cursor: pointer; }
     return [e.k.charAt(0).toUpperCase() + e.k.slice(1).replace(/-/g, " "), ""];
   }
 
+  // Where a line opens in the preview: a view of the app, or null.
+  function target(e, feed) {
+    if (/^(game-info|gamecast|game-final|scorebug-open)$/.test(e.k) && e.d) return `game&x=${encodeURIComponent(e.d)}`;
+    if (e.k === "ranking-expand" && e.d) return `card&x=${encodeURIComponent(e.d)}`;
+    if (e.k === "path-run" || e.k === "path-card") {
+      const of = feed.find((x) => x.n === e.n && /^path-of-/.test(x.k) && Math.abs(x.at - e.at) < 3000);
+      return of ? `path&x=${encodeURIComponent(nameFrom(of.k.slice(8)))}` : "scoreboard";
+    }
+    if (e.k === "h2h") return "h2h";
+    if (e.k === "history" || e.k === "trivia" || e.k === "scoreboard") return e.k;
+    if (e.k === "picks" || /^pick-/.test(e.k)) return "picks";
+    if (/^(pot-open|all-picks-open|wp-player|wp-explain|sim|grid-card|path-intro|path-share)$/.test(e.k)) return "scoreboard";
+    return null;
+  }
+
   // The feed as visits: each "in" starts one, an "out" ends it; uses in
   // between are its lines, oldest first. Visits newest first.
   function visits(feed, people) {
@@ -175,7 +235,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
       if (e.k === "out") { s.end = e.at; s.done = true; delete open[e.n]; continue; }
       const last = s.acts[s.acts.length - 1];
       const [a, d] = says(e, feed);
-      if (last && last.a === a && last.d === d) { last.x++; last.ids.push(evId(e)); } else s.acts.push({ at: e.at, a, d, x: 1, ids: [evId(e)] });
+      if (last && last.a === a && last.d === d) { last.x++; last.ids.push(evId(e)); } else s.acts.push({ at: e.at, a, d, x: 1, ids: [evId(e)], go: target(e, feed) });
       s.end = e.at;
     }
     for (const s of Object.values(open)) { const p = people[s.n]; if (p?.in && p.since <= s.start + 2000) { s.live = true; s.since = p.since; } }
@@ -186,8 +246,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   async function poll(full) {
     clearTimeout(poll.t);
     try {
-      const res = await fetch(`${WORKER}/presence?key=${encodeURIComponent(key)}${full ? "&seen=1" : ""}&t=${Date.now()}`, { cache: "no-store" });
-      if (res.status === 403) { store.del(KEY_STORE); store.del(SNAP_STORE); gate("That key didn't work."); return; }
+      const res = await fetch(`${WORKER}/presence?${auth()}${full ? "&seen=1" : ""}&t=${Date.now()}`, { cache: "no-store" });
+      if (res.status === 403) { const was = device; forget(); gate(was ? "This computer's sign-in has expired. Enter the key again." : "That key didn't work."); return; }
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
@@ -253,7 +313,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
       return `${head}<div class="sess${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}">
         <div class="sh">${av(s.n, true)}<div class="who"><div class="nm">${esc(name(s.n))}</div><div class="meta num">${esc(meta)}</div></div><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(Date.now() - s.since) : s.done ? "LEFT" : "ENDED"}</span></div>
-        ${s.acts.length ? `<ul class="acts">${s.acts.length > LIM && !open ? `<li class="quiet"><span></span><span>${s.acts.length - LIM} earlier</span></li>` : ""}${acts.map((a) => `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}"><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}</span></li>`).join("")}</ul>` : ""}
+        ${s.acts.length ? `<ul class="acts">${s.acts.length > LIM && !open ? `<li class="quiet"><span></span><span>${s.acts.length - LIM} earlier</span></li>` : ""}${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
         ${s.acts.length > LIM ? `<button type="button" class="more" data-open="${esc(id)}">${open ? "Show less" : `Show all ${s.acts.length}`}</button>` : ""}
       </div>`;
     }).join("");
@@ -264,7 +324,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
         <span class="age num" id="age">${st.cached ? "refreshing…" : st.ok ? "live" : "can't reach the server, retrying"}</span>
         <div class="tools">
           ${"Notification" in window ? `<button type="button" class="tool${st.alert ? " on" : ""}" data-alert="1">${st.alert ? "Alerts on" : "Alert me"}</button>` : ""}
-          <button type="button" class="tool" data-signout="1">Sign out</button>
+          <button type="button" class="tool" data-signout="1">${device ? "Forget this device" : "Sign out"}</button>
         </div>
       </div></div>
       <div class="page">
@@ -285,13 +345,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
     document.querySelectorAll("[data-since]").forEach((x) => { x.textContent = clock(Date.now() - Number(x.dataset.since)); });
   }, 1000);
 
+  app.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("li.go")) { e.preventDefault(); e.target.click(); } });
   app.addEventListener("click", async (e) => {
+    const li = e.target.closest("li.go");
+    if (li) { st.pv?.id === li.dataset.pid ? closePreview() : openPreview(li.dataset); return; }
     const b = e.target.closest("button");
     if (!b) return;
     if (b.dataset.n !== undefined) { st.filter = b.dataset.n && st.filter !== b.dataset.n ? b.dataset.n : null; st.shown = 20; render(); window.scrollTo({ top: 0 }); return; }
     if (b.dataset.open) { st.open.has(b.dataset.open) ? st.open.delete(b.dataset.open) : st.open.add(b.dataset.open); render(); return; }
     if (b.dataset.older) { st.shown += 20; render(); return; }
-    if (b.dataset.signout) { store.del(KEY_STORE); store.del(SNAP_STORE); location.reload(); return; }
+    if (b.dataset.signout) { forget(); location.reload(); return; }
     if (b.dataset.alert) {
       if (!st.alert && Notification.permission !== "granted") { try { await Notification.requestPermission(); } catch {} }
       st.alert = !st.alert && Notification.permission === "granted";
@@ -299,15 +362,44 @@ button { font: inherit; color: inherit; cursor: pointer; }
     }
   });
 
+  // The preview: the app itself, framed like a phone, on the screen a line
+  // names, as it looks now. Kept outside the page so it survives redraws.
+  const pv = document.getElementById("pv");
+  function openPreview(d) {
+    st.pv = { id: d.pid };
+    const when = hm(Number(d.at));
+    const body = d.go === "picks"
+      ? `<div class="pv-none"><b>No preview of someone's picks</b><span>Picks stay private until each game locks, so this shows nothing here. Their saved picks appear on the scoreboard once games lock.</span></div>`
+      : `<div class="pv-frame"><iframe title="Preview" src="../index.html?view=${d.go}"></iframe></div>`;
+    pv.innerHTML = `<div class="pv-h"><div class="pv-t"><b>${esc(name(d.who))}</b> · ${esc(when)}<span>${esc(d.what)}</span></div>
+        ${d.go === "picks" ? "" : `<a class="tool" href="../index.html?view=${d.go}" target="_blank" rel="noopener">Open ↗</a>`}<button type="button" class="tool pv-x" aria-label="Close preview">✕</button></div>
+      ${d.go === "picks" ? "" : `<div class="pv-note">How it looks now, not when ${esc(name(d.who))} saw it</div>`}${body}`;
+    pv.querySelector(".pv-x").addEventListener("click", closePreview);
+    document.body.classList.add("pv-open");
+    st.sig = ""; render();
+  }
+  function closePreview() { st.pv = null; pv.innerHTML = ""; document.body.classList.remove("pv-open"); st.sig = ""; render(); }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && st.pv) closePreview(); });
+
   function gate(err = "") {
     st.gated = true;
     clearTimeout(poll.t);
-    app.innerHTML = `<form class="gate"><h1>BROCHIEFS LIVE</h1><p>Enter the admin key.</p><input type="password" autocomplete="current-password" placeholder="Admin key" required><button>Go live</button><div class="err">${esc(err)}</div></form>`;
-    app.querySelector("input").focus();
-    app.querySelector("form").addEventListener("submit", (ev) => {
+    app.innerHTML = `<form class="gate"><h1>BROCHIEFS LIVE</h1><p>Enter the admin key.</p>
+      <input type="text" name="username" value="Brochiefs Live" autocomplete="username" hidden>
+      <input type="password" name="password" autocomplete="current-password" placeholder="Admin key" required>
+      <label class="rem"><input type="checkbox" checked> Remember this device for 180 days</label>
+      <button>Go live</button><div class="err">${esc(err)}</div></form>`;
+    const input = app.querySelector('input[type="password"]'), btn = app.querySelector("form button");
+    input.focus();
+    app.querySelector("form").addEventListener("submit", async (ev) => {
       ev.preventDefault();
-      key = app.querySelector("input").value.trim();
-      store.set(KEY_STORE, key);
+      const k = input.value.trim();
+      if (app.querySelector('.rem input').checked) {
+        btn.disabled = true; btn.textContent = "Checking…";
+        const r = await remember(k);
+        if (r === 403) { btn.disabled = false; btn.textContent = "Go live"; app.querySelector(".err").textContent = "That key didn't work."; return; }
+        if (r !== 200) { key = k; session.set(KEY_STORE, k); } // couldn't reach the Worker: this session only
+      } else { key = k; session.set(KEY_STORE, k); }
       start();
     });
   }
@@ -322,8 +414,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
     poll(true);
     keepAwake();
   }
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && key && !st.gated) { keepAwake(); poll(false); } });
-  if (key) start(); else gate();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && (device || key) && !st.gated) { keepAwake(); poll(false); } });
+  // A key saved by the first version of this page is traded for a device
+  // token, then dropped.
+  const oldKey = store.get(KEY_STORE);
+  if (oldKey && !device) { store.del(KEY_STORE); remember(oldKey).then((r) => { if (r === 200) start(); else if (r === 403) gate(); else { key = oldKey; session.set(KEY_STORE, oldKey); start(); } }); }
+  else if (device || key) start(); else gate();
 })();
 </script>
 </body>
