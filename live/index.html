@@ -439,7 +439,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     "path-share": "Shared a Path to Win", "path-intro": "Saw the Path to Win intro",
     "wp-player": "Opened a win % breakdown", "wp-explain": "Read how win % works", h2h: "Opened head to head",
     "pot-open": "Opened the pot", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
-    sim: "Ran a game sim", "grid-card": "Opened a grid card", "history-ask": "Asked the archive",
+    sim: "Ran a game sim", "grid-card": "Opened a grid card", "history-ask": "Asked the archive", "gamecast-log": "Opened the full game log",
   };
   function says(e, feed) {
     if (e.k === "path-run" || e.k === "path-card") {
@@ -453,7 +453,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 
   // Where a line opens in the preview: a view of the app, or null.
   function target(e, feed) {
-    if (/^(game-info|gamecast|game-final|scorebug-open)$/.test(e.k) && e.d) return `game&x=${encodeURIComponent(e.d)}`;
+    if (/^(game-info|gamecast|gamecast-log|game-final|scorebug-open)$/.test(e.k) && e.d) return `game&x=${encodeURIComponent(e.d)}`;
     if (e.k === "ranking-expand" && e.d) return `card&x=${encodeURIComponent(e.d)}`;
     if (e.k === "path-run" || e.k === "path-card") {
       const of = feed.find((x) => x.n === e.n && /^path-of-/.test(x.k) && Math.abs(x.at - e.at) < 3000);

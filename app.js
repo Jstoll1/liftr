@@ -5767,6 +5767,19 @@ async function fetchGameSnapshot(gameId) {
 function dayLabel(t) {
   return new Date(t).toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" }).toUpperCase();
 }
+// The game cast's full play log: open or closed per game, kept while the
+// sheet repaints; opening it scrolls the log into view.
+document.getElementById("insights-body")?.addEventListener("click", (e) => {
+  const b = e.target.closest(".gc-more");
+  if (!b) return;
+  const body = e.currentTarget, id = body.__gcGame;
+  if (id == null) return;
+  const open = !(window.__gcFull = window.__gcFull || {})[id];
+  window.__gcFull[id] = open;
+  if (open) noteUse("gamecast-log", id);
+  body.__gcPaint?.();
+  if (open) body.querySelector(".gc-log")?.scrollIntoView({ block: "start", behavior: "smooth" });
+});
 async function openInsights(gameId) {
   const modal = document.getElementById("insights-modal");
   const game = GAMES.find((g) => g.id === gameId);
@@ -6019,7 +6032,11 @@ async function openInsights(gameId) {
     const prevDrives = Array.isArray(drives.previous) ? drives.previous : [];
     const driveOfPlay = new Map();
     for (const d of [...prevDrives, ...(drives.current ? [drives.current] : [])]) for (const pl of d?.plays || []) if (pl?.id != null) driveOfPlay.set(String(pl.id), d === drives.current ? { ...d, live: true } : d);
-    const ordered = [...(drives.current?.plays || [])].reverse().concat(...prevDrives.slice(-4).reverse().map((d) => [...(d.plays || [])].reverse()));
+    // The full game log (opened from the log's header) goes back to the
+    // kickoff; otherwise the last few plays.
+    const full = !!(window.__gcFull || {})[gameId], LOGN = full ? Infinity : 5;
+    const ordered = [...(drives.current?.plays || [])].reverse().concat(...(full ? prevDrives : prevDrives.slice(-4)).slice().reverse().map((d) => [...(d.plays || [])].reverse()));
+    const totalPlays = new Set([...prevDrives, drives.current].flatMap((d) => (d?.plays || []).map((p) => p.id ?? p.text))).size;
     // ESPN's play text carries the clock, the formation, jersey numbers,
     // the tacklers and mascot-glued yard lines ("Hokies49"). Strip it to
     // the play itself and turn mascots into the abbreviations on screen.
@@ -6157,7 +6174,7 @@ async function openInsights(gameId) {
     // The current and previous drive can share a play (a kickoff, a score),
     // so drop repeats before taking three.
     const seenP = new Set();
-    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, 5).map((p) => ({ key: p.id || p.text, drv: p.id != null ? driveOfPlay.get(String(p.id)) || null : null, per: Number(p.period?.number) || null, secs: secsOf(p.clock?.displayValue), text: shortScore(tidy(p.text)), sc: p.scoringPlay && p.awayScore != null && p.homeScore != null ? `${A} ${p.awayScore} · ${H} ${p.homeScore}` : "", when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
+    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, LOGN).map((p) => ({ key: p.id || p.text, drv: p.id != null ? driveOfPlay.get(String(p.id)) || null : null, per: Number(p.period?.number) || null, secs: secsOf(p.clock?.displayValue), text: shortScore(tidy(p.text)), sc: p.scoringPlay && p.awayScore != null && p.homeScore != null ? `${A} ${p.awayScore} · ${H} ${p.homeScore}` : "", when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
     // The scoreboard feed updates faster than the game page. If its last
     // play is not the log's newest, put it on top.
     // Two feeds word the same play differently ("J.Turner rush right for
@@ -6169,11 +6186,14 @@ async function openInsights(gameId) {
       const lp = tidy(sit.lastPlay);
       if (!plays.length || (lp && !plays.slice(0, 5).some((p) => samePlay(p.text, sit.lastPlay)))) {
         const t0 = { type: { text: "" }, text: sit.lastPlay };
-        plays = [{ key: sit.lastPlay, per: Number(lv.period) || null, secs: secsOf(lv.clock), text: shortScore(lp), when: lv.period ? `Q${lv.period} ${lv.clock || ""}`.trim() : status || "", dd: "", tid: sit.lastPlayTeamId, badge: badgeOf(t0), marker: isMarker(t0) }, ...plays].slice(0, 5);
+        plays = [{ key: sit.lastPlay, per: Number(lv.period) || null, secs: secsOf(lv.clock), text: shortScore(lp), when: lv.period ? `Q${lv.period} ${lv.clock || ""}`.trim() : status || "", dd: "", tid: sit.lastPlayTeamId, badge: badgeOf(t0), marker: isMarker(t0) }, ...plays].slice(0, LOGN);
       }
     }
     // The newest play types itself in once, the first time it is seen.
-    plays = plays.filter((p, i) => p.marker || !plays.slice(0, i).some((q) => !q.marker && samePlay(q.text, p.text)));
+    // Two plays ESPN numbered apart are never the same play, however alike
+    // they read ("rush for 4 yds" happens a lot in a full game).
+    const ided = (p) => /^\d+$/.test(String(p.key));
+    plays = plays.filter((p, i) => p.marker || !plays.slice(0, i).some((q) => !q.marker && !(ided(q) && ided(p) && q.key !== p.key) && samePlay(q.text, p.text)));
     // Milestones the feed skips: the end of each quarter, halftime and the
     // two minute warning, read off the period and clock between plays (and
     // off the live clock above the newest one). ESPN's own marker wins.
@@ -6234,7 +6254,8 @@ async function openInsights(gameId) {
     const fresh = !!real[0] && !typed.some((t) => samePlay(t, real[0].text));
     for (const p of plays) if (!typed.some((t) => samePlay(t, p.text))) typed.push(p.text);
     if (typed.length > 60) typed.splice(0, typed.length - 60);
-    const playsHtml = plays.length ? `<div class="gc-log"><div class="gc-logh">PLAY LOG</div><ol class="gc-plays">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv${p.now ? " now" : ""}">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<span class="gc-pills">${p.badge.map(([bt, bc]) => `<b class="gc-badge ${bc}">${esc(bt)}</b>`).join("")}</span>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
+    const more = totalPlays > 5 ? `<button type="button" class="gc-more" data-gcfull="1" aria-expanded="${full}">${full ? "SHOW LESS ▴" : `FULL GAME LOG ▾ ${totalPlays}`}</button>` : "";
+    const playsHtml = plays.length ? `<div class="gc-log${full ? " full" : ""}"><div class="gc-logh"><span>PLAY LOG${full ? ` · ALL ${totalPlays}` : ""}</span>${more}</div><ol class="gc-plays${full ? " full" : ""}">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv${p.now ? " now" : ""}">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<span class="gc-pills">${p.badge.map(([bt, bc]) => `<b class="gc-badge ${bc}">${esc(bt)}</b>`).join("")}</span>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
     const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
@@ -6352,7 +6373,10 @@ async function openInsights(gameId) {
     return;
   }
   if (liveGame()) {
+    body.__gcPaint = paint; body.__gcGame = gameId;
+    const logTop = body.querySelector(".gc-plays.full")?.scrollTop ?? null;
     body.innerHTML = gamecastHtml() + links() + `<div class="ins-foot">Live from ESPN. Refreshes every 8 seconds.</div>`;
+    if (logTop != null) { const l = body.querySelector(".gc-plays.full"); if (l) l.scrollTop = logTop; }
     const sliders = body.querySelectorAll(".gc-slide[data-to]");
     if (sliders.length) { void body.offsetWidth; requestAnimationFrame(() => sliders.forEach((el) => { el.style.left = `${el.dataset.to}%`; })); }
     // Type the newest play on, a character at a time. Done in script so it
