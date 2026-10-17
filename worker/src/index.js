@@ -3433,6 +3433,15 @@ async function presenceWeek(env, now) {
   return Object.fromEntries(rows);
 }
 
+// What was asked of the archive in the last 7 days, with the answers, for
+// the live page (already kept for the admin's archive log). The admin's
+// own questions are left out.
+async function presenceAsks(env) {
+  const list = await env.LIFTR_KV.list({ prefix: "hist-log:", limit: 60 });
+  const rows = await Promise.all(list.keys.map((k) => env.LIFTR_KV.get(k.name, { type: "json", cacheTtl: 300 })));
+  return rows.filter((r) => r && r.asker !== "Jake").map((r) => ({ ts: r.ts, n: r.asker || null, q: String(r.question || "").slice(0, 300), a: String(r.answer || "").slice(0, 1200), kind: r.kind || "" }));
+}
+
 async function handlePresence(request, env, corsHeaders, url) {
   if (!env.LIVE) return json({ error: "Live not configured" }, 500, corsHeaders);
   const room = env.LIVE.get(env.LIVE.idFromName("league"));
@@ -3445,8 +3454,9 @@ async function handlePresence(request, env, corsHeaders, url) {
     // ?days=7 adds the week: seven days of taps from the room, and every
     // visit from the session log.
     const week = url.searchParams.get("days") === "7";
-    const [res, extra, sessions] = await Promise.all([room.fetch(`https://live/room${week ? "?days=7" : ""}`), url.searchParams.get("seen") ? presenceExtra(env) : null, week ? presenceWeek(env, Date.now()) : null]);
-    return json({ ...(await res.json()), ...(extra || {}), ...(sessions ? { week: sessions } : {}) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+    const seen = url.searchParams.get("seen");
+    const [res, extra, sessions, asks] = await Promise.all([room.fetch(`https://live/room${week ? "?days=7" : ""}`), seen ? presenceExtra(env) : null, week ? presenceWeek(env, Date.now()) : null, seen ? presenceAsks(env).catch(() => null) : null]);
+    return json({ ...(await res.json()), ...(extra || {}), ...(sessions ? { week: sessions } : {}), ...(asks ? { asks } : {}) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   // text/plain from a beacon, so read the text and parse it.

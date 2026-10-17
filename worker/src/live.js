@@ -14,7 +14,9 @@ export const GONE_MS = 75000;
 const DAY_MS = 24 * 3600000, FEED_MAX = 3000, FEED_AGE = 7 * DAY_MS;
 
 export const cleanKey = (x) => String(x ?? "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32);
-const cleanDetail = (x) => (x == null || x === "" ? undefined : String(x).replace(/[<>]/g, "").slice(0, 40));
+// Details are short (a game id, a name); a question asked of the archive
+// keeps up to 140 characters.
+const cleanDetail = (x, k) => (x == null || x === "" ? undefined : String(x).replace(/[<>]/g, "").slice(0, k === "history-ask" ? 140 : 40));
 
 export const emptyRoom = () => ({ people: {}, feed: [] });
 
@@ -30,7 +32,8 @@ export function applyBeat(room, b, now) {
     const k = cleanKey(e?.k);
     if (!k) continue;
     const ago = Math.min(Math.max(Number(e.ago) || 0, 0), 60000);
-    evs.push({ at: now - ago, k, ...(cleanDetail(e.d) ? { d: cleanDetail(e.d) } : {}) });
+    const d = cleanDetail(e.d, k);
+    evs.push({ at: now - ago, k, ...(d ? { d } : {}) });
   }
   // Coming in is stamped at the first thing they did, so it reads first.
   if (!b.bye && !wasIn) { p.since = Math.min(now, ...evs.map((e) => e.at)); add({ at: p.since - 1, k: "in", d: b.app === "home" ? "home" : "browser" }); }

@@ -300,6 +300,21 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 .pv-note { padding: 7px 14px; font-size: 12px; color: var(--dim); background: rgba(0, 0, 0, .2); }
 .pv-frame { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 10px 10px max(10px, env(safe-area-inset-bottom)); }
 .pv-frame iframe { width: 100%; max-width: 400px; height: 100%; border: 1px solid var(--line); border-radius: 18px; background: #0a0414; }
+.pv-chat { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px 14px max(16px, env(safe-area-inset-bottom)); }
+.cb { max-width: 88%; padding: 10px 13px; border-radius: 16px; font-size: 14.5px; line-height: 1.45; }
+.cb b { display: block; margin-bottom: 3px; font: 700 10.5px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; opacity: .75; }
+.cb p { margin: 0; white-space: pre-wrap; }
+.cb time { display: block; margin-top: 4px; font: 11px var(--mono); opacity: .6; }
+.cb.me { align-self: flex-end; color: #0b0716; background: linear-gradient(180deg, #b9a6ff, var(--past)); border-bottom-right-radius: 5px; }
+.cb.ai { align-self: flex-start; background: var(--panel2); border: 1px solid var(--line2); border-bottom-left-radius: 5px; }
+.cb.ai b { color: var(--green); opacity: 1; }
+.cb.off { color: var(--meta); }
+.asks { display: flex; flex-direction: column; gap: 6px; }
+.ask { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 9px 10px; text-align: left; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); border-radius: 10px; }
+.ask:hover { border-color: var(--line2); background: rgba(255, 255, 255, .05); }
+.ask-h { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+.ask-h time { margin-left: auto; font: 11px var(--mono); color: var(--dim); }
+.ask-q { font-size: 13.5px; color: var(--meta); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .pv-none { margin: 16px; padding: 16px; border-radius: 12px; border: 1px dashed var(--line); display: flex; flex-direction: column; gap: 6px; color: var(--meta); font-size: 14px; }
 .pv-none b { color: var(--text); }
 
@@ -349,7 +364,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { range: store.get("brochiefs_live_range") === "7d" ? "7d" : "24h", wk: null, sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { asks: [], range: store.get("brochiefs_live_range") === "7d" ? "7d" : "24h", wk: null, sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
 
   // --- Formatting --------------------------------------------------------
   const name = (n) => SHOWN[n] || n;
@@ -405,14 +420,14 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     "path-share": "Shared a Path to Win", "path-intro": "Saw the Path to Win intro",
     "wp-player": "Opened a win % breakdown", "wp-explain": "Read how win % works", h2h: "Opened head to head",
     "pot-open": "Opened the pot", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
-    sim: "Ran a game sim", "grid-card": "Opened a grid card",
+    sim: "Ran a game sim", "grid-card": "Opened a grid card", "history-ask": "Asked the archive",
   };
   function says(e, feed) {
     if (e.k === "path-run" || e.k === "path-card") {
       const of = feed.find((x) => x.n === e.n && /^path-of-/.test(x.k) && Math.abs(x.at - e.at) < 3000);
       return [e.k === "path-run" ? "Ran Path to Win" : "Opened a Path to Win card", of ? `for ${name(nameFrom(of.k.slice(8)))}` : ""];
     }
-    if (SAYS[e.k]) return [SAYS[e.k], /^(game-|gamecast|scorebug)/.test(e.k) ? st.games[e.d] || "" : e.k === "ranking-expand" && e.d ? name(e.d) : ""];
+    if (SAYS[e.k]) return [SAYS[e.k], /^(game-|gamecast|scorebug)/.test(e.k) ? st.games[e.d] || "" : e.k === "ranking-expand" && e.d ? name(e.d) : e.k === "history-ask" && e.d ? `“${e.d}”` : ""];
     if (SCREENS[e.k]) return [`Went to ${SCREENS[e.k]}`, ""];
     return [e.k.charAt(0).toUpperCase() + e.k.slice(1).replace(/-/g, " "), ""];
   }
@@ -426,6 +441,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       return of ? `path&x=${encodeURIComponent(nameFrom(of.k.slice(8)))}` : "scoreboard";
     }
     if (e.k === "h2h") return "h2h";
+    if (e.k === "history-ask") return "ask";
     if (e.k === "history" || e.k === "trivia" || e.k === "scoreboard") return e.k;
     if (e.k === "picks" || /^pick-/.test(e.k)) return "picks";
     if (/^(pot-open|all-picks-open|wp-player|wp-explain|sim|grid-card|path-intro|path-share)$/.test(e.k)) return "scoreboard";
@@ -463,6 +479,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
+      if (r.asks) st.asks = r.asks;
       // The week comes with seven days of taps; the live view keeps one.
       if (r.week) { st.wk = { sessions: r.week, feed: r.feed, at: Date.now() }; r.feed = r.feed.filter((e) => Date.now() - e.at < 86400000); }
       const ids = new Set(r.feed.map(evId));
@@ -471,7 +488,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         for (const [n, p] of Object.entries(r.people)) if (p.in && !st.room?.people?.[n]?.in) notify(n);
       }
       st.known = ids; st.room = r; st.at = Date.now(); st.ok = true; st.cached = false;
-      store.set(SNAP_STORE, JSON.stringify({ room: r, names: st.names, seen: st.seen, games: st.games }));
+      store.set(SNAP_STORE, JSON.stringify({ room: r, names: st.names, seen: st.seen, games: st.games, asks: st.asks }));
       setTimeout(() => { st.fresh.clear(); }, 2600);
     } catch { st.ok = false; }
     if (st.gated) return;
@@ -498,7 +515,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.wk?.at, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.wk?.at, st.asks.length, st.asks[0]?.ts, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -611,6 +628,13 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 
     // Side charts: actions by hour, what got used most, how they open it.
     // The week: visits by hour of the day, and what most visits used.
+    const askPanel = (fromTs, label) => {
+      const list = st.asks.filter((x) => x.ts >= fromTs && (!st.filter || x.n === st.filter)).slice(0, 5);
+      if (!list.length) return "";
+      return `<section class="panel"><div class="ph"><h2>Asked the archive</h2><span class="sub">${label}</span></div>
+        <div class="asks">${list.map((x) => `<button type="button" class="ask" data-ask="${x.ts}"><span class="ask-h">${x.n ? av(x.n, "sm") : ""}<b>${esc(x.n ? name(x.n) : "Someone")}</b><time>${esc(dayOf(x.ts) === today0 ? hm(x.ts) : `${new Date(x.ts).toLocaleDateString([], { weekday: "short" })} ${hm(x.ts)}`)}</time></span><span class="ask-q">${esc(x.q)}</span></button>`).join("")}</div>
+      </section>`;
+    };
     const railWeek = () => {
       const byH = Array.from({ length: 24 }, (_, h) => ({ h, n: 0, who: new Set() }));
       for (const v of wv) { const h = new Date(v.start).getHours(); byH[h].n++; byH[h].who.add(v.n); }
@@ -627,6 +651,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       <section class="panel"><div class="ph"><h2>Most used</h2><span class="sub">visits that used it, 7 days</span></div>
         ${tp.length ? `<div class="rank">${tp.map(([a, n]) => `<div><span>${esc(a)}</span><b>${n}</b><i><s style="width:${((n / mf) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>` : `<div class="note">Nothing used yet.</div>`}
       </section>
+      ${askPanel(wFrom, "last 7 days")}
     </aside>`;
     };
     const maxH = Math.max(1, ...hours.map((h) => h.n));
@@ -646,6 +671,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         <div class="split"><s style="width:${((home / (home + web)) * 100).toFixed(1)}%;background:var(--past)"></s><s style="flex:1;background:#5b5378"></s></div>
         <div class="split-k"><span><i style="background:var(--past)"></i>Home screen app <b>${home}</b></span><span><i style="background:#5b5378"></i>Browser <b>${web}</b></span></div>
       </section>` : ""}
+      ${askPanel(from, "last 24h")}
     </aside>`;
 
     // The feed: one card per visit, newest first.
@@ -754,6 +780,11 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; render(); }, 1600);
       return;
     }
+    if (b.dataset.ask) {
+      const x = st.asks.find((y) => String(y.ts) === b.dataset.ask);
+      if (x) openPreview({ go: "ask", pid: `ask|${x.ts}`, who: x.n || "", at: String(x.ts), what: x.q });
+      return;
+    }
     if (b.dataset.range) {
       st.range = b.dataset.range; store.set("brochiefs_live_range", st.range); render();
       if (st.range === "7d" && (!st.wk || Date.now() - st.wk.at > 60000)) poll(false);
@@ -800,9 +831,31 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   // The preview: the app itself, framed like a phone, on the screen a line
   // names, as it looks now. Kept outside the page so it survives redraws.
   const pv = document.getElementById("pv");
+  // A question asked of the archive, found in the archive's own log by who
+  // asked and when (within a few minutes of the tap).
+  function askFor(who, at) {
+    let best = null;
+    for (const x of st.asks) if (x.n === who && Math.abs(x.ts - at) < 180000 && (!best || Math.abs(x.ts - at) < Math.abs(best.ts - at))) best = x;
+    return best;
+  }
   function openPreview(d) {
     st.pv = { id: d.pid };
     const when = hm(Number(d.at));
+    if (d.go === "ask") {
+      const x = askFor(d.who, Number(d.at)), q = x?.q || String(d.what || "").replace(/^Asked the archive\s*/, "").replace(/^“|”$/g, "");
+      pv.innerHTML = `<div class="pv-grab" aria-hidden="true"><i></i></div>
+        <div class="pv-h"><button type="button" class="pv-done pv-x">Done</button><div class="pv-t"><b>${esc(name(d.who))}</b> · ${esc(when)}<span>Asked the archive</span></div></div>
+        <div class="pv-note">Exactly what was asked, and what the archive answered</div>
+        <div class="pv-chat">
+          <div class="cb me"><b>${esc(name(d.who))}</b><p>${esc(q)}</p><time>${esc(hm(x?.ts || Number(d.at)))}</time></div>
+          ${x ? `<div class="cb ai${x.kind === "blocked" || x.kind === "error" ? " off" : ""}"><b>THE ARCHIVE${x.kind === "blocked" ? " · turned away" : ""}</b><p>${esc(x.a)}</p></div>` : `<div class="cb ai off"><p>The answer isn't in the archive log yet. It keeps 7 days and refreshes every minute.</p></div>`}
+        </div>`;
+      pv.querySelector(".pv-x").addEventListener("click", closePreview);
+      pv.style.transform = "";
+      document.body.classList.add("pv-open");
+      st.sig = ""; render();
+      return;
+    }
     const body = d.go === "picks"
       ? `<div class="pv-none"><b>No preview of someone's picks</b><span>Picks stay private until each game locks, so this shows nothing here. Their saved picks appear on the scoreboard once games lock.</span></div>`
       : `<div class="pv-frame"><iframe title="Preview" src="../index.html?view=${d.go}"></iframe></div>`;
@@ -858,7 +911,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     // The last view straight away, marked as refreshing, then the real one.
     try {
       const snap = JSON.parse(store.get(SNAP_STORE) || "null");
-      if (snap?.room) { st.room = snap.room; st.names = snap.names || []; st.seen = snap.seen || {}; st.games = snap.games || {}; st.cached = true; }
+      if (snap?.room) { st.room = snap.room; st.names = snap.names || []; st.seen = snap.seen || {}; st.games = snap.games || {}; st.asks = snap.asks || []; st.cached = true; }
     } catch {}
     render();
     poll(true);

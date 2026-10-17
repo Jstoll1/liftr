@@ -56,3 +56,10 @@ test("the room keeps a week; the page reads a day unless it asks for the week", 
   assert.deepEqual([...new Set(roomView(r, t + 1000, "7").feed.map((e) => e.n))].sort(), ["Curt", "Logan"]);
   assert.equal(roomView(r, t + 1000, "99").feed.length, roomView(r, t + 1000, 7).feed.length);
 });
+
+test("a question asked of the archive keeps its words", () => {
+  const r = emptyRoom(), q = "Who has won the most titles since 2014, and who has the worst all time record of the active owners?";
+  applyBeat(r, { manager: "Curt", events: [{ k: "history-ask", d: q }, { k: "ranking-expand", d: q }] }, t);
+  assert.equal(r.feed.find((e) => e.k === "history-ask").d, q.slice(0, 140));
+  assert.equal(r.feed.find((e) => e.k === "ranking-expand").d.length, 40);
+});
