@@ -84,7 +84,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .sh .who { min-width: 0; }
 .sh .nm { font-size: 16px; font-weight: 700; }
 .sh .meta { font-size: 13px; color: var(--meta); }
-.badge { margin-left: auto; flex: none; padding: 4px 9px; border-radius: 999px; font: 700 12px/1 var(--mono); }
+.sh-r { margin-left: auto; flex: none; display: flex; flex-direction: row-reverse; align-items: center; gap: 8px; }
+@media (max-width: 560px) { .sh-r { flex-direction: column; align-items: flex-end; gap: 6px; } .sh-r .cp { min-height: 30px; padding: 5px 11px; } }
+.cp { flex: none; min-height: 32px; padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--cyan); background: rgba(79, 227, 240, .08); border: 1px solid rgba(79, 227, 240, .3); border-radius: 999px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.cp:active { transform: scale(.96); }
+.cp.ok { color: #0b0716; background: var(--green); border-color: var(--green); }
+.cpall { display: flex; justify-content: flex-end; margin: 12px 0 -10px; }
+.cpall .cp { margin-left: auto; }
+.badge { flex: none; padding: 4px 9px; border-radius: 999px; font: 700 12px/1 var(--mono); }
 .sess.live .badge { color: #0b0716; background: var(--green); }
 .sess:not(.live) .badge { color: var(--meta); background: var(--panel2); }
 .acts { margin: 0; padding: 4px 14px 10px 62px; list-style: none; border-top: 1px solid var(--line); }
@@ -172,7 +179,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
 
   // --- Formatting --------------------------------------------------------
   const name = (n) => SHOWN[n] || n;
@@ -282,7 +289,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([room.feed.length, room.feed[0], room.people, st.seen, st.filter, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([room.feed.length, room.feed[0], room.people, st.seen, st.filter, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const people = room.people, feed = room.feed;
@@ -302,6 +309,15 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       : `<div class="sum"><b>Nobody's in</b>${last ? `<span>Last in: ${esc(name(last))}, ${esc(ago(lastSeen(last)))}</span>` : ""}</div>`;
 
     const all = visits(feed, people).filter((s) => !st.filter || s.n === st.filter);
+    // Each visit as plain text, for Copy: who, when, how long, and every
+    // line in order.
+    st.texts = new Map();
+    for (const s of all.slice(0, st.shown)) {
+      const when = s.live ? `in now, since ${hm(s.start)} (${dur(Date.now() - s.since)})` : `${hm(s.start)} to ${hm(s.end)} (${dur(Math.max(s.end - s.start, 1000))})`;
+      const scr = s.live && SCREENS[people[s.n]?.screen] ? ` · on ${SCREENS[people[s.n].screen]}` : "";
+      st.texts.set(`${s.n}|${s.start}`, [`${name(s.n)} · ${dayLab(s.start)} · ${when}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${scr}`,
+        ...s.acts.map((a) => `  ${hm(a.at)}  ${a.a}${a.d ? `${/^for /.test(a.d) ? " " : ": "}${a.d}` : ""}${a.x > 1 ? ` (×${a.x})` : ""}`)].join("\n"));
+    }
     let day = null;
     const cards = all.slice(0, st.shown).map((s) => {
       const d = dayLab(s.start), head = d !== day ? `<div class="label day">${esc(d)}</div>` : "";
@@ -312,7 +328,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${span}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
       return `${head}<div class="sess${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}">
-        <div class="sh">${av(s.n, true)}<div class="who"><div class="nm">${esc(name(s.n))}</div><div class="meta num">${esc(meta)}</div></div><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(Date.now() - s.since) : s.done ? "LEFT" : "ENDED"}</span></div>
+        <div class="sh">${av(s.n, true)}<div class="who"><div class="nm">${esc(name(s.n))}</div><div class="meta num">${esc(meta)}</div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(Date.now() - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit">${st.copied === id ? "Copied ✓" : "Copy"}</button></div></div>
         ${s.acts.length ? `<ul class="acts">${s.acts.length > LIM && !open ? `<li class="quiet"><span></span><span>${s.acts.length - LIM} earlier</span></li>` : ""}${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
         ${s.acts.length > LIM ? `<button type="button" class="more" data-open="${esc(id)}">${open ? "Show less" : `Show all ${s.acts.length}`}</button>` : ""}
       </div>`;
@@ -331,6 +347,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         <aside class="side">${side}</aside>
         <main>
           ${sum}
+          ${all.length ? `<div class="cpall"><button type="button" class="cp${st.copied === "*" ? " ok" : ""}" data-copy="*">${st.copied === "*" ? "Copied ✓" : `Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"} ${Math.min(all.length, st.shown)} visit${Math.min(all.length, st.shown) === 1 ? "" : "s"}`}</button></div>` : ""}
           ${cards || `<div class="empty" style="margin-top:14px">${st.filter ? `No visits from ${esc(name(st.filter))} in the last 24 hours.` : "No visits in the last 24 hours yet. They show here as people use the app."}</div>`}
           ${all.length > st.shown ? `<button type="button" class="older" data-older="1">Show ${Math.min(20, all.length - st.shown)} more</button>` : ""}
           <p class="note">A visit is live while the app is on screen and ends when it's put away, or about a minute after a phone goes quiet. Shows screens and features, never which team anyone picked. Jake isn't tracked.</p>
@@ -354,6 +371,14 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     if (b.dataset.n !== undefined) { st.filter = b.dataset.n && st.filter !== b.dataset.n ? b.dataset.n : null; st.shown = 20; render(); window.scrollTo({ top: 0 }); return; }
     if (b.dataset.open) { st.open.has(b.dataset.open) ? st.open.delete(b.dataset.open) : st.open.add(b.dataset.open); render(); return; }
     if (b.dataset.older) { st.shown += 20; render(); return; }
+    if (b.dataset.copy) {
+      const id = b.dataset.copy;
+      const text = id === "*" ? `Brochiefs Live · ${st.filter ? name(st.filter) : "everyone"} · last 24 hours\n\n${[...st.texts.values()].join("\n\n")}` : st.texts.get(id) || "";
+      if (!text || !(await copyText(text))) { b.textContent = "Couldn't copy"; return; }
+      st.copied = id; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; render(); }, 1600);
+      return;
+    }
     if (b.dataset.signout) { forget(); location.reload(); return; }
     if (b.dataset.alert) {
       if (!st.alert && Notification.permission !== "granted") { try { await Notification.requestPermission(); } catch {} }
@@ -361,6 +386,18 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       render();
     }
   });
+
+  // The clipboard, called straight from the tap so iOS allows it; an older
+  // browser gets a hidden text box and the copy command instead.
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch {}
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;font-size:16px";
+    document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+    let ok = false; try { ok = document.execCommand("copy"); } catch {}
+    ta.remove();
+    return ok;
+  }
 
   // The preview: the app itself, framed like a phone, on the screen a line
   // names, as it looks now. Kept outside the page so it survives redraws.
