@@ -1,12 +1,17 @@
 // The late night side pot. Once the week is decided, the commissioner
-// picks a few games still to kick off and sets a buy-in; anyone can opt in
-// and pick those same games, scored like the main pool. Entry, and every
-// side pick, closes at the first of those kickoffs. The app keeps the
-// ledger only: money changes hands outside it.
+// picks a few of the slate's games, at the slate's lines, that have not
+// kicked off or only just have, and sets a buy-in; anyone can opt in and
+// pick those same games, scored like the main pool. Entry, and every side
+// pick, closes at the first of those kickoffs, but never sooner than
+// ENTRY_MIN_MS after the pot opens, so there is time to get in on a game
+// that is about to start or just has. The app keeps the ledger only:
+// money changes hands outside it.
 
 export const sideKey = (week) => `side:w${week}`;
 export const SIDE_MAX_GAMES = 5;
 export const SIDE_MAX_BUYIN = 500;
+export const RECENT_MS = 30 * 60000;    // a game this far past kickoff can still go in
+export const ENTRY_MIN_MS = 20 * 60000; // entry stays open at least this long
 
 const kickMs = (g) => new Date(g?.kickoff).getTime();
 
@@ -19,12 +24,12 @@ export function newPot({ week, games, buyIn, slate, now }) {
   for (const id of ids) {
     const g = byId.get(id);
     if (!g) return { error: `Game ${id} is not on this week's slate.` };
-    if (!Number.isFinite(kickMs(g)) || now >= kickMs(g)) return { error: `${g.awayShort} at ${g.homeShort} has already kicked off.` };
+    if (!Number.isFinite(kickMs(g)) || now >= kickMs(g) + RECENT_MS) return { error: `${g.awayShort} at ${g.homeShort} kicked off more than 30 minutes ago.` };
   }
   const amt = Number(buyIn);
   if (!Number.isInteger(amt) || amt < 1 || amt > SIDE_MAX_BUYIN) return { error: `Buy-in must be a whole dollar amount from 1 to ${SIDE_MAX_BUYIN}.` };
   const sorted = ids.sort((a, b) => kickMs(byId.get(a)) - kickMs(byId.get(b)) || a - b);
-  return { pot: { week, id: String(now), games: sorted, buyIn: amt, closesAt: kickMs(byId.get(sorted[0])), createdAt: now } };
+  return { pot: { week, id: String(now), games: sorted, buyIn: amt, closesAt: Math.max(kickMs(byId.get(sorted[0])), now + ENTRY_MIN_MS), createdAt: now } };
 }
 
 // Side picks must cover every pot game: a team playing in it, against the

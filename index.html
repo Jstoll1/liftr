@@ -395,6 +395,7 @@
         <div class="topbar centered"><span class="manager-badge">🛠 APP CONSOLE</span></div>
         <div id="console-tabs" class="console-tabs" role="tablist">
           <button class="console-tab active" type="button" data-tab="whosin">Who's in</button>
+          <button class="console-tab" type="button" data-tab="side">💰 Side bet</button>
           <button class="console-tab" type="button" data-tab="logins">Insights</button>
           <button class="console-tab" type="button" data-tab="scouting">Scouting</button>
           <button class="console-tab" type="button" data-tab="grid">Grid sheet</button>
@@ -541,6 +542,11 @@
     </div>
   </main>
 
+  <!-- SIDE BET SCREEN: only for players in this week's side bet -->
+  <main id="side-screen" class="screen hidden">
+    <div class="wrap"><div id="side-screen-body" class="ss-body"></div></div>
+  </main>
+
   </div><!-- /app-scroll -->
 
   <!-- BOTTOM NAV: matches the wordmark header, sits on every screen
@@ -553,6 +559,10 @@
     <button id="nav-scoreboard-btn" class="nav-btn" type="button">
       <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 9h3v5H2zm4.5-6h3v11h-3zm4.5 3h3v8h-3zM1 14h14v1H1z"/></svg>
       <span class="nav-btn-label">Scores</span>
+    </button>
+    <button id="nav-side-btn" class="nav-btn nav-side hidden" type="button">
+      <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" fill-rule="evenodd" d="M5 1h6v1h2v2h1v8h-1v2h-2v1H5v-1H3v-2H2V4h1V2h2zM7 3h2v1H7zM6 4h5v1H6zM5 5h2v2H5zM6 7h4v1H6zM9 8h2v2H9zM5 10h5v1H5zM7 11h2v1H7z"/></svg>
+      <span class="nav-btn-label">Side bet</span>
     </button>
     <button id="nav-history-btn" class="nav-btn" type="button">
       <svg class="nav-btn-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M4 1h8v1h2v1h1v3h-1v1h-1v1h-1v1h-1v1H9v2h2v1h1v1H4v-1h1v-1h2v-2H6V9H5V8H4V7H3V6H2V3h1V2h1zm0 2H3v2h1v1h1V3zm8 0v3h1V5h1V3z"/></svg>

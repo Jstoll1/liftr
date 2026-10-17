@@ -179,89 +179,9 @@
   }
   el("admin-qotw-btn")?.addEventListener("click", showQotw);
 
-  // Late night side pot: pick games still to kick off and a buy-in, and
-  // every player is asked on the board. Once it is running, this shows who
-  // is in (never their picks before the close), who has paid, and the
-  // result. Scoring and money come from app.js (sideStandings, sideOutcome).
-  const sideWeek = () => (typeof currentWeek === "number" ? currentWeek : 1);
-  async function sidePost(body) {
-    const key = await verifyKey();
-    if (!key) throw new Error("The admin key is missing.");
-    const res = await fetch(`${WORKER_URL}/side?key=${encodeURIComponent(key)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ week: sideWeek(), ...body }) });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { const e = new Error(data.error || `Failed (${res.status})`); e.status = res.status; throw e; }
-    return data;
-  }
-  async function showSide() {
-    const box = el("admin-side");
-    const key = await verifyKey();
-    if (!key) return;
-    box.classList.remove("hidden");
-    box.textContent = "Loading the side pot…";
-    try {
-      const res = await fetch(`${WORKER_URL}/side?week=${sideWeek()}&key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) throw new Error(String(res.status));
-      renderSide((await res.json()).pot);
-    } catch (e) { box.textContent = `Could not load the side pot (${e.message}).`; }
-  }
-  function renderSide(pot) {
-    const box = el("admin-side");
-    const games = (typeof GAMES !== "undefined" ? GAMES : []).slice().sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
-    const now = Date.now();
-    const label = (n) => (typeof shown === "function" ? shown(n) : n);
-    const etTime = (ms) => new Date(ms).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" });
-    if (!pot) {
-      const upcoming = games.filter((g) => new Date(g.kickoff).getTime() > now);
-      const preset = new Set(upcoming.slice(-3).map((g) => g.id));
-      box.innerHTML = `<div class="as-lead">Week ${sideWeek()}. Pick the games for tonight's side pot. Everyone picks these same games; entry and picks close at the first kickoff.</div>
-        ${upcoming.length ? "" : `<div class="as-none">Every game this week has kicked off.</div>`}
-        <div class="as-games">${upcoming.map((g) => `<label class="as-game"><input type="checkbox" value="${g.id}"${preset.has(g.id) ? " checked" : ""}><span>G${g.id} · ${esc(g.awayShort)} @ ${esc(g.homeShort)}</span><small>${esc(g.kickoffLabel || "")}</small></label>`).join("")}</div>
-        ${games.length > upcoming.length && upcoming.length ? `<div class="as-out">${games.length - upcoming.length} ${games.length - upcoming.length === 1 ? "game has" : "games have"} already kicked off.</div>` : ""}
-        <label class="as-buy">Buy-in $<input type="number" inputmode="numeric" min="1" max="500" step="1" value="25"></label>
-        <button type="button" class="admin-btn primary wide as-start"${upcoming.length ? "" : " disabled"}>Start side pot</button>`;
-      box.querySelector(".as-start")?.addEventListener("click", async (ev) => {
-        const ids = [...box.querySelectorAll(".as-games input:checked")].map((i) => Number(i.value));
-        const buyIn = Number(box.querySelector(".as-buy input").value);
-        if (!ids.length) { say("Pick at least one game for the side pot.", "bad"); return; }
-        ev.currentTarget.disabled = true;
-        try {
-          let d;
-          try { d = await sidePost({ action: "start", games: ids, buyIn }); }
-          catch (e) {
-            if (e.status !== 409 || !confirm("A side pot with players in it is already running. Replace it? Everyone in it is out.")) throw e;
-            d = await sidePost({ action: "start", games: ids, buyIn, replace: true });
-          }
-          say("Side pot is live. Players get asked when they open the board.", "ok");
-          renderSide(d.pot);
-          if (typeof fetchSidePot === "function") fetchSidePot(true).then(() => typeof renderSidePot === "function" && renderSidePot());
-        } catch (e) { say(`Side pot not started: ${e.message}`, "bad"); ev.currentTarget.disabled = false; }
-      });
-      return;
-    }
-    const open = now < pot.closesAt;
-    const ins = Object.keys(pot.entrants || {});
-    const st = typeof sideStandings === "function" ? sideStandings(pot) : null;
-    const out = st && typeof sideOutcome === "function" ? sideOutcome(pot, st) : null;
-    const result = !open && out?.final ? (out.n < 2 ? "One taker, no bet." : out.push ? "Dead heat, no money moves." : `${out.winners.map(label).join(" and ")} ${out.winners.length > 1 ? "split" : "takes"} $${out.total}, collecting $${Number.isInteger(out.net) ? out.net : out.net.toFixed(2)}${out.winners.length > 1 ? " each" : ""} from the others.`) : "";
-    const owes = (n) => !open && out?.final && out.losers.includes(n);
-    const won = (n) => !open && out?.final && !out.push && out.winners.includes(n);
-    box.innerHTML = `<div class="as-lead"><b>Week ${pot.week} side pot</b> · $${pot.buyIn} · ${ins.length} in · $${ins.length * pot.buyIn} pot<br>${open ? `Closes ${esc(etTime(pot.closesAt))} ET` : `Closed ${esc(etTime(pot.closesAt))} ET`}</div>
-      <div class="as-list">${pot.games.map((id) => games.find((g) => g.id === id)).filter(Boolean).map((g) => `<span>G${g.id} ${esc(g.awayShort)} @ ${esc(g.homeShort)}</span>`).join("")}</div>
-      ${result ? `<div class="as-result">${esc(result)}</div>` : ""}
-      <div class="as-people">${ins.length ? ins.map((n) => `<label class="as-person${owes(n) ? " owes" : ""}"><span>${esc(label(n))}${owes(n) ? ` <small>owes $${pot.buyIn}</small>` : ""}</span>${won(n) ? `<span class="as-won">collects</span>` : `<span class="as-paid"><input type="checkbox" data-paid="${esc(n)}"${pot.entrants[n].paid ? " checked" : ""}> paid</span>`}</label>`).join("") : `<div class="as-none">Nobody in yet.</div>`}</div>
-      ${pot.declined?.length ? `<div class="as-out">No thanks: ${pot.declined.map((n) => esc(label(n))).join(", ")}</div>` : ""}
-      <div class="as-btns"><button type="button" class="admin-btn as-refresh">↻ Refresh</button><button type="button" class="admin-btn as-cancel">Cancel pot</button></div>`;
-    box.querySelectorAll("[data-paid]").forEach((cb) => cb.addEventListener("change", async () => {
-      try { renderSide((await sidePost({ action: "paid", manager: cb.dataset.paid, paid: cb.checked })).pot); }
-      catch (e) { cb.checked = !cb.checked; say(`Not saved: ${e.message}`, "bad"); }
-    }));
-    box.querySelector(".as-refresh").addEventListener("click", showSide);
-    box.querySelector(".as-cancel").addEventListener("click", async () => {
-      if (!confirm(ins.length ? `Cancel the side pot? ${ins.length} ${ins.length === 1 ? "player is" : "players are"} in.` : "Cancel the side pot?")) return;
-      try { await sidePost({ action: "cancel" }); say("Side pot cancelled.", "ok"); renderSide(null); if (typeof fetchSidePot === "function") fetchSidePot(true).then(() => typeof renderSidePot === "function" && renderSidePot()); }
-      catch (e) { say(`Not cancelled: ${e.message}`, "bad"); }
-    });
-  }
+  // Late night side pot: the panel itself lives in app.js (mountSideAdmin),
+  // shared with the app owner's console.
+  const showSide = () => mountSideAdmin(el("admin-side"), verifyKey, say);
   el("admin-side-btn")?.addEventListener("click", showSide);
 
   function syncGate() {

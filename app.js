@@ -1278,7 +1278,11 @@ function track(path, extra) {
 let lastTrackedScreen = null;
 function setActiveNav(target) {
   if (target !== lastTrackedScreen) { lastTrackedScreen = target; track(`/${target}`); }
-  [navPicksBtn, navScoreboardBtn, navHistoryBtn, navTriviaBtn].forEach((btn) => btn.classList.remove("active"));
+  [navPicksBtn, navScoreboardBtn, navHistoryBtn, navTriviaBtn, document.getElementById("nav-side-btn")].forEach((btn) => btn?.classList.remove("active"));
+  // The Side bet screen is only hidden here, the one place every screen
+  // change passes through.
+  if (target === "side") document.getElementById("nav-side-btn")?.classList.add("active");
+  else document.getElementById("side-screen")?.classList.add("hidden");
   if (target === "history") navHistoryBtn.classList.add("active");
   if (target === "trivia") navTriviaBtn.classList.add("active");
   // The roster has no tab of its own — the pill in the header is how you
@@ -2853,6 +2857,8 @@ function renderSidePot() {
   if (!el) return;
   const pot = potNow();
   const names = pot ? Object.keys(pot.entrants || {}) : [];
+  updateSideNav();
+  renderSideScreen();
   if (!pot || !currentManager || window.LEAGUE?.sport === "nfl" || (!sideOpen(pot) && !names.length)) { el.classList.add("hidden"); el.innerHTML = ""; return; }
   const me = currentManager, mine = pot.entrants[me];
   const total = names.length * pot.buyIn;
@@ -2887,18 +2893,16 @@ function renderSidePot() {
   el.classList.remove("hidden");
 }
 document.getElementById("side-pot")?.addEventListener("click", (e) => {
-  if (e.target.closest("[data-sp='open']")) openSideSheet(false);
+  if (e.target.closest("[data-sp='open']")) return openSideSheet(false);
+  if (sideIn()) showSideScreen();
 });
 // The countdown on the card ticks; at the close the card turns into the
 // leaderboard with everyone's picks.
 setInterval(() => {
   const pot = potNow();
   if (!pot || document.hidden) return;
-  const cd = document.querySelector("#side-pot [data-sp-cd]");
-  if (cd) {
-    const c = kickoffCountdown(new Date(pot.closesAt).toISOString());
-    cd.textContent = c && !c.past ? c.text : "now";
-  }
+  const c = kickoffCountdown(new Date(pot.closesAt).toISOString());
+  document.querySelectorAll("[data-sp-cd]").forEach((cd) => { cd.textContent = c && !c.past ? c.text : "now"; });
   if (pot.open && Date.now() >= pot.closesAt) { pot.open = false; document.getElementById("side-modal")?.remove(); fetchSidePot(true).then(renderSidePot); }
 }, 1000);
 
@@ -2913,6 +2917,102 @@ function maybeShowSidePrompt() {
   if (busy()) return;
   sidePromptShown = true;
   setTimeout(() => { if (busy()) { sidePromptShown = false; return; } openSideSheet(true); }, 1500);
+}
+
+// The side pot's admin panel, mounted by the app owner's console (Side bet
+// tab) and the slate editor alike. Pick games, at the slate's lines, that
+// have not kicked off or only just have, and a buy-in; once running, it
+// shows who is in (never their picks before the close), who said no, who
+// has paid, and the result. getKey resolves the admin key; say reports.
+const SIDE_RECENT_MS = 30 * 60000; // matches RECENT_MS in worker/src/side.js
+async function mountSideAdmin(box, getKey, say) {
+  if (!box) return;
+  const esc = escapeCd;
+  const post = async (body) => {
+    const key = await getKey();
+    if (!key) throw new Error("The admin key is missing.");
+    const res = await fetch(`${WORKER_URL}/side?key=${encodeURIComponent(key)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ week: currentWeek, ...body }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { const e = new Error(data.error || `Failed (${res.status})`); e.status = res.status; throw e; }
+    return data;
+  };
+  const refreshApp = () => fetchSidePot(true).then(renderSidePot);
+  const etTime = (ms) => new Date(ms).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" });
+  const load = async () => {
+    const key = await getKey();
+    if (!key) return;
+    box.classList.remove("hidden");
+    box.textContent = "Loading the side pot…";
+    try {
+      const [res] = await Promise.all([fetch(`${WORKER_URL}/side?week=${currentWeek}&key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" }), fetchLiveScores().catch(() => {})]);
+      if (!res.ok) throw new Error(String(res.status));
+      render((await res.json()).pot);
+    } catch (e) { box.textContent = `Could not load the side pot (${e.message}).`; }
+  };
+  const render = (pot) => {
+    const now = Date.now();
+    const games = gamesByKickoff();
+    if (!pot) {
+      // In: not kicked off, or kicked off in the last half hour and not over.
+      const ok = (g) => { const k = new Date(g.kickoff).getTime(); return now < k + SIDE_RECENT_MS && !latestLive[g.id]?.completed; };
+      const avail = games.filter(ok);
+      const preset = new Set(avail.slice(-3).map((g) => g.id));
+      const tag = (g) => {
+        const l = latestLive[g.id], k = new Date(g.kickoff).getTime();
+        if (now < k) return esc(g.kickoffLabel || "");
+        return `<b class="as-live">ON NOW${l?.found && l.state === "in" ? ` · ${esc(shortStatus(l.detail || ""))} · ${l.awayScore}-${l.homeScore}` : ""}</b>`;
+      };
+      const line = (g) => `${g.favorite === g.home ? esc(g.homeShort) : esc(g.awayShort)} -${g.spread}`;
+      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Pick games at this week's lines. Everyone who opts in picks the same games. Entry closes at the first kickoff, or 20 minutes after you start it if that's later.</div>
+        ${avail.length ? `<div class="as-games">${avail.map((g) => `<label class="as-game"><input type="checkbox" value="${g.id}"${preset.has(g.id) ? " checked" : ""}><span>G${g.id} · ${esc(g.awayShort)} @ ${esc(g.homeShort)}<small class="as-line">${line(g)}</small></span><small>${tag(g)}</small></label>`).join("")}</div>` : `<div class="as-none">No games left that haven't kicked off or only just have.</div>`}
+        ${games.length > avail.length && avail.length ? `<div class="as-out">${games.length - avail.length} ${games.length - avail.length === 1 ? "game is" : "games are"} over or too far along.</div>` : ""}
+        <label class="as-buy">Buy-in $<input type="number" inputmode="numeric" min="1" max="500" step="1" value="25"></label>
+        <button type="button" class="admin-btn primary wide as-start"${avail.length ? "" : " disabled"}>Start side bet</button>`;
+      box.querySelector(".as-start")?.addEventListener("click", async (ev) => {
+        const btn = ev.currentTarget;
+        const ids = [...box.querySelectorAll(".as-games input:checked")].map((i) => Number(i.value));
+        const buyIn = Number(box.querySelector(".as-buy input").value);
+        if (!ids.length) { say("Pick at least one game for the side bet.", "bad"); return; }
+        btn.disabled = true;
+        try {
+          let d;
+          try { d = await post({ action: "start", games: ids, buyIn }); }
+          catch (e) {
+            if (e.status !== 409 || !confirm("A side bet with players in it is already running. Replace it? Everyone in it is out.")) throw e;
+            d = await post({ action: "start", games: ids, buyIn, replace: true });
+          }
+          say("Side bet is live. Everyone gets asked when they open the board.", "ok");
+          render(d.pot);
+          refreshApp();
+        } catch (e) { say(`Side bet not started: ${e.message}`, "bad"); btn.disabled = false; }
+      });
+      return;
+    }
+    const open = now < pot.closesAt;
+    const ins = Object.keys(pot.entrants || {});
+    const st = sideStandings(pot), out = sideOutcome(pot, st);
+    const net = Number.isInteger(out.net) ? out.net : out.net.toFixed(2);
+    const result = !open && out.final ? (out.n < 2 ? "One taker, no bet." : out.push ? "Dead heat, no money moves." : `${out.winners.map(shown).join(" and ")} ${out.winners.length > 1 ? "split" : "takes"} $${out.total}, collecting $${net}${out.winners.length > 1 ? " each" : ""} from the others.`) : "";
+    const owes = (n) => !open && out.final && out.losers.includes(n);
+    const won = (n) => !open && out.final && !out.push && out.winners.includes(n);
+    box.innerHTML = `<div class="as-lead"><b>Week ${pot.week} side bet</b> · $${pot.buyIn} · ${ins.length} in · $${ins.length * pot.buyIn} pot<br>${open ? `Entry closes ${esc(etTime(pot.closesAt))} ET` : `Closed ${esc(etTime(pot.closesAt))} ET`}</div>
+      <div class="as-list">${sideGames(pot).map((g) => `<span>G${g.id} ${esc(g.awayShort)} @ ${esc(g.homeShort)}</span>`).join("")}</div>
+      ${result ? `<div class="as-result">${esc(result)}</div>` : ""}
+      <div class="as-people">${ins.length ? ins.map((n) => `<label class="as-person${owes(n) ? " owes" : ""}"><span>${esc(shown(n))}${owes(n) ? ` <small>owes $${pot.buyIn}</small>` : ""}</span>${won(n) ? `<span class="as-won">collects</span>` : `<span class="as-paid"><input type="checkbox" data-paid="${esc(n)}"${pot.entrants[n].paid ? " checked" : ""}> paid</span>`}</label>`).join("") : `<div class="as-none">Nobody in yet.</div>`}</div>
+      ${pot.declined?.length ? `<div class="as-out">No thanks: ${pot.declined.map((n) => esc(shown(n))).join(", ")}</div>` : ""}
+      <div class="as-btns"><button type="button" class="admin-btn as-refresh">↻ Refresh</button><button type="button" class="admin-btn as-cancel">Cancel side bet</button></div>`;
+    box.querySelectorAll("[data-paid]").forEach((cb) => cb.addEventListener("change", async () => {
+      try { render((await post({ action: "paid", manager: cb.dataset.paid, paid: cb.checked })).pot); }
+      catch (e) { cb.checked = !cb.checked; say(`Not saved: ${e.message}`, "bad"); }
+    }));
+    box.querySelector(".as-refresh").addEventListener("click", load);
+    box.querySelector(".as-cancel").addEventListener("click", async () => {
+      if (!confirm(ins.length ? `Cancel the side bet? ${ins.length} ${ins.length === 1 ? "player is" : "players are"} in.` : "Cancel the side bet?")) return;
+      try { await post({ action: "cancel" }); say("Side bet cancelled.", "ok"); render(null); refreshApp(); }
+      catch (e) { say(`Not cancelled: ${e.message}`, "bad"); }
+    });
+  };
+  await load();
 }
 
 // One sheet to say yes and pick: the pot's games, a team and ATS or straight
@@ -2948,7 +3048,7 @@ function openSideSheet(asked) {
       <button type="button" class="sp-x" aria-label="Close">✕</button>
       <div class="sp-sheet-kick">💰 LATE NIGHT SIDE POT</div>
       <div class="sp-sheet-lead">${asked && !inAlready ? "The week's decided, but the night isn't. " : ""}Pick ${games.length === 1 ? "this game" : `these ${games.length} games`}, <b>$${pot.buyIn}</b> to get in. Most points takes the pot; ties split it.</div>
-      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">G${g.id} · ${escapeCd(g.kickoffLabel || "")}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div></div>`).join("")}</div>
+      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">G${g.id} · ${(() => { const l = latestLive[g.id]; return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">ON NOW · ${escapeCd(shortStatus(l.detail || ""))} · ${escapeCd(g.awayShort)} ${l.awayScore}, ${escapeCd(g.homeShort)} ${l.homeScore}</b>` : escapeCd(g.kickoffLabel || ""); })()}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div></div>`).join("")}</div>
       <div class="sp-sheet-note">Picks lock at ${closes} ET. Nobody sees yours until then. Money is settled between you, not in the app.</div>
       ${err ? `<div class="sp-err">${escapeCd(err)}</div>` : ""}
       <div class="sp-sheet-btns"><button type="button" class="sp-no"${busy ? " disabled" : ""}>${inAlready ? "Back out" : "No thanks"}</button><button type="button" class="sp-go"${ready && !busy ? "" : " disabled"}>${busy ? "Saving…" : inAlready ? "Save picks" : `I'm in · $${pot.buyIn}`}</button></div>
@@ -2977,6 +3077,77 @@ function openSideSheet(asked) {
   });
   paint();
 }
+
+// The Side bet tab: only for players in this week's side bet. The bet's
+// games with live scores (tap one for the gamecast), your pick on each and
+// what it is paying, and who is in. Everyone's picks show once entry has
+// closed, never before.
+const sideScreen = document.getElementById("side-screen");
+const navSideBtn = document.getElementById("nav-side-btn");
+const sideIn = () => { const pot = potNow(); return !!pot && !!currentManager && !!pot.entrants?.[currentManager] && window.LEAGUE?.sport !== "nfl"; };
+function updateSideNav() {
+  const on = sideIn();
+  navSideBtn?.classList.toggle("hidden", !on);
+  if (!on && sideScreen && !sideScreen.classList.contains("hidden")) navScoreboardBtn.click();
+}
+function showSideScreen() {
+  if (!sideIn()) return;
+  rememberScroll();
+  [loginScreen, picksScreen, scoreboardScreen, historyScreen, triviaScreen].forEach((s) => s.classList.add("hidden"));
+  sideScreen.classList.remove("hidden");
+  setActiveNav("side");
+  enterScreen("side");
+  renderSideScreen();
+  Promise.all([fetchSidePot(true), fetchLiveScores().catch(() => {})]).then(() => { updateSideNav(); renderSideScreen(); });
+}
+navSideBtn?.addEventListener("click", showSideScreen);
+function renderSideScreen() {
+  const body = document.getElementById("side-screen-body");
+  if (!body || sideScreen.classList.contains("hidden")) return;
+  const pot = potNow();
+  if (!pot) { body.innerHTML = `<div class="ss-empty">No side bet this week.</div>`; return; }
+  const me = currentManager, mine = pot.entrants[me]?.picks || {};
+  const names = Object.keys(pot.entrants || {});
+  const open = sideOpen(pot);
+  const results = computeLiveResults(latestLive);
+  const st = sideStandings(pot), out = sideOutcome(pot, st);
+  const myRow = st.rows.find((r) => r.name === me);
+  const cd = open ? kickoffCountdown(new Date(pot.closesAt).toISOString()) : null;
+  const status = open ? `Picks lock in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b>`
+    : !out.final ? `You have <b>${myRow?.pts ?? 0}</b>${myRow?.fly ? ` <span class="ss-fly">+${myRow.fly} live</span>` : ""}`
+    : out.n < 2 ? "One taker. No bet." : out.push ? "Dead heat. No money moves."
+    : out.winners.includes(me) ? (out.winners.length > 1 ? `You split it. You collect <b>${sideMoney(out.net)}</b>.` : `You won. You collect <b>${sideMoney(out.net)}</b>.`)
+    : `${escapeCd(sideNames(out.winners))} ${out.winners.length > 1 ? "split" : "took"} it. You owe <b>${sideMoney(pot.buyIn)}</b>.`;
+  const bug = (g) => {
+    const l = latestLive[g.id], kicked = Date.now() >= new Date(g.kickoff).getTime();
+    const on = l?.found && l.state === "in" && !l.completed, fin = !!results[g.id];
+    const showScore = kicked && l?.found && (on || fin);
+    const pick = mine[g.id];
+    const cell = myRow?.cells.find((c) => c.g.id === g.id);
+    const side = (team, id, short, score) => `<div class="ss-team${pick?.team === team ? " mine" : ""}"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${escapeCd(short)}</span><b>${showScore ? score : ""}</b></div>`;
+    const stat = fin ? "FINAL" : on ? escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`)) : escapeCd(g.kickoffLabel || "");
+    const line = pick ? `${escapeCd(pick.team === g.home ? g.homeShort : g.awayShort)} ${pick.mode === "SU" ? "to win" : `${pick.team === g.favorite ? "-" : "+"}${g.spread}`}` : "No pick";
+    return `<button type="button" class="ss-bug${on ? " live" : ""}${fin ? " final" : ""}" data-g="${g.id}">
+      <div class="ss-bug-top"><span>G${g.id}</span><span class="ss-stat">${on ? "<u></u>" : ""}${stat}</span></div>
+      ${side(g.away, g.awayId, g.awayShort, l?.awayScore ?? 0)}${side(g.home, g.homeId, g.homeShort, l?.homeScore ?? 0)}
+      <div class="ss-pick ${cell?.cls || "open"}"><span>YOUR PICK · ${line}</span><b>${cell ? (cell.cls === "open" ? `${cell.txt} PTS` : cell.txt) : ""}</b></div>
+    </button>`;
+  };
+  const who = open
+    ? `<div class="ss-sec">WHO'S IN · ${names.length}</div><div class="ss-names">${names.map((n) => `<span class="${n === me ? "me" : ""}">${escapeCd(shown(n))}</span>`).join("")}</div><div class="ss-note">Everyone's picks show here when entry closes.</div>`
+    : `<div class="ss-sec">STANDINGS</div><div class="sp-board">${st.rows.map((r) => `<div class="sp-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}"><span class="sp-nm">${escapeCd(shown(r.name))}</span><span class="sp-cells">${r.cells.map((c) => { const id = c.pick ? sideTeamId(c.g, c.pick.team) : null; return `<span class="sp-c ${c.cls}">${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ""}<i>${c.pick ? c.pick.mode : ""}</i><b>${c.txt}</b></span>`; }).join("")}</span><span class="sp-pts">${r.pts}${r.fly ? `<small>+${r.fly}</small>` : ""}</span></div>`).join("")}</div>`;
+  body.innerHTML = `<div class="ss-head"><span class="sp-kick">💰 SIDE BET</span><span class="sp-pot">${sideMoney(names.length * pot.buyIn)}</span></div>
+    <div class="ss-status">${status}</div>
+    <div class="ss-sub">${names.length} in · ${sideMoney(pot.buyIn)} each · most points takes it, ties split</div>
+    <div class="ss-bugs">${sideGames(pot).map(bug).join("")}</div>
+    ${open ? `<button type="button" class="sp-btn ss-edit" data-sp="open">EDIT MY PICKS</button>` : ""}
+    ${who}`;
+}
+document.getElementById("side-screen-body")?.addEventListener("click", (e) => {
+  if (e.target.closest("[data-sp='open']")) return openSideSheet(false);
+  const b = e.target.closest(".ss-bug");
+  if (b) { track("side-game", { event: true, d: b.dataset.g }); openInsights(Number(b.dataset.g)); }
+});
 
 // Results are derived straight from ESPN's live feed once a game goes
 // final — no manual score entry. A game only counts once ESPN marks it
@@ -5394,6 +5565,8 @@ setInterval(() => {
     if (!document.getElementById("payouts-panel")?.classList.contains("hidden")) renderPayouts();
   renderRecap(); // memoised: only the Thursday cutoff can change anything here
   }
+  // The Side bet tab keeps its scores and standings moving the same way.
+  if (!sideScreen.classList.contains("hidden")) Promise.all([fetchLiveScores().catch(() => {}), fetchSidePot()]).then(() => withScrollPreserved(() => { updateSideNav(); renderSideScreen(); }));
   // The off-board branch that fetched live scores here every tick is gone.
   // It fed the header chip back when the chip reported live games; the
   // chip is a to-do reminder now and reads nothing from the feed.

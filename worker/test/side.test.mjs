@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newPot, cleanSidePicks, joinEntry, declineEntry, viewPot, entryKey, sideKey } from "../src/side.js";
+import { newPot, cleanSidePicks, joinEntry, declineEntry, viewPot, entryKey, sideKey, ENTRY_MIN_MS } from "../src/side.js";
 
 const t = 1_800_000_000_000, H = 3600e3;
 const g = (id, h) => ({ id, away: `Away ${id}`, home: `Home ${id}`, awayShort: `A${id}`, homeShort: `H${id}`, favorite: `Home ${id}`, spread: 7, kickoff: new Date(t + h * H).toISOString() });
-const slate = { games: [g(1, -5), g(8, 1), g(9, 2), g(10, 4)] };
+const slate = { games: [g(1, -5), g(7, -0.25), g(8, 1), g(9, 2), g(10, 4)] };
 
 test("a pot takes games still to kick off, sorted, and closes at the first", () => {
   const { pot } = newPot({ week: 7, games: [10, 8, 9], buyIn: 25, slate, now: t });
@@ -15,8 +15,17 @@ test("a pot takes games still to kick off, sorted, and closes at the first", () 
   assert.equal(entryKey(7, pot.id, "Jake"), `side:w7:${pot.id}:Jake`);
 });
 
+test("a game that just kicked off can go in; entry then stays open 20 minutes", () => {
+  const { pot } = newPot({ week: 7, games: [8, 7], buyIn: 25, slate, now: t });
+  assert.deepEqual(pot.games, [7, 8]);
+  assert.equal(pot.closesAt, t + ENTRY_MIN_MS);
+  // About to kick off: still the 20 minutes, not the kickoff a minute away.
+  const soon = { games: [g(8, 0.02)] };
+  assert.equal(newPot({ week: 7, games: [8], buyIn: 25, slate: soon, now: t }).pot.closesAt, t + ENTRY_MIN_MS);
+});
+
 test("a pot refuses started games, unknown games, bad buy-ins and too many games", () => {
-  assert.match(newPot({ week: 7, games: [1, 8], buyIn: 25, slate, now: t }).error, /kicked off/);
+  assert.match(newPot({ week: 7, games: [1, 8], buyIn: 25, slate, now: t }).error, /more than 30 minutes/);
   assert.match(newPot({ week: 7, games: [5], buyIn: 25, slate, now: t }).error, /not on this week/);
   assert.match(newPot({ week: 7, games: [8], buyIn: 2.5, slate, now: t }).error, /whole dollar/);
   assert.match(newPot({ week: 7, games: [8], buyIn: 0, slate, now: t }).error, /whole dollar/);
