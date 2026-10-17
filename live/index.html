@@ -175,6 +175,25 @@ body.pv-open .tabs { display: none; }
 .seg button.on { color: var(--text); background: rgba(139, 108, 255, .25); box-shadow: inset 0 0 0 1px rgba(139, 108, 255, .5); }
 .sub2 { margin: 0 0 8px; font: 600 11px/1.3 var(--mono); letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
 
+/* The week: when in the day, a punch card */
+.pc { display: grid; grid-template-columns: var(--lab, 148px) repeat(24, minmax(0, 1fr)); gap: 3px; align-items: center; }
+@media (max-width: 640px) { .pc { --lab: 64px; gap: 2px; } }
+.pc-c { max-height: 30px; }
+.pc-l { display: flex; flex-direction: column; line-height: 1.1; padding-right: 6px; }
+.pc-l b { font-size: 13px; }
+.pc-l small { font: 10.5px var(--mono); color: var(--dim); }
+.pc-l.t b { color: var(--green); }
+.pc-c { position: relative; aspect-ratio: 1; max-height: 26px; display: grid; place-items: center; border-radius: 4px; background: rgba(255, 255, 255, .025); font-style: normal; }
+.pc-c s { display: block; width: 0; height: 0; border-radius: 50%; background: var(--past); text-decoration: none; }
+.pc-c[data-tip]:hover s { filter: brightness(1.3); }
+.pc-c.now { box-shadow: inset 0 0 0 1.5px var(--green); }
+.pc-c.fut { background: none; }
+.pc-x { font: 10px var(--mono); color: var(--dim); white-space: nowrap; overflow: visible; }
+.pc > span:nth-last-child(-n+24) { padding-top: 4px; }
+.sub2.row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.sub2.row .seg { margin-left: auto; }
+.seg.sm button { padding: 3px 8px; font-size: 11px; letter-spacing: 0; text-transform: none; }
+
 /* The week: who by day */
 .hm { display: grid; grid-template-columns: var(--lab, 148px) repeat(7, minmax(0, 1fr)); gap: 4px; align-items: center; }
 @media (max-width: 640px) { .hm { --lab: 112px; gap: 3px; } }
@@ -364,7 +383,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { asks: [], range: store.get("brochiefs_live_range") === "7d" ? "7d" : "24h", wk: null, sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: store.get("brochiefs_live_range") === "7d" ? "7d" : "24h", wk: null, sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
 
   // --- Formatting --------------------------------------------------------
   const name = (n) => SHOWN[n] || n;
@@ -515,7 +534,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.wk?.at, st.asks.length, st.asks[0]?.ts, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -589,30 +608,37 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const seg = `<span class="seg end" role="group" aria-label="Range"><button type="button" class="${st.range === "24h" ? "on" : ""}" data-range="24h">24h</button><button type="button" class="${st.range === "7d" ? "on" : ""}" data-range="7d">7 days</button></span>`;
     const weekView = () => {
       if (!wk) return `<div class="note">Loading the week…</div>`;
-      // Who, which day: minutes in the app, darker for more.
+      // Who, which day: visits (or minutes, by the switch), darker for more;
+      // a tap or hover gives both.
+      const byMin = st.metric === "min";
       const cell = (n, d) => { const mine = wv.filter((v) => v.n === n && wTime(v, d, d + DAY) > 0); return { n: mine.length, ms: mine.reduce((a, v) => a + wTime(v, d, d + DAY), 0), f: [...new Set(mine.flatMap((v) => v.f.map(featLab)).filter(Boolean))] }; };
       const grid = order.map((n) => dayList.map((d) => cell(n, d)));
-      const maxMs = Math.max(1, ...grid.flat().map((c) => c.ms));
+      const val = (x) => (byMin ? x.ms : x.n);
+      const maxV = Math.max(1, ...grid.flat().map(val));
       const hmHtml = `<div class="hm">
         <span></span>${dayList.map((d) => `<span class="hm-h${d === today0 ? " t" : ""}">${esc(dShort(d))}<small>${new Date(d).getDate()}</small></span>`).join("")}
-        ${order.map((n, r) => laneLabel(n) + dayList.map((d, c) => { const x = grid[r][c], a = x.ms ? 0.16 + 0.74 * Math.sqrt(x.ms / maxMs) : 0; return `<i class="hm-c${x.ms ? "" : " z"}${st.filter && st.filter !== n ? " dim" : ""}" style="${x.ms ? `background:rgba(139, 108, 255, ${a.toFixed(2)})` : ""}" data-tip="${esc(`<b>${name(n)} · ${dLong(d)}</b>${x.n ? `${x.n} visit${x.n === 1 ? "" : "s"} · ${mins(x.ms)}${x.f.length ? `<br>${x.f.slice(0, 5).join(", ")}` : ""}` : "Not in"}`)}">${mins(x.ms)}</i>`; }).join("")).join("")}
+        ${order.map((n, r) => laneLabel(n) + dayList.map((d, c) => { const x = grid[r][c], v = val(x), a = v ? 0.16 + 0.74 * Math.sqrt(v / maxV) : 0; return `<i class="hm-c${x.n ? "" : " z"}${st.filter && st.filter !== n ? " dim" : ""}" style="${v ? `background:rgba(139, 108, 255, ${a.toFixed(2)})` : ""}" data-tip="${esc(`<b>${name(n)} · ${dLong(d)}</b>${x.n ? `${x.n} visit${x.n === 1 ? "" : "s"} · ${mins(x.ms)} in the app${x.f.length ? `<br>${x.f.slice(0, 5).join(", ")}` : ""}` : "Not in"}`)}">${x.n ? (byMin ? mins(x.ms) : x.n) : ""}</i>`; }).join("")).join("")}
       </div>`;
-      // A lane per day: when in the day each visit was.
-      const lanesW = [...dayList].reverse().map((d) => {
-        const mine = wv.filter((v) => wTime(v, d, d + DAY) > 0 && (!st.filter || v.n === st.filter));
-        const blocks = mine.map((v) => { const a = Math.max(v.start, d), b = Math.min(v.end, d + DAY, now); return `<i class="blk wk${v.live ? " live" : ""}" style="left:${(((a - d) / DAY) * 100).toFixed(3)}%;width:${(((b - a) / DAY) * 100).toFixed(3)}%" data-n="${esc(v.n)}" data-tip="${esc(`<b>${name(v.n)}${v.live ? " · in now" : ""}</b>${hm(v.start)}${v.live ? "" : ` to ${hm(v.end)}`} · ${dur(v.end - v.start)}${v.f.length ? `<br>${[...new Set(v.f.map(featLab).filter(Boolean))].slice(0, 5).join(", ")}` : ""}`)}"></i>`; }).join("");
-        return `<div class="ln-l dl${d === today0 ? " in" : ""}"><span class="t"><span class="nm">${esc(dLong(d).replace(/, .*/, ""))}</span><span class="st num">${mine.length} visit${mine.length === 1 ? "" : "s"}</span></span></div><div class="ln-t">${blocks}${d === today0 ? `<i class="nowtick" style="left:${(((now - d) / DAY) * 100).toFixed(3)}%"></i>` : ""}</div>`;
-      }).join("");
-      const q = (h) => `${((h / 24) * 100).toFixed(3)}%`;
+      // When in the day: a punch card, a row per day and a column per hour,
+      // a bigger, brighter dot for more visits starting in that hour.
+      const pc = dayList.map((d) => Array.from({ length: 24 }, (_, h) => ({ d, h, n: 0, who: new Set() })));
+      for (const v of wv) {
+        if (st.filter && v.n !== st.filter) continue;
+        const r = dayList.findIndex((d) => v.start >= d && v.start < d + DAY);
+        if (r < 0) continue;
+        const c = pc[r][new Date(v.start).getHours()]; c.n++; c.who.add(v.n);
+      }
+      const maxP = Math.max(1, ...pc.flat().map((c) => c.n)), nowH = new Date(now).getHours();
+      const hourLabel = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
+      const pcHtml = `<div class="pc">
+        ${pc.map((row, r) => { const d = dayList[r], tot = row.reduce((a, c) => a + c.n, 0); return `<span class="pc-l${d === today0 ? " t" : ""}"><b>${esc(dShort(d))}</b><small>${tot}</small></span>${row.map((c) => { const k = c.n ? Math.sqrt(c.n / maxP) : 0; return `<i class="pc-c${d === today0 && c.h === nowH ? " now" : ""}${d === today0 && c.h > nowH ? " fut" : ""}"${c.n ? ` data-tip="${esc(`<b>${dLong(d)} · ${hourLabel(c.h)}</b>${c.n} visit${c.n === 1 ? "" : "s"} · ${[...c.who].map(name).join(", ")}`)}"` : ""}><s style="${c.n ? `width:${(30 + 70 * k).toFixed(0)}%;height:${(30 + 70 * k).toFixed(0)}%;opacity:${(0.45 + 0.55 * k).toFixed(2)}` : ""}"></s></i>`; }).join("")}`; }).join("")}
+        <span></span>${Array.from({ length: 24 }, (_, h) => `<span class="pc-x">${h % 3 === 0 ? hourLabel(h) : ""}</span>`).join("")}
+      </div>`;
       const firstTap = (wk.feed || []).reduce((m, e) => Math.min(m, e.at), now);
-      return `<div class="sub2">Who was in, day by day ${st.filter ? "" : "· tap a name to follow one person"}</div>${hmHtml}
-        <div class="sub2" style="margin-top:18px">When in the day${st.filter ? ` · ${esc(name(st.filter))}` : " · everyone"}</div>
-        <div class="tl-grid">
-          <div class="tl-over">${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<i class="hr${i === 4 ? " mid" : ""}" style="left:${q(i * 3)}"></i>`).join("")}<i class="night" style="left:0;width:${q(7)}"></i></div>
-          ${lanesW}
-          <div class="tl-ax">${["12a", "3a", "6a", "9a", "12p", "3p", "6p", "9p"].map((l, i) => `<span style="left:${q(i * 3)}">${l}</span>`).join("")}</div>
-        </div>
-        ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:8px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}`;
+      return `<div class="sub2 row">Who was in, day by day ${st.filter ? "" : "· tap a name to follow one person"}<span class="seg sm" role="group" aria-label="Show"><button type="button" class="${byMin ? "" : "on"}" data-metric="visits">Visits</button><button type="button" class="${byMin ? "on" : ""}" data-metric="min">Minutes</button></span></div>${hmHtml}
+        <div class="sub2" style="margin-top:20px">When in the day${st.filter ? ` · ${esc(name(st.filter))}` : " · everyone"} · visits by hour</div>
+        ${pcHtml}
+        ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:10px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}`;
     };
     const timeline = wk || st.range === "7d" ? `<section class="tl panel" id="sec-tl">
       <div class="ph"><h2>Last 7 days</h2>${seg}</div>
@@ -785,6 +811,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       if (x) openPreview({ go: "ask", pid: `ask|${x.ts}`, who: x.n || "", at: String(x.ts), what: x.q });
       return;
     }
+    if (b.dataset.metric) { st.metric = b.dataset.metric; store.set("brochiefs_live_metric", st.metric); render(); return; }
     if (b.dataset.range) {
       st.range = b.dataset.range; store.set("brochiefs_live_range", st.range); render();
       if (st.range === "7d" && (!st.wk || Date.now() - st.wk.at > 60000)) poll(false);
