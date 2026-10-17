@@ -3262,6 +3262,8 @@ function showPathIntro() {
     <button type="button" class="pi-ok">GOT IT</button>
   </div>`;
   document.body.appendChild(m);
+  // Seen once it's on screen, so closing the app over it doesn't bring it back.
+  try { localStorage.setItem(PATH_INTRO_KEY, String(Date.now())); } catch {}
   const done = () => { try { localStorage.setItem(PATH_INTRO_KEY, String(Date.now())); } catch {} m.classList.add("out"); setTimeout(() => m.remove(), 220); };
   m.querySelector(".pi-ok").addEventListener("click", done);
   m.querySelector(".pi-x").addEventListener("click", done);
@@ -3400,16 +3402,17 @@ async function sharePath(name, sc) {
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 let pathRunToken = 0;
-// Which paths this phone has already watched run, and with which games
-// final at the time. A path opens straight on its card until another game
-// goes final; then the next open plays the full run again, since the path
-// may have changed.
+// Which paths this phone has already watched run, when, and with which
+// games final at the time. A path opens straight on its card until another
+// game goes final or three hours pass; then the next open plays the full
+// run again. A first look always plays it.
 const PATH_SEEN_KEY = () => `brochiefs_pathseen_w${currentWeek}`;
+const PATH_FRESH_MS = 3 * 3600000;
 function finalsSig() { const r = computeLiveResults(latestLive); return GAMES.filter((g) => r[g.id]).map((g) => g.id).sort((x, y) => x - y).join(","); }
 function pathSeenMap() { try { const v = JSON.parse(localStorage.getItem(PATH_SEEN_KEY()) || "{}"); return v && !Array.isArray(v) && typeof v === "object" ? v : {}; } catch { return {}; } }
-function pathSeen(name) { return pathSeenMap()[name] === finalsSig(); }
+function pathSeen(name) { const v = pathSeenMap()[name]; return !!v && v.s === finalsSig() && Date.now() - (Number(v.t) || 0) < PATH_FRESH_MS; }
 function markPathSeen(name) {
-  try { const v = pathSeenMap(); v[name] = finalsSig(); localStorage.setItem(PATH_SEEN_KEY(), JSON.stringify(v)); } catch {}
+  try { const v = pathSeenMap(); v[name] = { s: finalsSig(), t: Date.now() }; localStorage.setItem(PATH_SEEN_KEY(), JSON.stringify(v)); } catch {}
 }
 // A result the path needs that pays this manager nothing is there to stop
 // someone: the rival it costs most, the one highest in the standings whose
@@ -3480,7 +3483,9 @@ function openPathRun(name, replay = false) {
   const results = computeLiveResults(latestLive);
   const pts = Object.fromEntries(MANAGERS.map((n) => [n, GAMES.reduce((t, g) => t + (results[g.id] ? scorePick(g, all[n]?.picks?.[g.id], results[g.id]) || 0 : 0), 0)]));
   const me = shown(name).toUpperCase();
-  let fast = (!replay && pathSeen(name)) || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Reduce Motion still plays the run game by game; only the slides (in
+  // CSS) and the closing fold are left out.
+  let fast = !replay && pathSeen(name);
   const m = document.createElement("div");
   m.className = "pr-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", `Path to win for ${shown(name)}`);
   // A DOS window: the title bar on top (drag it down, or tap X, to close),
