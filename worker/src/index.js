@@ -1,6 +1,7 @@
 import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
 import { LiveRoom, deviceToken, deviceTokenOk } from "./live.js";
+import { sideKey, entryKey, newPot, cleanSidePicks, joinEntry, declineEntry, viewPot } from "./side.js";
 
 // The live room has to be exported from the main module for Cloudflare.
 export { LiveRoom };
@@ -120,6 +121,9 @@ export default {
     }
     if (url.pathname === "/picks") {
       return handlePicks(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/side") {
+      return handleSide(request, env, corsHeaders, url);
     }
     if (url.pathname === "/results") {
       return handleResults(request, env, corsHeaders, url);
@@ -1121,6 +1125,75 @@ export function maskPicks(picks, kickoffs, now, viewer) {
     out[m] = { ...st, picks: p, ...(tbOpen && String(st.tiebreaker ?? "").trim() !== "" ? { tiebreaker: "hidden" } : {}) };
   }
   return out;
+}
+
+// --- Side pot (see side.js) ----------------------------------------------
+// GET  /side?week=N[&me=&token=]   the week's pot, picks hidden until it closes
+// POST /side?key=...  { action: "start", week, games, buyIn, replace? }
+//                     { action: "cancel", week } | { action: "paid", week, manager, paid }
+// POST /side          { action: "join", manager, token, picks } | { action: "decline", manager, token }
+async function sideEntries(env, pot) {
+  const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(entryKey(pot.week, pot.id, m), "json")]));
+  return Object.fromEntries(rows.filter(([, e]) => e));
+}
+async function handleSide(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  const now = Date.now();
+  const noStore = { ...corsHeaders, "Cache-Control": "no-store" };
+  const keep = { expirationTtl: 120 * 24 * 3600 };
+  if (request.method === "GET") {
+    const week = await weekFrom(env, url);
+    const pot = await env.LIFTR_KV.get(sideKey(week), "json");
+    if (!pot) return json({ week, pot: null }, 200, noStore);
+    const viewer = isSlateAdmin(env, url) ? { all: true, me: null } : await picksViewer(env, url);
+    return json({ week, pot: viewPot(pot, await sideEntries(env, pot), now, viewer) }, 200, noStore);
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const action = body?.action;
+  const week = Number.isInteger(body?.week) && body.week >= 1 ? body.week : await weekFrom(env, url);
+  const pot = await env.LIFTR_KV.get(sideKey(week), "json");
+  const viewAll = { all: true, me: null };
+
+  if (action === "start" || action === "cancel" || action === "paid") {
+    if (!isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+    if (action === "cancel") { await env.LIFTR_KV.delete(sideKey(week)); return json({ ok: true, pot: null }, 200, noStore); }
+    if (action === "paid") {
+      const k = pot && PICKS_MANAGERS.includes(body.manager) ? entryKey(week, pot.id, body.manager) : null;
+      const e = k ? await env.LIFTR_KV.get(k, "json") : null;
+      if (!e?.in) return json({ error: "Not in the pot" }, 400, corsHeaders);
+      if (body.paid) e.paid = true; else delete e.paid;
+      await env.LIFTR_KV.put(k, JSON.stringify(e), keep);
+      return json({ ok: true, pot: viewPot(pot, await sideEntries(env, pot), now, viewAll) }, 200, noStore);
+    }
+    // A pot people have bought into is only replaced on purpose.
+    const inNow = pot ? Object.values(await sideEntries(env, pot)).filter((e) => e.in).length : 0;
+    if (inNow && !body.replace) return json({ error: "A side pot with entrants is already running.", entrants: inNow }, 409, corsHeaders);
+    const made = newPot({ week, games: body.games, buyIn: body.buyIn, slate: await env.LIFTR_KV.get(gamesKey(week), "json"), now });
+    if (made.error) return json({ error: made.error }, 400, corsHeaders);
+    await env.LIFTR_KV.put(sideKey(week), JSON.stringify(made.pot), keep);
+    return json({ ok: true, pot: viewPot(made.pot, {}, now, viewAll) }, 200, noStore);
+  }
+
+  if (action !== "join" && action !== "decline") return json({ error: "Unknown action" }, 400, corsHeaders);
+  const manager = body?.manager;
+  if (!PICKS_MANAGERS.includes(manager)) return json({ error: "Invalid manager" }, 400, corsHeaders);
+  if ((await authMode(env)) === "on" && (await tokenOwner(env, body?.token)) !== manager) return json({ error: `Sign in as ${manager} first.`, needsLogin: true }, 401, corsHeaders);
+  if (!pot) return json({ error: "There is no side pot this week." }, 404, corsHeaders);
+  const k = entryKey(week, pot.id, manager);
+  const prev = await env.LIFTR_KV.get(k, "json");
+  let done;
+  if (action === "join") {
+    const clean = cleanSidePicks(pot, await env.LIFTR_KV.get(gamesKey(week), "json"), body.picks);
+    if (clean.error) return json({ error: clean.error }, 400, corsHeaders);
+    done = joinEntry(pot, prev, clean.picks, now);
+  } else done = declineEntry(pot, prev, now);
+  if (done.error) return json({ error: done.error }, 409, corsHeaders);
+  await env.LIFTR_KV.put(k, JSON.stringify(done.entry), keep);
+  const entries = await sideEntries(env, pot);
+  entries[manager] = done.entry; // read-after-write in KV can lag, so this answer is certain
+  return json({ ok: true, pot: viewPot(pot, entries, now, { all: false, me: manager }) }, 200, noStore);
 }
 
 async function handlePicks(request, env, corsHeaders, url) {

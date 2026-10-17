@@ -2741,7 +2741,9 @@ function paintScoreboard(fetched, live, cached) {
   renderMyScore(ranked, cloudPicks, live);
   renderWeekChamp(ranked, results);
   renderInsertCoin(cloudPicks);
+  renderSidePot();
   if (!cached) maybeShowPathIntro();
+  if (!cached) fetchSidePot().then(() => { renderSidePot(); maybeShowSidePrompt(); });
   // The clock lives inside the strip when there is one, so the board does
   // not spend a whole line on it. Seconds are gone: the poll is every 30,
   // so second-level precision was never true.
@@ -2779,6 +2781,202 @@ function renderInsertCoin(cloudPicks) {
   el.classList.remove("hidden");
 }
 document.getElementById("insert-coin")?.addEventListener("click", () => navPicksBtn.click());
+
+// --- Side pot --------------------------------------------------------------
+// Once the week is decided the commissioner can open a late night side pot
+// on a few games still to come (worker/src/side.js). Everyone picks the
+// same games, scored like the main pool; most points takes the pot and
+// ties split it. Each player is asked once when they open the board, picks
+// in one sheet, and the board carries a card: who is in before the games,
+// a small leaderboard once they start, who owes whom at the end. The app
+// keeps the ledger only; nobody pays through it. College only.
+let sidePot = null, sidePotAt = 0, sidePotWeek = 0, sideInFlight = null, sidePromptShown = false;
+const potNow = () => (sidePot && sidePotWeek === currentWeek && sidePot.week === currentWeek ? sidePot : null);
+const sideOpen = (pot) => !!pot && pot.open && Date.now() < pot.closesAt;
+const sideDoneKey = (pot, who) => `brochiefs_side_${pot.week}_${pot.id}_${who}`;
+function fetchSidePot(force = false) {
+  if (!WORKER_URL || window.LEAGUE?.sport === "nfl") return Promise.resolve(null);
+  if (!force && sidePotWeek === currentWeek && Date.now() - sidePotAt < 20000) return Promise.resolve(potNow());
+  if (sideInFlight) return sideInFlight;
+  const who = currentManager || loadMe();
+  const me = who && MANAGERS.includes(who) ? `&me=${encodeURIComponent(who)}${tokenFor(who) ? `&token=${encodeURIComponent(tokenFor(who))}` : ""}` : "";
+  const week = currentWeek;
+  sideInFlight = fetchCapped(`${WORKER_URL}/side?week=${week}${me}&t=${Date.now()}`, { cache: "no-store" }, 8000)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => { if (d && "pot" in d) { sidePot = d.pot; sidePotAt = Date.now(); sidePotWeek = week; } return potNow(); })
+    .catch(() => potNow())
+    .finally(() => { sideInFlight = null; });
+  return sideInFlight;
+}
+const sideGames = (pot) => pot.games.map((id) => GAMES.find((g) => g.id === id)).filter(Boolean);
+const sideMoney = (x) => `$${Number.isInteger(x) ? x : x.toFixed(2)}`;
+const sideNames = (list) => list.map((n) => shown(n)).join(list.length === 2 ? " and " : ", ");
+// Each entrant's side points: banked from finals, in flight from games on now.
+function sideStandings(pot, live = latestLive) {
+  const results = computeLiveResults(live);
+  const games = sideGames(pot);
+  const rows = Object.entries(pot.entrants || {}).map(([name, e]) => {
+    let pts = 0, fly = 0;
+    const cells = games.map((g) => {
+      const pick = e.picks?.[g.id];
+      if (!pick) return { g, pick: null, cls: "hidden", txt: "?" };
+      if (results[g.id]) { const p = scorePick(g, pick, results[g.id]) || 0; pts += p; return { g, pick, cls: p ? "hit" : "miss", txt: p ? `+${p}` : "0" }; }
+      const lv = live[g.id];
+      if (lv?.found && lv.state === "in" && Number.isFinite(lv.awayScore) && Number.isFinite(lv.homeScore)) {
+        const p = scorePick(g, pick, lv) || 0; fly += p;
+        return { g, pick, cls: p ? "live-hit" : "live-miss", txt: p ? `+${p}` : "0" };
+      }
+      return { g, pick, cls: "open", txt: String(pointValue(g, pick.team, pick.mode)) };
+    });
+    return { name, pts, fly, cells, paid: !!e.paid };
+  });
+  rows.sort((a, b) => b.pts + b.fly - (a.pts + a.fly) || b.pts - a.pts || a.name.localeCompare(b.name));
+  return { rows, games, final: games.length > 0 && games.every((g) => results[g.id]) };
+}
+// The money once every pot game is final. Ties split the pot; one entrant,
+// or everyone level, is no bet.
+function sideOutcome(pot, st = sideStandings(pot)) {
+  const n = st.rows.length, total = n * pot.buyIn;
+  const out = { n, total, final: st.final, winners: [], losers: [], share: 0, net: 0 };
+  if (!st.final || n < 2) return out;
+  const top = Math.max(...st.rows.map((r) => r.pts));
+  out.winners = st.rows.filter((r) => r.pts === top).map((r) => r.name);
+  out.losers = st.rows.filter((r) => r.pts !== top).map((r) => r.name);
+  if (!out.losers.length) return { ...out, push: true };
+  out.share = total / out.winners.length;
+  out.net = out.share - pot.buyIn; // what each winner collects from the others
+  return out;
+}
+function sideTeamId(g, team) { return team === g.home ? g.homeId : team === g.away ? g.awayId : null; }
+function renderSidePot() {
+  const el = document.getElementById("side-pot");
+  if (!el) return;
+  const pot = potNow();
+  const names = pot ? Object.keys(pot.entrants || {}) : [];
+  if (!pot || !currentManager || window.LEAGUE?.sport === "nfl" || (!sideOpen(pot) && !names.length)) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const me = currentManager, mine = pot.entrants[me];
+  const total = names.length * pot.buyIn;
+  const games = sideGames(pot);
+  let body;
+  if (sideOpen(pot)) {
+    const cd = kickoffCountdown(new Date(pot.closesAt).toISOString());
+    body = `<div class="sp-head"><span class="sp-kick">💰 LATE NIGHT SIDE POT</span><span class="sp-pot">${sideMoney(total)}</span></div>
+      <div class="sp-games">${games.map((g) => `<span>${escapeCd(g.awayShort)} @ ${escapeCd(g.homeShort)}</span>`).join("")}</div>
+      <div class="sp-in">${names.length ? `<b>${names.length} IN</b> ${names.map((n) => escapeCd(shown(n))).join(" · ")}` : "Nobody's in yet."}</div>
+      <div class="sp-foot"><span class="sp-close">$${pot.buyIn} to get in · closes in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b></span>
+        <button type="button" class="sp-btn${mine ? " in" : ""}" data-sp="open">${mine ? "✓ YOU'RE IN · EDIT" : `I'M IN · $${pot.buyIn}`}</button></div>`;
+  } else {
+    const st = sideStandings(pot), out = sideOutcome(pot, st);
+    const head = !out.final ? `${names.length} IN · ${sideMoney(total)} POT`
+      : out.n < 2 ? "ONE TAKER · NO BET"
+      : out.push ? "DEAD HEAT · NO MONEY MOVES"
+      : out.winners.length > 1 ? `${escapeCd(sideNames(out.winners).toUpperCase())} SPLIT ${sideMoney(out.total)}`
+      : `🏆 ${escapeCd(shown(out.winners[0]).toUpperCase())} TAKES ${sideMoney(out.total)}`;
+    const rows = st.rows.map((r) => `<div class="sp-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}">
+      <span class="sp-nm">${escapeCd(shown(r.name))}</span>
+      <span class="sp-cells">${r.cells.map((c) => { const id = c.pick ? sideTeamId(c.g, c.pick.team) : null; return `<span class="sp-c ${c.cls}">${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ""}<i>${c.pick ? c.pick.mode : ""}</i><b>${c.txt}</b></span>`; }).join("")}</span>
+      <span class="sp-pts">${r.pts}${r.fly ? `<small>+${r.fly}</small>` : ""}</span></div>`).join("");
+    // Who settles with whom, once it is over: each loser owes the buy-in,
+    // each winner collects their share of it.
+    const ledger = out.final && out.n >= 2 && !out.push
+      ? `<div class="sp-ledger"><span>${out.losers.map((n) => `${escapeCd(shown(n))}${pot.entrants[n]?.paid ? " (paid)" : ""}`).join(", ")} owe${out.losers.length === 1 ? "s" : ""} ${sideMoney(pot.buyIn)}${out.losers.length === 1 ? "" : " each"}</span><span>${escapeCd(sideNames(out.winners))} collect${out.winners.length === 1 ? "s" : ""} ${sideMoney(out.net)}${out.winners.length === 1 ? "" : " each"}</span></div>` : "";
+    body = `<div class="sp-head"><span class="sp-kick">💰 SIDE POT</span><span class="sp-pot sm">${head}</span></div>
+      <div class="sp-board">${rows}</div>${ledger}`;
+  }
+  el.innerHTML = `<div class="sp-card${sideOpen(pot) ? " open" : ""}">${body}</div>`;
+  el.classList.remove("hidden");
+}
+document.getElementById("side-pot")?.addEventListener("click", (e) => {
+  if (e.target.closest("[data-sp='open']")) openSideSheet(false);
+});
+// The countdown on the card ticks; at the close the card turns into the
+// leaderboard with everyone's picks.
+setInterval(() => {
+  const pot = potNow();
+  if (!pot || document.hidden) return;
+  const cd = document.querySelector("#side-pot [data-sp-cd]");
+  if (cd) {
+    const c = kickoffCountdown(new Date(pot.closesAt).toISOString());
+    cd.textContent = c && !c.past ? c.text : "now";
+  }
+  if (pot.open && Date.now() >= pot.closesAt) { pot.open = false; document.getElementById("side-modal")?.remove(); fetchSidePot(true).then(renderSidePot); }
+}, 1000);
+
+// Asked once, on the board, when it opens. Not over another pop-up: if one
+// is up, the next refresh asks again.
+function maybeShowSidePrompt() {
+  const pot = potNow();
+  if (sidePromptShown || !sideOpen(pot) || !currentManager || window.__adminEntry || window.__adminOpen || window.__liveView) return;
+  if (pot.entrants[currentManager] || pot.declined.includes(currentManager)) return;
+  try { if (localStorage.getItem(sideDoneKey(pot, currentManager))) return; } catch {}
+  const busy = () => scoreboardScreen.classList.contains("hidden") || [...document.querySelectorAll(".modal-overlay, .wpx-overlay, .pr-screen, .np-screen")].some((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none");
+  if (busy()) return;
+  sidePromptShown = true;
+  setTimeout(() => { if (busy()) { sidePromptShown = false; return; } openSideSheet(true); }, 1500);
+}
+
+// One sheet to say yes and pick: the pot's games, a team and ATS or straight
+// up for each, the same points as the main pool.
+function openSideSheet(asked) {
+  const pot = potNow();
+  if (!sideOpen(pot) || !currentManager) return;
+  noteUse(asked ? "side-ask" : "side-open");
+  const me = currentManager;
+  const was = pot.entrants[me]?.picks || {};
+  const draft = Object.fromEntries(Object.entries(was).map(([k, v]) => [k, { ...v }]));
+  const games = sideGames(pot);
+  document.getElementById("side-modal")?.remove();
+  const m = document.createElement("div");
+  m.id = "side-modal"; m.className = "wpx-overlay"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Late night side pot");
+  document.body.appendChild(m);
+  let busy = false, err = "";
+  const close = () => m.remove();
+  const team = (g, t, id, short) => {
+    const p = draft[g.id];
+    return `<button type="button" class="sp-team${p?.team === t ? " on" : ""}" data-g="${g.id}" data-team="${escapeCd(t)}"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${escapeCd(short)}</span><small>${t === g.favorite ? "-" : "+"}${g.spread}</small></button>`;
+  };
+  const mode = (g, md) => {
+    const p = draft[g.id];
+    const pts = p?.team ? pointValue(g, p.team, md) : md === "ATS" ? 2 : null;
+    return `<button type="button" class="sp-mode${p?.team && p.mode === md ? " on" : ""}" data-g="${g.id}" data-mode="${md}"${p?.team ? "" : " disabled"}>${md === "ATS" ? "ATS" : "STRAIGHT UP"}${pts != null ? ` · ${pts} PT${pts === 1 ? "" : "S"}` : ""}</button>`;
+  };
+  const paint = () => {
+    const ready = games.every((g) => draft[g.id]?.team && draft[g.id]?.mode);
+    const inAlready = !!pot.entrants[me];
+    const closes = new Date(pot.closesAt).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
+    m.innerHTML = `<div class="wpx-card sp-sheet">
+      <button type="button" class="sp-x" aria-label="Close">✕</button>
+      <div class="sp-sheet-kick">💰 LATE NIGHT SIDE POT</div>
+      <div class="sp-sheet-lead">${asked && !inAlready ? "The week's decided, but the night isn't. " : ""}Pick ${games.length === 1 ? "this game" : `these ${games.length} games`}, <b>$${pot.buyIn}</b> to get in. Most points takes the pot; ties split it.</div>
+      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">G${g.id} · ${escapeCd(g.kickoffLabel || "")}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div></div>`).join("")}</div>
+      <div class="sp-sheet-note">Picks lock at ${closes} ET. Nobody sees yours until then. Money is settled between you, not in the app.</div>
+      ${err ? `<div class="sp-err">${escapeCd(err)}</div>` : ""}
+      <div class="sp-sheet-btns"><button type="button" class="sp-no"${busy ? " disabled" : ""}>${inAlready ? "Back out" : "No thanks"}</button><button type="button" class="sp-go"${ready && !busy ? "" : " disabled"}>${busy ? "Saving…" : inAlready ? "Save picks" : `I'm in · $${pot.buyIn}`}</button></div>
+    </div>`;
+  };
+  const send = async (action) => {
+    busy = true; err = ""; paint();
+    try {
+      const r = await fetch(`${WORKER_URL}/side`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, week: pot.week, manager: me, token: tokenFor(me) || undefined, ...(action === "join" ? { picks: draft } : {}) }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "Didn't save. Try again.");
+      if (d.pot) { sidePot = d.pot; sidePotAt = Date.now(); sidePotWeek = pot.week; }
+      try { localStorage.setItem(sideDoneKey(pot, me), action); } catch {}
+      noteUse(action === "join" ? "side-join" : "side-decline");
+      close();
+      renderSidePot();
+    } catch (e) { busy = false; err = e.message || "Didn't save. Try again."; paint(); }
+  };
+  m.addEventListener("click", (e) => {
+    if (e.target === m || e.target.closest(".sp-x")) return close();
+    const t = e.target.closest(".sp-team"), md = e.target.closest(".sp-mode");
+    if (t) { const id = t.dataset.g; draft[id] = { team: t.dataset.team, mode: draft[id]?.mode || "ATS" }; err = ""; return paint(); }
+    if (md && !md.disabled) { const id = md.dataset.g; if (draft[id]) draft[id].mode = md.dataset.mode; return paint(); }
+    if (e.target.closest(".sp-go") && !busy) return send("join");
+    if (e.target.closest(".sp-no") && !busy) return send("decline");
+  });
+  paint();
+}
 
 // Results are derived straight from ESPN's live feed once a game goes
 // final — no manual score entry. A game only counts once ESPN marks it
