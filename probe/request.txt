@@ -1,6 +1,2 @@
-https://a.espncdn.com/i/teamlogos/nfl/500/12.png
-https://a.espncdn.com/i/teamlogos/nfl/500/kc.png
-https://a.espncdn.com/i/teamlogos/nfl/500-dark/kc.png
-https://a.espncdn.com/i/teamlogos/nfl/500-dark/pit.png
-https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/kc.png&w=160&h=160
-https://a.espncdn.com/i/teamlogos/nfl/500/wsh.png
+/games
+/live
