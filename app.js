@@ -5768,7 +5768,7 @@ function dayLabel(t) {
   return new Date(t).toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" }).toUpperCase();
 }
 // The game cast's full play log: open or closed per game, kept while the
-// sheet repaints; opening it scrolls the log into view.
+// sheet repaints; open, it fills the screen under the score.
 document.getElementById("insights-body")?.addEventListener("click", (e) => {
   const b = e.target.closest(".gc-more");
   if (!b) return;
@@ -5778,7 +5778,6 @@ document.getElementById("insights-body")?.addEventListener("click", (e) => {
   window.__gcFull[id] = open;
   if (open) noteUse("gamecast-log", id);
   body.__gcPaint?.();
-  if (open) body.querySelector(".gc-log")?.scrollIntoView({ block: "start", behavior: "smooth" });
 });
 async function openInsights(gameId) {
   const modal = document.getElementById("insights-modal");
@@ -5787,6 +5786,8 @@ async function openInsights(gameId) {
   { const l = latestLive[gameId]; const kind = l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"; noteUse(kind, gameId); if (kind === "gamecast") { sessionUse.add(`gamecast-g${gameId}`); gcStart(gameId); } }
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const body = modal.querySelector("#insights-body");
+  if (window.__gcFull) window.__gcFull[gameId] = false;
+  modal.classList.remove("gc-full");
   const favShort = game.favorite === game.home ? game.homeShort : game.awayShort;
   const lg = (id, cls = "") => `<img class="ins-logo ${cls}" src="${logoUrl(id)}" alt="" loading="lazy">`;
   // The sealed line rides next to the favourite's name: "Indiana -7 at Nebraska".
@@ -6254,7 +6255,7 @@ async function openInsights(gameId) {
     const fresh = !!real[0] && !typed.some((t) => samePlay(t, real[0].text));
     for (const p of plays) if (!typed.some((t) => samePlay(t, p.text))) typed.push(p.text);
     if (typed.length > 60) typed.splice(0, typed.length - 60);
-    const more = totalPlays > 5 ? `<button type="button" class="gc-more" data-gcfull="1" aria-expanded="${full}">${full ? "SHOW LESS ▴" : `FULL GAME LOG ▾ ${totalPlays}`}</button>` : "";
+    const more = totalPlays > 5 ? `<button type="button" class="gc-more" data-gcfull="1" aria-expanded="${full}">${full ? "✕ CLOSE LOG" : `FULL GAME LOG ▾ ${totalPlays}`}</button>` : "";
     const playsHtml = plays.length ? `<div class="gc-log${full ? " full" : ""}"><div class="gc-logh"><span>PLAY LOG${full ? ` · ALL ${totalPlays}` : ""}</span>${more}</div><ol class="gc-plays${full ? " full" : ""}">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv${p.now ? " now" : ""}">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<span class="gc-pills">${p.badge.map(([bt, bc]) => `<b class="gc-badge ${bc}">${esc(bt)}</b>`).join("")}</span>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
     const wpHtml = "";
@@ -6281,6 +6282,9 @@ async function openInsights(gameId) {
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
     }
+    // The full game log takes the whole screen: the score and the down on
+    // top as ever, then every play.
+    if (full) return `<div class="gc gc-fs">${strip}${ddLine}${playsHtml}</div>`;
     return `<div class="gc">${strip}${mineHtml}${field}${ddLine}${playsHtml}${roomHtml}${wpHtml}${spHtml}</div>`;
   };
   // Built as a function and prepended once abbrOf exists below.
@@ -6368,6 +6372,7 @@ async function openInsights(gameId) {
   // The simulate pill lives in the header; clear the last one first.
   modal.querySelector(".h2h-top #ins-sim")?.remove();
   modal.classList.toggle("gc-mode", liveGame() || finalGame());
+  modal.classList.toggle("gc-full", liveGame() && !!(window.__gcFull || {})[gameId]);
   if (finalGame()) {
     body.innerHTML = finalHtml() + links() + `<div class="ins-foot">Final from ESPN.</div>`;
     return;
