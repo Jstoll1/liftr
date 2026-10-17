@@ -110,26 +110,28 @@ body.pv-open .tabs { display: none; }
 .key i { width: 14px; height: 8px; border-radius: 3px; background: var(--past); }
 .key i.lv { background: var(--live); box-shadow: 0 0 8px rgba(61, 252, 143, .6); }
 
-/* Headline numbers */
-.kpis { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (min-width: 640px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (min-width: 1024px) { .kpis { grid-template-columns: 1.6fr repeat(5, minmax(0, 1fr)); } }
-.kpi { padding: 12px 14px; border-radius: 14px; background: linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .01)), var(--panel); border: 1px solid var(--line); min-width: 0; }
-.kpi em { display: block; font: 700 10.5px/1 var(--mono); letter-spacing: .14em; color: var(--dim); font-style: normal; text-transform: uppercase; }
-.kpi b { display: block; margin-top: 8px; font: 800 30px/1 var(--mono); color: var(--text); letter-spacing: -.02em; }
-.kpi b small { font-size: 15px; color: var(--dim); font-weight: 700; }
-.kpi > span { display: block; margin-top: 6px; font-size: 12.5px; color: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kpi.now { grid-column: span 2; border-color: rgba(61, 252, 143, .25); }
+/* Headline numbers: a slim "in now" banner, then one compact panel of six. */
+.kpis { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) { .kpis { grid-template-columns: minmax(280px, 1fr) minmax(0, 2.6fr); align-items: stretch; } }
+.kpi.now { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; padding: 12px 16px; border-radius: 14px; background: linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .01)), var(--panel); border: 1px solid rgba(61, 252, 143, .22); }
 .kpi.now.on { border-color: rgba(61, 252, 143, .55); background: radial-gradient(240px 120px at 0% 0%, rgba(61, 252, 143, .16), transparent), linear-gradient(180deg, rgba(61, 252, 143, .06), rgba(61, 252, 143, .01)), var(--panel); box-shadow: 0 0 30px rgba(61, 252, 143, .12); }
-.kpi.now.on b { color: var(--green); text-shadow: 0 0 18px rgba(61, 252, 143, .45); }
-.kpi.now .avs { display: flex; gap: 6px; margin-top: 8px; min-height: 24px; flex-wrap: wrap; }
+.now-l { display: flex; align-items: baseline; gap: 8px; flex: none; }
+.now-l b { font: 800 30px/1 var(--mono); color: var(--text); }
+.kpi.now.on .now-l b { color: var(--green); text-shadow: 0 0 18px rgba(61, 252, 143, .45); }
+.now-l em { font: 700 11px/1 var(--mono); letter-spacing: .14em; color: var(--dim); font-style: normal; text-transform: uppercase; }
+.now-last { font-size: 13.5px; color: var(--meta); }
+.now-last b { color: var(--text); }
+.kpi.now .avs { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
 .inp { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 2px; border-radius: 999px; background: rgba(61, 252, 143, .1); border: 1px solid rgba(61, 252, 143, .35); font-size: 13px; font-weight: 600; }
 .inp small { font: 600 11px var(--mono); color: var(--green); }
-.kpi.now { display: flex; flex-direction: column; }
-.kpi.now > b { display: inline-block; }
-@media (min-width: 640px) { .kpi.now { grid-column: span 1; } }
-@media (max-width: 639px) { .kpi:last-child { grid-column: span 2; } }
-@media (min-width: 640px) and (max-width: 1023px) { .kpi.now { grid-column: span 1; } }
+.kstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .01)), var(--panel); border: 1px solid var(--line); overflow: hidden; }
+@media (min-width: 1024px) { .kstats { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.ks { min-width: 0; padding: 10px 12px; border-right: 1px solid rgba(255, 255, 255, .05); border-bottom: 1px solid rgba(255, 255, 255, .05); cursor: default; }
+.ks[data-tip]:hover { background: rgba(255, 255, 255, .03); }
+.ks em { display: block; font: 700 9.5px/1.2 var(--mono); letter-spacing: .12em; color: var(--dim); font-style: normal; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks b { display: block; margin-top: 5px; font: 800 21px/1 var(--mono); color: var(--text); letter-spacing: -.01em; }
+.ks b small { font-size: 12px; color: var(--dim); font-weight: 700; margin-left: 1px; }
+.ks span { display: block; margin-top: 4px; font-size: 11.5px; color: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Avatars */
 .av { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--c); color: #0b0716; font: 800 13px/1 system-ui, sans-serif; position: relative; }
@@ -573,24 +575,36 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     for (const e of actions) { const h = hours.find((x) => e.at >= x.start && e.at < x.start + HOUR); if (h) { h.n++; h.who.add(e.n); } }
     const peak = hours.reduce((m, h) => (h.n > m.n ? h : m), { n: 0 });
     const last = order.find((n) => !people[n]?.in && lastSeen(n));
+    // The headline: who is in now as a slim banner, then six numbers in one
+    // compact panel (a tap or hover gives the detail).
+    const amt = (ms) => (ms >= HOUR ? `${(ms / HOUR).toFixed(1)}<small>h</small>` : ms >= 60000 ? `${Math.round(ms / 60000)}<small>m</small>` : `${Math.round(ms / 1000)}<small>s</small>`);
+    const ks = (label, value, sub, tip) => `<div class="ks"${tip ? ` data-tip="${esc(tip)}"` : ""}><em>${label}</em><b class="num">${value}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
+    const todayTip = `<b>In today</b>${inToday.length ? inToday.map(name).join(", ") : "Nobody yet"}${names.length > inToday.length ? `<br>Not yet: ${names.filter((n) => !inToday.includes(n)).map(name).join(", ")}` : ""}`;
+    const stats = wk ? (() => {
+      const t = wv.reduce((a, v) => a + wTime(v), 0);
+      const byDay = dayList.map((d) => ({ d, ms: wv.reduce((a, v) => a + wTime(v, d, d + DAY), 0), who: new Set(wv.filter((v) => wTime(v, d, d + DAY)).map((v) => v.n)) }));
+      const best = byDay.reduce((m, x) => (x.ms > m.ms ? x : m), { ms: 0 });
+      return [
+        ks("In today", `${inToday.length}<small>/${names.length}</small>`, "", todayTip),
+        ks("Visits · 7d", wv.length, `${new Set(wv.map((v) => v.n)).size} people`),
+        ks("Time in app", t ? amt(t) : "–", "7 days"),
+        ks("Avg visit", wv.length ? amt(t / wv.length) : "–", ""),
+        ks("Busiest", best.ms ? esc(new Date(best.d).toLocaleDateString([], { weekday: "short" })) : "–", best.ms ? `${mins(best.ms)} · ${best.who.size} ppl` : "", best.ms ? `<b>${dLong(best.d)}</b>${mins(best.ms)} in the app · ${[...best.who].map(name).join(", ")}` : ""),
+        ks("A day", (wv.length / 7).toFixed(1), "visits"),
+      ].join("");
+    })() : [
+      ks("In today", `${inToday.length}<small>/${names.length}</small>`, "", todayTip),
+      ks("Visits · 24h", vs.length, `${new Set(vs.map((v) => v.n)).size} people`),
+      ks("Time in app", time ? amt(time) : "–", "24 hours"),
+      ks("Avg visit", vs.length ? amt(time / vs.length) : "–", ""),
+      ks("Peak hour", peak.n ? hourLab(peak.start) : "–", peak.n ? `${peak.who.size} ${peak.who.size === 1 ? "person" : "ppl"}` : "", peak.n ? `<b>${hourLab(peak.start)} hour</b>${peak.n} actions · ${[...peak.who].map(name).join(", ")}` : ""),
+      ks("Actions", actions.length, "24 hours"),
+    ].join("");
     const kpis = `<section class="kpis" id="sec-now">
-      <div class="kpi now${inNow.length ? " on" : ""}"><em>In now</em><b class="num">${inNow.length}</b>
-        ${inNow.length ? `<div class="avs">${inNow.map((n) => `<span class="inp">${av(n, "sm", true)}${esc(name(n))}<small class="num" data-since="${people[n].since}">${clock(now - people[n].since)}</small></span>`).join("")}</div>` : `<span>${last ? `Last in: ${esc(name(last))}, ${esc(ago(lastSeen(last)))}` : "Nobody yet"}</span>`}</div>
-      <div class="kpi"><em>In today</em><b class="num">${inToday.length}<small>/${names.length}</small></b><span>${inToday.length ? esc(inToday.slice(0, 4).map(name).join(", ")) + (inToday.length > 4 ? ` +${inToday.length - 4}` : "") : "Nobody yet"}</span></div>
-      ${wk ? (() => {
-        const t = wv.reduce((a, v) => a + wTime(v), 0);
-        const byDay = dayList.map((d) => ({ d, ms: wv.reduce((a, v) => a + wTime(v, d, d + DAY), 0), who: new Set(wv.filter((v) => wTime(v, d, d + DAY)).map((v) => v.n)) }));
-        const best = byDay.reduce((m, x) => (x.ms > m.ms ? x : m), { ms: 0 });
-        return `<div class="kpi"><em>Visits · 7 days</em><b class="num">${wv.length}</b><span>${new Set(wv.map((v) => v.n)).size} people</span></div>
-      <div class="kpi"><em>Time in app</em><b class="num">${t >= HOUR ? `${(t / HOUR).toFixed(1)}<small>h</small>` : `${Math.round(t / 60000)}<small>m</small>`}</b><span>last 7 days</span></div>
-      <div class="kpi"><em>Avg visit</em><b class="num">${wv.length ? (() => { const m = t / wv.length; return m >= 60000 ? `${Math.round(m / 60000)}<small>m</small>` : `${Math.round(m / 1000)}<small>s</small>`; })() : "–"}</b><span>${(wv.length / 7).toFixed(1)} visits a day</span></div>
-      <div class="kpi"><em>Busiest day</em><b class="num">${best.ms ? esc(new Date(best.d).toLocaleDateString([], { weekday: "short" })) : "–"}</b><span>${best.ms ? `${mins(best.ms)} · ${best.who.size} ${best.who.size === 1 ? "person" : "people"}` : "no visits yet"}</span></div>`;
-      })() : `<div class="kpi"><em>Visits · 24h</em><b class="num">${vs.length}</b><span>${new Set(vs.map((v) => v.n)).size} people</span></div>
-      <div class="kpi"><em>Time in app</em><b class="num">${time >= HOUR ? `${(time / HOUR).toFixed(1)}<small>h</small>` : `${Math.round(time / 60000)}<small>m</small>`}</b><span>last 24 hours</span></div>
-      <div class="kpi"><em>Avg visit</em><b class="num">${vs.length ? (() => { const m = time / vs.length; return m >= 60000 ? `${Math.round(m / 60000)}<small>m</small>` : `${Math.round(m / 1000)}<small>s</small>`; })() : "–"}</b><span>${actions.length} actions</span></div>
-      <div class="kpi"><em>Peak hour</em><b class="num">${peak.n ? hourLab(peak.start) : "–"}</b><span>${peak.n ? `${peak.n} actions · ${peak.who.size} ${peak.who.size === 1 ? "person" : "people"}` : "no activity yet"}</span></div>`}
+      <div class="kpi now${inNow.length ? " on" : ""}"><div class="now-l"><b class="num">${inNow.length}</b><em>in now</em></div>
+        ${inNow.length ? `<div class="avs">${inNow.map((n) => `<span class="inp">${av(n, "sm", true)}${esc(name(n))}<small class="num" data-since="${people[n].since}">${clock(now - people[n].since)}</small></span>`).join("")}</div>` : `<span class="now-last">${last ? `Last in: <b>${esc(name(last))}</b> · ${esc(ago(lastSeen(last)))}` : "Nobody yet"}</span>`}</div>
+      <div class="kstats">${stats}</div>
     </section>`;
-
     // The timeline: one lane per player, a block per visit.
     // The timeline's window: 3, 6, 12 or 24 hours back to now (6 to start),
     // so a busy afternoon gets the width instead of a sliver by the now line.
