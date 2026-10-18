@@ -1167,7 +1167,7 @@ function goToPlayerSelect() {
   const me = loadMe();
   if (me) {
     currentManager = me;
-    if (window.LEAGUE?.sport === "nfl" ? nflOpensOnScoreboard(me) : firstKickoffPassed()) {
+    if (window.LEAGUE?.sport === "nfl" ? true : firstKickoffPassed()) {
       loginScreen.classList.add("hidden");
       showScoreboard();
     } else {
@@ -1180,7 +1180,7 @@ function goToPlayerSelect() {
   setActiveNav("home");
   renderManagerPicker();
   enterScreen("home");
-  if (!localStorage.getItem(RULES_SEEN_KEY)) openRules();
+  if (!localStorage.getItem(RULES_SEEN_KEY) && window.LEAGUE?.sport !== "nfl") openRules();
   else openClaimPrompt();
 }
 
@@ -2744,13 +2744,31 @@ function fetchBoardPicks() {
   return boardPicksInFlight;
 }
 
+// The last board this phone drew, kept so the next open paints it at once
+// (marked as a saved copy) while fresh picks and scores load behind it.
+const BOARD_CACHE_KEY = "brochiefs_board_v1";
+let bootBoard = null;
+try {
+  const c = JSON.parse(localStorage.getItem(BOARD_CACHE_KEY) || "null");
+  if (c && c.picks && c.live && Date.now() - c.at < 12 * 3600000) bootBoard = c;
+} catch {}
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
   maybeShowQotw();
+  if (bootBoard) {
+    const b = bootBoard; bootBoard = null;
+    if (b.week === currentWeek) {
+      if (!Object.keys(latestLive).length) latestLive = b.live;
+      try { paintScoreboard(b.picks, b.live, true); } catch (err) { console.warn("saved board", err); }
+    }
+  }
   // Picks and scores together, not picks and then scores.
   const [fetched, live] = await Promise.all([fetchBoardPicks(), fetchLiveScores()]);
-  cloudPicksStale = fetched === null;
+  paintScoreboard(fetched, live, false);
+}
+function paintScoreboard(fetched, live, cached) {
+  cloudPicksStale = !cached && fetched === null;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
   const cloudPicks = {};
   MANAGERS.forEach((name) => {
@@ -2760,7 +2778,7 @@ async function renderScoreboard() {
   if (fetched !== null) lastGoodCloudPicks = rawPicks;
   const results = computeLiveResults(live);
 
-  archiveWeekIfFinal(results);
+  if (!cached) archiveWeekIfFinal(results);
   renderLiveScores(live, cloudPicks);
   // Ranked once and handed to both, so the table and the leaderboard
   // cannot end up in different orders.
@@ -2774,7 +2792,11 @@ async function renderScoreboard() {
   picksStandingFinals = Object.keys(results).length > 0;
   liveWeekFinal = GAMES.length > 0 && GAMES.every((g) => results[g.id]);
   renderMyScore(ranked, cloudPicks, live);
-  maybeShowPathIntro();
+  if (!cached) maybeShowPathIntro();
+  // Keep this board for the next open.
+  if (!cached && fetched !== null && Object.keys(live).length) {
+    try { localStorage.setItem(BOARD_CACHE_KEY, JSON.stringify({ week: currentWeek, at: Date.now(), picks: rawPicks, live })); } catch {}
+  }
   renderWeekChamp(ranked, results);
   renderInsertCoin(cloudPicks);
   // The clock lives inside the strip when there is one, so the board does
@@ -2783,7 +2805,7 @@ async function renderScoreboard() {
   const stamp = document.getElementById("scoreboard-updated");
   if (stamp) {
     const noData = !Object.keys(live).length;
-    stamp.textContent = `${clockLabel()}${noData ? " · no live data" : ""}${cloudPicksStale ? " · ⚠ picks not reloaded" : ""} · tap to refresh`;
+    stamp.textContent = cached ? "saved copy · updating…" : `${clockLabel()}${noData ? " · no live data" : ""}${cloudPicksStale ? " · ⚠ picks not reloaded" : ""} · tap to refresh`;
     stamp.classList.toggle("stale", cloudPicksStale);
     stamp.classList.remove("busy");
     // Hidden whenever the strip is carrying the clock; shown on its own
@@ -5215,6 +5237,7 @@ const GRID_NAG_MS = 24 * 3600 * 1000;
 let gridTimer = null;
 function gridKey() { return `brochiefs_grid_v1_w${currentWeek}`; }
 function maybeShowGridCheck(force = false) {
+  if (!force && window.LEAGUE?.sport === "nfl") return; // NFL: no pop-ups
   const el = document.getElementById("grid-modal");
   if (!el || !currentManager || !GAMES.length) return;
   const lockAt = weekLockTime() ?? Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
@@ -5301,6 +5324,7 @@ function renderGridCheck() {
 const BONER_UNTIL = Date.parse("2026-09-29T03:59:00Z"); // Mon 11:59 PM ET
 let bonerShownThisLoad = false;
 function maybeShowBoner() {
+  if (window.LEAGUE?.sport === "nfl") return; // NFL: scores first, no pop-ups
   const el = document.getElementById("boner-modal");
   if (!el || bonerShownThisLoad || !currentManager) return;
   if (window.LEAGUE?.features?.boner === false || currentWeek !== 4 || Date.now() >= BONER_UNTIL || !GAMES.length || !GAMES.every(isGameLocked)) return;
@@ -5369,6 +5393,7 @@ const QOTW = window.LEAGUE?.features?.qotw === false ? null : { id: "gooey-belly
 window.QOTW = QOTW;
 let qotwShownThisLoad = false;
 async function maybeShowQotw() {
+  if (window.LEAGUE?.sport === "nfl") return; // NFL: scores first, no pop-ups
   // Not on the way into the admin panel: the prompt would sit on top of the key gate.
   if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW || window.__adminEntry || window.__adminOpen) return;
   const doneKey = `brochiefs_qotw_${QOTW.id}_${currentManager}`;
@@ -7503,6 +7528,28 @@ setInterval(() => { if (updateWaiting && !userBusy()) checkForUpdate(false); }, 
 const SPLASH_KEY = "brochiefs_splash_seen_v1";
 const SPLASH_TTL = 12 * 60 * 60 * 1000;
 (async () => {
+  // NFL: the scores as fast as possible. With this week's slate saved on
+  // the phone, open on it straight away (no splash, no wait) and let the
+  // network catch up behind; the board paints its saved copy at once and
+  // fresh scores as they land. A first visit, with nothing saved, still
+  // waits for the slate so it never draws the wrong games.
+  if (window.LEAGUE?.sport === "nfl") {
+    let saved = false;
+    try { saved = !!JSON.parse(localStorage.getItem(SLATE_CACHE_KEY) || "null")?.games?.length; } catch {}
+    const net = Promise.all([loadSlate(), refreshAuthState(), loadWeekSummaries(), loadRoster()]);
+    fetchLiveScores().catch(() => {});
+    if (saved) restoreCachedSlate(); else await net;
+    lastSlateSignature = slateSignature();
+    lastLockSignature = lockSignature();
+    renderManagerPicker();
+    goToPlayerSelect();
+    await net;
+    // The slate, the roster or logins may have moved while we drew: redraw once.
+    if (slateSignature() !== lastSlateSignature) { lastSlateSignature = slateSignature(); lastLockSignature = lockSignature(); }
+    renderManagerPicker();
+    if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
+    return;
+  }
   // Fetch this week's slate before anything renders, so nobody sees last
   // week's games flash past. The splash covers the wait. Whether login is
   // live, and who has claimed a name, comes down in the same breath.
@@ -7559,6 +7606,7 @@ const PATH_INTRO_KEY = "brochiefs_new_pathtowin_v1";
 let pathIntroShownThisLoad = false;
 function maybeShowPathIntro(force = false) {
   if (!force) {
+    if (window.LEAGUE?.sport === "nfl") return; // NFL: scores first, no pop-ups
     if (pathIntroShownThisLoad || !currentManager || window.__adminEntry || window.__adminOpen || window.__liveView) return;
     try { if (localStorage.getItem(PATH_INTRO_KEY)) return; } catch { return; }
     const results = computeLiveResults(latestLive);
