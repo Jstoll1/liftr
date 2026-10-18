@@ -8070,6 +8070,27 @@ document.querySelectorAll(".h2h-select").forEach((el) => el.addEventListener("ch
   renderH2H();
 }));
 
+// Graphics published from the Creative Studio (brochiefs.com/live): which
+// image to show where, by placement and subject. Kept on the phone so the
+// replay opens with it, refreshed on load, and redrawn when it changes.
+const CREATIVE_KEY = "brochiefs_creative_v1";
+let creativeArt = { at: 0, art: {} };
+try { creativeArt = JSON.parse(localStorage.getItem(CREATIVE_KEY) || "null") || creativeArt; } catch { /* private mode */ }
+async function loadCreativeArt() {
+  if (!WORKER_URL || window.LEAGUE?.sport === "nfl") return;
+  try {
+    const res = await fetch(`${WORKER_URL}/art/manifest?t=${Math.floor(Date.now() / 60000)}`);
+    if (!res.ok) return;
+    const m = await res.json();
+    if (!m || typeof m.art !== "object" || m.at === creativeArt.at) return;
+    creativeArt = m;
+    try { localStorage.setItem(CREATIVE_KEY, JSON.stringify(m)); } catch {}
+    renderRecap();
+  } catch { /* the usual logos stay */ }
+}
+setTimeout(loadCreativeArt, 1500);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) loadCreativeArt(); });
+
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
 let renderRecap = function () {
@@ -8092,7 +8113,11 @@ let renderRecap = function () {
   // template has, and for everyone else ESPN's logo fetched tiny and blown
   // up with hard pixel edges, so every card reads the same.
   const TEAM_ART = new Set([99, 344, 2390, 194, 84]);
+  // Art published from the Creative Studio comes first; then the template's
+  // hand-drawn five; then ESPN's logo in pixels.
+  const studio = (id) => creativeArt.art?.[`replay-logo:team:${Number(id)}`]?.v;
   const logo = (id, alt = "") => !id ? `<span class="recap-logo blank"></span>`
+    : studio(id) ? `<img class="recap-logo px-art" src="${WORKER_URL}/art/img/${encodeURIComponent(studio(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${Number(id)}.png&w=26&h=26';this.className='recap-logo px'">`
     : TEAM_ART.has(Number(id)) ? `<img class="recap-logo px-art" src="assets/images/teams/${Number(id)}.webp" alt="${esc(alt)}" loading="lazy">`
     : `<img class="recap-logo px" src="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${Number(id)}.png&w=26&h=26" alt="${esc(alt)}" loading="lazy">`;
   const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);
@@ -8124,7 +8149,7 @@ let renderRecap = function () {
     cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `${chips(t.who)}<span class="recap-pick">said ${esc(guess)}</span>`,
       `${esc(t.matchup)} came in at ${t.actual}`, t.off === 0 ? "🎯" : `${t.off}`, t.off === 0 ? "EXACT" : "OFF", mine(t.who)]);
   }
-  const key = `${last.week}|${cards.length}|${currentManager}`;
+  const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}`;
   toggle.classList.remove("hidden");
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
   if (panel.dataset.drawn === key) return;

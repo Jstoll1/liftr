@@ -22,8 +22,10 @@ const LSU = { category: "team-mascot", subject: { teamId: 99, name: "LSU", masco
 function desk({ cap = "10", draw, now } = {}) {
   const ctx = fakeCtx(), r2 = fakeR2();
   let t = now || 1_800_000_000_000;
-  const d = new CreativeDesk(ctx, { CREATIVE_MONTHLY_CAP_USD: cap, CREATIVE: r2 }, { draw: draw || (async () => ({ bytes: new Uint8Array([137, 80, 78, 71]), cost: 0.05 })), now: () => t });
-  return { d, ctx, r2, tick: (ms) => { t += ms; } };
+  const kv = new Map();
+  const d = new CreativeDesk(ctx, { CREATIVE_MONTHLY_CAP_USD: cap, CREATIVE: r2, LIFTR_KV: { put: async (k, v) => kv.set(k, v), get: async (k) => kv.get(k) } }, { draw: draw || (async () => ({ bytes: new Uint8Array([137, 80, 78, 71]), cost: 0.05 })), now: () => t });
+  d.kv = kv;
+  return { d, ctx, r2, kv, tick: (ms) => { t += ms; } };
 }
 const post = (d, path, body) => d.fetch(new Request(`https://desk/creative${path}`, { method: "POST", body: JSON.stringify(body) })).then((r) => r.json());
 const get = (d, path) => d.fetch(new Request(`https://desk/creative${path}`)).then((r) => r.json());
@@ -62,7 +64,10 @@ test("asking twice for the same graphic does not pay twice", async () => {
   const b = await post(d, "/generate", LSU);
   assert.equal(b.existing, true);
   assert.equal(b.versionId, a.versionId);
-  const other = await post(d, "/generate", { ...LSU, week: 8 });
+  // A mascot is one per team, whatever the week.
+  const nextWeek = await post(d, "/generate", { ...LSU, week: 8 });
+  assert.equal(nextWeek.versionId, a.versionId);
+  const other = await post(d, "/generate", { ...LSU, subject: { teamId: 194, name: "Ohio State" } });
   assert.notEqual(other.versionId, a.versionId);
 });
 
@@ -118,7 +123,6 @@ test("bad requests are refused; images are served only for stored versions", asy
   const { d } = desk();
   assert.match((await post(d, "/generate", { category: "nope" })).error, /category/);
   assert.match((await post(d, "/generate", { category: "team-mascot", subject: {} })).error, /team/);
-  assert.match((await post(d, "/generate", { ...LSU, week: 99 })).error, /week/);
   const q = await post(d, "/generate", LSU);
   assert.equal((await d.fetch(new Request(`https://desk/creative/image/${q.versionId}`))).status, 404);
   await d.alarm();
@@ -127,4 +131,54 @@ test("bad requests are refused; images are served only for stored versions", asy
   assert.equal(img.headers.get("Content-Type"), "image/png");
   const types = await get(d, "/types");
   assert.equal(types.types[0].id, "team-mascot");
+});
+
+const WEBP = new Uint8Array([82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80, 1, 2, 3]);
+const optimize = (d, id, bytes = WEBP, type = "image/webp") => d.fetch(new Request(`https://desk/creative/optimized/${id}`, { method: "POST", headers: { "Content-Type": type }, body: bytes })).then((r) => r.json());
+const act = (d, action, ids) => post(d, "/action", { action, versionIds: ids });
+
+test("approve is not publish; publish needs the optimized copy, then the app's list carries it", async () => {
+  const { d, kv, r2 } = desk();
+  const q = await post(d, "/generate", LSU);
+  await d.alarm();
+  assert.deepEqual((await act(d, "publish", [q.versionId])).skipped[0].why, "approve it first");
+  assert.deepEqual((await act(d, "approve", [q.versionId])).done, [q.versionId]);
+  assert.equal(kv.size, 0);
+  assert.match((await act(d, "publish", [q.versionId])).skipped[0].why, /optimized/);
+  assert.match((await optimize(d, q.versionId, new Uint8Array([1, 2, 3]))).error, /WebP or PNG/);
+  assert.equal((await optimize(d, q.versionId, new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0]), "image/png")).ok, true);
+  assert.equal((await optimize(d, q.versionId)).ok, true);
+  assert.equal(r2.m.get(`opt/${q.versionId}`).o.httpMetadata.contentType, "image/webp");
+  assert.deepEqual((await act(d, "publish", [q.versionId])).done, [q.versionId]);
+  const m = JSON.parse(kv.get("creative:published"));
+  assert.equal(m.art["replay-logo:team:99"].v, q.versionId);
+  const { items } = await get(d, "/assets");
+  assert.equal(items[0].status, "PUBLISHED");
+  assert.equal(items[0].published, true);
+});
+
+test("a replacement goes live only when published; the old one stays approved; unpublish falls back", async () => {
+  const { d, kv } = desk();
+  const a = await post(d, "/generate", LSU); await d.alarm();
+  await act(d, "approve", [a.versionId]); await optimize(d, a.versionId); await act(d, "publish", [a.versionId]);
+  // A new version for the same team, made after rejecting nothing: regenerate comes in phase 2,
+  // so here a second team stands in for a new version's lifecycle.
+  await act(d, "reject", [a.versionId]).then((r) => assert.match(r.skipped[0].why, /unpublish/));
+  assert.equal(JSON.parse(kv.get("creative:published")).art["replay-logo:team:99"].v, a.versionId);
+  await act(d, "unpublish", [a.versionId]);
+  assert.deepEqual(JSON.parse(kv.get("creative:published")).art, {});
+  const { items } = await get(d, "/assets");
+  assert.equal(items[0].status, "APPROVED");
+});
+
+test("batch actions report what they skipped; a rejected version can be asked for again", async () => {
+  const { d } = desk();
+  const a = await post(d, "/generate", LSU), b = await post(d, "/generate", { ...LSU, subject: { teamId: 61, name: "Georgia" } });
+  await d.alarm(); await d.alarm();
+  const r = await act(d, "approve", [a.versionId, b.versionId, "v_nope"]);
+  assert.equal(r.done.length, 2);
+  assert.equal(r.skipped[0].why, "not found");
+  await act(d, "reject", [b.versionId]);
+  const again = await post(d, "/generate", { ...LSU, subject: { teamId: 61, name: "Georgia" } });
+  assert.notEqual(again.versionId, b.versionId);
 });

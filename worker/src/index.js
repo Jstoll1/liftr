@@ -6,6 +6,7 @@ import { sideKey, entryKey, newPot, extendPot, cleanSidePicks, joinEntry, declin
 // The live room has to be exported from the main module for Cloudflare.
 export { LiveRoom };
 export { CreativeDesk } from "./creative.js";
+import { MANIFEST_KEY } from "./creative.js";
 // Liftr AI Worker
 //
 // Holds the OpenAI API key server-side (never exposed to the browser) and
@@ -99,6 +100,12 @@ export default {
     }
     // The Creative Studio: owner only, every route, before anything else
     // looks at the request.
+    // Published art, public: the list of what is live, and each image by
+    // its version (only while it is published). Everything else about the
+    // Studio stays behind the owner's key.
+    if (url.pathname.startsWith("/art/")) {
+      return handleArt(request, env, corsHeaders, url);
+    }
     if (url.pathname.startsWith("/creative/")) {
       return handleCreative(request, env, corsHeaders, url);
     }
@@ -3559,11 +3566,62 @@ async function handleCreative(request, env, corsHeaders, url) {
   if (!env.CREATIVE_DESK || !env.CREATIVE) return json({ error: "Creative Studio is not set up on this Worker." }, 503, corsHeaders);
   if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
   const desk = env.CREATIVE_DESK.get(env.CREATIVE_DESK.idFromName("studio"));
-  const res = await desk.fetch(new Request(`https://desk${url.pathname}${url.search}`, { method: request.method, headers: { "Content-Type": "application/json" }, body: request.method === "POST" ? await request.text() : undefined }));
+  if (url.pathname === "/creative/suggest" && request.method === "GET") return json(await creativeSuggest(env), 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  const res = await desk.fetch(new Request(`https://desk${url.pathname}${url.search}`, { method: request.method, headers: { "Content-Type": request.headers.get("Content-Type") || "application/json" }, body: request.method === "POST" ? await request.arrayBuffer() : undefined }));
   const headers = new Headers(res.headers);
   for (const [k, v] of Object.entries(corsHeaders)) headers.set(k, v);
   if (!headers.has("Cache-Control")) headers.set("Cache-Control", "no-store");
   return new Response(res.body, { status: res.status, headers });
+}
+
+async function handleArt(request, env, corsHeaders, url) {
+  if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  const manifest = (await env.LIFTR_KV.get(MANIFEST_KEY, "json")) || { at: 0, art: {} };
+  if (url.pathname === "/art/manifest") return json(manifest, 200, { ...corsHeaders, "Cache-Control": "public, max-age=60" });
+  const m = /^\/art\/img\/([\w-]+)$/.exec(url.pathname);
+  if (!m || !env.CREATIVE) return json({ error: "Not found" }, 404, corsHeaders);
+  if (!Object.values(manifest.art || {}).some((x) => x.v === m[1])) return json({ error: "Not found" }, 404, corsHeaders);
+  const obj = await env.CREATIVE.get(`opt/${m[1]}`);
+  if (!obj) return json({ error: "Not found" }, 404, corsHeaders);
+  // A version's picture never changes, so it can be kept for a long time.
+  return new Response(obj.body, { headers: { ...corsHeaders, "Content-Type": obj.httpMetadata?.contentType || "image/webp", "Cache-Control": "public, max-age=31536000, immutable" } });
+}
+
+// What the Studio should offer to draw, read from the league's own record:
+// every team on the latest Week Replay (the recap of the last sealed week,
+// where team art shows first) and on the current slate. Read only; the
+// Studio marks which already have art and queues only what the owner picks.
+async function creativeSuggest(env) {
+  const weeks = await readWeeks(env);
+  const current = weeks.current;
+  const teams = new Map();
+  const add = (id, name, reason) => {
+    const n = Number(id);
+    if (!Number.isInteger(n) || n < 1 || !name) return;
+    const t = teams.get(n) || { teamId: n, name, reasons: [] };
+    if (!t.reasons.includes(reason)) t.reasons.push(reason);
+    teams.set(n, t);
+  };
+  const nameIn = (games) => { const m = new Map(); for (const g of games || []) { if (g.awayId) m.set(Number(g.awayId), g.away); if (g.homeId) m.set(Number(g.homeId), g.home); } return m; };
+  // The Replay: the newest sealed week that has one.
+  let replayWeek = null;
+  for (const w of [...(weeks.list || [])].sort((a, b) => b - a)) {
+    const sum = await env.LIFTR_KV.get(summaryKey(w), "json");
+    if (!sum?.complete || !sum.recap) continue;
+    replayWeek = w;
+    const names = nameIn((await env.LIFTR_KV.get(gamesKey(w), "json"))?.games);
+    const r = sum.recap, tag = (what) => `Week ${w} Replay · ${what}`;
+    if (r.best?.teamId) add(r.best.teamId, names.get(Number(r.best.teamId)) || r.best.team, tag("Pick of the week"));
+    if (r.worst?.teamId) add(r.worst.teamId, names.get(Number(r.worst.teamId)) || r.worst.team, tag("Worst pick"));
+    for (const x of r.consensus?.sides || []) add(x.id, names.get(Number(x.id)) || x.team, tag("Coin flip"));
+    if (r.tb) { add(r.tb.awayId, names.get(Number(r.tb.awayId)), tag("Tiebreaker")); add(r.tb.homeId, names.get(Number(r.tb.homeId)), tag("Tiebreaker")); }
+    break;
+  }
+  const slate = (await env.LIFTR_KV.get(gamesKey(current), "json"))?.games || [];
+  for (const g of slate) { add(g.awayId, g.away, `Week ${current} slate`); add(g.homeId, g.home, `Week ${current} slate`); }
+  // Replay teams first: that is where team art shows today.
+  const list = [...teams.values()].sort((a, b) => Number(b.reasons.some((x) => x.includes("Replay"))) - Number(a.reasons.some((x) => x.includes("Replay"))) || a.name.localeCompare(b.name));
+  return { week: current, replayWeek, suggestions: list.map((t) => ({ category: "team-mascot", subject: { teamId: t.teamId, name: t.name }, reasons: t.reasons, replay: t.reasons.some((x) => x.includes("Replay")) })) };
 }
 
 async function handlePresence(request, env, corsHeaders, url) {

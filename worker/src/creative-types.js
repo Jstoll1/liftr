@@ -24,7 +24,8 @@ export const CATEGORIES = {
     label: "Team mascot",
     blurb: "A mascot in the arcade style, for a team's spot on the Replay and anywhere a team logo shows.",
     placements: ["replay-logo"],
-    trigger: "slate",          // queued when a slate is saved (phase 4)
+    trigger: "slate",          // suggested from the slate and the Replay
+    perWeek: false,            // one mascot per team, reused every week
     publishWhen: "any",        // no event to wait for
     size: "1024x1024", quality: "medium", background: "transparent",
     // The subject: one team, by its ESPN id, with what the prompt needs.

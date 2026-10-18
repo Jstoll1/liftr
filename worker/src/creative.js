@@ -14,6 +14,7 @@ import { drawImage, IMAGE_MODEL } from "./openai-image.js";
 
 export const STATUS = ["QUEUED", "GENERATING", "PENDING_REVIEW", "APPROVED", "PUBLISHED", "REJECTED", "FAILED"];
 export const MAX_ATTEMPTS = 3;
+export const MANIFEST_KEY = "creative:published";
 const STALE_MS = 10 * 60000;       // a GENERATING job this old died mid-flight
 const monthOf = (t) => new Date(t).toISOString().slice(0, 7);
 const newId = (p) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -59,6 +60,15 @@ export class CreativeDesk {
         const m = /^\/image\/([\w-]+)$/.exec(path);
         if (m) return this.image(m[1], url.searchParams.get("v") === "opt" ? "opt_key" : "orig_key");
       }
+      if (request.method === "POST" && path === "/action") {
+        const out = await this.act(await request.json().catch(() => ({})));
+        return Response.json(out, { status: out.error ? 400 : 200 });
+      }
+      const opt = /^\/optimized\/([\w-]+)$/.exec(path);
+      if (request.method === "POST" && opt) {
+        const out = await this.saveOptimized(opt[1], new Uint8Array(await request.arrayBuffer()), request.headers.get("Content-Type"));
+        return Response.json(out, { status: out.error ? 400 : 200 });
+      }
       if (request.method === "POST" && path === "/generate") {
         const out = this.enqueue(await request.json().catch(() => ({})));
         return Response.json(out, { status: out.error ? 400 : 200 });
@@ -92,6 +102,74 @@ export class CreativeDesk {
     return new Response(obj.body, { headers: { "Content-Type": obj.httpMetadata?.contentType || "image/png", "Cache-Control": "private, max-age=3600" } });
   }
 
+  // The small copy the app shows, made in the owner's browser at approval
+  // (Workers cannot resize images on their own). Checked before it is kept.
+  async saveOptimized(versionId, bytes, type) {
+    const v = this.row("SELECT * FROM versions WHERE id = ?", versionId);
+    if (!v) return { error: "No such version." };
+    if (!["PENDING_REVIEW", "APPROVED", "PUBLISHED"].includes(v.status)) return { error: `Can't add a copy to a ${v.status.toLowerCase()} version.` };
+    const sig = (a, b) => String.fromCharCode(...bytes.slice(a, b));
+    const ok = (type === "image/webp" && bytes.length > 12 && sig(0, 4) === "RIFF" && sig(8, 12) === "WEBP") || (type === "image/png" && bytes.length > 8 && sig(1, 4) === "PNG");
+    if (!ok) return { error: "The optimized copy must be a WebP or PNG image." };
+    if (bytes.length > 400 * 1024) return { error: "The optimized copy is too big." };
+    const key = `opt/${versionId}`;
+    await this.env.CREATIVE.put(key, bytes, { httpMetadata: { contentType: type } });
+    this.sql.exec("UPDATE versions SET opt_key = ?, updated = ? WHERE id = ?", key, this.now(), versionId);
+    return { ok: true };
+  }
+
+  // Approve, reject, publish and unpublish, each one at a time and each in
+  // the audit. Approving never publishes; publishing needs an approved
+  // version with its optimized copy, and only then swaps what is live.
+  async act(body) {
+    const action = body?.action, ids = Array.isArray(body?.versionIds) ? body.versionIds.slice(0, 50) : [];
+    if (!["approve", "reject", "publish", "unpublish"].includes(action)) return { error: "Unknown action." };
+    if (!ids.length) return { error: "Pick at least one graphic." };
+    const note = typeof body.feedback === "string" ? body.feedback.trim().slice(0, MAX_FEEDBACK) || null : null;
+    const done = [], skipped = [];
+    for (const id of ids) {
+      const v = this.row("SELECT v.*, a.category, a.subject, a.published_version FROM versions v JOIN assets a ON a.id = v.asset_id WHERE v.id = ?", String(id));
+      if (!v) { skipped.push({ id, why: "not found" }); continue; }
+      const now = this.now();
+      const set = (status) => this.sql.exec("UPDATE versions SET status = ?, updated = ? WHERE id = ?", status, now, v.id);
+      if (action === "approve") {
+        if (v.status !== "PENDING_REVIEW") { skipped.push({ id, why: `is ${v.status}` }); continue; }
+        set("APPROVED");
+      } else if (action === "reject") {
+        if (!["PENDING_REVIEW", "APPROVED"].includes(v.status)) { skipped.push({ id, why: v.status === "PUBLISHED" ? "is live: unpublish it first" : `is ${v.status}` }); continue; }
+        set("REJECTED");
+      } else if (action === "publish") {
+        if (v.status !== "APPROVED") { skipped.push({ id, why: v.status === "PENDING_REVIEW" ? "approve it first" : `is ${v.status}` }); continue; }
+        if (!v.opt_key) { skipped.push({ id, why: "has no optimized copy yet" }); continue; }
+        const cat = CATEGORIES[v.category];
+        if (cat?.publishWhen && cat.publishWhen !== "any") { skipped.push({ id, why: "isn't eligible yet" }); continue; }
+        // The version it replaces steps back to approved, still reusable.
+        if (v.published_version && v.published_version !== v.id) this.sql.exec("UPDATE versions SET status = 'APPROVED', updated = ? WHERE id = ? AND status = 'PUBLISHED'", now, v.published_version);
+        this.sql.exec("UPDATE assets SET published_version = ? WHERE id = ?", v.id, v.asset_id);
+        set("PUBLISHED");
+      } else if (action === "unpublish") {
+        if (v.status !== "PUBLISHED") { skipped.push({ id, why: `is ${v.status}` }); continue; }
+        this.sql.exec("UPDATE assets SET published_version = NULL WHERE id = ?", v.asset_id);
+        set("APPROVED");
+      }
+      this.audit(v.asset_id, v.id, action, body.actor, note);
+      done.push(id);
+    }
+    if (done.length && (action === "publish" || action === "unpublish")) await this.writeManifest();
+    return { ok: true, done, skipped };
+  }
+
+  // What the app may show: every published version by placement and
+  // subject, kept in KV so the public site reads one small key.
+  async writeManifest() {
+    const rows = this.rows("SELECT a.category, a.subject, v.id, v.updated FROM assets a JOIN versions v ON v.id = a.published_version WHERE v.status = 'PUBLISHED' AND v.opt_key IS NOT NULL");
+    const art = {};
+    for (const r of rows) for (const pl of CATEGORIES[r.category]?.placements || []) art[`${pl}:${r.subject}`] = { v: r.id, at: r.updated };
+    const manifest = { at: this.now(), art };
+    if (this.env.LIFTR_KV) await this.env.LIFTR_KV.put(MANIFEST_KEY, JSON.stringify(manifest));
+    return manifest;
+  }
+
   // Ask for a graphic. The same category, subject and week is one asset:
   // asking again while a version is queued, in review or kept returns that
   // one rather than paying twice. Only after every version was rejected or
@@ -101,7 +179,8 @@ export class CreativeDesk {
     if (!cat) return { error: "Unknown category." };
     const subject = cat.subject(body.subject || {});
     if (subject.error) return { error: subject.error };
-    const week = body.week == null || body.week === "" ? null : Number(body.week);
+    // A graphic that is not tied to a week (a team's mascot) is one asset for good.
+    const week = cat.perWeek === false || body.week == null || body.week === "" ? null : Number(body.week);
     if (week !== null && (!Number.isInteger(week) || week < 0 || week > 30)) return { error: "Bad week." };
     const feedback = typeof body.feedback === "string" && body.feedback.trim() ? body.feedback.trim().slice(0, MAX_FEEDBACK) : null;
     const dedupe = `${body.category}|${subject.key}|${week ?? "-"}`;

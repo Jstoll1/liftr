@@ -422,6 +422,50 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 .sd-msg { font-size: 12.5px; color: var(--green); } .sd-msg.bad { color: #ff6b93; }
 .sd-go { padding: 13px; font-weight: 800; font-size: 15px; color: #0b0716; background: var(--green); border: 0; border-radius: 12px; }
 .sd-go:disabled { opacity: .6; }
+
+.sg { display: flex; flex-direction: column; gap: 10px; }
+.sg-top { display: flex; align-items: center; gap: 10px; width: 100%; padding: 0; background: none; border: 0; color: inherit; text-align: left; }
+.sg-top span { font: 800 12px var(--mono); letter-spacing: .14em; color: #ffd23f; }
+.sg-top small { flex: 1; font: 11.5px var(--mono); color: var(--meta); }
+.sg-top i { font-style: normal; color: var(--meta); }
+.sg-why { margin: 0; font-size: 12px; color: var(--dim); }
+.sg-h { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; font: 700 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--meta); }
+.sg-h button { padding: 2px 4px; font: 600 11.5px var(--mono); color: var(--green); background: none; border: 0; text-transform: none; letter-spacing: 0; }
+.sg-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 6px; }
+.sg-t { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 8px 10px; text-align: left; color: var(--text); background: rgba(255, 255, 255, .03); border: 1px solid var(--line); border-radius: 10px; }
+.sg-t img { width: 28px; height: 28px; object-fit: contain; }
+.sg-t.on { border-color: rgba(61, 252, 143, .6); background: rgba(61, 252, 143, .08); }
+.sg-t.has { opacity: .75; }
+.sg-n { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sg-n b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-n small { font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-box { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--line); font-style: normal; font-size: 12px; color: #0b0716; }
+.sg-t.on .sg-box { background: var(--green); border-color: var(--green); }
+.sg-t .sd-badge { font-style: normal; }
+.sg-go { margin-top: 2px; }
+
+.rpv { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 8px; }
+.rpv-card { border: 2px solid var(--c); border-radius: 10px; overflow: hidden; background: rgba(0, 0, 0, .35); }
+.rpv-h { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--c); color: #0b0716; font: 800 11px var(--mono); letter-spacing: .12em; }
+.rpv-b { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+.rpv-t { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 8px; text-align: left; color: var(--text); background: rgba(255, 255, 255, .03); border: 1px solid var(--line); border-radius: 8px; }
+.rpv-t img { width: 40px; height: 40px; object-fit: contain; }
+.rpv-t img.px { image-rendering: pixelated; }
+.rpv-t span { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13.5px; font-weight: 700; }
+.rpv-t small { font-size: 11px; font-weight: 400; color: var(--dim); }
+.rpv-t.on { border-color: rgba(61, 252, 143, .6); background: rgba(61, 252, 143, .08); }
+.rpv-t.on .sg-box { background: var(--green); border-color: var(--green); }
+.rpv-t.has { opacity: .8; }
+.rpv-t .sd-badge { font-style: normal; }
+
+.sd-acts { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.sd-acts button { flex: 1; padding: 9px 6px; font-weight: 700; font-size: 12.5px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255, 255, 255, .04); color: var(--text); }
+.sd-acts .ok { color: #0b0716; background: var(--green); border-color: var(--green); }
+.sd-acts .pub { color: #0b0716; background: #ffd23f; border-color: #ffd23f; box-shadow: 0 0 14px rgba(255, 210, 63, .35); }
+.sd-acts .no { flex: 0 0 auto; padding: 9px 12px; color: #ff6b93; }
+.sd-live { flex: 1; font: 700 11.5px var(--mono); color: var(--green); }
+.sd-wait { font: 12px var(--mono); color: var(--meta); }
+.sd-card.s-published { border-color: rgba(61, 252, 143, .55); box-shadow: 0 0 18px rgba(61, 252, 143, .18); }
 </style>
 </head>
 <body>
@@ -1031,9 +1075,9 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   // one: the live page keeps polling underneath but does not repaint over
   // a review in progress. Phase 1: ask for a graphic, watch it generate,
   // look at it up close.
-  const sd = { types: [], items: [], budget: null, teams: [], filter: "ALL", gen: null, zoom: null, err: "", loading: false, review: 0, at: 0 };
+  const sd = { types: [], items: [], budget: null, teams: [], filter: "ALL", gen: null, zoom: null, err: "", loading: false, review: 0, at: 0, sugg: null, pick: null, queuing: false, suggOpen: true };
   const studioEl = document.getElementById("studio");
-  const SD_FILTERS = [["ALL", "All"], ["PENDING_REVIEW", "Review"], ["QUEUED", "Queued"], ["GENERATING", "Generating"], ["FAILED", "Failed"]];
+  const SD_FILTERS = [["ALL", "All"], ["PENDING_REVIEW", "Review"], ["APPROVED", "Approved"], ["PUBLISHED", "Live"], ["QUEUED", "Queued"], ["GENERATING", "Generating"], ["REJECTED", "Rejected"], ["FAILED", "Failed"]];
   const SD_LABEL = { QUEUED: "Queued", GENERATING: "Generating", PENDING_REVIEW: "In review", APPROVED: "Approved", PUBLISHED: "Published", REJECTED: "Rejected", FAILED: "Failed" };
   const money$ = (n) => (n == null ? "–" : `$${Number(n).toFixed(n < 1 ? 3 : 2)}`);
   const imgUrl = (id, v = "orig") => `${WORKER}/creative/image/${encodeURIComponent(id)}?${auth()}&v=${v}`;
@@ -1047,8 +1091,9 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     clearTimeout(studioLoad.t);
     if (!quiet) { sd.loading = true; paintStudio(); }
     try {
-      const [types, list] = await Promise.all([sd.types.length ? null : sdFetch("/types"), sdFetch("/assets")]);
+      const [types, list, sugg] = await Promise.all([sd.types.length ? null : sdFetch("/types"), sdFetch("/assets"), quiet && sd.sugg ? null : sdFetch("/suggest").catch(() => null)]);
       if (types) sd.types = types.types;
+      if (sugg) sd.sugg = sugg;
       sd.items = list.items; sd.budget = list.budget; sd.err = ""; sd.at = Date.now();
       sd.review = sd.items.filter((x) => x.status === "PENDING_REVIEW").length;
     } catch (e) { sd.err = e.message; }
@@ -1078,6 +1123,78 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const el = sec && document.getElementById(sec);
     if (el) scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + scrollY - (innerWidth >= 1024 ? 80 : 70)) });
   }
+  // What already exists for a suggestion: the newest version of that
+  // category and subject, if any (rejected and failed ones don't count).
+  const sdHas = (g) => sd.items.find((x) => x.category === g.category && x.subject === `team:${g.subject.teamId}` && x.status !== "REJECTED" && x.status !== "FAILED");
+  // The Studio's own suggestions: every team on the latest Week Replay and
+  // on this week's slate, Replay first. Teams without art start ticked on
+  // the Replay; nothing is queued until the owner taps.
+  function sdSuggest() {
+    const s = sd.sugg; if (!s) return "";
+    const list = s.suggestions || [];
+    if (!list.length) return "";
+    if (!sd.pick) sd.pick = new Set(list.filter((g) => g.replay && !sdHas(g)).map((g) => g.subject.teamId));
+    const open = list.filter((g) => !sdHas(g));
+    const est = sd.types.find((t) => t.id === "team-mascot")?.estCost || 0;
+    const chosen = open.filter((g) => sd.pick.has(g.subject.teamId));
+    const group = (title, rows, key) => rows.length ? `<div class="sg-h"><span>${esc(title)}</span>${rows.some((g) => !sdHas(g)) ? `<button type="button" data-sg-all="${key}">Select all</button>` : ""}</div><div class="sg-list">${rows.map((g) => {
+      const has = sdHas(g), on = !has && sd.pick.has(g.subject.teamId);
+      return `<button type="button" class="sg-t${on ? " on" : ""}${has ? " has" : ""}" data-sg="${g.subject.teamId}"${has ? ` data-zoom="${has.hasImage ? esc(has.id) : ""}"` : ""}>
+        <img src="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${g.subject.teamId}.png&w=56&h=56" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+        <span class="sg-n"><b>${esc(g.subject.name)}</b><small>${esc(g.reasons.map((r) => r.replace(/^Week \d+ /, "")).join(" · "))}</small></span>
+        ${has ? `<i class="sd-badge s-${has.status.toLowerCase()}">${esc(SD_LABEL[has.status])}</i>` : `<i class="sg-box">${on ? "✓" : ""}</i>`}
+      </button>`; }).join("")}</div>` : "";
+    // The Replay as the league sees it: each card in its colour with the
+    // logo it shows today, and beside each team, render a new one.
+    const TEMPLATE = new Set([99, 344, 2390, 194, 84]);
+    const nowArt = (id) => TEMPLATE.has(id) ? `../assets/images/teams/${id}.webp` : `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${id}.png&w=26&h=26`;
+    const CARDS = [["Pick of the week", "👑", "#3dfc8f"], ["Worst pick", "💣", "#ff2079"], ["Coin flip", "🪙", "#c13cff"], ["Tiebreaker", "🏁", "#ffd23f"]];
+    const replay = list.filter((g) => g.replay);
+    const preview = replay.length ? `<div class="sg-h"><span>Week ${s.replayWeek} Replay · preview</span>${replay.some((g) => !sdHas(g)) ? `<button type="button" data-sg-all="replay">Select all</button>` : ""}</div><div class="rpv">${CARDS.map(([kind, ic, col]) => {
+      const rows = replay.filter((g) => g.reasons.some((r) => r.endsWith(kind)));
+      if (!rows.length) return "";
+      return `<div class="rpv-card" style="--c:${col}"><div class="rpv-h"><span>${ic}</span>${esc(kind.toUpperCase())}</div><div class="rpv-b">${rows.map((g) => {
+        const id = g.subject.teamId, has = sdHas(g), on = !has && sd.pick.has(id);
+        return `<button type="button" class="rpv-t${on ? " on" : ""}${has ? " has" : ""}" data-sg="${id}"><img class="${TEMPLATE.has(id) ? "" : "px"}" src="${nowArt(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(g.subject.name)}<small>${TEMPLATE.has(id) ? "template art" : "ESPN logo"} now</small></span>${has ? `<i class="sd-badge s-${has.status.toLowerCase()}">${esc(SD_LABEL[has.status])}</i>` : `<i class="sg-box">${on ? "✓" : ""}</i>`}</button>`;
+      }).join("")}</div></div>`;
+    }).join("")}</div>` : "";
+    return `<section class="panel sg">
+      <button type="button" class="sg-top" data-sg-fold="1"><span>✨ SUGGESTED</span><small>${open.length} of ${list.length} without art</small><i>${sd.suggOpen ? "▴" : "▾"}</i></button>
+      ${sd.suggOpen ? `<p class="sg-why">Teams on the Week ${s.replayWeek ?? "–"} Replay and the Week ${s.week} slate. Team art shows first on the Replay. Mascots are made once and reused every week.</p>
+      ${preview}
+      ${group(`Week ${s.week} slate`, list.filter((g) => !g.replay), "slate")}
+      <button type="button" class="sd-go sg-go" data-sg-go="1"${!chosen.length || sd.queuing ? " disabled" : ""}>${sd.queuing ? `Queuing… ${sd.queuing}` : chosen.length ? `Render ${chosen.length} mascot${chosen.length === 1 ? "" : "s"} · about $${(chosen.length * est).toFixed(2)}` : "Pick teams to render"}</button>
+      ${sd.budget && chosen.length * est > sd.budget.left ? `<p class="sd-err">That's more than the ${money$(sd.budget.left)} left this month. The rest will wait for the budget.</p>` : ""}` : ""}
+    </section>`;
+  }
+  // The copy the app shows: the original drawn down to 256px in this
+  // browser (WebP where it can, PNG on Safari), stored beside the original.
+  async function sdOptimize(id) {
+    const blob = await (await fetch(imgUrl(id), { cache: "no-store" })).blob();
+    const bmp = await createImageBitmap(blob);
+    const c = document.createElement("canvas"); c.width = c.height = 256;
+    const g = c.getContext("2d"); g.imageSmoothingQuality = "high";
+    const k = Math.min(256 / bmp.width, 256 / bmp.height), w = bmp.width * k, h = bmp.height * k;
+    g.drawImage(bmp, (256 - w) / 2, (256 - h) / 2, w, h);
+    let out = await new Promise((r) => c.toBlob(r, "image/webp", 0.9));
+    if (!out || out.type !== "image/webp") out = await new Promise((r) => c.toBlob(r, "image/png"));
+    await sdFetch(`/optimized/${encodeURIComponent(id)}`, { method: "POST", headers: { "Content-Type": out.type }, body: out });
+  }
+  async function sdAct(action, id) {
+    if (action === "reject" && !confirm("Reject this graphic? It stays private and you can render it again.")) return;
+    if (action === "unpublish" && !confirm("Take it out of the app? The usual logo comes back.")) return;
+    sd.busy = id; paintStudio();
+    let msg = "";
+    try {
+      if (action === "approve") await sdOptimize(id);
+      const r = await sdFetch("/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, versionIds: [id] }) });
+      if (r.skipped?.length) msg = `Not done: ${r.skipped.map((x) => x.why).join(", ")}.`;
+    } catch (err) { msg = err.message; }
+    sd.busy = null;
+    await studioLoad(true);
+    // The reload clears old errors; this one stays until the next action.
+    if (msg) { sd.err = msg; paintStudio(); }
+  }
   function sdCard(x) {
     const t = new Date(x.created);
     const when = `${t.toLocaleDateString([], { month: "short", day: "numeric" })} · ${t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
@@ -1091,6 +1208,10 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         <div class="sd-sub num">${when} · ${x.cost != null ? money$(x.cost) : `~${money$(x.estCost)}`}${x.attempts > 1 ? ` · try ${x.attempts}` : ""}</div>
         ${x.feedback ? `<div class="sd-note">“${esc(x.feedback)}”</div>` : ""}
         ${x.error ? `<div class="sd-err">${esc(x.error)}</div>` : ""}
+        ${sd.busy === x.id ? `<div class="sd-acts"><span class="sd-wait">Working…</span></div>`
+          : x.status === "PENDING_REVIEW" ? `<div class="sd-acts"><button type="button" class="ok" data-act="approve" data-id="${esc(x.id)}">Approve</button><button type="button" class="no" data-act="reject" data-id="${esc(x.id)}">Reject</button></div>`
+          : x.status === "APPROVED" ? `<div class="sd-acts"><button type="button" class="pub" data-act="publish" data-id="${esc(x.id)}">Publish to app</button><button type="button" class="no" data-act="reject" data-id="${esc(x.id)}">Reject</button></div>`
+          : x.status === "PUBLISHED" ? `<div class="sd-acts"><span class="sd-live">● Live in the app</span><button type="button" class="no" data-act="unpublish" data-id="${esc(x.id)}">Unpublish</button></div>` : ""}
       </div>
     </article>`;
   }
@@ -1130,14 +1251,38 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
           <div class="sd-filters" role="group" aria-label="Status">${SD_FILTERS.map(([k, lab]) => `<button type="button" class="${sd.filter === k ? "on" : ""}" data-sd-filter="${k}">${lab}${counts[k] ? ` <b>${counts[k]}</b>` : ""}</button>`).join("")}</div>
         </section>
         ${sd.err ? `<div class="sd-errbox">${esc(sd.err)}</div>` : ""}
+        ${sdSuggest()}
         ${list.length ? `<div class="sd-grid">${list.map(sdCard).join("")}</div>` : `<div class="sd-empty">${sd.loading ? "Loading…" : sd.items.length ? "Nothing here." : "No graphics yet. Tap Generate to make the first one."}</div>`}
-        <p class="sd-foot">Phase 1 · generate and review up close. Approve, reject and publish come next. Nothing here is public.</p>
+        <p class="sd-foot">Approve keeps it private. Only Publish to app puts it in front of the league, and Unpublish brings the usual logo back.</p>
       </div>
       ${z ? `<div class="sd-zoom" data-sd-unzoom="1"><button type="button" class="ib sd-zx" data-sd-unzoom="1" aria-label="Close">${ICONS.x}</button><div class="sd-zimg"><img src="${imgUrl(z.id)}" alt="${esc(z.label)}"></div><div class="sd-zcap">${esc(z.label)} · ${esc(z.categoryLabel)} · ${money$(z.cost ?? z.estCost)}</div></div>` : ""}
       ${sdSheet()}
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" data-sd-back="${id}">${ICONS[ic]}<span>${lab}</span></button>`).join("")}<button type="button" class="on">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button></nav>`;
   }
   studioEl.addEventListener("click", async (e) => {
+    const sg = e.target.closest("[data-sg],[data-sg-all],[data-sg-go],[data-sg-fold]");
+    if (sg) {
+      if (sg.dataset.sgFold) { sd.suggOpen = !sd.suggOpen; return paintStudio(); }
+      const list = sd.sugg?.suggestions || [];
+      if (sg.dataset.sg) {
+        const g = list.find((x) => String(x.subject.teamId) === sg.dataset.sg), has = g && sdHas(g);
+        if (has) { if (has.hasImage) { sd.zoom = has.id; paintStudio(); } return; }
+        const id = Number(sg.dataset.sg); sd.pick.has(id) ? sd.pick.delete(id) : sd.pick.add(id); return paintStudio();
+      }
+      if (sg.dataset.sgAll) { const rows = list.filter((g) => g.replay === (sg.dataset.sgAll === "replay") && !sdHas(g)); const all = rows.every((g) => sd.pick.has(g.subject.teamId)); rows.forEach((g) => all ? sd.pick.delete(g.subject.teamId) : sd.pick.add(g.subject.teamId)); return paintStudio(); }
+      if (sg.dataset.sgGo) {
+        const go = list.filter((g) => !sdHas(g) && sd.pick.has(g.subject.teamId));
+        let n = 0, bad = "";
+        for (const g of go) {
+          sd.queuing = `${++n}/${go.length}`; paintStudio();
+          try { await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: g.category, subject: g.subject }) }); sd.pick.delete(g.subject.teamId); }
+          catch (err) { bad = err.message; }
+        }
+        sd.queuing = false; sd.err = bad; await studioLoad(true); return;
+      }
+    }
+    const act = e.target.closest("[data-act]");
+    if (act) return sdAct(act.dataset.act, act.dataset.id);
     const b = e.target.closest("[data-sd-back],[data-sd-refresh],[data-sd-new],[data-sd-filter],[data-zoom],[data-sd-unzoom],[data-sd-close]");
     if (!b) return;
     if (b.dataset.sdBack) return closeStudio(b.dataset.sdBack);
