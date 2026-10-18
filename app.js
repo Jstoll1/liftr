@@ -529,6 +529,9 @@ function parseEspnEvents(events, games = GAMES) {
       clock: comp.status?.displayClock ?? null,
       awayScore: away?.score != null ? Number(away.score) : null,
       homeScore: home?.score != null ? Number(home.score) : null,
+      // Points by quarter, for second-half side bets.
+      awayLines: Array.isArray(away?.linescores) ? away.linescores.map((x) => Number(x?.value) || 0) : null,
+      homeLines: Array.isArray(home?.linescores) ? home.linescores.map((x) => Number(x?.value) || 0) : null,
       winProb,
       // Where the ball is, for the live view on the sheet.
       awayColor: away?.team?.color ? `#${away.team.color}` : null,
@@ -2820,7 +2823,8 @@ function fetchSidePot(force = false) {
 const sideGames = (pot) => (pot.slate || pot.games.map((id) => ({ id }))).map((g) => { const x = GAMES.find((y) => String(y.id) === String(g.id)); return x ? { ...x, ...(g.total != null ? { total: g.total } : {}) } : g.away ? g : null; }).filter(Boolean);
 const onSlate = (g) => typeof g.id === "number" && GAMES.some((x) => x.id === g.id);
 // A pool game goes by its number; a game off the slate is marked as such.
-const sideTag = (g) => (onSlate(g) ? `G${g.id}` : "BONUS");
+const sideTag = (g) => (g.half === 2 ? "2ND HALF" : onSlate(g) ? `G${g.id}` : "BONUS");
+const sideMatch = (g) => `${g.awayShort} @ ${g.homeShort}${g.half === 2 ? " (2nd half)" : ""}`;
 // Live scores for side games off the slate, read from ESPN the same way
 // the board reads its own.
 let sideLive = {}, sideLiveAt = 0, sideLiveKey = "";
@@ -2836,7 +2840,19 @@ async function fetchSideLive(force = false) {
   if (events.length) { sideLive = { ...sideLive, ...parseEspnEvents(events, extra) }; sideLiveAt = Date.now(); sideLiveKey = key; }
   return sideLive;
 }
-const sideLiveOf = (g) => (onSlate(g) ? latestLive[g.id] : sideLive[g.id]);
+const sideRawOf = (g) => (onSlate(g) ? latestLive[g.id] : sideLive[g.id]);
+// A second-half bet sees only third quarter and later points: the score
+// less the first two quarters. Before the third quarter it has not
+// started; without ESPN's quarter scores it cannot be scored yet.
+function halfView(l) {
+  if (!l?.found) return l;
+  const p = Number(l.period) || 0;
+  if (!l.completed && p < 3) return { ...l, state: "pre", completed: false, awayScore: 0, homeScore: 0 };
+  if (!(l.awayLines?.length >= 2 && l.homeLines?.length >= 2)) return { ...l, state: l.completed ? "in" : l.state, completed: false, awayScore: null, homeScore: null };
+  const first = (a) => a[0] + a[1];
+  return { ...l, awayScore: l.awayScore - first(l.awayLines), homeScore: l.homeScore - first(l.homeLines) };
+}
+const sideLiveOf = (g) => (g.half === 2 ? halfView(sideRawOf(g)) : sideRawOf(g));
 const sideResultOf = (g) => { const l = sideLiveOf(g); return l?.completed && Number.isFinite(l.awayScore) && Number.isFinite(l.homeScore) ? { awayScore: l.awayScore, homeScore: l.homeScore } : null; };
 const sideMoney = (x) => `$${Number.isInteger(x) ? x : x.toFixed(2)}`;
 const sideNames = (list) => list.map((n) => shown(n)).join(list.length === 2 ? " and " : ", ");
@@ -2994,10 +3010,10 @@ async function mountSideAdmin(box, getKey, say) {
   // Tonight's other FBS games from ESPN, at ESPN's line, the same source
   // the slate editor uses. A game with no line (ESPN drops it once a game
   // is on) cannot be picked against the spread, so it is only counted.
-  let extras = [], noLine = 0;
+  let extras = [], noLine = 0, halves = [];
   const poolTotals = new Map();
   const readEspn = async () => {
-    extras = []; noLine = 0; poolTotals.clear();
+    extras = []; noLine = 0; halves = []; poolTotals.clear();
     const day = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
     // ESPN's line for one game from its game page, which keeps a line
     // after kickoff when the scoreboard has dropped it.
@@ -3023,6 +3039,24 @@ async function mountSideAdmin(box, getKey, say) {
         const st = c.status?.type || ev.status?.type || {};
         if (st.completed || st.state === "post") continue;
         const aId = Number(away.team?.id), hId = Number(home.team?.id);
+        // Second halves: any game still to come, or on now and not past
+        // halftime. Its line is prefilled at half the game's line.
+        if (st.state === "pre" || (Number(c.status?.period) || 0) <= 2) {
+          const pool = GAMES.find((g) => g.awayId === aId && g.homeId === hId);
+          const so = (c.odds || [])[0], pc = lined.get(ev.id);
+          const src = Number.isFinite(Number(so?.spread)) && Number(so.spread) !== 0 ? so : pc;
+          const raw = Number(src?.spread);
+          const favHome = pool ? pool.favorite === pool.home : src?.homeTeamOdds?.favorite ? true : src?.awayTeamOdds?.favorite ? false : Number.isFinite(raw) ? raw < 0 : true;
+          const fullSpread = pool ? Number(pool.spread) : Number.isFinite(raw) && raw !== 0 ? Math.abs(raw) : null;
+          const fullTotal = pool ? poolTotals.get(pool.id) : Number(src?.overUnder) > 0 ? Number(src.overUnder) : null;
+          halves.push({
+            eventId: ev.id, away: away.team?.displayName || "", home: home.team?.displayName || "",
+            awayShort: away.team?.shortDisplayName || away.team?.abbreviation || "", homeShort: home.team?.shortDisplayName || home.team?.abbreviation || "",
+            awayId: aId, homeId: hId, kickoff: ev.date, favHome, fcs, pool: pool?.id ?? null,
+            spread: fullSpread != null ? Math.round(fullSpread) / 2 : null, total: fullTotal != null ? Math.round(fullTotal) / 2 : null,
+            on: st.state === "in" ? { detail: st.shortDetail || "", a: away.score, h: home.score } : null,
+          });
+        }
         if (GAMES.some((g) => g.awayId === aId && g.homeId === hId)) continue; // on the pool slate already
         let o = (c.odds || [])[0] || {}, raw = Number(o.spread), fromPage = false;
         if (!Number.isFinite(raw) || raw === 0) { const pc = lined.get(ev.id); o = pc || {}; raw = Number(o.spread); fromPage = true; }
@@ -3039,6 +3073,8 @@ async function mountSideAdmin(box, getKey, say) {
         });
       }
       extras.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+      // Games on now first (their halftime is soonest), then by kickoff.
+      halves.sort((a, b) => !!b.on - !!a.on || new Date(a.kickoff) - new Date(b.kickoff));
     } catch {}
   };
   const load = async () => {
@@ -3075,23 +3111,40 @@ async function mountSideAdmin(box, getKey, say) {
         ${avail.length ? `<div class="as-games">${avail.map((g) => row(g, `G${g.id} · `, tag(g), preset.has(g.id))).join("")}</div>` : `<div class="as-none">Every pool game is over.</div>`}
         <div class="as-sec">MORE GAMES TODAY</div>
         ${extras.length ? `<div class="as-games">${extras.map((g) => row(g, "", xtag(g), false)).join("")}</div>` : `<div class="as-none">${noLine ? "" : "ESPN has no other games left today."}</div>`}
-        ${noLine ? `<div class="as-out">${noLine} ${noLine === 1 ? "game has" : "games have"} no line on ESPN at all, so ${noLine === 1 ? "it isn't" : "they aren't"} listed.</div>` : ""}
-        <label class="as-buy">Buy-in $<input type="number" inputmode="numeric" min="1" max="500" step="1" value="25"></label>
+        ${noLine ? `<div class="as-out">${noLine} ${noLine === 1 ? "game has" : "games have"} no line on ESPN at all, so ${noLine === 1 ? "it isn't" : "they aren't"} listed above.</div>` : ""}
+        <div class="as-sec">SECOND HALF</div>
+        <div class="as-out">Scored on 3rd quarter and later points only. Lines start at half the game's line; set them from your book. Close entry before the 3rd quarter starts.</div>
+        ${halves.length ? `<div class="as-games">${halves.map((h) => `<div class="as-half"><label class="as-game"><input type="checkbox" value="h${esc(h.eventId)}"><span>${h.pool ? `G${h.pool} · ` : ""}${esc(h.awayShort)} @ ${esc(h.homeShort)}${h.fcs ? `<small class="as-line">FCS</small>` : ""}</span><small>${h.on ? `<b class="as-live">${esc(shortStatus(h.on.detail))} · ${esc(h.on.a ?? 0)}-${esc(h.on.h ?? 0)}</b>` : esc(`${etTime(new Date(h.kickoff).getTime()).replace(",", "")} ET`)}</small></label>
+          <div class="as-half-line" data-h="${esc(h.eventId)}"><select aria-label="Second half favorite"><option value="away"${h.favHome ? "" : " selected"}>${esc(h.awayShort)}</option><option value="home"${h.favHome ? " selected" : ""}>${esc(h.homeShort)}</option></select><span>-</span><input class="as-h-sp" type="number" inputmode="decimal" step="0.5" min="0" max="40" placeholder="line" value="${h.spread ?? ""}"><span>O/U</span><input class="as-h-tot" type="number" inputmode="decimal" step="0.5" min="10" max="90" placeholder="total" value="${h.total ?? ""}"></div></div>`).join("")}</div>` : `<div class="as-none">No game left before its second half.</div>`}
+        <label class="as-buy">Entry closes in <input class="as-close" type="number" inputmode="numeric" min="5" max="480" step="1" placeholder="auto"> min</label>
+        <div class="as-out">Leave blank for the usual close: the first kickoff, or 20 minutes from now if that's later. For a second half at halftime, about 15.</div>
+        <label class="as-buy">Buy-in $<input class="as-buyin" type="number" inputmode="numeric" min="1" max="500" step="1" value="25"></label>
         <button type="button" class="admin-btn primary wide as-start"${avail.length || extras.length ? "" : " disabled"}>Start side bet</button>`;
       box.querySelector(".as-start")?.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget;
         // Pool games go by id (the Worker keeps the pool's line); others whole.
-        const ids = [...box.querySelectorAll(".as-games input:checked")].map((i) => { const x = extras.find((g) => g.id === i.value); if (!x) return { id: Number(i.value), total: poolTotals.get(Number(i.value)) }; const { on, fcs, fromPage, ...g } = x; return g; });
-        const buyIn = Number(box.querySelector(".as-buy input").value);
+        const ids = [...box.querySelectorAll(".as-games input[type=checkbox]:checked")].filter((i) => !i.value.startsWith("h")).map((i) => { const x = extras.find((g) => g.id === i.value); if (!x) return { id: Number(i.value), total: poolTotals.get(Number(i.value)) }; const { on, fcs, fromPage, ...g } = x; return g; });
+        const buyIn = Number(box.querySelector(".as-buyin").value);
+        for (const row of box.querySelectorAll(".as-half")) {
+          const cb = row.querySelector("input[type=checkbox]");
+          if (!cb.checked) continue;
+          const h = halves.find((x) => `h${x.eventId}` === cb.value);
+          const sp = Number(row.querySelector(".as-h-sp").value), tot = row.querySelector(".as-h-tot").value.trim();
+          if (!h || !Number.isFinite(sp) || sp < 0 || Math.round(sp * 2) !== sp * 2) { say(`Set a second-half line (whole or half point) for ${h ? `${h.awayShort} @ ${h.homeShort}` : "that game"}.`, "bad"); return; }
+          const favHome = row.querySelector("select").value === "home";
+          ids.push({ id: `h${h.eventId}`, away: h.away, home: h.home, awayShort: h.awayShort, homeShort: h.homeShort, awayId: h.awayId, homeId: h.homeId, favorite: favHome ? h.home : h.away, spread: sp, ...(tot !== "" && Number(tot) > 0 ? { total: Number(tot) } : {}), kickoff: h.kickoff, kickoffLabel: "2nd half" });
+        }
         if (!ids.length) { say("Pick at least one game for the side bet.", "bad"); return; }
         if (ids.length > 5) { say("Pick 5 games at most.", "bad"); return; }
+        const closeMin = Number(box.querySelector(".as-close")?.value);
+        const closeAt = Number.isFinite(closeMin) && closeMin >= 5 ? Date.now() + closeMin * 60000 : null;
         btn.disabled = true;
         try {
           let d;
-          try { d = await post({ action: "start", games: ids, buyIn }); }
+          try { d = await post({ action: "start", games: ids, buyIn, closeAt }); }
           catch (e) {
             if (e.status !== 409 || !confirm("A side bet with players in it is already running. Replace it? Everyone in it is out.")) throw e;
-            d = await post({ action: "start", games: ids, buyIn, replace: true });
+            d = await post({ action: "start", games: ids, buyIn, closeAt, replace: true });
           }
           say("Side bet is live. Everyone gets asked when they open the board.", "ok");
           render(d.pot);
@@ -3167,8 +3220,8 @@ function openSideSheet(asked) {
       <button type="button" class="sp-x" aria-label="Close">✕</button>
       <div class="sp-sheet-kick">💰 LATE NIGHT SIDE POT</div>
       <div class="sp-sheet-lead">${asked && !inAlready ? "The week's decided, but the night isn't. " : ""}Pick ${games.length === 1 ? "this game" : `these ${games.length} games`}, <b>$${pot.buyIn}</b> to get in. Most points takes the pot${pot.tbGame != null ? "; a tie goes to the closest tiebreaker guess" : "; ties split it"}.</div>
-      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">${sideTag(g)} · ${(() => { const l = sideLiveOf(g); return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">ON NOW · ${escapeCd(shortStatus(l.detail || ""))} · ${escapeCd(g.awayShort)} ${l.awayScore}, ${escapeCd(g.homeShort)} ${l.homeScore}</b>` : escapeCd(g.kickoffLabel || ""); })()}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div>${g.total != null ? `<div class="sp-modes">${ou(g, "over")}${ou(g, "under")}</div>` : ""}</div>`).join("")}</div>
-      ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${escapeCd(tbG.awayShort)} @ ${escapeCd(tbG.homeShort)}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="e.g. 52" value="${escapeCd(String(draftTb))}"></label>` : ""}
+      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">${sideTag(g)} · ${(() => { const l = sideRawOf(g); return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">ON NOW · ${escapeCd(shortStatus(l.detail || ""))} · ${escapeCd(g.awayShort)} ${l.awayScore}, ${escapeCd(g.homeShort)} ${l.homeScore}</b>` : g.half === 2 ? "scored on the 2nd half only" : escapeCd(g.kickoffLabel || ""); })()}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div>${g.total != null ? `<div class="sp-modes">${ou(g, "over")}${ou(g, "under")}</div>` : ""}</div>`).join("")}</div>
+      ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${escapeCd(sideMatch(tbG))}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="e.g. 52" value="${escapeCd(String(draftTb))}"></label>` : ""}
       <div class="sp-sheet-note">Picks lock at ${closes} ET. Nobody sees yours until then. Money is settled between you, not in the app.</div>
       ${err ? `<div class="sp-err">${escapeCd(err)}</div>` : ""}
       <div class="sp-sheet-btns"><button type="button" class="sp-no"${busy ? " disabled" : ""}>${inAlready ? "Back out" : "No thanks"}</button><button type="button" class="sp-go"${ready && !busy ? "" : " disabled"}>${busy ? "Saving…" : inAlready ? "Save picks" : `I'm in · $${pot.buyIn}`}</button></div>
@@ -3253,7 +3306,11 @@ function renderSideScreen() {
     const cell = myRow?.cells.find((c) => c.g.id === g.id && !c.ou);
     const ouCell = myRow?.cells.find((c) => c.g.id === g.id && c.ou);
     const side = (team, id, short, score) => `<div class="ss-team${pick?.team === team ? " mine" : ""}"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${escapeCd(short)}</span><b>${showScore ? score : ""}</b></div>`;
-    const stat = fin ? "FINAL" : on ? escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`)) : escapeCd(g.kickoffLabel || "");
+    // A second half not yet started shows the game as it stands.
+    const raw = g.half === 2 ? sideRawOf(g) : null;
+    const stat = fin ? "FINAL" : on ? escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`))
+      : raw?.found && raw.state === "in" ? `${escapeCd(shortStatus(raw.detail || ""))} · ${raw.awayScore}-${raw.homeScore} · 2H NEXT`
+      : escapeCd(g.kickoffLabel || "");
     const line = pick ? `${escapeCd(pick.team === g.home ? g.homeShort : g.awayShort)} ${pick.mode === "SU" ? "to win" : `${pick.team === g.favorite ? "-" : "+"}${g.spread}`}` : "No pick";
     return `<button type="button" class="ss-bug${on ? " live" : ""}${fin ? " final" : ""}" data-g="${g.id}">
       <div class="ss-bug-top"><span>${sideTag(g)}</span><span class="ss-stat">${on ? "<u></u>" : ""}${stat}</span></div>
@@ -3267,7 +3324,7 @@ function renderSideScreen() {
     : `<div class="ss-sec">STANDINGS</div><div class="sp-board">${sideRowsInOrder(st, out).map((r) => `<div class="sp-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}"><span class="sp-nm">${escapeCd(shown(r.name))}${Number.isFinite(r.tb) ? `<small class="sp-tb">TB ${r.tb}</small>` : ""}</span><span class="sp-cells">${r.cells.map(sideCellHtml).join("")}</span><span class="sp-pts">${r.pts}${r.fly ? `<small>+${r.fly}</small>` : ""}</span></div>`).join("")}</div>`;
   body.innerHTML = `<div class="ss-head"><span class="sp-kick">💰 SIDE BET</span><span class="sp-pot">${sideMoney(names.length * pot.buyIn)}</span></div>
     <div class="ss-status">${status}</div>
-    <div class="ss-sub">${names.length} in · ${sideMoney(pot.buyIn)} each · most points takes it${pot.tbGame != null ? (() => { const g = sideGames(pot).find((x) => String(x.id) === String(pot.tbGame)); return g ? ` · tiebreaker: total points in ${escapeCd(g.awayShort)} @ ${escapeCd(g.homeShort)}${out.tiebreak ? ` (${out.tiebreak.actual})` : ""}` : ""; })() : ", ties split"}</div>
+    <div class="ss-sub">${names.length} in · ${sideMoney(pot.buyIn)} each · most points takes it${pot.tbGame != null ? (() => { const g = sideGames(pot).find((x) => String(x.id) === String(pot.tbGame)); return g ? ` · tiebreaker: total points in ${escapeCd(sideMatch(g))}${out.tiebreak ? ` (${out.tiebreak.actual})` : ""}` : ""; })() : ", ties split"}</div>
     <div class="ss-bugs">${sideGames(pot).map(bug).join("")}</div>
     ${open ? `<button type="button" class="sp-btn ss-edit" data-sp="open">EDIT MY PICKS</button>` : ""}
     ${who}`;

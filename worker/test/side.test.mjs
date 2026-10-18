@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newPot, cleanSidePicks, joinEntry, declineEntry, viewPot, entryKey, sideKey, ENTRY_MIN_MS, cleanExtraGame } from "../src/side.js";
+import { newPot, cleanSidePicks, joinEntry, declineEntry, viewPot, entryKey, sideKey, ENTRY_MIN_MS, cleanExtraGame, CLOSE_MAX_MS } from "../src/side.js";
 
 const t = 1_800_000_000_000, H = 3600e3;
 const g = (id, h) => ({ id, away: `Away ${id}`, home: `Home ${id}`, awayShort: `A${id}`, homeShort: `H${id}`, favorite: `Home ${id}`, spread: 7, kickoff: new Date(t + h * H).toISOString() });
@@ -106,4 +106,16 @@ test("over/unders and the tiebreaker: required where the pot has them, hidden un
   assert.equal(viewPot(pot, { Jake: e }, t, { all: false, me: "Dewitt" }).entrants.Jake.tb, undefined, "the guess is hidden before close");
   assert.equal(viewPot(pot, { Jake: e }, pot.closesAt, { all: false }).entrants.Jake.tb, 47);
   assert.equal(newPot({ week: 7, games: [{ id: 9, total: 51.3 }], buyIn: 25, slate, now: t }).pot.slate[0].total, undefined, "a bad total is dropped");
+});
+
+test("a second-half bet: an h id marks it, the commissioner's close time wins", () => {
+  const half = { id: "h401856809", away: "Notre Dame Fighting Irish", home: "BYU Cougars", awayShort: "Notre Dame", homeShort: "BYU", awayId: 87, homeId: 252, favorite: "Notre Dame Fighting Irish", spread: 3.5, total: 24.5, kickoff: new Date(t - H).toISOString(), kickoffLabel: "2nd half" };
+  const g = cleanExtraGame(half);
+  assert.equal(g.half, 2);
+  assert.equal(g.eventId, "401856809");
+  assert.equal(cleanExtraGame({ ...half, id: "e401856809" }).half, undefined);
+  const { pot } = newPot({ week: 7, games: [half], buyIn: 25, slate, now: t, closeAt: t + 15 * 60000 });
+  assert.equal(pot.closesAt, t + 15 * 60000);
+  assert.equal(newPot({ week: 7, games: [half], buyIn: 25, slate, now: t, closeAt: t + 60000 }).pot.closesAt, t + ENTRY_MIN_MS, "too soon: the usual close");
+  assert.equal(newPot({ week: 7, games: [half], buyIn: 25, slate, now: t, closeAt: t + CLOSE_MAX_MS + 1 }).pot.closesAt, t + ENTRY_MIN_MS, "too far: the usual close");
 });

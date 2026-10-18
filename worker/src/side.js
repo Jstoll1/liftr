@@ -26,10 +26,12 @@ const GAME_FIELDS = ["id", "away", "home", "awayShort", "homeShort", "awayId", "
 const pickFields = (g) => Object.fromEntries(GAME_FIELDS.filter((f) => g[f] != null).map((f) => [f, g[f]]));
 
 // A game off the week's slate comes from the console with ESPN's line,
-// its id "e" plus the ESPN event id. Returns the clean game or null.
+// its id "e" plus the ESPN event id. A second-half bet on any game is "h"
+// plus the event id, at the line the commissioner set, and is scored on
+// third quarter and later points only. Returns the clean game or null.
 export function cleanExtraGame(g) {
   const id = String(g?.id || "");
-  if (!/^e\d{5,12}$/.test(id)) return null;
+  if (!/^[eh]\d{5,12}$/.test(id)) return null;
   const str = (v) => (typeof v === "string" && v.trim() && v.length <= 80 ? v.trim() : null);
   const away = str(g.away), home = str(g.home), awayShort = str(g.awayShort), homeShort = str(g.homeShort), favorite = str(g.favorite);
   const awayId = Number(g.awayId), homeId = Number(g.homeId), spread = Number(g.spread), kick = new Date(g.kickoff).getTime();
@@ -39,14 +41,17 @@ export function cleanExtraGame(g) {
   if (!Number.isFinite(spread) || spread < 0 || spread > 80 || Math.round(spread * 2) !== spread * 2) return null;
   if (!Number.isFinite(kick)) return null;
   const total = cleanTotal(g.total);
-  return { id, away, home, awayShort, homeShort, awayId, homeId, favorite, spread, ...(total != null ? { total } : {}), kickoff: new Date(kick).toISOString(), kickoffLabel: str(g.kickoffLabel) || "", eventId: id.slice(1) };
+  return { id, away, home, awayShort, homeShort, awayId, homeId, favorite, spread, ...(total != null ? { total } : {}), kickoff: new Date(kick).toISOString(), kickoffLabel: str(g.kickoffLabel) || "", eventId: id.slice(1), ...(id[0] === "h" ? { half: 2 } : {}) };
 }
 
 // A new pot from the commissioner's choice. A game on the week's slate
 // (given by its id) keeps the slate's line; any other game comes whole.
 // The pot keeps every game in full, so scoring never depends on the slate
 // changing later. Returns { pot } or { error }.
-export function newPot({ week, games, buyIn, slate, now }) {
+// closeAt, when the commissioner sets it (a second-half bet closes at the
+// end of halftime, which only they can judge), replaces the usual close.
+export const CLOSE_MIN_MS = 5 * 60000, CLOSE_MAX_MS = 8 * 3600000;
+export function newPot({ week, games, buyIn, slate, now, closeAt = null }) {
   const list = Array.isArray(games) ? games : [];
   const byId = new Map((slate?.games || []).map((g) => [String(g.id), g]));
   const chosen = new Map();
@@ -66,7 +71,7 @@ export function newPot({ week, games, buyIn, slate, now }) {
   const amt = Number(buyIn);
   if (!Number.isInteger(amt) || amt < 1 || amt > SIDE_MAX_BUYIN) return { error: `Buy-in must be a whole dollar amount from 1 to ${SIDE_MAX_BUYIN}.` };
   const sorted = [...chosen.values()].sort((a, b) => kickMs(a) - kickMs(b) || String(a.id).localeCompare(String(b.id)));
-  return { pot: { week, id: String(now), games: sorted.map((g) => g.id), slate: sorted, tbGame: sorted[sorted.length - 1].id, buyIn: amt, closesAt: Math.max(kickMs(sorted[0]), now + ENTRY_MIN_MS), createdAt: now } };
+  return { pot: { week, id: String(now), games: sorted.map((g) => g.id), slate: sorted, tbGame: sorted[sorted.length - 1].id, buyIn: amt, closesAt: Number.isFinite(Number(closeAt)) && closeAt !== null && Number(closeAt) >= now + CLOSE_MIN_MS && Number(closeAt) <= now + CLOSE_MAX_MS ? Number(closeAt) : Math.max(kickMs(sorted[0]), now + ENTRY_MIN_MS), createdAt: now } };
 }
 
 // Side picks must cover every pot game: a team playing in it, against the
