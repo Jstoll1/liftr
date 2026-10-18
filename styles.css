@@ -6599,3 +6599,4 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .sp-on { font-weight: normal; color: var(--neon-cyan); }
 #side-screen { align-items: flex-start; padding-top: 10px; }
 #side-screen .wrap { width: 100%; }
+.as-sec { margin-top: 4px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .1em; color: var(--neon-yellow); }

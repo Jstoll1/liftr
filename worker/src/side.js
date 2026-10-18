@@ -18,30 +18,56 @@ export const ENTRY_MIN_MS = 20 * 60000; // entry stays open at least this long
 
 const kickMs = (g) => new Date(g?.kickoff).getTime();
 
-// A new pot from the commissioner's choice, checked against the week's
-// slate. Returns { pot } or { error }.
+const GAME_FIELDS = ["id", "away", "home", "awayShort", "homeShort", "awayId", "homeId", "favorite", "spread", "kickoff", "kickoffLabel"];
+const pickFields = (g) => Object.fromEntries(GAME_FIELDS.filter((f) => g[f] != null).map((f) => [f, g[f]]));
+
+// A game off the week's slate comes from the console with ESPN's line,
+// its id "e" plus the ESPN event id. Returns the clean game or null.
+export function cleanExtraGame(g) {
+  const id = String(g?.id || "");
+  if (!/^e\d{5,12}$/.test(id)) return null;
+  const str = (v) => (typeof v === "string" && v.trim() && v.length <= 80 ? v.trim() : null);
+  const away = str(g.away), home = str(g.home), awayShort = str(g.awayShort), homeShort = str(g.homeShort), favorite = str(g.favorite);
+  const awayId = Number(g.awayId), homeId = Number(g.homeId), spread = Number(g.spread), kick = new Date(g.kickoff).getTime();
+  if (!away || !home || !awayShort || !homeShort || !favorite || away === home) return null;
+  if (favorite !== away && favorite !== home) return null;
+  if (!Number.isInteger(awayId) || !Number.isInteger(homeId)) return null;
+  if (!Number.isFinite(spread) || spread < 0 || spread > 80 || Math.round(spread * 2) !== spread * 2) return null;
+  if (!Number.isFinite(kick)) return null;
+  return { id, away, home, awayShort, homeShort, awayId, homeId, favorite, spread, kickoff: new Date(kick).toISOString(), kickoffLabel: str(g.kickoffLabel) || "", eventId: id.slice(1) };
+}
+
+// A new pot from the commissioner's choice. A game on the week's slate
+// (given by its id) keeps the slate's line; any other game comes whole.
+// The pot keeps every game in full, so scoring never depends on the slate
+// changing later. Returns { pot } or { error }.
 export function newPot({ week, games, buyIn, slate, now }) {
-  const ids = [...new Set((Array.isArray(games) ? games : []).map(Number))];
-  if (ids.length < 1 || ids.length > SIDE_MAX_GAMES) return { error: `Pick 1 to ${SIDE_MAX_GAMES} games.` };
-  const byId = new Map((slate?.games || []).map((g) => [Number(g.id), g]));
-  for (const id of ids) {
-    const g = byId.get(id);
-    if (!g) return { error: `Game ${id} is not on this week's slate.` };
+  const list = Array.isArray(games) ? games : [];
+  const byId = new Map((slate?.games || []).map((g) => [String(g.id), g]));
+  const chosen = new Map();
+  for (const item of list) {
+    const key = String(item && typeof item === "object" ? item.id : item);
+    const g = byId.has(key) ? pickFields(byId.get(key)) : cleanExtraGame(item);
+    if (!g) return { error: /^\d+$/.test(key) ? `Game ${key} is not on this week's slate.` : "One of those games is missing its line or teams." };
+    chosen.set(String(g.id), g);
+  }
+  if (chosen.size < 1 || chosen.size > SIDE_MAX_GAMES) return { error: `Pick 1 to ${SIDE_MAX_GAMES} games.` };
+  for (const g of chosen.values()) {
     if (!Number.isFinite(kickMs(g)) || now >= kickMs(g) + LIVE_MS) return { error: `${g.awayShort} at ${g.homeShort} is over.` };
   }
   const amt = Number(buyIn);
   if (!Number.isInteger(amt) || amt < 1 || amt > SIDE_MAX_BUYIN) return { error: `Buy-in must be a whole dollar amount from 1 to ${SIDE_MAX_BUYIN}.` };
-  const sorted = ids.sort((a, b) => kickMs(byId.get(a)) - kickMs(byId.get(b)) || a - b);
-  return { pot: { week, id: String(now), games: sorted, buyIn: amt, closesAt: Math.max(kickMs(byId.get(sorted[0])), now + ENTRY_MIN_MS), createdAt: now } };
+  const sorted = [...chosen.values()].sort((a, b) => kickMs(a) - kickMs(b) || String(a.id).localeCompare(String(b.id)));
+  return { pot: { week, id: String(now), games: sorted.map((g) => g.id), slate: sorted, buyIn: amt, closesAt: Math.max(kickMs(sorted[0]), now + ENTRY_MIN_MS), createdAt: now } };
 }
 
 // Side picks must cover every pot game: a team playing in it, against the
 // spread or straight up. Returns { picks } or { error }.
 export function cleanSidePicks(pot, slate, picks) {
-  const byId = new Map((slate?.games || []).map((g) => [Number(g.id), g]));
+  const byId = new Map((pot.slate || slate?.games || []).map((g) => [String(g.id), g]));
   const out = {};
   for (const id of pot.games) {
-    const g = byId.get(id), p = picks?.[id] ?? picks?.[String(id)];
+    const g = byId.get(String(id)), p = picks?.[id];
     if (!g) return { error: `Game ${id} is no longer on the slate.` };
     if (!p || (p.team !== g.away && p.team !== g.home)) return { error: `Pick a team in ${g.awayShort} at ${g.homeShort}.` };
     if (p.mode !== "ATS" && p.mode !== "SU") return { error: `Pick ATS or SU in ${g.awayShort} at ${g.homeShort}.` };
@@ -78,5 +104,5 @@ export function viewPot(pot, entries, now, viewer) {
     const show = !open || viewer?.all || viewer?.me === n;
     entrants[n] = { at: e.at, ...(e.paid ? { paid: true } : {}), ...(show ? { picks: e.picks } : { hidden: true }) };
   }
-  return { week: pot.week, id: pot.id, games: pot.games, buyIn: pot.buyIn, closesAt: pot.closesAt, createdAt: pot.createdAt, open, entrants, declined };
+  return { week: pot.week, id: pot.id, games: pot.games, ...(pot.slate ? { slate: pot.slate } : {}), buyIn: pot.buyIn, closesAt: pot.closesAt, createdAt: pot.createdAt, open, entrants, declined };
 }

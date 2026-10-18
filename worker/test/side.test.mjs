@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newPot, cleanSidePicks, joinEntry, declineEntry, viewPot, entryKey, sideKey, ENTRY_MIN_MS } from "../src/side.js";
+import { newPot, cleanSidePicks, joinEntry, declineEntry, viewPot, entryKey, sideKey, ENTRY_MIN_MS, cleanExtraGame } from "../src/side.js";
 
 const t = 1_800_000_000_000, H = 3600e3;
 const g = (id, h) => ({ id, away: `Away ${id}`, home: `Home ${id}`, awayShort: `A${id}`, homeShort: `H${id}`, favorite: `Home ${id}`, spread: 7, kickoff: new Date(t + h * H).toISOString() });
@@ -30,7 +30,7 @@ test("a pot refuses started games, unknown games, bad buy-ins and too many games
   assert.match(newPot({ week: 7, games: [8], buyIn: 2.5, slate, now: t }).error, /whole dollar/);
   assert.match(newPot({ week: 7, games: [8], buyIn: 0, slate, now: t }).error, /whole dollar/);
   assert.match(newPot({ week: 7, games: [], buyIn: 25, slate, now: t }).error, /Pick 1/);
-  assert.match(newPot({ week: 7, games: [8, 9, 10, 1, 2, 3], buyIn: 25, slate, now: t }).error, /Pick 1/);
+  assert.match(newPot({ week: 7, games: [8, 9, 10, 1, 6, 7], buyIn: 25, slate, now: t }).error, /Pick 1/);
 });
 
 test("side picks must cover every pot game with a real team and mode", () => {
@@ -65,10 +65,25 @@ test("who is in shows from the start; picks stay hidden from others until close"
   assert.equal(open.entrants.Dewitt.hidden, true);
   assert.equal(open.entrants.Dewitt.paid, true);
   assert.deepEqual(open.declined, ["Logan"]);
-  assert.ok(!JSON.stringify(open).includes("Away 8"), "nobody else's team leaks before close");
+  assert.ok(!JSON.stringify(open.entrants.Dewitt).includes("Away 8"), "nobody else's team leaks before close");
   const admin = viewPot(pot, entries, t + 1000, { all: true });
   assert.deepEqual(admin.entrants.Dewitt.picks, entries.Dewitt.picks);
   const closed = viewPot(pot, entries, t + H, { all: false, me: null });
   assert.equal(closed.open, false);
   assert.deepEqual(closed.entrants.Dewitt.picks, entries.Dewitt.picks);
+});
+
+test("games off the slate come whole with their ESPN line; slate games keep the slate's line", () => {
+  const extra = { id: "e401858999", away: "Utah Utes", home: "BYU Cougars", awayShort: "Utah", homeShort: "BYU", awayId: 254, homeId: 252, favorite: "BYU Cougars", spread: 3.5, kickoff: new Date(t + 2 * H).toISOString(), kickoffLabel: "Sat 10:15 PM ET" };
+  const { pot } = newPot({ week: 7, games: [{ id: 9, spread: 99 }, extra], buyIn: 25, slate, now: t });
+  assert.deepEqual(pot.games, [9, "e401858999"]);
+  assert.equal(pot.slate[0].spread, 7, "slate line wins over anything sent");
+  assert.equal(pot.slate[1].eventId, "401858999");
+  const ok = cleanSidePicks(pot, null, { 9: { team: "Home 9", mode: "ATS" }, e401858999: { team: "Utah Utes", mode: "SU" } });
+  assert.deepEqual(ok.picks, { 9: { team: "Home 9", mode: "ATS" }, e401858999: { team: "Utah Utes", mode: "SU" } });
+  assert.deepEqual(viewPot(pot, {}, t, { all: false }).slate.map((g) => g.id), [9, "e401858999"]);
+  assert.equal(cleanExtraGame({ ...extra, favorite: "Nobody" }), null);
+  assert.equal(cleanExtraGame({ ...extra, spread: 3.3 }), null);
+  assert.equal(cleanExtraGame({ ...extra, id: "401858999" }), null);
+  assert.match(newPot({ week: 7, games: [{ ...extra, spread: "x" }], buyIn: 25, slate, now: t }).error, /missing its line/);
 });

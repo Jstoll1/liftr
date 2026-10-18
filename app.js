@@ -468,9 +468,9 @@ function rankBadge(rank) {
   return rank ? `<i class="tm-rank" title="AP rank">${rank}</i>` : "";
 }
 
-function parseEspnEvents(events) {
+function parseEspnEvents(events, games = GAMES) {
   const byId = {};
-  GAMES.forEach((game) => {
+  games.forEach((game) => {
     const event = events.find((e) => {
       const ids = ((e?.competitions?.[0]?.competitors) || []).map((c) => Number(c?.team?.id));
       return ids.includes(game.awayId) && ids.includes(game.homeId);
@@ -2807,25 +2807,49 @@ function fetchSidePot(force = false) {
   const week = currentWeek;
   sideInFlight = fetchCapped(`${WORKER_URL}/side?week=${week}${me}&t=${Date.now()}`, { cache: "no-store" }, 8000)
     .then((r) => (r.ok ? r.json() : null))
-    .then((d) => { if (d && "pot" in d) { sidePot = d.pot; sidePotAt = Date.now(); sidePotWeek = week; } return potNow(); })
+    .then((d) => { if (d && "pot" in d) { sidePot = d.pot; sidePotAt = Date.now(); sidePotWeek = week; } return fetchSideLive().catch(() => {}); })
+    .then(() => potNow())
     .catch(() => potNow())
     .finally(() => { sideInFlight = null; });
   return sideInFlight;
 }
-const sideGames = (pot) => pot.games.map((id) => GAMES.find((g) => g.id === id)).filter(Boolean);
+// The pot carries its games whole (pot.slate), so a game off this week's
+// slate works the same; a slate game uses the slate's copy. Older pots
+// held ids only.
+const sideGames = (pot) => (pot.slate || pot.games.map((id) => ({ id }))).map((g) => GAMES.find((x) => String(x.id) === String(g.id)) || (g.away ? g : null)).filter(Boolean);
+const onSlate = (g) => GAMES.some((x) => x === g);
+// A pool game goes by its number; a game off the slate is marked as such.
+const sideTag = (g) => (onSlate(g) ? `G${g.id}` : "BONUS");
+// Live scores for side games off the slate, read from ESPN the same way
+// the board reads its own.
+let sideLive = {}, sideLiveAt = 0, sideLiveKey = "";
+async function fetchSideLive(force = false) {
+  const pot = potNow();
+  const extra = pot ? sideGames(pot).filter((g) => !onSlate(g)) : [];
+  if (!extra.length) return sideLive;
+  const key = extra.map((g) => g.id).join(",");
+  if (!force && key === sideLiveKey && Date.now() - sideLiveAt < 20000) return sideLive;
+  const days = [...new Set(extra.map((g) => new Date(g.kickoff).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "")))];
+  const answers = await Promise.all(days.map((d) => fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${d}&groups=80&limit=300&t=${Date.now()}`, { cache: "no-store" }, 6000).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
+  const events = answers.flatMap((a) => a?.events || []);
+  if (events.length) { sideLive = { ...sideLive, ...parseEspnEvents(events, extra) }; sideLiveAt = Date.now(); sideLiveKey = key; }
+  return sideLive;
+}
+const sideLiveOf = (g) => (onSlate(g) ? latestLive[g.id] : sideLive[g.id]);
+const sideResultOf = (g) => { const l = sideLiveOf(g); return l?.completed && Number.isFinite(l.awayScore) && Number.isFinite(l.homeScore) ? { awayScore: l.awayScore, homeScore: l.homeScore } : null; };
 const sideMoney = (x) => `$${Number.isInteger(x) ? x : x.toFixed(2)}`;
 const sideNames = (list) => list.map((n) => shown(n)).join(list.length === 2 ? " and " : ", ");
 // Each entrant's side points: banked from finals, in flight from games on now.
-function sideStandings(pot, live = latestLive) {
-  const results = computeLiveResults(live);
+function sideStandings(pot) {
   const games = sideGames(pot);
   const rows = Object.entries(pot.entrants || {}).map(([name, e]) => {
     let pts = 0, fly = 0;
     const cells = games.map((g) => {
       const pick = e.picks?.[g.id];
       if (!pick) return { g, pick: null, cls: "hidden", txt: "?" };
-      if (results[g.id]) { const p = scorePick(g, pick, results[g.id]) || 0; pts += p; return { g, pick, cls: p ? "hit" : "miss", txt: p ? `+${p}` : "0" }; }
-      const lv = live[g.id];
+      const res = sideResultOf(g);
+      if (res) { const p = scorePick(g, pick, res) || 0; pts += p; return { g, pick, cls: p ? "hit" : "miss", txt: p ? `+${p}` : "0" }; }
+      const lv = sideLiveOf(g);
       if (lv?.found && lv.state === "in" && Number.isFinite(lv.awayScore) && Number.isFinite(lv.homeScore)) {
         const p = scorePick(g, pick, lv) || 0; fly += p;
         return { g, pick, cls: p ? "live-hit" : "live-miss", txt: p ? `+${p}` : "0" };
@@ -2835,7 +2859,7 @@ function sideStandings(pot, live = latestLive) {
     return { name, pts, fly, cells, paid: !!e.paid };
   });
   rows.sort((a, b) => b.pts + b.fly - (a.pts + a.fly) || b.pts - a.pts || a.name.localeCompare(b.name));
-  return { rows, games, final: games.length > 0 && games.every((g) => results[g.id]) };
+  return { rows, games, final: games.length > 0 && games.every((g) => sideResultOf(g)) };
 }
 // The money once every pot game is final. Ties split the pot; one entrant,
 // or everyone level, is no bet.
@@ -2938,13 +2962,46 @@ async function mountSideAdmin(box, getKey, say) {
   };
   const refreshApp = () => fetchSidePot(true).then(renderSidePot);
   const etTime = (ms) => new Date(ms).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" });
+  // Tonight's other FBS games from ESPN, at ESPN's line, the same source
+  // the slate editor uses. A game with no line (ESPN drops it once a game
+  // is on) cannot be picked against the spread, so it is only counted.
+  let extras = [], noLine = 0;
+  const readEspn = async () => {
+    extras = []; noLine = 0;
+    const day = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
+    try {
+      const r = await fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${day}&groups=80&limit=300&t=${Date.now()}`, { cache: "no-store" }, 8000);
+      const data = r.ok ? await r.json() : null;
+      for (const ev of data?.events || []) {
+        const c = ev.competitions?.[0] || {};
+        const away = (c.competitors || []).find((x) => x.homeAway === "away"), home = (c.competitors || []).find((x) => x.homeAway === "home");
+        if (!away || !home) continue;
+        const st = c.status?.type || ev.status?.type || {};
+        if (st.completed || st.state === "post") continue;
+        const aId = Number(away.team?.id), hId = Number(home.team?.id);
+        if (GAMES.some((g) => g.awayId === aId && g.homeId === hId)) continue; // on the pool slate already
+        const o = (c.odds || [])[0] || {}, raw = Number(o.spread);
+        if (!Number.isFinite(raw) || raw === 0) { noLine += 1; continue; }
+        const favHome = o.homeTeamOdds?.favorite ? true : o.awayTeamOdds?.favorite ? false : raw < 0;
+        const aName = away.team?.displayName || "", hName = home.team?.displayName || "";
+        extras.push({
+          id: `e${ev.id}`, away: aName, home: hName,
+          awayShort: away.team?.shortDisplayName || away.team?.abbreviation || aName, homeShort: home.team?.shortDisplayName || home.team?.abbreviation || hName,
+          awayId: aId, homeId: hId, favorite: favHome ? hName : aName, spread: Math.abs(raw), kickoff: ev.date,
+          kickoffLabel: `${etTime(new Date(ev.date).getTime()).replace(",", "")} ET`,
+          on: st.state === "in" ? { detail: st.shortDetail || "", a: away.score, h: home.score } : null,
+        });
+      }
+      extras.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+    } catch {}
+  };
   const load = async () => {
     const key = await getKey();
     if (!key) return;
     box.classList.remove("hidden");
     box.textContent = "Loading the side pot…";
     try {
-      const [res] = await Promise.all([fetch(`${WORKER_URL}/side?week=${currentWeek}&key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" }), fetchLiveScores().catch(() => {})]);
+      const [res] = await Promise.all([fetch(`${WORKER_URL}/side?week=${currentWeek}&key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" }), fetchLiveScores().catch(() => {}), readEspn()]);
       if (!res.ok) throw new Error(String(res.status));
       render((await res.json()).pot);
     } catch (e) { box.textContent = `Could not load the side pot (${e.message}).`; }
@@ -2964,16 +3021,23 @@ async function mountSideAdmin(box, getKey, say) {
         return `<b class="as-live">ON NOW${l?.found && l.state === "in" ? ` · ${esc(shortStatus(l.detail || ""))} · ${l.awayScore}-${l.homeScore}` : ""}</b>`;
       };
       const line = (g) => `${g.favorite === g.home ? esc(g.homeShort) : esc(g.awayShort)} -${g.spread}`;
-      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Pick games at this week's lines, still to come or on now. Everyone who opts in picks the same games. Entry closes at the first kickoff, or 20 minutes after you start it if that's later. A game on now keeps its pregame line, so check the score before adding it.</div>
-        ${avail.length ? `<div class="as-games">${avail.map((g) => `<label class="as-game"><input type="checkbox" value="${g.id}"${preset.has(g.id) ? " checked" : ""}><span>G${g.id} · ${esc(g.awayShort)} @ ${esc(g.homeShort)}<small class="as-line">${line(g)}</small></span><small>${tag(g)}</small></label>`).join("")}</div>` : `<div class="as-none">Every game this week is over.</div>`}
-        ${games.length > avail.length && avail.length ? `<div class="as-out">${games.length - avail.length} ${games.length - avail.length === 1 ? "game is" : "games are"} over.</div>` : ""}
+      const xtag = (g) => (g.on ? `<b class="as-live">ON NOW · ${esc(shortStatus(g.on.detail))} · ${esc(g.on.a ?? 0)}-${esc(g.on.h ?? 0)}</b>` : esc(g.kickoffLabel));
+      const row = (g, label, tagHtml, checked) => `<label class="as-game"><input type="checkbox" value="${esc(g.id)}"${checked ? " checked" : ""}><span>${label}${esc(g.awayShort)} @ ${esc(g.homeShort)}<small class="as-line">${line(g)}</small></span><small>${tagHtml}</small></label>`;
+      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Pick up to 5 games, still to come or on now. Pool games keep the pool's line; the rest use ESPN's current line. Everyone who opts in picks the same games. Entry closes at the first kickoff, or 20 minutes after you start it if that's later. A game on now keeps its line, so check the score before adding it.</div>
+        <div class="as-sec">THIS WEEK'S POOL</div>
+        ${avail.length ? `<div class="as-games">${avail.map((g) => row(g, `G${g.id} · `, tag(g), preset.has(g.id))).join("")}</div>` : `<div class="as-none">Every pool game is over.</div>`}
+        <div class="as-sec">MORE GAMES TONIGHT</div>
+        ${extras.length ? `<div class="as-games">${extras.map((g) => row(g, "", xtag(g), false)).join("")}</div>` : `<div class="as-none">${noLine ? "" : "ESPN has no other games left tonight."}</div>`}
+        ${noLine ? `<div class="as-out">${noLine} ${noLine === 1 ? "game on now has" : "games on now have"} no line from ESPN, so ${noLine === 1 ? "it isn't" : "they aren't"} listed.</div>` : ""}
         <label class="as-buy">Buy-in $<input type="number" inputmode="numeric" min="1" max="500" step="1" value="25"></label>
-        <button type="button" class="admin-btn primary wide as-start"${avail.length ? "" : " disabled"}>Start side bet</button>`;
+        <button type="button" class="admin-btn primary wide as-start"${avail.length || extras.length ? "" : " disabled"}>Start side bet</button>`;
       box.querySelector(".as-start")?.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget;
-        const ids = [...box.querySelectorAll(".as-games input:checked")].map((i) => Number(i.value));
+        // Pool games go by id (the Worker keeps the pool's line); others whole.
+        const ids = [...box.querySelectorAll(".as-games input:checked")].map((i) => { const x = extras.find((g) => g.id === i.value); if (!x) return Number(i.value); const { on, ...g } = x; return g; });
         const buyIn = Number(box.querySelector(".as-buy input").value);
         if (!ids.length) { say("Pick at least one game for the side bet.", "bad"); return; }
+        if (ids.length > 5) { say("Pick 5 games at most.", "bad"); return; }
         btn.disabled = true;
         try {
           let d;
@@ -2997,7 +3061,7 @@ async function mountSideAdmin(box, getKey, say) {
     const owes = (n) => !open && out.final && out.losers.includes(n);
     const won = (n) => !open && out.final && !out.push && out.winners.includes(n);
     box.innerHTML = `<div class="as-lead"><b>Week ${pot.week} side bet</b> · $${pot.buyIn} · ${ins.length} in · $${ins.length * pot.buyIn} pot<br>${open ? `Entry closes ${esc(etTime(pot.closesAt))} ET` : `Closed ${esc(etTime(pot.closesAt))} ET`}</div>
-      <div class="as-list">${sideGames(pot).map((g) => `<span>G${g.id} ${esc(g.awayShort)} @ ${esc(g.homeShort)}</span>`).join("")}</div>
+      <div class="as-list">${sideGames(pot).map((g) => `<span>${sideTag(g)} ${esc(g.awayShort)} @ ${esc(g.homeShort)}</span>`).join("")}</div>
       ${result ? `<div class="as-result">${esc(result)}</div>` : ""}
       <div class="as-people">${ins.length ? ins.map((n) => `<label class="as-person${owes(n) ? " owes" : ""}"><span>${esc(shown(n))}${owes(n) ? ` <small>owes $${pot.buyIn}</small>` : ""}</span>${won(n) ? `<span class="as-won">collects</span>` : `<span class="as-paid"><input type="checkbox" data-paid="${esc(n)}"${pot.entrants[n].paid ? " checked" : ""}> paid</span>`}</label>`).join("") : `<div class="as-none">Nobody in yet.</div>`}</div>
       ${pot.declined?.length ? `<div class="as-out">No thanks: ${pot.declined.map((n) => esc(shown(n))).join(", ")}</div>` : ""}
@@ -3049,7 +3113,7 @@ function openSideSheet(asked) {
       <button type="button" class="sp-x" aria-label="Close">✕</button>
       <div class="sp-sheet-kick">💰 LATE NIGHT SIDE POT</div>
       <div class="sp-sheet-lead">${asked && !inAlready ? "The week's decided, but the night isn't. " : ""}Pick ${games.length === 1 ? "this game" : `these ${games.length} games`}, <b>$${pot.buyIn}</b> to get in. Most points takes the pot; ties split it.</div>
-      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">G${g.id} · ${(() => { const l = latestLive[g.id]; return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">ON NOW · ${escapeCd(shortStatus(l.detail || ""))} · ${escapeCd(g.awayShort)} ${l.awayScore}, ${escapeCd(g.homeShort)} ${l.homeScore}</b>` : escapeCd(g.kickoffLabel || ""); })()}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div></div>`).join("")}</div>
+      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">${sideTag(g)} · ${(() => { const l = sideLiveOf(g); return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">ON NOW · ${escapeCd(shortStatus(l.detail || ""))} · ${escapeCd(g.awayShort)} ${l.awayScore}, ${escapeCd(g.homeShort)} ${l.homeScore}</b>` : escapeCd(g.kickoffLabel || ""); })()}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div></div>`).join("")}</div>
       <div class="sp-sheet-note">Picks lock at ${closes} ET. Nobody sees yours until then. Money is settled between you, not in the app.</div>
       ${err ? `<div class="sp-err">${escapeCd(err)}</div>` : ""}
       <div class="sp-sheet-btns"><button type="button" class="sp-no"${busy ? " disabled" : ""}>${inAlready ? "Back out" : "No thanks"}</button><button type="button" class="sp-go"${ready && !busy ? "" : " disabled"}>${busy ? "Saving…" : inAlready ? "Save picks" : `I'm in · $${pot.buyIn}`}</button></div>
@@ -3110,7 +3174,6 @@ function renderSideScreen() {
   const me = currentManager, mine = pot.entrants[me]?.picks || {};
   const names = Object.keys(pot.entrants || {});
   const open = sideOpen(pot);
-  const results = computeLiveResults(latestLive);
   const st = sideStandings(pot), out = sideOutcome(pot, st);
   const myRow = st.rows.find((r) => r.name === me);
   const cd = open ? kickoffCountdown(new Date(pot.closesAt).toISOString()) : null;
@@ -3120,8 +3183,8 @@ function renderSideScreen() {
     : out.winners.includes(me) ? (out.winners.length > 1 ? `You split it. You collect <b>${sideMoney(out.net)}</b>.` : `You won. You collect <b>${sideMoney(out.net)}</b>.`)
     : `${escapeCd(sideNames(out.winners))} ${out.winners.length > 1 ? "split" : "took"} it. You owe <b>${sideMoney(pot.buyIn)}</b>.`;
   const bug = (g) => {
-    const l = latestLive[g.id], kicked = Date.now() >= new Date(g.kickoff).getTime();
-    const on = l?.found && l.state === "in" && !l.completed, fin = !!results[g.id];
+    const l = sideLiveOf(g), kicked = Date.now() >= new Date(g.kickoff).getTime();
+    const on = l?.found && l.state === "in" && !l.completed, fin = !!sideResultOf(g);
     const showScore = kicked && l?.found && (on || fin);
     const pick = mine[g.id];
     const cell = myRow?.cells.find((c) => c.g.id === g.id);
@@ -3129,7 +3192,7 @@ function renderSideScreen() {
     const stat = fin ? "FINAL" : on ? escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`)) : escapeCd(g.kickoffLabel || "");
     const line = pick ? `${escapeCd(pick.team === g.home ? g.homeShort : g.awayShort)} ${pick.mode === "SU" ? "to win" : `${pick.team === g.favorite ? "-" : "+"}${g.spread}`}` : "No pick";
     return `<button type="button" class="ss-bug${on ? " live" : ""}${fin ? " final" : ""}" data-g="${g.id}">
-      <div class="ss-bug-top"><span>G${g.id}</span><span class="ss-stat">${on ? "<u></u>" : ""}${stat}</span></div>
+      <div class="ss-bug-top"><span>${sideTag(g)}</span><span class="ss-stat">${on ? "<u></u>" : ""}${stat}</span></div>
       ${side(g.away, g.awayId, g.awayShort, l?.awayScore ?? 0)}${side(g.home, g.homeId, g.homeShort, l?.homeScore ?? 0)}
       <div class="ss-pick ${cell?.cls || "open"}"><span>YOUR PICK · ${line}</span><b>${cell ? (cell.cls === "open" ? `${cell.txt} PTS` : cell.txt) : ""}</b></div>
     </button>`;
@@ -3147,7 +3210,13 @@ function renderSideScreen() {
 document.getElementById("side-screen-body")?.addEventListener("click", (e) => {
   if (e.target.closest("[data-sp='open']")) return openSideSheet(false);
   const b = e.target.closest(".ss-bug");
-  if (b) { track("side-game", { event: true, d: b.dataset.g }); openInsights(Number(b.dataset.g)); }
+  if (b) {
+    track("side-game", { event: true, d: b.dataset.g });
+    // A slate game opens the app's gamecast; any other opens ESPN's.
+    const g = GAMES.find((x) => String(x.id) === b.dataset.g);
+    if (g) openInsights(g.id);
+    else { const ev = potNow()?.slate?.find((x) => String(x.id) === b.dataset.g)?.eventId; if (ev) window.open(`https://www.espn.com/college-football/game/_/gameId/${ev}`, "_blank", "noopener"); }
+  }
 });
 
 // Results are derived straight from ESPN's live feed once a game goes
@@ -5567,7 +5636,7 @@ setInterval(() => {
   renderRecap(); // memoised: only the Thursday cutoff can change anything here
   }
   // The Side bet tab keeps its scores and standings moving the same way.
-  if (!sideScreen.classList.contains("hidden")) Promise.all([fetchLiveScores().catch(() => {}), fetchSidePot()]).then(() => withScrollPreserved(() => { updateSideNav(); renderSideScreen(); }));
+  if (!sideScreen.classList.contains("hidden")) Promise.all([fetchLiveScores().catch(() => {}), fetchSidePot(), fetchSideLive().catch(() => {})]).then(() => withScrollPreserved(() => { updateSideNav(); renderSideScreen(); }));
   // The off-board branch that fetched live scores here every tick is gone.
   // It fed the header chip back when the chip reported live games; the
   // chip is a to-do reminder now and reads nothing from the feed.
