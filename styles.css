@@ -5145,14 +5145,14 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 #scoreboard-screen.week-over #recap-panel { order: 3; }
 #scoreboard-screen.week-over #payouts-toggle { order: 4; }
 #scoreboard-screen.week-over #payouts-panel { order: 5; }
-#scoreboard-screen.week-over .lb-head { order: 6; }
-#scoreboard-screen.week-over #rankings-list { order: 7; }
-#scoreboard-screen.week-over #scores-toggle { order: 8; }
-#scoreboard-screen.week-over #live-scores-list { order: 9; }
-#scoreboard-screen.week-over #all-picks-toggle { order: 10; }
-#scoreboard-screen.week-over .scoreboard-table-wrap { order: 11; }
-#scoreboard-screen.week-over #season-toggle { order: 12; }
-#scoreboard-screen.week-over #season-panel { order: 13; }
+#scoreboard-screen.week-over #season-toggle { order: 6; }
+#scoreboard-screen.week-over #season-panel { order: 7; }
+#scoreboard-screen.week-over .lb-head { order: 8; }
+#scoreboard-screen.week-over #rankings-list { order: 9; }
+#scoreboard-screen.week-over #scores-toggle { order: 10; }
+#scoreboard-screen.week-over #live-scores-list { order: 11; }
+#scoreboard-screen.week-over #all-picks-toggle { order: 12; }
+#scoreboard-screen.week-over .scoreboard-table-wrap { order: 13; }
 .recap-marquee { cursor: pointer; }
 .recap-panel.folded .recap-card { display: none; }
 .recap-caret { font-style: normal; display: inline-block; margin-left: 4px; transition: transform .15s; }

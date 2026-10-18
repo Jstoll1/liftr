@@ -5682,10 +5682,20 @@ function setWeekOverLayout(on) {
   const screen = document.getElementById("scoreboard-screen");
   if (!screen) return;
   screen.classList.toggle("week-over", on);
+  // The week-over overview: the replay, the pot and season stats, in that
+  // order, all open the first time the finished week is drawn. Each still
+  // folds by hand.
   if (on && weekOverSeen !== currentWeek) {
     weekOverSeen = currentWeek;
-    const pot = document.getElementById("payouts-toggle");
-    if (pot && !pot.classList.contains("open")) pot.click();
+    for (const id of ["payouts-toggle", "season-toggle"]) {
+      const t = document.getElementById(id);
+      if (t && !t.classList.contains("open")) t.click();
+    }
+    const recap = document.getElementById("recap-panel");
+    if (recap?.classList.contains("folded")) {
+      recap.classList.remove("folded");
+      recap.querySelector(".recap-marquee")?.setAttribute("aria-expanded", "true");
+    }
   }
 }
 document.getElementById("scores-toggle")?.addEventListener("click", (e) => {
