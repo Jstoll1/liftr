@@ -608,7 +608,13 @@ async function fetchLiveFromWorker() {
   const data = await res.json();
   const byId = {};
   (data.games || []).forEach((g) => {
-    if (g && g.found) byId[g.id] = g;
+    if (!g || !g.found) return;
+    // The Worker passes ESPN's win chance as a fraction (0.80); the app
+    // reads percent (80), as parseEspnEvents makes it. Read raw, a team
+    // at 80% looked like 0.8% and swung every win chance on the board.
+    const wp = g.winProb;
+    if (wp && Number.isFinite(wp.home) && Number.isFinite(wp.away) && wp.home <= 1 && wp.away <= 1) g.winProb = { home: wp.home * 100, away: wp.away * 100 };
+    byId[g.id] = g;
   });
   return byId;
 }
