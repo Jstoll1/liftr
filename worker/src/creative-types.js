@@ -87,9 +87,60 @@ CATEGORIES["scouting-report"] = {
   },
 };
 
+// The league's award and badge art: the Week Replay's card icons, the
+// high score trophy and the season stats tiles. Today each is a fixed
+// picture in assets/images; a published one takes its place. The key is
+// that picture's path with a dash (recap-crown is recap/crown.webp).
+export const AWARDS = {
+  "recap-crown": ["Pick of the Week", "Week Replay", "a jeweled golden crown"],
+  "recap-bomb": ["Worst Pick", "Week Replay", "a round black cartoon bomb with a lit fuse throwing sparks"],
+  "recap-chart": ["Movement", "Week Replay", "a rising green bar chart with a bold arrow climbing up"],
+  "recap-coin": ["Coin Flip", "Week Replay", "a spinning gold coin"],
+  "recap-flag": ["Tiebreaker", "Week Replay", "a waving black and white checkered racing flag"],
+  "recap-trophy": ["Week High Score", "High score banner", "a shining gold trophy cup"],
+  "hs-ats": ["Best ATS", "Season stats", "a red and white bullseye target with an arrow in the center"],
+  "hs-streak": ["Hot Hand", "Season stats", "an open hand wreathed in flames"],
+  "hs-dogs": ["Dog Hits", "Season stats", "a cool dog wearing sunglasses"],
+  "hs-lone": ["Lone Wolf", "Season stats", "a wolf howling at a full moon"],
+  "hs-fader": ["Favorite Fader", "Season stats", "a retro synthwave sunset with palm trees"],
+  "hs-tb": ["TB Sniper", "Season stats", "a glowing sniper scope crosshair"],
+  "hs-best": ["Best Week", "Season stats", "a gold trophy bursting with light rays and stars"],
+  "hs-blanks": ["No Shows", "Season stats", "a sleepy crescent moon among little stars"],
+  "hs-bank": ["Bankroll", "Side bets", "a thick stack of green cash"],
+  "hs-dice": ["Side Picks", "Side bets", "a pair of white dice mid roll"],
+  "hs-coins": ["Side Bets", "Side bets", "a stack of gold coins"],
+};
+CATEGORIES["award-art"] = {
+  kind: "image",
+  label: "Award art",
+  blurb: "The icons on the Week Replay cards, the high score trophy and the season stats tiles. A published one replaces today's picture.",
+  placements: ["award-icon"],
+  trigger: "manual",
+  perWeek: false,
+  publishWhen: "any",
+  size: "1024x1024", quality: "medium", background: "transparent",
+  choices: Object.entries(AWARDS).map(([key, [label, where]]) => ({ key, label, where })),
+  subject(input) {
+    const key = String(input?.award || "");
+    const a = AWARDS[key];
+    if (!a) return { error: "Pick an award." };
+    return { key: `award:${key}`, label: `${a[0]} · ${a[1]}`, data: { award: key, name: a[0], where: a[1], motif: a[2] } };
+  },
+  prompt(s) {
+    const d = s.data;
+    return [
+      `${ARCADE}.`,
+      `A single bold icon: ${d.motif}.`,
+      `It is the badge for the "${d.name}" award in a football pick'em game, so it must read clearly at small sizes, with a strong silhouette and few details.`,
+      NO_PEOPLE,
+      NO_TEXT,
+    ].join(" ");
+  },
+};
+
 export const MAX_FEEDBACK = 300;
 
 // What the Studio needs to draw its pickers, without the prompt code.
 export function publicTypes() {
-  return Object.entries(CATEGORIES).map(([id, c]) => ({ id, kind: c.kind || "image", label: c.label, blurb: c.blurb, placements: c.placements, trigger: c.trigger, publishWhen: c.publishWhen, perWeek: c.perWeek !== false, estCost: c.kind === "text" ? 0.006 : estimateCost(c.quality) }));
+  return Object.entries(CATEGORIES).map(([id, c]) => ({ id, kind: c.kind || "image", label: c.label, blurb: c.blurb, placements: c.placements, trigger: c.trigger, publishWhen: c.publishWhen, perWeek: c.perWeek !== false, ...(c.choices ? { choices: c.choices } : {}), estCost: c.kind === "text" ? 0.006 : estimateCost(c.quality) }));
 }

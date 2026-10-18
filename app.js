@@ -5689,7 +5689,7 @@ function renderWeekChamp(rows, results) {
   if (!allFinal || !rows.length) { el.classList.add("hidden"); return; }
   const top = rows.filter((r) => r.place === rows[0].place);
   const names = top.map((r) => shown(r.name).toUpperCase()).join(" & ");
-  const trophy = `<img class="wc-trophy" src="assets/images/recap/trophy.webp" alt="" aria-hidden="true" decoding="async">`;
+  const trophy = `<img class="wc-trophy" src="${awardArt("recap/trophy")}" alt="" aria-hidden="true" decoding="async">`;
   el.innerHTML = `<span class="wc-label"><span class="wc-rule"></span>${WEEK_LABEL.toUpperCase()} HIGH SCORE<span class="wc-rule"></span></span><span class="wc-line">${trophy}<span class="wc-name">${names}</span><span class="wc-pts">${String(rows[0].score).padStart(2, "0")}<small>PTS</small></span>${trophy}</span>`;
   el.classList.remove("hidden");
 }
@@ -8094,6 +8094,13 @@ async function loadCreativeArt() {
 setTimeout(loadCreativeArt, 1500);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) loadCreativeArt(); });
 
+// An award's picture: the one published from the Creative Studio if there
+// is one, else the picture that ships with the app.
+function awardArt(path) {
+  const v = creativeArt?.art?.[`award-icon:award:${path.replace("/", "-")}`]?.v;
+  return v ? `${WORKER_URL}/art/img/${encodeURIComponent(v)}` : `assets/images/${path}.webp`;
+}
+
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
 let renderRecap = function () {
@@ -8110,7 +8117,7 @@ let renderRecap = function () {
   const chips = (w) => nameChips(Array.isArray(w) ? w : [w]);
   // Pixel art for each card's header, cut from the league's template;
   // it hangs a little past the colour bar, the way the template draws it.
-  const art = (f) => `<img class="recap-ico" src="assets/images/recap/${f}.webp" alt="" aria-hidden="true" decoding="async">`;
+  const art = (f) => `<img class="recap-ico" src="${awardArt(`recap/${f}`)}" alt="" aria-hidden="true" decoding="async">`;
   const ICON = { target: art("crown"), skull: art("bomb"), up: art("chart"), coin: art("coin"), hash: art("flag") };
   // Team art in the template's pixel style: hand-drawn for the teams the
   // template has, and for everyone else ESPN's logo fetched tiny and blown
@@ -8475,7 +8482,7 @@ async function renderSeasonStats() {
     // per board; the emoji stands in if it fails to load.
     return `<div class="hs-tile${open ? " open" : ""}${!lead ? " empty" : ""}" style="--c:${color}">
       <button type="button" class="hs-tap" data-hs="${key}" aria-expanded="${open}">
-        <span class="hs-art"><img src="assets/images/hs/${art}.webp" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'${icon}'}))"></span>
+        <span class="hs-art"><img src="${awardArt(`hs/${art}`)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'${icon}'}))"></span>
         <span class="hs-body">
           <span class="hs-t-head"><span>${label}</span><em>${lead ? (open ? "▴" : "▾") : ""}</em></span>
           ${lead ? `<span class="hs-name"><b>${esc(shown(lead.name))}</b>${tied ? `<i title="tied with ${tied} more">+${tied}</i>` : ""}</span>
@@ -8496,7 +8503,7 @@ async function renderSeasonStats() {
       ${s.blanks.length ? tile("blanks", "💤", "NO SHOWS", "Games left unpicked", s.blanks, "#a77bff") : ""}
     </div>
     <div class="hs-side">
-      <div class="hs-side-h"><img src="assets/images/hs/coins.webp" alt="" loading="lazy" decoding="async"><span>SIDE BETS</span><small>OFF THE BOOKS · ${side.bets} BET${side.bets === 1 ? "" : "S"}</small></div>
+      <div class="hs-side-h"><img src="${awardArt("hs/coins")}" alt="" loading="lazy" decoding="async"><span>SIDE BETS</span><small>OFF THE BOOKS · ${side.bets} BET${side.bets === 1 ? "" : "S"}</small></div>
       <div class="hs-side-note">Their own record. Side bets never count toward pool standings, payouts or the boards above.</div>
       <div class="hs-grid">
         ${tile("side-bank", "💵", "BANKROLL", "Money won or lost across side bets", side.bank, "var(--neon-green)", "bank")}

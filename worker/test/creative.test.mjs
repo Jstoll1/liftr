@@ -262,3 +262,23 @@ test("regenerate adds a version with the note and the old draft; the live one st
   const r2 = await post(d, "/action", { action: "regenerate", versionIds: [img.versionId], feedback: "more snarl" });
   assert.equal(r2.done.length, 1);
 });
+
+test("award art: one asset per award, a prompt with the motif and no text, published to the award's spot", async () => {
+  const seen = [];
+  const { d } = desk({ draw: async (a) => { seen.push(a); return { bytes: new Uint8Array([1]), cost: 0.04 }; } });
+  assert.match((await post(d, "/generate", { category: "award-art", subject: { award: "nope" } })).error, /award/);
+  const q = await post(d, "/generate", { category: "award-art", subject: { award: "recap-crown" }, week: 7 });
+  const again = await post(d, "/generate", { category: "award-art", subject: { award: "recap-crown" }, week: 8 });
+  assert.equal(again.versionId, q.versionId);
+  await d.alarm();
+  assert.match(seen[0].prompt, /jeweled golden crown/);
+  assert.match(seen[0].prompt, /Pick of the Week/);
+  assert.match(seen[0].prompt, /no text/i);
+  await act(d, "approve", [q.versionId]);
+  await optimize(d, q.versionId);
+  await act(d, "publish", [q.versionId]);
+  assert.equal(JSON.parse(d.kv.get("creative:published")).art["award-icon:award:recap-crown"].v, q.versionId);
+  const types = await get(d, "/types");
+  const award = types.types.find((t) => t.id === "award-art");
+  assert.ok(award.choices.some((c) => c.key === "hs-dogs"));
+});

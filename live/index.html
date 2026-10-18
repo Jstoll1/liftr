@@ -539,6 +539,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 .lgsw button { padding: 4px 9px; font: 700 11.5px var(--mono); letter-spacing: .06em; color: var(--dim); background: none; border: 0; border-radius: 7px; }
 .lgsw button.on { color: #0b0716; background: var(--green); }
 .gate .lgsw { align-self: flex-start; }
+.sg-t.aw img { object-fit: contain; }
 </style>
 </head>
 <body>
@@ -1343,10 +1344,11 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       <div class="sd-sh"><b>New graphic</b><button type="button" class="ib" data-sd-close="1" aria-label="Close">${ICONS.x}</button></div>
       <label>Kind<select name="category">${sd.types.map((t) => `<option value="${esc(t.id)}"${t.id === g.category ? " selected" : ""}>${esc(t.label)}</option>`).join("")}</select></label>
       ${type ? `<p class="sd-blurb">${esc(type.blurb)}</p>` : ""}
-      <label>Team<select name="teamId">${sd.teams.length ? sd.teams.map((t) => `<option value="${t.id}"${String(t.id) === String(g.teamId) ? " selected" : ""}>${esc(t.name)}</option>`).join("") : `<option value="">This week's slate didn't load</option>`}</select></label>
+      ${type?.choices ? `<label>Award<select name="award">${type.choices.map((c) => `<option value="${esc(c.key)}"${g.award === c.key ? " selected" : ""}>${esc(c.label)} · ${esc(c.where)}</option>`).join("")}</select></label>
+      <label>Art direction <i>optional</i><textarea name="feedback" maxlength="300" rows="2" placeholder="Bigger flames, more gold">${esc(g.feedback || "")}</textarea></label>` : `<label>Team<select name="teamId">${sd.teams.length ? sd.teams.map((t) => `<option value="${t.id}"${String(t.id) === String(g.teamId) ? " selected" : ""}>${esc(t.name)}</option>`).join("") : `<option value="">This week's slate didn't load</option>`}</select></label>
       <div class="sd-two"><label><span>Mascot <i>optional</i></span><input name="mascot" maxlength="40" placeholder="tiger" value="${esc(g.mascot || "")}"></label>
       <label><span>Colors <i>optional</i></span><input name="colors" maxlength="60" placeholder="purple and gold" value="${esc(g.colors || "")}"></label></div>
-      <label><span>Art direction <i>optional</i></span><textarea name="feedback" maxlength="300" rows="2" placeholder="Snarling, gold glow, facing left">${esc(g.feedback || "")}</textarea></label>
+      <label><span>Art direction <i>optional</i></span><textarea name="feedback" maxlength="300" rows="2" placeholder="Snarling, gold glow, facing left">${esc(g.feedback || "")}</textarea></label>`}
       <div class="sd-cost">About ${money$(type?.estCost)} · ${sd.budget ? `${money$(sd.budget.left)} left of ${money$(sd.budget.cap)} this month` : ""}</div>
       ${g.msg ? `<div class="sd-msg${g.bad ? " bad" : ""}">${esc(g.msg)}</div>` : ""}
       <button type="submit" class="sd-go"${g.busy ? " disabled" : ""}>${g.busy ? "Sending…" : "Generate"}</button>
@@ -1356,7 +1358,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   // ---- Studio: shared pieces ----
   const SD_TABS = [["review", "Review"], ["library", "Library"], ["placements", "Placements"], ["create", "Create"]];
   const TONES = [["coach", "Coach"], ["hype", "Hype"], ["dry", "Dry"], ["savage", "Savage"]];
-  const PLACE = { "replay-logo": ["Week Replay logos", "Team logos on the Replay cards. Without Studio art: the template's five, else ESPN's logo in pixels."], "owner-card": ["Leaderboard card · Scouting Report", "Shown when someone opens an owner's row. Without a published report: nothing."] };
+  const PLACE = { "replay-logo": ["Week Replay logos", "Team logos on the Replay cards. Without Studio art: the template's five, else ESPN's logo in pixels."], "owner-card": ["Leaderboard card · Scouting Report", "Shown when someone opens an owner's row. Without a published report: nothing."], "award-icon": ["Award art", "Week Replay card icons, the high score trophy and the season stats tiles. Without Studio art: the pictures that ship with the app."] };
   // The buttons a version gets, by where it stands, with its note and
   // edit forms inline. Every action is in the asset's audit trail.
   function sdVerActs(v) {
@@ -1450,8 +1452,29 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         ${sdVerActs(x)}</article>`).join("")}</div>
     </section>`;
   }
+  // Award art: every award picture in the app, the one showing today, and
+  // a tick to render a Studio version (published ones replace today's).
+  function sdAwards() {
+    const t = sd.types.find((x) => x.id === "award-art");
+    if (!t?.choices) return "";
+    const has = (k) => sd.items.find((x) => x.category === "award-art" && x.subject === `award:${k}` && x.status !== "REJECTED" && x.status !== "FAILED");
+    sd.awardPick ||= new Set();
+    const groups = {};
+    for (const c of t.choices) (groups[c.where] ||= []).push(c);
+    const chosen = t.choices.filter((c) => !has(c.key) && sd.awardPick.has(c.key));
+    return `<section class="panel sg">
+      <div class="sg-top"><span>🏆 AWARD ART</span><small>${t.choices.filter((c) => has(c.key)?.status === "PUBLISHED").length} of ${t.choices.length} redrawn</small></div>
+      <p class="sg-why">The pictures on the Week Replay cards, the high score trophy and the season stats tiles. Today's picture stays until you publish a new one.</p>
+      ${Object.entries(groups).map(([where, list]) => `<div class="sg-h"><span>${esc(where)}</span></div><div class="sg-list">${list.map((c) => {
+        const h = has(c.key), live = h?.status === "PUBLISHED", on = !h && sd.awardPick.has(c.key);
+        return `<button type="button" class="sg-t aw${on ? " on" : ""}${h ? " has" : ""}" data-award="${esc(c.key)}"><img src="${live ? imgUrl(h.id) : `../assets/images/${c.key.replace("-", "/")}.webp`}" alt="" loading="lazy"><span class="sg-n"><b>${esc(c.label)}</b><small>${live ? "Studio art live" : "today's picture"}</small></span>${h ? `<i class="sd-badge s-${h.status.toLowerCase()}">${esc(SD_LABEL[h.status])}</i>` : `<i class="sg-box">${on ? "✓" : ""}</i>`}</button>`;
+      }).join("")}</div>`).join("")}
+      <button type="button" class="sd-go sg-go" data-award-go="1"${!chosen.length || sd.queuing ? " disabled" : ""}>${sd.queuing ? `Queuing… ${sd.queuing}` : chosen.length ? `Render ${chosen.length} award${chosen.length === 1 ? "" : "s"} · about $${(chosen.length * t.estCost).toFixed(2)}` : "Pick awards to redraw"}</button>
+    </section>`;
+  }
   function sdCreate() {
     return `${sdSuggest()}
+      ${sdAwards()}
       <div class="sd-bulk"><span>Something specific?</span><button type="button" data-sd-new="1">${ICONS.plus} New graphic</button></div>
       ${sdScout()}`;
   }
@@ -1541,6 +1564,22 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         sd.queuing = false; sd.err = bad; await studioLoad(true); return;
       }
     }
+    const aw = e.target.closest("[data-award],[data-award-go]");
+    if (aw) {
+      if (aw.dataset.award) {
+        const h = sd.items.find((x) => x.category === "award-art" && x.subject === `award:${aw.dataset.award}` && x.status !== "REJECTED" && x.status !== "FAILED");
+        if (h) { if (h.hasImage) { sd.zoom = h.id; paintStudio(); } return; }
+        sd.awardPick.has(aw.dataset.award) ? sd.awardPick.delete(aw.dataset.award) : sd.awardPick.add(aw.dataset.award);
+        return paintStudio();
+      }
+      const go = [...sd.awardPick];
+      let n = 0, bad = "";
+      for (const key of go) {
+        sd.queuing = `${++n}/${go.length}`; paintStudio();
+        try { await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: "award-art", subject: { award: key } }) }); sd.awardPick.delete(key); } catch (err) { bad = err.message; }
+      }
+      sd.queuing = false; await studioLoad(true); if (bad) { sd.err = bad; paintStudio(); } return;
+    }
     const t = e.target.closest("[data-sd-tab],[data-asset],[data-asset-close],[data-zoomsrc],[data-tone],[data-scout-load],[data-scout-write],[data-bulk],[data-regen-cancel],[data-edit-cancel]");
     if (t) {
       if (t.dataset.sdTab) { sd.tab = t.dataset.sdTab; sd.asset = null; paintStudio(); if (sd.tab === "library" || sd.tab === "placements") loadLibrary(); if (sd.tab === "create" && !sd.scout) loadScout(); return; }
@@ -1591,7 +1630,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   studioEl.addEventListener("change", (e) => {
     const f = e.target.closest("[data-sd-form]"); if (!f || !sd.gen) return;
     Object.assign(sd.gen, Object.fromEntries(new FormData(f)));
-    if (e.target.name === "category") paintStudio();
+    if (e.target.name === "category") { const t = sd.types.find((x) => x.id === sd.gen.category); sd.gen.award = t?.choices ? t.choices[0].key : undefined; paintStudio(); }
   });
   studioEl.addEventListener("submit", async (e) => {
     const rf = e.target.closest("[data-regen-form]"), ef = e.target.closest("[data-edit-form]");
@@ -1607,7 +1646,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const team = sd.teams.find((t) => String(t.id) === String(g.teamId));
     g.busy = true; g.msg = ""; paintStudio();
     try {
-      const r = await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: g.category, week: sd.week, feedback: g.feedback, subject: { teamId: team?.id, name: team?.name, mascot: g.mascot, colors: g.colors } }) });
+      const r = await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: g.category, week: sd.week, feedback: g.feedback, subject: g.award ? { award: g.award } : { teamId: team?.id, name: team?.name, mascot: g.mascot, colors: g.colors } }) });
       sd.gen = null; sd.filter = "ALL"; sd.tab = "review";
       if (r.existing) sd.err = "";
       await studioLoad(true);
