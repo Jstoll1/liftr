@@ -2899,7 +2899,9 @@ function sideStandings(pot) {
       // later that they never picked scores nothing.
       if (!pick) return [sideOpen(pot) ? { g, pick: null, cls: "hidden", txt: "?" } : { g, pick: null, cls: "miss", txt: "—" }];
       const out = [cell(g, pick, null, pointValue(g, pick.team, pick.mode), (sc) => scorePick(g, pick, sc))];
-      if (g.total != null && pick.ou) out.push(cell(g, pick, pick.ou, SIDE_OU_PTS, (sc) => scoreOu(g, pick.ou, sc)));
+      // An over/under is settled at the final only: 0-0 is under every
+      // total, so counting it live would hand everyone points at kickoff.
+      if (g.total != null && pick.ou) out.push(sideResultOf(g) ? cell(g, pick, pick.ou, SIDE_OU_PTS, (sc) => scoreOu(g, pick.ou, sc)) : { g, pick, ou: pick.ou, cls: "open", txt: String(SIDE_OU_PTS) });
       return out;
     });
     return { name, pts, fly, cells, paid: !!e.paid, tb: e.tb };
@@ -2931,8 +2933,39 @@ function sideOutcome(pot, st = sideStandings(pot)) {
   out.net = out.share - pot.buyIn; // what each winner collects from the others
   return out;
 }
+// The side bet scoreboard: a grid, one column per game (logos, where it
+// stands), one row per player (tied places share a rank), each cell the
+// team picked, spread or WIN, and what it pays, with the over/under under
+// it. The total counts live points, labelled as such.
+function sideBoardHtml(pot, st, out, me) {
+  const games = st.games;
+  const total = (r) => r.pts + r.fly;
+  const rows = sideRowsInOrder(st, out);
+  const rankOf = (r) => 1 + rows.filter((x) => total(x) > total(r)).length;
+  const tied = (r) => rows.filter((x) => total(x) === total(r)).length > 1;
+  const head = games.map((g) => {
+    const l = sideLiveOf(g), fin = !!sideResultOf(g), on = l?.found && l.state === "in" && !l.completed;
+    const where = fin ? "FINAL" : on ? `${l.awayScore}-${l.homeScore}` : "";
+    return `<th class="${on ? "live" : fin ? "final" : ""}"><div class="ssb-logos"><img src="${logoUrl(g.awayId)}" alt="" onerror="this.style.visibility='hidden'"><i>@</i><img src="${logoUrl(g.homeId)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="ssb-tag">${sideTag(g)}${String(pot.tbGame) === String(g.id) ? " ★" : ""}</div>${where ? `<div class="ssb-where">${where}</div>` : ""}</th>`;
+  }).join("");
+  const cell = (r, g) => {
+    const side = r.cells.find((c) => c.g.id === g.id && !c.ou), ou = r.cells.find((c) => c.g.id === g.id && c.ou);
+    if (!side?.pick) return `<td class="ssb-c none"><span class="ssb-none">no pick</span></td>`;
+    const p = side.pick, id = sideTeamId(g, p.team);
+    const what = p.mode === "SU" ? "WIN" : `${p.team === g.favorite ? "-" : "+"}${g.spread}`;
+    return `<td class="ssb-c"><div class="ssb-pick ${side.cls}"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${what}</span><b>${side.txt}</b></div>${ou ? `<div class="ssb-pick ou ${ou.cls}"><span>${ou.ou === "over" ? "O" : "U"} ${g.total}</span><b>${ou.txt}</b></div>` : ""}</td>`;
+  };
+  const body = rows.map((r) => `<tr class="${r.name === me ? "me" : ""}${out.winners.includes(r.name) ? " win" : ""}">
+      <th class="ssb-nm"><i>${tied(r) ? "T" : ""}${rankOf(r)}</i><span>${escapeCd(shown(r.name))}${out.winners.includes(r.name) ? " 🏆" : ""}</span>${Number.isFinite(r.tb) ? `<small>TB ${r.tb}</small>` : ""}</th>
+      ${games.map((g) => cell(r, g)).join("")}
+      <td class="ssb-tot"><b>${total(r)}</b><small>${out.final ? "final" : r.fly ? `${r.fly} live` : ""}</small></td>
+    </tr>`).join("");
+  return `<div class="ss-sec">SCOREBOARD${out.final ? " · FINAL" : ""}</div>
+    <div class="ssb-wrap"><table class="ssb"><thead><tr><th class="ssb-nm"></th>${head}<th class="ssb-tot">PTS</th></tr></thead><tbody>${body}</tbody></table></div>
+    <div class="ss-note">Green paid, pink didn't, outlined is live. ${pot.tbGame != null ? "★ is the tiebreaker game." : ""}</div>`;
+}
 // Winners first (a tiebreaker can put the winner level with someone above).
-const sideRowsInOrder = (st, out) => [...st.rows].sort((a, b) => out.winners.includes(b.name) - out.winners.includes(a.name));
+const sideRowsInOrder = (st, out) => [...st.rows].sort((a, b) => out.winners.includes(b.name) - out.winners.includes(a.name) || b.pts + b.fly - (a.pts + a.fly) || b.pts - a.pts || a.name.localeCompare(b.name));
 function sideTeamId(g, team) { return team === g.home ? g.homeId : team === g.away ? g.awayId : null; }
 // One pick in a standings row: the team's logo and ATS/SU, or OVR/UND.
 function sideCellHtml(c) {
@@ -3396,7 +3429,16 @@ function renderSideScreen() {
   // One line that says where things stand, for a player or an onlooker.
   const status = open
     ? (mine ? (sideNeedsPicks(pot, me) ? `New games added. <b>Finish your picks</b>` : `You're in. Picks lock in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b>`) : `Picks lock in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b>`)
-    : !out.final ? (myRow ? `You have <b>${myRow.pts}</b>${myRow.fly ? ` <span class="ss-fly">+${myRow.fly} live</span>` : ""} · leader ${escapeCd(shown(lead.name))} ${lead.pts}${lead.fly ? `+${lead.fly}` : ""}` : lead ? `Leader: <b>${escapeCd(shown(lead.name))}</b> ${lead.pts}${lead.fly ? ` <span class="ss-fly">+${lead.fly} live</span>` : ""}` : "Under way")
+    : !out.final ? (() => {
+        // Standing on points as they are right now, live ones counted.
+        const now = (r) => r.pts + r.fly, top = lead ? now(lead) : 0;
+        const leaders = st.rows.filter((r) => now(r) === top);
+        if (!myRow) return lead ? `Leader: <b>${escapeCd(sideNames(leaders.map((r) => r.name)))}</b> with ${top}` : "Under way";
+        const ahead = st.rows.filter((r) => now(r) > now(myRow)).length, tied = st.rows.filter((r) => now(r) === now(myRow)).length > 1;
+        const ord = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"}`;
+        const place = `${tied ? "tied for " : "in "}${ord(ahead + 1)}`;
+        return `You're ${place} with <b>${now(myRow)}</b>${myRow.fly ? ` <span class="ss-fly">(${myRow.fly} live)</span>` : ""}${ahead ? ` · leader ${escapeCd(shown(lead.name))} ${top}` : ""}`;
+      })()
     : out.n < 2 ? "Final. One taker, no bet." : out.push ? "Final. Dead heat, no money moves."
     : out.winners.includes(me) ? `Final. You ${out.winners.length > 1 ? "split it" : `won${out.tiebreak ? " on the tiebreaker" : ""}`}. You collect <b>${sideMoney(out.net)}</b>.`
     : `Final. ${escapeCd(sideNames(out.winners))} ${out.winners.length > 1 ? "split" : "took"} it${out.tiebreak ? " on the tiebreaker" : ""}.${myRow ? ` You owe <b>${sideMoney(pot.buyIn)}</b>.` : ""}`;
@@ -3423,7 +3465,7 @@ function renderSideScreen() {
     </button>`;
   };
   // The scoreboard: everyone's picks and points once entry has closed.
-  const board = open ? "" : `<div class="ss-sec">SCOREBOARD${out.final ? " · FINAL" : ""}</div><div class="sp-board ss-board">${sideRowsInOrder(st, out).map((r, i) => `<div class="sp-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}"><span class="sp-nm"><i class="ss-rank">${i + 1}</i>${escapeCd(shown(r.name))}${Number.isFinite(r.tb) ? `<small class="sp-tb">TB ${r.tb}</small>` : ""}</span><span class="sp-cells">${r.cells.map(sideCellHtml).join("")}</span><span class="sp-pts">${r.pts}${r.fly ? `<small>+${r.fly}</small>` : ""}</span></div>`).join("")}</div>`;
+  const board = open ? "" : sideBoardHtml(pot, st, out, me);
   // Settle up: who owes and who collects, with paid marks from the console.
   const settle = !out.final ? "" : out.n < 2 || out.push ? `<div class="ss-sec">SETTLE UP</div><div class="ss-note">${out.n < 2 ? "One taker: no money moves." : "Everyone level: no money moves."}</div>`
     : `<div class="ss-sec">SETTLE UP</div><div class="ss-ledger">${out.losers.map((n) => `<div class="ss-led"><span>${escapeCd(shown(n))}</span><span>owes ${sideMoney(pot.buyIn)}</span><b class="${pot.entrants[n]?.paid ? "paid" : ""}">${pot.entrants[n]?.paid ? "PAID ✓" : "UNPAID"}</b></div>`).join("")}${out.winners.map((n) => `<div class="ss-led win"><span>${escapeCd(shown(n))}</span><span>collects ${sideMoney(out.net)}</span><b>🏆</b></div>`).join("")}</div>`;
