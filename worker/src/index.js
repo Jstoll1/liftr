@@ -2479,6 +2479,8 @@ async function liveGames(env, week = null) {
           clock: comp.status?.displayClock ?? null,
           awayScore: away?.score != null ? Number(away.score) : null,
           homeScore: home?.score != null ? Number(home.score) : null,
+          awayAbbr: away?.team?.abbreviation || null,
+          homeAbbr: home?.team?.abbreviation || null,
           winProb,
         };
       } catch (err) {

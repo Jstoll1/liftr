@@ -7049,9 +7049,9 @@ function renderH2H() {
   if (allDone) {
     if (!leader) path = "Level on points: the week's tiebreaker decides it.";
   } else {
-    facts.push(`<span><small>LOCKED LEAD</small><b>${Math.abs(gap)}</b></span>`);
-    facts.push(`<span><small>${N(A)} CAN GAIN</small><b>${unknown ? "≥" : ""}${gainA}</b></span>`);
-    facts.push(`<span><small>${N(B)} CAN GAIN</small><b>${unknown ? "≥" : ""}${gainB}</b></span>`);
+    facts.push(`<span><small>LEAD</small><b>${Math.abs(gap)}</b></span>`);
+    facts.push(`<span><small>${N(A)} GAIN</small><b>${unknown ? "≥" : ""}${gainA}</b></span>`);
+    facts.push(`<span><small>${N(B)} GAIN</small><b>${unknown ? "≥" : ""}${gainB}</b></span>`);
     if (unknown) path = `${unknown} game${unknown === 1 ? "" : "s"} still hidden until kickoff, so the path is shown once those picks lock.`;
     else if (!openLeft || (gainA === 0 && gainB === 0)) path = leader ? `Nothing left can change it: ${N(leader)} takes this matchup.` : "Nothing left can change it: level on points, tiebreaker decides.";
     else if (!leader) path = `Level. Any net gain wins it; ${N(A)} can gain up to ${gainA}, ${N(B)} up to ${gainB}.`;
@@ -7080,15 +7080,15 @@ function renderH2H() {
     const st = stateOf(g, pick);
     const id = pick.team === g.home ? g.homeId : g.awayId;
     const line = pick.mode === "SU" ? "SU · WIN" : `ATS ${pick.team === g.favorite ? "−" : "+"}${g.spread}`;
-    return `<div class="h2x-pick ${side} ${st.cls}"><span class="h2x-tm">${id ? `<img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${(() => { const nm = short(g, pick.team), ab = abbr(g, pick.team === g.home ? "home" : "away"); return ab && ab !== nm && nm.length > 7 ? `<span class="nm-full">${esc(nm)}</span><span class="nm-ab">${esc(ab)}</span>` : `<span>${esc(nm)}</span>`; })()}</span><small>${line}</small><b class="h2x-pts ${st.cls}" title="${BADGE[st.cls]}">${st.txt}<i>${BADGE[st.cls]}</i></b></div>`;
+    return `<div class="h2x-pick ${side} ${st.cls}"><span class="h2x-tm">${id ? `<img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${(() => { const nm = short(g, pick.team), ab = abbr(g, pick.team === g.home ? "home" : "away"); return ab && ab !== nm && nm.length > 9 ? `<span class="nm-full">${esc(nm)}</span><span class="nm-ab">${esc(ab)}</span>` : `<span>${esc(nm)}</span>`; })()}</span><small>${line}</small><b class="h2x-pts ${st.cls}" title="${BADGE[st.cls]}">${st.txt}<i>${BADGE[st.cls]}</i></b></div>`;
   };
-  const row = (g) => `<div class="h2x-row ${statusOf(g)}${noSwing(g) ? "" : " swing"}">${noSwing(g) ? "" : `<span class="h2x-swing">SWING</span>`}${pickCell(g, A.name, a.st.picks[g.id], "l")}${centre(g)}${pickCell(g, B.name, b.st.picks[g.id], "r")}</div>`;
+  const row = (g) => `<div class="h2x-row ${statusOf(g)}${noSwing(g) ? "" : " swing"}">${pickCell(g, A.name, a.st.picks[g.id], "l")}${centre(g)}${pickCell(g, B.name, b.st.picks[g.id], "r")}</div>`;
   const GROUPS = [["live", "LIVE"], ["upcoming", "UPCOMING"], ["void", "NO RESULT"], ["final", "FINAL"]];
   const groupsHtml = GROUPS.map(([k, label]) => {
     const list = splitGames.filter((g) => statusOf(g) === k);
     return list.length ? `<section class="h2x-grp ${k}"><div class="h2x-gh"><span>${label}</span><b>${list.length}</b></div>${list.map(row).join("")}</section>` : "";
   }).join("");
-  const legend = `<div class="h2x-legend"><span><b class="h2x-pts hit">+2</b>earned</span><span><b class="h2x-pts miss">0</b>no points</span><span><b class="h2x-pts live-hit">+2</b>live, not final</span><span><b class="h2x-pts open">2</b>at stake</span></div>`;
+  const legend = `<div class="h2x-legend"><span><b class="h2x-pts hit">+2</b>earned</span><span><b class="h2x-pts miss">0</b>no points</span><span><b class="h2x-pts live-hit">+2</b>live</span><span><b class="h2x-pts open">2</b>at stake</span></div>`;
   const shared = sameGames.length ? `<details class="h2x-same"${h2hSharedOpen ? " open" : ""}><summary><span>SAME PICK · NO SWING <b>(${sameGames.length})</b></span><i aria-hidden="true">⌄</i></summary>${sameGames.map(row).join("")}</details>` : "";
   // Fighter cards up top: name, score, record, and a crown on the winner.
   // The native select sits invisibly over each card, so a tap still
@@ -7101,7 +7101,7 @@ function renderH2H() {
     av.style.setProperty("--accent", accentFor(row.name));
     card.querySelector(".h2h-f-name").textContent = shown(row.name).toUpperCase();
     const top = leader && leader.name === row.name;
-    card.querySelector(".h2h-f-meta").innerHTML = `<span title="Wins and losses on settled picks">W–L ${x.w}–${x.l}</span>${allDone ? "" : `<span title="Points if every open pick hits">MAX ${x.max}</span>`}${x.fly ? `<em title="Provisional, from games in progress">+${x.fly} LIVE</em>` : ""}${top ? `<span class="h2c-tag">${allDone ? "WINNER" : "LEADING"}</span>` : ""}`;
+    card.querySelector(".h2h-f-meta").innerHTML = `<span title="Wins and losses on settled picks">W–L ${x.w}–${x.l}</span>${allDone ? "" : `<span title="Points if every open pick hits">MAX ${x.max}</span>`}${x.fly ? `<em title="Provisional, from games in progress">+${x.fly} LIVE</em>` : ""}${top && allDone ? `<span class="h2c-tag">WINNER</span>` : ""}`;
     card.querySelector(".h2h-f-score").title = "Points locked in";
     card.querySelector(".h2h-f-score").textContent = String(row.score);
     card.classList.toggle("ahead", !!top);
