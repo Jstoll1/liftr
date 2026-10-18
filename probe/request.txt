@@ -1,2 +1,2 @@
-/games
-/live
+https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=20261017&groups=80&limit=300
+https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=20261017&groups=81&limit=300

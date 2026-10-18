@@ -1,6 +1,6 @@
 # Probe a Worker route from a runner that can reach it, for debugging feeds
 # without a phone. Push the route into probe/request.txt and read the log.
-# Read-only: GET only, no secrets.
+# Read-only: GET only, no secrets. ESPN API lines print a compact summary.
 name: Probe Worker
 
 on:
@@ -23,6 +23,12 @@ jobs:
               https://a.espncdn.com/*)
                 curl -sS --max-time 30 -o /tmp/probe.bin -w "%{http_code} %{content_type} %{size_download}B\n" "$p"
                 file /tmp/probe.bin ;;
+              # ESPN's public API: a compact summary only (status, lines).
+              https://site.api.espn.com/*)
+                curl -sS --max-time 30 "$p" | jq -r '
+                  if .events then .events[] | [.id, .shortName, .status.type.state, .status.type.shortDetail, (.competitions[0].odds[0].details // "no line"), (.competitions[0].odds[0].overUnder // "-")] | @tsv
+                  else ([.header.competitions[0].status.type.shortDetail // "-"] + [(.pickcenter // [])[] | "\(.provider.name // "?"): \(.details // "-") spread \(.spread // "-") o/u \(.overUnder // "-")"]) | join(" | ")
+                  end' | head -c 12000 ;;
               *)
                 curl -sS --max-time 90 "https://liftr-ai.jhs797.workers.dev$p" | head -c 8000 ;;
             esac
