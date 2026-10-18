@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newPot, cleanSidePicks, joinEntry, declineEntry, viewPot, entryKey, sideKey, ENTRY_MIN_MS, cleanExtraGame, CLOSE_MAX_MS } from "../src/side.js";
+import { newPot, extendPot, cleanSidePicks, joinEntry, declineEntry, viewPot, entryKey, sideKey, ENTRY_MIN_MS, cleanExtraGame, CLOSE_MAX_MS } from "../src/side.js";
 
 const t = 1_800_000_000_000, H = 3600e3;
 const g = (id, h) => ({ id, away: `Away ${id}`, home: `Home ${id}`, awayShort: `A${id}`, homeShort: `H${id}`, favorite: `Home ${id}`, spread: 7, kickoff: new Date(t + h * H).toISOString() });
@@ -130,4 +130,17 @@ test("a first-half bet is marked by an f id", () => {
   const g = cleanExtraGame({ id: "f401856809", away: "A", home: "B", awayShort: "A", homeShort: "B", awayId: 1, homeId: 2, favorite: "A", spread: 3.5, total: 24.5, kickoff: new Date(t + H).toISOString() });
   assert.equal(g.half, 1);
   assert.equal(g.eventId, "401856809");
+});
+
+test("games can be added to an open pot; it keeps its id, buy-in and players", () => {
+  // A pot from before totals: ids only, no tiebreaker.
+  const old = { week: 7, id: "p1", games: [10], buyIn: 25, closesAt: t + 4 * H, createdAt: t - H };
+  const extra = { id: "f401858999", away: "Utah Utes", home: "BYU Cougars", awayShort: "Utah", homeShort: "BYU", awayId: 254, homeId: 252, favorite: "BYU Cougars", spread: 2, total: 24.5, kickoff: new Date(t + 2 * H).toISOString() };
+  const { pot } = extendPot(old, { games: [extra, { id: 9, total: 51.5 }], slate, now: t, tbGame: "f401858999" });
+  assert.equal(pot.id, "p1"); assert.equal(pot.buyIn, 25); assert.equal(pot.createdAt, t - H);
+  assert.deepEqual(pot.games, [9, "f401858999", 10]);
+  assert.equal(pot.tbGame, "f401858999");
+  assert.equal(pot.closesAt, t + 2 * H, "now closes at the earliest kickoff");
+  assert.match(extendPot({ ...old, closesAt: t - 1 }, { games: [9], slate, now: t }).error, /closed/);
+  assert.match(extendPot(old, { games: [8, 9, 1, 6, 7, ...["e40185000", "e40185001", "e40185002"].map((id) => ({ ...extra, id }))], slate, now: t }).error, /Pick 1 to 8/);
 });

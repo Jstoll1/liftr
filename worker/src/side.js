@@ -77,6 +77,18 @@ export function newPot({ week, games, buyIn, slate, now, closeAt = null, tbGame 
   return { pot: { week, id: String(now), games: sorted.map((g) => g.id), slate: sorted, tbGame: (sorted.find((g) => tbGame != null && String(g.id) === String(tbGame)) || sorted[sorted.length - 1]).id, buyIn: amt, closesAt: Number.isFinite(Number(closeAt)) && closeAt !== null && Number(closeAt) >= now + CLOSE_MIN_MS && Number(closeAt) <= now + CLOSE_MAX_MS ? Number(closeAt) : Math.max(kickMs(sorted[0]), now + ENTRY_MIN_MS), createdAt: now } };
 }
 
+// Games added to a pot that is still open: the same checks as a new pot,
+// over its games plus the new ones. The pot keeps its id, so everyone
+// already in stays in; their picks on the new games are still to make.
+export function extendPot(pot, { games, slate, now, closeAt = null, tbGame = null }) {
+  if (now >= pot.closesAt) return { error: "Entry has closed, so games can't be added." };
+  const byId = new Map((slate?.games || []).map((g) => [String(g.id), g]));
+  const base = pot.slate || pot.games.map((id) => byId.get(String(id))).filter(Boolean);
+  const made = newPot({ week: pot.week, games: [...base, ...(Array.isArray(games) ? games : [])], buyIn: pot.buyIn, slate, now, closeAt, tbGame: tbGame ?? pot.tbGame ?? null });
+  if (made.error) return made;
+  return { pot: { ...made.pot, id: pot.id, createdAt: pot.createdAt, editedAt: now } };
+}
+
 // Side picks must cover every pot game: a team playing in it, against the
 // spread or straight up, and over or under where the game has a total; and
 // a tiebreaker guess when the pot has one. Returns { picks, tb } or { error }.

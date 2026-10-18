@@ -1,7 +1,7 @@
 import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
 import { LiveRoom, deviceToken, deviceTokenOk } from "./live.js";
-import { sideKey, entryKey, newPot, cleanSidePicks, joinEntry, declineEntry, viewPot } from "./side.js";
+import { sideKey, entryKey, newPot, extendPot, cleanSidePicks, joinEntry, declineEntry, viewPot } from "./side.js";
 
 // The live room has to be exported from the main module for Cloudflare.
 export { LiveRoom };
@@ -1156,9 +1156,16 @@ async function handleSide(request, env, corsHeaders, url) {
   const pot = await env.LIFTR_KV.get(sideKey(week), "json");
   const viewAll = { all: true, me: null };
 
-  if (action === "start" || action === "cancel" || action === "paid") {
+  if (action === "start" || action === "cancel" || action === "paid" || action === "edit") {
     if (!isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
     if (action === "cancel") { await env.LIFTR_KV.delete(sideKey(week)); return json({ ok: true, pot: null }, 200, noStore); }
+    if (action === "edit") {
+      if (!pot) return json({ error: "There is no side bet to add to." }, 404, corsHeaders);
+      const made = extendPot(pot, { games: body.games, slate: await env.LIFTR_KV.get(gamesKey(week), "json"), now, closeAt: body.closeAt ?? null, tbGame: body.tbGame ?? null });
+      if (made.error) return json({ error: made.error }, 400, corsHeaders);
+      await env.LIFTR_KV.put(sideKey(week), JSON.stringify(made.pot), keep);
+      return json({ ok: true, pot: viewPot(made.pot, await sideEntries(env, made.pot), now, viewAll) }, 200, noStore);
+    }
     if (action === "paid") {
       const k = pot && PICKS_MANAGERS.includes(body.manager) ? entryKey(week, pot.id, body.manager) : null;
       const e = k ? await env.LIFTR_KV.get(k, "json") : null;

@@ -2801,6 +2801,9 @@ let sidePot = null, sidePotAt = 0, sidePotWeek = 0, sideInFlight = null, sidePro
 const potNow = () => (sidePot && sidePotWeek === currentWeek && sidePot.week === currentWeek ? sidePot : null);
 const sideOpen = (pot) => !!pot && pot.open && Date.now() < pot.closesAt;
 const sideDoneKey = (pot, who) => `brochiefs_side_${pot.week}_${pot.id}_${who}`;
+// In the bet but short of picks: games were added after they joined, or a
+// tiebreaker was set.
+const sideNeedsPicks = (pot, who) => { const e = pot?.entrants?.[who]; return !!e && !!e.picks && (pot.games.some((id) => !e.picks[id]) || (pot.tbGame != null && !Number.isFinite(e.tb))); };
 function fetchSidePot(force = false) {
   if (!WORKER_URL || window.LEAGUE?.sport === "nfl") return Promise.resolve(null);
   if (!force && sidePotWeek === currentWeek && Date.now() - sidePotAt < 20000) return Promise.resolve(potNow());
@@ -2887,7 +2890,9 @@ function sideStandings(pot) {
     };
     const cells = games.flatMap((g) => {
       const pick = e.picks?.[g.id];
-      if (!pick) return [{ g, pick: null, cls: "hidden", txt: "?" }];
+      // No pick: still hidden while open; after the close, a game added
+      // later that they never picked scores nothing.
+      if (!pick) return [sideOpen(pot) ? { g, pick: null, cls: "hidden", txt: "?" } : { g, pick: null, cls: "miss", txt: "—" }];
       const out = [cell(g, pick, null, pointValue(g, pick.team, pick.mode), (sc) => scorePick(g, pick, sc))];
       if (g.total != null && pick.ou) out.push(cell(g, pick, pick.ou, SIDE_OU_PTS, (sc) => scoreOu(g, pick.ou, sc)));
       return out;
@@ -2948,7 +2953,7 @@ function renderSidePot() {
       <div class="sp-games">${games.map((g) => `<span>${escapeCd(g.awayShort)} @ ${escapeCd(g.homeShort)}</span>`).join("")}</div>
       <div class="sp-in">${names.length ? `<b>${names.length} IN</b> ${names.map((n) => escapeCd(shown(n))).join(" · ")}` : "Nobody's in yet."}</div>
       <div class="sp-foot"><span class="sp-close">$${pot.buyIn} to get in · closes in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b></span>
-        <button type="button" class="sp-btn${mine ? " in" : ""}" data-sp="open">${mine ? "✓ YOU'RE IN · EDIT" : `I'M IN · $${pot.buyIn}`}</button></div>`;
+        <button type="button" class="sp-btn${mine && !sideNeedsPicks(pot, me) ? " in" : ""}" data-sp="open">${sideNeedsPicks(pot, me) ? "NEW GAMES · FINISH PICKS" : mine ? "✓ YOU'RE IN · EDIT" : `I'M IN · $${pot.buyIn}`}</button></div>`;
   } else {
     const st = sideStandings(pot), out = sideOutcome(pot, st);
     const head = !out.final ? `${names.length} IN · ${sideMoney(total)} POT`
@@ -2989,8 +2994,9 @@ setInterval(() => {
 function maybeShowSidePrompt() {
   const pot = potNow();
   if (sidePromptShown || !sideOpen(pot) || !currentManager || window.__adminEntry || window.__adminOpen || window.__liveView) return;
-  if (pot.entrants[currentManager] || pot.declined.includes(currentManager)) return;
-  try { if (localStorage.getItem(sideDoneKey(pot, currentManager))) return; } catch {}
+  const owes = sideNeedsPicks(pot, currentManager);
+  if (!owes && (pot.entrants[currentManager] || pot.declined.includes(currentManager))) return;
+  try { if (!owes && localStorage.getItem(sideDoneKey(pot, currentManager))) return; } catch {}
   const busy = () => scoreboardScreen.classList.contains("hidden") || [...document.querySelectorAll(".modal-overlay, .wpx-overlay, .pr-screen, .np-screen")].some((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none");
   if (busy()) return;
   sidePromptShown = true;
@@ -3083,10 +3089,12 @@ async function mountSideAdmin(box, getKey, say) {
       render((await res.json()).pot);
     } catch (e) { box.textContent = `Could not load the side pot (${e.message}).`; }
   };
-  const render = (pot) => {
+  // render(pot, true) is the selector again, adding to a running bet.
+  const render = (pot, adding = false) => {
     const now = Date.now();
-    const games = gamesByKickoff();
-    if (!pot) {
+    if (!pot || adding) {
+      const inBet = new Set(adding ? pot.games.map(String) : []);
+      const betGames = adding ? sideGames(pot) : [];
       // The bet's options: a value per box. A pool game's full game is its
       // number (the Worker keeps the pool's line), any other full game "e",
       // a 1st half "f", a 2nd half "h", each plus the ESPN event id.
@@ -3094,7 +3102,7 @@ async function mountSideAdmin(box, getKey, say) {
       const halfLine = (c) => ({ favHome: c.full ? c.full.favHome : true, spread: c.full ? Math.round(c.full.spread) / 2 : "", total: c.full?.total ? Math.round(c.full.total) / 2 : "" });
       const lineText = (c) => (c.full ? `${c.full.favHome ? esc(c.homeShort) : esc(c.awayShort)} -${c.full.spread}${c.full.total != null ? ` · O/U ${c.full.total}` : ""}` : "No line on ESPN: halves only, at your line");
       const status = (c) => (c.on ? `<b class="as-live">${esc(shortStatus(c.on.detail))} · ${esc(c.on.a ?? 0)}-${esc(c.on.h ?? 0)}</b>` : esc(c.kickoffLabel));
-      const opt = (v, label) => `<label class="as-opt"><input type="checkbox" value="${esc(v)}"><span>${label}</span></label>`;
+      const opt = (v, label) => (inBet.has(v) ? `<span class="as-opt in"><span>${label} ✓</span></span>` : `<label class="as-opt"><input type="checkbox" value="${esc(v)}"><span>${label}</span></label>`);
       const edit = (c, v, label) => { const h = halfLine(c); return `<div class="as-h-edit hidden" data-for="${esc(v)}"><span>${label}</span><select aria-label="${label} favorite"><option value="away"${h.favHome ? "" : " selected"}>${esc(c.awayShort)}</option><option value="home"${h.favHome ? " selected" : ""}>${esc(c.homeShort)}</option></select><span>-</span><input class="as-h-sp" type="number" inputmode="decimal" step="0.5" min="0" max="40" placeholder="line" value="${h.spread}"><span>O/U</span><input class="as-h-tot" type="number" inputmode="decimal" step="0.5" min="10" max="90" placeholder="total" value="${h.total}"></div>`; };
       const rows = cands.map((c) => {
         const pre = c.state === "pre", firstOk = pre && c.eventId && !c.noHalves, secondOk = (pre || c.period <= 2) && c.eventId && !c.noHalves;
@@ -3106,26 +3114,28 @@ async function mountSideAdmin(box, getKey, say) {
           ${firstOk ? edit(c, `f${c.eventId}`, "1H") : ""}${secondOk ? edit(c, `h${c.eventId}`, "2H") : ""}
         </div>`;
       }).join("");
-      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Every game today not over, FBS and FCS. Check any mix of full games and halves, up to ${SIDE_MAX_PICKS}. Full games use the pool's line or ESPN's; a half starts at half the game's line, so set it from your book. Each pick with a total also gets an over/under, and one pick is the tiebreaker: closest guess at its total points wins a tie.</div>
+      box.innerHTML = `${adding ? `<div class="as-lead"><b>Add to the Week ${pot.week} side bet.</b> Everyone in stays in and gets asked for picks on what you add; anyone who doesn't make them scores 0 there. In the bet now: ${betGames.map((g) => esc(`${sideTag(g)} ${sideMatch(g)}`)).join(", ")}.</div>` : ""}<div class="as-lead${adding ? " hidden" : ""}"><b>Week ${currentWeek} side bet.</b> Every game today not over, FBS and FCS. Check any mix of full games and halves, up to ${SIDE_MAX_PICKS}. Full games use the pool's line or ESPN's; a half starts at half the game's line, so set it from your book. Each pick with a total also gets an over/under, and one pick is the tiebreaker: closest guess at its total points wins a tie.</div>
         ${rows ? `<div class="as-gl">${rows}</div>` : `<div class="as-none">Every game today is over.</div>`}
         <div class="as-count"></div>
         <label class="as-buy as-tbrow">Tiebreaker: total points in <select class="as-tb"><option value="">the last game</option></select></label>
         <label class="as-buy">Entry closes in <input class="as-close" type="number" inputmode="numeric" min="5" max="480" step="1" placeholder="auto"> min</label>
         <div class="as-out">Blank: the first kickoff, or 20 minutes from now if that's later. For a 2nd half at halftime, about 15.</div>
-        <label class="as-buy">Buy-in $<input class="as-buyin" type="number" inputmode="numeric" min="1" max="500" step="1" value="25"></label>
-        <button type="button" class="admin-btn primary wide as-start"${rows ? "" : " disabled"}>Start side bet</button>`;
+        <label class="as-buy${adding ? " hidden" : ""}">Buy-in $<input class="as-buyin" type="number" inputmode="numeric" min="1" max="500" step="1" value="${adding ? pot.buyIn : 25}"></label>
+        <button type="button" class="admin-btn primary wide as-start"${rows ? "" : " disabled"}>${adding ? "Add to side bet" : "Start side bet"}</button>
+        ${adding ? `<button type="button" class="admin-btn wide as-back">Back</button>` : ""}`;
+      box.querySelector(".as-back")?.addEventListener("click", () => render(pot));
       const candOf = (v) => cands.find((c) => fullVal(c) === v || `f${c.eventId}` === v || `h${c.eventId}` === v);
-      const nameOf = (v) => { const c = candOf(v); return c ? `${c.awayShort} @ ${c.homeShort}${v[0] === "f" ? " (1st half)" : v[0] === "h" ? " (2nd half)" : ""}` : v; };
+      const nameOf = (v) => { const b = betGames.find((g) => String(g.id) === v); if (b) return sideMatch(b); const c = candOf(v); return c ? `${c.awayShort} @ ${c.homeShort}${v[0] === "f" ? " (1st half)" : v[0] === "h" ? " (2nd half)" : ""}` : v; };
       const checked = () => [...box.querySelectorAll(".as-g-opts input:checked")].map((i) => i.value);
       // Checking a half opens its line; the tiebreaker offers what is checked.
       const sync = () => {
         const on = checked();
         box.querySelectorAll(".as-h-edit").forEach((el) => el.classList.toggle("hidden", !on.includes(el.dataset.for)));
-        const sel = box.querySelector(".as-tb"), was = sel.value;
-        sel.innerHTML = `<option value="">the last game</option>` + on.map((v) => `<option value="${esc(v)}"${v === was ? " selected" : ""}>${esc(nameOf(v))}</option>`).join("");
-        const n = box.querySelector(".as-count");
-        n.textContent = on.length ? `${on.length} of ${SIDE_MAX_PICKS} picked` : "";
-        n.classList.toggle("bad", on.length > SIDE_MAX_PICKS);
+        const sel = box.querySelector(".as-tb"), was = sel.value || (adding && pot.tbGame != null ? String(pot.tbGame) : "");
+        sel.innerHTML = `<option value="">the last game</option>` + [...inBet, ...on].map((v) => `<option value="${esc(v)}"${v === was ? " selected" : ""}>${esc(nameOf(v))}</option>`).join("");
+        const n = box.querySelector(".as-count"), total = inBet.size + on.length;
+        n.textContent = on.length ? `${total} of ${SIDE_MAX_PICKS} picked` : "";
+        n.classList.toggle("bad", total > SIDE_MAX_PICKS);
       };
       box.addEventListener("change", (e) => { if (e.target.matches(".as-g-opts input")) sync(); });
       sync();
@@ -3145,14 +3155,22 @@ async function mountSideAdmin(box, getKey, say) {
           const favHome = row.querySelector("select").value === "home";
           ids.push({ id: v, ...base, favorite: favHome ? c.home : c.away, spread: sp, ...(tot !== "" && Number(tot) > 0 ? { total: Number(tot) } : {}), kickoffLabel: v[0] === "f" ? c.kickoffLabel : "after halftime" });
         }
-        if (!ids.length) { say("Pick at least one game or half for the side bet.", "bad"); return; }
-        if (ids.length > SIDE_MAX_PICKS) { say(`Pick ${SIDE_MAX_PICKS} at most.`, "bad"); return; }
+        if (!ids.length && !adding) { say("Pick at least one game or half for the side bet.", "bad"); return; }
+        if (ids.length + inBet.size > SIDE_MAX_PICKS) { say(`${SIDE_MAX_PICKS} picks at most in a bet.`, "bad"); return; }
         const buyIn = Number(box.querySelector(".as-buyin").value);
         const closeMin = Number(box.querySelector(".as-close")?.value);
         const closeAt = Number.isFinite(closeMin) && closeMin >= 5 ? Date.now() + closeMin * 60000 : null;
         const tbPick = box.querySelector(".as-tb")?.value || "";
         const tbGame = tbPick === "" ? null : /^\d+$/.test(tbPick) ? Number(tbPick) : tbPick;
         btn.disabled = true;
+        if (adding) {
+          try {
+            const d = await post({ action: "edit", games: ids, closeAt, tbGame });
+            say(ids.length ? "Added. Everyone in gets asked for picks on the new games." : "Saved.", "ok");
+            render(d.pot); refreshApp();
+          } catch (e) { say(`Not added: ${e.message}`, "bad"); btn.disabled = false; }
+          return;
+        }
         try {
           let d;
           try { d = await post({ action: "start", games: ids, buyIn, closeAt, tbGame }); }
@@ -3180,7 +3198,9 @@ async function mountSideAdmin(box, getKey, say) {
       ${result ? `<div class="as-result">${esc(result)}</div>` : ""}
       <div class="as-people">${ins.length ? ins.map((n) => `<label class="as-person${owes(n) ? " owes" : ""}"><span>${esc(shown(n))}${!open && Number.isFinite(pot.entrants[n].tb) ? ` <small class="as-tbg">guess ${pot.entrants[n].tb}</small>` : ""}${owes(n) ? ` <small>owes $${pot.buyIn}</small>` : ""}</span>${won(n) ? `<span class="as-won">collects</span>` : `<span class="as-paid"><input type="checkbox" data-paid="${esc(n)}"${pot.entrants[n].paid ? " checked" : ""}> paid</span>`}</label>`).join("") : `<div class="as-none">Nobody in yet.</div>`}</div>
       ${pot.declined?.length ? `<div class="as-out">No thanks: ${pot.declined.map((n) => esc(shown(n))).join(", ")}</div>` : ""}
+      ${open ? `<button type="button" class="admin-btn primary wide as-add">＋ Add games or set the tiebreaker</button>` : ""}
       <div class="as-btns"><button type="button" class="admin-btn as-refresh">↻ Refresh</button><button type="button" class="admin-btn as-cancel">Cancel side bet</button></div>`;
+    box.querySelector(".as-add")?.addEventListener("click", () => render(pot, true));
     box.querySelectorAll("[data-paid]").forEach((cb) => cb.addEventListener("change", async () => {
       try { render((await post({ action: "paid", manager: cb.dataset.paid, paid: cb.checked })).pot); }
       catch (e) { cb.checked = !cb.checked; say(`Not saved: ${e.message}`, "bad"); }
@@ -3234,7 +3254,7 @@ function openSideSheet(asked) {
     m.innerHTML = `<div class="wpx-card sp-sheet">
       <button type="button" class="sp-x" aria-label="Close">✕</button>
       <div class="sp-sheet-kick">💰 LATE NIGHT SIDE POT</div>
-      <div class="sp-sheet-lead">${asked && !inAlready ? "The week's decided, but the night isn't. " : ""}Pick ${games.length === 1 ? "this game" : `these ${games.length} games`}, <b>$${pot.buyIn}</b> to get in. Most points takes the pot${pot.tbGame != null ? "; a tie goes to the closest tiebreaker guess" : "; ties split it"}.</div>
+      <div class="sp-sheet-lead">${sideNeedsPicks(pot, me) ? "<b>Games were added to the side bet.</b> Make your picks on them; you're still in. " : asked && !inAlready ? "The week's decided, but the night isn't. " : ""}Pick ${games.length === 1 ? "this game" : `these ${games.length} games`}, <b>$${pot.buyIn}</b> to get in. Most points takes the pot${pot.tbGame != null ? "; a tie goes to the closest tiebreaker guess" : "; ties split it"}.</div>
       <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">${sideTag(g)} · ${(() => { const l = sideRawOf(g); return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">ON NOW · ${escapeCd(shortStatus(l.detail || ""))} · ${escapeCd(g.awayShort)} ${l.awayScore}, ${escapeCd(g.homeShort)} ${l.homeScore}</b>` : g.half === 2 ? "scored on the 2nd half only" : g.half === 1 ? "scored on the 1st half only" : escapeCd(g.kickoffLabel || ""); })()}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div>${g.total != null ? `<div class="sp-modes">${ou(g, "over")}${ou(g, "under")}</div>` : ""}</div>`).join("")}</div>
       ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${escapeCd(sideMatch(tbG))}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="e.g. 52" value="${escapeCd(String(draftTb))}"></label>` : ""}
       <div class="sp-sheet-note">Picks lock at ${closes} ET. Nobody sees yours until then. Money is settled between you, not in the app.</div>
@@ -3341,7 +3361,7 @@ function renderSideScreen() {
     <div class="ss-status">${status}</div>
     <div class="ss-sub">${names.length} in · ${sideMoney(pot.buyIn)} each · most points takes it${pot.tbGame != null ? (() => { const g = sideGames(pot).find((x) => String(x.id) === String(pot.tbGame)); return g ? ` · tiebreaker: total points in ${escapeCd(sideMatch(g))}${out.tiebreak ? ` (${out.tiebreak.actual})` : ""}` : ""; })() : ", ties split"}</div>
     <div class="ss-bugs">${sideGames(pot).map(bug).join("")}</div>
-    ${open ? `<button type="button" class="sp-btn ss-edit" data-sp="open">EDIT MY PICKS</button>` : ""}
+    ${open ? `<button type="button" class="sp-btn ss-edit" data-sp="open">${sideNeedsPicks(pot, me) ? "NEW GAMES · FINISH MY PICKS" : "EDIT MY PICKS"}</button>` : ""}
     ${who}`;
 }
 document.getElementById("side-screen-body")?.addEventListener("click", (e) => {
