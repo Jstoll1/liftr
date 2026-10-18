@@ -2774,6 +2774,7 @@ async function renderScoreboard() {
   picksStandingFinals = Object.keys(results).length > 0;
   liveWeekFinal = GAMES.length > 0 && GAMES.every((g) => results[g.id]);
   renderMyScore(ranked, cloudPicks, live);
+  maybeShowPathIntro();
   renderWeekChamp(ranked, results);
   renderInsertCoin(cloudPicks);
   // The clock lives inside the strip when there is one, so the board does
@@ -7548,3 +7549,74 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
 // back to the front, so a change on one phone shows on every other.
 syncAvatars();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) syncAvatars(); });
+
+// --- Path to win ------------------------------------------------------
+// The new feature pop-up.
+// Once per phone, on the scoreboard while the week is live and a path can
+// be run: a small card showing where to tap, drawn from the real board.
+// Never over another popup. GOT IT, the X, or a swipe down closes it.
+const PATH_INTRO_KEY = "brochiefs_new_pathtowin_v1";
+let pathIntroShownThisLoad = false;
+function maybeShowPathIntro(force = false) {
+  if (!force) {
+    if (pathIntroShownThisLoad || !currentManager || window.__adminEntry || window.__adminOpen || window.__liveView) return;
+    try { if (localStorage.getItem(PATH_INTRO_KEY)) return; } catch { return; }
+    const results = computeLiveResults(latestLive);
+    const wd = winChanceMemo.detail?.[currentManager];
+    if (!weekIsLive(results) || !wd || wd.alive === false || scoreboardScreen.classList.contains("hidden")) return;
+    if ([...document.querySelectorAll(".modal-overlay, .pr-screen, .np-screen")].some((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none")) return;
+  }
+  pathIntroShownThisLoad = true;
+  setTimeout(() => showPathIntro(), force ? 0 : 900);
+}
+function showPathIntro() {
+  if (document.querySelector(".pi-screen")) return;
+  const me = currentManager;
+  const rows = liveWeekRows.length ? liveWeekRows : MANAGERS.map((name, i) => ({ name, score: 0, place: i + 1 }));
+  const at = Math.max(0, rows.findIndex((r) => r.name === me));
+  const pick = rows.slice(Math.max(0, Math.min(at - 1, rows.length - 3)), Math.max(0, Math.min(at - 1, rows.length - 3)) + 3);
+  const pct = (n) => { const v = winChanceMemo.out?.[n]; return v == null ? null : v; };
+  const mini = pick.map((r) => {
+    const p = pct(r.name), w = p == null ? 0 : Math.max(3, Math.min(100, p * 100));
+    return `<div class="pi-row${r.name === me ? " me" : ""}"><span class="pi-rk">${r.tied ? "T" : ""}${r.place || ""}</span><span class="pi-nm">${escapeCd(shown(r.name).toUpperCase())}</span><span class="pi-bar"><i style="width:${w.toFixed(0)}%"></i></span><span class="pi-pt">${String(r.score ?? 0).padStart(2, "0")}</span>${r.name === me ? `<span class="pi-tap" aria-hidden="true"></span>` : ""}</div>`;
+  }).join("");
+  const myPct = pct(me);
+  const m = document.createElement("div");
+  m.className = "pi-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: path to win");
+  m.innerHTML = `<div class="pi-card">
+    <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title">PATH TO WIN</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
+    <p class="pi-lede">See exactly which results you need to win the week, played out game by game.</p>
+    <div class="pi-step"><b>1</b><span>Tap your name on the leaderboard</span></div>
+    <div class="pi-mini">${mini}</div>
+    <div class="pi-step"><b>2</b><span>Tap the button on your card</span></div>
+    <div class="pi-mini pi-card2"><div class="pi-card2-top"><span class="pi-cap">CHANCE TO WIN THE WEEK · <b>${myPct == null ? "--" : winChanceLabel(myPct, winChanceMemo.detail?.[me])}</b></span><span class="pi-btnwrap"><span class="rd-path-btn pi-demo"><span class="rd-path-play">▶</span>MY PATH TO WIN</span></span></div><div class="pi-card2-sk"><i></i><i></i></div></div>
+    <button type="button" class="pi-ok">GOT IT</button>
+  </div>`;
+  document.body.appendChild(m);
+  // Seen once it's on screen, so closing the app over it doesn't bring it back.
+  try { localStorage.setItem(PATH_INTRO_KEY, String(Date.now())); } catch {}
+  const done = () => { try { localStorage.setItem(PATH_INTRO_KEY, String(Date.now())); } catch {} m.classList.add("out"); setTimeout(() => m.remove(), 220); };
+  m.querySelector(".pi-ok").addEventListener("click", done);
+  m.querySelector(".pi-x").addEventListener("click", done);
+  m.addEventListener("click", (e) => { if (e.target === m) done(); });
+  // Swipe the card down to close it.
+  const card = m.querySelector(".pi-card");
+  let y0 = null, dy = 0;
+  card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
+  card.addEventListener("touchmove", (e) => {
+    if (y0 == null) return;
+    dy = Math.max(0, e.touches[0].clientY - y0);
+    card.style.transform = `translateY(${dy}px)`;
+    card.style.opacity = String(Math.max(0.4, 1 - dy / 400));
+  }, { passive: true });
+  card.addEventListener("touchend", () => {
+    if (y0 == null) return;
+    y0 = null;
+    card.style.transition = "transform .2s ease-out, opacity .2s ease-out";
+    if (dy > 80) { card.style.transform = "translateY(100vh)"; done(); } else { card.style.transform = ""; card.style.opacity = ""; }
+  });
+  track("path-intro", { event: true });
+}
+// For a preview from the console: previewPathIntro().
+window.previewPathIntro = () => maybeShowPathIntro(true);
+
