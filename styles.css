@@ -6551,3 +6551,6 @@ html[data-sport="nfl"] #logo-screen { display: none !important; }
 .h2x-sum.line.done > span { font-size: 10px; }
 
 .h2x-foot { margin: 2px 0 0; text-align: center; font-size: 10.5px; color: #8a80a8; }
+/* The head to head sits above the tab bar, so a swipe anywhere scrolls it
+   and the last rows are never hidden behind the bar. */
+.h2h-modal { z-index: 45; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
