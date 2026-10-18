@@ -7620,3 +7620,35 @@ function showPathIntro() {
 // For a preview from the console: previewPathIntro().
 window.previewPathIntro = () => maybeShowPathIntro(true);
 
+
+// --- Logos that stay put ---------------------------------------------
+// The board, the picks list and the all picks table are redrawn from their
+// HTML on every refresh, and a freshly made <img> is blank until it loads
+// and decodes, so logos blinked out and back every few seconds. A redraw
+// now moves each logo already on screen into the new layout in place of
+// its fresh copy (same address, taking the fresh copy's attributes), so a
+// painted logo is never replaced. New logos still load as before.
+function keepLogos(el, draw) {
+  if (!el) return draw();
+  const have = new Map();
+  for (const img of el.querySelectorAll("img")) {
+    if (!img.complete || !img.naturalWidth) continue;
+    const list = have.get(img.src) || [];
+    list.push(img); have.set(img.src, list);
+  }
+  const out = draw();
+  if (!have.size) return out;
+  for (const fresh of el.querySelectorAll("img")) {
+    const old = have.get(fresh.src)?.shift();
+    if (!old || old === fresh) continue;
+    for (const a of [...old.attributes]) if (a.name !== "src") old.removeAttribute(a.name);
+    for (const a of fresh.attributes) if (a.name !== "src") old.setAttribute(a.name, a.value);
+    fresh.replaceWith(old);
+  }
+  return out;
+}
+const withLogosKept = (fn, el) => function (...args) { return keepLogos(el(), () => fn.apply(this, args)); };
+renderLiveScores = withLogosKept(renderLiveScores, () => liveScoresList);
+renderScoreboardTable = withLogosKept(renderScoreboardTable, () => scoreboardTable);
+renderRankings = withLogosKept(renderRankings, () => rankingsList);
+renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
