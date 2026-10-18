@@ -7930,7 +7930,10 @@ function openH2H() {
   if (!h2h.a) h2h.a = currentManager && rows.some((r) => r.name === currentManager) ? currentManager : rows[0]?.name || MANAGERS[0];
   if (!h2h.b || h2h.b === h2h.a) h2h.b = rows.find((r) => r.name !== h2h.a)?.name || MANAGERS.find((n) => n !== h2h.a);
   renderH2H();
-  document.getElementById("h2h-modal")?.classList.remove("hidden");
+  // Lifted out of the app's scroll layer so it sits above the tab bar.
+  const m = document.getElementById("h2h-modal");
+  if (m && m.parentElement !== document.body) document.body.appendChild(m);
+  m?.classList.remove("hidden");
 }
 function renderH2H() {
   const modal = document.getElementById("h2h-modal");
