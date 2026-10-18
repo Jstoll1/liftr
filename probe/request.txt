@@ -1,3 +1,1 @@
-https://liftr-nfl.jhs797.workers.dev/games
-https://liftr-nfl.jhs797.workers.dev/picks?week=6
 https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard

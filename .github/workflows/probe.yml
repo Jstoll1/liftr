@@ -26,7 +26,7 @@ jobs:
               # ESPN's public API: a compact summary only (status, lines).
               https://site.api.espn.com/*)
                 curl -sS --max-time 30 "$p" | jq -r '
-                  if .events then .events[] | [.id, .shortName, .status.type.state, .status.type.shortDetail, (.competitions[0].odds[0].details // "no line"), (.competitions[0].odds[0].overUnder // "-")] | @tsv
+                  if .events then .events[] | [.id, .shortName, .status.type.state, .status.type.shortDetail, (.competitions[0].odds[0].details // "no line"), (.competitions[0].odds[0].overUnder // "-"), ([.competitions[0].competitors[] | "\(.homeAway) \(.score)"] | join(" ")), (.competitions[0].situation.lastPlay.probability.homeWinPercentage // "-")] | @tsv
                   else ([.header.competitions[0].status.type.shortDetail // "-"] + [(.pickcenter // [])[] | "\(.provider.name // "?"): \(.details // "-") spread \(.spread // "-") o/u \(.overUnder // "-")"]) | join(" | ")
                   end' | head -c 12000 ;;
               # The NFL Worker: public routes only (picks are public once locked).
