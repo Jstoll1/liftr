@@ -138,9 +138,67 @@ CATEGORIES["award-art"] = {
   },
 };
 
-export const MAX_FEEDBACK = 300;
+// Any graphic or line of copy on the page, picked by tapping it in the
+// Studio's Canvas. The slot is what the app calls that spot: an image's
+// own path (assets/images/recap/crown.webp), a team logo (team:99) or a
+// line of copy (t: and its original words). The owner's direction is the
+// version's feedback, so a new idea for the same spot is a new version.
+const SLOT_STYLES = {
+  arcade: ARCADE,
+  freeform: "Clean illustration centered on a transparent background, matching a retro arcade football app",
+};
+const slotOk = (v) => typeof v === "string" && /^(assets\/images\/[\w\/.-]{1,120}|team:\d{1,6}|t:[^\n]{1,100})$/.test(v);
+CATEGORIES["slot-image"] = {
+  kind: "image",
+  label: "Canvas graphic",
+  blurb: "Any graphic on the page, tapped in the Canvas, redrawn from your direction.",
+  placements: ["slot"],
+  trigger: "manual", perWeek: false, publishWhen: "any", hidden: true,
+  size: "1024x1024", quality: "medium", background: "transparent",
+  subject(input) {
+    const slot = input?.slot;
+    if (!slotOk(slot) || slot.startsWith("t:")) return { error: "Tap a graphic in the Canvas." };
+    const style = SLOT_STYLES[input?.style] ? input.style : "arcade";
+    return { key: `img:${slot}`, label: str(input?.label, 80) || slot, data: { slot, style, what: str(input?.label, 80) } };
+  },
+  prompt(s) {
+    const d = s.data;
+    return [
+      `${SLOT_STYLES[d.style] || ARCADE}.`,
+      d.what ? `It replaces the "${d.what}" graphic in the app, so it must read clearly at small sizes.` : "It must read clearly at small sizes.",
+      NO_PEOPLE,
+      NO_TEXT,
+    ].join(" ");
+  },
+};
+CATEGORIES["slot-text"] = {
+  kind: "text",
+  label: "Canvas copy",
+  blurb: "Any heading or label on the page, tapped in the Canvas, rewritten by you or the writer.",
+  placements: ["slot"],
+  trigger: "manual", perWeek: false, publishWhen: "any", hidden: true, bodyOnly: true,
+  subject(input) {
+    const slot = input?.slot;
+    if (!slotOk(slot) || !slot.startsWith("t:")) return { error: "Tap a line of copy in the Canvas." };
+    return { key: slot, label: slot.slice(2), data: { slot, current: slot.slice(2) } };
+  },
+  prompt(s, { tone = "hype", feedback = null, previous = null } = {}) {
+    const cur = s.data.current;
+    const system = [
+      "You rewrite one short piece of interface copy in a retro arcade college football pick'em app among friends.",
+      `Voice: ${TONES[tone] || TONES.hype}.`,
+      `Keep it about as long as the original (at most ${Math.max(12, Math.round(cur.length * 1.6))} characters) and in the same case style.`,
+      "Never add numbers, scores, records, team or player names. No em dashes and no hyphens used as punctuation.",
+      'Return JSON: {"body": "the new copy"}.',
+    ].join(" ");
+    const user = [`Original: ${cur}`, previous ? `Earlier draft: ${previous}` : "", feedback ? `Owner's direction: ${feedback}` : ""].filter(Boolean).join("\n");
+    return JSON.stringify({ system, user, tone });
+  },
+};
+
+export const MAX_FEEDBACK = 500;
 
 // What the Studio needs to draw its pickers, without the prompt code.
 export function publicTypes() {
-  return Object.entries(CATEGORIES).map(([id, c]) => ({ id, kind: c.kind || "image", label: c.label, blurb: c.blurb, placements: c.placements, trigger: c.trigger, publishWhen: c.publishWhen, perWeek: c.perWeek !== false, ...(c.choices ? { choices: c.choices } : {}), estCost: c.kind === "text" ? 0.006 : estimateCost(c.quality) }));
+  return Object.entries(CATEGORIES).map(([id, c]) => ({ id, kind: c.kind || "image", label: c.label, blurb: c.blurb, placements: c.placements, trigger: c.trigger, publishWhen: c.publishWhen, perWeek: c.perWeek !== false, ...(c.choices ? { choices: c.choices } : {}), ...(c.hidden ? { hidden: true } : {}), estCost: c.kind === "text" ? 0.006 : estimateCost(c.quality) }));
 }

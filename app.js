@@ -8079,26 +8079,140 @@ document.querySelectorAll(".h2h-select").forEach((el) => el.addEventListener("ch
 const CREATIVE_KEY = "brochiefs_creative_v1";
 var creativeArt = { at: 0, art: {} }; // var: the board can draw before this line runs
 try { creativeArt = JSON.parse(localStorage.getItem(CREATIVE_KEY) || "null") || creativeArt; } catch { /* private mode */ }
-async function loadCreativeArt() {
+async function loadCreativeArt(force) {
   if (!WORKER_URL || window.LEAGUE?.sport === "nfl") return;
   try {
-    const res = await fetch(`${WORKER_URL}/art/manifest?t=${Math.floor(Date.now() / 60000)}`);
+    const res = await fetch(`${WORKER_URL}/art/manifest?t=${force ? Date.now() : Math.floor(Date.now() / 60000)}`);
     if (!res.ok) return;
     const m = await res.json();
     if (!m || typeof m.art !== "object" || m.at === creativeArt.at) return;
     creativeArt = m;
     try { localStorage.setItem(CREATIVE_KEY, JSON.stringify(m)); } catch {}
     renderRecap();
+    applySlots(document.body);
   } catch { /* the usual logos stay */ }
 }
 setTimeout(loadCreativeArt, 1500);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) loadCreativeArt(); });
 
-// An award's picture: the one published from the Creative Studio if there
-// is one, else the picture that ships with the app.
+// An award's picture. The Studio's art for it is swapped in by applySlots,
+// the same way as any other graphic on the page.
 function awardArt(path) {
-  const v = creativeArt?.art?.[`award-icon:award:${path.replace("/", "-")}`]?.v;
-  return v ? `${WORKER_URL}/art/img/${encodeURIComponent(v)}` : `assets/images/${path}.webp`;
+  return `assets/images/${path}.webp`;
+}
+
+// The Studio Canvas. Any graphic or line of copy can be replaced from the
+// Studio: a published one is swapped in here as the page draws, so no
+// screen needs to know about it. Graphics are known by their own path (or
+// team:id for a team logo) and copy by its original words; scores, records
+// and names are never copy (they have digits or are an owner's name), so
+// they always come from the app.
+const STUDIO = new URLSearchParams(location.search).has("studio") && window.parent !== window;
+const slotPreview = {}; // the Studio's drafts, shown only inside the Canvas
+function slotOfImg(img) {
+  if (img.dataset.slot) return img.dataset.slot;
+  const src = img.getAttribute("src") || "";
+  const a = src.match(/(assets\/images\/[\w\/.-]+?\.(?:webp|png|gif|jpe?g|svg))/);
+  if (a) return a[1];
+  const t = src.match(/teamlogos\/ncaa\/500(?:-dark)?\/(\d+)\.png/);
+  return t ? `team:${t[1]}` : null;
+}
+function slotImgUrl(slot) {
+  if (slotPreview[`img:${slot}`]) return slotPreview[`img:${slot}`];
+  const art = creativeArt?.art || {};
+  const award = slot.match(/^assets\/images\/(recap|hs)\/([\w-]+)\.webp$/);
+  const v = art[`slot:img:${slot}`]?.v || (award && art[`award-icon:award:${award[1]}-${award[2]}`]?.v);
+  return v ? `${WORKER_URL}/art/img/${encodeURIComponent(v)}` : null;
+}
+const copyOk = (t) => t.length >= 2 && t.length <= 80 && !/\d/.test(t) && !MANAGERS.some((m) => t.toUpperCase() === m.toUpperCase());
+function slotCopy(orig) {
+  const p = slotPreview[`t:${orig}`];
+  return p != null ? p : creativeArt?.art?.[`slot:t:${orig}`]?.text?.body ?? null;
+}
+const hasCopy = () => STUDIO || Object.keys(creativeArt?.art || {}).some((k) => k.startsWith("slot:t:"));
+function applySlots(root) {
+  if (!root || window.LEAGUE?.sport === "nfl") return;
+  const imgs = root.tagName === "IMG" ? [root] : root.querySelectorAll ? root.querySelectorAll("img") : [];
+  for (const img of imgs) {
+    const slot = img.dataset.slotOf || slotOfImg(img);
+    if (!slot || img.dataset.slotOff) continue;
+    const url = slotImgUrl(slot);
+    if (!img.dataset.slotOf) { img.dataset.slotOf = slot; img.dataset.slotSrc = img.getAttribute("src") || ""; }
+    const want = url || img.dataset.slotSrc;
+    if (want && img.getAttribute("src") !== want) img.setAttribute("src", want);
+  }
+  if (!hasCopy()) return;
+  if (root.nodeType === 3) return slotText(root);
+  if (root.nodeType !== 1) return;
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) slotText(n);
+}
+function slotText(n) {
+  const host = n.parentNode;
+  if (!host || /^(SCRIPT|STYLE|TEXTAREA|OPTION|TITLE)$/.test(host.tagName)) return;
+  const orig = n.__slotOrig || n.nodeValue.trim();
+  if (!copyOk(orig)) return;
+  const next = slotCopy(orig);
+  if (next == null && !n.__slotOrig) return;
+  n.__slotOrig = orig;
+  const want = n.nodeValue.replace(n.nodeValue.trim(), next ?? orig);
+  if (n.nodeValue !== want) n.nodeValue = want;
+}
+const ourSrc = (v) => /\/art\/img\/|\/creative\/image\//.test(String(v || ""));
+new MutationObserver((recs) => {
+  for (const r of recs) {
+    if (r.type === "attributes") {
+      // The page changed a picture's source itself: a new picture to look
+      // up, unless it was falling back from Studio art that failed to load.
+      const img = r.target, src = img.getAttribute("src");
+      if (!img.dataset.slotOf || img.dataset.slotOff || src === img.dataset.slotSrc || ourSrc(src)) continue;
+      if (ourSrc(r.oldValue)) { img.dataset.slotOff = "1"; continue; }
+      delete img.dataset.slotOf;
+      applySlots(img);
+      continue;
+    }
+    for (const n of r.addedNodes) if (n.nodeType === 1 || n.nodeType === 3) applySlots(n);
+  }
+}).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["src"], attributeOldValue: true });
+document.addEventListener("DOMContentLoaded", () => applySlots(document.body));
+
+// Inside the Studio's Canvas: every graphic and line of copy is tappable,
+// and a tap tells the Studio what was picked instead of using the app.
+if (STUDIO) {
+  document.documentElement.classList.add("studio-canvas");
+  const pickCopy = (e) => {
+    const r = document.caretRangeFromPoint?.(e.clientX, e.clientY);
+    let n = r?.startContainer;
+    if (n?.nodeType !== 3) n = [...(e.target.childNodes || [])].find((c) => c.nodeType === 3 && c.nodeValue.trim());
+    if (!n || n.nodeType !== 3) return null;
+    const orig = n.__slotOrig || n.nodeValue.trim();
+    return copyOk(orig) ? { n, orig } : { bad: orig };
+  };
+  document.addEventListener("click", (e) => {
+    const img = e.target.closest?.("img");
+    e.preventDefault(); e.stopPropagation();
+    if (img && (img.dataset.slotOf || slotOfImg(img))) {
+      const slot = img.dataset.slotOf || slotOfImg(img);
+      const label = img.alt || img.closest("[class]")?.innerText?.trim().split("\n")[0].slice(0, 60) || "";
+      const rc = img.getBoundingClientRect();
+      parent.postMessage({ type: "studio-pick", kind: "img", slot, label, src: img.currentSrc || img.src, original: new URL(img.dataset.slotSrc || img.src, location.href).href, w: Math.round(rc.width), h: Math.round(rc.height) }, location.origin);
+      return;
+    }
+    const c = pickCopy(e);
+    if (c?.orig) parent.postMessage({ type: "studio-pick", kind: "text", slot: `t:${c.orig}`, text: c.n.nodeValue.trim(), original: c.orig }, location.origin);
+    else parent.postMessage({ type: "studio-pick", kind: "none", why: c?.bad ? "Scores, records and owner names always come from the app, so they can't be rewritten." : "Nothing editable there. Tap a graphic or a heading." }, location.origin);
+  }, true);
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin || !e.data) return;
+    if (e.data.type === "studio-preview") {
+      if (e.data.value == null) delete slotPreview[e.data.key]; else slotPreview[e.data.key] = e.data.value;
+      applySlots(document.body);
+    } else if (e.data.type === "studio-reload") {
+      for (const k of Object.keys(slotPreview)) delete slotPreview[k];
+      creativeArt = { at: 0, art: creativeArt.art };
+      loadCreativeArt(true).then(() => applySlots(document.body));
+    }
+  });
 }
 
 // Last sealed week in five lines, computed by the Worker at seal time.
@@ -8127,7 +8241,7 @@ let renderRecap = function () {
   // hand-drawn five; then ESPN's logo in pixels.
   const studio = (id) => creativeArt.art?.[`replay-logo:team:${Number(id)}`]?.v;
   const logo = (id, alt = "") => !id ? `<span class="recap-logo blank"></span>`
-    : studio(id) ? `<img class="recap-logo px-art" src="${WORKER_URL}/art/img/${encodeURIComponent(studio(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${Number(id)}.png&w=26&h=26';this.className='recap-logo px'">`
+    : studio(id) ? `<img class="recap-logo px-art" data-slot="team:${Number(id)}" src="${WORKER_URL}/art/img/${encodeURIComponent(studio(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${Number(id)}.png&w=26&h=26';this.className='recap-logo px'">`
     : TEAM_ART.has(Number(id)) ? `<img class="recap-logo px-art" src="assets/images/teams/${Number(id)}.webp" alt="${esc(alt)}" loading="lazy">`
     : `<img class="recap-logo px" src="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${Number(id)}.png&w=26&h=26" alt="${esc(alt)}" loading="lazy">`;
   const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);

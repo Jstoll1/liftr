@@ -422,6 +422,52 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 .sd-msg { font-size: 12.5px; color: var(--green); } .sd-msg.bad { color: #ff6b93; }
 .sd-go { padding: 13px; font-weight: 800; font-size: 15px; color: #0b0716; background: var(--green); border: 0; border-radius: 12px; }
 .sd-go:disabled { opacity: .6; }
+/* Canvas: the app in a phone frame beside the editor; stacked on a phone. */
+.cv-wrap { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 16px; align-items: start; padding: 14px; }
+.cv-stage { position: sticky; top: 64px; display: grid; gap: 8px; }
+.cv-phone { border: 2px solid var(--line2); border-radius: 22px; overflow: hidden; background: #000; height: min(760px, 78vh); }
+.cv-phone iframe { width: 100%; height: 100%; border: 0; display: block; }
+.cv-reload { display: inline-flex; gap: 6px; align-items: center; justify-content: center; background: var(--panel2); color: var(--meta); border: 1px solid var(--line); border-radius: 10px; padding: 8px; font-size: 13px; }
+.cv-reload svg { width: 14px; height: 14px; }
+.cv-side { display: grid; gap: 12px; min-width: 0; }
+.cv-empty { display: grid; gap: 6px; padding: 22px; border: 1px dashed var(--line2); border-radius: 14px; text-align: center; color: var(--meta); }
+.cv-empty b { color: var(--text); font-size: 16px; }
+.cv-empty small { color: var(--dim); }
+.cv-pick { display: flex; gap: 12px; align-items: center; }
+.cv-pick b { display: block; font-size: 16px; overflow-wrap: anywhere; }
+.cv-pick small { color: var(--dim); font-family: var(--mono); font-size: 11px; overflow-wrap: anywhere; }
+.cv-thumbs { display: flex; gap: 8px; flex: none; }
+.cv-thumbs figure { margin: 0; text-align: center; }
+.cv-thumbs img { width: 64px; height: 64px; object-fit: contain; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; image-rendering: pixelated; }
+.cv-thumbs figcaption { font-size: 10px; color: var(--dim); margin-top: 2px; }
+.cv-form { display: grid; gap: 10px; }
+.cv-modes { display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-modes button { background: var(--panel2); color: var(--meta); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 700; }
+.cv-modes button.on { color: #0b0716; background: var(--cyan); border-color: var(--cyan); }
+.cv-f { display: grid; gap: 4px; font-size: 12px; color: var(--meta); font-weight: 700; }
+.cv-f textarea, .cv-f input, .cv-f select { font: inherit; font-size: 15px; font-weight: 400; color: var(--text); background: var(--panel2); border: 1px solid var(--line2); border-radius: 10px; padding: 9px 10px; width: 100%; box-sizing: border-box; }
+.cv-hint { margin: 0; color: var(--meta); font-size: 13px; }
+.cv-or { text-align: center; color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.sd-go.ghost { background: transparent; color: var(--green); border: 1px solid var(--green); }
+.cv-vh { font-size: 12px; font-weight: 800; color: var(--meta); letter-spacing: .06em; text-transform: uppercase; margin-top: 4px; }
+.cv-vers { display: grid; gap: 8px; }
+.cv-ver { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 10px; align-items: center; padding: 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; }
+.cv-ver.shown { border-color: var(--cyan); }
+.cv-ver.s-published { border-color: var(--green); }
+.cv-ver > img, .cv-wait, .cv-txt { width: 56px; height: 56px; object-fit: contain; border-radius: 8px; background: #0b0716; image-rendering: pixelated; display: grid; place-items: center; }
+.cv-txt { width: auto; height: auto; grid-column: 1 / -1; padding: 8px 10px; place-items: start; font-weight: 800; }
+.cv-ver:has(.cv-txt) .cv-vm { grid-column: 1 / -1; }
+.cv-vm { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-width: 0; }
+.cv-vm small { color: var(--dim); font-size: 12px; overflow-wrap: anywhere; }
+.cv-va { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-va button { flex: 1 1 auto; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line2); background: var(--panel); color: var(--text); font-weight: 700; font-size: 13px; }
+.cv-va button.go { background: var(--green); color: #0b0716; border-color: var(--green); }
+.cv-va button.no { color: #ff7a9a; }
+@media (max-width: 860px) {
+  .cv-wrap { grid-template-columns: minmax(0, 1fr); padding: 10px; }
+  .cv-stage { position: static; }
+  .cv-phone { height: 62vh; }
+}
 
 .sg { display: flex; flex-direction: column; gap: 10px; }
 .sg-top { display: flex; align-items: center; gap: 10px; width: 100%; padding: 0; background: none; border: 0; color: inherit; text-align: left; }
@@ -1194,7 +1240,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   // a review in progress. Phase 1: ask for a graphic, watch it generate,
   // look at it up close.
   const sd = { types: [], items: [], budget: null, teams: [], filter: "ALL", gen: null, zoom: null, err: "", loading: false, review: 0, at: 0, sugg: null, pick: null, queuing: false, suggOpen: true,
-    tab: "review", lib: null, asset: null, regen: null, edit: null, tone: "coach", scout: null, sel: new Set() };
+    tab: "canvas", lib: null, asset: null, regen: null, edit: null, tone: "coach", scout: null, sel: new Set() };
   const studioEl = document.getElementById("studio");
   const SD_FILTERS = [["ALL", "All"], ["PENDING_REVIEW", "Review"], ["APPROVED", "Approved"], ["PUBLISHED", "Live"], ["QUEUED", "Queued"], ["GENERATING", "Generating"], ["REJECTED", "Rejected"], ["FAILED", "Failed"]];
   const SD_LABEL = { QUEUED: "Queued", GENERATING: "Generating", PENDING_REVIEW: "In review", APPROVED: "Approved", PUBLISHED: "Published", REJECTED: "Rejected", FAILED: "Failed" };
@@ -1342,7 +1388,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const type = sd.types.find((t) => t.id === g.category) || sd.types[0];
     return `<div class="sd-scrim" data-sd-close="1"></div><form class="sd-sheet" data-sd-form="1">
       <div class="sd-sh"><b>New graphic</b><button type="button" class="ib" data-sd-close="1" aria-label="Close">${ICONS.x}</button></div>
-      <label>Kind<select name="category">${sd.types.map((t) => `<option value="${esc(t.id)}"${t.id === g.category ? " selected" : ""}>${esc(t.label)}</option>`).join("")}</select></label>
+      <label>Kind<select name="category">${sd.types.filter((t) => !t.hidden).map((t) => `<option value="${esc(t.id)}"${t.id === g.category ? " selected" : ""}>${esc(t.label)}</option>`).join("")}</select></label>
       ${type ? `<p class="sd-blurb">${esc(type.blurb)}</p>` : ""}
       ${type?.choices ? `<label>Award<select name="award">${type.choices.map((c) => `<option value="${esc(c.key)}"${g.award === c.key ? " selected" : ""}>${esc(c.label)} · ${esc(c.where)}</option>`).join("")}</select></label>
       <label>Art direction <i>optional</i><textarea name="feedback" maxlength="300" rows="2" placeholder="Bigger flames, more gold">${esc(g.feedback || "")}</textarea></label>` : `<label>Team<select name="teamId">${sd.teams.length ? sd.teams.map((t) => `<option value="${t.id}"${String(t.id) === String(g.teamId) ? " selected" : ""}>${esc(t.name)}</option>`).join("") : `<option value="">This week's slate didn't load</option>`}</select></label>
@@ -1356,7 +1402,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     </form>`;
   }
   // ---- Studio: shared pieces ----
-  const SD_TABS = [["review", "Review"], ["library", "Library"], ["placements", "Placements"], ["create", "Create"]];
+  const SD_TABS = [["canvas", "Canvas"], ["review", "Review"], ["library", "Library"], ["placements", "Placements"], ["create", "Create"]];
   const TONES = [["coach", "Coach"], ["hype", "Hype"], ["dry", "Dry"], ["savage", "Savage"]];
   const PLACE = { "replay-logo": ["Week Replay logos", "Team logos on the Replay cards. Without Studio art: the template's five, else ESPN's logo in pixels."], "owner-card": ["Leaderboard card · Scouting Report", "Shown when someone opens an owner's row. Without a published report: nothing."], "award-icon": ["Award art", "Week Replay card icons, the high score trophy and the season stats tiles. Without Studio art: the pictures that ship with the app."] };
   // The buttons a version gets, by where it stands, with its note and
@@ -1472,6 +1518,101 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       <button type="button" class="sd-go sg-go" data-award-go="1"${!chosen.length || sd.queuing ? " disabled" : ""}>${sd.queuing ? `Queuing… ${sd.queuing}` : chosen.length ? `Render ${chosen.length} award${chosen.length === 1 ? "" : "s"} · about $${(chosen.length * t.estCost).toFixed(2)}` : "Pick awards to redraw"}</button>
     </section>`;
   }
+
+  // The Canvas: the app itself, live, in a frame. Tap any graphic or line
+  // of copy and it lands here to redraw (freeform or from a preset) or to
+  // rewrite (by hand or by the writer). Drafts can be tried in place in the
+  // frame before anyone else sees them; only Publish changes the app.
+  const cv = { pick: null, mode: "free", style: "arcade", note: "", typed: "", tone: "hype", busy: false, msg: "", shown: null };
+  const cvKey = (p) => p.kind === "img" ? `img:${p.slot}` : p.slot;
+  const cvFrame = () => studioEl.querySelector("#sd-cv-frame");
+  const cvSend = (m) => cvFrame()?.contentWindow?.postMessage(m, location.origin);
+  function cvVersions(p) {
+    if (!p) return [];
+    const award = p.kind === "img" && p.slot.match(/^assets\/images\/(recap|hs)\/([\w-]+)\.webp$/);
+    const team = p.kind === "img" && p.slot.match(/^team:(\d+)$/);
+    return sd.items.filter((x) => (x.category === "slot-image" || x.category === "slot-text") ? x.subject === cvKey(p)
+      : award ? x.category === "award-art" && x.subject === `award:${award[1]}-${award[2]}`
+      : team ? x.category === "team-mascot" && x.subject === `team:${team[1]}` : false);
+  }
+  function cvPresets(p) {
+    if (p.kind !== "img") return [];
+    const award = p.slot.match(/^assets\/images\/(recap|hs)\/([\w-]+)\.webp$/);
+    const team = p.slot.match(/^team:(\d+)$/);
+    const out = [];
+    const at = sd.types.find((t) => t.id === "award-art");
+    if (award && at?.choices?.some((c) => c.key === `${award[1]}-${award[2]}`)) out.push(["award", "Award preset", "The league's award style for this badge. Shows wherever this award appears."]);
+    if (team) out.push(["mascot", "Team mascot preset", "An arcade mascot for this team. Shows on the Week Replay."]);
+    return out;
+  }
+  function cvPanel() {
+    const p = cv.pick;
+    if (!p) return `<div class="cv-empty"><b>Tap anything in the preview</b><span>A logo, an award icon, a tile picture, a heading or a label. It opens here to redraw or rewrite.</span><small>Scores, records and owner names always come from the app.</small></div>${cv.msg ? `<p class="sd-err">${esc(cv.msg)}</p>` : ""}`;
+    const vers = cvVersions(p);
+    const live = vers.find((v) => v.status === "PUBLISHED");
+    const draft = (v) => {
+      const busy = sd.busy === v.id, st = v.status;
+      const art = v.kind === "text" ? `<div class="cv-txt">${esc(v.text?.body || SD_LABEL[st])}</div>` : v.hasImage ? `<img src="${imgUrl(v.id)}" alt="" loading="lazy">` : `<div class="cv-wait">${st === "FAILED" ? "✕" : `<i class="sd-spin"></i>`}</div>`;
+      const ready = v.kind === "text" ? !!v.text : v.hasImage;
+      return `<div class="cv-ver s-${st.toLowerCase()}${cv.shown === v.id ? " shown" : ""}">${art}
+        <div class="cv-vm"><span class="sd-badge s-${st.toLowerCase()}">${esc(SD_LABEL[st])}</span><small>${esc(v.categoryLabel)}${v.feedback ? ` · “${esc(v.feedback)}”` : ""}</small>${v.error ? `<small class="sd-err">${esc(v.error)}</small>` : ""}</div>
+        <div class="cv-va">${ready && st !== "PUBLISHED" ? `<button type="button" data-cv-try="${esc(v.id)}">${cv.shown === v.id ? "Hide" : "Try it"}</button>` : ""}${st === "PENDING_REVIEW" ? `<button type="button" data-cv-act="approve" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Approve</button>` : ""}${st === "APPROVED" ? `<button type="button" class="go" data-cv-act="publish" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Publish</button>` : ""}${["PENDING_REVIEW", "APPROVED"].includes(st) ? `<button type="button" class="no" data-cv-act="reject" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Reject</button>` : ""}${st === "PUBLISHED" ? `<button type="button" class="no" data-cv-act="unpublish" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Restore original</button>` : ""}</div>
+      </div>`;
+    };
+    const presets = cvPresets(p);
+    const est = (sd.types.find((t) => t.id === "slot-image")?.estCost || 0.04).toFixed(2);
+    const head = p.kind === "img"
+      ? `<div class="cv-pick"><div class="cv-thumbs"><figure><img src="${esc(p.original)}" alt=""><figcaption>Original</figcaption></figure>${live ? `<figure><img src="${esc(p.src)}" alt=""><figcaption>Live now</figcaption></figure>` : ""}</div><div><b>${esc(p.label || "Graphic")}</b><small>${esc(p.slot)}</small></div></div>`
+      : `<div class="cv-pick"><div><b>“${esc(p.text)}”</b><small>${p.text !== p.original ? `Original: “${esc(p.original)}”` : "Line of copy"}</small></div></div>`;
+    const form = p.kind === "img" ? `
+      <div class="cv-modes"><button type="button" class="${cv.mode === "free" ? "on" : ""}" data-cv-mode="free">Freeform</button>${presets.map(([k, l]) => `<button type="button" class="${cv.mode === k ? "on" : ""}" data-cv-mode="${k}">${esc(l)}</button>`).join("")}</div>
+      ${cv.mode === "free" ? `<label class="cv-f">What should it be?<textarea name="note" rows="3" maxlength="500" placeholder="e.g. a flaming football helmet, purple and gold">${esc(cv.note)}</textarea></label>
+        <label class="cv-f">Style<select name="style"><option value="arcade"${cv.style === "arcade" ? " selected" : ""}>Arcade pixel (matches the app)</option><option value="freeform"${cv.style === "freeform" ? " selected" : ""}>Clean illustration</option></select></label>`
+      : `<p class="cv-hint">${esc(presets.find(([k]) => k === cv.mode)?.[2] || "")}</p><label class="cv-f">Art direction (optional)<textarea name="note" rows="2" maxlength="300">${esc(cv.note)}</textarea></label>`}
+      <button type="button" class="sd-go" data-cv-go="draw"${cv.busy ? " disabled" : ""}>${cv.busy ? "Queuing…" : `Render · about $${est}`}</button>`
+      : `<label class="cv-f">Type it yourself<input name="typed" maxlength="80" value="${esc(cv.typed)}" placeholder="${esc(p.text)}"></label>
+      <button type="button" class="sd-go" data-cv-go="type"${cv.busy || !cv.typed.trim() ? " disabled" : ""}>Save as approved · free</button>
+      <div class="cv-or">or ask the writer</div>
+      <label class="cv-f">Direction<input name="note" maxlength="300" value="${esc(cv.note)}" placeholder="e.g. more trash talk, shorter"></label>
+      <label class="cv-f">Voice<select name="tone">${["hype", "coach", "dry", "savage"].map((t) => `<option${cv.tone === t ? " selected" : ""}>${t}</option>`).join("")}</select></label>
+      <button type="button" class="sd-go ghost" data-cv-go="write"${cv.busy ? " disabled" : ""}>Write options · about $0.01</button>`;
+    return `${head}<form class="cv-form" data-cv-form="1" onsubmit="return false">${form}</form>
+      <div id="cv-vlist">${cv.msg ? `<p class="sd-err">${esc(cv.msg)}</p>` : ""}
+      ${vers.length ? `<div class="cv-vh">Versions for this spot</div><div class="cv-vers">${vers.map(draft).join("")}</div>` : ""}</div>
+      <p class="sd-foot">Try it shows a draft in the preview only. Approve keeps it private; Publish puts it in the app.</p>`;
+  }
+  function sdCanvas() {
+    return `<section class="panel cv-wrap"><div class="cv-stage"><div class="cv-phone"><iframe id="sd-cv-frame" src="../?studio=1" title="App preview"></iframe></div><button type="button" class="cv-reload" data-cv-reload="1">${ICONS.refresh}<span>Reload preview</span></button></div><div class="cv-side" id="sd-cv-panel">${cvPanel()}</div></section>`;
+  }
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin || e.data?.type !== "studio-pick") return;
+    if (e.data.kind === "none") { cv.msg = e.data.why; cv.pick = null; }
+    else { cv.pick = e.data; cv.msg = ""; cv.note = ""; cv.typed = ""; cv.mode = "free"; if (cv.shown) { cvSend({ type: "studio-reload" }); cv.shown = null; } }
+    paintStudio();
+    if (matchMedia("(max-width: 860px)").matches) studioEl.querySelector("#sd-cv-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  async function cvGo(how) {
+    const p = cv.pick; if (!p) return;
+    cv.busy = true; cv.msg = ""; paintStudio();
+    try {
+      let body;
+      if (p.kind === "text") body = how === "type" ? { category: "slot-text", subject: { slot: p.slot }, text: cv.typed.trim() } : { category: "slot-text", subject: { slot: p.slot }, feedback: cv.note, tone: cv.tone, fresh: true };
+      else if (cv.mode === "award") body = { category: "award-art", subject: { award: p.slot.replace(/^assets\/images\/(recap|hs)\/([\w-]+)\.webp$/, "$1-$2") }, feedback: cv.note };
+      else if (cv.mode === "mascot") {
+        await loadTeams();
+        const id = Number(p.slot.slice(5)), t = sd.teams.find((x) => Number(x.id) === id);
+        body = { category: "team-mascot", subject: { teamId: id, name: t?.name || p.label || `Team ${id}` }, feedback: cv.note };
+      } else {
+        if (!cv.note.trim()) throw new Error("Say what it should be first.");
+        body = { category: "slot-image", subject: { slot: p.slot, label: p.label, style: cv.style }, feedback: cv.note, fresh: true };
+      }
+      const r = await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (r.existing) cv.msg = "There's already a version of this in progress. It's listed below.";
+      if (how === "type") cv.typed = "";
+    } catch (err) { cv.msg = err.message; }
+    cv.busy = false;
+    await studioLoad(true);
+  }
   function sdCreate() {
     return `${sdSuggest()}
       ${sdAwards()}
@@ -1483,7 +1624,22 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     if (st.view !== "studio") return;
     const b = sd.budget, used = b && b.cap ? Math.min(100, ((b.spent + b.reserved) / b.cap) * 100) : 0;
     const z = sd.zoom;
-    const body = sd.tab === "library" ? sdLibrary() : sd.tab === "placements" ? sdPlacements() : sd.tab === "create" ? sdCreate() : sdReview();
+    // The Canvas keeps its frame: only the side panel and sheets redraw.
+    const keep = sd.tab === "canvas" && cvFrame();
+    if (keep) {
+      const pan = studioEl.querySelector("#sd-cv-panel"), ae = document.activeElement;
+      // Mid-typing, only the versions list redraws so the field keeps its focus.
+      if (ae && pan.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) {
+        const tmp = document.createElement("div"); tmp.innerHTML = cvPanel();
+        const nv = tmp.querySelector("#cv-vlist"), ov = pan.querySelector("#cv-vlist");
+        if (nv && ov) ov.replaceWith(nv);
+      } else pan.innerHTML = cvPanel();
+      studioEl.querySelector("#sd-over").innerHTML = sdOver();
+      const tb = studioEl.querySelector(".sd-tabs"); if (tb) tb.outerHTML = sdTabs();
+      const eb = studioEl.querySelector("#sd-errs"); if (eb) eb.innerHTML = sd.err ? `<div class="sd-errbox">${esc(sd.err)}</div>` : "";
+      return;
+    }
+    const body = sd.tab === "canvas" ? sdCanvas() : sd.tab === "library" ? sdLibrary() : sd.tab === "placements" ? sdPlacements() : sd.tab === "create" ? sdCreate() : sdReview();
     studioEl.innerHTML = `
       <div class="top"><div class="top-in">
         <button type="button" class="brand" data-sd-back="sec-now" aria-label="Back to live"><i class="beat"></i><b>BROCHIEFS</b><span>STUDIO</span></button>
@@ -1494,16 +1650,19 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         <section class="panel sd-head">
           <div class="sd-title"><span>🎨 CREATIVE STUDIO</span><button type="button" class="sd-new" data-sd-tab="create">${ICONS.plus}<span>Create</span></button></div>
           <div class="sd-budget"><div class="sd-bar"><u style="width:${used.toFixed(1)}%"></u></div><span class="num">${b ? `${money$(b.spent)} spent${b.reserved ? ` · ${money$(b.reserved)} in flight` : ""} · ${money$(b.cap)} cap · ${esc(b.month)}` : "Budget…"}</span></div>
-          <div class="sd-tabs" role="tablist">${SD_TABS.map(([k, l]) => `<button type="button" role="tab" class="${sd.tab === k ? "on" : ""}" data-sd-tab="${k}">${l}${k === "review" && sd.review ? ` <b>${sd.review}</b>` : ""}</button>`).join("")}</div>
+          ${sdTabs()}
         </section>
-        ${sd.err ? `<div class="sd-errbox">${esc(sd.err)}</div>` : ""}
+        <div id="sd-errs">${sd.err ? `<div class="sd-errbox">${esc(sd.err)}</div>` : ""}</div>
         ${body}
         <p class="sd-foot">Approve keeps it private. Only Publish puts it in front of the league, and Unpublish brings back what was there before.</p>
       </div>
-      ${z ? `<div class="sd-zoom" data-sd-unzoom="1"><button type="button" class="ib sd-zx" data-sd-unzoom="1" aria-label="Close">${ICONS.x}</button><div class="sd-zimg"><img src="${imgUrl(z)}" alt=""></div></div>` : ""}
-      ${sdAssetSheet()}
-      ${sdSheet()}
+      <div id="sd-over">${sdOver()}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" data-sd-back="${id}">${ICONS[ic]}<span>${lab}</span></button>`).join("")}<button type="button" class="on">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button></nav>`;
+  }
+  function sdTabs() { return `<div class="sd-tabs" role="tablist">${SD_TABS.map(([k, l]) => `<button type="button" role="tab" class="${sd.tab === k ? "on" : ""}" data-sd-tab="${k}">${l}${k === "review" && sd.review ? ` <b>${sd.review}</b>` : ""}</button>`).join("")}</div>`; }
+  function sdOver() {
+    const z = sd.zoom;
+    return `${z ? `<div class="sd-zoom" data-sd-unzoom="1"><button type="button" class="ib sd-zx" data-sd-unzoom="1" aria-label="Close">${ICONS.x}</button><div class="sd-zimg"><img src="${imgUrl(z)}" alt=""></div></div>` : ""}${sdAssetSheet()}${sdSheet()}`;
   }
   async function loadLibrary() { try { sd.lib = (await sdFetch("/library")).assets; } catch (e) { sd.err = e.message; } paintStudio(); }
   async function openAsset(id) { try { sd.asset = await sdFetch(`/asset/${encodeURIComponent(id)}`); } catch (e) { sd.err = e.message; } paintStudio(); }
@@ -1543,6 +1702,27 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     paintStudio();
   }
   studioEl.addEventListener("click", async (e) => {
+    const c = e.target.closest("[data-cv-mode],[data-cv-try],[data-cv-act],[data-cv-go],[data-cv-reload]");
+    if (c) {
+      if (c.dataset.cvMode) { cv.mode = c.dataset.cvMode; cv.msg = ""; return paintStudio(); }
+      if (c.dataset.cvReload) { cv.shown = null; const f = cvFrame(); if (f) f.src = f.src; return paintStudio(); }
+      if (c.dataset.cvTry) {
+        const id = c.dataset.cvTry, v = sd.items.find((x) => x.id === id), p = cv.pick;
+        if (cv.shown === id) { cv.shown = null; cvSend({ type: "studio-preview", key: cvKey(p), value: null }); }
+        else {
+          cv.shown = id;
+          // A preset's draft is tried on the graphic that was tapped.
+          cvSend({ type: "studio-preview", key: p.kind === "img" ? `img:${p.slot}` : p.slot, value: v.kind === "text" ? v.text?.body : imgUrl(id) });
+        }
+        return paintStudio();
+      }
+      if (c.dataset.cvAct) {
+        await sdAct(c.dataset.cvAct, c.dataset.id);
+        if (c.dataset.cvAct === "publish" || c.dataset.cvAct === "unpublish") { cv.shown = null; cvSend({ type: "studio-reload" }); }
+        return;
+      }
+      if (c.dataset.cvGo) return cvGo(c.dataset.cvGo);
+    }
     const sg = e.target.closest("[data-sg],[data-sg-all],[data-sg-go],[data-sg-fold]");
     if (sg) {
       if (sg.dataset.sgFold) { sd.suggOpen = !sd.suggOpen; return paintStudio(); }
@@ -1626,6 +1806,11 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       sd.gen = { category: sd.types[0]?.id || "team-mascot" }; paintStudio();
       await loadTeams(); if (sd.gen && !sd.gen.teamId) sd.gen.teamId = sd.teams[0]?.id; paintStudio();
     }
+  });
+  studioEl.addEventListener("input", (e) => {
+    const f = e.target.closest("[data-cv-form]"); if (!f || !e.target.name) return;
+    cv[e.target.name] = e.target.value;
+    if (e.target.name === "typed") { const b = f.querySelector('[data-cv-go="type"]'); if (b) b.disabled = cv.busy || !cv.typed.trim(); }
   });
   studioEl.addEventListener("change", (e) => {
     const f = e.target.closest("[data-sd-form]"); if (!f || !sd.gen) return;

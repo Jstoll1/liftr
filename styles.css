@@ -7028,3 +7028,8 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .rd-scout b { display: block; font-size: 14px; color: #fff; margin-bottom: 5px; }
 .rd-scout p { margin: 0 0 6px; font-size: 12.5px; line-height: 1.45; color: var(--text); }
 .rd-scout p:last-child { margin-bottom: 0; }
+
+/* Studio Canvas: inside the Studio's preview, everything editable says so. */
+.studio-canvas img { cursor: pointer; }
+.studio-canvas img:hover { outline: 2px dashed #39ff88; outline-offset: 2px; }
+.studio-canvas h1:hover, .studio-canvas h2:hover, .studio-canvas h3:hover, .studio-canvas button:hover, .studio-canvas span:hover, .studio-canvas b:hover, .studio-canvas small:hover, .studio-canvas em:hover, .studio-canvas p:hover, .studio-canvas div:not(:has(*)):hover { outline: 1px dashed #05d9e8; outline-offset: 1px; cursor: text; }

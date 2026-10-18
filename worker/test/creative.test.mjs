@@ -282,3 +282,29 @@ test("award art: one asset per award, a prompt with the motif and no text, publi
   const award = types.types.find((t) => t.id === "award-art");
   assert.ok(award.choices.some((c) => c.key === "hs-dogs"));
 });
+
+test("canvas slots: any graphic or line of copy, fresh takes, hand-typed copy, published by slot", async () => {
+  const seen = [];
+  const { d } = desk({ draw: async (a) => { seen.push(a); return { bytes: new Uint8Array([1]), cost: 0.04 }; }, write: async () => ({ text: JSON.stringify({ body: "WHO'S HOT" }), cost: 0.001 }) });
+  assert.match((await post(d, "/generate", { category: "slot-image", subject: { slot: "../etc/passwd" } })).error, /Tap/);
+  const a = await post(d, "/generate", { category: "slot-image", subject: { slot: "assets/images/recap/crown.webp", label: "Pick of the Week", style: "arcade" }, feedback: "a crown on fire" });
+  const b = await post(d, "/generate", { category: "slot-image", subject: { slot: "assets/images/recap/crown.webp", label: "Pick of the Week" }, feedback: "a neon crown", fresh: true });
+  assert.notEqual(a.versionId, b.versionId);
+  await d.alarm(); await d.alarm();
+  assert.match(seen[0].prompt, /crown on fire/);
+  assert.match(seen[0].prompt, /no text/i);
+  const t = await post(d, "/generate", { category: "slot-text", subject: { slot: "t:SEASON STATS" }, text: "HALL OF FAME" });
+  assert.equal(t.status, "APPROVED");
+  await act(d, "publish", [t.versionId]);
+  const w = await post(d, "/generate", { category: "slot-text", subject: { slot: "t:THE POT" }, feedback: "make it louder" });
+  await d.alarm();
+  await act(d, "approve", [w.versionId]);
+  await act(d, "publish", [w.versionId]);
+  await act(d, "approve", [a.versionId]);
+  await optimize(d, a.versionId);
+  await act(d, "publish", [a.versionId]);
+  const art = JSON.parse(d.kv.get("creative:published")).art;
+  assert.equal(art["slot:t:SEASON STATS"].text.body, "HALL OF FAME");
+  assert.equal(art["slot:t:THE POT"].text.body, "WHO'S HOT");
+  assert.equal(art["slot:img:assets/images/recap/crown.webp"].v, a.versionId);
+});

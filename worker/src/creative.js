@@ -22,7 +22,7 @@ export function parseText(raw) {
   if (raw == null) return null;
   try { const o = typeof raw === "string" ? JSON.parse(raw) : raw; return o && typeof o.body === "string" ? { headline: String(o.headline || "").slice(0, 120), body: o.body.slice(0, 2000) } : null; } catch { return null; }
 }
-const cleanEdit = (t) => { const p = parseText(t); return p && p.headline.trim() && p.body.trim() ? { headline: p.headline.trim(), body: p.body.trim() } : null; };
+const cleanEdit = (t, bodyOnly) => { const p = parseText(t); return p && (bodyOnly || p.headline.trim()) && p.body.trim() ? { headline: p.headline.trim(), body: p.body.trim() } : null; };
 const newId = (p) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 const SCHEMA = [
@@ -185,8 +185,8 @@ export class CreativeDesk {
       if (action === "edit") {
         // Hand edits to written work. A live version is never changed in
         // place: the edit becomes a new approved version to publish.
-        const text = cleanEdit(body.text);
-        if (!text) { skipped.push({ id, why: "the edit needs a headline and a body" }); continue; }
+        const text = cleanEdit(body.text, CATEGORIES[v.category]?.bodyOnly);
+        if (!text) { skipped.push({ id, why: CATEGORIES[v.category]?.bodyOnly ? "the edit is empty" : "the edit needs a headline and a body" }); continue; }
         if (v.text == null) { skipped.push({ id, why: "only written work can be edited" }); continue; }
         if (v.status === "PUBLISHED") {
           const nv = newId("v"), now2 = this.now();
@@ -295,12 +295,21 @@ export class CreativeDesk {
     const dedupe = `${body.category}|${subject.key}|${week ?? "-"}`;
     const now = this.now();
     let asset = this.row("SELECT * FROM assets WHERE dedupe = ?", dedupe);
+    // Copy typed by hand: no writer, no cost, straight to approved.
+    const manual = cat.kind === "text" && cat.bodyOnly && typeof body.text === "string" ? body.text.trim().slice(0, 300) : null;
     if (asset) {
       const live = this.row("SELECT id, status FROM versions WHERE asset_id = ? AND status NOT IN ('REJECTED', 'FAILED') ORDER BY created DESC", asset.id);
-      if (live) return { ok: true, existing: true, assetId: asset.id, versionId: live.id, status: live.status };
+      // The Canvas asks for a fresh take on purpose: a new version beside the others.
+      if (live && !body.fresh && !manual) return { ok: true, existing: true, assetId: asset.id, versionId: live.id, status: live.status };
     } else {
       asset = { id: newId("a") };
       this.sql.exec("INSERT INTO assets (id, category, subject, label, data, week, dedupe, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", asset.id, body.category, subject.key, subject.label, JSON.stringify(subject.data), week, dedupe, now);
+    }
+    if (manual) {
+      const vid = newId("v");
+      this.sql.exec("INSERT INTO versions (id, asset_id, status, prompt, feedback, tone, model, est_cost, cost, text, created, updated) VALUES (?, ?, 'APPROVED', '', 'typed by hand', NULL, 'hand', 0, 0, ?, ?, ?)", vid, asset.id, JSON.stringify({ headline: "", body: manual }), now, now);
+      this.audit(asset.id, vid, "edit", body.actor, "typed by hand");
+      return { ok: true, assetId: asset.id, versionId: vid, status: "APPROVED" };
     }
     const tone = typeof body.tone === "string" ? body.tone : null;
     const vid = this.newVersion(asset, cat, subject, { tone, feedback, actor: body.actor });
