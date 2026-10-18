@@ -8033,14 +8033,14 @@ function renderH2H() {
     facts.push(`<span><small>LEAD</small><b>${Math.abs(gap)}</b></span>`);
     facts.push(`<span><small>${N(A)} GAIN</small><b>${unknown ? "≥" : ""}${gainA}</b></span>`);
     facts.push(`<span><small>${N(B)} GAIN</small><b>${unknown ? "≥" : ""}${gainB}</b></span>`);
-    if (unknown) path = `${unknown} game${unknown === 1 ? "" : "s"} still hidden until kickoff, so the path is shown once those picks lock.`;
-    else if (!openLeft || (gainA === 0 && gainB === 0)) path = leader ? `Nothing left can change it: ${N(leader)} takes this matchup.` : "Nothing left can change it: level on points, tiebreaker decides.";
-    else if (!leader) path = `Level. Any net gain wins it; ${N(A)} can gain up to ${gainA}, ${N(B)} up to ${gainB}.`;
+    if (unknown) path = `${leader ? `${N(leader)} +${Math.abs(gap)} · ` : ""}${unknown} PICK${unknown === 1 ? "" : "S"} HIDDEN TILL KICKOFF`;
+    else if (!openLeft || (gainA === 0 && gainB === 0)) path = leader ? `${N(leader)} CLINCHED` : "LOCKED LEVEL · TIEBREAKER";
+    else if (!leader) path = `LEVEL · ${N(A)} UP TO +${gainA}, ${N(B)} UP TO +${gainB}`;
     else {
       const need = Math.abs(gap), best = trailer === A ? gainA : gainB;
-      path = best < need ? `${N(trailer)} is out: the most left to gain is ${best}, short of ${need}.`
-        : best === need ? `${N(trailer)}'s best case is a tie (net ${need}), then the tiebreaker decides.`
-        : `${N(trailer)} needs a net ${need} to tie, ${need + 1} to pass. Up to ${best} is still possible.`;
+      path = best < need ? `${N(leader)} CLINCHED · ${N(trailer)} CAN GAIN ${best}, NEEDS ${need}`
+        : best === need ? `${N(trailer)} CAN ONLY TIE (+${need}) · TIEBREAKER`
+        : `${N(trailer)} NEEDS +${need + 1} (+${need} TIES) · UP TO +${best} LEFT`;
     }
   }
   const provA = A.score + (a.fly || 0), provB = B.score + (b.fly || 0);
@@ -8089,7 +8089,10 @@ function renderH2H() {
     card.classList.toggle("crowned", !!top && allDone);
   };
   fill("a", A, a); fill("b", B, b);
-  body.innerHTML = `<div class="h2x-sum"><small>${kicker}</small><b>${headline}</b>${facts.length ? `<div class="h2x-facts">${facts.join("")}</div>` : ""}${path ? `<p class="h2x-path">${path}</p>` : ""}${nowLine}</div>
+  // One line under the cards: the scores are already up there, so this
+  // only says where the matchup stands.
+  const verdict = allDone ? (leader ? `${N(leader)} WINS` : "LEVEL · TIEBREAKER") : !leader ? "ALL SQUARE" : path;
+  body.innerHTML = `<div class="h2x-sum line${allDone ? " done" : ""}"><small>${kicker}</small><span>${verdict || headline}</span></div>
     ${splitGames.length ? `${legend}${groupsHtml}` : `<div class="h2c-none">Same picks on every game so far.</div>`}
     ${shared}`;
 }
