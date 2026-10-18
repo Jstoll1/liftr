@@ -8096,8 +8096,7 @@ function renderH2H() {
   // One line under the cards: the scores are already up there, so this
   // only says where the matchup stands.
   const verdict = allDone ? (leader ? `${N(leader)} WINS` : "LEVEL · TIEBREAKER") : !leader ? "ALL SQUARE" : path;
-  body.innerHTML = `<div class="h2x-sum line${allDone ? " done" : ""}"><small>${kicker}</small><span>${verdict || headline}</span></div>
-    ${splitGames.length ? `${legend}${groupsHtml}` : `<div class="h2c-none">Same picks on every game so far.</div>`}
+  body.innerHTML = `${splitGames.length ? groupsHtml : `<div class="h2c-none">Same picks on every game so far.</div>`}
     ${shared}`;
 }
 // Split games past the first three, and the shared picks, open on a tap
