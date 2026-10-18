@@ -7076,11 +7076,11 @@ function renderH2H() {
   };
   const pickCell = (g, name, pick, side) => {
     if (hiddenFor(name, g)) return `<div class="h2x-pick ${side} locked"><span class="h2x-tm">🔒 Hidden</span><small>until kickoff</small></div>`;
-    if (!pick) return `<div class="h2x-pick ${side} none"><span class="h2x-tm">No pick</span><small>&nbsp;</small><b class="h2x-pts none">0</b></div>`;
+    if (!pick) return `<div class="h2x-pick ${side} none"><span class="h2x-tm">No pick</span><small><b class="h2x-pts none">0</b></small></div>`;
     const st = stateOf(g, pick);
     const id = pick.team === g.home ? g.homeId : g.awayId;
     const line = pick.mode === "SU" ? "SU · WIN" : `ATS ${pick.team === g.favorite ? "−" : "+"}${g.spread}`;
-    return `<div class="h2x-pick ${side} ${st.cls}"><span class="h2x-tm">${id ? `<img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${(() => { const nm = short(g, pick.team), ab = abbr(g, pick.team === g.home ? "home" : "away"); return ab && ab !== nm && nm.length > 9 ? `<span class="nm-full">${esc(nm)}</span><span class="nm-ab">${esc(ab)}</span>` : `<span>${esc(nm)}</span>`; })()}</span><small>${line}</small><b class="h2x-pts ${st.cls}" title="${BADGE[st.cls]}">${st.txt}<i>${BADGE[st.cls]}</i></b></div>`;
+    return `<div class="h2x-pick ${side} ${st.cls}"><span class="h2x-tm">${id ? `<img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${(() => { const nm = short(g, pick.team), ab = abbr(g, pick.team === g.home ? "home" : "away"); return ab && ab !== nm && nm.length > 9 ? `<span class="nm-full">${esc(nm)}</span><span class="nm-ab">${esc(ab)}</span>` : `<span>${esc(nm)}</span>`; })()}</span><small>${line}<b class="h2x-pts ${st.cls}" title="${BADGE[st.cls]}">${st.txt}</b></small></div>`;
   };
   const row = (g) => `<div class="h2x-row ${statusOf(g)}${noSwing(g) ? "" : " swing"}">${pickCell(g, A.name, a.st.picks[g.id], "l")}${centre(g)}${pickCell(g, B.name, b.st.picks[g.id], "r")}</div>`;
   const GROUPS = [["live", "LIVE"], ["upcoming", "UPCOMING"], ["void", "NO RESULT"], ["final", "FINAL"]];
