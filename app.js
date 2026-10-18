@@ -7089,7 +7089,8 @@ function renderH2H() {
     return list.length ? `<section class="h2x-grp ${k}"><div class="h2x-gh"><span>${label}</span><b>${list.length}</b></div>${list.map(row).join("")}</section>` : "";
   }).join("");
   const legend = `<div class="h2x-legend"><span><b class="h2x-pts hit">+2</b>earned</span><span><b class="h2x-pts miss">0</b>no points</span><span><b class="h2x-pts live-hit">+2</b>live</span><span><b class="h2x-pts open">2</b>at stake</span></div>`;
-  const shared = sameGames.length ? `<details class="h2x-same"${h2hSharedOpen ? " open" : ""}><summary><span>SAME PICK · NO SWING <b>(${sameGames.length})</b></span><i aria-hidden="true">⌄</i></summary>${sameGames.map(row).join("")}</details>` : "";
+  // Same picks move nothing, so they are only a footnote.
+  const shared = sameGames.length ? `<p class="h2x-foot">Same pick, no swing: ${sameGames.map((g) => { const pk = a.st.picks[g.id]; return esc(abbr(g, pk.team === g.home ? "home" : "away")); }).join(", ")}</p>` : "";
   // Fighter cards up top: name, score, record, and a crown on the winner.
   // The native select sits invisibly over each card, so a tap still
   // changes the player.

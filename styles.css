@@ -6549,3 +6549,5 @@ html[data-sport="nfl"] #logo-screen { display: none !important; }
 .h2x-sum.line > small { font-size: 6.5px; padding: 2px 5px; border-radius: 3px; border: 1px solid currentColor; }
 .h2x-sum.line > span { font-family: 'Press Start 2P', monospace; font-size: 8.5px; line-height: 1.6; letter-spacing: .04em; color: #ffe45e; }
 .h2x-sum.line.done > span { font-size: 10px; }
+
+.h2x-foot { margin: 2px 0 0; text-align: center; font-size: 10.5px; color: #8a80a8; }
