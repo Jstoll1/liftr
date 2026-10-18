@@ -6925,3 +6925,13 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .hs-side-h span { flex: 1; font-family: 'Press Start 2P', monospace; font-size: 10px; text-shadow: 0 0 10px rgba(255, 228, 94, .5); letter-spacing: .1em; color: var(--neon-yellow); }
 .hs-side-h small { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .1em; color: var(--text-dim); }
 .hs-side-note { font-size: 10.5px; color: var(--text-dim); padding: 0 2px; }
+
+/* Week replay: the template's pixel art. Header art hangs off the bar. */
+.recap-card.arc { grid-template-columns: 62px minmax(0, 1fr) auto; }
+.recap-card.arc > .recap-head { position: relative; padding: 8px 10px 8px 46px; min-height: 30px; }
+.recap-ico { position: absolute; left: 6px; top: 50%; width: 34px; height: 34px; object-fit: contain; transform: translateY(-50%); filter: drop-shadow(1px 2px 0 rgba(0, 0, 0, .55)); pointer-events: none; }
+.recap-card.arc .recap-art { width: 62px; height: 58px; }
+.recap-card.arc .recap-logo { width: 54px; height: 54px; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--c) 35%, transparent)) drop-shadow(0 2px 2px rgba(0, 0, 0, .6)); }
+.recap-card.arc .recap-vs .recap-logo { width: 34px; height: 34px; }
+.recap-card.arc .recap-logo.chart { width: 58px; height: 58px; filter: drop-shadow(0 0 8px rgba(61, 252, 143, .35)); }
+img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255, 210, 63, .55)); }

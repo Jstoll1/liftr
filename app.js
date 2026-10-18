@@ -5539,7 +5539,7 @@ function renderWeekChamp(rows, results) {
   if (!allFinal || !rows.length) { el.classList.add("hidden"); return; }
   const top = rows.filter((r) => r.place === rows[0].place);
   const names = top.map((r) => shown(r.name).toUpperCase()).join(" & ");
-  const trophy = `<svg class="wc-trophy" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${["########", "#.####.#", "#.####.#", ".######.", "..####..", "...##...", "..####..", ".######."].flatMap((row, y) => [...row].map((c, x) => c === "#" ? `<rect x="${x}" y="${y}" width="1" height="1"/>` : "")).join("")}</svg>`;
+  const trophy = `<img class="wc-trophy" src="assets/images/recap/trophy.webp" alt="" aria-hidden="true" decoding="async">`;
   el.innerHTML = `<span class="wc-label"><span class="wc-rule"></span>${WEEK_LABEL.toUpperCase()} HIGH SCORE<span class="wc-rule"></span></span><span class="wc-line">${trophy}<span class="wc-name">${names}</span><span class="wc-pts">${String(rows[0].score).padStart(2, "0")}<small>PTS</small></span>${trophy}</span>`;
   el.classList.remove("hidden");
 }
@@ -7915,16 +7915,10 @@ let renderRecap = function () {
   const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
   const cards = [];
   const chips = (w) => nameChips(Array.isArray(w) ? w : [w]);
-  // 8x8 pixel icons in the card's colour, so they sit with the pixel type
-  // instead of fighting the logos the way native emoji did.
-  const px = (rows) => `<svg class="recap-icon" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${rows.flatMap((row, y) => [...row].map((c, x) => c === "#" ? `<rect x="${x}" y="${y}" width="1" height="1"/>` : "")).join("")}</svg>`;
-  const ICON = {
-    target: px(["..####..", ".#....#.", "#..##..#", "#.####.#", "#.####.#", "#..##..#", ".#....#.", "..####.."]),
-    skull: px([".######.", "########", "##.##.##", "##.##.##", "########", ".##..##.", "..####..", "..#..#.."]),
-    up: px(["...##...", "..####..", ".######.", "###..###", "#..##..#", "...##...", "...##...", "...##..."]),
-    coin: px(["..####..", ".#....#.", "#..##..#", "#.#..#.#", "#.#..#.#", "#..##..#", ".#....#.", "..####.."]),
-    hash: px(["..#..#..", "..#..#..", "########", "..#..#..", "..#..#..", "########", "..#..#..", "..#..#.."]),
-  };
+  // Pixel art for each card's header, cut from the league's template;
+  // it hangs a little past the colour bar, the way the template draws it.
+  const art = (f) => `<img class="recap-ico" src="assets/images/recap/${f}.webp" alt="" aria-hidden="true" decoding="async">`;
+  const ICON = { target: art("crown"), skull: art("bomb"), up: art("chart"), coin: art("coin"), hash: art("flag") };
   const logo = (id, alt = "") => id ? `<img class="recap-logo" src="${logoUrl(id)}" alt="${esc(alt)}" loading="lazy">` : `<span class="recap-logo blank"></span>`;
   const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);
   // [label, class, art, headline, sub, stat, statLabel, isMe]
@@ -7940,7 +7934,7 @@ let renderRecap = function () {
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
-    cards.push([ICON.up + "MOVEMENT", "move", `<span class="recap-logo arrow">▲</span>`, `${chips([u.name])}<span class="recap-pick">to #${u.to} on the season</span>`,
+    cards.push([ICON.up + "MOVEMENT", "move", `<img class="recap-logo chart" src="assets/images/recap/chart.webp" alt="" decoding="async">`, `${chips([u.name])}<span class="recap-pick">to #${u.to} on the season</span>`,
       d ? `${esc(shown(d.name))} fell ${d.to - d.from} to #${d.to}` : "Nobody fell", `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean))]);
   }
   if (r.consensus?.sides?.length > 1) {
