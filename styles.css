@@ -6625,3 +6625,24 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .as-tb { max-width: 210px; min-height: 36px; padding: 4px 6px; border-radius: 6px; border: 1px solid rgba(255, 228, 94, .5); background: #07020f; color: #fff; font-size: 16px; }
 .as-tbrow { flex-wrap: wrap; }
 .as-person small.as-tbg { color: var(--text-dim); }
+/* Side bet selector: one row per game, its options as chips. */
+.as-gl { display: flex; flex-direction: column; }
+.as-g { display: flex; flex-direction: column; gap: 6px; padding: 9px 0; border-top: 1px solid rgba(255, 255, 255, .07); }
+.as-g-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.as-g-nm { font-size: 13px; color: var(--text); }
+.as-g-nm small { margin-left: 4px; font-size: 9px; color: var(--text-dim); }
+.as-g-top > small { flex: none; color: var(--text-dim); }
+.as-g-line { font-size: 11px; color: var(--text-dim); }
+.as-g-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.as-opt { position: relative; cursor: pointer; }
+.as-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.as-opt span { display: inline-block; padding: 7px 10px; border-radius: 999px; border: 1.5px solid rgba(255, 255, 255, .2); font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .05em; color: var(--text-dim); }
+.as-opt input:checked + span { border-color: #ffb000; color: #1a0a00; background: linear-gradient(180deg, #ffe45e, #ffb000); }
+.as-opt input:focus-visible + span { outline: 2px solid var(--neon-cyan); outline-offset: 2px; }
+.as-h-edit { display: flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 11px; }
+.as-h-edit.hidden { display: none; }
+.as-h-edit select, .as-h-edit input { min-height: 34px; padding: 3px 6px; border-radius: 6px; border: 1px solid rgba(255, 228, 94, .45); background: #07020f; color: #fff; font-size: 16px; }
+.as-h-edit select { max-width: 120px; }
+.as-h-edit input { width: 64px; }
+.as-count { font-size: 11px; color: var(--neon-yellow); }
+.as-count.bad { color: var(--neon-pink); }

@@ -30,7 +30,7 @@ test("a pot refuses started games, unknown games, bad buy-ins and too many games
   assert.match(newPot({ week: 7, games: [8], buyIn: 2.5, slate, now: t }).error, /whole dollar/);
   assert.match(newPot({ week: 7, games: [8], buyIn: 0, slate, now: t }).error, /whole dollar/);
   assert.match(newPot({ week: 7, games: [], buyIn: 25, slate, now: t }).error, /Pick 1/);
-  assert.match(newPot({ week: 7, games: [8, 9, 10, 1, 6, 7], buyIn: 25, slate, now: t }).error, /Pick 1/);
+  assert.match(newPot({ week: 7, games: [8, 9, 10, 6, 7, ...["e40185000", "e40185001", "e40185002", "e40185003"].map((id) => ({ id, away: "A", home: "B", awayShort: "A", homeShort: "B", awayId: 1, homeId: 2, favorite: "A", spread: 3, kickoff: new Date(t + H).toISOString() }))], buyIn: 25, slate, now: t }).error, /Pick 1 to 8/);
 });
 
 test("side picks must cover every pot game with a real team and mode", () => {
@@ -124,4 +124,10 @@ test("the commissioner can pick the tiebreaker game; anything else falls back to
   assert.equal(newPot({ week: 7, games: [8, 9, 10], buyIn: 25, slate, now: t, tbGame: 9 }).pot.tbGame, 9);
   assert.equal(newPot({ week: 7, games: [8, 9, 10], buyIn: 25, slate, now: t, tbGame: 1 }).pot.tbGame, 10, "not in the bet");
   assert.equal(newPot({ week: 7, games: [8, 9, 10], buyIn: 25, slate, now: t }).pot.tbGame, 10);
+});
+
+test("a first-half bet is marked by an f id", () => {
+  const g = cleanExtraGame({ id: "f401856809", away: "A", home: "B", awayShort: "A", homeShort: "B", awayId: 1, homeId: 2, favorite: "A", spread: 3.5, total: 24.5, kickoff: new Date(t + H).toISOString() });
+  assert.equal(g.half, 1);
+  assert.equal(g.eventId, "401856809");
 });

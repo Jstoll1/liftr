@@ -10,7 +10,7 @@
 // money changes hands outside it.
 
 export const sideKey = (week) => `side:w${week}`;
-export const SIDE_MAX_GAMES = 5;
+export const SIDE_MAX_GAMES = 8;
 export const SIDE_MAX_BUYIN = 500;
 // The Worker does not read live scores, so "not over" is judged by the
 // clock here (no college game runs this long); the console also leaves
@@ -26,12 +26,13 @@ const GAME_FIELDS = ["id", "away", "home", "awayShort", "homeShort", "awayId", "
 const pickFields = (g) => Object.fromEntries(GAME_FIELDS.filter((f) => g[f] != null).map((f) => [f, g[f]]));
 
 // A game off the week's slate comes from the console with ESPN's line,
-// its id "e" plus the ESPN event id. A second-half bet on any game is "h"
-// plus the event id, at the line the commissioner set, and is scored on
-// third quarter and later points only. Returns the clean game or null.
+// its id "e" plus the ESPN event id. A half bet on any game is "f" (first
+// half) or "h" (second half) plus the event id, at the line the
+// commissioner set, and is scored on that half's points only. Returns the
+// clean game or null.
 export function cleanExtraGame(g) {
   const id = String(g?.id || "");
-  if (!/^[eh]\d{5,12}$/.test(id)) return null;
+  if (!/^[efh]\d{5,12}$/.test(id)) return null;
   const str = (v) => (typeof v === "string" && v.trim() && v.length <= 80 ? v.trim() : null);
   const away = str(g.away), home = str(g.home), awayShort = str(g.awayShort), homeShort = str(g.homeShort), favorite = str(g.favorite);
   const awayId = Number(g.awayId), homeId = Number(g.homeId), spread = Number(g.spread), kick = new Date(g.kickoff).getTime();
@@ -41,7 +42,7 @@ export function cleanExtraGame(g) {
   if (!Number.isFinite(spread) || spread < 0 || spread > 80 || Math.round(spread * 2) !== spread * 2) return null;
   if (!Number.isFinite(kick)) return null;
   const total = cleanTotal(g.total);
-  return { id, away, home, awayShort, homeShort, awayId, homeId, favorite, spread, ...(total != null ? { total } : {}), kickoff: new Date(kick).toISOString(), kickoffLabel: str(g.kickoffLabel) || "", eventId: id.slice(1), ...(id[0] === "h" ? { half: 2 } : {}) };
+  return { id, away, home, awayShort, homeShort, awayId, homeId, favorite, spread, ...(total != null ? { total } : {}), kickoff: new Date(kick).toISOString(), kickoffLabel: str(g.kickoffLabel) || "", eventId: id.slice(1), ...(id[0] === "h" ? { half: 2 } : id[0] === "f" ? { half: 1 } : {}) };
 }
 
 // A new pot from the commissioner's choice. A game on the week's slate

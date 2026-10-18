@@ -2823,8 +2823,8 @@ function fetchSidePot(force = false) {
 const sideGames = (pot) => (pot.slate || pot.games.map((id) => ({ id }))).map((g) => { const x = GAMES.find((y) => String(y.id) === String(g.id)); return x ? { ...x, ...(g.total != null ? { total: g.total } : {}) } : g.away ? g : null; }).filter(Boolean);
 const onSlate = (g) => typeof g.id === "number" && GAMES.some((x) => x.id === g.id);
 // A pool game goes by its number; a game off the slate is marked as such.
-const sideTag = (g) => (g.half === 2 ? "2ND HALF" : onSlate(g) ? `G${g.id}` : "BONUS");
-const sideMatch = (g) => `${g.awayShort} @ ${g.homeShort}${g.half === 2 ? " (2nd half)" : ""}`;
+const sideTag = (g) => (g.half === 2 ? "2ND HALF" : g.half === 1 ? "1ST HALF" : onSlate(g) ? `G${g.id}` : "BONUS");
+const sideMatch = (g) => `${g.awayShort} @ ${g.homeShort}${g.half === 2 ? " (2nd half)" : g.half === 1 ? " (1st half)" : ""}`;
 // Live scores for side games off the slate, read from ESPN the same way
 // the board reads its own.
 let sideLive = {}, sideLiveAt = 0, sideLiveKey = "";
@@ -2852,7 +2852,16 @@ function halfView(l) {
   const first = (a) => a[0] + a[1];
   return { ...l, awayScore: l.awayScore - first(l.awayLines), homeScore: l.homeScore - first(l.homeLines) };
 }
-const sideLiveOf = (g) => (g.half === 2 ? halfView(sideRawOf(g)) : sideRawOf(g));
+// A first-half bet is the game until halftime; from the third quarter
+// on it is settled at the first two quarters' points.
+function firstHalfView(l) {
+  if (!l?.found) return l;
+  const p = Number(l.period) || 0;
+  if (!l.completed && p < 3) return l;
+  if (!(l.awayLines?.length >= 2 && l.homeLines?.length >= 2)) return { ...l, completed: false, state: "in", awayScore: null, homeScore: null };
+  return { ...l, state: "post", completed: true, awayScore: l.awayLines[0] + l.awayLines[1], homeScore: l.homeLines[0] + l.homeLines[1], detail: "1st half final" };
+}
+const sideLiveOf = (g) => (g.half === 2 ? halfView(sideRawOf(g)) : g.half === 1 ? firstHalfView(sideRawOf(g)) : sideRawOf(g));
 const sideResultOf = (g) => { const l = sideLiveOf(g); return l?.completed && Number.isFinite(l.awayScore) && Number.isFinite(l.homeScore) ? { awayScore: l.awayScore, homeScore: l.homeScore } : null; };
 const sideMoney = (x) => `$${Number.isInteger(x) ? x : x.toFixed(2)}`;
 const sideNames = (list) => list.map((n) => shown(n)).join(list.length === 2 ? " and " : ", ");
@@ -2994,6 +3003,7 @@ function maybeShowSidePrompt() {
 // shows who is in (never their picks before the close), who said no, who
 // has paid, and the result. getKey resolves the admin key; say reports.
 const SIDE_LIVE_MS = 5 * 3600000; // matches LIVE_MS in worker/src/side.js
+const SIDE_MAX_PICKS = 8;          // matches SIDE_MAX_GAMES there
 async function mountSideAdmin(box, getKey, say) {
   if (!box) return;
   const esc = escapeCd;
@@ -3007,26 +3017,28 @@ async function mountSideAdmin(box, getKey, say) {
   };
   const refreshApp = () => fetchSidePot(true).then(renderSidePot);
   const etTime = (ms) => new Date(ms).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" });
-  // Tonight's other FBS games from ESPN, at ESPN's line, the same source
-  // the slate editor uses. A game with no line (ESPN drops it once a game
-  // is on) cannot be picked against the spread, so it is only counted.
-  let extras = [], noLine = 0, halves = [];
+  // Every game today that is not over, from ESPN (FBS and FCS), one row
+  // each, with what can be bet on it: the full game at its line (a pool
+  // game at the pool's line), the 1st half before kickoff, the 2nd half
+  // until halftime ends. A half's line starts at half the game's line and
+  // is the commissioner's to set; a game with no line on ESPN can still go
+  // in by its halves.
+  let cands = [];
   const poolTotals = new Map();
   const readEspn = async () => {
-    extras = []; noLine = 0; halves = []; poolTotals.clear();
+    cands = []; poolTotals.clear();
     const day = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
     // ESPN's line for one game from its game page, which keeps a line
     // after kickoff when the scoreboard has dropped it.
     const pageLine = (eventId) => fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}`, { cache: "no-store" }, 6000)
       .then((r) => (r.ok ? r.json() : null)).then((d) => (Array.isArray(d?.pickcenter) ? d.pickcenter[0] : null)).catch(() => null);
+    const hasLine = (o) => Number.isFinite(Number(o?.spread)) && Number(o.spread) !== 0;
     try {
-      // FBS (80) and FCS (81).
       const boards = await Promise.all([80, 81].map((grp) => fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${day}&groups=${grp}&limit=300&t=${Date.now()}`, { cache: "no-store" }, 8000).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
       const seen = new Set();
-      const events = boards.flatMap((b, i) => (b?.events || []).map((ev) => ({ ev, fcs: i === 1 }))).filter(({ ev }) => !seen.has(ev.id) && seen.add(ev.id));
-      // Games on now with no line on the scoreboard: ask their game pages.
-      const lined = new Map(await Promise.all(events.filter(({ ev }) => { const c = ev.competitions?.[0] || {}; const st = c.status?.type || ev.status?.type || {}; const o = (c.odds || [])[0]; return !st.completed && st.state !== "post" && !(Number.isFinite(Number(o?.spread)) && Number(o.spread) !== 0); }).map(async ({ ev }) => [ev.id, await pageLine(ev.id)])));
-      // Pool games need a total too; the slate keeps the spread only.
+      const events = boards.flatMap((b, i) => (b?.events || []).map((ev) => ({ ev, fcs: i === 1 }))).filter(({ ev }) => !seen.has(ev.id) && seen.add(ev.id))
+        .filter(({ ev }) => { const c = ev.competitions?.[0] || {}; const st = c.status?.type || ev.status?.type || {}; return !st.completed && st.state !== "post"; });
+      const lined = new Map(await Promise.all(events.filter(({ ev }) => !hasLine((ev.competitions?.[0]?.odds || [])[0])).map(async ({ ev }) => [ev.id, await pageLine(ev.id)])));
       await Promise.all(GAMES.map(async (g) => {
         const l = latestLive[g.id];
         if (Number.isFinite(l?.odds?.overUnder)) { poolTotals.set(g.id, l.odds.overUnder); return; }
@@ -3037,45 +3049,28 @@ async function mountSideAdmin(box, getKey, say) {
         const away = (c.competitors || []).find((x) => x.homeAway === "away"), home = (c.competitors || []).find((x) => x.homeAway === "home");
         if (!away || !home) continue;
         const st = c.status?.type || ev.status?.type || {};
-        if (st.completed || st.state === "post") continue;
         const aId = Number(away.team?.id), hId = Number(home.team?.id);
-        // Second halves: any game still to come, or on now and not past
-        // halftime. Its line is prefilled at half the game's line.
-        if (st.state === "pre" || (Number(c.status?.period) || 0) <= 2) {
-          const pool = GAMES.find((g) => g.awayId === aId && g.homeId === hId);
-          const so = (c.odds || [])[0], pc = lined.get(ev.id);
-          const src = Number.isFinite(Number(so?.spread)) && Number(so.spread) !== 0 ? so : pc;
-          const raw = Number(src?.spread);
-          const favHome = pool ? pool.favorite === pool.home : src?.homeTeamOdds?.favorite ? true : src?.awayTeamOdds?.favorite ? false : Number.isFinite(raw) ? raw < 0 : true;
-          const fullSpread = pool ? Number(pool.spread) : Number.isFinite(raw) && raw !== 0 ? Math.abs(raw) : null;
-          const fullTotal = pool ? poolTotals.get(pool.id) : Number(src?.overUnder) > 0 ? Number(src.overUnder) : null;
-          halves.push({
-            eventId: ev.id, away: away.team?.displayName || "", home: home.team?.displayName || "",
-            awayShort: away.team?.shortDisplayName || away.team?.abbreviation || "", homeShort: home.team?.shortDisplayName || home.team?.abbreviation || "",
-            awayId: aId, homeId: hId, kickoff: ev.date, favHome, fcs, pool: pool?.id ?? null,
-            spread: fullSpread != null ? Math.round(fullSpread) / 2 : null, total: fullTotal != null ? Math.round(fullTotal) / 2 : null,
-            on: st.state === "in" ? { detail: st.shortDetail || "", a: away.score, h: home.score } : null,
-          });
-        }
-        if (GAMES.some((g) => g.awayId === aId && g.homeId === hId)) continue; // on the pool slate already
-        let o = (c.odds || [])[0] || {}, raw = Number(o.spread), fromPage = false;
-        if (!Number.isFinite(raw) || raw === 0) { const pc = lined.get(ev.id); o = pc || {}; raw = Number(o.spread); fromPage = true; }
-        if (!Number.isFinite(raw) || raw === 0) { noLine += 1; continue; }
-        const favHome = o.homeTeamOdds?.favorite ? true : o.awayTeamOdds?.favorite ? false : raw < 0;
-        const aName = away.team?.displayName || "", hName = home.team?.displayName || "";
-        extras.push({
-          id: `e${ev.id}`, away: aName, home: hName,
-          awayShort: away.team?.shortDisplayName || away.team?.abbreviation || aName, homeShort: home.team?.shortDisplayName || home.team?.abbreviation || hName,
-          awayId: aId, homeId: hId, favorite: favHome ? hName : aName, spread: Math.abs(raw), kickoff: ev.date,
-          ...(Number.isFinite(Number(o.overUnder)) && Number(o.overUnder) > 0 ? { total: Number(o.overUnder) } : {}), fcs, fromPage,
-          kickoffLabel: `${etTime(new Date(ev.date).getTime()).replace(",", "")} ET`,
+        const pool = GAMES.find((g) => g.awayId === aId && g.homeId === hId) || null;
+        const so = (c.odds || [])[0], src = hasLine(so) ? so : lined.get(ev.id);
+        const raw = Number(src?.spread);
+        const full = pool ? { favHome: pool.favorite === pool.home, spread: Number(pool.spread), total: poolTotals.get(pool.id) ?? null }
+          : hasLine(src) ? { favHome: src.homeTeamOdds?.favorite ? true : src.awayTeamOdds?.favorite ? false : raw < 0, spread: Math.abs(raw), total: Number(src.overUnder) > 0 ? Number(src.overUnder) : null } : null;
+        cands.push({
+          eventId: ev.id, away: away.team?.displayName || "", home: home.team?.displayName || "",
+          awayShort: away.team?.shortDisplayName || away.team?.abbreviation || "", homeShort: home.team?.shortDisplayName || home.team?.abbreviation || "",
+          awayId: aId, homeId: hId, kickoff: ev.date, kickoffLabel: `${etTime(new Date(ev.date).getTime()).replace(",", "")} ET`, fcs, pool,
+          state: st.state || "pre", period: Number(c.status?.period) || 0, full,
           on: st.state === "in" ? { detail: st.shortDetail || "", a: away.score, h: home.score } : null,
         });
       }
-      extras.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
-      // Games on now first (their halftime is soonest), then by kickoff.
-      halves.sort((a, b) => !!b.on - !!a.on || new Date(a.kickoff) - new Date(b.kickoff));
     } catch {}
+    // ESPN out of reach: the pool's own games still in play, full game only.
+    if (!cands.length) for (const g of gamesByKickoff()) {
+      const l = latestLive[g.id];
+      if (l?.completed || Date.now() >= new Date(g.kickoff).getTime() + SIDE_LIVE_MS) continue;
+      cands.push({ eventId: l?.eventId || null, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, awayId: g.awayId, homeId: g.homeId, kickoff: g.kickoff, kickoffLabel: g.kickoffLabel, fcs: false, pool: g, state: l?.state || "pre", period: Number(l?.period) || 0, full: { favHome: g.favorite === g.home, spread: Number(g.spread), total: null }, on: null, noHalves: true });
+    }
+    cands.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
   };
   const load = async () => {
     const key = await getKey();
@@ -3092,61 +3087,67 @@ async function mountSideAdmin(box, getKey, say) {
     const now = Date.now();
     const games = gamesByKickoff();
     if (!pot) {
-      // In: anything not over. A game on now shows its score, so a lopsided
-      // one at the pregame line is easy to leave out.
-      const ok = (g) => { const k = new Date(g.kickoff).getTime(); return now < k + SIDE_LIVE_MS && !latestLive[g.id]?.completed; };
-      const avail = games.filter(ok);
-      const preset = new Set(avail.slice(-3).map((g) => g.id));
-      const tag = (g) => {
-        const l = latestLive[g.id], k = new Date(g.kickoff).getTime();
-        if (now < k) return esc(g.kickoffLabel || "");
-        return `<b class="as-live">ON NOW${l?.found && l.state === "in" ? ` · ${esc(shortStatus(l.detail || ""))} · ${l.awayScore}-${l.homeScore}` : ""}</b>`;
-      };
-      const tot = (g) => g.total ?? poolTotals.get(g.id);
-      const line = (g) => `${g.favorite === g.home ? esc(g.homeShort) : esc(g.awayShort)} -${g.spread}${tot(g) != null ? ` · O/U ${tot(g)}` : ""}${g.fcs ? " · FCS" : ""}`;
-      const xtag = (g) => (g.on ? `<b class="as-live">ON NOW · ${esc(shortStatus(g.on.detail))} · ${esc(g.on.a ?? 0)}-${esc(g.on.h ?? 0)}</b>` : esc(g.kickoffLabel));
-      const row = (g, label, tagHtml, checked) => `<label class="as-game"><input type="checkbox" value="${esc(g.id)}"${checked ? " checked" : ""}><span>${label}${esc(g.awayShort)} @ ${esc(g.homeShort)}<small class="as-line">${line(g)}</small></span><small>${tagHtml}</small></label>`;
-      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Pick up to 5 games, still to come or on now. Pool games keep the pool's line; the rest use ESPN's line (FBS and FCS), read from the game page once a game is on. Each game with a total also gets an over/under pick, and everyone guesses one game's total points as the tiebreaker (pick it below; the last game if you don't). Everyone who opts in picks the same games. Entry closes at the first kickoff, or 20 minutes after you start it if that's later. A game on now keeps its line, so check the score before adding it.</div>
-        <div class="as-sec">THIS WEEK'S POOL</div>
-        ${avail.length ? `<div class="as-games">${avail.map((g) => row(g, `G${g.id} · `, tag(g), preset.has(g.id))).join("")}</div>` : `<div class="as-none">Every pool game is over.</div>`}
-        <div class="as-sec">MORE GAMES TODAY</div>
-        ${extras.length ? `<div class="as-games">${extras.map((g) => row(g, "", xtag(g), false)).join("")}</div>` : `<div class="as-none">${noLine ? "" : "ESPN has no other games left today."}</div>`}
-        ${noLine ? `<div class="as-out">${noLine} ${noLine === 1 ? "game has" : "games have"} no line on ESPN at all, so ${noLine === 1 ? "it isn't" : "they aren't"} listed above.</div>` : ""}
-        <div class="as-sec">SECOND HALF</div>
-        <div class="as-out">Scored on 3rd quarter and later points only. Lines start at half the game's line; set them from your book. Close entry before the 3rd quarter starts.</div>
-        ${halves.length ? `<div class="as-games">${halves.map((h) => `<div class="as-half"><label class="as-game"><input type="checkbox" value="h${esc(h.eventId)}"><span>${h.pool ? `G${h.pool} · ` : ""}${esc(h.awayShort)} @ ${esc(h.homeShort)}${h.fcs ? `<small class="as-line">FCS</small>` : ""}</span><small>${h.on ? `<b class="as-live">${esc(shortStatus(h.on.detail))} · ${esc(h.on.a ?? 0)}-${esc(h.on.h ?? 0)}</b>` : esc(`${etTime(new Date(h.kickoff).getTime()).replace(",", "")} ET`)}</small></label>
-          <div class="as-half-line" data-h="${esc(h.eventId)}"><select aria-label="Second half favorite"><option value="away"${h.favHome ? "" : " selected"}>${esc(h.awayShort)}</option><option value="home"${h.favHome ? " selected" : ""}>${esc(h.homeShort)}</option></select><span>-</span><input class="as-h-sp" type="number" inputmode="decimal" step="0.5" min="0" max="40" placeholder="line" value="${h.spread ?? ""}"><span>O/U</span><input class="as-h-tot" type="number" inputmode="decimal" step="0.5" min="10" max="90" placeholder="total" value="${h.total ?? ""}"></div></div>`).join("")}</div>` : `<div class="as-none">No game left before its second half.</div>`}
+      // The bet's options: a value per box. A pool game's full game is its
+      // number (the Worker keeps the pool's line), any other full game "e",
+      // a 1st half "f", a 2nd half "h", each plus the ESPN event id.
+      const fullVal = (c) => (c.pool ? String(c.pool.id) : `e${c.eventId}`);
+      const halfLine = (c) => ({ favHome: c.full ? c.full.favHome : true, spread: c.full ? Math.round(c.full.spread) / 2 : "", total: c.full?.total ? Math.round(c.full.total) / 2 : "" });
+      const lineText = (c) => (c.full ? `${c.full.favHome ? esc(c.homeShort) : esc(c.awayShort)} -${c.full.spread}${c.full.total != null ? ` · O/U ${c.full.total}` : ""}` : "No line on ESPN: halves only, at your line");
+      const status = (c) => (c.on ? `<b class="as-live">${esc(shortStatus(c.on.detail))} · ${esc(c.on.a ?? 0)}-${esc(c.on.h ?? 0)}</b>` : esc(c.kickoffLabel));
+      const opt = (v, label) => `<label class="as-opt"><input type="checkbox" value="${esc(v)}"><span>${label}</span></label>`;
+      const edit = (c, v, label) => { const h = halfLine(c); return `<div class="as-h-edit hidden" data-for="${esc(v)}"><span>${label}</span><select aria-label="${label} favorite"><option value="away"${h.favHome ? "" : " selected"}>${esc(c.awayShort)}</option><option value="home"${h.favHome ? " selected" : ""}>${esc(c.homeShort)}</option></select><span>-</span><input class="as-h-sp" type="number" inputmode="decimal" step="0.5" min="0" max="40" placeholder="line" value="${h.spread}"><span>O/U</span><input class="as-h-tot" type="number" inputmode="decimal" step="0.5" min="10" max="90" placeholder="total" value="${h.total}"></div>`; };
+      const rows = cands.map((c) => {
+        const pre = c.state === "pre", firstOk = pre && c.eventId && !c.noHalves, secondOk = (pre || c.period <= 2) && c.eventId && !c.noHalves;
+        if (!c.full && !firstOk && !secondOk) return "";
+        return `<div class="as-g">
+          <div class="as-g-top"><span class="as-g-nm">${c.pool ? `G${c.pool.id} · ` : ""}${esc(c.awayShort)} @ ${esc(c.homeShort)}${c.fcs ? ` <small>FCS</small>` : ""}</span><small>${status(c)}</small></div>
+          <div class="as-g-line">${lineText(c)}</div>
+          <div class="as-g-opts">${c.full ? opt(fullVal(c), "FULL GAME") : ""}${firstOk ? opt(`f${c.eventId}`, "1ST HALF") : ""}${secondOk ? opt(`h${c.eventId}`, "2ND HALF") : ""}</div>
+          ${firstOk ? edit(c, `f${c.eventId}`, "1H") : ""}${secondOk ? edit(c, `h${c.eventId}`, "2H") : ""}
+        </div>`;
+      }).join("");
+      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Every game today not over, FBS and FCS. Check any mix of full games and halves, up to ${SIDE_MAX_PICKS}. Full games use the pool's line or ESPN's; a half starts at half the game's line, so set it from your book. Each pick with a total also gets an over/under, and one pick is the tiebreaker: closest guess at its total points wins a tie.</div>
+        ${rows ? `<div class="as-gl">${rows}</div>` : `<div class="as-none">Every game today is over.</div>`}
+        <div class="as-count"></div>
         <label class="as-buy as-tbrow">Tiebreaker: total points in <select class="as-tb"><option value="">the last game</option></select></label>
         <label class="as-buy">Entry closes in <input class="as-close" type="number" inputmode="numeric" min="5" max="480" step="1" placeholder="auto"> min</label>
-        <div class="as-out">Leave blank for the usual close: the first kickoff, or 20 minutes from now if that's later. For a second half at halftime, about 15.</div>
+        <div class="as-out">Blank: the first kickoff, or 20 minutes from now if that's later. For a 2nd half at halftime, about 15.</div>
         <label class="as-buy">Buy-in $<input class="as-buyin" type="number" inputmode="numeric" min="1" max="500" step="1" value="25"></label>
-        <button type="button" class="admin-btn primary wide as-start"${avail.length || extras.length ? "" : " disabled"}>Start side bet</button>`;
-      // The tiebreaker picker offers whatever is checked right now.
-      const nameOf = (v) => { const pool = GAMES.find((g) => String(g.id) === v); if (pool) return `G${pool.id} ${pool.awayShort} @ ${pool.homeShort}`; const x = extras.find((g) => g.id === v); if (x) return `${x.awayShort} @ ${x.homeShort}`; const h = halves.find((g) => `h${g.eventId}` === v); return h ? `${h.awayShort} @ ${h.homeShort} (2nd half)` : v; };
-      const syncTb = () => {
-        const sel = box.querySelector(".as-tb"); if (!sel) return;
-        const was = sel.value;
-        const on = [...box.querySelectorAll(".as-games input[type=checkbox]:checked")].map((i) => i.value);
+        <button type="button" class="admin-btn primary wide as-start"${rows ? "" : " disabled"}>Start side bet</button>`;
+      const candOf = (v) => cands.find((c) => fullVal(c) === v || `f${c.eventId}` === v || `h${c.eventId}` === v);
+      const nameOf = (v) => { const c = candOf(v); return c ? `${c.awayShort} @ ${c.homeShort}${v[0] === "f" ? " (1st half)" : v[0] === "h" ? " (2nd half)" : ""}` : v; };
+      const checked = () => [...box.querySelectorAll(".as-g-opts input:checked")].map((i) => i.value);
+      // Checking a half opens its line; the tiebreaker offers what is checked.
+      const sync = () => {
+        const on = checked();
+        box.querySelectorAll(".as-h-edit").forEach((el) => el.classList.toggle("hidden", !on.includes(el.dataset.for)));
+        const sel = box.querySelector(".as-tb"), was = sel.value;
         sel.innerHTML = `<option value="">the last game</option>` + on.map((v) => `<option value="${esc(v)}"${v === was ? " selected" : ""}>${esc(nameOf(v))}</option>`).join("");
+        const n = box.querySelector(".as-count");
+        n.textContent = on.length ? `${on.length} of ${SIDE_MAX_PICKS} picked` : "";
+        n.classList.toggle("bad", on.length > SIDE_MAX_PICKS);
       };
-      box.addEventListener("change", (e) => { if (e.target.matches(".as-games input[type=checkbox]")) syncTb(); });
-      syncTb();
+      box.addEventListener("change", (e) => { if (e.target.matches(".as-g-opts input")) sync(); });
+      sync();
       box.querySelector(".as-start")?.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget;
-        // Pool games go by id (the Worker keeps the pool's line); others whole.
-        const ids = [...box.querySelectorAll(".as-games input[type=checkbox]:checked")].filter((i) => !i.value.startsWith("h")).map((i) => { const x = extras.find((g) => g.id === i.value); if (!x) return { id: Number(i.value), total: poolTotals.get(Number(i.value)) }; const { on, fcs, fromPage, ...g } = x; return g; });
-        const buyIn = Number(box.querySelector(".as-buyin").value);
-        for (const row of box.querySelectorAll(".as-half")) {
-          const cb = row.querySelector("input[type=checkbox]");
-          if (!cb.checked) continue;
-          const h = halves.find((x) => `h${x.eventId}` === cb.value);
+        const ids = [];
+        for (const v of checked()) {
+          const c = candOf(v);
+          if (!c) continue;
+          if (/^\d+$/.test(v)) { ids.push({ id: Number(v), total: poolTotals.get(Number(v)) ?? c.full?.total ?? undefined }); continue; }
+          const base = { away: c.away, home: c.home, awayShort: c.awayShort, homeShort: c.homeShort, awayId: c.awayId, homeId: c.homeId, kickoff: c.kickoff };
+          if (v[0] === "e") { ids.push({ id: v, ...base, favorite: c.full.favHome ? c.home : c.away, spread: c.full.spread, ...(c.full.total != null ? { total: c.full.total } : {}), kickoffLabel: c.kickoffLabel }); continue; }
+          const row = box.querySelector(`.as-h-edit[data-for="${v}"]`);
           const sp = Number(row.querySelector(".as-h-sp").value), tot = row.querySelector(".as-h-tot").value.trim();
-          if (!h || !Number.isFinite(sp) || sp < 0 || Math.round(sp * 2) !== sp * 2) { say(`Set a second-half line (whole or half point) for ${h ? `${h.awayShort} @ ${h.homeShort}` : "that game"}.`, "bad"); return; }
+          const which = v[0] === "f" ? "1st half" : "2nd half";
+          if (row.querySelector(".as-h-sp").value.trim() === "" || !Number.isFinite(sp) || sp < 0 || Math.round(sp * 2) !== sp * 2) { say(`Set the ${which} line (whole or half point) for ${c.awayShort} @ ${c.homeShort}.`, "bad"); return; }
           const favHome = row.querySelector("select").value === "home";
-          ids.push({ id: `h${h.eventId}`, away: h.away, home: h.home, awayShort: h.awayShort, homeShort: h.homeShort, awayId: h.awayId, homeId: h.homeId, favorite: favHome ? h.home : h.away, spread: sp, ...(tot !== "" && Number(tot) > 0 ? { total: Number(tot) } : {}), kickoff: h.kickoff, kickoffLabel: "2nd half" });
+          ids.push({ id: v, ...base, favorite: favHome ? c.home : c.away, spread: sp, ...(tot !== "" && Number(tot) > 0 ? { total: Number(tot) } : {}), kickoffLabel: v[0] === "f" ? c.kickoffLabel : "after halftime" });
         }
-        if (!ids.length) { say("Pick at least one game for the side bet.", "bad"); return; }
-        if (ids.length > 5) { say("Pick 5 games at most.", "bad"); return; }
+        if (!ids.length) { say("Pick at least one game or half for the side bet.", "bad"); return; }
+        if (ids.length > SIDE_MAX_PICKS) { say(`Pick ${SIDE_MAX_PICKS} at most.`, "bad"); return; }
+        const buyIn = Number(box.querySelector(".as-buyin").value);
         const closeMin = Number(box.querySelector(".as-close")?.value);
         const closeAt = Number.isFinite(closeMin) && closeMin >= 5 ? Date.now() + closeMin * 60000 : null;
         const tbPick = box.querySelector(".as-tb")?.value || "";
@@ -3234,7 +3235,7 @@ function openSideSheet(asked) {
       <button type="button" class="sp-x" aria-label="Close">✕</button>
       <div class="sp-sheet-kick">💰 LATE NIGHT SIDE POT</div>
       <div class="sp-sheet-lead">${asked && !inAlready ? "The week's decided, but the night isn't. " : ""}Pick ${games.length === 1 ? "this game" : `these ${games.length} games`}, <b>$${pot.buyIn}</b> to get in. Most points takes the pot${pot.tbGame != null ? "; a tie goes to the closest tiebreaker guess" : "; ties split it"}.</div>
-      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">${sideTag(g)} · ${(() => { const l = sideRawOf(g); return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">ON NOW · ${escapeCd(shortStatus(l.detail || ""))} · ${escapeCd(g.awayShort)} ${l.awayScore}, ${escapeCd(g.homeShort)} ${l.homeScore}</b>` : g.half === 2 ? "scored on the 2nd half only" : escapeCd(g.kickoffLabel || ""); })()}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div>${g.total != null ? `<div class="sp-modes">${ou(g, "over")}${ou(g, "under")}</div>` : ""}</div>`).join("")}</div>
+      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">${sideTag(g)} · ${(() => { const l = sideRawOf(g); return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">ON NOW · ${escapeCd(shortStatus(l.detail || ""))} · ${escapeCd(g.awayShort)} ${l.awayScore}, ${escapeCd(g.homeShort)} ${l.homeScore}</b>` : g.half === 2 ? "scored on the 2nd half only" : g.half === 1 ? "scored on the 1st half only" : escapeCd(g.kickoffLabel || ""); })()}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div>${g.total != null ? `<div class="sp-modes">${ou(g, "over")}${ou(g, "under")}</div>` : ""}</div>`).join("")}</div>
       ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${escapeCd(sideMatch(tbG))}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="e.g. 52" value="${escapeCd(String(draftTb))}"></label>` : ""}
       <div class="sp-sheet-note">Picks lock at ${closes} ET. Nobody sees yours until then. Money is settled between you, not in the app.</div>
       ${err ? `<div class="sp-err">${escapeCd(err)}</div>` : ""}
@@ -3322,7 +3323,7 @@ function renderSideScreen() {
     const side = (team, id, short, score) => `<div class="ss-team${pick?.team === team ? " mine" : ""}"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${escapeCd(short)}</span><b>${showScore ? score : ""}</b></div>`;
     // A second half not yet started shows the game as it stands.
     const raw = g.half === 2 ? sideRawOf(g) : null;
-    const stat = fin ? "FINAL" : on ? escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`))
+    const stat = fin ? (g.half === 1 ? "1ST HALF FINAL" : "FINAL") : on ? escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`))
       : raw?.found && raw.state === "in" ? `${escapeCd(shortStatus(raw.detail || ""))} · ${raw.awayScore}-${raw.homeScore} · 2H NEXT`
       : escapeCd(g.kickoffLabel || "");
     const line = pick ? `${escapeCd(pick.team === g.home ? g.homeShort : g.awayShort)} ${pick.mode === "SU" ? "to win" : `${pick.team === g.favorite ? "-" : "+"}${g.spread}`}` : "No pick";
