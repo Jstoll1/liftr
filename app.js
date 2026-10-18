@@ -2940,6 +2940,7 @@ function sideCellHtml(c) {
   const id = c.pick ? sideTeamId(c.g, c.pick.team) : null;
   return `<span class="sp-c ${c.cls}">${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ""}<i>${c.pick ? c.pick.mode : ""}</i><b>${c.txt}</b></span>`;
 }
+const SIDE_STANDALONE = true;
 function renderSidePot() {
   const el = document.getElementById("side-pot");
   if (!el) return;
@@ -2947,7 +2948,8 @@ function renderSidePot() {
   const names = pot ? Object.keys(pot.entrants || {}) : [];
   updateSideNav();
   renderSideScreen();
-  if (!pot || !currentManager || window.LEAGUE?.sport === "nfl" || (!sideOpen(pot) && !names.length)) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  // The side bet has its own tab now and stays off the pool's board.
+  if (SIDE_STANDALONE || !pot || !currentManager || window.LEAGUE?.sport === "nfl" || (!sideOpen(pot) && !names.length)) { el.classList.add("hidden"); el.innerHTML = ""; return; }
   const me = currentManager, mine = pot.entrants[me];
   const total = names.length * pot.buyIn;
   const games = sideGames(pot);
@@ -3360,7 +3362,9 @@ function openSideSheet(asked) {
 // closed, never before.
 const sideScreen = document.getElementById("side-screen");
 const navSideBtn = document.getElementById("nav-side-btn");
-const sideIn = () => { const pot = potNow(); return !!pot && !!currentManager && !!pot.entrants?.[currentManager] && window.LEAGUE?.sport !== "nfl"; };
+// The tab shows for everyone while there is a bet: open to join, or with
+// players in to follow.
+const sideIn = () => { const pot = potNow(); return !!pot && !!currentManager && window.LEAGUE?.sport !== "nfl" && (sideOpen(pot) || Object.keys(pot.entrants || {}).length > 0); };
 function updateSideNav() {
   const on = sideIn();
   navSideBtn?.classList.toggle("hidden", !on);
@@ -3382,46 +3386,58 @@ function renderSideScreen() {
   if (!body || sideScreen.classList.contains("hidden")) return;
   const pot = potNow();
   if (!pot) { body.innerHTML = `<div class="ss-empty">No side bet this week.</div>`; return; }
-  const me = currentManager, mine = pot.entrants[me]?.picks || {};
+  const me = currentManager, mine = pot.entrants[me]?.picks || null;
   const names = Object.keys(pot.entrants || {});
   const open = sideOpen(pot);
   const st = sideStandings(pot), out = sideOutcome(pot, st);
   const myRow = st.rows.find((r) => r.name === me);
+  const tbG = pot.tbGame != null ? sideGames(pot).find((x) => String(x.id) === String(pot.tbGame)) : null;
   const cd = open ? kickoffCountdown(new Date(pot.closesAt).toISOString()) : null;
-  const status = open ? `Picks lock in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b>`
-    : !out.final ? `You have <b>${myRow?.pts ?? 0}</b>${myRow?.fly ? ` <span class="ss-fly">+${myRow.fly} live</span>` : ""}`
-    : out.n < 2 ? "One taker. No bet." : out.push ? "Dead heat. No money moves."
-    : out.winners.includes(me) ? (out.winners.length > 1 ? `You split it. You collect <b>${sideMoney(out.net)}</b>.` : `You won${out.tiebreak ? " on the tiebreaker" : ""}. You collect <b>${sideMoney(out.net)}</b>.`)
-    : `${escapeCd(sideNames(out.winners))} ${out.winners.length > 1 ? "split" : "took"} it. You owe <b>${sideMoney(pot.buyIn)}</b>.`;
+  const lead = st.rows[0];
+  // One line that says where things stand, for a player or an onlooker.
+  const status = open
+    ? (mine ? (sideNeedsPicks(pot, me) ? `New games added. <b>Finish your picks</b>` : `You're in. Picks lock in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b>`) : `Picks lock in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b>`)
+    : !out.final ? (myRow ? `You have <b>${myRow.pts}</b>${myRow.fly ? ` <span class="ss-fly">+${myRow.fly} live</span>` : ""} · leader ${escapeCd(shown(lead.name))} ${lead.pts}${lead.fly ? `+${lead.fly}` : ""}` : lead ? `Leader: <b>${escapeCd(shown(lead.name))}</b> ${lead.pts}${lead.fly ? ` <span class="ss-fly">+${lead.fly} live</span>` : ""}` : "Under way")
+    : out.n < 2 ? "Final. One taker, no bet." : out.push ? "Final. Dead heat, no money moves."
+    : out.winners.includes(me) ? `Final. You ${out.winners.length > 1 ? "split it" : `won${out.tiebreak ? " on the tiebreaker" : ""}`}. You collect <b>${sideMoney(out.net)}</b>.`
+    : `Final. ${escapeCd(sideNames(out.winners))} ${out.winners.length > 1 ? "split" : "took"} it${out.tiebreak ? " on the tiebreaker" : ""}.${myRow ? ` You owe <b>${sideMoney(pot.buyIn)}</b>.` : ""}`;
+  // Each game, live. A player's own pick rides under it.
   const bug = (g) => {
     const l = sideLiveOf(g), kicked = Date.now() >= new Date(g.kickoff).getTime();
     const on = l?.found && l.state === "in" && !l.completed, fin = !!sideResultOf(g);
     const showScore = kicked && l?.found && (on || fin);
-    const pick = mine[g.id];
+    const pick = mine?.[g.id];
     const cell = myRow?.cells.find((c) => c.g.id === g.id && !c.ou);
     const ouCell = myRow?.cells.find((c) => c.g.id === g.id && c.ou);
     const side = (team, id, short, score) => `<div class="ss-team${pick?.team === team ? " mine" : ""}"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${escapeCd(short)}</span><b>${showScore ? score : ""}</b></div>`;
-    // A second half not yet started shows the game as it stands.
     const raw = g.half === 2 ? sideRawOf(g) : null;
     const stat = fin ? (g.half === 1 ? "1ST HALF FINAL" : "FINAL") : on ? escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`))
       : raw?.found && raw.state === "in" ? `${escapeCd(shortStatus(raw.detail || ""))} · ${raw.awayScore}-${raw.homeScore} · 2H NEXT`
       : escapeCd(g.kickoffLabel || "");
-    const line = pick ? `${escapeCd(pick.team === g.home ? g.homeShort : g.awayShort)} ${pick.mode === "SU" ? "to win" : `${pick.team === g.favorite ? "-" : "+"}${g.spread}`}` : "No pick";
+    const line = `${g.favorite === g.home ? escapeCd(g.homeShort) : escapeCd(g.awayShort)} -${g.spread}${g.total != null ? ` · O/U ${g.total}` : ""}`;
+    const pickTxt = pick ? `${escapeCd(pick.team === g.home ? g.homeShort : g.awayShort)} ${pick.mode === "SU" ? "to win" : `${pick.team === g.favorite ? "-" : "+"}${g.spread}`}` : "";
     return `<button type="button" class="ss-bug${on ? " live" : ""}${fin ? " final" : ""}" data-g="${g.id}">
-      <div class="ss-bug-top"><span>${sideTag(g)}</span><span class="ss-stat">${on ? "<u></u>" : ""}${stat}</span></div>
+      <div class="ss-bug-top"><span>${sideTag(g)}${String(pot.tbGame) === String(g.id) ? " · TIEBREAKER" : ""}</span><span class="ss-stat">${on ? "<u></u>" : ""}${stat}</span></div>
       ${side(g.away, g.awayId, g.awayShort, l?.awayScore ?? 0)}${side(g.home, g.homeId, g.homeShort, l?.homeScore ?? 0)}
-      <div class="ss-pick ${cell?.cls || "open"}"><span>YOUR PICK · ${line}</span><b>${cell ? (cell.cls === "open" ? `${cell.txt} PTS` : cell.txt) : ""}</b></div>
-      ${ouCell ? `<div class="ss-pick sub ${ouCell.cls}"><span>${pick.ou === "over" ? "OVER" : "UNDER"} ${g.total}${showScore ? ` · ${fin ? "final" : "now"} ${(l?.awayScore ?? 0) + (l?.homeScore ?? 0)}` : ""}</span><b>${ouCell.cls === "open" ? `${ouCell.txt} PTS` : ouCell.txt}</b></div>` : ""}
+      ${mine ? `<div class="ss-pick ${cell?.cls || "open"}"><span>YOUR PICK · ${pickTxt || "none yet"}</span><b>${cell ? (cell.cls === "open" ? `${cell.txt} PTS` : cell.txt) : ""}</b></div>
+      ${ouCell ? `<div class="ss-pick sub ${ouCell.cls}"><span>${pick.ou === "over" ? "OVER" : "UNDER"} ${g.total}${showScore ? ` · ${fin ? "final" : "now"} ${(l?.awayScore ?? 0) + (l?.homeScore ?? 0)}` : ""}</span><b>${ouCell.cls === "open" ? `${ouCell.txt} PTS` : ouCell.txt}</b></div>` : ""}` : `<div class="ss-pick open"><span>${line}</span></div>`}
     </button>`;
   };
-  const who = open
-    ? `<div class="ss-sec">WHO'S IN · ${names.length}</div><div class="ss-names">${names.map((n) => `<span class="${n === me ? "me" : ""}">${escapeCd(shown(n))}</span>`).join("")}</div><div class="ss-note">Everyone's picks show here when entry closes.</div>`
-    : `<div class="ss-sec">STANDINGS</div><div class="sp-board">${sideRowsInOrder(st, out).map((r) => `<div class="sp-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}"><span class="sp-nm">${escapeCd(shown(r.name))}${Number.isFinite(r.tb) ? `<small class="sp-tb">TB ${r.tb}</small>` : ""}</span><span class="sp-cells">${r.cells.map(sideCellHtml).join("")}</span><span class="sp-pts">${r.pts}${r.fly ? `<small>+${r.fly}</small>` : ""}</span></div>`).join("")}</div>`;
+  // The scoreboard: everyone's picks and points once entry has closed.
+  const board = open ? "" : `<div class="ss-sec">SCOREBOARD${out.final ? " · FINAL" : ""}</div><div class="sp-board ss-board">${sideRowsInOrder(st, out).map((r, i) => `<div class="sp-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}"><span class="sp-nm"><i class="ss-rank">${i + 1}</i>${escapeCd(shown(r.name))}${Number.isFinite(r.tb) ? `<small class="sp-tb">TB ${r.tb}</small>` : ""}</span><span class="sp-cells">${r.cells.map(sideCellHtml).join("")}</span><span class="sp-pts">${r.pts}${r.fly ? `<small>+${r.fly}</small>` : ""}</span></div>`).join("")}</div>`;
+  // Settle up: who owes and who collects, with paid marks from the console.
+  const settle = !out.final ? "" : out.n < 2 || out.push ? `<div class="ss-sec">SETTLE UP</div><div class="ss-note">${out.n < 2 ? "One taker: no money moves." : "Everyone level: no money moves."}</div>`
+    : `<div class="ss-sec">SETTLE UP</div><div class="ss-ledger">${out.losers.map((n) => `<div class="ss-led"><span>${escapeCd(shown(n))}</span><span>owes ${sideMoney(pot.buyIn)}</span><b class="${pot.entrants[n]?.paid ? "paid" : ""}">${pot.entrants[n]?.paid ? "PAID ✓" : "UNPAID"}</b></div>`).join("")}${out.winners.map((n) => `<div class="ss-led win"><span>${escapeCd(shown(n))}</span><span>collects ${sideMoney(out.net)}</span><b>🏆</b></div>`).join("")}</div>`;
+  const who = open ? `<div class="ss-sec">WHO'S IN · ${names.length}</div><div class="ss-names">${names.length ? names.map((n) => `<span class="${n === me ? "me" : ""}">${escapeCd(shown(n))}</span>`).join("") : `<em>Nobody yet</em>`}</div><div class="ss-note">Everyone's picks show here when entry closes.</div>` : "";
+  const action = open ? `<button type="button" class="sp-btn ss-edit" data-sp="open">${!mine ? `I'M IN · ${sideMoney(pot.buyIn)}` : sideNeedsPicks(pot, me) ? "FINISH MY PICKS" : "EDIT MY PICKS"}</button>` : "";
   body.innerHTML = `<div class="ss-head"><span class="sp-kick">💰 SIDE BET</span><span class="sp-pot">${sideMoney(names.length * pot.buyIn)}</span></div>
     <div class="ss-status">${status}</div>
-    <div class="ss-sub">${names.length} in · ${sideMoney(pot.buyIn)} each · most points takes it${pot.tbGame != null ? (() => { const g = sideGames(pot).find((x) => String(x.id) === String(pot.tbGame)); return g ? ` · tiebreaker: total points in ${escapeCd(sideMatch(g))}${out.tiebreak ? ` (${out.tiebreak.actual})` : ""}` : ""; })() : ", ties split"}</div>
+    <div class="ss-sub">${names.length} in · ${sideMoney(pot.buyIn)} each · most points takes it${tbG ? ` · tiebreaker: ${escapeCd(sideMatch(tbG))}${out.tiebreak ? ` (${out.tiebreak.actual})` : ""}` : ", ties split"}</div>
+    ${action}
+    ${board}
+    <div class="ss-sec">GAMES</div>
     <div class="ss-bugs">${sideGames(pot).map(bug).join("")}</div>
-    ${open ? `<button type="button" class="sp-btn ss-edit" data-sp="open">${sideNeedsPicks(pot, me) ? "NEW GAMES · FINISH MY PICKS" : "EDIT MY PICKS"}</button>` : ""}
+    ${settle}
     ${who}`;
 }
 document.getElementById("side-screen-body")?.addEventListener("click", (e) => {

@@ -6686,3 +6686,15 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .sp-seg { align-items: center; line-height: 1; }
 /* The side bet sheet uses the main pool's pick card. */
 #side-modal .sp-match { container-type: inline-size; }
+/* Side bet tab: its own scoreboard and settle-up report. */
+.ss-rank { display: inline-block; width: 18px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); }
+.sp-row.win .ss-rank { color: var(--neon-yellow); }
+.ss-ledger { display: flex; flex-direction: column; border: 1px solid rgba(255, 228, 94, .3); border-radius: 10px; overflow: hidden; }
+.ss-led { display: grid; grid-template-columns: minmax(0, 1fr) auto 76px; align-items: center; gap: 10px; padding: 9px 12px; border-top: 1px solid rgba(255, 255, 255, .07); font-size: 13px; }
+.ss-led:first-child { border-top: 0; }
+.ss-led span:nth-child(2) { color: var(--text-meta); }
+.ss-led b { justify-self: end; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 7px; color: var(--neon-pink); }
+.ss-led b.paid { color: var(--neon-green); }
+.ss-led.win { background: rgba(57, 255, 136, .06); }
+.ss-led.win span:nth-child(2) { color: var(--neon-green); }
+.ss-names em { color: var(--text-dim); font-style: normal; font-size: 12px; }
