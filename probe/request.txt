@@ -1,2 +1,4 @@
-https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=20261017&groups=80&limit=300
-https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=20261017&groups=81&limit=300
+https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/12.png&w=160&h=160
+https://a.espncdn.com/i/teamlogos/nfl/500/12.png
+https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/kc.png&w=160&h=160
+https://a.espncdn.com/i/teamlogos/nfl/500-dark/12.png
