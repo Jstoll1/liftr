@@ -3486,10 +3486,9 @@ document.getElementById("side-screen-body")?.addEventListener("click", (e) => {
   const b = e.target.closest(".ss-bug");
   if (b) {
     track("side-game", { event: true, d: b.dataset.g });
-    // A slate game opens the app's gamecast; any other opens ESPN's.
+    // Our gamecast, for a pool game or any other.
     const g = GAMES.find((x) => String(x.id) === b.dataset.g);
-    if (g) openInsights(g.id);
-    else { const ev = potNow()?.slate?.find((x) => String(x.id) === b.dataset.g)?.eventId; if (ev) window.open(`https://www.espn.com/college-football/game/_/gameId/${ev}`, "_blank", "noopener"); }
+    openInsights(g ? g.id : b.dataset.g);
   }
 });
 
@@ -6197,7 +6196,7 @@ async function fetchInsights() {
   } catch { return insightsCache.data; }
 }
 function insightsLinks(game) {
-  const live = latestLive[game.id];
+  const live = insLive(game.id);
   const eventId = live?.eventId || insightsCache.eventIds?.[game.id] || insightsCache.data?.briefs?.[game.id]?.eventId || null;
   const q = encodeURIComponent(`${game.away} ${game.home} football`);
   const links = [];
@@ -6445,7 +6444,7 @@ async function fetchAiPreview(game, d) {
   if (aiPreviewCache[key]) return aiPreviewCache[key];
   const side = (list) => (list || []).slice(0, 5).map((x) => ({ ...x }));
   const inj = (list) => (list || []).slice(0, 6).map((i) => `${i.name} (${i.pos || "?"}) ${i.status}`);
-  const live = latestLive[game.id]?.odds?.spread != null ? latestLive[game.id].odds : d.odds;
+  const live = insLive(game.id)?.odds?.spread != null ? insLive(game.id).odds : d.odds;
   const favNow = live?.favoriteSide ? (live.favoriteSide === "home" ? game.home : game.away) : null;
   const bottom = (d.preview?.paras || []).find((t) => /bottom line:/i.test(t)) || null;
   // Storylines worth leading with, most interesting first. The model is
@@ -6488,7 +6487,7 @@ async function fetchAiPreview(game, d) {
       if (o <= 20 && dd <= 15) hooks.push(`${nm[off]} score just ${ppg[off]} a game against a ${nm[def]} defence allowing ${pa[def]}`);
     }
   }
-  const rk = (side) => latestLive[game.id]?.[side === "away" ? "awayRank" : "homeRank"];
+  const rk = (side) => insLive(game.id)?.[side === "away" ? "awayRank" : "homeRank"];
   if (rk("away") && rk("home")) hooks.push(`Top-25 matchup: No. ${rk("away")} ${game.away} at No. ${rk("home")} ${game.home}`);
   else if (rk("away") || rk("home")) { const sd = rk("away") ? "away" : "home"; hooks.push(`No. ${rk(sd)} ${nm[sd]} ${sd === "away" ? "go on the road" : "host an unranked opponent"}`); }
   if (/\b(7|8|9|10|11):\d\d\s*PM/i.test(game.kickoffLabel || "") || /\b(7|8|9|10|11)\s*PM/i.test(game.kickoffLabel || "")) hooks.push(`Night kickoff (${game.kickoffLabel})`);
@@ -6547,11 +6546,16 @@ document.getElementById("insights-body")?.addEventListener("click", (e) => {
   if (open) noteUse("gamecast-log", id);
   body.__gcPaint?.();
 });
+// The gamecast also opens for a side bet game off the pool's slate: the
+// game comes from the side bet, its live data from the side bet's own
+// ESPN read. A half bet shows its whole game.
+const sideGuestGame = (id) => (GAMES.some((g) => g.id === id) ? null : potNow()?.slate?.find((g) => String(g.id) === String(id)) || null);
+const insLive = (id) => latestLive[id] ?? sideLive[id];
 async function openInsights(gameId) {
   const modal = document.getElementById("insights-modal");
-  const game = GAMES.find((g) => g.id === gameId);
+  const game = GAMES.find((g) => g.id === gameId) || sideGuestGame(gameId);
   if (!modal || !game) return;
-  { const l = latestLive[gameId]; const kind = l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"; noteUse(kind, gameId); if (kind === "gamecast") { sessionUse.add(`gamecast-g${gameId}`); gcStart(gameId); } }
+  { const l = insLive(gameId); const kind = l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"; noteUse(kind, gameId); if (kind === "gamecast") { sessionUse.add(`gamecast-g${gameId}`); gcStart(gameId); } }
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const body = modal.querySelector("#insights-body");
   if (window.__gcFull) window.__gcFull[gameId] = false;
@@ -6569,7 +6573,8 @@ async function openInsights(gameId) {
     let px = parseFloat(getComputedStyle(titleEl).fontSize) || 11;
     while (t && t.scrollWidth > t.clientWidth + 1 && px > 7) { px -= 0.5; titleEl.style.fontSize = `${px}px`; }
   });
-  modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv}`;
+  const guest = !GAMES.includes(game);
+  modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv].filter(Boolean).join(" · ");
   const links = () => `<div class="ins-h">MORE</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
   body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
   modal.classList.remove("hidden");
@@ -6600,24 +6605,24 @@ async function openInsights(gameId) {
   const glance = direct || snap?.glance || brief?.glance || null;
   const news = awayNews.length || homeNews.length ? { away: awayNews, home: homeNews } : snap?.news || brief?.news || null;
   if (snap?.eventId) insightsCache.eventIds = { ...(insightsCache.eventIds || {}), [gameId]: snap.eventId };
-  const eventId = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || snap?.eventId || null;
+  const eventId = insLive(gameId)?.eventId || insightsCache.eventIds?.[gameId] || snap?.eventId || null;
   // Line: the Worker's logged samples plus whatever the browser sees now.
   const samples = (snap?.samples || []).filter((x) => !x.live).slice();
-  const nowOdds = latestLive[gameId]?.odds && latestLive[gameId].odds.spread !== null ? latestLive[gameId].odds : direct?.odds && direct.odds.spread !== null ? direct.odds : null;
+  const nowOdds = insLive(gameId)?.odds && insLive(gameId).odds.spread !== null ? insLive(gameId).odds : direct?.odds && direct.odds.spread !== null ? direct.odds : null;
   if (nowOdds) { samples.push({ ...nowOdds, at: Date.now(), live: true }); reportLine(gameId, nowOdds); }
   const mv = movementFrom(game, samples) || snap?.movement || brief?.movement || null;
   const feedErr = (side) => direct ? null : snap?.feeds?.[side];
   // Live or final: a gamecast in our theme at the top. Score and clock
   // from the scoreboard, where the ball is and the last play from its
   // situation, the current drive and scoring plays from ESPN's game page.
-  const liveGame = () => { const l = latestLive[gameId]; return !!(l && l.found && l.state === "in" && !l.completed); };
-  const finalGame = () => { const l = latestLive[gameId]; return !!(l && l.found && l.completed && l.awayScore != null && l.homeScore != null); };
+  const liveGame = () => { const l = insLive(gameId); return !!(l && l.found && l.state === "in" && !l.completed); };
+  const finalGame = () => { const l = insLive(gameId); return !!(l && l.found && l.completed && l.awayScore != null && l.homeScore != null); };
   // FINAL: the score on the VS board, how the line settled, your pick and
   // the room as CASHED or MISSED, the game's top performers, ESPN's recap
   // and the scoring plays. Nothing about the build-up (preview, line
   // movement, sim) once it is over.
   const finalHtml = () => {
-    const lv = latestLive[gameId];
+    const lv = insLive(gameId);
     const A = abbrOf("away"), H = abbrOf("home");
     const sc = summaryRaw?.header?.competitions?.[0]?.competitors || [];
     const colorOf = (id, fb) => { const c = sc.find((x) => Number(x.team?.id) === Number(id))?.team?.color; return c ? `#${c}` : fb || null; };
@@ -6655,7 +6660,7 @@ async function openInsights(gameId) {
       const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = room.filter((r) => r.state === "up").sort((x, y) => y.pts - x.pts), down = room.filter((r) => r.state === "down"), push = room.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
-      roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
+      if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
     }
     // Top performers: this game's leaders from ESPN, one row per category.
     const lb = Array.isArray(summaryRaw?.leaders) ? summaryRaw.leaders : [];
@@ -6683,7 +6688,7 @@ async function openInsights(gameId) {
   // gain, down and distance, then the last three plays and the scoring.
   // Away defends the left goal, home the right, as on the scorebug.
   const gamecastHtml = () => {
-    const lv = latestLive[gameId], sit = lv.situation || {};
+    const lv = insLive(gameId), sit = lv.situation || {};
     const A = abbrOf("away"), H = abbrOf("home");
     const sc = summaryRaw?.header?.competitions?.[0]?.competitors || [];
     const colorOf = (id, fb) => { const c = sc.find((x) => Number(x.team?.id) === Number(id))?.team?.color; return c ? `#${c}` : fb || null; };
@@ -7052,7 +7057,7 @@ async function openInsights(gameId) {
       const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = rows.filter((r) => r.state === "up"), down = rows.filter((r) => r.state === "down"), push = rows.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
-      roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
+      if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
     }
     // The full game log takes the whole screen: the score and the down on
     // top as ever, then every play.
@@ -7061,7 +7066,7 @@ async function openInsights(gameId) {
   };
   // Built as a function and prepended once abbrOf exists below.
   const liveBlock = () => {
-  const lv = latestLive[gameId];
+  const lv = insLive(gameId);
   const liveNow = !!(lv && lv.found && lv.state === "in" && !lv.completed);
   const finalNow = !!(lv && lv.found && lv.completed);
   let liveHtml = "";
@@ -7127,6 +7132,7 @@ async function openInsights(gameId) {
       return `<div class="rp-col"><div class="rp-team">${lg(id, "rp-logo")}<span>${esc(short)}</span><b>${n}</b></div>${bets || `<div class="rp-none">Nobody</div>`}</div>`;
     };
     const none = MANAGERS.filter((n) => !all[n]?.picks?.[game.id]);
+    if (guest) return "";
     return `<div class="rp"><div class="rp-h">THE ROOM · WHO HAS WHAT</div><div class="rp-cols">${side(game.away, game.awayShort, game.awayId)}${side(game.home, game.homeShort, game.homeId)}</div>${none.length ? `<div class="rp-np">NO PICK · ${none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}</div>`;
   })();
   // Simulate is a pre-lock toy: once picks lock, it goes away.
@@ -7304,7 +7310,7 @@ async function openInsights(gameId) {
       + `</div>`
       + (moreStats ? `<details class="ins-more-news ins-more-stats"><summary><span>▶</span> MORE STATS</summary><div class="ins-glance ins-stats">${moreStats}</div></details>` : "")
       + (w ? `<div class="ins-wx"><span>${esc(w)}</span></div>` : "");
-    if (glance.venue?.name) modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv} · ${glance.venue.name}${glance.venue.indoor ? " (indoors)" : ""}`;
+    if (glance.venue?.name) modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv, `${glance.venue.name}${glance.venue.indoor ? " (indoors)" : ""}`].filter(Boolean).join(" · ");
     // Leaders: two columns in the same away/home order, logo only.
     const catShort = (c) => /pass/i.test(c) ? "PASS" : /rush/i.test(c) ? "RUSH" : /receiv/i.test(c) ? "REC" : /tackle/i.test(c) ? "TKL" : /sack/i.test(c) ? "SACK" : String(c).toUpperCase().slice(0, 5);
     const lead = (list, teamId) => `<div class="ins-lead"><b>${lg(teamId)}</b>${(list || []).map((l) => `<span><em class="ins-cat">${esc(catShort(l.cat))}</em>${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>`;
@@ -7527,10 +7533,10 @@ async function openInsights(gameId) {
   // scorebug behind it. Stops the moment the sheet closes or the game ends.
   const liveTick = async () => {
     if (!alive()) { clearInterval(liveTimer); return; }
-    const l = latestLive[gameId];
+    const l = insLive(gameId);
     if (!(l && l.found && l.state === "in" && !l.completed)) return;
-    try { await fetchLiveScores(); } catch {}
-    const id = latestLive[gameId]?.eventId || null;
+    try { await (sideGuestGame(gameId) ? fetchSideLive(true) : fetchLiveScores()); } catch {}
+    const id = insLive(gameId)?.eventId || null;
     if (id) { try { const raw = await fetchEspnSummary(id, true); if (raw) summaryRaw = raw; } catch {} }
     if (alive()) paint();
   };
@@ -7565,9 +7571,9 @@ async function openInsights(gameId) {
   land(quickInj, (v) => { if (v && (v.away?.length || v.home?.length)) newsInj = v; });
   land(withTimeout(quickInj.then((q) => (q && (q.away?.length || q.home?.length) && !q.stale) ? q : injItems.then((items) => fetchNewsInjuries(gameId, items))), 40000, null), (v) => { if (v && (v.away?.length || v.home?.length || !newsInj)) newsInj = v; }, "inj");
   land(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), ([a, h]) => { awayNews = a; homeNews = h; }, "news");
-  const eventIdNow = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
-  const summaryP = (eventIdNow ? Promise.resolve(eventIdNow) : fetchLiveScores().catch(() => {}).then(() => latestLive[gameId]?.eventId || null))
-    .then((id) => fetchEspnSummary(id, !!(latestLive[gameId]?.found && (latestLive[gameId].completed || latestLive[gameId].state === "in"))));
+  const eventIdNow = insLive(gameId)?.eventId || insightsCache.eventIds?.[gameId] || sideGuestGame(gameId)?.eventId || null;
+  const summaryP = (eventIdNow ? Promise.resolve(eventIdNow) : fetchLiveScores().catch(() => {}).then(() => insLive(gameId)?.eventId || null))
+    .then((id) => fetchEspnSummary(id, !!(insLive(gameId)?.found && (insLive(gameId).completed || insLive(gameId).state === "in"))));
   land(summaryP, (v) => { summaryRaw = v; }, "summary");
   land(withTimeout(summaryP.then((raw) => fetchAiPreview(game, parseSummaryClient(raw, game))), 15000, null), (v) => { aiPv = v; }, "ai");
 }
