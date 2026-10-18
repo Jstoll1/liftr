@@ -6860,3 +6860,42 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .ssg-cells .ssb-box.live-miss { background: rgba(255, 32, 121, .05); border-color: rgba(255, 32, 121, .45); border-style: dashed; }
 .ssg-cells .ssb-box.open { border-style: dashed; }
 .ssg-cells .ssb-l b { font-size: 8px; }
+/* Side bet pick cards. */
+.ssp { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 7px 8px; border-radius: 11px; border: 1.5px solid rgba(255, 255, 255, .1); background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02)); }
+.ssp.hit { border-color: rgba(57, 255, 136, .65); background: linear-gradient(180deg, rgba(57, 255, 136, .16), rgba(57, 255, 136, .05)); }
+.ssp.live-hit { border-color: rgba(5, 217, 232, .75); background: linear-gradient(180deg, rgba(5, 217, 232, .14), rgba(5, 217, 232, .04)); box-shadow: 0 0 12px rgba(5, 217, 232, .22); }
+.ssp.live-miss { border-color: rgba(255, 32, 121, .5); border-style: dashed; }
+.ssp.miss { border-color: rgba(255, 32, 121, .35); background: rgba(255, 32, 121, .05); }
+.ssp.miss .ssp-t b, .ssp.miss .ssp-t small { color: var(--text-dim); text-decoration: line-through; text-decoration-color: rgba(255, 32, 121, .6); }
+.ssp.open { border-style: dashed; }
+.ssp.empty { align-items: center; justify-content: center; min-height: 44px; border-style: dashed; background: none; color: var(--text-dim); font-size: 11px; }
+.ssp-main { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.ssp-main img { width: 26px; height: 26px; object-fit: contain; flex: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5)); }
+.ssp-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ssp-t b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8.5px; letter-spacing: .03em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ssp-t small { font-size: 10.5px; color: var(--text-meta); white-space: nowrap; }
+.ssp-pts { flex: none; min-width: 26px; padding: 4px 5px; border-radius: 7px; text-align: center; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; line-height: 1; color: var(--text-meta); background: rgba(255, 255, 255, .08); }
+.ssp-pts.hit { color: #062b14; background: linear-gradient(180deg, #5dffa0, #22c873); box-shadow: 0 0 8px rgba(57, 255, 136, .45); }
+.ssp-pts.live-hit { color: #032a2e; background: linear-gradient(180deg, #5ef0fa, #05b8c6); box-shadow: 0 0 8px rgba(5, 217, 232, .45); }
+.ssp-pts.live-miss { color: var(--neon-pink); background: rgba(255, 32, 121, .12); }
+.ssp-pts.miss { color: #fff; background: rgba(255, 32, 121, .55); }
+.ssp-ou { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, .08); }
+.ssp-ou span { font-size: 10px; letter-spacing: .04em; color: var(--text-meta); white-space: nowrap; }
+.ssp-ou.none span { color: var(--text-dim); }
+.ssg-heads, .ssg-cells { grid-template-columns: repeat(var(--n), minmax(104px, 1fr)); }
+.ssg { min-width: calc(var(--n) * 104px + (var(--n) - 1) * 6px); }
+.ssp { padding: 7px 7px; }
+.ssp-main { gap: 6px; }
+.ssp-main img { width: 20px; height: 20px; }
+.ssp-t { overflow: hidden; }
+.ssp-t small { overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
+.ssp-pts { min-width: 22px; padding: 4px 4px; font-size: 7.5px; }
+.ssp-ou span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Stacked: logo and badge on top, the team and the bet beneath. */
+.ssp-main { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "logo pts" "team team"; align-items: center; row-gap: 5px; }
+.ssp-main img { grid-area: logo; width: 24px; height: 24px; }
+.ssp-main .ssp-pts { grid-area: pts; }
+.ssp-main .ssp-t { grid-area: team; }
+.ssp-t b { font-size: 8px; }
+.ssp-t small { font-size: 10.5px; }
+.ssp-ou span { font-size: 10px; }

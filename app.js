@@ -2950,14 +2950,20 @@ function sideBoardHtml(pot, st, out, me) {
     const score = fin || on ? `<b>${l.awayScore}</b><i>-</i><b>${l.homeScore}</b>` : `<span>${where}</span>`;
     return `<div class="ssg-h${on ? " live" : fin ? " final" : ""}"><div class="ssg-bug"><img src="${logoUrl(g.awayId)}" alt="" onerror="this.style.visibility='hidden'"><div class="ssg-sc">${score}</div><img src="${logoUrl(g.homeId)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="ssb-tag">${on ? `<u></u>${esc(shortStatus(l.detail || ""))}` : fin ? "FINAL" : sideTag(g)}${String(pot.tbGame) === String(g.id) ? " · ★TB" : ""}</div></div>`;
   }).join("");
+  // A pick as a small card: the team's logo, the team in bold with the
+  // bet under it, and a points badge coloured by how it stands; an
+  // over/under gets its own line and badge.
+  const badge = (c) => `<b class="ssp-pts ${c.cls}">${c.cls === "miss" ? "✕" : c.cls === "hit" || c.cls === "live-hit" ? `+${c.ou ? SIDE_OU_PTS : c.txt.replace("+", "")}` : c.cls === "live-miss" ? "0" : c.txt}</b>`;
+  const abbr = (g, team) => { const l = sideRawOf(g); const a = team === g.home ? l?.homeAbbr : l?.awayAbbr; return a || (team === g.home ? g.homeShort : g.awayShort); };
   const cell = (r, g) => {
     const side = r.cells.find((c) => c.g.id === g.id && !c.ou), ou = r.cells.find((c) => c.g.id === g.id && c.ou);
-    if (!side?.pick) return `<div class="ssb-box empty${g.total != null ? " tall" : ""}"><span class="ssb-none">no pick</span></div>`;
+    if (!side?.pick) return `<div class="ssp empty"><span>no pick</span></div>`;
     const p = side.pick, id = sideTeamId(g, p.team);
-    const what = p.mode === "SU" ? "WIN" : `${p.team === g.favorite ? "-" : "+"}${g.spread}`;
-    // The side on top, the over/under (when the game has one) under it,
-    // each with what it pays; text lines up under the logo's edge.
-    return `<div class="ssb-box ${side.cls}"><div class="ssb-l"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${what}</span><b>${side.cls === "hit" ? "✓ " : side.cls === "miss" ? "✕ " : ""}${side.txt}</b></div>${g.total != null ? `<div class="ssb-l ou ${ou?.cls || "none"}"><i class="ssb-sp"></i><span>${ou ? `${ou.ou === "over" ? "O" : "U"} ${g.total}` : "no O/U"}</span><b>${ou ? ou.txt : ""}</b></div>` : ""}</div>`;
+    const what = p.mode === "SU" ? "TO WIN" : `${p.team === g.favorite ? "-" : "+"}${g.spread}`;
+    return `<div class="ssp ${side.cls}">
+      <div class="ssp-main"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span class="ssp-t"><b>${esc(abbr(g, p.team))}</b><small>${what}</small></span>${badge(side)}</div>
+      ${g.total != null ? `<div class="ssp-ou ${ou?.cls || "none"}"><span>${ou ? `${ou.ou === "over" ? "O" : "U"} ${g.total}` : "no O/U"}</span>${ou ? badge(ou) : ""}</div>` : ""}
+    </div>`;
   };
   // A player's line (place, name, guess, total), then their picks in a row
   // of equal columns lined up under the game headers.
