@@ -595,6 +595,28 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 <aside id="pv" class="pv" aria-label="Preview" role="dialog"></aside>
 <div id="tip" class="tip" role="tooltip"></div>
 <script>
+// A phone (or a home screen shortcut) can open an old saved copy of this
+// page, one from before a feature shipped. Check the copy on the server
+// whenever the page opens or comes back, and reload once if it differs.
+(() => {
+  const mine = () => [...document.scripts].filter((x) => !x.src).map((x) => x.textContent).join("");
+  async function fresh() {
+    try {
+      const html = await (await fetch(`${location.pathname}?fresh=${Date.now()}`, { cache: "no-store" })).text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const theirs = [...doc.scripts].filter((x) => !x.src).map((x) => x.textContent).join("");
+      if (!theirs || theirs === mine()) return;
+      const k = "brochiefs_live_reloaded", last = Number(sessionStorage.getItem(k) || 0);
+      if (Date.now() - last < 60000) return; // never loop
+      sessionStorage.setItem(k, String(Date.now()));
+      const q = new URLSearchParams(location.search); q.set("v", Date.now());
+      location.replace(`${location.pathname}?${q}${location.hash}`);
+    } catch { /* offline: keep what we have */ }
+  }
+  fresh();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) fresh(); });
+})();
+
 (() => {
   // Which league this page reads: the college pick'em or the NFL one, each
   // with its own Worker, sign-in and cached view. Chosen with the CFB | NFL
@@ -610,7 +632,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   const SFX = LEAGUES[LEAGUE].suffix;
   const KEY_STORE = `brochiefs_live_key${SFX}`, DEVICE_STORE = `brochiefs_live_device${SFX}`, SNAP_STORE = `brochiefs_live_snap${SFX}`;
   const leagueSwitch = () => `<span class="lgsw" role="group" aria-label="League">${Object.entries(LEAGUES).map(([k, v]) => `<button type="button" class="${k === LEAGUE ? "on" : ""}" data-league="${k}">${v.label}</button>`).join("")}</span>`;
-  document.addEventListener("click", (e) => { const b = e.target.closest("[data-league]"); if (!b || b.dataset.league === LEAGUE) return; try { localStorage.setItem("brochiefs_live_league", b.dataset.league); } catch {} location.search = ""; location.reload(); });
+  document.addEventListener("click", (e) => { const b = e.target.closest("[data-league]"); if (!b || b.dataset.league === LEAGUE) return; try { localStorage.setItem("brochiefs_live_league", b.dataset.league); } catch {} location.replace(`${location.pathname}?v=${Date.now()}`); });
   const COLORS = ["#ff4f9a", "#ffe45e", "#c77dff", "#ffb347", "#3dfc8f", "#ff6b6b", "#4fe3f0", "#7aa2ff", "#9cf27a", "#ff9d3d"];
   const SHOWN = { Conlan: "Connie" };
   const SCREENS = { picks: "Picks", scoreboard: "Scores", history: "History", trivia: "Trivia", home: "Home", roster: "the roster", splash: "the splash screen" };
