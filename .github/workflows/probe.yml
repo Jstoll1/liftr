@@ -29,6 +29,9 @@ jobs:
                   if .events then .events[] | [.id, .shortName, .status.type.state, .status.type.shortDetail, (.competitions[0].odds[0].details // "no line"), (.competitions[0].odds[0].overUnder // "-")] | @tsv
                   else ([.header.competitions[0].status.type.shortDetail // "-"] + [(.pickcenter // [])[] | "\(.provider.name // "?"): \(.details // "-") spread \(.spread // "-") o/u \(.overUnder // "-")"]) | join(" | ")
                   end' | head -c 12000 ;;
+              # The NFL Worker: public routes only (picks are public once locked).
+              https://liftr-nfl.jhs797.workers.dev/*)
+                curl -sS --max-time 60 "$p" | head -c 20000 ;;
               *)
                 curl -sS --max-time 90 "https://liftr-ai.jhs797.workers.dev$p" | head -c 8000 ;;
             esac
