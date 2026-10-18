@@ -3301,10 +3301,9 @@ function openSideSheet(asked) {
         <div class="sp-sh-facts">${games.length} ${games.length === 1 ? "game" : "games"} · <b>$${pot.buyIn}</b> · locks ${closes}</div>
         ${sideNeedsPicks(pot, me) ? `<div class="sp-sh-alert">Games were added. Finish your picks below; you're still in.</div>` : asked && !inAlready ? `<div class="sp-sh-sub">The week's decided, but the night isn't.</div>` : ""}
       </div>
-      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game">
+      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game" data-g="${g.id}">
         <div class="sp-game-h"><span>${sideTag(g)}</span><span>${status(g)}</span></div>
-        <div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}${team(g, g.home, g.homeId, g.homeShort)}</div>
-        <div class="sp-segs">${mode(g, "ATS")}${mode(g, "SU")}</div>
+        <div class="sp-match">${matchupCardsHtml(g, draft[g.id]?.team ? { team: draft[g.id].team, mode: draft[g.id].mode || "ATS" } : null)}</div>
         ${g.total != null ? `<div class="sp-segs">${ou(g, "over")}${ou(g, "under")}</div>` : ""}
       </div>`).join("")}
       ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${escapeCd(sideMatch(tbG))}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="Your guess" value="${escapeCd(String(draftTb))}"></label>` : ""}
@@ -3343,6 +3342,8 @@ function openSideSheet(asked) {
   m.addEventListener("click", (e) => {
     if (e.target === m || e.target.closest(".sp-x")) return close();
     const t = e.target.closest(".sp-team"), md = e.target.closest("[data-mode]");
+    const chip = e.target.closest(".pick-mini-btn");
+    if (chip) { const id = chip.closest(".sp-game").dataset.g; draft[id] = { ...draft[id], team: chip.dataset.team, mode: chip.dataset.mode }; err = ""; return paint(); }
     const o = e.target.closest("[data-ou]");
     if (o) { const id = o.dataset.g; draft[id] = { ...draft[id], ou: o.dataset.ou }; return paint(); }
     if (t) { const id = t.dataset.g; draft[id] = { ...draft[id], team: t.dataset.team, mode: draft[id]?.mode || "ATS" }; err = ""; return paint(); }

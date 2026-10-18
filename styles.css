@@ -6684,3 +6684,5 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 #side-modal .sp-tbin { margin-top: 2px; }
 #side-modal.painted .wpx-card { animation: none; }
 .sp-seg { align-items: center; line-height: 1; }
+/* The side bet sheet uses the main pool's pick card. */
+#side-modal .sp-match { container-type: inline-size; }
