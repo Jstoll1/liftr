@@ -2945,7 +2945,7 @@ function sideBoardHtml(pot, st, out, me) {
   const tied = (r) => rows.filter((x) => total(x) === total(r)).length > 1;
   const head = games.map((g) => {
     const l = sideLiveOf(g), fin = !!sideResultOf(g), on = l?.found && l.state === "in" && !l.completed;
-    const where = fin ? "FINAL" : on ? `${l.awayScore}-${l.homeScore}` : "";
+    const where = fin ? "FINAL" : on ? `${l.awayScore}-${l.homeScore}` : g.half === 2 && sideRawOf(g)?.state === "in" ? "2H NEXT" : new Date(g.kickoff).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).replace(" ", "");
     return `<th class="${on ? "live" : fin ? "final" : ""}"><div class="ssb-logos"><img src="${logoUrl(g.awayId)}" alt="" onerror="this.style.visibility='hidden'"><i>@</i><img src="${logoUrl(g.homeId)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="ssb-tag">${sideTag(g)}${String(pot.tbGame) === String(g.id) ? " ★" : ""}</div>${where ? `<div class="ssb-where">${where}</div>` : ""}</th>`;
   }).join("");
   const cell = (r, g) => {
@@ -2958,7 +2958,7 @@ function sideBoardHtml(pot, st, out, me) {
   const body = rows.map((r) => `<tr class="${r.name === me ? "me" : ""}${out.winners.includes(r.name) ? " win" : ""}">
       <th class="ssb-nm"><i>${tied(r) ? "T" : ""}${rankOf(r)}</i><span>${escapeCd(shown(r.name))}${out.winners.includes(r.name) ? " 🏆" : ""}</span>${Number.isFinite(r.tb) ? `<small>TB ${r.tb}</small>` : ""}</th>
       ${games.map((g) => cell(r, g)).join("")}
-      <td class="ssb-tot"><b>${total(r)}</b><small>${out.final ? "final" : r.fly ? `${r.fly} live` : ""}</small></td>
+      <td class="ssb-tot"><b>${total(r)}</b><small>${out.final ? "final" : !r.fly ? "" : r.pts ? `${r.pts} locked` : "live"}</small></td>
     </tr>`).join("");
   return `<div class="ss-sec">SCOREBOARD${out.final ? " · FINAL" : ""}</div>
     <div class="ssb-wrap"><table class="ssb"><thead><tr><th class="ssb-nm"></th>${head}<th class="ssb-tot">PTS</th></tr></thead><tbody>${body}</tbody></table></div>
@@ -3437,7 +3437,8 @@ function renderSideScreen() {
         const ahead = st.rows.filter((r) => now(r) > now(myRow)).length, tied = st.rows.filter((r) => now(r) === now(myRow)).length > 1;
         const ord = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"}`;
         const place = `${tied ? "tied for " : "in "}${ord(ahead + 1)}`;
-        return `You're ${place} with <b>${now(myRow)}</b>${myRow.fly ? ` <span class="ss-fly">(${myRow.fly} live)</span>` : ""}${ahead ? ` · leader ${escapeCd(shown(lead.name))} ${top}` : ""}`;
+        const how = !myRow.fly ? "" : myRow.pts ? ` <span class="ss-fly">(${myRow.pts} locked)</span>` : ` <span class="ss-fly">live</span>`;
+        return `You're ${place} with <b>${now(myRow)}</b>${how}${ahead ? ` · leader ${escapeCd(shown(lead.name))} ${top}` : ""}`;
       })()
     : out.n < 2 ? "Final. One taker, no bet." : out.push ? "Final. Dead heat, no money moves."
     : out.winners.includes(me) ? `Final. You ${out.winners.length > 1 ? "split it" : `won${out.tiebreak ? " on the tiebreaker" : ""}`}. You collect <b>${sideMoney(out.net)}</b>.`
