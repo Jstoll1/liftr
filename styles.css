@@ -6543,3 +6543,9 @@ html[data-sport="nfl"] #logo-screen { display: none !important; }
 .h2x-teams b { font-size: 9.5px; }
 .h2x-when { font-size: 6px; }
 .h2x-same summary { min-height: 40px; }
+
+/* The summary as one slim line. */
+.h2x-sum.line { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 8px; padding: 7px 10px; border-width: 1px; border-color: rgba(255, 228, 94, .4); text-align: center; }
+.h2x-sum.line > small { font-size: 6.5px; padding: 2px 5px; border-radius: 3px; border: 1px solid currentColor; }
+.h2x-sum.line > span { font-family: 'Press Start 2P', monospace; font-size: 8.5px; line-height: 1.6; letter-spacing: .04em; color: #ffe45e; }
+.h2x-sum.line.done > span { font-size: 10px; }
