@@ -1185,9 +1185,9 @@ async function handleSide(request, env, corsHeaders, url) {
   const prev = await env.LIFTR_KV.get(k, "json");
   let done;
   if (action === "join") {
-    const clean = cleanSidePicks(pot, await env.LIFTR_KV.get(gamesKey(week), "json"), body.picks);
+    const clean = cleanSidePicks(pot, pot.slate ? null : await env.LIFTR_KV.get(gamesKey(week), "json"), body.picks, body.tb);
     if (clean.error) return json({ error: clean.error }, 400, corsHeaders);
-    done = joinEntry(pot, prev, clean.picks, now);
+    done = joinEntry(pot, prev, clean.picks, now, clean.tb);
   } else done = declineEntry(pot, prev, now);
   if (done.error) return json({ error: done.error }, 409, corsHeaders);
   await env.LIFTR_KV.put(k, JSON.stringify(done.entry), keep);

@@ -2816,8 +2816,9 @@ function fetchSidePot(force = false) {
 // The pot carries its games whole (pot.slate), so a game off this week's
 // slate works the same; a slate game uses the slate's copy. Older pots
 // held ids only.
-const sideGames = (pot) => (pot.slate || pot.games.map((id) => ({ id }))).map((g) => GAMES.find((x) => String(x.id) === String(g.id)) || (g.away ? g : null)).filter(Boolean);
-const onSlate = (g) => GAMES.some((x) => x === g);
+// The pot's copy carries the over/under total the slate does not have.
+const sideGames = (pot) => (pot.slate || pot.games.map((id) => ({ id }))).map((g) => { const x = GAMES.find((y) => String(y.id) === String(g.id)); return x ? { ...x, ...(g.total != null ? { total: g.total } : {}) } : g.away ? g : null; }).filter(Boolean);
+const onSlate = (g) => typeof g.id === "number" && GAMES.some((x) => x.id === g.id);
 // A pool game goes by its number; a game off the slate is marked as such.
 const sideTag = (g) => (onSlate(g) ? `G${g.id}` : "BONUS");
 // Live scores for side games off the slate, read from ESPN the same way
@@ -2830,7 +2831,7 @@ async function fetchSideLive(force = false) {
   const key = extra.map((g) => g.id).join(",");
   if (!force && key === sideLiveKey && Date.now() - sideLiveAt < 20000) return sideLive;
   const days = [...new Set(extra.map((g) => new Date(g.kickoff).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "")))];
-  const answers = await Promise.all(days.map((d) => fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${d}&groups=80&limit=300&t=${Date.now()}`, { cache: "no-store" }, 6000).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
+  const answers = await Promise.all(days.flatMap((d) => [80, 81].map((grp) => fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${d}&groups=${grp}&limit=300&t=${Date.now()}`, { cache: "no-store" }, 6000).then((r) => (r.ok ? r.json() : null)).catch(() => null))));
   const events = answers.flatMap((a) => a?.events || []);
   if (events.length) { sideLive = { ...sideLive, ...parseEspnEvents(events, extra) }; sideLiveAt = Date.now(); sideLiveKey = key; }
   return sideLive;
@@ -2840,42 +2841,70 @@ const sideResultOf = (g) => { const l = sideLiveOf(g); return l?.completed && Nu
 const sideMoney = (x) => `$${Number.isInteger(x) ? x : x.toFixed(2)}`;
 const sideNames = (list) => list.map((n) => shown(n)).join(list.length === 2 ? " and " : ", ");
 // Each entrant's side points: banked from finals, in flight from games on now.
+// An over/under pick is worth 2; landing exactly on the total pays nothing.
+const SIDE_OU_PTS = 2;
+const scoreOu = (g, ou, score) => (g.total == null || !ou ? null : score.awayScore + score.homeScore === g.total ? 0 : (score.awayScore + score.homeScore > g.total) === (ou === "over") ? SIDE_OU_PTS : 0);
 function sideStandings(pot) {
   const games = sideGames(pot);
   const rows = Object.entries(pot.entrants || {}).map(([name, e]) => {
     let pts = 0, fly = 0;
-    const cells = games.map((g) => {
-      const pick = e.picks?.[g.id];
-      if (!pick) return { g, pick: null, cls: "hidden", txt: "?" };
+    // One cell per pick: the side on each game, then its over/under.
+    const cell = (g, pick, ou, worth, score) => {
+      const base = { g, pick, ou };
       const res = sideResultOf(g);
-      if (res) { const p = scorePick(g, pick, res) || 0; pts += p; return { g, pick, cls: p ? "hit" : "miss", txt: p ? `+${p}` : "0" }; }
+      if (res) { const p = score(res) || 0; pts += p; return { ...base, cls: p ? "hit" : "miss", txt: p ? `+${p}` : "0" }; }
       const lv = sideLiveOf(g);
       if (lv?.found && lv.state === "in" && Number.isFinite(lv.awayScore) && Number.isFinite(lv.homeScore)) {
-        const p = scorePick(g, pick, lv) || 0; fly += p;
-        return { g, pick, cls: p ? "live-hit" : "live-miss", txt: p ? `+${p}` : "0" };
+        const p = score(lv) || 0; fly += p;
+        return { ...base, cls: p ? "live-hit" : "live-miss", txt: p ? `+${p}` : "0" };
       }
-      return { g, pick, cls: "open", txt: String(pointValue(g, pick.team, pick.mode)) };
+      return { ...base, cls: "open", txt: String(worth) };
+    };
+    const cells = games.flatMap((g) => {
+      const pick = e.picks?.[g.id];
+      if (!pick) return [{ g, pick: null, cls: "hidden", txt: "?" }];
+      const out = [cell(g, pick, null, pointValue(g, pick.team, pick.mode), (sc) => scorePick(g, pick, sc))];
+      if (g.total != null && pick.ou) out.push(cell(g, pick, pick.ou, SIDE_OU_PTS, (sc) => scoreOu(g, pick.ou, sc)));
+      return out;
     });
-    return { name, pts, fly, cells, paid: !!e.paid };
+    return { name, pts, fly, cells, paid: !!e.paid, tb: e.tb };
   });
   rows.sort((a, b) => b.pts + b.fly - (a.pts + a.fly) || b.pts - a.pts || a.name.localeCompare(b.name));
   return { rows, games, final: games.length > 0 && games.every((g) => sideResultOf(g)) };
 }
-// The money once every pot game is final. Ties split the pot; one entrant,
-// or everyone level, is no bet.
+// The money once every pot game is final. Level on points goes to the
+// tiebreaker (closest guess at the last game's total); still level splits.
+// One entrant, or everyone level all the way, is no bet.
 function sideOutcome(pot, st = sideStandings(pot)) {
   const n = st.rows.length, total = n * pot.buyIn;
   const out = { n, total, final: st.final, winners: [], losers: [], share: 0, net: 0 };
   if (!st.final || n < 2) return out;
   const top = Math.max(...st.rows.map((r) => r.pts));
-  out.winners = st.rows.filter((r) => r.pts === top).map((r) => r.name);
-  out.losers = st.rows.filter((r) => r.pts !== top).map((r) => r.name);
+  let lead = st.rows.filter((r) => r.pts === top);
+  const tbG = pot.tbGame != null ? st.games.find((g) => String(g.id) === String(pot.tbGame)) : null;
+  const tbRes = tbG ? sideResultOf(tbG) : null;
+  if (lead.length > 1 && tbRes) {
+    const actual = tbRes.awayScore + tbRes.homeScore;
+    const off = (r) => (Number.isFinite(r.tb) ? Math.abs(r.tb - actual) : Infinity);
+    const best = Math.min(...lead.map(off));
+    if (Number.isFinite(best)) { lead = lead.filter((r) => off(r) === best); out.tiebreak = { actual, game: tbG }; }
+  }
+  out.winners = lead.map((r) => r.name);
+  out.losers = st.rows.filter((r) => !out.winners.includes(r.name)).map((r) => r.name);
   if (!out.losers.length) return { ...out, push: true };
   out.share = total / out.winners.length;
   out.net = out.share - pot.buyIn; // what each winner collects from the others
   return out;
 }
+// Winners first (a tiebreaker can put the winner level with someone above).
+const sideRowsInOrder = (st, out) => [...st.rows].sort((a, b) => out.winners.includes(b.name) - out.winners.includes(a.name));
 function sideTeamId(g, team) { return team === g.home ? g.homeId : team === g.away ? g.awayId : null; }
+// One pick in a standings row: the team's logo and ATS/SU, or OVR/UND.
+function sideCellHtml(c) {
+  if (c.ou) return `<span class="sp-c ou ${c.cls}" title="${c.ou} ${c.g.total}"><i>${c.ou === "over" ? "OVR" : "UND"}</i><b>${c.txt}</b></span>`;
+  const id = c.pick ? sideTeamId(c.g, c.pick.team) : null;
+  return `<span class="sp-c ${c.cls}">${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ""}<i>${c.pick ? c.pick.mode : ""}</i><b>${c.txt}</b></span>`;
+}
 function renderSidePot() {
   const el = document.getElementById("side-pot");
   if (!el) return;
@@ -2901,10 +2930,10 @@ function renderSidePot() {
       : out.n < 2 ? "ONE TAKER · NO BET"
       : out.push ? "DEAD HEAT · NO MONEY MOVES"
       : out.winners.length > 1 ? `${escapeCd(sideNames(out.winners).toUpperCase())} SPLIT ${sideMoney(out.total)}`
-      : `🏆 ${escapeCd(shown(out.winners[0]).toUpperCase())} TAKES ${sideMoney(out.total)}`;
-    const rows = st.rows.map((r) => `<div class="sp-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}">
-      <span class="sp-nm">${escapeCd(shown(r.name))}</span>
-      <span class="sp-cells">${r.cells.map((c) => { const id = c.pick ? sideTeamId(c.g, c.pick.team) : null; return `<span class="sp-c ${c.cls}">${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ""}<i>${c.pick ? c.pick.mode : ""}</i><b>${c.txt}</b></span>`; }).join("")}</span>
+      : `🏆 ${escapeCd(shown(out.winners[0]).toUpperCase())} TAKES ${sideMoney(out.total)}${out.tiebreak ? " ON THE TIEBREAKER" : ""}`;
+    const rows = sideRowsInOrder(st, out).map((r) => `<div class="sp-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}">
+      <span class="sp-nm">${escapeCd(shown(r.name))}${Number.isFinite(r.tb) ? `<small class="sp-tb">TB ${r.tb}</small>` : ""}</span>
+      <span class="sp-cells">${r.cells.map(sideCellHtml).join("")}</span>
       <span class="sp-pts">${r.pts}${r.fly ? `<small>+${r.fly}</small>` : ""}</span></div>`).join("");
     // Who settles with whom, once it is over: each loser owes the buy-in,
     // each winner collects their share of it.
@@ -2966,13 +2995,28 @@ async function mountSideAdmin(box, getKey, say) {
   // the slate editor uses. A game with no line (ESPN drops it once a game
   // is on) cannot be picked against the spread, so it is only counted.
   let extras = [], noLine = 0;
+  const poolTotals = new Map();
   const readEspn = async () => {
-    extras = []; noLine = 0;
+    extras = []; noLine = 0; poolTotals.clear();
     const day = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
+    // ESPN's line for one game from its game page, which keeps a line
+    // after kickoff when the scoreboard has dropped it.
+    const pageLine = (eventId) => fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}`, { cache: "no-store" }, 6000)
+      .then((r) => (r.ok ? r.json() : null)).then((d) => (Array.isArray(d?.pickcenter) ? d.pickcenter[0] : null)).catch(() => null);
     try {
-      const r = await fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${day}&groups=80&limit=300&t=${Date.now()}`, { cache: "no-store" }, 8000);
-      const data = r.ok ? await r.json() : null;
-      for (const ev of data?.events || []) {
+      // FBS (80) and FCS (81).
+      const boards = await Promise.all([80, 81].map((grp) => fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${day}&groups=${grp}&limit=300&t=${Date.now()}`, { cache: "no-store" }, 8000).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
+      const seen = new Set();
+      const events = boards.flatMap((b, i) => (b?.events || []).map((ev) => ({ ev, fcs: i === 1 }))).filter(({ ev }) => !seen.has(ev.id) && seen.add(ev.id));
+      // Games on now with no line on the scoreboard: ask their game pages.
+      const lined = new Map(await Promise.all(events.filter(({ ev }) => { const c = ev.competitions?.[0] || {}; const st = c.status?.type || ev.status?.type || {}; const o = (c.odds || [])[0]; return !st.completed && st.state !== "post" && !(Number.isFinite(Number(o?.spread)) && Number(o.spread) !== 0); }).map(async ({ ev }) => [ev.id, await pageLine(ev.id)])));
+      // Pool games need a total too; the slate keeps the spread only.
+      await Promise.all(GAMES.map(async (g) => {
+        const l = latestLive[g.id];
+        if (Number.isFinite(l?.odds?.overUnder)) { poolTotals.set(g.id, l.odds.overUnder); return; }
+        if (l?.eventId) { const pc = await pageLine(l.eventId); if (Number.isFinite(Number(pc?.overUnder))) poolTotals.set(g.id, Number(pc.overUnder)); }
+      }));
+      for (const { ev, fcs } of events) {
         const c = ev.competitions?.[0] || {};
         const away = (c.competitors || []).find((x) => x.homeAway === "away"), home = (c.competitors || []).find((x) => x.homeAway === "home");
         if (!away || !home) continue;
@@ -2980,7 +3024,8 @@ async function mountSideAdmin(box, getKey, say) {
         if (st.completed || st.state === "post") continue;
         const aId = Number(away.team?.id), hId = Number(home.team?.id);
         if (GAMES.some((g) => g.awayId === aId && g.homeId === hId)) continue; // on the pool slate already
-        const o = (c.odds || [])[0] || {}, raw = Number(o.spread);
+        let o = (c.odds || [])[0] || {}, raw = Number(o.spread), fromPage = false;
+        if (!Number.isFinite(raw) || raw === 0) { const pc = lined.get(ev.id); o = pc || {}; raw = Number(o.spread); fromPage = true; }
         if (!Number.isFinite(raw) || raw === 0) { noLine += 1; continue; }
         const favHome = o.homeTeamOdds?.favorite ? true : o.awayTeamOdds?.favorite ? false : raw < 0;
         const aName = away.team?.displayName || "", hName = home.team?.displayName || "";
@@ -2988,6 +3033,7 @@ async function mountSideAdmin(box, getKey, say) {
           id: `e${ev.id}`, away: aName, home: hName,
           awayShort: away.team?.shortDisplayName || away.team?.abbreviation || aName, homeShort: home.team?.shortDisplayName || home.team?.abbreviation || hName,
           awayId: aId, homeId: hId, favorite: favHome ? hName : aName, spread: Math.abs(raw), kickoff: ev.date,
+          ...(Number.isFinite(Number(o.overUnder)) && Number(o.overUnder) > 0 ? { total: Number(o.overUnder) } : {}), fcs, fromPage,
           kickoffLabel: `${etTime(new Date(ev.date).getTime()).replace(",", "")} ET`,
           on: st.state === "in" ? { detail: st.shortDetail || "", a: away.score, h: home.score } : null,
         });
@@ -3020,21 +3066,22 @@ async function mountSideAdmin(box, getKey, say) {
         if (now < k) return esc(g.kickoffLabel || "");
         return `<b class="as-live">ON NOW${l?.found && l.state === "in" ? ` · ${esc(shortStatus(l.detail || ""))} · ${l.awayScore}-${l.homeScore}` : ""}</b>`;
       };
-      const line = (g) => `${g.favorite === g.home ? esc(g.homeShort) : esc(g.awayShort)} -${g.spread}`;
+      const tot = (g) => g.total ?? poolTotals.get(g.id);
+      const line = (g) => `${g.favorite === g.home ? esc(g.homeShort) : esc(g.awayShort)} -${g.spread}${tot(g) != null ? ` · O/U ${tot(g)}` : ""}${g.fcs ? " · FCS" : ""}`;
       const xtag = (g) => (g.on ? `<b class="as-live">ON NOW · ${esc(shortStatus(g.on.detail))} · ${esc(g.on.a ?? 0)}-${esc(g.on.h ?? 0)}</b>` : esc(g.kickoffLabel));
       const row = (g, label, tagHtml, checked) => `<label class="as-game"><input type="checkbox" value="${esc(g.id)}"${checked ? " checked" : ""}><span>${label}${esc(g.awayShort)} @ ${esc(g.homeShort)}<small class="as-line">${line(g)}</small></span><small>${tagHtml}</small></label>`;
-      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Pick up to 5 games, still to come or on now. Pool games keep the pool's line; the rest use ESPN's current line. Everyone who opts in picks the same games. Entry closes at the first kickoff, or 20 minutes after you start it if that's later. A game on now keeps its line, so check the score before adding it.</div>
+      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Pick up to 5 games, still to come or on now. Pool games keep the pool's line; the rest use ESPN's line (FBS and FCS), read from the game page once a game is on. Each game with a total also gets an over/under pick, and everyone guesses the last game's total points as the tiebreaker. Everyone who opts in picks the same games. Entry closes at the first kickoff, or 20 minutes after you start it if that's later. A game on now keeps its line, so check the score before adding it.</div>
         <div class="as-sec">THIS WEEK'S POOL</div>
         ${avail.length ? `<div class="as-games">${avail.map((g) => row(g, `G${g.id} · `, tag(g), preset.has(g.id))).join("")}</div>` : `<div class="as-none">Every pool game is over.</div>`}
-        <div class="as-sec">MORE GAMES TONIGHT</div>
-        ${extras.length ? `<div class="as-games">${extras.map((g) => row(g, "", xtag(g), false)).join("")}</div>` : `<div class="as-none">${noLine ? "" : "ESPN has no other games left tonight."}</div>`}
-        ${noLine ? `<div class="as-out">${noLine} ${noLine === 1 ? "game on now has" : "games on now have"} no line from ESPN, so ${noLine === 1 ? "it isn't" : "they aren't"} listed.</div>` : ""}
+        <div class="as-sec">MORE GAMES TODAY</div>
+        ${extras.length ? `<div class="as-games">${extras.map((g) => row(g, "", xtag(g), false)).join("")}</div>` : `<div class="as-none">${noLine ? "" : "ESPN has no other games left today."}</div>`}
+        ${noLine ? `<div class="as-out">${noLine} ${noLine === 1 ? "game has" : "games have"} no line on ESPN at all, so ${noLine === 1 ? "it isn't" : "they aren't"} listed.</div>` : ""}
         <label class="as-buy">Buy-in $<input type="number" inputmode="numeric" min="1" max="500" step="1" value="25"></label>
         <button type="button" class="admin-btn primary wide as-start"${avail.length || extras.length ? "" : " disabled"}>Start side bet</button>`;
       box.querySelector(".as-start")?.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget;
         // Pool games go by id (the Worker keeps the pool's line); others whole.
-        const ids = [...box.querySelectorAll(".as-games input:checked")].map((i) => { const x = extras.find((g) => g.id === i.value); if (!x) return Number(i.value); const { on, ...g } = x; return g; });
+        const ids = [...box.querySelectorAll(".as-games input:checked")].map((i) => { const x = extras.find((g) => g.id === i.value); if (!x) return { id: Number(i.value), total: poolTotals.get(Number(i.value)) }; const { on, fcs, fromPage, ...g } = x; return g; });
         const buyIn = Number(box.querySelector(".as-buy input").value);
         if (!ids.length) { say("Pick at least one game for the side bet.", "bad"); return; }
         if (ids.length > 5) { say("Pick 5 games at most.", "bad"); return; }
@@ -3057,7 +3104,7 @@ async function mountSideAdmin(box, getKey, say) {
     const ins = Object.keys(pot.entrants || {});
     const st = sideStandings(pot), out = sideOutcome(pot, st);
     const net = Number.isInteger(out.net) ? out.net : out.net.toFixed(2);
-    const result = !open && out.final ? (out.n < 2 ? "One taker, no bet." : out.push ? "Dead heat, no money moves." : `${out.winners.map(shown).join(" and ")} ${out.winners.length > 1 ? "split" : "takes"} $${out.total}, collecting $${net}${out.winners.length > 1 ? " each" : ""} from the others.`) : "";
+    const result = !open && out.final ? (out.n < 2 ? "One taker, no bet." : out.push ? "Dead heat, no money moves." : `${out.winners.map(shown).join(" and ")} ${out.winners.length > 1 ? "split" : "takes"} $${out.total}${out.tiebreak ? ` on the tiebreaker (total ${out.tiebreak.actual})` : ""}, collecting $${net}${out.winners.length > 1 ? " each" : ""} from the others.`) : "";
     const owes = (n) => !open && out.final && out.losers.includes(n);
     const won = (n) => !open && out.final && !out.push && out.winners.includes(n);
     box.innerHTML = `<div class="as-lead"><b>Week ${pot.week} side bet</b> · $${pot.buyIn} · ${ins.length} in · $${ins.length * pot.buyIn} pot<br>${open ? `Entry closes ${esc(etTime(pot.closesAt))} ET` : `Closed ${esc(etTime(pot.closesAt))} ET`}</div>
@@ -3090,6 +3137,12 @@ function openSideSheet(asked) {
   const was = pot.entrants[me]?.picks || {};
   const draft = Object.fromEntries(Object.entries(was).map(([k, v]) => [k, { ...v }]));
   const games = sideGames(pot);
+  // The tiebreaker: a guess at the last game's total points. Kept outside
+  // the redraw so typing is never lost to a tap elsewhere.
+  const tbG = pot.tbGame != null ? games.find((g) => String(g.id) === String(pot.tbGame)) : null;
+  let draftTb = pot.entrants[me]?.tb ?? "";
+  const tbOk = () => !tbG || (/^\d{1,3}$/.test(String(draftTb).trim()) && Number(draftTb) <= 200);
+  const isReady = () => games.every((g) => draft[g.id]?.team && draft[g.id]?.mode && (g.total == null || draft[g.id]?.ou)) && tbOk();
   document.getElementById("side-modal")?.remove();
   const m = document.createElement("div");
   m.id = "side-modal"; m.className = "wpx-overlay"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Late night side pot");
@@ -3105,15 +3158,17 @@ function openSideSheet(asked) {
     const pts = p?.team ? pointValue(g, p.team, md) : md === "ATS" ? 2 : null;
     return `<button type="button" class="sp-mode${p?.team && p.mode === md ? " on" : ""}" data-g="${g.id}" data-mode="${md}"${p?.team ? "" : " disabled"}>${md === "ATS" ? "ATS" : "STRAIGHT UP"}${pts != null ? ` · ${pts} PT${pts === 1 ? "" : "S"}` : ""}</button>`;
   };
+  const ou = (g, v) => `<button type="button" class="sp-mode${draft[g.id]?.ou === v ? " on" : ""}" data-g="${g.id}" data-ou="${v}">${v === "over" ? "OVER" : "UNDER"} ${g.total} · ${SIDE_OU_PTS} PTS</button>`;
   const paint = () => {
-    const ready = games.every((g) => draft[g.id]?.team && draft[g.id]?.mode);
+    const ready = isReady();
     const inAlready = !!pot.entrants[me];
     const closes = new Date(pot.closesAt).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
     m.innerHTML = `<div class="wpx-card sp-sheet">
       <button type="button" class="sp-x" aria-label="Close">✕</button>
       <div class="sp-sheet-kick">💰 LATE NIGHT SIDE POT</div>
-      <div class="sp-sheet-lead">${asked && !inAlready ? "The week's decided, but the night isn't. " : ""}Pick ${games.length === 1 ? "this game" : `these ${games.length} games`}, <b>$${pot.buyIn}</b> to get in. Most points takes the pot; ties split it.</div>
-      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">${sideTag(g)} · ${(() => { const l = sideLiveOf(g); return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">ON NOW · ${escapeCd(shortStatus(l.detail || ""))} · ${escapeCd(g.awayShort)} ${l.awayScore}, ${escapeCd(g.homeShort)} ${l.homeScore}</b>` : escapeCd(g.kickoffLabel || ""); })()}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div></div>`).join("")}</div>
+      <div class="sp-sheet-lead">${asked && !inAlready ? "The week's decided, but the night isn't. " : ""}Pick ${games.length === 1 ? "this game" : `these ${games.length} games`}, <b>$${pot.buyIn}</b> to get in. Most points takes the pot${pot.tbGame != null ? "; a tie goes to the closest tiebreaker guess" : "; ties split it"}.</div>
+      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">${sideTag(g)} · ${(() => { const l = sideLiveOf(g); return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">ON NOW · ${escapeCd(shortStatus(l.detail || ""))} · ${escapeCd(g.awayShort)} ${l.awayScore}, ${escapeCd(g.homeShort)} ${l.homeScore}</b>` : escapeCd(g.kickoffLabel || ""); })()}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div>${g.total != null ? `<div class="sp-modes">${ou(g, "over")}${ou(g, "under")}</div>` : ""}</div>`).join("")}</div>
+      ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${escapeCd(tbG.awayShort)} @ ${escapeCd(tbG.homeShort)}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="e.g. 52" value="${escapeCd(String(draftTb))}"></label>` : ""}
       <div class="sp-sheet-note">Picks lock at ${closes} ET. Nobody sees yours until then. Money is settled between you, not in the app.</div>
       ${err ? `<div class="sp-err">${escapeCd(err)}</div>` : ""}
       <div class="sp-sheet-btns"><button type="button" class="sp-no"${busy ? " disabled" : ""}>${inAlready ? "Back out" : "No thanks"}</button><button type="button" class="sp-go"${ready && !busy ? "" : " disabled"}>${busy ? "Saving…" : inAlready ? "Save picks" : `I'm in · $${pot.buyIn}`}</button></div>
@@ -3122,7 +3177,7 @@ function openSideSheet(asked) {
   const send = async (action) => {
     busy = true; err = ""; paint();
     try {
-      const r = await fetch(`${WORKER_URL}/side`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, week: pot.week, manager: me, token: tokenFor(me) || undefined, ...(action === "join" ? { picks: draft } : {}) }) });
+      const r = await fetch(`${WORKER_URL}/side`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, week: pot.week, manager: me, token: tokenFor(me) || undefined, ...(action === "join" ? { picks: draft, ...(tbG ? { tb: Number(draftTb) } : {}) } : {}) }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || "Didn't save. Try again.");
       if (d.pot) { sidePot = d.pot; sidePotAt = Date.now(); sidePotWeek = pot.week; }
@@ -3132,10 +3187,18 @@ function openSideSheet(asked) {
       renderSidePot();
     } catch (e) { busy = false; err = e.message || "Didn't save. Try again."; paint(); }
   };
+  m.addEventListener("input", (e) => {
+    if (!e.target.closest(".sp-tbin")) return;
+    draftTb = e.target.value;
+    const go = m.querySelector(".sp-go");
+    if (go && !busy) go.disabled = !isReady();
+  });
   m.addEventListener("click", (e) => {
     if (e.target === m || e.target.closest(".sp-x")) return close();
     const t = e.target.closest(".sp-team"), md = e.target.closest(".sp-mode");
-    if (t) { const id = t.dataset.g; draft[id] = { team: t.dataset.team, mode: draft[id]?.mode || "ATS" }; err = ""; return paint(); }
+    const o = e.target.closest("[data-ou]");
+    if (o) { const id = o.dataset.g; draft[id] = { ...draft[id], ou: o.dataset.ou }; return paint(); }
+    if (t) { const id = t.dataset.g; draft[id] = { ...draft[id], team: t.dataset.team, mode: draft[id]?.mode || "ATS" }; err = ""; return paint(); }
     if (md && !md.disabled) { const id = md.dataset.g; if (draft[id]) draft[id].mode = md.dataset.mode; return paint(); }
     if (e.target.closest(".sp-go") && !busy) return send("join");
     if (e.target.closest(".sp-no") && !busy) return send("decline");
@@ -3180,14 +3243,15 @@ function renderSideScreen() {
   const status = open ? `Picks lock in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b>`
     : !out.final ? `You have <b>${myRow?.pts ?? 0}</b>${myRow?.fly ? ` <span class="ss-fly">+${myRow.fly} live</span>` : ""}`
     : out.n < 2 ? "One taker. No bet." : out.push ? "Dead heat. No money moves."
-    : out.winners.includes(me) ? (out.winners.length > 1 ? `You split it. You collect <b>${sideMoney(out.net)}</b>.` : `You won. You collect <b>${sideMoney(out.net)}</b>.`)
+    : out.winners.includes(me) ? (out.winners.length > 1 ? `You split it. You collect <b>${sideMoney(out.net)}</b>.` : `You won${out.tiebreak ? " on the tiebreaker" : ""}. You collect <b>${sideMoney(out.net)}</b>.`)
     : `${escapeCd(sideNames(out.winners))} ${out.winners.length > 1 ? "split" : "took"} it. You owe <b>${sideMoney(pot.buyIn)}</b>.`;
   const bug = (g) => {
     const l = sideLiveOf(g), kicked = Date.now() >= new Date(g.kickoff).getTime();
     const on = l?.found && l.state === "in" && !l.completed, fin = !!sideResultOf(g);
     const showScore = kicked && l?.found && (on || fin);
     const pick = mine[g.id];
-    const cell = myRow?.cells.find((c) => c.g.id === g.id);
+    const cell = myRow?.cells.find((c) => c.g.id === g.id && !c.ou);
+    const ouCell = myRow?.cells.find((c) => c.g.id === g.id && c.ou);
     const side = (team, id, short, score) => `<div class="ss-team${pick?.team === team ? " mine" : ""}"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${escapeCd(short)}</span><b>${showScore ? score : ""}</b></div>`;
     const stat = fin ? "FINAL" : on ? escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`)) : escapeCd(g.kickoffLabel || "");
     const line = pick ? `${escapeCd(pick.team === g.home ? g.homeShort : g.awayShort)} ${pick.mode === "SU" ? "to win" : `${pick.team === g.favorite ? "-" : "+"}${g.spread}`}` : "No pick";
@@ -3195,14 +3259,15 @@ function renderSideScreen() {
       <div class="ss-bug-top"><span>${sideTag(g)}</span><span class="ss-stat">${on ? "<u></u>" : ""}${stat}</span></div>
       ${side(g.away, g.awayId, g.awayShort, l?.awayScore ?? 0)}${side(g.home, g.homeId, g.homeShort, l?.homeScore ?? 0)}
       <div class="ss-pick ${cell?.cls || "open"}"><span>YOUR PICK · ${line}</span><b>${cell ? (cell.cls === "open" ? `${cell.txt} PTS` : cell.txt) : ""}</b></div>
+      ${ouCell ? `<div class="ss-pick sub ${ouCell.cls}"><span>${pick.ou === "over" ? "OVER" : "UNDER"} ${g.total}${showScore ? ` · ${fin ? "final" : "now"} ${(l?.awayScore ?? 0) + (l?.homeScore ?? 0)}` : ""}</span><b>${ouCell.cls === "open" ? `${ouCell.txt} PTS` : ouCell.txt}</b></div>` : ""}
     </button>`;
   };
   const who = open
     ? `<div class="ss-sec">WHO'S IN · ${names.length}</div><div class="ss-names">${names.map((n) => `<span class="${n === me ? "me" : ""}">${escapeCd(shown(n))}</span>`).join("")}</div><div class="ss-note">Everyone's picks show here when entry closes.</div>`
-    : `<div class="ss-sec">STANDINGS</div><div class="sp-board">${st.rows.map((r) => `<div class="sp-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}"><span class="sp-nm">${escapeCd(shown(r.name))}</span><span class="sp-cells">${r.cells.map((c) => { const id = c.pick ? sideTeamId(c.g, c.pick.team) : null; return `<span class="sp-c ${c.cls}">${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ""}<i>${c.pick ? c.pick.mode : ""}</i><b>${c.txt}</b></span>`; }).join("")}</span><span class="sp-pts">${r.pts}${r.fly ? `<small>+${r.fly}</small>` : ""}</span></div>`).join("")}</div>`;
+    : `<div class="ss-sec">STANDINGS</div><div class="sp-board">${sideRowsInOrder(st, out).map((r) => `<div class="sp-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}"><span class="sp-nm">${escapeCd(shown(r.name))}${Number.isFinite(r.tb) ? `<small class="sp-tb">TB ${r.tb}</small>` : ""}</span><span class="sp-cells">${r.cells.map(sideCellHtml).join("")}</span><span class="sp-pts">${r.pts}${r.fly ? `<small>+${r.fly}</small>` : ""}</span></div>`).join("")}</div>`;
   body.innerHTML = `<div class="ss-head"><span class="sp-kick">💰 SIDE BET</span><span class="sp-pot">${sideMoney(names.length * pot.buyIn)}</span></div>
     <div class="ss-status">${status}</div>
-    <div class="ss-sub">${names.length} in · ${sideMoney(pot.buyIn)} each · most points takes it, ties split</div>
+    <div class="ss-sub">${names.length} in · ${sideMoney(pot.buyIn)} each · most points takes it${pot.tbGame != null ? (() => { const g = sideGames(pot).find((x) => String(x.id) === String(pot.tbGame)); return g ? ` · tiebreaker: total points in ${escapeCd(g.awayShort)} @ ${escapeCd(g.homeShort)}${out.tiebreak ? ` (${out.tiebreak.actual})` : ""}` : ""; })() : ", ties split"}</div>
     <div class="ss-bugs">${sideGames(pot).map(bug).join("")}</div>
     ${open ? `<button type="button" class="sp-btn ss-edit" data-sp="open">EDIT MY PICKS</button>` : ""}
     ${who}`;

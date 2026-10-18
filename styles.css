@@ -6600,3 +6600,18 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 #side-screen { align-items: flex-start; padding-top: 10px; }
 #side-screen .wrap { width: 100%; }
 .as-sec { margin-top: 4px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .1em; color: var(--neon-yellow); }
+.sp-c.ou { width: 52px; }
+.sp-tb { display: block; margin-top: 2px; font-size: 9px; color: var(--text-dim); }
+.ss-pick.sub { padding-top: 5px; border-top: 0; }
+.sp-tbin { display: flex; flex-direction: column; gap: 6px; padding: 9px; border: 1px dashed rgba(255, 228, 94, .45); border-radius: 9px; }
+.sp-tbin span { font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1.6; letter-spacing: .06em; color: var(--neon-yellow); }
+.sp-tbin input { width: 100%; box-sizing: border-box; min-height: 42px; padding: 6px 10px; border-radius: 7px; border: 1.5px solid rgba(255, 228, 94, .5); background: #07020f; color: #fff; font-size: 16px; }
+/* Standings: name and points on top, the picks on a line of their own,
+   so six or ten chips never squeeze the name out. */
+.sp-row { grid-template-columns: minmax(0, 1fr) 38px; grid-template-areas: "nm pts" "cells cells"; row-gap: 5px; padding: 6px 0; }
+.sp-row .sp-nm { grid-area: nm; }
+.sp-row .sp-pts { grid-area: pts; }
+.sp-row .sp-cells { grid-area: cells; justify-content: flex-start; }
+.sp-tb { display: inline; margin: 0 0 0 8px; }
+.ss-sub { white-space: normal; overflow-wrap: anywhere; }
+.sp-kick { white-space: nowrap; }
