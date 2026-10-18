@@ -6820,3 +6820,43 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 #side-screen .ssg-cells .ssb-box { height: auto; }
 #side-screen .ssg-cells .ssb-box.empty { min-height: 32px; }
 #side-screen .ssg-cells .ssb-box.empty.tall { min-height: 32px; }
+/* Side bet scoreboard, arcade pass: mini scorebugs up top, a card per
+   player with avatar, medal and race bar, picks filled by state. */
+.ssg-heads { border-bottom: 0; padding-bottom: 10px; }
+.ssg-h { gap: 5px; }
+.ssg-bug { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 6px 4px; border-radius: 10px; background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02)); border: 1px solid rgba(255, 255, 255, .08); }
+.ssg-h.live .ssg-bug { border-color: rgba(5, 217, 232, .6); box-shadow: 0 0 12px rgba(5, 217, 232, .25); }
+.ssg-bug img { width: 22px; height: 22px; object-fit: contain; flex: none; }
+.ssg-sc { display: flex; align-items: center; gap: 3px; min-width: 0; }
+.ssg-sc b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; color: #fff; }
+.ssg-sc i { font-style: normal; font-size: 9px; color: var(--text-dim); }
+.ssg-sc span { font-size: 10px; color: var(--text-meta); white-space: nowrap; }
+.ssg-h.live .ssg-sc b { color: var(--neon-cyan); text-shadow: 0 0 6px rgba(5, 217, 232, .5); }
+.ssg-h .ssb-tag { display: flex; align-items: center; gap: 4px; justify-content: center; font-size: 5.5px; }
+.ssg-h.live .ssb-tag { color: var(--neon-cyan); }
+.ssg-h .ssb-tag u { width: 5px; height: 5px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); animation: h2h-blink 1s steps(1) infinite; }
+.ssg-row { margin-top: 10px; padding: 10px; border: 1px solid rgba(255, 255, 255, .08); border-radius: 14px; background: rgba(255, 255, 255, .025); }
+.ssg-row.lead { border-color: rgba(255, 228, 94, .55); background: linear-gradient(180deg, rgba(255, 228, 94, .08), rgba(255, 228, 94, .02)); box-shadow: 0 0 18px rgba(255, 196, 0, .15); }
+.ssg-row.me { box-shadow: inset 3px 0 0 var(--neon-cyan); }
+.ssg-row.lead.me { box-shadow: inset 3px 0 0 var(--neon-cyan), 0 0 18px rgba(255, 196, 0, .15); }
+.ssg-who { align-items: center; gap: 8px; margin-bottom: 8px; }
+.ssg-rk { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 20px; padding: 0 4px; border-radius: 6px; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); background: rgba(255, 255, 255, .06); }
+.rk1 .ssg-rk { color: #1a0a00; background: linear-gradient(180deg, #ffe45e, #ffb000); }
+.rk2 .ssg-rk { color: #0b0716; background: linear-gradient(180deg, #e8ecf4, #a9b3c4); }
+.rk3 .ssg-rk { color: #1a0a00; background: linear-gradient(180deg, #f0a46b, #b8693a); }
+.ssg-av { flex: none; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 7px; background: var(--accent); color: #0a0414; font-family: 'Press Start 2P', monospace; font-size: 10px; box-shadow: 2px 2px 0 rgba(0, 0, 0, .45); }
+.ssg-nm { font-size: 15px; color: var(--text); }
+.ssg-row.me .ssg-nm { color: var(--neon-cyan); }
+.ssg-who b { font-size: 15px; text-shadow: 0 0 8px rgba(57, 255, 136, .45); }
+.ssg-race { position: relative; height: 5px; margin: 0 0 9px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.ssg-race i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
+.ssg-race .can { background: rgba(57, 255, 136, .18); }
+.ssg-race .has { background: linear-gradient(90deg, #22c873, #39ff88); box-shadow: 0 0 8px rgba(57, 255, 136, .5); }
+.ssg-cells .ssb-box { border-width: 1.5px; }
+.ssg-cells .ssb-box.hit { background: rgba(57, 255, 136, .14); border-color: rgba(57, 255, 136, .7); }
+.ssg-cells .ssb-box.miss { background: rgba(255, 32, 121, .06); border-color: rgba(255, 32, 121, .35); }
+.ssg-cells .ssb-box.miss .ssb-l:first-child span { color: var(--text-dim); text-decoration: line-through; text-decoration-color: rgba(255, 32, 121, .6); }
+.ssg-cells .ssb-box.live-hit { background: rgba(5, 217, 232, .12); border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(5, 217, 232, .25); }
+.ssg-cells .ssb-box.live-miss { background: rgba(255, 32, 121, .05); border-color: rgba(255, 32, 121, .45); border-style: dashed; }
+.ssg-cells .ssb-box.open { border-style: dashed; }
+.ssg-cells .ssb-l b { font-size: 8px; }

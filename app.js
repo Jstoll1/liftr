@@ -2938,6 +2938,7 @@ function sideOutcome(pot, st = sideStandings(pot)) {
 // team picked, spread or WIN, and what it pays, with the over/under under
 // it. The total counts live points, labelled as such.
 function sideBoardHtml(pot, st, out, me) {
+  const esc = escapeCd;
   const games = st.games;
   const total = (r) => r.pts + r.fly;
   const rows = sideRowsInOrder(st, out);
@@ -2946,7 +2947,8 @@ function sideBoardHtml(pot, st, out, me) {
   const head = games.map((g) => {
     const l = sideLiveOf(g), fin = !!sideResultOf(g), on = l?.found && l.state === "in" && !l.completed;
     const where = fin ? "FINAL" : on ? `${l.awayScore}-${l.homeScore}` : g.half === 2 && sideRawOf(g)?.state === "in" ? "2H NEXT" : new Date(g.kickoff).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).replace(" ", "");
-    return `<div class="ssg-h${on ? " live" : fin ? " final" : ""}"><div class="ssb-logos"><img src="${logoUrl(g.awayId)}" alt="" onerror="this.style.visibility='hidden'"><i>@</i><img src="${logoUrl(g.homeId)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="ssb-tag">${sideTag(g)}${String(pot.tbGame) === String(g.id) ? " ★" : ""}</div><div class="ssb-where">${where}</div></div>`;
+    const score = fin || on ? `<b>${l.awayScore}</b><i>-</i><b>${l.homeScore}</b>` : `<span>${where}</span>`;
+    return `<div class="ssg-h${on ? " live" : fin ? " final" : ""}"><div class="ssg-bug"><img src="${logoUrl(g.awayId)}" alt="" onerror="this.style.visibility='hidden'"><div class="ssg-sc">${score}</div><img src="${logoUrl(g.homeId)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="ssb-tag">${on ? `<u></u>${esc(shortStatus(l.detail || ""))}` : fin ? "FINAL" : sideTag(g)}${String(pot.tbGame) === String(g.id) ? " · ★TB" : ""}</div></div>`;
   }).join("");
   const cell = (r, g) => {
     const side = r.cells.find((c) => c.g.id === g.id && !c.ou), ou = r.cells.find((c) => c.g.id === g.id && c.ou);
@@ -2955,17 +2957,21 @@ function sideBoardHtml(pot, st, out, me) {
     const what = p.mode === "SU" ? "WIN" : `${p.team === g.favorite ? "-" : "+"}${g.spread}`;
     // The side on top, the over/under (when the game has one) under it,
     // each with what it pays; text lines up under the logo's edge.
-    return `<div class="ssb-box ${side.cls}"><div class="ssb-l"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${what}</span><b>${side.txt}</b></div>${g.total != null ? `<div class="ssb-l ou ${ou?.cls || "none"}"><i class="ssb-sp"></i><span>${ou ? `${ou.ou === "over" ? "O" : "U"} ${g.total}` : "no O/U"}</span><b>${ou ? ou.txt : ""}</b></div>` : ""}</div>`;
+    return `<div class="ssb-box ${side.cls}"><div class="ssb-l"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${what}</span><b>${side.cls === "hit" ? "✓ " : side.cls === "miss" ? "✕ " : ""}${side.txt}</b></div>${g.total != null ? `<div class="ssb-l ou ${ou?.cls || "none"}"><i class="ssb-sp"></i><span>${ou ? `${ou.ou === "over" ? "O" : "U"} ${g.total}` : "no O/U"}</span><b>${ou ? ou.txt : ""}</b></div>` : ""}</div>`;
   };
   // A player's line (place, name, guess, total), then their picks in a row
   // of equal columns lined up under the game headers.
-  const body = rows.map((r) => `<div class="ssg-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}">
-      <div class="ssg-who"><i>${tied(r) ? "T" : ""}${rankOf(r)}</i><span>${escapeCd(shown(r.name))}${out.winners.includes(r.name) ? " 🏆" : ""}</span>${Number.isFinite(r.tb) ? `<small>TB ${r.tb}</small>` : ""}<b>${total(r)}<em>${out.final ? "final" : !r.fly ? "" : r.pts ? `${r.pts} locked` : "live"}</em></b></div>
+  // The most a player can still reach: everything not already lost.
+  const reach = (r) => r.cells.reduce((t, c) => t + (c.pick && c.cls !== "miss" ? (c.ou ? SIDE_OU_PTS : pointValue(c.g, c.pick.team, c.pick.mode)) : 0), 0);
+  const scale = Math.max(1, ...rows.map(reach));
+  const body = rows.map((r) => { const rk = rankOf(r), lead = rk === 1 && total(r) > 0; return `<div class="ssg-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) || (!out.final && lead) ? " lead" : ""} rk${Math.min(rk, 4)}">
+      <div class="ssg-who"><i class="ssg-rk">${tied(r) ? "T" : ""}${rk}</i><span class="ssg-av" style="--accent:${accentFor(r.name)}">${esc(avatarOverrides[r.name] || shown(r.name)[0])}</span><span class="ssg-nm">${esc(shown(r.name))}${out.winners.includes(r.name) ? " 🏆" : ""}</span>${Number.isFinite(r.tb) ? `<small>TB ${r.tb}</small>` : ""}<b>${total(r)}<em>${out.final ? "final" : !r.fly ? "" : r.pts ? `${r.pts} locked` : "live"}</em></b></div>
+      <div class="ssg-race" title="${total(r)} now, ${reach(r)} still possible"><i class="can" style="width:${((reach(r) / scale) * 100).toFixed(1)}%"></i><i class="has" style="width:${((total(r) / scale) * 100).toFixed(1)}%"></i></div>
       <div class="ssg-cells">${games.map((g) => cell(r, g)).join("")}</div>
-    </div>`).join("");
+    </div>`; }).join("");
   return `<div class="ss-sec">SCOREBOARD${out.final ? " · FINAL" : ""}</div>
     <div class="ssg-wrap"><div class="ssg" style="--n:${games.length}"><div class="ssg-heads">${head}</div>${body}</div></div>
-    <div class="ss-note">Green paid, pink didn't, outlined is live.${pot.tbGame != null ? " ★ is the tiebreaker game." : ""}</div>`;
+    <div class="ss-note">The bar: points now, and how far each player can still get. ✓ paid, ✕ lost, glowing is live.${pot.tbGame != null ? " ★TB is the tiebreaker game." : ""}</div>`;
 }
 // Winners first (a tiebreaker can put the winner level with someone above).
 const sideRowsInOrder = (st, out) => [...st.rows].sort((a, b) => out.winners.includes(b.name) - out.winners.includes(a.name) || b.pts + b.fly - (a.pts + a.fly) || b.pts - a.pts || a.name.localeCompare(b.name));
