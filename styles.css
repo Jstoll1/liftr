@@ -7105,3 +7105,29 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .h2h-modal .h2h-f-meta { display: flex; flex-wrap: wrap; gap: 3px 7px; white-space: normal; line-height: 1.5; }
 .h2h-fighter.b .h2h-f-meta { justify-content: flex-end; }
 .h2h-modal .h2h-f-meta > * { white-space: nowrap; }
+
+/* Compact pass: two line rows, points inline with the line, slimmer summary. */
+.h2x-sum { gap: 4px; padding: 8px 8px 9px; }
+.h2x-sum > small { font-size: 7px; }
+.h2x-sum > b { font-size: clamp(11px, 3.2vw, 13px); }
+.h2x-facts { gap: 4px; }
+.h2x-facts span { grid-auto-flow: column; justify-content: center; align-items: baseline; gap: 6px; padding: 4px; }
+.h2x-facts b { font-size: 11px; }
+.h2x-path { font-size: 12px; line-height: 1.35; margin: 0; }
+.h2x-now { font-size: 11px; }
+.h2x-legend { font-size: 10px; gap: 2px 8px; }
+.h2x-grp { gap: 4px; }
+.h2x-gh { margin-top: 2px; font-size: 7px; }
+.h2x-row { padding: 5px 7px; gap: 4px; border-radius: 7px; grid-template-columns: minmax(0, 1fr) minmax(70px, auto) minmax(0, 1fr); }
+.h2x-pick { gap: 1px; }
+.h2x-tm { font-size: 12.5px; gap: 4px; }
+.h2x-tm .h2h-logo { width: 16px; height: 16px; }
+.h2x-pick small { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; }
+.h2x-pick.r small { flex-direction: row-reverse; }
+.h2x-pts { font-size: 9px; padding: 2px 4px; border-radius: 4px; }
+.h2x-pts i { display: none; }
+.h2x-mid { gap: 1px; }
+.h2x-teams { font-size: 10px; }
+.h2x-teams b { font-size: 9.5px; }
+.h2x-when { font-size: 6px; }
+.h2x-same summary { min-height: 40px; }
