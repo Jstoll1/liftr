@@ -2828,7 +2828,7 @@ function fetchSidePot(force = false) {
 // slate works the same; a slate game uses the slate's copy. Older pots
 // held ids only.
 // The pot's copy carries the over/under total the slate does not have.
-const sideGames = (pot) => (pot.slate || pot.games.map((id) => ({ id }))).map((g) => { const x = GAMES.find((y) => String(y.id) === String(g.id)); return x ? { ...x, ...(g.total != null ? { total: g.total } : {}) } : g.away ? g : null; }).filter(Boolean);
+const sideGames = (pot) => pot.own ? pot.slate : (pot.slate || pot.games.map((id) => ({ id }))).map((g) => { const x = GAMES.find((y) => String(y.id) === String(g.id)); return x ? { ...x, ...(g.total != null ? { total: g.total } : {}) } : g.away ? g : null; }).filter(Boolean);
 const onSlate = (g) => typeof g.id === "number" && GAMES.some((x) => x.id === g.id);
 // A pool game goes by its number; a game off the slate is marked as such.
 const sideTag = (g) => (g.half === 2 ? "2ND HALF" : g.half === 1 ? "1ST HALF" : onSlate(g) ? `G${g.id}` : "BONUS");
@@ -2870,23 +2870,26 @@ function firstHalfView(l) {
   return { ...l, state: "post", completed: true, awayScore: l.awayLines[0] + l.awayLines[1], homeScore: l.homeLines[0] + l.homeLines[1], detail: "1st half final" };
 }
 const sideLiveOf = (g) => (g.half === 2 ? halfView(sideRawOf(g)) : g.half === 1 ? firstHalfView(sideRawOf(g)) : sideRawOf(g));
-const sideResultOf = (g) => { const l = sideLiveOf(g); return l?.completed && Number.isFinite(l.awayScore) && Number.isFinite(l.homeScore) ? { awayScore: l.awayScore, homeScore: l.homeScore } : null; };
+const sideResultOf = (g) => { const l = sideLiveOf(g); if (l?.completed && Number.isFinite(l.awayScore) && Number.isFinite(l.homeScore)) return { awayScore: l.awayScore, homeScore: l.homeScore }; return potNow()?.finals?.[g.id] || null; };
 const sideMoney = (x) => `$${Number.isInteger(x) ? x : x.toFixed(2)}`;
 const sideNames = (list) => list.map((n) => shown(n)).join(list.length === 2 ? " and " : ", ");
 // Each entrant's side points: banked from finals, in flight from games on now.
 // An over/under pick is worth 2; landing exactly on the total pays nothing.
 const SIDE_OU_PTS = 2;
 const scoreOu = (g, ou, score) => (g.total == null || !ou ? null : score.awayScore + score.homeScore === g.total ? 0 : (score.awayScore + score.homeScore > g.total) === (ou === "over") ? SIDE_OU_PTS : 0);
-function sideStandings(pot) {
+// resOf reads a game's final: live by default, or a past bet's kept
+// finals for the season board (no live points there).
+function sideStandings(pot, resOf = sideResultOf) {
   const games = sideGames(pot);
+  const live = resOf === sideResultOf;
   const rows = Object.entries(pot.entrants || {}).map(([name, e]) => {
     let pts = 0, fly = 0;
     // One cell per pick: the side on each game, then its over/under.
     const cell = (g, pick, ou, worth, score) => {
       const base = { g, pick, ou };
-      const res = sideResultOf(g);
+      const res = resOf(g);
       if (res) { const p = score(res) || 0; pts += p; return { ...base, cls: p ? "hit" : "miss", txt: p ? `+${p}` : "0" }; }
-      const lv = sideLiveOf(g);
+      const lv = live ? sideLiveOf(g) : null;
       if (lv?.found && lv.state === "in" && Number.isFinite(lv.awayScore) && Number.isFinite(lv.homeScore)) {
         const p = score(lv) || 0; fly += p;
         return { ...base, cls: p ? "live-hit" : "live-miss", txt: p ? `+${p}` : "0" };
@@ -2897,17 +2900,17 @@ function sideStandings(pot) {
       const pick = e.picks?.[g.id];
       // No pick: still hidden while open; after the close, a game added
       // later that they never picked scores nothing.
-      if (!pick) return [sideOpen(pot) ? { g, pick: null, cls: "hidden", txt: "?" } : { g, pick: null, cls: "miss", txt: "—" }];
+      if (!pick) return [live && sideOpen(pot) ? { g, pick: null, cls: "hidden", txt: "?" } : { g, pick: null, cls: "miss", txt: "—" }];
       const out = [cell(g, pick, null, pointValue(g, pick.team, pick.mode), (sc) => scorePick(g, pick, sc))];
       // An over/under is settled at the final only: 0-0 is under every
       // total, so counting it live would hand everyone points at kickoff.
-      if (g.total != null && pick.ou) out.push(sideResultOf(g) ? cell(g, pick, pick.ou, SIDE_OU_PTS, (sc) => scoreOu(g, pick.ou, sc)) : { g, pick, ou: pick.ou, cls: "open", txt: String(SIDE_OU_PTS) });
+      if (g.total != null && pick.ou) out.push(resOf(g) ? cell(g, pick, pick.ou, SIDE_OU_PTS, (sc) => scoreOu(g, pick.ou, sc)) : { g, pick, ou: pick.ou, cls: "open", txt: String(SIDE_OU_PTS) });
       return out;
     });
     return { name, pts, fly, cells, paid: !!e.paid, tb: e.tb };
   });
   rows.sort((a, b) => b.pts + b.fly - (a.pts + a.fly) || b.pts - a.pts || a.name.localeCompare(b.name));
-  return { rows, games, final: games.length > 0 && games.every((g) => sideResultOf(g)) };
+  return { rows, games, resOf, final: games.length > 0 && games.every((g) => resOf(g)) };
 }
 // The money once every pot game is final. Level on points goes to the
 // tiebreaker (closest guess at the last game's total); still level splits.
@@ -2919,7 +2922,7 @@ function sideOutcome(pot, st = sideStandings(pot)) {
   const top = Math.max(...st.rows.map((r) => r.pts));
   let lead = st.rows.filter((r) => r.pts === top);
   const tbG = pot.tbGame != null ? st.games.find((g) => String(g.id) === String(pot.tbGame)) : null;
-  const tbRes = tbG ? sideResultOf(tbG) : null;
+  const tbRes = tbG ? (st.resOf || sideResultOf)(tbG) : null;
   if (lead.length > 1 && tbRes) {
     const actual = tbRes.awayScore + tbRes.homeScore;
     const off = (r) => (Number.isFinite(r.tb) ? Math.abs(r.tb - actual) : Infinity);
@@ -2989,11 +2992,28 @@ function sideCellHtml(c) {
   return `<span class="sp-c ${c.cls}">${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ""}<i>${c.pick ? c.pick.mode : ""}</i><b>${c.txt}</b></span>`;
 }
 const SIDE_STANDALONE = true;
+// Once every side game is final, this phone hands the finals to the
+// Worker, which files the bet in the season's side bet record (apart from
+// the pool's). Once per bet per phone, unless the Worker had a gap.
+const sideFinalsSent = new Set();
+let sideHistory = null, sideHistoryAt = 0;
+function postSideFinals(pot) {
+  if (!pot || sideOpen(pot) || sideFinalsSent.has(pot.id) || !WORKER_URL) return;
+  const games = sideGames(pot);
+  if (!games.length || games.every((g) => pot.finals?.[g.id])) return;
+  const finals = Object.fromEntries(games.map((g) => [g.id, sideResultOf(g)]).filter(([, r]) => r));
+  if (Object.keys(finals).length < games.length) return;
+  sideFinalsSent.add(pot.id);
+  fetch(`${WORKER_URL}/side`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "finals", week: pot.week, potId: pot.id, finals }) })
+    .then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.ok) { pot.finals = { ...(pot.finals || {}), ...finals }; sideHistory = null; } else sideFinalsSent.delete(pot.id); })
+    .catch(() => sideFinalsSent.delete(pot.id));
+}
 function renderSidePot() {
   const el = document.getElementById("side-pot");
   if (!el) return;
   const pot = potNow();
   const names = pot ? Object.keys(pot.entrants || {}) : [];
+  try { postSideFinals(pot); } catch {}
   updateSideNav();
   renderSideScreen();
   // The side bet has its own tab now and stays off the pool's board.
@@ -8157,23 +8177,73 @@ function seasonStats(weeks, liveBlanks = {}) {
   const pct = (w, l) => (w + l ? w / (w + l) : 0);
   const sameTbN = new Set(all.filter((m) => m.tbN).map((m) => m.tbN)).size === 1;
   return {
-    ats: all.filter((m) => m.atsW + m.atsL >= 3).sort((a, b) => pct(b.atsW, b.atsL) - pct(a.atsW, a.atsL) || b.atsW - a.atsW).map((m) => ({ name: m.name, value: `${m.atsW}-${m.atsL}`, sub: `${Math.round(pct(m.atsW, m.atsL) * 100)}%` })),
-    dogs: all.filter((m) => m.dogHits).sort((a, b) => b.dogHits - a.dogHits).map((m) => ({ name: m.name, value: String(m.dogHits), sub: "" })),
-    lone: all.filter((m) => m.lone).sort((a, b) => b.lone - a.lone).map((m) => ({ name: m.name, value: String(m.lone), sub: "" })),
-    streak: all.filter((m) => m.streak >= 2).sort((a, b) => b.streak - a.streak).map((m) => ({ name: m.name, value: String(m.streak), sub: "" })),
-    fader: all.filter((m) => m.picks >= 5).sort((a, b) => b.fades / b.picks - a.fades / a.picks).map((m) => ({ name: m.name, value: `${Math.round((m.fades / m.picks) * 100)}%`, sub: `${m.fades} of ${m.picks}` })),
-    tb: all.filter((m) => m.tbN).sort((a, b) => a.tbSum / a.tbN - b.tbSum / b.tbN).map((m) => ({ name: m.name, value: (m.tbSum / m.tbN).toFixed(1), sub: sameTbN ? "" : `${m.tbN} wk${m.tbN === 1 ? "" : "s"}` })),
-    best: all.filter((m) => m.bestWeek).sort((a, b) => b.bestWeek.score - a.bestWeek.score).map((m) => ({ name: m.name, value: String(m.bestWeek.score), sub: `Week ${m.bestWeek.week}` })),
-    blanks: all.filter((m) => m.blanks).sort((a, b) => b.blanks - a.blanks).map((m) => ({ name: m.name, value: String(m.blanks), sub: "left blank" })),
+    ats: all.filter((m) => m.atsW + m.atsL >= 3).sort((a, b) => pct(b.atsW, b.atsL) - pct(a.atsW, a.atsL) || b.atsW - a.atsW).map((m) => ({ name: m.name, n: pct(m.atsW, m.atsL), value: `${m.atsW}-${m.atsL}`, sub: `${Math.round(pct(m.atsW, m.atsL) * 100)}%` })),
+    dogs: all.filter((m) => m.dogHits).sort((a, b) => b.dogHits - a.dogHits).map((m) => ({ name: m.name, n: m.dogHits, value: String(m.dogHits), sub: "" })),
+    lone: all.filter((m) => m.lone).sort((a, b) => b.lone - a.lone).map((m) => ({ name: m.name, n: m.lone, value: String(m.lone), sub: "" })),
+    streak: all.filter((m) => m.streak >= 2).sort((a, b) => b.streak - a.streak).map((m) => ({ name: m.name, n: m.streak, value: String(m.streak), sub: "" })),
+    fader: all.filter((m) => m.picks >= 5).sort((a, b) => b.fades / b.picks - a.fades / a.picks).map((m) => ({ name: m.name, n: m.fades / m.picks, value: `${Math.round((m.fades / m.picks) * 100)}%`, sub: `${m.fades} of ${m.picks}` })),
+    tb: all.filter((m) => m.tbN).sort((a, b) => a.tbSum / a.tbN - b.tbSum / b.tbN).map((m) => ({ name: m.name, n: m.tbSum / m.tbN, low: true, value: (m.tbSum / m.tbN).toFixed(1), sub: sameTbN ? "" : `${m.tbN} wk${m.tbN === 1 ? "" : "s"}` })),
+    best: all.filter((m) => m.bestWeek).sort((a, b) => b.bestWeek.score - a.bestWeek.score).map((m) => ({ name: m.name, n: m.bestWeek.score, value: String(m.bestWeek.score), sub: `Week ${m.bestWeek.week}` })),
+    blanks: all.filter((m) => m.blanks).sort((a, b) => b.blanks - a.blanks).map((m) => ({ name: m.name, n: m.blanks, value: String(m.blanks), sub: "left blank" })),
   };
 }
 
+// The season's finished side bets, from the Worker's own side record.
+// Read only for this board; nothing here feeds the pool's numbers.
+async function fetchSideHistory() {
+  if (!WORKER_URL || window.LEAGUE?.sport === "nfl") return [];
+  if (sideHistory && Date.now() - sideHistoryAt < 5 * 60 * 1000) return sideHistory;
+  try {
+    const res = await fetchCapped(`${WORKER_URL}/side?history=1&t=${Date.now()}`, { cache: "no-store" }, 8000);
+    if (res.ok) { sideHistory = (await res.json()).history || []; sideHistoryAt = Date.now(); }
+  } catch { /* keep what we had */ }
+  return sideHistory || [];
+}
+
+// Pure: side bet boards from finished bets, scored by the side bet's own
+// rules on the finals the Worker kept. Apart from seasonStats on purpose:
+// a side bet never moves a pool record.
+function sideSeasonStats(history) {
+  const by = new Map();
+  const get = (n) => by.get(n) || by.set(n, { name: n, played: 0, won: 0, net: 0, pW: 0, pL: 0, oW: 0, oL: 0, pts: 0 }).get(n);
+  for (const rec of history || []) {
+    const pot = { ...rec, own: true };
+    const st = sideStandings(pot, (g) => rec.finals?.[g.id] || null);
+    if (!st.final) continue;
+    const out = sideOutcome(pot, st);
+    for (const r of st.rows) {
+      const m = get(r.name);
+      m.played += 1; m.pts += r.pts;
+      if (out.n >= 2 && !out.push) {
+        if (out.winners.includes(r.name)) { m.won += 1; m.net += out.net; } else m.net -= rec.buyIn;
+      }
+      for (const c of r.cells) {
+        if (c.cls !== "hit" && c.cls !== "miss") continue;
+        if (!c.pick) continue;
+        if (c.ou) { if (c.cls === "hit") m.oW += 1; else m.oL += 1; } else if (c.cls === "hit") m.pW += 1; else m.pL += 1;
+      }
+    }
+  }
+  const all = [...by.values()];
+  const money = (x) => `${x > 0 ? "+" : x < 0 ? "-" : ""}${sideMoney(Math.abs(x))}`;
+  const rate = (m) => { const w = m.pW + m.oW, l = m.pL + m.oL; return w + l ? w / (w + l) : 0; };
+  return {
+    bets: (history || []).length,
+    bank: all.sort((a, b) => b.net - a.net || b.won - a.won || a.name.localeCompare(b.name)).map((m) => ({ name: m.name, n: m.net, signed: true, value: money(m.net), sub: `${m.won} of ${m.played} won` })),
+    picks: [...all].filter((m) => m.pW + m.pL + m.oW + m.oL).sort((a, b) => rate(b) - rate(a) || b.pW + b.oW - (a.pW + a.oW)).map((m) => ({ name: m.name, n: rate(m), value: `${m.pW + m.oW}-${m.pL + m.oL}`, sub: `${Math.round(rate(m) * 100)}% · O/U ${m.oW}-${m.oL}` })),
+  };
+}
+
+// Season stats: a case of trophy tiles, two across. Each tile shows the
+// leader and where the viewer stands; a tap opens the full ranking, with
+// a bar for each player. Side bets sit underneath, off the books.
+const seasonOpenTiles = new Set();
 async function renderSeasonStats() {
   const panel = document.getElementById("season-panel");
   if (!panel || panel.classList.contains("hidden")) return;
-  const weeks = await fetchSeasonLedger();
+  const [weeks, sideHist] = await Promise.all([fetchSeasonLedger(), fetchSideHistory()]);
   if (!weeks) { panel.innerHTML = `<div class="pot-empty">Could not reach the record. Try again in a moment.</div>`; return; }
-  if (!weeks.length && !GAMES.some(isGameLocked)) { panel.innerHTML = `<div class="pot-empty">Nothing on the record yet. Stats appear once a week seals.</div>`; return; }
+  if (!weeks.length && !GAMES.some(isGameLocked) && !sideHist.length) { panel.innerHTML = `<div class="pot-empty">Nothing on the record yet. Stats appear once a week seals.</div>`; return; }
   // Locked games with no pick in the week in progress, unless that week
   // is already sealed and counted above.
   const liveBlanks = {};
@@ -8187,26 +8257,57 @@ async function renderSeasonStats() {
     }
   }
   const s = seasonStats(weeks, liveBlanks);
-  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const ORD = ["1ST", "2ND", "3RD"];
-  const row = (r, i) => {
-    const av = avatarOverrides[r.name] || shown(r.name)[0];
-    return `<div class="ss-row${r.name === currentManager ? " me" : ""}${i === 0 ? " lead" : ""}"><span class="ss-rank m${i + 1}">${ORD[i]}</span><span class="ss-av" style="--accent:${accentFor(r.name)}">${esc(av)}</span><span class="ss-name">${esc(shown(r.name).toUpperCase())}</span><span class="ss-sub">${esc(r.sub)}</span><b class="ss-val">${esc(r.value)}</b></div>`;
+  const side = sideSeasonStats(sideHist);
+  const esc = escapeCd;
+  const me = currentManager;
+  const av = (n, cls = "") => `<span class="hs-av ${cls}" style="--accent:${accentFor(n)}">${esc(avatarOverrides[n] || shown(n)[0])}</span>`;
+  // Competition rank on the shown value, so a tie reads as a tie.
+  const ranked = (rows) => rows.map((r) => ({ ...r, rank: 1 + rows.filter((x) => (r.low ? x.n < r.n : x.n > r.n)).length }));
+  const ORD = (k) => `${k}${k % 100 >= 11 && k % 100 <= 13 ? "TH" : ["TH", "ST", "ND", "RD"][k % 10] || "TH"}`;
+  const tile = (key, icon, label, note, rows, color) => {
+    const list = ranked(rows);
+    const open = seasonOpenTiles.has(key);
+    const lead = list[0];
+    const tied = lead ? list.filter((r) => r.rank === 1).length - 1 : 0;
+    const mine = list.find((r) => r.name === me);
+    const top = Math.max(...list.map((r) => Math.abs(r.n)), 0) || 1;
+    const lo = Math.min(...list.map((r) => r.n));
+    const width = (r) => Math.max(6, Math.round(100 * (r.low ? (lo || 0.1) / (r.n || 0.1) : Math.abs(r.n) / top)));
+    const full = !open ? "" : `<div class="hs-full"><div class="hs-note">${note}</div>${list.map((r) => `<div class="hs-r${r.name === me ? " me" : ""}${r.rank === 1 ? " first" : ""}"><i class="hs-rk">${r.rank}</i>${av(r.name)}<span class="hs-nm">${esc(shown(r.name))}</span><span class="hs-bar"><u class="${r.signed && r.n < 0 ? "neg" : ""}" style="width:${width(r)}%"></u></span><b class="hs-v${r.signed ? (r.n > 0 ? " up" : r.n < 0 ? " down" : "") : ""}">${esc(r.value)}<small>${esc(r.sub || "")}</small></b></div>`).join("")}</div>`;
+    return `<div class="hs-tile${open ? " open" : ""}${!lead ? " empty" : ""}" style="--c:${color}">
+      <button type="button" class="hs-tap" data-hs="${key}" aria-expanded="${open}">
+        <span class="hs-t-head"><i>${icon}</i><span>${label}</span><em>${lead ? (open ? "▴" : "▾") : ""}</em></span>
+        ${lead ? `<span class="hs-lead">${av(lead.name, "big")}<span class="hs-who"><b>${esc(shown(lead.name))}</b><small>${tied ? `+${tied} tied` : esc(lead.sub || "")}</small></span><strong class="${lead.signed && lead.n < 0 ? "down" : ""}">${esc(lead.value)}</strong></span>
+        <span class="hs-you">${mine && mine.rank > 1 ? `YOU · ${ORD(mine.rank)} · ${esc(mine.value)}` : mine ? "YOU LEAD" : `${list.length} RANKED`}</span>` : `<span class="hs-none">NOBODY YET</span>`}
+      </button>${full}</div>`;
   };
-  const board = (icon, label, note, rows, cls) => {
-    const top = rows.slice(0, 3).map((r, i) => row(r, i)).join("");
-    return `<div class="ss-card ${cls}"><div class="ss-head"><i class="ss-ico">${icon}</i><span>${label}</span></div><div class="ss-desc">${note}</div><div class="ss-table">${rows.length ? top : `<div class="ss-row none">NOBODY QUALIFIES · INSERT COIN</div>`}</div></div>`;
-  };
-  panel.innerHTML = `<div class="ss-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} ON THE RECORD</small></div>
-    ${board("🎯", "BEST ATS RECORD", "Spread picks, min 3", s.ats, "hit")}
-    ${board("🔥", "HOT HAND", "Correct picks in a row, right now", s.streak, "hit")}
-    ${board("🐶", "MOST DOG HITS", "Underdogs straight up, 3 pts each", s.dogs, "upset")}
-    ${board("🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "upset")}
-    ${board("🙃", "FAVORITE FADER", "Share of picks against the favorite", s.fader, "split")}
-    ${board("📏", "TIEBREAKER SNIPER", "Average miss, lower is better", s.tb, "tb")}
-    ${board("🏆", "BEST WEEK", "Highest single week score", s.best, "move")}
-    ${s.blanks.length ? board("💤", "NO SHOWS", "Games left unpicked", s.blanks, "miss") : ""}`;
+  panel.innerHTML = `<div class="hs-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} ON THE RECORD · TAP A BOARD FOR EVERYONE</small></div>
+    <div class="hs-grid">
+      ${tile("ats", "🎯", "BEST ATS", "Spread picks, at least 3", s.ats, "var(--neon-green)")}
+      ${tile("streak", "🔥", "HOT HAND", "Correct picks in a row, right now", s.streak, "#ff9f1c")}
+      ${tile("dogs", "🐶", "DOG HITS", "Underdogs straight up, 3 pts each", s.dogs, "var(--neon-pink)")}
+      ${tile("lone", "🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "var(--neon-purple)")}
+      ${tile("fader", "🙃", "FADER", "Share of picks against the favorite", s.fader, "#7aa2ff")}
+      ${tile("tb", "📏", "TB SNIPER", "Average tiebreaker miss, lower is better", s.tb, "var(--neon-yellow)")}
+      ${tile("best", "🏆", "BEST WEEK", "Highest single week score", s.best, "var(--neon-cyan)")}
+      ${s.blanks.length ? tile("blanks", "💤", "NO SHOWS", "Games left unpicked", s.blanks, "#9a8fb5") : ""}
+    </div>
+    <div class="hs-side">
+      <div class="hs-side-h"><span>💰 SIDE BETS</span><small>OFF THE BOOKS · ${side.bets} BET${side.bets === 1 ? "" : "S"}</small></div>
+      <div class="hs-side-note">Their own record. Side bets never count toward pool standings, payouts or the boards above.</div>
+      <div class="hs-grid">
+        ${tile("side-bank", "💵", "BANKROLL", "Money won or lost across side bets", side.bank, "var(--neon-green)")}
+        ${tile("side-picks", "🎲", "SIDE PICKS", "Side bet picks right, over/unders included", side.picks, "var(--neon-yellow)")}
+      </div>
+    </div>`;
 }
+document.getElementById("season-panel")?.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-hs]");
+  if (!b) return;
+  const k = b.dataset.hs;
+  if (seasonOpenTiles.has(k)) seasonOpenTiles.delete(k); else seasonOpenTiles.add(k);
+  renderSeasonStats();
+});
 (() => {
   const toggle = document.getElementById("season-toggle");
   const panel = document.getElementById("season-panel");

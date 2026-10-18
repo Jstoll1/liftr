@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newPot, extendPot, cleanSidePicks, joinEntry, declineEntry, viewPot, entryKey, sideKey, ENTRY_MIN_MS, cleanExtraGame, CLOSE_MAX_MS } from "../src/side.js";
+import { newPot, extendPot, cleanSidePicks, joinEntry, declineEntry, viewPot, entryKey, sideKey, ENTRY_MIN_MS, cleanExtraGame, CLOSE_MAX_MS, cleanSideFinals, sideHistoryRecord } from "../src/side.js";
 
 const t = 1_800_000_000_000, H = 3600e3;
 const g = (id, h) => ({ id, away: `Away ${id}`, home: `Home ${id}`, awayShort: `A${id}`, homeShort: `H${id}`, favorite: `Home ${id}`, spread: 7, kickoff: new Date(t + h * H).toISOString() });
@@ -162,4 +162,28 @@ test("an edit never moves the lock later unless the commissioner sets a close", 
   const pot = { week: 7, id: "p1", games: [10], buyIn: 25, closesAt: t + 10 * 60000, createdAt: t - H };
   assert.equal(extendPot(pot, { games: [], slate, now: t }).pot.closesAt, t + 10 * 60000, "game 10 is 4h out, but the lock stays");
   assert.equal(extendPot(pot, { games: [], slate, now: t, closeAt: t + H }).pot.closesAt, t + H, "set by hand");
+});
+
+test("side finals: only once the pot is closed and the game could be over; kept finals stay", () => {
+  const { pot } = newPot({ week: 7, games: [8, 9], buyIn: 25, slate, now: t });
+  assert.match(cleanSideFinals(pot, { 8: { awayScore: 1, homeScore: 2 } }, null, t).error, /still open/);
+  const late = t + 4 * H;
+  assert.match(cleanSideFinals(pot, { 9: { awayScore: 1, homeScore: 2 } }, null, late).error, /can't be final/);
+  assert.match(cleanSideFinals(pot, { 8: { awayScore: -1, homeScore: 2 } }, null, late).error, /Bad score/);
+  assert.deepEqual(cleanSideFinals(pot, { 8: { awayScore: 21, homeScore: 24 }, 99: { awayScore: 1, homeScore: 1 } }, null, late).finals, { 8: { awayScore: 21, homeScore: 24 } });
+  const kept = { 8: { awayScore: 21, homeScore: 24 } };
+  assert.deepEqual(cleanSideFinals(pot, { 8: { awayScore: 0, homeScore: 0 } }, kept, late).finals, {});
+  assert.deepEqual(cleanSideFinals(pot, { 8: { awayScore: 0, homeScore: 0 } }, kept, late, true).finals, { 8: { awayScore: 0, homeScore: 0 } });
+});
+
+test("side history: a record only once every game is final, entrants only", () => {
+  const { pot } = newPot({ week: 7, games: [8, 9], buyIn: 25, slate, now: t, tbGame: 9 });
+  const entries = { Jake: { in: true, picks: { 8: { team: "Home 8", mode: "SU" } }, tb: 40, paid: true }, Logan: { in: false } };
+  assert.equal(sideHistoryRecord(pot, entries, { 8: { awayScore: 1, homeScore: 2 } }), null);
+  const rec = sideHistoryRecord(pot, entries, { 8: { awayScore: 1, homeScore: 2 }, 9: { awayScore: 3, homeScore: 4 } });
+  assert.deepEqual(Object.keys(rec.entrants), ["Jake"]);
+  assert.equal(rec.entrants.Jake.tb, 40);
+  assert.equal(rec.entrants.Jake.paid, undefined);
+  assert.equal(rec.tbGame, 9);
+  assert.equal(rec.slate.length, 2);
 });

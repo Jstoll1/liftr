@@ -1,7 +1,7 @@
 import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
 import { LiveRoom, deviceToken, deviceTokenOk } from "./live.js";
-import { sideKey, entryKey, newPot, extendPot, cleanSidePicks, joinEntry, declineEntry, viewPot } from "./side.js";
+import { sideKey, entryKey, newPot, extendPot, cleanSidePicks, joinEntry, declineEntry, viewPot, cleanSideFinals, sideHistoryRecord } from "./side.js";
 
 // The live room has to be exported from the main module for Cloudflare.
 export { LiveRoom };
@@ -1132,6 +1132,9 @@ export function maskPicks(picks, kickoffs, now, viewer) {
 // POST /side?key=...  { action: "start", week, games, buyIn, replace? }
 //                     { action: "cancel", week } | { action: "paid", week, manager, paid }
 // POST /side          { action: "join", manager, token, picks } | { action: "decline", manager, token }
+// The season's finished side bets, one per week. Kept apart from the
+// pool's record and kept for good, like the week summaries.
+const SIDE_HISTORY_KEY = "side:history";
 async function sideEntries(env, pot) {
   const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(entryKey(pot.week, pot.id, m), "json")]));
   return Object.fromEntries(rows.filter(([, e]) => e));
@@ -1142,6 +1145,12 @@ async function handleSide(request, env, corsHeaders, url) {
   const noStore = { ...corsHeaders, "Cache-Control": "no-store" };
   const keep = { expirationTtl: 120 * 24 * 3600 };
   if (request.method === "GET") {
+    // Every finished side bet this season, for the side bets board in
+    // season stats. Only finished bets are kept, so every pick is public.
+    if (url.searchParams.get("history") === "1") {
+      const hist = (await env.LIFTR_KV.get(SIDE_HISTORY_KEY, "json")) || {};
+      return json({ history: Object.values(hist).sort((a, b) => a.week - b.week) }, 200, noStore);
+    }
     const week = await weekFrom(env, url);
     const pot = await env.LIFTR_KV.get(sideKey(week), "json");
     if (!pot) return json({ week, pot: null }, 200, noStore);
@@ -1181,6 +1190,22 @@ async function handleSide(request, env, corsHeaders, url) {
     if (made.error) return json({ error: made.error }, 400, corsHeaders);
     await env.LIFTR_KV.put(sideKey(week), JSON.stringify(made.pot), keep);
     return json({ ok: true, pot: viewPot(made.pot, {}, now, viewAll) }, 200, noStore);
+  }
+
+  // Finals for the pot's games, from whichever phone sees them end. Once
+  // every game has one, the bet goes into the season's side bet record.
+  if (action === "finals") {
+    if (!pot || String(body.potId) !== String(pot.id)) return json({ error: "That side bet is gone." }, 404, corsHeaders);
+    const clean = cleanSideFinals(pot, body.finals, pot.finals, now, isSlateAdmin(env, url));
+    if (clean.error) return json({ error: clean.error }, 400, corsHeaders);
+    const finals = { ...(pot.finals || {}), ...clean.finals };
+    if (Object.keys(clean.finals).length) await env.LIFTR_KV.put(sideKey(week), JSON.stringify({ ...pot, finals }), keep);
+    const rec = sideHistoryRecord(pot, await sideEntries(env, pot), finals);
+    if (rec) {
+      const hist = (await env.LIFTR_KV.get(SIDE_HISTORY_KEY, "json")) || {};
+      if (JSON.stringify(hist[week]) !== JSON.stringify(rec)) { hist[week] = rec; await env.LIFTR_KV.put(SIDE_HISTORY_KEY, JSON.stringify(hist)); }
+    }
+    return json({ ok: true, stored: Object.keys(clean.finals).length, recorded: !!rec }, 200, noStore);
   }
 
   if (action !== "join" && action !== "decline") return json({ error: "Unknown action" }, 400, corsHeaders);

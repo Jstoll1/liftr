@@ -150,5 +150,38 @@ export function viewPot(pot, entries, now, viewer) {
     const show = !open || viewer?.all || viewer?.me === n;
     entrants[n] = { at: e.at, ...(e.paid ? { paid: true } : {}), ...(show ? { picks: e.picks, ...(e.tb != null ? { tb: e.tb } : {}) } : { hidden: true }) };
   }
-  return { week: pot.week, id: pot.id, games: pot.games, ...(pot.slate ? { slate: pot.slate } : {}), ...(pot.tbGame != null ? { tbGame: pot.tbGame } : {}), buyIn: pot.buyIn, closesAt: pot.closesAt, createdAt: pot.createdAt, open, entrants, declined };
+  return { week: pot.week, id: pot.id, games: pot.games, ...(pot.slate ? { slate: pot.slate } : {}), ...(pot.tbGame != null ? { tbGame: pot.tbGame } : {}), buyIn: pot.buyIn, closesAt: pot.closesAt, createdAt: pot.createdAt, ...(pot.finals ? { finals: pot.finals } : {}), open, entrants, declined };
+}
+
+// The finals for a pot's games, posted by the first phone that sees them
+// end (the same way the week's own finals come in). A game only takes a
+// final once it could be over: a first half an hour and a quarter after
+// kickoff, a whole game or a second half two and a half hours after. A
+// final already kept stays unless the commissioner sends it again.
+// Returns { finals } with what is new, or { error }.
+const FINAL_AFTER_MS = { 1: 75 * 60000, 2: 150 * 60000, full: 150 * 60000 };
+export function cleanSideFinals(pot, posted, kept, now, admin = false) {
+  if (!pot || now < pot.closesAt) return { error: "The side bet is still open." };
+  const byId = new Map((pot.slate || []).map((g) => [String(g.id), g]));
+  const out = {};
+  for (const [id, f] of Object.entries(posted || {})) {
+    const g = byId.get(String(id));
+    if (!g) continue;
+    if (kept?.[id] && !admin) continue;
+    const a = Number(f?.awayScore), h = Number(f?.homeScore);
+    if (!Number.isInteger(a) || !Number.isInteger(h) || a < 0 || h < 0 || a > 200 || h > 200) return { error: `Bad score for game ${id}.` };
+    if (now < kickMs(g) + FINAL_AFTER_MS[g.half || "full"]) return { error: `Game ${id} can't be final yet.` };
+    out[id] = { awayScore: a, homeScore: h };
+  }
+  return { finals: out };
+}
+
+// What the season keeps of a side bet once every game is final: the games,
+// the finals, and who was in with what they picked. It sits apart from the
+// pool's record, so nothing here moves a standing or a pool stat.
+export function sideHistoryRecord(pot, entries, finals) {
+  if (!pot || !(pot.slate || []).length || !pot.slate.every((g) => finals?.[g.id])) return null;
+  const entrants = {};
+  for (const [n, e] of Object.entries(entries || {})) if (e?.in && e.picks) entrants[n] = { picks: e.picks, ...(e.tb != null ? { tb: e.tb } : {}) };
+  return { week: pot.week, id: pot.id, buyIn: pot.buyIn, games: pot.games, slate: pot.slate, ...(pot.tbGame != null ? { tbGame: pot.tbGame } : {}), finals, entrants };
 }
