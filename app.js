@@ -2921,10 +2921,10 @@ function maybeShowSidePrompt() {
 
 // The side pot's admin panel, mounted by the app owner's console (Side bet
 // tab) and the slate editor alike. Pick games, at the slate's lines, that
-// have not kicked off or only just have, and a buy-in; once running, it
+// are not over (still to come, or on now with the score shown), and a buy-in; once running, it
 // shows who is in (never their picks before the close), who said no, who
 // has paid, and the result. getKey resolves the admin key; say reports.
-const SIDE_RECENT_MS = 30 * 60000; // matches RECENT_MS in worker/src/side.js
+const SIDE_LIVE_MS = 5 * 3600000; // matches LIVE_MS in worker/src/side.js
 async function mountSideAdmin(box, getKey, say) {
   if (!box) return;
   const esc = escapeCd;
@@ -2953,8 +2953,9 @@ async function mountSideAdmin(box, getKey, say) {
     const now = Date.now();
     const games = gamesByKickoff();
     if (!pot) {
-      // In: not kicked off, or kicked off in the last half hour and not over.
-      const ok = (g) => { const k = new Date(g.kickoff).getTime(); return now < k + SIDE_RECENT_MS && !latestLive[g.id]?.completed; };
+      // In: anything not over. A game on now shows its score, so a lopsided
+      // one at the pregame line is easy to leave out.
+      const ok = (g) => { const k = new Date(g.kickoff).getTime(); return now < k + SIDE_LIVE_MS && !latestLive[g.id]?.completed; };
       const avail = games.filter(ok);
       const preset = new Set(avail.slice(-3).map((g) => g.id));
       const tag = (g) => {
@@ -2963,9 +2964,9 @@ async function mountSideAdmin(box, getKey, say) {
         return `<b class="as-live">ON NOW${l?.found && l.state === "in" ? ` · ${esc(shortStatus(l.detail || ""))} · ${l.awayScore}-${l.homeScore}` : ""}</b>`;
       };
       const line = (g) => `${g.favorite === g.home ? esc(g.homeShort) : esc(g.awayShort)} -${g.spread}`;
-      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Pick games at this week's lines. Everyone who opts in picks the same games. Entry closes at the first kickoff, or 20 minutes after you start it if that's later.</div>
-        ${avail.length ? `<div class="as-games">${avail.map((g) => `<label class="as-game"><input type="checkbox" value="${g.id}"${preset.has(g.id) ? " checked" : ""}><span>G${g.id} · ${esc(g.awayShort)} @ ${esc(g.homeShort)}<small class="as-line">${line(g)}</small></span><small>${tag(g)}</small></label>`).join("")}</div>` : `<div class="as-none">No games left that haven't kicked off or only just have.</div>`}
-        ${games.length > avail.length && avail.length ? `<div class="as-out">${games.length - avail.length} ${games.length - avail.length === 1 ? "game is" : "games are"} over or too far along.</div>` : ""}
+      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Pick games at this week's lines, still to come or on now. Everyone who opts in picks the same games. Entry closes at the first kickoff, or 20 minutes after you start it if that's later. A game on now keeps its pregame line, so check the score before adding it.</div>
+        ${avail.length ? `<div class="as-games">${avail.map((g) => `<label class="as-game"><input type="checkbox" value="${g.id}"${preset.has(g.id) ? " checked" : ""}><span>G${g.id} · ${esc(g.awayShort)} @ ${esc(g.homeShort)}<small class="as-line">${line(g)}</small></span><small>${tag(g)}</small></label>`).join("")}</div>` : `<div class="as-none">Every game this week is over.</div>`}
+        ${games.length > avail.length && avail.length ? `<div class="as-out">${games.length - avail.length} ${games.length - avail.length === 1 ? "game is" : "games are"} over.</div>` : ""}
         <label class="as-buy">Buy-in $<input type="number" inputmode="numeric" min="1" max="500" step="1" value="25"></label>
         <button type="button" class="admin-btn primary wide as-start"${avail.length ? "" : " disabled"}>Start side bet</button>`;
       box.querySelector(".as-start")?.addEventListener("click", async (ev) => {
