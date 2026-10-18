@@ -3523,19 +3523,34 @@ function renderSideScreen() {
   };
   // The scoreboard: everyone's picks and points once entry has closed.
   const board = open ? "" : sideBoardHtml(pot, st, out, me);
+  // Final: the result up top, like a game over screen. The winner (or
+  // winners) large with the money, then the next places on a podium.
+  const avatar = (n, cls = "") => `<span class="sf-av ${cls}" style="--accent:${accentFor(n)}">${escapeCd(avatarOverrides[n] || shown(n)[0])}</span>`;
+  const hero = !out.final || out.n < 2 || out.push ? "" : (() => {
+    const tot = (n) => { const r = st.rows.find((x) => x.name === n); return r ? r.pts : 0; };
+    const others = sideRowsInOrder(st, out).filter((r) => !out.winners.includes(r.name)).slice(0, 2);
+    return `<div class="sf-hero">
+      <div class="sf-kick">🏆 ${out.winners.length > 1 ? "SPLIT POT" : "WINNER"}</div>
+      <div class="sf-win">${out.winners.map((n) => `<div class="sf-w">${avatar(n, "big")}<b>${escapeCd(shown(n))}</b><span class="sf-pts">${tot(n)} pts</span></div>`).join("")}</div>
+      <div class="sf-money">+${sideMoney(out.net)}${out.winners.length > 1 ? " each" : ""}</div>
+      <div class="sf-how">${out.tiebreak ? `Won on the tiebreaker · ${escapeCd(sideMatch(st.games.find((g) => String(g.id) === String(pot.tbGame)) || {}))} total ${out.tiebreak.actual}` : `Pot ${sideMoney(out.total)} · ${out.n} in`}</div>
+      ${others.length ? `<div class="sf-pod">${others.map((r, i) => `<span>${i === 0 ? "🥈" : "🥉"} ${avatar(r.name)}${escapeCd(shown(r.name))} <b>${r.pts}</b></span>`).join("")}</div>` : ""}
+    </div>`;
+  })();
   // Settle up: who owes and who collects, with paid marks from the console.
   const settle = !out.final ? "" : out.n < 2 || out.push ? `<div class="ss-sec">SETTLE UP</div><div class="ss-note">${out.n < 2 ? "One taker: no money moves." : "Everyone level: no money moves."}</div>`
-    : `<div class="ss-sec">SETTLE UP</div><div class="ss-ledger">${out.losers.map((n) => `<div class="ss-led"><span>${escapeCd(shown(n))}</span><span>owes ${sideMoney(pot.buyIn)}</span><b class="${pot.entrants[n]?.paid ? "paid" : ""}">${pot.entrants[n]?.paid ? "PAID ✓" : "UNPAID"}</b></div>`).join("")}${out.winners.map((n) => `<div class="ss-led win"><span>${escapeCd(shown(n))}</span><span>collects ${sideMoney(out.net)}</span><b>🏆</b></div>`).join("")}</div>`;
+    : `<div class="ss-sec">SETTLE UP</div><div class="sf-ledger">${out.losers.map((n) => `<div class="sf-led${pot.entrants[n]?.paid ? " paid" : ""}">${avatar(n)}<span class="sf-nm">${escapeCd(shown(n))}</span><span class="sf-arrow">→ ${out.winners.map((w) => escapeCd(shown(w))).join(" & ")}</span><b>${sideMoney(pot.buyIn)}</b><em>${pot.entrants[n]?.paid ? "PAID ✓" : "UNPAID"}</em></div>`).join("")}</div>`;
   const who = open ? `<div class="ss-sec">WHO'S IN · ${names.length}</div><div class="ss-names">${names.length ? names.map((n) => `<span class="${n === me ? "me" : ""}">${escapeCd(shown(n))}</span>`).join("") : `<em>Nobody yet</em>`}</div><div class="ss-note">Everyone's picks show here when entry closes.</div>` : "";
   const action = open ? `<button type="button" class="sp-btn ss-edit" data-sp="open">${!mine ? `I'M IN · ${sideMoney(pot.buyIn)}` : sideNeedsPicks(pot, me) ? "FINISH MY PICKS" : "EDIT MY PICKS"}</button>` : "";
   body.innerHTML = `<div class="ss-head"><span class="sp-kick">💰 SIDE BET</span><span class="sp-pot">${sideMoney(names.length * pot.buyIn)}</span></div>
-    <div class="ss-status">${status}</div>
+    ${hero ? "" : `<div class="ss-status">${status}</div>`}
     <div class="ss-sub">${names.length} in · ${sideMoney(pot.buyIn)} each · most points takes it${tbG ? ` · tiebreaker: ${escapeCd(sideMatch(tbG))}${out.tiebreak ? ` (${out.tiebreak.actual})` : ""}` : ", ties split"}</div>
     ${action}
+    ${hero}
+    ${settle}
     ${board}
     <div class="ss-sec">GAMES</div>
     <div class="ss-bugs">${sideGames(pot).map(bug).join("")}</div>
-    ${settle}
     ${who}`;
 }
 document.getElementById("side-screen-body")?.addEventListener("click", (e) => {
