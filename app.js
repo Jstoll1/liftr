@@ -7675,12 +7675,15 @@ window.previewPathIntro = () => maybeShowPathIntro(true);
 // and decodes, so logos blinked out and back every few seconds. A redraw
 // now moves each logo already on screen into the new layout in place of
 // its fresh copy (same address, taking the fresh copy's attributes), so a
-// painted logo is never replaced. New logos still load as before.
+// logo on screen, painted or still loading, is never replaced.
 function keepLogos(el, draw) {
   if (!el) return draw();
   const have = new Map();
   for (const img of el.querySelectorAll("img")) {
-    if (!img.complete || !img.naturalWidth) continue;
+    // A logo still loading is kept too: moving it keeps its download, where
+    // a fresh copy would start over (a saved board followed a second later
+    // by the fresh one would otherwise blink every logo on open).
+    if (img.complete && !img.naturalWidth) continue; // a broken one gets a fresh try
     const list = have.get(img.src) || [];
     list.push(img); have.set(img.src, list);
   }
