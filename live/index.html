@@ -1523,7 +1523,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   // of copy and it lands here to redraw (freeform or from a preset) or to
   // rewrite (by hand or by the writer). Drafts can be tried in place in the
   // frame before anyone else sees them; only Publish changes the app.
-  const cv = { pick: null, mode: "free", style: "arcade", note: "", typed: "", tone: "hype", busy: false, msg: "", shown: null };
+  const cv = { edit: false, pick: null, mode: "free", style: "arcade", note: "", typed: "", tone: "hype", busy: false, msg: "", shown: null };
   const cvKey = (p) => p.kind === "img" ? `img:${p.slot}` : p.slot;
   const cvFrame = () => studioEl.querySelector("#sd-cv-frame");
   const cvSend = (m) => cvFrame()?.contentWindow?.postMessage(m, location.origin);
@@ -1547,7 +1547,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   }
   function cvPanel() {
     const p = cv.pick;
-    if (!p) return `<div class="cv-empty"><b>Tap anything in the preview</b><span>A logo, an award icon, a tile picture, a heading or a label. It opens here to redraw or rewrite.</span><small>Scores, records and owner names always come from the app.</small></div>${cv.msg ? `<p class="sd-err">${esc(cv.msg)}</p>` : ""}`;
+    if (!p) return `<div class="cv-empty"><b>${cv.edit ? "Tap anything in the preview" : "Browse to the screen you want"}</b><span>${cv.edit ? "" : "Use the app as normal: get past the splash, open a tab. Then switch to <b>Tap to edit</b>.<br>"}</span><span>A logo, an award icon, a tile picture, a heading or a label. It opens here to redraw or rewrite.</span><small>Scores, records and owner names always come from the app.</small></div>${cv.msg ? `<p class="sd-err">${esc(cv.msg)}</p>` : ""}`;
     const vers = cvVersions(p);
     const live = vers.find((v) => v.status === "PUBLISHED");
     const draft = (v) => {
@@ -1581,8 +1581,9 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       ${vers.length ? `<div class="cv-vh">Versions for this spot</div><div class="cv-vers">${vers.map(draft).join("")}</div>` : ""}</div>
       <p class="sd-foot">Try it shows a draft in the preview only. Approve keeps it private; Publish puts it in the app.</p>`;
   }
+  function cvSwitch() { return `<button type="button" class="${cv.edit ? "" : "on"}" data-cv-edit="0">Browse</button><button type="button" class="${cv.edit ? "on" : ""}" data-cv-edit="1">Tap to edit</button>`; }
   function sdCanvas() {
-    return `<section class="panel cv-wrap"><div class="cv-stage"><div class="cv-phone"><iframe id="sd-cv-frame" src="../?studio=1" title="App preview"></iframe></div><button type="button" class="cv-reload" data-cv-reload="1">${ICONS.refresh}<span>Reload preview</span></button></div><div class="cv-side" id="sd-cv-panel">${cvPanel()}</div></section>`;
+    return `<section class="panel cv-wrap"><div class="cv-stage"><div class="cv-modes cv-sw" id="cv-sw">${cvSwitch()}</div><div class="cv-phone"><iframe id="sd-cv-frame" src="../?studio=1" title="App preview" onload="this.contentWindow.postMessage({type:'studio-mode',edit:${cv.edit}},location.origin)"></iframe></div><button type="button" class="cv-reload" data-cv-reload="1">${ICONS.refresh}<span>Reload preview</span></button></div><div class="cv-side" id="sd-cv-panel">${cvPanel()}</div></section>`;
   }
   window.addEventListener("message", (e) => {
     if (e.origin !== location.origin || e.data?.type !== "studio-pick") return;
@@ -1702,6 +1703,14 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     paintStudio();
   }
   studioEl.addEventListener("click", async (e) => {
+    const sw = e.target.closest("[data-cv-edit]");
+    if (sw) {
+      cv.edit = sw.dataset.cvEdit === "1";
+      cvSend({ type: "studio-mode", edit: cv.edit });
+      const f = cvFrame(); if (f) f.setAttribute("onload", `this.contentWindow.postMessage({type:'studio-mode',edit:${cv.edit}},location.origin)`);
+      const box = studioEl.querySelector("#cv-sw"); if (box) box.innerHTML = cvSwitch();
+      return paintStudio();
+    }
     const c = e.target.closest("[data-cv-mode],[data-cv-try],[data-cv-act],[data-cv-go],[data-cv-reload]");
     if (c) {
       if (c.dataset.cvMode) { cv.mode = c.dataset.cvMode; cv.msg = ""; return paintStudio(); }

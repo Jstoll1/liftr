@@ -8185,7 +8185,6 @@ document.addEventListener("DOMContentLoaded", () => applySlots(document.body));
 // Inside the Studio's Canvas: every graphic and line of copy is tappable,
 // and a tap tells the Studio what was picked instead of using the app.
 if (STUDIO) {
-  document.documentElement.classList.add("studio-canvas");
   const pickCopy = (e) => {
     const r = document.caretRangeFromPoint?.(e.clientX, e.clientY);
     let n = r?.startContainer;
@@ -8194,7 +8193,13 @@ if (STUDIO) {
     const orig = n.__slotOrig || n.nodeValue.trim();
     return copyOk(orig) ? { n, orig } : { bad: orig };
   };
+  // Browse mode uses the app as normal (past the splash, between tabs);
+  // Edit mode turns taps into picks. The Studio flips it.
+  let editing = false;
+  const setEditing = (on) => { editing = !!on; document.documentElement.classList.toggle("studio-canvas", editing); };
+  setEditing(false);
   document.addEventListener("click", (e) => {
+    if (!editing) return;
     const img = e.target.closest?.("img");
     e.preventDefault(); e.stopPropagation();
     if (img && (img.dataset.slotOf || slotOfImg(img))) {
@@ -8210,6 +8215,7 @@ if (STUDIO) {
   }, true);
   window.addEventListener("message", (e) => {
     if (e.origin !== location.origin || !e.data) return;
+    if (e.data.type === "studio-mode") { setEditing(e.data.edit); return; }
     if (e.data.type === "studio-preview") {
       if (e.data.value == null) delete slotPreview[e.data.key]; else slotPreview[e.data.key] = e.data.value;
       applySlots(document.body);
