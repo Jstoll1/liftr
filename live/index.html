@@ -126,12 +126,12 @@ body.pv-open .tabs { display: none; }
 .inp small { font: 600 11px var(--mono); color: var(--green); }
 .kstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .01)), var(--panel); border: 1px solid var(--line); overflow: hidden; }
 @media (min-width: 1024px) { .kstats { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
-.ks { min-width: 0; padding: 10px 12px; border-right: 1px solid rgba(255, 255, 255, .05); border-bottom: 1px solid rgba(255, 255, 255, .05); cursor: default; }
+.ks { min-width: 0; display: flex; flex-direction: column; padding: 11px 12px 10px; border-right: 1px solid rgba(255, 255, 255, .05); border-bottom: 1px solid rgba(255, 255, 255, .05); cursor: default; }
 .ks[data-tip]:hover { background: rgba(255, 255, 255, .03); }
 .ks em { display: block; font: 700 9.5px/1.2 var(--mono); letter-spacing: .12em; color: var(--dim); font-style: normal; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ks b { display: block; margin-top: 5px; font: 800 21px/1 var(--mono); color: var(--text); letter-spacing: -.01em; }
 .ks b small { font-size: 12px; color: var(--dim); font-weight: 700; margin-left: 1px; }
-.ks span { display: block; margin-top: 4px; font-size: 11.5px; color: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks span { display: block; min-height: 1.2em; margin-top: 5px; font-size: 11.5px; color: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Avatars */
 .av { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--c); color: #0b0716; font: 800 13px/1 system-ui, sans-serif; position: relative; }
@@ -154,11 +154,11 @@ body.pv-open .tabs { display: none; }
 .ln-l.idle .nm { color: var(--dim); }
 .ln-t { position: relative; height: 34px; border-radius: 8px; background: rgba(255, 255, 255, .025); }
 .ln-t.sel { background: rgba(139, 108, 255, .08); }
-.tl-over { position: absolute; top: 0; bottom: 22px; left: var(--lab); right: 0; pointer-events: none; }
+.tl-over { position: absolute; top: 26px; bottom: 0; left: var(--lab); right: 0; pointer-events: none; }
 .tl-over .night { position: absolute; top: 0; bottom: 0; background: rgba(0, 0, 0, .22); }
 .tl-over .hr { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255, 255, 255, .05); }
 .tl-over .hr.mid { background: rgba(255, 255, 255, .14); }
-.tl-over .now { position: absolute; top: -6px; bottom: 0; right: 0; width: 2px; background: var(--green); box-shadow: 0 0 10px var(--green); }
+.tl-over .now { position: absolute; top: -8px; bottom: 0; right: 0; width: 2px; background: var(--green); box-shadow: 0 0 10px var(--green); }
 .blk { position: absolute; top: 7px; height: 20px; min-width: 6px; border-radius: 5px; background: var(--past); box-shadow: 0 0 0 1px rgba(11, 7, 22, .6); cursor: pointer; transition: filter .15s, transform .15s; }
 .blk:hover { filter: brightness(1.25); transform: scaleY(1.12); }
 .blk.live { background: linear-gradient(90deg, var(--live), #3dfc8f); box-shadow: 0 0 14px rgba(61, 252, 143, .55); }
@@ -169,8 +169,8 @@ body.pv-open .tabs { display: none; }
 .blk.short { top: 10px; height: 14px; min-width: 10px; }
 @keyframes livepulse { 50% { box-shadow: 0 0 22px rgba(61, 252, 143, .85); } }
 .blk.focus { outline: 2px solid #fff; outline-offset: 1px; }
-.tl-ax { grid-column: 2; position: relative; height: 22px; }
-.tl-ax span { position: absolute; top: 6px; transform: translateX(-50%); font: 11px var(--mono); color: var(--dim); white-space: nowrap; }
+.tl-ax { grid-column: 2; position: relative; height: 22px; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.tl-ax span { position: absolute; top: 3px; transform: translateX(-50%); font: 11px var(--mono); color: var(--dim); white-space: nowrap; }
 .tl-ax span.nowl { transform: translateX(-100%); color: var(--green); font-weight: 700; }
 
 /* Range switch */
@@ -179,9 +179,9 @@ body.pv-open .tabs { display: none; }
 .ph .key + .seg { margin-left: 12px; }
 .seg button { padding: 4px 10px; font: 600 12px/1.2 var(--mono); color: var(--dim); background: none; border: 0; border-radius: 7px; }
 .seg button.on { color: var(--text); background: rgba(139, 108, 255, .25); box-shadow: inset 0 0 0 1px rgba(139, 108, 255, .5); }
-.tl-hint { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: -4px 0 12px; font-size: 12px; color: var(--dim); }
+.tl-hint { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin: -2px 0 10px; font-size: 11.5px; color: var(--dim); }
 .ln-l.quiet { opacity: .45; }
-.ln-t.quiet { opacity: .5; }
+.ln-t.quiet { background: rgba(255, 255, 255, .018); }
 .sub2 { margin: 0 0 8px; font: 600 11px/1.3 var(--mono); letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
 
 /* The week: when in the day, a punch card */
@@ -589,18 +589,18 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       const byDay = dayList.map((d) => ({ d, ms: wv.reduce((a, v) => a + wTime(v, d, d + DAY), 0), who: new Set(wv.filter((v) => wTime(v, d, d + DAY)).map((v) => v.n)) }));
       const best = byDay.reduce((m, x) => (x.ms > m.ms ? x : m), { ms: 0 });
       return [
-        ks("In today", `${inToday.length}<small>/${names.length}</small>`, "", todayTip),
+        ks("In today", `${inToday.length}<small>/${names.length}</small>`, "players", todayTip),
         ks("Visits · 7d", wv.length, `${new Set(wv.map((v) => v.n)).size} people`),
         ks("Time in app", t ? amt(t) : "–", "7 days"),
-        ks("Avg visit", wv.length ? amt(t / wv.length) : "–", ""),
+        ks("Avg visit", wv.length ? amt(t / wv.length) : "–", "per visit"),
         ks("Busiest", best.ms ? esc(new Date(best.d).toLocaleDateString([], { weekday: "short" })) : "–", best.ms ? `${mins(best.ms)} · ${best.who.size} ppl` : "", best.ms ? `<b>${dLong(best.d)}</b>${mins(best.ms)} in the app · ${[...best.who].map(name).join(", ")}` : ""),
         ks("A day", (wv.length / 7).toFixed(1), "visits"),
       ].join("");
     })() : [
-      ks("In today", `${inToday.length}<small>/${names.length}</small>`, "", todayTip),
+      ks("In today", `${inToday.length}<small>/${names.length}</small>`, "players", todayTip),
       ks("Visits · 24h", vs.length, `${new Set(vs.map((v) => v.n)).size} people`),
       ks("Time in app", time ? amt(time) : "–", "24 hours"),
-      ks("Avg visit", vs.length ? amt(time / vs.length) : "–", ""),
+      ks("Avg visit", vs.length ? amt(time / vs.length) : "–", "per visit"),
       ks("Peak hour", peak.n ? hourLab(peak.start) : "–", peak.n ? `${peak.who.size} ${peak.who.size === 1 ? "person" : "ppl"}` : "", peak.n ? `<b>${hourLab(peak.start)} hour</b>${peak.n} actions · ${[...peak.who].map(name).join(", ")}` : ""),
       ks("Actions", actions.length, "24 hours"),
     ].join("");
@@ -638,7 +638,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         const acts = g.list.reduce((t, v) => t + v.acts.length, 0);
         const size = g.live || inApp >= 5 * 60000 ? "" : inApp < 60000 ? " peek" : " short";
         const tip = `<b>${esc(name(n))}${g.live ? " · in now" : ""}</b>${g.list.length > 1 ? `${g.list.length} visits · ` : ""}${esc(hm(g.start))}${g.live ? "" : ` to ${esc(hm(g.end))}`} · ${esc(dur(inApp))} in the app<br>${acts} action${acts === 1 ? "" : "s"}${first.app ? ` · ${first.app === "home" ? "home screen app" : "browser"}` : ""}`;
-        return `<i class="blk${size}${g.live ? " live" : ""}${g.list.some((v) => st.focus === `${v.n}|${v.start}`) ? " focus" : ""}" style="${g.live ? `right:0;width:max(10px, ${(100 - xp(g.start)).toFixed(3)}%)` : `left:${xp(g.start)}%;width:${(xp(g.end) - xp(g.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}"></i>`;
+        return `<i class="blk${size}${g.live ? " live" : ""}${g.list.some((v) => st.focus === `${v.n}|${v.start}`) ? " focus" : ""}" style="${g.live ? `right:0;width:max(10px, ${(100 - xp(g.start)).toFixed(3)}%)` : `left:min(${xp(g.start)}%, calc(100% - ${size ? 14 : 8}px));width:${(xp(g.end) - xp(g.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}"></i>`;
       }).join("");
       // Nobody in the window: the lane steps back.
       return `${laneLabel(n).replace('class="ln-l', `class="ln-l${mine.length ? "" : " quiet"}`)}<div class="ln-t${st.filter === n ? " sel" : ""}${mine.length ? "" : " quiet"}">${blocks}</div>`;
@@ -686,11 +686,11 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       ${weekView()}
     </section>` : `<section class="tl panel" id="sec-tl">
       <div class="ph"><h2>Last ${spanH} hours</h2>${seg}</div>
-      <div class="tl-hint"><span>a bar per sitting: dot = quick look, short = under 5 min, tall = longer · tap a name to see only theirs</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
+      <div class="tl-hint"><span>Dot: quick look · short: under 5 min · tall: longer</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
       <div class="tl-grid">
+        <span></span><div class="tl-ax">${axis}</div>
         <div class="tl-over">${nights.map(([a, b]) => `<i class="night" style="left:${xp(a)}%;width:${(xp(b) - xp(a)).toFixed(3)}%"></i>`).join("")}${marks.map((t) => `<i class="hr${new Date(t).getHours() === 0 ? " mid" : ""}" style="left:${xp(t)}%"></i>`).join("")}<i class="now"></i></div>
         ${lanes}
-        <div class="tl-ax">${axis}</div>
       </div>
     </section>`;
 
