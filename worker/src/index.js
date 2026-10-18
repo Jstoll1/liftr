@@ -1,5 +1,7 @@
 import { setSport, runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
+import { LiveRoom, deviceToken, deviceTokenOk } from "./live.js";
+export { LiveRoom };
 // Liftr AI Worker
 //
 // Holds the OpenAI API key server-side (never exposed to the browser) and
@@ -108,6 +110,14 @@ export default {
     }
     if (url.pathname === "/admin-check") {
       return handleAdminCheck(env, corsHeaders, url);
+    }
+    if (url.pathname === "/presence") {
+      return handlePresence(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/presence-device") {
+      if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+      if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+      return json(await deviceToken(env.ARCHIVE_LOG_KEY, Date.now()), 200, { ...corsHeaders, "Cache-Control": "no-store" });
     }
     if (url.pathname === "/visit") {
       return handleVisit(request, env, corsHeaders, url);
@@ -1117,10 +1127,24 @@ const PICKS_CACHE_MS = 5000;
 // locks at the week's first kickoff, so every game's lock time is the
 // earliest kickoff. Before that, each game locked at its own.
 let LOCK_ALL_FROM_WEEK = 4;
+// The NFL lock: every game from Sunday's 1pm ET kickoff on locks at that
+// kickoff, so all of Sunday, Sunday night and Monday are in by 1pm. A game
+// before it (Thursday night, a London morning) locks at its own kickoff,
+// since by Sunday it has been played. The app applies the same rule.
+const ET_PARTS = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", hourCycle: "h23" });
+export function sundayLockAt(times) {
+  const at = times.filter(Number.isFinite).filter((t) => { const p = Object.fromEntries(ET_PARTS.formatToParts(new Date(t)).map((x) => [x.type, x.value])); return p.weekday === "Sun" && Number(p.hour) >= 13; });
+  return at.length ? Math.min(...at) : null;
+}
+export function nflLocks(times) {
+  const anchor = sundayLockAt(times);
+  return times.map((t) => (anchor == null || !Number.isFinite(t) ? t : Math.min(t, anchor)));
+}
 async function kickoffsFor(env, week) {
   const wk = await env.LIFTR_KV.get(gamesKey(week), "json");
   if (wk && Array.isArray(wk.games) && wk.games.length) {
     const times = wk.games.map((g) => new Date(g.kickoff).getTime());
+    if (SPORT === "nfl") { const locks = nflLocks(times); return Object.fromEntries(wk.games.map((g, i) => [String(g.id), locks[i]])); }
     const first = Math.min(...times);
     return Object.fromEntries(wk.games.map((g, i) => [String(g.id), week >= LOCK_ALL_FROM_WEEK ? first : times[i]]));
   }
@@ -2116,7 +2140,8 @@ async function handleSeason(request, env, corsHeaders, url) {
       const ks = Object.fromEntries((wk.games || []).map((g) => [String(g.id), Date.parse(g.kickoff)]));
       const lockAll = Number(n) >= LOCK_ALL_FROM_WEEK && Object.values(ks).some(Number.isFinite);
       const first = lockAll ? Math.min(...Object.values(ks).filter(Number.isFinite)) : null;
-      const kicks = lockAll ? Object.fromEntries(Object.keys(ks).map((id) => [id, first])) : (Number(n) === 1 && !wk.games ? PICKS_KICKOFF : ks);
+      const nfl = SPORT === "nfl" && wk.games ? Object.fromEntries(Object.keys(ks).map((id, i, ids) => [id, nflLocks(ids.map((x) => ks[x]))[i]])) : null;
+      const kicks = nfl || (lockAll ? Object.fromEntries(Object.keys(ks).map((id) => [id, first])) : (Number(n) === 1 && !wk.games ? PICKS_KICKOFF : ks));
       season[n] = { ...wk, picks: maskPicks(wk.picks, kicks, now, { all: false, me: null }) };
     }
     return { ...data, season };
@@ -3615,5 +3640,52 @@ async function handleVisit(request, env, corsHeaders, url) {
   // 1,000 opens: weeks of history for the admin dashboard at the 5-minute
   // throttle; one write per open either way, about 100 KB at the cap.
   await env.LIFTR_KV.put(key(m), JSON.stringify(list.slice(0, 1000)));
+  return json({ ok: true }, 200, corsHeaders);
+}
+
+// Presence, the same as the college Worker: phones report what's open and
+// what's being used (POST, no key); brochiefs.com/live reads the room (GET,
+// the admin key or a device it signed). One Durable Object holds it.
+async function presenceExtra(env) {
+  const names = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m));
+  const opt = { type: "json", cacheTtl: 60 };
+  const [seen, games] = await Promise.all([
+    Promise.all(names.map(async (m) => {
+      const [v, s] = await Promise.all([env.LIFTR_KV.get(`visits:${m}`, opt), env.LIFTR_KV.get(sessKey(m), opt)]);
+      return [m, Math.max(0, ...(v || []).slice(0, 5).map((x) => Number(x.at) || 0), ...(s || []).slice(0, 5).map((x) => (Number(x.at) || 0) + (Number(x.dur) || 0)))];
+    })),
+    readWeeks(env).then((w) => env.LIFTR_KV.get(gamesKey(w.current), opt)).then((sl) => Object.fromEntries((sl?.games || []).map((g) => [g.id, `${g.awayShort || g.away} @ ${g.homeShort || g.home}`]))).catch(() => ({})),
+  ]);
+  return { names, seen: Object.fromEntries(seen), games };
+}
+async function presenceWeek(env, now) {
+  const names = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m)), from = now - 7 * 86400000;
+  const rows = await Promise.all(names.map(async (m) => {
+    const s = (await env.LIFTR_KV.get(sessKey(m), { type: "json", cacheTtl: 60 })) || [];
+    return [m, s.filter((x) => Number(x.at) + (Number(x.dur) || 0) >= from).map((x) => [Number(x.at), Number(x.dur) || 0, (x.f || []).slice(0, 24)])];
+  }));
+  return Object.fromEntries(rows);
+}
+async function presenceAsks(env) {
+  const list = await env.LIFTR_KV.list({ prefix: "hist-log:", limit: 60 });
+  const rows = await Promise.all(list.keys.map((k) => env.LIFTR_KV.get(k.name, { type: "json", cacheTtl: 300 })));
+  return rows.filter((r) => r && r.asker !== "Jake").map((r) => ({ ts: r.ts, n: r.asker || null, q: String(r.question || "").slice(0, 300), a: String(r.answer || "").slice(0, 1200), kind: r.kind || "" }));
+}
+async function handlePresence(request, env, corsHeaders, url) {
+  if (!env.LIVE) return json({ error: "Live not configured" }, 500, corsHeaders);
+  const room = env.LIVE.get(env.LIVE.idFromName("league"));
+  if (request.method === "GET") {
+    if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+    const week = url.searchParams.get("days") === "7";
+    const seen = url.searchParams.get("seen");
+    const [res, extra, sessions, asks] = await Promise.all([room.fetch(`https://live/room${week ? "?days=7" : ""}`), seen ? presenceExtra(env) : null, week ? presenceWeek(env, Date.now()) : null, seen ? presenceAsks(env).catch(() => null) : null]);
+    return json({ ...(await res.json()), ...(extra || {}), ...(sessions ? { week: sessions } : {}), ...(asks ? { asks } : {}) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const m = body?.manager;
+  if (!PICKS_MANAGERS.includes(m)) return json({ error: "Invalid manager" }, 400, corsHeaders);
+  if (VISITS_NOT_TRACKED.has(m)) return json({ ok: true, tracked: false }, 200, corsHeaders);
+  await room.fetch("https://live/beat", { method: "POST", body: JSON.stringify({ manager: m, bye: !!body.bye, screen: body.screen, app: body.app, events: body.events }) });
   return json({ ok: true }, 200, corsHeaders);
 }

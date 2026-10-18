@@ -72,12 +72,24 @@ DEFAULT_ROSTER = "Ben,Nathan,Jake"
 # News and expert-pick articles come from the NFL branch's own feed files,
 # never the college ones (the code's default reads main).
 FEEDS_URL = "https://raw.githubusercontent.com/Jstoll1/liftr/nfl/data/feeds"
-ALLOWED_ORIGIN = "https://nfl.brochiefs.com,https://liftr-1h0.pages.dev,https://*.liftr-1h0.pages.dev"
+# brochiefs.com is here for the live page (brochiefs.com/live), which reads
+# this league's room with the admin key.
+ALLOWED_ORIGIN = "https://nfl.brochiefs.com,https://liftr-1h0.pages.dev,https://*.liftr-1h0.pages.dev,https://brochiefs.com,https://www.brochiefs.com"
 OPENAI_MODEL = "gpt-4o-mini"
 OPENAI_MODEL_PLAN = "gpt-4o"
 # A new league starts with logins required: each member claims their name
 # with a code the first time they open the app.
 AUTH_MODE = "on"
+
+# The live room for brochiefs.com/live, the same Durable Object the college
+# Worker runs, with its own storage under this Worker.
+[[env.nfl.durable_objects.bindings]]
+name = "LIVE"
+class_name = "LiveRoom"
+
+[[env.nfl.migrations]]
+tag = "v1"
+new_sqlite_classes = ["LiveRoom"]
 
 [[env.nfl.kv_namespaces]]
 binding = "LIFTR_KV"

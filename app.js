@@ -313,8 +313,18 @@ function setManagerState(name, state) {
 // its own. The Worker applies the same rule when it grades a late save.
 const LOCK_ALL_FROM_WEEK = window.LEAGUE?.lockAllFromWeek ?? 4;
 function weekLockTime() {
+  if (window.LEAGUE?.lockAtSunday1pm && GAMES.length) return sundayLockAt(GAMES.map((g) => new Date(g.kickoff).getTime()));
   if (currentWeek < LOCK_ALL_FROM_WEEK || !GAMES.length) return null;
   return Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
+}
+// The NFL lock (the Worker applies the same rule): every game from
+// Sunday's 1pm ET kickoff on locks at that kickoff; a game before it
+// (Thursday night, a London morning) locks at its own.
+let ET_PARTS = null;
+function sundayLockAt(times) {
+  ET_PARTS ||= new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", hourCycle: "h23" });
+  const at = times.filter(Number.isFinite).filter((t) => { const p = Object.fromEntries(ET_PARTS.formatToParts(new Date(t)).map((x) => [x.type, x.value])); return p.weekday === "Sun" && Number(p.hour) >= 13; });
+  return at.length ? Math.min(...at) : null;
 }
 // The slate flags the tiebreaker game. If a slate ever ships without the
 // flag, the last kickoff stands in, so nothing that needs it can crash.
@@ -323,8 +333,9 @@ function tiebreakerGameOf() {
 }
 function isGameLocked(game) {
   if (!game) return false;
-  const all = weekLockTime();
-  return Date.now() >= (all ?? new Date(game.kickoff).getTime());
+  const all = weekLockTime(), own = new Date(game.kickoff).getTime();
+  // A game that kicks off before the week's lock locks at its own kickoff.
+  return Date.now() >= (all == null ? own : Math.min(own, all));
 }
 
 // --- Worker sync (cross-device picks + results) --------------------------
@@ -1231,6 +1242,38 @@ setTimeout(stampVisit, 1500);
 setTimeout(flushTele, 4000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) stampVisit(); });
 
+// Uses go out a moment after they happen (batched), a still-here beat
+// every 30 seconds while the app is on screen, and a goodbye when it's put
+// away. Beacons only, never awaited, so nothing here can slow the app.
+// Jake, the admin console and the preview site aren't reported; nor is
+// which team anyone picked.
+const presenceQ = [];
+let presenceT = null, presenceScreen = "";
+const presenceApp = (window.navigator.standalone || matchMedia("(display-mode: standalone)").matches) ? "home" : "browser";
+function presenceNote(key, detail) {
+  const k = String(key || "").replace(/^\//, "");
+  if (!k) return;
+  if (/^(picks|scoreboard|history|trivia|home|roster|splash)$/.test(k)) presenceScreen = k;
+  presenceQ.push({ k, d: detail == null ? undefined : String(detail), t: Date.now() });
+  if (presenceQ.length > 30) presenceQ.shift();
+  clearTimeout(presenceT);
+  presenceT = setTimeout(() => presenceSend(false), 1500);
+}
+function presenceSend(bye) {
+  clearTimeout(presenceT); presenceT = null;
+  const me = loadMe();
+  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || window.__liveView || PREVIEW || navigator.onLine === false) { presenceQ.length = 0; return; }
+  const now = Date.now();
+  const body = JSON.stringify({ manager: me, bye, screen: presenceScreen, app: presenceApp, events: presenceQ.splice(0).map((e) => ({ k: e.k, d: e.d, ago: now - e.t })) });
+  try {
+    if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/presence`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/presence`, { method: "POST", body, keepalive: true }).catch(() => {});
+  } catch {}
+}
+setTimeout(() => { if (!document.hidden) presenceSend(false); }, 2500);
+setInterval(() => { if (!document.hidden) presenceSend(false); }, 30000);
+document.addEventListener("visibilitychange", () => presenceSend(document.hidden));
+addEventListener("pagehide", () => presenceSend(true));
+
 // Sessions, for the admin dashboard: how long the app was on screen and
 // which screens and sheets were used, sent once when the app is put away.
 // In memory until then (a Set add per use), and the send is a background
@@ -1238,7 +1281,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) stam
 // touches load or scrolling.
 const sessionUse = new Set();
 let sessionStart = document.hidden ? null : Date.now();
-function noteUse(key) { if (key) sessionUse.add(String(key).replace(/^\//, "")); }
+function noteUse(key, detail) { if (key) { sessionUse.add(String(key).replace(/^\//, "")); presenceNote(key, detail); } }
 // Minutes on each game's live view: started when a live game cast opens,
 // stopped when the sheet closes or the app is put away.
 let gcTime = {}, gcOpen = null;
@@ -2588,7 +2631,7 @@ function updatePicksProgress(state) {
   const hint = document.querySelector("#picks-screen .picks-hint");
   if (hint) hint.textContent = allLocked
     ? `${WEEK_LABEL} has kicked off and your card is locked. Scores and results update below as games finish.`
-    : `One pick per game: straight up (1 pt favorite, 3 pt underdog) or against the spread (2 pts). Tap to save — change it any time until ${weekLockTime() ? "the week's first kickoff" : "that game kicks off"}.`;
+    : `One pick per game: straight up (1 pt favorite, 3 pt underdog) or against the spread (2 pts). Tap to save — change it any time until ${window.LEAGUE?.lockAtSunday1pm ? "Sunday's 1pm kickoff (a game before then locks at its own kickoff)" : weekLockTime() ? "the week's first kickoff" : "that game kicks off"}.`;
   let warn = document.getElementById("picks-mismatch");
   if (!warn) { warn = document.createElement("button"); warn.id = "picks-mismatch"; warn.type = "button"; warn.className = "picks-mismatch"; picksProgress.insertAdjacentElement("afterend", warn); warn.addEventListener("click", () => restorePhonePicks(currentManager)); }
   // A repair tool, not a message for the league. It only shows on a
@@ -4939,7 +4982,7 @@ function renderPicksCountdown() {
   const cd = kickoffCountdown(next.kickoff);
   if (!cd || cd.past) { el.classList.add("hidden"); el.innerHTML = ""; return; }
   const lockAll = weekLockTime() !== null;
-  const label = lockAll ? "PICKS LOCK IN" : next.id === first.id ? "1ST KICKOFF" : "NEXT KICKOFF";
+  const label = lockAll ? (window.LEAGUE?.lockAtSunday1pm ? "NEXT LOCK" : "PICKS LOCK IN") : next.id === first.id ? "1ST KICKOFF" : "NEXT KICKOFF";
   const game = `${next.awayShort} at ${next.homeShort} · ${next.kickoffLabel}`;
   // Your card at a glance, inside the clock: games picked and tiebreaker.
   const st = currentManager ? getManagerState(currentManager) : null;
