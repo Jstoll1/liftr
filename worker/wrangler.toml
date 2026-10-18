@@ -25,6 +25,8 @@ OPENAI_MODEL_PLAN = "gpt-4o"
 # log. "on" makes a token mandatory — an owner who has not claimed their
 # name cannot save until they do.
 AUTH_MODE = "off"
+# The Creative Engine's monthly OpenAI image budget, in dollars.
+CREATIVE_MONTHLY_CAP_USD = "10"
 
 # OPENAI_API_KEY is a secret, not a var — never put it in this file.
 # Set it with: wrangler secret put OPENAI_API_KEY
@@ -48,9 +50,22 @@ AUTH_MODE = "off"
 name = "LIVE"
 class_name = "LiveRoom"
 
+[[durable_objects.bindings]]
+name = "CREATIVE_DESK"
+class_name = "CreativeDesk"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["LiveRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["CreativeDesk"]
+
+# AI graphics (the Creative Studio): originals and optimized copies.
+[[r2_buckets]]
+binding = "CREATIVE"
+bucket_name = "brochiefs-creative"
 
 [[kv_namespaces]]
 binding = "LIFTR_KV"

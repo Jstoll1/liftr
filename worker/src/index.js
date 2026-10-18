@@ -5,6 +5,7 @@ import { sideKey, entryKey, newPot, extendPot, cleanSidePicks, joinEntry, declin
 
 // The live room has to be exported from the main module for Cloudflare.
 export { LiveRoom };
+export { CreativeDesk } from "./creative.js";
 // Liftr AI Worker
 //
 // Holds the OpenAI API key server-side (never exposed to the browser) and
@@ -95,6 +96,11 @@ export default {
     }
     if (url.pathname === "/visit") {
       return handleVisit(request, env, corsHeaders, url);
+    }
+    // The Creative Studio: owner only, every route, before anything else
+    // looks at the request.
+    if (url.pathname.startsWith("/creative/")) {
+      return handleCreative(request, env, corsHeaders, url);
     }
     if (url.pathname === "/presence") {
       return handlePresence(request, env, corsHeaders, url);
@@ -3545,6 +3551,19 @@ async function presenceAsks(env) {
   const list = await env.LIFTR_KV.list({ prefix: "hist-log:", limit: 60 });
   const rows = await Promise.all(list.keys.map((k) => env.LIFTR_KV.get(k.name, { type: "json", cacheTtl: 300 })));
   return rows.filter((r) => r && r.asker !== "Jake").map((r) => ({ ts: r.ts, n: r.asker || null, q: String(r.question || "").slice(0, 300), a: String(r.answer || "").slice(0, 1200), kind: r.kind || "" }));
+}
+
+// The Creative Studio's routes, all owner only (the admin key, or a device
+// it signed), handed to the one Creative Desk that owns every graphic.
+async function handleCreative(request, env, corsHeaders, url) {
+  if (!env.CREATIVE_DESK || !env.CREATIVE) return json({ error: "Creative Studio is not set up on this Worker." }, 503, corsHeaders);
+  if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+  const desk = env.CREATIVE_DESK.get(env.CREATIVE_DESK.idFromName("studio"));
+  const res = await desk.fetch(new Request(`https://desk${url.pathname}${url.search}`, { method: request.method, headers: { "Content-Type": "application/json" }, body: request.method === "POST" ? await request.text() : undefined }));
+  const headers = new Headers(res.headers);
+  for (const [k, v] of Object.entries(corsHeaders)) headers.set(k, v);
+  if (!headers.has("Cache-Control")) headers.set("Cache-Control", "no-store");
+  return new Response(res.body, { status: res.status, headers });
 }
 
 async function handlePresence(request, env, corsHeaders, url) {

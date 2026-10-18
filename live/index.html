@@ -357,10 +357,76 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 .gate .rem input { width: 16px; height: 16px; accent-color: var(--green); }
 .gate button:disabled { opacity: .6; }
 @media (prefers-reduced-motion: reduce) { .beat, .sess.fresh, .sess.focus, .acts li.new, .blk.live, .ib.spin svg, .menu { animation: none; } .blk { transition: none; } }
+
+/* ---- Creative Studio ---- */
+#studio[hidden], #app[hidden] { display: none; }
+.sd-page { max-width: 1100px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-right)) calc(110px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 14px; }
+.sd-head { display: flex; flex-direction: column; gap: 12px; }
+.sd-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sd-title > span { font: 800 13px/1 var(--mono); letter-spacing: .14em; color: var(--green); text-shadow: 0 0 14px rgba(61, 252, 143, .35); }
+.sd-new { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px 8px 10px; font-weight: 700; font-size: 13px; color: #0b0716; background: var(--green); border: 0; border-radius: 10px; box-shadow: 0 0 16px rgba(61, 252, 143, .35); }
+.sd-new svg { width: 16px; height: 16px; }
+.sd-budget { display: flex; flex-direction: column; gap: 6px; }
+.sd-bar { height: 7px; border-radius: 4px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.sd-bar u { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--green), #ffd23f); }
+.sd-budget span { font: 11.5px var(--mono); color: var(--meta); }
+.sd-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.sd-filters button { flex: none; padding: 6px 11px; font: 600 12px var(--mono); color: var(--dim); background: rgba(255, 255, 255, .03); border: 1px solid var(--line); border-radius: 999px; }
+.sd-filters button.on { color: var(--text); background: rgba(139, 108, 255, .22); border-color: rgba(139, 108, 255, .55); }
+.sd-filters b { color: var(--green); }
+.sd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 12px; }
+@media (max-width: 520px) { .sd-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+.sd-card { display: flex; flex-direction: column; min-width: 0; border-radius: 14px; overflow: hidden; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 8px 22px rgba(0, 0, 0, .3); }
+.sd-card.s-pending_review { border-color: rgba(255, 210, 63, .45); }
+.sd-card.s-failed { border-color: rgba(255, 107, 147, .45); }
+.sd-art { position: relative; display: grid; place-items: center; aspect-ratio: 1; width: 100%; padding: 0; border: 0; background: repeating-conic-gradient(#1a1230 0% 25%, #140d26 0% 50%) 50% / 18px 18px; cursor: zoom-in; }
+.sd-art img { width: 100%; height: 100%; object-fit: contain; }
+.sd-art.empty { cursor: default; flex-direction: column; gap: 10px; color: var(--dim); font-size: 28px; }
+.sd-art.empty small { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.sd-art.failed { color: #ff6b93; }
+.sd-spin { width: 26px; height: 26px; border-radius: 50%; border: 3px solid rgba(61, 252, 143, .2); border-top-color: var(--green); animation: sdspin .9s linear infinite; }
+@keyframes sdspin { to { transform: rotate(360deg); } }
+.sd-meta { display: flex; flex-direction: column; gap: 7px; padding: 10px 11px 12px; min-width: 0; }
+.sd-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
+.sd-row b { min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-badge { flex: none; padding: 3px 7px; border-radius: 6px; font: 700 9.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--meta); background: rgba(255, 255, 255, .07); }
+.sd-badge.s-pending_review { color: #0b0716; background: #ffd23f; }
+.sd-badge.s-queued, .sd-badge.s-generating { color: var(--green); background: rgba(61, 252, 143, .12); }
+.sd-badge.s-failed, .sd-badge.s-rejected { color: #ff6b93; background: rgba(255, 107, 147, .12); }
+.sd-badge.s-approved, .sd-badge.s-published { color: #0b0716; background: var(--green); }
+.sd-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.sd-chips span { padding: 2px 7px; border-radius: 999px; font-size: 10.5px; color: var(--meta); background: rgba(255, 255, 255, .05); border: 1px solid var(--line); }
+.sd-chips span.pl { color: #8b6cff; border-color: rgba(139, 108, 255, .4); }
+.sd-sub { font: 10.5px var(--mono); color: var(--dim); }
+.sd-note { font-size: 11.5px; color: var(--meta); font-style: italic; }
+.sd-err { font-size: 11px; color: #ff6b93; overflow-wrap: anywhere; }
+.sd-errbox { padding: 10px 12px; border-radius: 10px; color: #ff6b93; background: rgba(255, 107, 147, .08); border: 1px solid rgba(255, 107, 147, .3); font-size: 13px; }
+.sd-empty { padding: 40px 12px; text-align: center; color: var(--dim); }
+.sd-foot { margin: 0; font-size: 11.5px; color: var(--dim); text-align: center; }
+.sd-zoom { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px; background: rgba(5, 2, 12, .94); }
+.sd-zimg { max-width: min(92vw, 900px); max-height: 78vh; overflow: auto; border-radius: 12px; background: repeating-conic-gradient(#1a1230 0% 25%, #140d26 0% 50%) 50% / 22px 22px; touch-action: pinch-zoom pan-x pan-y; }
+.sd-zimg img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+.sd-zimg.big img { width: 200%; max-width: none; cursor: zoom-out; }
+.sd-zcap { font: 12px var(--mono); color: var(--meta); text-align: center; }
+.sd-zx { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px; }
+.sd-scrim { position: fixed; inset: 0; z-index: 30; background: rgba(5, 2, 12, .6); }
+.sd-sheet { position: fixed; z-index: 31; left: 50%; bottom: 0; transform: translateX(-50%); width: min(100%, 520px); max-height: 88vh; overflow: auto; display: flex; flex-direction: column; gap: 11px; padding: 16px 16px calc(18px + env(safe-area-inset-bottom)); background: var(--panel); border: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: 0 -16px 40px rgba(0, 0, 0, .5); }
+.sd-sh { display: flex; align-items: center; justify-content: space-between; }
+.sd-sh b { font: 800 13px var(--mono); letter-spacing: .12em; color: var(--green); }
+.sd-sheet label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: var(--meta); }
+.sd-sheet label i { font-style: normal; font-weight: 400; color: var(--dim); }
+.sd-sheet select, .sd-sheet input, .sd-sheet textarea { width: 100%; padding: 10px; font-family: inherit; font-size: 15px; line-height: 1.3; color: var(--text); background: rgba(255, 255, 255, .04); border: 1px solid var(--line); border-radius: 10px; }
+.sd-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sd-blurb, .sd-fine { margin: -4px 0 0; font-size: 12px; color: var(--dim); }
+.sd-cost { font: 12px var(--mono); color: var(--meta); }
+.sd-msg { font-size: 12.5px; color: var(--green); } .sd-msg.bad { color: #ff6b93; }
+.sd-go { padding: 13px; font-weight: 800; font-size: 15px; color: #0b0716; background: var(--green); border: 0; border-radius: 12px; }
+.sd-go:disabled { opacity: .6; }
 </style>
 </head>
 <body>
 <div id="app"></div>
+<div id="studio" hidden></div>
 <div class="pv-back" id="pv-back"></div>
 <aside id="pv" class="pv" aria-label="Preview" role="dialog"></aside>
 <div id="tip" class="tip" role="tooltip"></div>
@@ -421,6 +487,9 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     tl: svg('<path d="M4 6h7M8 12h10M4 18h12"/><path d="M20 4v16"/>'),
     visits: svg('<rect x="4" y="4" width="16" height="6" rx="2"/><rect x="4" y="14" width="16" height="6" rx="2"/>'),
     stats: svg('<path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/>'),
+    studio: svg('<path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.4-1.9-.4-1 .3-2.1 1.4-2.1H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/>'),
+    plus: svg('<path d="M12 5v14M5 12h14"/>'),
+    x: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
   };
   const TABS = [["sec-now", "Now", "now"], ["sec-tl", "Timeline", "tl"], ["sec-visits", "Visits", "visits"], ["sec-stats", "Stats", "stats"]];
   // Which section is in view, for the tabs; recomputed on scroll and after
@@ -540,6 +609,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   const hourLab = (t) => { const h = new Date(t).getHours(); return `${h % 12 || 12}${h < 12 ? "a" : "p"}`; };
   function render() {
     if (st.gated) return;
+    if (st.view === "studio") { st.sig = ""; return; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
@@ -795,7 +865,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         </div>
       </div></div>
       <div class="page">${kpis}${timeline}${feedHtml}${rail}</div>
-      <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}</nav>`;
+      <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button></nav>`;
     paintTabs();
   }
 
@@ -877,6 +947,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       }
       return;
     }
+    if (b.dataset.studio) { openStudio(); return; }
     if (b.dataset.signout) { forget(); location.reload(); return; }
     if (b.dataset.alert) {
       if (!st.alert && Notification.permission !== "granted") { try { await Notification.requestPermission(); } catch {} }
@@ -952,6 +1023,153 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     });
   }
   document.addEventListener("keydown", (e) => { if (e.key !== "Escape") return; if (st.menu) { st.menu = false; render(); } else if (st.pv) closePreview(); });
+
+
+  // ---- Creative Studio --------------------------------------------------
+  // AI graphics for the league, made with OpenAI on the Worker and kept
+  // private until the owner says otherwise. Its own view beside the live
+  // one: the live page keeps polling underneath but does not repaint over
+  // a review in progress. Phase 1: ask for a graphic, watch it generate,
+  // look at it up close.
+  const sd = { types: [], items: [], budget: null, teams: [], filter: "ALL", gen: null, zoom: null, err: "", loading: false, review: 0, at: 0 };
+  const studioEl = document.getElementById("studio");
+  const SD_FILTERS = [["ALL", "All"], ["PENDING_REVIEW", "Review"], ["QUEUED", "Queued"], ["GENERATING", "Generating"], ["FAILED", "Failed"]];
+  const SD_LABEL = { QUEUED: "Queued", GENERATING: "Generating", PENDING_REVIEW: "In review", APPROVED: "Approved", PUBLISHED: "Published", REJECTED: "Rejected", FAILED: "Failed" };
+  const money$ = (n) => (n == null ? "–" : `$${Number(n).toFixed(n < 1 ? 3 : 2)}`);
+  const imgUrl = (id, v = "orig") => `${WORKER}/creative/image/${encodeURIComponent(id)}?${auth()}&v=${v}`;
+  async function sdFetch(path, opts) {
+    const res = await fetch(`${WORKER}/creative${path}${path.includes("?") ? "&" : "?"}${auth()}`, { cache: "no-store", ...opts });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `The server answered ${res.status}`);
+    return data;
+  }
+  async function studioLoad(quiet) {
+    clearTimeout(studioLoad.t);
+    if (!quiet) { sd.loading = true; paintStudio(); }
+    try {
+      const [types, list] = await Promise.all([sd.types.length ? null : sdFetch("/types"), sdFetch("/assets")]);
+      if (types) sd.types = types.types;
+      sd.items = list.items; sd.budget = list.budget; sd.err = ""; sd.at = Date.now();
+      sd.review = sd.items.filter((x) => x.status === "PENDING_REVIEW").length;
+    } catch (e) { sd.err = e.message; }
+    sd.loading = false;
+    if (st.view === "studio") paintStudio();
+    // While anything is in the works, look again shortly.
+    if (st.view === "studio" && sd.items.some((x) => x.status === "QUEUED" || x.status === "GENERATING")) studioLoad.t = setTimeout(() => studioLoad(true), 5000);
+  }
+  async function loadTeams() {
+    if (sd.teams.length) return;
+    try {
+      const g = await (await fetch(`${WORKER}/games?t=${Date.now()}`, { cache: "no-store" })).json();
+      const m = new Map();
+      for (const x of g.games || []) { if (x.awayId) m.set(x.awayId, x.away); if (x.homeId) m.set(x.homeId, x.home); }
+      sd.teams = [...m].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+      sd.week = g.week || null;
+    } catch { /* the sheet says so */ }
+  }
+  function openStudio() {
+    st.view = "studio"; st.menu = false;
+    app.hidden = true; studioEl.hidden = false; scrollTo(0, 0);
+    paintStudio(); studioLoad();
+  }
+  function closeStudio(sec) {
+    st.view = "live"; clearTimeout(studioLoad.t);
+    studioEl.hidden = true; app.hidden = false; render();
+    const el = sec && document.getElementById(sec);
+    if (el) scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + scrollY - (innerWidth >= 1024 ? 80 : 70)) });
+  }
+  function sdCard(x) {
+    const t = new Date(x.created);
+    const when = `${t.toLocaleDateString([], { month: "short", day: "numeric" })} · ${t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+    const art = x.hasImage ? `<button type="button" class="sd-art" data-zoom="${esc(x.id)}" aria-label="Zoom"><img src="${imgUrl(x.id)}" alt="${esc(x.label)}" loading="lazy"></button>`
+      : `<div class="sd-art empty ${x.status.toLowerCase()}">${x.status === "FAILED" ? "✕" : `<i class="sd-spin"></i>`}<small>${esc(SD_LABEL[x.status])}</small></div>`;
+    return `<article class="sd-card s-${x.status.toLowerCase()}">
+      ${art}
+      <div class="sd-meta">
+        <div class="sd-row"><b>${esc(x.label)}</b><span class="sd-badge s-${x.status.toLowerCase()}">${esc(SD_LABEL[x.status] || x.status)}</span></div>
+        <div class="sd-chips"><span>${esc(x.categoryLabel)}</span>${x.week != null ? `<span>Week ${x.week}</span>` : ""}${x.placements.map((p) => `<span class="pl">${esc(p)}</span>`).join("")}</div>
+        <div class="sd-sub num">${when} · ${x.cost != null ? money$(x.cost) : `~${money$(x.estCost)}`}${x.attempts > 1 ? ` · try ${x.attempts}` : ""}</div>
+        ${x.feedback ? `<div class="sd-note">“${esc(x.feedback)}”</div>` : ""}
+        ${x.error ? `<div class="sd-err">${esc(x.error)}</div>` : ""}
+      </div>
+    </article>`;
+  }
+  function sdSheet() {
+    const g = sd.gen; if (!g) return "";
+    const type = sd.types.find((t) => t.id === g.category) || sd.types[0];
+    return `<div class="sd-scrim" data-sd-close="1"></div><form class="sd-sheet" data-sd-form="1">
+      <div class="sd-sh"><b>New graphic</b><button type="button" class="ib" data-sd-close="1" aria-label="Close">${ICONS.x}</button></div>
+      <label>Kind<select name="category">${sd.types.map((t) => `<option value="${esc(t.id)}"${t.id === g.category ? " selected" : ""}>${esc(t.label)}</option>`).join("")}</select></label>
+      ${type ? `<p class="sd-blurb">${esc(type.blurb)}</p>` : ""}
+      <label>Team<select name="teamId">${sd.teams.length ? sd.teams.map((t) => `<option value="${t.id}"${String(t.id) === String(g.teamId) ? " selected" : ""}>${esc(t.name)}</option>`).join("") : `<option value="">This week's slate didn't load</option>`}</select></label>
+      <div class="sd-two"><label><span>Mascot <i>optional</i></span><input name="mascot" maxlength="40" placeholder="tiger" value="${esc(g.mascot || "")}"></label>
+      <label><span>Colors <i>optional</i></span><input name="colors" maxlength="60" placeholder="purple and gold" value="${esc(g.colors || "")}"></label></div>
+      <label><span>Art direction <i>optional</i></span><textarea name="feedback" maxlength="300" rows="2" placeholder="Snarling, gold glow, facing left">${esc(g.feedback || "")}</textarea></label>
+      <div class="sd-cost">About ${money$(type?.estCost)} · ${sd.budget ? `${money$(sd.budget.left)} left of ${money$(sd.budget.cap)} this month` : ""}</div>
+      ${g.msg ? `<div class="sd-msg${g.bad ? " bad" : ""}">${esc(g.msg)}</div>` : ""}
+      <button type="submit" class="sd-go"${g.busy ? " disabled" : ""}>${g.busy ? "Sending…" : "Generate"}</button>
+      <p class="sd-fine">Nothing is published. It lands here for your review.</p>
+    </form>`;
+  }
+  function paintStudio() {
+    if (st.view !== "studio") return;
+    const b = sd.budget, used = b && b.cap ? Math.min(100, ((b.spent + b.reserved) / b.cap) * 100) : 0;
+    const counts = Object.fromEntries(SD_FILTERS.map(([k]) => [k, k === "ALL" ? sd.items.length : sd.items.filter((x) => x.status === k).length]));
+    const list = sd.filter === "ALL" ? sd.items : sd.items.filter((x) => x.status === sd.filter);
+    const z = sd.zoom && sd.items.find((x) => x.id === sd.zoom);
+    studioEl.innerHTML = `
+      <div class="top"><div class="top-in">
+        <button type="button" class="brand" data-sd-back="sec-now" aria-label="Back to live"><i class="beat"></i><b>BROCHIEFS</b><span>STUDIO</span></button>
+        <span class="age">${sd.loading ? "loading…" : sd.err ? "can't reach the studio" : ""}</span>
+        <div class="tools"><button type="button" class="ib" data-sd-refresh="1" aria-label="Refresh">${ICONS.refresh}</button></div>
+      </div></div>
+      <div class="sd-page">
+        <section class="panel sd-head">
+          <div class="sd-title"><span>🎨 CREATIVE STUDIO</span><button type="button" class="sd-new" data-sd-new="1">${ICONS.plus}<span>Generate</span></button></div>
+          <div class="sd-budget"><div class="sd-bar"><u style="width:${used.toFixed(1)}%"></u></div><span class="num">${b ? `${money$(b.spent)} spent${b.reserved ? ` · ${money$(b.reserved)} in flight` : ""} · ${money$(b.cap)} cap · ${esc(b.month)}` : "Budget…"}</span></div>
+          <div class="sd-filters" role="group" aria-label="Status">${SD_FILTERS.map(([k, lab]) => `<button type="button" class="${sd.filter === k ? "on" : ""}" data-sd-filter="${k}">${lab}${counts[k] ? ` <b>${counts[k]}</b>` : ""}</button>`).join("")}</div>
+        </section>
+        ${sd.err ? `<div class="sd-errbox">${esc(sd.err)}</div>` : ""}
+        ${list.length ? `<div class="sd-grid">${list.map(sdCard).join("")}</div>` : `<div class="sd-empty">${sd.loading ? "Loading…" : sd.items.length ? "Nothing here." : "No graphics yet. Tap Generate to make the first one."}</div>`}
+        <p class="sd-foot">Phase 1 · generate and review up close. Approve, reject and publish come next. Nothing here is public.</p>
+      </div>
+      ${z ? `<div class="sd-zoom" data-sd-unzoom="1"><button type="button" class="ib sd-zx" data-sd-unzoom="1" aria-label="Close">${ICONS.x}</button><div class="sd-zimg"><img src="${imgUrl(z.id)}" alt="${esc(z.label)}"></div><div class="sd-zcap">${esc(z.label)} · ${esc(z.categoryLabel)} · ${money$(z.cost ?? z.estCost)}</div></div>` : ""}
+      ${sdSheet()}
+      <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" data-sd-back="${id}">${ICONS[ic]}<span>${lab}</span></button>`).join("")}<button type="button" class="on">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button></nav>`;
+  }
+  studioEl.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-sd-back],[data-sd-refresh],[data-sd-new],[data-sd-filter],[data-zoom],[data-sd-unzoom],[data-sd-close]");
+    if (!b) return;
+    if (b.dataset.sdBack) return closeStudio(b.dataset.sdBack);
+    if (b.dataset.sdRefresh) return studioLoad();
+    if (b.dataset.sdFilter) { sd.filter = b.dataset.sdFilter; return paintStudio(); }
+    if (b.dataset.zoom) { sd.zoom = b.dataset.zoom; return paintStudio(); }
+    if (b.dataset.sdUnzoom) { if (e.target.closest(".sd-zimg img")) { e.target.closest(".sd-zimg").classList.toggle("big"); return; } sd.zoom = null; return paintStudio(); }
+    if (b.dataset.sdClose) { sd.gen = null; return paintStudio(); }
+    if (b.dataset.sdNew) {
+      sd.gen = { category: sd.types[0]?.id || "team-mascot" }; paintStudio();
+      await loadTeams(); if (sd.gen && !sd.gen.teamId) sd.gen.teamId = sd.teams[0]?.id; paintStudio();
+    }
+  });
+  studioEl.addEventListener("change", (e) => {
+    const f = e.target.closest("[data-sd-form]"); if (!f || !sd.gen) return;
+    Object.assign(sd.gen, Object.fromEntries(new FormData(f)));
+    if (e.target.name === "category") paintStudio();
+  });
+  studioEl.addEventListener("submit", async (e) => {
+    const f = e.target.closest("[data-sd-form]"); if (!f) return;
+    e.preventDefault();
+    const g = Object.assign(sd.gen, Object.fromEntries(new FormData(f)));
+    const team = sd.teams.find((t) => String(t.id) === String(g.teamId));
+    g.busy = true; g.msg = ""; paintStudio();
+    try {
+      const r = await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: g.category, week: sd.week, feedback: g.feedback, subject: { teamId: team?.id, name: team?.name, mascot: g.mascot, colors: g.colors } }) });
+      sd.gen = null; sd.filter = "ALL";
+      if (r.existing) sd.err = "";
+      await studioLoad(true);
+      if (r.existing) { sd.zoom = null; alert(`There's already a ${r.status === "PENDING_REVIEW" ? "version in review" : "version in the works"} for this one. Regenerating comes with review actions.`); }
+    } catch (err) { g.busy = false; g.msg = err.message; g.bad = true; paintStudio(); }
+  });
 
   function gate(err = "") {
     st.gated = true;
