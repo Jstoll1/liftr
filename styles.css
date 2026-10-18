@@ -7041,14 +7041,14 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .h2x-sum > b { font-family: 'Press Start 2P', monospace; font-size: clamp(12px, 3.6vw, 15px); line-height: 1.4; color: #ffe45e; text-shadow: 0 0 10px rgba(255, 228, 94, .45); overflow-wrap: anywhere; }
 .h2x-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .h2x-facts span { display: grid; gap: 3px; padding: 6px 4px; border-radius: 6px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .08); min-width: 0; }
-.h2x-facts small { font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1.5; letter-spacing: .06em; color: #b8afd3; overflow-wrap: anywhere; }
+.h2x-facts small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1.5; letter-spacing: .06em; color: #b8afd3; overflow-wrap: anywhere; }
 .h2x-facts b { font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; }
 .h2x-path { margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: #e8e2ff; }
 .h2x-now { font-size: 12px; color: #39ff88; }
 .h2x-now small { color: #8a80a8; }
-.h2x-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; font-size: 11px; color: #b8afd3; padding: 2px 0; }
+.h2x-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 10px; font-size: 10.5px; color: #b8afd3; padding: 2px 0; }
 .h2x-legend span { display: inline-flex; align-items: center; gap: 5px; }
-.h2x-legend .h2x-pts { min-width: 26px; padding: 2px 4px; }
+.h2x-legend .h2x-pts { min-width: 0; padding: 1px 4px; font-size: 9px; }
 .h2x-legend .h2x-pts i { display: none; }
 .h2x-grp { display: grid; gap: 6px; }
 .h2x-gh { display: flex; align-items: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .12em; color: #b8afd3; margin-top: 4px; }
@@ -7074,7 +7074,7 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .h2x-pick small { font-size: 10.5px; color: #b8afd3; letter-spacing: .03em; }
 .h2x-pick.locked .h2x-tm, .h2x-pick.none .h2x-tm { color: #8a80a8; font-weight: 600; }
 .h2x-pts { display: inline-flex; align-items: baseline; gap: 4px; font-family: 'Press Start 2P', monospace; font-size: 11px; padding: 3px 6px; border-radius: 5px; border: 1px solid transparent; white-space: nowrap; }
-.h2x-pts i { font-style: normal; font-family: inherit; font-size: 6px; letter-spacing: .06em; opacity: .85; }
+.h2x-pts i { font-style: normal; font-family: inherit; font-size: 5.5px; letter-spacing: .06em; opacity: .85; }
 .h2x-pts.hit { color: #0b0716; background: #39ff88; }
 .h2x-pts.miss, .h2x-pts.none { color: #8a80a8; border-color: rgba(138, 128, 168, .45); }
 .h2x-pts.live-hit { color: #39ff88; border-color: #39ff88; border-style: dashed; }
@@ -7101,3 +7101,7 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
   .h2x-pts i { display: none; }
 }
 @media (min-width: 700px) { .h2h-card { max-width: 560px; } }
+/* Card stats stack in short lines instead of one line that runs into the score. */
+.h2h-modal .h2h-f-meta { display: flex; flex-wrap: wrap; gap: 3px 7px; white-space: normal; line-height: 1.5; }
+.h2h-fighter.b .h2h-f-meta { justify-content: flex-end; }
+.h2h-modal .h2h-f-meta > * { white-space: nowrap; }
