@@ -2950,10 +2950,12 @@ function sideBoardHtml(pot, st, out, me) {
   }).join("");
   const cell = (r, g) => {
     const side = r.cells.find((c) => c.g.id === g.id && !c.ou), ou = r.cells.find((c) => c.g.id === g.id && c.ou);
-    if (!side?.pick) return `<td class="ssb-c none"><span class="ssb-none">no pick</span></td>`;
+    if (!side?.pick) return `<td class="ssb-c"><div class="ssb-box empty"><span class="ssb-none">no pick</span></div></td>`;
     const p = side.pick, id = sideTeamId(g, p.team);
     const what = p.mode === "SU" ? "WIN" : `${p.team === g.favorite ? "-" : "+"}${g.spread}`;
-    return `<td class="ssb-c"><div class="ssb-pick ${side.cls}"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${what}</span><b>${side.txt}</b></div>${ou ? `<div class="ssb-pick ou ${ou.cls}"><span>${ou.ou === "over" ? "O" : "U"} ${g.total}</span><b>${ou.txt}</b></div>` : ""}</td>`;
+    // One box: the side on top, the over/under (when the game has one)
+    // underneath, each with what it pays.
+    return `<td class="ssb-c"><div class="ssb-box ${side.cls}"><div class="ssb-l"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${what}</span><b>${side.txt}</b></div>${g.total != null ? `<div class="ssb-l ou ${ou?.cls || "none"}"><span>${ou ? `${ou.ou === "over" ? "O" : "U"} ${g.total}` : "no O/U"}</span><b>${ou ? ou.txt : ""}</b></div>` : ""}</div></td>`;
   };
   const body = rows.map((r) => `<tr class="${r.name === me ? "me" : ""}${out.winners.includes(r.name) ? " win" : ""}">
       <th class="ssb-nm"><i>${tied(r) ? "T" : ""}${rankOf(r)}</i><span>${escapeCd(shown(r.name))}${out.winners.includes(r.name) ? " 🏆" : ""}</span>${Number.isFinite(r.tb) ? `<small>TB ${r.tb}</small>` : ""}</th>
