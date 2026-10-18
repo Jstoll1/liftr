@@ -7,6 +7,9 @@
 // app over the art, never generated inside it.
 
 const NO_TEXT = "Absolutely no text, letters, numbers, words, wordmarks or logos anywhere in the image.";
+// No people: never a real person, an ethnic group or a cultural caricature.
+// A team named for a people or a nation gets a symbol instead.
+const NO_PEOPLE = "Never depict a real person, a human ethnic group, Native American people, headdresses or any cultural caricature. If the team is named for a people, a nation or a person (for example Seminoles, Fighting Irish, Aggies, Cavaliers), show an object or animal symbol instead, such as a flaming spear, a shamrock, a horse or a crossed sabre.";
 const ARCADE = "16-bit retro arcade pixel art, bold black outline, neon rim light, sticker style, centered on a transparent background";
 
 // gpt-image-1 at 1024x1024: image tokens by quality, priced per OpenAI's
@@ -39,9 +42,10 @@ export const CATEGORIES = {
       const d = s.data;
       return [
         `${ARCADE}.`,
-        `An original mascot character for the ${d.name} college football team${d.mascot ? `, a ${d.mascot}` : ""}${d.colors ? `, in ${d.colors}` : ""}.`,
+        `An original mascot or symbol for the ${d.name} college football team${d.mascot ? `, a ${d.mascot}` : ""}${d.colors ? `, in ${d.colors}` : ""}.`,
         "Head and shoulders, fierce and fun, game-day energy.",
         "An original character in the spirit of the team's mascot, not a copy of any official logo.",
+        NO_PEOPLE,
         NO_TEXT,
       ].join(" ");
     },

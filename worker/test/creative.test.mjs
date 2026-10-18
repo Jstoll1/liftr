@@ -182,3 +182,20 @@ test("batch actions report what they skipped; a rejected version can be asked fo
   const again = await post(d, "/generate", { ...LSU, subject: { teamId: 61, name: "Georgia" } });
   assert.notEqual(again.versionId, b.versionId);
 });
+
+test("the cost meter tallies every call by feature and model, images included", async () => {
+  const { d } = desk();
+  await post(d, "/usage", { feature: "history-ask", model: "gpt-4o-mini", tin: 1000, tout: 200, usd: 0.00027 });
+  await post(d, "/usage", { feature: "history-ask", model: "gpt-4o-mini", tin: 500, tout: 100, usd: 0.000135 });
+  await post(d, "/usage", { feature: "story", model: "gpt-4o", tin: 2000, tout: 800, usd: 0.013 });
+  await post(d, "/generate", LSU); await d.alarm();
+  const c = await get(d, "/costs");
+  assert.equal(c.today.calls, 4);
+  assert.equal(c.month.tin, 3500);
+  const ask = c.byFeature.find((r) => r.feature === "history-ask");
+  assert.equal(ask.calls, 2);
+  assert.ok(Math.abs(ask.usd - 0.000405) < 1e-9);
+  assert.equal(c.byFeature[0].feature, "creative-image");
+  assert.ok(Math.abs(c.month.usd - (0.000405 + 0.013 + 0.05)) < 1e-9);
+  assert.equal(c.byDay.length, 1);
+});

@@ -25,6 +25,8 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS versions_status ON versions (status, next_at)`,
   `CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, asset_id TEXT, version_id TEXT, action TEXT NOT NULL, actor TEXT, note TEXT)`,
   `CREATE TABLE IF NOT EXISTS budget (month TEXT PRIMARY KEY, spent REAL NOT NULL DEFAULT 0, reserved REAL NOT NULL DEFAULT 0)`,
+  // Every OpenAI call the Worker makes, by day, feature and model (see costs.js).
+  `CREATE TABLE IF NOT EXISTS usage (day TEXT NOT NULL, feature TEXT NOT NULL, model TEXT NOT NULL, calls INTEGER NOT NULL DEFAULT 0, tin INTEGER NOT NULL DEFAULT 0, tout INTEGER NOT NULL DEFAULT 0, usd REAL NOT NULL DEFAULT 0, PRIMARY KEY (day, feature, model))`,
 ];
 
 export class CreativeDesk {
@@ -60,6 +62,9 @@ export class CreativeDesk {
         const m = /^\/image\/([\w-]+)$/.exec(path);
         if (m) return this.image(m[1], url.searchParams.get("v") === "opt" ? "opt_key" : "orig_key");
       }
+      // The cost meter: written by the Worker itself (costs.js), read by the live page.
+      if (request.method === "POST" && path === "/usage") { this.addUsage(await request.json().catch(() => ({}))); return Response.json({ ok: true }); }
+      if (request.method === "GET" && path === "/costs") return Response.json(this.costs(Number(url.searchParams.get("days")) || 30));
       if (request.method === "POST" && path === "/action") {
         const out = await this.act(await request.json().catch(() => ({})));
         return Response.json(out, { status: out.error ? 400 : 200 });
@@ -100,6 +105,27 @@ export class CreativeDesk {
     const obj = await this.env.CREATIVE.get(v.k);
     if (!obj) return new Response("Not found", { status: 404 });
     return new Response(obj.body, { headers: { "Content-Type": obj.httpMetadata?.contentType || "image/png", "Cache-Control": "private, max-age=3600" } });
+  }
+
+  addUsage(r) {
+    const n = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : 0);
+    const feature = String(r?.feature || "unknown").slice(0, 40), model = String(r?.model || "unknown").slice(0, 60);
+    const day = new Date(this.now()).toISOString().slice(0, 10);
+    this.sql.exec("INSERT INTO usage (day, feature, model, calls, tin, tout, usd) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(day, feature, model) DO UPDATE SET calls = calls + excluded.calls, tin = tin + excluded.tin, tout = tout + excluded.tout, usd = usd + excluded.usd",
+      day, feature, model, Math.max(1, Math.round(n(r?.calls) || 1)), Math.round(n(r?.tin)), Math.round(n(r?.tout)), n(r?.usd));
+  }
+  // Today, this month and the last N days, by feature and by day.
+  costs(days) {
+    const now = this.now(), today = new Date(now).toISOString().slice(0, 10), month = today.slice(0, 7);
+    const from = new Date(now - (Math.min(Math.max(days, 1), 120) - 1) * 86400000).toISOString().slice(0, 10);
+    const sum = (where, ...a) => this.row(`SELECT COALESCE(SUM(calls), 0) AS calls, COALESCE(SUM(tin), 0) AS tin, COALESCE(SUM(tout), 0) AS tout, COALESCE(SUM(usd), 0) AS usd FROM usage WHERE ${where}`, ...a);
+    const first = this.row("SELECT MIN(day) AS d FROM usage")?.d || null;
+    return {
+      today: sum("day = ?", today), month: sum("substr(day, 1, 7) = ?", month), all: sum("1 = 1"), since: first,
+      byFeature: this.rows("SELECT feature, model, SUM(calls) AS calls, SUM(tin) AS tin, SUM(tout) AS tout, SUM(usd) AS usd FROM usage WHERE substr(day, 1, 7) = ? GROUP BY feature, model ORDER BY usd DESC", month),
+      byDay: this.rows("SELECT day, SUM(calls) AS calls, SUM(usd) AS usd FROM usage WHERE day >= ? GROUP BY day ORDER BY day", from),
+      creative: this.budget(),
+    };
   }
 
   // The small copy the app shows, made in the owner's browser at approval
@@ -239,6 +265,7 @@ export class CreativeDesk {
       const paid = cost > 0 ? cost : est;
       this.addBudget(month, paid, -est);
       this.sql.exec("UPDATE versions SET status = 'PENDING_REVIEW', cost = ?, orig_key = ?, updated = ? WHERE id = ?", paid, key, this.now(), job.id);
+      this.addUsage({ feature: "creative-image", model: job.model || IMAGE_MODEL, calls: 1, usd: paid });
       this.audit(job.asset_id, job.id, "ready", "engine", `$${paid.toFixed(3)}`);
     } catch (err) {
       this.addBudget(month, 0, -est);

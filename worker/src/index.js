@@ -1,3 +1,4 @@
+import { openaiChat } from "./costs.js";
 import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
 import { LiveRoom, deviceToken, deviceTokenOk } from "./live.js";
@@ -439,7 +440,7 @@ export default {
     });
 
     try {
-      const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      const aiRes = await openaiChat(env, "liftr-plan", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1856,7 +1857,7 @@ async function writeStory(env, facts) {
     "Banned: 'rollercoaster', 'this week's slate', 'took the crown', 'across the league', 'impressive', exclamation marks, and any city, stadium, nickname or detail not in the facts.",
     "No em dashes or hyphens as punctuation. Return JSON {headline, byline, body}.",
   ].join(" ");
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const res = await openaiChat(env, "story", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: JSON.stringify({
@@ -2620,7 +2621,7 @@ async function handleSwap(body, env, corsHeaders) {
   ].join(" ");
 
   try {
-    const askOpenAI = () => fetch("https://api.openai.com/v1/chat/completions", {
+    const askOpenAI = () => openaiChat(env, "liftr-swap", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
@@ -2730,7 +2731,7 @@ async function handleParseLibraryDoc(body, env, corsHeaders) {
   ].join(" ");
 
   try {
-    const askOpenAI = () => fetch("https://api.openai.com/v1/chat/completions", {
+    const askOpenAI = () => openaiChat(env, "liftr-library", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
@@ -2887,7 +2888,7 @@ async function handleChat(body, env, corsHeaders) {
   ];
 
   try {
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiRes = await openaiChat(env, "liftr-chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2987,7 +2988,7 @@ async function handleOpening(body, env, corsHeaders) {
     .join(" ");
 
   try {
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiRes = await openaiChat(env, "liftr-opening", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -3083,7 +3084,7 @@ async function handleHistoryAsk(request, env, corsHeaders) {
   await env.LIFTR_KV.put(bucket, String(used + 1), { expirationTtl: 3700 });
 
   try {
-    const askOpenAI = () => fetch("https://api.openai.com/v1/chat/completions", {
+    const askOpenAI = () => openaiChat(env, "history-ask", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({

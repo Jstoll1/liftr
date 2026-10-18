@@ -466,6 +466,23 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 .sd-live { flex: 1; font: 700 11.5px var(--mono); color: var(--green); }
 .sd-wait { font: 12px var(--mono); color: var(--meta); }
 .sd-card.s-published { border-color: rgba(61, 252, 143, .55); box-shadow: 0 0 18px rgba(61, 252, 143, .18); }
+
+.cost-k { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.cost-k > div { padding: 9px 10px; border-radius: 10px; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); min-width: 0; }
+.cost-k em { display: block; font: 700 9.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); font-style: normal; }
+.cost-k b { display: block; margin-top: 5px; font: 800 18px/1 var(--mono); color: var(--green); }
+.cost-k span { display: block; margin-top: 4px; font-size: 11px; color: var(--meta); }
+.cost-days { display: flex; align-items: flex-end; gap: 2px; height: 46px; margin-bottom: 12px; }
+.cost-days i { flex: 1; min-width: 2px; border-radius: 2px 2px 0 0; background: linear-gradient(180deg, #ffd23f, var(--green)); opacity: .85; }
+.cost-f { display: flex; flex-direction: column; gap: 8px; }
+.cost-r { display: grid; grid-template-columns: minmax(0, 1fr) 60px auto; align-items: center; gap: 10px; }
+.cost-r span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cost-r span b { font-size: 13px; }
+.cost-r small { font: 10.5px var(--mono); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cost-r u { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.cost-r u i { display: block; height: 100%; background: var(--green); border-radius: 3px; }
+.cost-r > b { font: 700 12.5px var(--mono); color: var(--text); min-width: 52px; text-align: right; }
+.cost .note { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -619,6 +636,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       if (res.status === 403) { const was = device; forget(); gate(was ? "This computer's sign-in has expired. Enter the key again." : "That key didn't work."); return; }
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
+      loadCosts(full);
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
       if (r.asks) st.asks = r.asks;
       // The week comes with seven days of taps; the live view keeps one.
@@ -825,7 +843,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       for (const v of wv) for (const l of new Set(v.f.map(featLab).filter(Boolean))) used.set(l, (used.get(l) || 0) + 1);
       const tp = [...used.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), mf = tp[0]?.[1] || 1;
       const lab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
-      return `<aside class="rail" id="sec-stats">
+      return `<aside class="rail" id="sec-stats">${costPanel()}
       <section class="panel"><div class="ph"><h2>Visits by hour</h2><span class="sub">time of day, last 7 days</span></div>
         <div class="bars">${byH.map((x) => `<i class="${x.n ? "" : "zero"}${x.h === curH ? " cur" : ""}" data-tip="${esc(`<b>${lab(x.h)}</b>${x.n} visit${x.n === 1 ? "" : "s"}${x.who.size ? ` · ${[...x.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((x.n / mx) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>
@@ -841,7 +859,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     for (const e of actions) { if (SCREENS[e.k]) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), maxF = top[0]?.[1] || 1;
     const home = vs.filter((v) => v.app === "home").length, web = vs.filter((v) => v.app === "browser").length;
-    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">
+    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">${costPanel()}
       <section class="panel"><div class="ph"><h2>Activity by hour</h2><span class="sub">actions, last 24h</span></div>
         <div class="bars">${hours.map((h, i) => `<i class="${h.n ? "" : "zero"}${i === 23 ? " cur" : ""}" data-tip="${esc(`<b>${hourLab(h.start)}${i === 23 ? " · this hour" : ""}</b>${h.n} action${h.n === 1 ? "" : "s"}${h.who.size ? ` · ${[...h.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((h.n / maxH) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>${hourLab(hours[0].start)}</span><span>${hourLab(hours[6].start)}</span><span>${hourLab(hours[12].start)}</span><span>${hourLab(hours[18].start)}</span><span>now</span></div>
@@ -1069,6 +1087,39 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   document.addEventListener("keydown", (e) => { if (e.key !== "Escape") return; if (st.menu) { st.menu = false; render(); } else if (st.pv) closePreview(); });
 
 
+  // ---- AI costs ---------------------------------------------------------
+  // Every OpenAI call the Worker makes, metered from the answers' own token
+  // counts (worker/src/costs.js): today, this month, by feature, by day.
+  // Read every few minutes; prices are OpenAI's published rates, so the
+  // bill itself is the final word.
+  const cost = { data: null, at: 0, err: "" };
+  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening" };
+  async function loadCosts(force) {
+    if (!force && Date.now() - cost.at < 3 * 60000) return;
+    try {
+      const r = await fetch(`${WORKER}/creative/costs?${auth()}&days=30&t=${Date.now()}`, { cache: "no-store" });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || r.status);
+      cost.data = d; cost.err = ""; cost.at = Date.now();
+    } catch (e) { cost.err = String(e.message || e); cost.at = Date.now(); }
+    st.sig = ""; render();
+  }
+  const usd = (n) => (n >= 1 ? `$${n.toFixed(2)}` : n >= 0.01 ? `$${n.toFixed(3)}` : n > 0 ? `$${n.toFixed(4)}` : "$0");
+  const ktok = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n));
+  function costPanel() {
+    const d = cost.data;
+    if (!d) return `<section class="panel cost"><div class="ph"><h2>AI costs</h2><span class="sub">${cost.err ? esc(cost.err) : "loading…"}</span></div></section>`;
+    const days = d.byDay || [], max = Math.max(...days.map((x) => x.usd), 0.0001);
+    const feats = d.byFeature || [], top = Math.max(...feats.map((x) => x.usd), 0.0001);
+    const c = d.creative || {};
+    return `<section class="panel cost"><div class="ph"><h2>AI costs</h2><span class="sub">metered${d.since ? ` since ${esc(d.since)}` : ""}</span></div>
+      <div class="cost-k"><div><em>Today</em><b class="num">${usd(d.today.usd)}</b><span>${d.today.calls} call${d.today.calls === 1 ? "" : "s"}</span></div><div><em>This month</em><b class="num">${usd(d.month.usd)}</b><span>${ktok(d.month.tin + d.month.tout)} tokens</span></div><div><em>Studio budget</em><b class="num">${usd(c.spent || 0)}</b><span>of ${usd(c.cap || 0)}</span></div></div>
+      ${days.length ? `<div class="cost-days" title="Last 30 days">${days.map((x) => `<i style="height:${Math.max(6, (x.usd / max) * 100).toFixed(0)}%" data-tip="${esc(`<b>${x.day}</b>${usd(x.usd)} · ${x.calls} call${x.calls === 1 ? "" : "s"}`)}"></i>`).join("")}</div>` : ""}
+      <div class="cost-f">${feats.length ? feats.map((x) => `<div class="cost-r"><span><b>${esc(FEATURE[x.feature] || x.feature)}</b><small>${esc(x.model)} · ${x.calls} call${x.calls === 1 ? "" : "s"} · ${ktok(x.tin)} in / ${ktok(x.tout)} out</small></span><u><i style="width:${Math.max(3, (x.usd / top) * 100).toFixed(0)}%"></i></u><b class="num">${usd(x.usd)}</b></div>`).join("") : `<div class="note">Nothing metered this month yet.</div>`}</div>
+      <div class="note">From each answer's token counts at OpenAI's list prices. Your OpenAI bill is the final word.</div>
+    </section>`;
+  }
+
   // ---- Creative Studio --------------------------------------------------
   // AI graphics for the league, made with OpenAI on the Worker and kept
   // private until the owner says otherwise. Its own view beside the live
@@ -1155,7 +1206,8 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       if (!rows.length) return "";
       return `<div class="rpv-card" style="--c:${col}"><div class="rpv-h"><span>${ic}</span>${esc(kind.toUpperCase())}</div><div class="rpv-b">${rows.map((g) => {
         const id = g.subject.teamId, has = sdHas(g), on = !has && sd.pick.has(id);
-        return `<button type="button" class="rpv-t${on ? " on" : ""}${has ? " has" : ""}" data-sg="${id}"><img class="${TEMPLATE.has(id) ? "" : "px"}" src="${nowArt(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(g.subject.name)}<small>${TEMPLATE.has(id) ? "template art" : "ESPN logo"} now</small></span>${has ? `<i class="sd-badge s-${has.status.toLowerCase()}">${esc(SD_LABEL[has.status])}</i>` : `<i class="sg-box">${on ? "✓" : ""}</i>`}</button>`;
+        const live = has && has.status === "PUBLISHED";
+        return `<button type="button" class="rpv-t${on ? " on" : ""}${has ? " has" : ""}" data-sg="${id}"><img class="${live || TEMPLATE.has(id) ? "" : "px"}" src="${live ? imgUrl(has.id) : nowArt(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(g.subject.name)}<small>${live ? "Studio art live" : TEMPLATE.has(id) ? "template art now" : "ESPN logo now"}</small></span>${has ? `<i class="sd-badge s-${has.status.toLowerCase()}">${esc(SD_LABEL[has.status])}</i>` : `<i class="sg-box">${on ? "✓" : ""}</i>`}</button>`;
       }).join("")}</div></div>`;
     }).join("")}</div>` : "";
     return `<section class="panel sg">
