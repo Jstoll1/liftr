@@ -6420,13 +6420,15 @@ async function openInsights(gameId) {
   modal.classList.toggle("gc-mode", liveGame() || finalGame());
   modal.classList.toggle("gc-full", liveGame() && !!(window.__gcFull || {})[gameId]);
   if (finalGame()) {
-    body.innerHTML = finalHtml() + links() + `<div class="ins-foot">Final from ESPN.</div>`;
+    keepLogos(body, () => { body.innerHTML = finalHtml() + links() + `<div class="ins-foot">Final from ESPN.</div>`; });
     return;
   }
   if (liveGame()) {
     body.__gcPaint = paint; body.__gcGame = gameId;
     const logTop = body.querySelector(".gc-plays.full")?.scrollTop ?? null;
-    body.innerHTML = gamecastHtml() + links() + `<div class="ins-foot">Live from ESPN. Refreshes every 8 seconds.</div>`;
+    // Logos already on screen are carried over, so the 8 second refresh
+    // never blanks them and nothing below them jumps.
+    keepLogos(body, () => { body.innerHTML = gamecastHtml() + links() + `<div class="ins-foot">Live from ESPN. Refreshes every 8 seconds.</div>`; });
     if (logTop != null) { const l = body.querySelector(".gc-plays.full"); if (l) l.scrollTop = logTop; }
     const sliders = body.querySelectorAll(".gc-slide[data-to]");
     if (sliders.length) { void body.offsetWidth; requestAnimationFrame(() => sliders.forEach((el) => { el.style.left = `${el.dataset.to}%`; })); }
@@ -6757,7 +6759,7 @@ async function openInsights(gameId) {
   // 4. Links out.
   html += links();
   html += `<div class="ins-foot">Information only. Scoring uses the sealed line on your card.</div>`;
-  body.innerHTML = html;
+  keepLogos(body, () => { body.innerHTML = html; });
   // The room, then simulate, then the line. After that, what
   // changes a pick: line and experts, then the background, with injuries
   // after last five and just before news. Each section is its heading plus
@@ -7697,6 +7699,21 @@ function keepLogos(el, draw) {
     fresh.replaceWith(old);
   }
   return out;
+}
+// NFL: every redraw anywhere keeps the logos already on screen. Live
+// screens repaint every few seconds, and a fresh <img> blanks until it
+// loads, which shifts everything under it.
+if (window.LEAGUE?.sport === "nfl") {
+  const d = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
+  let inside = false;
+  Object.defineProperty(Element.prototype, "innerHTML", {
+    configurable: true, get: d.get,
+    set(v) {
+      if (inside || !this.isConnected || !this.getElementsByTagName("img").length) return d.set.call(this, v);
+      inside = true;
+      try { keepLogos(this, () => d.set.call(this, v)); } finally { inside = false; }
+    },
+  });
 }
 const withLogosKept = (fn, el) => function (...args) { return keepLogos(el(), () => fn.apply(this, args)); };
 renderLiveScores = withLogosKept(renderLiveScores, () => liveScoresList);
