@@ -8264,7 +8264,7 @@ async function renderSeasonStats() {
   // Competition rank on the shown value, so a tie reads as a tie.
   const ranked = (rows) => rows.map((r) => ({ ...r, rank: 1 + rows.filter((x) => (r.low ? x.n < r.n : x.n > r.n)).length }));
   const ORD = (k) => `${k}${k % 100 >= 11 && k % 100 <= 13 ? "TH" : ["TH", "ST", "ND", "RD"][k % 10] || "TH"}`;
-  const tile = (key, icon, label, note, rows, color) => {
+  const tile = (key, icon, label, note, rows, color, art = key) => {
     const list = ranked(rows);
     const open = seasonOpenTiles.has(key);
     const lead = list[0];
@@ -8274,11 +8274,17 @@ async function renderSeasonStats() {
     const lo = Math.min(...list.map((r) => r.n));
     const width = (r) => Math.max(6, Math.round(100 * (r.low ? (lo || 0.1) / (r.n || 0.1) : Math.abs(r.n) / top)));
     const full = !open ? "" : `<div class="hs-full"><div class="hs-note">${note}</div>${list.map((r) => `<div class="hs-r${r.name === me ? " me" : ""}${r.rank === 1 ? " first" : ""}"><i class="hs-rk">${r.rank}</i>${av(r.name)}<span class="hs-nm">${esc(shown(r.name))}</span><span class="hs-bar"><u class="${r.signed && r.n < 0 ? "neg" : ""}" style="width:${width(r)}%"></u></span><b class="hs-v${r.signed ? (r.n > 0 ? " up" : r.n < 0 ? " down" : "") : ""}">${esc(r.value)}<small>${esc(r.sub || "")}</small></b></div>`).join("")}</div>`;
+    // The tile art is pixel art cut from the league's own template, one
+    // per board; the emoji stands in if it fails to load.
     return `<div class="hs-tile${open ? " open" : ""}${!lead ? " empty" : ""}" style="--c:${color}">
       <button type="button" class="hs-tap" data-hs="${key}" aria-expanded="${open}">
-        <span class="hs-t-head"><i>${icon}</i><span>${label}</span><em>${lead ? (open ? "▴" : "▾") : ""}</em></span>
-        ${lead ? `<span class="hs-lead">${av(lead.name, "big")}<span class="hs-who"><b>${esc(shown(lead.name))}</b><small>${tied ? `+${tied} tied` : esc(lead.sub || "")}</small></span><strong class="${lead.signed && lead.n < 0 ? "down" : ""}">${esc(lead.value)}</strong></span>
-        <span class="hs-you">${mine && mine.rank > 1 ? `YOU · ${ORD(mine.rank)} · ${esc(mine.value)}` : mine ? "YOU LEAD" : `${list.length} RANKED`}</span>` : `<span class="hs-none">NOBODY YET</span>`}
+        <span class="hs-art"><img src="assets/images/hs/${art}.webp" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'${icon}'}))"></span>
+        <span class="hs-body">
+          <span class="hs-t-head"><span>${label}</span><em>${lead ? (open ? "▴" : "▾") : ""}</em></span>
+          ${lead ? `<b class="hs-name">${esc(shown(lead.name))}</b>
+          <span class="hs-line"><small>${tied ? `+${tied} tied` : esc(lead.sub || "")}</small><strong class="${lead.signed && lead.n < 0 ? "down" : ""}">${esc(lead.value)}</strong></span>
+          <span class="hs-you">${mine && mine.rank > 1 ? `YOU · ${ORD(mine.rank)} · ${esc(mine.value)}` : mine ? "YOU LEAD" : `${list.length} RANKED`}</span>` : `<span class="hs-none">NOBODY YET</span>`}
+        </span>
       </button>${full}</div>`;
   };
   panel.innerHTML = `<div class="hs-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} ON THE RECORD · TAP A BOARD FOR EVERYONE</small></div>
@@ -8287,17 +8293,17 @@ async function renderSeasonStats() {
       ${tile("streak", "🔥", "HOT HAND", "Correct picks in a row, right now", s.streak, "#ff9f1c")}
       ${tile("dogs", "🐶", "DOG HITS", "Underdogs straight up, 3 pts each", s.dogs, "var(--neon-pink)")}
       ${tile("lone", "🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "var(--neon-purple)")}
-      ${tile("fader", "🙃", "FADER", "Share of picks against the favorite", s.fader, "#7aa2ff")}
+      ${tile("fader", "🙃", "FADER", "Share of picks against the favorite", s.fader, "var(--neon-cyan)")}
       ${tile("tb", "📏", "TB SNIPER", "Average tiebreaker miss, lower is better", s.tb, "var(--neon-yellow)")}
-      ${tile("best", "🏆", "BEST WEEK", "Highest single week score", s.best, "var(--neon-cyan)")}
-      ${s.blanks.length ? tile("blanks", "💤", "NO SHOWS", "Games left unpicked", s.blanks, "#9a8fb5") : ""}
+      ${tile("best", "🏆", "BEST WEEK", "Highest single week score", s.best, "#3fd0ff")}
+      ${s.blanks.length ? tile("blanks", "💤", "NO SHOWS", "Games left unpicked", s.blanks, "#a77bff") : ""}
     </div>
     <div class="hs-side">
-      <div class="hs-side-h"><span>💰 SIDE BETS</span><small>OFF THE BOOKS · ${side.bets} BET${side.bets === 1 ? "" : "S"}</small></div>
+      <div class="hs-side-h"><img src="assets/images/hs/coins.webp" alt="" loading="lazy" decoding="async"><span>SIDE BETS</span><small>OFF THE BOOKS · ${side.bets} BET${side.bets === 1 ? "" : "S"}</small></div>
       <div class="hs-side-note">Their own record. Side bets never count toward pool standings, payouts or the boards above.</div>
       <div class="hs-grid">
-        ${tile("side-bank", "💵", "BANKROLL", "Money won or lost across side bets", side.bank, "var(--neon-green)")}
-        ${tile("side-picks", "🎲", "SIDE PICKS", "Side bet picks right, over/unders included", side.picks, "var(--neon-yellow)")}
+        ${tile("side-bank", "💵", "BANKROLL", "Money won or lost across side bets", side.bank, "var(--neon-green)", "bank")}
+        ${tile("side-picks", "🎲", "SIDE PICKS", "Side bet picks right, over/unders included", side.picks, "var(--neon-yellow)", "dice")}
       </div>
     </div>`;
 }
