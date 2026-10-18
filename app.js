@@ -2739,7 +2739,9 @@ function paintScoreboard(fetched, live, cached) {
   const ranked = rankManagers(cloudPicks, results);
   renderScoreboardTable(cloudPicks, results, live, ranked);
   renderRankings(cloudPicks, results, live, ranked);
+  const firstRows = !liveWeekRows.length && ranked.length;
   liveWeekRows = ranked;
+  if (firstRows && potOpen()) renderPayouts();
   // The picks screen shows a one-line version of exactly these standings,
   // so it takes the board's copy rather than fetching its own again.
   picksStandingRows = ranked;
@@ -4786,6 +4788,8 @@ function payoutLedger() {
 function renderPayouts() {
   const panel = document.getElementById("payouts-panel");
   if (!panel || panel.classList.contains("hidden")) return;
+  // No record on this phone yet: say so rather than draw a wall of zeros.
+  if (!weekSummariesReady) { panel.innerHTML = `<div class="pot-empty">Reading the record…</div>`; return; }
   const { list, sealed, done, contested, liveWeek, liveWeekFinal } = payoutLedger();
   const paid = list.reduce((a, r) => a + r.earned, 0);
   const left = POT.total - paid - POT.seasonTotal;
@@ -4846,6 +4850,16 @@ function renderPayouts() {
 let weekTrophies = {};
 let weekSummaries = {};
 const SEALED_KEY = "brochiefs_sealed_v1";
+// The season record, kept on the phone so the pot and the replay open on
+// real numbers while the Worker is asked again. weekSummariesReady says
+// whether there is any record at all yet, cached or fresh.
+const WEEKS_CACHE_KEY = "brochiefs_weeks_v1";
+let weekSummariesReady = false;
+try {
+  const c = JSON.parse(localStorage.getItem(WEEKS_CACHE_KEY) || "null");
+  if (c?.summaries) { weekSummaries = c.summaries; weekTrophies = c.trophies || {}; weekSummariesReady = true; }
+} catch { /* private mode or a bad copy */ }
+const potOpen = () => !document.getElementById("payouts-panel")?.classList.contains("hidden");
 
 async function loadWeekSummaries() {
   if (!WORKER_URL) return;
@@ -4855,7 +4869,10 @@ async function loadWeekSummaries() {
     const data = await res.json();
     weekTrophies = data.trophies || {};
     weekSummaries = data.summaries || {};
+    weekSummariesReady = true;
+    try { localStorage.setItem(WEEKS_CACHE_KEY, JSON.stringify({ summaries: weekSummaries, trophies: weekTrophies })); } catch { /* full or private */ }
     renderRecap();
+    if (potOpen()) renderPayouts();
   } catch {
     // Leave whatever we had; trophies are decoration, not the score.
   }
