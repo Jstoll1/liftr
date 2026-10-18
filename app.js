@@ -6979,13 +6979,11 @@ function renderH2H() {
       if (results[g.id]) { if (pick) { const o = resultOutcome(g, results[g.id]); if (!(pick.mode === "ATS" && o?.push)) { if (scorePick(g, pick, results[g.id]) > 0) w += 1; else l += 1; } } }
       else if (pick) { max += pointValue(g, pick.team, pick.mode); left += 1; }
     }
-    const raw = (row.state || picks[row.name] || { picks: {} }).picks || {};
-    const unseen = GAMES.some((g) => !results[g.id] && raw[g.id] && (raw[g.id].hidden || hiddenFor(row.name, g)));
-    return { st, w, l, max: unseen ? "?" : max, left, fly: inFlightPoints(st.picks, live) };
+    return { st, w, l, max, left, fly: inFlightPoints(st.picks, live) };
   };
   const a = sideOf(A), b = sideOf(B);
   const short = (g, team) => team === g.home ? g.homeShort : team === g.away ? g.awayShort : team;
-  const lineOf = (g, pick) => !pick ? `<i class="h2h-none">no pick</i>` : `${esc(short(g, pick.team))} <small>${pick.mode === "SU" ? "SU" : (pick.team === g.favorite ? "-" : "+") + g.spread}</small>`;
+  const abbr = (g, side) => live[g.id]?.[`${side}Abbr`] || (side === "home" ? g.homeShort : g.awayShort);
   // What each pick is doing right now: points banked, in flight, or at stake.
   const stateOf = (g, pick) => {
     if (!pick) return { cls: "none", txt: "–" };
@@ -6998,65 +6996,103 @@ function renderH2H() {
     }
     return { cls: "open", txt: `${pointValue(g, pick.team, pick.mode)}` };
   };
-  // One line per game. Left card, centre column with the game number and
-  // where it stands, right card. Same pick on both sides is dimmed.
-  const order = (g) => results[g.id] ? 0 : (live[g.id]?.state === "in" ? 1 : 2);
-  const games = gamesByKickoff().slice().sort((x, y) => order(x) - order(y));
-  const mid = (g) => {
-    if (results[g.id]) return `<i>${results[g.id].awayScore}-${results[g.id].homeScore}</i>`;
+  // Status comes from the feed's own state, never from a score: a game is
+  // live only while ESPN says "in", final only once it is in the results.
+  const statusOf = (g) => {
+    if (results[g.id]) return "final";
     const lv = live[g.id];
-    if (lv?.state === "in") return `<i class="live"><u></u>${lv.awayScore ?? 0}-${lv.homeScore ?? 0}</i>`;
-    const k = new Date(g.kickoff);
-    return `<i class="soon">${k.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" }).toUpperCase()} ${k.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric" }).replace(" ", "")}</i>`;
+    if (lv?.state === "in") return "live";
+    if (lv?.state === "post") return "void"; // over without a final: postponed, canceled or suspended
+    return "upcoming";
   };
-  const cell = (g, pick, st, side) => {
-    if (hiddenFor(side === "a" ? A.name : B.name, g)) return `<div class="h2h-td ${side} hidden-pick"><span class="h2h-team"><span class="h2h-nm"><em>🔒 locked at kick</em></span></span></div>`;
-    const id = pick ? (pick.team === g.home ? g.homeId : pick.team === g.away ? g.awayId : null) : null;
-    const team = `<span class="h2h-team">${id ? `<img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : ""}<span class="h2h-nm">${pick ? esc(short(g, pick.team)) : "<em>none</em>"}</span></span>`;
-    const line = `<span class="h2h-line">${pick ? (pick.mode === "SU" ? "SU" : (pick.team === g.favorite ? "-" : "+") + g.spread) : ""}</span>`;
-    const pts = `<b>${st.txt}</b>`;
-    // The right card mirrors the left: points nearest the middle, team at the edge.
-    return `<div class="h2h-td ${side} ${st.cls}">${side === "a" ? team + line + pts : pts + line + team}</div>`;
-  };
-  const sameGames = games.filter((g) => { const pa = a.st.picks[g.id], pb = b.st.picks[g.id]; return pa && pb && pa.team === pb.team && pa.mode === pb.mode; });
-  const trs = games.filter((g) => !sameGames.includes(g)).map((g) => {
+  // Every way a game can still end that changes any pick: the league's own
+  // outcome classes (gameCats), a tie, and no result at all (both score 0).
+  // Each is scored with scorePick, so SU, ATS, pushes and point values are
+  // exactly the app's.
+  const swingRange = (g) => {
     const pa = a.st.picks[g.id], pb = b.st.picks[g.id];
-    const same = pa && pb && pa.team === pb.team && pa.mode === pb.mode;
-    const sa = stateOf(g, pa), sb = stateOf(g, pb);
-    // Marked only where it matters: a settled game where the points came
-    // out different, or an unsettled one where the picks could.
-    const diff = hiddenFor(A.name, g) || hiddenFor(B.name, g) ? false : order(g) === 2 ? !same : sa.txt !== sb.txt;
-    // Where the points split, an arrow from the centre points at the card
-    // that has the edge on this game.
-    const na = Number(sa.txt) || 0, nb = Number(sb.txt) || 0;
-    const arrow = "";
-    return `<div class="h2h-tr${diff ? " diff" : ""}${same ? " same" : ""}${pa && pb && !same && !hiddenFor(A.name, g) && !hiddenFor(B.name, g) ? " split" : ""}${order(g) === 1 ? " is-live" : ""}">${cell(g, pa, sa, "a")}<div class="h2h-mid">${arrow}<span>${same ? "SAME" : `G${g.id}`}</span>${mid(g)}</div>${cell(g, pb, sb, "b")}</div>`;
-  }).join("");
-  // The swing: on games still to play where they differ, the most either can gain on the other.
-  let swingA = 0, swingB = 0;
-  for (const g of GAMES) {
+    const ends = [...gameCats(g).map((c) => c.res), { awayScore: 30, homeScore: 30 }];
+    const d = ends.map((r) => (pa ? scorePick(g, pa, r) : 0) - (pb ? scorePick(g, pb, r) : 0));
+    d.push(0);
+    return { gainA: Math.max(...d), gainB: Math.max(...d.map((x) => -x)), none: d.every((x) => x === 0) };
+  };
+  const hidden = (g) => hiddenFor(A.name, g) || hiddenFor(B.name, g);
+  const rowsOf = gamesByKickoff().filter((g) => a.st.picks[g.id] || b.st.picks[g.id] || hidden(g));
+  // No swing: settled with the identical pick, or still open and proven to
+  // pay both the same however it ends. Anything else stays in the list.
+  const noSwing = (g) => {
+    if (hidden(g)) return false;
+    const pa = a.st.picks[g.id], pb = b.st.picks[g.id];
+    if (results[g.id]) return !!pa && !!pb && pa.team === pb.team && pa.mode === pb.mode;
+    return swingRange(g).none;
+  };
+  const sameGames = rowsOf.filter(noSwing);
+  const splitGames = rowsOf.filter((g) => !noSwing(g));
+  // Path to victory, from locked points only: live points are provisional
+  // and the live game is counted once, as a game that can still end any way.
+  let gainA = 0, gainB = 0, unknown = 0;
+  for (const g of splitGames) {
     if (results[g.id]) continue;
-    const pa = a.st.picks[g.id], pb = b.st.picks[g.id];
-    if (pa && pb && pa.team === pb.team && pa.mode === pb.mode) continue;
-    if (pa) swingA += pointValue(g, pa.team, pa.mode);
-    if (pb) swingB += pointValue(g, pb.team, pb.mode);
+    if (hidden(g)) { unknown++; continue; }
+    const r = swingRange(g); gainA += r.gainA; gainB += r.gainB;
   }
+  const openLeft = rowsOf.filter((g) => !results[g.id]).length;
+  const allDone = a.left + b.left === 0 && GAMES.every((g) => results[g.id]);
   const gap = A.score - B.score;
-  const leader = gap > 0 ? A : gap < 0 ? B : null, trailer = gap > 0 ? B : A;
-  const trailSwing = gap > 0 ? swingB : swingA;
-  let verdict;
-  if (a.left + b.left === 0) verdict = leader ? `Final. ${esc(shown(leader.name))} by ${Math.abs(gap)}.` : "Final. Dead level.";
-  else if (!leader) verdict = `Level. Where they split, ${esc(shown(A.name))} has ${swingA} in play and ${esc(shown(B.name))} has ${swingB}.`;
-  else if (trailSwing === 0) verdict = `${esc(shown(leader.name))} by ${Math.abs(gap)}. Nothing left where they split, so that holds.`;
-  else verdict = `${esc(shown(leader.name))} by ${Math.abs(gap)}. ${esc(shown(trailer.name))} has ${trailSwing} in play where they split${trailSwing < Math.abs(gap) ? ", not enough alone" : ""}.`;
-  // One strip for the games they agree on: nothing there moves the gap.
-  const sameStrip = sameGames.length ? `<div class="h2h-same"><div class="h2h-same-h">SAME PICK · NO SWING</div><div class="h2h-same-l">${sameGames.map((g) => {
-    const pk = a.st.picks[g.id], st = stateOf(g, pk);
-    const id = pk.team === g.home ? g.homeId : g.awayId;
-    return `<span class="h2h-same-c ${st.cls}"><img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">${esc(short(g, pk.team))} <small>${pk.mode === "SU" ? "WIN" : (pk.team === g.favorite ? "-" : "+") + g.spread}</small><b>${st.txt}</b></span>`;
-  }).join("")}</div></div>` : "";
-  // Fighter cards up top: avatar, name, score, record. The native select
-  // sits invisibly over each card, so a tap still changes the player.
+  const leader = gap > 0 ? A : gap < 0 ? B : null, trailer = gap > 0 ? B : gap < 0 ? A : null;
+  const N = (r) => esc(shown(r.name).toUpperCase());
+  const anyLive = rowsOf.some((g) => statusOf(g) === "live");
+  const kicker = allDone ? "FINAL" : anyLive ? "LIVE" : "THIS WEEK";
+  const headline = allDone ? (leader ? `${N(leader)} WINS BY ${Math.abs(gap)}` : "LEVEL ON POINTS") : leader ? `${N(leader)} LEADS BY ${Math.abs(gap)}` : "ALL SQUARE";
+  const facts = [];
+  let path = "";
+  if (allDone) {
+    if (!leader) path = "Level on points: the week's tiebreaker decides it.";
+  } else {
+    facts.push(`<span><small>LOCKED LEAD</small><b>${Math.abs(gap)}</b></span>`);
+    facts.push(`<span><small>${N(A)} CAN GAIN</small><b>${unknown ? "≥" : ""}${gainA}</b></span>`);
+    facts.push(`<span><small>${N(B)} CAN GAIN</small><b>${unknown ? "≥" : ""}${gainB}</b></span>`);
+    if (unknown) path = `${unknown} game${unknown === 1 ? "" : "s"} still hidden until kickoff, so the path is shown once those picks lock.`;
+    else if (!openLeft || (gainA === 0 && gainB === 0)) path = leader ? `Nothing left can change it: ${N(leader)} takes this matchup.` : "Nothing left can change it: level on points, tiebreaker decides.";
+    else if (!leader) path = `Level. Any net gain wins it; ${N(A)} can gain up to ${gainA}, ${N(B)} up to ${gainB}.`;
+    else {
+      const need = Math.abs(gap), best = trailer === A ? gainA : gainB;
+      path = best < need ? `${N(trailer)} is out: the most left to gain is ${best}, short of ${need}.`
+        : best === need ? `${N(trailer)}'s best case is a tie (net ${need}), then the tiebreaker decides.`
+        : `${N(trailer)} needs a net ${need} to tie, ${need + 1} to pass. Up to ${best} is still possible.`;
+    }
+  }
+  const provA = A.score + (a.fly || 0), provB = B.score + (b.fly || 0);
+  const nowLine = anyLive && !allDone && (a.fly || b.fly) ? `<div class="h2x-now">If it ended now: ${provA === provB ? "level" : `${N(provA > provB ? A : B)} by ${Math.abs(provA - provB)}`} <small>(${provA}–${provB} with live points)</small></div>` : "";
+  // A row: left pick, the game in the middle, right pick. The points badge
+  // says what it is in words as well as colour: earned, none, live, at stake.
+  const BADGE = { hit: "EARNED", miss: "NO PTS", "live-hit": "LIVE", "live-miss": "LIVE", open: "AT STAKE", none: "" };
+  const centre = (g) => {
+    const st = statusOf(g), r = results[g.id], lv = live[g.id];
+    const sc = r ? `${r.awayScore}–${r.homeScore}` : st === "live" ? `${lv.awayScore ?? 0}–${lv.homeScore ?? 0}` : "@";
+    const k = new Date(g.kickoff);
+    const when = st === "final" ? (/OT/i.test(String(lv?.detail || "")) ? "FINAL/OT" : "FINAL") : st === "live" ? esc(String(lv.detail || "LIVE").replace(/\s*-\s*/, " ").toUpperCase()) : st === "void" ? "NO RESULT" : `${k.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" }).toUpperCase()} ${k.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).replace(":00", "")}`;
+    return `<div class="h2x-mid"><span class="h2x-teams">${esc(abbr(g, "away"))} <b>${sc}</b> ${esc(abbr(g, "home"))}</span><small class="h2x-when ${st}">${st === "live" ? "<u></u>" : ""}${when}</small></div>`;
+  };
+  const pickCell = (g, name, pick, side) => {
+    if (hiddenFor(name, g)) return `<div class="h2x-pick ${side} locked"><span class="h2x-tm">🔒 Hidden</span><small>until kickoff</small></div>`;
+    if (!pick) return `<div class="h2x-pick ${side} none"><span class="h2x-tm">No pick</span><small>&nbsp;</small><b class="h2x-pts none">0</b></div>`;
+    const st = stateOf(g, pick);
+    const id = pick.team === g.home ? g.homeId : g.awayId;
+    const line = pick.mode === "SU" ? "SU · WIN" : `ATS ${pick.team === g.favorite ? "−" : "+"}${g.spread}`;
+    return `<div class="h2x-pick ${side} ${st.cls}"><span class="h2x-tm">${id ? `<img class="h2h-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${(() => { const nm = short(g, pick.team), ab = abbr(g, pick.team === g.home ? "home" : "away"); return ab && ab !== nm && nm.length > 7 ? `<span class="nm-full">${esc(nm)}</span><span class="nm-ab">${esc(ab)}</span>` : `<span>${esc(nm)}</span>`; })()}</span><small>${line}</small><b class="h2x-pts ${st.cls}" title="${BADGE[st.cls]}">${st.txt}<i>${BADGE[st.cls]}</i></b></div>`;
+  };
+  const row = (g) => `<div class="h2x-row ${statusOf(g)}${noSwing(g) ? "" : " swing"}">${noSwing(g) ? "" : `<span class="h2x-swing">SWING</span>`}${pickCell(g, A.name, a.st.picks[g.id], "l")}${centre(g)}${pickCell(g, B.name, b.st.picks[g.id], "r")}</div>`;
+  const GROUPS = [["live", "LIVE"], ["upcoming", "UPCOMING"], ["void", "NO RESULT"], ["final", "FINAL"]];
+  const groupsHtml = GROUPS.map(([k, label]) => {
+    const list = splitGames.filter((g) => statusOf(g) === k);
+    return list.length ? `<section class="h2x-grp ${k}"><div class="h2x-gh"><span>${label}</span><b>${list.length}</b></div>${list.map(row).join("")}</section>` : "";
+  }).join("");
+  const legend = `<div class="h2x-legend"><span><b class="h2x-pts hit">+2</b>earned</span><span><b class="h2x-pts miss">0</b>no points</span><span><b class="h2x-pts live-hit">+2</b>live, not final</span><span><b class="h2x-pts open">2</b>at stake</span></div>`;
+  const shared = sameGames.length ? `<details class="h2x-same"${h2hSharedOpen ? " open" : ""}><summary><span>SAME PICK · NO SWING <b>(${sameGames.length})</b></span><i aria-hidden="true">⌄</i></summary>${sameGames.map(row).join("")}</details>` : "";
+  // Fighter cards up top: name, score, record, and a crown on the winner.
+  // The native select sits invisibly over each card, so a tap still
+  // changes the player.
   const fill = (side, row, x) => {
     const card = modal.querySelector(`.h2h-fighter.${side}`);
     if (!card) return;
@@ -7064,18 +7100,25 @@ function renderH2H() {
     av.textContent = avatarOverrides[row.name] || shown(row.name)[0];
     av.style.setProperty("--accent", accentFor(row.name));
     card.querySelector(".h2h-f-name").textContent = shown(row.name).toUpperCase();
-    card.querySelector(".h2h-f-meta").innerHTML = `${x.w}-${x.l} · MAX ${x.max}${x.fly ? ` · <em>+${x.fly}</em>` : ""}`;
-    card.querySelector(".h2h-f-score").textContent = String(row.score).padStart(2, "0");
-    card.classList.toggle("ahead", row.score > (side === "a" ? B : A).score);
+    const top = leader && leader.name === row.name;
+    card.querySelector(".h2h-f-meta").innerHTML = `<span title="Wins and losses on settled picks">W–L ${x.w}–${x.l}</span>${allDone ? "" : `<span title="Points if every open pick hits">MAX ${x.max}</span>`}${x.fly ? `<em title="Provisional, from games in progress">+${x.fly} LIVE</em>` : ""}${top ? `<span class="h2c-tag">${allDone ? "WINNER" : "LEADING"}</span>` : ""}`;
+    card.querySelector(".h2h-f-score").title = "Points locked in";
+    card.querySelector(".h2h-f-score").textContent = String(row.score);
+    card.classList.toggle("ahead", !!top);
+    card.classList.toggle("crowned", !!top && allDone);
   };
   fill("a", A, a); fill("b", B, b);
-  const sideHead = (row, x, cls) => `<div class="h2h-th ${cls}"><span class="h2h-score">${String(row.score).padStart(2, "0")}</span><span class="h2h-meta">${x.w}-${x.l} · MAX ${x.max}${x.fly ? ` · <em>+${x.fly}</em>` : ""}</span></div>`;
-  body.innerHTML = `${trs ? `<div class="h2h-sec">SPLITS · WHERE IT'S DECIDED</div>` : ""}<div class="h2h-grid">
-    ${trs}
-  </div>
-  ${sameStrip}
-  <div class="h2h-verdict">${verdict}</div>`;
+  body.innerHTML = `<div class="h2x-sum"><small>${kicker}</small><b>${headline}</b>${facts.length ? `<div class="h2x-facts">${facts.join("")}</div>` : ""}${path ? `<p class="h2x-path">${path}</p>` : ""}${nowLine}</div>
+    ${splitGames.length ? `${legend}${groupsHtml}` : `<div class="h2c-none">Same picks on every game so far.</div>`}
+    ${shared}`;
 }
+// Split games past the first three, and the shared picks, open on a tap
+// and stay that way while the sheet is up.
+let h2hShowAll = false, h2hSharedOpen = false;
+document.getElementById("h2h-body")?.addEventListener("click", (e) => {
+  if (e.target.closest("[data-h2h-all]")) { h2hShowAll = !h2hShowAll; renderH2H(); }
+});
+document.getElementById("h2h-body")?.addEventListener("toggle", (e) => { if (e.target.matches?.(".h2c-shared, .h2x-same")) h2hSharedOpen = e.target.open; }, true);
 document.getElementById("h2h-open")?.addEventListener("click", openH2H);
 document.getElementById("h2h-close")?.addEventListener("click", () => document.getElementById("h2h-modal").classList.add("hidden"));
 document.getElementById("h2h-modal")?.addEventListener("click", (e) => {

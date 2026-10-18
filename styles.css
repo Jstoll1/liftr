@@ -6445,3 +6445,71 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 /* NFL opens on the scores: the splash never shows, not even before the
    script runs. */
 html[data-sport="nfl"] #logo-screen { display: none !important; }
+
+/* Head to head (2026-10-18 redesign): summary, legend, Live / Upcoming /
+   Final groups of three-column rows, no-swing picks folded away. */
+.h2x-sum { display: grid; gap: 6px; text-align: center; padding: 12px 10px; border: 2px solid rgba(255, 228, 94, .55); border-radius: 10px; background: rgba(255, 228, 94, .05); }
+.h2x-sum > small { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .14em; color: var(--neon-cyan); }
+.h2x-sum > b { font-family: 'Press Start 2P', monospace; font-size: clamp(12px, 3.6vw, 15px); line-height: 1.4; color: #ffe45e; text-shadow: 0 0 10px rgba(255, 228, 94, .45); overflow-wrap: anywhere; }
+.h2x-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.h2x-facts span { display: grid; gap: 3px; padding: 6px 4px; border-radius: 6px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .08); min-width: 0; }
+.h2x-facts small { font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1.5; letter-spacing: .06em; color: #b8afd3; overflow-wrap: anywhere; }
+.h2x-facts b { font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; }
+.h2x-path { margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: #e8e2ff; }
+.h2x-now { font-size: 12px; color: #39ff88; }
+.h2x-now small { color: #8a80a8; }
+.h2x-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; font-size: 11px; color: #b8afd3; padding: 2px 0; }
+.h2x-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.h2x-legend .h2x-pts { min-width: 26px; padding: 2px 4px; }
+.h2x-legend .h2x-pts i { display: none; }
+.h2x-grp { display: grid; gap: 6px; }
+.h2x-gh { display: flex; align-items: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .12em; color: #b8afd3; margin-top: 4px; }
+.h2x-gh::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(184, 175, 211, .35), transparent); }
+.h2x-gh b { color: #0b0716; background: #b8afd3; border-radius: 4px; padding: 2px 5px; font-size: 7px; }
+.h2x-grp.live .h2x-gh { color: #39ff88; }
+.h2x-grp.live .h2x-gh b { background: #39ff88; }
+.h2x-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(76px, auto) minmax(0, 1fr); align-items: stretch; gap: 6px; padding: 8px 6px; border-radius: 8px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .07); }
+.h2x-row.swing { border-color: rgba(255, 32, 121, .45); }
+.h2x-row.live.swing { border-color: #39ff88; background: rgba(57, 255, 136, .06); box-shadow: 0 0 12px rgba(57, 255, 136, .18); }
+.h2x-row.final { opacity: .88; }
+.h2x-swing { position: absolute; top: -7px; left: 50%; transform: translateX(-50%); font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: #ff2079; background: #0b0716; padding: 1px 5px; border: 1px solid rgba(255, 32, 121, .6); border-radius: 3px; }
+.h2x-row.live .h2x-swing { color: #39ff88; border-color: #39ff88; }
+.h2x-pick { display: grid; gap: 3px; align-content: center; min-width: 0; }
+.h2x-pick.l { justify-items: start; text-align: left; }
+.h2x-pick.r { justify-items: end; text-align: right; }
+.h2x-tm { display: inline-flex; align-items: center; gap: 5px; font-weight: 800; font-size: 13px; color: #fff; min-width: 0; max-width: 100%; }
+.h2x-tm span { overflow-wrap: normal; word-break: normal; line-height: 1.2; min-width: 0; }
+.h2x-tm .nm-ab { display: none; }
+@media (max-width: 440px) { .h2x-tm .nm-full { display: none; } .h2x-tm .nm-ab { display: inline; } }
+.h2x-pick.r .h2x-tm { flex-direction: row-reverse; }
+.h2x-tm .h2h-logo { width: 20px; height: 20px; flex: none; }
+.h2x-pick small { font-size: 10.5px; color: #b8afd3; letter-spacing: .03em; }
+.h2x-pick.locked .h2x-tm, .h2x-pick.none .h2x-tm { color: #8a80a8; font-weight: 600; }
+.h2x-pts { display: inline-flex; align-items: baseline; gap: 4px; font-family: 'Press Start 2P', monospace; font-size: 11px; padding: 3px 6px; border-radius: 5px; border: 1px solid transparent; white-space: nowrap; }
+.h2x-pts i { font-style: normal; font-family: inherit; font-size: 6px; letter-spacing: .06em; opacity: .85; }
+.h2x-pts.hit { color: #0b0716; background: #39ff88; }
+.h2x-pts.miss, .h2x-pts.none { color: #8a80a8; border-color: rgba(138, 128, 168, .45); }
+.h2x-pts.live-hit { color: #39ff88; border-color: #39ff88; border-style: dashed; }
+.h2x-pts.live-miss { color: #ff7a9a; border-color: rgba(255, 122, 154, .6); border-style: dashed; }
+.h2x-pts.open { color: #ffe45e; border-color: rgba(255, 228, 94, .55); }
+.h2x-mid { display: grid; gap: 4px; justify-items: center; align-content: center; text-align: center; padding: 0 2px; border-left: 1px dashed rgba(255, 255, 255, .1); border-right: 1px dashed rgba(255, 255, 255, .1); }
+.h2x-teams { font-size: 11px; font-weight: 700; color: #d8d0f0; white-space: nowrap; }
+.h2x-teams b { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; margin: 0 3px; }
+.h2x-when { display: inline-flex; align-items: center; gap: 4px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .06em; color: #8a80a8; }
+.h2x-when.live { color: #39ff88; }
+.h2x-when.live u { width: 6px; height: 6px; border-radius: 50%; background: #39ff88; animation: live-blink 1.2s steps(2) infinite; }
+.h2x-when.void { color: #ff7a9a; }
+.h2x-same { border: 1px solid rgba(255, 255, 255, .08); border-radius: 8px; background: rgba(0, 0, 0, .2); }
+.h2x-same summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 12px; cursor: pointer; list-style: none; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .08em; color: #b8afd3; }
+.h2x-same summary::-webkit-details-marker { display: none; }
+.h2x-same summary:focus-visible, .h2h-x:focus-visible, .h2h-fighter:focus-within { outline: 2px solid var(--neon-cyan); outline-offset: 2px; }
+.h2x-same[open] summary i { transform: rotate(180deg); }
+.h2x-same > .h2x-row { margin: 0 6px 6px; opacity: .75; }
+@media (max-width: 380px) {
+  .h2x-row { grid-template-columns: minmax(0, 1fr) minmax(64px, auto) minmax(0, 1fr); gap: 4px; padding: 8px 4px; }
+  .h2x-tm { font-size: 12px; }
+  .h2x-tm .h2h-logo { width: 16px; height: 16px; }
+  .h2x-pts { font-size: 9.5px; padding: 3px 4px; }
+  .h2x-pts i { display: none; }
+}
+@media (min-width: 700px) { .h2h-card { max-width: 560px; } }
