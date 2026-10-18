@@ -4,9 +4,8 @@
 // pick those same games, scored like the main pool, plus an over/under on
 // each game that has a total (2 points) and a tiebreaker guess at the last
 // game's total points (closest wins a tie on points; a dead heat splits). Entry, and every side
-// pick, closes at the first of those kickoffs, but never sooner than
-// ENTRY_MIN_MS after the pot opens, so there is time to get in on a game
-// that is about to start or already on. The app keeps the ledger only:
+// pick, closes at the first of those kickoffs still to come; if every game
+// is already on, ENTRY_MIN_MS after the pot opens. The app keeps the ledger only:
 // money changes hands outside it.
 
 export const sideKey = (week) => `side:w${week}`;
@@ -49,6 +48,14 @@ export function cleanExtraGame(g) {
 // (given by its id) keeps the slate's line; any other game comes whole.
 // The pot keeps every game in full, so scoring never depends on the slate
 // changing later. Returns { pot } or { error }.
+// Picks lock at the first kickoff still to come (a 2nd half's kickoff is
+// not its start, so it does not count). Only when every game is already
+// on is there nothing to lock at, and entry stays open ENTRY_MIN_MS.
+export function autoClose(games, now) {
+  const ahead = games.filter((g) => g.half !== 2).map(kickMs).filter((k) => Number.isFinite(k) && k > now);
+  return ahead.length ? Math.min(...ahead) : now + ENTRY_MIN_MS;
+}
+
 // closeAt, when the commissioner sets it (a second-half bet closes at the
 // end of halftime, which only they can judge), replaces the usual close.
 export const CLOSE_MIN_MS = 5 * 60000, CLOSE_MAX_MS = 8 * 3600000;
@@ -74,7 +81,7 @@ export function newPot({ week, games, buyIn, slate, now, closeAt = null, tbGame 
   const amt = Number(buyIn);
   if (!Number.isInteger(amt) || amt < 1 || amt > SIDE_MAX_BUYIN) return { error: `Buy-in must be a whole dollar amount from 1 to ${SIDE_MAX_BUYIN}.` };
   const sorted = [...chosen.values()].sort((a, b) => kickMs(a) - kickMs(b) || String(a.id).localeCompare(String(b.id)));
-  return { pot: { week, id: String(now), games: sorted.map((g) => g.id), slate: sorted, ...(() => { const tb = sorted.find((g) => tbGame != null && String(g.id) === String(tbGame)); return tb ? { tbGame: tb.id } : {}; })(), buyIn: amt, closesAt: Number.isFinite(Number(closeAt)) && closeAt !== null && Number(closeAt) >= now + CLOSE_MIN_MS && Number(closeAt) <= now + CLOSE_MAX_MS ? Number(closeAt) : Math.max(kickMs(sorted[0]), now + ENTRY_MIN_MS), createdAt: now } };
+  return { pot: { week, id: String(now), games: sorted.map((g) => g.id), slate: sorted, ...(() => { const tb = sorted.find((g) => tbGame != null && String(g.id) === String(tbGame)); return tb ? { tbGame: tb.id } : {}; })(), buyIn: amt, closesAt: Number.isFinite(Number(closeAt)) && closeAt !== null && Number(closeAt) >= now + CLOSE_MIN_MS && Number(closeAt) <= now + CLOSE_MAX_MS ? Number(closeAt) : autoClose(sorted, now), createdAt: now } };
 }
 
 // Games added to a pot that is still open: the same checks as a new pot,
@@ -88,7 +95,11 @@ export function extendPot(pot, { games, slate, now, closeAt = null, tbGame = nul
   const base = pot.slate || pot.games.map((id) => byId.get(String(id))).filter(Boolean);
   const made = newPot({ week: pot.week, games: [...base, ...(Array.isArray(games) ? games : [])], buyIn: pot.buyIn, slate, now, closeAt, tbGame: tbGame === "none" ? null : tbGame ?? pot.tbGame ?? null });
   if (made.error) return made;
-  return { pot: { ...made.pot, id: pot.id, createdAt: pot.createdAt, editedAt: now } };
+  // An edit never moves the lock later on its own: that would reopen picks
+  // on games already under way. A close time the commissioner sets wins.
+  const setByHand = closeAt !== null && made.pot.closesAt === Number(closeAt);
+  const closesAt = setByHand ? made.pot.closesAt : Math.min(made.pot.closesAt, pot.closesAt);
+  return { pot: { ...made.pot, closesAt, id: pot.id, createdAt: pot.createdAt, editedAt: now } };
 }
 
 // Side picks must cover every pot game: a team playing in it, against the

@@ -3133,7 +3133,7 @@ async function mountSideAdmin(box, getKey, say) {
         <div class="as-count"></div>
         <label class="as-buy as-tbrow">Tiebreaker: <select class="as-tb"><option value="none">none (a tie splits)</option></select></label>
         <label class="as-buy">Entry closes in <input class="as-close" type="number" inputmode="numeric" min="5" max="480" step="1" placeholder="auto"> min</label>
-        <div class="as-out">Blank: the first kickoff, or 20 minutes from now if that's later. For a 2nd half at halftime, about 15.</div>
+        <div class="as-out">Blank: picks lock at the first kickoff (20 minutes from now if every game is already on). For a 2nd half at halftime, about 15.</div>
         <label class="as-buy${adding ? " hidden" : ""}">Buy-in $<input class="as-buyin" type="number" inputmode="numeric" min="1" max="500" step="1" value="${adding ? pot.buyIn : 25}"></label>
         <button type="button" class="admin-btn primary wide as-start"${rows ? "" : " disabled"}>${adding ? "Add to side bet" : "Start side bet"}</button>
         ${adding ? `<button type="button" class="admin-btn wide as-back">Back</button>` : ""}`;

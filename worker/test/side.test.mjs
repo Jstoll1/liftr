@@ -15,13 +15,13 @@ test("a pot takes games still to kick off, sorted, and closes at the first", () 
   assert.equal(entryKey(7, pot.id, "Jake"), `side:w7:${pot.id}:Jake`);
 });
 
-test("a game already on can go in; entry then stays open 20 minutes", () => {
+test("picks lock at the first kickoff still to come; 20 minutes only if every game is on", () => {
   const { pot } = newPot({ week: 7, games: [8, 7, 6], buyIn: 25, slate, now: t });
   assert.deepEqual(pot.games, [6, 7, 8]);
-  assert.equal(pot.closesAt, t + ENTRY_MIN_MS);
-  // About to kick off: still the 20 minutes, not the kickoff a minute away.
+  assert.equal(pot.closesAt, t + H, "game 8's kickoff, not 20 minutes");
   const soon = { games: [g(8, 0.02)] };
-  assert.equal(newPot({ week: 7, games: [8], buyIn: 25, slate: soon, now: t }).pot.closesAt, t + ENTRY_MIN_MS);
+  assert.equal(newPot({ week: 7, games: [8], buyIn: 25, slate: soon, now: t }).pot.closesAt, t + 0.02 * H, "about to kick off: locks at kickoff");
+  assert.equal(newPot({ week: 7, games: [7, 6], buyIn: 25, slate, now: t }).pot.closesAt, t + ENTRY_MIN_MS, "all on: 20 minutes");
 });
 
 test("a pot refuses started games, unknown games, bad buy-ins and too many games", () => {
@@ -116,7 +116,7 @@ test("a second-half bet: an h id marks it, the commissioner's close time wins", 
   assert.equal(cleanExtraGame({ ...half, id: "e401856809" }).half, undefined);
   const { pot } = newPot({ week: 7, games: [half], buyIn: 25, slate, now: t, closeAt: t + 15 * 60000 });
   assert.equal(pot.closesAt, t + 15 * 60000);
-  assert.equal(newPot({ week: 7, games: [half], buyIn: 25, slate, now: t, closeAt: t + 60000 }).pot.closesAt, t + ENTRY_MIN_MS, "too soon: the usual close");
+  assert.equal(newPot({ week: 7, games: [half], buyIn: 25, slate, now: t, closeAt: t + 60000 }).pot.closesAt, t + ENTRY_MIN_MS, "too soon: the usual close (only a 2nd half, so 20 minutes)");
   assert.equal(newPot({ week: 7, games: [half], buyIn: 25, slate, now: t, closeAt: t + CLOSE_MAX_MS + 1 }).pot.closesAt, t + ENTRY_MIN_MS, "too far: the usual close");
 });
 
@@ -156,4 +156,10 @@ test("adding to a bet can take an over/under off, and set or clear the tiebreake
   assert.equal(a.tbGame, 9, "null keeps the tiebreaker");
   assert.equal(extendPot(pot, { games: [], slate, now: t, tbGame: "none" }).pot.tbGame, undefined);
   assert.equal(extendPot(pot, { games: [], slate, now: t, tbGame: "e401858999" }).pot.tbGame, "e401858999");
+});
+
+test("an edit never moves the lock later unless the commissioner sets a close", () => {
+  const pot = { week: 7, id: "p1", games: [10], buyIn: 25, closesAt: t + 10 * 60000, createdAt: t - H };
+  assert.equal(extendPot(pot, { games: [], slate, now: t }).pot.closesAt, t + 10 * 60000, "game 10 is 4h out, but the lock stays");
+  assert.equal(extendPot(pot, { games: [], slate, now: t, closeAt: t + H }).pot.closesAt, t + H, "set by hand");
 });
