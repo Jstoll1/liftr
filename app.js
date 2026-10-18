@@ -7105,7 +7105,7 @@ function renderH2H() {
     av.style.setProperty("--accent", accentFor(row.name));
     card.querySelector(".h2h-f-name").textContent = shown(row.name).toUpperCase();
     const top = leader && leader.name === row.name;
-    card.querySelector(".h2h-f-meta").innerHTML = `<span title="Wins and losses on settled picks">W–L ${x.w}–${x.l}</span>${allDone ? "" : `<span title="Points if every open pick hits">MAX ${x.max}</span>`}${x.fly ? `<em title="Provisional, from games in progress">+${x.fly} LIVE</em>` : ""}${top && allDone ? `<span class="h2c-tag">WINNER</span>` : ""}`;
+    card.querySelector(".h2h-f-meta").innerHTML = x.fly ? `<em title="Provisional, from games in progress">+${x.fly} LIVE</em>` : "";
     card.querySelector(".h2h-f-score").title = "Points locked in";
     card.querySelector(".h2h-f-score").textContent = String(row.score);
     card.classList.toggle("ahead", !!top);
