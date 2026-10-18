@@ -6940,3 +6940,32 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .recap-card.arc .recap-vs { gap: 3px; }
 .recap-card.arc .recap-vs .recap-logo { width: 29px; height: 36px; }
 .recap-card.arc .recap-vs .recap-logo + .recap-logo { margin-left: 0; }
+
+/* The pot: season head to head. */
+.pot-vs-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: 10px 0 4px; padding: 10px 12px; border: 2px solid var(--neon-pink); border-radius: 10px; background: linear-gradient(90deg, rgba(255, 32, 121, .16), rgba(5, 217, 232, .16)); color: #fff; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .1em; box-shadow: 0 0 14px rgba(255, 32, 121, .3), 3px 3px 0 rgba(0, 0, 0, .5); cursor: pointer; }
+.pot-vs-btn span { color: var(--neon-cyan); }
+.sh-weeks { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 5px; margin-bottom: 4px; }
+.sh-wk { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 2px; border-radius: 7px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .07); }
+.sh-wk.live { border-color: rgba(61, 252, 143, .45); }
+.sh-wk small { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--text-dim); }
+.sh-wk b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 9px; color: var(--text-meta); }
+.sh-wk b:nth-of-type(1).win { color: var(--neon-cyan); text-shadow: 0 0 6px rgba(5, 217, 232, .6); }
+.sh-wk b:nth-of-type(2).win { color: var(--neon-pink); text-shadow: 0 0 6px rgba(255, 32, 121, .6); }
+.sh-wk b.lose { opacity: .45; }
+.sh-tape { display: flex; flex-direction: column; gap: 7px; }
+.sh-row { display: grid; grid-template-columns: 58px minmax(0, 1fr) 58px; align-items: center; gap: 8px; }
+.sh-v { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 9px; color: var(--text-meta); white-space: nowrap; }
+.sh-v.a { text-align: left; } .sh-v.b { text-align: right; }
+.sh-v.a.win { color: var(--neon-cyan); } .sh-v.b.win { color: var(--neon-pink); }
+.sh-v.lose { opacity: .55; }
+.sh-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.sh-lab { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .1em; color: var(--text-dim); }
+.sh-bar { display: flex; width: 100%; height: 6px; gap: 2px; }
+.sh-bar u { display: block; height: 100%; border-radius: 3px; }
+.sh-bar u.a { background: var(--neon-cyan); box-shadow: 0 0 6px rgba(5, 217, 232, .5); }
+.sh-bar u.b { background: var(--neon-pink); box-shadow: 0 0 6px rgba(255, 32, 121, .5); }
+.sh-agree { margin-top: 12px; padding: 9px 10px; border: 1px dashed rgba(255, 255, 255, .16); border-radius: 9px; }
+.sh-agree-h { display: flex; align-items: baseline; justify-content: space-between; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .1em; color: var(--text-dim); }
+.sh-agree-h b { font-weight: normal; font-size: 12px; color: var(--neon-yellow); }
+.sh-agree-s { margin-top: 6px; font-size: 11.5px; color: var(--text-meta); }
+.sh-none { padding: 8px 2px; font-size: 11.5px; color: var(--text-dim); }

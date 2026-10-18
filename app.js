@@ -4819,6 +4819,7 @@ function renderPayouts() {
       <div class="pj-amount">${money(Math.max(0, left + (POT.seasonTotal || 0)))}</div>
       <div class="pj-sub">${money(POT.total)} pot · ${POT.members} × ${money(POT.buyIn)} · ${money(POT.weekly)} a week${POT.season.length ? ` · season ${POT.season.map(money).join(" / ")}` : " · 1st only"}</div>
     </div>
+    <button type="button" class="pot-vs-btn" data-sh2h>⚔ SEASON HEAD TO HEAD <span>▸</span></button>
     <div class="pot-season">
       <div class="ps-head"><span>SEASON</span><b>${sealed} / ${POT.weeks}</b></div>
       <div class="ps-bar" style="grid-template-columns: repeat(${POT.weeks + exh.length}, 1fr)">${seasonSegs}</div>
@@ -4839,6 +4840,135 @@ function renderPayouts() {
     </div>
     ${sealed ? "" : `<div class="pot-empty">No weeks settled yet. Earnings appear once a week's last game is final.</div>`}`;
 }
+
+// --- Season head to head ------------------------------------------------
+// Two managers' seasons side by side, opened from the pot: week by week
+// who outscored whom, a tale of the tape from the sealed record and the
+// pick ledger, and how often they were on the same side. Pool data only;
+// side bets stay out.
+const sh2h = { a: null, b: null };
+// Pure: everything the panel shows for two names, from the sealed weeks
+// (with their ledgers when the detail has loaded) and the pot's ledger.
+function seasonH2H(a, b, weeks, ledger, pot) {
+  const mk = () => ({ pts: 0, wk: 0, hits: 0, misses: 0, atsW: 0, atsL: 0, dogs: 0, best: null, tbSum: 0, tbN: 0, blanks: 0 });
+  const s = { [a]: mk(), [b]: mk() };
+  const meetings = [];
+  let same = 0, both = 0, splitA = 0, splitB = 0;
+  for (const w of weeks) {
+    const ra = (w.rows || []).find((r) => r.name === a), rb = (w.rows || []).find((r) => r.name === b);
+    for (const [n, r] of [[a, ra], [b, rb]]) {
+      if (!r) continue;
+      const m = s[n];
+      m.pts += r.score || 0; m.wk += 1;
+      if (!m.best || r.score > m.best.score) m.best = { score: r.score, week: w.week };
+      if (r.tbDiff != null) { m.tbSum += r.tbDiff; m.tbN += 1; }
+    }
+    if (ra && rb) meetings.push({ week: w.week, a: ra.score || 0, b: rb.score || 0, live: !!w.live });
+  }
+  for (const w of ledger || []) {
+    const la = (w.rows || []).find((r) => r.name === a)?.ledger || [], lb = (w.rows || []).find((r) => r.name === b)?.ledger || [];
+    for (const [n, list] of [[a, la], [b, lb]]) for (const l of list) {
+      if (l.result === "pending") continue;
+      const m = s[n];
+      if (!l.team) { m.blanks += 1; continue; }
+      if (l.result === "hit") m.hits += 1; else if (l.result === "miss") m.misses += 1;
+      if (l.mode === "ATS") { if (l.result === "hit") m.atsW += 1; else if (l.result === "miss") m.atsL += 1; }
+      if (l.mode === "SU" && l.team !== l.favorite && l.result === "hit") m.dogs += 1;
+    }
+    for (const x of la) {
+      const y = lb.find((l) => l.g === x.g);
+      if (!x.team || !y?.team || x.result === "pending") continue;
+      both += 1;
+      if (x.team === y.team) same += 1;
+      else if (x.result === "hit" && y.result !== "hit") splitA += 1;
+      else if (y.result === "hit" && x.result !== "hit") splitB += 1;
+    }
+  }
+  const potRow = (n) => pot.list.find((r) => r.name === n) || {};
+  // The week in progress shows, but only sealed weeks count in the record.
+  const done = meetings.filter((m) => !m.live);
+  const rec = { a: done.filter((m) => m.a > m.b).length, b: done.filter((m) => m.b > m.a).length, t: done.filter((m) => m.a === m.b).length };
+  return { s, meetings, rec, same, both, splitA, splitB, potA: potRow(a), potB: potRow(b) };
+}
+async function openSeasonH2H() {
+  noteUse("season-h2h");
+  const { list } = payoutLedger();
+  if (!sh2h.a) sh2h.a = currentManager && MANAGERS.includes(currentManager) ? currentManager : list[0]?.name || MANAGERS[0];
+  if (!sh2h.b || sh2h.b === sh2h.a) sh2h.b = list.find((r) => r.name !== sh2h.a)?.name || MANAGERS.find((n) => n !== sh2h.a);
+  renderSeasonH2H();
+  document.getElementById("sh2h-modal")?.classList.remove("hidden");
+  // The pick ledger comes with the detail, which season stats also reads.
+  if (!seasonLedger) { await fetchSeasonLedger(); renderSeasonH2H(); }
+}
+function renderSeasonH2H() {
+  const modal = document.getElementById("sh2h-modal");
+  if (!modal) return;
+  const esc = escapeCd;
+  const pot = payoutLedger();
+  const sealed = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition).sort((x, y) => x.week - y.week);
+  // The week in progress counts too, marked live, so the race is current.
+  const weeks = pot.liveWeek && liveWeekRows.some((r) => r.score) ? [...sealed, { week: pot.liveWeek, live: true, rows: liveWeekRows.map((r) => ({ name: r.name, score: r.score })) }] : sealed;
+  const a = sh2h.a, b = sh2h.b;
+  const d = seasonH2H(a, b, weeks, seasonLedger, pot);
+  modal.querySelectorAll(".sh2h-select").forEach((el) => {
+    const side = el.dataset.side;
+    el.innerHTML = pot.list.map((r) => `<option value="${esc(r.name)}"${sh2h[side] === r.name ? " selected" : ""}>${esc(shown(r.name).toUpperCase())}</option>`).join("");
+  });
+  const fill = (side, name, pr) => {
+    const card = modal.querySelector(`.h2h-fighter.${side}`);
+    card.style.setProperty("--accent", accentFor(name));
+    card.querySelector(".h2h-f-av").textContent = avatarOverrides[name] || shown(name)[0];
+    card.querySelector(".h2h-f-name").textContent = shown(name).toUpperCase();
+    card.querySelector(".h2h-f-meta").innerHTML = `<span>${pr.tied ? "T" : "#"}${pr.seasonPlace || "–"}</span><span>${pr.earned ? money(pr.earned) : "$0"}</span>`;
+    card.querySelector(".h2h-f-score").textContent = String(pr.points || 0).padStart(2, "0");
+    card.classList.toggle("ahead", (pr.points || 0) > ((side === "a" ? d.potB : d.potA).points || 0));
+  };
+  fill("a", a, d.potA); fill("b", b, d.potB);
+  const A = d.s[a], B = d.s[b];
+  const pct = (w, l) => (w + l ? Math.round((100 * w) / (w + l)) : null);
+  // [label, a shown, b shown, a number, b number, lower wins]
+  const tape = [
+    ["SEASON PTS", A.pts, B.pts, A.pts, B.pts],
+    ["PER WEEK", A.wk ? (A.pts / A.wk).toFixed(1) : "–", B.wk ? (B.pts / B.wk).toFixed(1) : "–", A.wk ? A.pts / A.wk : 0, B.wk ? B.pts / B.wk : 0],
+    ["WEEKS WON", d.potA.weeksWon || 0, d.potB.weeksWon || 0, d.potA.weeksWon || 0, d.potB.weeksWon || 0],
+    ["EARNED", money(d.potA.earned || 0), money(d.potB.earned || 0), d.potA.earned || 0, d.potB.earned || 0],
+    ["BEST WEEK", A.best ? A.best.score : "–", B.best ? B.best.score : "–", A.best?.score || 0, B.best?.score || 0],
+    ...(seasonLedger ? [
+      ["PICKS RIGHT", `${A.hits}-${A.misses}`, `${B.hits}-${B.misses}`, pct(A.hits, A.misses) || 0, pct(B.hits, B.misses) || 0],
+      ["ATS", `${A.atsW}-${A.atsL}`, `${B.atsW}-${B.atsL}`, pct(A.atsW, A.atsL) || 0, pct(B.atsW, B.atsL) || 0],
+      ["DOG HITS", A.dogs, B.dogs, A.dogs, B.dogs],
+      ["NO SHOWS", A.blanks, B.blanks, A.blanks, B.blanks, true],
+    ] : []),
+    ["TB MISS", A.tbN ? (A.tbSum / A.tbN).toFixed(1) : "–", B.tbN ? (B.tbSum / B.tbN).toFixed(1) : "–", A.tbN ? A.tbSum / A.tbN : Infinity, B.tbN ? B.tbSum / B.tbN : Infinity, true],
+  ];
+  const side = (x, y, low) => (x === y ? "" : (low ? x < y : x > y) ? "win" : "lose");
+  const tapeHtml = tape.map(([lab, as, bs, an, bn, low]) => {
+    const tot = Number.isFinite(an) && Number.isFinite(bn) && an + bn > 0 ? an + bn : 0;
+    const wa = tot ? Math.round((100 * (low ? bn : an)) / tot) : 50;
+    return `<div class="sh-row"><b class="sh-v a ${side(an, bn, low)}">${esc(as)}</b><span class="sh-mid"><span class="sh-lab">${lab}</span><span class="sh-bar"><u class="a" style="width:${wa}%"></u><u class="b" style="width:${100 - wa}%"></u></span></span><b class="sh-v b ${side(bn, an, low)}">${esc(bs)}</b></div>`;
+  }).join("");
+  const r = d.rec;
+  const lead = r.a === r.b ? `Level at ${r.a}-${r.b}${r.t ? `-${r.t}` : ""}` : `${esc(shown(r.a > r.b ? a : b))} leads ${Math.max(r.a, r.b)}-${Math.min(r.a, r.b)}${r.t ? `-${r.t}` : ""}`;
+  const weeksHtml = d.meetings.length ? d.meetings.map((m) => `<div class="sh-wk${m.live ? " live" : ""}"><small>W${m.week}${m.live ? " •" : ""}</small><b class="${m.a > m.b ? "win" : m.a < m.b ? "lose" : ""}">${m.a}</b><b class="${m.b > m.a ? "win" : m.b < m.a ? "lose" : ""}">${m.b}</b></div>`).join("") : `<div class="sh-none">No weeks on the record yet.</div>`;
+  const agree = d.both ? `<div class="sh-agree"><div class="sh-agree-h"><span>SAME SIDE</span><b>${Math.round((100 * d.same) / d.both)}%</b></div><div class="sh-agree-s">On the same team in ${d.same} of ${d.both} games both picked.${d.both - d.same ? ` When they split: ${esc(shown(a))} hit ${d.splitA}, ${esc(shown(b))} hit ${d.splitB}.` : ""}</div></div>` : "";
+  document.getElementById("sh2h-body").innerHTML = `<div class="h2h-sec">WEEK BY WEEK · ${lead}</div>
+    <div class="sh-weeks">${weeksHtml}</div>
+    <div class="h2h-sec">TALE OF THE TAPE</div>
+    <div class="sh-tape">${tapeHtml}</div>
+    ${agree}
+    ${seasonLedger ? "" : `<div class="sh-none">Loading pick records…</div>`}`;
+}
+document.getElementById("payouts-panel")?.addEventListener("click", (e) => {
+  if (e.target.closest("[data-sh2h]")) openSeasonH2H();
+});
+document.getElementById("sh2h-close")?.addEventListener("click", () => document.getElementById("sh2h-modal").classList.add("hidden"));
+document.getElementById("sh2h-modal")?.addEventListener("click", (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.add("hidden"); });
+document.querySelectorAll(".sh2h-select").forEach((el) => el.addEventListener("change", () => {
+  const side = el.dataset.side, other = side === "a" ? "b" : "a";
+  if (sh2h[other] === el.value) sh2h[other] = sh2h[side]; // picking the other card swaps them
+  sh2h[side] = el.value;
+  renderSeasonH2H();
+}));
 
 // --- Weekly performance and trophies ----------------------------------
 // The board is computed live from ESPN, so a week that has finished has

@@ -171,6 +171,22 @@
     </div>
   </div>
 
+  <!-- SEASON HEAD TO HEAD: two managers' seasons side by side, from the pot -->
+  <div id="sh2h-modal" class="modal-overlay h2h-modal hidden" role="dialog" aria-labelledby="sh2h-title">
+    <div class="modal-card h2h-card">
+      <div class="h2h-top">
+        <span id="sh2h-title" class="modal-title">SEASON HEAD TO HEAD</span>
+        <button id="sh2h-close" class="h2h-x" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="h2h-pickers">
+        <label class="h2h-fighter a"><span class="h2h-f-av"></span><span class="h2h-f-txt"><b class="h2h-f-name"></b><small class="h2h-f-meta"></small></span><i class="h2h-f-score"></i><select class="sh2h-select a" data-side="a" aria-label="Left manager"></select></label>
+        <span class="h2h-vs">VS</span>
+        <label class="h2h-fighter b"><i class="h2h-f-score"></i><span class="h2h-f-txt"><b class="h2h-f-name"></b><small class="h2h-f-meta"></small></span><span class="h2h-f-av"></span><select class="sh2h-select b" data-side="b" aria-label="Right manager"></select></label>
+      </div>
+      <div id="sh2h-body" class="h2h-body"></div>
+    </div>
+  </div>
+
   <!-- QUICK CLAIM: shown when a device has no saved identity -->
   <div id="claim-modal" class="modal-overlay hidden">
     <div class="modal-card">
