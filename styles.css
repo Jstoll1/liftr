@@ -6650,3 +6650,37 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .as-lead.hidden, .as-buy.hidden { display: none; }
 .as-opt.ou.hidden, .as-ou-in.hidden { display: none; }
 .as-opt.ou span { border-style: dashed; }
+/* Side bet sheet, tidied: a pinned header with the facts, compact team
+   rows, segmented switches, and a pinned footer with progress and Save. */
+#side-modal .wpx-card.sp-sheet { display: flex; flex-direction: column; gap: 0; padding: 0; max-height: calc(100dvh - 32px); overflow: hidden; }
+.sp-sh-top { flex: none; padding: 14px 14px 10px; border-bottom: 1px solid rgba(255, 255, 255, .08); background: #0c0418; border-radius: 14px 14px 0 0; }
+.sp-sh-title { display: flex; justify-content: space-between; align-items: center; }
+.sp-sh-title span { font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: .06em; color: var(--neon-yellow); text-shadow: 0 0 8px rgba(255, 228, 94, .5); }
+.sp-sh-title .sp-x { position: static; width: 32px; height: 32px; margin: -6px -6px -6px 0; }
+.sp-sh-facts { margin-top: 6px; font-size: 13px; color: var(--text-meta); }
+.sp-sh-facts b { color: var(--neon-green); font-weight: normal; }
+.sp-sh-alert { margin-top: 8px; padding: 7px 10px; border-radius: 8px; background: rgba(255, 176, 0, .12); border: 1px solid rgba(255, 176, 0, .45); font-size: 12px; color: var(--neon-yellow); }
+.sp-sh-sub { margin-top: 4px; font-size: 12px; color: var(--text-dim); }
+#side-modal .sp-sheet-games { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; }
+#side-modal .sp-game { gap: 8px; padding: 10px; }
+#side-modal .sp-game-h { display: flex; justify-content: space-between; gap: 8px; }
+#side-modal .sp-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#side-modal .sp-team { flex-direction: row; justify-content: flex-start; gap: 7px; padding: 8px; min-height: 46px; text-align: left; }
+#side-modal .sp-team img { width: 24px; height: 24px; flex: none; }
+#side-modal .sp-team span { flex: 1; min-width: 0; font-size: 13px; }
+#side-modal .sp-team small { flex: none; font-size: 11px; }
+.sp-segs { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; gap: 3px; border-radius: 9px; background: rgba(255, 255, 255, .05); }
+.sp-seg { display: flex; justify-content: center; align-items: baseline; gap: 6px; min-height: 36px; padding: 6px 4px; border: 0; border-radius: 7px; background: none; color: var(--text-meta); font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .04em; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.sp-seg small { font-family: inherit; font-size: 6px; color: var(--text-dim); }
+.sp-seg.on { background: rgba(5, 217, 232, .16); color: var(--neon-cyan); box-shadow: inset 0 0 0 1.5px var(--neon-cyan); }
+.sp-seg.on small { color: var(--neon-cyan); }
+#side-modal .sp-sheet-note { margin-top: 2px; }
+.sp-sh-foot { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid rgba(255, 255, 255, .08); background: #0c0418; border-radius: 0 0 14px 14px; }
+.sp-sh-prog { font-size: 11px; text-align: center; color: var(--text-dim); }
+.sp-sh-prog.done { color: var(--neon-green); }
+#side-modal .sp-sheet-btns { grid-template-columns: 1fr 2fr; }
+#side-modal .sp-no { border-color: transparent; background: none; color: var(--text-dim); }
+#side-modal .sp-go:disabled { background: rgba(255, 255, 255, .08); color: var(--text-dim); opacity: 1; box-shadow: none; }
+#side-modal .sp-tbin { margin-top: 2px; }
+#side-modal.painted .wpx-card { animation: none; }
+.sp-seg { align-items: center; line-height: 1; }

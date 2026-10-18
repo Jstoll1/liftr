@@ -3264,30 +3264,60 @@ function openSideSheet(asked) {
   document.body.appendChild(m);
   let busy = false, err = "";
   const close = () => m.remove();
+  // One compact row per team: logo, name, line. The side is chosen by
+  // tapping a team; ATS or straight up, and over or under, are segmented
+  // switches under it.
   const team = (g, t, id, short) => {
     const p = draft[g.id];
     return `<button type="button" class="sp-team${p?.team === t ? " on" : ""}" data-g="${g.id}" data-team="${escapeCd(t)}"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${escapeCd(short)}</span><small>${t === g.favorite ? "-" : "+"}${g.spread}</small></button>`;
   };
   const mode = (g, md) => {
     const p = draft[g.id];
-    const pts = p?.team ? pointValue(g, p.team, md) : md === "ATS" ? 2 : null;
-    return `<button type="button" class="sp-mode${p?.team && p.mode === md ? " on" : ""}" data-g="${g.id}" data-mode="${md}"${p?.team ? "" : " disabled"}>${md === "ATS" ? "ATS" : "STRAIGHT UP"}${pts != null ? ` · ${pts} PT${pts === 1 ? "" : "S"}` : ""}</button>`;
+    const pts = md === "ATS" ? "2" : p?.team ? String(pointValue(g, p.team, md)) : "1 or 3";
+    return `<button type="button" class="sp-seg${(p?.mode || "ATS") === md && p?.team ? " on" : ""}" data-g="${g.id}" data-mode="${md}">${md === "ATS" ? "SPREAD" : "TO WIN"}<small>${pts} PT${pts === "1" ? "" : "S"}</small></button>`;
   };
-  const ou = (g, v) => `<button type="button" class="sp-mode${draft[g.id]?.ou === v ? " on" : ""}" data-g="${g.id}" data-ou="${v}">${v === "over" ? "OVER" : "UNDER"} ${g.total} · ${SIDE_OU_PTS} PTS</button>`;
+  const ou = (g, v) => `<button type="button" class="sp-seg${draft[g.id]?.ou === v ? " on" : ""}" data-g="${g.id}" data-ou="${v}">${v === "over" ? "OVER" : "UNDER"} ${g.total}<small>${SIDE_OU_PTS} PTS</small></button>`;
+  const status = (g) => { const l = sideRawOf(g); return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">${escapeCd(shortStatus(l.detail || ""))} · ${l.awayScore}-${l.homeScore}</b>` : escapeCd(g.half ? (g.half === 1 ? "1st half only" : "2nd half only") : (g.kickoffLabel || "").replace(/ ET$/, "")); };
+  // What is still to do: a side on every game, an over/under where the bet
+  // has one, and the guess when there is a tiebreaker.
+  const progress = () => {
+    let need = 0, done = 0;
+    for (const g of games) { need += 1; if (draft[g.id]?.team) done += 1; if (g.total != null) { need += 1; if (draft[g.id]?.ou) done += 1; } }
+    if (tbG) { need += 1; if (tbOk()) done += 1; }
+    return { need, done };
+  };
   const paint = () => {
     const ready = isReady();
     const inAlready = !!pot.entrants[me];
     const closes = new Date(pot.closesAt).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
+    const pr = progress();
+    // A tap redraws the sheet: keep the list where it was, and play the
+    // entrance only the first time.
+    const y = m.querySelector(".sp-sheet-games")?.scrollTop || 0;
+    if (m.firstChild) m.classList.add("painted");
     m.innerHTML = `<div class="wpx-card sp-sheet">
-      <button type="button" class="sp-x" aria-label="Close">✕</button>
-      <div class="sp-sheet-kick">💰 LATE NIGHT SIDE POT</div>
-      <div class="sp-sheet-lead">${sideNeedsPicks(pot, me) ? "<b>Games were added to the side bet.</b> Make your picks on them; you're still in. " : asked && !inAlready ? "The week's decided, but the night isn't. " : ""}Pick ${games.length === 1 ? "this game" : `these ${games.length} games`}, <b>$${pot.buyIn}</b> to get in. Most points takes the pot${pot.tbGame != null ? "; a tie goes to the closest tiebreaker guess" : "; ties split it"}.</div>
-      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game"><div class="sp-game-h">${sideTag(g)} · ${(() => { const l = sideRawOf(g); return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">ON NOW · ${escapeCd(shortStatus(l.detail || ""))} · ${escapeCd(g.awayShort)} ${l.awayScore}, ${escapeCd(g.homeShort)} ${l.homeScore}</b>` : g.half === 2 ? "scored on the 2nd half only" : g.half === 1 ? "scored on the 1st half only" : escapeCd(g.kickoffLabel || ""); })()}</div><div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}<i>@</i>${team(g, g.home, g.homeId, g.homeShort)}</div><div class="sp-modes">${mode(g, "ATS")}${mode(g, "SU")}</div>${g.total != null ? `<div class="sp-modes">${ou(g, "over")}${ou(g, "under")}</div>` : ""}</div>`).join("")}</div>
-      ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${escapeCd(sideMatch(tbG))}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="e.g. 52" value="${escapeCd(String(draftTb))}"></label>` : ""}
-      <div class="sp-sheet-note">Picks lock at ${closes} ET. Nobody sees yours until then. Money is settled between you, not in the app.</div>
-      ${err ? `<div class="sp-err">${escapeCd(err)}</div>` : ""}
-      <div class="sp-sheet-btns"><button type="button" class="sp-no"${busy ? " disabled" : ""}>${inAlready ? "Back out" : "No thanks"}</button><button type="button" class="sp-go"${ready && !busy ? "" : " disabled"}>${busy ? "Saving…" : inAlready ? "Save picks" : `I'm in · $${pot.buyIn}`}</button></div>
+      <div class="sp-sh-top">
+        <div class="sp-sh-title"><span>💰 SIDE BET</span><button type="button" class="sp-x" aria-label="Close">✕</button></div>
+        <div class="sp-sh-facts">${games.length} ${games.length === 1 ? "game" : "games"} · <b>$${pot.buyIn}</b> · locks ${closes}</div>
+        ${sideNeedsPicks(pot, me) ? `<div class="sp-sh-alert">Games were added. Finish your picks below; you're still in.</div>` : asked && !inAlready ? `<div class="sp-sh-sub">The week's decided, but the night isn't.</div>` : ""}
+      </div>
+      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game">
+        <div class="sp-game-h"><span>${sideTag(g)}</span><span>${status(g)}</span></div>
+        <div class="sp-teams">${team(g, g.away, g.awayId, g.awayShort)}${team(g, g.home, g.homeId, g.homeShort)}</div>
+        <div class="sp-segs">${mode(g, "ATS")}${mode(g, "SU")}</div>
+        ${g.total != null ? `<div class="sp-segs">${ou(g, "over")}${ou(g, "under")}</div>` : ""}
+      </div>`).join("")}
+      ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${escapeCd(sideMatch(tbG))}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="Your guess" value="${escapeCd(String(draftTb))}"></label>` : ""}
+      <div class="sp-sheet-note">Most points takes the pot${tbG ? "; a tie goes to the closest guess" : "; a tie splits it"}. Nobody sees your picks until ${closes}. Money is settled between you, not in the app.</div>
+      </div>
+      <div class="sp-sh-foot">
+        ${err ? `<div class="sp-err">${escapeCd(err)}</div>` : ""}
+        <div class="sp-sh-prog${ready ? " done" : ""}">${ready ? "All set" : `${pr.done} of ${pr.need} done`}</div>
+        <div class="sp-sheet-btns"><button type="button" class="sp-no"${busy ? " disabled" : ""}>${inAlready ? "Back out" : "No thanks"}</button><button type="button" class="sp-go"${ready && !busy ? "" : " disabled"}>${busy ? "Saving…" : inAlready ? "Save picks" : `I'm in · $${pot.buyIn}`}</button></div>
+      </div>
     </div>`;
+    const list = m.querySelector(".sp-sheet-games");
+    if (list) list.scrollTop = y;
   };
   const send = async (action) => {
     busy = true; err = ""; paint();
@@ -3307,14 +3337,16 @@ function openSideSheet(asked) {
     draftTb = e.target.value;
     const go = m.querySelector(".sp-go");
     if (go && !busy) go.disabled = !isReady();
+    const pg = m.querySelector(".sp-sh-prog"), pr = progress();
+    if (pg) { pg.textContent = isReady() ? "All set" : `${pr.done} of ${pr.need} done`; pg.classList.toggle("done", isReady()); }
   });
   m.addEventListener("click", (e) => {
     if (e.target === m || e.target.closest(".sp-x")) return close();
-    const t = e.target.closest(".sp-team"), md = e.target.closest(".sp-mode");
+    const t = e.target.closest(".sp-team"), md = e.target.closest("[data-mode]");
     const o = e.target.closest("[data-ou]");
     if (o) { const id = o.dataset.g; draft[id] = { ...draft[id], ou: o.dataset.ou }; return paint(); }
     if (t) { const id = t.dataset.g; draft[id] = { ...draft[id], team: t.dataset.team, mode: draft[id]?.mode || "ATS" }; err = ""; return paint(); }
-    if (md && !md.disabled) { const id = md.dataset.g; if (draft[id]) draft[id].mode = md.dataset.mode; return paint(); }
+    if (md) { const id = md.dataset.g; draft[id] = { ...draft[id], mode: md.dataset.mode }; return paint(); }
     if (e.target.closest(".sp-go") && !busy) return send("join");
     if (e.target.closest(".sp-no") && !busy) return send("decline");
   });
