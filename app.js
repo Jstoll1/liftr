@@ -684,6 +684,7 @@ function fetchLiveScores(force = false) {
 async function fetchLiveScoresNow() {
   let live = {}, answered = false;
   try {
+    if (window.LEAGUE?.liveViaWorker) throw new Error("live via Worker");
     live = await fetchLiveFromEspn();
     answered = true;
   } catch (err) {

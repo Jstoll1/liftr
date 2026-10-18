@@ -32,6 +32,9 @@
     // by team id it is missing (404), so the NFL uses the standard cut.
     logoCut: "500",
     worker: "https://liftr-nfl.jhs797.workers.dev",
+    // ESPN refuses this site's browser requests (no CORS header), so live
+    // scores come straight from the Worker instead of failing first.
+    liveViaWorker: true,
     // Members are added by the admin and stored on the Worker; the app
     // reads them on open (see loadRoster in app.js).
     roster: null,
@@ -65,6 +68,9 @@
     features: { history: true, trivia: true, qotw: true, pot: true, boner: true, champ: true, analytics: true },
   };
   window.ESPN_API = "https://site.api.espn.com/apis/site/v2/sports/" + window.LEAGUE.espn;
+  // Open the connection to the Worker now, while the page and styles load,
+  // so the first scores request skips DNS and TLS.
+  try { var pc = document.createElement("link"); pc.rel = "preconnect"; pc.href = window.LEAGUE.worker; pc.crossOrigin = "anonymous"; document.head.appendChild(pc); } catch (e) { /* no head yet */ }
   if (nfl) {
     document.documentElement.setAttribute("data-sport", "nfl");
     document.title = window.LEAGUE.name;

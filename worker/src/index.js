@@ -2357,9 +2357,28 @@ async function handleInsights(request, env, corsHeaders, url) {
   }
 }
 
+// Everyone watching shares one ESPN answer for a few seconds: the first
+// request pays the trip to ESPN, the rest are served from memory or the
+// edge cache, and a burst of phones becomes one ESPN call.
+const LIVE_SHARE_MS = 5000;
+let liveMemo = null;
 async function handleLive(corsHeaders, env) {
   try {
-    return json(await liveGames(env), 200, corsHeaders);
+    const now = Date.now();
+    if (liveMemo && now - liveMemo.at < LIVE_SHARE_MS) return json(await liveMemo.body, 200, corsHeaders);
+    const cache = typeof caches !== "undefined" ? caches.default : null;
+    const key = new Request("https://live-share.internal/live");
+    const hit = cache ? await cache.match(key).catch(() => null) : null;
+    if (hit) {
+      const body = await hit.json();
+      liveMemo = { at: now, body: Promise.resolve(body) };
+      return json(body, 200, corsHeaders);
+    }
+    const pending = liveGames(env);
+    liveMemo = { at: now, body: pending };
+    const body = await pending.catch((e) => { liveMemo = null; throw e; });
+    if (cache && body?.games?.length) await cache.put(key, new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json", "Cache-Control": `max-age=${LIVE_SHARE_MS / 1000}` } })).catch(() => {});
+    return json(body, 200, corsHeaders);
   } catch (err) {
     console.error("Live scores error", err?.stack || String(err));
     return json({ games: [] }, 200, corsHeaders); // never break the client over this

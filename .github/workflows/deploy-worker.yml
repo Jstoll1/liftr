@@ -27,6 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # A failing test stops the deploy: the live Worker keeps running.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test worker/test/*.test.mjs
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
