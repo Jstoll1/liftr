@@ -4667,7 +4667,10 @@ function playerBreakdownHtml(name, state, results, live) {
     const canPath = wd.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((row) => row.some((p) => p?.hidden));
     wpRow = `<div class="rd-wp"><span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
   }
-  return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rows}${tbRow}${summary}</div>`;
+  // A Scouting Report published from the Creative Studio, under the week.
+  const scout = creativeArt?.art?.[`owner-card:owner:${name}`]?.text;
+  const scoutRow = scout ? `<div class="rd-scout"><em>📋 SCOUTING REPORT</em><b>${escapeCd(scout.headline)}</b>${String(scout.body).split(/\n\s*\n/).map((p) => `<p>${escapeCd(p)}</p>`).join("")}</div>` : "";
+  return `<div class="rank-detail">${wpRow}${scoutRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rows}${tbRow}${summary}</div>`;
 }
 
 // Second line under a leaderboard name. How many picks are in is fair
@@ -8074,7 +8077,7 @@ document.querySelectorAll(".h2h-select").forEach((el) => el.addEventListener("ch
 // image to show where, by placement and subject. Kept on the phone so the
 // replay opens with it, refreshed on load, and redrawn when it changes.
 const CREATIVE_KEY = "brochiefs_creative_v1";
-let creativeArt = { at: 0, art: {} };
+var creativeArt = { at: 0, art: {} }; // var: the board can draw before this line runs
 try { creativeArt = JSON.parse(localStorage.getItem(CREATIVE_KEY) || "null") || creativeArt; } catch { /* private mode */ }
 async function loadCreativeArt() {
   if (!WORKER_URL || window.LEAGUE?.sport === "nfl") return;

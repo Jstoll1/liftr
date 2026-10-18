@@ -22,8 +22,11 @@ export const estimateCost = (quality = "medium", promptChars = 600) => +(IMAGE_T
 
 const str = (v, max) => (typeof v === "string" && v.trim() && v.trim().length <= max ? v.trim() : null);
 
+export const TONES = { coach: "a straight-talking coach: warm, direct, practical", hype: "a hype man on game day: loud, fun, big energy", dry: "a dry, deadpan analyst: understated wit", savage: "a savage roast from a friend: ruthless but affectionate, never cruel about anything but picks" };
+
 export const CATEGORIES = {
   "team-mascot": {
+    kind: "image",
     label: "Team mascot",
     blurb: "A mascot in the arcade style, for a team's spot on the Replay and anywhere a team logo shows.",
     placements: ["replay-logo"],
@@ -52,9 +55,41 @@ export const CATEGORIES = {
   },
 };
 
+CATEGORIES["scouting-report"] = {
+  kind: "text",
+  label: "Scouting Report",
+  blurb: "Each owner's report, written from their own numbers (scout.js). Pick a tone, read them all, edit any line, then publish to their leaderboard card.",
+  placements: ["owner-card"],
+  trigger: "manual",
+  publishWhen: "any",
+  perWeek: true,
+  // The subject: one owner, with the facts scout.js computed for them. The
+  // writer may use only these; every number in the report comes from here.
+  subject(input) {
+    const name = str(input?.name, 40);
+    if (!name) return { error: "Pick an owner." };
+    const facts = input?.facts && typeof input.facts === "object" ? input.facts : null;
+    const raw = facts ? JSON.stringify(facts) : "";
+    if (!facts || raw.length > 8000) return { error: "That owner's numbers are missing or too long." };
+    return { key: `owner:${name}`, label: name, data: { name, facts } };
+  },
+  prompt(s, { tone = "coach", feedback = null, previous = null } = {}) {
+    const voice = TONES[tone] || TONES.coach;
+    const system = [
+      "You write a short scouting report for one owner in a college football pick'em league among friends.",
+      `Voice: ${voice}.`,
+      "Use only the facts given. Never invent or change a number, a team, a week or a result; you may round or say a number in words.",
+      "No em dashes and no hyphens used as punctuation. Plain words. Under 120 words.",
+      'Return JSON: {"headline": "under 9 words", "body": "two or three short paragraphs separated by a blank line, ending with the one thing to change if there is one"}.',
+    ].join(" ");
+    const user = [`Owner: ${s.data.name}`, `Facts: ${JSON.stringify(s.data.facts)}`, previous ? `Revise this earlier draft: ${previous}` : "", feedback ? `Owner's note for this draft: ${feedback}` : ""].filter(Boolean).join("\n");
+    return JSON.stringify({ system, user, tone });
+  },
+};
+
 export const MAX_FEEDBACK = 300;
 
 // What the Studio needs to draw its pickers, without the prompt code.
 export function publicTypes() {
-  return Object.entries(CATEGORIES).map(([id, c]) => ({ id, label: c.label, blurb: c.blurb, placements: c.placements, trigger: c.trigger, publishWhen: c.publishWhen, estCost: estimateCost(c.quality) }));
+  return Object.entries(CATEGORIES).map(([id, c]) => ({ id, kind: c.kind || "image", label: c.label, blurb: c.blurb, placements: c.placements, trigger: c.trigger, publishWhen: c.publishWhen, perWeek: c.perWeek !== false, estCost: c.kind === "text" ? 0.006 : estimateCost(c.quality) }));
 }

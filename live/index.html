@@ -483,6 +483,57 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 .cost-r u i { display: block; height: 100%; background: var(--green); border-radius: 3px; }
 .cost-r > b { font: 700 12.5px var(--mono); color: var(--text); min-width: 52px; text-align: right; }
 .cost .note { margin-top: 10px; }
+
+.sd-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 11px; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); }
+.sd-tabs button { padding: 8px 4px; font: 700 12.5px var(--mono); color: var(--dim); background: none; border: 0; border-radius: 8px; }
+.sd-tabs button.on { color: var(--text); background: rgba(139, 108, 255, .25); box-shadow: inset 0 0 0 1px rgba(139, 108, 255, .5); }
+.sd-tabs b { color: #ffd23f; }
+.sd-bulk { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.sd-bulk span { font-size: 12.5px; color: var(--meta); }
+.sd-bulk button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; font-weight: 700; font-size: 12.5px; color: var(--text); background: rgba(255, 255, 255, .05); border: 1px solid var(--line); border-radius: 9px; }
+.sd-bulk button svg { width: 14px; height: 14px; }
+.sd-bulk button.pub { color: #0b0716; background: #ffd23f; border-color: #ffd23f; }
+.sd-acts .ic { flex: 0 0 auto; padding: 9px 11px; }
+.sd-mini { display: flex; flex-direction: column; gap: 6px; }
+.sd-mini input, .sd-mini select, .sd-mini textarea { width: 100%; padding: 9px; font-family: inherit; font-size: 14px; line-height: 1.35; color: var(--text); background: rgba(255, 255, 255, .04); border: 1px solid var(--line); border-radius: 9px; }
+.sd-text { display: flex; flex-direction: column; gap: 7px; padding: 2px 0; }
+.sd-text b { font-size: 15px; color: #fff; }
+.sd-text p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text); }
+.sd-art.txt { aspect-ratio: auto; display: block; padding: 12px; text-align: left; background: rgba(139, 108, 255, .06); cursor: default; }
+.lib { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 6px; }
+.lib-r { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 7px 10px 7px 7px; text-align: left; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 11px; }
+.lib-th { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 8px; overflow: hidden; background: repeating-conic-gradient(#1a1230 0% 25%, #140d26 0% 50%) 50% / 12px 12px; }
+.lib-th img { width: 100%; height: 100%; object-fit: contain; }
+.lib-tx { padding: 4px; font-size: 9px; line-height: 1.2; color: var(--meta); overflow: hidden; }
+.lib-n { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.lib-n b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-n small { font: 10.5px var(--mono); color: var(--dim); }
+.lib-r .sd-badge { font-style: normal; }
+.sg-h small { font: 11px var(--mono); color: var(--dim); text-transform: none; letter-spacing: 0; }
+.sd-sheet.wide { width: min(100%, 980px); max-height: 92vh; }
+.ver-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+.ver-grid.tx { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.ver { display: flex; flex-direction: column; gap: 7px; padding: 8px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, .2); }
+.ver.live { border-color: rgba(61, 252, 143, .6); box-shadow: 0 0 14px rgba(61, 252, 143, .15); }
+.ver .sd-art { border-radius: 8px; }
+.ver .sd-badge { font-style: normal; }
+.audit { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.audit li { display: grid; grid-template-columns: 110px 90px minmax(0, 1fr); gap: 8px; font-size: 12px; color: var(--meta); }
+.audit li span { font-size: 11px; color: var(--dim); }
+.audit li b { text-transform: uppercase; font: 700 10.5px var(--mono); letter-spacing: .06em; color: var(--text); }
+.audit li small { overflow-wrap: anywhere; }
+.plc { display: flex; flex-direction: column; gap: 8px; }
+.scw { display: flex; flex-direction: column; gap: 10px; }
+.tones { display: flex; gap: 6px; flex-wrap: wrap; }
+.tones button { padding: 7px 13px; font: 700 12.5px var(--mono); color: var(--dim); background: rgba(255, 255, 255, .03); border: 1px solid var(--line); border-radius: 999px; }
+.tones button.on { color: #0b0716; background: #ffd23f; border-color: #ffd23f; }
+.scw-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 10px; }
+.scw-d { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.scw-d.s-pending_review { border-color: rgba(255, 210, 63, .45); }
+.scw-d.s-published { border-color: rgba(61, 252, 143, .6); }
+.scw-d .sd-row b { font-size: 14px; }
+.scw-d .sd-badge { font-style: normal; }
+@media (max-width: 520px) { .audit li { grid-template-columns: 90px 70px minmax(0, 1fr); } }
 </style>
 </head>
 <body>
@@ -1126,7 +1177,8 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   // one: the live page keeps polling underneath but does not repaint over
   // a review in progress. Phase 1: ask for a graphic, watch it generate,
   // look at it up close.
-  const sd = { types: [], items: [], budget: null, teams: [], filter: "ALL", gen: null, zoom: null, err: "", loading: false, review: 0, at: 0, sugg: null, pick: null, queuing: false, suggOpen: true };
+  const sd = { types: [], items: [], budget: null, teams: [], filter: "ALL", gen: null, zoom: null, err: "", loading: false, review: 0, at: 0, sugg: null, pick: null, queuing: false, suggOpen: true,
+    tab: "review", lib: null, asset: null, regen: null, edit: null, tone: "coach", scout: null, sel: new Set() };
   const studioEl = document.getElementById("studio");
   const SD_FILTERS = [["ALL", "All"], ["PENDING_REVIEW", "Review"], ["APPROVED", "Approved"], ["PUBLISHED", "Live"], ["QUEUED", "Queued"], ["GENERATING", "Generating"], ["REJECTED", "Rejected"], ["FAILED", "Failed"]];
   const SD_LABEL = { QUEUED: "Queued", GENERATING: "Generating", PENDING_REVIEW: "In review", APPROVED: "Approved", PUBLISHED: "Published", REJECTED: "Rejected", FAILED: "Failed" };
@@ -1232,25 +1284,30 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     if (!out || out.type !== "image/webp") out = await new Promise((r) => c.toBlob(r, "image/png"));
     await sdFetch(`/optimized/${encodeURIComponent(id)}`, { method: "POST", headers: { "Content-Type": out.type }, body: out });
   }
-  async function sdAct(action, id) {
-    if (action === "reject" && !confirm("Reject this graphic? It stays private and you can render it again.")) return;
-    if (action === "unpublish" && !confirm("Take it out of the app? The usual logo comes back.")) return;
+  async function sdAct(action, id, extra = {}) {
+    if (!extra.quiet && action === "reject" && !confirm("Reject this? It stays private and you can render it again.")) return;
+    if (!extra.quiet && action === "unpublish" && !confirm("Take it out of the app? What was there before comes back.")) return;
     sd.busy = id; paintStudio();
     let msg = "";
     try {
-      if (action === "approve") await sdOptimize(id);
-      const r = await sdFetch("/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, versionIds: [id] }) });
+      const v = sd.items.find((x) => x.id === id) || sd.asset?.versions?.find((x) => x.id === id);
+      const isText = (v && (v.kind === "text" || v.text)) || sd.asset?.kind === "text";
+      if (action === "approve" && !isText) await sdOptimize(id);
+      const r = await sdFetch("/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, versionIds: [id], feedback: extra.feedback, tone: extra.tone, text: extra.text }) });
       if (r.skipped?.length) msg = `Not done: ${r.skipped.map((x) => x.why).join(", ")}.`;
     } catch (err) { msg = err.message; }
     sd.busy = null;
+    if (extra.quiet) return;
     await studioLoad(true);
+    if (sd.asset) await openAsset(sd.asset.id);
+    if (sd.tab === "library" || sd.tab === "placements") await loadLibrary();
     // The reload clears old errors; this one stays until the next action.
     if (msg) { sd.err = msg; paintStudio(); }
   }
   function sdCard(x) {
     const t = new Date(x.created);
     const when = `${t.toLocaleDateString([], { month: "short", day: "numeric" })} · ${t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
-    const art = x.hasImage ? `<button type="button" class="sd-art" data-zoom="${esc(x.id)}" aria-label="Zoom"><img src="${imgUrl(x.id)}" alt="${esc(x.label)}" loading="lazy"></button>`
+    const art = x.kind === "text" ? `<div class="sd-art txt">${sdText(x.text) || `<small>${esc(SD_LABEL[x.status])}</small>`}</div>` : x.hasImage ? `<button type="button" class="sd-art" data-zoom="${esc(x.id)}" aria-label="Zoom"><img src="${imgUrl(x.id)}" alt="${esc(x.label)}" loading="lazy"></button>`
       : `<div class="sd-art empty ${x.status.toLowerCase()}">${x.status === "FAILED" ? "✕" : `<i class="sd-spin"></i>`}<small>${esc(SD_LABEL[x.status])}</small></div>`;
     return `<article class="sd-card s-${x.status.toLowerCase()}">
       ${art}
@@ -1260,10 +1317,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         <div class="sd-sub num">${when} · ${x.cost != null ? money$(x.cost) : `~${money$(x.estCost)}`}${x.attempts > 1 ? ` · try ${x.attempts}` : ""}</div>
         ${x.feedback ? `<div class="sd-note">“${esc(x.feedback)}”</div>` : ""}
         ${x.error ? `<div class="sd-err">${esc(x.error)}</div>` : ""}
-        ${sd.busy === x.id ? `<div class="sd-acts"><span class="sd-wait">Working…</span></div>`
-          : x.status === "PENDING_REVIEW" ? `<div class="sd-acts"><button type="button" class="ok" data-act="approve" data-id="${esc(x.id)}">Approve</button><button type="button" class="no" data-act="reject" data-id="${esc(x.id)}">Reject</button></div>`
-          : x.status === "APPROVED" ? `<div class="sd-acts"><button type="button" class="pub" data-act="publish" data-id="${esc(x.id)}">Publish to app</button><button type="button" class="no" data-act="reject" data-id="${esc(x.id)}">Reject</button></div>`
-          : x.status === "PUBLISHED" ? `<div class="sd-acts"><span class="sd-live">● Live in the app</span><button type="button" class="no" data-act="unpublish" data-id="${esc(x.id)}">Unpublish</button></div>` : ""}
+        ${sdVerActs(x)}
       </div>
     </article>`;
   }
@@ -1284,32 +1338,171 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       <p class="sd-fine">Nothing is published. It lands here for your review.</p>
     </form>`;
   }
+  // ---- Studio: shared pieces ----
+  const SD_TABS = [["review", "Review"], ["library", "Library"], ["placements", "Placements"], ["create", "Create"]];
+  const TONES = [["coach", "Coach"], ["hype", "Hype"], ["dry", "Dry"], ["savage", "Savage"]];
+  const PLACE = { "replay-logo": ["Week Replay logos", "Team logos on the Replay cards. Without Studio art: the template's five, else ESPN's logo in pixels."], "owner-card": ["Leaderboard card · Scouting Report", "Shown when someone opens an owner's row. Without a published report: nothing."] };
+  // The buttons a version gets, by where it stands, with its note and
+  // edit forms inline. Every action is in the asset's audit trail.
+  function sdVerActs(v) {
+    const id = esc(v.id), text = v.kind === "text";
+    if (sd.busy === v.id) return `<div class="sd-acts"><span class="sd-wait">Working…</span></div>`;
+    if (sd.regen === v.id) return `<form class="sd-mini" data-regen-form="${id}"><input name="note" maxlength="300" placeholder="${text ? "What to change: shorter, mention the rain…" : "What to change: more snarl, facing left…"}" autofocus>${text ? `<select name="tone">${TONES.map(([k, l]) => `<option value="${k}"${(v.tone || sd.tone) === k ? " selected" : ""}>${l}</option>`).join("")}</select>` : ""}<div class="sd-acts"><button type="submit" class="ok">Render again</button><button type="button" data-regen-cancel="1">Cancel</button></div></form>`;
+    if (sd.edit === v.id && v.text) return `<form class="sd-mini" data-edit-form="${id}"><input name="headline" maxlength="120" value="${esc(v.text.headline)}"><textarea name="body" rows="7">${esc(v.text.body)}</textarea><div class="sd-acts"><button type="submit" class="ok">Save edit</button><button type="button" data-edit-cancel="1">Cancel</button></div>${v.status === "PUBLISHED" ? `<p class="sd-fine">The live report stays as is until you publish the edit.</p>` : ""}</form>`;
+    const b = (act, label, cls = "") => `<button type="button" class="${cls}" data-act="${act}" data-id="${id}">${label}</button>`;
+    const regen = b("regen", "↻", "ic"), edit = text ? b("edit", "✎", "ic") : "";
+    if (v.status === "PENDING_REVIEW") return `<div class="sd-acts">${b("approve", "Approve", "ok")}${b("reject", "Reject", "no")}${edit}${regen}</div>`;
+    if (v.status === "APPROVED") return `<div class="sd-acts">${b("publish", "Publish to app", "pub")}${b("reject", "Reject", "no")}${edit}${regen}</div>`;
+    if (v.status === "PUBLISHED") return `<div class="sd-acts"><span class="sd-live">● Live</span>${b("unpublish", "Unpublish", "no")}${edit}${regen}</div>`;
+    if (v.status === "REJECTED" || v.status === "FAILED") return `<div class="sd-acts">${b("regen", "↻ Render again")}</div>`;
+    return "";
+  }
+  const sdText = (t) => t ? `<div class="sd-text"><b>${esc(t.headline)}</b>${t.body.split(/\n\s*\n/).map((p) => `<p>${esc(p)}</p>`).join("")}</div>` : "";
+
+  // ---- Review: everything waiting on you, newest first ----
+  function sdReview() {
+    const counts = Object.fromEntries(SD_FILTERS.map(([k]) => [k, k === "ALL" ? sd.items.length : sd.items.filter((x) => x.status === k).length]));
+    const list = sd.filter === "ALL" ? sd.items : sd.items.filter((x) => x.status === sd.filter);
+    const waiting = sd.items.filter((x) => x.status === "PENDING_REVIEW");
+    return `<div class="sd-filters" role="group" aria-label="Status">${SD_FILTERS.map(([k, lab]) => `<button type="button" class="${sd.filter === k ? "on" : ""}" data-sd-filter="${k}">${lab}${counts[k] ? ` <b>${counts[k]}</b>` : ""}</button>`).join("")}</div>
+      ${waiting.length > 1 ? `<div class="sd-bulk"><span>${waiting.length} waiting for you</span><button type="button" data-bulk="approve">Approve all ${waiting.length}</button></div>` : ""}
+      ${list.length ? `<div class="sd-grid">${list.map(sdCard).join("")}</div>` : `<div class="sd-empty">${sd.loading ? "Loading…" : sd.items.length ? "Nothing here." : "Nothing yet. Open Create to make the first graphic or report."}</div>`}`;
+  }
+
+  // ---- Library: one row per asset, what is live and what is newest ----
+  function sdLibrary() {
+    if (!sd.lib) return `<div class="sd-empty">Loading the library…</div>`;
+    if (!sd.lib.length) return `<div class="sd-empty">The library is empty. Everything you make lands here.</div>`;
+    const groups = {};
+    for (const a of sd.lib) (groups[a.categoryLabel] ||= []).push(a);
+    return Object.entries(groups).map(([g, rows]) => `<div class="sg-h"><span>${esc(g)} · ${rows.length}</span><small>${rows.filter((a) => a.live).length} live</small></div>
+      <div class="lib">${rows.map((a) => {
+        const show = a.live || a.latest;
+        const thumb = a.kind === "text" ? `<span class="lib-tx">${esc(show?.text?.headline || "…")}</span>` : show?.hasImage ? `<img src="${imgUrl(show.id)}" alt="" loading="lazy">` : `<span class="lib-tx">…</span>`;
+        return `<button type="button" class="lib-r" data-asset="${esc(a.id)}"><span class="lib-th">${thumb}</span><span class="lib-n"><b>${esc(a.label)}</b><small>${a.week != null ? `Week ${a.week} · ` : ""}${a.versions} version${a.versions === 1 ? "" : "s"} · ${money$(a.spent)}</small></span>${a.live ? `<i class="sd-badge s-published">Live</i>` : a.latest ? `<i class="sd-badge s-${a.latest.status.toLowerCase()}">${esc(SD_LABEL[a.latest.status])}</i>` : ""}</button>`;
+      }).join("")}</div>`).join("");
+  }
+  // One asset, every version side by side, and its history.
+  function sdAssetSheet() {
+    const a = sd.asset; if (!a) return "";
+    const text = a.kind === "text";
+    return `<div class="sd-scrim" data-asset-close="1"></div><div class="sd-sheet wide">
+      <div class="sd-sh"><b>${esc(a.label)}</b><button type="button" class="ib" data-asset-close="1" aria-label="Close">${ICONS.x}</button></div>
+      <div class="sd-chips"><span>${esc(a.categoryLabel)}</span>${a.week != null ? `<span>Week ${a.week}</span>` : ""}${a.placements.map((p) => `<span class="pl">${esc(PLACE[p]?.[0] || p)}</span>`).join("")}</div>
+      <div class="ver-grid${text ? " tx" : ""}">${a.versions.map((v) => { const vv = { ...v, kind: a.kind }; return `<div class="ver${v.published ? " live" : ""}">
+        ${text ? sdText(v.text) || `<div class="sd-text"><p>${esc(SD_LABEL[v.status])}…</p></div>` : v.hasImage ? `<button type="button" class="sd-art" data-zoomsrc="${esc(v.id)}"><img src="${imgUrl(v.id)}" alt="" loading="lazy"></button>` : `<div class="sd-art empty"><small>${esc(SD_LABEL[v.status])}</small></div>`}
+        <div class="sd-row"><span class="sd-sub num">${new Date(v.created).toLocaleDateString([], { month: "short", day: "numeric" })} · ${v.cost != null ? money$(v.cost) : `~${money$(v.estCost)}`}${v.tone ? ` · ${esc(v.tone)}` : ""}</span><i class="sd-badge s-${v.status.toLowerCase()}">${esc(SD_LABEL[v.status])}</i></div>
+        ${v.feedback ? `<div class="sd-note">“${esc(v.feedback)}”</div>` : ""}${v.error ? `<div class="sd-err">${esc(v.error)}</div>` : ""}
+        ${sdVerActs(vv)}
+      </div>`; }).join("")}</div>
+      <div class="sg-h"><span>History</span></div>
+      <ol class="audit">${a.audit.map((x) => `<li><span class="num">${new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span><b>${esc(x.action)}</b>${x.note ? `<small>${esc(x.note)}</small>` : ""}</li>`).join("")}</ol>
+    </div>`;
+  }
+
+  // ---- Placements: every spot in the app and what fills it ----
+  function sdPlacements() {
+    if (!sd.lib) return `<div class="sd-empty">Loading…</div>`;
+    const spots = [...new Set(sd.types.flatMap((t) => t.placements))];
+    return spots.map((p) => {
+      const live = sd.lib.filter((a) => a.live && a.placements.includes(p));
+      const [name, how] = PLACE[p] || [p, ""];
+      return `<section class="panel plc"><div class="ph"><h2>${esc(name)}</h2><span class="sub">${live.length} live</span></div><p class="sg-why">${esc(how)}</p>
+        ${live.length ? `<div class="lib">${live.map((a) => `<button type="button" class="lib-r" data-asset="${esc(a.id)}"><span class="lib-th">${a.kind === "text" ? `<span class="lib-tx">${esc(a.live.text?.headline || "")}</span>` : `<img src="${imgUrl(a.live.id)}" alt="" loading="lazy">`}</span><span class="lib-n"><b>${esc(a.label)}</b><small>live since ${new Date(a.live.at).toLocaleDateString([], { month: "short", day: "numeric" })}</small></span><i class="sd-badge s-published">Live</i></button>`).join("")}</div>` : `<div class="note">Nothing published here yet.</div>`}
+      </section>`;
+    }).join("");
+  }
+
+  // ---- Create: suggestions, a single graphic, and Scouting Reports ----
+  function sdScout() {
+    const sc = sd.scout;
+    const drafts = {};
+    for (const x of sd.items) if (x.category === "scouting-report" && (!sc?.week || x.week === sc.week) && !drafts[x.subject]) drafts[x.subject] = x;
+    const list = Object.values(drafts);
+    const est = sd.types.find((t) => t.id === "scouting-report")?.estCost || 0.006;
+    const missing = sc?.reps ? sc.reps.filter((r) => !drafts[`owner:${r.name}`] || drafts[`owner:${r.name}`].status === "REJECTED" || drafts[`owner:${r.name}`].status === "FAILED") : [];
+    const review = list.filter((x) => x.status === "PENDING_REVIEW"), ready = list.filter((x) => x.status === "APPROVED");
+    return `<section class="panel scw">
+      <div class="sd-title"><span>📋 SCOUTING REPORTS${sc?.week ? ` · WEEK ${sc.week}` : ""}</span></div>
+      <p class="sg-why">Written from each owner's own numbers (the admin console's Scouting math). The writer may not change a number. Pick a tone, write them all, read them here, edit any line, then publish to each owner's leaderboard card.</p>
+      <div class="tones">${TONES.map(([k, l]) => `<button type="button" class="${sd.tone === k ? "on" : ""}" data-tone="${k}">${l}</button>`).join("")}</div>
+      ${!sc ? `<button type="button" class="sd-go" data-scout-load="1">Load this week's numbers</button>` : sc.loading ? `<div class="sd-empty">Crunching the season…</div>` : sc.err ? `<div class="sd-errbox">${esc(sc.err)}</div>`
+        : missing.length ? `<button type="button" class="sd-go" data-scout-write="1"${sd.queuing ? " disabled" : ""}>${sd.queuing ? `Queuing… ${sd.queuing}` : `Write ${missing.length} report${missing.length === 1 ? "" : "s"} · ${TONES.find((t) => t[0] === sd.tone)[1]} · about $${(missing.length * est).toFixed(2)}`}</button>` : `<div class="note">Every owner has a draft this week. Use ↻ on any one for a new take.</div>`}
+      ${review.length > 1 || ready.length > 1 ? `<div class="sd-bulk">${review.length > 1 ? `<button type="button" data-bulk="approve" data-bulk-cat="scouting-report">Approve all ${review.length}</button>` : ""}${ready.length > 1 ? `<button type="button" class="pub" data-bulk="publish" data-bulk-cat="scouting-report">Publish all ${ready.length} approved</button>` : ""}</div>` : ""}
+      <div class="scw-list">${list.map((x) => `<article class="scw-d s-${x.status.toLowerCase()}"><div class="sd-row"><b>${esc(x.label)}</b><i class="sd-badge s-${x.status.toLowerCase()}">${esc(SD_LABEL[x.status])}</i></div>
+        ${x.text ? sdText(x.text) : `<div class="sd-text"><p>${x.status === "FAILED" ? esc(x.error || "Failed") : "Writing…"}</p></div>`}
+        <div class="sd-sub num">${x.tone ? `${esc(x.tone)} · ` : ""}${x.cost != null ? money$(x.cost) : `~${money$(x.estCost)}`}${x.feedback ? ` · “${esc(x.feedback)}”` : ""}</div>
+        ${sdVerActs(x)}</article>`).join("")}</div>
+    </section>`;
+  }
+  function sdCreate() {
+    return `${sdSuggest()}
+      <div class="sd-bulk"><span>Something specific?</span><button type="button" data-sd-new="1">${ICONS.plus} New graphic</button></div>
+      ${sdScout()}`;
+  }
+
   function paintStudio() {
     if (st.view !== "studio") return;
     const b = sd.budget, used = b && b.cap ? Math.min(100, ((b.spent + b.reserved) / b.cap) * 100) : 0;
-    const counts = Object.fromEntries(SD_FILTERS.map(([k]) => [k, k === "ALL" ? sd.items.length : sd.items.filter((x) => x.status === k).length]));
-    const list = sd.filter === "ALL" ? sd.items : sd.items.filter((x) => x.status === sd.filter);
-    const z = sd.zoom && sd.items.find((x) => x.id === sd.zoom);
+    const z = sd.zoom;
+    const body = sd.tab === "library" ? sdLibrary() : sd.tab === "placements" ? sdPlacements() : sd.tab === "create" ? sdCreate() : sdReview();
     studioEl.innerHTML = `
       <div class="top"><div class="top-in">
         <button type="button" class="brand" data-sd-back="sec-now" aria-label="Back to live"><i class="beat"></i><b>BROCHIEFS</b><span>STUDIO</span></button>
-        <span class="age">${sd.loading ? "loading…" : sd.err ? "can't reach the studio" : ""}</span>
+        <span class="age">${sd.loading ? "loading…" : sd.err ? "" : ""}</span>
         <div class="tools"><button type="button" class="ib" data-sd-refresh="1" aria-label="Refresh">${ICONS.refresh}</button></div>
       </div></div>
       <div class="sd-page">
         <section class="panel sd-head">
-          <div class="sd-title"><span>🎨 CREATIVE STUDIO</span><button type="button" class="sd-new" data-sd-new="1">${ICONS.plus}<span>Generate</span></button></div>
+          <div class="sd-title"><span>🎨 CREATIVE STUDIO</span><button type="button" class="sd-new" data-sd-tab="create">${ICONS.plus}<span>Create</span></button></div>
           <div class="sd-budget"><div class="sd-bar"><u style="width:${used.toFixed(1)}%"></u></div><span class="num">${b ? `${money$(b.spent)} spent${b.reserved ? ` · ${money$(b.reserved)} in flight` : ""} · ${money$(b.cap)} cap · ${esc(b.month)}` : "Budget…"}</span></div>
-          <div class="sd-filters" role="group" aria-label="Status">${SD_FILTERS.map(([k, lab]) => `<button type="button" class="${sd.filter === k ? "on" : ""}" data-sd-filter="${k}">${lab}${counts[k] ? ` <b>${counts[k]}</b>` : ""}</button>`).join("")}</div>
+          <div class="sd-tabs" role="tablist">${SD_TABS.map(([k, l]) => `<button type="button" role="tab" class="${sd.tab === k ? "on" : ""}" data-sd-tab="${k}">${l}${k === "review" && sd.review ? ` <b>${sd.review}</b>` : ""}</button>`).join("")}</div>
         </section>
         ${sd.err ? `<div class="sd-errbox">${esc(sd.err)}</div>` : ""}
-        ${sdSuggest()}
-        ${list.length ? `<div class="sd-grid">${list.map(sdCard).join("")}</div>` : `<div class="sd-empty">${sd.loading ? "Loading…" : sd.items.length ? "Nothing here." : "No graphics yet. Tap Generate to make the first one."}</div>`}
-        <p class="sd-foot">Approve keeps it private. Only Publish to app puts it in front of the league, and Unpublish brings the usual logo back.</p>
+        ${body}
+        <p class="sd-foot">Approve keeps it private. Only Publish puts it in front of the league, and Unpublish brings back what was there before.</p>
       </div>
-      ${z ? `<div class="sd-zoom" data-sd-unzoom="1"><button type="button" class="ib sd-zx" data-sd-unzoom="1" aria-label="Close">${ICONS.x}</button><div class="sd-zimg"><img src="${imgUrl(z.id)}" alt="${esc(z.label)}"></div><div class="sd-zcap">${esc(z.label)} · ${esc(z.categoryLabel)} · ${money$(z.cost ?? z.estCost)}</div></div>` : ""}
+      ${z ? `<div class="sd-zoom" data-sd-unzoom="1"><button type="button" class="ib sd-zx" data-sd-unzoom="1" aria-label="Close">${ICONS.x}</button><div class="sd-zimg"><img src="${imgUrl(z)}" alt=""></div></div>` : ""}
+      ${sdAssetSheet()}
       ${sdSheet()}
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" data-sd-back="${id}">${ICONS[ic]}<span>${lab}</span></button>`).join("")}<button type="button" class="on">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button></nav>`;
+  }
+  async function loadLibrary() { try { sd.lib = (await sdFetch("/library")).assets; } catch (e) { sd.err = e.message; } paintStudio(); }
+  async function openAsset(id) { try { sd.asset = await sdFetch(`/asset/${encodeURIComponent(id)}`); } catch (e) { sd.err = e.message; } paintStudio(); }
+
+  // Scouting numbers, worked out here the same way the admin console does
+  // (scout.js over the season and the pick log). Scoring mirrors app.js.
+  const LS = {
+    pointValue: (g, team, mode) => (mode === "ATS" ? 2 : team === g.favorite ? 1 : 3),
+    outcome(g, r) {
+      if (!r || !Number.isFinite(r.awayScore) || !Number.isFinite(r.homeScore)) return null;
+      const su = r.awayScore === r.homeScore ? null : r.awayScore > r.homeScore ? g.away : g.home;
+      const fm = g.favorite === g.home ? r.homeScore - r.awayScore : r.awayScore - r.homeScore;
+      const dog = g.favorite === g.away ? g.home : g.away;
+      return { su, ats: fm === g.spread ? null : fm > g.spread ? g.favorite : dog };
+    },
+    scorePick(g, p, r) { const o = LS.outcome(g, r); if (!o) return null; if (!p || !p.team || !p.mode) return 0; const w = p.mode === "SU" ? o.su : o.ats; return w !== null && p.team === w ? LS.pointValue(g, p.team, p.mode) : 0; },
+  };
+  async function loadScout() {
+    sd.scout = { loading: true }; paintStudio();
+    try {
+      if (!window.Scout) await new Promise((ok, bad) => { const x = document.createElement("script"); x.src = `../scout.js?t=${Date.now()}`; x.onload = ok; x.onerror = () => bad(new Error("Couldn't load the Scouting math.")); document.head.appendChild(x); });
+      const [season, log, games] = await Promise.all([
+        fetch(`${WORKER}/season?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+        fetch(`${WORKER}/picks-log?format=json&since=${Date.now() - 200 * 86400000}&${auth()}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : { changes: [] })).catch(() => ({ changes: [] })),
+        fetch(`${WORKER}/games?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
+      ]);
+      const names = [...new Set(Object.values(season?.season || {}).flatMap((w) => Object.keys(w.picks || {})))];
+      const S = window.Scout.build({ season, log: log?.changes || [], names, scorePick: LS.scorePick });
+      const reps = names.map((n) => S.report(n)).filter((r) => !r.empty).sort((a, b) => b.scored - a.scored).map((r) => ({ name: r.name, facts: {
+        points: r.scored, place: r.rank, of: r.of, picks: r.picks, weeks: r.weeks, luck: Math.round(r.luck), luckLine: r.luckLine, oneThingToChange: r.fix || null,
+        findings: r.insights.map((x) => ({ kind: x.tone, head: x.head, line: x.line, evidence: x.evidence })),
+        pickMix: r.kinds.map((k) => ({ type: k.label, taken: k.n, hit: k.hit })),
+      } }));
+      sd.scout = { reps, week: games.week || null };
+      if (!reps.length) sd.scout.err = "No finished games with picks yet.";
+    } catch (e) { sd.scout = { err: e.message }; }
+    paintStudio();
   }
   studioEl.addEventListener("click", async (e) => {
     const sg = e.target.closest("[data-sg],[data-sg-all],[data-sg-go],[data-sg-fold]");
@@ -1333,8 +1526,40 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         sd.queuing = false; sd.err = bad; await studioLoad(true); return;
       }
     }
+    const t = e.target.closest("[data-sd-tab],[data-asset],[data-asset-close],[data-zoomsrc],[data-tone],[data-scout-load],[data-scout-write],[data-bulk],[data-regen-cancel],[data-edit-cancel]");
+    if (t) {
+      if (t.dataset.sdTab) { sd.tab = t.dataset.sdTab; sd.asset = null; paintStudio(); if (sd.tab === "library" || sd.tab === "placements") loadLibrary(); if (sd.tab === "create" && !sd.scout) loadScout(); return; }
+      if (t.dataset.asset) return openAsset(t.dataset.asset);
+      if (t.dataset.assetClose) { sd.asset = null; return paintStudio(); }
+      if (t.dataset.zoomsrc) { sd.zoom = t.dataset.zoomsrc; return paintStudio(); }
+      if (t.dataset.tone) { sd.tone = t.dataset.tone; return paintStudio(); }
+      if (t.dataset.scoutLoad) return loadScout();
+      if (t.dataset.regenCancel) { sd.regen = null; return paintStudio(); }
+      if (t.dataset.editCancel) { sd.edit = null; return paintStudio(); }
+      if (t.dataset.scoutWrite) {
+        const drafts = new Set(sd.items.filter((x) => x.category === "scouting-report" && x.week === sd.scout.week && x.status !== "REJECTED" && x.status !== "FAILED").map((x) => x.subject));
+        const go = sd.scout.reps.filter((r) => !drafts.has(`owner:${r.name}`));
+        let n = 0, bad = "";
+        for (const r of go) {
+          sd.queuing = `${++n}/${go.length}`; paintStudio();
+          try { await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: "scouting-report", week: sd.scout.week, tone: sd.tone, subject: { name: r.name, facts: r.facts } }) }); } catch (err) { bad = err.message; }
+        }
+        sd.queuing = false; await studioLoad(true); if (bad) { sd.err = bad; paintStudio(); } return;
+      }
+      if (t.dataset.bulk) {
+        const want = t.dataset.bulk === "approve" ? "PENDING_REVIEW" : "APPROVED";
+        const ids = sd.items.filter((x) => x.status === want && (!t.dataset.bulkCat || x.category === t.dataset.bulkCat)).map((x) => x.id);
+        if (t.dataset.bulk === "publish" && !confirm(`Publish ${ids.length} to the app?`)) return;
+        for (const id of ids) await sdAct(t.dataset.bulk, id, { quiet: true });
+        return studioLoad(true);
+      }
+    }
     const act = e.target.closest("[data-act]");
-    if (act) return sdAct(act.dataset.act, act.dataset.id);
+    if (act) {
+      if (act.dataset.act === "regen") { sd.regen = act.dataset.id; sd.edit = null; return paintStudio(); }
+      if (act.dataset.act === "edit") { sd.edit = act.dataset.id; sd.regen = null; return paintStudio(); }
+      return sdAct(act.dataset.act, act.dataset.id);
+    }
     const b = e.target.closest("[data-sd-back],[data-sd-refresh],[data-sd-new],[data-sd-filter],[data-zoom],[data-sd-unzoom],[data-sd-close]");
     if (!b) return;
     if (b.dataset.sdBack) return closeStudio(b.dataset.sdBack);
@@ -1354,6 +1579,13 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     if (e.target.name === "category") paintStudio();
   });
   studioEl.addEventListener("submit", async (e) => {
+    const rf = e.target.closest("[data-regen-form]"), ef = e.target.closest("[data-edit-form]");
+    if (rf || ef) {
+      e.preventDefault();
+      const fd = Object.fromEntries(new FormData(rf || ef));
+      if (rf) { sd.regen = null; return sdAct("regenerate", rf.dataset.regenForm, { feedback: fd.note, tone: fd.tone }); }
+      sd.edit = null; return sdAct("edit", ef.dataset.editForm, { text: { headline: fd.headline, body: fd.body } });
+    }
     const f = e.target.closest("[data-sd-form]"); if (!f) return;
     e.preventDefault();
     const g = Object.assign(sd.gen, Object.fromEntries(new FormData(f)));
@@ -1361,7 +1593,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     g.busy = true; g.msg = ""; paintStudio();
     try {
       const r = await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: g.category, week: sd.week, feedback: g.feedback, subject: { teamId: team?.id, name: team?.name, mascot: g.mascot, colors: g.colors } }) });
-      sd.gen = null; sd.filter = "ALL";
+      sd.gen = null; sd.filter = "ALL"; sd.tab = "review";
       if (r.existing) sd.err = "";
       await studioLoad(true);
       if (r.existing) { sd.zoom = null; alert(`There's already a ${r.status === "PENDING_REVIEW" ? "version in review" : "version in the works"} for this one. Regenerating comes with review actions.`); }

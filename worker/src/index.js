@@ -2101,7 +2101,8 @@ async function handleSeason(request, env, corsHeaders, url) {
 }
 
 async function handlePicksLog(request, env, corsHeaders, url) {
-  if (!env.ARCHIVE_LOG_KEY || url.searchParams.get("key") !== env.ARCHIVE_LOG_KEY) return new Response("Not found", { status: 404 });
+  // The admin key, or a device it signed (the live panel's Studio reads this for Scouting Reports).
+  if (!env.ARCHIVE_LOG_KEY || (url.searchParams.get("key") !== env.ARCHIVE_LOG_KEY && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now())))) return new Response("Not found", { status: 404 });
   // Kept for the season now, so one page of keys no longer covers it.
   const since = Number(url.searchParams.get("since")) || 0;
   const tsOfLogKey = (name) => 9999999999999 - Number(String(name).split(":")[1] || 0);

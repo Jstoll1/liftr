@@ -19,11 +19,11 @@ function fakeCtx() {
 const fakeR2 = () => { const m = new Map(); return { m, put: async (k, v, o) => m.set(k, { v, o }), get: async (k) => (m.has(k) ? { body: m.get(k).v, httpMetadata: m.get(k).o?.httpMetadata } : null) }; };
 const LSU = { category: "team-mascot", subject: { teamId: 99, name: "LSU", mascot: "tiger", colors: "purple and gold" }, week: 7 };
 
-function desk({ cap = "10", draw, now } = {}) {
+function desk({ cap = "10", draw, write, now } = {}) {
   const ctx = fakeCtx(), r2 = fakeR2();
   let t = now || 1_800_000_000_000;
   const kv = new Map();
-  const d = new CreativeDesk(ctx, { CREATIVE_MONTHLY_CAP_USD: cap, CREATIVE: r2, LIFTR_KV: { put: async (k, v) => kv.set(k, v), get: async (k) => kv.get(k) } }, { draw: draw || (async () => ({ bytes: new Uint8Array([137, 80, 78, 71]), cost: 0.05 })), now: () => t });
+  const d = new CreativeDesk(ctx, { CREATIVE_MONTHLY_CAP_USD: cap, CREATIVE: r2, LIFTR_KV: { put: async (k, v) => kv.set(k, v), get: async (k) => kv.get(k) } }, { draw: draw || (async () => ({ bytes: new Uint8Array([137, 80, 78, 71]), cost: 0.05 })), write: write || (async () => ({ text: JSON.stringify({ headline: "Chalk eater", body: "You took 30 favorites.\n\nTake a dog." }), cost: 0.005 })), now: () => t });
   d.kv = kv;
   return { d, ctx, r2, kv, tick: (ms) => { t += ms; } };
 }
@@ -198,4 +198,67 @@ test("the cost meter tallies every call by feature and model, images included", 
   assert.equal(c.byFeature[0].feature, "creative-image");
   assert.ok(Math.abs(c.month.usd - (0.000405 + 0.013 + 0.05)) < 1e-9);
   assert.equal(c.byDay.length, 1);
+});
+
+const SCOUT = { category: "scouting-report", subject: { name: "Jake", facts: { scored: 61, rank: 5, of: 10, fix: "Take more dogs" } }, week: 7, tone: "savage" };
+
+test("a scouting report is written from the owner's facts in the chosen tone, then reviewed", async () => {
+  const seen = [];
+  const { d } = desk({ write: async (a) => { seen.push(a); return { text: JSON.stringify({ headline: "Chalk eater", body: "61 points." }), cost: 0.004 }; } });
+  const q = await post(d, "/generate", SCOUT);
+  await d.alarm();
+  assert.match(seen[0].system, /roast/);
+  assert.match(seen[0].system, /Never invent or change a number/);
+  assert.match(seen[0].user, /"scored":61/);
+  const { items } = await get(d, "/assets");
+  assert.equal(items[0].status, "PENDING_REVIEW");
+  assert.equal(items[0].text.headline, "Chalk eater");
+  assert.equal(items[0].tone, "savage");
+  const c = await get(d, "/costs");
+  assert.equal(c.byFeature[0].feature, "creative-text");
+  // Approve and publish without an image: the text goes in the app's list.
+  await act(d, "approve", [q.versionId]);
+  await act(d, "publish", [q.versionId]);
+  const m = JSON.parse(d.kv.get("creative:published"));
+  assert.equal(m.art["owner-card:owner:Jake"].text.body, "61 points.");
+  assert.equal(m.art["owner-card:owner:Jake"].week, 7);
+});
+
+test("editing a live report makes a new approved version; live text changes only on publish", async () => {
+  const { d } = desk();
+  const q = await post(d, "/generate", SCOUT); await d.alarm();
+  await act(d, "approve", [q.versionId]); await act(d, "publish", [q.versionId]);
+  const e = await post(d, "/action", { action: "edit", versionIds: [q.versionId], text: { headline: "New head", body: "New body" } });
+  const nv = e.done[0];
+  assert.notEqual(nv, q.versionId);
+  assert.equal(JSON.parse(d.kv.get("creative:published")).art["owner-card:owner:Jake"].text.headline, "Chalk eater");
+  await act(d, "publish", [nv]);
+  assert.equal(JSON.parse(d.kv.get("creative:published")).art["owner-card:owner:Jake"].text.headline, "New head");
+  const view = await get(d, `/asset/${q.assetId}`);
+  assert.equal(view.versions.length, 2);
+  assert.equal(view.versions.find((v) => v.id === q.versionId).status, "APPROVED");
+  assert.ok(view.audit.some((x) => x.action === "edit"));
+  // A bad edit is refused.
+  assert.match((await post(d, "/action", { action: "edit", versionIds: [nv], text: { headline: "", body: "" } })).skipped[0].why, /headline/);
+});
+
+test("regenerate adds a version with the note and the old draft; the live one stays live", async () => {
+  const seen = [];
+  const { d } = desk({ write: async (a) => { seen.push(a); return { text: JSON.stringify({ headline: `H${seen.length}`, body: "B" }), cost: 0.004 }; } });
+  const q = await post(d, "/generate", SCOUT); await d.alarm();
+  await act(d, "approve", [q.versionId]); await act(d, "publish", [q.versionId]);
+  const r = await post(d, "/action", { action: "regenerate", versionIds: [q.versionId], feedback: "shorter", tone: "hype" });
+  await d.alarm();
+  assert.match(seen[1].user, /Revise this earlier draft/);
+  assert.match(seen[1].user, /shorter/);
+  assert.match(seen[1].system, /hype man/);
+  assert.equal(JSON.parse(d.kv.get("creative:published")).art["owner-card:owner:Jake"].text.headline, "H1");
+  const lib = await get(d, "/library");
+  assert.equal(lib.assets[0].versions, 2);
+  assert.equal(lib.assets[0].live.text.headline, "H1");
+  assert.equal(lib.assets[0].latest.id, r.done[0]);
+  // Images regenerate the same way.
+  const img = await post(d, "/generate", LSU); await d.alarm();
+  const r2 = await post(d, "/action", { action: "regenerate", versionIds: [img.versionId], feedback: "more snarl" });
+  assert.equal(r2.done.length, 1);
 });

@@ -7021,3 +7021,10 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .h2h-fighter.b .h2h-f-meta { justify-content: flex-start; }
 .h2c-pick span { white-space: normal; line-height: 1.25; }
 .h2c-pick.hit, .h2c-pick.live-hit { background: rgba(61, 252, 143, .2); }
+
+/* A Scouting Report from the Creative Studio, inside an owner's row. */
+.rd-scout { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255, 210, 63, .4); background: linear-gradient(180deg, rgba(255, 210, 63, .08), rgba(255, 210, 63, .02)); }
+.rd-scout em { display: block; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--neon-yellow); margin-bottom: 7px; }
+.rd-scout b { display: block; font-size: 14px; color: #fff; margin-bottom: 5px; }
+.rd-scout p { margin: 0 0 6px; font-size: 12.5px; line-height: 1.45; color: var(--text); }
+.rd-scout p:last-child { margin-bottom: 0; }
