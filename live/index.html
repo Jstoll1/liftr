@@ -163,6 +163,10 @@ body.pv-open .tabs { display: none; }
 .blk:hover { filter: brightness(1.25); transform: scaleY(1.12); }
 .blk.live { background: linear-gradient(90deg, var(--live), #3dfc8f); box-shadow: 0 0 14px rgba(61, 252, 143, .55); }
 .blk.live { animation: livepulse 1.6s ease-in-out infinite; }
+/* How long they were really in: a dot for a quick look, a short bar under
+   five minutes, the full bar past that. */
+.blk.peek { top: 12px; height: 10px; min-width: 10px; border-radius: 5px; opacity: .75; }
+.blk.short { top: 10px; height: 14px; min-width: 10px; }
 @keyframes livepulse { 50% { box-shadow: 0 0 22px rgba(61, 252, 143, .85); } }
 .blk.focus { outline: 2px solid #fff; outline-offset: 1px; }
 .tl-ax { grid-column: 2; position: relative; height: 22px; }
@@ -619,10 +623,22 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     const tickLab = (t) => { const d = new Date(t), h = d.getHours(), m = d.getMinutes(); return m ? `${h % 12 || 12}:${String(m).padStart(2, "0")}` : hourLab(t); };
     const lanes = order.map((n) => {
       const mine = vs.filter((v) => v.n === n && vEnd(v) >= tFrom);
-      const blocks = mine.map((v) => {
-        const id = `${v.n}|${v.start}`;
-        const tip = `<b>${esc(name(n))}${v.live ? " · in now" : ""}</b>${esc(hm(v.start))}${v.live ? "" : ` to ${esc(hm(v.end))}`} · ${esc(dur(vEnd(v) - v.start))}<br>${v.acts.length} action${v.acts.length === 1 ? "" : "s"}${v.app ? ` · ${v.app === "home" ? "home screen app" : "browser"}` : ""}`;
-        return `<i class="blk${v.live ? " live" : ""}${st.focus === id ? " focus" : ""}" style="${v.live ? `right:0;width:max(10px, ${(100 - xp(v.start)).toFixed(3)}%)` : `left:${xp(v.start)}%;width:${(xp(vEnd(v)) - xp(v.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}"></i>`;
+      // Visits a couple of minutes apart are one sitting: one bar. Its
+      // height says how long they were really in: a dot for a quick look,
+      // a short bar under five minutes, full height past that.
+      const groups = [];
+      for (const v of mine.slice().sort((a, b) => a.start - b.start)) {
+        const g = groups[groups.length - 1];
+        if (g && v.start - g.end < 2 * 60000) { g.list.push(v); g.end = Math.max(g.end, vEnd(v)); g.live = g.live || v.live; }
+        else groups.push({ list: [v], start: v.start, end: vEnd(v), live: !!v.live });
+      }
+      const blocks = groups.map((g) => {
+        const first = g.list[0], id = `${first.n}|${first.start}`;
+        const inApp = g.list.reduce((t, v) => t + (vEnd(v) - v.start), 0);
+        const acts = g.list.reduce((t, v) => t + v.acts.length, 0);
+        const size = g.live || inApp >= 5 * 60000 ? "" : inApp < 60000 ? " peek" : " short";
+        const tip = `<b>${esc(name(n))}${g.live ? " · in now" : ""}</b>${g.list.length > 1 ? `${g.list.length} visits · ` : ""}${esc(hm(g.start))}${g.live ? "" : ` to ${esc(hm(g.end))}`} · ${esc(dur(inApp))} in the app<br>${acts} action${acts === 1 ? "" : "s"}${first.app ? ` · ${first.app === "home" ? "home screen app" : "browser"}` : ""}`;
+        return `<i class="blk${size}${g.live ? " live" : ""}${g.list.some((v) => st.focus === `${v.n}|${v.start}`) ? " focus" : ""}" style="${g.live ? `right:0;width:max(10px, ${(100 - xp(g.start)).toFixed(3)}%)` : `left:${xp(g.start)}%;width:${(xp(g.end) - xp(g.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}"></i>`;
       }).join("");
       // Nobody in the window: the lane steps back.
       return `${laneLabel(n).replace('class="ln-l', `class="ln-l${mine.length ? "" : " quiet"}`)}<div class="ln-t${st.filter === n ? " sel" : ""}${mine.length ? "" : " quiet"}">${blocks}</div>`;
@@ -670,7 +686,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       ${weekView()}
     </section>` : `<section class="tl panel" id="sec-tl">
       <div class="ph"><h2>Last ${spanH} hours</h2>${seg}</div>
-      <div class="tl-hint"><span>a block per visit · tap a name to see only theirs</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
+      <div class="tl-hint"><span>a bar per sitting: dot = quick look, short = under 5 min, tall = longer · tap a name to see only theirs</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
       <div class="tl-grid">
         <div class="tl-over">${nights.map(([a, b]) => `<i class="night" style="left:${xp(a)}%;width:${(xp(b) - xp(a)).toFixed(3)}%"></i>`).join("")}${marks.map((t) => `<i class="hr${new Date(t).getHours() === 0 ? " mid" : ""}" style="left:${xp(t)}%"></i>`).join("")}<i class="now"></i></div>
         ${lanes}
