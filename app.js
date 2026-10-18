@@ -3046,6 +3046,45 @@ function maybeShowSidePrompt() {
   setTimeout(() => { if (busy()) { sidePromptShown = false; return; } openSideSheet(true); }, 1500);
 }
 
+// A group text for the side bet, from the console. Final: who won, who
+// owes whom (unpaid only), with a Venmo pay link per winner, amount and
+// note filled in; a split divides each share between the winners. Before
+// that: who is in. Venmo handles are asked for once and kept on this
+// device. Shared through the phone's share sheet, else copied.
+const VENMO_KEY = "brochiefs_venmo_handles";
+function venmoHandle(name) {
+  let all = {};
+  try { all = JSON.parse(localStorage.getItem(VENMO_KEY) || "{}") || {}; } catch {}
+  if (all[name]) return all[name];
+  const h = (window.prompt(`${shown(name)}'s Venmo username (for the pay link)? Leave blank to skip.`) || "").trim().replace(/^@/, "");
+  if (h) { all[name] = h; try { localStorage.setItem(VENMO_KEY, JSON.stringify(all)); } catch {} }
+  return h;
+}
+async function sideVenmoText(pot, out, say) {
+  const money = (x) => `$${Number.isInteger(x) ? x : x.toFixed(2)}`;
+  const games = sideGames(pot).map((g) => sideMatch(g)).join(", ");
+  const ins = Object.keys(pot.entrants || {});
+  let text;
+  if (!out.final) {
+    text = `💰 Late night side bet: ${money(pot.buyIn)} each, ${ins.length} in (${ins.map(shown).join(", ")}). Games: ${games}. Pot ${money(ins.length * pot.buyIn)}. Settle up after the last game.`;
+  } else if (out.n < 2 || out.push) {
+    text = `💰 Late night side bet is final: ${out.n < 2 ? "only one taker" : "dead heat"}, so no money moves.`;
+  } else {
+    const share = pot.buyIn / out.winners.length;
+    const owing = out.losers.filter((n) => !pot.entrants[n]?.paid);
+    const note = encodeURIComponent(`Brochiefs side bet wk${pot.week}`);
+    const pay = out.winners.map((w) => { const h = venmoHandle(w); return `Pay ${shown(w)} ${money(share)}${h ? `: https://venmo.com/${encodeURIComponent(h)}?txn=pay&amount=${share}&note=${note}` : ""}`; });
+    text = [`💰 Late night side bet is final. 🏆 ${sideNames(out.winners)} ${out.winners.length > 1 ? "split" : "takes"} ${money(out.total)}${out.tiebreak ? ` (tiebreaker, total ${out.tiebreak.actual})` : ""}.`,
+      owing.length ? `${owing.map(shown).join(", ")}: please pay ${out.winners.length > 1 ? "each winner " : ""}${money(share)}${out.winners.length > 1 ? ` (${money(pot.buyIn)} total)` : ""} on Venmo.` : "Everyone has paid. Thanks!",
+      ...(owing.length ? pay : [])].join("\n");
+  }
+  try {
+    if (navigator.share) { await navigator.share({ text }); say("Shared.", "ok"); return; }
+  } catch (e) { if (e?.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(text); say("Venmo text copied. Paste it in the group chat.", "ok"); }
+  catch { window.prompt("Copy this text:", text); }
+}
+
 // The side pot's admin panel, mounted by the app owner's console (Side bet
 // tab) and the slate editor alike. Pick games, at the slate's lines, that
 // are not over (still to come, or on now with the score shown), and a buy-in; once running, it
@@ -3264,8 +3303,10 @@ async function mountSideAdmin(box, getKey, say) {
       <div class="as-people">${ins.length ? ins.map((n) => `<label class="as-person${owes(n) ? " owes" : ""}"><span>${esc(shown(n))}${!open && Number.isFinite(pot.entrants[n].tb) ? ` <small class="as-tbg">guess ${pot.entrants[n].tb}</small>` : ""}${owes(n) ? ` <small>owes $${pot.buyIn}</small>` : ""}</span>${won(n) ? `<span class="as-won">collects</span>` : `<span class="as-paid"><input type="checkbox" data-paid="${esc(n)}"${pot.entrants[n].paid ? " checked" : ""}> paid</span>`}</label>`).join("") : `<div class="as-none">Nobody in yet.</div>`}</div>
       ${pot.declined?.length ? `<div class="as-out">No thanks: ${pot.declined.map((n) => esc(shown(n))).join(", ")}</div>` : ""}
       ${open ? `<button type="button" class="admin-btn primary wide as-add">＋ Add games or set the tiebreaker</button>` : ""}
+      ${ins.length ? `<button type="button" class="admin-btn wide as-venmo">📲 Venmo text${out.final ? "" : " (who's in)"}</button>` : ""}
       <div class="as-btns"><button type="button" class="admin-btn as-refresh">↻ Refresh</button><button type="button" class="admin-btn as-cancel">Cancel side bet</button></div>`;
     box.querySelector(".as-add")?.addEventListener("click", () => render(pot, true));
+    box.querySelector(".as-venmo")?.addEventListener("click", () => sideVenmoText(pot, out, say));
     box.querySelectorAll("[data-paid]").forEach((cb) => cb.addEventListener("change", async () => {
       try { render((await post({ action: "paid", manager: cb.dataset.paid, paid: cb.checked })).pot); }
       catch (e) { cb.checked = !cb.checked; say(`Not saved: ${e.message}`, "bad"); }
