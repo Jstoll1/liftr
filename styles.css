@@ -6622,3 +6622,6 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .as-half-line select { max-width: 120px; }
 .as-half-line input { width: 64px; }
 .as-close { width: 80px; min-height: 36px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255, 228, 94, .5); background: #07020f; color: #fff; font-size: 16px; }
+.as-tb { max-width: 210px; min-height: 36px; padding: 4px 6px; border-radius: 6px; border: 1px solid rgba(255, 228, 94, .5); background: #07020f; color: #fff; font-size: 16px; }
+.as-tbrow { flex-wrap: wrap; }
+.as-person small.as-tbg { color: var(--text-dim); }

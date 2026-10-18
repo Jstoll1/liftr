@@ -1170,7 +1170,7 @@ async function handleSide(request, env, corsHeaders, url) {
     // A pot people have bought into is only replaced on purpose.
     const inNow = pot ? Object.values(await sideEntries(env, pot)).filter((e) => e.in).length : 0;
     if (inNow && !body.replace) return json({ error: "A side pot with entrants is already running.", entrants: inNow }, 409, corsHeaders);
-    const made = newPot({ week, games: body.games, buyIn: body.buyIn, slate: await env.LIFTR_KV.get(gamesKey(week), "json"), now, closeAt: body.closeAt ?? null });
+    const made = newPot({ week, games: body.games, buyIn: body.buyIn, slate: await env.LIFTR_KV.get(gamesKey(week), "json"), now, closeAt: body.closeAt ?? null, tbGame: body.tbGame ?? null });
     if (made.error) return json({ error: made.error }, 400, corsHeaders);
     await env.LIFTR_KV.put(sideKey(week), JSON.stringify(made.pot), keep);
     return json({ ok: true, pot: viewPot(made.pot, {}, now, viewAll) }, 200, noStore);

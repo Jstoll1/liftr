@@ -3106,7 +3106,7 @@ async function mountSideAdmin(box, getKey, say) {
       const line = (g) => `${g.favorite === g.home ? esc(g.homeShort) : esc(g.awayShort)} -${g.spread}${tot(g) != null ? ` · O/U ${tot(g)}` : ""}${g.fcs ? " · FCS" : ""}`;
       const xtag = (g) => (g.on ? `<b class="as-live">ON NOW · ${esc(shortStatus(g.on.detail))} · ${esc(g.on.a ?? 0)}-${esc(g.on.h ?? 0)}</b>` : esc(g.kickoffLabel));
       const row = (g, label, tagHtml, checked) => `<label class="as-game"><input type="checkbox" value="${esc(g.id)}"${checked ? " checked" : ""}><span>${label}${esc(g.awayShort)} @ ${esc(g.homeShort)}<small class="as-line">${line(g)}</small></span><small>${tagHtml}</small></label>`;
-      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Pick up to 5 games, still to come or on now. Pool games keep the pool's line; the rest use ESPN's line (FBS and FCS), read from the game page once a game is on. Each game with a total also gets an over/under pick, and everyone guesses the last game's total points as the tiebreaker. Everyone who opts in picks the same games. Entry closes at the first kickoff, or 20 minutes after you start it if that's later. A game on now keeps its line, so check the score before adding it.</div>
+      box.innerHTML = `<div class="as-lead"><b>Week ${currentWeek} side bet.</b> Pick up to 5 games, still to come or on now. Pool games keep the pool's line; the rest use ESPN's line (FBS and FCS), read from the game page once a game is on. Each game with a total also gets an over/under pick, and everyone guesses one game's total points as the tiebreaker (pick it below; the last game if you don't). Everyone who opts in picks the same games. Entry closes at the first kickoff, or 20 minutes after you start it if that's later. A game on now keeps its line, so check the score before adding it.</div>
         <div class="as-sec">THIS WEEK'S POOL</div>
         ${avail.length ? `<div class="as-games">${avail.map((g) => row(g, `G${g.id} · `, tag(g), preset.has(g.id))).join("")}</div>` : `<div class="as-none">Every pool game is over.</div>`}
         <div class="as-sec">MORE GAMES TODAY</div>
@@ -3116,10 +3116,21 @@ async function mountSideAdmin(box, getKey, say) {
         <div class="as-out">Scored on 3rd quarter and later points only. Lines start at half the game's line; set them from your book. Close entry before the 3rd quarter starts.</div>
         ${halves.length ? `<div class="as-games">${halves.map((h) => `<div class="as-half"><label class="as-game"><input type="checkbox" value="h${esc(h.eventId)}"><span>${h.pool ? `G${h.pool} · ` : ""}${esc(h.awayShort)} @ ${esc(h.homeShort)}${h.fcs ? `<small class="as-line">FCS</small>` : ""}</span><small>${h.on ? `<b class="as-live">${esc(shortStatus(h.on.detail))} · ${esc(h.on.a ?? 0)}-${esc(h.on.h ?? 0)}</b>` : esc(`${etTime(new Date(h.kickoff).getTime()).replace(",", "")} ET`)}</small></label>
           <div class="as-half-line" data-h="${esc(h.eventId)}"><select aria-label="Second half favorite"><option value="away"${h.favHome ? "" : " selected"}>${esc(h.awayShort)}</option><option value="home"${h.favHome ? " selected" : ""}>${esc(h.homeShort)}</option></select><span>-</span><input class="as-h-sp" type="number" inputmode="decimal" step="0.5" min="0" max="40" placeholder="line" value="${h.spread ?? ""}"><span>O/U</span><input class="as-h-tot" type="number" inputmode="decimal" step="0.5" min="10" max="90" placeholder="total" value="${h.total ?? ""}"></div></div>`).join("")}</div>` : `<div class="as-none">No game left before its second half.</div>`}
+        <label class="as-buy as-tbrow">Tiebreaker: total points in <select class="as-tb"><option value="">the last game</option></select></label>
         <label class="as-buy">Entry closes in <input class="as-close" type="number" inputmode="numeric" min="5" max="480" step="1" placeholder="auto"> min</label>
         <div class="as-out">Leave blank for the usual close: the first kickoff, or 20 minutes from now if that's later. For a second half at halftime, about 15.</div>
         <label class="as-buy">Buy-in $<input class="as-buyin" type="number" inputmode="numeric" min="1" max="500" step="1" value="25"></label>
         <button type="button" class="admin-btn primary wide as-start"${avail.length || extras.length ? "" : " disabled"}>Start side bet</button>`;
+      // The tiebreaker picker offers whatever is checked right now.
+      const nameOf = (v) => { const pool = GAMES.find((g) => String(g.id) === v); if (pool) return `G${pool.id} ${pool.awayShort} @ ${pool.homeShort}`; const x = extras.find((g) => g.id === v); if (x) return `${x.awayShort} @ ${x.homeShort}`; const h = halves.find((g) => `h${g.eventId}` === v); return h ? `${h.awayShort} @ ${h.homeShort} (2nd half)` : v; };
+      const syncTb = () => {
+        const sel = box.querySelector(".as-tb"); if (!sel) return;
+        const was = sel.value;
+        const on = [...box.querySelectorAll(".as-games input[type=checkbox]:checked")].map((i) => i.value);
+        sel.innerHTML = `<option value="">the last game</option>` + on.map((v) => `<option value="${esc(v)}"${v === was ? " selected" : ""}>${esc(nameOf(v))}</option>`).join("");
+      };
+      box.addEventListener("change", (e) => { if (e.target.matches(".as-games input[type=checkbox]")) syncTb(); });
+      syncTb();
       box.querySelector(".as-start")?.addEventListener("click", async (ev) => {
         const btn = ev.currentTarget;
         // Pool games go by id (the Worker keeps the pool's line); others whole.
@@ -3138,13 +3149,15 @@ async function mountSideAdmin(box, getKey, say) {
         if (ids.length > 5) { say("Pick 5 games at most.", "bad"); return; }
         const closeMin = Number(box.querySelector(".as-close")?.value);
         const closeAt = Number.isFinite(closeMin) && closeMin >= 5 ? Date.now() + closeMin * 60000 : null;
+        const tbPick = box.querySelector(".as-tb")?.value || "";
+        const tbGame = tbPick === "" ? null : /^\d+$/.test(tbPick) ? Number(tbPick) : tbPick;
         btn.disabled = true;
         try {
           let d;
-          try { d = await post({ action: "start", games: ids, buyIn, closeAt }); }
+          try { d = await post({ action: "start", games: ids, buyIn, closeAt, tbGame }); }
           catch (e) {
             if (e.status !== 409 || !confirm("A side bet with players in it is already running. Replace it? Everyone in it is out.")) throw e;
-            d = await post({ action: "start", games: ids, buyIn, closeAt, replace: true });
+            d = await post({ action: "start", games: ids, buyIn, closeAt, tbGame, replace: true });
           }
           say("Side bet is live. Everyone gets asked when they open the board.", "ok");
           render(d.pot);
@@ -3162,8 +3175,9 @@ async function mountSideAdmin(box, getKey, say) {
     const won = (n) => !open && out.final && !out.push && out.winners.includes(n);
     box.innerHTML = `<div class="as-lead"><b>Week ${pot.week} side bet</b> · $${pot.buyIn} · ${ins.length} in · $${ins.length * pot.buyIn} pot<br>${open ? `Entry closes ${esc(etTime(pot.closesAt))} ET` : `Closed ${esc(etTime(pot.closesAt))} ET`}</div>
       <div class="as-list">${sideGames(pot).map((g) => `<span>${sideTag(g)} ${esc(g.awayShort)} @ ${esc(g.homeShort)}</span>`).join("")}</div>
+      ${(() => { const g = pot.tbGame != null ? sideGames(pot).find((x) => String(x.id) === String(pot.tbGame)) : null; return g ? `<div class="as-out">Tiebreaker: total points in ${esc(sideMatch(g))}${out.tiebreak ? `, final ${out.tiebreak.actual}` : ""}. Closest guess wins a tie on points.</div>` : `<div class="as-out">No tiebreaker on this bet: a tie splits.</div>`; })()}
       ${result ? `<div class="as-result">${esc(result)}</div>` : ""}
-      <div class="as-people">${ins.length ? ins.map((n) => `<label class="as-person${owes(n) ? " owes" : ""}"><span>${esc(shown(n))}${owes(n) ? ` <small>owes $${pot.buyIn}</small>` : ""}</span>${won(n) ? `<span class="as-won">collects</span>` : `<span class="as-paid"><input type="checkbox" data-paid="${esc(n)}"${pot.entrants[n].paid ? " checked" : ""}> paid</span>`}</label>`).join("") : `<div class="as-none">Nobody in yet.</div>`}</div>
+      <div class="as-people">${ins.length ? ins.map((n) => `<label class="as-person${owes(n) ? " owes" : ""}"><span>${esc(shown(n))}${!open && Number.isFinite(pot.entrants[n].tb) ? ` <small class="as-tbg">guess ${pot.entrants[n].tb}</small>` : ""}${owes(n) ? ` <small>owes $${pot.buyIn}</small>` : ""}</span>${won(n) ? `<span class="as-won">collects</span>` : `<span class="as-paid"><input type="checkbox" data-paid="${esc(n)}"${pot.entrants[n].paid ? " checked" : ""}> paid</span>`}</label>`).join("") : `<div class="as-none">Nobody in yet.</div>`}</div>
       ${pot.declined?.length ? `<div class="as-out">No thanks: ${pot.declined.map((n) => esc(shown(n))).join(", ")}</div>` : ""}
       <div class="as-btns"><button type="button" class="admin-btn as-refresh">↻ Refresh</button><button type="button" class="admin-btn as-cancel">Cancel side bet</button></div>`;
     box.querySelectorAll("[data-paid]").forEach((cb) => cb.addEventListener("change", async () => {

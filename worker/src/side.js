@@ -51,7 +51,9 @@ export function cleanExtraGame(g) {
 // closeAt, when the commissioner sets it (a second-half bet closes at the
 // end of halftime, which only they can judge), replaces the usual close.
 export const CLOSE_MIN_MS = 5 * 60000, CLOSE_MAX_MS = 8 * 3600000;
-export function newPot({ week, games, buyIn, slate, now, closeAt = null }) {
+// tbGame, when the commissioner picks one of the chosen games, is the
+// tiebreaker; otherwise it is the last game.
+export function newPot({ week, games, buyIn, slate, now, closeAt = null, tbGame = null }) {
   const list = Array.isArray(games) ? games : [];
   const byId = new Map((slate?.games || []).map((g) => [String(g.id), g]));
   const chosen = new Map();
@@ -71,7 +73,7 @@ export function newPot({ week, games, buyIn, slate, now, closeAt = null }) {
   const amt = Number(buyIn);
   if (!Number.isInteger(amt) || amt < 1 || amt > SIDE_MAX_BUYIN) return { error: `Buy-in must be a whole dollar amount from 1 to ${SIDE_MAX_BUYIN}.` };
   const sorted = [...chosen.values()].sort((a, b) => kickMs(a) - kickMs(b) || String(a.id).localeCompare(String(b.id)));
-  return { pot: { week, id: String(now), games: sorted.map((g) => g.id), slate: sorted, tbGame: sorted[sorted.length - 1].id, buyIn: amt, closesAt: Number.isFinite(Number(closeAt)) && closeAt !== null && Number(closeAt) >= now + CLOSE_MIN_MS && Number(closeAt) <= now + CLOSE_MAX_MS ? Number(closeAt) : Math.max(kickMs(sorted[0]), now + ENTRY_MIN_MS), createdAt: now } };
+  return { pot: { week, id: String(now), games: sorted.map((g) => g.id), slate: sorted, tbGame: (sorted.find((g) => tbGame != null && String(g.id) === String(tbGame)) || sorted[sorted.length - 1]).id, buyIn: amt, closesAt: Number.isFinite(Number(closeAt)) && closeAt !== null && Number(closeAt) >= now + CLOSE_MIN_MS && Number(closeAt) <= now + CLOSE_MAX_MS ? Number(closeAt) : Math.max(kickMs(sorted[0]), now + ENTRY_MIN_MS), createdAt: now } };
 }
 
 // Side picks must cover every pot game: a team playing in it, against the

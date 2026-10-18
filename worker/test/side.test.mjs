@@ -119,3 +119,9 @@ test("a second-half bet: an h id marks it, the commissioner's close time wins", 
   assert.equal(newPot({ week: 7, games: [half], buyIn: 25, slate, now: t, closeAt: t + 60000 }).pot.closesAt, t + ENTRY_MIN_MS, "too soon: the usual close");
   assert.equal(newPot({ week: 7, games: [half], buyIn: 25, slate, now: t, closeAt: t + CLOSE_MAX_MS + 1 }).pot.closesAt, t + ENTRY_MIN_MS, "too far: the usual close");
 });
+
+test("the commissioner can pick the tiebreaker game; anything else falls back to the last", () => {
+  assert.equal(newPot({ week: 7, games: [8, 9, 10], buyIn: 25, slate, now: t, tbGame: 9 }).pot.tbGame, 9);
+  assert.equal(newPot({ week: 7, games: [8, 9, 10], buyIn: 25, slate, now: t, tbGame: 1 }).pot.tbGame, 10, "not in the bet");
+  assert.equal(newPot({ week: 7, games: [8, 9, 10], buyIn: 25, slate, now: t }).pot.tbGame, 10);
+});
