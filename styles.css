@@ -6969,3 +6969,55 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .sh-agree-h b { font-weight: normal; font-size: 12px; color: var(--neon-yellow); }
 .sh-agree-s { margin-top: 6px; font-size: 11.5px; color: var(--text-meta); }
 .sh-none { padding: 8px 2px; font-size: 11.5px; color: var(--text-dim); }
+
+/* Head to head, redesigned: stacked fighter cards, a result box, the
+   deciding picks as game cards, and the shared picks folded away. */
+.h2h-fighter, .h2h-fighter.b { grid-template-columns: 24px minmax(0, 1fr) auto; grid-template-areas: "av name crown" "score score score" "meta meta meta"; justify-content: stretch; text-align: left; row-gap: 6px; padding: 10px 12px; }
+.h2h-fighter .h2h-f-txt { display: contents; }
+.h2h-fighter .h2h-f-av { grid-area: av; width: 24px; height: 24px; font-size: 10px; }
+.h2h-fighter .h2h-f-name { grid-area: name; align-self: center; font-size: 8px; color: var(--c); }
+.h2h-fighter .h2h-f-score { grid-area: score; font-size: 26px; line-height: 1; color: #fff; }
+.h2h-fighter.ahead .h2h-f-score { color: var(--neon-green); text-shadow: 0 0 10px rgba(61, 252, 143, .5); }
+.h2h-fighter .h2h-f-meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: 6px; font-size: 6px; }
+.h2h-fighter::after { grid-area: crown; align-self: center; content: ""; }
+.h2h-fighter.crowned::after { content: "👑"; font-size: 15px; filter: drop-shadow(0 0 6px rgba(255, 210, 63, .7)); }
+.h2h-fighter.crowned { background: color-mix(in srgb, var(--c) 18%, #07020f); }
+.h2c-tag { color: var(--neon-yellow); }
+.h2h-pickers { align-items: stretch; }
+.h2c-result { display: flex; flex-direction: column; align-items: center; gap: 7px; margin: 4px 0 14px; padding: 14px 12px; text-align: center; border-radius: 12px; background: rgba(193, 60, 255, .1); border: 1px solid rgba(193, 60, 255, .3); }
+.h2c-result small { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .12em; color: var(--neon-yellow); }
+.h2c-result b { font-size: 19px; font-weight: 800; color: #fff; }
+.h2c-result span { font-size: 12px; color: var(--text-meta); }
+.h2c-sec { margin: 2px 0 8px; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .1em; color: var(--neon-yellow); }
+.h2c-games { display: flex; flex-direction: column; gap: 8px; }
+.h2c-game { padding: 8px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(0, 0, 0, .25); }
+.h2c-game.is-live { border-color: rgba(61, 252, 143, .4); }
+.h2c-gh { margin-bottom: 7px; text-align: center; font-size: 12px; color: var(--text-meta); }
+.h2c-live { color: var(--neon-green); }
+.h2c-live u { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--neon-green); box-shadow: 0 0 6px var(--neon-green); vertical-align: middle; }
+.h2c-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.h2c-pick { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 9px 10px; border-radius: 9px; background: rgba(255, 255, 255, .05); }
+.h2c-pick span { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.h2c-pick b { font-size: 17px; font-weight: 800; color: var(--text-meta); }
+.h2c-pick.hit, .h2c-pick.live-hit { background: rgba(61, 252, 143, .14); }
+.h2c-pick.hit b, .h2c-pick.live-hit b { color: var(--neon-green); }
+.h2c-pick.live-hit { box-shadow: inset 0 0 0 1px rgba(61, 252, 143, .35); }
+.h2c-pick.miss b, .h2c-pick.live-miss b, .h2c-pick.none b { color: var(--neon-pink); }
+.h2c-pick.open b { font-size: 12px; font-weight: 600; color: var(--text-dim); }
+.h2c-pick.locked span, .h2c-pick.none span { color: var(--text-dim); font-weight: 500; }
+.h2c-more { display: block; width: 100%; margin-top: 8px; padding: 8px; border: 0; border-radius: 9px; background: none; color: var(--neon-cyan); font-size: 12px; cursor: pointer; }
+.h2c-shared { margin-top: 12px; border-radius: 12px; background: rgba(255, 255, 255, .05); }
+.h2c-shared summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; list-style: none; cursor: pointer; }
+.h2c-shared summary::-webkit-details-marker { display: none; }
+.h2c-shared summary span { display: flex; flex-direction: column; gap: 5px; }
+.h2c-shared summary b { font-size: 15px; font-weight: 800; color: var(--text); }
+.h2c-shared summary small { font-size: 12px; color: var(--text-meta); }
+.h2c-shared summary i { font-style: normal; font-size: 18px; color: var(--text-meta); transition: transform .2s; }
+.h2c-shared[open] summary i { transform: rotate(180deg); }
+.h2c-shared .h2h-same-l { padding: 0 12px 12px; }
+.h2c-none { padding: 10px 2px; font-size: 12px; color: var(--text-dim); }
+.h2h-modal .h2h-vs { display: none; }
+.h2h-modal .h2h-pickers { grid-template-columns: 1fr 1fr; gap: 10px; }
+.h2h-fighter.b .h2h-f-meta { justify-content: flex-start; }
+.h2c-pick span { white-space: normal; line-height: 1.25; }
+.h2c-pick.hit, .h2c-pick.live-hit { background: rgba(61, 252, 143, .2); }
