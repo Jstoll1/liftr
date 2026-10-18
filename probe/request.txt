@@ -1,1 +1,5 @@
-https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard
+https://nfl.brochiefs.com/?x=1
+https://brochiefs.com/?x=1
+https://liftr-1h0.pages.dev/?x=1
+https://nfl.brochiefs.com/app.js?v=202610182315
+https://brochiefs.com/app.js?x=1
