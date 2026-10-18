@@ -534,6 +534,11 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 .scw-d .sd-row b { font-size: 14px; }
 .scw-d .sd-badge { font-style: normal; }
 @media (max-width: 520px) { .audit li { grid-template-columns: 90px 70px minmax(0, 1fr); } }
+
+.lg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255, 255, 255, .03); }
+.lg button { padding: 4px 9px; font: 700 11.5px var(--mono); letter-spacing: .06em; color: var(--dim); background: none; border: 0; border-radius: 7px; }
+.lg button.on { color: #0b0716; background: var(--green); }
+.gate .lg { align-self: flex-start; }
 </style>
 </head>
 <body>
@@ -544,11 +549,21 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 <div id="tip" class="tip" role="tooltip"></div>
 <script>
 (() => {
-  const WORKER = "https://liftr-ai.jhs797.workers.dev";
+  // Which league this page reads: the college pick'em or the NFL one, each
+  // with its own Worker, sign-in and cached view. Chosen with the CFB | NFL
+  // switch (or ?league=nfl) and remembered on this device.
+  const LEAGUES = { cfb: { label: "CFB", worker: "https://liftr-ai.jhs797.workers.dev", suffix: "" }, nfl: { label: "NFL", worker: "https://liftr-nfl.jhs797.workers.dev", suffix: "_nfl" } };
+  const LEAGUE = (() => { let l = null; try { const q = new URLSearchParams(location.search).get("league"); if (q && LEAGUES[q]) localStorage.setItem("brochiefs_live_league", q); l = localStorage.getItem("brochiefs_live_league"); } catch {} return LEAGUES[l] ? l : "cfb"; })();
+  const WORKER = LEAGUES[LEAGUE].worker;
+  // The Creative Studio and the AI cost meter live on the college Worker.
+  const HAS_STUDIO = LEAGUE === "cfb";
   // Signed in either as a remembered device (a token the Worker signed,
   // kept on this computer for 180 days) or with the key for this browser
   // session only. The key itself is never kept.
-  const KEY_STORE = "brochiefs_live_key", DEVICE_STORE = "brochiefs_live_device", SNAP_STORE = "brochiefs_live_snap";
+  const SFX = LEAGUES[LEAGUE].suffix;
+  const KEY_STORE = `brochiefs_live_key${SFX}`, DEVICE_STORE = `brochiefs_live_device${SFX}`, SNAP_STORE = `brochiefs_live_snap${SFX}`;
+  const leagueSwitch = () => `<span class="lg" role="group" aria-label="League">${Object.entries(LEAGUES).map(([k, v]) => `<button type="button" class="${k === LEAGUE ? "on" : ""}" data-league="${k}">${v.label}</button>`).join("")}</span>`;
+  document.addEventListener("click", (e) => { const b = e.target.closest("[data-league]"); if (!b || b.dataset.league === LEAGUE) return; try { localStorage.setItem("brochiefs_live_league", b.dataset.league); } catch {} location.search = ""; location.reload(); });
   const COLORS = ["#ff4f9a", "#ffe45e", "#c77dff", "#ffb347", "#3dfc8f", "#ff6b6b", "#4fe3f0", "#7aa2ff", "#9cf27a", "#ff9d3d"];
   const SHOWN = { Conlan: "Connie" };
   const SCREENS = { picks: "Picks", scoreboard: "Scores", history: "History", trivia: "Trivia", home: "Home", roster: "the roster", splash: "the splash screen" };
@@ -687,7 +702,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       if (res.status === 403) { const was = device; forget(); gate(was ? "This computer's sign-in has expired. Enter the key again." : "That key didn't work."); return; }
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
-      loadCosts(full);
+      if (HAS_STUDIO) loadCosts(full);
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
       if (r.asks) st.asks = r.asks;
       // The week comes with seven days of taps; the live view keeps one.
@@ -894,7 +909,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       for (const v of wv) for (const l of new Set(v.f.map(featLab).filter(Boolean))) used.set(l, (used.get(l) || 0) + 1);
       const tp = [...used.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), mf = tp[0]?.[1] || 1;
       const lab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
-      return `<aside class="rail" id="sec-stats">${costPanel()}
+      return `<aside class="rail" id="sec-stats">${HAS_STUDIO ? costPanel() : ""}
       <section class="panel"><div class="ph"><h2>Visits by hour</h2><span class="sub">time of day, last 7 days</span></div>
         <div class="bars">${byH.map((x) => `<i class="${x.n ? "" : "zero"}${x.h === curH ? " cur" : ""}" data-tip="${esc(`<b>${lab(x.h)}</b>${x.n} visit${x.n === 1 ? "" : "s"}${x.who.size ? ` · ${[...x.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((x.n / mx) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>
@@ -910,7 +925,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     for (const e of actions) { if (SCREENS[e.k]) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), maxF = top[0]?.[1] || 1;
     const home = vs.filter((v) => v.app === "home").length, web = vs.filter((v) => v.app === "browser").length;
-    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">${costPanel()}
+    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">${HAS_STUDIO ? costPanel() : ""}
       <section class="panel"><div class="ph"><h2>Activity by hour</h2><span class="sub">actions, last 24h</span></div>
         <div class="bars">${hours.map((h, i) => `<i class="${h.n ? "" : "zero"}${i === 23 ? " cur" : ""}" data-tip="${esc(`<b>${hourLab(h.start)}${i === 23 ? " · this hour" : ""}</b>${h.n} action${h.n === 1 ? "" : "s"}${h.who.size ? ` · ${[...h.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((h.n / maxH) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>${hourLab(hours[0].start)}</span><span>${hourLab(hours[6].start)}</span><span>${hourLab(hours[12].start)}</span><span>${hourLab(hours[18].start)}</span><span>now</span></div>
@@ -962,7 +977,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
 
     app.innerHTML = `
       <div class="top${st.ok ? "" : " stale"}"><div class="top-in">
-        <button type="button" class="brand" data-reload="1" aria-label="Refresh"><i class="beat"></i><b>BROCHIEFS</b><span>LIVE</span></button>
+        <button type="button" class="brand" data-reload="1" aria-label="Refresh"><i class="beat"></i><b>BROCHIEFS</b><span>${LEAGUE === "nfl" ? "NFL LIVE" : "LIVE"}</span></button>${leagueSwitch()}
         <span class="age num" id="age">${st.cached ? "refreshing…" : st.ok ? "live" : "can't reach the server, retrying"}</span>
         <div class="tools">
           <button type="button" class="ib${st.refreshing ? " spin" : ""}" data-refresh="1" aria-label="Refresh" title="Refresh">${ICONS.refresh}</button>
@@ -978,7 +993,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
         </div>
       </div></div>
       <div class="page">${kpis}${timeline}${feedHtml}${rail}</div>
-      <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button></nav>`;
+      <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
   }
 
@@ -1158,7 +1173,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   const usd = (n) => (n >= 1 ? `$${n.toFixed(2)}` : n >= 0.01 ? `$${n.toFixed(3)}` : n > 0 ? `$${n.toFixed(4)}` : "$0");
   const ktok = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n));
   function costPanel() {
-    const d = cost.data;
+    const d = cost.data?.today && cost.data?.month ? cost.data : null;
     if (!d) return `<section class="panel cost"><div class="ph"><h2>AI costs</h2><span class="sub">${cost.err ? esc(cost.err) : "loading…"}</span></div></section>`;
     const days = d.byDay || [], max = Math.max(...days.map((x) => x.usd), 0.0001);
     const feats = d.byFeature || [], top = Math.max(...feats.map((x) => x.usd), 0.0001);
@@ -1603,7 +1618,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
   function gate(err = "") {
     st.gated = true;
     clearTimeout(poll.t);
-    app.innerHTML = `<form class="gate"><h1>BROCHIEFS LIVE</h1><p>Enter the admin key.</p>
+    app.innerHTML = `<form class="gate"><h1>BROCHIEFS ${LEAGUE === "nfl" ? "NFL " : ""}LIVE</h1>${leagueSwitch()}<p>Enter the ${LEAGUE === "nfl" ? "NFL league's " : ""}admin key.</p>
       <input type="text" name="username" value="Brochiefs Live" autocomplete="username" hidden>
       <input type="password" name="password" autocomplete="current-password" placeholder="Admin key" required>
       <label class="rem"><input type="checkbox" checked> Remember this device for 180 days</label>
