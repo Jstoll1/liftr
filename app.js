@@ -3362,9 +3362,8 @@ function openSideSheet(asked) {
 // closed, never before.
 const sideScreen = document.getElementById("side-screen");
 const navSideBtn = document.getElementById("nav-side-btn");
-// The tab shows for everyone while there is a bet: open to join, or with
-// players in to follow.
-const sideIn = () => { const pot = potNow(); return !!pot && !!currentManager && window.LEAGUE?.sport !== "nfl" && (sideOpen(pot) || Object.keys(pot.entrants || {}).length > 0); };
+// The tab is only for players who opted in.
+const sideIn = () => { const pot = potNow(); return !!pot && !!currentManager && window.LEAGUE?.sport !== "nfl" && !!pot.entrants?.[currentManager]; };
 function updateSideNav() {
   const on = sideIn();
   navSideBtn?.classList.toggle("hidden", !on);
