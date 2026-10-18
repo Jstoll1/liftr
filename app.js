@@ -8178,13 +8178,13 @@ function seasonStats(weeks, liveBlanks = {}) {
   const sameTbN = new Set(all.filter((m) => m.tbN).map((m) => m.tbN)).size === 1;
   return {
     ats: all.filter((m) => m.atsW + m.atsL >= 3).sort((a, b) => pct(b.atsW, b.atsL) - pct(a.atsW, a.atsL) || b.atsW - a.atsW).map((m) => ({ name: m.name, n: pct(m.atsW, m.atsL), value: `${m.atsW}-${m.atsL}`, sub: `${Math.round(pct(m.atsW, m.atsL) * 100)}%` })),
-    dogs: all.filter((m) => m.dogHits).sort((a, b) => b.dogHits - a.dogHits).map((m) => ({ name: m.name, n: m.dogHits, value: String(m.dogHits), sub: "" })),
-    lone: all.filter((m) => m.lone).sort((a, b) => b.lone - a.lone).map((m) => ({ name: m.name, n: m.lone, value: String(m.lone), sub: "" })),
-    streak: all.filter((m) => m.streak >= 2).sort((a, b) => b.streak - a.streak).map((m) => ({ name: m.name, n: m.streak, value: String(m.streak), sub: "" })),
+    dogs: all.filter((m) => m.dogHits).sort((a, b) => b.dogHits - a.dogHits).map((m) => ({ name: m.name, n: m.dogHits, value: String(m.dogHits), sub: m.dogHits === 1 ? "hit" : "hits" })),
+    lone: all.filter((m) => m.lone).sort((a, b) => b.lone - a.lone).map((m) => ({ name: m.name, n: m.lone, value: String(m.lone), sub: m.lone === 1 ? "hit" : "hits" })),
+    streak: all.filter((m) => m.streak >= 2).sort((a, b) => b.streak - a.streak).map((m) => ({ name: m.name, n: m.streak, value: String(m.streak), sub: "in a row" })),
     fader: all.filter((m) => m.picks >= 5).sort((a, b) => b.fades / b.picks - a.fades / a.picks).map((m) => ({ name: m.name, n: m.fades / m.picks, value: `${Math.round((m.fades / m.picks) * 100)}%`, sub: `${m.fades} of ${m.picks}` })),
-    tb: all.filter((m) => m.tbN).sort((a, b) => a.tbSum / a.tbN - b.tbSum / b.tbN).map((m) => ({ name: m.name, n: m.tbSum / m.tbN, low: true, value: (m.tbSum / m.tbN).toFixed(1), sub: sameTbN ? "" : `${m.tbN} wk${m.tbN === 1 ? "" : "s"}` })),
+    tb: all.filter((m) => m.tbN).sort((a, b) => a.tbSum / a.tbN - b.tbSum / b.tbN).map((m) => ({ name: m.name, n: m.tbSum / m.tbN, low: true, value: (m.tbSum / m.tbN).toFixed(1), sub: "avg miss", more: `avg miss${sameTbN ? "" : ` · ${m.tbN} wk${m.tbN === 1 ? "" : "s"}`}` })),
     best: all.filter((m) => m.bestWeek).sort((a, b) => b.bestWeek.score - a.bestWeek.score).map((m) => ({ name: m.name, n: m.bestWeek.score, value: String(m.bestWeek.score), sub: `Week ${m.bestWeek.week}` })),
-    blanks: all.filter((m) => m.blanks).sort((a, b) => b.blanks - a.blanks).map((m) => ({ name: m.name, n: m.blanks, value: String(m.blanks), sub: "left blank" })),
+    blanks: all.filter((m) => m.blanks).sort((a, b) => b.blanks - a.blanks).map((m) => ({ name: m.name, n: m.blanks, value: String(m.blanks), sub: "blank", more: "left blank" })),
   };
 }
 
@@ -8229,8 +8229,8 @@ function sideSeasonStats(history) {
   const rate = (m) => { const w = m.pW + m.oW, l = m.pL + m.oL; return w + l ? w / (w + l) : 0; };
   return {
     bets: (history || []).length,
-    bank: all.sort((a, b) => b.net - a.net || b.won - a.won || a.name.localeCompare(b.name)).map((m) => ({ name: m.name, n: m.net, signed: true, value: money(m.net), sub: `${m.won} of ${m.played} won` })),
-    picks: [...all].filter((m) => m.pW + m.pL + m.oW + m.oL).sort((a, b) => rate(b) - rate(a) || b.pW + b.oW - (a.pW + a.oW)).map((m) => ({ name: m.name, n: rate(m), value: `${m.pW + m.oW}-${m.pL + m.oL}`, sub: `${Math.round(rate(m) * 100)}% · O/U ${m.oW}-${m.oL}` })),
+    bank: all.sort((a, b) => b.net - a.net || b.won - a.won || a.name.localeCompare(b.name)).map((m) => ({ name: m.name, n: m.net, signed: true, value: money(m.net), sub: `${m.won} of ${m.played}`, more: `won ${m.won} of ${m.played}` })),
+    picks: [...all].filter((m) => m.pW + m.pL + m.oW + m.oL).sort((a, b) => rate(b) - rate(a) || b.pW + b.oW - (a.pW + a.oW)).map((m) => ({ name: m.name, n: rate(m), value: `${m.pW + m.oW}-${m.pL + m.oL}`, sub: `${Math.round(rate(m) * 100)}%`, more: `${Math.round(rate(m) * 100)}% · O/U ${m.oW}-${m.oL}` })),
   };
 }
 
@@ -8273,7 +8273,7 @@ async function renderSeasonStats() {
     const top = Math.max(...list.map((r) => Math.abs(r.n)), 0) || 1;
     const lo = Math.min(...list.map((r) => r.n));
     const width = (r) => Math.max(6, Math.round(100 * (r.low ? (lo || 0.1) / (r.n || 0.1) : Math.abs(r.n) / top)));
-    const full = !open ? "" : `<div class="hs-full"><div class="hs-note">${note}</div>${list.map((r) => `<div class="hs-r${r.name === me ? " me" : ""}${r.rank === 1 ? " first" : ""}"><i class="hs-rk">${r.rank}</i>${av(r.name)}<span class="hs-nm">${esc(shown(r.name))}</span><span class="hs-bar"><u class="${r.signed && r.n < 0 ? "neg" : ""}" style="width:${width(r)}%"></u></span><b class="hs-v${r.signed ? (r.n > 0 ? " up" : r.n < 0 ? " down" : "") : ""}">${esc(r.value)}<small>${esc(r.sub || "")}</small></b></div>`).join("")}</div>`;
+    const full = !open ? "" : `<div class="hs-full"><div class="hs-note">${note}</div>${list.map((r) => `<div class="hs-r${r.name === me ? " me" : ""}${r.rank === 1 ? " first" : ""}"><i class="hs-rk">${r.rank}</i>${av(r.name)}<span class="hs-nm">${esc(shown(r.name))}</span><span class="hs-bar"><u class="${r.signed && r.n < 0 ? "neg" : ""}" style="width:${width(r)}%"></u></span><b class="hs-v${r.signed ? (r.n > 0 ? " up" : r.n < 0 ? " down" : "") : ""}">${esc(r.value)}<small>${esc(r.more || r.sub || "")}</small></b></div>`).join("")}</div>`;
     // The tile art is pixel art cut from the league's own template, one
     // per board; the emoji stands in if it fails to load.
     return `<div class="hs-tile${open ? " open" : ""}${!lead ? " empty" : ""}" style="--c:${color}">
@@ -8281,8 +8281,8 @@ async function renderSeasonStats() {
         <span class="hs-art"><img src="assets/images/hs/${art}.webp" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'${icon}'}))"></span>
         <span class="hs-body">
           <span class="hs-t-head"><span>${label}</span><em>${lead ? (open ? "▴" : "▾") : ""}</em></span>
-          ${lead ? `<b class="hs-name">${esc(shown(lead.name))}</b>
-          <span class="hs-line"><small>${tied ? `+${tied} tied` : esc(lead.sub || "")}</small><strong class="${lead.signed && lead.n < 0 ? "down" : ""}">${esc(lead.value)}</strong></span>
+          ${lead ? `<span class="hs-name"><b>${esc(shown(lead.name))}</b>${tied ? `<i title="tied with ${tied} more">+${tied}</i>` : ""}</span>
+          <span class="hs-line"><small>${esc(lead.sub || "")}</small><strong class="${lead.signed && lead.n < 0 ? "down" : ""}">${esc(lead.value)}</strong></span>
           <span class="hs-you">${mine && mine.rank > 1 ? `YOU · ${ORD(mine.rank)} · ${esc(mine.value)}` : mine ? "YOU LEAD" : `${list.length} RANKED`}</span>` : `<span class="hs-none">NOBODY YET</span>`}
         </span>
       </button>${full}</div>`;

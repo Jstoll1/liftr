@@ -6891,7 +6891,9 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .hs-t-head { display: flex; align-items: center; gap: 6px; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .04em; color: var(--c); text-shadow: 0 0 8px color-mix(in srgb, var(--c) 55%, transparent); }
 .hs-t-head span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hs-t-head em { font-style: normal; font-size: 8px; color: var(--c); }
-.hs-name { font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs-name { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.hs-name b { min-width: 0; font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs-name i { flex: none; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; padding: 3px 4px 2px; border-radius: 4px; color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); }
 .hs-line { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; min-width: 0; }
 .hs-line small { min-width: 0; font-size: 10.5px; color: var(--text-meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hs-line strong { flex: none; margin-left: auto; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; color: var(--c); text-shadow: 0 0 10px color-mix(in srgb, var(--c) 60%, transparent); white-space: nowrap; }
