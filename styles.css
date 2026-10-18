@@ -6814,3 +6814,9 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .ssg-cells .ssb-l b { font-size: 7px; }
 .ssg-cells .ssb-box.empty { min-height: 30px; }
 .ssg-cells .ssb-box.empty.tall { min-height: 55px; }
+/* Boxes size to what they hold (a pick, or a pick and an over/under),
+   centred in the row, instead of stretching to the tallest. */
+.ssg-cells { align-items: center; }
+#side-screen .ssg-cells .ssb-box { height: auto; }
+#side-screen .ssg-cells .ssb-box.empty { min-height: 32px; }
+#side-screen .ssg-cells .ssb-box.empty.tall { min-height: 32px; }
