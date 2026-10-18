@@ -6648,3 +6648,5 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .as-count.bad { color: var(--neon-pink); }
 .as-opt.in span { border-color: rgba(57, 255, 136, .5); color: var(--neon-green); }
 .as-lead.hidden, .as-buy.hidden { display: none; }
+.as-opt.ou.hidden, .as-ou-in.hidden { display: none; }
+.as-opt.ou span { border-style: dashed; }

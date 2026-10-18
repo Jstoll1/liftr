@@ -2803,7 +2803,12 @@ const sideOpen = (pot) => !!pot && pot.open && Date.now() < pot.closesAt;
 const sideDoneKey = (pot, who) => `brochiefs_side_${pot.week}_${pot.id}_${who}`;
 // In the bet but short of picks: games were added after they joined, or a
 // tiebreaker was set.
-const sideNeedsPicks = (pot, who) => { const e = pot?.entrants?.[who]; return !!e && !!e.picks && (pot.games.some((id) => !e.picks[id]) || (pot.tbGame != null && !Number.isFinite(e.tb))); };
+const sideNeedsPicks = (pot, who) => {
+  const e = pot?.entrants?.[who];
+  if (!e || !e.picks) return false;
+  const tot = (id) => (pot.slate || []).find((g) => String(g.id) === String(id))?.total;
+  return pot.games.some((id) => !e.picks[id] || (tot(id) != null && !e.picks[id].ou)) || (pot.tbGame != null && !Number.isFinite(e.tb));
+};
 function fetchSidePot(force = false) {
   if (!WORKER_URL || window.LEAGUE?.sport === "nfl") return Promise.resolve(null);
   if (!force && sidePotWeek === currentWeek && Date.now() - sidePotAt < 20000) return Promise.resolve(potNow());
@@ -3102,22 +3107,29 @@ async function mountSideAdmin(box, getKey, say) {
       const halfLine = (c) => ({ favHome: c.full ? c.full.favHome : true, spread: c.full ? Math.round(c.full.spread) / 2 : "", total: c.full?.total ? Math.round(c.full.total) / 2 : "" });
       const lineText = (c) => (c.full ? `${c.full.favHome ? esc(c.homeShort) : esc(c.awayShort)} -${c.full.spread}${c.full.total != null ? ` · O/U ${c.full.total}` : ""}` : "No line on ESPN: halves only, at your line");
       const status = (c) => (c.on ? `<b class="as-live">${esc(shortStatus(c.on.detail))} · ${esc(c.on.a ?? 0)}-${esc(c.on.h ?? 0)}</b>` : esc(c.kickoffLabel));
-      const opt = (v, label) => (inBet.has(v) ? `<span class="as-opt in"><span>${label} ✓</span></span>` : `<label class="as-opt"><input type="checkbox" value="${esc(v)}"><span>${label}</span></label>`);
-      const edit = (c, v, label) => { const h = halfLine(c); return `<div class="as-h-edit hidden" data-for="${esc(v)}"><span>${label}</span><select aria-label="${label} favorite"><option value="away"${h.favHome ? "" : " selected"}>${esc(c.awayShort)}</option><option value="home"${h.favHome ? " selected" : ""}>${esc(c.homeShort)}</option></select><span>-</span><input class="as-h-sp" type="number" inputmode="decimal" step="0.5" min="0" max="40" placeholder="line" value="${h.spread}"><span>O/U</span><input class="as-h-tot" type="number" inputmode="decimal" step="0.5" min="10" max="90" placeholder="total" value="${h.total}"></div>`; };
+      // An over/under only when asked for: each pick has its own O/U chip,
+      // shown once the pick is checked. A pick already in the bet shows its
+      // chip as it stands, so an over/under can be taken off or put on.
+      const betOf = (v) => betGames.find((g) => String(g.id) === v);
+      const ouChip = (v, total, on) => (total == null && !/^[fh]/.test(v) ? "" : `<label class="as-opt ou${inBet.has(v) ? "" : " hidden"}" data-ou-for="${esc(v)}"><input type="checkbox" class="as-ou" value="${esc(v)}"${on ? " checked" : ""}><span>+ O/U${total != null ? ` ${total}` : ""}</span></label>`);
+      const opt = (v, label, total) => (inBet.has(v)
+        ? `<span class="as-opt in"><span>${label} ✓</span></span>${ouChip(v, betOf(v)?.total ?? total, betOf(v)?.total != null)}`
+        : `<label class="as-opt"><input type="checkbox" value="${esc(v)}"><span>${label}</span></label>${ouChip(v, total, false)}`);
+      const edit = (c, v, label) => { const h = halfLine(c); return `<div class="as-h-edit hidden" data-for="${esc(v)}"><span>${label}</span><select aria-label="${label} favorite"><option value="away"${h.favHome ? "" : " selected"}>${esc(c.awayShort)}</option><option value="home"${h.favHome ? " selected" : ""}>${esc(c.homeShort)}</option></select><span>-</span><input class="as-h-sp" type="number" inputmode="decimal" step="0.5" min="0" max="40" placeholder="line" value="${h.spread}"><span class="as-ou-in hidden">O/U</span><input class="as-h-tot as-ou-in hidden" type="number" inputmode="decimal" step="0.5" min="10" max="90" placeholder="total" value="${h.total}"></div>`; };
       const rows = cands.map((c) => {
         const pre = c.state === "pre", firstOk = pre && c.eventId && !c.noHalves, secondOk = (pre || c.period <= 2) && c.eventId && !c.noHalves;
         if (!c.full && !firstOk && !secondOk) return "";
         return `<div class="as-g">
           <div class="as-g-top"><span class="as-g-nm">${c.pool ? `G${c.pool.id} · ` : ""}${esc(c.awayShort)} @ ${esc(c.homeShort)}${c.fcs ? ` <small>FCS</small>` : ""}</span><small>${status(c)}</small></div>
           <div class="as-g-line">${lineText(c)}</div>
-          <div class="as-g-opts">${c.full ? opt(fullVal(c), "FULL GAME") : ""}${firstOk ? opt(`f${c.eventId}`, "1ST HALF") : ""}${secondOk ? opt(`h${c.eventId}`, "2ND HALF") : ""}</div>
+          <div class="as-g-opts">${c.full ? opt(fullVal(c), "FULL GAME", c.full.total ?? (c.pool ? poolTotals.get(c.pool.id) : null) ?? null) : ""}${firstOk ? opt(`f${c.eventId}`, "1ST HALF", null) : ""}${secondOk ? opt(`h${c.eventId}`, "2ND HALF", null) : ""}</div>
           ${firstOk ? edit(c, `f${c.eventId}`, "1H") : ""}${secondOk ? edit(c, `h${c.eventId}`, "2H") : ""}
         </div>`;
       }).join("");
-      box.innerHTML = `${adding ? `<div class="as-lead"><b>Add to the Week ${pot.week} side bet.</b> Everyone in stays in and gets asked for picks on what you add; anyone who doesn't make them scores 0 there. In the bet now: ${betGames.map((g) => esc(`${sideTag(g)} ${sideMatch(g)}`)).join(", ")}.</div>` : ""}<div class="as-lead${adding ? " hidden" : ""}"><b>Week ${currentWeek} side bet.</b> Every game today not over, FBS and FCS. Check any mix of full games and halves, up to ${SIDE_MAX_PICKS}. Full games use the pool's line or ESPN's; a half starts at half the game's line, so set it from your book. Each pick with a total also gets an over/under, and one pick is the tiebreaker: closest guess at its total points wins a tie.</div>
+      box.innerHTML = `${adding ? `<div class="as-lead"><b>Add to the Week ${pot.week} side bet.</b> Everyone in stays in and gets asked for picks on what you add; anyone who doesn't make them scores 0 there. In the bet now: ${betGames.map((g) => esc(`${sideTag(g)} ${sideMatch(g)}`)).join(", ")}.</div>` : ""}<div class="as-lead${adding ? " hidden" : ""}"><b>Week ${currentWeek} side bet.</b> Every game today not over, FBS and FCS. Check any mix of full games and halves, up to ${SIDE_MAX_PICKS}. Full games use the pool's line or ESPN's; a half starts at half the game's line, so set it from your book. Tick + O/U on any pick to add its over/under, and choose a tiebreaker if you want one: closest guess at that game's total points wins a tie.</div>
         ${rows ? `<div class="as-gl">${rows}</div>` : `<div class="as-none">Every game today is over.</div>`}
         <div class="as-count"></div>
-        <label class="as-buy as-tbrow">Tiebreaker: total points in <select class="as-tb"><option value="">the last game</option></select></label>
+        <label class="as-buy as-tbrow">Tiebreaker: <select class="as-tb"><option value="none">none (a tie splits)</option></select></label>
         <label class="as-buy">Entry closes in <input class="as-close" type="number" inputmode="numeric" min="5" max="480" step="1" placeholder="auto"> min</label>
         <div class="as-out">Blank: the first kickoff, or 20 minutes from now if that's later. For a 2nd half at halftime, about 15.</div>
         <label class="as-buy${adding ? " hidden" : ""}">Buy-in $<input class="as-buyin" type="number" inputmode="numeric" min="1" max="500" step="1" value="${adding ? pot.buyIn : 25}"></label>
@@ -3126,13 +3138,17 @@ async function mountSideAdmin(box, getKey, say) {
       box.querySelector(".as-back")?.addEventListener("click", () => render(pot));
       const candOf = (v) => cands.find((c) => fullVal(c) === v || `f${c.eventId}` === v || `h${c.eventId}` === v);
       const nameOf = (v) => { const b = betGames.find((g) => String(g.id) === v); if (b) return sideMatch(b); const c = candOf(v); return c ? `${c.awayShort} @ ${c.homeShort}${v[0] === "f" ? " (1st half)" : v[0] === "h" ? " (2nd half)" : ""}` : v; };
-      const checked = () => [...box.querySelectorAll(".as-g-opts input:checked")].map((i) => i.value);
+      const checked = () => [...box.querySelectorAll(".as-g-opts input:checked:not(.as-ou)")].map((i) => i.value);
+      const ouOn = (v) => !!box.querySelector(`.as-ou[value="${v}"]:checked`);
       // Checking a half opens its line; the tiebreaker offers what is checked.
       const sync = () => {
         const on = checked();
-        box.querySelectorAll(".as-h-edit").forEach((el) => el.classList.toggle("hidden", !on.includes(el.dataset.for)));
-        const sel = box.querySelector(".as-tb"), was = sel.value || (adding && pot.tbGame != null ? String(pot.tbGame) : "");
-        sel.innerHTML = `<option value="">the last game</option>` + [...inBet, ...on].map((v) => `<option value="${esc(v)}"${v === was ? " selected" : ""}>${esc(nameOf(v))}</option>`).join("");
+        box.querySelectorAll(".as-h-edit").forEach((el) => { el.classList.toggle("hidden", !on.includes(el.dataset.for)); el.querySelectorAll(".as-ou-in").forEach((x) => x.classList.toggle("hidden", !ouOn(el.dataset.for))); });
+        box.querySelectorAll(".as-opt.ou").forEach((el) => { if (!inBet.has(el.dataset.ouFor)) el.classList.toggle("hidden", !on.includes(el.dataset.ouFor)); });
+        const sel = box.querySelector(".as-tb");
+        const was = sel.dataset.ready ? sel.value : adding && pot.tbGame != null ? String(pot.tbGame) : "none";
+        sel.dataset.ready = "1";
+        sel.innerHTML = `<option value="none">none (a tie splits)</option>` + [...inBet, ...on].map((v) => `<option value="${esc(v)}"${v === was ? " selected" : ""}>${esc(nameOf(v))}</option>`).join("");
         const n = box.querySelector(".as-count"), total = inBet.size + on.length;
         n.textContent = on.length ? `${total} of ${SIDE_MAX_PICKS} picked` : "";
         n.classList.toggle("bad", total > SIDE_MAX_PICKS);
@@ -3145,23 +3161,34 @@ async function mountSideAdmin(box, getKey, say) {
         for (const v of checked()) {
           const c = candOf(v);
           if (!c) continue;
-          if (/^\d+$/.test(v)) { ids.push({ id: Number(v), total: poolTotals.get(Number(v)) ?? c.full?.total ?? undefined }); continue; }
+          if (/^\d+$/.test(v)) { ids.push({ id: Number(v), ...(ouOn(v) ? { total: poolTotals.get(Number(v)) ?? c.full?.total ?? undefined } : {}) }); continue; }
           const base = { away: c.away, home: c.home, awayShort: c.awayShort, homeShort: c.homeShort, awayId: c.awayId, homeId: c.homeId, kickoff: c.kickoff };
-          if (v[0] === "e") { ids.push({ id: v, ...base, favorite: c.full.favHome ? c.home : c.away, spread: c.full.spread, ...(c.full.total != null ? { total: c.full.total } : {}), kickoffLabel: c.kickoffLabel }); continue; }
+          if (v[0] === "e") { ids.push({ id: v, ...base, favorite: c.full.favHome ? c.home : c.away, spread: c.full.spread, ...(c.full.total != null && ouOn(v) ? { total: c.full.total } : {}), kickoffLabel: c.kickoffLabel }); continue; }
           const row = box.querySelector(`.as-h-edit[data-for="${v}"]`);
           const sp = Number(row.querySelector(".as-h-sp").value), tot = row.querySelector(".as-h-tot").value.trim();
           const which = v[0] === "f" ? "1st half" : "2nd half";
           if (row.querySelector(".as-h-sp").value.trim() === "" || !Number.isFinite(sp) || sp < 0 || Math.round(sp * 2) !== sp * 2) { say(`Set the ${which} line (whole or half point) for ${c.awayShort} @ ${c.homeShort}.`, "bad"); return; }
           const favHome = row.querySelector("select").value === "home";
-          ids.push({ id: v, ...base, favorite: favHome ? c.home : c.away, spread: sp, ...(tot !== "" && Number(tot) > 0 ? { total: Number(tot) } : {}), kickoffLabel: v[0] === "f" ? c.kickoffLabel : "after halftime" });
+          if (ouOn(v) && !(tot !== "" && Number(tot) > 0)) { say(`Set the ${which} over/under for ${c.awayShort} @ ${c.homeShort}, or untick + O/U.`, "bad"); return; }
+          ids.push({ id: v, ...base, favorite: favHome ? c.home : c.away, spread: sp, ...(ouOn(v) ? { total: Number(tot) } : {}), kickoffLabel: v[0] === "f" ? c.kickoffLabel : "after halftime" });
+        }
+        // Picks already in the bet whose over/under was ticked on or off.
+        if (adding) for (const v of inBet) {
+          const g = betOf(v), had = g?.total != null, want = ouOn(v);
+          if (!g || had === want || !box.querySelector(`.as-ou[value="${v}"]`)) continue;
+          const c = candOf(v), total = want ? (g.total ?? c?.full?.total ?? (/^\d+$/.test(v) ? poolTotals.get(Number(v)) : null)) : null;
+          if (want && total == null) { say(`No over/under is known for ${sideMatch(g)}.`, "bad"); return; }
+          if (/^\d+$/.test(v)) { ids.push({ id: Number(v), ...(want ? { total } : {}) }); continue; }
+          const { total: _t, eventId, half, ...rest } = g;
+          ids.push({ ...rest, ...(want ? { total } : {}) });
         }
         if (!ids.length && !adding) { say("Pick at least one game or half for the side bet.", "bad"); return; }
-        if (ids.length + inBet.size > SIDE_MAX_PICKS) { say(`${SIDE_MAX_PICKS} picks at most in a bet.`, "bad"); return; }
+        if (ids.filter((x) => !inBet.has(String(x.id))).length + inBet.size > SIDE_MAX_PICKS) { say(`${SIDE_MAX_PICKS} picks at most in a bet.`, "bad"); return; }
         const buyIn = Number(box.querySelector(".as-buyin").value);
         const closeMin = Number(box.querySelector(".as-close")?.value);
         const closeAt = Number.isFinite(closeMin) && closeMin >= 5 ? Date.now() + closeMin * 60000 : null;
-        const tbPick = box.querySelector(".as-tb")?.value || "";
-        const tbGame = tbPick === "" ? null : /^\d+$/.test(tbPick) ? Number(tbPick) : tbPick;
+        const tbPick = box.querySelector(".as-tb")?.value || "none";
+        const tbGame = tbPick === "none" ? "none" : /^\d+$/.test(tbPick) ? Number(tbPick) : tbPick;
         btn.disabled = true;
         if (adding) {
           try {

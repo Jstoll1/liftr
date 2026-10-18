@@ -53,7 +53,7 @@ export function cleanExtraGame(g) {
 // end of halftime, which only they can judge), replaces the usual close.
 export const CLOSE_MIN_MS = 5 * 60000, CLOSE_MAX_MS = 8 * 3600000;
 // tbGame, when the commissioner picks one of the chosen games, is the
-// tiebreaker; otherwise it is the last game.
+// tiebreaker; otherwise there is none and a tie splits.
 export function newPot({ week, games, buyIn, slate, now, closeAt = null, tbGame = null }) {
   const list = Array.isArray(games) ? games : [];
   const byId = new Map((slate?.games || []).map((g) => [String(g.id), g]));
@@ -74,17 +74,19 @@ export function newPot({ week, games, buyIn, slate, now, closeAt = null, tbGame 
   const amt = Number(buyIn);
   if (!Number.isInteger(amt) || amt < 1 || amt > SIDE_MAX_BUYIN) return { error: `Buy-in must be a whole dollar amount from 1 to ${SIDE_MAX_BUYIN}.` };
   const sorted = [...chosen.values()].sort((a, b) => kickMs(a) - kickMs(b) || String(a.id).localeCompare(String(b.id)));
-  return { pot: { week, id: String(now), games: sorted.map((g) => g.id), slate: sorted, tbGame: (sorted.find((g) => tbGame != null && String(g.id) === String(tbGame)) || sorted[sorted.length - 1]).id, buyIn: amt, closesAt: Number.isFinite(Number(closeAt)) && closeAt !== null && Number(closeAt) >= now + CLOSE_MIN_MS && Number(closeAt) <= now + CLOSE_MAX_MS ? Number(closeAt) : Math.max(kickMs(sorted[0]), now + ENTRY_MIN_MS), createdAt: now } };
+  return { pot: { week, id: String(now), games: sorted.map((g) => g.id), slate: sorted, ...(() => { const tb = sorted.find((g) => tbGame != null && String(g.id) === String(tbGame)); return tb ? { tbGame: tb.id } : {}; })(), buyIn: amt, closesAt: Number.isFinite(Number(closeAt)) && closeAt !== null && Number(closeAt) >= now + CLOSE_MIN_MS && Number(closeAt) <= now + CLOSE_MAX_MS ? Number(closeAt) : Math.max(kickMs(sorted[0]), now + ENTRY_MIN_MS), createdAt: now } };
 }
 
 // Games added to a pot that is still open: the same checks as a new pot,
 // over its games plus the new ones. The pot keeps its id, so everyone
 // already in stays in; their picks on the new games are still to make.
+// A game sent again replaces the bet's copy (an over/under added or taken
+// off). tbGame: an id sets it, "none" clears it, null keeps it.
 export function extendPot(pot, { games, slate, now, closeAt = null, tbGame = null }) {
   if (now >= pot.closesAt) return { error: "Entry has closed, so games can't be added." };
   const byId = new Map((slate?.games || []).map((g) => [String(g.id), g]));
   const base = pot.slate || pot.games.map((id) => byId.get(String(id))).filter(Boolean);
-  const made = newPot({ week: pot.week, games: [...base, ...(Array.isArray(games) ? games : [])], buyIn: pot.buyIn, slate, now, closeAt, tbGame: tbGame ?? pot.tbGame ?? null });
+  const made = newPot({ week: pot.week, games: [...base, ...(Array.isArray(games) ? games : [])], buyIn: pot.buyIn, slate, now, closeAt, tbGame: tbGame === "none" ? null : tbGame ?? pot.tbGame ?? null });
   if (made.error) return made;
   return { pot: { ...made.pot, id: pot.id, createdAt: pot.createdAt, editedAt: now } };
 }

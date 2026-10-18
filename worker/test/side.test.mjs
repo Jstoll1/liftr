@@ -90,10 +90,10 @@ test("games off the slate come whole with their ESPN line; slate games keep the 
 
 test("over/unders and the tiebreaker: required where the pot has them, hidden until close", () => {
   const extra = { id: "e401858999", away: "Utah Utes", home: "BYU Cougars", awayShort: "Utah", homeShort: "BYU", awayId: 254, homeId: 252, favorite: "BYU Cougars", spread: 3.5, total: 48.5, kickoff: new Date(t + 2 * H).toISOString() };
-  const { pot } = newPot({ week: 7, games: [{ id: 9, total: 51.5 }, extra], buyIn: 25, slate, now: t });
+  const { pot } = newPot({ week: 7, games: [{ id: 9, total: 51.5 }, extra], buyIn: 25, slate, now: t, tbGame: "e401858999" });
   assert.equal(pot.slate[0].total, 51.5, "a slate game takes its total from the console");
   assert.equal(pot.slate[1].total, 48.5);
-  assert.equal(pot.tbGame, "e401858999", "the tiebreaker is the last game");
+  assert.equal(pot.tbGame, "e401858999");
   const picks = { 9: { team: "Home 9", mode: "ATS", ou: "over" }, e401858999: { team: "Utah Utes", mode: "SU", ou: "under" } };
   assert.match(cleanSidePicks(pot, null, { ...picks, 9: { team: "Home 9", mode: "ATS" } }, 50).error, /over or under/);
   assert.match(cleanSidePicks(pot, null, picks).error, /tiebreaker/);
@@ -120,10 +120,11 @@ test("a second-half bet: an h id marks it, the commissioner's close time wins", 
   assert.equal(newPot({ week: 7, games: [half], buyIn: 25, slate, now: t, closeAt: t + CLOSE_MAX_MS + 1 }).pot.closesAt, t + ENTRY_MIN_MS, "too far: the usual close");
 });
 
-test("the commissioner can pick the tiebreaker game; anything else falls back to the last", () => {
+test("a tiebreaker only when the commissioner picks one", () => {
   assert.equal(newPot({ week: 7, games: [8, 9, 10], buyIn: 25, slate, now: t, tbGame: 9 }).pot.tbGame, 9);
-  assert.equal(newPot({ week: 7, games: [8, 9, 10], buyIn: 25, slate, now: t, tbGame: 1 }).pot.tbGame, 10, "not in the bet");
-  assert.equal(newPot({ week: 7, games: [8, 9, 10], buyIn: 25, slate, now: t }).pot.tbGame, 10);
+  assert.equal(newPot({ week: 7, games: [8, 9, 10], buyIn: 25, slate, now: t, tbGame: 1 }).pot.tbGame, undefined, "not in the bet");
+  assert.equal(newPot({ week: 7, games: [8, 9, 10], buyIn: 25, slate, now: t }).pot.tbGame, undefined);
+  assert.equal(cleanSidePicks(newPot({ week: 7, games: [9], buyIn: 25, slate, now: t }).pot, slate, { 9: { team: "Home 9", mode: "SU" } }).error, undefined, "no guess needed");
 });
 
 test("a first-half bet is marked by an f id", () => {
@@ -143,4 +144,16 @@ test("games can be added to an open pot; it keeps its id, buy-in and players", (
   assert.equal(pot.closesAt, t + 2 * H, "now closes at the earliest kickoff");
   assert.match(extendPot({ ...old, closesAt: t - 1 }, { games: [9], slate, now: t }).error, /closed/);
   assert.match(extendPot(old, { games: [8, 9, 1, 6, 7, ...["e40185000", "e40185001", "e40185002"].map((id) => ({ ...extra, id }))], slate, now: t }).error, /Pick 1 to 8/);
+});
+
+test("adding to a bet can take an over/under off, and set or clear the tiebreaker", () => {
+  const extra = { id: "e401858999", away: "Utah Utes", home: "BYU Cougars", awayShort: "Utah", homeShort: "BYU", awayId: 254, homeId: 252, favorite: "BYU Cougars", spread: 3.5, total: 48.5, kickoff: new Date(t + 2 * H).toISOString() };
+  const { pot } = newPot({ week: 7, games: [{ id: 9, total: 51.5 }, extra], buyIn: 25, slate, now: t, tbGame: 9 });
+  const { total, ...noTotal } = extra;
+  const a = extendPot(pot, { games: [{ id: 9 }, noTotal], slate, now: t }).pot;
+  assert.equal(a.slate.find((g) => g.id === 9).total, undefined);
+  assert.equal(a.slate.find((g) => g.id === "e401858999").total, undefined);
+  assert.equal(a.tbGame, 9, "null keeps the tiebreaker");
+  assert.equal(extendPot(pot, { games: [], slate, now: t, tbGame: "none" }).pot.tbGame, undefined);
+  assert.equal(extendPot(pot, { games: [], slate, now: t, tbGame: "e401858999" }).pot.tbGame, "e401858999");
 });
