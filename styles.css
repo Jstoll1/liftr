@@ -7330,3 +7330,8 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .recap-card.arc .recap-stat { min-width: 46px; padding-left: 8px; }
 .recap-card.arc .recap-stat b { font-size: 16px; }
 .recap-card.arc .recap-stat span { margin-top: 3px; }
+
+/* Player card stats: label | bar | number | note, every column aligned. */
+.plc-sb { grid-template-columns: 84px minmax(0, 1fr) 46px 56px !important; grid-template-areas: "l bar v n" !important; }
+.plc-sb > b { grid-area: v; justify-content: flex-end; }
+.plc-sb > em { grid-area: n; font-style: normal; font-size: 10px; color: var(--text-dim); white-space: nowrap; text-align: left; }

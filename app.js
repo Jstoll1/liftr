@@ -8573,7 +8573,7 @@ function openPlayerCard(name, again) {
   const max = Math.max(1, ...d.scores.map((x) => x.score));
   const pct = d.w + d.l ? Math.round((d.w / (d.w + d.l)) * 100) : null;
   // A fighting game stat bar: label, value, ten segments filled to the share.
-  const bar = (label, val, share, note = "") => `<div class="plc-sb"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}${note ? `<small>${note}</small>` : ""}</b></div>`;
+  const bar = (label, val, share, note = "") => `<div class="plc-sb"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em></div>`;
   const logo = (full, known) => { const id = known || teamIdOf(full); return id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : `<span class="plc-nologo"></span>`; };
   const pick = (p, hit) => !p ? "" : `<div class="plc-pick ${hit ? "hit" : "miss"}">
       <div class="plc-pt"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}</small><b>${hit ? `+${p.pts}` : "0"} PTS</b></div>
