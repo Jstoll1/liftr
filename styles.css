@@ -6554,3 +6554,5 @@ html[data-sport="nfl"] #logo-screen { display: none !important; }
 /* The head to head sits above the tab bar, so a swipe anywhere scrolls it
    and the last rows are never hidden behind the bar. */
 .h2h-modal { z-index: 45; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+/* Admin screens on a phone never pan sideways. */
+.admin-overlay { overflow-x: hidden; }
