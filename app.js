@@ -8349,6 +8349,10 @@ let renderRecap = function () {
 var recapOpen = new Set(); // var: the board can draw the replay before this line runs
 function recapDetail(sum, kind) {
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // Picks come with the detailed weeks; until they land, ask for them and say so.
+  const full = (seasonLedger || []).find((w) => w.week === sum.week);
+  if (full) sum = { ...sum, rows: full.rows, slate: full.slate || sum.slate };
+  else if (kind !== "move" && !(sum.rows || []).some((r) => r.ledger)) { fetchSeasonLedger().then(() => { if ((seasonLedger || []).some((w) => w.week === sum.week)) { document.getElementById("recap-panel").dataset.drawn = ""; renderRecap(); } }); return `<div class="rm-none">Loading the picks…</div>`; }
   const rows = (sum.rows || []).filter((r) => r && r.name);
   if (!rows.length) return `<div class="rm-none">Details aren't saved for this week.</div>`;
   const nm = (n) => `<b class="${n === currentManager ? "me" : ""}">${esc(shown(n))}</b>`;
@@ -8474,7 +8478,8 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
 // Tap a pot row, or a name on the replay: that player's season on one
 // card. Everything comes from the sealed weeks, so it is what was graded.
 function playerSeason(name) {
-  const weeks = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition).sort((a, b) => a.week - b.week);
+  // The detailed weeks (with every pick) when they are loaded, else the plain ones.
+  const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition)).slice().sort((a, b) => a.week - b.week);
   const scores = [], picks = [];
   let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0;
   for (const wk of weeks) {
@@ -8505,9 +8510,11 @@ function playerSeason(name) {
     ats: atsN ? Math.round((atsW / atsN) * 100) : null, atsN, su: suN ? Math.round((suW / suN) * 100) : null, suN,
   };
 }
-function openPlayerCard(name) {
+function openPlayerCard(name, again) {
   if (!name) return;
-  noteUse("player-card", name);
+  if (!again) noteUse("player-card", name);
+  // Every pick lives in the detailed weeks; fetch them once, then redraw.
+  if (!again && !(seasonLedger && Date.now() - seasonLedgerAt < 5 * 60 * 1000)) fetchSeasonLedger().then(() => { if (!document.getElementById("player-modal")?.classList.contains("hidden")) openPlayerCard(name, true); });
   const esc = escapeCd, d = playerSeason(name);
   const pot = typeof payoutLedger === "function" ? payoutLedger() : null;
   const pr = pot?.list?.find((r) => r.name === name) || {};
@@ -8532,8 +8539,8 @@ function openPlayerCard(name) {
       ${stat("AVERAGE", d.avg.toFixed(1), `${d.scores.length} week${d.scores.length === 1 ? "" : "s"}`)}
       ${stat("BEST WEEK", d.top.score, `Week ${d.top.week}`)}
       ${stat("WORST WEEK", d.low.score, `Week ${d.low.week}`)}
-      ${stat("RECORD", `${d.w}-${d.l}`, d.w + d.l ? `${Math.round((d.w / (d.w + d.l)) * 100)}%` : "")}
-      ${stat("ATS · SU", `${d.ats ?? "–"}% · ${d.su ?? "–"}%`, `${d.atsN} spread · ${d.suN} straight`)}
+      ${d.w + d.l ? `${stat("RECORD", `${d.w}-${d.l}`, `${Math.round((d.w / (d.w + d.l)) * 100)}%`)}
+      ${stat("ATS · SU", `${d.ats ?? "–"}% · ${d.su ?? "–"}%`, `${d.atsN} spread · ${d.suN} straight`)}` : `<div class="pc-stat pc-wide"><small>PICKS</small><span>Loading every pick…</span></div>`}
     </div>
     ${d.best ? `<div class="pc-pick hit"><small>BEST PICK</small><b>${esc(d.best.text)}</b><span>Week ${d.best.week} · +${d.best.pts}${d.best.with_ <= 2 ? ` · only ${d.best.with_} of ${d.best.of} on it` : ""}</span></div>` : ""}
     ${d.worst ? `<div class="pc-pick miss"><small>WORST PICK</small><b>${esc(d.worst.text)}</b><span>Week ${d.worst.week} · 0${d.worst.others ? ` · ${d.worst.others} of ${d.worst.of} cashed the other side` : ""}</span></div>` : ""}`
@@ -8615,8 +8622,8 @@ document.addEventListener("click", (e) => {
 // --- Season stats ------------------------------------------------------
 // Five leaderboards from the ledger of every counting week. The ledger
 // comes down only when the panel is opened, and is kept for five minutes.
-let seasonLedgerAt = 0;
-let seasonLedger = null;
+var seasonLedgerAt = 0;
+var seasonLedger = null; // var: the replay and player card can read it before this line runs
 async function fetchSeasonLedger() {
   if (!WORKER_URL) return null;
   if (seasonLedger && Date.now() - seasonLedgerAt < 5 * 60 * 1000) return seasonLedger;

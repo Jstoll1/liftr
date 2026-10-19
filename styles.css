@@ -7212,3 +7212,4 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .pc-pick span { display: block; margin-top: 2px; font-size: 11px; color: var(--text-meta); }
 .pc-none { font-size: 12px; color: var(--text-dim); }
 #recap-panel .pick-chip[data-name] { cursor: pointer; }
+.pc-wide { grid-column: 1 / -1; }
