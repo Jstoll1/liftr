@@ -377,3 +377,7 @@
   .rank-cell { width: 28px; }
   .owner-cell, .team-cell { overflow-wrap: anywhere; }
 }
+
+.lineage-card[data-year] { cursor: pointer; }
+.season-card.flash { outline: 2px solid var(--gold, #ffe45e); outline-offset: 2px; transition: outline-color .6s; }
+.season-card { scroll-margin-top: 84px; }
