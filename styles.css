@@ -7228,13 +7228,14 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .plc-bars i.won b { color: var(--neon-yellow); }
 .plc-bars em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); margin-top: 4px; }
 .plc-stats { display: grid; gap: 6px; }
-.plc-sb { display: grid; grid-template-columns: 82px minmax(0, 1fr) 44px; grid-template-areas: "l bar v" ". n n"; align-items: center; column-gap: 8px; }
+.plc-sb { display: grid; grid-template-columns: 84px minmax(0, 1fr) 78px; grid-template-areas: "l bar v"; align-items: center; column-gap: 8px; min-height: 18px; }
 .plc-sb > span { grid-area: l; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .06em; color: var(--text-meta); }
 .plc-sb > i { grid-area: bar; display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; height: 12px; padding: 2px; border: 1px solid rgba(255, 255, 255, .15); background: #05010c; }
 .plc-sb u { background: rgba(255, 255, 255, .05); }
 .plc-sb u.on { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 60%, #fff), var(--accent)); box-shadow: 0 0 4px color-mix(in srgb, var(--accent) 60%, transparent); }
-.plc-sb > b { grid-area: v; text-align: right; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 9px; color: #fff; }
-.plc-sb > small { grid-area: n; justify-self: end; font-size: 10px; color: var(--text-dim); margin-top: -1px; }
+.plc-sb > b { grid-area: v; display: flex; align-items: baseline; justify-content: flex-end; gap: 4px; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 9px; color: #fff; white-space: nowrap; }
+.plc-sb > b small { font-family: system-ui, sans-serif; font-size: 10px; color: var(--text-dim); }
+.plc-sb > small { grid-column: 2 / -1; font-size: 10.5px; color: var(--text-dim); }
 .plc-pick { display: grid; gap: 7px; padding: 10px; border-radius: 9px; border: 1px solid rgba(57, 255, 136, .45); background: rgba(57, 255, 136, .05); }
 .plc-pick.miss { border-color: rgba(255, 32, 121, .45); background: rgba(255, 32, 121, .05); }
 .plc-pt { display: flex; justify-content: space-between; align-items: center; }
@@ -7246,7 +7247,7 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .plc-call img, .plc-call .plc-nologo { width: 38px; height: 38px; flex: none; object-fit: contain; }
 .plc-call b { display: block; font-size: 15px; color: #fff; }
 .plc-call small { display: block; margin-top: 2px; font-size: 11px; color: var(--text-meta); }
-.plc-score { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px; padding: 7px 8px; border-radius: 6px; background: #05010c; border: 1px solid rgba(255, 255, 255, .08); font-size: 12px; color: var(--text-meta); }
+.plc-score { display: grid; grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr); align-items: center; gap: 6px; padding: 7px 8px; border-radius: 6px; background: #05010c; border: 1px solid rgba(255, 255, 255, .08); font-size: 12px; color: var(--text-meta); }
 .plc-score span { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .plc-score span:last-child { justify-content: flex-end; }
 .plc-score img, .plc-score .plc-nologo { width: 18px; height: 18px; flex: none; object-fit: contain; }
@@ -7255,3 +7256,5 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .plc-score span.w b { color: var(--neon-yellow); }
 .plc-score em { font-style: normal; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 5.5px; line-height: 1.6; color: var(--text-dim); }
 .plc-none { font-size: 12px; color: var(--text-dim); }
+.plc-score span i { font-style: normal; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plc-score span b { flex: none; }
