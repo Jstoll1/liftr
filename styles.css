@@ -7312,3 +7312,4 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 #scoreboard-screen .pot-head #payouts-toggle { flex: 1 1 auto; min-width: 0; width: auto; padding-right: 2px; }
 #scoreboard-screen .pot-head #payouts-toggle { white-space: nowrap; }
 #scoreboard-screen .pot-head .h2h-btn { position: static; transform: none; flex: none; }
+#scoreboard-screen .pot-head #payouts-toggle { order: 0 !important; } #scoreboard-screen .pot-head .h2h-btn { order: 1; }
