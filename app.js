@@ -7865,7 +7865,7 @@ function swipeToClose(modal, card, close) {
 // Only from the top: if anything under the finger is scrolled down, the
 // pull scrolls it back up instead; a sideways drag never closes.
 (() => {
-  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #sim-modal, #gridcard-modal";
+  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #sim-modal, #gridcard-modal, #player-modal, #sh2h-modal";
   const CLOSE = '.wpx-x, [data-act="close"], #rules-close-btn, [aria-label="Close"]';
   let st = null;
   const reset = (card) => { if (card) { card.style.transform = ""; card.style.opacity = ""; } };
@@ -8560,7 +8560,6 @@ function openPlayerCard(name, again) {
     m.setAttribute("role", "dialog");
     document.body.appendChild(m);
     m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".plc-x")) m.classList.add("hidden"); });
-    if (typeof swipeToClose === "function") swipeToClose(m, null, () => m.classList.add("hidden"));
   }
   m.dataset.name = name;
   const pts = pr.points ?? d.scores.reduce((t, x) => t + x.score, 0);
