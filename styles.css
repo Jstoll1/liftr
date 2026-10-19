@@ -7352,3 +7352,20 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .plc-sb > i { background: #050a1c; }
 .plc-score { background: #050a1c; }
 .plc-bars em, .plc-sb > em { color: #7d90bd; }
+/* Player card scheme v2: synthwave arcade. Indigo cabinet, neon cyan, hot magenta. */
+.plc-card { --accent: #29e6ff; border-color: #29e6ff;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 3px), radial-gradient(120% 70% at 50% 0%, #2a1260 0%, #150a35 45%, #08041a 100%);
+  box-shadow: 0 0 0 4px #08041a, 0 0 0 6px #ff2bd6, 0 0 26px rgba(41, 230, 255, .35), 0 0 46px rgba(255, 43, 214, .25), 0 18px 40px rgba(0, 0, 0, .6); }
+.plc-top { border-bottom-color: rgba(255, 43, 214, .45); }
+.plc-av { background: linear-gradient(135deg, #b8f7ff 0%, #29e6ff 35%, #ff2bd6 100%); }
+.plc-av span { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .18) 0 2px, transparent 2px 4px), radial-gradient(circle at 30% 25%, #4ff0ff, #7a1fa8 85%); }
+.plc-id small { color: #ff6be3; }
+.plc-id b { text-shadow: 2px 2px 0 #ff2bd6, 0 0 12px rgba(41, 230, 255, .55); }
+.plc-badges span { background: rgba(41, 230, 255, .1); border-color: rgba(41, 230, 255, .35); }
+.plc-badges .rank { color: #08041a; background: #29e6ff; border-color: #29e6ff; }
+.plc-sec { color: #ff6be3; }
+.plc-sb > span { color: #c9c2ef; }
+.plc-sb > i, .plc-score { border-color: rgba(255, 43, 214, .3); background: #07031a; }
+.plc-sb u.on { background: linear-gradient(180deg, #b8f7ff, #29e6ff); box-shadow: 0 0 5px rgba(41, 230, 255, .7); }
+.plc-bars s { background: repeating-linear-gradient(0deg, #1a8fb0 0 4px, #29e6ff 4px 6px); }
+.plc-bars em, .plc-sb > em { color: #8f84c4; }
