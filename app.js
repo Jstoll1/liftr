@@ -8528,21 +8528,28 @@ function playerSeason(name) {
 // Team logos for past weeks: the sealed weeks keep names, not ESPN ids, so
 // the ids come from ESPN's public team list once and stay on the phone.
 var teamIdMap = null;
+// Names differ between feeds ("Georgia St" / "Georgia State Panthers"), so
+// both sides are folded the same way before matching.
+const teamKey = (n) => String(n || "").toLowerCase().replace(/&/g, "and").replace(/\bst\.?\b/g, "state").replace(/[^a-z0-9]+/g, " ").trim();
 function teamIdOf(name) {
   if (!name) return null;
   const g = GAMES.find((x) => x.away === name || x.home === name);
   if (g) return g.away === name ? g.awayId : g.homeId;
-  if (!teamIdMap) { try { teamIdMap = JSON.parse(localStorage.getItem("brochiefs_team_ids_v1") || "null"); } catch {} }
+  if (!teamIdMap) { try { teamIdMap = JSON.parse(localStorage.getItem("brochiefs_team_ids_v2") || "null"); } catch {} }
   if (!teamIdMap && !teamIdOf.loading) {
     teamIdOf.loading = fetch(`${window.ESPN_API || "https://site.api.espn.com/apis/site/v2/sports/football/college-football"}/teams?limit=1000`).then((r) => r.json()).then((d) => {
       const m = {};
-      for (const { team: t } of d?.sports?.[0]?.leagues?.[0]?.teams || []) for (const k of [t.displayName, t.shortDisplayName, t.location, `${t.location} ${t.name}`]) if (k && !m[k]) m[k] = Number(t.id);
+      for (const { team: t } of d?.sports?.[0]?.leagues?.[0]?.teams || []) for (const k of [t.displayName, t.shortDisplayName, t.location, `${t.location} ${t.name}`, t.abbreviation]) { const key = teamKey(k); if (key && !m[key]) m[key] = Number(t.id); }
       teamIdMap = m;
-      try { localStorage.setItem("brochiefs_team_ids_v1", JSON.stringify(m)); } catch {}
+      try { localStorage.setItem("brochiefs_team_ids_v2", JSON.stringify(m)); } catch {}
       if (!document.getElementById("player-modal")?.classList.contains("hidden")) openPlayerCard(document.getElementById("player-modal").dataset.name, true);
     }).catch(() => {});
   }
-  return teamIdMap?.[name] ?? null;
+  if (!teamIdMap) return null;
+  // Full name, then the name without its last word (the mascot), and so on.
+  const words = teamKey(name).split(" ");
+  for (let n = words.length; n > 0; n--) { const id = teamIdMap[words.slice(0, n).join(" ")]; if (id) return id; }
+  return null;
 }
 function openPlayerCard(name, again) {
   if (!name) return;
