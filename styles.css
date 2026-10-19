@@ -7313,3 +7313,20 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 #scoreboard-screen .pot-head #payouts-toggle { white-space: nowrap; }
 #scoreboard-screen .pot-head .h2h-btn { position: static; transform: none; flex: none; }
 #scoreboard-screen .pot-head #payouts-toggle { order: 0 !important; } #scoreboard-screen .pot-head .h2h-btn { order: 1; }
+/* Week replay, tighter: less air inside and between cards. */
+.recap-panel:not(.hidden) { gap: 6px; padding: 9px 8px 8px; }
+.recap-marquee { padding: 0 0 2px; }
+.recap-marquee span { font-size: 9px; }
+.recap-marquee small { margin-top: 4px; }
+.recap-card.arc { grid-template-columns: 36px minmax(0, 1fr) auto; gap: 2px 10px; padding: 7px 10px 8px 12px; border-radius: 9px; }
+.recap-card.arc > .recap-head { margin-bottom: 1px; font-size: 6px; }
+.recap-ico { width: 13px; height: 13px; }
+.recap-card.arc .recap-art { width: 36px; height: 36px; }
+.recap-card.arc .recap-logo, .recap-card.arc .recap-logo.chart { width: 34px; height: 34px; }
+.recap-card.arc .recap-vs .recap-logo { width: 18px; height: 24px; }
+.recap-card.arc .recap-main { font-size: 13px; gap: 3px 5px; }
+.recap-card.arc .recap-main .pick-chip { font-size: 10.5px; padding-top: 1px; padding-bottom: 1px; }
+.recap-card.arc .recap-sub { font-size: 10.5px; margin-top: 1px; }
+.recap-card.arc .recap-stat { min-width: 46px; padding-left: 8px; }
+.recap-card.arc .recap-stat b { font-size: 16px; }
+.recap-card.arc .recap-stat span { margin-top: 3px; }
