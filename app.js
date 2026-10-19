@@ -6944,10 +6944,10 @@ function swipeToClose(modal, card, close) {
 // both took the same side are a wash and are shown dimmed.
 let h2h = { a: null, b: null };
 function openH2H() {
-  noteUse("h2h");
   const rows = liveWeekRows || [];
   if (!h2h.a) h2h.a = currentManager && rows.some((r) => r.name === currentManager) ? currentManager : rows[0]?.name || MANAGERS[0];
   if (!h2h.b || h2h.b === h2h.a) h2h.b = rows.find((r) => r.name !== h2h.a)?.name || MANAGERS.find((n) => n !== h2h.a);
+  noteUse("h2h", `${h2h.a} vs ${h2h.b}`);
   renderH2H();
   // Lifted out of the app's scroll layer so it sits above the tab bar.
   const m = document.getElementById("h2h-modal");
@@ -7134,6 +7134,7 @@ document.querySelectorAll(".h2h-select").forEach((el) => el.addEventListener("ch
   const side = el.dataset.side, other = side === "a" ? "b" : "a";
   if (h2h[other] === el.value) h2h[other] = h2h[side]; // picking the other card swaps them
   h2h[side] = el.value;
+  noteUse("h2h", `${h2h.a} vs ${h2h.b}`);
   renderH2H();
 }));
 
@@ -7793,4 +7794,79 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
     for (const en of list) if (!en.isIntersecting) clearTimeout(en.target.__seenT);
   }, { threshold: 0.35 });
   for (const id of Object.keys(SEEN)) { const el = document.getElementById(id); if (el) io.observe(el); }
+})();
+
+// --- Insight: where people get stuck ----------------------------------------
+// Named events only, never positions or screen recordings. Each lands in the
+// admin visit log (brochiefs.com/live) like any other use.
+//   rage        three or more fast taps on the same thing
+//   dead-tap    a tap on something that looks like it does something but does nothing
+//   quick-exit  a sheet closed within 2 seconds of opening
+//   sheet-time  how long a sheet stayed open (3 seconds or more)
+//   depth       how far down a screen they scrolled, on leaving it
+//   js-error    a script error they ran into
+(() => {
+  if (window.__liveView || /[?&]studio\b/.test(location.search)) return;
+  const label = (el) => {
+    let host = el.closest?.("button, a, [role=button], [data-sec], [id], [class]") || el;
+    if (!host || host === document.documentElement || host === document.body) host = el;
+    if (host === document.documentElement || host === document.body) return "the background";
+    const txt = String(host.getAttribute?.("aria-label") || host.innerText || host.alt || "").split("\n")[0].replace(/\s+/g, " ").trim().slice(0, 22);
+    const tag = host.id ? `#${host.id}` : `.${String(host.className || host.tagName).split(" ")[0]}`;
+    return `${tag}${txt ? ` “${txt}”` : ""}`.slice(0, 40);
+  };
+  const interactive = (el) => !!el.closest?.("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-sec], [tabindex]") || getComputedStyle(el).cursor === "pointer";
+  // Rage: 3 taps inside 1 second within 30px.
+  let taps = [], rageAt = 0;
+  // Dead: a tap on a non interactive element that changes nothing on screen.
+  let mutated = false;
+  new MutationObserver(() => { mutated = true; }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+  let deadAt = 0;
+  document.addEventListener("pointerdown", (e) => {
+    const now = Date.now();
+    taps = taps.filter((t) => now - t.t < 1000 && Math.hypot(t.x - e.clientX, t.y - e.clientY) < 30);
+    taps.push({ t: now, x: e.clientX, y: e.clientY });
+    if (taps.length >= 3 && now - rageAt > 3000) { rageAt = now; taps = []; track("rage", { event: true, d: label(e.target) }); }
+    const el = e.target;
+    if (!(el instanceof Element) || interactive(el) || !(el.textContent || "").trim() && el.tagName !== "IMG") return;
+    // Looks tappable: an image, a logo, a badge, a name, a number.
+    if (!el.closest("img, [class*=logo], [class*=badge], [class*=chip], [class*=score], [class*=name], [class*=card], [class*=row]")) return;
+    mutated = false;
+    setTimeout(() => { if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); track("dead-tap", { event: true, d: label(el) }); } }, 700);
+  }, { capture: true, passive: true });
+  // Sheets: time open, and closed almost at once.
+  const opened = new Map();
+  const watch = (m) => new MutationObserver(() => {
+    const open = !m.classList.contains("hidden");
+    if (open && !opened.has(m)) opened.set(m, Date.now());
+    else if (!open && opened.has(m)) {
+      const ms = Date.now() - opened.get(m); opened.delete(m);
+      if (ms < 2000) track("quick-exit", { event: true, d: m.id });
+      else if (ms >= 3000) track("sheet-time", { event: true, d: `${m.id}:${Math.round(ms / 1000)}` });
+    }
+  }).observe(m, { attributes: true, attributeFilter: ["class"] });
+  document.querySelectorAll(".modal-overlay[id], .wpx-overlay[id]").forEach(watch);
+  // Depth: deepest point reached on each screen, in quarters, sent on leaving it.
+  const scroller = () => document.getElementById("app-scroll") || document.scrollingElement;
+  let screen = null, deepest = 0;
+  const flush = () => {
+    if (screen && deepest > 0) track("depth", { event: true, d: `${screen}:${deepest}` });
+    deepest = 0;
+  };
+  const measure = () => {
+    const sc = scroller(); if (!sc) return;
+    const max = sc.scrollHeight - sc.clientHeight;
+    const pct = max <= 40 ? 100 : Math.min(100, Math.ceil(((sc.scrollTop + 1) / max) * 4) * 25);
+    if (pct > deepest) deepest = pct;
+  };
+  (scroller() === document.scrollingElement ? window : scroller())?.addEventListener("scroll", () => { cancelAnimationFrame(measure.r); measure.r = requestAnimationFrame(measure); }, { passive: true });
+  const onScreen = (t) => { if (t === screen) return; flush(); screen = t; setTimeout(measure, 400); };
+  const setNav = window.setActiveNav;
+  if (typeof setNav === "function") window.setActiveNav = function (t) { onScreen(t); return setNav.apply(this, arguments); };
+  document.addEventListener("visibilitychange", () => { if (document.hidden) { measure(); flush(); } else if (screen) setTimeout(measure, 400); });
+  // Errors they actually hit, once each per visit.
+  const seenErr = new Set();
+  const err = (m) => { const k = String(m || "error").slice(0, 40); if (seenErr.has(k) || seenErr.size > 5) return; seenErr.add(k); track("js-error", { event: true, d: k }); };
+  addEventListener("error", (e) => { if (e.message) err(e.message); });
+  addEventListener("unhandledrejection", (e) => err(e.reason?.message || e.reason));
 })();
