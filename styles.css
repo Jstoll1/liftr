@@ -7440,3 +7440,24 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 #sh2h-modal .sh-agree { border-color: rgba(198, 255, 61, .4); background: rgba(198, 255, 61, .05); }
 #sh2h-modal .sh-agree-h span { color: var(--L); }
 #sh2h-modal .sh-agree-h b { color: #fff; text-shadow: 2px 2px 0 var(--R); }
+
+/* The arguments: who was right when they split. */
+#sh2h-modal .sh-args { display: grid; gap: 7px; }
+#sh2h-modal .sh-args .sh-agree-h { display: flex; justify-content: space-between; align-items: baseline; }
+#sh2h-modal .sh-args .sh-agree-h small { font-size: 11px; color: #9aa3b8; }
+.sh-argrow { display: grid; grid-template-columns: 34px minmax(0, 1fr) 34px; align-items: center; gap: 8px; }
+.sh-argrow b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 18px; text-align: center; }
+.sh-argrow b.a { color: var(--L, #29e6ff); } .sh-argrow b.b { color: var(--R, #ff2bd6); }
+.sh-argrow i { display: flex; height: 16px; padding: 2px; gap: 2px; background: #0b0e15; border: 1px solid rgba(255, 255, 255, .15); }
+.sh-argrow u { display: block; height: 100%; -webkit-mask: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 10px); mask: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 10px); }
+.sh-argrow u.a { background: var(--L, #29e6ff); box-shadow: 0 0 6px var(--L, #29e6ff); }
+.sh-argrow u.b { background: var(--R, #ff2bd6); box-shadow: 0 0 6px var(--R, #ff2bd6); }
+.sh-argwho { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: center; font-size: 11px; }
+.sh-argwho .a { color: var(--L, #29e6ff); } .sh-argwho .b { color: var(--R, #ff2bd6); text-align: right; }
+.sh-argwho em { font-style: normal; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 7.5px; line-height: 1.5; color: #fff; }
+.sh-argpts { font-size: 12px; color: #eef2ff; text-align: center; }
+.sh-swing { padding: 7px 9px; border-radius: 6px; background: rgba(0, 0, 0, .3); border-left: 3px solid var(--L, #29e6ff); }
+.sh-swing small { display: block; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .1em; color: #9aa3b8; margin-bottom: 4px; }
+.sh-swing span { font-size: 12px; color: #eef2ff; }
+.sh-argfoot { font-size: 10.5px; color: #9aa3b8; text-align: center; }
+#sh2h-modal .sh-args .sh-agree-h small { font-family: 'Orbitron', system-ui, sans-serif; font-size: 10.5px; letter-spacing: 0; white-space: nowrap; } #sh2h-modal .sh-args .sh-agree-h span { white-space: nowrap; }

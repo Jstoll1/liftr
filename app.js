@@ -4861,7 +4861,7 @@ function seasonH2H(a, b, weeks, ledger, pot) {
   const mk = () => ({ pts: 0, wk: 0, hits: 0, misses: 0, atsW: 0, atsL: 0, dogs: 0, best: null, tbSum: 0, tbN: 0, blanks: 0 });
   const s = { [a]: mk(), [b]: mk() };
   const meetings = [];
-  let same = 0, both = 0, splitA = 0, splitB = 0;
+  let same = 0, both = 0, splitA = 0, splitB = 0, splitN = 0, splitPtsA = 0, splitPtsB = 0, swing = null;
   for (const w of weeks) {
     const ra = (w.rows || []).find((r) => r.name === a), rb = (w.rows || []).find((r) => r.name === b);
     for (const [n, r] of [[a, ra], [b, rb]]) {
@@ -4888,15 +4888,23 @@ function seasonH2H(a, b, weeks, ledger, pot) {
       if (!x.team || !y?.team || x.result === "pending") continue;
       both += 1;
       if (x.team === y.team) same += 1;
-      else if (x.result === "hit" && y.result !== "hit") splitA += 1;
-      else if (y.result === "hit" && x.result !== "hit") splitB += 1;
+      else {
+        // A split: they took different sides. Who was right, what it paid,
+        // and the one that swung the most points between them.
+        splitN += 1;
+        const pa = x.result === "hit" ? x.pts || 0 : 0, pb = y.result === "hit" ? y.pts || 0 : 0;
+        splitPtsA += pa; splitPtsB += pb;
+        if (x.result === "hit" && y.result !== "hit") splitA += 1;
+        else if (y.result === "hit" && x.result !== "hit") splitB += 1;
+        if (!swing || Math.abs(pa - pb) > Math.abs(swing.pa - swing.pb)) swing = { week: w.week, matchup: x.matchup, a: x.team, b: y.team, la: x.line, lb: y.line, pa, pb };
+      }
     }
   }
   const potRow = (n) => pot.list.find((r) => r.name === n) || {};
   // The week in progress shows, but only sealed weeks count in the record.
   const done = meetings.filter((m) => !m.live);
   const rec = { a: done.filter((m) => m.a > m.b).length, b: done.filter((m) => m.b > m.a).length, t: done.filter((m) => m.a === m.b).length };
-  return { s, meetings, rec, same, both, splitA, splitB, potA: potRow(a), potB: potRow(b) };
+  return { s, meetings, rec, same, both, splitA, splitB, splitN, splitPtsA, splitPtsB, swing, potA: potRow(a), potB: potRow(b) };
 }
 async function openSeasonH2H() {
   noteUse("season-h2h");
@@ -4965,7 +4973,20 @@ function renderSeasonH2H() {
       <span class="sh-bn a">${nmA}</span>${d.meetings.map((m) => `<span class="sh-bc a${m.a > m.b ? " win" : ""}">${m.a}</span>`).join("")}
       <span class="sh-bn b">${nmB}</span>${d.meetings.map((m) => `<span class="sh-bc b${m.b > m.a ? " win" : ""}">${m.b}</span>`).join("")}
     </div>` : `<div class="sh-none">No weeks on the record yet.</div>`;
-  const agree = d.both ? `<div class="sh-agree"><div class="sh-agree-h"><span>SAME SIDE</span><b>${Math.round((100 * d.same) / d.both)}%</b></div><div class="sh-agree-s">On the same team in ${d.same} of ${d.both} games both picked.${d.both - d.same ? ` When they split: ${esc(shown(a))} hit ${d.splitA}, ${esc(shown(b))} hit ${d.splitB}.` : ""}</div></div>` : "";
+  // The arguments: the games they picked opposite sides, and who was right.
+  const short = (t) => String(t || "").split(" ").slice(0, -1).join(" ") || t;
+  const agree = d.both ? (() => {
+    const A = esc(shown(a)), B = esc(shown(b)), n = d.splitN, wa = d.splitA, wb = d.splitB;
+    const tot = Math.max(1, wa + wb), lead = wa === wb ? "Dead even on the arguments" : `${wa > wb ? A : B} wins the arguments by ${Math.abs(wa - wb)}`;
+    const sw = d.swing && d.swing.pa !== d.swing.pb ? `<div class="sh-swing"><small>BIGGEST SWING · WEEK ${d.swing.week}</small><span>${esc(d.swing.matchup || "")}: ${d.swing.pa > d.swing.pb ? A : B} took ${esc(short(d.swing.pa > d.swing.pb ? d.swing.a : d.swing.b))} for +${Math.max(d.swing.pa, d.swing.pb)}, ${d.swing.pa > d.swing.pb ? B : A} got 0</span></div>` : "";
+    return `<div class="sh-agree sh-args">
+      <div class="sh-agree-h"><span>THE ARGUMENTS</span><small>${n} game${n === 1 ? "" : "s"} on opposite sides</small></div>
+      ${n ? `<div class="sh-argrow"><b class="a">${wa}</b><i><u class="a" style="width:${(wa / tot) * 100}%"></u><u class="b" style="width:${(wb / tot) * 100}%"></u></i><b class="b">${wb}</b></div>
+      <div class="sh-argwho"><span class="a">${A} right</span><em>${lead}</em><span class="b">${B} right</span></div>
+      ${d.splitPtsA + d.splitPtsB ? `<div class="sh-argpts">Points from those games: ${A} +${d.splitPtsA} · ${B} +${d.splitPtsB}</div>` : ""}${sw}` : `<div class="sh-agree-s">They have not split on a game yet.</div>`}
+      <div class="sh-argfoot">${n - wa - wb > 0 ? `${n - wa - wb} split${n - wa - wb === 1 ? "" : "s"} where neither (or both) cashed · ` : ""}Same side on ${d.same} of ${d.both} games (${Math.round((100 * d.same) / d.both)}%)</div>
+    </div>`;
+  })() : "";
   document.getElementById("sh2h-body").innerHTML = `<div class="h2h-sec">WEEK BY WEEK · ${lead}</div>
     <div class="sh-weeks">${weeksHtml}</div>
     <div class="h2h-sec">TALE OF THE TAPE</div>
