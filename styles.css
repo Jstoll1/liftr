@@ -7503,3 +7503,53 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .sh-swing small { color: #6d7389 !important; }
 .sh-swing span { color: #c9cddb !important; }
 .sh-argfoot { color: #6d7389 !important; }
+
+/* Season rivalry readability refresh — isolated to the season modal. */
+#sh2h-modal .h2h-card { max-width: 620px; padding: 22px 20px !important; }
+#sh2h-modal .modal-title { font-size: 11px !important; line-height: 1.6; margin-bottom: 14px; }
+#sh2h-modal .h2h-pickers { gap: 12px; position: relative; }
+#sh2h-modal .h2h-fighter { padding: 15px 14px !important; border-radius: 12px !important; min-width: 0; }
+#sh2h-modal .h2h-f-score { font-size: clamp(29px, 7vw, 40px) !important; line-height: 1.2 !important; }
+#sh2h-modal .h2h-fighter.ahead { border-color: color-mix(in srgb, var(--c) 65%, transparent) !important; background: color-mix(in srgb, var(--c) 9%, #1a1d28) !important; }
+#sh2h-modal .h2h-f-meta { font-size: 8px !important; line-height: 1.6; }
+#sh2h-modal .h2h-sec { font-size: 7px !important; color: #bdc5d7 !important; margin: 20px 0 10px !important; line-height: 1.7; }
+#sh2h-modal .sh-board { gap: 5px !important; }
+#sh2h-modal .sh-bh { color: #a9b1c5 !important; font-size: 7px !important; }
+#sh2h-modal .sh-bc { min-height: 29px; display: grid; place-items: center; border-radius: 6px; }
+#sh2h-modal .sh-bn { font-size: 7px !important; }
+#sh2h-modal .sh-tape { background: #1a1d28; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; padding: 12px; gap: 0 !important; }
+#sh2h-modal .sh-row { padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.055); }
+#sh2h-modal .sh-row:last-child { border-bottom: none; }
+#sh2h-modal .sh-row.sh-key { background: rgba(255,255,255,.025); border-radius: 6px; }
+#sh2h-modal .sh-lab { font-size: 6.5px !important; color: #c2c9d9 !important; line-height: 1.5; }
+#sh2h-modal .sh-v { color: #abb5c9 !important; font-size: 9px !important; }
+#sh2h-modal .sh-v.lose { opacity: .75; }
+#sh2h-modal .sh-bar { height: 4px !important; max-width: 230px; }
+#sh2h-modal .sh-agree { margin-top: 18px; padding: 17px 14px !important; border: 1px solid rgba(255,255,255,.08) !important; }
+#sh2h-modal .sh-agree-h span { color: #c9d1e0 !important; font-size: 7px !important; }
+#sh2h-modal .sh-args .sh-agree-h small { color: #a9b2c6 !important; }
+#sh2h-modal .sh-argrow { margin-top: 12px; }
+#sh2h-modal .sh-argrow b { font-size: 19px !important; }
+#sh2h-modal .sh-argwho { margin-top: 8px; }
+#sh2h-modal .sh-argwho em { color: #f1d58b !important; font-size: 9px; text-align: center; }
+#sh2h-modal .sh-swing { margin-top: 15px; background: #101722 !important; border: 1px solid #303d51 !important; border-left: 3px solid #f1c76a !important; border-radius: 8px; padding: 12px !important; }
+#sh2h-modal .sh-swing small { color: #eccb7f !important; }
+#sh2h-modal .sh-swing span { color: #dbe3ef !important; line-height: 1.55; }
+#sh2h-modal .sh-argfoot { color: #a8b2c7 !important; line-height: 1.6; }
+#sh2h-modal .sh-hero-result { text-align: center; padding: 10px 6px 2px; color: #b7c5da; font-size: 11px; }
+#sh2h-modal .sh-hero-result strong { color: #f5d58b; font-family: 'Press Start 2P', monospace; font-size: 9px; }
+#sh2h-modal .sh-week-tile { display: grid; gap: 5px; padding: 8px 3px; border: 1px solid #303748; border-radius: 8px; background: #1a1d28; text-align: center; cursor: default; }
+#sh2h-modal .sh-week-tile small { color: #aeb8cb; font-family: 'Press Start 2P', monospace; font-size: 6px; }
+#sh2h-modal .sh-week-tile b { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #8e99ae; }
+#sh2h-modal .sh-week-tile b.a.win { color: var(--L); }
+#sh2h-modal .sh-week-tile b.b.win { color: var(--R); }
+#sh2h-modal .sh-week-tile.live { border-color: #4abf92; }
+#sh2h-modal .sh-weeks { grid-template-columns: repeat(auto-fit,minmax(46px,1fr)); gap: 7px; }
+@media(max-width:440px) {
+  #sh2h-modal .h2h-card { padding: 16px 12px !important; }
+  #sh2h-modal .sh-tape { padding: 8px; }
+  #sh2h-modal .sh-row { grid-template-columns: 51px minmax(0,1fr) 51px; gap: 5px; }
+  #sh2h-modal .sh-lab { font-size: 5.7px !important; letter-spacing: 0; }
+  #sh2h-modal .sh-v { font-size: 8px !important; }
+  #sh2h-modal .sh-args .sh-agree-h { flex-wrap: wrap; gap: 7px; }
+}
