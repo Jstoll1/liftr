@@ -8675,6 +8675,7 @@ async function openWeekWin(week, name) {
   const slate = new Map((w.slate || []).map((g) => [Number(g.id), g]));
   const shortOf = (gid, t) => { const g = slate.get(Number(gid)); return !g ? t : t === g.home ? g.homeShort : t === g.away ? g.awayShort : t; };
   const hits = (me.ledger || []).filter((l) => l.result === "hit");
+  const lg = (gid, t) => { const g = slate.get(Number(gid)); const id = g ? (t === g.home ? g.homeId : t === g.away ? g.awayId : null) : null; const k = id || (t ? teamIdOf(t) : null); return k ? `<img src="${logoUrl(k)}" alt="" loading="lazy">` : `<span class="ww-nologo"></span>`; };
   // Where the win was made: the game where this card out-earned the runner-up most.
   let deciding = null;
   if (next) for (const l of me.ledger || []) {
@@ -8699,12 +8700,21 @@ async function openWeekWin(week, name) {
   m.innerHTML = `<div class="wpx-card ww">
     <button type="button" class="wpx-x" aria-label="Close">✕</button>
     <div class="ww-kicker">🏆 ${esc(String(w.label || `Week ${w.week}`).toUpperCase())} CHAMPION${w.exhibition ? " · EXHIBITION" : ""}</div>
-    <div class="ww-head"><span class="wpp-av" style="--accent:${accentFor(me.name)}">${esc(avatarOverrides[me.name] || shown(me.name)[0])}</span><div><b>${esc(shown(me.name).toUpperCase())}</b><small>${me.score} PTS · ${me.hits}-${me.misses}</small></div>${prize}</div>
+    <div class="ww-head"><span class="wpp-av" style="--accent:${accentFor(me.name)}">${esc(avatarOverrides[me.name] || shown(me.name)[0])}</span><div><b>${esc(shown(me.name).toUpperCase())}</b><small>${me.score} PTS · ${me.hits ?? hits.length}-${me.misses ?? (me.ledger || []).filter((l) => l.result === "miss").length}</small></div>${prize}</div>
     <div class="ww-how">${howWon}${shared}</div>
-    ${deciding ? `<div class="wpx-h">WHERE IT WAS WON</div><div class="ww-dec"><b>${esc(deciding.l.matchup)}</b><span>${esc(shortOf(deciding.l.g, deciding.l.team))} ${esc(deciding.l.line)} <em class="up">+${deciding.l.pts}</em></span><span class="dim">${esc(shown(next.name))}: ${deciding.o?.team ? `${esc(shortOf(deciding.l.g, deciding.o.team))} ${esc(deciding.o.line)}` : "no pick"} <em class="dn">+${deciding.o?.pts || 0}</em></span><span class="dim">Final: ${esc(deciding.l.score || "")}</span></div>` : ""}
-    ${hits.length ? `<div class="wpx-h">CORRECT PICKS</div><div class="ww-hits">${hits.map((l) => `<span>${esc(shortOf(l.g, l.team))} <small>${esc(l.line)}</small><b>+${l.pts}</b></span>`).join("")}</div>` : ""}
+    ${deciding ? (() => {
+      const g = slate.get(Number(deciding.l.g)) || {};
+      const [as, hs] = String(deciding.l.score || "").split("-").map((x) => Number(x));
+      const side = (who, pk, pts, mine) => `<div class="ww-side${mine ? " me" : ""}"><small>${esc(shown(who).toUpperCase())}</small><span>${pk?.team ? `${lg(deciding.l.g, pk.team)}<b>${esc(shortOf(deciding.l.g, pk.team))}</b><i>${esc(pk.line || "")}</i>` : `<b class="dim">No pick</b>`}</span><em class="${pts ? "up" : "dn"}">+${pts || 0}</em></div>`;
+      return `<div class="wpx-h">WHERE IT WAS WON</div>
+      <div class="ww-dec2">
+        <div class="ww-sb"><span class="${as > hs ? "w" : ""}">${lg(deciding.l.g, g.away)}<i>${esc(g.awayShort || "")}</i><b>${Number.isFinite(as) ? as : ""}</b></span><em>FINAL</em><span class="${hs > as ? "w" : ""}"><b>${Number.isFinite(hs) ? hs : ""}</b><i>${esc(g.homeShort || "")}</i>${lg(deciding.l.g, g.home)}</span></div>
+        <div class="ww-sides">${side(me.name, deciding.l, deciding.l.pts, true)}${side(next.name, deciding.o, deciding.o?.pts, false)}</div>
+      </div>`;
+    })() : ""}
+    ${hits.length ? `<div class="wpx-h">CORRECT PICKS <span>${hits.length} of ${(me.ledger || []).length}</span></div><div class="ww-hits2">${hits.map((l) => `<span>${lg(l.g, l.team)}<b>${esc(shortOf(l.g, l.team))}</b><i>${esc(l.mode === "SU" ? "to win" : l.line)}</i><em>+${l.pts}</em></span>`).join("")}</div>` : ""}
     <div class="wpx-h">TOP OF THE BOARD</div>
-    <ol class="ww-top">${rows.slice(0, 4).map((r) => `<li class="${r.name === me.name ? "me" : ""}"><span>${esc(shown(r.name))}</span><b>${r.score}</b></li>`).join("")}</ol>
+    <ol class="ww-top2">${rows.slice(0, 4).map((r, i) => `<li class="${r.name === me.name ? "me" : ""}"><u>${i + 1}</u><span class="ww-av" style="--accent:${accentFor(r.name)}">${esc(avatarOverrides[r.name] || shown(r.name)[0])}</span><span>${esc(shown(r.name))}</span><b>${r.score}</b></li>`).join("")}</ol>
   </div>`;
   m.classList.remove("hidden");
 }
