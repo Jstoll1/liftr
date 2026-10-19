@@ -6556,3 +6556,10 @@ html[data-sport="nfl"] #logo-screen { display: none !important; }
 .h2h-modal { z-index: 45; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
 /* Admin screens on a phone never pan sideways. */
 .admin-overlay { overflow-x: hidden; }
+/* Head to head cards: one line each (avatar, name, score), no empty band. */
+.h2h-modal .h2h-fighter, .h2h-modal .h2h-fighter.b { grid-template-columns: 24px minmax(0, 1fr) auto; grid-template-areas: "av name score" "meta meta meta"; align-items: center; row-gap: 4px; padding: 8px 10px; min-height: 0; }
+.h2h-modal .h2h-f-score { justify-self: end; font-size: 24px; }
+.h2h-modal .h2h-f-meta:empty { display: none; }
+.h2h-modal .h2h-fighter::after { position: absolute; top: -9px; right: 8px; grid-area: auto; }
+.h2h-modal .h2h-pickers { align-items: stretch; }
+.h2h-modal .h2h-card { gap: 6px; padding-top: 10px; }
