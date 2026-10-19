@@ -7461,3 +7461,45 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .sh-swing span { font-size: 12px; color: #eef2ff; }
 .sh-argfoot { font-size: 10.5px; color: #9aa3b8; text-align: center; }
 #sh2h-modal .sh-args .sh-agree-h small { font-family: 'Orbitron', system-ui, sans-serif; font-size: 10.5px; letter-spacing: 0; white-space: nowrap; } #sh2h-modal .sh-args .sh-agree-h span { white-space: nowrap; }
+/* Season head to head v5: calm. Dark slate, two soft accents, no glow,
+   no scanlines, thin solid bars, more air. Shareable. */
+#sh2h-modal { --L: #7cc7ff; --R: #ff9bb5; }
+#sh2h-modal .h2h-card { border: 1px solid rgba(255, 255, 255, .12) !important; border-radius: 16px; padding: 18px 16px; background: #12141c !important; box-shadow: 0 20px 50px rgba(0, 0, 0, .55) !important; }
+#sh2h-modal .modal-title { color: #fff; text-shadow: none !important; font-size: 10px; letter-spacing: .16em; }
+#sh2h-modal .h2h-fighter { background: #1a1d28 !important; border: 1px solid rgba(255, 255, 255, .08) !important; box-shadow: none !important; border-top: 3px solid var(--c) !important; }
+#sh2h-modal .h2h-f-av { background: #2a2e3d !important; border: 0 !important; box-shadow: none !important; text-shadow: none !important; }
+#sh2h-modal .h2h-f-name { color: #e9ecf5 !important; }
+#sh2h-modal .h2h-f-score, #sh2h-modal .h2h-fighter.ahead .h2h-f-score { color: #fff !important; text-shadow: none !important; }
+#sh2h-modal .h2h-fighter.ahead .h2h-f-score { color: var(--c) !important; }
+#sh2h-modal .h2h-f-meta { color: #8b91a5; border-top-color: rgba(255, 255, 255, .08); }
+#sh2h-modal .h2h-sec { color: #8b91a5 !important; font-size: 6.5px; letter-spacing: .16em; margin-top: 10px; }
+.sh-board { background: transparent !important; border: 0 !important; padding: 0; gap: 4px; }
+.sh-bh { color: #6d7389 !important; }
+.sh-bn.a, .sh-bn.b { color: #e9ecf5 !important; }
+.sh-bn.a::before, .sh-bn.b::before { content: ""; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; background: var(--L); }
+.sh-bn.b::before { background: var(--R); }
+.sh-bc { background: #1a1d28 !important; color: #9aa0b4 !important; box-shadow: none !important; font-size: 9.5px; }
+.sh-bc.a.win { background: color-mix(in srgb, var(--L) 22%, #1a1d28) !important; color: #fff !important; box-shadow: inset 0 -2px 0 var(--L) !important; }
+.sh-bc.b.win { background: color-mix(in srgb, var(--R) 22%, #1a1d28) !important; color: #fff !important; box-shadow: inset 0 -2px 0 var(--R) !important; }
+#sh2h-modal .sh-tape { gap: 10px; }
+#sh2h-modal .sh-lab { color: #8b91a5 !important; font-size: 6px; }
+#sh2h-modal .sh-bar { height: 6px !important; padding: 0 !important; border: 0 !important; border-radius: 3px !important; background: #232736 !important; gap: 0 !important; overflow: hidden; }
+#sh2h-modal .sh-bar u { -webkit-mask: none !important; mask: none !important; box-shadow: none !important; border-radius: 0 !important; }
+#sh2h-modal .sh-bar u.a { background: var(--L) !important; }
+#sh2h-modal .sh-bar u.b { background: var(--R) !important; }
+#sh2h-modal .sh-v { color: #6d7389 !important; font-size: 9px; }
+#sh2h-modal .sh-v.a.win { color: var(--L) !important; } #sh2h-modal .sh-v.b.win { color: var(--R) !important; }
+#sh2h-modal .sh-agree { border: 0 !important; background: #1a1d28 !important; border-radius: 12px; padding: 14px; }
+#sh2h-modal .sh-agree-h span { color: #8b91a5 !important; font-size: 6.5px; letter-spacing: .16em; }
+#sh2h-modal .sh-args .sh-agree-h small { color: #6d7389; }
+.sh-argrow b.a { color: var(--L) !important; } .sh-argrow b.b { color: var(--R) !important; }
+.sh-argrow i { height: 8px !important; padding: 0 !important; gap: 0 !important; border: 0 !important; border-radius: 4px; overflow: hidden; background: #232736 !important; }
+.sh-argrow u { -webkit-mask: none !important; mask: none !important; box-shadow: none !important; }
+.sh-argrow u.a { background: var(--L) !important; } .sh-argrow u.b { background: var(--R) !important; }
+.sh-argwho .a { color: var(--L) !important; } .sh-argwho .b { color: var(--R) !important; }
+.sh-argwho em { font-size: 7px; color: #e9ecf5 !important; }
+.sh-argpts { color: #b9bed0 !important; }
+.sh-swing { background: #12141c !important; border-left: 2px solid #3a3f52 !important; }
+.sh-swing small { color: #6d7389 !important; }
+.sh-swing span { color: #c9cddb !important; }
+.sh-argfoot { color: #6d7389 !important; }
