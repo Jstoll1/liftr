@@ -357,3 +357,23 @@
 .trivia-hs-score { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #39ff88; text-shadow: 0 0 6px rgba(57, 255, 136, .6); text-align: right; }
 .trivia-hs-row.top .trivia-hs-score { color: var(--gold); text-shadow: 0 0 8px rgba(242, 193, 78, .7); }
 .trivia-posted { font-family: 'Orbitron', system-ui, sans-serif; font-size: 11px; color: var(--muted); text-align: center; }
+
+/* Phones: nothing scrolls sideways. The champions wrap into a grid and the
+   tables drop their secondary columns so the rest fits the screen. */
+@media (max-width: 640px) {
+  .lineage-wrap { overflow-x: visible; padding-bottom: 0; }
+  .lineage-track { min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .lineage-card { min-height: 0; padding: 12px; }
+  .lineage-trophy { margin: 10px 0 6px; font-size: 20px; }
+  .lineage-team { min-height: 0; }
+  .table-shell, .table-scroll { overflow-x: visible; }
+  .ledger-table, .season-table { min-width: 0; table-layout: auto; }
+  .ledger-table th, .season-table th { padding: 10px 6px; font-size: 7px; letter-spacing: .06em; }
+  .ledger-table td, .season-table td { padding: 10px 6px; font-size: 11px; }
+  .ledger-table th:nth-child(4), .ledger-table td:nth-child(4),
+  .ledger-table th:nth-child(6), .ledger-table td:nth-child(6),
+  .season-table th:nth-child(5), .season-table td:nth-child(5),
+  .season-table th:nth-child(6), .season-table td:nth-child(6) { display: none; }
+  .rank-cell { width: 28px; }
+  .owner-cell, .team-cell { overflow-wrap: anywhere; }
+}
