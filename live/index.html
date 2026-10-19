@@ -712,7 +712,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
     "scorebug-open": "Tapped a score", "ranking-expand": "Opened a leaderboard card",
     "path-share": "Shared a Path to Win", "path-intro": "Saw the Path to Win intro",
     "wp-player": "Opened a win % breakdown", "wp-explain": "Read how win % works", h2h: "Opened head to head",
-    "pot-open": "Opened the pot", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
+    "pot-open": "Opened the pot", "pot-seen": "Looked at the pot", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Read the week replay", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
     sim: "Ran a game sim", "grid-card": "Opened a grid card", "history-ask": "Asked the archive", "gamecast-log": "Opened the full game log",
   };
   function says(e, feed) {
@@ -720,6 +720,7 @@ body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-ind
       const of = feed.find((x) => x.n === e.n && /^path-of-/.test(x.k) && Math.abs(x.at - e.at) < 3000);
       return [e.k === "path-run" ? "Ran Path to Win" : "Opened a Path to Win card", of ? `for ${name(nameFrom(of.k.slice(8)))}` : ""];
     }
+    if (e.k === "hs-board") return ["Opened a high score board", ({ ats: "Best ATS", streak: "Hot Hand", dogs: "Dog Hits", lone: "Lone Wolf", fader: "Fader", tb: "TB Sniper", best: "Best Week", blanks: "No Shows", "side-bank": "Bankroll", "side-picks": "Side Picks" })[e.d] || e.d || ""];
     if (SAYS[e.k]) return [SAYS[e.k], /^(game-|gamecast|scorebug)/.test(e.k) ? st.games[e.d] || "" : e.k === "ranking-expand" && e.d ? name(e.d) : e.k === "history-ask" && e.d ? `“${e.d}”` : ""];
     if (SCREENS[e.k]) return [`Went to ${SCREENS[e.k]}`, ""];
     return [e.k.charAt(0).toUpperCase() + e.k.slice(1).replace(/-/g, " "), ""];

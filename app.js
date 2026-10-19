@@ -8428,7 +8428,8 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
     toggle.setAttribute("aria-expanded", String(open));
     if (open) renderPayouts();
   };
-  toggle.addEventListener("click", () => { open = !open; paint(); if (open) track("pot-open", { event: true }); });
+  // Only a real tap counts: the week-over overview opens it by itself.
+  toggle.addEventListener("click", (e) => { open = !open; paint(); if (open && e.isTrusted) track("pot-open", { event: true }); });
   paint();
 })();
 
@@ -8680,7 +8681,7 @@ document.getElementById("season-panel")?.addEventListener("click", (e) => {
   const b = e.target.closest("[data-hs]");
   if (!b) return;
   const k = b.dataset.hs;
-  if (seasonOpenTiles.has(k)) seasonOpenTiles.delete(k); else seasonOpenTiles.add(k);
+  if (seasonOpenTiles.has(k)) seasonOpenTiles.delete(k); else { seasonOpenTiles.add(k); track("hs-board", { event: true, d: k }); }
   renderSeasonStats();
 });
 (() => {
@@ -8694,7 +8695,7 @@ document.getElementById("season-panel")?.addEventListener("click", (e) => {
     toggle.setAttribute("aria-expanded", String(open));
     if (open) { panel.innerHTML = `<div class="pot-empty">Reading the record…</div>`; renderSeasonStats(); }
   };
-  toggle.addEventListener("click", () => { open = !open; paint(); });
+  toggle.addEventListener("click", (e) => { open = !open; paint(); if (open && e.isTrusted) track("season-open", { event: true }); });
   paint();
 })();
 
@@ -8916,3 +8917,21 @@ async function startLiveView() {
 // back to the front, so a change on one phone shows on every other.
 syncAvatars();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) syncAvatars(); });
+
+// What people read without tapping: the replay, the pot and the season
+// stats each count once a visit when most of it has been on screen.
+(() => {
+  if (!("IntersectionObserver" in window)) return;
+  const SEEN = { "recap-panel": "recap-seen", "payouts-panel": "pot-seen", "season-panel": "season-seen" };
+  const done = new Set();
+  const io = new IntersectionObserver((list) => {
+    for (const en of list) {
+      const k = SEEN[en.target.id];
+      if (!k || done.has(k) || !en.isIntersecting || en.target.classList.contains("hidden")) continue;
+      clearTimeout(en.target.__seenT);
+      en.target.__seenT = setTimeout(() => { if (!done.has(k) && !en.target.classList.contains("hidden")) { done.add(k); track(k, { event: true }); } }, 1500);
+    }
+    for (const en of list) if (!en.isIntersecting) clearTimeout(en.target.__seenT);
+  }, { threshold: 0.35 });
+  for (const id of Object.keys(SEEN)) { const el = document.getElementById(id); if (el) io.observe(el); }
+})();
