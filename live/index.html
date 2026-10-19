@@ -423,6 +423,10 @@ html, body { overflow-x: hidden; }
 .sd-msg { font-size: 12.5px; color: var(--green); } .sd-msg.bad { color: #ff6b93; }
 .sd-go { padding: 13px; font-weight: 800; font-size: 15px; color: #0b0716; background: var(--green); border: 0; border-radius: 12px; }
 .sd-go:disabled { opacity: .6; }
+.sd-toast { position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 90; max-width: min(92vw, 520px); padding: 11px 16px; border-radius: 12px; background: #12301f; border: 1px solid var(--green); color: var(--text); font-size: 14px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
+.sd-toast.bad { background: #3a1020; border-color: #ff7a9a; }
+.sd-lands { font-size: 12.5px; color: var(--meta); line-height: 1.4; }
+.sd-lands b { color: var(--text); font-weight: 700; }
 /* Canvas: the app in a phone frame beside the editor; stacked on a phone. */
 .cv-wrap { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 16px; align-items: start; padding: 14px; }
 .cv-stage { position: sticky; top: 64px; display: grid; gap: 8px; }
@@ -1314,7 +1318,19 @@ html, body { overflow-x: hidden; }
   const sd = { types: [], items: [], budget: null, teams: [], filter: "ALL", gen: null, zoom: null, err: "", loading: false, review: 0, at: 0, sugg: null, pick: null, queuing: false, suggOpen: true,
     tab: "canvas", lib: null, asset: null, regen: null, edit: null, tone: "coach", scout: null, sel: new Set() };
   const studioEl = document.getElementById("studio");
-  const SD_FILTERS = [["ALL", "All"], ["PENDING_REVIEW", "Review"], ["APPROVED", "Approved"], ["PUBLISHED", "Live"], ["QUEUED", "Queued"], ["GENERATING", "Generating"], ["REJECTED", "Rejected"], ["FAILED", "Failed"]];
+  const SD_FILTERS = [["ALL", "All"], ["WAITING", "Waiting on you"], ["PUBLISHED", "Live"], ["WORKING", "Rendering"], ["FAILED", "Failed"]];
+  const SD_GROUP = { WAITING: ["PENDING_REVIEW", "APPROVED"], WORKING: ["QUEUED", "GENERATING"], FAILED: ["FAILED", "REJECTED"] };
+  const inFilter = (x, f) => f === "ALL" || (SD_GROUP[f] ? SD_GROUP[f].includes(x.status) : x.status === f);
+  // Where a piece shows up in the app, in plain words.
+  function landsOn(x) {
+    const d = x.data || {};
+    if (x.category === "team-mascot") return `Week Replay · ${x.label} logo`;
+    if (x.category === "award-art") return `${d.where || "Awards"} · ${d.name || x.label} icon`;
+    if (x.category === "scouting-report") return `Leaderboard card · ${x.label}'s report`;
+    if (x.category === "slot-image") return `App · replaces the ${d.what || "graphic"}${d.slot && !d.what ? ` (${d.slot})` : ""}`;
+    if (x.category === "slot-text") return `App · replaces “${x.label}”`;
+    return (x.placements || []).join(", ");
+  }
   const SD_LABEL = { QUEUED: "Queued", GENERATING: "Generating", PENDING_REVIEW: "In review", APPROVED: "Approved", PUBLISHED: "Published", REJECTED: "Rejected", FAILED: "Failed" };
   const money$ = (n) => (n == null ? "–" : `$${Number(n).toFixed(n < 1 ? 3 : 2)}`);
   const imgUrl = (id, v = "orig") => `${WORKER}/creative/image/${encodeURIComponent(id)}?${auth()}&v=${v}`;
@@ -1418,25 +1434,50 @@ html, body { overflow-x: hidden; }
     if (!out || out.type !== "image/webp") out = await new Promise((r) => c.toBlob(r, "image/png"));
     await sdFetch(`/optimized/${encodeURIComponent(id)}`, { method: "POST", headers: { "Content-Type": out.type }, body: out });
   }
+  // A message that stays put at the bottom of the screen, so a result or
+  // a failure is never missed while scrolled down.
+  function sdToast(msg, bad) {
+    sd.toast = { msg, bad, at: Date.now() };
+    paintStudio();
+    clearTimeout(sdToast.t);
+    sdToast.t = setTimeout(() => { sd.toast = null; paintStudio(); }, bad ? 9000 : 4000);
+  }
+  // Publish is one step: approve (if needed), make the app copy, publish.
+  // Each step is still its own action in the audit. Returns true, or why not.
   async function sdAct(action, id, extra = {}) {
     if (!extra.quiet && action === "reject" && !confirm("Reject this? It stays private and you can render it again.")) return;
     if (!extra.quiet && action === "unpublish" && !confirm("Take it out of the app? What was there before comes back.")) return;
-    sd.busy = id; paintStudio();
-    let msg = "";
+    sd.busy = id; if (!extra.quiet) paintStudio();
+    const v = sd.items.find((x) => x.id === id) || sd.asset?.versions?.find((x) => x.id === id);
+    const isText = (v && (v.kind === "text" || v.text)) || sd.asset?.kind === "text";
+    const call = async (act) => {
+      const r = await sdFetch("/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: act, versionIds: [id], feedback: extra.feedback, tone: extra.tone, text: extra.text }) });
+      if (r.skipped?.length) throw new Error(r.skipped.map((x) => x.why).join(", "));
+    };
+    let result = true;
     try {
-      const v = sd.items.find((x) => x.id === id) || sd.asset?.versions?.find((x) => x.id === id);
-      const isText = (v && (v.kind === "text" || v.text)) || sd.asset?.kind === "text";
-      if (action === "approve" && !isText) await sdOptimize(id);
-      const r = await sdFetch("/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, versionIds: [id], feedback: extra.feedback, tone: extra.tone, text: extra.text }) });
-      if (r.skipped?.length) msg = `Not done: ${r.skipped.map((x) => x.why).join(", ")}.`;
-    } catch (err) { msg = err.message; }
+      if (action === "golive") {
+        if (!isText && !v?.hasImage) throw new Error("it is still rendering");
+        if (!isText) await sdOptimize(id).catch((e) => { throw new Error(`couldn't make the app copy (${e.message})`); });
+        if (!v || v.status === "PENDING_REVIEW") await call("approve");
+        await call("publish");
+      } else {
+        if (action === "approve" && !isText) await sdOptimize(id);
+        await call(action);
+      }
+    } catch (err) { result = err.message || "failed"; }
     sd.busy = null;
-    if (extra.quiet) return;
+    if (extra.quiet) return result;
     await studioLoad(true);
     if (sd.asset) await openAsset(sd.asset.id);
     if (sd.tab === "library" || sd.tab === "placements") await loadLibrary();
-    // The reload clears old errors; this one stays until the next action.
-    if (msg) { sd.err = msg; paintStudio(); }
+    const where = v ? landsOn(v) : "the app";
+    if (result !== true) sdToast(`Didn't ${action === "golive" ? "publish" : action}: ${result}`, true);
+    else if (action === "golive") sdToast(`Live now · ${where}`);
+    else if (action === "unpublish") sdToast(`Taken down · ${where} is back to before`);
+    else if (action === "reject") sdToast("Rejected");
+    if (/golive|unpublish/.test(action) && result === true) { try { document.querySelector("#sd-cv-frame")?.contentWindow?.postMessage({ type: "studio-reload" }, location.origin); } catch {} }
+    return result;
   }
   function sdCard(x) {
     const t = new Date(x.created);
@@ -1447,7 +1488,7 @@ html, body { overflow-x: hidden; }
       ${art}
       <div class="sd-meta">
         <div class="sd-row"><b>${esc(x.label)}</b><span class="sd-badge s-${x.status.toLowerCase()}">${esc(SD_LABEL[x.status] || x.status)}</span></div>
-        <div class="sd-chips"><span>${esc(x.categoryLabel)}</span>${x.week != null ? `<span>Week ${x.week}</span>` : ""}${x.placements.map((p) => `<span class="pl">${esc(p)}</span>`).join("")}</div>
+        <div class="sd-lands">${x.status === "PUBLISHED" ? "● Live on" : "Lands on"} <b>${esc(landsOn(x))}</b>${x.week != null ? ` · Week ${x.week}` : ""}</div>
         <div class="sd-sub num">${when} · ${x.cost != null ? money$(x.cost) : `~${money$(x.estCost)}`}${x.attempts > 1 ? ` · try ${x.attempts}` : ""}</div>
         ${x.feedback ? `<div class="sd-note">“${esc(x.feedback)}”</div>` : ""}
         ${x.error ? `<div class="sd-err">${esc(x.error)}</div>` : ""}
@@ -1474,7 +1515,7 @@ html, body { overflow-x: hidden; }
     </form>`;
   }
   // ---- Studio: shared pieces ----
-  const SD_TABS = [["canvas", "Canvas"], ["review", "Review"], ["library", "Library"], ["placements", "Placements"], ["create", "Create"]];
+  const SD_TABS = [["canvas", "Canvas"], ["review", "All work"], ["create", "Create"]];
   const TONES = [["coach", "Coach"], ["hype", "Hype"], ["dry", "Dry"], ["savage", "Savage"]];
   const PLACE = { "replay-logo": ["Week Replay logos", "Team logos on the Replay cards. Without Studio art: the template's five, else ESPN's logo in pixels."], "owner-card": ["Leaderboard card · Scouting Report", "Shown when someone opens an owner's row. Without a published report: nothing."], "award-icon": ["Award art", "Week Replay card icons, the high score trophy and the season stats tiles. Without Studio art: the pictures that ship with the app."] };
   // The buttons a version gets, by where it stands, with its note and
@@ -1485,22 +1526,24 @@ html, body { overflow-x: hidden; }
     if (sd.regen === v.id) return `<form class="sd-mini" data-regen-form="${id}"><input name="note" maxlength="300" placeholder="${text ? "What to change: shorter, mention the rain…" : "What to change: more snarl, facing left…"}" autofocus>${text ? `<select name="tone">${TONES.map(([k, l]) => `<option value="${k}"${(v.tone || sd.tone) === k ? " selected" : ""}>${l}</option>`).join("")}</select>` : ""}<div class="sd-acts"><button type="submit" class="ok">Render again</button><button type="button" data-regen-cancel="1">Cancel</button></div></form>`;
     if (sd.edit === v.id && v.text) return `<form class="sd-mini" data-edit-form="${id}"><input name="headline" maxlength="120" value="${esc(v.text.headline)}"><textarea name="body" rows="7">${esc(v.text.body)}</textarea><div class="sd-acts"><button type="submit" class="ok">Save edit</button><button type="button" data-edit-cancel="1">Cancel</button></div>${v.status === "PUBLISHED" ? `<p class="sd-fine">The live report stays as is until you publish the edit.</p>` : ""}</form>`;
     const b = (act, label, cls = "") => `<button type="button" class="${cls}" data-act="${act}" data-id="${id}">${label}</button>`;
-    const regen = b("regen", "↻", "ic"), edit = text ? b("edit", "✎", "ic") : "";
-    if (v.status === "PENDING_REVIEW") return `<div class="sd-acts">${b("approve", "Approve", "ok")}${b("reject", "Reject", "no")}${edit}${regen}</div>`;
-    if (v.status === "APPROVED") return `<div class="sd-acts">${b("publish", "Publish to app", "pub")}${b("reject", "Reject", "no")}${edit}${regen}</div>`;
-    if (v.status === "PUBLISHED") return `<div class="sd-acts"><span class="sd-live">● Live</span>${b("unpublish", "Unpublish", "no")}${edit}${regen}</div>`;
-    if (v.status === "REJECTED" || v.status === "FAILED") return `<div class="sd-acts">${b("regen", "↻ Render again")}</div>`;
+    // One step to the app. Change asks for a new version with your direction;
+    // what is live stays live until the new one is published.
+    const change = b("regen", "Change", ""), edit = text ? b("edit", "Edit text", "") : "";
+    if (v.status === "PENDING_REVIEW" || v.status === "APPROVED") return `<div class="sd-acts">${b("golive", "Publish", "pub")}${change}${edit}${b("reject", "Reject", "no")}</div>`;
+    if (v.status === "PUBLISHED") return `<div class="sd-acts"><span class="sd-live">● Live</span>${change}${edit}${b("unpublish", "Take down", "no")}</div>`;
+    if (v.status === "REJECTED" || v.status === "FAILED") return `<div class="sd-acts">${b("regen", "Try again")}</div>`;
     return "";
   }
   const sdText = (t) => t ? `<div class="sd-text"><b>${esc(t.headline)}</b>${t.body.split(/\n\s*\n/).map((p) => `<p>${esc(p)}</p>`).join("")}</div>` : "";
 
   // ---- Review: everything waiting on you, newest first ----
   function sdReview() {
-    const counts = Object.fromEntries(SD_FILTERS.map(([k]) => [k, k === "ALL" ? sd.items.length : sd.items.filter((x) => x.status === k).length]));
-    const list = sd.filter === "ALL" ? sd.items : sd.items.filter((x) => x.status === sd.filter);
-    const waiting = sd.items.filter((x) => x.status === "PENDING_REVIEW");
+    const counts = Object.fromEntries(SD_FILTERS.map(([k]) => [k, sd.items.filter((x) => inFilter(x, k)).length]));
+    if (!SD_FILTERS.some(([k]) => k === sd.filter)) sd.filter = "ALL";
+    const list = sd.items.filter((x) => inFilter(x, sd.filter));
+    const waiting = sd.items.filter((x) => inFilter(x, "WAITING") && (x.kind === "text" || x.hasImage));
     return `<div class="sd-filters" role="group" aria-label="Status">${SD_FILTERS.map(([k, lab]) => `<button type="button" class="${sd.filter === k ? "on" : ""}" data-sd-filter="${k}">${lab}${counts[k] ? ` <b>${counts[k]}</b>` : ""}</button>`).join("")}</div>
-      ${waiting.length > 1 ? `<div class="sd-bulk"><span>${waiting.length} waiting for you</span><button type="button" data-bulk="approve">Approve all ${waiting.length}</button></div>` : ""}
+      ${waiting.length > 1 ? `<div class="sd-bulk"><span>${waiting.length} waiting for you</span><button type="button" class="pub" data-bulk="golive">Publish all ${waiting.length}</button></div>` : ""}
       ${list.length ? `<div class="sd-grid">${list.map(sdCard).join("")}</div>` : `<div class="sd-empty">${sd.loading ? "Loading…" : sd.items.length ? "Nothing here." : "Nothing yet. Open Create to make the first graphic or report."}</div>`}`;
   }
 
@@ -1563,7 +1606,7 @@ html, body { overflow-x: hidden; }
       <div class="tones">${TONES.map(([k, l]) => `<button type="button" class="${sd.tone === k ? "on" : ""}" data-tone="${k}">${l}</button>`).join("")}</div>
       ${!sc ? `<button type="button" class="sd-go" data-scout-load="1">Load this week's numbers</button>` : sc.loading ? `<div class="sd-empty">Crunching the season…</div>` : sc.err ? `<div class="sd-errbox">${esc(sc.err)}</div>`
         : missing.length ? `<button type="button" class="sd-go" data-scout-write="1"${sd.queuing ? " disabled" : ""}>${sd.queuing ? `Queuing… ${sd.queuing}` : `Write ${missing.length} report${missing.length === 1 ? "" : "s"} · ${TONES.find((t) => t[0] === sd.tone)[1]} · about $${(missing.length * est).toFixed(2)}`}</button>` : `<div class="note">Every owner has a draft this week. Use ↻ on any one for a new take.</div>`}
-      ${review.length > 1 || ready.length > 1 ? `<div class="sd-bulk">${review.length > 1 ? `<button type="button" data-bulk="approve" data-bulk-cat="scouting-report">Approve all ${review.length}</button>` : ""}${ready.length > 1 ? `<button type="button" class="pub" data-bulk="publish" data-bulk-cat="scouting-report">Publish all ${ready.length} approved</button>` : ""}</div>` : ""}
+      ${review.length + ready.length > 1 ? `<div class="sd-bulk"><button type="button" class="pub" data-bulk="golive" data-bulk-cat="scouting-report">Publish all ${review.length + ready.length} reports</button></div>` : ""}
       <div class="scw-list">${list.map((x) => `<article class="scw-d s-${x.status.toLowerCase()}"><div class="sd-row"><b>${esc(x.label)}</b><i class="sd-badge s-${x.status.toLowerCase()}">${esc(SD_LABEL[x.status])}</i></div>
         ${x.text ? sdText(x.text) : `<div class="sd-text"><p>${x.status === "FAILED" ? esc(x.error || "Failed") : "Writing…"}</p></div>`}
         <div class="sd-sub num">${x.tone ? `${esc(x.tone)} · ` : ""}${x.cost != null ? money$(x.cost) : `~${money$(x.estCost)}`}${x.feedback ? ` · “${esc(x.feedback)}”` : ""}</div>
@@ -1628,7 +1671,7 @@ html, body { overflow-x: hidden; }
       const ready = v.kind === "text" ? !!v.text : v.hasImage;
       return `<div class="cv-ver s-${st.toLowerCase()}${cv.shown === v.id ? " shown" : ""}">${art}
         <div class="cv-vm"><span class="sd-badge s-${st.toLowerCase()}">${esc(SD_LABEL[st])}</span><small>${esc(v.categoryLabel)}${v.feedback ? ` · “${esc(v.feedback)}”` : ""}</small>${v.error ? `<small class="sd-err">${esc(v.error)}</small>` : ""}</div>
-        <div class="cv-va">${ready && st !== "PUBLISHED" ? `<button type="button" data-cv-try="${esc(v.id)}">${cv.shown === v.id ? "Hide" : "Try it"}</button>` : ""}${st === "PENDING_REVIEW" ? `<button type="button" data-cv-act="approve" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Approve</button>` : ""}${st === "APPROVED" ? `<button type="button" class="go" data-cv-act="publish" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Publish</button>` : ""}${["PENDING_REVIEW", "APPROVED"].includes(st) ? `<button type="button" class="no" data-cv-act="reject" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Reject</button>` : ""}${st === "PUBLISHED" ? `<button type="button" class="no" data-cv-act="unpublish" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Restore original</button>` : ""}</div>
+        <div class="cv-va">${ready && st !== "PUBLISHED" ? `<button type="button" data-cv-try="${esc(v.id)}">${cv.shown === v.id ? "Hide" : "Try it"}</button>` : ""}${["PENDING_REVIEW", "APPROVED"].includes(st) && ready ? `<button type="button" class="go" data-cv-act="golive" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Publish</button>` : ""}${["PENDING_REVIEW", "APPROVED"].includes(st) ? `<button type="button" class="no" data-cv-act="reject" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Reject</button>` : ""}${st === "PUBLISHED" ? `<button type="button" class="no" data-cv-act="unpublish" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Take down</button>` : ""}</div>
       </div>`;
     };
     const presets = cvPresets(p);
@@ -1651,7 +1694,7 @@ html, body { overflow-x: hidden; }
     return `${head}<form class="cv-form" data-cv-form="1" onsubmit="return false">${form}</form>
       <div id="cv-vlist">${cv.msg ? `<p class="sd-err">${esc(cv.msg)}</p>` : ""}
       ${vers.length ? `<div class="cv-vh">Versions for this spot</div><div class="cv-vers">${vers.map(draft).join("")}</div>` : ""}</div>
-      <p class="sd-foot">Try it shows a draft in the preview only. Approve keeps it private; Publish puts it in the app.</p>`;
+      <p class="sd-foot">Try it shows a draft in this preview only. Publish puts it in the app; Take down brings back the original.</p>`;
   }
   function cvSwitch() { return `<button type="button" class="${cv.edit ? "" : "on"}" data-cv-edit="0">Browse</button><button type="button" class="${cv.edit ? "on" : ""}" data-cv-edit="1">Tap to edit</button>`; }
   function sdCanvas() {
@@ -1727,7 +1770,7 @@ html, body { overflow-x: hidden; }
         </section>
         <div id="sd-errs">${sd.err ? `<div class="sd-errbox">${esc(sd.err)}</div>` : ""}</div>
         ${body}
-        <p class="sd-foot">Approve keeps it private. Only Publish puts it in front of the league, and Unpublish brings back what was there before.</p>
+        <p class="sd-foot">Publish puts it in the app. Take down brings back what was there before.</p>
       </div>
       <div id="sd-over">${sdOver()}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" data-sd-back="${id}">${ICONS[ic]}<span>${lab}</span></button>`).join("")}<button type="button" class="on">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button></nav>`;
@@ -1735,7 +1778,8 @@ html, body { overflow-x: hidden; }
   function sdTabs() { return `<div class="sd-tabs" role="tablist">${SD_TABS.map(([k, l]) => `<button type="button" role="tab" class="${sd.tab === k ? "on" : ""}" data-sd-tab="${k}">${l}${k === "review" && sd.review ? ` <b>${sd.review}</b>` : ""}</button>`).join("")}</div>`; }
   function sdOver() {
     const z = sd.zoom;
-    return `${z ? `<div class="sd-zoom" data-sd-unzoom="1"><button type="button" class="ib sd-zx" data-sd-unzoom="1" aria-label="Close">${ICONS.x}</button><div class="sd-zimg"><img src="${imgUrl(z)}" alt=""></div></div>` : ""}${sdAssetSheet()}${sdSheet()}`;
+    const t = sd.toast;
+    return `${t ? `<div class="sd-toast${t.bad ? " bad" : ""}" role="status">${esc(t.msg)}</div>` : ""}${z ? `<div class="sd-zoom" data-sd-unzoom="1"><button type="button" class="ib sd-zx" data-sd-unzoom="1" aria-label="Close">${ICONS.x}</button><div class="sd-zimg"><img src="${imgUrl(z)}" alt=""></div></div>` : ""}${sdAssetSheet()}${sdSheet()}`;
   }
   async function loadLibrary() { try { sd.lib = (await sdFetch("/library")).assets; } catch (e) { sd.err = e.message; } paintStudio(); }
   async function openAsset(id) { try { sd.asset = await sdFetch(`/asset/${encodeURIComponent(id)}`); } catch (e) { sd.err = e.message; } paintStudio(); }
@@ -1799,7 +1843,7 @@ html, body { overflow-x: hidden; }
       }
       if (c.dataset.cvAct) {
         await sdAct(c.dataset.cvAct, c.dataset.id);
-        if (c.dataset.cvAct === "publish" || c.dataset.cvAct === "unpublish") { cv.shown = null; cvSend({ type: "studio-reload" }); }
+        if (/golive|publish|unpublish/.test(c.dataset.cvAct)) { cv.shown = null; cvSend({ type: "studio-reload" }); }
         return;
       }
       if (c.dataset.cvGo) return cvGo(c.dataset.cvGo);
@@ -1862,10 +1906,13 @@ html, body { overflow-x: hidden; }
         sd.queuing = false; await studioLoad(true); if (bad) { sd.err = bad; paintStudio(); } return;
       }
       if (t.dataset.bulk) {
-        const want = t.dataset.bulk === "approve" ? "PENDING_REVIEW" : "APPROVED";
-        const ids = sd.items.filter((x) => x.status === want && (!t.dataset.bulkCat || x.category === t.dataset.bulkCat)).map((x) => x.id);
-        if (t.dataset.bulk === "publish" && !confirm(`Publish ${ids.length} to the app?`)) return;
-        for (const id of ids) await sdAct(t.dataset.bulk, id, { quiet: true });
+        const golive = t.dataset.bulk === "golive";
+        const want = golive ? ["PENDING_REVIEW", "APPROVED"] : [t.dataset.bulk === "approve" ? "PENDING_REVIEW" : "APPROVED"];
+        const ids = sd.items.filter((x) => want.includes(x.status) && (x.kind === "text" || x.hasImage) && (!t.dataset.bulkCat || x.category === t.dataset.bulkCat)).map((x) => x.id);
+        if ((golive || t.dataset.bulk === "publish") && !confirm(`Publish ${ids.length} to the app?`)) return;
+        let ok = 0; const bad = [];
+        for (const id of ids) { const r = await sdAct(golive ? "golive" : t.dataset.bulk, id, { quiet: true }); if (r === true) ok++; else bad.push(r || "failed"); }
+        sdToast(bad.length ? `${ok} done, ${bad.length} didn't: ${[...new Set(bad)].join("; ")}` : `${ok} published to the app`, !!bad.length);
         return studioLoad(true);
       }
     }
