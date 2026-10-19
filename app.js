@@ -8306,7 +8306,7 @@ let renderRecap = function () {
   if (r.worst) {
     const w = r.worst;
     cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${esc(w.pick)}</span>`,
-      `All ${w.takers} got zero · ${esc(w.final || w.score)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who)]);
+      `${w.takers} of ${w.of} got zero · ${esc(w.final || w.score)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who)]);
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
