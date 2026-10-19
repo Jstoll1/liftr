@@ -7776,3 +7776,21 @@ renderLiveScores = withLogosKept(renderLiveScores, () => liveScoresList);
 renderScoreboardTable = withLogosKept(renderScoreboardTable, () => scoreboardTable);
 renderRankings = withLogosKept(renderRankings, () => rankingsList);
 renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
+
+// What people read without tapping: the replay, the pot and the season
+// stats each count once a visit when most of it has been on screen.
+(() => {
+  if (!("IntersectionObserver" in window)) return;
+  const SEEN = { "rankings-list": "board-seen", "live-scores-list": "scores-seen" };
+  const done = new Set();
+  const io = new IntersectionObserver((list) => {
+    for (const en of list) {
+      const k = SEEN[en.target.id];
+      if (!k || done.has(k) || !en.isIntersecting || en.target.classList.contains("hidden")) continue;
+      clearTimeout(en.target.__seenT);
+      en.target.__seenT = setTimeout(() => { if (!done.has(k) && !en.target.classList.contains("hidden")) { done.add(k); track(k, { event: true }); } }, 1500);
+    }
+    for (const en of list) if (!en.isIntersecting) clearTimeout(en.target.__seenT);
+  }, { threshold: 0.35 });
+  for (const id of Object.keys(SEEN)) { const el = document.getElementById(id); if (el) io.observe(el); }
+})();
