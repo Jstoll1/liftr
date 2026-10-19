@@ -7503,3 +7503,9 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .sh-swing small { color: #6d7389 !important; }
 .sh-swing span { color: #c9cddb !important; }
 .sh-argfoot { color: #6d7389 !important; }
+
+/* Replay cards expand in place: no re-deal on redraw, details slide open. */
+#recap-panel.dealt .recap-card { animation: none; }
+.recap-card .recap-more { animation: recap-open .22s ease-out both; }
+@keyframes recap-open { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .recap-card .recap-more { animation: none; } }

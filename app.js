@@ -8417,6 +8417,7 @@ document.getElementById("recap-panel")?.addEventListener("click", (e) => {
   if (!c || e.target.closest(".pick-chip, a, button")) return;
   const k = c.dataset.rc;
   if (recapOpen.has(k)) recapOpen.delete(k); else { recapOpen.add(k); noteUse("recap-card", k); }
+  e.currentTarget.classList.add("dealt"); // already dealt in: redraw without replaying the deal
   renderRecap();
 });
 
