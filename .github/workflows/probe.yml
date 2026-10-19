@@ -23,6 +23,9 @@ jobs:
               https://a.espncdn.com/*)
                 curl -sS --max-time 30 -o /tmp/probe.bin -w "%{http_code} %{content_type} %{size_download}B\n" "$p"
                 file /tmp/probe.bin ;;
+              # ESPN's public team list: id and names only.
+              https://site.api.espn.com/*/teams\?*)
+                curl -sS --max-time 30 "$p" | jq -r '.sports[0].leagues[0].teams[].team | [.id, .displayName, .shortDisplayName, .location, .abbreviation] | @tsv' ;;
               # ESPN's public API: a compact summary only (status, lines).
               https://site.api.espn.com/*)
                 curl -sS --max-time 30 "$p" | jq -r '
