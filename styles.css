@@ -7220,3 +7220,9 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .pc-pick.miss .pc-pk i { color: var(--text-dim); }
 .pc-game { display: flex; justify-content: space-between; gap: 8px; margin: 6px 0 2px; padding: 6px 8px; border-radius: 6px; background: rgba(0, 0, 0, .3); font-size: 12px; color: #fff; }
 .pc-game em { font-style: normal; color: var(--text-meta); white-space: nowrap; }
+
+.pc-cap { display: flex; justify-content: space-between; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .12em; color: var(--text-dim); }
+.pc-cap span { font-family: inherit; letter-spacing: .04em; color: var(--neon-yellow); opacity: .8; }
+.pc-bars { height: 78px; }
+.pc-bars b { font-size: 10px; font-weight: 700; color: var(--text-meta); margin-bottom: 2px; }
+.pc-stat span b { color: #fff; }
