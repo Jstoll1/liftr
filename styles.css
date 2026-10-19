@@ -7187,45 +7187,9 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .pot-more { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 8px 12px 10px 40px; font-size: 11.5px; color: var(--text-meta); background: rgba(255, 255, 255, .02); border-bottom: 1px solid rgba(255, 255, 255, .05); }
 .pm-win { color: var(--neon-yellow); }
 
-/* Player card: one player's season. */
-.pc-modal { z-index: 46; align-items: center; padding: 16px; }
-.pc-card { position: relative; width: min(420px, 100%); display: grid; gap: 12px; padding: 16px; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, #0d0620), #07020f 70%); box-shadow: 0 16px 40px rgba(0, 0, 0, .55); }
-.pc-x { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border: 0; background: none; color: var(--text-dim); font-size: 16px; cursor: pointer; }
-.pc-head { display: flex; align-items: center; gap: 12px; }
-.pc-av { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: var(--accent); color: #0b0716; font-family: 'Press Start 2P', monospace; font-size: 16px; }
-.pc-head b { display: block; font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; letter-spacing: .06em; }
-.pc-head small { display: block; margin-top: 6px; font-size: 12px; color: var(--text-meta); }
-.pc-bars { display: flex; align-items: flex-end; gap: 4px; height: 64px; padding: 0 2px; }
-.pc-bars i { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; font-style: normal; }
-.pc-bars s { width: 100%; max-width: 22px; border-radius: 3px 3px 0 0; background: color-mix(in srgb, var(--accent) 55%, #2a2140); }
-.pc-bars i.won s { background: var(--neon-yellow); box-shadow: 0 0 8px rgba(255, 228, 94, .5); }
-.pc-bars em { font-style: normal; font-size: 8px; color: var(--text-dim); margin-top: 3px; }
-.pc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-.pc-stat { padding: 8px 10px; border-radius: 9px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .06); min-width: 0; }
-.pc-stat small { display: block; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .12em; color: var(--text-dim); }
-.pc-stat b { display: block; margin-top: 5px; font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 18px; color: #fff; }
-.pc-stat span { display: block; margin-top: 2px; font-size: 10.5px; color: var(--text-meta); overflow-wrap: anywhere; }
-.pc-pick { padding: 9px 11px; border-radius: 9px; border-left: 3px solid var(--neon-green); background: rgba(57, 255, 136, .05); }
-.pc-pick.miss { border-left-color: var(--neon-pink); background: rgba(255, 32, 121, .05); }
-.pc-pick small { display: block; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .12em; color: var(--text-dim); }
-.pc-pick b { display: block; margin-top: 5px; font-size: 14px; color: #fff; }
-.pc-pick span { display: block; margin-top: 2px; font-size: 11px; color: var(--text-meta); }
-.pc-none { font-size: 12px; color: var(--text-dim); }
 #recap-panel .pick-chip[data-name] { cursor: pointer; }
-.pc-wide { grid-column: 1 / -1; }
 
-.pc-pk { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 5px; }
-.pc-pk b { margin: 0 !important; }
-.pc-pk i { font-style: normal; font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 15px; color: var(--neon-green); }
-.pc-pick.miss .pc-pk i { color: var(--text-dim); }
-.pc-game { display: flex; justify-content: space-between; gap: 8px; margin: 6px 0 2px; padding: 6px 8px; border-radius: 6px; background: rgba(0, 0, 0, .3); font-size: 12px; color: #fff; }
-.pc-game em { font-style: normal; color: var(--text-meta); white-space: nowrap; }
 
-.pc-cap { display: flex; justify-content: space-between; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .12em; color: var(--text-dim); }
-.pc-cap span { font-family: inherit; letter-spacing: .04em; color: var(--neon-yellow); opacity: .8; }
-.pc-bars { height: 78px; }
-.pc-bars b { font-size: 10px; font-weight: 700; color: var(--text-meta); margin-bottom: 2px; }
-.pc-stat span b { color: #fff; }
 
 .rm-rank { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: 12.5px; }
 .rm-rank li { display: grid; grid-template-columns: 22px minmax(0, 1fr) 34px auto; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 5px; }
@@ -7235,3 +7199,59 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .rm-rank i.up { color: var(--neon-green); } .rm-rank i.down { color: #ff7a9a; } .rm-rank i.same { color: var(--text-dim); }
 .rm-rank span { text-align: right; color: var(--text-meta); white-space: nowrap; }
 .rm-rank small { color: var(--text-dim); font-size: 10.5px; }
+
+/* Player card: a retro arcade player card in the player's colour. */
+.plc-modal { z-index: 46; align-items: center; padding: 14px; }
+.plc-card { position: relative; width: min(420px, 100%); max-height: calc(100vh - 28px); overflow-y: auto; display: grid; gap: 10px; padding: 14px; border-radius: 14px; border: 2px solid var(--accent);
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 3px), linear-gradient(160deg, color-mix(in srgb, var(--accent) 22%, #0b0418) 0%, #07020f 55%);
+  box-shadow: 0 0 0 4px #07020f, 0 0 0 6px color-mix(in srgb, var(--accent) 45%, transparent), 0 0 30px color-mix(in srgb, var(--accent) 35%, transparent), 0 18px 40px rgba(0, 0, 0, .6); }
+.plc-x { position: absolute; top: 8px; right: 8px; z-index: 2; width: 34px; height: 34px; border: 0; background: none; color: var(--text-dim); font-size: 16px; cursor: pointer; }
+.plc-top { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; border-bottom: 2px dashed color-mix(in srgb, var(--accent) 35%, transparent); }
+.plc-av { position: relative; flex: none; width: 74px; height: 74px; border-radius: 10px; padding: 3px; background: linear-gradient(135deg, #fff 0%, var(--accent) 30%, color-mix(in srgb, var(--accent) 40%, #000) 100%); box-shadow: 4px 4px 0 rgba(0, 0, 0, .55), 0 0 18px color-mix(in srgb, var(--accent) 55%, transparent); }
+.plc-av span { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 7px; font-family: 'Press Start 2P', monospace; font-size: 30px; color: #fff; text-shadow: 3px 3px 0 rgba(0, 0, 0, .55);
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .18) 0 2px, transparent 2px 4px), radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent) 70%, #fff), color-mix(in srgb, var(--accent) 60%, #000)); }
+.plc-id { min-width: 0; }
+.plc-id small { display: block; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .16em; color: var(--accent); }
+.plc-id b { display: block; margin: 6px 0 7px; font-family: 'Press Start 2P', monospace; font-size: clamp(15px, 4.6vw, 19px); color: #fff; letter-spacing: .04em; text-shadow: 2px 2px 0 color-mix(in srgb, var(--accent) 60%, #000), 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent); overflow-wrap: anywhere; }
+.plc-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.plc-badges span { padding: 3px 6px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 7.5px; color: #fff; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); }
+.plc-badges .rank { color: #0b0716; background: var(--accent); border-color: var(--accent); }
+.plc-badges .cash { color: #0b0716; background: var(--neon-green); border-color: var(--neon-green); }
+.plc-badges .gold { color: #0b0716; background: var(--neon-yellow); border-color: var(--neon-yellow); }
+.plc-sec { display: flex; justify-content: space-between; align-items: center; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .14em; color: var(--text-dim); }
+.plc-sec span { font-family: inherit; letter-spacing: .04em; color: var(--neon-yellow); opacity: .8; }
+.plc-bars { display: flex; align-items: flex-end; gap: 5px; height: 84px; padding: 0 2px; }
+.plc-bars i { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; font-style: normal; min-width: 0; }
+.plc-bars b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 7.5px; color: var(--text-meta); margin-bottom: 3px; }
+.plc-bars s { width: 100%; max-width: 26px; background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--accent) 75%, #000) 0 4px, var(--accent) 4px 6px); box-shadow: 2px 2px 0 rgba(0, 0, 0, .45); }
+.plc-bars i.won s { background: repeating-linear-gradient(0deg, #c9a400 0 4px, var(--neon-yellow) 4px 6px); box-shadow: 0 0 10px rgba(255, 228, 94, .5); }
+.plc-bars i.won b { color: var(--neon-yellow); }
+.plc-bars em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--text-dim); margin-top: 4px; }
+.plc-stats { display: grid; gap: 6px; }
+.plc-sb { display: grid; grid-template-columns: 82px minmax(0, 1fr) 44px; grid-template-areas: "l bar v" ". n n"; align-items: center; column-gap: 8px; }
+.plc-sb > span { grid-area: l; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .06em; color: var(--text-meta); }
+.plc-sb > i { grid-area: bar; display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; height: 12px; padding: 2px; border: 1px solid rgba(255, 255, 255, .15); background: #05010c; }
+.plc-sb u { background: rgba(255, 255, 255, .05); }
+.plc-sb u.on { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 60%, #fff), var(--accent)); box-shadow: 0 0 4px color-mix(in srgb, var(--accent) 60%, transparent); }
+.plc-sb > b { grid-area: v; text-align: right; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 9px; color: #fff; }
+.plc-sb > small { grid-area: n; justify-self: end; font-size: 10px; color: var(--text-dim); margin-top: -1px; }
+.plc-pick { display: grid; gap: 7px; padding: 10px; border-radius: 9px; border: 1px solid rgba(57, 255, 136, .45); background: rgba(57, 255, 136, .05); }
+.plc-pick.miss { border-color: rgba(255, 32, 121, .45); background: rgba(255, 32, 121, .05); }
+.plc-pt { display: flex; justify-content: space-between; align-items: center; }
+.plc-pt small { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--neon-green); }
+.plc-pick.miss .plc-pt small { color: var(--neon-pink); }
+.plc-pt b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 10px; color: var(--neon-green); }
+.plc-pick.miss .plc-pt b { color: var(--text-dim); }
+.plc-call { display: flex; align-items: center; gap: 10px; }
+.plc-call img, .plc-call .plc-nologo { width: 38px; height: 38px; flex: none; object-fit: contain; }
+.plc-call b { display: block; font-size: 15px; color: #fff; }
+.plc-call small { display: block; margin-top: 2px; font-size: 11px; color: var(--text-meta); }
+.plc-score { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px; padding: 7px 8px; border-radius: 6px; background: #05010c; border: 1px solid rgba(255, 255, 255, .08); font-size: 12px; color: var(--text-meta); }
+.plc-score span { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.plc-score span:last-child { justify-content: flex-end; }
+.plc-score img, .plc-score .plc-nologo { width: 18px; height: 18px; flex: none; object-fit: contain; }
+.plc-score span b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; color: var(--text-meta); }
+.plc-score span.w { color: #fff; }
+.plc-score span.w b { color: var(--neon-yellow); }
+.plc-score em { font-style: normal; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 5.5px; line-height: 1.6; color: var(--text-dim); }
+.plc-none { font-size: 12px; color: var(--text-dim); }

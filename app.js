@@ -8514,7 +8514,7 @@ function playerSeason(name) {
       const game = g ? `${g.awayShort} ${Number.isFinite(as) ? as : ""} at ${g.homeShort} ${Number.isFinite(hs) ? hs : ""}`.replace(/\s+/g, " ").trim() : "";
       const margin = Number.isFinite(as) && Number.isFinite(hs) && g ? (as === hs ? "tied" : `${as > hs ? g.awayShort : g.homeShort} by ${Math.abs(as - hs)}`) : "";
       const line = g && g.spread != null ? `${g.favorite === g.home ? g.homeShort : g.awayShort} −${g.spread}` : "";
-      picks.push({ week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, with_, of: (wk.rows || []).length, others, game, margin, line });
+      picks.push({ teamFull: lg.team, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, with_, of: (wk.rows || []).length, others, game, margin, line });
     }
   }
   const sorted = [...scores].sort((a, b) => b.score - a.score);
@@ -8528,6 +8528,25 @@ function playerSeason(name) {
     ats: atsN ? Math.round((atsW / atsN) * 100) : null, atsN, atsW, su: suN ? Math.round((suW / suN) * 100) : null, suN, suW,
   };
 }
+// Team logos for past weeks: the sealed weeks keep names, not ESPN ids, so
+// the ids come from ESPN's public team list once and stay on the phone.
+var teamIdMap = null;
+function teamIdOf(name) {
+  if (!name) return null;
+  const g = GAMES.find((x) => x.away === name || x.home === name);
+  if (g) return g.away === name ? g.awayId : g.homeId;
+  if (!teamIdMap) { try { teamIdMap = JSON.parse(localStorage.getItem("brochiefs_team_ids_v1") || "null"); } catch {} }
+  if (!teamIdMap && !teamIdOf.loading) {
+    teamIdOf.loading = fetch(`${window.ESPN_API || "https://site.api.espn.com/apis/site/v2/sports/football/college-football"}/teams?limit=1000`).then((r) => r.json()).then((d) => {
+      const m = {};
+      for (const { team: t } of d?.sports?.[0]?.leagues?.[0]?.teams || []) for (const k of [t.displayName, t.shortDisplayName, t.location, `${t.location} ${t.name}`]) if (k && !m[k]) m[k] = Number(t.id);
+      teamIdMap = m;
+      try { localStorage.setItem("brochiefs_team_ids_v1", JSON.stringify(m)); } catch {}
+      if (!document.getElementById("player-modal")?.classList.contains("hidden")) openPlayerCard(document.getElementById("player-modal").dataset.name, true);
+    }).catch(() => {});
+  }
+  return teamIdMap?.[name] ?? null;
+}
 function openPlayerCard(name, again) {
   if (!name) return;
   if (!again) noteUse("player-card", name);
@@ -8540,34 +8559,44 @@ function openPlayerCard(name, again) {
   if (!m) {
     m = document.createElement("div");
     m.id = "player-modal";
-    m.className = "modal-overlay pc-modal hidden";
+    m.className = "modal-overlay plc-modal hidden";
     m.setAttribute("role", "dialog");
     document.body.appendChild(m);
-    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".pc-x")) m.classList.add("hidden"); });
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".plc-x")) m.classList.add("hidden"); });
     if (typeof swipeToClose === "function") swipeToClose(m, null, () => m.classList.add("hidden"));
   }
+  m.dataset.name = name;
+  const pts = pr.points ?? d.scores.reduce((t, x) => t + x.score, 0);
   const max = Math.max(1, ...d.scores.map((x) => x.score));
-  const stat = (label, big, small = "") => `<div class="pc-stat"><small>${label}</small><b>${big}</b>${small ? `<span>${small}</span>` : ""}</div>`;
-  m.innerHTML = `<div class="modal-card pc-card" style="--accent:${accentFor(name)}">
-    <button type="button" class="pc-x" aria-label="Close">✕</button>
-    <div class="pc-head"><span class="pc-av">${avatarOverrides[name] || shown(name)[0]}</span><div><b>${esc(shown(name).toUpperCase())}</b><small>${pr.seasonPlace ? `${pr.tied ? "T" : "#"}${pr.seasonPlace} · ` : ""}${pr.points ?? d.scores.reduce((s, x) => s + x.score, 0)} pts${pr.earned ? ` · ${money(pr.earned)} won` : ""}</small></div></div>
-    ${d.scores.length ? `<div class="pc-cap">POINTS EACH WEEK <span>gold = won the week</span></div>
-    <div class="pc-bars">${d.scores.map((x) => `<i class="${x.won ? "won" : ""}"><b>${x.score}</b><s style="height:${Math.max(6, (x.score / max) * 100)}%"></s><em>Wk ${x.week}</em></i>`).join("")}</div>
-    <div class="pc-grid">
-      ${stat("WEEKS WON", d.wins.length, d.wins.length ? d.wins.map((x) => `Week ${x.week}`).join(", ") : "none yet")}
-      ${stat("AVERAGE WEEK", `${d.avg.toFixed(1)} pts`, `over ${d.scores.length} week${d.scores.length === 1 ? "" : "s"}`)}
-      ${stat("BEST WEEK", `${d.top.score} pts`, `Week ${d.top.week}`)}
-      ${stat("WORST WEEK", `${d.low.score} pts`, `Week ${d.low.week}`)}
-      ${d.w + d.l ? `${stat("PICKS RIGHT", `${Math.round((d.w / (d.w + d.l)) * 100)}%`, `${d.w} right, ${d.l} wrong`)}
-      ${stat("BY PICK TYPE", "", `${d.atsN ? `On the spread: <b>${d.ats}%</b> (${d.atsW} of ${d.atsN})` : "No spread picks"}<br>${d.suN ? `To win outright: <b>${d.su}%</b> (${d.suW} of ${d.suN})` : "No straight-up picks"}`)}` : `<div class="pc-stat pc-wide"><small>PICKS</small><span>Loading every pick…</span></div>`}
+  const pct = d.w + d.l ? Math.round((d.w / (d.w + d.l)) * 100) : null;
+  // A fighting game stat bar: label, value, ten segments filled to the share.
+  const bar = (label, val, share, note = "") => `<div class="plc-sb"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b>${note ? `<small>${note}</small>` : ""}</div>`;
+  const logo = (full) => { const id = teamIdOf(full); return id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : `<span class="plc-nologo"></span>`; };
+  const pick = (p, hit) => !p ? "" : `<div class="plc-pick ${hit ? "hit" : "miss"}">
+      <div class="plc-pt"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}</small><b>${hit ? `+${p.pts}` : "0"} PTS</b></div>
+      <div class="plc-call">${logo(p.teamFull)}<span><b>${esc(p.text)}</b><small>${hit ? `${p.with_} of ${p.of} made this pick${p.with_ <= 2 ? " · almost nobody else" : ""}` : p.others ? `${p.others} of ${p.of} took the other side and got it right` : `${p.with_} of ${p.of} made this pick`}</small></span></div>
+      ${p.away ? `<div class="plc-score"><span class="${p.as > p.hs ? "w" : ""}">${logo(p.away)}${esc(p.awayShort)}<b>${Number.isFinite(p.as) ? p.as : ""}</b></span><em>FINAL${p.line ? `<br>${esc(p.line)}` : ""}</em><span class="${p.hs > p.as ? "w" : ""}"><b>${Number.isFinite(p.hs) ? p.hs : ""}</b>${esc(p.homeShort)}${logo(p.home)}</span></div>` : ""}
+    </div>`;
+  m.innerHTML = `<div class="modal-card plc-card" style="--accent:${accentFor(name)}">
+    <button type="button" class="plc-x" aria-label="Close">✕</button>
+    <div class="plc-top">
+      <div class="plc-av"><span>${avatarOverrides[name] || shown(name)[0]}</span></div>
+      <div class="plc-id"><small>PLAYER ${String(MANAGERS.indexOf(name) + 1).padStart(2, "0")}</small><b>${esc(shown(name).toUpperCase())}</b>
+        <div class="plc-badges">${pr.seasonPlace ? `<span class="rank">${pr.tied ? "T" : "#"}${pr.seasonPlace}</span>` : ""}<span>${pts} PTS</span>${pr.earned ? `<span class="cash">${money(pr.earned)}</span>` : ""}${d.wins.length ? `<span class="gold">🏆 ×${d.wins.length}</span>` : ""}</div></div>
     </div>
-    ${["best", "worst"].map((k) => { const p = d[k]; if (!p) return ""; const hit = k === "best";
-      return `<div class="pc-pick ${hit ? "hit" : "miss"}"><small>${hit ? "BEST PICK · biggest payout" : "WORST PICK · the one most others got right"} · WEEK ${p.week}</small>
-        <div class="pc-pk"><b>${esc(p.text)}</b><i>${hit ? `+${p.pts} pts` : "0 pts"}</i></div>
-        ${p.game ? `<div class="pc-game"><span>${esc(p.game)}</span>${p.margin ? `<em>${esc(p.margin)}</em>` : ""}</div>` : ""}
-        <span>${[p.line ? `Spread: ${esc(p.line)}` : "", hit ? `${p.with_} of ${p.of} players made this pick${p.with_ <= 2 ? " (almost nobody else)" : ""}` : `${p.others ? `${p.others} of ${p.of} picked the other side and got it right` : `${p.with_} of ${p.of} made this pick`}`].filter(Boolean).join(" · ")}</span>
-      </div>`; }).join("")}`
-    : `<div class="pc-none">No finished weeks yet.</div>`}
+    ${d.scores.length ? `
+    <div class="plc-sec">POINTS EACH WEEK <span>gold = won the week</span></div>
+    <div class="plc-bars">${d.scores.map((x) => `<i class="${x.won ? "won" : ""}${x === d.top ? " top" : ""}"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`).join("")}</div>
+    <div class="plc-sec">STATS</div>
+    <div class="plc-stats">
+      ${bar("AVG WEEK", `${d.avg.toFixed(1)}`, d.avg / 20, "pts")}
+      ${bar("BEST WEEK", d.top.score, d.top.score / 20, `W${d.top.week}`)}
+      ${bar("WORST WEEK", d.low.score, d.low.score / 20, `W${d.low.week}`)}
+      ${pct != null ? bar("PICKS RIGHT", `${pct}%`, pct / 100, `${d.w}-${d.l}`) : `<div class="plc-sb"><span>PICKS</span><small>Loading every pick…</small></div>`}
+      ${d.atsN ? bar("ON SPREAD", `${d.ats}%`, d.ats / 100, `${d.atsN} picks`) : ""}
+      ${d.suN ? bar("TO WIN", `${d.su}%`, d.su / 100, `${d.suN} picks`) : ""}
+    </div>
+    ${pick(d.best, true)}${pick(d.worst, false)}` : `<div class="plc-none">No finished weeks yet.</div>`}
   </div>`;
   m.classList.remove("hidden");
 }
