@@ -4828,7 +4828,6 @@ function renderPayouts() {
       <div class="pj-amount">${money(Math.max(0, left + (POT.seasonTotal || 0)))}</div>
       <div class="pj-sub">${money(POT.total)} pot · ${POT.members} × ${money(POT.buyIn)} · ${money(POT.weekly)} a week${POT.season.length ? ` · season ${POT.season.map(money).join(" / ")}` : " · 1st only"}</div>
     </div>
-    <button type="button" class="pot-vs-btn" data-sh2h>⚔ SEASON HEAD TO HEAD <span>▸</span></button>
     <div class="pot-season">
       <div class="ps-head"><span>SEASON</span><b>${sealed} / ${POT.weeks}</b></div>
       <div class="ps-bar" style="grid-template-columns: repeat(${POT.weeks + exh.length}, 1fr)">${seasonSegs}</div>
@@ -4967,9 +4966,7 @@ function renderSeasonH2H() {
     ${agree}
     ${seasonLedger ? "" : `<div class="sh-none">Loading pick records…</div>`}`;
 }
-document.getElementById("payouts-panel")?.addEventListener("click", (e) => {
-  if (e.target.closest("[data-sh2h]")) openSeasonH2H();
-});
+document.getElementById("sh2h-open")?.addEventListener("click", (e) => { e.stopPropagation(); openSeasonH2H(); });
 document.getElementById("sh2h-close")?.addEventListener("click", () => document.getElementById("sh2h-modal").classList.add("hidden"));
 document.getElementById("sh2h-modal")?.addEventListener("click", (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.add("hidden"); });
 document.querySelectorAll(".sh2h-select").forEach((el) => el.addEventListener("change", () => {
