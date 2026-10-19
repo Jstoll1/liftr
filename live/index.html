@@ -713,7 +713,7 @@ html, body { overflow-x: hidden; }
     "scorebug-open": "Tapped a score", "ranking-expand": "Opened a leaderboard card",
     "path-share": "Shared a Path to Win", "path-intro": "Saw the Path to Win intro",
     "wp-player": "Opened a win % breakdown", "wp-explain": "Read how win % works", h2h: "Opened head to head",
-    "pot-open": "Opened the pot", "pot-seen": "Looked at the pot", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Read the week replay", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
+    "pot-open": "Opened the pot", "pot-seen": "Looked at the pot", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Read the week replay", "board-seen": "Looked at the leaderboard", "scores-seen": "Looked at live scores", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
     sim: "Ran a game sim", "grid-card": "Opened a grid card", "history-ask": "Asked the archive", "gamecast-log": "Opened the full game log",
   };
   function says(e, feed) {
@@ -761,7 +761,29 @@ html, body { overflow-x: hidden; }
       s.end = e.at;
     }
     for (const s of Object.values(open)) { const p = people[s.n]; if (p?.in && p.since <= s.start + 2000) { s.live = true; s.since = p.since; } }
+    for (const s of list) s.acts = tidyActs(s);
     return list.sort((a, b) => b.start - a.start);
+  }
+  // Time on each screen (until the next thing they did), and back and
+  // forth between two screens folded into one line with the time on each.
+  function tidyActs(s) {
+    const acts = s.acts, endAt = s.live ? Date.now() : s.end;
+    acts.forEach((x, i) => { x.dur = Math.max(0, (acts[i + 1]?.at ?? endAt) - x.at); });
+    const isScreen = (x) => /^Went to /.test(x.a);
+    const out = [];
+    for (let i = 0; i < acts.length;) {
+      let j = i;
+      while (j < acts.length && isScreen(acts[j])) j++;
+      const run = acts.slice(i, j), screens = [...new Set(run.map((x) => x.a.slice(8)))];
+      if (run.length >= 3 && screens.length === 2) {
+        const t = (sc) => run.filter((x) => x.a.slice(8) === sc).reduce((n, x) => n + x.dur, 0);
+        out.push({ at: run[0].at, a: `Flipped between ${screens[0]} and ${screens[1]}`, d: `${run.length} switches · ${screens.map((sc) => `${sc} ${dur(t(sc))}`).join(", ")}`, x: 1, ids: run.flatMap((x) => x.ids), go: run[run.length - 1].go, dur: run.reduce((n, x) => n + x.dur, 0) });
+        i = j; continue;
+      }
+      for (const x of run) { if (x.dur >= 5000) x.d = [x.d, dur(x.dur)].filter(Boolean).join(" · "); out.push(x); }
+      if (j === i) { out.push(acts[i]); i++; } else i = j;
+    }
+    return out;
   }
 
   // --- Data --------------------------------------------------------------

@@ -8922,7 +8922,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
 // stats each count once a visit when most of it has been on screen.
 (() => {
   if (!("IntersectionObserver" in window)) return;
-  const SEEN = { "recap-panel": "recap-seen", "payouts-panel": "pot-seen", "season-panel": "season-seen" };
+  const SEEN = { "recap-panel": "recap-seen", "payouts-panel": "pot-seen", "season-panel": "season-seen", "rankings-list": "board-seen", "live-scores-list": "scores-seen" };
   const done = new Set();
   const io = new IntersectionObserver((list) => {
     for (const en of list) {
