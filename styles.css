@@ -7307,3 +7307,8 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 #sh2h-modal .sh-agree { border: 2px solid rgba(255, 228, 94, .45); border-radius: 9px; background: rgba(255, 228, 94, .05); }
 #sh2h-modal .sh-agree-h span { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .12em; color: var(--neon-yellow); }
 #sh2h-modal .h2h-sec { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .14em; color: var(--text-dim); }
+/* The Pot heading with its VS button: one line, like the other sections. */
+#scoreboard-screen .pot-head { display: flex; align-items: center; gap: 8px; }
+#scoreboard-screen .pot-head #payouts-toggle { flex: 1 1 auto; min-width: 0; width: auto; padding-right: 2px; }
+#scoreboard-screen .pot-head #payouts-toggle { white-space: nowrap; }
+#scoreboard-screen .pot-head .h2h-btn { position: static; transform: none; flex: none; }
