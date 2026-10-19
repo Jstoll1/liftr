@@ -8582,7 +8582,7 @@ function openPlayerCard(name, again) {
     <div class="plc-top">
       <div class="plc-av"><span>${avatarOverrides[name] || shown(name)[0]}</span></div>
       <div class="plc-id"><small>PLAYER ${String(MANAGERS.indexOf(name) + 1).padStart(2, "0")}</small><b>${esc(shown(name).toUpperCase())}</b>
-        <div class="plc-badges">${pr.seasonPlace ? `<span class="rank">${pr.tied ? "T" : "#"}${pr.seasonPlace}</span>` : ""}<span>${pts} PTS</span>${pr.earned ? `<span class="cash">${money(pr.earned)}</span>` : ""}${d.wins.length ? `<span class="gold">🏆 ×${d.wins.length}</span>` : ""}</div></div>
+        <div class="plc-badges">${pr.seasonPlace ? `<span class="rank">${pr.tied ? "T" : "#"}${pr.seasonPlace}</span>` : ""}<span>${pts} PTS</span>${pr.earned ? `<span class="cash">${money(pr.earned)}</span>` : ""}${d.wins.length ? `<span class="gold"><i class="plc-tro">🏆</i>×${d.wins.length}</span>` : ""}</div></div>
     </div>
     ${d.scores.length ? `
     <div class="plc-sec">POINTS EACH WEEK <span>gold = won the week</span></div>

@@ -7264,3 +7264,12 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .rm-side > div.pick-chips { gap: 4px; }
 .rm-side .pick-chip { font-size: 11px; cursor: pointer; }
 .rm-side.miss .pick-chip { opacity: .75; }
+/* Player card header: one badge height, centred letter, aligned edges. */
+.plc-top { align-items: center; }
+.plc-av span { line-height: 1; padding: 4px 0 0 4px; box-sizing: border-box; text-shadow: 2px 2px 0 rgba(0, 0, 0, .55); }
+.plc-id { display: flex; flex-direction: column; gap: 6px; }
+.plc-id small, .plc-id b { margin: 0; line-height: 1.2; }
+.plc-badges { align-items: center; gap: 5px; }
+.plc-badges span { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 22px; padding: 0 7px; box-sizing: border-box; line-height: 1; font-size: 8px; border-radius: 5px; }
+.plc-badges .gold { font-size: 8px; }
+.plc-tro { font-style: normal; font-size: 11px; line-height: 1; font-family: system-ui, sans-serif; }
