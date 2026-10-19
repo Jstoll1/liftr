@@ -7399,3 +7399,12 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 #sh2h-modal .sh-agree-h span { color: #ff6be3; }
 #sh2h-modal .sh-agree-h b { color: #fff; text-shadow: 2px 2px 0 #ff2bd6; }
 #sh2h-modal .sh-tape { gap: 5px; } #sh2h-modal .sh-row { align-items: end; } #sh2h-modal .sh-weeks { margin-bottom: 2px; }
+/* Season head to head: week by week as a scoreboard grid. */
+#sh2h-modal .sh-weeks { display: block; }
+.sh-board { display: grid; grid-template-columns: 62px repeat(var(--n), minmax(0, 1fr)); gap: 3px; padding: 6px; border-radius: 8px; background: #07031a; border: 1px solid rgba(255, 43, 214, .3); }
+.sh-bh { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8f84c4; text-align: center; padding-bottom: 2px; }
+.sh-bn { display: flex; align-items: center; font-family: 'Press Start 2P', monospace; font-size: 7.5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sh-bn.a { color: #29e6ff; } .sh-bn.b { color: #ff2bd6; }
+.sh-bc { display: grid; place-items: center; height: 24px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 10px; color: #c9c2ef; background: rgba(255, 255, 255, .04); }
+.sh-bc.a.win { color: #07031a; background: #29e6ff; box-shadow: 0 0 8px rgba(41, 230, 255, .6); }
+.sh-bc.b.win { color: #07031a; background: #ff2bd6; box-shadow: 0 0 8px rgba(255, 43, 214, .6); }

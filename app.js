@@ -4957,7 +4957,14 @@ function renderSeasonH2H() {
   }).join("");
   const r = d.rec;
   const lead = r.a === r.b ? `Level at ${r.a}-${r.b}${r.t ? `-${r.t}` : ""}` : `${esc(shown(r.a > r.b ? a : b))} leads ${Math.max(r.a, r.b)}-${Math.min(r.a, r.b)}${r.t ? `-${r.t}` : ""}`;
-  const weeksHtml = d.meetings.length ? d.meetings.map((m) => `<div class="sh-wk${m.live ? " live" : ""}"><small>W${m.week}${m.live ? " •" : ""}</small><b class="${m.a > m.b ? "win" : m.a < m.b ? "lose" : ""}">${m.a}</b><b class="${m.b > m.a ? "win" : m.b < m.a ? "lose" : ""}">${m.b}</b></div>`).join("") : `<div class="sh-none">No weeks on the record yet.</div>`;
+  // A small scoreboard: weeks across, one row per player, the week's
+  // winner lit in their side's colour, ties left plain.
+  const nmA = escapeCd(shown(sh2h.a).toUpperCase()), nmB = escapeCd(shown(sh2h.b).toUpperCase());
+  const weeksHtml = d.meetings.length ? `<div class="sh-board" style="--n:${d.meetings.length}">
+      <span class="sh-bh"></span>${d.meetings.map((m) => `<span class="sh-bh">W${m.week}${m.live ? "•" : ""}</span>`).join("")}
+      <span class="sh-bn a">${nmA}</span>${d.meetings.map((m) => `<span class="sh-bc a${m.a > m.b ? " win" : ""}">${m.a}</span>`).join("")}
+      <span class="sh-bn b">${nmB}</span>${d.meetings.map((m) => `<span class="sh-bc b${m.b > m.a ? " win" : ""}">${m.b}</span>`).join("")}
+    </div>` : `<div class="sh-none">No weeks on the record yet.</div>`;
   const agree = d.both ? `<div class="sh-agree"><div class="sh-agree-h"><span>SAME SIDE</span><b>${Math.round((100 * d.same) / d.both)}%</b></div><div class="sh-agree-s">On the same team in ${d.same} of ${d.both} games both picked.${d.both - d.same ? ` When they split: ${esc(shown(a))} hit ${d.splitA}, ${esc(shown(b))} hit ${d.splitB}.` : ""}</div></div>` : "";
   document.getElementById("sh2h-body").innerHTML = `<div class="h2h-sec">WEEK BY WEEK · ${lead}</div>
     <div class="sh-weeks">${weeksHtml}</div>
