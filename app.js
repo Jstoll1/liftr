@@ -4961,18 +4961,14 @@ function renderSeasonH2H() {
   const tapeHtml = tape.map(([lab, as, bs, an, bn, low]) => {
     const tot = Number.isFinite(an) && Number.isFinite(bn) && an + bn > 0 ? an + bn : 0;
     const wa = tot ? Math.round((100 * (low ? bn : an)) / tot) : 50;
-    return `<div class="sh-row"><b class="sh-v a ${side(an, bn, low)}">${esc(as)}</b><span class="sh-mid"><span class="sh-lab">${lab}</span><span class="sh-bar"><u class="a" style="width:${wa}%"></u><u class="b" style="width:${100 - wa}%"></u></span></span><b class="sh-v b ${side(bn, an, low)}">${esc(bs)}</b></div>`;
+    return `<div class="sh-row${["SEASON PTS", "WEEKS WON", "BEST WEEK"].includes(lab) ? " sh-key" : ""}"><b class="sh-v a ${side(an, bn, low)}">${esc(as)}</b><span class="sh-mid"><span class="sh-lab">${lab}</span><span class="sh-bar"><u class="a" style="width:${wa}%"></u><u class="b" style="width:${100 - wa}%"></u></span></span><b class="sh-v b ${side(bn, an, low)}">${esc(bs)}</b></div>`;
   }).join("");
   const r = d.rec;
   const lead = r.a === r.b ? `Level at ${r.a}-${r.b}${r.t ? `-${r.t}` : ""}` : `${esc(shown(r.a > r.b ? a : b))} leads ${Math.max(r.a, r.b)}-${Math.min(r.a, r.b)}${r.t ? `-${r.t}` : ""}`;
   // A small scoreboard: weeks across, one row per player, the week's
   // winner lit in their side's colour, ties left plain.
   const nmA = escapeCd(shown(sh2h.a).toUpperCase()), nmB = escapeCd(shown(sh2h.b).toUpperCase());
-  const weeksHtml = d.meetings.length ? `<div class="sh-board" style="--n:${d.meetings.length}">
-      <span class="sh-bh"></span>${d.meetings.map((m) => `<span class="sh-bh">W${m.week}${m.live ? "•" : ""}</span>`).join("")}
-      <span class="sh-bn a">${nmA}</span>${d.meetings.map((m) => `<span class="sh-bc a${m.a > m.b ? " win" : ""}">${m.a}</span>`).join("")}
-      <span class="sh-bn b">${nmB}</span>${d.meetings.map((m) => `<span class="sh-bc b${m.b > m.a ? " win" : ""}">${m.b}</span>`).join("")}
-    </div>` : `<div class="sh-none">No weeks on the record yet.</div>`;
+  const weeksHtml = d.meetings.length ? d.meetings.map((m) => `<div class="sh-week-tile${m.live ? " live" : ""}" aria-label="Week ${m.week}: ${nmA} ${m.a}, ${nmB} ${m.b}"><small>W${m.week}${m.live ? " •" : ""}</small><b class="a${m.a > m.b ? " win" : ""}">${m.a}</b><b class="b${m.b > m.a ? " win" : ""}">${m.b}</b></div>`).join("") : `<div class="sh-none">No weeks on the record yet.</div>`;
   // The arguments: the games they picked opposite sides, and who was right.
   const short = (t) => String(t || "").split(" ").slice(0, -1).join(" ") || t;
   const agree = d.both ? (() => {
@@ -4987,7 +4983,7 @@ function renderSeasonH2H() {
       <div class="sh-argfoot">${n - wa - wb > 0 ? `${n - wa - wb} split${n - wa - wb === 1 ? "" : "s"} where neither (or both) cashed · ` : ""}Same side on ${d.same} of ${d.both} games (${Math.round((100 * d.same) / d.both)}%)</div>
     </div>`;
   })() : "";
-  document.getElementById("sh2h-body").innerHTML = `<div class="h2h-sec">WEEK BY WEEK · ${lead}</div>
+  document.getElementById("sh2h-body").innerHTML = `<div class="sh-hero-result"><strong>${lead}</strong></div>\n    <div class="h2h-sec">WEEK BY WEEK</div>
     <div class="sh-weeks">${weeksHtml}</div>
     <div class="h2h-sec">TALE OF THE TAPE</div>
     <div class="sh-tape">${tapeHtml}</div>
