@@ -4838,14 +4838,20 @@ function renderPayouts() {
     ${contested ? `<div class="pot-warn">⚠ Season places are tied on points where the money sits. The weekly tiebreaker does not settle the season, so the league needs a rule for this before the last week.</div>` : ""}
     <div class="pot-table">
       <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>REC</span><span>WON</span><span>EARNED</span></div>
-      ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}">
+      ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}${potRowOpen === r.name ? " open" : ""}" data-pot-row="${escapeCd(r.name)}" role="button" tabindex="0">
         <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
         <span class="pot-name"><span class="pot-av" style="--accent:${accentFor(r.name)}">${avatarOverrides[r.name] || shown(r.name)[0]}</span>${r.seasonPlace === 1 && r.points > 0 ? `<i class="pot-crown">♛</i>` : ""}${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
         <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
         <span class="pot-rec">${rec[r.name] ? `${rec[r.name].w}-${rec[r.name].l}` : "–"}</span>
         <span class="pot-won">${(() => { const wk = Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(r.name)).sort((x, y) => x.week - y.week); return wk.length ? wk.map((w) => `<button type="button" class="pot-tro${w.exhibition ? " exh" : ""}" data-week="${w.week}" data-name="${r.name}" title="Week ${w.week} win">🏆</button>`).join("") : "–"; })()}</span>
         <span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>
-      </div>`).join("")}
+      </div>${potRowOpen === r.name ? (() => {
+        // Tap a row: the weeks they won, with the score, and where the money came from.
+        const wk = Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(r.name)).sort((x, y) => x.week - y.week);
+        const mine = Object.values(weekSummaries).filter((w) => w?.complete).map((w) => ({ w: w.week, s: (w.rows || []).find((x) => x.name === r.name)?.score })).filter((x) => x.s != null);
+        const best = mine.sort((a, b) => b.s - a.s)[0];
+        return `<div class="pot-more">${wk.length ? wk.map((w) => `<span class="pm-win">🏆 Week ${w.week} · ${w.highScore} pts${(w.winners || []).length > 1 ? " (split)" : ""}</span>`).join("") : `<span>No weekly wins yet.</span>`}${best ? `<span>Best week: Week ${best.w}, ${best.s} pts</span>` : ""}${r.seasonPrize ? `<span>On pace for season money in ${r.seasonPlace}${["th", "st", "nd", "rd"][r.seasonPlace] || "th"}</span>` : ""}</div>`;
+      })() : ""}`).join("")}
     </div>
     ${sealed ? "" : `<div class="pot-empty">No weeks settled yet. Earnings appear once a week's last game is final.</div>`}`;
 }
@@ -8325,13 +8331,13 @@ let renderRecap = function () {
     cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `${chips(t.who)}<span class="recap-pick">said ${esc(guess)}</span>`,
       `${esc(t.matchup)} came in at ${t.actual}`, t.off === 0 ? "🎯" : `${t.off}`, t.off === 0 ? "EXACT" : "OFF", mine(t.who)]);
   }
-  const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}`;
+  const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}`;
   toggle.classList.remove("hidden");
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
   if (panel.dataset.drawn === key) return;
   panel.dataset.drawn = key;
   panel.innerHTML = `<div class="recap-marquee" role="button" tabindex="0" aria-expanded="true" title="Tap to fold"><span>★ ${esc(String(last.label || `WEEK ${last.week}`).toUpperCase())} REPLAY ★</span><small>GAME OVER · FINAL STATS <i class="recap-caret">▾</i></small></div>` + cards.map(([h, cls, art, main, sub, stat, statLabel, me], i) =>
-    `<div class="recap-card arc ${cls}${me ? " me" : ""}" style="--i:${i}">
+    `<div class="recap-card arc ${cls}${me ? " me" : ""}${recapOpen.has(cls) ? " open" : ""}" style="--i:${i}" data-rc="${cls}" role="button" tabindex="0" aria-expanded="${recapOpen.has(cls)}">
       <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
       <div class="recap-art">${art}</div>
       <div class="recap-body">
@@ -8339,8 +8345,44 @@ let renderRecap = function () {
         <div class="recap-sub">${sub}</div>
       </div>
       <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div>
+      ${recapOpen.has(cls) ? `<div class="recap-more">${recapDetail(last, cls)}</div>` : ""}
     </div>`).join("");
 };
+
+// Tap a replay card for the whole story behind it: who took which side on
+// that game, everyone's week score, or every tiebreaker guess. Read from
+// the sealed week, so it is exactly what was graded.
+var recapOpen = new Set(); // var: the board can draw the replay before this line runs
+function recapDetail(sum, kind) {
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const rows = (sum.rows || []).filter((r) => r && r.name);
+  if (!rows.length) return `<div class="rm-none">Details aren't saved for this week.</div>`;
+  const nm = (n) => `<b class="${n === currentManager ? "me" : ""}">${esc(shown(n))}</b>`;
+  if (kind === "move") return `<div class="rm-h">WEEK ${sum.week} SCORES</div><ol class="rm-list">${[...rows].sort((a, b) => b.score - a.score).map((r) => `<li>${nm(r.name)}<span>${r.score} pts</span></li>`).join("")}</ol>`;
+  if (kind === "tb") {
+    const g = rows.filter((r) => r.tbGuess != null).sort((a, b) => (a.tbDiff ?? 999) - (b.tbDiff ?? 999));
+    return `<div class="rm-h">EVERY GUESS · ACTUAL ${esc(sum.recap?.tb?.actual ?? sum.tiebreaker?.actual ?? "?")}</div><ol class="rm-list">${g.map((r) => `<li>${nm(r.name)}<span>${r.tbGuess}${r.tbDiff != null ? ` · ${r.tbDiff === 0 ? "exact" : `off ${r.tbDiff}`}` : ""}</span></li>`).join("")}</ol>`;
+  }
+  const r = sum.recap || {};
+  const team = kind === "hit" ? r.best?.team : kind === "miss" ? r.worst?.team : r.consensus?.sides?.[0]?.team;
+  const g = (sum.slate || []).find((x) => [x.awayShort, x.homeShort].includes(team));
+  if (!g) return `<div class="rm-none">Couldn't find that game.</div>`;
+  const sides = new Map();
+  for (const row of rows) {
+    const l = (row.ledger || []).find((x) => Number(x.g) === Number(g.id));
+    const side = l ? `${l.team === g.home ? g.homeShort : l.team === g.away ? g.awayShort : l.team} ${l.line || l.mode || ""}`.trim() : "No pick";
+    const x = sides.get(side) || { side, hit: l?.result === "hit", pts: l?.result === "hit" ? l.pts : 0, who: [] };
+    x.who.push(row.name); sides.set(side, x);
+  }
+  return `<div class="rm-h">${esc(g.awayShort)} AT ${esc(g.homeShort)} · WHO TOOK WHAT</div>${[...sides.values()].sort((a, b) => b.who.length - a.who.length).map((x) => `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${esc(x.side)}</span><i>${x.hit ? `+${x.pts}` : "0"}</i><div>${x.who.map(nm).join("")}</div></div>`).join("")}`;
+}
+document.getElementById("recap-panel")?.addEventListener("click", (e) => {
+  const c = e.target.closest(".recap-card[data-rc]");
+  if (!c || e.target.closest(".pick-chip, a, button")) return;
+  const k = c.dataset.rc;
+  if (recapOpen.has(k)) recapOpen.delete(k); else { recapOpen.add(k); noteUse("recap-card", k); }
+  renderRecap();
+});
 
 // The REPLAY marquee is the fold: tap it to tuck the cards away.
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
@@ -8433,6 +8475,15 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
   toggle.addEventListener("click", (e) => { open = !open; paint(); if (open && e.isTrusted) track("pot-open", { event: true }); });
   paint();
 })();
+
+var potRowOpen = null;
+document.addEventListener("click", (e) => {
+  const row = e.target.closest?.("[data-pot-row]");
+  if (!row) return;
+  potRowOpen = potRowOpen === row.dataset.potRow ? null : row.dataset.potRow;
+  if (potRowOpen) noteUse("pot-row", potRowOpen);
+  renderPayouts();
+});
 
 // --- Week win card --------------------------------------------------------
 // Tap a trophy in The Pot (or a gold week on the season bar): how that

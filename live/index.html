@@ -724,6 +724,8 @@ html, body { overflow-x: hidden; }
   const SCREEN_NAME = { scoreboard: "Scores", picks: "Picks", history: "History", trivia: "Trivia", side: "Side bet", home: "Players" };
   const FRICTION = /^(rage|dead-tap|quick-exit|js-error)$/;
   function says(e, feed) {
+    if (e.k === "recap-card") return ["Opened a replay card", ({ hit: "Pick of the week", miss: "Worst pick", move: "Movement", split: "Coin flip", tb: "Tiebreaker" })[e.d] || e.d || ""];
+    if (e.k === "pot-row") return ["Opened a pot row", e.d ? name(e.d) : ""];
     if (e.k === "rage") return ["⚠ Rage tapped", e.d || ""];
     if (e.k === "dead-tap") return ["⚠ Tapped something that does nothing", e.d || ""];
     if (e.k === "quick-exit") return ["⚠ Closed right away", SHEET[e.d] || e.d || ""];

@@ -7167,3 +7167,22 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .recap-card.arc .recap-stat span { margin-top: 4px; font-size: 5px; opacity: .8; }
 /* Admin screens on a phone never pan sideways. */
 .admin-overlay { overflow-x: hidden; }
+
+/* Tappable replay cards and pot rows: the story behind the number. */
+.recap-card.arc[data-rc] { cursor: pointer; }
+.recap-card.arc .recap-more { grid-column: 1 / -1; margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, .07); display: grid; gap: 6px; }
+.rm-h { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .12em; color: var(--c); }
+.rm-none { font-size: 11px; color: var(--text-dim); }
+.rm-side { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; padding: 6px 8px; border-radius: 7px; background: rgba(255, 255, 255, .03); }
+.rm-side > span { font-size: 12.5px; font-weight: 700; color: #fff; }
+.rm-side > i { font-style: normal; font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 12px; color: var(--text-dim); }
+.rm-side.hit > i { color: var(--neon-green); }
+.rm-side > div { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--text-meta); }
+.rm-side b, .rm-list b { font-weight: 600; color: var(--text-meta); }
+.rm-side b.me, .rm-list b.me { color: var(--neon-cyan); }
+.rm-list { margin: 0; padding: 0 0 0 18px; display: grid; gap: 3px; font-size: 12px; }
+.rm-list li { display: flex; justify-content: space-between; gap: 8px; }
+.rm-list li span { color: var(--text-dim); }
+.pot-row[data-pot-row] { cursor: pointer; }
+.pot-more { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 8px 12px 10px 40px; font-size: 11.5px; color: var(--text-meta); background: rgba(255, 255, 255, .02); border-bottom: 1px solid rgba(255, 255, 255, .05); }
+.pm-win { color: var(--neon-yellow); }
