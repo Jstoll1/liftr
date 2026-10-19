@@ -1,5 +1,5 @@
 {
- "exported": "2026-10-12",
+ "exported": "2026-10-19",
  "weeks": [
   {
    "week": 1,
@@ -1660,7 +1660,9 @@
      "favorite": "James Madison",
      "spread": 6.5,
      "kickoff": "2026-09-05T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2335,
+     "homeId": 256
     },
     {
      "id": 2,
@@ -1671,7 +1673,9 @@
      "favorite": "Pitt",
      "spread": 16.5,
      "kickoff": "2026-09-05T16:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 193,
+     "homeId": 221
     },
     {
      "id": 3,
@@ -1682,7 +1686,9 @@
      "favorite": "Auburn",
      "spread": 7.5,
      "kickoff": "2026-09-05T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 239,
+     "homeId": 2
     },
     {
      "id": 4,
@@ -1693,7 +1699,9 @@
      "favorite": "Cincinnati",
      "spread": 7.5,
      "kickoff": "2026-09-05T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 103,
+     "homeId": 2132
     },
     {
      "id": 5,
@@ -1704,7 +1712,9 @@
      "favorite": "Duke",
      "spread": 7.5,
      "kickoff": "2026-09-05T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2655,
+     "homeId": 150
     },
     {
      "id": 6,
@@ -1715,7 +1725,9 @@
      "favorite": "#2 Oregon",
      "spread": 24.5,
      "kickoff": "2026-09-05T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 68,
+     "homeId": 2483
     },
     {
      "id": 7,
@@ -1726,7 +1738,9 @@
      "favorite": "Colorado State",
      "spread": 3.5,
      "kickoff": "2026-09-05T22:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2751,
+     "homeId": 36
     },
     {
      "id": 8,
@@ -1737,7 +1751,9 @@
      "favorite": "#11 LSU",
      "spread": 10,
      "kickoff": "2026-09-05T23:30:00.000Z",
-     "tiebreakerGame": true
+     "tiebreakerGame": true,
+     "awayId": 228,
+     "homeId": 99
     },
     {
      "id": 9,
@@ -1748,7 +1764,9 @@
      "favorite": "#13 Alabama",
      "spread": 27.5,
      "kickoff": "2026-09-05T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 151,
+     "homeId": 333
     },
     {
      "id": 10,
@@ -1759,7 +1777,9 @@
      "favorite": "#9 Ole Miss",
      "spread": 7,
      "kickoff": "2026-09-06T23:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 97,
+     "homeId": 145
     }
    ],
    "finals": {
@@ -3538,7 +3558,9 @@
      "favorite": "Missouri Tigers",
      "spread": 5.5,
      "kickoff": "2026-09-12T00:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 142,
+     "homeId": 2305
     },
     {
      "id": 2,
@@ -3549,7 +3571,9 @@
      "favorite": "Texas A&M Aggies",
      "spread": 14.5,
      "kickoff": "2026-09-12T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 9,
+     "homeId": 245
     },
     {
      "id": 3,
@@ -3560,7 +3584,9 @@
      "favorite": "Oklahoma Sooners",
      "spread": 5.5,
      "kickoff": "2026-09-12T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 201,
+     "homeId": 130
     },
     {
      "id": 4,
@@ -3571,7 +3597,9 @@
      "favorite": "Alabama Crimson Tide",
      "spread": 10.5,
      "kickoff": "2026-09-12T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 333,
+     "homeId": 96
     },
     {
      "id": 5,
@@ -3582,7 +3610,9 @@
      "favorite": "BYU Cougars",
      "spread": 7.5,
      "kickoff": "2026-09-12T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 12,
+     "homeId": 252
     },
     {
      "id": 6,
@@ -3593,7 +3623,9 @@
      "favorite": "Minnesota Golden Gophers",
      "spread": 1.5,
      "kickoff": "2026-09-12T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 344,
+     "homeId": 135
     },
     {
      "id": 7,
@@ -3604,7 +3636,9 @@
      "favorite": "Tennessee Volunteers",
      "spread": 12.5,
      "kickoff": "2026-09-12T23:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2633,
+     "homeId": 59
     },
     {
      "id": 8,
@@ -3615,7 +3649,9 @@
      "favorite": "Kennesaw State Owls",
      "spread": 8.5,
      "kickoff": "2026-09-12T23:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2247,
+     "homeId": 338
     },
     {
      "id": 9,
@@ -3626,7 +3662,9 @@
      "favorite": "Texas Longhorns",
      "spread": 1.5,
      "kickoff": "2026-09-12T23:30:00.000Z",
-     "tiebreakerGame": true
+     "tiebreakerGame": true,
+     "awayId": 194,
+     "homeId": 251
     },
     {
      "id": 10,
@@ -3637,7 +3675,9 @@
      "favorite": "North Dakota State Bison",
      "spread": 2.5,
      "kickoff": "2026-09-13T02:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2449,
+     "homeId": 2005
     }
    ],
    "finals": {
@@ -5418,7 +5458,9 @@
      "favorite": "Texas Tech Red Raiders",
      "spread": 7.5,
      "kickoff": "2026-09-19T00:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 248,
+     "homeId": 2641
     },
     {
      "id": 2,
@@ -5429,7 +5471,9 @@
      "favorite": "Arizona State Sun Devils",
      "spread": 5.5,
      "kickoff": "2026-09-19T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 9,
+     "homeId": 2305
     },
     {
      "id": 3,
@@ -5440,7 +5484,9 @@
      "favorite": "Clemson Tigers",
      "spread": 3.5,
      "kickoff": "2026-09-19T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 153,
+     "homeId": 228
     },
     {
      "id": 4,
@@ -5451,7 +5497,9 @@
      "favorite": "Alabama Crimson Tide",
      "spread": 19.5,
      "kickoff": "2026-09-19T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 52,
+     "homeId": 333
     },
     {
      "id": 5,
@@ -5462,7 +5510,9 @@
      "favorite": "Louisville Cardinals",
      "spread": 1.5,
      "kickoff": "2026-09-19T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2567,
+     "homeId": 97
     },
     {
      "id": 6,
@@ -5473,7 +5523,9 @@
      "favorite": "South Carolina Gamecocks",
      "spread": 4,
      "kickoff": "2026-09-19T20:15:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 344,
+     "homeId": 2579
     },
     {
      "id": 7,
@@ -5484,7 +5536,9 @@
      "favorite": "Florida Atlantic Owls",
      "spread": 7,
      "kickoff": "2026-09-19T22:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2229,
+     "homeId": 2226
     },
     {
      "id": 8,
@@ -5495,7 +5549,9 @@
      "favorite": "Florida Gators",
      "spread": 2.5,
      "kickoff": "2026-09-19T23:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 57,
+     "homeId": 2
     },
     {
      "id": 9,
@@ -5506,7 +5562,9 @@
      "favorite": "LSU Tigers",
      "spread": 3,
      "kickoff": "2026-09-19T23:30:00.000Z",
-     "tiebreakerGame": true
+     "tiebreakerGame": true,
+     "awayId": 99,
+     "homeId": 145
     },
     {
      "id": 10,
@@ -5517,7 +5575,9 @@
      "favorite": "Virginia Tech Hokies",
      "spread": 3,
      "kickoff": "2026-09-19T23:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 259,
+     "homeId": 120
     }
    ],
    "finals": {
@@ -7306,7 +7366,9 @@
      "favorite": "California Golden Bears",
      "spread": 1.5,
      "kickoff": "2026-09-26T02:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 228,
+     "homeId": 25
     },
     {
      "id": 2,
@@ -7317,7 +7379,9 @@
      "favorite": "Texas Longhorns",
      "spread": 5.5,
      "kickoff": "2026-09-26T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 251,
+     "homeId": 2633
     },
     {
      "id": 3,
@@ -7328,7 +7392,9 @@
      "favorite": "UCLA Bruins",
      "spread": 1.5,
      "kickoff": "2026-09-26T17:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 26,
+     "homeId": 120
     },
     {
      "id": 4,
@@ -7339,7 +7405,9 @@
      "favorite": "Florida Gators",
      "spread": 3.5,
      "kickoff": "2026-09-26T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 145,
+     "homeId": 57
     },
     {
      "id": 5,
@@ -7350,7 +7418,9 @@
      "favorite": "Michigan Wolverines",
      "spread": 5.5,
      "kickoff": "2026-09-26T19:30:00.000Z",
-     "tiebreakerGame": true
+     "tiebreakerGame": true,
+     "awayId": 2294,
+     "homeId": 130
     },
     {
      "id": 6,
@@ -7361,7 +7431,9 @@
      "favorite": "Auburn Tigers",
      "spread": 9.5,
      "kickoff": "2026-09-26T20:15:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 238,
+     "homeId": 2
     },
     {
      "id": 7,
@@ -7372,7 +7444,9 @@
      "favorite": "Alabama Crimson Tide",
      "spread": 12.5,
      "kickoff": "2026-09-26T23:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2579,
+     "homeId": 333
     },
     {
      "id": 8,
@@ -7383,7 +7457,9 @@
      "favorite": "LSU Tigers",
      "spread": 8.5,
      "kickoff": "2026-09-26T23:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 245,
+     "homeId": 99
     },
     {
      "id": 9,
@@ -7394,7 +7470,9 @@
      "favorite": "Mississippi State Bulldogs",
      "spread": 6.5,
      "kickoff": "2026-09-26T23:45:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 142,
+     "homeId": 344
     },
     {
      "id": 10,
@@ -7405,7 +7483,9 @@
      "favorite": "Georgia Tech Yellow Jackets",
      "spread": 3.5,
      "kickoff": "2026-09-27T02:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 59,
+     "homeId": 24
     }
    ],
    "finals": {
@@ -9194,7 +9274,9 @@
      "favorite": "Virginia Tech Hokies",
      "spread": 3.5,
      "kickoff": "2026-10-02T23:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 221,
+     "homeId": 259
     },
     {
      "id": 2,
@@ -9205,7 +9287,9 @@
      "favorite": "Penn State Nittany Lions",
      "spread": 2.5,
      "kickoff": "2026-10-03T00:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 213,
+     "homeId": 77
     },
     {
      "id": 3,
@@ -9216,7 +9300,9 @@
      "favorite": "Alabama Crimson Tide",
      "spread": 5.5,
      "kickoff": "2026-10-03T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 333,
+     "homeId": 344
     },
     {
      "id": 4,
@@ -9227,7 +9313,9 @@
      "favorite": "Michigan Wolverines",
      "spread": 5.5,
      "kickoff": "2026-10-03T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 130,
+     "homeId": 135
     },
     {
      "id": 5,
@@ -9238,7 +9326,9 @@
      "favorite": "Ohio State Buckeyes",
      "spread": 13.5,
      "kickoff": "2026-10-03T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 194,
+     "homeId": 2294
     },
     {
      "id": 6,
@@ -9249,7 +9339,9 @@
      "favorite": "Florida Gators",
      "spread": 4.5,
      "kickoff": "2026-10-03T19:30:00.000Z",
-     "tiebreakerGame": true
+     "tiebreakerGame": true,
+     "awayId": 57,
+     "homeId": 142
     },
     {
      "id": 7,
@@ -9260,7 +9352,9 @@
      "favorite": "Virginia Cavaliers",
      "spread": 2.5,
      "kickoff": "2026-10-03T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 258,
+     "homeId": 52
     },
     {
      "id": 8,
@@ -9271,7 +9365,9 @@
      "favorite": "South Carolina Gamecocks",
      "spread": 2.5,
      "kickoff": "2026-10-03T20:15:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 96,
+     "homeId": 2579
     },
     {
      "id": 9,
@@ -9282,7 +9378,9 @@
      "favorite": "Georgia Southern Eagles",
      "spread": 2.5,
      "kickoff": "2026-10-03T23:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 290,
+     "homeId": 324
     },
     {
      "id": 10,
@@ -9293,7 +9391,9 @@
      "favorite": "Miami Hurricanes",
      "spread": 17.5,
      "kickoff": "2026-10-03T23:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2390,
+     "homeId": 228
     }
    ],
    "finals": {
@@ -11083,7 +11183,9 @@
      "favorite": "Louisville Cardinals",
      "spread": 3.5,
      "kickoff": "2026-10-09T23:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 52,
+     "homeId": 97
     },
     {
      "id": 2,
@@ -11094,7 +11196,9 @@
      "favorite": "Indiana Hoosiers",
      "spread": 7,
      "kickoff": "2026-10-10T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 84,
+     "homeId": 158
     },
     {
      "id": 3,
@@ -11105,7 +11209,9 @@
      "favorite": "Arizona Wildcats",
      "spread": 3.5,
      "kickoff": "2026-10-10T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 12,
+     "homeId": 277
     },
     {
      "id": 4,
@@ -11116,7 +11222,9 @@
      "favorite": "Army Black Knights",
      "spread": 3,
      "kickoff": "2026-10-10T16:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2655,
+     "homeId": 349
     },
     {
      "id": 5,
@@ -11127,7 +11235,9 @@
      "favorite": "Texas Longhorns",
      "spread": 8.5,
      "kickoff": "2026-10-10T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 251,
+     "homeId": 201
     },
     {
      "id": 6,
@@ -11138,7 +11248,9 @@
      "favorite": "Oregon Ducks",
      "spread": 11.5,
      "kickoff": "2026-10-10T19:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 26,
+     "homeId": 2483
     },
     {
      "id": 7,
@@ -11149,7 +11261,9 @@
      "favorite": "LSU Tigers",
      "spread": 8.5,
      "kickoff": "2026-10-10T23:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 99,
+     "homeId": 96
     },
     {
      "id": 8,
@@ -11160,7 +11274,9 @@
      "favorite": "North Dakota State Bison",
      "spread": 3,
      "kickoff": "2026-10-10T23:00:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 2449,
+     "homeId": 2439
     },
     {
      "id": 9,
@@ -11171,7 +11287,9 @@
      "favorite": "Alabama Crimson Tide",
      "spread": 1.5,
      "kickoff": "2026-10-10T23:30:00.000Z",
-     "tiebreakerGame": true
+     "tiebreakerGame": true,
+     "awayId": 61,
+     "homeId": 333
     },
     {
      "id": 10,
@@ -11182,7 +11300,9 @@
      "favorite": "Penn State Nittany Lions",
      "spread": 1.5,
      "kickoff": "2026-10-10T23:30:00.000Z",
-     "tiebreakerGame": false
+     "tiebreakerGame": false,
+     "awayId": 30,
+     "homeId": 213
     }
    ],
    "finals": {
@@ -11307,6 +11427,1915 @@
      "matchup": "Georgia at Alabama",
      "awayId": 61,
      "homeId": 333
+    },
+    "bestWhoFixed": true
+   },
+   "frozen": true
+  },
+  {
+   "week": 7,
+   "version": 9,
+   "exhibition": false,
+   "label": "Week 7",
+   "complete": true,
+   "games": 10,
+   "played": 10,
+   "highScore": 17,
+   "winners": [
+    "Dewitt"
+   ],
+   "tiebreaker": {
+    "game": 2,
+    "matchup": "Ohio State at Indiana",
+    "actual": 34
+   },
+   "rows": [
+    {
+     "name": "Dewitt",
+     "score": 17,
+     "hits": 8,
+     "misses": 2,
+     "picked": 10,
+     "tbGuess": 42,
+     "tbDiff": 8,
+     "ledger": [
+      {
+       "g": 1,
+       "matchup": "Kennesaw St at Missouri St",
+       "favorite": "Kennesaw State Owls",
+       "spread": 3,
+       "team": "Missouri State Bears",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 3,
+       "result": "hit",
+       "score": "21-24",
+       "savedAt": 1791995179929,
+       "late": false
+      },
+      {
+       "g": 2,
+       "matchup": "Ohio State at Indiana",
+       "favorite": "Ohio State Buckeyes",
+       "spread": 3.5,
+       "team": "Ohio State Buckeyes",
+       "mode": "ATS",
+       "line": "-3.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "19-15",
+       "savedAt": 1791995183546,
+       "late": false
+      },
+      {
+       "g": 3,
+       "matchup": "Florida at Texas",
+       "favorite": "Texas Longhorns",
+       "spread": 10.5,
+       "team": "Florida Gators",
+       "mode": "ATS",
+       "line": "+10.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "27-24",
+       "savedAt": 1791995273802,
+       "late": false
+      },
+      {
+       "g": 4,
+       "matchup": "Mississippi St at LSU",
+       "favorite": "LSU Tigers",
+       "spread": 14,
+       "team": "Mississippi State Bulldogs",
+       "mode": "ATS",
+       "line": "+14",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "0-31",
+       "savedAt": 1791995270984,
+       "late": false
+      },
+      {
+       "g": 5,
+       "matchup": "Auburn at Georgia",
+       "favorite": "Georgia Bulldogs",
+       "spread": 20.5,
+       "team": "Auburn Tigers",
+       "mode": "ATS",
+       "line": "+20.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "27-24",
+       "savedAt": 1791995273802,
+       "late": false
+      },
+      {
+       "g": 6,
+       "matchup": "Alabama at Tennessee",
+       "favorite": "Alabama Crimson Tide",
+       "spread": 8.5,
+       "team": "Tennessee Volunteers",
+       "mode": "ATS",
+       "line": "+8.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "10-26",
+       "savedAt": 1791995277330,
+       "late": false
+      },
+      {
+       "g": 7,
+       "matchup": "Missouri at Ole Miss",
+       "favorite": "Ole Miss Rebels",
+       "spread": 6,
+       "team": "Ole Miss Rebels",
+       "mode": "ATS",
+       "line": "-6",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "3-31",
+       "savedAt": 1791995288104,
+       "late": false
+      },
+      {
+       "g": 8,
+       "matchup": "Florida St at Miami",
+       "favorite": "Miami Hurricanes",
+       "spread": 21.5,
+       "team": "Florida State Seminoles",
+       "mode": "ATS",
+       "line": "+21.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "35-43",
+       "savedAt": 1791995290284,
+       "late": false
+      },
+      {
+       "g": 9,
+       "matchup": "Kentucky at Oklahoma",
+       "favorite": "Oklahoma Sooners",
+       "spread": 7,
+       "team": "Oklahoma Sooners",
+       "mode": "ATS",
+       "line": "-7",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "21-13",
+       "savedAt": 1791995297862,
+       "late": false
+      },
+      {
+       "g": 10,
+       "matchup": "Nebraska at Oregon",
+       "favorite": "Oregon Ducks",
+       "spread": 7.5,
+       "team": "Nebraska Cornhuskers",
+       "mode": "ATS",
+       "line": "+7.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "14-17",
+       "savedAt": 1791995300964,
+       "late": false
+      }
+     ],
+     "place": 1,
+     "won": true
+    },
+    {
+     "name": "Curt",
+     "score": 15,
+     "hits": 7,
+     "misses": 3,
+     "picked": 10,
+     "tbGuess": 42,
+     "tbDiff": 8,
+     "ledger": [
+      {
+       "g": 1,
+       "matchup": "Kennesaw St at Missouri St",
+       "favorite": "Kennesaw State Owls",
+       "spread": 3,
+       "team": "Missouri State Bears",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 3,
+       "result": "hit",
+       "score": "21-24",
+       "savedAt": 1792007632072,
+       "late": false
+      },
+      {
+       "g": 2,
+       "matchup": "Ohio State at Indiana",
+       "favorite": "Ohio State Buckeyes",
+       "spread": 3.5,
+       "team": "Ohio State Buckeyes",
+       "mode": "ATS",
+       "line": "-3.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "19-15",
+       "savedAt": 1792007637185,
+       "late": false
+      },
+      {
+       "g": 3,
+       "matchup": "Florida at Texas",
+       "favorite": "Texas Longhorns",
+       "spread": 10.5,
+       "team": "Florida Gators",
+       "mode": "ATS",
+       "line": "+10.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "27-24",
+       "savedAt": 1792007646207,
+       "late": false
+      },
+      {
+       "g": 4,
+       "matchup": "Mississippi St at LSU",
+       "favorite": "LSU Tigers",
+       "spread": 14,
+       "team": "Mississippi State Bulldogs",
+       "mode": "ATS",
+       "line": "+14",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "0-31",
+       "savedAt": 1792007651471,
+       "late": false
+      },
+      {
+       "g": 5,
+       "matchup": "Auburn at Georgia",
+       "favorite": "Georgia Bulldogs",
+       "spread": 20.5,
+       "team": "Auburn Tigers",
+       "mode": "ATS",
+       "line": "+20.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "27-24",
+       "savedAt": 1792007706376,
+       "late": false
+      },
+      {
+       "g": 6,
+       "matchup": "Alabama at Tennessee",
+       "favorite": "Alabama Crimson Tide",
+       "spread": 8.5,
+       "team": "Tennessee Volunteers",
+       "mode": "ATS",
+       "line": "+8.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "10-26",
+       "savedAt": 1792007665247,
+       "late": false
+      },
+      {
+       "g": 7,
+       "matchup": "Missouri at Ole Miss",
+       "favorite": "Ole Miss Rebels",
+       "spread": 6,
+       "team": "Missouri Tigers",
+       "mode": "ATS",
+       "line": "+6",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "3-31",
+       "savedAt": 1792007671239,
+       "late": false
+      },
+      {
+       "g": 8,
+       "matchup": "Florida St at Miami",
+       "favorite": "Miami Hurricanes",
+       "spread": 21.5,
+       "team": "Florida State Seminoles",
+       "mode": "ATS",
+       "line": "+21.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "35-43",
+       "savedAt": 1792007677522,
+       "late": false
+      },
+      {
+       "g": 9,
+       "matchup": "Kentucky at Oklahoma",
+       "favorite": "Oklahoma Sooners",
+       "spread": 7,
+       "team": "Oklahoma Sooners",
+       "mode": "ATS",
+       "line": "-7",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "21-13",
+       "savedAt": 1792007687425,
+       "late": false
+      },
+      {
+       "g": 10,
+       "matchup": "Nebraska at Oregon",
+       "favorite": "Oregon Ducks",
+       "spread": 7.5,
+       "team": "Nebraska Cornhuskers",
+       "mode": "ATS",
+       "line": "+7.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "14-17",
+       "savedAt": 1792007694192,
+       "late": false
+      }
+     ],
+     "place": 2,
+     "won": false
+    },
+    {
+     "name": "Jake",
+     "score": 13,
+     "hits": 6,
+     "misses": 4,
+     "picked": 10,
+     "tbGuess": 45,
+     "tbDiff": 11,
+     "ledger": [
+      {
+       "g": 1,
+       "matchup": "Kennesaw St at Missouri St",
+       "favorite": "Kennesaw State Owls",
+       "spread": 3,
+       "team": "Kennesaw State Owls",
+       "mode": "ATS",
+       "line": "-3",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "21-24",
+       "savedAt": 1792020366556,
+       "late": false
+      },
+      {
+       "g": 2,
+       "matchup": "Ohio State at Indiana",
+       "favorite": "Ohio State Buckeyes",
+       "spread": 3.5,
+       "team": "Ohio State Buckeyes",
+       "mode": "ATS",
+       "line": "-3.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "19-15",
+       "savedAt": 1791998801420,
+       "late": false
+      },
+      {
+       "g": 3,
+       "matchup": "Florida at Texas",
+       "favorite": "Texas Longhorns",
+       "spread": 10.5,
+       "team": "Texas Longhorns",
+       "mode": "ATS",
+       "line": "-10.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1791999583010,
+       "late": false
+      },
+      {
+       "g": 4,
+       "matchup": "Mississippi St at LSU",
+       "favorite": "LSU Tigers",
+       "spread": 14,
+       "team": "LSU Tigers",
+       "mode": "ATS",
+       "line": "-14",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "0-31",
+       "savedAt": 1792020222304,
+       "late": false
+      },
+      {
+       "g": 5,
+       "matchup": "Auburn at Georgia",
+       "favorite": "Georgia Bulldogs",
+       "spread": 20.5,
+       "team": "Georgia Bulldogs",
+       "mode": "ATS",
+       "line": "-20.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1792019769970,
+       "late": false
+      },
+      {
+       "g": 6,
+       "matchup": "Alabama at Tennessee",
+       "favorite": "Alabama Crimson Tide",
+       "spread": 8.5,
+       "team": "Alabama Crimson Tide",
+       "mode": "ATS",
+       "line": "-8.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "10-26",
+       "savedAt": 1791999599345,
+       "late": false
+      },
+      {
+       "g": 7,
+       "matchup": "Missouri at Ole Miss",
+       "favorite": "Ole Miss Rebels",
+       "spread": 6,
+       "team": "Ole Miss Rebels",
+       "mode": "ATS",
+       "line": "-6",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "3-31",
+       "savedAt": 1792000208243,
+       "late": false
+      },
+      {
+       "g": 8,
+       "matchup": "Florida St at Miami",
+       "favorite": "Miami Hurricanes",
+       "spread": 21.5,
+       "team": "Florida State Seminoles",
+       "mode": "ATS",
+       "line": "+21.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "35-43",
+       "savedAt": 1792000215173,
+       "late": false
+      },
+      {
+       "g": 9,
+       "matchup": "Kentucky at Oklahoma",
+       "favorite": "Oklahoma Sooners",
+       "spread": 7,
+       "team": "Kentucky Wildcats",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 3,
+       "result": "hit",
+       "score": "21-13",
+       "savedAt": 1792019833879,
+       "late": false
+      },
+      {
+       "g": 10,
+       "matchup": "Nebraska at Oregon",
+       "favorite": "Oregon Ducks",
+       "spread": 7.5,
+       "team": "Nebraska Cornhuskers",
+       "mode": "ATS",
+       "line": "+7.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "14-17",
+       "savedAt": 1792000242169,
+       "late": false
+      }
+     ],
+     "place": 3,
+     "won": false
+    },
+    {
+     "name": "Jordan",
+     "score": 12,
+     "hits": 5,
+     "misses": 5,
+     "picked": 10,
+     "tbGuess": 49,
+     "tbDiff": 15,
+     "ledger": [
+      {
+       "g": 1,
+       "matchup": "Kennesaw St at Missouri St",
+       "favorite": "Kennesaw State Owls",
+       "spread": 3,
+       "team": "Missouri State Bears",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 3,
+       "result": "hit",
+       "score": "21-24",
+       "savedAt": 1791995223424,
+       "late": false
+      },
+      {
+       "g": 2,
+       "matchup": "Ohio State at Indiana",
+       "favorite": "Ohio State Buckeyes",
+       "spread": 3.5,
+       "team": "Indiana Hoosiers",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 0,
+       "result": "miss",
+       "score": "19-15",
+       "savedAt": 1791995236646,
+       "late": false
+      },
+      {
+       "g": 3,
+       "matchup": "Florida at Texas",
+       "favorite": "Texas Longhorns",
+       "spread": 10.5,
+       "team": "Florida Gators",
+       "mode": "ATS",
+       "line": "+10.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "27-24",
+       "savedAt": 1791997153796,
+       "late": false
+      },
+      {
+       "g": 4,
+       "matchup": "Mississippi St at LSU",
+       "favorite": "LSU Tigers",
+       "spread": 14,
+       "team": "Mississippi State Bulldogs",
+       "mode": "ATS",
+       "line": "+14",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "0-31",
+       "savedAt": 1791995252034,
+       "late": false
+      },
+      {
+       "g": 5,
+       "matchup": "Auburn at Georgia",
+       "favorite": "Georgia Bulldogs",
+       "spread": 20.5,
+       "team": "Georgia Bulldogs",
+       "mode": "ATS",
+       "line": "-20.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1791997275244,
+       "late": false
+      },
+      {
+       "g": 6,
+       "matchup": "Alabama at Tennessee",
+       "favorite": "Alabama Crimson Tide",
+       "spread": 8.5,
+       "team": "Tennessee Volunteers",
+       "mode": "ATS",
+       "line": "+8.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "10-26",
+       "savedAt": 1791995282581,
+       "late": false
+      },
+      {
+       "g": 7,
+       "matchup": "Missouri at Ole Miss",
+       "favorite": "Ole Miss Rebels",
+       "spread": 6,
+       "team": "Missouri Tigers",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 0,
+       "result": "miss",
+       "score": "3-31",
+       "savedAt": 1791995289714,
+       "late": false
+      },
+      {
+       "g": 8,
+       "matchup": "Florida St at Miami",
+       "favorite": "Miami Hurricanes",
+       "spread": 21.5,
+       "team": "Miami Hurricanes",
+       "mode": "ATS",
+       "line": "-21.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "35-43",
+       "savedAt": 1791995293252,
+       "late": false
+      },
+      {
+       "g": 9,
+       "matchup": "Kentucky at Oklahoma",
+       "favorite": "Oklahoma Sooners",
+       "spread": 7,
+       "team": "Kentucky Wildcats",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 3,
+       "result": "hit",
+       "score": "21-13",
+       "savedAt": 1791995308027,
+       "late": false
+      },
+      {
+       "g": 10,
+       "matchup": "Nebraska at Oregon",
+       "favorite": "Oregon Ducks",
+       "spread": 7.5,
+       "team": "Nebraska Cornhuskers",
+       "mode": "ATS",
+       "line": "+7.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "14-17",
+       "savedAt": 1791995320135,
+       "late": false
+      }
+     ],
+     "place": 4,
+     "won": false
+    },
+    {
+     "name": "Logan",
+     "score": 11,
+     "hits": 5,
+     "misses": 5,
+     "picked": 10,
+     "tbGuess": 48,
+     "tbDiff": 14,
+     "ledger": [
+      {
+       "g": 1,
+       "matchup": "Kennesaw St at Missouri St",
+       "favorite": "Kennesaw State Owls",
+       "spread": 3,
+       "team": "Kennesaw State Owls",
+       "mode": "ATS",
+       "line": "-3",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "21-24",
+       "savedAt": 1792006993239,
+       "late": false
+      },
+      {
+       "g": 2,
+       "matchup": "Ohio State at Indiana",
+       "favorite": "Ohio State Buckeyes",
+       "spread": 3.5,
+       "team": "Indiana Hoosiers",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 0,
+       "result": "miss",
+       "score": "19-15",
+       "savedAt": 1792007264598,
+       "late": false
+      },
+      {
+       "g": 3,
+       "matchup": "Florida at Texas",
+       "favorite": "Texas Longhorns",
+       "spread": 10.5,
+       "team": "Florida Gators",
+       "mode": "ATS",
+       "line": "+10.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "27-24",
+       "savedAt": 1792007009424,
+       "late": false
+      },
+      {
+       "g": 4,
+       "matchup": "Mississippi St at LSU",
+       "favorite": "LSU Tigers",
+       "spread": 14,
+       "team": "Mississippi State Bulldogs",
+       "mode": "ATS",
+       "line": "+14",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "0-31",
+       "savedAt": 1792007019031,
+       "late": false
+      },
+      {
+       "g": 5,
+       "matchup": "Auburn at Georgia",
+       "favorite": "Georgia Bulldogs",
+       "spread": 20.5,
+       "team": "Auburn Tigers",
+       "mode": "ATS",
+       "line": "+20.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "27-24",
+       "savedAt": 1792007041437,
+       "late": false
+      },
+      {
+       "g": 6,
+       "matchup": "Alabama at Tennessee",
+       "favorite": "Alabama Crimson Tide",
+       "spread": 8.5,
+       "team": "Tennessee Volunteers",
+       "mode": "ATS",
+       "line": "+8.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "10-26",
+       "savedAt": 1792007095573,
+       "late": false
+      },
+      {
+       "g": 7,
+       "matchup": "Missouri at Ole Miss",
+       "favorite": "Ole Miss Rebels",
+       "spread": 6,
+       "team": "Missouri Tigers",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 0,
+       "result": "miss",
+       "score": "3-31",
+       "savedAt": 1792007134272,
+       "late": false
+      },
+      {
+       "g": 8,
+       "matchup": "Florida St at Miami",
+       "favorite": "Miami Hurricanes",
+       "spread": 21.5,
+       "team": "Miami Hurricanes",
+       "mode": "ATS",
+       "line": "-21.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "35-43",
+       "savedAt": 1792007147332,
+       "late": false
+      },
+      {
+       "g": 9,
+       "matchup": "Kentucky at Oklahoma",
+       "favorite": "Oklahoma Sooners",
+       "spread": 7,
+       "team": "Kentucky Wildcats",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 3,
+       "result": "hit",
+       "score": "21-13",
+       "savedAt": 1792007149350,
+       "late": false
+      },
+      {
+       "g": 10,
+       "matchup": "Nebraska at Oregon",
+       "favorite": "Oregon Ducks",
+       "spread": 7.5,
+       "team": "Nebraska Cornhuskers",
+       "mode": "ATS",
+       "line": "+7.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "14-17",
+       "savedAt": 1792007187373,
+       "late": false
+      }
+     ],
+     "place": 5,
+     "won": false
+    },
+    {
+     "name": "Andrew",
+     "score": 8,
+     "hits": 3,
+     "misses": 7,
+     "picked": 10,
+     "tbGuess": 52,
+     "tbDiff": 18,
+     "ledger": [
+      {
+       "g": 1,
+       "matchup": "Kennesaw St at Missouri St",
+       "favorite": "Kennesaw State Owls",
+       "spread": 3,
+       "team": "Missouri State Bears",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 3,
+       "result": "hit",
+       "score": "21-24",
+       "savedAt": 1791994508779,
+       "late": false
+      },
+      {
+       "g": 2,
+       "matchup": "Ohio State at Indiana",
+       "favorite": "Ohio State Buckeyes",
+       "spread": 3.5,
+       "team": "Ohio State Buckeyes",
+       "mode": "ATS",
+       "line": "-3.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "19-15",
+       "savedAt": 1791994515486,
+       "late": false
+      },
+      {
+       "g": 3,
+       "matchup": "Florida at Texas",
+       "favorite": "Texas Longhorns",
+       "spread": 10.5,
+       "team": "Texas Longhorns",
+       "mode": "ATS",
+       "line": "-10.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1791994640491,
+       "late": false
+      },
+      {
+       "g": 4,
+       "matchup": "Mississippi St at LSU",
+       "favorite": "LSU Tigers",
+       "spread": 14,
+       "team": "Mississippi State Bulldogs",
+       "mode": "ATS",
+       "line": "+14",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "0-31",
+       "savedAt": 1791994537963,
+       "late": false
+      },
+      {
+       "g": 5,
+       "matchup": "Auburn at Georgia",
+       "favorite": "Georgia Bulldogs",
+       "spread": 20.5,
+       "team": "Georgia Bulldogs",
+       "mode": "ATS",
+       "line": "-20.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1791994543983,
+       "late": false
+      },
+      {
+       "g": 6,
+       "matchup": "Alabama at Tennessee",
+       "favorite": "Alabama Crimson Tide",
+       "spread": 8.5,
+       "team": "Alabama Crimson Tide",
+       "mode": "ATS",
+       "line": "-8.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "10-26",
+       "savedAt": 1791994548179,
+       "late": false
+      },
+      {
+       "g": 7,
+       "matchup": "Missouri at Ole Miss",
+       "favorite": "Ole Miss Rebels",
+       "spread": 6,
+       "team": "Missouri Tigers",
+       "mode": "ATS",
+       "line": "+6",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "3-31",
+       "savedAt": 1791994552395,
+       "late": false
+      },
+      {
+       "g": 8,
+       "matchup": "Florida St at Miami",
+       "favorite": "Miami Hurricanes",
+       "spread": 21.5,
+       "team": "Miami Hurricanes",
+       "mode": "ATS",
+       "line": "-21.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "35-43",
+       "savedAt": 1791994851437,
+       "late": false
+      },
+      {
+       "g": 9,
+       "matchup": "Kentucky at Oklahoma",
+       "favorite": "Oklahoma Sooners",
+       "spread": 7,
+       "team": "Kentucky Wildcats",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 3,
+       "result": "hit",
+       "score": "21-13",
+       "savedAt": 1791994558563,
+       "late": false
+      },
+      {
+       "g": 10,
+       "matchup": "Nebraska at Oregon",
+       "favorite": "Oregon Ducks",
+       "spread": 7.5,
+       "team": "Nebraska Cornhuskers",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 0,
+       "result": "miss",
+       "score": "14-17",
+       "savedAt": 1791994568359,
+       "late": false
+      }
+     ],
+     "place": 6,
+     "won": false
+    },
+    {
+     "name": "Robert",
+     "score": 7,
+     "hits": 3,
+     "misses": 7,
+     "picked": 10,
+     "tbGuess": 51,
+     "tbDiff": 17,
+     "ledger": [
+      {
+       "g": 1,
+       "matchup": "Kennesaw St at Missouri St",
+       "favorite": "Kennesaw State Owls",
+       "spread": 3,
+       "team": "Kennesaw State Owls",
+       "mode": "ATS",
+       "line": "-3",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "21-24",
+       "savedAt": 1791996967967,
+       "late": false
+      },
+      {
+       "g": 2,
+       "matchup": "Ohio State at Indiana",
+       "favorite": "Ohio State Buckeyes",
+       "spread": 3.5,
+       "team": "Indiana Hoosiers",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 0,
+       "result": "miss",
+       "score": "19-15",
+       "savedAt": 1791996979504,
+       "late": false
+      },
+      {
+       "g": 3,
+       "matchup": "Florida at Texas",
+       "favorite": "Texas Longhorns",
+       "spread": 10.5,
+       "team": "Texas Longhorns",
+       "mode": "ATS",
+       "line": "-10.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1791996991660,
+       "late": false
+      },
+      {
+       "g": 4,
+       "matchup": "Mississippi St at LSU",
+       "favorite": "LSU Tigers",
+       "spread": 14,
+       "team": "LSU Tigers",
+       "mode": "ATS",
+       "line": "-14",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "0-31",
+       "savedAt": 1791997003714,
+       "late": false
+      },
+      {
+       "g": 5,
+       "matchup": "Auburn at Georgia",
+       "favorite": "Georgia Bulldogs",
+       "spread": 20.5,
+       "team": "Georgia Bulldogs",
+       "mode": "ATS",
+       "line": "-20.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1791997011450,
+       "late": false
+      },
+      {
+       "g": 6,
+       "matchup": "Alabama at Tennessee",
+       "favorite": "Alabama Crimson Tide",
+       "spread": 8.5,
+       "team": "Alabama Crimson Tide",
+       "mode": "ATS",
+       "line": "-8.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "10-26",
+       "savedAt": 1791997023745,
+       "late": false
+      },
+      {
+       "g": 7,
+       "matchup": "Missouri at Ole Miss",
+       "favorite": "Ole Miss Rebels",
+       "spread": 6,
+       "team": "Ole Miss Rebels",
+       "mode": "ATS",
+       "line": "-6",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "3-31",
+       "savedAt": 1791997035737,
+       "late": false
+      },
+      {
+       "g": 8,
+       "matchup": "Florida St at Miami",
+       "favorite": "Miami Hurricanes",
+       "spread": 21.5,
+       "team": "Miami Hurricanes",
+       "mode": "ATS",
+       "line": "-21.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "35-43",
+       "savedAt": 1791997039807,
+       "late": false
+      },
+      {
+       "g": 9,
+       "matchup": "Kentucky at Oklahoma",
+       "favorite": "Oklahoma Sooners",
+       "spread": 7,
+       "team": "Kentucky Wildcats",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 3,
+       "result": "hit",
+       "score": "21-13",
+       "savedAt": 1791997043583,
+       "late": false
+      },
+      {
+       "g": 10,
+       "matchup": "Nebraska at Oregon",
+       "favorite": "Oregon Ducks",
+       "spread": 7.5,
+       "team": "Nebraska Cornhuskers",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 0,
+       "result": "miss",
+       "score": "14-17",
+       "savedAt": 1791997044995,
+       "late": false
+      }
+     ],
+     "place": 7,
+     "won": false
+    },
+    {
+     "name": "Conlan",
+     "score": 6,
+     "hits": 3,
+     "misses": 7,
+     "picked": 10,
+     "tbGuess": 41,
+     "tbDiff": 7,
+     "ledger": [
+      {
+       "g": 1,
+       "matchup": "Kennesaw St at Missouri St",
+       "favorite": "Kennesaw State Owls",
+       "spread": 3,
+       "team": "Kennesaw State Owls",
+       "mode": "ATS",
+       "line": "-3",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "21-24",
+       "savedAt": 1791994794962,
+       "late": false
+      },
+      {
+       "g": 2,
+       "matchup": "Ohio State at Indiana",
+       "favorite": "Ohio State Buckeyes",
+       "spread": 3.5,
+       "team": "Ohio State Buckeyes",
+       "mode": "ATS",
+       "line": "-3.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "19-15",
+       "savedAt": 1791994797692,
+       "late": false
+      },
+      {
+       "g": 3,
+       "matchup": "Florida at Texas",
+       "favorite": "Texas Longhorns",
+       "spread": 10.5,
+       "team": "Texas Longhorns",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 1,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1791994867017,
+       "late": false
+      },
+      {
+       "g": 4,
+       "matchup": "Mississippi St at LSU",
+       "favorite": "LSU Tigers",
+       "spread": 14,
+       "team": "Mississippi State Bulldogs",
+       "mode": "ATS",
+       "line": "+14",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "0-31",
+       "savedAt": 1791994817132,
+       "late": false
+      },
+      {
+       "g": 5,
+       "matchup": "Auburn at Georgia",
+       "favorite": "Georgia Bulldogs",
+       "spread": 20.5,
+       "team": "Georgia Bulldogs",
+       "mode": "ATS",
+       "line": "-20.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1791994821266,
+       "late": false
+      },
+      {
+       "g": 6,
+       "matchup": "Alabama at Tennessee",
+       "favorite": "Alabama Crimson Tide",
+       "spread": 8.5,
+       "team": "Alabama Crimson Tide",
+       "mode": "ATS",
+       "line": "-8.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "10-26",
+       "savedAt": 1791994827249,
+       "late": false
+      },
+      {
+       "g": 7,
+       "matchup": "Missouri at Ole Miss",
+       "favorite": "Ole Miss Rebels",
+       "spread": 6,
+       "team": "Missouri Tigers",
+       "mode": "ATS",
+       "line": "+6",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "3-31",
+       "savedAt": 1791994832748,
+       "late": false
+      },
+      {
+       "g": 8,
+       "matchup": "Florida St at Miami",
+       "favorite": "Miami Hurricanes",
+       "spread": 21.5,
+       "team": "Florida State Seminoles",
+       "mode": "ATS",
+       "line": "+21.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "35-43",
+       "savedAt": 1791994836600,
+       "late": false
+      },
+      {
+       "g": 9,
+       "matchup": "Kentucky at Oklahoma",
+       "favorite": "Oklahoma Sooners",
+       "spread": 7,
+       "team": "Kentucky Wildcats",
+       "mode": "ATS",
+       "line": "+7",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "21-13",
+       "savedAt": 1791994841732,
+       "late": false
+      },
+      {
+       "g": 10,
+       "matchup": "Nebraska at Oregon",
+       "favorite": "Oregon Ducks",
+       "spread": 7.5,
+       "team": "Nebraska Cornhuskers",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 0,
+       "result": "miss",
+       "score": "14-17",
+       "savedAt": 1791994847114,
+       "late": false
+      }
+     ],
+     "place": 8,
+     "won": false
+    },
+    {
+     "name": "Skills",
+     "score": 6,
+     "hits": 3,
+     "misses": 7,
+     "picked": 10,
+     "tbGuess": 56,
+     "tbDiff": 22,
+     "ledger": [
+      {
+       "g": 1,
+       "matchup": "Kennesaw St at Missouri St",
+       "favorite": "Kennesaw State Owls",
+       "spread": 3,
+       "team": "Kennesaw State Owls",
+       "mode": "ATS",
+       "line": "-3",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "21-24",
+       "savedAt": 1792012741502,
+       "late": false
+      },
+      {
+       "g": 2,
+       "matchup": "Ohio State at Indiana",
+       "favorite": "Ohio State Buckeyes",
+       "spread": 3.5,
+       "team": "Ohio State Buckeyes",
+       "mode": "ATS",
+       "line": "-3.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "19-15",
+       "savedAt": 1792002452513,
+       "late": false
+      },
+      {
+       "g": 3,
+       "matchup": "Florida at Texas",
+       "favorite": "Texas Longhorns",
+       "spread": 10.5,
+       "team": "Texas Longhorns",
+       "mode": "ATS",
+       "line": "-10.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1792002462019,
+       "late": false
+      },
+      {
+       "g": 4,
+       "matchup": "Mississippi St at LSU",
+       "favorite": "LSU Tigers",
+       "spread": 14,
+       "team": "Mississippi State Bulldogs",
+       "mode": "ATS",
+       "line": "+14",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "0-31",
+       "savedAt": 1792002479105,
+       "late": false
+      },
+      {
+       "g": 5,
+       "matchup": "Auburn at Georgia",
+       "favorite": "Georgia Bulldogs",
+       "spread": 20.5,
+       "team": "Auburn Tigers",
+       "mode": "ATS",
+       "line": "+20.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "27-24",
+       "savedAt": 1792002484674,
+       "late": false
+      },
+      {
+       "g": 6,
+       "matchup": "Alabama at Tennessee",
+       "favorite": "Alabama Crimson Tide",
+       "spread": 8.5,
+       "team": "Alabama Crimson Tide",
+       "mode": "ATS",
+       "line": "-8.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "10-26",
+       "savedAt": 1792002491046,
+       "late": false
+      },
+      {
+       "g": 7,
+       "matchup": "Missouri at Ole Miss",
+       "favorite": "Ole Miss Rebels",
+       "spread": 6,
+       "team": "Missouri Tigers",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 0,
+       "result": "miss",
+       "score": "3-31",
+       "savedAt": 1792002530553,
+       "late": false
+      },
+      {
+       "g": 8,
+       "matchup": "Florida St at Miami",
+       "favorite": "Miami Hurricanes",
+       "spread": 21.5,
+       "team": "Florida State Seminoles",
+       "mode": "ATS",
+       "line": "+21.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "35-43",
+       "savedAt": 1792012379746,
+       "late": false
+      },
+      {
+       "g": 9,
+       "matchup": "Kentucky at Oklahoma",
+       "favorite": "Oklahoma Sooners",
+       "spread": 7,
+       "team": "Oklahoma Sooners",
+       "mode": "ATS",
+       "line": "-7",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "21-13",
+       "savedAt": 1792002561246,
+       "late": false
+      },
+      {
+       "g": 10,
+       "matchup": "Nebraska at Oregon",
+       "favorite": "Oregon Ducks",
+       "spread": 7.5,
+       "team": "Nebraska Cornhuskers",
+       "mode": "SU",
+       "line": "SU",
+       "worth": 3,
+       "pts": 0,
+       "result": "miss",
+       "score": "14-17",
+       "savedAt": 1792002549766,
+       "late": false
+      }
+     ],
+     "place": 9,
+     "won": false
+    },
+    {
+     "name": "Nissan",
+     "score": 6,
+     "hits": 3,
+     "misses": 7,
+     "picked": 10,
+     "tbGuess": 68,
+     "tbDiff": 34,
+     "ledger": [
+      {
+       "g": 1,
+       "matchup": "Kennesaw St at Missouri St",
+       "favorite": "Kennesaw State Owls",
+       "spread": 3,
+       "team": "Kennesaw State Owls",
+       "mode": "ATS",
+       "line": "-3",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "21-24",
+       "savedAt": 1791998861513,
+       "late": false
+      },
+      {
+       "g": 2,
+       "matchup": "Ohio State at Indiana",
+       "favorite": "Ohio State Buckeyes",
+       "spread": 3.5,
+       "team": "Ohio State Buckeyes",
+       "mode": "ATS",
+       "line": "-3.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "19-15",
+       "savedAt": 1791999068381,
+       "late": false
+      },
+      {
+       "g": 3,
+       "matchup": "Florida at Texas",
+       "favorite": "Texas Longhorns",
+       "spread": 10.5,
+       "team": "Texas Longhorns",
+       "mode": "ATS",
+       "line": "-10.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1792001865633,
+       "late": false
+      },
+      {
+       "g": 4,
+       "matchup": "Mississippi St at LSU",
+       "favorite": "LSU Tigers",
+       "spread": 14,
+       "team": "Mississippi State Bulldogs",
+       "mode": "ATS",
+       "line": "+14",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "0-31",
+       "savedAt": 1792001890271,
+       "late": false
+      },
+      {
+       "g": 5,
+       "matchup": "Auburn at Georgia",
+       "favorite": "Georgia Bulldogs",
+       "spread": 20.5,
+       "team": "Georgia Bulldogs",
+       "mode": "ATS",
+       "line": "-20.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "27-24",
+       "savedAt": 1792001893453,
+       "late": false
+      },
+      {
+       "g": 6,
+       "matchup": "Alabama at Tennessee",
+       "favorite": "Alabama Crimson Tide",
+       "spread": 8.5,
+       "team": "Alabama Crimson Tide",
+       "mode": "ATS",
+       "line": "-8.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "10-26",
+       "savedAt": 1792001897321,
+       "late": false
+      },
+      {
+       "g": 7,
+       "matchup": "Missouri at Ole Miss",
+       "favorite": "Ole Miss Rebels",
+       "spread": 6,
+       "team": "Missouri Tigers",
+       "mode": "ATS",
+       "line": "+6",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "3-31",
+       "savedAt": 1792001902667,
+       "late": false
+      },
+      {
+       "g": 8,
+       "matchup": "Florida St at Miami",
+       "favorite": "Miami Hurricanes",
+       "spread": 21.5,
+       "team": "Miami Hurricanes",
+       "mode": "ATS",
+       "line": "-21.5",
+       "worth": 2,
+       "pts": 0,
+       "result": "miss",
+       "score": "35-43",
+       "savedAt": 1792001906995,
+       "late": false
+      },
+      {
+       "g": 9,
+       "matchup": "Kentucky at Oklahoma",
+       "favorite": "Oklahoma Sooners",
+       "spread": 7,
+       "team": "Kentucky Wildcats",
+       "mode": "ATS",
+       "line": "+7",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "21-13",
+       "savedAt": 1792001910439,
+       "late": false
+      },
+      {
+       "g": 10,
+       "matchup": "Nebraska at Oregon",
+       "favorite": "Oregon Ducks",
+       "spread": 7.5,
+       "team": "Nebraska Cornhuskers",
+       "mode": "ATS",
+       "line": "+7.5",
+       "worth": 2,
+       "pts": 2,
+       "result": "hit",
+       "score": "14-17",
+       "savedAt": 1792001915070,
+       "late": false
+      }
+     ],
+     "place": 10,
+     "won": false
+    }
+   ],
+   "slate": [
+    {
+     "id": 1,
+     "away": "Kennesaw State Owls",
+     "home": "Missouri State Bears",
+     "awayShort": "Kennesaw St",
+     "homeShort": "Missouri St",
+     "favorite": "Kennesaw State Owls",
+     "spread": 3,
+     "kickoff": "2026-10-14T23:30:00.000Z",
+     "tiebreakerGame": false,
+     "awayId": 338,
+     "homeId": 2623
+    },
+    {
+     "id": 2,
+     "away": "Ohio State Buckeyes",
+     "home": "Indiana Hoosiers",
+     "awayShort": "Ohio State",
+     "homeShort": "Indiana",
+     "favorite": "Ohio State Buckeyes",
+     "spread": 3.5,
+     "kickoff": "2026-10-17T16:00:00.000Z",
+     "tiebreakerGame": true,
+     "awayId": 194,
+     "homeId": 84
+    },
+    {
+     "id": 3,
+     "away": "Florida Gators",
+     "home": "Texas Longhorns",
+     "awayShort": "Florida",
+     "homeShort": "Texas",
+     "favorite": "Texas Longhorns",
+     "spread": 10.5,
+     "kickoff": "2026-10-17T16:00:00.000Z",
+     "tiebreakerGame": false,
+     "awayId": 57,
+     "homeId": 251
+    },
+    {
+     "id": 4,
+     "away": "Mississippi State Bulldogs",
+     "home": "LSU Tigers",
+     "awayShort": "Mississippi St",
+     "homeShort": "LSU",
+     "favorite": "LSU Tigers",
+     "spread": 14,
+     "kickoff": "2026-10-17T16:00:00.000Z",
+     "tiebreakerGame": false,
+     "awayId": 344,
+     "homeId": 99
+    },
+    {
+     "id": 5,
+     "away": "Auburn Tigers",
+     "home": "Georgia Bulldogs",
+     "awayShort": "Auburn",
+     "homeShort": "Georgia",
+     "favorite": "Georgia Bulldogs",
+     "spread": 20.5,
+     "kickoff": "2026-10-17T19:30:00.000Z",
+     "tiebreakerGame": false,
+     "awayId": 2,
+     "homeId": 61
+    },
+    {
+     "id": 6,
+     "away": "Alabama Crimson Tide",
+     "home": "Tennessee Volunteers",
+     "awayShort": "Alabama",
+     "homeShort": "Tennessee",
+     "favorite": "Alabama Crimson Tide",
+     "spread": 8.5,
+     "kickoff": "2026-10-17T19:30:00.000Z",
+     "tiebreakerGame": false,
+     "awayId": 333,
+     "homeId": 2633
+    },
+    {
+     "id": 7,
+     "away": "Missouri Tigers",
+     "home": "Ole Miss Rebels",
+     "awayShort": "Missouri",
+     "homeShort": "Ole Miss",
+     "favorite": "Ole Miss Rebels",
+     "spread": 6,
+     "kickoff": "2026-10-17T19:30:00.000Z",
+     "tiebreakerGame": false,
+     "awayId": 142,
+     "homeId": 145
+    },
+    {
+     "id": 8,
+     "away": "Florida State Seminoles",
+     "home": "Miami Hurricanes",
+     "awayShort": "Florida St",
+     "homeShort": "Miami",
+     "favorite": "Miami Hurricanes",
+     "spread": 21.5,
+     "kickoff": "2026-10-17T23:00:00.000Z",
+     "tiebreakerGame": false,
+     "awayId": 52,
+     "homeId": 2390
+    },
+    {
+     "id": 9,
+     "away": "Kentucky Wildcats",
+     "home": "Oklahoma Sooners",
+     "awayShort": "Kentucky",
+     "homeShort": "Oklahoma",
+     "favorite": "Oklahoma Sooners",
+     "spread": 7,
+     "kickoff": "2026-10-17T23:30:00.000Z",
+     "tiebreakerGame": false,
+     "awayId": 96,
+     "homeId": 201
+    },
+    {
+     "id": 10,
+     "away": "Nebraska Cornhuskers",
+     "home": "Oregon Ducks",
+     "awayShort": "Nebraska",
+     "homeShort": "Oregon",
+     "favorite": "Oregon Ducks",
+     "spread": 7.5,
+     "kickoff": "2026-10-18T03:00:00.000Z",
+     "tiebreakerGame": false,
+     "awayId": 158,
+     "homeId": 2483
+    }
+   ],
+   "finals": {
+    "1": {
+     "awayScore": 21,
+     "homeScore": 24
+    },
+    "2": {
+     "awayScore": 19,
+     "homeScore": 15
+    },
+    "3": {
+     "awayScore": 27,
+     "homeScore": 24
+    },
+    "4": {
+     "awayScore": 0,
+     "homeScore": 31
+    },
+    "5": {
+     "awayScore": 27,
+     "homeScore": 24
+    },
+    "6": {
+     "awayScore": 10,
+     "homeScore": 26
+    },
+    "7": {
+     "awayScore": 3,
+     "homeScore": 31
+    },
+    "8": {
+     "awayScore": 35,
+     "homeScore": 43
+    },
+    "9": {
+     "awayScore": 21,
+     "homeScore": 13
+    },
+    "10": {
+     "awayScore": 14,
+     "homeScore": 17
+    }
+   },
+   "sealedAt": 1792305910415,
+   "recap": {
+    "best": {
+     "who": [
+      "Jake",
+      "Robert"
+     ],
+     "team": "LSU",
+     "teamId": 99,
+     "pick": "LSU -14",
+     "matchup": "Mississippi St at LSU",
+     "score": "0-31",
+     "final": "LSU won 31-0",
+     "takers": 2,
+     "of": 10,
+     "pts": 2
+    },
+    "worst": {
+     "who": [
+      "Dewitt",
+      "Curt",
+      "Jordan",
+      "Logan",
+      "Andrew",
+      "Conlan",
+      "Skills",
+      "Nissan"
+     ],
+     "team": "Mississippi St",
+     "teamId": 344,
+     "pick": "Mississippi St +14",
+     "matchup": "Mississippi St at LSU",
+     "score": "0-31",
+     "final": "LSU won 31-0",
+     "takers": 8,
+     "of": 10,
+     "pts": 2
+    },
+    "movement": {
+     "up": {
+      "name": "Jake",
+      "from": 7,
+      "to": 5
+     },
+     "down": {
+      "name": "Conlan",
+      "from": 4,
+      "to": 6
+     }
+    },
+    "consensus": {
+     "pct": 68,
+     "matchup": "Florida St at Miami",
+     "sides": [
+      {
+       "team": "Florida St",
+       "id": 52,
+       "n": 5
+      },
+      {
+       "team": "Miami",
+       "id": 2390,
+       "n": 5
+      }
+     ],
+     "cashed": "Florida St",
+     "score": "35-43",
+     "final": "Miami won 43-35"
+    },
+    "tb": {
+     "who": [
+      "Conlan"
+     ],
+     "guesses": [
+      41
+     ],
+     "actual": 34,
+     "off": 7,
+     "matchup": "Ohio State at Indiana",
+     "awayId": 194,
+     "homeId": 84
     },
     "bestWhoFixed": true
    },
