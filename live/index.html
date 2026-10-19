@@ -724,7 +724,13 @@ html, body { overflow-x: hidden; }
   const SCREEN_NAME = { scoreboard: "Scores", picks: "Picks", history: "History", trivia: "Trivia", side: "Side bet", home: "Players" };
   const FRICTION = /^(rage|dead-tap|quick-exit|js-error)$/;
   let lastDigest = "";
-  document.addEventListener("click", (e) => { const b = e.target.closest(".digest-copy"); if (!b) return; navigator.clipboard?.writeText(lastDigest).then(() => { b.textContent = "Copied ✓"; setTimeout(() => (b.textContent = "Copy for Claude"), 1500); }, () => window.prompt("Copy this", lastDigest)); });
+  document.addEventListener("click", (e) => { const b = e.target.closest(".digest-copy"); if (!b) return; // Show the digest in the panel (no pop-up window), selected, and try the clipboard too.
+    const sec = b.closest("section"); let ta = sec.querySelector(".digest-text");
+    if (!ta) { ta = document.createElement("textarea"); ta.className = "digest-text"; ta.readOnly = true; ta.style.cssText = "width:100%;box-sizing:border-box;min-height:160px;margin-top:8px;font:12px/1.4 ui-monospace,monospace;background:#0b0e15;color:#e9ecf5;border:1px solid #ff7a9a;border-radius:8px;padding:8px"; sec.appendChild(ta); }
+    ta.value = lastDigest; ta.focus(); ta.select();
+    const ok = () => { b.textContent = "Copied ✓"; setTimeout(() => (b.textContent = "Copy for Claude"), 1500); };
+    try { navigator.clipboard.writeText(lastDigest).then(ok, () => { if (document.execCommand("copy")) ok(); }); } catch { if (document.execCommand("copy")) ok(); }
+  });
   function says(e, feed) {
     if (e.k === "recap-card") return ["Opened a replay card", ({ hit: "Pick of the week", miss: "Worst pick", move: "Movement", split: "Coin flip", tb: "Tiebreaker" })[e.d] || e.d || ""];
     if (e.k === "pot-row") return ["Opened a pot row", e.d ? name(e.d) : ""];
