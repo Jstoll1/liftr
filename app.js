@@ -8496,7 +8496,12 @@ function playerSeason(name) {
       const others = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team !== lg.team && x.result === "hit")).length;
       const g = (wk.slate || []).find((x) => Number(x.id) === Number(lg.g));
       const team = g ? (lg.team === g.home ? g.homeShort : lg.team === g.away ? g.awayShort : lg.team) : lg.team;
-      picks.push({ week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: `${team} ${lg.line || lg.mode}`.trim(), with_, of: (wk.rows || []).length, others });
+      // The game itself: matchup and final, from the sealed score ("away-home").
+      const [as, hs] = String(lg.score || "").split("-").map(Number);
+      const game = g ? `${g.awayShort} ${Number.isFinite(as) ? as : ""} at ${g.homeShort} ${Number.isFinite(hs) ? hs : ""}`.replace(/\s+/g, " ").trim() : "";
+      const margin = Number.isFinite(as) && Number.isFinite(hs) && g ? (as === hs ? "tied" : `${as > hs ? g.awayShort : g.homeShort} by ${Math.abs(as - hs)}`) : "";
+      const line = g && g.spread != null ? `${g.favorite === g.home ? g.homeShort : g.awayShort} −${g.spread}` : "";
+      picks.push({ week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: `${team} ${lg.line || lg.mode}`.trim(), mode: lg.mode, with_, of: (wk.rows || []).length, others, game, margin, line });
     }
   }
   const sorted = [...scores].sort((a, b) => b.score - a.score);
@@ -8542,8 +8547,12 @@ function openPlayerCard(name, again) {
       ${d.w + d.l ? `${stat("RECORD", `${d.w}-${d.l}`, `${Math.round((d.w / (d.w + d.l)) * 100)}%`)}
       ${stat("ATS · SU", `${d.ats ?? "–"}% · ${d.su ?? "–"}%`, `${d.atsN} spread · ${d.suN} straight`)}` : `<div class="pc-stat pc-wide"><small>PICKS</small><span>Loading every pick…</span></div>`}
     </div>
-    ${d.best ? `<div class="pc-pick hit"><small>BEST PICK</small><b>${esc(d.best.text)}</b><span>Week ${d.best.week} · +${d.best.pts}${d.best.with_ <= 2 ? ` · only ${d.best.with_} of ${d.best.of} on it` : ""}</span></div>` : ""}
-    ${d.worst ? `<div class="pc-pick miss"><small>WORST PICK</small><b>${esc(d.worst.text)}</b><span>Week ${d.worst.week} · 0${d.worst.others ? ` · ${d.worst.others} of ${d.worst.of} cashed the other side` : ""}</span></div>` : ""}`
+    ${["best", "worst"].map((k) => { const p = d[k]; if (!p) return ""; const hit = k === "best";
+      return `<div class="pc-pick ${hit ? "hit" : "miss"}"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}</small>
+        <div class="pc-pk"><b>${esc(p.text)}</b><i>${hit ? `+${p.pts}` : "0"}</i></div>
+        ${p.game ? `<div class="pc-game"><span>${esc(p.game)}</span>${p.margin ? `<em>${esc(p.margin)}</em>` : ""}</div>` : ""}
+        <span>${[p.line ? `Line ${esc(p.line)}` : "", hit ? `${p.with_} of ${p.of} on it${p.with_ <= 2 ? ", a lonely call" : ""}` : `${p.with_} of ${p.of} on it${p.others ? ` · ${p.others} cashed the other side` : ""}`].filter(Boolean).join(" · ")}</span>
+      </div>`; }).join("")}`
     : `<div class="pc-none">No finished weeks yet.</div>`}
   </div>`;
   m.classList.remove("hidden");

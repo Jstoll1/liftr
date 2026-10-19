@@ -7213,3 +7213,10 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .pc-none { font-size: 12px; color: var(--text-dim); }
 #recap-panel .pick-chip[data-name] { cursor: pointer; }
 .pc-wide { grid-column: 1 / -1; }
+
+.pc-pk { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 5px; }
+.pc-pk b { margin: 0 !important; }
+.pc-pk i { font-style: normal; font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 15px; color: var(--neon-green); }
+.pc-pick.miss .pc-pk i { color: var(--text-dim); }
+.pc-game { display: flex; justify-content: space-between; gap: 8px; margin: 6px 0 2px; padding: 6px 8px; border-radius: 6px; background: rgba(0, 0, 0, .3); font-size: 12px; color: #fff; }
+.pc-game em { font-style: normal; color: var(--text-meta); white-space: nowrap; }
