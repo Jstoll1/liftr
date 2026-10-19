@@ -3641,7 +3641,7 @@ function nameChips(names) {
     const idx = MANAGERS.indexOf(n);
     const accent = accentFor(n);
     const av = avatarOverrides[n] || shown(n)[0];
-    return `<span class="pick-chip${n === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
+    return `<span class="pick-chip${n === currentManager ? " me" : ""}" data-name="${escapeCd(n)}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
   }).join("");
 }
 
@@ -4838,20 +4838,14 @@ function renderPayouts() {
     ${contested ? `<div class="pot-warn">⚠ Season places are tied on points where the money sits. The weekly tiebreaker does not settle the season, so the league needs a rule for this before the last week.</div>` : ""}
     <div class="pot-table">
       <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>REC</span><span>WON</span><span>EARNED</span></div>
-      ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}${potRowOpen === r.name ? " open" : ""}" data-pot-row="${escapeCd(r.name)}" role="button" tabindex="0">
+      ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}" data-pot-row="${escapeCd(r.name)}" role="button" tabindex="0">
         <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
         <span class="pot-name"><span class="pot-av" style="--accent:${accentFor(r.name)}">${avatarOverrides[r.name] || shown(r.name)[0]}</span>${r.seasonPlace === 1 && r.points > 0 ? `<i class="pot-crown">♛</i>` : ""}${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
         <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
         <span class="pot-rec">${rec[r.name] ? `${rec[r.name].w}-${rec[r.name].l}` : "–"}</span>
         <span class="pot-won">${(() => { const wk = Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(r.name)).sort((x, y) => x.week - y.week); return wk.length ? wk.map((w) => `<button type="button" class="pot-tro${w.exhibition ? " exh" : ""}" data-week="${w.week}" data-name="${r.name}" title="Week ${w.week} win">🏆</button>`).join("") : "–"; })()}</span>
         <span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>
-      </div>${potRowOpen === r.name ? (() => {
-        // Tap a row: the weeks they won, with the score, and where the money came from.
-        const wk = Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(r.name)).sort((x, y) => x.week - y.week);
-        const mine = Object.values(weekSummaries).filter((w) => w?.complete).map((w) => ({ w: w.week, s: (w.rows || []).find((x) => x.name === r.name)?.score })).filter((x) => x.s != null);
-        const best = mine.sort((a, b) => b.s - a.s)[0];
-        return `<div class="pot-more">${wk.length ? wk.map((w) => `<span class="pm-win">🏆 Week ${w.week} · ${w.highScore} pts${(w.winners || []).length > 1 ? " (split)" : ""}</span>`).join("") : `<span>No weekly wins yet.</span>`}${best ? `<span>Best week: Week ${best.w}, ${best.s} pts</span>` : ""}${r.seasonPrize ? `<span>On pace for season money in ${r.seasonPlace}${["th", "st", "nd", "rd"][r.seasonPlace] || "th"}</span>` : ""}</div>`;
-      })() : ""}`).join("")}
+      </div>`).join("")}
     </div>
     ${sealed ? "" : `<div class="pot-empty">No weeks settled yet. Earnings appear once a week's last game is final.</div>`}`;
 }
@@ -8476,14 +8470,83 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
   paint();
 })();
 
-var potRowOpen = null;
+// --- Player card ----------------------------------------------------------
+// Tap a pot row, or a name on the replay: that player's season on one
+// card. Everything comes from the sealed weeks, so it is what was graded.
+function playerSeason(name) {
+  const weeks = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition).sort((a, b) => a.week - b.week);
+  const scores = [], picks = [];
+  let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0;
+  for (const wk of weeks) {
+    const me = (wk.rows || []).find((r) => r.name === name);
+    if (!me) continue;
+    scores.push({ week: wk.week, score: me.score, won: (wk.winners || []).includes(name), high: wk.highScore });
+    for (const lg of me.ledger || []) {
+      if (lg.result !== "hit" && lg.result !== "miss") continue;
+      const hit = lg.result === "hit";
+      hit ? w++ : l++;
+      if (lg.mode === "ATS") { atsN++; if (hit) atsW++; } else { suN++; if (hit) suW++; }
+      // How many others were on the same team that week.
+      const with_ = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team === lg.team)).length;
+      const others = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team !== lg.team && x.result === "hit")).length;
+      const g = (wk.slate || []).find((x) => Number(x.id) === Number(lg.g));
+      const team = g ? (lg.team === g.home ? g.homeShort : lg.team === g.away ? g.awayShort : lg.team) : lg.team;
+      picks.push({ week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: `${team} ${lg.line || lg.mode}`.trim(), with_, of: (wk.rows || []).length, others });
+    }
+  }
+  const sorted = [...scores].sort((a, b) => b.score - a.score);
+  const best = picks.filter((p) => p.hit).sort((a, b) => b.pts - a.pts || a.with_ - b.with_)[0];
+  const worst = picks.filter((p) => !p.hit).sort((a, b) => b.others - a.others || b.worth - a.worth)[0];
+  return {
+    scores, w, l, best, worst,
+    top: sorted[0], low: sorted[sorted.length - 1],
+    avg: scores.length ? scores.reduce((s, x) => s + x.score, 0) / scores.length : null,
+    wins: scores.filter((x) => x.won),
+    ats: atsN ? Math.round((atsW / atsN) * 100) : null, atsN, su: suN ? Math.round((suW / suN) * 100) : null, suN,
+  };
+}
+function openPlayerCard(name) {
+  if (!name) return;
+  noteUse("player-card", name);
+  const esc = escapeCd, d = playerSeason(name);
+  const pot = typeof payoutLedger === "function" ? payoutLedger() : null;
+  const pr = pot?.list?.find((r) => r.name === name) || {};
+  let m = document.getElementById("player-modal");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "player-modal";
+    m.className = "modal-overlay pc-modal hidden";
+    m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".pc-x")) m.classList.add("hidden"); });
+    if (typeof swipeToClose === "function") swipeToClose(m, null, () => m.classList.add("hidden"));
+  }
+  const max = Math.max(1, ...d.scores.map((x) => x.score));
+  const stat = (label, big, small = "") => `<div class="pc-stat"><small>${label}</small><b>${big}</b>${small ? `<span>${small}</span>` : ""}</div>`;
+  m.innerHTML = `<div class="modal-card pc-card" style="--accent:${accentFor(name)}">
+    <button type="button" class="pc-x" aria-label="Close">✕</button>
+    <div class="pc-head"><span class="pc-av">${avatarOverrides[name] || shown(name)[0]}</span><div><b>${esc(shown(name).toUpperCase())}</b><small>${pr.seasonPlace ? `${pr.tied ? "T" : "#"}${pr.seasonPlace} · ` : ""}${pr.points ?? d.scores.reduce((s, x) => s + x.score, 0)} pts${pr.earned ? ` · ${money(pr.earned)} won` : ""}</small></div></div>
+    ${d.scores.length ? `<div class="pc-bars">${d.scores.map((x) => `<i class="${x.won ? "won" : ""}" title="Week ${x.week}: ${x.score}"><s style="height:${Math.max(6, (x.score / max) * 100)}%"></s><em>${x.week}</em></i>`).join("")}</div>
+    <div class="pc-grid">
+      ${stat("WEEKS WON", d.wins.length, d.wins.length ? d.wins.map((x) => `W${x.week}`).join(" · ") : "none yet")}
+      ${stat("AVERAGE", d.avg.toFixed(1), `${d.scores.length} week${d.scores.length === 1 ? "" : "s"}`)}
+      ${stat("BEST WEEK", d.top.score, `Week ${d.top.week}`)}
+      ${stat("WORST WEEK", d.low.score, `Week ${d.low.week}`)}
+      ${stat("RECORD", `${d.w}-${d.l}`, d.w + d.l ? `${Math.round((d.w / (d.w + d.l)) * 100)}%` : "")}
+      ${stat("ATS · SU", `${d.ats ?? "–"}% · ${d.su ?? "–"}%`, `${d.atsN} spread · ${d.suN} straight`)}
+    </div>
+    ${d.best ? `<div class="pc-pick hit"><small>BEST PICK</small><b>${esc(d.best.text)}</b><span>Week ${d.best.week} · +${d.best.pts}${d.best.with_ <= 2 ? ` · only ${d.best.with_} of ${d.best.of} on it` : ""}</span></div>` : ""}
+    ${d.worst ? `<div class="pc-pick miss"><small>WORST PICK</small><b>${esc(d.worst.text)}</b><span>Week ${d.worst.week} · 0${d.worst.others ? ` · ${d.worst.others} of ${d.worst.of} cashed the other side` : ""}</span></div>` : ""}`
+    : `<div class="pc-none">No finished weeks yet.</div>`}
+  </div>`;
+  m.classList.remove("hidden");
+}
 document.addEventListener("click", (e) => {
   const row = e.target.closest?.("[data-pot-row]");
-  if (!row) return;
-  potRowOpen = potRowOpen === row.dataset.potRow ? null : row.dataset.potRow;
-  if (potRowOpen) noteUse("pot-row", potRowOpen);
-  renderPayouts();
-});
+  if (row) return openPlayerCard(row.dataset.potRow);
+  const chip = e.target.closest?.("#recap-panel .pick-chip");
+  if (chip?.dataset.name) { e.stopPropagation(); return openPlayerCard(chip.dataset.name); }
+}, true);
 
 // --- Week win card --------------------------------------------------------
 // Tap a trophy in The Pot (or a gold week on the season bar): how that
