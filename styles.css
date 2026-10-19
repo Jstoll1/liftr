@@ -7335,3 +7335,20 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .plc-sb { grid-template-columns: 84px minmax(0, 1fr) 46px 56px !important; grid-template-areas: "l bar v n" !important; }
 .plc-sb > b { grid-area: v; justify-content: flex-end; }
 .plc-sb > em { grid-area: n; font-style: normal; font-size: 10px; color: var(--text-dim); white-space: nowrap; text-align: left; }
+
+/* Player card: one scheme for everyone, arcade navy with an orange highlight. */
+.plc-card { --accent: #ff8a1f; --navy: #0d1a3f; border-color: #ff8a1f;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 3px), radial-gradient(120% 70% at 50% 0%, #142a63 0%, #0b1638 45%, #060b1e 100%);
+  box-shadow: 0 0 0 4px #060b1e, 0 0 0 6px rgba(79, 140, 255, .55), 0 0 30px rgba(255, 138, 31, .3), 0 18px 40px rgba(0, 0, 0, .6); }
+.plc-top { border-bottom-color: rgba(255, 138, 31, .4); }
+.plc-av { background: linear-gradient(135deg, #ffd29a 0%, #ff8a1f 35%, #b14d00 100%); }
+.plc-av span { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .16) 0 2px, transparent 2px 4px), radial-gradient(circle at 30% 25%, #ffb262, #c85a00); }
+.plc-id small { color: #6fa8ff; }
+.plc-id b { text-shadow: 2px 2px 0 #b14d00, 0 0 10px rgba(255, 138, 31, .45); }
+.plc-badges span { background: rgba(111, 168, 255, .12); border-color: rgba(111, 168, 255, .35); }
+.plc-sec { color: #8fb3ff; }
+.plc-sb > span { color: #b9c9f0; }
+.plc-sb > i, .plc-score, .plc-bars s { border-color: rgba(111, 168, 255, .25); }
+.plc-sb > i { background: #050a1c; }
+.plc-score { background: #050a1c; }
+.plc-bars em, .plc-sb > em { color: #7d90bd; }

@@ -8580,7 +8580,7 @@ function openPlayerCard(name, again) {
       <div class="plc-call">${logo(p.teamFull, p.teamId)}<span><b>${esc(p.text)}</b><small>${hit ? `${p.with_} of ${p.of} made this pick${p.with_ <= 2 ? " · almost nobody else" : ""}` : p.others ? `${p.others} of ${p.of} took the other side and got it right` : `${p.with_} of ${p.of} made this pick`}</small></span></div>
       ${p.away ? `<div class="plc-score"><span class="${p.as > p.hs ? "w" : ""}">${logo(p.away, p.awayId)}<i>${esc(p.awayShort)}</i><b>${Number.isFinite(p.as) ? p.as : ""}</b></span><em>FINAL${p.line ? `<br>${esc(p.line)}` : ""}</em><span class="${p.hs > p.as ? "w" : ""}"><b>${Number.isFinite(p.hs) ? p.hs : ""}</b><i>${esc(p.homeShort)}</i>${logo(p.home, p.homeId)}</span></div>` : ""}
     </div>`;
-  m.innerHTML = `<div class="modal-card plc-card" style="--accent:${accentFor(name)}">
+  m.innerHTML = `<div class="modal-card plc-card">
     <button type="button" class="plc-x" aria-label="Close">✕</button>
     <div class="plc-top">
       <div class="plc-av"><span>${avatarOverrides[name] || shown(name)[0]}</span></div>
