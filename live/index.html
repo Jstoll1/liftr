@@ -1016,13 +1016,14 @@ html, body { overflow-x: hidden; }
     // Where people got stuck, and how far down each screen they got.
     const frictionPanel = (list, sub) => {
       const f = new Map();
-      for (const e of list) if (FRICTION.test(e.k)) { const [a, d] = says(e, list); const k = `${a}|${d}`; const x = f.get(k) || { a, d, n: 0, who: new Set() }; x.n++; x.who.add(e.n); f.set(k, x); }
+      for (const e of list) if (FRICTION.test(e.k)) { const [a, d] = says(e, list); const k = `${a}|${d}`; const x = f.get(k) || { a, d, n: 0, who: new Set(), ats: [] }; x.n++; x.who.add(e.n); x.ats.push(e.at); f.set(k, x); }
       const top = [...f.values()].sort((a, b) => b.n - a.n).slice(0, 8);
       const deep = new Map();
       for (const e of list) if (e.k === "depth") { const [sc, pct] = String(e.d || "").split(":"); const x = deep.get(sc) || []; x.push(Number(pct) || 0); deep.set(sc, x); }
       const depthRows = [...deep.entries()].map(([sc, v]) => { const reach = (q) => Math.round((v.filter((p) => p >= q).length / v.length) * 100); return { sc, n: v.length, r50: reach(50), r100: reach(100) }; }).sort((a, b) => b.n - a.n);
+      const when = (t) => `${new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ${hm(t)}`;
       // A names-free digest to paste to Claude: what broke, how often, how many people.
-      lastDigest = [`Brochiefs ${LEAGUE.toUpperCase()} friction digest (${sub})`, ...top.map((x) => `- ${x.a.replace("⚠ ", "")}${x.d ? ` [${x.d}]` : ""}: ${x.n}x, ${x.who.size} people`), ...depthRows.map((x) => `- Depth ${SCREEN_NAME[x.sc] || x.sc}: ${x.n} visits, half ${x.r50}%, bottom ${x.r100}%`)].join("\n");
+      lastDigest = [`Brochiefs ${LEAGUE.toUpperCase()} friction digest (${sub})`, ...top.map((x) => `- ${x.a.replace("⚠ ", "")}${x.d ? ` [${x.d}]` : ""}: ${x.n}x, ${x.who.size} people, ${x.ats.sort((p, q) => p - q).map(when).join("; ")}`), ...depthRows.map((x) => `- Depth ${SCREEN_NAME[x.sc] || x.sc}: ${x.n} visits, half ${x.r50}%, bottom ${x.r100}%`)].join("\n");
       return `<section class="panel"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span><button type="button" class="digest-copy" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ff7a9a;background:transparent;color:#ff7a9a">Copy for Claude</button></div>
         ${top.length ? `<div class="rank">${top.map((x) => `<div><span>${esc(x.a.replace("⚠ ", ""))}${x.d ? ` <small>${esc(x.d)}</small>` : ""}</span><b>${x.n}</b><i><s style="width:${((x.n / top[0].n) * 100).toFixed(1)}%;background:#ff7a9a"></s></i></div>`).join("")}</div>` : `<div class="note">No rage taps, dead taps, quick exits or errors.</div>`}
       </section>
