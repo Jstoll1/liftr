@@ -7369,3 +7369,33 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .plc-sb u.on { background: linear-gradient(180deg, #b8f7ff, #29e6ff); box-shadow: 0 0 5px rgba(41, 230, 255, .7); }
 .plc-bars s { background: repeating-linear-gradient(0deg, #1a8fb0 0 4px, #29e6ff 4px 6px); }
 .plc-bars em, .plc-sb > em { color: #8f84c4; }
+/* Season head to head v2: the player card's synthwave cabinet. Left player
+   cyan, right player magenta, uniform avatar tiles, pink section labels. */
+#sh2h-modal .h2h-card { border-color: #29e6ff;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 3px), radial-gradient(120% 60% at 50% 0%, #2a1260 0%, #150a35 45%, #08041a 100%);
+  box-shadow: 0 0 0 4px #08041a, 0 0 0 6px #ff2bd6, 0 0 26px rgba(41, 230, 255, .35), 0 0 46px rgba(255, 43, 214, .25), 0 18px 40px rgba(0, 0, 0, .6); }
+#sh2h-modal .modal-title { color: #fff; text-shadow: 2px 2px 0 #ff2bd6, 0 0 12px rgba(41, 230, 255, .55); }
+#sh2h-modal .h2h-fighter.a { --c: #29e6ff; }
+#sh2h-modal .h2h-fighter.b { --c: #ff2bd6; }
+#sh2h-modal .h2h-fighter { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .12) 0 2px, transparent 2px 4px), #0c0626 !important; border-color: var(--c); box-shadow: 3px 3px 0 rgba(0, 0, 0, .5), 0 0 12px color-mix(in srgb, var(--c) 35%, transparent); }
+#sh2h-modal .h2h-f-av { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .18) 0 2px, transparent 2px 4px), radial-gradient(circle at 30% 25%, #4ff0ff, #7a1fa8 85%) !important; border: 2px solid #b8f7ff; }
+#sh2h-modal .h2h-f-name { color: var(--c) !important; }
+#sh2h-modal .h2h-f-score { color: #fff !important; }
+#sh2h-modal .h2h-fighter.ahead .h2h-f-score { color: #fff !important; text-shadow: 2px 2px 0 var(--c), 0 0 12px var(--c) !important; }
+#sh2h-modal .h2h-f-meta { color: #8f84c4; border-top-color: rgba(255, 43, 214, .3); }
+#sh2h-modal .h2h-sec { color: #ff6be3; margin-top: 4px; }
+#sh2h-modal .sh-wk { background: #07031a; border-color: rgba(255, 43, 214, .3); }
+#sh2h-modal .sh-wk small { color: #8f84c4; }
+#sh2h-modal .sh-wk b:nth-of-type(1).win { color: #29e6ff; text-shadow: 0 0 6px rgba(41, 230, 255, .6); }
+#sh2h-modal .sh-wk b:nth-of-type(2).win { color: #ff2bd6; text-shadow: 0 0 6px rgba(255, 43, 214, .6); }
+#sh2h-modal .sh-tape { gap: 9px; }
+#sh2h-modal .sh-lab { color: #c9c2ef; }
+#sh2h-modal .sh-bar { background: #07031a; border-color: rgba(255, 43, 214, .3); }
+#sh2h-modal .sh-bar u.a { background: linear-gradient(180deg, #b8f7ff, #29e6ff); box-shadow: 0 0 5px rgba(41, 230, 255, .7); }
+#sh2h-modal .sh-bar u.b { background: linear-gradient(180deg, #ffb3f0, #ff2bd6); box-shadow: 0 0 5px rgba(255, 43, 214, .7); }
+#sh2h-modal .sh-v { color: #8f84c4; }
+#sh2h-modal .sh-v.a.win { color: #29e6ff; } #sh2h-modal .sh-v.b.win { color: #ff2bd6; }
+#sh2h-modal .sh-agree { border-color: rgba(41, 230, 255, .4); background: rgba(41, 230, 255, .05); }
+#sh2h-modal .sh-agree-h span { color: #ff6be3; }
+#sh2h-modal .sh-agree-h b { color: #fff; text-shadow: 2px 2px 0 #ff2bd6; }
+#sh2h-modal .sh-tape { gap: 5px; } #sh2h-modal .sh-row { align-items: end; } #sh2h-modal .sh-weeks { margin-bottom: 2px; }
