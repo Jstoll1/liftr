@@ -7226,3 +7226,12 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .pc-bars { height: 78px; }
 .pc-bars b { font-size: 10px; font-weight: 700; color: var(--text-meta); margin-bottom: 2px; }
 .pc-stat span b { color: #fff; }
+
+.rm-rank { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: 12.5px; }
+.rm-rank li { display: grid; grid-template-columns: 22px minmax(0, 1fr) 34px auto; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 5px; }
+.rm-rank li:nth-child(odd) { background: rgba(255, 255, 255, .025); }
+.rm-rank em { font-style: normal; color: var(--text-dim); font-size: 11px; text-align: right; }
+.rm-rank i { font-style: normal; font-weight: 800; font-size: 11px; text-align: center; }
+.rm-rank i.up { color: var(--neon-green); } .rm-rank i.down { color: #ff7a9a; } .rm-rank i.same { color: var(--text-dim); }
+.rm-rank span { text-align: right; color: var(--text-meta); white-space: nowrap; }
+.rm-rank small { color: var(--text-dim); font-size: 10.5px; }

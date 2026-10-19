@@ -8356,7 +8356,20 @@ function recapDetail(sum, kind) {
   const rows = (sum.rows || []).filter((r) => r && r.name);
   if (!rows.length) return `<div class="rm-none">Details aren't saved for this week.</div>`;
   const nm = (n) => `<b class="${n === currentManager ? "me" : ""}">${esc(shown(n))}</b>`;
-  if (kind === "move") return `<div class="rm-h">WEEK ${sum.week} SCORES</div><ol class="rm-list">${[...rows].sort((a, b) => b.score - a.score).map((r) => `<li>${nm(r.name)}<span>${r.score} pts</span></li>`).join("")}</ol>`;
+  if (kind === "move") {
+    // Season standings after this week, with how far each player moved
+    // from the week before. Ties share a place.
+    const weeks = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition && w.week <= sum.week);
+    const total = (upto) => { const t = new Map(); for (const w of weeks) if (w.week <= upto) for (const r of w.rows || []) t.set(r.name, (t.get(r.name) || 0) + (r.score || 0)); return t; };
+    const place = (t) => { const list = [...t.entries()].sort((a, b) => b[1] - a[1]); const m = new Map(); list.forEach(([n, p]) => m.set(n, 1 + list.filter(([, q]) => q > p).length)); return m; };
+    const now = total(sum.week), was = total(sum.week - 1), pNow = place(now), pWas = place(was);
+    const list = [...now.entries()].sort((a, b) => b[1] - a[1]);
+    return `<div class="rm-h">SEASON STANDINGS AFTER WEEK ${sum.week}</div><ol class="rm-rank">${list.map(([n, pts]) => {
+      const d = was.size ? (pWas.get(n) ?? pNow.get(n)) - pNow.get(n) : 0;
+      const wk = (rows.find((r) => r.name === n) || {}).score;
+      return `<li><em>${pNow.get(n)}</em>${nm(n)}<i class="${d > 0 ? "up" : d < 0 ? "down" : "same"}">${d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "–"}</i><span>${pts} pts${wk != null ? ` <small>+${wk} this week</small>` : ""}</span></li>`;
+    }).join("")}</ol>`;
+  }
   if (kind === "tb") {
     const g = rows.filter((r) => r.tbGuess != null).sort((a, b) => (a.tbDiff ?? 999) - (b.tbDiff ?? 999));
     return `<div class="rm-h">EVERY GUESS · ACTUAL ${esc(sum.recap?.tb?.actual ?? sum.tiebreaker?.actual ?? "?")}</div><ol class="rm-list">${g.map((r) => `<li>${nm(r.name)}<span>${r.tbGuess}${r.tbDiff != null ? ` · ${r.tbDiff === 0 ? "exact" : `off ${r.tbDiff}`}` : ""}</span></li>`).join("")}</ol>`;
