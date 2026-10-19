@@ -723,6 +723,8 @@ html, body { overflow-x: hidden; }
   const SHEET = { "h2h-modal": "head to head", "insights-modal": "game info", "sh2h-modal": "season head to head", "grid-modal": "the grid check", "rules-modal": "the rules", "avatar-modal": "the avatar picker", "boner-modal": "the boner", "sim-modal": "game sim", "claim-modal": "the claim sheet", "identity-modal": "who are you", "code-modal": "the code sheet" };
   const SCREEN_NAME = { scoreboard: "Scores", picks: "Picks", history: "History", trivia: "Trivia", side: "Side bet", home: "Players" };
   const FRICTION = /^(rage|dead-tap|quick-exit|js-error)$/;
+  let lastDigest = "";
+  document.addEventListener("click", (e) => { const b = e.target.closest(".digest-copy"); if (!b) return; navigator.clipboard?.writeText(lastDigest).then(() => { b.textContent = "Copied ✓"; setTimeout(() => (b.textContent = "Copy for Claude"), 1500); }, () => window.prompt("Copy this", lastDigest)); });
   function says(e, feed) {
     if (e.k === "recap-card") return ["Opened a replay card", ({ hit: "Pick of the week", miss: "Worst pick", move: "Movement", split: "Coin flip", tb: "Tiebreaker" })[e.d] || e.d || ""];
     if (e.k === "pot-row") return ["Opened a pot row", e.d ? name(e.d) : ""];
@@ -1019,7 +1021,9 @@ html, body { overflow-x: hidden; }
       const deep = new Map();
       for (const e of list) if (e.k === "depth") { const [sc, pct] = String(e.d || "").split(":"); const x = deep.get(sc) || []; x.push(Number(pct) || 0); deep.set(sc, x); }
       const depthRows = [...deep.entries()].map(([sc, v]) => { const reach = (q) => Math.round((v.filter((p) => p >= q).length / v.length) * 100); return { sc, n: v.length, r50: reach(50), r100: reach(100) }; }).sort((a, b) => b.n - a.n);
-      return `<section class="panel"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span></div>
+      // A names-free digest to paste to Claude: what broke, how often, how many people.
+      lastDigest = [`Brochiefs ${LEAGUE.toUpperCase()} friction digest (${sub})`, ...top.map((x) => `- ${x.a.replace("⚠ ", "")}${x.d ? ` [${x.d}]` : ""}: ${x.n}x, ${x.who.size} people`), ...depthRows.map((x) => `- Depth ${SCREEN_NAME[x.sc] || x.sc}: ${x.n} visits, half ${x.r50}%, bottom ${x.r100}%`)].join("\n");
+      return `<section class="panel"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span><button type="button" class="digest-copy" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ff7a9a;background:transparent;color:#ff7a9a">Copy for Claude</button></div>
         ${top.length ? `<div class="rank">${top.map((x) => `<div><span>${esc(x.a.replace("⚠ ", ""))}${x.d ? ` <small>${esc(x.d)}</small>` : ""}</span><b>${x.n}</b><i><s style="width:${((x.n / top[0].n) * 100).toFixed(1)}%;background:#ff7a9a"></s></i></div>`).join("")}</div>` : `<div class="note">No rage taps, dead taps, quick exits or errors.</div>`}
       </section>
       ${depthRows.length ? `<section class="panel"><div class="ph"><h2>Scroll depth</h2><span class="sub">share of visits reaching half way / the bottom</span></div>
