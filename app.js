@@ -8533,6 +8533,8 @@ function playerSeason(name) {
       // How many others were on the same team that week.
       const with_ = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team === lg.team)).length;
       const others = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team !== lg.team && x.result === "hit")).length;
+      const sameNames = (wk.rows || []).filter((r) => r.name !== name && (r.ledger || []).some((x) => x.g === lg.g && x.team === lg.team)).map((r) => r.name);
+      const oppNames = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team !== lg.team)).map((r) => r.name);
       const g = (wk.slate || []).find((x) => Number(x.id) === Number(lg.g));
       const team = g ? (lg.team === g.home ? g.homeShort : lg.team === g.away ? g.awayShort : lg.team) : lg.team;
       // The game itself: matchup and final, from the sealed score ("away-home").
@@ -8540,7 +8542,7 @@ function playerSeason(name) {
       const game = g ? `${g.awayShort} ${Number.isFinite(as) ? as : ""} at ${g.homeShort} ${Number.isFinite(hs) ? hs : ""}`.replace(/\s+/g, " ").trim() : "";
       const margin = Number.isFinite(as) && Number.isFinite(hs) && g ? (as === hs ? "tied" : `${as > hs ? g.awayShort : g.homeShort} by ${Math.abs(as - hs)}`) : "";
       const line = g && g.spread != null ? `${g.favorite === g.home ? g.homeShort : g.awayShort} −${g.spread}` : "";
-      picks.push({ teamFull: lg.team, teamId: g ? (lg.team === g.home ? g.homeId : lg.team === g.away ? g.awayId : null) : null, awayId: g?.awayId, homeId: g?.homeId, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, with_, of: (wk.rows || []).length, others, game, margin, line });
+      picks.push({ teamFull: lg.team, teamId: g ? (lg.team === g.home ? g.homeId : lg.team === g.away ? g.awayId : null) : null, awayId: g?.awayId, homeId: g?.homeId, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, sameNames, oppNames, with_, of: (wk.rows || []).length, others, game, margin, line });
     }
   }
   const sorted = [...scores].sort((a, b) => b.score - a.score);
@@ -8608,7 +8610,17 @@ function openPlayerCard(name, again) {
       <div class="plc-pt"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}</small><b>${hit ? `+${p.pts}` : "0"} PTS</b></div>
       <div class="plc-call">${logo(p.teamFull, p.teamId)}<span><b>${esc(p.text)}</b><small>${hit ? `${p.with_} of ${p.of} made this pick${p.with_ <= 2 ? " · almost nobody else" : ""}` : p.others ? `${p.others} of ${p.of} took the other side and got it right` : `${p.with_} of ${p.of} made this pick`}</small></span></div>
       ${p.away ? `<div class="plc-score"><span class="${p.as > p.hs ? "w" : ""}">${logo(p.away, p.awayId)}<i>${esc(p.awayShort)}</i><b>${Number.isFinite(p.as) ? p.as : ""}</b></span><em>FINAL${p.line ? `<br>${esc(p.line)}` : ""}</em><span class="${p.hs > p.as ? "w" : ""}"><b>${Number.isFinite(p.hs) ? p.hs : ""}</b><i>${esc(p.homeShort)}</i>${logo(p.home, p.homeId)}</span></div>` : ""}
+      <div class="plc-more">${p.sameNames?.length ? `<div class="plc-wh"><small>ALSO ON IT</small><div class="pick-chips">${nameChips(p.sameNames)}</div></div>` : `<div class="plc-wh"><small>ALSO ON IT</small><em>Nobody else</em></div>`}${p.oppNames?.length ? `<div class="plc-wh"><small>OTHER SIDE</small><div class="pick-chips">${nameChips(p.oppNames)}</div></div>` : ""}</div>
+      <i class="plc-caret">▾</i>
     </div>`;
+  if (!m.dataset.pickTap) {
+    m.dataset.pickTap = "1";
+    m.addEventListener("click", (e) => {
+      const pk = e.target.closest(".plc-pick");
+      if (!pk || e.target.closest(".pick-chip")) return;
+      pk.classList.toggle("open");
+    });
+  }
   m.innerHTML = `<div class="modal-card plc-card">
     <button type="button" class="plc-x" aria-label="Close">✕</button>
     <div class="plc-top">

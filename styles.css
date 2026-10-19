@@ -7509,3 +7509,13 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .recap-card .recap-more { animation: recap-open .22s ease-out both; }
 @keyframes recap-open { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .recap-card .recap-more { animation: none; } }
+
+/* Player card: tap best or worst pick to see who was with you and who faded you. */
+.plc-pick { position: relative; cursor: pointer; }
+.plc-pick .plc-more { display: none; gap: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); animation: recap-open .2s ease-out both; }
+.plc-pick.open .plc-more { display: grid; }
+.plc-wh { display: grid; grid-template-columns: 78px 1fr; gap: 8px; align-items: start; }
+.plc-wh small { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: #8b91a5; padding-top: 6px; }
+.plc-wh em { font-size: 12px; color: #8b91a5; font-style: normal; padding-top: 3px; }
+.plc-caret { position: absolute; right: 10px; bottom: 6px; font-style: normal; font-size: 10px; color: #8b91a5; transition: transform .2s; }
+.plc-pick.open .plc-caret { transform: rotate(180deg); }
