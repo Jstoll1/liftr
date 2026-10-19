@@ -7553,3 +7553,14 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
   #sh2h-modal .sh-v { font-size: 8px !important; }
   #sh2h-modal .sh-args .sh-agree-h { flex-wrap: wrap; gap: 7px; }
 }
+
+/* Fix legacy scoreboard rule forcing weekly tiles to stack vertically. */
+#sh2h-modal .sh-weeks {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  gap: 7px !important;
+}
+#sh2h-modal .sh-week-tile { min-width: 0; width: auto; }
+@media (max-width: 480px) {
+  #sh2h-modal .sh-weeks { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
