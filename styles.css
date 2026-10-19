@@ -7273,3 +7273,10 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .plc-badges span { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 22px; padding: 0 7px; box-sizing: border-box; line-height: 1; font-size: 8px; border-radius: 5px; }
 .plc-badges .gold { font-size: 8px; }
 .plc-tro { font-style: normal; font-size: 11px; line-height: 1; font-family: system-ui, sans-serif; }
+/* Head to head cards: one line each (avatar, name, score), no empty band. */
+.h2h-modal .h2h-fighter, .h2h-modal .h2h-fighter.b { grid-template-columns: 24px minmax(0, 1fr) auto; grid-template-areas: "av name score" "meta meta meta"; align-items: center; row-gap: 4px; padding: 8px 10px; min-height: 0; }
+.h2h-modal .h2h-f-score { justify-self: end; font-size: 24px; }
+.h2h-modal .h2h-f-meta:empty { display: none; }
+.h2h-modal .h2h-fighter::after { position: absolute; top: -9px; right: 8px; grid-area: auto; }
+.h2h-modal .h2h-pickers { align-items: stretch; }
+.h2h-modal .h2h-card { gap: 6px; padding-top: 10px; }
