@@ -716,13 +716,22 @@ html, body { overflow-x: hidden; }
     "pot-open": "Opened the pot", "pot-seen": "Looked at the pot", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Read the week replay", "board-seen": "Looked at the leaderboard", "scores-seen": "Looked at live scores", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
     sim: "Ran a game sim", "grid-card": "Opened a grid card", "history-ask": "Asked the archive", "gamecast-log": "Opened the full game log",
   };
+  const SHEET = { "h2h-modal": "head to head", "insights-modal": "game info", "sh2h-modal": "season head to head", "grid-modal": "the grid check", "rules-modal": "the rules", "avatar-modal": "the avatar picker", "boner-modal": "the boner", "sim-modal": "game sim", "claim-modal": "the claim sheet", "identity-modal": "who are you", "code-modal": "the code sheet" };
+  const SCREEN_NAME = { scoreboard: "Scores", picks: "Picks", history: "History", trivia: "Trivia", side: "Side bet", home: "Players" };
+  const FRICTION = /^(rage|dead-tap|quick-exit|js-error)$/;
   function says(e, feed) {
+    if (e.k === "rage") return ["⚠ Rage tapped", e.d || ""];
+    if (e.k === "dead-tap") return ["⚠ Tapped something that does nothing", e.d || ""];
+    if (e.k === "quick-exit") return ["⚠ Closed right away", SHEET[e.d] || e.d || ""];
+    if (e.k === "js-error") return ["⚠ Hit an error", e.d || ""];
+    if (e.k === "sheet-time") { const [id, sec] = String(e.d || "").split(":"); return [`Spent ${dur(Number(sec) * 1000)} in ${SHEET[id] || id}`, ""]; }
+    if (e.k === "depth") { const [sc, pct] = String(e.d || "").split(":"); return [`Scrolled ${pct}% of ${SCREEN_NAME[sc] || sc}`, ""]; }
     if (e.k === "path-run" || e.k === "path-card") {
       const of = feed.find((x) => x.n === e.n && /^path-of-/.test(x.k) && Math.abs(x.at - e.at) < 3000);
       return [e.k === "path-run" ? "Ran Path to Win" : "Opened a Path to Win card", of ? `for ${name(nameFrom(of.k.slice(8)))}` : ""];
     }
     if (e.k === "hs-board") return ["Opened a high score board", ({ ats: "Best ATS", streak: "Hot Hand", dogs: "Dog Hits", lone: "Lone Wolf", fader: "Fader", tb: "TB Sniper", best: "Best Week", blanks: "No Shows", "side-bank": "Bankroll", "side-picks": "Side Picks" })[e.d] || e.d || ""];
-    if (SAYS[e.k]) return [SAYS[e.k], /^(game-|gamecast|scorebug)/.test(e.k) ? st.games[e.d] || "" : e.k === "ranking-expand" && e.d ? name(e.d) : e.k === "history-ask" && e.d ? `“${e.d}”` : ""];
+    if (SAYS[e.k]) return [SAYS[e.k], /^(game-|gamecast|scorebug)/.test(e.k) ? st.games[e.d] || "" : e.k === "ranking-expand" && e.d ? name(e.d) : e.k === "history-ask" && e.d ? `“${e.d}”` : e.k === "h2h" && e.d ? String(e.d).split(" vs ").map(name).join(" vs ") : ""];
     if (SCREENS[e.k]) return [`Went to ${SCREENS[e.k]}`, ""];
     return [e.k.charAt(0).toUpperCase() + e.k.slice(1).replace(/-/g, " "), ""];
   }
@@ -994,6 +1003,21 @@ html, body { overflow-x: hidden; }
         <div class="asks">${list.map((x) => `<button type="button" class="ask" data-ask="${x.ts}"><span class="ask-h">${x.n ? av(x.n, "sm") : ""}<b>${esc(x.n ? name(x.n) : "Someone")}</b><time>${esc(dayOf(x.ts) === today0 ? hm(x.ts) : `${new Date(x.ts).toLocaleDateString([], { weekday: "short" })} ${hm(x.ts)}`)}</time></span><span class="ask-q">${esc(x.q)}</span></button>`).join("")}</div>
       </section>`;
     };
+    // Where people got stuck, and how far down each screen they got.
+    const frictionPanel = (list, sub) => {
+      const f = new Map();
+      for (const e of list) if (FRICTION.test(e.k)) { const [a, d] = says(e, list); const k = `${a}|${d}`; const x = f.get(k) || { a, d, n: 0, who: new Set() }; x.n++; x.who.add(e.n); f.set(k, x); }
+      const top = [...f.values()].sort((a, b) => b.n - a.n).slice(0, 8);
+      const deep = new Map();
+      for (const e of list) if (e.k === "depth") { const [sc, pct] = String(e.d || "").split(":"); const x = deep.get(sc) || []; x.push(Number(pct) || 0); deep.set(sc, x); }
+      const depthRows = [...deep.entries()].map(([sc, v]) => { const reach = (q) => Math.round((v.filter((p) => p >= q).length / v.length) * 100); return { sc, n: v.length, r50: reach(50), r100: reach(100) }; }).sort((a, b) => b.n - a.n);
+      return `<section class="panel"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span></div>
+        ${top.length ? `<div class="rank">${top.map((x) => `<div><span>${esc(x.a.replace("⚠ ", ""))}${x.d ? ` <small>${esc(x.d)}</small>` : ""}</span><b>${x.n}</b><i><s style="width:${((x.n / top[0].n) * 100).toFixed(1)}%;background:#ff7a9a"></s></i></div>`).join("")}</div>` : `<div class="note">No rage taps, dead taps, quick exits or errors.</div>`}
+      </section>
+      ${depthRows.length ? `<section class="panel"><div class="ph"><h2>Scroll depth</h2><span class="sub">share of visits reaching half way / the bottom</span></div>
+        <div class="rank">${depthRows.map((x) => `<div><span>${esc(SCREEN_NAME[x.sc] || x.sc)} <small>${x.n} visits · bottom ${x.r100}%</small></span><b>${x.r50}%</b><i><s style="width:${x.r50}%"></s></i></div>`).join("")}</div>
+      </section>` : ""}`;
+    };
     const railWeek = () => {
       const byH = Array.from({ length: 24 }, (_, h) => ({ h, n: 0, who: new Set() }));
       for (const v of wv) { const h = new Date(v.start).getHours(); byH[h].n++; byH[h].who.add(v.n); }
@@ -1010,12 +1034,13 @@ html, body { overflow-x: hidden; }
       <section class="panel"><div class="ph"><h2>Most used</h2><span class="sub">visits that used it, 7 days</span></div>
         ${tp.length ? `<div class="rank">${tp.map(([a, n]) => `<div><span>${esc(a)}</span><b>${n}</b><i><s style="width:${((n / mf) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>` : `<div class="note">Nothing used yet.</div>`}
       </section>
+      ${frictionPanel((wk.feed || []).filter((e) => e.at >= wFrom), "last 7 days")}
       ${askPanel(wFrom, "last 7 days")}
     </aside>`;
     };
     const maxH = Math.max(1, ...hours.map((h) => h.n));
     const counts = new Map();
-    for (const e of actions) { if (SCREENS[e.k]) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
+    for (const e of actions) { if (SCREENS[e.k] || FRICTION.test(e.k) || /^(depth|sheet-time)$/.test(e.k)) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), maxF = top[0]?.[1] || 1;
     const home = vs.filter((v) => v.app === "home").length, web = vs.filter((v) => v.app === "browser").length;
     const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">${HAS_STUDIO ? costPanel() : ""}
@@ -1030,6 +1055,7 @@ html, body { overflow-x: hidden; }
         <div class="split"><s style="width:${((home / (home + web)) * 100).toFixed(1)}%;background:var(--past)"></s><s style="flex:1;background:#5b5378"></s></div>
         <div class="split-k"><span><i style="background:var(--past)"></i>Home screen app <b>${home}</b></span><span><i style="background:#5b5378"></i>Browser <b>${web}</b></span></div>
       </section>` : ""}
+      ${frictionPanel(actions, "last 24h")}
       ${askPanel(from, "last 24h")}
     </aside>`;
 
