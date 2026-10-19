@@ -8379,10 +8379,10 @@ function recapDetail(sum, kind) {
   for (const row of rows) {
     const l = (row.ledger || []).find((x) => Number(x.g) === Number(g.id));
     const side = l ? `${l.team === g.home ? g.homeShort : l.team === g.away ? g.awayShort : l.team} ${l.line || l.mode || ""}`.trim() : "No pick";
-    const x = sides.get(side) || { side, team: l?.team, hit: l?.result === "hit", pts: l?.result === "hit" ? l.pts : 0, who: [] };
+    const x = sides.get(side) || { side, team: l?.team, teamId: l ? (l.team === g.home ? g.homeId : l.team === g.away ? g.awayId : null) : null, hit: l?.result === "hit", pts: l?.result === "hit" ? l.pts : 0, who: [] };
     x.who.push(row.name); sides.set(side, x);
   }
-  return `<div class="rm-h">${esc(g.awayShort)} AT ${esc(g.homeShort)} · WHO TOOK WHAT</div>${[...sides.values()].sort((a, b) => b.who.length - a.who.length).map((x) => { const id = x.team ? teamIdOf(x.team) : null; return `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(x.side)}</span><i>${x.hit ? `+${x.pts} each` : "0"}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`; }).join("")}`;
+  return `<div class="rm-h">${esc(g.awayShort)} AT ${esc(g.homeShort)} · WHO TOOK WHAT</div>${[...sides.values()].sort((a, b) => b.who.length - a.who.length).map((x) => { const id = x.teamId || (x.team ? teamIdOf(x.team) : null); return `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(x.side)}</span><i>${x.hit ? `+${x.pts} each` : "0"}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`; }).join("")}`;
 }
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
   const c = e.target.closest(".recap-card[data-rc]");
@@ -8511,7 +8511,7 @@ function playerSeason(name) {
       const game = g ? `${g.awayShort} ${Number.isFinite(as) ? as : ""} at ${g.homeShort} ${Number.isFinite(hs) ? hs : ""}`.replace(/\s+/g, " ").trim() : "";
       const margin = Number.isFinite(as) && Number.isFinite(hs) && g ? (as === hs ? "tied" : `${as > hs ? g.awayShort : g.homeShort} by ${Math.abs(as - hs)}`) : "";
       const line = g && g.spread != null ? `${g.favorite === g.home ? g.homeShort : g.awayShort} −${g.spread}` : "";
-      picks.push({ teamFull: lg.team, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, with_, of: (wk.rows || []).length, others, game, margin, line });
+      picks.push({ teamFull: lg.team, teamId: g ? (lg.team === g.home ? g.homeId : lg.team === g.away ? g.awayId : null) : null, awayId: g?.awayId, homeId: g?.homeId, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, with_, of: (wk.rows || []).length, others, game, margin, line });
     }
   }
   const sorted = [...scores].sort((a, b) => b.score - a.score);
@@ -8574,11 +8574,11 @@ function openPlayerCard(name, again) {
   const pct = d.w + d.l ? Math.round((d.w / (d.w + d.l)) * 100) : null;
   // A fighting game stat bar: label, value, ten segments filled to the share.
   const bar = (label, val, share, note = "") => `<div class="plc-sb"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}${note ? `<small>${note}</small>` : ""}</b></div>`;
-  const logo = (full) => { const id = teamIdOf(full); return id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : `<span class="plc-nologo"></span>`; };
+  const logo = (full, known) => { const id = known || teamIdOf(full); return id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : `<span class="plc-nologo"></span>`; };
   const pick = (p, hit) => !p ? "" : `<div class="plc-pick ${hit ? "hit" : "miss"}">
       <div class="plc-pt"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}</small><b>${hit ? `+${p.pts}` : "0"} PTS</b></div>
-      <div class="plc-call">${logo(p.teamFull)}<span><b>${esc(p.text)}</b><small>${hit ? `${p.with_} of ${p.of} made this pick${p.with_ <= 2 ? " · almost nobody else" : ""}` : p.others ? `${p.others} of ${p.of} took the other side and got it right` : `${p.with_} of ${p.of} made this pick`}</small></span></div>
-      ${p.away ? `<div class="plc-score"><span class="${p.as > p.hs ? "w" : ""}">${logo(p.away)}<i>${esc(p.awayShort)}</i><b>${Number.isFinite(p.as) ? p.as : ""}</b></span><em>FINAL${p.line ? `<br>${esc(p.line)}` : ""}</em><span class="${p.hs > p.as ? "w" : ""}"><b>${Number.isFinite(p.hs) ? p.hs : ""}</b><i>${esc(p.homeShort)}</i>${logo(p.home)}</span></div>` : ""}
+      <div class="plc-call">${logo(p.teamFull, p.teamId)}<span><b>${esc(p.text)}</b><small>${hit ? `${p.with_} of ${p.of} made this pick${p.with_ <= 2 ? " · almost nobody else" : ""}` : p.others ? `${p.others} of ${p.of} took the other side and got it right` : `${p.with_} of ${p.of} made this pick`}</small></span></div>
+      ${p.away ? `<div class="plc-score"><span class="${p.as > p.hs ? "w" : ""}">${logo(p.away, p.awayId)}<i>${esc(p.awayShort)}</i><b>${Number.isFinite(p.as) ? p.as : ""}</b></span><em>FINAL${p.line ? `<br>${esc(p.line)}` : ""}</em><span class="${p.hs > p.as ? "w" : ""}"><b>${Number.isFinite(p.hs) ? p.hs : ""}</b><i>${esc(p.homeShort)}</i>${logo(p.home, p.homeId)}</span></div>` : ""}
     </div>`;
   m.innerHTML = `<div class="modal-card plc-card" style="--accent:${accentFor(name)}">
     <button type="button" class="plc-x" aria-label="Close">✕</button>

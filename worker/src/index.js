@@ -2027,6 +2027,13 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
   // need to draw a trophy. It comes back only when asked for.
   const detail = url.searchParams.get("detail") === "1";
   const lean = (s) => ({ ...s, rows: (s.rows || []).map(({ ledger, ...r }) => r), slate: undefined, finals: undefined });
+  // Team ids for the frozen slates, from each week's stored slate, so the
+  // app can draw logos for past games without guessing from names.
+  if (detail) await Promise.all(rows.filter(([, v]) => v?.slate).map(async ([n, v]) => {
+    const live = await env.LIFTR_KV.get(gamesKey(n), "json").catch(() => null);
+    const ids = new Map((live?.games || []).map((g) => [Number(g.id), g]));
+    v.slate = v.slate.map((g) => { const x = ids.get(Number(g.id)); return x ? { ...g, awayId: Number(x.awayId) || null, homeId: Number(x.homeId) || null } : g; });
+  }));
   const summaries = Object.fromEntries(rows.filter(([, v]) => v).map(([n, v]) => [n, detail ? v : lean(v)]));
   // One trophy per week won, which is what the leaderboard draws.
   const trophies = {};
