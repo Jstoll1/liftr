@@ -75,6 +75,9 @@ export default {
     if (url.pathname === "/expert-record") {
       return handleExpertRecord(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/poll") {
+      return handlePoll(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/qotw") {
       return handleQotw(request, env, corsHeaders, url);
     }
@@ -1888,6 +1891,44 @@ async function handleStory(request, env, corsHeaders, url) {
   if (!story) return json({ story: null }, 200, corsHeaders);
   await env.LIFTR_KV.put(storyKey(week), JSON.stringify(story));
   return json({ story }, 200, corsHeaders);
+}
+
+// --- League polls ----------------------------------------------------------
+// One vote per manager per poll id, changeable. GET ?id=&manager= returns
+// that manager's vote and the tally (counts only); ?all=1 (admin) adds names.
+const POLL_CHOICES = { "lock-of-week": ["B", "C", "D"] };
+async function handlePoll(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  const key = (id, m) => `poll:${id}:${m}`;
+  const tally = async (id) => {
+    const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(key(id, m), "json")]));
+    const counts = Object.fromEntries(POLL_CHOICES[id].map((c) => [c, 0]));
+    for (const [, v] of rows) if (v && v.choice in counts) counts[v.choice]++;
+    return { rows, counts, voted: rows.filter(([, v]) => v).length, of: PICKS_MANAGERS.length };
+  };
+  const id = String((request.method === "GET" ? url.searchParams.get("id") : null) || "").slice(0, 40);
+  if (request.method === "GET") {
+    if (!POLL_CHOICES[id]) return json({ error: "Unknown poll" }, 400, corsHeaders);
+    const t = await tally(id);
+    const out = { counts: t.counts, voted: t.voted, of: t.of };
+    if (url.searchParams.get("all") === "1") {
+      if (!isAdmin(env, url) && !isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+      out.votes = Object.fromEntries(t.rows.filter(([, v]) => v).map(([m, v]) => [m, v.choice]));
+      out.waitingOn = t.rows.filter(([, v]) => !v).map(([m]) => m);
+    }
+    const m = url.searchParams.get("manager");
+    if (PICKS_MANAGERS.includes(m)) out.vote = (t.rows.find(([n]) => n === m)?.[1] || {}).choice || null;
+    return json(out, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const { manager, choice, token } = body || {};
+  const pid = String(body?.id || "").slice(0, 40);
+  if (!POLL_CHOICES[pid] || !PICKS_MANAGERS.includes(manager) || !POLL_CHOICES[pid].includes(choice)) return json({ error: "Invalid vote" }, 400, corsHeaders);
+  if ((await authMode(env)) === "on" && (await tokenOwner(env, token)) !== manager) return json({ error: "Sign in to vote", needsLogin: true }, 401, corsHeaders);
+  await env.LIFTR_KV.put(key(pid, manager), JSON.stringify({ choice, at: Date.now() }));
+  const t = await tally(pid);
+  return json({ ok: true, vote: choice, counts: t.counts, voted: t.voted, of: t.of }, 200, corsHeaders);
 }
 
 // --- Question of the week -----------------------------------------------

@@ -1664,7 +1664,7 @@ function showPicksScreen() {
   setActiveNav("picks");
   enterScreen("picks");
   maybeShowBoner();
-  maybeShowQotw();
+  maybeShowQotw().finally(() => maybeShowPoll());
   return syncManagerFromCloud(currentManager).then((cloud) => {
     if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
     // After the sync, so a phone that has not seen its picks yet does not
@@ -2710,7 +2710,7 @@ function loadBootBoard() {
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
-  maybeShowQotw();
+  maybeShowQotw().finally(() => maybeShowPoll());
   if (bootBoard) {
     const b = bootBoard; bootBoard = null;
     if (!Object.keys(latestLive).length) { latestLive = b.live; latestLiveWeek = b.week; }
@@ -6401,6 +6401,68 @@ function showNowPlaying(then) {
 const QOTW = { id: "gooey-belly", q: "What actually is a “gooey belly”?", qHtml: `What actually is a<span class="qotw-pop">“gooey belly”?</span>` };
 window.QOTW = QOTW;
 let qotwShownThisLoad = false;
+// --- League poll: lock of the week scoring ------------------------------------
+// Pops up once per open until this manager votes. Votes can change; the
+// tally (counts only) shows after voting. Names are admin only (?all=1).
+const POLL = { id: "lock-of-week", q: "Lock of the week: how should it score?", opts: [
+  { k: "B", t: "Small bonus", hit: "+1", miss: "0", note: "Low stakes. A little reward, no risk." },
+  { k: "C", t: "Bonus with risk", hit: "+2", miss: "−1", note: "A real decision. One bad lock can't sink your week." },
+  { k: "D", t: "Double or nothing", hit: "×2", miss: "0", note: "Spread picks only. Simple and big." },
+] };
+let pollShownThisLoad = false;
+async function maybeShowPoll(force) {
+  if ((!force && pollShownThisLoad) || !currentManager || !WORKER_URL || window.__adminEntry || window.__adminOpen || window.__liveView) return;
+  const doneKey = `brochiefs_poll_${POLL.id}_${currentManager}`;
+  try { if (!force && localStorage.getItem(doneKey)) return; } catch {}
+  // Not on top of the question of the week: try again on the next open.
+  const q = document.getElementById("qotw-modal");
+  if (q && !q.classList.contains("hidden") && q.isConnected) return;
+  pollShownThisLoad = true;
+  let st;
+  try { const r = await fetch(`${WORKER_URL}/poll?id=${POLL.id}&manager=${encodeURIComponent(currentManager)}`); if (!r.ok) return; st = await r.json(); } catch { return; }
+  if (st.vote && !force) { try { localStorage.setItem(doneKey, st.vote); } catch {} return; }
+  let m = document.getElementById("poll-modal");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "poll-modal"; m.className = "wpx-overlay"; m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("click", async (e) => {
+      if (e.target === m || e.target.closest(".wpx-x, .poll-done")) { m.classList.add("hidden"); return; }
+      const b = e.target.closest(".poll-opt");
+      if (!b || b.disabled) return;
+      m.querySelectorAll(".poll-opt").forEach((x) => (x.disabled = true));
+      try {
+        const r = await fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: POLL.id, manager: currentManager, choice: b.dataset.k, token: tokenFor(currentManager) || undefined }) });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || "Vote failed");
+        try { localStorage.setItem(doneKey, j.vote); } catch {}
+        noteUse?.("poll", j.vote);
+        draw(j);
+      } catch (err) { m.querySelector(".poll-err").textContent = err.message; m.querySelectorAll(".poll-opt").forEach((x) => (x.disabled = false)); }
+    });
+  }
+  const draw = (s) => {
+    const max = Math.max(1, ...Object.values(s.counts || {}));
+    m.innerHTML = `<div class="wpx-card poll">
+      <button type="button" class="wpx-x" aria-label="Close">✕</button>
+      <div class="poll-kicker">🔒 LEAGUE VOTE</div>
+      <div class="poll-q">${POLL.q}</div>
+      <div class="poll-sub">Pick one game a week as your lock. Locks stay hidden until kickoff. Starts next week if it passes.</div>
+      <div class="poll-opts">${POLL.opts.map((o) => `<button type="button" class="poll-opt${s.vote === o.k ? " on" : ""}" data-k="${o.k}">
+        <span class="poll-k">${o.k}</span>
+        <span class="poll-t"><b>${o.t}</b><small>${o.note}</small></span>
+        <span class="poll-n"><i class="up"><small>HIT</small>${o.hit}</i><i class="dn"><small>MISS</small>${o.miss}</i></span>
+        ${s.vote ? `<span class="poll-bar"><u style="width:${Math.round(((s.counts[o.k] || 0) / max) * 100)}%"></u><em>${s.counts[o.k] || 0}</em></span>` : ""}
+      </button>`).join("")}</div>
+      <div class="poll-err"></div>
+      ${s.vote ? `<div class="poll-foot">${s.voted} of ${s.of} voted · tap another to change your vote<button type="button" class="poll-done">Done</button></div>` : ""}
+    </div>`;
+  };
+  draw(st);
+  m.classList.remove("hidden");
+}
+window.maybeShowPoll = maybeShowPoll;
+
 async function maybeShowQotw() {
   // Not on the way into the admin panel: the prompt would sit on top of the key gate.
   if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW || window.__adminEntry || window.__adminOpen || window.__liveView) return;
