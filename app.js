@@ -8382,10 +8382,10 @@ function recapDetail(sum, kind) {
   for (const row of rows) {
     const l = (row.ledger || []).find((x) => Number(x.g) === Number(g.id));
     const side = l ? `${l.team === g.home ? g.homeShort : l.team === g.away ? g.awayShort : l.team} ${l.line || l.mode || ""}`.trim() : "No pick";
-    const x = sides.get(side) || { side, hit: l?.result === "hit", pts: l?.result === "hit" ? l.pts : 0, who: [] };
+    const x = sides.get(side) || { side, team: l?.team, hit: l?.result === "hit", pts: l?.result === "hit" ? l.pts : 0, who: [] };
     x.who.push(row.name); sides.set(side, x);
   }
-  return `<div class="rm-h">${esc(g.awayShort)} AT ${esc(g.homeShort)} · WHO TOOK WHAT</div>${[...sides.values()].sort((a, b) => b.who.length - a.who.length).map((x) => `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${esc(x.side)}</span><i>${x.hit ? `+${x.pts}` : "0"}</i><div>${x.who.map(nm).join("")}</div></div>`).join("")}`;
+  return `<div class="rm-h">${esc(g.awayShort)} AT ${esc(g.homeShort)} · WHO TOOK WHAT</div>${[...sides.values()].sort((a, b) => b.who.length - a.who.length).map((x) => { const id = x.team ? teamIdOf(x.team) : null; return `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(x.side)}</span><i>${x.hit ? `+${x.pts} each` : "0"}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`; }).join("")}`;
 }
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
   const c = e.target.closest(".recap-card[data-rc]");

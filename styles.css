@@ -7258,3 +7258,9 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .plc-none { font-size: 12px; color: var(--text-dim); }
 .plc-score span i { font-style: normal; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .plc-score span b { flex: none; }
+
+.rm-side > span { display: inline-flex; align-items: center; gap: 7px; }
+.rm-side > span img { width: 22px; height: 22px; object-fit: contain; }
+.rm-side > div.pick-chips { gap: 4px; }
+.rm-side .pick-chip { font-size: 11px; cursor: pointer; }
+.rm-side.miss .pick-chip { opacity: .75; }
