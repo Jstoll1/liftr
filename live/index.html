@@ -44,7 +44,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .top { position: sticky; top: 0; z-index: 5; background: rgba(11, 7, 22, .82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
 .top::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: linear-gradient(90deg, transparent, rgba(139, 108, 255, .7), rgba(61, 252, 143, .7), transparent); }
 .top-in { max-width: 1440px; margin: 0 auto; display: flex; align-items: center; gap: 12px; padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); }
-.brand { padding: 0; background: none; border: 0; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; gap: 9px; font: 800 14px/1 var(--mono); letter-spacing: .16em; }
+.brand { white-space: nowrap; flex: none; padding: 0; background: none; border: 0; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; gap: 9px; font: 800 14px/1 var(--mono); letter-spacing: .16em; }
 .brand b { color: var(--gold); text-shadow: 0 0 14px rgba(255, 228, 94, .35); }
 .brand span { color: var(--green); text-shadow: 0 0 14px rgba(61, 252, 143, .45); }
 .beat { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: beat 1.6s ease-in-out infinite; }
@@ -606,6 +606,7 @@ html, body { overflow-x: hidden; }
     .quiet-toggle { display: block; }
   }
   section.panel.vote { border-color: rgba(255,210,63,.35); }
+  @media (max-width: 420px) { .brand { font-size: 12px; letter-spacing: .1em; gap: 6px; } }
 </style>
 </head>
 <body>
@@ -1148,7 +1149,7 @@ html, body { overflow-x: hidden; }
 
     app.innerHTML = `
       <div class="top${st.ok ? "" : " stale"}"><div class="top-in">
-        <button type="button" class="brand" data-reload="1" aria-label="Refresh"><i class="beat"></i><b>BROCHIEFS</b><span>${LEAGUE === "nfl" ? "NFL LIVE" : "LIVE"}</span></button>${leagueSwitch()}
+        <button type="button" class="brand" data-reload="1" aria-label="Refresh"><i class="beat"></i><b>BROCHIEFS</b><span>LIVE</span></button>${leagueSwitch()}
         <span class="age num" id="age">${st.cached ? "refreshing…" : st.ok ? "live" : "can't reach the server, retrying"}</span>
         <div class="tools">
           <button type="button" class="ib${st.refreshing ? " spin" : ""}" data-refresh="1" aria-label="Refresh" title="Refresh">${ICONS.refresh}</button>
