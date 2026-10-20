@@ -609,6 +609,25 @@ html, body { overflow-x: hidden; }
   }
   section.panel.vote { border-color: rgba(255,210,63,.35); }
   @media (max-width: 420px) { .brand { font-size: 12px; letter-spacing: .1em; gap: 6px; } }
+  /* Lock vote panel */
+  .pv-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .pv-sum span { display: grid; gap: 4px; align-content: start; line-height: 1.2; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.04); font-size: 11.5px; color: var(--dim); }
+  .pv-sum b { font: 700 20px/1 var(--mono); color: #fff; }
+  .pv-sum .ok b { color: #3dfc8f; } .pv-sum .seen b { color: #ffe45e; } .pv-sum .not b { color: #8b91a5; }
+  .pv-tally { display: grid; gap: 6px; margin-bottom: 12px; }
+  .pv-tally > div { display: grid; grid-template-columns: minmax(0, 1fr) 90px 18px; align-items: center; gap: 10px; font-size: 13px; }
+  .pv-tally small { color: var(--dim); font-size: 11px; margin-left: 4px; }
+  .pv-tally i { display: block; height: 6px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; }
+  .pv-tally s { display: block; height: 100%; background: #9b7bff; }
+  .pv-tally b { font: 700 13px/1 var(--mono); text-align: right; }
+  .pv-list { display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .pv-row { display: grid; grid-template-columns: auto minmax(0, 90px) minmax(0, 1fr); align-items: center; gap: 4px 10px; padding: 6px 8px; border-radius: 8px; }
+  .pv-row.ok { background: rgba(61,252,143,.05); } .pv-row.not { opacity: .6; }
+  .pv-n { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pv-st { display: grid; gap: 2px; font-size: 13px; line-height: 1.25; }
+  .pv-row.ok .pv-st b { color: #3dfc8f; } .pv-row.seen .pv-st b { color: #ffe45e; } .pv-row.not .pv-st b { color: var(--dim); font-weight: 500; }
+  .pv-st small { color: var(--dim); font-size: 11.5px; }
+  .pv-note { grid-column: 2 / -1; font-size: 12.5px; color: var(--meta, #c9cddb); font-style: italic; background: none !important; padding: 0 !important; }
 </style>
 </head>
 <body>
@@ -1042,17 +1061,22 @@ html, body { overflow-x: hidden; }
     // The lock of the week vote: tally, who voted what, who has seen it, feedback.
     const pollPanel = () => {
       const p = st.poll; if (!p) return "";
-      const LAB = { A: "Free bonus +2/0", B: "Bonus with risk +2/−1", C: "High stakes +3/−3", N: "No lock" };
-      const votes = p.votes || {}, views = p.views || {}, notes = p.notes || {};
+      const LAB = { A: "Free bonus", B: "Bonus with risk", C: "High stakes", N: "No lock" };
+      const SUB = { A: "+2 / 0", B: "+2 / −1", C: "+3 / −3", N: "keep as is" };
+      const votes = p.votes || {}, views = p.views || {}, notes = p.notes || {}, at = p.votedAt || {};
       const max = Math.max(1, ...Object.values(p.counts || {}));
-      const when = (t) => t ? `${new Date(t).toLocaleDateString([], { weekday: "short" })} ${hm(t)}` : "";
-      // Views are usage: Jake is left out of them. Votes count everyone.
-      const seen = Object.keys(views).filter((n) => n !== "Jake");
-      const waiting = (p.waitingOn || []);
-      return `<section class="panel vote" id="sec-vote"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${p.voted} of ${p.of} voted · seen by ${seen.length}</span></div>
-        <div class="rank">${Object.keys(LAB).map((k) => `<div><span>${esc(LAB[k])} <small>${Object.entries(votes).filter(([, v]) => v === k).map(([n]) => esc(name(n))).join(", ")}</small></span><b>${p.counts?.[k] || 0}</b><i><s style="width:${(((p.counts?.[k] || 0) / max) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>
-        ${waiting.length ? `<div class="note">Not voted: ${waiting.map((n) => `${esc(name(n))}${views[n] && n !== "Jake" ? ` <small>(seen ${views[n].n}×)</small>` : ""}`).join(", ")}</div>` : `<div class="note">Everyone has voted.</div>`}
-        ${Object.keys(notes).length ? `<div class="note">${Object.entries(notes).map(([n, t]) => `<div><b>${esc(name(n))}</b>: ${esc(t)} <small>${esc(when(p.votedAt?.[n]))}</small></div>`).join("")}</div>` : ""}
+      const when = (t) => t ? (dayOf(t) === today0 ? hm(t) : `${new Date(t).toLocaleDateString([], { weekday: "short" })} ${hm(t)}`) : "";
+      // Views are usage, so Jake's are left out; votes count everyone.
+      const seenOf = (n) => (n === "Jake" ? null : views[n]);
+      const everyone = [...new Set([...Object.keys(votes), ...(p.waitingOn || [])])];
+      const rows = everyone.map((n) => ({ n, v: votes[n], s: seenOf(n) })).sort((x, y) => (x.v ? 0 : x.s ? 1 : 2) - (y.v ? 0 : y.s ? 1 : 2) || (at[y.n] || y.s?.last || 0) - (at[x.n] || x.s?.last || 0));
+      const nVoted = rows.filter((r) => r.v).length, nSeen = rows.filter((r) => !r.v && r.s).length, nNot = rows.length - nVoted - nSeen;
+      return `<section class="panel vote" id="sec-vote"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${nVoted} of ${rows.length} voted</span></div>
+        <div class="pv-sum"><span class="ok"><b>${nVoted}</b>voted</span><span class="seen"><b>${nSeen}</b>saw it, no vote</span><span class="not"><b>${nNot}</b>not seen yet</span></div>
+        <div class="pv-tally">${Object.keys(LAB).map((k) => `<div><span>${LAB[k]} <small>${SUB[k]}</small></span><i><s style="width:${(((p.counts?.[k] || 0) / max) * 100).toFixed(1)}%"></s></i><b>${p.counts?.[k] || 0}</b></div>`).join("")}</div>
+        <div class="pv-list">${rows.map((r) => `<div class="pv-row ${r.v ? "ok" : r.s ? "seen" : "not"}">${av(r.n, "sm")}<span class="pv-n">${esc(name(r.n))}</span>
+          <span class="pv-st">${r.v ? `<b>${LAB[r.v] || r.v}</b>` : r.s ? `<b>Saw it, no vote</b>` : `<b>Not seen yet</b>`}<small>${r.v ? `voted ${esc(when(at[r.n]))}` : r.s ? `seen ${r.s.n}× · last ${esc(when(r.s.last))}` : ""}</small></span>
+          ${notes[r.n] ? `<span class="pv-note">“${esc(notes[r.n])}”</span>` : ""}</div>`).join("")}</div>
       </section>`;
     };
     // Where people got stuck, and how far down each screen they got.
