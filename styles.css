@@ -7661,3 +7661,4 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .wpx-card.poll .poll-foot span { font-size: 11.5px; }
 @media (prefers-reduced-motion: reduce) { #poll-modal .wpx-card.poll, .poll.fresh .poll-lock, .wpx-card.poll .poll-bar u { animation: none; } }
 .wpx-card.poll .poll-later { justify-self: center; width: 100%; text-align: center; }
+.plc-score { grid-template-columns: minmax(0,1fr) 34px minmax(0,1fr); }
