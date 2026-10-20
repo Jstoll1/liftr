@@ -7665,3 +7665,4 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 /* Vote: centred card, not a bottom sheet. */
 #poll-modal { align-items: center !important; padding: 16px; }
 #poll-modal .wpx-card.poll { border-radius: 18px !important; border-bottom: 1px solid rgba(41,230,255,.25) !important; padding-bottom: 14px; max-height: calc(100vh - 32px); overflow-y: auto; }
+/* restamp */
