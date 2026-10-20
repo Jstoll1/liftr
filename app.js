@@ -6405,7 +6405,7 @@ let qotwShownThisLoad = false;
 // Pops up once per open until this manager votes. Votes can change; the
 // tally (counts only) shows after voting. Names are admin only (?all=1).
 const POLL = { id: "lock-of-week", q: "Add a lock of the week?", opts: [
-  { k: "B", t: "Small bonus", hit: "+1", miss: "0" },
+  { k: "B", t: "Small additional bonus", hit: "+1", miss: "0" },
   { k: "C", t: "Bonus with risk", hit: "+2", miss: "−1" },
   { k: "D", t: "Double or nothing", hit: "×2", miss: "0" },
   { k: "N", t: "No lock", none: "Keep scoring as is" },
