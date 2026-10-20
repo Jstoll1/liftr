@@ -6404,10 +6404,10 @@ let qotwShownThisLoad = false;
 // --- League poll: lock of the week scoring ------------------------------------
 // Pops up once per open until this manager votes. Votes can change; the
 // tally (counts only) shows after voting. Names are admin only (?all=1).
-const POLL = { live: false, id: "lock-of-week", q: "Add a lock 🔒 of the week to scoring.", opts: [
-  { k: "B", t: "Small additional bonus", hit: "+1", miss: "0" },
-  { k: "C", t: "Bonus with risk", hit: "+2", miss: "−1" },
-  { k: "D", t: "Double or nothing", hit: "×2", miss: "0" },
+const POLL = { live: false, id: "lock-of-week-v2", q: "Add a lock 🔒 of the week to scoring.", opts: [
+  { k: "A", t: "Free bonus", hit: "+2", miss: "0" },
+  { k: "B", t: "Bonus with risk", hit: "+2", miss: "−1" },
+  { k: "C", t: "High stakes", hit: "+3", miss: "−3" },
   { k: "N", t: "No lock", none: "Keep scoring as is" },
 ] };
 let pollShownThisLoad = false;
