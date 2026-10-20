@@ -6435,12 +6435,12 @@ async function maybeShowPoll(force) {
       if (!b || b.disabled) return;
       m.querySelectorAll(".poll-opt").forEach((x) => (x.disabled = true));
       try {
-        const r = await fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: POLL.id, manager: currentManager, choice: b.dataset.k, token: tokenFor(currentManager) || undefined }) });
+        const r = await fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: POLL.id, manager: currentManager, choice: b.dataset.k, note: m.querySelector(".poll-note")?.value || "", token: tokenFor(currentManager) || undefined }) });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error || "Vote failed");
         try { localStorage.setItem(doneKey, j.vote); } catch {}
         noteUse?.("poll", j.vote);
-        draw(j);
+        draw({ ...j, note: m.querySelector(".poll-note")?.value || "" });
       } catch (err) { m.querySelector(".poll-err").textContent = err.message; m.querySelectorAll(".poll-opt").forEach((x) => (x.disabled = false)); }
     });
   }
@@ -6450,6 +6450,7 @@ async function maybeShowPoll(force) {
       <button type="button" class="wpx-x" aria-label="Close">✕</button>
       <div class="poll-kicker">VOTE</div>
       <div class="poll-q">${POLL.q}</div>
+      <textarea class="poll-note" rows="2" maxlength="1000" placeholder="Feedback or another idea? (optional)">${(s.note || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</textarea>
       <div class="poll-opts">${POLL.opts.map((o) => `<button type="button" class="poll-opt${s.vote === o.k ? " on" : ""}${o.none ? " no" : ""}" data-k="${o.k}">
         <span class="poll-k">${o.k}</span>
         <span class="poll-t"><b>${o.t}</b><small>${o.none ? o.none : `Hit <i class="up">${o.hit}</i> · Miss <i class="dn">${o.miss}</i>`}</small></span>

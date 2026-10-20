@@ -1914,10 +1914,11 @@ async function handlePoll(request, env, corsHeaders, url) {
     if (url.searchParams.get("all") === "1") {
       if (!isAdmin(env, url) && !isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
       out.votes = Object.fromEntries(t.rows.filter(([, v]) => v).map(([m, v]) => [m, v.choice]));
+      out.notes = Object.fromEntries(t.rows.filter(([, v]) => v?.note).map(([m, v]) => [m, v.note]));
       out.waitingOn = t.rows.filter(([, v]) => !v).map(([m]) => m);
     }
     const m = url.searchParams.get("manager");
-    if (PICKS_MANAGERS.includes(m)) out.vote = (t.rows.find(([n]) => n === m)?.[1] || {}).choice || null;
+    if (PICKS_MANAGERS.includes(m)) { const mine = t.rows.find(([n]) => n === m)?.[1] || {}; out.vote = mine.choice || null; out.note = mine.note || ""; }
     return json(out, 200, { ...corsHeaders, "Cache-Control": "no-store" });
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
@@ -1926,7 +1927,8 @@ async function handlePoll(request, env, corsHeaders, url) {
   const pid = String(body?.id || "").slice(0, 40);
   if (!POLL_CHOICES[pid] || !PICKS_MANAGERS.includes(manager) || !POLL_CHOICES[pid].includes(choice)) return json({ error: "Invalid vote" }, 400, corsHeaders);
   if ((await authMode(env)) === "on" && (await tokenOwner(env, token)) !== manager) return json({ error: "Sign in to vote", needsLogin: true }, 401, corsHeaders);
-  await env.LIFTR_KV.put(key(pid, manager), JSON.stringify({ choice, at: Date.now() }));
+  const note = String(body?.note || "").trim().slice(0, 1000);
+  await env.LIFTR_KV.put(key(pid, manager), JSON.stringify({ choice, note: note || undefined, at: Date.now() }));
   const t = await tally(pid);
   return json({ ok: true, vote: choice, counts: t.counts, voted: t.voted, of: t.of }, 200, corsHeaders);
 }
