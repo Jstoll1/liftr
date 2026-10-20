@@ -594,12 +594,14 @@ html, body { overflow-x: hidden; }
 
   /* Collapsible sections */
   .fold-h { cursor: pointer; user-select: none; }
-  section.panel > .ph.fold-h h2::before { content: "▾"; display: inline-block; width: 1em; margin-right: 4px; color: #8b91a5; font-size: 11px; transition: transform .15s; }
+  section.panel > .ph.fold-h h2::before { content: "▾"; display: inline-block; width: 1em; margin-right: 6px; color: #8b91a5; font-size: 10px; line-height: 1; vertical-align: 1px; text-align: center; transition: transform .15s; }
   section.panel.folded > .ph.fold-h h2::before { transform: rotate(-90deg); }
   section.panel.folded > :not(.ph) { display: none !important; }
   section.panel.folded { padding-bottom: 14px; }
-  .day.fold-h::after { content: " ▾"; }
-  .day.fold-h.shut::after { content: " ▸ " attr(data-n) " visits"; text-transform: none; letter-spacing: 0; }
+  .day.fold-h::before { content: "▾"; width: 1em; margin-right: -4px; font-size: 10px; text-align: center; transition: transform .15s; }
+  .day.fold-h.shut::before { transform: rotate(-90deg); }
+  .day .dn { order: 2; font: 600 11px/1 var(--mono); letter-spacing: 0; text-transform: none; color: var(--dim); }
+  .day::after { order: 3; }
   .quiet-toggle { display: none; margin: 8px auto 0; background: none; border: 1px solid rgba(255,255,255,.12); color: inherit; opacity: .75; border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 12px; cursor: pointer; }
   @media (max-width: 700px) {
     .tl:not(.allrows) .ln-l.quiet, .tl:not(.allrows) .ln-t.quiet { display: none; }
@@ -1188,7 +1190,8 @@ html, body { overflow-x: hidden; }
       d.classList.add("fold-h"); d.classList.toggle("shut", shut);
       let n = 0;
       for (let x = d.nextElementSibling; x && !x.classList.contains("day") && !x.classList.contains("note"); x = x.nextElementSibling) { x.hidden = shut; n++; }
-      d.dataset.n = n;
+      let dn = d.querySelector(".dn"); if (!dn) { dn = document.createElement("span"); dn.className = "dn"; d.appendChild(dn); }
+      dn.textContent = shut ? `${n} visit${n === 1 ? "" : "s"}` : "";
     });
     const tl = app.querySelector("#sec-tl"); const q = tl ? tl.querySelectorAll(".ln-t.quiet").length : 0;
     if (tl && q && !tl.querySelector(".quiet-toggle")) {
