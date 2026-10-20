@@ -7626,3 +7626,38 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .ps-r u s { display: block; height: 100%; background: #29e6ff; opacity: .55; }
 .ps-r.on u s { opacity: 1; }
 .ps-r b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; text-align: right; }
+
+/* Vote v3: a bottom sheet that slides up, risk meters, a locked in moment. */
+#poll-modal { align-items: flex-end; }
+#poll-modal .wpx-card.poll { width: min(440px, 100%); margin: 0 auto; border-radius: 18px 18px 0 0; padding: 18px 16px calc(14px + env(safe-area-inset-bottom)); gap: 12px; background: linear-gradient(180deg, #14122a, #0c0b1a) !important; border: 1px solid rgba(41,230,255,.25) !important; border-bottom: 0 !important; box-shadow: 0 -18px 50px rgba(0,0,0,.6) !important; animation: poll-up .32s cubic-bezier(.2,.9,.3,1) both; }
+@media (min-width: 600px) { #poll-modal { align-items: center; } #poll-modal .wpx-card.poll { border-radius: 18px; border-bottom: 1px solid rgba(41,230,255,.25) !important; } }
+@keyframes poll-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.poll-top { display: flex; align-items: center; gap: 12px; padding-right: 34px; }
+.poll-lock { width: 44px; height: 44px; flex: none; display: grid; place-items: center; font-size: 22px; border-radius: 12px; background: radial-gradient(circle at 30% 30%, rgba(255,210,63,.35), rgba(255,210,63,.08)); border: 1px solid rgba(255,210,63,.4); }
+.poll.fresh .poll-lock { animation: poll-pop .5s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes poll-pop { 0% { transform: scale(.6) rotate(-12deg); } 100% { transform: none; } }
+.wpx-card.poll .poll-kicker { font-size: 6.5px; color: #ffd23f; margin-bottom: 6px; }
+.wpx-card.poll .poll-q { margin: 0; font-size: 15px; white-space: normal; line-height: 1.3; }
+.wpx-card.poll .poll-opts { gap: 7px; }
+.wpx-card.poll .poll-opt { --a: #29e6ff; grid-template-columns: minmax(0,1fr) auto; min-height: 0; padding: 11px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.035); transition: transform .12s, border-color .15s, background .15s; }
+.wpx-card.poll .poll-opt:active { transform: scale(.98); }
+.wpx-card.poll .opt-A { --a: #39ff88; } .wpx-card.poll .opt-B { --a: #29e6ff; } .wpx-card.poll .opt-C { --a: #ff2bd6; } .wpx-card.poll .opt-N { --a: #8b91a5; }
+.wpx-card.poll .poll-opt:hover { border-color: color-mix(in srgb, var(--a) 55%, transparent); }
+.wpx-card.poll .poll-opt.on { border-color: var(--a); background: color-mix(in srgb, var(--a) 10%, transparent); box-shadow: inset 3px 0 0 var(--a); }
+.wpx-card.poll .poll-opt.no { border-style: dashed; }
+.wpx-card.poll .poll-t b { font-size: 14.5px; }
+.poll-risk { display: grid; grid-template-columns: repeat(3, 8px); gap: 3px; align-items: end; justify-items: center; }
+.poll-risk s { display: block; width: 8px; border-radius: 2px; background: rgba(255,255,255,.1); }
+.poll-risk s:nth-child(1) { height: 6px; } .poll-risk s:nth-child(2) { height: 10px; } .poll-risk s:nth-child(3) { height: 14px; }
+.poll-risk s.f { background: var(--a); }
+.poll-risk small { grid-column: 1 / -1; font-family: 'Press Start 2P', monospace; font-size: 5px; letter-spacing: .06em; color: var(--text-dim); white-space: nowrap; margin-top: 3px; }
+.poll-c { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--a); }
+.wpx-card.poll .poll-bar { grid-column: 1 / -1; display: block; height: 5px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; }
+.wpx-card.poll .poll-bar u { display: block; height: 100%; width: var(--w); background: var(--a); border-radius: 3px; animation: poll-grow .6s ease-out both; }
+@keyframes poll-grow { from { width: 0; } }
+.wpx-card.poll .poll-note { min-height: 0; height: 38px; resize: none; border-radius: 10px; font-size: 12.5px; transition: height .15s; }
+.wpx-card.poll .poll-note:focus { height: 70px; }
+.poll-later { justify-self: center; background: none; border: 0; color: var(--text-dim); font: inherit; font-size: 12px; padding: 2px 10px; cursor: pointer; }
+.wpx-card.poll .poll-foot span { font-size: 11.5px; }
+@media (prefers-reduced-motion: reduce) { #poll-modal .wpx-card.poll, .poll.fresh .poll-lock, .wpx-card.poll .poll-bar u { animation: none; } }
+.wpx-card.poll .poll-later { justify-self: center; width: 100%; text-align: center; }

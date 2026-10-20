@@ -6435,7 +6435,7 @@ async function maybeShowPoll(force) {
       if (on) fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: POLL.id, manager: currentManager, choice: on.dataset.k, note: e.target.value, token: tokenFor(currentManager) || undefined }) }).catch(() => {});
     });
     m.addEventListener("click", async (e) => {
-      if (e.target === m || e.target.closest(".wpx-x, .poll-done")) { m.classList.add("hidden"); return; }
+      if (e.target === m || e.target.closest(".wpx-x, .poll-done, .poll-later")) { m.classList.add("hidden"); return; }
       const b = e.target.closest(".poll-opt");
       if (!b || b.disabled) return;
       m.querySelectorAll(".poll-opt").forEach((x) => (x.disabled = true));
@@ -6445,25 +6445,25 @@ async function maybeShowPoll(force) {
         if (!r.ok) throw new Error(j.error || "Vote failed");
         try { localStorage.setItem(doneKey, j.vote); } catch {}
         noteUse?.("poll", j.vote);
-        draw({ ...j, note: m.querySelector(".poll-note")?.value || "" });
+        draw({ ...j, note: m.querySelector(".poll-note")?.value || "" }, true);
         drawPollStrip(j);
       } catch (err) { m.querySelector(".poll-err").textContent = err.message; m.querySelectorAll(".poll-opt").forEach((x) => (x.disabled = false)); }
     });
   }
-  const draw = (s) => {
+  const RISK = { A: 0, B: 1, C: 3, N: -1 };
+  const draw = (s, fresh) => {
     const max = Math.max(1, ...Object.values(s.counts || {}));
-    m.innerHTML = `<div class="wpx-card poll">
+    m.innerHTML = `<div class="wpx-card poll${s.vote ? " voted" : ""}${fresh ? " fresh" : ""}">
       <button type="button" class="wpx-x" aria-label="Close">✕</button>
-      <div class="poll-kicker">VOTE</div>
-      <div class="poll-q">${POLL.q}</div>
-      <div class="poll-opts">${POLL.opts.map((o) => `<button type="button" class="poll-opt${s.vote === o.k ? " on" : ""}${o.none ? " no" : ""}" data-k="${o.k}">
-        <span class="poll-k">${o.k}</span>
+      <div class="poll-top"><span class="poll-lock">🔒</span><div><div class="poll-kicker">${s.vote ? "YOU'RE LOCKED IN" : "LEAGUE VOTE · 5 SECONDS"}</div><div class="poll-q">${POLL.q}</div></div></div>
+      <div class="poll-opts">${POLL.opts.map((o) => `<button type="button" class="poll-opt opt-${o.k}${s.vote === o.k ? " on" : ""}${o.none ? " no" : ""}" data-k="${o.k}">
         <span class="poll-t"><b>${o.t}</b><small>${o.none ? o.none : `Hit <i class="up">${o.hit}</i> · Miss <i class="dn">${o.miss}</i>`}</small></span>
-        ${s.vote ? `<span class="poll-bar"><u style="width:${Math.round(((s.counts[o.k] || 0) / max) * 100)}%"></u><em>${s.counts[o.k] || 0}</em></span>` : ""}
+        ${s.vote ? `<em class="poll-c">${s.counts[o.k] || 0}</em>` : RISK[o.k] >= 0 ? `<span class="poll-risk" title="Risk">${[1, 2, 3].map((i) => `<s class="${i <= RISK[o.k] ? "f" : ""}"></s>`).join("")}<small>${["NO RISK", "SOME RISK", "", "BIG RISK"][RISK[o.k]]}</small></span>` : ""}
+        ${s.vote ? `<span class="poll-bar"><u style="--w:${Math.round(((s.counts[o.k] || 0) / max) * 100)}%"></u></span>` : ""}
       </button>`).join("")}</div>
-      <textarea class="poll-note" rows="2" maxlength="1000" placeholder="Optional feedback">${(s.note || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</textarea>
+      <textarea class="poll-note" rows="1" maxlength="1000" placeholder="Optional feedback">${(s.note || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</textarea>
       <div class="poll-err"></div>
-      ${s.vote ? `<div class="poll-foot">${s.voted} of ${s.of} voted · tap another to change your vote<button type="button" class="poll-done">Done</button></div>` : ""}
+      ${s.vote ? `<div class="poll-foot"><span>${s.voted} of ${s.of} voted · tap another to switch</span><button type="button" class="poll-done">Done</button></div>` : `<button type="button" class="poll-later wpx-x-alt">Not now</button>`}
     </div>`;
   };
   draw(st);
