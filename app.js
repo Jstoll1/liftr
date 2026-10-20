@@ -6404,7 +6404,7 @@ let qotwShownThisLoad = false;
 // --- League poll: lock of the week scoring ------------------------------------
 // Pops up once per open until this manager votes. Votes can change; the
 // tally (counts only) shows after voting. Names are admin only (?all=1).
-const POLL = { id: "lock-of-week", q: "Add a lock of the week?", opts: [
+const POLL = { live: false, id: "lock-of-week", q: "Add a lock of the week?", opts: [
   { k: "B", t: "Small additional bonus", hit: "+1", miss: "0" },
   { k: "C", t: "Bonus with risk", hit: "+2", miss: "−1" },
   { k: "D", t: "Double or nothing", hit: "×2", miss: "0" },
@@ -6412,6 +6412,8 @@ const POLL = { id: "lock-of-week", q: "Add a lock of the week?", opts: [
 ] };
 let pollShownThisLoad = false;
 async function maybeShowPoll(force) {
+  // Held back until POLL.live: preview with ?poll=1.
+  if (!POLL.live && !/[?&]poll=1/.test(location.search)) return;
   if ((!force && pollShownThisLoad) || !currentManager || !WORKER_URL || window.__adminEntry || window.__adminOpen || window.__liveView) return;
   const doneKey = `brochiefs_poll_${POLL.id}_${currentManager}`;
   try { if (!force && localStorage.getItem(doneKey)) return; } catch {}
