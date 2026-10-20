@@ -718,6 +718,7 @@ html, body { overflow-x: hidden; }
     "path-share": "Shared a Path to Win", "path-intro": "Saw the Path to Win intro",
     "wp-player": "Opened a win % breakdown", "wp-explain": "Read how win % works", h2h: "Opened head to head",
     "pot-open": "Opened the pot", "pot-seen": "Looked at the pot", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Read the week replay", "board-seen": "Looked at the leaderboard", "scores-seen": "Looked at live scores", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
+    "poll-view": "Saw the lock of the week vote", poll: "Voted on the lock of the week",
     sim: "Ran a game sim", "grid-card": "Opened a grid card", "history-ask": "Asked the archive", "gamecast-log": "Opened the full game log",
   };
   const SHEET = { "h2h-modal": "head to head", "insights-modal": "game info", "sh2h-modal": "season head to head", "grid-modal": "the grid check", "rules-modal": "the rules", "avatar-modal": "the avatar picker", "boner-modal": "the boner", "sim-modal": "game sim", "claim-modal": "the claim sheet", "identity-modal": "who are you", "code-modal": "the code sheet" };
@@ -821,6 +822,7 @@ html, body { overflow-x: hidden; }
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
       if (HAS_STUDIO) loadCosts(full);
+      if (LEAGUE === "cfb") fetch(`${WORKER}/poll?id=lock-of-week-v2&all=1&${auth()}&t=${Date.now()}`, { cache: "no-store" }).then((x) => (x.ok ? x.json() : null)).then((p) => { if (p && JSON.stringify(p) !== JSON.stringify(st.poll)) { st.poll = p; render(); } }).catch(() => {});
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
       if (r.asks) st.asks = r.asks;
       // The week comes with seven days of taps; the live view keeps one.
@@ -1019,6 +1021,22 @@ html, body { overflow-x: hidden; }
         <div class="asks">${list.map((x) => `<button type="button" class="ask" data-ask="${x.ts}"><span class="ask-h">${x.n ? av(x.n, "sm") : ""}<b>${esc(x.n ? name(x.n) : "Someone")}</b><time>${esc(dayOf(x.ts) === today0 ? hm(x.ts) : `${new Date(x.ts).toLocaleDateString([], { weekday: "short" })} ${hm(x.ts)}`)}</time></span><span class="ask-q">${esc(x.q)}</span></button>`).join("")}</div>
       </section>`;
     };
+    // The lock of the week vote: tally, who voted what, who has seen it, feedback.
+    const pollPanel = () => {
+      const p = st.poll; if (!p) return "";
+      const LAB = { A: "Free bonus +2/0", B: "Bonus with risk +2/−1", C: "High stakes +3/−3", N: "No lock" };
+      const votes = p.votes || {}, views = p.views || {}, notes = p.notes || {};
+      const max = Math.max(1, ...Object.values(p.counts || {}));
+      const when = (t) => t ? `${new Date(t).toLocaleDateString([], { weekday: "short" })} ${hm(t)}` : "";
+      // Views are usage: Jake is left out of them. Votes count everyone.
+      const seen = Object.keys(views).filter((n) => n !== "Jake");
+      const waiting = (p.waitingOn || []);
+      return `<section class="panel"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${p.voted} of ${p.of} voted · seen by ${seen.length}</span></div>
+        <div class="rank">${Object.keys(LAB).map((k) => `<div><span>${esc(LAB[k])} <small>${Object.entries(votes).filter(([, v]) => v === k).map(([n]) => esc(name(n))).join(", ")}</small></span><b>${p.counts?.[k] || 0}</b><i><s style="width:${(((p.counts?.[k] || 0) / max) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>
+        ${waiting.length ? `<div class="note">Not voted: ${waiting.map((n) => `${esc(name(n))}${views[n] && n !== "Jake" ? ` <small>(seen ${views[n].n}×)</small>` : ""}`).join(", ")}</div>` : `<div class="note">Everyone has voted.</div>`}
+        ${Object.keys(notes).length ? `<div class="note">${Object.entries(notes).map(([n, t]) => `<div><b>${esc(name(n))}</b>: ${esc(t)} <small>${esc(when(p.votedAt?.[n]))}</small></div>`).join("")}</div>` : ""}
+      </section>`;
+    };
     // Where people got stuck, and how far down each screen they got.
     const frictionPanel = (list, sub) => {
       const f = new Map();
@@ -1074,6 +1092,7 @@ html, body { overflow-x: hidden; }
         <div class="split"><s style="width:${((home / (home + web)) * 100).toFixed(1)}%;background:var(--past)"></s><s style="flex:1;background:#5b5378"></s></div>
         <div class="split-k"><span><i style="background:var(--past)"></i>Home screen app <b>${home}</b></span><span><i style="background:#5b5378"></i>Browser <b>${web}</b></span></div>
       </section>` : ""}
+      ${pollPanel()}
       ${frictionPanel(actions, "last 24h")}
       ${askPanel(from, "last 24h")}
     </aside>`;

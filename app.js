@@ -6404,7 +6404,7 @@ let qotwShownThisLoad = false;
 // --- League poll: lock of the week scoring ------------------------------------
 // Pops up once per open until this manager votes. Votes can change; the
 // tally (counts only) shows after voting. Names are admin only (?all=1).
-const POLL = { live: false, id: "lock-of-week-v2", q: "Add a lock 🔒 of the week to scoring.", opts: [
+const POLL = { live: true, id: "lock-of-week-v2", q: "Add a lock 🔒 of the week to scoring.", opts: [
   { k: "A", t: "Free bonus", hit: "+2", miss: "0" },
   { k: "B", t: "Bonus with risk", hit: "+2", miss: "−1" },
   { k: "C", t: "High stakes", hit: "+3", miss: "−3" },
@@ -6467,6 +6467,8 @@ async function maybeShowPoll(force) {
   };
   draw(st);
   m.classList.remove("hidden");
+  noteUse("poll-view", POLL.id);
+  fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: POLL.id, manager: currentManager, action: "view" }) }).catch(() => {});
 }
 window.maybeShowPoll = maybeShowPoll;
 

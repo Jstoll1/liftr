@@ -1912,7 +1912,10 @@ async function handlePoll(request, env, corsHeaders, url) {
     const t = await tally(id);
     const out = { counts: t.counts, voted: t.voted, of: t.of };
     if (url.searchParams.get("all") === "1") {
-      if (!isAdmin(env, url) && !isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+      if (!isAdmin(env, url) && !isSlateAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+      const views = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(`pollview:${id}:${m}`, "json")]));
+      out.views = Object.fromEntries(views.filter(([, v]) => v));
+      out.votedAt = Object.fromEntries(t.rows.filter(([, v]) => v).map(([m, v]) => [m, v.at]));
       out.votes = Object.fromEntries(t.rows.filter(([, v]) => v).map(([m, v]) => [m, v.choice]));
       out.notes = Object.fromEntries(t.rows.filter(([, v]) => v?.note).map(([m, v]) => [m, v.note]));
       out.waitingOn = t.rows.filter(([, v]) => !v).map(([m]) => m);
@@ -1925,6 +1928,15 @@ async function handlePoll(request, env, corsHeaders, url) {
   let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
   const { manager, choice, token } = body || {};
   const pid = String(body?.id || "").slice(0, 40);
+  // A view: the pop-up was shown to this manager (first, last, how many times).
+  if (body?.action === "view") {
+    if (!POLL_CHOICES[pid] || !PICKS_MANAGERS.includes(manager)) return json({ error: "Invalid" }, 400, corsHeaders);
+    const vk = `pollview:${pid}:${manager}`, now = Date.now();
+    const v = (await env.LIFTR_KV.get(vk, "json")) || { first: now, n: 0 };
+    v.last = now; v.n++;
+    await env.LIFTR_KV.put(vk, JSON.stringify(v));
+    return json({ ok: true }, 200, corsHeaders);
+  }
   if (!POLL_CHOICES[pid] || !PICKS_MANAGERS.includes(manager) || !POLL_CHOICES[pid].includes(choice)) return json({ error: "Invalid vote" }, 400, corsHeaders);
   if ((await authMode(env)) === "on" && (await tokenOwner(env, token)) !== manager) return json({ error: "Sign in to vote", needsLogin: true }, 401, corsHeaders);
   const note = String(body?.note || "").trim().slice(0, 1000);
