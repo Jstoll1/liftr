@@ -182,6 +182,11 @@
   }
   el("admin-qotw-btn")?.addEventListener("click", showQotw);
 
+  // Late night side pot: the panel itself lives in app.js (mountSideAdmin),
+  // shared with the app owner's console.
+  const showSide = () => mountSideAdmin(el("admin-side"), verifyKey, say);
+  el("admin-side-btn")?.addEventListener("click", showSide);
+
   function syncGate() {
     const has = !!getKey().trim();
     el("admin-load").disabled = !has;

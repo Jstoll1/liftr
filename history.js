@@ -16,7 +16,7 @@ const row=(s,o)=>s.standings.find(r=>r.owner===o);
 const cups=n=>n?'🏆'.repeat(n):'—';
 
 function renderLineage(){
-  document.getElementById('lineage-track').innerHTML=Object.values(S).map(s=>{const c=row(s,s.champion);return `<article class="lineage-card" style="--owner-accent:${color(s.champion)}"><span class="lineage-year">${s.year}</span><span class="lineage-trophy">🏆</span><strong>${s.champion}</strong><span class="lineage-team">${c.team}</span><span class="lineage-record">${c.wins}–${c.losses}</span></article>`}).join('');
+  document.getElementById('lineage-track').innerHTML=Object.values(S).map(s=>{const c=row(s,s.champion);return `<article class="lineage-card" style="--owner-accent:${color(s.champion)}" data-year="${s.year}" role="button" tabindex="0" title="Open ${s.year}"><span class="lineage-year">${s.year}</span><span class="lineage-trophy">🏆</span><strong>${s.champion}</strong><span class="lineage-team">${c.team}</span><span class="lineage-record">${c.wins}–${c.losses}</span></article>`}).join('');
 }
 let ledgerSort='titles';
 function ledgerRows(k){
@@ -169,7 +169,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     e.preventDefault();
     const q=input.value.trim();if(q.length<3||form.classList.contains('busy'))return;
     if(!worker){typeOut('The archive is offline right now.','error');return}
-    form.classList.add('busy');clearExtras();typeOut('SEARCHING THE ARCHIVE…');try{window.goatcounter&&window.goatcounter.count({path:'archive-ask',title:'archive-ask',event:true})}catch{}
+    form.classList.add('busy');clearExtras();typeOut('SEARCHING THE ARCHIVE…');try{window.presenceNote&&window.presenceNote('history-ask',q)}catch{}try{window.goatcounter&&window.goatcounter.count({path:'archive-ask',title:'archive-ask',event:true})}catch{}
     try{
       const res=await fetch(worker+'/history-ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,asker:(()=>{try{return localStorage.getItem('brochiefs_me_v1')||null}catch{return null}})()})});
       const data=await res.json().catch(()=>({}));
@@ -323,3 +323,12 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   showBest();showResume();loadHighScores();
   document.getElementById('nav-trivia-btn')?.addEventListener('click',loadHighScores);
 })();
+
+// A champion in the strip opens that season's full card further down.
+document.getElementById('lineage-track')?.addEventListener('click',e=>{
+  const c=e.target.closest('.lineage-card[data-year]');if(!c)return;
+  const d=document.querySelector(`.season-card[data-year="${c.dataset.year}"]`);if(!d)return;
+  d.open=true;d.scrollIntoView({behavior:'smooth',block:'start'});
+  d.classList.add('flash');setTimeout(()=>d.classList.remove('flash'),1400);
+  try{window.noteUse?.('history-season',c.dataset.year)}catch{}
+});

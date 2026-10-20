@@ -1,7 +1,13 @@
+import { openaiChat } from "./costs.js";
 import { setSport, runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
 import { LiveRoom, deviceToken, deviceTokenOk } from "./live.js";
+import { sideKey, entryKey, newPot, extendPot, cleanSidePicks, joinEntry, declineEntry, viewPot, cleanSideFinals, sideHistoryRecord } from "./side.js";
+
+// The live room has to be exported from the main module for Cloudflare.
 export { LiveRoom };
+export { CreativeDesk } from "./creative.js";
+import { MANIFEST_KEY } from "./creative.js";
 // Liftr AI Worker
 //
 // Holds the OpenAI API key server-side (never exposed to the browser) and
@@ -38,6 +44,9 @@ export default {
     // to Friday, hourly on Saturday) samples the lines for every game
     // still open.
     if (!SEAL_CRONS.has(event.cron)) {
+      // NFL: a schedule run also seals any week whose games are all over,
+      // in case nobody had the app open when the last one ended.
+      if (SPORT === "nfl") ctx.waitUntil(sealFromEspn(env).then((r) => console.log("scheduled seal check", JSON.stringify(r))).catch((err) => console.error("seal check", err)));
       if (SPORT === "nfl") ctx.waitUntil(autoSlate(env, { force: true }).then((r) => console.log("scheduled slate", JSON.stringify(r))).catch((err) => console.error("autoSlate", err)));
       ctx.waitUntil(runInsights(env, INSIGHTS_DEPS, { briefs: false }).then((r) => console.log("scheduled insights", JSON.stringify(r))));
       return;
@@ -90,6 +99,9 @@ export default {
     if (url.pathname === "/expert-record") {
       return handleExpertRecord(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/poll") {
+      return handlePoll(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/qotw") {
       return handleQotw(request, env, corsHeaders, url);
     }
@@ -122,6 +134,25 @@ export default {
     if (url.pathname === "/visit") {
       return handleVisit(request, env, corsHeaders, url);
     }
+    // The Creative Studio: owner only, every route, before anything else
+    // looks at the request.
+    // Published art, public: the list of what is live, and each image by
+    // its version (only while it is published). Everything else about the
+    // Studio stays behind the owner's key.
+    if (url.pathname.startsWith("/art/")) {
+      return handleArt(request, env, corsHeaders, url);
+    }
+    if (url.pathname.startsWith("/creative/")) {
+      return handleCreative(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/presence") {
+      return handlePresence(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/presence-device") {
+      if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+      if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+      return json(await deviceToken(env.ARCHIVE_LOG_KEY, Date.now()), 200, { ...corsHeaders, "Cache-Control": "no-store" });
+    }
     if (url.pathname === "/rollups") {
       return handleRollups(request, env, corsHeaders, url);
     }
@@ -139,6 +170,9 @@ export default {
     }
     if (url.pathname === "/picks") {
       return handlePicks(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/side") {
+      return handleSide(request, env, corsHeaders, url);
     }
     if (url.pathname === "/results") {
       return handleResults(request, env, corsHeaders, url);
@@ -441,7 +475,7 @@ export default {
     });
 
     try {
-      const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      const aiRes = await openaiChat(env, "liftr-plan", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1197,6 +1231,107 @@ export function maskPicks(picks, kickoffs, now, viewer) {
   return out;
 }
 
+// --- Side pot (see side.js) ----------------------------------------------
+// GET  /side?week=N[&me=&token=]   the week's pot, picks hidden until it closes
+// POST /side?key=...  { action: "start", week, games, buyIn, replace? }
+//                     { action: "cancel", week } | { action: "paid", week, manager, paid }
+// POST /side          { action: "join", manager, token, picks } | { action: "decline", manager, token }
+// The season's finished side bets, one per week. Kept apart from the
+// pool's record and kept for good, like the week summaries.
+const SIDE_HISTORY_KEY = "side:history";
+async function sideEntries(env, pot) {
+  const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(entryKey(pot.week, pot.id, m), "json")]));
+  return Object.fromEntries(rows.filter(([, e]) => e));
+}
+async function handleSide(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  const now = Date.now();
+  const noStore = { ...corsHeaders, "Cache-Control": "no-store" };
+  const keep = { expirationTtl: 120 * 24 * 3600 };
+  if (request.method === "GET") {
+    // Every finished side bet this season, for the side bets board in
+    // season stats. Only finished bets are kept, so every pick is public.
+    if (url.searchParams.get("history") === "1") {
+      const hist = (await env.LIFTR_KV.get(SIDE_HISTORY_KEY, "json")) || {};
+      return json({ history: Object.values(hist).sort((a, b) => a.week - b.week) }, 200, noStore);
+    }
+    const week = await weekFrom(env, url);
+    const pot = await env.LIFTR_KV.get(sideKey(week), "json");
+    if (!pot) return json({ week, pot: null }, 200, noStore);
+    const viewer = isSlateAdmin(env, url) ? { all: true, me: null } : await picksViewer(env, url);
+    return json({ week, pot: viewPot(pot, await sideEntries(env, pot), now, viewer) }, 200, noStore);
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const action = body?.action;
+  const week = Number.isInteger(body?.week) && body.week >= 1 ? body.week : await weekFrom(env, url);
+  const pot = await env.LIFTR_KV.get(sideKey(week), "json");
+  const viewAll = { all: true, me: null };
+
+  if (action === "start" || action === "cancel" || action === "paid" || action === "edit") {
+    if (!isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+    if (action === "cancel") { await env.LIFTR_KV.delete(sideKey(week)); return json({ ok: true, pot: null }, 200, noStore); }
+    if (action === "edit") {
+      if (!pot) return json({ error: "There is no side bet to add to." }, 404, corsHeaders);
+      const made = extendPot(pot, { games: body.games, slate: await env.LIFTR_KV.get(gamesKey(week), "json"), now, closeAt: body.closeAt ?? null, tbGame: body.tbGame ?? null });
+      if (made.error) return json({ error: made.error }, 400, corsHeaders);
+      await env.LIFTR_KV.put(sideKey(week), JSON.stringify(made.pot), keep);
+      return json({ ok: true, pot: viewPot(made.pot, await sideEntries(env, made.pot), now, viewAll) }, 200, noStore);
+    }
+    if (action === "paid") {
+      const k = pot && PICKS_MANAGERS.includes(body.manager) ? entryKey(week, pot.id, body.manager) : null;
+      const e = k ? await env.LIFTR_KV.get(k, "json") : null;
+      if (!e?.in) return json({ error: "Not in the pot" }, 400, corsHeaders);
+      if (body.paid) e.paid = true; else delete e.paid;
+      await env.LIFTR_KV.put(k, JSON.stringify(e), keep);
+      return json({ ok: true, pot: viewPot(pot, await sideEntries(env, pot), now, viewAll) }, 200, noStore);
+    }
+    // A pot people have bought into is only replaced on purpose.
+    const inNow = pot ? Object.values(await sideEntries(env, pot)).filter((e) => e.in).length : 0;
+    if (inNow && !body.replace) return json({ error: "A side pot with entrants is already running.", entrants: inNow }, 409, corsHeaders);
+    const made = newPot({ week, games: body.games, buyIn: body.buyIn, slate: await env.LIFTR_KV.get(gamesKey(week), "json"), now, closeAt: body.closeAt ?? null, tbGame: body.tbGame ?? null });
+    if (made.error) return json({ error: made.error }, 400, corsHeaders);
+    await env.LIFTR_KV.put(sideKey(week), JSON.stringify(made.pot), keep);
+    return json({ ok: true, pot: viewPot(made.pot, {}, now, viewAll) }, 200, noStore);
+  }
+
+  // Finals for the pot's games, from whichever phone sees them end. Once
+  // every game has one, the bet goes into the season's side bet record.
+  if (action === "finals") {
+    if (!pot || String(body.potId) !== String(pot.id)) return json({ error: "That side bet is gone." }, 404, corsHeaders);
+    const clean = cleanSideFinals(pot, body.finals, pot.finals, now, isSlateAdmin(env, url));
+    if (clean.error) return json({ error: clean.error }, 400, corsHeaders);
+    const finals = { ...(pot.finals || {}), ...clean.finals };
+    if (Object.keys(clean.finals).length) await env.LIFTR_KV.put(sideKey(week), JSON.stringify({ ...pot, finals }), keep);
+    const rec = sideHistoryRecord(pot, await sideEntries(env, pot), finals);
+    if (rec) {
+      const hist = (await env.LIFTR_KV.get(SIDE_HISTORY_KEY, "json")) || {};
+      if (JSON.stringify(hist[week]) !== JSON.stringify(rec)) { hist[week] = rec; await env.LIFTR_KV.put(SIDE_HISTORY_KEY, JSON.stringify(hist)); }
+    }
+    return json({ ok: true, stored: Object.keys(clean.finals).length, recorded: !!rec }, 200, noStore);
+  }
+
+  if (action !== "join" && action !== "decline") return json({ error: "Unknown action" }, 400, corsHeaders);
+  const manager = body?.manager;
+  if (!PICKS_MANAGERS.includes(manager)) return json({ error: "Invalid manager" }, 400, corsHeaders);
+  if ((await authMode(env)) === "on" && (await tokenOwner(env, body?.token)) !== manager) return json({ error: `Sign in as ${manager} first.`, needsLogin: true }, 401, corsHeaders);
+  if (!pot) return json({ error: "There is no side pot this week." }, 404, corsHeaders);
+  const k = entryKey(week, pot.id, manager);
+  const prev = await env.LIFTR_KV.get(k, "json");
+  let done;
+  if (action === "join") {
+    const clean = cleanSidePicks(pot, pot.slate ? null : await env.LIFTR_KV.get(gamesKey(week), "json"), body.picks, body.tb);
+    if (clean.error) return json({ error: clean.error }, 400, corsHeaders);
+    done = joinEntry(pot, prev, clean.picks, now, clean.tb);
+  } else done = declineEntry(pot, prev, now);
+  if (done.error) return json({ error: done.error }, 409, corsHeaders);
+  await env.LIFTR_KV.put(k, JSON.stringify(done.entry), keep);
+  const entries = await sideEntries(env, pot);
+  entries[manager] = done.entry; // read-after-write in KV can lag, so this answer is certain
+  return json({ ok: true, pot: viewPot(pot, entries, now, { all: false, me: manager }) }, 200, noStore);
+}
+
 async function handlePicks(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) {
     console.error("LIFTR_KV binding missing");
@@ -1922,7 +2057,7 @@ async function writeStory(env, facts) {
     "Banned: 'rollercoaster', 'this week's slate', 'took the crown', 'across the league', 'impressive', exclamation marks, and any city, stadium, nickname or detail not in the facts.",
     "No em dashes or hyphens as punctuation. Return JSON {headline, byline, body}.",
   ].join(" ");
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const res = await openaiChat(env, "story", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: JSON.stringify({
@@ -1953,6 +2088,58 @@ async function handleStory(request, env, corsHeaders, url) {
   if (!story) return json({ story: null }, 200, corsHeaders);
   await env.LIFTR_KV.put(storyKey(week), JSON.stringify(story));
   return json({ story }, 200, corsHeaders);
+}
+
+// --- League polls ----------------------------------------------------------
+// One vote per manager per poll id, changeable. GET ?id=&manager= returns
+// that manager's vote and the tally (counts only); ?all=1 (admin) adds names.
+const POLL_CHOICES = { "lock-of-week-v2": ["A", "B", "C", "N"] };
+async function handlePoll(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  const key = (id, m) => `poll:${id}:${m}`;
+  const tally = async (id) => {
+    const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(key(id, m), "json")]));
+    const counts = Object.fromEntries(POLL_CHOICES[id].map((c) => [c, 0]));
+    for (const [, v] of rows) if (v && v.choice in counts) counts[v.choice]++;
+    return { rows, counts, voted: rows.filter(([, v]) => v).length, of: PICKS_MANAGERS.length };
+  };
+  const id = String((request.method === "GET" ? url.searchParams.get("id") : null) || "").slice(0, 40);
+  if (request.method === "GET") {
+    if (!POLL_CHOICES[id]) return json({ error: "Unknown poll" }, 400, corsHeaders);
+    const t = await tally(id);
+    const out = { counts: t.counts, voted: t.voted, of: t.of };
+    if (url.searchParams.get("all") === "1") {
+      if (!isAdmin(env, url) && !isSlateAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+      const views = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(`pollview:${id}:${m}`, "json")]));
+      out.views = Object.fromEntries(views.filter(([, v]) => v));
+      out.votedAt = Object.fromEntries(t.rows.filter(([, v]) => v).map(([m, v]) => [m, v.at]));
+      out.votes = Object.fromEntries(t.rows.filter(([, v]) => v).map(([m, v]) => [m, v.choice]));
+      out.notes = Object.fromEntries(t.rows.filter(([, v]) => v?.note).map(([m, v]) => [m, v.note]));
+      out.waitingOn = t.rows.filter(([, v]) => !v).map(([m]) => m);
+    }
+    const m = url.searchParams.get("manager");
+    if (PICKS_MANAGERS.includes(m)) { const mine = t.rows.find(([n]) => n === m)?.[1] || {}; out.vote = mine.choice || null; out.note = mine.note || ""; }
+    return json(out, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const { manager, choice, token } = body || {};
+  const pid = String(body?.id || "").slice(0, 40);
+  // A view: the pop-up was shown to this manager (first, last, how many times).
+  if (body?.action === "view") {
+    if (!POLL_CHOICES[pid] || !PICKS_MANAGERS.includes(manager)) return json({ error: "Invalid" }, 400, corsHeaders);
+    const vk = `pollview:${pid}:${manager}`, now = Date.now();
+    const v = (await env.LIFTR_KV.get(vk, "json")) || { first: now, n: 0 };
+    v.last = now; v.n++;
+    await env.LIFTR_KV.put(vk, JSON.stringify(v));
+    return json({ ok: true }, 200, corsHeaders);
+  }
+  if (!POLL_CHOICES[pid] || !PICKS_MANAGERS.includes(manager) || !POLL_CHOICES[pid].includes(choice)) return json({ error: "Invalid vote" }, 400, corsHeaders);
+  if ((await authMode(env)) === "on" && (await tokenOwner(env, token)) !== manager) return json({ error: "Sign in to vote", needsLogin: true }, 401, corsHeaders);
+  const note = String(body?.note || "").trim().slice(0, 1000);
+  await env.LIFTR_KV.put(key(pid, manager), JSON.stringify({ choice, note: note || undefined, at: Date.now() }));
+  const t = await tally(pid);
+  return json({ ok: true, vote: choice, counts: t.counts, voted: t.voted, of: t.of }, 200, corsHeaders);
 }
 
 // --- Question of the week -----------------------------------------------
@@ -2092,6 +2279,13 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
   // need to draw a trophy. It comes back only when asked for.
   const detail = url.searchParams.get("detail") === "1";
   const lean = (s) => ({ ...s, rows: (s.rows || []).map(({ ledger, ...r }) => r), slate: undefined, finals: undefined });
+  // Team ids for the frozen slates, from each week's stored slate, so the
+  // app can draw logos for past games without guessing from names.
+  if (detail) await Promise.all(rows.filter(([, v]) => v?.slate).map(async ([n, v]) => {
+    const live = await env.LIFTR_KV.get(gamesKey(n), "json").catch(() => null);
+    const ids = new Map((live?.games || []).map((g) => [Number(g.id), g]));
+    v.slate = v.slate.map((g) => { const x = ids.get(Number(g.id)); return x ? { ...g, awayId: Number(x.awayId) || null, homeId: Number(x.homeId) || null } : g; });
+  }));
   const summaries = Object.fromEntries(rows.filter(([, v]) => v).map(([n, v]) => [n, detail ? v : lean(v)]));
   // One trophy per week won, which is what the leaderboard draws.
   const trophies = {};
@@ -2167,7 +2361,8 @@ async function handleSeason(request, env, corsHeaders, url) {
 }
 
 async function handlePicksLog(request, env, corsHeaders, url) {
-  if (!env.ARCHIVE_LOG_KEY || url.searchParams.get("key") !== env.ARCHIVE_LOG_KEY) return new Response("Not found", { status: 404 });
+  // The admin key, or a device it signed (the live panel's Studio reads this for Scouting Reports).
+  if (!env.ARCHIVE_LOG_KEY || (url.searchParams.get("key") !== env.ARCHIVE_LOG_KEY && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now())))) return new Response("Not found", { status: 404 });
   // Kept for the season now, so one page of keys no longer covers it.
   const since = Number(url.searchParams.get("since")) || 0;
   const tsOfLogKey = (name) => 9999999999999 - Number(String(name).split(":")[1] || 0);
@@ -2377,12 +2572,30 @@ async function handleLive(corsHeaders, env) {
     const pending = liveGames(env);
     liveMemo = { at: now, body: pending };
     const body = await pending.catch((e) => { liveMemo = null; throw e; });
+    await sealWhenFinal(env, body);
     if (cache && body?.games?.length) await cache.put(key, new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json", "Cache-Control": `max-age=${LIVE_SHARE_MS / 1000}` } })).catch(() => {});
     return json(body, 200, corsHeaders);
   } catch (err) {
     console.error("Live scores error", err?.stack || String(err));
     return json({ games: [] }, 200, corsHeaders); // never break the client over this
   }
+}
+
+// The replay goes up the moment the week's last game is final, not at the
+// Tuesday morning seal: a live read that finds every game over seals the
+// week (at most once every two minutes, and never again once sealed).
+let lastAutoSeal = 0;
+async function sealWhenFinal(env, body) {
+  const games = body?.games || [];
+  if (!games.length || !games.every((g) => g.found && g.completed) || Date.now() - lastAutoSeal < 120000) return;
+  lastAutoSeal = Date.now();
+  try {
+    const weeks = await readWeeks(env);
+    const s = await env.LIFTR_KV.get(summaryKey(weeks.current), "json");
+    if (s?.complete) return;
+    console.log("auto seal", JSON.stringify(await sealFromEspn(env)));
+    summariesCache = null;
+  } catch (err) { console.error("auto seal", err?.stack || String(err)); }
 }
 
 async function liveGames(env, week = null) {
@@ -2710,7 +2923,7 @@ async function handleSwap(body, env, corsHeaders) {
   ].join(" ");
 
   try {
-    const askOpenAI = () => fetch("https://api.openai.com/v1/chat/completions", {
+    const askOpenAI = () => openaiChat(env, "liftr-swap", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
@@ -2820,7 +3033,7 @@ async function handleParseLibraryDoc(body, env, corsHeaders) {
   ].join(" ");
 
   try {
-    const askOpenAI = () => fetch("https://api.openai.com/v1/chat/completions", {
+    const askOpenAI = () => openaiChat(env, "liftr-library", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
@@ -2977,7 +3190,7 @@ async function handleChat(body, env, corsHeaders) {
   ];
 
   try {
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiRes = await openaiChat(env, "liftr-chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -3077,7 +3290,7 @@ async function handleOpening(body, env, corsHeaders) {
     .join(" ");
 
   try {
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiRes = await openaiChat(env, "liftr-opening", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -3173,7 +3386,7 @@ async function handleHistoryAsk(request, env, corsHeaders) {
   await env.LIFTR_KV.put(bucket, String(used + 1), { expirationTtl: 3700 });
 
   try {
-    const askOpenAI = () => fetch("https://api.openai.com/v1/chat/completions", {
+    const askOpenAI = () => openaiChat(env, "history-ask", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
@@ -3612,6 +3825,134 @@ export function queuedOpenAt(body, now) {
   return Number.isFinite(at) && at <= now + 60000 && at >= now - 7 * 86400000 ? Math.min(at, now) : null;
 }
 
+// Presence: phones report what's open and what's being used (POST, no key,
+// like /visit); the admin's live page reads the room (GET, admin key).
+// Both go to the one Durable Object that holds it.
+async function presenceExtra(env) {
+  const names = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m));
+  const opt = { type: "json", cacheTtl: 60 };
+  const [seen, games] = await Promise.all([
+    Promise.all(names.map(async (m) => {
+      // Both logs are newest first; a few from the top cover a late queued open.
+      const [v, s] = await Promise.all([env.LIFTR_KV.get(`visits:${m}`, opt), env.LIFTR_KV.get(sessKey(m), opt)]);
+      return [m, Math.max(0, ...(v || []).slice(0, 5).map((x) => Number(x.at) || 0), ...(s || []).slice(0, 5).map((x) => (Number(x.at) || 0) + (Number(x.dur) || 0)))];
+    })),
+    readWeeks(env).then((w) => env.LIFTR_KV.get(gamesKey(w.current), opt)).then((sl) => Object.fromEntries((sl?.games || []).map((g) => [g.id, `${g.awayShort || g.away} @ ${g.homeShort || g.home}`]))).catch(() => ({})),
+  ]);
+  return { names, seen: Object.fromEntries(seen), games };
+}
+
+// The week, for the live page's 7 day view: every visit each player ended
+// in the last 7 days, from the session log (start, length, what was used).
+// Kept compact: [start, ms, [features]].
+async function presenceWeek(env, now) {
+  const names = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m)), from = now - 7 * 86400000;
+  const rows = await Promise.all(names.map(async (m) => {
+    const s = (await env.LIFTR_KV.get(sessKey(m), { type: "json", cacheTtl: 60 })) || [];
+    return [m, s.filter((x) => Number(x.at) + (Number(x.dur) || 0) >= from).map((x) => [Number(x.at), Number(x.dur) || 0, (x.f || []).slice(0, 24)])];
+  }));
+  return Object.fromEntries(rows);
+}
+
+// What was asked of the archive in the last 7 days, with the answers, for
+// the live page (already kept for the admin's archive log). The admin's
+// own questions are left out.
+async function presenceAsks(env) {
+  const list = await env.LIFTR_KV.list({ prefix: "hist-log:", limit: 60 });
+  const rows = await Promise.all(list.keys.map((k) => env.LIFTR_KV.get(k.name, { type: "json", cacheTtl: 300 })));
+  return rows.filter((r) => r && r.asker !== "Jake").map((r) => ({ ts: r.ts, n: r.asker || null, q: String(r.question || "").slice(0, 300), a: String(r.answer || "").slice(0, 1200), kind: r.kind || "" }));
+}
+
+// The Creative Studio's routes, all owner only (the admin key, or a device
+// it signed), handed to the one Creative Desk that owns every graphic.
+async function handleCreative(request, env, corsHeaders, url) {
+  if (!env.CREATIVE_DESK || !env.CREATIVE) return json({ error: "Creative Studio is not set up on this Worker." }, 503, corsHeaders);
+  if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+  const desk = env.CREATIVE_DESK.get(env.CREATIVE_DESK.idFromName("studio"));
+  if (url.pathname === "/creative/suggest" && request.method === "GET") return json(await creativeSuggest(env), 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  const res = await desk.fetch(new Request(`https://desk${url.pathname}${url.search}`, { method: request.method, headers: { "Content-Type": request.headers.get("Content-Type") || "application/json" }, body: request.method === "POST" ? await request.arrayBuffer() : undefined }));
+  const headers = new Headers(res.headers);
+  for (const [k, v] of Object.entries(corsHeaders)) headers.set(k, v);
+  if (!headers.has("Cache-Control")) headers.set("Cache-Control", "no-store");
+  return new Response(res.body, { status: res.status, headers });
+}
+
+async function handleArt(request, env, corsHeaders, url) {
+  if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  const manifest = (await env.LIFTR_KV.get(MANIFEST_KEY, "json")) || { at: 0, art: {} };
+  if (url.pathname === "/art/manifest") return json(manifest, 200, { ...corsHeaders, "Cache-Control": "public, max-age=60" });
+  const m = /^\/art\/img\/([\w-]+)$/.exec(url.pathname);
+  if (!m || !env.CREATIVE) return json({ error: "Not found" }, 404, corsHeaders);
+  if (!Object.values(manifest.art || {}).some((x) => x.v === m[1])) return json({ error: "Not found" }, 404, corsHeaders);
+  const obj = await env.CREATIVE.get(`opt/${m[1]}`);
+  if (!obj) return json({ error: "Not found" }, 404, corsHeaders);
+  // A version's picture never changes, so it can be kept for a long time.
+  return new Response(obj.body, { headers: { ...corsHeaders, "Content-Type": obj.httpMetadata?.contentType || "image/webp", "Cache-Control": "public, max-age=31536000, immutable" } });
+}
+
+// What the Studio should offer to draw, read from the league's own record:
+// every team on the latest Week Replay (the recap of the last sealed week,
+// where team art shows first) and on the current slate. Read only; the
+// Studio marks which already have art and queues only what the owner picks.
+async function creativeSuggest(env) {
+  const weeks = await readWeeks(env);
+  const current = weeks.current;
+  const teams = new Map();
+  const add = (id, name, reason) => {
+    const n = Number(id);
+    if (!Number.isInteger(n) || n < 1 || !name) return;
+    const t = teams.get(n) || { teamId: n, name, reasons: [] };
+    if (!t.reasons.includes(reason)) t.reasons.push(reason);
+    teams.set(n, t);
+  };
+  const nameIn = (games) => { const m = new Map(); for (const g of games || []) { if (g.awayId) m.set(Number(g.awayId), g.away); if (g.homeId) m.set(Number(g.homeId), g.home); } return m; };
+  // The Replay: the newest sealed week that has one.
+  let replayWeek = null;
+  for (const w of [...(weeks.list || [])].sort((a, b) => b - a)) {
+    const sum = await env.LIFTR_KV.get(summaryKey(w), "json");
+    if (!sum?.complete || !sum.recap) continue;
+    replayWeek = w;
+    const names = nameIn((await env.LIFTR_KV.get(gamesKey(w), "json"))?.games);
+    const r = sum.recap, tag = (what) => `Week ${w} Replay · ${what}`;
+    if (r.best?.teamId) add(r.best.teamId, names.get(Number(r.best.teamId)) || r.best.team, tag("Pick of the week"));
+    if (r.worst?.teamId) add(r.worst.teamId, names.get(Number(r.worst.teamId)) || r.worst.team, tag("Worst pick"));
+    for (const x of r.consensus?.sides || []) add(x.id, names.get(Number(x.id)) || x.team, tag("Coin flip"));
+    if (r.tb) { add(r.tb.awayId, names.get(Number(r.tb.awayId)), tag("Tiebreaker")); add(r.tb.homeId, names.get(Number(r.tb.homeId)), tag("Tiebreaker")); }
+    break;
+  }
+  const slate = (await env.LIFTR_KV.get(gamesKey(current), "json"))?.games || [];
+  for (const g of slate) { add(g.awayId, g.away, `Week ${current} slate`); add(g.homeId, g.home, `Week ${current} slate`); }
+  // Replay teams first: that is where team art shows today.
+  const list = [...teams.values()].sort((a, b) => Number(b.reasons.some((x) => x.includes("Replay"))) - Number(a.reasons.some((x) => x.includes("Replay"))) || a.name.localeCompare(b.name));
+  return { week: current, replayWeek, suggestions: list.map((t) => ({ category: "team-mascot", subject: { teamId: t.teamId, name: t.name }, reasons: t.reasons, replay: t.reasons.some((x) => x.includes("Replay")) })) };
+}
+
+async function handlePresence(request, env, corsHeaders, url) {
+  if (!env.LIVE) return json({ error: "Live not configured" }, 500, corsHeaders);
+  const room = env.LIVE.get(env.LIVE.idFromName("league"));
+  if (request.method === "GET") {
+    // The admin key, or a device it signed (remember this device).
+    if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+    // ?seen=1 (on open, then once a minute) adds what the room can't know:
+    // everyone tracked, when each was last in from the logs, and this
+    // week's games by id. One small answer instead of the full logs.
+    // ?days=7 adds the week: seven days of taps from the room, and every
+    // visit from the session log.
+    const week = url.searchParams.get("days") === "7";
+    const seen = url.searchParams.get("seen");
+    const [res, extra, sessions, asks] = await Promise.all([room.fetch(`https://live/room${week ? "?days=7" : ""}`), seen ? presenceExtra(env) : null, week ? presenceWeek(env, Date.now()) : null, seen ? presenceAsks(env).catch(() => null) : null]);
+    return json({ ...(await res.json()), ...(extra || {}), ...(sessions ? { week: sessions } : {}), ...(asks ? { asks } : {}) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  // text/plain from a beacon, so read the text and parse it.
+  let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const m = body?.manager;
+  if (!PICKS_MANAGERS.includes(m)) return json({ error: "Invalid manager" }, 400, corsHeaders);
+  if (VISITS_NOT_TRACKED.has(m)) return json({ ok: true, tracked: false }, 200, corsHeaders);
+  await room.fetch("https://live/beat", { method: "POST", body: JSON.stringify({ manager: m, bye: !!body.bye, screen: body.screen, app: body.app, events: body.events }) });
+  return json({ ok: true }, 200, corsHeaders);
+}
+
 async function handleVisit(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   const key = (m) => `visits:${m}`;
@@ -3664,49 +4005,3 @@ async function handleVisit(request, env, corsHeaders, url) {
   return json({ ok: true }, 200, corsHeaders);
 }
 
-// Presence, the same as the college Worker: phones report what's open and
-// what's being used (POST, no key); brochiefs.com/live reads the room (GET,
-// the admin key or a device it signed). One Durable Object holds it.
-async function presenceExtra(env) {
-  const names = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m));
-  const opt = { type: "json", cacheTtl: 60 };
-  const [seen, games] = await Promise.all([
-    Promise.all(names.map(async (m) => {
-      const [v, s] = await Promise.all([env.LIFTR_KV.get(`visits:${m}`, opt), env.LIFTR_KV.get(sessKey(m), opt)]);
-      return [m, Math.max(0, ...(v || []).slice(0, 5).map((x) => Number(x.at) || 0), ...(s || []).slice(0, 5).map((x) => (Number(x.at) || 0) + (Number(x.dur) || 0)))];
-    })),
-    readWeeks(env).then((w) => env.LIFTR_KV.get(gamesKey(w.current), opt)).then((sl) => Object.fromEntries((sl?.games || []).map((g) => [g.id, `${g.awayShort || g.away} @ ${g.homeShort || g.home}`]))).catch(() => ({})),
-  ]);
-  return { names, seen: Object.fromEntries(seen), games };
-}
-async function presenceWeek(env, now) {
-  const names = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m)), from = now - 7 * 86400000;
-  const rows = await Promise.all(names.map(async (m) => {
-    const s = (await env.LIFTR_KV.get(sessKey(m), { type: "json", cacheTtl: 60 })) || [];
-    return [m, s.filter((x) => Number(x.at) + (Number(x.dur) || 0) >= from).map((x) => [Number(x.at), Number(x.dur) || 0, (x.f || []).slice(0, 24)])];
-  }));
-  return Object.fromEntries(rows);
-}
-async function presenceAsks(env) {
-  const list = await env.LIFTR_KV.list({ prefix: "hist-log:", limit: 60 });
-  const rows = await Promise.all(list.keys.map((k) => env.LIFTR_KV.get(k.name, { type: "json", cacheTtl: 300 })));
-  return rows.filter((r) => r && r.asker !== "Jake").map((r) => ({ ts: r.ts, n: r.asker || null, q: String(r.question || "").slice(0, 300), a: String(r.answer || "").slice(0, 1200), kind: r.kind || "" }));
-}
-async function handlePresence(request, env, corsHeaders, url) {
-  if (!env.LIVE) return json({ error: "Live not configured" }, 500, corsHeaders);
-  const room = env.LIVE.get(env.LIVE.idFromName("league"));
-  if (request.method === "GET") {
-    if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
-    const week = url.searchParams.get("days") === "7";
-    const seen = url.searchParams.get("seen");
-    const [res, extra, sessions, asks] = await Promise.all([room.fetch(`https://live/room${week ? "?days=7" : ""}`), seen ? presenceExtra(env) : null, week ? presenceWeek(env, Date.now()) : null, seen ? presenceAsks(env).catch(() => null) : null]);
-    return json({ ...(await res.json()), ...(extra || {}), ...(sessions ? { week: sessions } : {}), ...(asks ? { asks } : {}) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
-  }
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
-  let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
-  const m = body?.manager;
-  if (!PICKS_MANAGERS.includes(m)) return json({ error: "Invalid manager" }, 400, corsHeaders);
-  if (VISITS_NOT_TRACKED.has(m)) return json({ ok: true, tracked: false }, 200, corsHeaders);
-  await room.fetch("https://live/beat", { method: "POST", body: JSON.stringify({ manager: m, bye: !!body.bye, screen: body.screen, app: body.app, events: body.events }) });
-  return json({ ok: true }, 200, corsHeaders);
-}

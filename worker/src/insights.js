@@ -1,3 +1,4 @@
+import { openaiChat } from "./costs.js";
 // Game insights: line movement sampled twice a day, ESPN injury and news
 // feeds, and a short factual brief per open game. Everything here is
 // display only. Nothing in this file writes the sealed slate, the spread
@@ -209,7 +210,7 @@ export function briefPrompt() {
 
 export async function writeBrief(env, payload) {
   if (!env.OPENAI_API_KEY) return { lines: [], error: "no model key" };
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const res = await openaiChat(env, "game-brief", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: JSON.stringify({
@@ -533,7 +534,7 @@ export function previewPrompt() {
 }
 export async function writePreview(env, facts) {
   if (!env.OPENAI_API_KEY) return { error: "no model key" };
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const res = await openaiChat(env, "game-preview", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: JSON.stringify({
@@ -709,7 +710,7 @@ export async function extractInjuries(env, teamName, items, ctx = null) {
   // Articles with a body first, since those carry the names.
   const ordered = [...items].sort((a, b) => (b.blurb ? b.blurb.length : 0) - (a.blurb ? a.blurb.length : 0));
   const text = ordered.map((n) => `- [${n.source || "news"}] ${n.headline}${n.blurb ? ` — ${n.blurb}` : ""}`).join("\n").slice(0, 12000);
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const res = await openaiChat(env, "injuries", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: JSON.stringify({
@@ -830,7 +831,7 @@ export async function extractPicks(env, game, items) {
   if (!env.OPENAI_API_KEY) return { picks: [], error: "no model key" };
   const ordered = [...items].sort((a, b) => (b.blurb ? b.blurb.length : 0) - (a.blurb ? a.blurb.length : 0));
   const text = ordered.map((n, i) => `- [#${i} ${n.source || "news"}] ${n.headline}${n.blurb ? ` — ${n.blurb.slice(0, 12000)}` : ""}`).join("\n").slice(0, 60000);
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const res = await openaiChat(env, "expert-picks", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: JSON.stringify({

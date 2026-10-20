@@ -1,8 +1,2120 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Brochiefs NFL Live</title>
-<!-- One live admin page serves both leagues; this opens it on NFL. -->
-<meta http-equiv="refresh" content="0; url=https://brochiefs.com/live/?league=nfl">
-<script>location.replace("https://brochiefs.com/live/?league=nfl" + location.hash);</script>
-<style>body{background:#0b0716;color:#b8afd3;font:14px system-ui;padding:24px}</style>
-</head><body><a href="https://brochiefs.com/live/?league=nfl">Open Brochiefs Live (NFL)</a></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0716">
+<title>Brochiefs Live</title>
+<!-- A home screen app on iPhone and iPad; the desktop layout from 880px. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Live">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="../icons/favicon-32.png">
+<link rel="preconnect" href="https://liftr-ai.jhs797.workers.dev" crossorigin>
+<style>
+/* The admin's watch panel: who is in the app now, the last 24 hours on
+   one timeline, and every visit with what was done in it. System fonts
+   and no libraries, so it paints at once; the last view is drawn from
+   this device straight away and replaced when the Worker answers. */
+:root {
+  --bg: #0b0716; --panel: #140e24; --panel2: #1b1430; --line: #2a2140; --line2: #3a2f58;
+  --text: #f3efff; --meta: #b8afd3; --dim: #8a80a8;
+  --green: #3dfc8f; --green-bg: rgba(61, 252, 143, .09); --cyan: #4fe3f0; --gold: #ffe45e;
+  /* Chart marks, checked against the panel surface: past visits violet,
+     live ones green (live also carries a label). */
+  --past: #8b6cff; --live: #1fae5c;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh;
+  background: radial-gradient(1100px 520px at 78% -12%, rgba(139, 108, 255, .16), transparent 70%), radial-gradient(800px 420px at -8% 4%, rgba(61, 252, 143, .07), transparent 70%), var(--bg); }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .5;
+  background-image: linear-gradient(rgba(139, 108, 255, .06) 1px, transparent 1px), linear-gradient(90deg, rgba(139, 108, 255, .06) 1px, transparent 1px); background-size: 44px 44px;
+  -webkit-mask-image: linear-gradient(#000, transparent 70%); mask-image: linear-gradient(#000, transparent 70%); }
+#app { position: relative; z-index: 1; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Top bar */
+.top { position: sticky; top: 0; z-index: 5; background: rgba(11, 7, 22, .82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+.top::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: linear-gradient(90deg, transparent, rgba(139, 108, 255, .7), rgba(61, 252, 143, .7), transparent); }
+.top-in { max-width: 1440px; margin: 0 auto; display: flex; align-items: center; gap: 12px; padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); }
+.brand { white-space: nowrap; flex: none; padding: 0; background: none; border: 0; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; gap: 9px; font: 800 14px/1 var(--mono); letter-spacing: .16em; }
+.brand b { color: var(--gold); text-shadow: 0 0 14px rgba(255, 228, 94, .35); }
+.brand span { color: var(--green); text-shadow: 0 0 14px rgba(61, 252, 143, .45); }
+.beat { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: beat 1.6s ease-in-out infinite; }
+.top.stale .beat { background: #ffb347; box-shadow: 0 0 10px #ffb347; }
+@keyframes beat { 50% { opacity: .3; } }
+.age { font: 12px var(--mono); color: var(--dim); }
+.tools { margin-left: auto; display: flex; gap: 6px; }
+.tool { padding: 6px 11px; font-size: 13px; color: var(--meta); background: rgba(255, 255, 255, .02); border: 1px solid var(--line); border-radius: 8px; white-space: nowrap; }
+.tool:hover { color: var(--text); border-color: var(--line2); }
+.tool.on { color: var(--green); border-color: rgba(61, 252, 143, .5); }
+@media (max-width: 560px) { .age { display: none; } .tool { padding: 6px 9px; font-size: 12.5px; } }
+
+/* Refresh and menu */
+.ib { display: inline-grid; place-items: center; width: 38px; height: 38px; padding: 0; color: var(--meta); background: rgba(255, 255, 255, .03); border: 1px solid var(--line); border-radius: 10px; -webkit-tap-highlight-color: transparent; }
+.ib svg { width: 19px; height: 19px; }
+.ib:hover, .ib.on { color: var(--text); border-color: var(--line2); background: rgba(255, 255, 255, .06); }
+.ib.spin svg { animation: spin .7s linear infinite; color: var(--green); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.tools { position: relative; }
+.menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; min-width: 250px; padding: 6px; border-radius: 14px; background: rgba(24, 17, 42, .98); border: 1px solid var(--line2); box-shadow: 0 18px 50px rgba(0, 0, 0, .55); animation: pop .14s ease-out; }
+@keyframes pop { from { opacity: 0; transform: translateY(-4px); } }
+.menu button, .menu a { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 10px; font-size: 14px; color: var(--text); text-align: left; text-decoration: none; background: none; border: 0; border-radius: 9px; }
+.menu button:hover, .menu a:hover { background: rgba(255, 255, 255, .06); }
+.menu svg { width: 18px; height: 18px; flex: none; color: var(--meta); }
+.menu span { flex: 1; }
+.menu i { font-style: normal; font-size: 12px; color: var(--dim); }
+.menu i.on { font: 700 10px/1 var(--mono); padding: 3px 6px; border-radius: 6px; color: #0b0716; background: var(--green); }
+.menu hr { margin: 6px 4px; border: 0; border-top: 1px solid var(--line); }
+.menu .danger, .menu .danger svg { color: #ff8aa8; }
+
+/* Section tabs: a bottom tab bar on a phone, centred in the top bar on a
+   wide screen. Outside the top bar so "fixed" means the screen. */
+.tabs { position: fixed; z-index: 15; left: 0; right: 0; bottom: 0; display: flex; padding: 6px max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); background: rgba(11, 7, 22, .9); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
+.tabs button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0 2px; font-size: 11px; font-weight: 600; color: var(--dim); background: none; border: 0; -webkit-tap-highlight-color: transparent; }
+.tabs svg { width: 22px; height: 22px; }
+.tabs button.on { color: var(--green); }
+.tabs button.on svg { filter: drop-shadow(0 0 6px rgba(61, 252, 143, .6)); }
+.tabs span { display: inline-flex; align-items: center; gap: 4px; }
+.tabs span b { min-width: 16px; padding: 1px 4px; border-radius: 8px; font: 700 10px/1.3 var(--mono); color: #0b0716; background: var(--green); }
+@media (min-width: 1024px) {
+  .tabs { top: max(11px, env(safe-area-inset-top)); bottom: auto; left: 50%; right: auto; transform: translateX(-50%); padding: 3px; gap: 2px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .03); backdrop-filter: none; -webkit-backdrop-filter: none; z-index: 6; }
+  .tabs button { flex-direction: row; gap: 7px; padding: 7px 14px; font-size: 13px; border-radius: 9px; }
+  .tabs svg { width: 16px; height: 16px; }
+  .tabs button:hover { color: var(--text); }
+  .tabs button.on { color: var(--text); background: rgba(139, 108, 255, .2); box-shadow: inset 0 0 0 1px rgba(139, 108, 255, .45); }
+  .tabs button.on svg { color: var(--green); }
+}
+body.pv-open .tabs { display: none; }
+
+/* Page */
+.page { max-width: 1440px; margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "vote" "tl" "feed" "rail"; }
+@media (min-width: 1024px) { .page { padding-bottom: calc(48px + env(safe-area-inset-bottom)); grid-template-columns: minmax(0, 1fr) 330px; grid-template-areas: "kpi kpi" "vote vote" "tl tl" "feed rail"; align-items: start; } .rail { position: sticky; top: 76px; } }
+@media (min-width: 1100px) { body.pv-open .page { margin-right: 430px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "vote" "tl" "feed" "rail"; } body.pv-open .rail { position: static; } }
+.kpis, .tl, .feed, .rail { scroll-margin-top: 84px; }
+.kpis { grid-area: kpi; } .panel.vote { grid-area: vote; } .tl { grid-area: tl; } .feed { grid-area: feed; min-width: 0; } .rail { grid-area: rail; display: flex; flex-direction: column; gap: 16px; }
+.panel { position: relative; padding: 14px 16px 16px; border-radius: 16px; background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .012)), var(--panel); border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 10px 30px rgba(0, 0, 0, .25); }
+.ph { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 12px; }
+.ph h2 { margin: 0; font: 700 11.5px/1 var(--mono); letter-spacing: .16em; color: var(--meta); text-transform: uppercase; }
+.ph .sub { font-size: 12px; color: var(--dim); }
+.ph .end { margin-left: auto; }
+.key { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); }
+.key i { width: 14px; height: 8px; border-radius: 3px; background: var(--past); }
+.key i.lv { background: var(--live); box-shadow: 0 0 8px rgba(61, 252, 143, .6); }
+
+/* Headline numbers: a slim "in now" banner, then one compact panel of six. */
+.kpis { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) { .kpis { grid-template-columns: minmax(280px, 1fr) minmax(0, 2.6fr); align-items: stretch; } }
+.kpi.now { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; padding: 12px 16px; border-radius: 14px; background: linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .01)), var(--panel); border: 1px solid rgba(61, 252, 143, .22); }
+.kpi.now.on { border-color: rgba(61, 252, 143, .55); background: radial-gradient(240px 120px at 0% 0%, rgba(61, 252, 143, .16), transparent), linear-gradient(180deg, rgba(61, 252, 143, .06), rgba(61, 252, 143, .01)), var(--panel); box-shadow: 0 0 30px rgba(61, 252, 143, .12); }
+.now-l { display: flex; align-items: baseline; gap: 8px; flex: none; }
+.now-l b { font: 800 30px/1 var(--mono); color: var(--text); }
+.kpi.now.on .now-l b { color: var(--green); text-shadow: 0 0 18px rgba(61, 252, 143, .45); }
+.now-l em { font: 700 11px/1 var(--mono); letter-spacing: .14em; color: var(--dim); font-style: normal; text-transform: uppercase; }
+.now-last { font-size: 13.5px; color: var(--meta); }
+.now-last b { color: var(--text); }
+.kpi.now .avs { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.inp { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 2px; border-radius: 999px; background: rgba(61, 252, 143, .1); border: 1px solid rgba(61, 252, 143, .35); font-size: 13px; font-weight: 600; }
+.inp small { font: 600 11px var(--mono); color: var(--green); }
+.kstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .01)), var(--panel); border: 1px solid var(--line); overflow: hidden; }
+@media (min-width: 1024px) { .kstats { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.ks { min-width: 0; display: flex; flex-direction: column; padding: 11px 12px 10px; border-right: 1px solid rgba(255, 255, 255, .05); border-bottom: 1px solid rgba(255, 255, 255, .05); cursor: default; }
+.ks[data-tip]:hover { background: rgba(255, 255, 255, .03); }
+.ks em { display: block; font: 700 9.5px/1.2 var(--mono); letter-spacing: .12em; color: var(--dim); font-style: normal; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks b { display: block; margin-top: 5px; font: 800 21px/1 var(--mono); color: var(--text); letter-spacing: -.01em; }
+.ks b small { font-size: 12px; color: var(--dim); font-weight: 700; margin-left: 1px; }
+.ks span { display: block; min-height: 1.2em; margin-top: 5px; font-size: 11.5px; color: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Avatars */
+.av { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--c); color: #0b0716; font: 800 13px/1 system-ui, sans-serif; position: relative; }
+.av.sm { width: 22px; height: 22px; border-radius: 6px; font-size: 11px; }
+.av.lg { width: 38px; height: 38px; border-radius: 11px; font-size: 17px; }
+.av.on::after { content: ""; position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 50%; background: var(--green); border: 2px solid var(--panel); box-shadow: 0 0 8px var(--green); }
+.av.sm.on::after { right: -3px; bottom: -3px; width: 8px; height: 8px; border-width: 1.5px; }
+
+/* The timeline: a lane per player over the last 24 hours, a block per
+   visit. Lane names filter the feed; a block jumps to its visit. */
+.tl-grid { position: relative; display: grid; grid-template-columns: var(--lab) minmax(0, 1fr); --lab: 148px; row-gap: 4px; }
+@media (max-width: 640px) { .tl-grid { --lab: 112px; } .ln-l { gap: 6px; } .ln-l .nm { font-size: 13px; } }
+.ln-l { display: flex; align-items: center; gap: 8px; min-width: 0; height: 34px; padding: 0 8px 0 4px; margin-right: 8px; text-align: left; background: none; border: 1px solid transparent; border-radius: 9px; }
+.ln-l:hover { background: rgba(255, 255, 255, .04); }
+.ln-l.sel { background: rgba(139, 108, 255, .14); border-color: rgba(139, 108, 255, .45); }
+.ln-l .t { min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
+.ln-l .nm { font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ln-l .st { font: 11px var(--mono); color: var(--dim); white-space: nowrap; }
+.ln-l.in .st { color: var(--green); }
+.ln-l.idle .nm { color: var(--dim); }
+.ln-t { position: relative; height: 34px; border-radius: 8px; background: rgba(255, 255, 255, .025); }
+.ln-t.sel { background: rgba(139, 108, 255, .08); }
+.tl-over { position: absolute; top: 26px; bottom: 0; left: var(--lab); right: 0; pointer-events: none; }
+.tl-over .night { position: absolute; top: 0; bottom: 0; background: rgba(0, 0, 0, .22); }
+.tl-over .hr { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255, 255, 255, .05); }
+.tl-over .hr.mid { background: rgba(255, 255, 255, .14); }
+.tl-over .now { position: absolute; top: -8px; bottom: 0; right: 0; width: 2px; background: var(--green); box-shadow: 0 0 10px var(--green); }
+.blk { position: absolute; top: 7px; height: 20px; min-width: 6px; border-radius: 5px; background: var(--past); box-shadow: 0 0 0 1px rgba(11, 7, 22, .6); cursor: pointer; transition: filter .15s, transform .15s; }
+.blk:hover { filter: brightness(1.25); transform: scaleY(1.12); }
+.blk.live { background: linear-gradient(90deg, var(--live), #3dfc8f); box-shadow: 0 0 14px rgba(61, 252, 143, .55); }
+.blk.live { animation: livepulse 1.6s ease-in-out infinite; }
+/* How long they were really in: a dot for a quick look, a short bar under
+   five minutes, the full bar past that. */
+.blk.peek { top: 12px; height: 10px; min-width: 10px; border-radius: 5px; opacity: .75; }
+.blk.short { top: 10px; height: 14px; min-width: 10px; }
+@keyframes livepulse { 50% { box-shadow: 0 0 22px rgba(61, 252, 143, .85); } }
+.blk.focus { outline: 2px solid #fff; outline-offset: 1px; }
+.tl-ax { grid-column: 2; position: relative; height: 22px; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.tl-ax span { position: absolute; top: 3px; transform: translateX(-50%); font: 11px var(--mono); color: var(--dim); white-space: nowrap; }
+.tl-ax span.nowl { transform: translateX(-100%); color: var(--green); font-weight: 700; }
+
+/* Range switch */
+.seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255, 255, 255, .03); }
+.ph .seg { margin-left: auto; }
+.ph .key + .seg { margin-left: 12px; }
+.seg button { padding: 4px 10px; font: 600 12px/1.2 var(--mono); color: var(--dim); background: none; border: 0; border-radius: 7px; }
+.seg button.on { color: var(--text); background: rgba(139, 108, 255, .25); box-shadow: inset 0 0 0 1px rgba(139, 108, 255, .5); }
+.tl-hint { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin: -2px 0 10px; font-size: 11.5px; color: var(--dim); }
+.ln-l.quiet { opacity: .45; }
+.ln-t.quiet { background: rgba(255, 255, 255, .018); }
+.sub2 { margin: 0 0 8px; font: 600 11px/1.3 var(--mono); letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
+
+/* The week: when in the day, a punch card */
+.pc { display: grid; grid-template-columns: var(--lab, 148px) repeat(24, minmax(0, 1fr)); gap: 3px; align-items: center; }
+@media (max-width: 640px) { .pc { --lab: 64px; gap: 2px; } }
+.pc-c { max-height: 30px; }
+.pc-l { display: flex; flex-direction: column; line-height: 1.1; padding-right: 6px; }
+.pc-l b { font-size: 13px; }
+.pc-l small { font: 10.5px var(--mono); color: var(--dim); }
+.pc-l.t b { color: var(--green); }
+.pc-c { position: relative; aspect-ratio: 1; max-height: 26px; display: grid; place-items: center; border-radius: 4px; background: rgba(255, 255, 255, .025); font-style: normal; }
+.pc-c s { display: block; width: 0; height: 0; border-radius: 50%; background: var(--past); text-decoration: none; }
+.pc-c[data-tip]:hover s { filter: brightness(1.3); }
+.pc-c.now { box-shadow: inset 0 0 0 1.5px var(--green); }
+.pc-c.fut { background: none; }
+.pc-x { font: 10px var(--mono); color: var(--dim); white-space: nowrap; overflow: visible; }
+.pc > span:nth-last-child(-n+24) { padding-top: 4px; }
+.sub2.row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.sub2.row .seg { margin-left: auto; }
+.seg.sm button { padding: 3px 8px; font-size: 11px; letter-spacing: 0; text-transform: none; }
+
+/* The week: who by day */
+.hm { display: grid; grid-template-columns: var(--lab, 148px) repeat(7, minmax(0, 1fr)); gap: 4px; align-items: center; }
+@media (max-width: 640px) { .hm { --lab: 112px; gap: 3px; } }
+.hm-h { text-align: center; font: 600 11px/1.2 var(--mono); color: var(--dim); text-transform: uppercase; }
+.hm-h small { display: block; font-size: 10px; opacity: .7; }
+.hm-h.t { color: var(--green); }
+.hm-c { height: 34px; display: grid; place-items: center; border-radius: 7px; font: 700 11.5px var(--mono); font-style: normal; color: #fff; background: rgba(255, 255, 255, .03); cursor: default; transition: filter .15s, opacity .15s; }
+.hm-c.z { color: transparent; }
+.hm-c:hover { filter: brightness(1.25); }
+.hm-c.dim { opacity: .25; }
+@media (max-width: 640px) { .hm-c { font-size: 10px; } }
+.ln-l.dl { cursor: default; }
+.ln-l.dl:hover { background: none; }
+.ln-l.dl.in .nm { color: var(--green); }
+.blk.wk { opacity: .85; }
+.nowtick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+/* Feed */
+.fh { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin-bottom: 4px; }
+.fh h2 { margin: 0; font: 700 11.5px/1 var(--mono); letter-spacing: .16em; color: var(--meta); }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 4px; font-size: 13px; background: rgba(139, 108, 255, .14); border: 1px solid rgba(139, 108, 255, .45); border-radius: 999px; }
+.chip button { padding: 0 6px; color: var(--meta); background: none; border: 0; font-size: 13px; }
+.day { margin: 18px 0 8px; font: 700 11px/1 var(--mono); letter-spacing: .16em; color: var(--dim); text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+.day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.sess { position: relative; margin-bottom: 10px; border-radius: 14px; background: linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .01)), var(--panel); border: 1px solid var(--line); overflow: hidden; }
+.sess::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--past); opacity: .8; }
+.sess.live { border-color: rgba(61, 252, 143, .45); background: radial-gradient(400px 140px at 0% 0%, rgba(61, 252, 143, .1), transparent), var(--panel); }
+.sess.live::before { background: var(--green); box-shadow: 0 0 12px var(--green); opacity: 1; }
+.sess.fresh { animation: arrive 2s ease-out; }
+.sess.focus { animation: focus 1.8s ease-out; }
+@keyframes arrive { from { box-shadow: 0 0 0 2px var(--green), 0 0 28px rgba(61, 252, 143, .45); } }
+@keyframes focus { from { box-shadow: 0 0 0 2px #fff, 0 0 26px rgba(139, 108, 255, .6); } }
+.sh { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 16px; }
+.sh .who { min-width: 0; }
+.sh .nm { font-size: 16px; font-weight: 700; }
+.sh .meta { font-size: 13px; color: var(--meta); }
+.sh-r { margin-left: auto; flex: none; display: flex; flex-direction: row-reverse; align-items: center; gap: 8px; }
+@media (max-width: 560px) { .sh-r { flex-direction: column; align-items: flex-end; gap: 2px; } }
+/* Copy: a quiet icon until it's wanted. The tap area stays 32px. */
+.cp { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 32px; min-height: 32px; padding: 0 6px; font-size: 12px; font-weight: 600; color: var(--dim); background: none; border: 0; border-radius: 8px; opacity: .55; transition: opacity .15s, color .15s, background .15s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.cp svg { width: 15px; height: 15px; }
+.cp:hover, .cp:focus-visible { opacity: 1; color: var(--meta); background: rgba(255, 255, 255, .05); outline: none; }
+.sess:hover .cp { opacity: .85; }
+.cp:active { transform: scale(.94); }
+.cp.ok { opacity: 1; color: var(--green); }
+.fh .cp { margin-left: auto; }
+.badge { flex: none; padding: 4px 9px; border-radius: 999px; font: 700 12px/1 var(--mono); }
+.sess.live .badge { color: #0b0716; background: var(--green); box-shadow: 0 0 12px rgba(61, 252, 143, .5); }
+.sess:not(.live) .badge { color: var(--meta); background: var(--panel2); }
+.acts { margin: 0; padding: 4px 14px 10px 66px; list-style: none; border-top: 1px solid var(--line); }
+.acts li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; padding: 5px 0; font-size: 14px; }
+.acts li + li { border-top: 1px solid rgba(255, 255, 255, .04); }
+.acts time { color: var(--dim); font: 12px var(--mono); padding-top: 2px; }
+.acts em { font-style: normal; color: var(--cyan); }
+.acts .x { color: var(--dim); font-size: 12.5px; }
+.acts li.new { animation: flash 2.4s ease-out; }
+@keyframes flash { 0%, 30% { background: rgba(61, 252, 143, .14); } }
+.acts .quiet { color: var(--dim); font-size: 13px; }
+@media (max-width: 560px) { .acts { padding-left: 16px; } }
+.more { display: block; padding: 0 14px 12px 66px; font-size: 13px; color: var(--cyan); background: none; border: 0; text-align: left; }
+.empty { padding: 18px; border-radius: 14px; border: 1px dashed var(--line); color: var(--dim); }
+.older { margin-top: 4px; padding: 10px 14px; width: 100%; color: var(--cyan); background: none; border: 1px solid var(--line); border-radius: 12px; }
+.note { margin: 6px 0 0; font-size: 12.5px; color: var(--dim); }
+
+/* Lines that open a preview */
+.acts li.go { cursor: pointer; border-radius: 8px; margin: 0 -8px; padding: 5px 8px; }
+.acts li.go:hover, .acts li.go:focus-visible { background: rgba(79, 227, 240, .08); outline: none; }
+.acts li.go.on { background: rgba(79, 227, 240, .14); box-shadow: inset 2px 0 0 var(--cyan); }
+.acts li .peek { margin-left: 8px; font-style: normal; font-size: 11px; color: var(--dim); opacity: 0; transition: opacity .15s; }
+.acts li.go:hover .peek, .acts li.go.on .peek { opacity: 1; color: var(--cyan); }
+@media (hover: none) { .acts li .peek { opacity: .7; } }
+
+/* Rail charts */
+.bars { display: flex; align-items: flex-end; gap: 2px; height: 110px; padding-top: 6px; }
+.bars i { position: relative; flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; cursor: default; }
+.bars i b { display: block; width: 100%; min-height: 2px; border-radius: 4px 4px 1px 1px; background: var(--past); }
+.bars i.zero b { background: rgba(255, 255, 255, .08); }
+.bars i.cur b { background: linear-gradient(180deg, #b9a6ff, var(--past)); box-shadow: 0 0 12px rgba(139, 108, 255, .6); }
+.bars i:hover b { filter: brightness(1.3); }
+.bars-ax { display: flex; justify-content: space-between; margin-top: 6px; font: 11px var(--mono); color: var(--dim); }
+.rank { display: flex; flex-direction: column; gap: 8px; }
+.rank div { display: grid; grid-template-columns: minmax(0, 1fr) 34px; gap: 4px 10px; align-items: center; font-size: 13px; }
+.rank div span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank div b { text-align: right; font: 700 13px var(--mono); color: var(--meta); }
+.rank div i { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.rank div i s { display: block; height: 100%; border-radius: 3px; background: var(--past); text-decoration: none; }
+.split { display: flex; gap: 2px; height: 12px; border-radius: 6px; overflow: hidden; }
+.split s { display: block; height: 100%; text-decoration: none; }
+.split-k { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: var(--meta); }
+.split-k b { font-family: var(--mono); color: var(--text); }
+.split-k i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+/* Tooltip */
+.tip { position: fixed; z-index: 30; pointer-events: none; max-width: 260px; padding: 8px 10px; border-radius: 10px; font-size: 12.5px; line-height: 1.4; color: var(--text); background: rgba(20, 14, 36, .97); border: 1px solid var(--line2); box-shadow: 0 10px 30px rgba(0, 0, 0, .5); opacity: 0; transition: opacity .12s; }
+.tip.show { opacity: 1; }
+.tip b { display: block; font-size: 13px; }
+
+/* The preview panel: a phone-width frame at the right on a wide screen,
+   a full screen sheet on a narrow one. */
+/* A sheet from the bottom on a phone (drag it down, tap behind it, or
+   Done to close), a floating panel on a tablet, a side panel on a wide
+   screen. The page stays in view behind the first two. */
+.pv, .pv-back { display: none; }
+body.pv-open .pv-back { display: block; position: fixed; inset: 0; z-index: 19; background: rgba(3, 0, 8, .62); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: fadein .2s ease-out; }
+@keyframes fadein { from { opacity: 0; } }
+body.pv-open .pv { display: flex; flex-direction: column; position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; height: min(86vh, 900px); background: #0d0919; border-top: 1px solid var(--line2); border-radius: 20px 20px 0 0; box-shadow: 0 -20px 60px rgba(0, 0, 0, .6); animation: sheetup .28s cubic-bezier(.22, 1, .36, 1); }
+@keyframes sheetup { from { transform: translateY(100%); } }
+@media (max-width: 1099px) { body.pv-open { overflow: hidden; } }
+@media (min-width: 700px) { body.pv-open .pv { left: auto; top: max(12px, env(safe-area-inset-top)); right: 12px; bottom: 12px; width: 430px; height: auto; border: 1px solid var(--line2); border-radius: 20px; animation: pop .18s ease-out; } }
+@media (min-width: 1100px) {
+  body.pv-open .pv-back { display: none; }
+  body.pv-open .pv { top: 61px; right: 0; bottom: 0; border: 0; border-left: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+}
+.pv-grab { display: flex; justify-content: center; padding: 8px 0 2px; touch-action: none; cursor: grab; }
+.pv-grab i { width: 40px; height: 5px; border-radius: 3px; background: var(--line2); }
+@media (min-width: 700px) { .pv-grab { display: none; } }
+.pv-h { display: flex; align-items: center; gap: 10px; padding: 8px 12px 12px; border-bottom: 1px solid var(--line); touch-action: none; }
+@media (min-width: 700px) { .pv-h { padding-top: 12px; } }
+.pv-done { flex: none; min-height: 36px; padding: 0 14px; font-weight: 700; font-size: 14px; color: #0b0716; background: var(--green); border: 0; border-radius: 10px; }
+.pv-t { flex: 1; min-width: 0; font-size: 14px; line-height: 1.3; }
+.pv-t span { display: block; font-size: 13px; color: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-h a.tool { flex: none; text-decoration: none; min-height: 36px; display: inline-flex; align-items: center; }
+.pv-note { padding: 7px 14px; font-size: 12px; color: var(--dim); background: rgba(0, 0, 0, .2); }
+.pv-frame { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 10px 10px max(10px, env(safe-area-inset-bottom)); }
+.pv-frame iframe { width: 100%; max-width: 400px; height: 100%; border: 1px solid var(--line); border-radius: 18px; background: #0a0414; }
+.pv-chat { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px 14px max(16px, env(safe-area-inset-bottom)); }
+.cb { max-width: 88%; padding: 10px 13px; border-radius: 16px; font-size: 14.5px; line-height: 1.45; }
+.cb b { display: block; margin-bottom: 3px; font: 700 10.5px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; opacity: .75; }
+.cb p { margin: 0; white-space: pre-wrap; }
+.cb time { display: block; margin-top: 4px; font: 11px var(--mono); opacity: .6; }
+.cb.me { align-self: flex-end; color: #0b0716; background: linear-gradient(180deg, #b9a6ff, var(--past)); border-bottom-right-radius: 5px; }
+.cb.ai { align-self: flex-start; background: var(--panel2); border: 1px solid var(--line2); border-bottom-left-radius: 5px; }
+.cb.ai b { color: var(--green); opacity: 1; }
+.cb.off { color: var(--meta); }
+.asks { display: flex; flex-direction: column; gap: 6px; }
+.ask { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 9px 10px; text-align: left; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); border-radius: 10px; }
+.ask:hover { border-color: var(--line2); background: rgba(255, 255, 255, .05); }
+.ask-h { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+.ask-h time { margin-left: auto; font: 11px var(--mono); color: var(--dim); }
+.ask-q { font-size: 13.5px; color: var(--meta); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pv-none { margin: 16px; padding: 16px; border-radius: 12px; border: 1px dashed var(--line); display: flex; flex-direction: column; gap: 6px; color: var(--meta); font-size: 14px; }
+.pv-none b { color: var(--text); }
+
+/* Key */
+.gate { max-width: 340px; margin: 18vh auto 0; padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
+.gate h1 { margin: 0; font: 800 16px/1 var(--mono); letter-spacing: .16em; color: var(--green); text-shadow: 0 0 16px rgba(61, 252, 143, .4); }
+.gate p { margin: 0; color: var(--meta); }
+.gate input { padding: 12px; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.gate button { padding: 12px; font-weight: 700; color: #0b0716; background: var(--green); border: 0; border-radius: 10px; }
+.gate .err { color: #ff6b93; font-size: 13px; min-height: 1em; }
+.gate .rem { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--meta); cursor: pointer; }
+.gate .rem input { width: 16px; height: 16px; accent-color: var(--green); }
+.gate button:disabled { opacity: .6; }
+@media (prefers-reduced-motion: reduce) { .beat, .sess.fresh, .sess.focus, .acts li.new, .blk.live, .ib.spin svg, .menu { animation: none; } .blk { transition: none; } }
+
+/* ---- Creative Studio ---- */
+#studio[hidden], #app[hidden] { display: none; }
+.sd-page { max-width: 1100px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-right)) calc(110px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 14px; }
+.sd-head { display: flex; flex-direction: column; gap: 12px; }
+.sd-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sd-title > span { font: 800 13px/1 var(--mono); letter-spacing: .14em; color: var(--green); text-shadow: 0 0 14px rgba(61, 252, 143, .35); }
+.sd-new { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px 8px 10px; font-weight: 700; font-size: 13px; color: #0b0716; background: var(--green); border: 0; border-radius: 10px; box-shadow: 0 0 16px rgba(61, 252, 143, .35); }
+.sd-new svg { width: 16px; height: 16px; }
+.sd-budget { display: flex; flex-direction: column; gap: 6px; }
+.sd-bar { height: 7px; border-radius: 4px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.sd-bar u { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--green), #ffd23f); }
+.sd-budget span { font: 11.5px var(--mono); color: var(--meta); }
+.sd-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+html, body { overflow-x: hidden; }
+.sd-filters button { flex: none; padding: 6px 11px; font: 600 12px var(--mono); color: var(--dim); background: rgba(255, 255, 255, .03); border: 1px solid var(--line); border-radius: 999px; }
+.sd-filters button.on { color: var(--text); background: rgba(139, 108, 255, .22); border-color: rgba(139, 108, 255, .55); }
+.sd-filters b { color: var(--green); }
+.sd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 12px; }
+@media (max-width: 520px) { .sd-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+.sd-card { display: flex; flex-direction: column; min-width: 0; border-radius: 14px; overflow: hidden; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 8px 22px rgba(0, 0, 0, .3); }
+.sd-card.s-pending_review { border-color: rgba(255, 210, 63, .45); }
+.sd-card.s-failed { border-color: rgba(255, 107, 147, .45); }
+.sd-art { position: relative; display: grid; place-items: center; aspect-ratio: 1; width: 100%; padding: 0; border: 0; background: repeating-conic-gradient(#1a1230 0% 25%, #140d26 0% 50%) 50% / 18px 18px; cursor: zoom-in; }
+.sd-art img { width: 100%; height: 100%; object-fit: contain; }
+.sd-art.empty { cursor: default; flex-direction: column; gap: 10px; color: var(--dim); font-size: 28px; }
+.sd-art.empty small { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.sd-art.failed { color: #ff6b93; }
+.sd-spin { width: 26px; height: 26px; border-radius: 50%; border: 3px solid rgba(61, 252, 143, .2); border-top-color: var(--green); animation: sdspin .9s linear infinite; }
+@keyframes sdspin { to { transform: rotate(360deg); } }
+.sd-meta { display: flex; flex-direction: column; gap: 7px; padding: 10px 11px 12px; min-width: 0; }
+.sd-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
+.sd-row b { min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-badge { flex: none; padding: 3px 7px; border-radius: 6px; font: 700 9.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--meta); background: rgba(255, 255, 255, .07); }
+.sd-badge.s-pending_review { color: #0b0716; background: #ffd23f; }
+.sd-badge.s-queued, .sd-badge.s-generating { color: var(--green); background: rgba(61, 252, 143, .12); }
+.sd-badge.s-failed, .sd-badge.s-rejected { color: #ff6b93; background: rgba(255, 107, 147, .12); }
+.sd-badge.s-approved, .sd-badge.s-published { color: #0b0716; background: var(--green); }
+.sd-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.sd-chips span { padding: 2px 7px; border-radius: 999px; font-size: 10.5px; color: var(--meta); background: rgba(255, 255, 255, .05); border: 1px solid var(--line); }
+.sd-chips span.pl { color: #8b6cff; border-color: rgba(139, 108, 255, .4); }
+.sd-sub { font: 10.5px var(--mono); color: var(--dim); }
+.sd-note { font-size: 11.5px; color: var(--meta); font-style: italic; }
+.sd-err { font-size: 11px; color: #ff6b93; overflow-wrap: anywhere; }
+.sd-errbox { padding: 10px 12px; border-radius: 10px; color: #ff6b93; background: rgba(255, 107, 147, .08); border: 1px solid rgba(255, 107, 147, .3); font-size: 13px; }
+.sd-empty { padding: 40px 12px; text-align: center; color: var(--dim); }
+.sd-foot { margin: 0; font-size: 11.5px; color: var(--dim); text-align: center; }
+.sd-zoom { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px; background: rgba(5, 2, 12, .94); }
+.sd-zimg { max-width: min(92vw, 900px); max-height: 78vh; overflow: auto; border-radius: 12px; background: repeating-conic-gradient(#1a1230 0% 25%, #140d26 0% 50%) 50% / 22px 22px; touch-action: pinch-zoom pan-x pan-y; }
+.sd-zimg img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+.sd-zimg.big img { width: 200%; max-width: none; cursor: zoom-out; }
+.sd-zcap { font: 12px var(--mono); color: var(--meta); text-align: center; }
+.sd-zx { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px; }
+.sd-scrim { position: fixed; inset: 0; z-index: 30; background: rgba(5, 2, 12, .6); }
+.sd-sheet { position: fixed; z-index: 31; left: 50%; bottom: 0; transform: translateX(-50%); width: min(100%, 520px); max-height: 88vh; overflow: auto; display: flex; flex-direction: column; gap: 11px; padding: 16px 16px calc(18px + env(safe-area-inset-bottom)); background: var(--panel); border: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: 0 -16px 40px rgba(0, 0, 0, .5); }
+.sd-sh { display: flex; align-items: center; justify-content: space-between; }
+.sd-sh b { font: 800 13px var(--mono); letter-spacing: .12em; color: var(--green); }
+.sd-sheet label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: var(--meta); }
+.sd-sheet label i { font-style: normal; font-weight: 400; color: var(--dim); }
+.sd-sheet select, .sd-sheet input, .sd-sheet textarea { width: 100%; padding: 10px; font-family: inherit; font-size: 15px; line-height: 1.3; color: var(--text); background: rgba(255, 255, 255, .04); border: 1px solid var(--line); border-radius: 10px; }
+.sd-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sd-blurb, .sd-fine { margin: -4px 0 0; font-size: 12px; color: var(--dim); }
+.sd-cost { font: 12px var(--mono); color: var(--meta); }
+.sd-msg { font-size: 12.5px; color: var(--green); } .sd-msg.bad { color: #ff6b93; }
+.sd-go { padding: 13px; font-weight: 800; font-size: 15px; color: #0b0716; background: var(--green); border: 0; border-radius: 12px; }
+.sd-go:disabled { opacity: .6; }
+.sd-toast { position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 90; max-width: min(92vw, 520px); padding: 11px 16px; border-radius: 12px; background: #12301f; border: 1px solid var(--green); color: var(--text); font-size: 14px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
+.sd-toast.bad { background: #3a1020; border-color: #ff7a9a; }
+.sd-lands { font-size: 12.5px; color: var(--meta); line-height: 1.4; }
+.sd-lands b { color: var(--text); font-weight: 700; }
+/* Canvas: the app in a phone frame beside the editor; stacked on a phone. */
+.cv-wrap { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 16px; align-items: start; padding: 14px; }
+.cv-stage { position: sticky; top: 64px; display: grid; gap: 8px; }
+.cv-phone { border: 2px solid var(--line2); border-radius: 22px; overflow: hidden; background: #000; height: min(760px, 78vh); }
+.cv-phone iframe { width: 100%; height: 100%; border: 0; display: block; }
+.cv-reload { display: inline-flex; gap: 6px; align-items: center; justify-content: center; background: var(--panel2); color: var(--meta); border: 1px solid var(--line); border-radius: 10px; padding: 8px; font-size: 13px; }
+.cv-reload svg { width: 14px; height: 14px; }
+.cv-side { display: grid; gap: 12px; min-width: 0; }
+.cv-empty { display: grid; gap: 6px; padding: 22px; border: 1px dashed var(--line2); border-radius: 14px; text-align: center; color: var(--meta); }
+.cv-empty b { color: var(--text); font-size: 16px; }
+.cv-empty small { color: var(--dim); }
+.cv-pick { display: flex; gap: 12px; align-items: center; }
+.cv-pick b { display: block; font-size: 16px; overflow-wrap: anywhere; }
+.cv-pick small { color: var(--dim); font-family: var(--mono); font-size: 11px; overflow-wrap: anywhere; }
+.cv-thumbs { display: flex; gap: 8px; flex: none; }
+.cv-thumbs figure { margin: 0; text-align: center; }
+.cv-thumbs img { width: 64px; height: 64px; object-fit: contain; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; image-rendering: pixelated; }
+.cv-thumbs figcaption { font-size: 10px; color: var(--dim); margin-top: 2px; }
+.cv-form { display: grid; gap: 10px; }
+.cv-modes { display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-modes button { background: var(--panel2); color: var(--meta); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 700; }
+.cv-modes button.on { color: #0b0716; background: var(--cyan); border-color: var(--cyan); }
+.cv-f { display: grid; gap: 4px; font-size: 12px; color: var(--meta); font-weight: 700; }
+.cv-f textarea, .cv-f input, .cv-f select { font: inherit; font-size: 15px; font-weight: 400; color: var(--text); background: var(--panel2); border: 1px solid var(--line2); border-radius: 10px; padding: 9px 10px; width: 100%; box-sizing: border-box; }
+.cv-hint { margin: 0; color: var(--meta); font-size: 13px; }
+.cv-or { text-align: center; color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.sd-go.ghost { background: transparent; color: var(--green); border: 1px solid var(--green); }
+.cv-vh { font-size: 12px; font-weight: 800; color: var(--meta); letter-spacing: .06em; text-transform: uppercase; margin-top: 4px; }
+.cv-vers { display: grid; gap: 8px; }
+.cv-ver { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 10px; align-items: center; padding: 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; }
+.cv-ver.shown { border-color: var(--cyan); }
+.cv-ver.s-published { border-color: var(--green); }
+.cv-ver > img, .cv-wait, .cv-txt { width: 56px; height: 56px; object-fit: contain; border-radius: 8px; background: #0b0716; image-rendering: pixelated; display: grid; place-items: center; }
+.cv-txt { width: auto; height: auto; grid-column: 1 / -1; padding: 8px 10px; place-items: start; font-weight: 800; }
+.cv-ver:has(.cv-txt) .cv-vm { grid-column: 1 / -1; }
+.cv-vm { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-width: 0; }
+.cv-vm small { color: var(--dim); font-size: 12px; overflow-wrap: anywhere; }
+.cv-va { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-va button { flex: 1 1 auto; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line2); background: var(--panel); color: var(--text); font-weight: 700; font-size: 13px; }
+.cv-va button.go { background: var(--green); color: #0b0716; border-color: var(--green); }
+.cv-va button.no { color: #ff7a9a; }
+@media (max-width: 860px) {
+  .cv-wrap { grid-template-columns: minmax(0, 1fr); padding: 10px; }
+  .cv-stage { position: static; }
+  .cv-phone { height: 62vh; }
+}
+
+.sg { display: flex; flex-direction: column; gap: 10px; }
+.sg-top { display: flex; align-items: center; gap: 10px; width: 100%; padding: 0; background: none; border: 0; color: inherit; text-align: left; }
+.sg-top span { font: 800 12px var(--mono); letter-spacing: .14em; color: #ffd23f; }
+.sg-top small { flex: 1; font: 11.5px var(--mono); color: var(--meta); }
+.sg-top i { font-style: normal; color: var(--meta); }
+.sg-why { margin: 0; font-size: 12px; color: var(--dim); }
+.sg-h { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; font: 700 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--meta); }
+.sg-h button { padding: 2px 4px; font: 600 11.5px var(--mono); color: var(--green); background: none; border: 0; text-transform: none; letter-spacing: 0; }
+.sg-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 6px; }
+.sg-t { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 8px 10px; text-align: left; color: var(--text); background: rgba(255, 255, 255, .03); border: 1px solid var(--line); border-radius: 10px; }
+.sg-t img { width: 28px; height: 28px; object-fit: contain; }
+.sg-t.on { border-color: rgba(61, 252, 143, .6); background: rgba(61, 252, 143, .08); }
+.sg-t.has { opacity: .75; }
+.sg-n { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sg-n b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-n small { font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-box { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--line); font-style: normal; font-size: 12px; color: #0b0716; }
+.sg-t.on .sg-box { background: var(--green); border-color: var(--green); }
+.sg-t .sd-badge { font-style: normal; }
+.sg-go { margin-top: 2px; }
+
+.rpv { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 8px; }
+.rpv-card { border: 2px solid var(--c); border-radius: 10px; overflow: hidden; background: rgba(0, 0, 0, .35); }
+.rpv-h { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--c); color: #0b0716; font: 800 11px var(--mono); letter-spacing: .12em; }
+.rpv-b { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+.rpv-t { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 8px; text-align: left; color: var(--text); background: rgba(255, 255, 255, .03); border: 1px solid var(--line); border-radius: 8px; }
+.rpv-t img { width: 40px; height: 40px; object-fit: contain; }
+.rpv-t img.px { image-rendering: pixelated; }
+.rpv-t span { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13.5px; font-weight: 700; }
+.rpv-t small { font-size: 11px; font-weight: 400; color: var(--dim); }
+.rpv-t.on { border-color: rgba(61, 252, 143, .6); background: rgba(61, 252, 143, .08); }
+.rpv-t.on .sg-box { background: var(--green); border-color: var(--green); }
+.rpv-t.has { opacity: .8; }
+.rpv-t .sd-badge { font-style: normal; }
+
+.sd-acts { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.sd-acts button { flex: 1; padding: 9px 6px; font-weight: 700; font-size: 12.5px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255, 255, 255, .04); color: var(--text); }
+.sd-acts .ok { color: #0b0716; background: var(--green); border-color: var(--green); }
+.sd-acts .pub { color: #0b0716; background: #ffd23f; border-color: #ffd23f; box-shadow: 0 0 14px rgba(255, 210, 63, .35); }
+.sd-acts .no { flex: 0 0 auto; padding: 9px 12px; color: #ff6b93; }
+.sd-live { flex: 1; font: 700 11.5px var(--mono); color: var(--green); }
+.sd-wait { font: 12px var(--mono); color: var(--meta); }
+.sd-card.s-published { border-color: rgba(61, 252, 143, .55); box-shadow: 0 0 18px rgba(61, 252, 143, .18); }
+
+.cost-k { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.cost-k > div { padding: 9px 10px; border-radius: 10px; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); min-width: 0; }
+.cost-k em { display: block; font: 700 9.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); font-style: normal; }
+.cost-k b { display: block; margin-top: 5px; font: 800 18px/1 var(--mono); color: var(--green); }
+.cost-k span { display: block; margin-top: 4px; font-size: 11px; color: var(--meta); }
+.cost-days { display: flex; align-items: flex-end; gap: 2px; height: 46px; margin-bottom: 12px; }
+.cost-days i { flex: 1; min-width: 2px; border-radius: 2px 2px 0 0; background: linear-gradient(180deg, #ffd23f, var(--green)); opacity: .85; }
+.cost-f { display: flex; flex-direction: column; gap: 8px; }
+.cost-r { display: grid; grid-template-columns: minmax(0, 1fr) 60px auto; align-items: center; gap: 10px; }
+.cost-r span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cost-r span b { font-size: 13px; }
+.cost-r small { font: 10.5px var(--mono); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cost-r u { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.cost-r u i { display: block; height: 100%; background: var(--green); border-radius: 3px; }
+.cost-r > b { font: 700 12.5px var(--mono); color: var(--text); min-width: 52px; text-align: right; }
+.cost .note { margin-top: 10px; }
+
+.sd-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 11px; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); }
+.sd-tabs button { padding: 8px 4px; font: 700 12.5px var(--mono); color: var(--dim); background: none; border: 0; border-radius: 8px; }
+.sd-tabs button.on { color: var(--text); background: rgba(139, 108, 255, .25); box-shadow: inset 0 0 0 1px rgba(139, 108, 255, .5); }
+.sd-tabs b { color: #ffd23f; }
+.sd-bulk { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.sd-bulk span { font-size: 12.5px; color: var(--meta); }
+.sd-bulk button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; font-weight: 700; font-size: 12.5px; color: var(--text); background: rgba(255, 255, 255, .05); border: 1px solid var(--line); border-radius: 9px; }
+.sd-bulk button svg { width: 14px; height: 14px; }
+.sd-bulk button.pub { color: #0b0716; background: #ffd23f; border-color: #ffd23f; }
+.sd-acts .ic { flex: 0 0 auto; padding: 9px 11px; }
+.sd-mini { display: flex; flex-direction: column; gap: 6px; }
+.sd-mini input, .sd-mini select, .sd-mini textarea { width: 100%; padding: 9px; font-family: inherit; font-size: 14px; line-height: 1.35; color: var(--text); background: rgba(255, 255, 255, .04); border: 1px solid var(--line); border-radius: 9px; }
+.sd-text { display: flex; flex-direction: column; gap: 7px; padding: 2px 0; }
+.sd-text b { font-size: 15px; color: #fff; }
+.sd-text p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text); }
+.sd-art.txt { aspect-ratio: auto; display: block; padding: 12px; text-align: left; background: rgba(139, 108, 255, .06); cursor: default; }
+.lib { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 6px; }
+.lib-r { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 7px 10px 7px 7px; text-align: left; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 11px; }
+.lib-th { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 8px; overflow: hidden; background: repeating-conic-gradient(#1a1230 0% 25%, #140d26 0% 50%) 50% / 12px 12px; }
+.lib-th img { width: 100%; height: 100%; object-fit: contain; }
+.lib-tx { padding: 4px; font-size: 9px; line-height: 1.2; color: var(--meta); overflow: hidden; }
+.lib-n { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.lib-n b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-n small { font: 10.5px var(--mono); color: var(--dim); }
+.lib-r .sd-badge { font-style: normal; }
+.sg-h small { font: 11px var(--mono); color: var(--dim); text-transform: none; letter-spacing: 0; }
+.sd-sheet.wide { width: min(100%, 980px); max-height: 92vh; }
+.ver-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+.ver-grid.tx { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.ver { display: flex; flex-direction: column; gap: 7px; padding: 8px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, .2); }
+.ver.live { border-color: rgba(61, 252, 143, .6); box-shadow: 0 0 14px rgba(61, 252, 143, .15); }
+.ver .sd-art { border-radius: 8px; }
+.ver .sd-badge { font-style: normal; }
+.audit { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.audit li { display: grid; grid-template-columns: 110px 90px minmax(0, 1fr); gap: 8px; font-size: 12px; color: var(--meta); }
+.audit li span { font-size: 11px; color: var(--dim); }
+.audit li b { text-transform: uppercase; font: 700 10.5px var(--mono); letter-spacing: .06em; color: var(--text); }
+.audit li small { overflow-wrap: anywhere; }
+.plc { display: flex; flex-direction: column; gap: 8px; }
+.scw { display: flex; flex-direction: column; gap: 10px; }
+.tones { display: flex; gap: 6px; flex-wrap: wrap; }
+.tones button { padding: 7px 13px; font: 700 12.5px var(--mono); color: var(--dim); background: rgba(255, 255, 255, .03); border: 1px solid var(--line); border-radius: 999px; }
+.tones button.on { color: #0b0716; background: #ffd23f; border-color: #ffd23f; }
+.scw-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 10px; }
+.scw-d { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.scw-d.s-pending_review { border-color: rgba(255, 210, 63, .45); }
+.scw-d.s-published { border-color: rgba(61, 252, 143, .6); }
+.scw-d .sd-row b { font-size: 14px; }
+.scw-d .sd-badge { font-style: normal; }
+@media (max-width: 520px) { .audit li { grid-template-columns: 90px 70px minmax(0, 1fr); } }
+
+.lgsw { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255, 255, 255, .03); }
+.lgsw button { padding: 4px 9px; font: 700 11.5px var(--mono); letter-spacing: .06em; color: var(--dim); background: none; border: 0; border-radius: 7px; }
+.lgsw button.on { color: #0b0716; background: var(--green); }
+.gate .lgsw { align-self: flex-start; }
+.sg-t.aw img { object-fit: contain; }
+
+  /* Collapsible sections */
+  .fold-h { cursor: pointer; user-select: none; }
+  section.panel > .ph.fold-h h2::before { content: "▾"; display: inline-block; width: 1em; margin-right: 6px; color: #8b91a5; font-size: 10px; line-height: 1; vertical-align: 1px; text-align: center; transition: transform .15s; }
+  section.panel.folded > .ph.fold-h h2::before { transform: rotate(-90deg); }
+  section.panel.folded > :not(.ph) { display: none !important; }
+  section.panel.folded { padding-bottom: 14px; }
+  .day.fold-h::before { content: "▾"; width: 1em; margin-right: -4px; font-size: 10px; text-align: center; transition: transform .15s; }
+  .day.fold-h.shut::before { transform: rotate(-90deg); }
+  .day .dn { order: 2; font: 600 11px/1 var(--mono); letter-spacing: 0; text-transform: none; color: var(--dim); }
+  .day::after { order: 3; }
+  .quiet-toggle { display: none; margin: 8px auto 0; background: none; border: 1px solid rgba(255,255,255,.12); color: inherit; opacity: .75; border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 12px; cursor: pointer; }
+  @media (max-width: 700px) {
+    .tl:not(.allrows) .ln-l.quiet, .tl:not(.allrows) .ln-t.quiet { display: none; }
+    .quiet-toggle { display: block; }
+  }
+  section.panel.vote { border-color: rgba(255,210,63,.35); }
+  @media (max-width: 420px) { .brand { font-size: 12px; letter-spacing: .1em; gap: 6px; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="studio" hidden></div>
+<div class="pv-back" id="pv-back"></div>
+<aside id="pv" class="pv" aria-label="Preview" role="dialog"></aside>
+<div id="tip" class="tip" role="tooltip"></div>
+<script>
+// A phone (or a home screen shortcut) can open an old saved copy of this
+// page, one from before a feature shipped. Check the copy on the server
+// whenever the page opens or comes back, and reload once if it differs.
+(() => {
+  const mine = () => [...document.scripts].filter((x) => !x.src).map((x) => x.textContent).join("");
+  async function fresh() {
+    try {
+      const html = await (await fetch(`${location.pathname}?fresh=${Date.now()}`, { cache: "no-store" })).text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const theirs = [...doc.scripts].filter((x) => !x.src).map((x) => x.textContent).join("");
+      if (!theirs || theirs === mine()) return;
+      const k = "brochiefs_live_reloaded", last = Number(sessionStorage.getItem(k) || 0);
+      if (Date.now() - last < 60000) return; // never loop
+      sessionStorage.setItem(k, String(Date.now()));
+      const q = new URLSearchParams(location.search); q.set("v", Date.now());
+      location.replace(`${location.pathname}?${q}${location.hash}`);
+    } catch { /* offline: keep what we have */ }
+  }
+  fresh();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) fresh(); });
+})();
+
+(() => {
+  // Which league this page reads: the college pick'em or the NFL one, each
+  // with its own Worker, sign-in and cached view. Chosen with the CFB | NFL
+  // switch (or ?league=nfl) and remembered on this device.
+  const LEAGUES = { cfb: { label: "CFB", worker: "https://liftr-ai.jhs797.workers.dev", suffix: "" }, nfl: { label: "NFL", worker: "https://liftr-nfl.jhs797.workers.dev", suffix: "_nfl" } };
+  const LEAGUE = (() => { let l = null; try { const q = new URLSearchParams(location.search).get("league"); if (q && LEAGUES[q]) localStorage.setItem("brochiefs_live_league", q); l = localStorage.getItem("brochiefs_live_league"); } catch {} return LEAGUES[l] ? l : "cfb"; })();
+  const WORKER = LEAGUES[LEAGUE].worker;
+  // The Creative Studio and the AI cost meter live on the college Worker.
+  const HAS_STUDIO = LEAGUE === "cfb";
+  // Signed in either as a remembered device (a token the Worker signed,
+  // kept on this computer for 180 days) or with the key for this browser
+  // session only. The key itself is never kept.
+  const SFX = LEAGUES[LEAGUE].suffix;
+  const KEY_STORE = `brochiefs_live_key${SFX}`, DEVICE_STORE = `brochiefs_live_device${SFX}`, SNAP_STORE = `brochiefs_live_snap${SFX}`;
+  const leagueSwitch = () => `<span class="lgsw" role="group" aria-label="League">${Object.entries(LEAGUES).map(([k, v]) => `<button type="button" class="${k === LEAGUE ? "on" : ""}" data-league="${k}">${v.label}</button>`).join("")}</span>`;
+  document.addEventListener("click", (e) => { const b = e.target.closest("[data-league]"); if (!b || b.dataset.league === LEAGUE) return; try { localStorage.setItem("brochiefs_live_league", b.dataset.league); } catch {} location.replace(`${location.pathname}?v=${Date.now()}`); });
+  const COLORS = ["#ff4f9a", "#ffe45e", "#c77dff", "#ffb347", "#3dfc8f", "#ff6b6b", "#4fe3f0", "#7aa2ff", "#9cf27a", "#ff9d3d"];
+  const SHOWN = { Conlan: "Connie" };
+  const SCREENS = { picks: "Picks", scoreboard: "Scores", history: "History", trivia: "Trivia", home: "Home", roster: "the roster", splash: "the splash screen" };
+  const app = document.getElementById("app");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }, del: (k) => { try { localStorage.removeItem(k); } catch {} } };
+  const session = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch {} }, del: (k) => { try { sessionStorage.removeItem(k); } catch {} } };
+  let device = store.get(DEVICE_STORE) || "", key = session.get(KEY_STORE) || "";
+  const auth = () => (device ? `device=${encodeURIComponent(device)}` : `key=${encodeURIComponent(key)}`);
+  async function remember(k) {
+    try {
+      const r = await fetch(`${WORKER}/presence-device?key=${encodeURIComponent(k)}`, { method: "POST", cache: "no-store" });
+      if (!r.ok) return r.status;
+      device = (await r.json()).token || "";
+      if (device) store.set(DEVICE_STORE, device);
+      return device ? 200 : 500;
+    } catch { return 0; }
+  }
+  function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
+
+  // room: the Worker's answer. names, seen, games: the once-a-minute extras.
+  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "6h", "12h", "24h", "7d"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "6h", wk: null, sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+
+  // --- Formatting --------------------------------------------------------
+  const name = (n) => SHOWN[n] || n;
+  const color = (n) => COLORS[[...n].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % COLORS.length];
+  const av = (n, size, on) => `<span class="av${size ? ` ${size}` : ""}${on ? " on" : ""}" style="--c:${color(n)}">${esc(name(n)[0])}</span>`;
+  const clock = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? `${h}:${String(m).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${m}:${String(s % 60).padStart(2, "0")}`; };
+  const dur = (ms) => ms < 60000 ? `${Math.max(1, Math.round(ms / 1000))}s` : ms < 3600000 ? `${Math.round(ms / 60000)} min` : `${(ms / 3600000).toFixed(1)} hr`;
+  const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
+  const hm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const dayOf = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const dayLab = (t) => { const d = dayOf(t), today = dayOf(Date.now()); return d === today ? "Today" : d === today - 86400000 ? "Yesterday" : new Date(t).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }); };
+  const nameFrom = (slug) => st.names.find((n) => n.toLowerCase() === slug) || slug.charAt(0).toUpperCase() + slug.slice(1);
+  const evId = (e) => `${e.n}|${e.at}|${e.k}`;
+
+  // One action in plain words, with its detail (a game, a person) apart.
+  const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const ICONS = {
+    refresh: svg('<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>'),
+    more: svg('<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>'),
+    bell: svg('<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>'),
+    copy: svg('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>'),
+    app: svg('<rect x="6" y="3" width="12" height="18" rx="3"/><path d="M11 17h2"/>'),
+    console: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>'),
+    out: svg('<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/>'),
+    now: svg('<circle cx="12" cy="12" r="3"/><path d="M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/>'),
+    tl: svg('<path d="M4 6h7M8 12h10M4 18h12"/><path d="M20 4v16"/>'),
+    visits: svg('<rect x="4" y="4" width="16" height="6" rx="2"/><rect x="4" y="14" width="16" height="6" rx="2"/>'),
+    stats: svg('<path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/>'),
+    studio: svg('<path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.4-1.9-.4-1 .3-2.1 1.4-2.1H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/>'),
+    plus: svg('<path d="M12 5v14M5 12h14"/>'),
+    x: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
+  };
+  const TABS = [["sec-now", "Now", "now"], ["sec-tl", "Timeline", "tl"], ["sec-visits", "Visits", "visits"], ["sec-stats", "Stats", "stats"]];
+  // Which section is in view, for the tabs; recomputed on scroll and after
+  // every redraw, so the right tab stays lit.
+  function paintTabs() {
+    if (Date.now() < (st.secLock || 0)) return;
+    // A section that sits beside the one before it (Stats next to Visits on
+    // a wide screen) doesn't take over from it.
+    let cur = "sec-now", prevTop = null;
+    for (const [id] of TABS) {
+      const el = document.getElementById(id); if (!el) continue;
+      const top = el.getBoundingClientRect().top;
+      if (top < 140 && (prevTop === null || Math.abs(top - prevTop) > 8)) cur = id;
+      prevTop = top;
+    }
+    const stats = document.getElementById("sec-stats"), feed = document.getElementById("sec-visits");
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4 && stats && feed && stats.getBoundingClientRect().top > feed.getBoundingClientRect().top + 8) cur = "sec-stats";
+    if (cur !== st.sec) { st.sec = cur; document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.sec === cur)); }
+  }
+  addEventListener("scroll", () => { cancelAnimationFrame(paintTabs.r); paintTabs.r = requestAnimationFrame(paintTabs); }, { passive: true });
+  const COPY_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 3.5v-.5a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3v5A1.5 1.5 0 0 0 4 9.5h.5"/></svg>`;
+  const SAYS = {
+    "game-info": "Opened game info", gamecast: "Watched the live game cast", "game-final": "Opened a final recap",
+    "scorebug-open": "Tapped a score", "ranking-expand": "Opened a leaderboard card",
+    "path-share": "Shared a Path to Win", "path-intro": "Saw the Path to Win intro",
+    "wp-player": "Opened a win % breakdown", "wp-explain": "Read how win % works", h2h: "Opened head to head",
+    "pot-open": "Opened the pot", "pot-seen": "Looked at the pot", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Read the week replay", "board-seen": "Looked at the leaderboard", "scores-seen": "Looked at live scores", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
+    "poll-view": "Saw the lock of the week vote", poll: "Voted on the lock of the week",
+    sim: "Ran a game sim", "grid-card": "Opened a grid card", "history-ask": "Asked the archive", "gamecast-log": "Opened the full game log",
+  };
+  const SHEET = { "h2h-modal": "head to head", "insights-modal": "game info", "sh2h-modal": "season head to head", "grid-modal": "the grid check", "rules-modal": "the rules", "avatar-modal": "the avatar picker", "boner-modal": "the boner", "sim-modal": "game sim", "claim-modal": "the claim sheet", "identity-modal": "who are you", "code-modal": "the code sheet" };
+  const SCREEN_NAME = { scoreboard: "Scores", picks: "Picks", history: "History", trivia: "Trivia", side: "Side bet", home: "Players" };
+  const FRICTION = /^(rage|dead-tap|quick-exit|js-error)$/;
+  let lastDigest = "";
+  document.addEventListener("click", (e) => { const b = e.target.closest(".digest-copy"); if (!b) return; // Show the digest in the panel (no pop-up window), selected, and try the clipboard too.
+    const sec = b.closest("section"); let ta = sec.querySelector(".digest-text");
+    if (!ta) { ta = document.createElement("textarea"); ta.className = "digest-text"; ta.readOnly = true; ta.style.cssText = "width:100%;box-sizing:border-box;min-height:160px;margin-top:8px;font:12px/1.4 ui-monospace,monospace;background:#0b0e15;color:#e9ecf5;border:1px solid #ff7a9a;border-radius:8px;padding:8px"; sec.appendChild(ta); }
+    ta.value = lastDigest; ta.focus(); ta.select();
+    const ok = () => { b.textContent = "Copied ✓"; setTimeout(() => (b.textContent = "Copy for Claude"), 1500); };
+    try { navigator.clipboard.writeText(lastDigest).then(ok, () => { if (document.execCommand("copy")) ok(); }); } catch { if (document.execCommand("copy")) ok(); }
+  });
+  function says(e, feed) {
+    if (e.k === "recap-card") return ["Opened a replay card", ({ hit: "Pick of the week", miss: "Worst pick", move: "Movement", split: "Coin flip", tb: "Tiebreaker" })[e.d] || e.d || ""];
+    if (e.k === "pot-row") return ["Opened a pot row", e.d ? name(e.d) : ""];
+    if (e.k === "history-season") return ["Opened a past season", e.d || ""];
+    if (e.k === "player-card") return ["Opened a player card", e.d ? name(e.d) : ""];
+    if (e.k === "rage") return ["⚠ Rage tapped", e.d || ""];
+    if (e.k === "dead-tap") return ["⚠ Tapped something that does nothing", e.d || ""];
+    if (e.k === "quick-exit") return ["⚠ Closed right away", SHEET[e.d] || e.d || ""];
+    if (e.k === "js-error") return ["⚠ Hit an error", e.d || ""];
+    if (e.k === "sheet-time") { const [id, sec] = String(e.d || "").split(":"); return [`Spent ${dur(Number(sec) * 1000)} in ${SHEET[id] || id}`, ""]; }
+    if (e.k === "depth") { const [sc, pct] = String(e.d || "").split(":"); return [`Scrolled ${pct}% of ${SCREEN_NAME[sc] || sc}`, ""]; }
+    if (e.k === "path-run" || e.k === "path-card") {
+      const of = feed.find((x) => x.n === e.n && /^path-of-/.test(x.k) && Math.abs(x.at - e.at) < 3000);
+      return [e.k === "path-run" ? "Ran Path to Win" : "Opened a Path to Win card", of ? `for ${name(nameFrom(of.k.slice(8)))}` : ""];
+    }
+    if (e.k === "hs-board") return ["Opened a high score board", ({ ats: "Best ATS", streak: "Hot Hand", dogs: "Dog Hits", lone: "Lone Wolf", fader: "Fader", tb: "TB Sniper", best: "Best Week", blanks: "No Shows", "side-bank": "Bankroll", "side-picks": "Side Picks" })[e.d] || e.d || ""];
+    if (SAYS[e.k]) return [SAYS[e.k], /^(game-|gamecast|scorebug)/.test(e.k) ? st.games[e.d] || "" : e.k === "ranking-expand" && e.d ? name(e.d) : e.k === "history-ask" && e.d ? `“${e.d}”` : e.k === "h2h" && e.d ? String(e.d).split(" vs ").map(name).join(" vs ") : ""];
+    if (SCREENS[e.k]) return [`Went to ${SCREENS[e.k]}`, ""];
+    return [e.k.charAt(0).toUpperCase() + e.k.slice(1).replace(/-/g, " "), ""];
+  }
+
+  // Where a line opens in the preview: a view of the app, or null.
+  function target(e, feed) {
+    if (/^(game-info|gamecast|gamecast-log|game-final|scorebug-open)$/.test(e.k) && e.d) return `game&x=${encodeURIComponent(e.d)}`;
+    if (e.k === "ranking-expand" && e.d) return `card&x=${encodeURIComponent(e.d)}`;
+    if (e.k === "path-run" || e.k === "path-card") {
+      const of = feed.find((x) => x.n === e.n && /^path-of-/.test(x.k) && Math.abs(x.at - e.at) < 3000);
+      return of ? `path&x=${encodeURIComponent(nameFrom(of.k.slice(8)))}` : "scoreboard";
+    }
+    if (e.k === "h2h") return "h2h";
+    if (e.k === "history-ask") return "ask";
+    if (e.k === "history" || e.k === "trivia" || e.k === "scoreboard") return e.k;
+    if (e.k === "picks" || /^pick-/.test(e.k)) return "picks";
+    if (/^(pot-open|all-picks-open|wp-player|wp-explain|sim|grid-card|path-intro|path-share)$/.test(e.k)) return "scoreboard";
+    return null;
+  }
+
+  // The feed as visits: each "in" starts one, an "out" ends it; uses in
+  // between are its lines, oldest first. Visits newest first.
+  function visits(feed, people) {
+    const open = {}, list = [];
+    for (const e of feed.filter((x) => !/^path-of-/.test(x.k)).slice().reverse()) {
+      let s = open[e.n];
+      if (e.k === "in" || !s) {
+        s = open[e.n] = { n: e.n, start: e.at, end: e.at, app: e.k === "in" ? e.d : "", acts: [], done: false };
+        list.push(s);
+        if (e.k === "in") continue;
+      }
+      if (e.k === "out") { s.end = e.at; s.done = true; delete open[e.n]; continue; }
+      const last = s.acts[s.acts.length - 1];
+      const [a, d] = says(e, feed);
+      if (last && last.a === a && last.d === d) { last.x++; last.ids.push(evId(e)); } else s.acts.push({ at: e.at, a, d, x: 1, ids: [evId(e)], go: target(e, feed) });
+      s.end = e.at;
+    }
+    for (const s of Object.values(open)) { const p = people[s.n]; if (p?.in && p.since <= s.start + 2000) { s.live = true; s.since = p.since; } }
+    for (const s of list) s.acts = tidyActs(s);
+    return list.sort((a, b) => b.start - a.start);
+  }
+  // Time on each screen (until the next thing they did), and back and
+  // forth between two screens folded into one line with the time on each.
+  function tidyActs(s) {
+    const acts = s.acts, endAt = s.live ? Date.now() : s.end;
+    acts.forEach((x, i) => { x.dur = Math.max(0, (acts[i + 1]?.at ?? endAt) - x.at); });
+    const isScreen = (x) => /^Went to /.test(x.a);
+    const out = [];
+    for (let i = 0; i < acts.length;) {
+      let j = i;
+      while (j < acts.length && isScreen(acts[j])) j++;
+      const run = acts.slice(i, j), screens = [...new Set(run.map((x) => x.a.slice(8)))];
+      if (run.length >= 3 && screens.length === 2) {
+        const t = (sc) => run.filter((x) => x.a.slice(8) === sc).reduce((n, x) => n + x.dur, 0);
+        out.push({ at: run[0].at, a: `Flipped between ${screens[0]} and ${screens[1]}`, d: `${run.length} switches · ${screens.map((sc) => `${sc} ${dur(t(sc))}`).join(", ")}`, x: 1, ids: run.flatMap((x) => x.ids), go: run[run.length - 1].go, dur: run.reduce((n, x) => n + x.dur, 0) });
+        i = j; continue;
+      }
+      for (const x of run) { if (x.dur >= 5000) x.d = [x.d, dur(x.dur)].filter(Boolean).join(" · "); out.push(x); }
+      if (j === i) { out.push(acts[i]); i++; } else i = j;
+    }
+    return out;
+  }
+
+  // --- Data --------------------------------------------------------------
+  async function poll(full) {
+    clearTimeout(poll.t);
+    try {
+      const wantWeek = st.range === "7d" && (full || !st.wk || Date.now() - st.wk.at > 60000);
+      const res = await fetch(`${WORKER}/presence?${auth()}${full ? "&seen=1" : ""}${wantWeek ? "&days=7" : ""}&t=${Date.now()}`, { cache: "no-store" });
+      if (res.status === 403) { const was = device; forget(); gate(was ? "This computer's sign-in has expired. Enter the key again." : "That key didn't work."); return; }
+      if (!res.ok) throw new Error(res.status);
+      const r = await res.json();
+      if (HAS_STUDIO) loadCosts(full);
+      if (LEAGUE === "cfb") fetch(`${WORKER}/poll?id=lock-of-week-v2&all=1&${auth()}&t=${Date.now()}`, { cache: "no-store" }).then((x) => (x.ok ? x.json() : null)).then((p) => { if (p && JSON.stringify(p) !== JSON.stringify(st.poll)) { st.poll = p; render(); } }).catch(() => {});
+      if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
+      if (r.asks) st.asks = r.asks;
+      // The week comes with seven days of taps; the live view keeps one.
+      if (r.week) { st.wk = { sessions: r.week, feed: r.feed, at: Date.now() }; r.feed = r.feed.filter((e) => Date.now() - e.at < 86400000); }
+      const ids = new Set(r.feed.map(evId));
+      if (st.known && !st.cached) {
+        for (const id of ids) if (!st.known.has(id)) st.fresh.add(id);
+        for (const [n, p] of Object.entries(r.people)) if (p.in && !st.room?.people?.[n]?.in) notify(n);
+      }
+      st.known = ids; st.room = r; st.at = Date.now(); st.ok = true; st.cached = false;
+      store.set(SNAP_STORE, JSON.stringify({ room: r, names: st.names, seen: st.seen, games: st.games, asks: st.asks }));
+      setTimeout(() => { st.fresh.clear(); }, 2600);
+    } catch { st.ok = false; }
+    if (st.gated) return;
+    render();
+    poll.n = (poll.n || 0) + 1;
+    poll.t = setTimeout(() => poll(poll.n % 20 === 0), document.hidden ? 30000 : 3000);
+  }
+  const lastSeen = (n) => Math.max(st.seen[n] || 0, st.room?.people?.[n]?.last || 0);
+
+  function notify(n) {
+    if (!st.alert || !document.hidden || !("Notification" in window) || Notification.permission !== "granted") return;
+    try { new Notification(`${name(n)} is in`, { body: "Brochiefs", tag: `in-${n}`, icon: "../icons/icon-192.png" }); } catch {}
+  }
+  async function keepAwake() {
+    if (document.hidden || st.wake || !navigator.wakeLock) return;
+    try { st.wake = await navigator.wakeLock.request("screen"); st.wake.addEventListener("release", () => { st.wake = null; }); } catch {}
+  }
+
+  // --- Render ------------------------------------------------------------
+  const DAY = 86400000, HOUR = 3600000;
+  const hourLab = (t) => { const h = new Date(t).getHours(); return `${h % 12 || 12}${h < 12 ? "a" : "p"}`; };
+  function render() {
+    if (st.gated) return;
+    if (st.view === "studio") { st.sig = ""; return; }
+    const room = st.room;
+    if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
+    // Only rebuild when something changed; the clocks tick on their own.
+    const sig = JSON.stringify([room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    if (sig === st.sig) return;
+    st.sig = sig;
+    const now = Date.now(), from = now - DAY, today0 = dayOf(now);
+    const people = room.people, feed = room.feed;
+    const names = [...new Set([...st.names, ...Object.keys(people)])];
+    const inNow = names.filter((n) => people[n]?.in).sort((a, b) => people[a].since - people[b].since);
+    document.title = inNow.length ? `(${inNow.length} in) Brochiefs Live` : "Brochiefs Live";
+    const order = names.slice().sort((a, b) => (people[b]?.in ? 1 : 0) - (people[a]?.in ? 1 : 0) || lastSeen(b) - lastSeen(a));
+    const laneLabel = (n) => { const on = people[n]?.in, t = lastSeen(n), sel = st.filter === n; return `<button type="button" class="ln-l${on ? " in" : ""}${sel ? " sel" : ""}${t ? "" : " idle"}" data-n="${esc(n)}">${av(n, "sm", on)}<span class="t"><span class="nm">${esc(name(n))}</span><span class="st num"${on ? ` data-since="${people[n].since}"` : ""}>${on ? clock(now - people[n].since) : t ? ago(t) : "not seen"}</span></span></button>`; };
+    const vs = visits(feed, people);
+    const vEnd = (v) => (v.live ? now : Math.max(v.end, v.start + 1000));
+    const actions = feed.filter((e) => e.k !== "in" && e.k !== "out" && !/^path-of-/.test(e.k) && e.at >= from);
+
+    // The week: every visit of the last 7 days from the session log, plus
+    // whoever is in now (their visit isn't logged until it ends).
+    const wk = st.range === "7d" ? st.wk : null;
+    const wFrom = today0 - 6 * DAY;
+    const wv = wk ? [
+      ...Object.entries(wk.sessions).flatMap(([n, list]) => list.map(([at, ms, f]) => ({ n, start: at, end: at + Math.max(ms, 1000), f: f || [] }))),
+      ...inNow.map((n) => ({ n, start: people[n].since, end: now, f: [], live: true })),
+    ].filter((v) => v.end >= wFrom).sort((a, b) => b.start - a.start) : [];
+    const wTime = (v, a = wFrom, b = now) => Math.max(0, Math.min(v.end, b) - Math.max(v.start, a));
+    const featLab = (k) => { k = String(k).replace(/-g\d+$/, ""); return SCREENS[k] || /^(path-of-|splash$)/.test(k) ? null : says({ k, n: "", d: "" }, [])[0]; };
+    const dayList = Array.from({ length: 7 }, (_, i) => dayOf(wFrom + i * DAY + 3 * HOUR));
+    const dShort = (d) => (d === today0 ? "Today" : new Date(d).toLocaleDateString([], { weekday: "short" }));
+    const dLong = (d) => (d === today0 ? "Today" : d === today0 - DAY ? "Yesterday" : new Date(d).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }));
+    const mins = (ms) => (ms >= HOUR ? `${(ms / HOUR).toFixed(1)}h` : ms >= 60000 ? `${Math.round(ms / 60000)}m` : ms > 0 ? "<1m" : "");
+
+    // Headline numbers.
+    const inToday = names.filter((n) => lastSeen(n) >= today0 || vs.some((v) => v.n === n && vEnd(v) >= today0));
+    const time = vs.reduce((t, v) => t + (vEnd(v) - Math.max(v.start, from)), 0);
+    const hours = Array.from({ length: 24 }, (_, i) => { const t0 = new Date(now); t0.setMinutes(0, 0, 0); const start = t0.getTime() - (23 - i) * HOUR; return { start, n: 0, who: new Set() }; });
+    for (const e of actions) { const h = hours.find((x) => e.at >= x.start && e.at < x.start + HOUR); if (h) { h.n++; h.who.add(e.n); } }
+    const peak = hours.reduce((m, h) => (h.n > m.n ? h : m), { n: 0 });
+    const last = order.find((n) => !people[n]?.in && lastSeen(n));
+    // The headline: who is in now as a slim banner, then six numbers in one
+    // compact panel (a tap or hover gives the detail).
+    const amt = (ms) => (ms >= HOUR ? `${(ms / HOUR).toFixed(1)}<small>h</small>` : ms >= 60000 ? `${Math.round(ms / 60000)}<small>m</small>` : `${Math.round(ms / 1000)}<small>s</small>`);
+    const ks = (label, value, sub, tip) => `<div class="ks"${tip ? ` data-tip="${esc(tip)}"` : ""}><em>${label}</em><b class="num">${value}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
+    const todayTip = `<b>In today</b>${inToday.length ? inToday.map(name).join(", ") : "Nobody yet"}${names.length > inToday.length ? `<br>Not yet: ${names.filter((n) => !inToday.includes(n)).map(name).join(", ")}` : ""}`;
+    const stats = wk ? (() => {
+      const t = wv.reduce((a, v) => a + wTime(v), 0);
+      const byDay = dayList.map((d) => ({ d, ms: wv.reduce((a, v) => a + wTime(v, d, d + DAY), 0), who: new Set(wv.filter((v) => wTime(v, d, d + DAY)).map((v) => v.n)) }));
+      const best = byDay.reduce((m, x) => (x.ms > m.ms ? x : m), { ms: 0 });
+      return [
+        ks("In today", `${inToday.length}<small>/${names.length}</small>`, "players", todayTip),
+        ks("Visits · 7d", wv.length, `${new Set(wv.map((v) => v.n)).size} people`),
+        ks("Time in app", t ? amt(t) : "–", "7 days"),
+        ks("Avg visit", wv.length ? amt(t / wv.length) : "–", "per visit"),
+        ks("Busiest", best.ms ? esc(new Date(best.d).toLocaleDateString([], { weekday: "short" })) : "–", best.ms ? `${mins(best.ms)} · ${best.who.size} ppl` : "", best.ms ? `<b>${dLong(best.d)}</b>${mins(best.ms)} in the app · ${[...best.who].map(name).join(", ")}` : ""),
+        ks("A day", (wv.length / 7).toFixed(1), "visits"),
+      ].join("");
+    })() : [
+      ks("In today", `${inToday.length}<small>/${names.length}</small>`, "players", todayTip),
+      ks("Visits · 24h", vs.length, `${new Set(vs.map((v) => v.n)).size} people`),
+      ks("Time in app", time ? amt(time) : "–", "24 hours"),
+      ks("Avg visit", vs.length ? amt(time / vs.length) : "–", "per visit"),
+      ks("Peak hour", peak.n ? hourLab(peak.start) : "–", peak.n ? `${peak.who.size} ${peak.who.size === 1 ? "person" : "ppl"}` : "", peak.n ? `<b>${hourLab(peak.start)} hour</b>${peak.n} actions · ${[...peak.who].map(name).join(", ")}` : ""),
+      ks("Actions", actions.length, "24 hours"),
+    ].join("");
+    const kpis = `<section class="kpis" id="sec-now">
+      <div class="kpi now${inNow.length ? " on" : ""}"><div class="now-l"><b class="num">${inNow.length}</b><em>in now</em></div>
+        ${inNow.length ? `<div class="avs">${inNow.map((n) => `<span class="inp">${av(n, "sm", true)}${esc(name(n))}<small class="num" data-since="${people[n].since}">${clock(now - people[n].since)}</small></span>`).join("")}</div>` : `<span class="now-last">${last ? `Last in: <b>${esc(name(last))}</b> · ${esc(ago(lastSeen(last)))}` : "Nobody yet"}</span>`}</div>
+      <div class="kstats">${stats}</div>
+    </section>`;
+    // The timeline: one lane per player, a block per visit.
+    // The timeline's window: 3, 6, 12 or 24 hours back to now (6 to start),
+    // so a busy afternoon gets the width instead of a sliver by the now line.
+    const spanH = { "3h": 3, "6h": 6, "12h": 12 }[st.range] || 24, tSpan = spanH * HOUR, tFrom = now - tSpan;
+    const xp = (t) => (((Math.min(Math.max(t, tFrom), now) - tFrom) / tSpan) * 100).toFixed(3);
+    const step = spanH <= 3 ? HOUR / 2 : HOUR, every = spanH <= 6 ? 1 : spanH <= 12 ? 2 : 3;
+    const marks = [];
+    const h0 = new Date(tFrom); h0.setMinutes(spanH <= 3 && h0.getMinutes() >= 30 ? 30 : 0, 0, 0);
+    for (let t = h0.getTime() + step; t < now; t += step) marks.push(t);
+    const nights = [];
+    for (let d = dayOf(tFrom); d < now; d += DAY) { const a = Math.max(d, tFrom), b = Math.min(d + 7 * HOUR, now); if (b > a) nights.push([a, b]); }
+    const tickLab = (t) => { const d = new Date(t), h = d.getHours(), m = d.getMinutes(); return m ? `${h % 12 || 12}:${String(m).padStart(2, "0")}` : hourLab(t); };
+    const lanes = order.map((n) => {
+      const mine = vs.filter((v) => v.n === n && vEnd(v) >= tFrom);
+      // Visits a couple of minutes apart are one sitting: one bar. Its
+      // height says how long they were really in: a dot for a quick look,
+      // a short bar under five minutes, full height past that.
+      const groups = [];
+      for (const v of mine.slice().sort((a, b) => a.start - b.start)) {
+        const g = groups[groups.length - 1];
+        if (g && v.start - g.end < 2 * 60000) { g.list.push(v); g.end = Math.max(g.end, vEnd(v)); g.live = g.live || v.live; }
+        else groups.push({ list: [v], start: v.start, end: vEnd(v), live: !!v.live });
+      }
+      const blocks = groups.map((g) => {
+        const first = g.list[0], id = `${first.n}|${first.start}`;
+        const inApp = g.list.reduce((t, v) => t + (vEnd(v) - v.start), 0);
+        const acts = g.list.reduce((t, v) => t + v.acts.length, 0);
+        const size = g.live || inApp >= 5 * 60000 ? "" : inApp < 60000 ? " peek" : " short";
+        const tip = `<b>${esc(name(n))}${g.live ? " · in now" : ""}</b>${g.list.length > 1 ? `${g.list.length} visits · ` : ""}${esc(hm(g.start))}${g.live ? "" : ` to ${esc(hm(g.end))}`} · ${esc(dur(inApp))} in the app<br>${acts} action${acts === 1 ? "" : "s"}${first.app ? ` · ${first.app === "home" ? "home screen app" : "browser"}` : ""}`;
+        return `<i class="blk${size}${g.live ? " live" : ""}${g.list.some((v) => st.focus === `${v.n}|${v.start}`) ? " focus" : ""}" style="${g.live ? `right:0;width:max(10px, ${(100 - xp(g.start)).toFixed(3)}%)` : `left:min(${xp(g.start)}%, calc(100% - ${size ? 14 : 8}px));width:${(xp(g.end) - xp(g.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}"></i>`;
+      }).join("");
+      // Nobody in the window: the lane steps back.
+      return `${laneLabel(n).replace('class="ln-l', `class="ln-l${mine.length ? "" : " quiet"}`)}<div class="ln-t${st.filter === n ? " sel" : ""}${mine.length ? "" : " quiet"}">${blocks}</div>`;
+    }).join("");
+    // Labels on the hour at the window's step, and the half hours at 3h.
+    const labelled = (t) => { const d = new Date(t); return d.getMinutes() ? spanH <= 3 : d.getHours() % every === 0; };
+    const axis = marks.filter((t) => labelled(t) && xp(t) < 87 && xp(t) > 4).map((t) => `<span style="left:${xp(t)}%">${tickLab(t)}</span>`).join("") + `<span class="nowl" style="left:100%">NOW</span>`;
+    const seg = `<span class="seg end" role="group" aria-label="Range">${["3h", "6h", "12h", "24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
+    const weekView = () => {
+      if (!wk) return `<div class="note">Loading the week…</div>`;
+      // Who, which day: visits (or minutes, by the switch), darker for more;
+      // a tap or hover gives both.
+      const byMin = st.metric === "min";
+      const cell = (n, d) => { const mine = wv.filter((v) => v.n === n && wTime(v, d, d + DAY) > 0); return { n: mine.length, ms: mine.reduce((a, v) => a + wTime(v, d, d + DAY), 0), f: [...new Set(mine.flatMap((v) => v.f.map(featLab)).filter(Boolean))] }; };
+      const grid = order.map((n) => dayList.map((d) => cell(n, d)));
+      const val = (x) => (byMin ? x.ms : x.n);
+      const maxV = Math.max(1, ...grid.flat().map(val));
+      const hmHtml = `<div class="hm">
+        <span></span>${dayList.map((d) => `<span class="hm-h${d === today0 ? " t" : ""}">${esc(dShort(d))}<small>${new Date(d).getDate()}</small></span>`).join("")}
+        ${order.map((n, r) => laneLabel(n) + dayList.map((d, c) => { const x = grid[r][c], v = val(x), a = v ? 0.16 + 0.74 * Math.sqrt(v / maxV) : 0; return `<i class="hm-c${x.n ? "" : " z"}${st.filter && st.filter !== n ? " dim" : ""}" style="${v ? `background:rgba(139, 108, 255, ${a.toFixed(2)})` : ""}" data-tip="${esc(`<b>${name(n)} · ${dLong(d)}</b>${x.n ? `${x.n} visit${x.n === 1 ? "" : "s"} · ${mins(x.ms)} in the app${x.f.length ? `<br>${x.f.slice(0, 5).join(", ")}` : ""}` : "Not in"}`)}">${x.n ? (byMin ? mins(x.ms) : x.n) : ""}</i>`; }).join("")).join("")}
+      </div>`;
+      // When in the day: a punch card, a row per day and a column per hour,
+      // a bigger, brighter dot for more visits starting in that hour.
+      const pc = dayList.map((d) => Array.from({ length: 24 }, (_, h) => ({ d, h, n: 0, who: new Set() })));
+      for (const v of wv) {
+        if (st.filter && v.n !== st.filter) continue;
+        const r = dayList.findIndex((d) => v.start >= d && v.start < d + DAY);
+        if (r < 0) continue;
+        const c = pc[r][new Date(v.start).getHours()]; c.n++; c.who.add(v.n);
+      }
+      const maxP = Math.max(1, ...pc.flat().map((c) => c.n)), nowH = new Date(now).getHours();
+      const hourLabel = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
+      const pcHtml = `<div class="pc">
+        ${pc.map((row, r) => { const d = dayList[r], tot = row.reduce((a, c) => a + c.n, 0); return `<span class="pc-l${d === today0 ? " t" : ""}"><b>${esc(dShort(d))}</b><small>${tot}</small></span>${row.map((c) => { const k = c.n ? Math.sqrt(c.n / maxP) : 0; return `<i class="pc-c${d === today0 && c.h === nowH ? " now" : ""}${d === today0 && c.h > nowH ? " fut" : ""}"${c.n ? ` data-tip="${esc(`<b>${dLong(d)} · ${hourLabel(c.h)}</b>${c.n} visit${c.n === 1 ? "" : "s"} · ${[...c.who].map(name).join(", ")}`)}"` : ""}><s style="${c.n ? `width:${(30 + 70 * k).toFixed(0)}%;height:${(30 + 70 * k).toFixed(0)}%;opacity:${(0.45 + 0.55 * k).toFixed(2)}` : ""}"></s></i>`; }).join("")}`; }).join("")}
+        <span></span>${Array.from({ length: 24 }, (_, h) => `<span class="pc-x">${h % 3 === 0 ? hourLabel(h) : ""}</span>`).join("")}
+      </div>`;
+      const firstTap = (wk.feed || []).reduce((m, e) => Math.min(m, e.at), now);
+      return `<div class="sub2 row">Who was in, day by day ${st.filter ? "" : "· tap a name to follow one person"}<span class="seg sm" role="group" aria-label="Show"><button type="button" class="${byMin ? "" : "on"}" data-metric="visits">Visits</button><button type="button" class="${byMin ? "on" : ""}" data-metric="min">Minutes</button></span></div>${hmHtml}
+        <div class="sub2" style="margin-top:20px">When in the day${st.filter ? ` · ${esc(name(st.filter))}` : " · everyone"} · visits by hour</div>
+        ${pcHtml}
+        ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:10px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}`;
+    };
+    const timeline = wk || st.range === "7d" ? `<section class="tl panel" id="sec-tl">
+      <div class="ph"><h2>Last 7 days</h2>${seg}</div>
+      ${weekView()}
+    </section>` : `<section class="tl panel" id="sec-tl">
+      <div class="ph"><h2>Last ${spanH} hours</h2>${seg}</div>
+      <div class="tl-hint"><span>Dot: quick look · short: under 5 min · tall: longer</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
+      <div class="tl-grid">
+        <span></span><div class="tl-ax">${axis}</div>
+        <div class="tl-over">${nights.map(([a, b]) => `<i class="night" style="left:${xp(a)}%;width:${(xp(b) - xp(a)).toFixed(3)}%"></i>`).join("")}${marks.map((t) => `<i class="hr${new Date(t).getHours() === 0 ? " mid" : ""}" style="left:${xp(t)}%"></i>`).join("")}<i class="now"></i></div>
+        ${lanes}
+      </div>
+    </section>`;
+
+    // Side charts: actions by hour, what got used most, how they open it.
+    // The week: visits by hour of the day, and what most visits used.
+    const askPanel = (fromTs, label) => {
+      const list = st.asks.filter((x) => x.ts >= fromTs && (!st.filter || x.n === st.filter)).slice(0, 5);
+      if (!list.length) return "";
+      return `<section class="panel"><div class="ph"><h2>Asked the archive</h2><span class="sub">${label}</span></div>
+        <div class="asks">${list.map((x) => `<button type="button" class="ask" data-ask="${x.ts}"><span class="ask-h">${x.n ? av(x.n, "sm") : ""}<b>${esc(x.n ? name(x.n) : "Someone")}</b><time>${esc(dayOf(x.ts) === today0 ? hm(x.ts) : `${new Date(x.ts).toLocaleDateString([], { weekday: "short" })} ${hm(x.ts)}`)}</time></span><span class="ask-q">${esc(x.q)}</span></button>`).join("")}</div>
+      </section>`;
+    };
+    // The lock of the week vote: tally, who voted what, who has seen it, feedback.
+    const pollPanel = () => {
+      const p = st.poll; if (!p) return "";
+      const LAB = { A: "Free bonus +2/0", B: "Bonus with risk +2/−1", C: "High stakes +3/−3", N: "No lock" };
+      const votes = p.votes || {}, views = p.views || {}, notes = p.notes || {};
+      const max = Math.max(1, ...Object.values(p.counts || {}));
+      const when = (t) => t ? `${new Date(t).toLocaleDateString([], { weekday: "short" })} ${hm(t)}` : "";
+      // Views are usage: Jake is left out of them. Votes count everyone.
+      const seen = Object.keys(views).filter((n) => n !== "Jake");
+      const waiting = (p.waitingOn || []);
+      return `<section class="panel vote" id="sec-vote"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${p.voted} of ${p.of} voted · seen by ${seen.length}</span></div>
+        <div class="rank">${Object.keys(LAB).map((k) => `<div><span>${esc(LAB[k])} <small>${Object.entries(votes).filter(([, v]) => v === k).map(([n]) => esc(name(n))).join(", ")}</small></span><b>${p.counts?.[k] || 0}</b><i><s style="width:${(((p.counts?.[k] || 0) / max) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>
+        ${waiting.length ? `<div class="note">Not voted: ${waiting.map((n) => `${esc(name(n))}${views[n] && n !== "Jake" ? ` <small>(seen ${views[n].n}×)</small>` : ""}`).join(", ")}</div>` : `<div class="note">Everyone has voted.</div>`}
+        ${Object.keys(notes).length ? `<div class="note">${Object.entries(notes).map(([n, t]) => `<div><b>${esc(name(n))}</b>: ${esc(t)} <small>${esc(when(p.votedAt?.[n]))}</small></div>`).join("")}</div>` : ""}
+      </section>`;
+    };
+    // Where people got stuck, and how far down each screen they got.
+    const frictionPanel = (list, sub) => {
+      const f = new Map();
+      for (const e of list) if (FRICTION.test(e.k)) { const [a, d] = says(e, list); const k = `${a}|${d}`; const x = f.get(k) || { a, d, n: 0, who: new Set(), ats: [] }; x.n++; x.who.add(e.n); x.ats.push(e.at); f.set(k, x); }
+      const top = [...f.values()].sort((a, b) => b.n - a.n).slice(0, 8);
+      const deep = new Map();
+      for (const e of list) if (e.k === "depth") { const [sc, pct] = String(e.d || "").split(":"); const x = deep.get(sc) || []; x.push(Number(pct) || 0); deep.set(sc, x); }
+      const depthRows = [...deep.entries()].map(([sc, v]) => { const reach = (q) => Math.round((v.filter((p) => p >= q).length / v.length) * 100); return { sc, n: v.length, r50: reach(50), r100: reach(100) }; }).sort((a, b) => b.n - a.n);
+      const when = (t) => `${new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ${hm(t)}`;
+      // A names-free digest to paste to Claude: what broke, how often, how many people.
+      lastDigest = [`Brochiefs ${LEAGUE.toUpperCase()} friction digest (${sub})`, ...top.map((x) => `- ${x.a.replace("⚠ ", "")}${x.d ? ` [${x.d}]` : ""}: ${x.n}x, ${x.who.size} people, ${x.ats.sort((p, q) => p - q).map(when).join("; ")}`), ...depthRows.map((x) => `- Depth ${SCREEN_NAME[x.sc] || x.sc}: ${x.n} visits, half ${x.r50}%, bottom ${x.r100}%`)].join("\n");
+      return `<section class="panel"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span><button type="button" class="digest-copy" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ff7a9a;background:transparent;color:#ff7a9a">Copy for Claude</button></div>
+        ${top.length ? `<div class="rank">${top.map((x) => `<div><span>${esc(x.a.replace("⚠ ", ""))}${x.d ? ` <small>${esc(x.d)}</small>` : ""}</span><b>${x.n}</b><i><s style="width:${((x.n / top[0].n) * 100).toFixed(1)}%;background:#ff7a9a"></s></i></div>`).join("")}</div>` : `<div class="note">No rage taps, dead taps, quick exits or errors.</div>`}
+      </section>
+      ${depthRows.length ? `<section class="panel"><div class="ph"><h2>Scroll depth</h2><span class="sub">share of visits reaching half way / the bottom</span></div>
+        <div class="rank">${depthRows.map((x) => `<div><span>${esc(SCREEN_NAME[x.sc] || x.sc)} <small>${x.n} visits · bottom ${x.r100}%</small></span><b>${x.r50}%</b><i><s style="width:${x.r50}%"></s></i></div>`).join("")}</div>
+      </section>` : ""}`;
+    };
+    const railWeek = () => {
+      const byH = Array.from({ length: 24 }, (_, h) => ({ h, n: 0, who: new Set() }));
+      for (const v of wv) { const h = new Date(v.start).getHours(); byH[h].n++; byH[h].who.add(v.n); }
+      const mx = Math.max(1, ...byH.map((x) => x.n)), curH = new Date(now).getHours();
+      const used = new Map();
+      for (const v of wv) for (const l of new Set(v.f.map(featLab).filter(Boolean))) used.set(l, (used.get(l) || 0) + 1);
+      const tp = [...used.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), mf = tp[0]?.[1] || 1;
+      const lab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
+      return `<aside class="rail" id="sec-stats">${HAS_STUDIO ? costPanel() : ""}
+      <section class="panel"><div class="ph"><h2>Visits by hour</h2><span class="sub">time of day, last 7 days</span></div>
+        <div class="bars">${byH.map((x) => `<i class="${x.n ? "" : "zero"}${x.h === curH ? " cur" : ""}" data-tip="${esc(`<b>${lab(x.h)}</b>${x.n} visit${x.n === 1 ? "" : "s"}${x.who.size ? ` · ${[...x.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((x.n / mx) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
+        <div class="bars-ax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>
+      </section>
+      <section class="panel"><div class="ph"><h2>Most used</h2><span class="sub">visits that used it, 7 days</span></div>
+        ${tp.length ? `<div class="rank">${tp.map(([a, n]) => `<div><span>${esc(a)}</span><b>${n}</b><i><s style="width:${((n / mf) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>` : `<div class="note">Nothing used yet.</div>`}
+      </section>
+      ${frictionPanel((wk.feed || []).filter((e) => e.at >= wFrom), "last 7 days")}
+      ${askPanel(wFrom, "last 7 days")}
+    </aside>`;
+    };
+    const maxH = Math.max(1, ...hours.map((h) => h.n));
+    const counts = new Map();
+    for (const e of actions) { if (SCREENS[e.k] || FRICTION.test(e.k) || /^(depth|sheet-time)$/.test(e.k)) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), maxF = top[0]?.[1] || 1;
+    const home = vs.filter((v) => v.app === "home").length, web = vs.filter((v) => v.app === "browser").length;
+    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">${HAS_STUDIO ? costPanel() : ""}
+      <section class="panel"><div class="ph"><h2>Activity by hour</h2><span class="sub">actions, last 24h</span></div>
+        <div class="bars">${hours.map((h, i) => `<i class="${h.n ? "" : "zero"}${i === 23 ? " cur" : ""}" data-tip="${esc(`<b>${hourLab(h.start)}${i === 23 ? " · this hour" : ""}</b>${h.n} action${h.n === 1 ? "" : "s"}${h.who.size ? ` · ${[...h.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((h.n / maxH) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
+        <div class="bars-ax"><span>${hourLab(hours[0].start)}</span><span>${hourLab(hours[6].start)}</span><span>${hourLab(hours[12].start)}</span><span>${hourLab(hours[18].start)}</span><span>now</span></div>
+      </section>
+      <section class="panel"><div class="ph"><h2>Most used</h2><span class="sub">last 24h</span></div>
+        ${top.length ? `<div class="rank">${top.map(([a, n]) => `<div><span>${esc(a)}</span><b>${n}</b><i><s style="width:${((n / maxF) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>` : `<div class="note">Nothing used yet.</div>`}
+      </section>
+      ${home + web ? `<section class="panel"><div class="ph"><h2>Opened from</h2><span class="sub">${home + web} visits</span></div>
+        <div class="split"><s style="width:${((home / (home + web)) * 100).toFixed(1)}%;background:var(--past)"></s><s style="flex:1;background:#5b5378"></s></div>
+        <div class="split-k"><span><i style="background:var(--past)"></i>Home screen app <b>${home}</b></span><span><i style="background:#5b5378"></i>Browser <b>${web}</b></span></div>
+      </section>` : ""}
+      ${frictionPanel(actions, "last 24h")}
+      ${askPanel(from, "last 24h")}
+    </aside>`;
+
+    // The feed: one card per visit, newest first.
+    const all = (wk ? visits(wk.feed || [], people) : vs).filter((s) => !st.filter || s.n === st.filter);
+    // Each visit as plain text, for Copy: who, when, how long, and every
+    // line in order.
+    st.texts = new Map();
+    for (const s of all.slice(0, st.shown)) {
+      const when = s.live ? `in now, since ${hm(s.start)} (${dur(now - s.since)})` : `${hm(s.start)} to ${hm(s.end)} (${dur(Math.max(s.end - s.start, 1000))})`;
+      const scr = s.live && SCREENS[people[s.n]?.screen] ? ` · on ${SCREENS[people[s.n].screen]}` : "";
+      st.texts.set(`${s.n}|${s.start}`, [`${name(s.n)} · ${dayLab(s.start)} · ${when}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${scr}`,
+        ...s.acts.map((a) => `  ${hm(a.at)}  ${a.a}${a.d ? `${/^for /.test(a.d) ? " " : ": "}${a.d}` : ""}${a.x > 1 ? ` (×${a.x})` : ""}`)].join("\n"));
+    }
+    let day = null;
+    const cards = all.slice(0, st.shown).map((s) => {
+      const d = dayLab(s.start), head = d !== day ? `<div class="day">${esc(d)}</div>` : "";
+      day = d;
+      const id = `${s.n}|${s.start}`, LIM = 6, open = st.open.has(id);
+      const acts = open ? s.acts : s.acts.slice(-LIM);
+      const span = s.live ? "" : ` · ${dur(Math.max(s.end - s.start, 1000))}`;
+      const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${span}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
+      const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
+      return `${head}<div class="sess${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
+        <div class="sh">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}</div><div class="meta num">${esc(meta)}</div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(now - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button></div></div>
+        ${s.acts.length ? `<ul class="acts">${s.acts.length > LIM && !open ? `<li class="quiet"><span></span><span>${s.acts.length - LIM} earlier</span></li>` : ""}${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
+        ${s.acts.length > LIM ? `<button type="button" class="more" data-open="${esc(id)}">${open ? "Show less" : `Show all ${s.acts.length}`}</button>` : ""}
+      </div>`;
+    }).join("");
+    const shownN = Math.min(all.length, st.shown);
+    const feedHtml = `<main class="feed" id="sec-visits">
+      <div class="fh"><h2>VISITS</h2>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
+        ${all.length ? `<button type="button" class="cp${st.copied === "*" ? " ok" : ""}" data-copy="*" title="Copy every visit shown">${st.copied === "*" ? "✓ Copied" : `${COPY_ICON}Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"}`}</button>` : ""}</div>
+      ${cards || `<div class="empty" style="margin-top:12px">${st.filter ? `No visits from ${esc(name(st.filter))} in the last 24 hours.` : "No visits in the last 24 hours yet. They show here as people use the app."}</div>`}
+      ${all.length > st.shown ? `<button type="button" class="older" data-older="1">Show ${Math.min(20, all.length - st.shown)} more</button>` : ""}
+      <p class="note">A visit is live while the app is on screen and ends when it's put away, or about a minute after a phone goes quiet. Shows screens and features, never which team anyone picked. Jake isn't tracked.</p>
+    </main>`;
+
+    app.innerHTML = `
+      <div class="top${st.ok ? "" : " stale"}"><div class="top-in">
+        <button type="button" class="brand" data-reload="1" aria-label="Refresh"><i class="beat"></i><b>BROCHIEFS</b><span>LIVE</span></button>${leagueSwitch()}
+        <span class="age num" id="age">${st.cached ? "refreshing…" : st.ok ? "live" : "can't reach the server, retrying"}</span>
+        <div class="tools">
+          <button type="button" class="ib${st.refreshing ? " spin" : ""}" data-refresh="1" aria-label="Refresh" title="Refresh">${ICONS.refresh}</button>
+          <button type="button" class="ib${st.menu ? " on" : ""}" data-menu="1" aria-label="Menu" aria-expanded="${st.menu}" title="Menu">${ICONS.more}</button>
+          ${st.menu ? `<div class="menu" role="menu">
+            ${"Notification" in window ? `<button type="button" role="menuitem" data-alert="1">${ICONS.bell}<span>${st.alert ? "Turn alerts off" : "Alert me when someone comes in"}</span>${st.alert ? `<i class="on">ON</i>` : ""}</button>` : ""}
+            <button type="button" role="menuitem" data-copy="*">${ICONS.copy}<span>Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"} visits</span></button>
+            <a role="menuitem" href="../" target="_blank" rel="noopener">${ICONS.app}<span>Open Pick'em</span><i>↗</i></a>
+            <a role="menuitem" href="../?admin" target="_blank" rel="noopener">${ICONS.console}<span>Admin console</span><i>↗</i></a>
+            <hr>
+            <button type="button" role="menuitem" class="danger" data-signout="1">${ICONS.out}<span>${device ? "Forget this device" : "Sign out"}</span></button>
+          </div>` : ""}
+        </div>
+      </div></div>
+      <div class="page">${kpis}${pollPanel()}${timeline}${feedHtml}${rail}</div>
+      <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
+    paintTabs();
+    tidy();
+  }
+
+  // Collapsible panels and day groups, remembered per device; quiet timeline lanes tucked on phones.
+  const FOLD_KEY = "brochiefs_live_folds";
+  const folds = (() => { try { return new Set(JSON.parse(store.get(FOLD_KEY) || "null") || ["day:older"]); } catch { return new Set(["day:older"]); } })();
+  const saveFolds = () => store.set(FOLD_KEY, JSON.stringify([...folds]));
+  let showQuiet = false;
+  const panelKey = (sec) => "p:" + (sec.querySelector(".ph h2")?.textContent || "").trim();
+  const dayKey = (d) => { const t = d.textContent.trim(); return t === "Today" ? "day:today" : t === "Yesterday" ? "day:yesterday" : "day:older"; };
+  function tidy() {
+    app.querySelectorAll("section.panel").forEach((sec) => {
+      const ph = sec.querySelector(":scope > .ph"); if (!ph) return;
+      ph.classList.add("fold-h");
+      sec.classList.toggle("folded", folds.has(panelKey(sec)));
+    });
+    app.querySelectorAll(".day").forEach((d) => {
+      const k = dayKey(d), shut = k === "day:today" ? folds.has(k) : !folds.has(k.replace("day:", "open:"));
+      d.classList.add("fold-h"); d.classList.toggle("shut", shut);
+      let n = 0;
+      for (let x = d.nextElementSibling; x && !x.classList.contains("day") && !x.classList.contains("note"); x = x.nextElementSibling) { x.hidden = shut; n++; }
+      let dn = d.querySelector(".dn"); if (!dn) { dn = document.createElement("span"); dn.className = "dn"; d.appendChild(dn); }
+      dn.textContent = shut ? `${n} visit${n === 1 ? "" : "s"}` : "";
+    });
+    const tl = app.querySelector("#sec-tl"); const q = tl ? tl.querySelectorAll(".ln-t.quiet").length : 0;
+    if (tl && q && !tl.querySelector(".quiet-toggle")) {
+      tl.classList.toggle("allrows", showQuiet);
+      tl.insertAdjacentHTML("beforeend", `<button type="button" class="quiet-toggle">${showQuiet ? "Hide quiet players" : `Show ${q} quiet player${q === 1 ? "" : "s"}`}</button>`);
+    }
+  }
+  app.addEventListener("click", (e) => {
+    const qt = e.target.closest(".quiet-toggle");
+    if (qt) { showQuiet = !showQuiet; const tl = qt.closest("#sec-tl"); tl.classList.toggle("allrows", showQuiet); const q = tl.querySelectorAll(".ln-t.quiet").length; qt.textContent = showQuiet ? "Hide quiet players" : `Show ${q} quiet player${q === 1 ? "" : "s"}`; return; }
+    const h = e.target.closest(".fold-h");
+    if (!h || e.target.closest("button:not(.fold-h), a, input, textarea")) return;
+    if (h.classList.contains("day")) {
+      const k = dayKey(h);
+      if (k === "day:today") folds.has(k) ? folds.delete(k) : folds.add(k);
+      else { const o = k.replace("day:", "open:"); folds.has(o) ? folds.delete(o) : folds.add(o); }
+    } else { const k = panelKey(h.closest("section")); folds.has(k) ? folds.delete(k) : folds.add(k); }
+    saveFolds(); tidy();
+  });
+
+  // Hover tips for the timeline and the charts; a tap shows one too.
+  const tipEl = document.getElementById("tip");
+  function showTip(el, x, y) {
+    tipEl.innerHTML = el.dataset.tip; tipEl.classList.add("show");
+    const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+    tipEl.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, x - w / 2))}px`;
+    tipEl.style.top = `${y - h - 14 < 8 ? y + 18 : y - h - 14}px`;
+  }
+  app.addEventListener("pointermove", (e) => { const el = e.target.closest("[data-tip]"); if (el && e.pointerType === "mouse") showTip(el, e.clientX, e.clientY); else if (!el) tipEl.classList.remove("show"); });
+  app.addEventListener("pointerleave", () => tipEl.classList.remove("show"));
+  app.addEventListener("pointerdown", (e) => { const el = e.target.closest("[data-tip]"); if (el && e.pointerType !== "mouse") { showTip(el, e.clientX, e.clientY); clearTimeout(showTip.t); showTip.t = setTimeout(() => tipEl.classList.remove("show"), 2200); } });
+  addEventListener("scroll", () => tipEl.classList.remove("show"), { passive: true });
+
+  // Clocks and the "updated" line tick every second between checks.
+  setInterval(() => {
+    const a = document.getElementById("age");
+    if (a && st.ok && st.at && !st.cached) a.textContent = `updated ${Math.round((Date.now() - st.at) / 1000)}s ago`;
+    document.querySelectorAll("[data-since]").forEach((x) => { x.textContent = clock(Date.now() - Number(x.dataset.since)); });
+  }, 1000);
+
+  app.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("li.go")) { e.preventDefault(); e.target.click(); } });
+  app.addEventListener("click", async (e) => {
+    // Any tap outside the open menu closes it.
+    if (st.menu && !e.target.closest(".menu, [data-menu]")) { st.menu = false; render(); }
+    const blk = e.target.closest(".blk");
+    if (blk && blk.dataset.n) { st.filter = st.filter === blk.dataset.n ? null : blk.dataset.n; render(); return; }
+    if (blk) {
+      const id = blk.dataset.v, who = id.split("|")[0];
+      st.filter = who; st.focus = id; st.shown = Math.max(st.shown, 20); render();
+      document.querySelector(`.sess[data-v="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      clearTimeout(st.focusT); st.focusT = setTimeout(() => { st.focus = null; render(); }, 2000);
+      return;
+    }
+    const li = e.target.closest("li.go");
+    if (li) { st.pv?.id === li.dataset.pid ? closePreview() : openPreview(li.dataset); return; }
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.n !== undefined) { st.filter = b.dataset.n && st.filter !== b.dataset.n ? b.dataset.n : null; st.shown = 20; render(); return; }
+    if (b.dataset.open) { st.open.has(b.dataset.open) ? st.open.delete(b.dataset.open) : st.open.add(b.dataset.open); render(); return; }
+    if (b.dataset.older) { st.shown += 20; render(); return; }
+    if (b.dataset.reload) { location.reload(); return; }
+    if (b.dataset.copy) {
+      const id = b.dataset.copy;
+      const text = id === "*" ? `Brochiefs Live · ${st.filter ? name(st.filter) : "everyone"} · last 24 hours\n\n${[...st.texts.values()].join("\n\n")}` : st.texts.get(id) || "";
+      if (!text || !(await copyText(text))) { b.textContent = "Couldn't copy"; return; }
+      st.copied = id; st.menu = false; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; render(); }, 1600);
+      return;
+    }
+    if (b.dataset.ask) {
+      const x = st.asks.find((y) => String(y.ts) === b.dataset.ask);
+      if (x) openPreview({ go: "ask", pid: `ask|${x.ts}`, who: x.n || "", at: String(x.ts), what: x.q });
+      return;
+    }
+    if (b.dataset.metric) { st.metric = b.dataset.metric; store.set("brochiefs_live_metric", st.metric); render(); return; }
+    if (b.dataset.range) {
+      st.range = b.dataset.range; store.set("brochiefs_live_range", st.range); render();
+      if (st.range === "7d" && (!st.wk || Date.now() - st.wk.at > 60000)) poll(false);
+      return;
+    }
+    if (b.dataset.menu) { st.menu = !st.menu; render(); return; }
+    if (b.dataset.refresh) {
+      st.refreshing = true; render();
+      const t0 = Date.now();
+      await poll(true); checkVersion();
+      setTimeout(() => { st.refreshing = false; render(); }, Math.max(0, 600 - (Date.now() - t0)));
+      return;
+    }
+    if (b.dataset.sec) {
+      const el = document.getElementById(b.dataset.sec);
+      if (el) {
+        const y = el.getBoundingClientRect().top + scrollY - (innerWidth >= 1024 ? 80 : 70);
+        scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+        st.sec = b.dataset.sec; st.secLock = Date.now() + 900;
+        document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x === b));
+      }
+      return;
+    }
+    if (b.dataset.studio) { openStudio(); return; }
+    if (b.dataset.signout) { forget(); location.reload(); return; }
+    if (b.dataset.alert) {
+      if (!st.alert && Notification.permission !== "granted") { try { await Notification.requestPermission(); } catch {} }
+      st.alert = !st.alert && Notification.permission === "granted";
+      st.menu = false; render();
+    }
+  });
+
+  // The clipboard, called straight from the tap so iOS allows it; an older
+  // browser gets a hidden text box and the copy command instead.
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch {}
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;font-size:16px";
+    document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+    let ok = false; try { ok = document.execCommand("copy"); } catch {}
+    ta.remove();
+    return ok;
+  }
+
+  // The preview: the app itself, framed like a phone, on the screen a line
+  // names, as it looks now. Kept outside the page so it survives redraws.
+  const pv = document.getElementById("pv");
+  // A question asked of the archive, found in the archive's own log by who
+  // asked and when (within a few minutes of the tap).
+  function askFor(who, at) {
+    let best = null;
+    for (const x of st.asks) if (x.n === who && Math.abs(x.ts - at) < 180000 && (!best || Math.abs(x.ts - at) < Math.abs(best.ts - at))) best = x;
+    return best;
+  }
+  function openPreview(d) {
+    st.pv = { id: d.pid };
+    const when = hm(Number(d.at));
+    if (d.go === "ask") {
+      const x = askFor(d.who, Number(d.at)), q = x?.q || String(d.what || "").replace(/^Asked the archive\s*/, "").replace(/^“|”$/g, "");
+      pv.innerHTML = `<div class="pv-grab" aria-hidden="true"><i></i></div>
+        <div class="pv-h"><button type="button" class="pv-done pv-x">Done</button><div class="pv-t"><b>${esc(name(d.who))}</b> · ${esc(when)}<span>Asked the archive</span></div></div>
+        <div class="pv-note">Exactly what was asked, and what the archive answered</div>
+        <div class="pv-chat">
+          <div class="cb me"><b>${esc(name(d.who))}</b><p>${esc(q)}</p><time>${esc(hm(x?.ts || Number(d.at)))}</time></div>
+          ${x ? `<div class="cb ai${x.kind === "blocked" || x.kind === "error" ? " off" : ""}"><b>THE ARCHIVE${x.kind === "blocked" ? " · turned away" : ""}</b><p>${esc(x.a)}</p></div>` : `<div class="cb ai off"><p>The answer isn't in the archive log yet. It keeps 7 days and refreshes every minute.</p></div>`}
+        </div>`;
+      pv.querySelector(".pv-x").addEventListener("click", closePreview);
+      pv.style.transform = "";
+      document.body.classList.add("pv-open");
+      st.sig = ""; render();
+      return;
+    }
+    const body = d.go === "picks"
+      ? `<div class="pv-none"><b>No preview of someone's picks</b><span>Picks stay private until each game locks, so this shows nothing here. Their saved picks appear on the scoreboard once games lock.</span></div>`
+      : `<div class="pv-frame"><iframe title="Preview" src="../index.html?view=${d.go}"></iframe></div>`;
+    pv.innerHTML = `<div class="pv-grab" aria-hidden="true"><i></i></div>
+      <div class="pv-h"><button type="button" class="pv-done pv-x">Done</button><div class="pv-t"><b>${esc(name(d.who))}</b> · ${esc(when)}<span>${esc(d.what)}</span></div>
+        ${d.go === "picks" ? "" : `<a class="tool" href="../index.html?view=${d.go}" target="_blank" rel="noopener">Open ↗</a>`}</div>
+      ${d.go === "picks" ? "" : `<div class="pv-note">How it looks now, not when ${esc(name(d.who))} saw it</div>`}${body}`;
+    pv.querySelector(".pv-x").addEventListener("click", closePreview);
+    pv.style.transform = "";
+    document.body.classList.add("pv-open");
+    st.sig = ""; render();
+  }
+  function closePreview() { st.pv = null; pv.innerHTML = ""; pv.style.transform = ""; pv.style.transition = ""; document.body.classList.remove("pv-open"); st.sig = ""; render(); }
+  document.getElementById("pv-back").addEventListener("click", closePreview);
+  // Drag the sheet down by its handle or header to close it; a short drag
+  // springs back.
+  {
+    let y0 = null, dy = 0;
+    pv.addEventListener("touchstart", (e) => { if (!e.target.closest(".pv-grab, .pv-h") || e.target.closest("a, button") || innerWidth >= 700) return; y0 = e.touches[0].clientY; dy = 0; pv.style.transition = "none"; }, { passive: true });
+    pv.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); pv.style.transform = `translateY(${dy}px)`; }, { passive: true });
+    pv.addEventListener("touchend", () => {
+      if (y0 == null) return;
+      y0 = null; pv.style.transition = "transform .22s ease-out";
+      if (dy > 90) { pv.style.transform = "translateY(100%)"; setTimeout(closePreview, 200); } else pv.style.transform = "";
+    });
+  }
+  document.addEventListener("keydown", (e) => { if (e.key !== "Escape") return; if (st.menu) { st.menu = false; render(); } else if (st.pv) closePreview(); });
+
+
+  // ---- AI costs ---------------------------------------------------------
+  // Every OpenAI call the Worker makes, metered from the answers' own token
+  // counts (worker/src/costs.js): today, this month, by feature, by day.
+  // Read every few minutes; prices are OpenAI's published rates, so the
+  // bill itself is the final word.
+  const cost = { data: null, at: 0, err: "" };
+  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening" };
+  async function loadCosts(force) {
+    if (!force && Date.now() - cost.at < 3 * 60000) return;
+    try {
+      const r = await fetch(`${WORKER}/creative/costs?${auth()}&days=30&t=${Date.now()}`, { cache: "no-store" });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || r.status);
+      cost.data = d; cost.err = ""; cost.at = Date.now();
+    } catch (e) { cost.err = String(e.message || e); cost.at = Date.now(); }
+    st.sig = ""; render();
+  }
+  const usd = (n) => (n >= 1 ? `$${n.toFixed(2)}` : n >= 0.01 ? `$${n.toFixed(3)}` : n > 0 ? `$${n.toFixed(4)}` : "$0");
+  const ktok = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n));
+  function costPanel() {
+    const d = cost.data?.today && cost.data?.month ? cost.data : null;
+    if (!d) return `<section class="panel cost"><div class="ph"><h2>AI costs</h2><span class="sub">${cost.err ? esc(cost.err) : "loading…"}</span></div></section>`;
+    const days = d.byDay || [], max = Math.max(...days.map((x) => x.usd), 0.0001);
+    const feats = d.byFeature || [], top = Math.max(...feats.map((x) => x.usd), 0.0001);
+    const c = d.creative || {};
+    return `<section class="panel cost"><div class="ph"><h2>AI costs</h2><span class="sub">metered${d.since ? ` since ${esc(d.since)}` : ""}</span></div>
+      <div class="cost-k"><div><em>Today</em><b class="num">${usd(d.today.usd)}</b><span>${d.today.calls} call${d.today.calls === 1 ? "" : "s"}</span></div><div><em>This month</em><b class="num">${usd(d.month.usd)}</b><span>${ktok(d.month.tin + d.month.tout)} tokens</span></div><div><em>Studio budget</em><b class="num">${usd(c.spent || 0)}</b><span>of ${usd(c.cap || 0)}</span></div></div>
+      ${days.length ? `<div class="cost-days" title="Last 30 days">${days.map((x) => `<i style="height:${Math.max(6, (x.usd / max) * 100).toFixed(0)}%" data-tip="${esc(`<b>${x.day}</b>${usd(x.usd)} · ${x.calls} call${x.calls === 1 ? "" : "s"}`)}"></i>`).join("")}</div>` : ""}
+      <div class="cost-f">${feats.length ? feats.map((x) => `<div class="cost-r"><span><b>${esc(FEATURE[x.feature] || x.feature)}</b><small>${esc(x.model)} · ${x.calls} call${x.calls === 1 ? "" : "s"} · ${ktok(x.tin)} in / ${ktok(x.tout)} out</small></span><u><i style="width:${Math.max(3, (x.usd / top) * 100).toFixed(0)}%"></i></u><b class="num">${usd(x.usd)}</b></div>`).join("") : `<div class="note">Nothing metered this month yet.</div>`}</div>
+      <div class="note">From each answer's token counts at OpenAI's list prices. Your OpenAI bill is the final word.</div>
+    </section>`;
+  }
+
+  // ---- Creative Studio --------------------------------------------------
+  // AI graphics for the league, made with OpenAI on the Worker and kept
+  // private until the owner says otherwise. Its own view beside the live
+  // one: the live page keeps polling underneath but does not repaint over
+  // a review in progress. Phase 1: ask for a graphic, watch it generate,
+  // look at it up close.
+  const sd = { types: [], items: [], budget: null, teams: [], filter: "ALL", gen: null, zoom: null, err: "", loading: false, review: 0, at: 0, sugg: null, pick: null, queuing: false, suggOpen: true,
+    tab: "canvas", lib: null, asset: null, regen: null, edit: null, tone: "coach", scout: null, sel: new Set() };
+  const studioEl = document.getElementById("studio");
+  const SD_FILTERS = [["ALL", "All"], ["WAITING", "Waiting on you"], ["PUBLISHED", "Live"], ["WORKING", "Rendering"], ["FAILED", "Failed"]];
+  const SD_GROUP = { WAITING: ["PENDING_REVIEW", "APPROVED"], WORKING: ["QUEUED", "GENERATING"], FAILED: ["FAILED", "REJECTED"] };
+  const inFilter = (x, f) => f === "ALL" || (SD_GROUP[f] ? SD_GROUP[f].includes(x.status) : x.status === f);
+  // Where a piece shows up in the app, in plain words.
+  function landsOn(x) {
+    const d = x.data || {};
+    if (x.category === "team-mascot") return `Week Replay · ${x.label} logo`;
+    if (x.category === "award-art") return `${d.where || "Awards"} · ${d.name || x.label} icon`;
+    if (x.category === "scouting-report") return `Leaderboard card · ${x.label}'s report`;
+    if (x.category === "slot-image") return `App · replaces the ${d.what || "graphic"}${d.slot && !d.what ? ` (${d.slot})` : ""}`;
+    if (x.category === "slot-text") return `App · replaces “${x.label}”`;
+    return (x.placements || []).join(", ");
+  }
+  const SD_LABEL = { QUEUED: "Queued", GENERATING: "Generating", PENDING_REVIEW: "In review", APPROVED: "Approved", PUBLISHED: "Published", REJECTED: "Rejected", FAILED: "Failed" };
+  const money$ = (n) => (n == null ? "–" : `$${Number(n).toFixed(n < 1 ? 3 : 2)}`);
+  const imgUrl = (id, v = "orig") => `${WORKER}/creative/image/${encodeURIComponent(id)}?${auth()}&v=${v}`;
+  async function sdFetch(path, opts) {
+    const res = await fetch(`${WORKER}/creative${path}${path.includes("?") ? "&" : "?"}${auth()}`, { cache: "no-store", ...opts });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `The server answered ${res.status}`);
+    return data;
+  }
+  async function studioLoad(quiet) {
+    clearTimeout(studioLoad.t);
+    if (!quiet) { sd.loading = true; paintStudio(); }
+    try {
+      const [types, list, sugg] = await Promise.all([sd.types.length ? null : sdFetch("/types"), sdFetch("/assets"), quiet && sd.sugg ? null : sdFetch("/suggest").catch(() => null)]);
+      if (types) sd.types = types.types;
+      if (sugg) sd.sugg = sugg;
+      sd.items = list.items; sd.budget = list.budget; sd.err = ""; sd.at = Date.now();
+      sd.review = sd.items.filter((x) => x.status === "PENDING_REVIEW").length;
+    } catch (e) { sd.err = e.message; }
+    sd.loading = false;
+    if (st.view === "studio") paintStudio();
+    // While anything is in the works, look again shortly.
+    if (st.view === "studio" && sd.items.some((x) => x.status === "QUEUED" || x.status === "GENERATING")) studioLoad.t = setTimeout(() => studioLoad(true), 5000);
+  }
+  async function loadTeams() {
+    if (sd.teams.length) return;
+    try {
+      const g = await (await fetch(`${WORKER}/games?t=${Date.now()}`, { cache: "no-store" })).json();
+      const m = new Map();
+      for (const x of g.games || []) { if (x.awayId) m.set(x.awayId, x.away); if (x.homeId) m.set(x.homeId, x.home); }
+      sd.teams = [...m].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+      sd.week = g.week || null;
+    } catch { /* the sheet says so */ }
+  }
+  function openStudio() {
+    st.view = "studio"; st.menu = false;
+    app.hidden = true; studioEl.hidden = false; scrollTo(0, 0);
+    paintStudio(); studioLoad();
+  }
+  function closeStudio(sec) {
+    st.view = "live"; clearTimeout(studioLoad.t);
+    studioEl.hidden = true; app.hidden = false; render();
+    const el = sec && document.getElementById(sec);
+    if (el) scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + scrollY - (innerWidth >= 1024 ? 80 : 70)) });
+  }
+  // What already exists for a suggestion: the newest version of that
+  // category and subject, if any (rejected and failed ones don't count).
+  const sdHas = (g) => sd.items.find((x) => x.category === g.category && x.subject === `team:${g.subject.teamId}` && x.status !== "REJECTED" && x.status !== "FAILED");
+  // The Studio's own suggestions: every team on the latest Week Replay and
+  // on this week's slate, Replay first. Teams without art start ticked on
+  // the Replay; nothing is queued until the owner taps.
+  function sdSuggest() {
+    const s = sd.sugg; if (!s) return "";
+    const list = s.suggestions || [];
+    if (!list.length) return "";
+    if (!sd.pick) sd.pick = new Set(list.filter((g) => g.replay && !sdHas(g)).map((g) => g.subject.teamId));
+    const open = list.filter((g) => !sdHas(g));
+    const est = sd.types.find((t) => t.id === "team-mascot")?.estCost || 0;
+    const chosen = open.filter((g) => sd.pick.has(g.subject.teamId));
+    const group = (title, rows, key) => rows.length ? `<div class="sg-h"><span>${esc(title)}</span>${rows.some((g) => !sdHas(g)) ? `<button type="button" data-sg-all="${key}">Select all</button>` : ""}</div><div class="sg-list">${rows.map((g) => {
+      const has = sdHas(g), on = !has && sd.pick.has(g.subject.teamId);
+      return `<button type="button" class="sg-t${on ? " on" : ""}${has ? " has" : ""}" data-sg="${g.subject.teamId}"${has ? ` data-zoom="${has.hasImage ? esc(has.id) : ""}"` : ""}>
+        <img src="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${g.subject.teamId}.png&w=56&h=56" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+        <span class="sg-n"><b>${esc(g.subject.name)}</b><small>${esc(g.reasons.map((r) => r.replace(/^Week \d+ /, "")).join(" · "))}</small></span>
+        ${has ? `<i class="sd-badge s-${has.status.toLowerCase()}">${esc(SD_LABEL[has.status])}</i>` : `<i class="sg-box">${on ? "✓" : ""}</i>`}
+      </button>`; }).join("")}</div>` : "";
+    // The Replay as the league sees it: each card in its colour with the
+    // logo it shows today, and beside each team, render a new one.
+    const TEMPLATE = new Set([99, 344, 2390, 194, 84]);
+    const nowArt = (id) => TEMPLATE.has(id) ? `../assets/images/teams/${id}.webp` : `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${id}.png&w=26&h=26`;
+    const CARDS = [["Pick of the week", "👑", "#3dfc8f"], ["Worst pick", "💣", "#ff2079"], ["Coin flip", "🪙", "#c13cff"], ["Tiebreaker", "🏁", "#ffd23f"]];
+    const replay = list.filter((g) => g.replay);
+    const preview = replay.length ? `<div class="sg-h"><span>Week ${s.replayWeek} Replay · preview</span>${replay.some((g) => !sdHas(g)) ? `<button type="button" data-sg-all="replay">Select all</button>` : ""}</div><div class="rpv">${CARDS.map(([kind, ic, col]) => {
+      const rows = replay.filter((g) => g.reasons.some((r) => r.endsWith(kind)));
+      if (!rows.length) return "";
+      return `<div class="rpv-card" style="--c:${col}"><div class="rpv-h"><span>${ic}</span>${esc(kind.toUpperCase())}</div><div class="rpv-b">${rows.map((g) => {
+        const id = g.subject.teamId, has = sdHas(g), on = !has && sd.pick.has(id);
+        const live = has && has.status === "PUBLISHED";
+        return `<button type="button" class="rpv-t${on ? " on" : ""}${has ? " has" : ""}" data-sg="${id}"><img class="${live || TEMPLATE.has(id) ? "" : "px"}" src="${live ? imgUrl(has.id) : nowArt(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(g.subject.name)}<small>${live ? "Studio art live" : TEMPLATE.has(id) ? "template art now" : "ESPN logo now"}</small></span>${has ? `<i class="sd-badge s-${has.status.toLowerCase()}">${esc(SD_LABEL[has.status])}</i>` : `<i class="sg-box">${on ? "✓" : ""}</i>`}</button>`;
+      }).join("")}</div></div>`;
+    }).join("")}</div>` : "";
+    return `<section class="panel sg">
+      <button type="button" class="sg-top" data-sg-fold="1"><span>✨ SUGGESTED</span><small>${open.length} of ${list.length} without art</small><i>${sd.suggOpen ? "▴" : "▾"}</i></button>
+      ${sd.suggOpen ? `<p class="sg-why">Teams on the Week ${s.replayWeek ?? "–"} Replay and the Week ${s.week} slate. Team art shows first on the Replay. Mascots are made once and reused every week.</p>
+      ${preview}
+      ${group(`Week ${s.week} slate`, list.filter((g) => !g.replay), "slate")}
+      <button type="button" class="sd-go sg-go" data-sg-go="1"${!chosen.length || sd.queuing ? " disabled" : ""}>${sd.queuing ? `Queuing… ${sd.queuing}` : chosen.length ? `Render ${chosen.length} mascot${chosen.length === 1 ? "" : "s"} · about $${(chosen.length * est).toFixed(2)}` : "Pick teams to render"}</button>
+      ${sd.budget && chosen.length * est > sd.budget.left ? `<p class="sd-err">That's more than the ${money$(sd.budget.left)} left this month. The rest will wait for the budget.</p>` : ""}` : ""}
+    </section>`;
+  }
+  // The copy the app shows: the original drawn down to 256px in this
+  // browser (WebP where it can, PNG on Safari), stored beside the original.
+  async function sdOptimize(id) {
+    const blob = await (await fetch(imgUrl(id), { cache: "no-store" })).blob();
+    const bmp = await createImageBitmap(blob);
+    const c = document.createElement("canvas"); c.width = c.height = 256;
+    const g = c.getContext("2d"); g.imageSmoothingQuality = "high";
+    const k = Math.min(256 / bmp.width, 256 / bmp.height), w = bmp.width * k, h = bmp.height * k;
+    g.drawImage(bmp, (256 - w) / 2, (256 - h) / 2, w, h);
+    let out = await new Promise((r) => c.toBlob(r, "image/webp", 0.9));
+    if (!out || out.type !== "image/webp") out = await new Promise((r) => c.toBlob(r, "image/png"));
+    await sdFetch(`/optimized/${encodeURIComponent(id)}`, { method: "POST", headers: { "Content-Type": out.type }, body: out });
+  }
+  // A message that stays put at the bottom of the screen, so a result or
+  // a failure is never missed while scrolled down.
+  function sdToast(msg, bad) {
+    sd.toast = { msg, bad, at: Date.now() };
+    paintStudio();
+    clearTimeout(sdToast.t);
+    sdToast.t = setTimeout(() => { sd.toast = null; paintStudio(); }, bad ? 9000 : 4000);
+  }
+  // Publish is one step: approve (if needed), make the app copy, publish.
+  // Each step is still its own action in the audit. Returns true, or why not.
+  async function sdAct(action, id, extra = {}) {
+    if (!extra.quiet && action === "reject" && !confirm("Reject this? It stays private and you can render it again.")) return;
+    if (!extra.quiet && action === "unpublish" && !confirm("Take it out of the app? What was there before comes back.")) return;
+    sd.busy = id; if (!extra.quiet) paintStudio();
+    const v = sd.items.find((x) => x.id === id) || sd.asset?.versions?.find((x) => x.id === id);
+    const isText = (v && (v.kind === "text" || v.text)) || sd.asset?.kind === "text";
+    const call = async (act) => {
+      const r = await sdFetch("/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: act, versionIds: [id], feedback: extra.feedback, tone: extra.tone, text: extra.text }) });
+      if (r.skipped?.length) throw new Error(r.skipped.map((x) => x.why).join(", "));
+    };
+    let result = true;
+    try {
+      if (action === "golive") {
+        if (!isText && !v?.hasImage) throw new Error("it is still rendering");
+        if (!isText) await sdOptimize(id).catch((e) => { throw new Error(`couldn't make the app copy (${e.message})`); });
+        if (!v || v.status === "PENDING_REVIEW") await call("approve");
+        await call("publish");
+      } else {
+        if (action === "approve" && !isText) await sdOptimize(id);
+        await call(action);
+      }
+    } catch (err) { result = err.message || "failed"; }
+    sd.busy = null;
+    if (extra.quiet) return result;
+    await studioLoad(true);
+    if (sd.asset) await openAsset(sd.asset.id);
+    if (sd.tab === "library" || sd.tab === "placements") await loadLibrary();
+    const where = v ? landsOn(v) : "the app";
+    if (result !== true) sdToast(`Didn't ${action === "golive" ? "publish" : action}: ${result}`, true);
+    else if (action === "golive") sdToast(`Live now · ${where}`);
+    else if (action === "unpublish") sdToast(`Taken down · ${where} is back to before`);
+    else if (action === "reject") sdToast("Rejected");
+    if (/golive|unpublish/.test(action) && result === true) { try { document.querySelector("#sd-cv-frame")?.contentWindow?.postMessage({ type: "studio-reload" }, location.origin); } catch {} }
+    return result;
+  }
+  function sdCard(x) {
+    const t = new Date(x.created);
+    const when = `${t.toLocaleDateString([], { month: "short", day: "numeric" })} · ${t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+    const art = x.kind === "text" ? `<div class="sd-art txt">${sdText(x.text) || `<small>${esc(SD_LABEL[x.status])}</small>`}</div>` : x.hasImage ? `<button type="button" class="sd-art" data-zoom="${esc(x.id)}" aria-label="Zoom"><img src="${imgUrl(x.id)}" alt="${esc(x.label)}" loading="lazy"></button>`
+      : `<div class="sd-art empty ${x.status.toLowerCase()}">${x.status === "FAILED" ? "✕" : `<i class="sd-spin"></i>`}<small>${esc(SD_LABEL[x.status])}</small></div>`;
+    return `<article class="sd-card s-${x.status.toLowerCase()}">
+      ${art}
+      <div class="sd-meta">
+        <div class="sd-row"><b>${esc(x.label)}</b><span class="sd-badge s-${x.status.toLowerCase()}">${esc(SD_LABEL[x.status] || x.status)}</span></div>
+        <div class="sd-lands">${x.status === "PUBLISHED" ? "● Live on" : "Lands on"} <b>${esc(landsOn(x))}</b>${x.week != null ? ` · Week ${x.week}` : ""}</div>
+        <div class="sd-sub num">${when} · ${x.cost != null ? money$(x.cost) : `~${money$(x.estCost)}`}${x.attempts > 1 ? ` · try ${x.attempts}` : ""}</div>
+        ${x.feedback ? `<div class="sd-note">“${esc(x.feedback)}”</div>` : ""}
+        ${x.error ? `<div class="sd-err">${esc(x.error)}</div>` : ""}
+        ${sdVerActs(x)}
+      </div>
+    </article>`;
+  }
+  function sdSheet() {
+    const g = sd.gen; if (!g) return "";
+    const type = sd.types.find((t) => t.id === g.category) || sd.types[0];
+    return `<div class="sd-scrim" data-sd-close="1"></div><form class="sd-sheet" data-sd-form="1">
+      <div class="sd-sh"><b>New graphic</b><button type="button" class="ib" data-sd-close="1" aria-label="Close">${ICONS.x}</button></div>
+      <label>Kind<select name="category">${sd.types.filter((t) => !t.hidden).map((t) => `<option value="${esc(t.id)}"${t.id === g.category ? " selected" : ""}>${esc(t.label)}</option>`).join("")}</select></label>
+      ${type ? `<p class="sd-blurb">${esc(type.blurb)}</p>` : ""}
+      ${type?.choices ? `<label>Award<select name="award">${type.choices.map((c) => `<option value="${esc(c.key)}"${g.award === c.key ? " selected" : ""}>${esc(c.label)} · ${esc(c.where)}</option>`).join("")}</select></label>
+      <label>Art direction <i>optional</i><textarea name="feedback" maxlength="300" rows="2" placeholder="Bigger flames, more gold">${esc(g.feedback || "")}</textarea></label>` : `<label>Team<select name="teamId">${sd.teams.length ? sd.teams.map((t) => `<option value="${t.id}"${String(t.id) === String(g.teamId) ? " selected" : ""}>${esc(t.name)}</option>`).join("") : `<option value="">This week's slate didn't load</option>`}</select></label>
+      <div class="sd-two"><label><span>Mascot <i>optional</i></span><input name="mascot" maxlength="40" placeholder="tiger" value="${esc(g.mascot || "")}"></label>
+      <label><span>Colors <i>optional</i></span><input name="colors" maxlength="60" placeholder="purple and gold" value="${esc(g.colors || "")}"></label></div>
+      <label><span>Art direction <i>optional</i></span><textarea name="feedback" maxlength="300" rows="2" placeholder="Snarling, gold glow, facing left">${esc(g.feedback || "")}</textarea></label>`}
+      <div class="sd-cost">About ${money$(type?.estCost)} · ${sd.budget ? `${money$(sd.budget.left)} left of ${money$(sd.budget.cap)} this month` : ""}</div>
+      ${g.msg ? `<div class="sd-msg${g.bad ? " bad" : ""}">${esc(g.msg)}</div>` : ""}
+      <button type="submit" class="sd-go"${g.busy ? " disabled" : ""}>${g.busy ? "Sending…" : "Generate"}</button>
+      <p class="sd-fine">Nothing is published. It lands here for your review.</p>
+    </form>`;
+  }
+  // ---- Studio: shared pieces ----
+  const SD_TABS = [["canvas", "Canvas"], ["review", "All work"], ["create", "Create"]];
+  const TONES = [["coach", "Coach"], ["hype", "Hype"], ["dry", "Dry"], ["savage", "Savage"]];
+  const PLACE = { "replay-logo": ["Week Replay logos", "Team logos on the Replay cards. Without Studio art: the template's five, else ESPN's logo in pixels."], "owner-card": ["Leaderboard card · Scouting Report", "Shown when someone opens an owner's row. Without a published report: nothing."], "award-icon": ["Award art", "Week Replay card icons, the high score trophy and the season stats tiles. Without Studio art: the pictures that ship with the app."] };
+  // The buttons a version gets, by where it stands, with its note and
+  // edit forms inline. Every action is in the asset's audit trail.
+  function sdVerActs(v) {
+    const id = esc(v.id), text = v.kind === "text";
+    if (sd.busy === v.id) return `<div class="sd-acts"><span class="sd-wait">Working…</span></div>`;
+    if (sd.regen === v.id) return `<form class="sd-mini" data-regen-form="${id}"><input name="note" maxlength="300" placeholder="${text ? "What to change: shorter, mention the rain…" : "What to change: more snarl, facing left…"}" autofocus>${text ? `<select name="tone">${TONES.map(([k, l]) => `<option value="${k}"${(v.tone || sd.tone) === k ? " selected" : ""}>${l}</option>`).join("")}</select>` : ""}<div class="sd-acts"><button type="submit" class="ok">Render again</button><button type="button" data-regen-cancel="1">Cancel</button></div></form>`;
+    if (sd.edit === v.id && v.text) return `<form class="sd-mini" data-edit-form="${id}"><input name="headline" maxlength="120" value="${esc(v.text.headline)}"><textarea name="body" rows="7">${esc(v.text.body)}</textarea><div class="sd-acts"><button type="submit" class="ok">Save edit</button><button type="button" data-edit-cancel="1">Cancel</button></div>${v.status === "PUBLISHED" ? `<p class="sd-fine">The live report stays as is until you publish the edit.</p>` : ""}</form>`;
+    const b = (act, label, cls = "") => `<button type="button" class="${cls}" data-act="${act}" data-id="${id}">${label}</button>`;
+    // One step to the app. Change asks for a new version with your direction;
+    // what is live stays live until the new one is published.
+    const change = b("regen", "Change", ""), edit = text ? b("edit", "Edit text", "") : "";
+    if (v.status === "PENDING_REVIEW" || v.status === "APPROVED") return `<div class="sd-acts">${b("golive", "Publish", "pub")}${change}${edit}${b("reject", "Reject", "no")}</div>`;
+    if (v.status === "PUBLISHED") return `<div class="sd-acts"><span class="sd-live">● Live</span>${change}${edit}${b("unpublish", "Take down", "no")}</div>`;
+    if (v.status === "REJECTED" || v.status === "FAILED") return `<div class="sd-acts">${b("regen", "Try again")}</div>`;
+    return "";
+  }
+  const sdText = (t) => t ? `<div class="sd-text"><b>${esc(t.headline)}</b>${t.body.split(/\n\s*\n/).map((p) => `<p>${esc(p)}</p>`).join("")}</div>` : "";
+
+  // ---- Review: everything waiting on you, newest first ----
+  function sdReview() {
+    const counts = Object.fromEntries(SD_FILTERS.map(([k]) => [k, sd.items.filter((x) => inFilter(x, k)).length]));
+    if (!SD_FILTERS.some(([k]) => k === sd.filter)) sd.filter = "ALL";
+    const list = sd.items.filter((x) => inFilter(x, sd.filter));
+    const waiting = sd.items.filter((x) => inFilter(x, "WAITING") && (x.kind === "text" || x.hasImage));
+    return `<div class="sd-filters" role="group" aria-label="Status">${SD_FILTERS.map(([k, lab]) => `<button type="button" class="${sd.filter === k ? "on" : ""}" data-sd-filter="${k}">${lab}${counts[k] ? ` <b>${counts[k]}</b>` : ""}</button>`).join("")}</div>
+      ${waiting.length > 1 ? `<div class="sd-bulk"><span>${waiting.length} waiting for you</span><button type="button" class="pub" data-bulk="golive">Publish all ${waiting.length}</button></div>` : ""}
+      ${list.length ? `<div class="sd-grid">${list.map(sdCard).join("")}</div>` : `<div class="sd-empty">${sd.loading ? "Loading…" : sd.items.length ? "Nothing here." : "Nothing yet. Open Create to make the first graphic or report."}</div>`}`;
+  }
+
+  // ---- Library: one row per asset, what is live and what is newest ----
+  function sdLibrary() {
+    if (!sd.lib) return `<div class="sd-empty">Loading the library…</div>`;
+    if (!sd.lib.length) return `<div class="sd-empty">The library is empty. Everything you make lands here.</div>`;
+    const groups = {};
+    for (const a of sd.lib) (groups[a.categoryLabel] ||= []).push(a);
+    return Object.entries(groups).map(([g, rows]) => `<div class="sg-h"><span>${esc(g)} · ${rows.length}</span><small>${rows.filter((a) => a.live).length} live</small></div>
+      <div class="lib">${rows.map((a) => {
+        const show = a.live || a.latest;
+        const thumb = a.kind === "text" ? `<span class="lib-tx">${esc(show?.text?.headline || "…")}</span>` : show?.hasImage ? `<img src="${imgUrl(show.id)}" alt="" loading="lazy">` : `<span class="lib-tx">…</span>`;
+        return `<button type="button" class="lib-r" data-asset="${esc(a.id)}"><span class="lib-th">${thumb}</span><span class="lib-n"><b>${esc(a.label)}</b><small>${a.week != null ? `Week ${a.week} · ` : ""}${a.versions} version${a.versions === 1 ? "" : "s"} · ${money$(a.spent)}</small></span>${a.live ? `<i class="sd-badge s-published">Live</i>` : a.latest ? `<i class="sd-badge s-${a.latest.status.toLowerCase()}">${esc(SD_LABEL[a.latest.status])}</i>` : ""}</button>`;
+      }).join("")}</div>`).join("");
+  }
+  // One asset, every version side by side, and its history.
+  function sdAssetSheet() {
+    const a = sd.asset; if (!a) return "";
+    const text = a.kind === "text";
+    return `<div class="sd-scrim" data-asset-close="1"></div><div class="sd-sheet wide">
+      <div class="sd-sh"><b>${esc(a.label)}</b><button type="button" class="ib" data-asset-close="1" aria-label="Close">${ICONS.x}</button></div>
+      <div class="sd-chips"><span>${esc(a.categoryLabel)}</span>${a.week != null ? `<span>Week ${a.week}</span>` : ""}${a.placements.map((p) => `<span class="pl">${esc(PLACE[p]?.[0] || p)}</span>`).join("")}</div>
+      <div class="ver-grid${text ? " tx" : ""}">${a.versions.map((v) => { const vv = { ...v, kind: a.kind }; return `<div class="ver${v.published ? " live" : ""}">
+        ${text ? sdText(v.text) || `<div class="sd-text"><p>${esc(SD_LABEL[v.status])}…</p></div>` : v.hasImage ? `<button type="button" class="sd-art" data-zoomsrc="${esc(v.id)}"><img src="${imgUrl(v.id)}" alt="" loading="lazy"></button>` : `<div class="sd-art empty"><small>${esc(SD_LABEL[v.status])}</small></div>`}
+        <div class="sd-row"><span class="sd-sub num">${new Date(v.created).toLocaleDateString([], { month: "short", day: "numeric" })} · ${v.cost != null ? money$(v.cost) : `~${money$(v.estCost)}`}${v.tone ? ` · ${esc(v.tone)}` : ""}</span><i class="sd-badge s-${v.status.toLowerCase()}">${esc(SD_LABEL[v.status])}</i></div>
+        ${v.feedback ? `<div class="sd-note">“${esc(v.feedback)}”</div>` : ""}${v.error ? `<div class="sd-err">${esc(v.error)}</div>` : ""}
+        ${sdVerActs(vv)}
+      </div>`; }).join("")}</div>
+      <div class="sg-h"><span>History</span></div>
+      <ol class="audit">${a.audit.map((x) => `<li><span class="num">${new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span><b>${esc(x.action)}</b>${x.note ? `<small>${esc(x.note)}</small>` : ""}</li>`).join("")}</ol>
+    </div>`;
+  }
+
+  // ---- Placements: every spot in the app and what fills it ----
+  function sdPlacements() {
+    if (!sd.lib) return `<div class="sd-empty">Loading…</div>`;
+    const spots = [...new Set(sd.types.flatMap((t) => t.placements))];
+    return spots.map((p) => {
+      const live = sd.lib.filter((a) => a.live && a.placements.includes(p));
+      const [name, how] = PLACE[p] || [p, ""];
+      return `<section class="panel plc"><div class="ph"><h2>${esc(name)}</h2><span class="sub">${live.length} live</span></div><p class="sg-why">${esc(how)}</p>
+        ${live.length ? `<div class="lib">${live.map((a) => `<button type="button" class="lib-r" data-asset="${esc(a.id)}"><span class="lib-th">${a.kind === "text" ? `<span class="lib-tx">${esc(a.live.text?.headline || "")}</span>` : `<img src="${imgUrl(a.live.id)}" alt="" loading="lazy">`}</span><span class="lib-n"><b>${esc(a.label)}</b><small>live since ${new Date(a.live.at).toLocaleDateString([], { month: "short", day: "numeric" })}</small></span><i class="sd-badge s-published">Live</i></button>`).join("")}</div>` : `<div class="note">Nothing published here yet.</div>`}
+      </section>`;
+    }).join("");
+  }
+
+  // ---- Create: suggestions, a single graphic, and Scouting Reports ----
+  function sdScout() {
+    const sc = sd.scout;
+    const drafts = {};
+    for (const x of sd.items) if (x.category === "scouting-report" && (!sc?.week || x.week === sc.week) && !drafts[x.subject]) drafts[x.subject] = x;
+    const list = Object.values(drafts);
+    const est = sd.types.find((t) => t.id === "scouting-report")?.estCost || 0.006;
+    const missing = sc?.reps ? sc.reps.filter((r) => !drafts[`owner:${r.name}`] || drafts[`owner:${r.name}`].status === "REJECTED" || drafts[`owner:${r.name}`].status === "FAILED") : [];
+    const review = list.filter((x) => x.status === "PENDING_REVIEW"), ready = list.filter((x) => x.status === "APPROVED");
+    return `<section class="panel scw">
+      <div class="sd-title"><span>📋 SCOUTING REPORTS${sc?.week ? ` · WEEK ${sc.week}` : ""}</span></div>
+      <p class="sg-why">Written from each owner's own numbers (the admin console's Scouting math). The writer may not change a number. Pick a tone, write them all, read them here, edit any line, then publish to each owner's leaderboard card.</p>
+      <div class="tones">${TONES.map(([k, l]) => `<button type="button" class="${sd.tone === k ? "on" : ""}" data-tone="${k}">${l}</button>`).join("")}</div>
+      ${!sc ? `<button type="button" class="sd-go" data-scout-load="1">Load this week's numbers</button>` : sc.loading ? `<div class="sd-empty">Crunching the season…</div>` : sc.err ? `<div class="sd-errbox">${esc(sc.err)}</div>`
+        : missing.length ? `<button type="button" class="sd-go" data-scout-write="1"${sd.queuing ? " disabled" : ""}>${sd.queuing ? `Queuing… ${sd.queuing}` : `Write ${missing.length} report${missing.length === 1 ? "" : "s"} · ${TONES.find((t) => t[0] === sd.tone)[1]} · about $${(missing.length * est).toFixed(2)}`}</button>` : `<div class="note">Every owner has a draft this week. Use ↻ on any one for a new take.</div>`}
+      ${review.length + ready.length > 1 ? `<div class="sd-bulk"><button type="button" class="pub" data-bulk="golive" data-bulk-cat="scouting-report">Publish all ${review.length + ready.length} reports</button></div>` : ""}
+      <div class="scw-list">${list.map((x) => `<article class="scw-d s-${x.status.toLowerCase()}"><div class="sd-row"><b>${esc(x.label)}</b><i class="sd-badge s-${x.status.toLowerCase()}">${esc(SD_LABEL[x.status])}</i></div>
+        ${x.text ? sdText(x.text) : `<div class="sd-text"><p>${x.status === "FAILED" ? esc(x.error || "Failed") : "Writing…"}</p></div>`}
+        <div class="sd-sub num">${x.tone ? `${esc(x.tone)} · ` : ""}${x.cost != null ? money$(x.cost) : `~${money$(x.estCost)}`}${x.feedback ? ` · “${esc(x.feedback)}”` : ""}</div>
+        ${sdVerActs(x)}</article>`).join("")}</div>
+    </section>`;
+  }
+  // Award art: every award picture in the app, the one showing today, and
+  // a tick to render a Studio version (published ones replace today's).
+  function sdAwards() {
+    const t = sd.types.find((x) => x.id === "award-art");
+    if (!t?.choices) return "";
+    const has = (k) => sd.items.find((x) => x.category === "award-art" && x.subject === `award:${k}` && x.status !== "REJECTED" && x.status !== "FAILED");
+    sd.awardPick ||= new Set();
+    const groups = {};
+    for (const c of t.choices) (groups[c.where] ||= []).push(c);
+    const chosen = t.choices.filter((c) => !has(c.key) && sd.awardPick.has(c.key));
+    return `<section class="panel sg">
+      <div class="sg-top"><span>🏆 AWARD ART</span><small>${t.choices.filter((c) => has(c.key)?.status === "PUBLISHED").length} of ${t.choices.length} redrawn</small></div>
+      <p class="sg-why">The pictures on the Week Replay cards, the high score trophy and the season stats tiles. Today's picture stays until you publish a new one.</p>
+      ${Object.entries(groups).map(([where, list]) => `<div class="sg-h"><span>${esc(where)}</span></div><div class="sg-list">${list.map((c) => {
+        const h = has(c.key), live = h?.status === "PUBLISHED", on = !h && sd.awardPick.has(c.key);
+        return `<button type="button" class="sg-t aw${on ? " on" : ""}${h ? " has" : ""}" data-award="${esc(c.key)}"><img src="${live ? imgUrl(h.id) : `../assets/images/${c.key.replace("-", "/")}.webp`}" alt="" loading="lazy"><span class="sg-n"><b>${esc(c.label)}</b><small>${live ? "Studio art live" : "today's picture"}</small></span>${h ? `<i class="sd-badge s-${h.status.toLowerCase()}">${esc(SD_LABEL[h.status])}</i>` : `<i class="sg-box">${on ? "✓" : ""}</i>`}</button>`;
+      }).join("")}</div>`).join("")}
+      <button type="button" class="sd-go sg-go" data-award-go="1"${!chosen.length || sd.queuing ? " disabled" : ""}>${sd.queuing ? `Queuing… ${sd.queuing}` : chosen.length ? `Render ${chosen.length} award${chosen.length === 1 ? "" : "s"} · about $${(chosen.length * t.estCost).toFixed(2)}` : "Pick awards to redraw"}</button>
+    </section>`;
+  }
+
+  // The Canvas: the app itself, live, in a frame. Tap any graphic or line
+  // of copy and it lands here to redraw (freeform or from a preset) or to
+  // rewrite (by hand or by the writer). Drafts can be tried in place in the
+  // frame before anyone else sees them; only Publish changes the app.
+  const cv = { edit: false, pick: null, mode: "free", style: "arcade", note: "", typed: "", tone: "hype", busy: false, msg: "", shown: null };
+  const cvKey = (p) => p.kind === "img" ? `img:${p.slot}` : p.slot;
+  const cvFrame = () => studioEl.querySelector("#sd-cv-frame");
+  const cvSend = (m) => cvFrame()?.contentWindow?.postMessage(m, location.origin);
+  function cvVersions(p) {
+    if (!p) return [];
+    const award = p.kind === "img" && p.slot.match(/^assets\/images\/(recap|hs)\/([\w-]+)\.webp$/);
+    const team = p.kind === "img" && p.slot.match(/^team:(\d+)$/);
+    return sd.items.filter((x) => (x.category === "slot-image" || x.category === "slot-text") ? x.subject === cvKey(p)
+      : award ? x.category === "award-art" && x.subject === `award:${award[1]}-${award[2]}`
+      : team ? x.category === "team-mascot" && x.subject === `team:${team[1]}` : false);
+  }
+  function cvPresets(p) {
+    if (p.kind !== "img") return [];
+    const award = p.slot.match(/^assets\/images\/(recap|hs)\/([\w-]+)\.webp$/);
+    const team = p.slot.match(/^team:(\d+)$/);
+    const out = [];
+    const at = sd.types.find((t) => t.id === "award-art");
+    if (award && at?.choices?.some((c) => c.key === `${award[1]}-${award[2]}`)) out.push(["award", "Award preset", "The league's award style for this badge. Shows wherever this award appears."]);
+    if (team) out.push(["mascot", "Team mascot preset", "An arcade mascot for this team. Shows on the Week Replay."]);
+    return out;
+  }
+  function cvPanel() {
+    const p = cv.pick;
+    if (!p) return `<div class="cv-empty"><b>${cv.edit ? "Tap anything in the preview" : "Browse to the screen you want"}</b><span>${cv.edit ? "" : "Use the app as normal: get past the splash, open a tab. Then switch to <b>Tap to edit</b>.<br>"}</span><span>A logo, an award icon, a tile picture, a heading or a label. It opens here to redraw or rewrite.</span><small>Scores, records and owner names always come from the app.</small></div>${cv.msg ? `<p class="sd-err">${esc(cv.msg)}</p>` : ""}`;
+    const vers = cvVersions(p);
+    const live = vers.find((v) => v.status === "PUBLISHED");
+    const draft = (v) => {
+      const busy = sd.busy === v.id, st = v.status;
+      const art = v.kind === "text" ? `<div class="cv-txt">${esc(v.text?.body || SD_LABEL[st])}</div>` : v.hasImage ? `<img src="${imgUrl(v.id)}" alt="" loading="lazy">` : `<div class="cv-wait">${st === "FAILED" ? "✕" : `<i class="sd-spin"></i>`}</div>`;
+      const ready = v.kind === "text" ? !!v.text : v.hasImage;
+      return `<div class="cv-ver s-${st.toLowerCase()}${cv.shown === v.id ? " shown" : ""}">${art}
+        <div class="cv-vm"><span class="sd-badge s-${st.toLowerCase()}">${esc(SD_LABEL[st])}</span><small>${esc(v.categoryLabel)}${v.feedback ? ` · “${esc(v.feedback)}”` : ""}</small>${v.error ? `<small class="sd-err">${esc(v.error)}</small>` : ""}</div>
+        <div class="cv-va">${ready && st !== "PUBLISHED" ? `<button type="button" data-cv-try="${esc(v.id)}">${cv.shown === v.id ? "Hide" : "Try it"}</button>` : ""}${["PENDING_REVIEW", "APPROVED"].includes(st) && ready ? `<button type="button" class="go" data-cv-act="golive" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Publish</button>` : ""}${["PENDING_REVIEW", "APPROVED"].includes(st) ? `<button type="button" class="no" data-cv-act="reject" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Reject</button>` : ""}${st === "PUBLISHED" ? `<button type="button" class="no" data-cv-act="unpublish" data-id="${esc(v.id)}"${busy ? " disabled" : ""}>Take down</button>` : ""}</div>
+      </div>`;
+    };
+    const presets = cvPresets(p);
+    const est = (sd.types.find((t) => t.id === "slot-image")?.estCost || 0.04).toFixed(2);
+    const head = p.kind === "img"
+      ? `<div class="cv-pick"><div class="cv-thumbs"><figure><img src="${esc(p.original)}" alt=""><figcaption>Original</figcaption></figure>${live ? `<figure><img src="${esc(p.src)}" alt=""><figcaption>Live now</figcaption></figure>` : ""}</div><div><b>${esc(p.label || "Graphic")}</b><small>${esc(p.slot)}</small></div></div>`
+      : `<div class="cv-pick"><div><b>“${esc(p.text)}”</b><small>${p.text !== p.original ? `Original: “${esc(p.original)}”` : "Line of copy"}</small></div></div>`;
+    const form = p.kind === "img" ? `
+      <div class="cv-modes"><button type="button" class="${cv.mode === "free" ? "on" : ""}" data-cv-mode="free">Freeform</button>${presets.map(([k, l]) => `<button type="button" class="${cv.mode === k ? "on" : ""}" data-cv-mode="${k}">${esc(l)}</button>`).join("")}</div>
+      ${cv.mode === "free" ? `<label class="cv-f">What should it be?<textarea name="note" rows="3" maxlength="500" placeholder="e.g. a flaming football helmet, purple and gold">${esc(cv.note)}</textarea></label>
+        <label class="cv-f">Style<select name="style"><option value="arcade"${cv.style === "arcade" ? " selected" : ""}>Arcade pixel (matches the app)</option><option value="freeform"${cv.style === "freeform" ? " selected" : ""}>Clean illustration</option></select></label>`
+      : `<p class="cv-hint">${esc(presets.find(([k]) => k === cv.mode)?.[2] || "")}</p><label class="cv-f">Art direction (optional)<textarea name="note" rows="2" maxlength="300">${esc(cv.note)}</textarea></label>`}
+      <button type="button" class="sd-go" data-cv-go="draw"${cv.busy ? " disabled" : ""}>${cv.busy ? "Queuing…" : `Render · about $${est}`}</button>`
+      : `<label class="cv-f">Type it yourself<input name="typed" maxlength="80" value="${esc(cv.typed)}" placeholder="${esc(p.text)}"></label>
+      <button type="button" class="sd-go" data-cv-go="type"${cv.busy || !cv.typed.trim() ? " disabled" : ""}>Save as approved · free</button>
+      <div class="cv-or">or ask the writer</div>
+      <label class="cv-f">Direction<input name="note" maxlength="300" value="${esc(cv.note)}" placeholder="e.g. more trash talk, shorter"></label>
+      <label class="cv-f">Voice<select name="tone">${["hype", "coach", "dry", "savage"].map((t) => `<option${cv.tone === t ? " selected" : ""}>${t}</option>`).join("")}</select></label>
+      <button type="button" class="sd-go ghost" data-cv-go="write"${cv.busy ? " disabled" : ""}>Write options · about $0.01</button>`;
+    return `${head}<form class="cv-form" data-cv-form="1" onsubmit="return false">${form}</form>
+      <div id="cv-vlist">${cv.msg ? `<p class="sd-err">${esc(cv.msg)}</p>` : ""}
+      ${vers.length ? `<div class="cv-vh">Versions for this spot</div><div class="cv-vers">${vers.map(draft).join("")}</div>` : ""}</div>
+      <p class="sd-foot">Try it shows a draft in this preview only. Publish puts it in the app; Take down brings back the original.</p>`;
+  }
+  function cvSwitch() { return `<button type="button" class="${cv.edit ? "" : "on"}" data-cv-edit="0">Browse</button><button type="button" class="${cv.edit ? "on" : ""}" data-cv-edit="1">Tap to edit</button>`; }
+  function sdCanvas() {
+    return `<section class="panel cv-wrap"><div class="cv-stage"><div class="cv-modes cv-sw" id="cv-sw">${cvSwitch()}</div><div class="cv-phone"><iframe id="sd-cv-frame" src="../?studio=1" title="App preview" onload="this.contentWindow.postMessage({type:'studio-mode',edit:${cv.edit}},location.origin)"></iframe></div><button type="button" class="cv-reload" data-cv-reload="1">${ICONS.refresh}<span>Reload preview</span></button></div><div class="cv-side" id="sd-cv-panel">${cvPanel()}</div></section>`;
+  }
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin || e.data?.type !== "studio-pick") return;
+    if (e.data.kind === "none") { cv.msg = e.data.why; cv.pick = null; }
+    else { cv.pick = e.data; cv.msg = ""; cv.note = ""; cv.typed = ""; cv.mode = "free"; if (cv.shown) { cvSend({ type: "studio-reload" }); cv.shown = null; } }
+    paintStudio();
+    if (matchMedia("(max-width: 860px)").matches) studioEl.querySelector("#sd-cv-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  async function cvGo(how) {
+    const p = cv.pick; if (!p) return;
+    cv.busy = true; cv.msg = ""; paintStudio();
+    try {
+      let body;
+      if (p.kind === "text") body = how === "type" ? { category: "slot-text", subject: { slot: p.slot }, text: cv.typed.trim() } : { category: "slot-text", subject: { slot: p.slot }, feedback: cv.note, tone: cv.tone, fresh: true };
+      else if (cv.mode === "award") body = { category: "award-art", subject: { award: p.slot.replace(/^assets\/images\/(recap|hs)\/([\w-]+)\.webp$/, "$1-$2") }, feedback: cv.note };
+      else if (cv.mode === "mascot") {
+        await loadTeams();
+        const id = Number(p.slot.slice(5)), t = sd.teams.find((x) => Number(x.id) === id);
+        body = { category: "team-mascot", subject: { teamId: id, name: t?.name || p.label || `Team ${id}` }, feedback: cv.note };
+      } else {
+        if (!cv.note.trim()) throw new Error("Say what it should be first.");
+        body = { category: "slot-image", subject: { slot: p.slot, label: p.label, style: cv.style }, feedback: cv.note, fresh: true };
+      }
+      const r = await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (r.existing) cv.msg = "There's already a version of this in progress. It's listed below.";
+      if (how === "type") cv.typed = "";
+    } catch (err) { cv.msg = err.message; }
+    cv.busy = false;
+    await studioLoad(true);
+  }
+  function sdCreate() {
+    return `${sdSuggest()}
+      ${sdAwards()}
+      <div class="sd-bulk"><span>Something specific?</span><button type="button" data-sd-new="1">${ICONS.plus} New graphic</button></div>
+      ${sdScout()}`;
+  }
+
+  function paintStudio() {
+    if (st.view !== "studio") return;
+    const b = sd.budget, used = b && b.cap ? Math.min(100, ((b.spent + b.reserved) / b.cap) * 100) : 0;
+    const z = sd.zoom;
+    // The Canvas keeps its frame: only the side panel and sheets redraw.
+    const keep = sd.tab === "canvas" && cvFrame();
+    if (keep) {
+      const pan = studioEl.querySelector("#sd-cv-panel"), ae = document.activeElement;
+      // Mid-typing, only the versions list redraws so the field keeps its focus.
+      if (ae && pan.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) {
+        const tmp = document.createElement("div"); tmp.innerHTML = cvPanel();
+        const nv = tmp.querySelector("#cv-vlist"), ov = pan.querySelector("#cv-vlist");
+        if (nv && ov) ov.replaceWith(nv);
+      } else pan.innerHTML = cvPanel();
+      studioEl.querySelector("#sd-over").innerHTML = sdOver();
+      const tb = studioEl.querySelector(".sd-tabs"); if (tb) tb.outerHTML = sdTabs();
+      const eb = studioEl.querySelector("#sd-errs"); if (eb) eb.innerHTML = sd.err ? `<div class="sd-errbox">${esc(sd.err)}</div>` : "";
+      return;
+    }
+    const body = sd.tab === "canvas" ? sdCanvas() : sd.tab === "library" ? sdLibrary() : sd.tab === "placements" ? sdPlacements() : sd.tab === "create" ? sdCreate() : sdReview();
+    studioEl.innerHTML = `
+      <div class="top"><div class="top-in">
+        <button type="button" class="brand" data-sd-back="sec-now" aria-label="Back to live"><i class="beat"></i><b>BROCHIEFS</b><span>STUDIO</span></button>
+        <span class="age">${sd.loading ? "loading…" : sd.err ? "" : ""}</span>
+        <div class="tools"><button type="button" class="ib" data-sd-refresh="1" aria-label="Refresh">${ICONS.refresh}</button></div>
+      </div></div>
+      <div class="sd-page">
+        <section class="panel sd-head">
+          <div class="sd-title"><span>🎨 CREATIVE STUDIO</span><button type="button" class="sd-new" data-sd-tab="create">${ICONS.plus}<span>Create</span></button></div>
+          <div class="sd-budget"><div class="sd-bar"><u style="width:${used.toFixed(1)}%"></u></div><span class="num">${b ? `${money$(b.spent)} spent${b.reserved ? ` · ${money$(b.reserved)} in flight` : ""} · ${money$(b.cap)} cap · ${esc(b.month)}` : "Budget…"}</span></div>
+          ${sdTabs()}
+        </section>
+        <div id="sd-errs">${sd.err ? `<div class="sd-errbox">${esc(sd.err)}</div>` : ""}</div>
+        ${body}
+        <p class="sd-foot">Publish puts it in the app. Take down brings back what was there before.</p>
+      </div>
+      <div id="sd-over">${sdOver()}</div>
+      <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" data-sd-back="${id}">${ICONS[ic]}<span>${lab}</span></button>`).join("")}<button type="button" class="on">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button></nav>`;
+  }
+  function sdTabs() { return `<div class="sd-tabs" role="tablist">${SD_TABS.map(([k, l]) => `<button type="button" role="tab" class="${sd.tab === k ? "on" : ""}" data-sd-tab="${k}">${l}${k === "review" && sd.review ? ` <b>${sd.review}</b>` : ""}</button>`).join("")}</div>`; }
+  function sdOver() {
+    const z = sd.zoom;
+    const t = sd.toast;
+    return `${t ? `<div class="sd-toast${t.bad ? " bad" : ""}" role="status">${esc(t.msg)}</div>` : ""}${z ? `<div class="sd-zoom" data-sd-unzoom="1"><button type="button" class="ib sd-zx" data-sd-unzoom="1" aria-label="Close">${ICONS.x}</button><div class="sd-zimg"><img src="${imgUrl(z)}" alt=""></div></div>` : ""}${sdAssetSheet()}${sdSheet()}`;
+  }
+  async function loadLibrary() { try { sd.lib = (await sdFetch("/library")).assets; } catch (e) { sd.err = e.message; } paintStudio(); }
+  async function openAsset(id) { try { sd.asset = await sdFetch(`/asset/${encodeURIComponent(id)}`); } catch (e) { sd.err = e.message; } paintStudio(); }
+
+  // Scouting numbers, worked out here the same way the admin console does
+  // (scout.js over the season and the pick log). Scoring mirrors app.js.
+  const LS = {
+    pointValue: (g, team, mode) => (mode === "ATS" ? 2 : team === g.favorite ? 1 : 3),
+    outcome(g, r) {
+      if (!r || !Number.isFinite(r.awayScore) || !Number.isFinite(r.homeScore)) return null;
+      const su = r.awayScore === r.homeScore ? null : r.awayScore > r.homeScore ? g.away : g.home;
+      const fm = g.favorite === g.home ? r.homeScore - r.awayScore : r.awayScore - r.homeScore;
+      const dog = g.favorite === g.away ? g.home : g.away;
+      return { su, ats: fm === g.spread ? null : fm > g.spread ? g.favorite : dog };
+    },
+    scorePick(g, p, r) { const o = LS.outcome(g, r); if (!o) return null; if (!p || !p.team || !p.mode) return 0; const w = p.mode === "SU" ? o.su : o.ats; return w !== null && p.team === w ? LS.pointValue(g, p.team, p.mode) : 0; },
+  };
+  async function loadScout() {
+    sd.scout = { loading: true }; paintStudio();
+    try {
+      if (!window.Scout) await new Promise((ok, bad) => { const x = document.createElement("script"); x.src = `../scout.js?t=${Date.now()}`; x.onload = ok; x.onerror = () => bad(new Error("Couldn't load the Scouting math.")); document.head.appendChild(x); });
+      const [season, log, games] = await Promise.all([
+        fetch(`${WORKER}/season?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()),
+        fetch(`${WORKER}/picks-log?format=json&since=${Date.now() - 200 * 86400000}&${auth()}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : { changes: [] })).catch(() => ({ changes: [] })),
+        fetch(`${WORKER}/games?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
+      ]);
+      const names = [...new Set(Object.values(season?.season || {}).flatMap((w) => Object.keys(w.picks || {})))];
+      const S = window.Scout.build({ season, log: log?.changes || [], names, scorePick: LS.scorePick });
+      const reps = names.map((n) => S.report(n)).filter((r) => !r.empty).sort((a, b) => b.scored - a.scored).map((r) => ({ name: r.name, facts: {
+        points: r.scored, place: r.rank, of: r.of, picks: r.picks, weeks: r.weeks, luck: Math.round(r.luck), luckLine: r.luckLine, oneThingToChange: r.fix || null,
+        findings: r.insights.map((x) => ({ kind: x.tone, head: x.head, line: x.line, evidence: x.evidence })),
+        pickMix: r.kinds.map((k) => ({ type: k.label, taken: k.n, hit: k.hit })),
+      } }));
+      sd.scout = { reps, week: games.week || null };
+      if (!reps.length) sd.scout.err = "No finished games with picks yet.";
+    } catch (e) { sd.scout = { err: e.message }; }
+    paintStudio();
+  }
+  studioEl.addEventListener("click", async (e) => {
+    const sw = e.target.closest("[data-cv-edit]");
+    if (sw) {
+      cv.edit = sw.dataset.cvEdit === "1";
+      cvSend({ type: "studio-mode", edit: cv.edit });
+      const f = cvFrame(); if (f) f.setAttribute("onload", `this.contentWindow.postMessage({type:'studio-mode',edit:${cv.edit}},location.origin)`);
+      const box = studioEl.querySelector("#cv-sw"); if (box) box.innerHTML = cvSwitch();
+      return paintStudio();
+    }
+    const c = e.target.closest("[data-cv-mode],[data-cv-try],[data-cv-act],[data-cv-go],[data-cv-reload]");
+    if (c) {
+      if (c.dataset.cvMode) { cv.mode = c.dataset.cvMode; cv.msg = ""; return paintStudio(); }
+      if (c.dataset.cvReload) { cv.shown = null; const f = cvFrame(); if (f) f.src = f.src; return paintStudio(); }
+      if (c.dataset.cvTry) {
+        const id = c.dataset.cvTry, v = sd.items.find((x) => x.id === id), p = cv.pick;
+        if (cv.shown === id) { cv.shown = null; cvSend({ type: "studio-preview", key: cvKey(p), value: null }); }
+        else {
+          cv.shown = id;
+          // A preset's draft is tried on the graphic that was tapped.
+          cvSend({ type: "studio-preview", key: p.kind === "img" ? `img:${p.slot}` : p.slot, value: v.kind === "text" ? v.text?.body : imgUrl(id) });
+        }
+        return paintStudio();
+      }
+      if (c.dataset.cvAct) {
+        await sdAct(c.dataset.cvAct, c.dataset.id);
+        if (/golive|publish|unpublish/.test(c.dataset.cvAct)) { cv.shown = null; cvSend({ type: "studio-reload" }); }
+        return;
+      }
+      if (c.dataset.cvGo) return cvGo(c.dataset.cvGo);
+    }
+    const sg = e.target.closest("[data-sg],[data-sg-all],[data-sg-go],[data-sg-fold]");
+    if (sg) {
+      if (sg.dataset.sgFold) { sd.suggOpen = !sd.suggOpen; return paintStudio(); }
+      const list = sd.sugg?.suggestions || [];
+      if (sg.dataset.sg) {
+        const g = list.find((x) => String(x.subject.teamId) === sg.dataset.sg), has = g && sdHas(g);
+        if (has) { if (has.hasImage) { sd.zoom = has.id; paintStudio(); } return; }
+        const id = Number(sg.dataset.sg); sd.pick.has(id) ? sd.pick.delete(id) : sd.pick.add(id); return paintStudio();
+      }
+      if (sg.dataset.sgAll) { const rows = list.filter((g) => g.replay === (sg.dataset.sgAll === "replay") && !sdHas(g)); const all = rows.every((g) => sd.pick.has(g.subject.teamId)); rows.forEach((g) => all ? sd.pick.delete(g.subject.teamId) : sd.pick.add(g.subject.teamId)); return paintStudio(); }
+      if (sg.dataset.sgGo) {
+        const go = list.filter((g) => !sdHas(g) && sd.pick.has(g.subject.teamId));
+        let n = 0, bad = "";
+        for (const g of go) {
+          sd.queuing = `${++n}/${go.length}`; paintStudio();
+          try { await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: g.category, subject: g.subject }) }); sd.pick.delete(g.subject.teamId); }
+          catch (err) { bad = err.message; }
+        }
+        sd.queuing = false; sd.err = bad; await studioLoad(true); return;
+      }
+    }
+    const aw = e.target.closest("[data-award],[data-award-go]");
+    if (aw) {
+      if (aw.dataset.award) {
+        const h = sd.items.find((x) => x.category === "award-art" && x.subject === `award:${aw.dataset.award}` && x.status !== "REJECTED" && x.status !== "FAILED");
+        if (h) { if (h.hasImage) { sd.zoom = h.id; paintStudio(); } return; }
+        sd.awardPick.has(aw.dataset.award) ? sd.awardPick.delete(aw.dataset.award) : sd.awardPick.add(aw.dataset.award);
+        return paintStudio();
+      }
+      const go = [...sd.awardPick];
+      let n = 0, bad = "";
+      for (const key of go) {
+        sd.queuing = `${++n}/${go.length}`; paintStudio();
+        try { await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: "award-art", subject: { award: key } }) }); sd.awardPick.delete(key); } catch (err) { bad = err.message; }
+      }
+      sd.queuing = false; await studioLoad(true); if (bad) { sd.err = bad; paintStudio(); } return;
+    }
+    const t = e.target.closest("[data-sd-tab],[data-asset],[data-asset-close],[data-zoomsrc],[data-tone],[data-scout-load],[data-scout-write],[data-bulk],[data-regen-cancel],[data-edit-cancel]");
+    if (t) {
+      if (t.dataset.sdTab) { sd.tab = t.dataset.sdTab; sd.asset = null; paintStudio(); if (sd.tab === "library" || sd.tab === "placements") loadLibrary(); if (sd.tab === "create" && !sd.scout) loadScout(); return; }
+      if (t.dataset.asset) return openAsset(t.dataset.asset);
+      if (t.dataset.assetClose) { sd.asset = null; return paintStudio(); }
+      if (t.dataset.zoomsrc) { sd.zoom = t.dataset.zoomsrc; return paintStudio(); }
+      if (t.dataset.tone) { sd.tone = t.dataset.tone; return paintStudio(); }
+      if (t.dataset.scoutLoad) return loadScout();
+      if (t.dataset.regenCancel) { sd.regen = null; return paintStudio(); }
+      if (t.dataset.editCancel) { sd.edit = null; return paintStudio(); }
+      if (t.dataset.scoutWrite) {
+        const drafts = new Set(sd.items.filter((x) => x.category === "scouting-report" && x.week === sd.scout.week && x.status !== "REJECTED" && x.status !== "FAILED").map((x) => x.subject));
+        const go = sd.scout.reps.filter((r) => !drafts.has(`owner:${r.name}`));
+        let n = 0, bad = "";
+        for (const r of go) {
+          sd.queuing = `${++n}/${go.length}`; paintStudio();
+          try { await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: "scouting-report", week: sd.scout.week, tone: sd.tone, subject: { name: r.name, facts: r.facts } }) }); } catch (err) { bad = err.message; }
+        }
+        sd.queuing = false; await studioLoad(true); if (bad) { sd.err = bad; paintStudio(); } return;
+      }
+      if (t.dataset.bulk) {
+        const golive = t.dataset.bulk === "golive";
+        const want = golive ? ["PENDING_REVIEW", "APPROVED"] : [t.dataset.bulk === "approve" ? "PENDING_REVIEW" : "APPROVED"];
+        const ids = sd.items.filter((x) => want.includes(x.status) && (x.kind === "text" || x.hasImage) && (!t.dataset.bulkCat || x.category === t.dataset.bulkCat)).map((x) => x.id);
+        if ((golive || t.dataset.bulk === "publish") && !confirm(`Publish ${ids.length} to the app?`)) return;
+        let ok = 0; const bad = [];
+        for (const id of ids) { const r = await sdAct(golive ? "golive" : t.dataset.bulk, id, { quiet: true }); if (r === true) ok++; else bad.push(r || "failed"); }
+        sdToast(bad.length ? `${ok} done, ${bad.length} didn't: ${[...new Set(bad)].join("; ")}` : `${ok} published to the app`, !!bad.length);
+        return studioLoad(true);
+      }
+    }
+    const act = e.target.closest("[data-act]");
+    if (act) {
+      if (act.dataset.act === "regen") { sd.regen = act.dataset.id; sd.edit = null; return paintStudio(); }
+      if (act.dataset.act === "edit") { sd.edit = act.dataset.id; sd.regen = null; return paintStudio(); }
+      return sdAct(act.dataset.act, act.dataset.id);
+    }
+    const b = e.target.closest("[data-sd-back],[data-sd-refresh],[data-sd-new],[data-sd-filter],[data-zoom],[data-sd-unzoom],[data-sd-close]");
+    if (!b) return;
+    if (b.dataset.sdBack) return closeStudio(b.dataset.sdBack);
+    if (b.dataset.sdRefresh) return studioLoad();
+    if (b.dataset.sdFilter) { sd.filter = b.dataset.sdFilter; return paintStudio(); }
+    if (b.dataset.zoom) { sd.zoom = b.dataset.zoom; return paintStudio(); }
+    if (b.dataset.sdUnzoom) { if (e.target.closest(".sd-zimg img")) { e.target.closest(".sd-zimg").classList.toggle("big"); return; } sd.zoom = null; return paintStudio(); }
+    if (b.dataset.sdClose) { sd.gen = null; return paintStudio(); }
+    if (b.dataset.sdNew) {
+      sd.gen = { category: sd.types[0]?.id || "team-mascot" }; paintStudio();
+      await loadTeams(); if (sd.gen && !sd.gen.teamId) sd.gen.teamId = sd.teams[0]?.id; paintStudio();
+    }
+  });
+  studioEl.addEventListener("input", (e) => {
+    const f = e.target.closest("[data-cv-form]"); if (!f || !e.target.name) return;
+    cv[e.target.name] = e.target.value;
+    if (e.target.name === "typed") { const b = f.querySelector('[data-cv-go="type"]'); if (b) b.disabled = cv.busy || !cv.typed.trim(); }
+  });
+  studioEl.addEventListener("change", (e) => {
+    const f = e.target.closest("[data-sd-form]"); if (!f || !sd.gen) return;
+    Object.assign(sd.gen, Object.fromEntries(new FormData(f)));
+    if (e.target.name === "category") { const t = sd.types.find((x) => x.id === sd.gen.category); sd.gen.award = t?.choices ? t.choices[0].key : undefined; paintStudio(); }
+  });
+  studioEl.addEventListener("submit", async (e) => {
+    const rf = e.target.closest("[data-regen-form]"), ef = e.target.closest("[data-edit-form]");
+    if (rf || ef) {
+      e.preventDefault();
+      const fd = Object.fromEntries(new FormData(rf || ef));
+      if (rf) { sd.regen = null; return sdAct("regenerate", rf.dataset.regenForm, { feedback: fd.note, tone: fd.tone }); }
+      sd.edit = null; return sdAct("edit", ef.dataset.editForm, { text: { headline: fd.headline, body: fd.body } });
+    }
+    const f = e.target.closest("[data-sd-form]"); if (!f) return;
+    e.preventDefault();
+    const g = Object.assign(sd.gen, Object.fromEntries(new FormData(f)));
+    const team = sd.teams.find((t) => String(t.id) === String(g.teamId));
+    g.busy = true; g.msg = ""; paintStudio();
+    try {
+      const r = await sdFetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category: g.category, week: sd.week, feedback: g.feedback, subject: g.award ? { award: g.award } : { teamId: team?.id, name: team?.name, mascot: g.mascot, colors: g.colors } }) });
+      sd.gen = null; sd.filter = "ALL"; sd.tab = "review";
+      if (r.existing) sd.err = "";
+      await studioLoad(true);
+      if (r.existing) { sd.zoom = null; alert(`There's already a ${r.status === "PENDING_REVIEW" ? "version in review" : "version in the works"} for this one. Regenerating comes with review actions.`); }
+    } catch (err) { g.busy = false; g.msg = err.message; g.bad = true; paintStudio(); }
+  });
+
+  function gate(err = "") {
+    st.gated = true;
+    clearTimeout(poll.t);
+    app.innerHTML = `<form class="gate"><h1>BROCHIEFS ${LEAGUE === "nfl" ? "NFL " : ""}LIVE</h1>${leagueSwitch()}<p>Enter the ${LEAGUE === "nfl" ? "NFL league's " : ""}admin key.</p>
+      <input type="text" name="username" value="Brochiefs Live" autocomplete="username" hidden>
+      <input type="password" name="password" autocomplete="current-password" placeholder="Admin key" required>
+      <label class="rem"><input type="checkbox" checked> Remember this device for 180 days</label>
+      <button>Go live</button><div class="err">${esc(err)}</div></form>`;
+    const input = app.querySelector('input[type="password"]'), btn = app.querySelector("form button");
+    input.focus();
+    app.querySelector("form").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const k = input.value.trim();
+      if (app.querySelector('.rem input').checked) {
+        btn.disabled = true; btn.textContent = "Checking…";
+        const r = await remember(k);
+        if (r === 403) { btn.disabled = false; btn.textContent = "Go live"; app.querySelector(".err").textContent = "That key didn't work."; return; }
+        if (r !== 200) { key = k; session.set(KEY_STORE, k); } // couldn't reach the Worker: this session only
+      } else { key = k; session.set(KEY_STORE, k); }
+      start();
+    });
+  }
+  function start() {
+    st.gated = false; st.known = null; st.sig = "";
+    // The last view straight away, marked as refreshing, then the real one.
+    try {
+      const snap = JSON.parse(store.get(SNAP_STORE) || "null");
+      if (snap?.room) { st.room = snap.room; st.names = snap.names || []; st.seen = snap.seen || {}; st.games = snap.games || {}; st.asks = snap.asks || []; st.cached = true; }
+    } catch {}
+    render();
+    poll(true);
+    keepAwake();
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && (device || key) && !st.gated) { keepAwake(); poll(false); checkVersion(); } });
+
+  // New versions: a home screen app has no reload, so this page compares
+  // itself with the copy on the site now and then and on coming back, and
+  // reloads onto a new one (never while a preview is open). Tapping the
+  // title reloads too.
+  let mine = null;
+  async function checkVersion() {
+    try {
+      const text = await (await fetch(`./?t=${Date.now()}`, { cache: "no-store" })).text();
+      let h = 7; for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
+      if (mine === null) mine = h;
+      else if (h !== mine && !st.pv && !document.hidden) location.reload();
+    } catch {}
+  }
+  checkVersion();
+  setInterval(() => { if (!document.hidden) checkVersion(); }, 5 * 60000);
+  // A key saved by the first version of this page is traded for a device
+  // token, then dropped.
+  const oldKey = store.get(KEY_STORE);
+  if (oldKey && !device) { store.del(KEY_STORE); remember(oldKey).then((r) => { if (r === 200) start(); else if (r === 403) gate(); else { key = oldKey; session.set(KEY_STORE, oldKey); start(); } }); }
+  else if (device || key) start(); else gate();
+})();
+</script>
+</body>
+</html>

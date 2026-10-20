@@ -25,6 +25,8 @@ OPENAI_MODEL_PLAN = "gpt-4o"
 # log. "on" makes a token mandatory — an owner who has not claimed their
 # name cannot save until they do.
 AUTH_MODE = "off"
+# The Creative Engine's monthly OpenAI image budget, in dollars.
+CREATIVE_MONTHLY_CAP_USD = "10"
 
 # OPENAI_API_KEY is a secret, not a var — never put it in this file.
 # Set it with: wrangler secret put OPENAI_API_KEY
@@ -42,6 +44,29 @@ AUTH_MODE = "off"
 # Cross-device sync storage. Create the namespace once with:
 #   npx wrangler kv namespace create LIFTR_KV
 # then replace the id below with the one it prints, and redeploy.
+# The live room (worker/src/live.js): who is in the app now, for the
+# admin's live page. One Durable Object, SQLite backed.
+[[durable_objects.bindings]]
+name = "LIVE"
+class_name = "LiveRoom"
+
+[[durable_objects.bindings]]
+name = "CREATIVE_DESK"
+class_name = "CreativeDesk"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LiveRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["CreativeDesk"]
+
+# AI graphics (the Creative Studio): originals and optimized copies.
+[[r2_buckets]]
+binding = "CREATIVE"
+bucket_name = "brochiefs-creative"
+
 [[kv_namespaces]]
 binding = "LIFTR_KV"
 id = "2b89a5d262d84832801fe39e3cdc8301"
@@ -97,7 +122,8 @@ id = "44e880a55bcc406890b700ca487025e1"
 
 # Tuesday 10:00 UTC seals the week, after Monday night. The rest sample
 # the lines for every game still open: every two hours Tuesday to
-# Saturday, hourly on Sunday. Days by name: Cloudflare numbers weekdays
+# Saturday, hourly on Sunday, and Monday at half past as a backstop seal
+# after Sunday night. Days by name: Cloudflare numbers weekdays
 # 1 to 7, so names cannot be misread.
 [env.nfl.triggers]
-crons = ["0 10 * * TUE", "0 */2 * * TUE-SAT", "0 * * * SUN"]
+crons = ["0 10 * * TUE", "0 */2 * * TUE-SAT", "0 * * * SUN", "30 * * * MON"]

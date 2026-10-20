@@ -1,5 +1,8 @@
 // Arrived via brochiefs.com/admin: set before anything else runs.
 window.__adminEntry = /[?&]admin(=|&|$)/.test(location.search) || location.hash === "#admin";
+// Opened by the admin's live page as a preview (?view=game&x=401): a quiet
+// look at one screen, nobody signed in, no popups, nothing reported.
+window.__liveView = new URLSearchParams(location.search).get("view") || "";
 // Brochiefs 2026 College Football Pick'em — retro arcade pick app.
 // Picks are cached per-manager in localStorage and, when configured,
 // synced through a small Cloudflare Worker (worker/src/index.js, the
@@ -500,9 +503,9 @@ function rankBadge(rank) {
   return rank ? `<i class="tm-rank" title="AP rank">${rank}</i>` : "";
 }
 
-function parseEspnEvents(events) {
+function parseEspnEvents(events, games = GAMES) {
   const byId = {};
-  GAMES.forEach((game) => {
+  games.forEach((game) => {
     const event = events.find((e) => {
       const ids = ((e?.competitions?.[0]?.competitors) || []).map((c) => Number(c?.team?.id));
       return ids.includes(game.awayId) && ids.includes(game.homeId);
@@ -561,6 +564,9 @@ function parseEspnEvents(events) {
       clock: comp.status?.displayClock ?? null,
       awayScore: away?.score != null ? Number(away.score) : null,
       homeScore: home?.score != null ? Number(home.score) : null,
+      // Points by quarter, for second-half side bets.
+      awayLines: Array.isArray(away?.linescores) ? away.linescores.map((x) => Number(x?.value) || 0) : null,
+      homeLines: Array.isArray(home?.linescores) ? home.linescores.map((x) => Number(x?.value) || 0) : null,
       winProb,
       // Where the ball is, for the live view on the sheet.
       awayColor: away?.team?.color ? `#${away.team.color}` : null,
@@ -634,6 +640,7 @@ async function fetchLiveFromEspn() {
     if (window.LEAGUE?.sport === "nfl") espnDirectOffUntil = Date.now() + 10 * 60000;
     throw new Error("espn scoreboard unavailable");
   }
+  espnPartial = ok < answers.length;
   return parseEspnEvents(events);
 }
 
@@ -657,7 +664,10 @@ async function fetchLiveFromWorker() {
 
 // Latest live map, shared with the picks screen so locked games there show
 // the score without their own fetch.
-let latestLive = {};
+let latestLive = {}, latestLiveWeek = null;
+// Whether the last read answered (the board's copy is fresh), and whether
+// ESPN answered for only some of the slate's days.
+let liveLastOk = false, espnPartial = false;
 // How long a live-scores fetch stays good. Every time while a game is on
 // (or might be: kicked off within five hours and not final), every minute
 // in the two hours before a kickoff, every five minutes otherwise. A
@@ -692,10 +702,17 @@ async function fetchLiveScoresNow() {
   }
   if (!Object.keys(live).length) {
     try { live = await fetchLiveFromWorker(); answered = true; } catch { live = {}; }
+  } else if (espnPartial) {
+    // A day that timed out would leave its games blank; the Worker fills them.
+    try { const w = await fetchLiveFromWorker(); for (const [id, g] of Object.entries(w)) if (!live[id]) live[id] = g; } catch {}
   }
-  if (Object.keys(live).length) latestLive = live;
+  // A game this phone already saw finish stays finished: a read that
+  // missed it is no reason to play it out again.
+  if (Object.keys(live).length && latestLiveWeek === currentWeek) for (const [id, g] of Object.entries(latestLive)) if (g?.completed && !live[id]) live[id] = g;
+  if (Object.keys(live).length) { latestLive = live; latestLiveWeek = currentWeek; }
   // A failed fetch is never reused; an answer (even "no games yet") is.
   if (answered) liveFetchedAt = Date.now();
+  liveLastOk = answered;
   return Object.keys(live).length ? live : latestLive;
 }
 
@@ -1199,7 +1216,7 @@ const VISIT_KEY = "brochiefs_visit_v1";
 function stampVisit() {
   const me = loadMe();
   // Jake is the admin: his opens don't count toward the league's.
-  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry) return;
+  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || window.__liveView) return;
   let last = 0;
   try { last = Number(localStorage.getItem(VISIT_KEY)) || 0; } catch {}
   // One open per five minutes at most (paid plan: writes are cheap now).
@@ -1249,6 +1266,7 @@ setTimeout(stampVisit, 1500);
 setTimeout(flushTele, 4000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) stampVisit(); });
 
+// Presence, for the admin's live page: what's open and what's being used.
 // Uses go out a moment after they happen (batched), a still-here beat
 // every 30 seconds while the app is on screen, and a goodbye when it's put
 // away. Beacons only, never awaited, so nothing here can slow the app.
@@ -1308,7 +1326,7 @@ function endSession() {
   const h = { e: appHealth.e, em: appHealth.em.slice(), ff: { ...appHealth.ff }, sl: { ...appHealth.sl }, ld: appHealth.ld };
   appHealth.e = 0; appHealth.em = []; appHealth.ff = { espn: 0, worker: 0 }; appHealth.sl = { espn: 0, worker: 0 }; appHealth.ld = -1; // load time only once per page
   const me = loadMe();
-  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || dur < 3000) return;
+  if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || window.__liveView || dur < 3000) return;
   const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, gt, h: h.ld === -1 ? { ...h, ld: null } : h, v: typeof APP_VERSION === "string" ? APP_VERSION : "" });
   try {
     // text/plain keeps the beacon a simple request (no CORS preflight).
@@ -1321,9 +1339,9 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) endSe
 addEventListener("pagehide", endSession);
 
 function track(path, extra) {
-  noteUse(path);
+  noteUse(path, extra?.d);
   try {
-    if (PREVIEW || window.LEAGUE?.features?.analytics === false || !window.goatcounter || typeof window.goatcounter.count !== "function") return;
+    if (PREVIEW || window.__liveView || window.LEAGUE?.features?.analytics === false || !window.goatcounter || typeof window.goatcounter.count !== "function") return;
     window.goatcounter.count({ path, title: extra?.title || path, event: !!extra?.event });
   } catch {}
 }
@@ -1333,7 +1351,11 @@ function track(path, extra) {
 let lastTrackedScreen = null;
 function setActiveNav(target) {
   if (target !== lastTrackedScreen) { lastTrackedScreen = target; track(`/${target}`); }
-  [navPicksBtn, navScoreboardBtn, navHistoryBtn, navTriviaBtn].forEach((btn) => btn.classList.remove("active"));
+  [navPicksBtn, navScoreboardBtn, navHistoryBtn, navTriviaBtn, document.getElementById("nav-side-btn")].forEach((btn) => btn?.classList.remove("active"));
+  // The Side bet screen is only hidden here, the one place every screen
+  // change passes through.
+  if (target === "side") document.getElementById("nav-side-btn")?.classList.add("active");
+  else document.getElementById("side-screen")?.classList.add("hidden");
   if (target === "history") navHistoryBtn.classList.add("active");
   if (target === "trivia") navTriviaBtn.classList.add("active");
   // The roster has no tab of its own — the pill in the header is how you
@@ -1501,7 +1523,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202610191301";
+  tag.src = "admin.js?v=202610200027";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1570,7 +1592,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202610191301";
+  tag.src = "console.js?v=202610200027";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -1715,7 +1737,7 @@ function showPicksScreen() {
   setActiveNav("picks");
   enterScreen("picks");
   maybeShowBoner();
-  maybeShowQotw();
+  maybeShowQotw().finally(() => maybeShowPoll());
   return syncManagerFromCloud(currentManager).then((cloud) => {
     if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
     // After the sync, so a phone that has not seen its picks yet does not
@@ -2103,6 +2125,7 @@ function openOwnerPicker() {
 // Restore the first-visit wording whenever the claim prompt is used again
 const _openClaimPrompt = openClaimPrompt;
 openClaimPrompt = function () {
+  if (window.__liveView) return;
   document.getElementById("claim-title").textContent = "WHO ARE YOU?";
   document.getElementById("claim-subtext").textContent = "Pick your name once and this phone will remember you.";
   claimSkipBtn.textContent = "Just looking for now";
@@ -2751,38 +2774,46 @@ function fetchBoardPicks() {
   return boardPicksInFlight;
 }
 
-// The last board this phone drew, kept so the next open paints it at once
-// (marked as a saved copy) while fresh picks and scores load behind it.
+// The board as last seen on this phone (picks as the Worker served them,
+// so nothing hidden before lock is here), drawn once on open while the
+// fresh copy loads, so the scoreboard is there at once.
 const BOARD_CACHE_KEY = "brochiefs_board_v1";
 let bootBoard = null;
-try {
-  const c = JSON.parse(localStorage.getItem(BOARD_CACHE_KEY) || "null");
-  if (c && c.picks && c.live && Date.now() - c.at < 12 * 3600000) bootBoard = c;
-} catch {}
+function loadBootBoard() {
+  try {
+    const c = JSON.parse(localStorage.getItem(BOARD_CACHE_KEY) || "null");
+    if (c && c.week === currentWeek && c.picks && c.live && Date.now() - c.at < 7 * 86400000) bootBoard = c;
+  } catch {}
+}
 async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
-  maybeShowQotw();
+  maybeShowQotw().finally(() => maybeShowPoll());
   if (bootBoard) {
     const b = bootBoard; bootBoard = null;
-    if (b.week === currentWeek) {
-      if (!Object.keys(latestLive).length) latestLive = b.live;
-      try { paintScoreboard(b.picks, b.live, true); } catch (err) { console.warn("saved board", err); }
-    }
+    if (!Object.keys(latestLive).length) { latestLive = b.live; latestLiveWeek = b.week; }
+    try { paintScoreboard(b.picks, b.live, true); } catch (err) { console.warn("cached board", err); }
   }
   // Picks and scores together, not picks and then scores.
   const [fetched, live] = await Promise.all([fetchBoardPicks(), fetchLiveScores()]);
   paintScoreboard(fetched, live, false);
 }
-function paintScoreboard(fetched, live, cached) {
-  cloudPicksStale = !cached && fetched === null;
-  const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
+function boardCloudPicks(rawPicks) {
   const cloudPicks = {};
   MANAGERS.forEach((name) => {
     const state = rawPicks[name];
     if (state) cloudPicks[name] = { ...state, picks: name === currentManager ? sanitizePicks(state.picks) : sanitizeRoomPicks(state.picks) };
   });
-  if (fetched !== null) lastGoodCloudPicks = rawPicks;
+  return cloudPicks;
+}
+function paintScoreboard(fetched, live, cached) {
+  cloudPicksStale = fetched === null;
+  const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
+  const cloudPicks = boardCloudPicks(rawPicks);
+  if (fetched !== null && !cached) lastGoodCloudPicks = rawPicks;
+  // Saved only from a read that answered, so old scores are never saved
+  // again as if they were new.
+  if (!cached && liveLastOk && fetched !== null && Object.keys(live || {}).length) { try { localStorage.setItem(BOARD_CACHE_KEY, JSON.stringify({ week: currentWeek, at: Date.now(), picks: rawPicks, live })); } catch {} }
   const results = computeLiveResults(live);
 
   if (!cached) archiveWeekIfFinal(results);
@@ -2792,7 +2823,9 @@ function paintScoreboard(fetched, live, cached) {
   const ranked = rankManagers(cloudPicks, results);
   renderScoreboardTable(cloudPicks, results, live, ranked);
   renderRankings(cloudPicks, results, live, ranked);
+  const firstRows = !liveWeekRows.length && ranked.length;
   liveWeekRows = ranked;
+  if (firstRows && potOpen()) renderPayouts();
   // The picks screen shows a one-line version of exactly these standings,
   // so it takes the board's copy rather than fetching its own again.
   picksStandingRows = ranked;
@@ -2806,13 +2839,16 @@ function paintScoreboard(fetched, live, cached) {
   }
   renderWeekChamp(ranked, results);
   renderInsertCoin(cloudPicks);
+  renderSidePot();
+  if (!cached) maybeShowPathIntro();
+  if (!cached) fetchSidePot().then(() => { renderSidePot(); maybeShowSidePrompt(); });
   // The clock lives inside the strip when there is one, so the board does
   // not spend a whole line on it. Seconds are gone: the poll is every 30,
   // so second-level precision was never true.
   const stamp = document.getElementById("scoreboard-updated");
   if (stamp) {
     const noData = !Object.keys(live).length;
-    stamp.textContent = cached ? "saved copy · updating…" : `${clockLabel()}${noData ? " · no live data" : ""}${cloudPicksStale ? " · ⚠ picks not reloaded" : ""} · tap to refresh`;
+    stamp.textContent = cached ? "updating…" : `${clockLabel()}${noData ? " · no live data" : !liveLastOk ? " · scores not updated" : ""}${cloudPicksStale ? " · ⚠ picks not reloaded" : ""} · tap to refresh`;
     stamp.classList.toggle("stale", cloudPicksStale);
     stamp.classList.remove("busy");
     // Hidden whenever the strip is carrying the clock; shown on its own
@@ -2843,6 +2879,801 @@ function renderInsertCoin(cloudPicks) {
   el.classList.remove("hidden");
 }
 document.getElementById("insert-coin")?.addEventListener("click", () => navPicksBtn.click());
+
+// --- Side pot --------------------------------------------------------------
+// Once the week is decided the commissioner can open a late night side pot
+// on a few games still to come (worker/src/side.js). Everyone picks the
+// same games, scored like the main pool; most points takes the pot and
+// ties split it. Each player is asked once when they open the board, picks
+// in one sheet, and the board carries a card: who is in before the games,
+// a small leaderboard once they start, who owes whom at the end. The app
+// keeps the ledger only; nobody pays through it. College only.
+let sidePot = null, sidePotAt = 0, sidePotWeek = 0, sideInFlight = null, sidePromptShown = false;
+const potNow = () => (sidePot && sidePotWeek === currentWeek && sidePot.week === currentWeek ? sidePot : null);
+const sideOpen = (pot) => !!pot && pot.open && Date.now() < pot.closesAt;
+const sideDoneKey = (pot, who) => `brochiefs_side_${pot.week}_${pot.id}_${who}`;
+// In the bet but short of picks: games were added after they joined, or a
+// tiebreaker was set.
+const sideNeedsPicks = (pot, who) => {
+  const e = pot?.entrants?.[who];
+  if (!e || !e.picks) return false;
+  const tot = (id) => (pot.slate || []).find((g) => String(g.id) === String(id))?.total;
+  return pot.games.some((id) => !e.picks[id] || (tot(id) != null && !e.picks[id].ou)) || (pot.tbGame != null && !Number.isFinite(e.tb));
+};
+function fetchSidePot(force = false) {
+  if (!WORKER_URL || window.LEAGUE?.sport === "nfl") return Promise.resolve(null);
+  if (!force && sidePotWeek === currentWeek && Date.now() - sidePotAt < 20000) return Promise.resolve(potNow());
+  if (sideInFlight) return sideInFlight;
+  const who = currentManager || loadMe();
+  const me = who && MANAGERS.includes(who) ? `&me=${encodeURIComponent(who)}${tokenFor(who) ? `&token=${encodeURIComponent(tokenFor(who))}` : ""}` : "";
+  const week = currentWeek;
+  sideInFlight = fetchCapped(`${WORKER_URL}/side?week=${week}${me}&t=${Date.now()}`, { cache: "no-store" }, 8000)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => { if (d && "pot" in d) { sidePot = d.pot; sidePotAt = Date.now(); sidePotWeek = week; } return fetchSideLive().catch(() => {}); })
+    .then(() => potNow())
+    .catch(() => potNow())
+    .finally(() => { sideInFlight = null; });
+  return sideInFlight;
+}
+// The pot carries its games whole (pot.slate), so a game off this week's
+// slate works the same; a slate game uses the slate's copy. Older pots
+// held ids only.
+// The pot's copy carries the over/under total the slate does not have.
+const sideGames = (pot) => pot.own ? pot.slate : (pot.slate || pot.games.map((id) => ({ id }))).map((g) => { const x = GAMES.find((y) => String(y.id) === String(g.id)); return x ? { ...x, ...(g.total != null ? { total: g.total } : {}) } : g.away ? g : null; }).filter(Boolean);
+const onSlate = (g) => typeof g.id === "number" && GAMES.some((x) => x.id === g.id);
+// A pool game goes by its number; a game off the slate is marked as such.
+const sideTag = (g) => (g.half === 2 ? "2ND HALF" : g.half === 1 ? "1ST HALF" : onSlate(g) ? `G${g.id}` : "BONUS");
+const sideMatch = (g) => `${g.awayShort} @ ${g.homeShort}${g.half === 2 ? " (2nd half)" : g.half === 1 ? " (1st half)" : ""}`;
+// Live scores for side games off the slate, read from ESPN the same way
+// the board reads its own.
+let sideLive = {}, sideLiveAt = 0, sideLiveKey = "";
+async function fetchSideLive(force = false) {
+  const pot = potNow();
+  const extra = pot ? sideGames(pot).filter((g) => !onSlate(g)) : [];
+  if (!extra.length) return sideLive;
+  const key = extra.map((g) => g.id).join(",");
+  if (!force && key === sideLiveKey && Date.now() - sideLiveAt < 20000) return sideLive;
+  const days = [...new Set(extra.map((g) => new Date(g.kickoff).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "")))];
+  const answers = await Promise.all(days.flatMap((d) => [80, 81].map((grp) => fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${d}&groups=${grp}&limit=300&t=${Date.now()}`, { cache: "no-store" }, 6000).then((r) => (r.ok ? r.json() : null)).catch(() => null))));
+  const events = answers.flatMap((a) => a?.events || []);
+  if (events.length) { sideLive = { ...sideLive, ...parseEspnEvents(events, extra) }; sideLiveAt = Date.now(); sideLiveKey = key; }
+  return sideLive;
+}
+const sideRawOf = (g) => (onSlate(g) ? latestLive[g.id] : sideLive[g.id]);
+// A second-half bet sees only third quarter and later points: the score
+// less the first two quarters. Before the third quarter it has not
+// started; without ESPN's quarter scores it cannot be scored yet.
+function halfView(l) {
+  if (!l?.found) return l;
+  const p = Number(l.period) || 0;
+  if (!l.completed && p < 3) return { ...l, state: "pre", completed: false, awayScore: 0, homeScore: 0 };
+  if (!(l.awayLines?.length >= 2 && l.homeLines?.length >= 2)) return { ...l, state: l.completed ? "in" : l.state, completed: false, awayScore: null, homeScore: null };
+  const first = (a) => a[0] + a[1];
+  return { ...l, awayScore: l.awayScore - first(l.awayLines), homeScore: l.homeScore - first(l.homeLines) };
+}
+// A first-half bet is the game until halftime; from the third quarter
+// on it is settled at the first two quarters' points.
+function firstHalfView(l) {
+  if (!l?.found) return l;
+  const p = Number(l.period) || 0;
+  if (!l.completed && p < 3) return l;
+  if (!(l.awayLines?.length >= 2 && l.homeLines?.length >= 2)) return { ...l, completed: false, state: "in", awayScore: null, homeScore: null };
+  return { ...l, state: "post", completed: true, awayScore: l.awayLines[0] + l.awayLines[1], homeScore: l.homeLines[0] + l.homeLines[1], detail: "1st half final" };
+}
+const sideLiveOf = (g) => (g.half === 2 ? halfView(sideRawOf(g)) : g.half === 1 ? firstHalfView(sideRawOf(g)) : sideRawOf(g));
+const sideResultOf = (g) => { const l = sideLiveOf(g); if (l?.completed && Number.isFinite(l.awayScore) && Number.isFinite(l.homeScore)) return { awayScore: l.awayScore, homeScore: l.homeScore }; return potNow()?.finals?.[g.id] || null; };
+const sideMoney = (x) => `$${Number.isInteger(x) ? x : x.toFixed(2)}`;
+const sideNames = (list) => list.map((n) => shown(n)).join(list.length === 2 ? " and " : ", ");
+// Each entrant's side points: banked from finals, in flight from games on now.
+// An over/under pick is worth 2; landing exactly on the total pays nothing.
+const SIDE_OU_PTS = 2;
+const scoreOu = (g, ou, score) => (g.total == null || !ou ? null : score.awayScore + score.homeScore === g.total ? 0 : (score.awayScore + score.homeScore > g.total) === (ou === "over") ? SIDE_OU_PTS : 0);
+// resOf reads a game's final: live by default, or a past bet's kept
+// finals for the season board (no live points there).
+function sideStandings(pot, resOf = sideResultOf) {
+  const games = sideGames(pot);
+  const live = resOf === sideResultOf;
+  const rows = Object.entries(pot.entrants || {}).map(([name, e]) => {
+    let pts = 0, fly = 0;
+    // One cell per pick: the side on each game, then its over/under.
+    const cell = (g, pick, ou, worth, score) => {
+      const base = { g, pick, ou };
+      const res = resOf(g);
+      if (res) { const p = score(res) || 0; pts += p; return { ...base, cls: p ? "hit" : "miss", txt: p ? `+${p}` : "0" }; }
+      const lv = live ? sideLiveOf(g) : null;
+      if (lv?.found && lv.state === "in" && Number.isFinite(lv.awayScore) && Number.isFinite(lv.homeScore)) {
+        const p = score(lv) || 0; fly += p;
+        return { ...base, cls: p ? "live-hit" : "live-miss", txt: p ? `+${p}` : "0" };
+      }
+      return { ...base, cls: "open", txt: String(worth) };
+    };
+    const cells = games.flatMap((g) => {
+      const pick = e.picks?.[g.id];
+      // No pick: still hidden while open; after the close, a game added
+      // later that they never picked scores nothing.
+      if (!pick) return [live && sideOpen(pot) ? { g, pick: null, cls: "hidden", txt: "?" } : { g, pick: null, cls: "miss", txt: "—" }];
+      const out = [cell(g, pick, null, pointValue(g, pick.team, pick.mode), (sc) => scorePick(g, pick, sc))];
+      // An over/under is settled at the final only: 0-0 is under every
+      // total, so counting it live would hand everyone points at kickoff.
+      if (g.total != null && pick.ou) out.push(resOf(g) ? cell(g, pick, pick.ou, SIDE_OU_PTS, (sc) => scoreOu(g, pick.ou, sc)) : { g, pick, ou: pick.ou, cls: "open", txt: String(SIDE_OU_PTS) });
+      return out;
+    });
+    return { name, pts, fly, cells, paid: !!e.paid, tb: e.tb };
+  });
+  rows.sort((a, b) => b.pts + b.fly - (a.pts + a.fly) || b.pts - a.pts || a.name.localeCompare(b.name));
+  return { rows, games, resOf, final: games.length > 0 && games.every((g) => resOf(g)) };
+}
+// The money once every pot game is final. Level on points goes to the
+// tiebreaker (closest guess at the last game's total); still level splits.
+// One entrant, or everyone level all the way, is no bet.
+function sideOutcome(pot, st = sideStandings(pot)) {
+  const n = st.rows.length, total = n * pot.buyIn;
+  const out = { n, total, final: st.final, winners: [], losers: [], share: 0, net: 0 };
+  if (!st.final || n < 2) return out;
+  const top = Math.max(...st.rows.map((r) => r.pts));
+  let lead = st.rows.filter((r) => r.pts === top);
+  const tbG = pot.tbGame != null ? st.games.find((g) => String(g.id) === String(pot.tbGame)) : null;
+  const tbRes = tbG ? (st.resOf || sideResultOf)(tbG) : null;
+  if (lead.length > 1 && tbRes) {
+    const actual = tbRes.awayScore + tbRes.homeScore;
+    const off = (r) => (Number.isFinite(r.tb) ? Math.abs(r.tb - actual) : Infinity);
+    const best = Math.min(...lead.map(off));
+    if (Number.isFinite(best)) { lead = lead.filter((r) => off(r) === best); out.tiebreak = { actual, game: tbG }; }
+  }
+  out.winners = lead.map((r) => r.name);
+  out.losers = st.rows.filter((r) => !out.winners.includes(r.name)).map((r) => r.name);
+  if (!out.losers.length) return { ...out, push: true };
+  out.share = total / out.winners.length;
+  out.net = out.share - pot.buyIn; // what each winner collects from the others
+  return out;
+}
+// The side bet scoreboard: a grid, one column per game (logos, where it
+// stands), one row per player (tied places share a rank), each cell the
+// team picked, spread or WIN, and what it pays, with the over/under under
+// it. The total counts live points, labelled as such.
+function sideBoardHtml(pot, st, out, me) {
+  const esc = escapeCd;
+  const games = st.games;
+  const total = (r) => r.pts + r.fly;
+  const rows = sideRowsInOrder(st, out);
+  const rankOf = (r) => 1 + rows.filter((x) => total(x) > total(r)).length;
+  const tied = (r) => rows.filter((x) => total(x) === total(r)).length > 1;
+  const head = games.map((g) => {
+    const l = sideLiveOf(g), fin = !!sideResultOf(g), on = l?.found && l.state === "in" && !l.completed;
+    const where = fin ? "FINAL" : on ? `${l.awayScore}-${l.homeScore}` : g.half === 2 && sideRawOf(g)?.state === "in" ? "2H NEXT" : new Date(g.kickoff).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).replace(" ", "");
+    const score = fin || on ? `<b>${l.awayScore}</b><i>-</i><b>${l.homeScore}</b>` : `<span>${where}</span>`;
+    return `<div class="ssg-h${on ? " live" : fin ? " final" : ""}"><div class="ssg-bug"><img src="${logoUrl(g.awayId)}" alt="" onerror="this.style.visibility='hidden'"><div class="ssg-sc">${score}</div><img src="${logoUrl(g.homeId)}" alt="" onerror="this.style.visibility='hidden'"></div><div class="ssb-tag">${on ? `<u></u>${esc(shortStatus(l.detail || ""))}` : fin ? "FINAL" : sideTag(g)}${String(pot.tbGame) === String(g.id) ? " · ★TB" : ""}</div></div>`;
+  }).join("");
+  // A pick as a small card: the team's logo, the team in bold with the
+  // bet under it, and a points badge coloured by how it stands; an
+  // over/under gets its own line and badge.
+  const badge = (c) => `<b class="ssp-pts ${c.cls}">${c.cls === "miss" ? "✕" : c.cls === "hit" || c.cls === "live-hit" ? `+${c.ou ? SIDE_OU_PTS : c.txt.replace("+", "")}` : c.cls === "live-miss" ? "0" : c.txt}</b>`;
+  const abbr = (g, team) => { const l = sideRawOf(g); const a = team === g.home ? l?.homeAbbr : l?.awayAbbr; return a || (team === g.home ? g.homeShort : g.awayShort); };
+  const cell = (r, g) => {
+    const side = r.cells.find((c) => c.g.id === g.id && !c.ou), ou = r.cells.find((c) => c.g.id === g.id && c.ou);
+    if (!side?.pick) return `<div class="ssp empty"><span>no pick</span></div>`;
+    const p = side.pick, id = sideTeamId(g, p.team);
+    const what = p.mode === "SU" ? "TO WIN" : `${p.team === g.favorite ? "-" : "+"}${g.spread}`;
+    return `<div class="ssp ${side.cls}">
+      <div class="ssp-main"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span class="ssp-t"><b>${esc(abbr(g, p.team))}</b><small>${what}</small></span>${badge(side)}</div>
+      ${g.total != null ? `<div class="ssp-ou ${ou?.cls || "none"}"><span>${ou ? `${ou.ou === "over" ? "O" : "U"} ${g.total}` : "no O/U"}</span>${ou ? badge(ou) : ""}</div>` : ""}
+    </div>`;
+  };
+  // A player's line (place, name, guess, total), then their picks in a row
+  // of equal columns lined up under the game headers.
+  // The most a player can still reach: everything not already lost.
+  const reach = (r) => r.cells.reduce((t, c) => t + (c.pick && c.cls !== "miss" ? (c.ou ? SIDE_OU_PTS : pointValue(c.g, c.pick.team, c.pick.mode)) : 0), 0);
+  const scale = Math.max(1, ...rows.map(reach));
+  const body = rows.map((r) => { const rk = rankOf(r), lead = rk === 1 && total(r) > 0; return `<div class="ssg-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) || (!out.final && lead) ? " lead" : ""} rk${Math.min(rk, 4)}">
+      <div class="ssg-who"><i class="ssg-rk">${tied(r) ? "T" : ""}${rk}</i><span class="ssg-av" style="--accent:${accentFor(r.name)}">${esc(avatarOverrides[r.name] || shown(r.name)[0])}</span><span class="ssg-nm">${esc(shown(r.name))}${out.winners.includes(r.name) ? " 🏆" : ""}</span>${Number.isFinite(r.tb) ? `<small>TB ${r.tb}</small>` : ""}<b>${total(r)}<em>${out.final ? "final" : !r.fly ? "" : r.pts ? `${r.pts} locked` : "live"}</em></b></div>
+      <div class="ssg-race" title="${total(r)} now, ${reach(r)} still possible"><i class="can" style="width:${((reach(r) / scale) * 100).toFixed(1)}%"></i><i class="has" style="width:${((total(r) / scale) * 100).toFixed(1)}%"></i></div>
+      <div class="ssg-cells">${games.map((g) => cell(r, g)).join("")}</div>
+    </div>`; }).join("");
+  return `<div class="ss-sec">SCOREBOARD${out.final ? " · FINAL" : ""}</div>
+    <div class="ssg-wrap"><div class="ssg" style="--n:${games.length}"><div class="ssg-heads">${head}</div>${body}</div></div>
+    <div class="ss-note">The bar: points now, and how far each player can still get. ✓ paid, ✕ lost, glowing is live.${pot.tbGame != null ? " ★TB is the tiebreaker game." : ""}</div>`;
+}
+// Winners first (a tiebreaker can put the winner level with someone above).
+const sideRowsInOrder = (st, out) => [...st.rows].sort((a, b) => out.winners.includes(b.name) - out.winners.includes(a.name) || b.pts + b.fly - (a.pts + a.fly) || b.pts - a.pts || a.name.localeCompare(b.name));
+function sideTeamId(g, team) { return team === g.home ? g.homeId : team === g.away ? g.awayId : null; }
+// One pick in a standings row: the team's logo and ATS/SU, or OVR/UND.
+function sideCellHtml(c) {
+  if (c.ou) return `<span class="sp-c ou ${c.cls}" title="${c.ou} ${c.g.total}"><i>${c.ou === "over" ? "OVR" : "UND"}</i><b>${c.txt}</b></span>`;
+  const id = c.pick ? sideTeamId(c.g, c.pick.team) : null;
+  return `<span class="sp-c ${c.cls}">${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ""}<i>${c.pick ? c.pick.mode : ""}</i><b>${c.txt}</b></span>`;
+}
+const SIDE_STANDALONE = true;
+// Once every side game is final, this phone hands the finals to the
+// Worker, which files the bet in the season's side bet record (apart from
+// the pool's). Once per bet per phone, unless the Worker had a gap.
+const sideFinalsSent = new Set();
+let sideHistory = null, sideHistoryAt = 0;
+function postSideFinals(pot) {
+  if (!pot || sideOpen(pot) || sideFinalsSent.has(pot.id) || !WORKER_URL) return;
+  const games = sideGames(pot);
+  if (!games.length || games.every((g) => pot.finals?.[g.id])) return;
+  const finals = Object.fromEntries(games.map((g) => [g.id, sideResultOf(g)]).filter(([, r]) => r));
+  if (Object.keys(finals).length < games.length) return;
+  sideFinalsSent.add(pot.id);
+  fetch(`${WORKER_URL}/side`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "finals", week: pot.week, potId: pot.id, finals }) })
+    .then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.ok) { pot.finals = { ...(pot.finals || {}), ...finals }; sideHistory = null; } else sideFinalsSent.delete(pot.id); })
+    .catch(() => sideFinalsSent.delete(pot.id));
+}
+function renderSidePot() {
+  const el = document.getElementById("side-pot");
+  if (!el) return;
+  const pot = potNow();
+  const names = pot ? Object.keys(pot.entrants || {}) : [];
+  try { postSideFinals(pot); } catch {}
+  updateSideNav();
+  renderSideScreen();
+  // The side bet has its own tab now and stays off the pool's board.
+  if (SIDE_STANDALONE || !pot || !currentManager || window.LEAGUE?.sport === "nfl" || (!sideOpen(pot) && !names.length)) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const me = currentManager, mine = pot.entrants[me];
+  const total = names.length * pot.buyIn;
+  const games = sideGames(pot);
+  let body;
+  if (sideOpen(pot)) {
+    const cd = kickoffCountdown(new Date(pot.closesAt).toISOString());
+    body = `<div class="sp-head"><span class="sp-kick">💰 LATE NIGHT SIDE POT</span><span class="sp-pot">${sideMoney(total)}</span></div>
+      <div class="sp-games">${games.map((g) => `<span>${escapeCd(g.awayShort)} @ ${escapeCd(g.homeShort)}</span>`).join("")}</div>
+      <div class="sp-in">${names.length ? `<b>${names.length} IN</b> ${names.map((n) => escapeCd(shown(n))).join(" · ")}` : "Nobody's in yet."}</div>
+      <div class="sp-foot"><span class="sp-close">$${pot.buyIn} to get in · closes in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b></span>
+        <button type="button" class="sp-btn${mine && !sideNeedsPicks(pot, me) ? " in" : ""}" data-sp="open">${sideNeedsPicks(pot, me) ? "NEW GAMES · FINISH PICKS" : mine ? "✓ YOU'RE IN · EDIT" : `I'M IN · $${pot.buyIn}`}</button></div>`;
+  } else {
+    const st = sideStandings(pot), out = sideOutcome(pot, st);
+    const head = !out.final ? `${names.length} IN · ${sideMoney(total)} POT`
+      : out.n < 2 ? "ONE TAKER · NO BET"
+      : out.push ? "DEAD HEAT · NO MONEY MOVES"
+      : out.winners.length > 1 ? `${escapeCd(sideNames(out.winners).toUpperCase())} SPLIT ${sideMoney(out.total)}`
+      : `🏆 ${escapeCd(shown(out.winners[0]).toUpperCase())} TAKES ${sideMoney(out.total)}${out.tiebreak ? " ON THE TIEBREAKER" : ""}`;
+    const rows = sideRowsInOrder(st, out).map((r) => `<div class="sp-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) ? " win" : ""}">
+      <span class="sp-nm">${escapeCd(shown(r.name))}${Number.isFinite(r.tb) ? `<small class="sp-tb">TB ${r.tb}</small>` : ""}</span>
+      <span class="sp-cells">${r.cells.map(sideCellHtml).join("")}</span>
+      <span class="sp-pts">${r.pts}${r.fly ? `<small>+${r.fly}</small>` : ""}</span></div>`).join("");
+    // Who settles with whom, once it is over: each loser owes the buy-in,
+    // each winner collects their share of it.
+    const ledger = out.final && out.n >= 2 && !out.push
+      ? `<div class="sp-ledger"><span>${out.losers.map((n) => `${escapeCd(shown(n))}${pot.entrants[n]?.paid ? " (paid)" : ""}`).join(", ")} owe${out.losers.length === 1 ? "s" : ""} ${sideMoney(pot.buyIn)}${out.losers.length === 1 ? "" : " each"}</span><span>${escapeCd(sideNames(out.winners))} collect${out.winners.length === 1 ? "s" : ""} ${sideMoney(out.net)}${out.winners.length === 1 ? "" : " each"}</span></div>` : "";
+    body = `<div class="sp-head"><span class="sp-kick">💰 SIDE POT</span><span class="sp-pot sm">${head}</span></div>
+      <div class="sp-board">${rows}</div>${ledger}`;
+  }
+  el.innerHTML = `<div class="sp-card${sideOpen(pot) ? " open" : ""}">${body}</div>`;
+  el.classList.remove("hidden");
+}
+document.getElementById("side-pot")?.addEventListener("click", (e) => {
+  if (e.target.closest("[data-sp='open']")) return openSideSheet(false);
+  if (sideIn()) showSideScreen();
+});
+// The countdown on the card ticks; at the close the card turns into the
+// leaderboard with everyone's picks.
+setInterval(() => {
+  const pot = potNow();
+  if (!pot || document.hidden) return;
+  const c = kickoffCountdown(new Date(pot.closesAt).toISOString());
+  document.querySelectorAll("[data-sp-cd]").forEach((cd) => { cd.textContent = c && !c.past ? c.text : "now"; });
+  if (pot.open && Date.now() >= pot.closesAt) { pot.open = false; document.getElementById("side-modal")?.remove(); fetchSidePot(true).then(renderSidePot); }
+}, 1000);
+
+// Asked once, on the board, when it opens. Not over another pop-up: if one
+// is up, the next refresh asks again.
+function maybeShowSidePrompt() {
+  const pot = potNow();
+  if (sidePromptShown || !sideOpen(pot) || !currentManager || window.__adminEntry || window.__adminOpen || window.__liveView) return;
+  const owes = sideNeedsPicks(pot, currentManager);
+  if (!owes && (pot.entrants[currentManager] || pot.declined.includes(currentManager))) return;
+  try { if (!owes && localStorage.getItem(sideDoneKey(pot, currentManager))) return; } catch {}
+  const busy = () => scoreboardScreen.classList.contains("hidden") || [...document.querySelectorAll(".modal-overlay, .wpx-overlay, .pr-screen, .np-screen")].some((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none");
+  if (busy()) return;
+  sidePromptShown = true;
+  setTimeout(() => { if (busy()) { sidePromptShown = false; return; } openSideSheet(true); }, 1500);
+}
+
+// A group text for the side bet, from the console. Final: who won, who
+// owes whom (unpaid only), with a Venmo pay link per winner, amount and
+// note filled in; a split divides each share between the winners. Before
+// that: who is in. Venmo handles are asked for once and kept on this
+// device. Shared through the phone's share sheet, else copied.
+const VENMO_KEY = "brochiefs_venmo_handles";
+function venmoHandle(name) {
+  let all = {};
+  try { all = JSON.parse(localStorage.getItem(VENMO_KEY) || "{}") || {}; } catch {}
+  if (all[name]) return all[name];
+  const h = (window.prompt(`${shown(name)}'s Venmo username (for the pay link)? Leave blank to skip.`) || "").trim().replace(/^@/, "");
+  if (h) { all[name] = h; try { localStorage.setItem(VENMO_KEY, JSON.stringify(all)); } catch {} }
+  return h;
+}
+async function sideVenmoText(pot, out, say) {
+  const money = (x) => `$${Number.isInteger(x) ? x : x.toFixed(2)}`;
+  const games = sideGames(pot).map((g) => sideMatch(g)).join(", ");
+  const ins = Object.keys(pot.entrants || {});
+  let text;
+  if (!out.final) {
+    text = `💰 Late night side bet: ${money(pot.buyIn)} each, ${ins.length} in (${ins.map(shown).join(", ")}). Games: ${games}. Pot ${money(ins.length * pot.buyIn)}. Settle up after the last game.`;
+  } else if (out.n < 2 || out.push) {
+    text = `💰 Late night side bet is final: ${out.n < 2 ? "only one taker" : "dead heat"}, so no money moves.`;
+  } else {
+    const share = pot.buyIn / out.winners.length;
+    const owing = out.losers.filter((n) => !pot.entrants[n]?.paid);
+    const note = encodeURIComponent(`Brochiefs side bet wk${pot.week}`);
+    const pay = out.winners.map((w) => { const h = venmoHandle(w); return `Pay ${shown(w)} ${money(share)}${h ? `: https://venmo.com/${encodeURIComponent(h)}?txn=pay&amount=${share}&note=${note}` : ""}`; });
+    text = [`💰 Late night side bet is final. 🏆 ${sideNames(out.winners)} ${out.winners.length > 1 ? "split" : "takes"} ${money(out.total)}${out.tiebreak ? ` (tiebreaker, total ${out.tiebreak.actual})` : ""}.`,
+      owing.length ? `${owing.map(shown).join(", ")}: please pay ${out.winners.length > 1 ? "each winner " : ""}${money(share)}${out.winners.length > 1 ? ` (${money(pot.buyIn)} total)` : ""} on Venmo.` : "Everyone has paid. Thanks!",
+      ...(owing.length ? pay : [])].join("\n");
+  }
+  try {
+    if (navigator.share) { await navigator.share({ text }); say("Shared.", "ok"); return; }
+  } catch (e) { if (e?.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(text); say("Venmo text copied. Paste it in the group chat.", "ok"); }
+  catch { window.prompt("Copy this text:", text); }
+}
+
+// The side pot's admin panel, mounted by the app owner's console (Side bet
+// tab) and the slate editor alike. Pick games, at the slate's lines, that
+// are not over (still to come, or on now with the score shown), and a buy-in; once running, it
+// shows who is in (never their picks before the close), who said no, who
+// has paid, and the result. getKey resolves the admin key; say reports.
+const SIDE_LIVE_MS = 5 * 3600000; // matches LIVE_MS in worker/src/side.js
+const SIDE_MAX_PICKS = 8;          // matches SIDE_MAX_GAMES there
+async function mountSideAdmin(box, getKey, say) {
+  if (!box) return;
+  const esc = escapeCd;
+  const post = async (body) => {
+    const key = await getKey();
+    if (!key) throw new Error("The admin key is missing.");
+    const res = await fetch(`${WORKER_URL}/side?key=${encodeURIComponent(key)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ week: currentWeek, ...body }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { const e = new Error(data.error || `Failed (${res.status})`); e.status = res.status; throw e; }
+    return data;
+  };
+  const refreshApp = () => fetchSidePot(true).then(renderSidePot);
+  const etTime = (ms) => new Date(ms).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" });
+  // Every game today that is not over, from ESPN (FBS and FCS), one row
+  // each, with what can be bet on it: the full game at its line (a pool
+  // game at the pool's line), the 1st half before kickoff, the 2nd half
+  // until halftime ends. A half's line starts at half the game's line and
+  // is the commissioner's to set; a game with no line on ESPN can still go
+  // in by its halves.
+  let cands = [];
+  const poolTotals = new Map();
+  const readEspn = async () => {
+    cands = []; poolTotals.clear();
+    const day = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
+    // ESPN's line for one game from its game page, which keeps a line
+    // after kickoff when the scoreboard has dropped it.
+    const pageLine = (eventId) => fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}`, { cache: "no-store" }, 6000)
+      .then((r) => (r.ok ? r.json() : null)).then((d) => (Array.isArray(d?.pickcenter) ? d.pickcenter[0] : null)).catch(() => null);
+    const hasLine = (o) => Number.isFinite(Number(o?.spread)) && Number(o.spread) !== 0;
+    try {
+      const boards = await Promise.all([80, 81].map((grp) => fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${day}&groups=${grp}&limit=300&t=${Date.now()}`, { cache: "no-store" }, 8000).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
+      const seen = new Set();
+      const events = boards.flatMap((b, i) => (b?.events || []).map((ev) => ({ ev, fcs: i === 1 }))).filter(({ ev }) => !seen.has(ev.id) && seen.add(ev.id))
+        .filter(({ ev }) => { const c = ev.competitions?.[0] || {}; const st = c.status?.type || ev.status?.type || {}; return !st.completed && st.state !== "post"; });
+      const lined = new Map(await Promise.all(events.filter(({ ev }) => !hasLine((ev.competitions?.[0]?.odds || [])[0])).map(async ({ ev }) => [ev.id, await pageLine(ev.id)])));
+      await Promise.all(GAMES.map(async (g) => {
+        const l = latestLive[g.id];
+        if (Number.isFinite(l?.odds?.overUnder)) { poolTotals.set(g.id, l.odds.overUnder); return; }
+        if (l?.eventId) { const pc = await pageLine(l.eventId); if (Number.isFinite(Number(pc?.overUnder))) poolTotals.set(g.id, Number(pc.overUnder)); }
+      }));
+      for (const { ev, fcs } of events) {
+        const c = ev.competitions?.[0] || {};
+        const away = (c.competitors || []).find((x) => x.homeAway === "away"), home = (c.competitors || []).find((x) => x.homeAway === "home");
+        if (!away || !home) continue;
+        const st = c.status?.type || ev.status?.type || {};
+        const aId = Number(away.team?.id), hId = Number(home.team?.id);
+        const pool = GAMES.find((g) => g.awayId === aId && g.homeId === hId) || null;
+        const so = (c.odds || [])[0], src = hasLine(so) ? so : lined.get(ev.id);
+        const raw = Number(src?.spread);
+        const full = pool ? { favHome: pool.favorite === pool.home, spread: Number(pool.spread), total: poolTotals.get(pool.id) ?? null }
+          : hasLine(src) ? { favHome: src.homeTeamOdds?.favorite ? true : src.awayTeamOdds?.favorite ? false : raw < 0, spread: Math.abs(raw), total: Number(src.overUnder) > 0 ? Number(src.overUnder) : null } : null;
+        cands.push({
+          eventId: ev.id, away: away.team?.displayName || "", home: home.team?.displayName || "",
+          awayShort: away.team?.shortDisplayName || away.team?.abbreviation || "", homeShort: home.team?.shortDisplayName || home.team?.abbreviation || "",
+          awayId: aId, homeId: hId, kickoff: ev.date, kickoffLabel: `${etTime(new Date(ev.date).getTime()).replace(",", "")} ET`, fcs, pool,
+          state: st.state || "pre", period: Number(c.status?.period) || 0, full,
+          on: st.state === "in" ? { detail: st.shortDetail || "", a: away.score, h: home.score } : null,
+        });
+      }
+    } catch {}
+    // ESPN out of reach: the pool's own games still in play, full game only.
+    if (!cands.length) for (const g of gamesByKickoff()) {
+      const l = latestLive[g.id];
+      if (l?.completed || Date.now() >= new Date(g.kickoff).getTime() + SIDE_LIVE_MS) continue;
+      cands.push({ eventId: l?.eventId || null, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, awayId: g.awayId, homeId: g.homeId, kickoff: g.kickoff, kickoffLabel: g.kickoffLabel, fcs: false, pool: g, state: l?.state || "pre", period: Number(l?.period) || 0, full: { favHome: g.favorite === g.home, spread: Number(g.spread), total: null }, on: null, noHalves: true });
+    }
+    cands.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+  };
+  const load = async () => {
+    const key = await getKey();
+    if (!key) return;
+    box.classList.remove("hidden");
+    box.textContent = "Loading the side pot…";
+    try {
+      const [res] = await Promise.all([fetch(`${WORKER_URL}/side?week=${currentWeek}&key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" }), fetchLiveScores().catch(() => {}), readEspn()]);
+      if (!res.ok) throw new Error(String(res.status));
+      render((await res.json()).pot);
+    } catch (e) { box.textContent = `Could not load the side pot (${e.message}).`; }
+  };
+  // render(pot, true) is the selector again, adding to a running bet.
+  const render = (pot, adding = false) => {
+    const now = Date.now();
+    if (!pot || adding) {
+      const inBet = new Set(adding ? pot.games.map(String) : []);
+      const betGames = adding ? sideGames(pot) : [];
+      // The bet's options: a value per box. A pool game's full game is its
+      // number (the Worker keeps the pool's line), any other full game "e",
+      // a 1st half "f", a 2nd half "h", each plus the ESPN event id.
+      const fullVal = (c) => (c.pool ? String(c.pool.id) : `e${c.eventId}`);
+      const halfLine = (c) => ({ favHome: c.full ? c.full.favHome : true, spread: c.full ? Math.round(c.full.spread) / 2 : "", total: c.full?.total ? Math.round(c.full.total) / 2 : "" });
+      const lineText = (c) => (c.full ? `${c.full.favHome ? esc(c.homeShort) : esc(c.awayShort)} -${c.full.spread}${c.full.total != null ? ` · O/U ${c.full.total}` : ""}` : "No line on ESPN: halves only, at your line");
+      const status = (c) => (c.on ? `<b class="as-live">${esc(shortStatus(c.on.detail))} · ${esc(c.on.a ?? 0)}-${esc(c.on.h ?? 0)}</b>` : esc(c.kickoffLabel));
+      // An over/under only when asked for: each pick has its own O/U chip,
+      // shown once the pick is checked. A pick already in the bet shows its
+      // chip as it stands, so an over/under can be taken off or put on.
+      const betOf = (v) => betGames.find((g) => String(g.id) === v);
+      const ouChip = (v, total, on) => (total == null && !/^[fh]/.test(v) ? "" : `<label class="as-opt ou${inBet.has(v) ? "" : " hidden"}" data-ou-for="${esc(v)}"><input type="checkbox" class="as-ou" value="${esc(v)}"${on ? " checked" : ""}><span>+ O/U${total != null ? ` ${total}` : ""}</span></label>`);
+      const opt = (v, label, total) => (inBet.has(v)
+        ? `<span class="as-opt in"><span>${label} ✓</span></span>${ouChip(v, betOf(v)?.total ?? total, betOf(v)?.total != null)}`
+        : `<label class="as-opt"><input type="checkbox" value="${esc(v)}"><span>${label}</span></label>${ouChip(v, total, false)}`);
+      const edit = (c, v, label) => { const h = halfLine(c); return `<div class="as-h-edit hidden" data-for="${esc(v)}"><span>${label}</span><select aria-label="${label} favorite"><option value="away"${h.favHome ? "" : " selected"}>${esc(c.awayShort)}</option><option value="home"${h.favHome ? " selected" : ""}>${esc(c.homeShort)}</option></select><span>-</span><input class="as-h-sp" type="number" inputmode="decimal" step="0.5" min="0" max="40" placeholder="line" value="${h.spread}"><span class="as-ou-in hidden">O/U</span><input class="as-h-tot as-ou-in hidden" type="number" inputmode="decimal" step="0.5" min="10" max="90" placeholder="total" value="${h.total}"></div>`; };
+      const rows = cands.map((c) => {
+        const pre = c.state === "pre", firstOk = pre && c.eventId && !c.noHalves, secondOk = (pre || c.period <= 2) && c.eventId && !c.noHalves;
+        if (!c.full && !firstOk && !secondOk) return "";
+        return `<div class="as-g">
+          <div class="as-g-top"><span class="as-g-nm">${c.pool ? `G${c.pool.id} · ` : ""}${esc(c.awayShort)} @ ${esc(c.homeShort)}${c.fcs ? ` <small>FCS</small>` : ""}</span><small>${status(c)}</small></div>
+          <div class="as-g-line">${lineText(c)}</div>
+          <div class="as-g-opts">${c.full ? opt(fullVal(c), "FULL GAME", c.full.total ?? (c.pool ? poolTotals.get(c.pool.id) : null) ?? null) : ""}${firstOk ? opt(`f${c.eventId}`, "1ST HALF", null) : ""}${secondOk ? opt(`h${c.eventId}`, "2ND HALF", null) : ""}</div>
+          ${firstOk ? edit(c, `f${c.eventId}`, "1H") : ""}${secondOk ? edit(c, `h${c.eventId}`, "2H") : ""}
+        </div>`;
+      }).join("");
+      box.innerHTML = `${adding ? `<div class="as-lead"><b>Add to the Week ${pot.week} side bet.</b> Everyone in stays in and gets asked for picks on what you add; anyone who doesn't make them scores 0 there. In the bet now: ${betGames.map((g) => esc(`${sideTag(g)} ${sideMatch(g)}`)).join(", ")}.</div>` : ""}<div class="as-lead${adding ? " hidden" : ""}"><b>Week ${currentWeek} side bet.</b> Every game today not over, FBS and FCS. Check any mix of full games and halves, up to ${SIDE_MAX_PICKS}. Full games use the pool's line or ESPN's; a half starts at half the game's line, so set it from your book. Tick + O/U on any pick to add its over/under, and choose a tiebreaker if you want one: closest guess at that game's total points wins a tie.</div>
+        ${rows ? `<div class="as-gl">${rows}</div>` : `<div class="as-none">Every game today is over.</div>`}
+        <div class="as-count"></div>
+        <label class="as-buy as-tbrow">Tiebreaker: <select class="as-tb"><option value="none">none (a tie splits)</option></select></label>
+        <label class="as-buy">Entry closes in <input class="as-close" type="number" inputmode="numeric" min="5" max="480" step="1" placeholder="auto"> min</label>
+        <div class="as-out">Blank: picks lock at the first kickoff (20 minutes from now if every game is already on). For a 2nd half at halftime, about 15.</div>
+        <label class="as-buy${adding ? " hidden" : ""}">Buy-in $<input class="as-buyin" type="number" inputmode="numeric" min="1" max="500" step="1" value="${adding ? pot.buyIn : 25}"></label>
+        <button type="button" class="admin-btn primary wide as-start"${rows ? "" : " disabled"}>${adding ? "Add to side bet" : "Start side bet"}</button>
+        ${adding ? `<button type="button" class="admin-btn wide as-back">Back</button>` : ""}`;
+      box.querySelector(".as-back")?.addEventListener("click", () => render(pot));
+      const candOf = (v) => cands.find((c) => fullVal(c) === v || `f${c.eventId}` === v || `h${c.eventId}` === v);
+      const nameOf = (v) => { const b = betGames.find((g) => String(g.id) === v); if (b) return sideMatch(b); const c = candOf(v); return c ? `${c.awayShort} @ ${c.homeShort}${v[0] === "f" ? " (1st half)" : v[0] === "h" ? " (2nd half)" : ""}` : v; };
+      const checked = () => [...box.querySelectorAll(".as-g-opts input:checked:not(.as-ou)")].map((i) => i.value);
+      const ouOn = (v) => !!box.querySelector(`.as-ou[value="${v}"]:checked`);
+      // Checking a half opens its line; the tiebreaker offers what is checked.
+      const sync = () => {
+        const on = checked();
+        box.querySelectorAll(".as-h-edit").forEach((el) => { el.classList.toggle("hidden", !on.includes(el.dataset.for)); el.querySelectorAll(".as-ou-in").forEach((x) => x.classList.toggle("hidden", !ouOn(el.dataset.for))); });
+        box.querySelectorAll(".as-opt.ou").forEach((el) => { if (!inBet.has(el.dataset.ouFor)) el.classList.toggle("hidden", !on.includes(el.dataset.ouFor)); });
+        const sel = box.querySelector(".as-tb");
+        const was = sel.dataset.ready ? sel.value : adding && pot.tbGame != null ? String(pot.tbGame) : "none";
+        sel.dataset.ready = "1";
+        sel.innerHTML = `<option value="none">none (a tie splits)</option>` + [...inBet, ...on].map((v) => `<option value="${esc(v)}"${v === was ? " selected" : ""}>${esc(nameOf(v))}</option>`).join("");
+        const n = box.querySelector(".as-count"), total = inBet.size + on.length;
+        n.textContent = on.length ? `${total} of ${SIDE_MAX_PICKS} picked` : "";
+        n.classList.toggle("bad", total > SIDE_MAX_PICKS);
+      };
+      box.addEventListener("change", (e) => { if (e.target.matches(".as-g-opts input")) sync(); });
+      sync();
+      box.querySelector(".as-start")?.addEventListener("click", async (ev) => {
+        const btn = ev.currentTarget;
+        const ids = [];
+        for (const v of checked()) {
+          const c = candOf(v);
+          if (!c) continue;
+          if (/^\d+$/.test(v)) { ids.push({ id: Number(v), ...(ouOn(v) ? { total: poolTotals.get(Number(v)) ?? c.full?.total ?? undefined } : {}) }); continue; }
+          const base = { away: c.away, home: c.home, awayShort: c.awayShort, homeShort: c.homeShort, awayId: c.awayId, homeId: c.homeId, kickoff: c.kickoff };
+          if (v[0] === "e") { ids.push({ id: v, ...base, favorite: c.full.favHome ? c.home : c.away, spread: c.full.spread, ...(c.full.total != null && ouOn(v) ? { total: c.full.total } : {}), kickoffLabel: c.kickoffLabel }); continue; }
+          const row = box.querySelector(`.as-h-edit[data-for="${v}"]`);
+          const sp = Number(row.querySelector(".as-h-sp").value), tot = row.querySelector(".as-h-tot").value.trim();
+          const which = v[0] === "f" ? "1st half" : "2nd half";
+          if (row.querySelector(".as-h-sp").value.trim() === "" || !Number.isFinite(sp) || sp < 0 || Math.round(sp * 2) !== sp * 2) { say(`Set the ${which} line (whole or half point) for ${c.awayShort} @ ${c.homeShort}.`, "bad"); return; }
+          const favHome = row.querySelector("select").value === "home";
+          if (ouOn(v) && !(tot !== "" && Number(tot) > 0)) { say(`Set the ${which} over/under for ${c.awayShort} @ ${c.homeShort}, or untick + O/U.`, "bad"); return; }
+          ids.push({ id: v, ...base, favorite: favHome ? c.home : c.away, spread: sp, ...(ouOn(v) ? { total: Number(tot) } : {}), kickoffLabel: v[0] === "f" ? c.kickoffLabel : "after halftime" });
+        }
+        // Picks already in the bet whose over/under was ticked on or off.
+        if (adding) for (const v of inBet) {
+          const g = betOf(v), had = g?.total != null, want = ouOn(v);
+          if (!g || had === want || !box.querySelector(`.as-ou[value="${v}"]`)) continue;
+          const c = candOf(v), total = want ? (g.total ?? c?.full?.total ?? (/^\d+$/.test(v) ? poolTotals.get(Number(v)) : null)) : null;
+          if (want && total == null) { say(`No over/under is known for ${sideMatch(g)}.`, "bad"); return; }
+          if (/^\d+$/.test(v)) { ids.push({ id: Number(v), ...(want ? { total } : {}) }); continue; }
+          const { total: _t, eventId, half, ...rest } = g;
+          ids.push({ ...rest, ...(want ? { total } : {}) });
+        }
+        if (!ids.length && !adding) { say("Pick at least one game or half for the side bet.", "bad"); return; }
+        if (ids.filter((x) => !inBet.has(String(x.id))).length + inBet.size > SIDE_MAX_PICKS) { say(`${SIDE_MAX_PICKS} picks at most in a bet.`, "bad"); return; }
+        const buyIn = Number(box.querySelector(".as-buyin").value);
+        const closeMin = Number(box.querySelector(".as-close")?.value);
+        const closeAt = Number.isFinite(closeMin) && closeMin >= 5 ? Date.now() + closeMin * 60000 : null;
+        const tbPick = box.querySelector(".as-tb")?.value || "none";
+        const tbGame = tbPick === "none" ? "none" : /^\d+$/.test(tbPick) ? Number(tbPick) : tbPick;
+        btn.disabled = true;
+        if (adding) {
+          try {
+            const d = await post({ action: "edit", games: ids, closeAt, tbGame });
+            say(ids.length ? "Added. Everyone in gets asked for picks on the new games." : "Saved.", "ok");
+            render(d.pot); refreshApp();
+          } catch (e) { say(`Not added: ${e.message}`, "bad"); btn.disabled = false; }
+          return;
+        }
+        try {
+          let d;
+          try { d = await post({ action: "start", games: ids, buyIn, closeAt, tbGame }); }
+          catch (e) {
+            if (e.status !== 409 || !confirm("A side bet with players in it is already running. Replace it? Everyone in it is out.")) throw e;
+            d = await post({ action: "start", games: ids, buyIn, closeAt, tbGame, replace: true });
+          }
+          say("Side bet is live. Everyone gets asked when they open the board.", "ok");
+          render(d.pot);
+          refreshApp();
+        } catch (e) { say(`Side bet not started: ${e.message}`, "bad"); btn.disabled = false; }
+      });
+      return;
+    }
+    const open = now < pot.closesAt;
+    const ins = Object.keys(pot.entrants || {});
+    const st = sideStandings(pot), out = sideOutcome(pot, st);
+    const net = Number.isInteger(out.net) ? out.net : out.net.toFixed(2);
+    const result = !open && out.final ? (out.n < 2 ? "One taker, no bet." : out.push ? "Dead heat, no money moves." : `${out.winners.map(shown).join(" and ")} ${out.winners.length > 1 ? "split" : "takes"} $${out.total}${out.tiebreak ? ` on the tiebreaker (total ${out.tiebreak.actual})` : ""}, collecting $${net}${out.winners.length > 1 ? " each" : ""} from the others.`) : "";
+    const owes = (n) => !open && out.final && out.losers.includes(n);
+    const won = (n) => !open && out.final && !out.push && out.winners.includes(n);
+    box.innerHTML = `<div class="as-lead"><b>Week ${pot.week} side bet</b> · $${pot.buyIn} · ${ins.length} in · $${ins.length * pot.buyIn} pot<br>${open ? `Entry closes ${esc(etTime(pot.closesAt))} ET` : `Closed ${esc(etTime(pot.closesAt))} ET`}</div>
+      <div class="as-list">${sideGames(pot).map((g) => `<span>${sideTag(g)} ${esc(g.awayShort)} @ ${esc(g.homeShort)}</span>`).join("")}</div>
+      ${(() => { const g = pot.tbGame != null ? sideGames(pot).find((x) => String(x.id) === String(pot.tbGame)) : null; return g ? `<div class="as-out">Tiebreaker: total points in ${esc(sideMatch(g))}${out.tiebreak ? `, final ${out.tiebreak.actual}` : ""}. Closest guess wins a tie on points.</div>` : `<div class="as-out">No tiebreaker on this bet: a tie splits.</div>`; })()}
+      ${result ? `<div class="as-result">${esc(result)}</div>` : ""}
+      <div class="as-people">${ins.length ? ins.map((n) => `<label class="as-person${owes(n) ? " owes" : ""}"><span>${esc(shown(n))}${!open && Number.isFinite(pot.entrants[n].tb) ? ` <small class="as-tbg">guess ${pot.entrants[n].tb}</small>` : ""}${owes(n) ? ` <small>owes $${pot.buyIn}</small>` : ""}</span>${won(n) ? `<span class="as-won">collects</span>` : `<span class="as-paid"><input type="checkbox" data-paid="${esc(n)}"${pot.entrants[n].paid ? " checked" : ""}> paid</span>`}</label>`).join("") : `<div class="as-none">Nobody in yet.</div>`}</div>
+      ${pot.declined?.length ? `<div class="as-out">No thanks: ${pot.declined.map((n) => esc(shown(n))).join(", ")}</div>` : ""}
+      ${open ? `<button type="button" class="admin-btn primary wide as-add">＋ Add games or set the tiebreaker</button>` : ""}
+      ${ins.length ? `<button type="button" class="admin-btn wide as-venmo">📲 Venmo text${out.final ? "" : " (who's in)"}</button>` : ""}
+      <div class="as-btns"><button type="button" class="admin-btn as-refresh">↻ Refresh</button><button type="button" class="admin-btn as-cancel">Cancel side bet</button></div>`;
+    box.querySelector(".as-add")?.addEventListener("click", () => render(pot, true));
+    box.querySelector(".as-venmo")?.addEventListener("click", () => sideVenmoText(pot, out, say));
+    box.querySelectorAll("[data-paid]").forEach((cb) => cb.addEventListener("change", async () => {
+      try { render((await post({ action: "paid", manager: cb.dataset.paid, paid: cb.checked })).pot); }
+      catch (e) { cb.checked = !cb.checked; say(`Not saved: ${e.message}`, "bad"); }
+    }));
+    box.querySelector(".as-refresh").addEventListener("click", load);
+    box.querySelector(".as-cancel").addEventListener("click", async () => {
+      if (!confirm(ins.length ? `Cancel the side bet? ${ins.length} ${ins.length === 1 ? "player is" : "players are"} in.` : "Cancel the side bet?")) return;
+      try { await post({ action: "cancel" }); say("Side bet cancelled.", "ok"); render(null); refreshApp(); }
+      catch (e) { say(`Not cancelled: ${e.message}`, "bad"); }
+    });
+  };
+  await load();
+}
+
+// One sheet to say yes and pick: the pot's games, a team and ATS or straight
+// up for each, the same points as the main pool.
+function openSideSheet(asked) {
+  const pot = potNow();
+  if (!sideOpen(pot) || !currentManager) return;
+  noteUse(asked ? "side-ask" : "side-open");
+  const me = currentManager;
+  const was = pot.entrants[me]?.picks || {};
+  const draft = Object.fromEntries(Object.entries(was).map(([k, v]) => [k, { ...v }]));
+  const games = sideGames(pot);
+  // The tiebreaker: a guess at the last game's total points. Kept outside
+  // the redraw so typing is never lost to a tap elsewhere.
+  const tbG = pot.tbGame != null ? games.find((g) => String(g.id) === String(pot.tbGame)) : null;
+  let draftTb = pot.entrants[me]?.tb ?? "";
+  const tbOk = () => !tbG || (/^\d{1,3}$/.test(String(draftTb).trim()) && Number(draftTb) <= 200);
+  const isReady = () => games.every((g) => draft[g.id]?.team && draft[g.id]?.mode && (g.total == null || draft[g.id]?.ou)) && tbOk();
+  document.getElementById("side-modal")?.remove();
+  const m = document.createElement("div");
+  m.id = "side-modal"; m.className = "wpx-overlay"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Late night side pot");
+  document.body.appendChild(m);
+  let busy = false, err = "";
+  const close = () => m.remove();
+  // One compact row per team: logo, name, line. The side is chosen by
+  // tapping a team; ATS or straight up, and over or under, are segmented
+  // switches under it.
+  const team = (g, t, id, short) => {
+    const p = draft[g.id];
+    return `<button type="button" class="sp-team${p?.team === t ? " on" : ""}" data-g="${g.id}" data-team="${escapeCd(t)}"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${escapeCd(short)}</span><small>${t === g.favorite ? "-" : "+"}${g.spread}</small></button>`;
+  };
+  const mode = (g, md) => {
+    const p = draft[g.id];
+    const pts = md === "ATS" ? "2" : p?.team ? String(pointValue(g, p.team, md)) : "1 or 3";
+    return `<button type="button" class="sp-seg${(p?.mode || "ATS") === md && p?.team ? " on" : ""}" data-g="${g.id}" data-mode="${md}">${md === "ATS" ? "SPREAD" : "TO WIN"}<small>${pts} PT${pts === "1" ? "" : "S"}</small></button>`;
+  };
+  const ou = (g, v) => `<button type="button" class="sp-seg${draft[g.id]?.ou === v ? " on" : ""}" data-g="${g.id}" data-ou="${v}">${v === "over" ? "OVER" : "UNDER"} ${g.total}<small>${SIDE_OU_PTS} PTS</small></button>`;
+  const status = (g) => { const l = sideRawOf(g); return l?.found && l.state === "in" && !l.completed ? `<b class="sp-on">${escapeCd(shortStatus(l.detail || ""))} · ${l.awayScore}-${l.homeScore}</b>` : escapeCd(g.half ? (g.half === 1 ? "1st half only" : "2nd half only") : (g.kickoffLabel || "").replace(/ ET$/, "")); };
+  // What is still to do: a side on every game, an over/under where the bet
+  // has one, and the guess when there is a tiebreaker.
+  const progress = () => {
+    let need = 0, done = 0;
+    for (const g of games) { need += 1; if (draft[g.id]?.team) done += 1; if (g.total != null) { need += 1; if (draft[g.id]?.ou) done += 1; } }
+    if (tbG) { need += 1; if (tbOk()) done += 1; }
+    return { need, done };
+  };
+  const paint = () => {
+    const ready = isReady();
+    const inAlready = !!pot.entrants[me];
+    const closes = new Date(pot.closesAt).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
+    const pr = progress();
+    // A tap redraws the sheet: keep the list where it was, and play the
+    // entrance only the first time.
+    const y = m.querySelector(".sp-sheet-games")?.scrollTop || 0;
+    if (m.firstChild) m.classList.add("painted");
+    m.innerHTML = `<div class="wpx-card sp-sheet">
+      <div class="sp-sh-top">
+        <div class="sp-sh-title"><span>💰 SIDE BET</span><button type="button" class="sp-x" aria-label="Close">✕</button></div>
+        <div class="sp-sh-facts">${games.length} ${games.length === 1 ? "game" : "games"} · <b>$${pot.buyIn}</b> · locks ${closes}</div>
+        ${sideNeedsPicks(pot, me) ? `<div class="sp-sh-alert">Games were added. Finish your picks below; you're still in.</div>` : asked && !inAlready ? `<div class="sp-sh-sub">The week's decided, but the night isn't.</div>` : ""}
+      </div>
+      <div class="sp-sheet-games">${games.map((g) => `<div class="sp-game" data-g="${g.id}">
+        <div class="sp-game-h"><span>${sideTag(g)}</span><span>${status(g)}</span></div>
+        <div class="sp-match">${matchupCardsHtml(g, draft[g.id]?.team ? { team: draft[g.id].team, mode: draft[g.id].mode || "ATS" } : null)}</div>
+        ${g.total != null ? `<div class="sp-segs">${ou(g, "over")}${ou(g, "under")}</div>` : ""}
+      </div>`).join("")}
+      ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${escapeCd(sideMatch(tbG))}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="Your guess" value="${escapeCd(String(draftTb))}"></label>` : ""}
+      <div class="sp-sheet-note">Most points takes the pot${tbG ? "; a tie goes to the closest guess" : "; a tie splits it"}. Nobody sees your picks until ${closes}. Money is settled between you, not in the app.</div>
+      </div>
+      <div class="sp-sh-foot">
+        ${err ? `<div class="sp-err">${escapeCd(err)}</div>` : ""}
+        <div class="sp-sh-prog${ready ? " done" : ""}">${ready ? "All set" : `${pr.done} of ${pr.need} done`}</div>
+        <div class="sp-sheet-btns"><button type="button" class="sp-no"${busy ? " disabled" : ""}>${inAlready ? "Back out" : "No thanks"}</button><button type="button" class="sp-go"${ready && !busy ? "" : " disabled"}>${busy ? "Saving…" : inAlready ? "Save picks" : `I'm in · $${pot.buyIn}`}</button></div>
+      </div>
+    </div>`;
+    const list = m.querySelector(".sp-sheet-games");
+    if (list) list.scrollTop = y;
+  };
+  const send = async (action) => {
+    busy = true; err = ""; paint();
+    try {
+      const r = await fetch(`${WORKER_URL}/side`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, week: pot.week, manager: me, token: tokenFor(me) || undefined, ...(action === "join" ? { picks: draft, ...(tbG ? { tb: Number(draftTb) } : {}) } : {}) }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "Didn't save. Try again.");
+      if (d.pot) { sidePot = d.pot; sidePotAt = Date.now(); sidePotWeek = pot.week; }
+      try { localStorage.setItem(sideDoneKey(pot, me), action); } catch {}
+      noteUse(action === "join" ? "side-join" : "side-decline");
+      close();
+      renderSidePot();
+    } catch (e) { busy = false; err = e.message || "Didn't save. Try again."; paint(); }
+  };
+  m.addEventListener("input", (e) => {
+    if (!e.target.closest(".sp-tbin")) return;
+    draftTb = e.target.value;
+    const go = m.querySelector(".sp-go");
+    if (go && !busy) go.disabled = !isReady();
+    const pg = m.querySelector(".sp-sh-prog"), pr = progress();
+    if (pg) { pg.textContent = isReady() ? "All set" : `${pr.done} of ${pr.need} done`; pg.classList.toggle("done", isReady()); }
+  });
+  m.addEventListener("click", (e) => {
+    if (e.target === m || e.target.closest(".sp-x")) return close();
+    const t = e.target.closest(".sp-team"), md = e.target.closest("[data-mode]");
+    const chip = e.target.closest(".pick-mini-btn");
+    if (chip) { const id = chip.closest(".sp-game").dataset.g; draft[id] = { ...draft[id], team: chip.dataset.team, mode: chip.dataset.mode }; err = ""; return paint(); }
+    const o = e.target.closest("[data-ou]");
+    if (o) { const id = o.dataset.g; draft[id] = { ...draft[id], ou: o.dataset.ou }; return paint(); }
+    if (t) { const id = t.dataset.g; draft[id] = { ...draft[id], team: t.dataset.team, mode: draft[id]?.mode || "ATS" }; err = ""; return paint(); }
+    if (md) { const id = md.dataset.g; draft[id] = { ...draft[id], mode: md.dataset.mode }; return paint(); }
+    if (e.target.closest(".sp-go") && !busy) return send("join");
+    if (e.target.closest(".sp-no") && !busy) return send("decline");
+  });
+  paint();
+}
+
+// The Side bet tab: only for players in this week's side bet. The bet's
+// games with live scores (tap one for the gamecast), your pick on each and
+// what it is paying, and who is in. Everyone's picks show once entry has
+// closed, never before.
+const sideScreen = document.getElementById("side-screen");
+const navSideBtn = document.getElementById("nav-side-btn");
+// The tab is only for players who opted in.
+const sideIn = () => { const pot = potNow(); return !!pot && !!currentManager && window.LEAGUE?.sport !== "nfl" && !!pot.entrants?.[currentManager]; };
+function updateSideNav() {
+  const on = sideIn();
+  navSideBtn?.classList.toggle("hidden", !on);
+  if (!on && sideScreen && !sideScreen.classList.contains("hidden")) navScoreboardBtn.click();
+}
+function showSideScreen() {
+  if (!sideIn()) return;
+  rememberScroll();
+  [loginScreen, picksScreen, scoreboardScreen, historyScreen, triviaScreen].forEach((s) => s.classList.add("hidden"));
+  sideScreen.classList.remove("hidden");
+  setActiveNav("side");
+  enterScreen("side");
+  renderSideScreen();
+  Promise.all([fetchSidePot(true), fetchLiveScores().catch(() => {})]).then(() => { updateSideNav(); renderSideScreen(); });
+}
+navSideBtn?.addEventListener("click", showSideScreen);
+function renderSideScreen() {
+  const body = document.getElementById("side-screen-body");
+  if (!body || sideScreen.classList.contains("hidden")) return;
+  const pot = potNow();
+  if (!pot) { body.innerHTML = `<div class="ss-empty">No side bet this week.</div>`; return; }
+  const me = currentManager, mine = pot.entrants[me]?.picks || null;
+  const names = Object.keys(pot.entrants || {});
+  const open = sideOpen(pot);
+  const st = sideStandings(pot), out = sideOutcome(pot, st);
+  const myRow = st.rows.find((r) => r.name === me);
+  const tbG = pot.tbGame != null ? sideGames(pot).find((x) => String(x.id) === String(pot.tbGame)) : null;
+  const cd = open ? kickoffCountdown(new Date(pot.closesAt).toISOString()) : null;
+  const lead = st.rows[0];
+  // One line that says where things stand, for a player or an onlooker.
+  const status = open
+    ? (mine ? (sideNeedsPicks(pot, me) ? `New games added. <b>Finish your picks</b>` : `You're in. Picks lock in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b>`) : `Picks lock in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b>`)
+    : !out.final ? (() => {
+        // Standing on points as they are right now, live ones counted.
+        const now = (r) => r.pts + r.fly, top = lead ? now(lead) : 0;
+        const leaders = st.rows.filter((r) => now(r) === top);
+        if (!myRow) return lead ? `Leader: <b>${escapeCd(sideNames(leaders.map((r) => r.name)))}</b> with ${top}` : "Under way";
+        const ahead = st.rows.filter((r) => now(r) > now(myRow)).length, tied = st.rows.filter((r) => now(r) === now(myRow)).length > 1;
+        const ord = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"}`;
+        const place = `${tied ? "tied for " : "in "}${ord(ahead + 1)}`;
+        const how = !myRow.fly ? "" : myRow.pts ? ` <span class="ss-fly">(${myRow.pts} locked)</span>` : ` <span class="ss-fly">live</span>`;
+        return `You're ${place} with <b>${now(myRow)}</b>${how}${ahead ? ` · leader ${escapeCd(shown(lead.name))} ${top}` : ""}`;
+      })()
+    : out.n < 2 ? "Final. One taker, no bet." : out.push ? "Final. Dead heat, no money moves."
+    : out.winners.includes(me) ? `Final. You ${out.winners.length > 1 ? "split it" : `won${out.tiebreak ? " on the tiebreaker" : ""}`}. You collect <b>${sideMoney(out.net)}</b>.`
+    : `Final. ${escapeCd(sideNames(out.winners))} ${out.winners.length > 1 ? "split" : "took"} it${out.tiebreak ? " on the tiebreaker" : ""}.${myRow ? ` You owe <b>${sideMoney(pot.buyIn)}</b>.` : ""}`;
+  // Each game, live. A player's own pick rides under it.
+  const bug = (g) => {
+    const l = sideLiveOf(g), kicked = Date.now() >= new Date(g.kickoff).getTime();
+    const on = l?.found && l.state === "in" && !l.completed, fin = !!sideResultOf(g);
+    const showScore = kicked && l?.found && (on || fin);
+    const pick = mine?.[g.id];
+    const cell = myRow?.cells.find((c) => c.g.id === g.id && !c.ou);
+    const ouCell = myRow?.cells.find((c) => c.g.id === g.id && c.ou);
+    const side = (team, id, short, score) => `<div class="ss-team${pick?.team === team ? " mine" : ""}"><img src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'"><span>${escapeCd(short)}</span><b>${showScore ? score : ""}</b></div>`;
+    const raw = g.half === 2 ? sideRawOf(g) : null;
+    const stat = fin ? (g.half === 1 ? "1ST HALF FINAL" : "FINAL") : on ? escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`))
+      : raw?.found && raw.state === "in" ? `${escapeCd(shortStatus(raw.detail || ""))} · ${raw.awayScore}-${raw.homeScore} · 2H NEXT`
+      : escapeCd(g.kickoffLabel || "");
+    const line = `${g.favorite === g.home ? escapeCd(g.homeShort) : escapeCd(g.awayShort)} -${g.spread}${g.total != null ? ` · O/U ${g.total}` : ""}`;
+    const pickTxt = pick ? `${escapeCd(pick.team === g.home ? g.homeShort : g.awayShort)} ${pick.mode === "SU" ? "to win" : `${pick.team === g.favorite ? "-" : "+"}${g.spread}`}` : "";
+    return `<button type="button" class="ss-bug${on ? " live" : ""}${fin ? " final" : ""}" data-g="${g.id}">
+      <div class="ss-bug-top"><span>${sideTag(g)}${String(pot.tbGame) === String(g.id) ? " · TIEBREAKER" : ""}</span><span class="ss-stat">${on ? "<u></u>" : ""}${stat}</span></div>
+      ${side(g.away, g.awayId, g.awayShort, l?.awayScore ?? 0)}${side(g.home, g.homeId, g.homeShort, l?.homeScore ?? 0)}
+      ${mine ? `<div class="ss-pick ${cell?.cls || "open"}"><span>YOUR PICK · ${pickTxt || "none yet"}</span><b>${cell ? (cell.cls === "open" ? `${cell.txt} PTS` : cell.txt) : ""}</b></div>
+      ${ouCell ? `<div class="ss-pick sub ${ouCell.cls}"><span>${pick.ou === "over" ? "OVER" : "UNDER"} ${g.total}${showScore ? ` · ${fin ? "final" : "now"} ${(l?.awayScore ?? 0) + (l?.homeScore ?? 0)}` : ""}</span><b>${ouCell.cls === "open" ? `${ouCell.txt} PTS` : ouCell.txt}</b></div>` : ""}` : `<div class="ss-pick open"><span>${line}</span></div>`}
+    </button>`;
+  };
+  // The scoreboard: everyone's picks and points once entry has closed.
+  const board = open ? "" : sideBoardHtml(pot, st, out, me);
+  // Final: the result up top, like a game over screen. The winner (or
+  // winners) large with the money, then the next places on a podium.
+  const avatar = (n, cls = "") => `<span class="sf-av ${cls}" style="--accent:${accentFor(n)}">${escapeCd(avatarOverrides[n] || shown(n)[0])}</span>`;
+  const hero = !out.final || out.n < 2 || out.push ? "" : (() => {
+    const tot = (n) => { const r = st.rows.find((x) => x.name === n); return r ? r.pts : 0; };
+    const others = sideRowsInOrder(st, out).filter((r) => !out.winners.includes(r.name)).slice(0, 2);
+    return `<div class="sf-hero">
+      <div class="sf-kick">🏆 ${out.winners.length > 1 ? "SPLIT POT" : "WINNER"}</div>
+      <div class="sf-win">${out.winners.map((n) => `<div class="sf-w">${avatar(n, "big")}<b>${escapeCd(shown(n))}</b><span class="sf-pts">${tot(n)} pts</span></div>`).join("")}</div>
+      <div class="sf-money">+${sideMoney(out.net)}${out.winners.length > 1 ? " each" : ""}</div>
+      <div class="sf-how">${out.tiebreak ? `Won on the tiebreaker · ${escapeCd(sideMatch(st.games.find((g) => String(g.id) === String(pot.tbGame)) || {}))} total ${out.tiebreak.actual}` : `Pot ${sideMoney(out.total)} · ${out.n} in`}</div>
+      ${others.length ? `<div class="sf-pod">${others.map((r, i) => `<span>${i === 0 ? "🥈" : "🥉"} ${avatar(r.name)}${escapeCd(shown(r.name))} <b>${r.pts}</b></span>`).join("")}</div>` : ""}
+    </div>`;
+  })();
+  // Settle up: who owes and who collects, with paid marks from the console.
+  const settle = !out.final ? "" : out.n < 2 || out.push ? `<div class="ss-sec">SETTLE UP</div><div class="ss-note">${out.n < 2 ? "One taker: no money moves." : "Everyone level: no money moves."}</div>`
+    : `<div class="ss-sec">SETTLE UP</div><div class="sf-ledger">${out.losers.map((n) => `<div class="sf-led${pot.entrants[n]?.paid ? " paid" : ""}">${avatar(n)}<span class="sf-nm">${escapeCd(shown(n))}</span><span class="sf-arrow">→ ${out.winners.map((w) => escapeCd(shown(w))).join(" & ")}</span><b>${sideMoney(pot.buyIn)}</b><em>${pot.entrants[n]?.paid ? "PAID ✓" : "UNPAID"}</em></div>`).join("")}</div>`;
+  const who = open ? `<div class="ss-sec">WHO'S IN · ${names.length}</div><div class="ss-names">${names.length ? names.map((n) => `<span class="${n === me ? "me" : ""}">${escapeCd(shown(n))}</span>`).join("") : `<em>Nobody yet</em>`}</div><div class="ss-note">Everyone's picks show here when entry closes.</div>` : "";
+  const action = open ? `<button type="button" class="sp-btn ss-edit" data-sp="open">${!mine ? `I'M IN · ${sideMoney(pot.buyIn)}` : sideNeedsPicks(pot, me) ? "FINISH MY PICKS" : "EDIT MY PICKS"}</button>` : "";
+  body.innerHTML = `<div class="ss-head"><span class="sp-kick">💰 SIDE BET</span><span class="sp-pot">${sideMoney(names.length * pot.buyIn)}</span></div>
+    ${hero ? "" : `<div class="ss-status">${status}</div>`}
+    <div class="ss-sub">${names.length} in · ${sideMoney(pot.buyIn)} each · most points takes it${tbG ? ` · tiebreaker: ${escapeCd(sideMatch(tbG))}${out.tiebreak ? ` (${out.tiebreak.actual})` : ""}` : ", ties split"}</div>
+    ${action}
+    ${hero}
+    ${settle}
+    ${board}
+    <div class="ss-sec">GAMES</div>
+    <div class="ss-bugs">${sideGames(pot).map(bug).join("")}</div>
+    ${who}`;
+}
+document.getElementById("side-screen-body")?.addEventListener("click", (e) => {
+  if (e.target.closest("[data-sp='open']")) return openSideSheet(false);
+  const b = e.target.closest(".ss-bug");
+  if (b) {
+    track("side-game", { event: true, d: b.dataset.g });
+    // Our gamecast, for a pool game or any other.
+    const g = GAMES.find((x) => String(x.id) === b.dataset.g);
+    openInsights(g ? g.id : b.dataset.g);
+  }
+});
 
 // Results are derived straight from ESPN's live feed once a game goes
 // final — no manual score entry. A game only counts once ESPN marks it
@@ -2893,7 +3724,7 @@ function nameChips(names) {
     const idx = MANAGERS.indexOf(n);
     const accent = accentFor(n);
     const av = avatarOverrides[n] || shown(n)[0];
-    return `<span class="pick-chip${n === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
+    return `<span class="pick-chip${n === currentManager ? " me" : ""}" data-name="${escapeCd(n)}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
   }).join("");
 }
 
@@ -3128,7 +3959,7 @@ function renderLiveScores(live, cloudPicks) {
   // final view after. The old expand-in-place view is gone.
   liveScoresList.querySelectorAll(".scorebug").forEach((el) => {
     const id = Number(el.dataset.game);
-    const open = () => { track("scorebug-open", { event: true }); openInsights(id); };
+    const open = () => { track("scorebug-open", { event: true, d: id }); openInsights(id); };
     el.addEventListener("click", open);
     el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
   });
@@ -3324,6 +4155,76 @@ function swingMatchupHtml(name, sw, m) {
 }
 
 // --- Path to win ------------------------------------------------------
+// The new feature pop-up.
+// Once per phone, on the scoreboard while the week is live and a path can
+// be run: a small card showing where to tap, drawn from the real board.
+// Never over another popup. GOT IT, the X, or a swipe down closes it.
+const PATH_INTRO_KEY = "brochiefs_new_pathtowin_v1";
+let pathIntroShownThisLoad = false;
+function maybeShowPathIntro(force = false) {
+  if (!force) {
+    if (pathIntroShownThisLoad || !currentManager || window.__adminEntry || window.__adminOpen || window.__liveView) return;
+    if (window.LEAGUE?.sport === "nfl") return; // college only for now
+    try { if (localStorage.getItem(PATH_INTRO_KEY)) return; } catch { return; }
+    const results = computeLiveResults(latestLive);
+    const wd = winChanceMemo.detail?.[currentManager];
+    if (!weekIsLive(results) || !wd || wd.alive === false || scoreboardScreen.classList.contains("hidden")) return;
+    if ([...document.querySelectorAll(".modal-overlay, .pr-screen, .np-screen")].some((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none")) return;
+  }
+  pathIntroShownThisLoad = true;
+  setTimeout(() => showPathIntro(), force ? 0 : 900);
+}
+function showPathIntro() {
+  if (document.querySelector(".pi-screen")) return;
+  const me = currentManager;
+  const rows = liveWeekRows.length ? liveWeekRows : MANAGERS.map((name, i) => ({ name, score: 0, place: i + 1 }));
+  const at = Math.max(0, rows.findIndex((r) => r.name === me));
+  const pick = rows.slice(Math.max(0, Math.min(at - 1, rows.length - 3)), Math.max(0, Math.min(at - 1, rows.length - 3)) + 3);
+  const pct = (n) => { const v = winChanceMemo.out?.[n]; return v == null ? null : v; };
+  const mini = pick.map((r) => {
+    const p = pct(r.name), w = p == null ? 0 : Math.max(3, Math.min(100, p * 100));
+    return `<div class="pi-row${r.name === me ? " me" : ""}"><span class="pi-rk">${r.tied ? "T" : ""}${r.place || ""}</span><span class="pi-nm">${escapeCd(shown(r.name).toUpperCase())}</span><span class="pi-bar"><i style="width:${w.toFixed(0)}%"></i></span><span class="pi-pt">${String(r.score ?? 0).padStart(2, "0")}</span>${r.name === me ? `<span class="pi-tap" aria-hidden="true"></span>` : ""}</div>`;
+  }).join("");
+  const myPct = pct(me);
+  const m = document.createElement("div");
+  m.className = "pi-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: path to win");
+  m.innerHTML = `<div class="pi-card">
+    <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title">PATH TO WIN</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
+    <p class="pi-lede">See exactly which results you need to win the week, played out game by game.</p>
+    <div class="pi-step"><b>1</b><span>Tap your name on the leaderboard</span></div>
+    <div class="pi-mini">${mini}</div>
+    <div class="pi-step"><b>2</b><span>Tap the button on your card</span></div>
+    <div class="pi-mini pi-card2"><div class="pi-card2-top"><span class="pi-cap">CHANCE TO WIN THE WEEK · <b>${myPct == null ? "--" : winChanceLabel(myPct, winChanceMemo.detail?.[me])}</b></span><span class="pi-btnwrap"><span class="rd-path-btn pi-demo"><span class="rd-path-play">▶</span>MY PATH TO WIN</span></span></div><div class="pi-card2-sk"><i></i><i></i></div></div>
+    <button type="button" class="pi-ok">GOT IT</button>
+  </div>`;
+  document.body.appendChild(m);
+  // Seen once it's on screen, so closing the app over it doesn't bring it back.
+  try { localStorage.setItem(PATH_INTRO_KEY, String(Date.now())); } catch {}
+  const done = () => { try { localStorage.setItem(PATH_INTRO_KEY, String(Date.now())); } catch {} m.classList.add("out"); setTimeout(() => m.remove(), 220); };
+  m.querySelector(".pi-ok").addEventListener("click", done);
+  m.querySelector(".pi-x").addEventListener("click", done);
+  m.addEventListener("click", (e) => { if (e.target === m) done(); });
+  // Swipe the card down to close it.
+  const card = m.querySelector(".pi-card");
+  let y0 = null, dy = 0;
+  card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
+  card.addEventListener("touchmove", (e) => {
+    if (y0 == null) return;
+    dy = Math.max(0, e.touches[0].clientY - y0);
+    card.style.transform = `translateY(${dy}px)`;
+    card.style.opacity = String(Math.max(0.4, 1 - dy / 400));
+  }, { passive: true });
+  card.addEventListener("touchend", () => {
+    if (y0 == null) return;
+    y0 = null;
+    card.style.transition = "transform .2s ease-out, opacity .2s ease-out";
+    if (dy > 80) { card.style.transform = "translateY(100vh)"; done(); } else { card.style.transform = ""; card.style.opacity = ""; }
+  });
+  track("path-intro", { event: true });
+}
+// For a preview from the console: previewPathIntro().
+window.previewPathIntro = () => maybeShowPathIntro(true);
+
 // The likeliest way the games left can finish with this manager first,
 // played out like a DOS program: the standings on the left, each game on
 // the right one at a time with its logos and result, points and places
@@ -3437,16 +4338,17 @@ async function sharePath(name, sc) {
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 let pathRunToken = 0;
-// Which paths this phone has already watched run, and with which games
-// final at the time. A path opens straight on its card until another game
-// goes final; then the next open plays the full run again, since the path
-// may have changed.
+// Which paths this phone has already watched run, when, and with which
+// games final at the time. A path opens straight on its card until another
+// game goes final or three hours pass; then the next open plays the full
+// run again. A first look always plays it.
 const PATH_SEEN_KEY = () => `brochiefs_pathseen_w${currentWeek}`;
+const PATH_FRESH_MS = 3 * 3600000;
 function finalsSig() { const r = computeLiveResults(latestLive); return GAMES.filter((g) => r[g.id]).map((g) => g.id).sort((x, y) => x - y).join(","); }
 function pathSeenMap() { try { const v = JSON.parse(localStorage.getItem(PATH_SEEN_KEY()) || "{}"); return v && !Array.isArray(v) && typeof v === "object" ? v : {}; } catch { return {}; } }
-function pathSeen(name) { return pathSeenMap()[name] === finalsSig(); }
+function pathSeen(name) { const v = pathSeenMap()[name]; return !!v && v.s === finalsSig() && Date.now() - (Number(v.t) || 0) < PATH_FRESH_MS; }
 function markPathSeen(name) {
-  try { const v = pathSeenMap(); v[name] = finalsSig(); localStorage.setItem(PATH_SEEN_KEY(), JSON.stringify(v)); } catch {}
+  try { const v = pathSeenMap(); v[name] = { s: finalsSig(), t: Date.now() }; localStorage.setItem(PATH_SEEN_KEY(), JSON.stringify(v)); } catch {}
 }
 // A result the path needs that pays this manager nothing is there to stop
 // someone: the rival it costs most, the one highest in the standings whose
@@ -3461,6 +4363,8 @@ function stopsWho(g, res, name, standing, all = lastGoodCloudPicks || {}) {
   });
   return hurt.sort((a, b) => (standing[b] || 0) - (standing[a] || 0))[0] || null;
 }
+// When the fresh read failed, the path says its scores may be behind.
+const pathStaleNote = () => (liveLastOk || window.__liveView ? "" : `<div class="pr-stale">Scores didn't refresh, so a game that just ended may still show.</div>`);
 // Once a path has been watched, the button opens this instead: a small
 // card with only the games that must go a certain way, the team's logo,
 // the result, and what it pays, then the win at the bottom.
@@ -3485,7 +4389,7 @@ function openPathCard(name) {
     const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
     const free = sc.all.length - sc.need.length;
     body = `<ul class="pc-list">${rowsHtml}</ul>
-      ${free ? `<div class="pc-free">The other ${free} game${free === 1 ? "" : "s"} can go either way.</div>` : ""}
+      ${pathStaleNote()}${free ? `<div class="pc-free">The other ${free} game${free === 1 ? "" : "s"} can go either way.</div>` : ""}
       ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : ""}
       <div class="pc-win">${escapeCd(me)} WINS THE WEEK</div>
       <div class="pc-foot"><span>${oneIn ? (oneIn > 10000 ? "Rarer than 1 in 10,000" : `About 1 in ${oneIn.toLocaleString()}`) : ""}</span><span class="pc-btns"><button type="button" class="pc-share">↗ Share</button><button type="button" class="pc-replay">▶ Replay</button></span></div>`;
@@ -3517,14 +4421,16 @@ function openPathRun(name, replay = false) {
   const results = computeLiveResults(latestLive);
   const pts = Object.fromEntries(MANAGERS.map((n) => [n, GAMES.reduce((t, g) => t + (results[g.id] ? scorePick(g, all[n]?.picks?.[g.id], results[g.id]) || 0 : 0), 0)]));
   const me = shown(name).toUpperCase();
-  let fast = (!replay && pathSeen(name)) || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Reduce Motion still plays the run game by game; only the slides (in
+  // CSS) and the closing fold are left out.
+  let fast = !replay && pathSeen(name);
   const m = document.createElement("div");
   m.className = "pr-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", `Path to win for ${shown(name)}`);
   // A DOS window: the title bar on top (drag it down, or tap X, to close),
   // the standings, then the terminal.
   m.innerHTML = `<div class="pr-win">
     <div class="pr-bar"><span class="pr-grip" aria-hidden="true"></span><span class="pr-bar-t">PATH TO WIN <i>·</i> ${escapeCd(me)}</span>${fast ? "" : `<button type="button" class="pr-skip">SKIP</button>`}<button type="button" class="pr-close" aria-label="Close">✕</button></div>
-    <div class="pr-meter"><span class="pr-meter-l">WIN CHANCE</span><span class="pr-meter-bar"><i></i></span><b class="pr-meter-v">--</b></div>
+    <div class="pr-meter"><span class="pr-meter-l">WIN CHANCE</span><span class="pr-meter-bar"><i></i></span><b class="pr-meter-v">--</b></div>${pathStaleNote()}
     <div class="pr-stand"><div class="pr-stand-h"><span>#</span><span>STANDINGS</span>${MANAGERS.length > 5 ? `<button type="button" class="pr-more" aria-expanded="false">ALL ▾</button>` : ""}<span>PTS</span></div><ol class="pr-board"></ol></div>
     <div class="pr-term"><div class="pr-lines"></div><span class="pr-cursor">█</span></div>
   </div>`;
@@ -3722,12 +4628,26 @@ function openPathRun(name, replay = false) {
   track("path-run", { event: true });
   noteUse(`path-of-${name}`);
 }
+// The path is worked out from the board's numbers, which on opening can be
+// the copy saved on the last visit. Before a path shows, the scores are
+// read fresh and the odds worked out from them, so a game that has
+// finished since is never played out again.
+async function pathFresh() {
+  if (!lastGoodCloudPicks) { const d = await fetchBoardPicks().catch(() => null); if (d) lastGoodCloudPicks = d; }
+  const old = liveFetchedAt;
+  if (!liveFetchedAt || Date.now() - liveFetchedAt > 60000) await fetchLiveScores(true).catch(() => {});
+  if (lastGoodCloudPicks) weekWinChances(boardCloudPicks(lastGoodCloudPicks), computeLiveResults(latestLive), latestLive);
+  if (liveFetchedAt !== old && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
+}
 // The button lives inside a card the board redraws, so one listener here.
+let pathOpening = false;
 document.addEventListener("click", (e) => {
   const b = e.target.closest?.(".rd-path-btn");
   if (!b) return;
   e.stopPropagation();
-  openPathRun(b.dataset.path);
+  if (pathOpening) return;
+  pathOpening = true; b.classList.add("busy");
+  pathFresh().finally(() => { pathOpening = false; b.classList.remove("busy"); openPathRun(b.dataset.path); });
 }, true);
 
 function playerBreakdownHtml(name, state, results, live) {
@@ -3836,7 +4756,10 @@ function playerBreakdownHtml(name, state, results, live) {
     const canPath = wd.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((row) => row.some((p) => p?.hidden));
     wpRow = `<div class="rd-wp"><span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
   }
-  return `<div class="rank-detail">${wpRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rows}${tbRow}${summary}</div>`;
+  // A Scouting Report published from the Creative Studio, under the week.
+  const scout = creativeArt?.art?.[`owner-card:owner:${name}`]?.text;
+  const scoutRow = scout ? `<div class="rd-scout"><em>📋 SCOUTING REPORT</em><b>${escapeCd(scout.headline)}</b>${String(scout.body).split(/\n\s*\n/).map((p) => `<p>${escapeCd(p)}</p>`).join("")}</div>` : "";
+  return `<div class="rank-detail">${wpRow}${scoutRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rows}${tbRow}${summary}</div>`;
 }
 
 // Second line under a leaderboard name. How many picks are in is fair
@@ -3898,6 +4821,9 @@ const POT = {
   weekly: 100, // to the winner of each week
   season: [],  // nothing held back for the season
 };
+// The NFL league plays for pride so far: the same season standings, no money.
+const NO_MONEY = window.LEAGUE?.features?.pot === false;
+if (NO_MONEY) { POT.buyIn = 0; POT.weekly = 0; POT.weeks = window.LEAGUE?.seasonWeeks || 18; }
 POT.total = POT.buyIn * POT.members;
 POT.weeklyTotal = POT.weekly * POT.weeks;
 POT.seasonTotal = POT.season.reduce((a, b) => a + b, 0);
@@ -3958,9 +4884,22 @@ function payoutLedger() {
   return { list, sealed: sealed.length, done, contested, liveWeek, liveWeekFinal };
 }
 
+// One row of the season standings; the NFL build leaves the money out.
+function potRowHtml(r, rec, withMoney, done) {
+  return `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}" data-pot-row="${escapeCd(r.name)}" role="button" tabindex="0">
+        <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
+        <span class="pot-name"><span class="pot-av" style="--accent:${accentFor(r.name)}">${avatarOverrides[r.name] || shown(r.name)[0]}</span>${r.seasonPlace === 1 && r.points > 0 ? `<i class="pot-crown">♛</i>` : ""}${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
+        <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
+        <span class="pot-rec">${rec[r.name] ? `${rec[r.name].w}-${rec[r.name].l}` : "–"}</span>
+        <span class="pot-won">${(() => { const wk = Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(r.name)).sort((x, y) => x.week - y.week); return wk.length ? wk.map((w) => `<button type="button" class="pot-tro${w.exhibition ? " exh" : ""}" data-week="${w.week}" data-name="${r.name}" title="Week ${w.week} win">🏆</button>`).join("") : "–"; })()}</span>
+        ${withMoney ? `<span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>` : ""}
+      </div>`;
+}
 function renderPayouts() {
   const panel = document.getElementById("payouts-panel");
   if (!panel || panel.classList.contains("hidden")) return;
+  // No record on this phone yet: say so rather than draw a wall of zeros.
+  if (!weekSummariesReady) { panel.innerHTML = `<div class="pot-empty">Reading the record…</div>`; return; }
   const { list, sealed, done, contested, liveWeek, liveWeekFinal } = payoutLedger();
   const paid = list.reduce((a, r) => a + r.earned, 0);
   const left = POT.total - paid - POT.seasonTotal;
@@ -3984,7 +4923,17 @@ function renderPayouts() {
     if (i === settled.length && liveWeek) return `<span class="ps-seg live"></span>`;
     return `<span class="ps-seg"></span>`;
   }).join("");
-  panel.innerHTML = `
+  panel.innerHTML = NO_MONEY ? `
+    <div class="pot-season">
+      <div class="ps-head"><span>SEASON</span><b>${sealed} / ${POT.weeks}</b></div>
+      <div class="ps-bar" style="grid-template-columns: repeat(${POT.weeks + exh.length}, 1fr)">${seasonSegs}</div>
+    </div>
+    ${liveWeek ? `<div class="pot-live">${liveWeekFinal ? `WEEK ${liveWeek} UNSEALED` : `WEEK ${liveWeek} ACTIVE`}</div>` : ""}
+    <div class="pot-table nomoney">
+      <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>REC</span><span>WON</span></div>
+      ${list.map((r) => potRowHtml(r, rec, false, done)).join("")}
+    </div>
+    ${sealed ? "" : `<div class="pot-empty">No weeks settled yet. Standings fill in once a week's last game is final.</div>`}` : `
     <div class="pot-jackpot">
       <div class="pj-label">★ JACKPOT · STILL IN PLAY ★</div>
       <div class="pj-amount">${money(Math.max(0, left + (POT.seasonTotal || 0)))}</div>
@@ -3999,17 +4948,165 @@ function renderPayouts() {
     ${contested ? `<div class="pot-warn">⚠ Season places are tied on points where the money sits. The weekly tiebreaker does not settle the season, so the league needs a rule for this before the last week.</div>` : ""}
     <div class="pot-table">
       <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>REC</span><span>WON</span><span>EARNED</span></div>
-      ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}">
-        <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
-        <span class="pot-name"><span class="pot-av" style="--accent:${accentFor(r.name)}">${avatarOverrides[r.name] || shown(r.name)[0]}</span>${r.seasonPlace === 1 && r.points > 0 ? `<i class="pot-crown">♛</i>` : ""}${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
-        <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
-        <span class="pot-rec">${rec[r.name] ? `${rec[r.name].w}-${rec[r.name].l}` : "–"}</span>
-        <span class="pot-won">${(() => { const wk = Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(r.name)).sort((x, y) => x.week - y.week); return wk.length ? wk.map((w) => `<button type="button" class="pot-tro${w.exhibition ? " exh" : ""}" data-week="${w.week}" data-name="${r.name}" title="Week ${w.week} win">🏆</button>`).join("") : "–"; })()}</span>
-        <span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>
-      </div>`).join("")}
+      ${list.map((r) => potRowHtml(r, rec, true, done)).join("")}
     </div>
     ${sealed ? "" : `<div class="pot-empty">No weeks settled yet. Earnings appear once a week's last game is final.</div>`}`;
 }
+
+// --- Season head to head ------------------------------------------------
+// Two managers' seasons side by side, opened from the pot: week by week
+// who outscored whom, a tale of the tape from the sealed record and the
+// pick ledger, and how often they were on the same side. Pool data only;
+// side bets stay out.
+const sh2h = { a: null, b: null };
+// Pure: everything the panel shows for two names, from the sealed weeks
+// (with their ledgers when the detail has loaded) and the pot's ledger.
+function seasonH2H(a, b, weeks, ledger, pot) {
+  const mk = () => ({ pts: 0, wk: 0, hits: 0, misses: 0, atsW: 0, atsL: 0, dogs: 0, best: null, tbSum: 0, tbN: 0, blanks: 0 });
+  const s = { [a]: mk(), [b]: mk() };
+  const meetings = [];
+  let same = 0, both = 0, splitA = 0, splitB = 0, splitN = 0, splitPtsA = 0, splitPtsB = 0, swing = null;
+  for (const w of weeks) {
+    const ra = (w.rows || []).find((r) => r.name === a), rb = (w.rows || []).find((r) => r.name === b);
+    for (const [n, r] of [[a, ra], [b, rb]]) {
+      if (!r) continue;
+      const m = s[n];
+      m.pts += r.score || 0; m.wk += 1;
+      if (!m.best || r.score > m.best.score) m.best = { score: r.score, week: w.week };
+      if (r.tbDiff != null) { m.tbSum += r.tbDiff; m.tbN += 1; }
+    }
+    if (ra && rb) meetings.push({ week: w.week, a: ra.score || 0, b: rb.score || 0, live: !!w.live });
+  }
+  for (const w of ledger || []) {
+    const la = (w.rows || []).find((r) => r.name === a)?.ledger || [], lb = (w.rows || []).find((r) => r.name === b)?.ledger || [];
+    for (const [n, list] of [[a, la], [b, lb]]) for (const l of list) {
+      if (l.result === "pending") continue;
+      const m = s[n];
+      if (!l.team) { m.blanks += 1; continue; }
+      if (l.result === "hit") m.hits += 1; else if (l.result === "miss") m.misses += 1;
+      if (l.mode === "ATS") { if (l.result === "hit") m.atsW += 1; else if (l.result === "miss") m.atsL += 1; }
+      if (l.mode === "SU" && l.team !== l.favorite && l.result === "hit") m.dogs += 1;
+    }
+    for (const x of la) {
+      const y = lb.find((l) => l.g === x.g);
+      if (!x.team || !y?.team || x.result === "pending") continue;
+      both += 1;
+      if (x.team === y.team) same += 1;
+      else {
+        // A split: they took different sides. Who was right, what it paid,
+        // and the one that swung the most points between them.
+        splitN += 1;
+        const pa = x.result === "hit" ? x.pts || 0 : 0, pb = y.result === "hit" ? y.pts || 0 : 0;
+        splitPtsA += pa; splitPtsB += pb;
+        if (x.result === "hit" && y.result !== "hit") splitA += 1;
+        else if (y.result === "hit" && x.result !== "hit") splitB += 1;
+        if (!swing || Math.abs(pa - pb) > Math.abs(swing.pa - swing.pb)) swing = { week: w.week, matchup: x.matchup, a: x.team, b: y.team, la: x.line, lb: y.line, pa, pb };
+      }
+    }
+  }
+  const potRow = (n) => pot.list.find((r) => r.name === n) || {};
+  // The week in progress shows, but only sealed weeks count in the record.
+  const done = meetings.filter((m) => !m.live);
+  const rec = { a: done.filter((m) => m.a > m.b).length, b: done.filter((m) => m.b > m.a).length, t: done.filter((m) => m.a === m.b).length };
+  return { s, meetings, rec, same, both, splitA, splitB, splitN, splitPtsA, splitPtsB, swing, potA: potRow(a), potB: potRow(b) };
+}
+async function openSeasonH2H() {
+  noteUse("season-h2h");
+  const { list } = payoutLedger();
+  if (!sh2h.a) sh2h.a = currentManager && MANAGERS.includes(currentManager) ? currentManager : list[0]?.name || MANAGERS[0];
+  if (!sh2h.b || sh2h.b === sh2h.a) sh2h.b = list.find((r) => r.name !== sh2h.a)?.name || MANAGERS.find((n) => n !== sh2h.a);
+  renderSeasonH2H();
+  document.getElementById("sh2h-modal")?.classList.remove("hidden");
+  // The pick ledger comes with the detail, which season stats also reads.
+  if (!seasonLedger) { await fetchSeasonLedger(); renderSeasonH2H(); }
+}
+function renderSeasonH2H() {
+  const modal = document.getElementById("sh2h-modal");
+  if (!modal) return;
+  const esc = escapeCd;
+  const pot = payoutLedger();
+  const sealed = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition).sort((x, y) => x.week - y.week);
+  // The week in progress counts too, marked live, so the race is current.
+  const weeks = pot.liveWeek && liveWeekRows.some((r) => r.score) ? [...sealed, { week: pot.liveWeek, live: true, rows: liveWeekRows.map((r) => ({ name: r.name, score: r.score })) }] : sealed;
+  const a = sh2h.a, b = sh2h.b;
+  const d = seasonH2H(a, b, weeks, seasonLedger, pot);
+  modal.querySelectorAll(".sh2h-select").forEach((el) => {
+    const side = el.dataset.side;
+    el.innerHTML = pot.list.map((r) => `<option value="${esc(r.name)}"${sh2h[side] === r.name ? " selected" : ""}>${esc(shown(r.name).toUpperCase())}</option>`).join("");
+  });
+  const fill = (side, name, pr) => {
+    const card = modal.querySelector(`.h2h-fighter.${side}`);
+    card.style.setProperty("--accent", accentFor(name));
+    card.querySelector(".h2h-f-av").textContent = avatarOverrides[name] || shown(name)[0];
+    card.querySelector(".h2h-f-name").textContent = shown(name).toUpperCase();
+    card.querySelector(".h2h-f-meta").innerHTML = `<span>${pr.tied ? "T" : "#"}${pr.seasonPlace || "–"}</span><span>${NO_MONEY ? `${pr.weeksWon ?? (pr.wins || 0)} won` : pr.earned ? money(pr.earned) : "$0"}</span>`;
+    card.querySelector(".h2h-f-score").textContent = String(pr.points || 0).padStart(2, "0");
+    card.classList.toggle("ahead", (pr.points || 0) > ((side === "a" ? d.potB : d.potA).points || 0));
+  };
+  fill("a", a, d.potA); fill("b", b, d.potB);
+  const A = d.s[a], B = d.s[b];
+  const pct = (w, l) => (w + l ? Math.round((100 * w) / (w + l)) : null);
+  // [label, a shown, b shown, a number, b number, lower wins]
+  const tape = [
+    ["SEASON PTS", A.pts, B.pts, A.pts, B.pts],
+    ["PER WEEK", A.wk ? (A.pts / A.wk).toFixed(1) : "–", B.wk ? (B.pts / B.wk).toFixed(1) : "–", A.wk ? A.pts / A.wk : 0, B.wk ? B.pts / B.wk : 0],
+    ["WEEKS WON", d.potA.weeksWon || 0, d.potB.weeksWon || 0, d.potA.weeksWon || 0, d.potB.weeksWon || 0],
+    ...(NO_MONEY ? [] : [["EARNED", money(d.potA.earned || 0), money(d.potB.earned || 0), d.potA.earned || 0, d.potB.earned || 0]]),
+    ["BEST WEEK", A.best ? A.best.score : "–", B.best ? B.best.score : "–", A.best?.score || 0, B.best?.score || 0],
+    ...(seasonLedger ? [
+      ["PICKS RIGHT", `${A.hits}-${A.misses}`, `${B.hits}-${B.misses}`, pct(A.hits, A.misses) || 0, pct(B.hits, B.misses) || 0],
+      ["ATS", `${A.atsW}-${A.atsL}`, `${B.atsW}-${B.atsL}`, pct(A.atsW, A.atsL) || 0, pct(B.atsW, B.atsL) || 0],
+      ["DOG HITS", A.dogs, B.dogs, A.dogs, B.dogs],
+      ["NO SHOWS", A.blanks, B.blanks, A.blanks, B.blanks, true],
+    ] : []),
+    ["TB MISS", A.tbN ? (A.tbSum / A.tbN).toFixed(1) : "–", B.tbN ? (B.tbSum / B.tbN).toFixed(1) : "–", A.tbN ? A.tbSum / A.tbN : Infinity, B.tbN ? B.tbSum / B.tbN : Infinity, true],
+  ];
+  const side = (x, y, low) => (x === y ? "" : (low ? x < y : x > y) ? "win" : "lose");
+  const tapeHtml = tape.map(([lab, as, bs, an, bn, low]) => {
+    const tot = Number.isFinite(an) && Number.isFinite(bn) && an + bn > 0 ? an + bn : 0;
+    const wa = tot ? Math.round((100 * (low ? bn : an)) / tot) : 50;
+    return `<div class="sh-row"><b class="sh-v a ${side(an, bn, low)}">${esc(as)}</b><span class="sh-mid"><span class="sh-lab">${lab}</span><span class="sh-bar"><u class="a" style="width:${wa}%"></u><u class="b" style="width:${100 - wa}%"></u></span></span><b class="sh-v b ${side(bn, an, low)}">${esc(bs)}</b></div>`;
+  }).join("");
+  const r = d.rec;
+  const lead = r.a === r.b ? `Level at ${r.a}-${r.b}${r.t ? `-${r.t}` : ""}` : `${esc(shown(r.a > r.b ? a : b))} leads ${Math.max(r.a, r.b)}-${Math.min(r.a, r.b)}${r.t ? `-${r.t}` : ""}`;
+  // A small scoreboard: weeks across, one row per player, the week's
+  // winner lit in their side's colour, ties left plain.
+  const nmA = escapeCd(shown(sh2h.a).toUpperCase()), nmB = escapeCd(shown(sh2h.b).toUpperCase());
+  const weeksHtml = d.meetings.length ? `<div class="sh-board" style="--n:${d.meetings.length}">
+      <span class="sh-bh"></span>${d.meetings.map((m) => `<span class="sh-bh">W${m.week}${m.live ? "•" : ""}</span>`).join("")}
+      <span class="sh-bn a">${nmA}</span>${d.meetings.map((m) => `<span class="sh-bc a${m.a > m.b ? " win" : ""}">${m.a}</span>`).join("")}
+      <span class="sh-bn b">${nmB}</span>${d.meetings.map((m) => `<span class="sh-bc b${m.b > m.a ? " win" : ""}">${m.b}</span>`).join("")}
+    </div>` : `<div class="sh-none">No weeks on the record yet.</div>`;
+  // The arguments: the games they picked opposite sides, and who was right.
+  const short = (t) => String(t || "").split(" ").slice(0, -1).join(" ") || t;
+  const agree = d.both ? (() => {
+    const A = esc(shown(a)), B = esc(shown(b)), n = d.splitN, wa = d.splitA, wb = d.splitB;
+    const tot = Math.max(1, wa + wb), lead = wa === wb ? "Dead even on the arguments" : `${wa > wb ? A : B} wins the arguments by ${Math.abs(wa - wb)}`;
+    const sw = d.swing && d.swing.pa !== d.swing.pb ? `<div class="sh-swing"><small>BIGGEST SWING · WEEK ${d.swing.week}</small><span>${esc(d.swing.matchup || "")}: ${d.swing.pa > d.swing.pb ? A : B} took ${esc(short(d.swing.pa > d.swing.pb ? d.swing.a : d.swing.b))} for +${Math.max(d.swing.pa, d.swing.pb)}, ${d.swing.pa > d.swing.pb ? B : A} got 0</span></div>` : "";
+    return `<div class="sh-agree sh-args">
+      <div class="sh-agree-h"><span>THE ARGUMENTS</span><small>${n} game${n === 1 ? "" : "s"} on opposite sides</small></div>
+      ${n ? `<div class="sh-argrow"><b class="a">${wa}</b><i><u class="a" style="width:${(wa / tot) * 100}%"></u><u class="b" style="width:${(wb / tot) * 100}%"></u></i><b class="b">${wb}</b></div>
+      <div class="sh-argwho"><span class="a">${A} right</span><em>${lead}</em><span class="b">${B} right</span></div>
+      ${d.splitPtsA + d.splitPtsB ? `<div class="sh-argpts">Points from those games: ${A} +${d.splitPtsA} · ${B} +${d.splitPtsB}</div>` : ""}${sw}` : `<div class="sh-agree-s">They have not split on a game yet.</div>`}
+      <div class="sh-argfoot">${n - wa - wb > 0 ? `${n - wa - wb} split${n - wa - wb === 1 ? "" : "s"} where neither (or both) cashed · ` : ""}Same side on ${d.same} of ${d.both} games (${Math.round((100 * d.same) / d.both)}%)</div>
+    </div>`;
+  })() : "";
+  document.getElementById("sh2h-body").innerHTML = `<div class="h2h-sec">WEEK BY WEEK · ${lead}</div>
+    <div class="sh-weeks">${weeksHtml}</div>
+    <div class="h2h-sec">TALE OF THE TAPE</div>
+    <div class="sh-tape">${tapeHtml}</div>
+    ${agree}
+    ${seasonLedger ? "" : `<div class="sh-none">Loading pick records…</div>`}`;
+}
+document.getElementById("sh2h-open")?.addEventListener("click", (e) => { e.stopPropagation(); openSeasonH2H(); });
+document.getElementById("sh2h-close")?.addEventListener("click", () => document.getElementById("sh2h-modal").classList.add("hidden"));
+document.getElementById("sh2h-modal")?.addEventListener("click", (e) => { if (e.target === e.currentTarget) e.currentTarget.classList.add("hidden"); });
+document.querySelectorAll(".sh2h-select").forEach((el) => el.addEventListener("change", () => {
+  const side = el.dataset.side, other = side === "a" ? "b" : "a";
+  if (sh2h[other] === el.value) sh2h[other] = sh2h[side]; // picking the other card swaps them
+  sh2h[side] = el.value;
+  renderSeasonH2H();
+}));
 
 // --- Weekly performance and trophies ----------------------------------
 // The board is computed live from ESPN, so a week that has finished has
@@ -4021,6 +5118,16 @@ function renderPayouts() {
 let weekTrophies = {};
 let weekSummaries = {};
 const SEALED_KEY = "brochiefs_sealed_v1";
+// The season record, kept on the phone so the pot and the replay open on
+// real numbers while the Worker is asked again. weekSummariesReady says
+// whether there is any record at all yet, cached or fresh.
+const WEEKS_CACHE_KEY = "brochiefs_weeks_v1";
+let weekSummariesReady = false;
+try {
+  const c = JSON.parse(localStorage.getItem(WEEKS_CACHE_KEY) || "null");
+  if (c?.summaries) { weekSummaries = c.summaries; weekTrophies = c.trophies || {}; weekSummariesReady = true; }
+} catch { /* private mode or a bad copy */ }
+const potOpen = () => !document.getElementById("payouts-panel")?.classList.contains("hidden");
 
 async function loadWeekSummaries() {
   if (!WORKER_URL) return;
@@ -4030,7 +5137,10 @@ async function loadWeekSummaries() {
     const data = await res.json();
     weekTrophies = data.trophies || {};
     weekSummaries = data.summaries || {};
+    weekSummariesReady = true;
+    try { localStorage.setItem(WEEKS_CACHE_KEY, JSON.stringify({ summaries: weekSummaries, trophies: weekTrophies })); } catch { /* full or private */ }
     renderRecap();
+    if (potOpen()) renderPayouts();
   } catch {
     // Leave whatever we had; trophies are decoration, not the score.
   }
@@ -4726,7 +5836,7 @@ function renderWeekChamp(rows, results) {
   if (!allFinal || !rows.length) { el.classList.add("hidden"); return; }
   const top = rows.filter((r) => r.place === rows[0].place);
   const names = top.map((r) => shown(r.name).toUpperCase()).join(" & ");
-  const trophy = `<svg class="wc-trophy" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${["########", "#.####.#", "#.####.#", ".######.", "..####..", "...##...", "..####..", ".######."].flatMap((row, y) => [...row].map((c, x) => c === "#" ? `<rect x="${x}" y="${y}" width="1" height="1"/>` : "")).join("")}</svg>`;
+  const trophy = `<img class="wc-trophy" src="${awardArt("recap/trophy")}" alt="" aria-hidden="true" decoding="async">`;
   el.innerHTML = `<span class="wc-label"><span class="wc-rule"></span>${WEEK_LABEL.toUpperCase()} HIGH SCORE<span class="wc-rule"></span></span><span class="wc-line">${trophy}<span class="wc-name">${names}</span><span class="wc-pts">${String(rows[0].score).padStart(2, "0")}<small>PTS</small></span>${trophy}</span>`;
   el.classList.remove("hidden");
 }
@@ -4852,10 +5962,20 @@ function setWeekOverLayout(on) {
   const screen = document.getElementById("scoreboard-screen");
   if (!screen) return;
   screen.classList.toggle("week-over", on);
+  // The week-over overview: the replay, the pot and season stats, in that
+  // order, all open the first time the finished week is drawn. Each still
+  // folds by hand.
   if (on && weekOverSeen !== currentWeek) {
     weekOverSeen = currentWeek;
-    const pot = document.getElementById("payouts-toggle");
-    if (pot && !pot.classList.contains("open")) pot.click();
+    for (const id of ["payouts-toggle", "season-toggle"]) {
+      const t = document.getElementById(id);
+      if (t && !t.classList.contains("open")) t.click();
+    }
+    const recap = document.getElementById("recap-panel");
+    if (recap?.classList.contains("folded")) {
+      recap.classList.remove("folded");
+      recap.querySelector(".recap-marquee")?.setAttribute("aria-expanded", "true");
+    }
   }
 }
 document.getElementById("scores-toggle")?.addEventListener("click", (e) => {
@@ -4940,7 +6060,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
       toggleRow();
     });
     const toggleRow = () => {
-      if (expandedRankings.has(row.name)) expandedRankings.delete(row.name); else { expandedRankings.add(row.name); track("ranking-expand", { event: true }); }
+      if (expandedRankings.has(row.name)) expandedRankings.delete(row.name); else { expandedRankings.add(row.name); track("ranking-expand", { event: true, d: row.name }); }
       withScrollPreserved(() => renderRankings(cloudPicks, results, live));
     };
     rankingsList.appendChild(div);
@@ -5189,6 +6309,8 @@ setInterval(() => {
     if (!document.getElementById("payouts-panel")?.classList.contains("hidden")) renderPayouts();
   renderRecap(); // memoised: only the Thursday cutoff can change anything here
   }
+  // The Side bet tab keeps its scores and standings moving the same way.
+  if (!sideScreen.classList.contains("hidden")) Promise.all([fetchLiveScores().catch(() => {}), fetchSidePot(), fetchSideLive().catch(() => {})]).then(() => withScrollPreserved(() => { updateSideNav(); renderSideScreen(); }));
   // The off-board branch that fetched live scores here every tick is gone.
   // It fed the header chip back when the chip reported live games; the
   // chip is a to-do reminder now and reads nothing from the feed.
@@ -5333,7 +6455,7 @@ let bonerShownThisLoad = false;
 function maybeShowBoner() {
   if (window.LEAGUE?.sport === "nfl") return; // NFL: scores first, no pop-ups
   const el = document.getElementById("boner-modal");
-  if (!el || bonerShownThisLoad || !currentManager) return;
+  if (!el || bonerShownThisLoad || !currentManager || window.__liveView) return;
   if (window.LEAGUE?.features?.boner === false || currentWeek !== 4 || Date.now() >= BONER_UNTIL || !GAMES.length || !GAMES.every(isGameLocked)) return;
   bonerShownThisLoad = true;
   // The GIF is half a megabyte; fetch it only when the popup actually shows.
@@ -5399,10 +6521,104 @@ function showNowPlaying(then) {
 const QOTW = window.LEAGUE?.features?.qotw === false ? null : { id: "gooey-belly", q: "What actually is a “gooey belly”?", qHtml: `What actually is a<span class="qotw-pop">“gooey belly”?</span>` };
 window.QOTW = QOTW;
 let qotwShownThisLoad = false;
+// --- League poll: lock of the week scoring ------------------------------------
+// Pops up once per open until this manager votes. Votes can change; the
+// tally (counts only) shows after voting. Names are admin only (?all=1).
+const POLL = { live: true, id: "lock-of-week-v2", q: "Add a lock 🔒 of the week to scoring.", opts: [
+  { k: "A", t: "Free bonus", hit: "+2", miss: "0" },
+  { k: "B", t: "Bonus with risk", hit: "+2", miss: "−1" },
+  { k: "C", t: "High stakes", hit: "+3", miss: "−3" },
+  { k: "N", t: "No lock", none: "Keep scoring as is" },
+] };
+let pollShownThisLoad = false;
+async function maybeShowPoll(force) {
+  // Held back until POLL.live: preview with ?poll=1.
+  if (!POLL.live && !/[?&]poll=1/.test(location.search)) return;
+  if (window.LEAGUE?.sport === "nfl") return; // a college league vote
+  if ((!force && pollShownThisLoad) || !currentManager || !WORKER_URL || window.__adminEntry || window.__adminOpen || window.__liveView) return;
+  const doneKey = `brochiefs_poll_${POLL.id}_${currentManager}`;
+  try { if (!force && localStorage.getItem(doneKey)) { refreshPollStrip(); return; } } catch {}
+  // Not on top of the question of the week: try again on the next open.
+  const q = document.getElementById("qotw-modal");
+  if (q && !q.classList.contains("hidden") && q.isConnected) return;
+  pollShownThisLoad = true;
+  let st;
+  try { const r = await fetch(`${WORKER_URL}/poll?id=${POLL.id}&manager=${encodeURIComponent(currentManager)}`); if (!r.ok) return; st = await r.json(); } catch { return; }
+  if (st.vote && !force) { try { localStorage.setItem(doneKey, st.vote); } catch {} drawPollStrip(st); return; }
+  let m = document.getElementById("poll-modal");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "poll-modal"; m.className = "wpx-overlay"; m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("change", (e) => {
+      if (!e.target.closest(".poll-note")) return;
+      const on = m.querySelector(".poll-opt.on");
+      if (on) fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: POLL.id, manager: currentManager, choice: on.dataset.k, note: e.target.value, token: tokenFor(currentManager) || undefined }) }).catch(() => {});
+    });
+    m.addEventListener("click", async (e) => {
+      if (e.target === m || e.target.closest(".wpx-x, .poll-done, .poll-later")) { m.classList.add("hidden"); return; }
+      const b = e.target.closest(".poll-opt");
+      if (!b || b.disabled) return;
+      m.querySelectorAll(".poll-opt").forEach((x) => (x.disabled = true));
+      try {
+        const r = await fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: POLL.id, manager: currentManager, choice: b.dataset.k, note: m.querySelector(".poll-note")?.value || "", token: tokenFor(currentManager) || undefined }) });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || "Vote failed");
+        try { localStorage.setItem(doneKey, j.vote); } catch {}
+        noteUse?.("poll", j.vote);
+        draw({ ...j, note: m.querySelector(".poll-note")?.value || "" }, true);
+        drawPollStrip(j);
+      } catch (err) { m.querySelector(".poll-err").textContent = err.message; m.querySelectorAll(".poll-opt").forEach((x) => (x.disabled = false)); }
+    });
+  }
+  const RISK = { A: 0, B: 1, C: 3, N: -1 };
+  const draw = (s, fresh) => {
+    const max = Math.max(1, ...Object.values(s.counts || {}));
+    m.innerHTML = `<div class="wpx-card poll${s.vote ? " voted" : ""}${fresh ? " fresh" : ""}">
+      <button type="button" class="wpx-x" aria-label="Close">✕</button>
+      <div class="poll-top"><span class="poll-lock">🔒</span><div><div class="poll-kicker">${s.vote ? "YOU'RE LOCKED IN" : "LEAGUE VOTE · 5 SECONDS"}</div><div class="poll-q">${POLL.q}</div></div></div>
+      <div class="poll-opts">${POLL.opts.map((o) => `<button type="button" class="poll-opt opt-${o.k}${s.vote === o.k ? " on" : ""}${o.none ? " no" : ""}" data-k="${o.k}">
+        <span class="poll-t"><b>${o.t}</b><small>${o.none ? o.none : `Hit <i class="up">${o.hit}</i> · Miss <i class="dn">${o.miss}</i>`}</small></span>
+        ${s.vote ? `<em class="poll-c">${s.counts[o.k] || 0}</em>` : RISK[o.k] >= 0 ? `<span class="poll-risk" title="Risk">${[1, 2, 3].map((i) => `<s class="${i <= RISK[o.k] ? "f" : ""}"></s>`).join("")}<small>${["NO RISK", "SOME RISK", "", "BIG RISK"][RISK[o.k]]}</small></span>` : ""}
+        ${s.vote ? `<span class="poll-bar"><u style="--w:${Math.round(((s.counts[o.k] || 0) / max) * 100)}%"></u></span>` : ""}
+      </button>`).join("")}</div>
+      <textarea class="poll-note" rows="1" maxlength="1000" placeholder="Optional feedback">${(s.note || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</textarea>
+      <div class="poll-err"></div>
+      ${s.vote ? `<div class="poll-foot"><span>${s.voted} of ${s.of} voted · tap another to switch</span><button type="button" class="poll-done">Done</button></div>` : `<button type="button" class="poll-later wpx-x-alt">Not now</button>`}
+    </div>`;
+  };
+  draw(st);
+  m.classList.remove("hidden");
+  noteUse("poll-view", POLL.id);
+  fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: POLL.id, manager: currentManager, action: "view" }) }).catch(() => {});
+}
+window.maybeShowPoll = maybeShowPoll;
+// Until they vote: show it again each time the app comes back to the front.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible" || !POLL.live || !currentManager) return;
+  try { if (localStorage.getItem(`brochiefs_poll_${POLL.id}_${currentManager}`)) return; } catch {}
+  if (!document.getElementById("poll-modal")?.classList.contains("hidden") && document.getElementById("poll-modal")) return;
+  pollShownThisLoad = false; maybeShowPoll();
+});
+// After voting: the running result on the board, counts only, never names.
+function drawPollStrip(s) {
+  const el = document.getElementById("poll-strip");
+  if (!el || !s?.vote || !s.counts) return;
+  const max = Math.max(1, ...Object.values(s.counts));
+  el.innerHTML = `<div class="ps-h"><b>🔒 LOCK OF THE WEEK VOTE</b><span>${s.voted} of ${s.of} voted · tap to change</span></div>
+    <div class="ps-rows">${POLL.opts.map((o) => `<div class="ps-r${s.vote === o.k ? " on" : ""}"><span>${o.t}${s.vote === o.k ? " <i>YOU</i>" : ""}</span><u><s style="width:${Math.round(((s.counts[o.k] || 0) / max) * 100)}%"></s></u><b>${s.counts[o.k] || 0}</b></div>`).join("")}</div>`;
+  el.classList.remove("hidden");
+}
+async function refreshPollStrip() {
+  if (window.LEAGUE?.sport === "nfl" || !POLL.live || !currentManager || !WORKER_URL) return;
+  try { const r = await fetch(`${WORKER_URL}/poll?id=${POLL.id}&manager=${encodeURIComponent(currentManager)}`); if (r.ok) drawPollStrip(await r.json()); } catch {}
+}
+document.getElementById("poll-strip")?.addEventListener("click", () => { pollShownThisLoad = false; maybeShowPoll(true); });
+
 async function maybeShowQotw() {
   if (window.LEAGUE?.sport === "nfl") return; // NFL: scores first, no pop-ups
   // Not on the way into the admin panel: the prompt would sit on top of the key gate.
-  if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW || window.__adminEntry || window.__adminOpen) return;
+  if (qotwShownThisLoad || !currentManager || !WORKER_URL || !QOTW || window.__adminEntry || window.__adminOpen || window.__liveView) return;
   const doneKey = `brochiefs_qotw_${QOTW.id}_${currentManager}`;
   try { if (localStorage.getItem(doneKey)) return; } catch {}
   qotwShownThisLoad = true;
@@ -5478,7 +6694,7 @@ async function fetchInsights() {
   } catch { return insightsCache.data; }
 }
 function insightsLinks(game) {
-  const live = latestLive[game.id];
+  const live = insLive(game.id);
   const eventId = live?.eventId || insightsCache.eventIds?.[game.id] || insightsCache.data?.briefs?.[game.id]?.eventId || null;
   const q = encodeURIComponent(`${game.away} ${game.home} football`);
   const links = [];
@@ -5726,7 +6942,7 @@ async function fetchAiPreview(game, d) {
   if (aiPreviewCache[key]) return aiPreviewCache[key];
   const side = (list) => (list || []).slice(0, 5).map((x) => ({ ...x }));
   const inj = (list) => (list || []).slice(0, 6).map((i) => `${i.name} (${i.pos || "?"}) ${i.status}`);
-  const live = latestLive[game.id]?.odds?.spread != null ? latestLive[game.id].odds : d.odds;
+  const live = insLive(game.id)?.odds?.spread != null ? insLive(game.id).odds : d.odds;
   const favNow = live?.favoriteSide ? (live.favoriteSide === "home" ? game.home : game.away) : null;
   const bottom = (d.preview?.paras || []).find((t) => /bottom line:/i.test(t)) || null;
   // Storylines worth leading with, most interesting first. The model is
@@ -5769,7 +6985,7 @@ async function fetchAiPreview(game, d) {
       if (o <= 20 && dd <= 15) hooks.push(`${nm[off]} score just ${ppg[off]} a game against a ${nm[def]} defence allowing ${pa[def]}`);
     }
   }
-  const rk = (side) => latestLive[game.id]?.[side === "away" ? "awayRank" : "homeRank"];
+  const rk = (side) => insLive(game.id)?.[side === "away" ? "awayRank" : "homeRank"];
   if (rk("away") && rk("home")) hooks.push(`Top-25 matchup: No. ${rk("away")} ${game.away} at No. ${rk("home")} ${game.home}`);
   else if (rk("away") || rk("home")) { const sd = rk("away") ? "away" : "home"; hooks.push(`No. ${rk(sd)} ${nm[sd]} ${sd === "away" ? "go on the road" : "host an unranked opponent"}`); }
   if (/\b(7|8|9|10|11):\d\d\s*PM/i.test(game.kickoffLabel || "") || /\b(7|8|9|10|11)\s*PM/i.test(game.kickoffLabel || "")) hooks.push(`Night kickoff (${game.kickoffLabel})`);
@@ -5828,11 +7044,16 @@ document.getElementById("insights-body")?.addEventListener("click", (e) => {
   if (open) noteUse("gamecast-log", id);
   body.__gcPaint?.();
 });
+// The gamecast also opens for a side bet game off the pool's slate: the
+// game comes from the side bet, its live data from the side bet's own
+// ESPN read. A half bet shows its whole game.
+const sideGuestGame = (id) => (GAMES.some((g) => g.id === id) ? null : potNow()?.slate?.find((g) => String(g.id) === String(id)) || null);
+const insLive = (id) => latestLive[id] ?? sideLive[id];
 async function openInsights(gameId) {
   const modal = document.getElementById("insights-modal");
-  const game = GAMES.find((g) => g.id === gameId);
+  const game = GAMES.find((g) => g.id === gameId) || sideGuestGame(gameId);
   if (!modal || !game) return;
-  { const l = latestLive[gameId]; const kind = l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"; noteUse(kind); if (kind === "gamecast") { noteUse(`gamecast-g${gameId}`); gcStart(gameId); } }
+  { const l = insLive(gameId); const kind = l?.found && l.state === "in" && !l.completed ? "gamecast" : l?.found && l.completed ? "game-final" : "game-info"; noteUse(kind, gameId); if (kind === "gamecast") { sessionUse.add(`gamecast-g${gameId}`); gcStart(gameId); } }
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const body = modal.querySelector("#insights-body");
   if (window.__gcFull) window.__gcFull[gameId] = false;
@@ -5850,7 +7071,8 @@ async function openInsights(gameId) {
     let px = parseFloat(getComputedStyle(titleEl).fontSize) || 11;
     while (t && t.scrollWidth > t.clientWidth + 1 && px > 7) { px -= 0.5; titleEl.style.fontSize = `${px}px`; }
   });
-  modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv}`;
+  const guest = !GAMES.includes(game);
+  modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv].filter(Boolean).join(" · ");
   const links = () => `<div class="ins-h">MORE</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
   body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
   modal.classList.remove("hidden");
@@ -5881,24 +7103,24 @@ async function openInsights(gameId) {
   const glance = direct || snap?.glance || brief?.glance || null;
   const news = awayNews.length || homeNews.length ? { away: awayNews, home: homeNews } : snap?.news || brief?.news || null;
   if (snap?.eventId) insightsCache.eventIds = { ...(insightsCache.eventIds || {}), [gameId]: snap.eventId };
-  const eventId = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || snap?.eventId || null;
+  const eventId = insLive(gameId)?.eventId || insightsCache.eventIds?.[gameId] || snap?.eventId || null;
   // Line: the Worker's logged samples plus whatever the browser sees now.
   const samples = (snap?.samples || []).filter((x) => !x.live).slice();
-  const nowOdds = latestLive[gameId]?.odds && latestLive[gameId].odds.spread !== null ? latestLive[gameId].odds : direct?.odds && direct.odds.spread !== null ? direct.odds : null;
+  const nowOdds = insLive(gameId)?.odds && insLive(gameId).odds.spread !== null ? insLive(gameId).odds : direct?.odds && direct.odds.spread !== null ? direct.odds : null;
   if (nowOdds) { samples.push({ ...nowOdds, at: Date.now(), live: true }); reportLine(gameId, nowOdds); }
   const mv = movementFrom(game, samples) || snap?.movement || brief?.movement || null;
   const feedErr = (side) => direct ? null : snap?.feeds?.[side];
   // Live or final: a gamecast in our theme at the top. Score and clock
   // from the scoreboard, where the ball is and the last play from its
   // situation, the current drive and scoring plays from ESPN's game page.
-  const liveGame = () => { const l = latestLive[gameId]; return !!(l && l.found && l.state === "in" && !l.completed); };
-  const finalGame = () => { const l = latestLive[gameId]; return !!(l && l.found && l.completed && l.awayScore != null && l.homeScore != null); };
+  const liveGame = () => { const l = insLive(gameId); return !!(l && l.found && l.state === "in" && !l.completed); };
+  const finalGame = () => { const l = insLive(gameId); return !!(l && l.found && l.completed && l.awayScore != null && l.homeScore != null); };
   // FINAL: the score on the VS board, how the line settled, your pick and
   // the room as CASHED or MISSED, the game's top performers, ESPN's recap
   // and the scoring plays. Nothing about the build-up (preview, line
   // movement, sim) once it is over.
   const finalHtml = () => {
-    const lv = latestLive[gameId];
+    const lv = insLive(gameId);
     const A = abbrOf("away"), H = abbrOf("home");
     const sc = summaryRaw?.header?.competitions?.[0]?.competitors || [];
     const colorOf = (id, fb) => { const c = sc.find((x) => Number(x.team?.id) === Number(id))?.team?.color; return c ? `#${c}` : fb || null; };
@@ -5936,7 +7158,7 @@ async function openInsights(gameId) {
       const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = room.filter((r) => r.state === "up").sort((x, y) => y.pts - x.pts), down = room.filter((r) => r.state === "down"), push = room.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
-      roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
+      if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
     }
     // Top performers: this game's leaders from ESPN, one row per category.
     const lb = Array.isArray(summaryRaw?.leaders) ? summaryRaw.leaders : [];
@@ -5964,7 +7186,7 @@ async function openInsights(gameId) {
   // gain, down and distance, then the last three plays and the scoring.
   // Away defends the left goal, home the right, as on the scorebug.
   const gamecastHtml = () => {
-    const lv = latestLive[gameId], sit = lv.situation || {};
+    const lv = insLive(gameId), sit = lv.situation || {};
     const A = abbrOf("away"), H = abbrOf("home");
     const sc = summaryRaw?.header?.competitions?.[0]?.competitors || [];
     const colorOf = (id, fb) => { const c = sc.find((x) => Number(x.team?.id) === Number(id))?.team?.color; return c ? `#${c}` : fb || null; };
@@ -6333,7 +7555,7 @@ async function openInsights(gameId) {
       const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = rows.filter((r) => r.state === "up"), down = rows.filter((r) => r.state === "down"), push = rows.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
-      roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
+      if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
     }
     // The full game log takes the whole screen: the score and the down on
     // top as ever, then every play.
@@ -6342,7 +7564,7 @@ async function openInsights(gameId) {
   };
   // Built as a function and prepended once abbrOf exists below.
   const liveBlock = () => {
-  const lv = latestLive[gameId];
+  const lv = insLive(gameId);
   const liveNow = !!(lv && lv.found && lv.state === "in" && !lv.completed);
   const finalNow = !!(lv && lv.found && lv.completed);
   let liveHtml = "";
@@ -6408,6 +7630,7 @@ async function openInsights(gameId) {
       return `<div class="rp-col"><div class="rp-team">${lg(id, "rp-logo")}<span>${esc(short)}</span><b>${n}</b></div>${bets || `<div class="rp-none">Nobody</div>`}</div>`;
     };
     const none = MANAGERS.filter((n) => !all[n]?.picks?.[game.id]);
+    if (guest) return "";
     return `<div class="rp"><div class="rp-h">THE ROOM · WHO HAS WHAT</div><div class="rp-cols">${side(game.away, game.awayShort, game.awayId)}${side(game.home, game.homeShort, game.homeId)}</div>${none.length ? `<div class="rp-np">NO PICK · ${none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}</div>`;
   })();
   // Simulate is a pre-lock toy: once picks lock, it goes away.
@@ -6587,7 +7810,7 @@ async function openInsights(gameId) {
       + `</div>`
       + (moreStats ? `<details class="ins-more-news ins-more-stats"><summary><span>▶</span> MORE STATS</summary><div class="ins-glance ins-stats">${moreStats}</div></details>` : "")
       + (w ? `<div class="ins-wx"><span>${esc(w)}</span></div>` : "");
-    if (glance.venue?.name) modal.querySelector("#insights-sub").textContent = `${game.kickoffLabel} · ${game.tv} · ${glance.venue.name}${glance.venue.indoor ? " (indoors)" : ""}`;
+    if (glance.venue?.name) modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv, `${glance.venue.name}${glance.venue.indoor ? " (indoors)" : ""}`].filter(Boolean).join(" · ");
     // Leaders: two columns in the same away/home order, logo only.
     const catShort = (c) => /pass/i.test(c) ? "PASS" : /rush/i.test(c) ? "RUSH" : /receiv/i.test(c) ? "REC" : /tackle/i.test(c) ? "TKL" : /sack/i.test(c) ? "SACK" : String(c).toUpperCase().slice(0, 5);
     const lead = (list, teamId) => `<div class="ins-lead"><b>${lg(teamId)}</b>${(list || []).map((l) => `<span><em class="ins-cat">${esc(catShort(l.cat))}</em>${esc(l.name)}<i>${esc(l.line)}</i></span>`).join("")}</div>`;
@@ -6810,10 +8033,10 @@ async function openInsights(gameId) {
   // scorebug behind it. Stops the moment the sheet closes or the game ends.
   const liveTick = async () => {
     if (!alive()) { clearInterval(liveTimer); return; }
-    const l = latestLive[gameId];
+    const l = insLive(gameId);
     if (!(l && l.found && l.state === "in" && !l.completed)) return;
-    try { await fetchLiveScores(); } catch {}
-    const id = latestLive[gameId]?.eventId || null;
+    try { await (sideGuestGame(gameId) ? fetchSideLive(true) : fetchLiveScores()); } catch {}
+    const id = insLive(gameId)?.eventId || null;
     if (id) { try { const raw = await fetchEspnSummary(id, true); if (raw) summaryRaw = raw; } catch {} }
     if (alive()) paint();
   };
@@ -6848,9 +8071,9 @@ async function openInsights(gameId) {
   land(quickInj, (v) => { if (v && (v.away?.length || v.home?.length)) newsInj = v; });
   land(withTimeout(quickInj.then((q) => (q && (q.away?.length || q.home?.length) && !q.stale) ? q : injItems.then((items) => fetchNewsInjuries(gameId, items))), 40000, null), (v) => { if (v && (v.away?.length || v.home?.length || !newsInj)) newsInj = v; }, "inj");
   land(Promise.all([fetchTeamNews(game.awayId), fetchTeamNews(game.homeId)]), ([a, h]) => { awayNews = a; homeNews = h; }, "news");
-  const eventIdNow = latestLive[gameId]?.eventId || insightsCache.eventIds?.[gameId] || null;
-  const summaryP = (eventIdNow ? Promise.resolve(eventIdNow) : fetchLiveScores().catch(() => {}).then(() => latestLive[gameId]?.eventId || null))
-    .then((id) => fetchEspnSummary(id, !!(latestLive[gameId]?.found && (latestLive[gameId].completed || latestLive[gameId].state === "in"))));
+  const eventIdNow = insLive(gameId)?.eventId || insightsCache.eventIds?.[gameId] || sideGuestGame(gameId)?.eventId || null;
+  const summaryP = (eventIdNow ? Promise.resolve(eventIdNow) : fetchLiveScores().catch(() => {}).then(() => insLive(gameId)?.eventId || null))
+    .then((id) => fetchEspnSummary(id, !!(insLive(gameId)?.found && (insLive(gameId).completed || insLive(gameId).state === "in"))));
   land(summaryP, (v) => { summaryRaw = v; }, "summary");
   land(withTimeout(summaryP.then((raw) => fetchAiPreview(game, parseSummaryClient(raw, game))), 15000, null), (v) => { aiPv = v; }, "ai");
 }
@@ -6887,7 +8110,7 @@ function swipeToClose(modal, card, close) {
 // Only from the top: if anything under the finger is scrolled down, the
 // pull scrolls it back up instead; a sideways drag never closes.
 (() => {
-  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #sim-modal, #gridcard-modal";
+  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #sim-modal, #gridcard-modal, #player-modal, #sh2h-modal";
   const CLOSE = '.wpx-x, [data-act="close"], #rules-close-btn, [aria-label="Close"]';
   let st = null;
   const reset = (card) => { if (card) { card.style.transform = ""; card.style.opacity = ""; } };
@@ -7138,6 +8361,154 @@ document.querySelectorAll(".h2h-select").forEach((el) => el.addEventListener("ch
   renderH2H();
 }));
 
+// Graphics published from the Creative Studio (brochiefs.com/live): which
+// image to show where, by placement and subject. Kept on the phone so the
+// replay opens with it, refreshed on load, and redrawn when it changes.
+const CREATIVE_KEY = "brochiefs_creative_v1";
+var creativeArt = { at: 0, art: {} }; // var: the board can draw before this line runs
+try { creativeArt = JSON.parse(localStorage.getItem(CREATIVE_KEY) || "null") || creativeArt; } catch { /* private mode */ }
+async function loadCreativeArt(force) {
+  if (!WORKER_URL || window.LEAGUE?.sport === "nfl") return;
+  try {
+    const res = await fetch(`${WORKER_URL}/art/manifest?t=${force ? Date.now() : Math.floor(Date.now() / 60000)}`);
+    if (!res.ok) return;
+    const m = await res.json();
+    if (!m || typeof m.art !== "object" || m.at === creativeArt.at) return;
+    creativeArt = m;
+    try { localStorage.setItem(CREATIVE_KEY, JSON.stringify(m)); } catch {}
+    renderRecap();
+    applySlots(document.body);
+  } catch { /* the usual logos stay */ }
+}
+setTimeout(loadCreativeArt, 1500);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) loadCreativeArt(); });
+
+// An award's picture. The Studio's art for it is swapped in by applySlots,
+// the same way as any other graphic on the page.
+function awardArt(path) {
+  return `assets/images/${path}.webp`;
+}
+
+// The Studio Canvas. Any graphic or line of copy can be replaced from the
+// Studio: a published one is swapped in here as the page draws, so no
+// screen needs to know about it. Graphics are known by their own path (or
+// team:id for a team logo) and copy by its original words; scores, records
+// and names are never copy (they have digits or are an owner's name), so
+// they always come from the app.
+const STUDIO = new URLSearchParams(location.search).has("studio") && window.parent !== window;
+const slotPreview = {}; // the Studio's drafts, shown only inside the Canvas
+function slotOfImg(img) {
+  if (img.dataset.slot) return img.dataset.slot;
+  const src = img.getAttribute("src") || "";
+  const a = src.match(/(assets\/images\/[\w\/.-]+?\.(?:webp|png|gif|jpe?g|svg))/);
+  if (a) return a[1];
+  const t = src.match(/teamlogos\/ncaa\/500(?:-dark)?\/(\d+)\.png/);
+  return t ? `team:${t[1]}` : null;
+}
+function slotImgUrl(slot) {
+  if (slotPreview[`img:${slot}`]) return slotPreview[`img:${slot}`];
+  const art = creativeArt?.art || {};
+  const award = slot.match(/^assets\/images\/(recap|hs)\/([\w-]+)\.webp$/);
+  const v = art[`slot:img:${slot}`]?.v || (award && art[`award-icon:award:${award[1]}-${award[2]}`]?.v);
+  return v ? `${WORKER_URL}/art/img/${encodeURIComponent(v)}` : null;
+}
+const copyOk = (t) => t.length >= 2 && t.length <= 80 && !/\d/.test(t) && !MANAGERS.some((m) => t.toUpperCase() === m.toUpperCase());
+function slotCopy(orig) {
+  const p = slotPreview[`t:${orig}`];
+  return p != null ? p : creativeArt?.art?.[`slot:t:${orig}`]?.text?.body ?? null;
+}
+const hasCopy = () => STUDIO || Object.keys(creativeArt?.art || {}).some((k) => k.startsWith("slot:t:"));
+function applySlots(root) {
+  if (!root || window.LEAGUE?.sport === "nfl") return;
+  const imgs = root.tagName === "IMG" ? [root] : root.querySelectorAll ? root.querySelectorAll("img") : [];
+  for (const img of imgs) {
+    const slot = img.dataset.slotOf || slotOfImg(img);
+    if (!slot || img.dataset.slotOff) continue;
+    const url = slotImgUrl(slot);
+    if (!img.dataset.slotOf) { img.dataset.slotOf = slot; img.dataset.slotSrc = img.getAttribute("src") || ""; }
+    const want = url || img.dataset.slotSrc;
+    if (want && img.getAttribute("src") !== want) img.setAttribute("src", want);
+  }
+  if (!hasCopy()) return;
+  if (root.nodeType === 3) return slotText(root);
+  if (root.nodeType !== 1) return;
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) slotText(n);
+}
+function slotText(n) {
+  const host = n.parentNode;
+  if (!host || /^(SCRIPT|STYLE|TEXTAREA|OPTION|TITLE)$/.test(host.tagName)) return;
+  const orig = n.__slotOrig || n.nodeValue.trim();
+  if (!copyOk(orig)) return;
+  const next = slotCopy(orig);
+  if (next == null && !n.__slotOrig) return;
+  n.__slotOrig = orig;
+  const want = n.nodeValue.replace(n.nodeValue.trim(), next ?? orig);
+  if (n.nodeValue !== want) n.nodeValue = want;
+}
+const ourSrc = (v) => /\/art\/img\/|\/creative\/image\//.test(String(v || ""));
+new MutationObserver((recs) => {
+  for (const r of recs) {
+    if (r.type === "attributes") {
+      // The page changed a picture's source itself: a new picture to look
+      // up, unless it was falling back from Studio art that failed to load.
+      const img = r.target, src = img.getAttribute("src");
+      if (!img.dataset.slotOf || img.dataset.slotOff || src === img.dataset.slotSrc || ourSrc(src)) continue;
+      if (ourSrc(r.oldValue)) { img.dataset.slotOff = "1"; continue; }
+      delete img.dataset.slotOf;
+      applySlots(img);
+      continue;
+    }
+    for (const n of r.addedNodes) if (n.nodeType === 1 || n.nodeType === 3) applySlots(n);
+  }
+}).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["src"], attributeOldValue: true });
+document.addEventListener("DOMContentLoaded", () => applySlots(document.body));
+
+// Inside the Studio's Canvas: every graphic and line of copy is tappable,
+// and a tap tells the Studio what was picked instead of using the app.
+if (STUDIO) {
+  const pickCopy = (e) => {
+    const r = document.caretRangeFromPoint?.(e.clientX, e.clientY);
+    let n = r?.startContainer;
+    if (n?.nodeType !== 3) n = [...(e.target.childNodes || [])].find((c) => c.nodeType === 3 && c.nodeValue.trim());
+    if (!n || n.nodeType !== 3) return null;
+    const orig = n.__slotOrig || n.nodeValue.trim();
+    return copyOk(orig) ? { n, orig } : { bad: orig };
+  };
+  // Browse mode uses the app as normal (past the splash, between tabs);
+  // Edit mode turns taps into picks. The Studio flips it.
+  let editing = false;
+  const setEditing = (on) => { editing = !!on; document.documentElement.classList.toggle("studio-canvas", editing); };
+  setEditing(false);
+  document.addEventListener("click", (e) => {
+    if (!editing) return;
+    const img = e.target.closest?.("img");
+    e.preventDefault(); e.stopPropagation();
+    if (img && (img.dataset.slotOf || slotOfImg(img))) {
+      const slot = img.dataset.slotOf || slotOfImg(img);
+      const label = img.alt || img.closest("[class]")?.innerText?.trim().split("\n")[0].slice(0, 60) || "";
+      const rc = img.getBoundingClientRect();
+      parent.postMessage({ type: "studio-pick", kind: "img", slot, label, src: img.currentSrc || img.src, original: new URL(img.dataset.slotSrc || img.src, location.href).href, w: Math.round(rc.width), h: Math.round(rc.height) }, location.origin);
+      return;
+    }
+    const c = pickCopy(e);
+    if (c?.orig) parent.postMessage({ type: "studio-pick", kind: "text", slot: `t:${c.orig}`, text: c.n.nodeValue.trim(), original: c.orig }, location.origin);
+    else parent.postMessage({ type: "studio-pick", kind: "none", why: c?.bad ? "Scores, records and owner names always come from the app, so they can't be rewritten." : "Nothing editable there. Tap a graphic or a heading." }, location.origin);
+  }, true);
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin || !e.data) return;
+    if (e.data.type === "studio-mode") { setEditing(e.data.edit); return; }
+    if (e.data.type === "studio-preview") {
+      if (e.data.value == null) delete slotPreview[e.data.key]; else slotPreview[e.data.key] = e.data.value;
+      applySlots(document.body);
+    } else if (e.data.type === "studio-reload") {
+      for (const k of Object.keys(slotPreview)) delete slotPreview[k];
+      creativeArt = { at: 0, art: creativeArt.art };
+      loadCreativeArt(true).then(() => applySlots(document.body));
+    }
+  });
+}
+
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
 let renderRecap = function () {
@@ -7152,17 +8523,21 @@ let renderRecap = function () {
   const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
   const cards = [];
   const chips = (w) => nameChips(Array.isArray(w) ? w : [w]);
-  // 8x8 pixel icons in the card's colour, so they sit with the pixel type
-  // instead of fighting the logos the way native emoji did.
-  const px = (rows) => `<svg class="recap-icon" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${rows.flatMap((row, y) => [...row].map((c, x) => c === "#" ? `<rect x="${x}" y="${y}" width="1" height="1"/>` : "")).join("")}</svg>`;
-  const ICON = {
-    target: px(["..####..", ".#....#.", "#..##..#", "#.####.#", "#.####.#", "#..##..#", ".#....#.", "..####.."]),
-    skull: px([".######.", "########", "##.##.##", "##.##.##", "########", ".##..##.", "..####..", "..#..#.."]),
-    up: px(["...##...", "..####..", ".######.", "###..###", "#..##..#", "...##...", "...##...", "...##..."]),
-    coin: px(["..####..", ".#....#.", "#..##..#", "#.#..#.#", "#.#..#.#", "#..##..#", ".#....#.", "..####.."]),
-    hash: px(["..#..#..", "..#..#..", "########", "..#..#..", "..#..#..", "########", "..#..#..", "..#..#.."]),
-  };
-  const logo = (id, alt = "") => id ? `<img class="recap-logo" src="${logoUrl(id)}" alt="${esc(alt)}" loading="lazy">` : `<span class="recap-logo blank"></span>`;
+  // Pixel art for each card's header, cut from the league's template;
+  // it hangs a little past the colour bar, the way the template draws it.
+  const art = (f) => `<img class="recap-ico" src="${awardArt(`recap/${f}`)}" alt="" aria-hidden="true" decoding="async">`;
+  const ICON = { target: art("crown"), skull: art("bomb"), up: art("chart"), coin: art("coin"), hash: art("flag") };
+  // Team art in the template's pixel style: hand-drawn for the teams the
+  // template has, and for everyone else ESPN's logo fetched tiny and blown
+  // up with hard pixel edges, so every card reads the same.
+  const TEAM_ART = new Set([99, 344, 2390, 194, 84]);
+  // Art published from the Creative Studio comes first; then the template's
+  // hand-drawn five; then ESPN's logo in pixels.
+  const studio = (id) => creativeArt.art?.[`replay-logo:team:${Number(id)}`]?.v;
+  const logo = (id, alt = "") => !id ? `<span class="recap-logo blank"></span>`
+    : studio(id) ? `<img class="recap-logo px-art" data-slot="team:${Number(id)}" src="${WORKER_URL}/art/img/${encodeURIComponent(studio(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='https://a.espncdn.com/combiner/i?img=/i/teamlogos/${window.LEAGUE?.logos || "ncaa"}/${window.LEAGUE?.logoCut || "500-dark"}/${Number(id)}.png&w=26&h=26';this.className='recap-logo px'">`
+    : TEAM_ART.has(Number(id)) ? `<img class="recap-logo px-art" src="assets/images/teams/${Number(id)}.webp" alt="${esc(alt)}" loading="lazy">`
+    : `<img class="recap-logo px" src="https://a.espncdn.com/combiner/i?img=/i/teamlogos/${window.LEAGUE?.logos || "ncaa"}/${window.LEAGUE?.logoCut || "500-dark"}/${Number(id)}.png&w=26&h=26" alt="${esc(alt)}" loading="lazy">`;
   const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);
   // [label, class, art, headline, sub, stat, statLabel, isMe]
   if (r.best) {
@@ -7173,11 +8548,11 @@ let renderRecap = function () {
   if (r.worst) {
     const w = r.worst;
     cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${esc(w.pick)}</span>`,
-      `All ${w.takers} got zero · ${esc(w.final || w.score)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who)]);
+      `${w.takers} of ${w.of} got zero · ${esc(w.final || w.score)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who)]);
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
-    cards.push([ICON.up + "MOVEMENT", "move", `<span class="recap-logo arrow">▲</span>`, `${chips([u.name])}<span class="recap-pick">to #${u.to} on the season</span>`,
+    cards.push([ICON.up + "MOVEMENT", "move", `<img class="recap-logo chart" src="assets/images/recap/chart.webp" alt="" decoding="async">`, `${chips([u.name])}<span class="recap-pick">to #${u.to} on the season</span>`,
       d ? `${esc(shown(d.name))} fell ${d.to - d.from} to #${d.to}` : "Nobody fell", `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean))]);
   }
   if (r.consensus?.sides?.length > 1) {
@@ -7192,13 +8567,13 @@ let renderRecap = function () {
     cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `${chips(t.who)}<span class="recap-pick">said ${esc(guess)}</span>`,
       `${esc(t.matchup)} came in at ${t.actual}`, t.off === 0 ? "🎯" : `${t.off}`, t.off === 0 ? "EXACT" : "OFF", mine(t.who)]);
   }
-  const key = `${last.week}|${cards.length}|${currentManager}`;
+  const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}`;
   toggle.classList.remove("hidden");
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
   if (panel.dataset.drawn === key) return;
   panel.dataset.drawn = key;
   panel.innerHTML = `<div class="recap-marquee" role="button" tabindex="0" aria-expanded="true" title="Tap to fold"><span>★ ${esc(String(last.label || `WEEK ${last.week}`).toUpperCase())} REPLAY ★</span><small>GAME OVER · FINAL STATS <i class="recap-caret">▾</i></small></div>` + cards.map(([h, cls, art, main, sub, stat, statLabel, me], i) =>
-    `<div class="recap-card arc ${cls}${me ? " me" : ""}" style="--i:${i}">
+    `<div class="recap-card arc ${cls}${me ? " me" : ""}${recapOpen.has(cls) ? " open" : ""}" style="--i:${i}" data-rc="${cls}" role="button" tabindex="0" aria-expanded="${recapOpen.has(cls)}">
       <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
       <div class="recap-art">${art}</div>
       <div class="recap-body">
@@ -7206,8 +8581,62 @@ let renderRecap = function () {
         <div class="recap-sub">${sub}</div>
       </div>
       <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div>
+      ${recapOpen.has(cls) ? `<div class="recap-more">${recapDetail(last, cls)}</div>` : ""}
     </div>`).join("");
 };
+
+// Tap a replay card for the whole story behind it: who took which side on
+// that game, everyone's week score, or every tiebreaker guess. Read from
+// the sealed week, so it is exactly what was graded.
+var recapOpen = new Set(); // var: the board can draw the replay before this line runs
+function recapDetail(sum, kind) {
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // Picks come with the detailed weeks; until they land, ask for them and say so.
+  const full = (seasonLedger || []).find((w) => w.week === sum.week);
+  if (full) sum = { ...sum, rows: full.rows, slate: full.slate || sum.slate };
+  else if (kind !== "move" && !(sum.rows || []).some((r) => r.ledger)) { fetchSeasonLedger().then(() => { if ((seasonLedger || []).some((w) => w.week === sum.week)) { document.getElementById("recap-panel").dataset.drawn = ""; renderRecap(); } }); return `<div class="rm-none">Loading the picks…</div>`; }
+  const rows = (sum.rows || []).filter((r) => r && r.name);
+  if (!rows.length) return `<div class="rm-none">Details aren't saved for this week.</div>`;
+  const nm = (n) => `<b class="${n === currentManager ? "me" : ""}">${esc(shown(n))}</b>`;
+  if (kind === "move") {
+    // Season standings after this week, with how far each player moved
+    // from the week before. Ties share a place.
+    const weeks = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition && w.week <= sum.week);
+    const total = (upto) => { const t = new Map(); for (const w of weeks) if (w.week <= upto) for (const r of w.rows || []) t.set(r.name, (t.get(r.name) || 0) + (r.score || 0)); return t; };
+    const place = (t) => { const list = [...t.entries()].sort((a, b) => b[1] - a[1]); const m = new Map(); list.forEach(([n, p]) => m.set(n, 1 + list.filter(([, q]) => q > p).length)); return m; };
+    const now = total(sum.week), was = total(sum.week - 1), pNow = place(now), pWas = place(was);
+    const list = [...now.entries()].sort((a, b) => b[1] - a[1]);
+    return `<div class="rm-h">SEASON STANDINGS AFTER WEEK ${sum.week}</div><ol class="rm-rank">${list.map(([n, pts]) => {
+      const d = was.size ? (pWas.get(n) ?? pNow.get(n)) - pNow.get(n) : 0;
+      const wk = (rows.find((r) => r.name === n) || {}).score;
+      return `<li><em>${pNow.get(n)}</em>${nm(n)}<i class="${d > 0 ? "up" : d < 0 ? "down" : "same"}">${d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "–"}</i><span>${pts} pts${wk != null ? ` <small>+${wk} this week</small>` : ""}</span></li>`;
+    }).join("")}</ol>`;
+  }
+  if (kind === "tb") {
+    const g = rows.filter((r) => r.tbGuess != null).sort((a, b) => (a.tbDiff ?? 999) - (b.tbDiff ?? 999));
+    return `<div class="rm-h">EVERY GUESS · ACTUAL ${esc(sum.recap?.tb?.actual ?? sum.tiebreaker?.actual ?? "?")}</div><ol class="rm-list">${g.map((r) => `<li>${nm(r.name)}<span>${r.tbGuess}${r.tbDiff != null ? ` · ${r.tbDiff === 0 ? "exact" : `off ${r.tbDiff}`}` : ""}</span></li>`).join("")}</ol>`;
+  }
+  const r = sum.recap || {};
+  const team = kind === "hit" ? r.best?.team : kind === "miss" ? r.worst?.team : r.consensus?.sides?.[0]?.team;
+  const g = (sum.slate || []).find((x) => [x.awayShort, x.homeShort].includes(team));
+  if (!g) return `<div class="rm-none">Couldn't find that game.</div>`;
+  const sides = new Map();
+  for (const row of rows) {
+    const l = (row.ledger || []).find((x) => Number(x.g) === Number(g.id));
+    const side = l ? `${l.team === g.home ? g.homeShort : l.team === g.away ? g.awayShort : l.team} ${l.line || l.mode || ""}`.trim() : "No pick";
+    const x = sides.get(side) || { side, team: l?.team, teamId: l ? (l.team === g.home ? g.homeId : l.team === g.away ? g.awayId : null) : null, hit: l?.result === "hit", pts: l?.result === "hit" ? l.pts : 0, who: [] };
+    x.who.push(row.name); sides.set(side, x);
+  }
+  return `<div class="rm-h">${esc(g.awayShort)} AT ${esc(g.homeShort)} · WHO TOOK WHAT</div>${[...sides.values()].sort((a, b) => b.who.length - a.who.length).map((x) => { const id = x.teamId || (x.team ? teamIdOf(x.team) : null); return `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(x.side)}</span><i>${x.hit ? `+${x.pts} each` : "0"}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`; }).join("")}`;
+}
+document.getElementById("recap-panel")?.addEventListener("click", (e) => {
+  const c = e.target.closest(".recap-card[data-rc]");
+  if (!c || e.target.closest(".pick-chip, a, button")) return;
+  const k = c.dataset.rc;
+  if (recapOpen.has(k)) recapOpen.delete(k); else { recapOpen.add(k); noteUse("recap-card", k); }
+  e.currentTarget.classList.add("dealt"); // already dealt in: redraw without replaying the deal
+  renderRecap();
+});
 
 // The REPLAY marquee is the fold: tap it to tuck the cards away.
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
@@ -7289,6 +8718,7 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
   const toggle = document.getElementById("payouts-toggle");
   const panel = document.getElementById("payouts-panel");
   if (!toggle || !panel) return;
+  if (NO_MONEY && toggle.firstChild) toggle.firstChild.textContent = "🏆 STANDINGS ";
   let open = false;
   const paint = () => {
     panel.classList.toggle("hidden", !open);
@@ -7296,9 +8726,148 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
     toggle.setAttribute("aria-expanded", String(open));
     if (open) renderPayouts();
   };
-  toggle.addEventListener("click", () => { open = !open; paint(); if (open) track("pot-open", { event: true }); });
+  // Only a real tap counts: the week-over overview opens it by itself.
+  toggle.addEventListener("click", (e) => { open = !open; paint(); if (open && e.isTrusted) track("pot-open", { event: true }); });
   paint();
 })();
+
+// --- Player card ----------------------------------------------------------
+// Tap a pot row, or a name on the replay: that player's season on one
+// card. Everything comes from the sealed weeks, so it is what was graded.
+function playerSeason(name) {
+  // The detailed weeks (with every pick) when they are loaded, else the plain ones.
+  const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition)).slice().sort((a, b) => a.week - b.week);
+  const scores = [], picks = [];
+  let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0;
+  for (const wk of weeks) {
+    const me = (wk.rows || []).find((r) => r.name === name);
+    if (!me) continue;
+    scores.push({ week: wk.week, score: me.score, won: (wk.winners || []).includes(name), high: wk.highScore });
+    for (const lg of me.ledger || []) {
+      if (lg.result !== "hit" && lg.result !== "miss") continue;
+      const hit = lg.result === "hit";
+      hit ? w++ : l++;
+      if (lg.mode === "ATS") { atsN++; if (hit) atsW++; } else { suN++; if (hit) suW++; }
+      // How many others were on the same team that week.
+      const with_ = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team === lg.team)).length;
+      const others = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team !== lg.team && x.result === "hit")).length;
+      const sameNames = (wk.rows || []).filter((r) => r.name !== name && (r.ledger || []).some((x) => x.g === lg.g && x.team === lg.team)).map((r) => r.name);
+      const oppNames = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team !== lg.team)).map((r) => r.name);
+      const g = (wk.slate || []).find((x) => Number(x.id) === Number(lg.g));
+      const team = g ? (lg.team === g.home ? g.homeShort : lg.team === g.away ? g.awayShort : lg.team) : lg.team;
+      // The game itself: matchup and final, from the sealed score ("away-home").
+      const [as, hs] = String(lg.score || "").split("-").map(Number);
+      const game = g ? `${g.awayShort} ${Number.isFinite(as) ? as : ""} at ${g.homeShort} ${Number.isFinite(hs) ? hs : ""}`.replace(/\s+/g, " ").trim() : "";
+      const margin = Number.isFinite(as) && Number.isFinite(hs) && g ? (as === hs ? "tied" : `${as > hs ? g.awayShort : g.homeShort} by ${Math.abs(as - hs)}`) : "";
+      const line = g && g.spread != null ? `${g.favorite === g.home ? g.homeShort : g.awayShort} −${g.spread}` : "";
+      picks.push({ teamFull: lg.team, teamId: g ? (lg.team === g.home ? g.homeId : lg.team === g.away ? g.awayId : null) : null, awayId: g?.awayId, homeId: g?.homeId, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, sameNames, oppNames, with_, of: (wk.rows || []).length, others, game, margin, line });
+    }
+  }
+  const sorted = [...scores].sort((a, b) => b.score - a.score);
+  const best = picks.filter((p) => p.hit).sort((a, b) => b.pts - a.pts || a.with_ - b.with_)[0];
+  const worst = picks.filter((p) => !p.hit).sort((a, b) => b.others - a.others || b.worth - a.worth)[0];
+  return {
+    scores, w, l, best, worst,
+    top: sorted[0], low: sorted[sorted.length - 1],
+    avg: scores.length ? scores.reduce((s, x) => s + x.score, 0) / scores.length : null,
+    wins: scores.filter((x) => x.won),
+    ats: atsN ? Math.round((atsW / atsN) * 100) : null, atsN, atsW, su: suN ? Math.round((suW / suN) * 100) : null, suN, suW,
+  };
+}
+// Team logos for past weeks: the sealed weeks keep names, not ESPN ids, so
+// the ids come from ESPN's public team list once and stay on the phone.
+var teamIdMap = null;
+// Names differ between feeds ("Georgia St" / "Georgia State Panthers"), so
+// both sides are folded the same way before matching.
+const teamKey = (n) => String(n || "").toLowerCase().replace(/&/g, "and").replace(/\bst\.?\b/g, "state").replace(/[^a-z0-9]+/g, " ").trim();
+function teamIdOf(name) {
+  if (!name) return null;
+  const g = GAMES.find((x) => x.away === name || x.home === name);
+  if (g) return g.away === name ? g.awayId : g.homeId;
+  if (!teamIdMap) { try { teamIdMap = JSON.parse(localStorage.getItem("brochiefs_team_ids_v2") || "null"); } catch {} }
+  if (!teamIdMap && !teamIdOf.loading) {
+    teamIdOf.loading = fetch(`${window.ESPN_API || "https://site.api.espn.com/apis/site/v2/sports/football/college-football"}/teams?limit=1000`).then((r) => r.json()).then((d) => {
+      const m = {};
+      for (const { team: t } of d?.sports?.[0]?.leagues?.[0]?.teams || []) for (const k of [t.displayName, t.shortDisplayName, t.location, `${t.location} ${t.name}`, t.abbreviation]) { const key = teamKey(k); if (key && !m[key]) m[key] = Number(t.id); }
+      teamIdMap = m;
+      try { localStorage.setItem("brochiefs_team_ids_v2", JSON.stringify(m)); } catch {}
+      if (!document.getElementById("player-modal")?.classList.contains("hidden")) openPlayerCard(document.getElementById("player-modal").dataset.name, true);
+    }).catch(() => {});
+  }
+  if (!teamIdMap) return null;
+  // Full name, then the name without its last word (the mascot), and so on.
+  const words = teamKey(name).split(" ");
+  for (let n = words.length; n > 0; n--) { const id = teamIdMap[words.slice(0, n).join(" ")]; if (id) return id; }
+  return null;
+}
+function openPlayerCard(name, again) {
+  if (!name) return;
+  if (!again) noteUse("player-card", name);
+  // Every pick lives in the detailed weeks; fetch them once, then redraw.
+  if (!again && !(seasonLedger && Date.now() - seasonLedgerAt < 5 * 60 * 1000)) fetchSeasonLedger().then(() => { if (!document.getElementById("player-modal")?.classList.contains("hidden")) openPlayerCard(name, true); });
+  const esc = escapeCd, d = playerSeason(name);
+  const pot = typeof payoutLedger === "function" ? payoutLedger() : null;
+  const pr = pot?.list?.find((r) => r.name === name) || {};
+  let m = document.getElementById("player-modal");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "player-modal";
+    m.className = "modal-overlay plc-modal hidden";
+    m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".plc-x")) m.classList.add("hidden"); });
+  }
+  m.dataset.name = name;
+  const pts = pr.points ?? d.scores.reduce((t, x) => t + x.score, 0);
+  const max = Math.max(1, ...d.scores.map((x) => x.score));
+  const pct = d.w + d.l ? Math.round((d.w / (d.w + d.l)) * 100) : null;
+  // A fighting game stat bar: label, value, ten segments filled to the share.
+  const bar = (label, val, share, note = "") => `<div class="plc-sb"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em></div>`;
+  const logo = (full, known) => { const id = known || teamIdOf(full); return id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : `<span class="plc-nologo"></span>`; };
+  const pick = (p, hit) => !p ? "" : `<div class="plc-pick ${hit ? "hit" : "miss"}">
+      <div class="plc-pt"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}</small><b>${hit ? `+${p.pts}` : "0"} PTS</b></div>
+      <div class="plc-call">${logo(p.teamFull, p.teamId)}<span><b>${esc(p.text)}</b><small>${hit ? `${p.with_} of ${p.of} made this pick${p.with_ <= 2 ? " · almost nobody else" : ""}` : p.others ? `${p.others} of ${p.of} took the other side and got it right` : `${p.with_} of ${p.of} made this pick`}</small></span></div>
+      ${p.away ? `<div class="plc-score"><span class="${p.as > p.hs ? "w" : ""}">${logo(p.away, p.awayId)}<i>${esc(p.awayShort)}</i><b>${Number.isFinite(p.as) ? p.as : ""}</b></span><em>FINAL</em><span class="${p.hs > p.as ? "w" : ""}"><b>${Number.isFinite(p.hs) ? p.hs : ""}</b><i>${esc(p.homeShort)}</i>${logo(p.home, p.homeId)}</span></div>` : ""}
+      <div class="plc-more">${p.sameNames?.length ? `<div class="plc-wh"><small>ALSO ON IT</small><div class="pick-chips">${nameChips(p.sameNames)}</div></div>` : `<div class="plc-wh"><small>ALSO ON IT</small><em>Nobody else</em></div>`}${p.oppNames?.length ? `<div class="plc-wh"><small>OTHER SIDE</small><div class="pick-chips">${nameChips(p.oppNames)}</div></div>` : ""}</div>
+      <i class="plc-caret">▾</i>
+    </div>`;
+  if (!m.dataset.pickTap) {
+    m.dataset.pickTap = "1";
+    m.addEventListener("click", (e) => {
+      const pk = e.target.closest(".plc-pick");
+      if (!pk || e.target.closest(".pick-chip")) return;
+      pk.classList.toggle("open");
+    });
+  }
+  m.innerHTML = `<div class="modal-card plc-card">
+    <button type="button" class="plc-x" aria-label="Close">✕</button>
+    <div class="plc-top">
+      <div class="plc-av"><span>${avatarOverrides[name] || shown(name)[0]}</span></div>
+      <div class="plc-id"><small>PLAYER ${String(MANAGERS.indexOf(name) + 1).padStart(2, "0")}</small><b>${esc(shown(name).toUpperCase())}</b>
+        <div class="plc-badges">${pr.seasonPlace ? `<span class="rank">${pr.tied ? "T" : "#"}${pr.seasonPlace}</span>` : ""}<span>${pts} PTS</span>${pr.earned ? `<span class="cash">${money(pr.earned)}</span>` : ""}${d.wins.length ? `<span class="gold"><i class="plc-tro">🏆</i>×${d.wins.length}</span>` : ""}</div></div>
+    </div>
+    ${d.scores.length ? `
+    <div class="plc-sec">POINTS EACH WEEK <span>gold = won the week</span></div>
+    <div class="plc-bars">${d.scores.map((x) => `<i class="${x.won ? "won" : ""}${x === d.top ? " top" : ""}"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`).join("")}</div>
+    <div class="plc-sec">STATS</div>
+    <div class="plc-stats">
+      ${bar("AVG WEEK", `${d.avg.toFixed(1)}`, d.avg / 20, "pts")}
+      ${bar("BEST WEEK", d.top.score, d.top.score / 20, `W${d.top.week}`)}
+      ${bar("WORST WEEK", d.low.score, d.low.score / 20, `W${d.low.week}`)}
+      ${pct != null ? bar("PICKS RIGHT", `${pct}%`, pct / 100, `${d.w}-${d.l}`) : `<div class="plc-sb"><span>PICKS</span><small>Loading every pick…</small></div>`}
+      ${d.atsN ? bar("ON SPREAD", `${d.ats}%`, d.ats / 100, `${d.atsN} picks`) : ""}
+      ${d.suN ? bar("TO WIN", `${d.su}%`, d.su / 100, `${d.suN} picks`) : ""}
+    </div>
+    ${pick(d.best, true)}${pick(d.worst, false)}` : `<div class="plc-none">No finished weeks yet.</div>`}
+  </div>`;
+  m.classList.remove("hidden");
+}
+document.addEventListener("click", (e) => {
+  const row = e.target.closest?.("[data-pot-row]");
+  if (row) return openPlayerCard(row.dataset.potRow);
+  const chip = e.target.closest?.("#recap-panel .pick-chip");
+  if (chip?.dataset.name) { e.stopPropagation(); return openPlayerCard(chip.dataset.name); }
+}, true);
 
 // --- Week win card --------------------------------------------------------
 // Tap a trophy in The Pot (or a gold week on the season bar): how that
@@ -7324,6 +8893,7 @@ async function openWeekWin(week, name) {
   const slate = new Map((w.slate || []).map((g) => [Number(g.id), g]));
   const shortOf = (gid, t) => { const g = slate.get(Number(gid)); return !g ? t : t === g.home ? g.homeShort : t === g.away ? g.awayShort : t; };
   const hits = (me.ledger || []).filter((l) => l.result === "hit");
+  const lg = (gid, t) => { const g = slate.get(Number(gid)); const id = g ? (t === g.home ? g.homeId : t === g.away ? g.awayId : null) : null; const k = id || (t ? teamIdOf(t) : null); return k ? `<img src="${logoUrl(k)}" alt="" loading="lazy">` : `<span class="ww-nologo"></span>`; };
   // Where the win was made: the game where this card out-earned the runner-up most.
   let deciding = null;
   if (next) for (const l of me.ledger || []) {
@@ -7337,7 +8907,7 @@ async function openWeekWin(week, name) {
     margin > 0 ? `Won by <b>${margin}</b> over ${esc(shown(next.name))} (${next.score}).` :
     `Tied ${esc(shown(next.name))} on ${me.score} and took it on the tiebreaker${tb && me.tbGuess != null ? `: guessed <b>${me.tbGuess}</b>, ${esc(tb.matchup)} came in at <b>${tb.actual}</b>` : ""}.`;
   const shared = winners.length > 1 ? ` Shared with ${winners.filter((n) => n !== me.name).map((n) => esc(shown(n))).join(", ")}.` : "";
-  const prize = w.exhibition ? `<span class="ww-prize exh">TROPHY ONLY</span>` : `<span class="ww-prize">${money(Math.round(POT.weekly / Math.max(1, winners.length)))}</span>`;
+  const prize = w.exhibition || NO_MONEY ? `<span class="ww-prize exh">🏆 TROPHY</span>` : `<span class="ww-prize">${money(Math.round(POT.weekly / Math.max(1, winners.length)))}</span>`;
   let m = document.getElementById("week-win");
   if (!m) {
     m = document.createElement("div");
@@ -7348,12 +8918,21 @@ async function openWeekWin(week, name) {
   m.innerHTML = `<div class="wpx-card ww">
     <button type="button" class="wpx-x" aria-label="Close">✕</button>
     <div class="ww-kicker">🏆 ${esc(String(w.label || `Week ${w.week}`).toUpperCase())} CHAMPION${w.exhibition ? " · EXHIBITION" : ""}</div>
-    <div class="ww-head"><span class="wpp-av" style="--accent:${accentFor(me.name)}">${esc(avatarOverrides[me.name] || shown(me.name)[0])}</span><div><b>${esc(shown(me.name).toUpperCase())}</b><small>${me.score} PTS · ${me.hits}-${me.misses}</small></div>${prize}</div>
+    <div class="ww-head"><span class="wpp-av" style="--accent:${accentFor(me.name)}">${esc(avatarOverrides[me.name] || shown(me.name)[0])}</span><div><b>${esc(shown(me.name).toUpperCase())}</b><small>${me.score} PTS · ${me.hits ?? hits.length}-${me.misses ?? (me.ledger || []).filter((l) => l.result === "miss").length}</small></div>${prize}</div>
     <div class="ww-how">${howWon}${shared}</div>
-    ${deciding ? `<div class="wpx-h">WHERE IT WAS WON</div><div class="ww-dec"><b>${esc(deciding.l.matchup)}</b><span>${esc(shortOf(deciding.l.g, deciding.l.team))} ${esc(deciding.l.line)} <em class="up">+${deciding.l.pts}</em></span><span class="dim">${esc(shown(next.name))}: ${deciding.o?.team ? `${esc(shortOf(deciding.l.g, deciding.o.team))} ${esc(deciding.o.line)}` : "no pick"} <em class="dn">+${deciding.o?.pts || 0}</em></span><span class="dim">Final: ${esc(deciding.l.score || "")}</span></div>` : ""}
-    ${hits.length ? `<div class="wpx-h">CORRECT PICKS</div><div class="ww-hits">${hits.map((l) => `<span>${esc(shortOf(l.g, l.team))} <small>${esc(l.line)}</small><b>+${l.pts}</b></span>`).join("")}</div>` : ""}
+    ${deciding ? (() => {
+      const g = slate.get(Number(deciding.l.g)) || {};
+      const [as, hs] = String(deciding.l.score || "").split("-").map((x) => Number(x));
+      const side = (who, pk, pts, mine) => `<div class="ww-side${mine ? " me" : ""}"><small>${esc(shown(who).toUpperCase())}</small><span>${pk?.team ? `${lg(deciding.l.g, pk.team)}<b>${esc(shortOf(deciding.l.g, pk.team))}</b><i>${esc(pk.line || "")}</i>` : `<b class="dim">No pick</b>`}</span><em class="${pts ? "up" : "dn"}">+${pts || 0}</em></div>`;
+      return `<div class="wpx-h">WHERE IT WAS WON</div>
+      <div class="ww-dec2">
+        <div class="ww-sb"><span class="${as > hs ? "w" : ""}">${lg(deciding.l.g, g.away)}<i>${esc(g.awayShort || "")}</i><b>${Number.isFinite(as) ? as : ""}</b></span><em>FINAL</em><span class="${hs > as ? "w" : ""}"><b>${Number.isFinite(hs) ? hs : ""}</b><i>${esc(g.homeShort || "")}</i>${lg(deciding.l.g, g.home)}</span></div>
+        <div class="ww-sides">${side(me.name, deciding.l, deciding.l.pts, true)}${side(next.name, deciding.o, deciding.o?.pts, false)}</div>
+      </div>`;
+    })() : ""}
+    ${hits.length ? `<div class="wpx-h">CORRECT PICKS <span>${hits.length} of ${(me.ledger || []).length}</span></div><div class="ww-hits2">${hits.map((l) => `<span>${lg(l.g, l.team)}<b>${esc(shortOf(l.g, l.team))}</b><i>${esc(l.mode === "SU" ? "to win" : l.line)}</i><em>+${l.pts}</em></span>`).join("")}</div>` : ""}
     <div class="wpx-h">TOP OF THE BOARD</div>
-    <ol class="ww-top">${rows.slice(0, 4).map((r) => `<li class="${r.name === me.name ? "me" : ""}"><span>${esc(shown(r.name))}</span><b>${r.score}</b></li>`).join("")}</ol>
+    <ol class="ww-top2">${rows.slice(0, 4).map((r, i) => `<li class="${r.name === me.name ? "me" : ""}"><u>${i + 1}</u><span class="ww-av" style="--accent:${accentFor(r.name)}">${esc(avatarOverrides[r.name] || shown(r.name)[0])}</span><span>${esc(shown(r.name))}</span><b>${r.score}</b></li>`).join("")}</ol>
   </div>`;
   m.classList.remove("hidden");
 }
@@ -7367,8 +8946,8 @@ document.addEventListener("click", (e) => {
 // --- Season stats ------------------------------------------------------
 // Five leaderboards from the ledger of every counting week. The ledger
 // comes down only when the panel is opened, and is kept for five minutes.
-let seasonLedgerAt = 0;
-let seasonLedger = null;
+var seasonLedgerAt = 0;
+var seasonLedger = null; // var: the replay and player card can read it before this line runs
 async function fetchSeasonLedger() {
   if (!WORKER_URL) return null;
   if (seasonLedger && Date.now() - seasonLedgerAt < 5 * 60 * 1000) return seasonLedger;
@@ -7414,23 +8993,73 @@ function seasonStats(weeks, liveBlanks = {}) {
   const pct = (w, l) => (w + l ? w / (w + l) : 0);
   const sameTbN = new Set(all.filter((m) => m.tbN).map((m) => m.tbN)).size === 1;
   return {
-    ats: all.filter((m) => m.atsW + m.atsL >= 3).sort((a, b) => pct(b.atsW, b.atsL) - pct(a.atsW, a.atsL) || b.atsW - a.atsW).map((m) => ({ name: m.name, value: `${m.atsW}-${m.atsL}`, sub: `${Math.round(pct(m.atsW, m.atsL) * 100)}%` })),
-    dogs: all.filter((m) => m.dogHits).sort((a, b) => b.dogHits - a.dogHits).map((m) => ({ name: m.name, value: String(m.dogHits), sub: "" })),
-    lone: all.filter((m) => m.lone).sort((a, b) => b.lone - a.lone).map((m) => ({ name: m.name, value: String(m.lone), sub: "" })),
-    streak: all.filter((m) => m.streak >= 2).sort((a, b) => b.streak - a.streak).map((m) => ({ name: m.name, value: String(m.streak), sub: "" })),
-    fader: all.filter((m) => m.picks >= 5).sort((a, b) => b.fades / b.picks - a.fades / a.picks).map((m) => ({ name: m.name, value: `${Math.round((m.fades / m.picks) * 100)}%`, sub: `${m.fades} of ${m.picks}` })),
-    tb: all.filter((m) => m.tbN).sort((a, b) => a.tbSum / a.tbN - b.tbSum / b.tbN).map((m) => ({ name: m.name, value: (m.tbSum / m.tbN).toFixed(1), sub: sameTbN ? "" : `${m.tbN} wk${m.tbN === 1 ? "" : "s"}` })),
-    best: all.filter((m) => m.bestWeek).sort((a, b) => b.bestWeek.score - a.bestWeek.score).map((m) => ({ name: m.name, value: String(m.bestWeek.score), sub: `Week ${m.bestWeek.week}` })),
-    blanks: all.filter((m) => m.blanks).sort((a, b) => b.blanks - a.blanks).map((m) => ({ name: m.name, value: String(m.blanks), sub: "left blank" })),
+    ats: all.filter((m) => m.atsW + m.atsL >= 3).sort((a, b) => pct(b.atsW, b.atsL) - pct(a.atsW, a.atsL) || b.atsW - a.atsW).map((m) => ({ name: m.name, n: pct(m.atsW, m.atsL), value: `${m.atsW}-${m.atsL}`, sub: `${Math.round(pct(m.atsW, m.atsL) * 100)}%` })),
+    dogs: all.filter((m) => m.dogHits).sort((a, b) => b.dogHits - a.dogHits).map((m) => ({ name: m.name, n: m.dogHits, value: String(m.dogHits), sub: m.dogHits === 1 ? "hit" : "hits" })),
+    lone: all.filter((m) => m.lone).sort((a, b) => b.lone - a.lone).map((m) => ({ name: m.name, n: m.lone, value: String(m.lone), sub: m.lone === 1 ? "hit" : "hits" })),
+    streak: all.filter((m) => m.streak >= 2).sort((a, b) => b.streak - a.streak).map((m) => ({ name: m.name, n: m.streak, value: String(m.streak), sub: "in a row" })),
+    fader: all.filter((m) => m.picks >= 5).sort((a, b) => b.fades / b.picks - a.fades / a.picks).map((m) => ({ name: m.name, n: m.fades / m.picks, value: `${Math.round((m.fades / m.picks) * 100)}%`, sub: `${m.fades} of ${m.picks}` })),
+    tb: all.filter((m) => m.tbN).sort((a, b) => a.tbSum / a.tbN - b.tbSum / b.tbN).map((m) => ({ name: m.name, n: m.tbSum / m.tbN, low: true, value: (m.tbSum / m.tbN).toFixed(1), sub: "avg miss", more: `avg miss${sameTbN ? "" : ` · ${m.tbN} wk${m.tbN === 1 ? "" : "s"}`}` })),
+    best: all.filter((m) => m.bestWeek).sort((a, b) => b.bestWeek.score - a.bestWeek.score).map((m) => ({ name: m.name, n: m.bestWeek.score, value: String(m.bestWeek.score), sub: `Week ${m.bestWeek.week}` })),
+    blanks: all.filter((m) => m.blanks).sort((a, b) => b.blanks - a.blanks).map((m) => ({ name: m.name, n: m.blanks, value: String(m.blanks), sub: "blank", more: "left blank" })),
   };
 }
 
+// The season's finished side bets, from the Worker's own side record.
+// Read only for this board; nothing here feeds the pool's numbers.
+async function fetchSideHistory() {
+  if (!WORKER_URL || window.LEAGUE?.sport === "nfl") return [];
+  if (sideHistory && Date.now() - sideHistoryAt < 5 * 60 * 1000) return sideHistory;
+  try {
+    const res = await fetchCapped(`${WORKER_URL}/side?history=1&t=${Date.now()}`, { cache: "no-store" }, 8000);
+    if (res.ok) { sideHistory = (await res.json()).history || []; sideHistoryAt = Date.now(); }
+  } catch { /* keep what we had */ }
+  return sideHistory || [];
+}
+
+// Pure: side bet boards from finished bets, scored by the side bet's own
+// rules on the finals the Worker kept. Apart from seasonStats on purpose:
+// a side bet never moves a pool record.
+function sideSeasonStats(history) {
+  const by = new Map();
+  const get = (n) => by.get(n) || by.set(n, { name: n, played: 0, won: 0, net: 0, pW: 0, pL: 0, oW: 0, oL: 0, pts: 0 }).get(n);
+  for (const rec of history || []) {
+    const pot = { ...rec, own: true };
+    const st = sideStandings(pot, (g) => rec.finals?.[g.id] || null);
+    if (!st.final) continue;
+    const out = sideOutcome(pot, st);
+    for (const r of st.rows) {
+      const m = get(r.name);
+      m.played += 1; m.pts += r.pts;
+      if (out.n >= 2 && !out.push) {
+        if (out.winners.includes(r.name)) { m.won += 1; m.net += out.net; } else m.net -= rec.buyIn;
+      }
+      for (const c of r.cells) {
+        if (c.cls !== "hit" && c.cls !== "miss") continue;
+        if (!c.pick) continue;
+        if (c.ou) { if (c.cls === "hit") m.oW += 1; else m.oL += 1; } else if (c.cls === "hit") m.pW += 1; else m.pL += 1;
+      }
+    }
+  }
+  const all = [...by.values()];
+  const money = (x) => `${x > 0 ? "+" : x < 0 ? "-" : ""}${sideMoney(Math.abs(x))}`;
+  const rate = (m) => { const w = m.pW + m.oW, l = m.pL + m.oL; return w + l ? w / (w + l) : 0; };
+  return {
+    bets: (history || []).length,
+    bank: all.sort((a, b) => b.net - a.net || b.won - a.won || a.name.localeCompare(b.name)).map((m) => ({ name: m.name, n: m.net, signed: true, value: money(m.net), sub: `${m.won} of ${m.played}`, more: `won ${m.won} of ${m.played}` })),
+    picks: [...all].filter((m) => m.pW + m.pL + m.oW + m.oL).sort((a, b) => rate(b) - rate(a) || b.pW + b.oW - (a.pW + a.oW)).map((m) => ({ name: m.name, n: rate(m), value: `${m.pW + m.oW}-${m.pL + m.oL}`, sub: `${Math.round(rate(m) * 100)}%`, more: `${Math.round(rate(m) * 100)}% · O/U ${m.oW}-${m.oL}` })),
+  };
+}
+
+// Season stats: a case of trophy tiles, two across. Each tile shows the
+// leader and where the viewer stands; a tap opens the full ranking, with
+// a bar for each player. Side bets sit underneath, off the books.
+const seasonOpenTiles = new Set();
 async function renderSeasonStats() {
   const panel = document.getElementById("season-panel");
   if (!panel || panel.classList.contains("hidden")) return;
-  const weeks = await fetchSeasonLedger();
+  const [weeks, sideHist] = await Promise.all([fetchSeasonLedger(), fetchSideHistory()]);
   if (!weeks) { panel.innerHTML = `<div class="pot-empty">Could not reach the record. Try again in a moment.</div>`; return; }
-  if (!weeks.length && !GAMES.some(isGameLocked)) { panel.innerHTML = `<div class="pot-empty">Nothing on the record yet. Stats appear once a week seals.</div>`; return; }
+  if (!weeks.length && !GAMES.some(isGameLocked) && !sideHist.length) { panel.innerHTML = `<div class="pot-empty">Nothing on the record yet. Stats appear once a week seals.</div>`; return; }
   // Locked games with no pick in the week in progress, unless that week
   // is already sealed and counted above.
   const liveBlanks = {};
@@ -7444,26 +9073,63 @@ async function renderSeasonStats() {
     }
   }
   const s = seasonStats(weeks, liveBlanks);
-  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const ORD = ["1ST", "2ND", "3RD"];
-  const row = (r, i) => {
-    const av = avatarOverrides[r.name] || shown(r.name)[0];
-    return `<div class="ss-row${r.name === currentManager ? " me" : ""}${i === 0 ? " lead" : ""}"><span class="ss-rank m${i + 1}">${ORD[i]}</span><span class="ss-av" style="--accent:${accentFor(r.name)}">${esc(av)}</span><span class="ss-name">${esc(shown(r.name).toUpperCase())}</span><span class="ss-sub">${esc(r.sub)}</span><b class="ss-val">${esc(r.value)}</b></div>`;
+  const side = sideSeasonStats(sideHist);
+  const esc = escapeCd;
+  const me = currentManager;
+  const av = (n, cls = "") => `<span class="hs-av ${cls}" style="--accent:${accentFor(n)}">${esc(avatarOverrides[n] || shown(n)[0])}</span>`;
+  // Competition rank on the shown value, so a tie reads as a tie.
+  const ranked = (rows) => rows.map((r) => ({ ...r, rank: 1 + rows.filter((x) => (r.low ? x.n < r.n : x.n > r.n)).length }));
+  const ORD = (k) => `${k}${k % 100 >= 11 && k % 100 <= 13 ? "TH" : ["TH", "ST", "ND", "RD"][k % 10] || "TH"}`;
+  const tile = (key, icon, label, note, rows, color, art = key) => {
+    const list = ranked(rows);
+    const open = seasonOpenTiles.has(key);
+    const lead = list[0];
+    const tied = lead ? list.filter((r) => r.rank === 1).length - 1 : 0;
+    const mine = list.find((r) => r.name === me);
+    const top = Math.max(...list.map((r) => Math.abs(r.n)), 0) || 1;
+    const lo = Math.min(...list.map((r) => r.n));
+    const width = (r) => Math.max(6, Math.round(100 * (r.low ? (lo || 0.1) / (r.n || 0.1) : Math.abs(r.n) / top)));
+    const full = !open ? "" : `<div class="hs-full"><div class="hs-note">${note}</div>${list.map((r) => `<div class="hs-r${r.name === me ? " me" : ""}${r.rank === 1 ? " first" : ""}"><i class="hs-rk">${r.rank}</i>${av(r.name)}<span class="hs-nm">${esc(shown(r.name))}</span><span class="hs-bar"><u class="${r.signed && r.n < 0 ? "neg" : ""}" style="width:${width(r)}%"></u></span><b class="hs-v${r.signed ? (r.n > 0 ? " up" : r.n < 0 ? " down" : "") : ""}">${esc(r.value)}<small>${esc(r.more || r.sub || "")}</small></b></div>`).join("")}</div>`;
+    // The tile art is pixel art cut from the league's own template, one
+    // per board; the emoji stands in if it fails to load.
+    return `<div class="hs-tile${open ? " open" : ""}${!lead ? " empty" : ""}" style="--c:${color}">
+      <button type="button" class="hs-tap" data-hs="${key}" aria-expanded="${open}">
+        <span class="hs-art"><img src="${awardArt(`hs/${art}`)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'${icon}'}))"></span>
+        <span class="hs-body">
+          <span class="hs-t-head"><span>${label}</span><em>${lead ? (open ? "▴" : "▾") : ""}</em></span>
+          ${lead ? `<span class="hs-name"><b>${esc(shown(lead.name))}</b>${tied ? `<i title="tied with ${tied} more">+${tied}</i>` : ""}</span>
+          <span class="hs-line"><small>${esc(lead.sub || "")}</small><strong class="${lead.signed && lead.n < 0 ? "down" : ""}">${esc(lead.value)}</strong></span>
+          <span class="hs-you">${mine && mine.rank > 1 ? `YOU · ${ORD(mine.rank)} · ${esc(mine.value)}` : mine ? "YOU LEAD" : `${list.length} RANKED`}</span>` : `<span class="hs-none">NOBODY YET</span>`}
+        </span>
+      </button>${full}</div>`;
   };
-  const board = (icon, label, note, rows, cls) => {
-    const top = rows.slice(0, 3).map((r, i) => row(r, i)).join("");
-    return `<div class="ss-card ${cls}"><div class="ss-head"><i class="ss-ico">${icon}</i><span>${label}</span></div><div class="ss-desc">${note}</div><div class="ss-table">${rows.length ? top : `<div class="ss-row none">NOBODY QUALIFIES · INSERT COIN</div>`}</div></div>`;
-  };
-  panel.innerHTML = `<div class="ss-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} ON THE RECORD</small></div>
-    ${board("🎯", "BEST ATS RECORD", "Spread picks, min 3", s.ats, "hit")}
-    ${board("🔥", "HOT HAND", "Correct picks in a row, right now", s.streak, "hit")}
-    ${board("🐶", "MOST DOG HITS", "Underdogs straight up, 3 pts each", s.dogs, "upset")}
-    ${board("🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "upset")}
-    ${board("🙃", "FAVORITE FADER", "Share of picks against the favorite", s.fader, "split")}
-    ${board("📏", "TIEBREAKER SNIPER", "Average miss, lower is better", s.tb, "tb")}
-    ${board("🏆", "BEST WEEK", "Highest single week score", s.best, "move")}
-    ${s.blanks.length ? board("💤", "NO SHOWS", "Games left unpicked", s.blanks, "miss") : ""}`;
+  panel.innerHTML = `<div class="hs-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} ON THE RECORD · TAP A BOARD FOR EVERYONE</small></div>
+    <div class="hs-grid">
+      ${tile("ats", "🎯", "BEST ATS", "Spread picks, at least 3", s.ats, "var(--neon-green)")}
+      ${tile("streak", "🔥", "HOT HAND", "Correct picks in a row, right now", s.streak, "#ff9f1c")}
+      ${tile("dogs", "🐶", "DOG HITS", "Underdogs straight up, 3 pts each", s.dogs, "var(--neon-pink)")}
+      ${tile("lone", "🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "var(--neon-purple)")}
+      ${tile("fader", "🙃", "FADER", "Share of picks against the favorite", s.fader, "var(--neon-cyan)")}
+      ${tile("tb", "📏", "TB SNIPER", "Average tiebreaker miss, lower is better", s.tb, "var(--neon-yellow)")}
+      ${tile("best", "🏆", "BEST WEEK", "Highest single week score", s.best, "#3fd0ff")}
+      ${s.blanks.length ? tile("blanks", "💤", "NO SHOWS", "Games left unpicked", s.blanks, "#a77bff") : ""}
+    </div>
+    <div class="hs-side">
+      <div class="hs-side-h"><img src="${awardArt("hs/coins")}" alt="" loading="lazy" decoding="async"><span>SIDE BETS</span><small>OFF THE BOOKS · ${side.bets} BET${side.bets === 1 ? "" : "S"}</small></div>
+      <div class="hs-side-note">Their own record. Side bets never count toward pool standings, payouts or the boards above.</div>
+      <div class="hs-grid">
+        ${tile("side-bank", "💵", "BANKROLL", "Money won or lost across side bets", side.bank, "var(--neon-green)", "bank")}
+        ${tile("side-picks", "🎲", "SIDE PICKS", "Side bet picks right, over/unders included", side.picks, "var(--neon-yellow)", "dice")}
+      </div>
+    </div>`;
 }
+document.getElementById("season-panel")?.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-hs]");
+  if (!b) return;
+  const k = b.dataset.hs;
+  if (seasonOpenTiles.has(k)) seasonOpenTiles.delete(k); else { seasonOpenTiles.add(k); track("hs-board", { event: true, d: k }); }
+  renderSeasonStats();
+});
 (() => {
   const toggle = document.getElementById("season-toggle");
   const panel = document.getElementById("season-panel");
@@ -7475,7 +9141,7 @@ async function renderSeasonStats() {
     toggle.setAttribute("aria-expanded", String(open));
     if (open) { panel.innerHTML = `<div class="pot-empty">Reading the record…</div>`; renderSeasonStats(); }
   };
-  toggle.addEventListener("click", () => { open = !open; paint(); });
+  toggle.addEventListener("click", (e) => { open = !open; paint(); if (open && e.isTrusted) track("season-open", { event: true }); });
   paint();
 })();
 
@@ -7497,6 +9163,8 @@ function showUpdateBar() {
 // A plain reload can be served the same cached index.html, which would
 // leave the bar showing and nothing changed. A fresh query cannot.
 function reloadFresh() {
+  // A live page preview keeps what it was showing.
+  if (window.__liveView) { const u = new URL(location.href); u.searchParams.set("r", String(Date.now())); location.replace(u.href); return; }
   location.replace(location.pathname + `?r=${Date.now()}` + location.hash);
 }
 
@@ -7583,42 +9251,54 @@ setInterval(() => { if (!document.hidden) checkForUpdate(false); }, 60 * 1000);
 setInterval(() => { if (updateWaiting && !userBusy()) checkForUpdate(false); }, 10 * 1000);
 
 // The splash shows once per 12 hours per device. Inside that window the
-// app opens straight to where the tap would have landed.
+// app opens straight to where the tap would have landed, and from the
+// week's first kickoff on it never shows to a known player.
 const SPLASH_KEY = "brochiefs_splash_seen_v1";
 const SPLASH_TTL = 12 * 60 * 60 * 1000;
+// A signed-in player goes straight to the scoreboard: this week's games
+// and the last board from this phone draw at once, and fresh ones replace
+// them as they land. No splash, at any point in the week.
+function goToScoresNow() {
+  logoScreen.classList.add("hidden");
+  loginScreen.classList.add("hidden");
+  homeHeader.classList.remove("hidden");
+  bottomNav.classList.remove("hidden");
+  currentManager = loadMe();
+  updateMePill();
+  showScoreboard();
+  document.documentElement.classList.remove("known");
+}
 (async () => {
-  // NFL: the scores as fast as possible. With this week's slate saved on
-  // the phone, open on it straight away (no splash, no wait) and let the
-  // network catch up behind; the board paints its saved copy at once and
-  // fresh scores as they land. A first visit, with nothing saved, still
-  // waits for the slate so it never draws the wrong games.
-  if (window.LEAGUE?.sport === "nfl") {
-    let saved = false;
-    try { saved = !!JSON.parse(localStorage.getItem(SLATE_CACHE_KEY) || "null")?.games?.length; } catch {}
-    const net = Promise.all([loadSlate(), refreshAuthState(), loadWeekSummaries(), loadRoster()]);
-    fetchLiveScores().catch(() => {});
-    if (saved) restoreCachedSlate(); else await net;
+  const fast = !!loadMe() && !window.__adminEntry && !window.__liveView;
+  if (fast) {
+    restoreCachedSlate();
     lastSlateSignature = slateSignature();
-    lastLockSignature = lockSignature();
-    renderManagerPicker();
-    goToPlayerSelect();
-    await net;
-    // The slate, the roster or logins may have moved while we drew: redraw once.
-    if (slateSignature() !== lastSlateSignature) { lastSlateSignature = slateSignature(); lastLockSignature = lockSignature(); }
-    renderManagerPicker();
-    if (!scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
-    return;
+    if (GAMES.length) { loadBootBoard(); goToScoresNow(); }
   }
+  const routed = fast && GAMES.length > 0;
   // Fetch this week's slate before anything renders, so nobody sees last
   // week's games flash past. The splash covers the wait. Whether login is
   // live, and who has claimed a name, comes down in the same breath.
-  await Promise.all([loadSlate(), refreshAuthState(), loadWeekSummaries(), loadRoster()]);
-  // Start the scores now, while the splash or the first screen draws, so
-  // the board has them (or is already waiting on them) when it opens.
-  if (window.LEAGUE?.sport === "nfl") fetchLiveScores().catch(() => {});
+  // The week's trophies are decoration and draw themselves when they land,
+  // so nothing waits on them. Once the slate is in, the board's picks and
+  // scores start loading at once, so a game day open finds them ready.
+  loadWeekSummaries();
+  await Promise.all([
+    loadSlate().then(() => { if (firstKickoffPassed()) { fetchLiveScores().catch(() => {}); fetchBoardPicks().catch(() => {}); } }),
+    refreshAuthState(),
+    loadRoster(),
+  ]);
+  const slateChanged = routed && slateSignature() !== lastSlateSignature;
   lastSlateSignature = slateSignature();
   lastLockSignature = lockSignature();
   renderManagerPicker();
+  if (routed) {
+    // Already on the board: redraw only if the network's slate differs
+    // from the one this phone had (a new week, a changed game).
+    if (slateChanged && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
+    return;
+  }
+  if (fast) { goToScoresNow(); return; }
 
   let last = 0;
   try { last = Number(localStorage.getItem(SPLASH_KEY)) || 0; } catch {}
@@ -7626,13 +9306,42 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
   const mark = () => { try { localStorage.setItem(SPLASH_KEY, String(Date.now())); } catch {} };
   // Skip the splash only when nothing else is due. The day's poster
   // follows the splash tap; it never jumps in over an untapped splash.
-  if (fresh && loadMe() && !nowPlayingDue()) {
+  // Once the week's first game has kicked off, a known player skips the
+  // splash entirely and lands on the scoreboard.
+  if (window.__liveView) {
+    startLiveView();
+  } else if (loadMe() && (firstKickoffPassed() || (fresh && !nowPlayingDue()))) {
     goToPlayerSelect();
   } else {
     track("/splash");
     logoScreen.addEventListener("click", mark, { once: true });
   }
 })();
+
+// The live page's preview: straight to the screen or sheet it names, as
+// someone just looking would see it now. view: scoreboard, history,
+// trivia, game (x = game id), card or path (x = a manager), h2h.
+async function startLiveView() {
+  const view = window.__liveView, x = new URLSearchParams(location.search).get("x") || "";
+  document.body.classList.add("live-view");
+  logoScreen.classList.add("hidden");
+  homeHeader.classList.remove("hidden");
+  bottomNav.classList.remove("hidden");
+  currentManager = null;
+  if (view === "history") return showHistory();
+  if (view === "trivia") return showTrivia();
+  showScoreboard();
+  const until = async (ok, ms = 10000) => { const t0 = Date.now(); while (!ok() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100)); return ok(); };
+  if (!(await until(() => liveWeekRows.length))) return;
+  const who = MANAGERS.find((n) => n === x);
+  if (view === "game" && GAMES.some((g) => String(g.id) === x)) openInsights(Number(x));
+  else if (view === "card" && who) {
+    expandedRankings.add(who);
+    await renderScoreboard();
+    document.querySelector(`.rd-path-btn[data-path="${CSS.escape(who)}"]`)?.closest(".ranking-row")?.scrollIntoView({ block: "start" });
+  } else if (view === "path" && who && (await until(() => winChanceMemo.ctx))) openPathCard(who);
+  else if (view === "h2h") openH2H();
+}
 
 // The bottom nav always wins: tapping a tab closes any sheet or popup that
 // is up (game info, head to head, grid check, the Game Box sim) and then
@@ -7655,78 +9364,6 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
 // back to the front, so a change on one phone shows on every other.
 syncAvatars();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) syncAvatars(); });
-
-// --- Path to win ------------------------------------------------------
-// The new feature pop-up.
-// Once per phone, on the scoreboard while the week is live and a path can
-// be run: a small card showing where to tap, drawn from the real board.
-// Never over another popup. GOT IT, the X, or a swipe down closes it.
-const PATH_INTRO_KEY = "brochiefs_new_pathtowin_v1";
-let pathIntroShownThisLoad = false;
-function maybeShowPathIntro(force = false) {
-  if (!force) {
-    if (window.LEAGUE?.sport === "nfl") return; // NFL: scores first, no pop-ups
-    if (pathIntroShownThisLoad || !currentManager || window.__adminEntry || window.__adminOpen || window.__liveView) return;
-    try { if (localStorage.getItem(PATH_INTRO_KEY)) return; } catch { return; }
-    const results = computeLiveResults(latestLive);
-    const wd = winChanceMemo.detail?.[currentManager];
-    if (!weekIsLive(results) || !wd || wd.alive === false || scoreboardScreen.classList.contains("hidden")) return;
-    if ([...document.querySelectorAll(".modal-overlay, .pr-screen, .np-screen")].some((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none")) return;
-  }
-  pathIntroShownThisLoad = true;
-  setTimeout(() => showPathIntro(), force ? 0 : 900);
-}
-function showPathIntro() {
-  if (document.querySelector(".pi-screen")) return;
-  const me = currentManager;
-  const rows = liveWeekRows.length ? liveWeekRows : MANAGERS.map((name, i) => ({ name, score: 0, place: i + 1 }));
-  const at = Math.max(0, rows.findIndex((r) => r.name === me));
-  const pick = rows.slice(Math.max(0, Math.min(at - 1, rows.length - 3)), Math.max(0, Math.min(at - 1, rows.length - 3)) + 3);
-  const pct = (n) => { const v = winChanceMemo.out?.[n]; return v == null ? null : v; };
-  const mini = pick.map((r) => {
-    const p = pct(r.name), w = p == null ? 0 : Math.max(3, Math.min(100, p * 100));
-    return `<div class="pi-row${r.name === me ? " me" : ""}"><span class="pi-rk">${r.tied ? "T" : ""}${r.place || ""}</span><span class="pi-nm">${escapeCd(shown(r.name).toUpperCase())}</span><span class="pi-bar"><i style="width:${w.toFixed(0)}%"></i></span><span class="pi-pt">${String(r.score ?? 0).padStart(2, "0")}</span>${r.name === me ? `<span class="pi-tap" aria-hidden="true"></span>` : ""}</div>`;
-  }).join("");
-  const myPct = pct(me);
-  const m = document.createElement("div");
-  m.className = "pi-screen"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: path to win");
-  m.innerHTML = `<div class="pi-card">
-    <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title">PATH TO WIN</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
-    <p class="pi-lede">See exactly which results you need to win the week, played out game by game.</p>
-    <div class="pi-step"><b>1</b><span>Tap your name on the leaderboard</span></div>
-    <div class="pi-mini">${mini}</div>
-    <div class="pi-step"><b>2</b><span>Tap the button on your card</span></div>
-    <div class="pi-mini pi-card2"><div class="pi-card2-top"><span class="pi-cap">CHANCE TO WIN THE WEEK · <b>${myPct == null ? "--" : winChanceLabel(myPct, winChanceMemo.detail?.[me])}</b></span><span class="pi-btnwrap"><span class="rd-path-btn pi-demo"><span class="rd-path-play">▶</span>MY PATH TO WIN</span></span></div><div class="pi-card2-sk"><i></i><i></i></div></div>
-    <button type="button" class="pi-ok">GOT IT</button>
-  </div>`;
-  document.body.appendChild(m);
-  // Seen once it's on screen, so closing the app over it doesn't bring it back.
-  try { localStorage.setItem(PATH_INTRO_KEY, String(Date.now())); } catch {}
-  const done = () => { try { localStorage.setItem(PATH_INTRO_KEY, String(Date.now())); } catch {} m.classList.add("out"); setTimeout(() => m.remove(), 220); };
-  m.querySelector(".pi-ok").addEventListener("click", done);
-  m.querySelector(".pi-x").addEventListener("click", done);
-  m.addEventListener("click", (e) => { if (e.target === m) done(); });
-  // Swipe the card down to close it.
-  const card = m.querySelector(".pi-card");
-  let y0 = null, dy = 0;
-  card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
-  card.addEventListener("touchmove", (e) => {
-    if (y0 == null) return;
-    dy = Math.max(0, e.touches[0].clientY - y0);
-    card.style.transform = `translateY(${dy}px)`;
-    card.style.opacity = String(Math.max(0.4, 1 - dy / 400));
-  }, { passive: true });
-  card.addEventListener("touchend", () => {
-    if (y0 == null) return;
-    y0 = null;
-    card.style.transition = "transform .2s ease-out, opacity .2s ease-out";
-    if (dy > 80) { card.style.transform = "translateY(100vh)"; done(); } else { card.style.transform = ""; card.style.opacity = ""; }
-  });
-  track("path-intro", { event: true });
-}
-// For a preview from the console: previewPathIntro().
-window.previewPathIntro = () => maybeShowPathIntro(true);
-
 
 // --- Logos that stay put ---------------------------------------------
 // The board, the picks list and the all picks table are redrawn from their
@@ -7782,7 +9419,7 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
 // stats each count once a visit when most of it has been on screen.
 (() => {
   if (!("IntersectionObserver" in window)) return;
-  const SEEN = { "rankings-list": "board-seen", "live-scores-list": "scores-seen" };
+  const SEEN = { "recap-panel": "recap-seen", "payouts-panel": "pot-seen", "season-panel": "season-seen", "rankings-list": "board-seen", "live-scores-list": "scores-seen" };
   const done = new Set();
   const io = new IntersectionObserver((list) => {
     for (const en of list) {

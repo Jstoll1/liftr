@@ -1535,7 +1535,15 @@
     });
   }
 
-  const TABS = { scouting: () => renderScouting(), whosin: renderWhosIn, qotw: renderQotw, experts: renderExperts, grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
+  // --- Side bet -------------------------------------------------------
+  // The late night side pot. The panel is shared with the slate editor and
+  // lives in app.js (mountSideAdmin).
+  function renderSide() {
+    body.innerHTML = `<div id="con-side" class="admin-side"></div>`;
+    return mountSideAdmin(el("con-side"), async () => key(), say);
+  }
+
+  const TABS = { side: renderSide, scouting: () => renderScouting(), whosin: renderWhosIn, qotw: renderQotw, experts: renderExperts, grid: renderGrid, picks: renderPicks, season: renderSeason, ledger: renderLedger, logins: renderLogins, owners: renderOwners, device: renderDevice, mode: renderMode, slate: renderSlate, feeds: renderFeeds };
 
   async function renderTab() {
     body.innerHTML = `<div class="admin-empty">Loading…</div>`;
