@@ -6404,7 +6404,7 @@ let qotwShownThisLoad = false;
 // --- League poll: lock of the week scoring ------------------------------------
 // Pops up once per open until this manager votes. Votes can change; the
 // tally (counts only) shows after voting. Names are admin only (?all=1).
-const POLL = { live: false, id: "lock-of-week", q: "Add a lock of the week?", opts: [
+const POLL = { live: false, id: "lock-of-week", q: "Add a lock 🔒 of the week to scoring.", opts: [
   { k: "B", t: "Small additional bonus", hit: "+1", miss: "0" },
   { k: "C", t: "Bonus with risk", hit: "+2", miss: "−1" },
   { k: "D", t: "Double or nothing", hit: "×2", miss: "0" },
@@ -6448,9 +6448,8 @@ async function maybeShowPoll(force) {
     const max = Math.max(1, ...Object.values(s.counts || {}));
     m.innerHTML = `<div class="wpx-card poll">
       <button type="button" class="wpx-x" aria-label="Close">✕</button>
-      <div class="poll-kicker">🔒 LEAGUE VOTE</div>
+      <div class="poll-kicker">VOTE</div>
       <div class="poll-q">${POLL.q}</div>
-      <div class="poll-sub">One pick a week counts extra.</div>
       <div class="poll-opts">${POLL.opts.map((o) => `<button type="button" class="poll-opt${s.vote === o.k ? " on" : ""}${o.none ? " no" : ""}" data-k="${o.k}">
         <span class="poll-k">${o.k}</span>
         <span class="poll-t"><b>${o.t}</b><small>${o.none ? o.none : `Hit <i class="up">${o.hit}</i> · Miss <i class="dn">${o.miss}</i>`}</small></span>
