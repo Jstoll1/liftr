@@ -96,11 +96,11 @@ body.pv-open .tabs { display: none; }
 
 /* Page */
 .page { max-width: 1440px; margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-  display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "tl" "feed" "rail"; }
-@media (min-width: 1024px) { .page { padding-bottom: calc(48px + env(safe-area-inset-bottom)); grid-template-columns: minmax(0, 1fr) 330px; grid-template-areas: "kpi kpi" "tl tl" "feed rail"; align-items: start; } .rail { position: sticky; top: 76px; } }
-@media (min-width: 1100px) { body.pv-open .page { margin-right: 430px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "tl" "feed" "rail"; } body.pv-open .rail { position: static; } }
+  display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "vote" "tl" "feed" "rail"; }
+@media (min-width: 1024px) { .page { padding-bottom: calc(48px + env(safe-area-inset-bottom)); grid-template-columns: minmax(0, 1fr) 330px; grid-template-areas: "kpi kpi" "vote vote" "tl tl" "feed rail"; align-items: start; } .rail { position: sticky; top: 76px; } }
+@media (min-width: 1100px) { body.pv-open .page { margin-right: 430px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "vote" "tl" "feed" "rail"; } body.pv-open .rail { position: static; } }
 .kpis, .tl, .feed, .rail { scroll-margin-top: 84px; }
-.kpis { grid-area: kpi; } .tl { grid-area: tl; } .feed { grid-area: feed; min-width: 0; } .rail { grid-area: rail; display: flex; flex-direction: column; gap: 16px; }
+.kpis { grid-area: kpi; } .panel.vote { grid-area: vote; } .tl { grid-area: tl; } .feed { grid-area: feed; min-width: 0; } .rail { grid-area: rail; display: flex; flex-direction: column; gap: 16px; }
 .panel { position: relative; padding: 14px 16px 16px; border-radius: 16px; background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .012)), var(--panel); border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 10px 30px rgba(0, 0, 0, .25); }
 .ph { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 12px; }
 .ph h2 { margin: 0; font: 700 11.5px/1 var(--mono); letter-spacing: .16em; color: var(--meta); text-transform: uppercase; }
@@ -591,6 +591,21 @@ html, body { overflow-x: hidden; }
 .lgsw button.on { color: #0b0716; background: var(--green); }
 .gate .lgsw { align-self: flex-start; }
 .sg-t.aw img { object-fit: contain; }
+
+  /* Collapsible sections */
+  .fold-h { cursor: pointer; user-select: none; }
+  section.panel > .ph.fold-h h2::before { content: "▾"; display: inline-block; width: 1em; margin-right: 4px; color: #8b91a5; font-size: 11px; transition: transform .15s; }
+  section.panel.folded > .ph.fold-h h2::before { transform: rotate(-90deg); }
+  section.panel.folded > :not(.ph) { display: none !important; }
+  section.panel.folded { padding-bottom: 14px; }
+  .day.fold-h::after { content: " ▾"; }
+  .day.fold-h.shut::after { content: " ▸ " attr(data-n) " visits"; text-transform: none; letter-spacing: 0; }
+  .quiet-toggle { display: none; margin: 8px auto 0; background: none; border: 1px solid rgba(255,255,255,.12); color: inherit; opacity: .75; border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 12px; cursor: pointer; }
+  @media (max-width: 700px) {
+    .tl:not(.allrows) .ln-l.quiet, .tl:not(.allrows) .ln-t.quiet { display: none; }
+    .quiet-toggle { display: block; }
+  }
+  section.panel.vote { border-color: rgba(255,210,63,.35); }
 </style>
 </head>
 <body>
@@ -1031,7 +1046,7 @@ html, body { overflow-x: hidden; }
       // Views are usage: Jake is left out of them. Votes count everyone.
       const seen = Object.keys(views).filter((n) => n !== "Jake");
       const waiting = (p.waitingOn || []);
-      return `<section class="panel"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${p.voted} of ${p.of} voted · seen by ${seen.length}</span></div>
+      return `<section class="panel vote" id="sec-vote"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${p.voted} of ${p.of} voted · seen by ${seen.length}</span></div>
         <div class="rank">${Object.keys(LAB).map((k) => `<div><span>${esc(LAB[k])} <small>${Object.entries(votes).filter(([, v]) => v === k).map(([n]) => esc(name(n))).join(", ")}</small></span><b>${p.counts?.[k] || 0}</b><i><s style="width:${(((p.counts?.[k] || 0) / max) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>
         ${waiting.length ? `<div class="note">Not voted: ${waiting.map((n) => `${esc(name(n))}${views[n] && n !== "Jake" ? ` <small>(seen ${views[n].n}×)</small>` : ""}`).join(", ")}</div>` : `<div class="note">Everyone has voted.</div>`}
         ${Object.keys(notes).length ? `<div class="note">${Object.entries(notes).map(([n, t]) => `<div><b>${esc(name(n))}</b>: ${esc(t)} <small>${esc(when(p.votedAt?.[n]))}</small></div>`).join("")}</div>` : ""}
@@ -1092,7 +1107,6 @@ html, body { overflow-x: hidden; }
         <div class="split"><s style="width:${((home / (home + web)) * 100).toFixed(1)}%;background:var(--past)"></s><s style="flex:1;background:#5b5378"></s></div>
         <div class="split-k"><span><i style="background:var(--past)"></i>Home screen app <b>${home}</b></span><span><i style="background:#5b5378"></i>Browser <b>${web}</b></span></div>
       </section>` : ""}
-      ${pollPanel()}
       ${frictionPanel(actions, "last 24h")}
       ${askPanel(from, "last 24h")}
     </aside>`;
@@ -1149,10 +1163,50 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}${timeline}${feedHtml}${rail}</div>
+      <div class="page">${kpis}${pollPanel()}${timeline}${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
+    tidy();
   }
+
+  // Collapsible panels and day groups, remembered per device; quiet timeline lanes tucked on phones.
+  const FOLD_KEY = "brochiefs_live_folds";
+  const folds = (() => { try { return new Set(JSON.parse(store.get(FOLD_KEY) || "null") || ["day:older"]); } catch { return new Set(["day:older"]); } })();
+  const saveFolds = () => store.set(FOLD_KEY, JSON.stringify([...folds]));
+  let showQuiet = false;
+  const panelKey = (sec) => "p:" + (sec.querySelector(".ph h2")?.textContent || "").trim();
+  const dayKey = (d) => { const t = d.textContent.trim(); return t === "Today" ? "day:today" : t === "Yesterday" ? "day:yesterday" : "day:older"; };
+  function tidy() {
+    app.querySelectorAll("section.panel").forEach((sec) => {
+      const ph = sec.querySelector(":scope > .ph"); if (!ph) return;
+      ph.classList.add("fold-h");
+      sec.classList.toggle("folded", folds.has(panelKey(sec)));
+    });
+    app.querySelectorAll(".day").forEach((d) => {
+      const k = dayKey(d), shut = k === "day:today" ? folds.has(k) : !folds.has(k.replace("day:", "open:"));
+      d.classList.add("fold-h"); d.classList.toggle("shut", shut);
+      let n = 0;
+      for (let x = d.nextElementSibling; x && !x.classList.contains("day") && !x.classList.contains("note"); x = x.nextElementSibling) { x.hidden = shut; n++; }
+      d.dataset.n = n;
+    });
+    const tl = app.querySelector("#sec-tl"); const q = tl ? tl.querySelectorAll(".ln-t.quiet").length : 0;
+    if (tl && q && !tl.querySelector(".quiet-toggle")) {
+      tl.classList.toggle("allrows", showQuiet);
+      tl.insertAdjacentHTML("beforeend", `<button type="button" class="quiet-toggle">${showQuiet ? "Hide quiet players" : `Show ${q} quiet player${q === 1 ? "" : "s"}`}</button>`);
+    }
+  }
+  app.addEventListener("click", (e) => {
+    const qt = e.target.closest(".quiet-toggle");
+    if (qt) { showQuiet = !showQuiet; const tl = qt.closest("#sec-tl"); tl.classList.toggle("allrows", showQuiet); const q = tl.querySelectorAll(".ln-t.quiet").length; qt.textContent = showQuiet ? "Hide quiet players" : `Show ${q} quiet player${q === 1 ? "" : "s"}`; return; }
+    const h = e.target.closest(".fold-h");
+    if (!h || e.target.closest("button:not(.fold-h), a, input, textarea")) return;
+    if (h.classList.contains("day")) {
+      const k = dayKey(h);
+      if (k === "day:today") folds.has(k) ? folds.delete(k) : folds.add(k);
+      else { const o = k.replace("day:", "open:"); folds.has(o) ? folds.delete(o) : folds.add(o); }
+    } else { const k = panelKey(h.closest("section")); folds.has(k) ? folds.delete(k) : folds.add(k); }
+    saveFolds(); tidy();
+  });
 
   // Hover tips for the timeline and the charts; a tap shows one too.
   const tipEl = document.getElementById("tip");
