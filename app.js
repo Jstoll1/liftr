@@ -6429,6 +6429,11 @@ async function maybeShowPoll(force) {
     m = document.createElement("div");
     m.id = "poll-modal"; m.className = "wpx-overlay"; m.setAttribute("role", "dialog");
     document.body.appendChild(m);
+    m.addEventListener("change", (e) => {
+      if (!e.target.closest(".poll-note")) return;
+      const on = m.querySelector(".poll-opt.on");
+      if (on) fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: POLL.id, manager: currentManager, choice: on.dataset.k, note: e.target.value, token: tokenFor(currentManager) || undefined }) }).catch(() => {});
+    });
     m.addEventListener("click", async (e) => {
       if (e.target === m || e.target.closest(".wpx-x, .poll-done")) { m.classList.add("hidden"); return; }
       const b = e.target.closest(".poll-opt");
@@ -6450,12 +6455,12 @@ async function maybeShowPoll(force) {
       <button type="button" class="wpx-x" aria-label="Close">✕</button>
       <div class="poll-kicker">VOTE</div>
       <div class="poll-q">${POLL.q}</div>
-      <textarea class="poll-note" rows="2" maxlength="1000" placeholder="Feedback or another idea? (optional)">${(s.note || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</textarea>
       <div class="poll-opts">${POLL.opts.map((o) => `<button type="button" class="poll-opt${s.vote === o.k ? " on" : ""}${o.none ? " no" : ""}" data-k="${o.k}">
         <span class="poll-k">${o.k}</span>
         <span class="poll-t"><b>${o.t}</b><small>${o.none ? o.none : `Hit <i class="up">${o.hit}</i> · Miss <i class="dn">${o.miss}</i>`}</small></span>
         ${s.vote ? `<span class="poll-bar"><u style="width:${Math.round(((s.counts[o.k] || 0) / max) * 100)}%"></u><em>${s.counts[o.k] || 0}</em></span>` : ""}
       </button>`).join("")}</div>
+      <textarea class="poll-note" rows="2" maxlength="1000" placeholder="Optional feedback">${(s.note || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</textarea>
       <div class="poll-err"></div>
       ${s.vote ? `<div class="poll-foot">${s.voted} of ${s.of} voted · tap another to change your vote<button type="button" class="poll-done">Done</button></div>` : ""}
     </div>`;

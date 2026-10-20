@@ -7609,3 +7609,5 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .wpx-card.poll .poll-q { margin-top: 14px; }
 .poll-note { width: 100%; box-sizing: border-box; resize: vertical; min-height: 44px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.3); color: #fff; font: inherit; font-size: 13px; }
 .poll-note:focus { outline: none; border-color: #29e6ff; }
+.poll-note:focus::placeholder { color: transparent; }
+.poll-note { min-height: 40px; }
