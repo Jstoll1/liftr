@@ -6416,14 +6416,14 @@ async function maybeShowPoll(force) {
   if (!POLL.live && !/[?&]poll=1/.test(location.search)) return;
   if ((!force && pollShownThisLoad) || !currentManager || !WORKER_URL || window.__adminEntry || window.__adminOpen || window.__liveView) return;
   const doneKey = `brochiefs_poll_${POLL.id}_${currentManager}`;
-  try { if (!force && localStorage.getItem(doneKey)) return; } catch {}
+  try { if (!force && localStorage.getItem(doneKey)) { refreshPollStrip(); return; } } catch {}
   // Not on top of the question of the week: try again on the next open.
   const q = document.getElementById("qotw-modal");
   if (q && !q.classList.contains("hidden") && q.isConnected) return;
   pollShownThisLoad = true;
   let st;
   try { const r = await fetch(`${WORKER_URL}/poll?id=${POLL.id}&manager=${encodeURIComponent(currentManager)}`); if (!r.ok) return; st = await r.json(); } catch { return; }
-  if (st.vote && !force) { try { localStorage.setItem(doneKey, st.vote); } catch {} return; }
+  if (st.vote && !force) { try { localStorage.setItem(doneKey, st.vote); } catch {} drawPollStrip(st); return; }
   let m = document.getElementById("poll-modal");
   if (!m) {
     m = document.createElement("div");
@@ -6446,6 +6446,7 @@ async function maybeShowPoll(force) {
         try { localStorage.setItem(doneKey, j.vote); } catch {}
         noteUse?.("poll", j.vote);
         draw({ ...j, note: m.querySelector(".poll-note")?.value || "" });
+        drawPollStrip(j);
       } catch (err) { m.querySelector(".poll-err").textContent = err.message; m.querySelectorAll(".poll-opt").forEach((x) => (x.disabled = false)); }
     });
   }
@@ -6471,6 +6472,20 @@ async function maybeShowPoll(force) {
   fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: POLL.id, manager: currentManager, action: "view" }) }).catch(() => {});
 }
 window.maybeShowPoll = maybeShowPoll;
+// After voting: the running result on the board, counts only, never names.
+function drawPollStrip(s) {
+  const el = document.getElementById("poll-strip");
+  if (!el || !s?.vote || !s.counts) return;
+  const max = Math.max(1, ...Object.values(s.counts));
+  el.innerHTML = `<div class="ps-h"><b>🔒 LOCK OF THE WEEK VOTE</b><span>${s.voted} of ${s.of} voted · tap to change</span></div>
+    <div class="ps-rows">${POLL.opts.map((o) => `<div class="ps-r${s.vote === o.k ? " on" : ""}"><span>${o.t}${s.vote === o.k ? " <i>YOU</i>" : ""}</span><u><s style="width:${Math.round(((s.counts[o.k] || 0) / max) * 100)}%"></s></u><b>${s.counts[o.k] || 0}</b></div>`).join("")}</div>`;
+  el.classList.remove("hidden");
+}
+async function refreshPollStrip() {
+  if (!POLL.live || !currentManager || !WORKER_URL) return;
+  try { const r = await fetch(`${WORKER_URL}/poll?id=${POLL.id}&manager=${encodeURIComponent(currentManager)}`); if (r.ok) drawPollStrip(await r.json()); } catch {}
+}
+document.getElementById("poll-strip")?.addEventListener("click", () => { pollShownThisLoad = false; maybeShowPoll(true); });
 
 async function maybeShowQotw() {
   // Not on the way into the admin panel: the prompt would sit on top of the key gate.

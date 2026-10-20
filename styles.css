@@ -7611,3 +7611,18 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .poll-note:focus { outline: none; border-color: #29e6ff; }
 .poll-note:focus::placeholder { color: transparent; }
 .poll-note { min-height: 40px; }
+
+/* Lock vote results on the board, after voting. */
+.poll-strip { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(41,230,255,.3); background: rgba(41,230,255,.05); cursor: pointer; display: grid; gap: 8px; }
+.poll-strip.hidden { display: none; }
+.ps-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ps-h b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 7px; letter-spacing: .1em; color: #29e6ff; }
+.ps-h span { font-size: 11px; color: var(--text-dim); }
+.ps-rows { display: grid; gap: 5px; }
+.ps-r { display: grid; grid-template-columns: 140px 1fr 18px; align-items: center; gap: 8px; font-size: 12px; color: #c9cddb; }
+.ps-r.on { color: #fff; }
+.ps-r i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; color: #0a0414; background: #29e6ff; padding: 2px 4px; border-radius: 3px; margin-left: 4px; }
+.ps-r u { display: block; height: 5px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+.ps-r u s { display: block; height: 100%; background: #29e6ff; opacity: .55; }
+.ps-r.on u s { opacity: 1; }
+.ps-r b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; text-align: right; }
