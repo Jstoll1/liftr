@@ -7662,3 +7662,6 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 @media (prefers-reduced-motion: reduce) { #poll-modal .wpx-card.poll, .poll.fresh .poll-lock, .wpx-card.poll .poll-bar u { animation: none; } }
 .wpx-card.poll .poll-later { justify-self: center; width: 100%; text-align: center; }
 .plc-score { grid-template-columns: minmax(0,1fr) 34px minmax(0,1fr); }
+/* Vote: centred card, not a bottom sheet. */
+#poll-modal { align-items: center !important; padding: 16px; }
+#poll-modal .wpx-card.poll { border-radius: 18px !important; border-bottom: 1px solid rgba(41,230,255,.25) !important; padding-bottom: 14px; max-height: calc(100vh - 32px); overflow-y: auto; }

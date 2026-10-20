@@ -6472,6 +6472,13 @@ async function maybeShowPoll(force) {
   fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: POLL.id, manager: currentManager, action: "view" }) }).catch(() => {});
 }
 window.maybeShowPoll = maybeShowPoll;
+// Until they vote: show it again each time the app comes back to the front.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible" || !POLL.live || !currentManager) return;
+  try { if (localStorage.getItem(`brochiefs_poll_${POLL.id}_${currentManager}`)) return; } catch {}
+  if (!document.getElementById("poll-modal")?.classList.contains("hidden") && document.getElementById("poll-modal")) return;
+  pollShownThisLoad = false; maybeShowPoll();
+});
 // After voting: the running result on the board, counts only, never names.
 function drawPollStrip(s) {
   const el = document.getElementById("poll-strip");
