@@ -7595,3 +7595,12 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .poll-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11.5px; color: var(--text-dim); }
 .poll-done { padding: 8px 16px; border-radius: 8px; border: 0; background: #29e6ff; color: #0a0414; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; }
 .poll-n i small { font-size: 6px; color: var(--text-dim); margin-right: 6px; }
+
+/* Vote pop-up v2: simple, even rows. */
+.poll-q { font-size: 13px; }
+.poll-opt { grid-template-columns: 30px minmax(0,1fr); min-height: 58px; padding: 9px 12px; }
+.poll-t small { font-size: 12px; }
+.poll-t small i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 9px; margin: 0 2px; }
+.poll-t .up { color: var(--neon-green); } .poll-t .dn { color: var(--neon-pink); }
+.poll-opt.no { border-style: dashed; }
+.poll-opt.no .poll-k { color: var(--text-dim); }

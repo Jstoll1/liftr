@@ -1896,7 +1896,7 @@ async function handleStory(request, env, corsHeaders, url) {
 // --- League polls ----------------------------------------------------------
 // One vote per manager per poll id, changeable. GET ?id=&manager= returns
 // that manager's vote and the tally (counts only); ?all=1 (admin) adds names.
-const POLL_CHOICES = { "lock-of-week": ["B", "C", "D"] };
+const POLL_CHOICES = { "lock-of-week": ["B", "C", "D", "N"] };
 async function handlePoll(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   const key = (id, m) => `poll:${id}:${m}`;

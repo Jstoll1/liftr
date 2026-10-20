@@ -6404,10 +6404,11 @@ let qotwShownThisLoad = false;
 // --- League poll: lock of the week scoring ------------------------------------
 // Pops up once per open until this manager votes. Votes can change; the
 // tally (counts only) shows after voting. Names are admin only (?all=1).
-const POLL = { id: "lock-of-week", q: "Lock of the week: how should it score?", opts: [
-  { k: "B", t: "Small bonus", hit: "+1", miss: "0", note: "Low stakes. A little reward, no risk." },
-  { k: "C", t: "Bonus with risk", hit: "+2", miss: "−1", note: "A real decision. One bad lock can't sink your week." },
-  { k: "D", t: "Double or nothing", hit: "×2", miss: "0", note: "Spread picks only. Simple and big." },
+const POLL = { id: "lock-of-week", q: "Add a lock of the week?", opts: [
+  { k: "B", t: "Small bonus", hit: "+1", miss: "0" },
+  { k: "C", t: "Bonus with risk", hit: "+2", miss: "−1" },
+  { k: "D", t: "Double or nothing", hit: "×2", miss: "0" },
+  { k: "N", t: "No lock", none: "Keep scoring as is" },
 ] };
 let pollShownThisLoad = false;
 async function maybeShowPoll(force) {
@@ -6447,11 +6448,10 @@ async function maybeShowPoll(force) {
       <button type="button" class="wpx-x" aria-label="Close">✕</button>
       <div class="poll-kicker">🔒 LEAGUE VOTE</div>
       <div class="poll-q">${POLL.q}</div>
-      <div class="poll-sub">Pick one game a week as your lock. Locks stay hidden until kickoff. Starts next week if it passes.</div>
-      <div class="poll-opts">${POLL.opts.map((o) => `<button type="button" class="poll-opt${s.vote === o.k ? " on" : ""}" data-k="${o.k}">
+      <div class="poll-sub">One pick a week counts extra.</div>
+      <div class="poll-opts">${POLL.opts.map((o) => `<button type="button" class="poll-opt${s.vote === o.k ? " on" : ""}${o.none ? " no" : ""}" data-k="${o.k}">
         <span class="poll-k">${o.k}</span>
-        <span class="poll-t"><b>${o.t}</b><small>${o.note}</small></span>
-        <span class="poll-n"><i class="up"><small>HIT</small>${o.hit}</i><i class="dn"><small>MISS</small>${o.miss}</i></span>
+        <span class="poll-t"><b>${o.t}</b><small>${o.none ? o.none : `Hit <i class="up">${o.hit}</i> · Miss <i class="dn">${o.miss}</i>`}</small></span>
         ${s.vote ? `<span class="poll-bar"><u style="width:${Math.round(((s.counts[o.k] || 0) / max) * 100)}%"></u><em>${s.counts[o.k] || 0}</em></span>` : ""}
       </button>`).join("")}</div>
       <div class="poll-err"></div>
