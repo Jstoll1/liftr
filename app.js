@@ -1158,6 +1158,42 @@ function fitHeaderLogo() {
   if (room > 40) img.style.maxWidth = `${Math.floor(room)}px`;
 }
 addEventListener("resize", fitHeaderLogo);
+
+// Desktop: split Picks and Scores into a main column and a sticky right
+// rail (countdown, standing and tiebreaker; your score and the
+// leaderboard). Nodes are moved, not copied, so every id and listener
+// keeps working; narrowing the window puts them back in their old order.
+const DESK_RAIL = {
+  "picks-screen": ["#picks-countdown", "#picks-standing", ".tiebreaker-card"],
+  "scoreboard-screen": ["#my-score", ".lb-head:not(.pot-head)", "#rankings-list"],
+};
+function deskLayout(on) {
+  for (const [id, railSel] of Object.entries(DESK_RAIL)) {
+    const wrap = document.querySelector(`#${id} > .wrap`);
+    if (!wrap) continue;
+    const grid = wrap.querySelector(":scope > .desk-grid");
+    if (on && !grid) {
+      wrap.__deskOrder = [...wrap.children];
+      const g = document.createElement("div"); g.className = "desk-grid";
+      const main = document.createElement("div"); main.className = "desk-main";
+      const rail = document.createElement("aside"); rail.className = "desk-rail";
+      const railEls = railSel.map((s) => wrap.querySelector(`:scope > ${s}`)).filter(Boolean);
+      wrap.__deskOrder.forEach((el) => (railEls.includes(el) ? rail : main).appendChild(el));
+      railEls.forEach((el) => rail.appendChild(el));
+      g.append(main, rail); wrap.appendChild(g); wrap.classList.add("desk-on");
+    } else if (!on && grid) {
+      // Anything added since (the lock bar) keeps its place by its neighbours.
+      const all = [...grid.querySelectorAll(":scope > .desk-main > *, :scope > .desk-rail > *")];
+      const order = (wrap.__deskOrder || []).filter((el) => all.includes(el));
+      all.filter((el) => !order.includes(el)).forEach((el) => { const next = el.nextElementSibling; const i = next ? order.indexOf(next) : -1; order.splice(i < 0 ? order.length : i, 0, el); });
+      order.forEach((el) => wrap.appendChild(el));
+      grid.remove(); wrap.classList.remove("desk-on");
+    }
+  }
+}
+const deskMq = matchMedia("(min-width: 1100px)");
+deskLayout(deskMq.matches);
+deskMq.addEventListener?.("change", (e) => deskLayout(e.matches));
 appScroll.addEventListener("scroll", syncHeaderSize, { passive: true });
 const savedScroll = {};
 let activeScreenName = null;
