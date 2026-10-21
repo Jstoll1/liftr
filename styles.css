@@ -7673,33 +7673,3 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 @keyframes pk-nudge { 0%, 100% { box-shadow: none; } 25%, 60% { box-shadow: 0 0 0 2px var(--neon-cyan), 0 0 14px rgba(5, 217, 232, .6); transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .pick-mini-btn.nudge { animation: none; outline: 2px solid var(--neon-cyan); } }
 .game-card .game-status { cursor: pointer; }
-
-/* Team card: tap a team on the picks screen. */
-.wpx-card.tc { gap: 12px; max-width: 400px; }
-.tc-head { display: flex; align-items: center; gap: 12px; padding-right: 30px; }
-.tc-head img { width: 48px; height: 48px; object-fit: contain; }
-.tc-head b { display: block; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 13px; color: #fff; line-height: 1.4; }
-.tc-head b i { font-style: normal; color: var(--neon-yellow); font-size: 10px; }
-.tc-head small { font-size: 12.5px; color: var(--text-dim); }
-.tc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.tc-stats span { display: grid; gap: 5px; padding: 8px; border-radius: 10px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); text-align: center; }
-.tc-stats em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .08em; color: var(--text-dim); }
-.tc-stats b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; color: #fff; }
-.tc-h { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--neon-pink); }
-.tc-five { display: grid; gap: 4px; }
-.tc-g { display: grid; grid-template-columns: 22px 20px minmax(0,1fr) auto; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; background: rgba(255,255,255,.03); font-size: 13px; }
-.tc-g i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 8px; text-align: center; padding: 3px 0; border-radius: 4px; }
-.tc-g.w i { background: rgba(57,255,136,.18); color: var(--neon-green); } .tc-g.l i { background: rgba(255,32,121,.18); color: var(--neon-pink); }
-.tc-g img, .tc-nl { width: 20px; height: 20px; object-fit: contain; }
-.tc-g span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #d9dcea; }
-.tc-g b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8.5px; color: var(--text-dim); }
-.tc-g.w b { color: #fff; }
-.tc-none, .tc-locked { font-size: 12.5px; color: var(--text-dim); }
-.tc-picks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.tc-b { display: grid; gap: 4px; padding: 12px 8px; border-radius: 12px; border: 1px solid rgba(5,217,232,.35); background: rgba(5,217,232,.06); color: #fff; font: inherit; cursor: pointer; text-align: center; }
-.tc-b b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 13px; }
-.tc-b small { font-size: 11px; color: var(--text-dim); }
-.tc-b.upset { border-color: rgba(255,32,121,.4); background: rgba(255,32,121,.06); }
-.tc-b.on { border-color: var(--neon-cyan); background: rgba(5,217,232,.18); box-shadow: 0 0 14px rgba(5,217,232,.35); }
-.tc-b.upset.on { border-color: var(--neon-pink); background: rgba(255,32,121,.18); box-shadow: 0 0 14px rgba(255,32,121,.35); }
-.tc-b:active { transform: scale(.97); }
