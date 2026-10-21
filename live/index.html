@@ -987,7 +987,6 @@ html, body { overflow-x: hidden; }
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
       if (HAS_STUDIO) loadCosts(full);
-      if (LEAGUE === "cfb") fetch(`${WORKER}/poll?id=lock-of-week-v2&all=1&${auth()}&t=${Date.now()}`, { cache: "no-store" }).then((x) => (x.ok ? x.json() : null)).then((p) => { if (p && JSON.stringify(p) !== JSON.stringify(st.poll)) { st.poll = p; render(); } }).catch(() => {});
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
       if (r.asks) st.asks = r.asks;
       // The week comes with seven days of taps; the live view keeps one.
@@ -1235,36 +1234,13 @@ html, body { overflow-x: hidden; }
     };
     // Since you last looked: one line, each part jumps to its section.
     const newStrip = () => {
-      const vNew = Object.keys(st.poll?.votes || {}).filter((n) => voteNew(n) || noteNew(n)).length;
       const visNew = vs.filter((v) => !v.live && v.end > seenBase.at).length;
       const fNew = (room.feed || []).filter((e) => FRICTION.test(e.k) && e.at > seenBase.at).length;
       const aNew = (st.asks || []).filter((x) => x.ts > seenBase.at).length;
-      const parts = [vNew && `<button type="button" data-jump="sec-vote">🔒 ${vNew} new vote${vNew === 1 ? "" : "s"}</button>`, visNew && `<button type="button" data-jump="sec-visits">👀 ${visNew} new visit${visNew === 1 ? "" : "s"}</button>`, fNew && `<button type="button" data-jump="sec-stats" class="warn">⚠ ${fNew} new issue${fNew === 1 ? "" : "s"}</button>`, aNew && `<button type="button" data-jump="sec-stats">💬 ${aNew} new question${aNew === 1 ? "" : "s"}</button>`].filter(Boolean);
+      const parts = [visNew && `<button type="button" data-jump="sec-visits">👀 ${visNew} new visit${visNew === 1 ? "" : "s"}</button>`, fNew && `<button type="button" data-jump="sec-stats" class="warn">⚠ ${fNew} new issue${fNew === 1 ? "" : "s"}</button>`, aNew && `<button type="button" data-jump="sec-stats">💬 ${aNew} new question${aNew === 1 ? "" : "s"}</button>`].filter(Boolean);
       if (!parts.length) return "";
       const ago = Date.now() - seenBase.at;
       return `<section class="newstrip"><span class="ns-h">NEW SINCE ${ago < 86400000 ? hm(seenBase.at).toUpperCase() : new Date(seenBase.at).toLocaleDateString([], { weekday: "short" }).toUpperCase() + " " + hm(seenBase.at).toUpperCase()}</span>${parts.join("")}<button type="button" class="ns-ok" data-seenall="1">✓ Seen</button></section>`;
-    };
-    // The lock of the week vote: tally, who voted what, who has seen it, feedback.
-    const pollPanel = () => {
-      const p = st.poll; if (!p) return "";
-      const LAB = { A: "Free bonus", B: "Bonus with risk", C: "High stakes", N: "No lock" };
-      const SUB = { A: "+2 / 0", B: "+2 / −1", C: "+3 / −3", N: "keep as is" };
-      const votes = p.votes || {}, views = p.views || {}, notes = p.notes || {}, at = p.votedAt || {};
-      const max = Math.max(1, ...Object.values(p.counts || {}));
-      const when = (t) => t ? (dayOf(t) === today0 ? hm(t) : `${new Date(t).toLocaleDateString([], { weekday: "short" })} ${hm(t)}`) : "";
-      // Views are usage, so Jake's are left out; votes count everyone.
-      const seenOf = (n) => (n === "Jake" ? null : views[n]);
-      const everyone = [...new Set([...Object.keys(votes), ...(p.waitingOn || [])])];
-      const rows = everyone.map((n) => ({ n, v: votes[n], s: seenOf(n) })).sort((x, y) => (x.v ? 0 : x.s ? 1 : 2) - (y.v ? 0 : y.s ? 1 : 2) || (at[y.n] || y.s?.last || 0) - (at[x.n] || x.s?.last || 0));
-      const nVoted = rows.filter((r) => r.v).length, nSeen = rows.filter((r) => !r.v && r.s).length, nNot = rows.length - nVoted - nSeen;
-      const nNew = rows.filter((r) => voteNew(r.n) || noteNew(r.n)).length;
-      return `<section class="panel vote${nNew ? " has-new" : ""}" id="sec-vote"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${nVoted} of ${rows.length} voted</span>${nNew ? `<b class="newc">${nNew} new</b>` : ""}</div>
-        <div class="pv-sum"><span class="ok"><b>${nVoted}</b>voted</span><span class="seen"><b>${nSeen}</b>seen only</span><span class="not"><b>${nNot}</b>not seen</span></div>
-        <div class="pv-tally">${Object.keys(LAB).map((k) => `<div><span>${LAB[k]} <small>${SUB[k]}</small></span><i><s style="width:${(((p.counts?.[k] || 0) / max) * 100).toFixed(1)}%"></s></i><b>${p.counts?.[k] || 0}</b></div>`).join("")}</div>
-        <div class="pv-list">${rows.map((r) => `<div class="pv-row ${r.v ? "ok" : r.s ? "seen" : "not"}${voteNew(r.n) || noteNew(r.n) ? " nw" : ""}">${av(r.n, "sm")}<span class="pv-n">${esc(name(r.n))}${voteNew(r.n) || noteNew(r.n) ? `<i class="newb">NEW</i>` : ""}</span>
-          <span class="pv-st">${r.v ? `<b>${LAB[r.v] || r.v}</b>` : r.s ? `<b>Seen</b>` : `<b>Not seen yet</b>`}<small>${r.v ? esc(when(at[r.n])) : r.s ? `${r.s.n}× · last ${esc(when(r.s.last))}` : ""}</small></span>
-          ${notes[r.n] ? `<span class="pv-note">“${esc(notes[r.n])}”</span>` : ""}</div>`).join("")}</div>
-      </section>`;
     };
     // Where people got stuck, and how far down each screen they got.
     const frictionPanel = (list, sub) => {
@@ -1419,7 +1395,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}<div class="vote-wrap">${newStrip()}${pollPanel()}</div>${timeline}${feedHtml}${rail}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${newStrip()}</div>${timeline}${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
