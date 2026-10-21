@@ -2217,6 +2217,9 @@ function matchupCardsHtml(game, draft) {
 // pulse, so the next tap makes the pick. (Players tapped the logo
 // expecting it to do something.)
 gamesList?.addEventListener("click", (e) => {
+  // The status chip (OPEN, your bet, LIVE, FINAL) opens the game, like INFO.
+  const chip = e.target.closest(".game-status");
+  if (chip) { const id = Number(chip.closest(".game-card")?.dataset.gameId); if (id) { track("status-tap", { event: true }); openInsights(id); } return; }
   const tm = e.target.closest(".hz-tm, .tm-id");
   if (!tm) return;
   const card = tm.closest(".game-card");

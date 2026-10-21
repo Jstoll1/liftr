@@ -7672,3 +7672,4 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .pick-mini-btn.nudge { animation: pk-nudge 1.2s ease-out; }
 @keyframes pk-nudge { 0%, 100% { box-shadow: none; } 25%, 60% { box-shadow: 0 0 0 2px var(--neon-cyan), 0 0 14px rgba(5, 217, 232, .6); transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .pick-mini-btn.nudge { animation: none; outline: 2px solid var(--neon-cyan); } }
+.game-card .game-status { cursor: pointer; }
