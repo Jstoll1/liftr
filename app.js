@@ -9317,6 +9317,9 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
     if (!(el instanceof Element) || interactive(el) || !(el.textContent || "").trim() && el.tagName !== "IMG") return;
     // Looks tappable: an image, a logo, a badge, a name, a number.
     if (!el.closest("img, [class*=logo], [class*=badge], [class*=chip], [class*=score], [class*=name], [class*=card], [class*=row]")) return;
+    // A tap in the gap of a container that holds buttons (a card's row, the
+    // space between bets) is a near miss, not a dead control.
+    if (el.querySelector?.("button, a, [role=button]")) return;
     mutated = false;
     setTimeout(() => { if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); track("dead-tap", { event: true, d: label(el) }); } }, 700);
   }, { capture: true, passive: true });
