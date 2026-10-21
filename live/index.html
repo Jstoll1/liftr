@@ -719,6 +719,23 @@ html, body { overflow-x: hidden; }
   .pv-row { grid-template-columns: auto 80px minmax(0, 1fr) !important; padding: 3px 6px !important; }
   .pv-sum span { display: flex !important; align-items: baseline; gap: 6px !important; padding: 6px 10px !important; }
   .pv-sum b { font-size: 16px !important; }
+  /* Feature grid and game day */
+  .fg { display: grid; grid-template-columns: minmax(84px, 1fr) repeat(var(--days), minmax(0, 34px)) 30px; gap: 4px; align-items: center; margin-top: 8px; }
+  .fg-d { font: 600 10.5px/1 var(--mono); color: var(--dim); text-align: center; } .fg-d.t { color: var(--green); }
+  .fg-l { font-size: 12.5px; color: var(--meta, #c9cddb); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fg-c { display: grid; place-items: center; height: 26px; border-radius: 6px; font: 700 11px/1 var(--mono); font-style: normal; color: #fff; background: rgba(155, 123, 255, var(--a)); }
+  .fg-c.z { background: rgba(255, 255, 255, .03); }
+  .fg-t { font: 800 12px/1 var(--mono); text-align: center; color: var(--text); }
+  .gd { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+  .gd span { display: grid; gap: 3px; padding: 8px; border-radius: 10px; background: rgba(255, 255, 255, .04); font-size: 11px; color: var(--dim); }
+  .gd b { font: 800 17px/1 var(--mono); color: var(--text); }
+  .gd-bars { display: flex; align-items: flex-end; gap: 3px; height: 54px; margin-top: 10px; }
+  .gd-bars i { flex: 1; min-height: 2px; border-radius: 3px 3px 0 0; background: #9b7bff; }
+  .gd-ax { display: flex; justify-content: space-between; font: 600 10px/1 var(--mono); color: var(--dim); margin-top: 4px; }
+  .gd-f { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .gd-f span { padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; color: var(--meta, #c9cddb); }
+  .gd-f b { color: var(--text); margin-left: 4px; }
+  @media (max-width: 420px) { .gd { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
 </head>
 <body>
@@ -1113,6 +1130,46 @@ html, body { overflow-x: hidden; }
     const labelled = (t) => { const d = new Date(t); return d.getMinutes() ? spanH <= 3 : d.getHours() % every === 0; };
     const axis = marks.filter((t) => labelled(t) && xp(t) < 87 && xp(t) > 4).map((t) => `<span style="left:${xp(t)}%">${tickLab(t)}</span>`).join("") + `<span class="nowl" style="left:100%">NOW</span>`;
     const seg = `<span class="seg end" role="group" aria-label="Range">${["3h", "6h", "12h", "24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
+    // Features, day by day: how many people used each one (taps in the
+    // cell's tooltip). Only features someone used this week show.
+    const FEATS = [["Gamecast", /^(gamecast|game-final|gamecast-log)$/], ["Game info", /^(game-info|team-tap|status-tap|insights-open)$/], ["Simulate", /^sim$/], ["Path to Win", /^path-(run|card|share)$|^path-of-/], ["Head to head", /^h2h$|^sh2h/], ["Win %", /^wp-/], ["Replay", /^recap-(card|seen)$/], ["Player card", /^player-card$/], ["Board rows", /^ranking-expand$|^board-seen$/], ["Standings", /^pot-(open|seen|row)$/], ["Season stats", /^season-(open|seen)$/], ["Side bet", /^side/], ["History", /^history(-season|-ask)?$/], ["Trivia", /^trivia/], ["Lock vote", /^poll$/]];
+    const featGrid = () => {
+      const ev = (wk.feed || []).filter((e) => e.at >= wFrom && (!st.filter || e.n === st.filter));
+      const rows = FEATS.map(([lab, re]) => {
+        const cells = dayList.map((d) => { const es = ev.filter((e) => re.test(e.k) && dayOf(e.at) === d); return { people: new Set(es.map((e) => e.n)), taps: es.length }; });
+        return { lab, cells, total: new Set(cells.flatMap((c) => [...c.people])).size, taps: cells.reduce((t, c) => t + c.taps, 0) };
+      }).filter((r) => r.taps).sort((a, b) => b.total - a.total || b.taps - a.taps);
+      if (!rows.length) return "";
+      const mx = Math.max(1, ...rows.flatMap((r) => r.cells.map((c) => c.people.size)));
+      return `<div class="sub2" style="margin-top:20px">Features${st.filter ? ` · ${esc(name(st.filter))}` : ""} · people who used each, by day</div>
+        <div class="fg" style="--days:${dayList.length}"><span></span>${dayList.map((d) => `<span class="fg-d${d === today0 ? " t" : ""}">${esc(dShort(d)).slice(0, 3)}</span>`).join("")}<span class="fg-d">WK</span>
+        ${rows.map((r) => `<span class="fg-l">${esc(r.lab)}</span>${r.cells.map((c, i) => `<i class="fg-c${c.people.size ? "" : " z"}" style="--a:${c.people.size ? (0.18 + 0.72 * c.people.size / mx).toFixed(2) : 0}" data-tip="${esc(`<b>${r.lab} · ${dLong(dayList[i])}</b>${c.people.size ? `${[...c.people].map(name).join(", ")} · ${c.taps} tap${c.taps === 1 ? "" : "s"}` : "Nobody"}`)}">${c.people.size || ""}</i>`).join("")}<b class="fg-t">${r.total}</b>`).join("")}</div>`;
+    };
+    // Game day: the league's big day (Saturday for college, Sunday for the
+    // NFL), noon to midnight, against the rest of the week.
+    const gameDay = () => {
+      const gd = LEAGUE === "nfl" ? 0 : 6;
+      const day = [...dayList].reverse().find((d) => new Date(d).getDay() === gd);
+      if (!day) return "";
+      const from = day + 12 * HOUR, to = day + 24 * HOUR;
+      const inWin = (v) => v.end >= from && v.start <= to;
+      const gv = wv.filter((v) => inWin(v) && (!st.filter || v.n === st.filter));
+      if (!gv.length) return "";
+      const ev = (wk.feed || []).filter((e) => e.at >= from && e.at <= to && (!st.filter || e.n === st.filter));
+      const who = new Set(gv.map((v) => v.n));
+      const ms = gv.reduce((t, v) => t + wTime(v, from, to), 0);
+      const byH = Array.from({ length: 12 }, (_, i) => gv.filter((v) => v.start < from + (i + 1) * HOUR && v.end >= from + i * HOUR).length);
+      const pk = byH.indexOf(Math.max(...byH));
+      const feats = FEATS.map(([lab, re]) => [lab, new Set(ev.filter((e) => re.test(e.k)).map((e) => e.n)).size]).filter(([, n]) => n).sort((a, b) => b[1] - a[1]).slice(0, 4);
+      const others = wv.filter((v) => !inWin(v) && (!st.filter || v.n === st.filter));
+      const share = Math.round(100 * gv.length / Math.max(1, gv.length + others.length));
+      const hr = (h) => `${(h + 12) % 12 || 12}${h + 12 < 12 ? "a" : "p"}`;
+      return `<div class="sub2" style="margin-top:20px">Game day · ${esc(dLong(day))}, noon to midnight</div>
+        <div class="gd"><span><b>${who.size}</b>people</span><span><b>${gv.length}</b>visits · ${share}% of the week</span><span><b>${esc(mins(ms) || "0m")}</b>in the app</span><span><b>${hr(pk + 12)}</b>busiest hour</span></div>
+        <div class="gd-bars">${byH.map((n, i) => `<i style="height:${(n / Math.max(1, ...byH) * 100).toFixed(0)}%" data-tip="${esc(`<b>${hr(i + 12)}</b>${n} visit${n === 1 ? "" : "s"}`)}"></i>`).join("")}</div>
+        <div class="gd-ax"><span>12p</span><span>3p</span><span>6p</span><span>9p</span><span>12a</span></div>
+        ${feats.length ? `<div class="gd-f">${feats.map(([l, n]) => `<span>${esc(l)} <b>${n}</b></span>`).join("")}</div>` : ""}`;
+    };
     const weekView = () => {
       if (!wk) return `<div class="note">Loading the week…</div>`;
       // Who, which day: visits (or minutes, by the switch), darker for more;
@@ -1145,6 +1202,8 @@ html, body { overflow-x: hidden; }
       return `<div class="sub2 row">Who was in, day by day ${st.filter ? "" : "· tap a name to follow one person"}<span class="seg sm" role="group" aria-label="Show"><button type="button" class="${byMin ? "" : "on"}" data-metric="visits">Visits</button><button type="button" class="${byMin ? "on" : ""}" data-metric="min">Minutes</button></span></div>${hmHtml}
         <div class="sub2" style="margin-top:20px">When in the day${st.filter ? ` · ${esc(name(st.filter))}` : " · everyone"} · visits by hour</div>
         ${pcHtml}
+        ${featGrid()}
+        ${gameDay()}
         ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:10px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}`;
     };
     const timeline = wk || st.range === "7d" ? `<section class="tl panel" id="sec-tl">
