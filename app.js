@@ -7084,8 +7084,6 @@ async function fetchAiPreview(game, d) {
   aiPreviewCache[key] = p;
   return p;
 }
-let insPvOpen = false;
-document.addEventListener("toggle", (e) => { if (e.target.classList?.contains("ins-pv-fold")) insPvOpen = e.target.open; }, true);
 function withTimeout(promise, ms, fallback) {
   return Promise.race([promise, new Promise((r) => setTimeout(() => r(fallback), ms))]);
 }
@@ -7130,13 +7128,13 @@ async function openInsights(gameId) {
   // The sealed line rides next to the favourite's name: "Indiana -7 at Nebraska".
   const ln = (team) => team === game.favorite && Number(game.spread) ? ` <b class="ins-ln">-${esc(game.spread)}</b>` : "";
   const titleEl = modal.querySelector("#insights-title");
-  titleEl.innerHTML = `${lg(game.awayId, "hd")}<span><em>${esc(game.awayShort)}${ln(game.away)}</em> <em><i>at</i>${esc(game.homeShort)}${ln(game.home)}</em></span>${lg(game.homeId, "hd")}`;
+  titleEl.innerHTML = `${lg(game.awayId, "hd")}<span>${esc(game.awayShort)}${ln(game.away)}<i>at</i>${esc(game.homeShort)}${ln(game.home)}</span>${lg(game.homeId, "hd")}`;
   // Long matchups shrink to fit on one line rather than cut off the line.
   titleEl.style.fontSize = "";
   requestAnimationFrame(() => {
     const t = titleEl.querySelector("span");
     let px = parseFloat(getComputedStyle(titleEl).fontSize) || 11;
-    while (t && t.scrollHeight > px * 3.4 && px > 8) { px -= 0.5; titleEl.style.fontSize = `${px}px`; }
+    while (t && t.scrollWidth > t.clientWidth + 1 && px > 7) { px -= 0.5; titleEl.style.fontSize = `${px}px`; }
   });
   const guest = !GAMES.includes(game);
   modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv].filter(Boolean).join(" · ");
@@ -7815,7 +7813,7 @@ async function openInsights(gameId) {
     // Nothing moved (or no quote yet): no rail, just a terminal line.
     if (!nowMoved) {
       const msg = nowV === null ? "NO LIVE LINE YET" : `NO CHANGE · ${esc(lab(sealedV))}`;
-      html += `<div class="lm-one"><b>${nowV === null ? "No live line yet" : `No change · ${esc(lab(sealedV))}`}</b>${small ? `<span>${small}</span>` : ""}</div>`;
+      html += `<div class="lm lm-term lm-slim lm-still"><div class="lm-cmd"><span class="p">&gt;</span> ${msg}<span class="lm-cur">█</span></div>${small ? `<div class="lm-small">${small}</div>` : ""}</div>`;
     } else
     html += `<div class="lm lm-term lm-slim"><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
@@ -7844,10 +7842,11 @@ async function openInsights(gameId) {
     const headline = aiPv?.headline || pv.headline;
     const lead = aiPv?.text ? [aiPv.text] : pv.paras.slice(0, 2);
     html += `<div class="ins-h">PREVIEW</div>${headline ? `<div class="ins-pv-h">${esc(headline)}</div>` : ""}`;
-    html += `<details class="ins-pv-fold"${insPvOpen ? " open" : ""}><summary>Read more</summary><div class="ins-pv">${lead.map((t) => `<p>${esc(t)}</p>`).join("")}${!aiPv?.text && pend.ai ? `<p class="pv-wait">Writing a sharper preview…</p>` : ""}</div></details>`;
+    html += `<div class="ins-pv">${lead.map((t) => `<p>${esc(t)}</p>`).join("")}${!aiPv?.text && pend.ai ? `<p class="pv-wait">Writing a sharper preview…</p>` : ""}</div>`;
   }
 
   // 3. Insights: the numbers, then the written brief.
+  html += `<div class="ins-h">INSIGHTS</div>`;
   // Matchup: one table under one team header. Record, ATS and FPI first,
   // then the season stats, the better number in green.
   const better = (label, a, h) => {
@@ -7868,16 +7867,14 @@ async function openInsights(gameId) {
     const restStats = allStats.filter((r) => !isKey(r));
     const statRows = (keyStats.length ? keyStats : allStats.slice(0, 4)).map(statRow).join("");
     const moreStats = (keyStats.length ? restStats : allStats.slice(4)).map(statRow).join("");
-    const thead = `<div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(abbrOf("away"))}</span><span>${lg(game.homeId)}${esc(abbrOf("home"))}</span></div>`;
-    const hasGlance = glance.records?.away?.overall || glance.records?.home?.overall || glance.ats?.away || glance.ats?.home || previewAts || glance.fpi;
-    if (hasGlance) html += `<div class="ins-h">AT A GLANCE</div><div class="ins-glance ins-stats">${thead}`
+    html += `<div class="ins-glance ins-stats"><div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(abbrOf("away"))}</span><span>${lg(game.homeId)}${esc(abbrOf("home"))}</span></div>`
       + cell("RECORD", glance.records?.away?.overall, glance.records?.home?.overall)
       + cell("ATS", glance.ats?.away || previewAts?.away, glance.ats?.home || previewAts?.home)
       + cell("ESPN FPI", glance.fpi ? `${glance.fpi.away}%` : null, glance.fpi ? `${glance.fpi.home}%` : null, glance.fpi && glance.fpi.away > glance.fpi.home ? "lead" : "", glance.fpi && glance.fpi.home > glance.fpi.away ? "lead" : "")
-      + `</div>`;
-    html += (w ? `<div class="ins-wx"><span>${esc(w)}</span></div>` : "")
-      + (statRows ? `<div class="ins-h">SEASON STATS</div><div class="ins-glance ins-stats">${thead}${statRows}</div>` : "")
-      + (moreStats ? `<details class="ins-more-news ins-more-stats"><summary><span>▶</span> MORE STATS</summary><div class="ins-glance ins-stats">${moreStats}</div></details>` : "");
+      + (statRows ? `<div class="ins-g divider"><span>SEASON</span></div>${statRows}` : "")
+      + `</div>`
+      + (moreStats ? `<details class="ins-more-news ins-more-stats"><summary><span>▶</span> MORE STATS</summary><div class="ins-glance ins-stats">${moreStats}</div></details>` : "")
+      + (w ? `<div class="ins-wx"><span>${esc(w)}</span></div>` : "");
     if (glance.venue?.name) modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv, `${glance.venue.name}${glance.venue.indoor ? " (indoors)" : ""}`].filter(Boolean).join(" · ");
     // Leaders: two columns in the same away/home order, logo only.
     const catShort = (c) => /pass/i.test(c) ? "PASS" : /rush/i.test(c) ? "RUSH" : /receiv/i.test(c) ? "REC" : /tackle/i.test(c) ? "TKL" : /sack/i.test(c) ? "SACK" : String(c).toUpperCase().slice(0, 5);
@@ -8011,8 +8008,8 @@ async function openInsights(gameId) {
         : `${ln === tot ? (tot === 1 ? "1 PICK:" : `ALL ${tot} BACK`) : `${ln} OF ${tot} BACK`} ${T(lw)}${how}`;
       html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,${cols >= 4 ? "1fr" : "112px"}))">${list.map(tileOf).join("")}</div>`;
       if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE OUTLETS (${rest.length})</summary><div class="xp-grid" style="grid-template-columns:repeat(${Math.min(rest.length, 4)},minmax(0,${rest.length >= 4 ? "1fr" : "112px"}))">${rest.map(tileOf).join("")}</div></details>`;
-    }
-    else if (false) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-empty small">No published picks yet. The outlets usually call games Thursday and Friday.</div>`;
+    } else if (pend.picks) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-loading">Checking the pickers…</div>`;
+    else html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-empty small">No published picks yet. The outlets usually call games Thursday and Friday.</div>`;
   }
   if (!newsRows.length && (pend.news || pend.wider || pend.gdelt || pend.site)) html += `<div class="ins-h">NEWS</div><div class="ins-loading">Loading news…</div>`;
   const newsErr = !pend.wider && !pend.gdelt && !pend.site && !wider.length && !gdelt.length && !(siteFeed?.news || []).length && (wider.errors || []).length ? `<div class="ins-empty small"><i class="ins-err">More sources unavailable: ${esc(wider.errors.slice(0, 2).join(" · "))}</i></div>` : "";
@@ -8063,7 +8060,7 @@ async function openInsights(gameId) {
   // after last five and just before news. Each section is its heading plus
   // everything up to the next heading.
   (() => {
-    const ORDER = ["AT A GLANCE", "LINE", "LAST FIVE", "PREVIEW", "EXPERT PICKS", "SEASON STATS", "INSIGHTS", "INJURIES", "NEWS", "MORE"];
+    const ORDER = ["LINE", "EXPERT PICKS", "PREVIEW", "LAST FIVE", "INSIGHTS", "INJURIES", "NEWS", "MORE"];
     const head = [], secs = {}, tail = [];
     let cur = null;
     for (const el of [...body.children]) {
