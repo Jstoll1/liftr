@@ -7759,3 +7759,13 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .ins-glance .ins-gk, .ins-glance .ins-gk.plain { font-family: inherit !important; font-size: 12.5px !important; letter-spacing: 0 !important; text-transform: none; color: var(--text-dim); }
 #insights-title em { font-style: normal; display: inline-block; white-space: nowrap; }
 .lm-one b { font-size: 8px; }
+
+/* What a lock does to the pick, in numbers. */
+.lk-st { display: inline-flex; gap: 6px; align-items: center; }
+.lk-st i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 7px; padding: 4px 6px; border-radius: 6px; white-space: nowrap; }
+.lk-st .up { color: var(--neon-green); background: rgba(57, 255, 136, .1); border: 1px solid rgba(57, 255, 136, .35); }
+.lk-st .dn { color: var(--neon-pink); background: rgba(255, 32, 121, .1); border: 1px solid rgba(255, 32, 121, .35); }
+.lotw-row:not(.on) { justify-content: space-between !important; }
+.lk-if { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); opacity: .8; }
+.lk-if .lk-st i { font-size: 6px; padding: 3px 5px; }
+.lotw-bar .lb-t .lk-st i { font-size: 6.5px; }

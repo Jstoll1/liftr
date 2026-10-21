@@ -39,7 +39,7 @@ const lockLabel = (r = lockRule()) => (r ? `hit +${r.hit} · miss ${r.miss < 0 ?
 // What a pick is worth if it cashes, lock bonus included.
 function pickWorth(game, pick) {
   if (!pick || !pick.team || !pick.mode) return 0;
-  return pointValue(game, pick.team, pick.mode) + (pick.lock && pick.mode === "ATS" && lockRule() ? lockRule().hit : 0);
+  return pointValue(game, pick.team, pick.mode) + (pick.lock && lockRule() ? lockRule().hit : 0);
 }
 
 // Given a final score, returns who won straight-up and who covered.
@@ -66,7 +66,7 @@ function scorePick(game, pick, result) {
   const winner = pick.mode === "SU" ? outcome.suWinner : outcome.atsWinner;
   if (winner === null) return 0;
   const base = pick.team === winner ? pointValue(game, pick.team, pick.mode) : 0;
-  const lr = pick.lock && pick.mode === "ATS" ? lockRule() : null;
+  const lr = pick.lock ? lockRule() : null;
   return lr ? (base > 0 ? base + lr.hit : lr.miss) : base;
 }
 
@@ -2420,14 +2420,18 @@ document.getElementById("picks-standing")?.addEventListener("click", () => {
 // The 🔒 button sits under a game once it has a pick; tapping it makes that
 // pick the lock (only one), tapping again takes it off. The locked card
 // glows gold. Above the games, one bar says which pick is the lock.
+// What a lock does to this pick: hit = its points + bonus, miss = the penalty.
+function lockStakes(game, pick, lr = lockRule()) {
+  const base = pointValue(game, pick.team, pick.mode);
+  return `<span class="lk-st"><i class="up">HIT ${base}+${lr.hit} = ${base + lr.hit}</i><i class="dn">MISS ${lr.miss < 0 ? "−" + Math.abs(lr.miss) : "0"}</i></span>`;
+}
 function lockRowHtml(game, pick, gameLocked) {
   const lr = lockRule();
   if (!lr || !pick) return "";
-  if (pick.mode !== "ATS") return gameLocked ? "" : `<div class="lotw-row"><span class="lotw-terms">🔒 Locks are spread picks only</span></div>`;
-  if (gameLocked) return pick.lock ? `<div class="lotw-row on done"><span class="lotw-tag">🔒 LOCK OF THE WEEK</span><span class="lotw-terms">${lockLabel(lr)}</span></div>` : "";
+  if (gameLocked) return pick.lock ? `<div class="lotw-row on done"><span class="lotw-tag">🔒 LOCK</span>${lockStakes(game, pick, lr)}</div>` : "";
   return pick.lock
-    ? `<div class="lotw-row on"><button type="button" class="lotw-btn" aria-pressed="true">🔒 YOUR LOCK</button><span class="lotw-terms">${lockLabel(lr)}</span></div>`
-    : `<div class="lotw-row"><button type="button" class="lotw-btn ghost" aria-pressed="false" title="Make this pick your lock of the week (${lockLabel(lr)})">🔒 LOCK IT</button></div>`;
+    ? `<div class="lotw-row on"><button type="button" class="lotw-btn" aria-pressed="true">🔒 YOUR LOCK</button>${lockStakes(game, pick, lr)}</div>`
+    : `<div class="lotw-row"><span class="lk-if">Lock it: ${lockStakes(game, pick, lr)}</span><button type="button" class="lotw-btn ghost" aria-pressed="false">🔒 LOCK IT</button></div>`;
 }
 function lotwToast(text) {
   let t = document.getElementById("lotw-toast");
@@ -2442,7 +2446,7 @@ function maybeLockReminder(why) {
   const lr = lockRule();
   if (!lr || !currentManager || window.__liveView) return false;
   const s = getManagerState(currentManager);
-  const open = GAMES.filter((g) => s.picks[g.id]?.mode === "ATS" && !isGameLocked(g));
+  const open = GAMES.filter((g) => s.picks[g.id] && !isGameLocked(g));
   if (!open.length || lockedGameOf(s)) return false;
   const k = `brochiefs_lotw_skip_w${currentWeek}`;
   try { if (localStorage.getItem(k)) return false; } catch {}
@@ -2468,7 +2472,7 @@ function renderLockRules() {
   if (!el) return;
   const lr = lockRule();
   el.classList.toggle("hidden", !lr);
-  if (lr) el.innerHTML = `<span class="rules-heading">🔒 Lock of the week</span><ul class="rules-list"><li>Optional: mark one spread pick a week as your lock (tap 🔒 under it)</li><li>Lock hits: <strong>+${lr.hit}</strong> on top of the pick · lock misses: <strong>${lr.miss < 0 ? "−" + Math.abs(lr.miss) : "0"}</strong></li><li>A push or no lock: nothing either way. It locks with the game and stays hidden until kickoff.</li></ul>`;
+  if (lr) el.innerHTML = `<span class="rules-heading">🔒 Lock of the week</span><ul class="rules-list"><li>Optional: mark one pick a week as your lock (tap 🔒 under it)</li><li>Lock hits: <strong>+${lr.hit}</strong> on top of the pick · lock misses: <strong>${lr.miss < 0 ? "−" + Math.abs(lr.miss) : "0"}</strong></li><li>A push or no lock: nothing either way. It locks with the game and stays hidden until kickoff.</li></ul>`;
 }
 // The leaderboard row's lock: a small 🔒 coloured by how it stands
 // (green cashed or covering, pink missed or not covering, plain before).
@@ -2494,7 +2498,6 @@ function setLock(gameId) {
   const s = getManagerState(currentManager);
   const target = s.picks[gameId];
   if (!target || isGameLocked(GAMES.find((g) => g.id === gameId))) return;
-  if (target.mode !== "ATS") { lotwToast("Locks are spread picks only."); return; }
   // A lock already kicked off is final.
   const held = lockedGameOf(s);
   if (held && held.id !== gameId && isGameLocked(held)) { lotwToast("Your lock's game has kicked off, so it stays."); return; }
@@ -2519,8 +2522,8 @@ function renderLockBar(state) {
   let fresh = false; try { fresh = !localStorage.getItem("brochiefs_lotw_seen"); } catch {}
   bar.className = `lotw-bar${g ? " on" : ""}`;
   bar.innerHTML = g
-    ? `<span class="lb-k">🔒 YOUR LOCK</span><span class="lb-v"><img src="${logoUrl(pk.team === g.away ? g.awayId : g.homeId)}" alt=""><b>${escapeCd(lockPickText(g, pk))}</b><small>${pointValue(g, pk.team, pk.mode)} + ${lr.hit} if it hits</small></span><span class="lb-t">${lockLabel(lr)}</span>`
-    : `<span class="lb-k">🔒 LOCK OF THE WEEK${fresh ? ` <i>NEW</i>` : ""}</span><span class="lb-v"><b>No lock yet</b><small>Make a spread pick, then tap 🔒 under it</small></span><span class="lb-t">${lockLabel(lr)}</span>`;
+    ? `<span class="lb-k">🔒 YOUR LOCK</span><span class="lb-v"><img src="${logoUrl(pk.team === g.away ? g.awayId : g.homeId)}" alt=""><b>${escapeCd(lockPickText(g, pk))}</b></span><span class="lb-t">${lockStakes(g, pk, lr)}</span>`
+    : `<span class="lb-k">🔒 LOCK OF THE WEEK${fresh ? ` <i>NEW</i>` : ""}</span><span class="lb-v"><b>No lock yet</b><small>Tap 🔒 under any pick</small></span><span class="lb-t">${lockLabel(lr)}</span>`;
 }
 
 function renderPicksScreen() {
@@ -2610,7 +2613,7 @@ function renderPicksScreen() {
         const prev = s.picks[game.id];
         const changed = !!prev && (prev.team !== team || prev.mode !== mode);
         if (prev && !changed) return; // same button again: nothing to save
-        s.picks[game.id] = { team, mode, updatedAt: Date.now(), ...(prev?.lock && mode === "ATS" ? { lock: true } : {}) };
+        s.picks[game.id] = { team, mode, updatedAt: Date.now(), ...(prev?.lock ? { lock: true } : {}) };
         setManagerState(currentManager, s);
         pushManagerState(currentManager, s).then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
         justSavedGameId = game.id;

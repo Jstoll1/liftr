@@ -1249,9 +1249,6 @@ async function handleSide(request, env, corsHeaders, url) {
 // and wins; otherwise the most recently changed locked pick keeps it. In a
 // week without the lock rule every flag is dropped.
 export function settleLock(picks, stored, kickoffs, now, week) {
-  // Locks are spread picks only (a flat +3 / -3 on a favourite to win would
-  // be near free points): a lock on any other pick is dropped.
-  for (const [id, p] of Object.entries(picks)) if (p?.lock && p.mode !== "ATS") { const { lock, ...rest } = p; picks[id] = rest; }
   const locked = Object.entries(picks).filter(([, p]) => p?.lock);
   if (!lockOnWeek(week)) { for (const [id] of locked) { const { lock, ...rest } = picks[id]; picks[id] = rest; } return; }
   if (locked.length <= 1) return;
@@ -1615,7 +1612,7 @@ function seasonScorePick(game, pick, result, lockRule = null) {
   if (winner === null) return 0;
   const base = pick.team === winner ? seasonPointValue(game, pick.team, pick.mode) : 0;
   // The lock rides on the pick; lockRule is the week's numbers (null: off).
-  if (pick.lock && lockRule && pick.mode === "ATS") return base > 0 ? base + lockRule.hit : lockRule.miss;
+  if (pick.lock && lockRule) return base > 0 ? base + lockRule.hit : lockRule.miss;
   return base;
 }
 
@@ -1645,7 +1642,7 @@ export function buildSummary(week, slate, results, picks, kickoffs = null, earli
       if (pick) picked += 1;
       const pts = seasonScorePick(g, pick, results?.[g.id], lockRule);
       const outcome = seasonOutcome(g, results?.[g.id]);
-      const locked = !!(lockRule && pick?.lock && pick.mode === "ATS");
+      const locked = !!(lockRule && pick?.lock);
       const ko = kickoffs?.[g.id] || null;
       ledger.push({
         g: Number(g.id),
