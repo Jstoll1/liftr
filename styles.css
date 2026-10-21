@@ -7782,3 +7782,7 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .game-card.lotw .pick-mini-btn.selected::after { content: "🔒"; position: absolute; top: -9px; left: -9px; font-size: 13px; line-height: 1; filter: drop-shadow(0 0 3px rgba(0, 0, 0, .8)); }
 /* Scoreboard: bigger corner lock on the locked pick */
 .pick-cell .pick-lk { top: 0; right: 0; font-size: 11px; padding: 1px 2px; border-radius: 0 0 0 5px; background: rgba(255, 210, 63, .9); }
+/* Scores tab: the viewer's locked game gets a gold corner lock */
+.scorebug.lk { position: relative; border-color: #ffd23f !important; box-shadow: 0 0 0 1px rgba(255, 210, 63, .45), 0 0 16px rgba(255, 210, 63, .2) !important; }
+.scorebug .bug-lk { position: absolute; top: -8px; left: -8px; z-index: 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #ffd23f; font-style: normal; font-size: 12px; line-height: 1; box-shadow: 0 0 8px rgba(255, 210, 63, .6); }
+.scorebug.lk .bug-gnum { margin-left: 12px; }

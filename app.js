@@ -4037,7 +4037,8 @@ function renderLiveScores(live, cloudPicks) {
         myPill = `<span class="stake ${tone}" title="You took ${mine} ${terms} for ${worth} pt">${face}</span>`;
       }
       return `
-        <div class="${cls}" data-game="${game.id}" role="button" tabindex="0" aria-label="Open ${game.awayShort} at ${game.homeShort}">
+        <div class="${cls}${myPick?.lock && lockRule() ? " lk" : ""}" data-game="${game.id}" role="button" tabindex="0" aria-label="Open ${game.awayShort} at ${game.homeShort}">
+          ${myPick?.lock && lockRule() ? `<i class="bug-lk" title="Your lock of the week">🔒</i>` : ""}
           <div class="bug-head">
             <span class="bug-gnum">G${game.id}</span>
             <span class="bug-status">${statusText}</span>${tvTag}
