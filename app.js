@@ -2508,8 +2508,8 @@ function lockConfirm(g, pk) {
   }
   m.dataset.gid = g.id;
   const hit = pointValue(g, pk.team, pk.mode) + lr.hit, miss = lr.miss;
-  const logo = logoUrl(pk.team === g.away ? g.awayId : g.homeId), opp = pk.team === g.away ? g.homeShort : g.awayShort;
-  m.innerHTML = `<div class="ln-card"><div class="lc-k">LOCK OF THE WEEK</div><img class="lc-logo" src="${logo}" alt=""><div class="lc-pick">${escapeCd(lockPickText(g, pk))}</div><div class="lc-vs">${pk.team === g.away ? "at" : "vs"} ${escapeCd(opp)}</div><div class="lc-odds"><div class="lc-o up"><small>COVERS</small><b>+${hit}</b></div><div class="lc-o dn"><small>MISSES</small><b>${miss < 0 ? "−" + Math.abs(miss) : 0}</b></div></div><button type="button" class="lc-go">🔒 LOCK IT</button><button type="button" class="lc-no">Not this one</button></div>`;
+  const opp = pk.team === g.away ? g.homeShort : g.awayShort;
+  m.innerHTML = `<div class="ln-card"><div class="lc-k">LOCK OF THE WEEK</div><div class="lc-mu"><img class="lc-logo ${pk.team === g.away ? "me" : ""}" src="${logoUrl(g.awayId)}" alt="${escapeCd(g.awayShort)}"><span>AT</span><img class="lc-logo ${pk.team === g.home ? "me" : ""}" src="${logoUrl(g.homeId)}" alt="${escapeCd(g.homeShort)}"></div><div class="lc-pick">${escapeCd(lockPickText(g, pk))}</div><div class="lc-vs">${pk.team === g.away ? "at" : "vs"} ${escapeCd(opp)}</div><div class="lc-odds"><div class="lc-o up"><small>COVERS</small><b>+${hit}</b></div><div class="lc-o dn"><small>MISSES</small><b>${miss < 0 ? "−" + Math.abs(miss) : 0}</b></div></div><button type="button" class="lc-go">🔒 LOCK IT</button><button type="button" class="lc-no">Not this one</button></div>`;
   requestAnimationFrame(() => m.classList.add("show"));
 }
 function setLock(gameId, opts = {}) {

@@ -7765,7 +7765,10 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .lotw-confirm:not(.show) { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .lotw-confirm .ln-card { display: flex; flex-direction: column; align-items: center; gap: 0; width: min(320px, 100%); padding: 26px 20px 14px; border-radius: 20px; text-align: center; background: linear-gradient(180deg, #1c1638, #0f0c22); border: 1px solid rgba(255, 210, 63, .35); box-shadow: 0 24px 60px rgba(0, 0, 0, .7), 0 0 40px rgba(255, 210, 63, .08); }
 .lotw-confirm .lc-k { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .16em; color: #ffd23f; opacity: .85; }
-.lotw-confirm .lc-logo { width: 64px; height: 64px; object-fit: contain; margin: 16px 0 10px; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, .6)); }
+.lotw-confirm .lc-mu { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 16px 0 12px; }
+.lotw-confirm .lc-mu span { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); }
+.lotw-confirm .lc-logo { width: 46px; height: 46px; padding: 8px; object-fit: contain; border-radius: 16px; opacity: .6; filter: grayscale(.4); }
+.lotw-confirm .lc-logo.me { width: 62px; height: 62px; opacity: 1; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, .6)); background: rgba(255, 210, 63, .08); box-shadow: 0 0 0 2px #ffd23f, 0 0 18px rgba(255, 210, 63, .3); }
 .lotw-confirm .lc-pick { font-size: 24px; font-weight: 700; color: #fff; letter-spacing: .01em; }
 .lotw-confirm .lc-vs { margin-top: 2px; font-size: 12px; color: var(--text-dim); }
 .lotw-confirm .lc-odds { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; width: 100%; margin: 18px 0 16px; border-radius: 12px; overflow: hidden; background: rgba(255, 255, 255, .08); }
