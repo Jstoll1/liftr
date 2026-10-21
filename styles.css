@@ -590,8 +590,12 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   pointer-events: none;
 }
 
-.game-card:hover::before {
+.game-card.next-up::before {
   opacity: 0.9;
+}
+/* The glow follows a mouse only: on a phone the last tap counts as a hover. */
+@media (hover: hover) and (pointer: fine) {
+  .game-card:hover::before { opacity: 0.9; }
 }
 
 .game-card.game-submitted::before {
@@ -7730,3 +7734,28 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .rank-lk.dn { border-color: var(--neon-pink); background: rgba(255, 32, 121, .15); }
 .gc-mine.lk .gc-mtag { background: #ffd23f !important; color: #1a0f00 !important; }
 .recap-card.lk .rm-side.miss i { color: var(--neon-pink); }
+/* Tapping a team points at its two bets. */
+.hz-tm, .tm-id { cursor: pointer; }
+.pick-mini-btn.nudge { animation: pk-nudge 1.2s ease-out; }
+@keyframes pk-nudge { 0%, 100% { box-shadow: none; } 25%, 60% { box-shadow: 0 0 0 2px var(--neon-cyan), 0 0 14px rgba(5, 217, 232, .6); transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .pick-mini-btn.nudge { animation: none; outline: 2px solid var(--neon-cyan); } }
+.game-card .game-status { cursor: pointer; }
+/* Last five: five equal chips that always fit; the road @ is a corner mark, not extra width. */
+.ins-form-r { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; flex-wrap: nowrap; }
+.ins-fchip { position: relative; min-width: 0 !important; justify-content: center; gap: 3px; padding: 4px 2px !important; overflow: hidden; }
+.ins-fchip u { position: absolute; top: 1px; left: 3px; text-decoration: none; font-size: 8px; line-height: 1; color: var(--text-dim); }
+.ins-fchip img { width: 16px; height: 16px; object-fit: contain; flex: none; }
+.ins-fchip i { font-size: clamp(8px, 2.6vw, 10px) !important; letter-spacing: -.02em; }
+/* Game info, calmer: title can take two lines, SIM is labelled, one body font. */
+#insights-title { white-space: normal !important; }
+#insights-title > span { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.6; text-align: center; }
+.ins-sim-pill b { display: inline !important; font-size: 7px; margin-left: 4px; }
+.lm-one { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 9px 12px; border-radius: 10px; background: rgba(57, 255, 136, .05); border: 1px solid rgba(57, 255, 136, .25); }
+.lm-one b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 9px; color: var(--neon-green); }
+.lm-one span { font-size: 12.5px; color: var(--text-dim); }
+.ins-pv-fold summary { cursor: pointer; list-style: none; display: inline-block; margin-top: 6px; font-size: 12.5px; color: var(--neon-cyan); }
+.ins-pv-fold summary::-webkit-details-marker { display: none; }
+.ins-pv-fold[open] summary { display: none; }
+.ins-glance .ins-gk, .ins-glance .ins-gk.plain { font-family: inherit !important; font-size: 12.5px !important; letter-spacing: 0 !important; text-transform: none; color: var(--text-dim); }
+#insights-title em { font-style: normal; display: inline-block; white-space: nowrap; }
+.lm-one b { font-size: 8px; }

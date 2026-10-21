@@ -181,6 +181,7 @@ function restoreCachedSlate() {
     if (!c || !Array.isArray(c.games) || !c.games.length) return;
     GAMES = c.games;
     currentWeek = c.week || currentWeek;
+    if (latestLiveWeek !== null && latestLiveWeek !== currentWeek) { latestLive = {}; latestLiveWeek = null; }
     WEEK_LABEL = c.label || `Week ${currentWeek}`;
     LOCK_RULE = c.lockRule || null;
     renderLockRules();
@@ -198,6 +199,9 @@ async function loadSlate(week) {
     if (!Array.isArray(data.games) || !data.games.length) return false;
     GAMES = data.games;
     currentWeek = data.week || currentWeek;
+    // A new week: last week's live data (scores, ranks, records) is keyed by
+    // game number, so it would land on this week's games. Drop it.
+    if (latestLiveWeek !== null && latestLiveWeek !== currentWeek) { latestLive = {}; latestLiveWeek = null; }
     WEEK_LABEL = data.label || `Week ${currentWeek}`;
     LOCK_RULE = data.lockRule || null;
     renderLockRules();
@@ -540,6 +544,7 @@ function parseEspnEvents(events, games = GAMES) {
       homeRank: rankOf(home),
       awayAbbr: away?.team?.abbreviation || null,
       homeAbbr: home?.team?.abbreviation || null,
+      awayTeamId: Number(away?.team?.id) || null,
       awayRecord: recordOf(away),
       homeRecord: recordOf(home),
       state: statusType.state || "pre",
@@ -1480,7 +1485,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202610200027";
+  tag.src = "admin.js?v=202610211722";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1549,7 +1554,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202610200027";
+  tag.src = "console.js?v=202610211722";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2181,8 +2186,8 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
   const pts = (n) => `<span class="pk-pts">${n}<i>PT</i></span>`;
   return `
     <div class="tm-row ${atsSelected || suSelected ? "picked" : ""}">
-      <div class="tm-id">
-        <span class="tm-logo-wrap"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank)}</span>
+      <div class="tm-id" data-tm="${escapeCd(team)}">
+        <span class="tm-logo-wrap"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${latestLiveWeek === currentWeek ? rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank) : ""}</span>
         <span class="tm-name">${isHome ? `<i class="tm-at">@</i>` : ""}<span class="tm-nm">${short}</span>${isFavorite ? `<span class="tm-spread">${line}</span>` : ""}</span>
       </div>
       <div class="tm-chips">
@@ -2207,7 +2212,8 @@ function nameSizeClass(short) {
 
 function matchupCardsHtml(game, draft) {
   const awayIsFav = game.favorite === game.away;
-  const live = latestLive[game.id] || {};
+  const raw = latestLiveWeek === currentWeek ? latestLive[game.id] : null;
+  const live = raw && (!raw.awayTeamId || !game.awayId || raw.awayTeamId === Number(game.awayId)) ? raw : {};
   const side = (team, teamId, isFavorite, short, rank, record) => {
     const sign = isFavorite ? "-" : "+";
     const line = `${sign}${game.spread}`;
@@ -2216,7 +2222,7 @@ function matchupCardsHtml(game, draft) {
     const atsSelected = pickEqual(draft, { team, mode: "ATS" });
     const suSelected = pickEqual(draft, { team, mode: "SU" });
     const pts = (n) => `<span class="pk-pts">${n}<i>PT</i></span>`;
-    const id = `<div class="hz-tm${atsSelected || suSelected ? " picked" : ""}">
+    const id = `<div class="hz-tm${atsSelected || suSelected ? " picked" : ""}" data-tm="${escapeCd(team)}">
         <img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
         <span class="hz-nm${nameSizeClass(short)}">${short}</span>
         <span class="hz-rec">${record ? String(record).replace(/[^0-9-]/g, "") : ""}${rank ? `<b>#${rank}</b>` : ""}</span>
@@ -2235,6 +2241,19 @@ function matchupCardsHtml(game, draft) {
     </div>
   `;
 }
+
+// Tapping a team (logo, name, record) or the status chip opens the game's
+// info sheet, like INFO. (Players tapped them expecting something.)
+gamesList?.addEventListener("click", (e) => {
+  // The status chip (OPEN, your bet, LIVE, FINAL) opens the game, like INFO.
+  const chip = e.target.closest(".game-status");
+  if (chip) { const id = Number(chip.closest(".game-card")?.dataset.gameId); if (id) { track("status-tap", { event: true }); openInsights(id); } return; }
+  // A team's logo or name opens the game's info sheet too.
+  const tm = e.target.closest(".hz-tm, .tm-id");
+  if (!tm) return;
+  const id = Number(tm.closest(".game-card")?.dataset.gameId);
+  if (id) { track("team-tap", { event: true }); openInsights(id); }
+});
 
 // Tap = saved. There's no separate Submit: every pick is freely
 // changeable until that game kicks off anyway, so a confirm step added
@@ -2514,6 +2533,8 @@ function renderPicksScreen() {
   // Kickoff order, not the order the commissioner happened to tap them
   // in: the card at the top is always the next one to lock, which is what
   // the countdown above is counting down to.
+  // The next game still to pick, in kickoff order, wears the glowing edge.
+  const nextUpId = gamesByKickoff().find((g) => !isGameLocked(g) && !state.picks[g.id])?.id ?? null;
   gamesByKickoff().forEach((game) => {
     const gameLocked = isGameLocked(game);
     const pick = state.picks[game.id];
@@ -2525,6 +2546,7 @@ function renderPicksScreen() {
       (gameLocked ? " game-locked" : "") +
       (pick ? " game-submitted" : "") +
       (pick?.lock && lockRule() ? " lotw" : "") +
+      (game.id === nextUpId ? " next-up" : "") +
       (justSavedGameId === game.id ? " just-saved" : "");
 
     const g = latestLive[game.id];
@@ -2846,7 +2868,7 @@ async function renderScoreboard() {
   maybeShowQotw().finally(() => maybeShowPoll());
   if (bootBoard) {
     const b = bootBoard; bootBoard = null;
-    if (!Object.keys(latestLive).length) { latestLive = b.live; latestLiveWeek = b.week; }
+    if (!Object.keys(latestLive).length && b.week === currentWeek) { latestLive = b.live; latestLiveWeek = b.week; }
     try { paintScoreboard(b.picks, b.live, true); } catch (err) { console.warn("cached board", err); }
   }
   // Picks and scores together, not picks and then scores.
@@ -4885,7 +4907,8 @@ let liveWeekFinal = false;
 
 function payoutLedger() {
   const allSealed = Object.values(weekSummaries).filter((s) => s && s.complete);
-  // An exhibition week keeps its picks, points and trophy, but pays
+  // Season points count every week, week 1 included (league call). An
+  // exhibition week keeps its picks, points and trophy, but pays
   // nothing and does not count toward the weeks the pot is spread over.
   const sealed = allSealed.filter((s) => !s.exhibition);
   const rows = new Map(MANAGERS.map((n) => [n, { name: n, weeksWon: 0, earned: 0, points: 0, played: 0 }]));
@@ -4941,7 +4964,7 @@ function renderPayouts() {
   // the record (pushes and blanks count neither way).
   const rec = {};
   for (const w of Object.values(weekSummaries)) {
-    if (!w?.complete || w.exhibition) continue;
+    if (!w?.complete) continue;
     for (const r of w.rows || []) { const x = rec[r.name] = rec[r.name] || { w: 0, l: 0 }; x.w += r.hits || 0; x.l += r.misses || 0; }
   }
   // One LED segment per week of the season: settled weeks carry the
@@ -5057,7 +5080,7 @@ function renderSeasonH2H() {
   if (!modal) return;
   const esc = escapeCd;
   const pot = payoutLedger();
-  const sealed = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition).sort((x, y) => x.week - y.week);
+  const sealed = Object.values(weekSummaries).filter((w) => w?.complete).sort((x, y) => x.week - y.week);
   // The week in progress counts too, marked live, so the race is current.
   const weeks = pot.liveWeek && liveWeekRows.some((r) => r.score) ? [...sealed, { week: pot.liveWeek, live: true, rows: liveWeekRows.map((r) => ({ name: r.name, score: r.score })) }] : sealed;
   const a = sh2h.a, b = sh2h.b;
@@ -7034,6 +7057,8 @@ async function fetchAiPreview(game, d) {
   aiPreviewCache[key] = p;
   return p;
 }
+let insPvOpen = false;
+document.addEventListener("toggle", (e) => { if (e.target.classList?.contains("ins-pv-fold")) insPvOpen = e.target.open; }, true);
 function withTimeout(promise, ms, fallback) {
   return Promise.race([promise, new Promise((r) => setTimeout(() => r(fallback), ms))]);
 }
@@ -7078,13 +7103,13 @@ async function openInsights(gameId) {
   // The sealed line rides next to the favourite's name: "Indiana -7 at Nebraska".
   const ln = (team) => team === game.favorite && Number(game.spread) ? ` <b class="ins-ln">-${esc(game.spread)}</b>` : "";
   const titleEl = modal.querySelector("#insights-title");
-  titleEl.innerHTML = `${lg(game.awayId, "hd")}<span>${esc(game.awayShort)}${ln(game.away)}<i>at</i>${esc(game.homeShort)}${ln(game.home)}</span>${lg(game.homeId, "hd")}`;
+  titleEl.innerHTML = `${lg(game.awayId, "hd")}<span><em>${esc(game.awayShort)}${ln(game.away)}</em> <em><i>at</i>${esc(game.homeShort)}${ln(game.home)}</em></span>${lg(game.homeId, "hd")}`;
   // Long matchups shrink to fit on one line rather than cut off the line.
   titleEl.style.fontSize = "";
   requestAnimationFrame(() => {
     const t = titleEl.querySelector("span");
     let px = parseFloat(getComputedStyle(titleEl).fontSize) || 11;
-    while (t && t.scrollWidth > t.clientWidth + 1 && px > 7) { px -= 0.5; titleEl.style.fontSize = `${px}px`; }
+    while (t && t.scrollHeight > px * 3.4 && px > 8) { px -= 0.5; titleEl.style.fontSize = `${px}px`; }
   });
   const guest = !GAMES.includes(game);
   modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv].filter(Boolean).join(" · ");
@@ -7763,7 +7788,7 @@ async function openInsights(gameId) {
     // Nothing moved (or no quote yet): no rail, just a terminal line.
     if (!nowMoved) {
       const msg = nowV === null ? "NO LIVE LINE YET" : `NO CHANGE · ${esc(lab(sealedV))}`;
-      html += `<div class="lm lm-term lm-slim lm-still"><div class="lm-cmd"><span class="p">&gt;</span> ${msg}<span class="lm-cur">█</span></div>${small ? `<div class="lm-small">${small}</div>` : ""}</div>`;
+      html += `<div class="lm-one"><b>${nowV === null ? "No live line yet" : `No change · ${esc(lab(sealedV))}`}</b>${small ? `<span>${small}</span>` : ""}</div>`;
     } else
     html += `<div class="lm lm-term lm-slim"><div class="lm-axis" style="--ticks:${ticks}">
       <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
@@ -7792,11 +7817,10 @@ async function openInsights(gameId) {
     const headline = aiPv?.headline || pv.headline;
     const lead = aiPv?.text ? [aiPv.text] : pv.paras.slice(0, 2);
     html += `<div class="ins-h">PREVIEW</div>${headline ? `<div class="ins-pv-h">${esc(headline)}</div>` : ""}`;
-    html += `<div class="ins-pv">${lead.map((t) => `<p>${esc(t)}</p>`).join("")}${!aiPv?.text && pend.ai ? `<p class="pv-wait">Writing a sharper preview…</p>` : ""}</div>`;
+    html += `<details class="ins-pv-fold"${insPvOpen ? " open" : ""}><summary>Read more</summary><div class="ins-pv">${lead.map((t) => `<p>${esc(t)}</p>`).join("")}${!aiPv?.text && pend.ai ? `<p class="pv-wait">Writing a sharper preview…</p>` : ""}</div></details>`;
   }
 
   // 3. Insights: the numbers, then the written brief.
-  html += `<div class="ins-h">INSIGHTS</div>`;
   // Matchup: one table under one team header. Record, ATS and FPI first,
   // then the season stats, the better number in green.
   const better = (label, a, h) => {
@@ -7817,14 +7841,16 @@ async function openInsights(gameId) {
     const restStats = allStats.filter((r) => !isKey(r));
     const statRows = (keyStats.length ? keyStats : allStats.slice(0, 4)).map(statRow).join("");
     const moreStats = (keyStats.length ? restStats : allStats.slice(4)).map(statRow).join("");
-    html += `<div class="ins-glance ins-stats"><div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(abbrOf("away"))}</span><span>${lg(game.homeId)}${esc(abbrOf("home"))}</span></div>`
+    const thead = `<div class="ins-g head"><span></span><span>${lg(game.awayId)}${esc(abbrOf("away"))}</span><span>${lg(game.homeId)}${esc(abbrOf("home"))}</span></div>`;
+    const hasGlance = glance.records?.away?.overall || glance.records?.home?.overall || glance.ats?.away || glance.ats?.home || previewAts || glance.fpi;
+    if (hasGlance) html += `<div class="ins-h">AT A GLANCE</div><div class="ins-glance ins-stats">${thead}`
       + cell("RECORD", glance.records?.away?.overall, glance.records?.home?.overall)
       + cell("ATS", glance.ats?.away || previewAts?.away, glance.ats?.home || previewAts?.home)
       + cell("ESPN FPI", glance.fpi ? `${glance.fpi.away}%` : null, glance.fpi ? `${glance.fpi.home}%` : null, glance.fpi && glance.fpi.away > glance.fpi.home ? "lead" : "", glance.fpi && glance.fpi.home > glance.fpi.away ? "lead" : "")
-      + (statRows ? `<div class="ins-g divider"><span>SEASON</span></div>${statRows}` : "")
-      + `</div>`
-      + (moreStats ? `<details class="ins-more-news ins-more-stats"><summary><span>▶</span> MORE STATS</summary><div class="ins-glance ins-stats">${moreStats}</div></details>` : "")
-      + (w ? `<div class="ins-wx"><span>${esc(w)}</span></div>` : "");
+      + `</div>`;
+    html += (w ? `<div class="ins-wx"><span>${esc(w)}</span></div>` : "")
+      + (statRows ? `<div class="ins-h">SEASON STATS</div><div class="ins-glance ins-stats">${thead}${statRows}</div>` : "")
+      + (moreStats ? `<details class="ins-more-news ins-more-stats"><summary><span>▶</span> MORE STATS</summary><div class="ins-glance ins-stats">${moreStats}</div></details>` : "");
     if (glance.venue?.name) modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv, `${glance.venue.name}${glance.venue.indoor ? " (indoors)" : ""}`].filter(Boolean).join(" · ");
     // Leaders: two columns in the same away/home order, logo only.
     const catShort = (c) => /pass/i.test(c) ? "PASS" : /rush/i.test(c) ? "RUSH" : /receiv/i.test(c) ? "REC" : /tackle/i.test(c) ? "TKL" : /sack/i.test(c) ? "SACK" : String(c).toUpperCase().slice(0, 5);
@@ -7836,7 +7862,7 @@ async function openInsights(gameId) {
   if (form && (form.away.length || form.home.length)) {
     const chip = (e) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}" title="${esc(`${e.result || ""} ${e.at === "@" ? "at" : "vs"} ${e.oppName || e.opp || ""} ${e.score || ""}`)}">${e.at === "@" ? `<u>@</u>` : ""}${e.oppId || e.oppLogo ? `<img src="${e.oppId ? logoUrl(e.oppId) : esc(e.oppLogo)}" alt="${esc(e.opp || "")}" loading="lazy">` : `<i>${esc(e.opp || "")}</i>`}<b>${esc(e.result || "·")}</b><i>${esc(e.score || "")}</i></span>`;
     const row = (teamId, list) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}</span><span class="ins-form-r">${list.map(chip).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
-    html += `<div class="ins-sub-h">LAST FIVE</div>${row(game.awayId, form.away)}${row(game.homeId, form.home)}`;
+    html += `<div class="ins-h">LAST FIVE</div>${row(game.awayId, form.away)}${row(game.homeId, form.home)}`;
   }
   // Series history.
   if (direct?.series?.length) {
@@ -7958,8 +7984,8 @@ async function openInsights(gameId) {
         : `${ln === tot ? (tot === 1 ? "1 PICK:" : `ALL ${tot} BACK`) : `${ln} OF ${tot} BACK`} ${T(lw)}${how}`;
       html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,${cols >= 4 ? "1fr" : "112px"}))">${list.map(tileOf).join("")}</div>`;
       if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE OUTLETS (${rest.length})</summary><div class="xp-grid" style="grid-template-columns:repeat(${Math.min(rest.length, 4)},minmax(0,${rest.length >= 4 ? "1fr" : "112px"}))">${rest.map(tileOf).join("")}</div></details>`;
-    } else if (pend.picks) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-loading">Checking the pickers…</div>`;
-    else html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-empty small">No published picks yet. The outlets usually call games Thursday and Friday.</div>`;
+    }
+    else if (false) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-empty small">No published picks yet. The outlets usually call games Thursday and Friday.</div>`;
   }
   if (!newsRows.length && (pend.news || pend.wider || pend.gdelt || pend.site)) html += `<div class="ins-h">NEWS</div><div class="ins-loading">Loading news…</div>`;
   const newsErr = !pend.wider && !pend.gdelt && !pend.site && !wider.length && !gdelt.length && !(siteFeed?.news || []).length && (wider.errors || []).length ? `<div class="ins-empty small"><i class="ins-err">More sources unavailable: ${esc(wider.errors.slice(0, 2).join(" · "))}</i></div>` : "";
@@ -8010,7 +8036,7 @@ async function openInsights(gameId) {
   // after last five and just before news. Each section is its heading plus
   // everything up to the next heading.
   (() => {
-    const ORDER = ["LINE", "EXPERT PICKS", "PREVIEW", "INSIGHTS", "INJURIES", "NEWS", "MORE"];
+    const ORDER = ["AT A GLANCE", "LINE", "LAST FIVE", "PREVIEW", "EXPERT PICKS", "SEASON STATS", "INSIGHTS", "INJURIES", "NEWS", "MORE"];
     const head = [], secs = {}, tail = [];
     let cur = null;
     for (const el of [...body.children]) {
@@ -8629,7 +8655,7 @@ function recapDetail(sum, kind) {
   if (kind === "move") {
     // Season standings after this week, with how far each player moved
     // from the week before. Ties share a place.
-    const weeks = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition && w.week <= sum.week);
+    const weeks = Object.values(weekSummaries).filter((w) => w?.complete && w.week <= sum.week);
     const total = (upto) => { const t = new Map(); for (const w of weeks) if (w.week <= upto) for (const r of w.rows || []) t.set(r.name, (t.get(r.name) || 0) + (r.score || 0)); return t; };
     const place = (t) => { const list = [...t.entries()].sort((a, b) => b[1] - a[1]); const m = new Map(); list.forEach(([n, p]) => m.set(n, 1 + list.filter(([, q]) => q > p).length)); return m; };
     const now = total(sum.week), was = total(sum.week - 1), pNow = place(now), pWas = place(was);
@@ -8763,7 +8789,7 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
 // card. Everything comes from the sealed weeks, so it is what was graded.
 function playerSeason(name) {
   // The detailed weeks (with every pick) when they are loaded, else the plain ones.
-  const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition)).slice().sort((a, b) => a.week - b.week);
+  const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete)).slice().sort((a, b) => a.week - b.week);
   const scores = [], picks = [];
   let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0, lockW = 0, lockL = 0;
   for (const wk of weeks) {
@@ -8985,7 +9011,7 @@ async function fetchSeasonLedger() {
     const res = await fetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return seasonLedger;
     const data = await res.json();
-    seasonLedger = Object.values(data.summaries || {}).filter((w) => w?.complete && !w.exhibition && Array.isArray(w.rows)).sort((a, b) => a.week - b.week);
+    seasonLedger = Object.values(data.summaries || {}).filter((w) => w?.complete && Array.isArray(w.rows)).sort((a, b) => a.week - b.week);
     seasonLedgerAt = Date.now();
   } catch { /* keep what we had */ }
   return seasonLedger;
@@ -9295,7 +9321,9 @@ function goToScoresNow() {
   bottomNav.classList.remove("hidden");
   currentManager = loadMe();
   updateMePill();
-  showScoreboard();
+  // A new slate with nothing kicked off yet: picks first. Once the week is
+  // under way, the scoreboard.
+  if (GAMES.length && !firstKickoffPassed()) showPicksScreen(); else showScoreboard();
   document.documentElement.classList.remove("known");
 }
 (async () => {
@@ -9324,6 +9352,9 @@ function goToScoresNow() {
   if (routed) {
     // Already on the board: redraw only if the network's slate differs
     // from the one this phone had (a new week, a changed game).
+    // The saved slate was last week's: the new one is open for picks, so
+    // go there instead of the old board.
+    if (slateChanged && !firstKickoffPassed() && !scoreboardScreen.classList.contains("hidden")) { showPicksScreen(); return; }
     if (slateChanged && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
     return;
   }
@@ -9447,6 +9478,9 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
     if (!(el instanceof Element) || interactive(el) || !(el.textContent || "").trim() && el.tagName !== "IMG") return;
     // Looks tappable: an image, a logo, a badge, a name, a number.
     if (!el.closest("img, [class*=logo], [class*=badge], [class*=chip], [class*=score], [class*=name], [class*=card], [class*=row]")) return;
+    // A tap in the gap of a container that holds buttons (a card's row, the
+    // space between bets) is a near miss, not a dead control.
+    if (el.querySelector?.("button, a, [role=button]")) return;
     mutated = false;
     setTimeout(() => { if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); track("dead-tap", { event: true, d: label(el) }); } }, 700);
   }, { capture: true, passive: true });
@@ -9486,3 +9520,53 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
   addEventListener("error", (e) => { if (e.message) err(e.message); });
   addEventListener("unhandledrejection", (e) => err(e.reason?.message || e.reason));
 })();
+
+// --- Logos that stay put ---------------------------------------------
+// The board, the picks list and the all picks table are redrawn from their
+// HTML on every refresh, and a freshly made <img> is blank until it loads
+// and decodes, so logos blinked out and back every few seconds. A redraw
+// now moves each logo already on screen into the new layout in place of
+// its fresh copy (same address, taking the fresh copy's attributes), so a
+// logo on screen, painted or still loading, is never replaced.
+function keepLogos(el, draw) {
+  if (!el) return draw();
+  const have = new Map();
+  for (const img of el.querySelectorAll("img")) {
+    // A logo still loading is kept too: moving it keeps its download, where
+    // a fresh copy would start over (a saved board followed a second later
+    // by the fresh one would otherwise blink every logo on open).
+    if (img.complete && !img.naturalWidth) continue; // a broken one gets a fresh try
+    const list = have.get(img.src) || [];
+    list.push(img); have.set(img.src, list);
+  }
+  const out = draw();
+  if (!have.size) return out;
+  for (const fresh of el.querySelectorAll("img")) {
+    const old = have.get(fresh.src)?.shift();
+    if (!old || old === fresh) continue;
+    for (const a of [...old.attributes]) if (a.name !== "src") old.removeAttribute(a.name);
+    for (const a of fresh.attributes) if (a.name !== "src") old.setAttribute(a.name, a.value);
+    fresh.replaceWith(old);
+  }
+  return out;
+}
+// Every redraw anywhere keeps the logos already on screen. Live
+// screens repaint every few seconds, and a fresh <img> blanks until it
+// loads, which shifts everything under it.
+{
+  const d = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
+  let inside = false;
+  Object.defineProperty(Element.prototype, "innerHTML", {
+    configurable: true, get: d.get,
+    set(v) {
+      if (inside || !this.isConnected || !this.getElementsByTagName("img").length) return d.set.call(this, v);
+      inside = true;
+      try { keepLogos(this, () => d.set.call(this, v)); } finally { inside = false; }
+    },
+  });
+}
+const withLogosKept = (fn, el) => function (...args) { return keepLogos(el(), () => fn.apply(this, args)); };
+renderLiveScores = withLogosKept(renderLiveScores, () => liveScoresList);
+renderScoreboardTable = withLogosKept(renderScoreboardTable, () => scoreboardTable);
+renderRankings = withLogosKept(renderRankings, () => rankingsList);
+renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
