@@ -1003,6 +1003,10 @@ html, body { overflow-x: hidden; }
     const wv = wk ? [
       ...Object.entries(wk.sessions).flatMap(([n, list]) => list.map(([at, ms, f]) => ({ n, start: at, end: at + Math.max(ms, 1000), f: f || [] }))),
       ...inNow.map((n) => ({ n, start: people[n].since, end: now, f: [], live: true })),
+      // Visits from the last day the session log has not caught yet: one
+      // put away without a goodbye (an app closed or a phone that slept)
+      // is written later, but the live room already saw it.
+      ...vs.filter((v) => !v.live && !(wk.sessions[v.n] || []).some(([at, ms]) => Math.abs(at - v.start) < 90000 || (v.start >= at && v.start <= at + ms))).map((v) => ({ n: v.n, start: v.start, end: Math.max(v.end, v.start + 1000), f: [] })),
     ].filter((v) => v.end >= wFrom).sort((a, b) => b.start - a.start) : [];
     const wTime = (v, a = wFrom, b = now) => Math.max(0, Math.min(v.end, b) - Math.max(v.start, a));
     const featLab = (k) => { k = String(k).replace(/-g\d+$/, ""); return SCREENS[k] || /^(path-of-|splash$)/.test(k) ? null : says({ k, n: "", d: "" }, [])[0]; };
