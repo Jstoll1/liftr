@@ -2158,7 +2158,7 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
   const pts = (n) => `<span class="pk-pts">${n}<i>PT</i></span>`;
   return `
     <div class="tm-row ${atsSelected || suSelected ? "picked" : ""}">
-      <div class="tm-id">
+      <div class="tm-id" data-tm="${escapeCd(team)}">
         <span class="tm-logo-wrap"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank)}</span>
         <span class="tm-name">${isHome ? `<i class="tm-at">@</i>` : ""}<span class="tm-nm">${short}</span>${isFavorite ? `<span class="tm-spread">${line}</span>` : ""}</span>
       </div>
@@ -2193,7 +2193,7 @@ function matchupCardsHtml(game, draft) {
     const atsSelected = pickEqual(draft, { team, mode: "ATS" });
     const suSelected = pickEqual(draft, { team, mode: "SU" });
     const pts = (n) => `<span class="pk-pts">${n}<i>PT</i></span>`;
-    const id = `<div class="hz-tm${atsSelected || suSelected ? " picked" : ""}">
+    const id = `<div class="hz-tm${atsSelected || suSelected ? " picked" : ""}" data-tm="${escapeCd(team)}">
         <img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
         <span class="hz-nm${nameSizeClass(short)}">${short}</span>
         <span class="hz-rec">${record ? String(record).replace(/[^0-9-]/g, "") : ""}${rank ? `<b>#${rank}</b>` : ""}</span>
@@ -2212,6 +2212,20 @@ function matchupCardsHtml(game, draft) {
     </div>
   `;
 }
+
+// Tapping a team's logo or name points at that team's two bets: they
+// pulse, so the next tap makes the pick. (Players tapped the logo
+// expecting it to do something.)
+gamesList?.addEventListener("click", (e) => {
+  const tm = e.target.closest(".hz-tm, .tm-id");
+  if (!tm) return;
+  const card = tm.closest(".game-card");
+  if (!card || card.classList.contains("game-locked")) return;
+  const mine = [...card.querySelectorAll(".pick-mini-btn")].filter((b) => b.dataset.team === tm.dataset.tm);
+  mine.forEach((b) => { b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); });
+  setTimeout(() => mine.forEach((b) => b.classList.remove("nudge")), 1300);
+  track("team-tap", { event: true });
+});
 
 // Tap = saved. There's no separate Submit: every pick is freely
 // changeable until that game kicks off anyway, so a confirm step added

@@ -7666,3 +7666,9 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 #poll-modal { align-items: center !important; padding: 16px; }
 #poll-modal .wpx-card.poll { border-radius: 18px !important; border-bottom: 1px solid rgba(41,230,255,.25) !important; padding-bottom: 14px; max-height: calc(100vh - 32px); overflow-y: auto; }
 /* restamp */
+
+/* Tapping a team points at its two bets. */
+.hz-tm, .tm-id { cursor: pointer; }
+.pick-mini-btn.nudge { animation: pk-nudge 1.2s ease-out; }
+@keyframes pk-nudge { 0%, 100% { box-shadow: none; } 25%, 60% { box-shadow: 0 0 0 2px var(--neon-cyan), 0 0 14px rgba(5, 217, 232, .6); transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .pick-mini-btn.nudge { animation: none; outline: 2px solid var(--neon-cyan); } }
