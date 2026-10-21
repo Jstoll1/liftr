@@ -2490,7 +2490,26 @@ function lockedGameOf(state) {
   const id = Object.keys(state?.picks || {}).find((k) => state.picks[k]?.lock);
   return id ? GAMES.find((g) => String(g.id) === String(id)) : null;
 }
-function setLock(gameId) {
+// Tapping LOCK IT opens a confirm sheet: the pick, what it scores if it
+// hits (green) and if it misses (red), then 🔒 LOCK IT to commit.
+function lockConfirm(g, pk) {
+  const lr = lockRule();
+  let m = document.getElementById("lotw-confirm");
+  if (!m) {
+    m = document.createElement("div"); m.id = "lotw-confirm"; m.className = "lotw-nudge lotw-confirm"; m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("click", (e) => {
+      if (e.target.closest(".lc-go")) { m.classList.remove("show"); setLock(m.dataset.gid, { confirmed: true }); return; }
+      if (e.target === m || e.target.closest(".ln-x, .lc-no")) m.classList.remove("show");
+    });
+  }
+  m.dataset.gid = g.id;
+  const hit = pointValue(g, pk.team, pk.mode) + lr.hit, miss = lr.miss;
+  m.innerHTML = `<div class="ln-card"><button type="button" class="ln-x" aria-label="Close">✕</button><div class="lc-k">🔒 LOCKING</div><div class="lc-pick"><img src="${logoUrl(pk.team === g.away ? g.awayId : g.homeId)}" alt=""><b>${escapeCd(lockPickText(g, pk).replace(/ to win$/, ""))}</b></div><div class="lc-row up"><span>Hits</span><b>${hit} points</b></div><div class="lc-row dn"><span>Misses</span><b>${miss < 0 ? "−" + Math.abs(miss) : 0} points</b></div><div class="ln-btns"><button type="button" class="ln-skip lc-no">Cancel</button><button type="button" class="ln-go lc-go">🔒 LOCK IT</button></div></div>`;
+  requestAnimationFrame(() => m.classList.add("show"));
+}
+function setLock(gameId, opts = {}) {
+  gameId = GAMES.find((g) => String(g.id) === String(gameId))?.id ?? gameId;
   const s = getManagerState(currentManager);
   const target = s.picks[gameId];
   if (!target || isGameLocked(GAMES.find((g) => g.id === gameId))) return;
@@ -2498,7 +2517,9 @@ function setLock(gameId) {
   // A lock already kicked off is final.
   const held = lockedGameOf(s);
   if (held && held.id !== gameId && isGameLocked(held)) { lotwToast("Your lock's game has kicked off, so it stays."); return; }
-  const turnOn = !target.lock, now = Date.now();
+  const turnOn = !target.lock;
+  if (turnOn && !opts.confirmed) { lockConfirm(GAMES.find((g) => g.id === gameId), target); return; }
+  const now = Date.now();
   for (const [id, p] of Object.entries(s.picks)) {
     if (p?.lock && String(id) !== String(gameId)) { const { lock, ...rest } = p; s.picks[id] = { ...rest, updatedAt: now }; }
   }

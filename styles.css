@@ -7759,3 +7759,26 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .ins-glance .ins-gk, .ins-glance .ins-gk.plain { font-family: inherit !important; font-size: 12.5px !important; letter-spacing: 0 !important; text-transform: none; color: var(--text-dim); }
 #insights-title em { font-style: normal; display: inline-block; white-space: nowrap; }
 .lm-one b { font-size: 8px; }
+
+/* Lock confirm sheet */
+.lotw-confirm { inset: 0; align-items: flex-end; padding-bottom: calc(96px + env(safe-area-inset-bottom)); background: rgba(0, 0, 0, .55); }
+.lotw-confirm:not(.show) { background: none; }
+.lotw-confirm .ln-card { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+.lotw-confirm .ln-card > * { width: 100%; box-sizing: border-box; }
+.lotw-confirm .ln-x { width: auto; }
+.lotw-confirm .lc-k { font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: .1em; color: #ffd23f; }
+.lotw-confirm .lc-pick { display: flex; align-items: center; gap: 10px; }
+.lotw-confirm .lc-pick img { width: 36px; height: 36px; object-fit: contain; }
+.lotw-confirm .lc-pick b { font-size: 20px; color: #fff; }
+.lotw-confirm .lc-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; border-radius: 10px; font-size: 15px; gap: 12px; }
+.lotw-confirm .lc-row.up { background: rgba(57, 255, 136, .1); border: 1px solid rgba(57, 255, 136, .45); color: var(--neon-green); }
+.lotw-confirm .lc-row.dn { background: rgba(255, 32, 121, .1); border: 1px solid rgba(255, 32, 121, .5); color: #ff4f6d; }
+.lotw-confirm .lc-row b { font-size: 17px; }
+.lotw-confirm .ln-btns { display: flex; gap: 10px; }
+.lotw-confirm .ln-btns button { flex: 1; white-space: nowrap; padding: 12px; border-radius: 10px; font-size: 14px; }
+.lotw-confirm .lc-go { background: #ffd23f; color: #1a0f00; border-color: #ffd23f; }
+/* The locked pick: red tinted box with a lock in its corner */
+.game-card.lotw .pick-mini-btn.selected { position: relative; background: rgba(255, 32, 121, .16) !important; border-color: #ff4f6d !important; box-shadow: 0 0 0 1px rgba(255, 79, 109, .5), 0 0 14px rgba(255, 32, 121, .3) !important; }
+.game-card.lotw .pick-mini-btn.selected::after { content: "🔒"; position: absolute; top: -9px; left: -9px; font-size: 13px; line-height: 1; filter: drop-shadow(0 0 3px rgba(0, 0, 0, .8)); }
+/* Scoreboard: bigger corner lock on the locked pick */
+.pick-cell .pick-lk { top: 0; right: 0; font-size: 11px; padding: 1px 2px; border-radius: 0 0 0 5px; background: rgba(255, 210, 63, .9); }
