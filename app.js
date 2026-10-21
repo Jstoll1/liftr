@@ -167,6 +167,7 @@ function restoreCachedSlate() {
     if (!c || !Array.isArray(c.games) || !c.games.length) return;
     GAMES = c.games;
     currentWeek = c.week || currentWeek;
+    if (latestLiveWeek !== null && latestLiveWeek !== currentWeek) { latestLive = {}; latestLiveWeek = null; }
     WEEK_LABEL = c.label || `Week ${currentWeek}`;
     if (Array.isArray(c.list)) weekList = c.list;
   } catch { /* private mode or a bad copy: keep what is there */ }
@@ -182,6 +183,9 @@ async function loadSlate(week) {
     if (!Array.isArray(data.games) || !data.games.length) return false;
     GAMES = data.games;
     currentWeek = data.week || currentWeek;
+    // A new week: last week's live data (scores, ranks, records) is keyed by
+    // game number, so it would land on this week's games. Drop it.
+    if (latestLiveWeek !== null && latestLiveWeek !== currentWeek) { latestLive = {}; latestLiveWeek = null; }
     WEEK_LABEL = data.label || `Week ${currentWeek}`;
     if (!week) {
       slateFromNetwork = true;
@@ -554,6 +558,7 @@ function parseEspnEvents(events, games = GAMES) {
       homeRank: rankOf(home),
       awayAbbr: away?.team?.abbreviation || null,
       homeAbbr: home?.team?.abbreviation || null,
+      awayTeamId: Number(away?.team?.id) || null,
       awayRecord: recordOf(away),
       homeRecord: recordOf(home),
       state: statusType.state || "pre",
@@ -1523,7 +1528,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202610210237";
+  tag.src = "admin.js?v=202610211201";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1592,7 +1597,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202610210237";
+  tag.src = "console.js?v=202610211201";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -2231,8 +2236,8 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
   const pts = (n) => `<span class="pk-pts">${n}<i>PT</i></span>`;
   return `
     <div class="tm-row ${atsSelected || suSelected ? "picked" : ""}">
-      <div class="tm-id">
-        <span class="tm-logo-wrap"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank)}</span>
+      <div class="tm-id" data-tm="${escapeCd(team)}">
+        <span class="tm-logo-wrap"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${latestLiveWeek === currentWeek ? rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank) : ""}</span>
         <span class="tm-name">${isHome ? `<i class="tm-at">@</i>` : ""}<span class="tm-nm">${short}</span>${isFavorite ? `<span class="tm-spread">${line}</span>` : ""}</span>
       </div>
       <div class="tm-chips">
@@ -2257,7 +2262,8 @@ function nameSizeClass(short) {
 
 function matchupCardsHtml(game, draft) {
   const awayIsFav = game.favorite === game.away;
-  const live = latestLive[game.id] || {};
+  const raw = latestLiveWeek === currentWeek ? latestLive[game.id] : null;
+  const live = raw && (!raw.awayTeamId || !game.awayId || raw.awayTeamId === Number(game.awayId)) ? raw : {};
   const side = (team, teamId, isFavorite, short, rank, record) => {
     const sign = isFavorite ? "-" : "+";
     const line = `${sign}${game.spread}`;
@@ -2266,7 +2272,7 @@ function matchupCardsHtml(game, draft) {
     const atsSelected = pickEqual(draft, { team, mode: "ATS" });
     const suSelected = pickEqual(draft, { team, mode: "SU" });
     const pts = (n) => `<span class="pk-pts">${n}<i>PT</i></span>`;
-    const id = `<div class="hz-tm${atsSelected || suSelected ? " picked" : ""}">
+    const id = `<div class="hz-tm${atsSelected || suSelected ? " picked" : ""}" data-tm="${escapeCd(team)}">
         <img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
         <span class="hz-nm${nameSizeClass(short)}">${short}</span>
         <span class="hz-rec">${record ? String(record).replace(/[^0-9-]/g, "") : ""}${rank ? `<b>#${rank}</b>` : ""}</span>
@@ -2285,6 +2291,19 @@ function matchupCardsHtml(game, draft) {
     </div>
   `;
 }
+
+// Tapping a team (logo, name, record) or the status chip opens the game's
+// info sheet, like INFO. (Players tapped them expecting something.)
+gamesList?.addEventListener("click", (e) => {
+  // The status chip (OPEN, your bet, LIVE, FINAL) opens the game, like INFO.
+  const chip = e.target.closest(".game-status");
+  if (chip) { const id = Number(chip.closest(".game-card")?.dataset.gameId); if (id) { track("status-tap", { event: true }); openInsights(id); } return; }
+  // A team's logo or name opens the game's info sheet too.
+  const tm = e.target.closest(".hz-tm, .tm-id");
+  if (!tm) return;
+  const id = Number(tm.closest(".game-card")?.dataset.gameId);
+  if (id) { track("team-tap", { event: true }); openInsights(id); }
+});
 
 // Tap = saved. There's no separate Submit: every pick is freely
 // changeable until that game kicks off anyway, so a confirm step added
@@ -2791,7 +2810,7 @@ async function renderScoreboard() {
   maybeShowQotw().finally(() => maybeShowPoll());
   if (bootBoard) {
     const b = bootBoard; bootBoard = null;
-    if (!Object.keys(latestLive).length) { latestLive = b.live; latestLiveWeek = b.week; }
+    if (!Object.keys(latestLive).length && b.week === currentWeek) { latestLive = b.live; latestLiveWeek = b.week; }
     try { paintScoreboard(b.picks, b.live, true); } catch (err) { console.warn("cached board", err); }
   }
   // Picks and scores together, not picks and then scores.
@@ -7822,7 +7841,7 @@ async function openInsights(gameId) {
   if (form && (form.away.length || form.home.length)) {
     const chip = (e) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}" title="${esc(`${e.result || ""} ${e.at === "@" ? "at" : "vs"} ${e.oppName || e.opp || ""} ${e.score || ""}`)}">${e.at === "@" ? `<u>@</u>` : ""}${e.oppId || e.oppLogo ? `<img src="${e.oppId ? logoUrl(e.oppId) : esc(e.oppLogo)}" alt="${esc(e.opp || "")}" loading="lazy">` : `<i>${esc(e.opp || "")}</i>`}<b>${esc(e.result || "·")}</b><i>${esc(e.score || "")}</i></span>`;
     const row = (teamId, list) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}</span><span class="ins-form-r">${list.map(chip).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
-    html += `<div class="ins-sub-h">LAST FIVE</div>${row(game.awayId, form.away)}${row(game.homeId, form.home)}`;
+    html += `<div class="ins-h">LAST FIVE</div>${row(game.awayId, form.away)}${row(game.homeId, form.home)}`;
   }
   // Series history.
   if (direct?.series?.length) {
@@ -7996,7 +8015,7 @@ async function openInsights(gameId) {
   // after last five and just before news. Each section is its heading plus
   // everything up to the next heading.
   (() => {
-    const ORDER = ["LINE", "EXPERT PICKS", "PREVIEW", "INSIGHTS", "INJURIES", "NEWS", "MORE"];
+    const ORDER = ["LINE", "EXPERT PICKS", "PREVIEW", "LAST FIVE", "INSIGHTS", "INJURIES", "NEWS", "MORE"];
     const head = [], secs = {}, tail = [];
     let cur = null;
     for (const el of [...body.children]) {
@@ -9474,6 +9493,9 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
     if (!(el instanceof Element) || interactive(el) || !(el.textContent || "").trim() && el.tagName !== "IMG") return;
     // Looks tappable: an image, a logo, a badge, a name, a number.
     if (!el.closest("img, [class*=logo], [class*=badge], [class*=chip], [class*=score], [class*=name], [class*=card], [class*=row]")) return;
+    // A tap in the gap of a container that holds buttons (a card's row, the
+    // space between bets) is a near miss, not a dead control.
+    if (el.querySelector?.("button, a, [role=button]")) return;
     mutated = false;
     setTimeout(() => { if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); track("dead-tap", { event: true, d: label(el) }); } }, 700);
   }, { capture: true, passive: true });
@@ -9513,3 +9535,53 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
   addEventListener("error", (e) => { if (e.message) err(e.message); });
   addEventListener("unhandledrejection", (e) => err(e.reason?.message || e.reason));
 })();
+
+// --- Logos that stay put ---------------------------------------------
+// The board, the picks list and the all picks table are redrawn from their
+// HTML on every refresh, and a freshly made <img> is blank until it loads
+// and decodes, so logos blinked out and back every few seconds. A redraw
+// now moves each logo already on screen into the new layout in place of
+// its fresh copy (same address, taking the fresh copy's attributes), so a
+// logo on screen, painted or still loading, is never replaced.
+function keepLogos(el, draw) {
+  if (!el) return draw();
+  const have = new Map();
+  for (const img of el.querySelectorAll("img")) {
+    // A logo still loading is kept too: moving it keeps its download, where
+    // a fresh copy would start over (a saved board followed a second later
+    // by the fresh one would otherwise blink every logo on open).
+    if (img.complete && !img.naturalWidth) continue; // a broken one gets a fresh try
+    const list = have.get(img.src) || [];
+    list.push(img); have.set(img.src, list);
+  }
+  const out = draw();
+  if (!have.size) return out;
+  for (const fresh of el.querySelectorAll("img")) {
+    const old = have.get(fresh.src)?.shift();
+    if (!old || old === fresh) continue;
+    for (const a of [...old.attributes]) if (a.name !== "src") old.removeAttribute(a.name);
+    for (const a of fresh.attributes) if (a.name !== "src") old.setAttribute(a.name, a.value);
+    fresh.replaceWith(old);
+  }
+  return out;
+}
+// Every redraw anywhere keeps the logos already on screen. Live
+// screens repaint every few seconds, and a fresh <img> blanks until it
+// loads, which shifts everything under it.
+{
+  const d = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
+  let inside = false;
+  Object.defineProperty(Element.prototype, "innerHTML", {
+    configurable: true, get: d.get,
+    set(v) {
+      if (inside || !this.isConnected || !this.getElementsByTagName("img").length) return d.set.call(this, v);
+      inside = true;
+      try { keepLogos(this, () => d.set.call(this, v)); } finally { inside = false; }
+    },
+  });
+}
+const withLogosKept = (fn, el) => function (...args) { return keepLogos(el(), () => fn.apply(this, args)); };
+renderLiveScores = withLogosKept(renderLiveScores, () => liveScoresList);
+renderScoreboardTable = withLogosKept(renderScoreboardTable, () => scoreboardTable);
+renderRankings = withLogosKept(renderRankings, () => rankingsList);
+renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);

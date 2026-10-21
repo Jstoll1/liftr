@@ -100,7 +100,7 @@ body.pv-open .tabs { display: none; }
 @media (min-width: 1024px) { .page { padding-bottom: calc(48px + env(safe-area-inset-bottom)); grid-template-columns: minmax(0, 1fr) 330px; grid-template-areas: "kpi kpi" "vote vote" "tl tl" "feed rail"; align-items: start; } .rail { position: sticky; top: 76px; } }
 @media (min-width: 1100px) { body.pv-open .page { margin-right: 430px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "vote" "tl" "feed" "rail"; } body.pv-open .rail { position: static; } }
 .kpis, .tl, .feed, .rail { scroll-margin-top: 84px; }
-.kpis { grid-area: kpi; } .panel.vote { grid-area: vote; } .tl { grid-area: tl; } .feed { grid-area: feed; min-width: 0; } .rail { grid-area: rail; display: flex; flex-direction: column; gap: 16px; }
+.kpis { grid-area: kpi; } .vote-wrap { grid-area: vote; display: grid; gap: 16px; min-width: 0; } .vote-wrap:empty { display: none; } .tl { grid-area: tl; } .feed { grid-area: feed; min-width: 0; } .rail { grid-area: rail; display: flex; flex-direction: column; gap: 16px; }
 .panel { position: relative; padding: 14px 16px 16px; border-radius: 16px; background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .012)), var(--panel); border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 10px 30px rgba(0, 0, 0, .25); }
 .ph { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 12px; }
 .ph h2 { margin: 0; font: 700 11.5px/1 var(--mono); letter-spacing: .16em; color: var(--meta); text-transform: uppercase; }
@@ -609,6 +609,97 @@ html, body { overflow-x: hidden; }
   }
   section.panel.vote { border-color: rgba(255,210,63,.35); }
   @media (max-width: 420px) { .brand { font-size: 12px; letter-spacing: .1em; gap: 6px; } }
+  /* Lock vote panel */
+  .pv-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .pv-sum span { display: grid; gap: 4px; align-content: start; line-height: 1.2; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.04); font-size: 11.5px; color: var(--dim); }
+  .pv-sum b { font: 700 20px/1 var(--mono); color: #fff; }
+  .pv-sum .ok b { color: #3dfc8f; } .pv-sum .seen b { color: #ffe45e; } .pv-sum .not b { color: #8b91a5; }
+  .pv-tally { display: grid; gap: 6px; margin-bottom: 12px; }
+  .pv-tally > div { display: grid; grid-template-columns: minmax(0, 1fr) 90px 18px; align-items: center; gap: 10px; font-size: 13px; }
+  .pv-tally small { color: var(--dim); font-size: 11px; margin-left: 4px; }
+  .pv-tally i { display: block; height: 6px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; }
+  .pv-tally s { display: block; height: 100%; background: #9b7bff; }
+  .pv-tally b { font: 700 13px/1 var(--mono); text-align: right; }
+  .pv-list { display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .pv-row { display: grid; grid-template-columns: auto minmax(0, 90px) minmax(0, 1fr); align-items: center; gap: 4px 10px; padding: 6px 8px; border-radius: 8px; }
+  .pv-row.ok { background: rgba(61,252,143,.05); } .pv-row.not { opacity: .6; }
+  .pv-n { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pv-st { display: grid; gap: 2px; font-size: 13px; line-height: 1.25; }
+  .pv-row.ok .pv-st b { color: #3dfc8f; } .pv-row.seen .pv-st b { color: #ffe45e; } .pv-row.not .pv-st b { color: var(--dim); font-weight: 500; }
+  .pv-st small { color: var(--dim); font-size: 11.5px; }
+  .pv-note { grid-column: 2 / -1; font-size: 12.5px; color: var(--meta, #c9cddb); font-style: italic; background: none !important; padding: 0 !important; }
+  /* Visits: collapsed rows, coloured by how long and whether anything broke */
+  .sess.shut .sh { padding-bottom: 10px; }
+  .sh[data-open] { cursor: pointer; }
+  .sess .nm { display: flex; align-items: baseline; gap: 8px; }
+  .vd { font: 600 12px/1 var(--mono); padding: 3px 7px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--meta, #c9cddb); }
+  .vsum { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 5px; font-size: 12px; color: var(--dim); }
+  .vsum .iss { color: #ffb347; font-weight: 700; } .vsum .iss.bad { color: #ff6b8a; }
+  .vcar { font-style: normal; margin-left: auto; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--meta, #c9cddb); font-size: 11.5px; white-space: nowrap; }
+  .sess.shut { cursor: pointer; } .sess.shut:active { transform: scale(.995); }
+  .sess.t-quick::before { background: #5b5378; } .sess.t-short::before { background: #7aa2ff; }
+  .sess.t-mid::before { background: #3dfc8f; } .sess.t-long::before { background: #ffe45e; }
+  .sess.t-quick .vd { color: var(--dim); } .sess.t-mid .vd { color: #3dfc8f; } .sess.t-long .vd { color: #ffe45e; background: rgba(255,228,94,.1); }
+  .sess.warn::before { background: #ffb347 !important; box-shadow: none; } .sess.bad::before { background: #ff4f6d !important; box-shadow: 0 0 10px rgba(255,79,109,.6); }
+  .sess.bad { border-color: rgba(255, 79, 109, .35); }
+  .acts li.iss span { color: #ffb347; }
+  .vleg { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 4px 0 10px; font-size: 11.5px; color: var(--dim); }
+  .vleg i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+  /* New since you last looked */
+  .newb { display: inline-block; margin-left: 6px; padding: 2px 5px; border-radius: 4px; background: #ff4f9a; color: #fff; font: 800 9px/1 var(--mono); letter-spacing: .08em; vertical-align: 2px; animation: newpulse 2s ease-in-out infinite; }
+  @keyframes newpulse { 50% { opacity: .55; } }
+  .newc { margin-left: 8px; padding: 3px 7px; border-radius: 999px; background: rgba(255, 79, 154, .18); color: #ff7ab5; font: 700 11px/1 var(--mono); }
+  section.panel.has-new { box-shadow: 0 0 0 1px rgba(255, 79, 154, .45), 0 0 18px rgba(255, 79, 154, .12); }
+  .pv-row.nw { background: rgba(255, 79, 154, .08) !important; }
+  .newstrip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(255, 79, 154, .45); background: linear-gradient(90deg, rgba(255, 79, 154, .12), rgba(255, 79, 154, .03)); }
+  .ns-h { font: 800 10.5px/1 var(--mono); letter-spacing: .14em; color: #ff7ab5; margin-right: 4px; }
+  .newstrip button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: #fff; cursor: pointer; }
+  .newstrip button.warn { border-color: rgba(255, 179, 71, .5); color: #ffcf85; }
+  .newstrip .ns-ok { margin-left: auto; background: none; color: var(--dim); }
+  @media (prefers-reduced-motion: reduce) { .newb { animation: none; } }
+  /* Tighter, aligned: the in-now card, visit rows, day bars, panels */
+  .kpi.now { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 14px; }
+  .now-l { align-items: center; }
+  .now-last { justify-self: end; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .kpi.now .avs { justify-content: flex-end; }
+  .panel { padding: 12px 14px 14px; }
+  .ph { margin-bottom: 8px; }
+  .sh { gap: 10px; padding: 10px 12px 10px 14px; align-items: flex-start; }
+  .sess .av.lg { width: 34px; height: 34px; font-size: 15px; border-radius: 10px; margin-top: 2px; }
+  .sess .who { flex: 1; min-width: 0; }
+  .sess .meta { margin-top: 2px; font-size: 12.5px; }
+  .sess .vsum { margin-top: 6px; }
+  .sh-r { align-self: center; }
+  .sess { margin-bottom: 8px; }
+  .acts { padding: 0 12px 8px 14px; }
+  .vd { padding: 2px 6px; font-size: 11.5px; }
+  .vcar { padding: 5px 12px; font-size: 12px; font-weight: 700; border-color: rgba(79, 227, 240, .4); color: var(--cyan, #4fe3f0); }
+  .sess.open .vcar { border-color: var(--line); color: var(--dim); font-weight: 500; }
+  /* Older days: a full width bar that opens and closes the day */
+  .day.fold-h { margin: 14px 0 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, .03); color: var(--meta, #c9cddb); }
+  .day.fold-h::after { display: none; }
+  .day.fold-h .dn { margin-left: auto; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(79, 227, 240, .4); color: var(--cyan, #4fe3f0); font: 700 11.5px/1 var(--mono); }
+  .day.fold-h.shut .dn { background: rgba(79, 227, 240, .08); }
+  .pv-sum span { padding: 7px 9px; }
+  .newstrip { padding: 8px 10px; gap: 6px; }
+  .newstrip button { padding: 5px 9px; font-size: 12.5px; }
+  .sh-r { flex-direction: column; align-items: flex-end; gap: 6px; }
+  .sh-r .vcar { margin-left: 0; }
+  .sh-r .cp { padding: 2px; }
+  /* Grouped visits */
+  .sess.grp .grp-in { padding: 0 8px 4px; }
+  .sess.grp .grp-in .sess { margin-bottom: 6px; background: rgba(255, 255, 255, .025); }
+  .sess.grp .grp-in .sess .av.lg, .sess.grp .grp-in .nmt, .sess.grp .grp-in .newb { display: none; }
+  .sess.grp .grp-in .sh { padding: 8px 10px 8px 12px; }
+  .sess.grp .grp-in .meta { font-size: 13.5px; color: var(--text, #fff); margin-top: 0; order: -1; }
+  .sess.grp .grp-in .who { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .sess.grp .grp-in .vsum { flex-basis: 100%; margin-top: 2px; }
+  .sess.grp::before { background: repeating-linear-gradient(180deg, var(--past) 0 6px, transparent 6px 9px); }
+  .vkey { margin-top: 10px; font-size: 12px; color: var(--dim); }
+  .vkey summary { cursor: pointer; list-style: none; display: inline-flex; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); }
+  .vkey summary::-webkit-details-marker { display: none; }
+  .vkey summary::before { content: "▸"; } .vkey[open] summary::before { content: "▾"; }
+  .vkey .vleg { margin: 8px 0 0; }
 </style>
 </head>
 <body>
@@ -678,6 +769,18 @@ html, body { overflow-x: hidden; }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
   const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "6h", "12h", "24h", "7d"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "6h", wk: null, sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  // What's new since this device last looked: a baseline saved when the
+  // page is put away, compared with what arrives. ✓ Seen resets it now.
+  const SEEN_KEY = `brochiefs_live_seen_${LEAGUE}`;
+  let seenBase = (() => { try { return JSON.parse(store.get(SEEN_KEY) || "null"); } catch { return null; } })() || { at: Date.now(), votes: null, notes: null };
+  const snapSeen = () => ({ at: Date.now(), votes: st.poll?.votes || seenBase.votes || {}, notes: st.poll?.notes || seenBase.notes || {} });
+  const saveSeen = () => store.set(SEEN_KEY, JSON.stringify(snapSeen()));
+  if (!store.get(SEEN_KEY)) saveSeen();
+  document.addEventListener("visibilitychange", () => { if (document.hidden) saveSeen(); });
+  addEventListener("pagehide", saveSeen);
+  // A first look at the vote (no baseline yet) counts nothing as new.
+  const voteNew = (n) => { const v = st.poll?.votes || {}; return !!(seenBase.votes && v[n] && seenBase.votes[n] !== v[n]); };
+  const noteNew = (n) => { const v = st.poll?.notes || {}; return !!(seenBase.notes && v[n] && seenBase.notes[n] !== v[n]); };
 
   // --- Formatting --------------------------------------------------------
   const name = (n) => SHOWN[n] || n;
@@ -879,7 +982,7 @@ html, body { overflow-x: hidden; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1039,20 +1142,37 @@ html, body { overflow-x: hidden; }
         <div class="asks">${list.map((x) => `<button type="button" class="ask" data-ask="${x.ts}"><span class="ask-h">${x.n ? av(x.n, "sm") : ""}<b>${esc(x.n ? name(x.n) : "Someone")}</b><time>${esc(dayOf(x.ts) === today0 ? hm(x.ts) : `${new Date(x.ts).toLocaleDateString([], { weekday: "short" })} ${hm(x.ts)}`)}</time></span><span class="ask-q">${esc(x.q)}</span></button>`).join("")}</div>
       </section>`;
     };
+    // Since you last looked: one line, each part jumps to its section.
+    const newStrip = () => {
+      const vNew = Object.keys(st.poll?.votes || {}).filter((n) => voteNew(n) || noteNew(n)).length;
+      const visNew = vs.filter((v) => !v.live && v.end > seenBase.at).length;
+      const fNew = (room.feed || []).filter((e) => FRICTION.test(e.k) && e.at > seenBase.at).length;
+      const aNew = (st.asks || []).filter((x) => x.ts > seenBase.at).length;
+      const parts = [vNew && `<button type="button" data-jump="sec-vote">🔒 ${vNew} new vote${vNew === 1 ? "" : "s"}</button>`, visNew && `<button type="button" data-jump="sec-visits">👀 ${visNew} new visit${visNew === 1 ? "" : "s"}</button>`, fNew && `<button type="button" data-jump="sec-stats" class="warn">⚠ ${fNew} new issue${fNew === 1 ? "" : "s"}</button>`, aNew && `<button type="button" data-jump="sec-stats">💬 ${aNew} new question${aNew === 1 ? "" : "s"}</button>`].filter(Boolean);
+      if (!parts.length) return "";
+      const ago = Date.now() - seenBase.at;
+      return `<section class="newstrip"><span class="ns-h">NEW SINCE ${ago < 86400000 ? hm(seenBase.at).toUpperCase() : new Date(seenBase.at).toLocaleDateString([], { weekday: "short" }).toUpperCase() + " " + hm(seenBase.at).toUpperCase()}</span>${parts.join("")}<button type="button" class="ns-ok" data-seenall="1">✓ Seen</button></section>`;
+    };
     // The lock of the week vote: tally, who voted what, who has seen it, feedback.
     const pollPanel = () => {
       const p = st.poll; if (!p) return "";
-      const LAB = { A: "Free bonus +2/0", B: "Bonus with risk +2/−1", C: "High stakes +3/−3", N: "No lock" };
-      const votes = p.votes || {}, views = p.views || {}, notes = p.notes || {};
+      const LAB = { A: "Free bonus", B: "Bonus with risk", C: "High stakes", N: "No lock" };
+      const SUB = { A: "+2 / 0", B: "+2 / −1", C: "+3 / −3", N: "keep as is" };
+      const votes = p.votes || {}, views = p.views || {}, notes = p.notes || {}, at = p.votedAt || {};
       const max = Math.max(1, ...Object.values(p.counts || {}));
-      const when = (t) => t ? `${new Date(t).toLocaleDateString([], { weekday: "short" })} ${hm(t)}` : "";
-      // Views are usage: Jake is left out of them. Votes count everyone.
-      const seen = Object.keys(views).filter((n) => n !== "Jake");
-      const waiting = (p.waitingOn || []);
-      return `<section class="panel vote" id="sec-vote"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${p.voted} of ${p.of} voted · seen by ${seen.length}</span></div>
-        <div class="rank">${Object.keys(LAB).map((k) => `<div><span>${esc(LAB[k])} <small>${Object.entries(votes).filter(([, v]) => v === k).map(([n]) => esc(name(n))).join(", ")}</small></span><b>${p.counts?.[k] || 0}</b><i><s style="width:${(((p.counts?.[k] || 0) / max) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>
-        ${waiting.length ? `<div class="note">Not voted: ${waiting.map((n) => `${esc(name(n))}${views[n] && n !== "Jake" ? ` <small>(seen ${views[n].n}×)</small>` : ""}`).join(", ")}</div>` : `<div class="note">Everyone has voted.</div>`}
-        ${Object.keys(notes).length ? `<div class="note">${Object.entries(notes).map(([n, t]) => `<div><b>${esc(name(n))}</b>: ${esc(t)} <small>${esc(when(p.votedAt?.[n]))}</small></div>`).join("")}</div>` : ""}
+      const when = (t) => t ? (dayOf(t) === today0 ? hm(t) : `${new Date(t).toLocaleDateString([], { weekday: "short" })} ${hm(t)}`) : "";
+      // Views are usage, so Jake's are left out; votes count everyone.
+      const seenOf = (n) => (n === "Jake" ? null : views[n]);
+      const everyone = [...new Set([...Object.keys(votes), ...(p.waitingOn || [])])];
+      const rows = everyone.map((n) => ({ n, v: votes[n], s: seenOf(n) })).sort((x, y) => (x.v ? 0 : x.s ? 1 : 2) - (y.v ? 0 : y.s ? 1 : 2) || (at[y.n] || y.s?.last || 0) - (at[x.n] || x.s?.last || 0));
+      const nVoted = rows.filter((r) => r.v).length, nSeen = rows.filter((r) => !r.v && r.s).length, nNot = rows.length - nVoted - nSeen;
+      const nNew = rows.filter((r) => voteNew(r.n) || noteNew(r.n)).length;
+      return `<section class="panel vote${nNew ? " has-new" : ""}" id="sec-vote"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${nVoted} of ${rows.length} voted</span>${nNew ? `<b class="newc">${nNew} new</b>` : ""}</div>
+        <div class="pv-sum"><span class="ok"><b>${nVoted}</b>voted</span><span class="seen"><b>${nSeen}</b>saw it, no vote</span><span class="not"><b>${nNot}</b>not seen yet</span></div>
+        <div class="pv-tally">${Object.keys(LAB).map((k) => `<div><span>${LAB[k]} <small>${SUB[k]}</small></span><i><s style="width:${(((p.counts?.[k] || 0) / max) * 100).toFixed(1)}%"></s></i><b>${p.counts?.[k] || 0}</b></div>`).join("")}</div>
+        <div class="pv-list">${rows.map((r) => `<div class="pv-row ${r.v ? "ok" : r.s ? "seen" : "not"}${voteNew(r.n) || noteNew(r.n) ? " nw" : ""}">${av(r.n, "sm")}<span class="pv-n">${esc(name(r.n))}${voteNew(r.n) || noteNew(r.n) ? `<i class="newb">NEW</i>` : ""}</span>
+          <span class="pv-st">${r.v ? `<b>${LAB[r.v] || r.v}</b>` : r.s ? `<b>Saw it, no vote</b>` : `<b>Not seen yet</b>`}<small>${r.v ? `voted ${esc(when(at[r.n]))}` : r.s ? `seen ${r.s.n}× · last ${esc(when(r.s.last))}` : ""}</small></span>
+          ${notes[r.n] ? `<span class="pv-note">“${esc(notes[r.n])}”</span>` : ""}</div>`).join("")}</div>
       </section>`;
     };
     // Where people got stuck, and how far down each screen they got.
@@ -1066,7 +1186,8 @@ html, body { overflow-x: hidden; }
       const when = (t) => `${new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ${hm(t)}`;
       // A names-free digest to paste to Claude: what broke, how often, how many people.
       lastDigest = [`Brochiefs ${LEAGUE.toUpperCase()} friction digest (${sub})`, ...top.map((x) => `- ${x.a.replace("⚠ ", "")}${x.d ? ` [${x.d}]` : ""}: ${x.n}x, ${x.who.size} people, ${x.ats.sort((p, q) => p - q).map(when).join("; ")}`), ...depthRows.map((x) => `- Depth ${SCREEN_NAME[x.sc] || x.sc}: ${x.n} visits, half ${x.r50}%, bottom ${x.r100}%`)].join("\n");
-      return `<section class="panel"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span><button type="button" class="digest-copy" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ff7a9a;background:transparent;color:#ff7a9a">Copy for Claude</button></div>
+      const fNew = list.filter((e) => FRICTION.test(e.k) && e.at > seenBase.at).length;
+      return `<section class="panel${fNew ? " has-new" : ""}"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span>${fNew ? `<b class="newc">${fNew} new</b>` : ""}<button type="button" class="digest-copy" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ff7a9a;background:transparent;color:#ff7a9a">Copy for Claude</button></div>
         ${top.length ? `<div class="rank">${top.map((x) => `<div><span>${esc(x.a.replace("⚠ ", ""))}${x.d ? ` <small>${esc(x.d)}</small>` : ""}</span><b>${x.n}</b><i><s style="width:${((x.n / top[0].n) * 100).toFixed(1)}%;background:#ff7a9a"></s></i></div>`).join("")}</div>` : `<div class="note">No rage taps, dead taps, quick exits or errors.</div>`}
       </section>
       ${depthRows.length ? `<section class="panel"><div class="ph"><h2>Scroll depth</h2><span class="sub">share of visits reaching half way / the bottom</span></div>
@@ -1081,7 +1202,7 @@ html, body { overflow-x: hidden; }
       for (const v of wv) for (const l of new Set(v.f.map(featLab).filter(Boolean))) used.set(l, (used.get(l) || 0) + 1);
       const tp = [...used.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), mf = tp[0]?.[1] || 1;
       const lab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
-      return `<aside class="rail" id="sec-stats">${HAS_STUDIO ? costPanel() : ""}
+      return `<aside class="rail" id="sec-stats">
       <section class="panel"><div class="ph"><h2>Visits by hour</h2><span class="sub">time of day, last 7 days</span></div>
         <div class="bars">${byH.map((x) => `<i class="${x.n ? "" : "zero"}${x.h === curH ? " cur" : ""}" data-tip="${esc(`<b>${lab(x.h)}</b>${x.n} visit${x.n === 1 ? "" : "s"}${x.who.size ? ` · ${[...x.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((x.n / mx) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>
@@ -1091,6 +1212,7 @@ html, body { overflow-x: hidden; }
       </section>
       ${frictionPanel((wk.feed || []).filter((e) => e.at >= wFrom), "last 7 days")}
       ${askPanel(wFrom, "last 7 days")}
+      ${HAS_STUDIO ? costPanel() : ""}
     </aside>`;
     };
     const maxH = Math.max(1, ...hours.map((h) => h.n));
@@ -1098,7 +1220,7 @@ html, body { overflow-x: hidden; }
     for (const e of actions) { if (SCREENS[e.k] || FRICTION.test(e.k) || /^(depth|sheet-time)$/.test(e.k)) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), maxF = top[0]?.[1] || 1;
     const home = vs.filter((v) => v.app === "home").length, web = vs.filter((v) => v.app === "browser").length;
-    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">${HAS_STUDIO ? costPanel() : ""}
+    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">
       <section class="panel"><div class="ph"><h2>Activity by hour</h2><span class="sub">actions, last 24h</span></div>
         <div class="bars">${hours.map((h, i) => `<i class="${h.n ? "" : "zero"}${i === 23 ? " cur" : ""}" data-tip="${esc(`<b>${hourLab(h.start)}${i === 23 ? " · this hour" : ""}</b>${h.n} action${h.n === 1 ? "" : "s"}${h.who.size ? ` · ${[...h.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((h.n / maxH) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>${hourLab(hours[0].start)}</span><span>${hourLab(hours[6].start)}</span><span>${hourLab(hours[12].start)}</span><span>${hourLab(hours[18].start)}</span><span>now</span></div>
@@ -1112,6 +1234,7 @@ html, body { overflow-x: hidden; }
       </section>` : ""}
       ${frictionPanel(actions, "last 24h")}
       ${askPanel(from, "last 24h")}
+      ${HAS_STUDIO ? costPanel() : ""}
     </aside>`;
 
     // The feed: one card per visit, newest first.
@@ -1125,27 +1248,65 @@ html, body { overflow-x: hidden; }
       st.texts.set(`${s.n}|${s.start}`, [`${name(s.n)} · ${dayLab(s.start)} · ${when}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${scr}`,
         ...s.acts.map((a) => `  ${hm(a.at)}  ${a.a}${a.d ? `${/^for /.test(a.d) ? " " : ": "}${a.d}` : ""}${a.x > 1 ? ` (×${a.x})` : ""}`)].join("\n"));
     }
+    // Length tiers relative to how long visits usually run here, not fixed
+    // minutes: under a minute is a quick look; then below, around and well
+    // above the average visit in view.
+    const lens = all.filter((v) => !v.live).map((v) => Math.max(v.end - v.start, 1000)).filter((x) => x >= 60000);
+    const avgMs = lens.length ? lens.reduce((t, x) => t + x, 0) / lens.length : 8 * 60000;
+    const cutLo = Math.max(90000, avgMs * 0.6), cutHi = Math.max(cutLo + 60000, avgMs * 1.5);
+    const mnt = (x) => `${Math.round(x / 60000)}m`;
     let day = null;
-    const cards = all.slice(0, st.shown).map((s) => {
-      const d = dayLab(s.start), head = d !== day ? `<div class="day">${esc(d)}</div>` : "";
-      day = d;
-      const id = `${s.n}|${s.start}`, LIM = 6, open = st.open.has(id);
-      const acts = open ? s.acts : s.acts.slice(-LIM);
+    const cardOf = (s) => {
+      const id = `${s.n}|${s.start}`, LIM = 6;
+      // Collapsed by default (a live visit stays open): one line says who,
+      // when, how long, what was used and whether anything went wrong;
+      // tap it to see every action.
+      const open = s.live ? !st.open.has(id) : st.open.has(id);
+      const acts = s.acts;
+      const ms = s.live ? now - s.since : Math.max(s.end - s.start, 1000);
+      const issues = s.acts.filter((a) => /^⚠/.test(a.a)), errs = issues.filter((a) => /error/i.test(a.a));
+      const tier = ms < 60000 ? "quick" : ms < cutLo ? "short" : ms < cutHi ? "mid" : "long";
+      const used = new Set(s.acts.filter((a) => !/^(Went to|⚠)/.test(a.a)).map((a) => a.a)).size;
       const span = s.live ? "" : ` · ${dur(Math.max(s.end - s.start, 1000))}`;
-      const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${span}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
+      const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.app ? ` · ${s.app === "home" ? "app" : "web"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
-      return `${head}<div class="sess${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
-        <div class="sh">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}</div><div class="meta num">${esc(meta)}</div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(now - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button></div></div>
-        ${s.acts.length ? `<ul class="acts">${s.acts.length > LIM && !open ? `<li class="quiet"><span></span><span>${s.acts.length - LIM} earlier</span></li>` : ""}${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
-        ${s.acts.length > LIM ? `<button type="button" class="more" data-open="${esc(id)}">${open ? "Show less" : `Show all ${s.acts.length}`}</button>` : ""}
+      return `<div class="sess t-${tier}${issues.length ? errs.length ? " bad" : " warn" : ""}${open ? " open" : " shut"}${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
+        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm"><span class="nmt">${esc(name(s.n))}</span>${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}${s.live ? "" : `<span class="vd num">${esc(dur(ms))}</span>`}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}</div></div><div class="sh-r">${s.live ? `<span class="badge num" data-since="${s.since}">${clock(now - s.since)}</span>` : ""}<i class="vcar">${open ? "Close ▴" : "Open ▾"}</i>${open ? `<button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button>` : ""}</div></div>
+        ${s.acts.length && open ? `<ul class="acts">${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${/^⚠/.test(a.a) ? " iss" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
+      </div>`;
+    };
+    // Back to back visits from one person (each starting within 10 minutes
+    // of the last ending) fold into one row: how many, the span, total time
+    // and issues. Open it for every visit, then any visit for its actions.
+    const groups = [];
+    for (const v of all.slice(0, st.shown)) {
+      const g = groups[groups.length - 1], prev = g?.list[g.list.length - 1];
+      if (g && !v.live && !prev.live && g.n === v.n && dayLab(v.start) === dayLab(prev.start) && prev.start - v.end < 10 * 60000) g.list.push(v);
+      else groups.push({ n: v.n, list: [v] });
+    }
+    const cards = groups.map((g) => {
+      const first = g.list[g.list.length - 1], last = g.list[0];
+      const d = dayLab(last.start), head = d !== day ? `<div class="day">${esc(d)}</div>` : "";
+      day = d;
+      if (g.list.length === 1) return head + cardOf(last);
+      const gid = `grp|${g.n}|${first.start}`, gopen = st.open.has(gid);
+      const total = g.list.reduce((t, v) => t + Math.max(v.end - v.start, 1000), 0);
+      const nActs = g.list.reduce((t, v) => t + v.acts.length, 0);
+      const nIss = g.list.reduce((t, v) => t + v.acts.filter((x) => /^⚠/.test(x.a)).length, 0);
+      const nErr = g.list.reduce((t, v) => t + v.acts.filter((x) => /^⚠/.test(x.a) && /error/i.test(x.a)).length, 0);
+      const isNew = g.list.some((v) => v.end > seenBase.at);
+      return `${head}<div class="sess grp${gopen ? " open" : " shut"}${nIss ? nErr ? " bad" : " warn" : ""}" data-v="${esc(gid)}">
+        <div class="sh" data-open="${esc(gid)}" role="button" tabindex="0" aria-expanded="${gopen}">${av(g.n, "lg")}<div class="who"><div class="nm">${esc(name(g.n))}${isNew ? `<i class="newb">NEW</i>` : ""}<span class="vd num">${g.list.length} visits</span></div><div class="meta num">${esc(hm(first.start))} to ${esc(hm(last.end))} · ${esc(dur(total))} total</div><div class="vsum"><span>${nActs} action${nActs === 1 ? "" : "s"}</span>${nIss ? `<span class="iss${nErr ? " bad" : ""}">⚠ ${nIss} issue${nIss === 1 ? "" : "s"}</span>` : ""}</div></div><div class="sh-r"><i class="vcar">${gopen ? "Close ▴" : "Open ▾"}</i></div></div>
+        ${gopen ? `<div class="grp-in">${g.list.map(cardOf).join("")}</div>` : ""}
       </div>`;
     }).join("");
     const shownN = Math.min(all.length, st.shown);
     const feedHtml = `<main class="feed" id="sec-visits">
-      <div class="fh"><h2>VISITS</h2>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
+      <div class="fh"><h2>VISITS</h2><button type="button" class="cp" data-openall="1" title="Open or close every visit">${all.slice(0, st.shown).some((v) => !(v.live ? !st.open.has(`${v.n}|${v.start}`) : st.open.has(`${v.n}|${v.start}`))) ? "Expand all" : "Collapse all"}</button>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
         ${all.length ? `<button type="button" class="cp${st.copied === "*" ? " ok" : ""}" data-copy="*" title="Copy every visit shown">${st.copied === "*" ? "✓ Copied" : `${COPY_ICON}Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"}`}</button>` : ""}</div>
       ${cards || `<div class="empty" style="margin-top:12px">${st.filter ? `No visits from ${esc(name(st.filter))} in the last 24 hours.` : "No visits in the last 24 hours yet. They show here as people use the app."}</div>`}
       ${all.length > st.shown ? `<button type="button" class="older" data-older="1">Show ${Math.min(20, all.length - st.shown)} more</button>` : ""}
+      ${cards ? `<details class="vkey"${st.keyOpen ? " open" : ""}><summary>Colour key</summary><div class="vleg"><span><i style="background:#5b5378"></i>quick look</span><span><i style="background:#7aa2ff"></i>short, under ${mnt(cutLo)}</span><span><i style="background:#3dfc8f"></i>typical, ${mnt(cutLo)} to ${mnt(cutHi)}</span><span><i style="background:#ffe45e"></i>long, ${mnt(cutHi)}+</span><span class="vavg">avg visit ${mnt(avgMs)}</span><span><i style="background:#ffb347"></i>friction</span><span><i style="background:#ff4f6d"></i>error</span></div></details>` : ""}
       <p class="note">A visit is live while the app is on screen and ends when it's put away, or about a minute after a phone goes quiet. Shows screens and features, never which team anyone picked. Jake isn't tracked.</p>
     </main>`;
 
@@ -1166,7 +1327,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}${pollPanel()}${timeline}${feedHtml}${rail}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${newStrip()}${pollPanel()}</div>${timeline}${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
@@ -1178,7 +1339,8 @@ html, body { overflow-x: hidden; }
   const saveFolds = () => store.set(FOLD_KEY, JSON.stringify([...folds]));
   let showQuiet = false;
   const panelKey = (sec) => "p:" + (sec.querySelector(".ph h2")?.textContent || "").trim();
-  const dayKey = (d) => { const t = d.textContent.trim(); return t === "Today" ? "day:today" : t === "Yesterday" ? "day:yesterday" : "day:older"; };
+  // From the day's own label (the first text), never the Show/Hide count added after it.
+  const dayKey = (d) => { const t = (d.childNodes[0]?.textContent || "").trim(); return t === "Today" ? "day:today" : t === "Yesterday" ? "day:yesterday" : `day:${t}`; };
   function tidy() {
     app.querySelectorAll("section.panel").forEach((sec) => {
       const ph = sec.querySelector(":scope > .ph"); if (!ph) return;
@@ -1186,12 +1348,13 @@ html, body { overflow-x: hidden; }
       sec.classList.toggle("folded", folds.has(panelKey(sec)));
     });
     app.querySelectorAll(".day").forEach((d) => {
-      const k = dayKey(d), shut = k === "day:today" ? folds.has(k) : !folds.has(k.replace("day:", "open:"));
-      d.classList.add("fold-h"); d.classList.toggle("shut", shut);
+      // Today stays open (folding it hid every visit at a stray tap); older days fold.
+      const k = dayKey(d), shut = k === "day:today" ? false : !folds.has(k.replace("day:", "open:"));
+      d.classList.toggle("fold-h", k !== "day:today"); d.classList.toggle("shut", shut);
       let n = 0;
       for (let x = d.nextElementSibling; x && !x.classList.contains("day") && !x.classList.contains("note"); x = x.nextElementSibling) { x.hidden = shut; n++; }
       let dn = d.querySelector(".dn"); if (!dn) { dn = document.createElement("span"); dn.className = "dn"; d.appendChild(dn); }
-      dn.textContent = shut ? `${n} visit${n === 1 ? "" : "s"}` : "";
+      dn.textContent = k === "day:today" ? "" : shut ? `${n} visit${n === 1 ? "" : "s"} · Show` : "Hide";
     });
     const tl = app.querySelector("#sec-tl"); const q = tl ? tl.querySelectorAll(".ln-t.quiet").length : 0;
     if (tl && q && !tl.querySelector(".quiet-toggle")) {
@@ -1244,6 +1407,29 @@ html, body { overflow-x: hidden; }
       document.querySelector(`.sess[data-v="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       clearTimeout(st.focusT); st.focusT = setTimeout(() => { st.focus = null; render(); }, 2000);
       return;
+    }
+    if (e.target.closest(".vkey summary")) { st.keyOpen = !e.target.closest(".vkey").open; return; }
+    const jb = e.target.closest("[data-jump]");
+    if (jb) { document.getElementById(jb.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    if (e.target.closest("[data-seenall]")) { seenBase = snapSeen(); saveSeen(); st.sig = ""; render(); return; }
+    // A closed visit opens on a tap anywhere on it; an open one closes from its header.
+    const card = e.target.closest(".sess[data-v]"); // the innermost visit or group
+    const vh = card && !e.target.closest("button, li.go, a") && (card.classList.contains("shut") ? card : e.target.closest(".sh[data-open]")) ? card.querySelector(".sh[data-open]") : null;
+    if (vh) {
+      const k = vh.dataset.open, top = card.getBoundingClientRect().top;
+      st.open.has(k) ? st.open.delete(k) : st.open.add(k);
+      st.sig = ""; render();
+      // Keep the card where it was on screen, so nothing jumps.
+      const again = [...app.querySelectorAll(".sess[data-v]")].find((x) => x.dataset.v === k);
+      if (again) window.scrollBy(0, again.getBoundingClientRect().top - top);
+      return;
+    }
+    const oa = e.target.closest("[data-openall]");
+    if (oa) {
+      const vis = [...app.querySelectorAll(".sess[data-v]")];
+      const expand = vis.some((x) => x.classList.contains("shut"));
+      for (const x of vis) { const k = x.dataset.v, live = x.classList.contains("live"); if (live) expand ? st.open.delete(k) : st.open.add(k); else expand ? st.open.add(k) : st.open.delete(k); }
+      render(); return;
     }
     const li = e.target.closest("li.go");
     if (li) { st.pv?.id === li.dataset.pid ? closePreview() : openPreview(li.dataset); return; }

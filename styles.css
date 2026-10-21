@@ -7692,3 +7692,9 @@ html[data-sport="nfl"] #logo-screen { display: none !important; }
 
 /* NFL: the season standings without money (no EARNED column). */
 .pot-table.nomoney .pot-row { grid-template-columns: 22px minmax(0, 1fr) 40px 50px minmax(46px, auto); }
+/* Tapping a team points at its two bets. */
+.hz-tm, .tm-id { cursor: pointer; }
+.pick-mini-btn.nudge { animation: pk-nudge 1.2s ease-out; }
+@keyframes pk-nudge { 0%, 100% { box-shadow: none; } 25%, 60% { box-shadow: 0 0 0 2px var(--neon-cyan), 0 0 14px rgba(5, 217, 232, .6); transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .pick-mini-btn.nudge { animation: none; outline: 2px solid var(--neon-cyan); } }
+.game-card .game-status { cursor: pointer; }
