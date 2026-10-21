@@ -29,10 +29,18 @@ test("weeks before the rule starts ignore a lock flag entirely", () => withRule(
   assert.equal(s.lockRule, undefined);
 }));
 
-test("rule off: nothing changes", () => {
+test("a lock on a straight up pick is dropped and scores nothing extra", () => withRule(() => {
+  const p = { 1: { team: "LSU", mode: "SU", lock: true } };
+  settleLock(p, {}, {}, 10, 9);
+  assert.equal(!!p[1].lock, false);
+  const s = buildSummary(9, slate, results, { Jake: { picks: { 1: { team: "LSU", mode: "SU", lock: true } } } });
+  assert.equal(s.rows.find((r) => r.name === "Jake").score, 1);
+}));
+
+test("rule off: nothing changes", () => { const was = LOCK_RULE.on; LOCK_RULE.on = false; try {
   const s = buildSummary(9, slate, results, { Jake: { picks: { 1: { team: "LSU", mode: "ATS", lock: true } } } });
   assert.equal(s.rows.find((r) => r.name === "Jake").score, 2);
-});
+} finally { LOCK_RULE.on = was; } });
 
 test("a push on a lock scores nothing either way", () => withRule(() => {
   const push = { ...results, 1: { awayScore: 10, homeScore: 17 } };
@@ -42,10 +50,10 @@ test("a push on a lock scores nothing either way", () => withRule(() => {
 }));
 
 test("one lock a week: the newest wins, a kicked off lock is final, off weeks drop it", () => withRule(() => {
-  const p = { 1: { team: "LSU", mode: "ATS", lock: true, updatedAt: 1 }, 2: { team: "Georgia", mode: "SU", lock: true, updatedAt: 2 } };
+  const p = { 1: { team: "LSU", mode: "ATS", lock: true, updatedAt: 1 }, 2: { team: "Georgia", mode: "ATS", lock: true, updatedAt: 2 } };
   settleLock(p, {}, {}, 10, 9);
   assert.equal(!!p[1].lock, false); assert.equal(p[2].lock, true);
-  const q = { 1: { team: "LSU", mode: "ATS", lock: true, updatedAt: 1 }, 2: { team: "Georgia", mode: "SU", lock: true, updatedAt: 2 } };
+  const q = { 1: { team: "LSU", mode: "ATS", lock: true, updatedAt: 1 }, 2: { team: "Georgia", mode: "ATS", lock: true, updatedAt: 2 } };
   settleLock(q, { 1: { lock: true } }, { 1: 5 }, 10, 9);
   assert.equal(q[1].lock, true); assert.equal(!!q[2].lock, false);
   const r = { 1: { team: "LSU", mode: "ATS", lock: true } };
