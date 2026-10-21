@@ -1332,6 +1332,21 @@ async function handleSide(request, env, corsHeaders, url) {
   return json({ ok: true, pot: viewPot(pot, entries, now, { all: false, me: manager }) }, 200, noStore);
 }
 
+// One lock a week, on a pick. A lock on a game already kicked off is final
+// and wins; otherwise the most recently changed locked pick keeps it. In a
+// week without the lock rule every flag is dropped.
+export function settleLock(picks, stored, kickoffs, now, week) {
+  // Locks are spread picks only (a flat +3 / -3 on a favourite to win would
+  // be near free points): a lock on any other pick is dropped.
+  for (const [id, p] of Object.entries(picks)) if (p?.lock && p.mode !== "ATS") { const { lock, ...rest } = p; picks[id] = rest; }
+  const locked = Object.entries(picks).filter(([, p]) => p?.lock);
+  if (!lockOnWeek(week)) { for (const [id] of locked) { const { lock, ...rest } = picks[id]; picks[id] = rest; } return; }
+  if (locked.length <= 1) return;
+  const frozen = locked.find(([id]) => kickoffs[id] && now >= kickoffs[id] && stored[id]?.lock);
+  const keep = frozen ? frozen[0] : locked.sort(([, a], [, b]) => (b.updatedAt || 0) - (a.updatedAt || 0))[0][0];
+  for (const [id] of locked) if (id !== keep) { const { lock, ...rest } = picks[id]; picks[id] = rest; }
+}
+
 async function handlePicks(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) {
     console.error("LIFTR_KV binding missing");
@@ -1412,6 +1427,7 @@ async function handlePicks(request, env, corsHeaders, url) {
           const prev = stored.picks?.[id];
           incoming.picks[id] = { ...p, savedAt: prev && prev.team === p.team && prev.mode === p.mode ? (prev.savedAt || null) : nowAdmin, ...(prev && prev.team === p.team && prev.mode === p.mode ? {} : { repairedAt: nowAdmin }) };
         }
+        settleLock(incoming.picks || {}, {}, {}, nowAdmin, week);
         await env.LIFTR_KV.put(pickKey(week, manager), JSON.stringify(incoming));
         picksCache = null;
         await logPickChanges(env, manager, stored, incoming, true, week, kickoffs);
@@ -1427,9 +1443,10 @@ async function handlePicks(request, env, corsHeaders, url) {
         const chosen = !a ? b : !b ? a : (a.updatedAt || 0) > (b.updatedAt || 0) ? a : b;
         // savedAt is the Worker's own clock, set whenever the pick changes,
         // so every pick carries a time nobody's device can fake.
-        const changed = !a || !chosen || a.team !== chosen.team || a.mode !== chosen.mode;
+        const changed = !a || !chosen || a.team !== chosen.team || a.mode !== chosen.mode || !!a.lock !== !!chosen.lock;
         merged.picks[id] = changed ? { ...chosen, savedAt: now } : { ...chosen, savedAt: a.savedAt || chosen.savedAt || null };
       }
+      settleLock(merged.picks, stored.picks || {}, kickoffs, now, week);
       const ta = stored.tiebreakerUpdatedAt || 0, tb = incoming.tiebreakerUpdatedAt || 0;
       const incomingHas = String(incoming.tiebreaker || "").trim() !== "";
       const storedHas = String(stored.tiebreaker || "").trim() !== "";
@@ -1477,7 +1494,7 @@ async function logPickChanges(env, manager, before, after, admin, week = 1, kick
     const ids = new Set([...Object.keys(before?.picks || {}), ...Object.keys(after?.picks || {})]);
     for (const id of ids) {
       const a = before?.picks?.[id], b = after?.picks?.[id];
-      const fa = a ? `${a.team} ${a.mode}` : null, fb = b ? `${b.team} ${b.mode}` : null;
+      const fa = a ? `${a.team} ${a.mode}${a.lock ? " LOCK" : ""}` : null, fb = b ? `${b.team} ${b.mode}${b.lock ? " LOCK" : ""}` : null;
       const ko = (kickoffs || PICKS_KICKOFF)[id];
       if (fa !== fb) changes.push({ game: Number(id), from: fa, to: fb, afterKickoff: !!ko && Date.now() >= ko });
     }
@@ -1715,12 +1732,12 @@ async function handleGames(request, env, corsHeaders, url) {
     const week = await weekFrom(env, url);
     const now = Date.now();
     if (gamesCache && gamesCache.week === week && now - gamesCache.at < 5000) {
-      return json({ weeks, ...gamesCache.slate, cached: true }, 200, corsHeaders);
+      return json({ weeks, ...gamesCache.slate, lockRule: lockRuleFor(week), cached: true }, 200, corsHeaders);
     }
     const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
     if (!slate) return json({ weeks, week, games: null, note: "no slate stored for this week" }, 200, corsHeaders);
     gamesCache = { at: now, week, slate };
-    return json({ weeks, ...slate }, 200, corsHeaders);
+    return json({ weeks, ...slate, lockRule: lockRuleFor(week) }, 200, corsHeaders);
   }
 
   if (request.method === "POST" || request.method === "PUT") {
@@ -1775,6 +1792,18 @@ const SUMMARY_VERSION = 9;
 // of its own.
 const EXHIBITION_WEEKS = new Set([1]);
 
+// Lock of the week (league vote): each player may mark one pick a week as
+// their lock. A locked pick that cashes adds LOCK_RULE.hit; one that misses
+// scores LOCK_RULE.miss in place of 0. A push, a game not played, or no
+// lock: nothing either way. Off until the vote is in: set on, the week it
+// starts, and the winning option's numbers (A +2/0, B +2/-1, C +3/-3).
+// Weeks before fromWeek never carry a lock, so the record never moves.
+// College starts the lock in week 8, the NFL in week 7 (its first week
+// after the rule). SPORT is only known per request, so it is read here.
+export const LOCK_RULE = { on: true, fromWeek: 8, nflFromWeek: 7, hit: 3, miss: -3 };
+function lockOnWeek(week) { return LOCK_RULE.on && Number(week) >= (SPORT === "nfl" ? LOCK_RULE.nflFromWeek : LOCK_RULE.fromWeek); }
+function lockRuleFor(week) { return lockOnWeek(week) ? { hit: LOCK_RULE.hit, miss: LOCK_RULE.miss } : null; }
+
 function seasonPointValue(game, team, mode) {
   if (mode === "ATS") return 2;
   return team === game.favorite ? 1 : 3;
@@ -1790,19 +1819,22 @@ function seasonOutcome(game, result) {
   return { suWinner, atsWinner: push ? null : favMargin > game.spread ? game.favorite : underdog, push };
 }
 
-function seasonScorePick(game, pick, result) {
+function seasonScorePick(game, pick, result, lockRule = null) {
   const outcome = seasonOutcome(game, result);
   if (!outcome) return null;
   if (!pick || !pick.team || !pick.mode) return 0;
   const winner = pick.mode === "SU" ? outcome.suWinner : outcome.atsWinner;
   if (winner === null) return 0;
-  return pick.team === winner ? seasonPointValue(game, pick.team, pick.mode) : 0;
+  const base = pick.team === winner ? seasonPointValue(game, pick.team, pick.mode) : 0;
+  // The lock rides on the pick; lockRule is the week's numbers (null: off).
+  if (pick.lock && lockRule && pick.mode === "ATS") return base > 0 ? base + lockRule.hit : lockRule.miss;
+  return base;
 }
 
 // One week's standings. Same order as the board: points, then whoever came
 // closest on the tiebreaker; anyone still level shares the place and, at
 // the top, shares the win.
-function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []) {
+export function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []) {
   const games = slate?.games || [];
   if (!games.length) return null;
   const played = games.filter((g) => results?.[g.id]);
@@ -1811,8 +1843,10 @@ function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []
   const tbResult = tbGame ? results?.[tbGame.id] : null;
   const actualTotal = tbResult ? tbResult.awayScore + tbResult.homeScore : null;
 
+  const lockRule = lockRuleFor(week);
   const rows = PICKS_MANAGERS.map((name) => {
     const state = picks?.[name] || { picks: {}, tiebreaker: "" };
+    let lock = null;
     let score = 0, hits = 0, misses = 0, picked = 0;
     // Every pick, one line each, right or wrong, with the line it was
     // taken at. The aggregate below is derivable from this; the reverse is
@@ -1821,8 +1855,9 @@ function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []
     for (const g of games) {
       const pick = state.picks?.[g.id];
       if (pick) picked += 1;
-      const pts = seasonScorePick(g, pick, results?.[g.id]);
+      const pts = seasonScorePick(g, pick, results?.[g.id], lockRule);
       const outcome = seasonOutcome(g, results?.[g.id]);
+      const locked = !!(lockRule && pick?.lock && pick.mode === "ATS");
       const ko = kickoffs?.[g.id] || null;
       ledger.push({
         g: Number(g.id),
@@ -1832,20 +1867,22 @@ function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []
         team: pick?.team ?? null,
         mode: pick?.mode ?? null,
         line: pick ? (pick.mode === "SU" ? "SU" : `${pick.team === g.favorite ? "-" : "+"}${g.spread}`) : null,
-        worth: pick ? seasonPointValue(g, pick.team, pick.mode) : null,
+        worth: pick ? seasonPointValue(g, pick.team, pick.mode) + (locked ? lockRule.hit : 0) : null,
         pts,
         result: pts === null ? "pending" : !pick ? "nopick" : outcome?.push && pick.mode === "ATS" ? "push" : pts > 0 ? "hit" : "miss",
+        ...(locked ? { lock: true } : {}),
         score: results?.[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : null,
         savedAt: pick?.savedAt ?? null,
         late: !!(ko && pick?.savedAt && pick.savedAt >= ko),
       });
+      if (locked) lock = { g: Number(g.id), team: pick.team, line: ledger[ledger.length - 1].line, matchup: ledger[ledger.length - 1].matchup, result: ledger[ledger.length - 1].result, pts: pts === null ? null : pts - (pts > 0 ? seasonPointValue(g, pick.team, pick.mode) : 0) };
       if (pts === null) continue;
-      if (pts > 0) { score += pts; hits += 1; } else if (pick) misses += 1;
+      if (pts > 0) { score += pts; hits += 1; } else if (pick) { score += pts; misses += 1; }
     }
     const raw = String(state.tiebreaker ?? "").trim();
     const guess = raw === "" ? null : Number(raw);
     const tbDiff = actualTotal !== null && Number.isFinite(guess) ? Math.abs(guess - actualTotal) : null;
-    return { name, score, hits, misses, picked, tbGuess: Number.isFinite(guess) ? guess : null, tbDiff, ledger };
+    return { name, score, hits, misses, picked, tbGuess: Number.isFinite(guess) ? guess : null, tbDiff, ledger, ...(lockRule ? { lock } : {}) };
   }).sort((a, b) => b.score - a.score || (a.tbDiff ?? Infinity) - (b.tbDiff ?? Infinity));
 
   let place = 0;
@@ -1865,6 +1902,7 @@ function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []
     version: SUMMARY_VERSION,
     exhibition: EXHIBITION_WEEKS.has(Number(week)),
     label: slate?.label || `Week ${week}`,
+    ...(lockRule ? { lockRule } : {}),
     complete,
     games: games.length,
     played: played.length,
@@ -2007,7 +2045,18 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
     ? { who: closestTb.map((r) => r.name), guesses: closestTb.map((r) => r.tbGuess), actual: actualTotal, off: closestTb[0].tbDiff, matchup: `${tbGame.awayShort} at ${tbGame.homeShort}`, awayId: tbGame.awayId ?? null, homeId: tbGame.homeId ?? null }
     : null;
 
-  return { best: best ? card(best) : null, worst: worst ? card(worst) : null, movement, consensus, tb };
+  // Lock of the week: every lock that was decided, hits first, the biggest
+  // lock (most points) leading. Only in weeks the lock rule covers.
+  const locked = rows.filter((r) => r.lock && (r.lock.result === "hit" || r.lock.result === "miss" || r.lock.result === "push"));
+  const locks = locked.length ? {
+    hit: locked.filter((r) => r.lock.result === "hit").map((r) => r.name),
+    miss: locked.filter((r) => r.lock.result === "miss").map((r) => r.name),
+    push: locked.filter((r) => r.lock.result === "push").map((r) => r.name),
+    none: rows.filter((r) => !r.lock).map((r) => r.name),
+    list: locked.map((r) => { const g = byId.get(r.lock.g); return { name: r.name, g: r.lock.g, team: r.lock.team, short: g ? short(g, r.lock.team) : r.lock.team, id: g ? idOf(g, r.lock.team) : null, line: r.lock.line, matchup: r.lock.matchup, result: r.lock.result, pts: r.lock.pts }; })
+      .sort((a, b) => (a.result === "hit" ? 0 : a.result === "push" ? 1 : 2) - (b.result === "hit" ? 0 : b.result === "push" ? 1 : 2)),
+  } : null;
+  return { best: best ? card(best) : null, worst: worst ? card(worst) : null, movement, consensus, tb, ...(locks ? { locks } : {}) };
 }
 
 // --- Week story -----------------------------------------------------------
@@ -3351,7 +3400,7 @@ const HISTORY_SYSTEM = (slice, asker) => `Today's date is ${new Date().toISOStri
 ${asker ? `The person asking is ${asker}, an owner in the league. "I", "me", "my" and "mine" in the question refer to ${asker}. ` : ""}You are the BroChiefs Football League archivist. You answer questions about the BroChiefs fantasy football league using the JSON dataset below. Rules:
 1. League history means anything in the dataset: the commissioner (Andrew, who founded the league in 2014 and has run it every season since), the ten active owners, the former members (Marty Griffin, Ryan Hacker, Tyler Cerone, Patrick Williams), every season from 2014 to 2025, standings, records, points, titles, podiums, eras and team names. Questions like "when was Marty's last season", "who did Ryan finish above in 2017" or "what was Jake's team name in 2018" are league history and must be answered from the data. When in doubt, treat the question as league history and answer it.
 2. Only refuse when the question is clearly unrelated to this league (weather, news, the NFL or college football itself, other leagues, coding, personal advice). For those reply exactly: "The archive only covers BroChiefs league history. Ask about a season, an owner, a record or a team name." A question that is about this league but needs data the archive lacks (draft picks and draft order, individual players, rosters, injuries, trades, waivers, weekly lineups) gets a different reply: say plainly that the archive keeps standings, scores, matchups, records and team names but has no draft, player, injury or transaction data, then offer one related question it can answer. You have no memory of earlier questions; if a message is only an instruction or a follow-up with nothing to answer (for example "only use active owners"), say each question stands alone and ask them to put the whole question in one message.
-3. Never invent facts. For any most, least, highest, lowest, best or worst question about a stat, read the answer from the rankings table, where each stat lists the five highest and five lowest owners already sorted with former members marked; that table is authoritative and you must not rank owners yourself from the career rows. Counting questions (how many times, who has the most finishes in the bottom three, top three, last place) must be answered from the precomputed fields: topThreeFinishes and topThreeYears, bottomThreeFinishes and bottomThreeYears, lastPlaceFinishes and lastPlaceYears, or the leagueRecords lists mostBottomThreeFinishes and mostTopThreeFinishes; for any other finish-based count, tally the owner's finishesByYear string (year:finish) or seasonLines and show the years you counted. Never estimate a count. The dataset also includes a matchups section built from the ESPN league schedule: headToHead[ownerA][ownerB] with regular season and playoff records, championship meetings and the last meeting; ownerMatchupStats per owner (regular season and playoff records, championship game record and list, close-game records in games decided by under 5 and under 10, wins and losses by 50 or more, an all-play record and a luck number where negative means unlucky and positive means the schedule helped, average weekly points, highest and lowest week, weeks as league top or lowest scorer, longest win streak, 100 and 150 point weeks, bench points total and per week, biggest win, worst loss); leagueMatchupRecords (highest and lowest weekly scores, biggest blowouts, closest games, highest score in a loss, lowest score in a win, every championship game, most bench points in a season, most weeks as top scorer, longest win streaks, luckiest and unluckiest owners, best close-game records, most played pairs, and a notAvailable line listing what the archive cannot answer, which you should quote when a question needs it); and everyGameByYear listing each game as "W<week> winner points d. loser points". For any "record against" question use recordAgainst[owner]: its ranked list is already from that owner's side and sorted best to worst, so the first row is the best record and the last row the worst. Never flip or re-read the headToHead strings yourself. Opponents with fewer than 5 meetings sit in smallSamples and do not count for best or worst unless the question asks about them; mention them in one clause if relevant. Lead with active opponents (active: true); if a former member holds the extreme, say so in a second sentence. The dataset includes careerTotals per owner (wins, losses, win percentage, total and per-game points for and against, titles, finals, podiums, last-place finishes, best and worst seasons, team names by year) as well as every season's standings, so use those numbers directly and do arithmetic (sums, averages, differences, rankings across owners or seasons) whenever a question calls for it. Only say the archive does not record something when none of these tables can produce the answer. When the dataset includes a draft section, it is authoritative for draft questions: firstOverallPickByYear says who held the first overall pick each season and whom they took, mostFirstOverallPicks is already counted and sorted, draftSlotsByOwner gives each owner's round-one slot by year with average, best and worst, firstRoundByYear lists the round-one board, and mostAutoDraftedPicks counts auto-drafted picks. everyPickByOwnerYear lists every pick an owner made, round by round with position, for each year (or the named years), and fullBoardByYear lists a whole draft in order; use them for any question about what someone drafted, which round, or which positions. The draft board lists every pick with the player\u0027s name; when it also carries a position field, positional questions (first kicker taken, earliest defense, first quarterback each year) are answerable from it, otherwise say the board has names but not positions. Outside the draft board the archive has no player-level, injury or transaction data. Never turn the notAvailable note into a receipt. Owner first names in questions match the owner field in the data; Marty means Marty Griffin, Ryan means Ryan Hacker, Cerone means Tyler Cerone, Williams means Patrick Williams.
+3. Never invent facts. For any most, least, highest, lowest, best or worst question about a stat, read the answer from the rankings table, where each stat lists the five highest and five lowest owners already sorted with former members marked; that table is authoritative and you must not rank owners yourself from the career rows. Counting questions (how many times, who has the most finishes in the bottom three, top three, last place) must be answered from the precomputed fields: topThreeFinishes and topThreeYears, bottomThreeFinishes and bottomThreeYears, lastPlaceFinishes and lastPlaceYears, or the leagueRecords lists mostBottomThreeFinishes and mostTopThreeFinishes; for any other finish-based count, tally the owner's finishesByYear string (year:finish) or seasonLines and show the years you counted. Never estimate a count. The dataset also includes a matchups section built from the ESPN league schedule: headToHead[ownerA][ownerB] with regular season and playoff records, championship meetings and the last meeting; ownerMatchupStats per owner (regular season and playoff records, championship game record and list, close-game records in games decided by under 5 and under 10, wins and losses by 50 or more, an all-play record and a luck number where negative means unlucky and positive means the schedule helped, average weekly points, highest and lowest week, weeks as league top or lowest scorer, topScorerStreaks and lowestScorerStreaks (longest run of consecutive weeks, every run of 2 or more, and the current run), longest win streak, 100 and 150 point weeks, bench points total and per week, biggest win, worst loss); leagueMatchupRecords (highest and lowest weekly scores, biggest blowouts, closest games, highest score in a loss, lowest score in a win, every championship game, most bench points in a season, most weeks as top scorer, longestTopScorerStreaks and longestLowestScorerStreaks (consecutive weeks as the league top or lowest scorer, already sorted; topScorerStreakCounts says how many runs reached 2, 3 or 4 weeks), longest win streaks, luckiest and unluckiest owners, best close-game records, most played pairs, and a notAvailable line listing what the archive cannot answer, which you should quote when a question needs it); and everyGameByYear listing each game as "W<week> winner points d. loser points". For any "record against" question use recordAgainst[owner]: its ranked list is already from that owner's side and sorted best to worst, so the first row is the best record and the last row the worst. Never flip or re-read the headToHead strings yourself. Opponents with fewer than 5 meetings sit in smallSamples and do not count for best or worst unless the question asks about them; mention them in one clause if relevant. Lead with active opponents (active: true); if a former member holds the extreme, say so in a second sentence. The dataset includes careerTotals per owner (wins, losses, win percentage, total and per-game points for and against, titles, finals, podiums, last-place finishes, best and worst seasons, team names by year) as well as every season's standings, so use those numbers directly and do arithmetic (sums, averages, differences, rankings across owners or seasons) whenever a question calls for it. Only say the archive does not record something when none of these tables can produce the answer. When the dataset includes a draft section, it is authoritative for draft questions: firstOverallPickByYear says who held the first overall pick each season and whom they took, mostFirstOverallPicks is already counted and sorted, draftSlotsByOwner gives each owner's round-one slot by year with average, best and worst, firstRoundByYear lists the round-one board, and mostAutoDraftedPicks counts auto-drafted picks. everyPickByOwnerYear lists every pick an owner made, round by round with position, for each year (or the named years), and fullBoardByYear lists a whole draft in order; use them for any question about what someone drafted, which round, or which positions. The draft board lists every pick with the player\u0027s name; when it also carries a position field, positional questions (first kicker taken, earliest defense, first quarterback each year) are answerable from it, otherwise say the board has names but not positions. Outside the draft board the archive has no player-level, injury or transaction data. Never turn the notAvailable note into a receipt. Owner first names in questions match the owner field in the data; Marty means Marty Griffin, Ryan means Ryan Hacker, Cerone means Tyler Cerone, Williams means Patrick Williams.
 4. Style. Lead with the answer and stop; never restate or summarize what you just said. Two sentences is the norm and three is the ceiling for a plain answer; a list plus its context may run a little longer. For a ranking or a list of three or more owners, use short lines, one per item, like "1. Andrew .450 (67-82)", then add one or two sentences of context beneath the list drawn from the data, such as a podium finish, a title, a best season or a recent trend, that separates the names or explains the ranking. Write win percentages as .450 not 0.450, records as 67-82 with an en dash, and points to two decimals. Write in dependency grammar: every sentence has a clear subject and verb, and clauses connect with commas or conjunctions rather than fragments. Never use em dashes or hyphens as punctuation, and never add a closing remark.
 5. Cite years and records when they support the answer. Any claim about a title, final, podium or record must be checked against the owner's titleYears, runnerUpYears, thirdYears or the season's result field before you state it; if the years are not there, the claim is false and must not be made. Answer the question as asked and do not narrow it to a shorter window unless the question names one.
 5a. When a question names a window such as "the last three years" or "since 2020", build the comparison from each owner's seasonLines for exactly those years: add up the records and list the results (champion, runner-up, third, no podium) for every candidate before choosing. Career totals and career win percentage do not apply inside a window and must not be used to justify the pick.

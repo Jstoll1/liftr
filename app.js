@@ -27,6 +27,21 @@ function pointValue(game, team, mode) {
   return team === game.favorite ? 1 : 3;
 }
 
+// Lock of the week (league vote): one pick a week marked as the lock. A
+// locked pick that cashes adds LOCK_RULE.hit; one that misses scores
+// LOCK_RULE.miss in place of 0; a push scores nothing either way. The
+// Worker sends the week's numbers with the slate (null while it is off).
+// ?lock=1 previews it on this phone with option B's numbers.
+let LOCK_RULE = null;
+const LOCK_PREVIEW = /[?&]lock=1/.test(location.search) ? { hit: 3, miss: -3 } : null;
+const lockRule = () => LOCK_RULE || LOCK_PREVIEW;
+const lockLabel = (r = lockRule()) => (r ? `hit +${r.hit} · miss ${r.miss < 0 ? "−" + Math.abs(r.miss) : "0"}` : "");
+// What a pick is worth if it cashes, lock bonus included.
+function pickWorth(game, pick) {
+  if (!pick || !pick.team || !pick.mode) return 0;
+  return pointValue(game, pick.team, pick.mode) + (pick.lock && pick.mode === "ATS" && lockRule() ? lockRule().hit : 0);
+}
+
 // Given a final score, returns who won straight-up and who covered.
 function resultOutcome(game, result) {
   if (!result || !Number.isFinite(result.awayScore) || !Number.isFinite(result.homeScore)) return null;
@@ -50,7 +65,9 @@ function scorePick(game, pick, result) {
   if (!pick || !pick.team || !pick.mode) return 0;
   const winner = pick.mode === "SU" ? outcome.suWinner : outcome.atsWinner;
   if (winner === null) return 0;
-  return pick.team === winner ? pointValue(game, pick.team, pick.mode) : 0;
+  const base = pick.team === winner ? pointValue(game, pick.team, pick.mode) : 0;
+  const lr = pick.lock && pick.mode === "ATS" ? lockRule() : null;
+  return lr ? (base > 0 ? base + lr.hit : lr.miss) : base;
 }
 
 // Fill this in after deploying the Worker (see worker/README.md), e.g.
@@ -169,6 +186,8 @@ function restoreCachedSlate() {
     currentWeek = c.week || currentWeek;
     if (latestLiveWeek !== null && latestLiveWeek !== currentWeek) { latestLive = {}; latestLiveWeek = null; }
     WEEK_LABEL = c.label || `Week ${currentWeek}`;
+    LOCK_RULE = c.lockRule || null;
+    renderLockRules();
     if (Array.isArray(c.list)) weekList = c.list;
   } catch { /* private mode or a bad copy: keep what is there */ }
 }
@@ -187,9 +206,12 @@ async function loadSlate(week) {
     // game number, so it would land on this week's games. Drop it.
     if (latestLiveWeek !== null && latestLiveWeek !== currentWeek) { latestLive = {}; latestLiveWeek = null; }
     WEEK_LABEL = data.label || `Week ${currentWeek}`;
+    LOCK_RULE = data.lockRule || null;
+    setTimeout(() => maybeLockIntro(), 600);
+    renderLockRules();
     if (!week) {
       slateFromNetwork = true;
-      try { localStorage.setItem(SLATE_CACHE_KEY, JSON.stringify({ games: GAMES, week: currentWeek, label: WEEK_LABEL, list: weekList })); } catch {}
+      try { localStorage.setItem(SLATE_CACHE_KEY, JSON.stringify({ games: GAMES, week: currentWeek, label: WEEK_LABEL, list: weekList, lockRule: LOCK_RULE })); } catch {}
     }
     return true;
   } catch {
@@ -1782,6 +1804,7 @@ function showPicksScreen() {
   enterScreen("picks");
   maybeShowBoner();
   maybeShowQotw();
+  maybeLockIntro();
   return syncManagerFromCloud(currentManager).then((cloud) => {
     if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
     // After the sync, so a phone that has not seen its picks yet does not
@@ -1820,6 +1843,8 @@ function showTrivia() {
 navTriviaBtn.addEventListener("click", showTrivia);
 
 navScoreboardBtn.addEventListener("click", () => {
+  // Leaving the picks with no lock set: the light reminder, once.
+  if (!picksScreen.classList.contains("hidden")) setTimeout(() => maybeLockReminder("leave"), 400);
   if (!currentManager) openClaimPrompt();
   loginScreen.classList.add("hidden");
   showScoreboard();
@@ -2249,7 +2274,7 @@ function pickTimeLabel(pick) {
 
 function pickLabel(game, pick) {
   if (!pick) return "";
-  const pts = pointValue(game, pick.team, pick.mode);
+  const pts = pickWorth(game, pick);
   if (pick.mode === "SU") return `${pick.team} SU (${pts} pt)`;
   const spreadStr = pick.team === game.favorite ? `-${game.spread}` : `+${game.spread}`;
   return `${pick.team} ATS ${spreadStr} (${pts} pt)`;
@@ -2367,7 +2392,7 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
   const betBadge = () => {
     if (!pick) return "";
     const isFav = pick.team === game.favorite;
-    const worth = pointValue(game, pick.team, pick.mode);
+    const worth = pickWorth(game, pick);
     const terms = pick.mode === "ATS" ? `${isFav ? "-" : "+"}${game.spread}` : "SU";
     // No tick. It marked the side you took, not a correct answer, but a
     // green check on a losing pick reads as "you got this one", and the
@@ -2388,7 +2413,7 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
   if (!pick) {
     foot = `<div class="lr-foot none">NO PICK MADE</div>`;
   } else {
-    const worth = pointValue(game, pick.team, pick.mode);
+    const worth = pickWorth(game, pick);
     const isFav = pick.team === game.favorite;
     const short = pick.team === game.away ? game.awayShort : game.homeShort;
     const pickScore = pickedSide === "away" ? aS : hS;
@@ -2505,6 +2530,162 @@ document.getElementById("picks-standing")?.addEventListener("click", () => {
   navScoreboardBtn?.click();
 });
 
+// --- Lock of the week: the picks screen ---------------------------------
+// The 🔒 button sits under a game once it has a pick; tapping it makes that
+// pick the lock (only one), tapping again takes it off. The locked card
+// glows gold. Above the games, one bar says which pick is the lock.
+function lockRowHtml(game, pick, gameLocked) {
+  const lr = lockRule();
+  if (!lr || !pick || pick.mode !== "ATS") return "";
+  if (gameLocked) return pick.lock ? `<span class="lotw-btn hdr on done">🔒 LOCK</span>` : "";
+  return pick.lock
+    ? `<button type="button" class="lotw-btn hdr on" aria-pressed="true" title="Your lock: tap to take it off">🔒 LOCKED</button>`
+    : `<button type="button" class="lotw-btn hdr" aria-pressed="false" title="Make this pick your lock of the week (${lockLabel(lr)})">🔒 LOCK IT</button>`;
+}
+function lotwToast(text) {
+  let t = document.getElementById("lotw-toast");
+  if (!t) { t = document.createElement("div"); t.id = "lotw-toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.textContent = text; t.classList.add("show");
+  clearTimeout(lotwToast.t); lotwToast.t = setTimeout(() => t.classList.remove("show"), 2600);
+}
+// The light reminder: picks made, no lock, and a game still open to lock.
+// Shown when the last pick goes in, or on leaving the picks screen; once a
+// week at most if skipped.
+// NFL: the one time announcement of the lock of the week, the first time a
+// signed in player opens the app while the rule is on. Same card as the
+// lock confirm. Got it or Show me (to Picks) closes it; nothing else does.
+function maybeLockIntro() {
+  const lr = lockRule();
+  if (!lr || window.LEAGUE?.sport !== "nfl" || !currentManager || window.__liveView || window.__adminOpen) return;
+  const k = `brochiefs_lotw_intro_${currentManager}`;
+  try { if (localStorage.getItem(k)) return; } catch { return; }
+  if (document.getElementById("lotw-intro")?.classList.contains("show")) return;
+  let m = document.getElementById("lotw-intro");
+  if (!m) {
+    m = document.createElement("div"); m.id = "lotw-intro"; m.className = "lotw-nudge lotw-confirm lotw-intro"; m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("click", (e) => {
+      const go = e.target.closest(".lc-go"), ok = e.target.closest(".lc-no");
+      if (!go && !ok) return;
+      try { localStorage.setItem(k, "1"); } catch {}
+      m.classList.remove("show");
+      track(go ? "lock-intro-go" : "lock-intro-ok", { event: true });
+      if (go && picksScreen.classList.contains("hidden")) document.getElementById("nav-picks-btn")?.click();
+    });
+  }
+  const miss = lr.miss < 0 ? "−" + Math.abs(lr.miss) : "0";
+  m.innerHTML = `<div class="ln-card"><div class="lc-k">NEW THIS WEEK</div><div class="li-lock">🔒</div><div class="lc-pick">Lock of the Week</div><div class="lc-vs">Pick one game each week as your lock</div><div class="lc-odds"><div class="lc-o up"><small>COVERS</small><b>+${lr.hit}</b></div><div class="lc-o dn"><small>MISSES</small><b>${miss}</b></div></div><ul class="li-rules"><li><b>Spread picks only.</b> Straight up picks can't be locked.</li><li>Covers: your pick's points <b>plus ${lr.hit}</b>. Misses: <b>${miss}</b> instead of 0. A push is nothing either way.</li><li>One lock a week. It's final once that game kicks off.</li><li>Optional. Tap <b>🔒 LOCK IT</b> on any spread pick.</li></ul><button type="button" class="lc-go">🔒 SHOW ME</button><button type="button" class="lc-no">Got it</button></div>`;
+  requestAnimationFrame(() => m.classList.add("show"));
+  track("lock-intro", { event: true });
+}
+function maybeLockReminder(why) {
+  const lr = lockRule();
+  if (!lr || !currentManager || window.__liveView) return false;
+  const s = getManagerState(currentManager);
+  const open = GAMES.filter((g) => s.picks[g.id]?.mode === "ATS" && !isGameLocked(g));
+  if (!open.length || lockedGameOf(s)) return false;
+  const k = `brochiefs_lotw_skip_w${currentWeek}`;
+  try { if (localStorage.getItem(k)) return false; } catch {}
+  if (why === "complete" && GAMES.some((g) => !s.picks[g.id] && !isGameLocked(g))) return false;
+  let m = document.getElementById("lotw-nudge");
+  if (!m) {
+    m = document.createElement("div"); m.id = "lotw-nudge"; m.className = "lotw-nudge"; m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("click", (e) => {
+      if (e.target.closest(".ln-skip")) { try { localStorage.setItem(k, "1"); } catch {} track("lock-skip", { event: true }); m.classList.remove("show"); return; }
+      if (e.target.closest(".ln-go")) { m.classList.remove("show"); if (picksScreen.classList.contains("hidden")) document.getElementById("nav-picks-btn")?.click(); setTimeout(() => document.getElementById("lotw-bar")?.click(), 250); return; }
+      if (e.target === m || e.target.closest(".ln-x")) m.classList.remove("show");
+    });
+  }
+  m.innerHTML = `<div class="ln-card"><button type="button" class="ln-x" aria-label="Close">✕</button><span class="ln-ic">🔒</span><div class="ln-tx"><b>No lock yet</b><small>Lock one of your picks: ${lockLabel(lr)}</small></div><div class="ln-btns"><button type="button" class="ln-skip">Skip this week</button><button type="button" class="ln-go">Pick one</button></div></div>`;
+  requestAnimationFrame(() => m.classList.add("show"));
+  track("lock-nudge", { event: true, d: why });
+  return true;
+}
+// The rules card gains the lock while the rule is on.
+function renderLockRules() {
+  const el = document.getElementById("rules-lotw");
+  if (!el) return;
+  const lr = lockRule();
+  el.classList.toggle("hidden", !lr);
+  if (lr) el.innerHTML = `<span class="rules-heading">🔒 Lock of the week</span><ul class="rules-list"><li>Optional: mark one spread pick a week as your lock (tap 🔒 under it)</li><li>Lock hits: <strong>+${lr.hit}</strong> on top of the pick · lock misses: <strong>${lr.miss < 0 ? "−" + Math.abs(lr.miss) : "0"}</strong></li><li>A push or no lock: nothing either way. It locks with the game and stays hidden until kickoff.</li></ul>`;
+}
+// The leaderboard row's lock: a small 🔒 coloured by how it stands
+// (green cashed or covering, pink missed or not covering, plain before).
+function rankLockHtml(row) {
+  if (!lockRule()) return "";
+  const id = Object.keys(row.state?.picks || {}).find((k) => row.state.picks[k]?.lock);
+  const g = id && GAMES.find((x) => String(x.id) === String(id));
+  if (!g) return "";
+  const pk = row.state.picks[id], fin = computeLiveResults(latestLive)[g.id], l = latestLive[g.id];
+  const p = fin ? scorePick(g, pk, fin) : l && l.found && l.state === "in" && l.awayScore != null ? scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) : null;
+  const st = p == null ? "" : p > 0 ? " up" : p < 0 || (fin && p === 0 && !(pk.mode === "ATS" && resultOutcome(g, fin)?.push)) ? " dn" : "";
+  return `<i class="rank-lk${st}${fin ? " fin" : ""}" title="Lock: ${escapeCd(lockPickText(g, pk))}">🔒</i>`;
+}
+function lockPickText(g, pk) {
+  const short = pk.team === g.home ? g.homeShort : pk.team === g.away ? g.awayShort : pk.team;
+  return pk.mode === "SU" ? `${short} to win` : `${short} ${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
+}
+function lockedGameOf(state) {
+  const id = Object.keys(state?.picks || {}).find((k) => state.picks[k]?.lock);
+  return id ? GAMES.find((g) => String(g.id) === String(id)) : null;
+}
+// Tapping LOCK IT opens a confirm sheet: the pick, what it scores if it
+// hits (green) and if it misses (red), then 🔒 LOCK IT to commit.
+function lockConfirm(g, pk) {
+  const lr = lockRule();
+  let m = document.getElementById("lotw-confirm");
+  if (!m) {
+    m = document.createElement("div"); m.id = "lotw-confirm"; m.className = "lotw-nudge lotw-confirm"; m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("click", (e) => {
+      if (e.target.closest(".lc-go")) { m.classList.remove("show"); setLock(m.dataset.gid, { confirmed: true }); return; }
+      // Only LOCK IT or Not this one close it: a tap outside does nothing.
+      if (e.target.closest(".lc-no")) m.classList.remove("show");
+    });
+  }
+  m.dataset.gid = g.id;
+  const hit = pointValue(g, pk.team, pk.mode) + lr.hit, miss = lr.miss;
+  const opp = pk.team === g.away ? g.homeShort : g.awayShort;
+  m.innerHTML = `<div class="ln-card"><div class="lc-k">LOCK OF THE WEEK</div><div class="lc-mu"><img class="lc-logo ${pk.team === g.away ? "me" : ""}" src="${logoUrl(g.awayId)}" alt="${escapeCd(g.awayShort)}"><span>AT</span><img class="lc-logo ${pk.team === g.home ? "me" : ""}" src="${logoUrl(g.homeId)}" alt="${escapeCd(g.homeShort)}"></div><div class="lc-pick">${escapeCd(lockPickText(g, pk))}</div><div class="lc-vs">${pk.team === g.away ? "at" : "vs"} ${escapeCd(opp)}</div><div class="lc-odds"><div class="lc-o up"><small>COVERS</small><b>+${hit}</b></div><div class="lc-o dn"><small>MISSES</small><b>${miss < 0 ? "−" + Math.abs(miss) : 0}</b></div></div><button type="button" class="lc-go">🔒 LOCK IT</button><button type="button" class="lc-no">Not this one</button></div>`;
+  requestAnimationFrame(() => m.classList.add("show"));
+}
+function setLock(gameId, opts = {}) {
+  gameId = GAMES.find((g) => String(g.id) === String(gameId))?.id ?? gameId;
+  const s = getManagerState(currentManager);
+  const target = s.picks[gameId];
+  if (!target || isGameLocked(GAMES.find((g) => g.id === gameId))) return;
+  if (target.mode !== "ATS") { lotwToast("Locks are spread picks only."); return; }
+  // A lock already kicked off is final.
+  const held = lockedGameOf(s);
+  if (held && held.id !== gameId && isGameLocked(held)) { lotwToast("Your lock's game has kicked off, so it stays."); return; }
+  const turnOn = !target.lock;
+  if (turnOn && !opts.confirmed) { lockConfirm(GAMES.find((g) => g.id === gameId), target); return; }
+  const now = Date.now();
+  for (const [id, p] of Object.entries(s.picks)) {
+    if (p?.lock && String(id) !== String(gameId)) { const { lock, ...rest } = p; s.picks[id] = { ...rest, updatedAt: now }; }
+  }
+  const { lock, ...rest } = target;
+  s.picks[gameId] = turnOn ? { ...rest, lock: true, updatedAt: now } : { ...rest, updatedAt: now };
+  setManagerState(currentManager, s);
+  try { localStorage.setItem("brochiefs_lotw_seen", "1"); } catch {}
+  track(turnOn ? "lock-set" : "lock-cleared", { event: true, d: String(gameId) });
+  pushManagerState(currentManager, s).then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
+  withScrollPreserved(renderPicksScreen);
+}
+function renderLockBar(state) {
+  let bar = document.getElementById("lotw-bar");
+  const lr = lockRule();
+  if (!lr) { bar?.remove(); return; }
+  if (!bar) { bar = document.createElement("button"); bar.type = "button"; bar.id = "lotw-bar"; gamesList.before(bar); bar.addEventListener("click", () => { const g = lockedGameOf(getManagerState(currentManager)); const el = g ? gamesList.querySelector(`[data-game-id="${g.id}"]`) : gamesList.querySelector(".game-submitted:not(.game-locked)"); el?.scrollIntoView({ behavior: "smooth", block: "center" }); el?.classList.add("lotw-ping"); setTimeout(() => el?.classList.remove("lotw-ping"), 1600); }); }
+  const g = lockedGameOf(state), pk = g ? state.picks[g.id] : null;
+  let fresh = false; try { fresh = !localStorage.getItem("brochiefs_lotw_seen"); } catch {}
+  bar.className = `lotw-bar${g ? " on" : ""}`;
+  bar.innerHTML = g
+    ? `<span class="lb-k">🔒 YOUR LOCK</span><span class="lb-v"><img src="${logoUrl(pk.team === g.away ? g.awayId : g.homeId)}" alt=""><b>${escapeCd(lockPickText(g, pk))}</b><small>${pointValue(g, pk.team, pk.mode)} + ${lr.hit} if it hits</small></span><span class="lb-t">${lockLabel(lr)}</span>`
+    : `<span class="lb-k">🔒 LOCK OF THE WEEK${fresh ? ` <i>NEW</i>` : ""}</span><span class="lb-v"><b>No lock yet</b><small>Make a spread pick, then tap 🔒 under it</small></span><span class="lb-t">${lockLabel(lr)}</span>`;
+}
+
 function renderPicksScreen() {
   markUsable();
   const state = getManagerState(currentManager);
@@ -2534,6 +2715,7 @@ function renderPicksScreen() {
       "game-card" +
       (gameLocked ? " game-locked" : "") +
       (pick ? " game-submitted" : "") +
+      (pick?.lock && lockRule() ? " lotw" : "") +
       (game.id === nextUpId ? " next-up" : "") +
       (justSavedGameId === game.id ? " just-saved" : "");
 
@@ -2561,11 +2743,11 @@ function renderPicksScreen() {
       statusLabel = "UPDATED ✓";
       statusClass = "submitted updated";
     } else if (pick) {
-      // The chip carries the bet, so ten cards scan as ten stakes:
-      // who, which way, and what it pays.
+      // A saved open pick shows no chip: the highlighted button already
+      // says which way, and the header keeps room for 🔒 and i.
       const teamId = pick.team === game.away ? game.awayId : game.homeId;
       const way = pick.mode === "SU" ? "WIN" : (pick.team === game.favorite ? `-${game.spread}` : `+${game.spread}`);
-      statusLabel = `<img class="gs-logo" src="${logoUrl(teamId)}" alt="${pick.team}"><span class="gs-bet">${way}</span><b>${pointValue(game, pick.team, pick.mode)}<i>PT</i></b> ✓`;
+      statusLabel = `<img class="gs-logo" src="${logoUrl(teamId)}" alt="${pick.team}"><span class="gs-bet">${way}</span><b>${pickWorth(game, pick)}<i>PT</i></b>${pick.lock && lockRule() ? " 🔒" : " ✓"}`;
       statusClass = "submitted bet";
     }
 
@@ -2577,7 +2759,7 @@ function renderPicksScreen() {
     card.innerHTML = `
       <div class="game-meta">
         <span class="game-meta-left"><span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>${gameLocked || !note || note.startsWith("⚠") ? "" : `<span class="game-stamp">${note}</span>`}</span>
-        <span class="game-meta-right"><button type="button" class="insights-btn" data-insights="${game.id}" aria-label="Insights for ${game.awayShort} at ${game.homeShort}">INFO</button><span class="game-status ${statusClass}">${statusLabel}</span></span>
+        <span class="game-meta-right">${lockRowHtml(game, pick, gameLocked)}<button type="button" class="insights-btn ic" data-insights="${game.id}" aria-label="Info for ${game.awayShort} at ${game.homeShort}">i</button>${statusClass === "submitted bet" ? "" : `<span class="game-status ${statusClass}">${statusLabel}</span>`}</span>
       </div>
       ${gameLocked ? lockedResultHtml(game, pick, finalRes, isLive ? g : null) : matchupCardsHtml(game, pick)}
       ${gameLocked || !note || !note.startsWith("⚠") ? "" : `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>`}
@@ -2595,12 +2777,13 @@ function renderPicksScreen() {
         const prev = s.picks[game.id];
         const changed = !!prev && (prev.team !== team || prev.mode !== mode);
         if (prev && !changed) return; // same button again: nothing to save
-        s.picks[game.id] = { team, mode, updatedAt: Date.now() };
+        s.picks[game.id] = { team, mode, updatedAt: Date.now(), ...(prev?.lock && mode === "ATS" ? { lock: true } : {}) };
         setManagerState(currentManager, s);
         pushManagerState(currentManager, s).then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
         justSavedGameId = game.id;
         justSavedKind = changed ? "updated" : "saved";
         track(changed ? "pick-updated" : "pick-saved", { event: true });
+        if (!changed) setTimeout(() => maybeLockReminder("complete"), 900);
         withScrollPreserved(renderPicksScreen);
         setTimeout(() => {
           if (justSavedGameId !== game.id || syncStatus === "failed") return;
@@ -2610,8 +2793,10 @@ function renderPicksScreen() {
       });
     });
 
+    card.querySelector(".lotw-btn")?.addEventListener("click", () => setLock(game.id));
     gamesList.appendChild(card);
   });
+  renderLockBar(state);
 
   const tiebreakerGame = tiebreakerGameOf();
   const tiebreakerLocked = isGameLocked(tiebreakerGame);
@@ -2683,7 +2868,7 @@ function updatePicksProgress(state) {
   for (const g of GAMES) {
     const pick = state.picks[g.id];
     if (!pick) continue;
-    const worth = pointValue(g, pick.team, pick.mode);
+    const worth = pickWorth(g, pick);
     if (results[g.id]) banked += scorePick(g, pick, results[g.id]);
     else openPts += worth;
     maxPts += results[g.id] ? scorePick(g, pick, results[g.id]) : worth;
@@ -2850,6 +3035,7 @@ async function renderScoreboard() {
   renderRecap(); // memoised on week and viewer, so this is cheap when nothing changed
   maybeShowBoner();
   maybeShowQotw();
+  maybeLockIntro();
   if (bootBoard) {
     const b = bootBoard; bootBoard = null;
     if (!Object.keys(latestLive).length && b.week === currentWeek) { latestLive = b.live; latestLiveWeek = b.week; }
@@ -3053,7 +3239,7 @@ function sideStandings(pot, resOf = sideResultOf) {
       // No pick: still hidden while open; after the close, a game added
       // later that they never picked scores nothing.
       if (!pick) return [live && sideOpen(pot) ? { g, pick: null, cls: "hidden", txt: "?" } : { g, pick: null, cls: "miss", txt: "—" }];
-      const out = [cell(g, pick, null, pointValue(g, pick.team, pick.mode), (sc) => scorePick(g, pick, sc))];
+      const out = [cell(g, pick, null, pickWorth(g, pick), (sc) => scorePick(g, pick, sc))];
       // An over/under is settled at the final only: 0-0 is under every
       // total, so counting it live would hand everyone points at kickoff.
       if (g.total != null && pick.ou) out.push(resOf(g) ? cell(g, pick, pick.ou, SIDE_OU_PTS, (sc) => scoreOu(g, pick.ou, sc)) : { g, pick, ou: pick.ou, cls: "open", txt: String(SIDE_OU_PTS) });
@@ -3123,7 +3309,7 @@ function sideBoardHtml(pot, st, out, me) {
   // A player's line (place, name, guess, total), then their picks in a row
   // of equal columns lined up under the game headers.
   // The most a player can still reach: everything not already lost.
-  const reach = (r) => r.cells.reduce((t, c) => t + (c.pick && c.cls !== "miss" ? (c.ou ? SIDE_OU_PTS : pointValue(c.g, c.pick.team, c.pick.mode)) : 0), 0);
+  const reach = (r) => r.cells.reduce((t, c) => t + (c.pick && c.cls !== "miss" ? (c.ou ? SIDE_OU_PTS : pickWorth(c.g, c.pick)) : 0), 0);
   const scale = Math.max(1, ...rows.map(reach));
   const body = rows.map((r) => { const rk = rankOf(r), lead = rk === 1 && total(r) > 0; return `<div class="ssg-row${r.name === me ? " me" : ""}${out.winners.includes(r.name) || (!out.final && lead) ? " lead" : ""} rk${Math.min(rk, 4)}">
       <div class="ssg-who"><i class="ssg-rk">${tied(r) ? "T" : ""}${rk}</i><span class="ssg-av" style="--accent:${accentFor(r.name)}">${esc(avatarOverrides[r.name] || shown(r.name)[0])}</span><span class="ssg-nm">${esc(shown(r.name))}${out.winners.includes(r.name) ? " 🏆" : ""}</span>${Number.isFinite(r.tb) ? `<small>TB ${r.tb}</small>` : ""}<b>${total(r)}<em>${out.final ? "final" : !r.fly ? "" : r.pts ? `${r.pts} locked` : "live"}</em></b></div>
@@ -3973,7 +4159,7 @@ function renderLiveScores(live, cloudPicks) {
       let myPill = "";
       const myPick = currentManager ? cloudPicks[currentManager]?.picks?.[game.id] : null;
       if (myPick) {
-        const worth = pointValue(game, myPick.team, myPick.mode);
+        const worth = pickWorth(game, myPick);
         const mine = myPick.team === game.away ? game.awayShort : game.homeShort;
         const isFav = myPick.team === game.favorite;
         const terms = myPick.mode === "ATS" ? `${isFav ? "-" : "+"}${game.spread}` : "SU";
@@ -4003,7 +4189,8 @@ function renderLiveScores(live, cloudPicks) {
         myPill = `<span class="stake ${tone}" title="You took ${mine} ${terms} for ${worth} pt">${face}</span>`;
       }
       return `
-        <div class="${cls}" data-game="${game.id}" role="button" tabindex="0" aria-label="Open ${game.awayShort} at ${game.homeShort}">
+        <div class="${cls}${myPick?.lock && lockRule() ? " lk" : ""}" data-game="${game.id}" role="button" tabindex="0" aria-label="Open ${game.awayShort} at ${game.homeShort}">
+          ${myPick?.lock && lockRule() ? `<i class="bug-lk" title="Your lock of the week">🔒</i>` : ""}
           <div class="bug-head">
             <span class="bug-gnum">G${game.id}</span>
             <span class="bug-status">${statusText}</span>${tvTag}
@@ -4062,7 +4249,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
       const pick = state.picks[game.id];
 
       if (!gameStarted) {
-        return `<td class="pick-cell hidden-pick">🔒</td>`;
+        return `<td class="pick-cell hidden-pick">•••</td>`;
       }
       if (!pick) {
         // The game has kicked off and nothing was submitted, so this is a
@@ -4094,7 +4281,8 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
       const pushed = pts !== null && pick.mode === "ATS" && resultOutcome(game, results[game.id])?.push;
       const pill = pts === null ? "" : pushed ? `<span class="pick-pill push">P</span>` : pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
       const under = pts === null ? spreadTag : pill;
-      return `<td class="pick-cell ${cls}" title="${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}"><span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
+      const lkCell = pick.lock && lockRule();
+      return `<td class="pick-cell ${cls}${lkCell ? " lk" : ""}" title="${lkCell ? "LOCK · " : ""}${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}">${lkCell ? `<i class="pick-lk">🔒</i>` : ""}<span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
     }).join("");
 
     // How far off, not what they said. A column of raw guesses is a column
@@ -4105,7 +4293,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
     const tbRaw = String(state.tiebreaker ?? "").trim();
     const tbGuess = tbRaw === "" ? null : Number(tbRaw);
     let tbCell;
-    if (!tbOpen) tbCell = "🔒";
+    if (!tbOpen) tbCell = "•••";
     else if (tbGuess === null || !Number.isFinite(tbGuess)) tbCell = `<span class="tb-off none">–</span>`;
     else if (tbActual === null) tbCell = `<span class="tb-off pending" title="Guessed ${tbGuess}">${tbGuess}</span>`;
     else {
@@ -4157,7 +4345,7 @@ function outReason(name, results, all = lastGoodCloudPicks || {}) {
   const open = GAMES.filter((g) => !results[g.id]);
   const others = MANAGERS.filter((n) => n !== name);
   let max = now[name];
-  for (const g of open) { const p = pickOf(name, g); if (p) max += pointValue(g, p.team, p.mode); }
+  for (const g of open) { const p = pickOf(name, g); if (p) max += pickWorth(g, p); }
   const banked = others.filter((n) => now[n] > max).sort((a, b) => now[b] - now[a])[0];
   if (banked) return `Max ${max} can't reach ${shown(banked)}'s ${now[banked]} already banked.`;
   const best = { ...now };
@@ -4738,7 +4926,7 @@ function playerBreakdownHtml(name, state, results, live) {
     let pickHtml, ptsHtml = `<span class="rd-pts none">–</span>`;
     let pickedSide = null;
     if (!locked) {
-      pickHtml = `<span class="rd-pickcard hidden-pick">🔒 HIDDEN</span>`;
+      pickHtml = `<span class="rd-pickcard hidden-pick">HIDDEN</span>`;
     } else if (!pick) {
       pickHtml = `<span class="rd-pickcard nopick${isFinal ? " lost" : ""}">NO PICK</span>`;
       // A kicked-off game with nothing submitted scores nothing, so it is
@@ -4749,24 +4937,25 @@ function playerBreakdownHtml(name, state, results, live) {
       pickedSide = pick.team === game.away ? "away" : "home";
       const pickId = pick.team === game.away ? game.awayId : game.homeId;
       const short = pick.team === game.away ? game.awayShort : game.homeShort;
-      const worth = pointValue(game, pick.team, pick.mode);
+      const worth = pickWorth(game, pick);
       // The stake lives inside the mode pill rather than in its own line
       // of text, because the PTS column beside it already says what the
       // pick was worth once the game is decided.
       const terms = pick.mode === "ATS" ? `${pick.team === game.favorite ? "-" : "+"}${game.spread}` : "SU";
       const mode = `<span class="rd-mode ${pick.mode === "ATS" ? "ats" : "su"}">${terms}<span class="rd-mode-pt">${worth}PT</span></span>`;
-      pickHtml = `<span class="rd-pickcard"><span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}${pickTimeLabel(pick) ? `<span class="rd-when">${pickTimeLabel(pick)}</span>` : ""}</span></span>`;
+      const lk = pick.lock && lockRule();
+      pickHtml = `<span class="rd-pickcard${lk ? " lk" : ""}">${lk ? `<span class="rd-lock">🔒 LOCK</span>` : ""}<span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}${pickTimeLabel(pick) ? `<span class="rd-when">${pickTimeLabel(pick)}</span>` : ""}</span></span>`;
       const pts = scorePick(game, pick, results[game.id]);
       if (pts !== null) {
         banked += pts;
         const pushed = pick.mode === "ATS" && resultOutcome(game, results[game.id])?.push;
         if (!pushed) { if (pts > 0) wins += 1; else losses += 1; }
-        ptsHtml = pushed ? `<span class="rd-pts push">PUSH</span>` : pts > 0 ? `<span class="rd-pts ${ptsValueTier(pts)}">+${pts}</span>` : `<span class="rd-pts miss">0</span>`;
+        ptsHtml = pushed ? `<span class="rd-pts push">PUSH</span>` : pts > 0 ? `<span class="rd-pts ${ptsValueTier(pts)}">+${pts}</span>` : `<span class="rd-pts miss">${pts < 0 ? "−" + Math.abs(pts) : "0"}</span>`;
       } else if (isLive && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore) && (g.awayScore || g.homeScore)) {
         const prov = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
         liveOpen += 1;
         if (prov > 0) { liveCovering += 1; liveFly += worth; ptsHtml = `<span class="rd-pts lean ${ptsValueTier(worth)}">+${worth}</span>`; }
-        else ptsHtml = `<span class="rd-pts lean miss">0</span>`;
+        else ptsHtml = `<span class="rd-pts lean miss">${prov < 0 ? "−" + Math.abs(prov) : "0"}</span>`;
       }
     }
     if (!isFinal && !isLive && sway[game.id] && ptsHtml.includes("rd-pts none")) ptsHtml = swayHtml(sway[game.id]);
@@ -4856,7 +5045,7 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
         if (pick.mode === "ATS" && o?.push) continue;
         if (scorePick(g, pick, results[g.id]) > 0) w += 1; else l += 1;
       } else if (pick?.hidden) unseen = true;
-      else if (pick) max += pointValue(g, pick.team, pick.mode);
+      else if (pick) max += pickWorth(g, pick);
     }
     const lead = row.submittedCount < GAMES.length ? `${picked} · ` : "";
     return `${lead}${w}-${l} · <span class="rank-max"${unseen ? ` title="Some picks are hidden until their games kick off"` : ""}>MAX <b>${unseen ? "?" : max}</b></span>${inFlight ? ` · <span class="rank-inflight">+${inFlight} LIVE</span>` : ""}`;
@@ -5024,7 +5213,7 @@ const sh2h = { a: null, b: null };
 // Pure: everything the panel shows for two names, from the sealed weeks
 // (with their ledgers when the detail has loaded) and the pot's ledger.
 function seasonH2H(a, b, weeks, ledger, pot) {
-  const mk = () => ({ pts: 0, wk: 0, hits: 0, misses: 0, atsW: 0, atsL: 0, dogs: 0, best: null, tbSum: 0, tbN: 0, blanks: 0 });
+  const mk = () => ({ pts: 0, wk: 0, hits: 0, misses: 0, atsW: 0, atsL: 0, dogs: 0, best: null, tbSum: 0, tbN: 0, blanks: 0, lockW: 0, lockL: 0 });
   const s = { [a]: mk(), [b]: mk() };
   const meetings = [];
   let same = 0, both = 0, splitA = 0, splitB = 0, splitN = 0, splitPtsA = 0, splitPtsB = 0, swing = null;
@@ -5048,6 +5237,7 @@ function seasonH2H(a, b, weeks, ledger, pot) {
       if (l.result === "hit") m.hits += 1; else if (l.result === "miss") m.misses += 1;
       if (l.mode === "ATS") { if (l.result === "hit") m.atsW += 1; else if (l.result === "miss") m.atsL += 1; }
       if (l.mode === "SU" && l.team !== l.favorite && l.result === "hit") m.dogs += 1;
+      if (l.lock) { if (l.result === "hit") m.lockW += 1; else if (l.result === "miss") m.lockL += 1; }
     }
     for (const x of la) {
       const y = lb.find((l) => l.g === x.g);
@@ -5119,6 +5309,7 @@ function renderSeasonH2H() {
       ["PICKS RIGHT", `${A.hits}-${A.misses}`, `${B.hits}-${B.misses}`, pct(A.hits, A.misses) || 0, pct(B.hits, B.misses) || 0],
       ["ATS", `${A.atsW}-${A.atsL}`, `${B.atsW}-${B.atsL}`, pct(A.atsW, A.atsL) || 0, pct(B.atsW, B.atsL) || 0],
       ["DOG HITS", A.dogs, B.dogs, A.dogs, B.dogs],
+      ...(A.lockW + A.lockL + B.lockW + B.lockL ? [["🔒 LOCKS", `${A.lockW}-${A.lockL}`, `${B.lockW}-${B.lockL}`, A.lockW, B.lockW]] : []),
       ["NO SHOWS", A.blanks, B.blanks, A.blanks, B.blanks, true],
     ] : []),
     ["TB MISS", A.tbN ? (A.tbSum / A.tbN).toFixed(1) : "–", B.tbN ? (B.tbSum / B.tbN).toFixed(1) : "–", A.tbN ? A.tbSum / A.tbN : Infinity, B.tbN ? B.tbSum / B.tbN : Infinity, true],
@@ -5567,7 +5758,7 @@ function weekWinChances(cloudPicks, results, live) {
   // side at random against the spread for 2 points. Scored as a miss it
   // handed the viewer the week, since nobody else could score on a game
   // that had not started.
-  const picks = MANAGERS.map((n) => GAMES.map((g) => { const p = cloudPicks[n]?.picks?.[g.id]; return !p ? null : p.hidden ? { hidden: true, mode: "ATS", pts: 2 } : { team: p.team, mode: p.mode, pts: pointValue(g, p.team, p.mode) }; }));
+  const picks = MANAGERS.map((n) => GAMES.map((g) => { const p = cloudPicks[n]?.picks?.[g.id]; return !p ? null : p.hidden ? { hidden: true, mode: "ATS", pts: 2 } : { team: p.team, mode: p.mode, lock: p.lock, pts: pickWorth(g, p) }; }));
   const anyHidden = picks.some((row) => row.some((p) => p?.hidden));
   const wins = new Array(MANAGERS.length).fill(0);
   const score = new Array(MANAGERS.length);
@@ -5679,7 +5870,7 @@ function openPlayerChance(name) {
   const pc = (x) => winChanceLabel(x, { alive: true });
   const short = (g, t) => t === g.home ? g.homeShort : g.awayShort;
   const terms = (g, pk) => pk.mode === "SU" ? "to win" : `${pk.team === g.favorite ? "-" : "+"}${g.spread}`;
-  const maxOf = (n) => { let m = rows.find((r) => r.name === n)?.score || 0; for (const g of GAMES) { const pk = picks[n]?.picks?.[g.id]; if (pk && !results[g.id]) m += pointValue(g, pk.team, pk.mode); } return m; };
+  const maxOf = (n) => { let m = rows.find((r) => r.name === n)?.score || 0; for (const g of GAMES) { const pk = picks[n]?.picks?.[g.id]; if (pk && !results[g.id]) m += pickWorth(g, pk); } return m; };
   const top = rows[0]?.score ?? 0;
   const leaders = rows.filter((r) => r.score === top).map((r) => r.name);
   const myMax = maxOf(name);
@@ -6077,7 +6268,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     div.innerHTML = `
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
-        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span></span><span class="ranking-lock">${row.subline}</span></span>
+        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span>${rankLockHtml(row)}</span><span class="ranking-lock">${row.subline}</span></span>
         <i class="rank-live mid${row.inFlight > 0 ? " on" : row.inFlight === 0 ? " zero" : ""}" title="${row.inFlight != null ? "Points from live games if they ended now" : "No games live"}">${row.inFlight != null ? `+${row.inFlight}` : "–"}</i>
         ${(() => {
           // The week at a glance: one square per game in kickoff order.
@@ -6087,7 +6278,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
           const strip = gamesByKickoff().map((g) => {
             const pk = row.state.picks?.[g.id];
             if (!pk) return `<i class="sq none"></i>`;
-            const big = pointValue(g, pk.team, pk.mode) >= 3 ? " big" : "";
+            const big = (pickWorth(g, pk) >= 3 ? " big" : "") + (pk.lock && lockRule() ? " lk" : "");
             const fin = results?.[g.id];
             if (fin) { const o = resultOutcome(g, fin); if (pk.mode === "ATS" && o?.push) return `<i class="sq push${big}"></i>`; return `<i class="sq ${scorePick(g, pk, fin) > 0 ? "hit" : "miss"}${big}"></i>`; }
             const l = live?.[g.id];
@@ -6100,7 +6291,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
           // Week over: the picks that cashed, in kickoff order, logo plus points.
           if (weekDone) {
             const hits = gamesByKickoff().map((g) => { const pk = row.state.picks?.[g.id]; const p = pk && results?.[g.id] ? scorePick(g, pk, results[g.id]) : 0; return p > 0 ? { g, pk, p } : null; }).filter(Boolean);
-            return `<span class="rank-hits">${hits.map((h) => `<span class="rh" title="${h.pk.team} ${h.pk.mode === "SU" ? "to win" : "ATS"} · +${h.p}"><img src="${logoUrl(h.pk.team === h.g.home ? h.g.homeId : h.g.awayId)}" alt="" loading="lazy"><b class="t${h.p}">+${h.p}</b></span>`).join("") || `<em>No hits</em>`}</span>`;
+            return `<span class="rank-hits">${hits.map((h) => `<span class="rh${h.pk.lock && lockRule() ? " lk" : ""}" title="${h.pk.lock && lockRule() ? "LOCK · " : ""}${h.pk.team} ${h.pk.mode === "SU" ? "to win" : "ATS"} · +${h.p}"><img src="${logoUrl(h.pk.team === h.g.home ? h.g.homeId : h.g.awayId)}" alt="" loading="lazy"><b class="t${h.p}">+${h.p}</b></span>`).join("") || `<em>No hits</em>`}</span>`;
           }
           return pct != null ? `<span class="rank-wp${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>` : `<span class="ranking-dots" aria-hidden="true"></span>`;
         })()}
@@ -6201,7 +6392,7 @@ function renderPicksCountdown() {
   const picked = st ? GAMES.filter((g) => st.picks[g.id]).length : 0;
   const tbSet = !!(st && String(st.tiebreaker ?? "").trim());
   const chip = (ok, txt) => `<span class="cd-chip ${ok ? "ok" : "miss"}">${txt} ${ok ? "✓" : "!"}</span>`;
-  const riding = st ? GAMES.reduce((n, g) => n + (st.picks[g.id] ? pointValue(g, st.picks[g.id].team, st.picks[g.id].mode) : 0), 0) : 0;
+  const riding = st ? GAMES.reduce((n, g) => n + (st.picks[g.id] ? pickWorth(g, st.picks[g.id]) : 0), 0) : 0;
   const status = st ? `<span class="cd-card"><em>YOUR CARD</em><span class="cd-riding"><b>${riding}</b><i>PT<br>RIDING</i></span><span class="cd-status">${chip(picked === GAMES.length, `${picked}/${GAMES.length}`)}${chip(tbSet, "TB")}</span></span>` : "";
   // Under an hour the whole slate is about to lock, so the strip goes hot.
   el.classList.remove("hidden"); el.classList.toggle("soon", cd.ms < 3600000);
@@ -6457,7 +6648,7 @@ function renderGridCheck() {
   const state = getManagerState(currentManager);
   const picked = GAMES.filter((g) => state.picks[g.id]).length;
   const tb = String(state.tiebreaker ?? "").trim();
-  const riding = GAMES.reduce((n, g) => n + (state.picks[g.id] ? pointValue(g, state.picks[g.id].team, state.picks[g.id].mode) : 0), 0);
+  const riding = GAMES.reduce((n, g) => n + (state.picks[g.id] ? pickWorth(g, state.picks[g.id]) : 0), 0);
   const lockAt = weekLockTime() ?? Math.min(...GAMES.map((g) => new Date(g.kickoff).getTime()));
   const ms = Math.max(0, lockAt - Date.now());
   const total = Math.floor(ms / 1000);
@@ -7117,13 +7308,14 @@ async function openInsights(gameId) {
     if (mine) {
       const pts = scorePick(game, mine, res), pushed = mine.mode === "ATS" && out?.push;
       const st = pushed ? "push" : pts > 0 ? "up" : "down";
-      mineHtml = `<div class="gc-mine ${st}"><span class="gc-mtag">YOUR PICK</span>${lg(mine.team === game.away ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(abOf(mine))} ${esc(termsOf(mine))}</b><span class="gc-msay"><i></i>${pushed ? "PUSH · 0 PT" : pts > 0 ? `CASHED · +${pts} PT${pts === 1 ? "" : "S"}` : "MISSED · 0 PT"}</span></div>`;
+      const lkm = mine.lock && lockRule();
+      mineHtml = `<div class="gc-mine ${st}${lkm ? " lk" : ""}"><span class="gc-mtag">${lkm ? "🔒 YOUR LOCK" : "YOUR PICK"}</span>${lg(mine.team === game.away ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(abOf(mine))} ${esc(termsOf(mine))}</b><span class="gc-msay"><i></i>${pushed ? "PUSH · 0 PT" : pts > 0 ? `CASHED · +${pts} PT${pts === 1 ? "" : "S"}${lkm ? " WITH THE LOCK" : ""}` : `MISSED · ${pts < 0 ? "−" + Math.abs(pts) : 0} PT${lkm && pts < 0 ? " (LOCK)" : ""}`}</span></div>`;
     }
     const room = MANAGERS.map((name) => ({ name, pick: pickOf(name) })).filter((r) => r.pick).map((r) => { const pts = scorePick(game, r.pick, res); const pushed = r.pick.mode === "ATS" && out?.push; return { ...r, pts, state: pushed ? "push" : pts > 0 ? "up" : "down" }; });
     let roomHtml = "";
     if (room.length) {
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}${r.pick.lock && lockRule() ? `<i class="gc-rlk">🔒</i>` : ""}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : r.pts < 0 ? "−" + Math.abs(r.pts) : "0"}</i></li>`; };
       const up = room.filter((r) => r.state === "up").sort((x, y) => y.pts - x.pts), down = room.filter((r) => r.state === "down"), push = room.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -7247,7 +7439,7 @@ async function openInsights(gameId) {
       const mySide = mine.team === game.away ? "away" : "home";
       const fav = mine.team === game.favorite;
       const terms = mine.mode === "SU" ? "TO WIN" : `${fav ? "-" : "+"}${game.spread}`;
-      const worth = pointValue(game, mine.team, mine.mode);
+      const worth = pickWorth(game, mine);
       const mineS = mySide === "away" ? aS : hS, oppS = mySide === "away" ? hS : aS;
       const margin = (mineS - oppS) + (mine.mode === "SU" ? 0 : (fav ? -1 : 1) * Number(game.spread));
       const res = { awayScore: aS, homeScore: hS };
@@ -7255,7 +7447,8 @@ async function openInsights(gameId) {
       const cash = pushed ? "push" : scorePick(game, mine, res) > 0 ? "up" : "down";
       const by = Math.abs(margin) % 1 ? Math.abs(margin).toFixed(1) : String(Math.abs(margin));
       const say = cash === "push" ? "PUSH RIGHT NOW" : cash === "up" ? (mine.mode === "SU" ? `WINNING BY ${by}` : `COVERING BY ${by}`) : (mine.mode === "SU" ? (margin === 0 ? "TIED" : `DOWN ${by}`) : `NEEDS ${by} MORE`);
-      mineHtml = `<div class="gc-mine ${cash}"><span class="gc-mtag">YOUR PICK</span>${lg(mySide === "away" ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(mySide === "away" ? A : H)} ${esc(terms)}</b><span class="gc-mpts">${worth} PT</span><span class="gc-msay"><i></i>${esc(say)}</span></div>`;
+      const lkm = mine.lock && lockRule();
+      mineHtml = `<div class="gc-mine ${cash}${lkm ? " lk" : ""}"><span class="gc-mtag">${lkm ? "🔒 YOUR LOCK" : "YOUR PICK"}</span>${lg(mySide === "away" ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(mySide === "away" ? A : H)} ${esc(terms)}</b><span class="gc-mpts">${lkm ? `${pointValue(game, mine.team, mine.mode)}+${lockRule().hit}` : worth} PT</span><span class="gc-msay"><i></i>${esc(say)}${lkm && cash === "down" && lockRule().miss < 0 ? ` · LOCK ${lockRule().miss}` : ""}</span></div>`;
     }
     // At a break, a mini box score replaces down and distance.
     const bsTeams = summaryRaw?.boxscore?.teams || [];
@@ -7517,10 +7710,10 @@ async function openInsights(gameId) {
         const fav = r.pick.team === game.favorite;
         const terms = r.pick.mode === "SU" ? "WIN" : `${fav ? "-" : "+"}${game.spread}`;
         const state = r.pick.mode === "ATS" && pushed ? "push" : scorePick(game, r.pick, res) > 0 ? "up" : "down";
-        return { ...r, side, terms, state, worth: pointValue(game, r.pick.team, r.pick.mode) };
+        return { ...r, side, terms, state, worth: pickWorth(game, r.pick) };
       });
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}${r.pick.lock && lockRule() ? `<i class="gc-rlk">🔒</i>` : ""}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = rows.filter((r) => r.state === "up"), down = rows.filter((r) => r.state === "down"), push = rows.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -8171,7 +8364,7 @@ function renderH2H() {
     for (const g of GAMES) {
       const pick = st.picks[g.id];
       if (results[g.id]) { if (pick) { const o = resultOutcome(g, results[g.id]); if (!(pick.mode === "ATS" && o?.push)) { if (scorePick(g, pick, results[g.id]) > 0) w += 1; else l += 1; } } }
-      else if (pick) { max += pointValue(g, pick.team, pick.mode); left += 1; }
+      else if (pick) { max += pickWorth(g, pick); left += 1; }
     }
     return { st, w, l, max, left, fly: inFlightPoints(st.picks, live) };
   };
@@ -8188,7 +8381,7 @@ function renderH2H() {
       const p = scorePick(g, pick, { awayScore: lv.awayScore, homeScore: lv.homeScore });
       return p > 0 ? { cls: "live-hit", txt: `+${p}` } : { cls: "live-miss", txt: "0" };
     }
-    return { cls: "open", txt: `${pointValue(g, pick.team, pick.mode)}` };
+    return { cls: "open", txt: `${pickWorth(g, pick)}` };
   };
   // Status comes from the feed's own state, never from a score: a game is
   // live only while ESPN says "in", final only once it is in the results.
@@ -8269,7 +8462,7 @@ function renderH2H() {
     return `<div class="h2x-mid"><span class="h2x-teams">${esc(abbr(g, "away"))} <b>${sc}</b> ${esc(abbr(g, "home"))}</span><small class="h2x-when ${st}">${st === "live" ? "<u></u>" : ""}${when}</small></div>`;
   };
   const pickCell = (g, name, pick, side) => {
-    if (hiddenFor(name, g)) return `<div class="h2x-pick ${side} locked"><span class="h2x-tm">🔒 Hidden</span><small>until kickoff</small></div>`;
+    if (hiddenFor(name, g)) return `<div class="h2x-pick ${side} locked"><span class="h2x-tm">Hidden</span><small>until kickoff</small></div>`;
     if (!pick) return `<div class="h2x-pick ${side} none"><span class="h2x-tm">No pick</span><small><b class="h2x-pts none">0</b></small></div>`;
     const st = stateOf(g, pick);
     const id = pick.team === g.home ? g.homeId : g.awayId;
@@ -8535,6 +8728,12 @@ let renderRecap = function () {
     cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `${chips(t.who)}<span class="recap-pick">said ${esc(guess)}</span>`,
       `${esc(t.matchup)} came in at ${t.actual}`, t.off === 0 ? "🎯" : `${t.off}`, t.off === 0 ? "EXACT" : "OFF", mine(t.who)]);
   }
+  // Lock of the week: who hit theirs, who missed, the best lock leading.
+  if (r.locks && (r.locks.list || []).length) {
+    const L = r.locks, top = L.list[0], n = L.list.length;
+    cards.push(["🔒 LOCK OF THE WEEK", "lk", logo(top.id, top.short), `${chips(L.hit.length ? L.hit : top.name)}<span class="recap-pick">${L.hit.length ? `hit ${L.hit.length === 1 ? "their lock" : "locks"}` : "nobody hit"}</span>`,
+      `${L.hit.length} hit · ${L.miss.length} missed${L.push.length ? ` · ${L.push.length} pushed` : ""}${L.none.length ? ` · ${L.none.length} no lock` : ""}`, `${L.hit.length}/${n}`, "HIT", mine(L.hit)]);
+  }
   const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}`;
   toggle.classList.remove("hidden");
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
@@ -8557,6 +8756,7 @@ let renderRecap = function () {
 // that game, everyone's week score, or every tiebreaker guess. Read from
 // the sealed week, so it is exactly what was graded.
 var recapOpen = new Set(); // var: the board can draw the replay before this line runs
+const last_locks = (sum) => sum?.recap?.locks || null;
 function recapDetail(sum, kind) {
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   // Picks come with the detailed weeks; until they land, ask for them and say so.
@@ -8566,6 +8766,12 @@ function recapDetail(sum, kind) {
   const rows = (sum.rows || []).filter((r) => r && r.name);
   if (!rows.length) return `<div class="rm-none">Details aren't saved for this week.</div>`;
   const nm = (n) => `<b class="${n === currentManager ? "me" : ""}">${esc(shown(n))}</b>`;
+  if (kind === "lk") {
+    const L = (sum.recap || {}).locks || last_locks(sum);
+    if (!L || !(L.list || []).length) return `<div class="rm-none">No locks this week.</div>`;
+    const lg = (id) => (id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : "");
+    return `<div class="rm-h">EVERY LOCK</div>${L.list.map((x) => `<div class="rm-side ${x.result === "hit" ? "hit" : x.result === "push" ? "" : "miss"}"><span>${lg(x.id)}${esc(x.short)} ${esc(x.line === "SU" ? "to win" : x.line)}</span><i>${x.result === "hit" ? `+${x.pts} lock` : x.result === "push" ? "push" : `${x.pts < 0 ? "−" + Math.abs(x.pts) : "0"} lock`}</i><div class="pick-chips">${nameChips([x.name])}</div></div>`).join("")}${L.none.length ? `<div class="rm-foot">No lock: ${L.none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}`;
+  }
   if (kind === "move") {
     // Season standings after this week, with how far each player moved
     // from the week before. Ties share a place.
@@ -8706,7 +8912,7 @@ function playerSeason(name) {
   // The detailed weeks (with every pick) when they are loaded, else the plain ones.
   const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete)).slice().sort((a, b) => a.week - b.week);
   const scores = [], picks = [];
-  let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0;
+  let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0, lockW = 0, lockL = 0;
   for (const wk of weeks) {
     const me = (wk.rows || []).find((r) => r.name === name);
     if (!me) continue;
@@ -8716,6 +8922,7 @@ function playerSeason(name) {
       const hit = lg.result === "hit";
       hit ? w++ : l++;
       if (lg.mode === "ATS") { atsN++; if (hit) atsW++; } else { suN++; if (hit) suW++; }
+      if (lg.lock) hit ? lockW++ : lockL++;
       // How many others were on the same team that week.
       const with_ = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team === lg.team)).length;
       const others = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team !== lg.team && x.result === "hit")).length;
@@ -8740,6 +8947,7 @@ function playerSeason(name) {
     avg: scores.length ? scores.reduce((s, x) => s + x.score, 0) / scores.length : null,
     wins: scores.filter((x) => x.won),
     ats: atsN ? Math.round((atsW / atsN) * 100) : null, atsN, atsW, su: suN ? Math.round((suW / suN) * 100) : null, suN, suW,
+    lockW, lockL,
   };
 }
 // Team logos for past weeks: the sealed weeks keep names, not ESPN ids, so
@@ -8825,6 +9033,7 @@ function openPlayerCard(name, again) {
       ${pct != null ? bar("PICKS RIGHT", `${pct}%`, pct / 100, `${d.w}-${d.l}`) : `<div class="plc-sb"><span>PICKS</span><small>Loading every pick…</small></div>`}
       ${d.atsN ? bar("ON SPREAD", `${d.ats}%`, d.ats / 100, `${d.atsN} picks`) : ""}
       ${d.suN ? bar("TO WIN", `${d.su}%`, d.su / 100, `${d.suN} picks`) : ""}
+      ${d.lockW + d.lockL ? bar("🔒 LOCKS", `${d.lockW}-${d.lockL}`, d.lockW / (d.lockW + d.lockL), `${Math.round((100 * d.lockW) / (d.lockW + d.lockL))}%`) : ""}
     </div>
     ${pick(d.best, true)}${pick(d.worst, false)}` : `<div class="plc-none">No finished weeks yet.</div>`}
   </div>`;

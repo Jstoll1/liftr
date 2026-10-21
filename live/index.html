@@ -597,7 +597,9 @@ html, body { overflow-x: hidden; }
   section.panel > .ph.fold-h h2::before { content: "▾"; display: inline-block; width: 1em; margin-right: 6px; color: #8b91a5; font-size: 10px; line-height: 1; vertical-align: 1px; text-align: center; transition: transform .15s; }
   section.panel.folded > .ph.fold-h h2::before { transform: rotate(-90deg); }
   section.panel.folded > :not(.ph) { display: none !important; }
-  section.panel.folded { padding-bottom: 14px; }
+  section.panel.folded { padding-top: 10px; padding-bottom: 10px; }
+  section.panel.folded > .ph { margin-bottom: 0; }
+  .blk-n { position: absolute; top: -7px; right: -6px; min-width: 13px; height: 13px; padding: 0 3px; border-radius: 7px; background: #fff; color: #120c24; font: 800 9px/13px var(--mono); text-align: center; pointer-events: none; }
   .day.fold-h::before { content: "▾"; width: 1em; margin-right: -4px; font-size: 10px; text-align: center; transition: transform .15s; }
   .day.fold-h.shut::before { transform: rotate(-90deg); }
   .day .dn { order: 2; font: 600 11px/1 var(--mono); letter-spacing: 0; text-transform: none; color: var(--dim); }
@@ -700,6 +702,44 @@ html, body { overflow-x: hidden; }
   .vkey summary::-webkit-details-marker { display: none; }
   .vkey summary::before { content: "▸"; } .vkey[open] summary::before { content: "▾"; }
   .vkey .vleg { margin: 8px 0 0; }
+  /* Lock vote, tighter */
+  section.panel.vote { padding: 10px 12px 10px; }
+  section.panel.vote > .ph { margin-bottom: 6px; }
+  .pv-sum { gap: 6px; margin-bottom: 8px; }
+  .pv-sum span { padding: 6px 8px; gap: 2px; }
+  .pv-sum b { font-size: 18px; }
+  .pv-tally { gap: 4px; margin-bottom: 8px; }
+  .pv-tally > div { font-size: 12.5px; }
+  .pv-list { gap: 2px; padding-top: 6px; }
+  .pv-row { padding: 4px 6px; gap: 2px 8px; }
+  .pv-row .av.sm { width: 22px; height: 22px; font-size: 11px; }
+  .pv-st { gap: 0; font-size: 12.5px; }
+  .pv-st small { font-size: 11px; }
+  .pv-st { display: flex !important; align-items: baseline; gap: 8px !important; flex-wrap: wrap; }
+  .pv-row { grid-template-columns: auto 80px minmax(0, 1fr) !important; padding: 3px 6px !important; }
+  .pv-sum span { display: flex !important; align-items: baseline; gap: 6px !important; padding: 6px 10px !important; }
+  .pv-sum b { font-size: 16px !important; }
+  /* Feature grid and game day */
+  .fg { display: grid; grid-template-columns: minmax(84px, 1fr) repeat(var(--days), minmax(0, 34px)) 30px; gap: 4px; align-items: center; margin-top: 8px; }
+  .fg-d { font: 600 10.5px/1 var(--mono); color: var(--dim); text-align: center; } .fg-d.t { color: var(--green); }
+  .fg-l { font-size: 12.5px; color: var(--meta, #c9cddb); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fg-c { display: grid; place-items: center; height: 26px; border-radius: 6px; font: 700 11px/1 var(--mono); font-style: normal; color: #fff; background: rgba(155, 123, 255, var(--a)); }
+  .fg-c.z { background: rgba(255, 255, 255, .03); }
+  .fg-t { font: 800 12px/1 var(--mono); text-align: center; color: var(--text); }
+  .gd { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+  .gd span { display: grid; gap: 3px; padding: 8px; border-radius: 10px; background: rgba(255, 255, 255, .04); font-size: 11px; color: var(--dim); }
+  .gd b { font: 800 17px/1 var(--mono); color: var(--text); }
+  .gd-bars { display: flex; align-items: flex-end; gap: 3px; height: 54px; margin-top: 10px; }
+  .gd-bars i { flex: 1; min-height: 2px; border-radius: 3px 3px 0 0; background: #9b7bff; }
+  .gd-ax { display: flex; justify-content: space-between; font: 600 10px/1 var(--mono); color: var(--dim); margin-top: 4px; }
+  .gd-f { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .gd-f span { padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; color: var(--meta, #c9cddb); }
+  .gd-f b { color: var(--text); margin-left: 4px; }
+  @media (max-width: 420px) { .gd { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  /* A folded panel is just its title bar. */
+  section.panel.folded { padding: 8px 12px !important; }
+  section.panel.folded > .ph { margin: 0 !important; min-height: 0; }
+  section.panel.folded > .ph h2 { line-height: 1.2; }
 </style>
 </head>
 <body>
@@ -840,19 +880,23 @@ html, body { overflow-x: hidden; }
     "wp-player": "Opened a win % breakdown", "wp-explain": "Read how win % works", h2h: "Opened head to head",
     "pot-open": "Opened the pot", "pot-seen": "Looked at the pot", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Read the week replay", "board-seen": "Looked at the leaderboard", "scores-seen": "Looked at live scores", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
     "poll-view": "Saw the lock of the week vote", poll: "Voted on the lock of the week",
+    "lock-set": "🔒 Set their lock of the week", "lock-cleared": "Took their lock off", "lock-nudge": "Got the no lock reminder", "lock-skip": "Skipped the lock this week",
     sim: "Ran a game sim", "grid-card": "Opened a grid card", "history-ask": "Asked the archive", "gamecast-log": "Opened the full game log",
   };
   const SHEET = { "h2h-modal": "head to head", "insights-modal": "game info", "sh2h-modal": "season head to head", "grid-modal": "the grid check", "rules-modal": "the rules", "avatar-modal": "the avatar picker", "boner-modal": "the boner", "sim-modal": "game sim", "claim-modal": "the claim sheet", "identity-modal": "who are you", "code-modal": "the code sheet" };
   const SCREEN_NAME = { scoreboard: "Scores", picks: "Picks", history: "History", trivia: "Trivia", side: "Side bet", home: "Players" };
   const FRICTION = /^(rage|dead-tap|quick-exit|js-error)$/;
   let lastDigest = "";
-  document.addEventListener("click", (e) => { const b = e.target.closest(".digest-copy"); if (!b) return; // Show the digest in the panel (no pop-up window), selected, and try the clipboard too.
-    const sec = b.closest("section"); let ta = sec.querySelector(".digest-text");
-    if (!ta) { ta = document.createElement("textarea"); ta.className = "digest-text"; ta.readOnly = true; ta.style.cssText = "width:100%;box-sizing:border-box;min-height:160px;margin-top:8px;font:12px/1.4 ui-monospace,monospace;background:#0b0e15;color:#e9ecf5;border:1px solid #ff7a9a;border-radius:8px;padding:8px"; sec.appendChild(ta); }
-    ta.value = lastDigest; ta.focus(); ta.select();
-    const ok = () => { b.textContent = "Copied ✓"; setTimeout(() => (b.textContent = "Copy for Claude"), 1500); };
-    try { navigator.clipboard.writeText(lastDigest).then(ok, () => { if (document.execCommand("copy")) ok(); }); } catch { if (document.execCommand("copy")) ok(); }
-  });
+  // Copy for Claude. The digest shows in the panel (and stays through the
+  // page's refreshes) and goes to the clipboard: the Clipboard API first,
+  // then a plain selected copy, which is what works in an iPhone's Safari.
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest(".digest-copy"); if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    const text = lastDigest || "No friction in this window.";
+    st.digestShow = true;
+    copyText(text).then((ok) => { st.digestOk = ok ? Date.now() : 0; st.sig = ""; render(); setTimeout(() => { st.sig = ""; render(); }, 1800); });
+  }, true);
   function says(e, feed) {
     if (e.k === "recap-card") return ["Opened a replay card", ({ hit: "Pick of the week", miss: "Worst pick", move: "Movement", split: "Coin flip", tb: "Tiebreaker" })[e.d] || e.d || ""];
     if (e.k === "pot-row") return ["Opened a pot row", e.d ? name(e.d) : ""];
@@ -943,7 +987,6 @@ html, body { overflow-x: hidden; }
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
       if (HAS_STUDIO) loadCosts(full);
-      if (LEAGUE === "cfb") fetch(`${WORKER}/poll?id=lock-of-week-v2&all=1&${auth()}&t=${Date.now()}`, { cache: "no-store" }).then((x) => (x.ok ? x.json() : null)).then((p) => { if (p && JSON.stringify(p) !== JSON.stringify(st.poll)) { st.poll = p; render(); } }).catch(() => {});
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
       if (r.asks) st.asks = r.asks;
       // The week comes with seven days of taps; the live view keeps one.
@@ -1003,6 +1046,10 @@ html, body { overflow-x: hidden; }
     const wv = wk ? [
       ...Object.entries(wk.sessions).flatMap(([n, list]) => list.map(([at, ms, f]) => ({ n, start: at, end: at + Math.max(ms, 1000), f: f || [] }))),
       ...inNow.map((n) => ({ n, start: people[n].since, end: now, f: [], live: true })),
+      // Visits from the last day the session log has not caught yet: one
+      // put away without a goodbye (an app closed or a phone that slept)
+      // is written later, but the live room already saw it.
+      ...vs.filter((v) => !v.live && !(wk.sessions[v.n] || []).some(([at, ms]) => Math.abs(at - v.start) < 90000 || (v.start >= at && v.start <= at + ms))).map((v) => ({ n: v.n, start: v.start, end: Math.max(v.end, v.start + 1000), f: [] })),
     ].filter((v) => v.end >= wFrom).sort((a, b) => b.start - a.start) : [];
     const wTime = (v, a = wFrom, b = now) => Math.max(0, Math.min(v.end, b) - Math.max(v.start, a));
     const featLab = (k) => { k = String(k).replace(/-g\d+$/, ""); return SCREENS[k] || /^(path-of-|splash$)/.test(k) ? null : says({ k, n: "", d: "" }, [])[0]; };
@@ -1068,7 +1115,8 @@ html, body { overflow-x: hidden; }
       const groups = [];
       for (const v of mine.slice().sort((a, b) => a.start - b.start)) {
         const g = groups[groups.length - 1];
-        if (g && v.start - g.end < 2 * 60000) { g.list.push(v); g.end = Math.max(g.end, vEnd(v)); g.live = g.live || v.live; }
+        // Close enough to touch on screen: one bar (about 2% of the width, at least 2 minutes).
+        if (g && v.start - g.end < Math.max(2 * 60000, tSpan * 0.02)) { g.list.push(v); g.end = Math.max(g.end, vEnd(v)); g.live = g.live || v.live; }
         else groups.push({ list: [v], start: v.start, end: vEnd(v), live: !!v.live });
       }
       const blocks = groups.map((g) => {
@@ -1077,7 +1125,7 @@ html, body { overflow-x: hidden; }
         const acts = g.list.reduce((t, v) => t + v.acts.length, 0);
         const size = g.live || inApp >= 5 * 60000 ? "" : inApp < 60000 ? " peek" : " short";
         const tip = `<b>${esc(name(n))}${g.live ? " · in now" : ""}</b>${g.list.length > 1 ? `${g.list.length} visits · ` : ""}${esc(hm(g.start))}${g.live ? "" : ` to ${esc(hm(g.end))}`} · ${esc(dur(inApp))} in the app<br>${acts} action${acts === 1 ? "" : "s"}${first.app ? ` · ${first.app === "home" ? "home screen app" : "browser"}` : ""}`;
-        return `<i class="blk${size}${g.live ? " live" : ""}${g.list.some((v) => st.focus === `${v.n}|${v.start}`) ? " focus" : ""}" style="${g.live ? `right:0;width:max(10px, ${(100 - xp(g.start)).toFixed(3)}%)` : `left:min(${xp(g.start)}%, calc(100% - ${size ? 14 : 8}px));width:${(xp(g.end) - xp(g.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}"></i>`;
+        return `<i class="blk${size}${g.live ? " live" : ""}${g.list.some((v) => st.focus === `${v.n}|${v.start}`) ? " focus" : ""}" style="${g.live ? `right:0;width:max(10px, ${(100 - xp(g.start)).toFixed(3)}%)` : `left:min(${xp(g.start)}%, calc(100% - ${size ? 14 : 8}px));width:${(xp(g.end) - xp(g.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}">${g.list.length > 1 && !g.live ? `<b class="blk-n">${g.list.length}</b>` : ""}</i>`;
       }).join("");
       // Nobody in the window: the lane steps back.
       return `${laneLabel(n).replace('class="ln-l', `class="ln-l${mine.length ? "" : " quiet"}`)}<div class="ln-t${st.filter === n ? " sel" : ""}${mine.length ? "" : " quiet"}">${blocks}</div>`;
@@ -1086,6 +1134,46 @@ html, body { overflow-x: hidden; }
     const labelled = (t) => { const d = new Date(t); return d.getMinutes() ? spanH <= 3 : d.getHours() % every === 0; };
     const axis = marks.filter((t) => labelled(t) && xp(t) < 87 && xp(t) > 4).map((t) => `<span style="left:${xp(t)}%">${tickLab(t)}</span>`).join("") + `<span class="nowl" style="left:100%">NOW</span>`;
     const seg = `<span class="seg end" role="group" aria-label="Range">${["3h", "6h", "12h", "24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
+    // Features, day by day: how many people used each one (taps in the
+    // cell's tooltip). Only features someone used this week show.
+    const FEATS = [["Gamecast", /^(gamecast|game-final|gamecast-log)$/], ["Game info", /^(game-info|team-tap|status-tap|insights-open)$/], ["Simulate", /^sim$/], ["Path to Win", /^path-(run|card|share)$|^path-of-/], ["Head to head", /^h2h$|^sh2h/], ["Win %", /^wp-/], ["Replay", /^recap-(card|seen)$/], ["Player card", /^player-card$/], ["Board rows", /^ranking-expand$|^board-seen$/], ["Standings", /^pot-(open|seen|row)$/], ["Season stats", /^season-(open|seen)$/], ["Side bet", /^side/], ["History", /^history(-season|-ask)?$/], ["Trivia", /^trivia/], ["Lock vote", /^poll$/]];
+    const featGrid = () => {
+      const ev = (wk.feed || []).filter((e) => e.at >= wFrom && (!st.filter || e.n === st.filter));
+      const rows = FEATS.map(([lab, re]) => {
+        const cells = dayList.map((d) => { const es = ev.filter((e) => re.test(e.k) && dayOf(e.at) === d); return { people: new Set(es.map((e) => e.n)), taps: es.length }; });
+        return { lab, cells, total: new Set(cells.flatMap((c) => [...c.people])).size, taps: cells.reduce((t, c) => t + c.taps, 0) };
+      }).filter((r) => r.taps).sort((a, b) => b.total - a.total || b.taps - a.taps);
+      if (!rows.length) return "";
+      const mx = Math.max(1, ...rows.flatMap((r) => r.cells.map((c) => c.people.size)));
+      return `<div class="sub2" style="margin-top:20px">Features${st.filter ? ` · ${esc(name(st.filter))}` : ""} · people who used each, by day</div>
+        <div class="fg" style="--days:${dayList.length}"><span></span>${dayList.map((d) => `<span class="fg-d${d === today0 ? " t" : ""}">${esc(dShort(d)).slice(0, 3)}</span>`).join("")}<span class="fg-d">WK</span>
+        ${rows.map((r) => `<span class="fg-l">${esc(r.lab)}</span>${r.cells.map((c, i) => `<i class="fg-c${c.people.size ? "" : " z"}" style="--a:${c.people.size ? (0.18 + 0.72 * c.people.size / mx).toFixed(2) : 0}" data-tip="${esc(`<b>${r.lab} · ${dLong(dayList[i])}</b>${c.people.size ? `${[...c.people].map(name).join(", ")} · ${c.taps} tap${c.taps === 1 ? "" : "s"}` : "Nobody"}`)}">${c.people.size || ""}</i>`).join("")}<b class="fg-t">${r.total}</b>`).join("")}</div>`;
+    };
+    // Game day: the league's big day (Saturday for college, Sunday for the
+    // NFL), noon to midnight, against the rest of the week.
+    const gameDay = () => {
+      const gd = LEAGUE === "nfl" ? 0 : 6;
+      const day = [...dayList].reverse().find((d) => new Date(d).getDay() === gd);
+      if (!day) return "";
+      const from = day + 12 * HOUR, to = day + 24 * HOUR;
+      const inWin = (v) => v.end >= from && v.start <= to;
+      const gv = wv.filter((v) => inWin(v) && (!st.filter || v.n === st.filter));
+      if (!gv.length) return "";
+      const ev = (wk.feed || []).filter((e) => e.at >= from && e.at <= to && (!st.filter || e.n === st.filter));
+      const who = new Set(gv.map((v) => v.n));
+      const ms = gv.reduce((t, v) => t + wTime(v, from, to), 0);
+      const byH = Array.from({ length: 12 }, (_, i) => gv.filter((v) => v.start < from + (i + 1) * HOUR && v.end >= from + i * HOUR).length);
+      const pk = byH.indexOf(Math.max(...byH));
+      const feats = FEATS.map(([lab, re]) => [lab, new Set(ev.filter((e) => re.test(e.k)).map((e) => e.n)).size]).filter(([, n]) => n).sort((a, b) => b[1] - a[1]).slice(0, 4);
+      const others = wv.filter((v) => !inWin(v) && (!st.filter || v.n === st.filter));
+      const share = Math.round(100 * gv.length / Math.max(1, gv.length + others.length));
+      const hr = (h) => `${(h + 12) % 12 || 12}${h + 12 < 12 ? "a" : "p"}`;
+      return `<div class="sub2" style="margin-top:20px">Game day · ${esc(dLong(day))}, noon to midnight</div>
+        <div class="gd"><span><b>${who.size}</b>people</span><span><b>${gv.length}</b>visits · ${share}% of the week</span><span><b>${esc(mins(ms) || "0m")}</b>in the app</span><span><b>${hr(pk + 12)}</b>busiest hour</span></div>
+        <div class="gd-bars">${byH.map((n, i) => `<i style="height:${(n / Math.max(1, ...byH) * 100).toFixed(0)}%" data-tip="${esc(`<b>${hr(i + 12)}</b>${n} visit${n === 1 ? "" : "s"}`)}"></i>`).join("")}</div>
+        <div class="gd-ax"><span>12p</span><span>3p</span><span>6p</span><span>9p</span><span>12a</span></div>
+        ${feats.length ? `<div class="gd-f">${feats.map(([l, n]) => `<span>${esc(l)} <b>${n}</b></span>`).join("")}</div>` : ""}`;
+    };
     const weekView = () => {
       if (!wk) return `<div class="note">Loading the week…</div>`;
       // Who, which day: visits (or minutes, by the switch), darker for more;
@@ -1118,6 +1206,8 @@ html, body { overflow-x: hidden; }
       return `<div class="sub2 row">Who was in, day by day ${st.filter ? "" : "· tap a name to follow one person"}<span class="seg sm" role="group" aria-label="Show"><button type="button" class="${byMin ? "" : "on"}" data-metric="visits">Visits</button><button type="button" class="${byMin ? "on" : ""}" data-metric="min">Minutes</button></span></div>${hmHtml}
         <div class="sub2" style="margin-top:20px">When in the day${st.filter ? ` · ${esc(name(st.filter))}` : " · everyone"} · visits by hour</div>
         ${pcHtml}
+        ${featGrid()}
+        ${gameDay()}
         ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:10px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}`;
     };
     const timeline = wk || st.range === "7d" ? `<section class="tl panel" id="sec-tl">
@@ -1125,7 +1215,7 @@ html, body { overflow-x: hidden; }
       ${weekView()}
     </section>` : `<section class="tl panel" id="sec-tl">
       <div class="ph"><h2>Last ${spanH} hours</h2>${seg}</div>
-      <div class="tl-hint"><span>Dot: quick look · short: under 5 min · tall: longer</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
+      <div class="tl-hint"><span>● quick look · ▮ visit, taller is longer · number = visits</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
       <div class="tl-grid">
         <span></span><div class="tl-ax">${axis}</div>
         <div class="tl-over">${nights.map(([a, b]) => `<i class="night" style="left:${xp(a)}%;width:${(xp(b) - xp(a)).toFixed(3)}%"></i>`).join("")}${marks.map((t) => `<i class="hr${new Date(t).getHours() === 0 ? " mid" : ""}" style="left:${xp(t)}%"></i>`).join("")}<i class="now"></i></div>
@@ -1144,36 +1234,13 @@ html, body { overflow-x: hidden; }
     };
     // Since you last looked: one line, each part jumps to its section.
     const newStrip = () => {
-      const vNew = Object.keys(st.poll?.votes || {}).filter((n) => voteNew(n) || noteNew(n)).length;
       const visNew = vs.filter((v) => !v.live && v.end > seenBase.at).length;
       const fNew = (room.feed || []).filter((e) => FRICTION.test(e.k) && e.at > seenBase.at).length;
       const aNew = (st.asks || []).filter((x) => x.ts > seenBase.at).length;
-      const parts = [vNew && `<button type="button" data-jump="sec-vote">🔒 ${vNew} new vote${vNew === 1 ? "" : "s"}</button>`, visNew && `<button type="button" data-jump="sec-visits">👀 ${visNew} new visit${visNew === 1 ? "" : "s"}</button>`, fNew && `<button type="button" data-jump="sec-stats" class="warn">⚠ ${fNew} new issue${fNew === 1 ? "" : "s"}</button>`, aNew && `<button type="button" data-jump="sec-stats">💬 ${aNew} new question${aNew === 1 ? "" : "s"}</button>`].filter(Boolean);
+      const parts = [visNew && `<button type="button" data-jump="sec-visits">👀 ${visNew} new visit${visNew === 1 ? "" : "s"}</button>`, fNew && `<button type="button" data-jump="sec-stats" class="warn">⚠ ${fNew} new issue${fNew === 1 ? "" : "s"}</button>`, aNew && `<button type="button" data-jump="sec-stats">💬 ${aNew} new question${aNew === 1 ? "" : "s"}</button>`].filter(Boolean);
       if (!parts.length) return "";
       const ago = Date.now() - seenBase.at;
       return `<section class="newstrip"><span class="ns-h">NEW SINCE ${ago < 86400000 ? hm(seenBase.at).toUpperCase() : new Date(seenBase.at).toLocaleDateString([], { weekday: "short" }).toUpperCase() + " " + hm(seenBase.at).toUpperCase()}</span>${parts.join("")}<button type="button" class="ns-ok" data-seenall="1">✓ Seen</button></section>`;
-    };
-    // The lock of the week vote: tally, who voted what, who has seen it, feedback.
-    const pollPanel = () => {
-      const p = st.poll; if (!p) return "";
-      const LAB = { A: "Free bonus", B: "Bonus with risk", C: "High stakes", N: "No lock" };
-      const SUB = { A: "+2 / 0", B: "+2 / −1", C: "+3 / −3", N: "keep as is" };
-      const votes = p.votes || {}, views = p.views || {}, notes = p.notes || {}, at = p.votedAt || {};
-      const max = Math.max(1, ...Object.values(p.counts || {}));
-      const when = (t) => t ? (dayOf(t) === today0 ? hm(t) : `${new Date(t).toLocaleDateString([], { weekday: "short" })} ${hm(t)}`) : "";
-      // Views are usage, so Jake's are left out; votes count everyone.
-      const seenOf = (n) => (n === "Jake" ? null : views[n]);
-      const everyone = [...new Set([...Object.keys(votes), ...(p.waitingOn || [])])];
-      const rows = everyone.map((n) => ({ n, v: votes[n], s: seenOf(n) })).sort((x, y) => (x.v ? 0 : x.s ? 1 : 2) - (y.v ? 0 : y.s ? 1 : 2) || (at[y.n] || y.s?.last || 0) - (at[x.n] || x.s?.last || 0));
-      const nVoted = rows.filter((r) => r.v).length, nSeen = rows.filter((r) => !r.v && r.s).length, nNot = rows.length - nVoted - nSeen;
-      const nNew = rows.filter((r) => voteNew(r.n) || noteNew(r.n)).length;
-      return `<section class="panel vote${nNew ? " has-new" : ""}" id="sec-vote"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${nVoted} of ${rows.length} voted</span>${nNew ? `<b class="newc">${nNew} new</b>` : ""}</div>
-        <div class="pv-sum"><span class="ok"><b>${nVoted}</b>voted</span><span class="seen"><b>${nSeen}</b>saw it, no vote</span><span class="not"><b>${nNot}</b>not seen yet</span></div>
-        <div class="pv-tally">${Object.keys(LAB).map((k) => `<div><span>${LAB[k]} <small>${SUB[k]}</small></span><i><s style="width:${(((p.counts?.[k] || 0) / max) * 100).toFixed(1)}%"></s></i><b>${p.counts?.[k] || 0}</b></div>`).join("")}</div>
-        <div class="pv-list">${rows.map((r) => `<div class="pv-row ${r.v ? "ok" : r.s ? "seen" : "not"}${voteNew(r.n) || noteNew(r.n) ? " nw" : ""}">${av(r.n, "sm")}<span class="pv-n">${esc(name(r.n))}${voteNew(r.n) || noteNew(r.n) ? `<i class="newb">NEW</i>` : ""}</span>
-          <span class="pv-st">${r.v ? `<b>${LAB[r.v] || r.v}</b>` : r.s ? `<b>Saw it, no vote</b>` : `<b>Not seen yet</b>`}<small>${r.v ? `voted ${esc(when(at[r.n]))}` : r.s ? `seen ${r.s.n}× · last ${esc(when(r.s.last))}` : ""}</small></span>
-          ${notes[r.n] ? `<span class="pv-note">“${esc(notes[r.n])}”</span>` : ""}</div>`).join("")}</div>
-      </section>`;
     };
     // Where people got stuck, and how far down each screen they got.
     const frictionPanel = (list, sub) => {
@@ -1187,8 +1254,9 @@ html, body { overflow-x: hidden; }
       // A names-free digest to paste to Claude: what broke, how often, how many people.
       lastDigest = [`Brochiefs ${LEAGUE.toUpperCase()} friction digest (${sub})`, ...top.map((x) => `- ${x.a.replace("⚠ ", "")}${x.d ? ` [${x.d}]` : ""}: ${x.n}x, ${x.who.size} people, ${x.ats.sort((p, q) => p - q).map(when).join("; ")}`), ...depthRows.map((x) => `- Depth ${SCREEN_NAME[x.sc] || x.sc}: ${x.n} visits, half ${x.r50}%, bottom ${x.r100}%`)].join("\n");
       const fNew = list.filter((e) => FRICTION.test(e.k) && e.at > seenBase.at).length;
-      return `<section class="panel${fNew ? " has-new" : ""}"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span>${fNew ? `<b class="newc">${fNew} new</b>` : ""}<button type="button" class="digest-copy" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ff7a9a;background:transparent;color:#ff7a9a">Copy for Claude</button></div>
+      return `<section class="panel${fNew ? " has-new" : ""}"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span>${fNew ? `<b class="newc">${fNew} new</b>` : ""}<button type="button" class="digest-copy" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ff7a9a;background:transparent;color:#ff7a9a">${st.digestOk && Date.now() - st.digestOk < 1800 ? "Copied ✓" : "Copy for Claude"}</button></div>
         ${top.length ? `<div class="rank">${top.map((x) => `<div><span>${esc(x.a.replace("⚠ ", ""))}${x.d ? ` <small>${esc(x.d)}</small>` : ""}</span><b>${x.n}</b><i><s style="width:${((x.n / top[0].n) * 100).toFixed(1)}%;background:#ff7a9a"></s></i></div>`).join("")}</div>` : `<div class="note">No rage taps, dead taps, quick exits or errors.</div>`}
+        ${st.digestShow ? `<textarea class="digest-text" readonly style="width:100%;box-sizing:border-box;min-height:140px;margin-top:8px;font:12px/1.4 ui-monospace,monospace;background:#0b0e15;color:#e9ecf5;border:1px solid #ff7a9a;border-radius:8px;padding:8px">${esc(lastDigest)}</textarea>` : ""}
       </section>
       ${depthRows.length ? `<section class="panel"><div class="ph"><h2>Scroll depth</h2><span class="sub">share of visits reaching half way / the bottom</span></div>
         <div class="rank">${depthRows.map((x) => `<div><span>${esc(SCREEN_NAME[x.sc] || x.sc)} <small>${x.n} visits · bottom ${x.r100}%</small></span><b>${x.r50}%</b><i><s style="width:${x.r50}%"></s></i></div>`).join("")}</div>
@@ -1320,6 +1388,7 @@ html, body { overflow-x: hidden; }
           ${st.menu ? `<div class="menu" role="menu">
             ${"Notification" in window ? `<button type="button" role="menuitem" data-alert="1">${ICONS.bell}<span>${st.alert ? "Turn alerts off" : "Alert me when someone comes in"}</span>${st.alert ? `<i class="on">ON</i>` : ""}</button>` : ""}
             <button type="button" role="menuitem" data-copy="*">${ICONS.copy}<span>Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"} visits</span></button>
+            <button type="button" role="menuitem" data-slate="1">${ICONS.copy}<span>${st.copied === "slate" ? "✓ Slate copied" : "Copy this week's slate"}</span></button>
             <a role="menuitem" href="../" target="_blank" rel="noopener">${ICONS.app}<span>Open Pick'em</span><i>↗</i></a>
             <a role="menuitem" href="../?admin" target="_blank" rel="noopener">${ICONS.console}<span>Admin console</span><i>↗</i></a>
             <hr>
@@ -1327,7 +1396,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}<div class="vote-wrap">${newStrip()}${pollPanel()}</div>${timeline}${feedHtml}${rail}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${newStrip()}</div>${timeline}${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
@@ -1439,6 +1508,21 @@ html, body { overflow-x: hidden; }
     if (b.dataset.open) { st.open.has(b.dataset.open) ? st.open.delete(b.dataset.open) : st.open.add(b.dataset.open); render(); return; }
     if (b.dataset.older) { st.shown += 20; render(); return; }
     if (b.dataset.reload) { location.reload(); return; }
+    if (b.dataset.slate) {
+      // This week's games as plain text, ready to paste into the group chat.
+      let text = "";
+      try {
+        const g = await (await fetch(`${WORKER}/games?t=${Date.now()}`, { cache: "no-store" })).json();
+        const games = [...(g.games || [])].sort((x, y) => new Date(x.kickoff) - new Date(y.kickoff) || x.id - y.id);
+        const dog = (x) => (x.favorite === x.away ? x.home : x.away);
+        text = `${LEAGUE === "nfl" ? "NFL" : "Brochiefs"} ${g.label || `Week ${g.week}`} slate\n\n` + games.map((x) =>
+          `${x.away} at ${x.home}\n${x.spread ? `${x.favorite} by ${x.spread} (${dog(x)} +${x.spread})` : "Pick em"} · ${[x.kickoffLabel, x.tv].filter(Boolean).join(" · ")}${x.tiebreakerGame ? "\n⭐ Tiebreaker: total points" : ""}`).join("\n\n");
+      } catch {}
+      if (!text || !(await copyText(text))) { b.textContent = "Couldn't copy the slate"; return; }
+      st.copied = "slate"; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.menu = false; render(); }, 1400);
+      return;
+    }
     if (b.dataset.copy) {
       const id = b.dataset.copy;
       const text = id === "*" ? `Brochiefs Live · ${st.filter ? name(st.filter) : "everyone"} · last 24 hours\n\n${[...st.texts.values()].join("\n\n")}` : st.texts.get(id) || "";
@@ -1491,7 +1575,8 @@ html, body { overflow-x: hidden; }
     try { await navigator.clipboard.writeText(text); return true; } catch {}
     const ta = document.createElement("textarea");
     ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;font-size:16px";
-    document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+    // iPhone Safari only copies a selection it can edit: drop readonly before selecting.
+    document.body.appendChild(ta); ta.removeAttribute("readonly"); ta.contentEditable = "true"; ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
     let ok = false; try { ok = document.execCommand("copy"); } catch {}
     ta.remove();
     return ok;

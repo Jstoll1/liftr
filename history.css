@@ -381,3 +381,10 @@
 .lineage-card[data-year] { cursor: pointer; }
 .season-card.flash { outline: 2px solid var(--gold, #ffe45e); outline-offset: 2px; transition: outline-color .6s; }
 .season-card { scroll-margin-top: 84px; }
+/* Sortable season tables, tappable stats and names */
+.season-table th { cursor: pointer; user-select: none; }
+.season-table th[data-dir="desc"]::after { content: " ▾"; } .season-table th[data-dir="asc"]::after { content: " ▴"; }
+.mini-stats > div { cursor: pointer; }
+.mini-years { margin-top: 8px; font: 500 11px/1.5 'Orbitron', system-ui, sans-serif; color: var(--cyan); }
+.mini-years:empty { display: none; }
+.name-rank-card { cursor: pointer; }

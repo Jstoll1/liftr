@@ -332,3 +332,42 @@ document.getElementById('lineage-track')?.addEventListener('click',e=>{
   d.classList.add('flash');setTimeout(()=>d.classList.remove('flash'),1400);
   try{window.noteUse?.('history-season',c.dataset.year)}catch{}
 });
+
+// Taps players tried that did nothing (from the friction log):
+// season tables sort by a header tap; a franchise's Titles / Finals /
+// Podiums list their years; a name in the Top 10 opens its season.
+(function () {
+  const num = (t) => { const m = String(t).replace(/,/g, "").replace(/[–−]/g, "-").match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : NaN; };
+  document.addEventListener("click", (e) => {
+    const th = e.target.closest(".season-table th");
+    if (th) {
+      const table = th.closest("table"), i = [...th.parentNode.children].indexOf(th), body = table.tBodies[0];
+      const dir = th.dataset.dir === "desc" ? "asc" : "desc";
+      th.parentNode.querySelectorAll("th").forEach((x) => { delete x.dataset.dir; });
+      th.dataset.dir = dir;
+      const key = (tr) => { const t = tr.children[i]?.textContent.trim() || ""; const n = num(t); return Number.isFinite(n) && i !== 1 ? n : t.toLowerCase(); };
+      const rows = [...body.rows].sort((a, b) => { const x = key(a), y = key(b); const c = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y)); return dir === "asc" ? c : -c; });
+      body.append(...rows);
+      return;
+    }
+    const ms = e.target.closest(".mini-stats > div");
+    if (ms) {
+      const card = ms.closest(".franchise-card"), owner = card?.dataset.owner;
+      if (!owner) return;
+      const kind = ms.querySelector("span")?.textContent.trim().toLowerCase();
+      const yrs = Object.entries(A.seasons).filter(([, s]) => kind === "titles" ? s[0] === owner : kind === "finals" ? s[0] === owner || s[1] === owner : [s[0], s[1], s[2]].includes(owner)).map(([y]) => y);
+      let out = card.querySelector(".mini-years");
+      if (!out) { out = document.createElement("div"); out.className = "mini-years"; ms.parentNode.after(out); }
+      const label = ms.querySelector("span").textContent.trim();
+      out.textContent = out.dataset.k === label ? "" : yrs.length ? `${label}: ${yrs.join(", ")}` : `No ${label.toLowerCase()} yet`;
+      out.dataset.k = out.textContent ? label : "";
+      return;
+    }
+    const nm = e.target.closest(".name-rank-card");
+    if (nm) {
+      const y = (nm.querySelector("p")?.textContent.match(/\d{4}/) || [])[0];
+      const sc = y && document.querySelector(`.season-card[data-year="${y}"]`);
+      if (sc) { sc.open = true; sc.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    }
+  });
+})();
