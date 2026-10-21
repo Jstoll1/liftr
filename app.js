@@ -1456,11 +1456,11 @@ let adminKeyHeld = "";
 
 homeLogoBtn.addEventListener("click", () => {
   // A plain tap scrolls to the top, so a curious tap does something.
-  // Admin needs 5 quick taps (3 was easy to hit by accident).
+  // Three quick taps open the admin key prompt.
   appScroll.scrollTo({ top: 0, behavior: "smooth" });
   adminTaps += 1;
   clearTimeout(adminTapTimer);
-  if (adminTaps >= 5) { adminTaps = 0; requestAdmin(); return; }
+  if (adminTaps >= 3) { adminTaps = 0; requestAdmin(); return; }
   adminTapTimer = setTimeout(() => { adminTaps = 0; }, ADMIN_TAP_WINDOW_MS);
 });
 

@@ -1690,6 +1690,19 @@ async function handleGames(request, env, corsHeaders, url) {
       if (!isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
       return json({ ok: true, role: keyRole(env, url) }, 200, corsHeaders);
     }
+    // The slate editor's warning before it changes a published game: who
+    // has a pick in on each game. Names only, never which side or mode.
+    if (url.searchParams.get("pickers")) {
+      if (!isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+      const week = await weekFrom(env, url);
+      const byGame = {};
+      await Promise.all(PICKS_MANAGERS.map(async (m) => {
+        const st = await env.LIFTR_KV.get(pickKey(week, m), "json").catch(() => null);
+        for (const [gid, p] of Object.entries(st?.picks || {})) if (p && p.team) (byGame[gid] ||= []).push(m);
+      }));
+      for (const k of Object.keys(byGame)) byGame[k].sort();
+      return json({ ok: true, week, pickers: byGame }, 200, corsHeaders);
+    }
     // NFL: bring this week's slate up to date first (throttled).
     if (SPORT === "nfl" && !url.searchParams.get("week")) {
       try { await autoSlate(env); } catch (err) { console.error("autoSlate", err?.stack || String(err)); }
