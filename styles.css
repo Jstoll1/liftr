@@ -7760,23 +7760,24 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 #insights-title em { font-style: normal; display: inline-block; white-space: nowrap; }
 .lm-one b { font-size: 8px; }
 
-/* Lock confirm sheet */
-.lotw-confirm { inset: 0; align-items: flex-end; padding-bottom: calc(96px + env(safe-area-inset-bottom)); background: rgba(0, 0, 0, .55); }
-.lotw-confirm:not(.show) { background: none; }
-.lotw-confirm .ln-card { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
-.lotw-confirm .ln-card > * { width: 100%; box-sizing: border-box; }
-.lotw-confirm .ln-x { width: auto; }
-.lotw-confirm .lc-k { font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: .1em; color: #ffd23f; }
-.lotw-confirm .lc-pick { display: flex; align-items: center; gap: 10px; }
-.lotw-confirm .lc-pick img { width: 36px; height: 36px; object-fit: contain; }
-.lotw-confirm .lc-pick b { font-size: 20px; color: #fff; }
-.lotw-confirm .lc-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; border-radius: 10px; font-size: 15px; gap: 12px; }
-.lotw-confirm .lc-row.up { background: rgba(57, 255, 136, .1); border: 1px solid rgba(57, 255, 136, .45); color: var(--neon-green); }
-.lotw-confirm .lc-row.dn { background: rgba(255, 32, 121, .1); border: 1px solid rgba(255, 32, 121, .5); color: #ff4f6d; }
-.lotw-confirm .lc-row b { font-size: 17px; }
-.lotw-confirm .ln-btns { display: flex; gap: 10px; }
-.lotw-confirm .ln-btns button { flex: 1; white-space: nowrap; padding: 12px; border-radius: 10px; font-size: 14px; }
-.lotw-confirm .lc-go { background: #ffd23f; color: #1a0f00; border-color: #ffd23f; }
+/* Lock confirm: centred card over a blurred backdrop */
+.lotw-confirm { inset: 0; align-items: center; padding: 24px; background: rgba(4, 3, 14, .72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: background .2s; }
+.lotw-confirm:not(.show) { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.lotw-confirm .ln-card { display: flex; flex-direction: column; align-items: center; gap: 0; width: min(320px, 100%); padding: 26px 20px 14px; border-radius: 20px; text-align: center; background: linear-gradient(180deg, #1c1638, #0f0c22); border: 1px solid rgba(255, 210, 63, .35); box-shadow: 0 24px 60px rgba(0, 0, 0, .7), 0 0 40px rgba(255, 210, 63, .08); }
+.lotw-confirm .lc-k { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .16em; color: #ffd23f; opacity: .85; }
+.lotw-confirm .lc-logo { width: 64px; height: 64px; object-fit: contain; margin: 16px 0 10px; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, .6)); }
+.lotw-confirm .lc-pick { font-size: 24px; font-weight: 700; color: #fff; letter-spacing: .01em; }
+.lotw-confirm .lc-vs { margin-top: 2px; font-size: 12px; color: var(--text-dim); }
+.lotw-confirm .lc-odds { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; width: 100%; margin: 18px 0 16px; border-radius: 12px; overflow: hidden; background: rgba(255, 255, 255, .08); }
+.lotw-confirm .lc-o { display: flex; flex-direction: column; gap: 6px; padding: 12px 6px; background: #120f26; }
+.lotw-confirm .lc-o small { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .14em; color: var(--text-dim); }
+.lotw-confirm .lc-o b { font-family: 'Press Start 2P', monospace; font-size: 18px; }
+.lotw-confirm .lc-o.up b { color: var(--neon-green); text-shadow: 0 0 10px rgba(57, 255, 136, .35); }
+.lotw-confirm .lc-o.dn b { color: #ff4f6d; text-shadow: 0 0 10px rgba(255, 79, 109, .35); }
+.lotw-confirm .lc-go { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: #ffd23f; color: #1a0f00; font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: .08em; box-shadow: 0 6px 20px rgba(255, 210, 63, .25); cursor: pointer; }
+.lotw-confirm .lc-go:active { transform: scale(.98); }
+.lotw-confirm .lc-no { margin-top: 6px; padding: 10px; border: 0; background: none; color: var(--text-dim); font-size: 13px; cursor: pointer; }
+.lotw-confirm .ln-x { position: absolute; top: 10px; right: 12px; }
 /* The locked pick: red tinted box with a lock in its corner */
 .game-card.lotw .pick-mini-btn.selected { position: relative; background: rgba(255, 32, 121, .16) !important; border-color: #ff4f6d !important; box-shadow: 0 0 0 1px rgba(255, 79, 109, .5), 0 0 14px rgba(255, 32, 121, .3) !important; }
 .game-card.lotw .pick-mini-btn.selected::before { display: none; }

@@ -2508,7 +2508,8 @@ function lockConfirm(g, pk) {
   }
   m.dataset.gid = g.id;
   const hit = pointValue(g, pk.team, pk.mode) + lr.hit, miss = lr.miss;
-  m.innerHTML = `<div class="ln-card"><button type="button" class="ln-x" aria-label="Close">✕</button><div class="lc-k">🔒 LOCKING</div><div class="lc-pick"><img src="${logoUrl(pk.team === g.away ? g.awayId : g.homeId)}" alt=""><b>${escapeCd(lockPickText(g, pk).replace(/ to win$/, ""))}</b></div><div class="lc-row up"><span>Hits</span><b>${hit} points</b></div><div class="lc-row dn"><span>Misses</span><b>${miss < 0 ? "−" + Math.abs(miss) : 0} points</b></div><div class="ln-btns"><button type="button" class="ln-skip lc-no">Cancel</button><button type="button" class="ln-go lc-go">🔒 LOCK IT</button></div></div>`;
+  const logo = logoUrl(pk.team === g.away ? g.awayId : g.homeId), opp = pk.team === g.away ? g.homeShort : g.awayShort;
+  m.innerHTML = `<div class="ln-card"><button type="button" class="ln-x" aria-label="Close">✕</button><div class="lc-k">LOCK OF THE WEEK</div><img class="lc-logo" src="${logo}" alt=""><div class="lc-pick">${escapeCd(lockPickText(g, pk))}</div><div class="lc-vs">${pk.team === g.away ? "at" : "vs"} ${escapeCd(opp)}</div><div class="lc-odds"><div class="lc-o up"><small>COVERS</small><b>+${hit}</b></div><div class="lc-o dn"><small>MISSES</small><b>${miss < 0 ? "−" + Math.abs(miss) : 0}</b></div></div><button type="button" class="lc-go">🔒 LOCK IT</button><button type="button" class="lc-no">Not this one</button></div>`;
   requestAnimationFrame(() => m.classList.add("show"));
 }
 function setLock(gameId, opts = {}) {
