@@ -2600,8 +2600,8 @@ function renderPicksScreen() {
       statusLabel = "UPDATED ✓";
       statusClass = "submitted updated";
     } else if (pick) {
-      // The chip carries the bet, so ten cards scan as ten stakes:
-      // who, which way, and what it pays.
+      // A saved open pick shows no chip: the highlighted button already
+      // says which way, and the header keeps room for 🔒 and i.
       const teamId = pick.team === game.away ? game.awayId : game.homeId;
       const way = pick.mode === "SU" ? "WIN" : (pick.team === game.favorite ? `-${game.spread}` : `+${game.spread}`);
       statusLabel = `<img class="gs-logo" src="${logoUrl(teamId)}" alt="${pick.team}"><span class="gs-bet">${way}</span><b>${pickWorth(game, pick)}<i>PT</i></b>${pick.lock && lockRule() ? " 🔒" : " ✓"}`;
@@ -2616,7 +2616,7 @@ function renderPicksScreen() {
     card.innerHTML = `
       <div class="game-meta">
         <span class="game-meta-left"><span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>${gameLocked || !note || note.startsWith("⚠") ? "" : `<span class="game-stamp">${note}</span>`}</span>
-        <span class="game-meta-right">${lockRowHtml(game, pick, gameLocked)}<button type="button" class="insights-btn ic" data-insights="${game.id}" aria-label="Info for ${game.awayShort} at ${game.homeShort}">i</button><span class="game-status ${statusClass}">${statusLabel}</span></span>
+        <span class="game-meta-right">${lockRowHtml(game, pick, gameLocked)}<button type="button" class="insights-btn ic" data-insights="${game.id}" aria-label="Info for ${game.awayShort} at ${game.homeShort}">i</button>${statusClass === "submitted bet" ? "" : `<span class="game-status ${statusClass}">${statusLabel}</span>`}</span>
       </div>
       ${gameLocked ? lockedResultHtml(game, pick, finalRes, isLive ? g : null) : matchupCardsHtml(game, pick)}
       ${gameLocked || !note || !note.startsWith("⚠") ? "" : `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>`}
