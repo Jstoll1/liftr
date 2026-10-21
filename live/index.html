@@ -686,6 +686,15 @@ html, body { overflow-x: hidden; }
   .sh-r { flex-direction: column; align-items: flex-end; gap: 6px; }
   .sh-r .vcar { margin-left: 0; }
   .sh-r .cp { padding: 2px; }
+  /* Grouped visits */
+  .sess.grp .grp-in { padding: 0 8px 4px; }
+  .sess.grp .grp-in .sess { margin-bottom: 6px; background: rgba(255, 255, 255, .025); }
+  .sess.grp .grp-in .sess .av.lg, .sess.grp .grp-in .nmt, .sess.grp .grp-in .newb { display: none; }
+  .sess.grp .grp-in .sh { padding: 8px 10px 8px 12px; }
+  .sess.grp .grp-in .meta { font-size: 13.5px; color: var(--text, #fff); margin-top: 0; order: -1; }
+  .sess.grp .grp-in .who { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .sess.grp .grp-in .vsum { flex-basis: 100%; margin-top: 2px; }
+  .sess.grp::before { background: repeating-linear-gradient(180deg, var(--past) 0 6px, transparent 6px 9px); }
 </style>
 </head>
 <body>
@@ -1242,9 +1251,7 @@ html, body { overflow-x: hidden; }
     const cutLo = Math.max(90000, avgMs * 0.6), cutHi = Math.max(cutLo + 60000, avgMs * 1.5);
     const mnt = (x) => `${Math.round(x / 60000)}m`;
     let day = null;
-    const cards = all.slice(0, st.shown).map((s) => {
-      const d = dayLab(s.start), head = d !== day ? `<div class="day">${esc(d)}</div>` : "";
-      day = d;
+    const cardOf = (s) => {
       const id = `${s.n}|${s.start}`, LIM = 6;
       // Collapsed by default (a live visit stays open): one line says who,
       // when, how long, what was used and whether anything went wrong;
@@ -1258,9 +1265,34 @@ html, body { overflow-x: hidden; }
       const span = s.live ? "" : ` · ${dur(Math.max(s.end - s.start, 1000))}`;
       const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.app ? ` · ${s.app === "home" ? "app" : "web"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
-      return `${head}<div class="sess t-${tier}${issues.length ? errs.length ? " bad" : " warn" : ""}${open ? " open" : " shut"}${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
-        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}${s.live ? "" : `<span class="vd num">${esc(dur(ms))}</span>`}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}</div></div><div class="sh-r">${s.live ? `<span class="badge num" data-since="${s.since}">${clock(now - s.since)}</span>` : ""}<i class="vcar">${open ? "Close ▴" : "Open ▾"}</i>${open ? `<button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button>` : ""}</div></div>
+      return `<div class="sess t-${tier}${issues.length ? errs.length ? " bad" : " warn" : ""}${open ? " open" : " shut"}${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
+        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm"><span class="nmt">${esc(name(s.n))}</span>${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}${s.live ? "" : `<span class="vd num">${esc(dur(ms))}</span>`}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}</div></div><div class="sh-r">${s.live ? `<span class="badge num" data-since="${s.since}">${clock(now - s.since)}</span>` : ""}<i class="vcar">${open ? "Close ▴" : "Open ▾"}</i>${open ? `<button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button>` : ""}</div></div>
         ${s.acts.length && open ? `<ul class="acts">${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${/^⚠/.test(a.a) ? " iss" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
+      </div>`;
+    };
+    // Back to back visits from one person (each starting within 10 minutes
+    // of the last ending) fold into one row: how many, the span, total time
+    // and issues. Open it for every visit, then any visit for its actions.
+    const groups = [];
+    for (const v of all.slice(0, st.shown)) {
+      const g = groups[groups.length - 1], prev = g?.list[g.list.length - 1];
+      if (g && !v.live && !prev.live && g.n === v.n && dayLab(v.start) === dayLab(prev.start) && prev.start - v.end < 10 * 60000) g.list.push(v);
+      else groups.push({ n: v.n, list: [v] });
+    }
+    const cards = groups.map((g) => {
+      const first = g.list[g.list.length - 1], last = g.list[0];
+      const d = dayLab(last.start), head = d !== day ? `<div class="day">${esc(d)}</div>` : "";
+      day = d;
+      if (g.list.length === 1) return head + cardOf(last);
+      const gid = `grp|${g.n}|${first.start}`, gopen = st.open.has(gid);
+      const total = g.list.reduce((t, v) => t + Math.max(v.end - v.start, 1000), 0);
+      const nActs = g.list.reduce((t, v) => t + v.acts.length, 0);
+      const nIss = g.list.reduce((t, v) => t + v.acts.filter((x) => /^⚠/.test(x.a)).length, 0);
+      const nErr = g.list.reduce((t, v) => t + v.acts.filter((x) => /^⚠/.test(x.a) && /error/i.test(x.a)).length, 0);
+      const isNew = g.list.some((v) => v.end > seenBase.at);
+      return `${head}<div class="sess grp${gopen ? " open" : " shut"}${nIss ? nErr ? " bad" : " warn" : ""}" data-v="${esc(gid)}">
+        <div class="sh" data-open="${esc(gid)}" role="button" tabindex="0" aria-expanded="${gopen}">${av(g.n, "lg")}<div class="who"><div class="nm">${esc(name(g.n))}${isNew ? `<i class="newb">NEW</i>` : ""}<span class="vd num">${g.list.length} visits</span></div><div class="meta num">${esc(hm(first.start))} to ${esc(hm(last.end))} · ${esc(dur(total))} total</div><div class="vsum"><span>${nActs} action${nActs === 1 ? "" : "s"}</span>${nIss ? `<span class="iss${nErr ? " bad" : ""}">⚠ ${nIss} issue${nIss === 1 ? "" : "s"}</span>` : ""}</div></div><div class="sh-r"><i class="vcar">${gopen ? "Close ▴" : "Open ▾"}</i></div></div>
+        ${gopen ? `<div class="grp-in">${g.list.map(cardOf).join("")}</div>` : ""}
       </div>`;
     }).join("");
     const shownN = Math.min(all.length, st.shown);
@@ -1375,7 +1407,7 @@ html, body { overflow-x: hidden; }
     if (jb) { document.getElementById(jb.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     if (e.target.closest("[data-seenall]")) { seenBase = snapSeen(); saveSeen(); st.sig = ""; render(); return; }
     // A closed visit opens on a tap anywhere on it; an open one closes from its header.
-    const card = e.target.closest(".sess[data-v]");
+    const card = e.target.closest(".sess[data-v]"); // the innermost visit or group
     const vh = card && !e.target.closest("button, li.go, a") && (card.classList.contains("shut") ? card : e.target.closest(".sh[data-open]")) ? card.querySelector(".sh[data-open]") : null;
     if (vh) {
       const k = vh.dataset.open, top = card.getBoundingClientRect().top;
