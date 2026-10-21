@@ -590,8 +590,12 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   pointer-events: none;
 }
 
-.game-card:hover::before {
+.game-card.next-up::before {
   opacity: 0.9;
+}
+/* The glow follows a mouse only: on a phone the last tap counts as a hover. */
+@media (hover: hover) and (pointer: fine) {
+  .game-card:hover::before { opacity: 0.9; }
 }
 
 .game-card.game-submitted::before {
