@@ -702,6 +702,23 @@ html, body { overflow-x: hidden; }
   .vkey summary::-webkit-details-marker { display: none; }
   .vkey summary::before { content: "▸"; } .vkey[open] summary::before { content: "▾"; }
   .vkey .vleg { margin: 8px 0 0; }
+  /* Lock vote, tighter */
+  section.panel.vote { padding: 10px 12px 10px; }
+  section.panel.vote > .ph { margin-bottom: 6px; }
+  .pv-sum { gap: 6px; margin-bottom: 8px; }
+  .pv-sum span { padding: 6px 8px; gap: 2px; }
+  .pv-sum b { font-size: 18px; }
+  .pv-tally { gap: 4px; margin-bottom: 8px; }
+  .pv-tally > div { font-size: 12.5px; }
+  .pv-list { gap: 2px; padding-top: 6px; }
+  .pv-row { padding: 4px 6px; gap: 2px 8px; }
+  .pv-row .av.sm { width: 22px; height: 22px; font-size: 11px; }
+  .pv-st { gap: 0; font-size: 12.5px; }
+  .pv-st small { font-size: 11px; }
+  .pv-st { display: flex !important; align-items: baseline; gap: 8px !important; flex-wrap: wrap; }
+  .pv-row { grid-template-columns: auto 80px minmax(0, 1fr) !important; padding: 3px 6px !important; }
+  .pv-sum span { display: flex !important; align-items: baseline; gap: 6px !important; padding: 6px 10px !important; }
+  .pv-sum b { font-size: 16px !important; }
 </style>
 </head>
 <body>
@@ -1178,10 +1195,10 @@ html, body { overflow-x: hidden; }
       const nVoted = rows.filter((r) => r.v).length, nSeen = rows.filter((r) => !r.v && r.s).length, nNot = rows.length - nVoted - nSeen;
       const nNew = rows.filter((r) => voteNew(r.n) || noteNew(r.n)).length;
       return `<section class="panel vote${nNew ? " has-new" : ""}" id="sec-vote"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${nVoted} of ${rows.length} voted</span>${nNew ? `<b class="newc">${nNew} new</b>` : ""}</div>
-        <div class="pv-sum"><span class="ok"><b>${nVoted}</b>voted</span><span class="seen"><b>${nSeen}</b>saw it, no vote</span><span class="not"><b>${nNot}</b>not seen yet</span></div>
+        <div class="pv-sum"><span class="ok"><b>${nVoted}</b>voted</span><span class="seen"><b>${nSeen}</b>seen only</span><span class="not"><b>${nNot}</b>not seen</span></div>
         <div class="pv-tally">${Object.keys(LAB).map((k) => `<div><span>${LAB[k]} <small>${SUB[k]}</small></span><i><s style="width:${(((p.counts?.[k] || 0) / max) * 100).toFixed(1)}%"></s></i><b>${p.counts?.[k] || 0}</b></div>`).join("")}</div>
         <div class="pv-list">${rows.map((r) => `<div class="pv-row ${r.v ? "ok" : r.s ? "seen" : "not"}${voteNew(r.n) || noteNew(r.n) ? " nw" : ""}">${av(r.n, "sm")}<span class="pv-n">${esc(name(r.n))}${voteNew(r.n) || noteNew(r.n) ? `<i class="newb">NEW</i>` : ""}</span>
-          <span class="pv-st">${r.v ? `<b>${LAB[r.v] || r.v}</b>` : r.s ? `<b>Saw it, no vote</b>` : `<b>Not seen yet</b>`}<small>${r.v ? `voted ${esc(when(at[r.n]))}` : r.s ? `seen ${r.s.n}× · last ${esc(when(r.s.last))}` : ""}</small></span>
+          <span class="pv-st">${r.v ? `<b>${LAB[r.v] || r.v}</b>` : r.s ? `<b>Seen</b>` : `<b>Not seen yet</b>`}<small>${r.v ? esc(when(at[r.n])) : r.s ? `${r.s.n}× · last ${esc(when(r.s.last))}` : ""}</small></span>
           ${notes[r.n] ? `<span class="pv-note">“${esc(notes[r.n])}”</span>` : ""}</div>`).join("")}</div>
       </section>`;
     };
