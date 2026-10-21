@@ -99,6 +99,29 @@ for w in regw: wk_groups[(w['year'], w['week'])].append(w)
 tops = collections.Counter(max(g, key=lambda w: w['points'])['owner'] for g in wk_groups.values())
 bots = collections.Counter(min(g, key=lambda w: w['points'])['owner'] for g in wk_groups.values())
 
+# Runs of consecutive regular season weeks as the league's top (or lowest)
+# scorer, within one season. Each run: owner, length, year, first and last week.
+def scorer_runs(pick):
+    runs = []
+    for y in sorted({y for y, _ in wk_groups}):
+        cur = None
+        for wk in sorted(w for yy, w in wk_groups if yy == y):
+            o = pick(wk_groups[(y, wk)], key=lambda w: w['points'])['owner']
+            if cur and cur['owner'] == o and cur['to'] == wk - 1: cur['to'] = wk; cur['weeks'] += 1
+            else:
+                cur = {'owner': o, 'year': y, 'from': wk, 'to': wk, 'weeks': 1}; runs.append(cur)
+    return runs
+fmt_run = lambda r: f"{r['owner']} {r['weeks']} straight weeks in {r['year']} (weeks {r['from']}-{r['to']})"
+top_runs, bot_runs = scorer_runs(max), scorer_runs(min)
+latest_wk = max(wk_groups)
+def owner_runs(runs, o):
+    mine = [r for r in runs if r['owner'] == o]
+    best = max(mine, key=lambda r: r['weeks'], default=None)
+    cur = next((r for r in runs if r['owner'] == o and (r['year'], r['to']) == latest_wk), None)
+    return {'longest': fmt_run(best) if best else 'never', 'longestWeeks': best['weeks'] if best else 0,
+            'runsOf2Plus': [fmt_run(r) for r in mine if r['weeks'] >= 2],
+            'current': f"{cur['weeks']} straight through {cur['year']} week {cur['to']}" if cur else 'none'}
+
 per = {}
 for o in owners:
     rs = [w for w in regw if w['owner'] == o]; po = [w for w in weekly if w['owner'] == o and w['type'] != 'regular season']
@@ -138,6 +161,7 @@ for o in owners:
         'highestWeek': f"{hi['points']} in {hi['year']} week {hi['week']} vs {hi['opponent']} ({hi['result']})",
         'lowestWeek': f"{lo['points']} in {lo['year']} week {lo['week']} vs {lo['opponent']} ({lo['result']})",
         'weeksAsLeagueTopScorer': tops[o], 'weeksAsLeagueLowestScorer': bots[o], 'longestWinStreak': best,
+        'topScorerStreaks': owner_runs(top_runs, o), 'lowestScorerStreaks': owner_runs(bot_runs, o),
         'weeks100Plus': sum(w['points'] >= 100 for w in rs), 'weeks150Plus': sum(w['points'] >= 150 for w in rs),
         'benchPointsTotal': R(sum(r['bench'] for r in b)), 'benchPointsPerWeek': R(sum(r['bench'] for r in b) / len(b)) if b else None,
         'mostBenchPointsSeason': ({'year': (yb := max(by_season, key=by_season.get)), 'bench': R(by_season[yb])} if by_season else None),
@@ -162,6 +186,9 @@ league = {
     'mostBenchPointsInASeason': [f"{o} {R(v)} in {y}" for (y, o), v in sorted(bench_season.items(), key=lambda kv: -kv[1])[:10]],
     'mostWeeksAsTopScorer': [f"{o} {n}" for o, n in tops.most_common(5)],
     'mostWeeksAsLowestScorer': [f"{o} {n}" for o, n in bots.most_common(5)],
+    'longestTopScorerStreaks': [fmt_run(r) for r in sorted(top_runs, key=lambda r: (-r['weeks'], r['year']))[:10] if r['weeks'] >= 2],
+    'longestLowestScorerStreaks': [fmt_run(r) for r in sorted(bot_runs, key=lambda r: (-r['weeks'], r['year']))[:10] if r['weeks'] >= 2],
+    'topScorerStreakCounts': {n: sum(r['weeks'] >= n for r in top_runs) for n in (2, 3, 4)},
     'longestWinStreaks': sorted([f"{o} {p['longestWinStreak']}" for o, p in per.items()], key=lambda s: -int(s.split()[-1]))[:5],
     'luckiestOwners': sorted([f"{o} {p['luck']:+} ({p['regularSeasonRecord']} actual, all-play {p['allPlayRecord']})" for o, p in per.items()], key=lambda s: -float(s.split()[1]))[:5],
     'unluckiestOwners': sorted([f"{o} {p['luck']:+} ({p['regularSeasonRecord']} actual, all-play {p['allPlayRecord']})" for o, p in per.items()], key=lambda s: float(s.split()[1]))[:5],
