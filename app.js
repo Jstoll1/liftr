@@ -1419,9 +1419,12 @@ let adminRole = null;
 let adminKeyHeld = "";
 
 homeLogoBtn.addEventListener("click", () => {
+  // A plain tap scrolls to the top, so a curious tap does something.
+  // Admin needs 5 quick taps (3 was easy to hit by accident).
+  appScroll.scrollTo({ top: 0, behavior: "smooth" });
   adminTaps += 1;
   clearTimeout(adminTapTimer);
-  if (adminTaps >= 3) { adminTaps = 0; requestAdmin(); return; }
+  if (adminTaps >= 5) { adminTaps = 0; requestAdmin(); return; }
   adminTapTimer = setTimeout(() => { adminTaps = 0; }, ADMIN_TAP_WINDOW_MS);
 });
 
@@ -1539,7 +1542,7 @@ function closeAdmin() {
   lockAdmin();
 }
 
-// Leaving an admin surface locks it again: the next three taps ask for a
+// Leaving an admin surface locks it again: the next five taps ask for a
 // key. Without this the tab kept whichever role it unlocked first, so
 // typing the other key appeared to open the wrong surface — and a phone
 // left on the table stayed unlocked.
