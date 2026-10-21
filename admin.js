@@ -267,6 +267,22 @@
   // Coming back to a week the commissioner has already started should show
   // that work, not a blank board. The saved slate carries ESPN team ids, so
   // each stored game re-checks the row it came from.
+  // A published week: who already has a pick in on each game (names only,
+  // the Worker never sends which side). Changing one of those games warns.
+  let savedSlate = [], pickers = {};
+  async function loadPickers(week) {
+    const key = getKey().trim();
+    if (!key) return;
+    try {
+      const r = await fetch(`${WORKER_URL}/games?pickers=1&week=${week}&key=${encodeURIComponent(key)}&t=${Date.now()}`, { cache: "no-store" });
+      if (r.ok) pickers = (await r.json()).pickers || {};
+    } catch {}
+  }
+  const savedGameOf = (g) => savedSlate.find((s) => Number(s.awayId) === g.awayId && Number(s.homeId) === g.homeId);
+  const pickersOf = (saved) => (saved && pickers[saved.id]) || [];
+  const pickWarning = (items) => items.map(({ label, names }) =>
+    `WARNING: ${names.length} ${names.length === 1 ? "user has" : "users have"} submitted picks for ${label}.\nThe following users have already selected: ${names.join(", ")}.`).join("\n\n");
+
   async function preselectSaved() {
     const week = Number(el("admin-espn-week").value);
     if (!Number.isInteger(week) || week < 1) return null;
@@ -275,6 +291,8 @@
       if (!res.ok) return null;
       const data = await res.json();
       const saved = Array.isArray(data.games) ? data.games : [];
+      savedSlate = saved; pickers = {};
+      if (saved.length) loadPickers(week);
       if (!saved.length) return { count: 0, missing: 0 };
       let missing = 0;
       for (const g of saved) {
@@ -481,7 +499,11 @@
     const g = found.find((x) => x.key === key);
     const act = e.target.closest("[data-act]")?.dataset.act;
     if (act === "toggle") {
-      if (picked.has(key)) { picked.delete(key); say(""); }
+      if (picked.has(key)) {
+        const names = pickersOf(savedGameOf(g));
+        if (names.length && !window.confirm(`${pickWarning([{ label: `${g.awayShort} @ ${g.homeShort}`, names }])}\n\nRemoving this game drops their picks on it. Remove it anyway?`)) return;
+        picked.delete(key); say("");
+      }
       else if (g.spread === null) { say(`ESPN has no line on ${g.awayShort} @ ${g.homeShort} yet. Load the week again closer to kickoff.`, "bad"); return; }
       else if (picked.size >= MAX_PICKS) { say(`That is ${MAX_PICKS} already. Untap one first.`, "bad"); return; }
       else picked.set(key, { tiebreaker: false });
@@ -521,6 +543,16 @@
       });
     }
 
+    // Any published game with picks on it that this save changes: removed,
+    // moved to a different slot (picks follow the slot), a new line or
+    // favourite, or the tiebreaker moved.
+    const changed = savedSlate.filter((sv) => pickersOf(sv).length).map((sv) => {
+      const nw = games.find((x) => x.awayId === Number(sv.awayId) && x.homeId === Number(sv.homeId));
+      const why = !nw ? "removed" : nw.id !== sv.id ? "moved to a different slot" : nw.spread !== sv.spread || nw.favorite !== sv.favorite ? `line changes from ${sv.favorite} -${sv.spread} to ${nw.favorite} -${nw.spread}` : !!nw.tiebreakerGame !== !!sv.tiebreakerGame ? "tiebreaker changes" : "";
+      return why && { label: `${sv.awayShort} @ ${sv.homeShort} (${why})`, names: pickersOf(sv) };
+    }).filter(Boolean);
+    if (changed.length && !window.confirm(`${pickWarning(changed)}\n\nSave these changes anyway?`)) { say("Not saved.", ""); return; }
+
     say("Saving…");
     try {
       const res = await fetch(`${WORKER_URL}/games?key=${encodeURIComponent(key)}`, {
@@ -529,6 +561,7 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) { say(`Not saved: ${data.error || res.status}`, "bad"); return; }
+      savedSlate = games; loadPickers(week);
       say(`Week ${data.week} saved with ${data.games} games${data.current === data.week ? " and is now live" : ""}. Reload to see it.`, "ok");
     } catch (err) {
       say(`Not saved: ${err.message}`, "bad");
