@@ -1204,6 +1204,13 @@ html, body { overflow-x: hidden; }
       st.texts.set(`${s.n}|${s.start}`, [`${name(s.n)} · ${dayLab(s.start)} · ${when}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${scr}`,
         ...s.acts.map((a) => `  ${hm(a.at)}  ${a.a}${a.d ? `${/^for /.test(a.d) ? " " : ": "}${a.d}` : ""}${a.x > 1 ? ` (×${a.x})` : ""}`)].join("\n"));
     }
+    // Length tiers relative to how long visits usually run here, not fixed
+    // minutes: under a minute is a quick look; then below, around and well
+    // above the average visit in view.
+    const lens = all.filter((v) => !v.live).map((v) => Math.max(v.end - v.start, 1000)).filter((x) => x >= 60000);
+    const avgMs = lens.length ? lens.reduce((t, x) => t + x, 0) / lens.length : 8 * 60000;
+    const cutLo = Math.max(90000, avgMs * 0.6), cutHi = Math.max(cutLo + 60000, avgMs * 1.5);
+    const mnt = (x) => `${Math.round(x / 60000)}m`;
     let day = null;
     const cards = all.slice(0, st.shown).map((s) => {
       const d = dayLab(s.start), head = d !== day ? `<div class="day">${esc(d)}</div>` : "";
@@ -1216,7 +1223,7 @@ html, body { overflow-x: hidden; }
       const acts = s.acts;
       const ms = s.live ? now - s.since : Math.max(s.end - s.start, 1000);
       const issues = s.acts.filter((a) => /^⚠/.test(a.a)), errs = issues.filter((a) => /error/i.test(a.a));
-      const tier = ms < 60000 ? "quick" : ms < 5 * 60000 ? "short" : ms < 15 * 60000 ? "mid" : "long";
+      const tier = ms < 60000 ? "quick" : ms < cutLo ? "short" : ms < cutHi ? "mid" : "long";
       const used = new Set(s.acts.filter((a) => !/^(Went to|⚠)/.test(a.a)).map((a) => a.a)).size;
       const span = s.live ? "" : ` · ${dur(Math.max(s.end - s.start, 1000))}`;
       const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
@@ -1230,7 +1237,7 @@ html, body { overflow-x: hidden; }
     const feedHtml = `<main class="feed" id="sec-visits">
       <div class="fh"><h2>VISITS</h2><button type="button" class="cp" data-openall="1" title="Open or close every visit">${all.slice(0, st.shown).some((v) => !(v.live ? !st.open.has(`${v.n}|${v.start}`) : st.open.has(`${v.n}|${v.start}`))) ? "Expand all" : "Collapse all"}</button>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
         ${all.length ? `<button type="button" class="cp${st.copied === "*" ? " ok" : ""}" data-copy="*" title="Copy every visit shown">${st.copied === "*" ? "✓ Copied" : `${COPY_ICON}Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"}`}</button>` : ""}</div>
-      ${cards ? `<div class="vleg"><span><i style="background:#5b5378"></i>quick look</span><span><i style="background:#7aa2ff"></i>under 5m</span><span><i style="background:#3dfc8f"></i>5 to 15m</span><span><i style="background:#ffe45e"></i>15m+</span><span><i style="background:#ffb347"></i>friction</span><span><i style="background:#ff4f6d"></i>error</span></div>` : ""}
+      ${cards ? `<div class="vleg"><span><i style="background:#5b5378"></i>quick look</span><span><i style="background:#7aa2ff"></i>short, under ${mnt(cutLo)}</span><span><i style="background:#3dfc8f"></i>typical, ${mnt(cutLo)} to ${mnt(cutHi)}</span><span><i style="background:#ffe45e"></i>long, ${mnt(cutHi)}+</span><span class="vavg">avg visit ${mnt(avgMs)}</span><span><i style="background:#ffb347"></i>friction</span><span><i style="background:#ff4f6d"></i>error</span></div>` : ""}
       ${cards || `<div class="empty" style="margin-top:12px">${st.filter ? `No visits from ${esc(name(st.filter))} in the last 24 hours.` : "No visits in the last 24 hours yet. They show here as people use the app."}</div>`}
       ${all.length > st.shown ? `<button type="button" class="older" data-older="1">Show ${Math.min(20, all.length - st.shown)} more</button>` : ""}
       <p class="note">A visit is live while the app is on screen and ends when it's put away, or about a minute after a phone goes quiet. Shows screens and features, never which team anyone picked. Jake isn't tracked.</p>
