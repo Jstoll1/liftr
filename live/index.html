@@ -695,6 +695,11 @@ html, body { overflow-x: hidden; }
   .sess.grp .grp-in .who { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
   .sess.grp .grp-in .vsum { flex-basis: 100%; margin-top: 2px; }
   .sess.grp::before { background: repeating-linear-gradient(180deg, var(--past) 0 6px, transparent 6px 9px); }
+  .vkey { margin-top: 10px; font-size: 12px; color: var(--dim); }
+  .vkey summary { cursor: pointer; list-style: none; display: inline-flex; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); }
+  .vkey summary::-webkit-details-marker { display: none; }
+  .vkey summary::before { content: "▸"; } .vkey[open] summary::before { content: "▾"; }
+  .vkey .vleg { margin: 8px 0 0; }
 </style>
 </head>
 <body>
@@ -1299,9 +1304,9 @@ html, body { overflow-x: hidden; }
     const feedHtml = `<main class="feed" id="sec-visits">
       <div class="fh"><h2>VISITS</h2><button type="button" class="cp" data-openall="1" title="Open or close every visit">${all.slice(0, st.shown).some((v) => !(v.live ? !st.open.has(`${v.n}|${v.start}`) : st.open.has(`${v.n}|${v.start}`))) ? "Expand all" : "Collapse all"}</button>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
         ${all.length ? `<button type="button" class="cp${st.copied === "*" ? " ok" : ""}" data-copy="*" title="Copy every visit shown">${st.copied === "*" ? "✓ Copied" : `${COPY_ICON}Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"}`}</button>` : ""}</div>
-      ${cards ? `<div class="vleg"><span><i style="background:#5b5378"></i>quick look</span><span><i style="background:#7aa2ff"></i>short, under ${mnt(cutLo)}</span><span><i style="background:#3dfc8f"></i>typical, ${mnt(cutLo)} to ${mnt(cutHi)}</span><span><i style="background:#ffe45e"></i>long, ${mnt(cutHi)}+</span><span class="vavg">avg visit ${mnt(avgMs)}</span><span><i style="background:#ffb347"></i>friction</span><span><i style="background:#ff4f6d"></i>error</span></div>` : ""}
       ${cards || `<div class="empty" style="margin-top:12px">${st.filter ? `No visits from ${esc(name(st.filter))} in the last 24 hours.` : "No visits in the last 24 hours yet. They show here as people use the app."}</div>`}
       ${all.length > st.shown ? `<button type="button" class="older" data-older="1">Show ${Math.min(20, all.length - st.shown)} more</button>` : ""}
+      ${cards ? `<details class="vkey"${st.keyOpen ? " open" : ""}><summary>Colour key</summary><div class="vleg"><span><i style="background:#5b5378"></i>quick look</span><span><i style="background:#7aa2ff"></i>short, under ${mnt(cutLo)}</span><span><i style="background:#3dfc8f"></i>typical, ${mnt(cutLo)} to ${mnt(cutHi)}</span><span><i style="background:#ffe45e"></i>long, ${mnt(cutHi)}+</span><span class="vavg">avg visit ${mnt(avgMs)}</span><span><i style="background:#ffb347"></i>friction</span><span><i style="background:#ff4f6d"></i>error</span></div></details>` : ""}
       <p class="note">A visit is live while the app is on screen and ends when it's put away, or about a minute after a phone goes quiet. Shows screens and features, never which team anyone picked. Jake isn't tracked.</p>
     </main>`;
 
@@ -1403,6 +1408,7 @@ html, body { overflow-x: hidden; }
       clearTimeout(st.focusT); st.focusT = setTimeout(() => { st.focus = null; render(); }, 2000);
       return;
     }
+    if (e.target.closest(".vkey summary")) { st.keyOpen = !e.target.closest(".vkey").open; return; }
     const jb = e.target.closest("[data-jump]");
     if (jb) { document.getElementById(jb.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     if (e.target.closest("[data-seenall]")) { seenBase = snapSeen(); saveSeen(); st.sig = ""; render(); return; }
