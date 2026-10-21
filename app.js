@@ -2405,6 +2405,8 @@ function renderPicksScreen() {
   // Kickoff order, not the order the commissioner happened to tap them
   // in: the card at the top is always the next one to lock, which is what
   // the countdown above is counting down to.
+  // The next game still to pick, in kickoff order, wears the glowing edge.
+  const nextUpId = gamesByKickoff().find((g) => !isGameLocked(g) && !state.picks[g.id])?.id ?? null;
   gamesByKickoff().forEach((game) => {
     const gameLocked = isGameLocked(game);
     const pick = state.picks[game.id];
@@ -2415,6 +2417,7 @@ function renderPicksScreen() {
       "game-card" +
       (gameLocked ? " game-locked" : "") +
       (pick ? " game-submitted" : "") +
+      (game.id === nextUpId ? " next-up" : "") +
       (justSavedGameId === game.id ? " just-saved" : "");
 
     const g = latestLive[game.id];
