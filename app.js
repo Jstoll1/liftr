@@ -7711,7 +7711,7 @@ async function openInsights(gameId) {
   if (form && (form.away.length || form.home.length)) {
     const chip = (e) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}" title="${esc(`${e.result || ""} ${e.at === "@" ? "at" : "vs"} ${e.oppName || e.opp || ""} ${e.score || ""}`)}">${e.at === "@" ? `<u>@</u>` : ""}${e.oppId || e.oppLogo ? `<img src="${e.oppId ? logoUrl(e.oppId) : esc(e.oppLogo)}" alt="${esc(e.opp || "")}" loading="lazy">` : `<i>${esc(e.opp || "")}</i>`}<b>${esc(e.result || "·")}</b><i>${esc(e.score || "")}</i></span>`;
     const row = (teamId, list) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}</span><span class="ins-form-r">${list.map(chip).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
-    html += `<div class="ins-sub-h">LAST FIVE</div>${row(game.awayId, form.away)}${row(game.homeId, form.home)}`;
+    html += `<div class="ins-h">LAST FIVE</div>${row(game.awayId, form.away)}${row(game.homeId, form.home)}`;
   }
   // Series history.
   if (direct?.series?.length) {
@@ -7885,7 +7885,7 @@ async function openInsights(gameId) {
   // after last five and just before news. Each section is its heading plus
   // everything up to the next heading.
   (() => {
-    const ORDER = ["LINE", "EXPERT PICKS", "PREVIEW", "INSIGHTS", "INJURIES", "NEWS", "MORE"];
+    const ORDER = ["LINE", "EXPERT PICKS", "PREVIEW", "LAST FIVE", "INSIGHTS", "INJURIES", "NEWS", "MORE"];
     const head = [], secs = {}, tail = [];
     let cur = null;
     for (const el of [...body.children]) {
