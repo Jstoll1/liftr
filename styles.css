@@ -7790,3 +7790,9 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .scorebug.lk .bug-head > :last-child { margin-right: 10px; }
 /* The locked game card: red slanted blinds tint over the whole card */
 .game-card.lotw { background-image: repeating-linear-gradient(135deg, rgba(255, 32, 121, .13) 0 10px, rgba(255, 32, 121, .03) 10px 20px) !important; border-color: #ff4f6d !important; box-shadow: 0 0 0 1px rgba(255, 79, 109, .5), 0 0 22px rgba(255, 32, 121, .22) !important; }
+/* Picks card header: round i for game info, lock button beside it (no extra row) */
+.game-card .insights-btn.ic { width: 24px; height: 24px; padding: 0; display: inline-grid; place-items: center; border-radius: 50%; font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 700; font-size: 13px; letter-spacing: 0; }
+.lotw-btn.hdr { padding: 6px 9px; font-size: 6.5px; border-color: rgba(255, 210, 63, .45); background: rgba(255, 210, 63, .06); color: #ffd23f; white-space: nowrap; }
+.lotw-btn.hdr.on { background: #ffd23f; color: #1a0f00; border-color: #ffd23f; box-shadow: 0 0 10px rgba(255, 210, 63, .4); }
+.lotw-btn.hdr.done { cursor: default; }
+.game-meta-right { gap: 6px; }

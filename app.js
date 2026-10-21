@@ -2425,12 +2425,11 @@ document.getElementById("picks-standing")?.addEventListener("click", () => {
 // glows gold. Above the games, one bar says which pick is the lock.
 function lockRowHtml(game, pick, gameLocked) {
   const lr = lockRule();
-  if (!lr || !pick) return "";
-  if (pick.mode !== "ATS") return "";
-  if (gameLocked) return pick.lock ? `<div class="lotw-row on done"><span class="lotw-tag">🔒 LOCK OF THE WEEK</span><span class="lotw-terms">${lockLabel(lr)}</span></div>` : "";
+  if (!lr || !pick || pick.mode !== "ATS") return "";
+  if (gameLocked) return pick.lock ? `<span class="lotw-btn hdr on done">🔒 LOCK</span>` : "";
   return pick.lock
-    ? `<div class="lotw-row on"><button type="button" class="lotw-btn" aria-pressed="true">🔒 YOUR LOCK</button><span class="lotw-terms">${lockLabel(lr)}</span></div>`
-    : `<div class="lotw-row"><button type="button" class="lotw-btn ghost" aria-pressed="false" title="Make this pick your lock of the week (${lockLabel(lr)})">🔒 LOCK IT</button></div>`;
+    ? `<button type="button" class="lotw-btn hdr on" aria-pressed="true" title="Your lock: tap to take it off">🔒 LOCKED</button>`
+    : `<button type="button" class="lotw-btn hdr" aria-pressed="false" title="Make this pick your lock of the week (${lockLabel(lr)})">🔒 LOCK IT</button>`;
 }
 function lotwToast(text) {
   let t = document.getElementById("lotw-toast");
@@ -2617,10 +2616,9 @@ function renderPicksScreen() {
     card.innerHTML = `
       <div class="game-meta">
         <span class="game-meta-left"><span>G${game.id} &middot; ${game.kickoffLabel} &middot; ${game.tv}</span>${gameLocked || !note || note.startsWith("⚠") ? "" : `<span class="game-stamp">${note}</span>`}</span>
-        <span class="game-meta-right"><button type="button" class="insights-btn" data-insights="${game.id}" aria-label="Insights for ${game.awayShort} at ${game.homeShort}">INFO</button><span class="game-status ${statusClass}">${statusLabel}</span></span>
+        <span class="game-meta-right">${lockRowHtml(game, pick, gameLocked)}<button type="button" class="insights-btn ic" data-insights="${game.id}" aria-label="Info for ${game.awayShort} at ${game.homeShort}">i</button><span class="game-status ${statusClass}">${statusLabel}</span></span>
       </div>
       ${gameLocked ? lockedResultHtml(game, pick, finalRes, isLive ? g : null) : matchupCardsHtml(game, pick)}
-      ${lockRowHtml(game, pick, gameLocked)}
       ${gameLocked || !note || !note.startsWith("⚠") ? "" : `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>`}
     `;
 
