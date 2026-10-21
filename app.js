@@ -2426,7 +2426,7 @@ document.getElementById("picks-standing")?.addEventListener("click", () => {
 function lockRowHtml(game, pick, gameLocked) {
   const lr = lockRule();
   if (!lr || !pick) return "";
-  if (pick.mode !== "ATS") return gameLocked ? "" : `<div class="lotw-row"><span class="lotw-terms">🔒 Locks are spread picks only</span></div>`;
+  if (pick.mode !== "ATS") return "";
   if (gameLocked) return pick.lock ? `<div class="lotw-row on done"><span class="lotw-tag">🔒 LOCK OF THE WEEK</span><span class="lotw-terms">${lockLabel(lr)}</span></div>` : "";
   return pick.lock
     ? `<div class="lotw-row on"><button type="button" class="lotw-btn" aria-pressed="true">🔒 YOUR LOCK</button><span class="lotw-terms">${lockLabel(lr)}</span></div>`
