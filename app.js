@@ -4840,7 +4840,8 @@ let liveWeekFinal = false;
 
 function payoutLedger() {
   const allSealed = Object.values(weekSummaries).filter((s) => s && s.complete);
-  // An exhibition week keeps its picks, points and trophy, but pays
+  // Season points count every week, week 1 included (league call). An
+  // exhibition week keeps its picks, points and trophy, but pays
   // nothing and does not count toward the weeks the pot is spread over.
   const sealed = allSealed.filter((s) => !s.exhibition);
   const rows = new Map(MANAGERS.map((n) => [n, { name: n, weeksWon: 0, earned: 0, points: 0, played: 0 }]));
@@ -4907,7 +4908,7 @@ function renderPayouts() {
   // the record (pushes and blanks count neither way).
   const rec = {};
   for (const w of Object.values(weekSummaries)) {
-    if (!w?.complete || w.exhibition) continue;
+    if (!w?.complete) continue;
     for (const r of w.rows || []) { const x = rec[r.name] = rec[r.name] || { w: 0, l: 0 }; x.w += r.hits || 0; x.l += r.misses || 0; }
   }
   // One LED segment per week of the season: settled weeks carry the
@@ -5025,7 +5026,7 @@ function renderSeasonH2H() {
   if (!modal) return;
   const esc = escapeCd;
   const pot = payoutLedger();
-  const sealed = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition).sort((x, y) => x.week - y.week);
+  const sealed = Object.values(weekSummaries).filter((w) => w?.complete).sort((x, y) => x.week - y.week);
   // The week in progress counts too, marked live, so the race is current.
   const weeks = pot.liveWeek && liveWeekRows.some((r) => r.score) ? [...sealed, { week: pot.liveWeek, live: true, rows: liveWeekRows.map((r) => ({ name: r.name, score: r.score })) }] : sealed;
   const a = sh2h.a, b = sh2h.b;
@@ -8601,7 +8602,7 @@ function recapDetail(sum, kind) {
   if (kind === "move") {
     // Season standings after this week, with how far each player moved
     // from the week before. Ties share a place.
-    const weeks = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition && w.week <= sum.week);
+    const weeks = Object.values(weekSummaries).filter((w) => w?.complete && w.week <= sum.week);
     const total = (upto) => { const t = new Map(); for (const w of weeks) if (w.week <= upto) for (const r of w.rows || []) t.set(r.name, (t.get(r.name) || 0) + (r.score || 0)); return t; };
     const place = (t) => { const list = [...t.entries()].sort((a, b) => b[1] - a[1]); const m = new Map(); list.forEach(([n, p]) => m.set(n, 1 + list.filter(([, q]) => q > p).length)); return m; };
     const now = total(sum.week), was = total(sum.week - 1), pNow = place(now), pWas = place(was);
@@ -8736,7 +8737,7 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
 // card. Everything comes from the sealed weeks, so it is what was graded.
 function playerSeason(name) {
   // The detailed weeks (with every pick) when they are loaded, else the plain ones.
-  const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition)).slice().sort((a, b) => a.week - b.week);
+  const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete)).slice().sort((a, b) => a.week - b.week);
   const scores = [], picks = [];
   let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0;
   for (const wk of weeks) {
@@ -8955,7 +8956,7 @@ async function fetchSeasonLedger() {
     const res = await fetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return seasonLedger;
     const data = await res.json();
-    seasonLedger = Object.values(data.summaries || {}).filter((w) => w?.complete && !w.exhibition && Array.isArray(w.rows)).sort((a, b) => a.week - b.week);
+    seasonLedger = Object.values(data.summaries || {}).filter((w) => w?.complete && Array.isArray(w.rows)).sort((a, b) => a.week - b.week);
     seasonLedgerAt = Date.now();
   } catch { /* keep what we had */ }
   return seasonLedger;
