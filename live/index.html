@@ -1388,6 +1388,7 @@ html, body { overflow-x: hidden; }
           ${st.menu ? `<div class="menu" role="menu">
             ${"Notification" in window ? `<button type="button" role="menuitem" data-alert="1">${ICONS.bell}<span>${st.alert ? "Turn alerts off" : "Alert me when someone comes in"}</span>${st.alert ? `<i class="on">ON</i>` : ""}</button>` : ""}
             <button type="button" role="menuitem" data-copy="*">${ICONS.copy}<span>Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"} visits</span></button>
+            <button type="button" role="menuitem" data-slate="1">${ICONS.copy}<span>${st.copied === "slate" ? "✓ Slate copied" : "Copy this week's slate"}</span></button>
             <a role="menuitem" href="../" target="_blank" rel="noopener">${ICONS.app}<span>Open Pick'em</span><i>↗</i></a>
             <a role="menuitem" href="../?admin" target="_blank" rel="noopener">${ICONS.console}<span>Admin console</span><i>↗</i></a>
             <hr>
@@ -1507,6 +1508,21 @@ html, body { overflow-x: hidden; }
     if (b.dataset.open) { st.open.has(b.dataset.open) ? st.open.delete(b.dataset.open) : st.open.add(b.dataset.open); render(); return; }
     if (b.dataset.older) { st.shown += 20; render(); return; }
     if (b.dataset.reload) { location.reload(); return; }
+    if (b.dataset.slate) {
+      // This week's games as plain text, ready to paste into the group chat.
+      let text = "";
+      try {
+        const g = await (await fetch(`${WORKER}/games?t=${Date.now()}`, { cache: "no-store" })).json();
+        const games = [...(g.games || [])].sort((x, y) => new Date(x.kickoff) - new Date(y.kickoff) || x.id - y.id);
+        const dog = (x) => (x.favorite === x.away ? x.home : x.away);
+        text = `${LEAGUE === "nfl" ? "NFL" : "Brochiefs"} ${g.label || `Week ${g.week}`} slate\n\n` + games.map((x) =>
+          `${x.away} at ${x.home}\n${x.spread ? `${x.favorite} by ${x.spread} (${dog(x)} +${x.spread})` : "Pick em"} · ${[x.kickoffLabel, x.tv].filter(Boolean).join(" · ")}${x.tiebreakerGame ? "\n⭐ Tiebreaker: total points" : ""}`).join("\n\n");
+      } catch {}
+      if (!text || !(await copyText(text))) { b.textContent = "Couldn't copy the slate"; return; }
+      st.copied = "slate"; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.menu = false; render(); }, 1400);
+      return;
+    }
     if (b.dataset.copy) {
       const id = b.dataset.copy;
       const text = id === "*" ? `Brochiefs Live · ${st.filter ? name(st.filter) : "everyone"} · last 24 hours\n\n${[...st.texts.values()].join("\n\n")}` : st.texts.get(id) || "";
