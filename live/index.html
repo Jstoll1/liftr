@@ -100,7 +100,7 @@ body.pv-open .tabs { display: none; }
 @media (min-width: 1024px) { .page { padding-bottom: calc(48px + env(safe-area-inset-bottom)); grid-template-columns: minmax(0, 1fr) 330px; grid-template-areas: "kpi kpi" "vote vote" "tl tl" "feed rail"; align-items: start; } .rail { position: sticky; top: 76px; } }
 @media (min-width: 1100px) { body.pv-open .page { margin-right: 430px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "vote" "tl" "feed" "rail"; } body.pv-open .rail { position: static; } }
 .kpis, .tl, .feed, .rail { scroll-margin-top: 84px; }
-.kpis { grid-area: kpi; } .panel.vote { grid-area: vote; } .tl { grid-area: tl; } .feed { grid-area: feed; min-width: 0; } .rail { grid-area: rail; display: flex; flex-direction: column; gap: 16px; }
+.kpis { grid-area: kpi; } .vote-wrap { grid-area: vote; display: grid; gap: 16px; min-width: 0; } .vote-wrap:empty { display: none; } .tl { grid-area: tl; } .feed { grid-area: feed; min-width: 0; } .rail { grid-area: rail; display: flex; flex-direction: column; gap: 16px; }
 .panel { position: relative; padding: 14px 16px 16px; border-radius: 16px; background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .012)), var(--panel); border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 10px 30px rgba(0, 0, 0, .25); }
 .ph { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 12px; }
 .ph h2 { margin: 0; font: 700 11.5px/1 var(--mono); letter-spacing: .16em; color: var(--meta); text-transform: uppercase; }
@@ -644,6 +644,18 @@ html, body { overflow-x: hidden; }
   .acts li.iss span { color: #ffb347; }
   .vleg { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 4px 0 10px; font-size: 11.5px; color: var(--dim); }
   .vleg i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+  /* New since you last looked */
+  .newb { display: inline-block; margin-left: 6px; padding: 2px 5px; border-radius: 4px; background: #ff4f9a; color: #fff; font: 800 9px/1 var(--mono); letter-spacing: .08em; vertical-align: 2px; animation: newpulse 2s ease-in-out infinite; }
+  @keyframes newpulse { 50% { opacity: .55; } }
+  .newc { margin-left: 8px; padding: 3px 7px; border-radius: 999px; background: rgba(255, 79, 154, .18); color: #ff7ab5; font: 700 11px/1 var(--mono); }
+  section.panel.has-new { box-shadow: 0 0 0 1px rgba(255, 79, 154, .45), 0 0 18px rgba(255, 79, 154, .12); }
+  .pv-row.nw { background: rgba(255, 79, 154, .08) !important; }
+  .newstrip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(255, 79, 154, .45); background: linear-gradient(90deg, rgba(255, 79, 154, .12), rgba(255, 79, 154, .03)); }
+  .ns-h { font: 800 10.5px/1 var(--mono); letter-spacing: .14em; color: #ff7ab5; margin-right: 4px; }
+  .newstrip button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: #fff; cursor: pointer; }
+  .newstrip button.warn { border-color: rgba(255, 179, 71, .5); color: #ffcf85; }
+  .newstrip .ns-ok { margin-left: auto; background: none; color: var(--dim); }
+  @media (prefers-reduced-motion: reduce) { .newb { animation: none; } }
 </style>
 </head>
 <body>
@@ -713,6 +725,18 @@ html, body { overflow-x: hidden; }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
   const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "6h", "12h", "24h", "7d"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "6h", wk: null, sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  // What's new since this device last looked: a baseline saved when the
+  // page is put away, compared with what arrives. ✓ Seen resets it now.
+  const SEEN_KEY = `brochiefs_live_seen_${LEAGUE}`;
+  let seenBase = (() => { try { return JSON.parse(store.get(SEEN_KEY) || "null"); } catch { return null; } })() || { at: Date.now(), votes: null, notes: null };
+  const snapSeen = () => ({ at: Date.now(), votes: st.poll?.votes || seenBase.votes || {}, notes: st.poll?.notes || seenBase.notes || {} });
+  const saveSeen = () => store.set(SEEN_KEY, JSON.stringify(snapSeen()));
+  if (!store.get(SEEN_KEY)) saveSeen();
+  document.addEventListener("visibilitychange", () => { if (document.hidden) saveSeen(); });
+  addEventListener("pagehide", saveSeen);
+  // A first look at the vote (no baseline yet) counts nothing as new.
+  const voteNew = (n) => { const v = st.poll?.votes || {}; return !!(seenBase.votes && v[n] && seenBase.votes[n] !== v[n]); };
+  const noteNew = (n) => { const v = st.poll?.notes || {}; return !!(seenBase.notes && v[n] && seenBase.notes[n] !== v[n]); };
 
   // --- Formatting --------------------------------------------------------
   const name = (n) => SHOWN[n] || n;
@@ -914,7 +938,7 @@ html, body { overflow-x: hidden; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1074,6 +1098,17 @@ html, body { overflow-x: hidden; }
         <div class="asks">${list.map((x) => `<button type="button" class="ask" data-ask="${x.ts}"><span class="ask-h">${x.n ? av(x.n, "sm") : ""}<b>${esc(x.n ? name(x.n) : "Someone")}</b><time>${esc(dayOf(x.ts) === today0 ? hm(x.ts) : `${new Date(x.ts).toLocaleDateString([], { weekday: "short" })} ${hm(x.ts)}`)}</time></span><span class="ask-q">${esc(x.q)}</span></button>`).join("")}</div>
       </section>`;
     };
+    // Since you last looked: one line, each part jumps to its section.
+    const newStrip = () => {
+      const vNew = Object.keys(st.poll?.votes || {}).filter((n) => voteNew(n) || noteNew(n)).length;
+      const visNew = vs.filter((v) => !v.live && v.end > seenBase.at).length;
+      const fNew = (room.feed || []).filter((e) => FRICTION.test(e.k) && e.at > seenBase.at).length;
+      const aNew = (st.asks || []).filter((x) => x.ts > seenBase.at).length;
+      const parts = [vNew && `<button type="button" data-jump="sec-vote">🔒 ${vNew} new vote${vNew === 1 ? "" : "s"}</button>`, visNew && `<button type="button" data-jump="sec-visits">👀 ${visNew} new visit${visNew === 1 ? "" : "s"}</button>`, fNew && `<button type="button" data-jump="sec-stats" class="warn">⚠ ${fNew} new issue${fNew === 1 ? "" : "s"}</button>`, aNew && `<button type="button" data-jump="sec-stats">💬 ${aNew} new question${aNew === 1 ? "" : "s"}</button>`].filter(Boolean);
+      if (!parts.length) return "";
+      const ago = Date.now() - seenBase.at;
+      return `<section class="newstrip"><span class="ns-h">NEW SINCE ${ago < 86400000 ? hm(seenBase.at).toUpperCase() : new Date(seenBase.at).toLocaleDateString([], { weekday: "short" }).toUpperCase() + " " + hm(seenBase.at).toUpperCase()}</span>${parts.join("")}<button type="button" class="ns-ok" data-seenall="1">✓ Seen</button></section>`;
+    };
     // The lock of the week vote: tally, who voted what, who has seen it, feedback.
     const pollPanel = () => {
       const p = st.poll; if (!p) return "";
@@ -1087,10 +1122,11 @@ html, body { overflow-x: hidden; }
       const everyone = [...new Set([...Object.keys(votes), ...(p.waitingOn || [])])];
       const rows = everyone.map((n) => ({ n, v: votes[n], s: seenOf(n) })).sort((x, y) => (x.v ? 0 : x.s ? 1 : 2) - (y.v ? 0 : y.s ? 1 : 2) || (at[y.n] || y.s?.last || 0) - (at[x.n] || x.s?.last || 0));
       const nVoted = rows.filter((r) => r.v).length, nSeen = rows.filter((r) => !r.v && r.s).length, nNot = rows.length - nVoted - nSeen;
-      return `<section class="panel vote" id="sec-vote"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${nVoted} of ${rows.length} voted</span></div>
+      const nNew = rows.filter((r) => voteNew(r.n) || noteNew(r.n)).length;
+      return `<section class="panel vote${nNew ? " has-new" : ""}" id="sec-vote"><div class="ph"><h2>🔒 Lock vote</h2><span class="sub">${nVoted} of ${rows.length} voted</span>${nNew ? `<b class="newc">${nNew} new</b>` : ""}</div>
         <div class="pv-sum"><span class="ok"><b>${nVoted}</b>voted</span><span class="seen"><b>${nSeen}</b>saw it, no vote</span><span class="not"><b>${nNot}</b>not seen yet</span></div>
         <div class="pv-tally">${Object.keys(LAB).map((k) => `<div><span>${LAB[k]} <small>${SUB[k]}</small></span><i><s style="width:${(((p.counts?.[k] || 0) / max) * 100).toFixed(1)}%"></s></i><b>${p.counts?.[k] || 0}</b></div>`).join("")}</div>
-        <div class="pv-list">${rows.map((r) => `<div class="pv-row ${r.v ? "ok" : r.s ? "seen" : "not"}">${av(r.n, "sm")}<span class="pv-n">${esc(name(r.n))}</span>
+        <div class="pv-list">${rows.map((r) => `<div class="pv-row ${r.v ? "ok" : r.s ? "seen" : "not"}${voteNew(r.n) || noteNew(r.n) ? " nw" : ""}">${av(r.n, "sm")}<span class="pv-n">${esc(name(r.n))}${voteNew(r.n) || noteNew(r.n) ? `<i class="newb">NEW</i>` : ""}</span>
           <span class="pv-st">${r.v ? `<b>${LAB[r.v] || r.v}</b>` : r.s ? `<b>Saw it, no vote</b>` : `<b>Not seen yet</b>`}<small>${r.v ? `voted ${esc(when(at[r.n]))}` : r.s ? `seen ${r.s.n}× · last ${esc(when(r.s.last))}` : ""}</small></span>
           ${notes[r.n] ? `<span class="pv-note">“${esc(notes[r.n])}”</span>` : ""}</div>`).join("")}</div>
       </section>`;
@@ -1106,7 +1142,8 @@ html, body { overflow-x: hidden; }
       const when = (t) => `${new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ${hm(t)}`;
       // A names-free digest to paste to Claude: what broke, how often, how many people.
       lastDigest = [`Brochiefs ${LEAGUE.toUpperCase()} friction digest (${sub})`, ...top.map((x) => `- ${x.a.replace("⚠ ", "")}${x.d ? ` [${x.d}]` : ""}: ${x.n}x, ${x.who.size} people, ${x.ats.sort((p, q) => p - q).map(when).join("; ")}`), ...depthRows.map((x) => `- Depth ${SCREEN_NAME[x.sc] || x.sc}: ${x.n} visits, half ${x.r50}%, bottom ${x.r100}%`)].join("\n");
-      return `<section class="panel"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span><button type="button" class="digest-copy" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ff7a9a;background:transparent;color:#ff7a9a">Copy for Claude</button></div>
+      const fNew = list.filter((e) => FRICTION.test(e.k) && e.at > seenBase.at).length;
+      return `<section class="panel${fNew ? " has-new" : ""}"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span>${fNew ? `<b class="newc">${fNew} new</b>` : ""}<button type="button" class="digest-copy" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ff7a9a;background:transparent;color:#ff7a9a">Copy for Claude</button></div>
         ${top.length ? `<div class="rank">${top.map((x) => `<div><span>${esc(x.a.replace("⚠ ", ""))}${x.d ? ` <small>${esc(x.d)}</small>` : ""}</span><b>${x.n}</b><i><s style="width:${((x.n / top[0].n) * 100).toFixed(1)}%;background:#ff7a9a"></s></i></div>`).join("")}</div>` : `<div class="note">No rage taps, dead taps, quick exits or errors.</div>`}
       </section>
       ${depthRows.length ? `<section class="panel"><div class="ph"><h2>Scroll depth</h2><span class="sub">share of visits reaching half way / the bottom</span></div>
@@ -1185,7 +1222,7 @@ html, body { overflow-x: hidden; }
       const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
       return `${head}<div class="sess t-${tier}${issues.length ? errs.length ? " bad" : " warn" : ""}${open ? " open" : " shut"}${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
-        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}${s.live ? "" : `<span class="vd num">${esc(dur(ms))}</span>`}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}<i class="vcar">${open ? "▾" : "▸"}</i></div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(now - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button></div></div>
+        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}${s.live ? "" : `<span class="vd num">${esc(dur(ms))}</span>`}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}<i class="vcar">${open ? "▾" : "▸"}</i></div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(now - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button></div></div>
         ${s.acts.length && open ? `<ul class="acts">${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${/^⚠/.test(a.a) ? " iss" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
       </div>`;
     }).join("");
@@ -1216,7 +1253,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}${pollPanel()}${timeline}${feedHtml}${rail}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${newStrip()}${pollPanel()}</div>${timeline}${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
@@ -1295,6 +1332,9 @@ html, body { overflow-x: hidden; }
       clearTimeout(st.focusT); st.focusT = setTimeout(() => { st.focus = null; render(); }, 2000);
       return;
     }
+    const jb = e.target.closest("[data-jump]");
+    if (jb) { document.getElementById(jb.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    if (e.target.closest("[data-seenall]")) { seenBase = snapSeen(); saveSeen(); st.sig = ""; render(); return; }
     const vh = e.target.closest(".sh[data-open]");
     if (vh && !e.target.closest("button")) { const k = vh.dataset.open; st.open.has(k) ? st.open.delete(k) : st.open.add(k); render(); return; }
     const oa = e.target.closest("[data-openall]");
