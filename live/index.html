@@ -298,6 +298,8 @@ body.pv-open .tabs { display: none; }
 /* Tooltip */
 .tip { position: fixed; z-index: 30; pointer-events: none; max-width: 260px; padding: 8px 10px; border-radius: 10px; font-size: 12.5px; line-height: 1.4; color: var(--text); background: rgba(20, 14, 36, .97); border: 1px solid var(--line2); box-shadow: 0 10px 30px rgba(0, 0, 0, .5); opacity: 0; transition: opacity .12s; }
 .tip.show { opacity: 1; }
+/* Holding a stat shows its tip: no iOS text selection or copy menu on top. */
+[data-tip] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .tip b { display: block; font-size: 13px; }
 
 /* The preview panel: a phone-width frame at the right on a wide screen,
@@ -1454,7 +1456,12 @@ html, body { overflow-x: hidden; }
   }
   app.addEventListener("pointermove", (e) => { const el = e.target.closest("[data-tip]"); if (el && e.pointerType === "mouse") showTip(el, e.clientX, e.clientY); else if (!el) tipEl.classList.remove("show"); });
   app.addEventListener("pointerleave", () => tipEl.classList.remove("show"));
-  app.addEventListener("pointerdown", (e) => { const el = e.target.closest("[data-tip]"); if (el && e.pointerType !== "mouse") { showTip(el, e.clientX, e.clientY); clearTimeout(showTip.t); showTip.t = setTimeout(() => tipEl.classList.remove("show"), 2200); } });
+  // Touch: the tip shows on press, stays while the finger is down, and
+  // fades a couple of seconds after it lifts.
+  app.addEventListener("pointerdown", (e) => { const el = e.target.closest("[data-tip]"); if (el && e.pointerType !== "mouse") { showTip(el, e.clientX, e.clientY); clearTimeout(showTip.t); } });
+  const tipLater = (e) => { if (e.pointerType === "mouse" || !tipEl.classList.contains("show")) return; clearTimeout(showTip.t); showTip.t = setTimeout(() => tipEl.classList.remove("show"), 2200); };
+  app.addEventListener("pointerup", tipLater); app.addEventListener("pointercancel", tipLater);
+  app.addEventListener("contextmenu", (e) => { if (e.target.closest("[data-tip]")) e.preventDefault(); });
   addEventListener("scroll", () => tipEl.classList.remove("show"), { passive: true });
 
   // Clocks and the "updated" line tick every second between checks.
