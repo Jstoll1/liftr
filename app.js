@@ -2222,13 +2222,90 @@ gamesList?.addEventListener("click", (e) => {
   if (chip) { const id = Number(chip.closest(".game-card")?.dataset.gameId); if (id) { track("status-tap", { event: true }); openInsights(id); } return; }
   const tm = e.target.closest(".hz-tm, .tm-id");
   if (!tm) return;
-  const card = tm.closest(".game-card");
-  if (!card || card.classList.contains("game-locked")) return;
-  const mine = [...card.querySelectorAll(".pick-mini-btn")].filter((b) => b.dataset.team === tm.dataset.tm);
-  mine.forEach((b) => { b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); });
-  setTimeout(() => mine.forEach((b) => b.classList.remove("nudge")), 1300);
-  track("team-tap", { event: true });
+  const id = Number(tm.closest(".game-card")?.dataset.gameId);
+  if (id && tm.dataset.tm) openTeamCard(id, tm.dataset.tm);
 });
+
+// --- Team card ----------------------------------------------------------
+// Tap a team on the picks screen: its record, record against the spread,
+// last five results and this week's line, with the two bets right there.
+// A pick made here is the same tap as on the card (it saves, and the card
+// behind updates).
+const teamSchedCache = {};
+function teamSchedule(teamId) {
+  const hit = teamSchedCache[teamId];
+  if (hit && Date.now() - hit.at < 30 * 60000) return hit.p;
+  const base = window.ESPN_API || "https://site.api.espn.com/apis/site/v2/sports/football/college-football";
+  const p = fetch(`${base}/teams/${teamId}/schedule`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  teamSchedCache[teamId] = { at: Date.now(), p };
+  return p;
+}
+function teamLastFive(sched, teamId) {
+  const out = [];
+  for (const ev of sched?.events || []) {
+    const c = ev.competitions?.[0];
+    if (!c?.status?.type?.completed) continue;
+    const me = (c.competitors || []).find((x) => Number(x.team?.id) === Number(teamId));
+    const op = (c.competitors || []).find((x) => Number(x.team?.id) !== Number(teamId));
+    if (!me || !op) continue;
+    const sc = (x) => Number(x.score?.value ?? x.score?.displayValue ?? x.score);
+    out.push({ date: ev.date, home: me.homeAway === "home", oppId: Number(op.team?.id) || null, opp: op.team?.shortDisplayName || op.team?.abbreviation || "", us: sc(me), them: sc(op), win: me.winner === true || sc(me) > sc(op) });
+  }
+  return out.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+}
+async function openTeamCard(gameId, team) {
+  const game = GAMES.find((g) => g.id === gameId);
+  if (!game) return;
+  const away = team === game.away, teamId = away ? game.awayId : game.homeId, oppId = away ? game.homeId : game.awayId;
+  const short = away ? game.awayShort : game.homeShort, opp = away ? game.homeShort : game.awayShort;
+  const fav = team === game.favorite, line = `${fav ? "−" : "+"}${game.spread}`;
+  const live = latestLive[gameId] || {};
+  track("team-card", { event: true, d: short });
+  let m = document.getElementById("team-card");
+  if (!m) {
+    m = document.createElement("div"); m.id = "team-card"; m.className = "wpx-overlay"; m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("click", (e) => {
+      if (e.target === m || e.target.closest(".wpx-x")) { m.classList.add("hidden"); return; }
+      const b = e.target.closest("[data-tc-mode]");
+      if (!b || b.disabled) return;
+      // The same button on the card behind: one save path for every pick.
+      const btn = gamesList.querySelector(`.game-card[data-game-id="${m.dataset.game}"] .pick-mini-btn[data-team="${CSS.escape(m.dataset.team)}"][data-mode="${b.dataset.tcMode}"]`);
+      if (btn && !btn.disabled) { btn.click(); track("team-card-pick", { event: true }); setTimeout(() => { draw(); setTimeout(() => m.classList.add("hidden"), 650); }, 60); }
+    });
+  }
+  m.dataset.game = gameId; m.dataset.team = team;
+  const locked = isGameLocked(game);
+  let sched = null, glance = null, loading = true;
+  const draw = () => {
+    const pk = getManagerState(currentManager)?.picks?.[gameId];
+    const sel = (mode) => pk && pk.team === team && pk.mode === mode;
+    const rec = (away ? live.awayRecord : live.homeRecord) || glance?.records?.[away ? "away" : "home"]?.overall || "";
+    const ats = glance?.ats?.[away ? "away" : "home"] || "";
+    // ESPN's game summary carries each side's last five; the team schedule covers the rest.
+    const fromSum = (glance?.lastFive?.[away ? "away" : "home"] || []).map((e) => { const [a, b] = String(e.score || "").split("-").map(Number); return { oppId: Number(e.oppId) || null, opp: e.opp || "", home: e.at !== "@", us: a, them: b, win: /^W/i.test(e.result || "") }; });
+    const five = fromSum.length ? fromSum : sched ? teamLastFive(sched, teamId) : [];
+    const lg = (id) => (id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : `<span class="tc-nl"></span>`);
+    const rank = away ? live.awayRank : live.homeRank;
+    m.innerHTML = `<div class="wpx-card tc">
+      <button type="button" class="wpx-x" aria-label="Close">✕</button>
+      <div class="tc-head">${lg(teamId)}<div><b>${rank ? `<i>#${rank}</i> ` : ""}${escapeCd(short)}</b><small>${escapeCd(away ? "at" : "vs")} ${escapeCd(opp)} · ${escapeCd(game.kickoffLabel || "")}</small></div></div>
+      <div class="tc-stats"><span><em>RECORD</em><b>${escapeCd(rec || "–")}</b></span><span><em>VS SPREAD</em><b>${escapeCd(ats || (loading ? "…" : "–"))}</b></span><span><em>THIS WEEK</em><b>${escapeCd(line)}</b></span></div>
+      <div class="tc-h">LAST ${five.length || 5}</div>
+      <div class="tc-five">${five.length ? five.map((g) => `<div class="tc-g ${g.win ? "w" : "l"}"><i>${g.win ? "W" : "L"}</i>${lg(g.oppId)}<span>${g.home ? "vs" : "at"} ${escapeCd(g.opp)}</span><b>${g.us}-${g.them}</b></div>`).join("") : `<div class="tc-none">${loading ? "Loading results…" : "No results yet."}</div>`}</div>
+      ${locked ? `<div class="tc-locked">Picks are locked for this game.</div>` : `<div class="tc-h">PICK ${escapeCd(short.toUpperCase())}</div>
+      <div class="tc-picks"><button type="button" class="tc-b${sel("ATS") ? " on" : ""}" data-tc-mode="ATS"><b>${escapeCd(line)}</b><small>spread · 2 PT</small></button><button type="button" class="tc-b${sel("SU") ? " on" : ""} ${fav ? "chalk" : "upset"}" data-tc-mode="SU"><b>WIN</b><small>to win · ${pointValue(game, team, "SU")} PT</small></button></div>`}
+    </div>`;
+  };
+  draw();
+  m.classList.remove("hidden");
+  const [sc, snap] = await Promise.all([
+    teamSchedule(teamId),
+    live.eventId ? fetchEspnSummary(live.eventId).then((d) => (d ? parseSummaryClient(d, game) : null)).catch(() => null) : fetchGameSnapshot(gameId).then((x) => x?.glance || null),
+  ]);
+  sched = sc; glance = snap?.ats ? snap : snap?.glance || snap; loading = false;
+  if (m.dataset.game === String(gameId) && m.dataset.team === team && !m.classList.contains("hidden")) draw();
+}
 
 // Tap = saved. There's no separate Submit: every pick is freely
 // changeable until that game kicks off anyway, so a confirm step added
