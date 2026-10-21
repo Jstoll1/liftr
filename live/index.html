@@ -1302,7 +1302,8 @@ html, body { overflow-x: hidden; }
   const saveFolds = () => store.set(FOLD_KEY, JSON.stringify([...folds]));
   let showQuiet = false;
   const panelKey = (sec) => "p:" + (sec.querySelector(".ph h2")?.textContent || "").trim();
-  const dayKey = (d) => { const t = d.textContent.trim(); return t === "Today" ? "day:today" : t === "Yesterday" ? "day:yesterday" : "day:older"; };
+  // From the day's own label (the first text), never the Show/Hide count added after it.
+  const dayKey = (d) => { const t = (d.childNodes[0]?.textContent || "").trim(); return t === "Today" ? "day:today" : t === "Yesterday" ? "day:yesterday" : `day:${t}`; };
   function tidy() {
     app.querySelectorAll("section.panel").forEach((sec) => {
       const ph = sec.querySelector(":scope > .ph"); if (!ph) return;
