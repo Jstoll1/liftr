@@ -628,6 +628,22 @@ html, body { overflow-x: hidden; }
   .pv-row.ok .pv-st b { color: #3dfc8f; } .pv-row.seen .pv-st b { color: #ffe45e; } .pv-row.not .pv-st b { color: var(--dim); font-weight: 500; }
   .pv-st small { color: var(--dim); font-size: 11.5px; }
   .pv-note { grid-column: 2 / -1; font-size: 12.5px; color: var(--meta, #c9cddb); font-style: italic; background: none !important; padding: 0 !important; }
+  /* Visits: collapsed rows, coloured by how long and whether anything broke */
+  .sess.shut .sh { padding-bottom: 10px; }
+  .sh[data-open] { cursor: pointer; }
+  .sess .nm { display: flex; align-items: baseline; gap: 8px; }
+  .vd { font: 600 12px/1 var(--mono); padding: 3px 7px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--meta, #c9cddb); }
+  .vsum { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 5px; font-size: 12px; color: var(--dim); }
+  .vsum .iss { color: #ffb347; font-weight: 700; } .vsum .iss.bad { color: #ff6b8a; }
+  .vcar { font-style: normal; margin-left: auto; color: var(--dim); }
+  .sess.t-quick::before { background: #5b5378; } .sess.t-short::before { background: #7aa2ff; }
+  .sess.t-mid::before { background: #3dfc8f; } .sess.t-long::before { background: #ffe45e; }
+  .sess.t-quick .vd { color: var(--dim); } .sess.t-mid .vd { color: #3dfc8f; } .sess.t-long .vd { color: #ffe45e; background: rgba(255,228,94,.1); }
+  .sess.warn::before { background: #ffb347 !important; box-shadow: none; } .sess.bad::before { background: #ff4f6d !important; box-shadow: 0 0 10px rgba(255,79,109,.6); }
+  .sess.bad { border-color: rgba(255, 79, 109, .35); }
+  .acts li.iss span { color: #ffb347; }
+  .vleg { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 4px 0 10px; font-size: 11.5px; color: var(--dim); }
+  .vleg i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
 </style>
 </head>
 <body>
@@ -1105,7 +1121,7 @@ html, body { overflow-x: hidden; }
       for (const v of wv) for (const l of new Set(v.f.map(featLab).filter(Boolean))) used.set(l, (used.get(l) || 0) + 1);
       const tp = [...used.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), mf = tp[0]?.[1] || 1;
       const lab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
-      return `<aside class="rail" id="sec-stats">${HAS_STUDIO ? costPanel() : ""}
+      return `<aside class="rail" id="sec-stats">
       <section class="panel"><div class="ph"><h2>Visits by hour</h2><span class="sub">time of day, last 7 days</span></div>
         <div class="bars">${byH.map((x) => `<i class="${x.n ? "" : "zero"}${x.h === curH ? " cur" : ""}" data-tip="${esc(`<b>${lab(x.h)}</b>${x.n} visit${x.n === 1 ? "" : "s"}${x.who.size ? ` · ${[...x.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((x.n / mx) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>
@@ -1115,6 +1131,7 @@ html, body { overflow-x: hidden; }
       </section>
       ${frictionPanel((wk.feed || []).filter((e) => e.at >= wFrom), "last 7 days")}
       ${askPanel(wFrom, "last 7 days")}
+      ${HAS_STUDIO ? costPanel() : ""}
     </aside>`;
     };
     const maxH = Math.max(1, ...hours.map((h) => h.n));
@@ -1122,7 +1139,7 @@ html, body { overflow-x: hidden; }
     for (const e of actions) { if (SCREENS[e.k] || FRICTION.test(e.k) || /^(depth|sheet-time)$/.test(e.k)) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), maxF = top[0]?.[1] || 1;
     const home = vs.filter((v) => v.app === "home").length, web = vs.filter((v) => v.app === "browser").length;
-    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">${HAS_STUDIO ? costPanel() : ""}
+    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">
       <section class="panel"><div class="ph"><h2>Activity by hour</h2><span class="sub">actions, last 24h</span></div>
         <div class="bars">${hours.map((h, i) => `<i class="${h.n ? "" : "zero"}${i === 23 ? " cur" : ""}" data-tip="${esc(`<b>${hourLab(h.start)}${i === 23 ? " · this hour" : ""}</b>${h.n} action${h.n === 1 ? "" : "s"}${h.who.size ? ` · ${[...h.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((h.n / maxH) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>${hourLab(hours[0].start)}</span><span>${hourLab(hours[6].start)}</span><span>${hourLab(hours[12].start)}</span><span>${hourLab(hours[18].start)}</span><span>now</span></div>
@@ -1136,6 +1153,7 @@ html, body { overflow-x: hidden; }
       </section>` : ""}
       ${frictionPanel(actions, "last 24h")}
       ${askPanel(from, "last 24h")}
+      ${HAS_STUDIO ? costPanel() : ""}
     </aside>`;
 
     // The feed: one card per visit, newest first.
@@ -1153,21 +1171,29 @@ html, body { overflow-x: hidden; }
     const cards = all.slice(0, st.shown).map((s) => {
       const d = dayLab(s.start), head = d !== day ? `<div class="day">${esc(d)}</div>` : "";
       day = d;
-      const id = `${s.n}|${s.start}`, LIM = 6, open = st.open.has(id);
-      const acts = open ? s.acts : s.acts.slice(-LIM);
+      const id = `${s.n}|${s.start}`, LIM = 6;
+      // Collapsed by default (a live visit stays open): one line says who,
+      // when, how long, what was used and whether anything went wrong;
+      // tap it to see every action.
+      const open = s.live ? !st.open.has(id) : st.open.has(id);
+      const acts = s.acts;
+      const ms = s.live ? now - s.since : Math.max(s.end - s.start, 1000);
+      const issues = s.acts.filter((a) => /^⚠/.test(a.a)), errs = issues.filter((a) => /error/i.test(a.a));
+      const tier = ms < 60000 ? "quick" : ms < 5 * 60000 ? "short" : ms < 15 * 60000 ? "mid" : "long";
+      const used = new Set(s.acts.filter((a) => !/^(Went to|⚠)/.test(a.a)).map((a) => a.a)).size;
       const span = s.live ? "" : ` · ${dur(Math.max(s.end - s.start, 1000))}`;
-      const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${span}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
+      const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
-      return `${head}<div class="sess${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
-        <div class="sh">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}</div><div class="meta num">${esc(meta)}</div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(now - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button></div></div>
-        ${s.acts.length ? `<ul class="acts">${s.acts.length > LIM && !open ? `<li class="quiet"><span></span><span>${s.acts.length - LIM} earlier</span></li>` : ""}${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
-        ${s.acts.length > LIM ? `<button type="button" class="more" data-open="${esc(id)}">${open ? "Show less" : `Show all ${s.acts.length}`}</button>` : ""}
+      return `${head}<div class="sess t-${tier}${issues.length ? errs.length ? " bad" : " warn" : ""}${open ? " open" : " shut"}${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
+        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}${s.live ? "" : `<span class="vd num">${esc(dur(ms))}</span>`}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}<i class="vcar">${open ? "▾" : "▸"}</i></div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(now - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button></div></div>
+        ${s.acts.length && open ? `<ul class="acts">${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${/^⚠/.test(a.a) ? " iss" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
       </div>`;
     }).join("");
     const shownN = Math.min(all.length, st.shown);
     const feedHtml = `<main class="feed" id="sec-visits">
-      <div class="fh"><h2>VISITS</h2>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
+      <div class="fh"><h2>VISITS</h2><button type="button" class="cp" data-openall="1" title="Open or close every visit">${all.slice(0, st.shown).some((v) => !(v.live ? !st.open.has(`${v.n}|${v.start}`) : st.open.has(`${v.n}|${v.start}`))) ? "Expand all" : "Collapse all"}</button>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
         ${all.length ? `<button type="button" class="cp${st.copied === "*" ? " ok" : ""}" data-copy="*" title="Copy every visit shown">${st.copied === "*" ? "✓ Copied" : `${COPY_ICON}Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"}`}</button>` : ""}</div>
+      ${cards ? `<div class="vleg"><span><i style="background:#5b5378"></i>quick look</span><span><i style="background:#7aa2ff"></i>under 5m</span><span><i style="background:#3dfc8f"></i>5 to 15m</span><span><i style="background:#ffe45e"></i>15m+</span><span><i style="background:#ffb347"></i>friction</span><span><i style="background:#ff4f6d"></i>error</span></div>` : ""}
       ${cards || `<div class="empty" style="margin-top:12px">${st.filter ? `No visits from ${esc(name(st.filter))} in the last 24 hours.` : "No visits in the last 24 hours yet. They show here as people use the app."}</div>`}
       ${all.length > st.shown ? `<button type="button" class="older" data-older="1">Show ${Math.min(20, all.length - st.shown)} more</button>` : ""}
       <p class="note">A visit is live while the app is on screen and ends when it's put away, or about a minute after a phone goes quiet. Shows screens and features, never which team anyone picked. Jake isn't tracked.</p>
@@ -1268,6 +1294,15 @@ html, body { overflow-x: hidden; }
       document.querySelector(`.sess[data-v="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       clearTimeout(st.focusT); st.focusT = setTimeout(() => { st.focus = null; render(); }, 2000);
       return;
+    }
+    const vh = e.target.closest(".sh[data-open]");
+    if (vh && !e.target.closest("button")) { const k = vh.dataset.open; st.open.has(k) ? st.open.delete(k) : st.open.add(k); render(); return; }
+    const oa = e.target.closest("[data-openall]");
+    if (oa) {
+      const vis = [...app.querySelectorAll(".sess[data-v]")];
+      const expand = vis.some((x) => x.classList.contains("shut"));
+      for (const x of vis) { const k = x.dataset.v, live = x.classList.contains("live"); if (live) expand ? st.open.delete(k) : st.open.add(k); else expand ? st.open.add(k) : st.open.delete(k); }
+      render(); return;
     }
     const li = e.target.closest("li.go");
     if (li) { st.pv?.id === li.dataset.pid ? closePreview() : openPreview(li.dataset); return; }
