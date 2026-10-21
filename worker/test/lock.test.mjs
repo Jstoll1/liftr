@@ -29,9 +29,12 @@ test("weeks before the rule starts ignore a lock flag entirely", () => withRule(
   assert.equal(s.lockRule, undefined);
 }));
 
-test("a straight up pick can be the lock: favourite to win hits for 1 + bonus", () => withRule(() => {
+test("a lock on a straight up pick is dropped and scores nothing extra", () => withRule(() => {
+  const p = { 1: { team: "LSU", mode: "SU", lock: true } };
+  settleLock(p, {}, {}, 10, 9);
+  assert.equal(!!p[1].lock, false);
   const s = buildSummary(9, slate, results, { Jake: { picks: { 1: { team: "LSU", mode: "SU", lock: true } } } });
-  assert.equal(s.rows.find((r) => r.name === "Jake").score, 3);
+  assert.equal(s.rows.find((r) => r.name === "Jake").score, 1);
 }));
 
 test("rule off: nothing changes", () => { const was = LOCK_RULE.on; LOCK_RULE.on = false; try {
