@@ -7786,3 +7786,5 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .scorebug.lk { position: relative; border-color: #ffd23f !important; box-shadow: 0 0 0 1px rgba(255, 210, 63, .45), 0 0 16px rgba(255, 210, 63, .2) !important; }
 .scorebug .bug-lk { position: absolute; top: -8px; left: -8px; z-index: 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #ffd23f; font-style: normal; font-size: 12px; line-height: 1; box-shadow: 0 0 8px rgba(255, 210, 63, .6); }
 .scorebug.lk .bug-gnum { margin-left: 12px; }
+/* The locked game card: red slanted blinds tint over the whole card */
+.game-card.lotw { background-image: repeating-linear-gradient(135deg, rgba(255, 32, 121, .13) 0 10px, rgba(255, 32, 121, .03) 10px 20px) !important; border-color: #ff4f6d !important; box-shadow: 0 0 0 1px rgba(255, 79, 109, .5), 0 0 22px rgba(255, 32, 121, .22) !important; }

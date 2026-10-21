@@ -1588,7 +1588,7 @@ const EXHIBITION_WEEKS = new Set([1]);
 // lock: nothing either way. Off until the vote is in: set on, the week it
 // starts, and the winning option's numbers (A +2/0, B +2/-1, C +3/-3).
 // Weeks before fromWeek never carry a lock, so the record never moves.
-export const LOCK_RULE = { on: false, fromWeek: 8, hit: 3, miss: -3 };
+export const LOCK_RULE = { on: true, fromWeek: 8, hit: 3, miss: -3 };
 function lockOnWeek(week) { return LOCK_RULE.on && Number(week) >= LOCK_RULE.fromWeek; }
 function lockRuleFor(week) { return lockOnWeek(week) ? { hit: LOCK_RULE.hit, miss: LOCK_RULE.miss } : null; }
 
