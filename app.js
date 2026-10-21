@@ -7232,7 +7232,7 @@ async function openInsights(gameId) {
   });
   const guest = !GAMES.includes(game);
   modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv].filter(Boolean).join(" · ");
-  const links = () => `<div class="ins-h">MORE</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
+  const links = () => `<div class="ins-h">ELSEWHERE ↗</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
   body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
   modal.classList.remove("hidden");
   // Paint as each source lands instead of waiting for the slowest. The
