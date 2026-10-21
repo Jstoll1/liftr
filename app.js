@@ -164,6 +164,7 @@ function restoreCachedSlate() {
     if (!c || !Array.isArray(c.games) || !c.games.length) return;
     GAMES = c.games;
     currentWeek = c.week || currentWeek;
+    if (latestLiveWeek !== null && latestLiveWeek !== currentWeek) { latestLive = {}; latestLiveWeek = null; }
     WEEK_LABEL = c.label || `Week ${currentWeek}`;
     if (Array.isArray(c.list)) weekList = c.list;
   } catch { /* private mode or a bad copy: keep what is there */ }
@@ -179,6 +180,9 @@ async function loadSlate(week) {
     if (!Array.isArray(data.games) || !data.games.length) return false;
     GAMES = data.games;
     currentWeek = data.week || currentWeek;
+    // A new week: last week's live data (scores, ranks, records) is keyed by
+    // game number, so it would land on this week's games. Drop it.
+    if (latestLiveWeek !== null && latestLiveWeek !== currentWeek) { latestLive = {}; latestLiveWeek = null; }
     WEEK_LABEL = data.label || `Week ${currentWeek}`;
     if (!week) {
       slateFromNetwork = true;
@@ -519,6 +523,7 @@ function parseEspnEvents(events, games = GAMES) {
       homeRank: rankOf(home),
       awayAbbr: away?.team?.abbreviation || null,
       homeAbbr: home?.team?.abbreviation || null,
+      awayTeamId: Number(away?.team?.id) || null,
       awayRecord: recordOf(away),
       homeRecord: recordOf(home),
       state: statusType.state || "pre",
@@ -2159,7 +2164,7 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
   return `
     <div class="tm-row ${atsSelected || suSelected ? "picked" : ""}">
       <div class="tm-id" data-tm="${escapeCd(team)}">
-        <span class="tm-logo-wrap"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank)}</span>
+        <span class="tm-logo-wrap"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${latestLiveWeek === currentWeek ? rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank) : ""}</span>
         <span class="tm-name">${isHome ? `<i class="tm-at">@</i>` : ""}<span class="tm-nm">${short}</span>${isFavorite ? `<span class="tm-spread">${line}</span>` : ""}</span>
       </div>
       <div class="tm-chips">
@@ -2184,7 +2189,8 @@ function nameSizeClass(short) {
 
 function matchupCardsHtml(game, draft) {
   const awayIsFav = game.favorite === game.away;
-  const live = latestLive[game.id] || {};
+  const raw = latestLiveWeek === currentWeek ? latestLive[game.id] : null;
+  const live = raw && (!raw.awayTeamId || !game.awayId || raw.awayTeamId === Number(game.awayId)) ? raw : {};
   const side = (team, teamId, isFavorite, short, rank, record) => {
     const sign = isFavorite ? "-" : "+";
     const line = `${sign}${game.spread}`;
@@ -2726,7 +2732,7 @@ async function renderScoreboard() {
   maybeShowQotw().finally(() => maybeShowPoll());
   if (bootBoard) {
     const b = bootBoard; bootBoard = null;
-    if (!Object.keys(latestLive).length) { latestLive = b.live; latestLiveWeek = b.week; }
+    if (!Object.keys(latestLive).length && b.week === currentWeek) { latestLive = b.live; latestLiveWeek = b.week; }
     try { paintScoreboard(b.picks, b.live, true); } catch (err) { console.warn("cached board", err); }
   }
   // Picks and scores together, not picks and then scores.
