@@ -848,13 +848,16 @@ html, body { overflow-x: hidden; }
   const SCREEN_NAME = { scoreboard: "Scores", picks: "Picks", history: "History", trivia: "Trivia", side: "Side bet", home: "Players" };
   const FRICTION = /^(rage|dead-tap|quick-exit|js-error)$/;
   let lastDigest = "";
-  document.addEventListener("click", (e) => { const b = e.target.closest(".digest-copy"); if (!b) return; // Show the digest in the panel (no pop-up window), selected, and try the clipboard too.
-    const sec = b.closest("section"); let ta = sec.querySelector(".digest-text");
-    if (!ta) { ta = document.createElement("textarea"); ta.className = "digest-text"; ta.readOnly = true; ta.style.cssText = "width:100%;box-sizing:border-box;min-height:160px;margin-top:8px;font:12px/1.4 ui-monospace,monospace;background:#0b0e15;color:#e9ecf5;border:1px solid #ff7a9a;border-radius:8px;padding:8px"; sec.appendChild(ta); }
-    ta.value = lastDigest; ta.focus(); ta.select();
-    const ok = () => { b.textContent = "Copied ✓"; setTimeout(() => (b.textContent = "Copy for Claude"), 1500); };
-    try { navigator.clipboard.writeText(lastDigest).then(ok, () => { if (document.execCommand("copy")) ok(); }); } catch { if (document.execCommand("copy")) ok(); }
-  });
+  // Copy for Claude. The digest shows in the panel (and stays through the
+  // page's refreshes) and goes to the clipboard: the Clipboard API first,
+  // then a plain selected copy, which is what works in an iPhone's Safari.
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest(".digest-copy"); if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    const text = lastDigest || "No friction in this window.";
+    st.digestShow = true;
+    copyText(text).then((ok) => { st.digestOk = ok ? Date.now() : 0; st.sig = ""; render(); setTimeout(() => { st.sig = ""; render(); }, 1800); });
+  }, true);
   function says(e, feed) {
     if (e.k === "recap-card") return ["Opened a replay card", ({ hit: "Pick of the week", miss: "Worst pick", move: "Movement", split: "Coin flip", tb: "Tiebreaker" })[e.d] || e.d || ""];
     if (e.k === "pot-row") return ["Opened a pot row", e.d ? name(e.d) : ""];
@@ -1194,8 +1197,9 @@ html, body { overflow-x: hidden; }
       // A names-free digest to paste to Claude: what broke, how often, how many people.
       lastDigest = [`Brochiefs ${LEAGUE.toUpperCase()} friction digest (${sub})`, ...top.map((x) => `- ${x.a.replace("⚠ ", "")}${x.d ? ` [${x.d}]` : ""}: ${x.n}x, ${x.who.size} people, ${x.ats.sort((p, q) => p - q).map(when).join("; ")}`), ...depthRows.map((x) => `- Depth ${SCREEN_NAME[x.sc] || x.sc}: ${x.n} visits, half ${x.r50}%, bottom ${x.r100}%`)].join("\n");
       const fNew = list.filter((e) => FRICTION.test(e.k) && e.at > seenBase.at).length;
-      return `<section class="panel${fNew ? " has-new" : ""}"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span>${fNew ? `<b class="newc">${fNew} new</b>` : ""}<button type="button" class="digest-copy" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ff7a9a;background:transparent;color:#ff7a9a">Copy for Claude</button></div>
+      return `<section class="panel${fNew ? " has-new" : ""}"><div class="ph"><h2>Friction</h2><span class="sub">${sub}</span>${fNew ? `<b class="newc">${fNew} new</b>` : ""}<button type="button" class="digest-copy" style="margin-left:auto;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ff7a9a;background:transparent;color:#ff7a9a">${st.digestOk && Date.now() - st.digestOk < 1800 ? "Copied ✓" : "Copy for Claude"}</button></div>
         ${top.length ? `<div class="rank">${top.map((x) => `<div><span>${esc(x.a.replace("⚠ ", ""))}${x.d ? ` <small>${esc(x.d)}</small>` : ""}</span><b>${x.n}</b><i><s style="width:${((x.n / top[0].n) * 100).toFixed(1)}%;background:#ff7a9a"></s></i></div>`).join("")}</div>` : `<div class="note">No rage taps, dead taps, quick exits or errors.</div>`}
+        ${st.digestShow ? `<textarea class="digest-text" readonly style="width:100%;box-sizing:border-box;min-height:140px;margin-top:8px;font:12px/1.4 ui-monospace,monospace;background:#0b0e15;color:#e9ecf5;border:1px solid #ff7a9a;border-radius:8px;padding:8px">${esc(lastDigest)}</textarea>` : ""}
       </section>
       ${depthRows.length ? `<section class="panel"><div class="ph"><h2>Scroll depth</h2><span class="sub">share of visits reaching half way / the bottom</span></div>
         <div class="rank">${depthRows.map((x) => `<div><span>${esc(SCREEN_NAME[x.sc] || x.sc)} <small>${x.n} visits · bottom ${x.r100}%</small></span><b>${x.r50}%</b><i><s style="width:${x.r50}%"></s></i></div>`).join("")}</div>
@@ -1498,7 +1502,8 @@ html, body { overflow-x: hidden; }
     try { await navigator.clipboard.writeText(text); return true; } catch {}
     const ta = document.createElement("textarea");
     ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;font-size:16px";
-    document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+    // iPhone Safari only copies a selection it can edit: drop readonly before selecting.
+    document.body.appendChild(ta); ta.removeAttribute("readonly"); ta.contentEditable = "true"; ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
     let ok = false; try { ok = document.execCommand("copy"); } catch {}
     ta.remove();
     return ok;
