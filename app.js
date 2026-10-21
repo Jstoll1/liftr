@@ -33,7 +33,7 @@ function pointValue(game, team, mode) {
 // Worker sends the week's numbers with the slate (null while it is off).
 // ?lock=1 previews it on this phone with option B's numbers.
 let LOCK_RULE = null;
-const LOCK_PREVIEW = /[?&]lock=1/.test(location.search) ? { hit: 2, miss: -1 } : null;
+const LOCK_PREVIEW = /[?&]lock=1/.test(location.search) ? { hit: 3, miss: -3 } : null;
 const lockRule = () => LOCK_RULE || LOCK_PREVIEW;
 const lockLabel = (r = lockRule()) => (r ? `hit +${r.hit} · miss ${r.miss < 0 ? "−" + Math.abs(r.miss) : "0"}` : "");
 // What a pick is worth if it cashes, lock bonus included.
