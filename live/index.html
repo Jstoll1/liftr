@@ -657,6 +657,35 @@ html, body { overflow-x: hidden; }
   .newstrip button.warn { border-color: rgba(255, 179, 71, .5); color: #ffcf85; }
   .newstrip .ns-ok { margin-left: auto; background: none; color: var(--dim); }
   @media (prefers-reduced-motion: reduce) { .newb { animation: none; } }
+  /* Tighter, aligned: the in-now card, visit rows, day bars, panels */
+  .kpi.now { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 14px; }
+  .now-l { align-items: center; }
+  .now-last { justify-self: end; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .kpi.now .avs { justify-content: flex-end; }
+  .panel { padding: 12px 14px 14px; }
+  .ph { margin-bottom: 8px; }
+  .sh { gap: 10px; padding: 10px 12px 10px 14px; align-items: flex-start; }
+  .sess .av.lg { width: 34px; height: 34px; font-size: 15px; border-radius: 10px; margin-top: 2px; }
+  .sess .who { flex: 1; min-width: 0; }
+  .sess .meta { margin-top: 2px; font-size: 12.5px; }
+  .sess .vsum { margin-top: 6px; }
+  .sh-r { align-self: center; }
+  .sess { margin-bottom: 8px; }
+  .acts { padding: 0 12px 8px 14px; }
+  .vd { padding: 2px 6px; font-size: 11.5px; }
+  .vcar { padding: 5px 12px; font-size: 12px; font-weight: 700; border-color: rgba(79, 227, 240, .4); color: var(--cyan, #4fe3f0); }
+  .sess.open .vcar { border-color: var(--line); color: var(--dim); font-weight: 500; }
+  /* Older days: a full width bar that opens and closes the day */
+  .day.fold-h { margin: 14px 0 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, .03); color: var(--meta, #c9cddb); }
+  .day.fold-h::after { display: none; }
+  .day.fold-h .dn { margin-left: auto; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(79, 227, 240, .4); color: var(--cyan, #4fe3f0); font: 700 11.5px/1 var(--mono); }
+  .day.fold-h.shut .dn { background: rgba(79, 227, 240, .08); }
+  .pv-sum span { padding: 7px 9px; }
+  .newstrip { padding: 8px 10px; gap: 6px; }
+  .newstrip button { padding: 5px 9px; font-size: 12.5px; }
+  .sh-r { flex-direction: column; align-items: flex-end; gap: 6px; }
+  .sh-r .vcar { margin-left: 0; }
+  .sh-r .cp { padding: 2px; }
 </style>
 </head>
 <body>
@@ -1227,10 +1256,10 @@ html, body { overflow-x: hidden; }
       const tier = ms < 60000 ? "quick" : ms < cutLo ? "short" : ms < cutHi ? "mid" : "long";
       const used = new Set(s.acts.filter((a) => !/^(Went to|⚠)/.test(a.a)).map((a) => a.a)).size;
       const span = s.live ? "" : ` · ${dur(Math.max(s.end - s.start, 1000))}`;
-      const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
+      const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.app ? ` · ${s.app === "home" ? "app" : "web"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
       return `${head}<div class="sess t-${tier}${issues.length ? errs.length ? " bad" : " warn" : ""}${open ? " open" : " shut"}${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
-        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}${s.live ? "" : `<span class="vd num">${esc(dur(ms))}</span>`}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}<i class="vcar">${open ? "Close ▴" : "Open ▾"}</i></div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(now - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button></div></div>
+        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}${s.live ? "" : `<span class="vd num">${esc(dur(ms))}</span>`}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}</div></div><div class="sh-r">${s.live ? `<span class="badge num" data-since="${s.since}">${clock(now - s.since)}</span>` : ""}<i class="vcar">${open ? "Close ▴" : "Open ▾"}</i>${open ? `<button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button>` : ""}</div></div>
         ${s.acts.length && open ? `<ul class="acts">${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${/^⚠/.test(a.a) ? " iss" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
       </div>`;
     }).join("");
@@ -1287,7 +1316,7 @@ html, body { overflow-x: hidden; }
       let n = 0;
       for (let x = d.nextElementSibling; x && !x.classList.contains("day") && !x.classList.contains("note"); x = x.nextElementSibling) { x.hidden = shut; n++; }
       let dn = d.querySelector(".dn"); if (!dn) { dn = document.createElement("span"); dn.className = "dn"; d.appendChild(dn); }
-      dn.textContent = shut ? `${n} visit${n === 1 ? "" : "s"}` : "";
+      dn.textContent = k === "day:today" ? "" : shut ? `${n} visit${n === 1 ? "" : "s"} · Show` : "Hide";
     });
     const tl = app.querySelector("#sec-tl"); const q = tl ? tl.querySelectorAll(".ln-t.quiet").length : 0;
     if (tl && q && !tl.querySelector(".quiet-toggle")) {
