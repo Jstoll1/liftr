@@ -1245,6 +1245,18 @@ async function handleSide(request, env, corsHeaders, url) {
   return json({ ok: true, pot: viewPot(pot, entries, now, { all: false, me: manager }) }, 200, noStore);
 }
 
+// One lock a week, on a pick. A lock on a game already kicked off is final
+// and wins; otherwise the most recently changed locked pick keeps it. In a
+// week without the lock rule every flag is dropped.
+export function settleLock(picks, stored, kickoffs, now, week) {
+  const locked = Object.entries(picks).filter(([, p]) => p?.lock);
+  if (!lockOnWeek(week)) { for (const [id] of locked) { const { lock, ...rest } = picks[id]; picks[id] = rest; } return; }
+  if (locked.length <= 1) return;
+  const frozen = locked.find(([id]) => kickoffs[id] && now >= kickoffs[id] && stored[id]?.lock);
+  const keep = frozen ? frozen[0] : locked.sort(([, a], [, b]) => (b.updatedAt || 0) - (a.updatedAt || 0))[0][0];
+  for (const [id] of locked) if (id !== keep) { const { lock, ...rest } = picks[id]; picks[id] = rest; }
+}
+
 async function handlePicks(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) {
     console.error("LIFTR_KV binding missing");
@@ -1325,6 +1337,7 @@ async function handlePicks(request, env, corsHeaders, url) {
           const prev = stored.picks?.[id];
           incoming.picks[id] = { ...p, savedAt: prev && prev.team === p.team && prev.mode === p.mode ? (prev.savedAt || null) : nowAdmin, ...(prev && prev.team === p.team && prev.mode === p.mode ? {} : { repairedAt: nowAdmin }) };
         }
+        settleLock(incoming.picks || {}, {}, {}, nowAdmin, week);
         await env.LIFTR_KV.put(pickKey(week, manager), JSON.stringify(incoming));
         picksCache = null;
         await logPickChanges(env, manager, stored, incoming, true, week, kickoffs);
@@ -1340,9 +1353,10 @@ async function handlePicks(request, env, corsHeaders, url) {
         const chosen = !a ? b : !b ? a : (a.updatedAt || 0) > (b.updatedAt || 0) ? a : b;
         // savedAt is the Worker's own clock, set whenever the pick changes,
         // so every pick carries a time nobody's device can fake.
-        const changed = !a || !chosen || a.team !== chosen.team || a.mode !== chosen.mode;
+        const changed = !a || !chosen || a.team !== chosen.team || a.mode !== chosen.mode || !!a.lock !== !!chosen.lock;
         merged.picks[id] = changed ? { ...chosen, savedAt: now } : { ...chosen, savedAt: a.savedAt || chosen.savedAt || null };
       }
+      settleLock(merged.picks, stored.picks || {}, kickoffs, now, week);
       const ta = stored.tiebreakerUpdatedAt || 0, tb = incoming.tiebreakerUpdatedAt || 0;
       const incomingHas = String(incoming.tiebreaker || "").trim() !== "";
       const storedHas = String(stored.tiebreaker || "").trim() !== "";
@@ -1390,7 +1404,7 @@ async function logPickChanges(env, manager, before, after, admin, week = 1, kick
     const ids = new Set([...Object.keys(before?.picks || {}), ...Object.keys(after?.picks || {})]);
     for (const id of ids) {
       const a = before?.picks?.[id], b = after?.picks?.[id];
-      const fa = a ? `${a.team} ${a.mode}` : null, fb = b ? `${b.team} ${b.mode}` : null;
+      const fa = a ? `${a.team} ${a.mode}${a.lock ? " LOCK" : ""}` : null, fb = b ? `${b.team} ${b.mode}${b.lock ? " LOCK" : ""}` : null;
       const ko = (kickoffs || PICKS_KICKOFF)[id];
       if (fa !== fb) changes.push({ game: Number(id), from: fa, to: fb, afterKickoff: !!ko && Date.now() >= ko });
     }
@@ -1505,12 +1519,12 @@ async function handleGames(request, env, corsHeaders, url) {
     const week = await weekFrom(env, url);
     const now = Date.now();
     if (gamesCache && gamesCache.week === week && now - gamesCache.at < 5000) {
-      return json({ weeks, ...gamesCache.slate, cached: true }, 200, corsHeaders);
+      return json({ weeks, ...gamesCache.slate, lockRule: lockRuleFor(week), cached: true }, 200, corsHeaders);
     }
     const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
     if (!slate) return json({ weeks, week, games: null, note: "no slate stored for this week" }, 200, corsHeaders);
     gamesCache = { at: now, week, slate };
-    return json({ weeks, ...slate }, 200, corsHeaders);
+    return json({ weeks, ...slate, lockRule: lockRuleFor(week) }, 200, corsHeaders);
   }
 
   if (request.method === "POST" || request.method === "PUT") {
@@ -1565,6 +1579,16 @@ const SUMMARY_VERSION = 9;
 // on the next week's movement card.
 const EXHIBITION_WEEKS = new Set([1]);
 
+// Lock of the week (league vote): each player may mark one pick a week as
+// their lock. A locked pick that cashes adds LOCK_RULE.hit; one that misses
+// scores LOCK_RULE.miss in place of 0. A push, a game not played, or no
+// lock: nothing either way. Off until the vote is in: set on, the week it
+// starts, and the winning option's numbers (A +2/0, B +2/-1, C +3/-3).
+// Weeks before fromWeek never carry a lock, so the record never moves.
+export const LOCK_RULE = { on: false, fromWeek: 9, hit: 2, miss: -1 };
+function lockOnWeek(week) { return LOCK_RULE.on && Number(week) >= LOCK_RULE.fromWeek; }
+function lockRuleFor(week) { return lockOnWeek(week) ? { hit: LOCK_RULE.hit, miss: LOCK_RULE.miss } : null; }
+
 function seasonPointValue(game, team, mode) {
   if (mode === "ATS") return 2;
   return team === game.favorite ? 1 : 3;
@@ -1580,19 +1604,22 @@ function seasonOutcome(game, result) {
   return { suWinner, atsWinner: push ? null : favMargin > game.spread ? game.favorite : underdog, push };
 }
 
-function seasonScorePick(game, pick, result) {
+function seasonScorePick(game, pick, result, lockRule = null) {
   const outcome = seasonOutcome(game, result);
   if (!outcome) return null;
   if (!pick || !pick.team || !pick.mode) return 0;
   const winner = pick.mode === "SU" ? outcome.suWinner : outcome.atsWinner;
   if (winner === null) return 0;
-  return pick.team === winner ? seasonPointValue(game, pick.team, pick.mode) : 0;
+  const base = pick.team === winner ? seasonPointValue(game, pick.team, pick.mode) : 0;
+  // The lock rides on the pick; lockRule is the week's numbers (null: off).
+  if (pick.lock && lockRule) return base > 0 ? base + lockRule.hit : lockRule.miss;
+  return base;
 }
 
 // One week's standings. Same order as the board: points, then whoever came
 // closest on the tiebreaker; anyone still level shares the place and, at
 // the top, shares the win.
-function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []) {
+export function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []) {
   const games = slate?.games || [];
   if (!games.length) return null;
   const played = games.filter((g) => results?.[g.id]);
@@ -1601,8 +1628,10 @@ function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []
   const tbResult = tbGame ? results?.[tbGame.id] : null;
   const actualTotal = tbResult ? tbResult.awayScore + tbResult.homeScore : null;
 
+  const lockRule = lockRuleFor(week);
   const rows = PICKS_MANAGERS.map((name) => {
     const state = picks?.[name] || { picks: {}, tiebreaker: "" };
+    let lock = null;
     let score = 0, hits = 0, misses = 0, picked = 0;
     // Every pick, one line each, right or wrong, with the line it was
     // taken at. The aggregate below is derivable from this; the reverse is
@@ -1611,8 +1640,9 @@ function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []
     for (const g of games) {
       const pick = state.picks?.[g.id];
       if (pick) picked += 1;
-      const pts = seasonScorePick(g, pick, results?.[g.id]);
+      const pts = seasonScorePick(g, pick, results?.[g.id], lockRule);
       const outcome = seasonOutcome(g, results?.[g.id]);
+      const locked = !!(lockRule && pick?.lock);
       const ko = kickoffs?.[g.id] || null;
       ledger.push({
         g: Number(g.id),
@@ -1622,20 +1652,22 @@ function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []
         team: pick?.team ?? null,
         mode: pick?.mode ?? null,
         line: pick ? (pick.mode === "SU" ? "SU" : `${pick.team === g.favorite ? "-" : "+"}${g.spread}`) : null,
-        worth: pick ? seasonPointValue(g, pick.team, pick.mode) : null,
+        worth: pick ? seasonPointValue(g, pick.team, pick.mode) + (locked ? lockRule.hit : 0) : null,
         pts,
         result: pts === null ? "pending" : !pick ? "nopick" : outcome?.push && pick.mode === "ATS" ? "push" : pts > 0 ? "hit" : "miss",
+        ...(locked ? { lock: true } : {}),
         score: results?.[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : null,
         savedAt: pick?.savedAt ?? null,
         late: !!(ko && pick?.savedAt && pick.savedAt >= ko),
       });
+      if (locked) lock = { g: Number(g.id), team: pick.team, line: ledger[ledger.length - 1].line, matchup: ledger[ledger.length - 1].matchup, result: ledger[ledger.length - 1].result, pts: pts === null ? null : pts - (pts > 0 ? seasonPointValue(g, pick.team, pick.mode) : 0) };
       if (pts === null) continue;
-      if (pts > 0) { score += pts; hits += 1; } else if (pick) misses += 1;
+      if (pts > 0) { score += pts; hits += 1; } else if (pick) { score += pts; misses += 1; }
     }
     const raw = String(state.tiebreaker ?? "").trim();
     const guess = raw === "" ? null : Number(raw);
     const tbDiff = actualTotal !== null && Number.isFinite(guess) ? Math.abs(guess - actualTotal) : null;
-    return { name, score, hits, misses, picked, tbGuess: Number.isFinite(guess) ? guess : null, tbDiff, ledger };
+    return { name, score, hits, misses, picked, tbGuess: Number.isFinite(guess) ? guess : null, tbDiff, ledger, ...(lockRule ? { lock } : {}) };
   }).sort((a, b) => b.score - a.score || (a.tbDiff ?? Infinity) - (b.tbDiff ?? Infinity));
 
   let place = 0;
@@ -1655,6 +1687,7 @@ function buildSummary(week, slate, results, picks, kickoffs = null, earlier = []
     version: SUMMARY_VERSION,
     exhibition: EXHIBITION_WEEKS.has(Number(week)),
     label: slate?.label || `Week ${week}`,
+    ...(lockRule ? { lockRule } : {}),
     complete,
     games: games.length,
     played: played.length,
@@ -1797,7 +1830,18 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
     ? { who: closestTb.map((r) => r.name), guesses: closestTb.map((r) => r.tbGuess), actual: actualTotal, off: closestTb[0].tbDiff, matchup: `${tbGame.awayShort} at ${tbGame.homeShort}`, awayId: tbGame.awayId ?? null, homeId: tbGame.homeId ?? null }
     : null;
 
-  return { best: best ? card(best) : null, worst: worst ? card(worst) : null, movement, consensus, tb };
+  // Lock of the week: every lock that was decided, hits first, the biggest
+  // lock (most points) leading. Only in weeks the lock rule covers.
+  const locked = rows.filter((r) => r.lock && (r.lock.result === "hit" || r.lock.result === "miss" || r.lock.result === "push"));
+  const locks = locked.length ? {
+    hit: locked.filter((r) => r.lock.result === "hit").map((r) => r.name),
+    miss: locked.filter((r) => r.lock.result === "miss").map((r) => r.name),
+    push: locked.filter((r) => r.lock.result === "push").map((r) => r.name),
+    none: rows.filter((r) => !r.lock).map((r) => r.name),
+    list: locked.map((r) => { const g = byId.get(r.lock.g); return { name: r.name, g: r.lock.g, team: r.lock.team, short: g ? short(g, r.lock.team) : r.lock.team, id: g ? idOf(g, r.lock.team) : null, line: r.lock.line, matchup: r.lock.matchup, result: r.lock.result, pts: r.lock.pts }; })
+      .sort((a, b) => (a.result === "hit" ? 0 : a.result === "push" ? 1 : 2) - (b.result === "hit" ? 0 : b.result === "push" ? 1 : 2)),
+  } : null;
+  return { best: best ? card(best) : null, worst: worst ? card(worst) : null, movement, consensus, tb, ...(locks ? { locks } : {}) };
 }
 
 // --- Week story -----------------------------------------------------------

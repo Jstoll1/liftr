@@ -7666,3 +7666,67 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 #poll-modal { align-items: center !important; padding: 16px; }
 #poll-modal .wpx-card.poll { border-radius: 18px !important; border-bottom: 1px solid rgba(41,230,255,.25) !important; padding-bottom: 14px; max-height: calc(100vh - 32px); overflow-y: auto; }
 /* restamp */
+
+/* Lock of the week: picks screen. Gold, so it reads apart from the cyan
+   and pink of the picks themselves. */
+.lotw-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255, 210, 63, .2); }
+.lotw-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(255, 210, 63, .45); background: rgba(255, 210, 63, .06); color: #ffd23f; font-family: 'Press Start 2P', monospace; font-size: 7.5px; letter-spacing: .06em; cursor: pointer; transition: transform .12s, background .15s; }
+.lotw-btn:active { transform: scale(.96); }
+.lotw-row.on .lotw-btn { background: #ffd23f; color: #1a0f00; border-color: #ffd23f; box-shadow: 0 0 14px rgba(255, 210, 63, .45); }
+.lotw-terms { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.lotw-row.on .lotw-terms { color: #ffd23f; }
+.lotw-tag { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #ffd23f; letter-spacing: .08em; }
+.game-card.lotw { border-color: #ffd23f !important; box-shadow: 0 0 0 1px rgba(255, 210, 63, .5), 0 0 22px rgba(255, 210, 63, .22) !important; }
+.game-card.lotw-ping { animation: lotw-ping 1.4s ease-out; }
+@keyframes lotw-ping { 0%, 100% { box-shadow: none; } 30% { box-shadow: 0 0 0 3px #ffd23f, 0 0 24px rgba(255, 210, 63, .6); } }
+.lotw-bar { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "k t" "v v"; gap: 6px 10px; width: 100%; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; border: 1px dashed rgba(255, 210, 63, .45); background: rgba(255, 210, 63, .04); color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.lotw-bar.on { border-style: solid; border-color: #ffd23f; background: linear-gradient(90deg, rgba(255, 210, 63, .14), rgba(255, 210, 63, .03)); }
+.lotw-bar .lb-k { grid-area: k; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .1em; color: #ffd23f; }
+.lotw-bar .lb-k i { font-style: normal; margin-left: 6px; padding: 2px 5px; border-radius: 4px; background: #ff2bd6; color: #fff; font-size: 6px; }
+.lotw-bar .lb-t { grid-area: t; justify-self: end; font-size: 11px; color: var(--text-dim); }
+.lotw-bar .lb-v { grid-area: v; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lotw-bar .lb-v img { width: 24px; height: 24px; object-fit: contain; }
+.lotw-bar .lb-v b { font-size: 15px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lotw-bar .lb-v small { font-size: 12px; color: var(--text-dim); }
+.lotw-bar:not(.on) .lb-v { flex-direction: column; align-items: flex-start; gap: 2px; }
+#lotw-toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 90; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; padding: 9px 14px; border-radius: 10px; background: #1a1430; border: 1px solid rgba(255, 210, 63, .5); color: #fff; font-size: 13px; transition: opacity .2s, transform .2s; }
+#lotw-toast.show { opacity: 1; transform: translate(-50%, 0); }
+/* The light reminder: a card that rises over the tab bar, not a full sheet. */
+.lotw-nudge { position: fixed; inset: auto 0 calc(84px + env(safe-area-inset-bottom)) 0; z-index: 85; display: flex; justify-content: center; padding: 0 12px; pointer-events: none; }
+.lotw-nudge .ln-card { pointer-events: auto; position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 12px; align-items: center; width: min(420px, 100%); padding: 14px; border-radius: 14px; background: #14122a; border: 1px solid rgba(255, 210, 63, .5); box-shadow: 0 16px 40px rgba(0, 0, 0, .6); transform: translateY(30px); opacity: 0; transition: transform .25s cubic-bezier(.2, .9, .3, 1), opacity .2s; }
+.lotw-nudge.show .ln-card { transform: none; opacity: 1; }
+.lotw-nudge:not(.show) { visibility: hidden; transition: visibility 0s .25s; }
+.ln-ic { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; font-size: 18px; background: rgba(255, 210, 63, .15); border: 1px solid rgba(255, 210, 63, .4); }
+.ln-tx { display: grid; gap: 3px; padding-right: 22px; } .ln-tx b { font-size: 14px; color: #fff; } .ln-tx small { font-size: 12px; color: var(--text-dim); }
+.ln-btns { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
+.ln-btns button { padding: 8px 14px; border-radius: 9px; font: inherit; font-size: 13px; cursor: pointer; }
+.ln-skip { background: none; border: 1px solid rgba(255, 255, 255, .15); color: var(--text-dim); }
+.ln-go { background: #ffd23f; border: 0; color: #1a0f00; font-weight: 700; }
+.ln-x { position: absolute; top: 8px; right: 8px; background: none; border: 0; color: var(--text-dim); font-size: 14px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .lotw-nudge .ln-card, .game-card.lotw-ping { transition: none; animation: none; } }
+
+.lotw-row:not(.on) { justify-content: flex-end; margin-top: 4px; padding-top: 0; border-top: 0; }
+.lotw-btn.ghost { padding: 5px 10px; border-color: rgba(255, 210, 63, .25); background: none; color: rgba(255, 210, 63, .75); font-size: 6.5px; }
+.lotw-bar .lb-v small { margin-left: auto; white-space: nowrap; }
+.lotw-bar.on .lb-v small { color: #ffd23f; font-size: 11px; }
+
+/* Lock of the week on the board: a gold ring on the strip square, a gold
+   corner lock in the all picks table, a tag on the expanded row. */
+.sq.lk { outline: 2px solid #ffd23f; outline-offset: 1px; }
+.pick-cell.lk { position: relative; box-shadow: inset 0 0 0 2px rgba(255, 210, 63, .7); }
+.pick-cell .pick-lk { position: absolute; top: 1px; right: 2px; font-style: normal; font-size: 8px; line-height: 1; }
+.rd-pickcard.lk { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .6); border-radius: 6px; background: rgba(255, 210, 63, .06); }
+.rd-lock { display: block; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .08em; color: #ffd23f; margin-bottom: 2px; }
+
+.gc-mine.lk { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .7), 0 0 16px rgba(255, 210, 63, .18); }
+.gc-mine.lk .gc-mtag { color: #ffd23f; }
+.gc-rlk { font-style: normal; font-size: 9px; margin-left: 3px; }
+.recap-card.lk { --c: #ffd23f; }
+.rm-foot { margin-top: 6px; font-size: 11.5px; color: var(--text-dim); }
+.rank-hits .rh.lk img { outline: 2px solid #ffd23f; outline-offset: 1px; border-radius: 4px; }
+.rank-hits .rh.lk b { color: #ffd23f !important; }
+.rank-lk { font-style: normal; font-size: 9px; margin-left: 5px; padding: 1px 3px; border-radius: 4px; border: 1px solid rgba(255, 210, 63, .5); vertical-align: 1px; }
+.rank-lk.up { border-color: var(--neon-green); background: rgba(57, 255, 136, .15); }
+.rank-lk.dn { border-color: var(--neon-pink); background: rgba(255, 32, 121, .15); }
+.gc-mine.lk .gc-mtag { background: #ffd23f !important; color: #1a0f00 !important; }
+.recap-card.lk .rm-side.miss i { color: var(--neon-pink); }
