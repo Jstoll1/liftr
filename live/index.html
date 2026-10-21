@@ -635,7 +635,8 @@ html, body { overflow-x: hidden; }
   .vd { font: 600 12px/1 var(--mono); padding: 3px 7px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--meta, #c9cddb); }
   .vsum { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 5px; font-size: 12px; color: var(--dim); }
   .vsum .iss { color: #ffb347; font-weight: 700; } .vsum .iss.bad { color: #ff6b8a; }
-  .vcar { font-style: normal; margin-left: auto; color: var(--dim); }
+  .vcar { font-style: normal; margin-left: auto; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--meta, #c9cddb); font-size: 11.5px; white-space: nowrap; }
+  .sess.shut { cursor: pointer; } .sess.shut:active { transform: scale(.995); }
   .sess.t-quick::before { background: #5b5378; } .sess.t-short::before { background: #7aa2ff; }
   .sess.t-mid::before { background: #3dfc8f; } .sess.t-long::before { background: #ffe45e; }
   .sess.t-quick .vd { color: var(--dim); } .sess.t-mid .vd { color: #3dfc8f; } .sess.t-long .vd { color: #ffe45e; background: rgba(255,228,94,.1); }
@@ -1229,7 +1230,7 @@ html, body { overflow-x: hidden; }
       const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.app ? ` · ${s.app === "home" ? "home screen app" : "browser"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
       return `${head}<div class="sess t-${tier}${issues.length ? errs.length ? " bad" : " warn" : ""}${open ? " open" : " shut"}${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
-        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}${s.live ? "" : `<span class="vd num">${esc(dur(ms))}</span>`}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}<i class="vcar">${open ? "▾" : "▸"}</i></div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(now - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button></div></div>
+        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm">${esc(name(s.n))}${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}${s.live ? "" : `<span class="vd num">${esc(dur(ms))}</span>`}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}<i class="vcar">${open ? "Close ▴" : "Open ▾"}</i></div></div><div class="sh-r"><span class="badge num"${s.live ? ` data-since="${s.since}"` : ""}>${s.live ? clock(now - s.since) : s.done ? "LEFT" : "ENDED"}</span><button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button></div></div>
         ${s.acts.length && open ? `<ul class="acts">${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${/^⚠/.test(a.a) ? " iss" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
       </div>`;
     }).join("");
@@ -1280,8 +1281,9 @@ html, body { overflow-x: hidden; }
       sec.classList.toggle("folded", folds.has(panelKey(sec)));
     });
     app.querySelectorAll(".day").forEach((d) => {
-      const k = dayKey(d), shut = k === "day:today" ? folds.has(k) : !folds.has(k.replace("day:", "open:"));
-      d.classList.add("fold-h"); d.classList.toggle("shut", shut);
+      // Today stays open (folding it hid every visit at a stray tap); older days fold.
+      const k = dayKey(d), shut = k === "day:today" ? false : !folds.has(k.replace("day:", "open:"));
+      d.classList.toggle("fold-h", k !== "day:today"); d.classList.toggle("shut", shut);
       let n = 0;
       for (let x = d.nextElementSibling; x && !x.classList.contains("day") && !x.classList.contains("note"); x = x.nextElementSibling) { x.hidden = shut; n++; }
       let dn = d.querySelector(".dn"); if (!dn) { dn = document.createElement("span"); dn.className = "dn"; d.appendChild(dn); }
@@ -1342,8 +1344,18 @@ html, body { overflow-x: hidden; }
     const jb = e.target.closest("[data-jump]");
     if (jb) { document.getElementById(jb.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     if (e.target.closest("[data-seenall]")) { seenBase = snapSeen(); saveSeen(); st.sig = ""; render(); return; }
-    const vh = e.target.closest(".sh[data-open]");
-    if (vh && !e.target.closest("button")) { const k = vh.dataset.open; st.open.has(k) ? st.open.delete(k) : st.open.add(k); render(); return; }
+    // A closed visit opens on a tap anywhere on it; an open one closes from its header.
+    const card = e.target.closest(".sess[data-v]");
+    const vh = card && !e.target.closest("button, li.go, a") && (card.classList.contains("shut") ? card : e.target.closest(".sh[data-open]")) ? card.querySelector(".sh[data-open]") : null;
+    if (vh) {
+      const k = vh.dataset.open, top = card.getBoundingClientRect().top;
+      st.open.has(k) ? st.open.delete(k) : st.open.add(k);
+      st.sig = ""; render();
+      // Keep the card where it was on screen, so nothing jumps.
+      const again = [...app.querySelectorAll(".sess[data-v]")].find((x) => x.dataset.v === k);
+      if (again) window.scrollBy(0, again.getBoundingClientRect().top - top);
+      return;
+    }
     const oa = e.target.closest("[data-openall]");
     if (oa) {
       const vis = [...app.querySelectorAll(".sess[data-v]")];
