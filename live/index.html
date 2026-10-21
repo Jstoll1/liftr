@@ -876,17 +876,19 @@ html, body { overflow-x: hidden; }
   addEventListener("scroll", () => { cancelAnimationFrame(paintTabs.r); paintTabs.r = requestAnimationFrame(paintTabs); }, { passive: true });
   const COPY_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 3.5v-.5a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3v5A1.5 1.5 0 0 0 4 9.5h.5"/></svg>`;
   const SAYS = {
-    "game-info": "Opened game info", gamecast: "Watched the live game cast", "game-final": "Opened a final recap",
-    "scorebug-open": "Tapped a score", "ranking-expand": "Opened a leaderboard card",
+    "game-info": "Opened game info", gamecast: "Watched a game live (Gamecast)", "game-final": "Opened a finished game",
+    "scorebug-open": "Opened a live score", "ranking-expand": "Expanded a player on the leaderboard",
     "path-share": "Shared a Path to Win", "path-intro": "Saw the Path to Win intro",
-    "wp-player": "Opened a win % breakdown", "wp-explain": "Read how win % works", h2h: "Opened head to head",
-    "pot-open": "Opened the pot", "pot-seen": "Looked at the pot", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Read the week replay", "board-seen": "Looked at the leaderboard", "scores-seen": "Looked at live scores", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
-    "poll-view": "Saw the lock of the week vote", poll: "Voted on the lock of the week",
-    "lock-set": "🔒 Set their lock of the week", "lock-cleared": "Took their lock off", "lock-nudge": "Got the no lock reminder", "lock-skip": "Skipped the lock this week",
-    sim: "Ran a game sim", "grid-card": "Opened a grid card", "history-ask": "Asked the archive", "gamecast-log": "Opened the full game log",
+    "wp-player": "Checked someone's odds to win the week", "wp-explain": "Read how win odds work", h2h: "Compared two players (VS)",
+    "pot-open": "Opened the pot and standings", "pot-seen": "Looked at the pot and standings", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Looked at the week replay", "board-seen": "Looked at the leaderboard", "scores-seen": "Looked at the game scores", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
+    "poll-view": "Saw the lock of the week vote (retired)", poll: "Voted on the lock of the week (retired)",
+    "team-tap": "Tapped a team to open game info", "status-tap": "Tapped a game's status chip to open game info", "season-h2h": "Compared two players' seasons (VS)", "side-game": "Opened a side bet game",
+    "lock-intro": "Saw the lock of the week announcement", "lock-intro-go": "Tapped Show me on the lock announcement", "lock-intro-ok": "Closed the lock announcement",
+    "lock-set": "🔒 Set their lock of the week", "lock-cleared": "Took their lock off", "lock-nudge": "Got the \"no lock yet\" reminder", "lock-skip": "Skipped the lock this week",
+    sim: "Simulated a game", "grid-card": "Opened the starting grid picture (hidden nav trick)", "history-ask": "Asked the history bot", "gamecast-log": "Opened the play by play",
   };
-  const SHEET = { "h2h-modal": "head to head", "insights-modal": "game info", "sh2h-modal": "season head to head", "grid-modal": "the grid check", "rules-modal": "the rules", "avatar-modal": "the avatar picker", "boner-modal": "the boner", "sim-modal": "game sim", "claim-modal": "the claim sheet", "identity-modal": "who are you", "code-modal": "the code sheet" };
-  const SCREEN_NAME = { scoreboard: "Scores", picks: "Picks", history: "History", trivia: "Trivia", side: "Side bet", home: "Players" };
+  const SHEET = { "h2h-modal": "head to head", "insights-modal": "game info", "sh2h-modal": "season head to head", "grid-modal": "the starting grid picture", "rules-modal": "the rules", "avatar-modal": "the avatar picker", "boner-modal": "the boner", "sim-modal": "the game simulator", "claim-modal": "the \"who are you\" sign in", "identity-modal": "the \"who are you\" sign in", "code-modal": "the PIN entry", "admin-gate": "the admin login", "qotw-modal": "question of the week", "lotw-confirm": "the lock confirm", "lotw-intro": "the lock announcement" };
+  const SCREEN_NAME = { scoreboard: "Scores", picks: "Picks", history: "History", trivia: "Trivia", side: "Side bet", home: "Home" };
   const FRICTION = /^(rage|dead-tap|quick-exit|js-error)$/;
   let lastDigest = "";
   // Copy for Claude. The digest shows in the panel (and stays through the
@@ -904,12 +906,13 @@ html, body { overflow-x: hidden; }
     if (e.k === "pot-row") return ["Opened a pot row", e.d ? name(e.d) : ""];
     if (e.k === "history-season") return ["Opened a past season", e.d || ""];
     if (e.k === "player-card") return ["Opened a player card", e.d ? name(e.d) : ""];
-    if (e.k === "rage") return ["⚠ Rage tapped", e.d || ""];
+    if (e.k === "rage") return ["⚠ Tapped the same spot over and over", e.d || ""];
     if (e.k === "dead-tap") return ["⚠ Tapped something that does nothing", e.d || ""];
-    if (e.k === "quick-exit") return ["⚠ Closed right away", SHEET[e.d] || e.d || ""];
+    if (e.k === "quick-exit") return ["⚠ Opened then closed right away", SHEET[e.d] || e.d || ""];
     if (e.k === "js-error") return ["⚠ Hit an error", e.d || ""];
     if (e.k === "sheet-time") { const [id, sec] = String(e.d || "").split(":"); return [`Spent ${dur(Number(sec) * 1000)} in ${SHEET[id] || id}`, ""]; }
     if (e.k === "depth") { const [sc, pct] = String(e.d || "").split(":"); return [`Scrolled ${pct}% of ${SCREEN_NAME[sc] || sc}`, ""]; }
+    if (e.k === "recap-card") return ["Opened a week replay card", ({ hit: "Pick of the week", miss: "Worst pick", move: "Movement", split: "Coin flip", tb: "Tiebreaker", lk: "Lock of the week" })[e.d] || e.d || ""];
     if (e.k === "path-run" || e.k === "path-card") {
       const of = feed.find((x) => x.n === e.n && /^path-of-/.test(x.k) && Math.abs(x.at - e.at) < 3000);
       return [e.k === "path-run" ? "Ran Path to Win" : "Opened a Path to Win card", of ? `for ${name(nameFrom(of.k.slice(8)))}` : ""];
@@ -1138,7 +1141,7 @@ html, body { overflow-x: hidden; }
     const seg = `<span class="seg end" role="group" aria-label="Range">${["3h", "6h", "12h", "24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
     // Features, day by day: how many people used each one (taps in the
     // cell's tooltip). Only features someone used this week show.
-    const FEATS = [["Gamecast", /^(gamecast|game-final|gamecast-log)$/], ["Game info", /^(game-info|team-tap|status-tap|insights-open)$/], ["Simulate", /^sim$/], ["Path to Win", /^path-(run|card|share)$|^path-of-/], ["Head to head", /^h2h$|^sh2h/], ["Win %", /^wp-/], ["Replay", /^recap-(card|seen)$/], ["Player card", /^player-card$/], ["Board rows", /^ranking-expand$|^board-seen$/], ["Standings", /^pot-(open|seen|row)$/], ["Season stats", /^season-(open|seen)$/], ["Side bet", /^side/], ["History", /^history(-season|-ask)?$/], ["Trivia", /^trivia/], ["Lock vote", /^poll$/]];
+    const FEATS = [["Gamecast", /^(gamecast|game-final|gamecast-log)$/], ["Game info", /^(game-info|team-tap|status-tap|insights-open)$/], ["Game sim", /^sim$/], ["Path to Win", /^path-(run|card|share)$|^path-of-/], ["Head to head", /^h2h$|^sh2h/], ["Win odds", /^wp-/], ["Replay", /^recap-(card|seen)$/], ["Player card", /^player-card$/], ["Leaderboard", /^ranking-expand$|^board-seen$/], ["Pot and standings", /^pot-(open|seen|row)$/], ["Season stats", /^season-(open|seen)$/], ["Side bet", /^side/], ["History", /^history(-season|-ask)?$/], ["Trivia", /^trivia/], ["Lock of the week", /^lock-(set|cleared)$/]];
     const featGrid = () => {
       const ev = (wk.feed || []).filter((e) => e.at >= wFrom && (!st.filter || e.n === st.filter));
       const rows = FEATS.map(([lab, re]) => {
