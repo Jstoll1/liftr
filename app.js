@@ -9140,7 +9140,9 @@ function goToScoresNow() {
   bottomNav.classList.remove("hidden");
   currentManager = loadMe();
   updateMePill();
-  showScoreboard();
+  // A new slate with nothing kicked off yet: picks first. Once the week is
+  // under way, the scoreboard.
+  if (GAMES.length && !firstKickoffPassed()) showPicksScreen(); else showScoreboard();
   document.documentElement.classList.remove("known");
 }
 (async () => {
@@ -9169,6 +9171,9 @@ function goToScoresNow() {
   if (routed) {
     // Already on the board: redraw only if the network's slate differs
     // from the one this phone had (a new week, a changed game).
+    // The saved slate was last week's: the new one is open for picks, so
+    // go there instead of the old board.
+    if (slateChanged && !firstKickoffPassed() && !scoreboardScreen.classList.contains("hidden")) { showPicksScreen(); return; }
     if (slateChanged && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
     return;
   }
