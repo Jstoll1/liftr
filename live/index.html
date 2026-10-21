@@ -597,7 +597,9 @@ html, body { overflow-x: hidden; }
   section.panel > .ph.fold-h h2::before { content: "▾"; display: inline-block; width: 1em; margin-right: 6px; color: #8b91a5; font-size: 10px; line-height: 1; vertical-align: 1px; text-align: center; transition: transform .15s; }
   section.panel.folded > .ph.fold-h h2::before { transform: rotate(-90deg); }
   section.panel.folded > :not(.ph) { display: none !important; }
-  section.panel.folded { padding-bottom: 14px; }
+  section.panel.folded { padding-top: 10px; padding-bottom: 10px; }
+  section.panel.folded > .ph { margin-bottom: 0; }
+  .blk-n { position: absolute; top: -7px; right: -6px; min-width: 13px; height: 13px; padding: 0 3px; border-radius: 7px; background: #fff; color: #120c24; font: 800 9px/13px var(--mono); text-align: center; pointer-events: none; }
   .day.fold-h::before { content: "▾"; width: 1em; margin-right: -4px; font-size: 10px; text-align: center; transition: transform .15s; }
   .day.fold-h.shut::before { transform: rotate(-90deg); }
   .day .dn { order: 2; font: 600 11px/1 var(--mono); letter-spacing: 0; text-transform: none; color: var(--dim); }
@@ -1072,7 +1074,8 @@ html, body { overflow-x: hidden; }
       const groups = [];
       for (const v of mine.slice().sort((a, b) => a.start - b.start)) {
         const g = groups[groups.length - 1];
-        if (g && v.start - g.end < 2 * 60000) { g.list.push(v); g.end = Math.max(g.end, vEnd(v)); g.live = g.live || v.live; }
+        // Close enough to touch on screen: one bar (about 2% of the width, at least 2 minutes).
+        if (g && v.start - g.end < Math.max(2 * 60000, tSpan * 0.02)) { g.list.push(v); g.end = Math.max(g.end, vEnd(v)); g.live = g.live || v.live; }
         else groups.push({ list: [v], start: v.start, end: vEnd(v), live: !!v.live });
       }
       const blocks = groups.map((g) => {
@@ -1081,7 +1084,7 @@ html, body { overflow-x: hidden; }
         const acts = g.list.reduce((t, v) => t + v.acts.length, 0);
         const size = g.live || inApp >= 5 * 60000 ? "" : inApp < 60000 ? " peek" : " short";
         const tip = `<b>${esc(name(n))}${g.live ? " · in now" : ""}</b>${g.list.length > 1 ? `${g.list.length} visits · ` : ""}${esc(hm(g.start))}${g.live ? "" : ` to ${esc(hm(g.end))}`} · ${esc(dur(inApp))} in the app<br>${acts} action${acts === 1 ? "" : "s"}${first.app ? ` · ${first.app === "home" ? "home screen app" : "browser"}` : ""}`;
-        return `<i class="blk${size}${g.live ? " live" : ""}${g.list.some((v) => st.focus === `${v.n}|${v.start}`) ? " focus" : ""}" style="${g.live ? `right:0;width:max(10px, ${(100 - xp(g.start)).toFixed(3)}%)` : `left:min(${xp(g.start)}%, calc(100% - ${size ? 14 : 8}px));width:${(xp(g.end) - xp(g.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}"></i>`;
+        return `<i class="blk${size}${g.live ? " live" : ""}${g.list.some((v) => st.focus === `${v.n}|${v.start}`) ? " focus" : ""}" style="${g.live ? `right:0;width:max(10px, ${(100 - xp(g.start)).toFixed(3)}%)` : `left:min(${xp(g.start)}%, calc(100% - ${size ? 14 : 8}px));width:${(xp(g.end) - xp(g.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}">${g.list.length > 1 && !g.live ? `<b class="blk-n">${g.list.length}</b>` : ""}</i>`;
       }).join("");
       // Nobody in the window: the lane steps back.
       return `${laneLabel(n).replace('class="ln-l', `class="ln-l${mine.length ? "" : " quiet"}`)}<div class="ln-t${st.filter === n ? " sel" : ""}${mine.length ? "" : " quiet"}">${blocks}</div>`;
@@ -1129,7 +1132,7 @@ html, body { overflow-x: hidden; }
       ${weekView()}
     </section>` : `<section class="tl panel" id="sec-tl">
       <div class="ph"><h2>Last ${spanH} hours</h2>${seg}</div>
-      <div class="tl-hint"><span>Dot: quick look · short: under 5 min · tall: longer</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
+      <div class="tl-hint"><span>● quick look · ▮ visit, taller is longer · number = visits</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
       <div class="tl-grid">
         <span></span><div class="tl-ax">${axis}</div>
         <div class="tl-over">${nights.map(([a, b]) => `<i class="night" style="left:${xp(a)}%;width:${(xp(b) - xp(a)).toFixed(3)}%"></i>`).join("")}${marks.map((t) => `<i class="hr${new Date(t).getHours() === 0 ? " mid" : ""}" style="left:${xp(t)}%"></i>`).join("")}<i class="now"></i></div>
