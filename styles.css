@@ -7786,3 +7786,25 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .lotw-btn.hdr.on { background: #ffd23f; color: #1a0f00; border-color: #ffd23f; box-shadow: 0 0 10px rgba(255, 210, 63, .4); }
 .lotw-btn.hdr.done { cursor: default; }
 .game-meta-right { gap: 6px; }
+
+/* ---- Desktop (1100px and wider) -----------------------------------------
+   Phones are untouched. On a wide screen the tab bar becomes a side rail,
+   the page gets two columns (main + a sticky right rail built by
+   deskLayout() in app.js) and the game cards sit two across. */
+@media (min-width: 1100px) {
+  .bottom-nav { top: 0; bottom: 0; right: auto; width: 92px; flex-direction: column; justify-content: center; gap: 10px; padding: 16px 8px; border-top: 0; border-right: 1px solid rgba(193, 60, 255, .45); box-shadow: 6px 0 18px rgba(10, 0, 20, .9); }
+  .bottom-nav .nav-btn { width: 100%; flex: none; padding: 12px 4px; }
+  .bottom-nav .nav-btn:hover { transform: translateX(2px); }
+  .nav-btn-icon { width: 24px; height: 24px; }
+  .app-scroll { left: 92px; }
+  .wrap.wide { max-width: 1240px; }
+  .wrap.desk-on { display: block; }
+  .desk-grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 28px; align-items: start; }
+  .desk-main, .desk-rail { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .desk-rail { position: sticky; top: 88px; max-height: calc(100vh - 108px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-bottom: 8px; }
+  #picks-screen .games-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  #picks-screen .games-list > :not(.game-card) { grid-column: 1 / -1; }
+  #picks-screen .pick-mini-btn { white-space: nowrap; }
+  #scoreboard-screen.week-over .desk-main > * { order: 50; }
+  #scoreboard-screen .desk-main > .my-score + .live-scores-list { margin-top: -8px; }
+}
