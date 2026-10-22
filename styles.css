@@ -8055,3 +8055,7 @@ html.sheet .gs-dots .gs-box a, html.sheet .gs-dots .gs-box button { width: 9px; 
 html.sheet .gs-dots .gs-box button.w, html.sheet .gs-dots .gs-box a.w { background: var(--neon-green); }
 html.sheet .gs-dots .gs-box button.l, html.sheet .gs-dots .gs-box a.l { background: #ff4f6d; }
 html.sheet .gs-dots .gs-box a:hover { outline: 1px solid #fff; }
+
+/* Last five logos: dark-ready ESPN logos, larger, on a faint tile */
+html.sheet .gs-g img { width: 24px; height: 24px; padding: 3px; border-radius: 7px; background: rgba(255, 255, 255, .09); box-sizing: content-box; }
+html.sheet .gs-g { gap: 3px; }
