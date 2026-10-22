@@ -7927,3 +7927,34 @@ html[data-sport="nfl"] #logo-screen { display: none !important; }
 @media (min-width: 1100px) {
   #picks-screen .desk-rail .tiebreaker-row .tiebreaker-input { flex: 1 1 auto; min-width: 0; }
 }
+
+/* Lock bar: a single row on every phone. The gold 🔒 replaces the label. */
+.lotw-bar.v2.on { padding: 8px 10px; gap: 8px; }
+.lotw-bar.v2.on .lb-tx { gap: 0; }
+.lotw-bar.v2 .lb-tag { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: rgba(255, 210, 63, .14); border: 1px solid rgba(255, 210, 63, .45); font-style: normal; font-size: 12px; }
+.lotw-bar.v2 .lb-odds { flex-direction: row !important; gap: 4px; }
+.lotw-bar.v2 .lb-odds i { flex-direction: column !important; justify-content: center; gap: 3px; min-width: 38px; padding: 4px 4px 3px; font-size: 10px; }
+.lotw-bar.v2 .lb-odds small { font-size: 5.5px; }
+@media (max-width: 560px) {
+  .lotw-bar.v2.on .lb-line { gap: 4px; }
+  .lotw-bar.v2.on .lb-line b, .lotw-bar.v2.on .lb-line u { font-size: 14px; }
+  .lotw-bar.v2.on .lb-line img.me { width: 22px; height: 22px; }
+  .lotw-bar.v2.on .lb-line img.op { width: 18px; height: 18px; }
+  .lotw-bar.v2.on .lb-line em { margin-left: 2px; }
+}
+@media (max-width: 350px) {
+  .lotw-bar.v2.on .lb-line em { display: none; }
+  .lotw-bar.v2.on .lb-line b, .lotw-bar.v2.on .lb-line u { font-size: 13px; }
+}
+
+/* One split chip: HIT on the left, MISS on the right */
+.lotw-bar.v2 .lb-odds { gap: 0 !important; border-radius: 9px; overflow: hidden; }
+.lotw-bar.v2 .lb-odds i { border-radius: 0 !important; min-width: 36px !important; }
+.lotw-bar.v2 .lb-odds .up { border-right-width: 0 !important; border-radius: 9px 0 0 9px !important; }
+.lotw-bar.v2 .lb-odds .dn { border-radius: 0 9px 9px 0 !important; }
+.lotw-bar.v2.on .lb-tx { overflow: hidden; }
+.lotw-bar.v2 .lb-line .me-a { display: none; }
+@media (max-width: 400px) {
+  .lotw-bar.v2.on .lb-line b.long .me-n { display: none; }
+  .lotw-bar.v2.on .lb-line b.long .me-a { display: inline; }
+}

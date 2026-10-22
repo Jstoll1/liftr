@@ -2673,6 +2673,11 @@ function setLock(gameId, opts = {}) {
   pushManagerState(currentManager, s).then(() => { if (!picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen); });
   withScrollPreserved(renderPicksScreen);
 }
+// ESPN's short code for a team on the slate (LSU, MOST), or initials.
+function teamCode(g, team) {
+  const l = latestLive?.[g.id], home = team === g.home, n = home ? g.homeShort : g.awayShort;
+  return (home ? l?.homeAbbr : l?.awayAbbr) || (n.length <= 6 ? n : n.split(/\s+/).map((w) => w[0]).join("").toUpperCase());
+}
 function renderLockBar(state) {
   let bar = document.getElementById("lotw-bar");
   const lr = lockRule();
@@ -2684,7 +2689,7 @@ function renderLockBar(state) {
   const odds = (hit) => `<span class="lb-odds"><i class="up"><small>HIT</small>+${hit}</i><i class="dn"><small>MISS</small>${lr.miss < 0 ? "−" + Math.abs(lr.miss) : 0}</i></span>`;
   if (g) {
     const mine = pk.team === g.away ? g.awayId : g.homeId, opp = pk.team === g.away ? g.homeId : g.awayId;
-    bar.innerHTML = `<span class="lb-tx"><small>🔒 YOUR LOCK</small><span class="lb-line"><img class="me" src="${logoUrl(mine)}" alt=""><b>${escapeCd(pk.team === g.away ? g.awayShort : g.homeShort)}</b><u>${pk.team === g.favorite ? "−" : "+"}${g.spread}</u><em>${pk.team === g.away ? "at" : "vs"}</em><img class="op" src="${logoUrl(opp)}" alt=""><span class="op-n">${escapeCd(pk.team === g.away ? g.homeShort : g.awayShort)}</span><span class="op-a">${escapeCd((() => { const l = latestLive?.[g.id]; const n = pk.team === g.away ? g.homeShort : g.awayShort; return (pk.team === g.away ? l?.homeAbbr : l?.awayAbbr) || (n.length <= 6 ? n : n.split(/\s+/).map((w) => w[0]).join("").toUpperCase()); })())}</span></span></span>${odds(pointValue(g, pk.team, pk.mode) + lr.hit)}`;
+    bar.innerHTML = `<span class="lb-tx" title="Your lock of the week"><span class="lb-line"><i class="lb-tag" aria-label="Your lock">🔒</i><img class="me" src="${logoUrl(mine)}" alt=""><b class="${(pk.team === g.away ? g.awayShort : g.homeShort).length > 9 ? "long" : ""}"><span class="me-n">${escapeCd(pk.team === g.away ? g.awayShort : g.homeShort)}</span><span class="me-a">${escapeCd(teamCode(g, pk.team))}</span></b><u>${pk.team === g.favorite ? "−" : "+"}${g.spread}</u><em>${pk.team === g.away ? "at" : "vs"}</em><img class="op" src="${logoUrl(opp)}" alt=""><span class="op-n">${escapeCd(pk.team === g.away ? g.homeShort : g.awayShort)}</span><span class="op-a">${escapeCd(teamCode(g, pk.team === g.away ? g.home : g.away))}</span></span></span>${odds(pointValue(g, pk.team, pk.mode) + lr.hit)}`;
   } else {
     bar.innerHTML = `<span class="lb-mu none">🔒</span><span class="lb-tx"><small>LOCK OF THE WEEK${fresh ? ` <i>NEW</i>` : ""}</small><b>No lock yet</b></span>${odds(lr.hit)}`;
   }
