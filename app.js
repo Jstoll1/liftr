@@ -2574,14 +2574,27 @@ function setLock(gameId, opts = {}) {
 function renderLockBar(state) {
   let bar = document.getElementById("lotw-bar");
   const lr = lockRule();
-  if (!lr) { bar?.remove(); return; }
+  if (!lr) { bar?.remove(); document.getElementById("slate-rule")?.remove(); return; }
   if (!bar) { bar = document.createElement("button"); bar.type = "button"; bar.id = "lotw-bar"; gamesList.before(bar); bar.addEventListener("click", () => { const g = lockedGameOf(getManagerState(currentManager)); const el = g ? gamesList.querySelector(`[data-game-id="${g.id}"]`) : gamesList.querySelector(".game-submitted:not(.game-locked)"); el?.scrollIntoView({ behavior: "smooth", block: "center" }); el?.classList.add("lotw-ping"); setTimeout(() => el?.classList.remove("lotw-ping"), 1600); }); }
   const g = lockedGameOf(state), pk = g ? state.picks[g.id] : null;
   let fresh = false; try { fresh = !localStorage.getItem("brochiefs_lotw_seen"); } catch {}
-  bar.className = `lotw-bar${g ? " on" : ""}`;
-  bar.innerHTML = g
-    ? `<span class="lb-k">🔒 YOUR LOCK</span><span class="lb-v"><img src="${logoUrl(pk.team === g.away ? g.awayId : g.homeId)}" alt=""><b>${escapeCd(lockPickText(g, pk))}</b><small>${pointValue(g, pk.team, pk.mode)} + ${lr.hit} if it hits</small></span><span class="lb-t">${lockLabel(lr)}</span>`
-    : `<span class="lb-k">🔒 LOCK OF THE WEEK${fresh ? ` <i>NEW</i>` : ""}</span><span class="lb-v"><b>No lock yet</b><small>Make a spread pick, then tap 🔒 under it</small></span><span class="lb-t">${lockLabel(lr)}</span>`;
+  bar.className = `lotw-bar v2${g ? " on" : ""}`;
+  const odds = (hit) => `<span class="lb-odds"><i class="up"><small>HIT</small>+${hit}</i><i class="dn"><small>MISS</small>${lr.miss < 0 ? "−" + Math.abs(lr.miss) : 0}</i></span>`;
+  if (g) {
+    const mine = pk.team === g.away ? g.awayId : g.homeId, opp = pk.team === g.away ? g.homeId : g.awayId;
+    bar.innerHTML = `<span class="lb-mu"><img class="me" src="${logoUrl(mine)}" alt=""><img class="op" src="${logoUrl(opp)}" alt=""></span><span class="lb-tx"><small>🔒 YOUR LOCK</small><b>${escapeCd(pk.team === g.away ? g.awayShort : g.homeShort)} <u>${pk.team === g.favorite ? "−" : "+"}${g.spread}</u></b><em>${pk.team === g.away ? "at" : "vs"} ${escapeCd(pk.team === g.away ? g.homeShort : g.awayShort)}</em></span>${odds(pointValue(g, pk.team, pk.mode) + lr.hit)}`;
+  } else {
+    bar.innerHTML = `<span class="lb-mu none">🔒</span><span class="lb-tx"><small>LOCK OF THE WEEK${fresh ? ` <i>NEW</i>` : ""}</small><b>No lock yet</b></span>${odds(lr.hit)}`;
+  }
+  // A retro rule between the lock and the slate.
+  let rule = document.getElementById("slate-rule");
+  if (!rule) { rule = document.createElement("div"); rule.id = "slate-rule"; rule.className = "slate-rule"; rule.setAttribute("aria-hidden", "true"); rule.innerHTML = "<span>THIS WEEK'S SLATE</span>"; }
+  // Desktop: the lock sits in the right rail under the standing; the rule
+  // stays right above the games either way.
+  const rail = document.querySelector("#picks-screen .desk-rail");
+  if (rail) { const at = document.getElementById("picks-standing"); if (bar.parentElement !== rail) (at?.parentElement === rail ? at.after(bar) : rail.prepend(bar)); }
+  else if (bar.nextElementSibling !== rule && bar.parentElement !== gamesList.parentElement) gamesList.before(bar);
+  if (rule.nextElementSibling !== gamesList) gamesList.before(rule);
 }
 
 function renderPicksScreen() {
