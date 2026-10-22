@@ -21,3 +21,14 @@ test("pickers: needs a key", async () => {
   assert.equal((await call("&key=nope")).status, 403);
   assert.equal((await call("")).status, 403);
 });
+
+test("audit: flags picks whose team is not in their game, owner key only, no teams", async () => {
+  store.set("games:w5", JSON.stringify({ week: 5, games: [{ id: 1, away: "LSU", home: "Florida", awayShort: "LSU", homeShort: "UF" }, { id: 2, away: "Army", home: "Navy", awayShort: "ARMY", homeShort: "NAVY" }] }));
+  const r = await worker.fetch(new Request("https://w.test/games?audit=1&week=5&key=appkey"), env, { waitUntil() {} });
+  assert.equal(r.status, 200);
+  const body = await r.json();
+  assert.equal(body.checked, 3);
+  assert.deepEqual(body.problems, [{ manager: "Curt", slot: 2, game: "ARMY @ NAVY", why: "the saved team is not in this game" }]);
+  assert.ok(!JSON.stringify(body).includes("Iowa"));
+  assert.equal((await worker.fetch(new Request("https://w.test/games?audit=1&week=5&key=slatekey"), env, { waitUntil() {} })).status, 403);
+});

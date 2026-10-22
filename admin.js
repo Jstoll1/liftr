@@ -269,7 +269,7 @@
   // each stored game re-checks the row it came from.
   // A published week: who already has a pick in on each game (names only,
   // the Worker never sends which side). Changing one of those games warns.
-  let savedSlate = [], pickers = {};
+  let savedSlate = [], pickers = {}, savedWeek = null;
   async function loadPickers(week) {
     const key = getKey().trim();
     if (!key) return;
@@ -291,7 +291,7 @@
       if (!res.ok) return null;
       const data = await res.json();
       const saved = Array.isArray(data.games) ? data.games : [];
-      savedSlate = saved; pickers = {};
+      savedSlate = saved; savedWeek = week; pickers = {};
       if (saved.length) loadPickers(week);
       if (!saved.length) return { count: 0, missing: 0 };
       let missing = 0;
@@ -527,13 +527,28 @@
     const tb = [...picked.values()].filter((p) => p.tiebreaker);
     if (tb.length !== 1) { say("Mark exactly one game as the tiebreaker.", "bad"); return; }
 
+    // The numbers below must come from this week's published slate.
+    if (savedWeek !== week) {
+      try {
+        const r = await fetch(`${WORKER_URL}/games?week=${week}&t=${Date.now()}`, { cache: "no-store" });
+        const d = r.ok ? await r.json() : null;
+        if (!d) { say("Could not read the published week. Try again.", "bad"); return; }
+        savedSlate = Array.isArray(d.games) ? d.games : []; savedWeek = week; pickers = {};
+        if (savedSlate.length) await loadPickers(week);
+      } catch { say("Could not read the published week. Try again.", "bad"); return; }
+    }
     const games = [];
-    let id = 0;
+    // Picks are stored by game number, so a published game keeps its number
+    // for good: a game already on the slate reuses it, a new one takes the
+    // next number never used this week. Edits can no longer move picks.
+    const usedIds = new Set(savedSlate.map((x) => Number(x.id)));
+    let nextId = Math.max(0, ...usedIds);
     for (const g of found) {
       const p = picked.get(g.key);
       if (!p) continue;
       if (!Number.isFinite(g.spread)) { say(`ESPN has no line on ${g.awayShort} @ ${g.homeShort}. Untap it.`, "bad"); return; }
-      id += 1;
+      const sv = savedGameOf(g);
+      const id = sv ? Number(sv.id) : ++nextId;
       games.push({
         id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort,
         awayId: g.awayId, homeId: g.homeId,
@@ -561,7 +576,7 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) { say(`Not saved: ${data.error || res.status}`, "bad"); return; }
-      savedSlate = games; loadPickers(week);
+      savedSlate = games; savedWeek = week; loadPickers(week);
       say(`Week ${data.week} saved with ${data.games} games${data.current === data.week ? " and is now live" : ""}. Reload to see it.`, "ok");
     } catch (err) {
       say(`Not saved: ${err.message}`, "bad");
