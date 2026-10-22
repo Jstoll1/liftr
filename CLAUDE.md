@@ -13,3 +13,12 @@ phone width (390px) and, for shared pages, desktop width:
 
 Screenshot the real component (every state: closed, open, empty, long text)
 and look at it before committing. If it fails BAD, fix it first.
+
+## Phones are always the phone layout
+A phone (touch, longest side under 1000px; `html.phone`, `IS_PHONE` in
+app.js) never gets a desktop layout, the /desktop pick sheet or any wide
+screen rule, even held sideways. Vertical scroll and tap only: nothing
+wider than the screen, no sideways scroll. Any new desktop feature must
+check `!IS_PHONE` (JS) or sit behind `(hover: hover)` / `html:not(.phone)`
+(CSS), and be tested with Playwright iPhone emulation (portrait and
+landscape) before pushing.
