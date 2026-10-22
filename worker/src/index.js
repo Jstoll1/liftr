@@ -1556,7 +1556,7 @@ function validateSlate(body) {
   for (const [i, g] of games.entries()) {
     const at = `game ${i + 1}`;
     const id = Number(g?.id);
-    if (!Number.isInteger(id) || id < 1 || id > 16) return `${at}: id must be 1 to 16`;
+    if (!Number.isInteger(id) || id < 1 || id > 40) return `${at}: id must be 1 to 40`;
     if (seen.has(id)) return `${at}: duplicate id ${id}`;
     seen.add(id);
     for (const f of ["away", "home", "awayShort", "homeShort", "favorite", "kickoff"]) {
@@ -1706,6 +1706,29 @@ async function handleGames(request, env, corsHeaders, url) {
     if (url.searchParams.get("check")) {
       if (!isSlateAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
       return json({ ok: true, role: keyRole(env, url) }, 200, corsHeaders);
+    }
+    // Owner only (never the slate key): picks that no longer sit on a game
+    // with their team in it, after a slate edit moved games between slots.
+    // Read only. Says who and which slot, never which team was picked.
+    if (url.searchParams.get("audit")) {
+      if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+      const week = await weekFrom(env, url);
+      const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
+      const games = new Map((slate?.games || []).map((g) => [String(g.id), g]));
+      let checked = 0;
+      const problems = [];
+      await Promise.all(PICKS_MANAGERS.map(async (m) => {
+        const st = await env.LIFTR_KV.get(pickKey(week, m), "json").catch(() => null);
+        for (const [gid, p] of Object.entries(st?.picks || {})) {
+          if (!p?.team) continue;
+          checked += 1;
+          const g = games.get(String(gid));
+          if (!g) problems.push({ manager: m, slot: Number(gid), game: null, why: "this slot is no longer on the slate" });
+          else if (p.team !== g.away && p.team !== g.home) problems.push({ manager: m, slot: Number(gid), game: `${g.awayShort} @ ${g.homeShort}`, why: "the saved team is not in this game" });
+        }
+      }));
+      problems.sort((a, b) => a.slot - b.slot || a.manager.localeCompare(b.manager));
+      return json({ ok: true, week, checked, problems }, 200, corsHeaders);
     }
     // The slate editor's warning before it changes a published game: who
     // has a pick in on each game. Names only, never which side or mode.

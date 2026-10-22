@@ -1388,6 +1388,7 @@ html, body { overflow-x: hidden; }
           ${st.menu ? `<div class="menu" role="menu">
             ${"Notification" in window ? `<button type="button" role="menuitem" data-alert="1">${ICONS.bell}<span>${st.alert ? "Turn alerts off" : "Alert me when someone comes in"}</span>${st.alert ? `<i class="on">ON</i>` : ""}</button>` : ""}
             <button type="button" role="menuitem" data-copy="*">${ICONS.copy}<span>Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"} visits</span></button>
+            <button type="button" role="menuitem" data-audit="1">${ICONS.copy}<span>Check picks match the slate</span></button>
             <button type="button" role="menuitem" data-slate="1">${ICONS.copy}<span>${st.copied === "slate" ? "✓ Slate copied" : "Copy this week's slate"}</span></button>
             <a role="menuitem" href="../" target="_blank" rel="noopener">${ICONS.app}<span>Open Pick'em</span><i>↗</i></a>
             <a role="menuitem" href="../?admin" target="_blank" rel="noopener">${ICONS.console}<span>Admin console</span><i>↗</i></a>
@@ -1508,6 +1509,17 @@ html, body { overflow-x: hidden; }
     if (b.dataset.open) { st.open.has(b.dataset.open) ? st.open.delete(b.dataset.open) : st.open.add(b.dataset.open); render(); return; }
     if (b.dataset.older) { st.shown += 20; render(); return; }
     if (b.dataset.reload) { location.reload(); return; }
+    if (b.dataset.audit) {
+      // Read only: any saved pick whose team is not in the game it sits on.
+      st.menu = false; render();
+      let r = null;
+      try { const x = await fetch(`${WORKER}/games?audit=1&${auth()}&t=${Date.now()}`, { cache: "no-store" }); r = x.ok ? await x.json() : null; } catch {}
+      if (!r) { alert("Couldn't run the check. Try again."); return; }
+      alert(r.problems.length
+        ? `${LEAGUE === "nfl" ? "NFL" : "College"} week ${r.week}: ${r.problems.length} of ${r.checked} picks don't match their game.\n\n${r.problems.map((x) => `${name(x.manager)} · G${x.slot}${x.game ? ` (${x.game})` : ""}: ${x.why}`).join("\n")}\n\nThose players should re-pick those games. Nothing was changed.`
+        : `${LEAGUE === "nfl" ? "NFL" : "College"} week ${r.week}: all ${r.checked} saved picks match their games ✓`);
+      return;
+    }
     if (b.dataset.slate) {
       // This week's games as plain text, ready to paste into the group chat.
       let text = "";
