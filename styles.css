@@ -8072,3 +8072,8 @@ html.sheet .gs-g.l small { color: #ff4f6d; }
 
 /* Phones: never sideways. Nothing may be wider than the screen. */
 html.phone, html.phone body, html.phone .app-scroll { overflow-x: hidden; max-width: 100vw; }
+/* Lock bar on every screen: the pick and the chip centred as one group,
+   padding trimmed to hug the row. */
+.lotw-bar.v2 { justify-content: center; }
+.lotw-bar.v2 .lb-tx { flex: 0 1 auto; }
+.lotw-bar.v2.on { padding-top: 5px; padding-bottom: 5px; }
