@@ -1268,7 +1268,7 @@ async function sheetLoad(g) {
     // ATS: ESPN's summary often leaves it out. Same fallbacks as the info
     // sheet: the Worker's stored read of the game, then the line in ESPN's
     // preview ("against the spread: Team 1-6, Team 2-4").
-    if (!d.ats?.away && !d.ats?.home) {
+    if (false) {
       const snap = await withTimeout(fetchGameSnapshot(g.id), 3500, null).catch(() => null);
       const brief = (await fetchInsights().catch(() => null))?.briefs?.[g.id];
       const alt = snap?.glance?.ats || brief?.glance?.ats;
@@ -1317,8 +1317,8 @@ function sheetHtml(g, d) {
   const fa = d?.fpi?.away, fh = d?.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
   const fpi = (v, other) => (hasF ? `<b class="${v > other ? "lead" : ""}">${v}%</b>` : "<em>—</em>");
   const ats = (v) => (v ? `<b>${escapeCd(String(v))}</b>` : "<em>—</em>");
-  const row = (id, f, fo, a, l5) => `<img src="${logoUrl(id)}" alt="">${fpi(f, fo)}${ats(a)}<span class="gs-dots">${dots(l5)}</span>`;
-  return `<div class="gs-t"><span></span><small title="ESPN Football Power Index win chance">FPI</small><small>ATS</small><small>LAST 5</small>${row(g.awayId, fa, fh, d?.ats?.away, d?.lastFive?.away)}${row(g.homeId, fh, fa, d?.ats?.home, d?.lastFive?.home)}</div>`;
+  const row = (id, f, fo, a, l5) => `<img src="${logoUrl(id)}" alt="">${fpi(f, fo)}<span class="gs-dots">${dots(l5)}</span>`;
+  return `<div class="gs-t no-ats"><span></span><small title="ESPN Football Power Index win chance">FPI</small><small>LAST 5</small>${row(g.awayId, fa, fh, d?.ats?.away, d?.lastFive?.away)}${row(g.homeId, fh, fa, d?.ats?.home, d?.lastFive?.home)}</div>`;
 }
 const sheetData = {};
 // Quick read under a pick card (every screen but the desktop sheet): a
@@ -1329,8 +1329,9 @@ function qrBody(g, d) {
   if (!d) return `<div class="qr-wait">Loading…</div>`;
   const fa = d.fpi?.away, fh = d.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
   const five = (list) => (list || []).slice(0, 5).map((e) => { const w = /^w/i.test(e.result || "") ? "w" : /^l/i.test(e.result || "") ? "l" : "t"; const img = e.oppId || e.oppLogo ? `<img src="${escapeCd(e.oppId ? logoUrl(e.oppId) : e.oppLogo)}" alt="${escapeCd(e.opp || "")}" loading="lazy"${e.oppLogo ? ` data-alt="${escapeCd(e.oppLogo)}"` : ""}>` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`; return `<${e.id ? `button type="button" data-past="${escapeCd(String(e.id))}"` : "span"} class="gs-g qr-g ${w}" title="${escapeCd(`${e.result || ""} ${e.score || ""} ${e.oppName || e.opp || ""}`.trim())}">${img}</${e.id ? "button" : "span"}>`; }).join("") || "<em>—</em>";
-  const row = (id, f, fo, a, l5) => `<img class="qr-t" src="${logoUrl(id)}" alt=""><b class="${hasF && f > fo ? "lead" : ""}">${hasF ? `${f}%` : "—"}</b><b>${a ? escapeCd(String(a)) : "—"}</b><span class="qr-five${(l5 || []).length ? "" : " none"}">${(l5 || []).length ? five(l5) : "<em>not posted yet</em>"}</span>`;
-  return `<div class="qr-grid"><span></span><small>FPI</small><small>ATS</small><small>LAST 5</small>${row(g.awayId, fa, fh, d.ats?.away, d.lastFive?.away)}${row(g.homeId, fh, fa, d.ats?.home, d.lastFive?.home)}</div>`;
+  // NFL: ESPN keeps ATS behind a 403, so the column is left out.
+  const row = (id, f, fo, a, l5) => `<img class="qr-t" src="${logoUrl(id)}" alt=""><b class="${hasF && f > fo ? "lead" : ""}">${hasF ? `${f}%` : "—"}</b><span class="qr-five${(l5 || []).length ? "" : " none"}">${(l5 || []).length ? five(l5) : "<em>not posted yet</em>"}</span>`;
+  return `<div class="qr-grid no-ats"><span></span><small>FPI</small><small>LAST 5</small>${row(g.awayId, fa, fh, d.ats?.away, d.lastFive?.away)}${row(g.homeId, fh, fa, d.ats?.home, d.lastFive?.home)}</div>`;
 }
 function quickReadHtml(g) {
   const open = qrOpen.has(g.id);

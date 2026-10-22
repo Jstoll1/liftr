@@ -8148,3 +8148,9 @@ html:not(.qr-seen) .hz-mid .qr-tog { animation: qr-glint 6s ease-in-out 2s infin
 .hz-rec { line-height: 1.1; }
 .qr-five.none { justify-content: center; }
 .qr-five.none em { font-style: normal; font-size: 11.5px; color: var(--text-dim); }
+
+/* NFL: no ATS column */
+.qr-grid.no-ats { grid-template-columns: 20px 44px minmax(0, 1fr); }
+.qr-grid.no-ats > small:nth-of-type(2) { justify-self: center; }
+.qr-grid.no-ats > small:nth-of-type(3) { justify-self: auto; }
+html.sheet .gs-t.no-ats { grid-template-columns: 22px minmax(52px, 1fr) auto; }
