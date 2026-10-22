@@ -1194,12 +1194,18 @@ async function sheetLoad(g) {
   sheetRead[g.id] = (async () => {
     // Same route as the info sheet: the live scores carry ESPN's event id,
     // and on the Picks page they may not have loaded yet.
-    let ev = latestLive?.[g.id]?.eventId || insightsCache.eventIds?.[g.id] || null;
+    let ev = g.eventId || latestLive?.[g.id]?.eventId || insightsCache.eventIds?.[g.id] || null;
     if (!ev) { await fetchLiveScores().catch(() => {}); ev = latestLive?.[g.id]?.eventId || null; }
     if (!ev) { await fetchInsights().catch(() => null); ev = insightsCache.eventIds?.[g.id] || insightsCache.data?.briefs?.[g.id]?.eventId || null; }
     const raw = ev ? await fetchEspnSummary(ev).catch(() => null) : null;
-    const d = raw ? parseSummaryClient(raw, g) : null;
-    if (!d) return null;
+    // No summary (ESPN slow or refusing this phone): build what we can
+    // from our own stored read of the game, then ESPN's team ATS below.
+    let d = raw ? parseSummaryClient(raw, g) : null;
+    if (!d) {
+      const snap = await withTimeout(fetchGameSnapshot(g.id), 3500, null).catch(() => null);
+      const gl = snap?.glance;
+      d = { fpi: gl?.fpi || null, ats: gl?.ats || null, lastFive: {}, preview: null, partial: true };
+    }
     // ATS: ESPN's summary often leaves it out. Same fallbacks as the info
     // sheet: the Worker's stored read of the game, then the line in ESPN's
     // preview ("against the spread: Team 1-6, Team 2-4").
@@ -1270,7 +1276,7 @@ function qrBody(g, d) {
   if (!d) return `<div class="qr-wait">Loading…</div>`;
   const fa = d.fpi?.away, fh = d.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
   const five = (list) => (list || []).slice(0, 5).map((e) => { const w = /^w/i.test(e.result || "") ? "w" : /^l/i.test(e.result || "") ? "l" : "t"; const img = e.oppId || e.oppLogo ? `<img src="${escapeCd(e.oppId ? logoUrl(e.oppId) : e.oppLogo)}" alt="${escapeCd(e.opp || "")}" loading="lazy"${e.oppLogo ? ` data-alt="${escapeCd(e.oppLogo)}"` : ""}>` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`; return `<${e.id ? `button type="button" data-past="${escapeCd(String(e.id))}"` : "span"} class="gs-g qr-g ${w}" title="${escapeCd(`${e.result || ""} ${e.score || ""} ${e.oppName || e.opp || ""}`.trim())}">${img}</${e.id ? "button" : "span"}>`; }).join("") || "<em>—</em>";
-  const row = (id, f, fo, a, l5) => `<img class="qr-t" src="${logoUrl(id)}" alt=""><b class="${hasF && f > fo ? "lead" : ""}">${hasF ? `${f}%` : "—"}</b><b>${a ? escapeCd(String(a)) : "—"}</b><span class="qr-five">${five(l5)}</span>`;
+  const row = (id, f, fo, a, l5) => `<img class="qr-t" src="${logoUrl(id)}" alt=""><b class="${hasF && f > fo ? "lead" : ""}">${hasF ? `${f}%` : "—"}</b><b>${a ? escapeCd(String(a)) : "—"}</b><span class="qr-five${(l5 || []).length ? "" : " none"}">${(l5 || []).length ? five(l5) : "<em>not posted yet</em>"}</span>`;
   return `<div class="qr-grid"><span></span><small>FPI</small><small>ATS</small><small>LAST 5</small>${row(g.awayId, fa, fh, d.ats?.away, d.lastFive?.away)}${row(g.homeId, fh, fa, d.ats?.home, d.lastFive?.home)}</div>`;
 }
 function quickReadHtml(g) {

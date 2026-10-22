@@ -1507,6 +1507,7 @@ function validateSlate(body) {
       kickoff: new Date(kick).toISOString(),
       kickoffLabel: typeof g.kickoffLabel === "string" && g.kickoffLabel.trim() ? g.kickoffLabel.trim() : kickoffLabelFor(kick),
       tv: typeof g.tv === "string" ? g.tv.trim() : "",
+      ...(/^\d{4,12}$/.test(String(g.eventId || "")) ? { eventId: String(g.eventId) } : {}),
       ...(g.tiebreakerGame ? { tiebreakerGame: true } : {}),
     });
   }
