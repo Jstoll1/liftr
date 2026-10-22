@@ -669,6 +669,17 @@ html, body { overflow-x: hidden; }
   .au-list { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 8px; align-items: start; margin-top: 10px; }
   .au-head .ns-h b { display: block; font-weight: 800; }
   .au-head .ns-h small { display: block; margin-top: 5px; font: 500 12px/1.3 var(--sans, system-ui); letter-spacing: 0; color: var(--muted, #a9a3c7); text-transform: none; }
+  .joins .ns-h b { color: #5df2ff; }
+  .newstrip.audit.joins { border-color: rgba(5, 217, 232, .5); background: linear-gradient(90deg, rgba(5, 217, 232, .1), rgba(5, 217, 232, .03)); }
+  .jr-when { margin-left: auto; font-size: 12px; color: var(--muted, #8e88ad); }
+  .jr-in { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+  .jr-mail { font-size: 13px; color: var(--muted, #a9a3c7); }
+  .jr-msg { font-size: 13px; font-style: italic; }
+  .jr-act { display: flex; gap: 8px; align-items: center; margin-top: 2px; }
+  .jr-act button { font: inherit; font-size: 13px; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+  .jr-act .jr-ok { border: 1px solid rgba(57, 255, 136, .6); background: rgba(57, 255, 136, .12); color: #5dffa3; }
+  .jr-act .jr-no { border: 1px solid rgba(255, 79, 109, .5); background: none; color: #ff8aa0; }
+  .jr-done { font-size: 13px; color: #5dffa3; }
   .au-row { padding: 10px 12px; border-radius: 12px; background: rgba(0, 0, 0, .25); border: 1px solid rgba(255, 255, 255, .06); }
   .au-top { display: flex; align-items: center; gap: 10px; }
   .au-top b { flex: 1 1 auto; min-width: 0; font-size: 15px; }
@@ -1020,6 +1031,7 @@ html, body { overflow-x: hidden; }
   async function poll(full) {
     clearTimeout(poll.t);
     if (!runAudit.t) runAudit();
+    if (!loadJoins.t || Date.now() - loadJoins.t > 60000) { loadJoins.t = Date.now(); loadJoins(); }
     try {
       const wantWeek = st.range === "7d" && (full || !st.wk || Date.now() - st.wk.at > 60000);
       const res = await fetch(`${WORKER}/presence?${auth()}${full ? "&seen=1" : ""}${wantWeek ? "&days=7" : ""}&t=${Date.now()}`, { cache: "no-store" });
@@ -1065,7 +1077,7 @@ html, body { overflow-x: hidden; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1278,6 +1290,17 @@ html, body { overflow-x: hidden; }
     // The pick check, run quietly on open. Nothing shows while every pick
     // sits on its game; otherwise a strip, and tapping it lists who, by
     // player, each with a ready to send message. Never which team.
+    // NFL join requests: approve makes a personal link to send the person.
+    const joinPanel = () => {
+      const list = (st.joins || []).filter((r) => r.status === "pending" || (r.status === "approved" && r.link && Date.now() - (r.decidedAt || 0) < 14 * 86400000));
+      if (!list.length) return "";
+      const nPend = list.filter((r) => r.status === "pending").length;
+      return `<section class="newstrip audit open joins"><div class="au-head"><span class="ns-h"><b>✋ ${nPend ? `${nPend} JOIN REQUEST${nPend === 1 ? "" : "S"}` : "JOIN LINKS TO SEND"}</b><small>NFL league</small></span></div>
+        <div class="au-list">${list.map((r) => `<div class="au-row jr"><div class="au-top"><b>${esc(r.name)}</b><span class="jr-when">${esc(hm(r.at))}</span></div>
+          <div class="jr-in"><span class="jr-mail">${esc(r.email)}</span>${r.message ? `<span class="jr-msg">“${esc(r.message)}”</span>` : ""}
+          ${r.status === "pending" ? `<span class="jr-act"><button type="button" class="jr-ok" data-join="${esc(r.id)}" data-act="approve">Approve</button><button type="button" class="jr-no" data-join="${esc(r.id)}" data-act="deny">Deny</button></span>` : `<span class="jr-act"><span class="jr-done">✓ Approved</span><button type="button" class="au-cp" data-joinlink="${esc(r.link)}" data-joinname="${esc(r.name)}">${st.copied === `jl:${r.id}` ? "✓ Copied" : "Copy invite"}</button></span>`}</div></div>`).join("")}</div>
+        <small class="au-note">Each approved player gets a one-time link; only that link can claim their name.</small></section>`;
+    };
     const auditStrip = () => {
       const a = st.audit;
       if (!a?.problems?.length) return st.auditOpen && a ? `<section class="newstrip audit ok"><div class="au-head"><span class="ns-h">✓ ALL ${a.checked} PICKS MATCH THEIR GAMES</span><button type="button" data-audit="close">Close</button></div></section>` : "";
@@ -1473,7 +1496,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}<div class="vote-wrap">${auditStrip()}${newStrip()}</div>${timeline}${feedHtml}${rail}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
@@ -1592,6 +1615,23 @@ html, body { overflow-x: hidden; }
     if (b.dataset.open) { st.open.has(b.dataset.open) ? st.open.delete(b.dataset.open) : st.open.add(b.dataset.open); render(); return; }
     if (b.dataset.older) { st.shown += 20; render(); return; }
     if (b.dataset.reload) { location.reload(); return; }
+    if (b.dataset.join) {
+      b.disabled = true;
+      try {
+        const x = await fetch(`${WORKER}/joins?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.dataset.join, action: b.dataset.act }) });
+        const j = await x.json().catch(() => ({}));
+        if (!x.ok) { alert(j.error || "Couldn't save that."); b.disabled = false; return; }
+      } catch { alert("No connection."); b.disabled = false; return; }
+      await loadJoins(); return;
+    }
+    if (b.dataset.joinlink) {
+      const r = (st.joins || []).find((x) => x.link === b.dataset.joinlink);
+      const text = `${b.dataset.joinname}, you're in the Brochiefs NFL pick'em! Open this link on your phone to set your PIN: ${b.dataset.joinlink}`;
+      if (!(await copyText(text))) { b.textContent = "Couldn't copy"; return; }
+      st.copied = `jl:${r?.id}`; st.sig = ""; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.sig = ""; render(); }, 1600);
+      return;
+    }
     if (b.dataset.audit) {
       if (b.dataset.audit === "close") { st.auditOpen = false; st.sig = ""; render(); return; }
       st.menu = false; st.auditOpen = true; await runAudit();
@@ -1680,6 +1720,11 @@ html, body { overflow-x: hidden; }
     const nums = list(p.games.map((g) => String(g.slot)));
     const names = p.games.map((g) => g.label).filter(Boolean);
     return `${name(p.n)}, heads up: the slate changed, so you need to go back through your picks. Game${p.games.length === 1 ? "" : "s"} ${nums}${names.length ? ` (${list(names)})` : ""} need${p.games.length === 1 ? "s" : ""} a fresh pick. Takes a minute!`;
+  }
+  // NFL join requests (name, email, message), newest first.
+  async function loadJoins() {
+    if (LEAGUE !== "nfl") { st.joins = null; return; }
+    try { const x = await fetch(`${WORKER}/joins?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); if (Array.isArray(j.requests)) { st.joins = j.requests; st.sig = ""; render(); } } } catch {}
   }
   async function runAudit() {
     clearTimeout(runAudit.t); runAudit.t = setTimeout(runAudit, 10 * 60000);
