@@ -151,6 +151,9 @@ export default {
     if (url.pathname === "/insights") {
       return handleInsights(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/ats") {
+      return handleAts(env, corsHeaders, url);
+    }
     if (url.pathname === "/insights/game") {
       try {
         const week = url.searchParams.get("week") ? Number(url.searchParams.get("week")) : (await readWeeks(env)).current;
@@ -2582,6 +2585,47 @@ function recordSummary(c) {
   const list = Array.isArray(c?.records) ? c.records : [];
   const r = list.find((x) => /total|overall/i.test(x?.type || x?.name || "")) || list[0];
   return typeof r?.summary === "string" ? r.summary : null;
+}
+
+// A team's season record against the spread, fetched by the Worker (ESPN
+// refuses these addresses to browsers). Two ESPN addresses are tried; the
+// answer, and which address gave it, is cached for six hours.
+//   GET /ats?team=<espn id>   ->  { ats: "5-2-1" | null, src, tried }
+async function handleAts(env, corsHeaders, url) {
+  const team = String(url.searchParams.get("team") || "");
+  if (!/^\d{1,6}$/.test(team)) return json({ error: "team id required" }, 400, corsHeaders);
+  const now = new Date();
+  const yr = now.getUTCMonth() < 2 ? now.getUTCFullYear() - 1 : now.getUTCFullYear();
+  const league = typeof SPORT !== "undefined" && SPORT === "nfl" ? "nfl" : "college-football";
+  const key = `ats:${league}:${yr}:${team}`;
+  const hit = env.LIFTR_KV ? await env.LIFTR_KV.get(key, "json") : null;
+  if (hit && Date.now() - hit.at < 6 * 3600e3) return json(hit, 200, corsHeaders);
+  const base = `https://sports.core.api.espn.com/v2/sports/football/leagues/${league}/seasons/${yr}`;
+  const urls = [`${base}/types/2/teams/${team}/ats`, `${base}/types/0/teams/${team}/odds-records`, `${base}/types/2/teams/${team}/odds-records`];
+  const tried = [];
+  let ats = null, src = null;
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" }, cf: { cacheTtl: 3600 } });
+      tried.push(`${r.status} ${u.slice(base.length)}`);
+      if (!r.ok) continue;
+      ats = parseAtsRecord(await r.json());
+      if (ats) { src = u.slice(base.length); break; }
+    } catch (e) { tried.push(`err ${u.slice(base.length)}`); }
+  }
+  const out = { ats, src, tried, at: Date.now() };
+  if (env.LIFTR_KV && ats) await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 86400 });
+  return json(out, 200, corsHeaders);
+}
+export function parseAtsRecord(j) {
+  const items = Array.isArray(j?.items) ? j.items : [];
+  const label = (x) => `${x?.type?.name || ""} ${x?.type?.description || ""} ${x?.name || ""} ${x?.abbreviation || ""}`;
+  const pick = items.find((x) => /(ats|spread).*overall|overall.*(ats|spread)/i.test(label(x))) || items.find((x) => /ats|spread/i.test(label(x))) || items[0];
+  if (!pick) return null;
+  const num = (k) => { if (Number.isFinite(Number(pick[k]))) return Number(pick[k]); const st = (pick.stats || []).find((s) => new RegExp(`^${k}$`, "i").test(s.name || s.type || "")); return st && Number.isFinite(Number(st.value)) ? Number(st.value) : NaN; };
+  const w = num("wins"), l = num("losses"), p = num("pushes");
+  if (!Number.isFinite(w) || !Number.isFinite(l)) return typeof pick.summary === "string" && /^\d+-\d+(-\d+)?$/.test(pick.summary) ? pick.summary : null;
+  return `${w}-${l}${p > 0 ? `-${p}` : ""}`;
 }
 
 // The backstop. Phones post finals when they see the last game end, but

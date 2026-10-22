@@ -1238,15 +1238,9 @@ const teamAtsCache = {};
 function teamAts(teamId) {
   if (!teamId) return Promise.resolve(null);
   if (teamAtsCache[teamId]) return teamAtsCache[teamId];
-  const k = new Date(GAMES[0]?.kickoff || Date.now());
-  const yr = k.getMonth() < 3 ? k.getFullYear() - 1 : k.getFullYear(); // bowl games in January belong to last season
-  teamAtsCache[teamId] = withTimeout(fetch(`https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/${yr}/types/2/teams/${teamId}/ats`).then((r) => (r.ok ? r.json() : null)), 5000, null)
-    .then((j) => {
-      const items = j?.items || [];
-      const it = items.find((x) => /overall/i.test(`${x?.type?.name || ""} ${x?.type?.description || ""}`)) || items[0];
-      if (!it || !Number.isFinite(Number(it.wins))) return null;
-      return `${it.wins}-${it.losses ?? 0}${Number(it.pushes) ? `-${it.pushes}` : ""}`;
-    })
+  // Through our Worker: ESPN turns these addresses away from browsers.
+  teamAtsCache[teamId] = withTimeout(fetch(`${WORKER_URL}/ats?team=${encodeURIComponent(teamId)}`).then((r) => (r.ok ? r.json() : null)), 6000, null)
+    .then((j) => j?.ats || null)
     .catch(() => null);
   return teamAtsCache[teamId];
 }
