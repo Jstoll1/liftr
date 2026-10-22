@@ -3,6 +3,9 @@ name: Pick check
 # counts and game numbers only: no names, no picks.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/pick-check.yml]
 jobs:
   check:
     runs-on: ubuntu-latest
