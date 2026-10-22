@@ -111,10 +111,11 @@ async function logoResponse(e) {
   const cache = await caches.open(LOGOS);
   const hit = await cache.match(e.request.url);
   if (hit) return hit; // logos do not change week to week
-  const network = fetch(new Request(e.request.url, { mode: "cors", credentials: "omit" }))
-    .then((res) => { if (res.ok) e.waitUntil(cache.put(e.request.url, res.clone())); return res; })
-    .catch(() => fetch(e.request));
-  return network;
+  // The plain image request, one trip; saved as is (an opaque copy still
+  // paints in an <img>).
+  const res = await fetch(e.request);
+  if (res.ok || res.type === "opaque") e.waitUntil(cache.put(e.request.url, res.clone()).catch(() => {}));
+  return res;
 }
 
 self.addEventListener("fetch", (e) => {
@@ -132,8 +133,6 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   // Team logos: kept on the phone so they paint at once on the next open.
-  // Asked for with CORS so the copy is readable (and small); if ESPN ever
-  // refuses that, the plain request goes through uncached.
   if (url.hostname === "a.espncdn.com" && /teamlogos|combiner/.test(url.pathname + url.search)) { e.respondWith(logoResponse(e)); return; }
   // The font stylesheet is linked without crossorigin, which would make it
   // opaque; Google serves it with CORS, so ask for it that way.
