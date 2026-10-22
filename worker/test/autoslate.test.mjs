@@ -20,7 +20,9 @@ globalThis.fetch = async (url) => {
   if (String(url).includes("college-football")) throw new Error("college ESPN must not be called");
   return realFetch(url);
 };
-const call = (env, path) => worker.fetch(new Request(`https://w.example${path}`), env, { waitUntil() {} }).then((r) => r.json());
+// Background work (the slate refresh) is awaited before the answer is read,
+// so each call sees what a phone's next request would.
+const call = async (env, path) => { const bg = []; const r = await worker.fetch(new Request(`https://w.example${path}`), env, { waitUntil(p) { bg.push(p); } }); await Promise.all(bg); return bg.length ? worker.fetch(new Request(`https://w.example${path}`), env, { waitUntil() {} }).then((x) => x.json()) : r.json(); };
 
 test("NFL: builds the week from ESPN, Monday night as tiebreaker, no-line games left out", async () => {
   board = { week: { number: 8 }, season: { type: 2 }, events: [ev(1, 21, 19, 6.5, false, 30), ev(2, 12, 13, 9.5, false, 80), ev(3, 8, 9, 1.5, true, 80, false), ev(4, 25, 26, 2.5, true, 104)] };

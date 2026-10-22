@@ -94,7 +94,7 @@ export default {
       return handleRoster(request, env, corsHeaders, url);
     }
     if (url.pathname === "/games") {
-      return handleGames(request, env, corsHeaders, url);
+      return handleGames(request, env, corsHeaders, url, ctx);
     }
     if (url.pathname === "/expert-record") {
       return handleExpertRecord(request, env, corsHeaders, url);
@@ -1715,7 +1715,7 @@ function kickoffLabelFor(ms) {
   return `${day} ${time} ET`;
 }
 
-async function handleGames(request, env, corsHeaders, url) {
+async function handleGames(request, env, corsHeaders, url, ctx) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
 
   if (request.method === "GET") {
@@ -1763,7 +1763,11 @@ async function handleGames(request, env, corsHeaders, url) {
     }
     // NFL: bring this week's slate up to date first (throttled).
     if (SPORT === "nfl" && !url.searchParams.get("week")) {
-      try { await autoSlate(env); } catch (err) { console.error("autoSlate", err?.stack || String(err)); }
+      // In the background when a slate is already stored, so phones get the
+      // stored slate at once instead of waiting on ESPN (it took ~15s).
+      const run = autoSlate(env).catch((err) => console.error("autoSlate", err?.stack || String(err)));
+      const have = await env.LIFTR_KV.get(gamesKey(await weekFrom(env, url)));
+      if (have && ctx?.waitUntil) ctx.waitUntil(run); else await run;
     }
     const weeks = await readWeeks(env);
     if (url.searchParams.get("all")) {

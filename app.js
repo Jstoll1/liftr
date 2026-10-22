@@ -692,6 +692,20 @@ async function fetchLiveFromWorker() {
 // Latest live map, shared with the picks screen so locked games there show
 // the score without their own fetch.
 let latestLive = {}, latestLiveWeek = null;
+// Team records and ranks from the last scores fetch, kept on the phone so
+// the cards show them at once on the next open. Only records and ranks:
+// nothing here is a score, so a stale copy can never show a wrong result.
+const RECORDS_KEY = "brochiefs_records_v1";
+function saveRecords(live) {
+  try {
+    const out = {};
+    for (const [id, l] of Object.entries(live)) if (l?.awayRecord || l?.homeRecord) out[id] = { awayRecord: l.awayRecord || null, homeRecord: l.homeRecord || null, awayRank: l.awayRank ?? null, homeRank: l.homeRank ?? null };
+    localStorage.setItem(RECORDS_KEY, JSON.stringify({ week: currentWeek, at: Date.now(), games: out }));
+  } catch {}
+}
+function savedRecords(gameId) {
+  try { const c = JSON.parse(localStorage.getItem(RECORDS_KEY) || "null"); return c && c.week === currentWeek && Date.now() - c.at < 7 * 86400000 ? c.games?.[gameId] || null : null; } catch { return null; }
+}
 // Whether the last read answered (the board's copy is fresh), and whether
 // ESPN answered for only some of the slate's days.
 let liveLastOk = false, espnPartial = false;
@@ -736,7 +750,7 @@ async function fetchLiveScoresNow() {
   // A game this phone already saw finish stays finished: a read that
   // missed it is no reason to play it out again.
   if (Object.keys(live).length && latestLiveWeek === currentWeek) for (const [id, g] of Object.entries(latestLive)) if (g?.completed && !live[id]) live[id] = g;
-  if (Object.keys(live).length) { latestLive = live; latestLiveWeek = currentWeek; }
+  if (Object.keys(live).length) { latestLive = live; latestLiveWeek = currentWeek; saveRecords(live); }
   // A failed fetch is never reused; an answer (even "no games yet") is.
   if (answered) liveFetchedAt = Date.now();
   liveLastOk = answered;
@@ -2453,7 +2467,10 @@ function nameSizeClass(short) {
 function matchupCardsHtml(game, draft) {
   const awayIsFav = game.favorite === game.away;
   const raw = latestLiveWeek === currentWeek ? latestLive[game.id] : null;
-  const live = raw && (!raw.awayTeamId || !game.awayId || raw.awayTeamId === Number(game.awayId)) ? raw : {};
+  let live = raw && (!raw.awayTeamId || !game.awayId || raw.awayTeamId === Number(game.awayId)) ? raw : {};
+  // Before the scores answer: last known records and ranks for this game.
+  const rec0 = live.awayRecord || live.homeRecord ? null : savedRecords(game.id);
+  if (rec0) Object.assign(live = { ...live }, rec0);
   const side = (team, teamId, isFavorite, short, rank, record) => {
     const sign = isFavorite ? "-" : "+";
     const line = `${sign}${game.spread}`;
@@ -2507,6 +2524,7 @@ let justSavedKind = "saved";
 // into a scorebug: both teams with live or final scores, the picked team
 // highlighted, and what the pick is worth or has earned.
 function lockedResultHtml(game, pick, finalRes, liveG) {
+  if (!liveG?.awayRecord && !liveG?.homeRecord) { const r0 = savedRecords(game.id) || (latestLive[game.id]?.awayRecord ? latestLive[game.id] : null); if (r0) liveG = { ...(liveG || {}), awayRecord: r0.awayRecord, homeRecord: r0.homeRecord, awayRank: liveG?.awayRank ?? r0.awayRank, homeRank: liveG?.homeRank ?? r0.homeRank }; }
   const src = finalRes || liveG;
   const aS = src && Number.isFinite(src.awayScore) ? src.awayScore : null;
   const hS = src && Number.isFinite(src.homeScore) ? src.homeScore : null;
