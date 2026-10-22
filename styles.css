@@ -8048,8 +8048,10 @@ html.phone, html.phone body, html.phone .app-scroll { overflow-x: hidden; max-wi
 
 html.sheet .gs-g { width: 48px; text-decoration: none; border-radius: 6px; padding: 2px 0; }
 html.sheet .gs-g small { font-size: 8.5px; }
-html.sheet a.gs-g:hover { background: rgba(255, 255, 255, .08); }
-html.sheet .gs-dots .gs-box a { width: 9px; height: 9px; border-radius: 2px; display: block; }
-html.sheet .gs-dots .gs-box a.w { background: var(--neon-green); }
-html.sheet .gs-dots .gs-box a.l { background: #ff4f6d; }
+html.sheet button.gs-g { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+html.sheet button.gs-g:hover { background: rgba(255, 255, 255, .08); }
+html.sheet .gs-dots .gs-box button { padding: 0; border: 0; cursor: pointer; }
+html.sheet .gs-dots .gs-box a, html.sheet .gs-dots .gs-box button { width: 9px; height: 9px; border-radius: 2px; display: block; }
+html.sheet .gs-dots .gs-box button.w, html.sheet .gs-dots .gs-box a.w { background: var(--neon-green); }
+html.sheet .gs-dots .gs-box button.l, html.sheet .gs-dots .gs-box a.l { background: #ff4f6d; }
 html.sheet .gs-dots .gs-box a:hover { outline: 1px solid #fff; }

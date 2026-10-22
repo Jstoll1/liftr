@@ -1210,8 +1210,8 @@ function sheetHtml(g, d) {
   const dots = (list) => {
     const l = (list || []).slice(0, 5);
     if (!l.length) return "<em>—</em>";
-    const boxes = l.map((e) => (e.id ? `<a class="${wl(e)}" href="https://www.espn.com/college-football/game/_/gameId/${encodeURIComponent(e.id)}" target="_blank" rel="noopener" title="${tip(e)} · open on ESPN"></a>` : `<i class="${wl(e)}" title="${tip(e)}"></i>`)).join("");
-    const chips = l.map((e) => `<${e.id ? `a href="https://www.espn.com/college-football/game/_/gameId/${encodeURIComponent(e.id)}" target="_blank" rel="noopener"` : "span"} class="gs-g ${wl(e)}" title="${tip(e)}${e.id ? " · open on ESPN" : ""}">${e.oppLogo ? `<img src="${escapeCd(e.oppLogo)}" alt="" loading="lazy">` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`}<small>${escapeCd((e.result || "").slice(0, 1).toUpperCase())} ${escapeCd(String(e.score || "").replace(/\s*OT$/i, "ᴼᵀ"))}</small></${e.id ? "a" : "span"}>`).join("");
+    const boxes = l.map((e) => (e.id ? `<button type="button" class="${wl(e)}" data-past="${escapeCd(String(e.id))}" title="${tip(e)} · open gamecast"></button>` : `<i class="${wl(e)}" title="${tip(e)}"></i>`)).join("");
+    const chips = l.map((e) => `<${e.id ? `button type="button" data-past="${escapeCd(String(e.id))}"` : "span"} class="gs-g ${wl(e)}" title="${tip(e)}${e.id ? " · open gamecast" : ""}">${e.oppLogo ? `<img src="${escapeCd(e.oppLogo)}" alt="" loading="lazy">` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`}<small>${escapeCd((e.result || "").slice(0, 1).toUpperCase())} ${escapeCd(String(e.score || "").replace(/\s*OT$/i, "ᴼᵀ"))}</small></${e.id ? "button" : "span"}>`).join("");
     return `<span class="gs-box">${boxes}</span><span class="gs-logo">${chips}</span>`;
   };
   const fa = d?.fpi?.away, fh = d?.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
@@ -1220,6 +1220,14 @@ function sheetHtml(g, d) {
   const row = (id, f, fo, a, l5) => `<img src="${logoUrl(id)}" alt="">${fpi(f, fo)}${ats(a)}<span class="gs-dots">${dots(l5)}</span>`;
   return `<div class="gs-t"><span></span><small title="ESPN Football Power Index win chance">FPI</small><small>ATS</small><small>LAST 5</small>${row(g.awayId, fa, fh, d?.ats?.away, d?.lastFive?.away)}${row(g.homeId, fh, fa, d?.ats?.home, d?.lastFive?.home)}</div>`;
 }
+const sheetData = {};
+gamesList?.addEventListener("click", (ev) => {
+  const b = ev.target.closest(".gs-ins [data-past]"); if (!b) return;
+  ev.stopPropagation();
+  const card = b.closest(".game-card"), g = GAMES.find((x) => String(x.id) === card?.dataset.gameId), d = g && sheetData[g.id];
+  if (!d) return;
+  for (const side of ["away", "home"]) { const e = (d.lastFive?.[side] || []).find((x) => String(x.id) === b.dataset.past); if (e) { openPastGame(g, side, e); return; } }
+});
 function paintSheet() {
   if (!sheetOn()) return;
   gamesList.querySelectorAll(".game-card[data-game-id]").forEach((card) => {
@@ -1228,7 +1236,7 @@ function paintSheet() {
     let box = card.querySelector(":scope > .gs-ins");
     if (!box) { box = document.createElement("div"); box.className = "gs-ins"; box.innerHTML = sheetRead[g.id]?.html || sheetHtml(g, null); card.appendChild(box); }
     if (sheetRead[g.id]?.html) { box.innerHTML = sheetRead[g.id].html; return; }
-    sheetLoad(g).then((d) => { const html = sheetHtml(g, d); if (sheetRead[g.id]) sheetRead[g.id].html = html; const b = gamesList.querySelector(`.game-card[data-game-id="${g.id}"] > .gs-ins`); if (b) b.innerHTML = html; });
+    sheetLoad(g).then((d) => { const html = sheetHtml(g, d); sheetData[g.id] = d; if (sheetRead[g.id]) sheetRead[g.id].html = html; const b = gamesList.querySelector(`.game-card[data-game-id="${g.id}"] > .gs-ins`); if (b) b.innerHTML = html; });
   });
 }
 sheetMq.addEventListener?.("change", applySheet);
@@ -7156,7 +7164,22 @@ document.getElementById("insights-body")?.addEventListener("click", (e) => {
 // The gamecast also opens for a side bet game off the pool's slate: the
 // game comes from the side bet, its live data from the side bet's own
 // ESPN read. A half bet shows its whole game.
-const sideGuestGame = (id) => (GAMES.some((g) => g.id === id) ? null : potNow()?.slate?.find((g) => String(g.id) === String(id)) || null);
+// Past games opened from the desktop sheet's last five, as gamecast guests.
+const pastGuests = {};
+const sideGuestGame = (id) => (GAMES.some((g) => g.id === id) ? null : pastGuests[id] || potNow()?.slate?.find((g) => String(g.id) === String(id)) || null);
+function openPastGame(g, side, e) {
+  if (!e?.id) return;
+  const id = `past${e.id}`;
+  const tId = side === "away" ? g.awayId : g.homeId, tName = side === "away" ? g.away : g.home, tShort = side === "away" ? g.awayShort : g.homeShort;
+  const teamAway = /@|at/i.test(e.at || "");
+  const [ts, os] = String(e.score || "").match(/\d+/g)?.map(Number) || [];
+  const oName = e.oppName || e.opp || "Opponent", oShort = e.opp || oName, oId = Number(e.oppId) || 0;
+  const away = teamAway ? { n: tName, s: tShort, id: tId, pts: ts } : { n: oName, s: oShort, id: oId, pts: os };
+  const home = teamAway ? { n: oName, s: oShort, id: oId, pts: os } : { n: tName, s: tShort, id: tId, pts: ts };
+  pastGuests[id] = { id, eventId: String(e.id), away: away.n, home: home.n, awayShort: away.s, homeShort: home.s, awayId: away.id, homeId: home.id, favorite: home.n, spread: 0, kickoff: e.date || new Date(0).toISOString(), kickoffLabel: "Final", tv: "", past: true };
+  sideLive[id] = { found: true, completed: true, state: "post", eventId: String(e.id), awayScore: away.pts ?? null, homeScore: home.pts ?? null, detail: "Final" };
+  openInsights(id);
+}
 const insLive = (id) => latestLive[id] ?? sideLive[id];
 async function openInsights(gameId) {
   const modal = document.getElementById("insights-modal");
@@ -7247,7 +7270,7 @@ async function openInsights(gameId) {
     const winAb = aS > hS ? A : H, by = Math.abs(aS - hS);
     const cover = out?.push ? `PUSH ON ${favAb} -${game.spread} · ${winAb} WON BY ${by}` : favMargin > Number(game.spread) ? `${favAb} -${game.spread} COVERED · ${winAb} WON BY ${by}` : `${dogAb} +${game.spread} COVERED · ${winAb} WON BY ${by}`;
     const upset = favMargin < 0 ? `<em>UPSET</em>` : "";
-    const lineHtml = `<div class="gc-settle"><b>${esc(cover)}</b>${upset}</div>`;
+    const lineHtml = game.past ? `<div class="gc-settle"><b>${esc(`${winAb} WON BY ${by}`)}</b></div>` : `<div class="gc-settle"><b>${esc(cover)}</b>${upset}</div>`;
     // Your pick and the room.
     const cloudAll = lastGoodCloudPicks || {};
     const pickOf = (name) => sanitizePicks(cloudAll[name]?.picks || {})[game.id] || (name === currentManager ? getManagerState(name).picks?.[game.id] : null) || null;
