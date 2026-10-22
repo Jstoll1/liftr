@@ -1274,6 +1274,11 @@ async function sheetLoad(g) {
         d.ats = {}; [[m[1], m[2]], [m[3], m[4]]].forEach(([n, r]) => { const sd = side(n); if (sd) d.ats[sd] = r; });
         break;
       }
+      // Last resort: ESPN's season ATS record for each team.
+      if (!d.ats?.away && !d.ats?.home) {
+        const [a, h] = await Promise.all([teamAts(g.awayId), teamAts(g.homeId)]);
+        if (a || h) d.ats = { away: a, home: h };
+      }
     }
     return d;
   })();
@@ -1281,6 +1286,23 @@ async function sheetLoad(g) {
   // Nothing yet: forget it and look again in a minute.
   if (!d) { delete sheetRead[g.id]; clearTimeout(sheetLoad.t); sheetLoad.t = setTimeout(() => paintSheet(), 60000); }
   return d;
+}
+const teamAtsCache = {};
+function teamAts(teamId) {
+  if (!teamId) return Promise.resolve(null);
+  if (teamAtsCache[teamId]) return teamAtsCache[teamId];
+  const k = new Date(GAMES[0]?.kickoff || Date.now());
+  const yr = k.getMonth() < 3 ? k.getFullYear() - 1 : k.getFullYear(); // January and February games belong to last season
+  const league = window.LEAGUE?.sport === "nfl" ? "nfl" : "college-football";
+  teamAtsCache[teamId] = withTimeout(fetch(`https://sports.core.api.espn.com/v2/sports/football/leagues/${league}/seasons/${yr}/types/2/teams/${teamId}/ats`).then((r) => (r.ok ? r.json() : null)), 5000, null)
+    .then((j) => {
+      const items = j?.items || [];
+      const it = items.find((x) => /overall/i.test(`${x?.type?.name || ""} ${x?.type?.description || ""}`)) || items[0];
+      if (!it || !Number.isFinite(Number(it.wins))) return null;
+      return `${it.wins}-${it.losses ?? 0}${Number(it.pushes) ? `-${it.pushes}` : ""}`;
+    })
+    .catch(() => null);
+  return teamAtsCache[teamId];
 }
 function sheetHtml(g, d) {
   const wl = (e) => (/^w/i.test(e.result || "") ? "w" : /^l/i.test(e.result || "") ? "l" : "t");
