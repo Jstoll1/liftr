@@ -9642,6 +9642,8 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
   new MutationObserver(() => { mutated = true; }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
   let deadAt = 0;
   document.addEventListener("pointerdown", (e) => {
+    // Three quick taps on the logo are the admin shortcut, not frustration.
+    if (e.target.closest?.(".home-logo-img") || (typeof homeLogoBtn !== "undefined" && homeLogoBtn?.contains(e.target))) return;
     const now = Date.now();
     taps = taps.filter((t) => now - t.t < 1000 && Math.hypot(t.x - e.clientX, t.y - e.clientY) < 30);
     taps.push({ t: now, x: e.clientX, y: e.clientY });
