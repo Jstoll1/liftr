@@ -1181,6 +1181,12 @@ function fitHeaderLogo() {
 }
 addEventListener("resize", fitHeaderLogo);
 
+// A phone is always the phone layout: vertical scroll and tap, never the
+// desktop columns or the pick sheet, whatever width it reports (an iPhone
+// on its side is still a phone). Touch first and a small physical screen.
+const IS_PHONE = (() => { try { return matchMedia("(pointer: coarse)").matches && Math.max(screen.width, screen.height) <= 1000; } catch { return false; } })();
+document.documentElement.classList.toggle("phone", IS_PHONE);
+
 // Desktop: split Picks and Scores into a main column and a sticky right
 // rail (countdown, standing and tiebreaker; your score and the
 // leaderboard). Nodes are moved, not copied, so every id and listener
@@ -1213,9 +1219,82 @@ function deskLayout(on) {
     }
   }
 }
+// Desktop pick sheet, only at brochiefs.com/desktop (?sheet=1) on a wide
+// screen. Everything it adds is scoped to html.sheet, so the normal app and
+// every phone are untouched. Each game row gains a quick read from the same
+// ESPN summary the info sheet uses: FPI, record against the spread, last five.
+const SHEET_ASKED = (() => { try { if (/[?&]sheet=1/.test(location.search)) sessionStorage.setItem("brochiefs_sheet", "1"); return sessionStorage.getItem("brochiefs_sheet") === "1"; } catch { return /[?&]sheet=1/.test(location.search); } })();
+const sheetMq = matchMedia("(min-width: 1100px)");
+const sheetOn = () => SHEET_ASKED && sheetMq.matches && !IS_PHONE;
+function applySheet() { document.documentElement.classList.toggle("sheet", sheetOn()); if (sheetOn() && typeof renderPicksScreen === "function" && currentManager) paintSheet(); }
+const sheetRead = {};
+async function sheetLoad(g) {
+  if (sheetRead[g.id]) return sheetRead[g.id];
+  sheetRead[g.id] = (async () => {
+    // Same route as the info sheet: the live scores carry ESPN's event id,
+    // and on the Picks page they may not have loaded yet.
+    let ev = latestLive?.[g.id]?.eventId || insightsCache.eventIds?.[g.id] || null;
+    if (!ev) { await fetchLiveScores().catch(() => {}); ev = latestLive?.[g.id]?.eventId || null; }
+    if (!ev) { await fetchInsights().catch(() => null); ev = insightsCache.eventIds?.[g.id] || insightsCache.data?.briefs?.[g.id]?.eventId || null; }
+    const raw = ev ? await fetchEspnSummary(ev).catch(() => null) : null;
+    const d = raw ? parseSummaryClient(raw, g) : null;
+    if (!d) return null;
+    // ATS: ESPN's summary often leaves it out. Same fallbacks as the info
+    // sheet: the Worker's stored read of the game, then the line in ESPN's
+    // preview ("against the spread: Team 1-6, Team 2-4").
+    if (!d.ats?.away && !d.ats?.home) {
+      const snap = await withTimeout(fetchGameSnapshot(g.id), 3500, null).catch(() => null);
+      const brief = (await fetchInsights().catch(() => null))?.briefs?.[g.id];
+      const alt = snap?.glance?.ats || brief?.glance?.ats;
+      if (alt?.away || alt?.home) d.ats = alt;
+      else for (const t of d.preview?.paras || []) {
+        const m = t.match(/against the spread:\s*(.+?)\s+(\d+-\d+(?:-\d+)?),\s*(.+?)\s+(\d+-\d+(?:-\d+)?)/i);
+        if (!m) continue;
+        const side = (n) => { n = n.toLowerCase(); return [g.away, g.awayShort].some((x) => x && (n.includes(x.toLowerCase()) || x.toLowerCase().includes(n))) ? "away" : [g.home, g.homeShort].some((x) => x && (n.includes(x.toLowerCase()) || x.toLowerCase().includes(n))) ? "home" : null; };
+        d.ats = {}; [[m[1], m[2]], [m[3], m[4]]].forEach(([n, r]) => { const sd = side(n); if (sd) d.ats[sd] = r; });
+        break;
+      }
+    }
+    return d;
+  })();
+  const d = await sheetRead[g.id];
+  // Nothing yet: forget it and look again in a minute.
+  if (!d) { delete sheetRead[g.id]; clearTimeout(sheetLoad.t); sheetLoad.t = setTimeout(() => paintSheet(), 60000); }
+  return d;
+}
+function sheetHtml(g, d) {
+  const wl = (e) => (/^w/i.test(e.result || "") ? "w" : /^l/i.test(e.result || "") ? "l" : "t");
+  const tip = (e) => escapeCd(`${e.result || ""} ${e.score || ""} ${e.at || ""} ${e.oppName || e.opp || ""}`.trim());
+  // Both forms ship; the column's width picks one (logos when there's room).
+  const dots = (list) => {
+    const l = (list || []).slice(0, 5);
+    if (!l.length) return "<em>—</em>";
+    const boxes = l.map((e) => `<i class="${wl(e)}" title="${tip(e)}"></i>`).join("");
+    const chips = l.map((e) => `<span class="gs-g ${wl(e)}" title="${tip(e)}">${e.oppLogo ? `<img src="${escapeCd(e.oppLogo)}" alt="" loading="lazy">` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`}<small>${escapeCd((e.result || "").slice(0, 1).toUpperCase())} ${escapeCd(e.score || "")}</small></span>`).join("");
+    return `<span class="gs-box">${boxes}</span><span class="gs-logo">${chips}</span>`;
+  };
+  const fa = d?.fpi?.away, fh = d?.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
+  const fpi = (v, other) => (hasF ? `<b class="${v > other ? "lead" : ""}">${v}%</b>` : "<em>—</em>");
+  const ats = (v) => (v ? `<b>${escapeCd(String(v))}</b>` : "<em>—</em>");
+  const row = (id, f, fo, a, l5) => `<img src="${logoUrl(id)}" alt="">${fpi(f, fo)}${ats(a)}<span class="gs-dots">${dots(l5)}</span>`;
+  return `<div class="gs-t"><span></span><small title="ESPN Football Power Index win chance">FPI</small><small>ATS</small><small>LAST 5</small>${row(g.awayId, fa, fh, d?.ats?.away, d?.lastFive?.away)}${row(g.homeId, fh, fa, d?.ats?.home, d?.lastFive?.home)}</div>`;
+}
+function paintSheet() {
+  if (!sheetOn()) return;
+  gamesList.querySelectorAll(".game-card[data-game-id]").forEach((card) => {
+    const g = GAMES.find((x) => String(x.id) === card.dataset.gameId);
+    if (!g) return;
+    let box = card.querySelector(":scope > .gs-ins");
+    if (!box) { box = document.createElement("div"); box.className = "gs-ins"; box.innerHTML = sheetRead[g.id]?.html || sheetHtml(g, null); card.appendChild(box); }
+    if (sheetRead[g.id]?.html) { box.innerHTML = sheetRead[g.id].html; return; }
+    sheetLoad(g).then((d) => { const html = sheetHtml(g, d); if (sheetRead[g.id]) sheetRead[g.id].html = html; const b = gamesList.querySelector(`.game-card[data-game-id="${g.id}"] > .gs-ins`); if (b) b.innerHTML = html; });
+  });
+}
+sheetMq.addEventListener?.("change", applySheet);
+document.documentElement.classList.toggle("sheet", sheetOn());
 const deskMq = matchMedia("(min-width: 1100px)");
-deskLayout(deskMq.matches);
-deskMq.addEventListener?.("change", (e) => deskLayout(e.matches));
+deskLayout(deskMq.matches && !IS_PHONE);
+deskMq.addEventListener?.("change", (e) => deskLayout(e.matches && !IS_PHONE));
 appScroll.addEventListener("scroll", syncHeaderSize, { passive: true });
 const savedScroll = {};
 let activeScreenName = null;

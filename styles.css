@@ -7960,7 +7960,115 @@ html[data-sport="nfl"] #logo-screen { display: none !important; }
 }
 /* Wide screens: the lock row is centred as one group (pick + chip), not
    pick at the left edge and chip at the right with a gap between. */
-@media (min-width: 700px) {
+@media (min-width: 700px) and (hover: hover) {
   .lotw-bar.v2 { justify-content: center; gap: 22px !important; }
   .lotw-bar.v2 .lb-tx { flex: 0 1 auto; }
 }
+/* Desktop: full screen overlays (slate editor, console) start right of the
+   side nav rail instead of sliding under it. */
+@media (min-width: 1100px) {
+  .admin-overlay { left: 92px; bottom: 0; }
+}
+/* Desktop pick sheet (brochiefs.com/desktop only): the quick read column
+   exists only under html.sheet. */
+.gs-ins { display: none; }
+html.sheet .wrap.wide { max-width: 1640px; }
+html.sheet #picks-screen .desk-grid { grid-template-columns: minmax(0, 1fr) 380px; }
+html.sheet #picks-screen .games-list { grid-template-columns: 1fr; gap: 10px; }
+html.sheet #picks-screen .game-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(330px, 38%); grid-template-areas: "meta ins" "match ins"; column-gap: 22px; row-gap: 6px; align-items: center; padding: 10px 14px; }
+html.sheet #picks-screen .game-card > .game-meta { grid-area: meta; }
+html.sheet #picks-screen .game-card > .matchup-cards-row { grid-area: match; }
+html.sheet #picks-screen .game-card > .game-submit-row { grid-column: 1 / -1; }
+html.sheet #picks-screen .gs-ins { grid-area: ins; display: grid; grid-template-columns: 1.3fr 1fr 1.2fr; gap: 14px; align-self: stretch; align-items: center; padding-left: 20px; border-left: 1px solid rgba(255, 255, 255, .08); }
+html.sheet .gs-c { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+html.sheet .gs-c small { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .14em; color: var(--text-dim); }
+html.sheet .gs-c em { font-style: normal; font-size: 12px; color: var(--text-dim); }
+html.sheet .gs-pair { display: flex; justify-content: space-between; gap: 10px; }
+html.sheet .gs-pair b { font-size: 14px; font-weight: 700; color: #fff; }
+html.sheet .gs-fpi { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+html.sheet .gs-fpi b { font-size: 14px; color: var(--text-dim); }
+html.sheet .gs-fpi b.lead { color: var(--neon-green); }
+html.sheet .gs-fpi i { position: relative; height: 6px; border-radius: 3px; background: rgba(255, 79, 154, .35); overflow: hidden; }
+html.sheet .gs-fpi i::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--a); background: var(--neon-cyan); }
+html.sheet .gs-dots { display: flex; gap: 3px; }
+html.sheet .gs-dots i { width: 8px; height: 8px; border-radius: 2px; background: rgba(255, 255, 255, .15); }
+html.sheet .gs-dots i.w { background: var(--neon-green); }
+html.sheet .gs-dots i.l { background: #ff4f6d; }
+html.sheet #picks-screen .gs-ins { display: flex !important; align-items: center; }
+html.sheet .gs-t { width: 100%; display: grid; grid-template-columns: 22px minmax(52px, 1fr) minmax(44px, 1fr) auto; align-items: center; column-gap: 14px; row-gap: 8px; }
+html.sheet .gs-t small { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--text-dim); }
+html.sheet .gs-t img { width: 22px; height: 22px; object-fit: contain; }
+html.sheet .gs-t b { font-size: 14px; font-weight: 700; color: #fff; }
+html.sheet .gs-t b.lead { color: var(--neon-green); }
+html.sheet .gs-t em { font-style: normal; font-size: 13px; color: var(--text-dim); }
+html.sheet .gs-dots i { width: 9px; height: 9px; }
+@media (max-width: 1399px) {
+  html.sheet #picks-screen .desk-grid { grid-template-columns: minmax(0, 1fr) 380px; }
+  html.sheet #picks-screen .game-card { grid-template-columns: minmax(0, 1fr) 228px; column-gap: 12px; padding: 10px 12px; }
+  html.sheet #picks-screen .gs-ins { padding-left: 14px; }
+  html.sheet .gs-t { column-gap: 9px; grid-template-columns: 20px minmax(40px, 1fr) minmax(34px, 1fr) auto; }
+  html.sheet .gs-dots i { width: 8px; height: 8px; }
+}
+
+/* Slate editor: "Your slate" panel. A fold near the top on phones, a
+   pinned column on the right on desktop. */
+.admin-slate { border: 1px solid rgba(57, 255, 136, .35); border-radius: 14px; background: rgba(57, 255, 136, .04); }
+.admin-slate > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; }
+.admin-slate > summary::-webkit-details-marker { display: none; }
+.admin-slate .as-h { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .14em; color: var(--neon-green); }
+.admin-slate .as-n { margin-left: auto; font-size: 12px; color: var(--text-dim); }
+.admin-slate .as-car { font-style: normal; color: var(--text-dim); transition: transform .15s; }
+.admin-slate[open] .as-car { transform: rotate(180deg); }
+.as-list { list-style: none; margin: 0; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 4px; }
+.as-list li { display: flex; align-items: center; gap: 6px; border-radius: 10px; background: rgba(0, 0, 0, .25); }
+.as-list li.as-empty { padding: 10px 12px; font-size: 12.5px; color: var(--text-dim); background: none; }
+.as-go { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.as-logos { flex: none; display: flex; gap: 3px; }
+.as-logos img, .as-logos i { width: 18px; height: 18px; object-fit: contain; }
+.as-t { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.as-t b { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.as-t b em { font-style: normal; font-size: 10px; color: #ffd23f; margin-left: 4px; }
+.as-t small { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.as-x { flex: none; width: 30px; height: 30px; margin-right: 4px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .1); background: none; color: var(--text-dim); cursor: pointer; }
+.as-x:hover { color: #ff4f6d; border-color: rgba(255, 79, 109, .5); }
+.admin-game.as-ping { box-shadow: 0 0 0 2px var(--neon-green), 0 0 18px rgba(57, 255, 136, .4) !important; }
+/* Selected game card: the tiebreaker control sits tight under the pick */
+.admin-game.on .admin-line { padding: 0 12px 10px; margin: 0; }
+@media (min-width: 1100px) {
+  #admin-screen .wrap.wide { max-width: 1320px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; column-gap: 24px; align-items: start; }
+  #admin-screen .wrap.wide > * { grid-column: 1; }
+  #admin-screen .wrap.wide > .admin-slate { grid-column: 2; grid-row: 1 / span 40; position: sticky; top: 12px; max-height: calc(100vh - 110px); overflow-y: auto; align-self: start; }
+  #admin-screen .admin-games { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.admin-game.on .admin-tb { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: #ffd23f; cursor: pointer; }
+.admin-game.on .admin-tb input { width: 15px; height: 15px; margin: 0; accent-color: #ffd23f; }
+@media (min-width: 1100px) {
+  #admin-screen .admin-slate > summary { pointer-events: none; }
+  #admin-screen .admin-slate .as-car { display: none; }
+}
+.admin-game.on .admin-tb { min-height: 0 !important; font-size: 11px !important; color: #ffd23f !important; }
+.admin-game.on .admin-pick { padding-bottom: 6px; }
+
+/* Sheet last five: opponent logos with W/L and score when the column has
+   room, the green and red squares when it doesn't. */
+html.sheet #picks-screen .gs-ins { container-type: inline-size; }
+html.sheet .gs-dots { display: block; }
+html.sheet .gs-dots .gs-box { display: flex; gap: 3px; }
+html.sheet .gs-dots .gs-logo { display: none; gap: 4px; }
+html.sheet .gs-dots .gs-box i { width: 9px; height: 9px; border-radius: 2px; background: rgba(255, 255, 255, .15); }
+html.sheet .gs-dots .gs-box i.w { background: var(--neon-green); }
+html.sheet .gs-dots .gs-box i.l { background: #ff4f6d; }
+html.sheet .gs-g { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 44px; }
+html.sheet .gs-g img { width: 18px; height: 18px; object-fit: contain; }
+html.sheet .gs-g > b { font-size: 9px; height: 18px; line-height: 18px; color: var(--text-dim); }
+html.sheet .gs-g small { font-size: 9px; letter-spacing: 0; white-space: nowrap; color: var(--text-dim); font-family: inherit; }
+html.sheet .gs-g.w small { color: var(--neon-green); }
+html.sheet .gs-g.l small { color: #ff4f6d; }
+@container (min-width: 390px) {
+  html.sheet .gs-dots .gs-box { display: none; }
+  html.sheet .gs-dots .gs-logo { display: flex; }
+  html.sheet .gs-t { row-gap: 10px; }
+}
+
+/* Phones: never sideways. Nothing may be wider than the screen. */
+html.phone, html.phone body, html.phone .app-scroll { overflow-x: hidden; max-width: 100vw; }
