@@ -1160,13 +1160,17 @@ const sheetRead = {};
 async function sheetLoad(g) {
   if (sheetRead[g.id]) return sheetRead[g.id];
   sheetRead[g.id] = (async () => {
-    let ev = latestLive?.[g.id]?.eventId;
+    // Same route as the info sheet: the live scores carry ESPN's event id,
+    // and on the Picks page they may not have loaded yet.
+    let ev = latestLive?.[g.id]?.eventId || insightsCache.eventIds?.[g.id] || null;
+    if (!ev) { await fetchLiveScores().catch(() => {}); ev = latestLive?.[g.id]?.eventId || null; }
     if (!ev) { await fetchInsights().catch(() => null); ev = insightsCache.eventIds?.[g.id] || insightsCache.data?.briefs?.[g.id]?.eventId || null; }
     const raw = ev ? await fetchEspnSummary(ev).catch(() => null) : null;
     return raw ? parseSummaryClient(raw, g) : null;
   })();
   const d = await sheetRead[g.id];
-  if (!d) delete sheetRead[g.id];
+  // Nothing yet: forget it and look again in a minute.
+  if (!d) { delete sheetRead[g.id]; clearTimeout(sheetLoad.t); sheetLoad.t = setTimeout(() => paintSheet(), 60000); }
   return d;
 }
 function sheetHtml(g, d) {

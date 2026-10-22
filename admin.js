@@ -486,7 +486,33 @@
     updateCount();
   }
 
+  // The slate as it stands: the selected games in kickoff order, each with
+  // its line and the tiebreaker starred. Tap a row to jump to it, ✕ drops it.
+  function renderSlate() {
+    const box = el("admin-slate"), list = el("admin-slate-list");
+    if (!box || !list) return;
+    const sel = found.filter((g) => picked.has(g.key)).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+    const tb = sel.some((g) => picked.get(g.key).tiebreaker);
+    el("admin-slate-n").textContent = `${sel.length} of ${MAX_PICKS}${sel.length ? (tb ? " · TB set" : " · no TB") : ""}`;
+    if (!sel.length) { list.innerHTML = `<li class="as-empty">Tap games below to build the slate.</li>`; return; }
+    list.innerHTML = sel.map((g) => {
+      const k = new Date(g.kickoff);
+      const when = `${k.toLocaleDateString("en-US", { weekday: "short" })} ${k.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+      const fav = g.favSide === "home" ? g.homeShort : g.awayShort;
+      return `<li data-key="${esc(g.key)}"><button type="button" class="as-go" data-act="go"><span class="as-logos">${g.awayLogo ? `<img src="${esc(g.awayLogo)}" alt="">` : "<i></i>"}${g.homeLogo ? `<img src="${esc(g.homeLogo)}" alt="">` : "<i></i>"}</span><span class="as-t"><b>${esc(g.awayShort)} @ ${esc(g.homeShort)}${picked.get(g.key).tiebreaker ? ` <em title="Tiebreaker">★ TB</em>` : ""}</b><small>${esc(when)} · ${g.spread === null ? "no line" : esc(`${fav} -${g.spread}`)}</small></span></button><button type="button" class="as-x" data-act="drop" aria-label="Remove ${esc(g.awayShort)} at ${esc(g.homeShort)}">✕</button></li>`;
+    }).join("");
+  }
+  el("admin-slate-list")?.addEventListener("click", (e) => {
+    const li = e.target.closest("li[data-key]"); if (!li) return;
+    const act = e.target.closest("[data-act]")?.dataset.act;
+    const card = document.querySelector(`#admin-games .admin-game[data-key="${CSS.escape(li.dataset.key)}"]`);
+    if (act === "drop") { card?.querySelector('[data-act="toggle"]')?.click(); return; }
+    if (card) { card.scrollIntoView({ behavior: "smooth", block: "center" }); card.classList.add("as-ping"); setTimeout(() => card.classList.remove("as-ping"), 1200); }
+  });
+  if (matchMedia("(min-width: 1100px)").matches) el("admin-slate")?.setAttribute("open", "");
+
   function updateCount() {
+    renderSlate();
     const hasTb = [...picked.values()].some((v) => v.tiebreaker);
     const tbNote = !picked.size ? "" : hasTb ? " · TB set" : " · no TB yet";
     el("admin-count").textContent = `${picked.size} of ${MAX_PICKS} selected${tbNote}`;
