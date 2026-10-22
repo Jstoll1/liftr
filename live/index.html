@@ -658,6 +658,24 @@ html, body { overflow-x: hidden; }
   .newstrip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(255, 79, 154, .45); background: linear-gradient(90deg, rgba(255, 79, 154, .12), rgba(255, 79, 154, .03)); }
   .ns-h { font: 800 10.5px/1 var(--mono); letter-spacing: .14em; color: #ff7ab5; margin-right: 4px; }
   .newstrip button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: #fff; cursor: pointer; }
+  .newstrip.audit { border-color: rgba(255, 79, 109, .55); background: linear-gradient(90deg, rgba(255, 79, 109, .14), rgba(255, 79, 109, .04)); }
+  .newstrip.audit .ns-h { color: #ff6f88; }
+  .newstrip.audit.ok { border-color: rgba(57, 255, 136, .4); background: rgba(57, 255, 136, .06); }
+  .newstrip.audit.ok .ns-h { color: #5dffa3; }
+  .newstrip.audit > button { margin-left: auto; }
+  .newstrip.audit.open { display: block !important; }
+  .au-head { display: flex; align-items: center; gap: 8px; }
+  .au-head > button { margin-left: auto; }
+  .au-list { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .au-row { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px; border-radius: 12px; background: rgba(0, 0, 0, .25); border: 1px solid rgba(255, 255, 255, .06); }
+  .au-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .au-t b { font-size: 15px; }
+  .au-t span { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; font-size: 13px; color: var(--muted, #a9a3c7); }
+  .au-t em { font-style: normal; }
+  .au-row { flex-wrap: wrap; }
+  .au-t i { font-style: normal; font-weight: 700; color: #fff; margin-right: 4px; }
+  .newstrip .au-cp { flex: none; border-color: rgba(255, 179, 71, .5); color: #ffcf85; white-space: nowrap; }
+  .au-note { display: block; margin-top: 8px; font-size: 11.5px; color: var(--muted, #a9a3c7); }
   .newstrip button.warn { border-color: rgba(255, 179, 71, .5); color: #ffcf85; }
   .newstrip .ns-ok { margin-left: auto; background: none; color: var(--dim); }
   @media (prefers-reduced-motion: reduce) { .newb { animation: none; } }
@@ -1031,7 +1049,7 @@ html, body { overflow-x: hidden; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1241,9 +1259,18 @@ html, body { overflow-x: hidden; }
     // Since you last looked: one line, each part jumps to its section.
     // The pick check, run quietly on open: shown only when a saved pick no
     // longer sits on a game with its team in it.
+    // The pick check, run quietly on open. Nothing shows while every pick
+    // sits on its game; otherwise a strip, and tapping it lists who, by
+    // player, each with a ready to send message. Never which team.
     const auditStrip = () => {
-      const a = st.audit; if (!a?.problems?.length) return "";
-      return `<section class="newstrip" style="border-color:#ff4f6d"><span class="ns-h" style="color:#ff4f6d">⚠ ${a.problems.length} PICK${a.problems.length === 1 ? " DOESN'T" : "S DON'T"} MATCH THEIR GAME</span><button type="button" data-audit="1" class="warn">See who</button></section>`;
+      const a = st.audit;
+      if (!a?.problems?.length) return st.auditOpen && a ? `<section class="newstrip audit ok"><span class="ns-h">✓ ALL ${a.checked} PICKS MATCH THEIR GAMES</span><button type="button" data-audit="close">Close</button></section>` : "";
+      const by = auditByPlayer(a);
+      const head = `<span class="ns-h">⚠ ${by.length} PLAYER${by.length === 1 ? "" : "S"} NEED${by.length === 1 ? "S" : ""} TO RE-PICK · ${a.problems.length} GAME${a.problems.length === 1 ? "" : "S"}</span>`;
+      if (!st.auditOpen) return `<section class="newstrip audit">${head}<button type="button" data-audit="open" class="warn">See who</button></section>`;
+      return `<section class="newstrip audit open"><div class="au-head">${head}<button type="button" data-audit="close">Hide</button></div>
+        <div class="au-list">${by.map((p) => `<div class="au-row">${av(p.n, "sm")}<div class="au-t"><b>${esc(name(p.n))}</b><span>${p.games.map((g) => `<i>G${g.slot}</i><em>${esc(g.label || "removed game")}</em>`).join("")}</span></div><button type="button" data-auditcopy="${esc(p.n)}" class="au-cp">${st.copied === `au:${p.n}` ? "✓ Copied" : "Copy message"}</button></div>`).join("")}</div>
+        <small class="au-note">Saved picks that no longer sit on a game with their team in it, after the slate changed. Nothing was changed.</small></section>`;
     };
     const newStrip = () => {
       const visNew = vs.filter((v) => !v.live && v.end > seenBase.at).length;
@@ -1527,14 +1554,17 @@ html, body { overflow-x: hidden; }
     if (b.dataset.older) { st.shown += 20; render(); return; }
     if (b.dataset.reload) { location.reload(); return; }
     if (b.dataset.audit) {
-      // Read only: any saved pick whose team is not in the game it sits on.
-      st.menu = false; render();
-      let r = null;
-      try { const x = await fetch(`${WORKER}/games?audit=1&${auth()}&t=${Date.now()}`, { cache: "no-store" }); r = x.ok ? await x.json() : null; } catch {}
-      if (!r) { alert("Couldn't run the check. Try again."); return; }
-      alert(r.problems.length
-        ? `${LEAGUE === "nfl" ? "NFL" : "College"} week ${r.week}: ${r.problems.length} of ${r.checked} picks don't match their game.\n\n${r.problems.map((x) => `${name(x.manager)} · G${x.slot}${x.game ? ` (${x.game})` : ""}: ${x.why}`).join("\n")}\n\nThose players should re-pick those games. Nothing was changed.`
-        : `${LEAGUE === "nfl" ? "NFL" : "College"} week ${r.week}: all ${r.checked} saved picks match their games ✓`);
+      if (b.dataset.audit === "close") { st.auditOpen = false; st.sig = ""; render(); return; }
+      st.menu = false; st.auditOpen = true; await runAudit();
+      if (!st.audit) { st.auditOpen = false; render(); alert("Couldn't run the check. Try again."); return; }
+      st.sig = ""; render(); scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (b.dataset.auditcopy) {
+      const p = auditByPlayer(st.audit).find((x) => x.n === b.dataset.auditcopy);
+      if (!p || !(await copyText(auditMessage(p)))) { b.textContent = "Couldn't copy"; return; }
+      st.copied = `au:${p.n}`; st.sig = ""; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.sig = ""; render(); }, 1600);
       return;
     }
     if (b.dataset.slate) {
@@ -1600,6 +1630,18 @@ html, body { overflow-x: hidden; }
 
   // The clipboard, called straight from the tap so iOS allows it; an older
   // browser gets a hidden text box and the copy command instead.
+  function auditByPlayer(a) {
+    const m = new Map();
+    for (const x of a?.problems || []) { if (!m.has(x.manager)) m.set(x.manager, []); m.get(x.manager).push({ slot: x.slot, label: x.game ? x.game.replace(" @ ", " at ") : "" }); }
+    return [...m].map(([n, games]) => ({ n, games: games.sort((x, y) => x.slot - y.slot) }));
+  }
+  // The text for one player: plain, no dashes, ready for iMessage.
+  function auditMessage(p) {
+    const list = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+    const nums = list(p.games.map((g) => String(g.slot)));
+    const names = p.games.map((g) => g.label).filter(Boolean);
+    return `${name(p.n)}, heads up: the slate changed, so you need to go back through your picks. Game${p.games.length === 1 ? "" : "s"} ${nums}${names.length ? ` (${list(names)})` : ""} need${p.games.length === 1 ? "s" : ""} a fresh pick. Takes a minute!`;
+  }
   async function runAudit() {
     clearTimeout(runAudit.t); runAudit.t = setTimeout(runAudit, 10 * 60000);
     try { const x = await fetch(`${WORKER}/games?audit=1&${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const a = await x.json(); if (Array.isArray(a?.problems)) { st.audit = a; st.sig = ""; render(); } } } catch {}
