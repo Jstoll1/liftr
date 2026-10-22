@@ -7932,3 +7932,48 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
   .lotw-bar.v2 { justify-content: center; gap: 22px !important; }
   .lotw-bar.v2 .lb-tx { flex: 0 1 auto; }
 }
+/* Desktop: full screen overlays (slate editor, console) start right of the
+   side nav rail instead of sliding under it. */
+@media (min-width: 1100px) {
+  .admin-overlay { left: 92px; bottom: 0; }
+}
+/* Desktop pick sheet (brochiefs.com/desktop only): the quick read column
+   exists only under html.sheet. */
+.gs-ins { display: none; }
+html.sheet .wrap.wide { max-width: 1640px; }
+html.sheet #picks-screen .desk-grid { grid-template-columns: minmax(0, 1fr) 380px; }
+html.sheet #picks-screen .games-list { grid-template-columns: 1fr; gap: 10px; }
+html.sheet #picks-screen .game-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(330px, 38%); grid-template-areas: "meta ins" "match ins"; column-gap: 22px; row-gap: 6px; align-items: center; padding: 10px 14px; }
+html.sheet #picks-screen .game-card > .game-meta { grid-area: meta; }
+html.sheet #picks-screen .game-card > .matchup-cards-row { grid-area: match; }
+html.sheet #picks-screen .game-card > .game-submit-row { grid-column: 1 / -1; }
+html.sheet #picks-screen .gs-ins { grid-area: ins; display: grid; grid-template-columns: 1.3fr 1fr 1.2fr; gap: 14px; align-self: stretch; align-items: center; padding-left: 20px; border-left: 1px solid rgba(255, 255, 255, .08); }
+html.sheet .gs-c { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+html.sheet .gs-c small { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .14em; color: var(--text-dim); }
+html.sheet .gs-c em { font-style: normal; font-size: 12px; color: var(--text-dim); }
+html.sheet .gs-pair { display: flex; justify-content: space-between; gap: 10px; }
+html.sheet .gs-pair b { font-size: 14px; font-weight: 700; color: #fff; }
+html.sheet .gs-fpi { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+html.sheet .gs-fpi b { font-size: 14px; color: var(--text-dim); }
+html.sheet .gs-fpi b.lead { color: var(--neon-green); }
+html.sheet .gs-fpi i { position: relative; height: 6px; border-radius: 3px; background: rgba(255, 79, 154, .35); overflow: hidden; }
+html.sheet .gs-fpi i::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--a); background: var(--neon-cyan); }
+html.sheet .gs-dots { display: flex; gap: 3px; }
+html.sheet .gs-dots i { width: 8px; height: 8px; border-radius: 2px; background: rgba(255, 255, 255, .15); }
+html.sheet .gs-dots i.w { background: var(--neon-green); }
+html.sheet .gs-dots i.l { background: #ff4f6d; }
+html.sheet #picks-screen .gs-ins { display: flex !important; align-items: center; }
+html.sheet .gs-t { width: 100%; display: grid; grid-template-columns: 22px minmax(52px, 1fr) minmax(44px, 1fr) auto; align-items: center; column-gap: 14px; row-gap: 8px; }
+html.sheet .gs-t small { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .12em; color: var(--text-dim); }
+html.sheet .gs-t img { width: 22px; height: 22px; object-fit: contain; }
+html.sheet .gs-t b { font-size: 14px; font-weight: 700; color: #fff; }
+html.sheet .gs-t b.lead { color: var(--neon-green); }
+html.sheet .gs-t em { font-style: normal; font-size: 13px; color: var(--text-dim); }
+html.sheet .gs-dots i { width: 9px; height: 9px; }
+@media (max-width: 1399px) {
+  html.sheet #picks-screen .desk-grid { grid-template-columns: minmax(0, 1fr) 380px; }
+  html.sheet #picks-screen .game-card { grid-template-columns: minmax(0, 1fr) 228px; column-gap: 12px; padding: 10px 12px; }
+  html.sheet #picks-screen .gs-ins { padding-left: 14px; }
+  html.sheet .gs-t { column-gap: 9px; grid-template-columns: 20px minmax(40px, 1fr) minmax(34px, 1fr) auto; }
+  html.sheet .gs-dots i { width: 8px; height: 8px; }
+}

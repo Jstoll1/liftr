@@ -1148,6 +1148,48 @@ function deskLayout(on) {
     }
   }
 }
+// Desktop pick sheet, only at brochiefs.com/desktop (?sheet=1) on a wide
+// screen. Everything it adds is scoped to html.sheet, so the normal app and
+// every phone are untouched. Each game row gains a quick read from the same
+// ESPN summary the info sheet uses: FPI, record against the spread, last five.
+const SHEET_ASKED = (() => { try { if (/[?&]sheet=1/.test(location.search)) sessionStorage.setItem("brochiefs_sheet", "1"); return sessionStorage.getItem("brochiefs_sheet") === "1"; } catch { return /[?&]sheet=1/.test(location.search); } })();
+const sheetMq = matchMedia("(min-width: 1100px)");
+const sheetOn = () => SHEET_ASKED && sheetMq.matches;
+function applySheet() { document.documentElement.classList.toggle("sheet", sheetOn()); if (sheetOn() && typeof renderPicksScreen === "function" && currentManager) paintSheet(); }
+const sheetRead = {};
+async function sheetLoad(g) {
+  if (sheetRead[g.id]) return sheetRead[g.id];
+  sheetRead[g.id] = (async () => {
+    let ev = latestLive?.[g.id]?.eventId;
+    if (!ev) { await fetchInsights().catch(() => null); ev = insightsCache.eventIds?.[g.id] || insightsCache.data?.briefs?.[g.id]?.eventId || null; }
+    const raw = ev ? await fetchEspnSummary(ev).catch(() => null) : null;
+    return raw ? parseSummaryClient(raw, g) : null;
+  })();
+  const d = await sheetRead[g.id];
+  if (!d) delete sheetRead[g.id];
+  return d;
+}
+function sheetHtml(g, d) {
+  const dots = (list) => (list || []).slice(0, 5).map((e) => `<i class="${/^w/i.test(e.result || "") ? "w" : /^l/i.test(e.result || "") ? "l" : "t"}" title="${escapeCd(`${e.result || ""} ${e.score || ""} ${e.at || ""} ${e.opp || ""}`.trim())}"></i>`).join("") || "<em>—</em>";
+  const fa = d?.fpi?.away, fh = d?.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
+  const fpi = (v, other) => (hasF ? `<b class="${v > other ? "lead" : ""}">${v}%</b>` : "<em>—</em>");
+  const ats = (v) => (v ? `<b>${escapeCd(String(v))}</b>` : "<em>—</em>");
+  const row = (id, f, fo, a, l5) => `<img src="${logoUrl(id)}" alt="">${fpi(f, fo)}${ats(a)}<span class="gs-dots">${dots(l5)}</span>`;
+  return `<div class="gs-t"><span></span><small title="ESPN Football Power Index win chance">FPI</small><small>ATS</small><small>LAST 5</small>${row(g.awayId, fa, fh, d?.ats?.away, d?.lastFive?.away)}${row(g.homeId, fh, fa, d?.ats?.home, d?.lastFive?.home)}</div>`;
+}
+function paintSheet() {
+  if (!sheetOn()) return;
+  gamesList.querySelectorAll(".game-card[data-game-id]").forEach((card) => {
+    const g = GAMES.find((x) => String(x.id) === card.dataset.gameId);
+    if (!g) return;
+    let box = card.querySelector(":scope > .gs-ins");
+    if (!box) { box = document.createElement("div"); box.className = "gs-ins"; box.innerHTML = sheetRead[g.id]?.html || sheetHtml(g, null); card.appendChild(box); }
+    if (sheetRead[g.id]?.html) { box.innerHTML = sheetRead[g.id].html; return; }
+    sheetLoad(g).then((d) => { const html = sheetHtml(g, d); if (sheetRead[g.id]) sheetRead[g.id].html = html; const b = gamesList.querySelector(`.game-card[data-game-id="${g.id}"] > .gs-ins`); if (b) b.innerHTML = html; });
+  });
+}
+sheetMq.addEventListener?.("change", applySheet);
+document.documentElement.classList.toggle("sheet", sheetOn());
 const deskMq = matchMedia("(min-width: 1100px)");
 deskLayout(deskMq.matches);
 deskMq.addEventListener?.("change", (e) => deskLayout(e.matches));
@@ -2747,6 +2789,7 @@ function renderPicksScreen() {
   if (saveBtn) saveBtn.classList.toggle("hidden", tiebreakerLocked);
 
   updatePicksProgress(state);
+  if (sheetOn()) paintSheet();
 }
 
 function updatePicksProgress(state) {
