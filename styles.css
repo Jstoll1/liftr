@@ -7928,7 +7928,7 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 }
 /* Wide screens: the lock row is centred as one group (pick + chip), not
    pick at the left edge and chip at the right with a gap between. */
-@media (min-width: 700px) {
+@media (min-width: 700px) and (hover: hover) {
   .lotw-bar.v2 { justify-content: center; gap: 22px !important; }
   .lotw-bar.v2 .lb-tx { flex: 0 1 auto; }
 }
@@ -8037,3 +8037,6 @@ html.sheet .gs-g.l small { color: #ff4f6d; }
   html.sheet .gs-dots .gs-logo { display: flex; }
   html.sheet .gs-t { row-gap: 10px; }
 }
+
+/* Phones: never sideways. Nothing may be wider than the screen. */
+html.phone, html.phone body, html.phone .app-scroll { overflow-x: hidden; max-width: 100vw; }

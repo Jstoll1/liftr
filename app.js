@@ -1116,6 +1116,12 @@ function fitHeaderLogo() {
 }
 addEventListener("resize", fitHeaderLogo);
 
+// A phone is always the phone layout: vertical scroll and tap, never the
+// desktop columns or the pick sheet, whatever width it reports (an iPhone
+// on its side is still a phone). Touch first and a small physical screen.
+const IS_PHONE = (() => { try { return matchMedia("(pointer: coarse)").matches && Math.max(screen.width, screen.height) <= 1000; } catch { return false; } })();
+document.documentElement.classList.toggle("phone", IS_PHONE);
+
 // Desktop: split Picks and Scores into a main column and a sticky right
 // rail (countdown, standing and tiebreaker; your score and the
 // leaderboard). Nodes are moved, not copied, so every id and listener
@@ -1154,7 +1160,7 @@ function deskLayout(on) {
 // ESPN summary the info sheet uses: FPI, record against the spread, last five.
 const SHEET_ASKED = (() => { try { if (/[?&]sheet=1/.test(location.search)) sessionStorage.setItem("brochiefs_sheet", "1"); return sessionStorage.getItem("brochiefs_sheet") === "1"; } catch { return /[?&]sheet=1/.test(location.search); } })();
 const sheetMq = matchMedia("(min-width: 1100px)");
-const sheetOn = () => SHEET_ASKED && sheetMq.matches;
+const sheetOn = () => SHEET_ASKED && sheetMq.matches && !IS_PHONE;
 function applySheet() { document.documentElement.classList.toggle("sheet", sheetOn()); if (sheetOn() && typeof renderPicksScreen === "function" && currentManager) paintSheet(); }
 const sheetRead = {};
 async function sheetLoad(g) {
@@ -1222,8 +1228,8 @@ function paintSheet() {
 sheetMq.addEventListener?.("change", applySheet);
 document.documentElement.classList.toggle("sheet", sheetOn());
 const deskMq = matchMedia("(min-width: 1100px)");
-deskLayout(deskMq.matches);
-deskMq.addEventListener?.("change", (e) => deskLayout(e.matches));
+deskLayout(deskMq.matches && !IS_PHONE);
+deskMq.addEventListener?.("change", (e) => deskLayout(e.matches && !IS_PHONE));
 appScroll.addEventListener("scroll", syncHeaderSize, { passive: true });
 const savedScroll = {};
 let activeScreenName = null;
