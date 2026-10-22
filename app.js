@@ -1166,7 +1166,25 @@ async function sheetLoad(g) {
     if (!ev) { await fetchLiveScores().catch(() => {}); ev = latestLive?.[g.id]?.eventId || null; }
     if (!ev) { await fetchInsights().catch(() => null); ev = insightsCache.eventIds?.[g.id] || insightsCache.data?.briefs?.[g.id]?.eventId || null; }
     const raw = ev ? await fetchEspnSummary(ev).catch(() => null) : null;
-    return raw ? parseSummaryClient(raw, g) : null;
+    const d = raw ? parseSummaryClient(raw, g) : null;
+    if (!d) return null;
+    // ATS: ESPN's summary often leaves it out. Same fallbacks as the info
+    // sheet: the Worker's stored read of the game, then the line in ESPN's
+    // preview ("against the spread: Team 1-6, Team 2-4").
+    if (!d.ats?.away && !d.ats?.home) {
+      const snap = await withTimeout(fetchGameSnapshot(g.id), 3500, null).catch(() => null);
+      const brief = (await fetchInsights().catch(() => null))?.briefs?.[g.id];
+      const alt = snap?.glance?.ats || brief?.glance?.ats;
+      if (alt?.away || alt?.home) d.ats = alt;
+      else for (const t of d.preview?.paras || []) {
+        const m = t.match(/against the spread:\s*(.+?)\s+(\d+-\d+(?:-\d+)?),\s*(.+?)\s+(\d+-\d+(?:-\d+)?)/i);
+        if (!m) continue;
+        const side = (n) => { n = n.toLowerCase(); return [g.away, g.awayShort].some((x) => x && (n.includes(x.toLowerCase()) || x.toLowerCase().includes(n))) ? "away" : [g.home, g.homeShort].some((x) => x && (n.includes(x.toLowerCase()) || x.toLowerCase().includes(n))) ? "home" : null; };
+        d.ats = {}; [[m[1], m[2]], [m[3], m[4]]].forEach(([n, r]) => { const sd = side(n); if (sd) d.ats[sd] = r; });
+        break;
+      }
+    }
+    return d;
   })();
   const d = await sheetRead[g.id];
   // Nothing yet: forget it and look again in a minute.
@@ -1174,7 +1192,16 @@ async function sheetLoad(g) {
   return d;
 }
 function sheetHtml(g, d) {
-  const dots = (list) => (list || []).slice(0, 5).map((e) => `<i class="${/^w/i.test(e.result || "") ? "w" : /^l/i.test(e.result || "") ? "l" : "t"}" title="${escapeCd(`${e.result || ""} ${e.score || ""} ${e.at || ""} ${e.opp || ""}`.trim())}"></i>`).join("") || "<em>—</em>";
+  const wl = (e) => (/^w/i.test(e.result || "") ? "w" : /^l/i.test(e.result || "") ? "l" : "t");
+  const tip = (e) => escapeCd(`${e.result || ""} ${e.score || ""} ${e.at || ""} ${e.oppName || e.opp || ""}`.trim());
+  // Both forms ship; the column's width picks one (logos when there's room).
+  const dots = (list) => {
+    const l = (list || []).slice(0, 5);
+    if (!l.length) return "<em>—</em>";
+    const boxes = l.map((e) => `<i class="${wl(e)}" title="${tip(e)}"></i>`).join("");
+    const chips = l.map((e) => `<span class="gs-g ${wl(e)}" title="${tip(e)}">${e.oppLogo ? `<img src="${escapeCd(e.oppLogo)}" alt="" loading="lazy">` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`}<small>${escapeCd((e.result || "").slice(0, 1).toUpperCase())} ${escapeCd(e.score || "")}</small></span>`).join("");
+    return `<span class="gs-box">${boxes}</span><span class="gs-logo">${chips}</span>`;
+  };
   const fa = d?.fpi?.away, fh = d?.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
   const fpi = (v, other) => (hasF ? `<b class="${v > other ? "lead" : ""}">${v}%</b>` : "<em>—</em>");
   const ats = (v) => (v ? `<b>${escapeCd(String(v))}</b>` : "<em>—</em>");

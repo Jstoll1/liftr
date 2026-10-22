@@ -8016,3 +8016,24 @@ html.sheet .gs-dots i { width: 9px; height: 9px; }
 }
 .admin-game.on .admin-tb { min-height: 0 !important; font-size: 11px !important; color: #ffd23f !important; }
 .admin-game.on .admin-pick { padding-bottom: 6px; }
+
+/* Sheet last five: opponent logos with W/L and score when the column has
+   room, the green and red squares when it doesn't. */
+html.sheet #picks-screen .gs-ins { container-type: inline-size; }
+html.sheet .gs-dots { display: block; }
+html.sheet .gs-dots .gs-box { display: flex; gap: 3px; }
+html.sheet .gs-dots .gs-logo { display: none; gap: 4px; }
+html.sheet .gs-dots .gs-box i { width: 9px; height: 9px; border-radius: 2px; background: rgba(255, 255, 255, .15); }
+html.sheet .gs-dots .gs-box i.w { background: var(--neon-green); }
+html.sheet .gs-dots .gs-box i.l { background: #ff4f6d; }
+html.sheet .gs-g { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 44px; }
+html.sheet .gs-g img { width: 18px; height: 18px; object-fit: contain; }
+html.sheet .gs-g > b { font-size: 9px; height: 18px; line-height: 18px; color: var(--text-dim); }
+html.sheet .gs-g small { font-size: 9px; letter-spacing: 0; white-space: nowrap; color: var(--text-dim); font-family: inherit; }
+html.sheet .gs-g.w small { color: var(--neon-green); }
+html.sheet .gs-g.l small { color: #ff4f6d; }
+@container (min-width: 390px) {
+  html.sheet .gs-dots .gs-box { display: none; }
+  html.sheet .gs-dots .gs-logo { display: flex; }
+  html.sheet .gs-t { row-gap: 10px; }
+}
