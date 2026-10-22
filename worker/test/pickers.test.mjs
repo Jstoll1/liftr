@@ -32,3 +32,13 @@ test("audit: flags picks whose team is not in their game, owner key only, no tea
   assert.ok(!JSON.stringify(body).includes("Iowa"));
   assert.equal((await worker.fetch(new Request("https://w.test/games?audit=1&week=5&key=slatekey"), env, { waitUntil() {} })).status, 403);
 });
+
+import { slateRenumbering } from "../src/index.js";
+test("slate guard: a published game keeps its number, numbers never move", () => {
+  const a = { id: 1, awayId: 1, homeId: 2, awayShort: "A", homeShort: "B" }, b = { id: 2, awayId: 3, homeId: 4, awayShort: "C", homeShort: "D" }, c = { awayId: 5, homeId: 6, awayShort: "E", homeShort: "F" };
+  assert.equal(slateRenumbering(null, [a]), null);
+  assert.equal(slateRenumbering([a, b], [a, b, { ...c, id: 3 }]), null);
+  assert.equal(slateRenumbering([a, b], [b, { ...c, id: 3 }]), null); // removing a game is fine
+  assert.match(slateRenumbering([a, b], [{ ...c, id: 1 }, { ...a, id: 2 }, { ...b, id: 3 }]), /A @ B is G1/);
+  assert.match(slateRenumbering([a, b], [b, { ...c, id: 1 }]), /G1 was A @ B/);
+});
