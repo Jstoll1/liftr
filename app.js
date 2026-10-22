@@ -1151,6 +1151,12 @@ function deskLayout(on) {
       all.filter((el) => !order.includes(el)).forEach((el) => { const next = el.nextElementSibling; const i = next ? order.indexOf(next) : -1; order.splice(i < 0 ? order.length : i, 0, el); });
       order.forEach((el) => wrap.appendChild(el));
       grid.remove(); wrap.classList.remove("desk-on");
+      // The lock and the slate rule always sit right above the games.
+      const gl = wrap.querySelector(":scope > .games-list"), rule = document.getElementById("slate-rule"), bar = document.getElementById("lotw-bar");
+      if (gl && rule) gl.before(rule);
+      if (gl && bar) (rule || gl).before(bar);
+      const tot = document.getElementById("picks-total"); if (gl && tot) gl.after(tot);
+      ["tb-required", "picks-mismatch"].forEach((id) => { const el = document.getElementById(id), pr = document.getElementById("picks-progress"); if (el && pr) pr.after(el); });
     }
   }
 }
