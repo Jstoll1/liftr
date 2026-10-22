@@ -2798,6 +2798,8 @@ async function liveGames(env, week = null) {
           possSrc,
           awayRank: rankOf(away),
           homeRank: rankOf(home),
+          awayRecord: recordSummary(away),
+          homeRecord: recordSummary(home),
           state: statusType.state || "pre", // "pre" | "in" | "post"
           completed: !!statusType.completed,
           detail: statusType.shortDetail || statusType.detail || "",
@@ -2817,6 +2819,13 @@ async function liveGames(env, week = null) {
 
     return { games, debug };
   }
+}
+
+// A team's overall record from an ESPN competitor ("6-1"), or null.
+function recordSummary(c) {
+  const list = Array.isArray(c?.records) ? c.records : [];
+  const r = list.find((x) => /total|overall/i.test(x?.type || x?.name || "")) || list[0];
+  return typeof r?.summary === "string" ? r.summary : null;
 }
 
 // The backstop. Phones post finals when they see the last game end, but
