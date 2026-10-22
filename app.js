@@ -1315,6 +1315,7 @@ function quickReadHtml(g) {
   const open = qrOpen.has(g.id);
   return `<div class="qr${open ? " open" : ""}"><div class="qr-body"><div class="qr-in">${open ? qrBody(g, sheetData[g.id]) : ""}</div></div></div>`;
 }
+try { if (localStorage.getItem("brochiefs_qr_seen")) document.documentElement.classList.add("qr-seen"); } catch {}
 // The arrow sits in the gap under AT, between the two pick columns.
 function qrToggleHtml(g) {
   const open = qrOpen.has(g.id);
@@ -1330,6 +1331,8 @@ gamesList?.addEventListener("click", (ev) => {
     qrOpen.add(g.id); inner.innerHTML = qrBody(g, sheetData[g.id]);
     requestAnimationFrame(() => box.classList.add("open")); t.textContent = "▴"; t.setAttribute("aria-expanded", "true");
     noteUse("quick-read", String(g.id));
+    try { localStorage.setItem("brochiefs_qr_seen", "1"); } catch {}
+    document.documentElement.classList.add("qr-seen");
     if (!sheetData[g.id]) sheetLoad(g).then((d) => { sheetData[g.id] = d || { lastFive: {} }; const b = gamesList.querySelector(`.game-card[data-game-id="${g.id}"] .qr-in`); if (b && qrOpen.has(g.id)) b.innerHTML = qrBody(g, sheetData[g.id]); });
     return;
   }
