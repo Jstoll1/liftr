@@ -22,3 +22,8 @@ wider than the screen, no sideways scroll. Any new desktop feature must
 check `!IS_PHONE` (JS) or sit behind `(hover: hover)` / `html:not(.phone)`
 (CSS), and be tested with Playwright iPhone emulation (portrait and
 landscape) before pushing.
+
+## Keep the "SAVED" stamp on game cards
+The "SAVED <day> <time>" line on each pick card stays: it is the user's
+audit trail that a pick reached the league. Never hide or shorten it to
+save space.
