@@ -1285,6 +1285,47 @@ function sheetHtml(g, d) {
   const row = (id, f, fo, a, l5) => `<img src="${logoUrl(id)}" alt="">${fpi(f, fo)}${ats(a)}<span class="gs-dots">${dots(l5)}</span>`;
   return `<div class="gs-t"><span></span><small title="ESPN Football Power Index win chance">FPI</small><small>ATS</small><small>LAST 5</small>${row(g.awayId, fa, fh, d?.ats?.away, d?.lastFive?.away)}${row(g.homeId, fh, fa, d?.ats?.home, d?.lastFive?.home)}</div>`;
 }
+const sheetData = {};
+// Quick read under a pick card (every screen but the desktop sheet): a
+// thin arrow that opens FPI, ATS and last five for both teams. Nothing is
+// fetched until it is opened; it stays open across redraws.
+const qrOpen = new Set();
+function qrBody(g, d) {
+  if (!d) return `<div class="qr-wait">Loading…</div>`;
+  const fa = d.fpi?.away, fh = d.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
+  const five = (list) => (list || []).slice(0, 5).map((e) => { const w = /^w/i.test(e.result || "") ? "w" : /^l/i.test(e.result || "") ? "l" : "t"; const img = e.oppId || e.oppLogo ? `<img src="${escapeCd(e.oppId ? logoUrl(e.oppId) : e.oppLogo)}" alt="${escapeCd(e.opp || "")}" loading="lazy"${e.oppLogo ? ` data-alt="${escapeCd(e.oppLogo)}"` : ""}>` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`; return `<${e.id ? `button type="button" data-past="${escapeCd(String(e.id))}"` : "span"} class="gs-g qr-g ${w}" title="${escapeCd(`${e.result || ""} ${e.score || ""} ${e.oppName || e.opp || ""}`.trim())}">${img}</${e.id ? "button" : "span"}>`; }).join("") || "<em>—</em>";
+  const row = (id, f, fo, a, l5) => `<img class="qr-t" src="${logoUrl(id)}" alt=""><b class="${hasF && f > fo ? "lead" : ""}">${hasF ? `${f}%` : "—"}</b><b>${a ? escapeCd(String(a)) : "—"}</b><span class="qr-five">${five(l5)}</span>`;
+  return `<div class="qr-grid"><span></span><small>FPI</small><small>ATS</small><small>LAST 5</small>${row(g.awayId, fa, fh, d.ats?.away, d.lastFive?.away)}${row(g.homeId, fh, fa, d.ats?.home, d.lastFive?.home)}</div>`;
+}
+function quickReadHtml(g) {
+  const open = qrOpen.has(g.id);
+  return `<div class="qr${open ? " open" : ""}"><div class="qr-body"><div class="qr-in">${open ? qrBody(g, sheetData[g.id]) : ""}</div></div><button type="button" class="qr-tog" aria-expanded="${open}" aria-label="${open ? "Hide" : "Show"} quick read">${open ? "▴" : "▾"}</button></div>`;
+}
+gamesList?.addEventListener("click", (ev) => {
+  const t = ev.target.closest(".qr-tog");
+  if (t) {
+    ev.stopPropagation();
+    const card = t.closest(".game-card"), g = GAMES.find((x) => String(x.id) === card?.dataset.gameId); if (!g) return;
+    const box = t.closest(".qr"), inner = box.querySelector(".qr-in");
+    if (qrOpen.has(g.id)) { qrOpen.delete(g.id); box.classList.remove("open"); t.textContent = "▾"; t.setAttribute("aria-expanded", "false"); return; }
+    qrOpen.add(g.id); inner.innerHTML = qrBody(g, sheetData[g.id]);
+    requestAnimationFrame(() => box.classList.add("open")); t.textContent = "▴"; t.setAttribute("aria-expanded", "true");
+    noteUse("quick-read", String(g.id));
+    if (!sheetData[g.id]) sheetLoad(g).then((d) => { sheetData[g.id] = d || { lastFive: {} }; const b = gamesList.querySelector(`.game-card[data-game-id="${g.id}"] .qr-in`); if (b && qrOpen.has(g.id)) b.innerHTML = qrBody(g, sheetData[g.id]); });
+    return;
+  }
+  const b = ev.target.closest(".qr [data-past]"); if (!b) return;
+  ev.stopPropagation();
+  const g = GAMES.find((x) => String(x.id) === b.closest(".game-card")?.dataset.gameId), d = g && sheetData[g.id];
+  for (const side of ["away", "home"]) { const e = (d?.lastFive?.[side] || []).find((x) => String(x.id) === b.dataset.past); if (e) { openPastGame(g, side, e); return; } }
+});
+gamesList?.addEventListener("click", (ev) => {
+  const b = ev.target.closest(".gs-ins [data-past]"); if (!b) return;
+  ev.stopPropagation();
+  const card = b.closest(".game-card"), g = GAMES.find((x) => String(x.id) === card?.dataset.gameId), d = g && sheetData[g.id];
+  if (!d) return;
+  for (const side of ["away", "home"]) { const e = (d.lastFive?.[side] || []).find((x) => String(x.id) === b.dataset.past); if (e) { openPastGame(g, side, e); return; } }
+});
 function paintSheet() {
   if (!sheetOn()) return;
   gamesList.querySelectorAll(".game-card[data-game-id]").forEach((card) => {
@@ -2863,6 +2904,7 @@ function renderPicksScreen() {
       </div>
       ${gameLocked ? lockedResultHtml(game, pick, finalRes, isLive ? g : null) : matchupCardsHtml(game, pick)}
       ${gameLocked || !note || !note.startsWith("⚠") ? "" : `<div class="game-submit-row"><span class="game-submit-note">${note}</span></div>`}
+      ${sheetOn() ? "" : quickReadHtml(game)}
     `;
 
     const infoBtn = card.querySelector(".insights-btn");
