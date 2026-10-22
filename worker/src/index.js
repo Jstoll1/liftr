@@ -2861,7 +2861,8 @@ async function handleAts(env, corsHeaders, url) {
     } catch (e) { tried.push(`err ${u.slice(base.length)}`); }
   }
   const out = { ats, src, tried, at: Date.now() };
-  if (env.LIFTR_KV && ats) await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 86400 });
+  // Refusals are remembered too, so a 403 is not asked again on every open.
+  if (env.LIFTR_KV) await env.LIFTR_KV.put(key, JSON.stringify(out), { expirationTtl: 86400 });
   return json(out, 200, corsHeaders);
 }
 export function parseAtsRecord(j) {
