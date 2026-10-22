@@ -1546,6 +1546,24 @@ async function handleTrivia(request, env, corsHeaders) {
 // POST /games?key=...    save a week (admin), optionally making it current
 let gamesCache = null;
 
+export function slateRenumbering(before, after) {
+  if (!Array.isArray(before) || !before.length) return null;
+  const pair = (g) => `${g.awayId}|${g.homeId}`;
+  const label = (g) => `${g.awayShort} @ ${g.homeShort}`;
+  const was = new Map(before.map((g) => [pair(g), g]));
+  const byId = new Map(before.map((g) => [Number(g.id), g]));
+  for (const g of after) {
+    const old = was.get(pair(g));
+    if (old && Number(old.id) !== Number(g.id)) return `${label(old)} is G${old.id}. It can't become G${g.id}: picks are saved by game number. Keep it as G${old.id}.`;
+  }
+  for (const g of after) {
+    const old = was.get(pair(g));
+    const holder = byId.get(Number(g.id));
+    if (!old && holder && pair(holder) !== pair(g)) return `G${g.id} was ${label(holder)} this week, so ${label(g)} needs a new number (picks on G${g.id} would move to it).`;
+  }
+  return null;
+}
+
 function validateSlate(body) {
   const week = Number(body?.week);
   if (!Number.isInteger(week) || week < 1 || week > 30) return "week must be a whole number from 1 to 30";
@@ -1779,6 +1797,11 @@ async function handleGames(request, env, corsHeaders, url) {
         return json({ error: `Week ${checked.week} has already kicked off. Add ?force=1 to overwrite it anyway.` }, 409, corsHeaders);
       }
     }
+    // Picks are stored by game number, so a published game keeps its number
+    // for good and a number never moves to a different game. Enforced here
+    // so no editor (or an old cached copy of one) can shuffle picks.
+    const moved = slateRenumbering(existing?.games, checked.games);
+    if (moved) return json({ error: moved }, 409, corsHeaders);
     await env.LIFTR_KV.put(gamesKey(checked.week), JSON.stringify(checked));
     const weeks = await readWeeks(env);
     const list = [...new Set([...weeks.list, checked.week])].sort((a, b) => a - b);
