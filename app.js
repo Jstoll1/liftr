@@ -2582,7 +2582,7 @@ function renderLockBar(state) {
   const odds = (hit) => `<span class="lb-odds"><i class="up"><small>HIT</small>+${hit}</i><i class="dn"><small>MISS</small>${lr.miss < 0 ? "−" + Math.abs(lr.miss) : 0}</i></span>`;
   if (g) {
     const mine = pk.team === g.away ? g.awayId : g.homeId, opp = pk.team === g.away ? g.homeId : g.awayId;
-    bar.innerHTML = `<span class="lb-mu"><img class="me" src="${logoUrl(mine)}" alt=""><img class="op" src="${logoUrl(opp)}" alt=""></span><span class="lb-tx"><small>🔒 YOUR LOCK</small><b>${escapeCd(pk.team === g.away ? g.awayShort : g.homeShort)} <u>${pk.team === g.favorite ? "−" : "+"}${g.spread}</u></b><em>${pk.team === g.away ? "at" : "vs"} ${escapeCd(pk.team === g.away ? g.homeShort : g.awayShort)}</em></span>${odds(pointValue(g, pk.team, pk.mode) + lr.hit)}`;
+    bar.innerHTML = `<span class="lb-tx"><small>🔒 YOUR LOCK</small><b><img src="${logoUrl(mine)}" alt="">${escapeCd(pk.team === g.away ? g.awayShort : g.homeShort)} <u>${pk.team === g.favorite ? "−" : "+"}${g.spread}</u></b><em><img src="${logoUrl(opp)}" alt="">${pk.team === g.away ? "at" : "vs"} ${escapeCd(pk.team === g.away ? g.homeShort : g.awayShort)}</em></span>${odds(pointValue(g, pk.team, pk.mode) + lr.hit)}`;
   } else {
     bar.innerHTML = `<span class="lb-mu none">🔒</span><span class="lb-tx"><small>LOCK OF THE WEEK${fresh ? ` <i>NEW</i>` : ""}</small><b>No lock yet</b></span>${odds(lr.hit)}`;
   }

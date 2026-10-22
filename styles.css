@@ -7837,3 +7837,9 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .lotw-bar.v2 .lb-tx em { font-style: normal; font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lotw-bar.v2 .lb-odds i { min-width: 42px; padding: 6px 5px 5px; font-size: 11px; }
 .lotw-bar.v2 { min-height: 64px; }
+
+/* Lock bar: your logo + team and line, the opponent's logo under it */
+.lotw-bar.v2 .lb-tx b, .lotw-bar.v2 .lb-tx em { display: flex; align-items: center; gap: 8px; }
+.lotw-bar.v2 .lb-tx b img { width: 26px; height: 26px; object-fit: contain; flex: none; }
+.lotw-bar.v2 .lb-tx em img { width: 26px; height: 18px; object-fit: contain; flex: none; opacity: .6; }
+.lotw-bar.v2 .lb-tx b u { margin-left: -2px; }
