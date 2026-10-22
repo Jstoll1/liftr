@@ -1013,7 +1013,7 @@ async function submitOwnerCode() {
   try {
     const res = await fetch(`${WORKER_URL}/auth`, {
       method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
-      body: JSON.stringify({ action: claimed ? "login" : "claim", manager: name, code, device: deviceId(), client: deviceDetails() }),
+      body: JSON.stringify({ action: claimed ? "login" : "claim", manager: name, code, device: deviceId(), client: deviceDetails(), ...(inviteFor(name) ? { invite: inviteFor(name) } : {}) }),
     });
     status = res.status;
     data = await res.json().catch(() => null);
@@ -1338,6 +1338,72 @@ function quickReadHtml(g) {
   return `<div class="qr${open ? " open" : ""}"><div class="qr-body"><div class="qr-in">${open ? qrBody(g, sheetData[g.id]) : ""}</div></div></div>`;
 }
 try { if (localStorage.getItem("brochiefs_qr_seen")) document.documentElement.classList.add("qr-seen"); } catch {}
+// --- Ask to join (NFL) ----------------------------------------------------
+// From the "Who are you?" sheet a new visitor sends a name and email; the
+// commissioner approves on the live page. This phone remembers the request
+// and checks it on each open; once approved, the name is on the roster and
+// they pick it and set a PIN like everyone else.
+const JOIN_KEY = "brochiefs_join_v1";
+const joinSaved = () => { try { return JSON.parse(localStorage.getItem(JOIN_KEY) || "null"); } catch { return null; } };
+function openJoin() {
+  const m = document.getElementById("join-modal"); if (!m) return;
+  document.getElementById("claim-modal")?.classList.add("hidden");
+  const j = joinSaved();
+  document.getElementById("join-form").classList.toggle("hidden", !!(j && j.status === "pending"));
+  document.getElementById("join-sub").textContent = j && j.status === "pending" ? `Request sent for ${j.name}. You'll be let in as soon as the commissioner approves it; this page checks each time you open the app.` : "The commissioner approves new players. You'll get your own login once you're in.";
+  m.classList.remove("hidden");
+  noteUse("join-open");
+}
+async function sendJoin(ev) {
+  ev.preventDefault();
+  const name = document.getElementById("join-name").value.trim(), email = document.getElementById("join-email").value.trim(), message = document.getElementById("join-msg").value.trim();
+  const err = document.getElementById("join-err"), btn = document.getElementById("join-send");
+  err.textContent = ""; btn.disabled = true; btn.textContent = "SENDING…";
+  try {
+    const r = await fetch(`${WORKER_URL}/join`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, message }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.id) { err.textContent = d.error || "Couldn't send. Try again."; return; }
+    try { localStorage.setItem(JOIN_KEY, JSON.stringify({ id: d.id, name, status: "pending", at: Date.now() })); } catch {}
+    track("join-request", { event: true });
+    openJoin();
+  } catch { err.textContent = "No connection. Try again."; }
+  finally { btn.disabled = false; btn.textContent = "SEND REQUEST"; }
+}
+async function checkJoin() {
+  const j = joinSaved();
+  if (!j || j.status !== "pending" || !WORKER_URL) return;
+  try {
+    const d = await (await fetch(`${WORKER_URL}/join?id=${encodeURIComponent(j.id)}&t=${Date.now()}`, { cache: "no-store" })).json();
+    if (d.status === "pending") return;
+    try { localStorage.setItem(JOIN_KEY, JSON.stringify({ ...j, status: d.status })); } catch {}
+    if (d.status === "approved") {
+      await loadRoster();
+      lotwToast?.(`You're in, ${j.name}! Pick your name and set a PIN.`);
+      setTimeout(() => openClaimPrompt(), 600);
+    }
+  } catch {}
+}
+// A personal invite link (?claim=<code>&n=<name>) from the commissioner:
+// that name can only be claimed with the code it carries.
+const INVITE_KEY = "brochiefs_invite_v1";
+function inviteFor(name) { try { const v = JSON.parse(localStorage.getItem(INVITE_KEY) || "null"); return v && v.name === name ? v.code : null; } catch { return null; } }
+if (window.LEAGUE?.sport === "nfl") {
+  const q = new URLSearchParams(location.search);
+  if (/^[a-f0-9]{32}$/.test(q.get("claim") || "") && q.get("n")) {
+    try { localStorage.setItem(INVITE_KEY, JSON.stringify({ code: q.get("claim"), name: q.get("n") })); } catch {}
+    history.replaceState(null, "", location.pathname);
+    const name = q.get("n");
+    // Once the roster has the name, go straight to setting their PIN.
+    setTimeout(async () => { await loadRoster(); if (MANAGERS.includes(name) && !loadMe()) { lotwToast?.(`Welcome, ${name}! Set a PIN to finish.`); if (await requireOwnerAuth(name)) { saveMe(name); selectManager(name); try { localStorage.removeItem(INVITE_KEY); } catch {} } } }, 900);
+  }
+  // brochiefs.com/join (NFL) lands here as ?join=1.
+  if (q.get("join") === "1") { history.replaceState(null, "", location.pathname); setTimeout(openJoin, 700); }
+  document.getElementById("join-form")?.addEventListener("submit", sendJoin);
+  document.getElementById("join-close")?.addEventListener("click", () => document.getElementById("join-modal").classList.add("hidden"));
+  setTimeout(checkJoin, 1500);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkJoin(); });
+}
+
 // The arrow sits in the gap under AT, between the two pick columns.
 function qrToggleHtml(g) {
   const open = qrOpen.has(g.id);

@@ -32,8 +32,8 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" /></noscript>
-  <meta name="build" content="136917983634" />
-  <link rel="stylesheet" href="styles.css?v=226018661282" />
+  <meta name="build" content="384647445204" />
+  <link rel="stylesheet" href="styles.css?v=151394774566" />
   <link rel="stylesheet" href="history.css?v=145654074095" />
 </head>
 <body>
@@ -196,7 +196,24 @@
       <span id="claim-title" class="modal-title">WHO ARE YOU?</span>
       <span id="claim-subtext" class="modal-subtext">Pick your name once and this phone will remember you.</span>
       <div id="claim-grid" class="claim-grid"></div>
+      <button id="claim-join-btn" class="join-btn hidden" type="button">New here? Ask to join the league</button>
       <button id="claim-skip-btn" class="link-btn claim-skip" type="button">Just looking for now</button>
+    </div>
+  </div>
+
+  <!-- JOIN REQUEST (NFL): name and email, approved by the commissioner -->
+  <div id="join-modal" class="modal-overlay hidden" role="dialog" aria-label="Ask to join">
+    <div class="modal-card join-card">
+      <span class="modal-title">ASK TO JOIN</span>
+      <span id="join-sub" class="modal-subtext">The commissioner approves new players. You'll get your own login once you're in.</span>
+      <form id="join-form" class="join-form" autocomplete="on">
+        <label>Name in the league<input id="join-name" name="name" maxlength="20" autocomplete="given-name" required /></label>
+        <label>Email<input id="join-email" name="email" type="email" inputmode="email" autocomplete="email" required /></label>
+        <label>Message <i>(optional)</i><textarea id="join-msg" name="message" maxlength="280" rows="3" placeholder="Who you know in the league"></textarea></label>
+        <span id="join-err" class="join-err" role="alert"></span>
+        <button id="join-send" class="join-go" type="submit">SEND REQUEST</button>
+      </form>
+      <button id="join-close" class="link-btn" type="button">Not now</button>
     </div>
   </div>
 
@@ -638,7 +655,7 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=979926360830"></script>
+  <script src="app.js?v=434533857512"></script>
   <script src="sim.js?v=374204176553"></script>
   <script src="gridcard.js?v=298316201101"></script>
   <script src="attract-facts.js?v=621767480045"></script>

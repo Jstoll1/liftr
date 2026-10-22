@@ -90,6 +90,10 @@ export default {
     if (url.pathname === "/library") {
       return handleLibrary(request, env, corsHeaders);
     }
+    if (url.pathname === "/join" || url.pathname === "/joins") {
+      await loadRoster(env);
+      return handleJoin(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/roster") {
       return handleRoster(request, env, corsHeaders, url);
     }
@@ -734,6 +738,77 @@ async function handleRoster(request, env, corsHeaders, url) {
   return json({ names }, 200, corsHeaders);
 }
 
+// --- Join requests (NFL) ------------------------------------------------
+// A new visitor asks to join with a name and email; the admin approves or
+// denies on the live page. Approving adds the name to the roster, and the
+// person then claims it and sets a PIN like everyone else.
+//   POST /join {name, email}            -> {id}        anyone, rate limited
+//   GET  /join?id=                      -> {status, name}
+//   GET  /joins?key=|device=            -> {requests}  admin only (with email)
+//   POST /joins?key=|device= {id, action: "approve"|"deny"} admin only
+const joinKey = (id) => `join:${id}`;
+const inviteKey = (name) => `invite:${String(name).toLowerCase()}`;
+async function handleJoin(request, env, corsHeaders, url) {
+  if (SPORT !== "nfl") return json({ error: "Not open" }, 404, corsHeaders);
+  const admin = isAdmin(env, url) || (await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()));
+  if (url.pathname === "/join" && request.method === "POST") {
+    let b; try { b = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
+    const name = String(b?.name ?? "").trim().replace(/\s+/g, " ");
+    const email = String(b?.email ?? "").trim().toLowerCase();
+    const message = String(b?.message ?? "").trim().replace(/\s+/g, " ").slice(0, 280);
+    if (!name || name.length > 20 || !/^[\p{L}\p{N} .'-]+$/u.test(name)) return json({ error: "Use a name of 20 letters or fewer." }, 400, corsHeaders);
+    if (!/^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/.test(email)) return json({ error: "That email doesn't look right." }, 400, corsHeaders);
+    if (PICKS_MANAGERS.some((n) => n.toLowerCase() === name.toLowerCase())) return json({ error: `${name} is already in the league. Pick your name instead, or use another.` }, 409, corsHeaders);
+    // Rate limit: five requests an hour per address, twenty pending at most.
+    const ip = request.headers.get("cf-connecting-ip") || "x";
+    const rl = `joinrl:${ip}:${Math.floor(Date.now() / 3600e3)}`;
+    const n = Number(await env.LIFTR_KV.get(rl)) || 0;
+    if (n >= 5) return json({ error: "Too many requests. Try again in an hour." }, 429, corsHeaders);
+    await env.LIFTR_KV.put(rl, String(n + 1), { expirationTtl: 3600 });
+    const pending = (await env.LIFTR_KV.list({ prefix: "join:" })).keys.length;
+    if (pending >= 20) return json({ error: "The waiting list is full. Text the commissioner." }, 429, corsHeaders);
+    const id = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+    await env.LIFTR_KV.put(joinKey(id), JSON.stringify({ id, name, email, message, at: Date.now(), status: "pending" }), { expirationTtl: 30 * 86400 });
+    return json({ ok: true, id }, 200, corsHeaders);
+  }
+  if (url.pathname === "/join" && request.method === "GET") {
+    const id = String(url.searchParams.get("id") || "");
+    if (!/^[a-f0-9]{16}$/.test(id)) return json({ error: "Bad id" }, 400, corsHeaders);
+    const r = await env.LIFTR_KV.get(joinKey(id), "json");
+    return json(r ? { status: r.status, name: r.name } : { status: "gone" }, 200, corsHeaders);
+  }
+  if (!admin) return json({ error: "Not authorized" }, 403, corsHeaders);
+  if (request.method === "GET") {
+    const keys = (await env.LIFTR_KV.list({ prefix: "join:" })).keys;
+    const all = (await Promise.all(keys.map((k) => env.LIFTR_KV.get(k.name, "json")))).filter(Boolean);
+    return json({ requests: all.sort((a, b) => b.at - a.at) }, 200, corsHeaders);
+  }
+  let b; try { b = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
+  const r = await env.LIFTR_KV.get(joinKey(String(b?.id || "")), "json");
+  if (!r) return json({ error: "No such request" }, 404, corsHeaders);
+  if (b.action === "approve") {
+    await loadRoster(env, true);
+    if (!PICKS_MANAGERS.some((n) => n.toLowerCase() === r.name.toLowerCase())) {
+      if (PICKS_MANAGERS.length >= 40) return json({ error: "The league has 40 members already." }, 400, corsHeaders);
+      const names = [...PICKS_MANAGERS, r.name];
+      await env.LIFTR_KV.put(ROSTER_KEY, JSON.stringify(names));
+      PICKS_MANAGERS.splice(0, PICKS_MANAGERS.length, ...names);
+      rosterReadAt = Date.now();
+    }
+    // A one-time code reserves the name: only the link carrying it can
+    // claim it (set the first PIN). Good for 14 days.
+    const code = crypto.randomUUID().replace(/-/g, "");
+    await env.LIFTR_KV.put(inviteKey(r.name), JSON.stringify({ code, id: r.id, at: Date.now() }), { expirationTtl: 14 * 86400 });
+    r.status = "approved";
+    r.link = `https://nfl.brochiefs.com/?claim=${code}&n=${encodeURIComponent(r.name)}`;
+  } else if (b.action === "deny") r.status = "denied";
+  else return json({ error: "action must be approve or deny" }, 400, corsHeaders);
+  r.decidedAt = Date.now();
+  // Kept a week after the decision so the person's phone can see it.
+  await env.LIFTR_KV.put(joinKey(r.id), JSON.stringify(r), { expirationTtl: 7 * 86400 });
+  return json({ ok: true, request: r, roster: PICKS_MANAGERS }, 200, corsHeaders);
+}
+
 // Kickoffs (ms since epoch) for the 2026 Week 1 slate, same values as
 // GAMES in app.js. A pick for a game past its kickoff can no longer be
 // added or changed through /picks.
@@ -1109,11 +1184,15 @@ async function handleAuth(request, env, corsHeaders, url) {
 
   if (action === "claim") {
     if (stored) return json({ error: `${manager} is already claimed. Enter that code, or ask the commissioner to reset it.`, claimed: true }, 409, corsHeaders);
+    // A newly approved player's name is held for their personal link.
+    const invite = typeof inviteKey === "function" ? await env.LIFTR_KV.get(inviteKey(manager), "json") : null;
+    if (invite && String(body?.invite || "") !== invite.code) return json({ error: `${manager} is waiting on their personal invite link. Use the link the commissioner sent.` }, 403, corsHeaders);
     if (code.length < AUTH_MIN_CODE) return json({ error: `Use at least ${AUTH_MIN_CODE} characters.` }, 400, corsHeaders);
     if (code.length > 64) return json({ error: "That code is too long." }, 400, corsHeaders);
     const salt = crypto.randomUUID();
     await env.LIFTR_KV.put(authKey(manager), JSON.stringify({ salt, hash: await codeHash(code, salt), setAt: Date.now() }));
     await authEvent(env, request, { manager, kind: "claim", deviceId, client });
+    if (invite) await env.LIFTR_KV.delete(inviteKey(manager));
     return json({ ok: true, manager, token: await signToken(env, manager) }, 200, corsHeaders);
   }
 
