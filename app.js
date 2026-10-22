@@ -233,6 +233,12 @@ function logoUrl(espnId) {
 }
 document.addEventListener("error", (e) => {
   const img = e.target;
+  // Last five logos, once the dark and plain ESPN logos have both failed:
+  // ESPN's own link for that opponent, then the team code as text.
+  if (img instanceof HTMLImageElement && img.closest?.(".gs-g") && !/combiner|\/500-dark\//.test(img.src)) {
+    if (img.dataset.alt && img.src !== img.dataset.alt) { const a = img.dataset.alt; delete img.dataset.alt; img.src = a; return; }
+    const b = document.createElement("b"); b.textContent = (img.alt || "?").slice(0, 4); img.replaceWith(b); return;
+  }
   if (!(img instanceof HTMLImageElement) || !img.src.includes("a.espncdn.com/")) return;
   const m = img.src.match(/combiner\/i\?img=([^&]+)/);
   if (m) { img.src = `https://a.espncdn.com${decodeURIComponent(m[1])}`; return; }
@@ -1211,7 +1217,7 @@ function sheetHtml(g, d) {
     const l = (list || []).slice(0, 5);
     if (!l.length) return "<em>—</em>";
     const boxes = l.map((e) => (e.id ? `<button type="button" class="${wl(e)}" data-past="${escapeCd(String(e.id))}" title="${tip(e)} · open gamecast"></button>` : `<i class="${wl(e)}" title="${tip(e)}"></i>`)).join("");
-    const chips = l.map((e) => `<${e.id ? `button type="button" data-past="${escapeCd(String(e.id))}"` : "span"} class="gs-g ${wl(e)}" title="${tip(e)}${e.id ? " · open gamecast" : ""}">${e.oppId || e.oppLogo ? `<img src="${escapeCd(e.oppId ? logoUrl(e.oppId) : e.oppLogo)}" alt="" loading="lazy">` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`}<small>${escapeCd((e.result || "").slice(0, 1).toUpperCase())} ${escapeCd(String(e.score || "").replace(/\s*OT$/i, "ᴼᵀ"))}</small></${e.id ? "button" : "span"}>`).join("");
+    const chips = l.map((e) => `<${e.id ? `button type="button" data-past="${escapeCd(String(e.id))}"` : "span"} class="gs-g ${wl(e)}" title="${tip(e)}${e.id ? " · open gamecast" : ""}">${e.oppId || e.oppLogo ? `<img src="${escapeCd(e.oppId ? logoUrl(e.oppId) : e.oppLogo)}" alt="${escapeCd(e.opp || "")}" loading="lazy"${e.oppLogo ? ` data-alt="${escapeCd(e.oppLogo)}"` : ""}>` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`}<small>${escapeCd((e.result || "").slice(0, 1).toUpperCase())} ${escapeCd(String(e.score || "").replace(/\s*OT$/i, "ᴼᵀ"))}</small></${e.id ? "button" : "span"}>`).join("");
     return `<span class="gs-box">${boxes}</span><span class="gs-logo">${chips}</span>`;
   };
   const fa = d?.fpi?.away, fh = d?.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
