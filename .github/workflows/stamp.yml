@@ -16,6 +16,7 @@ on:
       - "sim.js"
       - "gridcard.js"
       - "admin.js"
+      - "attract-facts.js"
       - "scout.js"
       - "sport.js"
       - "icons/**"
