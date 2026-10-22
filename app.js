@@ -7993,7 +7993,7 @@ async function openInsights(gameId) {
       : myPick ? (forMe ? `<em class="good">✓ Moved your way:</em> ${pts.toLowerCase()} better than the market.` : `<em class="bad">✗ Moved against you:</em> ${pts.toLowerCase()} worse than the market.`)
       : `${pts} better for ${esc(nowV > sealedV ? favAb : dogAb)} pickers.`;
     const ouSmall = mv?.overUnder ?? direct?.odds?.overUnder ?? null;
-    const small = [nowV !== null && nowMoved ? `${esc(oddsAb)} win odds ${wp(sealedV)}% → ${wp(nowV)}%` : "", openV !== null ? `Opened ${esc(lab(openV))}` : "", ouSmall !== null ? `O/U ${esc(ouSmall)}` : ""].filter(Boolean).join(" · ");
+    const small = [nowV !== null && nowMoved ? `${esc(oddsAb)} win odds ${wp(sealedV)}% → ${wp(nowV)}%` : "", openV !== null ? `Opened ${esc(lab(openV))}${openV * sealedV < 0 ? " (flipped since)" : ""}` : "", ouSmall !== null ? `O/U ${esc(ouSmall)}` : ""].filter(Boolean).join(" · ");
     const read = "";
     const l1 = say, l2 = small ? `<small class="lm-small">${small}</small>` : "";
     const open = "", move = "";
@@ -8008,7 +8008,7 @@ async function openInsights(gameId) {
     void tk;
     // Nothing moved (or no quote yet): no rail, just a terminal line.
     if (!nowMoved) {
-      const msg = nowV === null ? "NO LIVE LINE YET" : `NO CHANGE · ${esc(lab(sealedV))}`;
+      const msg = nowV === null ? "NO LIVE LINE YET" : `SAME AS OUR LINE · ${esc(lab(sealedV))}`;
       html += `<div class="lm lm-term lm-slim lm-still"><div class="lm-cmd"><span class="p">&gt;</span> ${msg}<span class="lm-cur">█</span></div>${small ? `<div class="lm-small">${small}</div>` : ""}</div>`;
     } else
     html += `<div class="lm lm-term lm-slim"><div class="lm-axis" style="--ticks:${ticks}">
