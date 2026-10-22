@@ -1594,6 +1594,7 @@ function validateSlate(body) {
       kickoff: new Date(kick).toISOString(),
       kickoffLabel: typeof g.kickoffLabel === "string" && g.kickoffLabel.trim() ? g.kickoffLabel.trim() : kickoffLabelFor(kick),
       tv: typeof g.tv === "string" ? g.tv.trim() : "",
+      ...(/^\d{4,12}$/.test(String(g.eventId || "")) ? { eventId: String(g.eventId) } : {}),
       ...(g.tiebreakerGame ? { tiebreakerGame: true } : {}),
     });
   }
@@ -1651,6 +1652,7 @@ async function autoSlate(env, { force = false } = {}) {
   for (const r of rows) {
     const g = games.find((x) => x.awayId === r.awayId && x.homeId === r.homeId);
     if (g) {
+      if (r.eventId && !g.eventId) g.eventId = r.eventId; // ESPN's game id, so phones can open its summary directly
       if (now >= Date.parse(g.kickoff)) continue;
       // A flexed kickoff always follows ESPN; the line only until the first pick.
       if (g.kickoff !== r.kickoff) { g.kickoff = r.kickoff; delete g.kickoffLabel; }
@@ -1705,6 +1707,7 @@ function buildNflRow(ev) {
     spread: Math.round(Math.abs(raw) * 2) / 2,
     kickoff: new Date(ev.date).toISOString(),
     tv: (c.broadcasts || []).flatMap((b) => b.names || [])[0] || "",
+    eventId: ev.id ? String(ev.id) : undefined,
   };
 }
 

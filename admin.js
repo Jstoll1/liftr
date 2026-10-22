@@ -565,7 +565,7 @@
         id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort,
         awayId: g.awayId, homeId: g.homeId,
         favorite: g.favSide === "away" ? g.away : g.home,
-        spread: g.spread, kickoff: g.kickoff, tv: g.tv,
+        spread: g.spread, kickoff: g.kickoff, tv: g.tv, eventId: g.key,
         ...(p.tiebreaker ? { tiebreakerGame: true } : {}),
       });
     }
