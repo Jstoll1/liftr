@@ -8116,3 +8116,5 @@ html.sheet .gs-g { gap: 3px; }
 @media (prefers-reduced-motion: reduce) { .qr-body { transition: none; } }
 .qr-five { justify-content: space-between; }
 .qr-g { flex: 1 1 0; max-width: 34px; width: auto; aspect-ratio: 1; height: auto; }
+/* Quick read: one compact block, centred in the card, whatever its width */
+.qr-grid { max-width: 360px; margin: 0 auto; }
