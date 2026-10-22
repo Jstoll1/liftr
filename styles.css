@@ -8087,3 +8087,13 @@ html.sheet .gs-g { gap: 3px; }
 /* Quick read: one compact block, centred in the card, whatever its width */
 .qr-grid { max-width: 360px; margin: 0 auto; }
 .qr-grid > small:nth-of-type(3) { justify-self: center; }
+
+/* Quick read arrow: in the gap under AT, so the card keeps its height */
+.hz-mid { position: relative; display: flex; align-items: center; justify-content: center; align-self: stretch; }
+.hz-mid .qr-tog { position: absolute; left: 50%; top: calc(50% + 14px); transform: translateX(-50%); width: 26px; height: 22px; line-height: 22px; border-radius: 6px; font-size: 11px; }
+.qr { margin: 0 -4px; }
+
+/* Team rank as a badge on the logo's bottom right; record under the name */
+.tm-lg { position: relative; display: inline-block; line-height: 0; }
+.tm-rk { position: absolute; right: -8px; bottom: 0; padding: 2px 4px; border-radius: 6px; background: #1a1430; border: 1px solid rgba(255, 210, 63, .6); color: #ffd23f; font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1; letter-spacing: 0; }
+.hz-rec:empty { display: none; }

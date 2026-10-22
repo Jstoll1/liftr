@@ -1274,14 +1274,19 @@ function qrBody(g, d) {
 }
 function quickReadHtml(g) {
   const open = qrOpen.has(g.id);
-  return `<div class="qr${open ? " open" : ""}"><div class="qr-body"><div class="qr-in">${open ? qrBody(g, sheetData[g.id]) : ""}</div></div><button type="button" class="qr-tog" aria-expanded="${open}" aria-label="${open ? "Hide" : "Show"} quick read">${open ? "▴" : "▾"}</button></div>`;
+  return `<div class="qr${open ? " open" : ""}"><div class="qr-body"><div class="qr-in">${open ? qrBody(g, sheetData[g.id]) : ""}</div></div></div>`;
+}
+// The arrow sits in the gap under AT, between the two pick columns.
+function qrToggleHtml(g) {
+  const open = qrOpen.has(g.id);
+  return `<button type="button" class="qr-tog" aria-expanded="${open}" aria-label="${open ? "Hide" : "Show"} quick read">${open ? "▴" : "▾"}</button>`;
 }
 gamesList?.addEventListener("click", (ev) => {
   const t = ev.target.closest(".qr-tog");
   if (t) {
     ev.stopPropagation();
     const card = t.closest(".game-card"), g = GAMES.find((x) => String(x.id) === card?.dataset.gameId); if (!g) return;
-    const box = t.closest(".qr"), inner = box.querySelector(".qr-in");
+    const box = card.querySelector(".qr"), inner = box?.querySelector(".qr-in"); if (!box) return;
     if (qrOpen.has(g.id)) { qrOpen.delete(g.id); box.classList.remove("open"); t.textContent = "▾"; t.setAttribute("aria-expanded", "false"); return; }
     qrOpen.add(g.id); inner.innerHTML = qrBody(g, sheetData[g.id]);
     requestAnimationFrame(() => box.classList.add("open")); t.textContent = "▴"; t.setAttribute("aria-expanded", "true");
@@ -2431,9 +2436,9 @@ function matchupCardsHtml(game, draft) {
     const suSelected = pickEqual(draft, { team, mode: "SU" });
     const pts = (n) => `<span class="pk-pts">${n}<i>PT</i></span>`;
     const id = `<div class="hz-tm${atsSelected || suSelected ? " picked" : ""}" data-tm="${escapeCd(team)}">
-        <img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+        <span class="tm-lg"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" decoding="async" onerror="this.style.visibility='hidden'" />${rank ? `<b class="tm-rk">#${rank}</b>` : ""}</span>
         <span class="hz-nm${nameSizeClass(short)}">${short}</span>
-        <span class="hz-rec">${record ? String(record).replace(/[^0-9-]/g, "") : ""}${rank ? `<b>#${rank}</b>` : ""}</span>
+        <span class="hz-rec">${record ? String(record).replace(/[^0-9-]/g, "") : ""}</span>
       </div>`;
     const chips = `<div class="hz-col">
         <button class="pick-mini-btn ats ${atsSelected ? "selected" : ""}" type="button" data-team="${team}" data-mode="ATS" title="${short} ${line} against the spread, 2 points">${lineHtml}${pts(2)}</button>
@@ -2445,7 +2450,7 @@ function matchupCardsHtml(game, draft) {
   const h = side(game.home, game.homeId, !awayIsFav, game.homeShort, live.homeRank, live.homeRecord);
   return `
     <div class="matchup-cards-row hz-row">
-      ${a.id}${a.chips}<div class="hz-at">AT</div>${h.chips}${h.id}
+      ${a.id}${a.chips}<div class="hz-mid"><div class="hz-at">AT</div>${typeof qrToggleHtml === "function" && !sheetOn() ? qrToggleHtml(game) : ""}</div>${h.chips}${h.id}
     </div>
   `;
 }
