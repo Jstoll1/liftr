@@ -1617,7 +1617,7 @@ function openAdmin() {
   if (adminScriptLoaded) return;
   adminScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "admin.js?v=202610221509";
+  tag.src = "admin.js?v=510660210318";
   tag.onerror = () => { adminScriptLoaded = false; window.alert("Could not load the slate editor."); closeAdmin(); };
   document.body.appendChild(tag);
 }
@@ -1686,7 +1686,7 @@ function openAppConsole() {
   if (consoleScriptLoaded) { window.showAppConsole?.(); return; }
   consoleScriptLoaded = true;
   const tag = document.createElement("script");
-  tag.src = "console.js?v=202610221509";
+  tag.src = "console.js?v=452248459630";
   // console.js shows itself once it loads.
   tag.onerror = () => { consoleScriptLoaded = false; window.alert("Could not load the console."); };
   document.body.appendChild(tag);
@@ -9299,7 +9299,7 @@ document.getElementById("season-panel")?.addEventListener("click", (e) => {
 // tag, and version.json carries whatever is deployed; when they differ
 // there is something to reload and the bar says so.
 const APP_VERSION = (() => {
-  try { return new URL(document.currentScript.src).searchParams.get("v") || ""; }
+  try { return document.querySelector('meta[name="build"]')?.content || new URL(document.currentScript.src).searchParams.get("v") || ""; }
   catch { return ""; }
 })();
 
