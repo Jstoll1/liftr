@@ -1,0 +1,25 @@
+name: Pick check
+# Read only. Runs the owner's pick check against both leagues and prints
+# counts and game numbers only: no names, no picks.
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check picks match the slate
+        env:
+          KEY: ${{ secrets.ARCHIVE_LOG_KEY }}
+        run: |
+          for w in liftr-ai liftr-nfl; do
+            body=$(curl -s "https://$w.jhs797.workers.dev/games?audit=1&key=$KEY")
+            echo "$body" | python3 -c "
+          import json, sys
+          try: d = json.load(sys.stdin)
+          except Exception: print('$w: no answer'); sys.exit()
+          if 'problems' not in d: print('$w: refused'); sys.exit()
+          p = d['problems']
+          slots = sorted({x['slot'] for x in p})
+          print(f\"$w week {d['week']}: {d['checked']} picks checked, {len(p)} mismatched\" + (f\" on games {slots}\" if p else ' (all match)'))
+          "
+          done
