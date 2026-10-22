@@ -915,7 +915,7 @@ html, body { overflow-x: hidden; }
     "wp-player": "Checked someone's odds to win the week", "wp-explain": "Read how win odds work", h2h: "Compared two players (VS)",
     "pot-open": "Opened the pot and standings", "pot-seen": "Looked at the pot and standings", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Looked at the week replay", "board-seen": "Looked at the leaderboard", "scores-seen": "Looked at the game scores", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
     "poll-view": "Saw the lock of the week vote (retired)", poll: "Voted on the lock of the week (retired)",
-    "quick-read": "Opened a game's quick read (FPI, ATS, last 5)", "side-open": "Opened the side bet sheet", "side-ask": "Opened the side bet from its invite",
+    "quick-read": "Opened a game's quick read (FPI, ATS, last 5)", "past-gamecast": "Opened a past game from a last five", "side-open": "Opened the side bet sheet", "side-ask": "Opened the side bet from its invite",
     "team-tap": "Tapped a team to open game info", "status-tap": "Tapped a game's status chip to open game info", "season-h2h": "Compared two players' seasons (VS)", "side-game": "Opened a side bet game",
     "lock-intro": "Saw the lock of the week announcement", "lock-intro-go": "Tapped Show me on the lock announcement", "lock-intro-ok": "Closed the lock announcement",
     "lock-set": "🔒 Set their lock of the week", "lock-cleared": "Took their lock off", "lock-nudge": "Got the \"no lock yet\" reminder", "lock-skip": "Skipped the lock this week",
@@ -1176,7 +1176,7 @@ html, body { overflow-x: hidden; }
     const seg = `<span class="seg end" role="group" aria-label="Range">${["3h", "6h", "12h", "24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
     // Features, day by day: how many people used each one (taps in the
     // cell's tooltip). Only features someone used this week show.
-    const FEATS = [["Gamecast", /^(gamecast|game-final|gamecast-log)$/], ["Game info", /^(game-info|team-tap|status-tap|insights-open|quick-read)$/], ["Game sim", /^sim$/], ["Path to Win", /^path-(run|card|share)$|^path-of-/], ["Head to head", /^h2h$|^sh2h/], ["Win odds", /^wp-/], ["Replay", /^recap-(card|seen)$/], ["Player card", /^player-card$/], ["Leaderboard", /^ranking-expand$|^board-seen$/], ["Pot and standings", /^pot-(open|seen|row)$/], ["Season stats", /^season-(open|seen)$/], ["Side bet", /^side/], ["History", /^history(-season|-ask)?$/], ["Trivia", /^trivia/], ["Lock of the week", /^lock-(set|cleared)$/]];
+    const FEATS = [["Gamecast", /^(gamecast|game-final|gamecast-log)$/], ["Game info", /^(game-info|team-tap|status-tap|insights-open)$/], ["Quick read", /^(quick-read|past-gamecast)$/], ["Game sim", /^sim$/], ["Path to Win", /^path-(run|card|share)$|^path-of-/], ["Head to head", /^h2h$|^sh2h/], ["Win odds", /^wp-/], ["Replay", /^recap-(card|seen)$/], ["Player card", /^player-card$/], ["Leaderboard", /^ranking-expand$|^board-seen$/], ["Pot and standings", /^pot-(open|seen|row)$/], ["Season stats", /^season-(open|seen)$/], ["Side bet", /^side/], ["History", /^history(-season|-ask)?$/], ["Trivia", /^trivia/], ["Lock of the week", /^lock-(set|cleared)$/]];
     const featGrid = () => {
       const ev = (wk.feed || []).filter((e) => e.at >= wFrom && (!st.filter || e.n === st.filter));
       const rows = FEATS.map(([lab, re]) => {
