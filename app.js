@@ -1204,8 +1204,8 @@ function sheetHtml(g, d) {
   const dots = (list) => {
     const l = (list || []).slice(0, 5);
     if (!l.length) return "<em>—</em>";
-    const boxes = l.map((e) => `<i class="${wl(e)}" title="${tip(e)}"></i>`).join("");
-    const chips = l.map((e) => `<span class="gs-g ${wl(e)}" title="${tip(e)}">${e.oppLogo ? `<img src="${escapeCd(e.oppLogo)}" alt="" loading="lazy">` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`}<small>${escapeCd((e.result || "").slice(0, 1).toUpperCase())} ${escapeCd(e.score || "")}</small></span>`).join("");
+    const boxes = l.map((e) => (e.id ? `<a class="${wl(e)}" href="https://www.espn.com/college-football/game/_/gameId/${encodeURIComponent(e.id)}" target="_blank" rel="noopener" title="${tip(e)} · open on ESPN"></a>` : `<i class="${wl(e)}" title="${tip(e)}"></i>`)).join("");
+    const chips = l.map((e) => `<${e.id ? `a href="https://www.espn.com/college-football/game/_/gameId/${encodeURIComponent(e.id)}" target="_blank" rel="noopener"` : "span"} class="gs-g ${wl(e)}" title="${tip(e)}${e.id ? " · open on ESPN" : ""}">${e.oppLogo ? `<img src="${escapeCd(e.oppLogo)}" alt="" loading="lazy">` : `<b>${escapeCd((e.opp || "?").slice(0, 4))}</b>`}<small>${escapeCd((e.result || "").slice(0, 1).toUpperCase())} ${escapeCd(String(e.score || "").replace(/\s*OT$/i, "ᴼᵀ"))}</small></${e.id ? "a" : "span"}>`).join("");
     return `<span class="gs-box">${boxes}</span><span class="gs-logo">${chips}</span>`;
   };
   const fa = d?.fpi?.away, fh = d?.fpi?.home, hasF = Number.isFinite(fa) && Number.isFinite(fh);
@@ -6886,7 +6886,7 @@ function parseSummaryClient(data, game) {
     return (block?.events || []).slice(0, 5).map((e) => ({
       result: e.gameResult || null, score: e.score || null,
       opp: e.opponent?.abbreviation || e.opponent?.displayName || null, oppName: e.opponent?.displayName || e.opponent?.location || null, oppId: e.opponent?.id || null, oppLogo: e.opponent?.logo || e.opponent?.logos?.[0]?.href || null,
-      at: e.atVs || null, date: e.gameDate || null,
+      at: e.atVs || null, date: e.gameDate || null, id: e.id || null,
     })).filter((e) => e.result || e.score);
   };
   // Team stats: whatever ESPN lists for both sides, matched by name.
