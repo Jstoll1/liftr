@@ -7958,3 +7958,9 @@ html[data-sport="nfl"] #logo-screen { display: none !important; }
   .lotw-bar.v2.on .lb-line b.long .me-n { display: none; }
   .lotw-bar.v2.on .lb-line b.long .me-a { display: inline; }
 }
+/* Wide screens: the lock row is centred as one group (pick + chip), not
+   pick at the left edge and chip at the right with a gap between. */
+@media (min-width: 700px) {
+  .lotw-bar.v2 { justify-content: center; gap: 22px !important; }
+  .lotw-bar.v2 .lb-tx { flex: 0 1 auto; }
+}
