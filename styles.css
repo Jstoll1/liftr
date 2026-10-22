@@ -8118,3 +8118,4 @@ html.sheet .gs-g { gap: 3px; }
 .qr-g { flex: 1 1 0; max-width: 34px; width: auto; aspect-ratio: 1; height: auto; }
 /* Quick read: one compact block, centred in the card, whatever its width */
 .qr-grid { max-width: 360px; margin: 0 auto; }
+.qr-grid > small:nth-of-type(3) { justify-self: center; }
