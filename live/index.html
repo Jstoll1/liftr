@@ -985,6 +985,7 @@ html, body { overflow-x: hidden; }
   // --- Data --------------------------------------------------------------
   async function poll(full) {
     clearTimeout(poll.t);
+    if (!runAudit.t) runAudit();
     try {
       const wantWeek = st.range === "7d" && (full || !st.wk || Date.now() - st.wk.at > 60000);
       const res = await fetch(`${WORKER}/presence?${auth()}${full ? "&seen=1" : ""}${wantWeek ? "&days=7" : ""}&t=${Date.now()}`, { cache: "no-store" });
@@ -1030,7 +1031,7 @@ html, body { overflow-x: hidden; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1238,6 +1239,12 @@ html, body { overflow-x: hidden; }
       </section>`;
     };
     // Since you last looked: one line, each part jumps to its section.
+    // The pick check, run quietly on open: shown only when a saved pick no
+    // longer sits on a game with its team in it.
+    const auditStrip = () => {
+      const a = st.audit; if (!a?.problems?.length) return "";
+      return `<section class="newstrip" style="border-color:#ff4f6d"><span class="ns-h" style="color:#ff4f6d">⚠ ${a.problems.length} PICK${a.problems.length === 1 ? " DOESN'T" : "S DON'T"} MATCH THEIR GAME</span><button type="button" data-audit="1" class="warn">See who</button></section>`;
+    };
     const newStrip = () => {
       const visNew = vs.filter((v) => !v.live && v.end > seenBase.at).length;
       const fNew = (room.feed || []).filter((e) => FRICTION.test(e.k) && e.at > seenBase.at).length;
@@ -1402,7 +1409,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}<div class="vote-wrap">${newStrip()}</div>${timeline}${feedHtml}${rail}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${auditStrip()}${newStrip()}</div>${timeline}${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
@@ -1593,6 +1600,10 @@ html, body { overflow-x: hidden; }
 
   // The clipboard, called straight from the tap so iOS allows it; an older
   // browser gets a hidden text box and the copy command instead.
+  async function runAudit() {
+    clearTimeout(runAudit.t); runAudit.t = setTimeout(runAudit, 10 * 60000);
+    try { const x = await fetch(`${WORKER}/games?audit=1&${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const a = await x.json(); if (Array.isArray(a?.problems)) { st.audit = a; st.sig = ""; render(); } } } catch {}
+  }
   async function copyText(text) {
     try { await navigator.clipboard.writeText(text); return true; } catch {}
     const ta = document.createElement("textarea");
