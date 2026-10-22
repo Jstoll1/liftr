@@ -1232,7 +1232,8 @@ const teamAtsCache = {};
 function teamAts(teamId) {
   if (!teamId) return Promise.resolve(null);
   if (teamAtsCache[teamId]) return teamAtsCache[teamId];
-  const yr = new Date(GAMES[0]?.kickoff || Date.now()).getFullYear();
+  const k = new Date(GAMES[0]?.kickoff || Date.now());
+  const yr = k.getMonth() < 3 ? k.getFullYear() - 1 : k.getFullYear(); // bowl games in January belong to last season
   teamAtsCache[teamId] = withTimeout(fetch(`https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/${yr}/types/2/teams/${teamId}/ats`).then((r) => (r.ok ? r.json() : null)), 5000, null)
     .then((j) => {
       const items = j?.items || [];
