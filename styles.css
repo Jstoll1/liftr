@@ -8193,3 +8193,24 @@ html.sheet .gs-t.no-ats { grid-template-columns: 22px minmax(52px, 1fr) auto; }
 .wks-r.me { outline: 1px solid var(--neon-cyan); background: rgba(5, 217, 232, .08); }
 .modal-card.wks-card { padding: 8px 16px 14px; gap: 0; }
 .wks-card .wks-grab { margin: 0 auto 4px; }
+
+/* Champions sheet: trophy tally, weekly winners, league champions by year. */
+.plc-badges button.gold { font: inherit; color: inherit; cursor: pointer; }
+#wk-stand { z-index: 1310; }
+.chp-sec { margin: 12px 0 6px; font-size: 10.5px; letter-spacing: .1em; color: var(--text-meta); }
+.chp-sec span { letter-spacing: 0; opacity: .7; margin-left: 6px; }
+.chp-board { display: flex; flex-wrap: wrap; gap: 6px; }
+.chp-t { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(255, 228, 94, .1); border: 1px solid rgba(255, 228, 94, .4); }
+.chp-t b { font-size: 13px; }
+.chp-t i { font-style: normal; font-size: 12px; color: var(--neon-yellow); }
+.chp-t.me, .chp-years .me { box-shadow: 0 0 0 1px var(--neon-cyan); }
+.chp-weeks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.chp-w { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 6px; padding: 7px 9px; border-radius: 8px; border: 0; background: rgba(255, 255, 255, .04); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.chp-w em { font-style: normal; font-size: 11px; color: var(--text-meta); }
+.chp-w b { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--neon-yellow); }
+.chp-w b .me { color: var(--neon-cyan); }
+.chp-w i { font-style: normal; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-meta); }
+.chp-years { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.chp-years span { display: flex; align-items: baseline; gap: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, .03); }
+.chp-years em { font-style: normal; font-size: 11px; color: var(--text-meta); font-variant-numeric: tabular-nums; }
+.chp-years b { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

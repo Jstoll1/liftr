@@ -9314,6 +9314,7 @@ function openPlayerCard(name, again) {
   if (!m.dataset.pickTap) {
     m.dataset.pickTap = "1";
     m.addEventListener("click", (e) => {
+      if (e.target.closest("[data-champs]")) return openChampions(m.dataset.name);
       const wk = e.target.closest("[data-wkstand]");
       if (wk) return openWeekStandings(Number(wk.dataset.wkstand), m.dataset.name);
       const pk = e.target.closest(".plc-pick");
@@ -9326,7 +9327,7 @@ function openPlayerCard(name, again) {
     <div class="plc-top">
       <div class="plc-av"><span>${avatarOverrides[name] || shown(name)[0]}</span></div>
       <div class="plc-id"><small>PLAYER ${String(MANAGERS.indexOf(name) + 1).padStart(2, "0")}</small><b>${esc(shown(name).toUpperCase())}</b>
-        <div class="plc-badges">${pr.seasonPlace ? `<span class="rank">${pr.tied ? "T" : "#"}${pr.seasonPlace}</span>` : ""}<span>${pts} PTS</span>${pr.earned ? `<span class="cash">${money(pr.earned)}</span>` : ""}${d.wins.length ? `<span class="gold"><i class="plc-tro">🏆</i>×${d.wins.length}</span>` : ""}</div></div>
+        <div class="plc-badges">${pr.seasonPlace ? `<span class="rank">${pr.tied ? "T" : "#"}${pr.seasonPlace}</span>` : ""}<span>${pts} PTS</span>${pr.earned ? `<span class="cash">${money(pr.earned)}</span>` : ""}${d.wins.length ? `<button type="button" class="gold" data-champs="1" aria-label="All champions"><i class="plc-tro">🏆</i>×${d.wins.length}</button>` : ""}</div></div>
     </div>
     ${d.scores.length ? `
     <div class="plc-sec">POINTS EACH WEEK <span>gold = won the week</span></div>
@@ -9352,6 +9353,48 @@ document.addEventListener("click", (e) => {
   if (chip?.dataset.name) { e.stopPropagation(); return openPlayerCard(chip.dataset.name); }
 }, true);
 
+// A sheet that slides up over a card: swipe down, the X or a tap outside
+// goes back to what is underneath.
+function bottomSheet(id) {
+  let m = document.getElementById(id);
+  if (m) return m;
+  m = document.createElement("div");
+  m.id = id; m.className = "modal-overlay wks-modal hidden"; m.setAttribute("role", "dialog");
+  document.body.appendChild(m);
+  m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wks-x")) m.classList.add("hidden"); });
+  let y0 = null, dy = 0;
+  m.addEventListener("touchstart", (e) => { const c = m.querySelector(".wks-card"); if (!c || c.scrollTop > 0) return; y0 = e.touches[0].clientY; dy = 0; c.style.transition = "none"; }, { passive: true });
+  m.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); m.querySelector(".wks-card").style.transform = `translateY(${dy}px)`; }, { passive: true });
+  m.addEventListener("touchend", () => { if (y0 == null) return; const c = m.querySelector(".wks-card"); c.style.transition = ""; c.style.transform = ""; if (dy > 70) m.classList.add("hidden"); y0 = null; });
+  return m;
+}
+
+// --- Champions ------------------------------------------------------------
+// The trophy on a player card: every week's winner this season, the trophy
+// count, and the league's champions by year, on one screen.
+function openChampions(name) {
+  const esc = escapeCd;
+  const weeks = Object.values(weekSummaries).filter((w) => w?.rows?.length && w.complete !== false).sort((a, b) => a.week - b.week);
+  const winnersOf = (w) => w.winners?.length ? w.winners : (() => { const top = Math.max(...w.rows.map((r) => r.score)); return w.rows.filter((r) => r.score === top).map((r) => r.name); })();
+  const tally = {};
+  for (const w of weeks) for (const n of winnersOf(w)) tally[n] = (tally[n] || 0) + 1;
+  const board = Object.entries(tally).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const nm = (n) => `<span class="${n === name ? "me" : ""}">${esc(shown(n))}</span>`;
+  const weekRows = weeks.map((w) => { const win = winnersOf(w); const sc = w.rows.find((r) => r.name === win[0])?.score;
+    return `<button type="button" class="chp-w" data-wkstand="${w.week}"><em>W${w.week}</em><b>${win.map(nm).join(" & ")}</b><i>${sc ?? ""}</i></button>`; }).join("");
+  const seasons = typeof S === "object" && S ? Object.values(S).filter((x) => x.champion).sort((a, b) => b.year - a.year) : [];
+  const m = bottomSheet("champs");
+  m.innerHTML = `<div class="modal-card wks-card chp-card"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>🏆 CHAMPIONS</b><small>WINNERS &amp; TITLES</small><button type="button" class="wks-x" aria-label="Back to the card">✕</button></div>
+    ${board.length ? `<div class="chp-sec">TROPHIES THIS SEASON</div><div class="chp-board">${board.map(([n, c]) => `<span class="chp-t${n === name ? " me" : ""}"><b>${esc(shown(n))}</b><i>🏆×${c}</i></span>`).join("")}</div>` : ""}
+    ${weeks.length ? `<div class="chp-sec">WEEKLY WINNERS <span>tap a week for standings</span></div><div class="chp-weeks">${weekRows}</div>` : `<div class="chp-sec">No finished weeks yet.</div>`}
+    ${seasons.length ? `<div class="chp-sec">LEAGUE CHAMPIONS</div><div class="chp-years">${seasons.map((x) => `<span class="${x.champion === name ? "me" : ""}"><em>${x.year}</em><b>${esc(shown(x.champion))}</b></span>`).join("")}</div>` : ""}
+  </div>`;
+  m.onclick = (e) => { const w = e.target.closest("[data-wkstand]"); if (w) openWeekStandings(Number(w.dataset.wkstand), name); };
+  noteUse("champions", name);
+  m.classList.remove("hidden");
+}
+
 // --- Week standings ------------------------------------------------------
 // A bar on a player card opens that week's final standings over the card.
 // Swipe down, the X or a tap outside goes back to the card.
@@ -9364,18 +9407,7 @@ function openWeekStandings(week, name) {
   let place = 0;
   const list = rows.map((r, i) => { if (i === 0 || r.score !== rows[i - 1].score) place = i + 1; const tied = rows.filter((x) => x.score === r.score).length > 1;
     return `<div class="wks-r${winners.includes(r.name) ? " won" : ""}${r.name === name ? " me" : ""}"><span class="wks-p">${tied ? "T" : ""}${place}</span><span class="wks-n">${escapeCd(shown(r.name))}</span><b class="wks-s">${r.score}</b></div>`; }).join("");
-  let m = document.getElementById("wk-stand");
-  if (!m) {
-    m = document.createElement("div");
-    m.id = "wk-stand"; m.className = "modal-overlay wks-modal hidden"; m.setAttribute("role", "dialog");
-    document.body.appendChild(m);
-    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wks-x")) m.classList.add("hidden"); });
-    // Swipe down to go back: the sheet follows the finger, past 70px it closes.
-    let y0 = null, dy = 0;
-    m.addEventListener("touchstart", (e) => { const c = m.querySelector(".wks-card"); if (!c || c.scrollTop > 0) return; y0 = e.touches[0].clientY; dy = 0; c.style.transition = "none"; }, { passive: true });
-    m.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); m.querySelector(".wks-card").style.transform = `translateY(${dy}px)`; }, { passive: true });
-    m.addEventListener("touchend", () => { if (y0 == null) return; const c = m.querySelector(".wks-card"); c.style.transition = ""; c.style.transform = ""; if (dy > 70) m.classList.add("hidden"); y0 = null; });
-  }
+  const m = bottomSheet("wk-stand");
   m.innerHTML = `<div class="modal-card wks-card"><i class="wks-grab" aria-hidden="true"></i>
     <div class="wks-h"><b>WEEK ${week}</b><small>FINAL STANDINGS</small><button type="button" class="wks-x" aria-label="Back to the card">✕</button></div><div class="wks-list">${list}</div></div>`;
   noteUse("week-standings", String(week));
