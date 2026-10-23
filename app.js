@@ -6659,8 +6659,8 @@ function renderPicksCountdown() {
   const st = currentManager ? getManagerState(currentManager) : null;
   const picked = st ? GAMES.filter((g) => st.picks[g.id]).length : 0;
   const tbSet = !!(st && String(st.tiebreaker ?? "").trim());
-  // A missing chip is a shortcut to what is missing.
-  const chip = (ok, txt, go) => (ok ? `<span class="cd-chip ok">${txt} ✓</span>` : `<button type="button" class="cd-chip miss" data-cdgo="${go}" aria-label="Go to what is missing">${txt} !</button>`);
+  // Every chip opens the grid check: what is missing, or that you are set.
+  const chip = (ok, txt, go) => `<button type="button" class="cd-chip ${ok ? "ok" : "miss"}" data-cdgo="${go}" aria-label="Open grid check">${txt} ${ok ? "✓" : "!"}</button>`;
   const riding = st ? GAMES.reduce((n, g) => n + (st.picks[g.id] ? pickWorth(g, st.picks[g.id]) : 0), 0) : 0;
   const status = st ? `<span class="cd-card"><em>YOUR CARD</em><span class="cd-riding"><b>${riding}</b><i>PT<br>RIDING</i></span><span class="cd-status">${chip(picked === GAMES.length, `${picked}/${GAMES.length}`, "game")}${chip(tbSet, "TB", "tb")}</span></span>` : "";
   // Under an hour the whole slate is about to lock, so the strip goes hot.
