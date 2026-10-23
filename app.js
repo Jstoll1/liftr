@@ -1640,13 +1640,16 @@ function endSession() {
 document.addEventListener("visibilitychange", () => { if (document.hidden) endSession(); else if (sessionStart == null) sessionStart = Date.now(); });
 addEventListener("pagehide", endSession);
 
-// Jake's dead taps go to their own log on the live page, never into usage.
-function adminFriction(d) {
+// Jake's friction (errors, rage taps, dead taps, sheets shut at once) goes
+// to its own log on the live page, never into league usage.
+const FRICTION_KINDS = new Set(["js-error", "rage", "dead-tap", "quick-exit"]);
+function adminFriction(k, d) {
   if (!WORKER_URL || PREVIEW || window.__liveView) return;
-  const body = JSON.stringify({ manager: "Jake", d, screen: presenceScreen });
+  const body = JSON.stringify({ manager: "Jake", k, d, screen: presenceScreen });
   try { if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/admin-friction`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/admin-friction`, { method: "POST", body, keepalive: true }).catch(() => {}); } catch {}
 }
 function track(path, extra) {
+  if (extra?.event && FRICTION_KINDS.has(path) && loadMe() === "Jake") { adminFriction(path, extra.d); return; }
   noteUse(path, extra?.d);
   try {
     if (PREVIEW || window.__liveView || window.LEAGUE?.features?.analytics === false || !window.goatcounter || typeof window.goatcounter.count !== "function") return;
@@ -9962,7 +9965,7 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
     // space between bets) is a near miss, not a dead control.
     if (el.querySelector?.("button, a, [role=button]")) return;
     mutated = false;
-    setTimeout(() => { if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); if (loadMe() === "Jake") adminFriction(label(el)); else track("dead-tap", { event: true, d: label(el) }); } }, 700);
+    setTimeout(() => { if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); track("dead-tap", { event: true, d: label(el) }); } }, 700);
   }, { capture: true, passive: true });
   // Sheets: time open, and closed almost at once.
   const opened = new Map();
