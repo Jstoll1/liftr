@@ -3931,9 +3931,9 @@ async function handleVisit(request, env, corsHeaders, url) {
   return json({ ok: true }, 200, corsHeaders);
 }
 
-// The admin's own dead taps, kept apart from league usage: Jake's visits
-// stay untracked, but where he taps and nothing happens is worth fixing.
-// Last 100, two weeks.
+// The admin's own friction (errors, rage and dead taps, sheets shut at
+// once), kept apart from league usage: Jake's visits stay untracked, but
+// where the app trips him up is worth fixing. Last 200, two weeks.
 const ADMIN_FRICTION_KEY = "admin-friction";
 async function handleAdminFriction(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
@@ -3944,11 +3944,11 @@ async function handleAdminFriction(request, env, corsHeaders, url) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
   if (!VISITS_NOT_TRACKED.has(body?.manager)) return json({ ok: true, tracked: false }, 200, corsHeaders);
-  const d = String(body.d || "").slice(0, 80), screen = String(body.screen || "").slice(0, 24);
-  if (!d) return json({ error: "Nothing to log" }, 400, corsHeaders);
+  const k = ["js-error", "rage", "dead-tap", "quick-exit"].includes(body.k) ? body.k : "dead-tap";
+  const d = String(body.d || "").slice(0, 120), screen = String(body.screen || "").slice(0, 24);
   const now = Date.now();
   const list = ((await env.LIFTR_KV.get(ADMIN_FRICTION_KEY, "json")) || []).filter((r) => now - r.at < 14 * 86400000);
-  list.unshift({ at: now, d, screen });
-  await env.LIFTR_KV.put(ADMIN_FRICTION_KEY, JSON.stringify(list.slice(0, 100)), { expirationTtl: 14 * 86400 });
+  list.unshift({ at: now, k, d, screen });
+  await env.LIFTR_KV.put(ADMIN_FRICTION_KEY, JSON.stringify(list.slice(0, 200)), { expirationTtl: 14 * 86400 });
   return json({ ok: true }, 200, corsHeaders);
 }

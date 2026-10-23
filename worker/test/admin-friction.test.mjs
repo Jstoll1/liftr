@@ -12,9 +12,9 @@ const call = (e, path, body) => worker.fetch(new Request(`https://w.test${path}`
 test("admin friction: only Jake's dead taps are kept, admin only to read", async () => {
   const e = env();
   assert.equal((await (await call(e, "/admin-friction", { manager: "Robert", d: ".x “1”" })).json()).tracked, false);
-  assert.equal((await call(e, "/admin-friction", { manager: "Jake", d: ".cd-chip “9/10 !”", screen: "picks" })).status, 200);
+  assert.equal((await call(e, "/admin-friction", { manager: "Jake", k: "rage", d: ".cd-chip “9/10 !”", screen: "picks" })).status, 200);
   assert.equal((await call(e, "/admin-friction")).status, 403);
   const { taps } = await (await call(e, "/admin-friction?key=adm")).json();
   assert.equal(taps.length, 1);
-  assert.deepEqual([taps[0].d, taps[0].screen], [".cd-chip “9/10 !”", "picks"]);
+  assert.deepEqual([taps[0].k, taps[0].d, taps[0].screen], ["rage", ".cd-chip “9/10 !”", "picks"]);
 });
