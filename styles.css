@@ -8221,3 +8221,6 @@ button.plc-av { padding: 0; font: inherit; color: inherit; cursor: pointer; }
    above instead of sitting alone on the left. */
 .ww-hits2 > :last-child:nth-child(odd), .chp-weeks > :last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 3px); }
 .chp-board { justify-content: center; }
+.plc-sb[data-statrank] { cursor: pointer; }
+.str-note { font-size: 11px; font-weight: 400; color: var(--text-meta); }
+.wks-r.lead .wks-n, .wks-r.lead .wks-s { color: var(--neon-yellow); }
