@@ -8120,3 +8120,24 @@ html:not(.qr-seen) .hz-mid .qr-tog { animation: qr-glint 6s ease-in-out 2s infin
 
 /* Wide wordmark logos (LSU): scaled, not resized, so the card keeps its height. */
 .hz-tm .tm-logo.wide { transform: scale(1.4); }
+
+/* Week standings over a player card: tap a weekly bar, swipe down to go back. */
+.plc-bars i[data-wkstand] { cursor: pointer; }
+.wks-modal { z-index: 1300; align-items: flex-end; }
+.wks-card { position: relative; width: min(420px, 100%); max-height: 78vh; overflow-y: auto; padding: 10px 16px 18px; border-radius: 18px 18px 0 0; transition: transform .2s ease; }
+.wks-grab { display: block; width: 40px; height: 4px; margin: 0 auto 10px; border-radius: 4px; background: rgba(255, 255, 255, .25); }
+.wks-x { margin-left: auto; flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .08); color: var(--text); font-size: 14px; cursor: pointer; }
+.wks-h { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.wks-h b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 12px; color: var(--neon-yellow); }
+.wks-h small { font-size: 11px; letter-spacing: .08em; color: var(--text-meta); }
+.wks-r { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; }
+.wks-r + .wks-r { margin-top: 2px; }
+.wks-r:nth-child(odd) { background: rgba(255, 255, 255, .03); }
+.wks-p { font-size: 12px; color: var(--text-meta); font-variant-numeric: tabular-nums; }
+.wks-n { font-size: 15px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wks-s { font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; font-variant-numeric: tabular-nums; }
+.wks-r.won .wks-n, .wks-r.won .wks-s { color: var(--neon-yellow); }
+.wks-r.won .wks-p::after { content: " 🏆"; }
+.wks-r.me { outline: 1px solid var(--neon-cyan); background: rgba(5, 217, 232, .08); }
+.modal-card.wks-card { padding: 8px 16px 14px; gap: 0; }
+.wks-card .wks-grab { margin: 0 auto 4px; }

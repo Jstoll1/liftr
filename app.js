@@ -9116,6 +9116,8 @@ function openPlayerCard(name, again) {
   if (!m.dataset.pickTap) {
     m.dataset.pickTap = "1";
     m.addEventListener("click", (e) => {
+      const wk = e.target.closest("[data-wkstand]");
+      if (wk) return openWeekStandings(Number(wk.dataset.wkstand), m.dataset.name);
       const pk = e.target.closest(".plc-pick");
       if (!pk || e.target.closest(".pick-chip")) return;
       pk.classList.toggle("open");
@@ -9130,7 +9132,7 @@ function openPlayerCard(name, again) {
     </div>
     ${d.scores.length ? `
     <div class="plc-sec">POINTS EACH WEEK <span>gold = won the week</span></div>
-    <div class="plc-bars">${d.scores.map((x) => `<i class="${x.won ? "won" : ""}${x === d.top ? " top" : ""}"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`).join("")}</div>
+    <div class="plc-bars">${d.scores.map((x) => `<i data-wkstand="${x.week}" class="${x.won ? "won" : ""}${x === d.top ? " top" : ""}"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`).join("")}</div>
     <div class="plc-sec">STATS</div>
     <div class="plc-stats">
       ${bar("AVG WEEK", `${d.avg.toFixed(1)}`, d.avg / 20, "pts")}
@@ -9151,6 +9153,36 @@ document.addEventListener("click", (e) => {
   const chip = e.target.closest?.("#recap-panel .pick-chip");
   if (chip?.dataset.name) { e.stopPropagation(); return openPlayerCard(chip.dataset.name); }
 }, true);
+
+// --- Week standings ------------------------------------------------------
+// A bar on a player card opens that week's final standings over the card.
+// Swipe down, the X or a tap outside goes back to the card.
+function openWeekStandings(week, name) {
+  const w = weekSummaries[week];
+  if (!w?.rows?.length) return;
+  const rows = [...w.rows].sort((a, b) => b.score - a.score);
+  const top = rows[0].score;
+  const winners = w.winners || rows.filter((r) => r.score === top).map((r) => r.name);
+  let place = 0;
+  const list = rows.map((r, i) => { if (i === 0 || r.score !== rows[i - 1].score) place = i + 1; const tied = rows.filter((x) => x.score === r.score).length > 1;
+    return `<div class="wks-r${winners.includes(r.name) ? " won" : ""}${r.name === name ? " me" : ""}"><span class="wks-p">${tied ? "T" : ""}${place}</span><span class="wks-n">${escapeCd(shown(r.name))}</span><b class="wks-s">${r.score}</b></div>`; }).join("");
+  let m = document.getElementById("wk-stand");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "wk-stand"; m.className = "modal-overlay wks-modal hidden"; m.setAttribute("role", "dialog");
+    document.body.appendChild(m);
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wks-x")) m.classList.add("hidden"); });
+    // Swipe down to go back: the sheet follows the finger, past 70px it closes.
+    let y0 = null, dy = 0;
+    m.addEventListener("touchstart", (e) => { const c = m.querySelector(".wks-card"); if (!c || c.scrollTop > 0) return; y0 = e.touches[0].clientY; dy = 0; c.style.transition = "none"; }, { passive: true });
+    m.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); m.querySelector(".wks-card").style.transform = `translateY(${dy}px)`; }, { passive: true });
+    m.addEventListener("touchend", () => { if (y0 == null) return; const c = m.querySelector(".wks-card"); c.style.transition = ""; c.style.transform = ""; if (dy > 70) m.classList.add("hidden"); y0 = null; });
+  }
+  m.innerHTML = `<div class="modal-card wks-card"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>WEEK ${week}</b><small>FINAL STANDINGS</small><button type="button" class="wks-x" aria-label="Back to the card">✕</button></div><div class="wks-list">${list}</div></div>`;
+  noteUse("week-standings", String(week));
+  m.classList.remove("hidden");
+}
 
 // --- Week win card --------------------------------------------------------
 // Tap a trophy in The Pot (or a gold week on the season bar): how that
@@ -9708,10 +9740,18 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
   // reading the game info stats is not a tap that expected anything.
   document.addEventListener("click", (e) => {
     const el = e.target;
-    if (el instanceof Element && el.closest("[class^=ins-], [class*=' ins-']")) return;
-    if (!(el instanceof Element) || interactive(el) || !(el.textContent || "").trim() && el.tagName !== "IMG") return;
-    // Looks tappable: an image, a logo, a badge, a name, a number.
-    if (!el.closest("img, [class*=logo], [class*=badge], [class*=chip], [class*=score], [class*=name], [class*=card], [class*=row]")) return;
+    if (!(el instanceof Element)) return;
+    // The admin sees every dead tap in a popup: overlays close on a tap, so
+    // the whole sheet reads as a pointer and the league filter skips it.
+    const popup = loadMe() === "Jake" && el.closest("[role=dialog], .modal-overlay, .wpx-overlay");
+    if (popup) {
+      if (el === popup || el.closest("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-past], [data-pot-row]")) return;
+    } else {
+      if (el.closest("[class^=ins-], [class*=' ins-']")) return;
+      if (interactive(el) || !(el.textContent || "").trim() && el.tagName !== "IMG") return;
+      // Looks tappable: an image, a logo, a badge, a name, a number.
+      if (!el.closest("img, [class*=logo], [class*=badge], [class*=chip], [class*=score], [class*=name], [class*=card], [class*=row]")) return;
+    }
     // A tap in the gap of a container that holds buttons (a card's row, the
     // space between bets) is a near miss, not a dead control.
     if (el.querySelector?.("button, a, [role=button]")) return;
