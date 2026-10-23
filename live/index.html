@@ -1096,7 +1096,8 @@ html, body { overflow-x: hidden; }
     const wk = st.range === "7d" ? st.wk : null;
     const wFrom = today0 - 6 * DAY;
     const wv = wk ? [
-      ...Object.entries(wk.sessions).flatMap(([n, list]) => list.map(([at, ms, f]) => ({ n, start: at, end: at + Math.max(ms, 1000), f: f || [] }))),
+      // A visit sent twice (a retry after a dropped connection) shows once.
+      ...Object.entries(wk.sessions).flatMap(([n, list]) => list.filter(([at], i) => !list.slice(0, i).some(([b]) => Math.abs(b - at) < 5000)).map(([at, ms, f]) => ({ n, start: at, end: at + Math.max(ms, 1000), f: f || [] }))),
       ...inNow.map((n) => ({ n, start: people[n].since, end: now, f: [], live: true })),
       // Visits from the last day the session log has not caught yet: one
       // put away without a goodbye (an app closed or a phone that slept)
