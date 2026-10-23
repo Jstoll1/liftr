@@ -9315,6 +9315,16 @@ function openPlayerCard(name, again) {
     m.dataset.pickTap = "1";
     m.addEventListener("click", (e) => {
       if (e.target.closest("[data-champs]")) return openChampions(m.dataset.name);
+      // The avatar: yours opens the avatar editor, anyone else's the season
+      // head to head, you against them.
+      if (e.target.closest("[data-plcav]")) {
+        const who = m.dataset.name;
+        m.classList.add("hidden");
+        if (who === currentManager) return openAvatarEditor(who, accentFor(who));
+        if (currentManager && MANAGERS.includes(currentManager)) sh2h.a = currentManager;
+        sh2h.b = who;
+        return openSeasonH2H();
+      }
       const wk = e.target.closest("[data-wkstand]");
       if (wk) return openWeekStandings(Number(wk.dataset.wkstand), m.dataset.name);
       const pk = e.target.closest(".plc-pick");
@@ -9325,7 +9335,7 @@ function openPlayerCard(name, again) {
   m.innerHTML = `<div class="modal-card plc-card">
     <button type="button" class="plc-x" aria-label="Close">✕</button>
     <div class="plc-top">
-      <div class="plc-av"><span>${avatarOverrides[name] || shown(name)[0]}</span></div>
+      <button type="button" class="plc-av" data-plcav="1" aria-label="${name === currentManager ? "Change your avatar" : `Season head to head with ${esc(shown(name))}`}"><span>${avatarOverrides[name] || shown(name)[0]}</span></button>
       <div class="plc-id"><small>PLAYER ${String(MANAGERS.indexOf(name) + 1).padStart(2, "0")}</small><b>${esc(shown(name).toUpperCase())}</b>
         <div class="plc-badges">${pr.seasonPlace ? `<span class="rank">${pr.tied ? "T" : "#"}${pr.seasonPlace}</span>` : ""}<span>${pts} PTS</span>${pr.earned ? `<span class="cash">${money(pr.earned)}</span>` : ""}${d.wins.length ? `<button type="button" class="gold" data-champs="1" aria-label="All champions"><i class="plc-tro">🏆</i>×${d.wins.length}</button>` : ""}</div></div>
     </div>
@@ -9385,7 +9395,7 @@ function openChampions(name) {
   const seasons = typeof S === "object" && S ? Object.values(S).filter((x) => x.champion).sort((a, b) => b.year - a.year) : [];
   const m = bottomSheet("champs");
   m.innerHTML = `<div class="modal-card wks-card chp-card"><i class="wks-grab" aria-hidden="true"></i>
-    <div class="wks-h"><b>🏆 CHAMPIONS</b><small>WINNERS &amp; TITLES</small><button type="button" class="wks-x" aria-label="Back to the card">✕</button></div>
+    <div class="wks-h"><b>🏆 PICK 'EM CHAMPIONS</b><button type="button" class="wks-x" aria-label="Back to the card">✕</button></div>
     ${board.length ? `<div class="chp-sec">TROPHIES THIS SEASON</div><div class="chp-board">${board.map(([n, c]) => `<span class="chp-t${n === name ? " me" : ""}"><b>${esc(shown(n))}</b><i>🏆×${c}</i></span>`).join("")}</div>` : ""}
     ${weeks.length ? `<div class="chp-sec">WEEKLY WINNERS <span>tap a week for standings</span></div><div class="chp-weeks">${weekRows}</div>` : `<div class="chp-sec">No finished weeks yet.</div>`}
     ${seasons.length ? `<div class="chp-sec">LEAGUE CHAMPIONS</div><div class="chp-years">${seasons.map((x) => `<span class="${x.champion === name ? "me" : ""}"><em>${x.year}</em><b>${esc(shown(x.champion))}</b></span>`).join("")}</div>` : ""}
