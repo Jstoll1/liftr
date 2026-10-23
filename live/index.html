@@ -669,28 +669,31 @@ html, body { overflow-x: hidden; }
   .au-list { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 8px; align-items: start; margin-top: 10px; }
   .au-head .ns-h b { display: block; font-weight: 800; }
   .au-head .ns-h small { display: block; margin-top: 5px; font: 500 12px/1.3 var(--sans, system-ui); letter-spacing: 0; color: var(--muted, #a9a3c7); text-transform: none; }
-  .afr { margin: 18px 0 8px; padding: 12px 14px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 14px; background: rgba(255, 255, 255, .03); }
-  .afr-h { display: flex; align-items: baseline; gap: 10px; }
-  .afr-h b { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #ffb3c8; }
-  .afr-h small { margin-left: auto; font-size: 12px; color: var(--muted, #8e88ad); }
-  .afr-h b { white-space: nowrap; }
-  .afr-h .au-cp { flex: none; margin: 0; font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .18); background: rgba(255, 255, 255, .06); color: #fff; cursor: pointer; }
-  .afr-day { margin: 12px 0 2px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #8e88ad); }
-  .afr-r { display: grid; grid-template-columns: 24px 62px 1fr; row-gap: 3px; align-items: baseline; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, .06); }
-  .afr-t { font-size: 12px; color: var(--muted, #8e88ad); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .afr-k { justify-self: start; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; border: 1px solid currentColor; }
-  .afr-k.err { color: #ff6b81; } .afr-k.rage { color: #ffb347; } .afr-k.dead { color: #c9a7ff; } .afr-k.exit { color: #5df2ff; }
-  .afr-d { min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
-  .afr-d i { font-style: normal; font-size: 12px; color: var(--muted, #8e88ad); }
-  .afr-d { grid-column: 2 / -1; }
-  @media (min-width: 700px) { .afr-r { grid-template-columns: 24px 62px 110px minmax(0, 1fr); } .afr-d { grid-column: auto; } }
-  .afr-cb { width: 20px; height: 20px; padding: 0; align-self: start; border-radius: 5px; border: 1.5px solid rgba(255, 255, 255, .35); background: none; color: #0b0716; font: 700 13px/1 system-ui, sans-serif; cursor: pointer; }
-  .afr-r.fixed .afr-cb { background: #5dffa3; border-color: #5dffa3; }
+  /* Admin friction: a deep blue terminal, collapsed until opened. */
+  .afr { --afr-g: #39ff88; margin: 14px 0; padding: 4px 12px; border: 1px solid #1d3b8f; border-radius: 12px; background: #06123a; color: var(--afr-g); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .afr:not(.shut) { padding-bottom: 10px; }
+  .afr-h { display: flex; align-items: center; gap: 8px; }
+  .afr-tg { flex: 1; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .afr-car { width: 12px; font-size: 12px; }
+  .afr-tg b { font-size: 14px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+  .afr-tg small { margin-left: auto; font-size: 12px; opacity: .75; }
+  .afr-cp, .afr-one { flex: none; font: inherit; font-size: 11px; padding: 4px 9px; border-radius: 6px; border: 1px solid rgba(57, 255, 136, .45); background: rgba(57, 255, 136, .08); color: var(--afr-g); cursor: pointer; }
+  .afr-day { margin: 10px 0 2px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .6; }
+  .afr-r { display: grid; grid-template-columns: 22px 64px 1fr auto; align-items: start; column-gap: 8px; row-gap: 3px; padding: 7px 0; border-top: 1px dashed rgba(57, 255, 136, .18); }
+  .afr-t { font-size: 12px; opacity: .7; white-space: nowrap; line-height: 20px; }
+  .afr-k { justify-self: start; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; white-space: nowrap; border: 1px solid currentColor; line-height: 16px; }
+  .afr-k.err { color: #ff6b81; } .afr-k.rage { color: #ffc14d; } .afr-k.dead { color: #c9a7ff; } .afr-k.exit { color: #5df2ff; }
+  .afr-d { grid-column: 2 / -1; min-width: 0; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; color: #c8ffe0; }
+  .afr-d i { font-style: normal; font-size: 12px; opacity: .6; }
+  .afr-one { grid-column: 4; grid-row: 1; }
+  @media (min-width: 700px) { .afr-r { grid-template-columns: 22px 64px 104px minmax(0, 1fr) auto; } .afr-d { grid-column: 4; } .afr-one { grid-column: 5; } }
+  .afr-cb { width: 18px; height: 18px; margin-top: 1px; padding: 0; border-radius: 4px; border: 1.5px solid rgba(57, 255, 136, .55); background: none; color: #06123a; font: 700 12px/1 system-ui, sans-serif; cursor: pointer; }
+  .afr-r.fixed .afr-cb { background: var(--afr-g); }
   .afr-cb:disabled { cursor: default; }
-  .afr-r.fixed .afr-t, .afr-r.fixed .afr-d { opacity: .5; }
+  .afr-r.fixed .afr-t, .afr-r.fixed .afr-d { opacity: .45; }
   .afr-r.fixed .afr-d { text-decoration: line-through; }
-  .afr-d i.afr-fx { margin-left: 6px; color: #5dffa3; text-decoration: none; display: inline-block; }
-  .afr-none { margin: 8px 0 0; font-size: 13px; color: var(--muted, #8e88ad); }
+  .afr-d i.afr-fx { margin-left: 6px; color: var(--afr-g); opacity: 1; display: inline-block; }
+  .afr-none { margin: 4px 0 2px; font-size: 13px; opacity: .8; }
   .joins .ns-h b { color: #5df2ff; }
   .newstrip.audit.joins { border-color: rgba(5, 217, 232, .5); background: linear-gradient(90deg, rgba(5, 217, 232, .1), rgba(5, 217, 232, .03)); }
   .jr-when { margin-left: auto; font-size: 12px; color: var(--muted, #8e88ad); }
@@ -1105,7 +1108,7 @@ html, body { overflow-x: hidden; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1327,8 +1330,11 @@ html, body { overflow-x: hidden; }
       const rows = [...st.afr].sort((x, y) => y.at - x.at);
       const days = [];
       for (const r of rows) { const k = afrDay(r.at); if (days[days.length - 1]?.k !== k) days.push({ k, rows: [] }); days[days.length - 1].rows.push(r); }
-      return `<section class="afr"><div class="afr-h"><b>Admin friction</b><small>${rows.filter((r) => !afrFix(r)).length} open</small>${rows.length ? `<button type="button" class="au-cp" data-afrcopy="1">${st.copied === "afr" ? "✓ Copied" : "Copy log"}</button>` : ""}</div>
-        ${rows.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r${afrFix(r) ? " fixed" : ""}"><button type="button" class="afr-cb" data-afrfix="${r.at}" aria-pressed="${!!afrFix(r)}" title="${afrFix(r)?.commit ? `Fixed in ${esc(afrFix(r).commit)}: ${esc(afrFix(r).note || "")}` : afrFix(r) ? "Ticked as fixed" : "Mark fixed"}"${afrFix(r)?.commit ? " disabled" : ""}>${afrFix(r) ? "✓" : ""}</button><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${AFR_KIND[r.k || "dead-tap"]?.[1] || ""}">${AFR_KIND[r.k || "dead-tap"]?.[0] || esc(r.k)}</span><span class="afr-d">${esc(r.d || "")}${r.screen ? ` <i>${esc(SCREENS[r.screen] || r.screen)}</i>` : ""}${afrFix(r)?.commit ? ` <i class="afr-fx">fixed ${esc(afrFix(r).commit)}</i>` : ""}</span></div>`).join("")}`).join("") : `<p class="afr-none">Nothing broke for you. No errors, rage taps, dead taps or sudden closes.</p>`}</section>`;
+      const open = rows.filter((r) => !afrFix(r)).length;
+      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-afrtoggle="1" aria-expanded="${!!st.afrOpen}"><span class="afr-car">${st.afrOpen ? "▾" : "▸"}</span><b>&gt; admin_friction</b><small>${open} open</small></button>${st.afrOpen && rows.length ? `<button type="button" class="afr-cp" data-afrcopy="1">${st.copied === "afr" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
+      if (!st.afrOpen) return `<section class="afr shut">${head}</section>`;
+      return `<section class="afr">${head}
+        ${rows.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r${afrFix(r) ? " fixed" : ""}"><button type="button" class="afr-cb" data-afrfix="${r.at}" aria-pressed="${!!afrFix(r)}" title="${afrFix(r)?.commit ? `Fixed in ${esc(afrFix(r).commit)}: ${esc(afrFix(r).note || "")}` : afrFix(r) ? "Ticked as fixed" : "Mark fixed"}"${afrFix(r)?.commit ? " disabled" : ""}>${afrFix(r) ? "✓" : ""}</button><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${AFR_KIND[r.k || "dead-tap"]?.[1] || ""}">${AFR_KIND[r.k || "dead-tap"]?.[0] || esc(r.k)}</span><span class="afr-d">${esc(r.d || "")}${r.screen ? ` <i>${esc(SCREENS[r.screen] || r.screen)}</i>` : ""}${afrFix(r)?.commit ? ` <i class="afr-fx">fixed ${esc(afrFix(r).commit)}</i>` : ""}</span><button type="button" class="afr-one" data-afrone="${r.at}" aria-label="Copy this one">${st.copied === `afr:${r.at}` ? "✓" : "copy"}</button></div>`).join("")}`).join("") : `<p class="afr-none">Nothing broke for you. No errors, rage taps, dead taps or sudden closes.</p>`}</section>`;
     };
     const joinPanel = () => {
       const list = (st.joins || []).filter((r) => r.status === "pending" || (r.status === "approved" && r.link && Date.now() - (r.decidedAt || 0) < 14 * 86400000));
@@ -1535,7 +1541,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}${feedHtml}${rail}${adminFriction()}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}${adminFriction()}${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
@@ -1670,6 +1676,14 @@ html, body { overflow-x: hidden; }
       try { const x = await fetch(`${WORKER}/admin-friction?${auth()}`, { method: "POST", body: JSON.stringify({ action: "fix", at, fixed: !!r.fixed }) }); const j = await x.json().catch(() => ({})); if (x.ok && j.taps) st.afr = j.taps; else r.fixed = r.fixed ? undefined : Date.now(); } catch { r.fixed = r.fixed ? undefined : Date.now(); }
       st.sig = ""; render(); return;
     }
+    if (b.dataset.afrtoggle) { st.afrOpen = !st.afrOpen; store.set("brochiefs_live_afr_open", st.afrOpen ? "1" : ""); st.sig = ""; render(); return; }
+    if (b.dataset.afrone) {
+      const r = (st.afr || []).find((x) => x.at === Number(b.dataset.afrone));
+      if (!r || !(await copyText(afrLog([r]).split("\n").slice(1).join("\n")))) return;
+      st.copied = `afr:${r.at}`; st.sig = ""; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.sig = ""; render(); }, 1600);
+      return;
+    }
     if (b.dataset.afrcopy) {
       if (!(await copyText(afrLog(st.afr || [])))) { b.textContent = "Couldn't copy"; return; }
       st.copied = "afr"; st.sig = ""; render();
@@ -1774,6 +1788,7 @@ html, body { overflow-x: hidden; }
     return `${name(p.n)}, heads up: the slate changed, so you need to go back through your picks. Game${p.games.length === 1 ? "" : "s"} ${nums}${names.length ? ` (${list(names)})` : ""} need${p.games.length === 1 ? "s" : ""} a fresh pick. Takes a minute!`;
   }
   // Jake's own dead taps, from their own log (his visits stay untracked).
+  st.afrOpen = store.get("brochiefs_live_afr_open") === "1";
   async function loadAdminFriction() {
     // Fixes shipped from a pasted log live in the repo (fixes.json).
     try { const f = await fetch(`../fixes.json?t=${Date.now()}`, { cache: "no-store" }); if (f.ok) st.afrFixes = (await f.json()).fixes || []; } catch {}
