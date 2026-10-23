@@ -669,6 +669,15 @@ html, body { overflow-x: hidden; }
   .au-list { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 8px; align-items: start; margin-top: 10px; }
   .au-head .ns-h b { display: block; font-weight: 800; }
   .au-head .ns-h small { display: block; margin-top: 5px; font: 500 12px/1.3 var(--sans, system-ui); letter-spacing: 0; color: var(--muted, #a9a3c7); text-transform: none; }
+  .afr { margin: 18px 0 8px; padding: 12px 14px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 14px; background: rgba(255, 255, 255, .03); }
+  .afr-h { display: flex; align-items: baseline; gap: 10px; }
+  .afr-h b { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #ffb3c8; }
+  .afr-h small { margin-left: auto; font-size: 12px; color: var(--muted, #8e88ad); }
+  .afr-list { display: flex; flex-direction: column; margin-top: 8px; }
+  .afr-r { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-top: 1px solid rgba(255, 255, 255, .06); }
+  .afr-d { flex: 1 1 auto; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
+  .afr-m { flex: none; font-size: 12px; color: var(--muted, #8e88ad); }
+  .afr-none { margin: 8px 0 0; font-size: 13px; color: var(--muted, #8e88ad); }
   .joins .ns-h b { color: #5df2ff; }
   .newstrip.audit.joins { border-color: rgba(5, 217, 232, .5); background: linear-gradient(90deg, rgba(5, 217, 232, .1), rgba(5, 217, 232, .03)); }
   .jr-when { margin-left: auto; font-size: 12px; color: var(--muted, #8e88ad); }
@@ -876,6 +885,7 @@ html, body { overflow-x: hidden; }
   const dur = (ms) => ms < 60000 ? `${Math.max(1, Math.round(ms / 1000))}s` : ms < 3600000 ? `${Math.round(ms / 60000)} min` : `${(ms / 3600000).toFixed(1)} hr`;
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
   const hm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const afrDay = (t) => { const d = new Date(t), n = new Date(); return d.toDateString() === n.toDateString() ? "Today" : d.toLocaleDateString([], { weekday: "short" }); };
   const dayOf = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const dayLab = (t) => { const d = dayOf(t), today = dayOf(Date.now()); return d === today ? "Today" : d === today - 86400000 ? "Yesterday" : new Date(t).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }); };
   const nameFrom = (slug) => st.names.find((n) => n.toLowerCase() === slug) || slug.charAt(0).toUpperCase() + slug.slice(1);
@@ -1032,6 +1042,7 @@ html, body { overflow-x: hidden; }
     clearTimeout(poll.t);
     if (!runAudit.t) runAudit();
     if (!loadJoins.t || Date.now() - loadJoins.t > 60000) { loadJoins.t = Date.now(); loadJoins(); }
+    if (!loadAdminFriction.t || Date.now() - loadAdminFriction.t > 60000) { loadAdminFriction.t = Date.now(); loadAdminFriction(); }
     try {
       const wantWeek = st.range === "7d" && (full || !st.wk || Date.now() - st.wk.at > 60000);
       const res = await fetch(`${WORKER}/presence?${auth()}${full ? "&seen=1" : ""}${wantWeek ? "&days=7" : ""}&t=${Date.now()}`, { cache: "no-store" });
@@ -1077,7 +1088,7 @@ html, body { overflow-x: hidden; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1292,6 +1303,15 @@ html, body { overflow-x: hidden; }
     // sits on its game; otherwise a strip, and tapping it lists who, by
     // player, each with a ready to send message. Never which team.
     // NFL join requests: approve makes a personal link to send the person.
+    // Admin friction: Jake's dead taps, grouped by what was tapped.
+    const adminFriction = () => {
+      if (!st.afr) return "";
+      const g = new Map();
+      for (const r of st.afr) { const k = r.d; const e = g.get(k) || { d: k, n: 0, last: 0, screen: r.screen }; e.n++; if (r.at > e.last) { e.last = r.at; e.screen = r.screen; } g.set(k, e); }
+      const rows = [...g.values()].sort((a, b) => b.last - a.last);
+      return `<section class="afr"><div class="afr-h"><b>Admin friction</b><small>Your dead taps · 14 days</small></div>
+        ${rows.length ? `<div class="afr-list">${rows.map((r) => `<div class="afr-r"><span class="afr-d">${esc(r.d)}</span><span class="afr-m">${r.n > 1 ? `${r.n}× · ` : ""}${r.screen ? `${esc(SCREENS[r.screen] || r.screen)} · ` : ""}${esc(afrDay(r.last))} ${esc(hm(r.last))}</span></div>`).join("")}</div>` : `<p class="afr-none">No dead taps. Everything you tapped did something.</p>`}</section>`;
+    };
     const joinPanel = () => {
       const list = (st.joins || []).filter((r) => r.status === "pending" || (r.status === "approved" && r.link && Date.now() - (r.decidedAt || 0) < 14 * 86400000));
       if (!list.length) return "";
@@ -1497,7 +1517,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}${feedHtml}${rail}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}${feedHtml}${rail}${adminFriction()}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
@@ -1721,6 +1741,10 @@ html, body { overflow-x: hidden; }
     const nums = list(p.games.map((g) => String(g.slot)));
     const names = p.games.map((g) => g.label).filter(Boolean);
     return `${name(p.n)}, heads up: the slate changed, so you need to go back through your picks. Game${p.games.length === 1 ? "" : "s"} ${nums}${names.length ? ` (${list(names)})` : ""} need${p.games.length === 1 ? "s" : ""} a fresh pick. Takes a minute!`;
+  }
+  // Jake's own dead taps, from their own log (his visits stay untracked).
+  async function loadAdminFriction() {
+    try { const x = await fetch(`${WORKER}/admin-friction?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.afr = Array.isArray(j.taps) ? j.taps : []; st.sig = ""; render(); } } catch {}
   }
   // NFL join requests (name, email, message), newest first.
   async function loadJoins() {

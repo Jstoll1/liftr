@@ -113,6 +113,9 @@ export default {
     if (url.pathname.startsWith("/creative/")) {
       return handleCreative(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/admin-friction") {
+      return handleAdminFriction(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/presence") {
       return handlePresence(request, env, corsHeaders, url);
     }
@@ -3925,5 +3928,27 @@ async function handleVisit(request, env, corsHeaders, url) {
   // 1,000 opens: weeks of history for the admin dashboard at the 5-minute
   // throttle; one write per open either way, about 100 KB at the cap.
   await env.LIFTR_KV.put(key(m), JSON.stringify(list.slice(0, 1000)));
+  return json({ ok: true }, 200, corsHeaders);
+}
+
+// The admin's own dead taps, kept apart from league usage: Jake's visits
+// stay untracked, but where he taps and nothing happens is worth fixing.
+// Last 100, two weeks.
+const ADMIN_FRICTION_KEY = "admin-friction";
+async function handleAdminFriction(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  if (request.method === "GET") {
+    if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+    return json({ taps: (await env.LIFTR_KV.get(ADMIN_FRICTION_KEY, "json")) || [] }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  if (!VISITS_NOT_TRACKED.has(body?.manager)) return json({ ok: true, tracked: false }, 200, corsHeaders);
+  const d = String(body.d || "").slice(0, 80), screen = String(body.screen || "").slice(0, 24);
+  if (!d) return json({ error: "Nothing to log" }, 400, corsHeaders);
+  const now = Date.now();
+  const list = ((await env.LIFTR_KV.get(ADMIN_FRICTION_KEY, "json")) || []).filter((r) => now - r.at < 14 * 86400000);
+  list.unshift({ at: now, d, screen });
+  await env.LIFTR_KV.put(ADMIN_FRICTION_KEY, JSON.stringify(list.slice(0, 100)), { expirationTtl: 14 * 86400 });
   return json({ ok: true }, 200, corsHeaders);
 }
