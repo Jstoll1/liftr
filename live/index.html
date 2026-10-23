@@ -91,6 +91,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .tabs button:hover { color: var(--text); }
   .tabs button.on { color: var(--text); background: rgba(139, 108, 255, .2); box-shadow: inset 0 0 0 1px rgba(139, 108, 255, .45); }
   .tabs button.on svg { color: var(--green); }
+  /* The tabs sit centred over the bar, so the freshness label moves right,
+     next to the tools, where there is room. */
+  .top-in .age { order: 2; margin-left: auto; }
+  .top-in .tools { order: 3; margin-left: 0; }
+}
+/* Narrow desktops: centred tabs would cover the league switch. */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .tabs { left: auto; right: 110px; transform: none; }
+  .top-in .age { display: none; }
+  .top-in .tools { margin-left: auto; }
 }
 body.pv-open .tabs { display: none; }
 
