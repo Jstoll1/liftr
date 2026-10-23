@@ -679,6 +679,33 @@ html, body { overflow-x: hidden; }
   .au-list { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 8px; align-items: start; margin-top: 10px; }
   .au-head .ns-h b { display: block; font-weight: 800; }
   .au-head .ns-h small { display: block; margin-top: 5px; font: 500 12px/1.3 var(--sans, system-ui); letter-spacing: 0; color: var(--muted, #a9a3c7); text-transform: none; }
+  /* Friction and card status share a row on wide screens, stack on phones. */
+  .duo { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0; align-items: start; }
+  .duo > section { margin: 0; }
+  @media (min-width: 900px) { .duo { grid-template-columns: 1fr 1fr; } .duo:has(> section:not(.shut)) { grid-template-columns: 1fr; } }
+  @media (min-width: 900px) { .cs-list { grid-template-columns: 1fr 1fr; column-gap: 8px; } .cs-list > :last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 4px); } }
+  .cs-tg b { white-space: nowrap; }
+  .cs-tg small { white-space: nowrap; }
+  .cs { padding: 4px 12px 10px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .03); }
+  .cs-h { display: flex; align-items: center; gap: 8px; }
+  .cs-tg { flex: 1; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .cs-tg b { font: 700 12px var(--mono); letter-spacing: .1em; color: var(--text); }
+  .cs-tg small { margin-left: auto; font: 12px var(--mono); color: #ffc14d; }
+  .cs-tg small.all { color: var(--green); }
+  .cs-cp { flex: none; font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .18); background: rgba(255, 255, 255, .06); color: #fff; cursor: pointer; }
+  .cs-sum { margin: 0; font-size: 13px; line-height: 1.6; color: var(--dim); }
+  .cs-sum b { color: var(--text); font-weight: 600; }
+  .cs-sum i { font-style: normal; color: #ffc14d; }
+  .cs-sum.ok { color: var(--green); }
+  .cs:not(.shut) .cs-sum { display: none; }
+  .cs-list { display: grid; gap: 3px; margin-top: 4px; }
+  .cs-r { display: grid; grid-template-columns: minmax(0, 1fr) 44px 30px 30px 104px; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, .03); font-size: 13px; }
+  .cs-r b { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cs-p { font: 600 12px var(--mono); text-align: right; }
+  .cs-p { color: #ffc14d; } .cs-p.full { color: var(--green); } .cs-r.none .cs-p { color: #ff6b81; }
+  .cs-f { font: 600 11px var(--mono); text-align: center; padding: 1px 4px; border-radius: 4px; color: #ff6b81; border: 1px solid rgba(255, 107, 129, .4); opacity: .9; }
+  .cs-f.on { color: var(--green); border-color: rgba(61, 252, 143, .4); }
+  .cs-r i { font-style: normal; font-size: 11.5px; color: var(--dim); text-align: right; white-space: nowrap; }
   /* Admin friction: a deep blue terminal, collapsed until opened. */
   .afr { --afr-g: #39ff88; margin: 14px 0; padding: 4px 12px; border: 1px solid #1d3b8f; border-radius: 12px; background: #06123a; color: var(--afr-g); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .afr:not(.shut) { padding-bottom: 10px; }
@@ -1118,7 +1145,7 @@ html, body { overflow-x: hidden; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1333,6 +1360,19 @@ html, body { overflow-x: hidden; }
     // sits on its game; otherwise a strip, and tapping it lists who, by
     // player, each with a ready to send message. Never which team.
     // NFL join requests: approve makes a personal link to send the person.
+    // This week's cards: who is fully in (every pick, tiebreaker, lock when
+    // the week has one). Counts only, from the pick audit; never a team.
+    const cardStatus = () => {
+      const cards = st.audit?.cards;
+      if (!cards?.length) return "";
+      const need = (c) => [c.picks < c.of && `${c.of - c.picks} pick${c.of - c.picks === 1 ? "" : "s"}`, !c.tb && "TB", st.audit.lockRule && !c.lock && "lock"].filter(Boolean);
+      const done = cards.filter((c) => !need(c).length), todo = cards.filter((c) => need(c).length).sort((a, b) => a.picks - b.picks);
+      const head = `<div class="cs-h"><button type="button" class="cs-tg" data-cstoggle="1" aria-expanded="${!!st.csOpen}"><span class="afr-car">${st.csOpen ? "▾" : "▸"}</span><b>WEEK ${st.audit.week} CARDS</b><small class="${todo.length ? "" : "all"}">${done.length}/${cards.length} done</small></button>${st.csOpen && todo.length ? `<button type="button" class="cs-cp" data-csnudge="1">${st.copied === "cs" ? "✓ copied" : "Copy nudges"}</button>` : ""}</div>`;
+      const sum = todo.length ? `<p class="cs-sum">Missing: ${todo.map((c) => `<b>${esc(name(c.name))}</b> <i>${esc(need(c).join(", "))}</i>`).join(" · ")}</p>` : `<p class="cs-sum ok">Every card is in.</p>`;
+      if (!st.csOpen) return `<section class="cs shut">${head}${sum}</section>`;
+      const row = (c) => { const n = need(c); return `<div class="cs-r ${n.length ? (c.picks ? "part" : "none") : "ok"}"><b>${esc(name(c.name))}</b><span class="cs-p${c.picks >= c.of ? " full" : ""}">${c.picks}/${c.of}</span><span class="cs-f ${c.tb ? "on" : ""}">TB</span>${st.audit.lockRule ? `<span class="cs-f ${c.lock ? "on" : ""}">🔒</span>` : "<span></span>"}<i>${c.last ? esc(afrDay(c.last) + " " + hm(c.last)) : "nothing saved"}</i></div>`; };
+      return `<section class="cs">${head}<div class="cs-list">${[...todo, ...done].map(row).join("")}</div></section>`;
+    };
     // Admin friction: Jake's errors, rage taps, dead taps and sheets shut at
     // once, newest first by day, with a plain text copy for pasting.
     const adminFriction = () => {
@@ -1551,7 +1591,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}${adminFriction()}${feedHtml}${rail}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}<div class="duo">${adminFriction()}${cardStatus()}</div>${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
@@ -1686,6 +1726,16 @@ html, body { overflow-x: hidden; }
       try { const x = await fetch(`${WORKER}/admin-friction?${auth()}`, { method: "POST", body: JSON.stringify({ action: "fix", at, fixed: !!r.fixed }) }); const j = await x.json().catch(() => ({})); if (x.ok && j.taps) st.afr = j.taps; else r.fixed = r.fixed ? undefined : Date.now(); } catch { r.fixed = r.fixed ? undefined : Date.now(); }
       st.sig = ""; render(); return;
     }
+    if (b.dataset.cstoggle) { st.csOpen = !st.csOpen; store.set("brochiefs_live_cs_open", st.csOpen ? "1" : ""); st.sig = ""; render(); return; }
+    if (b.dataset.csnudge) {
+      const c = st.audit?.cards || [];
+      const need = (x) => [x.picks < x.of && `${x.of - x.picks} pick${x.of - x.picks === 1 ? "" : "s"}`, !x.tb && "tiebreaker", st.audit.lockRule && !x.lock && "lock of the week"].filter(Boolean);
+      const text = `Week ${st.audit.week} cards still open:\n` + c.filter((x) => need(x).length).map((x) => `${name(x.name)}: ${need(x).join(", ")}`).join("\n");
+      if (!(await copyText(text))) return;
+      st.copied = "cs"; st.sig = ""; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.sig = ""; render(); }, 1600);
+      return;
+    }
     if (b.dataset.afrtoggle) { st.afrOpen = !st.afrOpen; store.set("brochiefs_live_afr_open", st.afrOpen ? "1" : ""); st.sig = ""; render(); return; }
     if (b.dataset.afrone) {
       const r = (st.afr || []).find((x) => x.at === Number(b.dataset.afrone));
@@ -1799,6 +1849,7 @@ html, body { overflow-x: hidden; }
   }
   // Jake's own dead taps, from their own log (his visits stay untracked).
   st.afrOpen = store.get("brochiefs_live_afr_open") === "1";
+  st.csOpen = store.get("brochiefs_live_cs_open") === "1";
   async function loadAdminFriction() {
     // Fixes shipped from a pasted log live in the repo (fixes.json).
     try { const f = await fetch(`../fixes.json?t=${Date.now()}`, { cache: "no-store" }); if (f.ok) st.afrFixes = (await f.json()).fixes || []; } catch {}
@@ -1810,7 +1861,7 @@ html, body { overflow-x: hidden; }
     try { const x = await fetch(`${WORKER}/joins?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); if (Array.isArray(j.requests)) { st.joins = j.requests; st.sig = ""; render(); } } } catch {}
   }
   async function runAudit() {
-    clearTimeout(runAudit.t); runAudit.t = setTimeout(runAudit, 10 * 60000);
+    clearTimeout(runAudit.t); runAudit.t = setTimeout(runAudit, 2 * 60000);
     try { const x = await fetch(`${WORKER}/games?audit=1&${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const a = await x.json(); if (Array.isArray(a?.problems)) { st.audit = a; st.sig = ""; render(); } } } catch {}
   }
   async function copyText(text) {

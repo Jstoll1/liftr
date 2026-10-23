@@ -30,6 +30,9 @@ test("audit: flags picks whose team is not in their game, owner key only, no tea
   assert.equal(body.checked, 3);
   assert.deepEqual(body.problems, [{ manager: "Curt", slot: 2, game: "ARMY @ NAVY", why: "the saved team is not in this game" }]);
   assert.ok(!JSON.stringify(body).includes("Iowa"));
+  // Card state per player: counts, tiebreaker and lock flags, never a team.
+  const curt = body.cards.find((c) => c.name === "Curt"), dew = body.cards.find((c) => c.name === "Dewitt");
+  assert.deepEqual([curt.picks, curt.of, curt.tb, dew.picks, dew.tb], [2, 2, false, 1, false]);
   assert.equal((await worker.fetch(new Request("https://w.test/games?audit=1&week=5&key=slatekey"), env, { waitUntil() {} })).status, 403);
 });
 
