@@ -10,6 +10,9 @@ phone width (390px) and, for shared pages, desktop width:
   header and its button sit on one row; lists line up in columns.
 - **Deadspace**: no empty bands or padding with nothing in it; nothing
   wraps onto its own line leaving a gap; cards hug their content.
+- **Odd counts stay balanced**: a grid of tiles must look balanced at every
+  count. In a two-column grid an odd last tile centres under the pair above
+  (never alone on the left); test with an odd count.
 
 Screenshot the real component (every state: closed, open, empty, long text)
 and look at it before committing. If it fails BAD, fix it first.
