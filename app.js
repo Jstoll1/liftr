@@ -9104,7 +9104,7 @@ function openPlayerCard(name, again) {
   const max = Math.max(1, ...d.scores.map((x) => x.score));
   const pct = d.w + d.l ? Math.round((d.w / (d.w + d.l)) * 100) : null;
   // A fighting game stat bar: label, value, ten segments filled to the share.
-  const bar = (label, val, share, note = "") => `<div class="plc-sb"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em></div>`;
+  const bar = (label, val, share, note = "") => `<div class="plc-sb" data-statrank="${label}" role="button" tabindex="0"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em></div>`;
   const logo = (full, known) => { const id = known || teamIdOf(full); return id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : `<span class="plc-nologo"></span>`; };
   const pick = (p, hit) => !p ? "" : `<div class="plc-pick ${hit ? "hit" : "miss"}">
       <div class="plc-pt"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}</small><b>${hit ? `+${p.pts}` : "0"} PTS</b></div>
@@ -9117,6 +9117,8 @@ function openPlayerCard(name, again) {
     m.dataset.pickTap = "1";
     m.addEventListener("click", (e) => {
       if (e.target.closest("[data-champs]")) return openChampions(m.dataset.name);
+      const sr = e.target.closest("[data-statrank]");
+      if (sr) return openStatRank(sr.dataset.statrank, m.dataset.name);
       // The avatar: yours opens the avatar editor, anyone else's the season
       // head to head, you against them.
       if (e.target.closest("[data-plcav]")) {
@@ -9179,6 +9181,32 @@ function bottomSheet(id) {
   m.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); m.querySelector(".wks-card").style.transform = `translateY(${dy}px)`; }, { passive: true });
   m.addEventListener("touchend", () => { if (y0 == null) return; const c = m.querySelector(".wks-card"); c.style.transition = ""; c.style.transform = ""; if (dy > 70) m.classList.add("hidden"); y0 = null; });
   return m;
+}
+
+// --- Stat ranking -------------------------------------------------------
+// A stat bar on a player card: the whole league ranked on that stat.
+const STAT_RANK = {
+  "AVG WEEK": (d) => d.scores.length ? [d.avg, d.avg.toFixed(1)] : null,
+  "BEST WEEK": (d) => d.top ? [d.top.score, `${d.top.score}`, `W${d.top.week}`] : null,
+  "WORST WEEK": (d) => d.low ? [d.low.score, `${d.low.score}`, `W${d.low.week}`] : null,
+  "PICKS RIGHT": (d) => d.w + d.l ? [d.w / (d.w + d.l), `${Math.round((100 * d.w) / (d.w + d.l))}%`, `${d.w}-${d.l}`] : null,
+  "ON SPREAD": (d) => d.atsN ? [d.ats, `${d.ats}%`, `${d.atsN} picks`] : null,
+  "TO WIN": (d) => d.suN ? [d.su, `${d.su}%`, `${d.suN} picks`] : null,
+  "🔒 LOCKS": (d) => d.lockW + d.lockL ? [d.lockW / (d.lockW + d.lockL), `${d.lockW}-${d.lockL}`, `${Math.round((100 * d.lockW) / (d.lockW + d.lockL))}%`] : null,
+};
+function openStatRank(stat, name) {
+  const f = STAT_RANK[stat];
+  if (!f) return;
+  const rows = MANAGERS.map((n) => { const v = f(playerSeason(n)); return v ? { n, v: v[0], txt: v[1], note: v[2] || "" } : null; }).filter(Boolean).sort((a, b) => b.v - a.v);
+  if (!rows.length) return;
+  let place = 0;
+  const list = rows.map((r, i) => { if (i === 0 || r.v !== rows[i - 1].v) place = i + 1; const tied = rows.filter((x) => x.v === r.v).length > 1;
+    return `<div class="wks-r${place === 1 ? " lead" : ""}${r.n === name ? " me" : ""}"><span class="wks-p">${tied ? "T" : ""}${place}</span><span class="wks-n">${escapeCd(shown(r.n))}${r.note ? ` <small class="str-note">${escapeCd(r.note)}</small>` : ""}</span><b class="wks-s">${escapeCd(r.txt)}</b></div>`; }).join("");
+  const m = bottomSheet("stat-rank");
+  m.innerHTML = `<div class="modal-card wks-card"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>${escapeCd(stat)}</b><small>THE LEAGUE</small><button type="button" class="wks-x" aria-label="Back to the card">✕</button></div><div class="wks-list">${list}</div></div>`;
+  noteUse("stat-rank", stat);
+  m.classList.remove("hidden");
 }
 
 // --- Champions ------------------------------------------------------------
