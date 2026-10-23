@@ -6963,16 +6963,11 @@ function renderGridCheck() {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !el.classList.contains("hidden")) close(); });
 })();
 
-// Countdown chips: "9/10 !" scrolls to the first open game without a pick,
-// "TB !" to the tiebreaker.
+// Countdown chips: a "9/10 !" or "TB !" chip opens the grid check, whose
+// button takes you to what is missing.
 document.addEventListener("click", (e) => {
-  const b = e.target.closest?.("[data-cdgo]");
-  if (!b || !currentManager) return;
-  const state = getManagerState(currentManager);
-  const blank = b.dataset.cdgo === "game" ? GAMES.find((g) => !state.picks[g.id] && !isGameLocked(g)) : null;
-  const target = blank ? document.querySelector(`.game-card[data-game-id="${blank.id}"]`) : document.getElementById("tiebreaker-input");
-  target?.scrollIntoView({ block: "center", behavior: "smooth" });
-  if (target) { target.classList.remove("cd-flash"); void target.offsetWidth; target.classList.add("cd-flash"); setTimeout(() => target.classList.remove("cd-flash"), 1600); }
+  if (!e.target.closest?.("[data-cdgo]") || !currentManager) return;
+  maybeShowGridCheck(true);
 });
 
 const BONER_UNTIL = Date.parse("2026-09-29T03:59:00Z"); // Mon 11:59 PM ET
