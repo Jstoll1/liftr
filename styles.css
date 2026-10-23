@@ -8169,3 +8169,6 @@ html.sheet .gs-t.no-ats { grid-template-columns: 22px minmax(52px, 1fr) auto; }
 
 .join-form textarea { padding: 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .18); background: rgba(0, 0, 0, .35); color: #fff; font: inherit; font-size: 16px; resize: none; }
 .join-form label i { font-style: normal; opacity: .7; }
+
+/* Wide wordmark logos (LSU): scaled, not resized, so the card keeps its height. */
+.hz-tm .tm-logo.wide { transform: scale(1.4); }
