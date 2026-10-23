@@ -676,12 +676,20 @@ html, body { overflow-x: hidden; }
   .afr-h b { white-space: nowrap; }
   .afr-h .au-cp { flex: none; margin: 0; font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .18); background: rgba(255, 255, 255, .06); color: #fff; cursor: pointer; }
   .afr-day { margin: 12px 0 2px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #8e88ad); }
-  .afr-r { display: grid; grid-template-columns: 62px 104px minmax(0, 1fr); align-items: baseline; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, .06); }
+  .afr-r { display: grid; grid-template-columns: 24px 62px 1fr; row-gap: 3px; align-items: baseline; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, .06); }
   .afr-t { font-size: 12px; color: var(--muted, #8e88ad); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .afr-k { justify-self: start; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; border: 1px solid currentColor; }
   .afr-k.err { color: #ff6b81; } .afr-k.rage { color: #ffb347; } .afr-k.dead { color: #c9a7ff; } .afr-k.exit { color: #5df2ff; }
   .afr-d { min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
   .afr-d i { font-style: normal; font-size: 12px; color: var(--muted, #8e88ad); }
+  .afr-d { grid-column: 2 / -1; }
+  @media (min-width: 700px) { .afr-r { grid-template-columns: 24px 62px 110px minmax(0, 1fr); } .afr-d { grid-column: auto; } }
+  .afr-cb { width: 20px; height: 20px; padding: 0; align-self: start; border-radius: 5px; border: 1.5px solid rgba(255, 255, 255, .35); background: none; color: #0b0716; font: 700 13px/1 system-ui, sans-serif; cursor: pointer; }
+  .afr-r.fixed .afr-cb { background: #5dffa3; border-color: #5dffa3; }
+  .afr-cb:disabled { cursor: default; }
+  .afr-r.fixed .afr-t, .afr-r.fixed .afr-d { opacity: .5; }
+  .afr-r.fixed .afr-d { text-decoration: line-through; }
+  .afr-d i.afr-fx { margin-left: 6px; color: #5dffa3; text-decoration: none; display: inline-block; }
   .afr-none { margin: 8px 0 0; font-size: 13px; color: var(--muted, #8e88ad); }
   .joins .ns-h b { color: #5df2ff; }
   .newstrip.audit.joins { border-color: rgba(5, 217, 232, .5); background: linear-gradient(90deg, rgba(5, 217, 232, .1), rgba(5, 217, 232, .03)); }
@@ -891,7 +899,9 @@ html, body { overflow-x: hidden; }
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
   const hm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   const AFR_KIND = { "js-error": ["Error", "err"], rage: ["Rage tap", "rage"], "dead-tap": ["Dead tap", "dead"], "quick-exit": ["Sudden close", "exit"] };
-  const afrLog = (rows) => [`Brochiefs ${LEAGUE.toUpperCase()} admin friction log · copied ${new Date().toLocaleString()}`, ...[...rows].sort((x, y) => y.at - x.at).map((r) => `${new Date(r.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} | ${(AFR_KIND[r.k || "dead-tap"] || [r.k])[0]} | ${r.d || ""}${r.screen ? ` | ${SCREENS[r.screen] || r.screen}` : ""}`)].join("\n");
+  // Fixed: ticked by hand, or a shipped fix of this kind and text came after it.
+  const afrFix = (r) => (st.afrFixes || []).find((f) => (!f.k || f.k === (r.k || "dead-tap")) && String(r.d || "").includes(f.match) && r.at <= f.at) || (r.fixed ? { manual: true } : null);
+  const afrLog = (rows) => [`Brochiefs ${LEAGUE.toUpperCase()} admin friction log · copied ${new Date().toLocaleString()}`, ...[...rows].sort((x, y) => y.at - x.at).map((r) => `${new Date(r.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} | ${(AFR_KIND[r.k || "dead-tap"] || [r.k])[0]} | ${r.d || ""}${r.screen ? ` | ${SCREENS[r.screen] || r.screen}` : ""}${afrFix(r) ? ` | FIXED${afrFix(r).commit ? ` ${afrFix(r).commit}` : ""}` : ""}`)].join("\n");
   const afrDay = (t) => { const d = new Date(t), n = new Date(); return d.toDateString() === n.toDateString() ? "Today" : d.toLocaleDateString([], { weekday: "short" }); };
   const dayOf = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const dayLab = (t) => { const d = dayOf(t), today = dayOf(Date.now()); return d === today ? "Today" : d === today - 86400000 ? "Yesterday" : new Date(t).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }); };
@@ -1317,8 +1327,8 @@ html, body { overflow-x: hidden; }
       const rows = [...st.afr].sort((x, y) => y.at - x.at);
       const days = [];
       for (const r of rows) { const k = afrDay(r.at); if (days[days.length - 1]?.k !== k) days.push({ k, rows: [] }); days[days.length - 1].rows.push(r); }
-      return `<section class="afr"><div class="afr-h"><b>Admin friction</b><small>14 days</small>${rows.length ? `<button type="button" class="au-cp" data-afrcopy="1">${st.copied === "afr" ? "✓ Copied" : "Copy log"}</button>` : ""}</div>
-        ${rows.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${AFR_KIND[r.k || "dead-tap"]?.[1] || ""}">${AFR_KIND[r.k || "dead-tap"]?.[0] || esc(r.k)}</span><span class="afr-d">${esc(r.d || "")}${r.screen ? ` <i>${esc(SCREENS[r.screen] || r.screen)}</i>` : ""}</span></div>`).join("")}`).join("") : `<p class="afr-none">Nothing broke for you. No errors, rage taps, dead taps or sudden closes.</p>`}</section>`;
+      return `<section class="afr"><div class="afr-h"><b>Admin friction</b><small>${rows.filter((r) => !afrFix(r)).length} open</small>${rows.length ? `<button type="button" class="au-cp" data-afrcopy="1">${st.copied === "afr" ? "✓ Copied" : "Copy log"}</button>` : ""}</div>
+        ${rows.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r${afrFix(r) ? " fixed" : ""}"><button type="button" class="afr-cb" data-afrfix="${r.at}" aria-pressed="${!!afrFix(r)}" title="${afrFix(r)?.commit ? `Fixed in ${esc(afrFix(r).commit)}: ${esc(afrFix(r).note || "")}` : afrFix(r) ? "Ticked as fixed" : "Mark fixed"}"${afrFix(r)?.commit ? " disabled" : ""}>${afrFix(r) ? "✓" : ""}</button><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${AFR_KIND[r.k || "dead-tap"]?.[1] || ""}">${AFR_KIND[r.k || "dead-tap"]?.[0] || esc(r.k)}</span><span class="afr-d">${esc(r.d || "")}${r.screen ? ` <i>${esc(SCREENS[r.screen] || r.screen)}</i>` : ""}${afrFix(r)?.commit ? ` <i class="afr-fx">fixed ${esc(afrFix(r).commit)}</i>` : ""}</span></div>`).join("")}`).join("") : `<p class="afr-none">Nothing broke for you. No errors, rage taps, dead taps or sudden closes.</p>`}</section>`;
     };
     const joinPanel = () => {
       const list = (st.joins || []).filter((r) => r.status === "pending" || (r.status === "approved" && r.link && Date.now() - (r.decidedAt || 0) < 14 * 86400000));
@@ -1653,6 +1663,13 @@ html, body { overflow-x: hidden; }
       } catch { alert("No connection."); b.disabled = false; return; }
       await loadJoins(); return;
     }
+    if (b.dataset.afrfix) {
+      const at = Number(b.dataset.afrfix), r = (st.afr || []).find((x) => x.at === at);
+      if (!r) return;
+      r.fixed = r.fixed ? undefined : Date.now(); st.sig = ""; render();
+      try { const x = await fetch(`${WORKER}/admin-friction?${auth()}`, { method: "POST", body: JSON.stringify({ action: "fix", at, fixed: !!r.fixed }) }); const j = await x.json().catch(() => ({})); if (x.ok && j.taps) st.afr = j.taps; else r.fixed = r.fixed ? undefined : Date.now(); } catch { r.fixed = r.fixed ? undefined : Date.now(); }
+      st.sig = ""; render(); return;
+    }
     if (b.dataset.afrcopy) {
       if (!(await copyText(afrLog(st.afr || [])))) { b.textContent = "Couldn't copy"; return; }
       st.copied = "afr"; st.sig = ""; render();
@@ -1758,6 +1775,8 @@ html, body { overflow-x: hidden; }
   }
   // Jake's own dead taps, from their own log (his visits stay untracked).
   async function loadAdminFriction() {
+    // Fixes shipped from a pasted log live in the repo (fixes.json).
+    try { const f = await fetch(`../fixes.json?t=${Date.now()}`, { cache: "no-store" }); if (f.ok) st.afrFixes = (await f.json()).fixes || []; } catch {}
     try { const x = await fetch(`${WORKER}/admin-friction?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.afr = Array.isArray(j.taps) ? j.taps : []; st.sig = ""; render(); } } catch {}
   }
   // NFL join requests (name, email, message), newest first.

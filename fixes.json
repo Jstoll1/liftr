@@ -1,0 +1,6 @@
+{
+  "_about": "Fixes for breaks in the admin friction log. Live ticks every entry of this kind whose text contains match and that happened before at (ms). Add one line per shipped fix.",
+  "fixes": [
+    { "k": "dead-tap", "match": ".cd-chip", "at": 1792757479000, "commit": "a2cb347", "note": "Every countdown chip opens the grid check" }
+  ]
+}

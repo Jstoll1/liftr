@@ -3943,6 +3943,16 @@ async function handleAdminFriction(request, env, corsHeaders, url) {
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  // The admin ticks an entry fixed (or unticks it) from the live page.
+  if (body?.action === "fix") {
+    if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+    const list = (await env.LIFTR_KV.get(ADMIN_FRICTION_KEY, "json")) || [];
+    const r = list.find((x) => x.at === Number(body.at));
+    if (!r) return json({ error: "No such entry" }, 404, corsHeaders);
+    if (body.fixed) r.fixed = Date.now(); else delete r.fixed;
+    await env.LIFTR_KV.put(ADMIN_FRICTION_KEY, JSON.stringify(list), { expirationTtl: 14 * 86400 });
+    return json({ ok: true, taps: list }, 200, corsHeaders);
+  }
   if (!VISITS_NOT_TRACKED.has(body?.manager)) return json({ ok: true, tracked: false }, 200, corsHeaders);
   const k = ["js-error", "rage", "dead-tap", "quick-exit"].includes(body.k) ? body.k : "dead-tap";
   const d = String(body.d || "").slice(0, 120), screen = String(body.screen || "").slice(0, 24);

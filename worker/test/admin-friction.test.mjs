@@ -18,3 +18,12 @@ test("admin friction: only Jake's dead taps are kept, admin only to read", async
   assert.equal(taps.length, 1);
   assert.deepEqual([taps[0].k, taps[0].d, taps[0].screen], ["rage", ".cd-chip “9/10 !”", "picks"]);
 });
+
+test("admin friction: the admin ticks an entry fixed and back", async () => {
+  const e = env();
+  await call(e, "/admin-friction", { manager: "Jake", k: "dead-tap", d: ".x" });
+  const at = (await (await call(e, "/admin-friction?key=adm")).json()).taps[0].at;
+  assert.equal((await call(e, "/admin-friction", { action: "fix", at, fixed: true })).status, 403);
+  assert.ok((await (await call(e, "/admin-friction?key=adm", { action: "fix", at, fixed: true })).json()).taps[0].fixed);
+  assert.equal((await (await call(e, "/admin-friction?key=adm", { action: "fix", at, fixed: false })).json()).taps[0].fixed, undefined);
+});

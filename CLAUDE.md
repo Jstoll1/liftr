@@ -27,3 +27,10 @@ landscape) before pushing.
 The "SAVED <day> <time>" line on each pick card stays: it is the user's
 audit trail that a pick reached the league. Never hide or shorten it to
 save space.
+
+## Tick off fixes from a pasted friction log
+When Jake pastes lines from the Live "Admin friction" log and a fix ships,
+add one entry to `fixes.json` (main) in the same push:
+`{ "k": "<dead-tap|rage|js-error|quick-exit>", "match": "<text from the line>", "at": <commit time in ms>, "commit": "<short sha>", "note": "<what changed>" }`.
+Live then ticks every matching entry from before the fix; a repeat after it
+stays open, which flags a fix that did not hold.
