@@ -1,6 +1,19 @@
 {
   "_about": "Fixes for breaks in the admin friction log. Live ticks every entry of this kind whose text contains match and that happened before at (ms). Add one line per shipped fix.",
   "fixes": [
-    { "k": "dead-tap", "match": ".cd-chip", "at": 1792757479000, "commit": "a2cb347", "note": "Every countdown chip opens the grid check" }
+    {
+      "k": "dead-tap",
+      "match": ".cd-chip",
+      "at": 1792757479000,
+      "commit": "a2cb347",
+      "note": "Every countdown chip opens the grid check"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".gold “🏆”",
+      "at": 1792758880000,
+      "commit": "683eeca",
+      "note": "Trophy on a player card opens the champions sheet"
+    }
   ]
 }
