@@ -1553,7 +1553,8 @@ async function handleGames(request, env, corsHeaders, url) {
       await Promise.all(PICKS_MANAGERS.map(async (m) => {
         const st = await env.LIFTR_KV.get(pickKey(week, m), "json").catch(() => null);
         const on = Object.entries(st?.picks || {}).filter(([gid, p]) => p?.team && games.has(String(gid)));
-        cards.push({ name: m, picks: on.length, of: games.size, tb: String(st?.tiebreaker ?? "").trim() !== "", lock: on.some(([, p]) => p.lock), last: Math.max(0, ...on.map(([, p]) => Number(p.savedAt) || 0)) || null });
+        const has = new Set(on.map(([gid]) => String(gid)));
+        cards.push({ name: m, slots: [...games.keys()].sort((a, b) => Number(a) - Number(b)).map((gid) => has.has(gid)), picks: on.length, of: games.size, tb: String(st?.tiebreaker ?? "").trim() !== "", lock: on.some(([, p]) => p.lock), last: Math.max(0, ...on.map(([, p]) => Number(p.savedAt) || 0)) || null });
         for (const [gid, p] of Object.entries(st?.picks || {})) {
           if (!p?.team) continue;
           checked += 1;

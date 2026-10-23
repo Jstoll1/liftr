@@ -33,6 +33,7 @@ test("audit: flags picks whose team is not in their game, owner key only, no tea
   // Card state per player: counts, tiebreaker and lock flags, never a team.
   const curt = body.cards.find((c) => c.name === "Curt"), dew = body.cards.find((c) => c.name === "Dewitt");
   assert.deepEqual([curt.picks, curt.of, curt.tb, dew.picks, dew.tb], [2, 2, false, 1, false]);
+  assert.deepEqual(dew.slots, [true, false]);
   assert.equal((await worker.fetch(new Request("https://w.test/games?audit=1&week=5&key=slatekey"), env, { waitUntil() {} })).status, 403);
 });
 

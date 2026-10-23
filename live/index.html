@@ -106,8 +106,8 @@ body.pv-open .tabs { display: none; }
 
 /* Page */
 .page { max-width: 1440px; margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-  display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "vote" "tl" "feed" "rail"; }
-@media (min-width: 1024px) { .page { padding-bottom: calc(48px + env(safe-area-inset-bottom)); grid-template-columns: minmax(0, 1fr) 330px; grid-template-areas: "kpi kpi" "vote vote" "tl tl" "feed rail"; align-items: start; } .rail { position: sticky; top: 76px; } }
+  display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "vote" "tl" "duo" "feed" "rail"; }
+@media (min-width: 1024px) { .page { padding-bottom: calc(48px + env(safe-area-inset-bottom)); grid-template-columns: minmax(0, 1fr) 330px; grid-template-areas: "kpi kpi" "vote vote" "tl tl" "duo duo" "feed rail"; align-items: start; } .rail { position: sticky; top: 76px; } }
 @media (min-width: 1100px) { body.pv-open .page { margin-right: 430px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "vote" "tl" "feed" "rail"; } body.pv-open .rail { position: static; } }
 .kpis, .tl, .feed, .rail { scroll-margin-top: 84px; }
 .kpis { grid-area: kpi; } .vote-wrap { grid-area: vote; display: grid; gap: 16px; min-width: 0; } .vote-wrap:empty { display: none; } .tl { grid-area: tl; } .feed { grid-area: feed; min-width: 0; } .rail { grid-area: rail; display: flex; flex-direction: column; gap: 16px; }
@@ -680,32 +680,28 @@ html, body { overflow-x: hidden; }
   .au-head .ns-h b { display: block; font-weight: 800; }
   .au-head .ns-h small { display: block; margin-top: 5px; font: 500 12px/1.3 var(--sans, system-ui); letter-spacing: 0; color: var(--muted, #a9a3c7); text-transform: none; }
   /* Friction and card status share a row on wide screens, stack on phones. */
-  .duo { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0; align-items: start; }
+  .duo { grid-area: duo; display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0; align-items: start; }
   .duo > section { margin: 0; }
-  @media (min-width: 900px) { .duo { grid-template-columns: 1fr 1fr; } .duo:has(> section:not(.shut)) { grid-template-columns: 1fr; } }
   @media (min-width: 900px) { .cs-list { grid-template-columns: 1fr 1fr; column-gap: 8px; } .cs-list > :last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 4px); } }
   .cs-tg b { white-space: nowrap; }
   .cs-tg small { white-space: nowrap; }
-  .cs { padding: 4px 12px 10px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .03); }
-  .cs-h { display: flex; align-items: center; gap: 8px; }
-  .cs-tg { flex: 1; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-  .cs-tg b { font: 700 12px var(--mono); letter-spacing: .1em; color: var(--text); }
-  .cs-tg small { margin-left: auto; font: 12px var(--mono); color: #ffc14d; }
-  .cs-tg small.all { color: var(--green); }
-  .cs-cp { flex: none; font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .18); background: rgba(255, 255, 255, .06); color: #fff; cursor: pointer; }
-  .cs-sum { margin: 0; font-size: 13px; line-height: 1.6; color: var(--dim); }
-  .cs-sum b { color: var(--text); font-weight: 600; }
-  .cs-sum i { font-style: normal; color: #ffc14d; }
-  .cs-sum.ok { color: var(--green); }
-  .cs:not(.shut) .cs-sum { display: none; }
-  .cs-list { display: grid; gap: 3px; margin-top: 4px; }
-  .cs-r { display: grid; grid-template-columns: minmax(0, 1fr) 44px 30px 30px 104px; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, .03); font-size: 13px; }
-  .cs-r b { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cs-p { font: 600 12px var(--mono); text-align: right; }
-  .cs-p { color: #ffc14d; } .cs-p.full { color: var(--green); } .cs-r.none .cs-p { color: #ff6b81; }
-  .cs-f { font: 600 11px var(--mono); text-align: center; padding: 1px 4px; border-radius: 4px; color: #ff6b81; border: 1px solid rgba(255, 107, 129, .4); opacity: .9; }
-  .cs-f.on { color: var(--green); border-color: rgba(61, 252, 143, .4); }
-  .cs-r i { font-style: normal; font-size: 11.5px; color: var(--dim); text-align: right; white-space: nowrap; }
+  .cs { padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .03); min-width: 0; }
+  .rail .cs { margin-bottom: 14px; }
+  .cs-desk { display: none; }
+  @media (min-width: 1024px) { .cs-desk { display: block; } .cs-phone { display: none; } }
+  .cs-h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .cs-h b { font: 700 11.5px var(--mono); letter-spacing: .1em; color: var(--text); white-space: nowrap; }
+  .cs-h small { font: 12px var(--mono); color: #ffc14d; white-space: nowrap; }
+  .cs-h small.all { color: var(--green); }
+  .cs-cp { margin-left: auto; flex: none; font: inherit; font-size: 11.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .18); background: rgba(255, 255, 255, .06); color: #fff; cursor: pointer; }
+  .cs-grid { display: grid; grid-template-columns: minmax(52px, 1fr) repeat(var(--n), 16px) repeat(var(--x), 22px); gap: 3px; align-items: center; }
+  .cs-grid em { font: 600 9.5px var(--mono); font-style: normal; text-align: center; color: var(--dim); }
+  .cs-grid > b { font-size: 12.5px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ffc14d; }
+  .cs-grid > b.all { color: var(--text); }
+  .cs-grid i { height: 16px; border-radius: 3px; font: 700 10px/16px system-ui, sans-serif; font-style: normal; text-align: center; color: #0b0716; }
+  .cs-grid i.y { background: var(--green); }
+  .cs-grid i.n { background: rgba(255, 107, 129, .55); }
+  @media (max-width: 1023px) { .cs-grid { grid-template-columns: minmax(60px, 1fr) repeat(var(--n), minmax(14px, 22px)) repeat(var(--x), 26px); } }
   /* Admin friction: a deep blue terminal, collapsed until opened. */
   .afr { --afr-g: #39ff88; margin: 14px 0; padding: 4px 12px; border: 1px solid #1d3b8f; border-radius: 12px; background: #06123a; color: var(--afr-g); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .afr:not(.shut) { padding-bottom: 10px; }
@@ -829,6 +825,7 @@ html, body { overflow-x: hidden; }
   .pv-sum b { font-size: 16px !important; }
   /* Feature grid and game day */
   .fg { display: grid; grid-template-columns: minmax(84px, 1fr) repeat(var(--days), minmax(0, 34px)) 30px; gap: 4px; align-items: center; margin-top: 8px; }
+  @media (min-width: 1024px) { .fg { grid-template-columns: minmax(84px, 170px) repeat(var(--days), minmax(0, 1fr)) 30px; } }
   .fg-d { font: 600 10.5px/1 var(--mono); color: var(--dim); text-align: center; } .fg-d.t { color: var(--green); }
   .fg-l { font-size: 12.5px; color: var(--meta, #c9cddb); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .fg-c { display: grid; place-items: center; height: 26px; border-radius: 6px; font: 700 11px/1 var(--mono); font-style: normal; color: #fff; background: rgba(155, 123, 255, var(--a)); }
@@ -1362,16 +1359,18 @@ html, body { overflow-x: hidden; }
     // NFL join requests: approve makes a personal link to send the person.
     // This week's cards: who is fully in (every pick, tiebreaker, lock when
     // the week has one). Counts only, from the pick audit; never a team.
-    const cardStatus = () => {
+    const cardStatus = (where) => {
       const cards = st.audit?.cards;
       if (!cards?.length) return "";
-      const need = (c) => [c.picks < c.of && `${c.of - c.picks} pick${c.of - c.picks === 1 ? "" : "s"}`, !c.tb && "TB", st.audit.lockRule && !c.lock && "lock"].filter(Boolean);
-      const done = cards.filter((c) => !need(c).length), todo = cards.filter((c) => need(c).length).sort((a, b) => a.picks - b.picks);
-      const head = `<div class="cs-h"><button type="button" class="cs-tg" data-cstoggle="1" aria-expanded="${!!st.csOpen}"><span class="afr-car">${st.csOpen ? "▾" : "▸"}</span><b>WEEK ${st.audit.week} CARDS</b><small class="${todo.length ? "" : "all"}">${done.length}/${cards.length} done</small></button>${st.csOpen && todo.length ? `<button type="button" class="cs-cp" data-csnudge="1">${st.copied === "cs" ? "✓ copied" : "Copy nudges"}</button>` : ""}</div>`;
-      const sum = todo.length ? `<p class="cs-sum">Missing: ${todo.map((c) => `<b>${esc(name(c.name))}</b> <i>${esc(need(c).join(", "))}</i>`).join(" · ")}</p>` : `<p class="cs-sum ok">Every card is in.</p>`;
-      if (!st.csOpen) return `<section class="cs shut">${head}${sum}</section>`;
-      const row = (c) => { const n = need(c); return `<div class="cs-r ${n.length ? (c.picks ? "part" : "none") : "ok"}"><b>${esc(name(c.name))}</b><span class="cs-p${c.picks >= c.of ? " full" : ""}">${c.picks}/${c.of}</span><span class="cs-f ${c.tb ? "on" : ""}">TB</span>${st.audit.lockRule ? `<span class="cs-f ${c.lock ? "on" : ""}">🔒</span>` : "<span></span>"}<i>${c.last ? esc(afrDay(c.last) + " " + hm(c.last)) : "nothing saved"}</i></div>`; };
-      return `<section class="cs">${head}<div class="cs-list">${[...todo, ...done].map(row).join("")}</div></section>`;
+      const lr = !!st.audit.lockRule;
+      const need = (c) => [c.picks < c.of && `${c.of - c.picks} pick${c.of - c.picks === 1 ? "" : "s"}`, !c.tb && "TB", lr && !c.lock && "lock"].filter(Boolean);
+      const done = cards.filter((c) => !need(c).length).length;
+      const rows = [...cards].sort((a, b) => (need(a).length ? 0 : 1) - (need(b).length ? 0 : 1) || a.picks - b.picks || a.name.localeCompare(b.name));
+      const n = Math.max(...cards.map((c) => c.of));
+      const cell = (ok, txt = "") => `<i class="${ok ? "y" : "n"}">${txt}</i>`;
+      const grid = `<div class="cs-grid" style="--n:${n};--x:${lr ? 2 : 1}"><span></span>${Array.from({ length: n }, (_, k) => `<em>${k + 1}</em>`).join("")}<em>TB</em>${lr ? "<em>🔒</em>" : ""}
+        ${rows.map((c) => `<b class="${need(c).length ? "" : "all"}" title="${c.last ? `last saved ${esc(afrDay(c.last) + " " + hm(c.last))}` : "nothing saved"}">${esc(name(c.name))}</b>${(c.slots || Array.from({ length: c.of }, (_, k) => k < c.picks)).map((x) => cell(x)).join("")}${cell(c.tb, c.tb ? "✓" : "")}${lr ? cell(c.lock, c.lock ? "✓" : "") : ""}`).join("")}</div>`;
+      return `<section class="cs cs-${where}"><div class="cs-h"><b>WEEK ${st.audit.week} CARDS</b><small class="${done === cards.length ? "all" : ""}">${done}/${cards.length} done</small>${done < cards.length ? `<button type="button" class="cs-cp" data-csnudge="1">${st.copied === "cs" ? "✓ copied" : "Copy nudges"}</button>` : ""}</div>${grid}</section>`;
     };
     // Admin friction: Jake's errors, rage taps, dead taps and sheets shut at
     // once, newest first by day, with a plain text copy for pasting.
@@ -1443,7 +1442,7 @@ html, body { overflow-x: hidden; }
       for (const v of wv) for (const l of new Set(v.f.map(featLab).filter(Boolean))) used.set(l, (used.get(l) || 0) + 1);
       const tp = [...used.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), mf = tp[0]?.[1] || 1;
       const lab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
-      return `<aside class="rail" id="sec-stats">
+      return `<aside class="rail" id="sec-stats">${cardStatus("desk")}
       <section class="panel"><div class="ph"><h2>Visits by hour</h2><span class="sub">time of day, last 7 days</span></div>
         <div class="bars">${byH.map((x) => `<i class="${x.n ? "" : "zero"}${x.h === curH ? " cur" : ""}" data-tip="${esc(`<b>${lab(x.h)}</b>${x.n} visit${x.n === 1 ? "" : "s"}${x.who.size ? ` · ${[...x.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((x.n / mx) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>
@@ -1461,7 +1460,7 @@ html, body { overflow-x: hidden; }
     for (const e of actions) { if (SCREENS[e.k] || FRICTION.test(e.k) || /^(depth|sheet-time)$/.test(e.k)) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), maxF = top[0]?.[1] || 1;
     const home = vs.filter((v) => v.app === "home").length, web = vs.filter((v) => v.app === "browser").length;
-    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">
+    const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">${cardStatus("desk")}
       <section class="panel"><div class="ph"><h2>Activity by hour</h2><span class="sub">actions, last 24h</span></div>
         <div class="bars">${hours.map((h, i) => `<i class="${h.n ? "" : "zero"}${i === 23 ? " cur" : ""}" data-tip="${esc(`<b>${hourLab(h.start)}${i === 23 ? " · this hour" : ""}</b>${h.n} action${h.n === 1 ? "" : "s"}${h.who.size ? ` · ${[...h.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((h.n / maxH) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>${hourLab(hours[0].start)}</span><span>${hourLab(hours[6].start)}</span><span>${hourLab(hours[12].start)}</span><span>${hourLab(hours[18].start)}</span><span>now</span></div>
@@ -1591,7 +1590,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}<div class="duo">${adminFriction()}${cardStatus()}</div>${feedHtml}${rail}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}<div class="duo">${adminFriction()}${cardStatus("phone")}</div>${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
@@ -1726,7 +1725,6 @@ html, body { overflow-x: hidden; }
       try { const x = await fetch(`${WORKER}/admin-friction?${auth()}`, { method: "POST", body: JSON.stringify({ action: "fix", at, fixed: !!r.fixed }) }); const j = await x.json().catch(() => ({})); if (x.ok && j.taps) st.afr = j.taps; else r.fixed = r.fixed ? undefined : Date.now(); } catch { r.fixed = r.fixed ? undefined : Date.now(); }
       st.sig = ""; render(); return;
     }
-    if (b.dataset.cstoggle) { st.csOpen = !st.csOpen; store.set("brochiefs_live_cs_open", st.csOpen ? "1" : ""); st.sig = ""; render(); return; }
     if (b.dataset.csnudge) {
       const c = st.audit?.cards || [];
       const need = (x) => [x.picks < x.of && `${x.of - x.picks} pick${x.of - x.picks === 1 ? "" : "s"}`, !x.tb && "tiebreaker", st.audit.lockRule && !x.lock && "lock of the week"].filter(Boolean);
