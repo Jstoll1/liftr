@@ -115,7 +115,10 @@ function noteError(msg) {
   const m = String(msg || "error").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim().slice(0, 80);
   if (m && appHealth.em.length < 3 && !appHealth.em.includes(m)) appHealth.em.push(m);
 }
-addEventListener("error", (e) => { if (e?.message) noteError(e.message); });
+// A bare "Script error." with no file comes from a script on another site
+// (an extension or an in-app browser); the browser hides the details.
+const foreignError = (e) => /^script error\.?$/i.test(e?.message || "") && !e?.filename;
+addEventListener("error", (e) => { if (e?.message && !foreignError(e)) noteError(e.message); });
 addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?.reason || "unhandled rejection"));
 function markUsable() { if (appHealth.ld == null) appHealth.ld = Math.round(performance.now() - healthT0); }
 (() => {
@@ -9904,7 +9907,12 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
     taps = taps.filter((t) => now - t.t < 1000 && Math.hypot(t.x - e.clientX, t.y - e.clientY) < 30);
     taps.push({ t: now, x: e.clientX, y: e.clientY });
     if (taps.length >= 3 && now - rageAt > 3000) { rageAt = now; taps = []; track("rage", { event: true, d: label(e.target) }); }
+  }, { capture: true, passive: true });
+  // A dead tap is a click (a finger that starts a scroll never clicks), and
+  // reading the game info stats is not a tap that expected anything.
+  document.addEventListener("click", (e) => {
     const el = e.target;
+    if (el instanceof Element && el.closest("[class^=ins-], [class*=' ins-']")) return;
     if (!(el instanceof Element) || interactive(el) || !(el.textContent || "").trim() && el.tagName !== "IMG") return;
     // Looks tappable: an image, a logo, a badge, a name, a number.
     if (!el.closest("img, [class*=logo], [class*=badge], [class*=chip], [class*=score], [class*=name], [class*=card], [class*=row]")) return;
@@ -9947,6 +9955,6 @@ renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
   // Errors they actually hit, once each per visit.
   const seenErr = new Set();
   const err = (m) => { const k = String(m || "error").slice(0, 40); if (seenErr.has(k) || seenErr.size > 5) return; seenErr.add(k); track("js-error", { event: true, d: k }); };
-  addEventListener("error", (e) => { if (e.message) err(e.message); });
+  addEventListener("error", (e) => { if (e.message && !foreignError(e)) err(e.message); });
   addEventListener("unhandledrejection", (e) => err(e.reason?.message || e.reason));
 })();
