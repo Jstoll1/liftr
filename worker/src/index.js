@@ -1822,9 +1822,12 @@ async function handleGames(request, env, corsHeaders, url, ctx) {
       const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
       const games = new Map((slate?.games || []).map((g) => [String(g.id), g]));
       let checked = 0;
-      const problems = [];
+      const problems = [], cards = [];
+      // Each card's state for the live page: counts only, never a team.
       await Promise.all(PICKS_MANAGERS.map(async (m) => {
         const st = await env.LIFTR_KV.get(pickKey(week, m), "json").catch(() => null);
+        const on = Object.entries(st?.picks || {}).filter(([gid, p]) => p?.team && games.has(String(gid)));
+        cards.push({ name: m, picks: on.length, of: games.size, tb: String(st?.tiebreaker ?? "").trim() !== "", lock: on.some(([, p]) => p.lock), last: Math.max(0, ...on.map(([, p]) => Number(p.savedAt) || 0)) || null });
         for (const [gid, p] of Object.entries(st?.picks || {})) {
           if (!p?.team) continue;
           checked += 1;
@@ -1834,7 +1837,8 @@ async function handleGames(request, env, corsHeaders, url, ctx) {
         }
       }));
       problems.sort((a, b) => a.slot - b.slot || a.manager.localeCompare(b.manager));
-      return json({ ok: true, week, checked, problems }, 200, corsHeaders);
+      cards.sort((a, b) => a.name.localeCompare(b.name));
+      return json({ ok: true, week, checked, problems, cards, lockRule: !!lockRuleFor(week) }, 200, corsHeaders);
     }
     // The slate editor's warning before it changes a published game: who
     // has a pick in on each game. Names only, never which side or mode.
