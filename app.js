@@ -6444,9 +6444,10 @@ function renderPicksCountdown() {
   const st = currentManager ? getManagerState(currentManager) : null;
   const picked = st ? GAMES.filter((g) => st.picks[g.id]).length : 0;
   const tbSet = !!(st && String(st.tiebreaker ?? "").trim());
-  const chip = (ok, txt) => `<span class="cd-chip ${ok ? "ok" : "miss"}">${txt} ${ok ? "✓" : "!"}</span>`;
+  // A missing chip is a shortcut to what is missing.
+  const chip = (ok, txt, go) => (ok ? `<span class="cd-chip ok">${txt} ✓</span>` : `<button type="button" class="cd-chip miss" data-cdgo="${go}" aria-label="Go to what is missing">${txt} !</button>`);
   const riding = st ? GAMES.reduce((n, g) => n + (st.picks[g.id] ? pickWorth(g, st.picks[g.id]) : 0), 0) : 0;
-  const status = st ? `<span class="cd-card"><em>YOUR CARD</em><span class="cd-riding"><b>${riding}</b><i>PT<br>RIDING</i></span><span class="cd-status">${chip(picked === GAMES.length, `${picked}/${GAMES.length}`)}${chip(tbSet, "TB")}</span></span>` : "";
+  const status = st ? `<span class="cd-card"><em>YOUR CARD</em><span class="cd-riding"><b>${riding}</b><i>PT<br>RIDING</i></span><span class="cd-status">${chip(picked === GAMES.length, `${picked}/${GAMES.length}`, "game")}${chip(tbSet, "TB", "tb")}</span></span>` : "";
   // Under an hour the whole slate is about to lock, so the strip goes hot.
   el.classList.remove("hidden"); el.classList.toggle("soon", cd.ms < 3600000);
   // Scoreboard digits: DAYS / HRS / MIN / SEC boxes, days dropped at zero.
@@ -6752,6 +6753,18 @@ function renderGridCheck() {
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !el.classList.contains("hidden")) close(); });
 })();
+
+// Countdown chips: "9/10 !" scrolls to the first open game without a pick,
+// "TB !" to the tiebreaker.
+document.addEventListener("click", (e) => {
+  const b = e.target.closest?.("[data-cdgo]");
+  if (!b || !currentManager) return;
+  const state = getManagerState(currentManager);
+  const blank = b.dataset.cdgo === "game" ? GAMES.find((g) => !state.picks[g.id] && !isGameLocked(g)) : null;
+  const target = blank ? document.querySelector(`.game-card[data-game-id="${blank.id}"]`) : document.getElementById("tiebreaker-input");
+  target?.scrollIntoView({ block: "center", behavior: "smooth" });
+  if (target) { target.classList.remove("cd-flash"); void target.offsetWidth; target.classList.add("cd-flash"); setTimeout(() => target.classList.remove("cd-flash"), 1600); }
+});
 
 const BONER_UNTIL = Date.parse("2026-09-29T03:59:00Z"); // Mon 11:59 PM ET
 let bonerShownThisLoad = false;
