@@ -8117,3 +8117,6 @@ html:not(.qr-seen) .hz-mid .qr-tog { animation: qr-glint 6s ease-in-out 2s infin
 .hz-rec { line-height: 1.1; }
 .qr-five.none { justify-content: center; }
 .qr-five.none em { font-style: normal; font-size: 11.5px; color: var(--text-dim); }
+
+/* Wide wordmark logos (LSU): scaled, not resized, so the card keeps its height. */
+.hz-tm .tm-logo.wide { transform: scale(1.4); }

@@ -2404,7 +2404,7 @@ function teamRowHtml(game, team, teamId, isFavorite, short, draft) {
   return `
     <div class="tm-row ${atsSelected || suSelected ? "picked" : ""}">
       <div class="tm-id" data-tm="${escapeCd(team)}">
-        <span class="tm-logo-wrap"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />${latestLiveWeek === currentWeek ? rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank) : ""}</span>
+        <span class="tm-logo-wrap"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" loading="lazy" onload="logoFit(this)" onerror="this.style.visibility='hidden'" />${latestLiveWeek === currentWeek ? rankBadge(teamId === game.awayId ? latestLive[game.id]?.awayRank : latestLive[game.id]?.homeRank) : ""}</span>
         <span class="tm-name">${isHome ? `<i class="tm-at">@</i>` : ""}<span class="tm-nm">${short}</span>${isFavorite ? `<span class="tm-spread">${line}</span>` : ""}</span>
       </div>
       <div class="tm-chips">
@@ -2443,7 +2443,7 @@ function matchupCardsHtml(game, draft) {
     const suSelected = pickEqual(draft, { team, mode: "SU" });
     const pts = (n) => `<span class="pk-pts">${n}<i>PT</i></span>`;
     const id = `<div class="hz-tm${atsSelected || suSelected ? " picked" : ""}" data-tm="${escapeCd(team)}">
-        <span class="tm-lg"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" decoding="async" onerror="this.style.visibility='hidden'" />${rank ? `<b class="tm-rk">#${rank}</b>` : ""}</span>
+        <span class="tm-lg"><img class="tm-logo" src="${logoUrl(teamId)}" alt="" decoding="async" onload="logoFit(this)" onerror="this.style.visibility='hidden'" />${rank ? `<b class="tm-rk">#${rank}</b>` : ""}</span>
         <span class="hz-nm${nameSizeClass(short)}">${short}</span>
         <span class="hz-rec">${record ? String(record).replace(/[^0-9-]/g, "") : ""}</span>
       </div>`;
@@ -2508,7 +2508,7 @@ function lockedResultHtml(game, pick, finalRes, liveG) {
     return `<span class="lr-bet">${terms}<span class="lr-bet-pts">${worth} PT</span></span>`;
   };
   const team = (side, name, id) => `<div class="hz-tm lr-hz-tm ${pickedSide === side ? "picked" : ""}">
-      <img class="tm-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+      <img class="tm-logo" src="${logoUrl(id)}" alt="" loading="lazy" onload="logoFit(this)" onerror="this.style.visibility='hidden'" />
       <span class="hz-nm${nameSizeClass(name)}">${name}</span>
       <span class="hz-rec">${(side === "away" ? liveG?.awayRecord : liveG?.homeRecord) ? String(side === "away" ? liveG.awayRecord : liveG.homeRecord).replace(/[^0-9-]/g, "") : ""}${(side === "away" ? liveG?.awayRank : liveG?.homeRank) ? `<b>#${side === "away" ? liveG.awayRank : liveG.homeRank}</b>` : ""}</span>
     </div>`;
@@ -6753,6 +6753,34 @@ function renderGridCheck() {
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !el.classList.contains("hidden")) close(); });
 })();
+
+// ESPN's resizer pads every logo into a square, so a wordmark (LSU) is a
+// thin band in the middle. Measure the drawn part once per logo and blow
+// up the wide ones; the box, and so the card, stays the same size.
+const LOGO_FIT_KEY = "brochiefs_logofit_v1";
+let logoFitMap = null;
+function logoFit(img) {
+  if (!logoFitMap) { try { logoFitMap = JSON.parse(localStorage.getItem(LOGO_FIT_KEY) || "{}"); } catch { logoFitMap = {}; } }
+  const k = img.src.replace(/.*\/(\d+)\.png.*/, "$1");
+  const apply = (w) => img.classList.toggle("wide", !!w);
+  if (k in logoFitMap) return apply(logoFitMap[k]);
+  const probe = new Image();
+  probe.crossOrigin = "anonymous";
+  probe.onload = () => {
+    try {
+      const N = 48, c = document.createElement("canvas"); c.width = c.height = N;
+      const x = c.getContext("2d"); x.drawImage(probe, 0, 0, N, N);
+      const a = x.getImageData(0, 0, N, N).data;
+      let t = N, b = -1, l = N, r = -1;
+      for (let y = 0; y < N; y++) for (let i = 0; i < N; i++) if (a[(y * N + i) * 4 + 3] > 24) { t = Math.min(t, y); b = Math.max(b, y); l = Math.min(l, i); r = Math.max(r, i); }
+      const wide = b >= t && (r - l + 1) > 1.6 * (b - t + 1);
+      logoFitMap[k] = wide ? 1 : 0;
+      try { localStorage.setItem(LOGO_FIT_KEY, JSON.stringify(logoFitMap)); } catch {}
+      apply(wide);
+    } catch {}
+  };
+  probe.src = img.src;
+}
 
 // Countdown chips: a "9/10 !" or "TB !" chip opens the grid check, whose
 // button takes you to what is missing.

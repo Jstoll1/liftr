@@ -133,7 +133,8 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   // Team logos: kept on the phone so they paint at once on the next open.
-  if (url.hostname === "a.espncdn.com" && /teamlogos|combiner/.test(url.pathname + url.search)) { e.respondWith(logoResponse(e)); return; }
+  // A CORS read (the logo size probe) skips the cache, which holds opaque copies.
+  if (url.hostname === "a.espncdn.com" && e.request.mode !== "cors" && /teamlogos|combiner/.test(url.pathname + url.search)) { e.respondWith(logoResponse(e)); return; }
   // The font stylesheet is linked without crossorigin, which would make it
   // opaque; Google serves it with CORS, so ask for it that way.
   if (url.hostname === "fonts.googleapis.com") e.respondWith(staleWhileRevalidate(e, new Request(req.url, { mode: "cors", credentials: "omit" })));
