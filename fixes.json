@@ -21,6 +21,27 @@
       "at": 1792760094000,
       "commit": "3e181a5",
       "note": "Avatar on a player card opens your avatar editor or the season head to head"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".plc-sb",
+      "at": 1792760276000,
+      "commit": "f144e51",
+      "note": "Stat bars on a player card open the league ranking for that stat"
+    },
+    {
+      "k": "rage",
+      "match": ".plc-sb",
+      "at": 1792760276000,
+      "commit": "f144e51",
+      "note": "Stat bars on a player card open the league ranking for that stat"
+    },
+    {
+      "k": "rage",
+      "match": ".plc-top",
+      "at": 1792760094000,
+      "commit": "3e181a5",
+      "note": "Avatar is a button now; the tap came seconds before that fix went live"
     }
   ]
 }
