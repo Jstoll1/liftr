@@ -2807,7 +2807,7 @@ function rankLockHtml(row) {
 }
 // The smashed padlock: shackle snapped off, body crushed and cracked.
 const HIT_LOCK = `<img class="lk-smashed" src="assets/lock-hit.png" alt="Lock hit" width="16" height="16">`;
-const SMASHED_LOCK = `<img class="lk-smashed" src="assets/lock-smashed.png" alt="Lock missed" width="16" height="16">`;
+const SMASHED_LOCK = `<img class="lk-smashed" src="assets/lock-missed.png" alt="Lock missed" width="16" height="16">`;
 function lockPickText(g, pk) {
   const short = pk.team === g.home ? g.homeShort : pk.team === g.away ? g.awayShort : pk.team;
   return pk.mode === "SU" ? `${short} to win` : `${short} ${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
