@@ -8450,7 +8450,7 @@ i.lk.rank-lk.lk-up, i.lk.rank-lk.lk-dn { padding: 2px 4px; border-radius: 5px; }
 i.lk.rank-lk.lk-up { background: rgba(57, 255, 136, .16); box-shadow: inset 0 0 0 1px rgba(57, 255, 136, .35); }
 i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 0 1px rgba(255, 32, 121, .4); }
 
-/* Ask the week (preview) */
+/* Ask the week: chat about this week's race */
 .ask-btn { margin-right: 6px; }
 .ask { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; justify-content: center; padding: 12px; background: rgba(5, 3, 12, .7); }
 .ask-card { width: min(460px, 100%); max-height: 80vh; display: flex; flex-direction: column; gap: 10px; padding: 14px; background: #150c28; border: 1px solid rgba(5, 217, 232, .45); border-radius: 16px; }
