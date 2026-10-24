@@ -497,7 +497,12 @@ async function fetchAllPicks(who = currentManager || loadMe()) {
 // that asked for the wrong days and found no scores at all.
 function espnScoreboardDates() {
   const days = new Set();
-  for (const g of GAMES) {
+  // A day whose games this phone has already seen finish is not asked
+  // again: finished games carry over from the last read. Saturday night
+  // reads one day, not Thursday through Saturday.
+  const done = (g) => latestLiveWeek === currentWeek && latestLive[g.id]?.completed;
+  const open = GAMES.filter((g) => !done(g));
+  for (const g of open.length ? open : GAMES) {
     const t = new Date(g.kickoff).getTime();
     if (!Number.isFinite(t)) continue;
     // Eastern, because that is the day ESPN files a game under, and a
@@ -709,7 +714,7 @@ let liveLastOk = false, espnPartial = false;
 let liveFetchedAt = 0;
 function liveTtl() {
   const now = Date.now();
-  if (Object.values(latestLive).some((l) => l?.found && l.state === "in" && !l.completed)) return 0;
+  if (Object.values(latestLive).some((l) => l?.found && l.state === "in" && !l.completed)) return 10000;
   const ks = GAMES.map((g) => ({ g, k: Date.parse(g.kickoff) })).filter((x) => Number.isFinite(x.k));
   if (ks.some(({ g, k }) => now >= k - 10 * 60000 && now < k + 5 * 3600000 && !latestLive[g.id]?.completed)) return 0;
   if (ks.some(({ k }) => k > now && k - now < 2 * 3600000)) return 60000;
@@ -8344,15 +8349,15 @@ async function openInsights(gameId) {
     if (!alive()) { clearInterval(liveTimer); return; }
     const l = insLive(gameId);
     if (!(l && l.found && l.state === "in" && !l.completed)) return;
-    try { await (sideGuestGame(gameId) ? fetchSideLive(true) : fetchLiveScores()); } catch {}
+    try { await (sideGuestGame(gameId) ? fetchSideLive(Date.now() - sideLiveAt > 10000) : fetchLiveScores()); } catch {}
     const id = insLive(gameId)?.eventId || null;
     if (id) { try { const raw = await fetchEspnSummary(id, true); if (raw) summaryRaw = raw; } catch {} }
     if (alive()) paint();
   };
-  // Every 8 seconds while the sheet is on screen; nothing while the phone
+  // Every 15 seconds while the sheet is on screen; nothing while the phone
   // is locked or the app is in the background, and an immediate catch-up
   // the moment it comes back.
-  const liveTimer = setInterval(() => { if (!document.hidden) liveTick(); }, 8000);
+  const liveTimer = setInterval(() => { if (!document.hidden) liveTick(); }, 15000);
   const onVis = () => { if (!alive()) { document.removeEventListener("visibilitychange", onVis); return; } if (!document.hidden) liveTick(); };
   document.addEventListener("visibilitychange", onVis);
   fetchAllPicks().then((p) => { if (p) { lastGoodCloudPicks = p; if (alive()) paint(); } }).catch(() => {});

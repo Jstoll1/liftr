@@ -527,6 +527,30 @@ const app = {
   },
 };
 
+// --- Append-only logs --------------------------------------------------------
+// Each entry is its own key, newest first by name, with the entry in the
+// key's metadata: one write to add, one list call to read the lot, and two
+// writes at once can never overwrite each other (KV is eventually
+// consistent, so a read-modify-write of one big list could drop entries).
+const logKey = (prefix, at) => `${prefix}${String(9e12 - at).padStart(13, "0")}-${Math.random().toString(36).slice(2, 7)}`;
+async function logPut(env, prefix, entry, ttlDays) {
+  const key = logKey(prefix, entry.at);
+  await env.LIFTR_KV.put(key, "", { expirationTtl: ttlDays * 86400, metadata: entry });
+  return key;
+}
+async function logList(env, prefix, max, legacyKey = null) {
+  const out = [];
+  let cursor;
+  do {
+    const r = await env.LIFTR_KV.list({ prefix, cursor, limit: 1000 });
+    for (const k of r.keys || []) if (k.metadata) out.push({ ...k.metadata, id: k.name });
+    cursor = r.list_complete === false ? r.cursor : null;
+  } while (cursor && out.length < max);
+  // Entries written before the switch, until they age out.
+  if (legacyKey) { try { for (const r of (await env.LIFTR_KV.get(legacyKey, "json")) || []) out.push(r); } catch {} }
+  return out.sort((a, b) => b.at - a.at).slice(0, max);
+}
+
 // --- Ops log: what went wrong, for the live page --------------------------
 // The Worker's own failures (a route that crashed or answered 5xx, a
 // scheduled run that threw, an upstream call that failed or crawled) and
@@ -545,11 +569,8 @@ function opsNote(k, d, extra = {}) {
 async function opsFlush(env) {
   if (!opsQ.length || !env?.LIFTR_KV) return;
   const add = opsQ.splice(0);
-  try {
-    const now = Date.now();
-    const list = ((await env.LIFTR_KV.get(OPS_KEY, "json")) || []).filter((r) => now - r.at < 7 * 86400000);
-    await env.LIFTR_KV.put(OPS_KEY, JSON.stringify([...add.reverse(), ...list].slice(0, 300)), { expirationTtl: 7 * 86400 });
-  } catch (err) { console.error("ops log", err?.stack || String(err)); }
+  try { await Promise.all(add.map((e) => logPut(env, "ops:", e, 7))); }
+  catch (err) { console.error("ops log", err?.stack || String(err)); }
 }
 // Upstream calls (ESPN and the rest): failures and calls over 8 seconds.
 const rawFetch = globalThis.fetch;
@@ -571,7 +592,7 @@ async function handleOps(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   if (request.method === "GET") {
     if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
-    return json({ ops: (await env.LIFTR_KV.get(OPS_KEY, "json")) || [] }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+    return json({ ops: await logList(env, "ops:", 300, OPS_KEY) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
@@ -587,16 +608,90 @@ async function handleOps(request, env, corsHeaders, url) {
   return json({ ok: true }, 200, corsHeaders);
 }
 
+// --- Read cache -----------------------------------------------------------
+// Public reads that are the same for everyone, kept briefly so a Saturday
+// of ten phones polling the same slate costs one Worker run and one set of
+// storage reads per window instead of one per phone. Two layers: this
+// isolate's memory (works everywhere), and Cloudflare's edge cache, which
+// only exists on a custom domain (a no-op on *.workers.dev). Anything that
+// names a person (key, device, token, me) is never cached; the app's
+// cache-busting ?t= is left out of the key; a write clears the memory copy.
+// A cached copy can only ever be older, never earlier: at worst a reveal at
+// lock shows a few seconds late, never a pick before it.
+const READ_TTL = { "/games": 15, "/weeks": 30, "/results": 20, "/season": 30, "/qotw": 15, "/avatars": 60, "/ats": 600, "/insights/game": 120, "/insights/news": 300 };
+const PERSONAL = ["key", "device", "token", "me", "slate", "admin"];
+const memCache = new Map();
+// Bumped on every clear: an answer built while something was written is
+// not kept, or a background slate refresh that lands mid-request would be
+// undone by the older answer the request then stores.
+let cacheGen = 0;
+const clearReadCache = () => { cacheGen++; memCache.clear(); };
+// Tests that change storage behind the Worker's back clear it by hand.
+export function resetReadCache() { clearReadCache(); }
+// One cache per storage binding (a test's fresh KV never sees another's).
+const kvIds = new WeakMap();
+let kvSeq = 0;
+const kvId = (env) => { const kv = env?.LIFTR_KV; if (!kv) return 0; const raw = kvRaw.get(kv) || kv; if (!kvIds.has(raw)) kvIds.set(raw, ++kvSeq); return kvIds.get(raw); };
+function readCacheKey(request, url, env) {
+  if (request.method !== "GET" || !READ_TTL[url.pathname]) return null;
+  if (PERSONAL.some((p) => url.searchParams.has(p))) return null;
+  const q = [...url.searchParams].filter(([k]) => k !== "t" && k !== "v").sort(([a], [b]) => a.localeCompare(b));
+  return `${kvId(env)}|${url.pathname}?${new URLSearchParams(q)}|${request.headers.get("Origin") || ""}`;
+}
+// A write to anything a cached read is built from clears the memory copy,
+// so the Worker's own background updates (a new slate, scores, a sealed
+// week) show on the very next read. Presence pings and logs do not count.
+const FEEDS_READS = /^(games|weeks|week-|results|summar|season|avatar|qotw|ats|news|insights|snap|preview|lines?:)/i;
+const kvWrapped = new WeakMap(), kvRaw = new WeakMap();
+function watchWrites(env) {
+  const kv = env?.LIFTR_KV;
+  if (!kv) return env;
+  let w = kvWrapped.get(kv);
+  if (!w) {
+    w = new Proxy(kv, { get(t, prop) {
+      const v = t[prop];
+      if (prop === "put" || prop === "delete") return (k, ...rest) => { if (FEEDS_READS.test(String(k))) clearReadCache(); return v.call(t, k, ...rest); };
+      return typeof v === "function" ? v.bind(t) : v;
+    } });
+    kvWrapped.set(kv, w); kvRaw.set(w, kv);
+  }
+  return new Proxy(env, { get(t, prop) { return prop === "LIFTR_KV" ? w : t[prop]; } });
+}
+async function cachedRead(request, env, ctx, run) {
+  const url = new URL(request.url);
+  if (request.method !== "GET" && request.method !== "OPTIONS") clearReadCache();
+  const key = readCacheKey(request, url, env);
+  if (!key) return run();
+  const ttl = READ_TTL[url.pathname], now = Date.now();
+  const hit = memCache.get(key);
+  if (hit && now - hit.at < ttl * 1000) return new Response(hit.body, { status: hit.status, headers: { ...hit.headers, "X-Read-Cache": "memory" } });
+  const edge = url.hostname.endsWith(".workers.dev") || typeof caches === "undefined" ? null : caches.default;
+  const edgeKey = edge ? new Request(`https://read-cache.local/${encodeURIComponent(key)}`) : null;
+  if (edge) { try { const e = await edge.match(edgeKey); if (e) return e; } catch {} }
+  const gen = cacheGen;
+  const r = await run();
+  if (r.status !== 200) return r;
+  const body = await r.text();
+  const headers = Object.fromEntries(r.headers);
+  // Something was written meanwhile: answer, but do not keep it.
+  if (gen !== cacheGen) return new Response(body, { status: 200, headers });
+  memCache.set(key, { at: now, body, status: 200, headers });
+  if (memCache.size > 300) memCache.delete(memCache.keys().next().value);
+  if (edge) { try { ctx?.waitUntil?.(edge.put(edgeKey, new Response(body, { status: 200, headers: { ...headers, "Cache-Control": `public, max-age=${ttl}` } }))); } catch {} }
+  return new Response(body, { status: 200, headers });
+}
+
 export default {
   async scheduled(event, env, ctx) {
     const wrapped = { ...ctx, waitUntil: (p) => ctx.waitUntil(Promise.resolve(p).catch((err) => { opsNote("cron-fail", `${event.cron}: ${String(err?.message || err).slice(0, 100)}`, { src: "worker" }); throw err; }).finally(() => opsFlush(env))) };
-    try { return await app.scheduled(event, env, wrapped); }
+    try { return await app.scheduled(event, watchWrites(env), wrapped); }
     catch (err) { opsNote("cron-fail", `${event.cron}: ${String(err?.message || err).slice(0, 100)}`, { src: "worker" }); ctx.waitUntil(opsFlush(env)); throw err; }
   },
   async fetch(request, env, ctx) {
     const path = new URL(request.url).pathname;
     try {
-      const r = await app.fetch(request, env, ctx);
+      const wenv = watchWrites(env);
+      const r = await cachedRead(request, wenv, ctx, () => app.fetch(request, wenv, ctx));
       if (r.status >= 500) opsNote("route-fail", `${request.method} ${path} ${r.status}`, { src: "worker" });
       if (opsQ.length) ctx?.waitUntil?.(opsFlush(env));
       return r;
@@ -4028,26 +4123,32 @@ async function handleAdminFriction(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   if (request.method === "GET") {
     if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
-    return json({ taps: (await env.LIFTR_KV.get(ADMIN_FRICTION_KEY, "json")) || [] }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+    return json({ taps: await logList(env, "afr:", 200, ADMIN_FRICTION_KEY) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
   // The admin ticks an entry fixed (or unticks it) from the live page.
   if (body?.action === "fix") {
     if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
-    const list = (await env.LIFTR_KV.get(ADMIN_FRICTION_KEY, "json")) || [];
-    const r = list.find((x) => x.at === Number(body.at));
+    const all = await logList(env, "afr:", 200, ADMIN_FRICTION_KEY);
+    const r = all.find((x) => x.at === Number(body.at));
     if (!r) return json({ error: "No such entry" }, 404, corsHeaders);
-    if (body.fixed) r.fixed = Date.now(); else delete r.fixed;
-    await env.LIFTR_KV.put(ADMIN_FRICTION_KEY, JSON.stringify(list), { expirationTtl: 14 * 86400 });
-    return json({ ok: true, taps: list }, 200, corsHeaders);
+    const { id, ...entry } = r;
+    if (body.fixed) entry.fixed = Date.now(); else delete entry.fixed;
+    if (id) {
+      // Rewrite that one key's metadata, keeping what is left of its two weeks.
+      const left = Math.max(60, Math.round((entry.at + 14 * 86400000 - Date.now()) / 1000));
+      await env.LIFTR_KV.put(id, "", { expirationTtl: left, metadata: entry });
+    } else {
+      const list = (await env.LIFTR_KV.get(ADMIN_FRICTION_KEY, "json")) || [];
+      const old = list.find((x) => x.at === entry.at);
+      if (old) { if (entry.fixed) old.fixed = entry.fixed; else delete old.fixed; await env.LIFTR_KV.put(ADMIN_FRICTION_KEY, JSON.stringify(list), { expirationTtl: 14 * 86400 }); }
+    }
+    return json({ ok: true, taps: all.map((x) => (x.at === entry.at ? { ...entry, ...(id ? { id } : {}) } : x)) }, 200, corsHeaders);
   }
   if (!VISITS_NOT_TRACKED.has(body?.manager)) return json({ ok: true, tracked: false }, 200, corsHeaders);
   const k = ["js-error", "rage", "dead-tap", "quick-exit"].includes(body.k) ? body.k : "dead-tap";
   const d = String(body.d || "").slice(0, 120), screen = String(body.screen || "").slice(0, 24);
-  const now = Date.now();
-  const list = ((await env.LIFTR_KV.get(ADMIN_FRICTION_KEY, "json")) || []).filter((r) => now - r.at < 14 * 86400000);
-  list.unshift({ at: now, k, d, screen });
-  await env.LIFTR_KV.put(ADMIN_FRICTION_KEY, JSON.stringify(list.slice(0, 200)), { expirationTtl: 14 * 86400 });
+  await logPut(env, "afr:", { at: Date.now(), k, d, screen }, 14);
   return json({ ok: true }, 200, corsHeaders);
 }

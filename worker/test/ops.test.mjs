@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-const kv = () => { const m = new Map(); return { m,
+// KV with list metadata, keys listed in name order like the real thing.
+const kv = () => { const m = new Map(), meta = new Map(); return { m,
   get: async (k, t) => { const v = m.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; },
-  put: async (k, v) => { m.set(k, v); }, delete: async (k) => { m.delete(k); },
-  list: async ({ prefix } = {}) => ({ keys: [...m.keys()].filter((k) => !prefix || k.startsWith(prefix)).map((name) => ({ name })), list_complete: true }) }; };
+  put: async (k, v, o) => { m.set(k, v); if (o?.metadata) meta.set(k, o.metadata); }, delete: async (k) => { m.delete(k); meta.delete(k); },
+  list: async ({ prefix } = {}) => ({ keys: [...m.keys()].filter((k) => !prefix || k.startsWith(prefix)).sort().map((name) => ({ name, metadata: meta.get(name) })), list_complete: true }) }; };
 
 test("ops: phones report failures, admin reads them, upstream failures are logged", async () => {
   // A failing upstream before the Worker module wraps fetch.
