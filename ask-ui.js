@@ -142,6 +142,7 @@
   }
 
   function answer(r) {
+    if ((r.intent === "needs" || r.intent === "threats") && r.conditions?.length) r = { ...r, intent: "chance" };
     if (r.intent === "field") return fieldAnswer(r);
     if (r.intent === "picks") return picksAnswer(r);
     if (r.intent === "tiebreaker") return tbAnswer();
@@ -225,7 +226,7 @@
     busy = true; const item = { q, a: null }; log.push(item); sheet();
     try {
       const games = GAMES.map((g) => ({ id: g.id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, favorite: g.favorite, spread: g.spread, status: computeLiveResults(latestLive)[g.id] ? "final" : latestLive[g.id]?.state === "in" ? "live" : "not started" }));
-      const r = await fetch(`${WORKER_URL}/week-ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, asker: me(), members: MANAGERS, games }) });
+      const r = await fetch(`${WORKER_URL}/week-ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, asker: me(), members: MANAGERS, games, previous: (() => { const p = log[log.length - 2]; return p ? { q: p.q, reading: p.raw || null } : null; })() }) });
       const j = await r.json().catch(() => ({}));
       item.raw = r.ok ? j : null;
       item.a = r.ok ? answer(j) : j.error || "Couldn't reach the league just now. Try again.";
