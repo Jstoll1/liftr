@@ -1,0 +1,256 @@
+/* Brochiefs Pro: the preview theme. Loaded only on the preview site (see the
+   theme loader in index.html) and scoped to html.pro, so the live app never
+   sees a rule of it. Two layers: first the neon arcade is neutralised (one
+   type family, no glows, hairlines instead of neon frames), then the core
+   components are rebuilt on a small set of tokens. The weekly graphics and
+   the wordmark keep their retro personality. */
+
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400 700; font-display: swap; src: url(fonts/inter-latin.woff2) format("woff2"); }
+
+html.pro {
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  /* Surfaces: graphite, not black; each step is a lift, not a frame. */
+  --bg: #0b0d10;
+  --bg2: #0b0d10;
+  --s1: #111418;
+  --s2: #171b21;
+  --s3: #1e232a;
+  --line: #232830;
+  --line2: #2e343e;
+  /* Text */
+  --text: #eef0f3;
+  --text-dim: #9aa2ae;
+  --text-meta: #b9c0ca;
+  --t3: #6c7480;
+  /* One accent for what you chose; status colours only mean status. */
+  --acc: #ff3d6e;
+  --acc-ink: #ffe7ee;
+  --acc-soft: rgba(255, 61, 110, .13);
+  --win: #2ecf7a;
+  --loss: #ff5d5d;
+  --live: #f5b73d;
+  /* The old neon names, remapped so every existing rule calms down. */
+  --neon-pink: var(--acc);
+  --neon-cyan: #8fb8ff;
+  --neon-purple: var(--line2);
+  --neon-yellow: var(--live);
+  --neon-green: var(--win);
+  --card-bg: var(--s1);
+  --card-border: var(--line);
+  --accent: var(--acc);
+  --r: 12px;
+  --r-sm: 8px;
+  color-scheme: dark;
+}
+
+/* ---- Layer 1: neutralise --------------------------------------------- */
+
+html.pro, html.pro body { background: var(--bg) !important; color: var(--text); font-family: var(--font); font-feature-settings: "tnum" 1, "cv11" 1, "ss01" 1; -webkit-font-smoothing: antialiased; }
+html.pro body *:not(.pro-keep):not(.pro-keep *) { font-family: var(--font) !important; text-shadow: none !important; letter-spacing: 0; }
+html.pro body *:not(.pro-keep *) { box-shadow: none !important; filter: none !important; }
+html.pro .app-scroll { background: var(--bg) !important; }
+/* The arcade backdrop: grids, scanlines, horizon glow. */
+html.pro .arcade-horizon-grid, html.pro .scanlines, html.pro .crt, html.pro [class*="scanline"], html.pro [class*="horizon"] { display: none !important; }
+html.pro body::before, html.pro body::after, html.pro .app-scroll::before, html.pro .app-scroll::after { display: none !important; }
+/* Neon frames become hairlines; status borders are restored per component. */
+html.pro body *:not(.pro-keep *) { border-color: var(--line); }
+html.pro ::selection { background: var(--acc-soft); }
+html.pro button { -webkit-tap-highlight-color: transparent; }
+html.pro button:focus-visible, html.pro a:focus-visible, html.pro input:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+/* Blinking and pulsing for attention becomes a still colour. */
+html.pro .cd-chip.miss, html.pro [class*="blink"], html.pro [class*="pulse"] { animation: none !important; }
+
+/* ---- Header ------------------------------------------------------------ */
+
+html.pro .home-header { background: rgba(11, 13, 16, .86) !important; backdrop-filter: saturate(140%) blur(18px); -webkit-backdrop-filter: saturate(140%) blur(18px); border-bottom: 1px solid var(--line) !important; }
+html.pro .home-header .home-logo-img { height: 30px !important; width: auto !important; }
+html.pro .me-pill, html.pro .head-score {
+  height: 30px; padding: 0 12px 0 4px !important; border-radius: 999px !important;
+  background: var(--s2) !important; border: 1px solid var(--line2) !important; color: var(--text) !important;
+  font-size: 13px !important; font-weight: 600 !important; text-transform: none !important;
+}
+html.pro .head-score { padding: 0 12px !important; color: var(--text-dim) !important; font-weight: 500 !important; }
+
+/* ---- Bottom navigation --------------------------------------------------- */
+
+html.pro .bottom-nav { background: rgba(11, 13, 16, .9) !important; backdrop-filter: saturate(140%) blur(18px); -webkit-backdrop-filter: saturate(140%) blur(18px); border-top: 1px solid var(--line) !important; }
+html.pro .nav-btn { color: var(--t3) !important; transition: color .15s ease; }
+html.pro .nav-btn-label { font-size: 10.5px !important; font-weight: 500 !important; letter-spacing: .01em !important; text-transform: none !important; }
+html.pro .nav-btn.active, html.pro .nav-btn.active .nav-btn-icon { color: var(--text) !important; }
+html.pro .nav-btn.active .nav-btn-label { font-weight: 600 !important; }
+html.pro .nav-btn.active::after { content: ""; position: absolute; top: 0; left: 30%; right: 30%; height: 2px; border-radius: 0 0 2px 2px; background: var(--acc); }
+html.pro .nav-btn { position: relative; }
+
+/* ---- Countdown strip ------------------------------------------------------ */
+
+html.pro .picks-countdown { background: var(--s1) !important; border: 1px solid var(--line) !important; border-radius: var(--r) !important; }
+html.pro .picks-countdown.soon { border-color: rgba(245, 183, 61, .45) !important; }
+html.pro .picks-countdown .cd-cell { background: none !important; border: 0 !important; }
+html.pro .picks-countdown .cd-cell b, html.pro .picks-countdown .cd-cell b * { background: none !important; border: 0 !important; }
+html.pro .picks-countdown .cd-cell b { font-size: 30px !important; font-weight: 600 !important; color: var(--text) !important; font-variant-numeric: tabular-nums; letter-spacing: -.02em !important; background: none !important; }
+html.pro .picks-countdown .cd-cell em, html.pro .picks-countdown .cd-first, html.pro .picks-countdown .cd-card em, html.pro .picks-countdown .cd-label { font-size: 10px !important; font-weight: 500 !important; color: var(--t3) !important; letter-spacing: .06em !important; font-style: normal; }
+html.pro .picks-countdown .cd-colon { color: var(--t3) !important; }
+html.pro .picks-countdown .cd-chip { font-size: 11px !important; font-weight: 600 !important; border-radius: 6px !important; padding: 4px 7px !important; }
+html.pro .picks-countdown .cd-chip.ok { color: var(--win) !important; background: rgba(46, 207, 122, .1) !important; border: 1px solid rgba(46, 207, 122, .3) !important; }
+html.pro .picks-countdown .cd-chip.miss { color: var(--acc) !important; background: var(--acc-soft) !important; border: 1px solid rgba(255, 61, 110, .35) !important; }
+html.pro .picks-countdown .cd-riding b { color: var(--text) !important; font-weight: 600 !important; }
+html.pro .picks-countdown .cd-riding i { color: var(--t3) !important; font-size: 9px !important; }
+html.pro .picks-countdown .cd-match { color: var(--text) !important; font-weight: 500 !important; }
+html.pro .picks-countdown .cd-fuse { background: var(--line) !important; height: 2px !important; }
+html.pro .picks-countdown .cd-fuse i { background: var(--acc) !important; }
+html.pro .picks-countdown .cd-fuse u { display: none !important; }
+
+/* ---- Pick cards ---------------------------------------------------------- */
+
+html.pro .game-card {
+  background: var(--s1) !important; border: 1px solid var(--line) !important; border-radius: var(--r) !important;
+  transition: border-color .2s ease, background-color .2s ease;
+}
+html.pro .game-card::before, html.pro .game-card::after { display: none !important; }
+html.pro .game-card.has-pick, html.pro .game-card:has(.pick-mini-btn.selected) { border-color: var(--line2) !important; }
+html.pro .game-meta { color: var(--t3) !important; font-size: 12px !important; font-weight: 500 !important; }
+html.pro .game-meta-left > span:first-child { color: var(--text-dim) !important; font-size: 12px !important; }
+/* The SAVED stamp stays: the audit trail that a pick reached the league. */
+html.pro .game-stamp { color: var(--win) !important; font-size: 11px !important; font-weight: 500 !important; letter-spacing: .02em !important; }
+html.pro .insights-btn.ic { width: 24px !important; height: 24px !important; border-radius: 50% !important; border: 1px solid var(--line2) !important; background: transparent !important; color: var(--text-dim) !important; font: italic 600 12px/22px Georgia, serif !important; }
+html.pro .game-status { font-size: 11px !important; font-weight: 600 !important; letter-spacing: .04em !important; border-radius: 6px !important; padding: 3px 8px !important; background: transparent !important; border: 1px solid var(--line2) !important; color: var(--text-dim) !important; }
+/* OPEN is every card's resting state: saying it ten times says nothing. */
+html.pro .game-status.open { display: none !important; }
+html.pro .game-status.live, html.pro .game-status[class*="live"] { color: var(--live) !important; border-color: rgba(245, 183, 61, .4) !important; }
+html.pro .game-status.submitted { color: var(--win) !important; border-color: rgba(46, 207, 122, .35) !important; }
+
+/* Teams: the logo, the name, the record. Nothing else competes. */
+html.pro .hz-tm .tm-logo { opacity: 1; }
+html.pro .hz-nm { color: var(--text) !important; font-weight: 600 !important; font-size: 13px !important; letter-spacing: -.005em !important; text-transform: none !important; }
+html.pro .hz-rec { color: var(--t3) !important; font-weight: 500 !important; font-size: 11.5px !important; }
+html.pro .tm-rk { background: none !important; border: 0 !important; color: var(--text-dim) !important; font-weight: 600 !important; font-size: 10.5px !important; }
+html.pro .hz-at { color: var(--t3) !important; font-size: 10px !important; font-weight: 600 !important; letter-spacing: .08em !important; background: none !important; border: 0 !important; }
+
+/* The four bets: quiet until chosen, then unmistakable. */
+html.pro .pick-mini-btn {
+  background: var(--s2) !important; border: 1px solid var(--line2) !important; border-radius: var(--r-sm) !important;
+  color: var(--text) !important; transition: background-color .12s ease, border-color .12s ease, transform .08s ease;
+}
+html.pro .pick-mini-btn:hover:not(:disabled) { background: var(--s3) !important; border-color: #3a414c !important; }
+html.pro .pick-mini-btn:active:not(:disabled) { transform: scale(.97); }
+html.pro .pick-mini-btn .pk-line { font-size: 15px !important; font-weight: 600 !important; color: var(--text) !important; letter-spacing: -.01em !important; }
+html.pro .pick-mini-btn .pk-line { white-space: nowrap !important; display: inline-flex !important; align-items: baseline; }
+html.pro .pick-mini-btn .pk-sign { font-style: normal; color: var(--text-dim) !important; display: inline !important; width: auto !important; min-width: 0 !important; }
+html.pro .pick-mini-btn .pk-label { font-size: 11px !important; font-weight: 600 !important; color: var(--text-dim) !important; letter-spacing: .06em !important; }
+html.pro .pick-mini-btn .pk-pts { font-size: 11px !important; font-weight: 500 !important; color: var(--t3) !important; }
+html.pro .pick-mini-btn .pk-pts i { font-style: normal; font-size: 9px !important; margin-left: 1px; }
+html.pro .pick-mini-btn.su.upset .pk-pts { color: var(--live) !important; }
+html.pro .pick-mini-btn.selected { background: var(--acc) !important; border-color: var(--acc) !important; }
+html.pro .pick-mini-btn.selected .pk-line, html.pro .pick-mini-btn.selected .pk-sign, html.pro .pick-mini-btn.selected .pk-label, html.pro .pick-mini-btn.selected .pk-pts { color: #fff !important; }
+html.pro .pick-mini-btn:disabled:not(.selected) { opacity: .45; }
+
+/* The quick read toggle under AT. */
+html.pro .qr-toggle, html.pro [class*="qr-tg"] { color: var(--t3) !important; background: none !important; border: 0 !important; }
+
+/* ---- Sheets and pop ups --------------------------------------------------- */
+
+html.pro .modal-overlay, html.pro .wpx-overlay { background: rgba(5, 6, 8, .72) !important; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+html.pro .modal-card, html.pro .wpx-card, html.pro [class*="-card"].modal-card {
+  background: var(--s1) !important; border: 1px solid var(--line2) !important; border-radius: 16px !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .55) !important;
+}
+html.pro .modal-card::before, html.pro .modal-card::after { display: none !important; }
+
+/* ---- Shared text -------------------------------------------------------- */
+
+html.pro h1, html.pro h2, html.pro h3 { font-weight: 650 !important; letter-spacing: -.02em !important; color: var(--text) !important; }
+html.pro .eyebrow, html.pro [class*="eyebrow"] { color: var(--t3) !important; font-size: 11px !important; font-weight: 600 !important; letter-spacing: .08em !important; }
+
+/* ---- Scores ------------------------------------------------------------- */
+
+/* Section labels: small, quiet, one hairline; the emoji stays as the mark. */
+html.pro .section-heading, html.pro .rules-heading {
+  background: none !important; border: 0 !important; border-bottom: 1px solid var(--line) !important; border-radius: 0 !important;
+  color: var(--text-dim) !important; font-size: 12px !important; font-weight: 600 !important; letter-spacing: .07em !important;
+  padding: 18px 2px 8px !important; justify-content: flex-start !important; text-align: left !important;
+}
+html.pro .all-picks-caret { color: var(--t3) !important; margin-left: auto; }
+html.pro .lb-head { border-bottom: 1px solid var(--line) !important; background: none !important; }
+html.pro .lb-head .section-heading { border-bottom: 0 !important; }
+html.pro .lb-head::before, html.pro .lb-head::after, html.pro .section-heading::after { display: none !important; }
+html.pro .h2h-btn { background: var(--s2) !important; border: 1px solid var(--line2) !important; color: var(--text) !important; border-radius: 6px !important; font-size: 11px !important; font-weight: 600 !important; padding: 4px 10px !important; }
+html.pro .updated-stamp { color: var(--t3) !important; font-size: 11.5px !important; background: none !important; border: 0 !important; }
+
+/* Unpicked games: one quiet line that takes you to the picks. */
+html.pro .insert-coin { background: var(--acc-soft) !important; border: 1px solid rgba(255, 61, 110, .3) !important; border-radius: var(--r) !important; padding: 11px 14px !important; text-align: left !important; display: block; width: 100%; }
+html.pro .insert-coin .coin-blink { display: none !important; }
+html.pro .insert-coin .coin-sub { color: var(--acc-ink) !important; font-size: 13px !important; font-weight: 500 !important; letter-spacing: 0 !important; text-transform: none !important; }
+
+/* Scorebugs: score on the right, big and tabular; everything else recedes. */
+html.pro .bug-grid { gap: 8px !important; }
+html.pro .scorebug { background: var(--s1) !important; border: 1px solid var(--line) !important; border-radius: var(--r) !important; padding: 10px 12px !important; }
+html.pro .scorebug::before, html.pro .scorebug::after { display: none !important; }
+html.pro .bug-head { color: var(--t3) !important; font-size: 11px !important; font-weight: 500 !important; margin-bottom: 6px !important; border: 0 !important; background: none !important; }
+html.pro .bug-gnum { color: var(--t3) !important; font-weight: 600 !important; }
+html.pro .bug-status { color: var(--text-dim) !important; font-weight: 500 !important; }
+html.pro .scorebug.live .bug-status, html.pro .bug-status.live { color: var(--live) !important; }
+html.pro .bug-tv { color: var(--t3) !important; border: 0 !important; background: none !important; font-size: 10.5px !important; }
+html.pro .bug-row { padding: 3px 0 !important; border: 0 !important; background: none !important; }
+html.pro .bug-team { color: var(--text) !important; font-size: 14px !important; font-weight: 600 !important; }
+html.pro .bug-fav { color: var(--t3) !important; font-size: 11.5px !important; font-weight: 500 !important; }
+html.pro .bug-score { color: var(--text) !important; font-size: 17px !important; font-weight: 600 !important; font-variant-numeric: tabular-nums; }
+html.pro .bug-row.lose .bug-team, html.pro .bug-row.lose .bug-score, html.pro .bug-row.loser .bug-team, html.pro .bug-row.loser .bug-score { color: var(--t3) !important; }
+
+/* Leaderboard: a table, not a stack of cards. */
+html.pro .rankings-list { background: none !important; border: 0 !important; gap: 0 !important; }
+html.pro .ranking-row { background: none !important; border: 0 !important; border-bottom: 1px solid var(--line) !important; border-radius: 0 !important; margin: 0 !important; }
+html.pro .ranking-row.rank-hd { border-bottom-color: var(--line2) !important; }
+html.pro .ranking-row.rank-hd * { color: var(--t3) !important; font-size: 10.5px !important; font-weight: 600 !important; letter-spacing: .07em !important; }
+html.pro .ranking-row.me, html.pro .ranking-row.is-me, html.pro .ranking-row[class*="me"]:not(.rank-hd) { background: rgba(255, 255, 255, .025) !important; box-shadow: inset 2px 0 0 var(--acc) !important; }
+html.pro .ranking-place { color: var(--text-dim) !important; font-size: 13px !important; font-weight: 600 !important; font-variant-numeric: tabular-nums; }
+html.pro .ranking-name, html.pro .rank-nameline { color: var(--text) !important; font-size: 14px !important; font-weight: 600 !important; }
+html.pro .rank-live, html.pro .rank-hits { color: var(--text) !important; font-size: 14px !important; font-weight: 600 !important; font-style: normal; }
+html.pro .rank-wp-bar { background: var(--line) !important; border: 0 !important; border-radius: 2px !important; }
+html.pro .rank-wp-bar > * { background: var(--acc) !important; }
+html.pro .rank-wp b { color: var(--text-dim) !important; font-weight: 500 !important; font-size: 12px !important; }
+html.pro .my-score { background: var(--s1) !important; border: 1px solid var(--line) !important; border-radius: var(--r) !important; }
+
+/* ---- Player card --------------------------------------------------------- */
+
+html.pro .plc-card { padding: 18px 18px 16px !important; }
+html.pro .plc-av { background: var(--s3) !important; border: 1px solid var(--line2) !important; border-radius: 14px !important; width: 64px !important; height: 64px !important; padding: 0 !important; }
+html.pro .plc-av span { background: none !important; font-size: 26px !important; font-weight: 600 !important; color: var(--text) !important; border-radius: 13px !important; }
+html.pro .plc-id small { color: var(--t3) !important; font-size: 11px !important; font-weight: 600 !important; letter-spacing: .08em !important; }
+html.pro .plc-id b { font-size: 24px !important; font-weight: 650 !important; letter-spacing: -.02em !important; color: var(--text) !important; }
+html.pro .plc-badges span, html.pro .plc-badges button.gold { height: 24px !important; font-size: 12px !important; font-weight: 600 !important; border-radius: 6px !important; background: var(--s2) !important; border: 1px solid var(--line2) !important; color: var(--text) !important; }
+html.pro .plc-badges .rank { color: var(--text) !important; }
+html.pro .plc-badges .cash { color: var(--win) !important; border-color: rgba(46, 207, 122, .35) !important; }
+html.pro .plc-badges button.gold { color: var(--live) !important; border-color: rgba(245, 183, 61, .35) !important; }
+html.pro .plc-sec { color: var(--t3) !important; font-size: 11px !important; font-weight: 600 !important; letter-spacing: .08em !important; border: 0 !important; border-top: 1px solid var(--line) !important; padding-top: 12px !important; margin-top: 14px !important; }
+html.pro .plc-sec span { color: var(--t3) !important; letter-spacing: 0 !important; font-weight: 500 !important; }
+/* Points each week: plain bars, gold only for a week won. */
+html.pro .plc-bars s { background: var(--s3) !important; border-radius: 3px 3px 0 0 !important; max-width: 22px !important; }
+html.pro .plc-bars i.won s { background: var(--live) !important; }
+html.pro .plc-bars i.top s { background: var(--text-dim) !important; }
+html.pro .plc-bars i.won.top s { background: var(--live) !important; }
+html.pro .plc-bars b { font-size: 11px !important; font-weight: 600 !important; color: var(--text-dim) !important; }
+html.pro .plc-bars em { font-size: 10px !important; color: var(--t3) !important; font-style: normal; }
+/* Stats: label, a thin bar, the number. */
+html.pro .plc-sb { border: 0 !important; }
+html.pro .plc-sb > span { color: var(--text-dim) !important; font-size: 12px !important; font-weight: 500 !important; letter-spacing: 0 !important; }
+html.pro .plc-sb i { display: flex !important; gap: 0 !important; height: 4px !important; background: var(--s3) !important; border-radius: 2px !important; overflow: hidden; border: 0 !important; padding: 0 !important; }
+html.pro .plc-sb i u { flex: 1; height: 100% !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; margin: 0 !important; }
+html.pro .plc-sb i u.on { background: var(--text-dim) !important; }
+html.pro .plc-sb b { color: var(--text) !important; font-size: 14px !important; font-weight: 600 !important; }
+html.pro .plc-sb em { color: var(--t3) !important; font-size: 11.5px !important; font-style: normal; }
+html.pro .plc-x { color: var(--text-dim) !important; background: var(--s2) !important; border: 1px solid var(--line2) !important; border-radius: 50% !important; }
+/* Week standings, champions, stat rankings: the same quiet sheet. */
+html.pro .wks-h b { color: var(--text) !important; font-size: 15px !important; font-weight: 650 !important; letter-spacing: -.01em !important; }
+html.pro .wks-h small { color: var(--t3) !important; font-size: 11px !important; font-weight: 600 !important; letter-spacing: .08em !important; }
+html.pro .wks-r { border-radius: 8px !important; }
+html.pro .wks-r:nth-child(odd) { background: var(--s2) !important; }
+html.pro .wks-r.won .wks-n, html.pro .wks-r.won .wks-s, html.pro .wks-r.lead .wks-n, html.pro .wks-r.lead .wks-s { color: var(--live) !important; }
+html.pro .wks-r.me { outline: 1px solid var(--acc) !important; background: var(--acc-soft) !important; }
+html.pro .wks-s { font-weight: 600 !important; font-size: 15px !important; }
+html.pro .chp-t { background: var(--s2) !important; border: 1px solid var(--line2) !important; }
+html.pro .chp-t i, html.pro .chp-w b { color: var(--live) !important; }
+html.pro .chp-w, html.pro .chp-years span { background: var(--s2) !important; }
+html.pro .chp-t.me, html.pro .chp-years .me { box-shadow: inset 0 0 0 1px var(--acc) !important; }
+html.pro .chp-w b .me { color: var(--acc) !important; }
+html.pro .plc-top { border-bottom: 0 !important; padding-bottom: 0 !important; background: none !important; }
+html.pro .plc-top::after, html.pro .plc-top::before { display: none !important; }
