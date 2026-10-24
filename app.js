@@ -8167,7 +8167,7 @@ async function openInsights(gameId) {
     const chip = (e, side, i) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}"${e.id ? ` data-fside="${side}" data-fi="${i}" role="button"` : ""} title="${esc(`${e.result || ""} ${e.at === "@" ? "at" : "vs"} ${e.oppName || e.opp || ""} ${e.score || ""}`)}">${e.at === "@" ? `<u>@</u>` : ""}${e.oppId || e.oppLogo ? `<img src="${e.oppId ? logoUrl(e.oppId) : esc(e.oppLogo)}" alt="${esc(e.opp || "")}" loading="lazy">` : `<i>${esc(e.opp || "")}</i>`}<b>${esc(e.result || "·")}</b><i>${esc(e.score || "")}</i></span>`;
     const row = (teamId, list, side) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}</span><span class="ins-form-r">${list.map((e, i) => chip(e, side, i)).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
     const rec = (list) => { const w = list.filter((e) => /^w/i.test(e.result || "")).length, l = list.filter((e) => /^l/i.test(e.result || "")).length; return `${w}-${l}`; };
-    html += `${foldOpen("l5")}LAST FIVE${foldSum(`${esc(game.awayShort)} ${rec(form.away)} · ${esc(game.homeShort)} ${rec(form.home)}`)}</summary>${row(game.awayId, form.away, "away")}${row(game.homeId, form.home, "home")}</details>`;
+    html += `${foldOpen("l5")}LAST FIVE${foldSum(`${esc(abbrOf("away"))} ${rec(form.away)} · ${esc(abbrOf("home"))} ${rec(form.home)}`)}</summary>${row(game.awayId, form.away, "away")}${row(game.homeId, form.home, "home")}</details>`;
   }
   // Series history.
   if (direct?.series?.length) {
@@ -8287,7 +8287,7 @@ async function openInsights(gameId) {
         : cov === ln ? ` · ${ln === 1 ? "COVERS" : "ALL COVER"} ${lineOf(favSide)}` : cov ? ` · ${cov} COVER ${lineOf(favSide)}` : ` · NONE COVER ${lineOf(favSide)}`;
       const sum = !tot ? "NO CALL" : bA === bH ? `SPLIT: ${bA} ${T("away")}, ${bH} ${T("home")}`
         : `${ln === tot ? (tot === 1 ? "1 PICK:" : `ALL ${tot} BACK`) : `${ln} OF ${tot} BACK`} ${T(lw)}${how}`;
-      html += `${foldOpen("xp")}EXPERT PICKS${foldSum(sum)}</summary><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,${cols >= 4 ? "1fr" : "112px"}))">${list.map(tileOf).join("")}</div>`;
+      html += `${foldOpen("xp")}EXPERT PICKS${foldSum(sum.replace(/\b(NO|CALL|SPLIT|ALL|PICK|OF|BACK|SAY|OUTRIGHT|WIN|COVER)\b/g, (w) => w.toLowerCase()))}</summary><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,${cols >= 4 ? "1fr" : "112px"}))">${list.map(tileOf).join("")}</div>`;
       if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE OUTLETS (${rest.length})</summary><div class="xp-grid" style="grid-template-columns:repeat(${Math.min(rest.length, 4)},minmax(0,${rest.length >= 4 ? "1fr" : "112px"}))">${rest.map(tileOf).join("")}</div></details>`;
       html += `</details>`;
     } else if (pend.picks) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-loading">Checking the pickers…</div>`;
