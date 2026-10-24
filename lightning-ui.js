@@ -13,6 +13,14 @@
   const hm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   const me = () => { const w = (typeof currentManager !== "undefined" && currentManager) || (typeof loadMe === "function" && loadMe()); return w && MANAGERS.includes(w) ? w : null; };
   const logo = (id) => (id && typeof logoUrl === "function" ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : "");
+  // The question on each card, and a side as a logo (or ▲ ▼ for a total)
+  // over its label, so the bet reads at a glance.
+  const ask = (b) => b.kind === "ou" ? `Over or under ${b.total} total points?` : b.kind === "su" ? "Who wins?" : "Who covers the spread?";
+  const side = (b, k, draft) => {
+    const g = b.game, id = b.kind === "ou" ? null : k === "a" ? g.awayId : g.homeId;
+    const pic = id ? logo(id) : `<span class="lt-ou">${k === "a" ? "▲" : "▼"}</span>`;
+    return `<div class="lt-side ${k}${draft[b.id] === k ? " sel" : ""}">${pic}<b>${esc(k === "a" ? b.a : b.b)}</b><i>${k === "a" ? "Swipe →" : "← Swipe"}</i></div>`;
+  };
   let night = null, at = 0, scores = {}, scoresAt = 0;
 
   async function load(force = false) {
@@ -88,12 +96,12 @@
     const m = modal(), n = night, bets = n.bets;
     if (view === "intro") {
       m.innerHTML = `<div class="lt-card lt-intro">${head()}
-        <div class="lt-bolt" aria-hidden="true">⚡</div>
-        <h2>Lightning is on</h2>
-        <p class="lt-sub">Five late night bets, one swipe each. $${n.buyIn} buy-in, most right takes the pot.</p>
-        <div class="lt-facts"><span><b>5</b>bets</span><span><b>$${n.buyIn}</b>buy-in</span><span><b>${esc(hm(n.closesAt))}</b>locks</span></div>
+        <h2>Late night lightning ⚡️ Round</h2>
+        <p class="lt-sub">5 Picks - Are you in?</p>
+        <p class="lt-pay">Venmo Jake $${n.buyIn}</p>
+        <div class="lt-facts"><span><b>5</b>picks</span><span><b>${esc(hm(n.closesAt))}</b>locks</span></div>
         ${err ? `<p class="lt-err">${esc(err)}</p>` : ""}
-        <div class="lt-btns"><button type="button" class="lt-pass" data-lt="pass"${busy ? " disabled" : ""}>Pass tonight</button><button type="button" class="lt-go" data-lt="play">⚡ Play</button></div>
+        <div class="lt-btns"><button type="button" class="lt-pass" data-lt="pass"${busy ? " disabled" : ""}>Pass</button><button type="button" class="lt-go" data-lt="play">⚡ I'm in</button></div>
       </div>`;
       return;
     }
@@ -103,10 +111,9 @@
         <div class="lt-dots">${bets.map((x, i) => `<i class="${draft[x.id] ? "on" : ""}${i === step ? " now" : ""}"></i>`).join("")}</div>
         <div class="lt-bet" data-bet="${b.id}">
           <div class="lt-kind">${esc(KIND[b.kind])}</div>
-          <div class="lt-match"><span>${logo(g.awayId)}<b>${esc(g.awayShort)}</b></span><em>at</em><span>${logo(g.homeId)}<b>${esc(g.homeShort)}</b></span></div>
-          <div class="lt-when">${esc(g.kickoffLabel || hm(g.kickoff))}</div>
-          <div class="lt-sides"><div class="lt-side b${draft[b.id] === "b" ? " sel" : ""}"><i>←</i><b>${esc(b.b)}</b></div><div class="lt-side a${draft[b.id] === "a" ? " sel" : ""}"><b>${esc(b.a)}</b><i>→</i></div></div>
-          <div class="lt-hint">Swipe or tap a side</div>
+          <div class="lt-q">${esc(ask(b))}</div>
+          <div class="lt-when">${esc(g.awayShort)} at ${esc(g.homeShort)} · ${esc(g.kickoffLabel || hm(g.kickoff))}</div>
+          <div class="lt-sides">${side(b, "b", draft)}${side(b, "a", draft)}</div>
         </div>
         ${step ? `<button type="button" class="lt-back" data-lt="back">↶ Back</button>` : ""}
       </div>`;

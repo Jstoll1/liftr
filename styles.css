@@ -8231,9 +8231,14 @@ button.plc-av { padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .lt-match em { font-style: normal; color: var(--text-meta); font-size: 12px; }
 .lt-when { font-size: 12px; color: var(--text-meta); }
 .lt-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-.lt-side { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 16px 6px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .04); font: 700 15px 'Orbitron', system-ui, sans-serif; cursor: pointer; white-space: nowrap; min-width: 0; }
+.lt-side { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px 6px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .04); font: 700 15px 'Orbitron', system-ui, sans-serif; cursor: pointer; white-space: nowrap; min-width: 0; }
 .lt-side b { overflow: hidden; text-overflow: ellipsis; }
-.lt-side i { font-style: normal; color: var(--neon-yellow); }
+.lt-side i { font: 400 11px system-ui, sans-serif; color: var(--text-meta); }
+.lt-side img { width: 64px; height: 64px; object-fit: contain; }
+.lt-ou { display: grid; place-items: center; width: 64px; height: 64px; font-size: 34px; color: var(--neon-yellow); }
+.lt-side b { max-width: 100%; }
+.lt-q { margin: 10px 0 2px; font: 700 18px system-ui, sans-serif; line-height: 1.3; }
+.lt-pay { margin: 4px 0 10px; text-align: center; font: 700 16px system-ui, sans-serif; color: var(--neon-yellow); }
 .lt-side.sel, .lt-bet.lean-a .lt-side.a, .lt-bet.lean-b .lt-side.b { border-color: var(--neon-yellow); background: rgba(255, 228, 94, .12); color: var(--neon-yellow); }
 .lt-hint { margin-top: 10px; font-size: 11.5px; color: var(--text-dim); }
 .lt-pick { font-size: 13px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -8258,3 +8263,5 @@ button.lt-rc { cursor: pointer; }
 .lt-marks { display: flex; gap: 3px; } .lt-marks i { width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; font-style: normal; font-size: 11px; background: rgba(255, 255, 255, .06); color: var(--text-meta); }
 .lt-marks i.y { background: rgba(57, 255, 136, .2); color: var(--neon-green); } .lt-marks i.n { background: rgba(255, 32, 121, .18); color: #ff8aa0; }
 .lt-note { margin: 12px 0 0; font-size: 11.5px; color: var(--text-dim); text-align: center; }
+.lt-intro h2 { margin-top: 6px; text-wrap: balance; }
+.lt-intro .lt-facts { grid-template-columns: 1fr 1fr; }

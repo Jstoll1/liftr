@@ -21,7 +21,10 @@
    and no libraries, so it paints at once; the last view is drawn from
    this device straight away and replaced when the Worker answers. */
 /* Lightning editor: an overlay of its own, outside the redrawn page. */
-.lz { position: fixed; inset: 0; z-index: 60; overflow-y: auto; background: rgba(5, 3, 12, .82); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 24px 12px; }
+/* iOS Safari won't touch scroll a fixed box that also blurs what's behind
+   it: the blur sits on its own layer and the box only scrolls. */
+.lz { position: fixed; inset: 0; z-index: 60; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; background: rgba(5, 3, 12, .82); padding: 24px 12px; }
+.lz::before { content: ""; position: fixed; inset: 0; z-index: -1; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); pointer-events: none; }
 .lz[hidden] { display: none; }
 body.lz-on { overflow: hidden; }
 .lz-card { max-width: 1040px; margin: 0 auto; background: var(--panel); border: 1px solid var(--line2); border-radius: 16px; padding: 14px 16px 18px; }
@@ -2005,7 +2008,7 @@ html, body { overflow-x: hidden; }
   // sees the swipe cards as players will, then saves and activates. It sits
   // outside the page so the live redraws never touch a half-typed edit.
   const lzEl = document.getElementById("lz");
-  const lz = { games: [], bets: [], buyIn: 10, lockAt: null, prompt: "", busy: "", msg: "", night: null, loaded: false };
+  const lz = { games: [], bets: [], buyIn: 25, lockAt: null, prompt: "", busy: "", msg: "", night: null, loaded: false };
   const LZ_KIND = { ats: "Spread", su: "To win", ou: "Total" };
   const etDate = (t = Date.now()) => new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
   const lzTime = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
