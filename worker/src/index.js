@@ -37,7 +37,7 @@ async function useLeague(env) {
   if (SPORT === "nfl") await loadRoster(env);
 }
 
-export default {
+const app = {
   async scheduled(event, env, ctx) {
     await useLeague(env);
     // Monday: seal the week. Every other schedule (every two hours Tuesday
@@ -126,6 +126,9 @@ export default {
     }
     if (url.pathname === "/admin-check") {
       return handleAdminCheck(env, corsHeaders, url);
+    }
+    if (url.pathname === "/ops") {
+      return handleOps(request, env, corsHeaders, url);
     }
     if (url.pathname === "/admin-friction") {
       return handleAdminFriction(request, env, corsHeaders, url);
@@ -556,6 +559,85 @@ export default {
     } catch (err) {
       console.error("Worker error (plan)", err?.stack || String(err));
       return json({ error: "Worker error" }, 500, corsHeaders);
+    }
+  },
+};
+
+// --- Ops log: what went wrong, for the live page --------------------------
+// The Worker's own failures (a route that crashed or answered 5xx, a
+// scheduled run that threw, an upstream call that failed or crawled) and
+// the ones phones report (a Worker or ESPN call that failed or crawled, a
+// slow first screen, a script error). Last 300, a week; admin only to read.
+const OPS_KEY = "ops-log";
+const OPS_KINDS = ["route-fail", "cron-fail", "upstream-fail", "upstream-slow", "worker-fail", "worker-slow", "espn-fail", "espn-slow", "slow-load", "js-error"];
+let opsQ = [], opsSeen = new Map();
+function opsNote(k, d, extra = {}) {
+  const key = `${k}|${d}`, now = Date.now();
+  if (now - (opsSeen.get(key) || 0) < 60000) return; // one per minute per kind and detail
+  opsSeen.set(key, now);
+  if (opsSeen.size > 500) opsSeen = new Map([...opsSeen].slice(-200));
+  opsQ.push({ at: now, k, d: String(d || "").slice(0, 140), ...extra });
+}
+async function opsFlush(env) {
+  if (!opsQ.length || !env?.LIFTR_KV) return;
+  const add = opsQ.splice(0);
+  try {
+    const now = Date.now();
+    const list = ((await env.LIFTR_KV.get(OPS_KEY, "json")) || []).filter((r) => now - r.at < 7 * 86400000);
+    await env.LIFTR_KV.put(OPS_KEY, JSON.stringify([...add.reverse(), ...list].slice(0, 300)), { expirationTtl: 7 * 86400 });
+  } catch (err) { console.error("ops log", err?.stack || String(err)); }
+}
+// Upstream calls (ESPN and the rest): failures and calls over 8 seconds.
+const rawFetch = globalThis.fetch;
+globalThis.fetch = async (input, init) => {
+  const url = typeof input === "string" ? input : input?.url || "";
+  let host = ""; try { host = new URL(url).hostname; } catch {}
+  const t0 = Date.now();
+  try {
+    const r = await rawFetch(input, init);
+    if (r.status >= 500 || r.status === 429) opsNote("upstream-fail", `${host} ${r.status}`, { src: "worker" });
+    else if (Date.now() - t0 > 8000) opsNote("upstream-slow", `${host} ${Math.round((Date.now() - t0) / 100) / 10}s`, { src: "worker" });
+    return r;
+  } catch (err) {
+    if (err?.name !== "AbortError") opsNote("upstream-fail", `${host} ${String(err?.message || err).slice(0, 60)}`, { src: "worker" });
+    throw err;
+  }
+};
+async function handleOps(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  if (request.method === "GET") {
+    if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+    return json({ ops: (await env.LIFTR_KV.get(OPS_KEY, "json")) || [] }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  // Phones report in batches; only known kinds, a few at a time.
+  const who = PICKS_MANAGERS.includes(body?.manager) && !VISITS_NOT_TRACKED.has(body.manager) ? body.manager : null;
+  for (const e of (Array.isArray(body?.events) ? body.events : []).slice(0, 10)) {
+    if (!OPS_KINDS.includes(e?.k) || ["route-fail", "cron-fail", "upstream-fail", "upstream-slow"].includes(e.k)) continue;
+    opsNote(e.k, e.d, { src: "app", ...(who ? { n: who } : {}), ...(/^[0-9]{6,14}$/.test(String(body.v || "")) ? { v: String(body.v) } : {}) });
+  }
+  await opsFlush(env);
+  return json({ ok: true }, 200, corsHeaders);
+}
+
+export default {
+  async scheduled(event, env, ctx) {
+    const wrapped = { ...ctx, waitUntil: (p) => ctx.waitUntil(Promise.resolve(p).catch((err) => { opsNote("cron-fail", `${event.cron}: ${String(err?.message || err).slice(0, 100)}`, { src: "worker" }); throw err; }).finally(() => opsFlush(env))) };
+    try { return await app.scheduled(event, env, wrapped); }
+    catch (err) { opsNote("cron-fail", `${event.cron}: ${String(err?.message || err).slice(0, 100)}`, { src: "worker" }); ctx.waitUntil(opsFlush(env)); throw err; }
+  },
+  async fetch(request, env, ctx) {
+    const path = new URL(request.url).pathname;
+    try {
+      const r = await app.fetch(request, env, ctx);
+      if (r.status >= 500) opsNote("route-fail", `${request.method} ${path} ${r.status}`, { src: "worker" });
+      if (opsQ.length) ctx?.waitUntil?.(opsFlush(env));
+      return r;
+    } catch (err) {
+      opsNote("route-fail", `${request.method} ${path} crashed: ${String(err?.message || err).slice(0, 80)}`, { src: "worker" });
+      ctx?.waitUntil?.(opsFlush(env));
+      return new Response(JSON.stringify({ error: "Worker error" }), { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
     }
   },
 };

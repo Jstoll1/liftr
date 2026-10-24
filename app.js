@@ -114,13 +114,30 @@ function noteError(msg) {
   appHealth.e++;
   const m = String(msg || "error").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim().slice(0, 80);
   if (m && appHealth.em.length < 3 && !appHealth.em.includes(m)) appHealth.em.push(m);
+  if (m) opsEvent("js-error", m);
 }
 // A bare "Script error." with no file comes from a script on another site
 // (an extension or an in-app browser); the browser hides the details.
 const foreignError = (e) => /^script error\.?$/i.test(e?.message || "") && !e?.filename;
 addEventListener("error", (e) => { if (e?.message && !foreignError(e)) noteError(e.message); });
 addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?.reason || "unhandled rejection"));
-function markUsable() { if (appHealth.ld == null) appHealth.ld = Math.round(performance.now() - healthT0); }
+function markUsable() { if (appHealth.ld == null) { appHealth.ld = Math.round(performance.now() - healthT0); if (appHealth.ld > 6000) opsEvent("slow-load", `first screen ${(appHealth.ld / 1000).toFixed(1)}s`); } }
+// Each failure as it happens, for the live page's health log: batched a few
+// seconds, at most ten a page load, one per kind and detail.
+const opsQueue = [], opsSent = new Set();
+function opsEvent(k, d) {
+  const key = `${k}|${d}`;
+  if (opsSent.has(key) || opsSent.size >= 10 || window.__liveView) return;
+  opsSent.add(key); opsQueue.push({ k, d });
+  clearTimeout(opsEvent.t); opsEvent.t = setTimeout(opsFlushApp, 3000);
+}
+function opsFlushApp() {
+  if (!opsQueue.length || typeof WORKER_URL === "undefined" || !WORKER_URL || PREVIEW) return;
+  let me = null; try { me = loadMe(); } catch {}
+  const body = JSON.stringify({ manager: me, v: document.querySelector('meta[name="build"]')?.content || "", events: opsQueue.splice(0) });
+  try { if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/ops`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/ops`, { method: "POST", body, keepalive: true }).catch(() => {}); } catch {}
+}
+addEventListener("pagehide", opsFlushApp);
 (() => {
   const raw = window.fetch?.bind(window);
   if (!raw) return;
@@ -131,11 +148,13 @@ function markUsable() { if (appHealth.ld == null) appHealth.ld = Math.round(perf
     const t0 = performance.now();
     try {
       const r = await raw(input, init);
-      if (r.status >= 500 || r.status === 429) appHealth.ff[b]++;
-      if (performance.now() - t0 > 4000) appHealth.sl[b]++;
+      // The path only (no query, no keys), so the log says what failed.
+      const where = (() => { try { const u = new URL(url); return b === "worker" ? u.pathname : u.pathname.split("/").slice(-2).join("/"); } catch { return ""; } })();
+      if (r.status >= 500 || r.status === 429) { appHealth.ff[b]++; opsEvent(`${b}-fail`, `${where} ${r.status}`); }
+      if (performance.now() - t0 > 4000) { appHealth.sl[b]++; opsEvent(`${b}-slow`, `${where} ${((performance.now() - t0) / 1000).toFixed(1)}s`); }
       return r;
     } catch (err) {
-      if (err?.name !== "AbortError") appHealth.ff[b]++;
+      if (err?.name !== "AbortError") { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }
       throw err;
     }
   };
