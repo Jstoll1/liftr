@@ -8344,3 +8344,29 @@ i.lk.nm-lk, .rp-chip i.lk.nm-lk { position: absolute; top: -8px; left: -7px; wid
    so a cold look says who scored. */
 .gc-badge:has(.gc-blogo) { display: inline-flex; align-items: center; gap: 4px; padding-left: 2px; }
 .gc-blogo { width: 1.9em; height: 1.9em; min-width: 12px; min-height: 12px; object-fit: contain; filter: drop-shadow(0 0 1px rgba(10, 4, 20, .9)); }
+
+/* Jake's lock set: one picture per state, replacing the drawn marks. */
+i.lk, i.lk.lk-pend, i.lk.lk-up, i.lk.lk-dn, i.lk.lk-hit, i.lk.lk-miss { font-size: 0; filter: none; opacity: 1; background: center / contain no-repeat; }
+i.lk::before, i.lk::after, i.lk.lk-up::before, i.lk.lk-dn::before, i.lk.lk-hit::after, i.lk.lk-miss::after { content: none; }
+i.lk.lk-pend { background-image: url("assets/lk-pend.png"); }
+i.lk.lk-up { background-image: url("assets/lk-up.png"); }
+i.lk.lk-dn { background-image: url("assets/lk-dn.png"); }
+i.lk.lk-hit { background-image: url("assets/lk-hit.png"); }
+i.lk.lk-miss { background-image: url("assets/lk-miss.png"); }
+i.lk.rank-lk { width: 20px; height: 20px; }
+i.lk.nm-lk, .rp-chip i.lk.nm-lk { width: 17px; height: 17px; filter: none; }
+.pick-cell i.lk.pick-lk { width: 17px; height: 17px; }
+.scorebug i.lk.bug-lk { width: 26px; height: 26px; top: -11px; right: -11px; box-shadow: none; background-color: transparent; }
+.lks-st i.lk { width: 20px; height: 20px; }
+i.lk, i.lk::before { border-radius: 0; overflow: visible; }
+i.lk.rank-lk { width: 22px; height: 22px; }
+i.lk.nm-lk, .rp-chip i.lk.nm-lk { width: 19px; height: 19px; top: -9px; left: -8px; }
+.pick-cell i.lk.pick-lk { width: 19px; height: 19px; top: -4px; right: -4px; }
+.scorebug i.lk.bug-lk { width: 30px; height: 30px; top: -13px; right: -13px; }
+.scorebug i.lk.bug-lk.lk-pend { background: url("assets/lk-pend.png") center / contain no-repeat, #0b0718; }
+.scorebug i.lk.bug-lk.lk-up { background: url("assets/lk-up.png") center / contain no-repeat, #0b0718; }
+.scorebug i.lk.bug-lk.lk-dn { background: url("assets/lk-dn.png") center / contain no-repeat, #0b0718; }
+.scorebug i.lk.bug-lk.lk-hit { background: url("assets/lk-hit.png") center / contain no-repeat, #0b0718; }
+.scorebug i.lk.bug-lk.lk-miss { background: url("assets/lk-miss.png") center / contain no-repeat, #0b0718; }
+.scorebug i.lk.bug-lk { border-radius: 8px; border: 0; }
+.scorebug i.lk.bug-lk::before, .scorebug i.lk.bug-lk::after { content: none; }
