@@ -185,7 +185,15 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) hidde
       if (performance.now() - t0 > 4000 && onScreen()) { appHealth.sl[b]++; opsEvent(`${b}-slow`, `${where} ${((performance.now() - t0) / 1000).toFixed(1)}s`); }
       return r;
     } catch (err) {
-      if (err?.name !== "AbortError") { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }
+      // One dropped read (Safari's "Load failed") is usually a blip or the
+      // phone going to the background mid-call: try once more, and log only
+      // a read that fails twice while the page stayed on screen.
+      const get = !init?.method || /^get$/i.test(init.method);
+      if (err?.name !== "AbortError" && get && !pageLeaving) {
+        await new Promise((ok) => setTimeout(ok, 1000));
+        try { return await raw(input, init); } catch (e2) { if (!onScreen()) throw e2; err = e2; }
+      }
+      if (err?.name !== "AbortError" && (!get || onScreen())) { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }
       throw err;
     }
   };
