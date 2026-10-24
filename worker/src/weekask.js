@@ -67,7 +67,7 @@ export function weekChatSystem(ctx) {
     "Scoring: each member picks every game, either against the spread (ATS) or straight up (SU, worth more for an underdog). One pick a week can be a lock: it scores extra if it hits and loses points if it misses. Most points wins the week; the tiebreaker is total points in one game.",
     `The member asking is ${ctx.asker || "unknown (not signed in)"}; "I", "me", "my" mean them. Members: ${(ctx.members || []).join(", ")}.`,
     `This week's games:\n${games}`,
-    "Never state a number, a pick, an odds figure or an outcome you did not get from a tool in this conversation. Call the tools you need, then answer from their results. Round chances to whole percents (one decimal under 10%).",
+    "Never state a number, a pick, an odds figure or an outcome you did not get from a tool in this conversation. Call the tools you need, then answer from their results. Chances are fractions: say them as percents, whole numbers from 10% up and one decimal under 10% (0.007 is 0.7%, never 1%).",
     "Questions with 'if' about game results: call chance with conditions. 'Doesn't cover', 'doesn't win', 'loses' is not: true on the team named. A correction or follow-up ('I said…', 'what about Curt') reuses the earlier question with the change.",
     "If a tool says picks are hidden, say so; never guess hidden picks. If the question is not about this week's pick'em, say briefly what you can help with.",
   ].join("\n\n");
