@@ -2250,7 +2250,7 @@ html, body { overflow-x: hidden; }
   // Read every few minutes; prices are OpenAI's published rates, so the
   // bill itself is the final word.
   const cost = { data: null, at: 0, err: "" };
-  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening", "week-ask": "Ask the week", "lightning-edit": "Lightning edits" };
+  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening", "week-ask": "Ask the week", "week-chat": "Ask the week (chat)", "lightning-edit": "Lightning edits" };
   async function loadCosts(force) {
     if (!force && Date.now() - cost.at < 3 * 60000) return;
     try {
