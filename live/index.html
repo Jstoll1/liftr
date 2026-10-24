@@ -204,6 +204,9 @@ body.pv-open .tabs { display: none; }
 .ks[data-tip]:hover { background: rgba(255, 255, 255, .03); }
 .ks em { display: block; font: 700 9.5px/1.2 var(--mono); letter-spacing: .12em; color: var(--dim); font-style: normal; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ks b { display: block; margin-top: 5px; font: 800 21px/1 var(--mono); color: var(--text); letter-spacing: -.01em; }
+.ks b .kt { margin-left: 6px; font: 700 10px/1 var(--mono); font-style: normal; letter-spacing: 0; vertical-align: 3px; white-space: nowrap; }
+.ks b .kt.up { color: var(--green); }
+.ks b .kt.dn { color: var(--pink, #ff5c8a); }
 .ks b small { font-size: 12px; color: var(--dim); font-weight: 700; margin-left: 1px; }
 .ks span { display: block; min-height: 1.2em; margin-top: 5px; font-size: 11.5px; color: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -1008,6 +1011,14 @@ html, body { overflow-x: hidden; }
   if (!store.get(SEEN_KEY)) saveSeen();
   document.addEventListener("visibilitychange", () => { if (document.hidden) saveSeen(); });
   addEventListener("pagehide", saveSeen);
+  // The top numbers as they stood when you last put the page away, so each
+  // can say how far it moved since (▲ 3 since 1:05 PM).
+  const KPI_KEY = `brochiefs_live_kpis_${LEAGUE}`;
+  const kpiBase = (() => { try { return JSON.parse(store.get(KPI_KEY) || "null"); } catch { return null; } })();
+  let kpiNow = null;
+  const saveKpis = () => { if (kpiNow) store.set(KPI_KEY, JSON.stringify(kpiNow)); };
+  document.addEventListener("visibilitychange", () => { if (document.hidden) saveKpis(); });
+  addEventListener("pagehide", saveKpis);
   // A first look at the vote (no baseline yet) counts nothing as new.
   const voteNew = (n) => { const v = st.poll?.votes || {}; return !!(seenBase.votes && v[n] && seenBase.votes[n] !== v[n]); };
   const noteNew = (n) => { const v = st.poll?.notes || {}; return !!(seenBase.notes && v[n] && seenBase.notes[n] !== v[n]); };
@@ -1276,28 +1287,41 @@ html, body { overflow-x: hidden; }
     // The headline: who is in now as a slim banner, then six numbers in one
     // compact panel (a tap or hover gives the detail).
     const amt = (ms) => (ms >= HOUR ? `${(ms / HOUR).toFixed(1)}<small>h</small>` : ms >= 60000 ? `${Math.round(ms / 60000)}<small>m</small>` : `${Math.round(ms / 1000)}<small>s</small>`);
-    const ks = (label, value, sub, tip) => `<div class="ks"${tip ? ` data-tip="${esc(tip)}"` : ""}><em>${label}</em><b class="num">${value}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
+    // A trend arrow against your last check: same week mode, and for the
+    // today count, the same day. Times move in minutes.
+    const vals = {}, mode = wk ? "wk" : "day";
+    const trend = (key, v, kind) => {
+      vals[key] = v;
+      const b = kpiBase && kpiBase.mode === mode && kpiBase.vals ? kpiBase.vals[key] : null;
+      if (b == null || v == null || (key === "today" && new Date(kpiBase.at).toDateString() !== new Date(now).toDateString())) return "";
+      const d = kind === "ms" ? Math.round((v - b) / 60000) : Math.round((v - b) * 10) / 10;
+      if (!d) return "";
+      const when = new Date(kpiBase.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      return `<i class="kt ${d > 0 ? "up" : "dn"}" title="Since your last check at ${esc(when)}">${d > 0 ? "▲" : "▼"} ${Math.abs(d)}${kind === "ms" ? "m" : ""}</i>`;
+    };
+    const ks = (label, value, sub, tip, tr = "") => `<div class="ks"${tip ? ` data-tip="${esc(tip)}"` : ""}><em>${label}</em><b class="num">${value}${tr}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
     const todayTip = `<b>In today</b>${inToday.length ? inToday.map(name).join(", ") : "Nobody yet"}${names.length > inToday.length ? `<br>Not yet: ${names.filter((n) => !inToday.includes(n)).map(name).join(", ")}` : ""}`;
     const stats = wk ? (() => {
       const t = wv.reduce((a, v) => a + wTime(v), 0);
       const byDay = dayList.map((d) => ({ d, ms: wv.reduce((a, v) => a + wTime(v, d, d + DAY), 0), who: new Set(wv.filter((v) => wTime(v, d, d + DAY)).map((v) => v.n)) }));
       const best = byDay.reduce((m, x) => (x.ms > m.ms ? x : m), { ms: 0 });
       return [
-        ks("In today", `${inToday.length}<small>/${names.length}</small>`, "players", todayTip),
-        ks("Visits · 7d", wv.length, `${new Set(wv.map((v) => v.n)).size} people`),
-        ks("Time in app", t ? amt(t) : "–", "7 days"),
-        ks("Avg visit", wv.length ? amt(t / wv.length) : "–", "per visit"),
+        ks("In today", `${inToday.length}<small>/${names.length}</small>`, "players", todayTip, trend("today", inToday.length)),
+        ks("Visits · 7d", wv.length, `${new Set(wv.map((v) => v.n)).size} people`, "", trend("visits", wv.length)),
+        ks("Time in app", t ? amt(t) : "–", "7 days", "", trend("time", t, "ms")),
+        ks("Avg visit", wv.length ? amt(t / wv.length) : "–", "per visit", "", trend("avg", wv.length ? t / wv.length : null, "ms")),
         ks("Busiest", best.ms ? esc(new Date(best.d).toLocaleDateString([], { weekday: "short" })) : "–", best.ms ? `${mins(best.ms)} · ${best.who.size} ppl` : "", best.ms ? `<b>${dLong(best.d)}</b>${mins(best.ms)} in the app · ${[...best.who].map(name).join(", ")}` : ""),
-        ks("A day", (wv.length / 7).toFixed(1), "visits"),
+        ks("A day", (wv.length / 7).toFixed(1), "visits", "", trend("aday", Number((wv.length / 7).toFixed(1)))),
       ].join("");
     })() : [
-      ks("In today", `${inToday.length}<small>/${names.length}</small>`, "players", todayTip),
-      ks("Visits · 24h", vs.length, `${new Set(vs.map((v) => v.n)).size} people`),
-      ks("Time in app", time ? amt(time) : "–", "24 hours"),
-      ks("Avg visit", vs.length ? amt(time / vs.length) : "–", "per visit"),
+      ks("In today", `${inToday.length}<small>/${names.length}</small>`, "players", todayTip, trend("today", inToday.length)),
+      ks("Visits · 24h", vs.length, `${new Set(vs.map((v) => v.n)).size} people`, "", trend("visits", vs.length)),
+      ks("Time in app", time ? amt(time) : "–", "24 hours", "", trend("time", time, "ms")),
+      ks("Avg visit", vs.length ? amt(time / vs.length) : "–", "per visit", "", trend("avg", vs.length ? time / vs.length : null, "ms")),
       ks("Peak hour", peak.n ? hourLab(peak.start) : "–", peak.n ? `${peak.who.size} ${peak.who.size === 1 ? "person" : "ppl"}` : "", peak.n ? `<b>${hourLab(peak.start)} hour</b>${peak.n} actions · ${[...peak.who].map(name).join(", ")}` : ""),
-      ks("Actions", actions.length, "24 hours"),
+      ks("Actions", actions.length, "24 hours", "", trend("actions", actions.length)),
     ].join("");
+    kpiNow = { at: now, mode, vals };
     const kpis = `<section class="kpis" id="sec-now">
       <div class="kpi now${inNow.length ? " on" : ""}"><div class="now-l"><b class="num">${inNow.length}</b><em>in now</em></div>
         ${inNow.length ? `<div class="avs">${inNow.map((n) => `<span class="inp">${av(n, "sm", true)}${esc(name(n))}<small class="num" data-since="${people[n].since}">${clock(now - people[n].since)}</small></span>`).join("")}</div>` : `<span class="now-last">${last ? `Last in: <b>${esc(name(last))}</b> · ${esc(ago(lastSeen(last)))}` : "Nobody yet"}</span>`}</div>
