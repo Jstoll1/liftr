@@ -121,7 +121,19 @@ function noteError(msg) {
 const foreignError = (e) => /^script error\.?$/i.test(e?.message || "") && !e?.filename;
 addEventListener("error", (e) => { if (e?.message && !foreignError(e)) noteError(e.message); });
 addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?.reason || "unhandled rejection"));
-function markUsable() { if (appHealth.ld == null) { appHealth.ld = Math.round(performance.now() - healthT0); if (appHealth.ld > 6000 && !document.hidden && hiddenSince === 0) opsEvent("slow-load", `first screen ${(appHealth.ld / 1000).toFixed(1)}s`); } }
+// The history, trivia, simulator, grid card and splash facts files are
+// not needed for the first screen, so they load once it is up (or the
+// moment History, Trivia or the simulator is opened, whichever is first).
+// In order: the facts before history, which reads them.
+const EXTRAS = ["attract-facts.js?v=621767480045", "history.js?v=009172634093", "sim.js?v=374204176553", "gridcard.js?v=889691969438"];
+let extrasP = null;
+function ensureExtras() {
+  if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
+  return extrasP;
+}
+const extrasSoon = () => setTimeout(() => (window.requestIdleCallback || ((f) => setTimeout(f, 1)))(() => ensureExtras(), { timeout: 2000 }), 600);
+addEventListener("load", () => setTimeout(ensureExtras, 4000));
+function markUsable() { if (appHealth.ld == null) { extrasSoon(); appHealth.ld = Math.round(performance.now() - healthT0); if (appHealth.ld > 6000 && !document.hidden && hiddenSince === 0) opsEvent("slow-load", `first screen ${(appHealth.ld / 1000).toFixed(1)}s`); } }
 // Each failure as it happens, for the live page's health log: batched a few
 // seconds, at most ten a page load, one per kind and detail.
 const opsQueue = [], opsSent = new Set();
@@ -1988,6 +2000,7 @@ function showPicksScreen() {
 }
 
 function showHistory() {
+  ensureExtras();
   if (!currentManager) openClaimPrompt();
   rememberScroll();
   loginScreen.classList.add("hidden");
@@ -2001,6 +2014,7 @@ function showHistory() {
 navHistoryBtn.addEventListener("click", showHistory);
 
 function showTrivia() {
+  ensureExtras();
   rememberScroll();
   loginScreen.classList.add("hidden");
   picksScreen.classList.add("hidden");
@@ -8371,7 +8385,7 @@ async function openInsights(gameId) {
     spread: mv ? mv.now : Number(game.spread) || 3,
     total: mv?.overUnder ?? direct?.odds?.overUnder ?? 52,
   };
-  modal.querySelector("#ins-sim")?.addEventListener("click", () => window.openSim?.(simCtx));
+  modal.querySelector("#ins-sim")?.addEventListener("click", () => ensureExtras().then(() => window.openSim?.(simCtx)));
   // No pick yet: one tap closes the sheet and goes to the picks screen.
   body.querySelector("#ins-mypick-go")?.addEventListener("click", () => { modal.querySelector("#insights-close")?.click(); navPicksBtn?.click(); });
   };
@@ -9292,6 +9306,7 @@ function openStatRank(stat, name) {
 // The trophy on a player card: every week's winner this season, the trophy
 // count, and the league's champions by year, on one screen.
 function openChampions(name) {
+  if (typeof S === "undefined") ensureExtras().then(() => { if (!document.getElementById("champs")?.classList.contains("hidden")) openChampions(name); });
   const esc = escapeCd;
   const weeks = Object.values(weekSummaries).filter((w) => w?.rows?.length && w.complete !== false).sort((a, b) => a.week - b.week);
   const winnersOf = (w) => w.winners?.length ? w.winners : (() => { const top = Math.max(...w.rows.map((r) => r.score)); return w.rows.filter((r) => r.score === top).map((r) => r.name); })();
