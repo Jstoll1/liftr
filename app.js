@@ -5172,7 +5172,7 @@ function playerBreakdownHtml(name, state, results, live) {
     const g = live[game.id];
     const isFinal = !!results[game.id];
     const isLive = !isFinal && g && g.found && g.state === "in";
-    const statusTag = isFinal ? `<span class="rd-tag final">FINAL</span>` : isLive ? `<span class="rd-tag live">${g.detail || "LIVE"}</span>` : locked ? `<span class="rd-tag wait">WAITING</span>` : `<span class="rd-tag time">${game.kickoffLabel.replace(/^(Sat|Sun) /, "")}</span>`;
+    const statusTag = isFinal ? `<span class="rd-tag final">FINAL</span>` : isLive ? `<span class="rd-tag live"><i class="rd-dot"></i>LIVE${g.detail ? ` · ${g.detail.replace(/\s*-\s*/, " ")}` : ""}</span>` : locked ? `<span class="rd-tag wait">WAITING</span>` : `<span class="rd-tag time">${game.kickoffLabel.replace(/^(Sat|Sun) /, "")}</span>`;
 
     let pickHtml, ptsHtml = `<span class="rd-pts none">–</span>`;
     let pickedSide = null;
@@ -5217,7 +5217,7 @@ function playerBreakdownHtml(name, state, results, live) {
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}">
       <div class="rd-game">
         <span class="rd-gline">G${game.id} ${statusTag}</span>
-        <span class="rd-matchup"><span class="rd-tm away ${pickedSide === "away" ? "picked" : ""}">${game.awayShort}</span>${scoreCell(aS, hS)}<span class="rd-tm home ${pickedSide === "home" ? "picked" : ""}">${game.homeShort}</span>${scoreCell(hS, aS)}</span>
+        <span class="rd-matchup"><img class="rd-mlogo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-tm away ${pickedSide === "away" ? "picked" : ""}">${game.awayShort}</span>${scoreCell(aS, hS)}<img class="rd-mlogo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-tm home ${pickedSide === "home" ? "picked" : ""}">${game.homeShort}</span>${scoreCell(hS, aS)}</span>
       </div>
       <div class="rd-pick">${pickHtml}</div>
       <div class="rd-result">${ptsHtml}</div>
