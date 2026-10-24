@@ -53,4 +53,10 @@ test("week chat worker: a finished answer is kept for the live page, admin only"
   assert.equal(c.asker, "Jake"); assert.equal(c.sid, "abc123"); assert.equal(c.turn, 1);
   assert.deepEqual(c.tools.map((t) => t.name), ["chance"]);
   assert.match(c.tools[0].out, /0\.12/);
+  // The admin flags it with a note; nobody else can.
+  const flag = (q) => worker.fetch(new Request(`https://w.test/week-chat${q}`, { method: "POST", body: JSON.stringify({ action: "flag", id: c.id, flagged: true, note: "said 0% means out" }) }), env, { waitUntil() {} });
+  assert.equal((await flag("")).status, 403);
+  assert.equal((await flag("?key=adm")).status, 200);
+  const again = (await (await worker.fetch(new Request("https://w.test/week-chat?key=adm"), env, { waitUntil() {} })).json()).chats[0];
+  assert.ok(again.flagged); assert.equal(again.note, "said 0% means out");
 });
