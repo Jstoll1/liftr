@@ -9127,15 +9127,15 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
   renderRecap = (...a) => { orig(...a); paint(); };
 })();
 
-// The leaderboard folds like the sections under it. It starts open, and
-// the choice is remembered on the device.
+// The leaderboard folds like the sections under it. It opens on every
+// load; a fold lasts until the app is opened again.
 (() => {
   const toggle = document.getElementById("leaderboard-toggle");
   const list = document.getElementById("rankings-list");
   if (!toggle || !list) return;
   const KEY = "brochiefs_leaderboard_open_v2";
   let open = true;
-  try { open = localStorage.getItem(KEY) !== "0"; } catch { /* private mode */ }
+  try { localStorage.removeItem(KEY); } catch { /* private mode */ }
   const h2hBtn = document.getElementById("h2h-open");
   const paint = () => {
     list.classList.toggle("hidden", !open);
@@ -9147,7 +9147,6 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
   toggle.addEventListener("click", () => {
     open = !open;
     paint();
-    try { localStorage.setItem(KEY, open ? "1" : "0"); } catch { /* private mode */ }
   });
   paint();
 })();
