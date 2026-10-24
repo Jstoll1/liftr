@@ -561,6 +561,20 @@ async function logList(env, prefix, max, legacyKey = null) {
 // the ones phones report (a Worker or ESPN call that failed or crawled, a
 // slow first screen, a script error). Last 300, a week; admin only to read.
 const OPS_KEY = "ops-log";
+// Closed entries live in one record, merged in on every read. Rewriting
+// each entry's own key did not stick: the key listing that reads them back
+// lags a write by up to a minute, so "close all" answered with the entries
+// still open, and the older single-key entries had no id to close at all.
+const OPS_CLOSED_KEY = "ops-closed";
+async function opsRead(env, closed = null) {
+  const map = closed || (await env.LIFTR_KV.get(OPS_CLOSED_KEY, "json").catch(() => null)) || {};
+  return (await logList(env, "ops:", 300, OPS_KEY)).map((r) => {
+    const id = r.id || `old:${r.at}|${r.k}|${String(r.d || "").slice(0, 40)}`;
+    const c = map[id] ?? r.closed;
+    const { closed: _, ...rest } = r;
+    return { ...rest, id, ...(c ? { closed: c } : {}) };
+  });
+}
 const OPS_KINDS = ["route-fail", "cron-fail", "upstream-fail", "upstream-slow", "worker-fail", "worker-slow", "espn-fail", "espn-slow", "slow-load", "js-error"];
 let opsQ = [], opsSeen = new Map();
 function opsNote(k, d, extra = {}) {
@@ -596,7 +610,7 @@ async function handleOps(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   if (request.method === "GET") {
     if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
-    return json({ ops: await logList(env, "ops:", 300, OPS_KEY) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+    return json({ ops: await opsRead(env) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
@@ -605,14 +619,14 @@ async function handleOps(request, env, corsHeaders, url) {
   // keeping what is left of its week.
   if (body?.action === "close") {
     if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
-    const ids = new Set((Array.isArray(body.ids) ? body.ids : [body.id]).filter((x) => typeof x === "string" && x.startsWith("ops:")).slice(0, 300));
-    const all = await logList(env, "ops:", 300);
+    const ids = (Array.isArray(body.ids) ? body.ids : [body.id]).filter((x) => typeof x === "string" && /^(ops:|old:)/.test(x)).slice(0, 400);
+    const map = (await env.LIFTR_KV.get(OPS_CLOSED_KEY, "json")) || {};
     const now = Date.now();
-    await Promise.all(all.filter((r) => ids.has(r.id)).map(({ id, ...entry }) => {
-      if (body.closed === false) delete entry.closed; else entry.closed = now;
-      return env.LIFTR_KV.put(id, "", { expirationTtl: Math.max(60, Math.round((entry.at + 7 * 86400000 - now) / 1000)), metadata: entry });
-    }));
-    return json({ ok: true, ops: await logList(env, "ops:", 300, OPS_KEY) }, 200, corsHeaders);
+    for (const id of ids) { if (body.closed === false) delete map[id]; else map[id] = now; }
+    // A week is as long as any entry lives.
+    for (const [id, t] of Object.entries(map)) if (now - t > 8 * 86400000) delete map[id];
+    await env.LIFTR_KV.put(OPS_CLOSED_KEY, JSON.stringify(map));
+    return json({ ok: true, ops: await opsRead(env, map) }, 200, corsHeaders);
   }
   // Phones report in batches; only known kinds, a few at a time.
   const who = PICKS_MANAGERS.includes(body?.manager) && !VISITS_NOT_TRACKED.has(body.manager) ? body.manager : null;

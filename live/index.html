@@ -809,7 +809,8 @@ html, body { overflow-x: hidden; }
   .afr-r.fixed .afr-t, .afr-r.fixed .afr-d { opacity: .45; }
   .afr-r.fixed .afr-d { text-decoration: line-through; }
   .afr-d i.afr-fx { margin-left: 6px; color: var(--afr-g); opacity: 1; display: inline-block; }
-  .afr-none { margin: 4px 0 2px; font-size: 13px; opacity: .8; }
+  .afr-more { display: block; margin: 2px 0 6px; padding: 0; border: 0; background: none; color: inherit; opacity: .6; font: inherit; font-size: 11px; cursor: pointer; text-decoration: underline; }
+.afr-none { margin: 4px 0 2px; font-size: 13px; opacity: .8; }
   .joins .ns-h b { color: #5df2ff; }
   .newstrip.audit.joins { border-color: rgba(5, 217, 232, .5); background: linear-gradient(90deg, rgba(5, 217, 232, .1), rgba(5, 217, 232, .03)); }
   .jr-when { margin-left: auto; font-size: 12px; color: var(--muted, #8e88ad); }
@@ -1472,10 +1473,13 @@ html, body { overflow-x: hidden; }
       const bad = day.filter((r) => (OPS_KIND[r.k] || [])[1] === "err").length;
       const head = `<div class="afr-h"><button type="button" class="afr-tg" data-opstoggle="1" aria-expanded="${!!st.opsOpen}"><span class="afr-car">${st.opsOpen ? "▾" : "▸"}</span><b>&gt; health</b><small>${day.length ? `${bad} fail · ${day.length - bad} slow · 24h` : "all clear · 24h"}</small></button>${st.opsOpen && openIds.length ? `<button type="button" class="afr-cp" data-opscloseall="1">close all</button>` : ""}${st.opsOpen && rows.length ? `<button type="button" class="afr-cp" data-opscopy="1">${st.copied === "ops" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
       if (!st.opsOpen) return `<section class="afr ops shut${bad ? " hot" : ""}">${head}</section>`;
+      // Closed entries are dealt with: out of the way unless asked for.
+      const nClosed = rows.filter((r) => r.closed).length;
+      const shown = st.opsShowClosed ? rows : rows.filter((r) => !r.closed);
       const days = [];
-      for (const r of rows) { const k = afrDay(r.at); if (days[days.length - 1]?.k !== k) days.push({ k, rows: [] }); days[days.length - 1].rows.push(r); }
+      for (const r of shown) { const k = afrDay(r.at); if (days[days.length - 1]?.k !== k) days.push({ k, rows: [] }); days[days.length - 1].rows.push(r); }
       return `<section class="afr ops${bad ? " hot" : ""}">${head}
-        ${rows.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r ops-r${r.closed ? " fixed" : ""}">${r.id ? `<button type="button" class="afr-cb" data-opsclose="${esc(r.id)}" aria-pressed="${!!r.closed}" title="${r.closed ? "Closed: tap to reopen" : "Close: dealt with"}">${r.closed ? "✓" : ""}</button>` : `<span></span>`}<span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${(OPS_KIND[r.k] || [])[1] || ""}">${esc((OPS_KIND[r.k] || [r.k])[0])}</span><span class="afr-d">${esc(r.d || "")} <i>${esc(opsWho(r))}${r.v ? ` · ${esc(r.v.slice(-6))}` : ""}</i></span><button type="button" class="afr-one" data-opsone="${r.at}|${esc(r.k)}" aria-label="Copy this one">${st.copied === `ops:${r.at}|${r.k}` ? "✓" : "copy"}</button></div>`).join("")}`).join("") : `<p class="afr-none">No failures or slow calls in the last 7 days.</p>`}</section>`;
+        ${nClosed ? `<button type="button" class="afr-more" data-opsclosed="1">${st.opsShowClosed ? "hide" : "show"} ${nClosed} closed</button>` : ""}${shown.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r ops-r${r.closed ? " fixed" : ""}">${r.id ? `<button type="button" class="afr-cb" data-opsclose="${esc(r.id)}" aria-pressed="${!!r.closed}" title="${r.closed ? "Closed: tap to reopen" : "Close: dealt with"}">${r.closed ? "✓" : ""}</button>` : `<span></span>`}<span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${(OPS_KIND[r.k] || [])[1] || ""}">${esc((OPS_KIND[r.k] || [r.k])[0])}</span><span class="afr-d">${esc(r.d || "")} <i>${esc(opsWho(r))}${r.v ? ` · ${esc(r.v.slice(-6))}` : ""}</i></span><button type="button" class="afr-one" data-opsone="${r.at}|${esc(r.k)}" aria-label="Copy this one">${st.copied === `ops:${r.at}|${r.k}` ? "✓" : "copy"}</button></div>`).join("")}`).join("") : `<p class="afr-none">${rows.length ? "All clear: everything is closed." : "No failures or slow calls in the last 7 days."}</p>`}</section>`;
     };
     // Admin friction: Jake's errors, rage taps, dead taps and sheets shut at
     // once, newest first by day, with a plain text copy for pasting.
@@ -1841,6 +1845,7 @@ html, body { overflow-x: hidden; }
       return;
     }
     if (b.dataset.opstoggle) { st.opsOpen = !st.opsOpen; store.set("brochiefs_live_ops_open", st.opsOpen ? "1" : ""); st.sig = ""; render(); return; }
+    if (b.dataset.opsclosed) { st.opsShowClosed = !st.opsShowClosed; st.sig = ""; render(); return; }
     if (b.dataset.opsclose || b.dataset.opscloseall) {
       const one = b.dataset.opsclose ? (st.ops || []).find((x) => x.id === b.dataset.opsclose) : null;
       const ids = one ? [one.id] : (st.ops || []).filter((x) => !x.closed && x.id).map((x) => x.id);
