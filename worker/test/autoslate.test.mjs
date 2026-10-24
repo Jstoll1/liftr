@@ -2,7 +2,7 @@
 // Worker never does: same code, SPORT unset.
 import test from "node:test";
 import assert from "node:assert/strict";
-import worker from "../src/index.js";
+import worker, { resetReadCache } from "../src/index.js";
 
 const kv = () => {
   const m = new Map();
@@ -47,6 +47,7 @@ test("NFL: a line follows ESPN until the first pick on that game, then holds", a
   await env.LIFTR_KV.put("picks:w8:Ben", JSON.stringify({ picks: { [chiefs.id]: { team: "Away 12", mode: "ATS" } }, tiebreaker: "" }));
   board.events = [ev(1, 21, 19, 7.5, false, 30), ev(2, 12, 13, 11, false, 80), ev(3, 8, 9, 3, true, 80), ev(4, 25, 26, 2.5, true, 104)];
   env.LIFTR_KV.m.delete("autoslate:at");
+  resetReadCache(); // storage changed behind the Worker's back; a phone would wait out the 15 second window
   const r = await call(env, "/games");
   assert.equal(r.games.find((g) => g.awayId === 21).spread, 7.5);   // nobody picked it: follows ESPN
   assert.equal(r.games.find((g) => g.awayId === 12).spread, 9.5);   // picked: held
