@@ -441,8 +441,17 @@ async function fetchText(url, accept, env = null) {
   // turns us away (Google News answers the Worker 503) no longer holds the
   // whole news answer up; whatever arrived in time is used.
   let res;
-  try { res = await fetch(url, { headers: { "User-Agent": UA, Accept: accept, "Accept-Language": "en-US,en;q=0.9" }, signal: AbortSignal.timeout(SOURCE_MS) }); }
-  catch (err) { return fallback(err?.name === "TimeoutError" || err?.name === "AbortError" ? `timed out after ${SOURCE_MS / 1000}s` : String(err?.message || err)); }
+  // With an older copy in hand the wait is a second and a half, not four:
+  // a slightly old headline beats a sheet that hangs.
+  const wait = stale ? 1500 : SOURCE_MS;
+  try { res = await fetch(url, { headers: { "User-Agent": UA, Accept: accept, "Accept-Language": "en-US,en;q=0.9" }, signal: AbortSignal.timeout(wait) }); }
+  catch (err) {
+    const timedOut = err?.name === "TimeoutError" || err?.name === "AbortError";
+    // A host that just timed out is left alone for five minutes, so the
+    // next opens answer at once instead of each waiting out the timer.
+    if (timedOut) { coolUntil[host] = Date.now() + COOL_MS / 2; if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(`cool:${host}`, String(coolUntil[host]), { expirationTtl: 360 }); } catch {} } }
+    return fallback(timedOut ? `timed out after ${wait / 1000}s` : String(err?.message || err));
+  }
   if (res.ok) {
     const text = await res.text();
     // Feed bodies are small; the site's feed file is not, so the cap is generous.

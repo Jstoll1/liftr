@@ -2800,8 +2800,12 @@ function rankLockHtml(row) {
   const pk = row.state.picks[id], fin = computeLiveResults(latestLive)[g.id], l = latestLive[g.id];
   const p = fin ? scorePick(g, pk, fin) : l && l.found && l.state === "in" && l.awayScore != null ? scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) : null;
   const st = p == null ? "" : p > 0 ? " up" : p < 0 || (fin && p === 0 && !(pk.mode === "ATS" && resultOutcome(g, fin)?.push)) ? " dn" : "";
-  return `<i class="rank-lk${st}${fin ? " fin" : ""}" title="Lock: ${escapeCd(lockPickText(g, pk))}">🔒</i>`;
+  // A final, missed lock is smashed: crushed flat with a crack through it.
+  const smashed = st === " dn" && fin, slam = smashed && !rankLockHtml.slammed.has(`${row.name}:${g.id}`);
+  if (slam) rankLockHtml.slammed.add(`${row.name}:${g.id}`);
+  return `<i class="rank-lk${st}${fin ? " fin" : ""}${smashed ? " smash" : ""}${slam ? " slam" : ""}" title="Lock${smashed ? " smashed" : ""}: ${escapeCd(lockPickText(g, pk))}">${smashed ? "<span>🔒</span>" : "🔒"}</i>`;
 }
+rankLockHtml.slammed = new Set();
 function lockPickText(g, pk) {
   const short = pk.team === g.home ? g.homeShort : pk.team === g.away ? g.awayShort : pk.team;
   return pk.mode === "SU" ? `${short} to win` : `${short} ${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
