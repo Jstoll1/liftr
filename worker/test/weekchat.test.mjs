@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanChat } from "../src/weekask.js";
+import { cleanChat, weekChatSystem } from "../src/weekask.js";
 import worker from "../src/index.js";
 
 const games = [{ id: "2", away: "Indiana Hoosiers", home: "Michigan Wolverines", awayShort: "Indiana", homeShort: "Michigan", favorite: "Indiana Hoosiers", spread: 7, status: "live" }];
@@ -31,6 +31,8 @@ test("week chat worker: relays the model's tool calls, then its reply", async ()
   assert.match(second.message.content, /12%/);
   assert.equal(sent[0].tools.length, 5);
   assert.match(sent[0].messages[0].content, /Never state a number/);
+  assert.match(weekChatSystem({ members: ["Jordan", "Conlan", "Jake"] }), /Woods = Jordan/);
+  assert.match(weekChatSystem({ members: ["Jordan", "Conlan", "Jake"] }), /Connie \/ Conlin = Conlan/);
   assert.equal(sent[0].messages[0].role, "system");
 });
 
