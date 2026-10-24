@@ -4331,8 +4331,9 @@ async function handleWeekAsk(request, env, corsHeaders) {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: JSON.stringify({
-      model: env.OPENAI_MODEL || "gpt-4o-mini", temperature: 0, max_tokens: 300, response_format: { type: "json_object" },
-      messages: [{ role: "system", content: weekAskPrompt() }, { role: "user", content: JSON.stringify({ question, asker, members, games }) }],
+      // The stronger model: negation and follow-ups are where mini slipped.
+      model: env.OPENAI_MODEL_PLAN || "gpt-4o", temperature: 0, max_tokens: 300, response_format: { type: "json_object" },
+      messages: [{ role: "system", content: weekAskPrompt() }, { role: "user", content: JSON.stringify({ question, asker, members, games, previous: body?.previous && typeof body.previous.q === "string" ? { q: body.previous.q.slice(0, 300), reading: body.previous.reading ?? null } : null }) }],
     }),
   });
   if (!res.ok) return json({ error: `Couldn't read that question (${res.status}). Try again.` }, 502, corsHeaders);
