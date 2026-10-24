@@ -8444,3 +8444,8 @@ i.lk.rd-lk { top: 5px; right: 6px; font-size: 11px; }
 .scorebug i.lk.bug-lk.lk-hit::after, .scorebug i.lk.bug-lk.lk-miss::after { position: absolute; top: -4px; right: -5px; display: grid; place-items: center; width: 12px; height: 12px; border-radius: 50%; font-size: 8px; color: #0a0014; content: "✓"; background: var(--neon-green, #39ff88); margin: 0; }
 .scorebug i.lk.bug-lk.lk-miss::after { content: "✗"; background: var(--neon-pink, #ff2079); }
 i.lk.nm-lk, i.lk.pick-lk, i.lk.rd-lk, .lks-st i.lk { display: inline-flex; align-items: center; white-space: nowrap; }
+/* Leaderboard: a live lock sits on a faint green (covering) or pink (not
+   covering) pill. */
+i.lk.rank-lk.lk-up, i.lk.rank-lk.lk-dn { padding: 2px 4px; border-radius: 5px; }
+i.lk.rank-lk.lk-up { background: rgba(57, 255, 136, .16); box-shadow: inset 0 0 0 1px rgba(57, 255, 136, .35); }
+i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 0 1px rgba(255, 32, 121, .4); }
