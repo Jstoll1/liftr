@@ -1,0 +1,29 @@
+# Publishes the preview branch to brochiefs-preview.pages.dev straight from
+# GitHub, so it never waits on (or runs out of) Cloudflare's own builds.
+# Uses the same CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets as the
+# Worker deploy; the token needs Cloudflare Pages: Edit.
+name: Deploy preview
+
+on:
+  push:
+    branches: [preview]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-preview
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The site is static: everything but the Worker, tests and repo plumbing.
+      - run: |
+          mkdir -p _site
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'worker' --exclude 'node_modules' --exclude '_site' ./ _site/
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy _site --project-name=brochiefs-preview --branch=preview --commit-dirty=true
