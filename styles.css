@@ -8272,3 +8272,29 @@ button.lt-rc { cursor: pointer; }
 .lk-smashed { display: block; width: 16px; height: 16px; }
 .pick-lk.smash .lk-smashed { width: 14px; height: 14px; }
 .pick-cell .pick-lk.smash { background: none; padding: 0; }
+
+/* Lock of the week, everywhere a name sits on a pick: a small 🔒 on the
+   name's top left corner. Tap any lock for everyone's. */
+.has-lk { position: relative; }
+.nm-lk { position: absolute; top: -6px; left: -5px; z-index: 1; display: grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: #ffd23f; font-style: normal; font-size: 8px; line-height: 1; box-shadow: 0 0 0 1.5px var(--bg, #0b0718); cursor: pointer; }
+.scorebug .bug-gnum.lk { padding: 1px 6px; border-radius: 999px; background: #ffd23f; color: #1a1030; font-weight: 800; letter-spacing: .04em; cursor: pointer; white-space: nowrap; }
+.rank-lk[data-locks] { cursor: pointer; }
+.lks { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(5, 3, 12, .72); }
+.lks-card { width: min(420px, 100%); max-height: 86vh; overflow-y: auto; overscroll-behavior: contain; background: #150c28; border: 1px solid rgba(255, 210, 63, .5); border-radius: 16px; padding: 14px 14px 10px; }
+.lks-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lks-h b { font: 400 11px 'Press Start 2P', monospace; color: #ffd23f; letter-spacing: .04em; }
+.lks-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .18); background: none; color: var(--text, #fff); font-size: 14px; cursor: pointer; }
+.lks-sub { display: block; margin: 2px 0 8px; color: var(--text-meta, #a99cc7); font-size: 11.5px; }
+.lks ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lks li { display: grid; grid-template-columns: 22px minmax(0, 64px) 26px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); }
+.lks li.me { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .45); }
+.lks-nm { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lks-logo { width: 26px; height: 26px; object-fit: contain; }
+.lks-pk { display: flex; flex-direction: column; min-width: 0; }
+.lks-pk b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lks-pk small { font-size: 10.5px; color: var(--text-meta, #a99cc7); }
+.lks-st { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; color: var(--text-meta, #a99cc7); white-space: nowrap; }
+.lks-st.up { color: var(--neon-green, #39ff88); }
+.lks-st.dn { color: var(--neon-pink, #ff2079); }
+.lks-st .lk-smashed { width: 18px; height: 18px; }
+.lks-none { grid-column: 3 / -1; font-size: 12px; color: var(--text-meta, #a99cc7); }

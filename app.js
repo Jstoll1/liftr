@@ -1596,6 +1596,36 @@ function gcStop() { if (!gcOpen) return; const k = `g${gcOpen.id}`; gcTime[k] = 
  new MutationObserver(() => { if (m.classList.contains("hidden")) gcStop(); }).observe(m, { attributes: true, attributeFilter: ["class"] });
 })();
 const insTap = { last: "" };
+// Everyone's lock of the week in one sheet, from any 🔒 tap. Only what the
+// Worker has shown: a lock on a game that hasn't kicked off stays hidden.
+function openLocksSheet() {
+  const lr = lockRule(); if (!lr) return;
+  const all = lastGoodCloudPicks || boardPicks.data || {};
+  const fins = computeLiveResults(latestLive);
+  const rows = MANAGERS.map((n) => {
+    const st = all[n]?.picks || {};
+    const id = Object.keys(st).find((k) => st[k]?.lock);
+    const g = id && GAMES.find((x) => String(x.id) === String(id));
+    const anyHidden = Object.values(st).some((x) => x?.hidden);
+    if (!g) return { n, rank: 3, html: `<span class="lks-none">${anyHidden && n !== currentManager ? "Hidden until kickoff" : "No lock"}</span>` };
+    const pk = st[id], fin = fins[g.id], l = latestLive[g.id];
+    const live = !fin && l?.found && l.state === "in" && l.awayScore != null ? scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) : null;
+    const pts = fin ? scorePick(g, pk, fin) : null;
+    const push = fin && pk.mode === "ATS" && resultOutcome(g, fin)?.push;
+    const tag = push ? `<span class="lks-st">PUSH</span>` : pts != null ? (pts > 0 ? `<span class="lks-st up">${HIT_LOCK}+${lr.hit}</span>` : `<span class="lks-st dn">${SMASHED_LOCK}${lr.miss < 0 ? "−" + Math.abs(lr.miss) : "0"}</span>`) : live != null ? `<span class="lks-st ${live > 0 ? "up" : "dn"}">${live > 0 ? "COVERING" : "NOT COVERING"}</span>` : `<span class="lks-st">${isGameLocked(g) ? "LIVE" : escapeCd(g.kickoffLabel || "")}</span>`;
+    const tid = pk.team === g.away ? g.awayId : g.homeId;
+    return { n, rank: pts != null ? (pts > 0 ? 0 : 2) : 1, html: `<img class="lks-logo" src="${logoUrl(tid)}" alt=""><span class="lks-pk"><b>${escapeCd(lockPickText(g, pk))}</b><small>${escapeCd(g.awayShort)} at ${escapeCd(g.homeShort)}</small></span>${tag}` };
+  }).sort((a, b) => a.rank - b.rank || MANAGERS.indexOf(a.n) - MANAGERS.indexOf(b.n));
+  document.getElementById("locks-sheet")?.remove();
+  const m = document.createElement("div");
+  m.id = "locks-sheet"; m.className = "lks"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Everyone's lock of the week");
+  m.innerHTML = `<div class="lks-card"><div class="lks-h"><b>🔒 LOCKS OF THE WEEK</b><button type="button" class="lks-x" aria-label="Close">✕</button></div><small class="lks-sub">${escapeCd(lockLabel(lr))} · shown from kickoff</small><ul>${rows.map((r) => `<li class="${r.n === currentManager ? "me" : ""}"><span class="pick-chip-av" style="--accent:${accentFor(r.n)}">${escapeCd(avatarOverrides[r.n] || shown(r.n)[0])}</span><span class="lks-nm">${escapeCd(shown(r.n))}</span>${r.html}</li>`).join("")}</ul></div>`;
+  m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".lks-x")) m.remove(); });
+  document.body.appendChild(m);
+  noteUse("locks-sheet");
+}
+// Any lock icon opens it, ahead of whatever the card under it would do.
+document.addEventListener("click", (e) => { const t = e.target.closest?.("[data-locks], .pick-cell .pick-lk"); if (!t || !lockRule()) return; e.preventDefault(); e.stopPropagation(); openLocksSheet(); }, true);
 function endSession() {
   if (sessionStart == null) return;
   const start = sessionStart, dur = Date.now() - start;
@@ -2818,7 +2848,7 @@ function rankLockHtml(row) {
   // A final, missed lock is a smashed padlock: one still picture.
   // Final: a hit is the glowing gold padlock, a miss the smashed one.
   const smashed = st === " dn" && fin, hit = st === " up" && fin;
-  return `<i class="rank-lk${st}${fin ? " fin" : ""}${smashed || hit ? " smash" : ""}" title="Lock${smashed ? " smashed" : hit ? " hit" : ""}: ${escapeCd(lockPickText(g, pk))}">${smashed ? SMASHED_LOCK : hit ? HIT_LOCK : "🔒"}</i>`;
+  return `<i data-locks="1" role="button" class="rank-lk${st}${fin ? " fin" : ""}${smashed || hit ? " smash" : ""}" title="Lock${smashed ? " smashed" : hit ? " hit" : ""}: ${escapeCd(lockPickText(g, pk))}">${smashed ? SMASHED_LOCK : hit ? HIT_LOCK : "🔒"}</i>`;
 }
 // The smashed padlock: shackle snapped off, body crushed and cracked.
 const HIT_LOCK = `<img class="lk-smashed" src="assets/lock-correct.png" alt="Lock hit" width="16" height="16">`;
@@ -4173,12 +4203,17 @@ function namesListHtml(names) {
 }
 
 // Name chips: avatar initial (or emoji) plus name, wrapping as a unit.
-function nameChips(names) {
+// A small 🔒 on the top left of a name that has this game as its lock.
+// Only picks the Worker has shown (from kickoff on) can carry it.
+function lockOn(n, gid, src = lastGoodCloudPicks) { return !!(lockRule() && gid != null && src?.[n]?.picks?.[gid]?.lock); }
+const nameLk = (on) => (on ? `<i class="nm-lk" data-locks="1" role="button" aria-label="Lock of the week: tap for everyone's">🔒</i>` : "");
+function nameChips(names, gid = null, src) {
   return names.map((n) => {
     const idx = MANAGERS.indexOf(n);
     const accent = accentFor(n);
     const av = avatarOverrides[n] || shown(n)[0];
-    return `<span class="pick-chip${n === currentManager ? " me" : ""}" data-name="${escapeCd(n)}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
+    const lk = lockOn(n, gid, src);
+    return `<span class="pick-chip${n === currentManager ? " me" : ""}${lk ? " has-lk" : ""}" data-name="${escapeCd(n)}">${nameLk(lk)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
   }).join("");
 }
 
@@ -4200,8 +4235,8 @@ function bugSideDetail(cloudPicks, game, team, short, finalRes) {
     return pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
   };
   const rows = [];
-  if (ats.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag ats">SPREAD ${spreadTxt}</span>${pill("ATS")}</span><div class="pick-chips">${nameChips(ats)}</div></div>`);
-  if (su.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag su">STRAIGHT UP</span>${pill("SU")}</span><div class="pick-chips">${nameChips(su)}</div></div>`);
+  if (ats.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag ats">SPREAD ${spreadTxt}</span>${pill("ATS")}</span><div class="pick-chips">${nameChips(ats, game.id, cloudPicks)}</div></div>`);
+  if (su.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag su">STRAIGHT UP</span>${pill("SU")}</span><div class="pick-chips">${nameChips(su, game.id, cloudPicks)}</div></div>`);
   return `
     <div class="bug-side">
       <div class="bug-side-head"><span>${short}</span></div>
@@ -4397,9 +4432,8 @@ function renderLiveScores(live, cloudPicks) {
       }
       return `
         <div class="${cls}${myPick?.lock && lockRule() ? " lk" : ""}" data-game="${game.id}" role="button" tabindex="0" aria-label="Open ${game.awayShort} at ${game.homeShort}">
-          ${myPick?.lock && lockRule() ? `<i class="bug-lk" title="Your lock of the week">🔒</i>` : ""}
           <div class="bug-head">
-            <span class="bug-gnum">G${game.id}</span>
+            ${myPick?.lock && lockRule() ? `<span class="bug-gnum lk" data-locks="1" role="button" title="Your lock of the week: tap for everyone's">🔒 LOCK</span>` : `<span class="bug-gnum">G${game.id}</span>`}
             <span class="bug-status">${statusText}</span>${tvTag}
             ${myPill}
           </div>
@@ -7555,7 +7589,7 @@ async function openInsights(gameId) {
     let roomHtml = "";
     if (room.length) {
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}${r.pick.lock && lockRule() ? `<i class="gc-rlk">🔒</i>` : ""}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : r.pts < 0 ? "−" + Math.abs(r.pts) : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule())}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : r.pts < 0 ? "−" + Math.abs(r.pts) : "0"}</i></li>`; };
       const up = room.filter((r) => r.state === "up").sort((x, y) => y.pts - x.pts), down = room.filter((r) => r.state === "down"), push = room.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -7953,7 +7987,7 @@ async function openInsights(gameId) {
         return { ...r, side, terms, state, worth: pickWorth(game, r.pick) };
       });
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}${r.pick.lock && lockRule() ? `<i class="gc-rlk">🔒</i>` : ""}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule())}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = rows.filter((r) => r.state === "up"), down = rows.filter((r) => r.state === "down"), push = rows.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -8003,7 +8037,7 @@ async function openInsights(gameId) {
   const roomPre = (() => {
     const all = lastGoodCloudPicks || {};
     const locked = isGameLocked(game);
-    const chip = (n) => `<span class="rp-chip${n === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accentFor(n)}">${esc(avatarOverrides[n] || shown(n)[0])}</span>${esc(shown(n))}</span>`;
+    const chip = (n) => `<span class="rp-chip${n === currentManager ? " me" : ""}${lockOn(n, game.id, all) ? " has-lk" : ""}">${nameLk(lockOn(n, game.id, all))}<span class="pick-chip-av" style="--accent:${accentFor(n)}">${esc(avatarOverrides[n] || shown(n)[0])}</span>${esc(shown(n))}</span>`;
     if (!locked) {
       const mine = all[currentManager]?.picks?.[game.id];
       const inN = MANAGERS.filter((n) => all[n]?.picks?.[game.id]).length;
