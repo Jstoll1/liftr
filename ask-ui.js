@@ -97,10 +97,44 @@
     return `${head}${outTxt}${aliveTxt}${hidden.length ? ` (${hidden.map(shown).join(", ")}'s picks are still hidden.)` : ""}`;
   }
 
+  const fins = () => computeLiveResults(latestLive);
+  // Best finish: what is banked plus every pick still to be decided hitting.
+  function maxAnswer(who) {
+    const st = (lastGoodCloudPicks || {})[who]?.picks || {}, f = fins(), you = who === me();
+    let banked = 0, open = 0, n = 0;
+    for (const g of GAMES) { const p = st[g.id]; if (!p?.team) continue; if (f[g.id]) banked += scorePick(g, p, f[g.id]) || 0; else { open += pickWorth(g, p); n++; } }
+    const S = you ? "You" : shown(who);
+    return `${S} ${you ? "have" : "has"} ${banked} banked and ${n} pick${n === 1 ? "" : "s"} still to play, so the best finish is ${banked + open}.`;
+  }
+  // Who took what on a game, from picks already shown (from kickoff on).
+  function picksAnswer(r) {
+    const c = r.conditions[0]; if (!c) return "Which game? Try \"who picked Michigan?\"";
+    const g = GAMES.find((x) => String(x.id) === String(c.game)); if (!g) return "I couldn't find that game.";
+    const all = lastGoodCloudPicks || {};
+    const side = (team) => MANAGERS.filter((n) => all[n]?.picks?.[g.id]?.team === team).map((n) => { const p = all[n].picks[g.id]; return `${shown(n)}${p.mode === "ATS" ? ` ${team === g.favorite ? "−" : "+"}${g.spread}` : " (to win)"}${p.lock && lockRule() ? " 🔒" : ""}`; });
+    const hidden = MANAGERS.filter((n) => all[n]?.picks?.[g.id]?.hidden).length;
+    if (hidden && !isGameLocked(g)) return `Picks on ${g.awayShort} at ${g.homeShort} stay hidden until it kicks off.`;
+    const a = side(g.away), h = side(g.home);
+    return `${g.awayShort}: ${a.length ? a.join(", ") : "nobody"}. ${g.homeShort}: ${h.length ? h.join(", ") : "nobody"}.`;
+  }
+  function tbAnswer() {
+    const g = typeof tiebreakerGameOf === "function" ? tiebreakerGameOf() : null; if (!g) return "There's no tiebreaker game set this week.";
+    const all = lastGoodCloudPicks || {}, f = fins()[g.id], l = latestLive[g.id];
+    const total = f ? f.awayScore + f.homeScore : l?.state === "in" ? (l.awayScore || 0) + (l.homeScore || 0) : null;
+    const gs = MANAGERS.map((n) => [n, String(all[n]?.tiebreaker ?? "").trim()]).filter(([, v]) => v !== "");
+    if (gs.some(([, v]) => v === "hidden")) return `The tiebreaker is total points in ${g.awayShort} at ${g.homeShort}. Guesses stay hidden until the first kickoff.`;
+    const list = gs.map(([n, v]) => [n, Number(v)]).filter(([, v]) => Number.isFinite(v)).sort((a, b) => (total == null ? a[1] - b[1] : Math.abs(a[1] - total) - Math.abs(b[1] - total)));
+    const now = total == null ? "It hasn't kicked off." : f ? `Final total: ${total}.` : `Total right now: ${total}.`;
+    return `Tiebreaker: total points in ${g.awayShort} at ${g.homeShort}. ${now} ${list.length ? `${total == null ? "Guesses" : "Closest first"}: ${list.map(([n, v]) => `${shown(n)} ${v}`).join(", ")}.` : "No guesses in."}`;
+  }
+
   function answer(r) {
     if (r.intent === "field") return fieldAnswer(r);
+    if (r.intent === "picks") return picksAnswer(r);
+    if (r.intent === "tiebreaker") return tbAnswer();
+    if (r.intent === "max") return maxAnswer(r.who || me() || MANAGERS[0]);
     const who = r.who || me();
-    if (r.intent === "unknown") return "I can answer questions about this week's race: can someone still win, what they need, who can catch them, and \"if X wins\" versions of those.";
+    if (r.intent === "unknown") return "I can answer questions about this week's race: odds, \"if X wins\", what you need, who's out, who picked what, best finish and the tiebreaker.";
     if (!who) return "Who's asking? Pick yourself on the app first, or name someone (\"can Curt still win?\").";
     const hidden = hiddenOthers(who);
     if (hidden.length >= MANAGERS.length - 1) return "Everyone else's picks are hidden until kickoff, so there's no race to work out yet. Ask again once games start.";
@@ -135,10 +169,23 @@
     return "I didn't follow that one. Try \"If Michigan wins can I still win?\"";
   }
 
+  // Suggestions: a few from the usual questions, filled in with games still
+  // to be decided, shuffled each time the chat opens.
+  let chipSet = null;
   function chips() {
-    const live = GAMES.filter((g) => !computeLiveResults(latestLive)[g.id]).slice(0, 1)[0];
-    return [live ? `If ${live.homeShort} wins can I still win?` : null, "What do I need?", live ? `If ${live.awayShort} covers who is out?` : "Who is out?"].filter(Boolean);
+    if (chipSet) return chipSet;
+    const f = fins(), open = GAMES.filter((g) => !f[g.id]);
+    const g1 = open[0], g2 = open[1] || open[0];
+    const pool = [
+      "Can I still win this week?", "What do I need to win?", "Who can catch me?", "Who is eliminated?", "Who's the favourite right now?",
+      "What's my best possible score?", "Where's the tiebreaker at?",
+      g1 && `If ${g1.homeShort} wins can I still win?`, g1 && `If ${g1.awayShort} covers who is out?`, g2 && `Who picked ${g2.homeShort}?`,
+      g1 && g2 && g1 !== g2 && `If ${g1.homeShort} and ${g2.awayShort} win, what are my odds?`,
+    ].filter(Boolean);
+    for (let i = pool.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [pool[i], pool[k]] = [pool[k], pool[i]]; }
+    return (chipSet = pool.slice(0, 3));
   }
+
 
   function sheet() {
     let m = document.getElementById("ask-sheet");
@@ -174,16 +221,20 @@
 
   function open() { sheet().querySelector("input")?.focus(); if (typeof noteUse === "function") noteUse("week-ask-open"); }
 
-  // The button: beside VS on the leaderboard header.
+  // The button: a pill fixed bottom left on the Scores page (Lightning has
+  // the bottom right), so it is in reach wherever you are on the board.
   function paintBtn() {
-    const vs = document.getElementById("h2h-open");
-    if (!vs || document.getElementById("ask-open")) return;
-    const b = document.createElement("button");
-    b.id = "ask-open"; b.type = "button"; b.className = "h2h-btn ask-btn"; b.title = "Ask about this week"; b.textContent = "ASK";
-    b.addEventListener("click", (e) => { e.stopPropagation(); open(); });
-    vs.before(b);
+    let b = document.getElementById("ask-fab");
+    if (!b) {
+      b = document.createElement("button"); b.id = "ask-fab"; b.type = "button"; b.className = "ask-fab"; b.setAttribute("aria-label", "Ask about this week");
+      b.innerHTML = `<b aria-hidden="true">💬</b>Ask`;
+      b.addEventListener("click", () => { chipSet = null; open(); });
+      document.body.appendChild(b);
+    }
+    const sb = document.getElementById("scoreboard-screen");
+    b.hidden = !sb || sb.classList.contains("hidden") || !!document.querySelector(".modal-overlay:not(.hidden), #ask-sheet, #lt-modal");
   }
-  paintBtn(); setInterval(paintBtn, 3000);
+  paintBtn(); setInterval(paintBtn, 800);
   window.openWeekAsk = open;
   window.__weekAsk = { answer, condChances };
 })();
