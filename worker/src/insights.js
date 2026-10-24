@@ -425,20 +425,34 @@ export function parseGdelt(json) {
 // throttling (Google's RSS answers 503 to busy edges).
 // Successful feed bodies are kept in KV for thirty minutes so repeat opens
 // of the same game do not hit the same throttled host again.
+// A service that answered 429 is left alone for ten minutes (GDELT in
+// particular); a failed call falls back to the last copy we kept.
+const COOL_MS = 10 * 60 * 1000;
+const coolUntil = {};
+const hostOf = (url) => { try { return new URL(url).hostname; } catch { return ""; } };
 async function fetchText(url, accept, env = null) {
-  const key = feedCacheKey(url);
-  if (env?.LIFTR_KV) { try { const hit = await env.LIFTR_KV.get(key, "json"); if (hit && hit.at && Date.now() - hit.at < 30 * 60 * 1000) return { ok: true, text: hit.text, cached: true }; } catch {} }
+  const key = feedCacheKey(url), host = hostOf(url);
+  let stale = null;
+  if (env?.LIFTR_KV) { try { const hit = await env.LIFTR_KV.get(key, "json"); if (hit && hit.at && Date.now() - hit.at < 30 * 60 * 1000) return { ok: true, text: hit.text, cached: true }; stale = hit?.text ? hit : null; } catch {} }
+  if (!coolUntil[host] && env?.LIFTR_KV) { try { coolUntil[host] = Number(await env.LIFTR_KV.get(`cool:${host}`)) || 0; } catch {} }
+  if (Date.now() < (coolUntil[host] || 0)) return stale ? { ok: true, text: stale.text, cached: true, stale: true } : { ok: false, error: "cooling down after 429" };
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await fetch(url, { headers: { "User-Agent": UA, Accept: accept, "Accept-Language": "en-US,en;q=0.9" } });
     if (res.ok) {
       const text = await res.text();
       // Feed bodies are small; the site's feed file is not, so the cap is generous.
-      if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(key, JSON.stringify({ at: Date.now(), text: text.slice(0, 4000000) }), { expirationTtl: 3600 }); } catch {} }
+      if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(key, JSON.stringify({ at: Date.now(), text: text.slice(0, 4000000) }), { expirationTtl: 6 * 3600 }); } catch {} }
       return { ok: true, text };
     }
-    if (res.status !== 503 && res.status !== 429) return { ok: false, error: `HTTP ${res.status}` };
+    if (res.status === 429) {
+      // Told to slow down: no retry (it only adds to the pile), back off for a while.
+      coolUntil[host] = Date.now() + COOL_MS;
+      if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(`cool:${host}`, String(coolUntil[host]), { expirationTtl: 900 }); } catch {} }
+      return stale ? { ok: true, text: stale.text, cached: true, stale: true } : { ok: false, error: "HTTP 429" };
+    }
+    if (res.status !== 503) return stale ? { ok: true, text: stale.text, cached: true, stale: true } : { ok: false, error: `HTTP ${res.status}` };
     if (attempt === 0) await new Promise((r) => setTimeout(r, 900 + Math.random() * 600));
-    else return { ok: false, error: `HTTP ${res.status}` };
+    else return stale ? { ok: true, text: stale.text, cached: true, stale: true } : { ok: false, error: `HTTP ${res.status}` };
   }
   return { ok: false, error: "unreachable" };
 }
@@ -483,9 +497,9 @@ export async function gameNews(env, game) {
     { tag: "home", url: bing(`"${H}" football`), bing: true },
   );
   queries.push(
+    // GDELT allows about one call every five seconds: one search per game,
+    // the team-only searches are left to the other sources.
     { tag: "game", url: gdeltUrl(`"${A}" "${H}" football`), gdelt: true },
-    { tag: "away", url: gdeltUrl(`"${A}" football`), gdelt: true },
-    { tag: "home", url: gdeltUrl(`"${H}" football`), gdelt: true },
     { tag: "game", url: yahooUrl(`${A} ${H} football`), yahoo: true },
     { tag: "away", url: yahooUrl(`${A} football`), yahoo: true },
     { tag: "home", url: yahooUrl(`${H} football`), yahoo: true },
