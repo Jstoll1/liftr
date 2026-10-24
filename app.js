@@ -1596,6 +1596,14 @@ function gcStop() { if (!gcOpen) return; const k = `g${gcOpen.id}`; gcTime[k] = 
  new MutationObserver(() => { if (m.classList.contains("hidden")) gcStop(); }).observe(m, { attributes: true, attributeFilter: ["class"] });
 })();
 const insTap = { last: "" };
+// A game row on a player's card opens that game (Gamecast once it has
+// kicked off). Ahead of the row's own tap, which folds the card.
+document.addEventListener("click", (e) => {
+  const r = e.target.closest?.(".rd-row[data-rdgame]");
+  if (!r || e.target.closest("[data-locks]")) return;
+  e.preventDefault(); e.stopPropagation();
+  const g = GAMES.find((x) => String(x.id) === r.dataset.rdgame); if (g) openInsights(g.id);
+}, true);
 // Everyone's lock of the week in one sheet, from any 🔒 tap. Only what the
 // Worker has shown: a lock on a game that hasn't kicked off stays hidden.
 function openLocksSheet() {
@@ -5214,7 +5222,7 @@ function playerBreakdownHtml(name, state, results, live) {
     const aS = src && Number.isFinite(src.awayScore) ? src.awayScore : null;
     const hS = src && Number.isFinite(src.homeScore) ? src.homeScore : null;
     const scoreCell = (s, other) => `<span class="rd-sc ${isFinal && s !== null && s > other ? "win" : ""}">${s === null ? "" : s}</span>`;
-    return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}">
+    return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
         <span class="rd-gline">G${game.id} ${statusTag}</span>
         <span class="rd-matchup"><img class="rd-mlogo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-tm away ${pickedSide === "away" ? "picked" : ""}">${game.awayShort}</span>${scoreCell(aS, hS)}<img class="rd-mlogo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-tm home ${pickedSide === "home" ? "picked" : ""}">${game.homeShort}</span>${scoreCell(hS, aS)}</span>

@@ -8419,3 +8419,5 @@ i.lk.rd-lk { position: absolute; top: 5px; right: 6px; width: 14px; height: 14px
 .rank-inflight.neg, .rd-summary .live.neg, .rd-summary .live.neg b { color: var(--neon-pink); }
 .ms-live.neg { color: var(--neon-pink); border-color: rgba(255, 32, 121, .5); }
 .ms-live.neg .stake-dot { background: var(--neon-pink); }
+.rd-row.go { cursor: pointer; }
+.rd-row.go:active { background: rgba(255, 255, 255, .05); }
