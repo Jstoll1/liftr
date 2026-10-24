@@ -1400,6 +1400,9 @@ async function handleLightning(request, env, corsHeaders, url) {
       return json({ ok: true, night: await view(made.night) }, 200, noStore);
     }
     if (action === "activate") {
+      // Only the Activate button on Live sends this; nothing else turns a
+      // night on (no schedule, no save, no player).
+      if (body.confirm !== "go-live") return json({ error: "Activate from the Lightning editor on Live." }, 400, corsHeaders);
       const made = activateNight(night, now);
       if (made.error) return json({ error: made.error }, 400, corsHeaders);
       await env.LIFTR_KV.put(lightningKey(week), JSON.stringify(made.night), keep);

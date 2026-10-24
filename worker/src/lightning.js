@@ -14,6 +14,8 @@ export const lightningEntryKey = (week, nightId, manager) => `lightning:w${week}
 export const LIGHTNING_HISTORY_KEY = "lightning:history";
 export const LIGHTNING_BETS = 5;
 export const LIGHTNING_MAX_BUYIN = 500;
+// Jake's house rule: every Lightning night is $25.
+export const LIGHTNING_BUYIN = 25;
 const KINDS = ["ats", "su", "ou"];
 
 const kickMs = (g) => new Date(g?.kickoff).getTime();
@@ -67,15 +69,16 @@ export function buildNight({ week, bets, buyIn, closesAt, now, prev = null }) {
   for (const b of list) { const c = cleanBet(b); if (c.error) return c; clean.push(c.bet); }
   const seen = new Set(clean.map((b) => `${b.game.eventId}:${b.kind}`));
   if (seen.size !== clean.length) return { error: "Two bets are the same bet on the same game." };
-  const amt = Number(buyIn);
-  if (!Number.isInteger(amt) || amt < 1 || amt > LIGHTNING_MAX_BUYIN) return { error: `Buy-in must be a whole dollar amount from 1 to ${LIGHTNING_MAX_BUYIN}.` };
+  const amt = LIGHTNING_BUYIN;
   const close = Number(closesAt);
   if (!Number.isFinite(close) || close <= now) return { error: "Set a lock time that is still to come." };
   if (close > now + 12 * 3600000) return { error: "The lock time is more than twelve hours away." };
   const last = clean.reduce((a, b) => (kickMs(b.game) > kickMs(a.game) ? b : a));
   const bet = (b, i) => ({ id: `b${i + 1}`, ...b });
   return { night: {
-    week, id: prev?.id || String(now), status: prev?.status || "draft",
+    // A save is a draft. Only activate() turns a night on; an edit to a
+    // night already on keeps it on.
+    week, id: prev?.id || String(now), status: prev?.status === "live" ? "live" : "draft",
     bets: clean.map(bet), buyIn: amt, closesAt: close,
     tbEvent: last.game.eventId, tbLabel: `${last.game.awayShort} at ${last.game.homeShort}`,
     createdAt: prev?.createdAt || now, ...(prev ? { editedAt: now } : {}), ...(prev?.activatedAt ? { activatedAt: prev.activatedAt } : {}),

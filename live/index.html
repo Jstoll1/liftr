@@ -2096,7 +2096,7 @@ html, body { overflow-x: hidden; }
       <div class="lz-cols">
         <div class="lz-sec"><h3>Tonight's games <button type="button" class="lz-link" data-lzreload="1">refresh</button></h3><div class="lz-games">${games}</div></div>
         <div class="lz-sec"><h3>The five</h3>${bets}
-          <div class="lz-row"><label>Buy-in $ <input type="number" min="1" max="500" step="1" data-lzbuy="1" value="${lz.buyIn}"></label><label>Locks at <input type="time" data-lzlock="1" value="${lockVal}"></label></div>
+          <div class="lz-row"><label>Buy-in <b>$25</b></label><label>Locks at <input type="time" data-lzlock="1" value="${lockVal}"></label></div>
           <p class="lz-dim">Tiebreaker: total points in the last of the five to kick off.</p>
           <div class="lz-ask"><input type="text" data-lzprompt="1" placeholder="Ask for an edit, e.g. swap bet 3 for the Utah total" value="${esc(lz.prompt)}"><button type="button" data-lzedit="1" ${lz.bets.length === 5 ? "" : "disabled"}>Apply</button></div>
           <div class="lz-acts"><button type="button" data-lzsave="1" ${lz.bets.length === 5 ? "" : "disabled"}>Save draft</button><button type="button" class="go" data-lzgo="1" ${n && !live ? "" : "disabled"}>⚡ Activate</button>${n ? `<button type="button" class="danger" data-lzcancel="1">Cancel night</button>` : ""}</div>
@@ -2144,7 +2144,7 @@ html, body { overflow-x: hidden; }
         lz.night = j.night; lz.msg = lz.night.status === "live" ? "Saved. Players see the change." : "Draft saved. Only you can see it.";
       } else if (b.dataset.lzgo) {
         if (!confirm(`Activate Lightning? Everyone sees it now, and it locks at ${lzTime(lz.night.closesAt)}.`)) return;
-        lz.night = (await lzPost({ action: "activate" })).night; lz.msg = "⚡ Lightning is live.";
+        lz.night = (await lzPost({ action: "activate", confirm: "go-live" })).night; lz.msg = "⚡ Lightning is live.";
       } else if (b.dataset.lzcancel) {
         if (!confirm("Cancel tonight's Lightning? Anyone in is dropped.")) return;
         await lzPost({ action: "cancel" }); lz.night = null; lz.msg = "Cancelled.";

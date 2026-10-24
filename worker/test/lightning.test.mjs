@@ -79,7 +79,11 @@ test("lightning worker: save and activate are the admin's; players join with pic
   assert.equal((await call("/lightning?key=adm", { action: "save", week: 9, bets: five(), buyIn: 10, closesAt: close })).status, 200);
   assert.equal((await (await call("/lightning?week=9")).json()).night, null); // a draft: nothing for players
   assert.equal((await call("/lightning?week=9", { action: "join", week: 9, manager: "Curt", picks: { b1: "a", b2: "a", b3: "a", b4: "a", b5: "a" }, tb: 40 })).status, 404);
-  assert.equal((await call("/lightning?key=adm", { action: "activate", week: 9 })).status, 200);
+  assert.equal((await call("/lightning?key=adm", { action: "activate", week: 9 })).status, 400); // no go-ahead, no live
+  assert.equal((await call("/lightning?week=9", { action: "activate", week: 9, confirm: "go-live" })).status, 403); // not the admin
+  assert.equal(JSON.parse(env.LIFTR_KV.m.get("lightning:w9")).status, "draft");
+  assert.equal((await call("/lightning?key=adm", { action: "activate", week: 9, confirm: "go-live" })).status, 200);
+  assert.equal(JSON.parse(env.LIFTR_KV.m.get("lightning:w9")).buyIn, 25);
   const picks = { b1: "a", b2: "b", b3: "a", b4: "a", b5: "b" };
   assert.equal((await call("/lightning?week=9", { action: "join", week: 9, manager: "Curt", picks, tb: 40 })).status, 200);
   assert.equal((await call("/lightning?week=9", { action: "join", week: 9, manager: "Logan", picks: { ...picks, b1: "b" }, tb: 37 })).status, 200);
