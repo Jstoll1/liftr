@@ -1613,8 +1613,8 @@ function openLocksSheet() {
     const pts = fin ? scorePick(g, pk, fin) : null;
     const push = fin && pk.mode === "ATS" && resultOutcome(g, fin)?.push;
     const tag = push ? `<span class="lks-st">PUSH</span>` : pts != null ? (pts > 0 ? `<span class="lks-st up">${HIT_LOCK}+${lr.hit}</span>` : `<span class="lks-st dn">${SMASHED_LOCK}${lr.miss < 0 ? "−" + Math.abs(lr.miss) : "0"}</span>`) : live != null ? `<span class="lks-st ${live > 0 ? "up" : "dn"}">${live > 0 ? "COVERING" : "NOT COVERING"}</span>` : `<span class="lks-st">${isGameLocked(g) ? "LIVE" : escapeCd(g.kickoffLabel || "")}</span>`;
-    const tid = pk.team === g.away ? g.awayId : g.homeId;
-    return { n, rank: pts != null ? (pts > 0 ? 0 : 2) : 1, html: `<img class="lks-logo" src="${logoUrl(tid)}" alt=""><span class="lks-pk"><b>${escapeCd(lockPickText(g, pk))}</b><small>${escapeCd(g.awayShort)} at ${escapeCd(g.homeShort)}</small></span>${tag}` };
+    const away = pk.team === g.away, tid = away ? g.awayId : g.homeId, oid = away ? g.homeId : g.awayId;
+    return { n, rank: pts != null ? (pts > 0 ? 0 : 2) : 1, html: `<img class="lks-logo" src="${logoUrl(tid)}" alt=""><span class="lks-pk"><b>${escapeCd(lockPickText(g, pk))}</b><small>${away ? "at" : "vs"} <img class="lks-opp" src="${logoUrl(oid)}" alt="">${escapeCd(away ? g.homeShort : g.awayShort)}</small></span>${tag}` };
   }).sort((a, b) => a.rank - b.rank || MANAGERS.indexOf(a.n) - MANAGERS.indexOf(b.n));
   document.getElementById("locks-sheet")?.remove();
   const m = document.createElement("div");

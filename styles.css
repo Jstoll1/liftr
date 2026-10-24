@@ -8286,13 +8286,14 @@ button.lt-rc { cursor: pointer; }
 .lks-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .18); background: none; color: var(--text, #fff); font-size: 14px; cursor: pointer; }
 .lks-sub { display: block; margin: 2px 0 8px; color: var(--text-meta, #a99cc7); font-size: 11.5px; }
 .lks ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.lks li { display: grid; grid-template-columns: 22px minmax(0, 64px) 26px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); }
+.lks li { display: grid; grid-template-columns: 22px minmax(0, 64px) 34px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); }
 .lks li.me { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .45); }
 .lks-nm { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lks-logo { width: 26px; height: 26px; object-fit: contain; }
+.lks-logo { width: 34px; height: 34px; object-fit: contain; }
+.lks-opp { width: 14px; height: 14px; object-fit: contain; vertical-align: -3px; margin-right: 3px; }
 .lks-pk { display: flex; flex-direction: column; min-width: 0; }
 .lks-pk b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lks-pk small { font-size: 10.5px; color: var(--text-meta, #a99cc7); }
+.lks-pk small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10.5px; color: var(--text-meta, #a99cc7); }
 .lks-st { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; color: var(--text-meta, #a99cc7); white-space: nowrap; }
 .lks-st.up { color: var(--neon-green, #39ff88); }
 .lks-st.dn { color: var(--neon-pink, #ff2079); }
