@@ -8340,3 +8340,7 @@ i.lk.nm-lk, .rp-chip i.lk.nm-lk { position: absolute; top: -8px; left: -7px; wid
 .lks-st i.lk { margin-right: 2px; }
 .scorebug i.lk.bug-lk { position: absolute; top: -9px; right: -9px; width: 22px; height: 22px; font-size: 0; filter: none; background: #ffd23f url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 9V6.5a4 4 0 0 1 8 0V9' fill='none' stroke='%231a1030' stroke-width='2'/%3E%3Crect x='4' y='9' width='12' height='9' rx='2' fill='%231a1030'/%3E%3C/svg%3E") center / 12px 12px no-repeat; box-shadow: 0 0 8px rgba(255, 210, 63, .6); }
 .scorebug i.lk.bug-lk.lk-up::before, .scorebug i.lk.bug-lk.lk-dn::before { inset: -3px; }
+/* The scoring side's logo on TOUCHDOWN / FG GOOD / SAFETY in the play log,
+   so a cold look says who scored. */
+.gc-badge:has(.gc-blogo) { display: inline-flex; align-items: center; gap: 4px; padding-left: 2px; }
+.gc-blogo { width: 1.9em; height: 1.9em; min-width: 12px; min-height: 12px; object-fit: contain; filter: drop-shadow(0 0 1px rgba(10, 4, 20, .9)); }
