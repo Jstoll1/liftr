@@ -1,4 +1,4 @@
-import { weekAskPrompt, parseWeekAsk } from "./weekask.js";
+import { weekAskPrompt, parseWeekAsk, WEEK_CHAT_TOOLS, weekChatSystem, cleanChat } from "./weekask.js";
 import { openaiChat } from "./costs.js";
 import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
@@ -149,6 +149,9 @@ const app = {
     }
     if (url.pathname === "/lightning") {
       return handleLightning(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/week-chat") {
+      return handleWeekChat(request, env, corsHeaders);
     }
     if (url.pathname === "/week-ask") {
       return handleWeekAsk(request, env, corsHeaders);
@@ -4339,4 +4342,40 @@ async function handleWeekAsk(request, env, corsHeaders) {
   if (!res.ok) return json({ error: `Couldn't read that question (${res.status}). Try again.` }, 502, corsHeaders);
   const data = await res.json().catch(() => ({}));
   return json(parseWeekAsk(data?.choices?.[0]?.message?.content || "", games, members, asker), 200, corsHeaders);
+}
+
+// POST /week-chat { messages, context: { asker, members, games } }
+//   -> { message } : the model's next turn, either a reply (content) or tool
+//      calls for the phone to run and send back in messages.
+// 40 new questions an hour per address (tool round trips are free).
+async function handleWeekChat(request, env, corsHeaders) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
+  const members = (Array.isArray(body?.context?.members) ? body.context.members : []).filter((m) => typeof m === "string" && PICKS_MANAGERS.includes(m));
+  const games = (Array.isArray(body?.context?.games) ? body.context.games : []).slice(0, 30).map((g) => ({ id: String(g?.id ?? "").slice(0, 10), away: String(g?.away || "").slice(0, 60), home: String(g?.home || "").slice(0, 60), awayShort: String(g?.awayShort || "").slice(0, 30), homeShort: String(g?.homeShort || "").slice(0, 30), favorite: String(g?.favorite || "").slice(0, 60), spread: Number(g?.spread) || 0, status: String(g?.status || "").slice(0, 30), score: String(g?.score || "").slice(0, 30) })).filter((g) => g.id && g.away && g.home);
+  const asker = members.includes(body?.context?.asker) ? body.context.asker : null;
+  const messages = cleanChat(body?.messages);
+  if (!messages.length || !games.length || !members.length) return json({ error: "Nothing to ask about" }, 400, corsHeaders);
+  if (!env.OPENAI_API_KEY) return json({ error: "Ask is not set up" }, 503, corsHeaders);
+  if (env.LIFTR_KV && messages[messages.length - 1].role === "user") {
+    const ip = request.headers.get("CF-Connecting-IP") || "anon";
+    const bucket = `wchat-rl:${ip}:${Math.floor(Date.now() / 3600000)}`;
+    const used = Number((await env.LIFTR_KV.get(bucket)) || 0);
+    if (used >= 40) return json({ error: "That's a lot of questions. Try again in a bit." }, 429, corsHeaders);
+    await env.LIFTR_KV.put(bucket, String(used + 1), { expirationTtl: 3700 });
+  }
+  const res = await openaiChat(env, "week-chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model: env.OPENAI_MODEL_PLAN || "gpt-4o", temperature: 0.3, max_tokens: 500,
+      tools: WEEK_CHAT_TOOLS, parallel_tool_calls: true,
+      messages: [{ role: "system", content: weekChatSystem({ asker, members, games }) }, ...messages],
+    }),
+  });
+  if (!res.ok) return json({ error: `The assistant didn't answer (${res.status}). Try again.` }, 502, corsHeaders);
+  const data = await res.json().catch(() => ({}));
+  const m = data?.choices?.[0]?.message || {};
+  const calls = (m.tool_calls || []).filter((c) => WEEK_CHAT_TOOLS.some((t) => t.function.name === c.function?.name)).map((c) => ({ id: c.id, type: "function", function: { name: c.function.name, arguments: c.function.arguments || "{}" } }));
+  return json({ message: { role: "assistant", content: m.content || null, ...(calls.length ? { tool_calls: calls } : {}) } }, 200, corsHeaders);
 }
