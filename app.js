@@ -5206,7 +5206,7 @@ function playerBreakdownHtml(name, state, results, live) {
         const prov = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
         liveOpen += 1;
         if (prov > 0) { liveCovering += 1; liveFly += worth; ptsHtml = `<span class="rd-pts lean ${ptsValueTier(worth)}">+${worth}</span>`; }
-        else ptsHtml = `<span class="rd-pts lean miss">${prov < 0 ? "−" + Math.abs(prov) : "0"}</span>`;
+        else { liveFly += prov; ptsHtml = `<span class="rd-pts lean miss">${prov < 0 ? "−" + Math.abs(prov) : "0"}</span>`; }
       }
     }
     if (!isFinal && !isLive && sway[game.id] && ptsHtml.includes("rd-pts none")) ptsHtml = swayHtml(sway[game.id]);
@@ -5247,7 +5247,7 @@ function playerBreakdownHtml(name, state, results, live) {
   </div>`;
   // One line on the week: settled points and record, plus what is in
   // flight while games are on.
-  const summary = `<div class="rd-summary"><span><b>${banked}</b> PTS</span><span>${wins}-${losses}</span>${liveOpen ? `<span class="live"><b>+${liveFly}</b> LIVE · ${liveCovering} OF ${liveOpen} COVERING</span>` : ""}</div>`;
+  const summary = `<div class="rd-summary"><span><b>${banked}</b> PTS</span><span>${wins}-${losses}</span>${liveOpen ? `<span class="live${liveFly < 0 ? " neg" : ""}"><b>${signedPts(liveFly)}</b> LIVE · ${liveCovering} OF ${liveOpen} COVERING</span>` : ""}</div>`;
   // The arithmetic behind the leaderboard percentage, for this manager.
   let wpRow = "";
   if (wd) {
@@ -5295,7 +5295,7 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
       } else if (pick) max += pickWorth(g, pick);
     }
     const lead = row.submittedCount < GAMES.length ? `${picked} · ` : "";
-    return `${lead}${w}-${l} · <span class="rank-max">MAX <b>${max}</b></span>${inFlight ? ` · <span class="rank-inflight">+${inFlight} LIVE</span>` : ""}`;
+    return `${lead}${w}-${l} · <span class="rank-max">MAX <b>${max}</b></span>${inFlight ? ` · <span class="rank-inflight${inFlight < 0 ? " neg" : ""}">${signedPts(inFlight)} LIVE</span>` : ""}`;
   }
   const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
   return `${picked} · ${guess} · ${off}`;
@@ -6323,11 +6323,13 @@ function inFlightPoints(picks, live) {
     if (!Number.isFinite(g.awayScore) || !Number.isFinite(g.homeScore)) continue;
     const pick = picks[game.id];
     if (!pick) continue;
-    const p = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
-    if (p > 0) pts += p;
+    // Net, not just what is covering: a lock that is losing counts its
+    // penalty, so a row can read −3 LIVE.
+    pts += scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
   }
   return pts;
 }
+const signedPts = (n) => (n < 0 ? `−${Math.abs(n)}` : `+${n}`);
 function anyGameLive(live) {
   return GAMES.some((game) => { const g = live[game.id]; return g && g.found && g.state === "in" && !g.completed; });
 }
@@ -6359,7 +6361,7 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // above, and the room it gives back pays for LIVE on the pill, which
   // reads better than a bare +6.
   const banked = `<span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>`;
-  const livePill = inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight} LIVE</span>` : "";
+  const livePill = inFlight ? `<span class="ms-live${inFlight < 0 ? " neg" : ""}"><span class="stake-dot"></span>${signedPts(inFlight)} LIVE</span>` : "";
   el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${livePill}${state}${clock}`;
   // The strip stays built (its refresh and countdown hooks still run) but
   // is not shown: the header carries the same thing now.
@@ -6371,7 +6373,7 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // screen has the countdown); from kickoff on, your place and points.
   headScoreHtml = pre
     ? ""
-    : `${cloudPicksStale ? `<span class="ms-warn" title="Picks did not reload">⚠</span>` : ""}<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight}</span>` : ""}${boardAllFinal ? `<span class="ms-state final">FINAL</span>` : ""}`;
+    : `${cloudPicksStale ? `<span class="ms-warn" title="Picks did not reload">⚠</span>` : ""}<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${inFlight ? `<span class="ms-live${inFlight < 0 ? " neg" : ""}"><span class="stake-dot"></span>${signedPts(inFlight)}</span>` : ""}${boardAllFinal ? `<span class="ms-state final">FINAL</span>` : ""}`;
   renderHeadScore();
 }
 // Ticks the strip's countdown without redrawing the strip.
@@ -6487,7 +6489,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
         <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span>${rankLockHtml(row)}</span><span class="ranking-lock">${row.subline}</span></span>
-        <i class="rank-live mid${row.inFlight > 0 ? " on" : row.inFlight === 0 ? " zero" : ""}" title="${row.inFlight != null ? "Points from live games if they ended now" : "No games live"}">${row.inFlight != null ? `+${row.inFlight}` : "–"}</i>
+        <i class="rank-live mid${row.inFlight > 0 ? " on" : row.inFlight < 0 ? " neg" : row.inFlight === 0 ? " zero" : ""}" title="${row.inFlight != null ? "Points from live games if they ended now (a losing lock counts its penalty)" : "No games live"}">${row.inFlight != null ? signedPts(row.inFlight) : "–"}</i>
         ${(() => {
           // The week at a glance: one square per game in kickoff order.
           // Green cashed, pink missed, yellow push, pulsing while live

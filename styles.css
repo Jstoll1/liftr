@@ -8413,3 +8413,9 @@ i.lk.rank-lk { vertical-align: middle; position: relative; top: -1px; }
 .rd-pickcard.lk { position: relative; }
 .rd-pickcard.lk .rd-pickteam { padding-right: 16px; }
 i.lk.rd-lk { position: absolute; top: 5px; right: 6px; width: 14px; height: 14px; }
+/* Live points can go below zero (a losing lock): pink, like a miss. */
+.rank-live.neg { color: var(--neon-pink); text-shadow: 0 0 6px rgba(255, 32, 121, .6); }
+.rank-live.mid.neg { background: rgba(255, 32, 121, .1); border: 1px solid rgba(255, 32, 121, .45); }
+.rank-inflight.neg, .rd-summary .live.neg, .rd-summary .live.neg b { color: var(--neon-pink); }
+.ms-live.neg { color: var(--neon-pink); border-color: rgba(255, 32, 121, .5); }
+.ms-live.neg .stake-dot { background: var(--neon-pink); }
