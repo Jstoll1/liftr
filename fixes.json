@@ -42,6 +42,34 @@
       "at": 1792760094000,
       "commit": "3e181a5",
       "note": "Avatar is a button now; the tap came seconds before that fix went live"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".pick-cell-logo",
+      "at": 1792846018000,
+      "commit": "dce7a0a",
+      "note": "A pick's logo in All Picks opens that game's info"
+    },
+    {
+      "k": "rage",
+      "match": ".ins-fchip",
+      "at": 1792846018000,
+      "commit": "dce7a0a",
+      "note": "Last five chips open that game's gamecast"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".ins-fchip",
+      "at": 1792846018000,
+      "commit": "dce7a0a",
+      "note": "Last five chips open that game's gamecast"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".ins-pv",
+      "at": 1792846018000,
+      "commit": "dce7a0a",
+      "note": "The preview expands to the full write-up on tap"
     }
   ]
 }
