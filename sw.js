@@ -19,7 +19,9 @@
 const SHELL = "brochiefs-shell-v1";
 const ASSETS = "brochiefs-assets-v1";
 const KEEP = new Set([SHELL, ASSETS]);
-const NAV_TIMEOUT_MS = 4000;
+// On weak signal (a stadium on a Saturday) the saved page shows after
+// 1.5 seconds instead of 4; the fresh one still lands for next time.
+const NAV_TIMEOUT_MS = 1500;
 const SHELL_KEY = "./index.html";
 
 self.addEventListener("install", (e) => {

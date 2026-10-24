@@ -42,7 +42,9 @@ html, body {
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+  /* none, not contain: on iOS contain still lets the page rubber band,
+     and a pull down at the top opened an empty band under the header. */
+  overscroll-behavior-y: none;
   z-index: 2;
 }
 
@@ -8172,3 +8174,278 @@ button.plc-av { padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .plc-sb[data-statrank] { cursor: pointer; }
 .str-note { font-size: 11px; font-weight: 400; color: var(--text-meta); }
 .wks-r.lead .wks-n, .wks-r.lead .wks-s { color: var(--neon-yellow); }
+
+/* Game info: last five chips open their game, the preview expands. */
+.ins-fchip[data-fi], td[data-cellgame], .ins-pv.has-more { cursor: pointer; }
+.ins-pv .ins-pv-more { display: none; }
+.ins-pv.open .ins-pv-more { display: block; }
+.ins-pv-tg { display: inline-block; margin-top: 4px; font-size: 11px; color: var(--neon-cyan); }
+
+/* Game info: the line as one sentence; expert picks and last five fold. */
+.ins-h.ins-line-h { justify-content: flex-start; gap: 10px; }
+.ins-line1 { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 12px; letter-spacing: 0; text-transform: none; line-height: 1.4; color: var(--text-meta); }
+.ins-line1 b { color: #fff; font-weight: 700; }
+.ins-line1 em { font-style: normal; font-weight: 700; }
+.ins-line1 em.good { color: var(--neon-green); } .ins-line1 em.bad { color: var(--neon-pink); }
+/* Folded headers read like the LINE header: label on one line, then a
+   short summary in the body font, the caret at the end of the rule. */
+.ins-fold > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; justify-content: flex-start; gap: 10px; }
+.ins-fold > summary::-webkit-details-marker { display: none; }
+.ins-fold > summary { white-space: nowrap; }
+.ins-fold-sum { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; line-height: 1.4; color: var(--text-meta); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-fold-car { margin-left: auto; font-style: normal; font-size: 11px; color: var(--text-meta); transition: transform .15s ease; }
+.ins-fold[open] .ins-fold-car { transform: rotate(180deg); }
+
+/* ---- Lightning: the late night five-bet pot ---------------------------- */
+.lt-fab { position: fixed; right: 14px; bottom: calc(var(--nav-h) + 14px); z-index: 900; display: flex; align-items: center; gap: 6px; padding: 9px 14px 9px 11px; border-radius: 999px; border: 1px solid rgba(255, 228, 94, .55); background: #1b1030; color: var(--neon-yellow); font: 700 12px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .04em; box-shadow: 0 6px 18px rgba(0, 0, 0, .5); cursor: pointer; }
+.lt-fab b { font-size: 16px; }
+.lt-fab.call { background: var(--neon-yellow); color: #1b1030; animation: lt-call 1.6s ease-in-out infinite; }
+@keyframes lt-call { 50% { box-shadow: 0 0 0 6px rgba(255, 228, 94, .18), 0 6px 18px rgba(0, 0, 0, .5); } }
+.lt-modal { position: fixed; inset: 0; z-index: 1400; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(6, 2, 14, .86); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.lt-card { width: min(420px, 100%); max-height: 92vh; overflow-y: auto; border-radius: 18px; border: 1px solid rgba(255, 228, 94, .45); background: linear-gradient(180deg, #1d1236, #110a20); padding: 14px 16px 18px; color: var(--text); }
+.lt-h { display: flex; align-items: center; gap: 10px; }
+.lt-h > b { font: 400 12px 'Press Start 2P', monospace; color: var(--neon-yellow); letter-spacing: .04em; }
+.lt-step { font-size: 12px; color: var(--text-meta); }
+.lt-x { margin-left: auto; width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .15); background: none; color: var(--text); cursor: pointer; }
+.lt-bolt { font-size: 56px; text-align: center; margin: 14px 0 4px; filter: drop-shadow(0 0 18px rgba(255, 228, 94, .55)); }
+.lt-bolt.small { font-size: 36px; margin-top: 8px; }
+.lt-card h2 { margin: 0; text-align: center; font: 700 22px 'Orbitron', system-ui, sans-serif; }
+.lt-sub { margin: 8px 0; text-align: center; font-size: 13.5px; color: var(--text-meta); line-height: 1.45; }
+.lt-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 4px; }
+.lt-facts span { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-radius: 12px; background: rgba(255, 255, 255, .05); font-size: 11px; color: var(--text-meta); text-transform: uppercase; letter-spacing: .06em; }
+.lt-facts b { font: 700 18px 'Orbitron', system-ui, sans-serif; color: #fff; letter-spacing: 0; text-transform: none; }
+.lt-btns { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; margin-top: 16px; }
+.lt-btns button, .lt-back { font: 700 14px 'Orbitron', system-ui, sans-serif; padding: 13px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .05); color: #fff; cursor: pointer; }
+.lt-go { background: var(--neon-yellow) !important; color: #1b1030 !important; border-color: var(--neon-yellow) !important; }
+.lt-go:disabled { opacity: .4; cursor: default; }
+.lt-err { margin: 10px 0 0; text-align: center; color: #ff8aa0; font-size: 13px; }
+.lt-dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0; }
+.lt-dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, .18); }
+.lt-dots i.on { background: var(--neon-yellow); } .lt-dots i.now { outline: 2px solid rgba(255, 228, 94, .6); outline-offset: 2px; }
+.lt-bet { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 16px; border: 1px solid rgba(255, 255, 255, .14); background: #160d2b; padding: 16px 14px 14px; text-align: center; transition: transform .18s ease, opacity .18s ease; }
+.lt-bet.lean-a { border-color: var(--neon-yellow); } .lt-bet.lean-b { border-color: var(--neon-yellow); }
+.lt-bet.fly-a { transform: translateX(120%) rotate(14deg); opacity: 0; } .lt-bet.fly-b { transform: translateX(-120%) rotate(-14deg); opacity: 0; }
+.lt-kind { font: 400 11px 'Press Start 2P', monospace; color: var(--neon-yellow); letter-spacing: .06em; text-transform: uppercase; }
+.lt-match { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 14px 0 6px; }
+.lt-match span { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.lt-match img { width: 56px; height: 56px; object-fit: contain; }
+.lt-match b { font: 700 15px 'Orbitron', system-ui, sans-serif; }
+.lt-match em { font-style: normal; color: var(--text-meta); font-size: 12px; }
+.lt-when { font-size: 12px; color: var(--text-meta); }
+.lt-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.lt-side { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px 6px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .04); font: 700 15px 'Orbitron', system-ui, sans-serif; cursor: pointer; white-space: nowrap; min-width: 0; }
+.lt-side b { overflow: hidden; text-overflow: ellipsis; }
+.lt-side i { font: 400 11px system-ui, sans-serif; color: var(--text-meta); }
+.lt-side img { width: 64px; height: 64px; object-fit: contain; }
+.lt-ou { display: grid; place-items: center; width: 64px; height: 64px; font-size: 34px; color: var(--neon-yellow); }
+.lt-side b { max-width: 100%; }
+.lt-q { margin: 10px 0 2px; font: 700 18px system-ui, sans-serif; line-height: 1.3; }
+.lt-pay { margin: 4px 0 10px; text-align: center; font: 700 16px system-ui, sans-serif; color: var(--neon-yellow); }
+.lt-side.sel, .lt-bet.lean-a .lt-side.a, .lt-bet.lean-b .lt-side.b { border-color: var(--neon-yellow); background: rgba(255, 228, 94, .12); color: var(--neon-yellow); }
+.lt-hint { margin-top: 10px; font-size: 11.5px; color: var(--text-dim); }
+.lt-pick { font-size: 13px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lt-back { display: block; margin: 10px auto 0; padding: 8px 14px; font-size: 12px; }
+.lt-h3 { margin: 14px 0 8px; font: 400 10.5px 'Press Start 2P', monospace; color: var(--text-meta); letter-spacing: .05em; }
+.lt-recap { display: grid; gap: 6px; }
+.lt-rc { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(255, 255, 255, .04); color: #fff; font: inherit; font-size: 13px; text-align: left; }
+button.lt-rc { cursor: pointer; }
+.lt-rc em { font-style: normal; color: var(--neon-yellow); font-weight: 700; } .lt-rc span { color: var(--text-meta); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .lt-rc b { white-space: nowrap; }
+.lt-tb { display: grid; gap: 6px; margin-top: 14px; font-size: 13px; color: var(--text-meta); }
+.lt-tb input { font: 700 18px 'Orbitron', system-ui, sans-serif; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .18); background: #0b0616; color: #fff; }
+.lt-win { margin: 12px 0 4px; padding: 10px 12px; border-radius: 12px; text-align: center; background: rgba(255, 228, 94, .12); color: var(--neon-yellow); font-weight: 700; }
+.lt-bets { display: grid; gap: 6px; margin-top: 10px; }
+.lt-br { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 9px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); font-size: 13px; }
+.lt-br em { font-style: normal; color: var(--neon-yellow); font-weight: 700; } .lt-br span { display: flex; flex-direction: column; min-width: 0; } .lt-br small { color: var(--text-meta); font-size: 11.5px; }
+.lt-res { color: var(--text, #fff); font-weight: 700; white-space: nowrap; }
+.lt-res small { color: var(--muted, #a99cc7); font-weight: 400; margin-right: 4px; }
+.lt-tab { display: grid; gap: 4px; }
+.lt-tr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .03); font-size: 13.5px; }
+.lt-tr.me { outline: 1px solid rgba(5, 217, 232, .6); } .lt-tr.win b { color: var(--neon-yellow); }
+.lt-tr em { font-style: normal; color: var(--text-meta); font-size: 12px; white-space: nowrap; }
+.lt-marks { display: flex; gap: 3px; } .lt-marks i { width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; font-style: normal; font-size: 11px; background: rgba(255, 255, 255, .06); color: var(--text-meta); }
+.lt-marks i.y { background: rgba(57, 255, 136, .2); color: var(--neon-green); } .lt-marks i.n { background: rgba(255, 32, 121, .18); color: #ff8aa0; }
+.lt-note { margin: 12px 0 0; font-size: 11.5px; color: var(--text-dim); text-align: center; }
+.lt-intro h2 { margin-top: 6px; text-wrap: balance; }
+.lt-intro .lt-facts { grid-template-columns: 1fr 1fr; }
+
+/* A missed lock, final: a still picture of a smashed padlock. */
+.rank-lk.smash { display: inline-flex; align-items: center; vertical-align: -2px; line-height: 1; padding: 1px 3px; }
+.rank-lk.smash { border: 0; background: none; padding: 0; }
+.lk-smashed { display: block; width: 16px; height: 16px; }
+.pick-lk.smash .lk-smashed { width: 14px; height: 14px; }
+.pick-cell .pick-lk.smash { background: none; padding: 0; }
+
+/* Lock of the week, everywhere a name sits on a pick: a small 🔒 on the
+   name's top left corner. Tap any lock for everyone's. */
+.has-lk { position: relative; }
+.nm-lk { position: absolute; top: -6px; left: -5px; z-index: 1; display: grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: #ffd23f; font-style: normal; font-size: 8px; line-height: 1; box-shadow: 0 0 0 1.5px var(--bg, #0b0718); cursor: pointer; }
+.scorebug .bug-lk[data-locks] { cursor: pointer; }
+.rank-lk[data-locks] { cursor: pointer; }
+.lks { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(5, 3, 12, .72); }
+.lks-card { width: min(420px, 100%); max-height: 86vh; overflow-y: auto; overscroll-behavior: contain; background: #150c28; border: 1px solid rgba(255, 210, 63, .5); border-radius: 16px; padding: 14px 14px 10px; }
+.lks-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lks-h b { font: 400 11px 'Press Start 2P', monospace; color: #ffd23f; letter-spacing: .04em; }
+.lks-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .18); background: none; color: var(--text, #fff); font-size: 14px; cursor: pointer; }
+.lks-sub { display: block; margin: 2px 0 8px; color: var(--text-meta, #a99cc7); font-size: 11.5px; }
+.lks ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lks li { display: grid; grid-template-columns: 22px minmax(0, 64px) 34px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); }
+.lks li.me { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .45); }
+.lks-nm { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lks-logo { width: 34px; height: 34px; object-fit: contain; }
+.lks-opp { width: 14px; height: 14px; object-fit: contain; vertical-align: -3px; margin-right: 3px; }
+.lks-pk { display: flex; flex-direction: column; min-width: 0; }
+.lks-pk b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lks-pk small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10.5px; color: var(--text-meta, #a99cc7); }
+.lks-st { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; color: var(--text-meta, #a99cc7); white-space: nowrap; }
+.lks-st.up { color: var(--neon-green, #39ff88); }
+.lks-st.dn { color: var(--neon-pink, #ff2079); }
+.lks-st .lk-smashed { width: 18px; height: 18px; }
+.lks-none { grid-column: 3 / -1; font-size: 12px; color: var(--text-meta, #a99cc7); }
+
+/* The room: names in two even columns, an odd last one centred under the
+   pair; a lock holder's chip is outlined gold with a small lock on its
+   corner instead of a big badge over the avatar. */
+.rp-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 4px; padding-top: 4px; }
+.rp-chip { min-width: 0; }
+.rp-chip:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 2px); }
+.rp-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rp-chip.has-lk { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .7); }
+.rp-chip.has-lk.me { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .7), 0 0 0 1px rgba(5, 217, 232, .5); }
+.rp-chip .nm-lk { top: -7px; left: -6px; width: auto; height: auto; background: none; box-shadow: none; font-size: 10px; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9)); }
+
+/* Locks, one system everywhere (see lockState in app.js). The lock itself
+   is always plain white; only its mark says how it stands. */
+i.lk { position: relative; display: inline-grid; place-items: center; width: 18px; height: 18px; border: 0; border-radius: 50%; padding: 0; background: none; box-shadow: none; font-style: normal; font-size: 11px; line-height: 1; cursor: pointer; vertical-align: middle; animation: none; }
+i.lk::before { content: ""; position: absolute; inset: 0; border-radius: 50%; }
+/* white, not the emoji's gold */
+i.lk { color: #fff; text-shadow: none; }
+i.lk { filter: grayscale(1) brightness(1.9); }
+i.lk.lk-up, i.lk.lk-dn, i.lk.lk-hit, i.lk.lk-miss { filter: none; }
+i.lk.lk-up, i.lk.lk-dn, i.lk.lk-hit, i.lk.lk-miss { font-size: 0; }
+i.lk.lk-up::after, i.lk.lk-dn::after, i.lk.lk-hit::after, i.lk.lk-miss::after { position: absolute; }
+/* the decorated states draw the lock again in white so the mark sits clean on top */
+i.lk.lk-up, i.lk.lk-dn, i.lk.lk-hit, i.lk.lk-miss { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 9V6.5a4 4 0 0 1 8 0V9' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Crect x='4' y='9' width='12' height='9' rx='2' fill='%23fff'/%3E%3C/svg%3E") center / 11px 11px no-repeat; }
+i.lk.lk-pend { font-size: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 9V6.5a4 4 0 0 1 8 0V9' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Crect x='4' y='9' width='12' height='9' rx='2' fill='%23fff'/%3E%3C/svg%3E") center / 11px 11px no-repeat; filter: none; }
+i.lk.lk-up::before { border: 1.5px dotted var(--neon-green, #39ff88); }
+i.lk.lk-dn::before { border: 1.5px dotted var(--neon-pink, #ff2079); }
+i.lk.lk-hit::after { content: "✓"; top: -3px; right: -4px; display: grid; place-items: center; width: 10px; height: 10px; border-radius: 50%; background: var(--neon-green, #39ff88); color: #0a0014; font: 900 8px/1 system-ui, sans-serif; }
+i.lk.lk-miss::after { content: "✕"; inset: 0; display: grid; place-items: center; color: #ff2d55; font: 900 16px/1 system-ui, sans-serif; text-shadow: 0 0 2px #0a0014, 0 0 2px #0a0014; }
+i.lk.lk-miss { opacity: .95; }
+/* where they sit */
+i.lk.rank-lk { margin-left: 4px; }
+.pick-cell i.lk.pick-lk { position: absolute; top: -2px; right: -2px; width: 16px; height: 16px; background-color: transparent; }
+i.lk.nm-lk, .rp-chip i.lk.nm-lk { position: absolute; top: -8px; left: -7px; width: 16px; height: 16px; z-index: 1; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9)); }
+.has-lk, .rp-chip.has-lk { box-shadow: none; }
+.rp-chip.has-lk.me { box-shadow: inset 0 0 0 1px rgba(5, 217, 232, .5); }
+.lks-st i.lk { margin-right: 2px; }
+.scorebug i.lk.bug-lk { position: absolute; top: -9px; right: -9px; width: 22px; height: 22px; font-size: 0; filter: none; background: #ffd23f url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 9V6.5a4 4 0 0 1 8 0V9' fill='none' stroke='%231a1030' stroke-width='2'/%3E%3Crect x='4' y='9' width='12' height='9' rx='2' fill='%231a1030'/%3E%3C/svg%3E") center / 12px 12px no-repeat; box-shadow: 0 0 8px rgba(255, 210, 63, .6); }
+.scorebug i.lk.bug-lk.lk-up::before, .scorebug i.lk.bug-lk.lk-dn::before { inset: -3px; }
+/* The scoring side's logo on TOUCHDOWN / FG GOOD / SAFETY in the play log,
+   so a cold look says who scored. */
+.gc-badge:has(.gc-blogo) { display: inline-flex; align-items: center; gap: 4px; padding-left: 2px; }
+.gc-blogo { width: 1.9em; height: 1.9em; min-width: 12px; min-height: 12px; object-fit: contain; filter: drop-shadow(0 0 1px rgba(10, 4, 20, .9)); }
+
+/* Jake's lock set: one picture per state, replacing the drawn marks. */
+i.lk, i.lk.lk-pend, i.lk.lk-up, i.lk.lk-dn, i.lk.lk-hit, i.lk.lk-miss { font-size: 0; filter: none; opacity: 1; background: center / contain no-repeat; }
+i.lk::before, i.lk::after, i.lk.lk-up::before, i.lk.lk-dn::before, i.lk.lk-hit::after, i.lk.lk-miss::after { content: none; }
+i.lk.lk-pend { background-image: url("assets/lk-pend.png"); }
+i.lk.lk-up { background-image: url("assets/lk-up.png"); }
+i.lk.lk-dn { background-image: url("assets/lk-dn.png"); }
+i.lk.lk-hit { background-image: url("assets/lk-hit.png"); }
+i.lk.lk-miss { background-image: url("assets/lk-miss.png"); }
+i.lk.rank-lk { width: 20px; height: 20px; }
+i.lk.nm-lk, .rp-chip i.lk.nm-lk { width: 17px; height: 17px; filter: none; }
+.pick-cell i.lk.pick-lk { width: 17px; height: 17px; }
+.scorebug i.lk.bug-lk { width: 26px; height: 26px; top: -11px; right: -11px; box-shadow: none; background-color: transparent; }
+.lks-st i.lk { width: 20px; height: 20px; }
+i.lk, i.lk::before { border-radius: 0; overflow: visible; }
+i.lk.rank-lk { width: 22px; height: 22px; }
+i.lk.nm-lk, .rp-chip i.lk.nm-lk { width: 19px; height: 19px; top: -9px; left: -8px; }
+.pick-cell i.lk.pick-lk { width: 19px; height: 19px; top: -4px; right: -4px; }
+.scorebug i.lk.bug-lk { width: 30px; height: 30px; top: -13px; right: -13px; }
+.scorebug i.lk.bug-lk.lk-pend { background: url("assets/lk-pend.png") center / contain no-repeat, #0b0718; }
+.scorebug i.lk.bug-lk.lk-up { background: url("assets/lk-up.png") center / contain no-repeat, #0b0718; }
+.scorebug i.lk.bug-lk.lk-dn { background: url("assets/lk-dn.png") center / contain no-repeat, #0b0718; }
+.scorebug i.lk.bug-lk.lk-hit { background: url("assets/lk-hit.png") center / contain no-repeat, #0b0718; }
+.scorebug i.lk.bug-lk.lk-miss { background: url("assets/lk-miss.png") center / contain no-repeat, #0b0718; }
+.scorebug i.lk.bug-lk { border-radius: 8px; border: 0; }
+.scorebug i.lk.bug-lk::before, .scorebug i.lk.bug-lk::after { content: none; }
+
+/* Scoreboard corner: a small vector lock in the state's colour, no tile. */
+.scorebug i.lk.bug-lk { width: 22px; height: 22px; top: -10px; right: -10px; border-radius: 0; filter: drop-shadow(0 0 3px rgba(11, 7, 24, .95)) drop-shadow(0 0 1px rgba(11, 7, 24, 1)); }
+.scorebug i.lk.bug-lk.lk-pend { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M7%2010V7.5a5%205%200%200%201%2010%200V10%27%20fill%3D%27none%27%20stroke%3D%27%23ece8ff%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%274.5%27%20y%3D%2710%27%20width%3D%2715%27%20height%3D%2711%27%20rx%3D%272.5%27%20fill%3D%27%23ece8ff%27/%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2714.6%27%20r%3D%271.6%27%20fill%3D%27%230b0718%27/%3E%3Crect%20x%3D%2711.2%27%20y%3D%2715%27%20width%3D%271.6%27%20height%3D%273.4%27%20rx%3D%27.8%27%20fill%3D%27%230b0718%27/%3E%3C/svg%3E") center / contain no-repeat; }
+.scorebug i.lk.bug-lk.lk-up { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M7%2010V7.5a5%205%200%200%201%2010%200V10%27%20fill%3D%27none%27%20stroke%3D%27%2339ff88%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%274.5%27%20y%3D%2710%27%20width%3D%2715%27%20height%3D%2711%27%20rx%3D%272.5%27%20fill%3D%27%2339ff88%27/%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2714.6%27%20r%3D%271.6%27%20fill%3D%27%230b0718%27/%3E%3Crect%20x%3D%2711.2%27%20y%3D%2715%27%20width%3D%271.6%27%20height%3D%273.4%27%20rx%3D%27.8%27%20fill%3D%27%230b0718%27/%3E%3Cpath%20d%3D%27M2.2%2012.5a6%206%200%200%201%200-3M21.8%209.5a6%206%200%200%201%200%203%27%20stroke%3D%27%2339ff88%27%20stroke-width%3D%271.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E") center / contain no-repeat; }
+.scorebug i.lk.bug-lk.lk-dn { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M7%2010V7.5a5%205%200%200%201%2010%200V10%27%20fill%3D%27none%27%20stroke%3D%27%23ff3b5c%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%274.5%27%20y%3D%2710%27%20width%3D%2715%27%20height%3D%2711%27%20rx%3D%272.5%27%20fill%3D%27%23ff3b5c%27/%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2714.6%27%20r%3D%271.6%27%20fill%3D%27%230b0718%27/%3E%3Crect%20x%3D%2711.2%27%20y%3D%2715%27%20width%3D%271.6%27%20height%3D%273.4%27%20rx%3D%27.8%27%20fill%3D%27%230b0718%27/%3E%3Cpath%20d%3D%27M2.2%2012.5a6%206%200%200%201%200-3M21.8%209.5a6%206%200%200%201%200%203%27%20stroke%3D%27%23ff3b5c%27%20stroke-width%3D%271.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E") center / contain no-repeat; }
+.scorebug i.lk.bug-lk.lk-hit { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M7%2010V7.5a5%205%200%200%201%2010%200V10%27%20fill%3D%27none%27%20stroke%3D%27%2339ff88%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%274.5%27%20y%3D%2710%27%20width%3D%2715%27%20height%3D%2711%27%20rx%3D%272.5%27%20fill%3D%27%2339ff88%27/%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2714.6%27%20r%3D%271.6%27%20fill%3D%27%230b0718%27/%3E%3Crect%20x%3D%2711.2%27%20y%3D%2715%27%20width%3D%271.6%27%20height%3D%273.4%27%20rx%3D%27.8%27%20fill%3D%27%230b0718%27/%3E%3Ccircle%20cx%3D%2719.5%27%20cy%3D%274.5%27%20r%3D%274%27%20fill%3D%27%2339ff88%27/%3E%3Cpath%20d%3D%27M17.6%204.6l1.4%201.4%202.5-2.7%27%20stroke%3D%27%230b0718%27%20stroke-width%3D%271.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E") center / contain no-repeat; }
+.scorebug i.lk.bug-lk.lk-miss { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M7%2010V7.5a5%205%200%200%201%209.4-2.4%27%20fill%3D%27none%27%20stroke%3D%27%23ff3b5c%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%274.5%27%20y%3D%2710%27%20width%3D%2715%27%20height%3D%2711%27%20rx%3D%272.5%27%20fill%3D%27%23ff3b5c%27/%3E%3Cpath%20d%3D%27M13%2010l-2%203.5%202.4%201.6-1.8%205.9%27%20fill%3D%27none%27%20stroke%3D%27%230b0718%27%20stroke-width%3D%271.4%27/%3E%3Ccircle%20cx%3D%2719.5%27%20cy%3D%274.5%27%20r%3D%274%27%20fill%3D%27%23ff3b5c%27/%3E%3Cpath%20d%3D%27M18%203l3%203M21%203l-3%203%27%20stroke%3D%27%230b0718%27%20stroke-width%3D%271.5%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E") center / contain no-repeat; }
+
+/* Player card game list: a logo by each team, every pick card the same
+   width, and live against final readable at a glance (a red pulsing LIVE
+   tag and an accent down the row; final rows a solid green tag). */
+.rd-matchup { grid-template-columns: 16px minmax(0, 1fr) auto; column-gap: 6px; align-items: center; }
+.rd-mlogo { width: 16px; height: 16px; object-fit: contain; }
+.rd-matchup .rd-tm.home::before { content: none; }
+.rd-pick .rd-pickcard { width: 100%; box-sizing: border-box; }
+.rd-tag.live { display: inline-flex; align-items: center; gap: 4px; color: #fff; background: rgba(255, 59, 92, .22); border: 1px solid rgba(255, 59, 92, .8); }
+.rd-dot { width: 5px; height: 5px; border-radius: 50%; background: #ff3b5c; animation: rd-pulse 1.4s ease-in-out infinite; }
+@keyframes rd-pulse { 50% { opacity: .25; } }
+.rd-tag.final { color: #0a0014; background: var(--neon-green); border-color: var(--neon-green); }
+.rd-row.live { box-shadow: inset 3px 0 0 #ff3b5c; padding-left: 8px; margin-left: -8px; background: linear-gradient(90deg, rgba(255, 59, 92, .07), transparent 60%); }
+.rd-row.final .rd-matchup { opacity: .8; }
+@media (prefers-reduced-motion: reduce) { .rd-dot { animation: none; } }
+
+/* Locks everywhere: the same small vector glyph as the scoreboard card,
+   in the theme's colours, no tile. */
+i.lk.lk-pend, .pick-cell i.lk.lk-pend, i.lk.nm-lk.lk-pend { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M7%2010V7.5a5%205%200%200%201%2010%200V10%27%20fill%3D%27none%27%20stroke%3D%27%23ece8ff%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%274.5%27%20y%3D%2710%27%20width%3D%2715%27%20height%3D%2711%27%20rx%3D%272.5%27%20fill%3D%27%23ece8ff%27/%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2714.6%27%20r%3D%271.6%27%20fill%3D%27%230b0718%27/%3E%3Crect%20x%3D%2711.2%27%20y%3D%2715%27%20width%3D%271.6%27%20height%3D%273.4%27%20rx%3D%27.8%27%20fill%3D%27%230b0718%27/%3E%3C/svg%3E") center / contain no-repeat; }
+i.lk.lk-up, .pick-cell i.lk.lk-up, i.lk.nm-lk.lk-up { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M7%2010V7.5a5%205%200%200%201%2010%200V10%27%20fill%3D%27none%27%20stroke%3D%27%2339ff88%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%274.5%27%20y%3D%2710%27%20width%3D%2715%27%20height%3D%2711%27%20rx%3D%272.5%27%20fill%3D%27%2339ff88%27/%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2714.6%27%20r%3D%271.6%27%20fill%3D%27%230b0718%27/%3E%3Crect%20x%3D%2711.2%27%20y%3D%2715%27%20width%3D%271.6%27%20height%3D%273.4%27%20rx%3D%27.8%27%20fill%3D%27%230b0718%27/%3E%3Cpath%20d%3D%27M2.2%2012.5a6%206%200%200%201%200-3M21.8%209.5a6%206%200%200%201%200%203%27%20stroke%3D%27%2339ff88%27%20stroke-width%3D%271.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E") center / contain no-repeat; }
+i.lk.lk-dn, .pick-cell i.lk.lk-dn, i.lk.nm-lk.lk-dn { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M7%2010V7.5a5%205%200%200%201%2010%200V10%27%20fill%3D%27none%27%20stroke%3D%27%23ff3b5c%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%274.5%27%20y%3D%2710%27%20width%3D%2715%27%20height%3D%2711%27%20rx%3D%272.5%27%20fill%3D%27%23ff3b5c%27/%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2714.6%27%20r%3D%271.6%27%20fill%3D%27%230b0718%27/%3E%3Crect%20x%3D%2711.2%27%20y%3D%2715%27%20width%3D%271.6%27%20height%3D%273.4%27%20rx%3D%27.8%27%20fill%3D%27%230b0718%27/%3E%3Cpath%20d%3D%27M2.2%2012.5a6%206%200%200%201%200-3M21.8%209.5a6%206%200%200%201%200%203%27%20stroke%3D%27%23ff3b5c%27%20stroke-width%3D%271.6%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E") center / contain no-repeat; }
+i.lk.lk-hit, .pick-cell i.lk.lk-hit, i.lk.nm-lk.lk-hit { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M7%2010V7.5a5%205%200%200%201%2010%200V10%27%20fill%3D%27none%27%20stroke%3D%27%2339ff88%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%274.5%27%20y%3D%2710%27%20width%3D%2715%27%20height%3D%2711%27%20rx%3D%272.5%27%20fill%3D%27%2339ff88%27/%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2714.6%27%20r%3D%271.6%27%20fill%3D%27%230b0718%27/%3E%3Crect%20x%3D%2711.2%27%20y%3D%2715%27%20width%3D%271.6%27%20height%3D%273.4%27%20rx%3D%27.8%27%20fill%3D%27%230b0718%27/%3E%3Ccircle%20cx%3D%2719.5%27%20cy%3D%274.5%27%20r%3D%274%27%20fill%3D%27%2339ff88%27/%3E%3Cpath%20d%3D%27M17.6%204.6l1.4%201.4%202.5-2.7%27%20stroke%3D%27%230b0718%27%20stroke-width%3D%271.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E") center / contain no-repeat; }
+i.lk.lk-miss, .pick-cell i.lk.lk-miss, i.lk.nm-lk.lk-miss { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M7%2010V7.5a5%205%200%200%201%209.4-2.4%27%20fill%3D%27none%27%20stroke%3D%27%23ff3b5c%27%20stroke-width%3D%272.4%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%274.5%27%20y%3D%2710%27%20width%3D%2715%27%20height%3D%2711%27%20rx%3D%272.5%27%20fill%3D%27%23ff3b5c%27/%3E%3Cpath%20d%3D%27M13%2010l-2%203.5%202.4%201.6-1.8%205.9%27%20fill%3D%27none%27%20stroke%3D%27%230b0718%27%20stroke-width%3D%271.4%27/%3E%3Ccircle%20cx%3D%2719.5%27%20cy%3D%274.5%27%20r%3D%274%27%20fill%3D%27%23ff3b5c%27/%3E%3Cpath%20d%3D%27M18%203l3%203M21%203l-3%203%27%20stroke%3D%27%230b0718%27%20stroke-width%3D%271.5%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E") center / contain no-repeat; }
+i.lk { border-radius: 0; filter: drop-shadow(0 0 2px rgba(11, 7, 24, .95)); }
+i.lk.rank-lk { width: 15px; height: 15px; margin-left: 6px; vertical-align: -2px; }
+i.lk.nm-lk, .rp-chip i.lk.nm-lk { width: 13px; height: 13px; top: -6px; left: -5px; }
+.pick-cell i.lk.pick-lk { width: 13px; height: 13px; top: 1px; right: 1px; }
+.lks-st i.lk { width: 15px; height: 15px; }
+i.lk.rank-lk { vertical-align: middle; position: relative; top: -1px; }
+
+/* Player card: the lock sits in the pick card's top right corner instead
+   of its own line, so a lock card is the same height as the rest. */
+.rd-pickcard.lk { position: relative; }
+.rd-pickcard.lk .rd-pickteam { padding-right: 16px; }
+i.lk.rd-lk { position: absolute; top: 5px; right: 6px; width: 14px; height: 14px; }
+/* Live points can go below zero (a losing lock): pink, like a miss. */
+.rank-live.neg { color: var(--neon-pink); text-shadow: 0 0 6px rgba(255, 32, 121, .6); }
+.rank-live.mid.neg { background: rgba(255, 32, 121, .1); border: 1px solid rgba(255, 32, 121, .45); }
+.rank-inflight.neg, .rd-summary .live.neg, .rd-summary .live.neg b { color: var(--neon-pink); }
+.ms-live.neg { color: var(--neon-pink); border-color: rgba(255, 32, 121, .5); }
+.ms-live.neg .stake-dot { background: var(--neon-pink); }
+.rd-row.go { cursor: pointer; }
+.rd-row.go:active { background: rgba(255, 255, 255, .05); }
+.rank-detail { cursor: default; }
+.rank-detail .rd-row.go { cursor: pointer; }
+
+/* Locks: back to the standard 🔒. No pictures, rings or tiles; a final
+   hit gets a small green ✓, a final miss a small pink ✗ and a dimmed lock. */
+i.lk, i.lk.lk-pend, i.lk.lk-up, i.lk.lk-dn, i.lk.lk-hit, i.lk.lk-miss,
+.pick-cell i.lk.lk-pend, .pick-cell i.lk.lk-up, .pick-cell i.lk.lk-dn, .pick-cell i.lk.lk-hit, .pick-cell i.lk.lk-miss,
+i.lk.nm-lk.lk-pend, i.lk.nm-lk.lk-up, i.lk.nm-lk.lk-dn, i.lk.nm-lk.lk-hit, i.lk.nm-lk.lk-miss { background: none; filter: none; font-size: 11px; width: auto; height: auto; line-height: 1; border-radius: 0; }
+i.lk::before, i.lk.lk-up::before, i.lk.lk-dn::before { content: none; }
+i.lk.lk-hit::after, i.lk.lk-miss::after { position: static; display: inline; inset: auto; width: auto; height: auto; background: none; border-radius: 0; text-shadow: none; margin-left: 1px; font: 900 9px/1 system-ui, sans-serif; vertical-align: 1px; }
+i.lk.lk-hit::after { content: "✓"; color: var(--neon-green, #39ff88); }
+i.lk.lk-miss::after { content: "✗"; color: var(--neon-pink, #ff2079); }
+i.lk.lk-miss { opacity: .55; }
+i.lk.rank-lk { display: inline-block; margin-left: 5px; top: 0; vertical-align: 1px; font-size: 11px; }
+i.lk.nm-lk, .rp-chip i.lk.nm-lk { top: -7px; left: -5px; font-size: 9px; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9)); }
+.pick-cell i.lk.pick-lk { top: 1px; right: 2px; font-size: 9px; }
+i.lk.rd-lk { top: 5px; right: 6px; font-size: 11px; }
+.lks-st i.lk { font-size: 11px; margin-right: 3px; }
+/* your scoreboard card: the gold circle it had */
+.scorebug i.lk.bug-lk, .scorebug i.lk.bug-lk.lk-pend, .scorebug i.lk.bug-lk.lk-up, .scorebug i.lk.bug-lk.lk-dn, .scorebug i.lk.bug-lk.lk-hit, .scorebug i.lk.bug-lk.lk-miss { position: absolute; top: -9px; right: -9px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #ffd23f; box-shadow: 0 0 8px rgba(255, 210, 63, .6); font-size: 12px; filter: none; opacity: 1; }
+.scorebug i.lk.bug-lk.lk-hit::after, .scorebug i.lk.bug-lk.lk-miss::after { position: absolute; top: -4px; right: -5px; display: grid; place-items: center; width: 12px; height: 12px; border-radius: 50%; font-size: 8px; color: #0a0014; content: "✓"; background: var(--neon-green, #39ff88); margin: 0; }
+.scorebug i.lk.bug-lk.lk-miss::after { content: "✗"; background: var(--neon-pink, #ff2079); }
+i.lk.nm-lk, i.lk.pick-lk, i.lk.rd-lk, .lks-st i.lk { display: inline-flex; align-items: center; white-space: nowrap; }
+/* Leaderboard: a live lock sits on a faint green (covering) or pink (not
+   covering) pill. */
+i.lk.rank-lk.lk-up, i.lk.rank-lk.lk-dn { padding: 2px 4px; border-radius: 5px; }
+i.lk.rank-lk.lk-up { background: rgba(57, 255, 136, .16); box-shadow: inset 0 0 0 1px rgba(57, 255, 136, .35); }
+i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 0 1px rgba(255, 32, 121, .4); }

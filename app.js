@@ -121,23 +121,50 @@ function noteError(msg) {
 const foreignError = (e) => /^script error\.?$/i.test(e?.message || "") && !e?.filename;
 addEventListener("error", (e) => { if (e?.message && !foreignError(e)) noteError(e.message); });
 addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?.reason || "unhandled rejection"));
-function markUsable() { if (appHealth.ld == null) { appHealth.ld = Math.round(performance.now() - healthT0); if (appHealth.ld > 6000) opsEvent("slow-load", `first screen ${(appHealth.ld / 1000).toFixed(1)}s`); } }
+// The history, trivia, simulator, grid card and splash facts files are
+// not needed for the first screen, so they load once it is up (or the
+// moment History, Trivia or the simulator is opened, whichever is first).
+// In order: the facts before history, which reads them.
+const EXTRAS = ["lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=009172634093", "sim.js?v=374204176553", "gridcard.js?v=889691969438"];
+let extrasP = null;
+function ensureExtras() {
+  if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
+  return extrasP;
+}
+const extrasSoon = () => setTimeout(() => (window.requestIdleCallback || ((f) => setTimeout(f, 1)))(() => ensureExtras(), { timeout: 2000 }), 600);
+addEventListener("load", () => setTimeout(ensureExtras, 4000));
+function markUsable() { if (appHealth.ld == null) { extrasSoon(); appHealth.ld = Math.round(performance.now() - healthT0); if (appHealth.ld > 6000 && !document.hidden && hiddenSince === 0) opsEvent("slow-load", `first screen ${(appHealth.ld / 1000).toFixed(1)}s`); } }
 // Each failure as it happens, for the live page's health log: batched a few
 // seconds, at most ten a page load, one per kind and detail.
 const opsQueue = [], opsSent = new Set();
+// While the page is going away (closed, or reloading onto a new build)
+// every call still in flight fails with "Load failed": that is the reload,
+// not the Worker, so nothing is logged from then on.
+let pageLeaving = false;
+addEventListener("beforeunload", () => { pageLeaving = true; });
+addEventListener("pageshow", () => { pageLeaving = false; });
 function opsEvent(k, d) {
   const key = `${k}|${d}`;
-  if (opsSent.has(key) || opsSent.size >= 10 || window.__liveView) return;
+  if (pageLeaving || opsSent.has(key) || opsSent.size >= 10 || window.__liveView) return;
   opsSent.add(key); opsQueue.push({ k, d });
   clearTimeout(opsEvent.t); opsEvent.t = setTimeout(opsFlushApp, 3000);
 }
 function opsFlushApp() {
   if (!opsQueue.length || typeof WORKER_URL === "undefined" || !WORKER_URL || PREVIEW) return;
   let me = null; try { me = loadMe(); } catch {}
-  const body = JSON.stringify({ manager: me, v: document.querySelector('meta[name="build"]')?.content || "", events: opsQueue.splice(0) });
+  // Several calls failing at once with a network error, ESPN included, is
+  // the phone losing its connection, not the Worker: one line, not eight.
+  let events = opsQueue.splice(0);
+  const netFail = events.filter((e) => /-fail$/.test(e.k) && !/\s\d{3}$/.test(e.d));
+  if (netFail.length >= 3 && netFail.some((e) => e.k === "espn-fail")) events = [...events.filter((e) => !netFail.includes(e)), { k: "worker-fail", d: `phone lost connection · ${netFail.length} calls` }];
+  const body = JSON.stringify({ manager: me, v: document.querySelector('meta[name="build"]')?.content || "", events });
   try { if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/ops`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/ops`, { method: "POST", body, keepalive: true }).catch(() => {}); } catch {}
 }
-addEventListener("pagehide", opsFlushApp);
+addEventListener("pagehide", () => { opsFlushApp(); pageLeaving = true; });
+// Bumped every time the page goes to the background, so a timer can tell
+// whether it stayed on screen.
+let hiddenSince = 0;
+document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenSince++; });
 (() => {
   const raw = window.fetch?.bind(window);
   if (!raw) return;
@@ -145,18 +172,56 @@ addEventListener("pagehide", opsFlushApp);
     const url = typeof input === "string" ? input : input?.url || "";
     const b = /espn\.com|espncdn/.test(url) ? "espn" : url.startsWith(WORKER_URL) ? "worker" : null;
     if (!b) return raw(input, init);
-    const t0 = performance.now();
+    const t0 = performance.now(), hid0 = hiddenSince;
+    // A phone that locks or switches apps mid-request freezes the page; the
+    // wait it wakes to is the lock screen, not the network. Only time calls
+    // that stayed on screen the whole way.
+    const onScreen = () => !document.hidden && hiddenSince === hid0;
     try {
       const r = await raw(input, init);
       // The path only (no query, no keys), so the log says what failed.
       const where = (() => { try { const u = new URL(url); return b === "worker" ? u.pathname : u.pathname.split("/").slice(-2).join("/"); } catch { return ""; } })();
       if (r.status >= 500 || r.status === 429) { appHealth.ff[b]++; opsEvent(`${b}-fail`, `${where} ${r.status}`); }
-      if (performance.now() - t0 > 4000) { appHealth.sl[b]++; opsEvent(`${b}-slow`, `${where} ${((performance.now() - t0) / 1000).toFixed(1)}s`); }
+      if (performance.now() - t0 > 4000 && onScreen()) { appHealth.sl[b]++; opsEvent(`${b}-slow`, `${where} ${((performance.now() - t0) / 1000).toFixed(1)}s`); }
       return r;
     } catch (err) {
-      if (err?.name !== "AbortError") { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }
+      // One dropped read (Safari's "Load failed") is usually a blip or the
+      // phone going to the background mid-call: try once more, and log only
+      // a read that fails twice while the page stayed on screen.
+      const get = !init?.method || /^get$/i.test(init.method);
+      if (err?.name !== "AbortError" && get && !pageLeaving) {
+        await new Promise((ok) => setTimeout(ok, 1000));
+        try { return await raw(input, init); } catch (e2) { if (!onScreen()) throw e2; err = e2; }
+      }
+      if (err?.name !== "AbortError" && (!get || onScreen())) { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }
       throw err;
     }
+  };
+})();
+
+// One answer for the same Worker read asked twice at once. Opening the app
+// asked for the same picks three times and the avatars twice; a read made
+// within three seconds of an identical one (the ?t= stamp aside) shares
+// the first one's answer. Reads only; anything sent is always sent, and
+// clears the shared answers so a read after a save is fresh.
+(() => {
+  const inner = window.fetch?.bind(window);
+  if (!inner) return;
+  const recent = new Map();
+  window.fetch = (input, init) => {
+    const url = typeof input === "string" ? input : input?.url || "";
+    const method = String(init?.method || (typeof input === "object" && input?.method) || "GET").toUpperCase();
+    if (typeof WORKER_URL === "undefined" || !url.startsWith(WORKER_URL)) return inner(input, init);
+    // A write (a saved pick, a vote) makes every shared answer stale.
+    if (method !== "GET") { recent.clear(); return inner(input, init); }
+    const key = url.replace(/([?&])t=\d+(&|$)/, (m, a, b) => (b ? a : "")).replace(/[?&]$/, "");
+    const now = Date.now(), hit = recent.get(key);
+    if (hit && now - hit.at < 3000) return hit.p.then((r) => r.clone());
+    const p = inner(input, init);
+    recent.set(key, { at: now, p });
+    p.catch(() => recent.delete(key));
+    if (recent.size > 60) for (const [k, v] of recent) if (now - v.at > 3000) recent.delete(k);
+    return p.then((r) => r.clone());
   };
 })();
 
@@ -489,7 +554,12 @@ async function fetchAllPicks(who = currentManager || loadMe()) {
 // that asked for the wrong days and found no scores at all.
 function espnScoreboardDates() {
   const days = new Set();
-  for (const g of GAMES) {
+  // A day whose games this phone has already seen finish is not asked
+  // again: finished games carry over from the last read. Saturday night
+  // reads one day, not Thursday through Saturday.
+  const done = (g) => latestLiveWeek === currentWeek && latestLive[g.id]?.completed;
+  const open = GAMES.filter((g) => !done(g));
+  for (const g of open.length ? open : GAMES) {
     const t = new Date(g.kickoff).getTime();
     if (!Number.isFinite(t)) continue;
     // Eastern, because that is the day ESPN files a game under, and a
@@ -701,7 +771,7 @@ let liveLastOk = false, espnPartial = false;
 let liveFetchedAt = 0;
 function liveTtl() {
   const now = Date.now();
-  if (Object.values(latestLive).some((l) => l?.found && l.state === "in" && !l.completed)) return 0;
+  if (Object.values(latestLive).some((l) => l?.found && l.state === "in" && !l.completed)) return 10000;
   const ks = GAMES.map((g) => ({ g, k: Date.parse(g.kickoff) })).filter((x) => Number.isFinite(x.k));
   if (ks.some(({ g, k }) => now >= k - 10 * 60000 && now < k + 5 * 3600000 && !latestLive[g.id]?.completed)) return 0;
   if (ks.some(({ k }) => k > now && k - now < 2 * 3600000)) return 60000;
@@ -1145,7 +1215,8 @@ function renderHeadScore() {
 function fitHeaderLogo() {
   const img = homeHeader.querySelector(".home-logo-img");
   if (!img) return;
-  img.style.maxWidth = "";
+  const btn = img.closest("button") || img;
+  img.style.maxWidth = ""; btn.style.transform = "";
   const left = [document.getElementById("head-score"), document.getElementById("header-countdown")].find((el) => el && !el.classList.contains("hidden"));
   if (!left) return;
   const row = homeHeader.querySelector(".head-row") || homeHeader;
@@ -1153,10 +1224,17 @@ function fitHeaderLogo() {
   const lEdge = left.getBoundingClientRect().right;
   const pill = document.getElementById("me-pill");
   const rEdge = pill && !pill.classList.contains("hidden") ? pill.getBoundingClientRect().left : rb.right;
-  const room = 2 * Math.min(mid - lEdge, rEdge - mid) - 16;
+  // The chips are rarely the same width (T-4TH 00 PTS +2 against a name),
+  // so the logo sits in the middle of the gap between them, not the middle
+  // of the screen: equal room either side instead of one side jammed.
+  const room = rEdge - lEdge - 16;
   if (room > 40) img.style.maxWidth = `${Math.floor(room)}px`;
+  const shift = (lEdge + rEdge) / 2 - mid;
+  if (Math.abs(shift) > 2) btn.style.transform = `translateX(${Math.round(shift)}px)`;
 }
 addEventListener("resize", fitHeaderLogo);
+// The header shrinks on scroll with a short transition; measure again once it settles.
+homeHeader.addEventListener("transitionend", (e) => { if (e.target === homeHeader || e.target.classList?.contains("home-logo-img") || e.target.id === "me-pill") fitHeaderLogo(); });
 
 // A phone is always the phone layout: vertical scroll and tap, never the
 // desktop columns or the pick sheet, whatever width it reports (an iPhone
@@ -1509,8 +1587,62 @@ function gcStart(id) { gcStop(); gcOpen = { id, t: Date.now() }; }
 function gcStop() { if (!gcOpen) return; const k = `g${gcOpen.id}`; gcTime[k] = (gcTime[k] || 0) + (Date.now() - gcOpen.t); gcOpen = null; }
 (() => {
   const m = document.getElementById("insights-modal");
-  if (m && window.MutationObserver) new MutationObserver(() => { if (m.classList.contains("hidden")) gcStop(); }).observe(m, { attributes: true, attributeFilter: ["class"] });
+  // What people tap inside game info: the section and the control, for Live.
+  m?.addEventListener("click", (e) => {
+    const el = e.target.closest?.("button, a, summary, [role=button], [data-ins], label, select, input");
+    if (!el || !m.contains(el)) return;
+    const clean = (t) => String(t || "").replace(/\s+/g, " ").trim().slice(0, 32);
+    let sec = "";
+    for (let p = el; p && p !== m && !sec; p = p.parentElement) {
+      const h = [...p.children].find((c) => c !== el && !c.contains(el) && c.matches(".ins-h, .ins-sub-h, .ins-pv-h, summary, h2, h3"));
+      if (h) sec = clean(h.textContent);
+    }
+    const what = clean(el.getAttribute("aria-label") || el.getAttribute("title") || el.textContent) || el.className.split(" ")[0];
+    const d = sec && sec !== what ? `${sec} › ${what}` : what;
+    if (d && d !== insTap.last) { insTap.last = d; noteUse("ins-tap", d); }
+  }, true);
+ new MutationObserver(() => { if (m.classList.contains("hidden")) gcStop(); }).observe(m, { attributes: true, attributeFilter: ["class"] });
 })();
+const insTap = { last: "" };
+// A game row on a player's card opens that game (Gamecast once it has
+// kicked off). Ahead of the row's own tap, which folds the card.
+document.addEventListener("click", (e) => {
+  const r = e.target.closest?.(".rd-row[data-rdgame]");
+  if (!r || e.target.closest("[data-locks]")) return;
+  e.preventDefault(); e.stopPropagation();
+  const g = GAMES.find((x) => String(x.id) === r.dataset.rdgame); if (g) openInsights(g.id);
+}, true);
+// Everyone's lock of the week in one sheet, from any 🔒 tap. Only what the
+// Worker has shown: a lock on a game that hasn't kicked off stays hidden.
+function openLocksSheet() {
+  const lr = lockRule(); if (!lr) return;
+  const all = lastGoodCloudPicks || boardPicks.data || {};
+  const fins = computeLiveResults(latestLive);
+  const rows = MANAGERS.map((n) => {
+    const st = all[n]?.picks || {};
+    const id = Object.keys(st).find((k) => st[k]?.lock);
+    const g = id && GAMES.find((x) => String(x.id) === String(id));
+    const anyHidden = Object.values(st).some((x) => x?.hidden);
+    if (!g) return { n, rank: 3, html: `<span class="lks-none">${anyHidden && n !== currentManager ? "Hidden until kickoff" : "No lock"}</span>` };
+    const pk = st[id], fin = fins[g.id], l = latestLive[g.id];
+    const live = !fin && l?.found && l.state === "in" && l.awayScore != null ? scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) : null;
+    const pts = fin ? scorePick(g, pk, fin) : null;
+    const push = fin && pk.mode === "ATS" && resultOutcome(g, fin)?.push;
+    const ls = lockState(g, pk), say = { pend: isGameLocked(g) ? "LIVE" : escapeCd(g.kickoffLabel || ""), up: "COVERING", dn: "NOT COVERING", hit: `+${lr.hit}`, miss: lr.miss < 0 ? "−" + Math.abs(lr.miss) : "0" }[ls];
+    const tag = `<span class="lks-st ${ls}">${ls === "pend" ? "" : lkI(ls)}${push ? "PUSH" : say}</span>`;
+    const away = pk.team === g.away, tid = away ? g.awayId : g.homeId, oid = away ? g.homeId : g.awayId;
+    return { n, rank: pts != null ? (pts > 0 ? 0 : 2) : 1, html: `<img class="lks-logo" src="${logoUrl(tid)}" alt=""><span class="lks-pk"><b>${escapeCd(lockPickText(g, pk))}</b><small>${away ? "at" : "vs"} <img class="lks-opp" src="${logoUrl(oid)}" alt="">${escapeCd(away ? g.homeShort : g.awayShort)}</small></span>${tag}` };
+  }).sort((a, b) => a.rank - b.rank || MANAGERS.indexOf(a.n) - MANAGERS.indexOf(b.n));
+  document.getElementById("locks-sheet")?.remove();
+  const m = document.createElement("div");
+  m.id = "locks-sheet"; m.className = "lks"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Everyone's lock of the week");
+  m.innerHTML = `<div class="lks-card"><div class="lks-h"><b>🔒 LOCKS OF THE WEEK</b><button type="button" class="lks-x" aria-label="Close">✕</button></div><small class="lks-sub">${escapeCd(lockLabel(lr))} · shown from kickoff</small><ul>${rows.map((r) => `<li class="${r.n === currentManager ? "me" : ""}"><span class="pick-chip-av" style="--accent:${accentFor(r.n)}">${escapeCd(avatarOverrides[r.n] || shown(r.n)[0])}</span><span class="lks-nm">${escapeCd(shown(r.n))}</span>${r.html}</li>`).join("")}</ul></div>`;
+  m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".lks-x")) m.remove(); });
+  document.body.appendChild(m);
+  noteUse("locks-sheet");
+}
+// Any lock icon opens it, ahead of whatever the card under it would do.
+document.addEventListener("click", (e) => { const t = e.target.closest?.("[data-locks], .pick-cell .pick-lk"); if (!t || !lockRule()) return; e.preventDefault(); e.stopPropagation(); openLocksSheet(); }, true);
 function endSession() {
   if (sessionStart == null) return;
   const start = sessionStart, dur = Date.now() - start;
@@ -1949,6 +2081,7 @@ function showPicksScreen() {
 }
 
 function showHistory() {
+  ensureExtras();
   if (!currentManager) openClaimPrompt();
   rememberScroll();
   loginScreen.classList.add("hidden");
@@ -1962,6 +2095,7 @@ function showHistory() {
 navHistoryBtn.addEventListener("click", showHistory);
 
 function showTrivia() {
+  ensureExtras();
   rememberScroll();
   loginScreen.classList.add("hidden");
   picksScreen.classList.add("hidden");
@@ -2718,18 +2852,32 @@ function renderLockRules() {
   el.classList.toggle("hidden", !lr);
   if (lr) el.innerHTML = `<span class="rules-heading">🔒 Lock of the week</span><ul class="rules-list"><li>Optional: mark one spread pick a week as your lock (tap 🔒 under it)</li><li>Lock hits: <strong>+${lr.hit}</strong> on top of the pick · lock misses: <strong>${lr.miss < 0 ? "−" + Math.abs(lr.miss) : "0"}</strong></li><li>A push or no lock: nothing either way. It locks with the game and stays hidden until kickoff.</li></ul>`;
 }
-// The leaderboard row's lock: a small 🔒 coloured by how it stands
-// (green cashed or covering, pink missed or not covering, plain before).
+// One lock, five looks, everywhere a lock shows:
+//   pend  plain white lock, game not started
+//   up    green dotted ring, live and covering
+//   dn    pink dotted ring, live and not covering
+//   hit   green check on its top right, final
+//   miss  red X over it, final
+// A push or no score yet reads as pend.
+function lockState(g, pk) {
+  if (!g || !pk) return "pend";
+  const fin = computeLiveResults(latestLive)[g.id], l = latestLive[g.id];
+  if (fin) { if (pk.mode === "ATS" && resultOutcome(g, fin)?.push) return "pend"; return scorePick(g, pk, fin) > 0 ? "hit" : "miss"; }
+  if (l && l.found && l.state === "in" && l.awayScore != null) return scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) > 0 ? "up" : "dn";
+  return "pend";
+}
+const LK_SAY = { pend: "not started", up: "covering now", dn: "not covering now", hit: "hit", miss: "missed" };
+const lkI = (st, cls = "", g = null, pk = null) => `<i class="lk lk-${st}${cls ? " " + cls : ""}" data-locks="1" role="button" title="Lock${g && pk ? `: ${escapeCd(lockPickText(g, pk))}` : ""} · ${LK_SAY[st]} · tap for everyone's">🔒</i>`;
+// The leaderboard row's lock.
 function rankLockHtml(row) {
   if (!lockRule()) return "";
   const id = Object.keys(row.state?.picks || {}).find((k) => row.state.picks[k]?.lock);
   const g = id && GAMES.find((x) => String(x.id) === String(id));
   if (!g) return "";
-  const pk = row.state.picks[id], fin = computeLiveResults(latestLive)[g.id], l = latestLive[g.id];
-  const p = fin ? scorePick(g, pk, fin) : l && l.found && l.state === "in" && l.awayScore != null ? scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) : null;
-  const st = p == null ? "" : p > 0 ? " up" : p < 0 || (fin && p === 0 && !(pk.mode === "ATS" && resultOutcome(g, fin)?.push)) ? " dn" : "";
-  return `<i class="rank-lk${st}${fin ? " fin" : ""}" title="Lock: ${escapeCd(lockPickText(g, pk))}">🔒</i>`;
+  const pk = row.state.picks[id];
+  return lkI(lockState(g, pk), "rank-lk", g, pk);
 }
+// The smashed padlock: shackle snapped off, body crushed and cracked.
 function lockPickText(g, pk) {
   const short = pk.team === g.home ? g.homeShort : pk.team === g.away ? g.awayShort : pk.team;
   return pk.mode === "SU" ? `${short} to win` : `${short} ${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
@@ -4080,12 +4228,17 @@ function namesListHtml(names) {
 }
 
 // Name chips: avatar initial (or emoji) plus name, wrapping as a unit.
-function nameChips(names) {
+// A small 🔒 on the top left of a name that has this game as its lock.
+// Only picks the Worker has shown (from kickoff on) can carry it.
+function lockOn(n, gid, src = lastGoodCloudPicks) { return !!(lockRule() && gid != null && src?.[n]?.picks?.[gid]?.lock); }
+const nameLk = (on, g, pk) => (on ? lkI(lockState(g, pk), "nm-lk", g, pk) : "");
+function nameChips(names, gid = null, src) {
   return names.map((n) => {
     const idx = MANAGERS.indexOf(n);
     const accent = accentFor(n);
     const av = avatarOverrides[n] || shown(n)[0];
-    return `<span class="pick-chip${n === currentManager ? " me" : ""}" data-name="${escapeCd(n)}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
+    const lk = lockOn(n, gid, src);
+    return `<span class="pick-chip${n === currentManager ? " me" : ""}${lk ? " has-lk" : ""}" data-name="${escapeCd(n)}">${nameLk(lk, GAMES.find((x) => String(x.id) === String(gid)), src?.[n]?.picks?.[gid])}<span class="pick-chip-av" style="--accent:${accent}">${av}</span>${shown(n)}</span>`;
   }).join("");
 }
 
@@ -4107,8 +4260,8 @@ function bugSideDetail(cloudPicks, game, team, short, finalRes) {
     return pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
   };
   const rows = [];
-  if (ats.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag ats">SPREAD ${spreadTxt}</span>${pill("ATS")}</span><div class="pick-chips">${nameChips(ats)}</div></div>`);
-  if (su.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag su">STRAIGHT UP</span>${pill("SU")}</span><div class="pick-chips">${nameChips(su)}</div></div>`);
+  if (ats.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag ats">SPREAD ${spreadTxt}</span>${pill("ATS")}</span><div class="pick-chips">${nameChips(ats, game.id, cloudPicks)}</div></div>`);
+  if (su.length) rows.push(`<div class="bug-pick-group"><span class="bug-pick-tagline"><span class="bug-pick-tag su">STRAIGHT UP</span>${pill("SU")}</span><div class="pick-chips">${nameChips(su, game.id, cloudPicks)}</div></div>`);
   return `
     <div class="bug-side">
       <div class="bug-side-head"><span>${short}</span></div>
@@ -4304,7 +4457,7 @@ function renderLiveScores(live, cloudPicks) {
       }
       return `
         <div class="${cls}${myPick?.lock && lockRule() ? " lk" : ""}" data-game="${game.id}" role="button" tabindex="0" aria-label="Open ${game.awayShort} at ${game.homeShort}">
-          ${myPick?.lock && lockRule() ? `<i class="bug-lk" title="Your lock of the week">🔒</i>` : ""}
+          ${myPick?.lock && lockRule() ? lkI(lockState(game, myPick), "bug-lk", game, myPick) : ""}
           <div class="bug-head">
             <span class="bug-gnum">G${game.id}</span>
             <span class="bug-status">${statusText}</span>${tvTag}
@@ -4396,7 +4549,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
       const pill = pts === null ? "" : pushed ? `<span class="pick-pill push">P</span>` : pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
       const under = pts === null ? spreadTag : pill;
       const lkCell = pick.lock && lockRule();
-      return `<td class="pick-cell ${cls}${lkCell ? " lk" : ""}" title="${lkCell ? "LOCK · " : ""}${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}">${lkCell ? `<i class="pick-lk">🔒</i>` : ""}<span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
+      return `<td class="pick-cell ${cls}${lkCell ? " lk" : ""}" data-cellgame="${game.id}" title="${lkCell ? "LOCK · " : ""}${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}">${lkCell ? lkI(lockState(game, pick), "pick-lk", game, pick) : ""}<span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
     }).join("");
 
     // How far off, not what they said. A column of raw guesses is a column
@@ -5035,7 +5188,7 @@ function playerBreakdownHtml(name, state, results, live) {
     const g = live[game.id];
     const isFinal = !!results[game.id];
     const isLive = !isFinal && g && g.found && g.state === "in";
-    const statusTag = isFinal ? `<span class="rd-tag final">FINAL</span>` : isLive ? `<span class="rd-tag live">${g.detail || "LIVE"}</span>` : locked ? `<span class="rd-tag wait">WAITING</span>` : `<span class="rd-tag time">${game.kickoffLabel.replace(/^(Sat|Sun) /, "")}</span>`;
+    const statusTag = isFinal ? `<span class="rd-tag final">FINAL</span>` : isLive ? `<span class="rd-tag live"><i class="rd-dot"></i>LIVE${g.detail ? ` · ${g.detail.replace(/\s*-\s*/, " ")}` : ""}</span>` : locked ? `<span class="rd-tag wait">WAITING</span>` : `<span class="rd-tag time">${game.kickoffLabel.replace(/^(Sat|Sun) /, "")}</span>`;
 
     let pickHtml, ptsHtml = `<span class="rd-pts none">–</span>`;
     let pickedSide = null;
@@ -5058,7 +5211,7 @@ function playerBreakdownHtml(name, state, results, live) {
       const terms = pick.mode === "ATS" ? `${pick.team === game.favorite ? "-" : "+"}${game.spread}` : "SU";
       const mode = `<span class="rd-mode ${pick.mode === "ATS" ? "ats" : "su"}">${terms}<span class="rd-mode-pt">${worth}PT</span></span>`;
       const lk = pick.lock && lockRule();
-      pickHtml = `<span class="rd-pickcard${lk ? " lk" : ""}">${lk ? `<span class="rd-lock">🔒 LOCK</span>` : ""}<span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}${pickTimeLabel(pick) ? `<span class="rd-when">${pickTimeLabel(pick)}</span>` : ""}</span></span>`;
+      pickHtml = `<span class="rd-pickcard${lk ? " lk" : ""}">${lk ? lkI(lockState(game, pick), "rd-lk", game, pick) : ""}<span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}${pickTimeLabel(pick) ? `<span class="rd-when">${pickTimeLabel(pick)}</span>` : ""}</span></span>`;
       const pts = scorePick(game, pick, results[game.id]);
       if (pts !== null) {
         banked += pts;
@@ -5069,7 +5222,7 @@ function playerBreakdownHtml(name, state, results, live) {
         const prov = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
         liveOpen += 1;
         if (prov > 0) { liveCovering += 1; liveFly += worth; ptsHtml = `<span class="rd-pts lean ${ptsValueTier(worth)}">+${worth}</span>`; }
-        else ptsHtml = `<span class="rd-pts lean miss">${prov < 0 ? "−" + Math.abs(prov) : "0"}</span>`;
+        else { liveFly += prov; ptsHtml = `<span class="rd-pts lean miss">${prov < 0 ? "−" + Math.abs(prov) : "0"}</span>`; }
       }
     }
     if (!isFinal && !isLive && sway[game.id] && ptsHtml.includes("rd-pts none")) ptsHtml = swayHtml(sway[game.id]);
@@ -5077,10 +5230,10 @@ function playerBreakdownHtml(name, state, results, live) {
     const aS = src && Number.isFinite(src.awayScore) ? src.awayScore : null;
     const hS = src && Number.isFinite(src.homeScore) ? src.homeScore : null;
     const scoreCell = (s, other) => `<span class="rd-sc ${isFinal && s !== null && s > other ? "win" : ""}">${s === null ? "" : s}</span>`;
-    return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}">
+    return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
         <span class="rd-gline">G${game.id} ${statusTag}</span>
-        <span class="rd-matchup"><span class="rd-tm away ${pickedSide === "away" ? "picked" : ""}">${game.awayShort}</span>${scoreCell(aS, hS)}<span class="rd-tm home ${pickedSide === "home" ? "picked" : ""}">${game.homeShort}</span>${scoreCell(hS, aS)}</span>
+        <span class="rd-matchup"><img class="rd-mlogo" src="${logoUrl(game.awayId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-tm away ${pickedSide === "away" ? "picked" : ""}">${game.awayShort}</span>${scoreCell(aS, hS)}<img class="rd-mlogo" src="${logoUrl(game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-tm home ${pickedSide === "home" ? "picked" : ""}">${game.homeShort}</span>${scoreCell(hS, aS)}</span>
       </div>
       <div class="rd-pick">${pickHtml}</div>
       <div class="rd-result">${ptsHtml}</div>
@@ -5110,7 +5263,7 @@ function playerBreakdownHtml(name, state, results, live) {
   </div>`;
   // One line on the week: settled points and record, plus what is in
   // flight while games are on.
-  const summary = `<div class="rd-summary"><span><b>${banked}</b> PTS</span><span>${wins}-${losses}</span>${liveOpen ? `<span class="live"><b>+${liveFly}</b> LIVE · ${liveCovering} OF ${liveOpen} COVERING</span>` : ""}</div>`;
+  const summary = `<div class="rd-summary"><span><b>${banked}</b> PTS</span><span>${wins}-${losses}</span>${liveOpen ? `<span class="live${liveFly < 0 ? " neg" : ""}"><b>${signedPts(liveFly)}</b> LIVE · ${liveCovering} OF ${liveOpen} COVERING</span>` : ""}</div>`;
   // The arithmetic behind the leaderboard percentage, for this manager.
   let wpRow = "";
   if (wd) {
@@ -5158,7 +5311,7 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
       } else if (pick) max += pickWorth(g, pick);
     }
     const lead = row.submittedCount < GAMES.length ? `${picked} · ` : "";
-    return `${lead}${w}-${l} · <span class="rank-max">MAX <b>${max}</b></span>${inFlight ? ` · <span class="rank-inflight">+${inFlight} LIVE</span>` : ""}`;
+    return `${lead}${w}-${l} · <span class="rank-max">MAX <b>${max}</b></span>${inFlight ? ` · <span class="rank-inflight${inFlight < 0 ? " neg" : ""}">${signedPts(inFlight)} LIVE</span>` : ""}`;
   }
   const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
   return `${picked} · ${guess} · ${off}`;
@@ -5881,6 +6034,8 @@ function weekWinChances(cloudPicks, results, live) {
         const winner = p.mode === "SU" ? o.suWinner : o.atsWinner;
         const hit = !!(winner && winner === p.team);
         if (hit) score[i] += p.pts;
+        // A lock that misses costs its penalty (a push costs nothing).
+        else if (p.lock && winner && lockRule()?.miss < 0) score[i] += lockRule().miss;
         hitThis[i][k] = hit;
       }
     }
@@ -6186,11 +6341,13 @@ function inFlightPoints(picks, live) {
     if (!Number.isFinite(g.awayScore) || !Number.isFinite(g.homeScore)) continue;
     const pick = picks[game.id];
     if (!pick) continue;
-    const p = scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
-    if (p > 0) pts += p;
+    // Net, not just what is covering: a lock that is losing counts its
+    // penalty, so a row can read −3 LIVE.
+    pts += scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore });
   }
   return pts;
 }
+const signedPts = (n) => (n < 0 ? `−${Math.abs(n)}` : `+${n}`);
 function anyGameLive(live) {
   return GAMES.some((game) => { const g = live[game.id]; return g && g.found && g.state === "in" && !g.completed; });
 }
@@ -6222,7 +6379,7 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // above, and the room it gives back pays for LIVE on the pill, which
   // reads better than a bare +6.
   const banked = `<span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>`;
-  const livePill = inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight} LIVE</span>` : "";
+  const livePill = inFlight ? `<span class="ms-live${inFlight < 0 ? " neg" : ""}"><span class="stake-dot"></span>${signedPts(inFlight)} LIVE</span>` : "";
   el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${livePill}${state}${clock}`;
   // The strip stays built (its refresh and countdown hooks still run) but
   // is not shown: the header carries the same thing now.
@@ -6234,7 +6391,7 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // screen has the countdown); from kickoff on, your place and points.
   headScoreHtml = pre
     ? ""
-    : `${cloudPicksStale ? `<span class="ms-warn" title="Picks did not reload">⚠</span>` : ""}<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${inFlight ? `<span class="ms-live"><span class="stake-dot"></span>+${inFlight}</span>` : ""}${boardAllFinal ? `<span class="ms-state final">FINAL</span>` : ""}`;
+    : `${cloudPicksStale ? `<span class="ms-warn" title="Picks did not reload">⚠</span>` : ""}<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${inFlight ? `<span class="ms-live${inFlight < 0 ? " neg" : ""}"><span class="stake-dot"></span>${signedPts(inFlight)}</span>` : ""}${boardAllFinal ? `<span class="ms-state final">FINAL</span>` : ""}`;
   renderHeadScore();
 }
 // Ticks the strip's countdown without redrawing the strip.
@@ -6350,7 +6507,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
         <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span>${rankLockHtml(row)}</span><span class="ranking-lock">${row.subline}</span></span>
-        <i class="rank-live mid${row.inFlight > 0 ? " on" : row.inFlight === 0 ? " zero" : ""}" title="${row.inFlight != null ? "Points from live games if they ended now" : "No games live"}">${row.inFlight != null ? `+${row.inFlight}` : "–"}</i>
+        <i class="rank-live mid${row.inFlight > 0 ? " on" : row.inFlight < 0 ? " neg" : row.inFlight === 0 ? " zero" : ""}" title="${row.inFlight != null ? "Points from live games if they ended now (a losing lock counts its penalty)" : "No games live"}">${row.inFlight != null ? signedPts(row.inFlight) : "–"}</i>
         ${(() => {
           // The week at a glance: one square per game in kickoff order.
           // Green cashed, pink missed, yellow push, pulsing while live
@@ -7336,7 +7493,26 @@ function openPastGame(g, side, e) {
   openInsights(id);
 }
 const insLive = (id) => latestLive[id] ?? sideLive[id];
+// Taps inside the game info sheet and the All Picks table: a last five
+// chip opens that game's gamecast, the preview expands, a pick's logo
+// opens its game.
+let insForm = null;
+// Folded sections in the game info sheet (expert picks, last five): shut
+// by default, and they stay as you left them while a live game repaints.
+const insFolds = new Set();
+const foldOpen = (k) => `<details class="ins-fold" data-fold="${k}"${insFolds.has(k) ? " open" : ""}><summary class="ins-h ins-fold-h">`;
+const foldSum = (t) => `<span class="ins-fold-sum">${t}</span><i class="ins-fold-car" aria-hidden="true">▾</i>`;
+document.addEventListener("toggle", (e) => { const f = e.target; if (f?.classList?.contains("ins-fold")) { if (f.open) { insFolds.add(f.dataset.fold); noteUse("fold-open", f.dataset.fold); } else insFolds.delete(f.dataset.fold); } }, true);
+document.addEventListener("click", (e) => {
+  const fc = e.target.closest?.(".ins-fchip[data-fi]");
+  if (fc && insForm) { const ev = insForm.form?.[fc.dataset.fside]?.[Number(fc.dataset.fi)]; if (ev) return openPastGame(insForm.game, fc.dataset.fside, ev); }
+  const pv = e.target.closest?.(".ins-pv.has-more");
+  if (pv) { const open = pv.classList.toggle("open"); pv.setAttribute("aria-expanded", String(open)); const t = pv.querySelector(".ins-pv-tg"); if (t) t.textContent = open ? "Show less ▴" : "Read more ▾"; noteUse("preview-more"); return; }
+  const cell = e.target.closest?.("td[data-cellgame]");
+  if (cell) { const id = Number(cell.dataset.cellgame); if (id) openInsights(id); }
+});
 async function openInsights(gameId) {
+  insTap.last = "";
   const modal = document.getElementById("insights-modal");
   const game = GAMES.find((g) => g.id === gameId) || sideGuestGame(gameId);
   if (!modal || !game) return;
@@ -7443,7 +7619,7 @@ async function openInsights(gameId) {
     let roomHtml = "";
     if (room.length) {
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}${r.pick.lock && lockRule() ? `<i class="gc-rlk">🔒</i>` : ""}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : r.pts < 0 ? "−" + Math.abs(r.pts) : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : r.pts < 0 ? "−" + Math.abs(r.pts) : "0"}</i></li>`; };
       const up = room.filter((r) => r.state === "up").sort((x, y) => y.pts - x.pts), down = room.filter((r) => r.state === "down"), push = room.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -7735,7 +7911,7 @@ async function openInsights(gameId) {
     // The current and previous drive can share a play (a kickoff, a score),
     // so drop repeats before taking three.
     const seenP = new Set();
-    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, LOGN).map((p) => ({ key: p.id || p.text, drv: p.id != null ? driveOfPlay.get(String(p.id)) || null : null, per: Number(p.period?.number) || null, secs: secsOf(p.clock?.displayValue), text: shortScore(tidy(p.text)), sc: p.scoringPlay && p.awayScore != null && p.homeScore != null ? `${A} ${p.awayScore} · ${H} ${p.homeScore}` : "", when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
+    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, LOGN).map((p) => ({ key: p.id || p.text, drv: p.id != null ? driveOfPlay.get(String(p.id)) || null : null, per: Number(p.period?.number) || null, secs: secsOf(p.clock?.displayValue), text: shortScore(tidy(p.text)), sc: p.scoringPlay && p.awayScore != null && p.homeScore != null ? `${A} ${p.awayScore} · ${H} ${p.homeScore}` : "", as: Number.isFinite(Number(p.awayScore)) ? Number(p.awayScore) : null, hs: Number.isFinite(Number(p.homeScore)) ? Number(p.homeScore) : null, when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
     // The scoreboard feed updates faster than the game page. If its last
     // play is not the log's newest, put it on top.
     // Two feeds word the same play differently ("J.Turner rush right for
@@ -7820,7 +7996,16 @@ async function openInsights(gameId) {
       ? `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1v5H1M10 15v-5h5"/></svg>`
       : `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 6V1h5M15 10v5h-5"/></svg>`;
     const more = totalPlays > 5 ? `<button type="button" class="gc-more" data-gcfull="1" aria-expanded="${full}" aria-label="${full ? "Close the full game log" : `Open the full game log, ${totalPlays} plays`}" title="${full ? "Close full log" : "Full game log"}">${corners}</button>` : "";
-    const playsHtml = plays.length ? `<div class="gc-log${full ? " full" : ""}"><div class="gc-logh"><span>PLAY LOG${full ? ` · ALL ${totalPlays}` : ""}</span>${more}</div><ol class="gc-plays${full ? " full" : ""}">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv${p.now ? " now" : ""}">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<span class="gc-pills">${p.badge.map(([bt, bc]) => `<b class="gc-badge ${bc}">${esc(bt)}</b>`).join("")}</span>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
+    // Who scored: the side whose score went up since the play before it
+    // (a pick six or a safety scores for the defence), else the offence.
+    const scorerOf = (p) => {
+      if (p.scorer !== undefined) return p.scorer;
+      const i = real.indexOf(p), prev = real.slice(i + 1).find((x) => x.as != null && x.hs != null);
+      p.scorer = p.as != null && prev ? (p.as > prev.as ? game.awayId : p.hs > prev.hs ? game.homeId : null) : null;
+      if (!p.scorer && p.tid != null) p.scorer = p.tid;
+      return p.scorer;
+    };
+    const playsHtml = plays.length ? `<div class="gc-log${full ? " full" : ""}"><div class="gc-logh"><span>PLAY LOG${full ? ` · ALL ${totalPlays}` : ""}</span>${more}</div><ol class="gc-plays${full ? " full" : ""}">${plays.map((p) => [p, real.indexOf(p)]).map(([p, i]) => p.drive ? `<li class="gc-drv${p.now ? " now" : ""}">${lg(p.tid, "gc-dlogo")}<span>${esc(p.text.toUpperCase())}</span></li>` : p.marker ? `<li class="gc-mark${p.ms || /end|half|two.?minute/i.test(p.text) ? " ms" : ""}"><span>${esc(p.text.replace(/\.$/, "").toUpperCase())}</span></li>` : `<li class="${i === 0 ? "new" : `old${i}`}${i === 0 && fresh ? " type" : ""}"><span class="gc-prompt">&gt;</span><div><span class="gc-pmeta">${esc([p.dd, p.when].filter(Boolean).join(" · "))}${p.sc ? `<em class="gc-psc">${esc(p.sc)}</em>` : ""}${p.badge ? `<span class="gc-pills">${p.badge.map(([bt, bc]) => `<b class="gc-badge ${bc}">${bc === "td" && scorerOf(p) ? lg(scorerOf(p), "gc-blogo") : ""}${esc(bt)}</b>`).join("")}</span>` : ""}</span><span class="gc-ptxt">${hiScore(esc(p.text))}</span></div></li>`).join("")}</ol></div>` : "";
     void pool;
     const wpHtml = "";
     const sp = Array.isArray(summaryRaw?.scoringPlays) ? summaryRaw.scoringPlays : [];
@@ -7841,7 +8026,7 @@ async function openInsights(gameId) {
         return { ...r, side, terms, state, worth: pickWorth(game, r.pick) };
       });
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}${r.pick.lock && lockRule() ? `<i class="gc-rlk">🔒</i>` : ""}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = rows.filter((r) => r.state === "up"), down = rows.filter((r) => r.state === "down"), push = rows.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -7891,7 +8076,7 @@ async function openInsights(gameId) {
   const roomPre = (() => {
     const all = lastGoodCloudPicks || {};
     const locked = isGameLocked(game);
-    const chip = (n) => `<span class="rp-chip${n === currentManager ? " me" : ""}"><span class="pick-chip-av" style="--accent:${accentFor(n)}">${esc(avatarOverrides[n] || shown(n)[0])}</span>${esc(shown(n))}</span>`;
+    const chip = (n) => `<span class="rp-chip${n === currentManager ? " me" : ""}${lockOn(n, game.id, all) ? " has-lk" : ""}">${nameLk(lockOn(n, game.id, all), game, all[n]?.picks?.[game.id])}<span class="pick-chip-av" style="--accent:${accentFor(n)}">${esc(avatarOverrides[n] || shown(n)[0])}</span><span class="rp-nm">${esc(shown(n))}</span></span>`;
     if (!locked) {
       const mine = all[currentManager]?.picks?.[game.id];
       const inN = MANAGERS.filter((n) => all[n]?.picks?.[game.id]).length;
@@ -7911,9 +8096,13 @@ async function openInsights(gameId) {
     }
     const side = (team, short, id) => {
       const bets = [["ATS", `${team === game.favorite ? "-" : "+"}${game.spread}`], ["SU", "WIN"]].map(([mode, label]) => {
-        const who = MANAGERS.filter((n) => { const pk = all[n]?.picks?.[game.id]; return pk && pk.team === team && pk.mode === mode; });
+        // Locks first, then the usual order.
+        const who = MANAGERS.filter((n) => { const pk = all[n]?.picks?.[game.id]; return pk && pk.team === team && pk.mode === mode; }).sort((a, b) => lockOn(b, game.id, all) - lockOn(a, game.id, all));
         if (!who.length) return "";
-        return `<div class="rp-bet"><div class="rp-bh"><b>${esc(label)}</b><em>${pointValue(game, team, mode)} PT</em><i>${who.length}</i></div><div class="rp-chips">${who.map(chip).join("")}</div></div>`;
+        // The count only when the side splits across two bets; otherwise
+        // the team row above already says it.
+        const split = MANAGERS.filter((m) => all[m]?.picks?.[game.id]?.team === team).length !== who.length;
+        return `<div class="rp-bet"><div class="rp-bh"><b>${esc(label)}</b><em>${pointValue(game, team, mode)} PT</em>${split ? `<i>${who.length}</i>` : ""}</div><div class="rp-chips">${who.map(chip).join("")}</div></div>`;
       }).join("");
       const n = MANAGERS.filter((m) => all[m]?.picks?.[game.id]?.team === team).length;
       return `<div class="rp-col"><div class="rp-team">${lg(id, "rp-logo")}<span>${esc(short)}</span><b>${n}</b></div>${bets || `<div class="rp-none">Nobody</div>`}</div>`;
@@ -7960,7 +8149,6 @@ async function openInsights(gameId) {
     return;
   }
   html = liveBlock() + html;
-  html += `<div class="ins-h">LINE</div>`;
   {
     const favId = game.favorite === game.home ? game.homeId : game.awayId, dogId = game.favorite === game.home ? game.awayId : game.homeId;
     const dogShort = game.favorite === game.home ? game.awayShort : game.homeShort;
@@ -8032,15 +8220,15 @@ async function openInsights(gameId) {
     // No quote strip: your pick is in the chip above the line, and the
     // market number sits on its marker.
     void tk;
-    // Nothing moved (or no quote yet): no rail, just a terminal line.
-    if (!nowMoved) {
-      const msg = nowV === null ? "NO LIVE LINE YET" : `SAME AS OUR LINE · ${esc(lab(sealedV))}`;
-      html += `<div class="lm lm-term lm-slim lm-still"><div class="lm-cmd"><span class="p">&gt;</span> ${msg}<span class="lm-cur">█</span></div>${small ? `<div class="lm-small">${small}</div>` : ""}</div>`;
-    } else
-    html += `<div class="lm lm-term lm-slim"><div class="lm-axis" style="--ticks:${ticks}">
-      <span class="lm-end l">${lg(dogId, "sm")}<em>${esc(dogAb)}</em></span><span class="lm-end r">${lg(favId, "sm")}<em>${esc(favAb)}</em></span>
-      ${zero}${band}${open}${seal}${now}${move}</div>
-      <div class="lm-read"><span><span>${l1}</span>${l2}</span></div>${read}</div>`;
+    // One line: where the number sits, how it moved and what that means for
+    // your pick, then the opener and total as small print.
+    const moveTxt = !nowMoved ? "" : myPick ? (forMe ? `<em class="good">▲ ${pts.toLowerCase()} your way</em>` : `<em class="bad">▼ ${pts.toLowerCase()} against you</em>`) : `moved ${pts.toLowerCase()} toward ${esc(nowV > sealedV ? favAb : dogAb)}`;
+    // The line sits in its own header: the number and one word on movement.
+    const parts = nowV === null ? [`<b>${esc(lab(sealedV))}</b>`, "no live line yet"]
+      : !nowMoved ? [`<b>${esc(lab(sealedV))}</b>`, "no movement"]
+      : [`<b>${esc(lab(nowV))}</b>`, `${moveTxt} (was ${esc(lab(sealedV))})`];
+    void openV; void ouSmall;
+    html += `<div class="ins-h ins-line-h">LINE <span class="ins-line1">${parts.join(" · ")}</span></div>`;
   }
 
   // Preview: same layout as ever (headline, text, "Read the rest"). The
@@ -8064,7 +8252,8 @@ async function openInsights(gameId) {
     const headline = aiPv?.headline || pv.headline;
     const lead = aiPv?.text ? [aiPv.text] : pv.paras.slice(0, 2);
     html += `<div class="ins-h">PREVIEW</div>${headline ? `<div class="ins-pv-h">${esc(headline)}</div>` : ""}`;
-    html += `<div class="ins-pv">${lead.map((t) => `<p>${esc(t)}</p>`).join("")}${!aiPv?.text && pend.ai ? `<p class="pv-wait">Writing a sharper preview…</p>` : ""}</div>`;
+    const more = aiPv?.text ? [] : pv.paras.slice(2);
+    html += `<div class="ins-pv${more.length ? " has-more" : ""}"${more.length ? ' role="button" aria-expanded="false"' : ""}>${lead.map((t) => `<p>${esc(t)}</p>`).join("")}${more.length ? `<div class="ins-pv-more">${more.map((t) => `<p>${esc(t)}</p>`).join("")}</div><span class="ins-pv-tg">Read more ▾</span>` : ""}${!aiPv?.text && pend.ai ? `<p class="pv-wait">Writing a sharper preview…</p>` : ""}</div>`;
   }
 
   // 3. Insights: the numbers, then the written brief.
@@ -8106,9 +8295,11 @@ async function openInsights(gameId) {
   // Last five: opponent logos, result and score; a small @ for road games.
   const form = direct?.lastFive;
   if (form && (form.away.length || form.home.length)) {
-    const chip = (e) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}" title="${esc(`${e.result || ""} ${e.at === "@" ? "at" : "vs"} ${e.oppName || e.opp || ""} ${e.score || ""}`)}">${e.at === "@" ? `<u>@</u>` : ""}${e.oppId || e.oppLogo ? `<img src="${e.oppId ? logoUrl(e.oppId) : esc(e.oppLogo)}" alt="${esc(e.opp || "")}" loading="lazy">` : `<i>${esc(e.opp || "")}</i>`}<b>${esc(e.result || "·")}</b><i>${esc(e.score || "")}</i></span>`;
-    const row = (teamId, list) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}</span><span class="ins-form-r">${list.map(chip).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
-    html += `<div class="ins-h">LAST FIVE</div>${row(game.awayId, form.away)}${row(game.homeId, form.home)}`;
+    insForm = { game, form };
+    const chip = (e, side, i) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}"${e.id ? ` data-fside="${side}" data-fi="${i}" role="button"` : ""} title="${esc(`${e.result || ""} ${e.at === "@" ? "at" : "vs"} ${e.oppName || e.opp || ""} ${e.score || ""}`)}">${e.at === "@" ? `<u>@</u>` : ""}${e.oppId || e.oppLogo ? `<img src="${e.oppId ? logoUrl(e.oppId) : esc(e.oppLogo)}" alt="${esc(e.opp || "")}" loading="lazy">` : `<i>${esc(e.opp || "")}</i>`}<b>${esc(e.result || "·")}</b><i>${esc(e.score || "")}</i></span>`;
+    const row = (teamId, list, side) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}</span><span class="ins-form-r">${list.map((e, i) => chip(e, side, i)).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
+    const rec = (list) => { const w = list.filter((e) => /^w/i.test(e.result || "")).length, l = list.filter((e) => /^l/i.test(e.result || "")).length; return `${w}-${l}`; };
+    html += `${foldOpen("l5")}LAST FIVE${foldSum(`${esc(abbrOf("away"))} ${rec(form.away)} · ${esc(abbrOf("home"))} ${rec(form.home)}`)}</summary>${row(game.awayId, form.away, "away")}${row(game.homeId, form.home, "home")}</details>`;
   }
   // Series history.
   if (direct?.series?.length) {
@@ -8228,8 +8419,9 @@ async function openInsights(gameId) {
         : cov === ln ? ` · ${ln === 1 ? "COVERS" : "ALL COVER"} ${lineOf(favSide)}` : cov ? ` · ${cov} COVER ${lineOf(favSide)}` : ` · NONE COVER ${lineOf(favSide)}`;
       const sum = !tot ? "NO CALL" : bA === bH ? `SPLIT: ${bA} ${T("away")}, ${bH} ${T("home")}`
         : `${ln === tot ? (tot === 1 ? "1 PICK:" : `ALL ${tot} BACK`) : `${ln} OF ${tot} BACK`} ${T(lw)}${how}`;
-      html += `<div class="ins-h">EXPERT PICKS</div><div class="xp-sum">${sum}</div><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,${cols >= 4 ? "1fr" : "112px"}))">${list.map(tileOf).join("")}</div>`;
+      html += `${foldOpen("xp")}EXPERT PICKS${foldSum(sum.replace(/\b(NO|CALL|SPLIT|ALL|PICK|OF|BACK|SAY|OUTRIGHT|WIN|COVER)\b/g, (w) => w.toLowerCase()))}</summary><div class="xp-grid" style="grid-template-columns:repeat(${cols},minmax(0,${cols >= 4 ? "1fr" : "112px"}))">${list.map(tileOf).join("")}</div>`;
       if (rest.length) html += `<details class="ins-more-news xp-more"><summary><span>▶</span> MORE OUTLETS (${rest.length})</summary><div class="xp-grid" style="grid-template-columns:repeat(${Math.min(rest.length, 4)},minmax(0,${rest.length >= 4 ? "1fr" : "112px"}))">${rest.map(tileOf).join("")}</div></details>`;
+      html += `</details>`;
     } else if (pend.picks) html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-loading">Checking the pickers…</div>`;
     else html += `<div class="ins-h">EXPERT PICKS</div><div class="ins-empty small">No published picks yet. The outlets usually call games Thursday and Friday.</div>`;
   }
@@ -8311,7 +8503,7 @@ async function openInsights(gameId) {
     spread: mv ? mv.now : Number(game.spread) || 3,
     total: mv?.overUnder ?? direct?.odds?.overUnder ?? 52,
   };
-  modal.querySelector("#ins-sim")?.addEventListener("click", () => window.openSim?.(simCtx));
+  modal.querySelector("#ins-sim")?.addEventListener("click", () => ensureExtras().then(() => window.openSim?.(simCtx)));
   // No pick yet: one tap closes the sheet and goes to the picks screen.
   body.querySelector("#ins-mypick-go")?.addEventListener("click", () => { modal.querySelector("#insights-close")?.click(); navPicksBtn?.click(); });
   };
@@ -8322,15 +8514,15 @@ async function openInsights(gameId) {
     if (!alive()) { clearInterval(liveTimer); return; }
     const l = insLive(gameId);
     if (!(l && l.found && l.state === "in" && !l.completed)) return;
-    try { await (sideGuestGame(gameId) ? fetchSideLive(true) : fetchLiveScores()); } catch {}
+    try { await (sideGuestGame(gameId) ? fetchSideLive(Date.now() - sideLiveAt > 10000) : fetchLiveScores()); } catch {}
     const id = insLive(gameId)?.eventId || null;
     if (id) { try { const raw = await fetchEspnSummary(id, true); if (raw) summaryRaw = raw; } catch {} }
     if (alive()) paint();
   };
-  // Every 8 seconds while the sheet is on screen; nothing while the phone
+  // Every 15 seconds while the sheet is on screen; nothing while the phone
   // is locked or the app is in the background, and an immediate catch-up
   // the moment it comes back.
-  const liveTimer = setInterval(() => { if (!document.hidden) liveTick(); }, 8000);
+  const liveTimer = setInterval(() => { if (!document.hidden) liveTick(); }, 15000);
   const onVis = () => { if (!alive()) { document.removeEventListener("visibilitychange", onVis); return; } if (!document.hidden) liveTick(); };
   document.addEventListener("visibilitychange", onVis);
   fetchAllPicks().then((p) => { if (p) { lastGoodCloudPicks = p; if (alive()) paint(); } }).catch(() => {});
@@ -8977,15 +9169,15 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
   renderRecap = (...a) => { orig(...a); paint(); };
 })();
 
-// The leaderboard folds like the sections under it. It starts open, and
-// the choice is remembered on the device.
+// The leaderboard folds like the sections under it. It opens on every
+// load; a fold lasts until the app is opened again.
 (() => {
   const toggle = document.getElementById("leaderboard-toggle");
   const list = document.getElementById("rankings-list");
   if (!toggle || !list) return;
   const KEY = "brochiefs_leaderboard_open_v2";
   let open = true;
-  try { open = localStorage.getItem(KEY) !== "0"; } catch { /* private mode */ }
+  try { localStorage.removeItem(KEY); } catch { /* private mode */ }
   const h2hBtn = document.getElementById("h2h-open");
   const paint = () => {
     list.classList.toggle("hidden", !open);
@@ -8997,7 +9189,6 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
   toggle.addEventListener("click", () => {
     open = !open;
     paint();
-    try { localStorage.setItem(KEY, open ? "1" : "0"); } catch { /* private mode */ }
   });
   paint();
 })();
@@ -9232,6 +9423,7 @@ function openStatRank(stat, name) {
 // The trophy on a player card: every week's winner this season, the trophy
 // count, and the league's champions by year, on one screen.
 function openChampions(name) {
+  if (typeof S === "undefined") ensureExtras().then(() => { if (!document.getElementById("champs")?.classList.contains("hidden")) openChampions(name); });
   const esc = escapeCd;
   const weeks = Object.values(weekSummaries).filter((w) => w?.rows?.length && w.complete !== false).sort((a, b) => a.week - b.week);
   const winnersOf = (w) => w.winners?.length ? w.winners : (() => { const top = Math.max(...w.rows.map((r) => r.score)); return w.rows.filter((r) => r.score === top).map((r) => r.name); })();
@@ -9569,6 +9761,7 @@ function showUpdateBar() {
 function reloadFresh() {
   // A live page preview keeps what it was showing.
   if (window.__liveView) { const u = new URL(location.href); u.searchParams.set("r", String(Date.now())); location.replace(u.href); return; }
+  pageLeaving = true;
   location.replace(location.pathname + `?r=${Date.now()}` + location.hash);
 }
 
@@ -9810,12 +10003,31 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
     const tag = host.id ? `#${host.id}` : `.${String(host.className || host.tagName).split(" ")[0]}`;
     return `${tag}${txt ? ` “${txt}”` : ""}`.slice(0, 40);
   };
-  const interactive = (el) => !!el.closest?.("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-sec], [tabindex]") || getComputedStyle(el).cursor === "pointer";
+  // A pointer cursor counts only where it is set, not where it is merely
+  // inherited: the whole leaderboard row is a pointer, so every name, score
+  // and game inside an open player card read as "does something" and a dead
+  // tap there was never logged.
+  const ownPointer = (el) => getComputedStyle(el).cursor === "pointer" && (!el.parentElement || getComputedStyle(el.parentElement).cursor !== "pointer");
+  const interactive = (el) => !!el.closest?.("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-sec], [tabindex]") || ownPointer(el);
   // Rage: 3 taps inside 1 second within 30px.
   let taps = [], rageAt = 0;
   // Dead: a tap on a non interactive element that changes nothing on screen.
-  let mutated = false;
-  new MutationObserver(() => { mutated = true; }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+  // Did the tap do anything? Only changes that answer it count: at or
+  // around the thing tapped, or a sheet, screen or overlay opening. Any
+  // change anywhere used to count, and on game day the clocks and scores
+  // tick every second, so no tap ever read as dead.
+  let mutated = false, tapEl = null;
+  const answers = (t) => {
+    if (!tapEl || !(t instanceof Node)) return false;
+    const n = t.nodeType === 1 ? t : t.parentElement;
+    if (!n) return false;
+    if (n === document.body || n.closest?.("[role=dialog], .modal-overlay, .wpx-overlay, .lks, .lt-modal, .screen:not(.hidden) > .wrap > :is(section, div)[class*=sheet]")) return true;
+    if (tapEl.contains(n)) return true;
+    let up = tapEl; for (let i = 0; i < 4 && up; i++) { if (up === n) return true; up = up.parentElement; }
+    return false;
+  };
+  new MutationObserver((list) => { if (!mutated && list.some((m) => answers(m.target) || (m.type === "attributes" && m.target.classList?.contains("screen")))) mutated = true; }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+  addEventListener("scroll", () => { if (tapEl) mutated = true; }, { capture: true, passive: true });
   let deadAt = 0;
   document.addEventListener("pointerdown", (e) => {
     // Three quick taps on the logo are the admin shortcut, not frustration.
@@ -9844,8 +10056,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
     // A tap in the gap of a container that holds buttons (a card's row, the
     // space between bets) is a near miss, not a dead control.
     if (el.querySelector?.("button, a, [role=button]")) return;
-    mutated = false;
-    setTimeout(() => { if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); track("dead-tap", { event: true, d: label(el) }); } }, 700);
+    mutated = false; tapEl = el;
+    setTimeout(() => { if (tapEl === el) tapEl = null; if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); track("dead-tap", { event: true, d: label(el) }); } }, 700);
   }, { capture: true, passive: true });
   // Sheets: time open, and closed almost at once.
   const opened = new Map();
