@@ -33,3 +33,24 @@ test("week chat worker: relays the model's tool calls, then its reply", async ()
   assert.match(sent[0].messages[0].content, /Never state a number/);
   assert.equal(sent[0].messages[0].role, "system");
 });
+
+test("week chat worker: a finished answer is kept for the live page, admin only", async () => {
+  const m = new Map(), meta = new Map();
+  const kv = { get: async (k, t) => { const v = m.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; }, put: async (k, v, o) => { m.set(k, String(v)); if (o?.metadata) meta.set(k, o.metadata); }, delete: async (k) => { m.delete(k); }, list: async ({ prefix }) => ({ keys: [...meta].filter(([k]) => k.startsWith(prefix)).map(([name, metadata]) => ({ name, metadata })), list_complete: true }) };
+  const real = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: "You win 12% of the time." } }], usage: {} }), { status: 200 });
+  const env = { OPENAI_API_KEY: "k", DEFAULT_ROSTER: "Jake,Curt", LIFTR_KV: kv, ARCHIVE_LOG_KEY: "adm" };
+  const ctx = { asker: "Jake", members: ["Jake", "Curt"], games };
+  const msgs = [{ role: "user", content: "can I win if IU doesn't cover" }, { role: "assistant", content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "chance", arguments: "{\"conditions\":[]}" } }] }, { role: "tool", tool_call_id: "c1", content: "{\"Jake\":0.12}" }];
+  await worker.fetch(new Request("https://w.test/week-chat", { method: "POST", body: JSON.stringify({ messages: msgs, context: ctx, sid: "abc123", build: "123456789012" }) }), env, { waitUntil() {} });
+  globalThis.fetch = real;
+  assert.equal((await worker.fetch(new Request("https://w.test/week-chat"), env, { waitUntil() {} })).status, 403);
+  const j = await (await worker.fetch(new Request("https://w.test/week-chat?key=adm"), env, { waitUntil() {} })).json();
+  assert.equal(j.chats.length, 1);
+  const c = j.chats[0];
+  assert.equal(c.q, "can I win if IU doesn't cover");
+  assert.equal(c.a, "You win 12% of the time.");
+  assert.equal(c.asker, "Jake"); assert.equal(c.sid, "abc123"); assert.equal(c.turn, 1);
+  assert.deepEqual(c.tools.map((t) => t.name), ["chance"]);
+  assert.match(c.tools[0].out, /0\.12/);
+});
