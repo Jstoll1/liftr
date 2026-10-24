@@ -694,11 +694,16 @@ html, body { overflow-x: hidden; }
   .afr.ops { --afr-g: #ffc14d; background: #1a1206; border-color: #5a3d0a; }
   .afr.ops .afr-d { color: #ffe6b3; }
   .afr.ops.hot { border-color: #ff6b81; }
-  .afr.ops .afr-r { grid-template-columns: 64px 1fr auto; }
-  .afr.ops .afr-one { grid-column: 3; }
+  .afr.ops .afr-r { grid-template-columns: 22px 64px 1fr auto; }
+  .afr.ops .afr-one { grid-column: 4; grid-row: 1; }
   .afr-k.slow { color: #ffc14d; }
+  .afr.ops .afr-cb { border-color: rgba(255, 193, 77, .55); }
+  .afr-tg small { white-space: nowrap; }
+  /* Phones: the open panel's buttons drop to their own row under the title. */
+  @media (max-width: 600px) { .afr.ops:not(.shut) .afr-h { flex-wrap: wrap; row-gap: 2px; } .afr.ops:not(.shut) .afr-tg { flex-basis: 100%; } .afr.ops:not(.shut) .afr-h .afr-cp:first-of-type { margin-left: auto; } }
+  .afr.ops .afr-r.fixed .afr-k { opacity: .45; }
   .afr.ops .afr-cp, .afr.ops .afr-one { border-color: rgba(255, 193, 77, .45); background: rgba(255, 193, 77, .08); }
-  @media (min-width: 700px) { .afr.ops .afr-r { grid-template-columns: 64px 110px minmax(0, 1fr) auto; } .afr.ops .afr-d { grid-column: 3; } .afr.ops .afr-one { grid-column: 4; } }
+  @media (min-width: 700px) { .afr.ops .afr-r { grid-template-columns: 22px 64px 132px minmax(0, 1fr) auto; } .afr.ops .afr-d { grid-column: 4; } .afr.ops .afr-one { grid-column: 5; } }
   @media (min-width: 900px) { .cs-list { grid-template-columns: 1fr 1fr; column-gap: 8px; } .cs-list > :last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 4px); } }
   .cs-tg b { white-space: nowrap; }
   .cs-tg small { white-space: nowrap; }
@@ -955,7 +960,7 @@ html, body { overflow-x: hidden; }
   const afrLog = (rows) => [`Brochiefs ${LEAGUE.toUpperCase()} admin friction log · copied ${new Date().toLocaleString()}`, ...[...rows].sort((x, y) => y.at - x.at).map((r) => `${new Date(r.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} | ${(AFR_KIND[r.k || "dead-tap"] || [r.k])[0]} | ${r.d || ""}${r.screen ? ` | ${SCREENS[r.screen] || r.screen}` : ""}${afrFix(r) ? ` | FIXED${afrFix(r).commit ? ` ${afrFix(r).commit}` : ""}` : ""}`)].join("\n");
   const OPS_KIND = { "route-fail": ["Worker error", "err"], "cron-fail": ["Job failed", "err"], "upstream-fail": ["Outside API failed", "err"], "upstream-slow": ["Outside API slow", "slow"], "worker-fail": ["Worker failed", "err"], "worker-slow": ["Worker slow", "slow"], "espn-fail": ["ESPN failed", "err"], "espn-slow": ["ESPN slow", "slow"], "slow-load": ["Slow load", "slow"], "js-error": ["Error", "err"] };
   const opsWho = (r) => (r.src === "worker" ? "worker" : r.n ? name(r.n) : "phone");
-  const opsLog = (rows) => [`Brochiefs ${LEAGUE.toUpperCase()} health log · copied ${new Date().toLocaleString()}`, ...[...rows].sort((x, y) => y.at - x.at).map((r) => `${new Date(r.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} | ${(OPS_KIND[r.k] || [r.k])[0]} | ${r.d || ""} | ${opsWho(r)}${r.v ? ` · build ${r.v}` : ""}`)].join("\n");
+  const opsLog = (rows) => [`Brochiefs ${LEAGUE.toUpperCase()} health log · copied ${new Date().toLocaleString()}`, ...[...rows].sort((x, y) => y.at - x.at).map((r) => `${new Date(r.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} | ${(OPS_KIND[r.k] || [r.k])[0]} | ${r.d || ""} | ${opsWho(r)}${r.v ? ` · build ${r.v}` : ""}${r.closed ? " | CLOSED" : ""}`)].join("\n");
   const afrDay = (t) => { const d = new Date(t), n = new Date(); return d.toDateString() === n.toDateString() ? "Today" : d.toLocaleDateString([], { weekday: "short" }); };
   const dayOf = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const dayLab = (t) => { const d = dayOf(t), today = dayOf(Date.now()); return d === today ? "Today" : d === today - 86400000 ? "Yesterday" : new Date(t).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }); };
@@ -1395,14 +1400,16 @@ html, body { overflow-x: hidden; }
     const opsPanel = () => {
       if (!st.ops) return "";
       const rows = [...st.ops].sort((x, y) => y.at - x.at);
-      const day = rows.filter((r) => Date.now() - r.at < 86400000);
+      // Closed entries (dealt with) stay listed, struck through, but stop counting.
+      const day = rows.filter((r) => Date.now() - r.at < 86400000 && !r.closed);
+      const openIds = rows.filter((r) => !r.closed && r.id).map((r) => r.id);
       const bad = day.filter((r) => (OPS_KIND[r.k] || [])[1] === "err").length;
-      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-opstoggle="1" aria-expanded="${!!st.opsOpen}"><span class="afr-car">${st.opsOpen ? "▾" : "▸"}</span><b>&gt; health</b><small>${day.length ? `${bad} fail · ${day.length - bad} slow · 24h` : "all clear · 24h"}</small></button>${st.opsOpen && rows.length ? `<button type="button" class="afr-cp" data-opscopy="1">${st.copied === "ops" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
+      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-opstoggle="1" aria-expanded="${!!st.opsOpen}"><span class="afr-car">${st.opsOpen ? "▾" : "▸"}</span><b>&gt; health</b><small>${day.length ? `${bad} fail · ${day.length - bad} slow · 24h` : "all clear · 24h"}</small></button>${st.opsOpen && openIds.length ? `<button type="button" class="afr-cp" data-opscloseall="1">close all</button>` : ""}${st.opsOpen && rows.length ? `<button type="button" class="afr-cp" data-opscopy="1">${st.copied === "ops" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
       if (!st.opsOpen) return `<section class="afr ops shut${bad ? " hot" : ""}">${head}</section>`;
       const days = [];
       for (const r of rows) { const k = afrDay(r.at); if (days[days.length - 1]?.k !== k) days.push({ k, rows: [] }); days[days.length - 1].rows.push(r); }
       return `<section class="afr ops${bad ? " hot" : ""}">${head}
-        ${rows.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r ops-r"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${(OPS_KIND[r.k] || [])[1] || ""}">${esc((OPS_KIND[r.k] || [r.k])[0])}</span><span class="afr-d">${esc(r.d || "")} <i>${esc(opsWho(r))}${r.v ? ` · ${esc(r.v.slice(-6))}` : ""}</i></span><button type="button" class="afr-one" data-opsone="${r.at}|${esc(r.k)}" aria-label="Copy this one">${st.copied === `ops:${r.at}|${r.k}` ? "✓" : "copy"}</button></div>`).join("")}`).join("") : `<p class="afr-none">No failures or slow calls in the last 7 days.</p>`}</section>`;
+        ${rows.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r ops-r${r.closed ? " fixed" : ""}">${r.id ? `<button type="button" class="afr-cb" data-opsclose="${esc(r.id)}" aria-pressed="${!!r.closed}" title="${r.closed ? "Closed: tap to reopen" : "Close: dealt with"}">${r.closed ? "✓" : ""}</button>` : `<span></span>`}<span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${(OPS_KIND[r.k] || [])[1] || ""}">${esc((OPS_KIND[r.k] || [r.k])[0])}</span><span class="afr-d">${esc(r.d || "")} <i>${esc(opsWho(r))}${r.v ? ` · ${esc(r.v.slice(-6))}` : ""}</i></span><button type="button" class="afr-one" data-opsone="${r.at}|${esc(r.k)}" aria-label="Copy this one">${st.copied === `ops:${r.at}|${r.k}` ? "✓" : "copy"}</button></div>`).join("")}`).join("") : `<p class="afr-none">No failures or slow calls in the last 7 days.</p>`}</section>`;
     };
     // Admin friction: Jake's errors, rage taps, dead taps and sheets shut at
     // once, newest first by day, with a plain text copy for pasting.
@@ -1767,6 +1774,15 @@ html, body { overflow-x: hidden; }
       return;
     }
     if (b.dataset.opstoggle) { st.opsOpen = !st.opsOpen; store.set("brochiefs_live_ops_open", st.opsOpen ? "1" : ""); st.sig = ""; render(); return; }
+    if (b.dataset.opsclose || b.dataset.opscloseall) {
+      const one = b.dataset.opsclose ? (st.ops || []).find((x) => x.id === b.dataset.opsclose) : null;
+      const ids = one ? [one.id] : (st.ops || []).filter((x) => !x.closed && x.id).map((x) => x.id);
+      const closed = one ? !one.closed : true;
+      for (const x of st.ops || []) if (ids.includes(x.id)) { if (closed) x.closed = Date.now(); else delete x.closed; }
+      st.sig = ""; render();
+      try { const x = await fetch(`${WORKER}/ops?${auth()}`, { method: "POST", body: JSON.stringify({ action: "close", ids, closed }) }); const j = await x.json().catch(() => ({})); if (x.ok && Array.isArray(j.ops)) st.ops = j.ops; else await loadOps(); } catch { await loadOps(); }
+      st.sig = ""; render(); return;
+    }
     if (b.dataset.opscopy || b.dataset.opsone) {
       const rows = b.dataset.opsone ? (st.ops || []).filter((x) => `${x.at}|${x.k}` === b.dataset.opsone) : st.ops || [];
       const text = b.dataset.opsone ? opsLog(rows).split("\n").slice(1).join("\n") : opsLog(rows);

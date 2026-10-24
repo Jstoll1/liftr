@@ -28,3 +28,18 @@ test("ops: phones report failures, admin reads them, upstream failures are logge
   assert.equal(ops.find((o) => o.k === "worker-fail").n, "Curt");
   assert.equal(ops.find((o) => o.k === "espn-slow").n, undefined); // the admin's own phone carries no name
 });
+
+test("ops: the admin closes entries, one or all, and can reopen them", async () => {
+  const { default: worker } = await import(`../src/index.js?close=${Date.now()}`);
+  const env = { LIFTR_KV: kv(), ARCHIVE_LOG_KEY: "adm", DEFAULT_ROSTER: "Curt,Jake" };
+  const call = (path, body) => worker.fetch(new Request(`https://w.test${path}`, body ? { method: "POST", body: JSON.stringify(body) } : {}), env, { waitUntil() {} });
+  await call("/ops", { manager: "Curt", events: [{ k: "worker-fail", d: "/a 500" }, { k: "espn-slow", d: "x 5.0s" }] });
+  let { ops } = await (await call("/ops?key=adm")).json();
+  assert.equal((await call("/ops", { action: "close", id: ops[0].id })).status, 403);
+  ({ ops } = await (await call("/ops?key=adm", { action: "close", id: ops[0].id })).json());
+  assert.equal(ops.filter((o) => o.closed).length, 1);
+  ({ ops } = await (await call("/ops?key=adm", { action: "close", ids: ops.map((o) => o.id) })).json());
+  assert.equal(ops.filter((o) => o.closed).length, 2);
+  ({ ops } = await (await call("/ops?key=adm", { action: "close", id: ops[0].id, closed: false })).json());
+  assert.equal(ops.filter((o) => o.closed).length, 1);
+});

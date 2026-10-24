@@ -596,6 +596,20 @@ async function handleOps(request, env, corsHeaders, url) {
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  // The admin closes entries once they are dealt with (or reopens them):
+  // one id, or a list for "close all". Each is one key's metadata rewritten,
+  // keeping what is left of its week.
+  if (body?.action === "close") {
+    if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+    const ids = new Set((Array.isArray(body.ids) ? body.ids : [body.id]).filter((x) => typeof x === "string" && x.startsWith("ops:")).slice(0, 300));
+    const all = await logList(env, "ops:", 300);
+    const now = Date.now();
+    await Promise.all(all.filter((r) => ids.has(r.id)).map(({ id, ...entry }) => {
+      if (body.closed === false) delete entry.closed; else entry.closed = now;
+      return env.LIFTR_KV.put(id, "", { expirationTtl: Math.max(60, Math.round((entry.at + 7 * 86400000 - now) / 1000)), metadata: entry });
+    }));
+    return json({ ok: true, ops: await logList(env, "ops:", 300, OPS_KEY) }, 200, corsHeaders);
+  }
   // Phones report in batches; only known kinds, a few at a time.
   const who = PICKS_MANAGERS.includes(body?.manager) && !VISITS_NOT_TRACKED.has(body.manager) ? body.manager : null;
   for (const e of (Array.isArray(body?.events) ? body.events : []).slice(0, 10)) {
