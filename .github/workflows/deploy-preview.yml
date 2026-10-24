@@ -26,4 +26,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy _site --project-name=brochiefs-preview --branch=preview --commit-dirty=true
+          # Published under both names, so it lands on the site's own address
+          # whichever branch the Pages project calls production.
+          command: |
+            pages deploy _site --project-name=brochiefs-preview --branch=preview --commit-dirty=true
+            pages deploy _site --project-name=brochiefs-preview --branch=main --commit-dirty=true
