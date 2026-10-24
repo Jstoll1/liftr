@@ -2,6 +2,7 @@ import { openaiChat } from "./costs.js";
 import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
 import { LiveRoom, deviceToken, deviceTokenOk } from "./live.js";
+import { lightningKey, lightningEntryKey, LIGHTNING_HISTORY_KEY, buildNight, activate as activateNight, cleanAnswers, joinNight, declineNight, viewNight, cleanFinals as cleanLightningFinals, historyRecord as lightningHistoryRecord, editPrompt as lightningEditPrompt, betsFromModel, cleanBet } from "./lightning.js";
 import { sideKey, entryKey, newPot, extendPot, cleanSidePicks, joinEntry, declineEntry, viewPot, cleanSideFinals, sideHistoryRecord } from "./side.js";
 
 // The live room has to be exported from the main module for Cloudflare.
@@ -144,6 +145,9 @@ const app = {
     }
     if (url.pathname === "/picks") {
       return handlePicks(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/lightning") {
+      return handleLightning(request, env, corsHeaders, url);
     }
     if (url.pathname === "/side") {
       return handleSide(request, env, corsHeaders, url);
@@ -1351,6 +1355,121 @@ export function maskPicks(picks, kickoffs, now, viewer) {
 // The season's finished side bets, one per week. Kept apart from the
 // pool's record and kept for good, like the week summaries.
 const SIDE_HISTORY_KEY = "side:history";
+// --- Lightning ------------------------------------------------------------
+// The late night five-bet pot, run from the live page (see lightning.js).
+async function lightningEntries(env, night) {
+  const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(lightningEntryKey(night.week, night.id, m), "json")]));
+  return Object.fromEntries(rows.filter(([, e]) => e));
+}
+const liveAdmin = async (env, url) => isAdmin(env, url) || (await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()));
+async function handleLightning(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  const now = Date.now();
+  const noStore = { ...corsHeaders, "Cache-Control": "no-store" };
+  const keep = { expirationTtl: 120 * 24 * 3600 };
+  const admin = await liveAdmin(env, url);
+  if (request.method === "GET") {
+    if (url.searchParams.get("history") === "1") {
+      const hist = (await env.LIFTR_KV.get(LIGHTNING_HISTORY_KEY, "json")) || {};
+      return json({ history: Object.values(hist).sort((a, b) => a.week - b.week) }, 200, noStore);
+    }
+    const week = await weekFrom(env, url);
+    const night = await env.LIFTR_KV.get(lightningKey(week), "json");
+    const viewer = admin ? { all: true, me: null } : await picksViewer(env, url);
+    return json({ week, night: night ? viewNight(night, await lightningEntries(env, night), night.finals, now, viewer) : null }, 200, noStore);
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const action = body?.action;
+  const week = Number.isInteger(body?.week) && body.week >= 1 ? body.week : await weekFrom(env, url);
+  const night = await env.LIFTR_KV.get(lightningKey(week), "json");
+  const all = { all: true, me: null };
+  const view = async (n) => viewNight(n, await lightningEntries(env, n), n.finals, now, all);
+
+  if (["save", "activate", "cancel", "paid", "edit"].includes(action)) {
+    if (!admin) return json({ error: "Not authorized" }, 403, corsHeaders);
+    if (action === "cancel") { await env.LIFTR_KV.delete(lightningKey(week)); return json({ ok: true, night: null }, 200, noStore); }
+    if (action === "save") {
+      // A live night people are in is only rebuilt on purpose (it starts over).
+      const inNow = night ? Object.values(await lightningEntries(env, night)).filter((e) => e.in).length : 0;
+      if (inNow && !body.replace) return json({ error: "People are already in tonight's Lightning.", entrants: inNow }, 409, corsHeaders);
+      const made = buildNight({ week, bets: body.bets, buyIn: body.buyIn, closesAt: body.closesAt, now, prev: night && !body.replace ? night : null });
+      if (made.error) return json({ error: made.error }, 400, corsHeaders);
+      await env.LIFTR_KV.put(lightningKey(week), JSON.stringify(made.night), keep);
+      return json({ ok: true, night: await view(made.night) }, 200, noStore);
+    }
+    if (action === "activate") {
+      const made = activateNight(night, now);
+      if (made.error) return json({ error: made.error }, 400, corsHeaders);
+      await env.LIFTR_KV.put(lightningKey(week), JSON.stringify(made.night), keep);
+      return json({ ok: true, night: await view(made.night) }, 200, noStore);
+    }
+    if (action === "paid") {
+      const k = night && PICKS_MANAGERS.includes(body.manager) ? lightningEntryKey(week, night.id, body.manager) : null;
+      const e = k ? await env.LIFTR_KV.get(k, "json") : null;
+      if (!e?.in) return json({ error: "Not in tonight's Lightning" }, 400, corsHeaders);
+      if (body.paid) e.paid = true; else delete e.paid;
+      await env.LIFTR_KV.put(k, JSON.stringify(e), keep);
+      return json({ ok: true, night: await view(night) }, 200, noStore);
+    }
+    // edit: an instruction for the model, over the current five and the
+    // games on offer. Nothing is saved; the editor shows the result.
+    if (!env.OPENAI_API_KEY) return json({ error: "No model key on this Worker." }, 400, corsHeaders);
+    const prompt = String(body.prompt || "").trim().slice(0, 500);
+    if (!prompt) return json({ error: "Say what to change." }, 400, corsHeaders);
+    const games = Array.isArray(body.games) ? body.games.slice(0, 40) : [];
+    const res = await openaiChat(env, "lightning-edit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: env.OPENAI_MODEL || "gpt-4o-mini", temperature: 0.2, response_format: { type: "json_object" },
+        messages: [{ role: "system", content: lightningEditPrompt() }, { role: "user", content: JSON.stringify({ instruction: prompt, current: (body.bets || []).map((b) => ({ eventId: b?.game?.eventId, kind: b?.kind, spread: b?.spread ?? null, favorite: b?.favorite ?? null, total: b?.total ?? null })), games }).slice(0, 12000) }],
+      }),
+    });
+    if (!res.ok) return json({ error: `The model did not answer (${res.status}).` }, 502, corsHeaders);
+    let answer; try { answer = JSON.parse((await res.json())?.choices?.[0]?.message?.content || "{}"); } catch { return json({ error: "The model's answer did not read." }, 502, corsHeaders); }
+    const back = betsFromModel(answer, games);
+    if (back.error) return json({ error: back.error }, 400, corsHeaders);
+    for (const b of back.bets) { const c = cleanBet(b); if (c.error) return json({ error: `The edit made a bet that does not check out: ${c.error}` }, 400, corsHeaders); }
+    return json({ ok: true, bets: back.bets, note: back.note }, 200, noStore);
+  }
+
+  // Finals from whichever phone sees each late game end. Once every bet
+  // and the tiebreaker are settled the night goes into the season record.
+  if (action === "finals") {
+    if (!night || String(body.nightId) !== String(night.id)) return json({ error: "That Lightning night is gone." }, 404, corsHeaders);
+    const clean = cleanLightningFinals(night, body.finals, night.finals, now, admin);
+    if (clean.error) return json({ error: clean.error }, 400, corsHeaders);
+    const finals = { ...(night.finals || {}), ...clean.finals };
+    if (Object.keys(clean.finals).length) await env.LIFTR_KV.put(lightningKey(week), JSON.stringify({ ...night, finals }), keep);
+    const rec = lightningHistoryRecord(night, await lightningEntries(env, night), finals);
+    if (rec) {
+      const hist = (await env.LIFTR_KV.get(LIGHTNING_HISTORY_KEY, "json")) || {};
+      if (JSON.stringify(hist[week]) !== JSON.stringify(rec)) { hist[week] = rec; await env.LIFTR_KV.put(LIGHTNING_HISTORY_KEY, JSON.stringify(hist)); }
+    }
+    return json({ ok: true, stored: Object.keys(clean.finals).length, recorded: !!rec }, 200, noStore);
+  }
+
+  if (action !== "join" && action !== "decline") return json({ error: "Unknown action" }, 400, corsHeaders);
+  const manager = body?.manager;
+  if (!PICKS_MANAGERS.includes(manager)) return json({ error: "Invalid manager" }, 400, corsHeaders);
+  if ((await authMode(env)) === "on" && (await tokenOwner(env, body?.token)) !== manager) return json({ error: `Sign in as ${manager} first.`, needsLogin: true }, 401, corsHeaders);
+  const k = night ? lightningEntryKey(week, night.id, manager) : null;
+  let done;
+  if (action === "join") {
+    if (!night || night.status !== "live") return json({ error: "Lightning is not on right now." }, 404, corsHeaders);
+    const clean = cleanAnswers(night, body.picks, body.tb);
+    if (clean.error) return json({ error: clean.error }, 400, corsHeaders);
+    done = joinNight(night, await env.LIFTR_KV.get(k, "json"), clean.picks, clean.tb, now);
+  } else done = declineNight(night, now);
+  if (done.error) return json({ error: done.error }, 409, corsHeaders);
+  await env.LIFTR_KV.put(k, JSON.stringify(done.entry), keep);
+  const entries = await lightningEntries(env, night);
+  entries[manager] = done.entry; // KV can lag a write, so this answer is certain
+  return json({ ok: true, night: viewNight(night, entries, night.finals, now, { all: false, me: manager }) }, 200, noStore);
+}
+
 async function sideEntries(env, pot) {
   const rows = await Promise.all(PICKS_MANAGERS.map(async (m) => [m, await env.LIFTR_KV.get(entryKey(pot.week, pot.id, m), "json")]));
   return Object.fromEntries(rows.filter(([, e]) => e));
