@@ -10,6 +10,7 @@ test("week ask: the model's reading is checked against the week", () => {
   const r = parseWeekAsk(JSON.stringify({ intent: "chance", who: "jake", conditions: [{ game: 2, team: "Michigan", mode: "SU" }, { game: 9, team: "Nobody", mode: "SU" }, { game: 3, team: "LSU Tigers", mode: "ATS" }] }), games, members, "Curt");
   assert.deepEqual(r, { intent: "chance", who: "Jake", conditions: [{ game: "2", team: "Michigan Wolverines", mode: "SU" }, { game: "3", team: "LSU Tigers", mode: "ATS" }] });
   assert.equal(parseWeekAsk("not json", games, members, "Curt").intent, "unknown");
+  assert.equal(parseWeekAsk(JSON.stringify({ intent: "field", who: null, conditions: [{ game: "2", team: "Indiana", mode: "ATS" }] }), games, members, "Curt").intent, "field");
   assert.equal(parseWeekAsk(JSON.stringify({ intent: "hack", who: "Andrew" }), games, members, "Curt").who, "Curt");
 });
 
