@@ -8407,3 +8407,9 @@ i.lk.nm-lk, .rp-chip i.lk.nm-lk { width: 13px; height: 13px; top: -6px; left: -5
 .pick-cell i.lk.pick-lk { width: 13px; height: 13px; top: 1px; right: 1px; }
 .lks-st i.lk { width: 15px; height: 15px; }
 i.lk.rank-lk { vertical-align: middle; position: relative; top: -1px; }
+
+/* Player card: the lock sits in the pick card's top right corner instead
+   of its own line, so a lock card is the same height as the rest. */
+.rd-pickcard.lk { position: relative; }
+.rd-pickcard.lk .rd-pickteam { padding-right: 16px; }
+i.lk.rd-lk { position: absolute; top: 5px; right: 6px; width: 14px; height: 14px; }

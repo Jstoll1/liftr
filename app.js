@@ -5195,7 +5195,7 @@ function playerBreakdownHtml(name, state, results, live) {
       const terms = pick.mode === "ATS" ? `${pick.team === game.favorite ? "-" : "+"}${game.spread}` : "SU";
       const mode = `<span class="rd-mode ${pick.mode === "ATS" ? "ats" : "su"}">${terms}<span class="rd-mode-pt">${worth}PT</span></span>`;
       const lk = pick.lock && lockRule();
-      pickHtml = `<span class="rd-pickcard${lk ? " lk" : ""}">${lk ? `<span class="rd-lock">🔒 LOCK</span>` : ""}<span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}${pickTimeLabel(pick) ? `<span class="rd-when">${pickTimeLabel(pick)}</span>` : ""}</span></span>`;
+      pickHtml = `<span class="rd-pickcard${lk ? " lk" : ""}">${lk ? lkI(lockState(game, pick), "rd-lk", game, pick) : ""}<span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}${pickTimeLabel(pick) ? `<span class="rd-when">${pickTimeLabel(pick)}</span>` : ""}</span></span>`;
       const pts = scorePick(game, pick, results[game.id]);
       if (pts !== null) {
         banked += pts;
