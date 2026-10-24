@@ -168,6 +168,32 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) hidde
   };
 })();
 
+// One answer for the same Worker read asked twice at once. Opening the app
+// asked for the same picks three times and the avatars twice; a read made
+// within three seconds of an identical one (the ?t= stamp aside) shares
+// the first one's answer. Reads only; anything sent is always sent, and
+// clears the shared answers so a read after a save is fresh.
+(() => {
+  const inner = window.fetch?.bind(window);
+  if (!inner) return;
+  const recent = new Map();
+  window.fetch = (input, init) => {
+    const url = typeof input === "string" ? input : input?.url || "";
+    const method = String(init?.method || (typeof input === "object" && input?.method) || "GET").toUpperCase();
+    if (typeof WORKER_URL === "undefined" || !url.startsWith(WORKER_URL)) return inner(input, init);
+    // A write (a saved pick, a vote) makes every shared answer stale.
+    if (method !== "GET") { recent.clear(); return inner(input, init); }
+    const key = url.replace(/([?&])t=\d+(&|$)/, (m, a, b) => (b ? a : "")).replace(/[?&]$/, "");
+    const now = Date.now(), hit = recent.get(key);
+    if (hit && now - hit.at < 3000) return hit.p.then((r) => r.clone());
+    const p = inner(input, init);
+    recent.set(key, { at: now, p });
+    p.catch(() => recent.delete(key));
+    if (recent.size > 60) for (const [k, v] of recent) if (now - v.at > 3000) recent.delete(k);
+    return p.then((r) => r.clone());
+  };
+})();
+
 const STORAGE_KEY_BASE = "brochiefs_picks_v1";
 // Local picks are namespaced per week from week 2 on, so a device holding
 // last week's card cannot leak it into the new one.
