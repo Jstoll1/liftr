@@ -812,6 +812,11 @@ html, body { overflow-x: hidden; }
   .afr-r.fixed .afr-t, .afr-r.fixed .afr-d { opacity: .45; }
   .afr-r.fixed .afr-d { text-decoration: line-through; }
   .afr-d i.afr-fx { margin-left: 6px; color: var(--afr-g); opacity: 1; display: inline-block; }
+  .afr-r.chat-r { grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; }
+  .chat-r .afr-d { display: flex; flex-direction: column; gap: 2px; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+  .chat-lq { font-weight: 700; color: var(--text); }
+  .chat-la { opacity: .85; white-space: pre-wrap; }
+  .chat-r .afr-d i { opacity: .55; font-style: normal; font-size: 11px; }
   .afr-more { display: block; margin: 2px 0 6px; padding: 0; border: 0; background: none; color: inherit; opacity: .6; font: inherit; font-size: 11px; cursor: pointer; text-decoration: underline; }
 .afr-none { margin: 4px 0 2px; font-size: 13px; opacity: .8; }
   .joins .ns-h b { color: #5df2ff; }
@@ -1198,6 +1203,7 @@ html, body { overflow-x: hidden; }
     if (!loadJoins.t || Date.now() - loadJoins.t > 60000) { loadJoins.t = Date.now(); loadJoins(); }
     if (!loadAdminFriction.t || Date.now() - loadAdminFriction.t > 60000) { loadAdminFriction.t = Date.now(); loadAdminFriction(); }
     if (!loadOps.t || Date.now() - loadOps.t > 60000) { loadOps.t = Date.now(); loadOps(); }
+    if (LEAGUE !== "nfl" && (!loadChats.t || Date.now() - loadChats.t > 60000)) { loadChats.t = Date.now(); loadChats(); }
     try {
       const wantWeek = st.range === "7d" && (full || !st.wk || Date.now() - st.wk.at > 60000);
       const res = await fetch(`${WORKER}/presence?${auth()}${full ? "&seen=1" : ""}${wantWeek ? "&days=7" : ""}&t=${Date.now()}`, { cache: "no-store" });
@@ -1488,6 +1494,17 @@ html, body { overflow-x: hidden; }
     };
     // Health: Worker failures, failed or slow ESPN and Worker calls, slow
     // loads and script errors, from the Worker itself and from phones.
+    // Ask the week: every finished answer, grouped by chat, newest first.
+    const chatPanel = () => {
+      if (!st.chats) return "";
+      const rows = st.chats;
+      const day = rows.filter((r) => Date.now() - r.at < 86400000);
+      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-chattoggle="1" aria-expanded="${!!st.chatOpen}"><span class="afr-car">${st.chatOpen ? "▾" : "▸"}</span><b>&gt; ask</b><small>${day.length ? `${day.length} q · ${new Set(day.map((r) => r.asker)).size} ppl · 24h` : "none · 24h"}</small></button>${st.chatOpen && rows.length ? `<button type="button" class="afr-cp" data-chatcopy="1">${st.copied === "chat" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
+      if (!st.chatOpen) return `<section class="afr chat shut">${head}</section>`;
+      const groups = [];
+      for (const r of rows) { const k = r.sid || r.id; let g = groups.find((x) => x.k === k); if (!g) groups.push(g = { k, rows: [] }); g.rows.push(r); }
+      return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; return `<div class="afr-day">${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div class="afr-r chat-r"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b><span class="chat-la">${esc(r.a)}</span>${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
+    };
     const opsPanel = () => {
       if (!st.ops) return "";
       const rows = [...st.ops].sort((x, y) => y.at - x.at);
@@ -1724,7 +1741,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}<div class="duo">${adminFriction()}${opsPanel()}</div>${feedHtml}${rail}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}<div class="duo">${adminFriction()}${opsPanel()}${chatPanel()}</div>${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
@@ -1879,6 +1896,14 @@ html, body { overflow-x: hidden; }
       try { const x = await fetch(`${WORKER}/ops?${auth()}`, { method: "POST", body: JSON.stringify({ action: "close", ids, closed }) }); const j = await x.json().catch(() => ({})); if (x.ok && Array.isArray(j.ops)) st.ops = j.ops; else await loadOps(); } catch { await loadOps(); }
       st.sig = ""; render(); return;
     }
+    if (b.dataset.chattoggle) { st.chatOpen = !st.chatOpen; store.set("brochiefs_live_chat_open", st.chatOpen ? "1" : ""); st.sig = ""; render(); return; }
+    if (b.dataset.chatcopy || b.dataset.chatone) {
+      const rows = b.dataset.chatone ? (st.chats || []).filter((x) => x.id === b.dataset.chatone) : st.chats || [];
+      if (!rows.length || !(await copyText(chatLog(rows)))) return;
+      st.copied = b.dataset.chatone ? `chat:${b.dataset.chatone}` : "chat"; st.sig = ""; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.sig = ""; render(); }, 1600);
+      return;
+    }
     if (b.dataset.opscopy || b.dataset.opsone) {
       const rows = b.dataset.opsone ? (st.ops || []).filter((x) => `${x.at}|${x.k}` === b.dataset.opsone) : st.ops || [];
       const text = b.dataset.opsone ? opsLog(rows).split("\n").slice(1).join("\n") : opsLog(rows);
@@ -2003,6 +2028,12 @@ html, body { overflow-x: hidden; }
   st.afrOpen = store.get("brochiefs_live_afr_open") === "1";
   st.csOpen = store.get("brochiefs_live_cs_open") === "1";
   st.opsOpen = store.get("brochiefs_live_ops_open") === "1";
+  st.chatOpen = store.get("brochiefs_live_chat_open") === "1";
+  // A chat as plain text for pasting: when, who, build, Q, A, each tool call.
+  const chatLog = (rows) => rows.map((c) => `${new Date(c.at).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · ${c.asker || "not signed in"}${c.build ? ` · build ${c.build}` : ""}\nQ: ${c.q}\nA: ${c.a}${(c.tools || []).map((t) => `\n   tool ${t.name}(${t.args}) -> ${t.out}`).join("")}`).join("\n\n");
+  async function loadChats() {
+    try { const x = await fetch(`${WORKER}/week-chat?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.chats = Array.isArray(j.chats) ? j.chats : []; st.sig = ""; render(); } } catch {}
+  }
   async function loadOps() {
     try { const x = await fetch(`${WORKER}/ops?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.ops = Array.isArray(j.ops) ? j.ops : []; st.sig = ""; render(); } } catch {}
   }

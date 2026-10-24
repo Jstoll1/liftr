@@ -151,7 +151,7 @@ const app = {
       return handleLightning(request, env, corsHeaders, url);
     }
     if (url.pathname === "/week-chat") {
-      return handleWeekChat(request, env, corsHeaders);
+      return handleWeekChat(request, env, corsHeaders, url);
     }
     if (url.pathname === "/week-ask") {
       return handleWeekAsk(request, env, corsHeaders);
@@ -4348,7 +4348,21 @@ async function handleWeekAsk(request, env, corsHeaders) {
 //   -> { message } : the model's next turn, either a reply (content) or tool
 //      calls for the phone to run and send back in messages.
 // 40 new questions an hour per address (tool round trips are free).
-async function handleWeekChat(request, env, corsHeaders) {
+// Finished answers are kept 30 days for the live page (admin only): the
+// question, every tool call with what it returned, and the reply. Recorded
+// here, from the conversation the Worker relayed, so a phone cannot write
+// to it directly.
+const WCHAT_LOG = "wchat:";
+async function weekChatLogRead(env) {
+  const rows = await logList(env, WCHAT_LOG, 150);
+  const full = await Promise.all(rows.map(async (r) => { try { const v = await env.LIFTR_KV.get(r.id, "json"); return v ? { ...v, id: r.id } : null; } catch { return null; } }));
+  return full.filter(Boolean).sort((a, b) => b.at - a.at);
+}
+async function handleWeekChat(request, env, corsHeaders, url = new URL(request.url)) {
+  if (request.method === "GET") {
+    if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+    return json({ chats: env.LIFTR_KV ? await weekChatLogRead(env) : [] }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
   const members = (Array.isArray(body?.context?.members) ? body.context.members : []).filter((m) => typeof m === "string" && PICKS_MANAGERS.includes(m));
@@ -4377,5 +4391,17 @@ async function handleWeekChat(request, env, corsHeaders) {
   const data = await res.json().catch(() => ({}));
   const m = data?.choices?.[0]?.message || {};
   const calls = (m.tool_calls || []).filter((c) => WEEK_CHAT_TOOLS.some((t) => t.function.name === c.function?.name)).map((c) => ({ id: c.id, type: "function", function: { name: c.function.name, arguments: c.function.arguments || "{}" } }));
+  // A reply (no more tool calls) ends a question: keep it for the live page.
+  if (!calls.length && env.LIFTR_KV) {
+    let u = messages.length - 1; while (u > 0 && messages[u].role !== "user") u--;
+    const after = messages.slice(u + 1), outs = new Map(after.filter((x) => x.role === "tool").map((x) => [x.tool_call_id, x.content]));
+    const tools = after.filter((x) => x.role === "assistant" && x.tool_calls).flatMap((x) => x.tool_calls.map((c) => ({ name: c.function.name, args: String(c.function.arguments || "").slice(0, 300), out: String(outs.get(c.id) || "").slice(0, 1500) })));
+    const at = Date.now(), sid = String(body?.sid || "").replace(/[^a-z0-9]/gi, "").slice(0, 16) || null;
+    const entry = { at, asker, sid, build: String(body?.build || "").replace(/\D/g, "").slice(0, 14) || null, q: String(messages[u]?.content || "").slice(0, 500), a: String(m.content || "").slice(0, 2000), tools, turn: messages.filter((x) => x.role === "user").length };
+    try {
+      const key = logKey(WCHAT_LOG, at);
+      await env.LIFTR_KV.put(key, JSON.stringify(entry), { expirationTtl: 30 * 86400, metadata: { at, asker, sid } });
+    } catch {}
+  }
   return json({ message: { role: "assistant", content: m.content || null, ...(calls.length ? { tool_calls: calls } : {}) } }, 200, corsHeaders);
 }

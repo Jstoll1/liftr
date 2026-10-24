@@ -202,6 +202,8 @@
   // The whole conversation as the assistant sees it (user, assistant and
   // tool turns); log holds what is shown.
   const convo = [];
+  // One id per chat on this page load, so Live can group a conversation.
+  const SID = Math.random().toString(36).slice(2, 10);
   function context() {
     const f = fins();
     return { asker: me(), members: MANAGERS, games: GAMES.map((g) => { const l = latestLive[g.id], fin = f[g.id]; const sc = fin || (l?.state === "in" ? l : null); return { id: g.id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, favorite: g.favorite, spread: g.spread, status: fin ? "final" : l?.state === "in" ? `live ${l.detail || ""}`.trim() : `not started (${g.kickoffLabel || ""})`, score: sc ? `${g.awayShort} ${sc.awayScore}, ${g.homeShort} ${sc.homeScore}` : "" }; }) };
@@ -212,7 +214,7 @@
     convo.push({ role: "user", content: q });
     try {
       for (let round = 0; round < 5; round++) {
-        const r = await fetch(`${WORKER_URL}/week-chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: convo.slice(-24), context: context() }) });
+        const r = await fetch(`${WORKER_URL}/week-chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: convo.slice(-24), context: context(), sid: SID, build: document.querySelector('meta[name="build"]')?.content || "" }) });
         const j = await r.json().catch(() => ({}));
         if (!r.ok || !j.message) { item.a = j.error || "Couldn't reach the league just now. Try again."; convo.pop(); break; }
         convo.push(j.message);
