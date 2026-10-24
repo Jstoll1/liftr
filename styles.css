@@ -8268,4 +8268,7 @@ button.lt-rc { cursor: pointer; }
 
 /* A missed lock, final: a still picture of a smashed padlock. */
 .rank-lk.smash { display: inline-flex; align-items: center; vertical-align: -2px; line-height: 1; padding: 1px 3px; }
-.rank-lk.smash svg { display: block; }
+.rank-lk.smash { border: 0; background: none; padding: 0; }
+.lk-smashed { display: block; width: 16px; height: 16px; }
+.pick-lk.smash .lk-smashed { width: 14px; height: 14px; }
+.pick-cell .pick-lk.smash { background: none; padding: 0; }

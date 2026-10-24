@@ -2805,7 +2805,7 @@ function rankLockHtml(row) {
   return `<i class="rank-lk${st}${fin ? " fin" : ""}${smashed ? " smash" : ""}" title="Lock${smashed ? " smashed" : ""}: ${escapeCd(lockPickText(g, pk))}">${smashed ? SMASHED_LOCK : "🔒"}</i>`;
 }
 // The smashed padlock: shackle snapped off, body crushed and cracked.
-const SMASHED_LOCK = `<svg viewBox="0 0 24 20" width="15" height="12" aria-hidden="true"><path d="M5.5 9.5V6.8a4.6 4.6 0 0 1 7.6-3.5" fill="none" stroke="#c9a227" stroke-width="2.2" stroke-linecap="round"/><path d="M16.2 4.2l2.6-2.4M18.4 6.6l3-.6" stroke="#c9a227" stroke-width="1.6" stroke-linecap="round"/><path d="M2.6 11.2l15.8-1.6 1.6 7.6-16.4 1.6z" fill="#e0b52e"/><path d="M2.6 11.2l15.8-1.6 1.6 7.6-16.4 1.6z" fill="#000" opacity=".18"/><path d="M10.6 10.3l-1.5 2.6 2.3 1.4-2 4.4" fill="none" stroke="#2a0f1c" stroke-width="1.5" stroke-linejoin="bevel"/><circle cx="14.6" cy="13.6" r="1.2" fill="#5a3b08"/></svg>`;
+const SMASHED_LOCK = `<img class="lk-smashed" src="assets/lock-smashed.png" alt="Lock missed" width="16" height="16">`;
 function lockPickText(g, pk) {
   const short = pk.team === g.home ? g.homeShort : pk.team === g.away ? g.awayShort : pk.team;
   return pk.mode === "SU" ? `${short} to win` : `${short} ${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
@@ -4472,7 +4472,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
       const pill = pts === null ? "" : pushed ? `<span class="pick-pill push">P</span>` : pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
       const under = pts === null ? spreadTag : pill;
       const lkCell = pick.lock && lockRule();
-      return `<td class="pick-cell ${cls}${lkCell ? " lk" : ""}" data-cellgame="${game.id}" title="${lkCell ? "LOCK · " : ""}${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}">${lkCell ? `<i class="pick-lk">🔒</i>` : ""}<span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
+      return `<td class="pick-cell ${cls}${lkCell ? " lk" : ""}" data-cellgame="${game.id}" title="${lkCell ? "LOCK · " : ""}${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}">${lkCell ? `<i class="pick-lk${pts !== null && pts <= 0 && !pushed ? " smash" : ""}">${pts !== null && pts <= 0 && !pushed ? SMASHED_LOCK : "🔒"}</i>` : ""}<span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
     }).join("");
 
     // How far off, not what they said. A column of raw guesses is a column
