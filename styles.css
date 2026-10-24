@@ -8172,3 +8172,9 @@ button.plc-av { padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .plc-sb[data-statrank] { cursor: pointer; }
 .str-note { font-size: 11px; font-weight: 400; color: var(--text-meta); }
 .wks-r.lead .wks-n, .wks-r.lead .wks-s { color: var(--neon-yellow); }
+
+/* Game info: last five chips open their game, the preview expands. */
+.ins-fchip[data-fi], td[data-cellgame], .ins-pv.has-more { cursor: pointer; }
+.ins-pv .ins-pv-more { display: none; }
+.ins-pv.open .ins-pv-more { display: block; }
+.ins-pv-tg { display: inline-block; margin-top: 4px; font-size: 11px; color: var(--neon-cyan); }

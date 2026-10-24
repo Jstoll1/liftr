@@ -4396,7 +4396,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
       const pill = pts === null ? "" : pushed ? `<span class="pick-pill push">P</span>` : pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
       const under = pts === null ? spreadTag : pill;
       const lkCell = pick.lock && lockRule();
-      return `<td class="pick-cell ${cls}${lkCell ? " lk" : ""}" title="${lkCell ? "LOCK · " : ""}${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}">${lkCell ? `<i class="pick-lk">🔒</i>` : ""}<span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
+      return `<td class="pick-cell ${cls}${lkCell ? " lk" : ""}" data-cellgame="${game.id}" title="${lkCell ? "LOCK · " : ""}${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}">${lkCell ? `<i class="pick-lk">🔒</i>` : ""}<span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
     }).join("");
 
     // How far off, not what they said. A column of raw guesses is a column
@@ -7336,6 +7336,18 @@ function openPastGame(g, side, e) {
   openInsights(id);
 }
 const insLive = (id) => latestLive[id] ?? sideLive[id];
+// Taps inside the game info sheet and the All Picks table: a last five
+// chip opens that game's gamecast, the preview expands, a pick's logo
+// opens its game.
+let insForm = null;
+document.addEventListener("click", (e) => {
+  const fc = e.target.closest?.(".ins-fchip[data-fi]");
+  if (fc && insForm) { const ev = insForm.form?.[fc.dataset.fside]?.[Number(fc.dataset.fi)]; if (ev) return openPastGame(insForm.game, fc.dataset.fside, ev); }
+  const pv = e.target.closest?.(".ins-pv.has-more");
+  if (pv) { const open = pv.classList.toggle("open"); pv.setAttribute("aria-expanded", String(open)); const t = pv.querySelector(".ins-pv-tg"); if (t) t.textContent = open ? "Show less ▴" : "Read more ▾"; noteUse("preview-more"); return; }
+  const cell = e.target.closest?.("td[data-cellgame]");
+  if (cell) { const id = Number(cell.dataset.cellgame); if (id) openInsights(id); }
+});
 async function openInsights(gameId) {
   const modal = document.getElementById("insights-modal");
   const game = GAMES.find((g) => g.id === gameId) || sideGuestGame(gameId);
@@ -8064,7 +8076,8 @@ async function openInsights(gameId) {
     const headline = aiPv?.headline || pv.headline;
     const lead = aiPv?.text ? [aiPv.text] : pv.paras.slice(0, 2);
     html += `<div class="ins-h">PREVIEW</div>${headline ? `<div class="ins-pv-h">${esc(headline)}</div>` : ""}`;
-    html += `<div class="ins-pv">${lead.map((t) => `<p>${esc(t)}</p>`).join("")}${!aiPv?.text && pend.ai ? `<p class="pv-wait">Writing a sharper preview…</p>` : ""}</div>`;
+    const more = aiPv?.text ? [] : pv.paras.slice(2);
+    html += `<div class="ins-pv${more.length ? " has-more" : ""}"${more.length ? ' role="button" aria-expanded="false"' : ""}>${lead.map((t) => `<p>${esc(t)}</p>`).join("")}${more.length ? `<div class="ins-pv-more">${more.map((t) => `<p>${esc(t)}</p>`).join("")}</div><span class="ins-pv-tg">Read more ▾</span>` : ""}${!aiPv?.text && pend.ai ? `<p class="pv-wait">Writing a sharper preview…</p>` : ""}</div>`;
   }
 
   // 3. Insights: the numbers, then the written brief.
@@ -8106,9 +8119,10 @@ async function openInsights(gameId) {
   // Last five: opponent logos, result and score; a small @ for road games.
   const form = direct?.lastFive;
   if (form && (form.away.length || form.home.length)) {
-    const chip = (e) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}" title="${esc(`${e.result || ""} ${e.at === "@" ? "at" : "vs"} ${e.oppName || e.opp || ""} ${e.score || ""}`)}">${e.at === "@" ? `<u>@</u>` : ""}${e.oppId || e.oppLogo ? `<img src="${e.oppId ? logoUrl(e.oppId) : esc(e.oppLogo)}" alt="${esc(e.opp || "")}" loading="lazy">` : `<i>${esc(e.opp || "")}</i>`}<b>${esc(e.result || "·")}</b><i>${esc(e.score || "")}</i></span>`;
-    const row = (teamId, list) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}</span><span class="ins-form-r">${list.map(chip).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
-    html += `<div class="ins-h">LAST FIVE</div>${row(game.awayId, form.away)}${row(game.homeId, form.home)}`;
+    insForm = { game, form };
+    const chip = (e, side, i) => `<span class="ins-fchip ${e.result === "W" ? "w" : e.result === "L" ? "l" : ""}"${e.id ? ` data-fside="${side}" data-fi="${i}" role="button"` : ""} title="${esc(`${e.result || ""} ${e.at === "@" ? "at" : "vs"} ${e.oppName || e.opp || ""} ${e.score || ""}`)}">${e.at === "@" ? `<u>@</u>` : ""}${e.oppId || e.oppLogo ? `<img src="${e.oppId ? logoUrl(e.oppId) : esc(e.oppLogo)}" alt="${esc(e.opp || "")}" loading="lazy">` : `<i>${esc(e.opp || "")}</i>`}<b>${esc(e.result || "·")}</b><i>${esc(e.score || "")}</i></span>`;
+    const row = (teamId, list, side) => `<div class="ins-form"><span class="ins-form-t">${lg(teamId)}</span><span class="ins-form-r">${list.map((e, i) => chip(e, side, i)).join("") || `<span class="ins-det">No games yet.</span>`}</span></div>`;
+    html += `<div class="ins-h">LAST FIVE</div>${row(game.awayId, form.away, "away")}${row(game.homeId, form.home, "home")}`;
   }
   // Series history.
   if (direct?.series?.length) {
