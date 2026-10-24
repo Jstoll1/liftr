@@ -8423,3 +8423,24 @@ i.lk.rd-lk { position: absolute; top: 5px; right: 6px; width: 14px; height: 14px
 .rd-row.go:active { background: rgba(255, 255, 255, .05); }
 .rank-detail { cursor: default; }
 .rank-detail .rd-row.go { cursor: pointer; }
+
+/* Locks: back to the standard 🔒. No pictures, rings or tiles; a final
+   hit gets a small green ✓, a final miss a small pink ✗ and a dimmed lock. */
+i.lk, i.lk.lk-pend, i.lk.lk-up, i.lk.lk-dn, i.lk.lk-hit, i.lk.lk-miss,
+.pick-cell i.lk.lk-pend, .pick-cell i.lk.lk-up, .pick-cell i.lk.lk-dn, .pick-cell i.lk.lk-hit, .pick-cell i.lk.lk-miss,
+i.lk.nm-lk.lk-pend, i.lk.nm-lk.lk-up, i.lk.nm-lk.lk-dn, i.lk.nm-lk.lk-hit, i.lk.nm-lk.lk-miss { background: none; filter: none; font-size: 11px; width: auto; height: auto; line-height: 1; border-radius: 0; }
+i.lk::before, i.lk.lk-up::before, i.lk.lk-dn::before { content: none; }
+i.lk.lk-hit::after, i.lk.lk-miss::after { position: static; display: inline; inset: auto; width: auto; height: auto; background: none; border-radius: 0; text-shadow: none; margin-left: 1px; font: 900 9px/1 system-ui, sans-serif; vertical-align: 1px; }
+i.lk.lk-hit::after { content: "✓"; color: var(--neon-green, #39ff88); }
+i.lk.lk-miss::after { content: "✗"; color: var(--neon-pink, #ff2079); }
+i.lk.lk-miss { opacity: .55; }
+i.lk.rank-lk { display: inline-block; margin-left: 5px; top: 0; vertical-align: 1px; font-size: 11px; }
+i.lk.nm-lk, .rp-chip i.lk.nm-lk { top: -7px; left: -5px; font-size: 9px; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9)); }
+.pick-cell i.lk.pick-lk { top: 1px; right: 2px; font-size: 9px; }
+i.lk.rd-lk { top: 5px; right: 6px; font-size: 11px; }
+.lks-st i.lk { font-size: 11px; margin-right: 3px; }
+/* your scoreboard card: the gold circle it had */
+.scorebug i.lk.bug-lk, .scorebug i.lk.bug-lk.lk-pend, .scorebug i.lk.bug-lk.lk-up, .scorebug i.lk.bug-lk.lk-dn, .scorebug i.lk.bug-lk.lk-hit, .scorebug i.lk.bug-lk.lk-miss { position: absolute; top: -9px; right: -9px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #ffd23f; box-shadow: 0 0 8px rgba(255, 210, 63, .6); font-size: 12px; filter: none; opacity: 1; }
+.scorebug i.lk.bug-lk.lk-hit::after, .scorebug i.lk.bug-lk.lk-miss::after { position: absolute; top: -4px; right: -5px; display: grid; place-items: center; width: 12px; height: 12px; border-radius: 50%; font-size: 8px; color: #0a0014; content: "✓"; background: var(--neon-green, #39ff88); margin: 0; }
+.scorebug i.lk.bug-lk.lk-miss::after { content: "✗"; background: var(--neon-pink, #ff2079); }
+i.lk.nm-lk, i.lk.pick-lk, i.lk.rd-lk, .lks-st i.lk { display: inline-flex; align-items: center; white-space: nowrap; }
