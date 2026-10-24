@@ -8232,7 +8232,8 @@ button.plc-av { padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .ins-pv-tg { display: inline-block; margin-top: 4px; font-size: 11px; color: var(--neon-cyan); }
 
 /* Game info: the line as one sentence; expert picks and last five fold. */
-.ins-line1 { margin: 6px 0 2px; font-size: 13px; line-height: 1.5; color: var(--text-meta); }
+.ins-h.ins-line-h { justify-content: flex-start; gap: 10px; }
+.ins-line1 { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 12px; letter-spacing: 0; text-transform: none; line-height: 1.4; color: var(--text-meta); }
 .ins-line1 b { color: #fff; font-weight: 700; }
 .ins-line1 em { font-style: normal; font-weight: 700; }
 .ins-line1 em.good { color: var(--neon-green); } .ins-line1 em.bad { color: var(--neon-pink); }
