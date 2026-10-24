@@ -8237,8 +8237,11 @@ button.plc-av { padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .ins-line1 b { color: #fff; font-weight: 700; }
 .ins-line1 em { font-style: normal; font-weight: 700; }
 .ins-line1 em.good { color: var(--neon-green); } .ins-line1 em.bad { color: var(--neon-pink); }
-.ins-fold > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 10px; }
+/* Folded headers read like the LINE header: label on one line, then a
+   short summary in the body font, the caret at the end of the rule. */
+.ins-fold > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; justify-content: flex-start; gap: 10px; }
 .ins-fold > summary::-webkit-details-marker { display: none; }
-.ins-fold-sum { font-family: inherit; font-size: 11px; letter-spacing: 0; color: var(--text-meta); text-transform: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ins-fold-car { margin-left: auto; font-style: normal; color: var(--text-dim); transition: transform .15s ease; }
+.ins-fold > summary { white-space: nowrap; }
+.ins-fold-sum { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; line-height: 1.4; color: var(--text-meta); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-fold-car { margin-left: auto; font-style: normal; font-size: 11px; color: var(--text-meta); transition: transform .15s ease; }
 .ins-fold[open] .ins-fold-car { transform: rotate(180deg); }
