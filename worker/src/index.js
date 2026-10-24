@@ -1,3 +1,4 @@
+import { weekAskPrompt, parseWeekAsk } from "./weekask.js";
 import { openaiChat } from "./costs.js";
 import { runInsights, readInsights, parseOdds, gameSnapshot, gameNews, gamePreview, previewKey, appendLineSample, lineSampleAdded, linesKey, gameInjuries, gamePicks, extractPicks, pickArchiveKey } from "./insights.js";
 import { expertRecord } from "./experts.js";
@@ -148,6 +149,9 @@ const app = {
     }
     if (url.pathname === "/lightning") {
       return handleLightning(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/week-ask") {
+      return handleWeekAsk(request, env, corsHeaders);
     }
     if (url.pathname === "/side") {
       return handleSide(request, env, corsHeaders, url);
@@ -4301,4 +4305,37 @@ async function handleAdminFriction(request, env, corsHeaders, url) {
   const d = String(body.d || "").slice(0, 120), screen = String(body.screen || "").slice(0, 24);
   await logPut(env, "afr:", { at: Date.now(), k, d, screen }, 14);
   return json({ ok: true }, 200, corsHeaders);
+}
+
+// POST /week-ask { question, asker, members, games } -> { intent, who, conditions }
+// The model reads the question into game outcomes only; the phone does the
+// maths. 30 an hour per address.
+async function handleWeekAsk(request, env, corsHeaders) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
+  const question = String(body?.question || "").trim().slice(0, 300);
+  if (question.length < 3) return json({ error: "Ask a question" }, 400, corsHeaders);
+  const members = (Array.isArray(body?.members) ? body.members : []).filter((m) => typeof m === "string" && PICKS_MANAGERS.includes(m));
+  const games = (Array.isArray(body?.games) ? body.games : []).slice(0, 30).map((g) => ({ id: String(g?.id ?? ""), away: String(g?.away || "").slice(0, 60), home: String(g?.home || "").slice(0, 60), awayShort: String(g?.awayShort || "").slice(0, 30), homeShort: String(g?.homeShort || "").slice(0, 30), favorite: String(g?.favorite || "").slice(0, 60), spread: Number(g?.spread) || 0, status: String(g?.status || "").slice(0, 20) })).filter((g) => g.id && g.away && g.home);
+  const asker = members.includes(body?.asker) ? body.asker : null;
+  if (!games.length || !members.length) return json({ error: "No week to ask about" }, 400, corsHeaders);
+  if (!env.OPENAI_API_KEY) return json({ error: "Ask is not set up" }, 503, corsHeaders);
+  if (env.LIFTR_KV) {
+    const ip = request.headers.get("CF-Connecting-IP") || "anon";
+    const bucket = `wask-rl:${ip}:${Math.floor(Date.now() / 3600000)}`;
+    const used = Number((await env.LIFTR_KV.get(bucket)) || 0);
+    if (used >= 30) return json({ error: "That's a lot of questions. Try again in a bit." }, 429, corsHeaders);
+    await env.LIFTR_KV.put(bucket, String(used + 1), { expirationTtl: 3700 });
+  }
+  const res = await openaiChat(env, "week-ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model: env.OPENAI_MODEL || "gpt-4o-mini", temperature: 0, max_tokens: 300, response_format: { type: "json_object" },
+      messages: [{ role: "system", content: weekAskPrompt() }, { role: "user", content: JSON.stringify({ question, asker, members, games }) }],
+    }),
+  });
+  if (!res.ok) return json({ error: `Couldn't read that question (${res.status}). Try again.` }, 502, corsHeaders);
+  const data = await res.json().catch(() => ({}));
+  return json(parseWeekAsk(data?.choices?.[0]?.message?.content || "", games, members, asker), 200, corsHeaders);
 }
