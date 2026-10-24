@@ -6034,6 +6034,8 @@ function weekWinChances(cloudPicks, results, live) {
         const winner = p.mode === "SU" ? o.suWinner : o.atsWinner;
         const hit = !!(winner && winner === p.team);
         if (hit) score[i] += p.pts;
+        // A lock that misses costs its penalty (a push costs nothing).
+        else if (p.lock && winner && lockRule()?.miss < 0) score[i] += lockRule().miss;
         hitThis[i][k] = hit;
       }
     }
