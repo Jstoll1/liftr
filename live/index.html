@@ -1102,6 +1102,7 @@ html, body { overflow-x: hidden; }
     if (e.k === "pot-row") return ["Opened a pot row", e.d ? name(e.d) : ""];
     if (e.k === "history-season") return ["Opened a past season", e.d || ""];
     if (e.k === "player-card") return ["Opened a player card", e.d ? name(e.d) : ""];
+    if (e.k === "ins-tap") return ["Tapped in game info", e.d || ""];
     if (e.k === "rage") return ["⚠ Tapped the same spot over and over", e.d || ""];
     if (e.k === "dead-tap") return ["⚠ Tapped something that does nothing", e.d || ""];
     if (e.k === "quick-exit") return ["⚠ Opened then closed right away", SHEET[e.d] || e.d || ""];

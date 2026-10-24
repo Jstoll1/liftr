@@ -1579,8 +1579,23 @@ function gcStart(id) { gcStop(); gcOpen = { id, t: Date.now() }; }
 function gcStop() { if (!gcOpen) return; const k = `g${gcOpen.id}`; gcTime[k] = (gcTime[k] || 0) + (Date.now() - gcOpen.t); gcOpen = null; }
 (() => {
   const m = document.getElementById("insights-modal");
-  if (m && window.MutationObserver) new MutationObserver(() => { if (m.classList.contains("hidden")) gcStop(); }).observe(m, { attributes: true, attributeFilter: ["class"] });
+  // What people tap inside game info: the section and the control, for Live.
+  m?.addEventListener("click", (e) => {
+    const el = e.target.closest?.("button, a, summary, [role=button], [data-ins], label, select, input");
+    if (!el || !m.contains(el)) return;
+    const clean = (t) => String(t || "").replace(/\s+/g, " ").trim().slice(0, 32);
+    let sec = "";
+    for (let p = el; p && p !== m && !sec; p = p.parentElement) {
+      const h = [...p.children].find((c) => c !== el && !c.contains(el) && c.matches(".ins-h, .ins-sub-h, .ins-pv-h, summary, h2, h3"));
+      if (h) sec = clean(h.textContent);
+    }
+    const what = clean(el.getAttribute("aria-label") || el.getAttribute("title") || el.textContent) || el.className.split(" ")[0];
+    const d = sec && sec !== what ? `${sec} › ${what}` : what;
+    if (d && d !== insTap.last) { insTap.last = d; noteUse("ins-tap", d); }
+  }, true);
+ new MutationObserver(() => { if (m.classList.contains("hidden")) gcStop(); }).observe(m, { attributes: true, attributeFilter: ["class"] });
 })();
+const insTap = { last: "" };
 function endSession() {
   if (sessionStart == null) return;
   const start = sessionStart, dur = Date.now() - start;
@@ -7433,6 +7448,7 @@ document.addEventListener("click", (e) => {
   if (cell) { const id = Number(cell.dataset.cellgame); if (id) openInsights(id); }
 });
 async function openInsights(gameId) {
+  insTap.last = "";
   const modal = document.getElementById("insights-modal");
   const game = GAMES.find((g) => g.id === gameId) || sideGuestGame(gameId);
   if (!modal || !game) return;
