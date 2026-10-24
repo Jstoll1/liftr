@@ -2801,10 +2801,12 @@ function rankLockHtml(row) {
   const p = fin ? scorePick(g, pk, fin) : l && l.found && l.state === "in" && l.awayScore != null ? scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) : null;
   const st = p == null ? "" : p > 0 ? " up" : p < 0 || (fin && p === 0 && !(pk.mode === "ATS" && resultOutcome(g, fin)?.push)) ? " dn" : "";
   // A final, missed lock is a smashed padlock: one still picture.
-  const smashed = st === " dn" && fin;
-  return `<i class="rank-lk${st}${fin ? " fin" : ""}${smashed ? " smash" : ""}" title="Lock${smashed ? " smashed" : ""}: ${escapeCd(lockPickText(g, pk))}">${smashed ? SMASHED_LOCK : "🔒"}</i>`;
+  // Final: a hit is the glowing gold padlock, a miss the smashed one.
+  const smashed = st === " dn" && fin, hit = st === " up" && fin;
+  return `<i class="rank-lk${st}${fin ? " fin" : ""}${smashed || hit ? " smash" : ""}" title="Lock${smashed ? " smashed" : hit ? " hit" : ""}: ${escapeCd(lockPickText(g, pk))}">${smashed ? SMASHED_LOCK : hit ? HIT_LOCK : "🔒"}</i>`;
 }
 // The smashed padlock: shackle snapped off, body crushed and cracked.
+const HIT_LOCK = `<img class="lk-smashed" src="assets/lock-hit.png" alt="Lock hit" width="16" height="16">`;
 const SMASHED_LOCK = `<img class="lk-smashed" src="assets/lock-smashed.png" alt="Lock missed" width="16" height="16">`;
 function lockPickText(g, pk) {
   const short = pk.team === g.home ? g.homeShort : pk.team === g.away ? g.awayShort : pk.team;
@@ -4472,7 +4474,7 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
       const pill = pts === null ? "" : pushed ? `<span class="pick-pill push">P</span>` : pts > 0 ? `<span class="pick-pill ${ptsTier(pts)}">+${pts}</span>` : `<span class="pick-pill miss">✗</span>`;
       const under = pts === null ? spreadTag : pill;
       const lkCell = pick.lock && lockRule();
-      return `<td class="pick-cell ${cls}${lkCell ? " lk" : ""}" data-cellgame="${game.id}" title="${lkCell ? "LOCK · " : ""}${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}">${lkCell ? `<i class="pick-lk${pts !== null && pts <= 0 && !pushed ? " smash" : ""}">${pts !== null && pts <= 0 && !pushed ? SMASHED_LOCK : "🔒"}</i>` : ""}<span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
+      return `<td class="pick-cell ${cls}${lkCell ? " lk" : ""}" data-cellgame="${game.id}" title="${lkCell ? "LOCK · " : ""}${short} ${pick.mode}${pick.mode === "ATS" ? ` ${pick.team === game.favorite ? "-" : "+"}${game.spread}` : ""}${pts !== null ? ` · ${pts} pt` : ""}">${lkCell ? `<i class="pick-lk${pts !== null && !pushed ? " smash" : ""}">${pts !== null && !pushed ? (pts > 0 ? HIT_LOCK : SMASHED_LOCK) : "🔒"}</i>` : ""}<span class="pick-mark"><img class="pick-cell-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pick-cell-short',textContent:'${short}'}))" /></span>${under}</td>`;
     }).join("");
 
     // How far off, not what they said. A column of raw guesses is a column
