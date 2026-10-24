@@ -75,14 +75,37 @@
     return MANAGERS.filter((n) => n !== who && Object.values(all[n]?.picks || {}).some((p) => p?.hidden));
   }
 
+  // Who is asking: the signed-in player, or the one this device picked.
+  const me = () => currentManager || (typeof loadMe === "function" ? loadMe() : null) || null;
+
+  // Everyone at once: who is out and who is alive, with or without held games.
+  function fieldAnswer(r) {
+    const hidden = hiddenOthers(me());
+    if (hidden.length >= MANAGERS.length - 1) return "Picks are hidden until kickoff, so there's no race to work out yet.";
+    const memo = base(); if (!memo) return "The odds aren't loaded yet. Give the board a second and ask again.";
+    let odds = memo.out, ifs = "";
+    if (r.conditions.length) {
+      const c = condChances(r.conditions); if (!c) return "The odds aren't loaded yet. Give the board a second and ask again.";
+      if (c.impossible) return `${c.impossible} can't happen any more: that game is already final the other way.`;
+      odds = c; ifs = r.conditions.map(condText).join(" and ");
+    }
+    const rows = MANAGERS.map((n) => [n, odds[n] || 0]).sort((a, b) => b[1] - a[1]);
+    const out = rows.filter(([, p]) => p <= 0).map(([n]) => shown(n)), alive = rows.filter(([, p]) => p > 0);
+    const head = ifs ? `If ${ifs}: ` : "";
+    const outTxt = out.length ? `${out.join(", ")} ${out.length === 1 ? "is" : "are"} out.` : "Nobody is out.";
+    const aliveTxt = alive.length ? ` Still alive: ${alive.map(([n, p]) => `${shown(n)} ${pct(p)}`).join(", ")}.` : "";
+    return `${head}${outTxt}${aliveTxt}${hidden.length ? ` (${hidden.map(shown).join(", ")}'s picks are still hidden.)` : ""}`;
+  }
+
   function answer(r) {
-    const who = r.who;
+    if (r.intent === "field") return fieldAnswer(r);
+    const who = r.who || me();
     if (r.intent === "unknown") return "I can answer questions about this week's race: can someone still win, what they need, who can catch them, and \"if X wins\" versions of those.";
     if (!who) return "Who's asking? Pick yourself on the app first, or name someone (\"can Curt still win?\").";
     const hidden = hiddenOthers(who);
     if (hidden.length >= MANAGERS.length - 1) return "Everyone else's picks are hidden until kickoff, so there's no race to work out yet. Ask again once games start.";
     const memo = base(); if (!memo?.detail?.[who]) return "The odds aren't loaded yet. Give the board a second and ask again.";
-    const d = memo.detail[who], name = shown(who), you = who === currentManager;
+    const d = memo.detail[who], name = shown(who), you = who === me();
     const subj = you ? "you" : name, Subj = you ? "You" : name;
     const note = hidden.length ? ` (${hidden.map(shown).join(", ")}'s picks are still hidden, so they aren't counted.)` : "";
     if (r.intent === "chance") {
@@ -114,7 +137,7 @@
 
   function chips() {
     const live = GAMES.filter((g) => !computeLiveResults(latestLive)[g.id]).slice(0, 1)[0];
-    return [live ? `If ${live.homeShort} wins can I still win?` : null, "What do I need?", "Who can catch me?"].filter(Boolean);
+    return [live ? `If ${live.homeShort} wins can I still win?` : null, "What do I need?", live ? `If ${live.awayShort} covers who is out?` : "Who is out?"].filter(Boolean);
   }
 
   function sheet() {
@@ -141,7 +164,7 @@
     busy = true; const item = { q, a: null }; log.push(item); sheet();
     try {
       const games = GAMES.map((g) => ({ id: g.id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, favorite: g.favorite, spread: g.spread, status: computeLiveResults(latestLive)[g.id] ? "final" : latestLive[g.id]?.state === "in" ? "live" : "not started" }));
-      const r = await fetch(`${WORKER_URL}/week-ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, asker: currentManager || null, members: MANAGERS, games }) });
+      const r = await fetch(`${WORKER_URL}/week-ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, asker: me(), members: MANAGERS, games }) });
       const j = await r.json().catch(() => ({}));
       item.a = r.ok ? answer(j) : j.error || "Couldn't reach the league just now. Try again.";
     } catch { item.a = "Couldn't reach the league just now. Try again."; }
