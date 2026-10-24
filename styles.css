@@ -8473,3 +8473,6 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 .ask-fab b { font-size: 13px; }
 .ask-fab[hidden] { display: none; }
 @media (min-width: 900px) { html:not(.phone) .ask-fab { left: 106px; } }
+.ask-h { gap: 8px; }
+.ask-h b { margin-right: auto; }
+.ask-cp { padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(5, 217, 232, .45); background: none; color: var(--neon-cyan, #05d9e8); font-size: 12px; font-weight: 700; cursor: pointer; }

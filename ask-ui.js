@@ -11,7 +11,20 @@
   const short = (g, team) => (team === g.away ? g.awayShort : g.homeShort);
   const condText = (c) => { const g = GAMES.find((x) => String(x.id) === String(c.game)); if (!g) return ""; const fav = c.team === g.favorite; return c.mode === "ATS" ? `${short(g, c.team)} ${fav ? "−" : "+"}${g.spread} covers` : `${short(g, c.team)} wins`; };
   const log = [];
-  let busy = false;
+  let busy = false, copied = false;
+  // The chat as plain text, with who asked and the build, to paste to Claude.
+  function chatText() {
+    const v = document.querySelector('meta[name="build"]')?.content || "";
+    const head = `Brochiefs Ask the week · ${new Date().toLocaleString()} · ${me() || "nobody signed in"}${v ? ` · build ${v}` : ""}`;
+    return [head, ...log.map((x) => `Q: ${x.q}\nA: ${x.a ?? "(still working)"}${x.raw ? `\n   read as: ${JSON.stringify(x.raw)}` : ""}`)].join("\n\n");
+  }
+  async function copyChat() {
+    const text = chatText();
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch {}
+    if (!ok) { const t = document.createElement("textarea"); t.value = text; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;top:0;left:0;opacity:0"; document.body.appendChild(t); t.select(); t.setSelectionRange(0, text.length); try { ok = document.execCommand("copy"); } catch {} t.remove(); }
+    copied = ok; sheet(); setTimeout(() => { copied = false; if (document.getElementById("ask-sheet")) sheet(); }, 1600);
+  }
 
   // The win-chance runs as they stand (the board keeps them fresh).
   function base() {
@@ -193,12 +206,13 @@
       m = document.createElement("div"); m.id = "ask-sheet"; m.className = "ask"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Ask about this week");
       m.addEventListener("click", (e) => {
         if (e.target === m || e.target.closest(".ask-x")) { m.remove(); return; }
+        if (e.target.closest("[data-askcopy]")) { copyChat(); return; }
         const c = e.target.closest("[data-ask]"); if (c) send(c.dataset.ask);
       });
       m.addEventListener("submit", (e) => { e.preventDefault(); const i = m.querySelector("input"); send(i.value); });
       document.body.appendChild(m);
     }
-    m.innerHTML = `<div class="ask-card"><div class="ask-h"><b>💬 ASK THE WEEK</b><button type="button" class="ask-x" aria-label="Close">✕</button></div>
+    m.innerHTML = `<div class="ask-card"><div class="ask-h"><b>💬 ASK THE WEEK</b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy chat"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
       <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><p class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : esc(x.a)}</p>`).join("") : `<p class="ask-hint">Ask about this week's race. The odds come from the same runs as the WIN% column.</p>`}</div>
       <div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}">${esc(c)}</button>`).join("")}</div>
       <form class="ask-f"><input type="text" maxlength="200" placeholder="If Michigan wins can I still win?" ${busy ? "disabled" : ""} autocomplete="off"><button type="submit" ${busy ? "disabled" : ""}>Ask</button></form></div>`;
@@ -213,6 +227,7 @@
       const games = GAMES.map((g) => ({ id: g.id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, favorite: g.favorite, spread: g.spread, status: computeLiveResults(latestLive)[g.id] ? "final" : latestLive[g.id]?.state === "in" ? "live" : "not started" }));
       const r = await fetch(`${WORKER_URL}/week-ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, asker: me(), members: MANAGERS, games }) });
       const j = await r.json().catch(() => ({}));
+      item.raw = r.ok ? j : null;
       item.a = r.ok ? answer(j) : j.error || "Couldn't reach the league just now. Try again.";
     } catch { item.a = "Couldn't reach the league just now. Try again."; }
     busy = false; sheet();
