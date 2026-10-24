@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-// Ask the week (preview): "If Michigan wins, can I still win?"
-=======
 // Ask the week: "If Michigan wins, can I still win?"
->>>>>>> main
 // The Worker's model only reads the question into who and which game
 // outcomes it assumes. The numbers here come from the app's own win-chance
 // runs, replayed with those outcomes held, so nothing is made up.
@@ -155,20 +151,6 @@
   };
   function runTool(name, args) { try { return TOOLS[name] ? TOOLS[name](args || {}) : { error: `Unknown tool ${name}` }; } catch (e) { return { error: "Couldn't work that out." }; } }
 
-<<<<<<< HEAD
-  // Suggestions: a few from the usual questions, filled in with games still
-  // to be decided, shuffled each time the chat opens.
-  let chipSet = null;
-  function chips() {
-    if (chipSet) return chipSet;
-    const f = fins(), open = GAMES.filter((g) => !f[g.id]);
-    const g1 = open[0], g2 = open[1] || open[0];
-    const pool = [
-      "Can I still win this week?", "What do I need to win?", "Who can catch me?", "Who is eliminated?", "Who's the favourite right now?",
-      "What's my best possible score?", "Where's the tiebreaker at?",
-      g1 && `If ${g1.homeShort} wins can I still win?`, g1 && `If ${g1.awayShort} covers who is out?`, g2 && `Who picked ${g2.homeShort}?`,
-      g1 && g2 && g1 !== g2 && `If ${g1.homeShort} and ${g2.awayShort} win, what are my odds?`,
-=======
   // Suggestions: three from a pool written for the chat, filled in with
   // this week's leader, a rival, games still open and the locks; a fresh
   // three after every answer.
@@ -190,17 +172,13 @@
       g && `If ${g.homeShort} wins, can I still win?`, g && `Who's out if ${g.awayShort} covers?`, g && `Who picked ${g.homeShort}?`,
       g && g2 && `If ${g.homeShort} and ${g2.awayShort} both cover, what are my odds?`, g && `What happens to me if ${g.favorite === g.home ? g.homeShort : g.awayShort} doesn't cover?`,
       lockGame && `Who locked ${lockGame.awayShort} or ${lockGame.homeShort}?`, "Whose lock is in trouble right now?",
->>>>>>> main
     ].filter(Boolean);
     for (let i = pool.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [pool[i], pool[k]] = [pool[k], pool[i]]; }
     return (chipSet = pool.slice(0, 3));
   }
 
 
-<<<<<<< HEAD
-=======
 
->>>>>>> main
   function sheet() {
     let m = document.getElementById("ask-sheet");
     if (!m) {
@@ -214,11 +192,7 @@
       document.body.appendChild(m);
     }
     m.innerHTML = `<div class="ask-card"><div class="ask-h"><b>💬 ASK THE WEEK</b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy chat"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
-<<<<<<< HEAD
-      <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><p class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : esc(x.a)}</p>`).join("") : `<p class="ask-hint">Ask about this week's race. The odds come from the same runs as the WIN% column.</p>`}</div>
-=======
       <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><p class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : esc(x.a)}</p>`).join("") : `<p class="ask-hint">Ask anything about this week's race: odds, "what if" a game goes one way, who's out, who picked what, the tiebreaker. The numbers come from the same runs as the WIN% column.</p>`}</div>
->>>>>>> main
       <div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}">${esc(c)}</button>`).join("")}</div>
       <form class="ask-f"><input type="text" maxlength="200" placeholder="If Michigan wins can I still win?" ${busy ? "disabled" : ""} autocomplete="off"><button type="submit" ${busy ? "disabled" : ""}>Ask</button></form></div>`;
     const lg = m.querySelector(".ask-log"); lg.scrollTop = lg.scrollHeight;
@@ -255,11 +229,7 @@
       }
       if (item.a == null) item.a = "That one took too many steps. Try asking it a simpler way.";
     } catch { item.a = "Couldn't reach the league just now. Try again."; convo.pop(); }
-<<<<<<< HEAD
-    busy = false; sheet();
-=======
     busy = false; chipSet = null; sheet();
->>>>>>> main
     if (typeof noteUse === "function") noteUse("week-ask", q.slice(0, 60));
   }
 
@@ -280,9 +250,5 @@
   }
   paintBtn(); setInterval(paintBtn, 800);
   window.openWeekAsk = open;
-<<<<<<< HEAD
-  window.__weekAsk = { answer, condChances };
-=======
   window.__weekAsk = { runTool, condChances };
->>>>>>> main
 })();
