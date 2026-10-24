@@ -20,6 +20,67 @@
    one timeline, and every visit with what was done in it. System fonts
    and no libraries, so it paints at once; the last view is drawn from
    this device straight away and replaced when the Worker answers. */
+/* Lightning editor: an overlay of its own, outside the redrawn page. */
+.lz { position: fixed; inset: 0; z-index: 60; overflow-y: auto; background: rgba(5, 3, 12, .82); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 24px 12px; }
+.lz[hidden] { display: none; }
+body.lz-on { overflow: hidden; }
+.lz-card { max-width: 1040px; margin: 0 auto; background: var(--panel); border: 1px solid var(--line2); border-radius: 16px; padding: 14px 16px 18px; }
+.lz-h { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.lz-h b { font: 800 15px var(--mono); color: var(--gold); letter-spacing: .08em; }
+.lz-st { font-size: 12.5px; color: var(--meta); padding: 3px 10px; border: 1px solid var(--line2); border-radius: 999px; }
+.lz-st.live { color: var(--green); border-color: rgba(61, 252, 143, .45); }
+.lz-close { margin-left: auto; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line2); background: none; color: var(--text); cursor: pointer; }
+.lz-msg { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--panel2); color: var(--text); font-size: 13.5px; }
+.lz-cols { display: grid; grid-template-columns: 1fr; gap: 14px; }
+@media (min-width: 860px) { .lz-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); } }
+.lz-sec h3 { margin: 14px 0 6px; font: 700 11.5px var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--dim); display: flex; align-items: center; gap: 10px; }
+.lz-dim { margin: 6px 0; color: var(--dim); font-size: 12.5px; }
+.lz-link { background: none; border: 0; padding: 0; color: var(--cyan); font: inherit; font-size: 12px; text-transform: none; letter-spacing: 0; cursor: pointer; }
+.lz-games { display: grid; gap: 4px; max-height: 360px; overflow-y: auto; }
+@media (max-width: 600px) {
+  .lz-g { grid-template-columns: repeat(3, auto) !important; justify-content: start; }
+  .lz-g .lz-gt { grid-column: 1 / -1; }
+  .lz-games { max-height: none !important; }
+  .lz-b { grid-template-columns: 22px minmax(0, 1fr) 26px !important; }
+  .lz-b .lz-bl { grid-column: 2 / 3; grid-row: 2; }
+}
+.lz-g { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); gap: 6px; align-items: center; padding: 7px 9px; border-radius: 9px; background: var(--panel2); }
+.lz-gt { display: flex; flex-direction: column; min-width: 0; }
+.lz-gt b { font-size: 13.5px; } .lz-gt small { font-size: 11.5px; color: var(--dim); }
+.lz-g button, .lz-acts button, .lz-ask button, .lz-pay { font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line2); background: rgba(255, 255, 255, .04); color: var(--text); cursor: pointer; white-space: nowrap; }
+.lz-g button:disabled, .lz-acts button:disabled, .lz-ask button:disabled { opacity: .35; cursor: default; }
+.lz-b { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 26px; gap: 8px; align-items: center; padding: 7px 9px; border-radius: 9px; background: var(--panel2); margin-bottom: 4px; }
+.lz-n { font: 700 12px var(--mono); color: var(--gold); text-align: center; }
+.lz-bt { font-size: 13.5px; min-width: 0; } .lz-bt em { font-style: normal; color: var(--cyan); font-size: 12px; margin-left: 4px; }
+.lz-bl { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--meta); }
+.lz-bl select { width: 84px !important; }
+.lz-bl input, .lz-bl select, .lz-row input { width: 64px; font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 7px; border: 1px solid var(--line2); background: var(--bg); color: var(--text); }
+.lz-row input[type=time] { width: 110px; }
+.lz-x { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line2); background: none; color: var(--dim); cursor: pointer; }
+.lz-row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color: var(--meta); }
+.lz-ask { display: flex; gap: 8px; margin-top: 10px; }
+.lz-ask input { flex: 1; min-width: 0; font: inherit; font-size: 13.5px; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--line2); background: var(--bg); color: var(--text); }
+.lz-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.lz-acts .go { border-color: rgba(255, 228, 94, .6); color: var(--gold); background: rgba(255, 228, 94, .08); }
+.lz-acts .danger { color: #ff8aa0; border-color: rgba(255, 79, 109, .45); margin-left: auto; }
+.lz-cards { display: grid; grid-template-columns: 1fr; gap: 8px; }
+@media (min-width: 860px) {
+  .lz-cards { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  /* Five across: each card stacks its sides, the left choice on top. */
+  .lz-cards .lzc-sides { grid-template-columns: 1fr; gap: 6px; }
+  .lz-cards .lzc-s { padding: 10px 8px; justify-content: flex-start; }
+  .lz-cards .lzc-s.a { justify-content: flex-end; }
+}
+.lzc { border-radius: 14px; border: 1px solid var(--line2); background: linear-gradient(180deg, #1d1638, #120d22); padding: 12px; }
+.lzc-top { display: flex; flex-direction: column; gap: 2px; text-align: center; font-size: 11.5px; color: var(--dim); }
+.lzc-top b { font: 800 13px var(--mono); letter-spacing: .1em; color: var(--gold); text-transform: uppercase; }
+.lzc-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.lzc-s { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 4px; border-radius: 10px; background: rgba(255, 255, 255, .05); font-size: 13.5px; font-weight: 700; color: var(--text); white-space: nowrap; min-width: 0; }
+.lzc-s b { overflow: hidden; text-overflow: ellipsis; }
+.lzc-s i { font-style: normal; color: var(--gold); }
+.lz-p { display: flex; align-items: center; gap: 10px; padding: 6px 9px; border-radius: 9px; background: var(--panel2); margin-bottom: 4px; font-size: 13.5px; }
+.lz-p > span { color: var(--meta); font-size: 12.5px; } .lz-p .lz-pay { margin-left: auto; } .lz-pay.on { color: var(--green); border-color: rgba(61, 252, 143, .45); }
+.lz-p.win b { color: var(--gold); }
 :root {
   --bg: #0b0716; --panel: #140e24; --panel2: #1b1430; --line: #2a2140; --line2: #3a2f58;
   --text: #f3efff; --meta: #b8afd3; --dim: #8a80a8;
@@ -871,6 +932,7 @@ html, body { overflow-x: hidden; }
 <div id="studio" hidden></div>
 <div class="pv-back" id="pv-back"></div>
 <aside id="pv" class="pv" aria-label="Preview" role="dialog"></aside>
+<aside id="lz" class="lz" aria-label="Lightning editor" role="dialog" hidden></aside>
 <div id="tip" class="tip" role="tooltip"></div>
 <script>
 // A phone (or a home screen shortcut) can open an old saved copy of this
@@ -1621,6 +1683,7 @@ html, body { overflow-x: hidden; }
             ${"Notification" in window ? `<button type="button" role="menuitem" data-alert="1">${ICONS.bell}<span>${st.alert ? "Turn alerts off" : "Alert me when someone comes in"}</span>${st.alert ? `<i class="on">ON</i>` : ""}</button>` : ""}
             <button type="button" role="menuitem" data-copy="*">${ICONS.copy}<span>Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"} visits</span></button>
             <button type="button" role="menuitem" data-audit="1">${ICONS.copy}<span>Check picks match the slate</span></button>
+            ${LEAGUE === "cfb" ? `<button type="button" role="menuitem" data-lz="1">${ICONS.copy}<span>⚡ Lightning editor</span></button>` : ""}
             <button type="button" role="menuitem" data-slate="1">${ICONS.copy}<span>${st.copied === "slate" ? "✓ Slate copied" : "Copy this week's slate"}</span></button>
             <a role="menuitem" href="../" target="_blank" rel="noopener">${ICONS.app}<span>Open Pick'em</span><i>↗</i></a>
             <a role="menuitem" href="../?admin" target="_blank" rel="noopener">${ICONS.console}<span>Admin console</span><i>↗</i></a>
@@ -1827,6 +1890,7 @@ html, body { overflow-x: hidden; }
       clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.sig = ""; render(); }, 1600);
       return;
     }
+    if (b.dataset.lz) { st.menu = false; st.sig = ""; render(); lzOpen(); return; }
     if (b.dataset.slate) {
       // This week's games as plain text, ready to paste into the group chat.
       let text = "";
@@ -1933,6 +1997,162 @@ html, body { overflow-x: hidden; }
     ta.remove();
     return ok;
   }
+
+  // --- Lightning editor -----------------------------------------------------
+  // The late night five-bet pot. Tonight's games come straight from ESPN
+  // (this page can reach it), with their lines; the commissioner builds five
+  // bets, sets a buy-in and one lock time, can ask for an edit in words,
+  // sees the swipe cards as players will, then saves and activates. It sits
+  // outside the page so the live redraws never touch a half-typed edit.
+  const lzEl = document.getElementById("lz");
+  const lz = { games: [], bets: [], buyIn: 10, lockAt: null, prompt: "", busy: "", msg: "", night: null, loaded: false };
+  const LZ_KIND = { ats: "Spread", su: "To win", ou: "Total" };
+  const etDate = (t = Date.now()) => new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
+  const lzTime = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  async function lzLoadGames() {
+    lz.busy = "Reading tonight's games…"; lzPaint();
+    try {
+      const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${etDate()}&groups=80&limit=300&t=${Date.now()}`, { cache: "no-store" });
+      const data = await r.json();
+      lz.games = (data.events || []).map((ev) => {
+        const c = ev.competitions?.[0] || {}, side = (ha) => (c.competitors || []).find((x) => x.homeAway === ha) || {};
+        const a = side("away"), h = side("home"), o = c.odds?.[0] || {};
+        const favHome = o.homeTeamOdds?.favorite === true, favAway = o.awayTeamOdds?.favorite === true;
+        const spread = Number.isFinite(Number(o.spread)) ? Math.abs(Number(o.spread)) : null;
+        return {
+          eventId: String(ev.id), away: a.team?.displayName, home: h.team?.displayName, awayShort: a.team?.abbreviation || a.team?.shortDisplayName, homeShort: h.team?.abbreviation || h.team?.shortDisplayName,
+          awayId: Number(a.team?.id), homeId: Number(h.team?.id), kickoff: ev.date, kickoffLabel: lzTime(ev.date),
+          state: c.status?.type?.state || "pre", spread, favorite: spread === 0 ? null : favHome ? h.team?.displayName : favAway ? a.team?.displayName : null,
+          total: Number.isFinite(Number(o.overUnder)) ? Number(o.overUnder) : null,
+        };
+      }).filter((g) => g.away && g.home && g.state !== "post").sort((x, y) => new Date(y.kickoff) - new Date(x.kickoff));
+      lz.busy = "";
+    } catch { lz.busy = ""; lz.msg = "Couldn't reach ESPN for tonight's games."; }
+    lzPaint();
+  }
+  async function lzLoadNight() {
+    try { const r = await fetch(`${WORKER}/lightning?${auth()}&t=${Date.now()}`, { cache: "no-store" }); const j = await r.json(); lz.night = j.night || null; } catch {}
+    if (lz.night && !lz.bets.length) { lz.bets = lz.night.bets.map((b) => ({ game: b.game, kind: b.kind, spread: b.spread, favorite: b.favorite, total: b.total })); lz.buyIn = lz.night.buyIn; lz.lockAt = lz.night.closesAt; }
+    lzPaint();
+  }
+  const lzGameOf = (b) => lz.games.find((g) => g.eventId === b.game.eventId) || b.game;
+  // Side labels, the way the Worker writes them, for the preview.
+  const lzSides = (b) => {
+    const g = b.game, A = g.awayShort, Hm = g.homeShort;
+    if (b.kind === "ou") return [`Over ${b.total ?? "?"}`, `Under ${b.total ?? "?"}`];
+    if (b.kind === "su") return [A, Hm];
+    const s = Number(b.spread);
+    const line = (team) => (s === 0 ? "PK" : `${team === b.favorite ? "-" : "+"}${Number.isFinite(s) ? s : "?"}`);
+    return [`${A} ${line(g.away)}`, `${Hm} ${line(g.home)}`];
+  };
+  const lzBetFrom = (g, kind) => ({ game: { eventId: g.eventId, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, awayId: g.awayId, homeId: g.homeId, kickoff: g.kickoff, kickoffLabel: g.kickoffLabel }, kind, ...(kind === "ats" ? { spread: g.spread ?? 0, favorite: g.favorite } : {}), ...(kind === "ou" ? { total: g.total } : {}) });
+  // Five to start from: the latest games, the kinds taken in turn (spread,
+  // total, to win), so the card is a mix; a game without that line moves on.
+  function lzAuto() {
+    const out = [];
+    const order = ["ats", "ou", "su"];
+    for (let round = 0; out.length < 5 && round < 3; round++) for (const [i, g] of lz.games.entries()) {
+      if (out.length >= 5) break;
+      const kind = order[(i + round) % 3];
+      if ((kind === "ats" && g.spread == null) || (kind === "ou" && g.total == null) || out.some((b) => b.game.eventId === g.eventId && b.kind === kind)) continue;
+      out.push(lzBetFrom(g, kind));
+    }
+    lz.bets = out.slice(0, 5); lzDefaultLock(); lzPaint();
+  }
+  // The lock defaults to the first of the five to kick off, or half an
+  // hour from now when they are all already on.
+  function lzDefaultLock() {
+    const ahead = lz.bets.map((b) => new Date(b.game.kickoff).getTime()).filter((t) => t > Date.now());
+    lz.lockAt = ahead.length ? Math.min(...ahead) : Date.now() + 30 * 60000;
+  }
+  const lzCard = (b, i) => {
+    const [a, bb] = lzSides(b), g = b.game;
+    return `<div class="lzc"><div class="lzc-top"><span>${i + 1} / 5</span><b>${esc(LZ_KIND[b.kind])}</b><span>${esc(g.awayShort)} at ${esc(g.homeShort)} · ${esc(g.kickoffLabel || lzTime(g.kickoff))}</span></div>
+      <div class="lzc-sides"><div class="lzc-s b"><i>←</i><b>${esc(bb)}</b></div><div class="lzc-s a"><b>${esc(a)}</b><i>→</i></div></div></div>`;
+  };
+  function lzPaint() {
+    if (lzEl.hidden) return;
+    const n = lz.night, live = n?.status === "live", locked = live && n.closesAt <= Date.now();
+    const status = !n ? "No night yet" : !live ? "Draft · only you can see it" : locked ? "Locked" : `Live · locks ${lzTime(n.closesAt)}`;
+    const used = new Set(lz.bets.map((b) => `${b.game.eventId}:${b.kind}`));
+    const games = lz.games.map((g) => `<div class="lz-g"><span class="lz-gt"><b>${esc(g.awayShort)} at ${esc(g.homeShort)}</b><small>${esc(g.kickoffLabel)}${g.state === "in" ? " · on now" : ""}${g.spread != null ? ` · ${g.spread === 0 ? "PK" : `${esc((g.favorite === g.home ? g.homeShort : g.awayShort) || "")} -${g.spread}`}` : ""}${g.total != null ? ` · O/U ${g.total}` : ""}</small></span>
+      ${["ats", "su", "ou"].map((k) => `<button type="button" data-lzadd="${g.eventId}|${k}" ${used.has(`${g.eventId}:${k}`) || lz.bets.length >= 5 || (k === "ats" && g.spread == null) || (k === "ou" && g.total == null) ? "disabled" : ""}>+ ${LZ_KIND[k]}</button>`).join("")}</div>`).join("") || `<p class="lz-dim">${lz.busy || "No games left tonight."}</p>`;
+    const bets = lz.bets.map((b, i) => {
+      const g = b.game;
+      const line = b.kind === "ou" ? `<label>Total <input type="number" step="0.5" data-lzf="${i}|total" value="${b.total ?? ""}"></label>`
+        : b.kind === "ats" ? `<label>Fav <select data-lzf="${i}|favorite"><option value="">PK</option><option ${b.favorite === g.away ? "selected" : ""} value="${esc(g.away)}">${esc(g.awayShort)}</option><option ${b.favorite === g.home ? "selected" : ""} value="${esc(g.home)}">${esc(g.homeShort)}</option></select></label><label>by <input type="number" step="0.5" min="0" data-lzf="${i}|spread" value="${b.spread ?? ""}"></label>` : `<span class="lz-dim">no line</span>`;
+      return `<div class="lz-b"><b class="lz-n">${i + 1}</b><span class="lz-bt">${esc(g.awayShort)} at ${esc(g.homeShort)} <em>${esc(LZ_KIND[b.kind])}</em></span><span class="lz-bl">${line}</span><button type="button" class="lz-x" data-lzdel="${i}" aria-label="Remove">✕</button></div>`;
+    }).join("") + (lz.bets.length < 5 ? `<p class="lz-dim">${5 - lz.bets.length} more to add${lz.games.length ? ` · <button type="button" class="lz-link" data-lzauto="1">fill automatically</button>` : ""}</p>` : "");
+    const lockVal = lz.lockAt ? new Date(lz.lockAt).toTimeString().slice(0, 5) : "";
+    const ent = n ? Object.entries(n.entrants || {}) : [];
+    const people = live ? `<div class="lz-sec"><h3>In tonight · ${ent.length}</h3>${ent.length ? ent.map(([name2, e]) => `<div class="lz-p"><b>${esc(name(name2))}</b>${e.picks ? `<span class="lz-dim">${n.bets.map((bt) => e.picks[bt.id] === "a" ? "→" : "←").join(" ")} · TB ${e.tb}</span>` : ""}<button type="button" class="lz-pay${e.paid ? " on" : ""}" data-lzpaid="${esc(name2)}">${e.paid ? "✓ paid" : "mark paid"}</button></div>`).join("") : `<p class="lz-dim">Nobody yet.</p>`}${n.declined?.length ? `<p class="lz-dim">Passed: ${n.declined.map((x) => esc(name(x))).join(", ")}</p>` : ""}
+      ${n.table ? `<h3>Standings${n.table.done ? " · final" : ""}</h3>${n.table.rows.map((r) => `<div class="lz-p${n.table.winners.includes(r.name) ? " win" : ""}"><b>${esc(name(r.name))}</b><span>${r.points} / 5${r.off != null ? ` · TB off ${r.off}` : ""}</span></div>`).join("")}` : ""}</div>` : "";
+    lzEl.innerHTML = `<div class="lz-card">
+      <div class="lz-h"><b>⚡ LIGHTNING</b><span class="lz-st${live ? " live" : ""}">${esc(status)}</span><button type="button" class="lz-close" data-lzclose="1" aria-label="Close">✕</button></div>
+      ${lz.msg ? `<p class="lz-msg">${esc(lz.msg)}</p>` : ""}
+      <div class="lz-cols">
+        <div class="lz-sec"><h3>Tonight's games <button type="button" class="lz-link" data-lzreload="1">refresh</button></h3><div class="lz-games">${games}</div></div>
+        <div class="lz-sec"><h3>The five</h3>${bets}
+          <div class="lz-row"><label>Buy-in $ <input type="number" min="1" max="500" step="1" data-lzbuy="1" value="${lz.buyIn}"></label><label>Locks at <input type="time" data-lzlock="1" value="${lockVal}"></label></div>
+          <p class="lz-dim">Tiebreaker: total points in the last of the five to kick off.</p>
+          <div class="lz-ask"><input type="text" data-lzprompt="1" placeholder="Ask for an edit, e.g. swap bet 3 for the Utah total" value="${esc(lz.prompt)}"><button type="button" data-lzedit="1" ${lz.bets.length === 5 ? "" : "disabled"}>Apply</button></div>
+          <div class="lz-acts"><button type="button" data-lzsave="1" ${lz.bets.length === 5 ? "" : "disabled"}>Save draft</button><button type="button" class="go" data-lzgo="1" ${n && !live ? "" : "disabled"}>⚡ Activate</button>${n ? `<button type="button" class="danger" data-lzcancel="1">Cancel night</button>` : ""}</div>
+          ${lz.busy && lz.games.length ? `<p class="lz-dim">${esc(lz.busy)}</p>` : ""}
+        </div>
+      </div>
+      ${lz.bets.length ? `<div class="lz-sec"><h3>What players see · swipe right for the right side, left for the left</h3><div class="lz-cards">${lz.bets.map(lzCard).join("")}</div></div>` : ""}
+      ${people}
+    </div>`;
+  }
+  function lzOpen() { lzEl.hidden = false; document.body.classList.add("lz-on"); lz.msg = ""; lzPaint(); if (!lz.loaded) { lz.loaded = true; lzLoadGames(); } lzLoadNight(); }
+  async function lzPost(body) {
+    const r = await fetch(`${WORKER}/lightning?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error(j.error || `Error ${r.status}`), { status: r.status, j });
+    return j;
+  }
+  lzEl.addEventListener("input", (e) => {
+    const t = e.target;
+    if (t.dataset.lzprompt) { lz.prompt = t.value; return; }
+    if (t.dataset.lzbuy) { lz.buyIn = Number(t.value); return; }
+    if (t.dataset.lzlock) { const [hh, mm] = t.value.split(":").map(Number); const d = new Date(); d.setHours(hh, mm, 0, 0); if (d.getTime() < Date.now() - 6 * 3600000) d.setDate(d.getDate() + 1); lz.lockAt = d.getTime(); return; }
+    if (t.dataset.lzf) { const [i, f] = t.dataset.lzf.split("|"); const b = lz.bets[Number(i)]; if (!b) return; b[f] = f === "favorite" ? t.value || null : t.value === "" ? null : Number(t.value); if (f === "favorite" && !t.value) b.spread = 0; }
+  });
+  lzEl.addEventListener("change", (e) => { if (e.target.dataset.lzf) lzPaint(); });
+  lzEl.addEventListener("click", async (e) => {
+    const b = e.target.closest("button");
+    if (e.target === lzEl || b?.dataset.lzclose) { lzEl.hidden = true; document.body.classList.remove("lz-on"); return; }
+    if (!b) return;
+    lz.msg = "";
+    if (b.dataset.lzreload) return lzLoadGames();
+    if (b.dataset.lzauto) return lzAuto();
+    if (b.dataset.lzadd) { const [id, k] = b.dataset.lzadd.split("|"); const g = lz.games.find((x) => x.eventId === id); if (g && lz.bets.length < 5) { lz.bets.push(lzBetFrom(g, k)); if (!lz.lockAt) lzDefaultLock(); } return lzPaint(); }
+    if (b.dataset.lzdel) { lz.bets.splice(Number(b.dataset.lzdel), 1); return lzPaint(); }
+    try {
+      if (b.dataset.lzedit) {
+        lz.busy = "Asking for the edit…"; lzPaint();
+        const j = await lzPost({ action: "edit", prompt: lz.prompt, bets: lz.bets, games: lz.games.map(({ state, ...g }) => g) });
+        lz.bets = j.bets; lz.prompt = ""; lz.msg = j.note || "Edited. Check the cards, then save.";
+      } else if (b.dataset.lzsave) {
+        if (!lz.lockAt) lzDefaultLock();
+        let j;
+        try { j = await lzPost({ action: "save", bets: lz.bets, buyIn: lz.buyIn, closesAt: lz.lockAt }); }
+        catch (err) { if (err.status !== 409 || !confirm(`${err.message} Saving starts it over and drops their answers. Go ahead?`)) throw err; j = await lzPost({ action: "save", bets: lz.bets, buyIn: lz.buyIn, closesAt: lz.lockAt, replace: true }); }
+        lz.night = j.night; lz.msg = lz.night.status === "live" ? "Saved. Players see the change." : "Draft saved. Only you can see it.";
+      } else if (b.dataset.lzgo) {
+        if (!confirm(`Activate Lightning? Everyone sees it now, and it locks at ${lzTime(lz.night.closesAt)}.`)) return;
+        lz.night = (await lzPost({ action: "activate" })).night; lz.msg = "⚡ Lightning is live.";
+      } else if (b.dataset.lzcancel) {
+        if (!confirm("Cancel tonight's Lightning? Anyone in is dropped.")) return;
+        await lzPost({ action: "cancel" }); lz.night = null; lz.msg = "Cancelled.";
+      } else if (b.dataset.lzpaid) {
+        const e2 = lz.night?.entrants?.[b.dataset.lzpaid];
+        lz.night = (await lzPost({ action: "paid", manager: b.dataset.lzpaid, paid: !e2?.paid })).night;
+      }
+    } catch (err) { lz.msg = err.message || "That didn't work."; }
+    lz.busy = ""; lzPaint();
+  });
+  setInterval(() => { if (!lzEl.hidden && !document.hidden && lz.night?.status === "live") lzLoadNight(); }, 30000);
 
   // The preview: the app itself, framed like a phone, on the screen a line
   // names, as it looks now. Kept outside the page so it survives redraws.
