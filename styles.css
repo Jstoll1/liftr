@@ -8312,3 +8312,31 @@ button.lt-rc { cursor: pointer; }
 .rp-chip.has-lk { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .7); }
 .rp-chip.has-lk.me { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .7), 0 0 0 1px rgba(5, 217, 232, .5); }
 .rp-chip .nm-lk { top: -7px; left: -6px; width: auto; height: auto; background: none; box-shadow: none; font-size: 10px; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9)); }
+
+/* Locks, one system everywhere (see lockState in app.js). The lock itself
+   is always plain white; only its mark says how it stands. */
+i.lk { position: relative; display: inline-grid; place-items: center; width: 18px; height: 18px; border: 0; border-radius: 50%; padding: 0; background: none; box-shadow: none; font-style: normal; font-size: 11px; line-height: 1; cursor: pointer; vertical-align: middle; animation: none; }
+i.lk::before { content: ""; position: absolute; inset: 0; border-radius: 50%; }
+/* white, not the emoji's gold */
+i.lk { color: #fff; text-shadow: none; }
+i.lk { filter: grayscale(1) brightness(1.9); }
+i.lk.lk-up, i.lk.lk-dn, i.lk.lk-hit, i.lk.lk-miss { filter: none; }
+i.lk.lk-up, i.lk.lk-dn, i.lk.lk-hit, i.lk.lk-miss { font-size: 0; }
+i.lk.lk-up::after, i.lk.lk-dn::after, i.lk.lk-hit::after, i.lk.lk-miss::after { position: absolute; }
+/* the decorated states draw the lock again in white so the mark sits clean on top */
+i.lk.lk-up, i.lk.lk-dn, i.lk.lk-hit, i.lk.lk-miss { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 9V6.5a4 4 0 0 1 8 0V9' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Crect x='4' y='9' width='12' height='9' rx='2' fill='%23fff'/%3E%3C/svg%3E") center / 11px 11px no-repeat; }
+i.lk.lk-pend { font-size: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 9V6.5a4 4 0 0 1 8 0V9' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Crect x='4' y='9' width='12' height='9' rx='2' fill='%23fff'/%3E%3C/svg%3E") center / 11px 11px no-repeat; filter: none; }
+i.lk.lk-up::before { border: 1.5px dotted var(--neon-green, #39ff88); }
+i.lk.lk-dn::before { border: 1.5px dotted var(--neon-pink, #ff2079); }
+i.lk.lk-hit::after { content: "✓"; top: -3px; right: -4px; display: grid; place-items: center; width: 10px; height: 10px; border-radius: 50%; background: var(--neon-green, #39ff88); color: #0a0014; font: 900 8px/1 system-ui, sans-serif; }
+i.lk.lk-miss::after { content: "✕"; inset: 0; display: grid; place-items: center; color: #ff2d55; font: 900 16px/1 system-ui, sans-serif; text-shadow: 0 0 2px #0a0014, 0 0 2px #0a0014; }
+i.lk.lk-miss { opacity: .95; }
+/* where they sit */
+i.lk.rank-lk { margin-left: 4px; }
+.pick-cell i.lk.pick-lk { position: absolute; top: -2px; right: -2px; width: 16px; height: 16px; background-color: transparent; }
+i.lk.nm-lk, .rp-chip i.lk.nm-lk { position: absolute; top: -8px; left: -7px; width: 16px; height: 16px; z-index: 1; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9)); }
+.has-lk, .rp-chip.has-lk { box-shadow: none; }
+.rp-chip.has-lk.me { box-shadow: inset 0 0 0 1px rgba(5, 217, 232, .5); }
+.lks-st i.lk { margin-right: 2px; }
+.scorebug i.lk.bug-lk { position: absolute; top: -9px; right: -9px; width: 22px; height: 22px; font-size: 0; filter: none; background: #ffd23f url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M6 9V6.5a4 4 0 0 1 8 0V9' fill='none' stroke='%231a1030' stroke-width='2'/%3E%3Crect x='4' y='9' width='12' height='9' rx='2' fill='%231a1030'/%3E%3C/svg%3E") center / 12px 12px no-repeat; box-shadow: 0 0 8px rgba(255, 210, 63, .6); }
+.scorebug i.lk.bug-lk.lk-up::before, .scorebug i.lk.bug-lk.lk-dn::before { inset: -3px; }
