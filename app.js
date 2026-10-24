@@ -2806,7 +2806,7 @@ function rankLockHtml(row) {
   return `<i class="rank-lk${st}${fin ? " fin" : ""}${smashed || hit ? " smash" : ""}" title="Lock${smashed ? " smashed" : hit ? " hit" : ""}: ${escapeCd(lockPickText(g, pk))}">${smashed ? SMASHED_LOCK : hit ? HIT_LOCK : "🔒"}</i>`;
 }
 // The smashed padlock: shackle snapped off, body crushed and cracked.
-const HIT_LOCK = `<img class="lk-smashed" src="assets/lock-hit.png" alt="Lock hit" width="16" height="16">`;
+const HIT_LOCK = `<img class="lk-smashed" src="assets/lock-correct.png" alt="Lock hit" width="16" height="16">`;
 const SMASHED_LOCK = `<img class="lk-smashed" src="assets/lock-missed.png" alt="Lock missed" width="16" height="16">`;
 function lockPickText(g, pk) {
   const short = pk.team === g.home ? g.homeShort : pk.team === g.away ? g.awayShort : pk.team;
