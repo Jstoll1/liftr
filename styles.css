@@ -8230,3 +8230,14 @@ button.plc-av { padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .ins-pv .ins-pv-more { display: none; }
 .ins-pv.open .ins-pv-more { display: block; }
 .ins-pv-tg { display: inline-block; margin-top: 4px; font-size: 11px; color: var(--neon-cyan); }
+
+/* Game info: the line as one sentence; expert picks and last five fold. */
+.ins-line1 { margin: 6px 0 2px; font-size: 13px; line-height: 1.5; color: var(--text-meta); }
+.ins-line1 b { color: #fff; font-weight: 700; }
+.ins-line1 em { font-style: normal; font-weight: 700; }
+.ins-line1 em.good { color: var(--neon-green); } .ins-line1 em.bad { color: var(--neon-pink); }
+.ins-fold > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 10px; }
+.ins-fold > summary::-webkit-details-marker { display: none; }
+.ins-fold-sum { font-family: inherit; font-size: 11px; letter-spacing: 0; color: var(--text-meta); text-transform: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-fold-car { margin-left: auto; font-style: normal; color: var(--text-dim); transition: transform .15s ease; }
+.ins-fold[open] .ins-fold-car { transform: rotate(180deg); }
