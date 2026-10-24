@@ -121,7 +121,7 @@ function noteError(msg) {
 const foreignError = (e) => /^script error\.?$/i.test(e?.message || "") && !e?.filename;
 addEventListener("error", (e) => { if (e?.message && !foreignError(e)) noteError(e.message); });
 addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?.reason || "unhandled rejection"));
-function markUsable() { if (appHealth.ld == null) { appHealth.ld = Math.round(performance.now() - healthT0); if (appHealth.ld > 6000) opsEvent("slow-load", `first screen ${(appHealth.ld / 1000).toFixed(1)}s`); } }
+function markUsable() { if (appHealth.ld == null) { appHealth.ld = Math.round(performance.now() - healthT0); if (appHealth.ld > 6000 && !document.hidden && hiddenSince === 0) opsEvent("slow-load", `first screen ${(appHealth.ld / 1000).toFixed(1)}s`); } }
 // Each failure as it happens, for the live page's health log: batched a few
 // seconds, at most ten a page load, one per kind and detail.
 const opsQueue = [], opsSent = new Set();
@@ -138,6 +138,10 @@ function opsFlushApp() {
   try { if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/ops`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/ops`, { method: "POST", body, keepalive: true }).catch(() => {}); } catch {}
 }
 addEventListener("pagehide", opsFlushApp);
+// Bumped every time the page goes to the background, so a timer can tell
+// whether it stayed on screen.
+let hiddenSince = 0;
+document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenSince++; });
 (() => {
   const raw = window.fetch?.bind(window);
   if (!raw) return;
@@ -145,13 +149,17 @@ addEventListener("pagehide", opsFlushApp);
     const url = typeof input === "string" ? input : input?.url || "";
     const b = /espn\.com|espncdn/.test(url) ? "espn" : url.startsWith(WORKER_URL) ? "worker" : null;
     if (!b) return raw(input, init);
-    const t0 = performance.now();
+    const t0 = performance.now(), hid0 = hiddenSince;
+    // A phone that locks or switches apps mid-request freezes the page; the
+    // wait it wakes to is the lock screen, not the network. Only time calls
+    // that stayed on screen the whole way.
+    const onScreen = () => !document.hidden && hiddenSince === hid0;
     try {
       const r = await raw(input, init);
       // The path only (no query, no keys), so the log says what failed.
       const where = (() => { try { const u = new URL(url); return b === "worker" ? u.pathname : u.pathname.split("/").slice(-2).join("/"); } catch { return ""; } })();
       if (r.status >= 500 || r.status === 429) { appHealth.ff[b]++; opsEvent(`${b}-fail`, `${where} ${r.status}`); }
-      if (performance.now() - t0 > 4000) { appHealth.sl[b]++; opsEvent(`${b}-slow`, `${where} ${((performance.now() - t0) / 1000).toFixed(1)}s`); }
+      if (performance.now() - t0 > 4000 && onScreen()) { appHealth.sl[b]++; opsEvent(`${b}-slow`, `${where} ${((performance.now() - t0) / 1000).toFixed(1)}s`); }
       return r;
     } catch (err) {
       if (err?.name !== "AbortError") { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }

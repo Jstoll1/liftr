@@ -579,6 +579,8 @@ async function handleOps(request, env, corsHeaders, url) {
   const who = PICKS_MANAGERS.includes(body?.manager) && !VISITS_NOT_TRACKED.has(body.manager) ? body.manager : null;
   for (const e of (Array.isArray(body?.events) ? body.events : []).slice(0, 10)) {
     if (!OPS_KINDS.includes(e?.k) || ["route-fail", "cron-fail", "upstream-fail", "upstream-slow"].includes(e.k)) continue;
+    // Over two minutes is a phone that slept mid-call, not a slow server.
+    if (/-slow$|^slow-load$/.test(e.k) && Number(String(e.d || "").match(/([\d.]+)s\b/)?.[1]) > 120) continue;
     opsNote(e.k, e.d, { src: "app", ...(who ? { n: who } : {}), ...(/^[0-9]{6,14}$/.test(String(body.v || "")) ? { v: String(body.v) } : {}) });
   }
   await opsFlush(env);
