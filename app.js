@@ -1215,7 +1215,8 @@ function renderHeadScore() {
 function fitHeaderLogo() {
   const img = homeHeader.querySelector(".home-logo-img");
   if (!img) return;
-  img.style.maxWidth = "";
+  const btn = img.closest("button") || img;
+  img.style.maxWidth = ""; btn.style.transform = "";
   const left = [document.getElementById("head-score"), document.getElementById("header-countdown")].find((el) => el && !el.classList.contains("hidden"));
   if (!left) return;
   const row = homeHeader.querySelector(".head-row") || homeHeader;
@@ -1223,10 +1224,17 @@ function fitHeaderLogo() {
   const lEdge = left.getBoundingClientRect().right;
   const pill = document.getElementById("me-pill");
   const rEdge = pill && !pill.classList.contains("hidden") ? pill.getBoundingClientRect().left : rb.right;
-  const room = 2 * Math.min(mid - lEdge, rEdge - mid) - 16;
+  // The chips are rarely the same width (T-4TH 00 PTS +2 against a name),
+  // so the logo sits in the middle of the gap between them, not the middle
+  // of the screen: equal room either side instead of one side jammed.
+  const room = rEdge - lEdge - 16;
   if (room > 40) img.style.maxWidth = `${Math.floor(room)}px`;
+  const shift = (lEdge + rEdge) / 2 - mid;
+  if (Math.abs(shift) > 2) btn.style.transform = `translateX(${Math.round(shift)}px)`;
 }
 addEventListener("resize", fitHeaderLogo);
+// The header shrinks on scroll with a short transition; measure again once it settles.
+homeHeader.addEventListener("transitionend", (e) => { if (e.target === homeHeader || e.target.classList?.contains("home-logo-img") || e.target.id === "me-pill") fitHeaderLogo(); });
 
 // A phone is always the phone layout: vertical scroll and tap, never the
 // desktop columns or the pick sheet, whatever width it reports (an iPhone
