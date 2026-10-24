@@ -595,7 +595,7 @@ globalThis.fetch = async (input, init) => {
   const t0 = Date.now();
   try {
     const r = await rawFetch(input, init);
-    if (r.status >= 500 || r.status === 429) opsNote("upstream-fail", `${host} ${r.status}`, { src: "worker" });
+    if (r.status >= 500 || r.status === 429) opsNote("upstream-fail", `${host} ${r.status}${r.status === 429 ? " rate limited" : ""}`, { src: "worker" });
     else if (Date.now() - t0 > 8000) opsNote("upstream-slow", `${host} ${Math.round((Date.now() - t0) / 100) / 10}s`, { src: "worker" });
     return r;
   } catch (err) {
