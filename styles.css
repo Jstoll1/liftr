@@ -42,7 +42,9 @@ html, body {
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+  /* none, not contain: on iOS contain still lets the page rubber band,
+     and a pull down at the top opened an empty band under the header. */
+  overscroll-behavior-y: none;
   z-index: 2;
 }
 
