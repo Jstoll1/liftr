@@ -4365,6 +4365,17 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
+  // The admin flags an answer as wrong (with a note) from the live page.
+  if (body?.action === "flag") {
+    if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+    const id = String(body.id || "");
+    if (!id.startsWith(WCHAT_LOG) || !env.LIFTR_KV) return json({ error: "No such entry" }, 404, corsHeaders);
+    const e = await env.LIFTR_KV.get(id, "json");
+    if (!e) return json({ error: "No such entry" }, 404, corsHeaders);
+    if (body.flagged) { e.flagged = Date.now(); e.note = String(body.note || "").slice(0, 300) || undefined; } else { delete e.flagged; delete e.note; }
+    await env.LIFTR_KV.put(id, JSON.stringify(e), { expirationTtl: Math.max(60, Math.round((e.at + 30 * 86400000 - Date.now()) / 1000)), metadata: { at: e.at, asker: e.asker, sid: e.sid } });
+    return json({ ok: true, chat: { ...e, id } }, 200, corsHeaders);
+  }
   const members = (Array.isArray(body?.context?.members) ? body.context.members : []).filter((m) => typeof m === "string" && PICKS_MANAGERS.includes(m));
   const games = (Array.isArray(body?.context?.games) ? body.context.games : []).slice(0, 30).map((g) => ({ id: String(g?.id ?? "").slice(0, 10), away: String(g?.away || "").slice(0, 60), home: String(g?.home || "").slice(0, 60), awayShort: String(g?.awayShort || "").slice(0, 30), homeShort: String(g?.homeShort || "").slice(0, 30), favorite: String(g?.favorite || "").slice(0, 60), spread: Number(g?.spread) || 0, status: String(g?.status || "").slice(0, 30), score: String(g?.score || "").slice(0, 30) })).filter((g) => g.id && g.away && g.home);
   const asker = members.includes(body?.context?.asker) ? body.context.asker : null;
