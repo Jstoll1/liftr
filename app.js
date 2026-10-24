@@ -137,19 +137,30 @@ function markUsable() { if (appHealth.ld == null) { extrasSoon(); appHealth.ld =
 // Each failure as it happens, for the live page's health log: batched a few
 // seconds, at most ten a page load, one per kind and detail.
 const opsQueue = [], opsSent = new Set();
+// While the page is going away (closed, or reloading onto a new build)
+// every call still in flight fails with "Load failed": that is the reload,
+// not the Worker, so nothing is logged from then on.
+let pageLeaving = false;
+addEventListener("beforeunload", () => { pageLeaving = true; });
+addEventListener("pageshow", () => { pageLeaving = false; });
 function opsEvent(k, d) {
   const key = `${k}|${d}`;
-  if (opsSent.has(key) || opsSent.size >= 10 || window.__liveView) return;
+  if (pageLeaving || opsSent.has(key) || opsSent.size >= 10 || window.__liveView) return;
   opsSent.add(key); opsQueue.push({ k, d });
   clearTimeout(opsEvent.t); opsEvent.t = setTimeout(opsFlushApp, 3000);
 }
 function opsFlushApp() {
   if (!opsQueue.length || typeof WORKER_URL === "undefined" || !WORKER_URL || PREVIEW) return;
   let me = null; try { me = loadMe(); } catch {}
-  const body = JSON.stringify({ manager: me, v: document.querySelector('meta[name="build"]')?.content || "", events: opsQueue.splice(0) });
+  // Several calls failing at once with a network error, ESPN included, is
+  // the phone losing its connection, not the Worker: one line, not eight.
+  let events = opsQueue.splice(0);
+  const netFail = events.filter((e) => /-fail$/.test(e.k) && !/\s\d{3}$/.test(e.d));
+  if (netFail.length >= 3 && netFail.some((e) => e.k === "espn-fail")) events = [...events.filter((e) => !netFail.includes(e)), { k: "worker-fail", d: `phone lost connection · ${netFail.length} calls` }];
+  const body = JSON.stringify({ manager: me, v: document.querySelector('meta[name="build"]')?.content || "", events });
   try { if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/ops`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/ops`, { method: "POST", body, keepalive: true }).catch(() => {}); } catch {}
 }
-addEventListener("pagehide", opsFlushApp);
+addEventListener("pagehide", () => { opsFlushApp(); pageLeaving = true; });
 // Bumped every time the page goes to the background, so a timer can tell
 // whether it stayed on screen.
 let hiddenSince = 0;
@@ -9644,6 +9655,7 @@ function showUpdateBar() {
 function reloadFresh() {
   // A live page preview keeps what it was showing.
   if (window.__liveView) { const u = new URL(location.href); u.searchParams.set("r", String(Date.now())); location.replace(u.href); return; }
+  pageLeaving = true;
   location.replace(location.pathname + `?r=${Date.now()}` + location.hash);
 }
 
