@@ -18,7 +18,7 @@ export function weekAskPrompt() {
     "intent tiebreaker: anything about the tiebreaker game, guesses or total points.",
     "intent unknown: anything else (not about this week's race).",
     "who: the member the question is about; 'I', 'me', 'my' means the asker. null if nobody is named and there is no asker.",
-    "conditions: one per game outcome the question assumes. 'wins' or 'beats' is SU. 'covers' or a spread number is ATS. A team losing means the other team in that game wins (SU) or covers (ATS). Only games from the list. Empty if none.",
+    "conditions: one per game outcome the question assumes. 'wins' or 'beats' is SU. 'covers' or a spread number is ATS. A team losing, not covering or failing to cover means the other team in that game wins (SU) or covers (ATS): 'if IU does not cover' is the other team ATS. Only games from the list. Empty if none.",
     "Never invent games, teams or members. Never include odds or prose.",
   ].join("\n");
 }
