@@ -8017,7 +8017,6 @@ async function openInsights(gameId) {
     return;
   }
   html = liveBlock() + html;
-  html += `<div class="ins-h">LINE</div>`;
   {
     const favId = game.favorite === game.home ? game.homeId : game.awayId, dogId = game.favorite === game.home ? game.awayId : game.homeId;
     const dogShort = game.favorite === game.home ? game.awayShort : game.homeShort;
@@ -8092,13 +8091,12 @@ async function openInsights(gameId) {
     // One line: where the number sits, how it moved and what that means for
     // your pick, then the opener and total as small print.
     const moveTxt = !nowMoved ? "" : myPick ? (forMe ? `<em class="good">▲ ${pts.toLowerCase()} your way</em>` : `<em class="bad">▼ ${pts.toLowerCase()} against you</em>`) : `moved ${pts.toLowerCase()} toward ${esc(nowV > sealedV ? favAb : dogAb)}`;
-    const parts = nowV === null ? [`Our line <b>${esc(lab(sealedV))}</b>`, "no live line yet"]
-      : !nowMoved ? [`<b>${esc(lab(sealedV))}</b>`, "same as our line"]
-      : [`Market <b>${esc(lab(nowV))}</b>`, `ours ${esc(lab(sealedV))}`, moveTxt];
-    if (openV !== null && openV !== sealedV) parts.push(`opened ${esc(lab(openV))}`);
-    if (ouSmall !== null) parts.push(`O/U ${esc(ouSmall)}`);
-    void l1; void l2; void small; void ou; void ticks; void zero; void band; void seal; void now; void open; void move;
-    html += `<div class="ins-line1">${parts.join(" · ")}</div>`;
+    // The line sits in its own header: the number and one word on movement.
+    const parts = nowV === null ? [`<b>${esc(lab(sealedV))}</b>`, "no live line yet"]
+      : !nowMoved ? [`<b>${esc(lab(sealedV))}</b>`, "no movement"]
+      : [`<b>${esc(lab(nowV))}</b>`, `${moveTxt} (was ${esc(lab(sealedV))})`];
+    void openV; void ouSmall;
+    html += `<div class="ins-h ins-line-h">LINE <span class="ins-line1">${parts.join(" · ")}</span></div>`;
   }
 
   // Preview: same layout as ever (headline, text, "Read the rest"). The
