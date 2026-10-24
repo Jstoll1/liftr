@@ -85,7 +85,7 @@ const WORKER_URL = "https://liftr-ai.jhs797.workers.dev";
 const PREVIEW = /(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname);
 if (PREVIEW) {
   const realFetch = window.fetch.bind(window);
-  const readOnlyPost = /^\/(insights\/|history-ask$)/;
+  const readOnlyPost = /^\/(insights\/|history-ask$|week-ask$)/;
   window.fetch = (input, init = {}) => {
     const url = typeof input === "string" ? input : input?.url || "";
     const method = String(init.method || (typeof input === "string" ? "GET" : input?.method) || "GET").toUpperCase();
