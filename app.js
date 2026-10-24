@@ -9993,12 +9993,31 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
     const tag = host.id ? `#${host.id}` : `.${String(host.className || host.tagName).split(" ")[0]}`;
     return `${tag}${txt ? ` “${txt}”` : ""}`.slice(0, 40);
   };
-  const interactive = (el) => !!el.closest?.("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-sec], [tabindex]") || getComputedStyle(el).cursor === "pointer";
+  // A pointer cursor counts only where it is set, not where it is merely
+  // inherited: the whole leaderboard row is a pointer, so every name, score
+  // and game inside an open player card read as "does something" and a dead
+  // tap there was never logged.
+  const ownPointer = (el) => getComputedStyle(el).cursor === "pointer" && (!el.parentElement || getComputedStyle(el.parentElement).cursor !== "pointer");
+  const interactive = (el) => !!el.closest?.("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-sec], [tabindex]") || ownPointer(el);
   // Rage: 3 taps inside 1 second within 30px.
   let taps = [], rageAt = 0;
   // Dead: a tap on a non interactive element that changes nothing on screen.
-  let mutated = false;
-  new MutationObserver(() => { mutated = true; }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+  // Did the tap do anything? Only changes that answer it count: at or
+  // around the thing tapped, or a sheet, screen or overlay opening. Any
+  // change anywhere used to count, and on game day the clocks and scores
+  // tick every second, so no tap ever read as dead.
+  let mutated = false, tapEl = null;
+  const answers = (t) => {
+    if (!tapEl || !(t instanceof Node)) return false;
+    const n = t.nodeType === 1 ? t : t.parentElement;
+    if (!n) return false;
+    if (n === document.body || n.closest?.("[role=dialog], .modal-overlay, .wpx-overlay, .lks, .lt-modal, .screen:not(.hidden) > .wrap > :is(section, div)[class*=sheet]")) return true;
+    if (tapEl.contains(n)) return true;
+    let up = tapEl; for (let i = 0; i < 4 && up; i++) { if (up === n) return true; up = up.parentElement; }
+    return false;
+  };
+  new MutationObserver((list) => { if (!mutated && list.some((m) => answers(m.target) || (m.type === "attributes" && m.target.classList?.contains("screen")))) mutated = true; }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+  addEventListener("scroll", () => { if (tapEl) mutated = true; }, { capture: true, passive: true });
   let deadAt = 0;
   document.addEventListener("pointerdown", (e) => {
     // Three quick taps on the logo are the admin shortcut, not frustration.
@@ -10027,8 +10046,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
     // A tap in the gap of a container that holds buttons (a card's row, the
     // space between bets) is a near miss, not a dead control.
     if (el.querySelector?.("button, a, [role=button]")) return;
-    mutated = false;
-    setTimeout(() => { if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); track("dead-tap", { event: true, d: label(el) }); } }, 700);
+    mutated = false; tapEl = el;
+    setTimeout(() => { if (tapEl === el) tapEl = null; if (!mutated && Date.now() - deadAt > 5000) { deadAt = Date.now(); track("dead-tap", { event: true, d: label(el) }); } }, 700);
   }, { capture: true, passive: true });
   // Sheets: time open, and closed almost at once.
   const opened = new Map();

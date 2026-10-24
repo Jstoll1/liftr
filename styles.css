@@ -8421,3 +8421,5 @@ i.lk.rd-lk { position: absolute; top: 5px; right: 6px; width: 14px; height: 14px
 .ms-live.neg .stake-dot { background: var(--neon-pink); }
 .rd-row.go { cursor: pointer; }
 .rd-row.go:active { background: rgba(255, 255, 255, .05); }
+.rank-detail { cursor: default; }
+.rank-detail .rd-row.go { cursor: pointer; }
