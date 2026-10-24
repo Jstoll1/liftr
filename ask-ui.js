@@ -107,10 +107,22 @@
     const h = hiddenOthers(me());
     return h.length >= MANAGERS.length - 1 ? { picksHidden: "Everyone else's picks are hidden until kickoff; odds can't be worked out yet." } : h.length ? { picksHidden: `${h.join(", ")} still have hidden picks (not counted).` } : {};
   }
+  // One status per member, so "0% but not out" can't be misread:
+  //   alive      wins in the simulations
+  //   long shot  no wins in 5,000 runs, but an exact check found a path
+  //   out        the exact check proved there is no path
+  //   likely out no wins and the exact check couldn't finish (too many games)
+  function statusOf(d) {
+    if (!d) return null;
+    if (d.pct > 0) return { status: "alive" };
+    if (d.alive === true) return { status: "long shot", onlyPath: (d.path?.need || []).map((x) => `${x.txt} (G${x.g.id})`), pathChance: d.path ? Math.round(d.path.p * 1e5) / 1e5 : null };
+    if (d.alive === false) return { status: "out" };
+    return { status: "likely out" };
+  }
   const TOOLS = {
     standings() {
       const memo = base(), live = typeof inFlightPoints === "function" ? (n) => inFlightPoints((lastGoodCloudPicks || {})[n]?.picks || {}, latestLive) : () => 0;
-      return { ...hiddenNote(), members: MANAGERS.map((n) => { const b = banked(n), d = memo?.detail?.[n]; return { member: n, points: b.pts, livePoints: live(n), bestPossible: b.max, picksLeft: b.picksLeft, chanceToWin: d ? r3(d.pct) : null, eliminated: d ? d.pct === 0 && d.alive === false : null }; }).sort((a, b) => b.points - a.points) };
+      return { ...hiddenNote(), members: MANAGERS.map((n) => { const b = banked(n), d = memo?.detail?.[n]; const sObj = statusOf(d) || {}; return { member: n, points: b.pts, livePoints: live(n), bestPossible: b.max, picksLeft: b.picksLeft, chanceToWin: d ? r3(d.pct) : null, ...sObj }; }).sort((a, b) => b.points - a.points), statusMeans: "alive = real chance; long shot = 0% in simulations but a path exists (onlyPath lists what must happen); out = proven no path; likely out = no wins found, not proven" };
     },
     chance({ conditions = [] } = {}) {
       const conds = [];
@@ -126,12 +138,12 @@
       const odds = conds.length ? condChances(conds) : memo.out;
       if (!odds) return { error: "Odds not loaded yet." };
       if (odds.impossible) return { error: `${odds.impossible} can't happen: that game is already final the other way.` };
-      return { ...h, assuming: conds.map(condText), chanceToWin: Object.fromEntries(MANAGERS.map((n) => [n, r3(odds[n] || 0)])), currentChance: Object.fromEntries(MANAGERS.map((n) => [n, r3(memo.out[n] || 0)])), eliminated: MANAGERS.filter((n) => !(odds[n] > 0)), ...(conds.length ? { eliminatedMeans: "won none of 4,000 simulated outcomes with these results: as good as out, not strictly impossible" } : {}) };
+      return { ...h, assuming: conds.map(condText), chanceToWin: Object.fromEntries(MANAGERS.map((n) => [n, r3(odds[n] || 0)])), currentChance: Object.fromEntries(MANAGERS.map((n) => [n, r3(memo.out[n] || 0)])), noWins: MANAGERS.filter((n) => !(odds[n] > 0)), ...(!conds.length ? { status: Object.fromEntries(MANAGERS.map((n) => [n, statusOf(memo.detail?.[n])?.status || null])) } : {}), ...(conds.length ? { noWinsMeans: "won none of 4,000 simulated outcomes with these results: as good as out, not proven impossible" } : {}) };
     },
     needs({ member } = {}) {
       const who = MANAGERS.find((n) => n.toLowerCase() === String(member || me() || "").toLowerCase()); if (!who) return { error: `No member ${member}.` };
       const memo = base(); const d = memo?.detail?.[who]; if (!d) return { error: "Odds not loaded yet." };
-      return { ...hiddenNote(), member: who, chanceToWin: r3(d.pct), eliminated: d.pct === 0 && d.alive === false, swings: (d.games || []).slice(0, 5).map((x) => ({ game: gName(x.game), pick: `${short(x.game, x.pick.team)} ${x.pick.mode === "ATS" ? `${x.pick.team === x.game.favorite ? "−" : "+"}${x.game.spread}` : "to win"}${x.pick.lock ? " (lock)" : ""}`, chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss), likelyToHit: r3(x.pHit) })) };
+      return { ...hiddenNote(), member: who, chanceToWin: r3(d.pct), ...statusOf(d), swings: (d.games || []).slice(0, 5).map((x) => ({ game: gName(x.game), pick: `${short(x.game, x.pick.team)} ${x.pick.mode === "ATS" ? `${x.pick.team === x.game.favorite ? "−" : "+"}${x.game.spread}` : "to win"}${x.pick.lock ? " (lock)" : ""}`, chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss), likelyToHit: r3(x.pHit) })) };
     },
     picks({ game } = {}) {
       const g = GAMES.find((x) => String(x.id) === String(game).replace(/^G/i, "")); if (!g) return { error: `No game ${game}.` };

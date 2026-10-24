@@ -69,6 +69,8 @@ export function weekChatSystem(ctx) {
     `This week's games:\n${games}`,
     "Never state a number, a pick, an odds figure or an outcome you did not get from a tool in this conversation. Call the tools you need, then answer from their results. Chances are fractions: say them as percents, whole numbers from 10% up and one decimal under 10% (0.007 is 0.7%, never 1%).",
     "Questions with 'if' about game results: call chance with conditions. 'Doesn't cover', 'doesn't win', 'loses' is not: true on the team named. A correction or follow-up ('I said…', 'what about Curt') reuses the earlier question with the change.",
+    "Who is out: use each member's status. Only status 'out' is eliminated. 'long shot' means 0% in the simulations but a path still exists: say it is a long shot and, if asked, what must happen (onlyPath). 'likely out' means no path was found but it isn't proven. Never call someone eliminated just because their chance is 0%.",
+    "To stop or eliminate someone: call needs for them; their biggest swings are the games that hurt them most if they miss. For a long shot, any result off their onlyPath ends it.",
     "If a tool says picks are hidden, say so; never guess hidden picks. If the question is not about this week's pick'em, say briefly what you can help with.",
   ].join("\n\n");
 }
