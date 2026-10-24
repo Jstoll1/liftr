@@ -66,7 +66,7 @@ html.pro .cd-chip.miss, html.pro [class*="blink"], html.pro [class*="pulse"] { a
 
 html.pro .home-header { background: rgba(11, 13, 16, .86) !important; backdrop-filter: saturate(140%) blur(18px); -webkit-backdrop-filter: saturate(140%) blur(18px); border-bottom: 1px solid var(--line) !important; }
 /* The Pro wordmark: white B and BROCHIEFS with gold laces, on transparent. */
-html.pro .home-header .home-logo-img { content: url(wordmark-pro.png); height: 20px !important; width: auto !important; max-width: 46vw; object-fit: contain; }
+html.pro .home-header .home-logo-img { content: url(wordmark-pro.png); height: 22px !important; width: auto !important; max-width: 46vw; object-fit: contain; }
 html.pro .me-pill, html.pro .head-score {
   height: 30px; padding: 0 12px 0 4px !important; border-radius: 999px !important;
   background: var(--s2) !important; border: 1px solid var(--line2) !important; color: var(--text) !important;
