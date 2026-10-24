@@ -2800,12 +2800,12 @@ function rankLockHtml(row) {
   const pk = row.state.picks[id], fin = computeLiveResults(latestLive)[g.id], l = latestLive[g.id];
   const p = fin ? scorePick(g, pk, fin) : l && l.found && l.state === "in" && l.awayScore != null ? scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) : null;
   const st = p == null ? "" : p > 0 ? " up" : p < 0 || (fin && p === 0 && !(pk.mode === "ATS" && resultOutcome(g, fin)?.push)) ? " dn" : "";
-  // A final, missed lock is smashed: crushed flat with a crack through it.
-  const smashed = st === " dn" && fin, slam = smashed && !rankLockHtml.slammed.has(`${row.name}:${g.id}`);
-  if (slam) rankLockHtml.slammed.add(`${row.name}:${g.id}`);
-  return `<i class="rank-lk${st}${fin ? " fin" : ""}${smashed ? " smash" : ""}${slam ? " slam" : ""}" title="Lock${smashed ? " smashed" : ""}: ${escapeCd(lockPickText(g, pk))}">${smashed ? "<span>🔒</span>" : "🔒"}</i>`;
+  // A final, missed lock is a smashed padlock: one still picture.
+  const smashed = st === " dn" && fin;
+  return `<i class="rank-lk${st}${fin ? " fin" : ""}${smashed ? " smash" : ""}" title="Lock${smashed ? " smashed" : ""}: ${escapeCd(lockPickText(g, pk))}">${smashed ? SMASHED_LOCK : "🔒"}</i>`;
 }
-rankLockHtml.slammed = new Set();
+// The smashed padlock: shackle snapped off, body crushed and cracked.
+const SMASHED_LOCK = `<svg viewBox="0 0 24 20" width="15" height="12" aria-hidden="true"><path d="M5.5 9.5V6.8a4.6 4.6 0 0 1 7.6-3.5" fill="none" stroke="#c9a227" stroke-width="2.2" stroke-linecap="round"/><path d="M16.2 4.2l2.6-2.4M18.4 6.6l3-.6" stroke="#c9a227" stroke-width="1.6" stroke-linecap="round"/><path d="M2.6 11.2l15.8-1.6 1.6 7.6-16.4 1.6z" fill="#e0b52e"/><path d="M2.6 11.2l15.8-1.6 1.6 7.6-16.4 1.6z" fill="#000" opacity=".18"/><path d="M10.6 10.3l-1.5 2.6 2.3 1.4-2 4.4" fill="none" stroke="#2a0f1c" stroke-width="1.5" stroke-linejoin="bevel"/><circle cx="14.6" cy="13.6" r="1.2" fill="#5a3b08"/></svg>`;
 function lockPickText(g, pk) {
   const short = pk.team === g.home ? g.homeShort : pk.team === g.away ? g.awayShort : pk.team;
   return pk.mode === "SU" ? `${short} to win` : `${short} ${pk.team === g.favorite ? "−" : "+"}${g.spread}`;

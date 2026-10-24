@@ -8266,11 +8266,6 @@ button.lt-rc { cursor: pointer; }
 .lt-intro h2 { margin-top: 6px; text-wrap: balance; }
 .lt-intro .lt-facts { grid-template-columns: 1fr 1fr; }
 
-/* A missed lock, final: crushed flat, knocked crooked and cracked, with one
-   slam when it first shows. */
-.rank-lk.smash { position: relative; display: inline-block; line-height: 1.35; vertical-align: -2px; background: rgba(255, 32, 121, .28); overflow: hidden; }
-.rank-lk.smash span { display: inline-block; filter: saturate(.35) brightness(.9); transform: rotate(-14deg) scale(1.2, .62) translateY(3px); transform-origin: 50% 100%; }
-.rank-lk.smash::after { content: ""; position: absolute; inset: -1px 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M11 0 L8 6 L12 9 L7 14 L10 20' fill='none' stroke='%23ff2079' stroke-width='1.8' stroke-linejoin='bevel'/%3E%3C/svg%3E") center / auto 100% no-repeat; pointer-events: none; }
-.rank-lk.smash.slam span { animation: lk-smash .5s cubic-bezier(.3, 1.6, .5, 1) both; }
-@keyframes lk-smash { 0% { transform: translateY(-6px); } 55% { transform: rotate(-18deg) scale(1.35, .45) translateY(4px); } 100% { transform: rotate(-14deg) scale(1.2, .62) translateY(3px); } }
-@media (prefers-reduced-motion: reduce) { .rank-lk.smash span { animation: none; } }
+/* A missed lock, final: a still picture of a smashed padlock. */
+.rank-lk.smash { display: inline-flex; align-items: center; vertical-align: -2px; line-height: 1; padding: 1px 3px; }
+.rank-lk.smash svg { display: block; }
