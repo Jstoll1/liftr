@@ -119,6 +119,9 @@
     if (d.alive === false) return { status: "out" };
     return { status: "likely out" };
   }
+  // Nicknames the league uses, so a tool given "Woods" finds Jordan.
+  const ALIASES = { woods: "Jordan", connie: "Conlan", conlin: "Conlan", adam: "Skills", logs: "Logan", tyler: "Dewitt", "tyler dewitt": "Dewitt" };
+  const memberOf = (x) => { const t = String(x || "").trim().toLowerCase(); return MANAGERS.find((n) => n.toLowerCase() === t || shown(n).toLowerCase() === t) || (ALIASES[t] && MANAGERS.includes(ALIASES[t]) ? ALIASES[t] : null); };
   const TOOLS = {
     standings() {
       const memo = base(), live = typeof inFlightPoints === "function" ? (n) => inFlightPoints((lastGoodCloudPicks || {})[n]?.picks || {}, latestLive) : () => 0;
@@ -141,7 +144,7 @@
       return { ...h, assuming: conds.map(condText), chanceToWin: Object.fromEntries(MANAGERS.map((n) => [n, r3(odds[n] || 0)])), currentChance: Object.fromEntries(MANAGERS.map((n) => [n, r3(memo.out[n] || 0)])), noWins: MANAGERS.filter((n) => !(odds[n] > 0)), ...(!conds.length ? { status: Object.fromEntries(MANAGERS.map((n) => [n, statusOf(memo.detail?.[n])?.status || null])) } : {}), ...(conds.length ? { noWinsMeans: "won none of 4,000 simulated outcomes with these results: as good as out, not proven impossible" } : {}) };
     },
     needs({ member } = {}) {
-      const who = MANAGERS.find((n) => n.toLowerCase() === String(member || me() || "").toLowerCase()); if (!who) return { error: `No member ${member}.` };
+      const who = memberOf(member || me()); if (!who) return { error: `No member ${member}. Members: ${MANAGERS.join(", ")}.` };
       const memo = base(); const d = memo?.detail?.[who]; if (!d) return { error: "Odds not loaded yet." };
       return { ...hiddenNote(), member: who, chanceToWin: r3(d.pct), ...statusOf(d), swings: (d.games || []).slice(0, 5).map((x) => ({ game: gName(x.game), pick: `${short(x.game, x.pick.team)} ${x.pick.mode === "ATS" ? `${x.pick.team === x.game.favorite ? "−" : "+"}${x.game.spread}` : "to win"}${x.pick.lock ? " (lock)" : ""}`, chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss), likelyToHit: r3(x.pHit) })) };
     },

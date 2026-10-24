@@ -49,6 +49,16 @@ export function parseWeekAsk(raw, games, members, asker) {
 }
 
 // --- Chat (tool calling) ----------------------------------------------------
+// What the league calls people. Tools take the member name on the left;
+// replies use the first name after it (what the app shows).
+export const MEMBER_ALIASES = {
+  Jordan: ["Woods"],
+  Conlan: ["Connie", "Conlin"],
+  Skills: ["Adam"],
+  Logan: ["Logs"],
+  Dewitt: ["DeWitt", "Tyler", "Tyler DeWitt"],
+};
+const SHOWN = { Conlan: "Connie" };
 // The model holds the conversation and writes the reply; every fact comes
 // from a tool the phone runs with the app's own maths, so no number is made
 // up. The Worker never runs the tools: it relays the calls and results.
@@ -66,6 +76,7 @@ export function weekChatSystem(ctx) {
     "You are the BroChiefs pick'em league's assistant for this week. Friendly, brief, plain words; one to three short sentences unless a list is asked for.",
     "Scoring: each member picks every game, either against the spread (ATS) or straight up (SU, worth more for an underdog). One pick a week can be a lock: it scores extra if it hits and loses points if it misses. Most points wins the week; the tiebreaker is total points in one game.",
     `The member asking is ${ctx.asker || "unknown (not signed in)"}; "I", "me", "my" mean them. Members: ${(ctx.members || []).join(", ")}.`,
+    `Nicknames (pass the member name to tools): ${(ctx.members || []).filter((m) => MEMBER_ALIASES[m]).map((m) => `${MEMBER_ALIASES[m].join(" / ")} = ${m}`).join("; ")}. In replies call people what the app shows: ${(ctx.members || []).map((m) => SHOWN[m] || m).join(", ")}. If a name matches nobody, ask who they mean; never guess a different member.`,
     `This week's games:\n${games}`,
     "Never state a number, a pick, an odds figure or an outcome you did not get from a tool in this conversation. Call the tools you need, then answer from their results. Chances are fractions: say them as percents, whole numbers from 10% up and one decimal under 10% (0.007 is 0.7%, never 1%).",
     "Questions with 'if' about game results: call chance with conditions. 'Doesn't cover', 'doesn't win', 'loses' is not: true on the team named. A correction or follow-up ('I said…', 'what about Curt') reuses the earlier question with the change.",
