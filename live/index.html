@@ -682,6 +682,16 @@ html, body { overflow-x: hidden; }
   /* Friction and card status share a row on wide screens, stack on phones. */
   .duo { grid-area: duo; display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0; align-items: start; }
   .duo > section { margin: 0; }
+  @media (min-width: 900px) { .duo { grid-template-columns: 1fr 1fr; } .duo:has(> .afr:not(.shut)) { grid-template-columns: 1fr; } }
+  /* Health: the friction terminal in amber; red edge when something failed. */
+  .afr.ops { --afr-g: #ffc14d; background: #1a1206; border-color: #5a3d0a; }
+  .afr.ops .afr-d { color: #ffe6b3; }
+  .afr.ops.hot { border-color: #ff6b81; }
+  .afr.ops .afr-r { grid-template-columns: 64px 1fr auto; }
+  .afr.ops .afr-one { grid-column: 3; }
+  .afr-k.slow { color: #ffc14d; }
+  .afr.ops .afr-cp, .afr.ops .afr-one { border-color: rgba(255, 193, 77, .45); background: rgba(255, 193, 77, .08); }
+  @media (min-width: 700px) { .afr.ops .afr-r { grid-template-columns: 64px 110px minmax(0, 1fr) auto; } .afr.ops .afr-d { grid-column: 3; } .afr.ops .afr-one { grid-column: 4; } }
   @media (min-width: 900px) { .cs-list { grid-template-columns: 1fr 1fr; column-gap: 8px; } .cs-list > :last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 4px); } }
   .cs-tg b { white-space: nowrap; }
   .cs-tg small { white-space: nowrap; }
@@ -939,6 +949,9 @@ html, body { overflow-x: hidden; }
   // Fixed: ticked by hand, or a shipped fix of this kind and text came after it.
   const afrFix = (r) => (st.afrFixes || []).find((f) => (!f.k || f.k === (r.k || "dead-tap")) && String(r.d || "").includes(f.match) && r.at <= f.at) || (r.fixed ? { manual: true } : null);
   const afrLog = (rows) => [`Brochiefs ${LEAGUE.toUpperCase()} admin friction log · copied ${new Date().toLocaleString()}`, ...[...rows].sort((x, y) => y.at - x.at).map((r) => `${new Date(r.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} | ${(AFR_KIND[r.k || "dead-tap"] || [r.k])[0]} | ${r.d || ""}${r.screen ? ` | ${SCREENS[r.screen] || r.screen}` : ""}${afrFix(r) ? ` | FIXED${afrFix(r).commit ? ` ${afrFix(r).commit}` : ""}` : ""}`)].join("\n");
+  const OPS_KIND = { "route-fail": ["Worker error", "err"], "cron-fail": ["Job failed", "err"], "upstream-fail": ["ESPN/API down", "err"], "upstream-slow": ["ESPN/API slow", "slow"], "worker-fail": ["Worker failed", "err"], "worker-slow": ["Worker slow", "slow"], "espn-fail": ["ESPN failed", "err"], "espn-slow": ["ESPN slow", "slow"], "slow-load": ["Slow load", "slow"], "js-error": ["Error", "err"] };
+  const opsWho = (r) => (r.src === "worker" ? "worker" : r.n ? name(r.n) : "phone");
+  const opsLog = (rows) => [`Brochiefs ${LEAGUE.toUpperCase()} health log · copied ${new Date().toLocaleString()}`, ...[...rows].sort((x, y) => y.at - x.at).map((r) => `${new Date(r.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} | ${(OPS_KIND[r.k] || [r.k])[0]} | ${r.d || ""} | ${opsWho(r)}${r.v ? ` · build ${r.v}` : ""}`)].join("\n");
   const afrDay = (t) => { const d = new Date(t), n = new Date(); return d.toDateString() === n.toDateString() ? "Today" : d.toLocaleDateString([], { weekday: "short" }); };
   const dayOf = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const dayLab = (t) => { const d = dayOf(t), today = dayOf(Date.now()); return d === today ? "Today" : d === today - 86400000 ? "Yesterday" : new Date(t).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }); };
@@ -1097,6 +1110,7 @@ html, body { overflow-x: hidden; }
     if (!runAudit.t) runAudit();
     if (!loadJoins.t || Date.now() - loadJoins.t > 60000) { loadJoins.t = Date.now(); loadJoins(); }
     if (!loadAdminFriction.t || Date.now() - loadAdminFriction.t > 60000) { loadAdminFriction.t = Date.now(); loadAdminFriction(); }
+    if (!loadOps.t || Date.now() - loadOps.t > 60000) { loadOps.t = Date.now(); loadOps(); }
     try {
       const wantWeek = st.range === "7d" && (full || !st.wk || Date.now() - st.wk.at > 60000);
       const res = await fetch(`${WORKER}/presence?${auth()}${full ? "&seen=1" : ""}${wantWeek ? "&days=7" : ""}&t=${Date.now()}`, { cache: "no-store" });
@@ -1142,7 +1156,7 @@ html, body { overflow-x: hidden; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1372,6 +1386,20 @@ html, body { overflow-x: hidden; }
         ${rows.map((c) => `<b class="${need(c).length ? "" : "all"}" title="${c.last ? `last saved ${esc(afrDay(c.last) + " " + hm(c.last))}` : "nothing saved"}">${esc(name(c.name))}</b>${(c.slots || Array.from({ length: c.of }, (_, k) => k < c.picks)).map((x) => cell(x)).join("")}${cell(c.tb, c.tb ? "✓" : "")}${lr ? cell(c.lock, c.lock ? "✓" : "") : ""}`).join("")}</div>`;
       return `<section class="cs cs-${where}"><div class="cs-h"><b>WEEK ${st.audit.week} CARDS</b><small class="${done === cards.length ? "all" : ""}">${done}/${cards.length} done</small>${done < cards.length ? `<button type="button" class="cs-cp" data-csnudge="1">${st.copied === "cs" ? "✓ copied" : "Copy nudges"}</button>` : ""}</div>${grid}</section>`;
     };
+    // Health: Worker failures, failed or slow ESPN and Worker calls, slow
+    // loads and script errors, from the Worker itself and from phones.
+    const opsPanel = () => {
+      if (!st.ops) return "";
+      const rows = [...st.ops].sort((x, y) => y.at - x.at);
+      const day = rows.filter((r) => Date.now() - r.at < 86400000);
+      const bad = day.filter((r) => (OPS_KIND[r.k] || [])[1] === "err").length;
+      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-opstoggle="1" aria-expanded="${!!st.opsOpen}"><span class="afr-car">${st.opsOpen ? "▾" : "▸"}</span><b>&gt; health</b><small>${day.length ? `${bad} fail · ${day.length - bad} slow · 24h` : "all clear · 24h"}</small></button>${st.opsOpen && rows.length ? `<button type="button" class="afr-cp" data-opscopy="1">${st.copied === "ops" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
+      if (!st.opsOpen) return `<section class="afr ops shut${bad ? " hot" : ""}">${head}</section>`;
+      const days = [];
+      for (const r of rows) { const k = afrDay(r.at); if (days[days.length - 1]?.k !== k) days.push({ k, rows: [] }); days[days.length - 1].rows.push(r); }
+      return `<section class="afr ops${bad ? " hot" : ""}">${head}
+        ${rows.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r ops-r"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${(OPS_KIND[r.k] || [])[1] || ""}">${esc((OPS_KIND[r.k] || [r.k])[0])}</span><span class="afr-d">${esc(r.d || "")} <i>${esc(opsWho(r))}${r.v ? ` · ${esc(r.v.slice(-6))}` : ""}</i></span><button type="button" class="afr-one" data-opsone="${r.at}|${esc(r.k)}" aria-label="Copy this one">${st.copied === `ops:${r.at}|${r.k}` ? "✓" : "copy"}</button></div>`).join("")}`).join("") : `<p class="afr-none">No failures or slow calls in the last 7 days.</p>`}</section>`;
+    };
     // Admin friction: Jake's errors, rage taps, dead taps and sheets shut at
     // once, newest first by day, with a plain text copy for pasting.
     const adminFriction = () => {
@@ -1590,7 +1618,7 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}<div class="duo">${adminFriction()}${cardStatus("phone")}</div>${feedHtml}${rail}</div>
+      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}<div class="duo">${adminFriction()}${opsPanel()}${cardStatus("phone")}</div>${feedHtml}${rail}</div>
       <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
     paintTabs();
     tidy();
@@ -1734,6 +1762,15 @@ html, body { overflow-x: hidden; }
       clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.sig = ""; render(); }, 1600);
       return;
     }
+    if (b.dataset.opstoggle) { st.opsOpen = !st.opsOpen; store.set("brochiefs_live_ops_open", st.opsOpen ? "1" : ""); st.sig = ""; render(); return; }
+    if (b.dataset.opscopy || b.dataset.opsone) {
+      const rows = b.dataset.opsone ? (st.ops || []).filter((x) => `${x.at}|${x.k}` === b.dataset.opsone) : st.ops || [];
+      const text = b.dataset.opsone ? opsLog(rows).split("\n").slice(1).join("\n") : opsLog(rows);
+      if (!rows.length || !(await copyText(text))) return;
+      st.copied = b.dataset.opsone ? `ops:${b.dataset.opsone}` : "ops"; st.sig = ""; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.sig = ""; render(); }, 1600);
+      return;
+    }
     if (b.dataset.afrtoggle) { st.afrOpen = !st.afrOpen; store.set("brochiefs_live_afr_open", st.afrOpen ? "1" : ""); st.sig = ""; render(); return; }
     if (b.dataset.afrone) {
       const r = (st.afr || []).find((x) => x.at === Number(b.dataset.afrone));
@@ -1848,6 +1885,10 @@ html, body { overflow-x: hidden; }
   // Jake's own dead taps, from their own log (his visits stay untracked).
   st.afrOpen = store.get("brochiefs_live_afr_open") === "1";
   st.csOpen = store.get("brochiefs_live_cs_open") === "1";
+  st.opsOpen = store.get("brochiefs_live_ops_open") === "1";
+  async function loadOps() {
+    try { const x = await fetch(`${WORKER}/ops?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.ops = Array.isArray(j.ops) ? j.ops : []; st.sig = ""; render(); } } catch {}
+  }
   async function loadAdminFriction() {
     // Fixes shipped from a pasted log live in the repo (fixes.json).
     try { const f = await fetch(`../fixes.json?t=${Date.now()}`, { cache: "no-store" }); if (f.ok) st.afrFixes = (await f.json()).fixes || []; } catch {}
