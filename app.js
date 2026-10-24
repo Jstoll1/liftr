@@ -8038,7 +8038,7 @@ async function openInsights(gameId) {
   const roomPre = (() => {
     const all = lastGoodCloudPicks || {};
     const locked = isGameLocked(game);
-    const chip = (n) => `<span class="rp-chip${n === currentManager ? " me" : ""}${lockOn(n, game.id, all) ? " has-lk" : ""}">${nameLk(lockOn(n, game.id, all))}<span class="pick-chip-av" style="--accent:${accentFor(n)}">${esc(avatarOverrides[n] || shown(n)[0])}</span>${esc(shown(n))}</span>`;
+    const chip = (n) => `<span class="rp-chip${n === currentManager ? " me" : ""}${lockOn(n, game.id, all) ? " has-lk" : ""}">${nameLk(lockOn(n, game.id, all))}<span class="pick-chip-av" style="--accent:${accentFor(n)}">${esc(avatarOverrides[n] || shown(n)[0])}</span><span class="rp-nm">${esc(shown(n))}</span></span>`;
     if (!locked) {
       const mine = all[currentManager]?.picks?.[game.id];
       const inN = MANAGERS.filter((n) => all[n]?.picks?.[game.id]).length;
@@ -8058,9 +8058,13 @@ async function openInsights(gameId) {
     }
     const side = (team, short, id) => {
       const bets = [["ATS", `${team === game.favorite ? "-" : "+"}${game.spread}`], ["SU", "WIN"]].map(([mode, label]) => {
-        const who = MANAGERS.filter((n) => { const pk = all[n]?.picks?.[game.id]; return pk && pk.team === team && pk.mode === mode; });
+        // Locks first, then the usual order.
+        const who = MANAGERS.filter((n) => { const pk = all[n]?.picks?.[game.id]; return pk && pk.team === team && pk.mode === mode; }).sort((a, b) => lockOn(b, game.id, all) - lockOn(a, game.id, all));
         if (!who.length) return "";
-        return `<div class="rp-bet"><div class="rp-bh"><b>${esc(label)}</b><em>${pointValue(game, team, mode)} PT</em><i>${who.length}</i></div><div class="rp-chips">${who.map(chip).join("")}</div></div>`;
+        // The count only when the side splits across two bets; otherwise
+        // the team row above already says it.
+        const split = MANAGERS.filter((m) => all[m]?.picks?.[game.id]?.team === team).length !== who.length;
+        return `<div class="rp-bet"><div class="rp-bh"><b>${esc(label)}</b><em>${pointValue(game, team, mode)} PT</em>${split ? `<i>${who.length}</i>` : ""}</div><div class="rp-chips">${who.map(chip).join("")}</div></div>`;
       }).join("");
       const n = MANAGERS.filter((m) => all[m]?.picks?.[game.id]?.team === team).length;
       return `<div class="rp-col"><div class="rp-team">${lg(id, "rp-logo")}<span>${esc(short)}</span><b>${n}</b></div>${bets || `<div class="rp-none">Nobody</div>`}</div>`;

@@ -8301,3 +8301,14 @@ button.lt-rc { cursor: pointer; }
 .lks-st.dn { color: var(--neon-pink, #ff2079); }
 .lks-st .lk-smashed { width: 18px; height: 18px; }
 .lks-none { grid-column: 3 / -1; font-size: 12px; color: var(--text-meta, #a99cc7); }
+
+/* The room: names in two even columns, an odd last one centred under the
+   pair; a lock holder's chip is outlined gold with a small lock on its
+   corner instead of a big badge over the avatar. */
+.rp-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 4px; padding-top: 4px; }
+.rp-chip { min-width: 0; }
+.rp-chip:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 2px); }
+.rp-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rp-chip.has-lk { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .7); }
+.rp-chip.has-lk.me { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .7), 0 0 0 1px rgba(5, 217, 232, .5); }
+.rp-chip .nm-lk { top: -7px; left: -6px; width: auto; height: auto; background: none; box-shadow: none; font-size: 10px; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9)); }
