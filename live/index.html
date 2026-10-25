@@ -1371,7 +1371,7 @@ body::before { display: none; }
   // Recommended actions folded or cleared, remembered on this device.
   const recShut = (() => { try { return new Set(JSON.parse(localStorage.getItem("brochiefs_live_rec_shut") || "[]")); } catch { return new Set(); } })();
   const recHidden = (() => { try { return JSON.parse(localStorage.getItem("brochiefs_live_rec_hidden") || "{}") || {}; } catch { return {}; } })();
-  const PAGES = [["home", "Overview", "now"], ["activity", "Visits", "visits"], ["issues", "Issues", "bell"], ["bi", "BI", "brain"], ["stats", "Stats", "stats"]];
+  const PAGES = [["home", "Overview", "now"], ["activity", "Visits", "visits"], ["issues", "Issues", "bell"], ["bi", "Chief", "brain"], ["stats", "Stats", "stats"]];
   // Old section ids (jump links, studio's back buttons) land on their page.
   const PAGE_OF = { "sec-now": "home", "sec-tl": "home", "sec-visits": "activity", "sec-stats": "stats" };
   // Which section is in view, for the tabs; recomputed on scroll and after
@@ -2068,7 +2068,7 @@ body::before { display: none; }
     const attCards = [
       att("issues", afrOpenN, "Friction open", afrOpenN ? "rage, dead taps, errors" : "all ticked off", afrOpenN ? "warn" : "ok"),
       att("issues", opsBad, "Health fails", `${opsDay.length - opsBad} slow · 24h`, opsBad ? "bad" : "ok"),
-      att("bi", biOthers.length, "BI from others", `${chatDay.length} questions · 24h`, biOthers.length ? "info" : "calm"),
+      att("bi", biOthers.length, "Chief from others", `${chatDay.length} questions · 24h`, biOthers.length ? "info" : "calm"),
       att("activity", fric24, "Stuck moments", "rage, dead taps · 24h", fric24 ? "warn" : "ok"),
     ].join("");
     // What they used and who was in, as ranked bars.
@@ -2115,9 +2115,9 @@ body::before { display: none; }
     if (quick.length >= 3 && pct(quick.length, vs.length) >= 25) recs.activity = { tone: "info", t: `${pct(quick.length, vs.length)}% of visits are a quick look`, why: `${quick.length} of ${vs.length} visits lasted under a minute${topQuick ? `; most ended on ${topQuick[0]} (${topQuick[1]})` : ""}.`,
       copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${pct(quick.length, vs.length)}% of visits in the last 24h lasted under a minute${topQuick ? `, most ending on ${topQuick[0]}` : ""}. Suggest and build the one change that answers what they opened the app for in the first screen (score, my picks, standing), without adding clutter. Test at 390px.` };
     else recs.activity = { tone: "ok", t: "Visits look healthy", why: `${vs.length} visits, ${quick.length} under a minute. Nothing to fix here today.`, copy: "" };
-    if (biBad.length) recs.bi = { tone: "warn", t: `Tune BI: ${biBad.length} answer${biBad.length === 1 ? "" : "s"} went wrong`, why: `${biNo.length} got no answer, ${biBad.length - biNo.length} flagged, of ${chatDay.length} in 24h.`,
-      copy: `BroChief Intelligence (BI) misses from the last 24h. For each, find why (tool data, system prompt, or the phone's tool) and fix the cause, not the one answer:\n\n${chatLog(biBad)}` };
-    else if (chatDay.length) recs.bi = { tone: "ok", t: "BI answered everything", why: `${chatDay.length} questions, none flagged or unanswered in 24h.`, copy: "" };
+    if (biBad.length) recs.bi = { tone: "warn", t: `Tune the Chief: ${biBad.length} answer${biBad.length === 1 ? "" : "s"} went wrong`, why: `${biNo.length} got no answer, ${biBad.length - biNo.length} flagged, of ${chatDay.length} in 24h.`,
+      copy: `Ask the Chief misses from the last 24h. For each, find why (tool data, system prompt, or the phone's tool) and fix the cause, not the one answer:\n\n${chatLog(biBad)}` };
+    else if (chatDay.length) recs.bi = { tone: "ok", t: "The Chief answered everything", why: `${chatDay.length} questions, none flagged or unanswered in 24h.`, copy: "" };
     const feats0 = [...featMap.entries()].sort((a, b) => a[1].who.size - b[1].who.size);
     const lowFeat = feats0.find(([, x]) => x.who.size <= 1);
     if (lowFeat) recs.stats = { tone: "info", t: `Surface ${lowFeat[0].replace(/^Opened (a |the )?/, "")}`, why: `Only ${lowFeat[1].who.size} person used it in 24h while ${feats[0] ? `${feats[0][1].who.size} used ${feats[0][0].replace(/^Opened (a |the )?/, "")}` : "others were busier"}.`,
@@ -2194,7 +2194,7 @@ body::before { display: none; }
       home: `${ucPanel}${recCard("home")}${kpisNb}${timeline}${feedHtml}${strips}${overview}${flowPanel}`,
       activity: "",
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
-      bi: `<div class="pg-bar"><h1>BI questions</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
+      bi: `<div class="pg-bar"><h1>Ask the Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
       stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${rail}`,
     }[st.page] || "";
     app.innerHTML = `
@@ -2793,7 +2793,7 @@ body::before { display: none; }
   // Read every few minutes; prices are OpenAI's published rates, so the
   // bill itself is the final word.
   const cost = { data: null, at: 0, err: "" };
-  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening", "week-ask": "BI (old reader)", "week-chat": "BroChief Intelligence", "lightning-edit": "Lightning edits" };
+  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening", "week-ask": "BI (old reader)", "week-chat": "Ask the Chief", "lightning-edit": "Lightning edits" };
   async function loadCosts(force) {
     if (!force && Date.now() - cost.at < 3 * 60000) return;
     try {
