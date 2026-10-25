@@ -1172,6 +1172,12 @@ body::before { display: none; }
 .nb-r .nb-p small { margin-left: auto; padding-left: 8px; color: var(--dim); font-size: 12px; white-space: nowrap; }
 .nb-r .nb-x { position: static; flex: none; width: 40px; height: 40px; border: 0; background: none; color: var(--dim); }
 .nb-r .nb-x:hover { color: var(--text); }
+
+/* NFL: who reached the under construction page. */
+.uc-l { display: flex; flex-direction: column; }
+.uc-r { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "b e" "s t"; gap: 2px 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.uc-r:first-child { border-top: 0; }
+.uc-r b { grid-area: b; font-weight: 600; } .uc-r span { grid-area: s; font-size: 12.5px; color: var(--meta); } .uc-r em { grid-area: e; font-style: normal; font-weight: 700; color: var(--gold); text-align: right; } .uc-r small { grid-area: t; font-size: 12px; color: var(--dim); text-align: right; }
 </style>
 </head>
 <body>
@@ -1446,6 +1452,7 @@ body::before { display: none; }
     if (!loadJoins.t || Date.now() - loadJoins.t > 60000) { loadJoins.t = Date.now(); loadJoins(); }
     if (!loadAdminFriction.t || Date.now() - loadAdminFriction.t > 60000) { loadAdminFriction.t = Date.now(); loadAdminFriction(); }
     if (!loadOps.t || Date.now() - loadOps.t > 60000) { loadOps.t = Date.now(); loadOps(); }
+    if (LEAGUE === "nfl" && (!loadUc.t || Date.now() - loadUc.t > 60000)) { loadUc.t = Date.now(); loadUc(); }
     if (LEAGUE !== "nfl" && (!loadChats.t || Date.now() - loadChats.t > 60000)) { loadChats.t = Date.now(); loadChats(); }
     try {
       const wantWeek = st.range === "7d" && (full || !st.wk || Date.now() - st.wk.at > 60000);
@@ -1503,7 +1510,7 @@ body::before { display: none; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([st.page, st.biFilter, st.vf, st.vsort, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([st.page, st.biFilter, st.vf, st.vsort, (st.uc || []).length, st.uc?.[0]?.at, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -2083,6 +2090,18 @@ body::before { display: none; }
       ${paths.length ? `<h3>Common paths</h3><ol class="flow-p">${paths.map(([p, n]) => `<li><span>${p.split(" → ").map((x) => `<i>${esc(x)}</i>`).join("<b>→</b>")}</span><em>${n}</em></li>`).join("")}</ol>` : ""}
       ${idea ? `<div class="idea"><em>💡 Engagement idea</em><b>${esc(idea.t)}</b><span>${esc(idea.why)}</span><button type="button" class="rec-cp" data-reccopy="idea">${st.copied === "rec:idea" ? "✓ Copied" : "Copy for Claude"}</button></div>` : ""}
     </section>` : "";
+    // NFL: everyone but Jake sees the under construction page; who tried.
+    const ucPanel = (() => {
+      if (LEAGUE !== "nfl" || !st.uc) return "";
+      const by = new Map();
+      for (const h of st.uc) { const k = h.dev || "?"; const x = by.get(k) || { who: "", kind: h.kind, vias: new Set(), n: 0, last: 0, first: Infinity }; x.who = x.who || h.n || (h.inv ? `${h.inv} (invite link)` : ""); x.vias.add(h.via); x.n++; x.last = Math.max(x.last, h.at); x.first = Math.min(x.first, h.at); by.set(k, x); }
+      const rows = [...by.entries()].sort((a, b) => b[1].last - a[1].last);
+      const VIA = { home: "site", join: "join link", invite: "invite link", app: "home screen app" };
+      const when = (t) => `${afrDay(t)} ${hm(t)}`;
+      return `<section class="panel uc"><div class="ph"><h2>🚧 Under construction hits</h2><span class="sub">${st.uc.length} hit${st.uc.length === 1 ? "" : "s"} · ${rows.length} device${rows.length === 1 ? "" : "s"} · 14 days</span></div>
+        ${rows.length ? `<div class="uc-l">${rows.map(([dev, x]) => `<div class="uc-r"><b>${esc(x.who || "Unknown")}</b><span>${esc(x.kind || "")} · ${esc([...x.vias].map((v) => VIA[v] || v).join(", "))}${x.who ? "" : ` · device ${esc(dev)}`}</span><em class="num">${x.n}×</em><small>${esc(when(x.last))}</small></div>`).join("")}</div>` : `<div class="note">Nobody has hit the page yet.</div>`}
+      </section>`;
+    })();
     const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}</div>`;
     // Notification bar: who came in and who asked BI since you last
     // cleared it (never you). Tap a part to go there; ✕ marks it seen.
@@ -2104,7 +2123,7 @@ body::before { display: none; }
     ].filter(Boolean).join("");
     const kpisNb = kpis.replace("<!--NB-->", nRows ? `<div class="nb-rows">${nRows}</div>` : "");
     const pageBody = {
-      home: `${recCard("home")}${kpisNb}${timeline}${feedHtml}${strips}${overview}${flowPanel}`,
+      home: `${ucPanel}${recCard("home")}${kpisNb}${timeline}${feedHtml}${strips}${overview}${flowPanel}`,
       activity: "",
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
       bi: `<div class="pg-bar"><h1>BI questions</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
@@ -2453,6 +2472,10 @@ body::before { display: none; }
   const chatLog = (rows) => rows.map((c) => `${new Date(c.at).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · ${c.asker || "not signed in"}${c.build ? ` · build ${c.build}` : ""}${c.flagged ? `\nFLAGGED${c.note ? `: ${c.note}` : ""}` : ""}\nQ: ${c.q}\nA: ${c.a ?? "(no answer)"}${c.status && c.status !== "answered" ? ` [${c.status}]` : ""}${(c.tools || []).map((t) => `\n   tool ${t.name}(${t.args}) -> ${t.out}`).join("")}`).join("\n\n");
   async function loadChats() {
     try { const x = await fetch(`${WORKER}/week-chat?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.chats = Array.isArray(j.chats) ? j.chats : []; st.sig = ""; render(); } } catch {}
+  }
+  // NFL holding page: who reached the under construction sign.
+  async function loadUc() {
+    try { const x = await fetch(`${WORKER}/uc-hit?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.uc = Array.isArray(j.hits) ? j.hits : []; st.sig = ""; render(); } } catch {}
   }
   async function loadOps() {
     try { const x = await fetch(`${WORKER}/ops?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.ops = Array.isArray(j.ops) ? j.ops : []; st.sig = ""; render(); } } catch {}
