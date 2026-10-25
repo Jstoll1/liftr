@@ -1195,6 +1195,44 @@ body::before { display: none; }
 .wl-k i.a { background: var(--accent); } .wl-k i.t { background: var(--green); }
 .wl-k span:last-child { margin-left: auto; color: var(--dim); }
 @media (max-width: 520px) { .pl { grid-template-columns: 110px minmax(0, 1fr); } }
+
+/* --- Week view layout: tiles, then when in the day and game day beside
+   them on a wide screen; features full width. --- */
+.wk-g { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+@media (min-width: 1100px) { .wk-g { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; } .wk-full { grid-column: 1 / -1; } }
+.wk-side, .wk-main, .wk-full { min-width: 0; }
+.lv-sec { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 10px; }
+.lv-sec h3 { margin: 0; font: 600 14px/1.2 var(--sans); color: var(--text); }
+.lv-sec span { font-size: 12px; color: var(--dim); }
+.lv-sec.row { align-items: center; } .lv-sec.row .seg { margin-left: auto; }
+.wk-side > .lv-sec ~ .lv-sec, .wk-full > .lv-sec { margin-top: 22px; }
+@media (min-width: 1100px) { .wk-full > .lv-sec { margin-top: 4px; } }
+/* Tiles: a 7 day total per person and an Everyone row. */
+.hm { grid-template-columns: var(--lab, 148px) repeat(7, minmax(0, 1fr)) 40px !important; }
+.hm-h, .hm-c { font-family: var(--sans) !important; }
+.hm-c { background-color: rgba(255, 255, 255, .03); }
+.hm-t { text-align: right; font: 700 13px/1 var(--sans); color: var(--text); }
+.hm-t.dim { opacity: .3; }
+.hm-f { font-size: 12px; font-weight: 600; color: var(--meta); padding-top: 6px; border-top: 1px solid var(--line); }
+.hm-s { text-align: center; font: 600 12px/1 var(--sans); color: var(--meta); padding-top: 8px; border-top: 1px solid var(--line); }
+.hm-s.t { color: var(--green); }
+.hm-st { text-align: right; color: var(--text); }
+/* When in the day: gridlines and the busiest hour marked. */
+.wl-c { position: relative; }
+.wl-g { stroke: rgba(255, 255, 255, .06); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.wl-pk { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(139, 124, 255, .3); }
+.wl-pk b { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); font: 700 11px/1 var(--sans); color: var(--text); background: var(--panel2); padding: 2px 5px; border-radius: 4px; white-space: nowrap; }
+/* Features: label, a 7 day line, a share bar and the people count. */
+.ft { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(70px, 1.2fr) minmax(40px, .8fr) 26px; gap: 8px 12px; align-items: center; }
+.ft-l { font-size: 13px; color: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ft-s { width: 100%; height: 22px; display: block; }
+.ft-b { height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; }
+.ft-b i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.ft-n { text-align: right; font: 700 13px/1 var(--sans); }
+/* Game day as a line. */
+.gd-l svg { display: block; width: 100%; height: 70px; margin-top: 10px; }
+.gd span, .gd b { font-family: var(--sans) !important; }
+@media (min-width: 900px) { .ft { grid-template-columns: minmax(110px, 200px) minmax(0, 2fr) minmax(0, 1fr) 30px; } }
 </style>
 </head>
 <body>
@@ -1660,9 +1698,10 @@ body::before { display: none; }
       }).filter((r) => r.taps).sort((a, b) => b.total - a.total || b.taps - a.taps);
       if (!rows.length) return "";
       const mx = Math.max(1, ...rows.flatMap((r) => r.cells.map((c) => c.people.size)));
-      return `<div class="sub2" style="margin-top:20px">Features${st.filter ? ` · ${esc(name(st.filter))}` : ""} · people who used each, by day</div>
-        <div class="fg" style="--days:${dayList.length}"><span></span>${dayList.map((d) => `<span class="fg-d${d === today0 ? " t" : ""}">${esc(dShort(d)).slice(0, 3)}</span>`).join("")}<span class="fg-d">WK</span>
-        ${rows.map((r) => `<span class="fg-l">${esc(r.lab)}</span>${r.cells.map((c, i) => `<i class="fg-c${c.people.size ? "" : " z"}" style="--a:${c.people.size ? (0.18 + 0.72 * c.people.size / mx).toFixed(2) : 0}" data-tip="${esc(`<b>${r.lab} · ${dLong(dayList[i])}</b>${c.people.size ? `${[...c.people].map(name).join(", ")} · ${c.taps} tap${c.taps === 1 ? "" : "s"}` : "Nobody"}`)}">${c.people.size || ""}</i>`).join("")}<b class="fg-t">${r.total}</b>`).join("")}</div>`;
+      const ln = (vals) => { const m = Math.max(1, ...vals), w = 100, h = 22; const pts = vals.map((v, k) => `${((k / (vals.length - 1)) * w).toFixed(1)},${(h - (v / m) * (h - 3) - 1.5).toFixed(1)}`).join(" "); return `<svg class="ft-s" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,${h} ${pts} ${w},${h}" class="spk-a"/><polyline points="${pts}" class="spk-l"/></svg>`; };
+      const top = Math.max(1, ...rows.map((r) => r.total));
+      return `<div class="lv-sec"><h3>Features${st.filter ? ` · ${esc(name(st.filter))}` : ""}</h3><span>people who used each · line is by day</span></div>
+        <div class="ft">${rows.map((r) => `<span class="ft-l">${esc(r.lab)}</span>${ln(r.cells.map((c) => c.people.size))}<span class="ft-b"><i style="width:${((r.total / top) * 100).toFixed(0)}%"></i></span><b class="ft-n num" title="${r.taps} taps">${r.total}</b>`).join("")}</div>`;
     };
     // Game day: the league's big day (Saturday for college, Sunday for the
     // NFL), noon to midnight, against the rest of the week.
@@ -1683,9 +1722,9 @@ body::before { display: none; }
       const others = wv.filter((v) => !inWin(v) && (!st.filter || v.n === st.filter));
       const share = Math.round(100 * gv.length / Math.max(1, gv.length + others.length));
       const hr = (h) => `${(h + 12) % 12 || 12}${h + 12 < 12 ? "a" : "p"}`;
-      return `<div class="sub2" style="margin-top:20px">Game day · ${esc(dLong(day))}, noon to midnight</div>
+      return `<div class="lv-sec"><h3>Game day</h3><span>${esc(dLong(day))}, noon to midnight</span></div>
         <div class="gd"><span><b>${who.size}</b>people</span><span><b>${gv.length}</b>visits · ${share}% of the week</span><span><b>${esc(mins(ms) || "0m")}</b>in the app</span><span><b>${hr(pk + 12)}</b>busiest hour</span></div>
-        <div class="gd-bars">${byH.map((n, i) => `<i style="height:${(n / Math.max(1, ...byH) * 100).toFixed(0)}%" data-tip="${esc(`<b>${hr(i + 12)}</b>${n} visit${n === 1 ? "" : "s"}`)}"></i>`).join("")}</div>
+        <div class="gd-l">${(() => { const m = Math.max(1, ...byH); const pts = byH.map((n, k) => `${((k / (byH.length - 1)) * 100).toFixed(1)},${(38 - (n / m) * 34).toFixed(1)}`).join(" "); return `<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,40 ${pts} 100,40" class="spk-a"/><polyline points="${pts}" class="spk-l"/></svg>`; })()}</div>
         <div class="gd-ax"><span>12p</span><span>3p</span><span>6p</span><span>9p</span><span>12a</span></div>
         ${feats.length ? `<div class="gd-f">${feats.map(([l, n]) => `<span>${esc(l)} <b>${n}</b></span>`).join("")}</div>` : ""}`;
     };
@@ -1699,8 +1738,9 @@ body::before { display: none; }
       const val = (x) => (byMin ? x.ms : x.n);
       const maxV = Math.max(1, ...grid.flat().map(val));
       const hmHtml = `<div class="hm">
-        <span></span>${dayList.map((d) => `<span class="hm-h${d === today0 ? " t" : ""}">${esc(dShort(d))}<small>${new Date(d).getDate()}</small></span>`).join("")}
-        ${order.map((n, r) => laneLabel(n) + dayList.map((d, c) => { const x = grid[r][c], v = val(x), a = v ? 0.16 + 0.74 * Math.sqrt(v / maxV) : 0; return `<i class="hm-c${x.n ? "" : " z"}${st.filter && st.filter !== n ? " dim" : ""}" style="${v ? `background:rgba(139, 108, 255, ${a.toFixed(2)})` : ""}" data-tip="${esc(`<b>${name(n)} · ${dLong(d)}</b>${x.n ? `${x.n} visit${x.n === 1 ? "" : "s"} · ${mins(x.ms)} in the app${x.f.length ? `<br>${x.f.slice(0, 5).join(", ")}` : ""}` : "Not in"}`)}">${x.n ? (byMin ? mins(x.ms) : x.n) : ""}</i>`; }).join("")).join("")}
+        <span></span>${dayList.map((d) => `<span class="hm-h${d === today0 ? " t" : ""}" title="${esc(dLong(d))}">${esc(new Date(d).toLocaleDateString([], { weekday: "short" }).slice(0, 2))}<small>${new Date(d).getDate()}</small></span>`).join("")}<span class="hm-h">7d</span>
+        ${order.map((n, r) => laneLabel(n) + dayList.map((d, c) => { const x = grid[r][c], v = val(x), a = v ? 0.16 + 0.74 * Math.sqrt(v / maxV) : 0; return `<i class="hm-c${x.n ? "" : " z"}${st.filter && st.filter !== n ? " dim" : ""}" style="${v ? `background:rgba(139, 108, 255, ${a.toFixed(2)})` : ""}" data-tip="${esc(`<b>${name(n)} · ${dLong(d)}</b>${x.n ? `${x.n} visit${x.n === 1 ? "" : "s"} · ${mins(x.ms)} in the app${x.f.length ? `<br>${x.f.slice(0, 5).join(", ")}` : ""}` : "Not in"}`)}">${x.n ? (byMin ? mins(x.ms) : x.n) : ""}</i>`; }).join("") + (() => { const t = grid[r].reduce((a, x) => ({ n: a.n + x.n, ms: a.ms + x.ms }), { n: 0, ms: 0 }); return `<b class="hm-t num${st.filter && st.filter !== n ? " dim" : ""}">${t.n ? (byMin ? mins(t.ms) : t.n) : "–"}</b>`; })()).join("")}
+        <span class="hm-f">Everyone</span>${dayList.map((d, c) => { const t = grid.reduce((a, row) => ({ n: a.n + row[c].n, ms: a.ms + row[c].ms }), { n: 0, ms: 0 }); return `<b class="hm-s num${d === today0 ? " t" : ""}">${t.n ? (byMin ? mins(t.ms) : t.n) : "–"}</b>`; }).join("")}<b class="hm-s hm-st num">${(() => { const t = grid.flat().reduce((a, x) => ({ n: a.n + x.n, ms: a.ms + x.ms }), { n: 0, ms: 0 }); return byMin ? mins(t.ms) : t.n; })()}</b>
       </div>`;
       // When in the day: a punch card, a row per day and a column per hour,
       // a bigger, brighter dot for more visits starting in that hour.
@@ -1718,16 +1758,17 @@ body::before { display: none; }
       const mxW = Math.max(1, ...wkH), mxT = Math.max(1, ...tdH, 1);
       const pts = (vals, mx) => vals.map((v, i) => `${((i / 23) * 100).toFixed(1)},${(58 - (v / mx) * 54).toFixed(1)}`).join(" ");
       const peakH = wkH.indexOf(Math.max(...wkH));
-      const pcHtml = `<div class="wl"><svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,60 ${pts(wkH, mxW)} 100,60" class="spk-a"/><polyline points="${pts(wkH, mxW)}" class="spk-l"/>${tdH.length ? `<polyline points="${pts(tdH, Math.max(mxT, mxW / 7))}" class="wl-t"/>` : ""}</svg>
+      const pkX = (peakH / 23) * 100, pkY = 58 - (wkH[peakH] / mxW) * 54;
+      const pcHtml = `<div class="wl"><div class="wl-c"><svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true">${[15, 30, 45].map((y) => `<line x1="0" x2="100" y1="${y}" y2="${y}" class="wl-g"/>`).join("")}${[25, 50, 75].map((x) => `<line y1="0" y2="60" x1="${x}" x2="${x}" class="wl-g"/>`).join("")}<polyline points="0,60 ${pts(wkH, mxW)} 100,60" class="spk-a"/><polyline points="${pts(wkH, mxW)}" class="spk-l"/>${tdH.length ? `<polyline points="${pts(tdH, Math.max(mxT, mxW / 7))}" class="wl-t"/>` : ""}</svg><i class="wl-pk" style="left:${pkX.toFixed(1)}%;top:${(pkY / 60 * 100).toFixed(1)}%"><b>${wkH[peakH]}</b></i></div>
         <div class="pl-ax">${[0, 6, 12, 18].map((h) => `<span>${hourLabel(h)}</span>`).join("")}<span>11p</span></div>
         <div class="wl-k"><span><i class="a"></i>7 days</span><span><i class="t"></i>today</span><span>busiest ${hourLabel(peakH)}</span></div></div>`;
       const firstTap = (wk.feed || []).reduce((m, e) => Math.min(m, e.at), now);
-      return `<div class="sub2 row">Who was in, day by day ${st.filter ? "" : "· tap a name to follow one person"}<span class="seg sm" role="group" aria-label="Show"><button type="button" class="${byMin ? "" : "on"}" data-metric="visits">Visits</button><button type="button" class="${byMin ? "on" : ""}" data-metric="min">Minutes</button></span></div>${hmHtml}
-        <div class="sub2" style="margin-top:20px">When in the day${st.filter ? ` · ${esc(name(st.filter))}` : " · everyone"} · visits by hour</div>
+      return `<div class="wk-g"><div class="wk-main"><div class="lv-sec row"><h3>Who was in</h3><span>${st.filter ? "" : "tap a name to follow one person"}</span><span class="seg sm" role="group" aria-label="Show"><button type="button" class="${byMin ? "" : "on"}" data-metric="visits">Visits</button><button type="button" class="${byMin ? "on" : ""}" data-metric="min">Minutes</button></span></div>${hmHtml}
+        </div><div class="wk-side"><div class="lv-sec"><h3>When in the day</h3><span>${st.filter ? esc(name(st.filter)) : "everyone"} · visits by hour</span></div>
         ${pcHtml}
+        ${gameDay()}</div><div class="wk-full">
         ${featGrid()}
-        ${gameDay()}
-        ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:10px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}`;
+        ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:10px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}</div></div>`;
     };
     // The last 24 hours: one line per person (actions each hour), in the
     // same style as the headline sparklines; quiet people fold away.
