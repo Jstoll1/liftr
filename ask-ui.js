@@ -265,7 +265,36 @@
     const sb = document.getElementById("scoreboard-screen");
     b.hidden = !sb || sb.classList.contains("hidden") || !!document.querySelector(".modal-overlay:not(.hidden), #ask-sheet, #lt-modal");
   }
-  paintBtn(); setInterval(paintBtn, 800);
+  // The one-time "new feature" card, in the Path to Win intro's style:
+  // once per device, on the Scores page, never over another pop-up.
+  const INTRO_KEY = "brochiefs_ai_intro_v1";
+  function introSeen() { try { return !!localStorage.getItem(INTRO_KEY); } catch { return true; } }
+  function maybeIntro() {
+    const fab = document.getElementById("ask-fab");
+    if (introSeen() || !fab || fab.hidden || !me() || document.querySelector(".pi-screen, .pr-screen:not(.hidden), .np-screen:not(.hidden), .modal-overlay:not(.hidden), .wpx-overlay:not(.hidden), #lt-modal, #ask-sheet, #locks-sheet")) return;
+    try { localStorage.setItem(INTRO_KEY, String(Date.now())); } catch {}
+    const ex = chips();
+    const m = document.createElement("div");
+    m.className = "pi-screen ai-intro"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: Ask AI");
+    m.innerHTML = `<div class="pi-card">
+      <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title">ASK AI</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
+      <p class="pi-lede">Ask anything about this week's race and get the answer from the same odds as the WIN% column.</p>
+      <div class="pi-step"><b>1</b><span>Tap <span class="ai-pill">🧠 Ask AI</span> at the bottom left of Scores</span></div>
+      <div class="pi-step"><b>2</b><span>Ask in your own words, or tap one of these</span></div>
+      <div class="ai-ex">${ex.map((q) => `<button type="button" data-aiex="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+      <div class="ai-btns"><button type="button" class="ai-later">LATER</button><button type="button" class="pi-ok">TRY IT</button></div>
+    </div>`;
+    document.body.appendChild(m);
+    const close = () => { m.classList.add("out"); setTimeout(() => m.remove(), 220); const f = document.getElementById("ask-fab"); f?.classList.add("ping"); setTimeout(() => f?.classList.remove("ping"), 2400); };
+    m.addEventListener("click", (e) => {
+      const q = e.target.closest("[data-aiex]")?.dataset.aiex;
+      if (q) { close(); setTimeout(() => { open(); send(q); }, 230); return; }
+      if (e.target.closest(".pi-ok")) { close(); setTimeout(open, 230); return; }
+      if (e.target === m || e.target.closest(".pi-x, .ai-later")) close();
+    });
+    if (typeof noteUse === "function") noteUse("ai-intro");
+  }
+  paintBtn(); setInterval(() => { paintBtn(); if (!introSeen()) maybeIntro(); }, 1500);
   window.openWeekAsk = open;
   window.__weekAsk = { runTool, condChances };
 })();
