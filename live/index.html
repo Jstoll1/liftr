@@ -1187,7 +1187,7 @@ body::before { display: none; }
   function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "6h", "12h", "24h", "7d"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "6h", wk: null, sec: "sec-now", page: ["home", "activity", "issues", "bi", "stats"].includes(store.get("brochiefs_live_page")) ? store.get("brochiefs_live_page") : "home", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "6h", "12h", "24h", "7d"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "6h", wk: null, sec: "sec-now", page: ["home", "issues", "bi", "stats"].includes(store.get("brochiefs_live_page")) ? store.get("brochiefs_live_page") : "home", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
   // What's new since this device last looked: a baseline saved when the
   // page is put away, compared with what arrives. ✓ Seen resets it now.
   const SEEN_KEY = `brochiefs_live_seen_${LEAGUE}`;
@@ -1262,11 +1262,16 @@ body::before { display: none; }
   // Which section is in view, for the tabs; recomputed on scroll and after
   // every redraw, so the right tab stays lit.
   // Pages, not one long scroll: the lit tab is the page you are on.
-  function paintTabs() {
-    document.querySelectorAll(".tabs button[data-page]").forEach((b) => b.classList.toggle("on", b.dataset.page === st.page));
+  function paintTabs(force) {
+    if (!force && Date.now() < (st.secLock || 0)) return;
+    // On Overview, the Visits tab lights once the visits reach the top.
+    const v = st.page === "home" && document.getElementById("sec-visits");
+    const cur = v && v.getBoundingClientRect().top < 160 ? "activity" : st.page;
+    document.querySelectorAll(".tabs button[data-page]").forEach((b) => b.classList.toggle("on", b.dataset.page === cur));
   }
 
-  addEventListener("scroll", () => { cancelAnimationFrame(paintTabs.r); paintTabs.r = requestAnimationFrame(paintTabs); }, { passive: true });
+
+  addEventListener("scroll", () => { cancelAnimationFrame(paintTabs.r); paintTabs.r = requestAnimationFrame(() => paintTabs()); }, { passive: true });
   const COPY_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 3.5v-.5a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3v5A1.5 1.5 0 0 0 4 9.5h.5"/></svg>`;
   const SAYS = {
     "game-info": "Opened game info", gamecast: "Watched a game live (Gamecast)", "game-final": "Opened a finished game",
@@ -2007,8 +2012,8 @@ body::before { display: none; }
     </section>` : "";
     const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>`;
     const pageBody = {
-      home: `${recCard("home")}${kpis}${timeline}${strips}${overview}`,
-      activity: `${recCard("activity")}${flowPanel}${feedHtml}`,
+      home: `${recCard("home")}${kpis}${timeline}${strips}${overview}${flowPanel}${feedHtml}`,
+      activity: "",
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
       bi: `<div class="pg-bar"><h1>BI questions</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
       stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${rail}`,
@@ -2685,6 +2690,16 @@ body::before { display: none; }
     paintStudio(); studioLoad();
   }
   function goPage(p) {
+    // Visits is the lower half of Overview: one scroll from the numbers
+    // into the visits themselves; the tab jumps there.
+    if (p === "activity") {
+      const wasHome = st.page === "home";
+      st.page = "home"; st.menu = false; store.set("brochiefs_live_page", "home"); if (!wasHome) { st.sig = ""; render(); }
+      const el = document.getElementById("sec-visits");
+      if (el) scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + scrollY - (innerWidth >= 1024 ? 80 : 70)), behavior: wasHome ? "smooth" : "auto" });
+      st.secLock = Date.now() + 900; document.querySelectorAll(".tabs button[data-page]").forEach((b) => b.classList.toggle("on", b.dataset.page === "activity"));
+      return;
+    }
     if (!PAGES.some(([id]) => id === p)) p = "home";
     st.page = p; st.menu = false; store.set("brochiefs_live_page", p); st.sig = ""; render(); scrollTo({ top: 0 });
   }
