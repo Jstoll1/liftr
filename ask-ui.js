@@ -1,4 +1,4 @@
-// Ask the week: "If Michigan wins, can I still win?"
+// BroChief Intelligence (BI): "If Michigan wins, can I still win?"
 // The Worker's model only reads the question into who and which game
 // outcomes it assumes. The numbers here come from the app's own win-chance
 // runs, replayed with those outcomes held, so nothing is made up.
@@ -15,7 +15,7 @@
   // The chat as plain text, with who asked and the build, to paste to Claude.
   function chatText() {
     const v = document.querySelector('meta[name="build"]')?.content || "";
-    const head = `Brochiefs Ask the week · ${new Date().toLocaleString()} · ${me() || "nobody signed in"}${v ? ` · build ${v}` : ""}`;
+    const head = `BroChief Intelligence · ${new Date().toLocaleString()} · ${me() || "nobody signed in"}${v ? ` · build ${v}` : ""}`;
     return [head, ...log.map((x) => `Q: ${x.q}\nA: ${x.a ?? "(still working)"}${(x.tools || []).map((t) => `\n   tool ${t.name}(${JSON.stringify(t.args)}) -> ${JSON.stringify(t.out).slice(0, 400)}`).join("")}`)].join("\n\n");
   }
   async function copyChat() {
@@ -197,7 +197,7 @@
   function sheet() {
     let m = document.getElementById("ask-sheet");
     if (!m) {
-      m = document.createElement("div"); m.id = "ask-sheet"; m.className = "ask"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Ask about this week");
+      m = document.createElement("div"); m.id = "ask-sheet"; m.className = "ask"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Ask BroChief Intelligence");
       m.addEventListener("click", (e) => {
         if (e.target === m || e.target.closest(".ask-x")) { m.remove(); return; }
         if (e.target.closest("[data-askcopy]")) { copyChat(); return; }
@@ -206,7 +206,7 @@
       m.addEventListener("submit", (e) => { e.preventDefault(); const i = m.querySelector("input"); send(i.value); });
       document.body.appendChild(m);
     }
-    m.innerHTML = `<div class="ask-card"><div class="ask-h"><b>💬 ASK THE WEEK</b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy chat"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
+    m.innerHTML = `<div class="ask-card"><div class="ask-h"><b>🧠 BROCHIEF INTELLIGENCE</b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy chat"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
       <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><p class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : esc(x.a)}</p>`).join("") : `<p class="ask-hint">Ask anything about this week's race: odds, "what if" a game goes one way, who's out, who picked what, the tiebreaker. The numbers come from the same runs as the WIN% column.</p>`}</div>
       <div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}">${esc(c)}</button>`).join("")}</div>
       <form class="ask-f"><input type="text" maxlength="200" placeholder="If Michigan wins can I still win?" ${busy ? "disabled" : ""} autocomplete="off"><button type="submit" ${busy ? "disabled" : ""}>Ask</button></form></div>`;
@@ -257,8 +257,8 @@
   function paintBtn() {
     let b = document.getElementById("ask-fab");
     if (!b) {
-      b = document.createElement("button"); b.id = "ask-fab"; b.type = "button"; b.className = "ask-fab"; b.setAttribute("aria-label", "Ask about this week");
-      b.innerHTML = `<b aria-hidden="true">💬</b>Ask`;
+      b = document.createElement("button"); b.id = "ask-fab"; b.type = "button"; b.className = "ask-fab"; b.setAttribute("aria-label", "Ask BroChief Intelligence");
+      b.innerHTML = `<b aria-hidden="true">🧠</b>Ask BI`;
       b.addEventListener("click", () => { chipSet = null; open(); });
       document.body.appendChild(b);
     }
