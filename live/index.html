@@ -1134,6 +1134,20 @@ body::before { display: none; }
 .feed .acts time { font: 500 12px/1.4 var(--sans) !important; color: var(--dim); min-width: 62px; }
 .feed .acts li.iss span { color: var(--gold); }
 @media (min-width: 1024px) { .feed .day { top: 64px; } .feed .fh .seg { order: 0; flex-basis: auto; } }
+
+.feed .vsort { position: relative; }
+.feed .vsort .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.feed .vsort select { appearance: none; -webkit-appearance: none; padding: 6px 26px 6px 10px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a2a8b8' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center; color: var(--text); font: 600 13px/1.2 var(--sans); }
+/* Visits header: title and actions on one row, sort and filters below. */
+.feed .fh { display: grid !important; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "h e c" "s f f"; align-items: center; gap: 10px 12px; }
+.feed .fh h2 { grid-area: h; margin: 0; }
+.feed .fh [data-openall] { grid-area: e; }
+.feed .fh [data-copy] { grid-area: c; }
+.feed .fh .vsort { grid-area: s; }
+.feed .fh .seg { grid-area: f; order: 0; flex-basis: auto; }
+.feed .fh .chip { grid-column: 1 / -1; justify-self: start; }
+.feed .fh .vsort select { width: 100%; }
+.feed .fh .seg button { white-space: nowrap; padding-left: 10px; padding-right: 10px; }
 </style>
 </head>
 <body>
@@ -1454,7 +1468,7 @@ body::before { display: none; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([st.page, st.biFilter, st.vf, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([st.page, st.biFilter, st.vf, st.vsort, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1833,7 +1847,13 @@ body::before { display: none; }
     // The feed: one card per visit, newest first.
     // Quick filters: every visit, only those with an issue, or 5 minutes+.
     const vfOk = (s) => st.vf === "iss" ? s.acts.some((a) => /^⚠/.test(a.a)) : st.vf === "long" ? s.live || s.end - s.start >= 5 * 60000 : true;
+    // Sort: newest first (grouped by day), or a flat list by length,
+    // actions or issues.
+    const vLen = (s) => (s.live ? now - (s.since || s.start) : s.end - s.start);
+    const vIss = (s) => s.acts.filter((a) => /^⚠/.test(a.a)).length;
+    const SORTS = { long: (a, b) => vLen(b) - vLen(a), acts: (a, b) => b.acts.length - a.acts.length || vLen(b) - vLen(a), iss: (a, b) => vIss(b) - vIss(a) || b.start - a.start };
     const all = (wk ? visits(wk.feed || [], people) : vs).filter((s) => (!st.filter || s.n === st.filter) && vfOk(s));
+    if (SORTS[st.vsort]) all.sort(SORTS[st.vsort]);
     // Each visit as plain text, for Copy: who, when, how long, and every
     // line in order.
     st.texts = new Map();
@@ -1897,12 +1917,12 @@ body::before { display: none; }
     const groups = [];
     for (const v of all.slice(0, st.shown)) {
       const g = groups[groups.length - 1], prev = g?.list[g.list.length - 1];
-      if (g && !v.live && !prev.live && g.n === v.n && dayLab(v.start) === dayLab(prev.start) && prev.start - v.end < 10 * 60000) g.list.push(v);
+      if (!st.vsort && g && !v.live && !prev.live && g.n === v.n && dayLab(v.start) === dayLab(prev.start) && prev.start - v.end < 10 * 60000) g.list.push(v);
       else groups.push({ n: v.n, list: [v] });
     }
     const cards = groups.map((g) => {
       const first = g.list[g.list.length - 1], last = g.list[0];
-      const d = dayLab(last.start), head = d !== day ? `<div class="day">${esc(d)}</div>` : "";
+      const d = dayLab(last.start), head = !st.vsort && d !== day ? `<div class="day">${esc(d)}</div>` : "";
       day = d;
       if (g.list.length === 1) return head + cardOf(last);
       const gid = `grp|${g.n}|${first.start}`, gopen = st.open.has(gid);
@@ -1918,7 +1938,7 @@ body::before { display: none; }
     }).join("");
     const shownN = Math.min(all.length, st.shown);
     const feedHtml = `<main class="feed" id="sec-visits">
-      <div class="fh"><h2>Visits <small class="num">${all.length}</small></h2><span class="seg vf" role="group" aria-label="Show">${[["all", "All"], ["iss", "⚠ Issues"], ["long", "5m+"]].map(([k, l]) => `<button type="button" class="${(st.vf || "all") === k ? "on" : ""}" data-vf="${k}">${l}</button>`).join("")}</span><button type="button" class="cp" data-openall="1" title="Open or close every visit">${all.slice(0, st.shown).some((v) => !(v.live ? !st.open.has(`${v.n}|${v.start}`) : st.open.has(`${v.n}|${v.start}`))) ? "Expand all" : "Collapse all"}</button>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
+      <div class="fh"><h2>Visits <small class="num">${all.length}</small></h2><label class="vsort"><span class="sr">Sort</span><select data-vsort="1" aria-label="Sort visits">${[["", "Most recent"], ["long", "Longest"], ["acts", "Most actions"], ["iss", "Issues first"]].map(([k, l]) => `<option value="${k}"${(st.vsort || "") === k ? " selected" : ""}>${l}</option>`).join("")}</select></label><span class="seg vf" role="group" aria-label="Show">${[["all", "All"], ["iss", "⚠ Issues"], ["long", "5m+"]].map(([k, l]) => `<button type="button" class="${(st.vf || "all") === k ? "on" : ""}" data-vf="${k}">${l}</button>`).join("")}</span><button type="button" class="cp" data-openall="1" title="Open or close every visit">${all.slice(0, st.shown).some((v) => !(v.live ? !st.open.has(`${v.n}|${v.start}`) : st.open.has(`${v.n}|${v.start}`))) ? "Expand all" : "Collapse all"}</button>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
         ${all.length ? `<button type="button" class="cp${st.copied === "*" ? " ok" : ""}" data-copy="*" title="Copy every visit shown">${st.copied === "*" ? "✓ Copied" : `${COPY_ICON}Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"}`}</button>` : ""}</div>
       ${cards || `<div class="empty" style="margin-top:12px">${st.filter ? `No visits from ${esc(name(st.filter))} in the last 24 hours.` : "No visits in the last 24 hours yet. They show here as people use the app."}</div>`}
       ${all.length > st.shown ? `<button type="button" class="older" data-older="1">Show ${Math.min(20, all.length - st.shown)} more</button>` : ""}
@@ -2092,6 +2112,10 @@ body::before { display: none; }
       tl.insertAdjacentHTML("beforeend", `<button type="button" class="quiet-toggle">${showQuiet ? "Hide quiet players" : `Show ${q} quiet player${q === 1 ? "" : "s"}`}</button>`);
     }
   }
+  app.addEventListener("change", (e) => {
+    const sel = e.target.closest?.("[data-vsort]");
+    if (sel) { st.vsort = sel.value || null; st.sig = ""; render(); }
+  });
   app.addEventListener("click", (e) => {
     const qt = e.target.closest(".quiet-toggle");
     if (qt) { showQuiet = !showQuiet; const tl = qt.closest("#sec-tl"); tl.classList.toggle("allrows", showQuiet); const q = tl.querySelectorAll(".ln-t.quiet").length; qt.textContent = showQuiet ? "Hide quiet players" : `Show ${q} quiet player${q === 1 ? "" : "s"}`; return; }
