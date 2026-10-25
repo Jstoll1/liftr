@@ -9039,17 +9039,12 @@ let renderRecap = function () {
   // it hangs a little past the colour bar, the way the template draws it.
   const art = (f) => `<img class="recap-ico" src="${awardArt(`recap/${f}`)}" alt="" aria-hidden="true" decoding="async">`;
   const ICON = { target: art("crown"), skull: art("bomb"), up: art("chart"), coin: art("coin"), hash: art("flag") };
-  // Team art in the template's pixel style: hand-drawn for the teams the
-  // template has, and for everyone else ESPN's logo fetched tiny and blown
-  // up with hard pixel edges, so every card reads the same.
-  const TEAM_ART = new Set([99, 344, 2390, 194, 84]);
-  // Art published from the Creative Studio comes first; then the template's
-  // hand-drawn five; then ESPN's logo in pixels.
+  // Art published from the Creative Studio comes first; otherwise ESPN's
+  // logo at full resolution (the old tiny, blown-up pixel version blurred).
   const studio = (id) => creativeArt.art?.[`replay-logo:team:${Number(id)}`]?.v;
   const logo = (id, alt = "") => !id ? `<span class="recap-logo blank"></span>`
-    : studio(id) ? `<img class="recap-logo px-art" data-slot="team:${Number(id)}" src="${WORKER_URL}/art/img/${encodeURIComponent(studio(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${Number(id)}.png&w=26&h=26';this.className='recap-logo px'">`
-    : TEAM_ART.has(Number(id)) ? `<img class="recap-logo px-art" src="assets/images/teams/${Number(id)}.webp" alt="${esc(alt)}" loading="lazy">`
-    : `<img class="recap-logo px" src="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${Number(id)}.png&w=26&h=26" alt="${esc(alt)}" loading="lazy">`;
+    : studio(id) ? `<img class="recap-logo px-art" data-slot="team:${Number(id)}" src="${WORKER_URL}/art/img/${encodeURIComponent(studio(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='${logoUrl(Number(id))}';this.className='recap-logo'">`
+    : `<img class="recap-logo" src="${logoUrl(Number(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.style.visibility='hidden'">`;
   const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);
   // [label, class, art, headline, sub, stat, statLabel, isMe]
   if (r.best) {
@@ -9085,7 +9080,7 @@ let renderRecap = function () {
     // The art is every team that hit (one logo each), not just the first
     // lock, so it never names a team most people didn't lock.
     const hitTeams = [...new Map(L.list.filter((x) => x.result === "hit" && x.id).map((x) => [x.id, x])).values()].slice(0, 3);
-    const lkArt = hitTeams.length === 1 ? logo(hitTeams[0].id, hitTeams[0].short) : hitTeams.length ? `<span class="recap-vs">${hitTeams.map((x) => logo(x.id, x.short)).join("")}</span>` : `<span class="recap-lk" aria-hidden="true">🔒</span>`;
+    const lkArt = hitTeams.length === 1 ? logo(hitTeams[0].id, hitTeams[0].short) : hitTeams.length ? `<span class="recap-vs n${hitTeams.length}">${hitTeams.map((x) => logo(x.id, x.short)).join("")}</span>` : `<span class="recap-lk" aria-hidden="true">🔒</span>`;
     cards.push(["🔒 LOCK OF THE WEEK", "lk", lkArt, `${chips(L.hit.length ? L.hit : top.name)}<span class="recap-pick">${L.hit.length ? `hit ${L.hit.length === 1 ? "their lock" : "locks"}` : "nobody hit"}</span>`,
       `${L.hit.length} hit · ${L.miss.length} missed${L.push.length ? ` · ${L.push.length} pushed` : ""}${L.none.length ? ` · ${L.none.length} no lock` : ""}`, `${L.hit.length}/${n}`, "HIT", mine(L.hit)]);
   }
