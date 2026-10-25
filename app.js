@@ -9257,13 +9257,18 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
 // Tap a pot row, or a name on the replay: that player's season on one
 // card. Everything comes from the sealed weeks, so it is what was graded.
 function playerSeason(name) {
-  // The detailed weeks (with every pick) when they are loaded, else the plain ones.
-  const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete)).slice().sort((a, b) => a.week - b.week);
+  // Every finished week: the detailed one (with every pick) where it has
+  // loaded, else the plain summary, so a week missing from either still
+  // counts. Weeks this player sat out show as a gap, not a hole.
+  const byWeek = new Map();
+  for (const w of Object.values(weekSummaries)) if (w?.complete) byWeek.set(w.week, w);
+  for (const w of seasonLedger || []) if (w?.complete) byWeek.set(w.week, w);
+  const weeks = [...byWeek.values()].sort((a, b) => a.week - b.week);
   const scores = [], picks = [];
   let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0, lockW = 0, lockL = 0;
   for (const wk of weeks) {
     const me = (wk.rows || []).find((r) => r.name === name);
-    if (!me) continue;
+    if (!me) { scores.push({ week: wk.week, score: null, missed: true }); continue; }
     scores.push({ week: wk.week, score: me.score, won: (wk.winners || []).includes(name), high: wk.highScore });
     for (const lg of me.ledger || []) {
       if (lg.result !== "hit" && lg.result !== "miss") continue;
@@ -9286,13 +9291,14 @@ function playerSeason(name) {
       picks.push({ teamFull: lg.team, teamId: g ? (lg.team === g.home ? g.homeId : lg.team === g.away ? g.awayId : null) : null, awayId: g?.awayId, homeId: g?.homeId, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, sameNames, oppNames, with_, of: (wk.rows || []).length, others, game, margin, line });
     }
   }
-  const sorted = [...scores].sort((a, b) => b.score - a.score);
+  const played = scores.filter((x) => !x.missed);
+  const sorted = [...played].sort((a, b) => b.score - a.score);
   const best = picks.filter((p) => p.hit).sort((a, b) => b.pts - a.pts || a.with_ - b.with_)[0];
   const worst = picks.filter((p) => !p.hit).sort((a, b) => b.others - a.others || b.worth - a.worth)[0];
   return {
     scores, w, l, best, worst,
     top: sorted[0], low: sorted[sorted.length - 1],
-    avg: scores.length ? scores.reduce((s, x) => s + x.score, 0) / scores.length : null,
+    avg: played.length ? played.reduce((s, x) => s + x.score, 0) / played.length : null,
     wins: scores.filter((x) => x.won),
     ats: atsN ? Math.round((atsW / atsN) * 100) : null, atsN, atsW, su: suN ? Math.round((suW / suN) * 100) : null, suN, suW,
     lockW, lockL,
@@ -9342,8 +9348,14 @@ function openPlayerCard(name, again) {
     m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".plc-x")) m.classList.add("hidden"); });
   }
   m.dataset.name = name;
-  const pts = pr.points ?? d.scores.reduce((t, x) => t + x.score, 0);
-  const max = Math.max(1, ...d.scores.map((x) => x.score));
+  const pts = pr.points ?? d.scores.reduce((t, x) => t + (x.score || 0), 0);
+  // The week being played: points from games already final, marked live.
+  const cur = weekSummaries[currentWeek];
+  const myPicks = lastGoodCloudPicks?.[name]?.picks || {};
+  const liveWk = !cur?.complete && GAMES.some((g) => isGameLocked(g)) && Object.keys(myPicks).length && !d.scores.some((x) => x.week === currentWeek)
+    ? { week: currentWeek, score: (() => { const f = computeLiveResults(latestLive); return GAMES.reduce((t, g) => t + (f[g.id] ? scorePick(g, myPicks[g.id], f[g.id]) || 0 : 0), 0); })(), live: true } : null;
+  const bars = liveWk ? [...d.scores, liveWk] : d.scores;
+  const max = Math.max(1, ...bars.map((x) => x.score || 0));
   const pct = d.w + d.l ? Math.round((d.w / (d.w + d.l)) * 100) : null;
   // A fighting game stat bar: label, value, ten segments filled to the share.
   const bar = (label, val, share, note = "") => `<div class="plc-sb" data-statrank="${label}" role="button" tabindex="0"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em></div>`;
@@ -9385,9 +9397,11 @@ function openPlayerCard(name, again) {
       <div class="plc-id"><small>PLAYER ${String(MANAGERS.indexOf(name) + 1).padStart(2, "0")}</small><b>${esc(shown(name).toUpperCase())}</b>
         <div class="plc-badges">${pr.seasonPlace ? `<span class="rank">${pr.tied ? "T" : "#"}${pr.seasonPlace}</span>` : ""}<span>${pts} PTS</span>${pr.earned ? `<span class="cash">${money(pr.earned)}</span>` : ""}${d.wins.length ? `<button type="button" class="gold" data-champs="1" aria-label="All champions"><i class="plc-tro">🏆</i>×${d.wins.length}</button>` : ""}</div></div>
     </div>
-    ${d.scores.length ? `
-    <div class="plc-sec">POINTS EACH WEEK <span>gold = won the week</span></div>
-    <div class="plc-bars">${d.scores.map((x) => `<i data-wkstand="${x.week}" class="${x.won ? "won" : ""}${x === d.top ? " top" : ""}"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`).join("")}</div>
+    ${d.top ? `
+    <div class="plc-sec">POINTS EACH WEEK <span>gold = won${liveWk ? " · dashed = live" : ""}</span></div>
+    <div class="plc-bars">${bars.map((x) => x.missed ? `<i class="sat" title="Week ${x.week}: no picks"><b>–</b><s style="height:6%"></s><em>W${x.week}</em></i>`
+      : x.live ? `<i class="live" title="Week ${x.week}: so far, games still to play"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`
+      : `<i data-wkstand="${x.week}" class="${x.won ? "won" : ""}${x === d.top ? " top" : ""}"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`).join("")}</div>
     <div class="plc-sec">STATS</div>
     <div class="plc-stats">
       ${bar("AVG WEEK", `${d.avg.toFixed(1)}`, d.avg / 20, "pts")}
@@ -9428,7 +9442,7 @@ function bottomSheet(id) {
 // --- Stat ranking -------------------------------------------------------
 // A stat bar on a player card: the whole league ranked on that stat.
 const STAT_RANK = {
-  "AVG WEEK": (d) => d.scores.length ? [d.avg, d.avg.toFixed(1)] : null,
+  "AVG WEEK": (d) => d.avg != null ? [d.avg, d.avg.toFixed(1)] : null,
   "BEST WEEK": (d) => d.top ? [d.top.score, `${d.top.score}`, `W${d.top.week}`] : null,
   "WORST WEEK": (d) => d.low ? [d.low.score, `${d.low.score}`, `W${d.low.week}`] : null,
   "PICKS RIGHT": (d) => d.w + d.l ? [d.w / (d.w + d.l), `${Math.round((100 * d.w) / (d.w + d.l))}%`, `${d.w}-${d.l}`] : null,
