@@ -122,26 +122,101 @@
   // Nicknames the league uses, so a tool given "Woods" finds Jordan.
   const ALIASES = { woods: "Jordan", connie: "Conlan", conlin: "Conlan", adam: "Skills", logs: "Logan", tyler: "Dewitt", "tyler dewitt": "Dewitt" };
   const memberOf = (x) => { const t = String(x || "").trim().toLowerCase(); return MANAGERS.find((n) => n.toLowerCase() === t || shown(n).toLowerCase() === t) || (ALIASES[t] && MANAGERS.includes(ALIASES[t]) ? ALIASES[t] : null); };
+  // The tools' "conditions" as games held to a side; "not" flips the team.
+  function readConds(conditions = []) {
+    const conds = [];
+    for (const c of conditions) {
+      const g = GAMES.find((x) => String(x.id) === String(c.game).replace(/^G/i, "")); if (!g) return { error: `No game ${c.game} this week.` };
+      const t = String(c.team || "").toLowerCase();
+      const team = [g.away, g.home].find((x) => x.toLowerCase() === t || x.toLowerCase().startsWith(t)) || (g.awayShort.toLowerCase() === t ? g.away : g.homeShort.toLowerCase() === t ? g.home : null);
+      if (!team) return { error: `${c.team} isn't in ${gName(g)}.` };
+      conds.push({ game: g.id, team: c.not ? (team === g.away ? g.home : g.away) : team, mode: c.mode === "ATS" ? "ATS" : "SU" });
+    }
+    return conds;
+  }
+  // Every way an open game can land that changes a pick: the underdog wins,
+  // the favourite wins but doesn't cover, a push, or it covers. Each band
+  // carries one sample score, checked against the real scoring.
+  function bands(g) {
+    const fav = g.favorite, dog = fav === g.away ? g.home : g.away, sp = Number(g.spread) || 0;
+    const res = (fd) => { const f = 20 + Math.max(fd, 0), d = 20 + Math.max(-fd, 0); return fav === g.home ? { homeScore: f, awayScore: d } : { awayScore: f, homeScore: d }; };
+    if (!fav || sp <= 0) return [{ txt: `${g.awayShort} wins`, res: { awayScore: 24, homeScore: 20 } }, { txt: `${g.homeShort} wins`, res: { awayScore: 20, homeScore: 24 } }];
+    const F = short(g, fav), D = short(g, dog), top = Math.floor(sp), out = [{ txt: `${D} wins`, res: res(-3) }];
+    const noCover = Number.isInteger(sp) ? sp - 1 : top;
+    if (noCover >= 1) out.push({ txt: `${F} wins by ${noCover === 1 ? "1" : `1 to ${noCover}`} (no cover)`, res: res(1) });
+    if (Number.isInteger(sp)) out.push({ txt: `${F} wins by exactly ${sp} (push)`, res: res(sp) });
+    out.push({ txt: `${F} wins by ${top + 1}+ (covers)`, res: res(top + 1) });
+    return out;
+  }
+  // Who takes it among members tied on points: the closest tiebreaker guess.
+  // If the tiebreaker game is still open, the answer by its final total.
+  function breakTie(tied, tbOpen, tbTotal) {
+    const all = lastGoodCloudPicks || {};
+    const gs = tied.map((n) => [n, Number(all[n]?.tiebreaker)]).filter(([, v]) => Number.isFinite(v));
+    if (!gs.length) return `tie: ${tied.map(shown).join(" / ")} (no tiebreaker guesses)`;
+    const near = (t) => { const d = Math.min(...gs.map(([, v]) => Math.abs(v - t))); return gs.filter(([, v]) => Math.abs(v - t) === d).map(([n]) => shown(n)).join(" / "); };
+    if (!tbOpen) return `${near(tbTotal)} on the tiebreaker (${tbTotal}), tied on points with ${tied.map(shown).join(", ")}`;
+    // Walk the totals still possible and note each change of who is closest.
+    const from = tbTotal || 0, cuts = [];
+    let cur = near(from), start = from;
+    for (let t = from + 1; t <= 150; t++) { const w = near(t); if (w !== cur) { cuts.push([start, t - 1, cur]); cur = w; start = t; } }
+    cuts.push([start, null, cur]);
+    return `tie on points (${tied.map(shown).join(", ")}); tiebreaker total ${cuts.map(([a, b, w]) => `${b == null ? `${a}+` : a === b ? a : `${a} to ${b}`}: ${w}`).join("; ")}`;
+  }
   const TOOLS = {
     standings() {
       const memo = base(), live = typeof inFlightPoints === "function" ? (n) => inFlightPoints((lastGoodCloudPicks || {})[n]?.picks || {}, latestLive) : () => 0;
       return { ...hiddenNote(), members: MANAGERS.map((n) => { const b = banked(n), d = memo?.detail?.[n]; const sObj = statusOf(d) || {}; return { member: n, points: b.pts, livePoints: live(n), bestPossible: b.max, picksLeft: b.picksLeft, chanceToWin: d ? r3(d.pct) : null, ...sObj }; }).sort((a, b) => b.points - a.points), statusMeans: "alive = real chance; long shot = 0% in simulations but a path exists (onlyPath lists what must happen); out = proven no path; likely out = no wins found, not proven" };
     },
     chance({ conditions = [] } = {}) {
-      const conds = [];
-      for (const c of conditions) {
-        const g = GAMES.find((x) => String(x.id) === String(c.game).replace(/^G/i, "")); if (!g) return { error: `No game ${c.game} this week.` };
-        const t = String(c.team || "").toLowerCase();
-        const team = [g.away, g.home].find((x) => x.toLowerCase() === t || x.toLowerCase().startsWith(t)) || (g.awayShort.toLowerCase() === t ? g.away : g.homeShort.toLowerCase() === t ? g.home : null);
-        if (!team) return { error: `${c.team} isn't in ${gName(g)}.` };
-        conds.push({ game: g.id, team: c.not ? (team === g.away ? g.home : g.away) : team, mode: c.mode === "ATS" ? "ATS" : "SU" });
-      }
+      const conds = readConds(conditions); if (conds.error) return conds;
       const memo = base(); if (!memo) return { error: "Odds not loaded yet." };
       const h = hiddenNote(); if (h.picksHidden && /Everyone/.test(h.picksHidden)) return h;
       const odds = conds.length ? condChances(conds) : memo.out;
       if (!odds) return { error: "Odds not loaded yet." };
       if (odds.impossible) return { error: `${odds.impossible} can't happen: that game is already final the other way.` };
       return { ...h, assuming: conds.map(condText), chanceToWin: Object.fromEntries(MANAGERS.map((n) => [n, r3(odds[n] || 0)])), currentChance: Object.fromEntries(MANAGERS.map((n) => [n, r3(memo.out[n] || 0)])), noWins: MANAGERS.filter((n) => !(odds[n] > 0)), ...(!conds.length ? { status: Object.fromEntries(MANAGERS.map((n) => [n, statusOf(memo.detail?.[n])?.status || null])) } : {}), ...(conds.length ? { noWinsMeans: "won none of 4,000 simulated outcomes with these results: as good as out, not proven impossible" } : {}) };
+    },
+    // Late in the night: every way the open games can go and who wins the
+    // week in each, exactly (no simulation).
+    scenarios({ conditions = [] } = {}) {
+      const conds = readConds(conditions); if (conds.error) return conds;
+      const h = hiddenNote(); if (h.picksHidden) return h;
+      const all = lastGoodCloudPicks || {}, f = fins();
+      const tb = typeof tiebreakerGameOf === "function" ? tiebreakerGameOf() : null;
+      const open = GAMES.filter((g) => !f[g.id]);
+      const opts = open.map((g) => {
+        const c = conds.find((x) => String(x.game) === String(g.id));
+        return bands(g).filter((b) => { if (!c) return true; const o = resultOutcome(g, b.res); return (c.mode === "SU" ? o.suWinner : o.atsWinner) === c.team; });
+      });
+      for (const c of conds) if (f[c.game]) { const g = GAMES.find((x) => x.id === c.game), o = resultOutcome(g, f[c.game]); if ((c.mode === "SU" ? o.suWinner : o.atsWinner) !== c.team) return { error: `${condText(c)} can't happen: that game is already final the other way.` }; }
+      const rows = opts.reduce((n, o) => n * o.length, 1);
+      if (!open.length) return { allFinal: true };
+      if (rows > 27) return { error: `${open.length} games are still open, too many to list every outcome; use chance instead, or add conditions.` };
+      const banks = Object.fromEntries(MANAGERS.map((n) => [n, banked(n).pts]));
+      const l = tb && latestLive[tb.id], tbFinal = tb && f[tb.id];
+      const tbNow = tbFinal ? tbFinal.awayScore + tbFinal.homeScore : l?.state === "in" ? (l.awayScore || 0) + (l.homeScore || 0) : 0;
+      const out = [];
+      const walk = (k, picked) => {
+        if (k === open.length) {
+          const pts = Object.fromEntries(MANAGERS.map((n) => [n, banks[n] + picked.reduce((t, [g, b]) => t + (scorePick(g, all[n]?.picks?.[g.id], b.res) || 0), 0)]));
+          const top = Math.max(...Object.values(pts)), tied = MANAGERS.filter((n) => pts[n] === top);
+          const tbOpen = !!tb && !tbFinal;
+          out.push({ if: picked.map(([, b]) => b.txt).join(" · "), winner: tied.length === 1 ? shown(tied[0]) : breakTie(tied, tbOpen, tbNow), top: MANAGERS.slice().sort((a, b) => pts[b] - pts[a]).slice(0, 3).map((n) => `${shown(n)} ${pts[n]}`).join(", ") });
+          return;
+        }
+        for (const b of opts[k]) walk(k + 1, [...picked, [open[k], b]]);
+      };
+      walk(0, []);
+      const winners = [...new Set(out.map((r) => r.winner))];
+      const res = {
+        openGames: open.map((g) => { const lv = latestLive[g.id]; return `${gName(g)}: ${lv?.state === "in" ? `live, ${g.awayShort} ${lv.awayScore}-${lv.homeScore} ${g.homeShort} (not final)` : "not started"}`; }),
+        assuming: conds.map(condText),
+        ...(winners.length === 1 ? { settled: `Same result every way: ${winners[0]}` } : {}),
+        scenarios: out,
+        // The model's tool reply is capped, so long tables drop the scores.
+      }; if (JSON.stringify(res).length > 5800) res.scenarios.forEach((r) => delete r.top);
+      return res;
     },
     needs({ member } = {}) {
       const who = memberOf(member || me()); if (!who) return { error: `No member ${member}. Members: ${MANAGERS.join(", ")}.` };

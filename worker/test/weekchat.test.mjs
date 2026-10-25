@@ -29,7 +29,7 @@ test("week chat worker: relays the model's tool calls, then its reply", async ()
   const second = await call([...q, first.message, { role: "tool", tool_call_id: "c1", content: JSON.stringify({ Jake: 0.12 }) }]);
   globalThis.fetch = real;
   assert.match(second.message.content, /12%/);
-  assert.equal(sent[0].tools.length, 5);
+  assert.equal(sent[0].tools.length, 6);
   assert.match(sent[0].messages[0].content, /Never state a number/);
   assert.match(weekChatSystem({ members: ["Jordan", "Conlan", "Jake"] }), /Woods = Jordan/);
   assert.match(weekChatSystem({ members: ["Jordan", "Conlan", "Jake"] }), /Connie \/ Conlin = Conlan/);
