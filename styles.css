@@ -8493,3 +8493,4 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 @media (prefers-reduced-motion: reduce) { .ask-fab.ping { animation: none; } }
 .ai-intro .pi-ok { background: var(--neon-cyan, #05d9e8); color: #0a0014; box-shadow: 0 0 12px rgba(5, 217, 232, .35); }
 .ai-btns .pi-ok, .ai-btns .ai-later { padding: 12px 8px; font-size: 8px; letter-spacing: .05em; }
+.ai-intro .pi-title { font-size: 10px; line-height: 1.5; }
