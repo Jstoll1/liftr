@@ -1607,7 +1607,7 @@ const insTap = { last: "" };
 // A game row on a player's card opens that game (Gamecast once it has
 // kicked off). Ahead of the row's own tap, which folds the card.
 document.addEventListener("click", (e) => {
-  const r = e.target.closest?.(".rd-row[data-rdgame]");
+  const r = e.target.closest?.(".rd-row[data-rdgame], .rd-tb[data-rdgame]");
   if (!r || e.target.closest("[data-locks]")) return;
   e.preventDefault(); e.stopPropagation();
   const g = GAMES.find((x) => String(x.id) === r.dataset.rdgame); if (g) openInsights(g.id);
@@ -5260,9 +5260,10 @@ function playerBreakdownHtml(name, state, results, live) {
   else if (tbRes) tbLine = `Guessed <b>${tbGuess}</b> · Final <b>${actual}</b> · Off by <b class="${Math.abs(tbGuess - actual) === 0 ? "exact" : ""}">${Math.abs(tbGuess - actual)}</b>`;
   else if (tbLive) tbLine = `Guessed <b>${tbGuess}</b> · Now <b>${actual}</b> · Off by <b>${Math.abs(tbGuess - actual)}</b>`;
   else tbLine = `Guessed <b>${tbGuess}</b> · Waiting on kickoff`;
-  const tbRow = `<div class="rd-tb">
+  // Tapping it opens the tiebreaker game (Gamecast once it has kicked off).
+  const tbRow = `<div class="rd-tb${tbSealed ? "" : " go"}"${tbSealed ? "" : ` data-rdgame="${tbGame.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(tbGame.awayShort)} at ${escapeCd(tbGame.homeShort)}"`}>
     <span class="rd-tb-label">TIEBREAKER · ${tbGame.awayShort} @ ${tbGame.homeShort} total</span>
-    <span class="rd-tb-line">${tbLine}</span>
+    <span class="rd-tb-line">${tbLine}${tbSealed ? "" : `<i class="rd-tb-go" aria-hidden="true">›</i>`}</span>
   </div>`;
   // One line on the week: settled points and record, plus what is in
   // flight while games are on.
