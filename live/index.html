@@ -819,6 +819,7 @@ html, body { overflow-x: hidden; }
   .chat-btns .afr-one { min-width: 46px; }
   .afr-r.chat-r.flagged { background: rgba(255, 92, 138, .08); box-shadow: inset 3px 0 0 #ff5c8a; padding-left: 6px; }
   .chat-note { font-style: normal; color: #ff8fab; }
+  .chat-la.miss { color: #ffb86b; font-style: italic; }
   .afr-cp.flag { color: #ff8fab; border-color: rgba(255, 92, 138, .5); }
   .chat-r .afr-d { display: flex; flex-direction: column; gap: 2px; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
   .chat-lq { font-weight: 700; color: var(--text); }
@@ -1510,7 +1511,7 @@ html, body { overflow-x: hidden; }
       if (!st.chatOpen) return `<section class="afr chat shut">${head}</section>`;
       const groups = [];
       for (const r of rows) { const k = r.sid || r.id; let g = groups.find((x) => x.k === k); if (!g) groups.push(g = { k, rows: [] }); g.rows.push(r); }
-      return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; return `<div class="afr-day">${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div class="afr-r chat-r${r.flagged ? " flagged" : ""}"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b><span class="chat-la">${esc(r.a)}</span>${r.flagged ? `<em class="chat-note">🚩 ${esc(r.note || "flagged")}</em>` : ""}${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><span class="chat-btns"><button type="button" class="afr-one" data-chatflag="${esc(r.id)}" aria-pressed="${!!r.flagged}" aria-label="${r.flagged ? "Unflag" : "Flag as wrong"}">${r.flagged ? "unflag" : "🚩"}</button><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></span></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
+      return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; return `<div class="afr-day">${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div class="afr-r chat-r${r.flagged ? " flagged" : ""}"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b><span class="chat-la${r.status && r.status !== "answered" ? " miss" : ""}">${esc(r.a ?? (r.status === "asked" && Date.now() - r.at < 60000 ? "(answering…)" : "(no answer: they left before it finished)"))}</span>${r.flagged ? `<em class="chat-note">🚩 ${esc(r.note || "flagged")}</em>` : ""}${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><span class="chat-btns"><button type="button" class="afr-one" data-chatflag="${esc(r.id)}" aria-pressed="${!!r.flagged}" aria-label="${r.flagged ? "Unflag" : "Flag as wrong"}">${r.flagged ? "unflag" : "🚩"}</button><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></span></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
     };
     const opsPanel = () => {
       if (!st.ops) return "";
@@ -2046,7 +2047,7 @@ html, body { overflow-x: hidden; }
   st.opsOpen = store.get("brochiefs_live_ops_open") === "1";
   st.chatOpen = store.get("brochiefs_live_chat_open") === "1";
   // A chat as plain text for pasting: when, who, build, Q, A, each tool call.
-  const chatLog = (rows) => rows.map((c) => `${new Date(c.at).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · ${c.asker || "not signed in"}${c.build ? ` · build ${c.build}` : ""}${c.flagged ? `\nFLAGGED${c.note ? `: ${c.note}` : ""}` : ""}\nQ: ${c.q}\nA: ${c.a}${(c.tools || []).map((t) => `\n   tool ${t.name}(${t.args}) -> ${t.out}`).join("")}`).join("\n\n");
+  const chatLog = (rows) => rows.map((c) => `${new Date(c.at).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · ${c.asker || "not signed in"}${c.build ? ` · build ${c.build}` : ""}${c.flagged ? `\nFLAGGED${c.note ? `: ${c.note}` : ""}` : ""}\nQ: ${c.q}\nA: ${c.a ?? "(no answer)"}${c.status && c.status !== "answered" ? ` [${c.status}]` : ""}${(c.tools || []).map((t) => `\n   tool ${t.name}(${t.args}) -> ${t.out}`).join("")}`).join("\n\n");
   async function loadChats() {
     try { const x = await fetch(`${WORKER}/week-chat?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.chats = Array.isArray(j.chats) ? j.chats : []; st.sig = ""; render(); } } catch {}
   }
