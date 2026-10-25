@@ -1501,12 +1501,12 @@ html, body { overflow-x: hidden; }
     };
     // Health: Worker failures, failed or slow ESPN and Worker calls, slow
     // loads and script errors, from the Worker itself and from phones.
-    // Ask the week: every finished answer, grouped by chat, newest first.
+    // BroChief Intelligence: every finished answer, grouped by chat, newest first.
     const chatPanel = () => {
       if (!st.chats) return "";
       const rows = st.chats;
       const day = rows.filter((r) => Date.now() - r.at < 86400000);
-      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-chattoggle="1" aria-expanded="${!!st.chatOpen}"><span class="afr-car">${st.chatOpen ? "▾" : "▸"}</span><b>&gt; ask</b>${st.chatOpen ? "" : `<small>${day.length ? `${day.length} q · ${new Set(day.map((r) => r.asker)).size} ppl · 24h` : "none · 24h"}${rows.some((r) => r.flagged) ? ` · ${rows.filter((r) => r.flagged).length} 🚩` : ""}</small>`}</button>${st.chatOpen && rows.some((r) => r.flagged) ? `<button type="button" class="afr-cp flag" data-chatcopy="flagged">${st.copied === "chat:flagged" ? "✓ copied" : `copy 🚩${rows.filter((r) => r.flagged).length}`}</button>` : ""}${st.chatOpen && rows.length ? `<button type="button" class="afr-cp" data-chatcopy="1">${st.copied === "chat" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
+      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-chattoggle="1" aria-expanded="${!!st.chatOpen}"><span class="afr-car">${st.chatOpen ? "▾" : "▸"}</span><b>&gt; bi</b>${st.chatOpen ? "" : `<small>${day.length ? `${day.length} q · ${new Set(day.map((r) => r.asker)).size} ppl · 24h` : "none · 24h"}${rows.some((r) => r.flagged) ? ` · ${rows.filter((r) => r.flagged).length} 🚩` : ""}</small>`}</button>${st.chatOpen && rows.some((r) => r.flagged) ? `<button type="button" class="afr-cp flag" data-chatcopy="flagged">${st.copied === "chat:flagged" ? "✓ copied" : `copy 🚩${rows.filter((r) => r.flagged).length}`}</button>` : ""}${st.chatOpen && rows.length ? `<button type="button" class="afr-cp" data-chatcopy="1">${st.copied === "chat" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
       if (!st.chatOpen) return `<section class="afr chat shut">${head}</section>`;
       const groups = [];
       for (const r of rows) { const k = r.sid || r.id; let g = groups.find((x) => x.k === k); if (!g) groups.push(g = { k, rows: [] }); g.rows.push(r); }
@@ -2297,7 +2297,7 @@ html, body { overflow-x: hidden; }
   // Read every few minutes; prices are OpenAI's published rates, so the
   // bill itself is the final word.
   const cost = { data: null, at: 0, err: "" };
-  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening", "week-ask": "Ask the week", "week-chat": "Ask the week (chat)", "lightning-edit": "Lightning edits" };
+  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening", "week-ask": "BI (old reader)", "week-chat": "BroChief Intelligence", "lightning-edit": "Lightning edits" };
   async function loadCosts(force) {
     if (!force && Date.now() - cost.at < 3 * 60000) return;
     try {
