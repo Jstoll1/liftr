@@ -391,7 +391,9 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     const fb=box.querySelector('.tq-fb');fb.innerHTML='<b>'+(right?'CORRECT':'NOPE')+'</b> '+cur.why;fb.className='tq-fb trivia-feedback '+(right?'ok':'bad');
     if(right){streak++;if(streak>sBest()){try{localStorage.setItem(STREAK_KEY,String(streak))}catch{}}
       box.querySelector('.tq-st b').textContent=streak;box.querySelector('.tq-st').classList.add('on','pop');box.querySelector('.tq-best b').textContent=sBest();
-      confettiBurst(box);track('trivia-streak-right');setTimeout(()=>{if(cur&&sAns)sNext()},1500);}
+      confettiBurst(box);track('trivia-streak-right');
+      // Four seconds to read why it was right; NEXT skips the wait.
+      const q0=cur;box.querySelector('.tq-next').classList.remove('hidden');setTimeout(()=>{if(cur===q0&&sAns)sNext()},4000);}
     else{const ended=streak;streak=0;if(ended)postStreak(ended);gameOver(box,ended);track('trivia-streak-miss');}
   }
   // One miss ends the run: the answer stays up, then a game over card with
