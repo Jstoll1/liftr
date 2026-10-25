@@ -392,7 +392,25 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     if(right){streak++;if(streak>sBest()){try{localStorage.setItem(STREAK_KEY,String(streak))}catch{}}
       box.querySelector('.tq-st b').textContent=streak;box.querySelector('.tq-st').classList.add('on','pop');box.querySelector('.tq-best b').textContent=sBest();
       confettiBurst(box);track('trivia-streak-right');setTimeout(()=>{if(cur&&sAns)sNext()},1500);}
-    else{const ended=streak;streak=0;if(ended)postStreak(ended);box.querySelector('.tq-next').classList.remove('hidden');track('trivia-streak-miss');}
+    else{const ended=streak;streak=0;if(ended)postStreak(ended);gameOver(box,ended);track('trivia-streak-miss');}
+  }
+  // One miss ends the run: the answer stays up, then a game over card with
+  // a line that roasts you in proportion to how far you got.
+  const SNARK={
+    0:['Zero. The auto-drafter is embarrassed for you.','Not even one. Bold strategy.','You fumbled the opening kickoff.','First question. First miss. Iconic.'],
+    1:['One and done. Like your playoff runs.','A single. The league remembers nothing.','One right. Your parents are proud, probably.'],
+    3:['Respectable. Barely.','A few in a row, then the wheels came off.','Solid start, classic collapse. Very on brand.'],
+    6:['Not bad. Not commissioner material, but not bad.','You know this league a little too well.','Somebody spends too much time in the archive.'],
+    10:['Hall of Fame trivia brain. Touch grass.','Double digits. Andrew is nervous.','Unreal. Do you have the spreadsheet open?']
+  };
+  const snarkFor=(n)=>{const k=n>=10?10:n>=6?6:n>=3?3:n>=1?1:0;const a2=SNARK[k];return a2[Math.floor(Math.random()*a2.length)]};
+  function gameOver(box,n){
+    const b2=sBest(),isBest=n>0&&n>=b2;
+    const end=document.createElement('div');end.className='tq-over';
+    end.innerHTML=`<div class="tq-over-h">GAME OVER</div><div class="tq-over-n"><b>${n}</b><span>in a row${isBest?' · NEW BEST':` · best ${b2}`}</span></div><p class="tq-over-s">${snarkFor(n)} Better luck next time.</p><button type="button" class="trivia-btn primary tq-again">↻ PLAY AGAIN</button>`;
+    box.appendChild(end);
+    end.querySelector('.tq-again').addEventListener('click',()=>{buildDeck();sNext();box.scrollIntoView({block:'start',behavior:'smooth'})});
+    setTimeout(()=>end.scrollIntoView({block:'nearest',behavior:'smooth'}),150);
   }
   async function postStreak(n){const who=me();if(!who||!WORKER)return;try{await fetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,streak:n})});loadStreakBoard()}catch{}}
   async function loadStreakBoard(){

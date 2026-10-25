@@ -8535,3 +8535,9 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 @media (prefers-reduced-motion: reduce) { .tq-conf { display: none; } .tq-st.pop { animation: none; } }
 #trivia-screen #trivia > .section-heading-row { display: none; }
 #trivia-screen .trivia-hero { padding-bottom: 12px; margin-bottom: 8px; }
+.tq-over { margin-top: 6px; padding: 16px; border-radius: 12px; border: 2px solid #ff2079; background: rgba(255, 32, 121, .08); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; animation: tqin .35s ease-out; }
+.tq-over-h { font: 400 16px/1 'Press Start 2P', monospace; color: #ff2079; letter-spacing: .06em; }
+.tq-over-n b { font: 800 34px/1 'Orbitron', sans-serif; color: #fff; margin-right: 6px; }
+.tq-over-n span { font-size: 13px; color: var(--text-meta, #b8afd3); }
+.tq-over-s { margin: 0; font-size: 15px; line-height: 1.4; }
+@keyframes tqin { from { opacity: 0; transform: translateY(6px); } }
