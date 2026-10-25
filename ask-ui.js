@@ -245,10 +245,13 @@
     q = String(q || "").trim(); if (q.length < 2 || busy) return;
     busy = true; const item = { q, a: null, tools: [] }; log.push(item); sheet();
     convo.push({ role: "user", content: q });
+    let logId = null;
+    const giveUp = (reason) => { if (logId) fetch(`${WORKER_URL}/week-chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "giveup", logId, reason }) }).catch(() => {}); };
     try {
       for (let round = 0; round < 5; round++) {
-        const r = await fetch(`${WORKER_URL}/week-chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: convo.slice(-24), context: context(), sid: SID, build: document.querySelector('meta[name="build"]')?.content || "" }) });
+        const r = await fetch(`${WORKER_URL}/week-chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: convo.slice(-24), context: context(), sid: SID, logId, build: document.querySelector('meta[name="build"]')?.content || "" }) });
         const j = await r.json().catch(() => ({}));
+        if (j.logId) logId = j.logId;
         if (!r.ok || !j.message) { item.a = j.error || "Couldn't reach the league just now. Try again."; convo.pop(); break; }
         convo.push(j.message);
         if (j.message.tool_calls?.length) {
@@ -262,8 +265,8 @@
         }
         item.a = j.message.content || "…"; break;
       }
-      if (item.a == null) item.a = "That one took too many steps. Try asking it a simpler way.";
-    } catch { item.a = "Couldn't reach the league just now. Try again."; convo.pop(); }
+      if (item.a == null) { item.a = "That one took too many steps. Try asking it a simpler way."; giveUp("too many steps"); }
+    } catch { item.a = "Couldn't reach the league just now. Try again."; convo.pop(); giveUp("lost connection"); }
     busy = false; chipSet = null; sheet();
     if (typeof noteUse === "function") noteUse("week-ask", q.slice(0, 60));
   }

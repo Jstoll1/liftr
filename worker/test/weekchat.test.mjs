@@ -62,3 +62,30 @@ test("week chat worker: a finished answer is kept for the live page, admin only"
   const again = (await (await worker.fetch(new Request("https://w.test/week-chat?key=adm"), env, { waitUntil() {} })).json()).chats[0];
   assert.ok(again.flagged); assert.equal(again.note, "said 0% means out");
 });
+
+test("week chat worker: every question is logged, answered or not", async () => {
+  const m = new Map(), meta = new Map();
+  const kv = { get: async (k, t) => { const v = m.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; }, put: async (k, v, o) => { m.set(k, String(v)); if (o?.metadata) meta.set(k, o.metadata); }, delete: async (k) => { m.delete(k); }, list: async ({ prefix }) => ({ keys: [...meta].filter(([k]) => k.startsWith(prefix)).map(([name, metadata]) => ({ name, metadata })), list_complete: true }) };
+  const env = { OPENAI_API_KEY: "k", DEFAULT_ROSTER: "Jake,Curt", LIFTR_KV: kv, ARCHIVE_LOG_KEY: "adm" };
+  const ctx = { asker: "Jake", members: ["Jake", "Curt"], games };
+  const real = globalThis.fetch;
+  const post = async (b) => (await worker.fetch(new Request("https://w.test/week-chat", { method: "POST", body: JSON.stringify({ context: ctx, sid: "s9", ...b }) }), env, { waitUntil() {} })).json();
+  const list = async () => (await (await worker.fetch(new Request("https://w.test/week-chat?key=adm"), env, { waitUntil() {} })).json()).chats;
+  // 1) The model asks for a tool: the question is logged as asked straight away.
+  globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "standings", arguments: "{}" } }] } }], usage: {} }), { status: 200 });
+  const r1 = await post({ messages: [{ role: "user", content: "who's out?" }] });
+  assert.ok(r1.logId);
+  assert.equal((await list())[0].status, "asked");
+  // 2) The phone gives up: the entry says so.
+  await post({ action: "giveup", logId: r1.logId, reason: "too many steps" });
+  assert.match((await list())[0].a, /no answer: too many steps/);
+  // 3) The AI service fails on a new question: logged as an error.
+  globalThis.fetch = async () => new Response("down", { status: 503 });
+  const r3 = await post({ messages: [{ role: "user", content: "can I win?" }] });
+  globalThis.fetch = real;
+  const all = await list();
+  assert.equal(all.length, 2);
+  const err = all.find((c) => c.q === "can I win?");
+  assert.equal(err.status, "error"); assert.match(err.a, /503/);
+  assert.ok(r3.logId);
+});

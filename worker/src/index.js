@@ -4358,6 +4358,19 @@ async function weekChatLogRead(env) {
   const full = await Promise.all(rows.map(async (r) => { try { const v = await env.LIFTR_KV.get(r.id, "json"); return v ? { ...v, id: r.id } : null; } catch { return null; } }));
   return full.filter(Boolean).sort((a, b) => b.at - a.at);
 }
+// One entry per question: written when it arrives (status "asked"), then
+// filled in with the reply or what went wrong, so a question that never got
+// an answer still shows on the live page.
+async function weekChatLog(env, id, patch) {
+  if (!env.LIFTR_KV) return null;
+  try {
+    const key = id && String(id).startsWith(WCHAT_LOG) ? String(id) : logKey(WCHAT_LOG, patch.at || Date.now());
+    const prev = id ? await env.LIFTR_KV.get(key, "json") : null;
+    const e = { ...(prev || {}), ...patch };
+    await env.LIFTR_KV.put(key, JSON.stringify(e), { expirationTtl: Math.max(60, Math.round((e.at + 30 * 86400000 - Date.now()) / 1000)), metadata: { at: e.at, asker: e.asker, sid: e.sid } });
+    return key;
+  } catch { return null; }
+}
 async function handleWeekChat(request, env, corsHeaders, url = new URL(request.url)) {
   if (request.method === "GET") {
     if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
@@ -4376,6 +4389,14 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
     await env.LIFTR_KV.put(id, JSON.stringify(e), { expirationTtl: Math.max(60, Math.round((e.at + 30 * 86400000 - Date.now()) / 1000)), metadata: { at: e.at, asker: e.asker, sid: e.sid } });
     return json({ ok: true, chat: { ...e, id } }, 200, corsHeaders);
   }
+  // The phone gave up (too many steps, lost connection): note it on a
+  // question still waiting. Nothing else about the entry can be changed.
+  if (body?.action === "giveup") {
+    const id = String(body.logId || "");
+    const e = id.startsWith(WCHAT_LOG) && env.LIFTR_KV ? await env.LIFTR_KV.get(id, "json") : null;
+    if (e && e.status === "asked") await weekChatLog(env, id, { status: "no answer", a: `(no answer: ${String(body.reason || "the phone gave up").slice(0, 80)})` });
+    return json({ ok: true }, 200, corsHeaders);
+  }
   const members = (Array.isArray(body?.context?.members) ? body.context.members : []).filter((m) => typeof m === "string" && PICKS_MANAGERS.includes(m));
   const games = (Array.isArray(body?.context?.games) ? body.context.games : []).slice(0, 30).map((g) => ({ id: String(g?.id ?? "").slice(0, 10), away: String(g?.away || "").slice(0, 60), home: String(g?.home || "").slice(0, 60), awayShort: String(g?.awayShort || "").slice(0, 30), homeShort: String(g?.homeShort || "").slice(0, 30), favorite: String(g?.favorite || "").slice(0, 60), spread: Number(g?.spread) || 0, status: String(g?.status || "").slice(0, 30), score: String(g?.score || "").slice(0, 30) })).filter((g) => g.id && g.away && g.home);
   const asker = members.includes(body?.context?.asker) ? body.context.asker : null;
@@ -4386,8 +4407,18 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
     const ip = request.headers.get("CF-Connecting-IP") || "anon";
     const bucket = `wchat-rl:${ip}:${Math.floor(Date.now() / 3600000)}`;
     const used = Number((await env.LIFTR_KV.get(bucket)) || 0);
-    if (used >= 40) return json({ error: "That's a lot of questions. Try again in a bit." }, 429, corsHeaders);
+    if (used >= 40) {
+      const q = messages[messages.length - 1].content;
+      await weekChatLog(env, null, { at: Date.now(), asker, sid: String(body?.sid || "").replace(/[^a-z0-9]/gi, "").slice(0, 16) || null, q: String(q).slice(0, 500), a: "(not asked: over 40 questions this hour)", status: "rate limited", tools: [] });
+      return json({ error: "That's a lot of questions. Try again in a bit." }, 429, corsHeaders);
+    }
     await env.LIFTR_KV.put(bucket, String(used + 1), { expirationTtl: 3700 });
+  }
+  const sid = String(body?.sid || "").replace(/[^a-z0-9]/gi, "").slice(0, 16) || null;
+  const build = String(body?.build || "").replace(/\D/g, "").slice(0, 14) || null;
+  let logId = typeof body?.logId === "string" && body.logId.startsWith(WCHAT_LOG) ? body.logId : null;
+  if (messages[messages.length - 1].role === "user") {
+    logId = await weekChatLog(env, null, { at: Date.now(), asker, sid, build, q: String(messages[messages.length - 1].content).slice(0, 500), a: null, status: "asked", tools: [], turn: messages.filter((x) => x.role === "user").length });
   }
   const res = await openaiChat(env, "week-chat", {
     method: "POST",
@@ -4398,21 +4429,20 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
       messages: [{ role: "system", content: weekChatSystem({ asker, members, games }) }, ...messages],
     }),
   });
-  if (!res.ok) return json({ error: `The assistant didn't answer (${res.status}). Try again.` }, 502, corsHeaders);
+  if (!res.ok) {
+    if (logId) await weekChatLog(env, logId, { status: "error", a: `(no answer: the AI service returned ${res.status})` });
+    return json({ error: `The assistant didn't answer (${res.status}). Try again.`, logId }, 502, corsHeaders);
+  }
   const data = await res.json().catch(() => ({}));
   const m = data?.choices?.[0]?.message || {};
   const calls = (m.tool_calls || []).filter((c) => WEEK_CHAT_TOOLS.some((t) => t.function.name === c.function?.name)).map((c) => ({ id: c.id, type: "function", function: { name: c.function.name, arguments: c.function.arguments || "{}" } }));
-  // A reply (no more tool calls) ends a question: keep it for the live page.
-  if (!calls.length && env.LIFTR_KV) {
+  // A reply (no more tool calls) ends a question: fill in its entry.
+  if (!calls.length) {
     let u = messages.length - 1; while (u > 0 && messages[u].role !== "user") u--;
     const after = messages.slice(u + 1), outs = new Map(after.filter((x) => x.role === "tool").map((x) => [x.tool_call_id, x.content]));
     const tools = after.filter((x) => x.role === "assistant" && x.tool_calls).flatMap((x) => x.tool_calls.map((c) => ({ name: c.function.name, args: String(c.function.arguments || "").slice(0, 300), out: String(outs.get(c.id) || "").slice(0, 1500) })));
-    const at = Date.now(), sid = String(body?.sid || "").replace(/[^a-z0-9]/gi, "").slice(0, 16) || null;
-    const entry = { at, asker, sid, build: String(body?.build || "").replace(/\D/g, "").slice(0, 14) || null, q: String(messages[u]?.content || "").slice(0, 500), a: String(m.content || "").slice(0, 2000), tools, turn: messages.filter((x) => x.role === "user").length };
-    try {
-      const key = logKey(WCHAT_LOG, at);
-      await env.LIFTR_KV.put(key, JSON.stringify(entry), { expirationTtl: 30 * 86400, metadata: { at, asker, sid } });
-    } catch {}
+    const patch = { a: String(m.content || "").slice(0, 2000), tools, status: "answered" };
+    logId = await weekChatLog(env, logId, logId ? patch : { at: Date.now(), asker, sid, build, q: String(messages[u]?.content || "").slice(0, 500), turn: messages.filter((x) => x.role === "user").length, ...patch });
   }
-  return json({ message: { role: "assistant", content: m.content || null, ...(calls.length ? { tool_calls: calls } : {}) } }, 200, corsHeaders);
+  return json({ message: { role: "assistant", content: m.content || null, ...(calls.length ? { tool_calls: calls } : {}) }, logId }, 200, corsHeaders);
 }
