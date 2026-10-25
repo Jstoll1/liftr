@@ -423,12 +423,13 @@ export function parseGdelt(json) {
 }
 // One fetch with a single retry after a short pause when the host is
 // throttling (Google's RSS answers 503 to busy edges).
-// Successful feed bodies are kept in KV for thirty minutes so repeat opens
-// of the same game do not hit the same throttled host again.
+// Successful feed bodies are fresh for thirty minutes, so repeat opens of
+// the same game do not hit the same throttled host again, and kept a day
+// as the fallback when a source fails or misses its deadline.
 // A service that answered 429 is left alone for ten minutes (GDELT in
 // particular); a failed call falls back to the last copy we kept.
 const COOL_MS = 10 * 60 * 1000, SOURCE_MS = 4000;
-const coolUntil = {};
+const coolUntil = {}, timeoutsInRow = {};
 const hostOf = (url) => { try { return new URL(url).hostname; } catch { return ""; } };
 async function fetchText(url, accept, env = null) {
   const key = feedCacheKey(url), host = hostOf(url);
@@ -449,13 +450,16 @@ async function fetchText(url, accept, env = null) {
     const timedOut = err?.name === "TimeoutError" || err?.name === "AbortError";
     // A host that just timed out is left alone for five minutes, so the
     // next opens answer at once instead of each waiting out the timer.
-    if (timedOut) { coolUntil[host] = Date.now() + COOL_MS / 2; if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(`cool:${host}`, String(coolUntil[host]), { expirationTtl: 360 }); } catch {} } }
+    // Each timeout in a row doubles the rest (5, 10, 20, then 60 minutes),
+    // so a source that keeps crawling (GDELT) stops being asked at all.
+    if (timedOut) { const n = (timeoutsInRow[host] = (timeoutsInRow[host] || 0) + 1); const ms = Math.min(60 * 60 * 1000, (COOL_MS / 2) * 2 ** (n - 1)); coolUntil[host] = Date.now() + ms; if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(`cool:${host}`, String(coolUntil[host]), { expirationTtl: Math.round(ms / 1000) + 60 }); } catch {} } }
     return fallback(timedOut ? `timed out after ${wait / 1000}s` : String(err?.message || err));
   }
   if (res.ok) {
+    timeoutsInRow[host] = 0;
     const text = await res.text();
     // Feed bodies are small; the site's feed file is not, so the cap is generous.
-    if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(key, JSON.stringify({ at: Date.now(), text: text.slice(0, 4000000) }), { expirationTtl: 6 * 3600 }); } catch {} }
+    if (env?.LIFTR_KV) { try { await env.LIFTR_KV.put(key, JSON.stringify({ at: Date.now(), text: text.slice(0, 4000000) }), { expirationTtl: 24 * 3600 }); } catch {} }
     return { ok: true, text };
   }
   if (res.status === 429 || res.status === 503) {

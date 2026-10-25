@@ -599,6 +599,7 @@ async function opsFlush(env) {
 }
 // Upstream calls (ESPN and the rest): failures and calls over 8 seconds.
 const rawFetch = globalThis.fetch;
+const timeoutNoted = {};
 globalThis.fetch = async (input, init) => {
   const url = typeof input === "string" ? input : input?.url || "";
   let host = ""; try { host = new URL(url).hostname; } catch {}
@@ -609,7 +610,11 @@ globalThis.fetch = async (input, init) => {
     else if (Date.now() - t0 > 8000) opsNote("upstream-slow", `${host} ${Math.round((Date.now() - t0) / 100) / 10}s`, { src: "worker" });
     return r;
   } catch (err) {
-    if (err?.name !== "AbortError") opsNote("upstream-fail", `${host} ${String(err?.message || err).slice(0, 60)}`, { src: "worker" });
+    // Our own deadline running out (AbortSignal.timeout) is handled by the
+    // caller, which serves its saved copy: a slow source, not a failure, and
+    // noted once per host every six hours rather than on every call.
+    if (err?.name === "TimeoutError") { if (Date.now() - (timeoutNoted[host] || 0) > 6 * 3600 * 1000) { timeoutNoted[host] = Date.now(); opsNote("upstream-slow", `${host} missed our deadline (saved copy served; noted once per 6h)`, { src: "worker" }); } }
+    else if (err?.name !== "AbortError") opsNote("upstream-fail", `${host} ${String(err?.message || err).slice(0, 60)}`, { src: "worker" });
     throw err;
   }
 };
