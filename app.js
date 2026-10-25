@@ -9082,7 +9082,11 @@ let renderRecap = function () {
   // Lock of the week: who hit theirs, who missed, the best lock leading.
   if (r.locks && (r.locks.list || []).length) {
     const L = r.locks, top = L.list[0], n = L.list.length;
-    cards.push(["🔒 LOCK OF THE WEEK", "lk", logo(top.id, top.short), `${chips(L.hit.length ? L.hit : top.name)}<span class="recap-pick">${L.hit.length ? `hit ${L.hit.length === 1 ? "their lock" : "locks"}` : "nobody hit"}</span>`,
+    // The art is every team that hit (one logo each), not just the first
+    // lock, so it never names a team most people didn't lock.
+    const hitTeams = [...new Map(L.list.filter((x) => x.result === "hit" && x.id).map((x) => [x.id, x])).values()].slice(0, 3);
+    const lkArt = hitTeams.length === 1 ? logo(hitTeams[0].id, hitTeams[0].short) : hitTeams.length ? `<span class="recap-vs">${hitTeams.map((x) => logo(x.id, x.short)).join("")}</span>` : `<span class="recap-lk" aria-hidden="true">🔒</span>`;
+    cards.push(["🔒 LOCK OF THE WEEK", "lk", lkArt, `${chips(L.hit.length ? L.hit : top.name)}<span class="recap-pick">${L.hit.length ? `hit ${L.hit.length === 1 ? "their lock" : "locks"}` : "nobody hit"}</span>`,
       `${L.hit.length} hit · ${L.miss.length} missed${L.push.length ? ` · ${L.push.length} pushed` : ""}${L.none.length ? ` · ${L.none.length} no lock` : ""}`, `${L.hit.length}/${n}`, "HIT", mine(L.hit)]);
   }
   const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}`;

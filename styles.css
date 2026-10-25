@@ -8507,3 +8507,4 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 /* Re-tapping the tab you're on, already at the top: a small refresh note. */
 #nav-toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translate(-50%, 8px); padding: 6px 12px; border-radius: 999px; background: rgba(20, 16, 40, .94); border: 1px solid rgba(5, 217, 232, .5); color: #05d9e8; font-size: 13px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 60; }
 #nav-toast.show { opacity: 1; transform: translate(-50%, 0); }
+.recap-lk { font-size: 28px; line-height: 1; }
