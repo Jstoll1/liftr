@@ -8509,5 +8509,7 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 #nav-toast.show { opacity: 1; transform: translate(-50%, 0); }
 .recap-lk { font-size: 28px; line-height: 1; }
 /* Three hit locks: smaller logos so the row fits the art column. */
-.recap-card .recap-vs.n3 .recap-logo { width: 20px; height: 20px; }
-.recap-card .recap-vs.n3 { justify-content: center; } .recap-card .recap-vs.n3 .recap-logo + .recap-logo { margin-left: -5px; }
+/* Two or three hit locks: logos stacked in a column, not squeezed in a row. */
+.recap-card .recap-vs.n2, .recap-card .recap-vs.n3 { flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.recap-card .recap-vs.n2 .recap-logo { width: 28px; height: 28px; margin: 0 !important; }
+.recap-card .recap-vs.n3 { gap: 2px; padding-top: 8px; } .recap-card .recap-vs.n3 .recap-logo { width: 18px; height: 18px; margin: 0 !important; }
