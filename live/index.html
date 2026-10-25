@@ -1091,6 +1091,33 @@ body::before { display: none; }
 .now-l b { font-family: var(--sans); text-shadow: none !important; }
 .afr-r .afr-d, .ops-r .afr-d { color: var(--text) !important; }
 .afr-r .afr-d small, .afr-r .afr-d i { color: var(--dim) !important; }
+
+/* Recommended action: fold and clear. */
+.rec { grid-template-columns: 32px minmax(0, 1fr) auto 28px; }
+.rec .rec-b { background: none; border: 0; padding: 0; text-align: left; color: inherit; cursor: pointer; }
+.rec-b em i { font-style: normal; margin-left: 4px; }
+.rec-x { width: 28px; height: 28px; border-radius: 6px; border: 1px solid transparent; background: none; color: var(--dim); font-size: 13px; grid-column: 4; grid-row: 1; }
+.rec-x:hover { border-color: var(--line2); color: var(--text); }
+.rec .rec-cp { grid-column: 3; grid-row: 1; }
+.rec.shut { padding-top: 10px; padding-bottom: 10px; }
+.rec.shut .rec-i { width: 24px; height: 24px; font-size: 12px; }
+@media (max-width: 520px) { .rec { grid-template-columns: 32px minmax(0, 1fr) 28px; } .rec-x { grid-column: 3; } .rec .rec-cp { grid-column: 1 / -1; grid-row: 2; } }
+/* User flow. */
+.flow h3 { margin: 14px 0 6px; font: 600 12px/1.2 var(--sans); color: var(--meta); }
+.flow-g { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.flow-g h3 { margin-top: 0; }
+.flow-p { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.flow-p li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--panel2); }
+.flow-p span { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 13px; min-width: 0; }
+.flow-p i { font-style: normal; padding: 2px 8px; border-radius: 999px; background: rgba(139, 124, 255, .14); color: var(--text); }
+.flow-p b { color: var(--dim); font-weight: 500; }
+.flow-p em { font-style: normal; font-weight: 700; color: var(--meta); }
+.idea { margin-top: 14px; padding: 12px 14px; border-radius: 10px; border: 1px dashed rgba(139, 124, 255, .45); display: grid; gap: 4px; }
+.idea em { font: 600 10.5px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-style: normal; }
+.idea b { font-size: 15px; font-weight: 600; }
+.idea span { font-size: 12.5px; color: var(--meta); }
+.idea .rec-cp { justify-self: start; margin-top: 6px; }
+@media (max-width: 520px) { .flow-g { grid-template-columns: 1fr; gap: 4px; } .idea .rec-cp { justify-self: stretch; } }
 </style>
 </head>
 <body>
@@ -1226,6 +1253,9 @@ body::before { display: none; }
   // The page is split into pages, one at a time, picked from the bottom nav:
   // Overview (numbers, charts, what needs you), Activity (timeline and
   // visits), Issues (friction and health), BI (questions) and Stats.
+  // Recommended actions folded or cleared, remembered on this device.
+  const recShut = (() => { try { return new Set(JSON.parse(localStorage.getItem("brochiefs_live_rec_shut") || "[]")); } catch { return new Set(); } })();
+  const recHidden = (() => { try { return JSON.parse(localStorage.getItem("brochiefs_live_rec_hidden") || "{}") || {}; } catch { return {}; } })();
   const PAGES = [["home", "Overview", "now"], ["activity", "Visits", "visits"], ["issues", "Issues", "bell"], ["bi", "BI", "brain"], ["stats", "Stats", "stats"]];
   // Old section ids (jump links, studio's back buttons) land on their page.
   const PAGE_OF = { "sec-now": "home", "sec-tl": "home", "sec-visits": "activity", "sec-stats": "stats" };
@@ -1942,11 +1972,43 @@ body::before { display: none; }
     // Overview leads with the most urgent of the rest.
     recs.home = [recs.issues, recs.bi, recs.activity, recs.stats].filter(Boolean).find((r) => r.tone === "bad") || [recs.issues, recs.bi, recs.activity, recs.stats].filter(Boolean).find((r) => r.tone === "warn") || recs.activity;
     st.recTexts = Object.fromEntries(Object.entries(recs).map(([k, r]) => [k, r.copy]));
-    const recCard = (k) => { const r = recs[k]; if (!r) return ""; return `<section class="rec ${r.tone}"><div class="rec-i" aria-hidden="true">${r.tone === "ok" ? "✓" : r.tone === "bad" ? "!" : "→"}</div><div class="rec-b"><em>Recommended action</em><b>${esc(r.t)}</b><span>${esc(r.why)}</span></div>${r.copy ? `<button type="button" class="rec-cp" data-reccopy="${k}">${st.copied === `rec:${k}` ? "✓ Copied" : "Copy for Claude"}</button>` : ""}</section>`; };
+    // Collapsible (tap the title) and clearable (✕): a cleared card stays
+    // gone until the recommendation itself changes.
+    const recCard = (k) => {
+      const r = recs[k]; if (!r || recHidden[k] === r.t) return "";
+      const shut = recShut.has(k);
+      return `<section class="rec ${r.tone}${shut ? " shut" : ""}"><div class="rec-i" aria-hidden="true">${r.tone === "ok" ? "✓" : r.tone === "bad" ? "!" : "→"}</div><button type="button" class="rec-b" data-recfold="${k}" aria-expanded="${!shut}"><em>Recommended action <i>${shut ? "▸" : "▾"}</i></em><b>${esc(r.t)}</b>${shut ? "" : `<span>${esc(r.why)}</span>`}</button><button type="button" class="rec-x" data-recclear="${k}" aria-label="Clear this recommendation">✕</button>${r.copy && !shut ? `<button type="button" class="rec-cp" data-reccopy="${k}">${st.copied === `rec:${k}` ? "✓ Copied" : "Copy for Claude"}</button>` : ""}</section>`;
+    };
+    // --- User flow: where visits start, the paths they take, where they end.
+    // Short names for steps, so a path reads "Scores → Game info → VS".
+    const STEP_SHORT = [[/^Compared two players/i, "VS"], [/^Expanded a player/i, "Player card"], [/Gamecast/i, "Gamecast"], [/game scores/i, "Scores"], [/Path to Win/i, "Path to Win"], [/odds to win/i, "Win odds"], [/week replay/i, "Replay"], [/pot and standings/i, "Pot"], [/season stats/i, "Season stats"]];
+    const stepOf = (a) => { if (/^⚠/.test(a)) return ""; const hit = STEP_SHORT.find(([re]) => re.test(a)); const x = hit ? hit[1] : a.replace(/^(Went to|Looked at|Opened|Watched|Tapped|Checked|Read|Saw) (a |an |the )?/i, "").replace(/\s*\(.*\)$/, ""); return x.charAt(0).toUpperCase() + x.slice(1); };
+    const flows = vs.filter((v) => !v.live || v.acts.length).map((v) => { const out = []; for (const a of v.acts) { const x = stepOf(a.a); if (x && out[out.length - 1] !== x) out.push(x); } return out; }).filter((f) => f.length);
+    const tally = (arr) => { const m = new Map(); for (const x of arr) m.set(x, (m.get(x) || 0) + 1); return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+    const starts = tally(flows.map((f) => f[0])).slice(0, 4), ends = tally(flows.map((f) => f[f.length - 1])).slice(0, 4);
+    const paths = tally(flows.filter((f) => f.length > 1).map((f) => f.slice(0, 3).join(" → "))).slice(0, 4);
+    const depth = flows.length ? flows.reduce((t, f) => t + f.length, 0) / flows.length : 0;
+    const oneStep = flows.filter((f) => f.length === 1).length;
+    const fbar = (rows) => { const mx = Math.max(1, ...rows.map(([, n]) => n)); return `<div class="rank">${rows.map(([l, n]) => `<div><span>${esc(l)}</span><b>${pct(n, flows.length)}%</b><i><s style="width:${((n / mx) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>`; };
+    // An engagement idea from the flow, using patterns sports and fantasy
+    // apps lean on: alerts tied to your own stakes, continue-to-next
+    // prompts, and a reason to come back.
+    const topStart = starts[0]?.[0] || "", topEnd = ends[0]?.[0] || "", quickShare = pct(oneStep, flows.length);
+    const idea = !flows.length ? null
+      : /score|game|gamecast/i.test(topStart) && pct(starts[0][1], flows.length) >= 35 ? { t: "Alert them when their pick flips", why: `${pct(starts[0][1], flows.length)}% of visits open straight to ${topStart}: they come to check on their games. A push when a pick goes from covering to not (or back) brings them in at the moment it matters, instead of hoping they check.`, copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${pct(starts[0][1], flows.length)}% of visits start on ${topStart} (checking scores). Add opt-in web push (iOS 16.4+ home-screen apps support it) that fires when one of the user's own picks flips between covering and not, at most one alert per game, never for hidden picks. Show the opt-in once, after a visit that checked scores. Test at 390px.` }
+      : quickShare >= 45 ? { t: "Give quick looks a one-glance answer", why: `${quickShare}% of visits do a single thing and leave. Lead the first screen with the answer they came for: your points so far, your place, and what changed since they last looked.`, copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${quickShare}% of visits do one thing and leave. Add a slim "since you last looked" line at the top of the first screen (points change, place change, picks that hit or missed), shown only when something changed. Test at 390px.` }
+      : /game info|gamecast/i.test(topEnd) ? { t: "Add a 'next game that matters' step", why: `Visits most often end on ${topEnd}. A next step at the bottom (the next game with your pick in it) keeps the session going the way streaming apps queue the next episode.`, copy: `Brochiefs ${LEAGUE.toUpperCase()}: visits most often end on ${topEnd}. At the end of game info add one button: the next game (live or soonest) that has the viewer's pick in it, with their pick and status. Test at 390px.` }
+      : { t: "Give them a reason to come back", why: `Average visit covers ${depth.toFixed(1)} screens. A weekly streak (picks in on time, weeks played) or a Monday recap card to share gives a habit loop between game days.`, copy: `Brochiefs ${LEAGUE.toUpperCase()}: suggest and build the lightest habit loop for between game days: a picks-in-on-time streak on the player card, or a shareable Monday recap card. Pick one, keep it out of the way, test at 390px.` };
+    if (idea) st.recTexts.idea = idea.copy;
+    const flowPanel = flows.length >= 3 ? `<section class="panel flow"><div class="ph"><h2>User flow</h2><span class="sub">${flows.length} visits · ${depth.toFixed(1)} screens a visit · 24h</span></div>
+      <div class="flow-g"><div><h3>Starts on</h3>${fbar(starts)}</div><div><h3>Leaves from</h3>${fbar(ends)}</div></div>
+      ${paths.length ? `<h3>Common paths</h3><ol class="flow-p">${paths.map(([p, n]) => `<li><span>${p.split(" → ").map((x) => `<i>${esc(x)}</i>`).join("<b>→</b>")}</span><em>${n}</em></li>`).join("")}</ol>` : ""}
+      ${idea ? `<div class="idea"><em>💡 Engagement idea</em><b>${esc(idea.t)}</b><span>${esc(idea.why)}</span><button type="button" class="rec-cp" data-reccopy="idea">${st.copied === "rec:idea" ? "✓ Copied" : "Copy for Claude"}</button></div>` : ""}
+    </section>` : "";
     const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>`;
     const pageBody = {
       home: `${recCard("home")}${kpis}${timeline}${strips}${overview}`,
-      activity: `${recCard("activity")}${feedHtml}`,
+      activity: `${recCard("activity")}${flowPanel}${feedHtml}`,
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
       bi: `<div class="pg-bar"><h1>BI questions</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
       stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${rail}`,
@@ -2141,6 +2203,8 @@ body::before { display: none; }
       try { const x = await fetch(`${WORKER}/week-chat?${auth()}`, { method: "POST", body: JSON.stringify({ action: "flag", id: r.id, flagged: on, note }) }); const j = await x.json().catch(() => ({})); if (x.ok && j.chat) Object.assign(r, j.chat); } catch {}
       st.sig = ""; render(); return;
     }
+    if (b.dataset.recfold) { const k = b.dataset.recfold; recShut.has(k) ? recShut.delete(k) : recShut.add(k); store.set("brochiefs_live_rec_shut", JSON.stringify([...recShut])); st.sig = ""; render(); return; }
+    if (b.dataset.recclear) { const k = b.dataset.recclear; const r = document.querySelector(`[data-recfold="${k}"] b`); recHidden[k] = r ? r.textContent : ""; store.set("brochiefs_live_rec_hidden", JSON.stringify(recHidden)); st.sig = ""; render(); return; }
     if (b.dataset.reccopy) {
       const t = st.recTexts?.[b.dataset.reccopy];
       if (!t || !(await copyText(t))) return;
