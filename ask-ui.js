@@ -284,15 +284,21 @@
       document.body.appendChild(b);
     }
     const sb = document.getElementById("scoreboard-screen");
-    b.hidden = !sb || sb.classList.contains("hidden") || !!document.querySelector(".modal-overlay:not(.hidden), #ask-sheet, #lt-modal");
+    b.hidden = !sb || sb.classList.contains("hidden") || [...document.querySelectorAll(".modal-overlay, #ask-sheet, #lt-modal")].some((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none" && el.getClientRects().length > 0);
   }
   // The one-time "new feature" card, in the Path to Win intro's style:
   // once per device, on the Scores page, never over another pop-up.
   const INTRO_KEY = "brochiefs_ai_intro_v1";
   function introSeen() { try { return !!localStorage.getItem(INTRO_KEY); } catch { return true; } }
+  // ?intro=bi on the address shows the card again (for checking it).
+  if (/[?&]intro=bi\b/.test(location.search)) { try { localStorage.removeItem(INTRO_KEY); } catch {} }
   function maybeIntro() {
     const fab = document.getElementById("ask-fab");
-    if (introSeen() || !fab || fab.hidden || !me() || document.querySelector(".pi-screen, .pr-screen:not(.hidden), .np-screen:not(.hidden), .modal-overlay:not(.hidden), .wpx-overlay:not(.hidden), #lt-modal, #ask-sheet, #locks-sheet")) return;
+    // Only a pop-up actually on screen holds it back (some hide by style,
+    // not the hidden class, and used to block it for good).
+    const shown_ = (el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none" && getComputedStyle(el).visibility !== "hidden" && el.getClientRects().length > 0;
+    // Any screen, on launch: TRY IT takes them to Scores and opens the chat.
+    if (introSeen() || !me() || window.__adminEntry || window.__liveView || (document.getElementById("logo-screen") && !document.getElementById("logo-screen").classList.contains("hidden")) || [...document.querySelectorAll(".pi-screen, .pr-screen, .np-screen, .modal-overlay, .wpx-overlay, #lt-modal, #ask-sheet, #locks-sheet, .lks")].some(shown_)) return;
     try { localStorage.setItem(INTRO_KEY, String(Date.now())); } catch {}
     const ex = chips();
     const m = document.createElement("div");
@@ -309,8 +315,9 @@
     const close = () => { m.classList.add("out"); setTimeout(() => m.remove(), 220); const f = document.getElementById("ask-fab"); f?.classList.add("ping"); setTimeout(() => f?.classList.remove("ping"), 2400); };
     m.addEventListener("click", (e) => {
       const q = e.target.closest("[data-aiex]")?.dataset.aiex;
-      if (q) { close(); setTimeout(() => { open(); send(q); }, 230); return; }
-      if (e.target.closest(".pi-ok")) { close(); setTimeout(open, 230); return; }
+      const toScores = () => { const sb = document.getElementById("scoreboard-screen"); if (sb?.classList.contains("hidden")) document.getElementById("nav-scoreboard-btn")?.click(); };
+      if (q) { close(); toScores(); setTimeout(() => { open(); send(q); }, 330); return; }
+      if (e.target.closest(".pi-ok")) { close(); toScores(); setTimeout(open, 330); return; }
       if (e.target === m || e.target.closest(".pi-x, .ai-later")) close();
     });
     if (typeof noteUse === "function") noteUse("ai-intro");
