@@ -11,6 +11,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Live">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="../icons/favicon-32.png">
@@ -1001,6 +1003,94 @@ html, body { overflow-x: hidden; }
 .pg-bi .chat-btns { flex-direction: row; gap: 4px; }
 .pg-bi .chat-btns .afr-one { min-width: 0; padding: 4px 8px; font-size: 12px; }
 @media (min-width: 1024px) { .pg-bi { max-width: 1100px; } }
+
+/* ===== BI refresh: one calm, consistent system for every page =====
+   Neutral slate surfaces, one violet accent, status colours only where they
+   mean something, sans headings in sentence case, no glows or grid. */
+:root {
+  --bg: #0b0d12; --panel: #12151c; --panel2: #171b24; --line: #222734; --line2: #2c3242;
+  --text: #e8eaf0; --meta: #a2a8b8; --dim: #6f7689;
+  --accent: #8b7cff; --past: #8b7cff; --green: #34d399; --gold: #fbbf24; --red: #f87171; --cyan: #38bdf8;
+  --sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body { font-family: var(--sans); background: var(--bg); letter-spacing: -.005em; }
+body::before { display: none; }
+.top { background: rgba(11, 13, 18, .85); border-bottom-color: var(--line); }
+.top::after { display: none; }
+.tabs { background: rgba(11, 13, 18, .92); border-top-color: var(--line); }
+.tabs button.on { color: var(--text); }
+.tabs button.on svg { filter: none; color: var(--accent); }
+.tabs b { background: var(--accent) !important; color: #fff !important; box-shadow: none !important; }
+.page.pg { gap: 14px; }
+/* Panels: flat cards, sentence-case titles. */
+.panel, .kstats, .kpi, .att-c, .sess, .afr { background: var(--panel) !important; border: 1px solid var(--line) !important; box-shadow: none !important; border-radius: 12px; }
+.ph h2 { font: 600 14px/1.2 var(--sans); letter-spacing: 0; text-transform: none; color: var(--text); }
+.ph .sub { font-size: 12px; color: var(--dim); }
+/* Headline numbers. */
+.kpi.now { border-color: var(--line) !important; }
+.kpi.now.on { border-color: rgba(52, 211, 153, .4) !important; }
+.ks { padding: 14px 16px 12px; border-color: var(--line) !important; }
+.ks em { font: 500 11px/1.2 var(--sans); letter-spacing: .02em; text-transform: none; color: var(--meta); }
+.ks b { font: 700 24px/1.1 var(--sans); letter-spacing: -.02em; margin-top: 6px; }
+.ks b small { font-weight: 600; color: var(--dim); }
+.ks > span { font-size: 12px; color: var(--dim); }
+.ks b .kt { font: 600 11px/1 var(--sans); padding: 2px 5px; border-radius: 4px; vertical-align: 4px; }
+.ks b .kt.up { color: var(--green); background: rgba(52, 211, 153, .12); }
+.ks b .kt.dn { color: var(--red); background: rgba(248, 113, 113, .12); }
+.spk { display: block; width: 100%; height: 22px; margin-top: 8px; }
+.spk-a { fill: rgba(139, 124, 255, .14); stroke: none; }
+.spk-l { fill: none; stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+/* Recommended action. */
+.rec { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(90deg, rgba(139, 124, 255, .1), rgba(139, 124, 255, .02)), var(--panel); }
+.rec-i { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; background: rgba(139, 124, 255, .18); color: var(--accent); }
+.rec.warn { background: linear-gradient(90deg, rgba(251, 191, 36, .1), rgba(251, 191, 36, .02)), var(--panel); } .rec.warn .rec-i { background: rgba(251, 191, 36, .16); color: var(--gold); }
+.rec.bad { background: linear-gradient(90deg, rgba(248, 113, 113, .12), rgba(248, 113, 113, .02)), var(--panel); } .rec.bad .rec-i { background: rgba(248, 113, 113, .18); color: var(--red); }
+.rec.ok .rec-i { background: rgba(52, 211, 153, .15); color: var(--green); }
+.rec-b { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rec-b em { font: 600 10.5px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); font-style: normal; }
+.rec-b b { font-size: 15px; font-weight: 600; }
+.rec-b span { font-size: 12.5px; color: var(--meta); }
+.rec-cp { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel2); color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.rec-cp:hover { border-color: var(--accent); }
+@media (max-width: 520px) { .rec { grid-template-columns: 32px minmax(0, 1fr); } .rec-cp { grid-column: 1 / -1; width: 100%; } }
+/* Needs-you cards. */
+.att-c { padding: 14px 16px; }
+.att-c b { font: 700 26px/1 var(--sans); letter-spacing: -.02em; }
+.att-c span { font-size: 13px; font-weight: 600; color: var(--text); }
+.att-c small { color: var(--dim); opacity: 1; }
+.att-c.warn { border-color: rgba(251, 191, 36, .35) !important; } .att-c.warn b { color: var(--gold); }
+.att-c.bad { border-color: rgba(248, 113, 113, .4) !important; } .att-c.bad b { color: var(--red); }
+.att-c.info { border-color: rgba(139, 124, 255, .45) !important; } .att-c.info b { color: var(--accent); }
+.att-c.ok b, .att-c.calm b { color: var(--dim); }
+/* Ranked bars. */
+.rank i { height: 6px; border-radius: 3px; background: var(--panel2); }
+.rank i s { border-radius: 3px; background: var(--accent) !important; }
+/* Logs (friction, health, BI): same card language, readable sans. */
+.afr { color: var(--text) !important; font-family: var(--sans) !important; padding: 6px 16px !important; }
+.afr-h b { font: 600 14px/1.2 var(--sans) !important; color: var(--text) !important; letter-spacing: 0; }
+.afr-h small, .afr-t, .afr-day { font-family: var(--sans) !important; color: var(--dim) !important; }
+.afr-day { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.afr-r { border-color: var(--line) !important; }
+.afr-cp, .afr-one, .afr-more { font-family: var(--sans) !important; border-color: var(--line2) !important; background: var(--panel2) !important; color: var(--text) !important; border-radius: 6px !important; }
+.afr-day.chat-other { color: var(--accent) !important; }
+.afr-r.chat-r.other { background: rgba(139, 124, 255, .06) !important; box-shadow: inset 3px 0 0 var(--accent) !important; }
+.afr-r.chat-r.flagged { background: rgba(248, 113, 113, .07) !important; box-shadow: inset 3px 0 0 var(--red) !important; }
+.chat-lq { color: var(--text) !important; font-weight: 600; }
+.chat-la { color: var(--meta) !important; }
+.chat-oth { color: var(--accent) !important; }
+.pg-bar h1 { font: 700 18px/1.2 var(--sans); letter-spacing: -.01em; text-transform: none; color: var(--text); }
+.seg button.on { background: var(--panel2) !important; color: var(--text) !important; border-color: var(--line2) !important; box-shadow: none !important; }
+/* Visits. */
+.sess::before { width: 3px; }
+.sh .nm { font-weight: 600; }
+
+.brand b, .brand span { font-family: var(--sans) !important; color: var(--text) !important; text-shadow: none !important; letter-spacing: .02em; }
+.brand span { color: var(--dim) !important; font-weight: 600; }
+.seg button, .tabs button, .age, .now-l em, .ln-l small, .tl .axis span { font-family: var(--sans) !important; }
+.now-l em { letter-spacing: .04em; text-transform: none; font-weight: 600; color: var(--meta); }
+.now-l b { font-family: var(--sans); text-shadow: none !important; }
+.afr-r .afr-d, .ops-r .afr-d { color: var(--text) !important; }
+.afr-r .afr-d small, .afr-r .afr-d i { color: var(--dim) !important; }
 </style>
 </head>
 <body>
@@ -1369,7 +1459,10 @@ html, body { overflow-x: hidden; }
       const when = new Date(kpiBase.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
       return `<i class="kt ${d > 0 ? "up" : "dn"}" title="Since your last check at ${esc(when)}">${d > 0 ? "▲" : "▼"} ${Math.abs(d)}${kind === "ms" ? "m" : ""}</i>`;
     };
-    const ks = (label, value, sub, tip, tr = "") => `<div class="ks"${tip ? ` data-tip="${esc(tip)}"` : ""}><em>${label}</em><b class="num">${value}${tr}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
+    const ks = (label, value, sub, tip, tr = "", sp = "") => `<div class="ks"${tip ? ` data-tip="${esc(tip)}"` : ""}><em>${label}</em><b class="num">${value}${tr}</b>${sub ? `<span>${sub}</span>` : ""}${sp}</div>`;
+    // A 24 hour sparkline under a number: the shape of the day at a glance.
+    const spark = (vals) => { const mx = Math.max(1, ...vals), w = 100, h = 22, step = w / (vals.length - 1); const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(h - (v / mx) * (h - 2) - 1).toFixed(1)}`).join(" "); return `<svg class="spk" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,${h} ${pts} ${w},${h}" class="spk-a"/><polyline points="${pts}" class="spk-l"/></svg>`; };
+    const visitsByHour = hours.map((x) => vs.filter((v) => v.start >= x.start && v.start < x.start + HOUR).length);
     const todayTip = `<b>In today</b>${inToday.length ? inToday.map(name).join(", ") : "Nobody yet"}${names.length > inToday.length ? `<br>Not yet: ${names.filter((n) => !inToday.includes(n)).map(name).join(", ")}` : ""}`;
     const stats = wk ? (() => {
       const t = wv.reduce((a, v) => a + wTime(v), 0);
@@ -1385,11 +1478,11 @@ html, body { overflow-x: hidden; }
       ].join("");
     })() : [
       ks("In today", `${inToday.length}<small>/${names.length}</small>`, "players", todayTip, trend("today", inToday.length)),
-      ks("Visits · 24h", vs.length, `${new Set(vs.map((v) => v.n)).size} people`, "", trend("visits", vs.length)),
+      ks("Visits · 24h", vs.length, `${new Set(vs.map((v) => v.n)).size} people`, "", trend("visits", vs.length), spark(visitsByHour)),
       ks("Time in app", time ? amt(time) : "–", "24 hours", "", trend("time", time, "ms")),
       ks("Avg visit", vs.length ? amt(time / vs.length) : "–", "per visit", "", trend("avg", vs.length ? time / vs.length : null, "ms")),
       ks("Peak hour", peak.n ? hourLab(peak.start) : "–", peak.n ? `${peak.who.size} ${peak.who.size === 1 ? "person" : "ppl"}` : "", peak.n ? `<b>${hourLab(peak.start)} hour</b>${peak.n} actions · ${[...peak.who].map(name).join(", ")}` : ""),
-      ks("Actions", actions.length, "24 hours", "", trend("actions", actions.length)),
+      ks("Actions", actions.length, "24 hours", "", trend("actions", actions.length), spark(hours.map((h) => h.n))),
     ].join("");
     kpiNow = { at: now, mode, vals };
     const kpis = `<section class="kpis" id="sec-now">
@@ -1563,7 +1656,7 @@ html, body { overflow-x: hidden; }
       if (!st.chats) return "";
       const rows = st.chats;
       const day = rows.filter((r) => Date.now() - r.at < 86400000);
-      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-chattoggle="1" aria-expanded="${!!st.chatOpen}"><span class="afr-car">${st.chatOpen ? "▾" : "▸"}</span><b>&gt; bi</b>${st.chatOpen ? "" : `<small>${day.length ? `${day.length} q · ${new Set(day.map((r) => r.asker)).size} ppl${day.some((r) => r.asker !== "Jake") ? ` · <b class="chat-oth">🧠 ${day.filter((r) => r.asker !== "Jake").length} from others</b>` : ""} · 24h` : "none · 24h"}${rows.some((r) => r.flagged) ? ` · ${rows.filter((r) => r.flagged).length} 🚩` : ""}</small>`}</button>${st.chatOpen && rows.some((r) => r.flagged) ? `<button type="button" class="afr-cp flag" data-chatcopy="flagged">${st.copied === "chat:flagged" ? "✓ copied" : `copy 🚩${rows.filter((r) => r.flagged).length}`}</button>` : ""}${st.chatOpen && rows.length ? `<button type="button" class="afr-cp" data-chatcopy="1">${st.copied === "chat" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
+      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-chattoggle="1" aria-expanded="${!!st.chatOpen}"><span class="afr-car">${st.chatOpen ? "▾" : "▸"}</span><b>Chats</b>${st.chatOpen ? "" : `<small>${day.length ? `${day.length} q · ${new Set(day.map((r) => r.asker)).size} ppl${day.some((r) => r.asker !== "Jake") ? ` · <b class="chat-oth">🧠 ${day.filter((r) => r.asker !== "Jake").length} from others</b>` : ""} · 24h` : "none · 24h"}${rows.some((r) => r.flagged) ? ` · ${rows.filter((r) => r.flagged).length} 🚩` : ""}</small>`}</button>${st.chatOpen && rows.some((r) => r.flagged) ? `<button type="button" class="afr-cp flag" data-chatcopy="flagged">${st.copied === "chat:flagged" ? "✓ copied" : `copy 🚩${rows.filter((r) => r.flagged).length}`}</button>` : ""}${st.chatOpen && rows.length ? `<button type="button" class="afr-cp" data-chatcopy="1">${st.copied === "chat" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
       if (!st.chatOpen) return `<section class="afr chat shut">${head}</section>`;
       const groups = [];
       const keep = st.biFilter === "others" ? (r) => r.asker !== "Jake" : st.biFilter === "flagged" ? (r) => r.flagged : () => true;
@@ -1577,7 +1670,7 @@ html, body { overflow-x: hidden; }
       const day = rows.filter((r) => Date.now() - r.at < 86400000 && !r.closed);
       const openIds = rows.filter((r) => !r.closed && r.id).map((r) => r.id);
       const bad = day.filter((r) => (OPS_KIND[r.k] || [])[1] === "err").length;
-      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-opstoggle="1" aria-expanded="${!!st.opsOpen}"><span class="afr-car">${st.opsOpen ? "▾" : "▸"}</span><b>&gt; health</b><small>${day.length ? `${bad} fail · ${day.length - bad} slow · 24h` : "all clear · 24h"}</small></button>${st.opsOpen && openIds.length ? `<button type="button" class="afr-cp" data-opscloseall="1">close all</button>` : ""}${st.opsOpen && rows.length ? `<button type="button" class="afr-cp" data-opscopy="1">${st.copied === "ops" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
+      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-opstoggle="1" aria-expanded="${!!st.opsOpen}"><span class="afr-car">${st.opsOpen ? "▾" : "▸"}</span><b>Health</b><small>${day.length ? `${bad} fail · ${day.length - bad} slow · 24h` : "all clear · 24h"}</small></button>${st.opsOpen && openIds.length ? `<button type="button" class="afr-cp" data-opscloseall="1">close all</button>` : ""}${st.opsOpen && rows.length ? `<button type="button" class="afr-cp" data-opscopy="1">${st.copied === "ops" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
       if (!st.opsOpen) return `<section class="afr ops shut${bad ? " hot" : ""}">${head}</section>`;
       // Closed entries are dealt with: out of the way unless asked for.
       const nClosed = rows.filter((r) => r.closed).length;
@@ -1595,7 +1688,7 @@ html, body { overflow-x: hidden; }
       const days = [];
       for (const r of rows) { const k = afrDay(r.at); if (days[days.length - 1]?.k !== k) days.push({ k, rows: [] }); days[days.length - 1].rows.push(r); }
       const open = rows.filter((r) => !afrFix(r)).length;
-      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-afrtoggle="1" aria-expanded="${!!st.afrOpen}"><span class="afr-car">${st.afrOpen ? "▾" : "▸"}</span><b>&gt; admin_friction</b><small>${open} open</small></button>${st.afrOpen && rows.length ? `<button type="button" class="afr-cp" data-afrcopy="1">${st.copied === "afr" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
+      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-afrtoggle="1" aria-expanded="${!!st.afrOpen}"><span class="afr-car">${st.afrOpen ? "▾" : "▸"}</span><b>Your friction</b><small>${open} open</small></button>${st.afrOpen && rows.length ? `<button type="button" class="afr-cp" data-afrcopy="1">${st.copied === "afr" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
       if (!st.afrOpen) return `<section class="afr shut">${head}</section>`;
       return `<section class="afr">${head}
         ${rows.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r${afrFix(r) ? " fixed" : ""}"><button type="button" class="afr-cb" data-afrfix="${r.at}" aria-pressed="${!!afrFix(r)}" title="${afrFix(r)?.commit ? `Fixed in ${esc(afrFix(r).commit)}: ${esc(afrFix(r).note || "")}` : afrFix(r) ? "Ticked as fixed" : "Mark fixed"}"${afrFix(r)?.commit ? " disabled" : ""}>${afrFix(r) ? "✓" : ""}</button><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${AFR_KIND[r.k || "dead-tap"]?.[1] || ""}">${AFR_KIND[r.k || "dead-tap"]?.[0] || esc(r.k)}</span><span class="afr-d">${esc(r.d || "")}${r.screen ? ` <i>${esc(SCREENS[r.screen] || r.screen)}</i>` : ""}${afrFix(r)?.commit ? ` <i class="afr-fx">fixed ${esc(afrFix(r).commit)}</i>` : ""}</span><button type="button" class="afr-one" data-afrone="${r.at}" aria-label="Copy this one">${st.copied === `afr:${r.at}` ? "✓" : "copy"}</button></div>`).join("")}`).join("") : `<p class="afr-none">Nothing broke for you. No errors, rage taps, dead taps or sudden closes.</p>`}</section>`;
@@ -1812,13 +1905,51 @@ html, body { overflow-x: hidden; }
       </div>`;
     // On their own page the logs are always open (no fold to tap first).
     const forceOpen = (f) => { const was = [st.afrOpen, st.opsOpen, st.chatOpen]; st.afrOpen = st.opsOpen = st.chatOpen = true; try { return f(); } finally { [st.afrOpen, st.opsOpen, st.chatOpen] = was; } };
+    // --- Recommended actions: one per page, from the data on it, with a
+    // ready-to-paste brief for Claude (names left out, numbers kept). ---
+    const recs = {};
+    const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+    // Stuck moments by what was tapped.
+    const fr = new Map();
+    for (const e of actions) if (FRICTION.test(e.k)) { const [a, d] = says(e, feed); const k = `${a}|${d}`; const x = fr.get(k) || { a: a.replace("⚠ ", ""), d, n: 0, who: new Set() }; x.n++; x.who.add(e.n); fr.set(k, x); }
+    const topFr = [...fr.values()].sort((a, b) => b.who.size - a.who.size || b.n - a.n)[0];
+    // Health by kind and target.
+    const hg = new Map();
+    for (const r of opsDay) { const k = `${r.k}|${String(r.d || "").replace(/\d+(\.\d+)?s?\b/g, "#").slice(0, 60)}`; const x = hg.get(k) || { k: r.k, d: r.d, n: 0, err: (OPS_KIND[r.k] || [])[1] === "err" }; x.n++; hg.set(k, x); }
+    const topH = [...hg.values()].sort((a, b) => b.err - a.err || b.n - a.n)[0];
+    // Quick looks: visits under a minute, and where they ended.
+    const quick = vs.filter((v) => !v.live && v.end - v.start < 60000);
+    const lastScr = new Map();
+    for (const v of quick) { const a = [...v.acts].reverse().find((x) => /^Went to |^Looked at /.test(x.a)); const k = a ? a.a.replace(/^Went to |^Looked at (the )?/, "") : "the home screen"; lastScr.set(k, (lastScr.get(k) || 0) + 1); }
+    const topQuick = [...lastScr.entries()].sort((a, b) => b[1] - a[1])[0];
+    // BI: answers that went wrong.
+    const biBad = chatDay.filter((r) => r.flagged || (r.status && r.status !== "answered" && r.status !== "asked"));
+    const biNo = chatDay.filter((r) => r.status && r.status !== "answered" && r.status !== "asked");
+    if (topFr) recs.issues = { tone: "warn", t: `Fix: ${topFr.a}${topFr.d ? ` on ${topFr.d}` : ""}`, why: `${topFr.n} time${topFr.n === 1 ? "" : "s"} by ${topFr.who.size} ${topFr.who.size === 1 ? "person" : "people"} in 24h, the most common stuck moment.`,
+      copy: `Brochiefs ${LEAGUE.toUpperCase()} app: players keep hitting "${topFr.a}"${topFr.d ? ` on ${topFr.d}` : ""} (${topFr.n}x, ${topFr.who.size} people, last 24h). Find what that element is meant to do, make the tap do it (or make it clearly not tappable), test at 390px, and add a fixes.json entry.` };
+    if (topH && (!recs.issues || topH.err)) recs.issues = { tone: topH.err ? "bad" : "warn", t: `${topH.err ? "Fix" : "Speed up"}: ${(OPS_KIND[topH.k] || [topH.k])[0]}`, why: `${topH.n}x in 24h: ${topH.d || topH.k}.`,
+      copy: `Brochiefs ${LEAGUE.toUpperCase()} health log: "${(OPS_KIND[topH.k] || [topH.k])[0]}" happened ${topH.n}x in the last 24h (example: ${topH.d || topH.k}). Find the cause in the Worker or app, add a retry or cache where it helps, and make sure a failure here never blocks the screen.` };
+    if (quick.length >= 3 && pct(quick.length, vs.length) >= 25) recs.activity = { tone: "info", t: `${pct(quick.length, vs.length)}% of visits are a quick look`, why: `${quick.length} of ${vs.length} visits lasted under a minute${topQuick ? `; most ended on ${topQuick[0]} (${topQuick[1]})` : ""}.`,
+      copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${pct(quick.length, vs.length)}% of visits in the last 24h lasted under a minute${topQuick ? `, most ending on ${topQuick[0]}` : ""}. Suggest and build the one change that answers what they opened the app for in the first screen (score, my picks, standing), without adding clutter. Test at 390px.` };
+    else recs.activity = { tone: "ok", t: "Visits look healthy", why: `${vs.length} visits, ${quick.length} under a minute. Nothing to fix here today.`, copy: "" };
+    if (biBad.length) recs.bi = { tone: "warn", t: `Tune BI: ${biBad.length} answer${biBad.length === 1 ? "" : "s"} went wrong`, why: `${biNo.length} got no answer, ${biBad.length - biNo.length} flagged, of ${chatDay.length} in 24h.`,
+      copy: `BroChief Intelligence (BI) misses from the last 24h. For each, find why (tool data, system prompt, or the phone's tool) and fix the cause, not the one answer:\n\n${chatLog(biBad)}` };
+    else if (chatDay.length) recs.bi = { tone: "ok", t: "BI answered everything", why: `${chatDay.length} questions, none flagged or unanswered in 24h.`, copy: "" };
+    const feats0 = [...featMap.entries()].sort((a, b) => a[1].who.size - b[1].who.size);
+    const lowFeat = feats0.find(([, x]) => x.who.size <= 1);
+    if (lowFeat) recs.stats = { tone: "info", t: `Surface ${lowFeat[0].replace(/^Opened (a |the )?/, "")}`, why: `Only ${lowFeat[1].who.size} person used it in 24h while ${feats[0] ? `${feats[0][1].who.size} used ${feats[0][0].replace(/^Opened (a |the )?/, "")}` : "others were busier"}.`,
+      copy: `Brochiefs ${LEAGUE.toUpperCase()}: "${lowFeat[0]}" was used by ${lowFeat[1].who.size} person in the last 24h. Suggest whether to make it easier to find (where, how) or cut it, and build the better option. Test at 390px.` };
+    // Overview leads with the most urgent of the rest.
+    recs.home = [recs.issues, recs.bi, recs.activity, recs.stats].filter(Boolean).find((r) => r.tone === "bad") || [recs.issues, recs.bi, recs.activity, recs.stats].filter(Boolean).find((r) => r.tone === "warn") || recs.activity;
+    st.recTexts = Object.fromEntries(Object.entries(recs).map(([k, r]) => [k, r.copy]));
+    const recCard = (k) => { const r = recs[k]; if (!r) return ""; return `<section class="rec ${r.tone}"><div class="rec-i" aria-hidden="true">${r.tone === "ok" ? "✓" : r.tone === "bad" ? "!" : "→"}</div><div class="rec-b"><em>Recommended action</em><b>${esc(r.t)}</b><span>${esc(r.why)}</span></div>${r.copy ? `<button type="button" class="rec-cp" data-reccopy="${k}">${st.copied === `rec:${k}` ? "✓ Copied" : "Copy for Claude"}</button>` : ""}</section>`; };
     const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>`;
     const pageBody = {
-      home: `${kpis}${timeline}${strips}${overview}`,
-      activity: feedHtml,
-      issues: forceOpen(() => `${adminFriction()}${opsPanel()}`),
-      bi: `<div class="pg-bar"><h1>BI questions</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
-      stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${rail}`,
+      home: `${recCard("home")}${kpis}${timeline}${strips}${overview}`,
+      activity: `${recCard("activity")}${feedHtml}`,
+      issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
+      bi: `<div class="pg-bar"><h1>BI questions</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
+      stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${rail}`,
     }[st.page] || "";
     app.innerHTML = `
       <div class="top${st.ok ? "" : " stale"}"><div class="top-in">
@@ -2009,6 +2140,13 @@ html, body { overflow-x: hidden; }
       r.flagged = on ? Date.now() : undefined; r.note = on ? note || undefined : undefined; st.sig = ""; render();
       try { const x = await fetch(`${WORKER}/week-chat?${auth()}`, { method: "POST", body: JSON.stringify({ action: "flag", id: r.id, flagged: on, note }) }); const j = await x.json().catch(() => ({})); if (x.ok && j.chat) Object.assign(r, j.chat); } catch {}
       st.sig = ""; render(); return;
+    }
+    if (b.dataset.reccopy) {
+      const t = st.recTexts?.[b.dataset.reccopy];
+      if (!t || !(await copyText(t))) return;
+      st.copied = `rec:${b.dataset.reccopy}`; st.sig = ""; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.sig = ""; render(); }, 1600);
+      return;
     }
     if (b.dataset.chatcopy || b.dataset.chatone) {
       const rows = b.dataset.chatone ? (st.chats || []).filter((x) => x.id === b.dataset.chatone) : b.dataset.chatcopy === "flagged" ? (st.chats || []).filter((x) => x.flagged) : st.chats || [];
