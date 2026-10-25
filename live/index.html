@@ -1282,7 +1282,7 @@ body::before { display: none; }
     if (!force && Date.now() < (st.secLock || 0)) return;
     // On Overview, the Visits tab lights once the visits reach the top.
     const v = st.page === "home" && document.getElementById("sec-visits");
-    const cur = v && v.getBoundingClientRect().top < 160 ? "activity" : st.page;
+    const r = v && v.getBoundingClientRect(), cur = r && r.top < 160 && r.bottom > 160 ? "activity" : st.page;
     document.querySelectorAll(".tabs button[data-page]").forEach((b) => b.classList.toggle("on", b.dataset.page === cur));
   }
 
@@ -2030,7 +2030,7 @@ body::before { display: none; }
     </section>` : "";
     const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>`;
     const pageBody = {
-      home: `${recCard("home")}${kpis}${timeline}${strips}${overview}${flowPanel}${feedHtml}`,
+      home: `${recCard("home")}${kpis}${timeline}${feedHtml}${strips}${overview}${flowPanel}`,
       activity: "",
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
       bi: `<div class="pg-bar"><h1>BI questions</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
