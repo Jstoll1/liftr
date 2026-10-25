@@ -77,6 +77,13 @@
       "at": 1792890318000,
       "commit": "052aa1e",
       "note": "Tiebreaker line on a player card opens the tiebreaker game once it has kicked off"
+    },
+    {
+      "k": "rage",
+      "match": ".nav-btn-label",
+      "at": 1792910809000,
+      "commit": "b57b6f7",
+      "note": "Re-tapping the tab you're on, already at the top, now refreshes and shows 'Up to date' instead of doing nothing"
     }
   ]
 }
