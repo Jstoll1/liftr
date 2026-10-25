@@ -8497,3 +8497,6 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 .rd-tb.go { cursor: pointer; }
 .rd-tb.go:active { background: rgba(255, 255, 255, .05); }
 .rd-tb-go { font-style: normal; margin-left: 6px; color: var(--neon-cyan, #05d9e8); font-weight: 700; }
+/* Path to win: the live score under a game being played. */
+.pr-now { display: block; white-space: normal; font-size: 14px; line-height: 1.1; color: #ff5a6e; letter-spacing: .03em; }
+.pc-txt .pr-now { font-size: 13px; }

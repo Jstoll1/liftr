@@ -4884,6 +4884,8 @@ function stopsWho(g, res, name, standing, all = lastGoodCloudPicks || {}) {
 }
 // When the fresh read failed, the path says its scores may be behind.
 const pathStaleNote = () => (liveLastOk || window.__liveView ? "" : `<div class="pr-stale">Scores didn't refresh, so a game that just ended may still show.</div>`);
+// A game being played shows its score now, so the path reads against it.
+const pathLiveTag = (g) => { const l = latestLiveWeek === currentWeek ? latestLive[g.id] : null; return l?.found && l.state === "in" && !l.completed && Number.isFinite(l.awayScore) ? `<small class="pr-now">LIVE ${escapeCd(g.awayShort)} ${l.awayScore}-${l.homeScore} ${escapeCd(g.homeShort)}</small>` : ""; };
 // Once a path has been watched, the button opens this instead: a small
 // card with only the games that must go a certain way, the team's logo,
 // the result, and what it pays, then the win at the bottom.
@@ -4903,7 +4905,7 @@ function openPathCard(name) {
     const rowsHtml = sc.all.filter((st) => st.need).map((st) => {
       const p = scorePick(st.g, all[name]?.picks?.[st.g.id], st.res) || 0;
       const stop = p ? null : stopsWho(st.g, st.res, name, pts);
-      return `<li class="pc-row"><img class="pc-logo" src="${logoUrl(teamOf(st.g, st.txt))}" alt="" onerror="this.style.visibility='hidden'" /><span class="pc-txt">${escapeCd(st.txt)}${stop ? `<small class="pc-why">stops ${escapeCd(shown(stop))}</small>` : ""}</span><span class="pc-pts${p ? "" : " zero"}">${p ? `+${p}` : "0"}</span></li>`;
+      return `<li class="pc-row"><img class="pc-logo" src="${logoUrl(teamOf(st.g, st.txt))}" alt="" onerror="this.style.visibility='hidden'" /><span class="pc-txt">${escapeCd(st.txt)}${pathLiveTag(st.g)}${stop ? `<small class="pc-why">stops ${escapeCd(shown(stop))}</small>` : ""}</span><span class="pc-pts${p ? "" : " zero"}">${p ? `+${p}` : "0"}</span></li>`;
     }).join("");
     const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
     const free = sc.all.length - sc.need.length;
@@ -5055,7 +5057,7 @@ function openPathRun(name, replay = false) {
       const gains = {};
       for (const n of MANAGERS) { const p = scorePick(g, all[n]?.picks?.[g.id], st.res) || 0; if (p) gains[n] = p; }
       row.className = `pr-line g ${st.need ? "need" : "free"}${fast ? "" : " typing"}`;
-      row.innerHTML = `<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}${(() => { const w = st.need && !gains[name] ? stopsWho(g, st.res, name, pts) : null; return w ? `<small class="pr-why">stops ${escapeCd(shown(w))}</small>` : ""; })()}</span><span class="pr-gp${gains[name] ? "" : " zero"}">${gains[name] ? `+${gains[name]}` : st.need ? "0" : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`;
+      row.innerHTML = `<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}${pathLiveTag(g)}${(() => { const w = st.need && !gains[name] ? stopsWho(g, st.res, name, pts) : null; return w ? `<small class="pr-why">stops ${escapeCd(shown(w))}</small>` : ""; })()}</span><span class="pr-gp${gains[name] ? "" : " zero"}">${gains[name] ? `+${gains[name]}` : st.need ? "0" : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`;
       if (!fast) term.scrollTop = Math.max(0, row.offsetTop - term.clientHeight + row.offsetHeight + 60);
       // One cursor at a time: the terminal's resting cursor hides while a line types.
       if (!fast) { term.classList.add("typing"); await wait(200); row.classList.add("wipe"); await wait(390); row.classList.remove("typing", "wipe"); term.classList.remove("typing"); }
