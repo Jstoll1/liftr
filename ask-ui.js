@@ -198,8 +198,10 @@
         const who = memberOf(member || me()), memo = base(), d = who && memo?.detail?.[who];
         const sc = who && typeof pathScenario === "function" ? pathScenario(who) : null;
         return { tooManyToList: `${open.length} games still open, so not every outcome is listed.`, member: who, chanceToWin: d ? r3(d.pct) : null, ...(statusOf(d) || {}),
-          likeliestPath: sc ? { mustHappen: sc.all.filter((x) => x.need).map((x) => `${x.txt} (G${x.g.id})`), eitherWay: sc.all.length - sc.need.length, chanceOfThisPath: Math.round(sc.p * 1e4) / 1e4 } : null,
-          biggestSwings: (d?.games || []).slice(0, 3).map((x) => ({ game: gName(x.game), chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss) })) };
+          likeliestPath: sc ? { mustHappen: sc.all.filter((x) => x.need).map((x) => `${x.txt} (G${x.g.id})`), eitherWay: sc.all.length - sc.need.length, chanceOfThisPath: Math.round(sc.p * 1e4) / 1e4,
+            // The path is exact: every listed result landing means first place.
+            ifAllHappen: sc.tie ? `${shown(who)} ties for first and needs the tiebreaker${sc.guess != null && sc.tbGame ? ` (guessed ${sc.guess} on ${sc.tbGame.awayShort} at ${sc.tbGame.homeShort})` : ""}` : `${shown(who)} wins the week for certain, whatever the other games do` } : null,
+          biggestSwings: (d?.games || []).slice(0, 3).map((x) => ({ game: gName(x.game), chanceIfOnlyThisHits: r3(x.ifHit), chanceIfThisMisses: r3(x.ifMiss) })) };
       }
       const banks = Object.fromEntries(MANAGERS.map((n) => [n, banked(n).pts]));
       const l = tb && latestLive[tb.id], tbFinal = tb && f[tb.id];
