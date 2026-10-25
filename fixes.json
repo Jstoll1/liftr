@@ -70,6 +70,13 @@
       "at": 1792846018000,
       "commit": "dce7a0a",
       "note": "The preview expands to the full write-up on tap"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".rd-tb-line",
+      "at": 1792890318000,
+      "commit": "052aa1e",
+      "note": "Tiebreaker line on a player card opens the tiebreaker game once it has kicked off"
     }
   ]
 }
