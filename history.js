@@ -344,10 +344,29 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   }
   let deck=[],cur=null,sOrder=[],sAns=false,streak=0;
   const sBest=()=>{try{return Number(localStorage.getItem(STREAK_KEY))||0}catch{return 0}};
+  // Generated from the archive each time the deck is shuffled: three
+  // title teams and one that never won; three champions and one who
+  // never has.
+  function titleQs(){
+    const out=[];
+    const champs=Object.values(S).map((x)=>({year:x.year,owner:x.champion,team:(row(x,x.champion)||{}).team})).filter((c)=>c.team);
+    const champNames=new Set(champs.map((c)=>c.team));
+    const never=Object.values(S).flatMap((x)=>x.standings.filter((r)=>r.owner!==x.champion&&!champNames.has(r.team)).map((r)=>({year:x.year,owner:r.owner,team:r.team,rec:r.wins+'-'+r.losses})));
+    for(let k=0;k<3&&champs.length>=3&&never.length;k++){
+      const three=pickN(champs,3),odd=never[Math.floor(Math.random()*never.length)];
+      out.push({q:'Which of these teams never won a title?',o:[odd.team,...three.map((c)=>c.team)],a:0,why:`${odd.team} (${odd.owner}, ${odd.year}, ${odd.rec}) never won it. The others: ${three.map((c)=>`${c.team} (${c.owner}, ${c.year})`).join(', ')}.`});
+    }
+    const winners=A.owners.filter((w)=>O[w]&&O[w].titles>0),none=A.owners.filter((w)=>O[w]&&O[w].titles===0);
+    for(let k=0;k<2&&winners.length>=3&&none.length;k++){
+      const three=pickN(winners,3),odd=none[Math.floor(Math.random()*none.length)];
+      out.push({q:'Which of these players has never won a championship?',o:[odd,...three],a:0,why:`${odd} is still waiting on a first title. ${three.map((w)=>`${w} has ${O[w].titles}`).join(', ')}.`});
+    }
+    return out;
+  }
   function buildDeck(){
     const o=ownerOf(me());const mine=o?aboutYou(o):[];
     const first=mine.shift();
-    deck=(first?[first]:[]).concat(shuffle(POOL.concat(mine)));
+    deck=(first?[first]:[]).concat(shuffle(POOL.concat(mine,titleQs())));
   }
   function confettiBurst(box){
     const c=document.createElement('div');c.className='tq-conf';
