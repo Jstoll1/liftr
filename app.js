@@ -1437,8 +1437,25 @@ function rememberScroll() {
 // Re-tapping the tab you are already on sends you to the top of it.
 let navToTop = false;
 [["nav-picks-btn", "picks"], ["nav-scoreboard-btn", "scoreboard"], ["nav-history-btn", "history"], ["nav-trivia-btn", "trivia"]].forEach(([id, name]) => {
-  document.getElementById(id)?.addEventListener("click", () => { navToTop = activeScreenName === name; }, true);
+  document.getElementById(id)?.addEventListener("click", () => {
+    navToTop = activeScreenName === name;
+    // Already at the top: a re-tap refreshes and says so, so it never
+    // feels dead (Nissan tapped PICKS over and over, Oct 24).
+    if (navToTop && appScroll.scrollTop < 4) navRefresh();
+  }, true);
 });
+let navRefreshAt = 0;
+function navRefresh() {
+  if (Date.now() - navRefreshAt < 1500) return;
+  navRefreshAt = Date.now();
+  let t = document.getElementById("nav-toast");
+  if (!t) { t = document.createElement("div"); t.id = "nav-toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.textContent = "↻ Refreshing…"; t.classList.add("show");
+  Promise.resolve(typeof fetchLiveScoresNow === "function" ? fetchLiveScoresNow() : null).catch(() => {}).finally(() => {
+    t.textContent = `✓ Up to date · ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+    clearTimeout(t.__h); t.__h = setTimeout(() => t.classList.remove("show"), 1400);
+  });
+}
 function enterScreen(name) {
   if (navToTop) { savedScroll[name] = 0; navToTop = false; }
   activeScreenName = name;

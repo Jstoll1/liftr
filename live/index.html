@@ -1170,7 +1170,10 @@ html, body { overflow-x: hidden; }
   // between are its lines, oldest first. Visits newest first.
   function visits(feed, people) {
     const open = {}, list = [];
-    for (const e of feed.filter((x) => !/^path-of-/.test(x.k)).slice().reverse()) {
+    // A scoreboard tap logs itself and then the sheet it opened; show the
+    // sheet only (finished, live or info), so one tap reads as one line.
+    const dupTap = (x) => x.k === "scorebug-open" && feed.some((y) => y.n === x.n && /^(game-final|gamecast|game-info)$/.test(y.k) && String(y.d) === String(x.d) && Math.abs(y.at - x.at) < 3000);
+    for (const e of feed.filter((x) => !/^path-of-/.test(x.k) && !dupTap(x)).slice().reverse()) {
       let s = open[e.n];
       if (e.k === "in" || !s) {
         s = open[e.n] = { n: e.n, start: e.at, end: e.at, app: e.k === "in" ? e.d : "", acts: [], done: false };
