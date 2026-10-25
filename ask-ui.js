@@ -179,7 +179,7 @@
     },
     // Late in the night: every way the open games can go and who wins the
     // week in each, exactly (no simulation).
-    scenarios({ conditions = [] } = {}) {
+    scenarios({ conditions = [], member } = {}) {
       const conds = readConds(conditions); if (conds.error) return conds;
       const h = hiddenNote(); if (h.picksHidden) return h;
       const all = lastGoodCloudPicks || {}, f = fins();
@@ -192,7 +192,15 @@
       for (const c of conds) if (f[c.game]) { const g = GAMES.find((x) => x.id === c.game), o = resultOutcome(g, f[c.game]); if ((c.mode === "SU" ? o.suWinner : o.atsWinner) !== c.team) return { error: `${condText(c)} can't happen: that game is already final the other way.` }; }
       const rows = opts.reduce((n, o) => n * o.length, 1);
       if (!open.length) return { allFinal: true };
-      if (rows > 27) return { error: `${open.length} games are still open, too many to list every outcome; use chance instead, or add conditions.` };
+      if (rows > 27) {
+        // Too many to list: give the member's likeliest winning path instead
+        // (the same one Path to Win shows), so there's always a concrete answer.
+        const who = memberOf(member || me()), memo = base(), d = who && memo?.detail?.[who];
+        const sc = who && typeof pathScenario === "function" ? pathScenario(who) : null;
+        return { tooManyToList: `${open.length} games still open, so not every outcome is listed.`, member: who, chanceToWin: d ? r3(d.pct) : null, ...(statusOf(d) || {}),
+          likeliestPath: sc ? { mustHappen: sc.all.filter((x) => x.need).map((x) => `${x.txt} (G${x.g.id})`), eitherWay: sc.all.length - sc.need.length, chanceOfThisPath: Math.round(sc.p * 1e4) / 1e4 } : null,
+          biggestSwings: (d?.games || []).slice(0, 3).map((x) => ({ game: gName(x.game), chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss) })) };
+      }
       const banks = Object.fromEntries(MANAGERS.map((n) => [n, banked(n).pts]));
       const l = tb && latestLive[tb.id], tbFinal = tb && f[tb.id];
       const tbNow = tbFinal ? tbFinal.awayScore + tbFinal.homeScore : l?.state === "in" ? (l.awayScore || 0) + (l.homeScore || 0) : 0;
