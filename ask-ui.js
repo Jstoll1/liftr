@@ -188,8 +188,26 @@
       g && g2 && `If ${g.homeShort} and ${g2.awayShort} both cover, what are my odds?`, g && `What happens to me if ${g.favorite === g.home ? g.homeShort : g.awayShort} doesn't cover?`,
       lockGame && `Who locked ${lockGame.awayShort} or ${lockGame.homeShort}?`, "Whose lock is in trouble right now?",
     ].filter(Boolean);
-    for (let i = pool.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [pool[i], pool[k]] = [pool[k], pool[i]]; }
-    return (chipSet = pool.slice(0, 3));
+    // One of the three is always trash talk: at whoever is having the worst
+    // week (never the asker), the surprise leader, or a lock going down.
+    const others = MANAGERS.filter((n) => n !== mine);
+    const worstN = others.slice().sort((a, b) => ((memo?.out?.[a] || 0) - (memo?.out?.[b] || 0)) || (banked(a).pts - banked(b).pts))[0];
+    const worst = worstN && shown(worstN), worstOut = worstN && !(memo?.out?.[worstN] > 0);
+    const losingLock = others.find((n) => { const st = all[n]?.picks || {}; const id = Object.keys(st).find((k) => st[k]?.lock); const lg = id && GAMES.find((x) => String(x.id) === String(id)); return lg && lockState(lg, st[id]) === "dn"; });
+    const snark = [
+      worst && worstOut && `How did ${worst} get knocked out so fast?`,
+      worst && worstOut && `Was ${worst} eliminated before kickoff or after?`,
+      worst && !worstOut && `Does ${worst} have any path at all, or is it over?`,
+      worst && `Is ${worst} even trying this week?`,
+      worst && `${worst}'s picks: bold or just bad?`,
+      leader && `How is ${leader} somehow in the lead?`,
+      leader && `What has to go wrong for ${leader} to blow it?`,
+      losingLock && `How bad is ${shown(losingLock)}'s lock looking?`,
+      "Whose week is the biggest disaster so far?",
+      "Rank everyone's week from best to worst.",
+    ].filter(Boolean);
+    for (const arr of [pool, snark]) for (let i = arr.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [arr[i], arr[k]] = [arr[k], arr[i]]; }
+    return (chipSet = [...pool.slice(0, 2), snark[0]].filter(Boolean));
   }
 
 
