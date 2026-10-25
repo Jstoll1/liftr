@@ -1178,6 +1178,23 @@ body::before { display: none; }
 .uc-r { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "b e" "s t"; gap: 2px 10px; padding: 9px 0; border-top: 1px solid var(--line); }
 .uc-r:first-child { border-top: 0; }
 .uc-r b { grid-area: b; font-weight: 600; } .uc-r span { grid-area: s; font-size: 12.5px; color: var(--meta); } .uc-r em { grid-area: e; font-style: normal; font-weight: 700; color: var(--gold); text-align: right; } .uc-r small { grid-area: t; font-size: 12px; color: var(--dim); text-align: right; }
+
+/* 24h: a line per person. */
+.pl { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 4px 12px; }
+.pl-r { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pl-r.dim { opacity: .35; }
+.pl-s { flex: 1; height: 28px; min-width: 0; }
+.pl-n { width: 40px; text-align: right; font-size: 12px; color: var(--meta); }
+.pl-ax { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--dim); padding-right: 50px; }
+/* 7 days: when in the day as lines. */
+.wl svg { display: block; width: 100%; height: 120px; }
+.wl .pl-ax { padding-right: 0; margin-top: 4px; }
+.wl-t { fill: none; stroke: var(--green); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.wl-k { display: flex; gap: 14px; margin-top: 8px; font-size: 12px; color: var(--meta); }
+.wl-k i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+.wl-k i.a { background: var(--accent); } .wl-k i.t { background: var(--green); }
+.wl-k span:last-child { margin-left: auto; color: var(--dim); }
+@media (max-width: 520px) { .pl { grid-template-columns: 110px minmax(0, 1fr); } }
 </style>
 </head>
 <body>
@@ -1247,7 +1264,7 @@ body::before { display: none; }
   function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "6h", "12h", "24h", "7d"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "6h", wk: null, sec: "sec-now", page: ["home", "issues", "bi", "stats"].includes(store.get("brochiefs_live_page")) ? store.get("brochiefs_live_page") : "home", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: store.get("brochiefs_live_range") === "24h" ? "24h" : "7d", wk: null, sec: "sec-now", page: ["home", "issues", "bi", "stats"].includes(store.get("brochiefs_live_page")) ? store.get("brochiefs_live_page") : "home", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
   // What's new since this device last looked: a baseline saved when the
   // page is put away, compared with what arrives. ✓ Seen resets it now.
   const SEEN_KEY = `brochiefs_live_seen_${LEAGUE}`;
@@ -1628,33 +1645,10 @@ body::before { display: none; }
     const nights = [];
     for (let d = dayOf(tFrom); d < now; d += DAY) { const a = Math.max(d, tFrom), b = Math.min(d + 7 * HOUR, now); if (b > a) nights.push([a, b]); }
     const tickLab = (t) => { const d = new Date(t), h = d.getHours(), m = d.getMinutes(); return m ? `${h % 12 || 12}:${String(m).padStart(2, "0")}` : hourLab(t); };
-    const lanes = order.map((n) => {
-      const mine = vs.filter((v) => v.n === n && vEnd(v) >= tFrom);
-      // Visits a couple of minutes apart are one sitting: one bar. Its
-      // height says how long they were really in: a dot for a quick look,
-      // a short bar under five minutes, full height past that.
-      const groups = [];
-      for (const v of mine.slice().sort((a, b) => a.start - b.start)) {
-        const g = groups[groups.length - 1];
-        // Close enough to touch on screen: one bar (about 2% of the width, at least 2 minutes).
-        if (g && v.start - g.end < Math.max(2 * 60000, tSpan * 0.02)) { g.list.push(v); g.end = Math.max(g.end, vEnd(v)); g.live = g.live || v.live; }
-        else groups.push({ list: [v], start: v.start, end: vEnd(v), live: !!v.live });
-      }
-      const blocks = groups.map((g) => {
-        const first = g.list[0], id = `${first.n}|${first.start}`;
-        const inApp = g.list.reduce((t, v) => t + (vEnd(v) - v.start), 0);
-        const acts = g.list.reduce((t, v) => t + v.acts.length, 0);
-        const size = g.live || inApp >= 5 * 60000 ? "" : inApp < 60000 ? " peek" : " short";
-        const tip = `<b>${esc(name(n))}${g.live ? " · in now" : ""}</b>${g.list.length > 1 ? `${g.list.length} visits · ` : ""}${esc(hm(g.start))}${g.live ? "" : ` to ${esc(hm(g.end))}`} · ${esc(dur(inApp))} in the app<br>${acts} action${acts === 1 ? "" : "s"}${first.app ? ` · ${first.app === "home" ? "home screen app" : "browser"}` : ""}`;
-        return `<i class="blk${size}${g.live ? " live" : ""}${g.list.some((v) => st.focus === `${v.n}|${v.start}`) ? " focus" : ""}" style="${g.live ? `right:0;width:max(10px, ${(100 - xp(g.start)).toFixed(3)}%)` : `left:min(${xp(g.start)}%, calc(100% - ${size ? 14 : 8}px));width:${(xp(g.end) - xp(g.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}">${g.list.length > 1 && !g.live ? `<b class="blk-n">${g.list.length}</b>` : ""}</i>`;
-      }).join("");
-      // Nobody in the window: the lane steps back.
-      return `${laneLabel(n).replace('class="ln-l', `class="ln-l${mine.length ? "" : " quiet"}`)}<div class="ln-t${st.filter === n ? " sel" : ""}${mine.length ? "" : " quiet"}">${blocks}</div>`;
-    }).join("");
     // Labels on the hour at the window's step, and the half hours at 3h.
     const labelled = (t) => { const d = new Date(t); return d.getMinutes() ? spanH <= 3 : d.getHours() % every === 0; };
     const axis = marks.filter((t) => labelled(t) && xp(t) < 87 && xp(t) > 4).map((t) => `<span style="left:${xp(t)}%">${tickLab(t)}</span>`).join("") + `<span class="nowl" style="left:100%">NOW</span>`;
-    const seg = `<span class="seg end" role="group" aria-label="Range">${["3h", "6h", "12h", "24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
+    const seg = `<span class="seg end" role="group" aria-label="Range">${["24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
     // Features, day by day: how many people used each one (taps in the
     // cell's tooltip). Only features someone used this week show.
     const FEATS = [["Gamecast", /^(gamecast|game-final|gamecast-log)$/], ["Game info", /^(game-info|team-tap|status-tap|insights-open)$/], ["Quick read", /^(quick-read|past-gamecast)$/], ["Game sim", /^sim$/], ["Path to Win", /^path-(run|card|share)$|^path-of-/], ["Head to head", /^h2h$|^sh2h/], ["Win odds", /^wp-/], ["Replay", /^recap-(card|seen)$/], ["Player card", /^player-card$/], ["Leaderboard", /^ranking-expand$|^board-seen$/], ["Pot and standings", /^pot-(open|seen|row)$/], ["Season stats", /^season-(open|seen)$/], ["Side bet", /^side/], ["History", /^history(-season|-ask)?$/], ["Trivia", /^trivia/], ["Lock of the week", /^lock-(set|cleared)$/]];
@@ -1717,12 +1711,16 @@ body::before { display: none; }
         if (r < 0) continue;
         const c = pc[r][new Date(v.start).getHours()]; c.n++; c.who.add(v.n);
       }
-      const maxP = Math.max(1, ...pc.flat().map((c) => c.n)), nowH = new Date(now).getHours();
+      // As lines: the week's visits by hour (filled), today on top in green.
       const hourLabel = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
-      const pcHtml = `<div class="pc">
-        ${pc.map((row, r) => { const d = dayList[r], tot = row.reduce((a, c) => a + c.n, 0); return `<span class="pc-l${d === today0 ? " t" : ""}"><b>${esc(dShort(d))}</b><small>${tot}</small></span>${row.map((c) => { const k = c.n ? Math.sqrt(c.n / maxP) : 0; return `<i class="pc-c${d === today0 && c.h === nowH ? " now" : ""}${d === today0 && c.h > nowH ? " fut" : ""}"${c.n ? ` data-tip="${esc(`<b>${dLong(d)} · ${hourLabel(c.h)}</b>${c.n} visit${c.n === 1 ? "" : "s"} · ${[...c.who].map(name).join(", ")}`)}"` : ""}><s style="${c.n ? `width:${(30 + 70 * k).toFixed(0)}%;height:${(30 + 70 * k).toFixed(0)}%;opacity:${(0.45 + 0.55 * k).toFixed(2)}` : ""}"></s></i>`; }).join("")}`; }).join("")}
-        <span></span>${Array.from({ length: 24 }, (_, h) => `<span class="pc-x">${h % 3 === 0 ? hourLabel(h) : ""}</span>`).join("")}
-      </div>`;
+      const wkH = Array.from({ length: 24 }, (_, h) => pc.reduce((a, row) => a + row[h].n, 0));
+      const tdH = (pc[dayList.indexOf(today0)] || []).map((c) => c.n);
+      const mxW = Math.max(1, ...wkH), mxT = Math.max(1, ...tdH, 1);
+      const pts = (vals, mx) => vals.map((v, i) => `${((i / 23) * 100).toFixed(1)},${(58 - (v / mx) * 54).toFixed(1)}`).join(" ");
+      const peakH = wkH.indexOf(Math.max(...wkH));
+      const pcHtml = `<div class="wl"><svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,60 ${pts(wkH, mxW)} 100,60" class="spk-a"/><polyline points="${pts(wkH, mxW)}" class="spk-l"/>${tdH.length ? `<polyline points="${pts(tdH, Math.max(mxT, mxW / 7))}" class="wl-t"/>` : ""}</svg>
+        <div class="pl-ax">${[0, 6, 12, 18].map((h) => `<span>${hourLabel(h)}</span>`).join("")}<span>11p</span></div>
+        <div class="wl-k"><span><i class="a"></i>7 days</span><span><i class="t"></i>today</span><span>busiest ${hourLabel(peakH)}</span></div></div>`;
       const firstTap = (wk.feed || []).reduce((m, e) => Math.min(m, e.at), now);
       return `<div class="sub2 row">Who was in, day by day ${st.filter ? "" : "· tap a name to follow one person"}<span class="seg sm" role="group" aria-label="Show"><button type="button" class="${byMin ? "" : "on"}" data-metric="visits">Visits</button><button type="button" class="${byMin ? "on" : ""}" data-metric="min">Minutes</button></span></div>${hmHtml}
         <div class="sub2" style="margin-top:20px">When in the day${st.filter ? ` · ${esc(name(st.filter))}` : " · everyone"} · visits by hour</div>
@@ -1731,17 +1729,27 @@ body::before { display: none; }
         ${gameDay()}
         ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:10px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}`;
     };
+    // The last 24 hours: one line per person (actions each hour), in the
+    // same style as the headline sparklines; quiet people fold away.
+    const personLines = () => {
+      const rows = order.map((n) => {
+        const vals = hours.map((h) => actions.filter((e) => e.n === n && e.at >= h.start && e.at < h.start + HOUR).length);
+        const ms = vs.filter((v) => v.n === n).reduce((t, v) => t + (vEnd(v) - Math.max(v.start, from)), 0);
+        return { n, vals, tot: vals.reduce((a, b) => a + b, 0), ms };
+      });
+      const busy = rows.filter((r) => r.tot), quiet = rows.filter((r) => !r.tot);
+      const mx = Math.max(1, ...busy.flatMap((r) => r.vals));
+      const line = (vals) => { const w = 100, h = 26, step = w / (vals.length - 1); const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(h - (v / mx) * (h - 2) - 1).toFixed(1)}`).join(" "); return `<svg class="pl-s" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,${h} ${pts} ${w},${h}" class="spk-a"/><polyline points="${pts}" class="spk-l"/></svg>`; };
+      return `<div class="pl">${busy.map((r) => `${laneLabel(r.n)}<div class="pl-r${st.filter && st.filter !== r.n ? " dim" : ""}">${line(r.vals)}<span class="pl-n num">${mins(r.ms) || "<1m"}</span></div>`).join("")}
+        <span></span><div class="pl-ax">${[0, 6, 12, 18].map((i) => `<span>${esc(hourLab(hours[i].start))}</span>`).join("")}<span>now</span></div></div>
+        ${quiet.length ? `<div class="note" style="margin-top:8px">Not in: ${quiet.map((r) => esc(name(r.n))).join(", ")}</div>` : ""}`;
+    };
     const timeline = wk || st.range === "7d" ? `<section class="tl panel" id="sec-tl">
       <div class="ph"><h2>Last 7 days</h2>${seg}</div>
       ${weekView()}
     </section>` : `<section class="tl panel" id="sec-tl">
-      <div class="ph"><h2>Last ${spanH} hours</h2>${seg}</div>
-      <div class="tl-hint"><span>● quick look · ▮ visit, taller is longer · number = visits</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
-      <div class="tl-grid">
-        <span></span><div class="tl-ax">${axis}</div>
-        <div class="tl-over">${nights.map(([a, b]) => `<i class="night" style="left:${xp(a)}%;width:${(xp(b) - xp(a)).toFixed(3)}%"></i>`).join("")}${marks.map((t) => `<i class="hr${new Date(t).getHours() === 0 ? " mid" : ""}" style="left:${xp(t)}%"></i>`).join("")}<i class="now"></i></div>
-        ${lanes}
-      </div>
+      <div class="ph"><h2>Last 24 hours</h2><span class="sub">actions each hour</span>${seg}</div>
+      ${personLines()}
     </section>`;
 
     // Side charts: actions by hour, what got used most, how they open it.
