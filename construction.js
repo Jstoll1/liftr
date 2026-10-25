@@ -65,4 +65,12 @@
     document.body.appendChild(d);
   }
   if (document.body) put(); else document.addEventListener("DOMContentLoaded", put);
+  // Tell the league's Worker who reached this page (for Jake's Live page).
+  try {
+    var q = new URLSearchParams(location.search), dev = localStorage.getItem("brochiefs_device_v1");
+    if (!dev) { dev = String(Math.random()).slice(2, 14) + Date.now().toString(36); localStorage.setItem("brochiefs_device_v1", dev); }
+    var standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+    fetch(window.LEAGUE.worker + "/uc-hit", { method: "POST", keepalive: true, headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ device: dev, name: localStorage.getItem("brochiefs_me_v1") || "", invite: q.get("n") || "", via: q.get("join") === "1" ? "join" : q.get("claim") ? "invite" : standalone ? "app" : "home" }) }).catch(function () {});
+  } catch (e) {}
 })();

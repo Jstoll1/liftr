@@ -130,6 +130,9 @@ const app = {
     if (url.pathname === "/ops") {
       return handleOps(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/uc-hit") {
+      return handleUcHit(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/admin-friction") {
       return handleAdminFriction(request, env, corsHeaders, url);
     }
@@ -624,6 +627,32 @@ globalThis.fetch = async (input, init) => {
     throw err;
   }
 };
+// Under construction: who reached the NFL holding page (the name the
+// device was set to, or the name on an invite link, and how they came in),
+// kept two weeks, admin only to read. One note per device every 5 minutes.
+const ucSeen = new Map();
+async function handleUcHit(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  if (request.method === "GET") {
+    if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+    return json({ hits: await logList(env, "uchit:", 300) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const clean = (v, n) => String(v || "").replace(/[^\w .'-]/g, "").trim().slice(0, n);
+  const dev = clean(body?.device, 24) || "unknown";
+  const now = Date.now();
+  if (now - (ucSeen.get(dev) || 0) < 5 * 60 * 1000) return json({ ok: true }, 200, corsHeaders);
+  ucSeen.set(dev, now);
+  const ua = request.headers.get("User-Agent") || "";
+  const kind = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Mac/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : "other";
+  const entry = { at: now, dev: dev.slice(0, 8), kind, via: ["home", "join", "invite", "app"].includes(body?.via) ? body.via : "home" };
+  const n = clean(body?.name, 24), inv = clean(body?.invite, 24);
+  if (n) entry.n = n;
+  if (inv) entry.inv = inv;
+  await logPut(env, "uchit:", entry, 14);
+  return json({ ok: true }, 200, corsHeaders);
+}
 async function handleOps(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   if (request.method === "GET") {
