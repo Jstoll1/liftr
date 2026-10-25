@@ -1136,9 +1136,9 @@ html, body { overflow-x: hidden; }
   // The page is split into pages, one at a time, picked from the bottom nav:
   // Overview (numbers, charts, what needs you), Activity (timeline and
   // visits), Issues (friction and health), BI (questions) and Stats.
-  const PAGES = [["home", "Overview", "now"], ["activity", "Activity", "visits"], ["issues", "Issues", "bell"], ["bi", "BI", "brain"], ["stats", "Stats", "stats"]];
+  const PAGES = [["home", "Overview", "now"], ["activity", "Visits", "visits"], ["issues", "Issues", "bell"], ["bi", "BI", "brain"], ["stats", "Stats", "stats"]];
   // Old section ids (jump links, studio's back buttons) land on their page.
-  const PAGE_OF = { "sec-now": "home", "sec-tl": "activity", "sec-visits": "activity", "sec-stats": "stats" };
+  const PAGE_OF = { "sec-now": "home", "sec-tl": "home", "sec-visits": "activity", "sec-stats": "stats" };
   // Which section is in view, for the tabs; recomputed on scroll and after
   // every redraw, so the right tab stays lit.
   // Pages, not one long scroll: the lit tab is the page you are on.
@@ -1795,10 +1795,6 @@ html, body { overflow-x: hidden; }
       att("bi", biOthers.length, "BI from others", `${chatDay.length} questions · 24h`, biOthers.length ? "info" : "calm"),
       att("activity", fric24, "Stuck moments", "rage, dead taps · 24h", fric24 ? "warn" : "ok"),
     ].join("");
-    // Activity by hour: one bar per hour, height = actions, the busiest lit.
-    const hMax = Math.max(1, ...hours.map((h) => h.n));
-    const hourChart = `<div class="hbars" role="img" aria-label="Actions per hour, last 24 hours">${hours.map((h, i) => `<i class="${h === peak && h.n ? "pk" : ""}${h.n ? "" : " z"}" style="--h:${((h.n / hMax) * 100).toFixed(1)}%" title="${esc(hourLab(h.start))}: ${h.n} actions · ${h.who.size} ppl"></i>`).join("")}</div>
-      <div class="hax">${hours.map((h, i) => `<span>${i % 6 === 0 ? esc(hourLab(h.start)) : ""}</span>`).join("")}</div>`;
     // What they used and who was in, as ranked bars.
     const featMap = new Map();
     for (const e of actions) { const l = featLab(e.k); if (!l) continue; const x = featMap.get(l) || { n: 0, who: new Set() }; x.n++; x.who.add(e.n); featMap.set(l, x); }
@@ -1809,7 +1805,6 @@ html, body { overflow-x: hidden; }
     const who = [...whoMs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
     const wMax = Math.max(1, ...who.map(([, ms]) => ms));
     const rankRows = (rows) => `<div class="rank">${rows.join("")}</div>`;
-    const hourPanel = `<section class="panel ov"><div class="ph"><h2>Activity by hour</h2><span class="sub">${actions.length} actions · 24h${peak.n ? ` · peak ${esc(hourLab(peak.start))}` : ""}</span></div>${hourChart}</section>`;
     const overview = `<section class="att">${attCards}</section>
       <div class="ov-duo">
         <section class="panel ov"><div class="ph"><h2>Most used</h2><span class="sub">people · 24h</span></div>${feats.length ? rankRows(feats.map(([l, x]) => `<div><span>${esc(l)} <small>${x.n} taps</small></span><b>${x.who.size}</b><i><s style="width:${((x.who.size / fMax) * 100).toFixed(1)}%"></s></i></div>`)) : `<div class="note">Nothing used yet today.</div>`}</section>
@@ -1819,8 +1814,8 @@ html, body { overflow-x: hidden; }
     const forceOpen = (f) => { const was = [st.afrOpen, st.opsOpen, st.chatOpen]; st.afrOpen = st.opsOpen = st.chatOpen = true; try { return f(); } finally { [st.afrOpen, st.opsOpen, st.chatOpen] = was; } };
     const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>`;
     const pageBody = {
-      home: `${kpis}${hourPanel}${strips}${overview}`,
-      activity: `${timeline}${feedHtml}`,
+      home: `${kpis}${timeline}${strips}${overview}`,
+      activity: feedHtml,
       issues: forceOpen(() => `${adminFriction()}${opsPanel()}`),
       bi: `<div class="pg-bar"><h1>BI questions</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
       stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${rail}`,
