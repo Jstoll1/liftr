@@ -990,15 +990,15 @@ html, body { overflow-x: hidden; }
 .pg-stats .rail { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 1024px) { .pg-stats { max-width: 1440px; } .pg-stats .rail { grid-template-columns: 1fr 1fr; align-items: start; } }
 /* Activity: a closed visit is one compact row. */
-.pg-activity .sess.shut { margin-bottom: 6px; border-radius: 12px; }
-.pg-activity .sess.shut .sh { padding-top: 8px; padding-bottom: 8px; gap: 10px; align-items: center; }
-.pg-activity .sess.shut .av.lg { width: 28px; height: 28px; font-size: 13px; border-radius: 8px; margin-top: 0; }
-.pg-activity .sess.shut .nm { font-size: 14px; }
-.pg-activity .sess.shut .meta { font-size: 12px; margin-top: 0; }
-.pg-activity .sess.shut .vsum { margin-top: 2px; font-size: 12px; }
-.pg-activity .sess.shut .vcar { display: none; }
-.pg-activity .sess.shut .who { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
-.pg-activity .sess.shut .vsum { flex-basis: 100%; }
+.feed .sess.shut { margin-bottom: 6px; border-radius: 12px; }
+.feed .sess.shut .sh { padding-top: 8px; padding-bottom: 8px; gap: 10px; align-items: center; }
+.feed .sess.shut .av.lg { width: 28px; height: 28px; font-size: 13px; border-radius: 8px; margin-top: 0; }
+.feed .sess.shut .nm { font-size: 14px; }
+.feed .sess.shut .meta { font-size: 12px; margin-top: 0; }
+.feed .sess.shut .vsum { margin-top: 2px; font-size: 12px; }
+.feed .sess.shut .vcar { display: none; }
+.feed .sess.shut .who { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
+.feed .sess.shut .vsum { flex-basis: 100%; }
 /* BI: compact action buttons. */
 .pg-bi .chat-btns { flex-direction: row; gap: 4px; }
 .pg-bi .chat-btns .afr-one { min-width: 0; padding: 4px 8px; font-size: 12px; }
@@ -1118,6 +1118,22 @@ body::before { display: none; }
 .idea span { font-size: 12.5px; color: var(--meta); }
 .idea .rec-cp { justify-self: start; margin-top: 6px; }
 @media (max-width: 520px) { .flow-g { grid-template-columns: 1fr; gap: 4px; } .idea .rec-cp { justify-self: stretch; } }
+
+/* Visits: a header with filters, sticky day labels, one tap to open. */
+.feed .fh { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 4px; }
+.feed .fh h2 { margin: 0 auto 0 0; font: 700 18px/1.2 var(--sans); letter-spacing: -.01em; text-transform: none; color: var(--text); }
+.feed .fh h2 small { margin-left: 6px; font-size: 13px; font-weight: 600; color: var(--dim); }
+.feed .fh .seg { order: 3; flex-basis: 100%; display: flex; }
+.feed .fh .seg button { flex: 1; }
+.feed .fh .cp { font: 600 12px/1 var(--sans) !important; color: var(--meta) !important; }
+.feed .day { position: sticky; top: calc(56px + env(safe-area-inset-top)); z-index: 3; margin: 6px -4px; padding: 8px 4px; background: var(--bg); font: 600 11px/1 var(--sans); letter-spacing: .08em; color: var(--meta); }
+.feed .vcar { display: none !important; }
+.feed .sess .sh { cursor: pointer; }
+.feed .sess.open .who .nm::after { content: "▴"; margin-left: auto; color: var(--dim); font-size: 12px; }
+.feed .acts li { padding-top: 7px; padding-bottom: 7px; font-size: 14px; }
+.feed .acts time { font: 500 12px/1.4 var(--sans) !important; color: var(--dim); min-width: 62px; }
+.feed .acts li.iss span { color: var(--gold); }
+@media (min-width: 1024px) { .feed .day { top: 64px; } .feed .fh .seg { order: 0; flex-basis: auto; } }
 </style>
 </head>
 <body>
@@ -1438,7 +1454,7 @@ body::before { display: none; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([st.page, st.biFilter, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([st.page, st.biFilter, st.vf, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1815,7 +1831,9 @@ body::before { display: none; }
     </aside>`;
 
     // The feed: one card per visit, newest first.
-    const all = (wk ? visits(wk.feed || [], people) : vs).filter((s) => !st.filter || s.n === st.filter);
+    // Quick filters: every visit, only those with an issue, or 5 minutes+.
+    const vfOk = (s) => st.vf === "iss" ? s.acts.some((a) => /^⚠/.test(a.a)) : st.vf === "long" ? s.live || s.end - s.start >= 5 * 60000 : true;
+    const all = (wk ? visits(wk.feed || [], people) : vs).filter((s) => (!st.filter || s.n === st.filter) && vfOk(s));
     // Each visit as plain text, for Copy: who, when, how long, and every
     // line in order.
     st.texts = new Map();
@@ -1845,7 +1863,7 @@ body::before { display: none; }
       const tier = ms < 60000 ? "quick" : ms < cutLo ? "short" : ms < cutHi ? "mid" : "long";
       const used = new Set(s.acts.filter((a) => !/^(Went to|⚠)/.test(a.a)).map((a) => a.a)).size;
       const span = s.live ? "" : ` · ${dur(Math.max(s.end - s.start, 1000))}`;
-      const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.app ? ` · ${s.app === "home" ? "app" : "web"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
+      const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
       return `<div class="sess t-${tier}${issues.length ? errs.length ? " bad" : " warn" : ""}${open ? " open" : " shut"}${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
         <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm"><span class="nmt">${esc(name(s.n))}</span>${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}</div></div><div class="sh-r">${s.live ? `<span class="badge num" data-since="${s.since}">${clock(now - s.since)}</span>` : `<span class="tia num"><b>${esc(dur(ms))}</b><small>in app</small></span>`}<i class="vcar">${open ? "Close ▴" : "Open ▾"}</i>${open ? `<button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button>` : ""}</div></div>
@@ -1900,7 +1918,7 @@ body::before { display: none; }
     }).join("");
     const shownN = Math.min(all.length, st.shown);
     const feedHtml = `<main class="feed" id="sec-visits">
-      <div class="fh"><h2>VISITS</h2><button type="button" class="cp" data-openall="1" title="Open or close every visit">${all.slice(0, st.shown).some((v) => !(v.live ? !st.open.has(`${v.n}|${v.start}`) : st.open.has(`${v.n}|${v.start}`))) ? "Expand all" : "Collapse all"}</button>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
+      <div class="fh"><h2>Visits <small class="num">${all.length}</small></h2><span class="seg vf" role="group" aria-label="Show">${[["all", "All"], ["iss", "⚠ Issues"], ["long", "5m+"]].map(([k, l]) => `<button type="button" class="${(st.vf || "all") === k ? "on" : ""}" data-vf="${k}">${l}</button>`).join("")}</span><button type="button" class="cp" data-openall="1" title="Open or close every visit">${all.slice(0, st.shown).some((v) => !(v.live ? !st.open.has(`${v.n}|${v.start}`) : st.open.has(`${v.n}|${v.start}`))) ? "Expand all" : "Collapse all"}</button>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
         ${all.length ? `<button type="button" class="cp${st.copied === "*" ? " ok" : ""}" data-copy="*" title="Copy every visit shown">${st.copied === "*" ? "✓ Copied" : `${COPY_ICON}Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"}`}</button>` : ""}</div>
       ${cards || `<div class="empty" style="margin-top:12px">${st.filter ? `No visits from ${esc(name(st.filter))} in the last 24 hours.` : "No visits in the last 24 hours yet. They show here as people use the app."}</div>`}
       ${all.length > st.shown ? `<button type="button" class="older" data-older="1">Show ${Math.min(20, all.length - st.shown)} more</button>` : ""}
@@ -2128,6 +2146,8 @@ body::before { display: none; }
     if (e.target.closest(".vkey summary")) { st.keyOpen = !e.target.closest(".vkey").open; return; }
     const jb = e.target.closest("[data-jump]");
     if (jb) { goPage(PAGE_OF[jb.dataset.jump] || jb.dataset.jump); return; }
+    const vfb = e.target.closest("[data-vf]");
+    if (vfb) { st.vf = vfb.dataset.vf === "all" ? null : vfb.dataset.vf; st.sig = ""; render(); return; }
     const bf = e.target.closest("[data-bif]");
     if (bf) { st.biFilter = bf.dataset.bif; st.sig = ""; render(); return; }
     const pb = e.target.closest("[data-page]");
