@@ -1772,6 +1772,11 @@ async function logPickChanges(env, manager, before, after, admin, week = 1, kick
 let triviaCache = null;
 async function handleTrivia(request, env, corsHeaders) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  // Streak mode: the longest run of right answers in a row, per player.
+  if (request.method === "GET" && new URL(request.url).searchParams.get("streak")) {
+    const rows = await Promise.all(PICKS_MANAGERS.map(async (p) => [p, await env.LIFTR_KV.get(`trivia-streak:${p}`, "json")]));
+    return json({ streaks: rows.filter(([, v]) => v).map(([player, v]) => ({ player, best: v.best, bestAt: v.bestAt, runs: v.runs })) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  }
   if (request.method === "GET") {
     const now = Date.now();
     if (triviaCache && now - triviaCache.at < 5000) return json({ scores: triviaCache.scores }, 200, corsHeaders);
@@ -1784,6 +1789,17 @@ async function handleTrivia(request, env, corsHeaders) {
     let body;
     try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
     const player = body?.player;
+    if (body?.streak != null) {
+      const n = Number(body.streak);
+      if (!PICKS_MANAGERS.includes(player)) return json({ error: "Unknown player" }, 400, corsHeaders);
+      if (!Number.isInteger(n) || n < 1 || n > 500) return json({ error: "Bad streak" }, 400, corsHeaders);
+      const now = Date.now();
+      const cur = (await env.LIFTR_KV.get(`trivia-streak:${player}`, "json")) || { best: 0, bestAt: null, runs: 0 };
+      cur.runs += 1;
+      if (n > cur.best) { cur.best = n; cur.bestAt = now; }
+      await env.LIFTR_KV.put(`trivia-streak:${player}`, JSON.stringify(cur));
+      return json({ ok: true, best: cur.best }, 200, corsHeaders);
+    }
     const score = Number(body?.score), total = Number(body?.total);
     if (!PICKS_MANAGERS.includes(player)) return json({ error: "Unknown player" }, 400, corsHeaders);
     if (!Number.isInteger(score) || !Number.isInteger(total) || total < 1 || total > 50 || score < 0 || score > total) return json({ error: "Bad score" }, 400, corsHeaders);

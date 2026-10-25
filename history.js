@@ -320,8 +320,77 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   el('trivia-start-btn').addEventListener('click',()=>{i=0;score=0;clearProg();draw();beginPlay();render();track('trivia-start')});
   el('trivia-next').addEventListener('click',()=>{if(i===Q.length-1){finish();return}i++;render();play.scrollIntoView({block:'start',behavior:'smooth'})});
   el('trivia-again').addEventListener('click',()=>{end.classList.add('hidden');start.classList.remove('hidden');showBest();showResume();start.scrollIntoView({block:'start',behavior:'smooth'})});
-  showBest();showResume();loadHighScores();
-  document.getElementById('nav-trivia-btn')?.addEventListener('click',loadHighScores);
+  // --- Streak mode: one question at a time, how many in a row. ---------
+  // No start button: a question is already up. The first is about you
+  // (with a little snark), built from your own seasons; then the archive
+  // pool and more about you, shuffled. Right: confetti and the next one.
+  // Wrong: the answer, the streak resets, tap for the next.
+  const STREAK_KEY='brochiefs_trivia_streak_v1';
+  const ownerOf=(m)=>{if(!m)return null;const sh=typeof shown==='function'?shown(m):m;return A.owners.includes(sh)?sh:A.owners.includes(m)?m:null};
+  const rec=(r)=>r.wins+'-'+r.losses;
+  const pickN=(arr,n)=>shuffle(arr).slice(0,n);
+  function aboutYou(o){
+    const r=O[o];if(!r)return[];
+    const out=[];
+    const mine=[...new Set(r.seasons.map((x)=>x.team))];
+    const others=[...new Set(Object.values(S).flatMap((s)=>s.standings.filter((x)=>x.owner!==o).map((x)=>x.team)))];
+    const opts=(right)=>{const pool=mine.filter((t)=>t!==right);const fill=pool.length>=3?pickN(pool,3):pool.concat(pickN(others.filter((t)=>!mine.includes(t)),3-pool.length));return[right,...fill]};
+    out.push({q:`Be honest, ${o}: which of these was your worst season?`,o:opts(r.worst.team),a:0,why:`${r.worst.team}, ${rec(r.worst)} in ${r.worst.year}. We don't talk about it.`,me:1});
+    if(r.best.team!==r.worst.team)out.push({q:`${o}, your finest hour. Which team had your best record?`,o:opts(r.best.team),a:0,why:`${r.best.team} went ${rec(r.best)} in ${r.best.year}. Peak ${o}.`,me:1});
+    const t=r.titles;out.push({q:`Quick one, ${o}: how many titles do you have?`,o:[String(t),...pickN([0,1,2,3,4].filter((x)=>x!==t).map(String),3)],a:0,why:t?`${t}. ${t>1?'Flex accepted.':'Frame it.'}`:`Zero. Still hunting, ${o}.`,me:1});
+    const last=r.seasons[r.seasons.length-1];if(last){const n=S[String(last.year)].standings.length;out.push({q:`Where did you finish in ${last.year}, ${o}?`,o:[String(last.rank),...pickN(Array.from({length:n},(_,k)=>String(k+1)).filter((x)=>x!==String(last.rank)),3)].map((x)=>x+(x==='1'?'st':x==='2'?'nd':x==='3'?'rd':'th')),a:0,why:`${last.rank}${last.rank===1?'st':last.rank===2?'nd':last.rank===3?'rd':'th'} of ${n} with ${last.team} (${rec(last)}).`,me:1});}
+    out.push({q:`${o}, what's your all-time record?`,o:[rec(r),...pickN([[2,-2],[-3,3],[4,-4],[-2,2],[5,-5]].map(([a2,b2])=>`${Math.max(0,r.wins+a2)}-${Math.max(0,r.losses+b2)}`).filter((x)=>x!==rec(r)),3)],a:0,why:`${rec(r)} over ${r.seasons.length} season${r.seasons.length===1?'':'s'}.`,me:1});
+    return out;
+  }
+  let deck=[],cur=null,sOrder=[],sAns=false,streak=0;
+  const sBest=()=>{try{return Number(localStorage.getItem(STREAK_KEY))||0}catch{return 0}};
+  function buildDeck(){
+    const o=ownerOf(me());const mine=o?aboutYou(o):[];
+    const first=mine.shift();
+    deck=(first?[first]:[]).concat(shuffle(POOL.concat(mine)));
+  }
+  function confettiBurst(box){
+    const c=document.createElement('div');c.className='tq-conf';
+    const cols=['#ff2079','#05d9e8','#ffe45e','#3dfc8f','#8b6cff'];
+    for(let k=0;k<36;k++){const i2=document.createElement('i');i2.style.cssText=`left:${50+(Math.random()-.5)*20}%;background:${cols[k%5]};--dx:${(Math.random()-.5)*320}px;--dy:${-80-Math.random()*200}px;--r:${Math.random()*720-360}deg;animation-delay:${Math.random()*80}ms`;c.appendChild(i2)}
+    box.appendChild(c);setTimeout(()=>c.remove(),1300);
+  }
+  function sNext(){if(!deck.length)buildDeck();cur=deck.shift();sAns=false;sOrder=shuffle(cur.o.map((_,k)=>k));sRender()}
+  function sRender(){
+    const box=el('trivia-streak');if(!box)return;
+    const b=sBest();
+    box.innerHTML=`<div class="tq-top"><span class="tq-st${streak?' on':''}">🔥 <b>${streak}</b> in a row</span><span class="tq-best">BEST <b>${b}</b></span></div>
+      ${cur.me?'<div class="tq-tag">ABOUT YOU</div>':''}<div class="tq-q">${cur.q}</div>
+      <div class="tq-o">${sOrder.map((k,n)=>`<button type="button" class="trivia-opt" data-k="${k}"><span class="trivia-key">${'ABCD'[n]}</span>${cur.o[k]}</button>`).join('')}</div>
+      <div class="tq-fb hidden"></div><button type="button" class="trivia-btn primary tq-next hidden">NEXT ▸</button>`;
+    box.querySelectorAll('.trivia-opt').forEach((btn)=>btn.addEventListener('click',()=>sAnswer(Number(btn.dataset.k))));
+    box.querySelector('.tq-next').addEventListener('click',sNext);
+  }
+  function sAnswer(k){
+    if(sAns)return;sAns=true;const box=el('trivia-streak');const right=k===cur.a;
+    box.querySelectorAll('.trivia-opt').forEach((btn)=>{btn.disabled=true;const kk=Number(btn.dataset.k);if(kk===cur.a)btn.classList.add('right');else if(kk===k)btn.classList.add('wrong')});
+    const fb=box.querySelector('.tq-fb');fb.innerHTML='<b>'+(right?'CORRECT':'NOPE')+'</b> '+cur.why;fb.className='tq-fb trivia-feedback '+(right?'ok':'bad');
+    if(right){streak++;if(streak>sBest()){try{localStorage.setItem(STREAK_KEY,String(streak))}catch{}}
+      box.querySelector('.tq-st b').textContent=streak;box.querySelector('.tq-st').classList.add('on','pop');box.querySelector('.tq-best b').textContent=sBest();
+      confettiBurst(box);track('trivia-streak-right');setTimeout(()=>{if(cur&&sAns)sNext()},1500);}
+    else{const ended=streak;streak=0;if(ended)postStreak(ended);box.querySelector('.tq-next').classList.remove('hidden');track('trivia-streak-miss');}
+  }
+  async function postStreak(n){const who=me();if(!who||!WORKER)return;try{await fetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,streak:n})});loadStreakBoard()}catch{}}
+  async function loadStreakBoard(){
+    const list=el('trivia-hs-list');if(!list||!WORKER)return;
+    try{const d=await(await fetch(WORKER+'/trivia?streak=1&t='+Date.now(),{cache:'no-store'})).json();const rows=(d.streaks||[]).sort((a2,b2)=>b2.best-a2.best||(a2.bestAt||0)-(b2.bestAt||0));
+      if(!rows.length){list.innerHTML='<div class="trivia-hs-empty">No streaks yet. Get a few in a row to get on the board.</div>';return}
+      const who=me();list.innerHTML=rows.map((r,i2)=>'<div class="trivia-hs-row'+(r.player===who?' me':'')+(i2===0?' top':'')+'"><span class="trivia-hs-rank">'+(i2+1)+'</span><span class="trivia-hs-name">'+(typeof shown==='function'?shown(r.player):r.player).toUpperCase()+'</span><span class="trivia-hs-when">'+fmtWhen(r.bestAt)+'</span><span class="trivia-hs-score">🔥'+r.best+'</span></div>').join('');
+    }catch{list.innerHTML='<div class="trivia-hs-empty">The board is offline right now.</div>'}
+  }
+  // Swap the 12-question game for the streak card.
+  start.classList.add('hidden');play.classList.add('hidden');end.classList.add('hidden');
+  const sBox=document.createElement('div');sBox.id='trivia-streak';sBox.className='trivia-streak';el('trivia-game').appendChild(sBox);
+  const hsHead=document.querySelector('.trivia-hs-head');if(hsHead)hsHead.textContent='🔥 LONGEST STREAKS';
+  const hero=document.querySelector('.trivia-hero .hero-years');if(hero)hero.textContent='How many in a row?';
+  const mq=document.querySelector('#trivia .section-heading p');if(mq)mq.textContent='One question at a time. Get it right and the next one drops. Miss and the streak resets.';
+  buildDeck();sNext();loadStreakBoard();
+  document.getElementById('nav-trivia-btn')?.addEventListener('click',()=>{loadStreakBoard();const o=ownerOf(me());if(o&&!sAns&&!streak&&cur&&!cur.me){buildDeck();sNext();}});
 })();
 
 // A champion in the strip opens that season's full card further down.
