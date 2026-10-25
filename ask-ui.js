@@ -258,7 +258,7 @@
     let b = document.getElementById("ask-fab");
     if (!b) {
       b = document.createElement("button"); b.id = "ask-fab"; b.type = "button"; b.className = "ask-fab"; b.setAttribute("aria-label", "Ask BroChief Intelligence");
-      b.innerHTML = `<b aria-hidden="true">🧠</b>Ask AI`;
+      b.innerHTML = `<b aria-hidden="true">🧠</b>Ask`;
       b.addEventListener("click", () => { chipSet = null; open(); });
       document.body.appendChild(b);
     }
@@ -279,7 +279,7 @@
     m.innerHTML = `<div class="pi-card">
       <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title">🧠 BROCHIEF INTELLIGENCE</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
       <p class="pi-lede">Ask anything about this week's race and get the answer from the same odds as the WIN% column.</p>
-      <div class="pi-step"><b>1</b><span>Tap <span class="ai-pill">🧠 Ask AI</span> at the bottom left of Scores</span></div>
+      <div class="pi-step"><b>1</b><span>Tap <span class="ai-pill">🧠 Ask</span> at the bottom left of Scores</span></div>
       <div class="pi-step"><b>2</b><span>Ask in your own words, or tap one of these</span></div>
       <div class="ai-ex">${ex.map((q) => `<button type="button" data-aiex="${esc(q)}">${esc(q)}</button>`).join("")}</div>
       <div class="ai-btns"><button type="button" class="ai-later">LATER</button><button type="button" class="pi-ok">TRY IT</button></div>
