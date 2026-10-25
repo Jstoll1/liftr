@@ -275,9 +275,9 @@
     try { localStorage.setItem(INTRO_KEY, String(Date.now())); } catch {}
     const ex = chips();
     const m = document.createElement("div");
-    m.className = "pi-screen ai-intro"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: Ask AI");
+    m.className = "pi-screen ai-intro"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: BroChief Intelligence");
     m.innerHTML = `<div class="pi-card">
-      <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title">ASK AI</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
+      <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title">🧠 BROCHIEF INTELLIGENCE</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
       <p class="pi-lede">Ask anything about this week's race and get the answer from the same odds as the WIN% column.</p>
       <div class="pi-step"><b>1</b><span>Tap <span class="ai-pill">🧠 Ask AI</span> at the bottom left of Scores</span></div>
       <div class="pi-step"><b>2</b><span>Ask in your own words, or tap one of these</span></div>
