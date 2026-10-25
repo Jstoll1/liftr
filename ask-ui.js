@@ -207,7 +207,12 @@
       "Rank everyone's week from best to worst.",
     ].filter(Boolean);
     for (const arr of [pool, snark]) for (let i = arr.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [arr[i], arr[k]] = [arr[k], arr[i]]; }
-    return (chipSet = [...pool.slice(0, 2), snark[0]].filter(Boolean));
+    // Always one about beating the favourite, by name (unless that's you).
+    const beat = leader && `How do I cleanly beat ${leader}?`;
+    // The other two aren't about the leader too.
+    const notLeader = (q) => !beat || !q.includes(leader);
+    const rest = pool.filter(notLeader), jab = snark.filter(notLeader);
+    return (chipSet = [beat, ...rest.slice(0, beat ? 1 : 2), jab[0] || snark[0]].filter(Boolean));
   }
 
 
