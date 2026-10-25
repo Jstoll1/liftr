@@ -335,13 +335,31 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     const mine=[...new Set(r.seasons.map((x)=>x.team))];
     const others=[...new Set(Object.values(S).flatMap((s)=>s.standings.filter((x)=>x.owner!==o).map((x)=>x.team)))];
     const opts=(right)=>{const pool=mine.filter((t)=>t!==right);const fill=pool.length>=3?pickN(pool,3):pool.concat(pickN(others.filter((t)=>!mine.includes(t)),3-pool.length));return[right,...fill]};
-    out.push({q:`Be honest, ${o}: which of these was your worst season?`,o:opts(r.worst.team),a:0,why:`${r.worst.team}, ${rec(r.worst)} in ${r.worst.year}. We don't talk about it.`,me:1});
-    if(r.best.team!==r.worst.team)out.push({q:`${o}, your finest hour. Which team had your best record?`,o:opts(r.best.team),a:0,why:`${r.best.team} went ${rec(r.best)} in ${r.best.year}. Peak ${o}.`,me:1});
-    const t=r.titles;out.push({q:`Quick one, ${o}: how many titles do you have?`,o:[String(t),...pickN([0,1,2,3,4].filter((x)=>x!==t).map(String),3)],a:0,why:t?`${t}. ${t>1?'Flex accepted.':'Frame it.'}`:`Zero. Still hunting, ${o}.`,me:1});
-    const last=r.seasons[r.seasons.length-1];if(last){const n=S[String(last.year)].standings.length;out.push({q:`Where did you finish in ${last.year}, ${o}?`,o:[String(last.rank),...pickN(Array.from({length:n},(_,k)=>String(k+1)).filter((x)=>x!==String(last.rank)),3)].map((x)=>x+(x==='1'?'st':x==='2'?'nd':x==='3'?'rd':'th')),a:0,why:`${last.rank}${last.rank===1?'st':last.rank===2?'nd':last.rank===3?'rd':'th'} of ${n} with ${last.team} (${rec(last)}).`,me:1});}
-    out.push({q:`${o}, what's your all-time record?`,o:[rec(r),...pickN([[2,-2],[-3,3],[4,-4],[-2,2],[5,-5]].map(([a2,b2])=>`${Math.max(0,r.wins+a2)}-${Math.max(0,r.losses+b2)}`).filter((x)=>x!==rec(r)),3)],a:0,why:`${rec(r)} over ${r.seasons.length} season${r.seasons.length===1?'':'s'}.`,me:1});
+    out.push({id:'worst',q:`Be honest, ${o}: which of these was your worst season?`,o:opts(r.worst.team),a:0,why:`${r.worst.team}, ${rec(r.worst)} in ${r.worst.year}. We don't talk about it.`,me:1});
+    if(r.best.team!==r.worst.team)out.push({id:'best',q:`${o}, your finest hour. Which team had your best record?`,o:opts(r.best.team),a:0,why:`${r.best.team} went ${rec(r.best)} in ${r.best.year}. Peak ${o}.`,me:1});
+    const t=r.titles;out.push({id:'titles',q:`Quick one, ${o}: how many titles do you have?`,o:[String(t),...pickN([0,1,2,3,4].filter((x)=>x!==t).map(String),3)],a:0,why:t?`${t}. ${t>1?'Flex accepted.':'Frame it.'}`:`Zero. Still hunting, ${o}.`,me:1});
+    const last=r.seasons[r.seasons.length-1];if(last){const n=S[String(last.year)].standings.length;out.push({id:'last',q:`Where did you finish in ${last.year}, ${o}?`,o:[String(last.rank),...pickN(Array.from({length:n},(_,k)=>String(k+1)).filter((x)=>x!==String(last.rank)),3)].map((x)=>x+(x==='1'?'st':x==='2'?'nd':x==='3'?'rd':'th')),a:0,why:`${last.rank}${last.rank===1?'st':last.rank===2?'nd':last.rank===3?'rd':'th'} of ${n} with ${last.team} (${rec(last)}).`,me:1});}
+    out.push({id:'record',q:`${o}, what's your all-time record?`,o:[rec(r),...pickN([[2,-2],[-3,3],[4,-4],[-2,2],[5,-5]].map(([a2,b2])=>`${Math.max(0,r.wins+a2)}-${Math.max(0,r.losses+b2)}`).filter((x)=>x!==rec(r)),3)],a:0,why:`${rec(r)} over ${r.seasons.length} season${r.seasons.length===1?'':'s'}.`,me:1});
+    // More about you: points, last places, the nemesis, bad luck, podiums.
+    const ord=(n)=>n+(n%100>=11&&n%100<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th');
+    const years=r.seasons.map((x)=>x.year);
+    const hi=r.seasons.reduce((a2,b2)=>(b2.pf>a2.pf?b2:a2));
+    if(years.length>=4)out.push({id:'pf',q:`${o}, which season did you put up the most points?`,o:[String(hi.year),...pickN(years.filter((y)=>y!==hi.year).map(String),3)],a:0,why:`${hi.year}: ${num(hi.pf)} points with ${hi.team}${S[String(hi.year)].champion===o?'. And you won it all.':'. Still did not win it.'}`,me:1});
+    const lasts=r.seasons.filter((x)=>x.rank===S[String(x.year)].standings.length).length;
+    out.push({id:'lasts',q:`Be real, ${o}: how many times have you finished dead last?`,o:[String(lasts),...pickN([0,1,2,3,4].filter((x)=>x!==lasts).map(String),3)],a:0,why:lasts?`${lasts}. ${lasts>1?'A proud tradition.':'Once is plenty.'}`:'Never. Somebody had to be worse, every single year.',me:1});
+    const ahead={};for(const x of r.seasons){for(const y of S[String(x.year)].standings){if(y.owner!==o&&y.rank<x.rank)ahead[y.owner]=(ahead[y.owner]||0)+1}}
+    const nem=Object.entries(ahead).sort((a2,b2)=>b2[1]-a2[1]);
+    if(nem.length>=4&&nem[0][1]>nem[1][1])out.push({id:'nemesis',q:`${o}, who has finished ahead of you the most times?`,o:[nem[0][0],...pickN(nem.slice(1).map(([w])=>w),3)],a:0,why:`${nem[0][0]}, in ${nem[0][1]} of your ${r.seasons.length} seasons. Your nemesis.`,me:1});
+    const unl=r.seasons.reduce((a2,b2)=>(b2.pa>a2.pa?b2:a2));
+    if(years.length>=4)out.push({id:'unlucky',q:`Which season did the league pile on you the hardest, ${o}? (most points against)`,o:[String(unl.year),...pickN(years.filter((y)=>y!==unl.year).map(String),3)],a:0,why:`${unl.year}: ${num(unl.pa)} points against. ${unl.team} went ${rec(unl)}. Rough.`,me:1});
+    const pods=r.podiums;
+    out.push({id:'podium',q:`${o}, how many times have you finished in the top three?`,o:[String(pods),...pickN([0,1,2,3,4,5].filter((x)=>x!==pods).map(String),3)],a:0,why:pods?`${pods}: ${r.titles} title${r.titles===1?'':'s'}, ${r.seconds} second${r.seconds===1?'':'s'}, ${r.thirds} third${r.thirds===1?'':'s'}.`:'Zero. The podium has never heard of you.',me:1});
     return out;
   }
+  // The questions about you that opened recent runs, so the next run leads
+  // with ones you have not seen lately.
+  const SEEN_ME_KEY='brochiefs_trivia_seen_me_v1';
+  const seenMe=()=>{try{return JSON.parse(localStorage.getItem(SEEN_ME_KEY))||[]}catch{return[]}};
   let deck=[],cur=null,sOrder=[],sAns=false,streak=0;
   const sBest=()=>{try{return Number(localStorage.getItem(STREAK_KEY))||0}catch{return 0}};
   // Generated from the archive each time the deck is shuffled: three
@@ -364,9 +382,12 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     return out;
   }
   function buildDeck(){
-    const o=ownerOf(me());const mine=o?aboutYou(o):[];
-    const first=mine.shift();
-    deck=(first?[first]:[]).concat(shuffle(POOL.concat(mine,titleQs())));
+    // Three about you open every run, freshest first; the rest mix in.
+    const o=ownerOf(me());const mine=o?shuffle(aboutYou(o)):[];
+    const seen=seenMe();mine.sort((a2,b2)=>(seen.includes(a2.id)?1:0)-(seen.includes(b2.id)?1:0));
+    const lead=mine.splice(0,3);
+    try{localStorage.setItem(SEEN_ME_KEY,JSON.stringify([...lead.map((q)=>q.id),...seen.filter((x)=>!lead.some((q)=>q.id===x))].slice(0,6)))}catch{}
+    deck=lead.concat(shuffle(POOL.concat(mine,titleQs())));
   }
   function confettiBurst(box){
     const c=document.createElement('div');c.className='tq-conf';
@@ -403,7 +424,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     1:['One and done. Like your playoff runs.','A single. The league remembers nothing.','One right. Your parents are proud, probably.'],
     3:['Respectable. Barely.','A few in a row, then the wheels came off.','Solid start, classic collapse. Very on brand.'],
     6:['Not bad. Not commissioner material, but not bad.','You know this league a little too well.','Somebody spends too much time in the archive.'],
-    10:['Hall of Fame trivia brain. Touch grass.','Double digits. Andrew is nervous.','Unreal. Do you have the spreadsheet open?']
+    10:['Hall of Fame trivia brain. Touch grass.','Double digits. Someone has been studying.','Unreal. Do you have the spreadsheet open?']
   };
   const snarkFor=(n)=>{const k=n>=10?10:n>=6?6:n>=3?3:n>=1?1:0;const a2=SNARK[k];return a2[Math.floor(Math.random()*a2.length)]};
   function gameOver(box,n){
