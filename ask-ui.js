@@ -206,7 +206,7 @@
       m.addEventListener("submit", (e) => { e.preventDefault(); const i = m.querySelector("input"); send(i.value); });
       document.body.appendChild(m);
     }
-    m.innerHTML = `<div class="ask-card"><div class="ask-h"><b>🧠 BROCHIEF INTELLIGENCE</b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy chat"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
+    m.innerHTML = `<div class="ask-card"><div class="ask-h"><b>🧠 BROCHIEF INTELLIGENCE<small>Ask about odds, what-ifs, who's out, picks and the tiebreaker.</small></b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy chat"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
       <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><p class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : esc(x.a)}</p>`).join("") : `<p class="ask-hint">Ask anything about this week's race: odds, "what if" a game goes one way, who's out, who picked what, the tiebreaker. The numbers come from the same runs as the WIN% column.</p>`}</div>
       <div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}">${esc(c)}</button>`).join("")}</div>
       <form class="ask-f"><input type="text" maxlength="200" placeholder="If Michigan wins can I still win?" ${busy ? "disabled" : ""} autocomplete="off"><button type="submit" ${busy ? "disabled" : ""}>Ask</button></form></div>`;
@@ -258,7 +258,7 @@
     let b = document.getElementById("ask-fab");
     if (!b) {
       b = document.createElement("button"); b.id = "ask-fab"; b.type = "button"; b.className = "ask-fab"; b.setAttribute("aria-label", "Ask BroChief Intelligence");
-      b.innerHTML = `<b aria-hidden="true">🧠</b>Ask BI`;
+      b.innerHTML = `<b aria-hidden="true">🧠</b>Ask AI`;
       b.addEventListener("click", () => { chipSet = null; open(); });
       document.body.appendChild(b);
     }
