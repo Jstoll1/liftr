@@ -979,6 +979,28 @@ html, body { overflow-x: hidden; }
 .hax span { white-space: nowrap; overflow: visible; }
 .ov-duo { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 900px) { .ov-duo { grid-template-columns: 1fr 1fr; } }
+
+/* Page title bar with a toggle (Stats range, BI filter). */
+.pg-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pg-bar h1 { margin: 0; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--meta, #9a94b8); }
+.pg-bar .seg { margin: 0; }
+/* Stats: panels two across on a wide screen. */
+.pg-stats .rail { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 1024px) { .pg-stats { max-width: 1440px; } .pg-stats .rail { grid-template-columns: 1fr 1fr; align-items: start; } }
+/* Activity: a closed visit is one compact row. */
+.pg-activity .sess.shut { margin-bottom: 6px; border-radius: 12px; }
+.pg-activity .sess.shut .sh { padding-top: 8px; padding-bottom: 8px; gap: 10px; align-items: center; }
+.pg-activity .sess.shut .av.lg { width: 28px; height: 28px; font-size: 13px; border-radius: 8px; margin-top: 0; }
+.pg-activity .sess.shut .nm { font-size: 14px; }
+.pg-activity .sess.shut .meta { font-size: 12px; margin-top: 0; }
+.pg-activity .sess.shut .vsum { margin-top: 2px; font-size: 12px; }
+.pg-activity .sess.shut .vcar { display: none; }
+.pg-activity .sess.shut .who { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
+.pg-activity .sess.shut .vsum { flex-basis: 100%; }
+/* BI: compact action buttons. */
+.pg-bi .chat-btns { flex-direction: row; gap: 4px; }
+.pg-bi .chat-btns .afr-one { min-width: 0; padding: 4px 8px; font-size: 12px; }
+@media (min-width: 1024px) { .pg-bi { max-width: 1100px; } }
 </style>
 </head>
 <body>
@@ -1291,7 +1313,7 @@ html, body { overflow-x: hidden; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([st.page, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([st.page, st.biFilter, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1544,7 +1566,8 @@ html, body { overflow-x: hidden; }
       const head = `<div class="afr-h"><button type="button" class="afr-tg" data-chattoggle="1" aria-expanded="${!!st.chatOpen}"><span class="afr-car">${st.chatOpen ? "▾" : "▸"}</span><b>&gt; bi</b>${st.chatOpen ? "" : `<small>${day.length ? `${day.length} q · ${new Set(day.map((r) => r.asker)).size} ppl${day.some((r) => r.asker !== "Jake") ? ` · <b class="chat-oth">🧠 ${day.filter((r) => r.asker !== "Jake").length} from others</b>` : ""} · 24h` : "none · 24h"}${rows.some((r) => r.flagged) ? ` · ${rows.filter((r) => r.flagged).length} 🚩` : ""}</small>`}</button>${st.chatOpen && rows.some((r) => r.flagged) ? `<button type="button" class="afr-cp flag" data-chatcopy="flagged">${st.copied === "chat:flagged" ? "✓ copied" : `copy 🚩${rows.filter((r) => r.flagged).length}`}</button>` : ""}${st.chatOpen && rows.length ? `<button type="button" class="afr-cp" data-chatcopy="1">${st.copied === "chat" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
       if (!st.chatOpen) return `<section class="afr chat shut">${head}</section>`;
       const groups = [];
-      for (const r of rows) { const k = r.sid || r.id; let g = groups.find((x) => x.k === k); if (!g) groups.push(g = { k, rows: [] }); g.rows.push(r); }
+      const keep = st.biFilter === "others" ? (r) => r.asker !== "Jake" : st.biFilter === "flagged" ? (r) => r.flagged : () => true;
+      for (const r of rows.filter(keep)) { const k = r.sid || r.id; let g = groups.find((x) => x.k === k); if (!g) groups.push(g = { k, rows: [] }); g.rows.push(r); }
       return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; const other = first.asker !== "Jake"; return `<div class="afr-day${other ? " chat-other" : " chat-me"}">${other ? "🧠 " : ""}${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div class="afr-r chat-r${r.flagged ? " flagged" : ""}${other ? " other" : " me"}"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b><span class="chat-la${r.status && r.status !== "answered" ? " miss" : ""}">${esc(r.a ?? (r.status === "asked" && Date.now() - r.at < 60000 ? "(answering…)" : "(no answer: they left before it finished)"))}</span>${r.flagged ? `<em class="chat-note">🚩 ${esc(r.note || "flagged")}</em>` : ""}${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><span class="chat-btns"><button type="button" class="afr-one" data-chatflag="${esc(r.id)}" aria-pressed="${!!r.flagged}" aria-label="${r.flagged ? "Unflag" : "Flag as wrong"}">${r.flagged ? "unflag" : "🚩"}</button><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></span></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
     };
     const opsPanel = () => {
@@ -1652,14 +1675,8 @@ html, body { overflow-x: hidden; }
     for (const e of actions) { if (SCREENS[e.k] || FRICTION.test(e.k) || /^(depth|sheet-time)$/.test(e.k)) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), maxF = top[0]?.[1] || 1;
     const home = vs.filter((v) => v.app === "home").length, web = vs.filter((v) => v.app === "browser").length;
+    // The day's charts live on Overview; Stats keeps what goes deeper.
     const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">
-      <section class="panel"><div class="ph"><h2>Activity by hour</h2><span class="sub">actions, last 24h</span></div>
-        <div class="bars">${hours.map((h, i) => `<i class="${h.n ? "" : "zero"}${i === 23 ? " cur" : ""}" data-tip="${esc(`<b>${hourLab(h.start)}${i === 23 ? " · this hour" : ""}</b>${h.n} action${h.n === 1 ? "" : "s"}${h.who.size ? ` · ${[...h.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((h.n / maxH) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
-        <div class="bars-ax"><span>${hourLab(hours[0].start)}</span><span>${hourLab(hours[6].start)}</span><span>${hourLab(hours[12].start)}</span><span>${hourLab(hours[18].start)}</span><span>now</span></div>
-      </section>
-      <section class="panel"><div class="ph"><h2>Most used</h2><span class="sub">last 24h</span></div>
-        ${top.length ? `<div class="rank">${top.map(([a, n]) => `<div><span>${esc(a)}</span><b>${n}</b><i><s style="width:${((n / maxF) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>` : `<div class="note">Nothing used yet.</div>`}
-      </section>
       ${home + web ? `<section class="panel"><div class="ph"><h2>Opened from</h2><span class="sub">${home + web} visits</span></div>
         <div class="split"><s style="width:${((home / (home + web)) * 100).toFixed(1)}%;background:var(--past)"></s><s style="flex:1;background:#5b5378"></s></div>
         <div class="split-k"><span><i style="background:var(--past)"></i>Home screen app <b>${home}</b></span><span><i style="background:#5b5378"></i>Browser <b>${web}</b></span></div>
@@ -1792,8 +1809,8 @@ html, body { overflow-x: hidden; }
     const who = [...whoMs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
     const wMax = Math.max(1, ...who.map(([, ms]) => ms));
     const rankRows = (rows) => `<div class="rank">${rows.join("")}</div>`;
+    const hourPanel = `<section class="panel ov"><div class="ph"><h2>Activity by hour</h2><span class="sub">${actions.length} actions · 24h${peak.n ? ` · peak ${esc(hourLab(peak.start))}` : ""}</span></div>${hourChart}</section>`;
     const overview = `<section class="att">${attCards}</section>
-      <section class="panel ov"><div class="ph"><h2>Activity by hour</h2><span class="sub">${actions.length} actions · 24h${peak.n ? ` · peak ${esc(hourLab(peak.start))}` : ""}</span></div>${hourChart}</section>
       <div class="ov-duo">
         <section class="panel ov"><div class="ph"><h2>Most used</h2><span class="sub">people · 24h</span></div>${feats.length ? rankRows(feats.map(([l, x]) => `<div><span>${esc(l)} <small>${x.n} taps</small></span><b>${x.who.size}</b><i><s style="width:${((x.who.size / fMax) * 100).toFixed(1)}%"></s></i></div>`)) : `<div class="note">Nothing used yet today.</div>`}</section>
         <section class="panel ov"><div class="ph"><h2>Who's been in</h2><span class="sub">time in app · 24h</span></div>${who.length ? rankRows(who.map(([n, ms]) => `<div><span>${esc(name(n))} <small>${vs.filter((v) => v.n === n).length} visits</small></span><b>${mins(ms) || "<1m"}</b><i><s style="width:${((ms / wMax) * 100).toFixed(1)}%;background:#05d9e8"></s></i></div>`)) : `<div class="note">Nobody in yet.</div>`}</section>
@@ -1802,11 +1819,11 @@ html, body { overflow-x: hidden; }
     const forceOpen = (f) => { const was = [st.afrOpen, st.opsOpen, st.chatOpen]; st.afrOpen = st.opsOpen = st.chatOpen = true; try { return f(); } finally { [st.afrOpen, st.opsOpen, st.chatOpen] = was; } };
     const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>`;
     const pageBody = {
-      home: `${kpis}${strips}${overview}`,
+      home: `${kpis}${hourPanel}${strips}${overview}`,
       activity: `${timeline}${feedHtml}`,
       issues: forceOpen(() => `${adminFriction()}${opsPanel()}`),
-      bi: forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`,
-      stats: rail,
+      bi: `<div class="pg-bar"><h1>BI questions</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
+      stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${rail}`,
     }[st.page] || "";
     app.innerHTML = `
       <div class="top${st.ok ? "" : " stale"}"><div class="top-in">
@@ -1918,6 +1935,8 @@ html, body { overflow-x: hidden; }
     if (e.target.closest(".vkey summary")) { st.keyOpen = !e.target.closest(".vkey").open; return; }
     const jb = e.target.closest("[data-jump]");
     if (jb) { goPage(PAGE_OF[jb.dataset.jump] || jb.dataset.jump); return; }
+    const bf = e.target.closest("[data-bif]");
+    if (bf) { st.biFilter = bf.dataset.bif; st.sig = ""; render(); return; }
     const pb = e.target.closest("[data-page]");
     if (pb) { goPage(pb.dataset.page); return; }
     if (e.target.closest("[data-seenall]")) { seenBase = snapSeen(); saveSeen(); st.sig = ""; render(); return; }
