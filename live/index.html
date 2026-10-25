@@ -2080,13 +2080,13 @@ body::before { display: none; }
     // Each person's latest visit since then, newest first; whoever is in now leads.
     const visitors = [...new Map(vs.filter((v) => v.n !== ME && !v.live && v.start > nSeen && !inNow.includes(v.n)).sort((a, b) => a.start - b.start).map((v) => [v.n, v])).values()].reverse();
     const asked = chatDay.filter((r) => r.asker !== ME && r.at > nSeen).sort((a, b) => b.at - a.at);
-    const ago = (t) => { const m = Math.round((now - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : `${Math.round(m / 60)}h ago`; };
+    const nbAgo = (t) => { const m = Math.round((now - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : `${Math.round(m / 60)}h ago`; };
     const whoList = (ns) => ns.length <= 2 ? ns.join(" and ") : `${ns.slice(0, 2).join(", ")} +${ns.length - 2}`;
     const inN = inNow.filter((n) => n !== ME).map(name), wasN = visitors.map((v) => name(v.n));
     const nParts = [
       inN.length && `<button type="button" class="nb-p live" data-page="activity"><i class="nb-dot"></i><b>${esc(whoList(inN))}</b> ${inN.length === 1 ? "is" : "are"} in now</button>`,
-      wasN.length && `<button type="button" class="nb-p" data-page="activity"><i class="nb-ic">👀</i><b>${esc(whoList(wasN))}</b> visited<small>${esc(ago(visitors[0].end || visitors[0].start))}</small></button>`,
-      asked.length && `<button type="button" class="nb-p" data-page="bi"><i class="nb-ic">🧠</i><b>${esc(name(asked[0].asker))}</b> asked “${esc(String(asked[0].q || "").slice(0, 60))}”${asked.length > 1 ? `<small>+${asked.length - 1} more</small>` : `<small>${esc(ago(asked[0].at))}</small>`}</button>`,
+      wasN.length && `<button type="button" class="nb-p" data-page="activity"><i class="nb-ic">👀</i><b>${esc(whoList(wasN))}</b> visited<small>${esc(nbAgo(visitors[0].end || visitors[0].start))}</small></button>`,
+      asked.length && `<button type="button" class="nb-p" data-page="bi"><i class="nb-ic">🧠</i><b>${esc(name(asked[0].asker))}</b> asked “${esc(String(asked[0].q || "").slice(0, 60))}”${asked.length > 1 ? `<small>+${asked.length - 1} more</small>` : `<small>${esc(nbAgo(asked[0].at))}</small>`}</button>`,
     ].filter(Boolean);
     const notifBar = nParts.length ? `<section class="nbar" role="status">${nParts.join("")}<button type="button" class="nb-x" data-nseen="1" aria-label="Mark as seen">✕</button></section>` : "";
     const pageBody = {
