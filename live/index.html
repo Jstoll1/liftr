@@ -1475,7 +1475,18 @@ body::before { display: none; }
   // --- Render ------------------------------------------------------------
   const DAY = 86400000, HOUR = 3600000;
   const hourLab = (t) => { const h = new Date(t).getHours(); return `${h % 12 || 12}${h < 12 ? "a" : "p"}`; };
+  // A drawing error shows itself (with a copy) instead of a blank page.
   function render() {
+    try { renderPage(); }
+    catch (err) {
+      console.error(err);
+      const msg = `Brochiefs Live render error (${LEAGUE}, page ${st.page}, range ${st.range}): ${err?.stack || err}`;
+      app.innerHTML = `<div class="gate"><p>Live hit an error drawing this page.</p><pre style="white-space:pre-wrap;font-size:12px;max-width:100%;overflow:auto;color:var(--meta)">${String(msg).replace(/[&<]/g, (c) => (c === "&" ? "&amp;" : "&lt;"))}</pre><p><button type="button" class="rec-cp" id="err-copy">Copy error</button> <button type="button" class="rec-cp" id="err-home">Back to Overview</button></p></div>`;
+      document.getElementById("err-copy")?.addEventListener("click", (e) => { navigator.clipboard?.writeText(msg).then(() => { e.target.textContent = "✓ Copied"; }).catch(() => {}); });
+      document.getElementById("err-home")?.addEventListener("click", () => { st.page = "home"; st.vsort = null; st.vf = null; store.set("brochiefs_live_page", "home"); st.sig = ""; render(); });
+    }
+  }
+  function renderPage() {
     if (st.gated) return;
     if (st.view === "studio") { st.sig = ""; return; }
     const room = st.room;
