@@ -47,13 +47,13 @@
     d.id = "uc"; d.setAttribute("role", "alert");
     var digits = String(hits).padStart(6, "0").split("").map(function (n) { return "<i>" + n + "</i>"; }).join("");
     d.innerHTML = '<div class="pg">' +
-      '<div class="mq"><span>*** WELCOME TO THE BROCHIEFS NFL PICK\'EM HOME PAGE *** LOGIN LINKS COMING SOON *** PLEASE SIGN MY GUESTBOOK ***</span></div>' +
+      '<div class="mq"><span>*** WELCOME TO THE BROCHIEFS NFL PICK\'EM HOME PAGE *** NFL LOGIN LINKS ARE BEING WORKED ON *** PLEASE SIGN MY GUESTBOOK ***</span></div>' +
       '<h1>🚧 UNDER CONSTRUCTION 🚧</h1>' +
       '<div class="stripe"></div>' +
       '<div class="dig"><span class="w">👷</span>⛏️<span class="w">🚜</span></div>' +
       '<p class="bl">!!! PARDON OUR DUST !!!</p>' +
       '<hr class="rb">' +
-      '<p>This page is <b>under construction</b>.<br>Our login links are being built by a crack team of webmasters.</p>' +
+      '<p>This page is <b>under construction</b>.<br><b>NFL login links are being worked on.</b></p>' +
       '<p>Please check back soon!!!</p>' +
       '<p><a onclick="return false">Sign my Guestbook</a> &nbsp;|&nbsp; <a onclick="return false">E-mail the Webmaster</a></p>' +
       '<hr class="rb">' +
