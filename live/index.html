@@ -1322,6 +1322,25 @@ body::before { display: none; }
   // Which section is in view, for the tabs; recomputed on scroll and after
   // every redraw, so the right tab stays lit.
   // Pages, not one long scroll: the lit tab is the page you are on.
+  // Seeing the visits clears the "visited" notification, and opening BI
+  // clears the BI one; the page holds still while the line goes.
+  const markSeen = (kind) => {
+    if (kind === "v" && !document.querySelector('[data-nseen="v"]')) return;
+    if (kind === "q") { store.set(`brochiefs_live_notif_seen_q${SFX}`, String(Date.now())); return; }
+    const v = document.getElementById("sec-visits"), before = v ? v.getBoundingClientRect().top : null;
+    store.set(`brochiefs_live_notif_seen_${kind}${SFX}`, String(Date.now())); st.sig = ""; render();
+    const after = v && document.getElementById("sec-visits")?.getBoundingClientRect().top;
+    if (before != null && after != null && kind === "v") scrollBy(0, after - before);
+  };
+  let seenTimer = 0;
+  function watchSeen() {
+    if (st.page === "bi") return setTimeout(() => markSeen("q"), 800);
+    const v = document.getElementById("sec-visits");
+    const r = v && v.getBoundingClientRect();
+    const onScreen = r && r.top < innerHeight - 120 && r.bottom > 160;
+    if (onScreen && !seenTimer) seenTimer = setTimeout(() => { seenTimer = 0; const r2 = document.getElementById("sec-visits")?.getBoundingClientRect(); if (r2 && r2.top < innerHeight - 120 && r2.bottom > 160) markSeen("v"); }, 1200);
+  }
+  addEventListener("scroll", () => { cancelAnimationFrame(watchSeen.r); watchSeen.r = requestAnimationFrame(watchSeen); }, { passive: true });
   function paintTabs(force) {
     if (!force && Date.now() < (st.secLock || 0)) return;
     // On Overview, the Visits tab lights once the visits reach the top.
@@ -2107,7 +2126,7 @@ body::before { display: none; }
     // cleared it (never you). Tap a part to go there; ✕ marks it seen.
     const ME = "Jake";
     const nSeenOld = Number(store.get("brochiefs_live_notif_seen")) || now - 6 * HOUR;
-    const nSeenV = Number(store.get("brochiefs_live_notif_seen_v")) || nSeenOld, nSeenQ = Number(store.get("brochiefs_live_notif_seen_q")) || nSeenOld;
+    const nSeenV = Number(store.get(`brochiefs_live_notif_seen_v${SFX}`)) || nSeenOld, nSeenQ = Number(store.get(`brochiefs_live_notif_seen_q${SFX}`)) || nSeenOld;
     // Each person's latest visit since then, newest first; whoever is in now leads.
     const visitors = [...new Map(vs.filter((v) => v.n !== ME && !v.live && v.start > nSeenV && !inNow.includes(v.n)).sort((a, b) => a.start - b.start).map((v) => [v.n, v])).values()].reverse();
     const asked = chatDay.filter((r) => r.asker !== ME && r.at > nSeenQ).sort((a, b) => b.at - a.at);
@@ -2154,6 +2173,7 @@ body::before { display: none; }
       <nav class="tabs" aria-label="Pages">${PAGES.map(([id, lab, ic]) => `<button type="button" class="${st.page === id ? "on" : ""}" data-page="${id}" aria-current="${st.page === id ? "page" : "false"}">${ICONS[ic]}<span>${lab}${badge[id] ? `<b>${badge[id]}</b>` : ""}</span></button>`).join("")}</nav>`;
     paintTabs();
     tidy();
+    watchSeen();
   }
 
   // Collapsible panels and day groups, remembered per device; quiet timeline lanes tucked on phones.
@@ -2244,7 +2264,7 @@ body::before { display: none; }
     const jb = e.target.closest("[data-jump]");
     if (jb) { goPage(PAGE_OF[jb.dataset.jump] || jb.dataset.jump); return; }
     const ns = e.target.closest("[data-nseen]");
-    if (ns) { store.set(`brochiefs_live_notif_seen_${ns.dataset.nseen}`, String(Date.now())); st.sig = ""; render(); return; }
+    if (ns) { store.set(`brochiefs_live_notif_seen_${ns.dataset.nseen}${SFX}`, String(Date.now())); st.sig = ""; render(); return; }
     const vfb = e.target.closest("[data-vf]");
     if (vfb) { st.vf = vfb.dataset.vf === "all" ? null : vfb.dataset.vf; st.sig = ""; render(); return; }
     const bf = e.target.closest("[data-bif]");
