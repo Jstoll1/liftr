@@ -1001,15 +1001,25 @@ function tokenFor(name) {
   return held && held.manager === name ? held.token : null;
 }
 
-async function refreshAuthState() {
+// The login mode, kept from the last good answer: a dropped connection
+// ("Load failed") keeps the last known mode instead of falling back to
+// "off", is tried once more after a short pause, and never waits more
+// than six seconds, so nothing on screen ever hangs on it.
+const AUTH_STATE_KEY = "brochiefs_auth_state_v1";
+try { const saved = JSON.parse(localStorage.getItem(AUTH_STATE_KEY) || "null"); if (saved && typeof saved.mode === "string") authState = { mode: saved.mode, claimed: Array.isArray(saved.claimed) ? saved.claimed : [] }; } catch {}
+async function refreshAuthState(retry = true) {
   if (!WORKER_URL) return;
   try {
-    const res = await fetch(`${WORKER_URL}/auth?t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) return;
+    const res = await fetch(`${WORKER_URL}/auth?t=${Date.now()}`, { cache: "no-store", signal: AbortSignal.timeout ? AbortSignal.timeout(6000) : undefined });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (typeof data.mode === "string") authState = { mode: data.mode, claimed: Array.isArray(data.claimed) ? data.claimed : [] };
+    if (typeof data.mode === "string") {
+      authState = { mode: data.mode, claimed: Array.isArray(data.claimed) ? data.claimed : [] };
+      try { localStorage.setItem(AUTH_STATE_KEY, JSON.stringify(authState)); } catch {}
+    }
   } catch {
-    // Login stays off if the Worker cannot be reached; picks still queue.
+    // Keep the last known mode; one more try in a moment, in the background.
+    if (retry) setTimeout(() => { refreshAuthState(false); }, 2500);
   }
 }
 
