@@ -2172,14 +2172,18 @@ async function fetchAvatars() {
     return null;
   }
 }
-async function fetchAvatarsAll() {
+// Avatars are kept on the phone, so a dropped call ("Load failed") just
+// keeps the saved ones: it waits five seconds at most and tries once more
+// in the background.
+async function fetchAvatarsAll(retry = true) {
   if (!WORKER_URL) return null;
   try {
-    const res = await fetch(`${WORKER_URL}/avatars`);
+    const res = await fetch(`${WORKER_URL}/avatars`, { signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined });
     if (!res.ok) return null;
     const data = await res.json();
     return { avatars: data.avatars || {}, colors: data.colors || {} };
   } catch {
+    if (retry) setTimeout(() => { syncAvatars(false); }, 2500);
     return null;
   }
 }
@@ -2222,9 +2226,9 @@ async function queueAvatar(manager, patch) {
 // The Worker is the source of truth: what it holds wins, so a reset on one
 // phone clears it on every other. Unsent local changes ride on top until
 // they go through.
-async function syncAvatars() {
+async function syncAvatars(retry = true) {
   for (const m of Object.keys(loadPendingAvatars())) await flushAvatar(m);
-  const cloud = await fetchAvatarsAll();
+  const cloud = await fetchAvatarsAll(retry);
   if (!cloud) return false;
   const emojis = { ...cloud.avatars }, colors = { ...cloud.colors };
   for (const [m, p] of Object.entries(loadPendingAvatars())) {
@@ -2252,7 +2256,8 @@ async function renderManagerPicker() {
   const pickerResults = firstKickoffPassed() ? computeLiveResults(latestLive) : {};
   const scored = Object.keys(pickerResults).length > 0;
 
-  await syncAvatars();
+  // The roster never waits long on avatars: the saved ones show at once.
+  await Promise.race([syncAvatars(), new Promise((r) => setTimeout(r, 2000))]);
   updateMePill();
 
   managerPicker.innerHTML = "";
@@ -10020,7 +10025,9 @@ async function startLiveView() {
 // Avatars live on the Worker; pull them on open and whenever the app comes
 // back to the front, so a change on one phone shows on every other.
 syncAvatars();
-document.addEventListener("visibilitychange", () => { if (!document.hidden) syncAvatars(); });
+// A phone just back in the foreground is often still reconnecting: wait a
+// beat before asking.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(() => { if (!document.hidden) syncAvatars(); }, 1500); });
 
 // What people read without tapping: the replay, the pot and the season
 // stats each count once a visit when most of it has been on screen.
