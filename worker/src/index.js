@@ -4192,7 +4192,7 @@ async function presenceWeek(env, now) {
   const names = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m)), from = now - 7 * 86400000;
   const rows = await Promise.all(names.map(async (m) => {
     const s = (await env.LIFTR_KV.get(sessKey(m), { type: "json", cacheTtl: 60 })) || [];
-    return [m, s.filter((x) => Number(x.at) + (Number(x.dur) || 0) >= from).map((x) => [Number(x.at), Number(x.dur) || 0, (x.f || []).slice(0, 24)])];
+    return [m, s.filter((x) => Number(x.at) + (Number(x.dur) || 0) >= from).map((x) => [Number(x.at), Number(x.dur) || 0, (x.f || []).slice(0, 24), ...(x.st === "pro" ? ["pro"] : [])])];
   }));
   return Object.fromEntries(rows);
 }
@@ -4316,6 +4316,7 @@ async function handleVisit(request, env, corsHeaders, url) {
   // KV write), so an older copy of the app still gets its ok.
   if (VISITS_NOT_TRACKED.has(m)) return json({ ok: true, tracked: false }, 200, corsHeaders);
   const ver = /^[0-9]{6,14}$/.test(String(body.v || "")) ? String(body.v) : "";
+  const sty = styleTag(body);
   // A session ends: the app was put away. When it started, how long it was
   // on screen, which screens and sheets were used, and which build it ran.
   // Sent as a background beacon, so the phone never waits on it.
@@ -4332,14 +4333,14 @@ async function handleVisit(request, env, corsHeaders, url) {
     const pair = (o) => ({ espn: int(o?.espn, 999), worker: int(o?.worker, 999) });
     const h = { e: int(hb.e, 999), em: (Array.isArray(hb.em) ? hb.em : []).slice(0, 3).map((x) => String(x).replace(/[<>]/g, "").slice(0, 80)).filter(Boolean), ff: pair(hb.ff), sl: pair(hb.sl), ...(int(hb.ld, 120000) ? { ld: int(hb.ld, 120000) } : {}) };
     const hasH = h.e || h.ff.espn || h.ff.worker || h.sl.espn || h.sl.worker || h.ld;
-    const rec = { at: Math.round(start), dur: Math.round(Math.min(dur, 6 * 3600000)), f, ...(Object.keys(gt).length ? { gt } : {}), ...(hasH ? { h } : {}), ...(ver ? { v: ver } : {}) };
+    const rec = { at: Math.round(start), dur: Math.round(Math.min(dur, 6 * 3600000)), f, ...(Object.keys(gt).length ? { gt } : {}), ...(hasH ? { h } : {}), ...(ver ? { v: ver } : {}), ...sty };
     const list = (await env.LIFTR_KV.get(sessKey(m), "json")) || [];
     list.unshift(rec);
     await env.LIFTR_KV.put(sessKey(m), JSON.stringify(list.slice(0, 1500)));
     return json({ ok: true }, 200, corsHeaders);
   }
   const qAt = queuedOpenAt(body, Date.now());
-  const entry = { at: qAt ?? Date.now(), ...(qAt != null ? { q: 1 } : {}), app: body.standalone ? "home" : "browser", device: String(body.device || "").slice(0, 12), screen: String(body.screen || "").slice(0, 12), tz: String(body.tz || "").slice(0, 40), ...(ver ? { v: ver } : {}) };
+  const entry = { at: qAt ?? Date.now(), ...(qAt != null ? { q: 1 } : {}), app: body.standalone ? "home" : "browser", device: String(body.device || "").slice(0, 12), screen: String(body.screen || "").slice(0, 12), tz: String(body.tz || "").slice(0, 40), ...(ver ? { v: ver } : {}), ...sty };
   const list = (await env.LIFTR_KV.get(key(m), "json")) || [];
   list.unshift(entry);
   // 1,000 opens: weeks of history for the admin dashboard at the 5-minute
@@ -4522,3 +4523,6 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
   }
   return json({ message: { role: "assistant", content: m.content || null, ...(calls.length ? { tool_calls: calls } : {}) }, logId }, 200, corsHeaders);
 }
+
+// Pro trial: classic is the default, so only a pro visit carries a tag.
+export function styleTag(body) { return body && body.st === "pro" ? { st: "pro" } : {}; }

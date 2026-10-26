@@ -986,6 +986,10 @@ html, body { overflow-x: hidden; }
 .pg-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pg-bar h1 { margin: 0; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--meta, #9a94b8); }
 .pg-bar .seg { margin: 0; }
+.styt > div { display: grid; grid-template-columns: 1.2fr repeat(5, 1fr); gap: 6px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); align-items: center; font-size: 13px; }
+.styt > div:first-child b { font-size: 10px; font-weight: 600; opacity: .6; }
+.styt > div:last-child { border-bottom: 0; }
+.styt b { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
 /* Stats: panels two across on a wide screen. */
 .pg-stats .rail { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 1024px) { .pg-stats { max-width: 1440px; } .pg-stats .rail { grid-template-columns: 1fr 1fr; align-items: start; } }
@@ -1648,7 +1652,7 @@ body::before { display: none; }
     const wFrom = today0 - 6 * DAY;
     const wv = wk ? [
       // A visit sent twice (a retry after a dropped connection) shows once.
-      ...Object.entries(wk.sessions).flatMap(([n, list]) => list.filter(([at], i) => !list.slice(0, i).some(([b]) => Math.abs(b - at) < 5000)).map(([at, ms, f]) => ({ n, start: at, end: at + Math.max(ms, 1000), f: f || [] }))),
+      ...Object.entries(wk.sessions).flatMap(([n, list]) => list.filter(([at], i) => !list.slice(0, i).some(([b]) => Math.abs(b - at) < 5000)).map(([at, ms, f, sty]) => ({ n, start: at, end: at + Math.max(ms, 1000), f: f || [], st: sty === "pro" ? "pro" : "classic" }))),
       ...inNow.map((n) => ({ n, start: people[n].since, end: now, f: [], live: true })),
       // Visits from the last day the session log has not caught yet: one
       // put away without a goodbye (an app closed or a phone that slept)
@@ -1991,7 +1995,22 @@ body::before { display: none; }
       for (const v of wv) for (const l of new Set(v.f.map(featLab).filter(Boolean))) used.set(l, (used.get(l) || 0) + 1);
       const tp = [...used.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), mf = tp[0]?.[1] || 1;
       const lab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
+      // Pro trial: the same week split by the style each visit ran in.
+      // Quick exit = a visit under 30s; issues = friction in the visit.
+      const styleRow = (k) => {
+        const l = wv.filter((v) => (v.st || "classic") === k), n = l.length;
+        const ms = l.reduce((a, v) => a + (v.end - v.start), 0), qe = l.filter((v) => v.end - v.start < 30000).length;
+        const iss = l.reduce((a, v) => a + (wk.feed || []).filter((e) => e.n === v.n && e.at >= v.start && e.at <= v.end + 2000 && FRICTION.test(e.k)).length, 0);
+        return { k, n, who: new Set(l.map((v) => v.n)).size, avg: n ? ms / n / 60000 : 0, qe, iss };
+      };
+      const sr = ["pro", "classic"].map(styleRow);
+      const stylePanel = sr[0].n ? `<section class="panel"><div class="ph"><h2>Pro vs Classic</h2><span class="sub">style trial, last 7 days</span></div>
+        <div class="styt"><div><span></span><b>Visits</b><b>People</b><b>Avg min</b><b>Exits</b><b>Issues</b></div>
+        ${sr.map((r) => `<div><span>${r.k === "pro" ? "Pro" : "Classic"}</span><b>${r.n}</b><b>${r.who}</b><b>${r.avg.toFixed(1)}</b><b>${r.n >= 10 ? Math.round((r.qe / r.n) * 100) + "%" : r.qe}</b><b>${r.n >= 10 ? (r.iss / r.n).toFixed(2) : r.iss}</b></div>`).join("")}</div>
+        <div class="note">Exits: visits under 30s. Issues: rage, dead taps and errors per visit. Counts under 10 visits.</div>
+      </section>` : "";
       return `<aside class="rail" id="sec-stats">
+      ${stylePanel}
       <section class="panel"><div class="ph"><h2>Visits by hour</h2><span class="sub">time of day, last 7 days</span></div>
         <div class="bars">${byH.map((x) => `<i class="${x.n ? "" : "zero"}${x.h === curH ? " cur" : ""}" data-tip="${esc(`<b>${lab(x.h)}</b>${x.n} visit${x.n === 1 ? "" : "s"}${x.who.size ? ` · ${[...x.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((x.n / mx) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>

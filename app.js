@@ -1524,7 +1524,7 @@ function stampVisit() {
   try { localStorage.setItem(VISIT_KEY, String(Date.now())); } catch {}
   const d = deviceDetails();
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
-  const body = { manager: me, device: deviceId().slice(0, 12), screen: d.screen, tz: d.tz, standalone, v: typeof APP_VERSION === "string" ? APP_VERSION : "" };
+  const body = { manager: me, device: deviceId().slice(0, 12), screen: d.screen, tz: d.tz, standalone, v: typeof APP_VERSION === "string" ? APP_VERSION : "", st: window.APP_STYLE === "pro" ? "pro" : "classic" };
   if (navigator.onLine === false) { queueTele({ ...body, q: 1, at: Date.now() }); return; }
   fetch(`${WORKER_URL}/visit`, { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true, body: JSON.stringify(body) })
     .then((res) => { if (res.ok) flushTele(); })
@@ -1681,7 +1681,7 @@ function endSession() {
   appHealth.e = 0; appHealth.em = []; appHealth.ff = { espn: 0, worker: 0 }; appHealth.sl = { espn: 0, worker: 0 }; appHealth.ld = -1; // load time only once per page
   const me = loadMe();
   if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || window.__liveView || dur < 3000) return;
-  const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, gt, h: h.ld === -1 ? { ...h, ld: null } : h, v: typeof APP_VERSION === "string" ? APP_VERSION : "" });
+  const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, gt, h: h.ld === -1 ? { ...h, ld: null } : h, v: typeof APP_VERSION === "string" ? APP_VERSION : "", st: window.APP_STYLE === "pro" ? "pro" : "classic" });
   try {
     // text/plain keeps the beacon a simple request (no CORS preflight).
     // With no signal a beacon is accepted and then lost; keep it instead.
