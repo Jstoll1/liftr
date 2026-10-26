@@ -1208,7 +1208,9 @@ body::before { display: none; }
 .wk-side > .lv-sec ~ .lv-sec, .wk-full > .lv-sec { margin-top: 22px; }
 @media (min-width: 1100px) { .wk-full > .lv-sec { margin-top: 4px; } }
 /* Tiles: a 7 day total per person and an Everyone row. */
-.hm { grid-template-columns: var(--lab, 148px) repeat(7, minmax(0, 1fr)) 40px !important; }
+.hm { grid-template-columns: var(--lab, 148px) repeat(7, minmax(0, 1fr)) !important; }
+.hm-lt { display: block; margin-top: 2px; font: 500 11px/1.2 var(--sans); color: var(--dim); white-space: nowrap; }
+.hm-f .hm-lt { font-weight: 500; }
 .hm-h, .hm-c { font-family: var(--sans) !important; }
 .hm-c { background-color: rgba(255, 255, 255, .03); }
 .hm-t { text-align: right; font: 700 13px/1 var(--sans); color: var(--text); }
@@ -1233,6 +1235,24 @@ body::before { display: none; }
 .gd-l svg { display: block; width: 100%; height: 70px; margin-top: 10px; }
 .gd span, .gd b { font-family: var(--sans) !important; }
 @media (min-width: 900px) { .ft { grid-template-columns: minmax(110px, 200px) minmax(0, 2fr) minmax(0, 1fr) 30px; } }
+
+/* 3h: a bar per sitting, its length on it. */
+.sb { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 6px 12px; }
+.sb-t { position: relative; height: 30px; border-radius: 6px; background: rgba(255, 255, 255, .025); }
+.sb-t.dim { opacity: .35; }
+.sb-g { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255, 255, 255, .06); }
+.sb-b { position: absolute; top: 4px; bottom: 4px; min-width: 8px; border-radius: 5px; background: var(--accent); display: flex; align-items: center; justify-content: center; font: 700 11px/1 var(--sans); color: #fff; white-space: nowrap; overflow: visible; }
+.sb-b.live { background: var(--green); color: #06281a; box-shadow: 0 0 0 3px rgba(52, 211, 153, .2); }
+.sb-b.sm span { position: absolute; left: calc(100% + 4px); color: var(--meta); }
+.sb-b.sm.live span { color: var(--green); }
+.sb-ax { position: relative; height: 16px; font-size: 10.5px; color: var(--dim); }
+.sb-ax span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.sb-ax .nw { transform: translateX(-100%); color: var(--green); font-weight: 600; }
+@media (max-width: 520px) { .sb { grid-template-columns: 110px minmax(0, 1fr); } }
+.ln-l:has(.hm-lt) { height: auto; min-height: 34px; padding-top: 3px; padding-bottom: 3px; }
+.ln-l .hm-lt { margin-top: 1px; }
+.sb-b.sm.end span { left: auto; right: calc(100% + 4px); }
+.ln-l .hm-lt { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 </style>
 </head>
 <body>
@@ -1302,7 +1322,7 @@ body::before { display: none; }
   function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: store.get("brochiefs_live_range") === "24h" ? "24h" : "7d", wk: null, sec: "sec-now", page: ["home", "issues", "bi", "stats"].includes(store.get("brochiefs_live_page")) ? store.get("brochiefs_live_page") : "home", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "24h"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "7d", wk: null, sec: "sec-now", page: ["home", "issues", "bi", "stats"].includes(store.get("brochiefs_live_page")) ? store.get("brochiefs_live_page") : "home", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
   // What's new since this device last looked: a baseline saved when the
   // page is put away, compared with what arrives. ✓ Seen resets it now.
   const SEEN_KEY = `brochiefs_live_seen_${LEAGUE}`;
@@ -1334,6 +1354,11 @@ body::before { display: none; }
   const hm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   const AFR_KIND = { "js-error": ["Error", "err"], rage: ["Rage tap", "rage"], "dead-tap": ["Dead tap", "dead"], "quick-exit": ["Sudden close", "exit"] };
   // Fixed: ticked by hand, or a shipped fix of this kind and text came after it.
+  // Health fixes ride in fixes.json too (k is the health kind, e.g.
+  // "worker-fail"): every matching entry from before the fix reads closed,
+  // so a pasted error that was fixed clears itself; a repeat after stays.
+  const opsFix = (r) => (st.afrFixes || []).find((f) => f.k === r.k && String(r.d || "").includes(f.match) && r.at <= f.at) || null;
+  const applyOpsFixes = () => { for (const r of st.ops || []) { const f = opsFix(r); if (f && !r.closed) { r.closed = f.at; r.fixNote = `Fixed in ${f.commit}: ${f.note}`; } } };
   const afrFix = (r) => (st.afrFixes || []).find((f) => (!f.k || f.k === (r.k || "dead-tap")) && String(r.d || "").includes(f.match) && r.at <= f.at) || (r.fixed ? { manual: true } : null);
   const afrLog = (rows) => [`Brochiefs ${LEAGUE.toUpperCase()} admin friction log · copied ${new Date().toLocaleString()}`, ...[...rows].sort((x, y) => y.at - x.at).map((r) => `${new Date(r.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} | ${(AFR_KIND[r.k || "dead-tap"] || [r.k])[0]} | ${r.d || ""}${r.screen ? ` | ${SCREENS[r.screen] || r.screen}` : ""}${afrFix(r) ? ` | FIXED${afrFix(r).commit ? ` ${afrFix(r).commit}` : ""}` : ""}`)].join("\n");
   const OPS_KIND = { "route-fail": ["Worker error", "err"], "cron-fail": ["Job failed", "err"], "upstream-fail": ["Outside API failed", "err"], "upstream-slow": ["Outside API slow", "slow"], "worker-fail": ["Worker failed", "err"], "worker-slow": ["Worker slow", "slow"], "espn-fail": ["ESPN failed", "err"], "espn-slow": ["ESPN slow", "slow"], "slow-load": ["Slow load", "slow"], "js-error": ["Error", "err"] };
@@ -1686,7 +1711,7 @@ body::before { display: none; }
     // Labels on the hour at the window's step, and the half hours at 3h.
     const labelled = (t) => { const d = new Date(t); return d.getMinutes() ? spanH <= 3 : d.getHours() % every === 0; };
     const axis = marks.filter((t) => labelled(t) && xp(t) < 87 && xp(t) > 4).map((t) => `<span style="left:${xp(t)}%">${tickLab(t)}</span>`).join("") + `<span class="nowl" style="left:100%">NOW</span>`;
-    const seg = `<span class="seg end" role="group" aria-label="Range">${["24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
+    const seg = `<span class="seg end" role="group" aria-label="Range">${["3h", "24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
     // Features, day by day: how many people used each one (taps in the
     // cell's tooltip). Only features someone used this week show.
     const FEATS = [["Gamecast", /^(gamecast|game-final|gamecast-log)$/], ["Game info", /^(game-info|team-tap|status-tap|insights-open)$/], ["Quick read", /^(quick-read|past-gamecast)$/], ["Game sim", /^sim$/], ["Path to Win", /^path-(run|card|share)$|^path-of-/], ["Head to head", /^h2h$|^sh2h/], ["Win odds", /^wp-/], ["Replay", /^recap-(card|seen)$/], ["Player card", /^player-card$/], ["Leaderboard", /^ranking-expand$|^board-seen$/], ["Pot and standings", /^pot-(open|seen|row)$/], ["Season stats", /^season-(open|seen)$/], ["Side bet", /^side/], ["History", /^history(-season|-ask)?$/], ["Trivia", /^trivia/], ["Lock of the week", /^lock-(set|cleared)$/]];
@@ -1738,9 +1763,9 @@ body::before { display: none; }
       const val = (x) => (byMin ? x.ms : x.n);
       const maxV = Math.max(1, ...grid.flat().map(val));
       const hmHtml = `<div class="hm">
-        <span></span>${dayList.map((d) => `<span class="hm-h${d === today0 ? " t" : ""}" title="${esc(dLong(d))}">${esc(new Date(d).toLocaleDateString([], { weekday: "short" }).slice(0, 2))}<small>${new Date(d).getDate()}</small></span>`).join("")}<span class="hm-h">7d</span>
-        ${order.map((n, r) => laneLabel(n) + dayList.map((d, c) => { const x = grid[r][c], v = val(x), a = v ? 0.16 + 0.74 * Math.sqrt(v / maxV) : 0; return `<i class="hm-c${x.n ? "" : " z"}${st.filter && st.filter !== n ? " dim" : ""}" style="${v ? `background:rgba(139, 108, 255, ${a.toFixed(2)})` : ""}" data-tip="${esc(`<b>${name(n)} · ${dLong(d)}</b>${x.n ? `${x.n} visit${x.n === 1 ? "" : "s"} · ${mins(x.ms)} in the app${x.f.length ? `<br>${x.f.slice(0, 5).join(", ")}` : ""}` : "Not in"}`)}">${x.n ? (byMin ? mins(x.ms) : x.n) : ""}</i>`; }).join("") + (() => { const t = grid[r].reduce((a, x) => ({ n: a.n + x.n, ms: a.ms + x.ms }), { n: 0, ms: 0 }); return `<b class="hm-t num${st.filter && st.filter !== n ? " dim" : ""}">${t.n ? (byMin ? mins(t.ms) : t.n) : "–"}</b>`; })()).join("")}
-        <span class="hm-f">Everyone</span>${dayList.map((d, c) => { const t = grid.reduce((a, row) => ({ n: a.n + row[c].n, ms: a.ms + row[c].ms }), { n: 0, ms: 0 }); return `<b class="hm-s num${d === today0 ? " t" : ""}">${t.n ? (byMin ? mins(t.ms) : t.n) : "–"}</b>`; }).join("")}<b class="hm-s hm-st num">${(() => { const t = grid.flat().reduce((a, x) => ({ n: a.n + x.n, ms: a.ms + x.ms }), { n: 0, ms: 0 }); return byMin ? mins(t.ms) : t.n; })()}</b>
+        <span></span>${dayList.map((d) => `<span class="hm-h${d === today0 ? " t" : ""}" title="${esc(dLong(d))}">${esc(new Date(d).toLocaleDateString([], { weekday: "short" }).slice(0, 2))}<small>${new Date(d).getDate()}</small></span>`).join("")}
+        ${order.map((n, r) => { const t = grid[r].reduce((a, x) => ({ n: a.n + x.n, ms: a.ms + x.ms }), { n: 0, ms: 0 }); return laneLabel(n).replace(/<\/span><\/span><\/button>$/, `</span><small class="hm-lt">${t.n ? `${t.n} visit${t.n === 1 ? "" : "s"} · ${mins(t.ms) || "<1m"}` : "none this week"}</small></span></button>`) + dayList.map((d, c) => { const x = grid[r][c], v = val(x), a = v ? 0.16 + 0.74 * Math.sqrt(v / maxV) : 0; return `<i class="hm-c${x.n ? "" : " z"}${st.filter && st.filter !== n ? " dim" : ""}" style="${v ? `background:rgba(139, 108, 255, ${a.toFixed(2)})` : ""}" data-tip="${esc(`<b>${name(n)} · ${dLong(d)}</b>${x.n ? `${x.n} visit${x.n === 1 ? "" : "s"} · ${mins(x.ms)} in the app${x.f.length ? `<br>${x.f.slice(0, 5).join(", ")}` : ""}` : "Not in"}`)}">${x.n ? (byMin ? mins(x.ms) : x.n) : ""}</i>`; }).join(""); }).join("")}
+        <span class="hm-f">Everyone<small class="hm-lt">${(() => { const t = grid.flat().reduce((a2, x) => ({ n: a2.n + x.n, ms: a2.ms + x.ms }), { n: 0, ms: 0 }); return `${t.n} visits · ${mins(t.ms) || "<1m"}`; })()}</small></span>${dayList.map((d, c) => { const t = grid.reduce((a, row) => ({ n: a.n + row[c].n, ms: a.ms + row[c].ms }), { n: 0, ms: 0 }); return `<b class="hm-s num${d === today0 ? " t" : ""}">${t.n ? (byMin ? mins(t.ms) : t.n) : "–"}</b>`; }).join("")}
       </div>`;
       // When in the day: a punch card, a row per day and a column per hour,
       // a bigger, brighter dot for more visits starting in that hour.
@@ -1785,7 +1810,29 @@ body::before { display: none; }
         <span></span><div class="pl-ax">${[0, 6, 12, 18].map((i) => `<span>${esc(hourLab(hours[i].start))}</span>`).join("")}<span>now</span></div></div>
         ${quiet.length ? `<div class="note" style="margin-top:8px">Not in: ${quiet.map((r) => esc(name(r.n))).join(", ")}</div>` : ""}`;
     };
-    const timeline = wk || st.range === "7d" ? `<section class="tl panel" id="sec-tl">
+    // The last 3 hours: who was in and for how long. A bar per sitting
+    // (visits under two minutes apart join up), its length written on it;
+    // whoever is in now runs green to the now line.
+    const sessionBars = () => {
+      const span = 3 * HOUR, t0 = now - span, xp3 = (t) => ((Math.min(Math.max(t, t0), now) - t0) / span) * 100;
+      const rows = order.map((n) => {
+        const mine = vs.filter((v) => v.n === n && vEnd(v) >= t0).sort((a, b) => a.start - b.start);
+        const sits = [];
+        for (const v of mine) { const g = sits[sits.length - 1]; if (g && v.start - g.end < 2 * 60000) { g.end = Math.max(g.end, vEnd(v)); g.live = g.live || v.live; g.ms += vEnd(v) - v.start; g.acts += v.acts.length; } else sits.push({ start: v.start, end: vEnd(v), live: !!v.live, ms: vEnd(v) - v.start, acts: v.acts.length }); }
+        return { n, sits, ms: sits.reduce((t, g) => t + g.ms, 0) };
+      });
+      const on = rows.filter((r) => r.sits.length), off = rows.filter((r) => !r.sits.length);
+      const ticks = []; const h0 = new Date(t0); h0.setMinutes(h0.getMinutes() >= 30 ? 60 : 30, 0, 0); for (let t = h0.getTime(); t < now - 5 * 60000; t += 30 * 60000) ticks.push(t);
+      const lab = (t) => { const d = new Date(t); return d.getMinutes() ? `${d.getHours() % 12 || 12}:30` : hourLab(t); };
+      if (!on.length) return `<div class="note">Nobody in the last 3 hours.</div>`;
+      return `<div class="sb">${on.map((r) => `${laneLabel(r.n).replace(/<\/span><\/span><\/button>$/, `</span><small class="hm-lt">${mins(r.ms) || "<1m"} in · ${r.sits.length} visit${r.sits.length === 1 ? "" : "s"}</small></span></button>`)}<div class="sb-t${st.filter && st.filter !== r.n ? " dim" : ""}">${ticks.map((t) => `<i class="sb-g" style="left:${xp3(t).toFixed(2)}%"></i>`).join("")}${r.sits.map((g) => { const l = xp3(g.start), w = Math.max(1.6, xp3(g.end) - l), d = mins(g.ms) || "<1m"; return `<b class="sb-b${g.live ? " live" : ""}${w < 9 ? " sm" : ""}${l + w > 84 ? " end" : ""}" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%" title="${esc(`${name(r.n)}: ${hm(g.start)}${g.live ? " to now" : ` to ${hm(g.end)}`}, ${d}, ${g.acts} actions`)}"><span>${g.live ? "● " : ""}${esc(d)}</span></b>`; }).join("")}</div>`).join("")}
+        <span></span><div class="sb-ax">${ticks.map((t) => `<span style="left:${xp3(t).toFixed(2)}%">${lab(t)}</span>`).join("")}<span class="nw" style="left:100%">now</span></div></div>
+        ${off.length ? `<div class="note" style="margin-top:8px">Not in: ${off.map((r) => esc(name(r.n))).join(", ")}</div>` : ""}`;
+    };
+    const timeline = st.range === "3h" ? `<section class="tl panel" id="sec-tl">
+      <div class="ph"><h2>Last 3 hours</h2><span class="sub">who was in, and for how long</span>${seg}</div>
+      ${sessionBars()}
+    </section>` : wk || st.range === "7d" ? `<section class="tl panel" id="sec-tl">
       <div class="ph"><h2>Last 7 days</h2>${seg}</div>
       ${weekView()}
     </section>` : `<section class="tl panel" id="sec-tl">
@@ -2098,7 +2145,8 @@ body::before { display: none; }
     const topFr = [...fr.values()].sort((a, b) => b.who.size - a.who.size || b.n - a.n)[0];
     // Health by kind and target.
     const hg = new Map();
-    for (const r of opsDay) { const k = `${r.k}|${String(r.d || "").replace(/\d+(\.\d+)?s?\b/g, "#").slice(0, 60)}`; const x = hg.get(k) || { k: r.k, d: r.d, n: 0, err: (OPS_KIND[r.k] || [])[1] === "err" }; x.n++; hg.set(k, x); }
+    for (const r of opsDay) { const k = `${r.k}|${String(r.d || "").replace(/\d+(\.\d+)?s?\b/g, "#").slice(0, 60)}`; const x = hg.get(k) || { k: r.k, d: r.d, n: 0, err: (OPS_KIND[r.k] || [])[1] === "err", ats: [], vs: new Set() }; x.n++; x.ats.push(r.at); if (r.v) x.vs.add(r.v); hg.set(k, x); }
+    const when = (t) => `${afrDay(t)} ${hm(t)}`;
     const topH = [...hg.values()].sort((a, b) => b.err - a.err || b.n - a.n)[0];
     // Quick looks: visits under a minute, and where they ended.
     const quick = vs.filter((v) => !v.live && v.end - v.start < 60000);
@@ -2110,8 +2158,8 @@ body::before { display: none; }
     const biNo = chatDay.filter((r) => r.status && r.status !== "answered" && r.status !== "asked");
     if (topFr) recs.issues = { tone: "warn", t: `Fix: ${topFr.a}${topFr.d ? ` on ${topFr.d}` : ""}`, why: `${topFr.n} time${topFr.n === 1 ? "" : "s"} by ${topFr.who.size} ${topFr.who.size === 1 ? "person" : "people"} in 24h, the most common stuck moment.`,
       copy: `Brochiefs ${LEAGUE.toUpperCase()} app: players keep hitting "${topFr.a}"${topFr.d ? ` on ${topFr.d}` : ""} (${topFr.n}x, ${topFr.who.size} people, last 24h). Find what that element is meant to do, make the tap do it (or make it clearly not tappable), test at 390px, and add a fixes.json entry.` };
-    if (topH && (!recs.issues || topH.err)) recs.issues = { tone: topH.err ? "bad" : "warn", t: `${topH.err ? "Fix" : "Speed up"}: ${(OPS_KIND[topH.k] || [topH.k])[0]}`, why: `${topH.n}x in 24h: ${topH.d || topH.k}.`,
-      copy: `Brochiefs ${LEAGUE.toUpperCase()} health log: "${(OPS_KIND[topH.k] || [topH.k])[0]}" happened ${topH.n}x in the last 24h (example: ${topH.d || topH.k}). Find the cause in the Worker or app, add a retry or cache where it helps, and make sure a failure here never blocks the screen.` };
+    if (topH && (!recs.issues || topH.err)) recs.issues = { tone: topH.err ? "bad" : "warn", t: `${topH.err ? "Fix" : "Speed up"}: ${(OPS_KIND[topH.k] || [topH.k])[0]}`, why: `${topH.n}x in 24h, last ${when(Math.max(...topH.ats))}${topH.vs.size ? ` · build ${[...topH.vs].join(", ")}` : ""}: ${topH.d || topH.k}.`,
+      copy: `Brochiefs ${LEAGUE.toUpperCase()} health log: "${(OPS_KIND[topH.k] || [topH.k])[0]}" happened ${topH.n}x in the last 24h (example: ${topH.d || topH.k}; at ${topH.ats.slice().sort((a, b) => a - b).map((t) => new Date(t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })).join(", ")}${topH.vs.size ? `; app build ${[...topH.vs].join(", ")}` : ""}). Find the cause in the Worker or app, add a retry or cache where it helps, and make sure a failure here never blocks the screen.` };
     if (quick.length >= 3 && pct(quick.length, vs.length) >= 25) recs.activity = { tone: "info", t: `${pct(quick.length, vs.length)}% of visits are a quick look`, why: `${quick.length} of ${vs.length} visits lasted under a minute${topQuick ? `; most ended on ${topQuick[0]} (${topQuick[1]})` : ""}.`,
       copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${pct(quick.length, vs.length)}% of visits in the last 24h lasted under a minute${topQuick ? `, most ending on ${topQuick[0]}` : ""}. Suggest and build the one change that answers what they opened the app for in the first screen (score, my picks, standing), without adding clutter. Test at 390px.` };
     else recs.activity = { tone: "ok", t: "Visits look healthy", why: `${vs.length} visits, ${quick.length} under a minute. Nothing to fix here today.`, copy: "" };
@@ -2547,11 +2595,11 @@ body::before { display: none; }
     try { const x = await fetch(`${WORKER}/uc-hit?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.uc = Array.isArray(j.hits) ? j.hits : []; st.sig = ""; render(); } } catch {}
   }
   async function loadOps() {
-    try { const x = await fetch(`${WORKER}/ops?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.ops = Array.isArray(j.ops) ? j.ops : []; st.sig = ""; render(); } } catch {}
+    try { const x = await fetch(`${WORKER}/ops?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.ops = Array.isArray(j.ops) ? j.ops : []; applyOpsFixes(); st.sig = ""; render(); } } catch {}
   }
   async function loadAdminFriction() {
     // Fixes shipped from a pasted log live in the repo (fixes.json).
-    try { const f = await fetch(`../fixes.json?t=${Date.now()}`, { cache: "no-store" }); if (f.ok) st.afrFixes = (await f.json()).fixes || []; } catch {}
+    try { const f = await fetch(`../fixes.json?t=${Date.now()}`, { cache: "no-store" }); if (f.ok) { st.afrFixes = (await f.json()).fixes || []; applyOpsFixes(); } } catch {}
     try { const x = await fetch(`${WORKER}/admin-friction?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.afr = Array.isArray(j.taps) ? j.taps : []; st.sig = ""; render(); } } catch {}
   }
   // NFL join requests (name, email, message), newest first.

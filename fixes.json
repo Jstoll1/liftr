@@ -84,6 +84,13 @@
       "at": 1792910809000,
       "commit": "b57b6f7",
       "note": "Re-tapping the tab you're on, already at the top, now refreshes and shows 'Up to date' instead of doing nothing"
+    },
+    {
+      "k": "worker-fail",
+      "match": "/auth",
+      "at": 1793018998000,
+      "commit": "4e3b81f5",
+      "note": "A dropped /auth call keeps the last known login mode, retries once in the background and never waits over 6s"
     }
   ]
 }

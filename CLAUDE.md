@@ -37,3 +37,9 @@ add one entry to `fixes.json` (main) in the same push:
 `{ "k": "<dead-tap|rage|js-error|quick-exit>", "match": "<text from the line>", "at": <commit time in ms>, "commit": "<short sha>", "note": "<what changed>" }`.
 Live then ticks every matching entry from before the fix; a repeat after it
 stays open, which flags a fix that did not hold.
+
+The same goes for a pasted health log brief ("Brochiefs CFB health log:
+..."): add `{ "k": "<health kind, e.g. worker-fail, espn-fail, upstream-fail>",
+"match": "<text from the entry, e.g. /auth>", "at": <commit time in ms>,
+"commit": "<short sha>", "note": "<what changed>" }` to `fixes.json` in the
+same push, and Live closes every matching health entry from before it.
