@@ -1253,6 +1253,19 @@ body::before { display: none; }
 .ln-l .hm-lt { margin-top: 1px; }
 .sb-b.sm.end span { left: auto; right: calc(100% + 4px); }
 .ln-l .hm-lt { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* Records: today against the best day ever. */
+.recs-g { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 900px) { .recs-g { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.rec-m { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); min-width: 0; }
+.rec-m em { font: 500 11.5px/1.2 var(--sans); font-style: normal; color: var(--meta); }
+.rec-m b { font: 700 22px/1.1 var(--sans); }
+.rec-m span { font-size: 11.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-bar { display: block; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.rec-bar s { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.rec-m.new { border-color: rgba(251, 191, 36, .5); background: linear-gradient(180deg, rgba(251, 191, 36, .1), rgba(251, 191, 36, .02)), var(--panel2); }
+.rec-m b small { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--dim); }
+.rec-m.new b { color: var(--gold); } .rec-m.new .rec-bar s { background: var(--gold); } .rec-m.new span { color: var(--gold); }
 </style>
 </head>
 <body>
@@ -1551,6 +1564,7 @@ body::before { display: none; }
     if (!loadJoins.t || Date.now() - loadJoins.t > 60000) { loadJoins.t = Date.now(); loadJoins(); }
     if (!loadAdminFriction.t || Date.now() - loadAdminFriction.t > 60000) { loadAdminFriction.t = Date.now(); loadAdminFriction(); }
     if (!loadOps.t || Date.now() - loadOps.t > 60000) { loadOps.t = Date.now(); loadOps(); }
+    if (!loadRecords.t) { loadRecords.t = Date.now(); loadRecords(); }
     if (LEAGUE === "nfl" && (!loadUc.t || Date.now() - loadUc.t > 60000)) { loadUc.t = Date.now(); loadUc(); }
     if (LEAGUE !== "nfl" && (!loadChats.t || Date.now() - loadChats.t > 60000)) { loadChats.t = Date.now(); loadChats(); }
     try {
@@ -1609,7 +1623,7 @@ body::before { display: none; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([st.page, st.biFilter, st.vf, st.vsort, (st.uc || []).length, st.uc?.[0]?.at, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([JSON.stringify(st.rec?.best || {}), st.page, st.biFilter, st.vf, st.vsort, (st.uc || []).length, st.uc?.[0]?.at, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -2218,6 +2232,27 @@ body::before { display: none; }
         ${rows.length ? `<div class="uc-l">${rows.map(([dev, x]) => `<div class="uc-r"><b>${esc(x.who || "Unknown")}</b><span>${esc(x.kind || "")} · ${esc([...x.vias].map((v) => VIA[v] || v).join(", "))}${x.who ? "" : ` · device ${esc(dev)}`}</span><em class="num">${x.n}×</em><small>${esc(when(x.last))}</small></div>`).join("")}</div>` : `<div class="note">Nobody has hit the page yet.</div>`}
       </section>`;
     })();
+    // --- Records: today against the best day ever. Each day's totals go to
+    // the Worker (every 10 minutes at most), which keeps the best. ---
+    const ymd = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+    const dayStats = (a, b, visitsList, feedList) => {
+      const vv = visitsList.filter((v) => v.start >= a && v.start < b);
+      return { visits: vv.length, people: new Set(vv.map((v) => v.n)).size, timeMs: Math.round(visitsList.reduce((t, v) => t + Math.max(0, Math.min(vEnd(v), b) - Math.max(v.start, a)), 0)), actions: feedList.filter((e) => e.at >= a && e.at < b && e.k !== "in" && e.k !== "out" && !/^path-of-/.test(e.k)).length };
+    };
+    const todayStats = dayStats(today0, today0 + DAY, wk ? wv : vs, wk ? [...(wk.feed || []), ...feed.filter((e) => !(wk.feed || []).some((x) => x.at === e.at && x.n === e.n))] : feed);
+    if (st.rec && Date.now() - (sendRecords.t || 0) > 10 * 60000) {
+      sendRecords.t = Date.now();
+      const days = [{ d: ymd(today0), ...todayStats }];
+      if (wk) for (const d of dayList) if (d !== today0) days.push({ d: ymd(d), ...dayStats(d, d + DAY, wv, wk.feed || []) });
+      sendRecords(days);
+    }
+    const RECS = [["visits", "Visits", (v) => String(v)], ["people", "People in", (v) => String(v)], ["timeMs", "Time in app", (v) => mins(v) || "0m"], ["actions", "Actions", (v) => String(v)]];
+    const recDate = (d) => { const [y, m, dd] = String(d).split("-").map(Number); const t = new Date(y, m - 1, dd).getTime(); return t === today0 ? "today" : t === today0 - DAY ? "yesterday" : new Date(t).toLocaleDateString([], { month: "short", day: "numeric" }); };
+    const recordsPanel = st.rec ? `<section class="panel recs"><div class="ph"><h2>Records</h2><span class="sub">today against the best day ever</span></div><div class="recs-g">${RECS.map(([k, lab, f]) => {
+      const best = st.rec.best?.[k], b = Math.max(best?.v || 0, todayStats[k]), t = todayStats[k], isRec = t > 0 && t >= (best?.v || 0);
+      const share = b ? Math.min(100, (t / b) * 100) : 0;
+      return `<div class="rec-m${isRec ? " new" : ""}"><em>${lab}</em><b class="num">${esc(f(t))}${!isRec && best ? `<small>${Math.round(share)}%</small>` : ""}</b><i class="rec-bar"><s style="width:${share.toFixed(0)}%"></s></i><span>${isRec ? "🏆 New record today" : best ? `best ${esc(f(best.v))} · ${esc(recDate(best.d))}` : "first day on record"}</span></div>`;
+    }).join("")}</div></section>` : "";
     const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}</div>`;
     // Notification bar: who came in and who asked BI since you last
     // cleared it (never you). Tap a part to go there; ✕ marks it seen.
@@ -2239,7 +2274,7 @@ body::before { display: none; }
     ].filter(Boolean).join("");
     const kpisNb = kpis.replace("<!--NB-->", nRows ? `<div class="nb-rows">${nRows}</div>` : "");
     const pageBody = {
-      home: `${ucPanel}${recCard("home")}${kpisNb}${timeline}${feedHtml}${strips}${overview}${flowPanel}`,
+      home: `${ucPanel}${recCard("home")}${kpisNb}${recordsPanel}${timeline}${feedHtml}${strips}${overview}${flowPanel}`,
       activity: "",
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
       bi: `<div class="pg-bar"><h1>Ask the Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
@@ -2593,6 +2628,13 @@ body::before { display: none; }
   // NFL holding page: who reached the under construction sign.
   async function loadUc() {
     try { const x = await fetch(`${WORKER}/uc-hit?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.uc = Array.isArray(j.hits) ? j.hits : []; st.sig = ""; render(); } } catch {}
+  }
+  // Records: the best day ever for each metric, kept by the Worker.
+  async function loadRecords() {
+    try { const x = await fetch(`${WORKER}/records?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { st.rec = await x.json(); st.sig = ""; render(); } } catch {}
+  }
+  async function sendRecords(days) {
+    try { const x = await fetch(`${WORKER}/records?${auth()}`, { method: "POST", body: JSON.stringify({ days }) }); if (x.ok) { st.rec = await x.json(); st.sig = ""; render(); } } catch {}
   }
   async function loadOps() {
     try { const x = await fetch(`${WORKER}/ops?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.ops = Array.isArray(j.ops) ? j.ops : []; applyOpsFixes(); st.sig = ""; render(); } } catch {}

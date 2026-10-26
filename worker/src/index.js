@@ -129,6 +129,9 @@ const app = {
       if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
       return json(await deviceToken(env.ARCHIVE_LOG_KEY, Date.now()), 200, { ...corsHeaders, "Cache-Control": "no-store" });
     }
+    if (url.pathname === "/records") {
+      return handleRecords(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/rollups") {
       return handleRollups(request, env, corsHeaders, url);
     }
@@ -3992,6 +3995,37 @@ async function handleExpertRecord(request, env, corsHeaders, url) {
 // One key per manager holding the latest 100, so a visit costs one read and
 // one write.
 const VISITS_NOT_TRACKED = new Set(["Jake"]);
+
+// --- Records: the best day ever ------------------------------------------
+// Live sends each day's totals (visits, people in, time in app, actions);
+// the Worker keeps a 120 day history, the highest value seen for each day
+// (a day still running only ever goes up), and the best day ever for each
+// metric, so a benchmark outlives the raw logs. Admin only.
+export const RECORD_METRICS = ["visits", "people", "timeMs", "actions"];
+export function mergeRecords(have, days) {
+  const out = { days: { ...(have?.days || {}) }, best: { ...(have?.best || {}) } };
+  for (const d of Array.isArray(days) ? days.slice(0, 40) : []) {
+    if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d.d || "")) continue;
+    const cur = out.days[d.d] || {};
+    for (const k of RECORD_METRICS) { const v = Math.round(Number(d[k])); if (Number.isFinite(v) && v >= 0 && v < 1e9) cur[k] = Math.max(cur[k] || 0, v); }
+    out.days[d.d] = cur;
+  }
+  const keep = Object.keys(out.days).sort().slice(-120);
+  out.days = Object.fromEntries(keep.map((k) => [k, out.days[k]]));
+  for (const k of RECORD_METRICS) for (const [d, v] of Object.entries(out.days)) if ((v[k] || 0) > (out.best[k]?.v || 0)) out.best[k] = { v: v[k], d };
+  return out;
+}
+async function handleRecords(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+  const have = (await env.LIFTR_KV.get("records", "json")) || { days: {}, best: {} };
+  if (request.method === "GET") return json(have, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const next = mergeRecords(have, body?.days);
+  await env.LIFTR_KV.put("records", JSON.stringify(next));
+  return json(next, 200, corsHeaders);
+}
 
 // --- Weekly rollups ----------------------------------------------------
 // Raw opens and sessions are capped per owner, so a season-long view needs
