@@ -2249,9 +2249,11 @@ body::before { display: none; }
     const RECS = [["visits", "Visits", (v) => String(v)], ["people", "People in", (v) => String(v)], ["timeMs", "Time in app", (v) => mins(v) || "0m"], ["actions", "Actions", (v) => String(v)]];
     const recDate = (d) => { const [y, m, dd] = String(d).split("-").map(Number); const t = new Date(y, m - 1, dd).getTime(); return t === today0 ? "today" : t === today0 - DAY ? "yesterday" : new Date(t).toLocaleDateString([], { month: "short", day: "numeric" }); };
     const recordsPanel = st.rec ? `<section class="panel recs"><div class="ph"><h2>Records</h2><span class="sub">today against the best day ever</span></div><div class="recs-g">${RECS.map(([k, lab, f]) => {
-      const best = st.rec.best?.[k], b = Math.max(best?.v || 0, todayStats[k]), t = todayStats[k], isRec = t > 0 && t >= (best?.v || 0);
+      // The record to beat is the best of the days before today.
+      const tk = ymd(today0), prev = Object.entries(st.rec.days || {}).filter(([d]) => d !== tk).reduce((m, [d, v]) => ((v[k] || 0) > (m?.v || 0) ? { v: v[k], d } : m), null);
+      const best = prev, t = todayStats[k], b = Math.max(best?.v || 0, t), isRec = !!best && t > best.v;
       const share = b ? Math.min(100, (t / b) * 100) : 0;
-      return `<div class="rec-m${isRec ? " new" : ""}"><em>${lab}</em><b class="num">${esc(f(t))}${!isRec && best ? `<small>${Math.round(share)}%</small>` : ""}</b><i class="rec-bar"><s style="width:${share.toFixed(0)}%"></s></i><span>${isRec ? "🏆 New record today" : best ? `best ${esc(f(best.v))} · ${esc(recDate(best.d))}` : "first day on record"}</span></div>`;
+      return `<div class="rec-m${isRec ? " new" : ""}"><em>${lab}</em><b class="num">${esc(f(t))}${!isRec && best ? `<small>${Math.round(share)}%</small>` : ""}</b><i class="rec-bar"><s style="width:${share.toFixed(0)}%"></s></i><span>${isRec ? `🏆 New record · was ${esc(f(best.v))}, ${esc(recDate(best.d))}` : best ? `best ${esc(f(best.v))} · ${esc(recDate(best.d))}` : "no earlier days yet"}</span></div>`;
     }).join("")}</div></section>` : "";
     const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}</div>`;
     // Notification bar: who came in and who asked BI since you last

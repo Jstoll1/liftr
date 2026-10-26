@@ -4015,14 +4015,35 @@ export function mergeRecords(have, days) {
   for (const k of RECORD_METRICS) for (const [d, v] of Object.entries(out.days)) if ((v[k] || 0) > (out.best[k]?.v || 0)) out.best[k] = { v: v[k], d };
   return out;
 }
+// History already on hand: every day the session logs still reach gives
+// its visits, people and time in app (actions are not in the logs, so
+// those come from Live only). Merged in at most every six hours.
+export function daysFromSessions(sessionsBy) {
+  const by = {};
+  for (const [m, list] of Object.entries(sessionsBy || {})) for (const x of list || []) {
+    if (!Number.isFinite(x?.at)) continue;
+    const d = etDate(x.at), cur = by[d] || (by[d] = { d, visits: 0, people: new Set(), timeMs: 0 });
+    cur.visits++; cur.people.add(m); cur.timeMs += Math.max(0, Number(x.dur) || 0);
+  }
+  return Object.values(by).map((x) => ({ d: x.d, visits: x.visits, people: x.people.size, timeMs: x.timeMs }));
+}
 async function handleRecords(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
-  const have = (await env.LIFTR_KV.get("records", "json")) || { days: {}, best: {} };
+  let have = (await env.LIFTR_KV.get("records", "json")) || { days: {}, best: {} };
+  if (Date.now() - (have.filledAt || 0) > 6 * 3600000) {
+    try {
+      const { sessions } = await readUsage(env);
+      const days = daysFromSessions(sessions).sort((a, b) => (a.d < b.d ? 1 : -1));
+      for (let i = 0; i < days.length; i += 40) have = { ...mergeRecords(have, days.slice(i, i + 40)), filledAt: have.filledAt };
+      have.filledAt = Date.now();
+      await env.LIFTR_KV.put("records", JSON.stringify(have));
+    } catch (err) { console.error("records fill", err?.stack || String(err)); }
+  }
   if (request.method === "GET") return json(have, 200, { ...corsHeaders, "Cache-Control": "no-store" });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
-  const next = mergeRecords(have, body?.days);
+  const next = { ...mergeRecords(have, body?.days), filledAt: have.filledAt };
   await env.LIFTR_KV.put("records", JSON.stringify(next));
   return json(next, 200, corsHeaders);
 }
