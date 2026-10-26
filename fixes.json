@@ -91,6 +91,13 @@
       "at": 1793018998000,
       "commit": "4e3b81f5",
       "note": "A dropped /auth call keeps the last known login mode, retries once in the background and never waits over 6s"
+    },
+    {
+      "k": "worker-fail",
+      "match": "/avatars",
+      "at": 1793034560000,
+      "commit": "f2ff976",
+      "note": "/avatars waits 5s at most, retries once, keeps saved avatars; the roster no longer waits on it"
     }
   ]
 }
