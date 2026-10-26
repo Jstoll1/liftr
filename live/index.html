@@ -1266,6 +1266,11 @@ body::before { display: none; }
 .rec-m.new { border-color: rgba(251, 191, 36, .5); background: linear-gradient(180deg, rgba(251, 191, 36, .1), rgba(251, 191, 36, .02)), var(--panel2); }
 .rec-m b small { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--dim); }
 .rec-m.new b { color: var(--gold); } .rec-m.new .rec-bar s { background: var(--gold); } .rec-m.new span { color: var(--gold); }
+.recs .ph { flex-wrap: nowrap; align-items: center; }
+.recs .ph .sub { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recs .ph .seg { flex: none; margin-left: auto; }
+@media (max-width: 520px) { .recs .ph .sub { display: none; } }
+.rec-m span { white-space: normal; line-height: 1.3; }
 </style>
 </head>
 <body>
@@ -1335,7 +1340,7 @@ body::before { display: none; }
   function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "24h"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "7d", wk: null, sec: "sec-now", page: ["home", "issues", "bi", "stats"].includes(store.get("brochiefs_live_page")) ? store.get("brochiefs_live_page") : "home", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "24h"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "7d", wk: null, sec: "sec-now", recPeriod: store.get("brochiefs_live_recp") === "week" ? "week" : "day", page: ["home", "issues", "bi", "stats"].includes(store.get("brochiefs_live_page")) ? store.get("brochiefs_live_page") : "home", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
   // What's new since this device last looked: a baseline saved when the
   // page is put away, compared with what arrives. ✓ Seen resets it now.
   const SEEN_KEY = `brochiefs_live_seen_${LEAGUE}`;
@@ -1623,7 +1628,7 @@ body::before { display: none; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([JSON.stringify(st.rec?.best || {}), st.page, st.biFilter, st.vf, st.vsort, (st.uc || []).length, st.uc?.[0]?.at, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([st.recPeriod, JSON.stringify(st.rec?.best || {}), st.page, st.biFilter, st.vf, st.vsort, (st.uc || []).length, st.uc?.[0]?.at, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -2246,15 +2251,24 @@ body::before { display: none; }
       if (wk) for (const d of dayList) if (d !== today0) days.push({ d: ymd(d), ...dayStats(d, d + DAY, wv, wk.feed || []) });
       sendRecords(days);
     }
-    const RECS = [["visits", "Visits", (v) => String(v)], ["people", "People in", (v) => String(v)], ["timeMs", "Time in app", (v) => mins(v) || "0m"], ["actions", "Actions", (v) => String(v)]];
+    // Today against the best day before it, or this week so far against the
+    // best full week (weeks run Monday to Sunday; people is a daily average).
+    const tk = ymd(today0), recDays = { ...(st.rec?.days || {}), [tk]: { ...(st.rec?.days?.[tk] || {}), ...todayStats } };
+    const wkOf = (d) => { const [y, m, dd] = String(d).split("-").map(Number); const t = new Date(y, m - 1, dd); t.setDate(t.getDate() - ((t.getDay() + 6) % 7)); return ymd(t.getTime()); };
+    const weeks = {};
+    for (const [d, v] of Object.entries(recDays)) { const w = wkOf(d), x = weeks[w] || (weeks[w] = { visits: 0, timeMs: 0, actions: 0, peopleSum: 0, days: 0 }); x.visits += v.visits || 0; x.timeMs += v.timeMs || 0; x.actions += v.actions || 0; x.peopleSum += v.people || 0; x.days++; }
+    for (const x of Object.values(weeks)) x.people = x.days ? Math.round((x.peopleSum / x.days) * 10) / 10 : 0;
+    const curW = wkOf(tk), byWeek = st.recPeriod === "week";
+    const RECS = [["visits", "Visits", (v) => String(v)], ["people", byWeek ? "People / day" : "People in", (v) => String(v)], ["timeMs", "Time in app", (v) => mins(v) || "0m"], ["actions", "Actions", (v) => String(v)]];
     const recDate = (d) => { const [y, m, dd] = String(d).split("-").map(Number); const t = new Date(y, m - 1, dd).getTime(); return t === today0 ? "today" : t === today0 - DAY ? "yesterday" : new Date(t).toLocaleDateString([], { month: "short", day: "numeric" }); };
-    const recordsPanel = st.rec ? `<section class="panel recs"><div class="ph"><h2>Records</h2><span class="sub">today against the best day ever</span></div><div class="recs-g">${RECS.map(([k, lab, f]) => {
-      // The record to beat is the best of the days before today.
-      const tk = ymd(today0), prev = Object.entries(st.rec.days || {}).filter(([d]) => d !== tk).reduce((m, [d, v]) => ((v[k] || 0) > (m?.v || 0) ? { v: v[k], d } : m), null);
-      const best = prev, t = todayStats[k], b = Math.max(best?.v || 0, t), isRec = !!best && t > best.v;
-      const share = b ? Math.min(100, (t / b) * 100) : 0;
-      return `<div class="rec-m${isRec ? " new" : ""}"><em>${lab}</em><b class="num">${esc(f(t))}${!isRec && best ? `<small>${Math.round(share)}%</small>` : ""}</b><i class="rec-bar"><s style="width:${share.toFixed(0)}%"></s></i><span>${isRec ? `🏆 New record · was ${esc(f(best.v))}, ${esc(recDate(best.d))}` : best ? `best ${esc(f(best.v))} · ${esc(recDate(best.d))}` : "no earlier days yet"}</span></div>`;
-    }).join("")}</div></section>` : "";
+    const wkDate = (w) => `wk of ${recDate(w)}`;
+    const recordsPanel = st.rec ? `<section class="panel recs"><div class="ph"><h2>Records</h2><span class="sub">${byWeek ? "this week so far against the best week" : "today against the best day"}</span><span class="seg sm end" role="group" aria-label="Period"><button type="button" class="${byWeek ? "" : "on"}" data-recp="day">24h</button><button type="button" class="${byWeek ? "on" : ""}" data-recp="week">Week</button></span></div><div class="recs-g">${RECS.map(([k, lab, f]) => {
+      const pool = byWeek ? Object.entries(weeks).filter(([w]) => w !== curW) : Object.entries(recDays).filter(([d]) => d !== tk);
+      const prev = pool.reduce((m, [d, v]) => ((v[k] || 0) > (m?.v || 0) ? { v: v[k], d } : m), null);
+      const t = byWeek ? (weeks[curW]?.[k] || 0) : todayStats[k], b = Math.max(prev?.v || 0, t), isRec = !!prev && t > prev.v;
+      const share = b ? Math.min(100, (t / b) * 100) : 0, when = (d) => (byWeek ? wkDate(d) : recDate(d));
+      return `<div class="rec-m${isRec ? " new" : ""}"><em>${lab}</em><b class="num">${esc(f(t))}${!isRec && prev ? `<small>${Math.round(share)}%</small>` : ""}</b><i class="rec-bar"><s style="width:${share.toFixed(0)}%"></s></i><span>${isRec ? `🏆 New record · was ${esc(f(prev.v))}, ${esc(when(prev.d))}` : prev ? `best ${esc(f(prev.v))} · ${esc(when(prev.d))}` : `no earlier ${byWeek ? "weeks" : "days"} yet`}</span></div>`;
+    }).join("")}</div>${byWeek ? `<div class="note" style="margin-top:8px">This week: ${weeks[curW]?.days || 0} of 7 days in.</div>` : ""}</section>` : "";
     const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}</div>`;
     // Notification bar: who came in and who asked BI since you last
     // cleared it (never you). Tap a part to go there; ✕ marks it seen.
@@ -2399,6 +2413,8 @@ body::before { display: none; }
     if (jb) { goPage(PAGE_OF[jb.dataset.jump] || jb.dataset.jump); return; }
     const ns = e.target.closest("[data-nseen]");
     if (ns) { store.set(`brochiefs_live_notif_seen_${ns.dataset.nseen}${SFX}`, String(Date.now())); st.sig = ""; render(); return; }
+    const rp = e.target.closest("[data-recp]");
+    if (rp) { st.recPeriod = rp.dataset.recp; store.set("brochiefs_live_recp", st.recPeriod); st.sig = ""; render(); return; }
     const vfb = e.target.closest("[data-vf]");
     if (vfb) { st.vf = vfb.dataset.vf === "all" ? null : vfb.dataset.vf; st.sig = ""; render(); return; }
     const bf = e.target.closest("[data-bif]");
