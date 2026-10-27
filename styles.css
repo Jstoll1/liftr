@@ -8458,7 +8458,7 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 .ask-h b { font: 400 10px 'Press Start 2P', monospace; color: var(--neon-cyan, #05d9e8); letter-spacing: .04em; }
 .ask-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .18); background: none; color: #fff; cursor: pointer; }
 .ask-log { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 8px; }
-.ask-log p { margin: 0; font-size: 14px; line-height: 1.45; }
+.ask-log p, .ask-log .ask-a { margin: 0; font-size: 14px; line-height: 1.45; }
 .ask-hint { color: var(--text-meta, #a99cc7); }
 .ask-q { align-self: flex-end; max-width: 85%; padding: 7px 11px; border-radius: 14px 14px 4px 14px; background: rgba(5, 217, 232, .16); color: #fff; }
 .ask-a { align-self: flex-start; max-width: 92%; padding: 8px 11px; border-radius: 14px 14px 14px 4px; background: rgba(255, 255, 255, .06); color: var(--text, #f4f0ff); }
@@ -8602,3 +8602,9 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 .since-flash { animation: since-flash 1.6s ease-out; }
 @keyframes since-flash { 0%, 40% { box-shadow: 0 0 0 2px var(--neon-cyan); } 100% { box-shadow: 0 0 0 0 transparent; } }
 .since-h + .since-tiles { border-top: 0; padding-top: 2px; }
+/* Chief answers: short paragraphs and lists, tight. */
+.ask-a .ask-p { display: block; }
+.ask-a .ask-p + .ask-p, .ask-a ol + .ask-p, .ask-a ul + .ask-p, .ask-a .ask-p + ol, .ask-a .ask-p + ul { margin-top: 6px; }
+.ask-a ol, .ask-a ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.ask-a li::marker { color: var(--neon-cyan); font-weight: 700; }
+.ask-a b { color: var(--text); font-weight: 700; }

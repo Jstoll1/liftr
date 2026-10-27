@@ -5,6 +5,21 @@
 (() => {
   if (typeof WORKER_URL === "undefined" || !WORKER_URL || window.LEAGUE?.sport === "nfl") return;
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // An answer as a few blocks: lines starting "1." become a numbered list,
+  // "-" or "•" a bullet list, the rest short paragraphs. Escaped first, so
+  // nothing in the text can become markup; **bold** is the only styling.
+  const fmtA = (t) => {
+    const out = []; let list = null;
+    const inl = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    for (const raw of String(t ?? "").split(/\n+/)) {
+      const line = raw.trim(); if (!line) continue;
+      const m = line.match(/^(\d+)[.)]\s+(.*)$/) || line.match(/^[-•]\s+(.*)$/);
+      const kind = /^\d/.test(line) && m ? "ol" : m ? "ul" : null;
+      if (kind) { if (!list || list.kind !== kind) { list = { kind, items: [] }; out.push(list); } list.items.push(inl(m[m.length - 1])); }
+      else { list = null; out.push(`<span class="ask-p">${inl(line)}</span>`); }
+    }
+    return out.map((x) => (typeof x === "string" ? x : `<${x.kind}>${x.items.map((i) => `<li>${i}</li>`).join("")}</${x.kind}>`)).join("");
+  };
   // Small odds keep a decimal, so "0.4%, down from 1.2%" never reads as
   // "under 1%, down from 1%".
   const pct = (p) => (p >= 0.995 ? "over 99%" : p > 0 && p < 0.001 ? "under 0.1%" : p < 0.1 && p > 0 ? `${(p * 100).toFixed(1)}%` : `${Math.round(p * 100)}%`);
@@ -324,7 +339,7 @@
       document.body.appendChild(m);
     }
     m.innerHTML = `<div class="ask-card"><span class="ask-grip" aria-hidden="true"></span><div class="ask-h"><b>🧠 ASK THE CHIEF<small>Ask about odds, what-ifs, who's out, picks and the tiebreaker.</small></b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy chat"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
-      <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><p class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : esc(x.a)}</p>`).join("") : `<p class="ask-hint">Ask anything about this week's race: odds, "what if" a game goes one way, who's out, who picked what, the tiebreaker. The numbers come from the same runs as the WIN% column.</p>`}</div>
+      <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><div class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : fmtA(x.a)}</div>`).join("") : `<p class="ask-hint">Ask anything about this week's race: odds, "what if" a game goes one way, who's out, who picked what, the tiebreaker. The numbers come from the same runs as the WIN% column.</p>`}</div>
       <div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}">${esc(c)}</button>`).join("")}</div>
       <form class="ask-f"><input type="text" maxlength="200" placeholder="If Michigan wins can I still win?" ${busy ? "disabled" : ""} autocomplete="off"><button type="submit" ${busy ? "disabled" : ""}>Ask</button></form></div>`;
     const lg = m.querySelector(".ask-log"); lg.scrollTop = lg.scrollHeight;
