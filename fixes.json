@@ -98,6 +98,27 @@
       "at": 1793034560000,
       "commit": "f2ff976",
       "note": "/avatars waits 5s at most, retries once, keeps saved avatars; the roster no longer waits on it"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".gc-rc",
+      "at": 1793061186000,
+      "commit": "67b2cb6",
+      "note": "Names in the Gamecast room open that player's card"
+    },
+    {
+      "k": "quick-exit",
+      "match": "admin-gate",
+      "at": 1793061186000,
+      "commit": "67b2cb6",
+      "note": "Logo taps only count toward the admin prompt when already at the top, so tapping to scroll up never opens it"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".LI “2”",
+      "at": 1793061186000,
+      "commit": "67b2cb6",
+      "note": "Steps in the How chance to win works explainer are reading, not controls; no longer logged as dead taps"
     }
   ]
 }
