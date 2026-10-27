@@ -8719,7 +8719,8 @@ function renderSinceLine(ranked, cloudPicks, live) {
   const cov = {};
   for (const g of GAMES) { const st = sinceState(g, picks[g.id], live[g.id]); if (st) cov[g.id] = st; }
   const livePts = GAMES.some((g) => live[g.id]?.found && live[g.id].state === "in" && !live[g.id].completed) ? inFlightPoints(picks, live) : null;
-  const now = { mgr: me, week: currentWeek, at: Date.now(), pts: row?.score ?? 0, place: row?.place ?? null, live: livePts, cov };
+  const fin = GAMES.filter((g) => cov[g.id] && live[g.id]?.completed).map((g) => g.id);
+  const now = { mgr: me, week: currentWeek, at: Date.now(), pts: row?.score ?? 0, place: row?.place ?? null, live: livePts, cov, fin };
   if (sinceBase === undefined) { try { sinceBase = JSON.parse(localStorage.getItem(SINCE_KEY) || "null"); } catch { sinceBase = null; } if (sinceBase && (sinceBase.mgr !== me || sinceBase.week !== currentWeek)) sinceBase = null; }
   try { localStorage.setItem(SINCE_KEY, JSON.stringify(now)); } catch {}
   const b = sinceBase, flips = [], liveRows = [];
@@ -8742,7 +8743,10 @@ function renderSinceLine(ranked, cloudPicks, live) {
     if (l.state === "in" && !l.completed) { liveRows.push(row2(g, is, is === "up" ? "covering" : is === "push" ? "pushing" : "not covering")); if (liveFirst === null) liveFirst = g.id; }
     if (!b) continue;
     const was = b.cov?.[g.id];
-    if (was === is || (!was && is === "down")) continue;
+    // A game that went final since the last look always reads, cashed or
+    // missed, even when it was already covering (or not) before.
+    const newlyFinal = l.completed && !(b.fin || []).includes(g.id);
+    if (!newlyFinal && (was === is || (!was && is === "down"))) continue;
     flips.push(row2(g, is, is === "up" ? (l.completed ? "cashed" : "now covering") : is === "push" ? "pushing" : (l.completed ? "missed" : "no longer covering")));
     if (first === null) first = g.id;
   }
