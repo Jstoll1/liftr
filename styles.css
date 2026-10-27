@@ -8575,17 +8575,22 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 .since-line.hidden { display: none; }
 .since-h { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 7px; line-height: 1; color: var(--neon-cyan); letter-spacing: .04em; }
 .since-rows { display: flex; flex-direction: column; }
-.since-row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto 10px; align-items: center; column-gap: 8px; min-height: 30px; border-top: 1px solid rgba(255, 255, 255, .06); font-size: 13px; }
+.since-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 10px; align-items: center; column-gap: 10px; min-height: 44px; padding: 4px 0; border-top: 1px solid rgba(255, 255, 255, .06); font-size: 13px; }
 .since-row:first-child { border-top: 0; }
-.since-row > i { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); }
-.since-row.up > i { background: var(--neon-green); box-shadow: 0 0 6px rgba(57, 255, 136, .6); }
-.since-row.dn > i { background: var(--neon-pink); box-shadow: 0 0 6px rgba(255, 32, 121, .6); }
-.since-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-meta); }
-.since-row > span b { color: var(--text); font-weight: 700; }
+/* The logo sits in a ring coloured by how the pick stands. */
+.since-row > i { position: relative; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 2px var(--text-dim); }
+.since-row.up > i { box-shadow: inset 0 0 0 2px var(--neon-green), 0 0 6px rgba(57, 255, 136, .45); }
+.since-row.dn > i { box-shadow: inset 0 0 0 2px var(--neon-pink), 0 0 6px rgba(255, 32, 121, .45); }
+.since-row > i img { width: 20px; height: 20px; object-fit: contain; }
+.since-row > span { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.since-t, .since-sc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.since-t { color: var(--text-meta); }
+.since-t b { color: var(--text); font-weight: 700; }
+.since-sc { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .since-row > em { font-style: normal; font-weight: 800; font-variant-numeric: tabular-nums; font-size: 13px; }
 .since-row.up > em { color: var(--neon-green); } .since-row.dn > em { color: var(--neon-pink); } .since-row.eq > em { color: var(--text-dim); }
 .since-row > s { text-decoration: none; color: var(--text-dim); font-size: 16px; line-height: 1; justify-self: end; }
-.since-more { min-height: 26px; display: flex; align-items: center; padding-left: 16px; border-top: 1px solid rgba(255, 255, 255, .06); font-size: 12px; color: var(--text-dim); }
+.since-more { min-height: 26px; display: flex; align-items: center; padding-left: 38px; border-top: 1px solid rgba(255, 255, 255, .06); font-size: 12px; color: var(--text-dim); }
 .since-tiles { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid rgba(255, 255, 255, .08); padding-top: 8px; }
 .since-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .since-tile + .since-tile { border-left: 1px solid rgba(255, 255, 255, .08); }
