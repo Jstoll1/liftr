@@ -2191,7 +2191,9 @@ body::before { display: none; }
     const hg = new Map();
     for (const r of opsDay) { const k = `${r.k}|${String(r.d || "").replace(/\d+(\.\d+)?s?\b/g, "#").slice(0, 60)}`; const x = hg.get(k) || { k: r.k, d: r.d, n: 0, err: (OPS_KIND[r.k] || [])[1] === "err", ats: [], vs: new Set() }; x.n++; x.ats.push(r.at); if (r.v) x.vs.add(r.v); hg.set(k, x); }
     const when = (t) => `${afrDay(t)} ${hm(t)}`;
-    const topH = [...hg.values()].sort((a, b) => b.err - a.err || b.n - a.n)[0];
+    // A slow source the Worker already covered with its saved copy is a
+    // note in the log, not an action: nothing waited and nothing broke.
+    const topH = [...hg.values()].filter((x) => !(x.k === "upstream-slow" && /saved copy served/.test(x.d || ""))).sort((a, b) => b.err - a.err || b.n - a.n)[0];
     // Quick looks: visits under a minute, and where they ended.
     const quick = vs.filter((v) => !v.live && v.end - v.start < 60000);
     const lastScr = new Map();

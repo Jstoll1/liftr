@@ -596,7 +596,16 @@ function opsNote(k, d, extra = {}) {
 }
 async function opsFlush(env) {
   if (!opsQ.length || !env?.LIFTR_KV) return;
-  const add = opsQ.splice(0);
+  let add = opsQ.splice(0);
+  // "Noted once per 6h" has to hold across every Worker instance, not just
+  // this one's memory: the first instance to note a slow host marks it in KV
+  // and the rest skip it until the mark expires.
+  add = (await Promise.all(add.map(async (e) => {
+    const host = e.k === "upstream-slow" && /missed our deadline/.test(e.d) ? e.d.split(" ")[0] : "";
+    if (!host) return e;
+    try { if (await env.LIFTR_KV.get(`slownote:${host}`)) return null; await env.LIFTR_KV.put(`slownote:${host}`, "1", { expirationTtl: 6 * 3600 }); } catch {}
+    return e;
+  }))).filter(Boolean);
   try { await Promise.all(add.map((e) => logPut(env, "ops:", e, 7))); }
   catch (err) { console.error("ops log", err?.stack || String(err)); }
 }
