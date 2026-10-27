@@ -133,6 +133,13 @@
       "at": 1793099620000,
       "commit": "6910471",
       "note": "/weeks waits 6s at most and retries once; the saved weeks show meanwhile and the screen never waits on it. Live now closes a multi-call blip from one phone as one event"
+    },
+    {
+      "k": "upstream-slow",
+      "match": "missed our deadline",
+      "at": 1793100612000,
+      "commit": "69ae05a",
+      "note": "Already covered (short try, cool-down, saved copy served). The once-per-6h note now holds across all Worker instances via KV, and Live no longer raises it as an action"
     }
   ]
 }
