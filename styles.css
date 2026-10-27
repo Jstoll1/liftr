@@ -8550,3 +8550,19 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 }
 .modal-overlay, .wpx-overlay { overscroll-behavior: contain; padding-top: max(16px, env(safe-area-inset-top)); padding-bottom: max(16px, env(safe-area-inset-bottom)); }
 .h2h-card { max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; }
+
+/* Phones: All Picks fits the screen, every game visible, no sideways
+   scroll. Fixed columns share the width; names truncate rather than push. */
+@media (max-width: 520px) {
+  .scoreboard-table { min-width: 0; table-layout: fixed; font-size: 10px; }
+  .scoreboard-table th, .scoreboard-table td { padding: 5px 0; }
+  .scoreboard-table th.manager-col, .scoreboard-table td.manager-col { width: 72px; padding-left: 5px; overflow: hidden; text-overflow: ellipsis; }
+  .scoreboard-table td.manager-col .ap-who { font-size: 11px; }
+  .scoreboard-table .ap-place { margin-left: 2px; font-size: 7px; }
+  .scoreboard-table th { font-size: 8px; letter-spacing: 0; }
+  .scoreboard-table th:nth-last-child(2) { width: 20px; }
+  .scoreboard-table th:last-child { width: 26px; }
+  .scoreboard-table .pick-cell-logo { width: 18px; height: 18px; max-width: 100%; }
+  .scoreboard-table .pick-pill { min-width: 0; max-width: calc(100% - 2px); padding-left: 1px; padding-right: 1px; box-sizing: border-box; }
+  .scoreboard-table td > * { max-width: 100%; }
+}
