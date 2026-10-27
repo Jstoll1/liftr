@@ -332,6 +332,9 @@ html.pro .pr-term { flex: 0 1 auto !important; font-family: Inter, system-ui, sa
 html.pro .pr-screen:not(.pc) { align-items: center !important; }
 html.pro .pr-screen:not(.pc) .pr-win { max-height: 100%; height: auto !important; }
 html.pro .since-line { background: var(--s1) !important; border: 1px solid var(--line2) !important; border-left: 3px solid var(--acc) !important; }
-html.pro .since-line > i { font-family: Inter, system-ui, sans-serif !important; font-size: 10px !important; font-weight: 700 !important; color: var(--acc-ink) !important; }
+html.pro .since-l > i { font-family: Inter, system-ui, sans-serif !important; font-size: 10px !important; font-weight: 700 !important; color: var(--acc-ink) !important; }
 html.pro .since-list .up { color: var(--win) !important; } html.pro .since-list .dn { color: var(--loss) !important; }
 html.pro .since-flash { animation: none; box-shadow: 0 0 0 2px var(--acc) !important; transition: box-shadow 1.2s; }
+html.pro .since-stat u.up { color: var(--win) !important; } html.pro .since-stat u.dn { color: var(--loss) !important; }
+html.pro .since-stat b { font-family: Inter, system-ui, sans-serif; }
+html.pro .since-stat small em.up { color: var(--win) !important; } html.pro .since-stat small em.dn { color: var(--loss) !important; }
