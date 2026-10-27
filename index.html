@@ -31,13 +31,13 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" /></noscript>
-  <meta name="build" content="589201282923" />
-  <link rel="stylesheet" href="styles.css?v=394292073999" />
-  <!-- Brochiefs Pro, the trial theme: off unless this phone opted in
-       (?theme=pro turns it on and remembers, ?theme=classic turns it off);
-       always on for the preview site. Scoped to html.pro, so Classic never
-       sees a rule of it. -->
-  <script>(function(){var q=location.search,k="brochiefs_style";try{if(/[?&]theme=pro\b/.test(q))localStorage.setItem(k,"pro");if(/[?&]theme=classic\b/.test(q))localStorage.setItem(k,"classic");}catch(e){}var v="";try{v=localStorage.getItem(k)||""}catch(e){}var on=v==="pro"||(/(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname)&&v!=="classic");window.APP_STYLE=on?"pro":"classic";if(!on)return;document.documentElement.classList.add("pro");var l=document.createElement("link");l.rel="stylesheet";l.href="themes/pro.css?v=024598318220";document.head.appendChild(l);})();</script>
+  <meta name="build" content="973830746837" />
+  <link rel="stylesheet" href="styles.css?v=589950927585" />
+  <!-- Brochiefs Pro, the trial theme. PAUSED: brochiefs.com is Retro only
+       (trial=false ignores ?theme=pro and clears a saved choice). The preview
+       site still runs it. To restart the trial, set trial=true. Scoped to
+       html.pro, so Retro never sees a rule of it. -->
+  <script>(function(){var trial=false,pv=/(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname),q=location.search,k="brochiefs_style";if(!trial&&!pv){try{localStorage.removeItem(k)}catch(e){}window.APP_STYLE="classic";return;}try{if(/[?&]theme=pro\b/.test(q))localStorage.setItem(k,"pro");if(/[?&]theme=classic\b/.test(q))localStorage.setItem(k,"classic");}catch(e){}var v="";try{v=localStorage.getItem(k)||""}catch(e){}var on=v==="pro"||(/(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname)&&v!=="classic");window.APP_STYLE=on?"pro":"classic";if(!on)return;document.documentElement.classList.add("pro");var l=document.createElement("link");l.rel="stylesheet";l.href="themes/pro.css?v=024598318220";document.head.appendChild(l);})();</script>
   <link rel="stylesheet" href="history.css?v=145654074095" />
 </head>
 <body>
@@ -645,6 +645,6 @@
   <script data-goatcounter="https://brochiefs.goatcounter.com/count"
           data-goatcounter-settings='{"no_onload": true}'
           async src="https://gc.zgo.at/count.js"></script>
-  <script src="app.js?v=314823555890"></script>
+  <script src="app.js?v=627814178596"></script>
 </body>
 </html>

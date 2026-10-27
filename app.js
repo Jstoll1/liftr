@@ -8732,7 +8732,7 @@ function renderSinceLine(ranked, cloudPicks, live) {
   }
   if (!changed) { el.classList.add("hidden"); el.innerHTML = ""; return; }
   el.dataset.sg = first ?? "";
-  el.innerHTML = `<span class="since-l"><i>SINCE YOU LAST LOOKED</i><span class="since-list">${flips.join("") || `<span class="since-none">No pick changed sides</span>`}</span></span>${stats ? `<span class="since-r">${stats}</span>` : ""}`;
+  el.innerHTML = `<span class="since-l"><i>SINCE YOU LAST LOOKED</i><span class="since-list">${(flips.length > 3 ? [...flips.slice(0, 2), `<span class="since-more">+${flips.length - 2} more</span>`] : flips).join("") || `<span class="since-none">No pick changed sides</span>`}</span></span>${stats ? `<span class="since-r">${stats}</span>` : ""}`;
   el.classList.remove("hidden");
 }
 // Tap: jump to that game's score card (the flip tapped, else the first).
