@@ -126,6 +126,13 @@
       "at": 1793070089000,
       "commit": "a34f018",
       "note": "Trivia boards wait 5s at most, retry once, and show the last good board on a miss; the screen never waits on them"
+    },
+    {
+      "k": "worker-fail",
+      "match": "/weeks",
+      "at": 1793099620000,
+      "commit": "6910471",
+      "note": "/weeks waits 6s at most and retries once; the saved weeks show meanwhile and the screen never waits on it. Live now closes a multi-call blip from one phone as one event"
     }
   ]
 }
