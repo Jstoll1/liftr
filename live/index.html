@@ -2185,7 +2185,8 @@ body::before { display: none; }
     const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
     // Stuck moments by what was tapped.
     const fr = new Map();
-    for (const e of actions) if (FRICTION.test(e.k)) { const [a, d] = says(e, feed); const k = `${a}|${d}`; const x = fr.get(k) || { a: a.replace("⚠ ", ""), d, n: 0, who: new Set() }; x.n++; x.who.add(e.n); fr.set(k, x); }
+    // A stuck moment a shipped fix already covers (fixes.json) is done.
+    for (const e of actions) if (FRICTION.test(e.k) && !afrFix(e)) { const [a, d] = says(e, feed); const k = `${a}|${d}`; const x = fr.get(k) || { a: a.replace("⚠ ", ""), d, n: 0, who: new Set() }; x.n++; x.who.add(e.n); fr.set(k, x); }
     const topFr = [...fr.values()].sort((a, b) => b.who.size - a.who.size || b.n - a.n)[0];
     // Health by kind and target.
     const hg = new Map();
@@ -2193,7 +2194,12 @@ body::before { display: none; }
     const when = (t) => `${afrDay(t)} ${hm(t)}`;
     // A slow source the Worker already covered with its saved copy is a
     // note in the log, not an action: nothing waited and nothing broke.
-    const topH = [...hg.values()].filter((x) => !(x.k === "upstream-slow" && /saved copy served/.test(x.d || ""))).sort((a, b) => b.err - a.err || b.n - a.n)[0];
+    // What is worth a card: any failure, and a slow kind only when it keeps
+    // happening (3+ in 24h); an outside API's 429 is the same (the Worker
+    // cools off and serves its saved copy). A slow source the Worker already covered with its
+    // saved copy is a note in the log, not an action: nothing waited.
+    const hOpen = [...hg.values()].filter((x) => !(x.k === "upstream-slow" && /saved copy served/.test(x.d || "")) && ((x.err && !(x.k === "upstream-fail" && /\b429\b/.test(x.d || ""))) || x.n >= 3)).sort((a, b) => b.err - a.err || b.n - a.n);
+    const topH = hOpen[0];
     // Quick looks: visits under a minute, and where they ended.
     const quick = vs.filter((v) => !v.live && v.end - v.start < 60000);
     const lastScr = new Map();
@@ -2204,8 +2210,20 @@ body::before { display: none; }
     const biNo = chatDay.filter((r) => r.status && r.status !== "answered" && r.status !== "asked");
     if (topFr) recs.issues = { tone: "warn", t: `Fix: ${topFr.a}${topFr.d ? ` on ${topFr.d}` : ""}`, why: `${topFr.n} time${topFr.n === 1 ? "" : "s"} by ${topFr.who.size} ${topFr.who.size === 1 ? "person" : "people"} in 24h, the most common stuck moment.`,
       copy: `Brochiefs ${LEAGUE.toUpperCase()} app: players keep hitting "${topFr.a}"${topFr.d ? ` on ${topFr.d}` : ""} (${topFr.n}x, ${topFr.who.size} people, last 24h). Find what that element is meant to do, make the tap do it (or make it clearly not tappable), test at 390px, and add a fixes.json entry.` };
-    if (topH && (!recs.issues || topH.err)) recs.issues = { tone: topH.err ? "bad" : "warn", t: `${topH.err ? "Fix" : "Speed up"}: ${(OPS_KIND[topH.k] || [topH.k])[0]}`, why: `${topH.n}x in 24h, last ${when(Math.max(...topH.ats))}${topH.vs.size ? ` · build ${[...topH.vs].join(", ")}` : ""}: ${topH.d || topH.k}.`,
-      copy: `Brochiefs ${LEAGUE.toUpperCase()} health log: "${(OPS_KIND[topH.k] || [topH.k])[0]}" happened ${topH.n}x in the last 24h (example: ${topH.d || topH.k}; at ${topH.ats.slice().sort((a, b) => a - b).map((t) => new Date(t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })).join(", ")}${topH.vs.size ? `; app build ${[...topH.vs].join(", ")}` : ""}). Find the cause in the Worker or app, add a retry or cache where it helps, and make sure a failure here never blocks the screen.` };
+    if (topH && (!recs.issues || topH.err)) {
+      const lab = (x) => (OPS_KIND[x.k] || [x.k])[0];
+      const target = (x) => String(x.d || x.k).split(" ")[0];
+      const ts = (x) => x.ats.slice().sort((a, b) => a - b).map((t) => new Date(t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })).join(", ");
+      const item = (x) => `"${lab(x)}" happened ${x.n}x in the last 24h (example: ${x.d || x.k}; at ${ts(x)}${x.vs.size ? `; app build ${[...x.vs].join(", ")}` : ""})`;
+      const more = hOpen.length - 1;
+      recs.issues = { tone: topH.err ? "bad" : "warn", t: `${topH.err ? "Fix" : "Speed up"}: ${lab(topH)} · ${target(topH)}${more ? ` (+${more} more)` : ""}`,
+        why: `${topH.n}x in 24h, last ${when(Math.max(...topH.ats))}${topH.vs.size ? ` · build ${[...topH.vs].join(", ")}` : ""}: ${topH.d || topH.k}.${more ? ` Also open: ${hOpen.slice(1, 4).map((x) => `${lab(x)} ${target(x)}`).join(", ")}${more > 3 ? "…" : ""}.` : ""}`,
+        // Every open health item in one brief, so one paste clears them all
+        // instead of a new card on every load.
+        copy: hOpen.length === 1
+          ? `Brochiefs ${LEAGUE.toUpperCase()} health log: ${item(topH)}. Find the cause in the Worker or app, add a retry or cache where it helps, and make sure a failure here never blocks the screen.`
+          : `Brochiefs ${LEAGUE.toUpperCase()} health log, ${hOpen.length} open items in the last 24h:\n${hOpen.slice(0, 8).map((x, n) => `${n + 1}. ${item(x)}`).join("\n")}\nFind the cause of each in the Worker or app (several at the same minute on one phone are a connection drop), add a retry or cache where it helps, make sure a failure never blocks the screen, and add a fixes.json entry for each.` };
+    }
     if (quick.length >= 3 && pct(quick.length, vs.length) >= 25) recs.activity = { tone: "info", t: `${pct(quick.length, vs.length)}% of visits are a quick look`, why: `${quick.length} of ${vs.length} visits lasted under a minute${topQuick ? `; most ended on ${topQuick[0]} (${topQuick[1]})` : ""}.`,
       copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${pct(quick.length, vs.length)}% of visits in the last 24h lasted under a minute${topQuick ? `, most ending on ${topQuick[0]}` : ""}. Suggest and build the one change that answers what they opened the app for in the first screen (score, my picks, standing), without adding clutter. Test at 390px.` };
     else recs.activity = { tone: "ok", t: "Visits look healthy", why: `${vs.length} visits, ${quick.length} under a minute. Nothing to fix here today.`, copy: "" };
