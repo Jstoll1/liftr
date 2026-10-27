@@ -8723,29 +8723,35 @@ function renderSinceLine(ranked, cloudPicks, live) {
   if (sinceBase === undefined) { try { sinceBase = JSON.parse(localStorage.getItem(SINCE_KEY) || "null"); } catch { sinceBase = null; } if (sinceBase && (sinceBase.mgr !== me || sinceBase.week !== currentWeek)) sinceBase = null; }
   try { localStorage.setItem(SINCE_KEY, JSON.stringify(now)); } catch {}
   const b = sinceBase, flips = [];
-  let first = null, stats = "", changed = false;
+  let first = null, changed = false;
   if (b) {
     for (const g of GAMES) {
       const was = b.cov?.[g.id], is = cov[g.id];
       if (!is || was === is || (!was && is === "down")) continue;
-      const fin = live[g.id]?.completed;
-      const team = escapeCd(picks[g.id].team === g.home ? g.homeShort : g.awayShort);
+      const l = live[g.id], fin = l?.completed, pk = picks[g.id];
+      const team = escapeCd(pk.team === g.home ? g.homeShort : g.awayShort);
       const say = is === "up" ? (fin ? "cashed" : "now covering") : is === "push" ? "pushing" : (fin ? "missed" : "no longer covering");
-      flips.push(`<span class="${is === "up" ? "up" : is === "push" ? "" : "dn"}" data-sg="${g.id}"><b>${team}</b> ${say}</span>`);
+      // What the pick is worth on this score: banked if final, in play if live.
+      const v = scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) ?? 0;
+      const tone = is === "up" ? "up" : is === "push" ? "eq" : "dn";
+      flips.push(`<span class="since-row ${tone}" data-sg="${g.id}"><i></i><span><b>${team}</b> ${say}</span><em>${v > 0 ? "+" : ""}${v}</em><s>›</s></span>`);
       if (first === null) first = g.id;
     }
     const dp = now.pts - (b.pts || 0), dPlace = b.place && now.place ? b.place - now.place : 0;
     const dl = livePts !== null ? livePts - (b.live ?? 0) : 0;
     changed = flips.length > 0 || dp !== 0 || dPlace !== 0 || dl !== 0;
-    const arrow = (d) => (d > 0 ? `<u class="up">▲${d}</u>` : d < 0 ? `<u class="dn">▼${-d}</u>` : "");
-    // Right side: live points in play with their move, then banked points
-    // and place with theirs.
-    if (livePts !== null) stats += `<span class="since-stat"><small>LIVE</small><b>${livePts > 0 ? "+" : ""}${livePts}</b>${arrow(dl)}</span>`;
-    if (dp || dPlace) stats += `<span class="since-stat"><small>${now.place ? ordinal(now.place).toUpperCase() : "PTS"}${dPlace ? ` <em class="${dPlace > 0 ? "up" : "dn"}">${dPlace > 0 ? "↑" : "↓"}${Math.abs(dPlace)}</em>` : ""}</small><b>${now.pts}</b>${arrow(dp)}</span>`;
+    var tiles = (() => {
+      const mv = (d, up = "▲", dn = "▼") => (d > 0 ? `<u class="up">${up}${d}</u>` : d < 0 ? `<u class="dn">${dn}${-d}</u>` : `<u class="eq">–</u>`);
+      const tile = (k, v, d) => `<span class="since-tile"><small>${k}</small><span><b>${v}</b>${d}</span></span>`;
+      return tile("LIVE", livePts === null ? "–" : `${livePts > 0 ? "+" : ""}${livePts}`, livePts === null ? "" : mv(dl))
+        + tile("POINTS", now.pts, mv(dp))
+        + tile("PLACE", now.place ? ordinal(now.place).toUpperCase() : "–", mv(dPlace, "↑", "↓"));
+    })();
   }
   if (!changed) { el.classList.add("hidden"); el.innerHTML = ""; return; }
   el.dataset.sg = first ?? "";
-  el.innerHTML = `<span class="since-l"><i>SINCE YOU LAST LOOKED</i><span class="since-list">${(flips.length > 3 ? [...flips.slice(0, 2), `<span class="since-more">+${flips.length - 2} more</span>`] : flips).join("") || `<span class="since-none">No pick changed sides</span>`}</span></span>${stats ? `<span class="since-r">${stats}</span>` : ""}`;
+  const rows = flips.length > 3 ? [...flips.slice(0, 2), `<span class="since-more">+${flips.length - 2} more picks changed</span>`] : flips;
+  el.innerHTML = `<i class="since-h">SINCE YOU LAST LOOKED</i>${rows.length ? `<span class="since-rows">${rows.join("")}</span>` : ""}<span class="since-tiles">${tiles}</span>`;
   el.classList.remove("hidden");
 }
 // Tap: jump to that game's score card (the flip tapped, else the first).
