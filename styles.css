@@ -8541,3 +8541,12 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 .tq-over-n span { font-size: 13px; color: var(--text-meta, #b8afd3); }
 .tq-over-s { margin: 0; font-size: 15px; line-height: 1.4; }
 @keyframes tqin { from { opacity: 0; transform: translateY(6px); } }
+
+/* Popups fit the screen you can actually see (iOS toolbars included) and
+   scroll inside themselves; the page behind never scrolls instead. */
+.modal-card, .wpx-card, .plc-card, .wks-card, .lt-card, .lks-card, .ask-card, .wpp {
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+}
+.modal-overlay, .wpx-overlay { overscroll-behavior: contain; padding-top: max(16px, env(safe-area-inset-top)); padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+.h2h-card { max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; }

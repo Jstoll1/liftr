@@ -8637,7 +8637,7 @@ function swipeToClose(modal, card, close) {
 // Only from the top: if anything under the finger is scrolled down, the
 // pull scrolls it back up instead; a sideways drag never closes.
 (() => {
-  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #sim-modal, #gridcard-modal, #player-modal, #sh2h-modal";
+  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #avatar-modal, #sim-modal, #gridcard-modal, #player-modal, #sh2h-modal";
   const CLOSE = '.wpx-x, [data-act="close"], #rules-close-btn, [aria-label="Close"]';
   let st = null;
   const reset = (card) => { if (card) { card.style.transform = ""; card.style.opacity = ""; } };
