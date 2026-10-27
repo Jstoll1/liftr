@@ -3373,6 +3373,7 @@ function paintScoreboard(fetched, live, cached) {
   const ranked = rankManagers(cloudPicks, results);
   renderScoreboardTable(cloudPicks, results, live, ranked);
   renderRankings(cloudPicks, results, live, ranked);
+  if (!cached) renderSinceLine(ranked, cloudPicks, live);
   const firstRows = !liveWeekRows.length && ranked.length;
   liveWeekRows = ranked;
   if (firstRows && potOpen()) renderPayouts();
@@ -8677,6 +8678,63 @@ function swipeToClose(modal, card, close) {
   document.addEventListener("touchend", end, { capture: true });
   document.addEventListener("touchcancel", end, { capture: true });
 })();
+// "Since you last looked": the signed-in player's own picks that flipped
+// between covering and not, and their points and place, against what they
+// saw last visit. Only their own picks, so nothing hidden ever shows. A
+// visit starts on load or after 5 minutes away; what they see is saved as
+// they look, so the next visit compares with exactly that.
+const SINCE_KEY = "brochiefs_since_v1";
+let sinceBase, sinceAway = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) sinceAway = Date.now();
+  else if (sinceAway && Date.now() - sinceAway > 5 * 60 * 1000) sinceBase = undefined;
+});
+function sinceState(game, pick, l) {
+  if (!pick || !l || !l.found || !(l.completed || l.state === "in")) return null;
+  const res = { awayScore: l.awayScore, homeScore: l.homeScore };
+  if (pick.mode === "ATS" && resultOutcome(game, res)?.push) return "push";
+  return scorePick(game, pick, res) > 0 ? "up" : "down";
+}
+function renderSinceLine(ranked, cloudPicks, live) {
+  const el = document.getElementById("since-line");
+  const me = currentManager;
+  if (!el || !me || !MANAGERS.includes(me)) return;
+  const row = ranked.find((r) => r.name === me);
+  const picks = sanitizePicks(cloudPicks[me]?.picks || {});
+  const cov = {};
+  for (const g of GAMES) { const st = sinceState(g, picks[g.id], live[g.id]); if (st) cov[g.id] = st; }
+  const now = { mgr: me, week: currentWeek, at: Date.now(), pts: row?.score ?? 0, place: row?.place ?? null, cov };
+  if (sinceBase === undefined) { try { sinceBase = JSON.parse(localStorage.getItem(SINCE_KEY) || "null"); } catch { sinceBase = null; } if (sinceBase && (sinceBase.mgr !== me || sinceBase.week !== currentWeek)) sinceBase = null; }
+  try { localStorage.setItem(SINCE_KEY, JSON.stringify(now)); } catch {}
+  const b = sinceBase, parts = [];
+  let first = null;
+  if (b) {
+    const dp = now.pts - (b.pts || 0);
+    if (dp) parts.push(`<b class="${dp > 0 ? "up" : "dn"}">${dp > 0 ? "+" : ""}${dp} pt${Math.abs(dp) === 1 ? "" : "s"}</b>`);
+    if (b.place && now.place && b.place !== now.place) parts.push(`<b class="${now.place < b.place ? "up" : "dn"}">${now.place < b.place ? "▲" : "▼"} ${ordinal(now.place)}</b>`);
+    for (const g of GAMES) {
+      const was = b.cov?.[g.id], is = cov[g.id];
+      if (!is || was === is || (!was && is === "down")) continue;
+      const fin = live[g.id]?.completed;
+      const team = picks[g.id].team === g.home ? g.homeShort : g.awayShort;
+      const say = is === "up" ? (fin ? "cashed" : "now covering") : is === "push" ? "pushing" : (fin ? "missed" : "not covering");
+      parts.push(`<span class="${is === "up" ? "up" : is === "push" ? "" : "dn"}" data-sg="${g.id}">${escapeCd(team)} ${say}</span>`);
+      if (first === null) first = g.id;
+    }
+  }
+  if (!parts.length) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  el.dataset.sg = first ?? "";
+  el.innerHTML = `<i>SINCE YOU LAST LOOKED</i><span class="since-list">${parts.join("")}</span>`;
+  el.classList.remove("hidden");
+}
+// Tap: jump to that game's score card (the flip tapped, else the first).
+document.getElementById("since-line")?.addEventListener("click", (e) => {
+  const el = e.currentTarget, id = e.target.closest("[data-sg]")?.dataset.sg || el.dataset.sg;
+  const card = id && document.querySelector(`#live-scores-list [data-game="${id}"]`);
+  if (!card) { document.getElementById("rankings-list")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  card.classList.add("since-flash"); setTimeout(() => card.classList.remove("since-flash"), 1600);
+});
 // A name in the Gamecast room opens that player's card.
 document.addEventListener("click", (e) => {
   const li = e.target.closest?.(".gc-rc[data-pl]");
