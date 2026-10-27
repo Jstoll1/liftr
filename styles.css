@@ -8566,3 +8566,4 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
   .scoreboard-table .pick-pill { min-width: 0; max-width: calc(100% - 2px); padding-left: 1px; padding-right: 1px; box-sizing: border-box; }
   .scoreboard-table td > * { max-width: 100%; }
 }
+.gc-rc[data-pl] { cursor: pointer; }

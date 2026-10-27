@@ -1779,7 +1779,11 @@ let adminKeyHeld = "";
 homeLogoBtn.addEventListener("click", () => {
   // A plain tap scrolls to the top, so a curious tap does something.
   // Three quick taps open the admin key prompt.
+  // Taps that scroll back up are not the shortcut: only taps made while
+  // already at the top count, so tapping home from far down never opens it.
+  const atTop = appScroll.scrollTop < 5;
   appScroll.scrollTo({ top: 0, behavior: "smooth" });
+  if (!atTop) { adminTaps = 0; return; }
   adminTaps += 1;
   clearTimeout(adminTapTimer);
   if (adminTaps >= 3) { adminTaps = 0; requestAdmin(); return; }
@@ -7667,7 +7671,7 @@ async function openInsights(gameId) {
     let roomHtml = "";
     if (room.length) {
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : r.pts < 0 ? "−" + Math.abs(r.pts) : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li data-pl="${esc(r.name)}" class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : r.pts < 0 ? "−" + Math.abs(r.pts) : "0"}</i></li>`; };
       const up = room.filter((r) => r.state === "up").sort((x, y) => y.pts - x.pts), down = room.filter((r) => r.state === "down"), push = room.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -8074,7 +8078,7 @@ async function openInsights(gameId) {
         return { ...r, side, terms, state, worth: pickWorth(game, r.pick) };
       });
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li data-pl="${esc(r.name)}" class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = rows.filter((r) => r.state === "up"), down = rows.filter((r) => r.state === "down"), push = rows.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -8673,6 +8677,11 @@ function swipeToClose(modal, card, close) {
   document.addEventListener("touchend", end, { capture: true });
   document.addEventListener("touchcancel", end, { capture: true });
 })();
+// A name in the Gamecast room opens that player's card.
+document.addEventListener("click", (e) => {
+  const li = e.target.closest?.(".gc-rc[data-pl]");
+  if (li) openPlayerCard(li.dataset.pl);
+});
 (() => {
   const m = document.getElementById("h2h-modal");
   if (m) swipeToClose(m, m.querySelector(".h2h-card"), () => m.classList.add("hidden"));
@@ -10112,6 +10121,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) setT
       if (el === popup || el.closest("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-past], [data-pot-row]")) return;
     } else {
       if (el.closest("[class^=ins-], [class*=' ins-']")) return;
+      // Explainer steps are reading, not controls.
+      if (el.closest(".wpx-steps")) return;
       if (interactive(el) || !(el.textContent || "").trim() && el.tagName !== "IMG") return;
       // Looks tappable: an image, a logo, a badge, a name, a number.
       if (!el.closest("img, [class*=logo], [class*=badge], [class*=chip], [class*=score], [class*=name], [class*=card], [class*=row]")) return;
