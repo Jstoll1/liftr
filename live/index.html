@@ -2224,9 +2224,23 @@ body::before { display: none; }
           ? `Brochiefs ${LEAGUE.toUpperCase()} health log: ${item(topH)}. Find the cause in the Worker or app, add a retry or cache where it helps, and make sure a failure here never blocks the screen.`
           : `Brochiefs ${LEAGUE.toUpperCase()} health log, ${hOpen.length} open items in the last 24h:\n${hOpen.slice(0, 8).map((x, n) => `${n + 1}. ${item(x)}`).join("\n")}\nFind the cause of each in the Worker or app (several at the same minute on one phone are a connection drop), add a retry or cache where it helps, make sure a failure never blocks the screen, and add a fixes.json entry for each.` };
     }
-    if (quick.length >= 3 && pct(quick.length, vs.length) >= 25) recs.activity = { tone: "info", t: `${pct(quick.length, vs.length)}% of visits are a quick look`, why: `${quick.length} of ${vs.length} visits lasted under a minute${topQuick ? `; most ended on ${topQuick[0]} (${topQuick[1]})` : ""}.`,
-      copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${pct(quick.length, vs.length)}% of visits in the last 24h lasted under a minute${topQuick ? `, most ending on ${topQuick[0]}` : ""}. Suggest and build the one change that answers what they opened the app for in the first screen (score, my picks, standing), without adding clutter. Test at 390px.` };
-    else recs.activity = { tone: "ok", t: "Visits look healthy", why: `${vs.length} visits, ${quick.length} under a minute. Nothing to fix here today.`, copy: "" };
+    // Quick looks, with the context to judge them: how many visits, from how
+    // many people, over what hours, how long the typical one ran, and whether
+    // it was a game day. A short check midweek is the app doing its job, so
+    // the card only asks for a change on a real sample (10+ visits) on a day
+    // with games (Thu to Sat ET; NFL Thu, Sun, Mon), when a quick exit can mean a miss.
+    const etDay = (t) => new Date(t).toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" });
+    const onGameDay = vs.some((v) => (LEAGUE === "nfl" ? /^(Thu|Sun|Mon)$/ : /^(Thu|Fri|Sat)$/).test(etDay(v.start)));
+    const qLens = vs.map((v) => (v.live ? Date.now() - (v.since || v.start) : v.end - v.start)).sort((a, b) => a - b);
+    const qMed = qLens.length ? qLens[Math.floor(qLens.length / 2)] : 0;
+    const qMedS = qMed < 60000 ? `${Math.max(1, Math.round(qMed / 1000))}s` : `${Math.round(qMed / 60000)}m`;
+    const qSpan = vs.length ? `${afrDay(Math.min(...vs.map((v) => v.start)))} ${hm(Math.min(...vs.map((v) => v.start)))} to ${afrDay(Math.max(...vs.map((v) => v.start)))} ${hm(Math.max(...vs.map((v) => v.start)))}` : "";
+    const qPpl = new Set(vs.map((v) => v.n)).size;
+    const qCtx = `${vs.length} visit${vs.length === 1 ? "" : "s"} from ${qPpl} ${qPpl === 1 ? "person" : "people"}, ${qSpan}; typical visit ${qMedS}; ${onGameDay ? "games on" : "no games (off day)"}`;
+    const qShare = vs.length >= 10 ? `${pct(quick.length, vs.length)}%` : `${quick.length} of ${vs.length}`;
+    if (vs.length >= 10 && onGameDay && pct(quick.length, vs.length) >= 25) recs.activity = { tone: "info", t: `${qShare} of visits are a quick look`, why: `${qCtx}.${topQuick ? ` Most ended on ${topQuick[0]} (${topQuick[1]}).` : ""}`,
+      copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${qShare} of visits in the last 24h lasted under a minute (${qCtx})${topQuick ? `, most ending on ${topQuick[0]}` : ""}. On a game day a quick exit can mean the first screen missed what they came for (score, my picks, standing). Suggest and build the one change that answers it without adding clutter. Test at 390px.` };
+    else recs.activity = { tone: "ok", t: quick.length && !onGameDay ? "Quick checks on an off day" : "Visits look healthy", why: `${qCtx}. ${quick.length} under a minute${!onGameDay && quick.length ? ", which is normal with no games on" : vs.length < 10 ? ", too few visits to read into" : ""}. Nothing to fix here today.`, copy: "" };
     if (biBad.length) recs.bi = { tone: "warn", t: `Tune the Chief: ${biBad.length} answer${biBad.length === 1 ? "" : "s"} went wrong`, why: `${biNo.length} got no answer, ${biBad.length - biNo.length} flagged, of ${chatDay.length} in 24h.`,
       copy: `Ask the Chief misses from the last 24h. For each, find why (tool data, system prompt, or the phone's tool) and fix the cause, not the one answer:\n\n${chatLog(biBad)}` };
     else if (chatDay.length) recs.bi = { tone: "ok", t: "The Chief answered everything", why: `${chatDay.length} questions, none flagged or unanswered in 24h.`, copy: "" };
