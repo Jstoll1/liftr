@@ -277,11 +277,15 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   }
   const WORKER=(typeof WORKER_URL==='string'&&WORKER_URL)||'';
   const me=()=>{try{return localStorage.getItem('brochiefs_me_v1')||null}catch{return null}};
+  // A blip (iOS "Load failed") gets one retry after a short wait, each try
+  // capped at 5s; the last good board is kept so a miss shows it, not "offline".
+  const tFetch=async(url,opt)=>{for(let i=0;i<2;i++){const c=new AbortController();const t=setTimeout(()=>c.abort(),5000);try{const r=await fetch(url,{...opt,signal:c.signal});clearTimeout(t);if(r.ok||r.status<500||i)return r}catch(e){clearTimeout(t);if(i)throw e}await new Promise((r)=>setTimeout(r,1500))}};
+  const tGet=async(url,key)=>{try{const d=await(await tFetch(url+(url.includes('?')?'&':'?')+'t='+Date.now(),{cache:'no-store'})).json();try{localStorage.setItem(key,JSON.stringify(d))}catch{}return d}catch(e){let d=null;try{d=JSON.parse(localStorage.getItem(key)||'null')}catch{}if(d)return d;throw e}};
   const fmtWhen=(t)=>t?new Date(t).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
   async function loadHighScores(){
     const list=el('trivia-hs-list');if(!list||!WORKER)return;
     try{
-      const res=await fetch(WORKER+'/trivia?t='+Date.now(),{cache:'no-store'});const data=await res.json();
+      const data=await tGet(WORKER+'/trivia','brochiefs_trivia_hs');
       const rows=(data.scores||[]).sort((a,b)=>b.best-a.best||(a.bestAt||0)-(b.bestAt||0));
       if(!rows.length){list.innerHTML='<div class="trivia-hs-empty">No scores yet. Be the first on the board.</div>';return}
       const who=me();
@@ -293,7 +297,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     if(!who){box.textContent='Tap your name in the top corner to post scores to the league board.';box.classList.remove('hidden');return}
     if(!WORKER)return;
     try{
-      const res=await fetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,score:sc,total})});
+      const res=await tFetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,score:sc,total})});
       const data=await res.json().catch(()=>({}));
       if(res.ok&&data.ok){box.textContent='Posted for '+who+' · best '+data.best+'/12 · '+data.plays+' game'+(data.plays===1?'':'s');box.classList.remove('hidden');loadHighScores();}
       else{box.textContent='Score not posted: '+(data.error||'try again');box.classList.remove('hidden')}
@@ -435,10 +439,10 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     end.querySelector('.tq-again').addEventListener('click',()=>{buildDeck();sNext();box.scrollIntoView({block:'start',behavior:'smooth'})});
     setTimeout(()=>end.scrollIntoView({block:'nearest',behavior:'smooth'}),150);
   }
-  async function postStreak(n){const who=me();if(!who||!WORKER)return;try{await fetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,streak:n})});loadStreakBoard()}catch{}}
+  async function postStreak(n){const who=me();if(!who||!WORKER)return;try{await tFetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,streak:n})});loadStreakBoard()}catch{}}
   async function loadStreakBoard(){
     const list=el('trivia-hs-list');if(!list||!WORKER)return;
-    try{const d=await(await fetch(WORKER+'/trivia?streak=1&t='+Date.now(),{cache:'no-store'})).json();const rows=(d.streaks||[]).sort((a2,b2)=>b2.best-a2.best||(a2.bestAt||0)-(b2.bestAt||0));
+    try{const d=await tGet(WORKER+'/trivia?streak=1','brochiefs_trivia_streaks');const rows=(d.streaks||[]).sort((a2,b2)=>b2.best-a2.best||(a2.bestAt||0)-(b2.bestAt||0));
       if(!rows.length){list.innerHTML='<div class="trivia-hs-empty">No streaks yet. Get a few in a row to get on the board.</div>';return}
       const who=me();list.innerHTML=rows.map((r,i2)=>'<div class="trivia-hs-row'+(r.player===who?' me':'')+(i2===0?' top':'')+'"><span class="trivia-hs-rank">'+(i2+1)+'</span><span class="trivia-hs-name">'+(typeof shown==='function'?shown(r.player):r.player).toUpperCase()+'</span><span class="trivia-hs-when">'+fmtWhen(r.bestAt)+'</span><span class="trivia-hs-score">🔥'+r.best+'</span></div>').join('');
     }catch{list.innerHTML='<div class="trivia-hs-empty">The board is offline right now.</div>'}
