@@ -8699,6 +8699,8 @@ function renderSinceLine(ranked, cloudPicks, live) {
   const el = document.getElementById("since-line");
   const me = currentManager;
   if (!el || !me || !MANAGERS.includes(me)) return;
+  // Nothing to report before the first kickoff of the week.
+  if (!GAMES.some((g) => isGameLocked(g) || live[g.id]?.found && live[g.id].state !== "pre")) { el.classList.add("hidden"); el.innerHTML = ""; return; }
   const row = ranked.find((r) => r.name === me);
   const picks = sanitizePicks(cloudPicks[me]?.picks || {});
   const cov = {};
