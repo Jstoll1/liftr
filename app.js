@@ -8722,36 +8722,42 @@ function renderSinceLine(ranked, cloudPicks, live) {
   const now = { mgr: me, week: currentWeek, at: Date.now(), pts: row?.score ?? 0, place: row?.place ?? null, live: livePts, cov };
   if (sinceBase === undefined) { try { sinceBase = JSON.parse(localStorage.getItem(SINCE_KEY) || "null"); } catch { sinceBase = null; } if (sinceBase && (sinceBase.mgr !== me || sinceBase.week !== currentWeek)) sinceBase = null; }
   try { localStorage.setItem(SINCE_KEY, JSON.stringify(now)); } catch {}
-  const b = sinceBase, flips = [];
-  let first = null, changed = false;
-  if (b) {
-    for (const g of GAMES) {
-      const was = b.cov?.[g.id], is = cov[g.id];
-      if (!is || was === is || (!was && is === "down")) continue;
-      const l = live[g.id], fin = l?.completed, pk = picks[g.id];
-      const team = escapeCd(pk.team === g.home ? g.homeShort : g.awayShort);
-      const say = is === "up" ? (fin ? "cashed" : "now covering") : is === "push" ? "pushing" : (fin ? "missed" : "no longer covering");
-      // What the pick is worth on this score: banked if final, in play if live.
-      const v = scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) ?? 0;
-      const tone = is === "up" ? "up" : is === "push" ? "eq" : "dn";
-      flips.push(`<span class="since-row ${tone}" data-sg="${g.id}"><i></i><span><b>${team}</b> ${say}</span><em>${v > 0 ? "+" : ""}${v}</em><s>›</s></span>`);
-      if (first === null) first = g.id;
-    }
-    const dp = now.pts - (b.pts || 0), dPlace = b.place && now.place ? b.place - now.place : 0;
-    const dl = livePts !== null ? livePts - (b.live ?? 0) : 0;
-    changed = flips.length > 0 || dp !== 0 || dPlace !== 0 || dl !== 0;
-    var tiles = (() => {
-      const mv = (d, up = "▲", dn = "▼") => (d > 0 ? `<u class="up">${up}${d}</u>` : d < 0 ? `<u class="dn">${dn}${-d}</u>` : `<u class="eq">–</u>`);
-      const tile = (k, v, d) => `<span class="since-tile"><small>${k}</small><span><b>${v}</b>${d}</span></span>`;
-      return tile("LIVE", livePts === null ? "–" : `${livePts > 0 ? "+" : ""}${livePts}`, livePts === null ? "" : mv(dl))
-        + tile("POINTS", now.pts, mv(dp))
-        + tile("PLACE", now.place ? ordinal(now.place).toUpperCase() : "–", mv(dPlace, "↑", "↓"));
-    })();
+  const b = sinceBase, flips = [], liveRows = [];
+  const row2 = (g, is, say) => {
+    const l = live[g.id], pk = picks[g.id];
+    const team = escapeCd(pk.team === g.home ? g.homeShort : g.awayShort);
+    // What the pick is worth on this score: banked if final, in play if live.
+    const v = scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) ?? 0;
+    const tone = is === "up" ? "up" : is === "push" ? "eq" : "dn";
+    return `<span class="since-row ${tone}" data-sg="${g.id}"><i></i><span><b>${team}</b> ${say}</span><em>${v > 0 ? "+" : ""}${v}</em><s>›</s></span>`;
+  };
+  let first = null, liveFirst = null;
+  for (const g of GAMES) {
+    const is = cov[g.id], l = live[g.id];
+    if (!is) continue;
+    if (l.state === "in" && !l.completed) { liveRows.push(row2(g, is, is === "up" ? "covering" : is === "push" ? "pushing" : "not covering")); if (liveFirst === null) liveFirst = g.id; }
+    if (!b) continue;
+    const was = b.cov?.[g.id];
+    if (was === is || (!was && is === "down")) continue;
+    flips.push(row2(g, is, is === "up" ? (l.completed ? "cashed" : "now covering") : is === "push" ? "pushing" : (l.completed ? "missed" : "no longer covering")));
+    if (first === null) first = g.id;
   }
-  if (!changed) { el.classList.add("hidden"); el.innerHTML = ""; return; }
-  el.dataset.sg = first ?? "";
-  const rows = flips.length > 3 ? [...flips.slice(0, 2), `<span class="since-more">+${flips.length - 2} more picks changed</span>`] : flips;
-  el.innerHTML = `<i class="since-h">SINCE YOU LAST LOOKED</i>${rows.length ? `<span class="since-rows">${rows.join("")}</span>` : ""}<span class="since-tiles">${tiles}</span>`;
+  const dp = b ? now.pts - (b.pts || 0) : 0, dPlace = b && b.place && now.place ? b.place - now.place : 0;
+  const dl = b && livePts !== null ? livePts - (b.live ?? 0) : 0;
+  const changed = !!b && (flips.length > 0 || dp !== 0 || dPlace !== 0 || dl !== 0);
+  // Saturday: while a game is on there is always something here. With no
+  // change since the last look it shows where each live pick stands now.
+  const liveMode = !changed && livePts !== null;
+  if (!changed && !liveMode) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const mv = (d, up = "▲", dn = "▼") => (d > 0 ? `<u class="up">${up}${d}</u>` : d < 0 ? `<u class="dn">${dn}${-d}</u>` : `<u class="eq">–</u>`);
+  const tile = (k, v, d) => `<span class="since-tile"><small>${k}</small><span><b>${v}</b>${d}</span></span>`;
+  const tiles = tile("LIVE", livePts === null ? "–" : `${livePts > 0 ? "+" : ""}${livePts}`, livePts === null ? "" : mv(dl))
+    + tile("POINTS", now.pts, mv(dp))
+    + tile("PLACE", now.place ? ordinal(now.place).toUpperCase() : "–", mv(dPlace, "↑", "↓"));
+  const list = liveMode ? liveRows : flips;
+  el.dataset.sg = (liveMode ? liveFirst : first) ?? "";
+  const rows = list.length > 3 ? [...list.slice(0, 2), `<span class="since-more">+${list.length - 2} more ${liveMode ? "live picks" : "picks changed"}</span>`] : list;
+  el.innerHTML = `<i class="since-h">${liveMode ? "YOUR LIVE PICKS" : "SINCE YOU LAST LOOKED"}</i>${rows.length ? `<span class="since-rows">${rows.join("")}</span>` : ""}<span class="since-tiles">${tiles}</span>`;
   el.classList.remove("hidden");
 }
 // Tap: jump to that game's score card (the flip tapped, else the first).
