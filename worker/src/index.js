@@ -4017,6 +4017,19 @@ export function mergeRecords(have, days) {
     if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d.d || "")) continue;
     const cur = out.days[d.d] || {};
     for (const k of RECORD_METRICS) { const v = Math.round(Number(d[k])); if (Number.isFinite(v) && v >= 0 && v < 1e9) cur[k] = Math.max(cur[k] || 0, v); }
+    // Pace: each metric's running total at the end of every hour of the day
+    // (24 values, Eastern), so "the best day had 62 by 2 PM" can be shown.
+    // Merged value by value, highest wins, like the totals.
+    if (d.h && typeof d.h === "object") {
+      const h = { ...(cur.h || {}) };
+      for (const k of RECORD_METRICS) {
+        const arr = d.h[k];
+        if (!Array.isArray(arr) || arr.length !== 24) continue;
+        const was = Array.isArray(h[k]) ? h[k] : [];
+        h[k] = arr.map((x, i) => { const v = Math.round(Number(x)); return Math.max(was[i] || 0, Number.isFinite(v) && v >= 0 && v < 1e9 ? v : 0); });
+      }
+      if (Object.keys(h).length) cur.h = h;
+    }
     out.days[d.d] = cur;
   }
   const keep = Object.keys(out.days).sort().slice(-120);
@@ -4031,28 +4044,34 @@ export function daysFromSessions(sessionsBy) {
   const by = {};
   for (const [m, list] of Object.entries(sessionsBy || {})) for (const x of list || []) {
     if (!Number.isFinite(x?.at)) continue;
-    const d = etDate(x.at), cur = by[d] || (by[d] = { d, visits: 0, people: new Set(), timeMs: 0 });
-    cur.visits++; cur.people.add(m); cur.timeMs += Math.max(0, Number(x.dur) || 0);
+    const d = etDate(x.at), cur = by[d] || (by[d] = { d, visits: 0, people: new Set(), timeMs: 0, hv: Array(24).fill(0), ht: Array(24).fill(0), hp: Array.from({ length: 24 }, () => new Set()) });
+    const hr = etHour(x.at), dur = Math.max(0, Number(x.dur) || 0);
+    cur.visits++; cur.people.add(m); cur.timeMs += dur;
+    cur.hv[hr]++; cur.ht[hr] += dur; cur.hp[hr].add(m);
   }
-  return Object.values(by).map((x) => ({ d: x.d, visits: x.visits, people: x.people.size, timeMs: x.timeMs }));
+  // Hourly running totals (people: distinct so far), for the pace marker.
+  const run = (a) => { let t = 0; return a.map((x) => (t += x)); };
+  const runPeople = (a) => { const seen = new Set(); return a.map((s) => { for (const m of s) seen.add(m); return seen.size; }); };
+  return Object.values(by).map((x) => ({ d: x.d, visits: x.visits, people: x.people.size, timeMs: x.timeMs, h: { visits: run(x.hv), people: runPeople(x.hp), timeMs: run(x.ht) } }));
 }
 async function handleRecords(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
   let have = (await env.LIFTR_KV.get("records", "json")) || { days: {}, best: {} };
-  if (Date.now() - (have.filledAt || 0) > 6 * 3600000) {
+  // hv: the hourly pace curves came later; fill once more so past days get them.
+  if (Date.now() - (have.filledAt || 0) > 6 * 3600000 || !have.hv) {
     try {
       const { sessions } = await readUsage(env);
       const days = daysFromSessions(sessions).sort((a, b) => (a.d < b.d ? 1 : -1));
       for (let i = 0; i < days.length; i += 40) have = { ...mergeRecords(have, days.slice(i, i + 40)), filledAt: have.filledAt };
-      have.filledAt = Date.now();
+      have.filledAt = Date.now(); have.hv = 1;
       await env.LIFTR_KV.put("records", JSON.stringify(have));
     } catch (err) { console.error("records fill", err?.stack || String(err)); }
   }
   if (request.method === "GET") return json(have, 200, { ...corsHeaders, "Cache-Control": "no-store" });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
   let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
-  const next = { ...mergeRecords(have, body?.days), filledAt: have.filledAt };
+  const next = { ...mergeRecords(have, body?.days), filledAt: have.filledAt, hv: have.hv };
   await env.LIFTR_KV.put("records", JSON.stringify(next));
   return json(next, 200, corsHeaders);
 }
@@ -4066,6 +4085,7 @@ async function handleRecords(request, env, corsHeaders, url) {
 const ROLLUP_TZ = "America/New_York";
 const etParts = (ms) => { const o = {}; for (const p of new Intl.DateTimeFormat("en-US", { timeZone: ROLLUP_TZ, year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" }).formatToParts(new Date(ms))) o[p.type] = p.value; return o; };
 const etDate = (ms) => { const o = etParts(ms); return `${o.year}-${o.month}-${o.day}`; };
+const etHour = (ms) => Number(new Intl.DateTimeFormat("en-US", { timeZone: ROLLUP_TZ, hour: "numeric", hourCycle: "h23" }).format(new Date(ms))) % 24;
 function etWeekKey(ms) {
   const o = etParts(ms);
   const dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(o.weekday);

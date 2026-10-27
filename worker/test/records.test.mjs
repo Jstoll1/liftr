@@ -27,3 +27,19 @@ test("records: history from the session logs, by Eastern day", () => {
   const d24 = days.find((d) => d.d === "2026-10-24");
   assert.equal(d24.visits, 4); assert.equal(d24.people, 2); assert.equal(d24.timeMs, 220000);
 });
+
+test("pace: hourly running totals from sessions, merged highest-wins", () => {
+  const at = (s) => Date.parse(s);
+  // 2pm and 4pm ET on Oct 24 (EDT, UTC-4).
+  const [day] = daysFromSessions({ Logan: [{ at: at("2026-10-24T18:10:00Z"), dur: 60000 }, { at: at("2026-10-24T20:30:00Z"), dur: 120000 }], Curt: [{ at: at("2026-10-24T20:40:00Z"), dur: 30000 }] });
+  assert.equal(day.h.visits.length, 24);
+  assert.equal(day.h.visits[13], 0); assert.equal(day.h.visits[14], 1); assert.equal(day.h.visits[16], 3); assert.equal(day.h.visits[23], 3);
+  assert.equal(day.h.people[14], 1); assert.equal(day.h.people[16], 2);
+  assert.equal(day.h.timeMs[16], 210000);
+  let r = mergeRecords(null, [day]);
+  r = mergeRecords(r, [{ d: day.d, h: { visits: Array(24).fill(2), actions: Array(24).fill(5) } }]);
+  assert.equal(r.days[day.d].h.visits[13], 2); assert.equal(r.days[day.d].h.visits[16], 3);
+  assert.equal(r.days[day.d].h.actions[0], 5);
+  r = mergeRecords(r, [{ d: day.d, h: { visits: [1, 2] } }]);
+  assert.equal(r.days[day.d].h.visits[16], 3);
+});

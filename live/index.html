@@ -1265,8 +1265,13 @@ body::before { display: none; }
 .rec-m em { font: 500 11.5px/1.2 var(--sans); font-style: normal; color: var(--meta); }
 .rec-m b { font: 700 22px/1.1 var(--sans); }
 .rec-m span { font-size: 11.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rec-bar { display: block; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.rec-bar { position: relative; display: block; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: visible; }
 .rec-bar s { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+/* Pace: a gold tick where the record stood at this hour, over the bar. */
+.rec-bar u { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--gold); box-shadow: 0 0 0 1px rgba(0, 0, 0, .5); z-index: 1; }
+.rec-pace { display: flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 11px; color: var(--muted, #8a93a6); }
+.rec-pace i { flex: none; width: 2px; height: 9px; border-radius: 1px; background: var(--gold); }
+.rec-pace.up { color: #5fd38d; } .rec-pace.dn { color: #e7a35b; } .rec-pace.none { opacity: .55; }
 .rec-m.new { border-color: rgba(251, 191, 36, .5); background: linear-gradient(180deg, rgba(251, 191, 36, .1), rgba(251, 191, 36, .02)), var(--panel2); }
 .rec-m b small { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--dim); }
 .rec-m.new b { color: var(--gold); } .rec-m.new .rec-bar s { background: var(--gold); } .rec-m.new span { color: var(--gold); }
@@ -2306,8 +2311,12 @@ body::before { display: none; }
     const todayStats = dayStats(today0, today0 + DAY, wk ? wv : vs, wk ? [...(wk.feed || []), ...feed.filter((e) => !(wk.feed || []).some((x) => x.at === e.at && x.n === e.n))] : feed);
     if (st.rec && Date.now() - (sendRecords.t || 0) > 10 * 60000) {
       sendRecords.t = Date.now();
-      const days = [{ d: ymd(today0), ...todayStats }];
-      if (wk) for (const d of dayList) if (d !== today0) days.push({ d: ymd(d), ...dayStats(d, d + DAY, wv, wk.feed || []) });
+      // Each day also carries its running totals hour by hour, for the pace
+      // marker ("the best day had 62 by 2 PM").
+      const curve = (d, vl, fl) => { const h = { visits: [], people: [], timeMs: [], actions: [] }; for (let i = 0; i < 24; i++) { const x = dayStats(d, Math.min(d + (i + 1) * HOUR, d + DAY), vl, fl); for (const k of Object.keys(h)) h[k].push(x[k]); } return h; };
+      const allFeed = wk ? [...(wk.feed || []), ...feed.filter((e) => !(wk.feed || []).some((x) => x.at === e.at && x.n === e.n))] : feed;
+      const days = [{ d: ymd(today0), ...todayStats, h: curve(today0, wk ? wv : vs, allFeed) }];
+      if (wk) for (const d of dayList) if (d !== today0) days.push({ d: ymd(d), ...dayStats(d, d + DAY, wv, wk.feed || []), h: curve(d, wv, wk.feed || []) });
       sendRecords(days);
     }
     // Today against the best day before it, or this week so far against the
@@ -2321,12 +2330,37 @@ body::before { display: none; }
     const RECS = [["visits", "Visits", (v) => String(v)], ["people", byWeek ? "People / day" : "People in", (v) => String(v)], ["timeMs", "Time in app", (v) => mins(v) || "0m"], ["actions", "Actions", (v) => String(v)]];
     const recDate = (d) => { const [y, m, dd] = String(d).split("-").map(Number); const t = new Date(y, m - 1, dd).getTime(); return t === today0 ? "today" : t === today0 - DAY ? "yesterday" : new Date(t).toLocaleDateString([], { month: "short", day: "numeric" }); };
     const wkDate = (w) => `wk of ${recDate(w)}`;
+    // The hour now (0 to 23) and its label, and the record's value at that
+    // hour: a day's running total, or for a week the full days before today's
+    // weekday plus that weekday's running total. People per day has no clean
+    // weekly pace, so it is left off in week view.
+    const hourNow = Math.min(23, Math.max(0, Math.floor((Date.now() - today0) / HOUR)));
+    const paceLab = new Date(today0 + (hourNow + 1) * HOUR).toLocaleTimeString([], { hour: "numeric" });
+    const dIdx = (d) => { const [y, m, dd] = String(d).split("-").map(Number); return (new Date(y, m - 1, dd).getDay() + 6) % 7; };
+    const paceOf = (key, k) => {
+      if (!byWeek) { const h = recDays[key]?.h?.[k]; return Array.isArray(h) ? h[hourNow] : null; }
+      if (k === "people") return null;
+      const ti = dIdx(tk); let sum = 0, have = false;
+      for (const [d, v] of Object.entries(recDays)) {
+        if (wkOf(d) !== key) continue;
+        const i = dIdx(d);
+        if (i < ti) sum += v[k] || 0;
+        else if (i === ti) { const h = v.h?.[k]; if (!Array.isArray(h)) return null; sum += h[hourNow]; have = true; }
+      }
+      return have ? sum : null;
+    };
     const recordsPanel = st.rec ? `<section class="panel recs"><div class="ph"><h2>Records</h2><span class="sub">${byWeek ? "this week so far against the best week" : "today against the best day"}</span><span class="seg sm end" role="group" aria-label="Period"><button type="button" class="${byWeek ? "" : "on"}" data-recp="day">24h</button><button type="button" class="${byWeek ? "on" : ""}" data-recp="week">Week</button></span></div><div class="recs-g">${RECS.map(([k, lab, f]) => {
       const pool = byWeek ? Object.entries(weeks).filter(([w]) => w !== curW) : Object.entries(recDays).filter(([d]) => d !== tk);
       const prev = pool.reduce((m, [d, v]) => ((v[k] || 0) > (m?.v || 0) ? { v: v[k], d } : m), null);
       const t = byWeek ? (weeks[curW]?.[k] || 0) : todayStats[k], b = Math.max(prev?.v || 0, t), isRec = !!prev && t > prev.v;
       const share = b ? Math.min(100, (t / b) * 100) : 0, when = (d) => (byWeek ? wkDate(d) : recDate(d));
-      return `<div class="rec-m${isRec ? " new" : ""}"><em>${lab}</em><b class="num">${esc(f(t))}${!isRec && prev ? `<small>${Math.round(share)}%</small>` : ""}</b><i class="rec-bar"><s style="width:${share.toFixed(0)}%"></s></i><span>${isRec ? `🏆 New record · was ${esc(f(prev.v))}, ${esc(when(prev.d))}` : prev ? `best ${esc(f(prev.v))} · ${esc(when(prev.d))}` : `no earlier ${byWeek ? "weeks" : "days"} yet`}</span></div>`;
+      // Pace: where the record day (or week) stood at this same hour, drawn
+      // as a second marker on the bar so ahead or behind reads at a glance.
+      const pv = prev && !isRec ? paceOf(prev.d, k) : null;
+      const pShare = pv != null && b ? Math.min(100, (pv / b) * 100) : null;
+      const ahead = pv != null && t >= pv;
+      const paceTxt = pv != null ? `<span class="rec-pace ${ahead ? "up" : "dn"}"><i></i>${esc(f(pv))} by ${esc(paceLab)} · ${ahead ? "ahead" : "behind"}</span>` : prev && !isRec ? `<span class="rec-pace none">${byWeek && k === "people" ? "no weekly pace for a daily average" : "no hourly pace for that day"}</span>` : "";
+      return `<div class="rec-m${isRec ? " new" : ""}${pv != null ? (ahead ? " ahead" : " behind") : ""}"><em>${lab}</em><b class="num">${esc(f(t))}${!isRec && prev ? `<small>${Math.round(share)}%</small>` : ""}</b><i class="rec-bar">${pShare != null ? `<u style="left:${pShare.toFixed(1)}%"></u>` : ""}<s style="width:${share.toFixed(0)}%"></s></i><span>${isRec ? `🏆 New record · was ${esc(f(prev.v))}, ${esc(when(prev.d))}` : prev ? `best ${esc(f(prev.v))} · ${esc(when(prev.d))}` : `no earlier ${byWeek ? "weeks" : "days"} yet`}</span>${paceTxt}</div>`;
     }).join("")}</div>${byWeek ? `<div class="note" style="margin-top:8px">This week: ${weeks[curW]?.days || 0} of 7 days in.</div>` : ""}</section>` : "";
     const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}</div>`;
     // Notification bar: who came in and who asked BI since you last
