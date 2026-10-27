@@ -5679,10 +5679,23 @@ try {
 } catch { /* private mode or a bad copy */ }
 const potOpen = () => !document.getElementById("payouts-panel")?.classList.contains("hidden");
 
+// A Worker read that a dropped signal ("Load failed") should not lose: six
+// seconds at most per try, and one more try after a short wait on a network
+// error or a 5xx. Callers keep their own saved copy for when both miss.
+async function workerFetch(url, opt = {}) {
+  for (let i = 0; ; i++) {
+    try {
+      const res = await fetch(url, { ...opt, signal: AbortSignal.timeout ? AbortSignal.timeout(6000) : undefined });
+      if (res.status < 500 || i) return res;
+    } catch (e) { if (i) throw e; }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+}
+
 async function loadWeekSummaries() {
   if (!WORKER_URL) return;
   try {
-    const res = await fetch(`${WORKER_URL}/weeks?t=${Date.now()}`, { cache: "no-store" });
+    const res = await workerFetch(`${WORKER_URL}/weeks?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return;
     const data = await res.json();
     weekTrophies = data.trophies || {};
@@ -9608,7 +9621,7 @@ let weekDetailAll = null;
 async function fetchWeekDetail() {
   if (weekDetailAll) return weekDetailAll;
   try {
-    const res = await fetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
+    const res = await workerFetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
     if (res.ok) weekDetailAll = (await res.json()).summaries || {};
   } catch {}
   return weekDetailAll || {};
@@ -9684,7 +9697,7 @@ async function fetchSeasonLedger() {
   if (!WORKER_URL) return null;
   if (seasonLedger && Date.now() - seasonLedgerAt < 5 * 60 * 1000) return seasonLedger;
   try {
-    const res = await fetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
+    const res = await workerFetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return seasonLedger;
     const data = await res.json();
     seasonLedger = Object.values(data.summaries || {}).filter((w) => w?.complete && Array.isArray(w.rows)).sort((a, b) => a.week - b.week);

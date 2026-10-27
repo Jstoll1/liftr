@@ -1380,7 +1380,13 @@ body::before { display: none; }
   // "worker-fail"): every matching entry from before the fix reads closed,
   // so a pasted error that was fixed clears itself; a repeat after stays.
   const opsFix = (r) => (st.afrFixes || []).find((f) => f.k === r.k && String(r.d || "").includes(f.match) && r.at <= f.at) || null;
-  const applyOpsFixes = () => { for (const r of st.ops || []) { const f = opsFix(r); if (f && !r.closed) { r.closed = f.at; r.fixNote = `Fixed in ${f.commit}: ${f.note}`; } } };
+  // A connection blip: one phone failing two or more different calls with a
+  // network error (no HTTP status) within 90 seconds lost its signal; the
+  // Worker was fine. Those read closed as one event instead of surfacing one
+  // endpoint at a time (the app retries each call).
+  const netErr = (r) => /-fail$/.test(r.k) && r.src !== "worker" && !/\s\d{3}$/.test(String(r.d || ""));
+  const opsBlip = (r) => { if (!netErr(r) || !r.n) return 0; const path = (x) => String(x.d || "").split(" ")[0]; const near = (st.ops || []).filter((x) => x.n === r.n && netErr(x) && Math.abs(x.at - r.at) <= 90000); return new Set(near.map(path)).size >= 2 ? near.length : 0; };
+  const applyOpsFixes = () => { for (const r of st.ops || []) { if (r.closed) continue; const f = opsFix(r); if (f) { r.closed = f.at; r.fixNote = `Fixed in ${f.commit}: ${f.note}`; continue; } const nb = opsBlip(r); if (nb) { r.closed = r.at; r.fixNote = `Connection blip: ${nb} calls failed together on one phone; the Worker was fine and the app retries.`; } } };
   const afrFix = (r) => (st.afrFixes || []).find((f) => (!f.k || f.k === (r.k || "dead-tap")) && String(r.d || "").includes(f.match) && r.at <= f.at) || (r.fixed ? { manual: true } : null);
   const afrLog = (rows) => [`Brochiefs ${LEAGUE.toUpperCase()} admin friction log · copied ${new Date().toLocaleString()}`, ...[...rows].sort((x, y) => y.at - x.at).map((r) => `${new Date(r.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} | ${(AFR_KIND[r.k || "dead-tap"] || [r.k])[0]} | ${r.d || ""}${r.screen ? ` | ${SCREENS[r.screen] || r.screen}` : ""}${afrFix(r) ? ` | FIXED${afrFix(r).commit ? ` ${afrFix(r).commit}` : ""}` : ""}`)].join("\n");
   const OPS_KIND = { "route-fail": ["Worker error", "err"], "cron-fail": ["Job failed", "err"], "upstream-fail": ["Outside API failed", "err"], "upstream-slow": ["Outside API slow", "slow"], "worker-fail": ["Worker failed", "err"], "worker-slow": ["Worker slow", "slow"], "espn-fail": ["ESPN failed", "err"], "espn-slow": ["ESPN slow", "slow"], "slow-load": ["Slow load", "slow"], "js-error": ["Error", "err"] };
