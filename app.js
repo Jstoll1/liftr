@@ -2249,6 +2249,8 @@ async function syncAvatars(retry = true) {
   return true;
 }
 
+// Slot colours from the league's roster template, 1 to 10.
+const ROSTER_SLOTS = ["#ff2a3d", "#ffd21f", "#21d45a", "#9b3bff", "#2f6bff", "#1f6fff", "#ff7a1a", "#ff3fa4", "#1fd6ff", "#a6ff1f"];
 async function renderManagerPicker() {
   const local = loadAll();
   const cloud = await fetchAllPicks();
@@ -2265,6 +2267,7 @@ async function renderManagerPicker() {
   updateMePill();
 
   managerPicker.innerHTML = "";
+  managerPicker.classList.add("roster-v2");
   MANAGERS.forEach((name, i) => {
     const state = all[name];
     const submittedCount = state ? Object.keys(sanitizeRoomPicks(state.picks)).length : 0;
@@ -2277,19 +2280,26 @@ async function renderManagerPicker() {
     const accent = accentFor(name);
     const avatarContent = avatarOverrides[name] || shown(name)[0];
 
+    // The league's $100 roster template: one panel per slot, the slot's
+    // portrait and colour from the template (by roster order), a flag for
+    // how far along the picks are, and the selections as ten segments.
+    // Before kickoff only counts are known for others (picks stay hidden).
+    const slot = i % ROSTER_SLOTS.length, col = ROSTER_SLOTS[slot];
+    const flag = complete ? "done" : partial ? "part" : "none";
+    const segs = GAMES.map((_, k) => `<i class="${k < submittedCount ? "on" : ""}"></i>`).join("");
+    const tbTxt = tiebreakerDone ? (isMe && state.tiebreaker !== "hidden" ? escapeCd(String(state.tiebreaker)) : "SET") : "--:--";
+    const avatar = avatarOverrides[name];
     const btn = document.createElement("button");
-    btn.className = "manager-card" + (complete ? " has-picks" : "") + (partial ? " partial-picks" : "") + (isChamp ? " defending-champ" : "") + (isMe ? " is-me" : "");
-    btn.style.setProperty("--accent", accent);
+    btn.type = "button";
+    btn.className = `roster-card flag-${flag}` + (isChamp ? " defending-champ" : "") + (isMe ? " is-me" : "");
+    btn.style.setProperty("--rc", col);
+    btn.setAttribute("aria-label", `${shown(name)}: ${scored ? `${computeScore(state || { picks: {} }, pickerResults)} points` : `${submittedCount} of ${GAMES.length} picks${tiebreakerDone ? ", tiebreaker set" : ""}`}`);
     btn.innerHTML = `
-      <span class="player-tag">${isMe ? "YOU" : `P${i + 1}`}</span>
-      <span class="badge-slot">${isChamp ? `<span class="champ-badge">🏆 Defending Champ</span>` : ""}</span>
-      <span class="manager-avatar-ring">
-        <span class="manager-avatar">${avatarContent}</span>
-      </span>
-      <span class="manager-name-plate">
-        <span class="manager-name">${shown(name)}</span>
-        <span class="manager-pick-status">${scored ? `${computeScore(state || { picks: {} }, pickerResults)} PTS` : complete ? "✓ All in" : partial ? `${submittedCount}/${GAMES.length} in` : ""}</span>
-      </span>
+      <span class="rc-art"><img src="assets/images/roster/p${slot + 1}.webp" alt="" loading="lazy" decoding="async"><b class="rc-n">${i + 1}</b>${isMe ? `<em class="rc-you">YOU</em>` : ""}${isChamp ? `<em class="rc-champ" title="Defending champ">🏆</em>` : ""}</span>
+      <span class="rc-bar">${avatar ? `<span class="rc-av">${avatar}</span>` : ""}<span class="rc-name">${shown(name)}</span><svg class="rc-flag" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5v13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4 2.2h8.5l-2 3 2 3H4z" fill="currentColor"/></svg></span>
+      ${scored
+        ? `<span class="rc-row rc-pts"><small>POINTS</small><b>${computeScore(state || { picks: {} }, pickerResults)}</b></span>`
+        : `<span class="rc-row"><small>SELECTIONS</small><b>${submittedCount}<s>/${GAMES.length}</s></b></span><span class="rc-segs">${segs}</span><span class="rc-row rc-tb"><small>TIEBREAKER</small><b>${tbTxt}</b></span>`}
     `;
 
     // Long-press (550ms) opens the avatar editor instead of navigating.

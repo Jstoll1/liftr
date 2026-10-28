@@ -8608,3 +8608,38 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 .ask-a ol, .ask-a ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 .ask-a li::marker { color: var(--neon-cyan); font-weight: 700; }
 .ask-a b { color: var(--text); font-weight: 700; }
+
+/* --- Roster: the league's $100 template ------------------------------------
+   Two panels a row; each is the slot's portrait with its number, a name bar in
+   the slot colour with a status flag (red none, yellow some, green all in),
+   then the selections as ten segments and the tiebreaker. */
+.brand-title { display: block; width: min(100%, 360px); height: auto; margin: 0 auto 2px; border-radius: 12px; box-shadow: 0 6px 24px rgba(255, 90, 40, .25); }
+.brand-title + .brand-mark { font-size: 12px; letter-spacing: .3em; opacity: .85; }
+.roster-card { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 0; border: 2px solid color-mix(in srgb, var(--rc) 70%, #000); border-radius: 12px; overflow: hidden; background: #0d0a18; color: var(--text); font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .12s; }
+.roster-card:active { transform: scale(.97); }
+.roster-card.is-me { border-color: var(--rc); box-shadow: 0 0 0 2px rgba(255, 255, 255, .85), 0 0 18px color-mix(in srgb, var(--rc) 60%, transparent); }
+.rc-art { position: relative; display: block; aspect-ratio: 16 / 11; overflow: hidden; background: color-mix(in srgb, var(--rc) 25%, #120a20); }
+.rc-art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; }
+.rc-n { position: absolute; top: 6px; left: 6px; min-width: 24px; height: 24px; padding: 0 4px; display: flex; align-items: center; justify-content: center; font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; background: #0d0a18; border: 2px solid var(--rc); border-radius: 4px; box-shadow: 0 0 8px color-mix(in srgb, var(--rc) 70%, transparent); }
+.rc-you, .rc-champ { position: absolute; top: 6px; right: 6px; font-style: normal; }
+.rc-you { padding: 3px 5px; border-radius: 4px; background: #fff; color: #0d0a18; font-family: 'Press Start 2P', monospace; font-size: 7px; }
+.rc-champ { font-size: 16px; filter: drop-shadow(0 1px 2px #000); }
+.rc-you + .rc-champ { top: 28px; }
+.rc-bar { display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 4px 8px; background: var(--rc); color: #0d0a18; }
+.rc-av { flex: none; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(13, 10, 24, .2); font-size: 12px; line-height: 1; }
+.rc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Press Start 2P', monospace; font-size: 9.5px; text-transform: uppercase; }
+.rc-flag { flex: none; width: 20px; height: 20px; padding: 2px; border-radius: 4px; background: #0d0a18; }
+.flag-none .rc-flag { color: #ff3b4e; box-shadow: 0 0 0 1.5px #ff3b4e; }
+.flag-part .rc-flag { color: #ffd21f; box-shadow: 0 0 0 1.5px #ffd21f; }
+.flag-done .rc-flag { color: #2ee86b; box-shadow: 0 0 0 1.5px #2ee86b; }
+.rc-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 6px 8px 0; }
+.rc-row small { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); letter-spacing: .04em; }
+.rc-row b { font-family: 'Press Start 2P', monospace; font-size: 10px; font-weight: 400; color: #fff; }
+.rc-row b s { text-decoration: none; color: var(--text-dim); font-size: 8px; }
+.rc-segs { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; padding: 5px 8px 0; }
+.rc-segs i { height: 7px; border-radius: 1px; background: rgba(255, 255, 255, .1); }
+.rc-segs i.on { background: var(--rc); box-shadow: 0 0 4px color-mix(in srgb, var(--rc) 60%, transparent); }
+.flag-done .rc-segs i.on { background: #2ee86b; box-shadow: 0 0 4px rgba(46, 232, 107, .6); }
+.rc-tb { padding-bottom: 8px; }
+.rc-pts { padding: 10px 8px; }
+.rc-pts b { font-size: 14px; }
