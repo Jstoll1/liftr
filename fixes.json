@@ -140,6 +140,13 @@
       "at": 1793100612000,
       "commit": "69ae05a",
       "note": "Already covered (short try, cool-down, saved copy served). The once-per-6h note now holds across all Worker instances via KV, and Live no longer raises it as an action"
+    },
+    {
+      "k": "rage",
+      "match": ".tm-nm",
+      "at": 1793217807000,
+      "commit": "bc37d4c",
+      "note": "Score cards and pick-card teams take touch-action: manipulation, so quick taps open the game sheet at once on iOS; a rage tap now needs all three taps on the same element (taps landing on the sheet a tap opened no longer count)"
     }
   ]
 }
