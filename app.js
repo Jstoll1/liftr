@@ -10204,8 +10204,10 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) setT
     // Three quick taps on the logo are the admin shortcut, not frustration.
     if (e.target.closest?.(".home-logo-img") || (typeof homeLogoBtn !== "undefined" && homeLogoBtn?.contains(e.target))) return;
     const now = Date.now();
-    taps = taps.filter((t) => now - t.t < 1000 && Math.hypot(t.x - e.clientX, t.y - e.clientY) < 30);
-    taps.push({ t: now, x: e.clientX, y: e.clientY });
+    // Same spot and the same element: a tap that opened a sheet, then taps
+    // landing on that sheet, is a reader, not frustration.
+    taps = taps.filter((t) => now - t.t < 1000 && Math.hypot(t.x - e.clientX, t.y - e.clientY) < 30 && t.el === e.target);
+    taps.push({ t: now, x: e.clientX, y: e.clientY, el: e.target });
     if (taps.length >= 3 && now - rageAt > 3000) { rageAt = now; taps = []; track("rage", { event: true, d: label(e.target) }); }
   }, { capture: true, passive: true });
   // A dead tap is a click (a finger that starts a scroll never clicks), and
