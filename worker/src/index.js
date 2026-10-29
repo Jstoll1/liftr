@@ -235,7 +235,7 @@ const app = {
         const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
         const g = (slate?.games || []).find((x) => Number(x.id) === Number(url.searchParams.get("game")));
         if (!g) return json({ items: [], error: "no such game" }, 404, corsHeaders);
-        return json(await gameNews(env, g), 200, { ...corsHeaders, "Cache-Control": "public, max-age=600" });
+        return json(await gameNews(env, g, ctx), 200, { ...corsHeaders, "Cache-Control": "public, max-age=600" });
       } catch (err) {
         console.error("insights news", err?.stack || String(err));
         return json({ items: [], error: "News failed" }, 200, corsHeaders);

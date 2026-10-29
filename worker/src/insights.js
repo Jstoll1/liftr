@@ -491,10 +491,22 @@ export function filterNews(items) {
 // Slate names carry poll ranks ("#4 Miami") and parentheses ("Miami (OH)");
 // neither appears in headlines, so strip them before searching.
 export const searchName = (n) => String(n || "").replace(/^#\d+\s+/, "").replace(/[()]/g, "").replace(/\s+/g, " ").trim();
-export async function gameNews(env, game) {
+// News for a game. Fresh for 30 minutes; after that the saved copy (kept six
+// hours) answers at once and a new one is fetched in the background, so an
+// open never waits on the feeds (that wait was 4 to 5 seconds) unless there
+// is nothing saved at all.
+const newsRefreshing = new Set();
+export async function gameNews(env, game, ctx = null) {
   const key = `news:v2:g:${game.awayId}:${game.homeId}`;
   const hit = await env.LIFTR_KV.get(key, "json");
   if (hit && Date.now() - hit.at < 30 * 60 * 1000) return hit;
+  if (hit?.items?.length && ctx?.waitUntil) {
+    if (!newsRefreshing.has(key)) { newsRefreshing.add(key); ctx.waitUntil(fetchGameNews(env, game, key).catch(() => {}).finally(() => newsRefreshing.delete(key))); }
+    return { ...hit, stale: true };
+  }
+  return fetchGameNews(env, game, key);
+}
+async function fetchGameNews(env, game, key) {
   const q = (s) => `https://news.google.com/rss/search?q=${encodeURIComponent(s)}+when:7d&hl=en-US&gl=US&ceid=US:en`;
   const A = searchName(game.away), H = searchName(game.home);
   const queries = [

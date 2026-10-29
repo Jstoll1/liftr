@@ -193,7 +193,9 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) hidde
         await new Promise((ok) => setTimeout(ok, 1000));
         try { return await raw(input, init); } catch (e2) { if (!onScreen()) throw e2; err = e2; }
       }
-      if (err?.name !== "AbortError" && (!get || onScreen())) { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }
+      // A read with its own fallback (soft) is logged by its caller, and only
+      // if the fallback fails too.
+      if (err?.name !== "AbortError" && (!get || onScreen()) && !init?.soft) { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }
       throw err;
     }
   };
@@ -709,7 +711,9 @@ async function fetchLiveFromEspn() {
     try {
       const res = await fetchCapped(
         `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300&t=${Date.now()}`,
-        { cache: "no-store" }, 4000
+        // soft: the Worker's copy stands in when ESPN refuses (Firefox reports
+        // that as "Cross-Origin Request Blocked"), so this alone is not a failure.
+        { cache: "no-store", soft: true }, 4000
       );
       return res.ok ? await res.json() : null;
     } catch { return null; }
@@ -795,7 +799,7 @@ async function fetchLiveScoresNow() {
     console.warn("ESPN direct fetch failed, falling back to Worker", err);
   }
   if (!Object.keys(live).length) {
-    try { live = await fetchLiveFromWorker(); answered = true; } catch { live = {}; }
+    try { live = await fetchLiveFromWorker(); answered = true; } catch { live = {}; if (!answered) opsEvent("espn-fail", "scoreboard and Worker /live both failed"); }
   } else if (espnPartial) {
     // A day that timed out would leave its games blank; the Worker fills them.
     try { const w = await fetchLiveFromWorker(); for (const [id, g] of Object.entries(w)) if (!live[id]) live[id] = g; } catch {}
