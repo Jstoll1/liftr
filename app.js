@@ -125,7 +125,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=242230407334", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=387127915229", "sim.js?v=374204176553", "gridcard.js?v=079837032790"];
+const EXTRAS = ["ask-ui.js?v=298705189322", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=387127915229", "sim.js?v=374204176553", "gridcard.js?v=079837032790"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -1508,8 +1508,8 @@ function goToPlayerSelect() {
   setActiveNav("home");
   renderManagerPicker();
   enterScreen("home");
-  if (!localStorage.getItem(RULES_SEEN_KEY)) openRules();
-  else openClaimPrompt();
+  // No introduction pop ups: How It Works stays a link on this screen.
+  openClaimPrompt();
 }
 
 // Analytics: one page view per screen, plus a few named events. Wrapped

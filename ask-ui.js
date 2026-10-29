@@ -412,6 +412,9 @@
     // not the hidden class, and used to block it for good).
     const shown_ = (el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none" && getComputedStyle(el).visibility !== "hidden" && el.getClientRects().length > 0;
     // Any screen, on launch: TRY IT takes them to Scores and opens the chat.
+    // No introduction pop ups: the Ask pill is enough. ?intro=bi still
+    // previews the card (admin).
+    if (!/[?&]intro=bi\b/.test(location.search)) return;
     if (introSeen() || !me() || window.__adminEntry || window.__liveView || (document.getElementById("logo-screen") && !document.getElementById("logo-screen").classList.contains("hidden")) || [...document.querySelectorAll(".pi-screen, .pr-screen, .np-screen, .modal-overlay, .wpx-overlay, #lt-modal, #ask-sheet, #locks-sheet, .lks")].some(shown_)) return;
     try { localStorage.setItem(INTRO_KEY, String(Date.now())); } catch {}
     const ex = chips();
