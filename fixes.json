@@ -147,6 +147,20 @@
       "at": 1793217807000,
       "commit": "bc37d4c",
       "note": "Score cards and pick-card teams take touch-action: manipulation, so quick taps open the game sheet at once on iOS; a rage tap now needs all three taps on the same element (taps landing on the sheet a tap opened no longer count)"
+    },
+    {
+      "k": "espn-fail",
+      "match": "Cross-Origin Request Blocked",
+      "at": 1793245166000,
+      "commit": "e0bbfcf",
+      "note": "ESPN refusing the phone (Firefox calls it Cross-Origin Request Blocked) is covered by the Worker's /live copy; the scoreboard read is now logged only when that fallback fails too"
+    },
+    {
+      "k": "worker-slow",
+      "match": "/insights/news",
+      "at": 1793245166000,
+      "commit": "e0bbfcf",
+      "note": "Game news past 30 minutes old answers from the saved copy at once and refreshes in the background, instead of waiting 4 to 5s on the feeds"
     }
   ]
 }
