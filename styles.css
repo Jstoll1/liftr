@@ -8611,3 +8611,10 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 /* Score cards and a pick card's team open the game on one tap: no
    double-tap wait, so quick repeat taps each register as a tap on iOS. */
 .scorebug, .game-card .tm-id, .hz-tm, .game-status { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+/* No pick yet: a full-width, readable call to pick (the old pill clipped
+   its pixel text into what read as strikethrough). Label left, the state,
+   then a clear button on the right edge. */
+.ins-mypick.none { width: 100%; align-self: stretch; justify-content: flex-start; gap: 10px; min-height: 40px; padding: 6px 6px 6px 12px; border-radius: 10px; border: 1px solid rgba(255, 32, 121, .6); background: rgba(255, 32, 121, .08); line-height: 1.2; }
+.ins-mypick.none .k { font-size: 7px; line-height: 1; color: var(--text-dim); }
+.ins-mypick.none b { flex: 1; font-family: inherit; font-weight: 700; font-size: 14px; line-height: 1.2; color: var(--neon-pink); text-align: left; }
+.ins-mypick.none i { flex: none; padding: 7px 12px; border-radius: 7px; background: var(--neon-pink); color: #1a0010; font-family: 'Press Start 2P', monospace; font-size: 8px; line-height: 1; }

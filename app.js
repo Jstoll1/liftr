@@ -8158,7 +8158,7 @@ async function openInsights(gameId) {
       // your own pick on one slim line under the header.
       return mine
         ? `<div class="ins-mypick"><span class="k">YOUR PICK</span>${lg(mineId, "sm")}<b>${esc(mineAb)} ${esc(mineTerms)}</b><i>${mine.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${minePts} PT${minePts === 1 ? "" : "S"}</i></div>`
-        : `<button type="button" class="ins-mypick none" id="ins-mypick-go"><span class="k">YOUR PICK</span><b>NO PICK YET</b><i>TAP TO PICK ›</i></button>`;
+        : `<button type="button" class="ins-mypick none" id="ins-mypick-go"><span class="k">YOUR PICK</span><b>No pick yet</b><i>PICK ›</i></button>`;
     }
     const side = (team, short, id) => {
       const bets = [["ATS", `${team === game.favorite ? "-" : "+"}${game.spread}`], ["SU", "WIN"]].map(([mode, label]) => {
