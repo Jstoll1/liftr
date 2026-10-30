@@ -291,7 +291,7 @@
     const lockGame = GAMES.find((x) => isGameLocked(x) && MANAGERS.some((n) => all[n]?.picks?.[x.id]?.lock));
     const pool = [
       "Can I still win this week?", "What's my best path to win?", "Which game matters most for me?", "Who's out right now?",
-      "Who's the favourite and why?", "What's my best possible score?", "Who's closest on the tiebreaker?", "Where do I stand vs the leader?",
+      "Who's the favourite and why?", "Rank everyone's week from best to worst.", "What's my best possible score?", "Who's closest on the tiebreaker?", "Where do I stand vs the leader?",
       leader && `How does ${leader} get stopped?`, leader && `What does ${leader} need tonight?`, rival && `Can ${rival} still catch me?`, rival && leader && `Who's in better shape, ${rival} or ${leader}?`,
       g && `If ${g.homeShort} wins, can I still win?`, g && `Who's out if ${g.awayShort} covers?`, g && `Who picked ${g.homeShort}?`,
       g && g2 && `If ${g.homeShort} and ${g2.awayShort} both cover, what are my odds?`, g && `What happens to me if ${g.favorite === g.home ? g.homeShort : g.awayShort} doesn't cover?`,
@@ -312,8 +312,14 @@
       leader && `How is ${leader} somehow in the lead?`,
       leader && `What has to go wrong for ${leader} to blow it?`,
       losingLock && `How bad is ${shown(losingLock)}'s lock looking?`,
-      "Whose week is the biggest disaster so far?",
-      "Rank everyone's week from best to worst.",
+      worst && `Rate ${worst}'s card out of 10. Be honest.`,
+      worst && `Did ${worst} make these picks blindfolded?`,
+      worst && `Is ${worst} just donating the buy-in this year?`,
+      worst && `Should ${worst} be allowed to pick next week?`,
+      leader && `${leader} is due for a collapse, right?`,
+      leader && `Is ${leader} good or just lucky?`,
+      "Whose picks should be embarrassing them right now?",
+      "Who's buying the beer this week?",
     ].filter(Boolean);
     for (const arr of [pool, snark]) for (let i = arr.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [arr[i], arr[k]] = [arr[k], arr[i]]; }
     // Always one about beating the favourite, by name (unless that's you).
