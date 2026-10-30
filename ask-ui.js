@@ -179,6 +179,15 @@
     return `tie on points (${tied.map(shown).join(", ")}); tiebreaker total ${cuts.map(([a, b, w]) => `${b == null ? `${a}+` : a === b ? a : `${a} to ${b}`}: ${w}`).join("; ")}`;
   }
   const TOOLS = {
+    // The season so far, from the sealed weeks (the Worker's record) plus
+    // this week's points so far, as The Pot shows it.
+    season() {
+      if (typeof payoutLedger !== "function") return { error: "Season not available" };
+      if (!weekSummariesReady) { try { loadWeekSummaries(); } catch {} return { error: "The season record is still loading; ask again in a moment." }; }
+      const L = payoutLedger();
+      const list = (L.list || []).map((r) => ({ member: r.name, place: r.seasonPlace, tied: !!r.tied, seasonPoints: r.points, thisWeekSoFar: r.livePoints ?? null, weeksPlayed: r.played, weeksWon: r.weeksWon, winnings: Math.round((r.earned || 0) * 100) / 100 }));
+      return { weeksSealed: Object.values(weekSummaries).filter((w) => w?.complete).length, currentWeek, includesThisWeek: list.some((r) => r.thisWeekSoFar != null), members: list };
+    },
     standings() {
       const memo = base(), live = typeof inFlightPoints === "function" ? (n) => inFlightPoints((lastGoodCloudPicks || {})[n]?.picks || {}, latestLive) : () => 0;
       return { ...hiddenNote(), members: MANAGERS.map((n) => { const b = banked(n), d = memo?.detail?.[n]; const sObj = statusOf(d) || {}; return { member: n, points: b.pts, livePoints: live(n), bestPossible: b.max, picksLeft: b.picksLeft, chanceToWin: d ? r3(d.pct) : null, ...sObj }; }).sort((a, b) => b.points - a.points), statusMeans: "alive = real chance; long shot = 0% in simulations but a path exists (onlyPath lists what must happen); out = proven no path; likely out = no wins found, not proven" };
