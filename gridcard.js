@@ -186,3 +186,106 @@
   }
   window.openGridCard = openGridCard;
 })();
+
+// My picks: tap Picks in the bottom bar three times in a row (within a
+// second and a half) for a clean picture of your own picks this week:
+// each game in kickoff order, your side and terms, what it pays, your lock
+// and your tiebreaker. Only your own card; nobody else's picks.
+(() => {
+  let taps = [];
+  document.getElementById("nav-picks-btn")?.addEventListener("click", () => {
+    const now = Date.now();
+    taps = taps.filter((t) => now - t < 1500); taps.push(now);
+    if (taps.length >= 3) { taps = []; openMyPicks(); }
+  });
+  const loadImg = (src) => new Promise((res) => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => res(im); im.onerror = () => res(null); im.src = src; setTimeout(() => res(null), 4000); });
+  async function openMyPicks() {
+    const me = typeof currentManager === "string" ? currentManager : null;
+    if (!me) return;
+    try { window.noteUse?.("my-picks-card"); } catch {}
+    const st = getManagerState(me) || { picks: {} };
+    const games = (typeof gamesByKickoff === "function" ? gamesByKickoff() : GAMES.slice());
+    const W = 1080, PAD = 56, ROW = 132, TOP = 250, FOOT = 170, H = TOP + games.length * ROW + FOOT;
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+    const lr = typeof lockRule === "function" ? lockRule() : null;
+    // Logos: drawn when ESPN allows it on a canvas, a coloured initial if not.
+    const ids = [...new Set(games.flatMap((g) => { const p = st.picks?.[g.id]; return p?.team ? [p.team === g.home ? g.homeId : g.awayId] : []; }))];
+    const logos = Object.fromEntries(await Promise.all(ids.map(async (id) => [id, await loadImg(logoUrl(id))])));
+    // Background and header.
+    const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#160428"); bg.addColorStop(1, "#07020f");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#ff2079"; ctx.fillRect(0, 0, W, 8);
+    ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+    ctx.font = "26px 'Press Start 2P', monospace"; ctx.fillStyle = "#05d9e8";
+    ctx.fillText(`${WEEK_LABEL.toUpperCase()} PICKS`, PAD, 104);
+    ctx.font = "800 64px Orbitron, system-ui, sans-serif"; ctx.fillStyle = "#fff";
+    ctx.fillText(shown(me).toUpperCase(), PAD, 184);
+    const n = games.filter((g) => st.picks?.[g.id]?.team).length;
+    ctx.textAlign = "right"; ctx.font = "700 30px Orbitron, system-ui, sans-serif"; ctx.fillStyle = n === games.length ? "#39ff88" : "#ffe45e";
+    ctx.fillText(`${n}/${games.length} IN`, W - PAD, 184);
+    ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(PAD, TOP - 26, W - PAD * 2, 2);
+    // One row per game.
+    games.forEach((g, i) => {
+      const y = TOP + i * ROW, p = st.picks?.[g.id];
+      if (i % 2) { ctx.fillStyle = "rgba(255,255,255,.035)"; ctx.fillRect(PAD - 16, y - 8, W - PAD * 2 + 32, ROW - 12); }
+      const ko = new Date(g.kickoff);
+      ctx.textAlign = "left"; ctx.font = "16px 'Press Start 2P', monospace"; ctx.fillStyle = "#9a8bb8";
+      ctx.fillText(`G${g.id} · ${ko.toLocaleDateString([], { weekday: "short" }).toUpperCase()} ${ko.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`, PAD, y + 26);
+      ctx.font = "500 26px system-ui, sans-serif"; ctx.fillStyle = "#b4a7cd";
+      ctx.fillText(`${g.awayShort} @ ${g.homeShort}`, PAD, y + 66);
+      const rx = W - PAD;
+      if (!p?.team) {
+        ctx.textAlign = "right"; ctx.font = "800 36px Orbitron, system-ui, sans-serif"; ctx.fillStyle = "#ff4f6d";
+        ctx.fillText("NO PICK", rx, y + 62);
+        return;
+      }
+      const home = p.team === g.home, id = home ? g.homeId : g.awayId, short = home ? g.homeShort : g.awayShort;
+      const terms = p.mode === "SU" ? "TO WIN" : `${p.team === g.favorite ? "-" : "+"}${g.spread}`;
+      const pts = pointValue(g, p.team, p.mode === "SU" ? "SU" : "ATS") + (p.lock && p.mode === "ATS" && lr ? lr.hit : 0);
+      // Right block: logo, side and terms, then what it pays under it.
+      ctx.textAlign = "right"; ctx.font = "800 40px Orbitron, system-ui, sans-serif"; ctx.fillStyle = "#fff";
+      const main = `${short} ${terms}`; ctx.fillText(main, rx, y + 58);
+      const mw = ctx.measureText(main).width;
+      const lx = rx - mw - 64;
+      if (logos[id]) ctx.drawImage(logos[id], lx, y + 16, 52, 52);
+      else { ctx.fillStyle = "#c13cff"; ctx.beginPath(); ctx.arc(lx + 26, y + 42, 24, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "800 24px Orbitron, system-ui, sans-serif"; ctx.fillText(short[0], lx + 26, y + 51); ctx.textAlign = "right"; }
+      ctx.font = "700 22px system-ui, sans-serif"; ctx.fillStyle = "#05d9e8";
+      ctx.fillText(`${p.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${pts} PT${pts === 1 ? "" : "S"}`, rx, y + 96);
+      if (p.lock && p.mode === "ATS" && lr) { const lw = ctx.measureText(`${p.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${pts} PT${pts === 1 ? "" : "S"}`).width; ctx.fillStyle = "#ffe45e"; ctx.fillText("🔒 LOCK  ", rx - lw, y + 96); }
+    });
+    // Footer: the tiebreaker and when it was made.
+    const fy = TOP + games.length * ROW + 10;
+    ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(PAD, fy, W - PAD * 2, 2);
+    const tbg = typeof tiebreakerGameOf === "function" ? tiebreakerGameOf() : null;
+    ctx.textAlign = "left"; ctx.font = "16px 'Press Start 2P', monospace"; ctx.fillStyle = "#9a8bb8";
+    ctx.fillText(`TIEBREAKER${tbg ? ` · ${tbg.awayShort} @ ${tbg.homeShort} TOTAL` : ""}`, PAD, fy + 56);
+    const tb = String(st.tiebreaker ?? "").trim();
+    ctx.textAlign = "right"; ctx.font = "800 40px Orbitron, system-ui, sans-serif"; ctx.fillStyle = tb ? "#fff" : "#ff4f6d";
+    ctx.fillText(tb || "NOT SET", W - PAD, fy + 62);
+    ctx.textAlign = "center"; ctx.font = "14px 'Press Start 2P', monospace"; ctx.fillStyle = "rgba(255,255,255,.35)";
+    ctx.fillText(`BROCHIEFS · ${new Date().toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).toUpperCase()}`, W / 2, H - 40);
+    showExport(c, `my-picks-${String(WEEK_LABEL).toLowerCase().replace(/\s+/g, "-")}.png`, `My picks · ${WEEK_LABEL}`);
+    if (typeof track === "function") track("my-picks-card");
+  }
+  // The same picture pop up as the grid check: share, save, or long-press.
+  function showExport(c, file, text) {
+    let modal = document.getElementById("mypicks-modal");
+    if (!modal) {
+      modal = document.createElement("div"); modal.id = "mypicks-modal"; modal.className = "gridcard-modal";
+      modal.innerHTML = `<div class="gridcard-box"><img alt="My picks"><div class="gridcard-row"><button type="button" class="admin-btn primary" data-act="share">Share</button><a class="admin-btn" data-act="save">Save</a><button type="button" class="admin-btn" data-act="close" aria-label="Close">Close</button></div><p class="gridcard-hint">Or press and hold the picture to save it.</p></div>`;
+      document.body.appendChild(modal);
+      modal.addEventListener("click", (e) => { if (e.target === modal || e.target.dataset.act === "close") modal.classList.add("hidden"); });
+    }
+    let url = ""; try { url = c.toDataURL("image/png"); } catch {}
+    modal.querySelector("img").src = url;
+    const save = modal.querySelector('[data-act="save"]'); save.href = url; save.download = file;
+    modal.classList.remove("hidden");
+    modal.querySelector('[data-act="share"]').onclick = () => c.toBlob(async (blob) => {
+      const f = new File([blob], file, { type: "image/png" });
+      if (navigator.canShare?.({ files: [f] })) { try { await navigator.share({ files: [f], text }); } catch {} }
+      else modal.querySelector(".gridcard-hint").textContent = "Sharing is not available here. Save or press and hold the picture.";
+    });
+  }
+  window.openMyPicks = openMyPicks;
+})();

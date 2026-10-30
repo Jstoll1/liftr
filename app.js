@@ -125,7 +125,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=298705189322", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=387127915229", "sim.js?v=374204176553", "gridcard.js?v=079837032790"];
+const EXTRAS = ["ask-ui.js?v=298705189322", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=387127915229", "sim.js?v=374204176553", "gridcard.js?v=788931349874"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -8659,7 +8659,7 @@ function swipeToClose(modal, card, close) {
 // Only from the top: if anything under the finger is scrolled down, the
 // pull scrolls it back up instead; a sideways drag never closes.
 (() => {
-  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #avatar-modal, #sim-modal, #gridcard-modal, #player-modal, #sh2h-modal";
+  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #avatar-modal, #sim-modal, #gridcard-modal, #mypicks-modal, #player-modal, #sh2h-modal";
   const CLOSE = '.wpx-x, [data-act="close"], #rules-close-btn, [aria-label="Close"]';
   let st = null;
   const reset = (card) => { if (card) { card.style.transform = ""; card.style.opacity = ""; } };
@@ -10207,6 +10207,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) setT
   document.addEventListener("pointerdown", (e) => {
     // Three quick taps on the logo are the admin shortcut, not frustration.
     if (e.target.closest?.(".home-logo-img") || (typeof homeLogoBtn !== "undefined" && homeLogoBtn?.contains(e.target))) return;
+    // Three taps on Picks open the my-picks export, also on purpose.
+    if (e.target.closest?.("#nav-picks-btn")) return;
     const now = Date.now();
     // Same spot and the same element: a tap that opened a sheet, then taps
     // landing on that sheet, is a reader, not frustration.
