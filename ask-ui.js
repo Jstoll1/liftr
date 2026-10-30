@@ -186,11 +186,15 @@
       if (!weekSummariesReady) { try { loadWeekSummaries(); } catch {} return { error: "The season record is still loading; ask again in a moment." }; }
       const L = payoutLedger();
       const list = (L.list || []).map((r) => ({ member: r.name, place: r.seasonPlace, tied: !!r.tied, seasonPoints: r.points, thisWeekSoFar: r.livePoints ?? null, weeksPlayed: r.played, weeksWon: r.weeksWon, winnings: Math.round((r.earned || 0) * 100) / 100 }));
-      return { weeksSealed: Object.values(weekSummaries).filter((w) => w?.complete).length, currentWeek, includesThisWeek: list.some((r) => r.thisWeekSoFar != null), members: list };
+      const sealedN = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition).length, total = typeof POT === "object" ? POT.weeks : null;
+      return { weeksSealed: Object.values(weekSummaries).filter((w) => w?.complete).length, seasonWeeks: total, weeksLeft: total != null ? Math.max(0, total - sealedN) : null, thisWeekCounts: total != null && !weekSummaries[currentWeek]?.complete, currentWeek, includesThisWeek: list.some((r) => r.thisWeekSoFar != null), members: list };
     },
     standings() {
       const memo = base(), live = typeof inFlightPoints === "function" ? (n) => inFlightPoints((lastGoodCloudPicks || {})[n]?.picks || {}, latestLive) : () => 0;
-      return { ...hiddenNote(), members: MANAGERS.map((n) => { const b = banked(n), d = memo?.detail?.[n]; const sObj = statusOf(d) || {}; return { member: n, points: b.pts, livePoints: live(n), bestPossible: b.max, picksLeft: b.picksLeft, chanceToWin: d ? r3(d.pct) : null, ...sObj }; }).sort((a, b) => b.points - a.points), statusMeans: "alive = real chance; long shot = 0% in simulations but a path exists (onlyPath lists what must happen); out = proven no path; likely out = no wins found, not proven" };
+      // While everyone else's picks are hidden the odds would only count the
+      // asker's own picks (that read 99% to win), so none are given.
+      const hn = hiddenNote(), noOdds = !!hn.picksHidden && /Everyone/.test(hn.picksHidden);
+      return { ...hn, ...(noOdds ? { oddsAvailable: false } : {}), members: MANAGERS.map((n) => { const b = banked(n), d = memo?.detail?.[n]; const sObj = noOdds ? {} : statusOf(d) || {}; return { member: n, points: b.pts, livePoints: live(n), bestPossible: b.max, picksLeft: b.picksLeft, chanceToWin: !noOdds && d ? r3(d.pct) : null, ...sObj }; }).sort((a, b) => b.points - a.points), statusMeans: "alive = real chance; long shot = 0% in simulations but a path exists (onlyPath lists what must happen); out = proven no path; likely out = no wins found, not proven" };
     },
     chance({ conditions = [] } = {}) {
       const conds = readConds(conditions); if (conds.error) return conds;
