@@ -8632,3 +8632,8 @@ body:has(#ask-sheet:not(.hidden)) #ask-fab { display: none !important; }
 /* The Chief, bigger: 28px in the Ask pill, 24px in the sheet header. */
 #ask-fab .chief-ico { width: 28px; height: 28px; vertical-align: middle; margin: -4px 0; }
 .ask-h .chief-ico { width: 24px; height: 24px; vertical-align: -6px; margin-right: 2px; }
+/* Badge and title share a centre line; the pill's badge centres on "Ask". */
+.ask-h .ask-title { display: flex; align-items: center; gap: 8px; }
+.ask-h .ask-title .chief-ico { vertical-align: 0; margin: 0; }
+#ask-fab b { display: flex; align-items: center; }
+#ask-fab .chief-ico { margin: 0; }
