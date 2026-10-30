@@ -1934,7 +1934,10 @@ async function handleGames(request, env, corsHeaders, url) {
       }));
       problems.sort((a, b) => a.slot - b.slot || a.manager.localeCompare(b.manager));
       cards.sort((a, b) => a.name.localeCompare(b.name));
-      return json({ ok: true, week, checked, problems, cards, lockRule: !!lockRuleFor(week) }, 200, corsHeaders);
+      // The games behind each slot (column order), so a missing box can say
+      // which game it is. Matchups and kickoffs only, never a pick.
+      const slots = [...games.keys()].sort((a, b) => Number(a) - Number(b)).map((gid) => { const g = games.get(gid); return { id: Number(gid), game: `${g.awayShort || g.away} @ ${g.homeShort || g.home}`, kickoff: g.kickoff || null }; });
+      return json({ ok: true, week, checked, problems, cards, slots, lockRule: !!lockRuleFor(week) }, 200, corsHeaders);
     }
     // The slate editor's warning before it changes a published game: who
     // has a pick in on each game. Names only, never which side or mode.

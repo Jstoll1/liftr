@@ -793,6 +793,12 @@ html, body { overflow-x: hidden; }
   .cs-grid i { height: 16px; border-radius: 3px; font: 700 10px/16px system-ui, sans-serif; font-style: normal; text-align: center; color: #0b0716; }
   .cs-grid i.y { background: var(--green); }
   .cs-grid i.n { background: rgba(255, 107, 129, .55); }
+  .cs-grid button.n { height: 16px; padding: 0; border: 0; border-radius: 3px; background: rgba(255, 107, 129, .55); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .cs-grid button.n:hover { background: rgba(255, 107, 129, .8); }
+  .cs-grid button.n.on { background: #ff6b81; box-shadow: 0 0 0 2px var(--text); }
+  .cs-miss { display: block; margin-top: 10px; line-height: 1.4; padding: 8px 10px; border-radius: 8px; background: rgba(255, 107, 129, .1); border: 1px solid rgba(255, 107, 129, .35); font-size: 13px; color: var(--text); }
+  .cs-miss b { font-weight: 700; }
+  .cs-miss small { display: block; margin-top: 2px; font-size: 12px; color: var(--dim); }
   @media (max-width: 1023px) { .cs-grid { grid-template-columns: minmax(60px, 1fr) repeat(var(--n), minmax(14px, 22px)) repeat(var(--x), 26px); } }
   /* Admin friction: a deep blue terminal, collapsed until opened. */
   .afr { --afr-g: #39ff88; margin: 14px 0; padding: 4px 12px; border: 1px solid #1d3b8f; border-radius: 12px; background: #06123a; color: var(--afr-g); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
@@ -1914,9 +1920,20 @@ body::before { display: none; }
       const rows = [...cards].sort((a, b) => (need(a).length ? 0 : 1) - (need(b).length ? 0 : 1) || a.picks - b.picks || a.name.localeCompare(b.name));
       const n = Math.max(...cards.map((c) => c.of));
       const cell = (ok, txt = "") => `<i class="${ok ? "y" : "n"}">${txt}</i>`;
+      // A missing pick is a button: tap it to see which game it is.
+      const slotCell = (c, ok, k) => ok ? cell(true) : `<button type="button" class="n${st.csMiss === `${c.name}|${k}` ? " on" : ""}" data-csmiss="${esc(c.name)}|${k}" aria-label="${esc(name(c.name))} is missing game ${k + 1}"></button>`;
+      const miss = (() => {
+        if (!st.csMiss) return "";
+        const [who, k] = st.csMiss.split("|"); const sl = st.audit.slots?.[Number(k)];
+        if (!rows.some((c) => c.name === who)) return "";
+        const ko = sl?.kickoff ? new Date(sl.kickoff) : null;
+        const when = ko ? `${ko.toLocaleDateString([], { weekday: "short" })} ${hm(ko.getTime())}` : "";
+        const all = rows.filter((c) => !(c.slots || [])[Number(k)]).map((c) => name(c.name));
+        return `<div class="cs-miss"><b>${esc(name(who))}</b> is missing <b>G${sl?.id ?? Number(k) + 1}</b>${sl ? ` · ${esc(sl.game)}` : ""}${when ? ` · <span style="white-space:nowrap">${esc(when)}</span>` : ""}${all.length > 1 ? `<small>Also missing it: ${esc(all.filter((n) => n !== name(who)).join(", "))}</small>` : ""}</div>`;
+      })();
       const grid = `<div class="cs-grid" style="--n:${n};--x:${lr ? 2 : 1}"><span></span>${Array.from({ length: n }, (_, k) => `<em>${k + 1}</em>`).join("")}<em>TB</em>${lr ? "<em>🔒</em>" : ""}
-        ${rows.map((c) => `<b class="${need(c).length ? "" : "all"}" title="${c.last ? `last saved ${esc(afrDay(c.last) + " " + hm(c.last))}` : "nothing saved"}">${esc(name(c.name))}</b>${(c.slots || Array.from({ length: c.of }, (_, k) => k < c.picks)).map((x) => cell(x)).join("")}${cell(c.tb, c.tb ? "✓" : "")}${lr ? cell(c.lock, c.lock ? "✓" : "") : ""}`).join("")}</div>`;
-      return `<section class="cs cs-${where}"><div class="cs-h"><b>WEEK ${st.audit.week} CARDS</b><small class="${done === cards.length ? "all" : ""}">${done}/${cards.length} done</small>${done < cards.length ? `<button type="button" class="cs-cp" data-csnudge="1">${st.copied === "cs" ? "✓ copied" : "Copy nudges"}</button>` : ""}</div>${grid}</section>`;
+        ${rows.map((c) => `<b class="${need(c).length ? "" : "all"}" title="${c.last ? `last saved ${esc(afrDay(c.last) + " " + hm(c.last))}` : "nothing saved"}">${esc(name(c.name))}</b>${(c.slots || Array.from({ length: c.of }, (_, k) => k < c.picks)).map((x, k) => slotCell(c, x, k)).join("")}${cell(c.tb, c.tb ? "✓" : "")}${lr ? cell(c.lock, c.lock ? "✓" : "") : ""}`).join("")}</div>`;
+      return `<section class="cs cs-${where}"><div class="cs-h"><b>WEEK ${st.audit.week} CARDS</b><small class="${done === cards.length ? "all" : ""}">${done}/${cards.length} done</small>${done < cards.length ? `<button type="button" class="cs-cp" data-csnudge="1">${st.copied === "cs" ? "✓ copied" : "Copy nudges"}</button>` : ""}</div>${grid}${miss}</section>`;
     };
     // Health: Worker failures, failed or slow ESPN and Worker calls, slow
     // loads and script errors, from the Worker itself and from phones.
@@ -2573,6 +2590,7 @@ body::before { display: none; }
       try { const x = await fetch(`${WORKER}/admin-friction?${auth()}`, { method: "POST", body: JSON.stringify({ action: "fix", at, fixed: !!r.fixed }) }); const j = await x.json().catch(() => ({})); if (x.ok && j.taps) st.afr = j.taps; else r.fixed = r.fixed ? undefined : Date.now(); } catch { r.fixed = r.fixed ? undefined : Date.now(); }
       st.sig = ""; render(); return;
     }
+    if (b.dataset.csmiss) { st.csMiss = st.csMiss === b.dataset.csmiss ? null : b.dataset.csmiss; st.sig = ""; render(); return; }
     if (b.dataset.csnudge) {
       const c = st.audit?.cards || [];
       const need = (x) => [x.picks < x.of && `${x.of - x.picks} pick${x.of - x.picks === 1 ? "" : "s"}`, !x.tb && "tiebreaker", st.audit.lockRule && !x.lock && "lock of the week"].filter(Boolean);
