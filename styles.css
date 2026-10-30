@@ -8629,3 +8629,6 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 /* The Chief: the league's mascot where the 🧠 was, at emoji size. */
 .chief-ico { display: inline-block; width: 1.3em; height: 1.3em; vertical-align: -0.3em; object-fit: contain; }
 body:has(#ask-sheet:not(.hidden)) #ask-fab { display: none !important; }
+/* The Chief, bigger: 28px in the Ask pill, 24px in the sheet header. */
+#ask-fab .chief-ico { width: 28px; height: 28px; vertical-align: middle; margin: -4px 0; }
+.ask-h .chief-ico { width: 24px; height: 24px; vertical-align: -6px; margin-right: 2px; }
