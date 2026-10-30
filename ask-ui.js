@@ -345,11 +345,18 @@
       m.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) card.style.transform = `translateY(${dy}px)`; }, { passive: true });
       m.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; card.style.transition = "transform .2s ease"; if (dy > 90) { card.style.transform = "translateY(110%)"; setTimeout(() => m.remove(), 200); } else card.style.transform = ""; });
       m.addEventListener("submit", (e) => { e.preventDefault(); const i = m.querySelector("input"); send(i.value); });
+      // Dock above the keyboard: iOS does not shrink a fixed overlay when the
+      // keyboard opens, so the overlay is sized to the visible viewport.
+      const vv = window.visualViewport;
+      if (vv) {
+        const fit = () => { if (!document.body.contains(m)) { vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit); return; } m.style.top = `${vv.offsetTop}px`; m.style.height = `${vv.height}px`; m.style.bottom = "auto"; };
+        vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); requestAnimationFrame(fit);
+      }
       document.body.appendChild(m);
     }
     m.innerHTML = `<div class="ask-card"><span class="ask-grip" aria-hidden="true"></span><div class="ask-h"><b><span class="ask-title"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async">ASK CHIEF</span></b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
-      <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><div class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : fmtA(x.a)}</div>`).join("") : `<p class="ask-hint">Ask about this week or the season: odds, "what if" a game goes one way, who's out, who picked what, the tiebreaker, season points. The odds come from the same runs as the WIN% column.</p>`}</div>
-      ${log.length ? "" : `<div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}">${esc(c)}</button>`).join("")}</div>`}
+      <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><div class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : fmtA(x.a)}</div>`).join("") : `<p class="ask-hint">Odds, what-ifs, who's out, picks, the tiebreaker and season points.</p>`}</div>
+      ${log.length ? "" : `<div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}"><span>${esc(c)}</span><i aria-hidden="true">↗</i></button>`).join("")}</div>`}
       <form class="ask-f"><input type="text" maxlength="200" placeholder="If Michigan wins can I still win?" ${busy ? "disabled" : ""} autocomplete="off"><button type="submit" ${busy ? "disabled" : ""}>Ask</button></form></div>`;
     const lg = m.querySelector(".ask-log"); lg.scrollTop = lg.scrollHeight;
     return m;
