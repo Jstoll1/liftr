@@ -65,7 +65,7 @@ for (const e of feed) {
 }
 const stuck = [...fr.values()].sort((a, b) => b.who.size - a.who.size || b.n - a.n);
 
-// --- Ask the Chief ----------------------------------------------------------
+// --- Ask Chief --------------------------------------------------------------
 const chats = (chatR.value?.chats || []).filter((c) => c.at >= since && c.asker !== ADMIN);
 const misses = chats.filter((c) => c.flagged || (c.status && !["answered", "asked"].includes(c.status)));
 
@@ -76,7 +76,7 @@ out.push("", `HEALTH · ${health.length} open`);
 health.slice(0, 12).forEach((g, i) => out.push(`${i + 1}. "${(OPS_KIND[g.k] || [g.k])[0]}" ${g.n}x (example: ${g.d || g.k}; at ${g.ats.sort((a, b) => a - b).map(when).join(", ")}${g.vs.size ? `; app build ${[...g.vs].join(", ")}` : ""})`));
 out.push("", `STUCK MOMENTS · ${stuck.length} open`);
 stuck.slice(0, 12).forEach((g, i) => out.push(`${i + 1}. ${FR[g.k]} on ${g.d || "(no label)"}: ${g.n}x by ${g.who.size} ${g.who.size === 1 ? "person" : "people"} (last ${when(Math.max(...g.ats))}${g.v.size ? `; build ${[...g.v].join(", ")}` : ""})`));
-out.push("", `ASK THE CHIEF · ${misses.length} of ${chats.length} need a look`);
+out.push("", `ASK CHIEF · ${misses.length} of ${chats.length} need a look`);
 misses.slice(0, 8).forEach((c, i) => out.push(`${i + 1}. [${c.flagged ? "flagged" : c.status}] Q: ${c.q}\n   A: ${c.a ?? "(no answer)"}${(c.tools || []).map((t) => `\n   tool ${t.name}(${typeof t.args === "string" ? t.args : JSON.stringify(t.args)}) -> ${String(typeof t.out === "string" ? t.out : JSON.stringify(t.out)).slice(0, 300)}`).join("")}`));
 if (!health.length && !stuck.length && !misses.length) out.push("", "Nothing open. Live is clean.");
 console.log(out.join("\n"));

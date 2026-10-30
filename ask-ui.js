@@ -1,4 +1,4 @@
-// Ask the Chief: "If Michigan wins, can I still win?"
+// Ask Chief: "If Michigan wins, can I still win?"
 // The Worker's model only reads the question into who and which game
 // outcomes it assumes. The numbers here come from the app's own win-chance
 // runs, replayed with those outcomes held, so nothing is made up.
@@ -30,7 +30,7 @@
   // The chat as plain text, with who asked and the build, to paste to Claude.
   function chatText() {
     const v = document.querySelector('meta[name="build"]')?.content || "";
-    const head = `Ask the Chief · ${new Date().toLocaleString()} · ${me() || "nobody signed in"}${v ? ` · build ${v}` : ""}`;
+    const head = `Ask Chief · ${new Date().toLocaleString()} · ${me() || "nobody signed in"}${v ? ` · build ${v}` : ""}`;
     return [head, ...log.map((x) => `Q: ${x.q}\nA: ${x.a ?? "(still working)"}${(x.tools || []).map((t) => `\n   tool ${t.name}(${JSON.stringify(t.args)}) -> ${JSON.stringify(t.out).slice(0, 400)}`).join("")}`)].join("\n\n");
   }
   async function copyChat() {
@@ -329,7 +329,7 @@
   function sheet() {
     let m = document.getElementById("ask-sheet");
     if (!m) {
-      m = document.createElement("div"); m.id = "ask-sheet"; m.className = "ask"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Ask the Chief");
+      m = document.createElement("div"); m.id = "ask-sheet"; m.className = "ask"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Ask Chief");
       m.addEventListener("click", (e) => {
         if (e.target === m || e.target.closest(".ask-x")) { m.remove(); return; }
         if (e.target.closest("[data-askcopy]")) { copyChat(); return; }
@@ -347,7 +347,7 @@
       m.addEventListener("submit", (e) => { e.preventDefault(); const i = m.querySelector("input"); send(i.value); });
       document.body.appendChild(m);
     }
-    m.innerHTML = `<div class="ask-card"><span class="ask-grip" aria-hidden="true"></span><div class="ask-h"><b><span class="ask-title"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async">ASK THE CHIEF</span></b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
+    m.innerHTML = `<div class="ask-card"><span class="ask-grip" aria-hidden="true"></span><div class="ask-h"><b><span class="ask-title"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async">ASK CHIEF</span></b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
       <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><div class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : fmtA(x.a)}</div>`).join("") : `<p class="ask-hint">Ask about this week or the season: odds, "what if" a game goes one way, who's out, who picked what, the tiebreaker, season points. The odds come from the same runs as the WIN% column.</p>`}</div>
       ${log.length ? "" : `<div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}">${esc(c)}</button>`).join("")}</div>`}
       <form class="ask-f"><input type="text" maxlength="200" placeholder="If Michigan wins can I still win?" ${busy ? "disabled" : ""} autocomplete="off"><button type="submit" ${busy ? "disabled" : ""}>Ask</button></form></div>`;
@@ -401,7 +401,7 @@
   function paintBtn() {
     let b = document.getElementById("ask-fab");
     if (!b) {
-      b = document.createElement("button"); b.id = "ask-fab"; b.type = "button"; b.className = "ask-fab"; b.setAttribute("aria-label", "Ask the Chief");
+      b = document.createElement("button"); b.id = "ask-fab"; b.type = "button"; b.className = "ask-fab"; b.setAttribute("aria-label", "Ask Chief");
       b.innerHTML = `<b aria-hidden="true"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async"></b>Ask`;
       b.addEventListener("click", () => { chipSet = null; open(); });
       document.body.appendChild(b);
@@ -428,9 +428,9 @@
     try { localStorage.setItem(INTRO_KEY, String(Date.now())); } catch {}
     const ex = chips();
     const m = document.createElement("div");
-    m.className = "pi-screen ai-intro"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: Ask the Chief");
+    m.className = "pi-screen ai-intro"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: Ask Chief");
     m.innerHTML = `<div class="pi-card">
-      <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async"> ASK THE CHIEF</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
+      <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async"> ASK CHIEF</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
       <p class="pi-lede">Ask anything about this week's race and get the answer from the same odds as the WIN% column.</p>
       <div class="pi-step"><b>1</b><span>Tap <span class="ai-pill"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async"> Ask</span> at the bottom left of Scores</span></div>
       <div class="pi-step"><b>2</b><span>Ask in your own words, or tap one of these</span></div>

@@ -2277,7 +2277,7 @@ body::before { display: none; }
       copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${qShare} of visits in the last 24h lasted under a minute (${qCtx})${topQuick ? `, most ending on ${topQuick[0]}` : ""}. On a game day a quick exit can mean the first screen missed what they came for (score, my picks, standing). Suggest and build the one change that answers it without adding clutter. Test at 390px.` };
     else recs.activity = { tone: "ok", t: quick.length && !onGameDay ? "Quick checks on an off day" : "Visits look healthy", why: `${qCtx}. ${quick.length} under a minute${!onGameDay && quick.length ? ", which is normal with no games on" : vs.length < 10 ? ", too few visits to read into" : ""}. Nothing to fix here today.`, copy: "" };
     if (biBad.length) recs.bi = { tone: "warn", t: `Tune the Chief: ${biBad.length} answer${biBad.length === 1 ? "" : "s"} went wrong`, why: `${biNo.length} got no answer, ${biBad.length - biNo.length} flagged, of ${chatDay.length} in 24h.`,
-      copy: `Ask the Chief misses from the last 24h. For each, find why (tool data, system prompt, or the phone's tool) and fix the cause, not the one answer:\n\n${chatLog(biBad)}` };
+      copy: `Ask Chief misses from the last 24h. For each, find why (tool data, system prompt, or the phone's tool) and fix the cause, not the one answer:\n\n${chatLog(biBad)}` };
     else if (chatDay.length) recs.bi = { tone: "ok", t: "The Chief answered everything", why: `${chatDay.length} questions, none flagged or unanswered in 24h.`, copy: "" };
     const feats0 = [...featMap.entries()].sort((a, b) => a[1].who.size - b[1].who.size);
     const lowFeat = feats0.find(([, x]) => x.who.size <= 1);
@@ -2416,7 +2416,7 @@ body::before { display: none; }
       home: `${ucPanel}${recCard("home")}${kpisNb}${recordsPanel}${timeline}${feedHtml}${strips}${overview}${flowPanel}`,
       activity: "",
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
-      bi: `<div class="pg-bar"><h1>Ask the Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
+      bi: `<div class="pg-bar"><h1>Ask Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
       stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${rail}`,
     }[st.page] || "";
     app.innerHTML = `
@@ -3025,7 +3025,7 @@ body::before { display: none; }
   // Read every few minutes; prices are OpenAI's published rates, so the
   // bill itself is the final word.
   const cost = { data: null, at: 0, err: "" };
-  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening", "week-ask": "BI (old reader)", "week-chat": "Ask the Chief", "lightning-edit": "Lightning edits" };
+  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening", "week-ask": "BI (old reader)", "week-chat": "Ask Chief", "lightning-edit": "Lightning edits" };
   async function loadCosts(force) {
     if (!force && Date.now() - cost.at < 3 * 60000) return;
     try {
