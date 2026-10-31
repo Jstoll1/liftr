@@ -8791,7 +8791,11 @@ function renderSinceLine(ranked, cloudPicks, live) {
   const tiles = tile("LIVE", livePts === null ? "–" : `${livePts > 0 ? "+" : ""}${livePts}`, livePts === null ? "" : mv(dl))
     + tile("POINTS", now.pts, mv(dp))
     + tile("PLACE", now.place ? `${row?.tied ? "T-" : ""}${ordinal(now.place).toUpperCase()}` : "–", mv(dPlace, "↑", "↓"));
-  const list = liveMode ? liveRows : flips;
+  // Changed: what flipped first, then every other pick still live, so a
+  // second game in progress never drops out of view.
+  const flipIds = new Set(); for (const g of GAMES) if (cov[g.id] && b && (() => { const l = live[g.id], was = b.cov?.[g.id], is = cov[g.id]; const nf = l.completed && !(b.fin || []).includes(g.id); return nf || !(was === is || (!was && is === "down")); })()) flipIds.add(g.id);
+  const restLive = GAMES.filter((g) => cov[g.id] && live[g.id].state === "in" && !live[g.id].completed && !flipIds.has(g.id)).map((g) => row2(g, cov[g.id], cov[g.id] === "up" ? "covering" : cov[g.id] === "push" ? "pushing" : "not covering"));
+  const list = liveMode ? liveRows : [...flips, ...restLive];
   el.dataset.sg = (liveMode ? liveFirst : first) ?? "";
   const rows = list.length > 3 ? [...list.slice(0, 2), `<span class="since-more">+${list.length - 2} more ${liveMode ? "live picks" : "picks changed"}</span>`] : list;
   el.innerHTML = `<i class="since-h">${liveMode ? `YOUR LIVE PICKS${b?.at ? `<em> · NO CHANGE SINCE ${new Date(b.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toUpperCase()}</em>` : ""}` : "SINCE YOU LAST LOOKED"}</i>${rows.length ? `<span class="since-rows">${rows.join("")}</span>` : ""}<span class="since-tiles">${tiles}</span>`;
