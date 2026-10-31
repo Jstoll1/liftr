@@ -589,6 +589,8 @@ function ptsValueTier(points) {
   return points >= 3 ? "upset" : points === 2 ? "hit2" : points > 0 ? "hit" : "miss";
 }
 
+// Point totals: Retro keeps its two digit LED look ("03"); Pro shows "3".
+const pts2 = (n) => (window.APP_STYLE === "pro" ? String(n) : String(n).padStart(2, "0"));
 function rankBadge(rank) {
   return rank ? `<i class="tm-rank" title="AP rank">${rank}</i>` : "";
 }
@@ -2814,7 +2816,7 @@ function renderPicksStanding() {
   const right = chasing
     ? `<span class="ps-label">${me.place === 1 ? "AHEAD OF" : "CHASING"}</span><span class="ps-who">${escapeCd(shown(chasing.name).toUpperCase())}</span><span class="ps-gap">${gap} ${me.place === 1 ? "UP" : "BACK"}</span>`
     : `<span class="ps-label">CLEAR</span>`;
-  el.innerHTML = `<span class="ps-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ps-score">${String(me.score).padStart(2, "0")} PTS</span>${right}`;
+  el.innerHTML = `<span class="ps-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span><span class="ps-score">${pts2(me.score)} PTS</span>${right}`;
   el.classList.remove("hidden");
 }
 
@@ -5027,7 +5029,7 @@ function openPathRun(name, replay = false) {
     order.forEach((n) => {
       const li = rows[n], rank = 1 + order.findIndex((x) => pts[x] === pts[n]), tied = order.filter((x) => pts[x] === pts[n]).length > 1;
       li.querySelector(".pr-rk").textContent = `${tied ? "T" : ""}${rank}`;
-      li.querySelector(".pr-pt").textContent = String(pts[n]).padStart(2, "0");
+      li.querySelector(".pr-pt").textContent = pts2(pts[n]);
       li.querySelector(".pr-gain").textContent = gains[n] ? `+${gains[n]}` : "";
       // Restart the pop every game, even for a row that gained last game too.
       li.classList.remove("gained");
@@ -5584,7 +5586,7 @@ function renderSeasonH2H() {
     card.querySelector(".h2h-f-av").textContent = avatarOverrides[name] || shown(name)[0];
     card.querySelector(".h2h-f-name").textContent = shown(name).toUpperCase();
     card.querySelector(".h2h-f-meta").innerHTML = `<span>${pr.tied ? "T" : "#"}${pr.seasonPlace || "–"}</span><span>${pr.earned ? money(pr.earned) : "$0"}</span>`;
-    card.querySelector(".h2h-f-score").textContent = String(pr.points || 0).padStart(2, "0");
+    card.querySelector(".h2h-f-score").textContent = pts2(pr.points || 0);
     card.classList.toggle("ahead", (pr.points || 0) > ((side === "a" ? d.potB : d.potA).points || 0));
   };
   fill("a", a, d.potA); fill("b", b, d.potB);
@@ -6452,7 +6454,7 @@ function renderMyScore(rows, cloudPicks = {}, live = {}) {
   // No name here. The header's own pill says who you are eight pixels
   // above, and the room it gives back pays for LIVE on the pill, which
   // reads better than a bare +6.
-  const banked = `<span class="ms-score">${String(me.score).padStart(2, "0")} PTS</span>`;
+  const banked = `<span class="ms-score">${pts2(me.score)} PTS</span>`;
   const livePill = inFlight ? `<span class="ms-live${inFlight < 0 ? " neg" : ""}"><span class="stake-dot"></span>${signedPts(inFlight)} LIVE</span>` : "";
   el.innerHTML = `<span class="ms-rank">${me.tied ? "T-" : ""}${ordinal(me.place)}</span>${banked}${livePill}${state}${clock}`;
   // The strip stays built (its refresh and countdown hooks still run) but
@@ -6510,7 +6512,7 @@ function drawChalkLine(rows, results) {
   const line = document.createElement("div");
   line.className = "chalk-line";
   line.title = "Score of a card with every favorite against the spread";
-  line.innerHTML = `<span>CHALK LINE <b>${String(chalk).padStart(2, "0")}</b></span><em>${beat} of ${rows.length} above</em>`;
+  line.innerHTML = `<span>CHALK LINE <b>${pts2(chalk)}</b></span><em>${beat} of ${rows.length} above</em>`;
   if (i === -1 || !els[i]) rankingsList.appendChild(line);
   else rankingsList.insertBefore(line, els[i]);
   const note = document.createElement("p");
@@ -6607,7 +6609,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
           }
           return pct != null ? `<span class="rank-wp${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>` : `<span class="ranking-dots" aria-hidden="true"></span>`;
         })()}
-        <span class="ranking-score">${String(row.score).padStart(2, "0")}</span>
+        <span class="ranking-score">${pts2(row.score)}</span>
       </div>
       ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
     `;

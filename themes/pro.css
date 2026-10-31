@@ -537,3 +537,16 @@ html.pro .rankings-list .ranking-row .rank-wp, html.pro .rankings-list .ranking-
 html.pro .rankings-list .ranking-row .ranking-name { flex: 0 1 112px !important; width: auto !important; min-width: 64px !important; }
 html.pro .rankings-list .ranking-row .rank-wp, html.pro .rankings-list .ranking-row .ranking-dots { min-width: 72px !important; }
 @media (max-width: 350px) { html.pro .ranking-row .ranking-main { gap: 6px !important; padding-left: 8px !important; padding-right: 8px !important; } }
+
+/* Score card points pill: one solid shape in every state. Before kickoff
+   grey ("2 PT"); live green when covering, red when not; final the same. */
+html.pro .bug-head .stake { border: 1px solid var(--line2) !important; border-style: solid !important; border-radius: 999px !important; background: var(--s2) !important; color: var(--text-dim) !important; min-width: 34px; justify-content: center; box-shadow: none !important; animation: none !important; font-weight: 700 !important; }
+html.pro .bug-head .stake :is(.stake-dot) { display: none !important; }
+html.pro .bug-head .stake.hit, html.pro .bug-head .stake.lean.hit, html.pro .bug-head .stake.lean:not(.miss) { background: rgba(46, 207, 122, .14) !important; border-color: rgba(46, 207, 122, .45) !important; color: var(--win) !important; }
+html.pro .bug-head .stake.miss, html.pro .bug-head .stake.lean.miss { background: rgba(255, 93, 93, .12) !important; border-color: rgba(255, 93, 93, .4) !important; color: var(--loss) !important; }
+html.pro .bug-head .stake.push { background: var(--s2) !important; color: var(--text-dim) !important; }
+/* Since box: grey heading like every other, no dash when nothing moved. */
+html.pro .since-h, html.pro .since-h * { color: var(--text-dim) !important; }
+html.pro .since-tile u.eq { display: none !important; }
+/* AP rank sits clear of the team name. */
+html.pro .bug-mark { margin-right: 6px !important; }
