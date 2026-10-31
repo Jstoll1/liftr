@@ -455,3 +455,56 @@ html.pro .scorebug { padding: 5px 8px 5px !important; } html.pro .bug-head { mar
 html.pro .ranking-row:not(.rank-hd) .ranking-main { padding-top: 4px !important; padding-bottom: 4px !important; min-height: 0 !important; }
 html.pro .ranking-row .ranking-name { line-height: 1.2 !important; gap: 1px !important; } html.pro .ranking-row .ranking-name > * { line-height: 1.2 !important; margin: 0 !important; }
 html.pro .gc-field.crt::before, html.pro .gc-field.crt::after { opacity: .35; }
+
+/* ---- Leaderboard, Pro -----------------------------------------------
+   One quiet card, fixed columns so every row and the header line up,
+   one type family with tabular numbers, colour only where it means
+   something (your row, live up/down, the chance bar). */
+html.pro .rankings-list { background: var(--s1) !important; border: 1px solid var(--line) !important; border-radius: var(--r) !important; padding: 2px 0 !important; overflow: hidden; }
+html.pro .rankings-list::after, html.pro .rankings-list > .ranking-row::before { display: none !important; }
+html.pro .ranking-row { border-bottom: 1px solid var(--line) !important; }
+html.pro .ranking-row:last-child { border-bottom: 0 !important; }
+html.pro .ranking-row .ranking-main { display: flex !important; align-items: center !important; gap: 10px !important; padding: 7px 12px !important; }
+/* Columns */
+html.pro .ranking-row .ranking-place { flex: 0 0 30px !important; min-width: 30px !important; width: 30px !important; height: 22px !important; padding: 0 !important; display: inline-flex !important; align-items: center; justify-content: center; font: 700 12px/1 var(--font) !important; font-variant-numeric: tabular-nums; border-radius: 6px !important; background: none !important; border: 0 !important; box-shadow: none !important; color: var(--text-dim) !important; }
+html.pro .ranking-row .ranking-place.medal { color: #14110b !important; }
+html.pro .ranking-row .ranking-name { flex: 1 1 auto !important; min-width: 0 !important; }
+html.pro .ranking-row .rank-live { flex: 0 0 38px !important; width: 38px !important; text-align: center !important; }
+html.pro .ranking-row .rank-wp, html.pro .ranking-row .ranking-dots { flex: 0 0 104px !important; width: 104px !important; display: flex !important; align-items: center !important; gap: 8px !important; margin: 0 !important; }
+html.pro .ranking-row .ranking-score { flex: 0 0 30px !important; width: 30px !important; text-align: right !important; }
+/* Name and subline */
+html.pro .rank-who { font: 600 14px/1.2 var(--font) !important; letter-spacing: .01em !important; color: var(--text) !important; }
+html.pro .ranking-row.is-me .rank-who { color: var(--acc-ink) !important; }
+html.pro .ranking-lock { font: 500 11.5px/1.25 var(--font) !important; letter-spacing: 0 !important; color: var(--text-dim) !important; font-variant-numeric: tabular-nums; }
+html.pro .ranking-lock .rank-max { color: var(--text-dim) !important; font-size: 11.5px !important; font-weight: 500 !important; letter-spacing: 0 !important; }
+html.pro .ranking-lock .rank-max b { color: var(--text) !important; font-weight: 600 !important; font-size: 11.5px !important; }
+html.pro .rank-nameline { display: flex !important; align-items: center !important; gap: 6px !important; }
+/* Lock: the same small icon everywhere; its state is a coloured dot, not a box. */
+html.pro .rank-lk { width: 16px !important; height: 16px !important; display: inline-flex !important; align-items: center; justify-content: center; font-size: 11px !important; background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; position: relative; }
+html.pro .rank-lk.lk-up::after, html.pro .rank-lk.lk-hit::after { content: ""; position: absolute; right: -2px; bottom: 0; width: 6px; height: 6px; border-radius: 50%; background: var(--win); }
+html.pro .rank-lk.lk-dn::after, html.pro .rank-lk.lk-miss::after { content: ""; position: absolute; right: -2px; bottom: 0; width: 6px; height: 6px; border-radius: 50%; background: var(--loss); }
+/* Live: one fixed pill shape for every value, so +0 lines up with +7. */
+html.pro .ranking-row:not(.rank-hd) .rank-live { height: 22px !important; line-height: 22px !important; padding: 0 !important; border-radius: 6px !important; border: 0 !important; box-shadow: none !important; font: 700 12.5px/22px var(--font) !important; font-variant-numeric: tabular-nums; background: var(--s2) !important; color: var(--text-dim) !important; }
+html.pro .ranking-row:not(.rank-hd) .rank-live.on { background: rgba(46, 207, 122, .14) !important; color: var(--win) !important; }
+html.pro .ranking-row:not(.rank-hd) .rank-live.neg { background: rgba(255, 93, 93, .14) !important; color: var(--loss) !important; }
+/* Chance: a thin solid bar and a right aligned number. */
+html.pro .rank-wp-bar { flex: 1 1 auto !important; height: 4px !important; border-radius: 2px !important; background: var(--s3) !important; overflow: hidden; }
+html.pro .rank-wp-bar::before, html.pro .rank-wp-bar::after { display: none !important; }
+html.pro .rank-wp-bar > i { background: var(--acc) !important; border-radius: 2px !important; height: 100% !important; box-shadow: none !important; }
+html.pro .rank-wp b { flex: 0 0 34px !important; text-align: right !important; font: 600 12px/1 var(--font) !important; color: var(--text) !important; font-variant-numeric: tabular-nums; letter-spacing: 0 !important; }
+html.pro .rank-wp.out b { color: var(--t3) !important; }
+/* Points: the number, bold, no box. */
+html.pro .ranking-row:not(.rank-hd) .ranking-score { font: 700 17px/1 var(--font) !important; font-variant-numeric: tabular-nums; color: var(--text) !important; background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; min-width: 0 !important; height: auto !important; }
+html.pro .ranking-row.rank-hd .ranking-main { padding-top: 8px !important; padding-bottom: 6px !important; }
+html.pro .ranking-row.rank-hd .ranking-place { height: auto !important; }
+/* Chalk line: a plain labelled divider. */
+html.pro .chalk-line { background: var(--bg) !important; border: 0 !important; border-top: 1px dashed var(--line2) !important; border-bottom: 1px dashed var(--line2) !important; box-shadow: none !important; padding: 6px 12px !important; }
+html.pro .chalk-line::before, html.pro .chalk-line::after { display: none !important; }
+html.pro .chalk-line, html.pro .chalk-line * { color: var(--text-dim) !important; font-family: var(--font) !important; }
+html.pro .rankings-list .rank-wp-bar { -webkit-mask: none !important; mask: none !important; height: 4px !important; }
+html.pro .ranking-row .ranking-place.medal.m1 { background: var(--acc) !important; }
+html.pro .ranking-row .ranking-place.medal.m2 { background: #c9ced6 !important; }
+html.pro .ranking-row .ranking-place.medal.m3 { background: #c8865a !important; }
+html.pro .ranking-row.rank-hd .rank-wp b { flex: 1 1 auto !important; white-space: nowrap !important; text-align: right !important; }
+html.pro .ranking-row.tier-break { margin-top: 0 !important; border-top: 1px solid var(--line2) !important; }
+html.pro .ranking-row.tier-break::after { display: none !important; }
