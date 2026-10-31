@@ -8664,3 +8664,4 @@ body:has(#ask-sheet:not(.hidden)) #ask-fab { display: none !important; }
 /* While the since strip is up it carries the live points; the header
    keeps place and points only, no repeat of +3. */
 body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }
+.since-opp { width: 15px; height: 15px; object-fit: contain; vertical-align: -3px; margin-right: 3px; }

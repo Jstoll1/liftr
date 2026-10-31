@@ -8736,9 +8736,10 @@ function renderSinceLine(ranked, cloudPicks, live) {
     const tone = is === "up" ? "up" : is === "push" ? "eq" : "dn";
     // Logo of the side picked, and a plain score: picked side first.
     const home = pk.team === g.home, id = home ? g.homeId : g.awayId;
+    const oppId = home ? g.awayId : g.homeId;
     const mine = home ? l.homeScore : l.awayScore, opp = home ? l.awayScore : l.homeScore, oppName = escapeCd(home ? g.awayShort : g.homeShort);
     const clock = l.completed ? "Final" : escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`));
-    return `<span class="since-row ${tone}" data-sg="${g.id}"><i>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" decoding="async">` : ""}</i><span><span class="since-t"><b>${team}</b> ${say}</span><span class="since-sc">${mine}–${opp} vs ${oppName} · ${clock}</span></span><em>${v > 0 ? "+" : ""}${v}</em><s>›</s></span>`;
+    return `<span class="since-row ${tone}" data-sg="${g.id}"><i>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" decoding="async">` : ""}</i><span><span class="since-t"><b>${team}</b> ${say}</span><span class="since-sc">${mine}–${opp} vs ${oppId ? `<img class="since-opp" src="${logoUrl(oppId)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}${oppName} · ${clock}</span></span><em>${v > 0 ? "+" : ""}${v}</em><s>›</s></span>`;
   };
   let first = null, liveFirst = null;
   for (const g of GAMES) {
