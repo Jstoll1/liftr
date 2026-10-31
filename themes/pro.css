@@ -386,7 +386,7 @@ html.pro .preview-flag { white-space: nowrap; font-size: 9px !important; }
    whole card framed in gold. The winner's final score in green. The card
    header stays one line: the time gives way before the network collides. */
 html.pro .bug-row.mine { border-left: 2px solid var(--acc) !important; padding-left: 6px !important; margin-left: -8px !important; }
-html.pro .bug-row.mine .bug-team { color: var(--acc-ink) !important; }
+html.pro .bug-row.mine .bug-team { color: var(--text) !important; }
 html.pro .scorebug.lk { border-color: var(--acc) !important; box-shadow: 0 0 0 1px var(--acc) !important; }
 html.pro .scorebug.is-final .bug-row.leading .bug-score { color: var(--win) !important; }
 html.pro .bug-head { display: flex !important; align-items: center; gap: 6px; white-space: nowrap; min-width: 0; }
@@ -415,3 +415,10 @@ html.pro .bug-head:has(.bug-tv.xlong) .ampm { display: none; }
 html.pro .bug-tv.long { letter-spacing: .02em !important; padding: 1px 4px !important; }
 html.pro .bug-head .bug-tv { flex: 0 0 auto !important; }
 html.pro .pick-chip-av { overflow: hidden; line-height: 1; }
+
+/* Since you last looked: a drop is red, a gain green. Pro maps
+   --neon-pink to the gold accent, which made every drop read amber. */
+html.pro .since-tile u.up, html.pro .since-row.up > em { color: var(--win) !important; }
+html.pro .since-tile u.dn, html.pro .since-row.dn > em { color: var(--loss) !important; }
+html.pro .since-row.up > i { box-shadow: inset 0 0 0 2px var(--win) !important; }
+html.pro .since-row.dn > i { box-shadow: inset 0 0 0 2px var(--loss) !important; }
