@@ -422,3 +422,20 @@ html.pro .since-tile u.up, html.pro .since-row.up > em { color: var(--win) !impo
 html.pro .since-tile u.dn, html.pro .since-row.dn > em { color: var(--loss) !important; }
 html.pro .since-row.up > i { box-shadow: inset 0 0 0 2px var(--win) !important; }
 html.pro .since-row.dn > i { box-shadow: inset 0 0 0 2px var(--loss) !important; }
+
+/* Card header at Retro's scale, so G#, time, day, network and points all
+   fit on one line like Retro, with nothing dropped. */
+html.pro .bug-head { font-size: 10px !important; gap: 5px !important; }
+html.pro .bug-head .bug-gnum, html.pro .bug-head .bug-status { font-size: 10px !important; letter-spacing: 0 !important; }
+html.pro .bug-head .ampm { font-size: 8px !important; }
+html.pro .bug-head .bug-tv, html.pro .bug-head .bug-tv.long { font-size: 8.5px !important; letter-spacing: .02em !important; padding: 1px 4px !important; }
+html.pro .bug-head .stake { font-size: 10px !important; padding: 1px 6px !important; }
+html.pro .bug-head .stake-u { font-size: 7.5px !important; }
+html.pro .bug-head:has(.bug-tv.long) .bug-day.sat, html.pro .bug-head:has(.bug-tv.xlong) .ampm { display: revert !important; }
+html.pro .scorebug { padding: 10px 9px !important; }
+html.pro .bug-head { gap: 4px !important; }
+html.pro .bug-head .stake { padding: 1px 4px !important; }
+html.pro .bug-head .bug-tv, html.pro .bug-head .bug-tv.long { font-size: 8px !important; padding: 1px 3px !important; }
+html.pro .bug-head .bug-status { font-size: 9.5px !important; }
+html.pro .bug-head { gap: 3px !important; } html.pro .bug-head .bug-tv { margin-left: auto; }
+html.pro .bug-head .stake { display: inline-flex !important; align-items: baseline !important; } html.pro .bug-head .stake-u { vertical-align: baseline !important; position: static !important; margin-left: 2px !important; }
