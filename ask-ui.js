@@ -443,14 +443,7 @@
         const c = e.target.closest("[data-ask]"); if (c) send(c.dataset.ask);
       });
       // Swipe down to close, from the header or a log scrolled to its top.
-      let y0 = null, dy = 0, card = null;
-      m.addEventListener("touchstart", (e) => {
-        card = m.querySelector(".ask-card"); const lg = m.querySelector(".ask-log");
-        if (!card || e.target.closest("input, .ask-chips") || (!e.target.closest(".ask-h") && lg?.contains(e.target) && lg.scrollTop > 0)) { y0 = null; return; }
-        y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none";
-      }, { passive: true });
-      m.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) card.style.transform = `translateY(${dy}px)`; }, { passive: true });
-      m.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; card.style.transition = "transform .2s ease"; if (dy > 90) { card.style.transform = "translateY(110%)"; setTimeout(() => m.remove(), 200); } else card.style.transform = ""; });
+      if (typeof pullToClose === "function") pullToClose(m, () => m.querySelector(".ask-card"), () => m.remove());
       m.addEventListener("submit", (e) => { e.preventDefault(); const i = m.querySelector("input"); send(i.value); });
       // Dock above the keyboard: iOS does not shrink a fixed overlay when the
       // keyboard opens, so the overlay is sized to the visible viewport.

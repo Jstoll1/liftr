@@ -125,7 +125,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=347070121344", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=387127915229", "sim.js?v=374204176553", "gridcard.js?v=788931349874"];
+const EXTRAS = ["ask-ui.js?v=664139599255", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=387127915229", "sim.js?v=374204176553", "gridcard.js?v=788931349874"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -4776,20 +4776,7 @@ function showPathIntro() {
   m.addEventListener("click", (e) => { if (e.target === m) done(); });
   // Swipe the card down to close it.
   const card = m.querySelector(".pi-card");
-  let y0 = null, dy = 0;
-  card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
-  card.addEventListener("touchmove", (e) => {
-    if (y0 == null) return;
-    dy = Math.max(0, e.touches[0].clientY - y0);
-    card.style.transform = `translateY(${dy}px)`;
-    card.style.opacity = String(Math.max(0.4, 1 - dy / 400));
-  }, { passive: true });
-  card.addEventListener("touchend", () => {
-    if (y0 == null) return;
-    y0 = null;
-    card.style.transition = "transform .2s ease-out, opacity .2s ease-out";
-    if (dy > 80) { card.style.transform = "translateY(100vh)"; done(); } else { card.style.transform = ""; card.style.opacity = ""; }
-  });
+  pullToClose(card, card, done, 80);
   track("path-intro", { event: true });
 }
 // For a preview from the console: previewPathIntro().
@@ -4984,10 +4971,7 @@ function openPathCard(name) {
   m.addEventListener("click", (e) => { if (e.target === m) close(); });
   m.querySelector(".pc-replay")?.addEventListener("click", () => openPathRun(name, true));
   m.querySelector(".pc-share")?.addEventListener("click", () => { track("path-share", { event: true }); sharePath(name, sc); });
-  let y0 = null, dy = 0;
-  card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
-  card.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) card.style.transform = `translateY(${dy}px)`; }, { passive: true });
-  card.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; card.style.transition = ""; if (dy > 90) { card.style.transform = "translateY(120%)"; close(); } else card.style.transform = ""; });
+  pullToClose(card, card, close);
   track("path-card", { event: true });
   // Whose path was opened, for the console's path to win tracker.
   noteUse(`path-of-${name}`);
@@ -5092,10 +5076,7 @@ function openPathRun(name, replay = false) {
   m.querySelector(".pr-skip")?.addEventListener("click", (e) => { fast = true; markPathSeen(name); e.currentTarget.remove(); });
   // Drag down from the title bar or the standings, or from the top of the
   // terminal, to close; a short drag springs back.
-  let y0 = null, dy = 0;
-  win.addEventListener("touchstart", (e) => { const fromTop = !!e.target.closest(".pr-bar, .pr-stand"); y0 = fromTop || term.scrollTop <= 0 ? e.touches[0].clientY : null; dy = 0; win.style.transition = "none"; }, { passive: true });
-  win.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) win.style.transform = `translateY(${dy}px)`; }, { passive: true });
-  win.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; win.style.transition = ""; if (dy > 110) { win.style.transform = "translateY(100%)"; close(); } else win.style.transform = ""; });
+  pullToClose(win, win, close, 110);
   const logo = (id) => `<img class="pr-logo" src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'" />`;
   (async () => {
     await type(`C:\\> PATH ${me}`, "cmd");
@@ -8654,27 +8635,45 @@ async function openInsights(gameId) {
 // Swipe down to close a sheet: only from the top of the sheet, so
 // scrolling the content still works; the card follows the finger and
 // snaps back if the pull is short.
+// Pull a sheet down to close it, the one way every window does it.
+// Starts only on a clearly downward drag (8px, more down than sideways),
+// never from an input or from content that is scrolled down (that drag
+// scrolls it back up instead), closes past `far` px or on a quick flick,
+// and always springs back otherwise, touchcancel included (iOS sends it
+// when it takes the gesture for a scroll; without it a sheet stayed
+// half-dragged and the next touch misbehaved).
+function pullToClose(root, getCard, onClose, far = 90) {
+  let st = null;
+  const card = () => (typeof getCard === "function" ? getCard() : getCard);
+  const reset = (el, anim = true) => { if (!el) return; el.style.transition = anim ? "transform .2s ease, opacity .2s ease" : "none"; el.style.transform = ""; el.style.opacity = ""; };
+  root.addEventListener("touchstart", (e) => {
+    st = null;
+    if (e.touches.length !== 1 || e.target.closest?.("input, textarea, select, [contenteditable]")) return;
+    for (let el = e.target; el; el = el.parentElement) { if (el.scrollTop > 2) return; if (el === root) break; }
+    st = { x0: e.touches[0].clientX, y0: e.touches[0].clientY, t0: Date.now(), dy: 0, dir: null };
+  }, { passive: true });
+  root.addEventListener("touchmove", (e) => {
+    if (!st) return;
+    const dx = e.touches[0].clientX - st.x0, dy = e.touches[0].clientY - st.y0;
+    if (!st.dir && Math.hypot(dx, dy) > 8) st.dir = dy > 0 && Math.abs(dy) > Math.abs(dx) ? "down" : "other";
+    if (st.dir !== "down") { if (st.dir === "other") st = null; return; }
+    const c = card(); if (!c) return;
+    st.dy = Math.max(0, dy);
+    c.style.transition = "none"; c.style.transform = `translateY(${st.dy * 0.9}px)`; c.style.opacity = String(Math.max(0.5, 1 - st.dy / 600));
+  }, { passive: true });
+  const end = (cancel) => {
+    if (!st) return;
+    const { dy, t0, dir } = st; st = null;
+    const c = card();
+    if (!cancel && dir === "down" && (dy > far || (dy > 45 && Date.now() - t0 < 250))) { if (c) { c.style.transition = "transform .2s ease, opacity .2s ease"; c.style.transform = "translateY(110%)"; } setTimeout(() => { onClose(); reset(c, false); }, 180); }
+    else reset(c);
+  };
+  root.addEventListener("touchend", () => end(false));
+  root.addEventListener("touchcancel", () => end(true));
+}
 function swipeToClose(modal, card, close) {
-  let y0 = null, dy = 0, t0 = 0;
   modal.dataset.swipe = "own";
-  modal.addEventListener("touchstart", (e) => {
-    if (modal.scrollTop > 2 || e.touches.length !== 1 || e.target.closest("select")) { y0 = null; return; }
-    y0 = e.touches[0].clientY; dy = 0; t0 = Date.now();
-    if (card) card.style.transition = "none";
-  }, { passive: true });
-  modal.addEventListener("touchmove", (e) => {
-    if (y0 === null) return;
-    dy = e.touches[0].clientY - y0;
-    if (dy <= 0) { if (card) card.style.transform = ""; return; }
-    if (card) { card.style.transform = `translateY(${dy * 0.85}px)`; card.style.opacity = String(Math.max(0.4, 1 - dy / 500)); }
-  }, { passive: true });
-  modal.addEventListener("touchend", () => {
-    if (y0 === null) return;
-    if (card) card.style.transition = "transform .2s ease, opacity .2s ease";
-    if (dy > 110 || (dy > 50 && Date.now() - t0 < 250)) close();
-    if (card) { card.style.transform = ""; card.style.opacity = ""; }
-    y0 = null; dy = 0;
-  });
+  pullToClose(modal, card, close, 110);
 }
 // Every other window that has a way out swipes down to close too: the
 // arcade popups, the grid check, the rules and the Game Box. A swipe does
@@ -9592,10 +9591,7 @@ function bottomSheet(id) {
   m.id = id; m.className = "modal-overlay wks-modal hidden"; m.setAttribute("role", "dialog");
   document.body.appendChild(m);
   m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wks-x")) m.classList.add("hidden"); });
-  let y0 = null, dy = 0;
-  m.addEventListener("touchstart", (e) => { const c = m.querySelector(".wks-card"); if (!c || c.scrollTop > 0) return; y0 = e.touches[0].clientY; dy = 0; c.style.transition = "none"; }, { passive: true });
-  m.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); m.querySelector(".wks-card").style.transform = `translateY(${dy}px)`; }, { passive: true });
-  m.addEventListener("touchend", () => { if (y0 == null) return; const c = m.querySelector(".wks-card"); c.style.transition = ""; c.style.transform = ""; if (dy > 70) m.classList.add("hidden"); y0 = null; });
+  pullToClose(m, () => m.querySelector(".wks-card"), () => m.classList.add("hidden"), 70);
   return m;
 }
 
