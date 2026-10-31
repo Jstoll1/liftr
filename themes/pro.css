@@ -531,3 +531,9 @@ html.pro .ranking-row.rank-hd .ranking-name { display: block !important; width: 
 html.pro .ranking-row.rank-hd .ranking-name { text-align-last: left !important; }
 html.pro .rankings-list .ranking-row.rank-hd span.ranking-name { display: block !important; text-align: left !important; width: auto !important; }
 html.pro .rankings-list .ranking-row .ranking-name { max-width: none !important; flex: 1 1 0 !important; }
+/* Spare width goes to the chance bar, not a gap after the names. */
+html.pro .rankings-list .ranking-row .ranking-name { flex: 0 0 112px !important; width: 112px !important; }
+html.pro .rankings-list .ranking-row .rank-wp, html.pro .rankings-list .ranking-row .ranking-dots { flex: 1 1 104px !important; width: auto !important; min-width: 104px; }
+html.pro .rankings-list .ranking-row .ranking-name { flex: 0 1 112px !important; width: auto !important; min-width: 64px !important; }
+html.pro .rankings-list .ranking-row .rank-wp, html.pro .rankings-list .ranking-row .ranking-dots { min-width: 72px !important; }
+@media (max-width: 350px) { html.pro .ranking-row .ranking-main { gap: 6px !important; padding-left: 8px !important; padding-right: 8px !important; } }
