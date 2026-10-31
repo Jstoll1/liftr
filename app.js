@@ -4580,7 +4580,9 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
       const pickId = pick.team === game.away ? game.awayId : game.homeId;
       const short = pick.team === game.away ? game.awayShort : game.homeShort;
       const spreadTag = pick.mode === "ATS"
-        ? `<span class="pick-cell-spread">${pick.team === game.favorite ? "-" : "+"}${game.spread}</span>`
+        // Halves as ½ (+16½), as books print them: one character narrower,
+        // so every line fits its column on a phone.
+        ? `<span class="pick-cell-spread">${pick.team === game.favorite ? "-" : "+"}${String(game.spread).replace(/\.5$/, "½")}</span>`
         : "";
       // Final games: points ride as a badge on the logo (+2 in green, ✗ in
       // pink with the logo dimmed) instead of a third stacked line.

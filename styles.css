@@ -8679,3 +8679,9 @@ body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }
 .since-tile b { font-size: 15px; }
 .since-tile u { font-size: 10px; }
 .since-more { padding-left: 35px; }
+/* All Picks on phones: the spread under each logo in a compact face so it
+   fits its 24px column (the pixel font ran into the next column). */
+@media (max-width: 520px) {
+  .scoreboard-table .pick-cell-spread { font-family: system-ui, -apple-system, sans-serif; font-weight: 700; font-size: 7.5px; letter-spacing: -0.05em; text-shadow: none; white-space: nowrap; margin-top: 2px; }
+  .scoreboard-table td.pick-cell { overflow: hidden; }
+}
