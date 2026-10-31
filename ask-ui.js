@@ -348,8 +348,10 @@
       const term = (g, x) => !x ? "no pick" : x.hidden ? "hidden" : `${x.team === g.home ? g.homeShort : g.awayShort} ${x.mode === "ATS" ? `${x.team === g.favorite ? "−" : "+"}${g.spread}` : "to win"}${x.lock ? " (lock)" : ""}`;
       const differ = GAMES.filter((g) => !f[g.id]).map((g) => { const a = all[me_]?.picks?.[g.id], b = all[them]?.picks?.[g.id]; return { g, a, b }; })
         .filter(({ a, b }) => !(a && b && a.team === b.team && a.mode === b.mode && !!a.lock === !!b.lock))
-        .map(({ g, a, b }) => ({ game: gName(g), [me_]: term(g, a), [them]: term(g, b) }));
-      return { member: me_, rival: them, chanceToFinishAhead: p == null ? null : r3(p), pointsNow: { [me_]: banked(me_).pts, [them]: banked(them).pts }, gamesThatSplitThem: differ };
+        .map(({ g, a, b }) => { const wa = a?.team && !a.hidden ? pickWorth(g, a) : 0, wb = b?.team && !b.hidden ? pickWorth(g, b) : 0; return { game: gName(g), [me_]: term(g, a), [them]: term(g, b), worth: { [me_]: wa, [them]: wb }, biggestSwing: wa + wb }; })
+        .sort((x, y) => y.biggestSwing - x.biggestSwing);
+      const ch = (n) => { const d = memo?.detail?.[n]; return d ? r3(d.pct) : null; };
+      return { member: me_, rival: them, chanceToFinishAhead: p == null ? null : r3(p), chanceToWinWeek: { [me_]: ch(me_), [them]: ch(them) }, pointsNow: { [me_]: banked(me_).pts, [them]: banked(them).pts }, ceiling: { [me_]: banked(me_).max, [them]: banked(them).max }, gamesThatSplitThem: differ };
     },
     // The least-picked sides of the week, over every game whose picks are
     // showing: one call instead of one per game.

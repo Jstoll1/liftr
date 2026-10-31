@@ -132,6 +132,8 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 /* The wordmark is the best thing on the page at rest and dead weight once
    you are reading a list, so it shrinks out of the way on the way down and
    comes back the moment you return to the top. */
+.home-header { transition: padding .18s ease; }
+.home-logo-btn { transition: transform .18s ease, padding .18s ease; }
 .home-header.compact { padding: max(3px, env(safe-area-inset-top)) 12px 3px; }
 .head-row { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; }
 
