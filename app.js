@@ -4419,7 +4419,7 @@ function renderLiveScores(live, cloudPicks) {
       // Thursday or Friday game stands out from the Saturday slate.
       const kl = game.kickoffLabel.match(/^(Sat|Sun|Mon|Tue|Wed|Thu|Fri) (.+?)(?: ET)?$/);
       // AM/PM shrinks to a tiny suffix so the hour and the day carry it.
-      const timeOnly = (kl ? `${kl[2]} ${kl[1]}` : game.kickoffLabel.replace(/ ET$/, "")).replace(/\s?(AM|PM)\b/, '<small class="ampm">$1</small>');
+      const timeOnly = (kl ? `${kl[2]} <span class="bug-day${kl[1] === "Sat" ? " sat" : ""}">${kl[1]}</span>` : game.kickoffLabel.replace(/ ET$/, "")).replace(/\s?(AM|PM)\b/, '<small class="ampm">$1</small>');
       const statusText = !locked
         ? timeOnly
         : isFinal
@@ -4432,7 +4432,7 @@ function renderLiveScores(live, cloudPicks) {
       // that one on" is asked most often about a game already in
       // progress. It only stops mattering once the game is over.
       const tvTag = !isFinal && game.tv
-        ? `<span class="bug-tv" title="${escapeCd(game.tv)}">${escapeCd(shortNetwork(game.tv))}</span>`
+        ? `<span class="bug-tv${shortNetwork(game.tv).length > 5 ? " long xlong" : shortNetwork(game.tv).length > 4 ? " long" : ""}" title="${escapeCd(game.tv)}">${escapeCd(shortNetwork(game.tv))}</span>`
         : "";
 
       const awayScore = found ? g.awayScore ?? "–" : "–";
