@@ -8770,7 +8770,7 @@ function renderSinceLine(ranked, cloudPicks, live) {
   const list = liveMode ? liveRows : flips;
   el.dataset.sg = (liveMode ? liveFirst : first) ?? "";
   const rows = list.length > 3 ? [...list.slice(0, 2), `<span class="since-more">+${list.length - 2} more ${liveMode ? "live picks" : "picks changed"}</span>`] : list;
-  el.innerHTML = `<i class="since-h">${liveMode ? "YOUR LIVE PICKS" : "SINCE YOU LAST LOOKED"}</i>${rows.length ? `<span class="since-rows">${rows.join("")}</span>` : ""}<span class="since-tiles">${tiles}</span>`;
+  el.innerHTML = `<i class="since-h">${liveMode ? `YOUR LIVE PICKS${b?.at ? `<em> · NO CHANGE SINCE ${new Date(b.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toUpperCase()}</em>` : ""}` : "SINCE YOU LAST LOOKED"}</i>${rows.length ? `<span class="since-rows">${rows.join("")}</span>` : ""}<span class="since-tiles">${tiles}</span>`;
   el.classList.remove("hidden");
 }
 // Tap: jump to that game's score card (the flip tapped, else the first).

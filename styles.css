@@ -8665,3 +8665,17 @@ body:has(#ask-sheet:not(.hidden)) #ask-fab { display: none !important; }
    keeps place and points only, no repeat of +3. */
 body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }
 .since-opp { width: 15px; height: 15px; object-fit: contain; vertical-align: -3px; margin-right: 3px; }
+/* Since strip, tighter: less padding, a shorter row, compact tiles. */
+.since-line { gap: 6px; padding: 8px 10px; margin-bottom: 8px; }
+.since-h em { font-style: normal; color: var(--text-dim); }
+.since-row { min-height: 40px; padding: 2px 0; column-gap: 9px; grid-template-columns: 26px minmax(0, 1fr) auto 10px; }
+.since-row > i { width: 26px; height: 26px; }
+.since-row > i img { width: 18px; height: 18px; }
+.since-t { font-size: 13.5px; }
+.since-sc { font-size: 11px; }
+.since-tiles { padding-top: 5px; }
+.since-tile { gap: 0; }
+.since-tile small { font-size: 8px; }
+.since-tile b { font-size: 15px; }
+.since-tile u { font-size: 10px; }
+.since-more { padding-left: 35px; }
