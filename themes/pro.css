@@ -554,3 +554,6 @@ html.pro .gc-ezshow b { font-family: "Press Start 2P", monospace !important; }
 html.pro .wpx-run { background: var(--s2) !important; border: 1px solid var(--line2) !important; color: var(--win) !important; font: 700 12px/1 var(--font) !important; letter-spacing: .04em !important; }
 html.pro .wpx-run.stop { background: rgba(255, 93, 93, .16) !important; border: 2px solid var(--loss) !important; color: var(--loss) !important; font-size: 14px !important; padding: 12px 22px !important; }
 html.pro .since-row.up .since-ln { color: var(--win) !important; } html.pro .since-row.dn .since-ln { color: var(--loss) !important; } html.pro .since-ln { font-size: 11.5px !important; }
+html.pro .since-row.up em.since-pill { background: rgba(46, 207, 122, .14) !important; color: var(--win) !important; }
+html.pro .since-row.dn em.since-pill { background: rgba(255, 93, 93, .14) !important; color: var(--loss) !important; }
+html.pro .since-row.up .since-t u { color: var(--win) !important; } html.pro .since-row.dn .since-t u { color: var(--loss) !important; }
