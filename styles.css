@@ -8699,3 +8699,4 @@ body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }
   html:not(.phone) .ask-card:not(:has(.ask-q)) { height: auto; align-self: flex-start; }
   html:not(.phone) .ask-card:not(:has(.ask-q)) .ask-log { flex: 0 0 auto; }
 }
+.ask-tlogo { width: 16px; height: 16px; object-fit: contain; vertical-align: -3px; margin-right: 3px; }

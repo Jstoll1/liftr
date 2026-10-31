@@ -10,7 +10,15 @@
   // nothing in the text can become markup; **bold** is the only styling.
   const fmtA = (t) => {
     const out = []; let list = null;
-    const inl = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    // This week's teams by every name the answer might use (full, short),
+    // longest first so "Ohio State" wins over "Ohio". The first mention of
+    // each team in an answer gets its logo in front.
+    const teams = []; for (const g of (typeof GAMES !== "undefined" ? GAMES : [])) for (const [id, names] of [[g.awayId, [g.away, g.awayShort]], [g.homeId, [g.home, g.homeShort]]]) for (const n of names) if (n && id) teams.push([String(n).replace(/^#\d+\s+/, ""), id]);
+    teams.sort((a, b) => b[0].length - a[0].length);
+    const seen = new Set();
+    const rx = teams.length ? new RegExp(`(^|[^A-Za-z])(${teams.map(([n]) => esc(n).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![A-Za-z])`, "g") : null;
+    const logos = (h) => !rx ? h : h.replace(rx, (m, pre, nm) => { const t = teams.find(([n]) => esc(n) === nm); if (!t || seen.has(t[1])) return m; seen.add(t[1]); return `${pre}<img class="ask-tlogo" src="${logoUrl(t[1])}" alt="" loading="lazy" decoding="async" onerror="this.remove()">${nm}`; });
+    const inl = (x) => logos(esc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"));
     for (const raw of String(t ?? "").split(/\n+/)) {
       const line = raw.trim(); if (!line) continue;
       const m = line.match(/^(\d+)[.)]\s+(.*)$/) || line.match(/^[-•]\s+(.*)$/);
