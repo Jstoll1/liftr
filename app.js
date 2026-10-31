@@ -8881,24 +8881,27 @@ function renderSinceLine(ranked, cloudPicks, live) {
   if (sinceBase === undefined) { try { sinceBase = JSON.parse(localStorage.getItem(SINCE_KEY) || "null"); } catch { sinceBase = null; } if (sinceBase && (sinceBase.mgr !== me || sinceBase.week !== currentWeek)) sinceBase = null; }
   try { localStorage.setItem(SINCE_KEY, JSON.stringify(now)); } catch {}
   const b = sinceBase, flips = [], liveRows = [];
+  // One game, two lines: team and line on top with a single status pill
+  // at the right; score, opponent and clock beneath. Steady states
+  // ("covering") live in the pill; a flip ("now covering", "cashed") is
+  // news, so it also reads beside the team.
+  const STEADY = /^(covering|not covering|pushing)$/;
   const row2 = (g, is, say) => {
     const l = live[g.id], pk = picks[g.id];
     const team = escapeCd(pk.team === g.home ? g.homeShort : g.awayShort);
-    // What the pick is worth on this score: banked if final, in play if live.
     const v = scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) ?? 0;
     const tone = is === "up" ? "up" : is === "push" ? "eq" : "dn";
-    // Logo of the side picked, and a plain score: picked side first.
     const home = pk.team === g.home, id = home ? g.homeId : g.awayId;
-    const oppId = home ? g.awayId : g.homeId;
-    const mine = home ? l.homeScore : l.awayScore, opp = home ? l.awayScore : l.homeScore, oppName = escapeCd(home ? g.awayShort : g.homeShort);
+    const mine = home ? l.homeScore : l.awayScore, opp = home ? l.awayScore : l.homeScore;
+    const oc = teamCode(g, home ? g.away : g.home), oppCode = escapeCd(oc.length <= 2 ? (home ? g.awayShort : g.homeShort) : oc);
     const clock = l.completed ? "Final" : escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`));
-    // The line and how far from it: "-3.5 · by 0.5" covering, "-3.5 ·
-    // needs 3.5" short of it; to win outright, the lead or the gap.
     const sp = Number(g.spread) || 0, fav = pk.team === g.favorite, lead = (mine ?? 0) - (opp ?? 0);
     const edge = pk.mode === "SU" ? lead : lead + (fav ? -sp : sp);
     const lineTxt = pk.mode === "SU" ? "to win" : `${fav ? "-" : "+"}${sp}`;
-    const gapTxt = l.completed ? "" : edge > 0 ? ` · by ${edge}` : edge < 0 ? ` · needs ${-edge}${pk.mode === "SU" ? "" : " more"}` : pk.mode === "SU" ? " · tied" : " · on the number";
-    return `<span class="since-row ${tone}" data-sg="${g.id}"><i>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" decoding="async">` : ""}</i><span><span class="since-t"><b>${team}</b> ${say}</span><span class="since-sc">${mine}–${opp} vs ${oppId ? `<img class="since-opp" src="${logoUrl(oppId)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}${oppName} · ${clock}</span><span class="since-ln">${lineTxt}${gapTxt}</span></span><em>${v > 0 ? "+" : ""}${v}</em><s>›</s></span>`;
+    const pill = l.completed ? (v > 0 ? `+${v}` : is === "push" ? "push" : "missed")
+      : edge > 0 ? `+${v} · by ${edge}` : edge < 0 ? `needs ${-edge}` : pk.mode === "SU" ? "tied" : "push";
+    const news = STEADY.test(say) ? "" : ` <u>${escapeCd(say)}</u>`;
+    return `<span class="since-row ${tone}" data-sg="${g.id}"><i>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" decoding="async">` : ""}</i><span><span class="since-t"><b>${team}</b> <span class="since-lt">${lineTxt}</span>${news}</span><span class="since-sc">${mine}–${opp} vs ${oppCode} · ${clock}</span></span><em class="since-pill">${pill}</em><s>›</s></span>`;
   };
   let first = null, liveFirst = null;
   for (const g of GAMES) {
