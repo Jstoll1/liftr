@@ -440,3 +440,4 @@ html.pro .bug-head .bug-status { font-size: 9.5px !important; }
 html.pro .bug-head { gap: 3px !important; } html.pro .bug-head .bug-tv { margin-left: auto; }
 html.pro .bug-head .stake { display: inline-flex !important; align-items: baseline !important; } html.pro .bug-head .stake-u { vertical-align: baseline !important; position: static !important; margin-left: 2px !important; }
 html.pro .pr-row.me, html.pro .pr-row.me .pr-rk, html.pro .pr-row.me .pr-pt { color: var(--acc-ink) !important; font-weight: 700; } html.pro .pr-row.me .pr-gain { color: var(--win) !important; } html.pro .pr-row.me { box-shadow: inset 2px 0 0 var(--acc); }
+html.pro .pr-screen:not(.pc) .pr-win { width: 100% !important; max-width: 560px; align-self: center; }
