@@ -8892,7 +8892,13 @@ function renderSinceLine(ranked, cloudPicks, live) {
     const oppId = home ? g.awayId : g.homeId;
     const mine = home ? l.homeScore : l.awayScore, opp = home ? l.awayScore : l.homeScore, oppName = escapeCd(home ? g.awayShort : g.homeShort);
     const clock = l.completed ? "Final" : escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`));
-    return `<span class="since-row ${tone}" data-sg="${g.id}"><i>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" decoding="async">` : ""}</i><span><span class="since-t"><b>${team}</b> ${say}</span><span class="since-sc">${mine}–${opp} vs ${oppId ? `<img class="since-opp" src="${logoUrl(oppId)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}${oppName} · ${clock}</span></span><em>${v > 0 ? "+" : ""}${v}</em><s>›</s></span>`;
+    // The line and how far from it: "-3.5 · by 0.5" covering, "-3.5 ·
+    // needs 3.5" short of it; to win outright, the lead or the gap.
+    const sp = Number(g.spread) || 0, fav = pk.team === g.favorite, lead = (mine ?? 0) - (opp ?? 0);
+    const edge = pk.mode === "SU" ? lead : lead + (fav ? -sp : sp);
+    const lineTxt = pk.mode === "SU" ? "to win" : `${fav ? "-" : "+"}${sp}`;
+    const gapTxt = l.completed ? "" : edge > 0 ? ` · by ${edge}` : edge < 0 ? ` · needs ${-edge}${pk.mode === "SU" ? "" : " more"}` : pk.mode === "SU" ? " · tied" : " · on the number";
+    return `<span class="since-row ${tone}" data-sg="${g.id}"><i>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" decoding="async">` : ""}</i><span><span class="since-t"><b>${team}</b> ${say}</span><span class="since-sc">${mine}–${opp} vs ${oppId ? `<img class="since-opp" src="${logoUrl(oppId)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}${oppName} · ${clock}</span><span class="since-ln">${lineTxt}${gapTxt}</span></span><em>${v > 0 ? "+" : ""}${v}</em><s>›</s></span>`;
   };
   let first = null, liveFirst = null;
   for (const g of GAMES) {
