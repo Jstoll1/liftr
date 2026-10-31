@@ -125,7 +125,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=671954582048", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=387127915229", "sim.js?v=374204176553", "gridcard.js?v=788931349874"];
+const EXTRAS = ["ask-ui.js?v=748968210929", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=387127915229", "sim.js?v=374204176553", "gridcard.js?v=788931349874"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -6081,6 +6081,9 @@ function weekWinChances(cloudPicks, results, live) {
   // How often each open game ended each of its ways, for the exact check.
   const catIx = models.map((m) => m.fixed ? null : new Map(gameCats(m.g).map((c, ci) => [c.sig, ci])));
   const catN = models.map((m, k) => m.fixed ? null : new Array(catIx[k].size).fill(0));
+  // Head to head: in how many runs each player finishes ahead of each
+  // other one (points, then the closer tiebreaker; a dead heat is half).
+  const ahead = MANAGERS.map(() => new Array(MANAGERS.length).fill(0));
   for (let s = 0; s < N; s++) {
     score.fill(0);
     let tbTotal = null;
@@ -6116,6 +6119,15 @@ function weekWinChances(cloudPicks, results, live) {
       else if (score[i] === best && diff === bestDiff) lead.push(i);
     }
     for (const i of lead) wins[i] += 1 / lead.length;
+    for (let i = 0; i < MANAGERS.length; i++) {
+      const di = guesses[i] === null || tbTotal === null ? Infinity : Math.abs(guesses[i] - tbTotal);
+      for (let j = i + 1; j < MANAGERS.length; j++) {
+        const dj = guesses[j] === null || tbTotal === null ? Infinity : Math.abs(guesses[j] - tbTotal);
+        if (score[i] > score[j] || (score[i] === score[j] && di < dj)) ahead[i][j]++;
+        else if (score[j] > score[i] || (score[i] === score[j] && dj < di)) ahead[j][i]++;
+        else { ahead[i][j] += 0.5; ahead[j][i] += 0.5; }
+      }
+    }
     const share = new Array(MANAGERS.length).fill(0);
     for (const i of lead) share[i] = 1 / lead.length;
     const atTop = score.filter((x) => x === best).length;
@@ -6161,7 +6173,7 @@ function weekWinChances(cloudPicks, results, live) {
     detail[n] = { pct, swing: best, games: all, finals, top: topN[i] / N, tb: tbW[i] / N, threats, moe: 1.96 * Math.sqrt(pct * (1 - pct) / N), runs: N, alive: wins[i] > 0 ? true : exact[i]?.alive, path: exact[i]?.path || null };
   });
   const out = Object.fromEntries(MANAGERS.map((n, i) => [n, wins[i] / N]));
-  winChanceMemo = { key, out, detail, ctx: { models, picks, guesses, tbGame, catN, N } };
+  winChanceMemo = { key, out, detail, h2h: ahead.map((r) => r.map((x) => x / N)), ctx: { models, picks, guesses, tbGame, catN, N } };
   return out;
 }
 

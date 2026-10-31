@@ -268,6 +268,36 @@
       const side = (team) => MANAGERS.filter((n) => all[n]?.picks?.[g.id]?.team === team).map((n) => { const p = all[n].picks[g.id]; return { member: n, bet: p.mode === "ATS" ? `${team === g.favorite ? "−" : "+"}${g.spread}` : "to win", lock: !!(p.lock && lockRule()) }; });
       return { game: gName(g), [g.away]: side(g.away), [g.home]: side(g.home), noPick: MANAGERS.filter((n) => !all[n]?.picks?.[g.id]) };
     },
+    // One member against another: the chance to finish ahead (from the same
+    // runs as WIN%), and every open game where their picks differ, which is
+    // where it is decided (a game they both took the same way cannot split them).
+    versus({ member, rival } = {}) {
+      const me_ = MANAGERS.find((n) => n.toLowerCase() === String(member || me() || "").toLowerCase()), them = MANAGERS.find((n) => n.toLowerCase() === String(rival || "").toLowerCase());
+      if (!me_ || !them) return { error: "Name two members." };
+      const hn = hiddenNote(); if (hn.picksHidden && /Everyone/.test(hn.picksHidden)) return { ...hn, oddsAvailable: false };
+      const memo = base(), i = MANAGERS.indexOf(me_), j = MANAGERS.indexOf(them);
+      const p = memo?.h2h?.[i]?.[j];
+      const all = lastGoodCloudPicks || {}, f = fins();
+      const term = (g, x) => !x ? "no pick" : x.hidden ? "hidden" : `${x.team === g.home ? g.homeShort : g.awayShort} ${x.mode === "ATS" ? `${x.team === g.favorite ? "−" : "+"}${g.spread}` : "to win"}${x.lock ? " (lock)" : ""}`;
+      const differ = GAMES.filter((g) => !f[g.id]).map((g) => { const a = all[me_]?.picks?.[g.id], b = all[them]?.picks?.[g.id]; return { g, a, b }; })
+        .filter(({ a, b }) => !(a && b && a.team === b.team && a.mode === b.mode && !!a.lock === !!b.lock))
+        .map(({ g, a, b }) => ({ game: gName(g), [me_]: term(g, a), [them]: term(g, b) }));
+      return { member: me_, rival: them, chanceToFinishAhead: p == null ? null : r3(p), pointsNow: { [me_]: banked(me_).pts, [them]: banked(them).pts }, gamesThatSplitThem: differ };
+    },
+    // The least-picked sides of the week, over every game whose picks are
+    // showing: one call instead of one per game.
+    rarest() {
+      const all = lastGoodCloudPicks || {}, out = [];
+      for (const g of GAMES) {
+        if (!isGameLocked(g) && MANAGERS.some((n) => all[n]?.picks?.[g.id]?.hidden)) continue;
+        const by = new Map();
+        for (const n of MANAGERS) { const x = all[n]?.picks?.[g.id]; if (!x?.team) continue; const k = `${x.team}|${x.mode}`; const e = by.get(k) || { g, x, who: [] }; e.who.push(n); by.set(k, e); }
+        const tot = [...by.values()].reduce((a, e) => a + e.who.length, 0);
+        for (const e of by.values()) out.push({ game: gName(g), pick: `${e.x.team === g.home ? g.homeShort : g.awayShort} ${e.x.mode === "ATS" ? `${e.x.team === g.favorite ? "−" : "+"}${g.spread}` : "to win"}`, members: e.who, of: tot });
+      }
+      if (!out.length) return { picksHidden: "No picks are showing yet (they show from each game's kickoff)." };
+      return { rarest: out.sort((a, b) => a.members.length - b.members.length || a.game.localeCompare(b.game)).slice(0, 6) };
+    },
     tiebreaker() {
       const g = typeof tiebreakerGameOf === "function" ? tiebreakerGameOf() : null; if (!g) return { error: "No tiebreaker game this week." };
       const all = lastGoodCloudPicks || {}, f = fins()[g.id], l = latestLive[g.id];

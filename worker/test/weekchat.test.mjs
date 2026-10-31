@@ -29,7 +29,7 @@ test("week chat worker: relays the model's tool calls, then its reply", async ()
   const second = await call([...q, first.message, { role: "tool", tool_call_id: "c1", content: JSON.stringify({ Jake: 0.12 }) }]);
   globalThis.fetch = real;
   assert.match(second.message.content, /12%/);
-  assert.equal(sent[0].tools.length, 7);
+  assert.equal(sent[0].tools.length, 9);
   assert.ok(sent[0].tools.some((t) => t.function.name === "season"));
   assert.match(sent[0].messages[0].content, /Never state a number/);
   assert.match(weekChatSystem({ members: ["Jordan", "Conlan", "Jake"] }), /Woods = Jordan/);
@@ -89,4 +89,16 @@ test("week chat worker: every question is logged, answered or not", async () => 
   const err = all.find((c) => c.q === "can I win?");
   assert.equal(err.status, "error"); assert.match(err.a, /503/);
   assert.ok(r3.logId);
+});
+
+test("cleanChat keeps up to 12 tool calls and drops results whose call was dropped", async () => {
+  const { cleanChat } = await import("../src/weekask.js");
+  const calls = Array.from({ length: 14 }, (_, i) => ({ id: `c${i}`, type: "function", function: { name: "picks", arguments: "{}" } }));
+  const msgs = [{ role: "user", content: "most unique pick?" }, { role: "assistant", content: null, tool_calls: calls }, ...calls.map((c) => ({ role: "tool", tool_call_id: c.id, content: "{}" }))];
+  const out = cleanChat(msgs);
+  const a = out.find((m) => m.role === "assistant");
+  assert.equal(a.tool_calls.length, 12);
+  const tools = out.filter((m) => m.role === "tool");
+  assert.equal(tools.length, 12);
+  assert.ok(tools.every((t) => a.tool_calls.some((c) => c.id === t.tool_call_id)));
 });
