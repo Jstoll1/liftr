@@ -551,3 +551,4 @@ html.pro .since-tile u.eq { display: none !important; }
 /* AP rank sits clear of the team name. */
 html.pro .bug-mark { margin-right: 6px !important; }
 html.pro .gc-ezshow b { font-family: "Press Start 2P", monospace !important; }
+html.pro .wpx-run { background: var(--s2) !important; border: 1px solid var(--line2) !important; color: var(--win) !important; font: 700 12px/1 var(--font) !important; letter-spacing: .04em !important; }

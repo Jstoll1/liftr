@@ -8731,3 +8731,22 @@ body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }
 .gc-ezshow.fg:not(.miss) .gc-posts { animation: gc-ezpost 1s ease-in-out infinite; }
 @keyframes gc-ezpost { 50% { filter: drop-shadow(0 0 6px #ffe45e); } }
 @media (prefers-reduced-motion: reduce) { .gc-ezshow b, .gc-ezshow .gc-posts { animation: none; } }
+
+/* The engine terminal: a small DOS window over the explainer. */
+.eng-term { position: fixed; left: 50%; bottom: calc(var(--nav-h, 64px) + 12px); z-index: 2600; width: min(360px, calc(100vw - 24px)); transform: translate(-50%, 16px); opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; background: #050a05; border: 1px solid #2f6b2f; border-radius: 8px; box-shadow: 0 14px 40px rgba(0, 0, 0, .7); overflow: hidden; font-family: 'VT323', ui-monospace, monospace !important; }
+.eng-term.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.eng-term * { font-family: 'VT323', ui-monospace, monospace !important; }
+.eng-bar { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 4px 10px; background: #123a12; color: #b6ffb6; font-size: 15px; letter-spacing: .04em; }
+.eng-x { width: 26px; height: 24px; border: 1px solid #3c8a3c; border-radius: 4px; background: none; color: #b6ffb6; font-size: 14px; cursor: pointer; }
+.eng-body { height: 160px; padding: 6px 10px 2px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+.eng-l { color: #6dff6d; font-size: 14px; line-height: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: eng-in .18s steps(3, end); }
+.eng-l b { color: #e9ffe9; font-weight: 400; }
+.eng-t { color: #3d9a3d; }
+.eng-g { color: #ffe45e; }
+.eng-c { color: #9fd8ff; }
+.eng-l i { color: #ff9f43; font-style: normal; }
+.eng-foot { padding: 3px 10px 6px; border-top: 1px dashed #1f4a1f; color: #3d9a3d; font-size: 13px; white-space: nowrap; overflow: hidden; }
+.eng-foot::after { content: "▌"; margin-left: 4px; animation: gc-ezblink 1s steps(2, start) infinite; color: #6dff6d; }
+@keyframes eng-in { from { opacity: 0; } }
+.wpx-run { display: block; margin: 12px auto 4px; padding: 8px 14px; border: 1px solid rgba(57, 255, 136, .6); border-radius: 8px; background: rgba(57, 255, 136, .08); color: #39ff88; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .08em; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .eng-l, .eng-foot::after { animation: none; } }
