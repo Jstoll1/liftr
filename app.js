@@ -7911,8 +7911,8 @@ async function openInsights(gameId) {
       ? `<div class="gc-ezshow td"><img src="${logoUrl(scoreShow.id)}" alt=""><i class="gc-ball"></i><b class="pro-keep">TOUCHDOWN</b></div>`
       : `<div class="gc-ezshow fg${scoreShow.good ? "" : " miss"}"><b class="pro-keep">${scoreShow.good ? "FIELD GOAL" : "NO GOOD"}</b></div>`;
     const field = `<div class="gc-stage">${brk ? `<div class="gc-brk"><span>${esc(brkLabel)}</span></div>` : ""}<div class="gc-field crt${brk ? " brk" : ""}${scoreShow ? " scored" : ""}">${mid}
-      <div class="gc-ez l${scoreShow?.side === "l" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${aCol}"><i class="gc-gp" aria-hidden="true"><svg viewBox="0 0 40 52" width="32" height="42"><g fill="none" stroke-linecap="round"><path class="gp-sh" d="M20 50 L20 30 M7 33 L33 25 M7 33 L7 3 M33 25 L33 0"/><path class="gp-ln" d="M20 50 L20 30 M7 33 L33 25 M7 33 L7 3 M33 25 L33 0"/></g></svg></i><span>${esc(A)}</span>${ezShow("l")}</div>
-      <div class="gc-ez r${scoreShow?.side === "r" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${hCol}"><i class="gc-gp" aria-hidden="true"><svg viewBox="0 0 40 52" width="32" height="42"><g fill="none" stroke-linecap="round"><path class="gp-sh" d="M20 50 L20 30 M7 33 L33 25 M7 33 L7 3 M33 25 L33 0"/><path class="gp-ln" d="M20 50 L20 30 M7 33 L33 25 M7 33 L7 3 M33 25 L33 0"/></g></svg></i><span>${esc(H)}</span>${ezShow("r")}</div>
+      <div class="gc-ez l${scoreShow?.side === "l" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${aCol}"><i class="gc-gp" aria-hidden="true"><i class="gp-bar"></i></i><span>${esc(A)}</span>${ezShow("l")}</div>
+      <div class="gc-ez r${scoreShow?.side === "r" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${hCol}"><i class="gc-gp" aria-hidden="true"><i class="gp-bar"></i></i><span>${esc(H)}</span>${ezShow("r")}</div>
       ${ticks}${brk || scoreShow ? "" : drive + gain + ball}
     </div></div>`;
     const status = shortStatus(lv.detail || `Q${lv.period ?? "?"} ${lv.clock ?? ""}`);
@@ -8970,6 +8970,43 @@ document.getElementById("since-line")?.addEventListener("click", (e) => {
   card.scrollIntoView({ behavior: "smooth", block: "center" });
   card.classList.add("since-flash"); setTimeout(() => card.classList.remove("since-flash"), 1600);
 });
+// Goalposts on the Gamecast field, drawn in screen space over the tilted
+// field: each back line carries a hidden anchor (.gp-bar) the field's tilt
+// slants like the line itself. From its two ends: a stem rises from the
+// middle, the crossbar runs parallel to the back line at the stem's top,
+// and the uprights stand straight up from the crossbar's ends.
+function drawGoalposts(stage) {
+  stage.querySelector(".gc-gpsvg")?.remove();
+  const sr = stage.getBoundingClientRect(); if (!sr.width) return;
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", "gc-gpsvg"); svg.setAttribute("width", sr.width); svg.setAttribute("height", sr.height);
+  svg.setAttribute("aria-hidden", "true");
+  for (const ez of stage.querySelectorAll(".gc-ez")) {
+    const bar = ez.querySelector(".gp-bar"); if (!bar) continue;
+    const r = bar.getBoundingClientRect(), left = ez.classList.contains("l");
+    // The back line leans out at the bottom: on the left goal the top end is
+    // to the right, on the right goal to the left.
+    const top = { x: (left ? r.right : r.left) - sr.left, y: r.top - sr.top }, bot = { x: (left ? r.left : r.right) - sr.left, y: r.bottom - sr.top };
+    const mid = { x: (top.x + bot.x) / 2, y: (top.y + bot.y) / 2 };
+    const H = 16, U = 20; // stem height, uprights above the crossbar
+    const a = { x: top.x, y: top.y - H }, b = { x: bot.x, y: bot.y - H };
+    const d = `M${mid.x} ${mid.y} L${mid.x} ${mid.y - H} M${a.x} ${a.y} L${b.x} ${b.y} M${a.x} ${a.y} L${a.x} ${a.y - U} M${b.x} ${b.y} L${b.x} ${b.y - U}`;
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "gp" + (ez.classList.contains("show") && ez.classList.contains("fg") ? (ez.classList.contains("miss") ? " miss" : " lit") : ""));
+    g.innerHTML = `<path class="gp-sh" d="${d}"/><path class="gp-ln" d="${d}"/><ellipse class="gp-base" cx="${mid.x}" cy="${mid.y}" rx="4" ry="1.6"/>`;
+    svg.appendChild(g);
+  }
+  stage.appendChild(svg);
+}
+new MutationObserver((muts) => {
+  for (const m of muts) for (const n of m.addedNodes) {
+    if (n.nodeType !== 1) continue;
+    const st = n.matches?.(".gc-stage") ? [n] : n.querySelectorAll?.(".gc-stage") || [];
+    for (const s of st) requestAnimationFrame(() => drawGoalposts(s));
+  }
+}).observe(document.documentElement, { childList: true, subtree: true });
+addEventListener("resize", () => document.querySelectorAll(".gc-stage").forEach(drawGoalposts));
 // A game row in a Path to Win card opens that game's Gamecast (the card
 // closes under it), as a game row does everywhere else.
 document.addEventListener("click", (e) => {
