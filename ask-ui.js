@@ -276,6 +276,43 @@
       const side = (team) => MANAGERS.filter((n) => all[n]?.picks?.[g.id]?.team === team).map((n) => { const p = all[n].picks[g.id]; return { member: n, bet: p.mode === "ATS" ? `${team === g.favorite ? "−" : "+"}${g.spread}` : "to win", lock: !!(p.lock && lockRule()) }; });
       return { game: gName(g), [g.away]: side(g.away), [g.home]: side(g.home), noPick: MANAGERS.filter((n) => !all[n]?.picks?.[g.id]) };
     },
+    // One time slot (the 12 PM games): every way its games can finish, and
+    // everyone's points after them. Each game has three outcomes (the
+    // favourite covers, wins without covering, or loses; a push too on a
+    // whole-number spread), so a slot of up to 4 games is listed in full.
+    window({ games, member } = {}) {
+      const who = memberOf(member || me()); if (!who) return { error: "Who is asking?" };
+      const hn = hiddenNote(); if (hn.picksHidden && /Everyone/.test(hn.picksHidden)) return { ...hn, oddsAvailable: false };
+      const f = fins(), all = lastGoodCloudPicks || {};
+      let slot = Array.isArray(games) && games.length ? games.map((x) => GAMES.find((g) => String(g.id) === String(x).replace(/^G/i, ""))).filter(Boolean)
+        : (() => { const open = GAMES.filter((g) => !f[g.id]).sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff)); const t = open.length ? Date.parse(open[0].kickoff) : 0; return open.filter((g) => Date.parse(g.kickoff) === t); })();
+      slot = slot.filter((g) => !f[g.id]);
+      if (!slot.length) return { error: "No open games in that slot." };
+      if (slot.length > 4) return { error: `That slot has ${slot.length} games; ask about up to 4 at a time.` };
+      const outs = (g) => {
+        const favHome = g.favorite === g.home, sp = Number(g.spread) || 0, big = Math.floor(sp) + 3, small = Math.max(1, Math.ceil(sp) - 1);
+        const res = (favBy) => favHome ? { awayScore: 20, homeScore: 20 + favBy } : { awayScore: 20 + favBy, homeScore: 20 };
+        const fav = favHome ? g.homeShort : g.awayShort, dog = favHome ? g.awayShort : g.homeShort;
+        const list = [{ say: `${fav} covers ${"−" + sp}`, r: res(big) }];
+        if (sp >= 1.5) list.push({ say: `${fav} wins, ${dog} covers`, r: res(small) });
+        if (Number.isInteger(sp) && sp > 0) list.push({ say: `${fav} wins by exactly ${sp} (push)`, r: res(sp) });
+        list.push({ say: `${dog} wins`, r: res(-3) });
+        return list;
+      };
+      const base0 = Object.fromEntries(MANAGERS.map((n) => [n, banked(n).pts]));
+      let combos = [{ says: [], pts: { ...base0 } }];
+      for (const g of slot) {
+        const next = [];
+        for (const c of combos) for (const o of outs(g)) {
+          const pts = { ...c.pts };
+          for (const n of MANAGERS) { const pk = all[n]?.picks?.[g.id]; if (pk?.team) pts[n] += scorePick(g, pk, o.r) ?? 0; }
+          next.push({ says: [...c.says, o.say], pts });
+        }
+        combos = next;
+      }
+      const rows = combos.map((c) => { const others = MANAGERS.filter((n) => n !== who).map((n) => c.pts[n]); const lead = c.pts[who] - Math.max(...others); const place = 1 + others.filter((x) => x > c.pts[who]).length; return { outcome: c.says.join("; "), yourPoints: c.pts[who], leadOverNextBest: lead, place, tiedWith: others.filter((x) => x === c.pts[who]).length }; }).sort((a, b) => b.leadOverNextBest - a.leadOverNextBest);
+      return { member: who, slot: slot.map(gName), pointsNow: base0[who], best: rows[0], worst: rows[rows.length - 1], outcomes: rows.slice(0, 12), note: "Leads count banked points only; outcome odds are not given." };
+    },
     // Why someone's odds are what they are: where their card differs from the
     // league (sides most of the room did not take, and what those pay), their
     // lock, their ceiling against everyone else's, and their biggest swings.
@@ -439,7 +476,7 @@
   const SID = Math.random().toString(36).slice(2, 10);
   function context() {
     const f = fins();
-    return { asker: me(), members: MANAGERS, games: GAMES.map((g) => { const l = latestLive[g.id], fin = f[g.id]; const sc = fin || (l?.state === "in" ? l : null); return { id: g.id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, favorite: g.favorite, spread: g.spread, status: fin ? "final" : l?.state === "in" ? `live ${l.detail || ""}`.trim() : `not started (${g.kickoffLabel || ""})`, score: sc ? `${g.awayShort} ${sc.awayScore}, ${g.homeShort} ${sc.homeScore}` : "" }; }) };
+    return { asker: me(), members: MANAGERS, games: GAMES.map((g) => { const l = latestLive[g.id], fin = f[g.id]; const sc = fin || (l?.state === "in" ? l : null); return { id: g.id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, favorite: g.favorite, spread: g.spread, status: fin ? "final" : l?.state === "in" ? `live ${l.detail || ""} (kicked off ${g.kickoffLabel || ""})`.trim() : `not started (${g.kickoffLabel || ""})`, score: sc ? `${g.awayShort} ${sc.awayScore}, ${g.homeShort} ${sc.homeScore}` : "" }; }) };
   }
   async function send(q) {
     q = String(q || "").trim(); if (q.length < 2 || busy) return;
