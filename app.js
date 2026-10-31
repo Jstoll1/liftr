@@ -8905,12 +8905,25 @@ function renderSinceLine(ranked, cloudPicks, live) {
   const restLive = GAMES.filter((g) => cov[g.id] && live[g.id].state === "in" && !live[g.id].completed && !flipIds.has(g.id)).map((g) => row2(g, cov[g.id], cov[g.id] === "up" ? "covering" : cov[g.id] === "push" ? "pushing" : "not covering"));
   const list = liveMode ? liveRows : [...flips, ...restLive];
   el.dataset.sg = (liveMode ? liveFirst : first) ?? "";
-  const rows = list.length > 3 ? [...list.slice(0, 2), `<span class="since-more">+${list.length - 2} more ${liveMode ? "live picks" : "picks changed"}</span>`] : list;
+  // Past two games the rest fold under a toggle; it stays open across
+  // refreshes until tapped again.
+  const extra = list.length > 3 ? list.length - 2 : 0;
+  const rows = extra ? [...list.slice(0, 2), ...list.slice(2).map((r) => r.replace('<span class="since-row ', '<span class="since-row since-x ')), `<button type="button" class="since-more">${sinceOpen ? "Show less" : `+${extra} more ${liveMode ? "live picks" : "picks changed"}`}</button>`] : list;
+  el.classList.toggle("since-open", sinceOpen);
   el.innerHTML = `<i class="since-h">${liveMode ? `YOUR LIVE PICKS${b?.at ? `<em> · NO CHANGE SINCE ${new Date(b.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toUpperCase()}</em>` : ""}` : "SINCE YOU LAST LOOKED"}</i>${rows.length ? `<span class="since-rows">${rows.join("")}</span>` : ""}<span class="since-tiles">${tiles}</span>`;
   el.classList.remove("hidden");
 }
 // Tap: jump to that game's score card (the flip tapped, else the first).
+var sinceOpen = false; // var: read by renderSinceLine, which can run before this line
 document.getElementById("since-line")?.addEventListener("click", (e) => {
+  const more = e.target.closest(".since-more");
+  if (more) {
+    sinceOpen = !sinceOpen;
+    const el = e.currentTarget, n = el.querySelectorAll(".since-x").length;
+    el.classList.toggle("since-open", sinceOpen);
+    more.textContent = sinceOpen ? "Show less" : `+${n} more ${/LIVE PICKS/.test(el.querySelector(".since-h")?.textContent || "") ? "live picks" : "picks changed"}`;
+    return;
+  }
   // The LIVE / POINTS / PLACE tiles go to your row on the leaderboard.
   if (e.target.closest(".since-tiles")) {
     const row = document.querySelector("#rankings-list .ranking-row.is-me") || document.getElementById("rankings-list");

@@ -8750,3 +8750,8 @@ body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }
 @keyframes eng-in { from { opacity: 0; } }
 .wpx-run { display: block; margin: 12px auto 4px; padding: 8px 14px; border: 1px solid rgba(57, 255, 136, .6); border-radius: 8px; background: rgba(57, 255, 136, .08); color: #39ff88; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .08em; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .eng-l, .eng-foot::after { animation: none; } }
+.since-line .since-x { display: none; }
+.since-line.since-open .since-x { display: grid; }
+button.since-more { width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }
+button.since-more::after { content: "▾"; margin-left: 6px; }
+.since-line.since-open button.since-more::after { content: "▴"; }
