@@ -2504,12 +2504,27 @@ function fixBestWho(s) {
 
 // Writes the summary for a week, and keeps the sealed-at stamp from the
 // first sealing so a later correction does not look like a new week.
+// No game is over sooner than this after its kickoff (a quick college game
+// runs about three hours).
+const FINAL_MIN_MS = 2.5 * 3600000;
+const couldBeFinal = (kick, now = Date.now()) => Number.isFinite(kick) && now >= kick + FINAL_MIN_MS;
 async function sealWeek(env, week, { force = false } = {}) {
   const prior = await env.LIFTR_KV.get(summaryKey(week), "json");
   // A week sealed complete is the season's record of it. Later reads must
   // not rescore it: the slate can be re-saved and a moved spread would
   // rewrite history. Only the owner's console, passing force, reopens one.
-  if (prior?.frozen && !force) return prior;
+  // A week sealed while some of its games cannot have finished (a phone
+  // posted the wrong week's scores) is not a record: drop those results and
+  // reopen it instead of keeping it frozen.
+  if (prior?.frozen && !force) {
+    const sl = await env.LIFTR_KV.get(gamesKey(week), "json");
+    const early = (sl?.games || []).filter((g) => !couldBeFinal(Date.parse(g.kickoff))).map((g) => String(g.id));
+    if (!early.length) return prior;
+    const res = (await env.LIFTR_KV.get(resultsKey(week), "json")) || {};
+    for (const id of early) delete res[id];
+    await env.LIFTR_KV.put(resultsKey(week), JSON.stringify(res));
+    console.log("reopened week sealed early", week, early.join(","));
+  }
   const [slate, results, ...picksRows] = await Promise.all([
     env.LIFTR_KV.get(gamesKey(week), "json"),
     env.LIFTR_KV.get(resultsKey(week), "json"),
@@ -2559,6 +2574,12 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
   const wantDetail = url.searchParams.get("detail") === "1";
   if (summariesCache && summariesCache.detail === wantDetail && now - summariesCache.at < 60000) return json({ ...summariesCache.data, cached: true }, 200, corsHeaders);
   const weeks = await readWeeks(env);
+  // The current week sealed while its games are still being played is the
+  // early-seal bug: reseal it (sealWeek drops the impossible results).
+  try {
+    const cur = await env.LIFTR_KV.get(summaryKey(weeks.current), "json");
+    if (cur?.frozen) { const sl = await env.LIFTR_KV.get(gamesKey(weeks.current), "json"); if ((sl?.games || []).some((g) => !couldBeFinal(Date.parse(g.kickoff), now))) await sealWeek(env, weeks.current); }
+  } catch (err) { console.error("early seal check", err?.stack || String(err)); }
   const rows = await Promise.all(weeks.list.map(async (n) => {
     let s = await env.LIFTR_KV.get(summaryKey(n), "json");
     // Written by an older Worker: rebuild it from the stored picks and
@@ -2601,8 +2622,12 @@ async function handleSeason(request, env, corsHeaders, url) {
     const week = Number(body?.week);
     if (!Number.isInteger(week) || week < 1 || week > 30) return json({ error: "Bad week" }, 400, corsHeaders);
     const kickoffs = await kickoffsFor(env, week);
+    // Each game's own kickoff (the lock-all rule gives every game the
+    // week's first one): a result counts only once its game could be over.
+    const ownKick = Object.fromEntries(((await env.LIFTR_KV.get(gamesKey(week), "json"))?.games || []).map((g) => [String(g.id), Date.parse(g.kickoff)]));
     const clean = {};
     for (const [id, r] of Object.entries(body?.results || {})) {
+      if (!couldBeFinal(ownKick[id])) continue;
       const a = Number(r?.awayScore), h = Number(r?.homeScore);
       if (!Number.isInteger(a) || !Number.isInteger(h) || a < 0 || h < 0 || a > 200 || h > 200) continue;
       if (!kickoffs[id] || Date.now() < kickoffs[id]) continue; // not started: ignore

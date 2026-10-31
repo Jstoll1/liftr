@@ -43,3 +43,18 @@ test("pace: hourly running totals from sessions, merged highest-wins", () => {
   r = mergeRecords(r, [{ d: day.d, h: { visits: [1, 2] } }]);
   assert.equal(r.days[day.d].h.visits[16], 3);
 });
+
+test("a week sealed before its games could finish reopens on read, and early results are refused", async () => {
+  const m = new Map();
+  const kv = { get: async (k, t) => { const v = m.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; }, put: async (k, v) => { m.set(k, String(v)); }, delete: async (k) => m.delete(k), list: async () => ({ keys: [], list_complete: true }) };
+  const env = { LIFTR_KV: kv, ARCHIVE_LOG_KEY: "adm" };
+  const now = Date.now();
+  const games = [{ id: 1, away: "A", home: "B", awayShort: "A", homeShort: "B", favorite: "B", spread: 3, kickoff: new Date(now - 26 * 3600e3).toISOString() }, { id: 2, away: "C", home: "D", awayShort: "C", homeShort: "D", favorite: "D", spread: 3, kickoff: new Date(now - 1 * 3600e3).toISOString() }];
+  m.set("weeks", JSON.stringify({ current: 9, list: [9] }));
+  for (const k of ["games:w9", "games:9", "slate:9"]) m.set(k, JSON.stringify({ week: 9, games }));
+  const hit = (path, init) => worker.fetch(new Request(`https://w.test${path}`, init), env, { waitUntil() {} });
+  // A phone posts a "final" for game 2, an hour after it kicked off.
+  const r = await (await hit("/season", { method: "POST", body: JSON.stringify({ week: 9, results: { 1: { awayScore: 10, homeScore: 20 }, 2: { awayScore: 7, homeScore: 3 } } }) })).json();
+  assert.equal(r.stored, 1, "only the game that could be over is kept");
+  assert.equal(r.complete, false);
+});

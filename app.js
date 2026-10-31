@@ -5727,7 +5727,10 @@ async function loadWeekSummaries() {
 // week on this device so ten phones do not each post it ten times.
 async function archiveWeekIfFinal(results) {
   if (!WORKER_URL || !GAMES.length) return;
-  if (!GAMES.every((g) => results[g.id])) return;
+  // Only this week's own scores, and only once every game could be over:
+  // a phone holding last week's slate once sealed the next week early.
+  if (latestLiveWeek !== currentWeek) return;
+  if (!GAMES.every((g) => results[g.id] && Date.now() >= Date.parse(g.kickoff) + 2.5 * 3600000)) return;
   let done = [];
   try { done = JSON.parse(localStorage.getItem(SEALED_KEY) || "[]"); } catch {}
   if (done.includes(currentWeek)) return;
