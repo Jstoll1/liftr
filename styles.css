@@ -8773,3 +8773,13 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .since-row.up em.since-pill { background: rgba(57, 255, 136, .14); color: var(--neon-green); }
 .since-row.dn em.since-pill { background: rgba(255, 32, 121, .14); color: var(--neon-pink); }
 .pr-screen.pc .pc-row[data-pcg] { cursor: pointer; -webkit-tap-highlight-color: transparent; } .pr-screen.pc .pc-row[data-pcg]:active { background: rgba(255, 255, 255, .06); }
+
+/* Goalposts from above at the back of each end zone: the crossbar runs
+   across the field, the stem stands just behind it. Muted until a field
+   goal, when the ones it went through light up. */
+.gc-gp { position: absolute; top: 34%; bottom: 34%; width: 3px; background: #ffe45e; opacity: .55; border-radius: 2px; pointer-events: none; z-index: 1; }
+.gc-gp::after { content: ""; position: absolute; top: 50%; width: 6px; height: 3px; margin-top: -1.5px; background: inherit; border-radius: 2px; }
+.gc-ez.l .gc-gp { left: 3px; } .gc-ez.l .gc-gp::after { right: 100%; }
+.gc-ez.r .gc-gp { right: 3px; } .gc-ez.r .gc-gp::after { left: 100%; }
+.gc-ez.show.fg:not(.miss) .gc-gp { opacity: 1; box-shadow: 0 0 8px #ffe45e, 0 0 2px #fff; animation: gc-ezpost 1s ease-in-out infinite; }
+.gc-ez.show.fg.miss .gc-gp { opacity: .8; }
