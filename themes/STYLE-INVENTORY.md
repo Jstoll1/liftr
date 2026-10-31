@@ -1,6 +1,6 @@
 # Style inventory: what makes Brochiefs look Retro
 
-Status: the app ships **Retro only**. Pro is paused (`trial=false` in the
+Status: **Pro is the default for everyone** since 2026-10-31 (`trial=true`, everyone on Pro unless `?theme=classic`). Roll back with `trial=false` in the
 loader in `index.html`); it still runs on the preview site. This file lists
 every place the Retro look lives, so a swap later is a checklist, not a hunt.
 

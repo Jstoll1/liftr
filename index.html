@@ -33,11 +33,11 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;700;900&family=VT323&display=swap" rel="stylesheet" /></noscript>
   <meta name="build" content="865023288491" />
   <link rel="stylesheet" href="styles.css?v=684535089900" />
-  <!-- Brochiefs Pro, the trial theme. PAUSED: brochiefs.com is Retro only
-       (trial=false ignores ?theme=pro and clears a saved choice). The preview
-       site still runs it. To restart the trial, set trial=true. Scoped to
+  <!-- Brochiefs Pro is the default look for everyone (2026-10-31).
+       ?theme=classic switches a phone back to Retro and remembers it;
+       ?theme=pro returns. To roll everyone back to Retro, set trial=false. Scoped to
        html.pro, so Retro never sees a rule of it. -->
-  <script>(function(){var trial=false,pv=/(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname),q=location.search,k="brochiefs_style";if(!trial&&!pv){try{localStorage.removeItem(k)}catch(e){}window.APP_STYLE="classic";return;}try{if(/[?&]theme=pro\b/.test(q))localStorage.setItem(k,"pro");if(/[?&]theme=classic\b/.test(q))localStorage.setItem(k,"classic");}catch(e){}var v="";try{v=localStorage.getItem(k)||""}catch(e){}var on=v==="pro"||(/(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname)&&v!=="classic");window.APP_STYLE=on?"pro":"classic";if(!on)return;document.documentElement.classList.add("pro");var l=document.createElement("link");l.rel="stylesheet";l.href="themes/pro.css?v=749514594125";document.head.appendChild(l);})();</script>
+  <script>(function(){var trial=true,pv=/(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname),q=location.search,k="brochiefs_style";if(!trial&&!pv){try{localStorage.removeItem(k)}catch(e){}window.APP_STYLE="classic";return;}try{if(/[?&]theme=pro\b/.test(q))localStorage.setItem(k,"pro");if(/[?&]theme=classic\b/.test(q))localStorage.setItem(k,"classic");}catch(e){}var v="";try{v=localStorage.getItem(k)||""}catch(e){}var on=v!=="classic";window.APP_STYLE=on?"pro":"classic";if(!on)return;document.documentElement.classList.add("pro");var l=document.createElement("link");l.rel="stylesheet";l.href="themes/pro.css?v=749514594125";document.head.appendChild(l);})();</script>
   <link rel="stylesheet" href="history.css?v=145654074095" />
 </head>
 <body>
