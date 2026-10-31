@@ -530,3 +530,4 @@ html.pro .ranking-row.rank-hd .rank-wp b { flex: 1 1 auto !important; justify-co
 html.pro .ranking-row.rank-hd .ranking-name { display: block !important; width: auto !important; }
 html.pro .ranking-row.rank-hd .ranking-name { text-align-last: left !important; }
 html.pro .rankings-list .ranking-row.rank-hd span.ranking-name { display: block !important; text-align: left !important; width: auto !important; }
+html.pro .rankings-list .ranking-row .ranking-name { max-width: none !important; flex: 1 1 0 !important; }
