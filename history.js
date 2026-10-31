@@ -445,6 +445,9 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   async function loadStreakBoard(){
     const list=el('trivia-hs-list');if(!list||!WORKER)return;
     try{const d=await tGet(WORKER+'/trivia?streak=1','brochiefs_trivia_streaks');const rows=(d.streaks||[]).sort((a2,b2)=>b2.best-a2.best||(a2.bestAt||0)-(b2.bestAt||0));
+      // A best this phone holds but the board never heard (an older run
+      // closed mid-streak) is sent up once.
+      {const mine=me(),loc=sBest(),on=(rows.find((x)=>x.player===mine)||{}).best||0;if(mine&&loc>on&&!window.__tqSynced){window.__tqSynced=true;postStreak(loc,true);return}}
       if(!rows.length){list.innerHTML='<div class="trivia-hs-empty">No streaks yet. Get a few in a row to get on the board.</div>';return}
       const who=me();const rk=(i2)=>{const f=rows.findIndex((x)=>x.best===rows[i2].best);const tied=rows.filter((x)=>x.best===rows[i2].best).length>1;return (tied?'T':'')+(f+1)};list.innerHTML=rows.map((r,i2)=>'<div class="trivia-hs-row'+(r.player===who?' me':'')+(r.best===rows[0].best?' top':'')+'"><span class="trivia-hs-rank">'+rk(i2)+'</span><span class="trivia-hs-name">'+(typeof shown==='function'?shown(r.player):r.player).toUpperCase()+'</span><span class="trivia-hs-when">'+fmtWhen(r.bestAt)+'</span><span class="trivia-hs-score">🔥'+r.best+'</span></div>').join('');
     }catch{list.innerHTML='<div class="trivia-hs-empty">The board is offline right now.</div>'}
