@@ -10,7 +10,7 @@
     },
     {
       "k": "dead-tap",
-      "match": ".gold “🏆”",
+      "match": ".gold \u201c\ud83c\udfc6\u201d",
       "at": 1792758880000,
       "commit": "683eeca",
       "note": "Trophy on a player card opens the champions sheet"
@@ -115,7 +115,7 @@
     },
     {
       "k": "dead-tap",
-      "match": ".LI “2”",
+      "match": ".LI \u201c2\u201d",
       "at": 1793061186000,
       "commit": "67b2cb6",
       "note": "Steps in the How chance to win works explainer are reading, not controls; no longer logged as dead taps"
@@ -189,6 +189,20 @@
       "at": 1793406287000,
       "commit": "4aa87cd",
       "note": "The scheduled job (every 2h, hourly Saturday) now fetches news for every unfinished game ahead of time, so a game's first open no longer waits on the feeds"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".pc-txt",
+      "at": 1793481796000,
+      "commit": "d1fc506",
+      "note": "Path to Win card game rows open that game's Gamecast"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".pc-pts",
+      "at": 1793481796000,
+      "commit": "d1fc506",
+      "note": "Path to Win card game rows open that game's Gamecast"
     }
   ]
 }
