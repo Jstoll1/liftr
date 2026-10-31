@@ -452,3 +452,5 @@ html.pro .bug-team { font-size: 12.5px !important; font-weight: 600 !important; 
 html.pro .bug-score { font-size: 15px !important; font-weight: 700 !important; }
 html.pro .bug-fav { font-size: 10px !important; }
 html.pro .scorebug { padding: 5px 8px 5px !important; } html.pro .bug-head { margin-bottom: 1px !important; }
+html.pro .ranking-row:not(.rank-hd) .ranking-main { padding-top: 4px !important; padding-bottom: 4px !important; min-height: 0 !important; }
+html.pro .ranking-row .ranking-name { line-height: 1.2 !important; gap: 1px !important; } html.pro .ranking-row .ranking-name > * { line-height: 1.2 !important; margin: 0 !important; }
