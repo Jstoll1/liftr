@@ -352,7 +352,7 @@ html.pro .since-stat small em.up { color: var(--win) !important; } html.pro .sin
 html.pro :is(.lr-bet-pts, .chalk-line em, .rd-tag, .gc-live, .gc-rt, .lr-mid, .pt-label i, .pt-val i, .expand-tag, .franchise-tag,
   .rd-wp-label, .rd-head span, .rd-gline, .rd-tb-label, .gc-h, .ps-label, .tiebreaker-label, .rd-summary span,
   .gc-rh, .preview-flag, .since-h, .bug-gnum, .chalk-line span, .ghost-ask, .extreme-label, .season-champ-label,
-  .champion span, .record-card span, .rd-path-btn, .pick-chip-av, .ins-h, .pt-label, .ranking-lock, .rank-max,
+  .champion span, .record-card span, .rd-path-btn, .ins-h, .pt-label, .ranking-lock, .rank-max,
   .ps-gap, .since-tile small, .archive-ask-label, .hero-stat span, .ledger-controls button, .ledger-seasons,
   .franchise-byline, .memoriam-years, .memoriam-line, .methodology strong, .trivia-key, .rd-path-play,
   .chalk-note, .tb-at, .section-action, .tq-tag, .trivia-hs-head, .gc-rh span, .ins-foot, .rd-pickcard) { font-size: 10px !important; letter-spacing: .02em !important; }
@@ -414,3 +414,4 @@ html.pro .bug-head:has(.bug-tv.long) { gap: 4px; }
 html.pro .bug-head:has(.bug-tv.xlong) .ampm { display: none; }
 html.pro .bug-tv.long { letter-spacing: .02em !important; padding: 1px 4px !important; }
 html.pro .bug-head .bug-tv { flex: 0 0 auto !important; }
+html.pro .pick-chip-av { overflow: hidden; line-height: 1; }
