@@ -161,6 +161,34 @@
       "at": 1793245166000,
       "commit": "e0bbfcf",
       "note": "Game news past 30 minutes old answers from the saved copy at once and refreshes in the background, instead of waiting 4 to 5s on the feeds"
+    },
+    {
+      "k": "worker-fail",
+      "match": "/week-chat 502",
+      "at": 1793406157000,
+      "commit": "64908f7",
+      "note": "The model refused a chat whose tool results outnumbered the kept calls (10 per-game picks calls); the Worker now keeps 12 and drops orphaned results, and 'rarest' answers unique-pick questions in one call"
+    },
+    {
+      "k": "route-fail",
+      "match": "/week-chat 502",
+      "at": 1793406157000,
+      "commit": "64908f7",
+      "note": "Same as the app side: orphaned tool results made the model API refuse the chat; fixed in the Worker"
+    },
+    {
+      "k": "espn-fail",
+      "match": "both failed",
+      "at": 1793406287000,
+      "commit": "4aa87cd",
+      "note": "Both score sources down is the phone's signal; the app now waits 3s and tries the Worker again, and logs only if that fails too while online and on screen"
+    },
+    {
+      "k": "worker-slow",
+      "match": "/insights/news",
+      "at": 1793406287000,
+      "commit": "4aa87cd",
+      "note": "The scheduled job (every 2h, hourly Saturday) now fetches news for every unfinished game ahead of time, so a game's first open no longer waits on the feeds"
     }
   ]
 }
