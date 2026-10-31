@@ -31,6 +31,7 @@ const app = {
     // still open.
     if (event.cron !== SEAL_CRON) {
       ctx.waitUntil(runInsights(env, INSIGHTS_DEPS, { briefs: false }).then((r) => console.log("scheduled insights", JSON.stringify(r))));
+      ctx.waitUntil(warmNews(env).then((n) => console.log("scheduled news warm", n)).catch((err) => console.error("news warm", err)));
       return;
     }
     ctx.waitUntil(sealFromEspn(env).then((r) => console.log("scheduled seal", JSON.stringify(r))));
@@ -2817,6 +2818,19 @@ async function handleReactions(request, env, corsHeaders, url) {
 
 // --- Insights ---------------------------------------------------------
 const SEAL_CRON = "0 10 * * 1";
+// Game news is fetched ahead of anyone asking: every game that has not
+// finished (kicks off later, or kicked off in the last four hours), one at a
+// time, so the first person to open a game finds it saved instead of waiting
+// four to five seconds on the feeds. gameNews skips any saved under 30 min.
+async function warmNews(env) {
+  const week = (await readWeeks(env)).current;
+  const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
+  const now = Date.now();
+  const games = (slate?.games || []).filter((g) => { const k = Date.parse(g.kickoff); return Number.isFinite(k) && k > now - 4 * 3600000; });
+  let n = 0;
+  for (const g of games) { try { await gameNews(env, g); n++; } catch {} }
+  return n;
+}
 const INSIGHTS_DEPS = {
   liveGames: (env, week) => liveGames(env, week),
   readSlate: (env, week) => env.LIFTR_KV.get(gamesKey(week), "json"),

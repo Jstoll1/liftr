@@ -799,7 +799,15 @@ async function fetchLiveScoresNow() {
     console.warn("ESPN direct fetch failed, falling back to Worker", err);
   }
   if (!Object.keys(live).length) {
-    try { live = await fetchLiveFromWorker(); answered = true; } catch { live = {}; if (!answered) opsEvent("espn-fail", "scoreboard and Worker /live both failed"); }
+    try { live = await fetchLiveFromWorker(); answered = true; }
+    catch {
+      // Both down at once is nearly always the phone's signal: give it three
+      // seconds and try the Worker once more before logging anything.
+      live = {};
+      await new Promise((r) => setTimeout(r, 3000));
+      try { live = await fetchLiveFromWorker(); answered = true; }
+      catch { live = {}; if (!answered && navigator.onLine !== false && !document.hidden) opsEvent("espn-fail", "scoreboard and Worker /live both failed"); }
+    }
   } else if (espnPartial) {
     // A day that timed out would leave its games blank; the Worker fills them.
     try { const w = await fetchLiveFromWorker(); for (const [id, g] of Object.entries(w)) if (!live[id]) live[id] = g; } catch {}
