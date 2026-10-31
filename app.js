@@ -8806,6 +8806,9 @@ document.getElementById("since-line")?.addEventListener("click", (e) => {
     row?.classList.add("since-flash"); setTimeout(() => row?.classList.remove("since-flash"), 1600);
     return;
   }
+  // A game row opens that game's Gamecast, same as tapping its score card.
+  const rowId = e.target.closest(".since-row[data-sg]")?.dataset.sg;
+  if (rowId && GAMES.some((g) => String(g.id) === rowId)) { openInsights(Number(rowId)); return; }
   const el = e.currentTarget, id = e.target.closest("[data-sg]")?.dataset.sg || el.dataset.sg;
   const card = id && document.querySelector(`#live-scores-list [data-game="${id}"]`);
   if (!card) { document.getElementById("rankings-list")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
