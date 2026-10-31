@@ -7911,8 +7911,8 @@ async function openInsights(gameId) {
       ? `<div class="gc-ezshow td"><img src="${logoUrl(scoreShow.id)}" alt=""><i class="gc-ball"></i><b class="pro-keep">TOUCHDOWN</b></div>`
       : `<div class="gc-ezshow fg${scoreShow.good ? "" : " miss"}"><b class="pro-keep">${scoreShow.good ? "FIELD GOAL" : "NO GOOD"}</b></div>`;
     const field = `<div class="gc-stage">${brk ? `<div class="gc-brk"><span>${esc(brkLabel)}</span></div>` : ""}<div class="gc-field crt${brk ? " brk" : ""}${scoreShow ? " scored" : ""}">${mid}
-      <div class="gc-ez l${scoreShow?.side === "l" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${aCol}"><i class="gc-gp" aria-hidden="true"></i><span>${esc(A)}</span>${ezShow("l")}</div>
-      <div class="gc-ez r${scoreShow?.side === "r" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${hCol}"><i class="gc-gp" aria-hidden="true"></i><span>${esc(H)}</span>${ezShow("r")}</div>
+      <div class="gc-ez l${scoreShow?.side === "l" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${aCol}"><i class="gc-gp" aria-hidden="true"><svg viewBox="0 0 40 52" width="32" height="42"><g fill="none" stroke-linecap="round"><path class="gp-sh" d="M20 50 L20 30 M7 33 L33 25 M7 33 L7 3 M33 25 L33 0"/><path class="gp-ln" d="M20 50 L20 30 M7 33 L33 25 M7 33 L7 3 M33 25 L33 0"/></g></svg></i><span>${esc(A)}</span>${ezShow("l")}</div>
+      <div class="gc-ez r${scoreShow?.side === "r" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${hCol}"><i class="gc-gp" aria-hidden="true"><svg viewBox="0 0 40 52" width="32" height="42"><g fill="none" stroke-linecap="round"><path class="gp-sh" d="M20 50 L20 30 M7 33 L33 25 M7 33 L7 3 M33 25 L33 0"/><path class="gp-ln" d="M20 50 L20 30 M7 33 L33 25 M7 33 L7 3 M33 25 L33 0"/></g></svg></i><span>${esc(H)}</span>${ezShow("r")}</div>
       ${ticks}${brk || scoreShow ? "" : drive + gain + ball}
     </div></div>`;
     const status = shortStatus(lv.detail || `Q${lv.period ?? "?"} ${lv.clock ?? ""}`);
