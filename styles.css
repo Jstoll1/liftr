@@ -8658,3 +8658,9 @@ body:has(#ask-sheet:not(.hidden)) #ask-fab { display: none !important; }
 .ask-chips button:active { background: rgba(5, 217, 232, .08); }
 .ask-f input, .ask-f button { height: 44px; }
 .ask-f input { padding: 0 12px; }
+/* The Ask pill slides away while the page scrolls. */
+.ask-fab { transition: opacity .18s ease, transform .18s ease; }
+.ask-fab.tuck { opacity: 0; transform: translateY(14px); pointer-events: none; }
+/* While the since strip is up it carries the live points; the header
+   keeps place and points only, no repeat of +3. */
+body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }

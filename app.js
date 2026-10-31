@@ -125,7 +125,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=032146589737", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=387127915229", "sim.js?v=374204176553", "gridcard.js?v=788931349874"];
+const EXTRAS = ["ask-ui.js?v=671954582048", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=387127915229", "sim.js?v=374204176553", "gridcard.js?v=788931349874"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -8765,7 +8765,7 @@ function renderSinceLine(ranked, cloudPicks, live) {
   const tile = (k, v, d) => `<span class="since-tile"><small>${k}</small><span><b>${v}</b>${d}</span></span>`;
   const tiles = tile("LIVE", livePts === null ? "–" : `${livePts > 0 ? "+" : ""}${livePts}`, livePts === null ? "" : mv(dl))
     + tile("POINTS", now.pts, mv(dp))
-    + tile("PLACE", now.place ? ordinal(now.place).toUpperCase() : "–", mv(dPlace, "↑", "↓"));
+    + tile("PLACE", now.place ? `${row?.tied ? "T-" : ""}${ordinal(now.place).toUpperCase()}` : "–", mv(dPlace, "↑", "↓"));
   const list = liveMode ? liveRows : flips;
   el.dataset.sg = (liveMode ? liveFirst : first) ?? "";
   const rows = list.length > 3 ? [...list.slice(0, 2), `<span class="since-more">+${list.length - 2} more ${liveMode ? "live picks" : "picks changed"}</span>`] : list;
@@ -8774,6 +8774,13 @@ function renderSinceLine(ranked, cloudPicks, live) {
 }
 // Tap: jump to that game's score card (the flip tapped, else the first).
 document.getElementById("since-line")?.addEventListener("click", (e) => {
+  // The LIVE / POINTS / PLACE tiles go to your row on the leaderboard.
+  if (e.target.closest(".since-tiles")) {
+    const row = document.querySelector("#rankings-list .ranking-row.is-me") || document.getElementById("rankings-list");
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+    row?.classList.add("since-flash"); setTimeout(() => row?.classList.remove("since-flash"), 1600);
+    return;
+  }
   const el = e.currentTarget, id = e.target.closest("[data-sg]")?.dataset.sg || el.dataset.sg;
   const card = id && document.querySelector(`#live-scores-list [data-game="${id}"]`);
   if (!card) { document.getElementById("rankings-list")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }

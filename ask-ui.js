@@ -422,6 +422,12 @@
       b.innerHTML = `<b aria-hidden="true"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async"></b>Ask`;
       b.addEventListener("click", () => { chipSet = null; open(); });
       document.body.appendChild(b);
+      // Tucks away while the page scrolls (it floats over rows) and comes
+      // back once scrolling stops.
+      const sc = document.getElementById("app-scroll");
+      let tuckT = null;
+      const tuck = () => { b.classList.add("tuck"); clearTimeout(tuckT); tuckT = setTimeout(() => b.classList.remove("tuck"), 700); };
+      sc?.addEventListener("scroll", tuck, { passive: true }); window.addEventListener("scroll", tuck, { passive: true });
     }
     const sb = document.getElementById("scoreboard-screen");
     b.hidden = !sb || sb.classList.contains("hidden") || [...document.querySelectorAll(".modal-overlay, #ask-sheet, #lt-modal")].some((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none" && el.getClientRects().length > 0);
