@@ -6367,7 +6367,7 @@ function openWinChanceExplainer() {
       <div class="wpx-chips"><span>YOUR MAX POINTS</span><span>LIVE SCORES</span><span>TIME LEFT</span><span>THE LINE</span><span>ESPN WIN %</span><span>EVERYONE ELSE'S PICKS</span></div>
       <div class="wpx-ex"><b>EXAMPLE</b> Favourite up 7 on a 7.5 line. With 8:00 left they cover about <em>39%</em> of the time. With 1:00 left, about <em>8%</em>: they'd need one more score.</div>
       <button type="button" class="wpx-run">▶ WATCH THE ENGINE</button>
-      <div class="wpx-foot">No way left to finish first? You read OUT. Still a way, but too rare to show up in 5,000 runs? You read &lt;1%. Tap your row to see the pick that matters most for you.</div>
+      <div class="wpx-foot"><b>OUT</b> means no result left gets you 1st. <b>&lt;1%</b> means it can still happen, just in fewer than 50 of 5,000 runs. Tap your row on the board to see the game that matters most to you.</div>
     </div>`;
     document.body.appendChild(m);
     const close = () => { m.classList.add("hidden"); stopEngineTerm(); };
@@ -6398,7 +6398,7 @@ function openEngineTerm() {
   const card = document.querySelector("#wp-explain .wpx-card"), btn = card?.querySelector(".wpx-run");
   if (btn && w.previousElementSibling !== btn) btn.after(w); else if (!card && !w.isConnected) document.body.appendChild(w);
   w.classList.toggle("inline", !!card);
-  if (btn) btn.textContent = "■ STOP THE ENGINE";
+  if (btn) { btn.textContent = "■ STOP THE ENGINE"; btn.classList.add("stop"); }
   const ctx = window.__wpCtx || {};
   const results = ctx.results || {}, cloud = ctx.cloudPicks || lastGoodCloudPicks || {};
   const body = w.querySelector(".eng-body"), foot = w.querySelector(".eng-foot");
@@ -6418,38 +6418,48 @@ function openEngineTerm() {
   };
   const gameLine = (m, res) => {
     const g = m.g, o = resultOutcome(g, res);
-    const fav = g.favorite === g.home ? "home" : "away";
-    const cov = o.push ? "PUSH" : o.atsWinner === g.favorite ? `${ab(g, fav)} -${g.spread} ✓` : `${ab(g, fav === "home" ? "away" : "home")} +${g.spread} ✓`;
-    const live = latestLive?.[g.id]?.state === "in";
-    return `<span class="eng-g">G${g.id}</span> ${ab(g, "away")} <b>${res.awayScore}</b>–<b>${res.homeScore}</b> ${ab(g, "home")} <span class="eng-c">${cov}</span>${live ? ` <i>LIVE</i>` : ""}`;
+    const fav = g.favorite === g.home ? "home" : "away", dog = fav === "home" ? "away" : "home";
+    const cov = o.push ? `<span class="eng-c">push</span>` : o.atsWinner === g.favorite ? `<span class="eng-c">${ab(g, fav)} covers -${g.spread}</span>` : `<span class="eng-c">${ab(g, dog)} covers +${g.spread}</span>`;
+    const l = latestLive?.[g.id], live = l?.state === "in";
+    return `<span class="eng-g">G${g.id}</span> ${ab(g, "away")} <b>${res.awayScore}</b>–<b>${res.homeScore}</b> ${ab(g, "home")}${live ? ` <i>(was ${l.awayScore ?? 0}–${l.homeScore ?? 0})</i>` : ""} · ${cov}`;
   };
-  const runWinner = () => {
-    if (anyHidden || !open.length) return null;
-    const out = models.map((m) => m.fixed || draw(m));
+  // One run at a time, in order: every open game's final, then who wins
+  // the week on exactly those finals. The run number starts where the
+  // clock says the loop is, and counts up from there.
+  const winnerOf = (out) => {
+    if (anyHidden) return null;
     let best = -Infinity, who = [];
     for (const n of MANAGERS) {
       let pts = 0;
       models.forEach((m, k) => { const p = cloud[n]?.picks?.[m.g.id]; if (!p?.team) return; const o = resultOutcome(m.g, out[k]); const w = p.mode === "SU" ? o.suWinner : o.atsWinner; if (w && w === p.team) pts += pickWorth(m.g, p); else if (p.lock && w && lockRule()?.miss < 0) pts += lockRule().miss; });
       if (pts > best) { best = pts; who = [n]; } else if (pts === best) who.push(n);
     }
-    return `→ <b>${escapeCd(shown(who[0]).toUpperCase())}</b>${who.length > 1 ? ` <span class="eng-c">+${who.length - 1} TIED</span>` : ""} ${best} PTS`;
+    return who.length > 1
+      ? `<b>TIE ${best} PTS</b> ${escapeCd(who.map((x) => shown(x).toUpperCase()).join(", "))} <span class="eng-c">→ tiebreaker</span>`
+      : `<b>${escapeCd(shown(who[0]).toUpperCase())}</b> wins the week, ${best} pts`;
+  };
+  let run = runNo(), queue = [];
+  const nextRun = () => {
+    const out = models.map((m) => m.fixed || draw(m));
+    const lines = models.map((m, k) => m.fixed ? null : gameLine(m, out[k])).filter(Boolean);
+    const wnr = winnerOf(out);
+    queue = [`<span class="eng-r">RUN ${run.toLocaleString()}</span>`, ...lines, ...(wnr ? [`→ ${wnr}`] : [])];
+    run = run % N + 1;
   };
   const line = (t, html) => `<div class="eng-l"><span class="eng-t">${ts(t)}</span> ${html}</div>`;
-  let tick = 0;
   const step = (t = Date.now()) => {
-    tick++;
     if (!open.length) return line(t, `<span class="eng-c">ALL GAMES FINAL · NOTHING LEFT TO RUN</span>`);
-    if (tick % 6 === 0) { const wnr = runWinner(); if (wnr) return line(t, `<span class="eng-g">RUN ${runNo().toLocaleString()}</span> ${wnr}`); }
-    const m = open[Math.floor(Math.random() * open.length)];
-    return line(t, gameLine(m, draw(m)));
+    if (!queue.length) nextRun();
+    return line(t, queue.shift());
   };
   // Mid-stream: a screen's worth already printed, timestamps just behind.
   const now = Date.now();
+  nextRun(); queue.splice(0, Math.floor(Math.random() * queue.length));
   body.innerHTML = Array.from({ length: 7 }, (_, i) => step(now - (7 - i) * 350)).join("");
   const paint = () => {
     body.insertAdjacentHTML("beforeend", step());
     while (body.children.length > 9) body.firstElementChild.remove();
-    foot.textContent = `RUN ${runNo().toLocaleString()} / ${N.toLocaleString()} · ${open.length} OPEN GAME${open.length === 1 ? "" : "S"} · ${ts(Date.now())}`;
+    foot.textContent = open.length ? `Run ${run.toLocaleString()} of ${N.toLocaleString()} · one possible Saturday each` : "Every game is final";
   };
   paint();
   clearInterval(engineTimer);
@@ -6461,7 +6471,7 @@ function stopEngineTerm() {
   const w = document.getElementById("eng-term");
   w?.classList.remove("on");
   clearInterval(engineTimer); engineTimer = null;
-  const btn = document.querySelector("#wp-explain .wpx-run"); if (btn) btn.textContent = "▶ WATCH THE ENGINE";
+  const btn = document.querySelector("#wp-explain .wpx-run"); if (btn) { btn.textContent = "▶ WATCH THE ENGINE"; btn.classList.remove("stop"); }
 }
 
 function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
