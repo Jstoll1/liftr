@@ -1808,7 +1808,9 @@ async function handleTrivia(request, env, corsHeaders) {
       if (!Number.isInteger(n) || n < 1 || n > 500) return json({ error: "Bad streak" }, 400, corsHeaders);
       const now = Date.now();
       const cur = (await env.LIFTR_KV.get(`trivia-streak:${player}`, "json")) || { best: 0, bestAt: null, runs: 0 };
-      cur.runs += 1;
+      // A live post (a new best mid-streak) raises the best only; the run
+      // is counted when it ends.
+      if (!body.live) cur.runs += 1;
       if (n > cur.best) { cur.best = n; cur.bestAt = now; }
       await env.LIFTR_KV.put(`trivia-streak:${player}`, JSON.stringify(cur));
       return json({ ok: true, best: cur.best }, 200, corsHeaders);
