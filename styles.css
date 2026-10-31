@@ -8777,7 +8777,7 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 /* Goalposts: an invisible anchor on each back line (the tilt slants it
    like the line); drawGoalposts() paints the posts over the field. */
 .gc-gp { position: absolute; top: 41%; bottom: 41%; width: 0; pointer-events: none; }
-.gc-ez.l .gc-gp { left: 6px; } .gc-ez.r .gc-gp { right: 6px; }
+.gc-ez.l .gc-gp { left: 4px; } .gc-ez.r .gc-gp { right: 4px; }
 .gp-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 1px; visibility: hidden; }
 .gc-gpsvg { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 4; overflow: visible; }
 .gc-gpsvg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
@@ -8788,5 +8788,5 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .gc-gpsvg .gp.lit { opacity: 1; filter: drop-shadow(0 0 5px #ffe45e) drop-shadow(0 0 2px #fff); animation: gc-ezpost 1s ease-in-out infinite; }
 .gc-ez { overflow: visible; }
 .gc-ez > span { position: relative; z-index: 3; }
-.gc-ez > span { display: none; }
+.gc-ez:not(.show) { justify-content: flex-end; padding-right: 3px; } .gc-ez.r:not(.show) { justify-content: flex-start; padding: 0 0 0 3px; } .gc-ez > span { position: relative; z-index: 1; }
 .scorebug.pregame .bug-score { opacity: .45; }
