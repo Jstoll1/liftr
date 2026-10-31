@@ -8774,17 +8774,18 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .since-row.dn em.since-pill { background: rgba(255, 32, 121, .14); color: var(--neon-pink); }
 .pr-screen.pc .pc-row[data-pcg] { cursor: pointer; -webkit-tap-highlight-color: transparent; } .pr-screen.pc .pc-row[data-pcg]:active { background: rgba(255, 255, 255, .06); }
 
-/* Goalposts standing on each back line: stem, crossbar running into the
-   field's depth, two uprights rising out of it. Drawn upright against the
-   tilted field the way the ball marker is (counter-rotated), muted until
-   a field goal goes through them, then lit and pulsing. */
-.gc-gp { position: absolute; top: 74%; width: 32px; height: 42px; margin-top: -42px; pointer-events: none; z-index: 2; transform: rotateX(-34deg); transform-origin: 50% 100%; opacity: .8; }
-.gc-ez.l .gc-gp { left: -4px; } .gc-ez.r .gc-gp { right: -4px; transform: rotateX(-34deg) scaleX(-1); }
-.gc-gp svg { display: block; overflow: visible; }
-.gc-gp .gp-sh { stroke: rgba(0, 0, 0, .55); stroke-width: 5; }
-.gc-gp .gp-ln { stroke: #ffe45e; stroke-width: 3; }
-.gc-ez.show.fg:not(.miss) .gc-gp { opacity: 1; filter: drop-shadow(0 0 5px #ffe45e) drop-shadow(0 0 2px #fff); animation: gc-ezpost 1s ease-in-out infinite; }
-.gc-ez.show.fg.miss .gc-gp { opacity: .9; }
+/* Goalposts: an invisible anchor on each back line (the tilt slants it
+   like the line); drawGoalposts() paints the posts over the field. */
+.gc-gp { position: absolute; top: 41%; bottom: 41%; width: 0; pointer-events: none; }
+.gc-ez.l .gc-gp { left: 6px; } .gc-ez.r .gc-gp { right: 6px; }
+.gp-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 1px; visibility: hidden; }
+.gc-gpsvg { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 4; overflow: visible; }
+.gc-gpsvg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.gc-gpsvg .gp-sh { stroke: rgba(0, 0, 0, .55); stroke-width: 5; }
+.gc-gpsvg .gp-ln { stroke: #ffe45e; stroke-width: 3; }
+.gc-gpsvg .gp-base { fill: rgba(0, 0, 0, .35); }
+.gc-gpsvg .gp { opacity: .85; }
+.gc-gpsvg .gp.lit { opacity: 1; filter: drop-shadow(0 0 5px #ffe45e) drop-shadow(0 0 2px #fff); animation: gc-ezpost 1s ease-in-out infinite; }
 .gc-ez { overflow: visible; }
 .gc-ez > span { position: relative; z-index: 3; }
 .gc-ez > span { display: none; }
