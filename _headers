@@ -1,0 +1,8 @@
+# Brochiefs Live is a home screen app with no reload button: never let a
+# phone keep a saved copy of its page, so every launch gets the current one.
+/live
+  Cache-Control: no-store
+/live/
+  Cache-Control: no-store
+/live/index.html
+  Cache-Control: no-store
