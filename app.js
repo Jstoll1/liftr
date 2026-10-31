@@ -6370,8 +6370,8 @@ function openWinChanceExplainer() {
       <div class="wpx-foot">No way left to finish first? You read OUT. Still a way, but too rare to show up in 5,000 runs? You read &lt;1%. Tap your row to see the pick that matters most for you.</div>
     </div>`;
     document.body.appendChild(m);
-    const close = () => m.classList.add("hidden");
-    m.addEventListener("click", (e) => { if (e.target.closest(".wpx-run")) { openEngineTerm(); track("wp-engine", { event: true }); return; } if (e.target === m || e.target.closest(".wpx-x")) close(); });
+    const close = () => { m.classList.add("hidden"); stopEngineTerm(); };
+    m.addEventListener("click", (e) => { if (e.target.closest(".wpx-run")) { if (engineTimer) stopEngineTerm(); else { openEngineTerm(); track("wp-engine", { event: true }); } return; } if (e.target === m || e.target.closest(".wpx-x")) close(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
   }
   m.classList.remove("hidden");
@@ -6392,9 +6392,13 @@ function openEngineTerm() {
     w.setAttribute("role", "dialog");
     w.setAttribute("aria-label", "The engine running");
     w.innerHTML = `<div class="eng-bar"><span>C:\\BROCHIEFS\\ENGINE.EXE</span><button type="button" class="eng-x" aria-label="Close">✕</button></div><div class="eng-body" aria-live="off"></div><div class="eng-foot"></div>`;
-    document.body.appendChild(w);
-    w.querySelector(".eng-x").addEventListener("click", () => { w.classList.remove("on"); clearInterval(engineTimer); engineTimer = null; });
+    w.querySelector(".eng-x").addEventListener("click", () => stopEngineTerm());
   }
+  // Docked in the explainer, where the button is, at the card's width.
+  const card = document.querySelector("#wp-explain .wpx-card"), btn = card?.querySelector(".wpx-run");
+  if (btn && w.previousElementSibling !== btn) btn.after(w); else if (!card && !w.isConnected) document.body.appendChild(w);
+  w.classList.toggle("inline", !!card);
+  if (btn) btn.textContent = "■ STOP THE ENGINE";
   const ctx = window.__wpCtx || {};
   const results = ctx.results || {}, cloud = ctx.cloudPicks || lastGoodCloudPicks || {};
   const body = w.querySelector(".eng-body"), foot = w.querySelector(".eng-foot");
@@ -6451,6 +6455,13 @@ function openEngineTerm() {
   clearInterval(engineTimer);
   engineTimer = setInterval(() => { if (!document.hidden) paint(); }, 350);
   w.classList.add("on");
+  requestAnimationFrame(() => w.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+}
+function stopEngineTerm() {
+  const w = document.getElementById("eng-term");
+  w?.classList.remove("on");
+  clearInterval(engineTimer); engineTimer = null;
+  const btn = document.querySelector("#wp-explain .wpx-run"); if (btn) btn.textContent = "▶ WATCH THE ENGINE";
 }
 
 function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
