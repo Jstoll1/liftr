@@ -344,3 +344,39 @@ html.pro .since-flash { animation: none; box-shadow: 0 0 0 2px var(--acc) !impor
 html.pro .since-stat u.up { color: var(--win) !important; } html.pro .since-stat u.dn { color: var(--loss) !important; }
 html.pro .since-stat b { font-family: Inter, system-ui, sans-serif; }
 html.pro .since-stat small em.up { color: var(--win) !important; } html.pro .since-stat small em.dn { color: var(--loss) !important; }
+
+/* ---- Readable floor ---------------------------------------------------
+   Retro's pixel face reads at 6 to 8px; Inter does not. Every label the
+   audit found under 10px in Pro comes up to 10px (11px for the ones that
+   carry a number you read), so nothing in Pro is smaller than 10px. */
+html.pro :is(.lr-bet-pts, .chalk-line em, .rd-tag, .gc-live, .gc-rt, .lr-mid, .pt-label i, .pt-val i, .expand-tag, .franchise-tag,
+  .rd-wp-label, .rd-head span, .rd-gline, .rd-tb-label, .gc-h, .ps-label, .tiebreaker-label, .rd-summary span,
+  .gc-rh, .preview-flag, .since-h, .bug-gnum, .chalk-line span, .ghost-ask, .extreme-label, .season-champ-label,
+  .champion span, .record-card span, .rd-path-btn, .pick-chip-av, .ins-h, .pt-label, .ranking-lock, .rank-max,
+  .ps-gap, .since-tile small, .archive-ask-label, .hero-stat span, .ledger-controls button, .ledger-seasons,
+  .franchise-byline, .memoriam-years, .memoriam-line, .methodology strong, .trivia-key, .rd-path-play,
+  .chalk-note, .tb-at, .section-action, .tq-tag, .trivia-hs-head, .gc-rh span, .ins-foot, .rd-pickcard) { font-size: 10px !important; letter-spacing: .02em !important; }
+html.pro :is(.gc-mpts, .gc-msay, .gc-rpts, .bug-status, .gc-tn b, .pt-val, .rank-max b, .rd-pts, .ms-rank, .ms-score,
+  .gc-mine b, .gc-settle b, .rank-who, .ps-rank, .ps-score, .ps-who, .lr-bet, .rd-wp-label b) { font-size: 11px !important; }
+html.pro .rd-tb-label, html.pro .lr-mid, html.pro .tiebreaker-label { white-space: normal; }
+
+/* TV network: a quiet tag, never as loud as the game status beside it. */
+html.pro .bug-tv { font-size: 9.5px !important; font-weight: 600 !important; letter-spacing: .06em !important; opacity: .8; }
+html.pro .bug-head { font-size: 11px !important; }
+
+/* ---- Ask Chief ---------------------------------------------------------- */
+html.pro .ask-card { background: var(--s1) !important; border: 1px solid var(--line2) !important; box-shadow: 0 -12px 40px rgba(0,0,0,.5); }
+html.pro .ask-h b, html.pro .ask-title { color: var(--text) !important; font-weight: 700 !important; font-size: 14px !important; letter-spacing: .02em !important; }
+html.pro .ask-hint { color: var(--text-dim) !important; font-size: 14px !important; }
+html.pro .ask-chips button { background: none !important; border: 0 !important; border-bottom: 1px solid var(--line) !important; color: var(--text) !important; font-size: 15px !important; }
+html.pro .ask-chips button i { color: var(--acc) !important; }
+html.pro .ask-f input { background: var(--bg) !important; border: 1px solid var(--line2) !important; box-shadow: none !important; outline: none !important; color: var(--text) !important; border-radius: var(--r-sm) !important; }
+html.pro .ask-f input:focus { border-color: var(--acc) !important; }
+html.pro .ask-f button { background: var(--acc) !important; color: var(--on-acc) !important; border: 0 !important; border-radius: var(--r-sm) !important; font-weight: 700 !important; box-shadow: none !important; }
+html.pro .ask-x, html.pro .ask-cp { background: var(--s2) !important; border: 1px solid var(--line) !important; color: var(--text-dim) !important; box-shadow: none !important; }
+html.pro .ask-q { background: var(--acc-soft) !important; color: var(--acc-ink) !important; }
+html.pro .ask-a { background: var(--s2) !important; color: var(--text) !important; }
+html.pro .ask-a li::marker { color: var(--acc) !important; }
+html.pro .ask-grip { background: var(--line2) !important; }
+html.pro .ask-fab { background: var(--s2) !important; border: 1px solid var(--line2) !important; color: var(--text) !important; font-family: var(--font) !important; box-shadow: 0 6px 18px rgba(0,0,0,.45) !important; }
+html.pro .preview-flag { white-space: nowrap; font-size: 9px !important; }
