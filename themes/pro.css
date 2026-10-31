@@ -557,3 +557,16 @@ html.pro .since-row.up .since-ln { color: var(--win) !important; } html.pro .sin
 html.pro .since-row.up em.since-pill { background: rgba(46, 207, 122, .14) !important; color: var(--win) !important; }
 html.pro .since-row.dn em.since-pill { background: rgba(255, 93, 93, .14) !important; color: var(--loss) !important; }
 html.pro .since-row.up .since-t u { color: var(--win) !important; } html.pro .since-row.dn .since-t u { color: var(--loss) !important; }
+
+/* Score cards say their state at a glance: live games glow amber with a
+   pulsing dot, games not started are dimmed with dashes for scores, finals
+   stay plain with the winner in green. */
+html.pro .scorebug.is-live { border-color: rgba(255, 159, 67, .55) !important; box-shadow: 0 0 0 1px rgba(255, 159, 67, .25) !important; }
+html.pro .scorebug.is-live .bug-status { color: var(--live) !important; font-weight: 700 !important; display: inline-flex; align-items: center; gap: 4px; }
+html.pro .scorebug.is-live .bug-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--live); flex: none; animation: pro-live-dot 1.4s ease-in-out infinite; }
+@keyframes pro-live-dot { 50% { opacity: .25; } }
+html.pro .scorebug.pregame .bug-score { color: var(--t3) !important; font-weight: 500 !important; }
+html.pro .scorebug.pregame .bug-team { color: var(--text-dim) !important; }
+html.pro .scorebug.is-final .bug-status { color: var(--text-dim) !important; }
+html.pro .scorebug.lk.is-live { border-color: var(--acc) !important; }
+@media (prefers-reduced-motion: reduce) { html.pro .scorebug.is-live .bug-status::before { animation: none; } }

@@ -4437,8 +4437,10 @@ function renderLiveScores(live, cloudPicks) {
         ? `<span class="bug-tv${shortNetwork(game.tv).length > 5 ? " long xlong" : shortNetwork(game.tv).length > 4 ? " long" : ""}" title="${escapeCd(game.tv)}">${escapeCd(shortNetwork(game.tv))}</span>`
         : "";
 
-      const awayScore = found ? g.awayScore ?? "–" : "–";
-      const homeScore = found ? g.homeScore ?? "–" : "–";
+      // Not kicked off: no score yet, a dash, never a 0 that reads as final.
+      const started = found && (isLive || isFinal || g.state === "in" || g.state === "post");
+      const awayScore = started ? g.awayScore ?? "–" : "–";
+      const homeScore = started ? g.homeScore ?? "–" : "–";
       const prev = lastScores[game.id] || {};
       const awayPop = found && prev.away !== undefined && prev.away !== awayScore;
       const homePop = found && prev.home !== undefined && prev.home !== homeScore;
@@ -4469,7 +4471,7 @@ function renderLiveScores(live, cloudPicks) {
           <span class="bug-score ${pop ? "pop" : ""}">${score}</span>
         </div>`;
 
-      const cls = ["scorebug", isLive ? "is-live" : "", isFinal ? "is-final" : "", !locked ? "upcoming" : ""].join(" ");
+      const cls = ["scorebug", isLive ? "is-live" : "", isFinal ? "is-final" : "", !locked ? "upcoming" : "", !isLive && !isFinal ? "pregame" : ""].join(" ");
       // What this game is worth to the viewer, top right. Before kickoff
       // it just states the stake; live it carries a dot, green while the
       // pick is covering and red while it is not; at the final a miss is
