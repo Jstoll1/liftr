@@ -58,7 +58,7 @@ html.pro body *:not(.pro-keep):not(.pro-keep *) { font-family: var(--font) !impo
 html.pro body *:not(.pro-keep *) { box-shadow: none !important; filter: none !important; }
 html.pro .app-scroll { background: var(--bg) !important; }
 /* The arcade backdrop: grids, scanlines, horizon glow. */
-html.pro .arcade-horizon-grid, html.pro .scanlines, html.pro .crt, html.pro [class*="scanline"], html.pro [class*="horizon"] { display: none !important; }
+html.pro .arcade-horizon-grid, html.pro .scanlines, html.pro .crt:not(.gc-field), html.pro [class*="scanline"], html.pro [class*="horizon"] { display: none !important; }
 html.pro body::before, html.pro body::after, html.pro .app-scroll::before, html.pro .app-scroll::after { display: none !important; }
 /* Neon frames become hairlines; status borders are restored per component. */
 html.pro body *:not(.pro-keep *) { border-color: var(--line); }
@@ -454,3 +454,4 @@ html.pro .bug-fav { font-size: 10px !important; }
 html.pro .scorebug { padding: 5px 8px 5px !important; } html.pro .bug-head { margin-bottom: 1px !important; }
 html.pro .ranking-row:not(.rank-hd) .ranking-main { padding-top: 4px !important; padding-bottom: 4px !important; min-height: 0 !important; }
 html.pro .ranking-row .ranking-name { line-height: 1.2 !important; gap: 1px !important; } html.pro .ranking-row .ranking-name > * { line-height: 1.2 !important; margin: 0 !important; }
+html.pro .gc-field.crt::before, html.pro .gc-field.crt::after { opacity: .35; }
