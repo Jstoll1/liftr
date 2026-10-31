@@ -6026,14 +6026,11 @@ function exactPaths(targets, models, picks, guesses, tbGame, catN, N) {
 }
 
 let winChanceMemo = { key: "", out: null };
-function weekWinChances(cloudPicks, results, live) {
-  const key = JSON.stringify([GAMES.map((g) => { const l = live[g.id]; return [g.id, results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : l ? `${l.state}${l.awayScore}-${l.homeScore}@${l.period}${l.clock}~${l.winProb ? Math.round(l.winProb.home * 10) : ""}` : ""]; }), MANAGERS.map((n) => JSON.stringify(cloudPicks[n]?.picks || {}) + (cloudPicks[n]?.tiebreaker ?? ""))]);
-  if (winChanceMemo.key === key) return winChanceMemo.out;
-  const N = 5000;
-  const rnd = seededRandom(key);
-  const tbGame = tiebreakerGameOf();
-  const guesses = MANAGERS.map((n) => { const raw = String(cloudPicks[n]?.tiebreaker ?? "").trim(); const v = Number(raw); return raw !== "" && Number.isFinite(v) ? v : null; });
-  const models = GAMES.map((g) => {
+// One game model per game for the week simulation: finals fixed, open
+// games as scoring drives (see weekWinChances). Shared with the engine
+// terminal so what it prints is what WIN% is built from.
+function simModels(results, live) {
+  return GAMES.map((g) => {
     if (results[g.id]) return { g, fixed: results[g.id] };
     const l = live[g.id];
     const odds = l?.odds && l.odds.spread != null ? l.odds : null;
@@ -6057,6 +6054,15 @@ function weekWinChances(cloudPicks, results, live) {
     if (espnWp != null) { const c = calibrateLive(lam, curH - curA, espnWp); return { g, rem, lam: c.lam, pHome: c.p, curA, curH, espn: espnWp }; }
     return { g, rem, lam, pHome, curA, curH };
   });
+}
+function weekWinChances(cloudPicks, results, live) {
+  const key = JSON.stringify([GAMES.map((g) => { const l = live[g.id]; return [g.id, results[g.id] ? `${results[g.id].awayScore}-${results[g.id].homeScore}` : l ? `${l.state}${l.awayScore}-${l.homeScore}@${l.period}${l.clock}~${l.winProb ? Math.round(l.winProb.home * 10) : ""}` : ""]; }), MANAGERS.map((n) => JSON.stringify(cloudPicks[n]?.picks || {}) + (cloudPicks[n]?.tiebreaker ?? ""))]);
+  if (winChanceMemo.key === key) return winChanceMemo.out;
+  const N = 5000;
+  const rnd = seededRandom(key);
+  const tbGame = tiebreakerGameOf();
+  const guesses = MANAGERS.map((n) => { const raw = String(cloudPicks[n]?.tiebreaker ?? "").trim(); const v = Number(raw); return raw !== "" && Number.isFinite(v) ? v : null; });
+  const models = simModels(results, live);
   // Each manager's pick on each game, with what it pays.
   const picks = MANAGERS.map((n) => GAMES.map((g) => { const p = cloudPicks[n]?.picks?.[g.id]; return p ? { team: p.team, mode: p.mode, lock: p.lock, pts: pickWorth(g, p) } : null; }));
   const wins = new Array(MANAGERS.length).fill(0);
@@ -6360,15 +6366,91 @@ function openWinChanceExplainer() {
       <div class="wpx-h">WHAT MOVES YOUR %</div>
       <div class="wpx-chips"><span>YOUR MAX POINTS</span><span>LIVE SCORES</span><span>TIME LEFT</span><span>THE LINE</span><span>ESPN WIN %</span><span>EVERYONE ELSE'S PICKS</span></div>
       <div class="wpx-ex"><b>EXAMPLE</b> Favourite up 7 on a 7.5 line. With 8:00 left they cover about <em>39%</em> of the time. With 1:00 left, about <em>8%</em>: they'd need one more score.</div>
+      <button type="button" class="wpx-run">▶ WATCH THE ENGINE</button>
       <div class="wpx-foot">No way left to finish first? You read OUT. Still a way, but too rare to show up in 5,000 runs? You read &lt;1%. Tap your row to see the pick that matters most for you.</div>
     </div>`;
     document.body.appendChild(m);
     const close = () => m.classList.add("hidden");
-    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wpx-x")) close(); });
+    m.addEventListener("click", (e) => { if (e.target.closest(".wpx-run")) { openEngineTerm(); track("wp-engine", { event: true }); return; } if (e.target === m || e.target.closest(".wpx-x")) close(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
   }
   m.classList.remove("hidden");
   track("wp-explain", { event: true });
+}
+
+// The engine, watched: a small terminal that prints runs as they are
+// drawn, from the same game models WIN% uses. It is a window onto a loop
+// that is always going: the run number follows the clock, so opening it
+// lands mid-stream with a few lines already up, never a fresh start.
+let engineTimer = null;
+function openEngineTerm() {
+  let w = document.getElementById("eng-term");
+  if (!w) {
+    w = document.createElement("div");
+    w.id = "eng-term";
+    w.className = "eng-term pro-keep";
+    w.setAttribute("role", "dialog");
+    w.setAttribute("aria-label", "The engine running");
+    w.innerHTML = `<div class="eng-bar"><span>C:\\BROCHIEFS\\ENGINE.EXE</span><button type="button" class="eng-x" aria-label="Close">✕</button></div><div class="eng-body" aria-live="off"></div><div class="eng-foot"></div>`;
+    document.body.appendChild(w);
+    w.querySelector(".eng-x").addEventListener("click", () => { w.classList.remove("on"); clearInterval(engineTimer); engineTimer = null; });
+  }
+  const ctx = window.__wpCtx || {};
+  const results = ctx.results || {}, cloud = ctx.cloudPicks || lastGoodCloudPicks || {};
+  const body = w.querySelector(".eng-body"), foot = w.querySelector(".eng-foot");
+  const models = simModels(results, latestLive || {});
+  const open = models.filter((m) => !m.fixed);
+  const anyHidden = MANAGERS.some((n) => Object.values(cloud[n]?.picks || {}).some((p) => p?.hidden));
+  const RUN_MS = 40, N = 5000;
+  const runNo = () => Math.floor(Date.now() / RUN_MS) % N + 1;
+  const ts = (t) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+  const ab = (g, side) => { const c = teamCode(g, side === "home" ? g.home : g.away), n = side === "home" ? g.homeShort : g.awayShort; return escapeCd(c.length <= 2 ? n.replace(/[^A-Za-z]/g, "").slice(0, 4).toUpperCase() : c.toUpperCase()); };
+  const draw = (m) => {
+    let h = m.curH || 0, a = m.curA || 0;
+    const n = poissonRand(m.lam, Math.random);
+    for (let q = 0; q < n; q++) { const pts = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += pts; else a += pts; }
+    if (h === a) { const pts = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += pts; else a += pts; }
+    return { awayScore: a, homeScore: h };
+  };
+  const gameLine = (m, res) => {
+    const g = m.g, o = resultOutcome(g, res);
+    const fav = g.favorite === g.home ? "home" : "away";
+    const cov = o.push ? "PUSH" : o.atsWinner === g.favorite ? `${ab(g, fav)} -${g.spread} ✓` : `${ab(g, fav === "home" ? "away" : "home")} +${g.spread} ✓`;
+    const live = latestLive?.[g.id]?.state === "in";
+    return `<span class="eng-g">G${g.id}</span> ${ab(g, "away")} <b>${res.awayScore}</b>–<b>${res.homeScore}</b> ${ab(g, "home")} <span class="eng-c">${cov}</span>${live ? ` <i>LIVE</i>` : ""}`;
+  };
+  const runWinner = () => {
+    if (anyHidden || !open.length) return null;
+    const out = models.map((m) => m.fixed || draw(m));
+    let best = -Infinity, who = [];
+    for (const n of MANAGERS) {
+      let pts = 0;
+      models.forEach((m, k) => { const p = cloud[n]?.picks?.[m.g.id]; if (!p?.team) return; const o = resultOutcome(m.g, out[k]); const w = p.mode === "SU" ? o.suWinner : o.atsWinner; if (w && w === p.team) pts += pickWorth(m.g, p); else if (p.lock && w && lockRule()?.miss < 0) pts += lockRule().miss; });
+      if (pts > best) { best = pts; who = [n]; } else if (pts === best) who.push(n);
+    }
+    return `→ <b>${escapeCd(shown(who[0]).toUpperCase())}</b>${who.length > 1 ? ` <span class="eng-c">+${who.length - 1} TIED</span>` : ""} ${best} PTS`;
+  };
+  const line = (t, html) => `<div class="eng-l"><span class="eng-t">${ts(t)}</span> ${html}</div>`;
+  let tick = 0;
+  const step = (t = Date.now()) => {
+    tick++;
+    if (!open.length) return line(t, `<span class="eng-c">ALL GAMES FINAL · NOTHING LEFT TO RUN</span>`);
+    if (tick % 6 === 0) { const wnr = runWinner(); if (wnr) return line(t, `<span class="eng-g">RUN ${runNo().toLocaleString()}</span> ${wnr}`); }
+    const m = open[Math.floor(Math.random() * open.length)];
+    return line(t, gameLine(m, draw(m)));
+  };
+  // Mid-stream: a screen's worth already printed, timestamps just behind.
+  const now = Date.now();
+  body.innerHTML = Array.from({ length: 7 }, (_, i) => step(now - (7 - i) * 350)).join("");
+  const paint = () => {
+    body.insertAdjacentHTML("beforeend", step());
+    while (body.children.length > 9) body.firstElementChild.remove();
+    foot.textContent = `RUN ${runNo().toLocaleString()} / ${N.toLocaleString()} · ${open.length} OPEN GAME${open.length === 1 ? "" : "S"} · ${ts(Date.now())}`;
+  };
+  paint();
+  clearInterval(engineTimer);
+  engineTimer = setInterval(() => { if (!document.hidden) paint(); }, 350);
+  w.classList.add("on");
 }
 
 function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
