@@ -508,3 +508,25 @@ html.pro .ranking-row .ranking-place.medal.m3 { background: #c8865a !important; 
 html.pro .ranking-row.rank-hd .rank-wp b { flex: 1 1 auto !important; white-space: nowrap !important; text-align: right !important; }
 html.pro .ranking-row.tier-break { margin-top: 0 !important; border-top: 1px solid var(--line2) !important; }
 html.pro .ranking-row.tier-break::after { display: none !important; }
+
+/* Section headings (Scores, Leaderboard, Recap, All Picks): one row, every
+   part on the same centre line, caret beside the title, VS level with it. */
+html.pro .section-heading { display: flex !important; align-items: center !important; gap: 8px !important; min-height: 36px; padding: 6px 0 !important; margin: 0 !important; font: 700 13px/1 var(--font) !important; letter-spacing: .08em !important; color: var(--text-dim) !important; }
+html.pro .section-heading .all-picks-caret { display: inline-flex !important; align-items: center; font-size: 10px !important; line-height: 1 !important; color: var(--t3) !important; transform: none; position: static !important; margin: 0 !important; }
+html.pro .lb-head { display: flex !important; align-items: center !important; gap: 10px; border-bottom: 1px solid var(--line) !important; margin-bottom: 8px !important; }
+html.pro .lb-head > .section-heading { flex: 1 1 auto; border: 0 !important; }
+html.pro .lb-head .h2h-btn { flex: none; height: 28px !important; padding: 0 12px !important; display: inline-flex !important; align-items: center; border-radius: 8px !important; font: 700 12px/1 var(--font) !important; }
+/* Table header: labels sit on their column's edge (letter spacing would push
+   right aligned ones off by its width). */
+html.pro .ranking-row.rank-hd .ranking-score, html.pro .ranking-row.rank-hd .rank-wp b { letter-spacing: 0 !important; }
+html.pro .ranking-row.rank-hd .ranking-main { padding-top: 6px !important; padding-bottom: 6px !important; align-items: center !important; }
+html.pro .ranking-row.rank-hd :is(.ranking-place, .ranking-name, .rank-live, .rank-wp, .rank-wp b, .ranking-score, .rank-hd-wp) { font: 600 11px/14px var(--font) !important; height: 14px !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; background: none !important; letter-spacing: .06em !important; color: var(--t3) !important; display: flex !important; align-items: center !important; }
+html.pro .ranking-row.rank-hd .rank-live { justify-content: center !important; }
+html.pro .ranking-row.rank-hd :is(.rank-wp, .ranking-score) { justify-content: flex-end !important; letter-spacing: 0 !important; }
+html.pro .ranking-row.rank-hd .rank-wp b { letter-spacing: 0 !important; }
+html.pro .ranking-row.rank-hd .ranking-name { justify-content: flex-start !important; text-align: left !important; }
+html.pro .ranking-row.rank-hd .rank-wp .rank-wp-bar { display: none !important; }
+html.pro .ranking-row.rank-hd .rank-wp b { flex: 1 1 auto !important; justify-content: flex-end !important; text-align: right !important; }
+html.pro .ranking-row.rank-hd .ranking-name { display: block !important; width: auto !important; }
+html.pro .ranking-row.rank-hd .ranking-name { text-align-last: left !important; }
+html.pro .rankings-list .ranking-row.rank-hd span.ranking-name { display: block !important; text-align: left !important; width: auto !important; }
