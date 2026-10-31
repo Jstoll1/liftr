@@ -1,10 +1,33 @@
-// BroChief Intelligence (BI): "If Michigan wins, can I still win?"
+// Ask Chief: "If Michigan wins, can I still win?"
 // The Worker's model only reads the question into who and which game
 // outcomes it assumes. The numbers here come from the app's own win-chance
 // runs, replayed with those outcomes held, so nothing is made up.
 (() => {
   if (typeof WORKER_URL === "undefined" || !WORKER_URL || window.LEAGUE?.sport === "nfl") return;
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // An answer as a few blocks: lines starting "1." become a numbered list,
+  // "-" or "•" a bullet list, the rest short paragraphs. Escaped first, so
+  // nothing in the text can become markup; **bold** is the only styling.
+  const fmtA = (t) => {
+    const out = []; let list = null;
+    // This week's teams by every name the answer might use (full, short),
+    // longest first so "Ohio State" wins over "Ohio". The first mention of
+    // each team in an answer gets its logo in front.
+    const teams = []; for (const g of (typeof GAMES !== "undefined" ? GAMES : [])) for (const [id, names] of [[g.awayId, [g.away, g.awayShort]], [g.homeId, [g.home, g.homeShort]]]) for (const n of names) if (n && id) teams.push([String(n).replace(/^#\d+\s+/, ""), id]);
+    teams.sort((a, b) => b[0].length - a[0].length);
+    const seen = new Set();
+    const rx = teams.length ? new RegExp(`(^|[^A-Za-z])(${teams.map(([n]) => esc(n).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![A-Za-z])`, "g") : null;
+    const logos = (h) => !rx ? h : h.replace(rx, (m, pre, nm) => { const t = teams.find(([n]) => esc(n) === nm); if (!t || seen.has(t[1])) return m; seen.add(t[1]); return `${pre}<img class="ask-tlogo" src="${logoUrl(t[1])}" alt="" loading="lazy" decoding="async" onerror="this.remove()">${nm}`; });
+    const inl = (x) => logos(esc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"));
+    for (const raw of String(t ?? "").split(/\n+/)) {
+      const line = raw.trim(); if (!line) continue;
+      const m = line.match(/^(\d+)[.)]\s+(.*)$/) || line.match(/^[-•]\s+(.*)$/);
+      const kind = /^\d/.test(line) && m ? "ol" : m ? "ul" : null;
+      if (kind) { if (!list || list.kind !== kind) { list = { kind, items: [] }; out.push(list); } list.items.push(inl(m[m.length - 1])); }
+      else { list = null; out.push(`<span class="ask-p">${inl(line)}</span>`); }
+    }
+    return out.map((x) => (typeof x === "string" ? x : `<${x.kind}>${x.items.map((i) => `<li>${i}</li>`).join("")}</${x.kind}>`)).join("");
+  };
   // Small odds keep a decimal, so "0.4%, down from 1.2%" never reads as
   // "under 1%, down from 1%".
   const pct = (p) => (p >= 0.995 ? "over 99%" : p > 0 && p < 0.001 ? "under 0.1%" : p < 0.1 && p > 0 ? `${(p * 100).toFixed(1)}%` : `${Math.round(p * 100)}%`);
@@ -15,7 +38,7 @@
   // The chat as plain text, with who asked and the build, to paste to Claude.
   function chatText() {
     const v = document.querySelector('meta[name="build"]')?.content || "";
-    const head = `BroChief Intelligence · ${new Date().toLocaleString()} · ${me() || "nobody signed in"}${v ? ` · build ${v}` : ""}`;
+    const head = `Ask Chief · ${new Date().toLocaleString()} · ${me() || "nobody signed in"}${v ? ` · build ${v}` : ""}`;
     return [head, ...log.map((x) => `Q: ${x.q}\nA: ${x.a ?? "(still working)"}${(x.tools || []).map((t) => `\n   tool ${t.name}(${JSON.stringify(t.args)}) -> ${JSON.stringify(t.out).slice(0, 400)}`).join("")}`)].join("\n\n");
   }
   async function copyChat() {
@@ -122,26 +145,124 @@
   // Nicknames the league uses, so a tool given "Woods" finds Jordan.
   const ALIASES = { woods: "Jordan", connie: "Conlan", conlin: "Conlan", adam: "Skills", logs: "Logan", tyler: "Dewitt", "tyler dewitt": "Dewitt" };
   const memberOf = (x) => { const t = String(x || "").trim().toLowerCase(); return MANAGERS.find((n) => n.toLowerCase() === t || shown(n).toLowerCase() === t) || (ALIASES[t] && MANAGERS.includes(ALIASES[t]) ? ALIASES[t] : null); };
+  // The tools' "conditions" as games held to a side; "not" flips the team.
+  function readConds(conditions = []) {
+    const conds = [];
+    for (const c of conditions) {
+      const g = GAMES.find((x) => String(x.id) === String(c.game).replace(/^G/i, "")); if (!g) return { error: `No game ${c.game} this week.` };
+      const t = String(c.team || "").toLowerCase();
+      const team = [g.away, g.home].find((x) => x.toLowerCase() === t || x.toLowerCase().startsWith(t)) || (g.awayShort.toLowerCase() === t ? g.away : g.homeShort.toLowerCase() === t ? g.home : null);
+      if (!team) return { error: `${c.team} isn't in ${gName(g)}.` };
+      conds.push({ game: g.id, team: c.not ? (team === g.away ? g.home : g.away) : team, mode: c.mode === "ATS" ? "ATS" : "SU" });
+    }
+    return conds;
+  }
+  // Every way an open game can land that changes a pick: the underdog wins,
+  // the favourite wins but doesn't cover, a push, or it covers. Each band
+  // carries one sample score, checked against the real scoring.
+  function bands(g) {
+    const fav = g.favorite, dog = fav === g.away ? g.home : g.away, sp = Number(g.spread) || 0;
+    const res = (fd) => { const f = 20 + Math.max(fd, 0), d = 20 + Math.max(-fd, 0); return fav === g.home ? { homeScore: f, awayScore: d } : { awayScore: f, homeScore: d }; };
+    if (!fav || sp <= 0) return [{ txt: `${g.awayShort} wins`, res: { awayScore: 24, homeScore: 20 } }, { txt: `${g.homeShort} wins`, res: { awayScore: 20, homeScore: 24 } }];
+    const F = short(g, fav), D = short(g, dog), top = Math.floor(sp), out = [{ txt: `${D} wins`, res: res(-3) }];
+    const noCover = Number.isInteger(sp) ? sp - 1 : top;
+    if (noCover >= 1) out.push({ txt: `${F} wins by ${noCover === 1 ? "1" : `1 to ${noCover}`} (no cover)`, res: res(1) });
+    if (Number.isInteger(sp)) out.push({ txt: `${F} wins by exactly ${sp} (push)`, res: res(sp) });
+    out.push({ txt: `${F} wins by ${top + 1}+ (covers)`, res: res(top + 1) });
+    return out;
+  }
+  // Who takes it among members tied on points: the closest tiebreaker guess.
+  // If the tiebreaker game is still open, the answer by its final total.
+  function breakTie(tied, tbOpen, tbTotal) {
+    const all = lastGoodCloudPicks || {};
+    const gs = tied.map((n) => [n, Number(all[n]?.tiebreaker)]).filter(([, v]) => Number.isFinite(v));
+    if (!gs.length) return `tie: ${tied.map(shown).join(" / ")} (no tiebreaker guesses)`;
+    const near = (t) => { const d = Math.min(...gs.map(([, v]) => Math.abs(v - t))); return gs.filter(([, v]) => Math.abs(v - t) === d).map(([n]) => shown(n)).join(" / "); };
+    if (!tbOpen) return `${near(tbTotal)} on the tiebreaker (${tbTotal}), tied on points with ${tied.map(shown).join(", ")}`;
+    // Walk the totals still possible and note each change of who is closest.
+    const from = tbTotal || 0, cuts = [];
+    let cur = near(from), start = from;
+    for (let t = from + 1; t <= 150; t++) { const w = near(t); if (w !== cur) { cuts.push([start, t - 1, cur]); cur = w; start = t; } }
+    cuts.push([start, null, cur]);
+    return `tie on points (${tied.map(shown).join(", ")}); tiebreaker total ${cuts.map(([a, b, w]) => `${b == null ? `${a}+` : a === b ? a : `${a} to ${b}`}: ${w}`).join("; ")}`;
+  }
   const TOOLS = {
+    // The season so far, from the sealed weeks (the Worker's record) plus
+    // this week's points so far, as The Pot shows it.
+    season() {
+      if (typeof payoutLedger !== "function") return { error: "Season not available" };
+      if (!weekSummariesReady) { try { loadWeekSummaries(); } catch {} return { error: "The season record is still loading; ask again in a moment." }; }
+      const L = payoutLedger();
+      const list = (L.list || []).map((r) => ({ member: r.name, place: r.seasonPlace, tied: !!r.tied, seasonPoints: r.points, thisWeekSoFar: r.livePoints ?? null, weeksPlayed: r.played, weeksWon: r.weeksWon, winnings: Math.round((r.earned || 0) * 100) / 100 }));
+      const sealedN = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition).length, total = typeof POT === "object" ? POT.weeks : null;
+      return { weeksSealed: Object.values(weekSummaries).filter((w) => w?.complete).length, seasonWeeks: total, weeksLeft: total != null ? Math.max(0, total - sealedN) : null, thisWeekCounts: total != null && !weekSummaries[currentWeek]?.complete, currentWeek, includesThisWeek: list.some((r) => r.thisWeekSoFar != null), members: list };
+    },
     standings() {
       const memo = base(), live = typeof inFlightPoints === "function" ? (n) => inFlightPoints((lastGoodCloudPicks || {})[n]?.picks || {}, latestLive) : () => 0;
-      return { ...hiddenNote(), members: MANAGERS.map((n) => { const b = banked(n), d = memo?.detail?.[n]; const sObj = statusOf(d) || {}; return { member: n, points: b.pts, livePoints: live(n), bestPossible: b.max, picksLeft: b.picksLeft, chanceToWin: d ? r3(d.pct) : null, ...sObj }; }).sort((a, b) => b.points - a.points), statusMeans: "alive = real chance; long shot = 0% in simulations but a path exists (onlyPath lists what must happen); out = proven no path; likely out = no wins found, not proven" };
+      // While everyone else's picks are hidden the odds would only count the
+      // asker's own picks (that read 99% to win), so none are given.
+      const hn = hiddenNote(), noOdds = !!hn.picksHidden && /Everyone/.test(hn.picksHidden);
+      return { ...hn, ...(noOdds ? { oddsAvailable: false } : {}), members: MANAGERS.map((n) => { const b = banked(n), d = memo?.detail?.[n]; const sObj = noOdds ? {} : statusOf(d) || {}; return { member: n, points: b.pts, livePoints: live(n), bestPossible: b.max, picksLeft: b.picksLeft, chanceToWin: !noOdds && d ? r3(d.pct) : null, ...sObj }; }).sort((a, b) => b.points - a.points), statusMeans: "alive = real chance; long shot = 0% in simulations but a path exists (onlyPath lists what must happen); out = proven no path; likely out = no wins found, not proven" };
     },
     chance({ conditions = [] } = {}) {
-      const conds = [];
-      for (const c of conditions) {
-        const g = GAMES.find((x) => String(x.id) === String(c.game).replace(/^G/i, "")); if (!g) return { error: `No game ${c.game} this week.` };
-        const t = String(c.team || "").toLowerCase();
-        const team = [g.away, g.home].find((x) => x.toLowerCase() === t || x.toLowerCase().startsWith(t)) || (g.awayShort.toLowerCase() === t ? g.away : g.homeShort.toLowerCase() === t ? g.home : null);
-        if (!team) return { error: `${c.team} isn't in ${gName(g)}.` };
-        conds.push({ game: g.id, team: c.not ? (team === g.away ? g.home : g.away) : team, mode: c.mode === "ATS" ? "ATS" : "SU" });
-      }
+      const conds = readConds(conditions); if (conds.error) return conds;
       const memo = base(); if (!memo) return { error: "Odds not loaded yet." };
       const h = hiddenNote(); if (h.picksHidden && /Everyone/.test(h.picksHidden)) return h;
       const odds = conds.length ? condChances(conds) : memo.out;
       if (!odds) return { error: "Odds not loaded yet." };
       if (odds.impossible) return { error: `${odds.impossible} can't happen: that game is already final the other way.` };
       return { ...h, assuming: conds.map(condText), chanceToWin: Object.fromEntries(MANAGERS.map((n) => [n, r3(odds[n] || 0)])), currentChance: Object.fromEntries(MANAGERS.map((n) => [n, r3(memo.out[n] || 0)])), noWins: MANAGERS.filter((n) => !(odds[n] > 0)), ...(!conds.length ? { status: Object.fromEntries(MANAGERS.map((n) => [n, statusOf(memo.detail?.[n])?.status || null])) } : {}), ...(conds.length ? { noWinsMeans: "won none of 4,000 simulated outcomes with these results: as good as out, not proven impossible" } : {}) };
+    },
+    // Late in the night: every way the open games can go and who wins the
+    // week in each, exactly (no simulation).
+    scenarios({ conditions = [], member } = {}) {
+      const conds = readConds(conditions); if (conds.error) return conds;
+      const h = hiddenNote(); if (h.picksHidden) return h;
+      const all = lastGoodCloudPicks || {}, f = fins();
+      const tb = typeof tiebreakerGameOf === "function" ? tiebreakerGameOf() : null;
+      const open = GAMES.filter((g) => !f[g.id]);
+      const opts = open.map((g) => {
+        const c = conds.find((x) => String(x.game) === String(g.id));
+        return bands(g).filter((b) => { if (!c) return true; const o = resultOutcome(g, b.res); return (c.mode === "SU" ? o.suWinner : o.atsWinner) === c.team; });
+      });
+      for (const c of conds) if (f[c.game]) { const g = GAMES.find((x) => x.id === c.game), o = resultOutcome(g, f[c.game]); if ((c.mode === "SU" ? o.suWinner : o.atsWinner) !== c.team) return { error: `${condText(c)} can't happen: that game is already final the other way.` }; }
+      const rows = opts.reduce((n, o) => n * o.length, 1);
+      if (!open.length) return { allFinal: true };
+      if (rows > 27) {
+        // Too many to list: give the member's likeliest winning path instead
+        // (the same one Path to Win shows), so there's always a concrete answer.
+        const who = memberOf(member || me()), memo = base(), d = who && memo?.detail?.[who];
+        const sc = who && typeof pathScenario === "function" ? pathScenario(who) : null;
+        return { tooManyToList: `${open.length} games still open, so not every outcome is listed.`, member: who, chanceToWin: d ? r3(d.pct) : null, ...(statusOf(d) || {}),
+          likeliestPath: sc ? { mustHappen: sc.all.filter((x) => x.need).map((x) => `${x.txt} (G${x.g.id})`), eitherWay: sc.all.length - sc.need.length, chanceOfThisPath: Math.round(sc.p * 1e4) / 1e4,
+            // The path is exact: every listed result landing means first place.
+            ifAllHappen: sc.tie ? `${shown(who)} ties for first and needs the tiebreaker${sc.guess != null && sc.tbGame ? ` (guessed ${sc.guess} on ${sc.tbGame.awayShort} at ${sc.tbGame.homeShort})` : ""}` : `${shown(who)} wins the week for certain, whatever the other games do` } : null,
+          biggestSwings: (d?.games || []).slice(0, 3).map((x) => ({ game: gName(x.game), chanceIfOnlyThisHits: r3(x.ifHit), chanceIfThisMisses: r3(x.ifMiss) })) };
+      }
+      const banks = Object.fromEntries(MANAGERS.map((n) => [n, banked(n).pts]));
+      const l = tb && latestLive[tb.id], tbFinal = tb && f[tb.id];
+      const tbNow = tbFinal ? tbFinal.awayScore + tbFinal.homeScore : l?.state === "in" ? (l.awayScore || 0) + (l.homeScore || 0) : 0;
+      const out = [];
+      const walk = (k, picked) => {
+        if (k === open.length) {
+          const pts = Object.fromEntries(MANAGERS.map((n) => [n, banks[n] + picked.reduce((t, [g, b]) => t + (scorePick(g, all[n]?.picks?.[g.id], b.res) || 0), 0)]));
+          const top = Math.max(...Object.values(pts)), tied = MANAGERS.filter((n) => pts[n] === top);
+          const tbOpen = !!tb && !tbFinal;
+          out.push({ if: picked.map(([, b]) => b.txt).join(" · "), winner: tied.length === 1 ? shown(tied[0]) : breakTie(tied, tbOpen, tbNow), top: MANAGERS.slice().sort((a, b) => pts[b] - pts[a]).slice(0, 3).map((n) => `${shown(n)} ${pts[n]}`).join(", ") });
+          return;
+        }
+        for (const b of opts[k]) walk(k + 1, [...picked, [open[k], b]]);
+      };
+      walk(0, []);
+      const winners = [...new Set(out.map((r) => r.winner))];
+      const res = {
+        openGames: open.map((g) => { const lv = latestLive[g.id]; return `${gName(g)}: ${lv?.state === "in" ? `live, ${g.awayShort} ${lv.awayScore}-${lv.homeScore} ${g.homeShort} (not final)` : "not started"}`; }),
+        assuming: conds.map(condText),
+        ...(winners.length === 1 ? { settled: `Same result every way: ${winners[0]}` } : {}),
+        scenarios: out,
+        // The model's tool reply is capped, so long tables drop the scores.
+      }; if (JSON.stringify(res).length > 5800) res.scenarios.forEach((r) => delete r.top);
+      return res;
     },
     needs({ member } = {}) {
       const who = memberOf(member || me()); if (!who) return { error: `No member ${member}. Members: ${MANAGERS.join(", ")}.` };
@@ -154,6 +275,97 @@
       if (!isGameLocked(g) && MANAGERS.some((n) => all[n]?.picks?.[g.id]?.hidden)) return { game: gName(g), picksHidden: "Picks on this game are hidden until it kicks off." };
       const side = (team) => MANAGERS.filter((n) => all[n]?.picks?.[g.id]?.team === team).map((n) => { const p = all[n].picks[g.id]; return { member: n, bet: p.mode === "ATS" ? `${team === g.favorite ? "−" : "+"}${g.spread}` : "to win", lock: !!(p.lock && lockRule()) }; });
       return { game: gName(g), [g.away]: side(g.away), [g.home]: side(g.home), noPick: MANAGERS.filter((n) => !all[n]?.picks?.[g.id]) };
+    },
+    // One time slot (the 12 PM games): every way its games can finish, and
+    // everyone's points after them. Each game has three outcomes (the
+    // favourite covers, wins without covering, or loses; a push too on a
+    // whole-number spread), so a slot of up to 4 games is listed in full.
+    window({ games, member } = {}) {
+      const who = memberOf(member || me()); if (!who) return { error: "Who is asking?" };
+      const hn = hiddenNote(); if (hn.picksHidden && /Everyone/.test(hn.picksHidden)) return { ...hn, oddsAvailable: false };
+      const f = fins(), all = lastGoodCloudPicks || {};
+      let slot = Array.isArray(games) && games.length ? games.map((x) => GAMES.find((g) => String(g.id) === String(x).replace(/^G/i, ""))).filter(Boolean)
+        : (() => { const open = GAMES.filter((g) => !f[g.id]).sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff)); const t = open.length ? Date.parse(open[0].kickoff) : 0; return open.filter((g) => Date.parse(g.kickoff) === t); })();
+      slot = slot.filter((g) => !f[g.id]);
+      if (!slot.length) return { error: "No open games in that slot." };
+      if (slot.length > 4) return { error: `That slot has ${slot.length} games; ask about up to 4 at a time.` };
+      const outs = (g) => {
+        const favHome = g.favorite === g.home, sp = Number(g.spread) || 0, big = Math.floor(sp) + 3, small = Math.max(1, Math.ceil(sp) - 1);
+        const res = (favBy) => favHome ? { awayScore: 20, homeScore: 20 + favBy } : { awayScore: 20 + favBy, homeScore: 20 };
+        const fav = favHome ? g.homeShort : g.awayShort, dog = favHome ? g.awayShort : g.homeShort;
+        const list = [{ say: `${fav} covers ${"−" + sp}`, r: res(big) }];
+        if (sp >= 1.5) list.push({ say: `${fav} wins, ${dog} covers`, r: res(small) });
+        if (Number.isInteger(sp) && sp > 0) list.push({ say: `${fav} wins by exactly ${sp} (push)`, r: res(sp) });
+        list.push({ say: `${dog} wins`, r: res(-3) });
+        return list;
+      };
+      const base0 = Object.fromEntries(MANAGERS.map((n) => [n, banked(n).pts]));
+      let combos = [{ says: [], pts: { ...base0 } }];
+      for (const g of slot) {
+        const next = [];
+        for (const c of combos) for (const o of outs(g)) {
+          const pts = { ...c.pts };
+          for (const n of MANAGERS) { const pk = all[n]?.picks?.[g.id]; if (pk?.team) pts[n] += scorePick(g, pk, o.r) ?? 0; }
+          next.push({ says: [...c.says, o.say], pts });
+        }
+        combos = next;
+      }
+      const rows = combos.map((c) => { const others = MANAGERS.filter((n) => n !== who).map((n) => c.pts[n]); const lead = c.pts[who] - Math.max(...others); const place = 1 + others.filter((x) => x > c.pts[who]).length; return { outcome: c.says.join("; "), yourPoints: c.pts[who], leadOverNextBest: lead, place, tiedWith: others.filter((x) => x === c.pts[who]).length }; }).sort((a, b) => b.leadOverNextBest - a.leadOverNextBest);
+      return { member: who, slot: slot.map(gName), pointsNow: base0[who], best: rows[0], worst: rows[rows.length - 1], outcomes: rows.slice(0, 12), note: "Leads count banked points only; outcome odds are not given." };
+    },
+    // Why someone's odds are what they are: where their card differs from the
+    // league (sides most of the room did not take, and what those pay), their
+    // lock, their ceiling against everyone else's, and their biggest swings.
+    edge({ member } = {}) {
+      const who = memberOf(member || me()); if (!who) return { error: `No member ${member}.` };
+      const hn = hiddenNote(); if (hn.picksHidden && /Everyone/.test(hn.picksHidden)) return { ...hn, oddsAvailable: false };
+      const memo = base(), d = memo?.detail?.[who], all = lastGoodCloudPicks || {}, f = fins();
+      const contrarian = [];
+      for (const g of GAMES) {
+        if (f[g.id]) continue;
+        const mine = all[who]?.picks?.[g.id]; if (!mine?.team) continue;
+        const others = MANAGERS.filter((n) => n !== who && all[n]?.picks?.[g.id]?.team);
+        if (!others.length || others.some((n) => all[n].picks[g.id].hidden)) continue;
+        const same = others.filter((n) => all[n].picks[g.id].team === mine.team).length;
+        if (same / others.length <= 0.4) contrarian.push({ game: gName(g), pick: `${short(g, mine.team)} ${mine.mode === "ATS" ? `${mine.team === g.favorite ? "−" : "+"}${g.spread}` : "to win"}${mine.lock ? " (lock)" : ""}`, worth: pickWorth(g, mine), sameSide: same, of: others.length });
+      }
+      const maxes = MANAGERS.map((n) => [n, banked(n).max]).sort((a, b) => b[1] - a[1]);
+      const lockG = GAMES.find((g) => all[who]?.picks?.[g.id]?.lock);
+      return { member: who, chanceToWin: d ? r3(d.pct) : null, ceiling: banked(who).max, ceilingRank: maxes.findIndex(([n]) => n === who) + 1, of: MANAGERS.length,
+        lock: lockG ? { game: gName(lockG), pick: `${short(lockG, all[who].picks[lockG.id].team)}` } : null,
+        againstTheRoom: contrarian.slice(0, 4), swings: (d?.games || []).slice(0, 3).map((x) => ({ game: gName(x.game), chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss) })) };
+    },
+    // One member against another: the chance to finish ahead (from the same
+    // runs as WIN%), and every open game where their picks differ, which is
+    // where it is decided (a game they both took the same way cannot split them).
+    versus({ member, rival } = {}) {
+      const me_ = MANAGERS.find((n) => n.toLowerCase() === String(member || me() || "").toLowerCase()), them = MANAGERS.find((n) => n.toLowerCase() === String(rival || "").toLowerCase());
+      if (!me_ || !them) return { error: "Name two members." };
+      const hn = hiddenNote(); if (hn.picksHidden && /Everyone/.test(hn.picksHidden)) return { ...hn, oddsAvailable: false };
+      const memo = base(), i = MANAGERS.indexOf(me_), j = MANAGERS.indexOf(them);
+      const p = memo?.h2h?.[i]?.[j];
+      const all = lastGoodCloudPicks || {}, f = fins();
+      const term = (g, x) => !x ? "no pick" : x.hidden ? "hidden" : `${x.team === g.home ? g.homeShort : g.awayShort} ${x.mode === "ATS" ? `${x.team === g.favorite ? "−" : "+"}${g.spread}` : "to win"}${x.lock ? " (lock)" : ""}`;
+      const differ = GAMES.filter((g) => !f[g.id]).map((g) => { const a = all[me_]?.picks?.[g.id], b = all[them]?.picks?.[g.id]; return { g, a, b }; })
+        .filter(({ a, b }) => !(a && b && a.team === b.team && a.mode === b.mode && !!a.lock === !!b.lock))
+        .map(({ g, a, b }) => { const wa = a?.team && !a.hidden ? pickWorth(g, a) : 0, wb = b?.team && !b.hidden ? pickWorth(g, b) : 0; return { game: gName(g), [me_]: term(g, a), [them]: term(g, b), worth: { [me_]: wa, [them]: wb }, biggestSwing: wa + wb }; })
+        .sort((x, y) => y.biggestSwing - x.biggestSwing);
+      const ch = (n) => { const d = memo?.detail?.[n]; return d ? r3(d.pct) : null; };
+      return { member: me_, rival: them, chanceToFinishAhead: p == null ? null : r3(p), chanceToWinWeek: { [me_]: ch(me_), [them]: ch(them) }, pointsNow: { [me_]: banked(me_).pts, [them]: banked(them).pts }, ceiling: { [me_]: banked(me_).max, [them]: banked(them).max }, gamesThatSplitThem: differ };
+    },
+    // The least-picked sides of the week, over every game whose picks are
+    // showing: one call instead of one per game.
+    rarest() {
+      const all = lastGoodCloudPicks || {}, out = [];
+      for (const g of GAMES) {
+        if (!isGameLocked(g) && MANAGERS.some((n) => all[n]?.picks?.[g.id]?.hidden)) continue;
+        const by = new Map();
+        for (const n of MANAGERS) { const x = all[n]?.picks?.[g.id]; if (!x?.team) continue; const k = `${x.team}|${x.mode}`; const e = by.get(k) || { g, x, who: [] }; e.who.push(n); by.set(k, e); }
+        const tot = [...by.values()].reduce((a, e) => a + e.who.length, 0);
+        for (const e of by.values()) out.push({ game: gName(g), pick: `${e.x.team === g.home ? g.homeShort : g.awayShort} ${e.x.mode === "ATS" ? `${e.x.team === g.favorite ? "−" : "+"}${g.spread}` : "to win"}`, members: e.who, of: tot });
+      }
+      if (!out.length) return { picksHidden: "No picks are showing yet (they show from each game's kickoff)." };
+      return { rarest: out.sort((a, b) => a.members.length - b.members.length || a.game.localeCompare(b.game)).slice(0, 6) };
     },
     tiebreaker() {
       const g = typeof tiebreakerGameOf === "function" ? tiebreakerGameOf() : null; if (!g) return { error: "No tiebreaker game this week." };
@@ -182,7 +394,7 @@
     const lockGame = GAMES.find((x) => isGameLocked(x) && MANAGERS.some((n) => all[n]?.picks?.[x.id]?.lock));
     const pool = [
       "Can I still win this week?", "What's my best path to win?", "Which game matters most for me?", "Who's out right now?",
-      "Who's the favourite and why?", "What's my best possible score?", "Who's closest on the tiebreaker?", "Where do I stand vs the leader?",
+      "Who's the favourite and why?", "Rank everyone's week from best to worst.", "What's my best possible score?", "Who's closest on the tiebreaker?", "Where do I stand vs the leader?",
       leader && `How does ${leader} get stopped?`, leader && `What does ${leader} need tonight?`, rival && `Can ${rival} still catch me?`, rival && leader && `Who's in better shape, ${rival} or ${leader}?`,
       g && `If ${g.homeShort} wins, can I still win?`, g && `Who's out if ${g.awayShort} covers?`, g && `Who picked ${g.homeShort}?`,
       g && g2 && `If ${g.homeShort} and ${g2.awayShort} both cover, what are my odds?`, g && `What happens to me if ${g.favorite === g.home ? g.homeShort : g.awayShort} doesn't cover?`,
@@ -203,8 +415,14 @@
       leader && `How is ${leader} somehow in the lead?`,
       leader && `What has to go wrong for ${leader} to blow it?`,
       losingLock && `How bad is ${shown(losingLock)}'s lock looking?`,
-      "Whose week is the biggest disaster so far?",
-      "Rank everyone's week from best to worst.",
+      worst && `Rate ${worst}'s card out of 10. Be honest.`,
+      worst && `Did ${worst} make these picks blindfolded?`,
+      worst && `Is ${worst} just donating the buy-in this year?`,
+      worst && `Should ${worst} be allowed to pick next week?`,
+      leader && `${leader} is due for a collapse, right?`,
+      leader && `Is ${leader} good or just lucky?`,
+      "Whose picks should be embarrassing them right now?",
+      "Who's buying the beer this week?",
     ].filter(Boolean);
     for (const arr of [pool, snark]) for (let i = arr.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [arr[i], arr[k]] = [arr[k], arr[i]]; }
     // Always one about beating the favourite, by name (unless that's you).
@@ -220,18 +438,27 @@
   function sheet() {
     let m = document.getElementById("ask-sheet");
     if (!m) {
-      m = document.createElement("div"); m.id = "ask-sheet"; m.className = "ask"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Ask BroChief Intelligence");
+      m = document.createElement("div"); m.id = "ask-sheet"; m.className = "ask"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Ask Chief");
       m.addEventListener("click", (e) => {
         if (e.target === m || e.target.closest(".ask-x")) { m.remove(); return; }
         if (e.target.closest("[data-askcopy]")) { copyChat(); return; }
         const c = e.target.closest("[data-ask]"); if (c) send(c.dataset.ask);
       });
+      // Swipe down to close, from the header or a log scrolled to its top.
+      if (typeof pullToClose === "function") pullToClose(m, () => m.querySelector(".ask-card"), () => m.remove());
       m.addEventListener("submit", (e) => { e.preventDefault(); const i = m.querySelector("input"); send(i.value); });
+      // Dock above the keyboard: iOS does not shrink a fixed overlay when the
+      // keyboard opens, so the overlay is sized to the visible viewport.
+      const vv = window.visualViewport;
+      if (vv) {
+        const fit = () => { if (!document.body.contains(m)) { vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit); return; } m.style.top = `${vv.offsetTop}px`; m.style.height = `${vv.height}px`; m.style.bottom = "auto"; };
+        vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); requestAnimationFrame(fit);
+      }
       document.body.appendChild(m);
     }
-    m.innerHTML = `<div class="ask-card"><div class="ask-h"><b>🧠 BROCHIEF INTELLIGENCE<small>Ask about odds, what-ifs, who's out, picks and the tiebreaker.</small></b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy chat"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
-      <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><p class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : esc(x.a)}</p>`).join("") : `<p class="ask-hint">Ask anything about this week's race: odds, "what if" a game goes one way, who's out, who picked what, the tiebreaker. The numbers come from the same runs as the WIN% column.</p>`}</div>
-      <div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+    m.innerHTML = `<div class="ask-card"><span class="ask-grip" aria-hidden="true"></span><div class="ask-h"><b><span class="ask-title"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async">ASK CHIEF</span></b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
+      <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><div class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : fmtA(x.a)}</div>`).join("") : `<p class="ask-hint">Odds, what-ifs, who's out, picks, the tiebreaker and season points.</p>`}</div>
+      ${log.length ? "" : `<div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}"><span>${esc(c)}</span><i aria-hidden="true">↗</i></button>`).join("")}</div>`}
       <form class="ask-f"><input type="text" maxlength="200" placeholder="If Michigan wins can I still win?" ${busy ? "disabled" : ""} autocomplete="off"><button type="submit" ${busy ? "disabled" : ""}>Ask</button></form></div>`;
     const lg = m.querySelector(".ask-log"); lg.scrollTop = lg.scrollHeight;
     return m;
@@ -244,7 +471,7 @@
   const SID = Math.random().toString(36).slice(2, 10);
   function context() {
     const f = fins();
-    return { asker: me(), members: MANAGERS, games: GAMES.map((g) => { const l = latestLive[g.id], fin = f[g.id]; const sc = fin || (l?.state === "in" ? l : null); return { id: g.id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, favorite: g.favorite, spread: g.spread, status: fin ? "final" : l?.state === "in" ? `live ${l.detail || ""}`.trim() : `not started (${g.kickoffLabel || ""})`, score: sc ? `${g.awayShort} ${sc.awayScore}, ${g.homeShort} ${sc.homeScore}` : "" }; }) };
+    return { asker: me(), members: MANAGERS, games: GAMES.map((g) => { const l = latestLive[g.id], fin = f[g.id]; const sc = fin || (l?.state === "in" ? l : null); return { id: g.id, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, favorite: g.favorite, spread: g.spread, status: fin ? "final" : l?.state === "in" ? `live ${l.detail || ""} (kicked off ${g.kickoffLabel || ""})`.trim() : `not started (${g.kickoffLabel || ""})`, score: sc ? `${g.awayShort} ${sc.awayScore}, ${g.homeShort} ${sc.homeScore}` : "" }; }) };
   }
   async function send(q) {
     q = String(q || "").trim(); if (q.length < 2 || busy) return;
@@ -283,10 +510,16 @@
   function paintBtn() {
     let b = document.getElementById("ask-fab");
     if (!b) {
-      b = document.createElement("button"); b.id = "ask-fab"; b.type = "button"; b.className = "ask-fab"; b.setAttribute("aria-label", "Ask BroChief Intelligence");
-      b.innerHTML = `<b aria-hidden="true">🧠</b>Ask`;
+      b = document.createElement("button"); b.id = "ask-fab"; b.type = "button"; b.className = "ask-fab"; b.setAttribute("aria-label", "Ask Chief");
+      b.innerHTML = `<b aria-hidden="true"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async"></b>Ask`;
       b.addEventListener("click", () => { chipSet = null; open(); });
       document.body.appendChild(b);
+      // Tucks away while the page scrolls (it floats over rows) and comes
+      // back once scrolling stops.
+      const sc = document.getElementById("app-scroll");
+      let tuckT = null;
+      const tuck = () => { b.classList.add("tuck"); clearTimeout(tuckT); tuckT = setTimeout(() => b.classList.remove("tuck"), 700); };
+      sc?.addEventListener("scroll", tuck, { passive: true }); window.addEventListener("scroll", tuck, { passive: true });
     }
     const sb = document.getElementById("scoreboard-screen");
     b.hidden = !sb || sb.classList.contains("hidden") || [...document.querySelectorAll(".modal-overlay, #ask-sheet, #lt-modal")].some((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none" && el.getClientRects().length > 0);
@@ -303,15 +536,18 @@
     // not the hidden class, and used to block it for good).
     const shown_ = (el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none" && getComputedStyle(el).visibility !== "hidden" && el.getClientRects().length > 0;
     // Any screen, on launch: TRY IT takes them to Scores and opens the chat.
+    // No introduction pop ups: the Ask pill is enough. ?intro=bi still
+    // previews the card (admin).
+    if (!/[?&]intro=bi\b/.test(location.search)) return;
     if (introSeen() || !me() || window.__adminEntry || window.__liveView || (document.getElementById("logo-screen") && !document.getElementById("logo-screen").classList.contains("hidden")) || [...document.querySelectorAll(".pi-screen, .pr-screen, .np-screen, .modal-overlay, .wpx-overlay, #lt-modal, #ask-sheet, #locks-sheet, .lks")].some(shown_)) return;
     try { localStorage.setItem(INTRO_KEY, String(Date.now())); } catch {}
     const ex = chips();
     const m = document.createElement("div");
-    m.className = "pi-screen ai-intro"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: BroChief Intelligence");
+    m.className = "pi-screen ai-intro"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "New feature: Ask Chief");
     m.innerHTML = `<div class="pi-card">
-      <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title">🧠 BROCHIEF INTELLIGENCE</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
+      <div class="pi-head"><span class="pi-new">NEW</span><span class="pi-title"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async"> ASK CHIEF</span><button type="button" class="pi-x" aria-label="Close">✕</button></div>
       <p class="pi-lede">Ask anything about this week's race and get the answer from the same odds as the WIN% column.</p>
-      <div class="pi-step"><b>1</b><span>Tap <span class="ai-pill">🧠 Ask</span> at the bottom left of Scores</span></div>
+      <div class="pi-step"><b>1</b><span>Tap <span class="ai-pill"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async"> Ask</span> at the bottom left of Scores</span></div>
       <div class="pi-step"><b>2</b><span>Ask in your own words, or tap one of these</span></div>
       <div class="ai-ex">${ex.map((q) => `<button type="button" data-aiex="${esc(q)}">${esc(q)}</button>`).join("")}</div>
       <div class="ai-btns"><button type="button" class="ai-later">LATER</button><button type="button" class="pi-ok">TRY IT</button></div>

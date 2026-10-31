@@ -77,6 +77,118 @@
       "at": 1792890318000,
       "commit": "052aa1e",
       "note": "Tiebreaker line on a player card opens the tiebreaker game once it has kicked off"
+    },
+    {
+      "k": "rage",
+      "match": ".nav-btn-label",
+      "at": 1792910809000,
+      "commit": "b57b6f7",
+      "note": "Re-tapping the tab you're on, already at the top, now refreshes and shows 'Up to date' instead of doing nothing"
+    },
+    {
+      "k": "worker-fail",
+      "match": "/auth",
+      "at": 1793018998000,
+      "commit": "4e3b81f5",
+      "note": "A dropped /auth call keeps the last known login mode, retries once in the background and never waits over 6s"
+    },
+    {
+      "k": "worker-fail",
+      "match": "/avatars",
+      "at": 1793034560000,
+      "commit": "f2ff976",
+      "note": "/avatars waits 5s at most, retries once, keeps saved avatars; the roster no longer waits on it"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".gc-rc",
+      "at": 1793061186000,
+      "commit": "67b2cb6",
+      "note": "Names in the Gamecast room open that player's card"
+    },
+    {
+      "k": "quick-exit",
+      "match": "admin-gate",
+      "at": 1793061186000,
+      "commit": "67b2cb6",
+      "note": "Logo taps only count toward the admin prompt when already at the top, so tapping to scroll up never opens it"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".LI “2”",
+      "at": 1793061186000,
+      "commit": "67b2cb6",
+      "note": "Steps in the How chance to win works explainer are reading, not controls; no longer logged as dead taps"
+    },
+    {
+      "k": "worker-fail",
+      "match": "/trivia",
+      "at": 1793070089000,
+      "commit": "a34f018",
+      "note": "Trivia boards wait 5s at most, retry once, and show the last good board on a miss; the screen never waits on them"
+    },
+    {
+      "k": "worker-fail",
+      "match": "/weeks",
+      "at": 1793099620000,
+      "commit": "6910471",
+      "note": "/weeks waits 6s at most and retries once; the saved weeks show meanwhile and the screen never waits on it. Live now closes a multi-call blip from one phone as one event"
+    },
+    {
+      "k": "upstream-slow",
+      "match": "missed our deadline",
+      "at": 1793100612000,
+      "commit": "69ae05a",
+      "note": "Already covered (short try, cool-down, saved copy served). The once-per-6h note now holds across all Worker instances via KV, and Live no longer raises it as an action"
+    },
+    {
+      "k": "rage",
+      "match": ".tm-nm",
+      "at": 1793217807000,
+      "commit": "bc37d4c",
+      "note": "Score cards and pick-card teams take touch-action: manipulation, so quick taps open the game sheet at once on iOS; a rage tap now needs all three taps on the same element (taps landing on the sheet a tap opened no longer count)"
+    },
+    {
+      "k": "espn-fail",
+      "match": "Cross-Origin Request Blocked",
+      "at": 1793245166000,
+      "commit": "e0bbfcf",
+      "note": "ESPN refusing the phone (Firefox calls it Cross-Origin Request Blocked) is covered by the Worker's /live copy; the scoreboard read is now logged only when that fallback fails too"
+    },
+    {
+      "k": "worker-slow",
+      "match": "/insights/news",
+      "at": 1793245166000,
+      "commit": "e0bbfcf",
+      "note": "Game news past 30 minutes old answers from the saved copy at once and refreshes in the background, instead of waiting 4 to 5s on the feeds"
+    },
+    {
+      "k": "worker-fail",
+      "match": "/week-chat 502",
+      "at": 1793406157000,
+      "commit": "64908f7",
+      "note": "The model refused a chat whose tool results outnumbered the kept calls (10 per-game picks calls); the Worker now keeps 12 and drops orphaned results, and 'rarest' answers unique-pick questions in one call"
+    },
+    {
+      "k": "route-fail",
+      "match": "/week-chat 502",
+      "at": 1793406157000,
+      "commit": "64908f7",
+      "note": "Same as the app side: orphaned tool results made the model API refuse the chat; fixed in the Worker"
+    },
+    {
+      "k": "espn-fail",
+      "match": "both failed",
+      "at": 1793406287000,
+      "commit": "4aa87cd",
+      "note": "Both score sources down is the phone's signal; the app now waits 3s and tries the Worker again, and logs only if that fails too while online and on screen"
+    },
+    {
+      "k": "worker-slow",
+      "match": "/insights/news",
+      "at": 1793406287000,
+      "commit": "4aa87cd",
+      "note": "The scheduled job (every 2h, hourly Saturday) now fetches news for every unfinished game ahead of time, so a game's first open no longer waits on the feeds"
     }
   ]
 }

@@ -37,3 +37,17 @@ add one entry to `fixes.json` (main) in the same push:
 `{ "k": "<dead-tap|rage|js-error|quick-exit>", "match": "<text from the line>", "at": <commit time in ms>, "commit": "<short sha>", "note": "<what changed>" }`.
 Live then ticks every matching entry from before the fix; a repeat after it
 stays open, which flags a fix that did not hold.
+
+The same goes for a pasted health log brief ("Brochiefs CFB health log:
+..."): add `{ "k": "<health kind, e.g. worker-fail, espn-fail, upstream-fail>",
+"match": "<text from the entry, e.g. /auth>", "at": <commit time in ms>,
+"commit": "<short sha>", "note": "<what changed>" }` to `fixes.json` in the
+same push, and Live closes every matching health entry from before it.
+
+## "Check Live"
+`BROCHIEFS_KEY=… node scripts/live-brief.mjs` prints everything open on Live
+(health, stuck moments, Ask the Chief misses; last 24h, filtered like Live).
+When Jake says "check Live", run it, fix what it lists, and add the
+`fixes.json` entries as above. Needs `BROCHIEFS_KEY` in the environment and
+`liftr-ai.jhs797.workers.dev` allowed by its network policy. Never run it in
+a GitHub Action and never commit its output.

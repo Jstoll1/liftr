@@ -125,7 +125,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=797778025462", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=009172634093", "sim.js?v=374204176553", "gridcard.js?v=889691969438"];
+const EXTRAS = ["ask-ui.js?v=959874484393", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=387127915229", "sim.js?v=374204176553", "gridcard.js?v=788931349874"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -193,7 +193,9 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) hidde
         await new Promise((ok) => setTimeout(ok, 1000));
         try { return await raw(input, init); } catch (e2) { if (!onScreen()) throw e2; err = e2; }
       }
-      if (err?.name !== "AbortError" && (!get || onScreen())) { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }
+      // A read with its own fallback (soft) is logged by its caller, and only
+      // if the fallback fails too.
+      if (err?.name !== "AbortError" && (!get || onScreen()) && !init?.soft) { appHealth.ff[b]++; if (navigator.onLine !== false) opsEvent(`${b}-fail`, `${(() => { try { return new URL(url).pathname; } catch { return ""; } })()} ${String(err?.message || "network").slice(0, 40)}`); }
       throw err;
     }
   };
@@ -709,7 +711,9 @@ async function fetchLiveFromEspn() {
     try {
       const res = await fetchCapped(
         `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&groups=80&limit=300&t=${Date.now()}`,
-        { cache: "no-store" }, 4000
+        // soft: the Worker's copy stands in when ESPN refuses (Firefox reports
+        // that as "Cross-Origin Request Blocked"), so this alone is not a failure.
+        { cache: "no-store", soft: true }, 4000
       );
       return res.ok ? await res.json() : null;
     } catch { return null; }
@@ -795,7 +799,15 @@ async function fetchLiveScoresNow() {
     console.warn("ESPN direct fetch failed, falling back to Worker", err);
   }
   if (!Object.keys(live).length) {
-    try { live = await fetchLiveFromWorker(); answered = true; } catch { live = {}; }
+    try { live = await fetchLiveFromWorker(); answered = true; }
+    catch {
+      // Both down at once is nearly always the phone's signal: give it three
+      // seconds and try the Worker once more before logging anything.
+      live = {};
+      await new Promise((r) => setTimeout(r, 3000));
+      try { live = await fetchLiveFromWorker(); answered = true; }
+      catch { live = {}; if (!answered && navigator.onLine !== false && !document.hidden) opsEvent("espn-fail", "scoreboard and Worker /live both failed"); }
+    }
   } else if (espnPartial) {
     // A day that timed out would leave its games blank; the Worker fills them.
     try { const w = await fetchLiveFromWorker(); for (const [id, g] of Object.entries(w)) if (!live[id]) live[id] = g; } catch {}
@@ -1001,15 +1013,25 @@ function tokenFor(name) {
   return held && held.manager === name ? held.token : null;
 }
 
-async function refreshAuthState() {
+// The login mode, kept from the last good answer: a dropped connection
+// ("Load failed") keeps the last known mode instead of falling back to
+// "off", is tried once more after a short pause, and never waits more
+// than six seconds, so nothing on screen ever hangs on it.
+const AUTH_STATE_KEY = "brochiefs_auth_state_v1";
+try { const saved = JSON.parse(localStorage.getItem(AUTH_STATE_KEY) || "null"); if (saved && typeof saved.mode === "string") authState = { mode: saved.mode, claimed: Array.isArray(saved.claimed) ? saved.claimed : [] }; } catch {}
+async function refreshAuthState(retry = true) {
   if (!WORKER_URL) return;
   try {
-    const res = await fetch(`${WORKER_URL}/auth?t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) return;
+    const res = await fetch(`${WORKER_URL}/auth?t=${Date.now()}`, { cache: "no-store", signal: AbortSignal.timeout ? AbortSignal.timeout(6000) : undefined });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (typeof data.mode === "string") authState = { mode: data.mode, claimed: Array.isArray(data.claimed) ? data.claimed : [] };
+    if (typeof data.mode === "string") {
+      authState = { mode: data.mode, claimed: Array.isArray(data.claimed) ? data.claimed : [] };
+      try { localStorage.setItem(AUTH_STATE_KEY, JSON.stringify(authState)); } catch {}
+    }
   } catch {
-    // Login stays off if the Worker cannot be reached; picks still queue.
+    // Keep the last known mode; one more try in a moment, in the background.
+    if (retry) setTimeout(() => { refreshAuthState(false); }, 2500);
   }
 }
 
@@ -1437,8 +1459,25 @@ function rememberScroll() {
 // Re-tapping the tab you are already on sends you to the top of it.
 let navToTop = false;
 [["nav-picks-btn", "picks"], ["nav-scoreboard-btn", "scoreboard"], ["nav-history-btn", "history"], ["nav-trivia-btn", "trivia"]].forEach(([id, name]) => {
-  document.getElementById(id)?.addEventListener("click", () => { navToTop = activeScreenName === name; }, true);
+  document.getElementById(id)?.addEventListener("click", () => {
+    navToTop = activeScreenName === name;
+    // Already at the top: a re-tap refreshes and says so, so it never
+    // feels dead (Nissan tapped PICKS over and over, Oct 24).
+    if (navToTop && appScroll.scrollTop < 4) navRefresh();
+  }, true);
 });
+let navRefreshAt = 0;
+function navRefresh() {
+  if (Date.now() - navRefreshAt < 1500) return;
+  navRefreshAt = Date.now();
+  let t = document.getElementById("nav-toast");
+  if (!t) { t = document.createElement("div"); t.id = "nav-toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.textContent = "↻ Refreshing…"; t.classList.add("show");
+  Promise.resolve(typeof fetchLiveScoresNow === "function" ? fetchLiveScoresNow() : null).catch(() => {}).finally(() => {
+    t.textContent = `✓ Up to date · ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+    clearTimeout(t.__h); t.__h = setTimeout(() => t.classList.remove("show"), 1400);
+  });
+}
 function enterScreen(name) {
   if (navToTop) { savedScroll[name] = 0; navToTop = false; }
   activeScreenName = name;
@@ -1477,8 +1516,8 @@ function goToPlayerSelect() {
   setActiveNav("home");
   renderManagerPicker();
   enterScreen("home");
-  if (!localStorage.getItem(RULES_SEEN_KEY)) openRules();
-  else openClaimPrompt();
+  // No introduction pop ups: How It Works stays a link on this screen.
+  openClaimPrompt();
 }
 
 // Analytics: one page view per screen, plus a few named events. Wrapped
@@ -1497,7 +1536,7 @@ function stampVisit() {
   try { localStorage.setItem(VISIT_KEY, String(Date.now())); } catch {}
   const d = deviceDetails();
   const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
-  const body = { manager: me, device: deviceId().slice(0, 12), screen: d.screen, tz: d.tz, standalone, v: typeof APP_VERSION === "string" ? APP_VERSION : "" };
+  const body = { manager: me, device: deviceId().slice(0, 12), screen: d.screen, tz: d.tz, standalone, v: typeof APP_VERSION === "string" ? APP_VERSION : "", st: window.APP_STYLE === "pro" ? "pro" : "classic" };
   if (navigator.onLine === false) { queueTele({ ...body, q: 1, at: Date.now() }); return; }
   fetch(`${WORKER_URL}/visit`, { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true, body: JSON.stringify(body) })
     .then((res) => { if (res.ok) flushTele(); })
@@ -1654,7 +1693,7 @@ function endSession() {
   appHealth.e = 0; appHealth.em = []; appHealth.ff = { espn: 0, worker: 0 }; appHealth.sl = { espn: 0, worker: 0 }; appHealth.ld = -1; // load time only once per page
   const me = loadMe();
   if (!me || me === "Jake" || !WORKER_URL || window.__adminEntry || window.__liveView || dur < 3000) return;
-  const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, gt, h: h.ld === -1 ? { ...h, ld: null } : h, v: typeof APP_VERSION === "string" ? APP_VERSION : "" });
+  const body = JSON.stringify({ manager: me, kind: "session", start, dur, f, gt, h: h.ld === -1 ? { ...h, ld: null } : h, v: typeof APP_VERSION === "string" ? APP_VERSION : "", st: window.APP_STYLE === "pro" ? "pro" : "classic" });
   try {
     // text/plain keeps the beacon a simple request (no CORS preflight).
     // With no signal a beacon is accepted and then lost; keep it instead.
@@ -1752,7 +1791,11 @@ let adminKeyHeld = "";
 homeLogoBtn.addEventListener("click", () => {
   // A plain tap scrolls to the top, so a curious tap does something.
   // Three quick taps open the admin key prompt.
+  // Taps that scroll back up are not the shortcut: only taps made while
+  // already at the top count, so tapping home from far down never opens it.
+  const atTop = appScroll.scrollTop < 5;
   appScroll.scrollTo({ top: 0, behavior: "smooth" });
+  if (!atTop) { adminTaps = 0; return; }
   adminTaps += 1;
   clearTimeout(adminTapTimer);
   if (adminTaps >= 3) { adminTaps = 0; requestAdmin(); return; }
@@ -2145,14 +2188,18 @@ async function fetchAvatars() {
     return null;
   }
 }
-async function fetchAvatarsAll() {
+// Avatars are kept on the phone, so a dropped call ("Load failed") just
+// keeps the saved ones: it waits five seconds at most and tries once more
+// in the background.
+async function fetchAvatarsAll(retry = true) {
   if (!WORKER_URL) return null;
   try {
-    const res = await fetch(`${WORKER_URL}/avatars`);
+    const res = await fetch(`${WORKER_URL}/avatars`, { signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined });
     if (!res.ok) return null;
     const data = await res.json();
     return { avatars: data.avatars || {}, colors: data.colors || {} };
   } catch {
+    if (retry) setTimeout(() => { syncAvatars(false); }, 2500);
     return null;
   }
 }
@@ -2195,9 +2242,9 @@ async function queueAvatar(manager, patch) {
 // The Worker is the source of truth: what it holds wins, so a reset on one
 // phone clears it on every other. Unsent local changes ride on top until
 // they go through.
-async function syncAvatars() {
+async function syncAvatars(retry = true) {
   for (const m of Object.keys(loadPendingAvatars())) await flushAvatar(m);
-  const cloud = await fetchAvatarsAll();
+  const cloud = await fetchAvatarsAll(retry);
   if (!cloud) return false;
   const emojis = { ...cloud.avatars }, colors = { ...cloud.colors };
   for (const [m, p] of Object.entries(loadPendingAvatars())) {
@@ -2225,7 +2272,8 @@ async function renderManagerPicker() {
   const pickerResults = firstKickoffPassed() ? computeLiveResults(latestLive) : {};
   const scored = Object.keys(pickerResults).length > 0;
 
-  await syncAvatars();
+  // The roster never waits long on avatars: the saved ones show at once.
+  await Promise.race([syncAvatars(), new Promise((r) => setTimeout(r, 2000))]);
   updateMePill();
 
   managerPicker.innerHTML = "";
@@ -3337,6 +3385,7 @@ function paintScoreboard(fetched, live, cached) {
   const ranked = rankManagers(cloudPicks, results);
   renderScoreboardTable(cloudPicks, results, live, ranked);
   renderRankings(cloudPicks, results, live, ranked);
+  if (!cached) renderSinceLine(ranked, cloudPicks, live);
   const firstRows = !liveWeekRows.length && ranked.length;
   liveWeekRows = ranked;
   if (firstRows && potOpen()) renderPayouts();
@@ -4539,7 +4588,9 @@ function renderScoreboardTable(cloudPicks, results, live = {}, ranked = null) {
       const pickId = pick.team === game.away ? game.awayId : game.homeId;
       const short = pick.team === game.away ? game.awayShort : game.homeShort;
       const spreadTag = pick.mode === "ATS"
-        ? `<span class="pick-cell-spread">${pick.team === game.favorite ? "-" : "+"}${game.spread}</span>`
+        // Halves as ½ (+16½), as books print them: one character narrower,
+        // so every line fits its column on a phone.
+        ? `<span class="pick-cell-spread">${pick.team === game.favorite ? "-" : "+"}${String(game.spread).replace(/\.5$/, "½")}</span>`
         : "";
       // Final games: points ride as a badge on the logo (+2 in green, ✗ in
       // pink with the logo dimmed) instead of a third stacked line.
@@ -4725,20 +4776,7 @@ function showPathIntro() {
   m.addEventListener("click", (e) => { if (e.target === m) done(); });
   // Swipe the card down to close it.
   const card = m.querySelector(".pi-card");
-  let y0 = null, dy = 0;
-  card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
-  card.addEventListener("touchmove", (e) => {
-    if (y0 == null) return;
-    dy = Math.max(0, e.touches[0].clientY - y0);
-    card.style.transform = `translateY(${dy}px)`;
-    card.style.opacity = String(Math.max(0.4, 1 - dy / 400));
-  }, { passive: true });
-  card.addEventListener("touchend", () => {
-    if (y0 == null) return;
-    y0 = null;
-    card.style.transition = "transform .2s ease-out, opacity .2s ease-out";
-    if (dy > 80) { card.style.transform = "translateY(100vh)"; done(); } else { card.style.transform = ""; card.style.opacity = ""; }
-  });
+  pullToClose(card, card, done, 80);
   track("path-intro", { event: true });
 }
 // For a preview from the console: previewPathIntro().
@@ -4884,6 +4922,16 @@ function stopsWho(g, res, name, standing, all = lastGoodCloudPicks || {}) {
 }
 // When the fresh read failed, the path says its scores may be behind.
 const pathStaleNote = () => (liveLastOk || window.__liveView ? "" : `<div class="pr-stale">Scores didn't refresh, so a game that just ended may still show.</div>`);
+// A game being played shows its score now, so the path reads against it:
+// green with a check while it is going the way the path needs, pink if not.
+const pathLiveTag = (g, st) => {
+  const l = latestLiveWeek === currentWeek ? latestLive[g.id] : null;
+  if (!(l?.found && l.state === "in" && !l.completed && Number.isFinite(l.awayScore))) return "";
+  const want = st?.res && resultOutcome(g, st.res), now = resultOutcome(g, { awayScore: l.awayScore, homeScore: l.homeScore });
+  const k = /cover/i.test(st?.txt || "") ? "atsWinner" : "suWinner";
+  const on = want && now ? (want[k] === now[k] ? " on" : " off") : "";
+  return `<small class="pr-now${on}">${on === " on" ? "✓ " : ""}LIVE ${escapeCd(g.awayShort)} ${l.awayScore}-${l.homeScore} ${escapeCd(g.homeShort)}</small>`;
+};
 // Once a path has been watched, the button opens this instead: a small
 // card with only the games that must go a certain way, the team's logo,
 // the result, and what it pays, then the win at the bottom.
@@ -4903,7 +4951,7 @@ function openPathCard(name) {
     const rowsHtml = sc.all.filter((st) => st.need).map((st) => {
       const p = scorePick(st.g, all[name]?.picks?.[st.g.id], st.res) || 0;
       const stop = p ? null : stopsWho(st.g, st.res, name, pts);
-      return `<li class="pc-row"><img class="pc-logo" src="${logoUrl(teamOf(st.g, st.txt))}" alt="" onerror="this.style.visibility='hidden'" /><span class="pc-txt">${escapeCd(st.txt)}${stop ? `<small class="pc-why">stops ${escapeCd(shown(stop))}</small>` : ""}</span><span class="pc-pts${p ? "" : " zero"}">${p ? `+${p}` : "0"}</span></li>`;
+      return `<li class="pc-row"><img class="pc-logo" src="${logoUrl(teamOf(st.g, st.txt))}" alt="" onerror="this.style.visibility='hidden'" /><span class="pc-txt">${escapeCd(st.txt)}${pathLiveTag(st.g, st)}${stop ? `<small class="pc-why">stops ${escapeCd(shown(stop))}</small>` : ""}</span><span class="pc-pts${p ? "" : " zero"}">${p ? `+${p}` : "0"}</span></li>`;
     }).join("");
     const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
     const free = sc.all.length - sc.need.length;
@@ -4923,10 +4971,7 @@ function openPathCard(name) {
   m.addEventListener("click", (e) => { if (e.target === m) close(); });
   m.querySelector(".pc-replay")?.addEventListener("click", () => openPathRun(name, true));
   m.querySelector(".pc-share")?.addEventListener("click", () => { track("path-share", { event: true }); sharePath(name, sc); });
-  let y0 = null, dy = 0;
-  card.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; dy = 0; card.style.transition = "none"; }, { passive: true });
-  card.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) card.style.transform = `translateY(${dy}px)`; }, { passive: true });
-  card.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; card.style.transition = ""; if (dy > 90) { card.style.transform = "translateY(120%)"; close(); } else card.style.transform = ""; });
+  pullToClose(card, card, close);
   track("path-card", { event: true });
   // Whose path was opened, for the console's path to win tracker.
   noteUse(`path-of-${name}`);
@@ -5031,10 +5076,7 @@ function openPathRun(name, replay = false) {
   m.querySelector(".pr-skip")?.addEventListener("click", (e) => { fast = true; markPathSeen(name); e.currentTarget.remove(); });
   // Drag down from the title bar or the standings, or from the top of the
   // terminal, to close; a short drag springs back.
-  let y0 = null, dy = 0;
-  win.addEventListener("touchstart", (e) => { const fromTop = !!e.target.closest(".pr-bar, .pr-stand"); y0 = fromTop || term.scrollTop <= 0 ? e.touches[0].clientY : null; dy = 0; win.style.transition = "none"; }, { passive: true });
-  win.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0) win.style.transform = `translateY(${dy}px)`; }, { passive: true });
-  win.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; win.style.transition = ""; if (dy > 110) { win.style.transform = "translateY(100%)"; close(); } else win.style.transform = ""; });
+  pullToClose(win, win, close, 110);
   const logo = (id) => `<img class="pr-logo" src="${logoUrl(id)}" alt="" onerror="this.style.visibility='hidden'" />`;
   (async () => {
     await type(`C:\\> PATH ${me}`, "cmd");
@@ -5055,7 +5097,7 @@ function openPathRun(name, replay = false) {
       const gains = {};
       for (const n of MANAGERS) { const p = scorePick(g, all[n]?.picks?.[g.id], st.res) || 0; if (p) gains[n] = p; }
       row.className = `pr-line g ${st.need ? "need" : "free"}${fast ? "" : " typing"}`;
-      row.innerHTML = `<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}${(() => { const w = st.need && !gains[name] ? stopsWho(g, st.res, name, pts) : null; return w ? `<small class="pr-why">stops ${escapeCd(shown(w))}</small>` : ""; })()}</span><span class="pr-gp${gains[name] ? "" : " zero"}">${gains[name] ? `+${gains[name]}` : st.need ? "0" : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`;
+      row.innerHTML = `<span class="pr-gc"><span class="pr-gl">${logo(g.awayId)}${logo(g.homeId)}</span><span class="pr-gt">${escapeCd(st.txt)}${pathLiveTag(g, st)}${(() => { const w = st.need && !gains[name] ? stopsWho(g, st.res, name, pts) : null; return w ? `<small class="pr-why">stops ${escapeCd(shown(w))}</small>` : ""; })()}</span><span class="pr-gp${gains[name] ? "" : " zero"}">${gains[name] ? `+${gains[name]}` : st.need ? "0" : ""}</span></span>${fast ? "" : `<span class="pr-gcur" aria-hidden="true">█</span>`}`;
       if (!fast) term.scrollTop = Math.max(0, row.offsetTop - term.clientHeight + row.offsetHeight + 60);
       // One cursor at a time: the terminal's resting cursor hides while a line types.
       if (!fast) { term.classList.add("typing"); await wait(200); row.classList.add("wipe"); await wait(390); row.classList.remove("typing", "wipe"); term.classList.remove("typing"); }
@@ -5632,10 +5674,23 @@ try {
 } catch { /* private mode or a bad copy */ }
 const potOpen = () => !document.getElementById("payouts-panel")?.classList.contains("hidden");
 
+// A Worker read that a dropped signal ("Load failed") should not lose: six
+// seconds at most per try, and one more try after a short wait on a network
+// error or a 5xx. Callers keep their own saved copy for when both miss.
+async function workerFetch(url, opt = {}) {
+  for (let i = 0; ; i++) {
+    try {
+      const res = await fetch(url, { ...opt, signal: AbortSignal.timeout ? AbortSignal.timeout(6000) : undefined });
+      if (res.status < 500 || i) return res;
+    } catch (e) { if (i) throw e; }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+}
+
 async function loadWeekSummaries() {
   if (!WORKER_URL) return;
   try {
-    const res = await fetch(`${WORKER_URL}/weeks?t=${Date.now()}`, { cache: "no-store" });
+    const res = await workerFetch(`${WORKER_URL}/weeks?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return;
     const data = await res.json();
     weekTrophies = data.trophies || {};
@@ -5653,7 +5708,10 @@ async function loadWeekSummaries() {
 // week on this device so ten phones do not each post it ten times.
 async function archiveWeekIfFinal(results) {
   if (!WORKER_URL || !GAMES.length) return;
-  if (!GAMES.every((g) => results[g.id])) return;
+  // Only this week's own scores, and only once every game could be over:
+  // a phone holding last week's slate once sealed the next week early.
+  if (latestLiveWeek !== currentWeek) return;
+  if (!GAMES.every((g) => results[g.id] && Date.now() >= Date.parse(g.kickoff) + 2.5 * 3600000)) return;
   let done = [];
   try { done = JSON.parse(localStorage.getItem(SEALED_KEY) || "[]"); } catch {}
   if (done.includes(currentWeek)) return;
@@ -6015,6 +6073,9 @@ function weekWinChances(cloudPicks, results, live) {
   // How often each open game ended each of its ways, for the exact check.
   const catIx = models.map((m) => m.fixed ? null : new Map(gameCats(m.g).map((c, ci) => [c.sig, ci])));
   const catN = models.map((m, k) => m.fixed ? null : new Array(catIx[k].size).fill(0));
+  // Head to head: in how many runs each player finishes ahead of each
+  // other one (points, then the closer tiebreaker; a dead heat is half).
+  const ahead = MANAGERS.map(() => new Array(MANAGERS.length).fill(0));
   for (let s = 0; s < N; s++) {
     score.fill(0);
     let tbTotal = null;
@@ -6050,6 +6111,15 @@ function weekWinChances(cloudPicks, results, live) {
       else if (score[i] === best && diff === bestDiff) lead.push(i);
     }
     for (const i of lead) wins[i] += 1 / lead.length;
+    for (let i = 0; i < MANAGERS.length; i++) {
+      const di = guesses[i] === null || tbTotal === null ? Infinity : Math.abs(guesses[i] - tbTotal);
+      for (let j = i + 1; j < MANAGERS.length; j++) {
+        const dj = guesses[j] === null || tbTotal === null ? Infinity : Math.abs(guesses[j] - tbTotal);
+        if (score[i] > score[j] || (score[i] === score[j] && di < dj)) ahead[i][j]++;
+        else if (score[j] > score[i] || (score[i] === score[j] && dj < di)) ahead[j][i]++;
+        else { ahead[i][j] += 0.5; ahead[j][i] += 0.5; }
+      }
+    }
     const share = new Array(MANAGERS.length).fill(0);
     for (const i of lead) share[i] = 1 / lead.length;
     const atTop = score.filter((x) => x === best).length;
@@ -6095,7 +6165,7 @@ function weekWinChances(cloudPicks, results, live) {
     detail[n] = { pct, swing: best, games: all, finals, top: topN[i] / N, tb: tbW[i] / N, threats, moe: 1.96 * Math.sqrt(pct * (1 - pct) / N), runs: N, alive: wins[i] > 0 ? true : exact[i]?.alive, path: exact[i]?.path || null };
   });
   const out = Object.fromEntries(MANAGERS.map((n, i) => [n, wins[i] / N]));
-  winChanceMemo = { key, out, detail, ctx: { models, picks, guesses, tbGame, catN, N } };
+  winChanceMemo = { key, out, detail, h2h: ahead.map((r) => r.map((x) => x / N)), ctx: { models, picks, guesses, tbGame, catN, N } };
   return out;
 }
 
@@ -7625,7 +7695,7 @@ async function openInsights(gameId) {
     let roomHtml = "";
     if (room.length) {
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : r.pts < 0 ? "−" + Math.abs(r.pts) : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li data-pl="${esc(r.name)}" class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.pick.team === game.away ? game.awayId : game.homeId, "gc-rlogo")}${esc(termsOf(r.pick))}</span><i class="gc-rpts">${r.state === "up" ? `+${r.pts}` : r.state === "push" ? "P" : r.pts < 0 ? "−" + Math.abs(r.pts) : "0"}</i></li>`; };
       const up = room.filter((r) => r.state === "up").sort((x, y) => y.pts - x.pts), down = room.filter((r) => r.state === "down"), push = room.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · FINAL</div><div class="gc-rcols">${col("up", "CASHED", up)}${col("down", "MISSED", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -8032,7 +8102,7 @@ async function openInsights(gameId) {
         return { ...r, side, terms, state, worth: pickWorth(game, r.pick) };
       });
       const idx = (n) => MANAGERS.indexOf(n);
-      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
+      const chip = (r) => { const accent = accentFor(r.name); const av = avatarOverrides[r.name] || shown(r.name)[0]; return `<li data-pl="${esc(r.name)}" class="gc-rc ${r.state}${r.name === currentManager ? " me" : ""}${r.pick.lock && lockRule() ? " has-lk" : ""}">${nameLk(r.pick.lock && lockRule(), game, r.pick)}<span class="pick-chip-av" style="--accent:${accent}">${av}</span><b>${esc(shown(r.name))}</b><span class="gc-rt">${lg(r.side === "away" ? game.awayId : game.homeId, "gc-rlogo")}${esc(r.terms)}</span><i class="gc-rpts">${r.state === "up" ? `+${r.worth}` : r.state === "push" ? "P" : "0"}</i></li>`; };
       const up = rows.filter((r) => r.state === "up"), down = rows.filter((r) => r.state === "down"), push = rows.filter((r) => r.state === "push");
       const col = (cls, title, list) => `<div class="gc-rcol ${cls}"><div class="gc-rh"><i></i>${title}<span>${list.length}</span></div>${list.length ? `<ul>${list.map(chip).join("")}</ul>` : `<div class="gc-rnone">Nobody</div>`}</div>`;
       if (!guest) roomHtml = `<div class="gc-room"><div class="gc-h">THE ROOM · ON THIS SCORE</div><div class="gc-rcols">${col("up", "CASHING", up)}${col("down", "SWEATING", down)}</div>${push.length ? col("push", "PUSH", push) : ""}</div>`;
@@ -8098,7 +8168,7 @@ async function openInsights(gameId) {
       // your own pick on one slim line under the header.
       return mine
         ? `<div class="ins-mypick"><span class="k">YOUR PICK</span>${lg(mineId, "sm")}<b>${esc(mineAb)} ${esc(mineTerms)}</b><i>${mine.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${minePts} PT${minePts === 1 ? "" : "S"}</i></div>`
-        : `<button type="button" class="ins-mypick none" id="ins-mypick-go"><span class="k">YOUR PICK</span><b>NO PICK YET</b><i>TAP TO PICK ›</i></button>`;
+        : `<button type="button" class="ins-mypick none" id="ins-mypick-go"><span class="k">YOUR PICK</span><b>No pick yet</b><i>PICK ›</i></button>`;
     }
     const side = (team, short, id) => {
       const bets = [["ATS", `${team === game.favorite ? "-" : "+"}${game.spread}`], ["SU", "WIN"]].map(([mode, label]) => {
@@ -8565,27 +8635,45 @@ async function openInsights(gameId) {
 // Swipe down to close a sheet: only from the top of the sheet, so
 // scrolling the content still works; the card follows the finger and
 // snaps back if the pull is short.
+// Pull a sheet down to close it, the one way every window does it.
+// Starts only on a clearly downward drag (8px, more down than sideways),
+// never from an input or from content that is scrolled down (that drag
+// scrolls it back up instead), closes past `far` px or on a quick flick,
+// and always springs back otherwise, touchcancel included (iOS sends it
+// when it takes the gesture for a scroll; without it a sheet stayed
+// half-dragged and the next touch misbehaved).
+function pullToClose(root, getCard, onClose, far = 90) {
+  let st = null;
+  const card = () => (typeof getCard === "function" ? getCard() : getCard);
+  const reset = (el, anim = true) => { if (!el) return; el.style.transition = anim ? "transform .2s ease, opacity .2s ease" : "none"; el.style.transform = ""; el.style.opacity = ""; };
+  root.addEventListener("touchstart", (e) => {
+    st = null;
+    if (e.touches.length !== 1 || e.target.closest?.("input, textarea, select, [contenteditable]")) return;
+    for (let el = e.target; el; el = el.parentElement) { if (el.scrollTop > 2) return; if (el === root) break; }
+    st = { x0: e.touches[0].clientX, y0: e.touches[0].clientY, t0: Date.now(), dy: 0, dir: null };
+  }, { passive: true });
+  root.addEventListener("touchmove", (e) => {
+    if (!st) return;
+    const dx = e.touches[0].clientX - st.x0, dy = e.touches[0].clientY - st.y0;
+    if (!st.dir && Math.hypot(dx, dy) > 8) st.dir = dy > 0 && Math.abs(dy) > Math.abs(dx) ? "down" : "other";
+    if (st.dir !== "down") { if (st.dir === "other") st = null; return; }
+    const c = card(); if (!c) return;
+    st.dy = Math.max(0, dy);
+    c.style.transition = "none"; c.style.transform = `translateY(${st.dy * 0.9}px)`; c.style.opacity = String(Math.max(0.5, 1 - st.dy / 600));
+  }, { passive: true });
+  const end = (cancel) => {
+    if (!st) return;
+    const { dy, t0, dir } = st; st = null;
+    const c = card();
+    if (!cancel && dir === "down" && (dy > far || (dy > 45 && Date.now() - t0 < 250))) { if (c) { c.style.transition = "transform .2s ease, opacity .2s ease"; c.style.transform = "translateY(110%)"; } setTimeout(() => { onClose(); reset(c, false); }, 180); }
+    else reset(c);
+  };
+  root.addEventListener("touchend", () => end(false));
+  root.addEventListener("touchcancel", () => end(true));
+}
 function swipeToClose(modal, card, close) {
-  let y0 = null, dy = 0, t0 = 0;
   modal.dataset.swipe = "own";
-  modal.addEventListener("touchstart", (e) => {
-    if (modal.scrollTop > 2 || e.touches.length !== 1 || e.target.closest("select")) { y0 = null; return; }
-    y0 = e.touches[0].clientY; dy = 0; t0 = Date.now();
-    if (card) card.style.transition = "none";
-  }, { passive: true });
-  modal.addEventListener("touchmove", (e) => {
-    if (y0 === null) return;
-    dy = e.touches[0].clientY - y0;
-    if (dy <= 0) { if (card) card.style.transform = ""; return; }
-    if (card) { card.style.transform = `translateY(${dy * 0.85}px)`; card.style.opacity = String(Math.max(0.4, 1 - dy / 500)); }
-  }, { passive: true });
-  modal.addEventListener("touchend", () => {
-    if (y0 === null) return;
-    if (card) card.style.transition = "transform .2s ease, opacity .2s ease";
-    if (dy > 110 || (dy > 50 && Date.now() - t0 < 250)) close();
-    if (card) { card.style.transform = ""; card.style.opacity = ""; }
-    y0 = null; dy = 0;
-  });
+  pullToClose(modal, card, close, 110);
 }
 // Every other window that has a way out swipes down to close too: the
 // arcade popups, the grid check, the rules and the Game Box. A swipe does
@@ -8595,7 +8683,7 @@ function swipeToClose(modal, card, close) {
 // Only from the top: if anything under the finger is scrolled down, the
 // pull scrolls it back up instead; a sideways drag never closes.
 (() => {
-  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #sim-modal, #gridcard-modal, #player-modal, #sh2h-modal";
+  const SEL = ".wpx-overlay:not(#qotw-modal), #grid-modal, #rules-modal, #avatar-modal, #sim-modal, #gridcard-modal, #mypicks-modal, #player-modal, #sh2h-modal";
   const CLOSE = '.wpx-x, [data-act="close"], #rules-close-btn, [aria-label="Close"]';
   let st = null;
   const reset = (card) => { if (card) { card.style.transform = ""; card.style.opacity = ""; } };
@@ -8631,6 +8719,104 @@ function swipeToClose(modal, card, close) {
   document.addEventListener("touchend", end, { capture: true });
   document.addEventListener("touchcancel", end, { capture: true });
 })();
+// "Since you last looked": the signed-in player's own picks that flipped
+// between covering and not, and their points and place, against what they
+// saw last visit. Only their own picks, so nothing hidden ever shows. A
+// visit starts on load or after 5 minutes away; what they see is saved as
+// they look, so the next visit compares with exactly that.
+const SINCE_KEY = "brochiefs_since_v1";
+let sinceBase, sinceAway = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) sinceAway = Date.now();
+  else if (sinceAway && Date.now() - sinceAway > 5 * 60 * 1000) sinceBase = undefined;
+});
+function sinceState(game, pick, l) {
+  if (!pick || !l || !l.found || !(l.completed || l.state === "in")) return null;
+  const res = { awayScore: l.awayScore, homeScore: l.homeScore };
+  if (pick.mode === "ATS" && resultOutcome(game, res)?.push) return "push";
+  return scorePick(game, pick, res) > 0 ? "up" : "down";
+}
+function renderSinceLine(ranked, cloudPicks, live) {
+  const el = document.getElementById("since-line");
+  const me = currentManager;
+  if (!el || !me || !MANAGERS.includes(me)) return;
+  // Nothing to report before the first kickoff of the week.
+  if (!GAMES.some((g) => isGameLocked(g) || live[g.id]?.found && live[g.id].state !== "pre")) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const row = ranked.find((r) => r.name === me);
+  const picks = sanitizePicks(cloudPicks[me]?.picks || {});
+  const cov = {};
+  for (const g of GAMES) { const st = sinceState(g, picks[g.id], live[g.id]); if (st) cov[g.id] = st; }
+  const livePts = GAMES.some((g) => live[g.id]?.found && live[g.id].state === "in" && !live[g.id].completed) ? inFlightPoints(picks, live) : null;
+  const fin = GAMES.filter((g) => cov[g.id] && live[g.id]?.completed).map((g) => g.id);
+  const now = { mgr: me, week: currentWeek, at: Date.now(), pts: row?.score ?? 0, place: row?.place ?? null, live: livePts, cov, fin };
+  if (sinceBase === undefined) { try { sinceBase = JSON.parse(localStorage.getItem(SINCE_KEY) || "null"); } catch { sinceBase = null; } if (sinceBase && (sinceBase.mgr !== me || sinceBase.week !== currentWeek)) sinceBase = null; }
+  try { localStorage.setItem(SINCE_KEY, JSON.stringify(now)); } catch {}
+  const b = sinceBase, flips = [], liveRows = [];
+  const row2 = (g, is, say) => {
+    const l = live[g.id], pk = picks[g.id];
+    const team = escapeCd(pk.team === g.home ? g.homeShort : g.awayShort);
+    // What the pick is worth on this score: banked if final, in play if live.
+    const v = scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) ?? 0;
+    const tone = is === "up" ? "up" : is === "push" ? "eq" : "dn";
+    // Logo of the side picked, and a plain score: picked side first.
+    const home = pk.team === g.home, id = home ? g.homeId : g.awayId;
+    const oppId = home ? g.awayId : g.homeId;
+    const mine = home ? l.homeScore : l.awayScore, opp = home ? l.awayScore : l.homeScore, oppName = escapeCd(home ? g.awayShort : g.homeShort);
+    const clock = l.completed ? "Final" : escapeCd(shortStatus(l.detail || `Q${l.period ?? "?"} ${l.clock ?? ""}`));
+    return `<span class="since-row ${tone}" data-sg="${g.id}"><i>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy" decoding="async">` : ""}</i><span><span class="since-t"><b>${team}</b> ${say}</span><span class="since-sc">${mine}–${opp} vs ${oppId ? `<img class="since-opp" src="${logoUrl(oppId)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}${oppName} · ${clock}</span></span><em>${v > 0 ? "+" : ""}${v}</em><s>›</s></span>`;
+  };
+  let first = null, liveFirst = null;
+  for (const g of GAMES) {
+    const is = cov[g.id], l = live[g.id];
+    if (!is) continue;
+    if (l.state === "in" && !l.completed) { liveRows.push(row2(g, is, is === "up" ? "covering" : is === "push" ? "pushing" : "not covering")); if (liveFirst === null) liveFirst = g.id; }
+    if (!b) continue;
+    const was = b.cov?.[g.id];
+    // A game that went final since the last look always reads, cashed or
+    // missed, even when it was already covering (or not) before.
+    const newlyFinal = l.completed && !(b.fin || []).includes(g.id);
+    if (!newlyFinal && (was === is || (!was && is === "down"))) continue;
+    flips.push(row2(g, is, is === "up" ? (l.completed ? "cashed" : "now covering") : is === "push" ? "pushing" : (l.completed ? "missed" : "no longer covering")));
+    if (first === null) first = g.id;
+  }
+  const dp = b ? now.pts - (b.pts || 0) : 0, dPlace = b && b.place && now.place ? b.place - now.place : 0;
+  const dl = b && livePts !== null ? livePts - (b.live ?? 0) : 0;
+  const changed = !!b && (flips.length > 0 || dp !== 0 || dPlace !== 0 || dl !== 0);
+  // Saturday: while a game is on there is always something here. With no
+  // change since the last look it shows where each live pick stands now.
+  const liveMode = !changed && livePts !== null;
+  if (!changed && !liveMode) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  const mv = (d, up = "▲", dn = "▼") => (d > 0 ? `<u class="up">${up}${d}</u>` : d < 0 ? `<u class="dn">${dn}${-d}</u>` : `<u class="eq">–</u>`);
+  const tile = (k, v, d) => `<span class="since-tile"><small>${k}</small><span><b>${v}</b>${d}</span></span>`;
+  const tiles = tile("LIVE", livePts === null ? "–" : `${livePts > 0 ? "+" : ""}${livePts}`, livePts === null ? "" : mv(dl))
+    + tile("POINTS", now.pts, mv(dp))
+    + tile("PLACE", now.place ? `${row?.tied ? "T-" : ""}${ordinal(now.place).toUpperCase()}` : "–", mv(dPlace, "↑", "↓"));
+  const list = liveMode ? liveRows : flips;
+  el.dataset.sg = (liveMode ? liveFirst : first) ?? "";
+  const rows = list.length > 3 ? [...list.slice(0, 2), `<span class="since-more">+${list.length - 2} more ${liveMode ? "live picks" : "picks changed"}</span>`] : list;
+  el.innerHTML = `<i class="since-h">${liveMode ? `YOUR LIVE PICKS${b?.at ? `<em> · NO CHANGE SINCE ${new Date(b.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toUpperCase()}</em>` : ""}` : "SINCE YOU LAST LOOKED"}</i>${rows.length ? `<span class="since-rows">${rows.join("")}</span>` : ""}<span class="since-tiles">${tiles}</span>`;
+  el.classList.remove("hidden");
+}
+// Tap: jump to that game's score card (the flip tapped, else the first).
+document.getElementById("since-line")?.addEventListener("click", (e) => {
+  // The LIVE / POINTS / PLACE tiles go to your row on the leaderboard.
+  if (e.target.closest(".since-tiles")) {
+    const row = document.querySelector("#rankings-list .ranking-row.is-me") || document.getElementById("rankings-list");
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+    row?.classList.add("since-flash"); setTimeout(() => row?.classList.remove("since-flash"), 1600);
+    return;
+  }
+  const el = e.currentTarget, id = e.target.closest("[data-sg]")?.dataset.sg || el.dataset.sg;
+  const card = id && document.querySelector(`#live-scores-list [data-game="${id}"]`);
+  if (!card) { document.getElementById("rankings-list")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  card.classList.add("since-flash"); setTimeout(() => card.classList.remove("since-flash"), 1600);
+});
+// A name in the Gamecast room opens that player's card.
+document.addEventListener("click", (e) => {
+  const li = e.target.closest?.(".gc-rc[data-pl]");
+  if (li) openPlayerCard(li.dataset.pl);
+});
 (() => {
   const m = document.getElementById("h2h-modal");
   if (m) swipeToClose(m, m.querySelector(".h2h-card"), () => m.classList.add("hidden"));
@@ -9012,17 +9198,12 @@ let renderRecap = function () {
   // it hangs a little past the colour bar, the way the template draws it.
   const art = (f) => `<img class="recap-ico" src="${awardArt(`recap/${f}`)}" alt="" aria-hidden="true" decoding="async">`;
   const ICON = { target: art("crown"), skull: art("bomb"), up: art("chart"), coin: art("coin"), hash: art("flag") };
-  // Team art in the template's pixel style: hand-drawn for the teams the
-  // template has, and for everyone else ESPN's logo fetched tiny and blown
-  // up with hard pixel edges, so every card reads the same.
-  const TEAM_ART = new Set([99, 344, 2390, 194, 84]);
-  // Art published from the Creative Studio comes first; then the template's
-  // hand-drawn five; then ESPN's logo in pixels.
+  // Art published from the Creative Studio comes first; otherwise ESPN's
+  // logo at full resolution (the old tiny, blown-up pixel version blurred).
   const studio = (id) => creativeArt.art?.[`replay-logo:team:${Number(id)}`]?.v;
   const logo = (id, alt = "") => !id ? `<span class="recap-logo blank"></span>`
-    : studio(id) ? `<img class="recap-logo px-art" data-slot="team:${Number(id)}" src="${WORKER_URL}/art/img/${encodeURIComponent(studio(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${Number(id)}.png&w=26&h=26';this.className='recap-logo px'">`
-    : TEAM_ART.has(Number(id)) ? `<img class="recap-logo px-art" src="assets/images/teams/${Number(id)}.webp" alt="${esc(alt)}" loading="lazy">`
-    : `<img class="recap-logo px" src="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${Number(id)}.png&w=26&h=26" alt="${esc(alt)}" loading="lazy">`;
+    : studio(id) ? `<img class="recap-logo px-art" data-slot="team:${Number(id)}" src="${WORKER_URL}/art/img/${encodeURIComponent(studio(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='${logoUrl(Number(id))}';this.className='recap-logo'">`
+    : `<img class="recap-logo" src="${logoUrl(Number(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.style.visibility='hidden'">`;
   const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);
   // [label, class, art, headline, sub, stat, statLabel, isMe]
   if (r.best) {
@@ -9055,7 +9236,11 @@ let renderRecap = function () {
   // Lock of the week: who hit theirs, who missed, the best lock leading.
   if (r.locks && (r.locks.list || []).length) {
     const L = r.locks, top = L.list[0], n = L.list.length;
-    cards.push(["🔒 LOCK OF THE WEEK", "lk", logo(top.id, top.short), `${chips(L.hit.length ? L.hit : top.name)}<span class="recap-pick">${L.hit.length ? `hit ${L.hit.length === 1 ? "their lock" : "locks"}` : "nobody hit"}</span>`,
+    // The art is every team that hit (one logo each), not just the first
+    // lock, so it never names a team most people didn't lock.
+    const hitTeams = [...new Map(L.list.filter((x) => x.result === "hit" && x.id).map((x) => [x.id, x])).values()].slice(0, 3);
+    const lkArt = hitTeams.length === 1 ? logo(hitTeams[0].id, hitTeams[0].short) : hitTeams.length ? `<span class="recap-vs n${hitTeams.length}">${hitTeams.map((x) => logo(x.id, x.short)).join("")}</span>` : `<span class="recap-lk" aria-hidden="true">🔒</span>`;
+    cards.push(["🔒 LOCK OF THE WEEK", "lk", lkArt, `${chips(L.hit.length ? L.hit : top.name)}<span class="recap-pick">${L.hit.length ? `hit ${L.hit.length === 1 ? "their lock" : "locks"}` : "nobody hit"}</span>`,
       `${L.hit.length} hit · ${L.miss.length} missed${L.push.length ? ` · ${L.push.length} pushed` : ""}${L.none.length ? ` · ${L.none.length} no lock` : ""}`, `${L.hit.length}/${n}`, "HIT", mine(L.hit)]);
   }
   const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}`;
@@ -9231,13 +9416,18 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
 // Tap a pot row, or a name on the replay: that player's season on one
 // card. Everything comes from the sealed weeks, so it is what was graded.
 function playerSeason(name) {
-  // The detailed weeks (with every pick) when they are loaded, else the plain ones.
-  const weeks = (seasonLedger && seasonLedger.length ? seasonLedger : Object.values(weekSummaries).filter((w) => w?.complete)).slice().sort((a, b) => a.week - b.week);
+  // Every finished week: the detailed one (with every pick) where it has
+  // loaded, else the plain summary, so a week missing from either still
+  // counts. Weeks this player sat out show as a gap, not a hole.
+  const byWeek = new Map();
+  for (const w of Object.values(weekSummaries)) if (w?.complete) byWeek.set(w.week, w);
+  for (const w of seasonLedger || []) if (w?.complete) byWeek.set(w.week, w);
+  const weeks = [...byWeek.values()].sort((a, b) => a.week - b.week);
   const scores = [], picks = [];
   let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0, lockW = 0, lockL = 0;
   for (const wk of weeks) {
     const me = (wk.rows || []).find((r) => r.name === name);
-    if (!me) continue;
+    if (!me) { scores.push({ week: wk.week, score: null, missed: true }); continue; }
     scores.push({ week: wk.week, score: me.score, won: (wk.winners || []).includes(name), high: wk.highScore });
     for (const lg of me.ledger || []) {
       if (lg.result !== "hit" && lg.result !== "miss") continue;
@@ -9260,13 +9450,14 @@ function playerSeason(name) {
       picks.push({ teamFull: lg.team, teamId: g ? (lg.team === g.home ? g.homeId : lg.team === g.away ? g.awayId : null) : null, awayId: g?.awayId, homeId: g?.homeId, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, sameNames, oppNames, with_, of: (wk.rows || []).length, others, game, margin, line });
     }
   }
-  const sorted = [...scores].sort((a, b) => b.score - a.score);
+  const played = scores.filter((x) => !x.missed);
+  const sorted = [...played].sort((a, b) => b.score - a.score);
   const best = picks.filter((p) => p.hit).sort((a, b) => b.pts - a.pts || a.with_ - b.with_)[0];
   const worst = picks.filter((p) => !p.hit).sort((a, b) => b.others - a.others || b.worth - a.worth)[0];
   return {
     scores, w, l, best, worst,
     top: sorted[0], low: sorted[sorted.length - 1],
-    avg: scores.length ? scores.reduce((s, x) => s + x.score, 0) / scores.length : null,
+    avg: played.length ? played.reduce((s, x) => s + x.score, 0) / played.length : null,
     wins: scores.filter((x) => x.won),
     ats: atsN ? Math.round((atsW / atsN) * 100) : null, atsN, atsW, su: suN ? Math.round((suW / suN) * 100) : null, suN, suW,
     lockW, lockL,
@@ -9316,8 +9507,14 @@ function openPlayerCard(name, again) {
     m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".plc-x")) m.classList.add("hidden"); });
   }
   m.dataset.name = name;
-  const pts = pr.points ?? d.scores.reduce((t, x) => t + x.score, 0);
-  const max = Math.max(1, ...d.scores.map((x) => x.score));
+  const pts = pr.points ?? d.scores.reduce((t, x) => t + (x.score || 0), 0);
+  // The week being played: points from games already final, marked live.
+  const cur = weekSummaries[currentWeek];
+  const myPicks = lastGoodCloudPicks?.[name]?.picks || {};
+  const liveWk = !cur?.complete && GAMES.some((g) => isGameLocked(g)) && Object.keys(myPicks).length && !d.scores.some((x) => x.week === currentWeek)
+    ? { week: currentWeek, score: (() => { const f = computeLiveResults(latestLive); return GAMES.reduce((t, g) => t + (f[g.id] ? scorePick(g, myPicks[g.id], f[g.id]) || 0 : 0), 0); })(), live: true } : null;
+  const bars = liveWk ? [...d.scores, liveWk] : d.scores;
+  const max = Math.max(1, ...bars.map((x) => x.score || 0));
   const pct = d.w + d.l ? Math.round((d.w / (d.w + d.l)) * 100) : null;
   // A fighting game stat bar: label, value, ten segments filled to the share.
   const bar = (label, val, share, note = "") => `<div class="plc-sb" data-statrank="${label}" role="button" tabindex="0"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em></div>`;
@@ -9359,9 +9556,11 @@ function openPlayerCard(name, again) {
       <div class="plc-id"><small>PLAYER ${String(MANAGERS.indexOf(name) + 1).padStart(2, "0")}</small><b>${esc(shown(name).toUpperCase())}</b>
         <div class="plc-badges">${pr.seasonPlace ? `<span class="rank">${pr.tied ? "T" : "#"}${pr.seasonPlace}</span>` : ""}<span>${pts} PTS</span>${pr.earned ? `<span class="cash">${money(pr.earned)}</span>` : ""}${d.wins.length ? `<button type="button" class="gold" data-champs="1" aria-label="All champions"><i class="plc-tro">🏆</i>×${d.wins.length}</button>` : ""}</div></div>
     </div>
-    ${d.scores.length ? `
-    <div class="plc-sec">POINTS EACH WEEK <span>gold = won the week</span></div>
-    <div class="plc-bars">${d.scores.map((x) => `<i data-wkstand="${x.week}" class="${x.won ? "won" : ""}${x === d.top ? " top" : ""}"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`).join("")}</div>
+    ${d.top ? `
+    <div class="plc-sec">POINTS EACH WEEK <span>gold = won${liveWk ? " · dashed = live" : ""}</span></div>
+    <div class="plc-bars">${bars.map((x) => x.missed ? `<i class="sat" title="Week ${x.week}: no picks"><b>–</b><s style="height:6%"></s><em>W${x.week}</em></i>`
+      : x.live ? `<i class="live" title="Week ${x.week}: so far, games still to play"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`
+      : `<i data-wkstand="${x.week}" class="${x.won ? "won" : ""}${x === d.top ? " top" : ""}"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`).join("")}</div>
     <div class="plc-sec">STATS</div>
     <div class="plc-stats">
       ${bar("AVG WEEK", `${d.avg.toFixed(1)}`, d.avg / 20, "pts")}
@@ -9392,17 +9591,14 @@ function bottomSheet(id) {
   m.id = id; m.className = "modal-overlay wks-modal hidden"; m.setAttribute("role", "dialog");
   document.body.appendChild(m);
   m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wks-x")) m.classList.add("hidden"); });
-  let y0 = null, dy = 0;
-  m.addEventListener("touchstart", (e) => { const c = m.querySelector(".wks-card"); if (!c || c.scrollTop > 0) return; y0 = e.touches[0].clientY; dy = 0; c.style.transition = "none"; }, { passive: true });
-  m.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); m.querySelector(".wks-card").style.transform = `translateY(${dy}px)`; }, { passive: true });
-  m.addEventListener("touchend", () => { if (y0 == null) return; const c = m.querySelector(".wks-card"); c.style.transition = ""; c.style.transform = ""; if (dy > 70) m.classList.add("hidden"); y0 = null; });
+  pullToClose(m, () => m.querySelector(".wks-card"), () => m.classList.add("hidden"), 70);
   return m;
 }
 
 // --- Stat ranking -------------------------------------------------------
 // A stat bar on a player card: the whole league ranked on that stat.
 const STAT_RANK = {
-  "AVG WEEK": (d) => d.scores.length ? [d.avg, d.avg.toFixed(1)] : null,
+  "AVG WEEK": (d) => d.avg != null ? [d.avg, d.avg.toFixed(1)] : null,
   "BEST WEEK": (d) => d.top ? [d.top.score, `${d.top.score}`, `W${d.top.week}`] : null,
   "WORST WEEK": (d) => d.low ? [d.low.score, `${d.low.score}`, `W${d.low.week}`] : null,
   "PICKS RIGHT": (d) => d.w + d.l ? [d.w / (d.w + d.l), `${Math.round((100 * d.w) / (d.w + d.l))}%`, `${d.w}-${d.l}`] : null,
@@ -9478,7 +9674,7 @@ let weekDetailAll = null;
 async function fetchWeekDetail() {
   if (weekDetailAll) return weekDetailAll;
   try {
-    const res = await fetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
+    const res = await workerFetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
     if (res.ok) weekDetailAll = (await res.json()).summaries || {};
   } catch {}
   return weekDetailAll || {};
@@ -9554,7 +9750,7 @@ async function fetchSeasonLedger() {
   if (!WORKER_URL) return null;
   if (seasonLedger && Date.now() - seasonLedgerAt < 5 * 60 * 1000) return seasonLedger;
   try {
-    const res = await fetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
+    const res = await workerFetch(`${WORKER_URL}/weeks?detail=1&t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return seasonLedger;
     const data = await res.json();
     seasonLedger = Object.values(data.summaries || {}).filter((w) => w?.complete && Array.isArray(w.rows)).sort((a, b) => a.week - b.week);
@@ -9970,7 +10166,9 @@ async function startLiveView() {
 // Avatars live on the Worker; pull them on open and whenever the app comes
 // back to the front, so a change on one phone shows on every other.
 syncAvatars();
-document.addEventListener("visibilitychange", () => { if (!document.hidden) syncAvatars(); });
+// A phone just back in the foreground is often still reconnecting: wait a
+// beat before asking.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(() => { if (!document.hidden) syncAvatars(); }, 1500); });
 
 // What people read without tapping: the replay, the pot and the season
 // stats each count once a visit when most of it has been on screen.
@@ -10038,9 +10236,13 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
   document.addEventListener("pointerdown", (e) => {
     // Three quick taps on the logo are the admin shortcut, not frustration.
     if (e.target.closest?.(".home-logo-img") || (typeof homeLogoBtn !== "undefined" && homeLogoBtn?.contains(e.target))) return;
+    // Three taps on Picks open the my-picks export, also on purpose.
+    if (e.target.closest?.("#nav-picks-btn")) return;
     const now = Date.now();
-    taps = taps.filter((t) => now - t.t < 1000 && Math.hypot(t.x - e.clientX, t.y - e.clientY) < 30);
-    taps.push({ t: now, x: e.clientX, y: e.clientY });
+    // Same spot and the same element: a tap that opened a sheet, then taps
+    // landing on that sheet, is a reader, not frustration.
+    taps = taps.filter((t) => now - t.t < 1000 && Math.hypot(t.x - e.clientX, t.y - e.clientY) < 30 && t.el === e.target);
+    taps.push({ t: now, x: e.clientX, y: e.clientY, el: e.target });
     if (taps.length >= 3 && now - rageAt > 3000) { rageAt = now; taps = []; track("rage", { event: true, d: label(e.target) }); }
   }, { capture: true, passive: true });
   // A dead tap is a click (a finger that starts a scroll never clicks), and
@@ -10055,6 +10257,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) sync
       if (el === popup || el.closest("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-past], [data-pot-row]")) return;
     } else {
       if (el.closest("[class^=ins-], [class*=' ins-']")) return;
+      // Explainer steps are reading, not controls.
+      if (el.closest(".wpx-steps")) return;
       if (interactive(el) || !(el.textContent || "").trim() && el.tagName !== "IMG") return;
       // Looks tappable: an image, a logo, a badge, a name, a number.
       if (!el.closest("img, [class*=logo], [class*=badge], [class*=chip], [class*=score], [class*=name], [class*=card], [class*=row]")) return;

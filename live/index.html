@@ -11,6 +11,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Live">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="../icons/favicon-32.png">
@@ -195,6 +197,10 @@ body.pv-open .tabs { display: none; }
 .now-l em { font: 700 11px/1 var(--mono); letter-spacing: .14em; color: var(--dim); font-style: normal; text-transform: uppercase; }
 .now-last { font-size: 13.5px; color: var(--meta); }
 .now-last b { color: var(--text); }
+.now-last.fresh { color: var(--gold); padding: 2px 8px; margin: -2px -8px; border-radius: 8px; background: rgba(255, 228, 94, .1); animation: lastin-pop 1.4s ease-out 1; }
+.now-last.fresh b { color: var(--gold); }
+.now-last em { margin-left: 6px; padding: 1px 5px; border-radius: 4px; background: var(--gold); color: #1a1300; font-style: normal; font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px; }
+@keyframes lastin-pop { 0% { box-shadow: 0 0 0 0 rgba(255, 228, 94, .55); } 60% { box-shadow: 0 0 0 8px rgba(255, 228, 94, 0); } 100% { box-shadow: none; } }
 .kpi.now .avs { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
 .inp { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 2px; border-radius: 999px; background: rgba(61, 252, 143, .1); border: 1px solid rgba(61, 252, 143, .35); font-size: 13px; font-weight: 600; }
 .inp small { font: 600 11px var(--mono); color: var(--green); }
@@ -787,6 +793,12 @@ html, body { overflow-x: hidden; }
   .cs-grid i { height: 16px; border-radius: 3px; font: 700 10px/16px system-ui, sans-serif; font-style: normal; text-align: center; color: #0b0716; }
   .cs-grid i.y { background: var(--green); }
   .cs-grid i.n { background: rgba(255, 107, 129, .55); }
+  .cs-grid button.n { height: 16px; padding: 0; border: 0; border-radius: 3px; background: rgba(255, 107, 129, .55); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .cs-grid button.n:hover { background: rgba(255, 107, 129, .8); }
+  .cs-grid button.n.on { background: #ff6b81; box-shadow: 0 0 0 2px var(--text); }
+  .cs-miss { display: block; margin-top: 10px; line-height: 1.4; padding: 8px 10px; border-radius: 8px; background: rgba(255, 107, 129, .1); border: 1px solid rgba(255, 107, 129, .35); font-size: 13px; color: var(--text); }
+  .cs-miss b { font-weight: 700; }
+  .cs-miss small { display: block; margin-top: 2px; font-size: 12px; color: var(--dim); }
   @media (max-width: 1023px) { .cs-grid { grid-template-columns: minmax(60px, 1fr) repeat(var(--n), minmax(14px, 22px)) repeat(var(--x), 26px); } }
   /* Admin friction: a deep blue terminal, collapsed until opened. */
   .afr { --afr-g: #39ff88; margin: 14px 0; padding: 4px 12px; border: 1px solid #1d3b8f; border-radius: 12px; background: #06123a; color: var(--afr-g); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
@@ -817,6 +829,11 @@ html, body { overflow-x: hidden; }
   .chat-r .afr-d { flex: 1; }
   .chat-btns { flex: none; display: flex; flex-direction: column; gap: 4px; }
   .chat-btns .afr-one { min-width: 46px; }
+  .afr-day.chat-other { color: #05d9e8; font-weight: 700; }
+  .afr-day.chat-me { opacity: .55; }
+  .afr-r.chat-r.other { background: rgba(5, 217, 232, .07); box-shadow: inset 3px 0 0 #05d9e8; padding-left: 6px; }
+  .afr-r.chat-r.me { opacity: .6; }
+  .chat-oth { color: #05d9e8; font-weight: 700; }
   .afr-r.chat-r.flagged { background: rgba(255, 92, 138, .08); box-shadow: inset 3px 0 0 #ff5c8a; padding-left: 6px; }
   .chat-note { font-style: normal; color: #ff8fab; }
   .chat-la.miss { color: #ffb86b; font-style: italic; }
@@ -945,6 +962,334 @@ html, body { overflow-x: hidden; }
   section.panel.folded { padding: 8px 12px !important; }
   section.panel.folded > .ph { margin: 0 !important; min-height: 0; }
   section.panel.folded > .ph h2 { line-height: 1.2; }
+
+/* --- Pages (Overview, Activity, Issues, BI, Stats) --- */
+.page.pg { display: flex; flex-direction: column; gap: 16px; grid-template-areas: none; }
+.page.pg > * { margin: 0; min-width: 0; width: 100%; box-sizing: border-box; }
+.pg-issues, .pg-bi, .pg-stats { max-width: 920px; }
+.pg-stats .rail { position: static; }
+.pg-issues .afr-car, .pg-bi .afr-car { display: none; }
+.pg-issues .afr-tg, .pg-bi .afr-tg { pointer-events: none; }
+@media (min-width: 1024px) { .pg-issues { display: grid; grid-template-columns: 1fr 1fr; align-items: start; max-width: 1440px; } }
+/* Needs-you cards: two by two on a phone, four across on a wide screen. */
+.att { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (min-width: 900px) { .att { grid-template-columns: repeat(4, 1fr); } }
+.att-c { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .08); background: rgba(255, 255, 255, .03); color: inherit; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.att-c b { font-size: 28px; line-height: 1; }
+.att-c span { font-size: 13px; font-weight: 600; }
+.att-c small { font-size: 11px; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.att-c.ok b, .att-c.calm b { color: #8b93a7; }
+.att-c.warn { border-color: rgba(255, 196, 0, .35); } .att-c.warn b { color: #ffc400; }
+.att-c.bad { border-color: rgba(255, 92, 138, .45); background: rgba(255, 92, 138, .06); } .att-c.bad b { color: #ff5c8a; }
+.att-c.info { border-color: rgba(5, 217, 232, .4); background: rgba(5, 217, 232, .05); } .att-c.info b { color: #05d9e8; }
+/* Activity by hour. */
+.hbars { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; align-items: end; height: 96px; margin-top: 10px; }
+.hbars i { display: block; height: max(3px, var(--h)); border-radius: 3px 3px 1px 1px; background: rgba(5, 217, 232, .55); }
+.hbars i.z { background: rgba(255, 255, 255, .07); }
+.hbars i.pk { background: #ffc400; }
+.hax { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; margin-top: 4px; font-size: 10px; opacity: .55; }
+.hax span { white-space: nowrap; overflow: visible; }
+.ov-duo { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 900px) { .ov-duo { grid-template-columns: 1fr 1fr; } }
+
+/* Page title bar with a toggle (Stats range, BI filter). */
+.pg-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pg-bar h1 { margin: 0; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--meta, #9a94b8); }
+.pg-bar .seg { margin: 0; }
+.styt > div { display: grid; grid-template-columns: 1.2fr repeat(5, 1fr); gap: 6px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); align-items: center; font-size: 13px; }
+.styt > div:first-child b { font-size: 10px; font-weight: 600; opacity: .6; }
+.styt > div:last-child { border-bottom: 0; }
+.styt b { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+/* Stats: panels two across on a wide screen. */
+.pg-stats .rail { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 1024px) { .pg-stats { max-width: 1440px; } .pg-stats .rail { grid-template-columns: 1fr 1fr; align-items: start; } }
+/* Activity: a closed visit is one compact row. */
+.feed .sess.shut { margin-bottom: 6px; border-radius: 12px; }
+.feed .sess.shut .sh { padding-top: 8px; padding-bottom: 8px; gap: 10px; align-items: center; }
+.feed .sess.shut .av.lg { width: 28px; height: 28px; font-size: 13px; border-radius: 8px; margin-top: 0; }
+.feed .sess.shut .nm { font-size: 14px; }
+.feed .sess.shut .meta { font-size: 12px; margin-top: 0; }
+.feed .sess.shut .vsum { margin-top: 2px; font-size: 12px; }
+.feed .sess.shut .vcar { display: none; }
+.feed .sess.shut .who { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
+.feed .sess.shut .vsum { flex-basis: 100%; }
+/* BI: compact action buttons. */
+.pg-bi .chat-btns { flex-direction: row; gap: 4px; }
+.pg-bi .chat-btns .afr-one { min-width: 0; padding: 4px 8px; font-size: 12px; }
+@media (min-width: 1024px) { .pg-bi { max-width: 1100px; } }
+
+/* ===== BI refresh: one calm, consistent system for every page =====
+   Neutral slate surfaces, one violet accent, status colours only where they
+   mean something, sans headings in sentence case, no glows or grid. */
+:root {
+  --bg: #0b0d12; --panel: #12151c; --panel2: #171b24; --line: #222734; --line2: #2c3242;
+  --text: #e8eaf0; --meta: #a2a8b8; --dim: #6f7689;
+  --accent: #8b7cff; --past: #8b7cff; --green: #34d399; --gold: #fbbf24; --red: #f87171; --cyan: #38bdf8;
+  --sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body { font-family: var(--sans); background: var(--bg); letter-spacing: -.005em; }
+body::before { display: none; }
+.top { background: rgba(11, 13, 18, .85); border-bottom-color: var(--line); }
+.top::after { display: none; }
+.tabs { background: rgba(11, 13, 18, .92); border-top-color: var(--line); }
+.tabs button.on { color: var(--text); }
+.tabs button.on svg { filter: none; color: var(--accent); }
+.tabs b { background: var(--accent) !important; color: #fff !important; box-shadow: none !important; }
+.page.pg { gap: 14px; }
+/* Panels: flat cards, sentence-case titles. */
+.panel, .kstats, .kpi, .att-c, .sess, .afr { background: var(--panel) !important; border: 1px solid var(--line) !important; box-shadow: none !important; border-radius: 12px; }
+.ph h2 { font: 600 14px/1.2 var(--sans); letter-spacing: 0; text-transform: none; color: var(--text); }
+.ph .sub { font-size: 12px; color: var(--dim); }
+/* Headline numbers. */
+.kpi.now { border-color: var(--line) !important; }
+.kpi.now.on { border-color: rgba(52, 211, 153, .4) !important; }
+.ks { padding: 14px 16px 12px; border-color: var(--line) !important; }
+.ks em { font: 500 11px/1.2 var(--sans); letter-spacing: .02em; text-transform: none; color: var(--meta); }
+.ks b { font: 700 24px/1.1 var(--sans); letter-spacing: -.02em; margin-top: 6px; }
+.ks b small { font-weight: 600; color: var(--dim); }
+.ks > span { font-size: 12px; color: var(--dim); }
+.ks b .kt { font: 600 11px/1 var(--sans); padding: 2px 5px; border-radius: 4px; vertical-align: 4px; }
+.ks b .kt.up { color: var(--green); background: rgba(52, 211, 153, .12); }
+.ks b .kt.dn { color: var(--red); background: rgba(248, 113, 113, .12); }
+.spk { display: block; width: 100%; height: 22px; margin-top: 8px; }
+.spk-a { fill: rgba(139, 124, 255, .14); stroke: none; }
+.spk-l { fill: none; stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+/* Recommended action. */
+.rec { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(90deg, rgba(139, 124, 255, .1), rgba(139, 124, 255, .02)), var(--panel); }
+.rec-i { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; background: rgba(139, 124, 255, .18); color: var(--accent); }
+.rec.warn { background: linear-gradient(90deg, rgba(251, 191, 36, .1), rgba(251, 191, 36, .02)), var(--panel); } .rec.warn .rec-i { background: rgba(251, 191, 36, .16); color: var(--gold); }
+.rec.bad { background: linear-gradient(90deg, rgba(248, 113, 113, .12), rgba(248, 113, 113, .02)), var(--panel); } .rec.bad .rec-i { background: rgba(248, 113, 113, .18); color: var(--red); }
+.rec.ok .rec-i { background: rgba(52, 211, 153, .15); color: var(--green); }
+.rec-b { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rec-b em { font: 600 10.5px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); font-style: normal; }
+.rec-b b { font-size: 15px; font-weight: 600; }
+.rec-b span { font-size: 12.5px; color: var(--meta); }
+.rec-cp { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel2); color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.rec-cp:hover { border-color: var(--accent); }
+@media (max-width: 520px) { .rec { grid-template-columns: 32px minmax(0, 1fr); } .rec-cp { grid-column: 1 / -1; width: 100%; } }
+/* Needs-you cards. */
+.att-c { padding: 14px 16px; }
+.att-c b { font: 700 26px/1 var(--sans); letter-spacing: -.02em; }
+.att-c span { font-size: 13px; font-weight: 600; color: var(--text); }
+.att-c small { color: var(--dim); opacity: 1; }
+.att-c.warn { border-color: rgba(251, 191, 36, .35) !important; } .att-c.warn b { color: var(--gold); }
+.att-c.bad { border-color: rgba(248, 113, 113, .4) !important; } .att-c.bad b { color: var(--red); }
+.att-c.info { border-color: rgba(139, 124, 255, .45) !important; } .att-c.info b { color: var(--accent); }
+.att-c.ok b, .att-c.calm b { color: var(--dim); }
+/* Ranked bars. */
+.rank i { height: 6px; border-radius: 3px; background: var(--panel2); }
+.rank i s { border-radius: 3px; background: var(--accent) !important; }
+/* Logs (friction, health, BI): same card language, readable sans. */
+.afr { color: var(--text) !important; font-family: var(--sans) !important; padding: 6px 16px !important; }
+.afr-h b { font: 600 14px/1.2 var(--sans) !important; color: var(--text) !important; letter-spacing: 0; }
+.afr-h small, .afr-t, .afr-day { font-family: var(--sans) !important; color: var(--dim) !important; }
+.afr-day { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.afr-r { border-color: var(--line) !important; }
+.afr-cp, .afr-one, .afr-more { font-family: var(--sans) !important; border-color: var(--line2) !important; background: var(--panel2) !important; color: var(--text) !important; border-radius: 6px !important; }
+.afr-day.chat-other { color: var(--accent) !important; }
+.afr-r.chat-r.other { background: rgba(139, 124, 255, .06) !important; box-shadow: inset 3px 0 0 var(--accent) !important; }
+.afr-r.chat-r.flagged { background: rgba(248, 113, 113, .07) !important; box-shadow: inset 3px 0 0 var(--red) !important; }
+.chat-lq { color: var(--text) !important; font-weight: 600; }
+.chat-la { color: var(--meta) !important; }
+.chat-oth { color: var(--accent) !important; }
+.pg-bar h1 { font: 700 18px/1.2 var(--sans); letter-spacing: -.01em; text-transform: none; color: var(--text); }
+.seg button.on { background: var(--panel2) !important; color: var(--text) !important; border-color: var(--line2) !important; box-shadow: none !important; }
+/* Visits. */
+.sess::before { width: 3px; }
+.sh .nm { font-weight: 600; }
+
+.brand b, .brand span { font-family: var(--sans) !important; color: var(--text) !important; text-shadow: none !important; letter-spacing: .02em; }
+.brand span { color: var(--dim) !important; font-weight: 600; }
+.seg button, .tabs button, .age, .now-l em, .ln-l small, .tl .axis span { font-family: var(--sans) !important; }
+.now-l em { letter-spacing: .04em; text-transform: none; font-weight: 600; color: var(--meta); }
+.now-l b { font-family: var(--sans); text-shadow: none !important; }
+.afr-r .afr-d, .ops-r .afr-d { color: var(--text) !important; }
+.afr-r .afr-d small, .afr-r .afr-d i { color: var(--dim) !important; }
+
+/* Recommended action: fold and clear. */
+.rec { grid-template-columns: 32px minmax(0, 1fr) auto 28px; }
+.rec .rec-b { background: none; border: 0; padding: 0; text-align: left; color: inherit; cursor: pointer; }
+.rec-b em i { font-style: normal; margin-left: 4px; }
+.rec-x { width: 28px; height: 28px; border-radius: 6px; border: 1px solid transparent; background: none; color: var(--dim); font-size: 13px; grid-column: 4; grid-row: 1; }
+.rec-x:hover { border-color: var(--line2); color: var(--text); }
+.rec .rec-cp { grid-column: 3; grid-row: 1; }
+.rec.shut { padding-top: 10px; padding-bottom: 10px; }
+.rec.shut .rec-i { width: 24px; height: 24px; font-size: 12px; }
+@media (max-width: 520px) { .rec { grid-template-columns: 32px minmax(0, 1fr) 28px; } .rec-x { grid-column: 3; } .rec .rec-cp { grid-column: 1 / -1; grid-row: 2; } }
+/* User flow. */
+.flow h3 { margin: 14px 0 6px; font: 600 12px/1.2 var(--sans); color: var(--meta); }
+.flow-g { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.flow-g h3 { margin-top: 0; }
+.flow-p { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.flow-p li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--panel2); }
+.flow-p span { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 13px; min-width: 0; }
+.flow-p i { font-style: normal; padding: 2px 8px; border-radius: 999px; background: rgba(139, 124, 255, .14); color: var(--text); }
+.flow-p b { color: var(--dim); font-weight: 500; }
+.flow-p em { font-style: normal; font-weight: 700; color: var(--meta); }
+.idea { margin-top: 14px; padding: 12px 14px; border-radius: 10px; border: 1px dashed rgba(139, 124, 255, .45); display: grid; gap: 4px; }
+.idea em { font: 600 10.5px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-style: normal; }
+.idea b { font-size: 15px; font-weight: 600; }
+.idea span { font-size: 12.5px; color: var(--meta); }
+.idea .rec-cp { justify-self: start; margin-top: 6px; }
+@media (max-width: 520px) { .flow-g { grid-template-columns: 1fr; gap: 4px; } .idea .rec-cp { justify-self: stretch; } }
+
+/* Visits: a header with filters, sticky day labels, one tap to open. */
+.feed .fh { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 4px; }
+.feed .fh h2 { margin: 0 auto 0 0; font: 700 18px/1.2 var(--sans); letter-spacing: -.01em; text-transform: none; color: var(--text); }
+.feed .fh h2 small { margin-left: 6px; font-size: 13px; font-weight: 600; color: var(--dim); }
+.feed .fh .seg { order: 3; flex-basis: 100%; display: flex; }
+.feed .fh .seg button { flex: 1; }
+.feed .fh .cp { font: 600 12px/1 var(--sans) !important; color: var(--meta) !important; }
+.feed .day { position: sticky; top: calc(56px + env(safe-area-inset-top)); z-index: 3; margin: 6px -4px; padding: 8px 4px; background: var(--bg); font: 600 11px/1 var(--sans); letter-spacing: .08em; color: var(--meta); }
+.feed .vcar { display: none !important; }
+.feed .sess .sh { cursor: pointer; }
+.feed .sess.open .who .nm::after { content: "▴"; margin-left: auto; color: var(--dim); font-size: 12px; }
+.feed .acts li { padding-top: 7px; padding-bottom: 7px; font-size: 14px; }
+.feed .acts time { font: 500 12px/1.4 var(--sans) !important; color: var(--dim); min-width: 62px; }
+.feed .acts li.iss span { color: var(--gold); }
+@media (min-width: 1024px) { .feed .day { top: 64px; } .feed .fh .seg { order: 0; flex-basis: auto; } }
+
+.feed .vsort { position: relative; }
+.feed .vsort .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.feed .vsort select { appearance: none; -webkit-appearance: none; padding: 6px 26px 6px 10px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a2a8b8' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center; color: var(--text); font: 600 13px/1.2 var(--sans); }
+/* Visits header: title and actions on one row, sort and filters below. */
+.feed .fh { display: grid !important; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "h e c" "s f f"; align-items: center; gap: 10px 12px; }
+.feed .fh h2 { grid-area: h; margin: 0; }
+.feed .fh [data-openall] { grid-area: e; }
+.feed .fh [data-copy] { grid-area: c; }
+.feed .fh .vsort { grid-area: s; }
+.feed .fh .seg { grid-area: f; order: 0; flex-basis: auto; }
+.feed .fh .chip { grid-column: 1 / -1; justify-self: start; }
+.feed .fh .vsort select { width: 100%; }
+.feed .fh .seg button { white-space: nowrap; padding-left: 10px; padding-right: 10px; }
+
+/* Notification bar: new visits and BI questions from others. */
+.nbar { display: flex; align-items: stretch; gap: 0; border-radius: 12px; border: 1px solid rgba(139, 124, 255, .35); background: linear-gradient(90deg, rgba(139, 124, 255, .12), rgba(139, 124, 255, .03)), var(--panel); overflow: hidden; }
+.nb-p { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 11px 14px; border: 0; border-right: 1px solid var(--line); background: none; color: var(--meta); font: 500 13.5px/1.3 var(--sans); text-align: left; cursor: pointer; }
+.nb-p b { color: var(--text); font-weight: 600; white-space: nowrap; }
+.nb-p small { margin-left: auto; padding-left: 8px; color: var(--dim); font-size: 12px; white-space: nowrap; }
+.nb-p:hover { background: rgba(255, 255, 255, .03); }
+.nb-ic { font-style: normal; }
+.nb-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(52, 211, 153, .18); }
+.nb-x { flex: none; width: 44px; border: 0; background: none; color: var(--dim); font-size: 14px; }
+.nb-x:hover { color: var(--text); }
+@media (max-width: 720px) { .nbar { position: relative; flex-direction: column; } .nb-p { border-right: 0; border-bottom: 1px solid var(--line); padding-right: 48px; } .nb-p:nth-last-child(2) { border-bottom: 0; } .nb-x { position: absolute; top: 0; right: 0; height: 44px; } }
+.nb-p { overflow: hidden; text-overflow: ellipsis; }
+
+/* New visits and BI questions inside the in-now card. */
+.kpi.now .nb-rows { grid-column: 1 / -1; display: flex; flex-direction: column; margin: 4px -14px -10px; border-top: 1px solid var(--line); }
+.nb-r { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+.nb-r:last-child { border-bottom: 0; }
+.nb-r .nb-p { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 10px 6px 10px 14px; border: 0; background: none; color: var(--meta); font: 500 13.5px/1.3 var(--sans); text-align: left; }
+.nb-r .nb-p span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nb-r .nb-p b { color: var(--text); font-weight: 600; }
+.nb-r .nb-p small { margin-left: auto; padding-left: 8px; color: var(--dim); font-size: 12px; white-space: nowrap; }
+.nb-r .nb-x { position: static; flex: none; width: 40px; height: 40px; border: 0; background: none; color: var(--dim); }
+.nb-r .nb-x:hover { color: var(--text); }
+
+/* NFL: who reached the under construction page. */
+.uc-l { display: flex; flex-direction: column; }
+.uc-r { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "b e" "s t"; gap: 2px 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.uc-r:first-child { border-top: 0; }
+.uc-r b { grid-area: b; font-weight: 600; } .uc-r span { grid-area: s; font-size: 12.5px; color: var(--meta); } .uc-r em { grid-area: e; font-style: normal; font-weight: 700; color: var(--gold); text-align: right; } .uc-r small { grid-area: t; font-size: 12px; color: var(--dim); text-align: right; }
+
+/* 24h: a line per person. */
+.pl { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 4px 12px; }
+.pl-r { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pl-r.dim { opacity: .35; }
+.pl-s { flex: 1; height: 28px; min-width: 0; }
+.pl-n { width: 40px; text-align: right; font-size: 12px; color: var(--meta); }
+.pl-ax { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--dim); padding-right: 50px; }
+/* 7 days: when in the day as lines. */
+.wl svg { display: block; width: 100%; height: 120px; }
+.wl .pl-ax { padding-right: 0; margin-top: 4px; }
+.wl-t { fill: none; stroke: var(--green); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.wl-k { display: flex; gap: 14px; margin-top: 8px; font-size: 12px; color: var(--meta); }
+.wl-k i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+.wl-k i.a { background: var(--accent); } .wl-k i.t { background: var(--green); }
+.wl-k span:last-child { margin-left: auto; color: var(--dim); }
+@media (max-width: 520px) { .pl { grid-template-columns: 110px minmax(0, 1fr); } }
+
+/* --- Week view layout: tiles, then when in the day and game day beside
+   them on a wide screen; features full width. --- */
+.wk-g { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+@media (min-width: 1100px) { .wk-g { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; } .wk-full { grid-column: 1 / -1; } }
+.wk-side, .wk-main, .wk-full { min-width: 0; }
+.lv-sec { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 10px; }
+.lv-sec h3 { margin: 0; font: 600 14px/1.2 var(--sans); color: var(--text); }
+.lv-sec span { font-size: 12px; color: var(--dim); }
+.lv-sec.row { align-items: center; } .lv-sec.row .seg { margin-left: auto; }
+.wk-side > .lv-sec ~ .lv-sec, .wk-full > .lv-sec { margin-top: 22px; }
+@media (min-width: 1100px) { .wk-full > .lv-sec { margin-top: 4px; } }
+/* Tiles: a 7 day total per person and an Everyone row. */
+.hm { grid-template-columns: var(--lab, 148px) repeat(7, minmax(0, 1fr)) !important; }
+.hm-lt { display: block; margin-top: 2px; font: 500 11px/1.2 var(--sans); color: var(--dim); white-space: nowrap; }
+.hm-f .hm-lt { font-weight: 500; }
+.hm-h, .hm-c { font-family: var(--sans) !important; }
+.hm-c { background-color: rgba(255, 255, 255, .03); }
+.hm-t { text-align: right; font: 700 13px/1 var(--sans); color: var(--text); }
+.hm-t.dim { opacity: .3; }
+.hm-f { font-size: 12px; font-weight: 600; color: var(--meta); padding-top: 6px; border-top: 1px solid var(--line); }
+.hm-s { text-align: center; font: 600 12px/1 var(--sans); color: var(--meta); padding-top: 8px; border-top: 1px solid var(--line); }
+.hm-s.t { color: var(--green); }
+.hm-st { text-align: right; color: var(--text); }
+/* When in the day: gridlines and the busiest hour marked. */
+.wl-c { position: relative; }
+.wl-g { stroke: rgba(255, 255, 255, .06); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.wl-pk { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(139, 124, 255, .3); }
+.wl-pk b { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); font: 700 11px/1 var(--sans); color: var(--text); background: var(--panel2); padding: 2px 5px; border-radius: 4px; white-space: nowrap; }
+/* Features: label, a 7 day line, a share bar and the people count. */
+.ft { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(70px, 1.2fr) minmax(40px, .8fr) 26px; gap: 8px 12px; align-items: center; }
+.ft-l { font-size: 13px; color: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ft-s { width: 100%; height: 22px; display: block; }
+.ft-b { height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; }
+.ft-b i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.ft-n { text-align: right; font: 700 13px/1 var(--sans); }
+/* Game day as a line. */
+.gd-l svg { display: block; width: 100%; height: 70px; margin-top: 10px; }
+.gd span, .gd b { font-family: var(--sans) !important; }
+@media (min-width: 900px) { .ft { grid-template-columns: minmax(110px, 200px) minmax(0, 2fr) minmax(0, 1fr) 30px; } }
+
+/* 3h: a bar per sitting, its length on it. */
+.sb { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 6px 12px; }
+.sb-t { position: relative; height: 30px; border-radius: 6px; background: rgba(255, 255, 255, .025); }
+.sb-t.dim { opacity: .35; }
+.sb-g { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255, 255, 255, .06); }
+.sb-b { position: absolute; top: 4px; bottom: 4px; min-width: 8px; border-radius: 5px; background: var(--accent); display: flex; align-items: center; justify-content: center; font: 700 11px/1 var(--sans); color: #fff; white-space: nowrap; overflow: visible; }
+.sb-b.live { background: var(--green); color: #06281a; box-shadow: 0 0 0 3px rgba(52, 211, 153, .2); }
+.sb-b.sm span { position: absolute; left: calc(100% + 4px); color: var(--meta); }
+.sb-b.sm.live span { color: var(--green); }
+.sb-ax { position: relative; height: 16px; font-size: 10.5px; color: var(--dim); }
+.sb-ax span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.sb-ax .nw { transform: translateX(-100%); color: var(--green); font-weight: 600; }
+@media (max-width: 520px) { .sb { grid-template-columns: 110px minmax(0, 1fr); } }
+.ln-l:has(.hm-lt) { height: auto; min-height: 34px; padding-top: 3px; padding-bottom: 3px; }
+.ln-l .hm-lt { margin-top: 1px; }
+.sb-b.sm.end span { left: auto; right: calc(100% + 4px); }
+.ln-l .hm-lt { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* Records: today against the best day ever. */
+.recs-g { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 900px) { .recs-g { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.rec-m { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); min-width: 0; }
+.rec-m em { font: 500 11.5px/1.2 var(--sans); font-style: normal; color: var(--meta); }
+.rec-m b { font: 700 22px/1.1 var(--sans); }
+.rec-m span { font-size: 11.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-bar { position: relative; display: block; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: visible; }
+.rec-bar s { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+/* Pace: a gold tick where the record stood at this hour, over the bar. */
+.rec-bar u { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--gold); box-shadow: 0 0 0 1px rgba(0, 0, 0, .5); z-index: 1; }
+.rec-pace { display: flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 11px; color: var(--muted, #8a93a6); }
+.rec-pace i { flex: none; width: 2px; height: 9px; border-radius: 1px; background: var(--gold); }
+.rec-pace.up { color: #5fd38d; } .rec-pace.dn { color: #e7a35b; } .rec-pace.none { opacity: .55; }
+.rec-m.new { border-color: rgba(251, 191, 36, .5); background: linear-gradient(180deg, rgba(251, 191, 36, .1), rgba(251, 191, 36, .02)), var(--panel2); }
+.rec-m b small { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--dim); }
+.rec-m.new b { color: var(--gold); } .rec-m.new .rec-bar s { background: var(--gold); } .rec-m.new span { color: var(--gold); }
+.recs .ph { flex-wrap: nowrap; align-items: center; }
+.recs .ph .sub { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recs .ph .seg { flex: none; margin-left: auto; }
+@media (max-width: 520px) { .recs .ph .sub { display: none; } }
+.rec-m span { white-space: normal; line-height: 1.3; }
 </style>
 </head>
 <body>
@@ -1014,10 +1359,14 @@ html, body { overflow-x: hidden; }
   function forget() { device = ""; key = ""; store.del(DEVICE_STORE); store.del(KEY_STORE); store.del(SNAP_STORE); session.del(KEY_STORE); }
 
   // room: the Worker's answer. names, seen, games: the once-a-minute extras.
-  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "6h", "12h", "24h", "7d"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "6h", wk: null, sec: "sec-now", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
+  const st = { metric: store.get("brochiefs_live_metric") === "min" ? "min" : "visits", asks: [], range: ["3h", "24h"].includes(store.get("brochiefs_live_range")) ? store.get("brochiefs_live_range") : "7d", wk: null, sec: "sec-now", recPeriod: store.get("brochiefs_live_recp") === "week" ? "week" : "day", page: ["home", "issues", "bi", "stats"].includes(store.get("brochiefs_live_page")) ? store.get("brochiefs_live_page") : "home", menu: false, refreshing: false, focus: null, texts: new Map(), copied: null, pv: null, room: null, names: [], seen: {}, games: {}, at: 0, ok: true, cached: false, known: null, fresh: new Set(), filter: null, open: new Set(), shown: 20, alert: false, wake: null, gated: false, sig: "" };
   // What's new since this device last looked: a baseline saved when the
   // page is put away, compared with what arrives. ✓ Seen resets it now.
   const SEEN_KEY = `brochiefs_live_seen_${LEAGUE}`;
+  // "Last in" as it stood on the previous visit to Live: a change since then
+  // (someone new, or the same person again later) gets a colour pop.
+  const LASTIN_KEY = "brochiefs_live_lastin";
+  const lastInBase = (() => { try { return JSON.parse(store.get(LASTIN_KEY) || "null"); } catch { return null; } })();
   let seenBase = (() => { try { return JSON.parse(store.get(SEEN_KEY) || "null"); } catch { return null; } })() || { at: Date.now(), votes: null, notes: null };
   const snapSeen = () => ({ at: Date.now(), votes: st.poll?.votes || seenBase.votes || {}, notes: st.poll?.notes || seenBase.notes || {} });
   const saveSeen = () => store.set(SEEN_KEY, JSON.stringify(snapSeen()));
@@ -1046,6 +1395,17 @@ html, body { overflow-x: hidden; }
   const hm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   const AFR_KIND = { "js-error": ["Error", "err"], rage: ["Rage tap", "rage"], "dead-tap": ["Dead tap", "dead"], "quick-exit": ["Sudden close", "exit"] };
   // Fixed: ticked by hand, or a shipped fix of this kind and text came after it.
+  // Health fixes ride in fixes.json too (k is the health kind, e.g.
+  // "worker-fail"): every matching entry from before the fix reads closed,
+  // so a pasted error that was fixed clears itself; a repeat after stays.
+  const opsFix = (r) => (st.afrFixes || []).find((f) => f.k === r.k && String(r.d || "").includes(f.match) && r.at <= f.at) || null;
+  // A connection blip: one phone failing two or more different calls with a
+  // network error (no HTTP status) within 90 seconds lost its signal; the
+  // Worker was fine. Those read closed as one event instead of surfacing one
+  // endpoint at a time (the app retries each call).
+  const netErr = (r) => /-fail$/.test(r.k) && r.src !== "worker" && !/\s\d{3}$/.test(String(r.d || ""));
+  const opsBlip = (r) => { if (!netErr(r) || !r.n) return 0; const path = (x) => String(x.d || "").split(" ")[0]; const near = (st.ops || []).filter((x) => x.n === r.n && netErr(x) && Math.abs(x.at - r.at) <= 90000); return new Set(near.map(path)).size >= 2 ? near.length : 0; };
+  const applyOpsFixes = () => { for (const r of st.ops || []) { if (r.closed) continue; const f = opsFix(r); if (f) { r.closed = f.at; r.fixNote = `Fixed in ${f.commit}: ${f.note}`; continue; } const nb = opsBlip(r); if (nb) { r.closed = r.at; r.fixNote = `Connection blip: ${nb} calls failed together on one phone; the Worker was fine and the app retries.`; } } };
   const afrFix = (r) => (st.afrFixes || []).find((f) => (!f.k || f.k === (r.k || "dead-tap")) && String(r.d || "").includes(f.match) && r.at <= f.at) || (r.fixed ? { manual: true } : null);
   const afrLog = (rows) => [`Brochiefs ${LEAGUE.toUpperCase()} admin friction log · copied ${new Date().toLocaleString()}`, ...[...rows].sort((x, y) => y.at - x.at).map((r) => `${new Date(r.at).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} | ${(AFR_KIND[r.k || "dead-tap"] || [r.k])[0]} | ${r.d || ""}${r.screen ? ` | ${SCREENS[r.screen] || r.screen}` : ""}${afrFix(r) ? ` | FIXED${afrFix(r).commit ? ` ${afrFix(r).commit}` : ""}` : ""}`)].join("\n");
   const OPS_KIND = { "route-fail": ["Worker error", "err"], "cron-fail": ["Job failed", "err"], "upstream-fail": ["Outside API failed", "err"], "upstream-slow": ["Outside API slow", "slow"], "worker-fail": ["Worker failed", "err"], "worker-slow": ["Worker slow", "slow"], "espn-fail": ["ESPN failed", "err"], "espn-slow": ["ESPN slow", "slow"], "slow-load": ["Slow load", "slow"], "js-error": ["Error", "err"] };
@@ -1071,29 +1431,53 @@ html, body { overflow-x: hidden; }
     tl: svg('<path d="M4 6h7M8 12h10M4 18h12"/><path d="M20 4v16"/>'),
     visits: svg('<rect x="4" y="4" width="16" height="6" rx="2"/><rect x="4" y="14" width="16" height="6" rx="2"/>'),
     stats: svg('<path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/>'),
+    brain: svg('<path d="M9 4a3 3 0 0 0-3 3v.5A3 3 0 0 0 4 10.5a3 3 0 0 0 1 2.2A3 3 0 0 0 7 17.5 2.5 2.5 0 0 0 12 18V5.5A2.5 2.5 0 0 0 9 4z"/><path d="M15 4a3 3 0 0 1 3 3v.5a3 3 0 0 1 2 3 3 3 0 0 1-1 2.2 3 3 0 0 1-2 4.8 2.5 2.5 0 0 1-5 .5"/>'),
     studio: svg('<path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.4-1.9-.4-1 .3-2.1 1.4-2.1H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/>'),
     plus: svg('<path d="M12 5v14M5 12h14"/>'),
     x: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
   };
   const TABS = [["sec-now", "Now", "now"], ["sec-tl", "Timeline", "tl"], ["sec-visits", "Visits", "visits"], ["sec-stats", "Stats", "stats"]];
+  // The page is split into pages, one at a time, picked from the bottom nav:
+  // Overview (numbers, charts, what needs you), Activity (timeline and
+  // visits), Issues (friction and health), BI (questions) and Stats.
+  // Recommended actions folded or cleared, remembered on this device.
+  const recShut = (() => { try { return new Set(JSON.parse(localStorage.getItem("brochiefs_live_rec_shut") || "[]")); } catch { return new Set(); } })();
+  const recHidden = (() => { try { return JSON.parse(localStorage.getItem("brochiefs_live_rec_hidden") || "{}") || {}; } catch { return {}; } })();
+  const PAGES = [["home", "Overview", "now"], ["activity", "Visits", "visits"], ["issues", "Issues", "bell"], ["bi", "Chief", "brain"], ["stats", "Stats", "stats"]];
+  // Old section ids (jump links, studio's back buttons) land on their page.
+  const PAGE_OF = { "sec-now": "home", "sec-tl": "home", "sec-visits": "activity", "sec-stats": "stats" };
   // Which section is in view, for the tabs; recomputed on scroll and after
   // every redraw, so the right tab stays lit.
-  function paintTabs() {
-    if (Date.now() < (st.secLock || 0)) return;
-    // A section that sits beside the one before it (Stats next to Visits on
-    // a wide screen) doesn't take over from it.
-    let cur = "sec-now", prevTop = null;
-    for (const [id] of TABS) {
-      const el = document.getElementById(id); if (!el) continue;
-      const top = el.getBoundingClientRect().top;
-      if (top < 140 && (prevTop === null || Math.abs(top - prevTop) > 8)) cur = id;
-      prevTop = top;
-    }
-    const stats = document.getElementById("sec-stats"), feed = document.getElementById("sec-visits");
-    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4 && stats && feed && stats.getBoundingClientRect().top > feed.getBoundingClientRect().top + 8) cur = "sec-stats";
-    if (cur !== st.sec) { st.sec = cur; document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.sec === cur)); }
+  // Pages, not one long scroll: the lit tab is the page you are on.
+  // Seeing the visits clears the "visited" notification, and opening BI
+  // clears the BI one; the page holds still while the line goes.
+  const markSeen = (kind) => {
+    if (kind === "v" && !document.querySelector('[data-nseen="v"]')) return;
+    if (kind === "q") { store.set(`brochiefs_live_notif_seen_q${SFX}`, String(Date.now())); return; }
+    const v = document.getElementById("sec-visits"), before = v ? v.getBoundingClientRect().top : null;
+    store.set(`brochiefs_live_notif_seen_${kind}${SFX}`, String(Date.now())); st.sig = ""; render();
+    const after = v && document.getElementById("sec-visits")?.getBoundingClientRect().top;
+    if (before != null && after != null && kind === "v") scrollBy(0, after - before);
+  };
+  let seenTimer = 0;
+  function watchSeen() {
+    if (st.page === "bi") return setTimeout(() => markSeen("q"), 800);
+    const v = document.getElementById("sec-visits");
+    const r = v && v.getBoundingClientRect();
+    const onScreen = r && r.top < innerHeight - 120 && r.bottom > 160;
+    if (onScreen && !seenTimer) seenTimer = setTimeout(() => { seenTimer = 0; const r2 = document.getElementById("sec-visits")?.getBoundingClientRect(); if (r2 && r2.top < innerHeight - 120 && r2.bottom > 160) markSeen("v"); }, 1200);
   }
-  addEventListener("scroll", () => { cancelAnimationFrame(paintTabs.r); paintTabs.r = requestAnimationFrame(paintTabs); }, { passive: true });
+  addEventListener("scroll", () => { cancelAnimationFrame(watchSeen.r); watchSeen.r = requestAnimationFrame(watchSeen); }, { passive: true });
+  function paintTabs(force) {
+    if (!force && Date.now() < (st.secLock || 0)) return;
+    // On Overview, the Visits tab lights once the visits reach the top.
+    const v = st.page === "home" && document.getElementById("sec-visits");
+    const r = v && v.getBoundingClientRect(), cur = r && r.top < 160 && r.bottom > 160 ? "activity" : st.page;
+    document.querySelectorAll(".tabs button[data-page]").forEach((b) => b.classList.toggle("on", b.dataset.page === cur));
+  }
+
+
+  addEventListener("scroll", () => { cancelAnimationFrame(paintTabs.r); paintTabs.r = requestAnimationFrame(() => paintTabs()); }, { passive: true });
   const COPY_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 3.5v-.5a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3v5A1.5 1.5 0 0 0 4 9.5h.5"/></svg>`;
   const SAYS = {
     "game-info": "Opened game info", gamecast: "Watched a game live (Gamecast)", "game-final": "Opened a finished game",
@@ -1106,7 +1490,7 @@ html, body { overflow-x: hidden; }
     "team-tap": "Tapped a team to open game info", "status-tap": "Tapped a game's status chip to open game info", "season-h2h": "Compared two players' seasons (VS)", "side-game": "Opened a side bet game",
     "lock-intro": "Saw the lock of the week announcement", "lock-intro-go": "Tapped Show me on the lock announcement", "lock-intro-ok": "Closed the lock announcement",
     "lock-set": "🔒 Set their lock of the week", "lock-cleared": "Took their lock off", "lock-nudge": "Got the \"no lock yet\" reminder", "lock-skip": "Skipped the lock this week",
-    sim: "Simulated a game", "grid-card": "Opened the starting grid picture (hidden nav trick)", "history-ask": "Asked the history bot", "gamecast-log": "Opened the play by play",
+    sim: "Simulated a game", "grid-card": "Opened the starting grid picture (hidden nav trick)", "history-ask": "Asked the history bot", "week-ask": "🧠 Asked Chief", "week-ask-open": "🧠 Opened Ask Chief", "my-picks-card": "Exported their picks (triple tap)", "gamecast-log": "Opened the play by play",
   };
   const SHEET = { "h2h-modal": "head to head", "insights-modal": "game info", "sh2h-modal": "season head to head", "grid-modal": "the pre-race check (picks reminder)", "gridcard-modal": "the starting grid picture", "rules-modal": "the rules", "avatar-modal": "the avatar picker", "boner-modal": "the boner", "sim-modal": "the game simulator", "claim-modal": "the \"who are you\" sign in", "identity-modal": "the \"who are you\" sign in", "code-modal": "the PIN entry", "admin-gate": "the admin login", "qotw-modal": "question of the week", "lotw-confirm": "the lock confirm", "lotw-intro": "the lock announcement" };
   const SCREEN_NAME = { scoreboard: "Scores", picks: "Picks", history: "History", trivia: "Trivia", side: "Side bet", home: "Home" };
@@ -1123,6 +1507,7 @@ html, body { overflow-x: hidden; }
     copyText(text).then((ok) => { st.digestOk = ok ? Date.now() : 0; st.sig = ""; render(); setTimeout(() => { st.sig = ""; render(); }, 1800); });
   }, true);
   function says(e, feed) {
+    if (e.k === "week-ask") return ["🧠 Asked Chief", e.d ? `“${e.d}”` : ""];
     if (e.k === "recap-card") return ["Opened a replay card", ({ hit: "Pick of the week", miss: "Worst pick", move: "Movement", split: "Coin flip", tb: "Tiebreaker" })[e.d] || e.d || ""];
     if (e.k === "pot-row") return ["Opened a pot row", e.d ? name(e.d) : ""];
     if (e.k === "history-season") return ["Opened a past season", e.d || ""];
@@ -1165,7 +1550,10 @@ html, body { overflow-x: hidden; }
   // between are its lines, oldest first. Visits newest first.
   function visits(feed, people) {
     const open = {}, list = [];
-    for (const e of feed.filter((x) => !/^path-of-/.test(x.k)).slice().reverse()) {
+    // A scoreboard tap logs itself and then the sheet it opened; show the
+    // sheet only (finished, live or info), so one tap reads as one line.
+    const dupTap = (x) => x.k === "scorebug-open" && feed.some((y) => y.n === x.n && /^(game-final|gamecast|game-info)$/.test(y.k) && String(y.d) === String(x.d) && Math.abs(y.at - x.at) < 3000);
+    for (const e of feed.filter((x) => !/^path-of-/.test(x.k) && !dupTap(x)).slice().reverse()) {
       let s = open[e.n];
       if (e.k === "in" || !s) {
         s = open[e.n] = { n: e.n, start: e.at, end: e.at, app: e.k === "in" ? e.d : "", acts: [], done: false };
@@ -1211,6 +1599,8 @@ html, body { overflow-x: hidden; }
     if (!loadJoins.t || Date.now() - loadJoins.t > 60000) { loadJoins.t = Date.now(); loadJoins(); }
     if (!loadAdminFriction.t || Date.now() - loadAdminFriction.t > 60000) { loadAdminFriction.t = Date.now(); loadAdminFriction(); }
     if (!loadOps.t || Date.now() - loadOps.t > 60000) { loadOps.t = Date.now(); loadOps(); }
+    if (!loadRecords.t) { loadRecords.t = Date.now(); loadRecords(); }
+    if (LEAGUE === "nfl" && (!loadUc.t || Date.now() - loadUc.t > 60000)) { loadUc.t = Date.now(); loadUc(); }
     if (LEAGUE !== "nfl" && (!loadChats.t || Date.now() - loadChats.t > 60000)) { loadChats.t = Date.now(); loadChats(); }
     try {
       const wantWeek = st.range === "7d" && (full || !st.wk || Date.now() - st.wk.at > 60000);
@@ -1251,13 +1641,24 @@ html, body { overflow-x: hidden; }
   // --- Render ------------------------------------------------------------
   const DAY = 86400000, HOUR = 3600000;
   const hourLab = (t) => { const h = new Date(t).getHours(); return `${h % 12 || 12}${h < 12 ? "a" : "p"}`; };
+  // A drawing error shows itself (with a copy) instead of a blank page.
   function render() {
+    try { renderPage(); }
+    catch (err) {
+      console.error(err);
+      const msg = `Brochiefs Live render error (${LEAGUE}, page ${st.page}, range ${st.range}): ${err?.stack || err}`;
+      app.innerHTML = `<div class="gate"><p>Live hit an error drawing this page.</p><pre style="white-space:pre-wrap;font-size:12px;max-width:100%;overflow:auto;color:var(--meta)">${String(msg).replace(/[&<]/g, (c) => (c === "&" ? "&amp;" : "&lt;"))}</pre><p><button type="button" class="rec-cp" id="err-copy">Copy error</button> <button type="button" class="rec-cp" id="err-home">Back to Overview</button></p></div>`;
+      document.getElementById("err-copy")?.addEventListener("click", (e) => { navigator.clipboard?.writeText(msg).then(() => { e.target.textContent = "✓ Copied"; }).catch(() => {}); });
+      document.getElementById("err-home")?.addEventListener("click", () => { st.page = "home"; st.vsort = null; st.vf = null; store.set("brochiefs_live_page", "home"); st.sig = ""; render(); });
+    }
+  }
+  function renderPage() {
     if (st.gated) return;
     if (st.view === "studio") { st.sig = ""; return; }
     const room = st.room;
     if (!room) { app.innerHTML = `<div class="gate"><p>Connecting…</p></div>`; return; }
     // Only rebuild when something changed; the clocks tick on their own.
-    const sig = JSON.stringify([seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
+    const sig = JSON.stringify([st.recPeriod, JSON.stringify(st.rec?.best || {}), st.page, st.biFilter, st.vf, st.vsort, (st.uc || []).length, st.uc?.[0]?.at, seenBase.at, room.feed.length, room.feed[0], room.people, st.seen, st.filter, st.focus, [...st.open], st.shown, st.fresh.size, st.ok, st.cached, st.alert, st.copied, st.menu, st.refreshing, st.range, st.metric, st.wk?.at, st.asks.length, st.asks[0]?.ts, st.poll && JSON.stringify(st.poll), st.audit?.problems?.length || 0, st.auditOpen, JSON.stringify(st.joins || null), JSON.stringify(st.afr || null), st.afrOpen, JSON.stringify(st.ops || null), st.opsOpen, st.csOpen, JSON.stringify(st.audit?.cards || null), Object.keys(st.games).length, Math.floor(Date.now() / 60000)]);
     if (sig === st.sig) return;
     st.sig = sig;
     const now = Date.now(), from = now - DAY, today0 = dayOf(now);
@@ -1277,7 +1678,7 @@ html, body { overflow-x: hidden; }
     const wFrom = today0 - 6 * DAY;
     const wv = wk ? [
       // A visit sent twice (a retry after a dropped connection) shows once.
-      ...Object.entries(wk.sessions).flatMap(([n, list]) => list.filter(([at], i) => !list.slice(0, i).some(([b]) => Math.abs(b - at) < 5000)).map(([at, ms, f]) => ({ n, start: at, end: at + Math.max(ms, 1000), f: f || [] }))),
+      ...Object.entries(wk.sessions).flatMap(([n, list]) => list.filter(([at], i) => !list.slice(0, i).some(([b]) => Math.abs(b - at) < 5000)).map(([at, ms, f, sty]) => ({ n, start: at, end: at + Math.max(ms, 1000), f: f || [], st: sty === "pro" ? "pro" : "classic" }))),
       ...inNow.map((n) => ({ n, start: people[n].since, end: now, f: [], live: true })),
       // Visits from the last day the session log has not caught yet: one
       // put away without a goodbye (an app closed or a phone that slept)
@@ -1298,6 +1699,11 @@ html, body { overflow-x: hidden; }
     for (const e of actions) { const h = hours.find((x) => e.at >= x.start && e.at < x.start + HOUR); if (h) { h.n++; h.who.add(e.n); } }
     const peak = hours.reduce((m, h) => (h.n > m.n ? h : m), { n: 0 });
     const last = order.find((n) => !people[n]?.in && lastSeen(n));
+    const lastAt = last ? lastSeen(last) : 0;
+    // Changed since the last visit to Live: a different person, or a later
+    // visit (a minute of slack, so the same visit never reads as new).
+    const lastFresh = !!last && !!lastInBase && (lastInBase.n !== last || lastAt - (lastInBase.at || 0) > 60000);
+    if (last) { try { store.set(LASTIN_KEY, JSON.stringify({ n: last, at: lastAt })); } catch {} }
     // The headline: who is in now as a slim banner, then six numbers in one
     // compact panel (a tap or hover gives the detail).
     const amt = (ms) => (ms >= HOUR ? `${(ms / HOUR).toFixed(1)}<small>h</small>` : ms >= 60000 ? `${Math.round(ms / 60000)}<small>m</small>` : `${Math.round(ms / 1000)}<small>s</small>`);
@@ -1313,7 +1719,10 @@ html, body { overflow-x: hidden; }
       const when = new Date(kpiBase.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
       return `<i class="kt ${d > 0 ? "up" : "dn"}" title="Since your last check at ${esc(when)}">${d > 0 ? "▲" : "▼"} ${Math.abs(d)}${kind === "ms" ? "m" : ""}</i>`;
     };
-    const ks = (label, value, sub, tip, tr = "") => `<div class="ks"${tip ? ` data-tip="${esc(tip)}"` : ""}><em>${label}</em><b class="num">${value}${tr}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
+    const ks = (label, value, sub, tip, tr = "", sp = "") => `<div class="ks"${tip ? ` data-tip="${esc(tip)}"` : ""}><em>${label}</em><b class="num">${value}${tr}</b>${sub ? `<span>${sub}</span>` : ""}${sp}</div>`;
+    // A 24 hour sparkline under a number: the shape of the day at a glance.
+    const spark = (vals) => { const mx = Math.max(1, ...vals), w = 100, h = 22, step = w / (vals.length - 1); const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(h - (v / mx) * (h - 2) - 1).toFixed(1)}`).join(" "); return `<svg class="spk" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,${h} ${pts} ${w},${h}" class="spk-a"/><polyline points="${pts}" class="spk-l"/></svg>`; };
+    const visitsByHour = hours.map((x) => vs.filter((v) => v.start >= x.start && v.start < x.start + HOUR).length);
     const todayTip = `<b>In today</b>${inToday.length ? inToday.map(name).join(", ") : "Nobody yet"}${names.length > inToday.length ? `<br>Not yet: ${names.filter((n) => !inToday.includes(n)).map(name).join(", ")}` : ""}`;
     const stats = wk ? (() => {
       const t = wv.reduce((a, v) => a + wTime(v), 0);
@@ -1329,16 +1738,16 @@ html, body { overflow-x: hidden; }
       ].join("");
     })() : [
       ks("In today", `${inToday.length}<small>/${names.length}</small>`, "players", todayTip, trend("today", inToday.length)),
-      ks("Visits · 24h", vs.length, `${new Set(vs.map((v) => v.n)).size} people`, "", trend("visits", vs.length)),
+      ks("Visits · 24h", vs.length, `${new Set(vs.map((v) => v.n)).size} people`, "", trend("visits", vs.length), spark(visitsByHour)),
       ks("Time in app", time ? amt(time) : "–", "24 hours", "", trend("time", time, "ms")),
       ks("Avg visit", vs.length ? amt(time / vs.length) : "–", "per visit", "", trend("avg", vs.length ? time / vs.length : null, "ms")),
       ks("Peak hour", peak.n ? hourLab(peak.start) : "–", peak.n ? `${peak.who.size} ${peak.who.size === 1 ? "person" : "ppl"}` : "", peak.n ? `<b>${hourLab(peak.start)} hour</b>${peak.n} actions · ${[...peak.who].map(name).join(", ")}` : ""),
-      ks("Actions", actions.length, "24 hours", "", trend("actions", actions.length)),
+      ks("Actions", actions.length, "24 hours", "", trend("actions", actions.length), spark(hours.map((h) => h.n))),
     ].join("");
     kpiNow = { at: now, mode, vals };
     const kpis = `<section class="kpis" id="sec-now">
       <div class="kpi now${inNow.length ? " on" : ""}"><div class="now-l"><b class="num">${inNow.length}</b><em>in now</em></div>
-        ${inNow.length ? `<div class="avs">${inNow.map((n) => `<span class="inp">${av(n, "sm", true)}${esc(name(n))}<small class="num" data-since="${people[n].since}">${clock(now - people[n].since)}</small></span>`).join("")}</div>` : `<span class="now-last">${last ? `Last in: <b>${esc(name(last))}</b> · ${esc(ago(lastSeen(last)))}` : "Nobody yet"}</span>`}</div>
+        ${inNow.length ? `<div class="avs">${inNow.map((n) => `<span class="inp">${av(n, "sm", true)}${esc(name(n))}<small class="num" data-since="${people[n].since}">${clock(now - people[n].since)}</small></span>`).join("")}</div>` : `<span class="now-last${lastFresh ? " fresh" : ""}">${last ? `Last in: <b>${esc(name(last))}</b> · ${esc(ago(lastSeen(last)))}${lastFresh ? `<em>new</em>` : ""}` : "Nobody yet"}</span>`}<!--NB--></div>
       <div class="kstats">${stats}</div>
     </section>`;
     // The timeline: one lane per player, a block per visit.
@@ -1353,33 +1762,10 @@ html, body { overflow-x: hidden; }
     const nights = [];
     for (let d = dayOf(tFrom); d < now; d += DAY) { const a = Math.max(d, tFrom), b = Math.min(d + 7 * HOUR, now); if (b > a) nights.push([a, b]); }
     const tickLab = (t) => { const d = new Date(t), h = d.getHours(), m = d.getMinutes(); return m ? `${h % 12 || 12}:${String(m).padStart(2, "0")}` : hourLab(t); };
-    const lanes = order.map((n) => {
-      const mine = vs.filter((v) => v.n === n && vEnd(v) >= tFrom);
-      // Visits a couple of minutes apart are one sitting: one bar. Its
-      // height says how long they were really in: a dot for a quick look,
-      // a short bar under five minutes, full height past that.
-      const groups = [];
-      for (const v of mine.slice().sort((a, b) => a.start - b.start)) {
-        const g = groups[groups.length - 1];
-        // Close enough to touch on screen: one bar (about 2% of the width, at least 2 minutes).
-        if (g && v.start - g.end < Math.max(2 * 60000, tSpan * 0.02)) { g.list.push(v); g.end = Math.max(g.end, vEnd(v)); g.live = g.live || v.live; }
-        else groups.push({ list: [v], start: v.start, end: vEnd(v), live: !!v.live });
-      }
-      const blocks = groups.map((g) => {
-        const first = g.list[0], id = `${first.n}|${first.start}`;
-        const inApp = g.list.reduce((t, v) => t + (vEnd(v) - v.start), 0);
-        const acts = g.list.reduce((t, v) => t + v.acts.length, 0);
-        const size = g.live || inApp >= 5 * 60000 ? "" : inApp < 60000 ? " peek" : " short";
-        const tip = `<b>${esc(name(n))}${g.live ? " · in now" : ""}</b>${g.list.length > 1 ? `${g.list.length} visits · ` : ""}${esc(hm(g.start))}${g.live ? "" : ` to ${esc(hm(g.end))}`} · ${esc(dur(inApp))} in the app<br>${acts} action${acts === 1 ? "" : "s"}${first.app ? ` · ${first.app === "home" ? "home screen app" : "browser"}` : ""}`;
-        return `<i class="blk${size}${g.live ? " live" : ""}${g.list.some((v) => st.focus === `${v.n}|${v.start}`) ? " focus" : ""}" style="${g.live ? `right:0;width:max(10px, ${(100 - xp(g.start)).toFixed(3)}%)` : `left:min(${xp(g.start)}%, calc(100% - ${size ? 14 : 8}px));width:${(xp(g.end) - xp(g.start)).toFixed(3)}%`}" data-v="${esc(id)}" data-tip="${esc(tip)}">${g.list.length > 1 && !g.live ? `<b class="blk-n">${g.list.length}</b>` : ""}</i>`;
-      }).join("");
-      // Nobody in the window: the lane steps back.
-      return `${laneLabel(n).replace('class="ln-l', `class="ln-l${mine.length ? "" : " quiet"}`)}<div class="ln-t${st.filter === n ? " sel" : ""}${mine.length ? "" : " quiet"}">${blocks}</div>`;
-    }).join("");
     // Labels on the hour at the window's step, and the half hours at 3h.
     const labelled = (t) => { const d = new Date(t); return d.getMinutes() ? spanH <= 3 : d.getHours() % every === 0; };
     const axis = marks.filter((t) => labelled(t) && xp(t) < 87 && xp(t) > 4).map((t) => `<span style="left:${xp(t)}%">${tickLab(t)}</span>`).join("") + `<span class="nowl" style="left:100%">NOW</span>`;
-    const seg = `<span class="seg end" role="group" aria-label="Range">${["3h", "6h", "12h", "24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
+    const seg = `<span class="seg end" role="group" aria-label="Range">${["3h", "24h", "7d"].map((r) => `<button type="button" class="${st.range === r ? "on" : ""}" data-range="${r}">${r}</button>`).join("")}</span>`;
     // Features, day by day: how many people used each one (taps in the
     // cell's tooltip). Only features someone used this week show.
     const FEATS = [["Gamecast", /^(gamecast|game-final|gamecast-log)$/], ["Game info", /^(game-info|team-tap|status-tap|insights-open)$/], ["Quick read", /^(quick-read|past-gamecast)$/], ["Game sim", /^sim$/], ["Path to Win", /^path-(run|card|share)$|^path-of-/], ["Head to head", /^h2h$|^sh2h/], ["Win odds", /^wp-/], ["Replay", /^recap-(card|seen)$/], ["Player card", /^player-card$/], ["Leaderboard", /^ranking-expand$|^board-seen$/], ["Pot and standings", /^pot-(open|seen|row)$/], ["Season stats", /^season-(open|seen)$/], ["Side bet", /^side/], ["History", /^history(-season|-ask)?$/], ["Trivia", /^trivia/], ["Lock of the week", /^lock-(set|cleared)$/]];
@@ -1391,9 +1777,10 @@ html, body { overflow-x: hidden; }
       }).filter((r) => r.taps).sort((a, b) => b.total - a.total || b.taps - a.taps);
       if (!rows.length) return "";
       const mx = Math.max(1, ...rows.flatMap((r) => r.cells.map((c) => c.people.size)));
-      return `<div class="sub2" style="margin-top:20px">Features${st.filter ? ` · ${esc(name(st.filter))}` : ""} · people who used each, by day</div>
-        <div class="fg" style="--days:${dayList.length}"><span></span>${dayList.map((d) => `<span class="fg-d${d === today0 ? " t" : ""}">${esc(dShort(d)).slice(0, 3)}</span>`).join("")}<span class="fg-d">WK</span>
-        ${rows.map((r) => `<span class="fg-l">${esc(r.lab)}</span>${r.cells.map((c, i) => `<i class="fg-c${c.people.size ? "" : " z"}" style="--a:${c.people.size ? (0.18 + 0.72 * c.people.size / mx).toFixed(2) : 0}" data-tip="${esc(`<b>${r.lab} · ${dLong(dayList[i])}</b>${c.people.size ? `${[...c.people].map(name).join(", ")} · ${c.taps} tap${c.taps === 1 ? "" : "s"}` : "Nobody"}`)}">${c.people.size || ""}</i>`).join("")}<b class="fg-t">${r.total}</b>`).join("")}</div>`;
+      const ln = (vals) => { const m = Math.max(1, ...vals), w = 100, h = 22; const pts = vals.map((v, k) => `${((k / (vals.length - 1)) * w).toFixed(1)},${(h - (v / m) * (h - 3) - 1.5).toFixed(1)}`).join(" "); return `<svg class="ft-s" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,${h} ${pts} ${w},${h}" class="spk-a"/><polyline points="${pts}" class="spk-l"/></svg>`; };
+      const top = Math.max(1, ...rows.map((r) => r.total));
+      return `<div class="lv-sec"><h3>Features${st.filter ? ` · ${esc(name(st.filter))}` : ""}</h3><span>people who used each · line is by day</span></div>
+        <div class="ft">${rows.map((r) => `<span class="ft-l">${esc(r.lab)}</span>${ln(r.cells.map((c) => c.people.size))}<span class="ft-b"><i style="width:${((r.total / top) * 100).toFixed(0)}%"></i></span><b class="ft-n num" title="${r.taps} taps">${r.total}</b>`).join("")}</div>`;
     };
     // Game day: the league's big day (Saturday for college, Sunday for the
     // NFL), noon to midnight, against the rest of the week.
@@ -1414,9 +1801,9 @@ html, body { overflow-x: hidden; }
       const others = wv.filter((v) => !inWin(v) && (!st.filter || v.n === st.filter));
       const share = Math.round(100 * gv.length / Math.max(1, gv.length + others.length));
       const hr = (h) => `${(h + 12) % 12 || 12}${h + 12 < 12 ? "a" : "p"}`;
-      return `<div class="sub2" style="margin-top:20px">Game day · ${esc(dLong(day))}, noon to midnight</div>
+      return `<div class="lv-sec"><h3>Game day</h3><span>${esc(dLong(day))}, noon to midnight</span></div>
         <div class="gd"><span><b>${who.size}</b>people</span><span><b>${gv.length}</b>visits · ${share}% of the week</span><span><b>${esc(mins(ms) || "0m")}</b>in the app</span><span><b>${hr(pk + 12)}</b>busiest hour</span></div>
-        <div class="gd-bars">${byH.map((n, i) => `<i style="height:${(n / Math.max(1, ...byH) * 100).toFixed(0)}%" data-tip="${esc(`<b>${hr(i + 12)}</b>${n} visit${n === 1 ? "" : "s"}`)}"></i>`).join("")}</div>
+        <div class="gd-l">${(() => { const m = Math.max(1, ...byH); const pts = byH.map((n, k) => `${((k / (byH.length - 1)) * 100).toFixed(1)},${(38 - (n / m) * 34).toFixed(1)}`).join(" "); return `<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,40 ${pts} 100,40" class="spk-a"/><polyline points="${pts}" class="spk-l"/></svg>`; })()}</div>
         <div class="gd-ax"><span>12p</span><span>3p</span><span>6p</span><span>9p</span><span>12a</span></div>
         ${feats.length ? `<div class="gd-f">${feats.map(([l, n]) => `<span>${esc(l)} <b>${n}</b></span>`).join("")}</div>` : ""}`;
     };
@@ -1430,8 +1817,9 @@ html, body { overflow-x: hidden; }
       const val = (x) => (byMin ? x.ms : x.n);
       const maxV = Math.max(1, ...grid.flat().map(val));
       const hmHtml = `<div class="hm">
-        <span></span>${dayList.map((d) => `<span class="hm-h${d === today0 ? " t" : ""}">${esc(dShort(d))}<small>${new Date(d).getDate()}</small></span>`).join("")}
-        ${order.map((n, r) => laneLabel(n) + dayList.map((d, c) => { const x = grid[r][c], v = val(x), a = v ? 0.16 + 0.74 * Math.sqrt(v / maxV) : 0; return `<i class="hm-c${x.n ? "" : " z"}${st.filter && st.filter !== n ? " dim" : ""}" style="${v ? `background:rgba(139, 108, 255, ${a.toFixed(2)})` : ""}" data-tip="${esc(`<b>${name(n)} · ${dLong(d)}</b>${x.n ? `${x.n} visit${x.n === 1 ? "" : "s"} · ${mins(x.ms)} in the app${x.f.length ? `<br>${x.f.slice(0, 5).join(", ")}` : ""}` : "Not in"}`)}">${x.n ? (byMin ? mins(x.ms) : x.n) : ""}</i>`; }).join("")).join("")}
+        <span></span>${dayList.map((d) => `<span class="hm-h${d === today0 ? " t" : ""}" title="${esc(dLong(d))}">${esc(new Date(d).toLocaleDateString([], { weekday: "short" }).slice(0, 2))}<small>${new Date(d).getDate()}</small></span>`).join("")}
+        ${order.map((n, r) => { const t = grid[r].reduce((a, x) => ({ n: a.n + x.n, ms: a.ms + x.ms }), { n: 0, ms: 0 }); return laneLabel(n).replace(/<\/span><\/span><\/button>$/, `</span><small class="hm-lt">${t.n ? `${t.n} visit${t.n === 1 ? "" : "s"} · ${mins(t.ms) || "<1m"}` : "none this week"}</small></span></button>`) + dayList.map((d, c) => { const x = grid[r][c], v = val(x), a = v ? 0.16 + 0.74 * Math.sqrt(v / maxV) : 0; return `<i class="hm-c${x.n ? "" : " z"}${st.filter && st.filter !== n ? " dim" : ""}" style="${v ? `background:rgba(139, 108, 255, ${a.toFixed(2)})` : ""}" data-tip="${esc(`<b>${name(n)} · ${dLong(d)}</b>${x.n ? `${x.n} visit${x.n === 1 ? "" : "s"} · ${mins(x.ms)} in the app${x.f.length ? `<br>${x.f.slice(0, 5).join(", ")}` : ""}` : "Not in"}`)}">${x.n ? (byMin ? mins(x.ms) : x.n) : ""}</i>`; }).join(""); }).join("")}
+        <span class="hm-f">Everyone<small class="hm-lt">${(() => { const t = grid.flat().reduce((a2, x) => ({ n: a2.n + x.n, ms: a2.ms + x.ms }), { n: 0, ms: 0 }); return `${t.n} visits · ${mins(t.ms) || "<1m"}`; })()}</small></span>${dayList.map((d, c) => { const t = grid.reduce((a, row) => ({ n: a.n + row[c].n, ms: a.ms + row[c].ms }), { n: 0, ms: 0 }); return `<b class="hm-s num${d === today0 ? " t" : ""}">${t.n ? (byMin ? mins(t.ms) : t.n) : "–"}</b>`; }).join("")}
       </div>`;
       // When in the day: a punch card, a row per day and a column per hour,
       // a bigger, brighter dot for more visits starting in that hour.
@@ -1442,31 +1830,68 @@ html, body { overflow-x: hidden; }
         if (r < 0) continue;
         const c = pc[r][new Date(v.start).getHours()]; c.n++; c.who.add(v.n);
       }
-      const maxP = Math.max(1, ...pc.flat().map((c) => c.n)), nowH = new Date(now).getHours();
+      // As lines: the week's visits by hour (filled), today on top in green.
       const hourLabel = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
-      const pcHtml = `<div class="pc">
-        ${pc.map((row, r) => { const d = dayList[r], tot = row.reduce((a, c) => a + c.n, 0); return `<span class="pc-l${d === today0 ? " t" : ""}"><b>${esc(dShort(d))}</b><small>${tot}</small></span>${row.map((c) => { const k = c.n ? Math.sqrt(c.n / maxP) : 0; return `<i class="pc-c${d === today0 && c.h === nowH ? " now" : ""}${d === today0 && c.h > nowH ? " fut" : ""}"${c.n ? ` data-tip="${esc(`<b>${dLong(d)} · ${hourLabel(c.h)}</b>${c.n} visit${c.n === 1 ? "" : "s"} · ${[...c.who].map(name).join(", ")}`)}"` : ""}><s style="${c.n ? `width:${(30 + 70 * k).toFixed(0)}%;height:${(30 + 70 * k).toFixed(0)}%;opacity:${(0.45 + 0.55 * k).toFixed(2)}` : ""}"></s></i>`; }).join("")}`; }).join("")}
-        <span></span>${Array.from({ length: 24 }, (_, h) => `<span class="pc-x">${h % 3 === 0 ? hourLabel(h) : ""}</span>`).join("")}
-      </div>`;
+      const wkH = Array.from({ length: 24 }, (_, h) => pc.reduce((a, row) => a + row[h].n, 0));
+      const tdH = (pc[dayList.indexOf(today0)] || []).map((c) => c.n);
+      const mxW = Math.max(1, ...wkH), mxT = Math.max(1, ...tdH, 1);
+      const pts = (vals, mx) => vals.map((v, i) => `${((i / 23) * 100).toFixed(1)},${(58 - (v / mx) * 54).toFixed(1)}`).join(" ");
+      const peakH = wkH.indexOf(Math.max(...wkH));
+      const pkX = (peakH / 23) * 100, pkY = 58 - (wkH[peakH] / mxW) * 54;
+      const pcHtml = `<div class="wl"><div class="wl-c"><svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true">${[15, 30, 45].map((y) => `<line x1="0" x2="100" y1="${y}" y2="${y}" class="wl-g"/>`).join("")}${[25, 50, 75].map((x) => `<line y1="0" y2="60" x1="${x}" x2="${x}" class="wl-g"/>`).join("")}<polyline points="0,60 ${pts(wkH, mxW)} 100,60" class="spk-a"/><polyline points="${pts(wkH, mxW)}" class="spk-l"/>${tdH.length ? `<polyline points="${pts(tdH, Math.max(mxT, mxW / 7))}" class="wl-t"/>` : ""}</svg><i class="wl-pk" style="left:${pkX.toFixed(1)}%;top:${(pkY / 60 * 100).toFixed(1)}%"><b>${wkH[peakH]}</b></i></div>
+        <div class="pl-ax">${[0, 6, 12, 18].map((h) => `<span>${hourLabel(h)}</span>`).join("")}<span>11p</span></div>
+        <div class="wl-k"><span><i class="a"></i>7 days</span><span><i class="t"></i>today</span><span>busiest ${hourLabel(peakH)}</span></div></div>`;
       const firstTap = (wk.feed || []).reduce((m, e) => Math.min(m, e.at), now);
-      return `<div class="sub2 row">Who was in, day by day ${st.filter ? "" : "· tap a name to follow one person"}<span class="seg sm" role="group" aria-label="Show"><button type="button" class="${byMin ? "" : "on"}" data-metric="visits">Visits</button><button type="button" class="${byMin ? "on" : ""}" data-metric="min">Minutes</button></span></div>${hmHtml}
-        <div class="sub2" style="margin-top:20px">When in the day${st.filter ? ` · ${esc(name(st.filter))}` : " · everyone"} · visits by hour</div>
+      return `<div class="wk-g"><div class="wk-main"><div class="lv-sec row"><h3>Who was in</h3><span>${st.filter ? "" : "tap a name to follow one person"}</span><span class="seg sm" role="group" aria-label="Show"><button type="button" class="${byMin ? "" : "on"}" data-metric="visits">Visits</button><button type="button" class="${byMin ? "on" : ""}" data-metric="min">Minutes</button></span></div>${hmHtml}
+        </div><div class="wk-side"><div class="lv-sec"><h3>When in the day</h3><span>${st.filter ? esc(name(st.filter)) : "everyone"} · visits by hour</span></div>
         ${pcHtml}
+        ${gameDay()}</div><div class="wk-full">
         ${featGrid()}
-        ${gameDay()}
-        ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:10px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}`;
+        ${firstTap > wFrom + HOUR ? `<div class="note" style="margin-top:10px">Visits above go back all 7 days. Tap by tap detail in the visit list starts ${esc(dLong(dayOf(firstTap)))}.</div>` : ""}</div></div>`;
     };
-    const timeline = wk || st.range === "7d" ? `<section class="tl panel" id="sec-tl">
+    // The last 24 hours: one line per person (actions each hour), in the
+    // same style as the headline sparklines; quiet people fold away.
+    const personLines = () => {
+      const rows = order.map((n) => {
+        const vals = hours.map((h) => actions.filter((e) => e.n === n && e.at >= h.start && e.at < h.start + HOUR).length);
+        const ms = vs.filter((v) => v.n === n).reduce((t, v) => t + (vEnd(v) - Math.max(v.start, from)), 0);
+        return { n, vals, tot: vals.reduce((a, b) => a + b, 0), ms };
+      });
+      const busy = rows.filter((r) => r.tot), quiet = rows.filter((r) => !r.tot);
+      const mx = Math.max(1, ...busy.flatMap((r) => r.vals));
+      const line = (vals) => { const w = 100, h = 26, step = w / (vals.length - 1); const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(h - (v / mx) * (h - 2) - 1).toFixed(1)}`).join(" "); return `<svg class="pl-s" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,${h} ${pts} ${w},${h}" class="spk-a"/><polyline points="${pts}" class="spk-l"/></svg>`; };
+      return `<div class="pl">${busy.map((r) => `${laneLabel(r.n)}<div class="pl-r${st.filter && st.filter !== r.n ? " dim" : ""}">${line(r.vals)}<span class="pl-n num">${mins(r.ms) || "<1m"}</span></div>`).join("")}
+        <span></span><div class="pl-ax">${[0, 6, 12, 18].map((i) => `<span>${esc(hourLab(hours[i].start))}</span>`).join("")}<span>now</span></div></div>
+        ${quiet.length ? `<div class="note" style="margin-top:8px">Not in: ${quiet.map((r) => esc(name(r.n))).join(", ")}</div>` : ""}`;
+    };
+    // The last 3 hours: who was in and for how long. A bar per sitting
+    // (visits under two minutes apart join up), its length written on it;
+    // whoever is in now runs green to the now line.
+    const sessionBars = () => {
+      const span = 3 * HOUR, t0 = now - span, xp3 = (t) => ((Math.min(Math.max(t, t0), now) - t0) / span) * 100;
+      const rows = order.map((n) => {
+        const mine = vs.filter((v) => v.n === n && vEnd(v) >= t0).sort((a, b) => a.start - b.start);
+        const sits = [];
+        for (const v of mine) { const g = sits[sits.length - 1]; if (g && v.start - g.end < 2 * 60000) { g.end = Math.max(g.end, vEnd(v)); g.live = g.live || v.live; g.ms += vEnd(v) - v.start; g.acts += v.acts.length; } else sits.push({ start: v.start, end: vEnd(v), live: !!v.live, ms: vEnd(v) - v.start, acts: v.acts.length }); }
+        return { n, sits, ms: sits.reduce((t, g) => t + g.ms, 0) };
+      });
+      const on = rows.filter((r) => r.sits.length), off = rows.filter((r) => !r.sits.length);
+      const ticks = []; const h0 = new Date(t0); h0.setMinutes(h0.getMinutes() >= 30 ? 60 : 30, 0, 0); for (let t = h0.getTime(); t < now - 5 * 60000; t += 30 * 60000) ticks.push(t);
+      const lab = (t) => { const d = new Date(t); return d.getMinutes() ? `${d.getHours() % 12 || 12}:30` : hourLab(t); };
+      if (!on.length) return `<div class="note">Nobody in the last 3 hours.</div>`;
+      return `<div class="sb">${on.map((r) => `${laneLabel(r.n).replace(/<\/span><\/span><\/button>$/, `</span><small class="hm-lt">${mins(r.ms) || "<1m"} in · ${r.sits.length} visit${r.sits.length === 1 ? "" : "s"}</small></span></button>`)}<div class="sb-t${st.filter && st.filter !== r.n ? " dim" : ""}">${ticks.map((t) => `<i class="sb-g" style="left:${xp3(t).toFixed(2)}%"></i>`).join("")}${r.sits.map((g) => { const l = xp3(g.start), w = Math.max(1.6, xp3(g.end) - l), d = mins(g.ms) || "<1m"; return `<b class="sb-b${g.live ? " live" : ""}${w < 9 ? " sm" : ""}${l + w > 84 ? " end" : ""}" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%" title="${esc(`${name(r.n)}: ${hm(g.start)}${g.live ? " to now" : ` to ${hm(g.end)}`}, ${d}, ${g.acts} actions`)}"><span>${g.live ? "● " : ""}${esc(d)}</span></b>`; }).join("")}</div>`).join("")}
+        <span></span><div class="sb-ax">${ticks.map((t) => `<span style="left:${xp3(t).toFixed(2)}%">${lab(t)}</span>`).join("")}<span class="nw" style="left:100%">now</span></div></div>
+        ${off.length ? `<div class="note" style="margin-top:8px">Not in: ${off.map((r) => esc(name(r.n))).join(", ")}</div>` : ""}`;
+    };
+    const timeline = st.range === "3h" ? `<section class="tl panel" id="sec-tl">
+      <div class="ph"><h2>Last 3 hours</h2><span class="sub">who was in, and for how long</span>${seg}</div>
+      ${sessionBars()}
+    </section>` : wk || st.range === "7d" ? `<section class="tl panel" id="sec-tl">
       <div class="ph"><h2>Last 7 days</h2>${seg}</div>
       ${weekView()}
     </section>` : `<section class="tl panel" id="sec-tl">
-      <div class="ph"><h2>Last ${spanH} hours</h2>${seg}</div>
-      <div class="tl-hint"><span>● quick look · ▮ visit, taller is longer · number = visits</span><span class="key"><i></i>visit <i class="lv"></i>live</span></div>
-      <div class="tl-grid">
-        <span></span><div class="tl-ax">${axis}</div>
-        <div class="tl-over">${nights.map(([a, b]) => `<i class="night" style="left:${xp(a)}%;width:${(xp(b) - xp(a)).toFixed(3)}%"></i>`).join("")}${marks.map((t) => `<i class="hr${new Date(t).getHours() === 0 ? " mid" : ""}" style="left:${xp(t)}%"></i>`).join("")}<i class="now"></i></div>
-        ${lanes}
-      </div>
+      <div class="ph"><h2>Last 24 hours</h2><span class="sub">actions each hour</span>${seg}</div>
+      ${personLines()}
     </section>`;
 
     // Side charts: actions by hour, what got used most, how they open it.
@@ -1496,9 +1921,20 @@ html, body { overflow-x: hidden; }
       const rows = [...cards].sort((a, b) => (need(a).length ? 0 : 1) - (need(b).length ? 0 : 1) || a.picks - b.picks || a.name.localeCompare(b.name));
       const n = Math.max(...cards.map((c) => c.of));
       const cell = (ok, txt = "") => `<i class="${ok ? "y" : "n"}">${txt}</i>`;
+      // A missing pick is a button: tap it to see which game it is.
+      const slotCell = (c, ok, k) => ok ? cell(true) : `<button type="button" class="n${st.csMiss === `${c.name}|${k}` ? " on" : ""}" data-csmiss="${esc(c.name)}|${k}" aria-label="${esc(name(c.name))} is missing game ${k + 1}"></button>`;
+      const miss = (() => {
+        if (!st.csMiss) return "";
+        const [who, k] = st.csMiss.split("|"); const sl = st.audit.slots?.[Number(k)];
+        if (!rows.some((c) => c.name === who)) return "";
+        const ko = sl?.kickoff ? new Date(sl.kickoff) : null;
+        const when = ko ? `${ko.toLocaleDateString([], { weekday: "short" })} ${hm(ko.getTime())}` : "";
+        const all = rows.filter((c) => !(c.slots || [])[Number(k)]).map((c) => name(c.name));
+        return `<div class="cs-miss"><b>${esc(name(who))}</b> is missing <b>G${sl?.id ?? Number(k) + 1}</b>${sl ? ` · ${esc(sl.game)}` : ""}${when ? ` · <span style="white-space:nowrap">${esc(when)}</span>` : ""}${all.length > 1 ? `<small>Also missing it: ${esc(all.filter((n) => n !== name(who)).join(", "))}</small>` : ""}</div>`;
+      })();
       const grid = `<div class="cs-grid" style="--n:${n};--x:${lr ? 2 : 1}"><span></span>${Array.from({ length: n }, (_, k) => `<em>${k + 1}</em>`).join("")}<em>TB</em>${lr ? "<em>🔒</em>" : ""}
-        ${rows.map((c) => `<b class="${need(c).length ? "" : "all"}" title="${c.last ? `last saved ${esc(afrDay(c.last) + " " + hm(c.last))}` : "nothing saved"}">${esc(name(c.name))}</b>${(c.slots || Array.from({ length: c.of }, (_, k) => k < c.picks)).map((x) => cell(x)).join("")}${cell(c.tb, c.tb ? "✓" : "")}${lr ? cell(c.lock, c.lock ? "✓" : "") : ""}`).join("")}</div>`;
-      return `<section class="cs cs-${where}"><div class="cs-h"><b>WEEK ${st.audit.week} CARDS</b><small class="${done === cards.length ? "all" : ""}">${done}/${cards.length} done</small>${done < cards.length ? `<button type="button" class="cs-cp" data-csnudge="1">${st.copied === "cs" ? "✓ copied" : "Copy nudges"}</button>` : ""}</div>${grid}</section>`;
+        ${rows.map((c) => `<b class="${need(c).length ? "" : "all"}" title="${c.last ? `last saved ${esc(afrDay(c.last) + " " + hm(c.last))}` : "nothing saved"}">${esc(name(c.name))}</b>${(c.slots || Array.from({ length: c.of }, (_, k) => k < c.picks)).map((x, k) => slotCell(c, x, k)).join("")}${cell(c.tb, c.tb ? "✓" : "")}${lr ? cell(c.lock, c.lock ? "✓" : "") : ""}`).join("")}</div>`;
+      return `<section class="cs cs-${where}"><div class="cs-h"><b>WEEK ${st.audit.week} CARDS</b><small class="${done === cards.length ? "all" : ""}">${done}/${cards.length} done</small>${done < cards.length ? `<button type="button" class="cs-cp" data-csnudge="1">${st.copied === "cs" ? "✓ copied" : "Copy nudges"}</button>` : ""}</div>${grid}${miss}</section>`;
     };
     // Health: Worker failures, failed or slow ESPN and Worker calls, slow
     // loads and script errors, from the Worker itself and from phones.
@@ -1507,11 +1943,12 @@ html, body { overflow-x: hidden; }
       if (!st.chats) return "";
       const rows = st.chats;
       const day = rows.filter((r) => Date.now() - r.at < 86400000);
-      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-chattoggle="1" aria-expanded="${!!st.chatOpen}"><span class="afr-car">${st.chatOpen ? "▾" : "▸"}</span><b>&gt; bi</b>${st.chatOpen ? "" : `<small>${day.length ? `${day.length} q · ${new Set(day.map((r) => r.asker)).size} ppl · 24h` : "none · 24h"}${rows.some((r) => r.flagged) ? ` · ${rows.filter((r) => r.flagged).length} 🚩` : ""}</small>`}</button>${st.chatOpen && rows.some((r) => r.flagged) ? `<button type="button" class="afr-cp flag" data-chatcopy="flagged">${st.copied === "chat:flagged" ? "✓ copied" : `copy 🚩${rows.filter((r) => r.flagged).length}`}</button>` : ""}${st.chatOpen && rows.length ? `<button type="button" class="afr-cp" data-chatcopy="1">${st.copied === "chat" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
+      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-chattoggle="1" aria-expanded="${!!st.chatOpen}"><span class="afr-car">${st.chatOpen ? "▾" : "▸"}</span><b>Chats</b>${st.chatOpen ? "" : `<small>${day.length ? `${day.length} q · ${new Set(day.map((r) => r.asker)).size} ppl${day.some((r) => r.asker !== "Jake") ? ` · <b class="chat-oth">🧠 ${day.filter((r) => r.asker !== "Jake").length} from others</b>` : ""} · 24h` : "none · 24h"}${rows.some((r) => r.flagged) ? ` · ${rows.filter((r) => r.flagged).length} 🚩` : ""}</small>`}</button>${st.chatOpen && rows.some((r) => r.flagged) ? `<button type="button" class="afr-cp flag" data-chatcopy="flagged">${st.copied === "chat:flagged" ? "✓ copied" : `copy 🚩${rows.filter((r) => r.flagged).length}`}</button>` : ""}${st.chatOpen && rows.length ? `<button type="button" class="afr-cp" data-chatcopy="1">${st.copied === "chat" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
       if (!st.chatOpen) return `<section class="afr chat shut">${head}</section>`;
       const groups = [];
-      for (const r of rows) { const k = r.sid || r.id; let g = groups.find((x) => x.k === k); if (!g) groups.push(g = { k, rows: [] }); g.rows.push(r); }
-      return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; return `<div class="afr-day">${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div class="afr-r chat-r${r.flagged ? " flagged" : ""}"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b><span class="chat-la${r.status && r.status !== "answered" ? " miss" : ""}">${esc(r.a ?? (r.status === "asked" && Date.now() - r.at < 60000 ? "(answering…)" : "(no answer: they left before it finished)"))}</span>${r.flagged ? `<em class="chat-note">🚩 ${esc(r.note || "flagged")}</em>` : ""}${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><span class="chat-btns"><button type="button" class="afr-one" data-chatflag="${esc(r.id)}" aria-pressed="${!!r.flagged}" aria-label="${r.flagged ? "Unflag" : "Flag as wrong"}">${r.flagged ? "unflag" : "🚩"}</button><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></span></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
+      const keep = st.biFilter === "others" ? (r) => r.asker !== "Jake" : st.biFilter === "flagged" ? (r) => r.flagged : () => true;
+      for (const r of rows.filter(keep)) { const k = r.sid || r.id; let g = groups.find((x) => x.k === k); if (!g) groups.push(g = { k, rows: [] }); g.rows.push(r); }
+      return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; const other = first.asker !== "Jake"; return `<div class="afr-day${other ? " chat-other" : " chat-me"}">${other ? "🧠 " : ""}${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div class="afr-r chat-r${r.flagged ? " flagged" : ""}${other ? " other" : " me"}"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b><span class="chat-la${r.status && r.status !== "answered" ? " miss" : ""}">${esc(r.a ?? (r.status === "asked" && Date.now() - r.at < 60000 ? "(answering…)" : "(no answer: they left before it finished)"))}</span>${r.flagged ? `<em class="chat-note">🚩 ${esc(r.note || "flagged")}</em>` : ""}${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><span class="chat-btns"><button type="button" class="afr-one" data-chatflag="${esc(r.id)}" aria-pressed="${!!r.flagged}" aria-label="${r.flagged ? "Unflag" : "Flag as wrong"}">${r.flagged ? "unflag" : "🚩"}</button><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></span></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
     };
     const opsPanel = () => {
       if (!st.ops) return "";
@@ -1520,7 +1957,7 @@ html, body { overflow-x: hidden; }
       const day = rows.filter((r) => Date.now() - r.at < 86400000 && !r.closed);
       const openIds = rows.filter((r) => !r.closed && r.id).map((r) => r.id);
       const bad = day.filter((r) => (OPS_KIND[r.k] || [])[1] === "err").length;
-      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-opstoggle="1" aria-expanded="${!!st.opsOpen}"><span class="afr-car">${st.opsOpen ? "▾" : "▸"}</span><b>&gt; health</b><small>${day.length ? `${bad} fail · ${day.length - bad} slow · 24h` : "all clear · 24h"}</small></button>${st.opsOpen && openIds.length ? `<button type="button" class="afr-cp" data-opscloseall="1">close all</button>` : ""}${st.opsOpen && rows.length ? `<button type="button" class="afr-cp" data-opscopy="1">${st.copied === "ops" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
+      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-opstoggle="1" aria-expanded="${!!st.opsOpen}"><span class="afr-car">${st.opsOpen ? "▾" : "▸"}</span><b>Health</b><small>${day.length ? `${bad} fail · ${day.length - bad} slow · 24h` : "all clear · 24h"}</small></button>${st.opsOpen && openIds.length ? `<button type="button" class="afr-cp" data-opscloseall="1">close all</button>` : ""}${st.opsOpen && rows.length ? `<button type="button" class="afr-cp" data-opscopy="1">${st.copied === "ops" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
       if (!st.opsOpen) return `<section class="afr ops shut${bad ? " hot" : ""}">${head}</section>`;
       // Closed entries are dealt with: out of the way unless asked for.
       const nClosed = rows.filter((r) => r.closed).length;
@@ -1538,7 +1975,7 @@ html, body { overflow-x: hidden; }
       const days = [];
       for (const r of rows) { const k = afrDay(r.at); if (days[days.length - 1]?.k !== k) days.push({ k, rows: [] }); days[days.length - 1].rows.push(r); }
       const open = rows.filter((r) => !afrFix(r)).length;
-      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-afrtoggle="1" aria-expanded="${!!st.afrOpen}"><span class="afr-car">${st.afrOpen ? "▾" : "▸"}</span><b>&gt; admin_friction</b><small>${open} open</small></button>${st.afrOpen && rows.length ? `<button type="button" class="afr-cp" data-afrcopy="1">${st.copied === "afr" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
+      const head = `<div class="afr-h"><button type="button" class="afr-tg" data-afrtoggle="1" aria-expanded="${!!st.afrOpen}"><span class="afr-car">${st.afrOpen ? "▾" : "▸"}</span><b>Your friction</b><small>${open} open</small></button>${st.afrOpen && rows.length ? `<button type="button" class="afr-cp" data-afrcopy="1">${st.copied === "afr" ? "✓ copied" : "copy all"}</button>` : ""}</div>`;
       if (!st.afrOpen) return `<section class="afr shut">${head}</section>`;
       return `<section class="afr">${head}
         ${rows.length ? days.map((g) => `<div class="afr-day">${esc(g.k)}</div>${g.rows.map((r) => `<div class="afr-r${afrFix(r) ? " fixed" : ""}"><button type="button" class="afr-cb" data-afrfix="${r.at}" aria-pressed="${!!afrFix(r)}" title="${afrFix(r)?.commit ? `Fixed in ${esc(afrFix(r).commit)}: ${esc(afrFix(r).note || "")}` : afrFix(r) ? "Ticked as fixed" : "Mark fixed"}"${afrFix(r)?.commit ? " disabled" : ""}>${afrFix(r) ? "✓" : ""}</button><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-k ${AFR_KIND[r.k || "dead-tap"]?.[1] || ""}">${AFR_KIND[r.k || "dead-tap"]?.[0] || esc(r.k)}</span><span class="afr-d">${esc(r.d || "")}${r.screen ? ` <i>${esc(SCREENS[r.screen] || r.screen)}</i>` : ""}${afrFix(r)?.commit ? ` <i class="afr-fx">fixed ${esc(afrFix(r).commit)}</i>` : ""}</span><button type="button" class="afr-one" data-afrone="${r.at}" aria-label="Copy this one">${st.copied === `afr:${r.at}` ? "✓" : "copy"}</button></div>`).join("")}`).join("") : `<p class="afr-none">Nothing broke for you. No errors, rage taps, dead taps or sudden closes.</p>`}</section>`;
@@ -1567,7 +2004,7 @@ html, body { overflow-x: hidden; }
       const visNew = vs.filter((v) => !v.live && v.end > seenBase.at).length;
       const fNew = (room.feed || []).filter((e) => FRICTION.test(e.k) && e.at > seenBase.at).length;
       const aNew = (st.asks || []).filter((x) => x.ts > seenBase.at).length;
-      const parts = [visNew && `<button type="button" data-jump="sec-visits">👀 ${visNew} new visit${visNew === 1 ? "" : "s"}</button>`, fNew && `<button type="button" data-jump="sec-stats" class="warn">⚠ ${fNew} new issue${fNew === 1 ? "" : "s"}</button>`, aNew && `<button type="button" data-jump="sec-stats">💬 ${aNew} new question${aNew === 1 ? "" : "s"}</button>`].filter(Boolean);
+      const parts = [visNew && `<button type="button" data-jump="sec-visits">👀 ${visNew} new visit${visNew === 1 ? "" : "s"}</button>`, fNew && `<button type="button" data-jump="issues" class="warn">⚠ ${fNew} new issue${fNew === 1 ? "" : "s"}</button>`, aNew && `<button type="button" data-jump="sec-stats">💬 ${aNew} new question${aNew === 1 ? "" : "s"}</button>`].filter(Boolean);
       if (!parts.length) return "";
       const ago = Date.now() - seenBase.at;
       return `<section class="newstrip"><span class="ns-h">NEW SINCE ${ago < 86400000 ? hm(seenBase.at).toUpperCase() : new Date(seenBase.at).toLocaleDateString([], { weekday: "short" }).toUpperCase() + " " + hm(seenBase.at).toUpperCase()}</span>${parts.join("")}<button type="button" class="ns-ok" data-seenall="1">✓ Seen</button></section>`;
@@ -1600,7 +2037,22 @@ html, body { overflow-x: hidden; }
       for (const v of wv) for (const l of new Set(v.f.map(featLab).filter(Boolean))) used.set(l, (used.get(l) || 0) + 1);
       const tp = [...used.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), mf = tp[0]?.[1] || 1;
       const lab = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
+      // Pro trial: the same week split by the style each visit ran in.
+      // Quick exit = a visit under 30s; issues = friction in the visit.
+      const styleRow = (k) => {
+        const l = wv.filter((v) => (v.st || "classic") === k), n = l.length;
+        const ms = l.reduce((a, v) => a + (v.end - v.start), 0), qe = l.filter((v) => v.end - v.start < 30000).length;
+        const iss = l.reduce((a, v) => a + (wk.feed || []).filter((e) => e.n === v.n && e.at >= v.start && e.at <= v.end + 2000 && FRICTION.test(e.k)).length, 0);
+        return { k, n, who: new Set(l.map((v) => v.n)).size, avg: n ? ms / n / 60000 : 0, qe, iss };
+      };
+      const sr = ["pro", "classic"].map(styleRow);
+      const stylePanel = sr[0].n ? `<section class="panel"><div class="ph"><h2>Pro vs Classic</h2><span class="sub">style trial, last 7 days</span></div>
+        <div class="styt"><div><span></span><b>Visits</b><b>People</b><b>Avg min</b><b>Exits</b><b>Issues</b></div>
+        ${sr.map((r) => `<div><span>${r.k === "pro" ? "Pro" : "Classic"}</span><b>${r.n}</b><b>${r.who}</b><b>${r.avg.toFixed(1)}</b><b>${r.n >= 10 ? Math.round((r.qe / r.n) * 100) + "%" : r.qe}</b><b>${r.n >= 10 ? (r.iss / r.n).toFixed(2) : r.iss}</b></div>`).join("")}</div>
+        <div class="note">Exits: visits under 30s. Issues: rage, dead taps and errors per visit. Counts under 10 visits.</div>
+      </section>` : "";
       return `<aside class="rail" id="sec-stats">
+      ${stylePanel}
       <section class="panel"><div class="ph"><h2>Visits by hour</h2><span class="sub">time of day, last 7 days</span></div>
         <div class="bars">${byH.map((x) => `<i class="${x.n ? "" : "zero"}${x.h === curH ? " cur" : ""}" data-tip="${esc(`<b>${lab(x.h)}</b>${x.n} visit${x.n === 1 ? "" : "s"}${x.who.size ? ` · ${[...x.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((x.n / mx) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
         <div class="bars-ax"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>
@@ -1618,14 +2070,8 @@ html, body { overflow-x: hidden; }
     for (const e of actions) { if (SCREENS[e.k] || FRICTION.test(e.k) || /^(depth|sheet-time)$/.test(e.k)) continue; const [a] = says(e, feed); counts.set(a, (counts.get(a) || 0) + 1); }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), maxF = top[0]?.[1] || 1;
     const home = vs.filter((v) => v.app === "home").length, web = vs.filter((v) => v.app === "browser").length;
+    // The day's charts live on Overview; Stats keeps what goes deeper.
     const rail = wk ? railWeek() : `<aside class="rail" id="sec-stats">
-      <section class="panel"><div class="ph"><h2>Activity by hour</h2><span class="sub">actions, last 24h</span></div>
-        <div class="bars">${hours.map((h, i) => `<i class="${h.n ? "" : "zero"}${i === 23 ? " cur" : ""}" data-tip="${esc(`<b>${hourLab(h.start)}${i === 23 ? " · this hour" : ""}</b>${h.n} action${h.n === 1 ? "" : "s"}${h.who.size ? ` · ${[...h.who].map(name).join(", ")}` : ""}`)}"><b style="height:${((h.n / maxH) * 100).toFixed(1)}%"></b></i>`).join("")}</div>
-        <div class="bars-ax"><span>${hourLab(hours[0].start)}</span><span>${hourLab(hours[6].start)}</span><span>${hourLab(hours[12].start)}</span><span>${hourLab(hours[18].start)}</span><span>now</span></div>
-      </section>
-      <section class="panel"><div class="ph"><h2>Most used</h2><span class="sub">last 24h</span></div>
-        ${top.length ? `<div class="rank">${top.map(([a, n]) => `<div><span>${esc(a)}</span><b>${n}</b><i><s style="width:${((n / maxF) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>` : `<div class="note">Nothing used yet.</div>`}
-      </section>
       ${home + web ? `<section class="panel"><div class="ph"><h2>Opened from</h2><span class="sub">${home + web} visits</span></div>
         <div class="split"><s style="width:${((home / (home + web)) * 100).toFixed(1)}%;background:var(--past)"></s><s style="flex:1;background:#5b5378"></s></div>
         <div class="split-k"><span><i style="background:var(--past)"></i>Home screen app <b>${home}</b></span><span><i style="background:#5b5378"></i>Browser <b>${web}</b></span></div>
@@ -1636,7 +2082,15 @@ html, body { overflow-x: hidden; }
     </aside>`;
 
     // The feed: one card per visit, newest first.
-    const all = (wk ? visits(wk.feed || [], people) : vs).filter((s) => !st.filter || s.n === st.filter);
+    // Quick filters: every visit, only those with an issue, or 5 minutes+.
+    const vfOk = (s) => st.vf === "iss" ? s.acts.some((a) => /^⚠/.test(a.a)) : st.vf === "long" ? s.live || s.end - s.start >= 5 * 60000 : true;
+    // Sort: newest first (grouped by day), or a flat list by length,
+    // actions or issues.
+    const vLen = (s) => (s.live ? now - (s.since || s.start) : s.end - s.start);
+    const vIss = (s) => s.acts.filter((a) => /^⚠/.test(a.a)).length;
+    const SORTS = { long: (a, b) => vLen(b) - vLen(a), acts: (a, b) => b.acts.length - a.acts.length || vLen(b) - vLen(a), iss: (a, b) => vIss(b) - vIss(a) || b.start - a.start };
+    const all = (wk ? visits(wk.feed || [], people) : vs).filter((s) => (!st.filter || s.n === st.filter) && vfOk(s));
+    if (SORTS[st.vsort]) all.sort(SORTS[st.vsort]);
     // Each visit as plain text, for Copy: who, when, how long, and every
     // line in order.
     st.texts = new Map();
@@ -1666,7 +2120,7 @@ html, body { overflow-x: hidden; }
       const tier = ms < 60000 ? "quick" : ms < cutLo ? "short" : ms < cutHi ? "mid" : "long";
       const used = new Set(s.acts.filter((a) => !/^(Went to|⚠)/.test(a.a)).map((a) => a.a)).size;
       const span = s.live ? "" : ` · ${dur(Math.max(s.end - s.start, 1000))}`;
-      const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.app ? ` · ${s.app === "home" ? "app" : "web"}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
+      const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
       return `<div class="sess t-${tier}${issues.length ? errs.length ? " bad" : " warn" : ""}${open ? " open" : " shut"}${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
         <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm"><span class="nmt">${esc(name(s.n))}</span>${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}</div></div><div class="sh-r">${s.live ? `<span class="badge num" data-since="${s.since}">${clock(now - s.since)}</span>` : `<span class="tia num"><b>${esc(dur(ms))}</b><small>in app</small></span>`}<i class="vcar">${open ? "Close ▴" : "Open ▾"}</i>${open ? `<button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button>` : ""}</div></div>
@@ -1700,12 +2154,12 @@ html, body { overflow-x: hidden; }
     const groups = [];
     for (const v of all.slice(0, st.shown)) {
       const g = groups[groups.length - 1], prev = g?.list[g.list.length - 1];
-      if (g && !v.live && !prev.live && g.n === v.n && dayLab(v.start) === dayLab(prev.start) && prev.start - v.end < 10 * 60000) g.list.push(v);
+      if (!st.vsort && g && !v.live && !prev.live && g.n === v.n && dayLab(v.start) === dayLab(prev.start) && prev.start - v.end < 10 * 60000) g.list.push(v);
       else groups.push({ n: v.n, list: [v] });
     }
     const cards = groups.map((g) => {
       const first = g.list[g.list.length - 1], last = g.list[0];
-      const d = dayLab(last.start), head = d !== day ? `<div class="day">${esc(d)}</div>` : "";
+      const d = dayLab(last.start), head = !st.vsort && d !== day ? `<div class="day">${esc(d)}</div>` : "";
       day = d;
       if (g.list.length === 1) return head + cardOf(last);
       const gid = `grp|${g.n}|${first.start}`, gopen = st.open.has(gid);
@@ -1721,7 +2175,7 @@ html, body { overflow-x: hidden; }
     }).join("");
     const shownN = Math.min(all.length, st.shown);
     const feedHtml = `<main class="feed" id="sec-visits">
-      <div class="fh"><h2>VISITS</h2><button type="button" class="cp" data-openall="1" title="Open or close every visit">${all.slice(0, st.shown).some((v) => !(v.live ? !st.open.has(`${v.n}|${v.start}`) : st.open.has(`${v.n}|${v.start}`))) ? "Expand all" : "Collapse all"}</button>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
+      <div class="fh"><h2>Visits <small class="num">${all.length}</small></h2><label class="vsort"><span class="sr">Sort</span><select data-vsort="1" aria-label="Sort visits">${[["", "Most recent"], ["long", "Longest"], ["acts", "Most actions"], ["iss", "Issues first"]].map(([k, l]) => `<option value="${k}"${(st.vsort || "") === k ? " selected" : ""}>${l}</option>`).join("")}</select></label><span class="seg vf" role="group" aria-label="Show">${[["all", "All"], ["iss", "⚠ Issues"], ["long", "5m+"]].map(([k, l]) => `<button type="button" class="${(st.vf || "all") === k ? "on" : ""}" data-vf="${k}">${l}</button>`).join("")}</span><button type="button" class="cp" data-openall="1" title="Open or close every visit">${all.slice(0, st.shown).some((v) => !(v.live ? !st.open.has(`${v.n}|${v.start}`) : st.open.has(`${v.n}|${v.start}`))) ? "Expand all" : "Collapse all"}</button>${st.filter ? `<span class="chip">${av(st.filter, "sm")}${esc(name(st.filter))}<button type="button" data-n="" aria-label="Show everyone">✕</button></span>` : ""}
         ${all.length ? `<button type="button" class="cp${st.copied === "*" ? " ok" : ""}" data-copy="*" title="Copy every visit shown">${st.copied === "*" ? "✓ Copied" : `${COPY_ICON}Copy ${st.filter ? `${esc(name(st.filter))}'s` : "all"}`}</button>` : ""}</div>
       ${cards || `<div class="empty" style="margin-top:12px">${st.filter ? `No visits from ${esc(name(st.filter))} in the last 24 hours.` : "No visits in the last 24 hours yet. They show here as people use the app."}</div>`}
       ${all.length > st.shown ? `<button type="button" class="older" data-older="1">Show ${Math.min(20, all.length - st.shown)} more</button>` : ""}
@@ -1729,6 +2183,250 @@ html, body { overflow-x: hidden; }
       <p class="note">A visit is live while the app is on screen and ends when it's put away, or about a minute after a phone goes quiet. Shows screens and features, never which team anyone picked. Jake isn't tracked.</p>
     </main>`;
 
+    // --- Overview: what needs you, then the day as charts. ---
+    const afrOpenN = (st.afr || []).filter((r) => !afrFix(r)).length;
+    const opsDay = (st.ops || []).filter((r) => Date.now() - r.at < DAY && !r.closed);
+    const opsBad = opsDay.filter((r) => (OPS_KIND[r.k] || [])[1] === "err").length;
+    const chatDay = (st.chats || []).filter((r) => Date.now() - r.at < DAY);
+    const biOthers = chatDay.filter((r) => r.asker !== "Jake");
+    const fric24 = actions.filter((e) => FRICTION.test(e.k)).length;
+    // Tab badges count what is new since that page was last opened, so
+    // looking clears them (the cards on each page still show everything open).
+    let pseen = {}; try { pseen = JSON.parse(store.get("brochiefs_live_pseen") || "{}"); } catch {}
+    if (st.page === "issues" || st.page === "bi") { pseen[st.page] = Date.now(); store.set("brochiefs_live_pseen", JSON.stringify(pseen)); }
+    const since = (pg) => pseen[pg] || 0;
+    const issuesNew = (st.afr || []).filter((r) => !afrFix(r) && r.at > since("issues")).length + opsDay.filter((r) => (OPS_KIND[r.k] || [])[1] === "err" && r.at > since("issues")).length;
+    const biNew = biOthers.filter((r) => r.at > since("bi")).length;
+    const badge = { home: inNow.length || "", issues: issuesNew || "", bi: biNew || "" };
+    const att = (page, n, lab, sub, tone) => `<button type="button" class="att-c ${tone}" data-page="${page}"><b class="num">${n}</b><span>${lab}</span><small>${sub}</small></button>`;
+    const attCards = [
+      att("issues", afrOpenN, "Friction open", afrOpenN ? "rage, dead taps, errors" : "all ticked off", afrOpenN ? "warn" : "ok"),
+      att("issues", opsBad, "Health fails", `${opsDay.length - opsBad} slow · 24h`, opsBad ? "bad" : "ok"),
+      att("bi", biOthers.length, "Chief from others", `${chatDay.length} questions · 24h`, biOthers.length ? "info" : "calm"),
+      att("activity", fric24, "Stuck moments", "rage, dead taps · 24h", fric24 ? "warn" : "ok"),
+    ].join("");
+    // What they used and who was in, as ranked bars.
+    const featMap = new Map();
+    for (const e of actions) { const l = featLab(e.k); if (!l) continue; const x = featMap.get(l) || { n: 0, who: new Set() }; x.n++; x.who.add(e.n); featMap.set(l, x); }
+    const feats = [...featMap.entries()].sort((a, b) => b[1].who.size - a[1].who.size || b[1].n - a[1].n).slice(0, 6);
+    const fMax = Math.max(1, ...feats.map(([, x]) => x.who.size));
+    const whoMs = new Map();
+    for (const v of vs) whoMs.set(v.n, (whoMs.get(v.n) || 0) + (vEnd(v) - Math.max(v.start, from)));
+    const who = [...whoMs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const wMax = Math.max(1, ...who.map(([, ms]) => ms));
+    const rankRows = (rows) => `<div class="rank">${rows.join("")}</div>`;
+    const overview = `<section class="att">${attCards}</section>
+      <div class="ov-duo">
+        <section class="panel ov"><div class="ph"><h2>Most used</h2><span class="sub">people · 24h</span></div>${feats.length ? rankRows(feats.map(([l, x]) => `<div><span>${esc(l)} <small>${x.n} taps</small></span><b>${x.who.size}</b><i><s style="width:${((x.who.size / fMax) * 100).toFixed(1)}%"></s></i></div>`)) : `<div class="note">Nothing used yet today.</div>`}</section>
+        <section class="panel ov"><div class="ph"><h2>Who's been in</h2><span class="sub">time in app · 24h</span></div>${who.length ? rankRows(who.map(([n, ms]) => `<div><span>${esc(name(n))} <small>${vs.filter((v) => v.n === n).length} visits</small></span><b>${mins(ms) || "<1m"}</b><i><s style="width:${((ms / wMax) * 100).toFixed(1)}%;background:#05d9e8"></s></i></div>`)) : `<div class="note">Nobody in yet.</div>`}</section>
+      </div>`;
+    // On their own page the logs are always open (no fold to tap first).
+    const forceOpen = (f) => { const was = [st.afrOpen, st.opsOpen, st.chatOpen]; st.afrOpen = st.opsOpen = st.chatOpen = true; try { return f(); } finally { [st.afrOpen, st.opsOpen, st.chatOpen] = was; } };
+    // --- Recommended actions: one per page, from the data on it, with a
+    // ready-to-paste brief for Claude (names left out, numbers kept). ---
+    const recs = {};
+    const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+    // Stuck moments by what was tapped.
+    const fr = new Map();
+    // A stuck moment a shipped fix already covers (fixes.json) is done.
+    for (const e of actions) if (FRICTION.test(e.k) && !afrFix(e)) { const [a, d] = says(e, feed); const k = `${a}|${d}`; const x = fr.get(k) || { a: a.replace("⚠ ", ""), d, n: 0, who: new Set() }; x.n++; x.who.add(e.n); fr.set(k, x); }
+    const topFr = [...fr.values()].sort((a, b) => b.who.size - a.who.size || b.n - a.n)[0];
+    // Health by kind and target.
+    const hg = new Map();
+    for (const r of opsDay) { const k = `${r.k}|${String(r.d || "").replace(/\d+(\.\d+)?s?\b/g, "#").slice(0, 60)}`; const x = hg.get(k) || { k: r.k, d: r.d, n: 0, err: (OPS_KIND[r.k] || [])[1] === "err", ats: [], vs: new Set() }; x.n++; x.ats.push(r.at); if (r.v) x.vs.add(r.v); hg.set(k, x); }
+    const when = (t) => `${afrDay(t)} ${hm(t)}`;
+    // A slow source the Worker already covered with its saved copy is a
+    // note in the log, not an action: nothing waited and nothing broke.
+    // What is worth a card: any failure, and a slow kind only when it keeps
+    // happening (3+ in 24h); an outside API's 429 is the same (the Worker
+    // cools off and serves its saved copy). A slow source the Worker already covered with its
+    // saved copy is a note in the log, not an action: nothing waited.
+    const hOpen = [...hg.values()].filter((x) => !(x.k === "upstream-slow" && /saved copy served/.test(x.d || "")) && ((x.err && !(x.k === "upstream-fail" && /\b429\b/.test(x.d || ""))) || x.n >= 3)).sort((a, b) => b.err - a.err || b.n - a.n);
+    const topH = hOpen[0];
+    // Quick looks: visits under a minute, and where they ended.
+    const quick = vs.filter((v) => !v.live && v.end - v.start < 60000);
+    const lastScr = new Map();
+    for (const v of quick) { const a = [...v.acts].reverse().find((x) => /^Went to |^Looked at /.test(x.a)); const k = a ? a.a.replace(/^Went to |^Looked at (the )?/, "") : "the home screen"; lastScr.set(k, (lastScr.get(k) || 0) + 1); }
+    const topQuick = [...lastScr.entries()].sort((a, b) => b[1] - a[1])[0];
+    // BI: answers that went wrong.
+    const biBad = chatDay.filter((r) => r.flagged || (r.status && r.status !== "answered" && r.status !== "asked"));
+    const biNo = chatDay.filter((r) => r.status && r.status !== "answered" && r.status !== "asked");
+    if (topFr) recs.issues = { tone: "warn", t: `Fix: ${topFr.a}${topFr.d ? ` on ${topFr.d}` : ""}`, why: `${topFr.n} time${topFr.n === 1 ? "" : "s"} by ${topFr.who.size} ${topFr.who.size === 1 ? "person" : "people"} in 24h, the most common stuck moment.`,
+      copy: `Brochiefs ${LEAGUE.toUpperCase()} app: players keep hitting "${topFr.a}"${topFr.d ? ` on ${topFr.d}` : ""} (${topFr.n}x, ${topFr.who.size} people, last 24h). Find what that element is meant to do, make the tap do it (or make it clearly not tappable), test at 390px, and add a fixes.json entry.` };
+    if (topH && (!recs.issues || topH.err)) {
+      const lab = (x) => (OPS_KIND[x.k] || [x.k])[0];
+      const target = (x) => String(x.d || x.k).split(" ")[0];
+      const ts = (x) => x.ats.slice().sort((a, b) => a - b).map((t) => new Date(t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })).join(", ");
+      const item = (x) => `"${lab(x)}" happened ${x.n}x in the last 24h (example: ${x.d || x.k}; at ${ts(x)}${x.vs.size ? `; app build ${[...x.vs].join(", ")}` : ""})`;
+      const more = hOpen.length - 1;
+      recs.issues = { tone: topH.err ? "bad" : "warn", t: `${topH.err ? "Fix" : "Speed up"}: ${lab(topH)} · ${target(topH)}${more ? ` (+${more} more)` : ""}`,
+        why: `${topH.n}x in 24h, last ${when(Math.max(...topH.ats))}${topH.vs.size ? ` · build ${[...topH.vs].join(", ")}` : ""}: ${topH.d || topH.k}.${more ? ` Also open: ${hOpen.slice(1, 4).map((x) => `${lab(x)} ${target(x)}`).join(", ")}${more > 3 ? "…" : ""}.` : ""}`,
+        // Every open health item in one brief, so one paste clears them all
+        // instead of a new card on every load.
+        copy: hOpen.length === 1
+          ? `Brochiefs ${LEAGUE.toUpperCase()} health log: ${item(topH)}. Find the cause in the Worker or app, add a retry or cache where it helps, and make sure a failure here never blocks the screen.`
+          : `Brochiefs ${LEAGUE.toUpperCase()} health log, ${hOpen.length} open items in the last 24h:\n${hOpen.slice(0, 8).map((x, n) => `${n + 1}. ${item(x)}`).join("\n")}\nFind the cause of each in the Worker or app (several at the same minute on one phone are a connection drop), add a retry or cache where it helps, make sure a failure never blocks the screen, and add a fixes.json entry for each.` };
+    }
+    // Quick looks, with the context to judge them: how many visits, from how
+    // many people, over what hours, how long the typical one ran, and whether
+    // it was a game day. A short check midweek is the app doing its job, so
+    // the card only asks for a change on a real sample (10+ visits) on a day
+    // with games (Thu to Sat ET; NFL Thu, Sun, Mon), when a quick exit can mean a miss.
+    const etDay = (t) => new Date(t).toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" });
+    const onGameDay = vs.some((v) => (LEAGUE === "nfl" ? /^(Thu|Sun|Mon)$/ : /^(Thu|Fri|Sat)$/).test(etDay(v.start)));
+    const qLens = vs.map((v) => (v.live ? Date.now() - (v.since || v.start) : v.end - v.start)).sort((a, b) => a - b);
+    const qMed = qLens.length ? qLens[Math.floor(qLens.length / 2)] : 0;
+    const qMedS = qMed < 60000 ? `${Math.max(1, Math.round(qMed / 1000))}s` : `${Math.round(qMed / 60000)}m`;
+    const qSpan = vs.length ? `${afrDay(Math.min(...vs.map((v) => v.start)))} ${hm(Math.min(...vs.map((v) => v.start)))} to ${afrDay(Math.max(...vs.map((v) => v.start)))} ${hm(Math.max(...vs.map((v) => v.start)))}` : "";
+    const qPpl = new Set(vs.map((v) => v.n)).size;
+    const qCtx = `${vs.length} visit${vs.length === 1 ? "" : "s"} from ${qPpl} ${qPpl === 1 ? "person" : "people"}, ${qSpan}; typical visit ${qMedS}; ${onGameDay ? "games on" : "no games (off day)"}`;
+    const qShare = vs.length >= 10 ? `${pct(quick.length, vs.length)}%` : `${quick.length} of ${vs.length}`;
+    if (vs.length >= 10 && onGameDay && pct(quick.length, vs.length) >= 25) recs.activity = { tone: "info", t: `${qShare} of visits are a quick look`, why: `${qCtx}.${topQuick ? ` Most ended on ${topQuick[0]} (${topQuick[1]}).` : ""}`,
+      copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${qShare} of visits in the last 24h lasted under a minute (${qCtx})${topQuick ? `, most ending on ${topQuick[0]}` : ""}. On a game day a quick exit can mean the first screen missed what they came for (score, my picks, standing). Suggest and build the one change that answers it without adding clutter. Test at 390px.` };
+    else recs.activity = { tone: "ok", t: quick.length && !onGameDay ? "Quick checks on an off day" : "Visits look healthy", why: `${qCtx}. ${quick.length} under a minute${!onGameDay && quick.length ? ", which is normal with no games on" : vs.length < 10 ? ", too few visits to read into" : ""}. Nothing to fix here today.`, copy: "" };
+    if (biBad.length) recs.bi = { tone: "warn", t: `Tune the Chief: ${biBad.length} answer${biBad.length === 1 ? "" : "s"} went wrong`, why: `${biNo.length} got no answer, ${biBad.length - biNo.length} flagged, of ${chatDay.length} in 24h.`,
+      copy: `Ask Chief misses from the last 24h. For each, find why (tool data, system prompt, or the phone's tool) and fix the cause, not the one answer:\n\n${chatLog(biBad)}` };
+    else if (chatDay.length) recs.bi = { tone: "ok", t: "The Chief answered everything", why: `${chatDay.length} questions, none flagged or unanswered in 24h.`, copy: "" };
+    const feats0 = [...featMap.entries()].sort((a, b) => a[1].who.size - b[1].who.size);
+    const lowFeat = feats0.find(([, x]) => x.who.size <= 1);
+    if (lowFeat) recs.stats = { tone: "info", t: `Surface ${lowFeat[0].replace(/^Opened (a |the )?/, "")}`, why: `Only ${lowFeat[1].who.size} person used it in 24h while ${feats[0] ? `${feats[0][1].who.size} used ${feats[0][0].replace(/^Opened (a |the )?/, "")}` : "others were busier"}.`,
+      copy: `Brochiefs ${LEAGUE.toUpperCase()}: "${lowFeat[0]}" was used by ${lowFeat[1].who.size} person in the last 24h. Suggest whether to make it easier to find (where, how) or cut it, and build the better option. Test at 390px.` };
+    // Overview leads with the most urgent of the rest.
+    recs.home = [recs.issues, recs.bi, recs.activity, recs.stats].filter(Boolean).find((r) => r.tone === "bad") || [recs.issues, recs.bi, recs.activity, recs.stats].filter(Boolean).find((r) => r.tone === "warn") || recs.activity;
+    st.recTexts = Object.fromEntries(Object.entries(recs).map(([k, r]) => [k, r.copy]));
+    // Collapsible (tap the title) and clearable (✕): a cleared card stays
+    // gone until the recommendation itself changes.
+    const recCard = (k) => {
+      const r = recs[k]; if (!r || recHidden[k] === r.t) return "";
+      const shut = recShut.has(k);
+      return `<section class="rec ${r.tone}${shut ? " shut" : ""}"><div class="rec-i" aria-hidden="true">${r.tone === "ok" ? "✓" : r.tone === "bad" ? "!" : "→"}</div><button type="button" class="rec-b" data-recfold="${k}" aria-expanded="${!shut}"><em>Recommended action <i>${shut ? "▸" : "▾"}</i></em><b>${esc(r.t)}</b>${shut ? "" : `<span>${esc(r.why)}</span>`}</button><button type="button" class="rec-x" data-recclear="${k}" aria-label="Clear this recommendation">✕</button>${r.copy && !shut ? `<button type="button" class="rec-cp" data-reccopy="${k}">${st.copied === `rec:${k}` ? "✓ Copied" : "Copy for Claude"}</button>` : ""}</section>`;
+    };
+    // --- User flow: where visits start, the paths they take, where they end.
+    // Short names for steps, so a path reads "Scores → Game info → VS".
+    const STEP_SHORT = [[/^Compared two players/i, "VS"], [/^Expanded a player/i, "Player card"], [/Gamecast/i, "Gamecast"], [/game scores/i, "Scores"], [/Path to Win/i, "Path to Win"], [/odds to win/i, "Win odds"], [/week replay/i, "Replay"], [/pot and standings/i, "Pot"], [/season stats/i, "Season stats"]];
+    const stepOf = (a) => { if (/^⚠/.test(a)) return ""; const hit = STEP_SHORT.find(([re]) => re.test(a)); const x = hit ? hit[1] : a.replace(/^(Went to|Looked at|Opened|Watched|Tapped|Checked|Read|Saw) (a |an |the )?/i, "").replace(/\s*\(.*\)$/, ""); return x.charAt(0).toUpperCase() + x.slice(1); };
+    const flows = vs.filter((v) => !v.live || v.acts.length).map((v) => { const out = []; for (const a of v.acts) { const x = stepOf(a.a); if (x && out[out.length - 1] !== x) out.push(x); } return out; }).filter((f) => f.length);
+    const tally = (arr) => { const m = new Map(); for (const x of arr) m.set(x, (m.get(x) || 0) + 1); return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+    const starts = tally(flows.map((f) => f[0])).slice(0, 4), ends = tally(flows.map((f) => f[f.length - 1])).slice(0, 4);
+    const paths = tally(flows.filter((f) => f.length > 1).map((f) => f.slice(0, 3).join(" → "))).slice(0, 4);
+    const depth = flows.length ? flows.reduce((t, f) => t + f.length, 0) / flows.length : 0;
+    const oneStep = flows.filter((f) => f.length === 1).length;
+    const fbar = (rows) => { const mx = Math.max(1, ...rows.map(([, n]) => n)); return `<div class="rank">${rows.map(([l, n]) => `<div><span>${esc(l)}</span><b>${pct(n, flows.length)}%</b><i><s style="width:${((n / mx) * 100).toFixed(1)}%"></s></i></div>`).join("")}</div>`; };
+    // An engagement idea from the flow, using patterns sports and fantasy
+    // apps lean on: alerts tied to your own stakes, continue-to-next
+    // prompts, and a reason to come back.
+    const topStart = starts[0]?.[0] || "", topEnd = ends[0]?.[0] || "", quickShare = pct(oneStep, flows.length);
+    const idea = !flows.length ? null
+      : /score|game|gamecast/i.test(topStart) && pct(starts[0][1], flows.length) >= 35 ? { t: "Show what flipped since they last looked", why: `${pct(starts[0][1], flows.length)}% of visits open straight to ${topStart}: they come to check on their games. Lead Scores with what changed for them since their last visit (a pick that flipped to covering or not, points moved, place moved), so the check pays off in one glance. No push: the league does not do notifications.`, copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${pct(starts[0][1], flows.length)}% of visits start on ${topStart} (checking scores). No push notifications. At the top of Scores, show a slim "since you last looked" line for the signed-in player only: picks that flipped between covering and not, points and place changes since their last visit, never hidden picks. Show it only when something changed; tap it to jump to that game. Test at 390px.` }
+      : quickShare >= 45 ? { t: "Give quick looks a one-glance answer", why: `${quickShare}% of visits do a single thing and leave. Lead the first screen with the answer they came for: your points so far, your place, and what changed since they last looked.`, copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${quickShare}% of visits do one thing and leave. Add a slim "since you last looked" line at the top of the first screen (points change, place change, picks that hit or missed), shown only when something changed. Test at 390px.` }
+      : /game info|gamecast/i.test(topEnd) ? { t: "Add a 'next game that matters' step", why: `Visits most often end on ${topEnd}. A next step at the bottom (the next game with your pick in it) keeps the session going the way streaming apps queue the next episode.`, copy: `Brochiefs ${LEAGUE.toUpperCase()}: visits most often end on ${topEnd}. At the end of game info add one button: the next game (live or soonest) that has the viewer's pick in it, with their pick and status. Test at 390px.` }
+      : { t: "Give them a reason to come back", why: `Average visit covers ${depth.toFixed(1)} screens. A weekly streak (picks in on time, weeks played) or a Monday recap card to share gives a habit loop between game days.`, copy: `Brochiefs ${LEAGUE.toUpperCase()}: suggest and build the lightest habit loop for between game days: a picks-in-on-time streak on the player card, or a shareable Monday recap card. Pick one, keep it out of the way, test at 390px.` };
+    if (idea) st.recTexts.idea = idea.copy;
+    const flowPanel = flows.length >= 3 ? `<section class="panel flow"><div class="ph"><h2>User flow</h2><span class="sub">${flows.length} visits · ${depth.toFixed(1)} screens a visit · 24h</span></div>
+      <div class="flow-g"><div><h3>Starts on</h3>${fbar(starts)}</div><div><h3>Leaves from</h3>${fbar(ends)}</div></div>
+      ${paths.length ? `<h3>Common paths</h3><ol class="flow-p">${paths.map(([p, n]) => `<li><span>${p.split(" → ").map((x) => `<i>${esc(x)}</i>`).join("<b>→</b>")}</span><em>${n}</em></li>`).join("")}</ol>` : ""}
+      ${idea ? `<div class="idea"><em>💡 Engagement idea</em><b>${esc(idea.t)}</b><span>${esc(idea.why)}</span><button type="button" class="rec-cp" data-reccopy="idea">${st.copied === "rec:idea" ? "✓ Copied" : "Copy for Claude"}</button></div>` : ""}
+    </section>` : "";
+    // NFL: everyone but Jake sees the under construction page; who tried.
+    const ucPanel = (() => {
+      if (LEAGUE !== "nfl" || !st.uc) return "";
+      const by = new Map();
+      for (const h of st.uc) { const k = h.dev || "?"; const x = by.get(k) || { who: "", kind: h.kind, vias: new Set(), n: 0, last: 0, first: Infinity }; x.who = x.who || h.n || (h.inv ? `${h.inv} (invite link)` : ""); x.vias.add(h.via); x.n++; x.last = Math.max(x.last, h.at); x.first = Math.min(x.first, h.at); by.set(k, x); }
+      const rows = [...by.entries()].sort((a, b) => b[1].last - a[1].last);
+      const VIA = { home: "site", join: "join link", invite: "invite link", app: "home screen app" };
+      const when = (t) => `${afrDay(t)} ${hm(t)}`;
+      return `<section class="panel uc"><div class="ph"><h2>🚧 Under construction hits</h2><span class="sub">${st.uc.length} hit${st.uc.length === 1 ? "" : "s"} · ${rows.length} device${rows.length === 1 ? "" : "s"} · 14 days</span></div>
+        ${rows.length ? `<div class="uc-l">${rows.map(([dev, x]) => `<div class="uc-r"><b>${esc(x.who || "Unknown")}</b><span>${esc(x.kind || "")} · ${esc([...x.vias].map((v) => VIA[v] || v).join(", "))}${x.who ? "" : ` · device ${esc(dev)}`}</span><em class="num">${x.n}×</em><small>${esc(when(x.last))}</small></div>`).join("")}</div>` : `<div class="note">Nobody has hit the page yet.</div>`}
+      </section>`;
+    })();
+    // --- Records: today against the best day ever. Each day's totals go to
+    // the Worker (every 10 minutes at most), which keeps the best. ---
+    const ymd = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+    const dayStats = (a, b, visitsList, feedList) => {
+      const vv = visitsList.filter((v) => v.start >= a && v.start < b);
+      return { visits: vv.length, people: new Set(vv.map((v) => v.n)).size, timeMs: Math.round(visitsList.reduce((t, v) => t + Math.max(0, Math.min(vEnd(v), b) - Math.max(v.start, a)), 0)), actions: feedList.filter((e) => e.at >= a && e.at < b && e.k !== "in" && e.k !== "out" && !/^path-of-/.test(e.k)).length };
+    };
+    const todayStats = dayStats(today0, today0 + DAY, wk ? wv : vs, wk ? [...(wk.feed || []), ...feed.filter((e) => !(wk.feed || []).some((x) => x.at === e.at && x.n === e.n))] : feed);
+    if (st.rec && Date.now() - (sendRecords.t || 0) > 10 * 60000) {
+      sendRecords.t = Date.now();
+      // Each day also carries its running totals hour by hour, for the pace
+      // marker ("the best day had 62 by 2 PM").
+      const curve = (d, vl, fl) => { const h = { visits: [], people: [], timeMs: [], actions: [] }; for (let i = 0; i < 24; i++) { const x = dayStats(d, Math.min(d + (i + 1) * HOUR, d + DAY), vl, fl); for (const k of Object.keys(h)) h[k].push(x[k]); } return h; };
+      const allFeed = wk ? [...(wk.feed || []), ...feed.filter((e) => !(wk.feed || []).some((x) => x.at === e.at && x.n === e.n))] : feed;
+      const days = [{ d: ymd(today0), ...todayStats, h: curve(today0, wk ? wv : vs, allFeed) }];
+      if (wk) for (const d of dayList) if (d !== today0) days.push({ d: ymd(d), ...dayStats(d, d + DAY, wv, wk.feed || []), h: curve(d, wv, wk.feed || []) });
+      sendRecords(days);
+    }
+    // Today against the best day before it, or this week so far against the
+    // best full week (weeks run Monday to Sunday; people is a daily average).
+    const tk = ymd(today0), recDays = { ...(st.rec?.days || {}), [tk]: { ...(st.rec?.days?.[tk] || {}), ...todayStats } };
+    const wkOf = (d) => { const [y, m, dd] = String(d).split("-").map(Number); const t = new Date(y, m - 1, dd); t.setDate(t.getDate() - ((t.getDay() + 6) % 7)); return ymd(t.getTime()); };
+    const weeks = {};
+    for (const [d, v] of Object.entries(recDays)) { const w = wkOf(d), x = weeks[w] || (weeks[w] = { visits: 0, timeMs: 0, actions: 0, peopleSum: 0, days: 0 }); x.visits += v.visits || 0; x.timeMs += v.timeMs || 0; x.actions += v.actions || 0; x.peopleSum += v.people || 0; x.days++; }
+    for (const x of Object.values(weeks)) x.people = x.days ? Math.round((x.peopleSum / x.days) * 10) / 10 : 0;
+    const curW = wkOf(tk), byWeek = st.recPeriod === "week";
+    const RECS = [["visits", "Visits", (v) => String(v)], ["people", byWeek ? "People / day" : "People in", (v) => String(v)], ["timeMs", "Time in app", (v) => mins(v) || "0m"], ["actions", "Actions", (v) => String(v)]];
+    const recDate = (d) => { const [y, m, dd] = String(d).split("-").map(Number); const t = new Date(y, m - 1, dd).getTime(); return t === today0 ? "today" : t === today0 - DAY ? "yesterday" : new Date(t).toLocaleDateString([], { month: "short", day: "numeric" }); };
+    const wkDate = (w) => `wk of ${recDate(w)}`;
+    // The hour now (0 to 23) and its label, and the record's value at that
+    // hour: a day's running total, or for a week the full days before today's
+    // weekday plus that weekday's running total. People per day has no clean
+    // weekly pace, so it is left off in week view.
+    const hourNow = Math.min(23, Math.max(0, Math.floor((Date.now() - today0) / HOUR)));
+    const paceLab = new Date(today0 + (hourNow + 1) * HOUR).toLocaleTimeString([], { hour: "numeric" });
+    const dIdx = (d) => { const [y, m, dd] = String(d).split("-").map(Number); return (new Date(y, m - 1, dd).getDay() + 6) % 7; };
+    const paceOf = (key, k) => {
+      if (!byWeek) { const h = recDays[key]?.h?.[k]; return Array.isArray(h) ? h[hourNow] : null; }
+      if (k === "people") return null;
+      const ti = dIdx(tk); let sum = 0, have = false;
+      for (const [d, v] of Object.entries(recDays)) {
+        if (wkOf(d) !== key) continue;
+        const i = dIdx(d);
+        if (i < ti) sum += v[k] || 0;
+        else if (i === ti) { const h = v.h?.[k]; if (!Array.isArray(h)) return null; sum += h[hourNow]; have = true; }
+      }
+      return have ? sum : null;
+    };
+    const recordsPanel = st.rec ? `<section class="panel recs"><div class="ph"><h2>Records</h2><span class="sub">${byWeek ? "this week so far against the best week" : "today against the best day"}</span><span class="seg sm end" role="group" aria-label="Period"><button type="button" class="${byWeek ? "" : "on"}" data-recp="day">24h</button><button type="button" class="${byWeek ? "on" : ""}" data-recp="week">Week</button></span></div><div class="recs-g">${RECS.map(([k, lab, f]) => {
+      const pool = byWeek ? Object.entries(weeks).filter(([w]) => w !== curW) : Object.entries(recDays).filter(([d]) => d !== tk);
+      const prev = pool.reduce((m, [d, v]) => ((v[k] || 0) > (m?.v || 0) ? { v: v[k], d } : m), null);
+      const t = byWeek ? (weeks[curW]?.[k] || 0) : todayStats[k], b = Math.max(prev?.v || 0, t), isRec = !!prev && t > prev.v;
+      const share = b ? Math.min(100, (t / b) * 100) : 0, when = (d) => (byWeek ? wkDate(d) : recDate(d));
+      // Pace: where the record day (or week) stood at this same hour, drawn
+      // as a second marker on the bar so ahead or behind reads at a glance.
+      const pv = prev && !isRec ? paceOf(prev.d, k) : null;
+      const pShare = pv != null && b ? Math.min(100, (pv / b) * 100) : null;
+      const ahead = pv != null && t >= pv;
+      const paceTxt = pv != null ? `<span class="rec-pace ${ahead ? "up" : "dn"}"><i></i>${esc(f(pv))} by ${esc(paceLab)} · ${ahead ? "ahead" : "behind"}</span>` : prev && !isRec ? `<span class="rec-pace none">${byWeek && k === "people" ? "no weekly pace for a daily average" : "no hourly pace for that day"}</span>` : "";
+      return `<div class="rec-m${isRec ? " new" : ""}${pv != null ? (ahead ? " ahead" : " behind") : ""}"><em>${lab}</em><b class="num">${esc(f(t))}${!isRec && prev ? `<small>${Math.round(share)}%</small>` : ""}</b><i class="rec-bar">${pShare != null ? `<u style="left:${pShare.toFixed(1)}%"></u>` : ""}<s style="width:${share.toFixed(0)}%"></s></i><span>${isRec ? `🏆 New record · was ${esc(f(prev.v))}, ${esc(when(prev.d))}` : prev ? `best ${esc(f(prev.v))} · ${esc(when(prev.d))}` : `no earlier ${byWeek ? "weeks" : "days"} yet`}</span>${paceTxt}</div>`;
+    }).join("")}</div>${byWeek ? `<div class="note" style="margin-top:8px">This week: ${weeks[curW]?.days || 0} of 7 days in.</div>` : ""}</section>` : "";
+    const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}</div>`;
+    // Notification bar: who came in and who asked BI since you last
+    // cleared it (never you). Tap a part to go there; ✕ marks it seen.
+    const ME = "Jake";
+    const nSeenOld = Number(store.get("brochiefs_live_notif_seen")) || now - 6 * HOUR;
+    const nSeenV = Number(store.get(`brochiefs_live_notif_seen_v${SFX}`)) || nSeenOld, nSeenQ = Number(store.get(`brochiefs_live_notif_seen_q${SFX}`)) || nSeenOld;
+    // Each person's latest visit since then, newest first; whoever is in now leads.
+    const visitors = [...new Map(vs.filter((v) => v.n !== ME && !v.live && v.start > nSeenV && !inNow.includes(v.n)).sort((a, b) => a.start - b.start).map((v) => [v.n, v])).values()].reverse();
+    const asked = chatDay.filter((r) => r.asker !== ME && r.at > nSeenQ).sort((a, b) => b.at - a.at);
+    const nbAgo = (t) => { const m = Math.round((now - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m}m ago` : `${Math.round(m / 60)}h ago`; };
+    const whoList = (ns) => ns.length <= 2 ? ns.join(" and ") : `${ns.slice(0, 2).join(", ")} +${ns.length - 2}`;
+    const inN = inNow.filter((n) => n !== ME).map(name), wasN = visitors.map((v) => name(v.n));
+    // New since you last cleared each: visits and BI questions, each line
+    // with its own clear. Who is in now is the card itself.
+    const nRow = (kind, page, icon, html, when) => `<div class="nb-r"><button type="button" class="nb-p" data-page="${page}"><i class="nb-ic">${icon}</i><span>${html}</span><small>${esc(when)}</small></button><button type="button" class="nb-x" data-nseen="${kind}" aria-label="Clear">✕</button></div>`;
+    const nRows = [
+      wasN.length && nRow("v", "activity", "👀", `<b>${esc(whoList(wasN))}</b> visited`, nbAgo(visitors[0].end || visitors[0].start)),
+      asked.length && nRow("q", "bi", "🧠", `<b>${esc(name(asked[0].asker))}</b> asked “${esc(String(asked[0].q || "").slice(0, 60))}”`, asked.length > 1 ? `+${asked.length - 1} more` : nbAgo(asked[0].at)),
+    ].filter(Boolean).join("");
+    const kpisNb = kpis.replace("<!--NB-->", nRows ? `<div class="nb-rows">${nRows}</div>` : "");
+    const pageBody = {
+      home: `${ucPanel}${recCard("home")}${kpisNb}${recordsPanel}${timeline}${feedHtml}${strips}${overview}${flowPanel}`,
+      activity: "",
+      issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
+      bi: `<div class="pg-bar"><h1>Ask Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
+      stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${rail}`,
+    }[st.page] || "";
     app.innerHTML = `
       <div class="top${st.ok ? "" : " stale"}"><div class="top-in">
         <button type="button" class="brand" data-reload="1" aria-label="Refresh"><i class="beat"></i><b>BROCHIEFS</b><span>LIVE</span></button>${leagueSwitch()}
@@ -1742,6 +2440,7 @@ html, body { overflow-x: hidden; }
             <button type="button" role="menuitem" data-audit="1">${ICONS.copy}<span>Check picks match the slate</span></button>
             ${LEAGUE === "cfb" ? `<button type="button" role="menuitem" data-lz="1">${ICONS.copy}<span>⚡ Lightning editor</span></button>` : ""}
             <button type="button" role="menuitem" data-slate="1">${ICONS.copy}<span>${st.copied === "slate" ? "✓ Slate copied" : "Copy this week's slate"}</span></button>
+            ${HAS_STUDIO ? `<button type="button" role="menuitem" data-studio="1">${ICONS.studio}<span>Studio</span>${sd.review ? `<i class="on">${sd.review}</i>` : ""}</button>` : ""}
             <a role="menuitem" href="../" target="_blank" rel="noopener">${ICONS.app}<span>Open Pick'em</span><i>↗</i></a>
             <a role="menuitem" href="../?admin" target="_blank" rel="noopener">${ICONS.console}<span>Admin console</span><i>↗</i></a>
             <hr>
@@ -1749,10 +2448,11 @@ html, body { overflow-x: hidden; }
           </div>` : ""}
         </div>
       </div></div>
-      <div class="page">${kpis}<div class="vote-wrap">${joinPanel()}${auditStrip()}${newStrip()}</div>${timeline}<div class="duo">${adminFriction()}${opsPanel()}${chatPanel()}</div>${feedHtml}${rail}</div>
-      <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" class="${st.sec === id ? "on" : ""}" data-sec="${id}">${ICONS[ic]}<span>${lab}${id === "sec-now" && inNow.length ? `<b>${inNow.length}</b>` : ""}</span></button>`).join("")}${HAS_STUDIO ? `<button type="button" data-studio="1">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button>` : ""}</nav>`;
+      <div class="page pg pg-${st.page}">${pageBody}</div>
+      <nav class="tabs" aria-label="Pages">${PAGES.map(([id, lab, ic]) => `<button type="button" class="${st.page === id ? "on" : ""}" data-page="${id}" aria-current="${st.page === id ? "page" : "false"}">${ICONS[ic]}<span>${lab}${badge[id] ? `<b>${badge[id]}</b>` : ""}</span></button>`).join("")}</nav>`;
     paintTabs();
     tidy();
+    watchSeen();
   }
 
   // Collapsible panels and day groups, remembered per device; quiet timeline lanes tucked on phones.
@@ -1784,6 +2484,10 @@ html, body { overflow-x: hidden; }
       tl.insertAdjacentHTML("beforeend", `<button type="button" class="quiet-toggle">${showQuiet ? "Hide quiet players" : `Show ${q} quiet player${q === 1 ? "" : "s"}`}</button>`);
     }
   }
+  app.addEventListener("change", (e) => {
+    const sel = e.target.closest?.("[data-vsort]");
+    if (sel) { st.vsort = sel.value || null; st.sig = ""; render(); }
+  });
   app.addEventListener("click", (e) => {
     const qt = e.target.closest(".quiet-toggle");
     if (qt) { showQuiet = !showQuiet; const tl = qt.closest("#sec-tl"); tl.classList.toggle("allrows", showQuiet); const q = tl.querySelectorAll(".ln-t.quiet").length; qt.textContent = showQuiet ? "Hide quiet players" : `Show ${q} quiet player${q === 1 ? "" : "s"}`; return; }
@@ -1837,7 +2541,17 @@ html, body { overflow-x: hidden; }
     }
     if (e.target.closest(".vkey summary")) { st.keyOpen = !e.target.closest(".vkey").open; return; }
     const jb = e.target.closest("[data-jump]");
-    if (jb) { document.getElementById(jb.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    if (jb) { goPage(PAGE_OF[jb.dataset.jump] || jb.dataset.jump); return; }
+    const ns = e.target.closest("[data-nseen]");
+    if (ns) { store.set(`brochiefs_live_notif_seen_${ns.dataset.nseen}${SFX}`, String(Date.now())); st.sig = ""; render(); return; }
+    const rp = e.target.closest("[data-recp]");
+    if (rp) { st.recPeriod = rp.dataset.recp; store.set("brochiefs_live_recp", st.recPeriod); st.sig = ""; render(); return; }
+    const vfb = e.target.closest("[data-vf]");
+    if (vfb) { st.vf = vfb.dataset.vf === "all" ? null : vfb.dataset.vf; st.sig = ""; render(); return; }
+    const bf = e.target.closest("[data-bif]");
+    if (bf) { st.biFilter = bf.dataset.bif; st.sig = ""; render(); return; }
+    const pb = e.target.closest("[data-page]");
+    if (pb) { goPage(pb.dataset.page); return; }
     if (e.target.closest("[data-seenall]")) { seenBase = snapSeen(); saveSeen(); st.sig = ""; render(); return; }
     const gvh = !e.target.closest("button") && e.target.closest(".gv-h[data-open]");
     if (gvh) { const k = gvh.dataset.open; st.open.has(k) ? st.open.delete(k) : st.open.add(k); st.sig = ""; render(); return; }
@@ -1884,6 +2598,7 @@ html, body { overflow-x: hidden; }
       try { const x = await fetch(`${WORKER}/admin-friction?${auth()}`, { method: "POST", body: JSON.stringify({ action: "fix", at, fixed: !!r.fixed }) }); const j = await x.json().catch(() => ({})); if (x.ok && j.taps) st.afr = j.taps; else r.fixed = r.fixed ? undefined : Date.now(); } catch { r.fixed = r.fixed ? undefined : Date.now(); }
       st.sig = ""; render(); return;
     }
+    if (b.dataset.csmiss) { st.csMiss = st.csMiss === b.dataset.csmiss ? null : b.dataset.csmiss; st.sig = ""; render(); return; }
     if (b.dataset.csnudge) {
       const c = st.audit?.cards || [];
       const need = (x) => [x.picks < x.of && `${x.of - x.picks} pick${x.of - x.picks === 1 ? "" : "s"}`, !x.tb && "tiebreaker", st.audit.lockRule && !x.lock && "lock of the week"].filter(Boolean);
@@ -1913,6 +2628,15 @@ html, body { overflow-x: hidden; }
       r.flagged = on ? Date.now() : undefined; r.note = on ? note || undefined : undefined; st.sig = ""; render();
       try { const x = await fetch(`${WORKER}/week-chat?${auth()}`, { method: "POST", body: JSON.stringify({ action: "flag", id: r.id, flagged: on, note }) }); const j = await x.json().catch(() => ({})); if (x.ok && j.chat) Object.assign(r, j.chat); } catch {}
       st.sig = ""; render(); return;
+    }
+    if (b.dataset.recfold) { const k = b.dataset.recfold; recShut.has(k) ? recShut.delete(k) : recShut.add(k); store.set("brochiefs_live_rec_shut", JSON.stringify([...recShut])); st.sig = ""; render(); return; }
+    if (b.dataset.recclear) { const k = b.dataset.recclear; const r = document.querySelector(`[data-recfold="${k}"] b`); recHidden[k] = r ? r.textContent : ""; store.set("brochiefs_live_rec_hidden", JSON.stringify(recHidden)); st.sig = ""; render(); return; }
+    if (b.dataset.reccopy) {
+      const t = st.recTexts?.[b.dataset.reccopy];
+      if (!t || !(await copyText(t))) return;
+      st.copied = `rec:${b.dataset.reccopy}`; st.sig = ""; render();
+      clearTimeout(copyText.t); copyText.t = setTimeout(() => { st.copied = null; st.sig = ""; render(); }, 1600);
+      return;
     }
     if (b.dataset.chatcopy || b.dataset.chatone) {
       const rows = b.dataset.chatone ? (st.chats || []).filter((x) => x.id === b.dataset.chatone) : b.dataset.chatcopy === "flagged" ? (st.chats || []).filter((x) => x.flagged) : st.chats || [];
@@ -2051,12 +2775,23 @@ html, body { overflow-x: hidden; }
   async function loadChats() {
     try { const x = await fetch(`${WORKER}/week-chat?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.chats = Array.isArray(j.chats) ? j.chats : []; st.sig = ""; render(); } } catch {}
   }
+  // NFL holding page: who reached the under construction sign.
+  async function loadUc() {
+    try { const x = await fetch(`${WORKER}/uc-hit?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.uc = Array.isArray(j.hits) ? j.hits : []; st.sig = ""; render(); } } catch {}
+  }
+  // Records: the best day ever for each metric, kept by the Worker.
+  async function loadRecords() {
+    try { const x = await fetch(`${WORKER}/records?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { st.rec = await x.json(); st.sig = ""; render(); } } catch {}
+  }
+  async function sendRecords(days) {
+    try { const x = await fetch(`${WORKER}/records?${auth()}`, { method: "POST", body: JSON.stringify({ days }) }); if (x.ok) { st.rec = await x.json(); st.sig = ""; render(); } } catch {}
+  }
   async function loadOps() {
-    try { const x = await fetch(`${WORKER}/ops?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.ops = Array.isArray(j.ops) ? j.ops : []; st.sig = ""; render(); } } catch {}
+    try { const x = await fetch(`${WORKER}/ops?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.ops = Array.isArray(j.ops) ? j.ops : []; applyOpsFixes(); st.sig = ""; render(); } } catch {}
   }
   async function loadAdminFriction() {
     // Fixes shipped from a pasted log live in the repo (fixes.json).
-    try { const f = await fetch(`../fixes.json?t=${Date.now()}`, { cache: "no-store" }); if (f.ok) st.afrFixes = (await f.json()).fixes || []; } catch {}
+    try { const f = await fetch(`../fixes.json?t=${Date.now()}`, { cache: "no-store" }); if (f.ok) { st.afrFixes = (await f.json()).fixes || []; applyOpsFixes(); } } catch {}
     try { const x = await fetch(`${WORKER}/admin-friction?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.afr = Array.isArray(j.taps) ? j.taps : []; st.sig = ""; render(); } } catch {}
   }
   // NFL join requests (name, email, message), newest first.
@@ -2298,7 +3033,7 @@ html, body { overflow-x: hidden; }
   // Read every few minutes; prices are OpenAI's published rates, so the
   // bill itself is the final word.
   const cost = { data: null, at: 0, err: "" };
-  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening", "week-ask": "BI (old reader)", "week-chat": "BroChief Intelligence", "lightning-edit": "Lightning edits" };
+  const FEATURE = { "history-ask": "History Ask", "story": "Week story", "game-brief": "Game briefs", "game-preview": "Game previews", "injuries": "Injury reads", "expert-picks": "Expert picks", "creative-image": "Studio images", "liftr-plan": "Liftr plans", "liftr-swap": "Liftr swaps", "liftr-library": "Liftr library", "liftr-chat": "Liftr chat", "liftr-opening": "Liftr opening", "week-ask": "BI (old reader)", "week-chat": "Ask Chief", "lightning-edit": "Lightning edits" };
   async function loadCosts(force) {
     if (!force && Date.now() - cost.at < 3 * 60000) return;
     try {
@@ -2386,11 +3121,24 @@ html, body { overflow-x: hidden; }
     app.hidden = true; studioEl.hidden = false; scrollTo(0, 0);
     paintStudio(); studioLoad();
   }
+  function goPage(p) {
+    // Visits is the lower half of Overview: one scroll from the numbers
+    // into the visits themselves; the tab jumps there.
+    if (p === "activity") {
+      const wasHome = st.page === "home";
+      st.page = "home"; st.menu = false; store.set("brochiefs_live_page", "home"); if (!wasHome) { st.sig = ""; render(); }
+      const el = document.getElementById("sec-visits");
+      if (el) scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + scrollY - (innerWidth >= 1024 ? 80 : 70)), behavior: wasHome ? "smooth" : "auto" });
+      st.secLock = Date.now() + 900; document.querySelectorAll(".tabs button[data-page]").forEach((b) => b.classList.toggle("on", b.dataset.page === "activity"));
+      return;
+    }
+    if (!PAGES.some(([id]) => id === p)) p = "home";
+    st.page = p; st.menu = false; store.set("brochiefs_live_page", p); st.sig = ""; render(); scrollTo({ top: 0 });
+  }
   function closeStudio(sec) {
     st.view = "live"; clearTimeout(studioLoad.t);
     studioEl.hidden = true; app.hidden = false; render();
-    const el = sec && document.getElementById(sec);
-    if (el) scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + scrollY - (innerWidth >= 1024 ? 80 : 70)) });
+    if (sec) goPage(PAGE_OF[sec] || sec);
   }
   // What already exists for a suggestion: the newest version of that
   // category and subject, if any (rejected and failed ones don't count).
@@ -2774,7 +3522,7 @@ html, body { overflow-x: hidden; }
     const body = sd.tab === "canvas" ? sdCanvas() : sd.tab === "library" ? sdLibrary() : sd.tab === "placements" ? sdPlacements() : sd.tab === "create" ? sdCreate() : sdReview();
     studioEl.innerHTML = `
       <div class="top"><div class="top-in">
-        <button type="button" class="brand" data-sd-back="sec-now" aria-label="Back to live"><i class="beat"></i><b>BROCHIEFS</b><span>STUDIO</span></button>
+        <button type="button" class="brand" data-sd-back="home" aria-label="Back to live"><i class="beat"></i><b>BROCHIEFS</b><span>STUDIO</span></button>
         <span class="age">${sd.loading ? "loading…" : sd.err ? "" : ""}</span>
         <div class="tools"><button type="button" class="ib" data-sd-refresh="1" aria-label="Refresh">${ICONS.refresh}</button></div>
       </div></div>
@@ -2789,7 +3537,7 @@ html, body { overflow-x: hidden; }
         <p class="sd-foot">Publish puts it in the app. Take down brings back what was there before.</p>
       </div>
       <div id="sd-over">${sdOver()}</div>
-      <nav class="tabs" aria-label="Sections">${TABS.map(([id, lab, ic]) => `<button type="button" data-sd-back="${id}">${ICONS[ic]}<span>${lab}</span></button>`).join("")}<button type="button" class="on">${ICONS.studio}<span>Studio${sd.review ? `<b>${sd.review}</b>` : ""}</span></button></nav>`;
+      <nav class="tabs" aria-label="Pages">${PAGES.map(([id, lab, ic]) => `<button type="button" data-sd-back="${id}">${ICONS[ic]}<span>${lab}</span></button>`).join("")}</nav>`;
   }
   function sdTabs() { return `<div class="sd-tabs" role="tablist">${SD_TABS.map(([k, l]) => `<button type="button" role="tab" class="${sd.tab === k ? "on" : ""}" data-sd-tab="${k}">${l}${k === "review" && sd.review ? ` <b>${sd.review}</b>` : ""}</button>`).join("")}</div>`; }
   function sdOver() {

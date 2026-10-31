@@ -31,6 +31,7 @@ const app = {
     // still open.
     if (event.cron !== SEAL_CRON) {
       ctx.waitUntil(runInsights(env, INSIGHTS_DEPS, { briefs: false }).then((r) => console.log("scheduled insights", JSON.stringify(r))));
+      ctx.waitUntil(warmNews(env).then((n) => console.log("scheduled news warm", n)).catch((err) => console.error("news warm", err)));
       return;
     }
     ctx.waitUntil(sealFromEspn(env).then((r) => console.log("scheduled seal", JSON.stringify(r))));
@@ -128,6 +129,9 @@ const app = {
       if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
       if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
       return json(await deviceToken(env.ARCHIVE_LOG_KEY, Date.now()), 200, { ...corsHeaders, "Cache-Control": "no-store" });
+    }
+    if (url.pathname === "/records") {
+      return handleRecords(request, env, corsHeaders, url);
     }
     if (url.pathname === "/rollups") {
       return handleRollups(request, env, corsHeaders, url);
@@ -232,7 +236,7 @@ const app = {
         const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
         const g = (slate?.games || []).find((x) => Number(x.id) === Number(url.searchParams.get("game")));
         if (!g) return json({ items: [], error: "no such game" }, 404, corsHeaders);
-        return json(await gameNews(env, g), 200, { ...corsHeaders, "Cache-Control": "public, max-age=600" });
+        return json(await gameNews(env, g, ctx), 200, { ...corsHeaders, "Cache-Control": "public, max-age=600" });
       } catch (err) {
         console.error("insights news", err?.stack || String(err));
         return json({ items: [], error: "News failed" }, 200, corsHeaders);
@@ -593,12 +597,22 @@ function opsNote(k, d, extra = {}) {
 }
 async function opsFlush(env) {
   if (!opsQ.length || !env?.LIFTR_KV) return;
-  const add = opsQ.splice(0);
+  let add = opsQ.splice(0);
+  // "Noted once per 6h" has to hold across every Worker instance, not just
+  // this one's memory: the first instance to note a slow host marks it in KV
+  // and the rest skip it until the mark expires.
+  add = (await Promise.all(add.map(async (e) => {
+    const host = e.k === "upstream-slow" && /missed our deadline/.test(e.d) ? e.d.split(" ")[0] : "";
+    if (!host) return e;
+    try { if (await env.LIFTR_KV.get(`slownote:${host}`)) return null; await env.LIFTR_KV.put(`slownote:${host}`, "1", { expirationTtl: 6 * 3600 }); } catch {}
+    return e;
+  }))).filter(Boolean);
   try { await Promise.all(add.map((e) => logPut(env, "ops:", e, 7))); }
   catch (err) { console.error("ops log", err?.stack || String(err)); }
 }
 // Upstream calls (ESPN and the rest): failures and calls over 8 seconds.
 const rawFetch = globalThis.fetch;
+const timeoutNoted = {};
 globalThis.fetch = async (input, init) => {
   const url = typeof input === "string" ? input : input?.url || "";
   let host = ""; try { host = new URL(url).hostname; } catch {}
@@ -609,7 +623,11 @@ globalThis.fetch = async (input, init) => {
     else if (Date.now() - t0 > 8000) opsNote("upstream-slow", `${host} ${Math.round((Date.now() - t0) / 100) / 10}s`, { src: "worker" });
     return r;
   } catch (err) {
-    if (err?.name !== "AbortError") opsNote("upstream-fail", `${host} ${String(err?.message || err).slice(0, 60)}`, { src: "worker" });
+    // Our own deadline running out (AbortSignal.timeout) is handled by the
+    // caller, which serves its saved copy: a slow source, not a failure, and
+    // noted once per host every six hours rather than on every call.
+    if (err?.name === "TimeoutError") { if (Date.now() - (timeoutNoted[host] || 0) > 6 * 3600 * 1000) { timeoutNoted[host] = Date.now(); opsNote("upstream-slow", `${host} missed our deadline (saved copy served; noted once per 6h)`, { src: "worker" }); } }
+    else if (err?.name !== "AbortError") opsNote("upstream-fail", `${host} ${String(err?.message || err).slice(0, 60)}`, { src: "worker" });
     throw err;
   }
 };
@@ -1767,6 +1785,11 @@ async function logPickChanges(env, manager, before, after, admin, week = 1, kick
 let triviaCache = null;
 async function handleTrivia(request, env, corsHeaders) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  // Streak mode: the longest run of right answers in a row, per player.
+  if (request.method === "GET" && new URL(request.url).searchParams.get("streak")) {
+    const rows = await Promise.all(PICKS_MANAGERS.map(async (p) => [p, await env.LIFTR_KV.get(`trivia-streak:${p}`, "json")]));
+    return json({ streaks: rows.filter(([, v]) => v).map(([player, v]) => ({ player, best: v.best, bestAt: v.bestAt, runs: v.runs })) }, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  }
   if (request.method === "GET") {
     const now = Date.now();
     if (triviaCache && now - triviaCache.at < 5000) return json({ scores: triviaCache.scores }, 200, corsHeaders);
@@ -1779,6 +1802,17 @@ async function handleTrivia(request, env, corsHeaders) {
     let body;
     try { body = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
     const player = body?.player;
+    if (body?.streak != null) {
+      const n = Number(body.streak);
+      if (!PICKS_MANAGERS.includes(player)) return json({ error: "Unknown player" }, 400, corsHeaders);
+      if (!Number.isInteger(n) || n < 1 || n > 500) return json({ error: "Bad streak" }, 400, corsHeaders);
+      const now = Date.now();
+      const cur = (await env.LIFTR_KV.get(`trivia-streak:${player}`, "json")) || { best: 0, bestAt: null, runs: 0 };
+      cur.runs += 1;
+      if (n > cur.best) { cur.best = n; cur.bestAt = now; }
+      await env.LIFTR_KV.put(`trivia-streak:${player}`, JSON.stringify(cur));
+      return json({ ok: true, best: cur.best }, 200, corsHeaders);
+    }
     const score = Number(body?.score), total = Number(body?.total);
     if (!PICKS_MANAGERS.includes(player)) return json({ error: "Unknown player" }, 400, corsHeaders);
     if (!Number.isInteger(score) || !Number.isInteger(total) || total < 1 || total > 50 || score < 0 || score > total) return json({ error: "Bad score" }, 400, corsHeaders);
@@ -1901,7 +1935,10 @@ async function handleGames(request, env, corsHeaders, url) {
       }));
       problems.sort((a, b) => a.slot - b.slot || a.manager.localeCompare(b.manager));
       cards.sort((a, b) => a.name.localeCompare(b.name));
-      return json({ ok: true, week, checked, problems, cards, lockRule: !!lockRuleFor(week) }, 200, corsHeaders);
+      // The games behind each slot (column order), so a missing box can say
+      // which game it is. Matchups and kickoffs only, never a pick.
+      const slots = [...games.keys()].sort((a, b) => Number(a) - Number(b)).map((gid) => { const g = games.get(gid); return { id: Number(gid), game: `${g.awayShort || g.away} @ ${g.homeShort || g.home}`, kickoff: g.kickoff || null }; });
+      return json({ ok: true, week, checked, problems, cards, slots, lockRule: !!lockRuleFor(week) }, 200, corsHeaders);
     }
     // The slate editor's warning before it changes a published game: who
     // has a pick in on each game. Names only, never which side or mode.
@@ -2467,12 +2504,27 @@ function fixBestWho(s) {
 
 // Writes the summary for a week, and keeps the sealed-at stamp from the
 // first sealing so a later correction does not look like a new week.
+// No game is over sooner than this after its kickoff (a quick college game
+// runs about three hours).
+const FINAL_MIN_MS = 2.5 * 3600000;
+const couldBeFinal = (kick, now = Date.now()) => Number.isFinite(kick) && now >= kick + FINAL_MIN_MS;
 async function sealWeek(env, week, { force = false } = {}) {
   const prior = await env.LIFTR_KV.get(summaryKey(week), "json");
   // A week sealed complete is the season's record of it. Later reads must
   // not rescore it: the slate can be re-saved and a moved spread would
   // rewrite history. Only the owner's console, passing force, reopens one.
-  if (prior?.frozen && !force) return prior;
+  // A week sealed while some of its games cannot have finished (a phone
+  // posted the wrong week's scores) is not a record: drop those results and
+  // reopen it instead of keeping it frozen.
+  if (prior?.frozen && !force) {
+    const sl = await env.LIFTR_KV.get(gamesKey(week), "json");
+    const early = (sl?.games || []).filter((g) => !couldBeFinal(Date.parse(g.kickoff))).map((g) => String(g.id));
+    if (!early.length) return prior;
+    const res = (await env.LIFTR_KV.get(resultsKey(week), "json")) || {};
+    for (const id of early) delete res[id];
+    await env.LIFTR_KV.put(resultsKey(week), JSON.stringify(res));
+    console.log("reopened week sealed early", week, early.join(","));
+  }
   const [slate, results, ...picksRows] = await Promise.all([
     env.LIFTR_KV.get(gamesKey(week), "json"),
     env.LIFTR_KV.get(resultsKey(week), "json"),
@@ -2522,6 +2574,12 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
   const wantDetail = url.searchParams.get("detail") === "1";
   if (summariesCache && summariesCache.detail === wantDetail && now - summariesCache.at < 60000) return json({ ...summariesCache.data, cached: true }, 200, corsHeaders);
   const weeks = await readWeeks(env);
+  // The current week sealed while its games are still being played is the
+  // early-seal bug: reseal it (sealWeek drops the impossible results).
+  try {
+    const cur = await env.LIFTR_KV.get(summaryKey(weeks.current), "json");
+    if (cur?.frozen) { const sl = await env.LIFTR_KV.get(gamesKey(weeks.current), "json"); if ((sl?.games || []).some((g) => !couldBeFinal(Date.parse(g.kickoff), now))) await sealWeek(env, weeks.current); }
+  } catch (err) { console.error("early seal check", err?.stack || String(err)); }
   const rows = await Promise.all(weeks.list.map(async (n) => {
     let s = await env.LIFTR_KV.get(summaryKey(n), "json");
     // Written by an older Worker: rebuild it from the stored picks and
@@ -2564,8 +2622,12 @@ async function handleSeason(request, env, corsHeaders, url) {
     const week = Number(body?.week);
     if (!Number.isInteger(week) || week < 1 || week > 30) return json({ error: "Bad week" }, 400, corsHeaders);
     const kickoffs = await kickoffsFor(env, week);
+    // Each game's own kickoff (the lock-all rule gives every game the
+    // week's first one): a result counts only once its game could be over.
+    const ownKick = Object.fromEntries(((await env.LIFTR_KV.get(gamesKey(week), "json"))?.games || []).map((g) => [String(g.id), Date.parse(g.kickoff)]));
     const clean = {};
     for (const [id, r] of Object.entries(body?.results || {})) {
+      if (!couldBeFinal(ownKick[id])) continue;
       const a = Number(r?.awayScore), h = Number(r?.homeScore);
       if (!Number.isInteger(a) || !Number.isInteger(h) || a < 0 || h < 0 || a > 200 || h > 200) continue;
       if (!kickoffs[id] || Date.now() < kickoffs[id]) continue; // not started: ignore
@@ -2781,6 +2843,19 @@ async function handleReactions(request, env, corsHeaders, url) {
 
 // --- Insights ---------------------------------------------------------
 const SEAL_CRON = "0 10 * * 1";
+// Game news is fetched ahead of anyone asking: every game that has not
+// finished (kicks off later, or kicked off in the last four hours), one at a
+// time, so the first person to open a game finds it saved instead of waiting
+// four to five seconds on the feeds. gameNews skips any saved under 30 min.
+async function warmNews(env) {
+  const week = (await readWeeks(env)).current;
+  const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
+  const now = Date.now();
+  const games = (slate?.games || []).filter((g) => { const k = Date.parse(g.kickoff); return Number.isFinite(k) && k > now - 4 * 3600000; });
+  let n = 0;
+  for (const g of games) { try { await gameNews(env, g); n++; } catch {} }
+  return n;
+}
 const INSIGHTS_DEPS = {
   liveGames: (env, week) => liveGames(env, week),
   readSlate: (env, week) => env.LIFTR_KV.get(gamesKey(week), "json"),
@@ -3972,6 +4047,77 @@ async function handleExpertRecord(request, env, corsHeaders, url) {
 // one write.
 const VISITS_NOT_TRACKED = new Set(["Jake"]);
 
+// --- Records: the best day ever ------------------------------------------
+// Live sends each day's totals (visits, people in, time in app, actions);
+// the Worker keeps a 120 day history, the highest value seen for each day
+// (a day still running only ever goes up), and the best day ever for each
+// metric, so a benchmark outlives the raw logs. Admin only.
+export const RECORD_METRICS = ["visits", "people", "timeMs", "actions"];
+export function mergeRecords(have, days) {
+  const out = { days: { ...(have?.days || {}) }, best: { ...(have?.best || {}) } };
+  for (const d of Array.isArray(days) ? days.slice(0, 40) : []) {
+    if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d.d || "")) continue;
+    const cur = out.days[d.d] || {};
+    for (const k of RECORD_METRICS) { const v = Math.round(Number(d[k])); if (Number.isFinite(v) && v >= 0 && v < 1e9) cur[k] = Math.max(cur[k] || 0, v); }
+    // Pace: each metric's running total at the end of every hour of the day
+    // (24 values, Eastern), so "the best day had 62 by 2 PM" can be shown.
+    // Merged value by value, highest wins, like the totals.
+    if (d.h && typeof d.h === "object") {
+      const h = { ...(cur.h || {}) };
+      for (const k of RECORD_METRICS) {
+        const arr = d.h[k];
+        if (!Array.isArray(arr) || arr.length !== 24) continue;
+        const was = Array.isArray(h[k]) ? h[k] : [];
+        h[k] = arr.map((x, i) => { const v = Math.round(Number(x)); return Math.max(was[i] || 0, Number.isFinite(v) && v >= 0 && v < 1e9 ? v : 0); });
+      }
+      if (Object.keys(h).length) cur.h = h;
+    }
+    out.days[d.d] = cur;
+  }
+  const keep = Object.keys(out.days).sort().slice(-120);
+  out.days = Object.fromEntries(keep.map((k) => [k, out.days[k]]));
+  for (const k of RECORD_METRICS) for (const [d, v] of Object.entries(out.days)) if ((v[k] || 0) > (out.best[k]?.v || 0)) out.best[k] = { v: v[k], d };
+  return out;
+}
+// History already on hand: every day the session logs still reach gives
+// its visits, people and time in app (actions are not in the logs, so
+// those come from Live only). Merged in at most every six hours.
+export function daysFromSessions(sessionsBy) {
+  const by = {};
+  for (const [m, list] of Object.entries(sessionsBy || {})) for (const x of list || []) {
+    if (!Number.isFinite(x?.at)) continue;
+    const d = etDate(x.at), cur = by[d] || (by[d] = { d, visits: 0, people: new Set(), timeMs: 0, hv: Array(24).fill(0), ht: Array(24).fill(0), hp: Array.from({ length: 24 }, () => new Set()) });
+    const hr = etHour(x.at), dur = Math.max(0, Number(x.dur) || 0);
+    cur.visits++; cur.people.add(m); cur.timeMs += dur;
+    cur.hv[hr]++; cur.ht[hr] += dur; cur.hp[hr].add(m);
+  }
+  // Hourly running totals (people: distinct so far), for the pace marker.
+  const run = (a) => { let t = 0; return a.map((x) => (t += x)); };
+  const runPeople = (a) => { const seen = new Set(); return a.map((s) => { for (const m of s) seen.add(m); return seen.size; }); };
+  return Object.values(by).map((x) => ({ d: x.d, visits: x.visits, people: x.people.size, timeMs: x.timeMs, h: { visits: run(x.hv), people: runPeople(x.hp), timeMs: run(x.ht) } }));
+}
+async function handleRecords(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
+  let have = (await env.LIFTR_KV.get("records", "json")) || { days: {}, best: {} };
+  // hv: the hourly pace curves came later; fill once more so past days get them.
+  if (Date.now() - (have.filledAt || 0) > 6 * 3600000 || !have.hv) {
+    try {
+      const { sessions } = await readUsage(env);
+      const days = daysFromSessions(sessions).sort((a, b) => (a.d < b.d ? 1 : -1));
+      for (let i = 0; i < days.length; i += 40) have = { ...mergeRecords(have, days.slice(i, i + 40)), filledAt: have.filledAt };
+      have.filledAt = Date.now(); have.hv = 1;
+      await env.LIFTR_KV.put("records", JSON.stringify(have));
+    } catch (err) { console.error("records fill", err?.stack || String(err)); }
+  }
+  if (request.method === "GET") return json(have, 200, { ...corsHeaders, "Cache-Control": "no-store" });
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let body; try { body = JSON.parse(await request.text()); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  const next = { ...mergeRecords(have, body?.days), filledAt: have.filledAt, hv: have.hv };
+  await env.LIFTR_KV.put("records", JSON.stringify(next));
+  return json(next, 200, corsHeaders);
+}
+
 // --- Weekly rollups ----------------------------------------------------
 // Raw opens and sessions are capped per owner, so a season-long view needs
 // the week's totals saved once the week is over. Weeks run Monday to
@@ -3981,6 +4127,7 @@ const VISITS_NOT_TRACKED = new Set(["Jake"]);
 const ROLLUP_TZ = "America/New_York";
 const etParts = (ms) => { const o = {}; for (const p of new Intl.DateTimeFormat("en-US", { timeZone: ROLLUP_TZ, year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" }).formatToParts(new Date(ms))) o[p.type] = p.value; return o; };
 const etDate = (ms) => { const o = etParts(ms); return `${o.year}-${o.month}-${o.day}`; };
+const etHour = (ms) => Number(new Intl.DateTimeFormat("en-US", { timeZone: ROLLUP_TZ, hour: "numeric", hourCycle: "h23" }).format(new Date(ms))) % 24;
 function etWeekKey(ms) {
   const o = etParts(ms);
   const dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(o.weekday);
@@ -4116,7 +4263,7 @@ async function presenceWeek(env, now) {
   const names = PICKS_MANAGERS.filter((m) => !VISITS_NOT_TRACKED.has(m)), from = now - 7 * 86400000;
   const rows = await Promise.all(names.map(async (m) => {
     const s = (await env.LIFTR_KV.get(sessKey(m), { type: "json", cacheTtl: 60 })) || [];
-    return [m, s.filter((x) => Number(x.at) + (Number(x.dur) || 0) >= from).map((x) => [Number(x.at), Number(x.dur) || 0, (x.f || []).slice(0, 24)])];
+    return [m, s.filter((x) => Number(x.at) + (Number(x.dur) || 0) >= from).map((x) => [Number(x.at), Number(x.dur) || 0, (x.f || []).slice(0, 24), ...(x.st === "pro" ? ["pro"] : [])])];
   }));
   return Object.fromEntries(rows);
 }
@@ -4240,6 +4387,7 @@ async function handleVisit(request, env, corsHeaders, url) {
   // KV write), so an older copy of the app still gets its ok.
   if (VISITS_NOT_TRACKED.has(m)) return json({ ok: true, tracked: false }, 200, corsHeaders);
   const ver = /^[0-9]{6,14}$/.test(String(body.v || "")) ? String(body.v) : "";
+  const sty = styleTag(body);
   // A session ends: the app was put away. When it started, how long it was
   // on screen, which screens and sheets were used, and which build it ran.
   // Sent as a background beacon, so the phone never waits on it.
@@ -4256,14 +4404,14 @@ async function handleVisit(request, env, corsHeaders, url) {
     const pair = (o) => ({ espn: int(o?.espn, 999), worker: int(o?.worker, 999) });
     const h = { e: int(hb.e, 999), em: (Array.isArray(hb.em) ? hb.em : []).slice(0, 3).map((x) => String(x).replace(/[<>]/g, "").slice(0, 80)).filter(Boolean), ff: pair(hb.ff), sl: pair(hb.sl), ...(int(hb.ld, 120000) ? { ld: int(hb.ld, 120000) } : {}) };
     const hasH = h.e || h.ff.espn || h.ff.worker || h.sl.espn || h.sl.worker || h.ld;
-    const rec = { at: Math.round(start), dur: Math.round(Math.min(dur, 6 * 3600000)), f, ...(Object.keys(gt).length ? { gt } : {}), ...(hasH ? { h } : {}), ...(ver ? { v: ver } : {}) };
+    const rec = { at: Math.round(start), dur: Math.round(Math.min(dur, 6 * 3600000)), f, ...(Object.keys(gt).length ? { gt } : {}), ...(hasH ? { h } : {}), ...(ver ? { v: ver } : {}), ...sty };
     const list = (await env.LIFTR_KV.get(sessKey(m), "json")) || [];
     list.unshift(rec);
     await env.LIFTR_KV.put(sessKey(m), JSON.stringify(list.slice(0, 1500)));
     return json({ ok: true }, 200, corsHeaders);
   }
   const qAt = queuedOpenAt(body, Date.now());
-  const entry = { at: qAt ?? Date.now(), ...(qAt != null ? { q: 1 } : {}), app: body.standalone ? "home" : "browser", device: String(body.device || "").slice(0, 12), screen: String(body.screen || "").slice(0, 12), tz: String(body.tz || "").slice(0, 40), ...(ver ? { v: ver } : {}) };
+  const entry = { at: qAt ?? Date.now(), ...(qAt != null ? { q: 1 } : {}), app: body.standalone ? "home" : "browser", device: String(body.device || "").slice(0, 12), screen: String(body.screen || "").slice(0, 12), tz: String(body.tz || "").slice(0, 40), ...(ver ? { v: ver } : {}), ...sty };
   const list = (await env.LIFTR_KV.get(key(m), "json")) || [];
   list.unshift(entry);
   // 1,000 opens: weeks of history for the admin dashboard at the 5-minute
@@ -4446,3 +4594,6 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
   }
   return json({ message: { role: "assistant", content: m.content || null, ...(calls.length ? { tool_calls: calls } : {}) }, logId }, 200, corsHeaders);
 }
+
+// Pro trial: classic is the default, so only a pro visit carries a tag.
+export function styleTag(body) { return body && body.st === "pro" ? { st: "pro" } : {}; }

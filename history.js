@@ -277,11 +277,15 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   }
   const WORKER=(typeof WORKER_URL==='string'&&WORKER_URL)||'';
   const me=()=>{try{return localStorage.getItem('brochiefs_me_v1')||null}catch{return null}};
+  // A blip (iOS "Load failed") gets one retry after a short wait, each try
+  // capped at 5s; the last good board is kept so a miss shows it, not "offline".
+  const tFetch=async(url,opt)=>{for(let i=0;i<2;i++){const c=new AbortController();const t=setTimeout(()=>c.abort(),5000);try{const r=await fetch(url,{...opt,signal:c.signal});clearTimeout(t);if(r.ok||r.status<500||i)return r}catch(e){clearTimeout(t);if(i)throw e}await new Promise((r)=>setTimeout(r,1500))}};
+  const tGet=async(url,key)=>{try{const d=await(await tFetch(url+(url.includes('?')?'&':'?')+'t='+Date.now(),{cache:'no-store'})).json();try{localStorage.setItem(key,JSON.stringify(d))}catch{}return d}catch(e){let d=null;try{d=JSON.parse(localStorage.getItem(key)||'null')}catch{}if(d)return d;throw e}};
   const fmtWhen=(t)=>t?new Date(t).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
   async function loadHighScores(){
     const list=el('trivia-hs-list');if(!list||!WORKER)return;
     try{
-      const res=await fetch(WORKER+'/trivia?t='+Date.now(),{cache:'no-store'});const data=await res.json();
+      const data=await tGet(WORKER+'/trivia','brochiefs_trivia_hs');
       const rows=(data.scores||[]).sort((a,b)=>b.best-a.best||(a.bestAt||0)-(b.bestAt||0));
       if(!rows.length){list.innerHTML='<div class="trivia-hs-empty">No scores yet. Be the first on the board.</div>';return}
       const who=me();
@@ -293,7 +297,7 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     if(!who){box.textContent='Tap your name in the top corner to post scores to the league board.';box.classList.remove('hidden');return}
     if(!WORKER)return;
     try{
-      const res=await fetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,score:sc,total})});
+      const res=await tFetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,score:sc,total})});
       const data=await res.json().catch(()=>({}));
       if(res.ok&&data.ok){box.textContent='Posted for '+who+' · best '+data.best+'/12 · '+data.plays+' game'+(data.plays===1?'':'s');box.classList.remove('hidden');loadHighScores();}
       else{box.textContent='Score not posted: '+(data.error||'try again');box.classList.remove('hidden')}
@@ -320,8 +324,137 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   el('trivia-start-btn').addEventListener('click',()=>{i=0;score=0;clearProg();draw();beginPlay();render();track('trivia-start')});
   el('trivia-next').addEventListener('click',()=>{if(i===Q.length-1){finish();return}i++;render();play.scrollIntoView({block:'start',behavior:'smooth'})});
   el('trivia-again').addEventListener('click',()=>{end.classList.add('hidden');start.classList.remove('hidden');showBest();showResume();start.scrollIntoView({block:'start',behavior:'smooth'})});
-  showBest();showResume();loadHighScores();
-  document.getElementById('nav-trivia-btn')?.addEventListener('click',loadHighScores);
+  // --- Streak mode: one question at a time, how many in a row. ---------
+  // No start button: a question is already up. The first is about you
+  // (with a little snark), built from your own seasons; then the archive
+  // pool and more about you, shuffled. Right: confetti and the next one.
+  // Wrong: the answer, the streak resets, tap for the next.
+  const STREAK_KEY='brochiefs_trivia_streak_v1';
+  const ownerOf=(m)=>{if(!m)return null;const sh=typeof shown==='function'?shown(m):m;return A.owners.includes(sh)?sh:A.owners.includes(m)?m:null};
+  const rec=(r)=>r.wins+'-'+r.losses;
+  const pickN=(arr,n)=>shuffle(arr).slice(0,n);
+  function aboutYou(o){
+    const r=O[o];if(!r)return[];
+    const out=[];
+    const mine=[...new Set(r.seasons.map((x)=>x.team))];
+    const others=[...new Set(Object.values(S).flatMap((s)=>s.standings.filter((x)=>x.owner!==o).map((x)=>x.team)))];
+    const opts=(right)=>{const pool=mine.filter((t)=>t!==right);const fill=pool.length>=3?pickN(pool,3):pool.concat(pickN(others.filter((t)=>!mine.includes(t)),3-pool.length));return[right,...fill]};
+    out.push({id:'worst',q:`Be honest, ${o}: which of these was your worst season?`,o:opts(r.worst.team),a:0,why:`${r.worst.team}, ${rec(r.worst)} in ${r.worst.year}. We don't talk about it.`,me:1});
+    if(r.best.team!==r.worst.team)out.push({id:'best',q:`${o}, your finest hour. Which team had your best record?`,o:opts(r.best.team),a:0,why:`${r.best.team} went ${rec(r.best)} in ${r.best.year}. Peak ${o}.`,me:1});
+    const t=r.titles;out.push({id:'titles',q:`Quick one, ${o}: how many titles do you have?`,o:[String(t),...pickN([0,1,2,3,4].filter((x)=>x!==t).map(String),3)],a:0,why:t?`${t}. ${t>1?'Flex accepted.':'Frame it.'}`:`Zero. Still hunting, ${o}.`,me:1});
+    const last=r.seasons[r.seasons.length-1];if(last){const n=S[String(last.year)].standings.length;out.push({id:'last',q:`Where did you finish in ${last.year}, ${o}?`,o:[String(last.rank),...pickN(Array.from({length:n},(_,k)=>String(k+1)).filter((x)=>x!==String(last.rank)),3)].map((x)=>x+(x==='1'?'st':x==='2'?'nd':x==='3'?'rd':'th')),a:0,why:`${last.rank}${last.rank===1?'st':last.rank===2?'nd':last.rank===3?'rd':'th'} of ${n} with ${last.team} (${rec(last)}).`,me:1});}
+    out.push({id:'record',q:`${o}, what's your all-time record?`,o:[rec(r),...pickN([[2,-2],[-3,3],[4,-4],[-2,2],[5,-5]].map(([a2,b2])=>`${Math.max(0,r.wins+a2)}-${Math.max(0,r.losses+b2)}`).filter((x)=>x!==rec(r)),3)],a:0,why:`${rec(r)} over ${r.seasons.length} season${r.seasons.length===1?'':'s'}.`,me:1});
+    // More about you: points, last places, the nemesis, bad luck, podiums.
+    const ord=(n)=>n+(n%100>=11&&n%100<=13?'th':n%10===1?'st':n%10===2?'nd':n%10===3?'rd':'th');
+    const years=r.seasons.map((x)=>x.year);
+    const hi=r.seasons.reduce((a2,b2)=>(b2.pf>a2.pf?b2:a2));
+    if(years.length>=4)out.push({id:'pf',q:`${o}, which season did you put up the most points?`,o:[String(hi.year),...pickN(years.filter((y)=>y!==hi.year).map(String),3)],a:0,why:`${hi.year}: ${num(hi.pf)} points with ${hi.team}${S[String(hi.year)].champion===o?'. And you won it all.':'. Still did not win it.'}`,me:1});
+    const lasts=r.seasons.filter((x)=>x.rank===S[String(x.year)].standings.length).length;
+    out.push({id:'lasts',q:`Be real, ${o}: how many times have you finished dead last?`,o:[String(lasts),...pickN([0,1,2,3,4].filter((x)=>x!==lasts).map(String),3)],a:0,why:lasts?`${lasts}. ${lasts>1?'A proud tradition.':'Once is plenty.'}`:'Never. Somebody had to be worse, every single year.',me:1});
+    const ahead={};for(const x of r.seasons){for(const y of S[String(x.year)].standings){if(y.owner!==o&&y.rank<x.rank)ahead[y.owner]=(ahead[y.owner]||0)+1}}
+    const nem=Object.entries(ahead).sort((a2,b2)=>b2[1]-a2[1]);
+    if(nem.length>=4&&nem[0][1]>nem[1][1])out.push({id:'nemesis',q:`${o}, who has finished ahead of you the most times?`,o:[nem[0][0],...pickN(nem.slice(1).map(([w])=>w),3)],a:0,why:`${nem[0][0]}, in ${nem[0][1]} of your ${r.seasons.length} seasons. Your nemesis.`,me:1});
+    const unl=r.seasons.reduce((a2,b2)=>(b2.pa>a2.pa?b2:a2));
+    if(years.length>=4)out.push({id:'unlucky',q:`Which season did the league pile on you the hardest, ${o}? (most points against)`,o:[String(unl.year),...pickN(years.filter((y)=>y!==unl.year).map(String),3)],a:0,why:`${unl.year}: ${num(unl.pa)} points against. ${unl.team} went ${rec(unl)}. Rough.`,me:1});
+    const pods=r.podiums;
+    out.push({id:'podium',q:`${o}, how many times have you finished in the top three?`,o:[String(pods),...pickN([0,1,2,3,4,5].filter((x)=>x!==pods).map(String),3)],a:0,why:pods?`${pods}: ${r.titles} title${r.titles===1?'':'s'}, ${r.seconds} second${r.seconds===1?'':'s'}, ${r.thirds} third${r.thirds===1?'':'s'}.`:'Zero. The podium has never heard of you.',me:1});
+    return out;
+  }
+  // The questions about you that opened recent runs, so the next run leads
+  // with ones you have not seen lately.
+  const SEEN_ME_KEY='brochiefs_trivia_seen_me_v1';
+  const seenMe=()=>{try{return JSON.parse(localStorage.getItem(SEEN_ME_KEY))||[]}catch{return[]}};
+  let deck=[],cur=null,sOrder=[],sAns=false,streak=0;
+  const sBest=()=>{try{return Number(localStorage.getItem(STREAK_KEY))||0}catch{return 0}};
+  // Generated from the archive each time the deck is shuffled: three
+  // title teams and one that never won; three champions and one who
+  // never has.
+  function titleQs(){
+    const out=[];
+    const champs=Object.values(S).map((x)=>({year:x.year,owner:x.champion,team:(row(x,x.champion)||{}).team})).filter((c)=>c.team);
+    const champNames=new Set(champs.map((c)=>c.team));
+    const never=Object.values(S).flatMap((x)=>x.standings.filter((r)=>r.owner!==x.champion&&!champNames.has(r.team)).map((r)=>({year:x.year,owner:r.owner,team:r.team,rec:r.wins+'-'+r.losses})));
+    for(let k=0;k<3&&champs.length>=3&&never.length;k++){
+      const three=pickN(champs,3),odd=never[Math.floor(Math.random()*never.length)];
+      out.push({q:'Which of these teams never won a title?',o:[odd.team,...three.map((c)=>c.team)],a:0,why:`${odd.team} (${odd.owner}, ${odd.year}, ${odd.rec}) never won it. The others: ${three.map((c)=>`${c.team} (${c.owner}, ${c.year})`).join(', ')}.`});
+    }
+    const winners=A.owners.filter((w)=>O[w]&&O[w].titles>0),none=A.owners.filter((w)=>O[w]&&O[w].titles===0);
+    for(let k=0;k<2&&winners.length>=3&&none.length;k++){
+      const three=pickN(winners,3),odd=none[Math.floor(Math.random()*none.length)];
+      out.push({q:'Which of these players has never won a championship?',o:[odd,...three],a:0,why:`${odd} is still waiting on a first title. ${three.map((w)=>`${w} has ${O[w].titles}`).join(', ')}.`});
+    }
+    return out;
+  }
+  function buildDeck(){
+    // Three about you open every run, freshest first; the rest mix in.
+    const o=ownerOf(me());const mine=o?shuffle(aboutYou(o)):[];
+    const seen=seenMe();mine.sort((a2,b2)=>(seen.includes(a2.id)?1:0)-(seen.includes(b2.id)?1:0));
+    const lead=mine.splice(0,3);
+    try{localStorage.setItem(SEEN_ME_KEY,JSON.stringify([...lead.map((q)=>q.id),...seen.filter((x)=>!lead.some((q)=>q.id===x))].slice(0,6)))}catch{}
+    deck=lead.concat(shuffle(POOL.concat(mine,titleQs())));
+  }
+  function confettiBurst(box){
+    const c=document.createElement('div');c.className='tq-conf';
+    const cols=['#ff2079','#05d9e8','#ffe45e','#3dfc8f','#8b6cff'];
+    for(let k=0;k<36;k++){const i2=document.createElement('i');i2.style.cssText=`left:${50+(Math.random()-.5)*20}%;background:${cols[k%5]};--dx:${(Math.random()-.5)*320}px;--dy:${-80-Math.random()*200}px;--r:${Math.random()*720-360}deg;animation-delay:${Math.random()*80}ms`;c.appendChild(i2)}
+    box.appendChild(c);setTimeout(()=>c.remove(),1300);
+  }
+  function sNext(){if(!deck.length)buildDeck();cur=deck.shift();sAns=false;sOrder=shuffle(cur.o.map((_,k)=>k));sRender()}
+  function sRender(){
+    const box=el('trivia-streak');if(!box)return;
+    const b=sBest();
+    box.innerHTML=`<div class="tq-top"><span class="tq-st${streak?' on':''}">🔥 <b>${streak}</b> in a row</span><span class="tq-best">BEST <b>${b}</b></span></div>
+      ${cur.me?'<div class="tq-tag">ABOUT YOU</div>':''}<div class="tq-q">${cur.q}</div>
+      <div class="tq-o">${sOrder.map((k,n)=>`<button type="button" class="trivia-opt" data-k="${k}"><span class="trivia-key">${'ABCD'[n]}</span>${cur.o[k]}</button>`).join('')}</div>
+      <div class="tq-fb hidden"></div><button type="button" class="trivia-btn primary tq-next hidden">NEXT ▸</button>`;
+    box.querySelectorAll('.trivia-opt').forEach((btn)=>btn.addEventListener('click',()=>sAnswer(Number(btn.dataset.k))));
+    box.querySelector('.tq-next').addEventListener('click',sNext);
+  }
+  function sAnswer(k){
+    if(sAns)return;sAns=true;const box=el('trivia-streak');const right=k===cur.a;
+    box.querySelectorAll('.trivia-opt').forEach((btn)=>{btn.disabled=true;const kk=Number(btn.dataset.k);if(kk===cur.a)btn.classList.add('right');else if(kk===k)btn.classList.add('wrong')});
+    const fb=box.querySelector('.tq-fb');fb.innerHTML='<b>'+(right?'CORRECT':'NOPE')+'</b> '+cur.why;fb.className='tq-fb trivia-feedback '+(right?'ok':'bad');
+    if(right){streak++;if(streak>sBest()){try{localStorage.setItem(STREAK_KEY,String(streak))}catch{}}
+      box.querySelector('.tq-st b').textContent=streak;box.querySelector('.tq-st').classList.add('on','pop');box.querySelector('.tq-best b').textContent=sBest();
+      confettiBurst(box);track('trivia-streak-right');
+      // Four seconds to read why it was right; NEXT skips the wait.
+      const q0=cur;box.querySelector('.tq-next').classList.remove('hidden');setTimeout(()=>{if(cur===q0&&sAns)sNext()},4000);}
+    else{const ended=streak;streak=0;if(ended)postStreak(ended);gameOver(box,ended);track('trivia-streak-miss');}
+  }
+  // One miss ends the run: the answer stays up, then a game over card with
+  // a line that roasts you in proportion to how far you got.
+  const SNARK={
+    0:['Zero. The auto-drafter is embarrassed for you.','Not even one. Bold strategy.','You fumbled the opening kickoff.','First question. First miss. Iconic.'],
+    1:['One and done. Like your playoff runs.','A single. The league remembers nothing.','One right. Your parents are proud, probably.'],
+    3:['Respectable. Barely.','A few in a row, then the wheels came off.','Solid start, classic collapse. Very on brand.'],
+    6:['Not bad. Not commissioner material, but not bad.','You know this league a little too well.','Somebody spends too much time in the archive.'],
+    10:['Hall of Fame trivia brain. Touch grass.','Double digits. Someone has been studying.','Unreal. Do you have the spreadsheet open?']
+  };
+  const snarkFor=(n)=>{const k=n>=10?10:n>=6?6:n>=3?3:n>=1?1:0;const a2=SNARK[k];return a2[Math.floor(Math.random()*a2.length)]};
+  function gameOver(box,n){
+    const b2=sBest(),isBest=n>0&&n>=b2;
+    const end=document.createElement('div');end.className='tq-over';
+    end.innerHTML=`<div class="tq-over-h">GAME OVER</div><div class="tq-over-n"><b>${n}</b><span>in a row${isBest?' · NEW BEST':` · best ${b2}`}</span></div><p class="tq-over-s">${snarkFor(n)} Better luck next time.</p><button type="button" class="trivia-btn primary tq-again">↻ PLAY AGAIN</button>`;
+    box.appendChild(end);
+    end.querySelector('.tq-again').addEventListener('click',()=>{buildDeck();sNext();box.scrollIntoView({block:'start',behavior:'smooth'})});
+    setTimeout(()=>end.scrollIntoView({block:'nearest',behavior:'smooth'}),150);
+  }
+  async function postStreak(n){const who=me();if(!who||!WORKER)return;try{await tFetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,streak:n})});loadStreakBoard()}catch{}}
+  async function loadStreakBoard(){
+    const list=el('trivia-hs-list');if(!list||!WORKER)return;
+    try{const d=await tGet(WORKER+'/trivia?streak=1','brochiefs_trivia_streaks');const rows=(d.streaks||[]).sort((a2,b2)=>b2.best-a2.best||(a2.bestAt||0)-(b2.bestAt||0));
+      if(!rows.length){list.innerHTML='<div class="trivia-hs-empty">No streaks yet. Get a few in a row to get on the board.</div>';return}
+      const who=me();list.innerHTML=rows.map((r,i2)=>'<div class="trivia-hs-row'+(r.player===who?' me':'')+(i2===0?' top':'')+'"><span class="trivia-hs-rank">'+(i2+1)+'</span><span class="trivia-hs-name">'+(typeof shown==='function'?shown(r.player):r.player).toUpperCase()+'</span><span class="trivia-hs-when">'+fmtWhen(r.bestAt)+'</span><span class="trivia-hs-score">🔥'+r.best+'</span></div>').join('');
+    }catch{list.innerHTML='<div class="trivia-hs-empty">The board is offline right now.</div>'}
+  }
+  // Swap the 12-question game for the streak card.
+  start.classList.add('hidden');play.classList.add('hidden');end.classList.add('hidden');
+  const sBox=document.createElement('div');sBox.id='trivia-streak';sBox.className='trivia-streak';el('trivia-game').appendChild(sBox);
+  const hsHead=document.querySelector('.trivia-hs-head');if(hsHead)hsHead.textContent='🔥 LONGEST STREAKS';
+  const hero=document.querySelector('.trivia-hero .hero-years');if(hero)hero.textContent='How many in a row?';
+  const mq=document.querySelector('#trivia .section-heading p');if(mq)mq.textContent='One question at a time. Get it right and the next one drops. Miss and the streak resets.';
+  buildDeck();sNext();loadStreakBoard();
+  document.getElementById('nav-trivia-btn')?.addEventListener('click',()=>{loadStreakBoard();const o=ownerOf(me());if(o&&!sAns&&!streak&&cur&&!cur.me){buildDeck();sNext();}});
 })();
 
 // A champion in the strip opens that season's full card further down.
