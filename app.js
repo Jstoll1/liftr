@@ -6566,7 +6566,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     const hd = document.createElement("div");
     hd.className = "ranking-row rank-hd";
     hd.setAttribute("aria-hidden", "true");
-    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span>${weekDone ? `<span class="rank-hits hd">CORRECT PICKS</span>` : `<i class="rank-live mid">LIVE</i>`}${weekDone ? "" : anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b class="rank-hd-wp" role="button" tabindex="0" title="How chance to win is worked out">WIN% ?</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
+    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span>${weekDone ? `<span class="rank-hits hd">CORRECT PICKS</span>` : `<i class="rank-live mid">LIVE</i>`}${weekDone ? "" : anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b class="rank-hd-wp" role="button" tabindex="0" title="How chance to win is worked out">WIN%</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
     hd.querySelector(".rank-hd-wp")?.addEventListener("click", openWinChanceExplainer);
     rankingsList.appendChild(hd);
   }
