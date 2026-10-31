@@ -7783,10 +7783,34 @@ async function openInsights(gameId) {
     const st0 = shortStatus(lv.detail || "");
     const brk = /^(HALF|END \d|END \dH)/i.test(st0) || /halftime|end of/i.test(String(lv.detail || ""));
     const brkLabel = /half/i.test(st0) || /halftime/i.test(String(lv.detail || "")) ? "HALFTIME" : (st0 || "BREAK");
-    const field = `<div class="gc-stage">${brk ? `<div class="gc-brk"><span>${esc(brkLabel)}</span></div>` : ""}<div class="gc-field crt${brk ? " brk" : ""}">${mid}
-      <div class="gc-ez l" style="--tc:${aCol}"><span>${esc(A)}</span></div>
-      <div class="gc-ez r" style="--tc:${hCol}"><span>${esc(H)}</span></div>
-      ${ticks}${brk ? "" : drive + gain + ball}
+    // A score just happened and the kickoff is not in yet: the ball's spot
+    // is stale (ESPN parks it for the kickoff), so the field shows the
+    // score instead, looping in the end zone it happened in, until the
+    // kickoff (or any non-scoring play) arrives.
+    const allPlays = []; const seenSc = new Set();
+    for (const d of [...(summaryRaw?.drives?.previous || []), summaryRaw?.drives?.current].filter(Boolean)) for (const pl of d.plays || []) { const k = pl.id || `${pl.sequenceNumber}|${pl.text}`; if (seenSc.has(k)) continue; seenSc.add(k); allPlays.push({ pl, team: d.team?.id }); }
+    const newest = allPlays.length ? allPlays[allPlays.length - 1] : null;
+    const nType = String(newest?.pl?.type?.text || ""), nText = String(newest?.pl?.text || "");
+    let scoreShow = null;
+    if (newest && !brk && !/kickoff|end period|end of/i.test(nType)) {
+      const fg = /field goal/i.test(nType) || /field goal/i.test(nText) && /good|no good|missed|blocked/i.test(nText);
+      const td = /touchdown/i.test(nType) || (newest.pl.scoringPlay && /touchdown/i.test(nText));
+      if (fg || td) {
+        const scorer = Number(newest.pl.start?.team?.id ?? newest.team);
+        const awayScored = scorer === Number(game.awayId);
+        // Away attacks the right goal (home defends it), home the left.
+        const side = awayScored ? "r" : "l";
+        const good = td || (/good/i.test(nType + " " + nText) && !/no good|missed|blocked/i.test(nType + " " + nText));
+        scoreShow = { kind: td ? "td" : "fg", good, side, id: awayScored ? game.awayId : game.homeId, abbr: awayScored ? A : H };
+      }
+    }
+    const ezShow = (side) => !scoreShow || scoreShow.side !== side ? "" : scoreShow.kind === "td"
+      ? `<div class="gc-ezshow td"><img src="${logoUrl(scoreShow.id)}" alt=""><i class="gc-ball"></i><b class="pro-keep">TOUCHDOWN</b></div>`
+      : `<div class="gc-ezshow fg${scoreShow.good ? "" : " miss"}"><i class="gc-posts" aria-hidden="true"></i><b class="pro-keep">${scoreShow.good ? "FIELD GOAL" : "NO GOOD"}</b></div>`;
+    const field = `<div class="gc-stage">${brk ? `<div class="gc-brk"><span>${esc(brkLabel)}</span></div>` : ""}<div class="gc-field crt${brk ? " brk" : ""}${scoreShow ? " scored" : ""}">${mid}
+      <div class="gc-ez l${scoreShow?.side === "l" ? " show" : ""}" style="--tc:${aCol}"><span>${esc(A)}</span>${ezShow("l")}</div>
+      <div class="gc-ez r${scoreShow?.side === "r" ? " show" : ""}" style="--tc:${hCol}"><span>${esc(H)}</span>${ezShow("r")}</div>
+      ${ticks}${brk || scoreShow ? "" : drive + gain + ball}
     </div></div>`;
     const status = shortStatus(lv.detail || `Q${lv.period ?? "?"} ${lv.clock ?? ""}`);
     const aS = lv.awayScore ?? 0, hS = lv.homeScore ?? 0;
@@ -7837,7 +7861,7 @@ async function openInsights(gameId) {
     const stat = (id, ...names) => { const t = bsTeams.find((x) => Number(x.team?.id) === Number(id)); const st = (t?.statistics || []).find((x) => names.includes(x.name)); return st?.displayValue ?? null; };
     const bsRow = (label, ...names) => { const a = stat(game.awayId, ...names), h = stat(game.homeId, ...names); return a == null && h == null ? "" : `<div class="gc-bs-r"><b>${esc(a ?? "-")}</b><span>${label}</span><b>${esc(h ?? "-")}</b></div>`; };
     const boxHtml = brk ? (() => { const rows = bsRow("TOTAL YARDS", "totalYards") + bsRow("PASSING", "netPassingYards", "passingYards") + bsRow("RUSHING", "rushingYards") + bsRow("TURNOVERS", "turnovers") + bsRow("POSSESSION", "possessionTime"); return rows ? `<div class="gc-bs"><div class="gc-bs-h"><span>${esc(A)}</span><span>${esc(brkLabel === "HALFTIME" ? "FIRST HALF" : "SO FAR")}</span><span>${esc(H)}</span></div>${rows}</div>` : ""; })() : "";
-    const ddLine = brk ? boxHtml : dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || (possA ? `${A} ball · between plays` : possH ? `${H} ball · between plays` : "Between plays"))}</b></div>`;
+    const ddLine = brk ? boxHtml : scoreShow ? `<div class="gc-dd"><b>${esc(scoreShow.kind === "td" ? `${scoreShow.abbr} touchdown` : scoreShow.good ? `${scoreShow.abbr} field goal` : `${scoreShow.abbr} field goal no good`)} · kickoff next</b></div>` : dd ? `<div class="gc-dd${sit.isRedZone ? " rz" : ""}"><b>${esc(dd.replace(/\s+at\s+.*$/i, ""))}</b>${/\bat\s+/.test(dd) ? `<span>${esc(dd.replace(/^.*?\bat\s+/i, "at "))}</span>` : ""}${sit.isRedZone ? `<em>RED ZONE</em>` : ""}</div>` : `<div class="gc-dd"><b>${esc(sit.possessionText || (possA ? `${A} ball · between plays` : possH ? `${H} ball · between plays` : "Between plays"))}</b></div>`;
     // Last three plays: the current drive first, the previous drive if the
     // current one is too short, else the scoreboard's last play.
     const drives = summaryRaw?.drives || {};

@@ -8712,3 +8712,22 @@ body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }
   html:not(.phone) .ask-card:not(:has(.ask-q)) .ask-log { flex: 0 0 auto; }
 }
 .ask-tlogo { width: 16px; height: 16px; object-fit: contain; vertical-align: -3px; margin-right: 3px; }
+
+/* Score just happened: the end zone it happened in takes over the field
+   until the kickoff. TOUCHDOWN: scorer's logo and the ball, the word
+   flashing arcade style. Field goal: the uprights, FIELD GOAL or NO GOOD. */
+.gc-field.scored .gc-ez { z-index: 3; }
+.gc-ez.show { width: 30%; transition: width .35s ease; }
+.gc-ez.show > span { display: none; }
+.gc-ezshow { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+.gc-ezshow img { width: 30px; height: 30px; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .6)); }
+.gc-ezshow .gc-ball { position: static; transform: none; }
+.gc-ezshow b { font-family: 'Press Start 2P', monospace; font-size: 7.5px; color: #fff; letter-spacing: .06em; text-shadow: 0 0 6px rgba(255, 255, 255, .8), 0 1px 0 #000; animation: gc-ezblink 1s steps(2, start) infinite; }
+.gc-ezshow.miss b { color: #ffd0d0; }
+@keyframes gc-ezblink { 50% { opacity: 0; } }
+.gc-posts { position: relative; width: 22px; height: 26px; }
+.gc-posts::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 14px; border: 3px solid #ffe45e; border-top: 0; border-radius: 0 0 2px 2px; }
+.gc-posts::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 3px; height: 13px; margin-left: -1.5px; background: #ffe45e; }
+.gc-ezshow.fg:not(.miss) .gc-posts { animation: gc-ezpost 1s ease-in-out infinite; }
+@keyframes gc-ezpost { 50% { filter: drop-shadow(0 0 6px #ffe45e); } }
+@media (prefers-reduced-motion: reduce) { .gc-ezshow b, .gc-ezshow .gc-posts { animation: none; } }
