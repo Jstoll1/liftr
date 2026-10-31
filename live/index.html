@@ -2190,7 +2190,14 @@ body::before { display: none; }
     const chatDay = (st.chats || []).filter((r) => Date.now() - r.at < DAY);
     const biOthers = chatDay.filter((r) => r.asker !== "Jake");
     const fric24 = actions.filter((e) => FRICTION.test(e.k)).length;
-    const badge = { home: inNow.length || "", issues: afrOpenN + opsBad || "", bi: biOthers.length || "" };
+    // Tab badges count what is new since that page was last opened, so
+    // looking clears them (the cards on each page still show everything open).
+    let pseen = {}; try { pseen = JSON.parse(store.get("brochiefs_live_pseen") || "{}"); } catch {}
+    if (st.page === "issues" || st.page === "bi") { pseen[st.page] = Date.now(); store.set("brochiefs_live_pseen", JSON.stringify(pseen)); }
+    const since = (pg) => pseen[pg] || 0;
+    const issuesNew = (st.afr || []).filter((r) => !afrFix(r) && r.at > since("issues")).length + opsDay.filter((r) => (OPS_KIND[r.k] || [])[1] === "err" && r.at > since("issues")).length;
+    const biNew = biOthers.filter((r) => r.at > since("bi")).length;
+    const badge = { home: inNow.length || "", issues: issuesNew || "", bi: biNew || "" };
     const att = (page, n, lab, sub, tone) => `<button type="button" class="att-c ${tone}" data-page="${page}"><b class="num">${n}</b><span>${lab}</span><small>${sub}</small></button>`;
     const attCards = [
       att("issues", afrOpenN, "Friction open", afrOpenN ? "rage, dead taps, errors" : "all ticked off", afrOpenN ? "warn" : "ok"),
