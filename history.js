@@ -414,12 +414,12 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     if(sAns)return;sAns=true;const box=el('trivia-streak');const right=k===cur.a;
     box.querySelectorAll('.trivia-opt').forEach((btn)=>{btn.disabled=true;const kk=Number(btn.dataset.k);if(kk===cur.a)btn.classList.add('right');else if(kk===k)btn.classList.add('wrong')});
     const fb=box.querySelector('.tq-fb');fb.innerHTML='<b>'+(right?'CORRECT':'NOPE')+'</b> '+cur.why;fb.className='tq-fb trivia-feedback '+(right?'ok':'bad');
-    if(right){streak++;if(streak>sBest()){try{localStorage.setItem(STREAK_KEY,String(streak))}catch{}}
+    if(right){streak++;if(streak>sBest()){try{localStorage.setItem(STREAK_KEY,String(streak))}catch{}}if(streak>(window.__tqPosted||0)){window.__tqPosted=streak;postStreak(streak,true)}
       box.querySelector('.tq-st b').textContent=streak;box.querySelector('.tq-st').classList.add('on','pop');box.querySelector('.tq-best b').textContent=sBest();
       confettiBurst(box);track('trivia-streak-right');
       // Four seconds to read why it was right; NEXT skips the wait.
       const q0=cur;box.querySelector('.tq-next').classList.remove('hidden');setTimeout(()=>{if(cur===q0&&sAns)sNext()},4000);}
-    else{const ended=streak;streak=0;if(ended)postStreak(ended);gameOver(box,ended);track('trivia-streak-miss');}
+    else{const ended=streak;streak=0;window.__tqPosted=0;if(ended)postStreak(ended);gameOver(box,ended);track('trivia-streak-miss');}
   }
   // One miss ends the run: the answer stays up, then a game over card with
   // a line that roasts you in proportion to how far you got.
@@ -439,12 +439,14 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
     end.querySelector('.tq-again').addEventListener('click',()=>{buildDeck();sNext();box.scrollIntoView({block:'start',behavior:'smooth'})});
     setTimeout(()=>end.scrollIntoView({block:'nearest',behavior:'smooth'}),150);
   }
-  async function postStreak(n){const who=me();if(!who||!WORKER)return;try{await tFetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,streak:n})});loadStreakBoard()}catch{}}
+  // A new best goes up the moment it happens (live), so closing trivia
+  // mid-streak never loses it; the run itself is counted once, at the miss.
+  async function postStreak(n,live){const who=me();if(!who||!WORKER)return;try{await tFetch(WORKER+'/trivia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:who,streak:n,live:!!live})});loadStreakBoard()}catch{}}
   async function loadStreakBoard(){
     const list=el('trivia-hs-list');if(!list||!WORKER)return;
     try{const d=await tGet(WORKER+'/trivia?streak=1','brochiefs_trivia_streaks');const rows=(d.streaks||[]).sort((a2,b2)=>b2.best-a2.best||(a2.bestAt||0)-(b2.bestAt||0));
       if(!rows.length){list.innerHTML='<div class="trivia-hs-empty">No streaks yet. Get a few in a row to get on the board.</div>';return}
-      const who=me();list.innerHTML=rows.map((r,i2)=>'<div class="trivia-hs-row'+(r.player===who?' me':'')+(i2===0?' top':'')+'"><span class="trivia-hs-rank">'+(i2+1)+'</span><span class="trivia-hs-name">'+(typeof shown==='function'?shown(r.player):r.player).toUpperCase()+'</span><span class="trivia-hs-when">'+fmtWhen(r.bestAt)+'</span><span class="trivia-hs-score">🔥'+r.best+'</span></div>').join('');
+      const who=me();const rk=(i2)=>{const f=rows.findIndex((x)=>x.best===rows[i2].best);const tied=rows.filter((x)=>x.best===rows[i2].best).length>1;return (tied?'T':'')+(f+1)};list.innerHTML=rows.map((r,i2)=>'<div class="trivia-hs-row'+(r.player===who?' me':'')+(r.best===rows[0].best?' top':'')+'"><span class="trivia-hs-rank">'+rk(i2)+'</span><span class="trivia-hs-name">'+(typeof shown==='function'?shown(r.player):r.player).toUpperCase()+'</span><span class="trivia-hs-when">'+fmtWhen(r.bestAt)+'</span><span class="trivia-hs-score">🔥'+r.best+'</span></div>').join('');
     }catch{list.innerHTML='<div class="trivia-hs-empty">The board is offline right now.</div>'}
   }
   // Swap the 12-question game for the streak card.
