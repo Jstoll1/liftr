@@ -1311,15 +1311,24 @@ body::before { display: none; }
       const doc = new DOMParser().parseFromString(html, "text/html");
       const theirs = [...doc.scripts].filter((x) => !x.src).map((x) => x.textContent).join("");
       if (!theirs || theirs === mine()) return;
-      const k = "brochiefs_live_reloaded", last = Number(sessionStorage.getItem(k) || 0);
-      if (Date.now() - last < 60000) return; // never loop
-      sessionStorage.setItem(k, String(Date.now()));
+      // Never loop, but give every new build its own two tries: a stale
+      // copy served on the first reload no longer blocks the next build.
+      let h = 7; for (let i = 0; i < theirs.length; i++) h = (h * 31 + theirs.charCodeAt(i)) >>> 0;
+      const k = "brochiefs_live_reloaded", seen = JSON.parse(sessionStorage.getItem(k) || "{}");
+      const tries = seen[h] || [];
+      if (tries.length >= 2 && Date.now() - tries[tries.length - 1] < 60000) return;
+      sessionStorage.setItem(k, JSON.stringify({ [h]: [...tries, Date.now()].slice(-2) }));
       const q = new URLSearchParams(location.search); q.set("v", Date.now());
       location.replace(`${location.pathname}?${q}${location.hash}`);
     } catch { /* offline: keep what we have */ }
   }
   fresh();
+  window.__liveFresh = fresh;
+  // iOS can resume a home screen app from memory without a visibility
+  // change, so also check on pageshow (incl. back/forward cache) and focus.
   document.addEventListener("visibilitychange", () => { if (!document.hidden) fresh(); });
+  addEventListener("pageshow", () => fresh());
+  addEventListener("focus", () => fresh());
 })();
 
 (() => {
@@ -3773,10 +3782,9 @@ body::before { display: none; }
   let mine = null;
   async function checkVersion() {
     try {
-      const text = await (await fetch(`./?t=${Date.now()}`, { cache: "no-store" })).text();
-      let h = 7; for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
-      if (mine === null) mine = h;
-      else if (h !== mine && !st.pv && !document.hidden) location.reload();
+      // Compare against the page actually running (the check above), not
+      // whatever the server held at the first poll.
+      if (!st.pv && !document.hidden && window.__liveFresh) window.__liveFresh();
     } catch {}
   }
   checkVersion();
