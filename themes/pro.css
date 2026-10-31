@@ -40,15 +40,12 @@ html.pro {
   --card-bg: var(--s1);
   --card-border: var(--line);
   --accent: var(--acc);
-<<<<<<< HEAD
-=======
   /* Retro repeat colours, calmed. */
   --arcade-gold: var(--acc);
   --led: var(--live);
   --cyan-2: #8fb8ff;
   --ink: var(--s1);
   --ink-2: var(--bg);
->>>>>>> main
   --r: 12px;
   --r-sm: 8px;
   color-scheme: dark;
@@ -270,8 +267,6 @@ html.pro .plc-top::after, html.pro .plc-top::before { display: none !important; 
 html.pro .pick-mini-btn.selected *, html.pro .pick-mini-btn.su.upset.selected .pk-pts { color: var(--on-acc) !important; }
 html.pro .pick-mini-btn.selected::after, html.pro .pick-mini-btn.selected::before { background: var(--on-acc) !important; color: var(--acc) !important; border: 1.5px solid var(--acc) !important; }
 html.pro body *::before, html.pro body *::after { box-shadow: none !important; text-shadow: none !important; }
-<<<<<<< HEAD
-=======
 
 /* ---- Game-day sheets (game info, Gamecast, Path to Win, player card) ------ */
 
@@ -349,9 +344,6 @@ html.pro .since-flash { animation: none; box-shadow: 0 0 0 2px var(--acc) !impor
 html.pro .since-stat u.up { color: var(--win) !important; } html.pro .since-stat u.dn { color: var(--loss) !important; }
 html.pro .since-stat b { font-family: Inter, system-ui, sans-serif; }
 html.pro .since-stat small em.up { color: var(--win) !important; } html.pro .since-stat small em.dn { color: var(--loss) !important; }
-<<<<<<< HEAD
->>>>>>> main
-=======
 
 /* ---- Readable floor ---------------------------------------------------
    Retro's pixel face reads at 6 to 8px; Inter does not. Every label the
@@ -388,4 +380,3 @@ html.pro .ask-a li::marker { color: var(--acc) !important; }
 html.pro .ask-grip { background: var(--line2) !important; }
 html.pro .ask-fab { background: var(--s2) !important; border: 1px solid var(--line2) !important; color: var(--text) !important; font-family: var(--font) !important; box-shadow: 0 6px 18px rgba(0,0,0,.45) !important; }
 html.pro .preview-flag { white-space: nowrap; font-size: 9px !important; }
->>>>>>> main
