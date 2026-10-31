@@ -9985,7 +9985,7 @@ async function checkForUpdate(quiet = false) {
     // old index.html after that, the bar takes over rather than a loop.
     // Found mid-session: reload too, but only once the person is idle, so
     // nobody is yanked out of a pick or a sheet. Until then the bar shows.
-    if (already !== data.v && (quiet || !userBusy())) {
+    if (already !== data.v && (quiet || !userBusy(8000))) {
       try { sessionStorage.setItem(RELOADED_KEY, data.v); } catch { /* private mode */ }
       reloadFresh();
       return;
@@ -10038,8 +10038,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) { ch
 // the last 20 seconds. A waiting build reloads at the first idle moment.
 let lastInteract = Date.now(), updateWaiting = false;
 ["pointerdown", "keydown", "scroll", "touchmove"].forEach((ev) => addEventListener(ev, () => { lastInteract = Date.now(); }, { passive: true, capture: true }));
-function userBusy() {
-  if (Date.now() - lastInteract < 20000) return true;
+function userBusy(idleMs = 20000) {
+  if (Date.now() - lastInteract < idleMs) return true;
   const a = document.activeElement;
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
   return !![...document.querySelectorAll(".modal-overlay, .wpx-overlay, .np-screen, #sim-modal")].find((el) => !el.classList.contains("hidden") && getComputedStyle(el).display !== "none");
@@ -10047,7 +10047,9 @@ function userBusy() {
 // Once a minute: cheap (a tiny static file), and a deploy reaches an open
 // screen within a minute or two of going live.
 setInterval(() => { if (!document.hidden) checkForUpdate(false); }, 60 * 1000);
-setInterval(() => { if (updateWaiting && !userBusy()) checkForUpdate(false); }, 10 * 1000);
+// An update waits only 8s of stillness (not the 20s other idle work
+// uses), checked every 3s, so the bar rarely lingers: it reloads itself.
+setInterval(() => { if (updateWaiting && !userBusy(8000)) checkForUpdate(false); }, 3 * 1000);
 
 // The splash shows once per 12 hours per device. Inside that window the
 // app opens straight to where the tap would have landed, and from the
