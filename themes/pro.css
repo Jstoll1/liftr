@@ -40,6 +40,12 @@ html.pro {
   --card-bg: var(--s1);
   --card-border: var(--line);
   --accent: var(--acc);
+  /* Retro repeat colours, calmed. */
+  --arcade-gold: var(--acc);
+  --led: var(--live);
+  --cyan-2: #8fb8ff;
+  --ink: var(--s1);
+  --ink-2: var(--bg);
   --r: 12px;
   --r-sm: 8px;
   color-scheme: dark;
