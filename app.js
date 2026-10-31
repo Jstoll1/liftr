@@ -7909,10 +7909,10 @@ async function openInsights(gameId) {
     }
     const ezShow = (side) => !scoreShow || scoreShow.side !== side ? "" : scoreShow.kind === "td"
       ? `<div class="gc-ezshow td"><img src="${logoUrl(scoreShow.id)}" alt=""><i class="gc-ball"></i><b class="pro-keep">TOUCHDOWN</b></div>`
-      : `<div class="gc-ezshow fg${scoreShow.good ? "" : " miss"}"><i class="gc-posts" aria-hidden="true"></i><b class="pro-keep">${scoreShow.good ? "FIELD GOAL" : "NO GOOD"}</b></div>`;
+      : `<div class="gc-ezshow fg${scoreShow.good ? "" : " miss"}"><b class="pro-keep">${scoreShow.good ? "FIELD GOAL" : "NO GOOD"}</b></div>`;
     const field = `<div class="gc-stage">${brk ? `<div class="gc-brk"><span>${esc(brkLabel)}</span></div>` : ""}<div class="gc-field crt${brk ? " brk" : ""}${scoreShow ? " scored" : ""}">${mid}
-      <div class="gc-ez l${scoreShow?.side === "l" ? " show" : ""}" style="--tc:${aCol}"><span>${esc(A)}</span>${ezShow("l")}</div>
-      <div class="gc-ez r${scoreShow?.side === "r" ? " show" : ""}" style="--tc:${hCol}"><span>${esc(H)}</span>${ezShow("r")}</div>
+      <div class="gc-ez l${scoreShow?.side === "l" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${aCol}"><i class="gc-gp" aria-hidden="true"></i><span>${esc(A)}</span>${ezShow("l")}</div>
+      <div class="gc-ez r${scoreShow?.side === "r" ? ` show ${scoreShow.kind}${scoreShow.good ? "" : " miss"}` : ""}" style="--tc:${hCol}"><i class="gc-gp" aria-hidden="true"></i><span>${esc(H)}</span>${ezShow("r")}</div>
       ${ticks}${brk || scoreShow ? "" : drive + gain + ball}
     </div></div>`;
     const status = shortStatus(lv.detail || `Q${lv.period ?? "?"} ${lv.clock ?? ""}`);
