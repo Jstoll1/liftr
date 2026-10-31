@@ -8755,3 +8755,8 @@ body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }
 button.since-more { width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }
 button.since-more::after { content: "▾"; margin-left: 6px; }
 .since-line.since-open button.since-more::after { content: "▴"; }
+/* Docked: part of the explainer card, not a window over it. */
+.eng-term.inline { position: static; left: auto; bottom: auto; width: 100%; transform: none; margin: 4px 0 12px; box-shadow: none; display: none; }
+.eng-term.inline.on { display: block; opacity: 1; animation: eng-open .2s ease-out; }
+@keyframes eng-open { from { opacity: 0; transform: translateY(-4px); } }
+.eng-term.inline .eng-x { display: none; }
