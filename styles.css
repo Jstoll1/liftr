@@ -8772,3 +8772,4 @@ button.since-more::after { content: "▾"; margin-left: 6px; }
 em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-space: nowrap; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, .06); color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .since-row.up em.since-pill { background: rgba(57, 255, 136, .14); color: var(--neon-green); }
 .since-row.dn em.since-pill { background: rgba(255, 32, 121, .14); color: var(--neon-pink); }
+.pr-screen.pc .pc-row[data-pcg] { cursor: pointer; -webkit-tap-highlight-color: transparent; } .pr-screen.pc .pc-row[data-pcg]:active { background: rgba(255, 255, 255, .06); }

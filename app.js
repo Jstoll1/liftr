@@ -4953,7 +4953,7 @@ function openPathCard(name) {
     const rowsHtml = sc.all.filter((st) => st.need).map((st) => {
       const p = scorePick(st.g, all[name]?.picks?.[st.g.id], st.res) || 0;
       const stop = p ? null : stopsWho(st.g, st.res, name, pts);
-      return `<li class="pc-row"><img class="pc-logo" src="${logoUrl(teamOf(st.g, st.txt))}" alt="" onerror="this.style.visibility='hidden'" /><span class="pc-txt">${escapeCd(st.txt)}${pathLiveTag(st.g, st)}${stop ? `<small class="pc-why">stops ${escapeCd(shown(stop))}</small>` : ""}</span><span class="pc-pts${p ? "" : " zero"}">${p ? `+${p}` : "0"}</span></li>`;
+      return `<li class="pc-row" data-pcg="${st.g.id}" role="button" tabindex="0"><img class="pc-logo" src="${logoUrl(teamOf(st.g, st.txt))}" alt="" onerror="this.style.visibility='hidden'" /><span class="pc-txt">${escapeCd(st.txt)}${pathLiveTag(st.g, st)}${stop ? `<small class="pc-why">stops ${escapeCd(shown(stop))}</small>` : ""}</span><span class="pc-pts${p ? "" : " zero"}">${p ? `+${p}` : "0"}</span></li>`;
     }).join("");
     const oneIn = sc.p > 0 ? Math.max(2, Math.round(1 / sc.p)) : null;
     const free = sc.all.length - sc.need.length;
@@ -8969,6 +8969,15 @@ document.getElementById("since-line")?.addEventListener("click", (e) => {
   if (!card) { document.getElementById("rankings-list")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   card.scrollIntoView({ behavior: "smooth", block: "center" });
   card.classList.add("since-flash"); setTimeout(() => card.classList.remove("since-flash"), 1600);
+});
+// A game row in a Path to Win card opens that game's Gamecast (the card
+// closes under it), as a game row does everywhere else.
+document.addEventListener("click", (e) => {
+  const r = e.target.closest?.(".pr-screen.pc .pc-row[data-pcg]");
+  if (!r) return;
+  const id = Number(r.dataset.pcg); if (!GAMES.some((g) => g.id === id)) return;
+  const m = r.closest(".pr-screen"); m.classList.add("out"); setTimeout(() => m.remove(), 220);
+  openInsights(id);
 });
 // A name in the Gamecast room opens that player's card.
 document.addEventListener("click", (e) => {
