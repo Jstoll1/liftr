@@ -380,3 +380,16 @@ html.pro .ask-a li::marker { color: var(--acc) !important; }
 html.pro .ask-grip { background: var(--line2) !important; }
 html.pro .ask-fab { background: var(--s2) !important; border: 1px solid var(--line2) !important; color: var(--text) !important; font-family: var(--font) !important; box-shadow: 0 6px 18px rgba(0,0,0,.45) !important; }
 html.pro .preview-flag { white-space: nowrap; font-size: 9px !important; }
+
+/* ---- Score cards: keep what Retro tells you at a glance ----------------
+   Your side: a gold rule and gold name (Retro's cyan bar). Your lock: the
+   whole card framed in gold. The winner's final score in green. The card
+   header stays one line: the time gives way before the network collides. */
+html.pro .bug-row.mine { border-left: 2px solid var(--acc) !important; padding-left: 6px !important; margin-left: -8px !important; }
+html.pro .bug-row.mine .bug-team { color: var(--acc-ink) !important; }
+html.pro .scorebug.lk { border-color: var(--acc) !important; box-shadow: 0 0 0 1px var(--acc) !important; }
+html.pro .scorebug.is-final .bug-row.leading .bug-score { color: var(--win) !important; }
+html.pro .bug-head { display: flex !important; align-items: center; gap: 6px; white-space: nowrap; min-width: 0; }
+html.pro .bug-status { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+html.pro .bug-tv { flex-shrink: 0; max-width: none !important; overflow: visible !important; margin-left: auto; padding: 1px 5px !important; border: 1px solid var(--line2) !important; border-radius: 4px; }
+html.pro .bug-tv ~ * { flex-shrink: 0; }
