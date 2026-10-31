@@ -268,6 +268,28 @@
       const side = (team) => MANAGERS.filter((n) => all[n]?.picks?.[g.id]?.team === team).map((n) => { const p = all[n].picks[g.id]; return { member: n, bet: p.mode === "ATS" ? `${team === g.favorite ? "−" : "+"}${g.spread}` : "to win", lock: !!(p.lock && lockRule()) }; });
       return { game: gName(g), [g.away]: side(g.away), [g.home]: side(g.home), noPick: MANAGERS.filter((n) => !all[n]?.picks?.[g.id]) };
     },
+    // Why someone's odds are what they are: where their card differs from the
+    // league (sides most of the room did not take, and what those pay), their
+    // lock, their ceiling against everyone else's, and their biggest swings.
+    edge({ member } = {}) {
+      const who = memberOf(member || me()); if (!who) return { error: `No member ${member}.` };
+      const hn = hiddenNote(); if (hn.picksHidden && /Everyone/.test(hn.picksHidden)) return { ...hn, oddsAvailable: false };
+      const memo = base(), d = memo?.detail?.[who], all = lastGoodCloudPicks || {}, f = fins();
+      const contrarian = [];
+      for (const g of GAMES) {
+        if (f[g.id]) continue;
+        const mine = all[who]?.picks?.[g.id]; if (!mine?.team) continue;
+        const others = MANAGERS.filter((n) => n !== who && all[n]?.picks?.[g.id]?.team);
+        if (!others.length || others.some((n) => all[n].picks[g.id].hidden)) continue;
+        const same = others.filter((n) => all[n].picks[g.id].team === mine.team).length;
+        if (same / others.length <= 0.4) contrarian.push({ game: gName(g), pick: `${short(g, mine.team)} ${mine.mode === "ATS" ? `${mine.team === g.favorite ? "−" : "+"}${g.spread}` : "to win"}${mine.lock ? " (lock)" : ""}`, worth: pickWorth(g, mine), sameSide: same, of: others.length });
+      }
+      const maxes = MANAGERS.map((n) => [n, banked(n).max]).sort((a, b) => b[1] - a[1]);
+      const lockG = GAMES.find((g) => all[who]?.picks?.[g.id]?.lock);
+      return { member: who, chanceToWin: d ? r3(d.pct) : null, ceiling: banked(who).max, ceilingRank: maxes.findIndex(([n]) => n === who) + 1, of: MANAGERS.length,
+        lock: lockG ? { game: gName(lockG), pick: `${short(lockG, all[who].picks[lockG.id].team)}` } : null,
+        againstTheRoom: contrarian.slice(0, 4), swings: (d?.games || []).slice(0, 3).map((x) => ({ game: gName(x.game), chanceIfHits: r3(x.ifHit), chanceIfMisses: r3(x.ifMiss) })) };
+    },
     // One member against another: the chance to finish ahead (from the same
     // runs as WIN%), and every open game where their picks differ, which is
     // where it is decided (a game they both took the same way cannot split them).

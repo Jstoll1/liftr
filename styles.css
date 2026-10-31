@@ -8685,3 +8685,17 @@ body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }
   .scoreboard-table .pick-cell-spread { font-family: system-ui, -apple-system, sans-serif; font-weight: 700; font-size: 7.5px; letter-spacing: -0.05em; text-shadow: none; white-space: nowrap; margin-top: 2px; }
   .scoreboard-table td.pick-cell { overflow: hidden; }
 }
+/* Desktop: Ask Chief is a full-height panel on the right, so the chat has
+   room and the board stays visible beside it. Phones keep the bottom sheet. */
+@media (min-width: 900px) {
+  html:not(.phone) .ask { align-items: stretch; justify-content: flex-end; padding: 16px; background: rgba(5, 3, 12, .35); }
+  html:not(.phone) .ask-card { width: 440px; height: 100%; max-height: none; border-radius: 16px; }
+  html:not(.phone) .ask-grip { display: none; }
+  html:not(.phone) .ask-log { flex: 1; }
+}
+@media (min-width: 900px) {
+  /* Before the first question the panel hugs its content (no empty band);
+     once there is a chat it takes the full height. */
+  html:not(.phone) .ask-card:not(:has(.ask-q)) { height: auto; align-self: flex-start; }
+  html:not(.phone) .ask-card:not(:has(.ask-q)) .ask-log { flex: 0 0 auto; }
+}
