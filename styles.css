@@ -9120,11 +9120,11 @@ html:not(.pro) .recap-card.rx.move { --rxc: 5, 217, 232; }
 html:not(.pro) .recap-card.rx.split { --rxc: 255, 210, 63; }
 html:not(.pro) .recap-card.rx.tb { --rxc: 255, 140, 40; }
 html:not(.pro) .recap-card.rx.lk { --rxc: 193, 60, 255; }
-html:not(.pro) .recap-card.rx[class*=" "] { border: 2px solid #2a1b4a !important; border-radius: 6px !important; background: #0f0820 !important; box-shadow: inset 0 3px 0 rgb(var(--rxc, 193, 60, 255)), 0 0 0 2px #05000c !important; }
+html:not(.pro) .recap-card.rx[class*=" "] { border: 2px solid rgba(var(--rxc, 193, 60, 255), .55) !important; border-radius: 6px !important; background: linear-gradient(180deg, rgba(var(--rxc, 193, 60, 255), .12), rgba(var(--rxc, 193, 60, 255), .03) 60%), #0f0820 !important; box-shadow: inset 0 3px 0 rgb(var(--rxc, 193, 60, 255)), 0 0 8px rgba(var(--rxc, 193, 60, 255), .18) !important; }
 html:not(.pro) .recap-card.rx .recap-head { color: rgb(var(--rxc, 193, 60, 255)) !important; text-shadow: none; }
 html:not(.pro) .recap-card.rx .recap-main { color: #fff !important; text-shadow: none; }
 html:not(.pro) .recap-card.rx .recap-stat b { color: rgb(var(--rxc, 193, 60, 255)) !important; text-shadow: 2px 2px 0 rgba(0,0,0,.6) !important; }
-html:not(.pro) .recap-card.rx .recap-sub { color: var(--text-meta) !important; }
+html:not(.pro) .recap-card.rx .recap-sub { color: #b9acd9 !important; }
 /* Retro replay: tighter */
 html:not(.pro) .rx-grid { gap: 6px !important; }
 html:not(.pro) .recap-card.rx { padding: 8px 10px !important; border-radius: 12px !important; }
