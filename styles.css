@@ -8790,3 +8790,15 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .gc-ez > span { position: relative; z-index: 3; }
 .gc-ez:not(.show) { justify-content: flex-end; padding-right: 3px; } .gc-ez.r:not(.show) { justify-content: flex-start; padding: 0 0 0 3px; } .gc-ez > span { position: relative; z-index: 1; }
 .scorebug.pregame .bug-score { opacity: .45; }
+
+/* Play log, easier to follow: the down/distance and clock line is legible,
+   older plays fade gently instead of to a ghost, the newest play is marked,
+   and the result tags are readable. */
+.gc-log .gc-pmeta { font-size: 7px; color: rgba(57, 255, 136, .9); }
+.gc-badge { font-size: 7px; padding: 3px 5px; }
+.gc-log li.old1 .gc-ptxt { color: rgba(184, 255, 210, .85); }
+.gc-log li.old2 .gc-ptxt { color: rgba(184, 255, 210, .72); }
+.gc-log li.old3 .gc-ptxt { color: rgba(184, 255, 210, .62); }
+.gc-log li.old4 .gc-ptxt { color: rgba(184, 255, 210, .55); }
+.gc-log li.new { box-shadow: inset 3px 0 0 #39ff88; padding-left: 6px; }
+.gc-log .gc-ptxt { font-size: 11.5px; }

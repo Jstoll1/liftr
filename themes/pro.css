@@ -570,3 +570,7 @@ html.pro .scorebug.pregame .bug-team { color: var(--text-dim) !important; }
 html.pro .scorebug.is-final .bug-status { color: var(--text-dim) !important; }
 html.pro .scorebug.lk.is-live { border-color: var(--acc) !important; }
 @media (prefers-reduced-motion: reduce) { html.pro .scorebug.is-live .bug-status::before { animation: none; } }
+html.pro .gc-log .gc-pmeta { font-size: 11px !important; font-weight: 600 !important; letter-spacing: .02em !important; }
+html.pro .gc-badge { font-size: 9.5px !important; font-weight: 700 !important; padding: 3px 6px !important; border-radius: 4px !important; }
+html.pro .gc-log .gc-ptxt { font-size: 13px !important; line-height: 1.4 !important; }
+html.pro .gc-logh { font-size: 10px !important; }
