@@ -619,3 +619,6 @@ html.pro .plc-pick.hit { background: linear-gradient(135deg, rgba(46, 207, 122, 
 html.pro .plc-pick:not(.hit) { background: linear-gradient(135deg, rgba(255, 93, 93, .14), rgba(255, 93, 93, .02)) !important; border-color: rgba(255, 93, 93, .35) !important; }
 html.pro .plc-bars i.top:not(.won) s { background: color-mix(in srgb, var(--pc, var(--acc)) 85%, #fff) !important; }
 html.pro .modal-card.plc-card { background: linear-gradient(180deg, color-mix(in srgb, var(--pc, var(--acc)) 18%, transparent), transparent 240px), var(--s1) !important; }
+html.pro .plc-sb .plc-rk { color: var(--text-dim) !important; }
+html.pro .plc-sb .plc-rk.top { color: var(--text) !important; }
+html.pro .plc-sb .plc-rk.lead { background: rgba(212, 174, 104, .18) !important; color: var(--acc) !important; }

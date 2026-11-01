@@ -9822,7 +9822,7 @@ function openPlayerCard(name, again) {
   const max = Math.max(1, ...bars.map((x) => x.score || 0));
   const pct = d.w + d.l ? Math.round((d.w / (d.w + d.l)) * 100) : null;
   // A fighting game stat bar: label, value, ten segments filled to the share.
-  const bar = (label, val, share, note = "") => `<div class="plc-sb ${/WORST/.test(label) ? "t-mid" : share >= 0.6 ? "t-hi" : share >= 0.45 ? "t-mid" : "t-lo"}" data-statrank="${label}" role="button" tabindex="0"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em></div>`;
+  const bar = (label, val, share, note = "") => `<div class="plc-sb ${/WORST/.test(label) ? "t-mid" : share >= 0.6 ? "t-hi" : share >= 0.45 ? "t-mid" : "t-lo"}" data-statrank="${label}" role="button" tabindex="0"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em>${statPlace(label, name)}</div>`;
   const logo = (full, known) => { const id = known || teamIdOf(full); return id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : `<span class="plc-nologo"></span>`; };
   const pick = (p, hit) => !p ? "" : `<div class="plc-pick ${hit ? "hit" : "miss"}">
       <div class="plc-pt"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}</small><b>${hit ? `+${p.pts}` : "0"} PTS</b></div>
@@ -9911,6 +9911,17 @@ const STAT_RANK = {
   "TO WIN": (d) => d.suN ? [d.su, `${d.su}%`, `${d.suN} picks`] : null,
   "🔒 LOCKS": (d) => d.lockW + d.lockL ? [d.lockW / (d.lockW + d.lockL), `${d.lockW}-${d.lockL}`, `${Math.round((100 * d.lockW) / (d.lockW + d.lockL))}%`] : null,
 };
+// Where a player stands in the league on one stat: "3rd", "T-2nd", gold
+// when they lead it. Empty when the stat cannot be ranked.
+function statPlace(stat, name) {
+  try {
+    const f = STAT_RANK[stat]; if (!f) return "";
+    const rows = MANAGERS.map((n) => { const v = f(playerSeason(n)); return v ? { n, v: v[0] } : null; }).filter(Boolean);
+    const me = rows.find((r) => r.n === name); if (!me || rows.length < 2) return "";
+    const place = 1 + rows.filter((r) => r.v > me.v).length, tied = rows.filter((r) => r.v === me.v).length > 1;
+    return `<i class="plc-rk${place === 1 ? " lead" : place <= 3 ? " top" : ""}" title="Rank in the league">${tied ? "T-" : ""}${ordinal(place)}</i>`;
+  } catch { return ""; }
+}
 function openStatRank(stat, name) {
   const f = STAT_RANK[stat];
   if (!f) return;
