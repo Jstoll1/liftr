@@ -9109,3 +9109,7 @@ html:root .tpoll-card .tpoll-opts button[class^="dodge-"] { animation: tpoll-hop
 html:root .tpoll-card .tpoll-opts button.dodge-2 span, html:root .tpoll-card .tpoll-opts button.dodge-3 span { font-size: 18px !important; }
 @keyframes tpoll-hop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
 html:root .tpoll-card .tpoll-opts:has(.dodge-2), html:root .tpoll-card .tpoll-opts:has(.dodge-3) { grid-template-columns: 1fr 1fr !important; }
+/* Theme poll: Retro button, boosted */
+html:root .tpoll-card .tpoll-opts button[data-tv="retro"] { background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px), radial-gradient(120% 90% at 50% 110%, rgba(255,32,121,.55), transparent 60%), radial-gradient(100% 80% at 50% -10%, rgba(5,217,232,.45), transparent 60%), linear-gradient(180deg, #3a0070, #12002a) !important; border: 2px solid #ff2bd6 !important; box-shadow: 0 0 6px #ff2bd6, 0 0 18px rgba(255,43,214,.7), inset 0 0 14px rgba(5,217,232,.45) !important; }
+html:root .tpoll-card .tpoll-opts button[data-tv="retro"] span { filter: drop-shadow(0 0 6px #05d9e8) drop-shadow(0 0 2px #fff); }
+html:root .tpoll-card .tpoll-opts button[data-tv="retro"] b { color: #fff200 !important; text-shadow: 0 0 2px #fff, 0 0 8px #ff2bd6, 0 0 14px #ff2079, 1px 1px 0 rgba(5,217,232,.8) !important; }
