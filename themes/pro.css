@@ -575,3 +575,4 @@ html.pro .gc-badge { font-size: 9.5px !important; font-weight: 700 !important; p
 html.pro .gc-log .gc-ptxt { font-size: 13px !important; line-height: 1.4 !important; }
 html.pro .gc-logh { font-size: 10px !important; }
 html.pro .gc-mine { flex-wrap: nowrap !important; } html.pro .gc-mine .gc-msay { margin-left: auto !important; white-space: nowrap; }
+html.pro .gc-to i.on { background: var(--acc) !important; box-shadow: none !important; } html.pro .gc-to i { background: var(--s3) !important; }
