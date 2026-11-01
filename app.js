@@ -349,7 +349,11 @@ const AVATAR_PALETTE = [
 ];
 // A player's avatar colour: their own pick if they set one, else the
 // roster default by position.
+// Pro uses one standard categorical palette (muted, distinct, readable on
+// dark) instead of each player's neon; a player keeps the same slot.
+const PRO_PALETTE = ["#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F", "#EDC948", "#B07AA1", "#FF9DA7", "#9C755F", "#BAB0AC"];
 function accentFor(name) {
+  if (window.APP_STYLE === "pro") { const i = MANAGERS.indexOf(name); return PRO_PALETTE[(i >= 0 ? i : 0) % PRO_PALETTE.length]; }
   const own = typeof avatarColors !== "undefined" && avatarColors[name];
   if (own) return own;
   const i = MANAGERS.indexOf(name);
@@ -9919,8 +9923,8 @@ function statPlace(stat, name) {
     const rows = MANAGERS.map((n) => { const v = f(playerSeason(n)); return v ? { n, v: v[0] } : null; }).filter(Boolean);
     const me = rows.find((r) => r.n === name); if (!me || rows.length < 2) return "";
     const place = 1 + rows.filter((r) => r.v > me.v).length, tied = rows.filter((r) => r.v === me.v).length > 1;
-    // Only a highlight earns a mark: top three in the league.
-    if (place > 3) return "";
+    // Rank lives in the tap-through league list, not on the row.
+    if (place > 0) return "";
     return `<span class="plc-rk${place === 1 ? " lead" : " top"}" title="Rank in the league">${tied ? "T-" : ""}${ordinal(place).toLowerCase()}</span>`;
   } catch { return ""; }
 }
