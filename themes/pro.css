@@ -623,3 +623,7 @@ html.pro .plc-sb .plc-rk { color: var(--text-dim) !important; }
 html.pro .plc-sb .plc-rk.top { color: var(--text) !important; }
 html.pro .plc-sb .plc-rk.lead { background: rgba(212, 174, 104, .18) !important; color: var(--acc) !important; }
 html.pro .plc-sb > .plc-rk { background: var(--s1) !important; } html.pro .plc-sb > .plc-rk.lead { color: var(--acc) !important; }
+html.pro .sbk-r { background: var(--s2) !important; }
+html.pro .sbk-bar u { background: var(--text-dim) !important; }
+html.pro .sbk-r.hi u { background: var(--win) !important; } html.pro .sbk-r.hi b { color: var(--win) !important; }
+html.pro .sbk-r.lo u { background: var(--loss) !important; } html.pro .sbk-r.lo b { color: var(--loss) !important; }

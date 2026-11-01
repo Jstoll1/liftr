@@ -1528,6 +1528,7 @@ body::before { display: none; }
     if (e.k === "js-error") return ["⚠ Hit an error", e.d || ""];
     if (e.k === "sheet-time") { const [id, sec] = String(e.d || "").split(":"); return [`Spent ${dur(Number(sec) * 1000)} in ${SHEET[id] || id}`, ""]; }
     if (e.k === "depth") { const [sc, pct] = String(e.d || "").split(":"); return [`Scrolled ${pct}% of ${SCREEN_NAME[sc] || sc}`, ""]; }
+    if (e.k === "stat-break") return ["Opened a stat breakdown on a player card", String(e.d || "").replace("🔒 ", "")];
     if (e.k === "recap-hero") return ["Tapped the week replay winner", ""];
     if (e.k === "recap-you") return ["Tapped their week in the replay", ""];
     if (e.k === "recap-sheet-close") return ["Closed a replay breakdown", ({ x: "with ✕", outside: "tapping outside", swipe: "swiping down" })[e.d] || ""];
