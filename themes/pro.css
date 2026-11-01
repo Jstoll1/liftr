@@ -622,3 +622,4 @@ html.pro .modal-card.plc-card { background: linear-gradient(180deg, color-mix(in
 html.pro .plc-sb .plc-rk { color: var(--text-dim) !important; }
 html.pro .plc-sb .plc-rk.top { color: var(--text) !important; }
 html.pro .plc-sb .plc-rk.lead { background: rgba(212, 174, 104, .18) !important; color: var(--acc) !important; }
+html.pro .plc-sb > .plc-rk { background: var(--s1) !important; } html.pro .plc-sb > .plc-rk.lead { color: var(--acc) !important; }

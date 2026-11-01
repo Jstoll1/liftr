@@ -9921,7 +9921,7 @@ function statPlace(stat, name) {
     const place = 1 + rows.filter((r) => r.v > me.v).length, tied = rows.filter((r) => r.v === me.v).length > 1;
     // Only a highlight earns a mark: top three in the league.
     if (place > 3) return "";
-    return `<i class="plc-rk${place === 1 ? " lead" : " top"}" title="Rank in the league">${place === 1 ? "👑 " : ""}${tied ? "T-" : ""}${ordinal(place)}</i>`;
+    return `<span class="plc-rk${place === 1 ? " lead" : " top"}" title="Rank in the league">${tied ? "T-" : ""}${ordinal(place).toLowerCase()}</span>`;
   } catch { return ""; }
 }
 function openStatRank(stat, name) {
