@@ -9822,7 +9822,7 @@ function openPlayerCard(name, again) {
   const max = Math.max(1, ...bars.map((x) => x.score || 0));
   const pct = d.w + d.l ? Math.round((d.w / (d.w + d.l)) * 100) : null;
   // A fighting game stat bar: label, value, ten segments filled to the share.
-  const bar = (label, val, share, note = "") => `<div class="plc-sb" data-statrank="${label}" role="button" tabindex="0"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em></div>`;
+  const bar = (label, val, share, note = "") => `<div class="plc-sb ${/WORST/.test(label) ? "t-mid" : share >= 0.6 ? "t-hi" : share >= 0.45 ? "t-mid" : "t-lo"}" data-statrank="${label}" role="button" tabindex="0"><span>${label}</span><i>${Array.from({ length: 10 }, (_, k) => `<u class="${k < Math.round(share * 10) ? "on" : ""}"></u>`).join("")}</i><b>${val}</b><em>${note}</em></div>`;
   const logo = (full, known) => { const id = known || teamIdOf(full); return id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : `<span class="plc-nologo"></span>`; };
   const pick = (p, hit) => !p ? "" : `<div class="plc-pick ${hit ? "hit" : "miss"}">
       <div class="plc-pt"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}</small><b>${hit ? `+${p.pts}` : "0"} PTS</b></div>
@@ -9854,7 +9854,7 @@ function openPlayerCard(name, again) {
       pk.classList.toggle("open");
     });
   }
-  m.innerHTML = `<div class="modal-card plc-card">
+  m.innerHTML = `<div class="modal-card plc-card" style="--pc:${accentFor(name)}">
     <button type="button" class="plc-x" aria-label="Close">✕</button>
     <div class="plc-top">
       <button type="button" class="plc-av" data-plcav="1" aria-label="${name === currentManager ? "Change your avatar" : `Season head to head with ${esc(shown(name))}`}"><span>${avatarOverrides[name] || shown(name)[0]}</span></button>
