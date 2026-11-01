@@ -9486,8 +9486,8 @@ let renderRecap = function () {
   const av = (n, cls = "") => `<span class="rx-av ${cls}" style="--ac:${accentFor(n)}">${avatarOverrides[n] || esc(shown(n)[0])}</span>`;
   const hero = champ ? `<div class="rx-hero">
       <div class="rx-kicker">${esc(String(last.label || `Week ${last.week}`).toUpperCase())} · FINAL</div>
-      <div class="rx-champ">${av(champ.name, "big")}<b class="rx-cn">${esc(shown(champ.name))}</b><div class="rx-num"><b data-count="${champ.score}">${champ.score}</b><span>PTS</span></div><span class="rx-cw">wins the week</span></div>
-      ${margin != null ? `<div class="rx-margin">${margin === 0 ? "won on the tiebreaker" : `by ${margin} point${margin === 1 ? "" : "s"}`}</div>` : ""}
+      <div class="rx-champ">${av(champ.name, "big")}<b class="rx-cn">${esc(shown(champ.name))}</b><div class="rx-num"><b data-count="${champ.score}">${champ.score}</b><span>PTS</span></div></div>
+      <div class="rx-margin">wins the week${margin != null ? ` · ${margin === 0 ? "on the tiebreaker" : `by ${margin}`}` : ""}</div>
       <div class="rx-podium">${podium.map((r, i) => `<div class="rx-step s${i + 1}${r.name === currentManager ? " me" : ""}">${av(r.name)}<b>${esc(shown(r.name))}</b><i>${r.score}</i><em>${i + 1}</em></div>`).join("")}</div>
     </div>` : "";
   const meRow = rows.find((x) => x.name === currentManager);
