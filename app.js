@@ -9840,7 +9840,7 @@ function openPlayerCard(name, again) {
     m.addEventListener("click", (e) => {
       if (e.target.closest("[data-champs]")) return openChampions(m.dataset.name);
       const sr = e.target.closest("[data-statrank]");
-      if (sr) return openStatRank(sr.dataset.statrank, m.dataset.name);
+      if (sr) return openStatBreakdown(sr.dataset.statrank, m.dataset.name);
       // The avatar: yours opens the avatar editor, anyone else's the season
       // head to head, you against them.
       if (e.target.closest("[data-plcav]")) {
@@ -9927,6 +9927,37 @@ function statPlace(stat, name) {
     if (place > 0) return "";
     return `<span class="plc-rk${place === 1 ? " lead" : " top"}" title="Rank in the league">${tied ? "T-" : ""}${ordinal(place).toLowerCase()}</span>`;
   } catch { return ""; }
+}
+// One stat, week by week, for one player: what built the number.
+function openStatBreakdown(stat, name) {
+  const esc = escapeCd;
+  const byWeek = new Map();
+  for (const w of Object.values(weekSummaries)) if (w?.complete) byWeek.set(w.week, w);
+  for (const w of seasonLedger || []) if (w?.complete) byWeek.set(w.week, w);
+  const weeks = [...byWeek.values()].sort((a, b) => a.week - b.week).map((wk) => ({ wk, me: (wk.rows || []).find((r) => r.name === name) }));
+  const teamOf = (wk, lg) => { const g = (wk.slate || []).find((x) => Number(x.id) === Number(lg.g)); return g ? (lg.team === g.home ? g.homeShort : lg.team === g.away ? g.awayShort : lg.team) : lg.team; };
+  const tally = (me, pred) => { let w = 0, n = 0; for (const lg of me?.ledger || []) { if (lg.result !== "hit" && lg.result !== "miss") continue; if (!pred(lg)) continue; n++; if (lg.result === "hit") w++; } return { w, n }; };
+  const row = (wkNo, barShare, val, note, cls = "") => `<div class="sbk-r ${cls}"><span class="sbk-w">W${wkNo}</span><i class="sbk-bar"><u style="width:${Math.max(0, Math.min(100, Math.round(barShare * 100)))}%"></u></i><b>${val}</b><em>${note}</em></div>`;
+  let title = stat, sub = "", body = "";
+  if (/WEEK/.test(stat)) {
+    const sc = weeks.filter((x) => x.me && Number.isFinite(x.me.score));
+    const max = Math.max(1, ...sc.map((x) => x.me.score)), min = Math.min(...sc.map((x) => x.me.score)), avg = sc.reduce((a, x) => a + x.me.score, 0) / (sc.length || 1);
+    sub = `Points each week · average ${avg.toFixed(1)}`;
+    body = weeks.map(({ wk, me }) => !me ? row(wk.week, 0, "–", "sat out", "dim") : row(wk.week, me.score / max, me.score, me.score === max ? "best" : me.score === min ? "worst" : (wk.winners || []).includes(name) ? "won" : `${me.score >= avg ? "+" : "−"}${Math.abs(me.score - avg).toFixed(1)} vs avg`, me.score === max ? "hi" : me.score === min ? "lo" : "")).join("");
+  } else if (/LOCK/.test(stat)) {
+    sub = "Every lock, week by week";
+    body = weeks.map(({ wk, me }) => { const lk = (me?.ledger || []).find((l) => l.lock); if (!lk) return row(wk.week, 0, "–", "no lock", "dim"); const hit = lk.result === "hit"; return row(wk.week, hit ? 1 : 0, hit ? "HIT" : lk.result === "push" ? "PUSH" : "MISS", `${esc(teamOf(wk, lk))} ${esc(lk.line && lk.line !== "SU" ? lk.line : "to win")}`, hit ? "hi" : "lo"); }).join("");
+  } else {
+    const pred = /SPREAD/.test(stat) ? (l) => l.mode === "ATS" : /WIN/.test(stat) ? (l) => l.mode !== "ATS" : () => true;
+    sub = /SPREAD/.test(stat) ? "Spread picks right each week" : /WIN/.test(stat) ? "To-win picks right each week" : "Picks right each week";
+    body = weeks.map(({ wk, me }) => { if (!me) return row(wk.week, 0, "–", "sat out", "dim"); const t = tally(me, pred); if (!t.n) return row(wk.week, 0, "–", "none", "dim"); const p = t.w / t.n; return row(wk.week, p, `${t.w}-${t.n - t.w}`, `${Math.round(p * 100)}%`, p >= 0.6 ? "hi" : p < 0.45 ? "lo" : ""); }).join("");
+  }
+  const m = bottomSheet("stat-break");
+  m.innerHTML = `<div class="modal-card wks-card sbk-card"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>${esc(title.replace("🔒 ", ""))}</b><small>${esc(shown(name).toUpperCase())}</small><button type="button" class="wks-x" aria-label="Back to the card">✕</button></div>
+    <div class="sbk-sub">${esc(sub)}</div><div class="sbk-list">${body || `<div class="sbk-none">No finished weeks yet.</div>`}</div></div>`;
+  noteUse("stat-break", stat);
+  m.classList.remove("hidden");
 }
 function openStatRank(stat, name) {
   const f = STAT_RANK[stat];

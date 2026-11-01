@@ -9038,3 +9038,20 @@ html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 
 .plc-sb > .plc-rk.lead { color: var(--arcade-gold) !important; } .plc-sb > .plc-rk.top { color: var(--text) !important; }
 .plc-sb > i { margin-right: 40px; }
 .plc-sb > .plc-rk { padding: 3px 7px !important; border-radius: 999px !important; } html.pro .plc-sb > .plc-rk.lead { background: rgba(212, 174, 104, .16) !important; } html.pro .plc-sb > .plc-rk.top { background: var(--s2) !important; } .plc-sb > .plc-rk.lead { background: rgba(255, 210, 63, .14); }
+/* Player card stat rows: bars use the full width, a chevron says "tap". */
+.plc-sb > i { margin-right: 0 !important; }
+.plc-sb { grid-template-columns: 84px minmax(0, 1fr) 46px 64px 10px !important; grid-template-areas: "l bar v n c" !important; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.plc-sb::after { content: "›"; grid-area: c; justify-self: end; color: var(--text-dim); font-size: 15px; line-height: 1; }
+.plc-sb:active { background: rgba(255, 255, 255, .04); border-radius: 6px; }
+/* Stat breakdown sheet. */
+.sbk-sub { font-size: 12px; color: var(--text-dim); margin: 0 0 8px; }
+.sbk-list { display: grid; gap: 4px; }
+.sbk-r { display: grid; grid-template-columns: 34px minmax(0, 1fr) 48px 96px; align-items: center; column-gap: 10px; padding: 5px 8px; border-radius: 8px; background: rgba(255, 255, 255, .03); }
+.sbk-w { font-size: 12px; color: var(--text-dim); font-weight: 700; }
+.sbk-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; display: block; }
+.sbk-bar u { display: block; height: 100%; border-radius: 3px; background: var(--neon-cyan); text-decoration: none; }
+.sbk-r b { text-align: right; font-size: 14px; font-variant-numeric: tabular-nums; }
+.sbk-r em { font-style: normal; font-size: 11.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbk-r.hi u { background: var(--neon-green); } .sbk-r.hi b { color: var(--neon-green); }
+.sbk-r.lo u { background: var(--neon-pink); } .sbk-r.lo b { color: var(--neon-pink); }
+.sbk-r.dim { opacity: .5; }
