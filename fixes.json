@@ -10,7 +10,7 @@
     },
     {
       "k": "dead-tap",
-      "match": ".gold \u201c\ud83c\udfc6\u201d",
+      "match": ".gold “🏆”",
       "at": 1792758880000,
       "commit": "683eeca",
       "note": "Trophy on a player card opens the champions sheet"
@@ -115,7 +115,7 @@
     },
     {
       "k": "dead-tap",
-      "match": ".LI \u201c2\u201d",
+      "match": ".LI “2”",
       "at": 1793061186000,
       "commit": "67b2cb6",
       "note": "Steps in the How chance to win works explainer are reading, not controls; no longer logged as dead taps"
@@ -210,6 +210,13 @@
       "at": 1793503705000,
       "commit": "0d360e2",
       "note": "Pick card result line opens the game sheet"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".ask-log",
+      "at": 1793567646000,
+      "commit": "5a6704b",
+      "note": "Ask Chief question bubbles re-fill the box; chat text no longer counts as a dead tap"
     }
   ]
 }

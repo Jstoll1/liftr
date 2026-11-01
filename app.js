@@ -125,7 +125,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=993879440822", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=647429713492", "sim.js?v=374204176553", "gridcard.js?v=788931349874"];
+const EXTRAS = ["ask-ui.js?v=007248629367", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=647429713492", "sim.js?v=374204176553", "gridcard.js?v=788931349874"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -10683,6 +10683,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) setT
     // the whole sheet reads as a pointer and the league filter skips it.
     const popup = loadMe() === "Jake" && el.closest("[role=dialog], .modal-overlay, .wpx-overlay");
     if (popup) {
+      // The chat log is reading: answer text and the gaps between bubbles.
+      if (el.closest(".ask-log") && !el.closest("[data-reask]")) return;
       if (el === popup || el.closest("button, a, input, select, textarea, label, summary, [role=button], [onclick], [data-past], [data-pot-row]")) return;
     } else {
       if (el.closest("[class^=ins-], [class*=' ins-']")) return;
