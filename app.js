@@ -10134,7 +10134,7 @@ async function fetchSeasonLedger() {
 // Pure: the boards from a list of counting weeks. Every board carries
 // everyone, ranked, so the panel can show the top three and the viewer.
 function seasonStats(weeks, liveBlanks = {}) {
-  const by = new Map(MANAGERS.map((n) => [n, { name: n, atsW: 0, atsL: 0, dogHits: 0, fades: 0, picks: 0, blanks: 0, lone: 0, tbSum: 0, tbN: 0, bestWeek: null, streak: 0, pts: 0 }]));
+  const by = new Map(MANAGERS.map((n) => [n, { name: n, atsW: 0, atsL: 0, dogHits: 0, fades: 0, picks: 0, blanks: 0, lone: 0, tbSum: 0, tbN: 0, bestWeek: null, streak: 0, bestStreak: 0, pts: 0 }]));
   // How many were on each team in each game, for the lone-wolf board.
   const onTeam = new Map();
   for (const w of weeks) for (const r of w.rows) for (const l of r.ledger || []) if (l.team) { const k = `${w.week}|${l.g}|${l.team}`; onTeam.set(k, (onTeam.get(k) || 0) + 1); }
@@ -10153,7 +10153,7 @@ function seasonStats(weeks, liveBlanks = {}) {
       if (l.mode === "SU" && dog && l.result === "hit") m.dogHits += 1;
       if (l.result === "hit" && (onTeam.get(`${w.week}|${l.g}|${l.team}`) || 0) <= 3) m.lone += 1;
       // Correct-pick streak, in ledger order, carried across weeks.
-      if (l.result === "hit") m.streak += 1; else if (l.result === "miss") m.streak = 0;
+      if (l.result === "hit") { m.streak += 1; m.bestStreak = Math.max(m.bestStreak, m.streak); } else if (l.result === "miss") m.streak = 0;
     }
   }
   // This week's blanks count the moment the card locks, so a no-show is
@@ -10166,11 +10166,13 @@ function seasonStats(weeks, liveBlanks = {}) {
     ats: all.filter((m) => m.atsW + m.atsL >= 3).sort((a, b) => pct(b.atsW, b.atsL) - pct(a.atsW, a.atsL) || b.atsW - a.atsW).map((m) => ({ name: m.name, n: pct(m.atsW, m.atsL), value: `${m.atsW}-${m.atsL}`, sub: `${Math.round(pct(m.atsW, m.atsL) * 100)}%` })),
     dogs: all.filter((m) => m.dogHits).sort((a, b) => b.dogHits - a.dogHits).map((m) => ({ name: m.name, n: m.dogHits, value: String(m.dogHits), sub: m.dogHits === 1 ? "hit" : "hits" })),
     lone: all.filter((m) => m.lone).sort((a, b) => b.lone - a.lone).map((m) => ({ name: m.name, n: m.lone, value: String(m.lone), sub: m.lone === 1 ? "hit" : "hits" })),
-    streak: all.filter((m) => m.streak >= 2).sort((a, b) => b.streak - a.streak).map((m) => ({ name: m.name, n: m.streak, value: String(m.streak), sub: "in a row" })),
+    // Longest run of correct picks this season (a "right now" streak was
+    // empty most of the week, since one Saturday miss resets everyone).
+    streak: all.filter((m) => m.bestStreak >= 2).sort((a, b) => b.bestStreak - a.bestStreak).map((m) => ({ name: m.name, n: m.bestStreak, value: String(m.bestStreak), sub: m.streak === m.bestStreak ? "in a row · live" : "in a row" })),
     fader: all.filter((m) => m.picks >= 5).sort((a, b) => b.fades / b.picks - a.fades / a.picks).map((m) => ({ name: m.name, n: m.fades / m.picks, value: `${Math.round((m.fades / m.picks) * 100)}%`, sub: `${m.fades} of ${m.picks}` })),
     tb: all.filter((m) => m.tbN).sort((a, b) => a.tbSum / a.tbN - b.tbSum / b.tbN).map((m) => ({ name: m.name, n: m.tbSum / m.tbN, low: true, value: (m.tbSum / m.tbN).toFixed(1), sub: "avg miss", more: `avg miss${sameTbN ? "" : ` · ${m.tbN} wk${m.tbN === 1 ? "" : "s"}`}` })),
     best: all.filter((m) => m.bestWeek).sort((a, b) => b.bestWeek.score - a.bestWeek.score).map((m) => ({ name: m.name, n: m.bestWeek.score, value: String(m.bestWeek.score), sub: `Week ${m.bestWeek.week}` })),
-    blanks: all.filter((m) => m.blanks).sort((a, b) => b.blanks - a.blanks).map((m) => ({ name: m.name, n: m.blanks, value: String(m.blanks), sub: "blank", more: "left blank" })),
+    blanks: all.filter((m) => m.blanks).sort((a, b) => b.blanks - a.blanks).map((m) => ({ name: m.name, n: m.blanks, value: String(m.blanks), sub: m.blanks === 1 ? "pick left blank" : "picks left blank", more: "left blank" })),
   };
 }
 
@@ -10276,9 +10278,9 @@ async function renderSeasonStats() {
   panel.innerHTML = `<div class="hs-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} ON THE RECORD · TAP A BOARD FOR EVERYONE</small></div>
     <div class="hs-grid">
       ${tile("ats", "🎯", "BEST ATS", "Spread picks, at least 3", s.ats, "var(--neon-green)")}
-      ${tile("streak", "🔥", "HOT HAND", "Correct picks in a row, right now", s.streak, "#ff9f1c")}
+      ${tile("streak", "🔥", "HOT HAND", "Longest run of correct picks this season", s.streak, "#ff9f1c")}
       ${tile("dogs", "🐶", "DOG HITS", "Underdogs straight up, 3 pts each", s.dogs, "var(--neon-pink)")}
-      ${tile("lone", "🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "var(--neon-purple)")}
+      ${tile("lone", "🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "#b9a6ff")}
       ${tile("fader", "🙃", "FADER", "Share of picks against the favorite", s.fader, "var(--neon-cyan)")}
       ${tile("tb", "📏", "TB SNIPER", "Average tiebreaker miss, lower is better", s.tb, "var(--neon-yellow)")}
       ${tile("best", "🏆", "BEST WEEK", "Highest single week score", s.best, "#3fd0ff")}
