@@ -458,6 +458,8 @@
       m.addEventListener("click", (e) => {
         if (e.target === m || e.target.closest(".ask-x")) { m.remove(); return; }
         if (e.target.closest("[data-askcopy]")) { copyChat(); return; }
+        const rq = e.target.closest("[data-reask]");
+        if (rq) { const i = m.querySelector(".ask-f input"); if (i && !i.disabled) { i.value = rq.dataset.reask; i.focus(); i.setSelectionRange(i.value.length, i.value.length); } if (typeof noteUse === "function") noteUse("ask-reask"); return; }
         const c = e.target.closest("[data-ask]"); if (c) send(c.dataset.ask);
       });
       // Swipe down to close, from the header or a log scrolled to its top.
@@ -473,7 +475,7 @@
       document.body.appendChild(m);
     }
     m.innerHTML = `<div class="ask-card"><span class="ask-grip" aria-hidden="true"></span><div class="ask-h"><b><span class="ask-title"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async">ASK CHIEF</span></b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
-      <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q">${esc(x.q)}</p><div class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : fmtA(x.a)}</div>`).join("") : `<p class="ask-hint">Odds, what-ifs, who's out, picks, the tiebreaker and season points.</p>`}</div>
+      <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q" role="button" tabindex="0" data-reask="${esc(x.q)}" title="Tap to ask again or edit">${esc(x.q)}</p><div class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : fmtA(x.a)}</div>`).join("") : `<p class="ask-hint">Odds, what-ifs, who's out, picks, the tiebreaker and season points.</p>`}</div>
       ${log.length ? "" : `<div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}"><span>${esc(c)}</span><i aria-hidden="true">↗</i></button>`).join("")}</div>`}
       <form class="ask-f"><input type="text" maxlength="200" placeholder="If Michigan wins can I still win?" ${busy ? "disabled" : ""} autocomplete="off"><button type="submit" ${busy ? "disabled" : ""}>Ask</button></form></div>`;
     const lg = m.querySelector(".ask-log"); lg.scrollTop = lg.scrollHeight;

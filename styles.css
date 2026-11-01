@@ -9152,3 +9152,5 @@ html:not(.pro) .rx-sheet .rm-rank li.p1 em { color: #ffd23f !important; text-sha
 html:not(.pro) .rx-sheet .rm-rank li.p2 em { color: #d8e1ee !important; }
 html:not(.pro) .rx-sheet .rm-rank li.p3 em { color: #ff9a4a !important; }
 html:not(.pro) .rx-sheet .rm-rank li.me { background: rgba(5,217,232,.14) !important; box-shadow: inset 2px 0 0 #05d9e8, 0 0 10px rgba(5,217,232,.25); border-radius: 6px; }
+.ask-q[data-reask] { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .1s; }
+.ask-q[data-reask]:active { transform: scale(.97); background: rgba(5, 217, 232, .28); }
