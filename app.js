@@ -9486,7 +9486,7 @@ let renderRecap = function () {
   const av = (n, cls = "") => `<span class="rx-av ${cls}" style="--ac:${accentFor(n)}">${avatarOverrides[n] || esc(shown(n)[0])}</span>`;
   const hero = champ ? `<div class="rx-hero">
       <div class="rx-kicker">${esc(String(last.label || `Week ${last.week}`).toUpperCase())} · FINAL</div>
-      <div class="rx-champ">${av(champ.name, "big")}<div><b>${esc(shown(champ.name))}</b><span>wins the week</span></div><div class="rx-num"><b data-count="${champ.score}">${champ.score}</b><span>PTS</span></div></div>
+      <div class="rx-champ">${av(champ.name, "big")}<b class="rx-cn">${esc(shown(champ.name))}</b><div class="rx-num"><b data-count="${champ.score}">${champ.score}</b><span>PTS</span></div><span class="rx-cw">wins the week</span></div>
       ${margin != null ? `<div class="rx-margin">${margin === 0 ? "won on the tiebreaker" : `by ${margin} point${margin === 1 ? "" : "s"}`}</div>` : ""}
       <div class="rx-podium">${podium.map((r, i) => `<div class="rx-step s${i + 1}${r.name === currentManager ? " me" : ""}">${av(r.name)}<b>${esc(shown(r.name))}</b><i>${r.score}</i><em>${i + 1}</em></div>`).join("")}</div>
     </div>` : "";
@@ -9500,13 +9500,12 @@ let renderRecap = function () {
   }
   const head = new Set(["hit", "miss"]);
   const card = ([h, cls, art, main, sub, stat, statLabel, me, viz], i) =>
-    `<div class="recap-card rx ${head.has(cls) ? "rx-wide" : "rx-tile"} ${cls}${me ? " me" : ""}${recapOpen.has(cls) ? " open" : ""}" style="--i:${i}" data-rc="${cls}" role="button" tabindex="0" aria-expanded="${recapOpen.has(cls)}">
+    `<div class="recap-card rx ${head.has(cls) ? "rx-wide" : "rx-tile"} ${cls}${me ? " me" : ""}" style="--i:${i}" data-rc="${cls}" role="button" tabindex="0" aria-haspopup="dialog">
       <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
       <div class="rx-row"><div class="recap-art">${art}</div>
       <div class="recap-body"><div class="recap-main">${main}</div><div class="recap-sub">${sub}</div></div>
       <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div></div>
       ${viz ? `<div class="rx-viz">${viz}</div>` : ""}
-      ${recapOpen.has(cls) ? `<div class="recap-more">${recapDetail(last, cls)}</div>` : ""}
     </div>`;
   window.__recapWeek = last.week;
   document.getElementById("week-champ")?.classList.add("hidden");
@@ -9575,11 +9574,32 @@ function recapDetail(sum, kind) {
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
   const c = e.target.closest(".recap-card[data-rc]");
   if (!c || e.target.closest(".pick-chip, a, button")) return;
+  // The story behind a card opens in a sheet; the replay itself never moves.
   const k = c.dataset.rc;
-  if (recapOpen.has(k)) recapOpen.delete(k); else { recapOpen.add(k); noteUse("recap-card", k); }
-  e.currentTarget.classList.add("dealt"); // already dealt in: redraw without replaying the deal
-  renderRecap();
+  noteUse("recap-card", k);
+  openRecapSheet(k, c.querySelector(".recap-head")?.textContent?.replace("YOU", "").trim() || "");
 });
+function openRecapSheet(kind, title) {
+  const last = Object.values(weekSummaries).filter((s) => s?.complete && s.recap).sort((a, b) => b.week - a.week)[0];
+  if (!last) return;
+  let m = document.getElementById("rx-sheet");
+  if (!m) {
+    m = document.createElement("div"); m.id = "rx-sheet"; m.className = "modal-overlay rx-sheet hidden"; m.setAttribute("role", "dialog");
+    m.innerHTML = `<div class="modal-card rx-sheet-card"><div class="rx-sh-h"><b></b><button type="button" class="rx-sh-x" aria-label="Close">✕</button></div><div class="rx-sh-body recap-more"></div></div>`;
+    document.body.appendChild(m);
+    const close = () => m.classList.add("hidden");
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".rx-sh-x")) close(); });
+    if (typeof swipeToClose === "function") swipeToClose(m, m.querySelector(".rx-sheet-card"), close);
+  }
+  m.setAttribute("aria-label", title);
+  m.querySelector(".rx-sh-h b").textContent = title;
+  const body = m.querySelector(".rx-sh-body");
+  const draw = () => { body.innerHTML = recapDetail(last, kind).replace(/<div class="rm-close">Tap to close<\/div>/g, ""); };
+  draw();
+  // Picks may still be loading; redraw once they land.
+  if (/Loading the picks/.test(body.textContent)) fetchSeasonLedger?.().then(() => !m.classList.contains("hidden") && draw()).catch(() => {});
+  m.classList.remove("hidden");
+}
 
 // The REPLAY marquee is the fold: tap it to tuck the cards away.
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
