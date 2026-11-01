@@ -8810,3 +8810,4 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .gc-to { display: flex; justify-content: center; gap: 3px; margin-top: 3px; }
 .gc-to i { width: 10px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .16); }
 .gc-to i.on { background: #ffe45e; box-shadow: 0 0 4px rgba(255, 228, 94, .6); }
+.game-card .lr-foot { cursor: pointer; -webkit-tap-highlight-color: transparent; }
