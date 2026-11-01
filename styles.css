@@ -8802,3 +8802,7 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .gc-log li.old4 .gc-ptxt { color: rgba(184, 255, 210, .55); }
 .gc-log li.new { box-shadow: inset 3px 0 0 #39ff88; padding-left: 6px; }
 .gc-log .gc-ptxt { font-size: 11.5px; }
+/* Your pick / lock: one line, the status pushed to the right edge. */
+.gc-mine { flex-wrap: nowrap; }
+.gc-mine .gc-msay { margin-left: auto; white-space: nowrap; }
+.gc-mine b { white-space: nowrap; }
