@@ -1,0 +1,111 @@
+/* CRT scoreboard: the Retro look on preview (html.crt).
+   Rules: near-black glass; amber phosphor for structure and type; green
+   only for right/won, red only for wrong/lost; gold only for money.
+   One font for numbers and headings (VT323), body stays plain. No glows,
+   no gradients on cards; scanlines on the one hero per screen only. */
+html.crt {
+  --bg: #050605; --bg2: #090b09;
+  --neon-cyan: #ffb000; --neon-purple: #ffb000; --neon-pink: #ff4d3d;
+  --neon-yellow: #ffcf4a; --neon-green: #3dff7a;
+  --text: #f1e6cc; --text-dim: #8c8068; --text-meta: #b3a789;
+  --card-bg: #0b0d0b; --card-border: rgba(255, 176, 0, .22);
+  --arcade-gold: #ffcf4a; --led: #ffb000; --cyan-2: #ffb000;
+  --ink: #050605; --ink-2: #0b0d0b;
+  --s1: #0b0d0b; --s2: #101310; --s3: #151915;
+  --line: rgba(255, 176, 0, .18); --line2: rgba(255, 176, 0, .32);
+  --acc: #ffb000; --win: #3dff7a; --loss: #ff4d3d;
+}
+html.crt body { background: #050605 !important; color: var(--text); }
+html.crt body::before, html.crt body::after { display: none !important; }
+
+/* Calm everything: no neon halos or candy gradients. */
+html.crt *, html.crt *::before, html.crt *::after { text-shadow: none !important; }
+html.crt .card, html.crt [class*="-card"], html.crt .recap-card, html.crt .modal-card { box-shadow: none !important; }
+
+/* Headings and numbers: VT323 phosphor, uppercase, amber. */
+html.crt .recap-head, html.crt .rx-kicker, html.crt .rx-yl, html.crt .pot-row.head, html.crt .ps-head, html.crt .tpoll-k,
+html.crt .section-title, html.crt h2, html.crt h3 { font-family: 'VT323', monospace !important; letter-spacing: .08em !important; color: #ffb000 !important; }
+html.crt .recap-head { font-size: 15px !important; }
+
+/* Replay: one card style, amber hairline, square corners, colour = meaning. */
+html.crt .recap-card.rx, html.crt .recap-card.rx[class*=" "] { background: #0b0d0b !important; border: 1px solid rgba(255, 176, 0, .22) !important; border-radius: 3px !important; box-shadow: none !important; padding: 8px 10px !important; }
+html.crt .recap-card.rx .recap-head { color: #ffb000 !important; margin-bottom: 2px !important; }
+html.crt .recap-card.rx .recap-main { color: var(--text) !important; }
+html.crt .recap-card.rx .recap-sub { color: var(--text-dim) !important; }
+html.crt .recap-card.rx .recap-stat b { font-family: 'VT323', monospace !important; font-size: 26px !important; color: #ffb000 !important; }
+html.crt .recap-card.rx.hit .recap-stat b { color: var(--win) !important; }
+html.crt .recap-card.rx.miss .recap-stat b { color: var(--loss) !important; }
+html.crt .rx-grid { gap: 6px !important; }
+html.crt .rx-tbl { background: #101310 !important; border: 1px solid rgba(255, 176, 0, .14) !important; border-radius: 2px !important; }
+html.crt .rx-tbl b { font-family: 'VT323', monospace !important; font-size: 20px !important; color: #ffb000 !important; }
+html.crt .rx-bar { background: rgba(255, 176, 0, .1) !important; } html.crt .rx-bar i { background: var(--loss) !important; box-shadow: none !important; }
+html.crt .rx-dots i { background: rgba(255, 176, 0, .14) !important; box-shadow: none !important; } html.crt .rx-dots.hit i.on { background: var(--win) !important; box-shadow: none !important; }
+html.crt .rx-split i { background: #151915 !important; color: var(--text) !important; } html.crt .rx-split i + i { background: #1d1a12 !important; }
+html.crt .rx-locks i.hit { filter: none !important; color: var(--win); }
+
+/* The hero: the one striking piece. Scanlines, phosphor bloom, big digits. */
+html.crt .rx-hero { position: relative; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .35) 0 1px, transparent 1px 3px), #0c0a04 !important; border: 1px solid #ffb000 !important; border-radius: 3px !important; box-shadow: 0 0 24px rgba(255, 176, 0, .18), inset 0 0 40px rgba(255, 176, 0, .08) !important; }
+html.crt .rx-hero .rx-kicker { color: #ffb000 !important; font-size: 16px !important; }
+html.crt .rx-champ .rx-cn { font-family: 'VT323', monospace !important; font-size: 30px !important; color: #ffcf4a !important; text-shadow: 0 0 10px rgba(255, 176, 0, .55) !important; letter-spacing: .04em; }
+html.crt .rx-num b { font-family: 'VT323', monospace !important; font-size: 34px !important; color: #ffcf4a !important; text-shadow: 0 0 10px rgba(255, 176, 0, .55) !important; }
+
+/* Your week: one strip, not four boxes. */
+html.crt .rx-you { background: #0b0d0b !important; border: 1px solid rgba(255, 176, 0, .22) !important; border-radius: 3px !important; box-shadow: none !important; }
+html.crt .rx-ycols > div { background: transparent !important; border: 0 !important; border-left: 1px solid rgba(255, 176, 0, .14) !important; border-radius: 0 !important; padding: 4px 6px !important; }
+html.crt .rx-ycols > div:first-child { border-left: 0 !important; }
+html.crt .rx-ycols { grid-template-columns: repeat(4, 1fr) !important; gap: 0 !important; }
+html.crt .rx-ycols b { font-family: 'VT323', monospace !important; font-size: 26px !important; color: var(--text) !important; }
+html.crt .rx-ycols span { font-size: 10px !important; color: var(--text-dim) !important; }
+html.crt .rx-ycols .up b { color: var(--win) !important; } html.crt .rx-ycols .dn b { color: var(--loss) !important; }
+
+/* Sheets */
+html.crt .rx-sheet-card { background: #0b0d0b !important; border: 1px solid #ffb000 !important; border-bottom: 0 !important; border-radius: 4px 4px 0 0 !important; }
+html.crt .rx-sheet .rm-h { color: #ffb000 !important; font-family: 'VT323', monospace; font-size: 20px; }
+html.crt .rx-sheet .rm-rank li .rm-pts { color: #ffb000 !important; font-family: 'VT323', monospace; font-size: 20px; }
+html.crt .rx-sheet .rm-rank li > span small { color: var(--text-dim) !important; opacity: 1; }
+html.crt .rx-sheet .rm-rank li.p1 em, html.crt .rx-sheet .rm-rank li.p2 em, html.crt .rx-sheet .rm-rank li.p3 em { color: #ffcf4a !important; }
+html.crt .rx-sheet .rm-rank li.me { background: rgba(255, 176, 0, .1) !important; box-shadow: inset 2px 0 0 #ffb000; }
+
+/* Chrome: header, logo, nav, floating buttons, backdrop. */
+html.crt .synth-grid { display: none !important; }
+html.crt .scanlines { opacity: .5 !important; }
+html.crt .home-header { background: rgba(5, 6, 5, .97) !important; border-bottom: 1px solid rgba(255, 176, 0, .28) !important; box-shadow: none !important; }
+html.crt .home-logo-img { filter: grayscale(1) sepia(1) saturate(5) hue-rotate(-12deg) brightness(1.05) drop-shadow(0 0 6px rgba(255, 176, 0, .35)) !important; }
+html.crt .head-score, html.crt .me-pill { background: #0b0d0b !important; border: 1px solid rgba(255, 176, 0, .35) !important; border-radius: 3px !important; box-shadow: none !important; color: #ffb000 !important; }
+html.crt .head-score *, html.crt .me-pill-name { color: #ffb000 !important; font-family: 'VT323', monospace !important; font-size: 17px !important; letter-spacing: .05em; }
+html.crt .me-pill-avatar { background: #ffb000 !important; color: #050605 !important; border-radius: 2px !important; box-shadow: none !important; }
+html.crt .bottom-nav { background: #050605 !important; border-top: 1px solid rgba(255, 176, 0, .28) !important; box-shadow: none !important; }
+html.crt .bottom-nav * { color: #6f6650 !important; filter: none !important; }
+html.crt .bottom-nav .active, html.crt .bottom-nav .active * , html.crt .bottom-nav [aria-current] * { color: #ffb000 !important; }
+html.crt .bottom-nav span, html.crt .bottom-nav b { font-family: 'VT323', monospace !important; font-size: 16px !important; letter-spacing: .08em; }
+html.crt .ask-fab { background: #0b0d0b !important; border: 1px solid #ffb000 !important; border-radius: 3px !important; box-shadow: none !important; color: #ffb000 !important; }
+html.crt .ask-fab * { color: #ffb000 !important; font-family: 'VT323', monospace !important; font-size: 20px !important; }
+
+/* Leaderboard: a plain scoreboard panel, no rainbow frame. */
+html.crt .rankings-list { background: #0b0d0b !important; border: 1px solid rgba(255, 176, 0, .3) !important; border-radius: 3px !important; box-shadow: none !important; }
+html.crt .rankings-list::after { display: none !important; }
+html.crt .ranking-row { background: transparent !important; box-shadow: none !important; border: 0 !important; border-bottom: 1px solid rgba(255, 176, 0, .1) !important; border-radius: 0 !important; margin: 0 !important; }
+html.crt .ranking-row:last-child { border-bottom: 0 !important; }
+html.crt .ranking-row.me { background: rgba(255, 176, 0, .08) !important; box-shadow: inset 2px 0 0 #ffb000 !important; }
+html.crt .ranking-name, html.crt .ranking-name * { color: var(--text) !important; }
+html.crt [class*="rank-score"], html.crt .ranking-row .pts, html.crt .ranking-row .score-box { background: transparent !important; border: 0 !important; box-shadow: none !important; color: #ffb000 !important; font-family: 'VT323', monospace !important; }
+html.crt .rank-wp-bar i, html.crt .rank-strip i { box-shadow: none !important; }
+
+/* Game cards: square, hairline. */
+html.crt .bug-grid > * { border-radius: 3px !important; border-width: 1px !important; border-color: rgba(255, 176, 0, .22) !important; background: #0b0d0b !important; box-shadow: none !important; }
+html.crt .bug-grid > * [class*="net"], html.crt .bug-grid > * [class*="tv"] { border-radius: 2px !important; border-color: rgba(255, 176, 0, .2) !important; color: var(--text-dim) !important; }
+
+/* Section heads: one amber line, no gradient rule. */
+html.crt [class*="section-head"] , html.crt [class*="sec-head"] { color: #ffb000 !important; }
+html.crt [class*="-rule"], html.crt [class*="head-line"] { background: rgba(255, 176, 0, .25) !important; }
+html.crt button[class*="vs"], html.crt .vs-btn { background: transparent !important; border: 1px solid rgba(255, 176, 0, .5) !important; border-radius: 3px !important; color: #ffb000 !important; box-shadow: none !important; }
+
+/* Phase 1 fit and finish */
+html.crt .head-score *, html.crt .me-pill-name { font-size: 13px !important; }
+html.crt .bottom-nav span, html.crt .bottom-nav b { font-size: 12px !important; }
+html.crt .rank-wp-bar i { background: #ffb000 !important; box-shadow: none !important; }
+html.crt .rank-wp.hot .rank-wp-bar i { background: var(--win) !important; }
+html.crt .rank-wp b { color: #ffb000 !important; }
+html.crt #scoreboard-screen .all-picks-toggle.section-heading::after { background: rgba(255, 176, 0, .3) !important; height: 1px !important; }
+html.crt .section-heading { font-family: 'VT323', monospace !important; font-size: 19px !important; letter-spacing: .06em !important; color: #ffb000 !important; white-space: nowrap; }
+html.crt .h2h-btn, html.crt .h2h-vs { background: transparent !important; border: 1px solid rgba(255, 176, 0, .5) !important; border-radius: 3px !important; color: #ffb000 !important; box-shadow: none !important; }
