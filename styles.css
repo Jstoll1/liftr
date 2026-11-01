@@ -9125,3 +9125,4 @@ html:not(.pro) .recap-card.rx .recap-head { color: rgb(var(--rxc, 193, 60, 255))
 html:not(.pro) .recap-card.rx .recap-main { color: #fff !important; text-shadow: 0 0 8px rgba(var(--rxc, 193, 60, 255), .55); }
 html:not(.pro) .recap-card.rx .recap-stat b { color: rgb(var(--rxc, 193, 60, 255)) !important; text-shadow: 0 0 10px rgba(var(--rxc, 193, 60, 255), .9) !important; }
 html:not(.pro) .recap-card.rx .recap-sub { color: #c9b8ff !important; }
+.recap-card.rx { filter: none !important; opacity: 1 !important; }
