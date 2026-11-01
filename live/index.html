@@ -1528,6 +1528,14 @@ body::before { display: none; }
     if (e.k === "js-error") return ["⚠ Hit an error", e.d || ""];
     if (e.k === "sheet-time") { const [id, sec] = String(e.d || "").split(":"); return [`Spent ${dur(Number(sec) * 1000)} in ${SHEET[id] || id}`, ""]; }
     if (e.k === "depth") { const [sc, pct] = String(e.d || "").split(":"); return [`Scrolled ${pct}% of ${SCREEN_NAME[sc] || sc}`, ""]; }
+    if (e.k === "recap-hero") return ["Tapped the week replay winner", ""];
+    if (e.k === "recap-you") return ["Tapped their week in the replay", ""];
+    if (e.k === "recap-sheet-close") return ["Closed a replay breakdown", ({ x: "with ✕", outside: "tapping outside", swipe: "swiping down" })[e.d] || ""];
+    if (e.k === "since-game") return ["Opened a game from Since you last looked", e.d || ""];
+    if (e.k === "since-more") return [e.d === "close" ? "Folded Since you last looked" : "Expanded Since you last looked", ""];
+    if (e.k === "since-tiles") return ["Tapped LIVE / POINTS / PLACE in Since you last looked", ""];
+    if (e.k === "path-game") return ["Opened a game from a Path to Win card", e.d || ""];
+    if (e.k === "wp-engine-stop") return ["Stopped the engine terminal", ""];
     if (e.k === "recap-card") return ["Opened a week replay card", ({ hit: "Pick of the week", miss: "Worst pick", move: "Movement", split: "Coin flip", tb: "Tiebreaker", lk: "Lock of the week" })[e.d] || e.d || ""];
     if (e.k === "path-run" || e.k === "path-card") {
       const of = feed.find((x) => x.n === e.n && /^path-of-/.test(x.k) && Math.abs(x.at - e.at) < 3000);
