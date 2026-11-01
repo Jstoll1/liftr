@@ -581,3 +581,19 @@ html.pro .recap-card.split { --c: #b9b4ff; }
    the faintest grey was under 3:1 on cards. */
 html.pro { --t3: #8f97a3; }
 html.pro .scorebug.pregame .bug-score { color: var(--text-dim) !important; opacity: .8; }
+
+/* Week replay in Pro: one card style, no neon frame. */
+html.pro .recap-panel:not(.hidden) { background: none !important; box-shadow: none !important; padding: 0 !important; gap: 8px !important; }
+html.pro .recap-panel:not(.hidden)::before, html.pro .recap-panel:not(.hidden)::after { display: none !important; }
+html.pro .recap-card.rx { background: var(--s1) !important; border: 1px solid var(--line) !important; border-radius: var(--r) !important; box-shadow: none !important; }
+html.pro .recap-card.rx::before, html.pro .recap-card.rx::after { display: none !important; }
+html.pro .rx-hero { background: linear-gradient(160deg, rgba(212, 174, 104, .16), rgba(212, 174, 104, .02) 60%), var(--s1) !important; border-color: rgba(212, 174, 104, .5) !important; }
+html.pro .rx-kicker, html.pro .rx-play, html.pro .rx-num b { color: var(--acc) !important; }
+html.pro .rx-av.big { box-shadow: 0 0 0 3px rgba(212, 174, 104, .7) !important; }
+html.pro .rx-step.s1 { background: rgba(212, 174, 104, .14) !important; }
+html.pro .rx-step.me b { color: var(--acc-ink) !important; }
+html.pro .rx-you { background: var(--s1) !important; border-color: var(--line) !important; }
+html.pro .rx-you .up, html.pro .rx-climb i.to { color: var(--win) !important; } html.pro .rx-you .dn { color: var(--loss) !important; }
+html.pro .rx-dots.hit i.on { background: var(--win) !important; box-shadow: none !important; }
+html.pro .rx-bar i { background: var(--loss) !important; }
+html.pro .rx-grid > .rx-tile .recap-head { justify-content: flex-start !important; text-align: left !important; }

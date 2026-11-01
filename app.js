@@ -6505,7 +6505,9 @@ function renderWeekChamp(rows, results) {
   const el = document.getElementById("week-champ");
   if (!el) return;
   const allFinal = GAMES.every((g) => results[g.id]);
-  if (!allFinal || !rows.length) { el.classList.add("hidden"); return; }
+  // The replay's hero card already crowns this week's winner.
+  const rp = document.getElementById("recap-panel");
+  if (!allFinal || !rows.length || (rp && !rp.classList.contains("hidden") && window.__recapWeek === currentWeek)) { el.classList.add("hidden"); return; }
   const top = rows.filter((r) => r.place === rows[0].place);
   const names = top.map((r) => shown(r.name).toUpperCase()).join(" & ");
   const trophy = `<img class="wc-trophy" src="${awardArt("recap/trophy")}" alt="" aria-hidden="true" decoding="async">`;
@@ -9397,6 +9399,41 @@ if (STUDIO) {
   });
 }
 
+// Replay visuals: who was on a pick as dots, a share as a bar.
+function rxDots(n, of, cls) { n = Math.max(0, Math.min(of || 0, n || 0)); return `<span class="rx-dots ${cls}">${Array.from({ length: of || 0 }, (_, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span>`; }
+function rxBar(n, of, cls) { const p = of ? Math.round((n / of) * 100) : 0; return `<span class="rx-bar ${cls}"><i style="width:${p}%"></i></span>`; }
+function rxCountUp(root) {
+  for (const el of root.querySelectorAll("[data-count]")) {
+    const to = Number(el.dataset.count); if (!Number.isFinite(to) || to <= 0) continue;
+    const t0 = performance.now(), dur = 900;
+    const tick = (t) => { const k = Math.min(1, (t - t0) / dur); el.textContent = String(Math.round(to * (1 - Math.pow(1 - k, 3)))); if (k < 1) requestAnimationFrame(tick); };
+    el.textContent = "0"; requestAnimationFrame(tick);
+  }
+}
+// Story mode: the replay one card at a time, full screen. Tap the right
+// side for next, the left for back; progress bars at the top; swipe down
+// or ✕ to close.
+function openRecapStory(panel) {
+  const st = panel.__story; if (!st) return;
+  const slides = [st.hero.replace("rx-hero", "rx-hero story-hero").replace('<div class="rx-play">▶ Play the week</div>', ""), ...[...panel.querySelectorAll(".rx-grid > .recap-card")].map((c) => c.outerHTML.replace(/ open"/, '"').replace(/<div class="recap-more">[\s\S]*?<\/div>\s*<\/div>$/, "</div>"))];
+  let i = 0;
+  const m = document.createElement("div");
+  m.className = "rx-story"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Week story");
+  const draw = () => {
+    m.innerHTML = `<div class="rx-prog">${slides.map((_, k) => `<i class="${k < i ? "done" : k === i ? "on" : ""}"></i>`).join("")}</div><button type="button" class="rx-sx" aria-label="Close">✕</button><div class="rx-slide">${slides[i]}</div><div class="rx-nav"><span>${i + 1} / ${slides.length}</span></div>`;
+    rxCountUp(m);
+  };
+  const close = () => { m.classList.add("out"); setTimeout(() => m.remove(), 200); };
+  m.addEventListener("click", (e) => {
+    if (e.target.closest(".rx-sx")) { close(); return; }
+    const right = e.clientX > innerWidth * 0.33;
+    if (right) { if (i < slides.length - 1) { i++; draw(); } else close(); } else if (i > 0) { i--; draw(); }
+  });
+  document.addEventListener("keydown", function k(e) { if (!m.isConnected) { document.removeEventListener("keydown", k); return; } if (e.key === "Escape") close(); if (e.key === "ArrowRight" && i < slides.length - 1) { i++; draw(); } if (e.key === "ArrowLeft" && i > 0) { i--; draw(); } });
+  if (typeof pullToClose === "function") pullToClose(m, () => m.querySelector(".rx-slide"), close);
+  draw(); document.body.appendChild(m);
+  track("recap-story", { event: true });
+}
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
 let renderRecap = function () {
@@ -9426,29 +9463,29 @@ let renderRecap = function () {
   if (r.best) {
     const b = r.best;
     cards.push([ICON.target + "PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${esc(b.pick)}</span>`,
-      `Only ${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : `were on ${esc(b.team || b.pick)}`}${Array.isArray(b.who) && b.who.length < b.takers ? ` · ${b.who.length} cashed` : ""} · ${esc(b.final || b.score)}`, `+${b.pts}`, Array.isArray(b.who) && b.who.length > 1 ? "PTS TOP" : "PTS", mine(b.who)]);
+      `Only ${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : `were on ${esc(b.team || b.pick)}`}${Array.isArray(b.who) && b.who.length < b.takers ? ` · ${b.who.length} cashed` : ""} · ${esc(b.final || b.score)}`, `+${b.pts}`, Array.isArray(b.who) && b.who.length > 1 ? "PTS TOP" : "PTS", mine(b.who), rxDots(b.takers, b.of, "hit")]);
   }
   if (r.worst) {
     const w = r.worst;
     cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${esc(w.pick)}</span>`,
-      `${w.takers} of ${w.of} got zero · ${esc(w.final || w.score)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who)]);
+      `${w.takers} of ${w.of} got zero · ${esc(w.final || w.score)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who), rxBar(w.takers, w.of, "miss")]);
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
     cards.push([ICON.up + "MOVEMENT", "move", `<img class="recap-logo chart" src="assets/images/recap/chart.webp" alt="" decoding="async">`, `${chips([u.name])}<span class="recap-pick">to #${u.to} on the season</span>`,
-      d ? `${esc(shown(d.name))} fell ${d.to - d.from} to #${d.to}` : "Nobody fell", `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean))]);
+      d ? `${esc(shown(d.name))} fell ${d.to - d.from} to #${d.to}` : "Nobody fell", `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean)), `<span class="rx-climb"><i>#${u.from}</i><b>→</b><i class="to">#${u.to}</i></span>`]);
   }
   if (r.consensus?.sides?.length > 1) {
     const c = r.consensus;
     const [a, b] = c.sides;
     cards.push([ICON.coin + "COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="recap-pick">${esc(c.matchup)}</span>`,
-      `${esc(a.team)} ${a.n} · ${esc(b.team)} ${b.n} · ${esc(c.final || c.score)}`, `${a.n}-${b.n}`, "SPLIT", false]);
+      `${esc(a.team)} ${a.n} · ${esc(b.team)} ${b.n} · ${esc(c.final || c.score)}`, `${a.n}-${b.n}`, "SPLIT", false, `<span class="rx-split"><i style="flex:${a.n}">${esc(a.team)}</i><i style="flex:${b.n}">${esc(b.team)}</i></span>`]);
   }
   if (r.tb) {
     const t = r.tb;
     const guess = [...new Set(t.guesses || [t.guess])].join(" & ");
     cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `${chips(t.who)}<span class="recap-pick">said ${esc(guess)}</span>`,
-      `${esc(t.matchup)} came in at ${t.actual}`, t.off === 0 ? "🎯" : `${t.off}`, t.off === 0 ? "EXACT" : "OFF", mine(t.who)]);
+      `${esc(t.matchup)} came in at ${t.actual}`, t.off === 0 ? "🎯" : `${t.off}`, t.off === 0 ? "EXACT" : "OFF", mine(t.who), `<span class="rx-tb"><i>actual total <b>${t.actual}</b></i></span>`]);
   }
   // Lock of the week: who hit theirs, who missed, the best lock leading.
   if (r.locks && (r.locks.list || []).length) {
@@ -9458,24 +9495,52 @@ let renderRecap = function () {
     const hitTeams = [...new Map(L.list.filter((x) => x.result === "hit" && x.id).map((x) => [x.id, x])).values()].slice(0, 3);
     const lkArt = hitTeams.length === 1 ? logo(hitTeams[0].id, hitTeams[0].short) : hitTeams.length ? `<span class="recap-vs n${hitTeams.length}">${hitTeams.map((x) => logo(x.id, x.short)).join("")}</span>` : `<span class="recap-lk" aria-hidden="true">🔒</span>`;
     cards.push(["🔒 LOCK OF THE WEEK", "lk", lkArt, `${chips(L.hit.length ? L.hit : top.name)}<span class="recap-pick">${L.hit.length ? `hit ${L.hit.length === 1 ? "their lock" : "locks"}` : "nobody hit"}</span>`,
-      `${L.hit.length} hit · ${L.miss.length} missed${L.push.length ? ` · ${L.push.length} pushed` : ""}${L.none.length ? ` · ${L.none.length} no lock` : ""}`, `${L.hit.length}/${n}`, "HIT", mine(L.hit)]);
+      `${L.hit.length} hit · ${L.miss.length} missed${L.push.length ? ` · ${L.push.length} pushed` : ""}${L.none.length ? ` · ${L.none.length} no lock` : ""}`, `${L.hit.length}/${n}`, "HIT", mine(L.hit), `<span class="rx-locks">${L.list.map((x) => `<i class="${x.result === "hit" ? "hit" : x.result === "push" ? "push" : "miss"}">🔒</i>`).join("")}</span>`]);
   }
   const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}`;
   toggle.classList.remove("hidden");
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
   if (panel.dataset.drawn === key) return;
   panel.dataset.drawn = key;
-  panel.innerHTML = `<div class="recap-marquee" role="button" tabindex="0" aria-expanded="true" title="Tap to fold"><span>★ ${esc(String(last.label || `WEEK ${last.week}`).toUpperCase())} REPLAY ★</span><small>GAME OVER · FINAL STATS <i class="recap-caret">▾</i></small></div>` + cards.map(([h, cls, art, main, sub, stat, statLabel, me], i) =>
-    `<div class="recap-card arc ${cls}${me ? " me" : ""}${recapOpen.has(cls) ? " open" : ""}" style="--i:${i}" data-rc="${cls}" role="button" tabindex="0" aria-expanded="${recapOpen.has(cls)}">
+  // Hero: the week's winner (podium of three), the margin, the viewer's
+  // own line. Then the two headline stories full width, the rest as tiles.
+  const rows = (last.rows || []).filter((x) => x && x.name && Number.isFinite(x.score)).sort((a, b) => b.score - a.score || (a.tbDiff ?? 999) - (b.tbDiff ?? 999));
+  const podium = rows.slice(0, 3);
+  const champ = podium[0], margin = rows[1] ? champ.score - rows[1].score : null;
+  const av = (n, cls = "") => `<span class="rx-av ${cls}" style="--ac:${accentFor(n)}">${avatarOverrides[n] || esc(shown(n)[0])}</span>`;
+  const hero = champ ? `<div class="rx-hero" role="button" tabindex="0" aria-label="Play the week ${last.week} story">
+      <div class="rx-kicker">${esc(String(last.label || `Week ${last.week}`).toUpperCase())} · FINAL</div>
+      <div class="rx-champ">${av(champ.name, "big")}<div><b>${esc(shown(champ.name))}</b><span>wins the week</span></div><div class="rx-num"><b data-count="${champ.score}">${champ.score}</b><span>PTS</span></div></div>
+      ${margin != null ? `<div class="rx-margin">${margin === 0 ? "won on the tiebreaker" : `by ${margin} point${margin === 1 ? "" : "s"}`}</div>` : ""}
+      <div class="rx-podium">${podium.map((r, i) => `<div class="rx-step s${i + 1}${r.name === currentManager ? " me" : ""}">${av(r.name)}<b>${esc(shown(r.name))}</b><i>${r.score}</i><em>${i + 1}</em></div>`).join("")}</div>
+      <div class="rx-play">▶ Play the week</div>
+    </div>` : "";
+  const meRow = rows.find((x) => x.name === currentManager);
+  let you = "";
+  if (meRow) {
+    const place = 1 + rows.filter((x) => x.score > meRow.score).length, avg = rows.reduce((a, x) => a + x.score, 0) / rows.length, vs = Math.round((meRow.score - avg) * 10) / 10;
+    const best = (meRow.ledger || []).filter((l) => l.result === "hit").sort((a, b) => (b.pts || 0) - (a.pts || 0))[0];
+    const bestTxt = best ? (() => { const g = (last.slate || []).find((x) => Number(x.id) === Number(best.g)); const t = g ? (best.team === g.home ? g.homeShort : best.team === g.away ? g.awayShort : best.team) : best.team; return `${esc(t)} ${esc(best.line || "")} +${best.pts}`; })() : "";
+    you = `<div class="rx-you"><span class="rx-yl">YOUR WEEK</span><span><b>${ordinal(place)}</b></span><span><b data-count="${meRow.score}">${meRow.score}</b> pts</span><span class="${vs >= 0 ? "up" : "dn"}">${vs >= 0 ? "+" : "−"}${Math.abs(vs)} vs avg</span>${bestTxt ? `<span class="rx-best">best: ${bestTxt}</span>` : ""}</div>`;
+  }
+  const head = new Set(["hit", "miss"]);
+  const card = ([h, cls, art, main, sub, stat, statLabel, me, viz], i) =>
+    `<div class="recap-card rx ${head.has(cls) ? "rx-wide" : "rx-tile"} ${cls}${me ? " me" : ""}${recapOpen.has(cls) ? " open" : ""}" style="--i:${i}" data-rc="${cls}" role="button" tabindex="0" aria-expanded="${recapOpen.has(cls)}">
       <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
-      <div class="recap-art">${art}</div>
-      <div class="recap-body">
-        <div class="recap-main">${main}</div>
-        <div class="recap-sub">${sub}</div>
-      </div>
-      <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div>
+      <div class="rx-row"><div class="recap-art">${art}</div>
+      <div class="recap-body"><div class="recap-main">${main}</div><div class="recap-sub">${sub}</div></div>
+      <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div></div>
+      ${viz ? `<div class="rx-viz">${viz}</div>` : ""}
       ${recapOpen.has(cls) ? `<div class="recap-more">${recapDetail(last, cls)}</div>` : ""}
-    </div>`).join("");
+    </div>`;
+  window.__recapWeek = last.week;
+  document.getElementById("week-champ")?.classList.add("hidden");
+  panel.innerHTML = hero + you + `<div class="rx-grid">${cards.map(card).join("")}</div>`;
+  panel.__story = { last, cards, hero };
+  // Count up the first time this week's replay is seen.
+  const seenKey = `brochiefs_rx_seen_${last.week}`;
+  let seen = false; try { seen = !!localStorage.getItem(seenKey); localStorage.setItem(seenKey, "1"); } catch {}
+  if (!seen && !matchMedia("(prefers-reduced-motion: reduce)").matches) rxCountUp(panel);
 };
 
 // Tap a replay card for the whole story behind it: who took which side on
@@ -9530,6 +9595,7 @@ function recapDetail(sum, kind) {
   return `<div class="rm-h">${esc(g.awayShort)} AT ${esc(g.homeShort)} · WHO TOOK WHAT</div>${[...sides.values()].sort((a, b) => b.who.length - a.who.length).map((x) => { const id = x.teamId || (x.team ? teamIdOf(x.team) : null); return `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(x.side)}</span><i>${x.hit ? `+${x.pts} each` : "0"}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`; }).join("")}`;
 }
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
+  if (e.target.closest(".rx-hero")) { openRecapStory(e.currentTarget); return; }
   const c = e.target.closest(".recap-card[data-rc]");
   if (!c || e.target.closest(".pick-chip, a, button")) return;
   const k = c.dataset.rc;
