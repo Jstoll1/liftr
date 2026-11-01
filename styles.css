@@ -8843,7 +8843,7 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .rx-climb { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; } .rx-climb i { font-style: normal; color: var(--text-dim); } .rx-climb i.to { color: var(--neon-green); }
 .rx-tb { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--text-dim); } .rx-tb i { font-style: normal; } .rx-tb b { color: var(--text); }
 /* Hero */
-.rx-hero { position: relative; padding: 14px 14px 12px; border-radius: 14px; background: linear-gradient(160deg, rgba(255, 210, 63, .14), rgba(255, 210, 63, .02) 60%), var(--card-bg); border: 1px solid rgba(255, 210, 63, .45); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rx-hero { position: relative; padding: 14px 14px 12px; border-radius: 14px; background: linear-gradient(160deg, rgba(255, 210, 63, .14), rgba(255, 210, 63, .02) 60%), var(--card-bg); border: 1px solid rgba(255, 210, 63, .45); }
 .rx-kicker { font-size: 11px; letter-spacing: .12em; color: var(--arcade-gold); font-weight: 700; }
 .rx-champ { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
 .rx-champ > div:not(.rx-num) { flex: 1; min-width: 0; } .rx-champ b { display: block; font-size: 22px; font-weight: 800; color: var(--text); } .rx-champ span { font-size: 12px; color: var(--text-dim); }
