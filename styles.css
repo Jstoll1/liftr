@@ -9002,3 +9002,11 @@ html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 
 .rx-grid > .rx-tile.move .recap-sub { display: block; font-size: 12px; }
 .recap-panel:not(.hidden) { margin-bottom: 4px !important; }
 .recap-panel:not(.hidden) + * , #recap-panel + .lb-head { margin-top: 8px !important; }
+/* Locks tile mirrors the tiebreaker: headline, padlock line, two boxes. */
+.rx-grid > .rx-tile.lk .recap-sub { display: block; margin-top: 6px; }
+.rx-grid > .rx-tile.lk .rx-locks { display: flex !important; flex-wrap: nowrap; justify-content: flex-start; gap: 1px; font-size: 12px; }
+.rx-grid > .rx-tile.lk .rx-viz { margin-top: auto; padding-top: 10px; }
+.rx-grid > .rx-tile.tb .rx-viz { margin-top: auto; padding-top: 10px; }
+.rx-tbn { white-space: nowrap; }
+.rx-tbl .rx-tbn { white-space: normal; font-size: 12.5px; line-height: 1.25; }
+.rx-grid > .rx-tile.tb .rx-viz, .rx-grid > .rx-tile.lk .rx-viz { margin-top: 10px !important; padding-top: 0 !important; }

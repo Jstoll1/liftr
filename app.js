@@ -9401,6 +9401,7 @@ if (STUDIO) {
 }
 
 // Replay visuals: who was on a pick as dots, a share as a bar.
+function line2(cls, label, who, big, small) { return `<div class="rx-tbl ${cls}"><span class="rx-tbk">${label}</span><span class="rx-tbn">${who}</span><b>${big}</b><em>${small}</em></div>`; }
 function rxDots(n, of, cls) { n = Math.max(0, Math.min(of || 0, n || 0)); return `<span class="rx-dots ${cls}">${Array.from({ length: of || 0 }, (_, i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span>`; }
 function rxBar(n, of, cls) { const p = of ? Math.round((n / of) * 100) : 0; return `<span class="rx-bar ${cls}"><i style="width:${p}%"></i></span>`; }
 function rxCountUp(root) {
@@ -9479,10 +9480,15 @@ let renderRecap = function () {
     const lkArt = hitTeams.length === 1 ? logo(hitTeams[0].id, hitTeams[0].short) : hitTeams.length ? `<span class="recap-vs n${hitTeams.length}">${hitTeams.map((x) => logo(x.id, x.short)).join("")}</span>` : `<span class="recap-lk" aria-hidden="true">🔒</span>`;
     const myLk = L.list.find((x) => x.name === currentManager);
     const word = L.hit.length === 0 ? "No locks hit" : L.hit.length === n ? "Every lock hit" : `${L.hit.length} of ${n} locks hit`;
-    const hitNames = L.hit.map((x) => esc(shown(x))).join(", ");
-    cards.push(["🔒 LOCKS", "lk", lkArt, `<span class="recap-pick">${word}</span>`,
-      `${L.hit.length ? `Hit: ${hitNames}` : "Nobody cashed a lock"}${myLk ? `<br>Your lock: ${esc(myLk.short)} ${esc(myLk.line === "SU" ? "to win" : myLk.line)}, ${myLk.result === "hit" ? `hit (+${myLk.pts})` : myLk.result === "push" ? "pushed" : `missed (${myLk.pts < 0 ? "−" + Math.abs(myLk.pts) : "0"})`}` : ""}`, `${L.hit.length}/${n}`, "HIT", mine(L.hit),
-      `<span class="rx-locks">${L.list.map((x) => `<i class="${x.result === "hit" ? "hit" : x.result === "push" ? "push" : "miss"}${x.name === currentManager ? " me" : ""}" title="${esc(shown(x.name))}">🔒</i>`).join("")}</span>`]);
+    const pad = `<span class="rx-locks">${L.list.map((x) => `<i class="${x.result === "hit" ? "hit" : x.result === "push" ? "push" : "miss"}${x.name === currentManager ? " me" : ""}" title="${esc(shown(x.name))}">🔒</i>`).join("")}</span>`;
+    const nm = (a) => a.map((x) => esc(shown(x))).join(", ");
+    const hitPts = L.list.find((x) => x.result === "hit")?.pts;
+    // Two boxes, the same shape as the tiebreaker's: who hit, and yours
+    // (or who missed, when you had no lock).
+    const box1 = line2("best", "Hit", L.hit.length ? (L.hit.length <= 2 ? nm(L.hit) : `${nm(L.hit.slice(0, 1))} & ${L.hit.length - 1} more`) : "Nobody", hitPts != null ? `+${hitPts}` : "", L.hit.length ? "each" : "");
+    const box2 = myLk ? line2(myLk.result === "hit" ? "best" : myLk.result === "push" ? "" : "worst", "Your lock", `${esc(myLk.short)} ${esc(myLk.line === "SU" ? "to win" : myLk.line)}`, myLk.result === "hit" ? `+${myLk.pts}` : myLk.result === "push" ? "0" : (myLk.pts < 0 ? "−" + Math.abs(myLk.pts) : "0"), myLk.result === "hit" ? "hit" : myLk.result === "push" ? "push" : "missed")
+      : line2("worst", "Missed", L.miss.length ? nm(L.miss) : "Nobody", "", `${L.miss.length} missed`);
+    cards.push(["🔒 LOCKS", "lk", lkArt, `<span class="recap-pick">${word}</span>`, pad, "", "", mine(L.hit), `<div class="rx-tbw">${box1}${box2}</div>`]);
   }
   const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}`;
   toggle.classList.remove("hidden");
