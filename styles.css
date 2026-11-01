@@ -8890,3 +8890,19 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .recap-more .rm-side > i { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .04em; }
 .recap-more .rm-side.hit > i { color: var(--neon-green); } .recap-more .rm-side.miss > i { color: var(--neon-pink); }
 .rm-close { margin-top: 8px; text-align: center; font-size: 11px; color: var(--text-dim); }
+/* Hero: the champ centred. */
+.rx-hero { text-align: center; }
+.rx-champ { flex-direction: column; justify-content: center; gap: 4px; margin-top: 10px; }
+.rx-champ .rx-cn { display: block; font-size: 24px; font-weight: 800; color: var(--text); margin-top: 6px; }
+.rx-champ .rx-num { text-align: center; display: flex; align-items: baseline; gap: 6px; justify-content: center; }
+.rx-champ .rx-num span { display: inline; }
+.rx-champ .rx-cw { font-size: 12px; color: var(--text-dim); }
+.rx-margin { text-align: center; }
+/* Replay breakdown sheet. */
+.rx-sheet { align-items: flex-end; }
+.rx-sheet-card { width: min(520px, 100%); max-height: 82vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding: 14px 14px max(18px, env(safe-area-inset-bottom)); }
+.rx-sh-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.rx-sh-h b { font-size: 13px; font-weight: 800; letter-spacing: .06em; }
+.rx-sh-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .2); background: none; color: inherit; font-size: 14px; }
+.rx-sheet .recap-more .rm-h:first-child { border-top: 0; padding-top: 0; margin-top: 4px; }
+.rx-sheet { z-index: 3000 !important; }
