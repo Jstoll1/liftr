@@ -9416,6 +9416,39 @@ function rxCountUp(root) {
     el.textContent = "0"; requestAnimationFrame(tick);
   }
 }
+// Theme poll: one vote per player, shown until they vote, then never again.
+const THEME_POLL = "theme-v1", THEME_POLL_SEEN = `brochiefs_poll_${THEME_POLL}`;
+async function maybeThemePoll() {
+  const me = loadMe();
+  if (!me || !MANAGERS.includes(me) || !WORKER_URL || PREVIEW || window.__liveView || window.__adminEntry) return;
+  try { if (localStorage.getItem(THEME_POLL_SEEN)) return; } catch {}
+  if (document.getElementById("theme-poll")) return;
+  let mine = null;
+  try { const r = await fetch(`${WORKER_URL}/poll?id=${THEME_POLL}&manager=${encodeURIComponent(me)}&t=${Date.now()}`, { cache: "no-store" }); if (!r.ok) return; mine = (await r.json()).vote; } catch { return; }
+  if (mine) { try { localStorage.setItem(THEME_POLL_SEEN, mine); } catch {} return; }
+  const opts = [["retro", "🕹️", "Retro Arcade"], ["dark", "🌙", "Current Dark Mode"], ["either", "🤷", "Who Cares"]];
+  const m = document.createElement("div");
+  m.id = "theme-poll"; m.className = "modal-overlay tpoll"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Theme poll");
+  m.innerHTML = `<div class="modal-card tpoll-card"><div class="tpoll-k">QUICK POLL · ONE VOTE</div><h3>Which look do you want?</h3><p>Help pick the app's look. One vote each.</p>
+    <div class="tpoll-opts">${opts.map(([k, ic, t]) => `<button type="button" data-tv="${k}"><span>${ic}</span><b>${t}</b></button>`).join("")}</div><div class="tpoll-err" hidden>Couldn't save that. Try again.</div></div>`;
+  document.body.appendChild(m);
+  fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: THEME_POLL, manager: me, action: "view" }) }).catch(() => {});
+  noteUse("theme-poll-shown");
+  m.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-tv]"); if (!b) return;
+    m.querySelectorAll("button").forEach((x) => (x.disabled = true)); b.classList.add("on");
+    try {
+      const r = await fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: THEME_POLL, manager: me, choice: b.dataset.tv, token: loadAuth()?.manager === me ? loadAuth().token : undefined }) });
+      if (!r.ok) throw new Error();
+      try { localStorage.setItem(THEME_POLL_SEEN, b.dataset.tv); } catch {}
+      noteUse("theme-poll-vote", b.dataset.tv);
+      m.querySelector(".tpoll-card").innerHTML = `<div class="tpoll-done">✓ Vote in. Thanks!</div>`;
+      setTimeout(() => m.remove(), 900);
+    } catch { m.querySelector(".tpoll-err").hidden = false; m.querySelectorAll("button").forEach((x) => (x.disabled = false)); b.classList.remove("on"); }
+  });
+}
+setTimeout(() => maybeThemePoll(), 2500);
+
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
 let renderRecap = function () {

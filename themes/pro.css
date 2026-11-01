@@ -651,3 +651,8 @@ html.pro .plc-key .k-hi { background: var(--win); } html.pro .plc-key .k-lo { ba
 /* Season stats panel in Pro: no Retro gradient frame. */
 html.pro .season-panel { background: none !important; box-shadow: none !important; padding: 0 !important; }
 html.pro .season-panel::before, html.pro .season-panel::after { display: none !important; }
+html.pro .tpoll-card { background: var(--s1) !important; border: 1px solid var(--line2) !important; }
+html.pro .tpoll-k { color: var(--acc) !important; }
+html.pro .tpoll-opts button { background: var(--s2) !important; border-color: var(--line2) !important; }
+html.pro .tpoll-opts button.on { border-color: var(--win) !important; background: rgba(46, 207, 122, .12) !important; }
+html.pro .tpoll-done { color: var(--win) !important; }
