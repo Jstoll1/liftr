@@ -8789,7 +8789,7 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .gc-ez { overflow: visible; }
 .gc-ez > span { position: relative; z-index: 3; }
 .gc-ez:not(.show) { justify-content: flex-end; padding-right: 3px; } .gc-ez.r:not(.show) { justify-content: flex-start; padding: 0 0 0 3px; } .gc-ez > span { position: relative; z-index: 1; }
-.scorebug.pregame .bug-score { opacity: .45; }
+.scorebug.pregame .bug-score { opacity: .6; }
 
 /* Play log, easier to follow: the down/distance and clock line is legible,
    older plays fade gently instead of to a ghost, the newest play is marked,
@@ -8811,3 +8811,4 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .gc-to i { width: 10px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .16); }
 .gc-to i.on { background: #ffe45e; box-shadow: 0 0 4px rgba(255, 228, 94, .6); }
 .game-card .lr-foot { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.gc-ez > span { text-shadow: 0 0 2px #000, 0 1px 2px #000, 0 0 4px rgba(0, 0, 0, .7); }
