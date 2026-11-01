@@ -9496,7 +9496,12 @@ let renderRecap = function () {
     const place = 1 + rows.filter((x) => x.score > meRow.score).length, avg = rows.reduce((a, x) => a + x.score, 0) / rows.length, vs = Math.round((meRow.score - avg) * 10) / 10;
     const best = (meRow.ledger || []).filter((l) => l.result === "hit").sort((a, b) => (b.pts || 0) - (a.pts || 0))[0];
     const bestTxt = best ? (() => { const g = (last.slate || []).find((x) => Number(x.id) === Number(best.g)); const t = g ? (best.team === g.home ? g.homeShort : best.team === g.away ? g.awayShort : best.team) : best.team; return `${esc(t)} ${esc(best.line || "")} +${best.pts}`; })() : "";
-    you = `<div class="rx-you"><span class="rx-yl">YOUR WEEK</span><span><b>${ordinal(place)}</b></span><span><b data-count="${meRow.score}">${meRow.score}</b> pts</span><span class="${vs >= 0 ? "up" : "dn"}">${vs >= 0 ? "+" : "−"}${Math.abs(vs)} vs avg</span>${bestTxt ? `<span class="rx-best">best: ${bestTxt}</span>` : ""}</div>`;
+    const avgR = Math.round(avg * 10) / 10;
+    you = `<div class="rx-you"><div class="rx-yl">YOUR WEEK</div><div class="rx-ycols">
+      <div><b>${ordinal(place)}</b><span>of ${rows.length}</span></div>
+      <div><b data-count="${meRow.score}">${meRow.score}</b><span>points</span></div>
+      <div class="${vs >= 0 ? "up" : "dn"}"><b>${vs >= 0 ? "+" : "−"}${Math.abs(vs)}</b><span>${vs >= 0 ? "above" : "below"} league avg (${avgR})</span></div>
+    </div>${bestTxt ? `<div class="rx-best">Best call: ${bestTxt}</div>` : ""}</div>`;
   }
   const head = new Set(["hit", "miss"]);
   const card = ([h, cls, art, main, sub, stat, statLabel, me, viz], i) =>

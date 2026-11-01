@@ -599,3 +599,4 @@ html.pro .rx-bar i { background: var(--loss) !important; }
 html.pro .rx-grid > .rx-tile .recap-head { justify-content: flex-start !important; text-align: left !important; }
 html.pro .recap-more .rm-side.hit > i { color: var(--win) !important; } html.pro .recap-more .rm-side.miss > i { color: var(--loss) !important; } html.pro .recap-more .rm-h { color: var(--text) !important; font-size: 12px !important; }
 html.pro .rx-sheet-card { background: var(--s1) !important; border: 1px solid var(--line2) !important; } html.pro .rx-sh-h b { color: var(--text) !important; }
+html.pro .rx-ycols .up b { color: var(--win) !important; } html.pro .rx-ycols .dn b { color: var(--loss) !important; } html.pro .rx-ycols > div { background: var(--s2) !important; }
