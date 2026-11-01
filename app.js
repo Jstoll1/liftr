@@ -7796,7 +7796,7 @@ async function openInsights(gameId) {
       const pts = scorePick(game, mine, res), pushed = mine.mode === "ATS" && out?.push;
       const st = pushed ? "push" : pts > 0 ? "up" : "down";
       const lkm = mine.lock && lockRule();
-      mineHtml = `<div class="gc-mine ${st}${lkm ? " lk" : ""}"><span class="gc-mtag">${lkm ? "🔒 YOUR LOCK" : "YOUR PICK"}</span>${lg(mine.team === game.away ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(abOf(mine))} ${esc(termsOf(mine))}</b><span class="gc-msay"><i></i>${pushed ? "PUSH · 0 PT" : pts > 0 ? `CASHED · +${pts} PT${pts === 1 ? "" : "S"}${lkm ? " WITH THE LOCK" : ""}` : `MISSED · ${pts < 0 ? "−" + Math.abs(pts) : 0} PT${lkm && pts < 0 ? " (LOCK)" : ""}`}</span></div>`;
+      mineHtml = `<div class="gc-mine ${st}${lkm ? " lk" : ""}"><span class="gc-mtag">${lkm ? "🔒 LOCK" : "YOUR PICK"}</span>${lg(mine.team === game.away ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(abOf(mine))} ${esc(termsOf(mine))}</b><span class="gc-msay"><i></i>${pushed ? "PUSH · 0 PT" : pts > 0 ? `CASHED · +${pts} PT${pts === 1 ? "" : "S"}${lkm ? " WITH THE LOCK" : ""}` : `MISSED · ${pts < 0 ? "−" + Math.abs(pts) : 0} PT${lkm && pts < 0 ? " (LOCK)" : ""}`}</span></div>`;
     }
     const room = MANAGERS.map((name) => ({ name, pick: pickOf(name) })).filter((r) => r.pick).map((r) => { const pts = scorePick(game, r.pick, res); const pushed = r.pick.mode === "ATS" && out?.push; return { ...r, pts, state: pushed ? "push" : pts > 0 ? "up" : "down" }; });
     let roomHtml = "";
@@ -7962,9 +7962,9 @@ async function openInsights(gameId) {
       const pushed = mine.mode === "ATS" && resultOutcome(game, res)?.push;
       const cash = pushed ? "push" : scorePick(game, mine, res) > 0 ? "up" : "down";
       const by = Math.abs(margin) % 1 ? Math.abs(margin).toFixed(1) : String(Math.abs(margin));
-      const say = cash === "push" ? "PUSH RIGHT NOW" : cash === "up" ? (mine.mode === "SU" ? `WINNING BY ${by}` : `COVERING BY ${by}`) : (mine.mode === "SU" ? (margin === 0 ? "TIED" : `DOWN ${by}`) : `NEEDS ${by} MORE`);
+      const say = cash === "push" ? "PUSH RIGHT NOW" : cash === "up" ? (mine.mode === "SU" ? `WINNING BY ${by}` : `COVERING BY ${by}`) : (mine.mode === "SU" ? (margin === 0 ? "TIED" : `DOWN ${by}`) : (mine.lock && lockRule() ? `NEEDS ${by}` : `NEEDS ${by} MORE`));
       const lkm = mine.lock && lockRule();
-      mineHtml = `<div class="gc-mine ${cash}${lkm ? " lk" : ""}"><span class="gc-mtag">${lkm ? "🔒 YOUR LOCK" : "YOUR PICK"}</span>${lg(mySide === "away" ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(mySide === "away" ? A : H)} ${esc(terms)}</b><span class="gc-mpts">${lkm ? `${pointValue(game, mine.team, mine.mode)}+${lockRule().hit}` : worth} PT</span><span class="gc-msay"><i></i>${esc(say)}${lkm && cash === "down" && lockRule().miss < 0 ? ` · LOCK ${lockRule().miss}` : ""}</span></div>`;
+      mineHtml = `<div class="gc-mine ${cash}${lkm ? " lk" : ""}"><span class="gc-mtag">${lkm ? "🔒 YOUR LOCK" : "YOUR PICK"}</span>${lg(mySide === "away" ? game.awayId : game.homeId, "gc-mlogo")}<b>${esc(mySide === "away" ? A : H)} ${esc(terms)}</b><span class="gc-mpts">${lkm ? `${pointValue(game, mine.team, mine.mode)}+${lockRule().hit}` : worth} PT</span><span class="gc-msay"><i></i>${esc(say)}${lkm && cash === "down" && lockRule().miss < 0 ? ` · ${String(lockRule().miss).replace("-", "−")}` : ""}</span></div>`;
     }
     // At a break, a mini box score replaces down and distance.
     const bsTeams = summaryRaw?.boxscore?.teams || [];
