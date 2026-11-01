@@ -8942,3 +8942,12 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .rx-ycols span { font-size: 11px; color: var(--text-dim); line-height: 1.2; }
 .rx-ycols .up b { color: var(--neon-green); } .rx-ycols .dn b { color: var(--neon-pink); }
 .rx-you .rx-best { margin-top: 8px; text-align: center; font-size: 12px; }
+/* Your week: 2 x 2, every box the same size. */
+.rx-ycols { grid-template-columns: 1fr 1fr !important; }
+/* Locks tile: headline, a 5 x 2 grid of padlocks, then who hit and your lock. */
+.rx-grid > .rx-tile.lk .recap-sub { display: block; font-size: 12px; line-height: 1.35; margin-top: 2px; }
+.rx-grid > .rx-tile.lk .recap-main .recap-pick { font-size: 15px; font-weight: 800; }
+.rx-grid > .rx-tile.lk .recap-stat { display: none !important; }
+.rx-locks { display: grid !important; grid-template-columns: repeat(5, 1fr); justify-items: center; gap: 4px 2px; font-size: 16px; }
+.rx-locks i.me { outline: 2px solid currentColor; outline-offset: 1px; border-radius: 4px; color: var(--neon-cyan); }
+.rx-grid > .rx-tile.lk .rx-viz { margin-top: 8px; padding-top: 0; }

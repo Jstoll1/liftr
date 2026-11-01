@@ -9471,8 +9471,12 @@ let renderRecap = function () {
     // lock, so it never names a team most people didn't lock.
     const hitTeams = [...new Map(L.list.filter((x) => x.result === "hit" && x.id).map((x) => [x.id, x])).values()].slice(0, 3);
     const lkArt = hitTeams.length === 1 ? logo(hitTeams[0].id, hitTeams[0].short) : hitTeams.length ? `<span class="recap-vs n${hitTeams.length}">${hitTeams.map((x) => logo(x.id, x.short)).join("")}</span>` : `<span class="recap-lk" aria-hidden="true">🔒</span>`;
-    cards.push(["🔒 LOCK OF THE WEEK", "lk", lkArt, `${chips(L.hit.length ? L.hit : top.name)}<span class="recap-pick">${L.hit.length ? `hit ${L.hit.length === 1 ? "their lock" : "locks"}` : "nobody hit"}</span>`,
-      `${L.hit.length} hit · ${L.miss.length} missed${L.push.length ? ` · ${L.push.length} pushed` : ""}${L.none.length ? ` · ${L.none.length} no lock` : ""}`, `${L.hit.length}/${n}`, "HIT", mine(L.hit), `<span class="rx-locks">${L.list.map((x) => `<i class="${x.result === "hit" ? "hit" : x.result === "push" ? "push" : "miss"}">🔒</i>`).join("")}</span>`]);
+    const myLk = L.list.find((x) => x.name === currentManager);
+    const word = L.hit.length === 0 ? "No locks hit" : L.hit.length === n ? "Every lock hit" : `${L.hit.length} of ${n} locks hit`;
+    const hitNames = L.hit.map((x) => esc(shown(x))).join(", ");
+    cards.push(["🔒 LOCKS", "lk", lkArt, `<span class="recap-pick">${word}</span>`,
+      `${L.hit.length ? `Hit: ${hitNames}` : "Nobody cashed a lock"}${myLk ? `<br>Your lock: ${esc(myLk.short)} ${esc(myLk.line === "SU" ? "to win" : myLk.line)}, ${myLk.result === "hit" ? `hit (+${myLk.pts})` : myLk.result === "push" ? "pushed" : `missed (${myLk.pts < 0 ? "−" + Math.abs(myLk.pts) : "0"})`}` : ""}`, `${L.hit.length}/${n}`, "HIT", mine(L.hit),
+      `<span class="rx-locks">${L.list.map((x) => `<i class="${x.result === "hit" ? "hit" : x.result === "push" ? "push" : "miss"}${x.name === currentManager ? " me" : ""}" title="${esc(shown(x.name))}">🔒</i>`).join("")}</span>`]);
   }
   const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}`;
   toggle.classList.remove("hidden");
@@ -9501,7 +9505,8 @@ let renderRecap = function () {
     you = `<div class="rx-you"><div class="rx-yl">YOUR WEEK</div><div class="rx-ycols">
       <div><b>${ordinal(place)}</b><span>of ${rows.length}</span></div>
       <div><b data-count="${meRow.score}">${meRow.score}</b><span>points</span></div>
-      <div class="${vs >= 0 ? "up" : "dn"}"><b>${vs >= 0 ? "+" : "−"}${Math.abs(vs)}</b><span>${vs >= 0 ? "above" : "below"} league avg (${avgR})</span></div>
+      <div class="${vs >= 0 ? "up" : "dn"}"><b>${vs >= 0 ? "+" : "−"}${Math.abs(vs)}</b><span>vs league avg (${avgR})</span></div>
+      ${(() => { const mine = Object.values(weekSummaries).filter((w) => w?.complete && w.week < last.week).map((w) => (w.rows || []).find((x) => x.name === currentManager)?.score).filter(Number.isFinite); if (!mine.length) return `<div><b>–</b><span>vs your avg (first week)</span></div>`; const ma = mine.reduce((a, x) => a + x, 0) / mine.length, d = Math.round((meRow.score - ma) * 10) / 10; return `<div class="${d >= 0 ? "up" : "dn"}"><b>${d >= 0 ? "+" : "−"}${Math.abs(d)}</b><span>vs your avg (${Math.round(ma * 10) / 10})</span></div>`; })()}
     </div>${bestTxt ? `<div class="rx-best">Best call: ${bestTxt}</div>` : ""}</div>`;
   }
   const head = new Set(["hit", "miss"]);
