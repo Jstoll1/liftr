@@ -602,3 +602,20 @@ html.pro .rx-sheet-card { background: var(--s1) !important; border: 1px solid va
 html.pro .rx-ycols .up b { color: var(--win) !important; } html.pro .rx-ycols .dn b { color: var(--loss) !important; } html.pro .rx-ycols > div { background: var(--s2) !important; }
 html.pro .rx-locks i.me { color: var(--acc) !important; }
 html.pro .rx-tbl.best em { color: var(--win) !important; } html.pro .rx-tbl.worst em { color: var(--loss) !important; } html.pro .rx-tbl { background: var(--s2) !important; }
+
+/* Player card with colour: the player's own accent leads (header wash,
+   avatar ring, bars), won weeks gold, stats coloured by how good they are. */
+html.pro .plc-card { background: linear-gradient(180deg, color-mix(in srgb, var(--pc, var(--acc)) 16%, transparent), transparent 220px), var(--s1) !important; border-color: color-mix(in srgb, var(--pc, var(--acc)) 40%, var(--line2)) !important; }
+html.pro .plc-av { background: color-mix(in srgb, var(--pc, var(--acc)) 22%, var(--s2)) !important; border: 2px solid var(--pc, var(--acc)) !important; box-shadow: 0 0 0 4px color-mix(in srgb, var(--pc, var(--acc)) 15%, transparent) !important; }
+html.pro .plc-id small { color: var(--pc, var(--acc)) !important; }
+html.pro .plc-badges .rank { background: color-mix(in srgb, var(--pc, var(--acc)) 18%, transparent) !important; border-color: color-mix(in srgb, var(--pc, var(--acc)) 45%, transparent) !important; }
+html.pro .plc-bars i s, html.pro .plc-bars s { background: color-mix(in srgb, var(--pc, var(--acc)) 55%, var(--s3)) !important; }
+html.pro .plc-bars i.won s, html.pro .plc-bars i.won.top s { background: linear-gradient(180deg, #f3d38c, var(--acc)) !important; box-shadow: 0 0 10px rgba(212, 174, 104, .45) !important; }
+html.pro .plc-bars i.won b { color: var(--acc) !important; }
+html.pro .plc-sb.t-hi i u.on { background: var(--win) !important; } html.pro .plc-sb.t-hi b { color: var(--win) !important; }
+html.pro .plc-sb.t-mid i u.on { background: var(--acc) !important; } html.pro .plc-sb.t-mid b { color: var(--acc-ink) !important; }
+html.pro .plc-sb.t-lo i u.on { background: var(--loss) !important; } html.pro .plc-sb.t-lo b { color: var(--loss) !important; }
+html.pro .plc-pick.hit { background: linear-gradient(135deg, rgba(46, 207, 122, .16), rgba(46, 207, 122, .03)) !important; border-color: rgba(46, 207, 122, .4) !important; }
+html.pro .plc-pick:not(.hit) { background: linear-gradient(135deg, rgba(255, 93, 93, .14), rgba(255, 93, 93, .02)) !important; border-color: rgba(255, 93, 93, .35) !important; }
+html.pro .plc-bars i.top:not(.won) s { background: color-mix(in srgb, var(--pc, var(--acc)) 85%, #fff) !important; }
+html.pro .modal-card.plc-card { background: linear-gradient(180deg, color-mix(in srgb, var(--pc, var(--acc)) 18%, transparent), transparent 240px), var(--s1) !important; }
