@@ -9063,3 +9063,4 @@ html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 
 .sbk-bar { position: relative; overflow: visible !important; }
 .sbk-bar s { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #fff; border-radius: 1px; opacity: .85; text-decoration: none; }
 .sbk-r { grid-template-columns: 34px minmax(0, 1fr) 46px 108px !important; }
+.plc-bars s { flex-shrink: 0; }

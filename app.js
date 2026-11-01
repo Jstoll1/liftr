@@ -9866,10 +9866,10 @@ function openPlayerCard(name, again) {
         <div class="plc-badges">${pr.seasonPlace ? `<span class="rank">${pr.tied ? "T" : "#"}${pr.seasonPlace}</span>` : ""}<span>${pts} PTS</span>${pr.earned ? `<span class="cash">${money(pr.earned)}</span>` : ""}${d.wins.length ? `<button type="button" class="gold" data-champs="1" aria-label="All champions"><i class="plc-tro">🏆</i>×${d.wins.length}</button>` : ""}</div></div>
     </div>
     ${d.top ? `
-    <div class="plc-sec">POINTS EACH WEEK <span>gold = won${liveWk ? " · dashed = live" : ""}</span></div>
+    <div class="plc-sec">POINTS EACH WEEK <span class="plc-key">${window.APP_STYLE === "pro" ? `<i class="k-hi"></i>above avg <i class="k-lo"></i>below <i class="k-won"></i>won` : "gold = won"}${liveWk ? " · dashed = live" : ""}</span></div>
     <div class="plc-bars">${bars.map((x) => x.missed ? `<i class="sat" title="Week ${x.week}: no picks"><b>–</b><s style="height:6%"></s><em>W${x.week}</em></i>`
-      : x.live ? `<i class="live" title="Week ${x.week}: so far, games still to play"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`
-      : `<i data-wkstand="${x.week}" class="${x.won ? "won" : ""}${x === d.top ? " top" : ""}"><b>${x.score}</b><s style="height:${Math.max(8, (x.score / max) * 100)}%"></s><em>W${x.week}</em></i>`).join("")}</div>
+      : x.live ? `<i class="live" title="Week ${x.week}: so far, games still to play"><b>${x.score}</b><s style="height:calc((100% - 34px) * ${Math.max(0.08, x.score / max).toFixed(3)})"></s><em>W${x.week}</em></i>`
+      : `<i data-wkstand="${x.week}" class="${x.won ? "won" : ""}${x === d.top ? " top" : ""} ${d.avg != null && x.score >= d.avg + 1.5 ? "t-hi" : d.avg != null && x.score <= d.avg - 1.5 ? "t-lo" : "t-mid"}"><b>${x.score}</b><s style="height:calc((100% - 34px) * ${Math.max(0.08, x.score / max).toFixed(3)})"></s><em>W${x.week}</em></i>`).join("")}</div>
     <div class="plc-sec">STATS</div>
     <div class="plc-stats">
       ${bar("AVG WEEK", `${d.avg.toFixed(1)}`, d.avg / 20, "pts")}
