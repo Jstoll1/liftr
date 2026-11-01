@@ -9101,3 +9101,11 @@ html:root .tpoll-card .tpoll-opts button[data-tv="retro"] b { font-size: 7.5px !
 .pot-row.head .pot-sort.on { color: var(--neon-yellow); }
 html.pro .pot-row.head .pot-sort.on { color: var(--acc) !important; }
 .pot-row.head .pot-sort i { font-style: normal; margin-left: 3px; font-size: .85em; }
+/* Theme poll: Who Cares dodges (side, top, bottom) */
+html:root .tpoll-card .tpoll-opts button.dodge-1 { order: -1; }
+html:root .tpoll-card .tpoll-opts button.dodge-2 { order: -1; grid-column: 1 / -1; flex-direction: row; min-height: 0; padding: 8px !important; }
+html:root .tpoll-card .tpoll-opts button.dodge-3 { order: 9; grid-column: 1 / -1; flex-direction: row; min-height: 0; padding: 8px !important; }
+html:root .tpoll-card .tpoll-opts button[class^="dodge-"] { animation: tpoll-hop .28s ease-out; }
+html:root .tpoll-card .tpoll-opts button.dodge-2 span, html:root .tpoll-card .tpoll-opts button.dodge-3 span { font-size: 18px !important; }
+@keyframes tpoll-hop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+html:root .tpoll-card .tpoll-opts:has(.dodge-2), html:root .tpoll-card .tpoll-opts:has(.dodge-3) { grid-template-columns: 1fr 1fr !important; }
