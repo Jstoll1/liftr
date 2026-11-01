@@ -628,3 +628,23 @@ html.pro .sbk-bar u { background: var(--text-dim) !important; }
 html.pro .sbk-r.hi u { background: var(--win) !important; } html.pro .sbk-r.hi b { color: var(--win) !important; }
 html.pro .sbk-r.lo u { background: var(--loss) !important; } html.pro .sbk-r.lo b { color: var(--loss) !important; }
 html.pro .sbk-lg > div { background: var(--s2) !important; } html.pro .sbk-lg > div:first-child b { color: var(--acc) !important; }
+
+/* Player card: neutral surface, colour only where the data is.
+   Weekly bars by how the week went against the player's own average
+   (green above, blue around, red below; gold if they won the week). */
+html.pro .modal-card.plc-card, html.pro .plc-card { background: var(--s1) !important; border-color: var(--line2) !important; }
+html.pro .plc-av { background: var(--s2) !important; border: 1px solid var(--line2) !important; box-shadow: none !important; }
+html.pro .plc-id small { color: var(--t3) !important; }
+html.pro .plc-badges .rank { background: var(--s2) !important; border-color: var(--line2) !important; }
+html.pro .plc-bars i.t-hi s { background: var(--win) !important; }
+html.pro .plc-bars i.t-mid s { background: #4E79A7 !important; }
+html.pro .plc-bars i.t-lo s { background: var(--loss) !important; }
+html.pro .plc-bars i.won s, html.pro .plc-bars i.won.top s { background: linear-gradient(180deg, #f3d38c, var(--acc)) !important; }
+html.pro .plc-bars i.top:not(.won) s { filter: brightness(1.15); }
+html.pro .plc-bars i.top.t-hi:not(.won) s { background: var(--win) !important; }
+html.pro .plc-bars i.top.t-mid:not(.won) s { background: #4E79A7 !important; }
+html.pro .plc-bars i.top.t-lo:not(.won) s { background: var(--loss) !important; }
+html.pro .plc-bars i.top:not(.won) s { box-shadow: 0 0 0 2px rgba(255, 255, 255, .55); filter: none; }
+html.pro .plc-key { display: inline-flex; align-items: center; gap: 4px; }
+html.pro .plc-key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-left: 4px; }
+html.pro .plc-key .k-hi { background: var(--win); } html.pro .plc-key .k-lo { background: var(--loss); } html.pro .plc-key .k-won { background: var(--acc); }
