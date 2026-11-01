@@ -9410,30 +9410,6 @@ function rxCountUp(root) {
     el.textContent = "0"; requestAnimationFrame(tick);
   }
 }
-// Story mode: the replay one card at a time, full screen. Tap the right
-// side for next, the left for back; progress bars at the top; swipe down
-// or ✕ to close.
-function openRecapStory(panel) {
-  const st = panel.__story; if (!st) return;
-  const slides = [st.hero.replace("rx-hero", "rx-hero story-hero").replace('<div class="rx-play">▶ Play the week</div>', ""), ...[...panel.querySelectorAll(".rx-grid > .recap-card")].map((c) => c.outerHTML.replace(/ open"/, '"').replace(/<div class="recap-more">[\s\S]*?<\/div>\s*<\/div>$/, "</div>"))];
-  let i = 0;
-  const m = document.createElement("div");
-  m.className = "rx-story"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Week story");
-  const draw = () => {
-    m.innerHTML = `<div class="rx-prog">${slides.map((_, k) => `<i class="${k < i ? "done" : k === i ? "on" : ""}"></i>`).join("")}</div><button type="button" class="rx-sx" aria-label="Close">✕</button><div class="rx-slide">${slides[i]}</div><div class="rx-nav"><span>${i + 1} / ${slides.length}</span></div>`;
-    rxCountUp(m);
-  };
-  const close = () => { m.classList.add("out"); setTimeout(() => m.remove(), 200); };
-  m.addEventListener("click", (e) => {
-    if (e.target.closest(".rx-sx")) { close(); return; }
-    const right = e.clientX > innerWidth * 0.33;
-    if (right) { if (i < slides.length - 1) { i++; draw(); } else close(); } else if (i > 0) { i--; draw(); }
-  });
-  document.addEventListener("keydown", function k(e) { if (!m.isConnected) { document.removeEventListener("keydown", k); return; } if (e.key === "Escape") close(); if (e.key === "ArrowRight" && i < slides.length - 1) { i++; draw(); } if (e.key === "ArrowLeft" && i > 0) { i--; draw(); } });
-  if (typeof pullToClose === "function") pullToClose(m, () => m.querySelector(".rx-slide"), close);
-  draw(); document.body.appendChild(m);
-  track("recap-story", { event: true });
-}
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
 let renderRecap = function () {
@@ -9508,12 +9484,11 @@ let renderRecap = function () {
   const podium = rows.slice(0, 3);
   const champ = podium[0], margin = rows[1] ? champ.score - rows[1].score : null;
   const av = (n, cls = "") => `<span class="rx-av ${cls}" style="--ac:${accentFor(n)}">${avatarOverrides[n] || esc(shown(n)[0])}</span>`;
-  const hero = champ ? `<div class="rx-hero" role="button" tabindex="0" aria-label="Play the week ${last.week} story">
+  const hero = champ ? `<div class="rx-hero">
       <div class="rx-kicker">${esc(String(last.label || `Week ${last.week}`).toUpperCase())} · FINAL</div>
       <div class="rx-champ">${av(champ.name, "big")}<div><b>${esc(shown(champ.name))}</b><span>wins the week</span></div><div class="rx-num"><b data-count="${champ.score}">${champ.score}</b><span>PTS</span></div></div>
       ${margin != null ? `<div class="rx-margin">${margin === 0 ? "won on the tiebreaker" : `by ${margin} point${margin === 1 ? "" : "s"}`}</div>` : ""}
       <div class="rx-podium">${podium.map((r, i) => `<div class="rx-step s${i + 1}${r.name === currentManager ? " me" : ""}">${av(r.name)}<b>${esc(shown(r.name))}</b><i>${r.score}</i><em>${i + 1}</em></div>`).join("")}</div>
-      <div class="rx-play">▶ Play the week</div>
     </div>` : "";
   const meRow = rows.find((x) => x.name === currentManager);
   let you = "";
@@ -9536,7 +9511,6 @@ let renderRecap = function () {
   window.__recapWeek = last.week;
   document.getElementById("week-champ")?.classList.add("hidden");
   panel.innerHTML = hero + you + `<div class="rx-grid">${cards.map(card).join("")}</div>`;
-  panel.__story = { last, cards, hero };
   // Count up the first time this week's replay is seen.
   const seenKey = `brochiefs_rx_seen_${last.week}`;
   let seen = false; try { seen = !!localStorage.getItem(seenKey); localStorage.setItem(seenKey, "1"); } catch {}
@@ -9595,7 +9569,6 @@ function recapDetail(sum, kind) {
   return `<div class="rm-h">${esc(g.awayShort)} AT ${esc(g.homeShort)} · WHO TOOK WHAT</div>${[...sides.values()].sort((a, b) => b.who.length - a.who.length).map((x) => { const id = x.teamId || (x.team ? teamIdOf(x.team) : null); return `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(x.side)}</span><i>${x.hit ? `+${x.pts} each` : "0"}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`; }).join("")}`;
 }
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
-  if (e.target.closest(".rx-hero")) { openRecapStory(e.currentTarget); return; }
   const c = e.target.closest(".recap-card[data-rc]");
   if (!c || e.target.closest(".pick-chip, a, button")) return;
   const k = c.dataset.rc;
