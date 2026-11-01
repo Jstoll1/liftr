@@ -9631,7 +9631,7 @@ function recapDetail(sum, kind) {
     return `<div class="rm-h">Season standings after week ${sum.week}</div><div class="rm-cols"><span>#</span><span>Player</span><span>Move</span><span>Season</span><span>Week</span></div><ol class="rm-rank">${list.map(([n, pts]) => {
       const d = was.size ? (pWas.get(n) ?? pNow.get(n)) - pNow.get(n) : 0;
       const wk = (rows.find((r) => r.name === n) || {}).score;
-      return `<li><em>${pNow.get(n)}</em>${nm(n)}<i class="${d > 0 ? "up" : d < 0 ? "down" : "same"}">${d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "–"}</i><span><b class="rm-pts">${pts}</b><small>${wk != null ? `+${wk} wk` : ""}</small></span></li>`;
+      return `<li class="${n === currentManager ? "me" : ""} p${pNow.get(n)}"><em>${pNow.get(n)}</em>${nm(n)}<i class="${d > 0 ? "up" : d < 0 ? "down" : "same"}">${d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "–"}</i><span><b class="rm-pts">${pts}</b><small>${wk != null ? `+${wk} wk` : ""}</small></span></li>`;
     }).join("")}</ol><div class="rm-close">Tap to close</div>`;
   }
   if (kind === "tb") {

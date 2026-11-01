@@ -9140,3 +9140,15 @@ html:not(.pro) .rx-grid > .rx-tile .recap-stat b { font-size: 18px !important; }
 html:not(.pro) .rx-tbl { padding: 4px 7px !important; }
 html:not(.pro) .rx-tbl b { font-size: 10px !important; }
 html:not(.pro) .rx-tbw { gap: 4px !important; }
+/* Retro movement sheet: neon */
+html:not(.pro) .rx-sheet-card { background: radial-gradient(120% 40% at 50% 0%, rgba(5,217,232,.16), transparent 70%), repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px), #12002a !important; }
+html:not(.pro) .rx-sheet .rm-h { color: #05d9e8 !important; text-shadow: 0 0 8px rgba(5,217,232,.7); }
+html:not(.pro) .rx-sheet .rm-cols span { color: #c9b8ff !important; }
+html:not(.pro) .rx-sheet .rm-rank li .rm-pts { color: #ffe600 !important; text-shadow: 0 0 6px rgba(255,230,0,.6); }
+html:not(.pro) .rx-sheet .rm-rank li > span small { color: #39ff88 !important; opacity: .85; }
+html:not(.pro) .rx-sheet .rm-rank li > i.up { color: #39ff88 !important; text-shadow: 0 0 6px rgba(57,255,136,.8); }
+html:not(.pro) .rx-sheet .rm-rank li > i.down { color: #ff2079 !important; text-shadow: 0 0 6px rgba(255,32,121,.8); }
+html:not(.pro) .rx-sheet .rm-rank li.p1 em { color: #ffd23f !important; text-shadow: 0 0 6px rgba(255,210,63,.9); }
+html:not(.pro) .rx-sheet .rm-rank li.p2 em { color: #d8e1ee !important; }
+html:not(.pro) .rx-sheet .rm-rank li.p3 em { color: #ff9a4a !important; }
+html:not(.pro) .rx-sheet .rm-rank li.me { background: rgba(5,217,232,.14) !important; box-shadow: inset 2px 0 0 #05d9e8, 0 0 10px rgba(5,217,232,.25); border-radius: 6px; }
