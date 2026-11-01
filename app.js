@@ -5451,6 +5451,20 @@ function payoutLedger() {
   return { list, sealed: sealed.length, done, contested, liveWeek, liveWeekFinal };
 }
 
+// Pot table sort: tap a header to sort by it, tap again to flip. Place is the default.
+const potSort = { k: "place", dir: 1 };
+const potWins = (n) => Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition && (w.winners || []).includes(n)).length;
+function potSorted(list, rec) {
+  const val = { place: (r) => r.seasonPlace, name: (r) => shown(r.name).toLowerCase(), pts: (r) => r.points, rec: (r) => rec[r.name]?.w || 0, won: (r) => potWins(r.name), earned: (r) => r.earned || 0 }[potSort.k];
+  return list.map((r, i) => [r, i]).sort(([a, ia], [b, ib]) => { const x = val(a), y = val(b); const c = x < y ? -1 : x > y ? 1 : 0; return c * potSort.dir || a.seasonPlace - b.seasonPlace || ia - ib; }).map(([r]) => r);
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest?.("[data-psort]"); if (!b) return;
+  const k = b.dataset.psort;
+  if (potSort.k === k) potSort.dir = -potSort.dir; else { potSort.k = k; potSort.dir = k === "place" || k === "name" ? 1 : -1; }
+  if (typeof noteUse === "function") noteUse("pot-sort", `${k}${potSort.dir > 0 ? "↑" : "↓"}`);
+  renderPayouts();
+});
 function renderPayouts() {
   const panel = document.getElementById("payouts-panel");
   if (!panel || panel.classList.contains("hidden")) return;
@@ -5493,8 +5507,8 @@ function renderPayouts() {
     ${liveWeek ? `<div class="pot-live">${liveWeekFinal ? `WEEK ${liveWeek} UNSEALED` : `WEEK ${liveWeek} ACTIVE`}</div>` : ""}
     ${contested ? `<div class="pot-warn">⚠ Season places are tied on points where the money sits. The weekly tiebreaker does not settle the season, so the league needs a rule for this before the last week.</div>` : ""}
     <div class="pot-table">
-      <div class="pot-row head"><span>#</span><span>MANAGER</span><span>PTS</span><span>REC</span><span>WON</span><span>EARNED</span></div>
-      ${list.map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}" data-pot-row="${escapeCd(r.name)}" role="button" tabindex="0">
+      <div class="pot-row head">${[["place","#"],["name","MANAGER"],["pts","PTS"],["rec","REC"],["won","WON"],["earned","EARNED"]].map(([k, t]) => `<button type="button" class="pot-sort${potSort.k === k ? " on" : ""}" data-psort="${k}" aria-label="Sort by ${t}">${t}${potSort.k === k && k !== "place" ? `<i>${potSort.dir > 0 ? "▲" : "▼"}</i>` : ""}</button>`).join("")}</div>
+      ${potSorted(list, rec).map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}" data-pot-row="${escapeCd(r.name)}" role="button" tabindex="0">
         <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}</span>
         <span class="pot-name"><span class="pot-av" style="--accent:${accentFor(r.name)}">${avatarOverrides[r.name] || shown(r.name)[0]}</span>${r.seasonPlace === 1 && r.points > 0 ? `<i class="pot-crown">♛</i>` : ""}${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
         <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
