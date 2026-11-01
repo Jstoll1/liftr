@@ -9455,8 +9455,8 @@ let renderRecap = function () {
   if (r.consensus?.sides?.length > 1) {
     const c = r.consensus;
     const [a, b] = c.sides;
-    cards.push([ICON.coin + "COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="recap-pick">${esc(c.matchup)}</span>`,
-      `${esc(a.team)} ${a.n} · ${esc(b.team)} ${b.n} · ${esc(c.final || c.score)}`, `${a.n}-${b.n}`, "SPLIT", false, `<span class="rx-split"><i style="flex:${a.n}">${esc(a.team)}</i><i style="flex:${b.n}">${esc(b.team)}</i></span>`]);
+    cards.push([ICON.coin + "COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="recap-pick">League split ${a.n}-${b.n}</span>`,
+      `${esc(c.matchup)} · ${esc(c.final || c.score)}`, `${a.n}-${b.n}`, "SPLIT", false, `<span class="rx-split"><i style="flex:${a.n}">${esc(a.team)} ${a.n}</i><i style="flex:${b.n}">${esc(b.team)} ${b.n}</i></span>`]);
   }
   if (r.tb) {
     const t = r.tb;

@@ -8994,3 +8994,11 @@ html:not(.pro) .rx-tbl.worst em { color: var(--neon-pink); text-shadow: 0 0 6px 
 html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 0 -6px 24px rgba(5, 217, 232, .3); }
 /* The preview banner stays on one line and off the header. */
 .preview-flag { white-space: nowrap; font-size: 6.5px !important; }
+/* BAD pass: movement and coin flip tiles say it once (the graphic), so
+   the pair is shorter and even; less gap before the pot. */
+.rx-grid > .rx-tile.move .recap-stat, .rx-grid > .rx-tile.split .recap-stat { display: none !important; }
+.rx-grid > .rx-tile.split .recap-main .recap-pick { font-size: 15px; font-weight: 800; }
+.rx-grid > .rx-tile.split .recap-sub { display: block; font-size: 12px; }
+.rx-grid > .rx-tile.move .recap-sub { display: block; font-size: 12px; }
+.recap-panel:not(.hidden) { margin-bottom: 4px !important; }
+.recap-panel:not(.hidden) + * , #recap-panel + .lb-head { margin-top: 8px !important; }
