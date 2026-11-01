@@ -9461,8 +9461,14 @@ let renderRecap = function () {
   if (r.tb) {
     const t = r.tb;
     const guess = [...new Set(t.guesses || [t.guess])].join(" & ");
-    cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `${chips(t.who)}<span class="recap-pick">said ${esc(guess)}</span>`,
-      `${esc(t.matchup)} came in at ${t.actual}`, t.off === 0 ? "🎯" : `${t.off}`, t.off === 0 ? "EXACT" : "OFF", mine(t.who), `<span class="rx-tb"><i>actual total <b>${t.actual}</b></i></span>`]);
+    // Closest and furthest guess, read from the sealed week's rows.
+    const gs = (last.rows || []).filter((x) => Number.isFinite(Number(x.tbGuess)) && x.tbGuess !== null && x.tbGuess !== "").map((x) => ({ n: x.name, g: Number(x.tbGuess), off: Math.abs(Number(x.tbGuess) - t.actual) }));
+    const worstOff = gs.length ? Math.max(...gs.map((x) => x.off)) : null, worst = gs.filter((x) => x.off === worstOff);
+    const line = (cls, label, who, g, off) => `<div class="rx-tbl ${cls}"><span class="rx-tbk">${label}</span><span class="rx-tbn">${esc(who)}</span><b>${esc(g)}</b><em>${off === 0 ? "exact" : `off ${off}`}</em></div>`;
+    const bestNames = (t.who || []).map((x) => shown(x)).join(", ");
+    const viz = `<div class="rx-tbw">${line("best", "Closest", bestNames, guess, t.off)}${worst.length && worstOff > t.off ? line("worst", "Furthest", worst.map((x) => shown(x.n)).join(", "), [...new Set(worst.map((x) => x.g))].join(" & "), worstOff) : ""}</div>`;
+    cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `<span class="recap-pick">Actual total ${t.actual}</span>`,
+      esc(t.matchup), "", "", mine(t.who), viz]);
   }
   // Lock of the week: who hit theirs, who missed, the best lock leading.
   if (r.locks && (r.locks.list || []).length) {

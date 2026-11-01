@@ -8951,3 +8951,14 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .rx-locks { display: grid !important; grid-template-columns: repeat(5, 1fr); justify-items: center; gap: 4px 2px; font-size: 16px; }
 .rx-locks i.me { outline: 2px solid currentColor; outline-offset: 1px; border-radius: 4px; color: var(--neon-cyan); }
 .rx-grid > .rx-tile.lk .rx-viz { margin-top: 8px; padding-top: 0; }
+/* Tiebreaker tile: the total, then closest and furthest on aligned rows. */
+.rx-grid > .rx-tile.tb .recap-sub { display: block; font-size: 12px; }
+.rx-grid > .rx-tile.tb .recap-main .recap-pick { font-size: 15px; font-weight: 800; }
+.rx-grid > .rx-tile.tb .recap-stat { display: none !important; }
+.rx-tbw { display: grid; gap: 6px; }
+.rx-tbl { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "k k" "n g" "n e"; column-gap: 8px; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, .04); }
+.rx-tbk { grid-area: k; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); font-weight: 700; }
+.rx-tbn { grid-area: n; align-self: center; font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.rx-tbl b { grid-area: g; text-align: right; font-size: 17px; font-variant-numeric: tabular-nums; }
+.rx-tbl em { grid-area: e; text-align: right; font-style: normal; font-size: 11px; }
+.rx-tbl.best em { color: var(--neon-green); } .rx-tbl.worst em { color: var(--neon-pink); }
