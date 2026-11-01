@@ -576,3 +576,8 @@ html.pro .gc-log .gc-ptxt { font-size: 13px !important; line-height: 1.4 !import
 html.pro .gc-logh { font-size: 10px !important; }
 html.pro .gc-mine { flex-wrap: nowrap !important; } html.pro .gc-mine .gc-msay { margin-left: auto !important; white-space: nowrap; }
 html.pro .gc-to i.on { background: var(--acc) !important; box-shadow: none !important; } html.pro .gc-to i { background: var(--s3) !important; }
+html.pro .recap-card.split { --c: #b9b4ff; }
+/* Contrast pass (audit at 390px, every text node vs its real background):
+   the faintest grey was under 3:1 on cards. */
+html.pro { --t3: #8f97a3; }
+html.pro .scorebug.pregame .bug-score { color: var(--text-dim) !important; opacity: .8; }
