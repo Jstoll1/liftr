@@ -5513,7 +5513,7 @@ function renderPayouts() {
         <span class="pot-name"><span class="pot-av" style="--accent:${accentFor(r.name)}">${avatarOverrides[r.name] || shown(r.name)[0]}</span>${r.seasonPlace === 1 && r.points > 0 ? `<i class="pot-crown">♛</i>` : ""}${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
         <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
         <span class="pot-rec">${rec[r.name] ? `${rec[r.name].w}-${rec[r.name].l}` : "–"}</span>
-        <span class="pot-won">${(() => { const wk = Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(r.name)).sort((x, y) => x.week - y.week); return wk.length ? wk.map((w) => `<button type="button" class="pot-tro${w.exhibition ? " exh" : ""}" data-week="${w.week}" data-name="${r.name}" title="Week ${w.week} win">🏆</button>`).join("") : "–"; })()}</span>
+        <span class="pot-won">${(() => { const wk = Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(r.name)).sort((x, y) => x.week - y.week); return wk.length ? wk.map((w) => `<button type="button" class="pot-tro${w.exhibition ? " exh" : ""}" data-week="${w.week}" data-name="${r.name}" title="Week ${w.week} ${w.exhibition ? "exhibition win, trophy only" : "win"}">🏆</button>`).join("") : "–"; })()}</span>
         <span class="pot-earned">${r.earned ? money(r.earned) : "–"}</span>
       </div>`).join("")}
     </div>
