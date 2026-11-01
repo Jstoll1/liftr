@@ -9429,7 +9429,7 @@ async function maybeThemePoll() {
   const opts = [["retro", "🕹️", "Retro Arcade"], ["dark", "🌙", "Current Dark Mode"], ["either", "🤷", "Who Cares"]];
   const m = document.createElement("div");
   m.id = "theme-poll"; m.className = "modal-overlay tpoll"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Theme poll");
-  m.innerHTML = `<div class="modal-card tpoll-card"><div class="tpoll-k">QUICK POLL · ONE VOTE</div><h3>Which look do you want?</h3><p>Help pick the app's look. One vote each.</p>
+  m.innerHTML = `<div class="modal-card tpoll-card"><div class="tpoll-k">QUICK POLL · ONE VOTE</div><h3>Which theme do you prefer?</h3>
     <div class="tpoll-opts">${opts.map(([k, ic, t]) => `<button type="button" data-tv="${k}"><span>${ic}</span><b>${t}</b></button>`).join("")}</div><div class="tpoll-err" hidden>Couldn't save that. Try again.</div></div>`;
   document.body.appendChild(m);
   fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: THEME_POLL, manager: me, action: "view" }) }).catch(() => {});

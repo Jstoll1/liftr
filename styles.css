@@ -9086,3 +9086,11 @@ html:root .tpoll-card .tpoll-opts button[data-tv="dark"] b { font-family: -apple
 html:root .tpoll-card .tpoll-opts button[data-tv="either"] { background: transparent !important; border: 1px dashed rgba(255,255,255,.28) !important; border-radius: 12px !important; color: #aab0bb !important; }
 html:root .tpoll-card .tpoll-opts button[data-tv="either"] b { font-family: system-ui, sans-serif !important; font-weight: 500 !important; color: #aab0bb !important; }
 html:root .tpoll-card .tpoll-opts button.on { outline: 2px solid #39ff88 !important; outline-offset: 2px !important; }
+/* Theme poll: tight */
+html:root .tpoll-card { padding: 14px 12px 12px !important; width: min(360px, 100%) !important; }
+html:root .tpoll-card h3 { margin: 4px 0 12px !important; font-size: 17px !important; }
+html:root .tpoll-card .tpoll-opts { gap: 6px !important; }
+html:root .tpoll-card .tpoll-opts button { padding: 10px 4px !important; gap: 5px !important; min-height: 74px; justify-content: center; }
+html:root .tpoll-card .tpoll-opts button span { font-size: 22px !important; }
+html:root .tpoll-card .tpoll-opts button b { font-size: 11.5px !important; }
+html:root .tpoll-card .tpoll-opts button[data-tv="retro"] b { font-size: 7.5px !important; }
