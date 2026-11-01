@@ -204,6 +204,21 @@
       const hn = hiddenNote(), noOdds = !!hn.picksHidden && /Everyone/.test(hn.picksHidden);
       return { ...hn, ...(noOdds ? { oddsAvailable: false } : {}), members: MANAGERS.map((n) => { const b = banked(n), d = memo?.detail?.[n]; const sObj = noOdds ? {} : statusOf(d) || {}; return { member: n, points: b.pts, livePoints: live(n), bestPossible: b.max, picksLeft: b.picksLeft, chanceToWin: !noOdds && d ? r3(d.pct) : null, ...sObj }; }).sort((a, b) => b.points - a.points), statusMeans: "alive = real chance; long shot = 0% in simulations but a path exists (onlyPath lists what must happen); out = proven no path; likely out = no wins found, not proven" };
     },
+    // "If the scores stay the same": every game still going ends at its
+    // current score, and the week is scored and ranked exactly on that.
+    endedNow() {
+      const hn = hiddenNote(); if (hn.picksHidden && /Everyone/.test(hn.picksHidden)) return { ...hn, oddsAvailable: false };
+      const res = { ...(typeof computeLiveResults === "function" ? computeLiveResults(latestLive || {}) : {}) };
+      const asNow = [];
+      for (const g of GAMES) { const l = latestLive?.[g.id]; if (res[g.id] || !l?.found || l.state !== "in") continue; res[g.id] = { awayScore: l.awayScore || 0, homeScore: l.homeScore || 0 }; asNow.push(`${gName(g)}: ends ${l.awayScore || 0}-${l.homeScore || 0}`); }
+      const notStarted = GAMES.filter((g) => !res[g.id]).map(gName);
+      const rows = rankManagers(lastGoodCloudPicks || {}, res);
+      const tb = tiebreakerGameOf?.(), tbTotal = tb && res[tb.id] ? res[tb.id].awayScore + res[tb.id].homeScore : null;
+      const top = rows.filter((r) => r.place === 1).map((r) => r.name);
+      return { ...hn, assuming: asNow, notStartedIgnored: notStarted, winner: top.length === 1 ? top[0] : null, tiedForFirst: top.length > 1 ? top : undefined,
+        tiebreaker: tb ? (tbTotal == null ? "tiebreaker game not started: ties stay ties" : `tiebreaker total would be ${tbTotal}`) : undefined,
+        standings: rows.slice(0, 6).map((r) => ({ member: r.name, points: r.score, place: r.place, tied: !!r.tied })) };
+    },
     chance({ conditions = [] } = {}) {
       const conds = readConds(conditions); if (conds.error) return conds;
       const memo = base(); if (!memo) return { error: "Odds not loaded yet." };
@@ -377,6 +392,7 @@
     },
   };
   function runTool(name, args) { try { return TOOLS[name] ? TOOLS[name](args || {}) : { error: `Unknown tool ${name}` }; } catch (e) { return { error: "Couldn't work that out." }; } }
+  window.__askRun = runTool; // tests and the console
 
   // Suggestions: three from a pool written for the chat, filled in with
   // this week's leader, a rival, games still open and the locks; a fresh
