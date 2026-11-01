@@ -6375,7 +6375,7 @@ function openWinChanceExplainer() {
     </div>`;
     document.body.appendChild(m);
     const close = () => { m.classList.add("hidden"); stopEngineTerm(); };
-    m.addEventListener("click", (e) => { if (e.target.closest(".wpx-run")) { if (engineTimer) stopEngineTerm(); else { openEngineTerm(); track("wp-engine", { event: true }); } return; } if (e.target === m || e.target.closest(".wpx-x")) close(); });
+    m.addEventListener("click", (e) => { if (e.target.closest(".wpx-run")) { if (engineTimer) { stopEngineTerm(); noteUse("wp-engine-stop"); } else { openEngineTerm(); track("wp-engine", { event: true }); } return; } if (e.target === m || e.target.closest(".wpx-x")) close(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
   }
   m.classList.remove("hidden");
@@ -8963,14 +8963,14 @@ var sinceOpen = false; // var: read by renderSinceLine, which can run before thi
 document.getElementById("since-line")?.addEventListener("click", (e) => {
   const more = e.target.closest(".since-more");
   if (more) {
-    sinceOpen = !sinceOpen;
+    sinceOpen = !sinceOpen; noteUse("since-more", sinceOpen ? "open" : "close");
     const el = e.currentTarget, n = el.querySelectorAll(".since-x").length;
     el.classList.toggle("since-open", sinceOpen);
     more.textContent = sinceOpen ? "Show less" : `+${n} more ${/LIVE PICKS/.test(el.querySelector(".since-h")?.textContent || "") ? "live picks" : "picks changed"}`;
     return;
   }
   // The LIVE / POINTS / PLACE tiles go to your row on the leaderboard.
-  if (e.target.closest(".since-tiles")) {
+  if (e.target.closest(".since-tiles")) { noteUse("since-tiles");
     const row = document.querySelector("#rankings-list .ranking-row.is-me") || document.getElementById("rankings-list");
     row?.scrollIntoView({ behavior: "smooth", block: "center" });
     row?.classList.add("since-flash"); setTimeout(() => row?.classList.remove("since-flash"), 1600);
@@ -8978,7 +8978,7 @@ document.getElementById("since-line")?.addEventListener("click", (e) => {
   }
   // A game row opens that game's Gamecast, same as tapping its score card.
   const rowId = e.target.closest(".since-row[data-sg]")?.dataset.sg;
-  if (rowId && GAMES.some((g) => String(g.id) === rowId)) { openInsights(Number(rowId)); return; }
+  if (rowId && GAMES.some((g) => String(g.id) === rowId)) { noteUse("since-game", GAMES.find((g) => String(g.id) === rowId)?.homeShort); openInsights(Number(rowId)); return; }
   const el = e.currentTarget, id = e.target.closest("[data-sg]")?.dataset.sg || el.dataset.sg;
   const card = id && document.querySelector(`#live-scores-list [data-game="${id}"]`);
   if (!card) { document.getElementById("rankings-list")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
@@ -9029,6 +9029,7 @@ document.addEventListener("click", (e) => {
   if (!r) return;
   const id = Number(r.dataset.pcg); if (!GAMES.some((g) => g.id === id)) return;
   const m = r.closest(".pr-screen"); m.classList.add("out"); setTimeout(() => m.remove(), 220);
+  noteUse("path-game", GAMES.find((g) => g.id === id)?.homeShort);
   openInsights(id);
 });
 // A name in the Gamecast room opens that player's card.
@@ -9577,6 +9578,8 @@ function recapDetail(sum, kind) {
   return `<div class="rm-h">Everyone's pick: ${esc(g.awayShort)} at ${esc(g.homeShort)}</div>${[...sides.values()].sort((a, b) => (b.hit - a.hit) || b.who.length - a.who.length).map((x) => { const id = x.teamId || (x.team ? teamIdOf(x.team) : null); return `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(x.side)}</span><i>${x.side === "No pick" ? "NO PICK" : x.hit ? `CASHED +${x.pts} each` : "MISSED"}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`; }).join("")}<div class="rm-close">Tap to close</div>`;
 }
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
+  if (e.target.closest(".rx-hero")) { noteUse("recap-hero"); return; }
+  if (e.target.closest(".rx-you")) { noteUse("recap-you"); return; }
   const c = e.target.closest(".recap-card[data-rc]");
   if (!c || e.target.closest(".pick-chip, a, button")) return;
   // The story behind a card opens in a sheet; the replay itself never moves.
@@ -9592,9 +9595,9 @@ function openRecapSheet(kind, title) {
     m = document.createElement("div"); m.id = "rx-sheet"; m.className = "modal-overlay rx-sheet hidden"; m.setAttribute("role", "dialog");
     m.innerHTML = `<div class="modal-card rx-sheet-card"><div class="rx-sh-h"><b></b><button type="button" class="rx-sh-x" aria-label="Close">✕</button></div><div class="rx-sh-body recap-more"></div></div>`;
     document.body.appendChild(m);
-    const close = () => m.classList.add("hidden");
-    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".rx-sh-x")) close(); });
-    if (typeof swipeToClose === "function") swipeToClose(m, m.querySelector(".rx-sheet-card"), close);
+    const close = (how = "swipe") => { if (!m.classList.contains("hidden")) noteUse("recap-sheet-close", how); m.classList.add("hidden"); };
+    m.addEventListener("click", (e) => { if (e.target === m) close("outside"); else if (e.target.closest(".rx-sh-x")) close("x"); });
+    if (typeof swipeToClose === "function") swipeToClose(m, m.querySelector(".rx-sheet-card"), () => close("swipe"));
   }
   m.setAttribute("aria-label", title);
   m.querySelector(".rx-sh-h b").textContent = title;
