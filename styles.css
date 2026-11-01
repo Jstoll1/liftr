@@ -9055,3 +9055,11 @@ html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 
 .sbk-r.hi u { background: var(--neon-green); } .sbk-r.hi b { color: var(--neon-green); }
 .sbk-r.lo u { background: var(--neon-pink); } .sbk-r.lo b { color: var(--neon-pink); }
 .sbk-r.dim { opacity: .5; }
+.sbk-lg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0 12px; }
+.sbk-lg > div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 8px; background: rgba(255, 255, 255, .05); text-align: center; min-width: 0; }
+.sbk-lg span { font-size: 10px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.sbk-lg b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.sbk-lg > div:first-child b { color: var(--neon-cyan); }
+.sbk-bar { position: relative; overflow: visible !important; }
+.sbk-bar s { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #fff; border-radius: 1px; opacity: .85; text-decoration: none; }
+.sbk-r { grid-template-columns: 34px minmax(0, 1fr) 46px 108px !important; }

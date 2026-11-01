@@ -9937,25 +9937,44 @@ function openStatBreakdown(stat, name) {
   const weeks = [...byWeek.values()].sort((a, b) => a.week - b.week).map((wk) => ({ wk, me: (wk.rows || []).find((r) => r.name === name) }));
   const teamOf = (wk, lg) => { const g = (wk.slate || []).find((x) => Number(x.id) === Number(lg.g)); return g ? (lg.team === g.home ? g.homeShort : lg.team === g.away ? g.awayShort : lg.team) : lg.team; };
   const tally = (me, pred) => { let w = 0, n = 0; for (const lg of me?.ledger || []) { if (lg.result !== "hit" && lg.result !== "miss") continue; if (!pred(lg)) continue; n++; if (lg.result === "hit") w++; } return { w, n }; };
-  const row = (wkNo, barShare, val, note, cls = "") => `<div class="sbk-r ${cls}"><span class="sbk-w">W${wkNo}</span><i class="sbk-bar"><u style="width:${Math.max(0, Math.min(100, Math.round(barShare * 100)))}%"></u></i><b>${val}</b><em>${note}</em></div>`;
+  const pc = (x) => Math.max(0, Math.min(100, Math.round(x * 100)));
+  const row = (wkNo, barShare, val, note, cls = "", lg = null) => `<div class="sbk-r ${cls}"><span class="sbk-w">W${wkNo}</span><i class="sbk-bar"><u style="width:${pc(barShare)}%"></u>${lg != null ? `<s style="left:${pc(lg)}%" title="League average"></s>` : ""}</i><b>${val}</b><em>${note}</em></div>`;
+  // League average for one week, on the same scale as the row's bar.
+  const lgAvg = (wk, f) => { const v = (wk.rows || []).map(f).filter((x) => x != null && Number.isFinite(x)); return v.length ? v.reduce((a, x) => a + x, 0) / v.length : null; };
   let title = stat, sub = "", body = "";
   if (/WEEK/.test(stat)) {
     const sc = weeks.filter((x) => x.me && Number.isFinite(x.me.score));
     const max = Math.max(1, ...sc.map((x) => x.me.score)), min = Math.min(...sc.map((x) => x.me.score)), avg = sc.reduce((a, x) => a + x.me.score, 0) / (sc.length || 1);
-    sub = `Points each week · average ${avg.toFixed(1)}`;
-    body = weeks.map(({ wk, me }) => !me ? row(wk.week, 0, "–", "sat out", "dim") : row(wk.week, me.score / max, me.score, me.score === max ? "best" : me.score === min ? "worst" : (wk.winners || []).includes(name) ? "won" : `${me.score >= avg ? "+" : "−"}${Math.abs(me.score - avg).toFixed(1)} vs avg`, me.score === max ? "hi" : me.score === min ? "lo" : "")).join("");
+    sub = "Points each week vs the league average (tick)";
+    const lmax = Math.max(max, ...weeks.flatMap(({ wk }) => (wk.rows || []).map((r) => r.score || 0)));
+    body = weeks.map(({ wk, me }) => { const la = lgAvg(wk, (r) => r.score); if (!me) return row(wk.week, 0, "–", "sat out", "dim"); const d = la == null ? null : me.score - la; return row(wk.week, me.score / lmax, me.score, d == null ? "" : `${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)} vs league`, d > 0 ? "hi" : d < 0 ? "lo" : "", la == null ? null : la / lmax); }).join("");
   } else if (/LOCK/.test(stat)) {
     sub = "Every lock, week by week";
-    body = weeks.map(({ wk, me }) => { const lk = (me?.ledger || []).find((l) => l.lock); if (!lk) return row(wk.week, 0, "–", "no lock", "dim"); const hit = lk.result === "hit"; return row(wk.week, hit ? 1 : 0, hit ? "HIT" : lk.result === "push" ? "PUSH" : "MISS", `${esc(teamOf(wk, lk))} ${esc(lk.line && lk.line !== "SU" ? lk.line : "to win")}`, hit ? "hi" : "lo"); }).join("");
+    body = weeks.map(({ wk, me }) => { const lk = (me?.ledger || []).find((l) => l.lock); if (!lk) return row(wk.week, 0, "–", "no lock", "dim"); const hit = lk.result === "hit"; const all = (wk.rows || []).map((r) => (r.ledger || []).find((l) => l.lock)).filter(Boolean), lh = all.filter((l) => l.result === "hit").length; return row(wk.week, hit ? 1 : 0, hit ? "HIT" : lk.result === "push" ? "PUSH" : "MISS", `${esc(teamOf(wk, lk))} · lg ${lh}/${all.length} hit`, hit ? "hi" : "lo", all.length ? lh / all.length : null); }).join("");
   } else {
     const pred = /SPREAD/.test(stat) ? (l) => l.mode === "ATS" : /WIN/.test(stat) ? (l) => l.mode !== "ATS" : () => true;
-    sub = /SPREAD/.test(stat) ? "Spread picks right each week" : /WIN/.test(stat) ? "To-win picks right each week" : "Picks right each week";
-    body = weeks.map(({ wk, me }) => { if (!me) return row(wk.week, 0, "–", "sat out", "dim"); const t = tally(me, pred); if (!t.n) return row(wk.week, 0, "–", "none", "dim"); const p = t.w / t.n; return row(wk.week, p, `${t.w}-${t.n - t.w}`, `${Math.round(p * 100)}%`, p >= 0.6 ? "hi" : p < 0.45 ? "lo" : ""); }).join("");
+    sub = (/SPREAD/.test(stat) ? "Spread picks right" : /WIN/.test(stat) ? "To-win picks right" : "Picks right") + " each week vs the league average (tick)";
+    body = weeks.map(({ wk, me }) => { const la = lgAvg(wk, (r) => { const t = tally(r, pred); return t.n ? t.w / t.n : null; }); if (!me) return row(wk.week, 0, "–", "sat out", "dim"); const t = tally(me, pred); if (!t.n) return row(wk.week, 0, "–", "none", "dim"); const p = t.w / t.n; return row(wk.week, p, `${t.w}-${t.n - t.w}`, la == null ? `${Math.round(p * 100)}%` : `${Math.round(p * 100)}% · lg ${Math.round(la * 100)}%`, la == null ? "" : p > la + 0.001 ? "hi" : p < la - 0.001 ? "lo" : "", la); }).join("");
   }
+  // The season number against the league: you, the league average, the best.
+  let league = "";
+  try {
+    const f = STAT_RANK[stat];
+    if (f) {
+      const all = MANAGERS.map((n) => { const v = f(playerSeason(n)); return v ? { n, v: v[0], t: v[1] } : null; }).filter(Boolean);
+      const me = all.find((x) => x.n === name);
+      if (me && all.length > 1) {
+        const isPct = /RIGHT|SPREAD|WIN|LOCK/.test(stat), fmt = (v) => isPct ? `${Math.round((v > 1 ? v : v * 100))}%` : (Math.round(v * 10) / 10).toString();
+        const avgV = all.reduce((a, x) => a + x.v, 0) / all.length, top = all.reduce((a, x) => (x.v > a.v ? x : a));
+        const place = 1 + all.filter((x) => x.v > me.v).length;
+        league = `<div class="sbk-lg"><div><span>${esc(shown(name))}</span><b>${esc(me.t)}</b></div><div><span>League avg</span><b>${fmt(avgV)}</b></div><div><span>Best · ${esc(shown(top.n))}</span><b>${esc(top.t)}</b></div><div><span>Rank of ${all.length}</span><b>${ordinal(place).toLowerCase()}</b></div></div>`;
+      }
+    }
+  } catch {}
   const m = bottomSheet("stat-break");
   m.innerHTML = `<div class="modal-card wks-card sbk-card"><i class="wks-grab" aria-hidden="true"></i>
     <div class="wks-h"><b>${esc(title.replace("🔒 ", ""))}</b><small>${esc(shown(name).toUpperCase())}</small><button type="button" class="wks-x" aria-label="Back to the card">✕</button></div>
-    <div class="sbk-sub">${esc(sub)}</div><div class="sbk-list">${body || `<div class="sbk-none">No finished weeks yet.</div>`}</div></div>`;
+    ${league}<div class="sbk-sub">${esc(sub)}</div><div class="sbk-list">${body || `<div class="sbk-none">No finished weeks yet.</div>`}</div></div>`;
   noteUse("stat-break", stat);
   m.classList.remove("hidden");
 }
