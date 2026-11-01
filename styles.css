@@ -9019,3 +9019,8 @@ html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 
 .plc-sb { overflow: visible !important; } .plc-sb .plc-rk { display: inline-block !important; height: auto !important; line-height: 14px !important; padding: 1px 6px !important; align-self: center; overflow: visible !important; text-align: center; letter-spacing: 0 !important; }
 .plc-sb .plc-rk, html.pro .plc-sb .plc-rk, html.pro .plc-sb .plc-rk.lead { background: none !important; padding: 0 !important; font-size: 11px !important; line-height: 1 !important; align-self: center !important; margin: 0 !important; transform: none !important; }
 .plc-sb .plc-rk.lead, .plc-sb .plc-rk.top { background: none !important; } .plc-sb .plc-rk { position: relative; top: -2px; }
+/* Top-3 ranks sit inside the note column, so the row keeps four columns. */
+.plc-sb { grid-template-columns: 84px minmax(0, 1fr) 46px 64px !important; grid-template-areas: "l bar v n" !important; }
+.plc-sb > em { grid-area: n; }
+.plc-sb .plc-rk { grid-area: n; justify-self: end; top: 0 !important; font-size: 10px !important; }
+.plc-sb:has(.plc-rk) > em { display: none; }

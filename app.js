@@ -9919,7 +9919,9 @@ function statPlace(stat, name) {
     const rows = MANAGERS.map((n) => { const v = f(playerSeason(n)); return v ? { n, v: v[0] } : null; }).filter(Boolean);
     const me = rows.find((r) => r.n === name); if (!me || rows.length < 2) return "";
     const place = 1 + rows.filter((r) => r.v > me.v).length, tied = rows.filter((r) => r.v === me.v).length > 1;
-    return `<i class="plc-rk${place === 1 ? " lead" : place <= 3 ? " top" : ""}" title="Rank in the league">${tied ? "T-" : ""}${ordinal(place)}</i>`;
+    // Only a highlight earns a mark: top three in the league.
+    if (place > 3) return "";
+    return `<i class="plc-rk${place === 1 ? " lead" : " top"}" title="Rank in the league">${place === 1 ? "👑 " : ""}${tied ? "T-" : ""}${ordinal(place)}</i>`;
   } catch { return ""; }
 }
 function openStatRank(stat, name) {
