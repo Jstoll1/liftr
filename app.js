@@ -7852,7 +7852,12 @@ async function openInsights(gameId) {
     // text says "at VT 34" (34 yards from VT's goal); its yardLine number
     // is the same spot counted from the home goal on most feeds, so the
     // text wins when both are present.
-    const dd = String(sit.downDistance || "");
+    // Between plays ESPN drops the live down; the last play carries the
+    // down it left ("2nd & 10 at UNC 25"), so that stands in.
+    const ordN = (n) => ["", "1st", "2nd", "3rd", "4th"][n] || `${n}th`;
+    const endOf = (pl) => { const e = pl?.end; if (!e) return ""; const t = e.downDistanceText || e.shortDownDistanceText; if (t) return t; return e.down > 0 && e.distance != null ? `${ordN(e.down)} & ${e.distance}${e.possessionText ? ` at ${e.possessionText}` : ""}` : ""; };
+    const lastScoring = /touchdown|field goal|extra point|two.?point|safety|kickoff|end (of )?(period|half|game|quarter)/i.test(String(lastP?.type?.text || ""));
+    const dd = String(sit.downDistance || (lastScoring ? "" : endOf(lastP)) || "");
     let x = null;
     const m = dd.match(/\bat\s+([A-Za-z&.' -]+?)\s+(\d{1,2})\s*$/);
     if (m) { const who = m[1].trim().toUpperCase(), yd = Number(m[2]); x = who === String(H).toUpperCase() ? 100 - yd : who === String(A).toUpperCase() ? yd : null; }
@@ -8118,7 +8123,7 @@ async function openInsights(gameId) {
     // The current and previous drive can share a play (a kickoff, a score),
     // so drop repeats before taking three.
     const seenP = new Set();
-    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, LOGN).map((p) => ({ key: p.id || p.text, drv: p.id != null ? driveOfPlay.get(String(p.id)) || null : null, per: Number(p.period?.number) || null, secs: secsOf(p.clock?.displayValue), text: shortScore(tidy(p.text)), sc: p.scoringPlay && p.awayScore != null && p.homeScore != null ? `${A} ${p.awayScore} · ${H} ${p.homeScore}` : "", as: Number.isFinite(Number(p.awayScore)) ? Number(p.awayScore) : null, hs: Number.isFinite(Number(p.homeScore)) ? Number(p.homeScore) : null, when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || "", tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
+    let plays = ordered.filter((p) => p && p.text).filter((p) => { const k = p.id || `${p.period?.number}|${p.clock?.displayValue}|${p.text}`; if (seenP.has(k)) return false; seenP.add(k); return true; }).slice(0, LOGN).map((p) => ({ key: p.id || p.text, drv: p.id != null ? driveOfPlay.get(String(p.id)) || null : null, per: Number(p.period?.number) || null, secs: secsOf(p.clock?.displayValue), text: shortScore(tidy(p.text)), sc: p.scoringPlay && p.awayScore != null && p.homeScore != null ? `${A} ${p.awayScore} · ${H} ${p.homeScore}` : "", as: Number.isFinite(Number(p.awayScore)) ? Number(p.awayScore) : null, hs: Number.isFinite(Number(p.homeScore)) ? Number(p.homeScore) : null, when: `Q${p.period?.number ?? "?"} ${p.clock?.displayValue || ""}`.trim(), dd: p.start?.shortDownDistanceText || p.start?.downDistanceText || (p.start?.down > 0 && p.start?.distance != null ? `${["", "1st", "2nd", "3rd", "4th"][p.start.down] || p.start.down + "th"} & ${p.start.distance}` : ""), tid: p.start?.team?.id ?? null, badge: badgeOf(p), marker: isMarker(p) }));
     // The scoreboard feed updates faster than the game page. If its last
     // play is not the log's newest, put it on top.
     // Two feeds word the same play differently ("J.Turner rush right for
