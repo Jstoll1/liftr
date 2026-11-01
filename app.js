@@ -9450,6 +9450,12 @@ async function maybeThemePoll() {
   noteUse("theme-poll-shown");
   m.addEventListener("click", async (e) => {
     const b = e.target.closest("[data-tv]"); if (!b) return;
+    // Who Cares dodges: other side, then top, then bottom; catchable there.
+    if (b.dataset.tv === "either" && (b.dataset.dodge | 0) < 3) {
+      const n = (b.dataset.dodge | 0) + 1; b.dataset.dodge = n;
+      b.className = `dodge-${n}`; noteUse("theme-poll-dodge", String(n));
+      return;
+    }
     m.querySelectorAll("button").forEach((x) => (x.disabled = true)); b.classList.add("on");
     try {
       const r = await fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: THEME_POLL, manager: me, choice: b.dataset.tv, token: loadAuth()?.manager === me ? loadAuth().token : undefined }) });
