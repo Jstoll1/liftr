@@ -8906,3 +8906,16 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .rx-sh-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .2); background: none; color: inherit; font-size: 14px; }
 .rx-sheet .recap-more .rm-h:first-child { border-top: 0; padding-top: 0; margin-top: 4px; }
 .rx-sheet { z-index: 3000 !important; }
+/* Compact centred hero: one line for avatar, name, points. */
+.rx-hero { padding: 10px 12px 10px; }
+.rx-champ { flex-direction: row; align-items: center; justify-content: center; gap: 10px; margin-top: 6px; }
+.rx-av.big { width: 36px; height: 36px; font-size: 17px; box-shadow: 0 0 0 2px rgba(255, 210, 63, .7); }
+.rx-champ .rx-cn { margin: 0; font-size: 20px; }
+.rx-champ .rx-num b { font-size: 26px; }
+.rx-margin { margin-top: 2px; }
+.rx-podium { margin-top: 8px; gap: 5px; }
+.rx-step { padding: 5px 4px 4px; gap: 1px; flex-direction: row; justify-content: center; gap: 5px; }
+.rx-step .rx-av { width: 20px; height: 20px; font-size: 10px; }
+.rx-step.s1 { padding-top: 5px; }
+.rx-step em { display: none; }
+.rx-step i { font-size: 14px; }
