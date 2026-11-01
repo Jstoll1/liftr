@@ -176,6 +176,10 @@ body.pv-open .tabs { display: none; }
 @media (min-width: 1024px) { .page { padding-bottom: calc(48px + env(safe-area-inset-bottom)); grid-template-columns: minmax(0, 1fr) 330px; grid-template-areas: "kpi kpi" "vote vote" "tl tl" "duo duo" "feed rail"; align-items: start; } .rail { position: sticky; top: 76px; } }
 @media (min-width: 1100px) { body.pv-open .page { margin-right: 430px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kpi" "vote" "tl" "feed" "rail"; } body.pv-open .rail { position: static; } }
 .kpis, .tl, .feed, .rail { scroll-margin-top: 84px; }
+.tpl { padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.1); } .tpl-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; } .tpl-h b { font-size: 15px; } .tpl-h span { font-size: 12px; opacity: .7; }
+.tpl-bars { display: grid; gap: 8px; } .tpl-r { display: grid; grid-template-columns: 150px minmax(0, 1fr) 24px; grid-template-areas: "l b n" ". w w"; align-items: center; column-gap: 10px; }
+.tpl-l { grid-area: l; font-size: 13px; } .tpl-b { grid-area: b; height: 8px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; } .tpl-b i { display: block; height: 100%; background: #f4c64e; border-radius: 4px; }
+.tpl-r > b { grid-area: n; text-align: right; } .tpl-r small { grid-area: w; font-size: 11.5px; opacity: .7; } .tpl-w { margin-top: 10px; font-size: 12px; opacity: .75; } .tpl-w em { font-style: normal; opacity: .7; }
 .kpis { grid-area: kpi; } .vote-wrap { grid-area: vote; display: grid; gap: 16px; min-width: 0; } .vote-wrap:empty { display: none; } .tl { grid-area: tl; } .feed { grid-area: feed; min-width: 0; } .rail { grid-area: rail; display: flex; flex-direction: column; gap: 16px; }
 .panel { position: relative; padding: 14px 16px 16px; border-radius: 16px; background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .012)), var(--panel); border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 10px 30px rgba(0, 0, 0, .25); }
 .ph { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 12px; }
@@ -1528,6 +1532,8 @@ body::before { display: none; }
     if (e.k === "js-error") return ["⚠ Hit an error", e.d || ""];
     if (e.k === "sheet-time") { const [id, sec] = String(e.d || "").split(":"); return [`Spent ${dur(Number(sec) * 1000)} in ${SHEET[id] || id}`, ""]; }
     if (e.k === "depth") { const [sc, pct] = String(e.d || "").split(":"); return [`Scrolled ${pct}% of ${SCREEN_NAME[sc] || sc}`, ""]; }
+    if (e.k === "theme-poll-shown") return ["Saw the theme poll", ""];
+    if (e.k === "theme-poll-vote") return ["Voted in the theme poll", ({ retro: "Retro Arcade", dark: "Current Dark Mode", either: "Who Cares" })[e.d] || e.d || ""];
     if (e.k === "stat-break") return ["Opened a stat breakdown on a player card", String(e.d || "").replace("🔒 ", "")];
     if (e.k === "recap-hero") return ["Tapped the week replay winner", ""];
     if (e.k === "recap-you") return ["Tapped their week in the replay", ""];
@@ -2418,7 +2424,12 @@ body::before { display: none; }
       const paceTxt = pv != null ? `<span class="rec-pace ${ahead ? "up" : "dn"}"><i></i>${esc(f(pv))} by ${esc(paceLab)} · ${ahead ? "ahead" : "behind"}</span>` : prev && !isRec ? `<span class="rec-pace none">${byWeek && k === "people" ? "no weekly pace for a daily average" : "no hourly pace for that day"}</span>` : "";
       return `<div class="rec-m${isRec ? " new" : ""}${pv != null ? (ahead ? " ahead" : " behind") : ""}"><em>${lab}</em><b class="num">${esc(f(t))}${!isRec && prev ? `<small>${Math.round(share)}%</small>` : ""}</b><i class="rec-bar">${pShare != null ? `<u style="left:${pShare.toFixed(1)}%"></u>` : ""}<s style="width:${share.toFixed(0)}%"></s></i><span>${isRec ? `🏆 New record · was ${esc(f(prev.v))}, ${esc(when(prev.d))}` : prev ? `best ${esc(f(prev.v))} · ${esc(when(prev.d))}` : `no earlier ${byWeek ? "weeks" : "days"} yet`}</span>${paceTxt}</div>`;
     }).join("")}</div>${byWeek ? `<div class="note" style="margin-top:8px">This week: ${weeks[curW]?.days || 0} of 7 days in.</div>` : ""}</section>` : "";
-    const strips = `<div class="vote-wrap">${joinPanel()}${auditStrip()}</div>`;
+    // Theme poll: the tally, each vote with its name, and who has not voted.
+    const tp = st.themePoll, TPL = { retro: "🕹️ Retro Arcade", dark: "🌙 Current Dark Mode", either: "🤷 Who Cares" };
+    const themeCard = !tp ? "" : `<section class="card tpl"><div class="tpl-h"><b>Theme poll</b><span>${tp.voted} of ${tp.of} voted</span></div>
+      <div class="tpl-bars">${Object.keys(TPL).map((k) => { const n = tp.counts?.[k] || 0, pct = tp.voted ? Math.round((100 * n) / tp.voted) : 0; const who = Object.entries(tp.votes || {}).filter(([, v]) => v === k).map(([m]) => esc(name(m))); return `<div class="tpl-r"><span class="tpl-l">${TPL[k]}</span><span class="tpl-b"><i style="width:${pct}%"></i></span><b>${n}</b><small>${who.join(", ") || "&nbsp;"}</small></div>`; }).join("")}</div>
+      ${(tp.waitingOn || []).length ? `<div class="tpl-w">Still to vote: ${tp.waitingOn.map((m) => `${esc(name(m))}${tp.views?.[m] ? ` <em>(seen ${tp.views[m].n}×)</em>` : ""}`).join(", ")}</div>` : `<div class="tpl-w">Everyone has voted.</div>`}</section>`;
+    const strips = `<div class="vote-wrap">${themeCard}${joinPanel()}${auditStrip()}</div>`;
     // Notification bar: who came in and who asked BI since you last
     // cleared it (never you). Tap a part to go there; ✕ marks it seen.
     const ME = "Jake";
@@ -2805,6 +2816,7 @@ body::before { display: none; }
     try { const x = await fetch(`${WORKER}/records?${auth()}`, { method: "POST", body: JSON.stringify({ days }) }); if (x.ok) { st.rec = await x.json(); st.sig = ""; render(); } } catch {}
   }
   async function loadOps() {
+    try { const x = await fetch(`${WORKER}/poll?id=theme-v1&all=1&${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) st.themePoll = await x.json(); } catch {}
     try { const x = await fetch(`${WORKER}/ops?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.ops = Array.isArray(j.ops) ? j.ops : []; applyOpsFixes(); st.sig = ""; render(); } } catch {}
   }
   async function loadAdminFriction() {
