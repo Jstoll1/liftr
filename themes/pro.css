@@ -597,3 +597,4 @@ html.pro .rx-you .up, html.pro .rx-climb i.to { color: var(--win) !important; } 
 html.pro .rx-dots.hit i.on { background: var(--win) !important; box-shadow: none !important; }
 html.pro .rx-bar i { background: var(--loss) !important; }
 html.pro .rx-grid > .rx-tile .recap-head { justify-content: flex-start !important; text-align: left !important; }
+html.pro .recap-more .rm-side.hit > i { color: var(--win) !important; } html.pro .recap-more .rm-side.miss > i { color: var(--loss) !important; } html.pro .recap-more .rm-h { color: var(--text) !important; font-size: 12px !important; }

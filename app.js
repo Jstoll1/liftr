@@ -9535,7 +9535,11 @@ function recapDetail(sum, kind) {
     const L = (sum.recap || {}).locks || last_locks(sum);
     if (!L || !(L.list || []).length) return `<div class="rm-none">No locks this week.</div>`;
     const lg = (id) => (id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : "");
-    return `<div class="rm-h">EVERY LOCK</div>${L.list.map((x) => `<div class="rm-side ${x.result === "hit" ? "hit" : x.result === "push" ? "" : "miss"}"><span>${lg(x.id)}${esc(x.short)} ${esc(x.line === "SU" ? "to win" : x.line)}</span><i>${x.result === "hit" ? `+${x.pts} lock` : x.result === "push" ? "push" : `${x.pts < 0 ? "−" + Math.abs(x.pts) : "0"} lock`}</i><div class="pick-chips">${nameChips([x.name])}</div></div>`).join("")}${L.none.length ? `<div class="rm-foot">No lock: ${L.none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}`;
+    // One row per lock and result, everyone who had it underneath.
+    const grp = new Map();
+    for (const x of L.list) { const k = `${x.id}|${x.line}|${x.result}`; const e = grp.get(k) || { ...x, who: [] }; e.who.push(x.name); grp.set(k, e); }
+    const order = { hit: 0, push: 1, miss: 2 };
+    return `<div class="rm-h">Every lock this week</div>${[...grp.values()].sort((a, b) => (order[a.result] ?? 3) - (order[b.result] ?? 3) || b.who.length - a.who.length).map((x) => `<div class="rm-side ${x.result === "hit" ? "hit" : x.result === "push" ? "" : "miss"}"><span>${lg(x.id)}${esc(x.short)} ${esc(x.line === "SU" ? "to win" : x.line)}</span><i>${x.result === "hit" ? `HIT +${x.pts}` : x.result === "push" ? "PUSH" : `MISSED ${x.pts < 0 ? "−" + Math.abs(x.pts) : "0"}`}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`).join("")}${L.none.length ? `<div class="rm-foot">No lock: ${L.none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}<div class="rm-close">Tap to close</div>`;
   }
   if (kind === "move") {
     // Season standings after this week, with how far each player moved
@@ -9545,15 +9549,15 @@ function recapDetail(sum, kind) {
     const place = (t) => { const list = [...t.entries()].sort((a, b) => b[1] - a[1]); const m = new Map(); list.forEach(([n, p]) => m.set(n, 1 + list.filter(([, q]) => q > p).length)); return m; };
     const now = total(sum.week), was = total(sum.week - 1), pNow = place(now), pWas = place(was);
     const list = [...now.entries()].sort((a, b) => b[1] - a[1]);
-    return `<div class="rm-h">SEASON STANDINGS AFTER WEEK ${sum.week}</div><ol class="rm-rank">${list.map(([n, pts]) => {
+    return `<div class="rm-h">Season standings after week ${sum.week}</div><ol class="rm-rank">${list.map(([n, pts]) => {
       const d = was.size ? (pWas.get(n) ?? pNow.get(n)) - pNow.get(n) : 0;
       const wk = (rows.find((r) => r.name === n) || {}).score;
       return `<li><em>${pNow.get(n)}</em>${nm(n)}<i class="${d > 0 ? "up" : d < 0 ? "down" : "same"}">${d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "–"}</i><span>${pts} pts${wk != null ? ` <small>+${wk} this week</small>` : ""}</span></li>`;
-    }).join("")}</ol>`;
+    }).join("")}</ol><div class="rm-close">Tap to close</div>`;
   }
   if (kind === "tb") {
     const g = rows.filter((r) => r.tbGuess != null).sort((a, b) => (a.tbDiff ?? 999) - (b.tbDiff ?? 999));
-    return `<div class="rm-h">EVERY GUESS · ACTUAL ${esc(sum.recap?.tb?.actual ?? sum.tiebreaker?.actual ?? "?")}</div><ol class="rm-list">${g.map((r) => `<li>${nm(r.name)}<span>${r.tbGuess}${r.tbDiff != null ? ` · ${r.tbDiff === 0 ? "exact" : `off ${r.tbDiff}`}` : ""}</span></li>`).join("")}</ol>`;
+    return `<div class="rm-h">Every tiebreaker guess · actual total ${esc(sum.recap?.tb?.actual ?? sum.tiebreaker?.actual ?? "?")}</div><ol class="rm-list">${g.map((r) => `<li>${nm(r.name)}<span>${r.tbGuess}${r.tbDiff != null ? ` · ${r.tbDiff === 0 ? "exact" : `off ${r.tbDiff}`}` : ""}</span></li>`).join("")}</ol><div class="rm-close">Tap to close</div>`;
   }
   const r = sum.recap || {};
   const team = kind === "hit" ? r.best?.team : kind === "miss" ? r.worst?.team : r.consensus?.sides?.[0]?.team;
@@ -9566,7 +9570,7 @@ function recapDetail(sum, kind) {
     const x = sides.get(side) || { side, team: l?.team, teamId: l ? (l.team === g.home ? g.homeId : l.team === g.away ? g.awayId : null) : null, hit: l?.result === "hit", pts: l?.result === "hit" ? l.pts : 0, who: [] };
     x.who.push(row.name); sides.set(side, x);
   }
-  return `<div class="rm-h">${esc(g.awayShort)} AT ${esc(g.homeShort)} · WHO TOOK WHAT</div>${[...sides.values()].sort((a, b) => b.who.length - a.who.length).map((x) => { const id = x.teamId || (x.team ? teamIdOf(x.team) : null); return `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(x.side)}</span><i>${x.hit ? `+${x.pts} each` : "0"}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`; }).join("")}`;
+  return `<div class="rm-h">Everyone's pick: ${esc(g.awayShort)} at ${esc(g.homeShort)}</div>${[...sides.values()].sort((a, b) => (b.hit - a.hit) || b.who.length - a.who.length).map((x) => { const id = x.teamId || (x.team ? teamIdOf(x.team) : null); return `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(x.side)}</span><i>${x.side === "No pick" ? "NO PICK" : x.hit ? `CASHED +${x.pts} each` : "MISSED"}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`; }).join("")}<div class="rm-close">Tap to close</div>`;
 }
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
   const c = e.target.closest(".recap-card[data-rc]");
