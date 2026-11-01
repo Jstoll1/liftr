@@ -9024,3 +9024,17 @@ html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 
 .plc-sb > em { grid-area: n; }
 .plc-sb .plc-rk { grid-area: n; justify-self: end; top: 0 !important; font-size: 10px !important; }
 .plc-sb:has(.plc-rk) > em { display: none; }
+/* Rank rides inline after the note: one baseline, nothing replaced. */
+.plc-sb { grid-template-columns: 84px minmax(0, 1fr) 46px 84px !important; }
+.plc-sb:has(.plc-rk) > em { display: block !important; }
+.plc-sb > em { white-space: nowrap; }
+.plc-sb > em .plc-rk { grid-area: auto !important; position: static !important; top: auto !important; display: inline !important; margin-left: 5px !important; font-size: inherit !important; font-weight: 700 !important; line-height: inherit !important; }
+.plc-sb > em .plc-rk::before { content: "· "; color: var(--text-dim); font-weight: 400; }
+/* Final: rank badge sits at the end of the bar's track, centred on it;
+   the note keeps its column. */
+.plc-sb { grid-template-columns: 84px minmax(0, 1fr) 46px 64px !important; grid-template-areas: "l bar v n" !important; }
+.plc-sb > .plc-rk { grid-area: bar !important; justify-self: end !important; align-self: center !important; position: relative !important; top: 0 !important; z-index: 1; display: inline-block !important; margin: 0 !important; padding: 0 0 0 6px !important; font-size: 10.5px !important; line-height: 1 !important; font-weight: 800 !important; letter-spacing: .02em !important; background: var(--card-bg, #12141a) !important; }
+.plc-sb > .plc-rk::before { content: none !important; }
+.plc-sb > .plc-rk.lead { color: var(--arcade-gold) !important; } .plc-sb > .plc-rk.top { color: var(--text) !important; }
+.plc-sb > i { margin-right: 40px; }
+.plc-sb > .plc-rk { padding: 3px 7px !important; border-radius: 999px !important; } html.pro .plc-sb > .plc-rk.lead { background: rgba(212, 174, 104, .16) !important; } html.pro .plc-sb > .plc-rk.top { background: var(--s2) !important; } .plc-sb > .plc-rk.lead { background: rgba(255, 210, 63, .14); }
