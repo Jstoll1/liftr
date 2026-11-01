@@ -675,6 +675,8 @@ function parseEspnEvents(events, games = GAMES) {
         downDistance: comp.situation.downDistanceText || comp.situation.shortDownDistanceText || null,
         possessionText: comp.situation.possessionText || null,
         isRedZone: !!comp.situation.isRedZone,
+        awayTimeouts: Number.isFinite(comp.situation.awayTimeouts) ? comp.situation.awayTimeouts : null,
+        homeTimeouts: Number.isFinite(comp.situation.homeTimeouts) ? comp.situation.homeTimeouts : null,
         lastPlay: comp.situation.lastPlay?.text || null,
         lastPlayTeamId: comp.situation.lastPlay?.team?.id != null ? Number(comp.situation.lastPlay.team.id) : null,
       } : null,
@@ -7937,7 +7939,11 @@ async function openInsights(gameId) {
     // of the flow, so the names stay centred under their logos and nothing
     // moves when the ball changes hands.
     const pb = (poss) => poss ? `<i class="gc-pball gc-pfloat" title="Has the ball"></i>` : "";
-    const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<span class="gc-tn">${side === "h" ? pb(poss) : ""}<b>${esc(ab)}</b>${side === "a" ? pb(poss) : ""}</span></div>`;
+    // Timeouts left: three pips under the name, lit for each one still in
+    // hand (college teams get three a half).
+    const toOf = (side) => { const v = side === "a" ? (sit.awayTimeouts ?? summaryRaw?.situation?.awayTimeouts) : (sit.homeTimeouts ?? summaryRaw?.situation?.homeTimeouts); return Number.isFinite(v) ? Math.max(0, Math.min(3, v)) : null; };
+    const toPips = (side) => { const n = toOf(side); return n == null ? "" : `<span class="gc-to" title="${n} timeout${n === 1 ? "" : "s"} left" aria-label="${n} timeouts left">${[0, 1, 2].map((i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span>`; };
+    const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<span class="gc-tn">${side === "h" ? pb(poss) : ""}<b>${esc(ab)}</b>${side === "a" ? pb(poss) : ""}</span>${toPips(side)}</div>`;
     const wp = lv.winProb;
     // Win probability: amber LED numbers with each logo at the ends, a
     // thin neon bar in the app's cyan and pink, and a bright notch where

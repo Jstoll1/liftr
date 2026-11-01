@@ -8806,3 +8806,7 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .gc-mine { flex-wrap: nowrap; }
 .gc-mine .gc-msay { margin-left: auto; white-space: nowrap; }
 .gc-mine b { white-space: nowrap; }
+/* Timeouts left under each team in the Gamecast header. */
+.gc-to { display: flex; justify-content: center; gap: 3px; margin-top: 3px; }
+.gc-to i { width: 10px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .16); }
+.gc-to i.on { background: #ffe45e; box-shadow: 0 0 4px rgba(255, 228, 94, .6); }
