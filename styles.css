@@ -9094,3 +9094,10 @@ html:root .tpoll-card .tpoll-opts button { padding: 10px 4px !important; gap: 5p
 html:root .tpoll-card .tpoll-opts button span { font-size: 22px !important; }
 html:root .tpoll-card .tpoll-opts button b { font-size: 11.5px !important; }
 html:root .tpoll-card .tpoll-opts button[data-tv="retro"] b { font-size: 7.5px !important; }
+/* Pot table: sortable headers */
+.pot-row.head .pot-sort { all: unset; display: block; font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; white-space: nowrap; }
+.pot-row.head > .pot-sort:nth-child(3), .pot-row.head > .pot-sort:nth-child(6) { text-align: right; }
+.pot-row.head > .pot-sort:nth-child(4), .pot-row.head > .pot-sort:nth-child(5) { text-align: center; }
+.pot-row.head .pot-sort.on { color: var(--neon-yellow); }
+html.pro .pot-row.head .pot-sort.on { color: var(--acc) !important; }
+.pot-row.head .pot-sort i { font-style: normal; margin-left: 3px; font-size: .85em; }

@@ -1538,6 +1538,7 @@ body::before { display: none; }
     if (e.k === "recap-hero") return ["Tapped the week replay winner", ""];
     if (e.k === "recap-you") return ["Tapped their week in the replay", ""];
     if (e.k === "recap-sheet-close") return ["Closed a replay breakdown", ({ x: "with ✕", outside: "tapping outside", swipe: "swiping down" })[e.d] || ""];
+    if (e.k === "pot-sort") return ["Sorted the pot table", e.d || ""];
     if (e.k === "since-game") return ["Opened a game from Since you last looked", e.d || ""];
     if (e.k === "since-more") return [e.d === "close" ? "Folded Since you last looked" : "Expanded Since you last looked", ""];
     if (e.k === "since-tiles") return ["Tapped LIVE / POINTS / PLACE in Since you last looked", ""];
