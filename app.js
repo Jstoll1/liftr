@@ -9596,7 +9596,7 @@ function recapDetail(sum, kind) {
 }
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
   if (e.target.closest(".rx-hero")) { noteUse("recap-hero"); return; }
-  if (e.target.closest(".rx-you")) { noteUse("recap-you"); return; }
+  if (e.target.closest(".rx-you")) { noteUse("recap-you"); if (currentManager) openPlayerCard(currentManager); return; }
   const c = e.target.closest(".recap-card[data-rc]");
   if (!c || e.target.closest(".pick-chip, a, button")) return;
   // The story behind a card opens in a sheet; the replay itself never moves.

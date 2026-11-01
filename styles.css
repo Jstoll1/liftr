@@ -9010,3 +9010,4 @@ html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 
 .rx-tbn { white-space: nowrap; }
 .rx-tbl .rx-tbn { white-space: normal; font-size: 12.5px; line-height: 1.25; }
 .rx-grid > .rx-tile.tb .rx-viz, .rx-grid > .rx-tile.lk .rx-viz { margin-top: 10px !important; padding-top: 0 !important; }
+.rx-you { cursor: pointer; -webkit-tap-highlight-color: transparent; }
