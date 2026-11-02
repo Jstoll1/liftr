@@ -9193,7 +9193,7 @@ html:not(.pro) .recap-card.rx .recap-stat span { letter-spacing: 0 !important; }
 
 /* ==== RETRO: frames (navy glass, thin purple frame, no glow) ==== */
 html:not(.pro) .home-header:not(.compact) { padding-bottom: 4px !important; }
-html:not(.pro) .home-header .home-logo-img { content: url(themes/wordmark-retro.png); height: 21px !important; width: auto !important; object-fit: contain; filter: none !important; }
+html:not(.pro) .home-header .home-logo-img { height: 21px !important; width: auto !important; object-fit: contain; filter: none !important; }
 html:not(.pro) .home-logo-btn:hover .home-logo-img { filter: brightness(1.08) !important; }
 html:not(.pro) .home-header.compact .home-logo-img { height: 21px !important; }
 html:not(.pro) .home-header.compact { padding-top: max(3px, env(safe-area-inset-top)) !important; padding-bottom: 3px !important; }
@@ -9259,3 +9259,7 @@ html:not(.pro) .rx-you { padding-top: 8px !important; padding-bottom: 8px !impor
 html:not(.pro) .recap-card.rx { padding-bottom: 10px !important; }
 html:not(.pro) .recap-card.rx .rx-row { margin: 0 !important; }
 html:not(.pro) .recap-card.rx .recap-body > :last-child, html:not(.pro) .recap-card.rx .rx-viz { margin-bottom: 0 !important; }
+/* Tiebreaker and locks rows: notes stay inside the card on wider phone fonts. */
+html:not(.pro) .rx-tbl { overflow: hidden; }
+html:not(.pro) .rx-tbl b { font-size: 9px !important; padding-left: 2px !important; }
+html:not(.pro) .rx-tbl em { font-size: 9.5px !important; padding-left: 5px !important; }
