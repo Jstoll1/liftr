@@ -8832,9 +8832,10 @@ function pullToClose(root, getCard, onClose, far = 90) {
     if (!st.dir && Math.hypot(dx, dy) > 8) st.dir = dy > 0 && Math.abs(dy) > Math.abs(dx) ? "down" : "other";
     if (st.dir !== "down") { if (st.dir === "other") st = null; return; }
     const c = card(); if (!c) return;
+    if (e.cancelable) e.preventDefault(); // the drag is ours: nothing behind scrolls
     st.dy = Math.max(0, dy);
     c.style.transition = "none"; c.style.transform = `translateY(${st.dy * 0.9}px)`; c.style.opacity = String(Math.max(0.5, 1 - st.dy / 600));
-  }, { passive: true });
+  }, { passive: false });
   const end = (cancel) => {
     if (!st) return;
     const { dy, t0, dir } = st; st = null;
@@ -8878,8 +8879,9 @@ function swipeToClose(modal, card, close) {
     if (!st.dir && Math.hypot(dx, dy) > 8) st.dir = Math.abs(dy) > Math.abs(dx) && dy > 0 ? "down" : "other";
     if (st.dir !== "down") { reset(st.card); if (st.dir === "other") st = null; return; }
     st.dy = Math.max(0, dy);
+    if (e.cancelable) e.preventDefault();
     if (st.card) { st.card.style.transform = `translateY(${st.dy * 0.85}px)`; st.card.style.opacity = String(Math.max(0.4, 1 - st.dy / 500)); }
-  }, { passive: true, capture: true });
+  }, { passive: false, capture: true });
   const end = () => {
     if (!st) return;
     const { ov, card, dy, t0 } = st; st = null;
