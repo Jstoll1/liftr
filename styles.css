@@ -9099,23 +9099,26 @@ html:not(.pro) .recap-panel .rx-hero::before, html:not(.pro) .recap-card.rx::bef
 html:not(.pro) .recap-panel .rx-hero::after, html:not(.pro) .recap-card.rx::after { inset: 1.5px; background: linear-gradient(180deg, rgba(255, 255, 255, .035), transparent 40%), var(--rx-ink); }
 html:not(.pro) .recap-card.rx.hit { --rx-c: var(--neon-cyan); --rx-t: var(--neon-cyan); --rx-t-rgb: var(--neon-cyan-rgb); filter: drop-shadow(0 0 7px rgba(var(--neon-cyan-rgb), .45)) !important; }
 html:not(.pro) .recap-card.rx.miss { --rx-c: rgba(var(--neon-pink-rgb), .75); --rx-t: var(--neon-pink); --rx-t-rgb: var(--neon-pink-rgb); }
-html:not(.pro) .recap-card.rx { --rx-t: var(--neon-cyan); --rx-t-rgb: var(--neon-cyan-rgb); padding: 0 12px 10px !important; }
+html:not(.pro) .recap-card.rx { --rx-t: var(--neon-cyan); --rx-t-rgb: var(--neon-cyan-rgb); padding: 0 10px 8px !important; }
 /* Heads: wide cards get a slanted tab, tiles a band with a rule under it. */
-html:not(.pro) .recap-card.rx .recap-head { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 15px !important; letter-spacing: .08em !important; text-transform: uppercase; color: var(--rx-t) !important; text-shadow: none !important; margin: 0 -12px 8px !important; padding: 7px 12px 6px; border-bottom: 1px solid var(--rx-c, var(--rx-frame)); }
+html:not(.pro) .recap-card.rx .recap-head { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 13px !important; letter-spacing: .08em !important; text-transform: uppercase; color: var(--rx-t) !important; text-shadow: none !important; margin: 0 -10px 6px !important; padding: 4px 10px 3px; border-bottom: 1px solid var(--rx-c, var(--rx-frame)); }
 html:not(.pro) .recap-card.rx.rx-wide .recap-head { border-bottom: 1.5px solid var(--rx-c); background: linear-gradient(100deg, rgba(var(--rx-t-rgb), .16) 0 58%, transparent 58.2%) !important; }
 html:not(.pro) .recap-card.rx.rx-wide .recap-head::after { content: ""; margin-left: auto; width: 64px; height: 12px; background: repeating-linear-gradient(115deg, rgba(var(--neon-pink-rgb), .7) 0 5px, transparent 5px 10px); }
 html:not(.pro) .recap-card.rx .recap-head img, html:not(.pro) .recap-card.rx .recap-head svg { filter: none; }
 html:not(.pro) .recap-card.rx .recap-you { font-family: var(--rx-disp); font-style: italic; font-weight: 800; background: var(--neon-cyan) !important; color: var(--rx-ink) !important; transform: skewX(-12deg); border-radius: 2px !important; padding: 1px 8px !important; }
 /* Body type */
-html:not(.pro) .recap-card.rx .recap-main, html:not(.pro) .recap-card.rx .recap-pick { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: #fff !important; text-shadow: none !important; font-size: 19px !important; line-height: 1.1 !important; }
-html:not(.pro) .rx-grid > .rx-tile .recap-main, html:not(.pro) .rx-grid > .rx-tile .recap-pick { font-size: 17px !important; }
-html:not(.pro) .recap-card.rx .recap-sub { color: #b9bfd6 !important; font-size: 12px !important; line-height: 1.3 !important; margin-top: 3px !important; }
+html:not(.pro) .recap-card.rx .recap-main, html:not(.pro) .recap-card.rx .recap-pick { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: #fff !important; text-shadow: none !important; font-size: 17px !important; line-height: 1.05 !important; }
+html:not(.pro) .rx-grid > .rx-tile .recap-main, html:not(.pro) .rx-grid > .rx-tile .recap-pick { font-size: 15px !important; }
+html:not(.pro) .recap-card.rx .recap-sub { color: #b9bfd6 !important; font-size: 11px !important; line-height: 1.25 !important; margin-top: 2px !important; }
 html:not(.pro) .recap-card.rx .recap-stat { border-color: rgba(var(--neon-purple-rgb), .45) !important; }
-html:not(.pro) .recap-card.rx .recap-stat b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 34px !important; line-height: 1 !important; color: var(--rx-t) !important; text-shadow: none !important; }
-html:not(.pro) .recap-card.rx .recap-stat span { font-size: 11px !important; letter-spacing: .08em; color: #c9cde0 !important; text-transform: uppercase; }
-html:not(.pro) .recap-card.rx .recap-art { width: 52px !important; height: 52px !important; }
-html:not(.pro) .recap-card.rx .recap-logo { width: 48px !important; height: 48px !important; }
-html:not(.pro) .recap-card.rx .rx-viz { margin-top: 8px !important; }
+html:not(.pro) .recap-card.rx .recap-stat b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 28px !important; line-height: 1 !important; color: var(--rx-t) !important; text-shadow: none !important; }
+html:not(.pro) .recap-card.rx .recap-stat span { font-size: 9.5px !important; letter-spacing: .08em; color: #c9cde0 !important; text-transform: uppercase; }
+html:not(.pro) .recap-card.rx .recap-art { width: 42px !important; height: 42px !important; }
+html:not(.pro) .recap-card.rx .recap-logo { width: 40px !important; height: 40px !important; }
+html:not(.pro) .recap-card.rx .rx-viz { margin-top: 6px !important; }
+html:not(.pro) .rx-grid > .rx-tile .rx-viz { margin-top: 6px !important; padding-top: 0 !important; }
+html:not(.pro) .rx-grid > .rx-tile .rx-row { gap: 2px !important; }
+html:not(.pro) .rx-grid > .rx-tile { gap: 0 !important; justify-content: flex-start !important; }
 /* Name chips: outlined pills */
 html:not(.pro) .recap-card.rx .pick-chip { background: transparent !important; border: 1.5px solid rgba(var(--rx-t-rgb), .7) !important; border-radius: 4px !important; font-family: var(--rx-disp); font-style: italic; font-weight: 700; text-transform: uppercase; font-size: 12px !important; color: #fff !important; padding: 1px 8px !important; box-shadow: none !important; }
 html:not(.pro) .recap-card.rx.hit .pick-chip > :first-child:not(:only-child) { display: none; }
@@ -9123,7 +9126,7 @@ html:not(.pro) .recap-card.rx.hit .pick-chip > :first-child:not(:only-child) { d
 html:not(.pro) .recap-card.rx.hit .rx-dots { display: none !important; }
 html:not(.pro) .rx-bar { background: rgba(255, 255, 255, .06) !important; height: 8px !important; border-radius: 4px; }
 html:not(.pro) .rx-bar i { background: var(--neon-pink) !important; box-shadow: 0 0 8px rgba(var(--neon-pink-rgb), .6) !important; border-radius: 4px; }
-html:not(.pro) .rx-climb { font-family: var(--rx-disp); font-style: italic; font-weight: 800; font-size: 26px; }
+html:not(.pro) .rx-climb { font-family: var(--rx-disp); font-style: italic; font-weight: 800; font-size: 22px; }
 html:not(.pro) .rx-climb i { color: #8d93ad !important; text-shadow: none !important; } html:not(.pro) .rx-climb i.to { color: var(--neon-cyan) !important; }
 html:not(.pro) .rx-split { gap: 8px !important; background: none !important; }
 html:not(.pro) .rx-split i { font-family: var(--rx-disp); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 13px; background: transparent !important; border: 1.5px solid rgba(var(--neon-purple-rgb), .6); border-radius: 4px; color: #fff !important; justify-content: center; }
@@ -9132,9 +9135,12 @@ html:not(.pro) .rx-locks i.hit { filter: grayscale(1) sepia(1) saturate(6) hue-r
 html:not(.pro) .rx-locks i.miss { filter: grayscale(1) brightness(.6) !important; opacity: .5 !important; }
 html:not(.pro) .rx-locks i.me { outline: 1.5px solid var(--neon-cyan); outline-offset: 1px; border-radius: 3px; }
 html:not(.pro) .rx-tbw { gap: 0 !important; }
-html:not(.pro) .rx-tbl { background: transparent !important; border: 0 !important; border-top: 1px solid rgba(var(--neon-purple-rgb), .3) !important; border-radius: 0 !important; padding: 5px 0 3px !important; }
+html:not(.pro) .rx-tbl { background: transparent !important; border: 0 !important; border-top: 1px solid rgba(var(--neon-purple-rgb), .3) !important; border-radius: 0 !important; padding: 3px 0 2px !important; row-gap: 0 !important; }
+html:not(.pro) .rx-tbl .rx-tbk { font-size: 9.5px !important; } html:not(.pro) .rx-tbl .rx-tbn { font-size: 13px !important; } html:not(.pro) .rx-tbl em { font-size: 11px !important; }
 html:not(.pro) .rx-tbl .rx-tbk { color: #8d93ad; letter-spacing: .08em; }
-html:not(.pro) .rx-tbl b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 17px !important; color: #fff !important; }
+html:not(.pro) .rx-tbl { grid-template-columns: minmax(0, 1fr) auto auto !important; grid-template-areas: "k k k" "n g e" !important; column-gap: 6px !important; align-items: baseline !important; }
+html:not(.pro) .rx-tbl .rx-tbn { white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; }
+html:not(.pro) .rx-tbl b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 15px !important; color: #fff !important; }
 html:not(.pro) .rx-tbl.best em { color: var(--neon-cyan) !important; } html:not(.pro) .rx-tbl.worst em { color: var(--neon-pink) !important; }
 /* Champion hero: the standout. Cyan frame and glow. */
 html:not(.pro) .recap-panel .rx-hero { --rx-c: var(--neon-cyan); filter: drop-shadow(0 0 9px rgba(var(--neon-cyan-rgb), .5)) !important; padding: 12px 12px 12px !important; }
@@ -9160,7 +9166,7 @@ html:not(.pro) .rx-ycols > div:first-child { border-left: 0 !important; }
 html:not(.pro) .rx-ycols b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 30px !important; line-height: 1 !important; color: #fff !important; text-shadow: none !important; }
 html:not(.pro) .rx-ycols .up b { color: var(--neon-cyan) !important; } html:not(.pro) .rx-ycols .dn b { color: var(--neon-pink) !important; }
 html:not(.pro) .rx-ycols span { font-size: 10px !important; line-height: 1.25 !important; text-transform: uppercase; letter-spacing: .04em; color: #c9cde0 !important; }
-html:not(.pro) .rx-grid { gap: 10px !important; }
+html:not(.pro) .rx-grid { gap: 8px !important; }
 /* Movement sheet */
 html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 0 -6px 24px rgba(var(--neon-cyan-rgb), .3); }
 html:not(.pro) .rx-sheet .rm-h { color: var(--neon-cyan) !important; }
