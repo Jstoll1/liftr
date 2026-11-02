@@ -1213,11 +1213,12 @@ let headerCompact = false;
 function syncHeaderSize() {
   const y = appScroll.scrollTop;
   // Retro keeps the header tight all the time: no expansion at the top.
-  const next = window.APP_STYLE !== "pro" || (headerCompact ? y > 24 : y > 64);
+  const next = true; // tight all the time, both themes: no grow or shrink on scroll
   if (next === headerCompact) return;
   headerCompact = next;
   homeHeader.classList.toggle("compact", next);
   renderHeadScore();
+  requestAnimationFrame(() => { try { fitHeaderLogo(); } catch {} });
 }
 
 // Your score, in the header's left slot, once the board has scrolled past
