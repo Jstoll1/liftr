@@ -9507,12 +9507,12 @@ let renderRecap = function () {
   if (r.best) {
     const b = r.best;
     cards.push([ICON.target + "PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${esc(b.pick)}</span>`,
-      `Only ${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : `were on ${esc(b.team || b.pick)}`}${Array.isArray(b.who) && b.who.length < b.takers ? ` · ${b.who.length} cashed` : ""} · ${esc(b.final || b.score)}`, `+${b.pts}`, Array.isArray(b.who) && b.who.length > 1 ? "PTS TOP" : "PTS", mine(b.who), rxDots(b.takers, b.of, "hit")]);
+      `${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : "on it"}${Array.isArray(b.who) && b.who.length < b.takers ? ` · ${b.who.length} cashed` : ""} · ${esc(b.final || b.score)}`, `+${b.pts}`, Array.isArray(b.who) && b.who.length > 1 ? "PTS TOP" : "PTS", mine(b.who), rxDots(b.takers, b.of, "hit")]);
   }
   if (r.worst) {
     const w = r.worst;
     cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${esc(w.pick)}</span>`,
-      `${w.takers} of ${w.of} got zero · ${esc(w.final || w.score)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who), rxBar(w.takers, w.of, "miss")]);
+      `${w.takers} of ${w.of} on it · ${esc(w.final || w.score)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who), rxBar(w.takers, w.of, "miss")]);
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
