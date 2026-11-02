@@ -499,7 +499,7 @@
     const giveUp = (reason) => { if (logId) fetch(`${WORKER_URL}/week-chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "giveup", logId, reason }) }).catch(() => {}); };
     try {
       for (let round = 0; round < 5; round++) {
-        const r = await fetch(`${WORKER_URL}/week-chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: convo.slice(-24), context: context(), sid: SID, logId, build: document.querySelector('meta[name="build"]')?.content || "" }) });
+        const r = await fetch(`${WORKER_URL}/week-chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: convo.slice(-24), context: context(), sid: SID, logId, build: document.querySelector('meta[name="build"]')?.content || "" }), signal: AbortSignal.timeout(60000) });
         const j = await r.json().catch(() => ({}));
         if (j.logId) logId = j.logId;
         if (!r.ok || !j.message) { item.a = j.error || "Couldn't reach the league just now. Try again."; convo.pop(); break; }
