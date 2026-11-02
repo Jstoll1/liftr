@@ -9519,14 +9519,14 @@ let renderRecap = function () {
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
-    cards.push([ICON.up + "SEASON MOVEMENT", "move", `<img class="recap-logo chart" src="assets/images/recap/chart.webp" alt="" decoding="async">`, `<span class="rx-big"><i class="from">#${u.from}</i><b>→</b><i class="to">#${u.to}</i></span><span class="recap-pick">${esc(shown(u.name))}</span>`,
-      `Up ${u.from - u.to} ${u.from - u.to === 1 ? "spot" : "spots"}${d ? ` · ${esc(shown(d.name))} fell ${d.to - d.from}` : ""}`, `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean)), `<span class="rx-climb"><i>#${u.from}</i><b>→</b><i class="to">#${u.to}</i></span>`]);
+    cards.push([ICON.up + "MOVEMENT", "move", `<img class="recap-logo chart" src="assets/images/recap/chart.webp" alt="" decoding="async">`, `${chips([u.name])}<span class="recap-pick">to #${u.to} on the season</span>`,
+      d ? `${esc(shown(d.name))} fell ${d.to - d.from} to #${d.to}` : "Nobody fell", `▲${u.from - u.to}`, "SPOTS", mine([u.name, d?.name].filter(Boolean)), `<span class="rx-climb"><i>#${u.from}</i><b>→</b><i class="to">#${u.to}</i></span>`]);
   }
   if (r.consensus?.sides?.length > 1) {
     const c = r.consensus;
     const [a, b] = c.sides;
-    cards.push([ICON.coin + "COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="rx-big">${a.n}<b>–</b>${b.n}</span>`,
-      esc(c.final || c.score), `${a.n}-${b.n}`, "SPLIT", false, `<span class="rx-cf"><span class="rx-cf-bar"><i style="flex:${a.n}"></i><i style="flex:${b.n}"></i></span><span class="rx-cf-lab"><em>${esc(a.team)}</em><em>${esc(b.team)}</em></span></span>`]);
+    cards.push([ICON.coin + "COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="recap-pick">League split ${a.n}-${b.n}</span>`,
+      `${esc(c.matchup)} · ${esc(c.final || c.score)}`, `${a.n}-${b.n}`, "SPLIT", false, `<span class="rx-split"><i style="flex:${a.n}">${esc(a.team)} ${a.n}</i><i style="flex:${b.n}">${esc(b.team)} ${b.n}</i></span>`]);
   }
   if (r.tb) {
     const t = r.tb;
@@ -9537,8 +9537,8 @@ let renderRecap = function () {
     const line = (cls, label, who, g, off) => `<div class="rx-tbl ${cls}"><span class="rx-tbk">${label}</span><span class="rx-tbn">${esc(who)}</span><b>${esc(g)}</b><em>${off === 0 ? "exact" : `off ${off}`}</em></div>`;
     const bestNames = (t.who || []).map((x) => shown(x)).join(", ");
     const viz = `<div class="rx-tbw">${line("best", "Closest", bestNames, guess, t.off)}${worst.length && worstOff > t.off ? line("worst", "Furthest", worst.map((x) => shown(x.n)).join(", "), [...new Set(worst.map((x) => x.g))].join(" & "), worstOff) : ""}</div>`;
-    cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `<span class="rx-big">${t.off === 0 ? "Exact" : `Off by ${t.off}`}</span>`,
-      `Actual ${t.actual} · ${esc(t.matchup)}`, "", "", mine(t.who), viz]);
+    cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `<span class="recap-pick">Actual total ${t.actual}</span>`,
+      esc(t.matchup), "", "", mine(t.who), viz]);
   }
   // Lock of the week: who hit theirs, who missed, the best lock leading.
   if (r.locks && (r.locks.list || []).length) {
@@ -9557,7 +9557,7 @@ let renderRecap = function () {
     const box1 = line2("best", "Hit", L.hit.length ? (L.hit.length === 1 ? nm(L.hit) : `${L.hit.length} players`) : "Nobody", hitPts != null ? `+${hitPts}` : "", L.hit.length ? "each" : "");
     const box2 = myLk ? line2(myLk.result === "hit" ? "best" : myLk.result === "push" ? "" : "worst", "Your lock", `${esc(myLk.short)} ${esc(myLk.line === "SU" ? "to win" : myLk.line)}`, myLk.result === "hit" ? `+${myLk.pts}` : myLk.result === "push" ? "0" : (myLk.pts < 0 ? "−" + Math.abs(myLk.pts) : "0"), myLk.result === "hit" ? "hit" : myLk.result === "push" ? "push" : "missed")
       : line2("worst", "Missed", L.miss.length ? nm(L.miss) : "Nobody", "", `${L.miss.length} missed`);
-    cards.push(["🔒 LOCKS", "lk", lkArt, `<span class="rx-big">${L.hit.length}<b>/</b>${n}</span><span class="recap-pick">locks hit</span>`, pad, "", "", mine(L.hit), `<div class="rx-tbw">${box1}${box2}</div>`]);
+    cards.push(["🔒 LOCKS", "lk", lkArt, `<span class="recap-pick">${word}</span>`, pad, "", "", mine(L.hit), `<div class="rx-tbw">${box1}${box2}</div>`]);
   }
   const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}`;
   toggle.classList.remove("hidden");
