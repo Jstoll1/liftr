@@ -9177,9 +9177,9 @@ html:not(.pro) .recap-card.rx .recap-stat span { letter-spacing: 0 !important; }
 
 /* ==== RETRO: frames (navy glass, thin purple frame, no glow) ==== */
 html:not(.pro) .home-header:not(.compact) { padding-bottom: 4px !important; }
-html:not(.pro) .home-logo-img { height: 36px !important; filter: saturate(.85) brightness(.95) !important; }
-html:not(.pro) .home-logo-btn:hover .home-logo-img { filter: saturate(.85) brightness(1.05) !important; }
-html:not(.pro) .home-header.compact .home-logo-img { height: 22px !important; }
+html:not(.pro) .home-header .home-logo-img { content: url(themes/wordmark-retro.png); height: 24px !important; width: auto !important; object-fit: contain; filter: none !important; }
+html:not(.pro) .home-logo-btn:hover .home-logo-img { filter: brightness(1.08) !important; }
+html:not(.pro) .home-header.compact .home-logo-img { height: 24px !important; }
 #head-score, .head-cd { display: none !important; }
 html:not(.pro) #me-pill { height: 28px !important; box-sizing: border-box; display: inline-flex !important; top: 50% !important; transform: translateY(-50%) !important; margin: 0 !important; align-items: center !important; border: 1.5px solid rgba(var(--neon-cyan-rgb), .45) !important; border-radius: 15px !important; background: var(--card-bg) !important; box-shadow: none !important; }
 html:not(.pro) .home-header { background: rgba(10, 12, 24, .97) !important; }
