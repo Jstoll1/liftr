@@ -30,8 +30,25 @@ export async function recordUsage(env, row) {
   } catch { /* the meter never breaks a feature */ }
 }
 
+// One OpenAI chat call with a deadline and one retry. A model reply is
+// often 5-10s; a stuck call gets 25s, and a timeout, 429 or 5xx is tried
+// once more after a short pause, so a single slow or flaky call does not
+// fail the feature. Callers that pass their own signal keep it.
+const OPENAI_DEADLINE_MS = 25000;
+async function openaiOnce(init, fetchImpl) {
+  const req = init.signal ? init : { ...init, signal: AbortSignal.timeout(OPENAI_DEADLINE_MS) };
+  return fetchImpl("https://api.openai.com/v1/chat/completions", req);
+}
 export async function openaiChat(env, feature, init, fetchImpl = fetch) {
-  const res = await fetchImpl("https://api.openai.com/v1/chat/completions", init);
+  let res;
+  try {
+    res = await openaiOnce(init, fetchImpl);
+    if (res.status === 429 || res.status >= 500) throw Object.assign(new Error(`status ${res.status}`), { retry: true });
+  } catch (err) {
+    if (init.signal || !(err?.retry || err?.name === "TimeoutError" || err?.name === "TypeError")) { if (res) return res; throw err; }
+    await new Promise((r) => setTimeout(r, 600));
+    res = await openaiOnce(init, fetchImpl);
+  }
   try {
     if (res.ok) {
       const data = await res.clone().json();
