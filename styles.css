@@ -9157,7 +9157,7 @@ html:not(.pro) .rx-ycols .up b { color: var(--neon-green) !important; } html:not
 html:not(.pro) .rx-ycols span { font-size: 8.5px !important; line-height: 1.25 !important; text-transform: uppercase; color: var(--text-meta) !important; }
 html:not(.pro) .rx-grid { gap: 8px !important; }
 /* Movement sheet */
-html:not(.pro) .rx-sheet-card { background: var(--bg2) !important; border: 1.5px solid var(--card-border); box-shadow: none; }
+html:not(.pro) .rx-sheet-card { background: var(--bg2) !important; border: 1.5px solid var(--card-border); border-bottom: 0 !important; box-shadow: none; }
 html:not(.pro) .rx-sheet .rm-h { color: var(--neon-cyan) !important; }
 html:not(.pro) .rx-sheet .rm-cols span { color: var(--text-meta) !important; }
 html:not(.pro) .rx-sheet .rm-rank li .rm-pts { color: var(--neon-yellow) !important; }
@@ -9185,3 +9185,7 @@ html:not(.pro) .games-list { gap: 8px !important; }
 
 .ask-q[data-reask] { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .1s; }
 .ask-q[data-reask]:active { transform: scale(.97); background: rgba(5, 217, 232, .28); }
+
+/* Replay sheet: pinned to the bottom edge on every phone (dvh, no inset gap). */
+.rx-sheet { position: fixed !important; inset: 0 !important; height: 100dvh; padding: 0 !important; align-items: flex-end !important; justify-content: center !important; }
+.rx-sheet-card { margin: 0 auto !important; max-height: 82dvh !important; min-height: 38dvh; }

@@ -9680,6 +9680,7 @@ function openRecapSheet(kind, title) {
   draw();
   // Picks may still be loading; redraw once they land.
   if (/Loading the picks/.test(body.textContent)) fetchSeasonLedger?.().then(() => !m.classList.contains("hidden") && draw()).catch(() => {});
+  { const c = m.querySelector(".rx-sheet-card"); if (c) { c.style.transform = ""; c.style.opacity = ""; } }
   m.classList.remove("hidden");
 }
 
