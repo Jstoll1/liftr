@@ -1,3 +1,6 @@
+@font-face { font-family: "Barlow Condensed"; font-style: italic; font-weight: 600; font-display: swap; src: url(themes/fonts/barlow-cond-600i.woff2) format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: italic; font-weight: 700; font-display: swap; src: url(themes/fonts/barlow-cond-700i.woff2) format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: italic; font-weight: 800; font-display: swap; src: url(themes/fonts/barlow-cond-800i.woff2) format("woff2"); }
 :root {
   --bg: #0a0014;
   --nav-h: calc(63px + env(safe-area-inset-bottom));
@@ -8960,35 +8963,6 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .rx-tbl em { grid-area: e; text-align: right; font-style: normal; font-size: 11px; }
 .rx-tbl.best em { color: var(--neon-green); } .rx-tbl.worst em { color: var(--neon-pink); }
 
-/* ---- Retro skin for the rebuilt replay (Pro overrides in pro.css) ---- */
-html:not(.pro) .rx-hero { background: radial-gradient(120% 90% at 50% 0%, rgba(var(--arcade-gold-rgb), .22), transparent 60%), var(--ink-2); border: 2px solid var(--arcade-gold); box-shadow: 0 0 0 2px var(--ink), 0 0 18px rgba(var(--arcade-gold-rgb), .35), inset 0 0 20px rgba(var(--arcade-gold-rgb), .08); }
-html:not(.pro) .rx-kicker { font-family: 'Press Start 2P', monospace; font-size: 8px; text-shadow: 0 0 6px rgba(var(--arcade-gold-rgb), .8); }
-html:not(.pro) .rx-champ .rx-cn { font-family: 'Press Start 2P', monospace; font-size: 15px; color: #fff; text-shadow: 0 0 8px rgba(var(--neon-pink-rgb), .8); }
-html:not(.pro) .rx-num b { font-family: 'Press Start 2P', monospace; font-size: 22px; color: var(--arcade-gold); text-shadow: 0 0 10px rgba(var(--arcade-gold-rgb), .9), 2px 2px 0 #7a4b00; }
-html:not(.pro) .rx-step { background: rgba(var(--neon-cyan-rgb), .08); border: 1px solid rgba(var(--neon-cyan-rgb), .35); }
-html:not(.pro) .rx-step.s1 { background: rgba(var(--arcade-gold-rgb), .14); border-color: var(--arcade-gold); box-shadow: 0 0 10px rgba(var(--arcade-gold-rgb), .35); }
-html:not(.pro) .rx-step i { font-family: 'Press Start 2P', monospace; font-size: 10px; color: var(--neon-yellow); }
-html:not(.pro) .rx-you { background: var(--ink-2); border: 1px solid rgba(var(--neon-purple-rgb), .5); box-shadow: 0 0 12px rgba(var(--neon-purple-rgb), .2); }
-html:not(.pro) .rx-yl { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-cyan); text-shadow: 0 0 6px rgba(var(--neon-cyan-rgb), .7); }
-html:not(.pro) .rx-ycols > div { background: rgba(var(--neon-cyan-rgb), .06); border: 1px solid rgba(var(--neon-cyan-rgb), .25); }
-html:not(.pro) .rx-ycols b { font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; }
-html:not(.pro) .rx-ycols .up b { color: var(--neon-green); text-shadow: 0 0 8px rgba(var(--neon-green-rgb), .8); }
-html:not(.pro) .rx-ycols .dn b { color: var(--neon-pink); text-shadow: 0 0 8px rgba(var(--neon-pink-rgb), .8); }
-html:not(.pro) .recap-card.rx { border-color: color-mix(in srgb, var(--c, var(--neon-cyan)) 60%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--c, var(--neon-cyan)) 22%, transparent), inset 0 0 18px color-mix(in srgb, var(--c, var(--neon-cyan)) 8%, transparent); }
-html:not(.pro) .recap-card.rx .recap-head { color: var(--c, var(--neon-cyan)); text-shadow: 0 0 6px color-mix(in srgb, var(--c, var(--neon-cyan)) 70%, transparent); }
-html:not(.pro) .recap-card.rx .recap-main .recap-pick { color: #fff; }
-html:not(.pro) .rx-dots.hit i.on { background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
-html:not(.pro) .rx-bar { background: rgba(var(--neon-pink-rgb), .12); }
-html:not(.pro) .rx-bar i { background: linear-gradient(90deg, var(--neon-pink), #ff6b9d); box-shadow: 0 0 10px rgba(var(--neon-pink-rgb), .7); }
-html:not(.pro) .rx-split i { background: rgba(var(--neon-cyan-rgb), .22); color: #e8fdff; } html:not(.pro) .rx-split i + i { background: rgba(var(--neon-pink-rgb), .28); color: #ffe6f0; }
-html:not(.pro) .rx-climb i.to { color: var(--neon-green); text-shadow: 0 0 8px rgba(var(--neon-green-rgb), .7); }
-html:not(.pro) .rx-locks i.hit { filter: drop-shadow(0 0 4px rgba(var(--arcade-gold-rgb), .9)); }
-html:not(.pro) .rx-locks i.me { color: var(--neon-cyan); }
-html:not(.pro) .rx-tbl { background: rgba(var(--neon-cyan-rgb), .06); border: 1px solid rgba(var(--neon-cyan-rgb), .22); }
-html:not(.pro) .rx-tbl b { font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--neon-yellow); }
-html:not(.pro) .rx-tbl.best em { color: var(--neon-green); text-shadow: 0 0 6px rgba(var(--neon-green-rgb), .7); }
-html:not(.pro) .rx-tbl.worst em { color: var(--neon-pink); text-shadow: 0 0 6px rgba(var(--neon-pink-rgb), .7); }
-html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 0 -6px 24px rgba(var(--neon-cyan-rgb), .3); }
 /* The preview banner stays on one line and off the header. */
 .preview-flag { white-space: nowrap; font-size: 6.5px !important; }
 /* BAD pass: movement and coin flip tiles say it once (the graphic), so
@@ -9111,43 +9085,94 @@ html:root .tpoll-card .tpoll-opts button[data-tv="retro"] { background: repeatin
 html:root .tpoll-card .tpoll-opts button[data-tv="retro"] span { filter: drop-shadow(0 0 6px #05d9e8) drop-shadow(0 0 2px #fff); }
 html:root .tpoll-card .tpoll-opts button[data-tv="retro"] b { color: #fff200 !important; text-shadow: 0 0 2px #fff, 0 0 8px #ff2bd6, 0 0 14px #ff2079, 1px 1px 0 rgba(5,217,232,.8) !important; }
 /* ==== RETRO: week replay (one block; see CLAUDE.md "Retro arcade rules") ====
-   Each card wears one neon from the palette; colour lives in tokens. */
-html:not(.pro) .recap-card.rx.hit { --rxc: var(--neon-green-rgb); }
-html:not(.pro) .recap-card.rx.miss { --rxc: var(--neon-pink-rgb); }
-html:not(.pro) .recap-card.rx.move { --rxc: var(--neon-cyan-rgb); }
-html:not(.pro) .recap-card.rx.split { --rxc: var(--arcade-gold-rgb); }
-html:not(.pro) .recap-card.rx.tb { --rxc: var(--neon-orange-rgb); }
-html:not(.pro) .recap-card.rx.lk { --rxc: var(--neon-purple-rgb); }
-html:not(.pro) .recap-card.rx[class*=" "] { border: 2px solid rgba(var(--rxc), .7) !important; border-radius: 10px !important; background: linear-gradient(180deg, rgba(var(--rxc), .1), transparent 45%), repeating-linear-gradient(0deg, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px), var(--bg2) !important; box-shadow: 0 4px 0 rgba(var(--rxc), .28) !important; padding: 8px 10px !important; }
-html:not(.pro) .recap-card.rx .recap-head { color: rgb(var(--rxc)) !important; text-shadow: none !important; margin-bottom: 4px !important; }
-html:not(.pro) .recap-card.rx .recap-main { color: #fff !important; text-shadow: none !important; font-size: 12px !important; line-height: 1.2 !important; }
-html:not(.pro) .recap-card.rx .recap-pick { font-size: 13px !important; }
-html:not(.pro) .recap-card.rx .recap-sub { color: var(--text-meta) !important; font-size: 10.5px !important; line-height: 1.3 !important; margin-top: 2px !important; }
-html:not(.pro) .recap-card.rx .recap-stat b { color: rgb(var(--rxc)) !important; font-family: 'Press Start 2P', monospace !important; font-size: 13px !important; text-shadow: 2px 2px 0 rgba(0, 0, 0, .7) !important; }
-html:not(.pro) .recap-card.rx .recap-art { width: 40px !important; height: 40px !important; }
-html:not(.pro) .recap-card.rx .recap-logo { width: 36px !important; height: 36px !important; }
-html:not(.pro) .recap-card.rx .rx-viz { margin-top: 6px !important; }
-html:not(.pro) .rx-grid { gap: 6px !important; }
-html:not(.pro) .rx-grid > .rx-tile .recap-stat b { font-size: 12px !important; }
-html:not(.pro) .rx-tbl { padding: 4px 7px !important; }
-html:not(.pro) .rx-tbl b { font-size: 10px !important; }
-html:not(.pro) .rx-tbw { gap: 4px !important; }
-/* Your week: one strip of four stats, thin dividers. */
-html:not(.pro) .rx-you { padding: 8px !important; }
+   Arcade broadcast: navy glass, chamfered frames, cyan and pink only,
+   italic condensed display type. Pick of the week is cyan, worst pick pink,
+   tiles share the purple frame. */
+html:not(.pro) .recap-panel { background: none !important; box-shadow: none !important; border: 0 !important; padding: 0 !important; }
+html:not(.pro) .recap-panel::before, html:not(.pro) .recap-panel::after { display: none !important; }
+html:not(.pro) .recap-panel { --rx-ink: #0c0e1d; --rx-frame: rgba(var(--neon-purple-rgb), .5); --rx-cut: 12px; --rx-disp: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif; }
+/* Chamfered frame: ::before is the border colour, ::after the glass. */
+html:not(.pro) .recap-panel .rx-hero, html:not(.pro) .recap-card.rx { position: relative; isolation: isolate; background: none !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; filter: none !important; opacity: 1 !important; }
+html:not(.pro) .recap-panel .rx-hero::before, html:not(.pro) .recap-card.rx::before,
+html:not(.pro) .recap-panel .rx-hero::after, html:not(.pro) .recap-card.rx::after { content: ""; position: absolute; z-index: -1; clip-path: polygon(var(--rx-cut) 0, 100% 0, 100% calc(100% - var(--rx-cut)), calc(100% - var(--rx-cut)) 100%, 0 100%, 0 var(--rx-cut)); pointer-events: none; }
+html:not(.pro) .recap-panel .rx-hero::before, html:not(.pro) .recap-card.rx::before { inset: 0; background: var(--rx-c, var(--rx-frame)); }
+html:not(.pro) .recap-panel .rx-hero::after, html:not(.pro) .recap-card.rx::after { inset: 1.5px; background: linear-gradient(180deg, rgba(255, 255, 255, .035), transparent 40%), var(--rx-ink); }
+html:not(.pro) .recap-card.rx.hit { --rx-c: var(--neon-cyan); --rx-t: var(--neon-cyan); --rx-t-rgb: var(--neon-cyan-rgb); filter: drop-shadow(0 0 7px rgba(var(--neon-cyan-rgb), .45)) !important; }
+html:not(.pro) .recap-card.rx.miss { --rx-c: rgba(var(--neon-pink-rgb), .75); --rx-t: var(--neon-pink); --rx-t-rgb: var(--neon-pink-rgb); }
+html:not(.pro) .recap-card.rx { --rx-t: var(--neon-cyan); --rx-t-rgb: var(--neon-cyan-rgb); padding: 0 12px 10px !important; }
+/* Heads: wide cards get a slanted tab, tiles a band with a rule under it. */
+html:not(.pro) .recap-card.rx .recap-head { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 15px !important; letter-spacing: .08em !important; text-transform: uppercase; color: var(--rx-t) !important; text-shadow: none !important; margin: 0 -12px 8px !important; padding: 7px 12px 6px; border-bottom: 1px solid var(--rx-c, var(--rx-frame)); }
+html:not(.pro) .recap-card.rx.rx-wide .recap-head { border-bottom: 1.5px solid var(--rx-c); background: linear-gradient(100deg, rgba(var(--rx-t-rgb), .16) 0 58%, transparent 58.2%) !important; }
+html:not(.pro) .recap-card.rx.rx-wide .recap-head::after { content: ""; margin-left: auto; width: 64px; height: 12px; background: repeating-linear-gradient(115deg, rgba(var(--neon-pink-rgb), .7) 0 5px, transparent 5px 10px); }
+html:not(.pro) .recap-card.rx .recap-head img, html:not(.pro) .recap-card.rx .recap-head svg { filter: none; }
+html:not(.pro) .recap-card.rx .recap-you { font-family: var(--rx-disp); font-style: italic; font-weight: 800; background: var(--neon-cyan) !important; color: var(--rx-ink) !important; transform: skewX(-12deg); border-radius: 2px !important; padding: 1px 8px !important; }
+/* Body type */
+html:not(.pro) .recap-card.rx .recap-main, html:not(.pro) .recap-card.rx .recap-pick { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: #fff !important; text-shadow: none !important; font-size: 19px !important; line-height: 1.1 !important; }
+html:not(.pro) .rx-grid > .rx-tile .recap-main, html:not(.pro) .rx-grid > .rx-tile .recap-pick { font-size: 17px !important; }
+html:not(.pro) .recap-card.rx .recap-sub { color: #b9bfd6 !important; font-size: 12px !important; line-height: 1.3 !important; margin-top: 3px !important; }
+html:not(.pro) .recap-card.rx .recap-stat { border-color: rgba(var(--neon-purple-rgb), .45) !important; }
+html:not(.pro) .recap-card.rx .recap-stat b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 34px !important; line-height: 1 !important; color: var(--rx-t) !important; text-shadow: none !important; }
+html:not(.pro) .recap-card.rx .recap-stat span { font-size: 11px !important; letter-spacing: .08em; color: #c9cde0 !important; text-transform: uppercase; }
+html:not(.pro) .recap-card.rx .recap-art { width: 52px !important; height: 52px !important; }
+html:not(.pro) .recap-card.rx .recap-logo { width: 48px !important; height: 48px !important; }
+html:not(.pro) .recap-card.rx .rx-viz { margin-top: 8px !important; }
+/* Name chips: outlined pills */
+html:not(.pro) .recap-card.rx .pick-chip { background: transparent !important; border: 1.5px solid rgba(var(--rx-t-rgb), .7) !important; border-radius: 4px !important; font-family: var(--rx-disp); font-style: italic; font-weight: 700; text-transform: uppercase; font-size: 12px !important; color: #fff !important; padding: 1px 8px !important; box-shadow: none !important; }
+html:not(.pro) .recap-card.rx.hit .pick-chip > :first-child:not(:only-child) { display: none; }
+/* Viz */
+html:not(.pro) .recap-card.rx.hit .rx-dots { display: none !important; }
+html:not(.pro) .rx-bar { background: rgba(255, 255, 255, .06) !important; height: 8px !important; border-radius: 4px; }
+html:not(.pro) .rx-bar i { background: var(--neon-pink) !important; box-shadow: 0 0 8px rgba(var(--neon-pink-rgb), .6) !important; border-radius: 4px; }
+html:not(.pro) .rx-climb { font-family: var(--rx-disp); font-style: italic; font-weight: 800; font-size: 26px; }
+html:not(.pro) .rx-climb i { color: #8d93ad !important; text-shadow: none !important; } html:not(.pro) .rx-climb i.to { color: var(--neon-cyan) !important; }
+html:not(.pro) .rx-split { gap: 8px !important; background: none !important; }
+html:not(.pro) .rx-split i { font-family: var(--rx-disp); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 13px; background: transparent !important; border: 1.5px solid rgba(var(--neon-purple-rgb), .6); border-radius: 4px; color: #fff !important; justify-content: center; }
+html:not(.pro) .rx-split i + i { background: var(--neon-pink) !important; border-color: var(--neon-pink); box-shadow: 0 0 8px rgba(var(--neon-pink-rgb), .5); }
+html:not(.pro) .rx-locks i.hit { filter: grayscale(1) sepia(1) saturate(6) hue-rotate(140deg) brightness(1.15) !important; }
+html:not(.pro) .rx-locks i.miss { filter: grayscale(1) brightness(.6) !important; opacity: .5 !important; }
+html:not(.pro) .rx-locks i.me { outline: 1.5px solid var(--neon-cyan); outline-offset: 1px; border-radius: 3px; }
+html:not(.pro) .rx-tbw { gap: 0 !important; }
+html:not(.pro) .rx-tbl { background: transparent !important; border: 0 !important; border-top: 1px solid rgba(var(--neon-purple-rgb), .3) !important; border-radius: 0 !important; padding: 5px 0 3px !important; }
+html:not(.pro) .rx-tbl .rx-tbk { color: #8d93ad; letter-spacing: .08em; }
+html:not(.pro) .rx-tbl b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 17px !important; color: #fff !important; }
+html:not(.pro) .rx-tbl.best em { color: var(--neon-cyan) !important; } html:not(.pro) .rx-tbl.worst em { color: var(--neon-pink) !important; }
+/* Champion hero: the standout. Cyan frame and glow. */
+html:not(.pro) .recap-panel .rx-hero { --rx-c: var(--neon-cyan); filter: drop-shadow(0 0 9px rgba(var(--neon-cyan-rgb), .5)) !important; padding: 12px 12px 12px !important; }
+html:not(.pro) .rx-kicker { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 700; font-size: 14px !important; letter-spacing: .3em !important; color: #e8eaf6 !important; text-shadow: none !important; }
+html:not(.pro) .rx-champ .rx-cn { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 36px !important; line-height: 1 !important; text-transform: uppercase; color: #fff !important; text-shadow: none !important; }
+html:not(.pro) .rx-num b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 40px !important; line-height: 1 !important; color: var(--neon-pink) !important; text-shadow: none !important; }
+html:not(.pro) .rx-num span { font-family: var(--rx-disp); font-style: italic; font-weight: 700; letter-spacing: .12em; color: #e8eaf6 !important; }
+html:not(.pro) .rx-margin { font-family: var(--rx-disp); font-style: italic; font-weight: 600; text-transform: uppercase; letter-spacing: .22em; font-size: 13px !important; color: #c9cde0 !important; }
+html:not(.pro) .rx-champ .rx-av.big { box-shadow: 0 0 0 2px var(--neon-pink) !important; }
+html:not(.pro) .rx-step { background: transparent !important; border: 1.5px solid rgba(var(--neon-purple-rgb), .6) !important; border-radius: 6px !important; box-shadow: none !important; transform: skewX(-8deg); }
+html:not(.pro) .rx-step > * { transform: skewX(8deg); }
+html:not(.pro) .rx-step b { font-family: var(--rx-disp); font-style: italic; font-weight: 800; text-transform: uppercase; color: #fff !important; }
+html:not(.pro) .rx-step i { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 18px !important; color: #fff !important; }
+html:not(.pro) .rx-step.s1 { border-color: var(--neon-pink) !important; background: rgba(var(--neon-pink-rgb), .1) !important; box-shadow: 0 0 10px rgba(var(--neon-pink-rgb), .45) !important; }
+html:not(.pro) .rx-step.s1 i { color: var(--neon-pink) !important; }
+/* Your week: no frame; a label with a rule, four big stats with dividers. */
+html:not(.pro) .rx-you { background: none !important; border: 0 !important; box-shadow: none !important; padding: 2px 0 4px !important; }
+html:not(.pro) .rx-yl { display: flex; align-items: center; gap: 10px; font-family: var(--rx-disp) !important; font-style: italic; font-weight: 700; font-size: 15px !important; letter-spacing: .3em !important; color: #e8eaf6 !important; text-shadow: none !important; margin-bottom: 6px !important; }
+html:not(.pro) .rx-yl::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(var(--neon-cyan-rgb), .6), rgba(var(--neon-purple-rgb), .2)); }
 html:not(.pro) .rx-ycols { grid-template-columns: repeat(4, 1fr) !important; gap: 0 !important; }
-html:not(.pro) .rx-ycols > div { background: transparent !important; border: 0 !important; border-left: 1px solid rgba(var(--neon-purple-rgb), .3) !important; border-radius: 0 !important; padding: 2px 3px !important; justify-content: flex-start; }
+html:not(.pro) .rx-ycols > div { background: transparent !important; border: 0 !important; border-left: 1px solid rgba(var(--neon-cyan-rgb), .35) !important; border-radius: 0 !important; padding: 2px 3px !important; justify-content: flex-start; }
 html:not(.pro) .rx-ycols > div:first-child { border-left: 0 !important; }
-html:not(.pro) .rx-ycols b { font-size: 16px !important; }
-html:not(.pro) .rx-ycols span { font-size: 9.5px !important; line-height: 1.25 !important; }
+html:not(.pro) .rx-ycols b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 30px !important; line-height: 1 !important; color: #fff !important; text-shadow: none !important; }
+html:not(.pro) .rx-ycols .up b { color: var(--neon-cyan) !important; } html:not(.pro) .rx-ycols .dn b { color: var(--neon-pink) !important; }
+html:not(.pro) .rx-ycols span { font-size: 10px !important; line-height: 1.25 !important; text-transform: uppercase; letter-spacing: .04em; color: #c9cde0 !important; }
+html:not(.pro) .rx-grid { gap: 10px !important; }
 /* Movement sheet */
+html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 0 -6px 24px rgba(var(--neon-cyan-rgb), .3); }
 html:not(.pro) .rx-sheet .rm-h { color: var(--neon-cyan) !important; }
 html:not(.pro) .rx-sheet .rm-cols span { color: var(--text-meta) !important; }
-html:not(.pro) .rx-sheet .rm-rank li .rm-pts { color: var(--neon-yellow) !important; }
-html:not(.pro) .rx-sheet .rm-rank li > span small { color: var(--neon-green) !important; opacity: .85; }
-html:not(.pro) .rx-sheet .rm-rank li > i.up { color: var(--neon-green) !important; }
+html:not(.pro) .rx-sheet .rm-rank li .rm-pts { color: #fff !important; }
+html:not(.pro) .rx-sheet .rm-rank li > span small { color: var(--neon-cyan) !important; opacity: .85; }
+html:not(.pro) .rx-sheet .rm-rank li > i.up { color: var(--neon-cyan) !important; }
 html:not(.pro) .rx-sheet .rm-rank li > i.down { color: var(--neon-pink) !important; }
-html:not(.pro) .rx-sheet .rm-rank li.p1 em { color: var(--arcade-gold) !important; }
+html:not(.pro) .rx-sheet .rm-rank li.p1 em { color: var(--neon-pink) !important; }
 html:not(.pro) .rx-sheet .rm-rank li.me { background: rgba(var(--neon-cyan-rgb), .14) !important; box-shadow: inset 2px 0 0 var(--neon-cyan); border-radius: 4px; }
+/* Backdrop grid in pink, like the arcade floor. */
+html:not(.pro) .synth-grid { background-image: linear-gradient(rgba(var(--neon-pink-rgb), .28) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--neon-pink-rgb), .28) 1px, transparent 1px) !important; }
 
 /* ==== RETRO: layout (one card shape, tight) ==== */
 html:not(.pro) .scorebug, html:not(.pro) .game-card, html:not(.pro) .recap-card, html:not(.pro) .rx-you, html:not(.pro) .pot-table, html:not(.pro) .rankings-list { border-radius: 10px !important; }
