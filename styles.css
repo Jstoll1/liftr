@@ -9231,3 +9231,12 @@ html:not(.pro) .rx-you { position: relative; background: rgba(var(--neon-cyan-rg
 html:not(.pro) .rx-you::after { content: "›"; position: absolute; right: 8px; top: 50%; transform: translateY(-40%); font-size: 20px; line-height: 1; color: rgba(var(--neon-cyan-rgb), .7); }
 html:not(.pro) .rx-you:active { background: rgba(var(--neon-cyan-rgb), .12) !important; border-color: rgba(var(--neon-cyan-rgb), .5) !important; }
 html:not(.pro) .rx-you .rx-yl { margin-right: -16px; }
+/* Your week, balanced: symmetric padding so the stats centre under the
+   label, cyan dividers to match the panel, two-line labels on every stat. */
+html:not(.pro) .rx-you { padding: 6px 22px !important; }
+html:not(.pro) .rx-you .rx-yl { margin-right: 0 !important; }
+html:not(.pro) .rx-ycols > div { border-left-color: rgba(var(--neon-cyan-rgb), .22) !important; align-items: center !important; }
+html:not(.pro) .rx-ycols span { line-height: 1.3 !important; }
+html:not(.pro) .rx-ycols span i { font-style: normal; color: var(--text-dim); text-transform: none; }
+html:not(.pro) .rx-yl::before, html:not(.pro) .rx-yl::after { background: rgba(var(--neon-cyan-rgb), .22) !important; }
+html.pro .rx-ycols span i { font-style: normal; opacity: .7; }
