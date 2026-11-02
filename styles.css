@@ -9263,3 +9263,8 @@ html:not(.pro) .recap-card.rx .recap-body > :last-child, html:not(.pro) .recap-c
 html:not(.pro) .rx-tbl { overflow: hidden; }
 html:not(.pro) .rx-tbl b { font-size: 9px !important; padding-left: 2px !important; }
 html:not(.pro) .rx-tbl em { font-size: 9.5px !important; padding-left: 5px !important; }
+/* Tiebreaker and locks share rhythm: same head height, same line under the
+   headline, rows pinned to the bottom so they line up across the pair. */
+html:not(.pro) .rx-grid > .rx-tile .recap-head { height: 27px !important; box-sizing: border-box; }
+html:not(.pro) .rx-grid > .rx-tile.lk .rx-locks, html:not(.pro) .rx-grid > .rx-tile .recap-sub { min-height: 14px; }
+html:not(.pro) .rx-grid > .rx-tile.tb .rx-viz, html:not(.pro) .rx-grid > .rx-tile.lk .rx-viz { margin-top: auto !important; padding-top: 6px !important; }
