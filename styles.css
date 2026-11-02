@@ -9185,7 +9185,8 @@ html:not(.pro) .rx-split i, html:not(.pro) .rx-split i + i { flex: none !importa
 
 /* Audit: tile heads align with the body; rows keep a gap; locks fit. */
 html:not(.pro) .rx-grid > .rx-tile .recap-head { margin: 0 0 6px !important; padding: 7px 0 6px !important; }
-html:not(.pro) .rx-tbl em { margin-left: 4px !important; }
+html:not(.pro) .rx-tbl em { margin-left: 0 !important; padding-left: 7px !important; min-width: 0; }
+html:not(.pro) .rx-tbl b { padding-left: 4px; }
 html:not(.pro) .rx-grid > .rx-tile.lk .rx-locks { display: flex !important; justify-content: space-between !important; gap: 0 !important; font-size: 11px !important; width: 100% !important; }
 html:not(.pro) .rx-split i { font-size: 10px !important; }
 html:not(.pro) .recap-card.rx .recap-stat span { letter-spacing: 0 !important; }
