@@ -9551,7 +9551,7 @@ let renderRecap = function () {
     const hitPts = L.list.find((x) => x.result === "hit")?.pts;
     // Two boxes, the same shape as the tiebreaker's: who hit, and yours
     // (or who missed, when you had no lock).
-    const box1 = line2("best", "Hit", L.hit.length ? (L.hit.length <= 2 ? nm(L.hit) : `${nm(L.hit.slice(0, 1))} & ${L.hit.length - 1} more`) : "Nobody", hitPts != null ? `+${hitPts}` : "", L.hit.length ? "each" : "");
+    const box1 = line2("best", "Hit", L.hit.length ? (L.hit.length === 1 ? nm(L.hit) : `${L.hit.length} players`) : "Nobody", hitPts != null ? `+${hitPts}` : "", L.hit.length ? "each" : "");
     const box2 = myLk ? line2(myLk.result === "hit" ? "best" : myLk.result === "push" ? "" : "worst", "Your lock", `${esc(myLk.short)} ${esc(myLk.line === "SU" ? "to win" : myLk.line)}`, myLk.result === "hit" ? `+${myLk.pts}` : myLk.result === "push" ? "0" : (myLk.pts < 0 ? "−" + Math.abs(myLk.pts) : "0"), myLk.result === "hit" ? "hit" : myLk.result === "push" ? "push" : "missed")
       : line2("worst", "Missed", L.miss.length ? nm(L.miss) : "Nobody", "", `${L.miss.length} missed`);
     cards.push(["🔒 LOCKS", "lk", lkArt, `<span class="recap-pick">${word}</span>`, pad, "", "", mine(L.hit), `<div class="rx-tbw">${box1}${box2}</div>`]);
@@ -9592,7 +9592,7 @@ let renderRecap = function () {
     `<div class="recap-card rx ${head.has(cls) ? "rx-wide" : "rx-tile"} ${cls}${me ? " me" : ""}" style="--i:${i}" data-rc="${cls}" role="button" tabindex="0" aria-haspopup="dialog">
       <div class="recap-head">${h}${me ? `<span class="recap-you">YOU</span>` : ""}</div>
       <div class="rx-row"><div class="recap-art">${art}</div>
-      <div class="recap-body"><div class="recap-main">${main}</div><div class="recap-sub">${sub}</div></div>
+      <div class="recap-body"><div class="recap-main">${main}</div><div class="recap-sub">${String(sub).replace(/(\d)-(\d)/g, "$1&#8209;$2")}</div></div>
       <div class="recap-stat"><b>${stat}</b><span>${statLabel}</span></div></div>
       ${viz ? `<div class="rx-viz">${viz}</div>` : ""}
     </div>`;

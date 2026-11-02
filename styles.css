@@ -9141,7 +9141,8 @@ html:not(.pro) .recap-panel .rx-hero .rx-av.big { width: 34px !important; height
 html:not(.pro) .rx-podium { gap: 6px !important; margin-top: 6px !important; }
 html:not(.pro) .rx-step { background: transparent !important; border: 1px solid var(--card-border) !important; border-radius: 10px !important; box-shadow: none !important; padding: 3px 6px !important; min-height: 0 !important; }
 html:not(.pro) .rx-step .rx-av { width: 20px !important; height: 20px !important; font-size: 10px !important; }
-html:not(.pro) .rx-step b { color: #fff !important; }
+html:not(.pro) .rx-step b { color: #fff !important; font-size: 11px !important; overflow: visible !important; text-overflow: clip !important; }
+html:not(.pro) .rx-step { gap: 4px !important; padding: 3px 5px !important; }
 html:not(.pro) .rx-step i { font-family: 'Press Start 2P', monospace !important; font-size: 10px !important; color: #fff !important; }
 html:not(.pro) .rx-step.s1 { border-color: var(--arcade-gold) !important; background: rgba(var(--arcade-gold-rgb), .08) !important; }
 html:not(.pro) .rx-step.s1 i { color: var(--arcade-gold) !important; }
@@ -9167,6 +9168,16 @@ html:not(.pro) .rx-sheet .rm-rank li > i.down { color: var(--neon-pink) !importa
 html:not(.pro) .rx-sheet .rm-rank li.p1 em { color: var(--arcade-gold) !important; }
 html:not(.pro) .rx-sheet .rm-rank li.me { background: rgba(var(--neon-cyan-rgb), .14) !important; box-shadow: inset 2px 0 0 var(--neon-cyan); border-radius: 4px; }
 html:not(.pro) .synth-grid { background-image: linear-gradient(rgba(var(--neon-pink-rgb), .22) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--neon-pink-rgb), .22) 1px, transparent 1px) !important; }
+
+/* Calm colour: frames and headings neutral; bright colour only on outcomes
+   (right/wrong numbers, gold champion). Full labels, no truncation. */
+html:not(.pro) .recap-card.rx.hit, html:not(.pro) .recap-card.rx.miss { --rx-c: var(--card-border) !important; }
+html:not(.pro) .recap-card.rx .recap-head { color: var(--text-meta) !important; }
+html:not(.pro) .recap-card.rx.rx-wide .recap-head { background: transparent !important; border-bottom-color: var(--card-border) !important; }
+html:not(.pro) .rx-yl { color: var(--text-meta) !important; }
+html:not(.pro) .recap-card.rx .pick-chip { border-color: var(--card-border) !important; }
+html:not(.pro) .rx-split { flex-direction: column !important; gap: 4px !important; height: auto !important; overflow: visible !important; }
+html:not(.pro) .rx-split i, html:not(.pro) .rx-split i + i { flex: none !important; border-color: var(--card-border) !important; text-overflow: clip !important; }
 
 /* Audit: tile heads align with the body; rows keep a gap; locks fit. */
 html:not(.pro) .rx-grid > .rx-tile .recap-head { margin: 0 0 6px !important; padding: 7px 0 6px !important; }
