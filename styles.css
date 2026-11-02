@@ -9101,35 +9101,35 @@ html:not(.pro) .recap-card.rx.hit { --rx-c: var(--neon-cyan); --rx-t: var(--neon
 html:not(.pro) .recap-card.rx.miss { --rx-c: rgba(var(--neon-pink-rgb), .75); --rx-t: var(--neon-pink); --rx-t-rgb: var(--neon-pink-rgb); }
 html:not(.pro) .recap-card.rx { --rx-t: var(--neon-cyan); --rx-t-rgb: var(--neon-cyan-rgb); padding: 0 10px 8px !important; }
 /* Heads: wide cards get a slanted tab, tiles a band with a rule under it. */
-html:not(.pro) .recap-card.rx .recap-head { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 13px !important; letter-spacing: .08em !important; text-transform: uppercase; color: var(--rx-t) !important; text-shadow: none !important; margin: 0 -10px 6px !important; padding: 4px 10px 3px; border-bottom: 1px solid var(--rx-c, var(--rx-frame)); }
+html:not(.pro) .recap-card.rx .recap-head { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 12px !important; letter-spacing: .08em !important; text-transform: uppercase; color: var(--rx-t) !important; text-shadow: none !important; margin: 0 -10px 5px !important; padding: 3px 10px 2px; border-bottom: 1px solid var(--rx-c, var(--rx-frame)); }
 html:not(.pro) .recap-card.rx.rx-wide .recap-head { border-bottom: 1.5px solid var(--rx-c); background: linear-gradient(100deg, rgba(var(--rx-t-rgb), .16) 0 58%, transparent 58.2%) !important; }
 html:not(.pro) .recap-card.rx.rx-wide .recap-head::after { content: ""; margin-left: auto; width: 64px; height: 12px; background: repeating-linear-gradient(115deg, rgba(var(--neon-pink-rgb), .7) 0 5px, transparent 5px 10px); }
 html:not(.pro) .recap-card.rx .recap-head img, html:not(.pro) .recap-card.rx .recap-head svg { filter: none; }
 html:not(.pro) .recap-card.rx .recap-you { font-family: var(--rx-disp); font-style: italic; font-weight: 800; background: var(--neon-cyan) !important; color: var(--rx-ink) !important; transform: skewX(-12deg); border-radius: 2px !important; padding: 1px 8px !important; }
 /* Body type */
-html:not(.pro) .recap-card.rx .recap-main, html:not(.pro) .recap-card.rx .recap-pick { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: #fff !important; text-shadow: none !important; font-size: 17px !important; line-height: 1.05 !important; }
-html:not(.pro) .rx-grid > .rx-tile .recap-main, html:not(.pro) .rx-grid > .rx-tile .recap-pick { font-size: 15px !important; }
+html:not(.pro) .recap-card.rx .recap-main, html:not(.pro) .recap-card.rx .recap-pick { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: #fff !important; text-shadow: none !important; font-size: 15px !important; line-height: 1.05 !important; }
+html:not(.pro) .rx-grid > .rx-tile .recap-main, html:not(.pro) .rx-grid > .rx-tile .recap-pick { font-size: 13.5px !important; }
 html:not(.pro) .recap-card.rx .recap-sub { color: #b9bfd6 !important; font-size: 11px !important; line-height: 1.25 !important; margin-top: 2px !important; }
 html:not(.pro) .recap-card.rx .recap-stat { border-color: rgba(var(--neon-purple-rgb), .45) !important; }
-html:not(.pro) .recap-card.rx .recap-stat b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 28px !important; line-height: 1 !important; color: var(--rx-t) !important; text-shadow: none !important; }
-html:not(.pro) .recap-card.rx .recap-stat span { font-size: 9.5px !important; letter-spacing: .08em; color: #c9cde0 !important; text-transform: uppercase; }
-html:not(.pro) .recap-card.rx .recap-art { width: 42px !important; height: 42px !important; }
-html:not(.pro) .recap-card.rx .recap-logo { width: 40px !important; height: 40px !important; }
+html:not(.pro) .recap-card.rx .recap-stat b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 22px !important; line-height: 1 !important; color: var(--rx-t) !important; text-shadow: none !important; }
+html:not(.pro) .recap-card.rx .recap-stat span { font-size: 8.5px !important; letter-spacing: .04em; font-family: inherit !important; color: #c9cde0 !important; text-transform: uppercase; }
+html:not(.pro) .recap-card.rx .recap-art { width: 34px !important; height: 34px !important; }
+html:not(.pro) .recap-card.rx .recap-logo { width: 32px !important; height: 32px !important; }
 html:not(.pro) .recap-card.rx .rx-viz { margin-top: 6px !important; }
 html:not(.pro) .rx-grid > .rx-tile .rx-viz { margin-top: 6px !important; padding-top: 0 !important; }
 html:not(.pro) .rx-grid > .rx-tile .rx-row { gap: 2px !important; }
 html:not(.pro) .rx-grid > .rx-tile { gap: 0 !important; justify-content: flex-start !important; }
 /* Name chips: outlined pills */
-html:not(.pro) .recap-card.rx .pick-chip { background: transparent !important; border: 1.5px solid rgba(var(--rx-t-rgb), .7) !important; border-radius: 4px !important; font-family: var(--rx-disp); font-style: italic; font-weight: 700; text-transform: uppercase; font-size: 12px !important; color: #fff !important; padding: 1px 8px !important; box-shadow: none !important; }
+html:not(.pro) .recap-card.rx .pick-chip { background: transparent !important; border: 1.5px solid rgba(var(--rx-t-rgb), .7) !important; border-radius: 4px !important; font-family: var(--rx-disp); font-style: italic; font-weight: 700; text-transform: uppercase; font-size: 11px !important; color: #fff !important; padding: 0 6px !important; box-shadow: none !important; }
 html:not(.pro) .recap-card.rx.hit .pick-chip > :first-child:not(:only-child) { display: none; }
 /* Viz */
 html:not(.pro) .recap-card.rx.hit .rx-dots { display: none !important; }
-html:not(.pro) .rx-bar { background: rgba(255, 255, 255, .06) !important; height: 8px !important; border-radius: 4px; }
+html:not(.pro) .rx-bar { background: rgba(255, 255, 255, .06) !important; height: 6px !important; border-radius: 4px; }
 html:not(.pro) .rx-bar i { background: var(--neon-pink) !important; box-shadow: 0 0 8px rgba(var(--neon-pink-rgb), .6) !important; border-radius: 4px; }
-html:not(.pro) .rx-climb { font-family: var(--rx-disp); font-style: italic; font-weight: 800; font-size: 22px; }
+html:not(.pro) .rx-climb { font-family: var(--rx-disp); font-style: italic; font-weight: 800; font-size: 18px; }
 html:not(.pro) .rx-climb i { color: #8d93ad !important; text-shadow: none !important; } html:not(.pro) .rx-climb i.to { color: var(--neon-cyan) !important; }
 html:not(.pro) .rx-split { gap: 8px !important; background: none !important; }
-html:not(.pro) .rx-split i { font-family: var(--rx-disp); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 13px; background: transparent !important; border: 1.5px solid rgba(var(--neon-purple-rgb), .6); border-radius: 4px; color: #fff !important; justify-content: center; }
+html:not(.pro) .rx-split i { font-family: var(--rx-disp); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 12px; padding: 1px 4px !important; background: transparent !important; border: 1.5px solid rgba(var(--neon-purple-rgb), .6); border-radius: 4px; color: #fff !important; justify-content: center; }
 html:not(.pro) .rx-split i + i { background: var(--neon-pink) !important; border-color: var(--neon-pink); box-shadow: 0 0 8px rgba(var(--neon-pink-rgb), .5); }
 html:not(.pro) .rx-locks i.hit { filter: grayscale(1) sepia(1) saturate(6) hue-rotate(140deg) brightness(1.15) !important; }
 html:not(.pro) .rx-locks i.miss { filter: grayscale(1) brightness(.6) !important; opacity: .5 !important; }
@@ -9143,29 +9143,34 @@ html:not(.pro) .rx-tbl .rx-tbn { white-space: nowrap !important; overflow: hidde
 html:not(.pro) .rx-tbl b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 15px !important; color: #fff !important; }
 html:not(.pro) .rx-tbl.best em { color: var(--neon-cyan) !important; } html:not(.pro) .rx-tbl.worst em { color: var(--neon-pink) !important; }
 /* Champion hero: the standout. Cyan frame and glow. */
-html:not(.pro) .recap-panel .rx-hero { --rx-c: var(--neon-cyan); filter: drop-shadow(0 0 9px rgba(var(--neon-cyan-rgb), .5)) !important; padding: 12px 12px 12px !important; }
-html:not(.pro) .rx-kicker { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 700; font-size: 14px !important; letter-spacing: .3em !important; color: #e8eaf6 !important; text-shadow: none !important; }
-html:not(.pro) .rx-champ .rx-cn { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 36px !important; line-height: 1 !important; text-transform: uppercase; color: #fff !important; text-shadow: none !important; }
-html:not(.pro) .rx-num b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 40px !important; line-height: 1 !important; color: var(--neon-pink) !important; text-shadow: none !important; }
+html:not(.pro) .recap-panel .rx-hero { --rx-c: var(--neon-cyan); filter: drop-shadow(0 0 9px rgba(var(--neon-cyan-rgb), .5)) !important; padding: 8px 10px !important; }
+html:not(.pro) .recap-panel .rx-hero .rx-av.big { width: 34px !important; height: 34px !important; font-size: 16px !important; }
+html:not(.pro) .rx-champ { gap: 8px !important; margin: 2px 0 !important; }
+html:not(.pro) .rx-podium { gap: 6px !important; margin-top: 6px !important; }
+html:not(.pro) .rx-step { padding: 3px 6px !important; min-height: 0 !important; }
+html:not(.pro) .rx-step .rx-av { width: 20px !important; height: 20px !important; font-size: 10px !important; }
+html:not(.pro) .rx-kicker { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 700; font-size: 11px !important; letter-spacing: .25em !important; color: #e8eaf6 !important; text-shadow: none !important; }
+html:not(.pro) .rx-champ .rx-cn { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 26px !important; line-height: 1 !important; text-transform: uppercase; color: #fff !important; text-shadow: none !important; }
+html:not(.pro) .rx-num b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 28px !important; line-height: 1 !important; color: var(--neon-pink) !important; text-shadow: none !important; }
 html:not(.pro) .rx-num span { font-family: var(--rx-disp); font-style: italic; font-weight: 700; letter-spacing: .12em; color: #e8eaf6 !important; }
-html:not(.pro) .rx-margin { font-family: var(--rx-disp); font-style: italic; font-weight: 600; text-transform: uppercase; letter-spacing: .22em; font-size: 13px !important; color: #c9cde0 !important; }
+html:not(.pro) .rx-margin { font-family: var(--rx-disp); font-style: italic; font-weight: 600; text-transform: uppercase; letter-spacing: .18em; font-size: 10.5px !important; color: #c9cde0 !important; }
 html:not(.pro) .rx-champ .rx-av.big { box-shadow: 0 0 0 2px var(--neon-pink) !important; }
 html:not(.pro) .rx-step { background: transparent !important; border: 1.5px solid rgba(var(--neon-purple-rgb), .6) !important; border-radius: 6px !important; box-shadow: none !important; transform: skewX(-8deg); }
 html:not(.pro) .rx-step > * { transform: skewX(8deg); }
 html:not(.pro) .rx-step b { font-family: var(--rx-disp); font-style: italic; font-weight: 800; text-transform: uppercase; color: #fff !important; }
-html:not(.pro) .rx-step i { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 18px !important; color: #fff !important; }
+html:not(.pro) .rx-step i { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 15px !important; color: #fff !important; }
 html:not(.pro) .rx-step.s1 { border-color: var(--neon-pink) !important; background: rgba(var(--neon-pink-rgb), .1) !important; box-shadow: 0 0 10px rgba(var(--neon-pink-rgb), .45) !important; }
 html:not(.pro) .rx-step.s1 i { color: var(--neon-pink) !important; }
 /* Your week: no frame; a label with a rule, four big stats with dividers. */
 html:not(.pro) .rx-you { background: none !important; border: 0 !important; box-shadow: none !important; padding: 2px 0 4px !important; }
-html:not(.pro) .rx-yl { display: flex; align-items: center; gap: 10px; font-family: var(--rx-disp) !important; font-style: italic; font-weight: 700; font-size: 15px !important; letter-spacing: .3em !important; color: #e8eaf6 !important; text-shadow: none !important; margin-bottom: 6px !important; }
+html:not(.pro) .rx-yl { display: flex; align-items: center; gap: 10px; font-family: var(--rx-disp) !important; font-style: italic; font-weight: 700; font-size: 11px !important; letter-spacing: .25em !important; color: #e8eaf6 !important; text-shadow: none !important; margin-bottom: 3px !important; }
 html:not(.pro) .rx-yl::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(var(--neon-cyan-rgb), .6), rgba(var(--neon-purple-rgb), .2)); }
 html:not(.pro) .rx-ycols { grid-template-columns: repeat(4, 1fr) !important; gap: 0 !important; }
 html:not(.pro) .rx-ycols > div { background: transparent !important; border: 0 !important; border-left: 1px solid rgba(var(--neon-cyan-rgb), .35) !important; border-radius: 0 !important; padding: 2px 3px !important; justify-content: flex-start; }
 html:not(.pro) .rx-ycols > div:first-child { border-left: 0 !important; }
-html:not(.pro) .rx-ycols b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 30px !important; line-height: 1 !important; color: #fff !important; text-shadow: none !important; }
+html:not(.pro) .rx-ycols b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 22px !important; line-height: 1 !important; color: #fff !important; text-shadow: none !important; }
 html:not(.pro) .rx-ycols .up b { color: var(--neon-cyan) !important; } html:not(.pro) .rx-ycols .dn b { color: var(--neon-pink) !important; }
-html:not(.pro) .rx-ycols span { font-size: 10px !important; line-height: 1.25 !important; text-transform: uppercase; letter-spacing: .04em; color: #c9cde0 !important; }
+html:not(.pro) .rx-ycols span { font-size: 8.5px !important; line-height: 1.25 !important; text-transform: uppercase; letter-spacing: .04em; color: #c9cde0 !important; }
 html:not(.pro) .rx-grid { gap: 8px !important; }
 /* Movement sheet */
 html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 0 -6px 24px rgba(var(--neon-cyan-rgb), .3); }
