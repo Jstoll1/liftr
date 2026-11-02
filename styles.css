@@ -9177,11 +9177,13 @@ html:not(.pro) .recap-card.rx .recap-stat span { letter-spacing: 0 !important; }
 
 /* ==== RETRO: frames (navy glass, thin purple frame, no glow) ==== */
 html:not(.pro) .home-header:not(.compact) { padding-bottom: 4px !important; }
-html:not(.pro) .home-header .home-logo-img { content: url(themes/wordmark-retro.png); height: 24px !important; width: auto !important; object-fit: contain; filter: none !important; }
+html:not(.pro) .home-header .home-logo-img { content: url(themes/wordmark-retro.png); height: 21px !important; width: auto !important; object-fit: contain; filter: none !important; }
 html:not(.pro) .home-logo-btn:hover .home-logo-img { filter: brightness(1.08) !important; }
-html:not(.pro) .home-header.compact .home-logo-img { height: 24px !important; }
+html:not(.pro) .home-header.compact .home-logo-img { height: 21px !important; }
+html:not(.pro) .home-header.compact { padding-top: max(3px, env(safe-area-inset-top)) !important; padding-bottom: 3px !important; }
+html:not(.pro) .home-header.compact .home-logo-btn { padding: 0 !important; }
 #head-score, .head-cd { display: none !important; }
-html:not(.pro) #me-pill { height: 28px !important; box-sizing: border-box; display: inline-flex !important; top: 50% !important; transform: translateY(-50%) !important; margin: 0 !important; align-items: center !important; border: 1.5px solid rgba(var(--neon-cyan-rgb), .45) !important; border-radius: 15px !important; background: var(--card-bg) !important; box-shadow: none !important; }
+html:not(.pro) #me-pill { height: 24px !important; box-sizing: border-box; display: inline-flex !important; top: 50% !important; transform: translateY(-50%) !important; margin: 0 !important; align-items: center !important; border: 1.5px solid rgba(var(--neon-cyan-rgb), .45) !important; border-radius: 15px !important; background: var(--card-bg) !important; box-shadow: none !important; }
 html:not(.pro) .home-header { background: rgba(10, 12, 24, .97) !important; }
 html:not(.pro) .scorebug, html:not(.pro) .game-card, html:not(.pro) .pot-table, html:not(.pro) .rankings-list { background: var(--card-bg) !important; border: 1.5px solid var(--card-border) !important; box-shadow: none !important; }
 html:not(.pro) .rankings-list::after { display: none !important; }
