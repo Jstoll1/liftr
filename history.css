@@ -388,3 +388,6 @@
 .mini-years { margin-top: 8px; font: 500 11px/1.5 'Orbitron', system-ui, sans-serif; color: var(--cyan); }
 .mini-years:empty { display: none; }
 .name-rank-card { cursor: pointer; }
+
+/* Retro: no empty band above the title. */
+html:not(.pro) .archive-hero { padding-top: 18px !important; padding-bottom: 18px !important; }
