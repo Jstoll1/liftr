@@ -24,6 +24,10 @@
   --s1: var(--card-bg); --s2: #1c0030; --s3: #240040;
   --line: var(--card-border); --line2: rgba(193, 60, 255, 0.55);
   --acc: var(--neon-cyan); --win: var(--neon-green); --loss: var(--neon-pink);
+  /* RGB triplets of the palette, for rgba(var(--x-rgb), a). */
+  --neon-pink-rgb: 255, 32, 121; --neon-cyan-rgb: 5, 217, 232; --neon-purple-rgb: 193, 60, 255;
+  --neon-green-rgb: 57, 255, 136; --arcade-gold-rgb: 255, 210, 63; --neon-orange-rgb: 255, 140, 40;
+  --neon-orange: #ff8c28;
 }
 
 * { box-sizing: border-box; }
@@ -3598,13 +3602,6 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rank-wp i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgba(5, 217, 232, .55), var(--neon-cyan)); transition: width .6s steps(8); }
 .rank-wp.hot i { background: linear-gradient(90deg, rgba(57, 255, 136, .55), var(--neon-green)); }
 .rank-wp b { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6px; color: #fff; text-shadow: 0 0 3px #000, 0 0 2px #000; }
-/* Recap reactions */
-.recap-react { grid-column: 1 / -1; display: flex; gap: 5px; margin-top: 2px; padding-top: 6px; border-top: 1px dashed rgba(255, 255, 255, .08); }
-.rx { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .03); font-size: 12px; line-height: 1; cursor: pointer; filter: grayscale(.8); opacity: .7; }
-.rx.on { filter: none; opacity: 1; }
-.rx.mine { border-color: var(--neon-cyan); background: rgba(5, 217, 232, .12); }
-.rx b { font-family: 'Orbitron', system-ui, sans-serif; font-size: 10px; color: var(--text); }
-.rx:active { transform: scale(1.15); }
 /* Win chance sits in line, where the dotted leader runs. */
 .ranking-main .rank-wp { flex: 1 1 auto; min-width: 60px; display: flex; align-items: center; gap: 6px; height: auto; margin: 0; background: none; overflow: visible; }
 .rank-wp-bar { position: relative; flex: 1; height: 8px; border-radius: 2px; background: rgba(255, 255, 255, .07); overflow: hidden; }
@@ -8964,34 +8961,34 @@ em.since-pill { font-style: normal; font-size: 12px; font-weight: 700; white-spa
 .rx-tbl.best em { color: var(--neon-green); } .rx-tbl.worst em { color: var(--neon-pink); }
 
 /* ---- Retro skin for the rebuilt replay (Pro overrides in pro.css) ---- */
-html:not(.pro) .rx-hero { background: radial-gradient(120% 90% at 50% 0%, rgba(255, 210, 63, .22), transparent 60%), var(--ink-2); border: 2px solid var(--arcade-gold); box-shadow: 0 0 0 2px var(--ink), 0 0 18px rgba(255, 210, 63, .35), inset 0 0 20px rgba(255, 210, 63, .08); }
-html:not(.pro) .rx-kicker { font-family: 'Press Start 2P', monospace; font-size: 8px; text-shadow: 0 0 6px rgba(255, 210, 63, .8); }
-html:not(.pro) .rx-champ .rx-cn { font-family: 'Press Start 2P', monospace; font-size: 15px; color: #fff; text-shadow: 0 0 8px rgba(255, 32, 121, .8); }
-html:not(.pro) .rx-num b { font-family: 'Press Start 2P', monospace; font-size: 22px; color: var(--arcade-gold); text-shadow: 0 0 10px rgba(255, 210, 63, .9), 2px 2px 0 #7a4b00; }
-html:not(.pro) .rx-step { background: rgba(5, 217, 232, .08); border: 1px solid rgba(5, 217, 232, .35); }
-html:not(.pro) .rx-step.s1 { background: rgba(255, 210, 63, .14); border-color: var(--arcade-gold); box-shadow: 0 0 10px rgba(255, 210, 63, .35); }
+html:not(.pro) .rx-hero { background: radial-gradient(120% 90% at 50% 0%, rgba(var(--arcade-gold-rgb), .22), transparent 60%), var(--ink-2); border: 2px solid var(--arcade-gold); box-shadow: 0 0 0 2px var(--ink), 0 0 18px rgba(var(--arcade-gold-rgb), .35), inset 0 0 20px rgba(var(--arcade-gold-rgb), .08); }
+html:not(.pro) .rx-kicker { font-family: 'Press Start 2P', monospace; font-size: 8px; text-shadow: 0 0 6px rgba(var(--arcade-gold-rgb), .8); }
+html:not(.pro) .rx-champ .rx-cn { font-family: 'Press Start 2P', monospace; font-size: 15px; color: #fff; text-shadow: 0 0 8px rgba(var(--neon-pink-rgb), .8); }
+html:not(.pro) .rx-num b { font-family: 'Press Start 2P', monospace; font-size: 22px; color: var(--arcade-gold); text-shadow: 0 0 10px rgba(var(--arcade-gold-rgb), .9), 2px 2px 0 #7a4b00; }
+html:not(.pro) .rx-step { background: rgba(var(--neon-cyan-rgb), .08); border: 1px solid rgba(var(--neon-cyan-rgb), .35); }
+html:not(.pro) .rx-step.s1 { background: rgba(var(--arcade-gold-rgb), .14); border-color: var(--arcade-gold); box-shadow: 0 0 10px rgba(var(--arcade-gold-rgb), .35); }
 html:not(.pro) .rx-step i { font-family: 'Press Start 2P', monospace; font-size: 10px; color: var(--neon-yellow); }
-html:not(.pro) .rx-you { background: var(--ink-2); border: 1px solid rgba(193, 60, 255, .5); box-shadow: 0 0 12px rgba(193, 60, 255, .2); }
-html:not(.pro) .rx-yl { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-cyan); text-shadow: 0 0 6px rgba(5, 217, 232, .7); }
-html:not(.pro) .rx-ycols > div { background: rgba(5, 217, 232, .06); border: 1px solid rgba(5, 217, 232, .25); }
+html:not(.pro) .rx-you { background: var(--ink-2); border: 1px solid rgba(var(--neon-purple-rgb), .5); box-shadow: 0 0 12px rgba(var(--neon-purple-rgb), .2); }
+html:not(.pro) .rx-yl { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-cyan); text-shadow: 0 0 6px rgba(var(--neon-cyan-rgb), .7); }
+html:not(.pro) .rx-ycols > div { background: rgba(var(--neon-cyan-rgb), .06); border: 1px solid rgba(var(--neon-cyan-rgb), .25); }
 html:not(.pro) .rx-ycols b { font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; }
-html:not(.pro) .rx-ycols .up b { color: var(--neon-green); text-shadow: 0 0 8px rgba(57, 255, 136, .8); }
-html:not(.pro) .rx-ycols .dn b { color: var(--neon-pink); text-shadow: 0 0 8px rgba(255, 32, 121, .8); }
+html:not(.pro) .rx-ycols .up b { color: var(--neon-green); text-shadow: 0 0 8px rgba(var(--neon-green-rgb), .8); }
+html:not(.pro) .rx-ycols .dn b { color: var(--neon-pink); text-shadow: 0 0 8px rgba(var(--neon-pink-rgb), .8); }
 html:not(.pro) .recap-card.rx { border-color: color-mix(in srgb, var(--c, var(--neon-cyan)) 60%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--c, var(--neon-cyan)) 22%, transparent), inset 0 0 18px color-mix(in srgb, var(--c, var(--neon-cyan)) 8%, transparent); }
 html:not(.pro) .recap-card.rx .recap-head { color: var(--c, var(--neon-cyan)); text-shadow: 0 0 6px color-mix(in srgb, var(--c, var(--neon-cyan)) 70%, transparent); }
 html:not(.pro) .recap-card.rx .recap-main .recap-pick { color: #fff; }
 html:not(.pro) .rx-dots.hit i.on { background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
-html:not(.pro) .rx-bar { background: rgba(255, 32, 121, .12); }
-html:not(.pro) .rx-bar i { background: linear-gradient(90deg, #ff2079, #ff6b9d); box-shadow: 0 0 10px rgba(255, 32, 121, .7); }
-html:not(.pro) .rx-split i { background: rgba(5, 217, 232, .22); color: #e8fdff; } html:not(.pro) .rx-split i + i { background: rgba(255, 32, 121, .28); color: #ffe6f0; }
-html:not(.pro) .rx-climb i.to { color: var(--neon-green); text-shadow: 0 0 8px rgba(57, 255, 136, .7); }
-html:not(.pro) .rx-locks i.hit { filter: drop-shadow(0 0 4px rgba(255, 210, 63, .9)); }
+html:not(.pro) .rx-bar { background: rgba(var(--neon-pink-rgb), .12); }
+html:not(.pro) .rx-bar i { background: linear-gradient(90deg, var(--neon-pink), #ff6b9d); box-shadow: 0 0 10px rgba(var(--neon-pink-rgb), .7); }
+html:not(.pro) .rx-split i { background: rgba(var(--neon-cyan-rgb), .22); color: #e8fdff; } html:not(.pro) .rx-split i + i { background: rgba(var(--neon-pink-rgb), .28); color: #ffe6f0; }
+html:not(.pro) .rx-climb i.to { color: var(--neon-green); text-shadow: 0 0 8px rgba(var(--neon-green-rgb), .7); }
+html:not(.pro) .rx-locks i.hit { filter: drop-shadow(0 0 4px rgba(var(--arcade-gold-rgb), .9)); }
 html:not(.pro) .rx-locks i.me { color: var(--neon-cyan); }
-html:not(.pro) .rx-tbl { background: rgba(5, 217, 232, .06); border: 1px solid rgba(5, 217, 232, .22); }
+html:not(.pro) .rx-tbl { background: rgba(var(--neon-cyan-rgb), .06); border: 1px solid rgba(var(--neon-cyan-rgb), .22); }
 html:not(.pro) .rx-tbl b { font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--neon-yellow); }
-html:not(.pro) .rx-tbl.best em { color: var(--neon-green); text-shadow: 0 0 6px rgba(57, 255, 136, .7); }
-html:not(.pro) .rx-tbl.worst em { color: var(--neon-pink); text-shadow: 0 0 6px rgba(255, 32, 121, .7); }
-html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 0 -6px 24px rgba(5, 217, 232, .3); }
+html:not(.pro) .rx-tbl.best em { color: var(--neon-green); text-shadow: 0 0 6px rgba(var(--neon-green-rgb), .7); }
+html:not(.pro) .rx-tbl.worst em { color: var(--neon-pink); text-shadow: 0 0 6px rgba(var(--neon-pink-rgb), .7); }
+html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 0 -6px 24px rgba(var(--neon-cyan-rgb), .3); }
 /* The preview banner stays on one line and off the header. */
 .preview-flag { white-space: nowrap; font-size: 6.5px !important; }
 /* BAD pass: movement and coin flip tiles say it once (the graphic), so
@@ -9113,46 +9110,53 @@ html:root .tpoll-card .tpoll-opts:has(.dodge-2), html:root .tpoll-card .tpoll-op
 html:root .tpoll-card .tpoll-opts button[data-tv="retro"] { background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px), radial-gradient(120% 90% at 50% 110%, rgba(255,32,121,.55), transparent 60%), radial-gradient(100% 80% at 50% -10%, rgba(5,217,232,.45), transparent 60%), linear-gradient(180deg, #3a0070, #12002a) !important; border: 2px solid #ff2bd6 !important; box-shadow: 0 0 6px #ff2bd6, 0 0 18px rgba(255,43,214,.7), inset 0 0 14px rgba(5,217,232,.45) !important; }
 html:root .tpoll-card .tpoll-opts button[data-tv="retro"] span { filter: drop-shadow(0 0 6px #05d9e8) drop-shadow(0 0 2px #fff); }
 html:root .tpoll-card .tpoll-opts button[data-tv="retro"] b { color: #fff200 !important; text-shadow: 0 0 2px #fff, 0 0 8px #ff2bd6, 0 0 14px #ff2079, 1px 1px 0 rgba(5,217,232,.8) !important; }
-/* Retro replay: arcade cabinet, colour as an accent only */
-html:not(.pro) .recap-card.rx.hit { --rxc: 57, 255, 136; }
-html:not(.pro) .recap-card.rx.miss { --rxc: 255, 32, 121; }
-html:not(.pro) .recap-card.rx.move { --rxc: 5, 217, 232; }
-html:not(.pro) .recap-card.rx.split { --rxc: 255, 210, 63; }
-html:not(.pro) .recap-card.rx.tb { --rxc: 255, 140, 40; }
-html:not(.pro) .recap-card.rx.lk { --rxc: 193, 60, 255; }
-html:not(.pro) .recap-card.rx[class*=" "] { border: 2px solid rgba(var(--rxc, 193, 60, 255), .85) !important; border-radius: 6px !important; background: linear-gradient(180deg, rgba(var(--rxc, 193, 60, 255), .2), rgba(var(--rxc, 193, 60, 255), .06) 70%), #0d0620 !important; box-shadow: inset 0 3px 0 rgb(var(--rxc, 193, 60, 255)), 0 0 0 2px #05000c, 0 0 12px rgba(var(--rxc, 193, 60, 255), .35) !important; }
-html:not(.pro) .recap-card.rx .recap-head { color: rgb(var(--rxc, 193, 60, 255)) !important; text-shadow: 0 0 6px rgba(var(--rxc, 193, 60, 255), .6); }
-html:not(.pro) .recap-card.rx .recap-main { color: #fff !important; text-shadow: none; }
-html:not(.pro) .recap-card.rx .recap-stat b { color: rgb(var(--rxc, 193, 60, 255)) !important; text-shadow: 2px 2px 0 rgba(0,0,0,.6) !important; }
-html:not(.pro) .recap-card.rx .recap-sub { color: #b9acd9 !important; }
-/* Retro replay: tighter */
-html:not(.pro) .rx-grid { gap: 6px !important; }
-html:not(.pro) .recap-card.rx { padding: 8px 10px !important; border-radius: 12px !important; }
-html:not(.pro) .recap-card.rx .recap-head { margin-bottom: 4px !important; }
-html:not(.pro) .recap-card.rx .recap-main { font-size: 12px !important; line-height: 1.2 !important; }
+/* ==== RETRO: week replay (one block; see CLAUDE.md "Retro arcade rules") ====
+   Each card wears one neon from the palette; colour lives in tokens. */
+html:not(.pro) .recap-card.rx.hit { --rxc: var(--neon-green-rgb); }
+html:not(.pro) .recap-card.rx.miss { --rxc: var(--neon-pink-rgb); }
+html:not(.pro) .recap-card.rx.move { --rxc: var(--neon-cyan-rgb); }
+html:not(.pro) .recap-card.rx.split { --rxc: var(--arcade-gold-rgb); }
+html:not(.pro) .recap-card.rx.tb { --rxc: var(--neon-orange-rgb); }
+html:not(.pro) .recap-card.rx.lk { --rxc: var(--neon-purple-rgb); }
+html:not(.pro) .recap-card.rx[class*=" "] { border: 2px solid rgb(var(--rxc)) !important; border-radius: 10px !important; background: radial-gradient(120% 70% at 0% 0%, rgba(var(--rxc), .2), transparent 60%), repeating-linear-gradient(0deg, rgba(0, 0, 0, .18) 0 1px, transparent 1px 3px), var(--bg2) !important; box-shadow: 0 0 0 2px var(--bg), 0 0 12px rgba(var(--rxc), .4), inset 0 0 14px rgba(var(--rxc), .1) !important; padding: 8px 10px !important; }
+html:not(.pro) .recap-card.rx .recap-head { color: rgb(var(--rxc)) !important; text-shadow: 0 0 6px rgba(var(--rxc), .9) !important; margin-bottom: 4px !important; }
+html:not(.pro) .recap-card.rx .recap-main { color: #fff !important; text-shadow: 0 0 8px rgba(var(--rxc), .5) !important; font-size: 12px !important; line-height: 1.2 !important; }
 html:not(.pro) .recap-card.rx .recap-pick { font-size: 13px !important; }
-html:not(.pro) .recap-card.rx .recap-sub { font-size: 10.5px !important; line-height: 1.3 !important; margin-top: 2px !important; }
+html:not(.pro) .recap-card.rx .recap-sub { color: var(--text-meta) !important; font-size: 10.5px !important; line-height: 1.3 !important; margin-top: 2px !important; }
+html:not(.pro) .recap-card.rx .recap-stat b { color: rgb(var(--rxc)) !important; text-shadow: 0 0 10px rgba(var(--rxc), .9) !important; }
 html:not(.pro) .recap-card.rx .recap-art { width: 40px !important; height: 40px !important; }
 html:not(.pro) .recap-card.rx .recap-logo { width: 36px !important; height: 36px !important; }
 html:not(.pro) .recap-card.rx .rx-viz { margin-top: 6px !important; }
+html:not(.pro) .rx-grid { gap: 6px !important; }
 html:not(.pro) .rx-grid > .rx-tile .recap-stat b { font-size: 18px !important; }
 html:not(.pro) .rx-tbl { padding: 4px 7px !important; }
 html:not(.pro) .rx-tbl b { font-size: 10px !important; }
 html:not(.pro) .rx-tbw { gap: 4px !important; }
-/* Retro movement sheet: neon */
-html:not(.pro) .rx-sheet-card { background: #0f0820 !important; }
-html:not(.pro) .rx-sheet .rm-h { color: #05d9e8 !important; }
-html:not(.pro) .rx-sheet .rm-cols span { color: #c9b8ff !important; }
+/* Your week: one strip of four stats, thin dividers. */
+html:not(.pro) .rx-you { padding: 8px !important; }
+html:not(.pro) .rx-ycols { grid-template-columns: repeat(4, 1fr) !important; gap: 0 !important; }
+html:not(.pro) .rx-ycols > div { background: transparent !important; border: 0 !important; border-left: 1px solid rgba(var(--neon-purple-rgb), .3) !important; border-radius: 0 !important; padding: 2px 3px !important; justify-content: flex-start; }
+html:not(.pro) .rx-ycols > div:first-child { border-left: 0 !important; }
+html:not(.pro) .rx-ycols b { font-size: 16px !important; }
+html:not(.pro) .rx-ycols span { font-size: 9.5px !important; line-height: 1.25 !important; }
+/* Movement sheet */
+html:not(.pro) .rx-sheet .rm-h { color: var(--neon-cyan) !important; }
+html:not(.pro) .rx-sheet .rm-cols span { color: var(--text-meta) !important; }
 html:not(.pro) .rx-sheet .rm-rank li .rm-pts { color: var(--neon-yellow) !important; }
-html:not(.pro) .rx-sheet .rm-rank li > span small { color: #39ff88 !important; opacity: .85; }
-html:not(.pro) .rx-sheet .rm-rank li > i.up { color: #39ff88 !important; }
-html:not(.pro) .rx-sheet .rm-rank li > i.down { color: #ff2079 !important; }
-html:not(.pro) .rx-sheet .rm-rank li.p1 em { color: #ffd23f !important; text-shadow: 0 0 6px rgba(255,210,63,.9); }
-html:not(.pro) .rx-sheet .rm-rank li.p2 em { color: #d8e1ee !important; }
-html:not(.pro) .rx-sheet .rm-rank li.p3 em { color: #ff9a4a !important; }
-html:not(.pro) .rx-sheet .rm-rank li.me { background: rgba(5,217,232,.14) !important; box-shadow: inset 2px 0 0 #05d9e8; border-radius: 4px; }
+html:not(.pro) .rx-sheet .rm-rank li > span small { color: var(--neon-green) !important; opacity: .85; }
+html:not(.pro) .rx-sheet .rm-rank li > i.up { color: var(--neon-green) !important; }
+html:not(.pro) .rx-sheet .rm-rank li > i.down { color: var(--neon-pink) !important; }
+html:not(.pro) .rx-sheet .rm-rank li.p1 em { color: var(--arcade-gold) !important; }
+html:not(.pro) .rx-sheet .rm-rank li.me { background: rgba(var(--neon-cyan-rgb), .14) !important; box-shadow: inset 2px 0 0 var(--neon-cyan); border-radius: 4px; }
+
+/* ==== RETRO: layout (one card shape, tight) ==== */
+html:not(.pro) .scorebug, html:not(.pro) .game-card, html:not(.pro) .recap-card, html:not(.pro) .rx-you, html:not(.pro) .pot-table, html:not(.pro) .rankings-list { border-radius: 10px !important; }
+html:not(.pro) .scorebug, html:not(.pro) .game-card { border-width: 1.5px !important; }
+html:not(.pro) .game-card { padding: 6px 9px !important; }
+html:not(.pro) .locked-result { padding: 2px 2px 0 !important; }
+html:not(.pro) .hz-row.lr-hz { padding: 0 !important; }
+html:not(.pro) .lr-foot { padding: 5px 8px 1px !important; }
+html:not(.pro) .games-list { gap: 8px !important; }
+
 .ask-q[data-reask] { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .1s; }
 .ask-q[data-reask]:active { transform: scale(.97); background: rgba(5, 217, 232, .28); }
-
-/* The replay cards share class .rx with the old reaction chips (80% greyscale, 70% opacity). Keep them out of it. */
-.recap-card.rx { filter: none !important; opacity: 1 !important; }

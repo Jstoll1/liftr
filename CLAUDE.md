@@ -51,3 +51,24 @@ When Jake says "check Live", run it, fix what it lists, and add the
 `fixes.json` entries as above. Needs `BROCHIEFS_KEY` in the environment and
 `liftr-ai.jhs797.workers.dev` allowed by its network policy. Never run it in
 a GitHub Action and never commit its output.
+
+## Retro arcade rules
+Retro is the base look (`styles.css`; Pro overrides in `themes/pro.css`).
+Keep it a clean arcade, not a funhouse:
+
+- **Palette, with meaning**: deep purple ink (`--bg`, `--bg2`); cyan =
+  you / live / structure; green = right / won; pink = wrong / lost; gold =
+  money / champion; purple = frames. The week replay is the one place each
+  card wears its own neon. No new colours: use the tokens in `:root`
+  (`var(--neon-*)`, `rgba(var(--*-rgb), a)`), never raw hex in a Retro rule.
+- **Type**: pixel font (Press Start 2P) for kickers and headings only; body
+  stays plain.
+- **One card shape**: 10px corners, 1.5px purple frame. No boxes inside
+  boxes; stats sit on one line with thin dividers.
+- **One standout per screen** (logo, leaderboard frame, replay cards);
+  everything else stays quiet.
+- **One block per component**: change a Retro rule where it lives (search
+  `==== RETRO:`); never append another override layer below it.
+- Run `node scripts/check-retro.mjs` before pushing style changes, and
+  screenshot with animations finished (not disabled) so the check matches
+  a real phone.
