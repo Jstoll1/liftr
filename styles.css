@@ -9180,7 +9180,8 @@ html:not(.pro) .home-header:not(.compact) { padding-bottom: 4px !important; }
 html:not(.pro) .home-logo-img { height: 36px !important; filter: saturate(.85) brightness(.95) !important; }
 html:not(.pro) .home-logo-btn:hover .home-logo-img { filter: saturate(.85) brightness(1.05) !important; }
 html:not(.pro) .home-header.compact .home-logo-img { height: 22px !important; }
-html:not(.pro) #head-score, html:not(.pro) #me-pill { height: 28px !important; box-sizing: border-box; display: inline-flex !important; align-items: center !important; border: 1.5px solid rgba(var(--neon-cyan-rgb), .45) !important; border-radius: 15px !important; background: var(--card-bg) !important; box-shadow: none !important; }
+html:not(.pro) #head-score, html:not(.pro) .head-cd { display: none !important; }
+html:not(.pro) #me-pill { height: 28px !important; box-sizing: border-box; display: inline-flex !important; top: 50% !important; transform: translateY(-50%) !important; margin: 0 !important; align-items: center !important; border: 1.5px solid rgba(var(--neon-cyan-rgb), .45) !important; border-radius: 15px !important; background: var(--card-bg) !important; box-shadow: none !important; }
 html:not(.pro) .home-header { background: rgba(10, 12, 24, .97) !important; }
 html:not(.pro) .scorebug, html:not(.pro) .game-card, html:not(.pro) .pot-table, html:not(.pro) .rankings-list { background: var(--card-bg) !important; border: 1.5px solid var(--card-border) !important; box-shadow: none !important; }
 html:not(.pro) .rankings-list::after { display: none !important; }

@@ -1248,7 +1248,7 @@ function fitHeaderLogo() {
   if (!img) return;
   const btn = img.closest("button") || img;
   img.style.maxWidth = ""; btn.style.transform = "";
-  const left = [document.getElementById("head-score"), document.getElementById("header-countdown")].find((el) => el && !el.classList.contains("hidden"));
+  const left = [document.getElementById("head-score"), document.getElementById("header-countdown")].find((el) => el && !el.classList.contains("hidden") && el.offsetWidth > 0);
   if (!left) return;
   const row = homeHeader.querySelector(".head-row") || homeHeader;
   const rb = row.getBoundingClientRect(), mid = rb.left + rb.width / 2;
