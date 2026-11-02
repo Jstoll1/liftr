@@ -9221,3 +9221,6 @@ html:not(.pro) .games-list { gap: 8px !important; }
 .rx-sheet-card { margin: 0 auto !important; width: min(440px, 100%) !important; max-height: 78dvh !important; min-height: 0 !important; border-radius: 14px !important; border-bottom: 1.5px solid var(--card-border) !important; padding-bottom: 14px !important; }
 .rx-sheet-card::before { display: none !important; }
 .preview-flag { display: none !important; }
+/* Your week: label centred on its rule. */
+html:not(.pro) .rx-yl::before { content: ""; flex: 1; height: 1px; background: var(--card-border); }
+html:not(.pro) .rx-yl { justify-content: center; text-align: center; }
