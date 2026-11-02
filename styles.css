@@ -9273,3 +9273,5 @@ html:not(.pro) .rx-grid > .rx-tile.tb .rx-viz, html:not(.pro) .rx-grid > .rx-til
 body:has(.modal-overlay:not(.hidden), .wpx-overlay:not(.hidden)) #app-scroll { overflow: hidden !important; touch-action: none; }
 .modal-overlay, .wpx-overlay { overscroll-behavior: contain; touch-action: pan-y; }
 .modal-overlay .modal-card, .wpx-overlay .wpx-card, .rx-sheet-card { overscroll-behavior: contain; }
+/* Theme poll is a hard gate: above every sheet, nav and pop-up. */
+#theme-poll { z-index: 2147483000 !important; position: fixed !important; inset: 0 !important; }
