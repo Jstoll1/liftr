@@ -1244,6 +1244,9 @@ function renderHeadScore() {
 // chip changes width (KICK 21H 22M, T-1ST 06 PTS +4), so instead of a
 // guessed max size the logo is measured to whatever room the chips leave,
 // with a small gap either side. No chip on the left, no limit.
+// Retro wears its own wordmark: set the file directly (iOS can ignore a
+// CSS content swap on an img).
+if (window.APP_STYLE !== "pro") { const li = document.querySelector(".home-logo-img"); if (li && !/wordmark-retro/.test(li.src)) li.src = "themes/wordmark-retro.png"; }
 function fitHeaderLogo() {
   const img = homeHeader.querySelector(".home-logo-img");
   if (!img) return;
