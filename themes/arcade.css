@@ -1,0 +1,27 @@
+/* Retro arcade, retooled (preview, html.arc). Same identity: pink chrome
+   logo, purple and cyan neon on deep purple, pixel headings. Rules:
+   one card shape (10px corners, 1.5px purple frame); neon marks meaning
+   (cyan = you/live, green = right, pink = wrong, gold = money/champion);
+   tight padding; one standout per screen. */
+
+/* Card shape */
+html.arc .scorebug, html.arc .game-card, html.arc .recap-card, html.arc .rx-you, html.arc .pot-table, html.arc .rankings-list { border-radius: 10px !important; }
+html.arc .scorebug, html.arc .game-card { border-width: 1.5px !important; }
+
+/* Picks: less air in each game card */
+html.arc .game-card { padding: 6px 9px !important; }
+html.arc .game-card .game-meta { min-height: 0 !important; }
+html.arc .locked-result { padding: 2px 2px 0 !important; }
+html.arc .hz-row.lr-hz { padding: 0 !important; }
+html.arc .lr-foot { padding: 5px 8px 1px !important; }
+html.arc .games-list { gap: 8px !important; }
+
+/* History: no empty band above the title */
+html.arc .archive-hero { padding-top: 18px !important; padding-bottom: 18px !important; }
+
+/* Replay: the bright per-card neon, tight */
+html.arc .recap-card.rx[class*=" "] { border: 2px solid rgb(var(--rxc, 193, 60, 255)) !important; border-radius: 10px !important; background: radial-gradient(120% 70% at 0% 0%, rgba(var(--rxc, 193, 60, 255), .2), transparent 60%), repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px), #12002a !important; box-shadow: 0 0 0 2px #0a0014, 0 0 12px rgba(var(--rxc, 193, 60, 255), .4), inset 0 0 14px rgba(var(--rxc, 193, 60, 255), .1) !important; }
+html.arc .recap-card.rx .recap-head { color: rgb(var(--rxc, 193, 60, 255)) !important; text-shadow: 0 0 6px rgba(var(--rxc, 193, 60, 255), .9) !important; }
+html.arc .recap-card.rx .recap-main { color: #fff !important; text-shadow: 0 0 8px rgba(var(--rxc, 193, 60, 255), .5) !important; }
+html.arc .recap-card.rx .recap-stat b { color: rgb(var(--rxc, 193, 60, 255)) !important; text-shadow: 0 0 10px rgba(var(--rxc, 193, 60, 255), .9) !important; }
+html.arc .recap-card.rx .recap-sub { color: #c9b8ff !important; }
