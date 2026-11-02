@@ -9176,6 +9176,10 @@ html:not(.pro) .recap-card.rx .recap-head { color: var(--text-meta) !important; 
 html:not(.pro) .recap-card.rx.rx-wide .recap-head { background: transparent !important; border-bottom-color: var(--card-border) !important; }
 html:not(.pro) .rx-yl { color: var(--text-meta) !important; }
 html:not(.pro) .recap-card.rx .pick-chip { border-color: var(--card-border) !important; }
+/* Dead space: the coin flip already says the split and both teams, so the
+   pills go (they made the tile taller than Movement); the pick of the week
+   hides its empty viz row. */
+html:not(.pro) .recap-card.rx.split .rx-viz, html:not(.pro) .recap-card.rx.hit .rx-viz, html:not(.pro) .recap-card.rx.move .rx-viz { display: none !important; }
 html:not(.pro) .rx-split { flex-direction: column !important; gap: 4px !important; height: auto !important; overflow: visible !important; }
 html:not(.pro) .rx-split i, html:not(.pro) .rx-split i + i { flex: none !important; border-color: var(--card-border) !important; text-overflow: clip !important; }
 
