@@ -9203,3 +9203,4 @@ html:not(.pro) .games-list { gap: 8px !important; }
 .rx-sheet { position: fixed !important; inset: 0 !important; height: 100dvh; padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom)) !important; align-items: center !important; justify-content: center !important; }
 .rx-sheet-card { margin: 0 auto !important; width: min(440px, 100%) !important; max-height: 78dvh !important; min-height: 0 !important; border-radius: 14px !important; border-bottom: 1.5px solid var(--card-border) !important; padding-bottom: 14px !important; }
 .rx-sheet-card::before { display: none !important; }
+.preview-flag { display: none !important; }
