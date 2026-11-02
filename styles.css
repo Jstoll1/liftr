@@ -9141,6 +9141,9 @@ html:not(.pro) .rx-tbl .rx-tbk { color: #8d93ad; letter-spacing: .08em; }
 html:not(.pro) .rx-tbl { grid-template-columns: minmax(0, 1fr) auto auto !important; grid-template-areas: "k k k" "n g e" !important; column-gap: 5px !important; row-gap: 0 !important; align-items: baseline !important; padding: 3px 0 2px !important; }
 html:not(.pro) .rx-tbl .rx-tbk { font-size: 8px !important; line-height: 1.1 !important; }
 html:not(.pro) .rx-tbl .rx-tbn, html:not(.pro) .rx-tbl b, html:not(.pro) .rx-tbl em { line-height: 1.15 !important; }
+html:not(.pro) .rx-tbl b, html:not(.pro) .rx-tbl em { white-space: nowrap !important; }
+html:not(.pro) .rx-tbl em { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 700; font-size: 13px !important; }
+html:not(.pro) .rx-tbl .rx-tbn { font-size: 12.5px !important; }
 html:not(.pro) .rx-grid > .rx-tile .rx-locks { margin: 2px 0 0 !important; }
 html:not(.pro) .rx-grid > .rx-tile .recap-sub:empty { display: none !important; }
 html:not(.pro) .rx-tbl .rx-tbn { white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; }
