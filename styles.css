@@ -1,3 +1,5 @@
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 600; font-display: swap; src: url(themes/fonts/barlow-cond-600.woff2) format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 700; font-display: swap; src: url(themes/fonts/barlow-cond-700.woff2) format("woff2"); }
 :root {
   --bg: #0a0c18;
   --nav-h: calc(63px + env(safe-area-inset-bottom));
@@ -9179,7 +9181,7 @@ html:not(.pro) .recap-card.rx .pick-chip { border-color: var(--card-border) !imp
 /* Dead space: the coin flip already says the split and both teams, so the
    pills go (they made the tile taller than Movement); the pick of the week
    hides its empty viz row. */
-html:not(.pro) .recap-card.rx.split .rx-viz, html:not(.pro) .recap-card.rx.hit .rx-viz, html:not(.pro) .recap-card.rx.move .rx-viz { display: none !important; }
+html:not(.pro) .recap-card.rx.hit .rx-viz, html:not(.pro) .recap-card.rx.move .rx-viz { display: none !important; }
 html:not(.pro) .rx-split { flex-direction: column !important; gap: 4px !important; height: auto !important; overflow: visible !important; }
 html:not(.pro) .rx-split i, html:not(.pro) .rx-split i + i { flex: none !important; border-color: var(--card-border) !important; text-overflow: clip !important; }
 
@@ -9263,3 +9265,36 @@ html:not(.pro) .recap-card.rx .recap-body > :last-child, html:not(.pro) .recap-c
 html:not(.pro) .rx-tbl { overflow: hidden; }
 html:not(.pro) .rx-tbl b { font-size: 9px !important; padding-left: 2px !important; }
 html:not(.pro) .rx-tbl em { font-size: 9.5px !important; padding-left: 5px !important; }
+
+/* ==== RETRO: replay type and story cards ====
+   Pixel font only for kickers; names, scores and numbers in a clean sports
+   condensed. Muted purple frames; colour and glow only for outcomes. */
+html:not(.pro) .recap-panel { --sport: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif; --card-border: rgba(var(--neon-purple-rgb), .28); }
+html:not(.pro) .recap-card.rx .recap-main, html:not(.pro) .recap-card.rx .recap-pick, html:not(.pro) .rx-champ .rx-cn, html:not(.pro) .rx-step b, html:not(.pro) .recap-card.rx .pick-chip, html:not(.pro) .rx-tbl .rx-tbn { font-family: var(--sport) !important; font-weight: 700 !important; letter-spacing: .01em !important; }
+html:not(.pro) .recap-card.rx .recap-main, html:not(.pro) .recap-card.rx .recap-pick { font-size: 18px !important; }
+html:not(.pro) .rx-grid > .rx-tile .recap-pick { font-size: 16px !important; color: #fff !important; }
+html:not(.pro) .rx-num b, html:not(.pro) .rx-ycols b, html:not(.pro) .recap-card.rx .recap-stat b, html:not(.pro) .rx-tbl b, html:not(.pro) .rx-step i { font-family: var(--sport) !important; font-weight: 700 !important; text-shadow: none !important; letter-spacing: 0 !important; }
+html:not(.pro) .rx-champ .rx-cn { font-size: 26px !important; }
+html:not(.pro) .rx-num b { font-size: 32px !important; }
+html:not(.pro) .rx-ycols b { font-size: 24px !important; line-height: 1.05 !important; }
+html:not(.pro) .recap-card.rx .recap-stat b { font-size: 30px !important; line-height: 1 !important; }
+html:not(.pro) .rx-step i { font-size: 16px !important; } html:not(.pro) .rx-step b { font-size: 14px !important; }
+html:not(.pro) .rx-tbl b { font-size: 15px !important; } html:not(.pro) .rx-tbl .rx-tbn { font-size: 15px !important; } html:not(.pro) .rx-tbl em { font-size: 11px !important; }
+html:not(.pro) .recap-card.rx .recap-sub { color: var(--text-dim) !important; }
+/* Story metric: the one big thing on each tile. */
+html:not(.pro) .rx-big { display: flex; align-items: baseline; gap: 6px; font-family: var(--sport); font-weight: 700; font-size: 34px; line-height: 1; color: #fff; margin: 2px 0 4px; }
+html:not(.pro) .rx-big b { font-weight: 600; color: var(--text-dim); font-size: .7em; }
+html:not(.pro) .rx-big i { font-style: normal; } html:not(.pro) .rx-big i.from { color: var(--text-dim); } html:not(.pro) .rx-big i.to { color: var(--neon-green); }
+html:not(.pro) .recap-card.rx.tb .rx-big { color: var(--neon-green); font-size: 30px; text-transform: uppercase; }
+html:not(.pro) .recap-card.rx.lk .rx-big { color: var(--arcade-gold); }
+html:not(.pro) .recap-card.rx .recap-main { flex-direction: column; align-items: flex-start !important; gap: 0 !important; }
+html:not(.pro) .recap-card.rx.rx-wide .recap-main { flex-direction: row; flex-wrap: wrap; align-items: center !important; gap: 4px 6px !important; }
+/* Coin flip: a two-colour 5–5 bar with the teams under each end. */
+html:not(.pro) .rx-cf { display: block; width: 100%; }
+html:not(.pro) .rx-cf-bar { display: flex; gap: 3px; height: 8px; }
+html:not(.pro) .rx-cf-bar i { border-radius: 4px; background: var(--neon-cyan); } html:not(.pro) .rx-cf-bar i + i { background: var(--neon-pink); }
+html:not(.pro) .rx-cf-lab { display: flex; justify-content: space-between; margin-top: 4px; font-family: var(--sport); font-weight: 600; font-size: 13px; color: var(--text-meta); }
+html:not(.pro) .rx-cf-lab em { font-style: normal; }
+/* Glow only for the champion and locks that hit. */
+html:not(.pro) .rx-locks i.hit { filter: grayscale(1) sepia(1) saturate(3.2) hue-rotate(-6deg) brightness(1.05) drop-shadow(0 0 4px rgba(var(--arcade-gold-rgb), .55)) !important; }
+html:not(.pro) .recap-card.rx.lk .recap-pick { font-size: 13px !important; color: var(--text-meta) !important; font-weight: 600 !important; text-transform: uppercase; letter-spacing: .06em !important; }
