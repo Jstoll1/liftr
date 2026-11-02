@@ -25,3 +25,11 @@ html.arc .recap-card.rx .recap-head { color: rgb(var(--rxc, 193, 60, 255)) !impo
 html.arc .recap-card.rx .recap-main { color: #fff !important; text-shadow: 0 0 8px rgba(var(--rxc, 193, 60, 255), .5) !important; }
 html.arc .recap-card.rx .recap-stat b { color: rgb(var(--rxc, 193, 60, 255)) !important; text-shadow: 0 0 10px rgba(var(--rxc, 193, 60, 255), .9) !important; }
 html.arc .recap-card.rx .recap-sub { color: #c9b8ff !important; }
+
+/* Your week: one strip of four stats, thin dividers, no inner boxes */
+html.arc .rx-ycols { grid-template-columns: repeat(4, 1fr) !important; gap: 0 !important; }
+html.arc .rx-ycols > div { background: transparent !important; border: 0 !important; border-left: 1px solid rgba(193, 60, 255, .3) !important; border-radius: 0 !important; padding: 2px 3px !important; justify-content: flex-start; }
+html.arc .rx-ycols > div:first-child { border-left: 0 !important; }
+html.arc .rx-ycols b { font-size: 16px !important; }
+html.arc .rx-ycols span { font-size: 9.5px !important; line-height: 1.25 !important; }
+html.arc .rx-you { padding: 8px 8px !important; }
