@@ -9581,10 +9581,10 @@ let renderRecap = function () {
     const bestTxt = best ? (() => { const g = (last.slate || []).find((x) => Number(x.id) === Number(best.g)); const t = g ? (best.team === g.home ? g.homeShort : best.team === g.away ? g.awayShort : best.team) : best.team; return `${esc(t)} ${esc(best.line || "")} +${best.pts}`; })() : "";
     const avgR = Math.round(avg * 10) / 10;
     you = `<div class="rx-you"><div class="rx-yl">YOUR WEEK</div><div class="rx-ycols">
-      <div><b>${ordinal(place)}</b><span>of ${rows.length}</span></div>
-      <div><b data-count="${meRow.score}">${meRow.score}</b><span>points</span></div>
-      <div class="${vs >= 0 ? "up" : "dn"}"><b>${vs >= 0 ? "+" : "−"}${Math.abs(vs)}</b><span>vs league avg (${avgR})</span></div>
-      ${(() => { const mine = Object.values(weekSummaries).filter((w) => w?.complete && w.week < last.week).map((w) => (w.rows || []).find((x) => x.name === currentManager)?.score).filter(Number.isFinite); if (!mine.length) return `<div><b>–</b><span>vs your avg (first week)</span></div>`; const ma = mine.reduce((a, x) => a + x, 0) / mine.length, d = Math.round((meRow.score - ma) * 10) / 10; return `<div class="${d >= 0 ? "up" : "dn"}"><b>${d >= 0 ? "+" : "−"}${Math.abs(d)}</b><span>vs your avg (${Math.round(ma * 10) / 10})</span></div>`; })()}
+      <div><b>${ordinal(place)}</b><span>place<br><i>of ${rows.length}</i></span></div>
+      <div><b data-count="${meRow.score}">${meRow.score}</b><span>points<br><i>this week</i></span></div>
+      <div class="${vs >= 0 ? "up" : "dn"}"><b>${vs >= 0 ? "+" : "−"}${Math.abs(vs)}</b><span>vs league<br><i>avg ${avgR}</i></span></div>
+      ${(() => { const mine = Object.values(weekSummaries).filter((w) => w?.complete && w.week < last.week).map((w) => (w.rows || []).find((x) => x.name === currentManager)?.score).filter(Number.isFinite); if (!mine.length) return `<div><b>–</b><span>vs you<br><i>first week</i></span></div>`; const ma = mine.reduce((a, x) => a + x, 0) / mine.length, d = Math.round((meRow.score - ma) * 10) / 10; return `<div class="${d >= 0 ? "up" : "dn"}"><b>${d >= 0 ? "+" : "−"}${Math.abs(d)}</b><span>vs you<br><i>avg ${Math.round(ma * 10) / 10}</i></span></div>`; })()}
     </div>${bestTxt ? `<div class="rx-best">Best call: ${bestTxt}</div>` : ""}</div>`;
   }
   const head = new Set(["hit", "miss"]);
