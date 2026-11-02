@@ -1212,7 +1212,8 @@ const appScroll = document.getElementById("app-scroll");
 let headerCompact = false;
 function syncHeaderSize() {
   const y = appScroll.scrollTop;
-  const next = headerCompact ? y > 24 : y > 64;
+  // Retro keeps the header tight all the time: no expansion at the top.
+  const next = window.APP_STYLE !== "pro" || (headerCompact ? y > 24 : y > 64);
   if (next === headerCompact) return;
   headerCompact = next;
   homeHeader.classList.toggle("compact", next);
@@ -1457,6 +1458,7 @@ const deskMq = matchMedia("(min-width: 1100px)");
 deskLayout(deskMq.matches && !IS_PHONE);
 deskMq.addEventListener?.("change", (e) => deskLayout(e.matches && !IS_PHONE));
 appScroll.addEventListener("scroll", syncHeaderSize, { passive: true });
+requestAnimationFrame(() => { try { syncHeaderSize(); } catch {} });
 const savedScroll = {};
 let activeScreenName = null;
 function rememberScroll() {
