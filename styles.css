@@ -9224,3 +9224,9 @@ html:not(.pro) .games-list { gap: 8px !important; }
 /* Your week: label centred on its rule. */
 html:not(.pro) .rx-yl::before { content: ""; flex: 1; height: 1px; background: var(--card-border); }
 html:not(.pro) .rx-yl { justify-content: center; text-align: center; }
+/* Your week: a faint cyan panel (cyan = you) and a chevron, so it reads as
+   yours and tappable (it opens your player card). */
+html:not(.pro) .rx-you { position: relative; background: rgba(var(--neon-cyan-rgb), .05) !important; border: 1px solid rgba(var(--neon-cyan-rgb), .28) !important; border-radius: 10px !important; padding: 6px 22px 6px 6px !important; cursor: pointer; transition: background .15s, border-color .15s; }
+html:not(.pro) .rx-you::after { content: "›"; position: absolute; right: 8px; top: 50%; transform: translateY(-40%); font-size: 20px; line-height: 1; color: rgba(var(--neon-cyan-rgb), .7); }
+html:not(.pro) .rx-you:active { background: rgba(var(--neon-cyan-rgb), .12) !important; border-color: rgba(var(--neon-cyan-rgb), .5) !important; }
+html:not(.pro) .rx-you .rx-yl { margin-right: -16px; }
