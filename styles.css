@@ -9118,7 +9118,7 @@ html:not(.pro) .rx-split { gap: 6px !important; background: none !important; }
 html:not(.pro) .rx-split i { font-size: 11px; font-weight: 800; padding: 3px 4px !important; background: transparent !important; border: 1px solid rgba(var(--neon-cyan-rgb), .6); border-radius: 8px; color: #fff !important; justify-content: center; }
 html:not(.pro) .rx-split i { flex: 1 1 0 !important; min-width: 0; display: block !important; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 html:not(.pro) .rx-split i + i { border-color: rgba(var(--neon-pink-rgb), .7); color: #fff !important; }
-html:not(.pro) .rx-locks i.hit { filter: none !important; }
+html:not(.pro) .rx-locks i.hit { filter: grayscale(1) sepia(1) saturate(3.2) hue-rotate(-6deg) brightness(1.05) !important; }
 html:not(.pro) .rx-locks i.miss { filter: grayscale(1) brightness(.6) !important; opacity: .5 !important; }
 html:not(.pro) .rx-locks i.me { outline: 1.5px solid var(--neon-cyan); outline-offset: 1px; border-radius: 3px; }
 html:not(.pro) .rx-grid > .rx-tile .rx-locks { margin: 2px 0 0 !important; }
