@@ -9168,7 +9168,15 @@ html:not(.pro) .rx-sheet .rm-rank li.p1 em { color: var(--arcade-gold) !importan
 html:not(.pro) .rx-sheet .rm-rank li.me { background: rgba(var(--neon-cyan-rgb), .14) !important; box-shadow: inset 2px 0 0 var(--neon-cyan); border-radius: 4px; }
 html:not(.pro) .synth-grid { background-image: linear-gradient(rgba(var(--neon-pink-rgb), .22) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--neon-pink-rgb), .22) 1px, transparent 1px) !important; }
 
+/* Audit: tile heads align with the body; rows keep a gap; locks fit. */
+html:not(.pro) .rx-grid > .rx-tile .recap-head { margin: 0 0 6px !important; padding: 7px 0 6px !important; }
+html:not(.pro) .rx-tbl em { margin-left: 4px !important; }
+html:not(.pro) .rx-grid > .rx-tile.lk .rx-locks { display: flex !important; justify-content: space-between !important; gap: 0 !important; font-size: 11px !important; width: 100% !important; }
+html:not(.pro) .rx-split i { font-size: 10px !important; }
+html:not(.pro) .recap-card.rx .recap-stat span { letter-spacing: 0 !important; }
+
 /* ==== RETRO: frames (navy glass, thin purple frame, no glow) ==== */
+html:not(.pro) #head-score, html:not(.pro) #me-pill { height: 28px !important; box-sizing: border-box; display: inline-flex !important; align-items: center !important; border: 1.5px solid rgba(var(--neon-cyan-rgb), .45) !important; border-radius: 15px !important; background: var(--card-bg) !important; box-shadow: none !important; }
 html:not(.pro) .home-header { background: rgba(10, 12, 24, .97) !important; }
 html:not(.pro) .scorebug, html:not(.pro) .game-card, html:not(.pro) .pot-table, html:not(.pro) .rankings-list { background: var(--card-bg) !important; border: 1.5px solid var(--card-border) !important; box-shadow: none !important; }
 html:not(.pro) .rankings-list::after { display: none !important; }
