@@ -1249,7 +1249,13 @@ function fitHeaderLogo() {
   const btn = img.closest("button") || img;
   img.style.maxWidth = ""; btn.style.transform = "";
   const left = [document.getElementById("head-score"), document.getElementById("header-countdown")].find((el) => el && !el.classList.contains("hidden") && el.offsetWidth > 0);
-  if (!left) return;
+  if (!left) {
+    // No left chip: keep the logo dead centre, narrow enough to clear the
+    // name pill with the same gap it would leave on the left.
+    const pill = document.getElementById("me-pill"), row = homeHeader.querySelector(".head-row") || homeHeader;
+    if (pill && pill.offsetWidth) { const rb = row.getBoundingClientRect(), room = 2 * (pill.getBoundingClientRect().left - (rb.left + rb.width / 2)) - 24; if (room > 40) img.style.maxWidth = `${Math.floor(room)}px`; }
+    return;
+  }
   const row = homeHeader.querySelector(".head-row") || homeHeader;
   const rb = row.getBoundingClientRect(), mid = rb.left + rb.width / 2;
   const lEdge = left.getBoundingClientRect().right;
