@@ -9138,7 +9138,11 @@ html:not(.pro) .rx-tbw { gap: 0 !important; }
 html:not(.pro) .rx-tbl { background: transparent !important; border: 0 !important; border-top: 1px solid rgba(var(--neon-purple-rgb), .3) !important; border-radius: 0 !important; padding: 3px 0 2px !important; row-gap: 0 !important; }
 html:not(.pro) .rx-tbl .rx-tbk { font-size: 9.5px !important; } html:not(.pro) .rx-tbl .rx-tbn { font-size: 13px !important; } html:not(.pro) .rx-tbl em { font-size: 11px !important; }
 html:not(.pro) .rx-tbl .rx-tbk { color: #8d93ad; letter-spacing: .08em; }
-html:not(.pro) .rx-tbl { grid-template-columns: minmax(0, 1fr) auto auto !important; grid-template-areas: "k k k" "n g e" !important; column-gap: 6px !important; align-items: baseline !important; }
+html:not(.pro) .rx-tbl { grid-template-columns: minmax(0, 1fr) auto auto !important; grid-template-areas: "k k k" "n g e" !important; column-gap: 5px !important; row-gap: 0 !important; align-items: baseline !important; padding: 3px 0 2px !important; }
+html:not(.pro) .rx-tbl .rx-tbk { font-size: 8px !important; line-height: 1.1 !important; }
+html:not(.pro) .rx-tbl .rx-tbn, html:not(.pro) .rx-tbl b, html:not(.pro) .rx-tbl em { line-height: 1.15 !important; }
+html:not(.pro) .rx-grid > .rx-tile .rx-locks { margin: 2px 0 0 !important; }
+html:not(.pro) .rx-grid > .rx-tile .recap-sub:empty { display: none !important; }
 html:not(.pro) .rx-tbl .rx-tbn { white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; }
 html:not(.pro) .rx-tbl b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 15px !important; color: #fff !important; }
 html:not(.pro) .rx-tbl.best em { color: var(--neon-cyan) !important; } html:not(.pro) .rx-tbl.worst em { color: var(--neon-pink) !important; }
