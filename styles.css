@@ -1,10 +1,7 @@
-@font-face { font-family: "Barlow Condensed"; font-style: italic; font-weight: 600; font-display: swap; src: url(themes/fonts/barlow-cond-600i.woff2) format("woff2"); }
-@font-face { font-family: "Barlow Condensed"; font-style: italic; font-weight: 700; font-display: swap; src: url(themes/fonts/barlow-cond-700i.woff2) format("woff2"); }
-@font-face { font-family: "Barlow Condensed"; font-style: italic; font-weight: 800; font-display: swap; src: url(themes/fonts/barlow-cond-800i.woff2) format("woff2"); }
 :root {
-  --bg: #0a0014;
+  --bg: #0a0c18;
   --nav-h: calc(63px + env(safe-area-inset-bottom));
-  --bg2: #150024;
+  --bg2: #0c0e1d;
   --neon-pink: #ff2079;
   --neon-cyan: #05d9e8;
   --neon-purple: #c13cff;
@@ -15,15 +12,15 @@
   /* One notch up from --text-dim, for secondary text that has to stay
      readable on a card the board is deliberately recessing. */
   --text-meta: #b4a7cd;
-  --card-bg: rgba(21, 0, 36, 0.75);
-  --card-border: rgba(193, 60, 255, 0.35);
+  --card-bg: rgba(12, 14, 29, 0.94);
+  --card-border: rgba(193, 60, 255, 0.45);
   /* Repeat Retro colours as tokens, so a theme swaps them in one place.
      Pro only names, given Retro values so new code can use them now. */
   --arcade-gold: #ffd23f;
   --led: #ffb000;
   --cyan-2: #29e6ff;
-  --ink: #0a0414;
-  --ink-2: #07020f;
+  --ink: #0a0c18;
+  --ink-2: #0c0e1d;
   --s1: var(--card-bg); --s2: #1c0030; --s3: #240040;
   --line: var(--card-border); --line2: rgba(193, 60, 255, 0.55);
   --acc: var(--neon-cyan); --win: var(--neon-green); --loss: var(--neon-pink);
@@ -9085,112 +9082,97 @@ html:root .tpoll-card .tpoll-opts button[data-tv="retro"] { background: repeatin
 html:root .tpoll-card .tpoll-opts button[data-tv="retro"] span { filter: drop-shadow(0 0 6px #05d9e8) drop-shadow(0 0 2px #fff); }
 html:root .tpoll-card .tpoll-opts button[data-tv="retro"] b { color: #fff200 !important; text-shadow: 0 0 2px #fff, 0 0 8px #ff2bd6, 0 0 14px #ff2079, 1px 1px 0 rgba(5,217,232,.8) !important; }
 /* ==== RETRO: week replay (one block; see CLAUDE.md "Retro arcade rules") ====
-   Arcade broadcast: navy glass, chamfered frames, cyan and pink only,
-   italic condensed display type. Pick of the week is cyan, worst pick pink,
-   tiles share the purple frame. */
+   Navy glass and thin purple frames; Retro corners, pixel type and colour
+   with meaning. The champion hero is the one card that glows. */
 html:not(.pro) .recap-panel { background: none !important; box-shadow: none !important; border: 0 !important; padding: 0 !important; }
 html:not(.pro) .recap-panel::before, html:not(.pro) .recap-panel::after { display: none !important; }
-html:not(.pro) .recap-panel { --rx-ink: #0c0e1d; --rx-frame: rgba(var(--neon-purple-rgb), .5); --rx-cut: 12px; --rx-disp: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif; }
-/* Chamfered frame: ::before is the border colour, ::after the glass. */
-html:not(.pro) .recap-panel .rx-hero, html:not(.pro) .recap-card.rx { position: relative; isolation: isolate; background: none !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; filter: none !important; opacity: 1 !important; }
-html:not(.pro) .recap-panel .rx-hero::before, html:not(.pro) .recap-card.rx::before,
-html:not(.pro) .recap-panel .rx-hero::after, html:not(.pro) .recap-card.rx::after { content: ""; position: absolute; z-index: -1; clip-path: polygon(var(--rx-cut) 0, 100% 0, 100% calc(100% - var(--rx-cut)), calc(100% - var(--rx-cut)) 100%, 0 100%, 0 var(--rx-cut)); pointer-events: none; }
-html:not(.pro) .recap-panel .rx-hero::before, html:not(.pro) .recap-card.rx::before { inset: 0; background: var(--rx-c, var(--rx-frame)); }
-html:not(.pro) .recap-panel .rx-hero::after, html:not(.pro) .recap-card.rx::after { inset: 1.5px; background: linear-gradient(180deg, rgba(255, 255, 255, .035), transparent 40%), var(--rx-ink); }
-html:not(.pro) .recap-card.rx.hit { --rx-c: var(--neon-cyan); --rx-t: var(--neon-cyan); --rx-t-rgb: var(--neon-cyan-rgb); filter: drop-shadow(0 0 7px rgba(var(--neon-cyan-rgb), .45)) !important; }
-html:not(.pro) .recap-card.rx.miss { --rx-c: rgba(var(--neon-pink-rgb), .75); --rx-t: var(--neon-pink); --rx-t-rgb: var(--neon-pink-rgb); }
-html:not(.pro) .recap-card.rx { --rx-t: var(--neon-cyan); --rx-t-rgb: var(--neon-cyan-rgb); padding: 0 10px 8px !important; }
-/* Heads: wide cards get a slanted tab, tiles a band with a rule under it. */
-html:not(.pro) .recap-card.rx .recap-head { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 12px !important; letter-spacing: .08em !important; text-transform: uppercase; color: var(--rx-t) !important; text-shadow: none !important; margin: 0 -10px 5px !important; padding: 3px 10px 2px; border-bottom: 1px solid var(--rx-c, var(--rx-frame)); }
-html:not(.pro) .recap-card.rx.rx-wide .recap-head { border-bottom: 1.5px solid var(--rx-c); background: linear-gradient(100deg, rgba(var(--rx-t-rgb), .16) 0 58%, transparent 58.2%) !important; }
-html:not(.pro) .recap-card.rx.rx-wide .recap-head::after { content: ""; margin-left: auto; width: 64px; height: 12px; background: repeating-linear-gradient(115deg, rgba(var(--neon-pink-rgb), .7) 0 5px, transparent 5px 10px); }
-html:not(.pro) .recap-card.rx .recap-head img, html:not(.pro) .recap-card.rx .recap-head svg { filter: none; }
-html:not(.pro) .recap-card.rx .recap-you { font-family: var(--rx-disp); font-style: italic; font-weight: 800; background: var(--neon-cyan) !important; color: var(--rx-ink) !important; transform: skewX(-12deg); border-radius: 2px !important; padding: 1px 8px !important; }
-/* Body type */
-html:not(.pro) .recap-card.rx .recap-main, html:not(.pro) .recap-card.rx .recap-pick { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: #fff !important; text-shadow: none !important; font-size: 15px !important; line-height: 1.05 !important; }
-html:not(.pro) .rx-grid > .rx-tile .recap-main, html:not(.pro) .rx-grid > .rx-tile .recap-pick { font-size: 13.5px !important; }
-html:not(.pro) .recap-card.rx .recap-sub { color: #b9bfd6 !important; font-size: 11px !important; line-height: 1.25 !important; margin-top: 2px !important; }
-html:not(.pro) .recap-card.rx .recap-stat { border-color: rgba(var(--neon-purple-rgb), .45) !important; }
-html:not(.pro) .recap-card.rx .recap-stat b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 22px !important; line-height: 1 !important; color: var(--rx-t) !important; text-shadow: none !important; }
-html:not(.pro) .recap-card.rx .recap-stat span { font-size: 8.5px !important; letter-spacing: .04em; font-family: inherit !important; color: #c9cde0 !important; text-transform: uppercase; }
+html:not(.pro) .recap-panel .rx-hero, html:not(.pro) .recap-card.rx { background: linear-gradient(180deg, rgba(255, 255, 255, .03), transparent 40%), var(--card-bg) !important; border: 1.5px solid var(--rx-c, var(--card-border)) !important; border-radius: 10px !important; box-shadow: none !important; filter: none !important; opacity: 1 !important; }
+html:not(.pro) .recap-card.rx { --rx-t: var(--neon-cyan); --rx-t-rgb: var(--neon-cyan-rgb); padding: 0 10px 8px !important; overflow: hidden; }
+html:not(.pro) .recap-card.rx.hit { --rx-c: rgba(var(--neon-green-rgb), .7); --rx-t: var(--neon-green); --rx-t-rgb: var(--neon-green-rgb); }
+html:not(.pro) .recap-card.rx.miss { --rx-c: rgba(var(--neon-pink-rgb), .7); --rx-t: var(--neon-pink); --rx-t-rgb: var(--neon-pink-rgb); }
+/* Heads: a pixel kicker on a ruled band; wide cards get a tinted band. */
+html:not(.pro) .recap-card.rx .recap-head { font-family: 'Press Start 2P', monospace !important; font-size: 7.5px !important; letter-spacing: .1em !important; color: var(--rx-t) !important; text-shadow: none !important; margin: 0 -10px 6px !important; padding: 7px 10px 6px; border-bottom: 1px solid var(--card-border); }
+html:not(.pro) .recap-card.rx.rx-wide .recap-head { background: rgba(var(--rx-t-rgb), .1) !important; border-bottom-color: var(--rx-c); }
+html:not(.pro) .recap-card.rx .recap-you { font-family: 'Press Start 2P', monospace; font-size: 6px; background: var(--neon-cyan) !important; color: var(--bg) !important; border-radius: 2px !important; padding: 2px 5px !important; }
+/* Body */
+html:not(.pro) .recap-card.rx .recap-main, html:not(.pro) .recap-card.rx .recap-pick { color: #fff !important; text-shadow: none !important; font-size: 14px !important; font-weight: 800; line-height: 1.15 !important; }
+html:not(.pro) .rx-grid > .rx-tile .recap-main, html:not(.pro) .rx-grid > .rx-tile .recap-pick { font-size: 13px !important; }
+html:not(.pro) .recap-card.rx .recap-sub { color: var(--text-meta) !important; font-size: 11px !important; line-height: 1.25 !important; margin-top: 2px !important; }
+html:not(.pro) .recap-card.rx .recap-stat { border-color: var(--card-border) !important; }
+html:not(.pro) .recap-card.rx .recap-stat b { font-family: 'Press Start 2P', monospace !important; font-size: 15px !important; line-height: 1.2 !important; color: var(--rx-t) !important; text-shadow: 2px 2px 0 rgba(0, 0, 0, .6) !important; }
+html:not(.pro) .recap-card.rx .recap-stat span { font-size: 8.5px !important; letter-spacing: .06em; color: var(--text-meta) !important; text-transform: uppercase; }
 html:not(.pro) .recap-card.rx .recap-art { width: 34px !important; height: 34px !important; }
 html:not(.pro) .recap-card.rx .recap-logo { width: 32px !important; height: 32px !important; }
 html:not(.pro) .recap-card.rx .rx-viz { margin-top: 6px !important; }
+html:not(.pro) .rx-grid > .rx-tile { gap: 0 !important; justify-content: flex-start !important; }
 html:not(.pro) .rx-grid > .rx-tile .rx-viz { margin-top: 6px !important; padding-top: 0 !important; }
 html:not(.pro) .rx-grid > .rx-tile .rx-row { gap: 2px !important; }
-html:not(.pro) .rx-grid > .rx-tile { gap: 0 !important; justify-content: flex-start !important; }
-/* Name chips: outlined pills */
-html:not(.pro) .recap-card.rx .pick-chip { background: transparent !important; border: 1.5px solid rgba(var(--rx-t-rgb), .7) !important; border-radius: 4px !important; font-family: var(--rx-disp); font-style: italic; font-weight: 700; text-transform: uppercase; font-size: 11px !important; color: #fff !important; padding: 0 6px !important; box-shadow: none !important; }
-html:not(.pro) .recap-card.rx.hit .pick-chip > :first-child:not(:only-child) { display: none; }
+html:not(.pro) .recap-card.rx .pick-chip { background: transparent !important; border: 1px solid rgba(var(--rx-t-rgb), .6) !important; border-radius: 10px !important; font-size: 11px !important; color: #fff !important; padding: 0 7px 0 2px !important; box-shadow: none !important; }
 /* Viz */
 html:not(.pro) .recap-card.rx.hit .rx-dots { display: none !important; }
-html:not(.pro) .rx-bar { background: rgba(255, 255, 255, .06) !important; height: 6px !important; border-radius: 4px; }
-html:not(.pro) .rx-bar i { background: var(--neon-pink) !important; box-shadow: 0 0 8px rgba(var(--neon-pink-rgb), .6) !important; border-radius: 4px; }
-html:not(.pro) .rx-climb { font-family: var(--rx-disp); font-style: italic; font-weight: 800; font-size: 18px; }
-html:not(.pro) .rx-climb i { color: #8d93ad !important; text-shadow: none !important; } html:not(.pro) .rx-climb i.to { color: var(--neon-cyan) !important; }
-html:not(.pro) .rx-split { gap: 8px !important; background: none !important; }
-html:not(.pro) .rx-split i { font-family: var(--rx-disp); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 12px; padding: 1px 4px !important; background: transparent !important; border: 1.5px solid rgba(var(--neon-purple-rgb), .6); border-radius: 4px; color: #fff !important; justify-content: center; }
-html:not(.pro) .rx-split i + i { background: var(--neon-pink) !important; border-color: var(--neon-pink); box-shadow: 0 0 8px rgba(var(--neon-pink-rgb), .5); }
-html:not(.pro) .rx-locks i.hit { filter: grayscale(1) sepia(1) saturate(6) hue-rotate(140deg) brightness(1.15) !important; }
+html:not(.pro) .rx-bar { background: rgba(255, 255, 255, .06) !important; height: 6px !important; border-radius: 3px; }
+html:not(.pro) .rx-bar i { background: var(--neon-pink) !important; box-shadow: none !important; border-radius: 3px; }
+html:not(.pro) .rx-climb { font-family: 'Press Start 2P', monospace; font-size: 13px; }
+html:not(.pro) .rx-climb i { color: var(--text-dim) !important; text-shadow: none !important; } html:not(.pro) .rx-climb i.to { color: var(--neon-green) !important; }
+html:not(.pro) .rx-split { gap: 6px !important; background: none !important; }
+html:not(.pro) .rx-split i { font-size: 11px; font-weight: 800; padding: 3px 4px !important; background: transparent !important; border: 1px solid rgba(var(--neon-cyan-rgb), .6); border-radius: 8px; color: #fff !important; justify-content: center; }
+html:not(.pro) .rx-split i { flex: 1 1 0 !important; min-width: 0; display: block !important; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html:not(.pro) .rx-split i + i { border-color: rgba(var(--neon-pink-rgb), .7); color: #fff !important; }
+html:not(.pro) .rx-locks i.hit { filter: grayscale(1) sepia(1) saturate(6) hue-rotate(70deg) brightness(1.1) !important; }
 html:not(.pro) .rx-locks i.miss { filter: grayscale(1) brightness(.6) !important; opacity: .5 !important; }
 html:not(.pro) .rx-locks i.me { outline: 1.5px solid var(--neon-cyan); outline-offset: 1px; border-radius: 3px; }
-html:not(.pro) .rx-tbw { gap: 0 !important; }
-html:not(.pro) .rx-tbl { background: transparent !important; border: 0 !important; border-top: 1px solid rgba(var(--neon-purple-rgb), .3) !important; border-radius: 0 !important; padding: 3px 0 2px !important; row-gap: 0 !important; }
-html:not(.pro) .rx-tbl .rx-tbk { font-size: 9.5px !important; } html:not(.pro) .rx-tbl .rx-tbn { font-size: 13px !important; } html:not(.pro) .rx-tbl em { font-size: 11px !important; }
-html:not(.pro) .rx-tbl .rx-tbk { color: #8d93ad; letter-spacing: .08em; }
-html:not(.pro) .rx-tbl { grid-template-columns: minmax(0, 1fr) auto auto !important; grid-template-areas: "k k k" "n g e" !important; column-gap: 5px !important; row-gap: 0 !important; align-items: baseline !important; padding: 3px 0 2px !important; }
-html:not(.pro) .rx-tbl .rx-tbk { font-size: 8px !important; line-height: 1.1 !important; }
-html:not(.pro) .rx-tbl .rx-tbn, html:not(.pro) .rx-tbl b, html:not(.pro) .rx-tbl em { line-height: 1.15 !important; }
-html:not(.pro) .rx-tbl b, html:not(.pro) .rx-tbl em { white-space: nowrap !important; }
-html:not(.pro) .rx-tbl em { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 700; font-size: 13px !important; }
-html:not(.pro) .rx-tbl .rx-tbn { font-size: 12.5px !important; }
 html:not(.pro) .rx-grid > .rx-tile .rx-locks { margin: 2px 0 0 !important; }
-html:not(.pro) .rx-grid > .rx-tile .recap-sub:empty { display: none !important; }
-html:not(.pro) .rx-tbl .rx-tbn { white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; }
-html:not(.pro) .rx-tbl b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 15px !important; color: #fff !important; }
-html:not(.pro) .rx-tbl.best em { color: var(--neon-cyan) !important; } html:not(.pro) .rx-tbl.worst em { color: var(--neon-pink) !important; }
-/* Champion hero: the standout. Cyan frame and glow. */
-html:not(.pro) .recap-panel .rx-hero { --rx-c: var(--neon-cyan); filter: drop-shadow(0 0 9px rgba(var(--neon-cyan-rgb), .5)) !important; padding: 8px 10px !important; }
-html:not(.pro) .recap-panel .rx-hero .rx-av.big { width: 34px !important; height: 34px !important; font-size: 16px !important; }
+html:not(.pro) .rx-tbw { gap: 0 !important; }
+html:not(.pro) .rx-tbl { background: transparent !important; border: 0 !important; border-top: 1px solid var(--card-border) !important; border-radius: 0 !important; grid-template-columns: minmax(0, 1fr) auto auto !important; grid-template-areas: "k k k" "n g e" !important; column-gap: 5px !important; row-gap: 0 !important; align-items: baseline !important; padding: 3px 0 2px !important; }
+html:not(.pro) .rx-tbl .rx-tbk { font-size: 8px !important; line-height: 1.1 !important; color: var(--text-dim); letter-spacing: .08em; }
+html:not(.pro) .rx-tbl .rx-tbn { font-size: 12px !important; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; line-height: 1.2 !important; }
+html:not(.pro) .rx-tbl b { font-family: 'Press Start 2P', monospace !important; font-size: 10px !important; color: #fff !important; white-space: nowrap !important; }
+html:not(.pro) .rx-tbl em { font-size: 10.5px !important; white-space: nowrap !important; }
+html:not(.pro) .rx-tbl.best em { color: var(--neon-green) !important; } html:not(.pro) .rx-tbl.worst em { color: var(--neon-pink) !important; }
+/* Champion hero: gold, the one glow. */
+html:not(.pro) .recap-panel .rx-hero { --rx-c: var(--arcade-gold); box-shadow: 0 0 14px rgba(var(--arcade-gold-rgb), .3) !important; padding: 8px 10px !important; }
+html:not(.pro) .rx-kicker { font-family: 'Press Start 2P', monospace !important; font-size: 7.5px !important; letter-spacing: .14em !important; color: var(--arcade-gold) !important; text-shadow: none !important; }
 html:not(.pro) .rx-champ { gap: 8px !important; margin: 2px 0 !important; }
+html:not(.pro) .rx-champ .rx-cn { font-family: 'Press Start 2P', monospace !important; font-size: 15px !important; line-height: 1.2 !important; color: #fff !important; text-shadow: none !important; }
+html:not(.pro) .rx-num b { font-family: 'Press Start 2P', monospace !important; font-size: 20px !important; line-height: 1.2 !important; color: var(--arcade-gold) !important; text-shadow: 2px 2px 0 rgba(0, 0, 0, .6) !important; }
+html:not(.pro) .rx-num span { font-size: 9px; color: var(--text-meta) !important; }
+html:not(.pro) .rx-margin { font-size: 11px !important; color: var(--text-meta) !important; }
+html:not(.pro) .recap-panel .rx-hero .rx-av.big { width: 34px !important; height: 34px !important; font-size: 16px !important; box-shadow: 0 0 0 2px var(--arcade-gold) !important; }
 html:not(.pro) .rx-podium { gap: 6px !important; margin-top: 6px !important; }
-html:not(.pro) .rx-step { padding: 3px 6px !important; min-height: 0 !important; }
+html:not(.pro) .rx-step { background: transparent !important; border: 1px solid var(--card-border) !important; border-radius: 10px !important; box-shadow: none !important; padding: 3px 6px !important; min-height: 0 !important; }
 html:not(.pro) .rx-step .rx-av { width: 20px !important; height: 20px !important; font-size: 10px !important; }
-html:not(.pro) .rx-kicker { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 700; font-size: 11px !important; letter-spacing: .25em !important; color: #e8eaf6 !important; text-shadow: none !important; }
-html:not(.pro) .rx-champ .rx-cn { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 26px !important; line-height: 1 !important; text-transform: uppercase; color: #fff !important; text-shadow: none !important; }
-html:not(.pro) .rx-num b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 28px !important; line-height: 1 !important; color: var(--neon-pink) !important; text-shadow: none !important; }
-html:not(.pro) .rx-num span { font-family: var(--rx-disp); font-style: italic; font-weight: 700; letter-spacing: .12em; color: #e8eaf6 !important; }
-html:not(.pro) .rx-margin { font-family: var(--rx-disp); font-style: italic; font-weight: 600; text-transform: uppercase; letter-spacing: .18em; font-size: 10.5px !important; color: #c9cde0 !important; }
-html:not(.pro) .rx-champ .rx-av.big { box-shadow: 0 0 0 2px var(--neon-pink) !important; }
-html:not(.pro) .rx-step { background: transparent !important; border: 1.5px solid rgba(var(--neon-purple-rgb), .6) !important; border-radius: 6px !important; box-shadow: none !important; transform: skewX(-8deg); }
-html:not(.pro) .rx-step > * { transform: skewX(8deg); }
-html:not(.pro) .rx-step b { font-family: var(--rx-disp); font-style: italic; font-weight: 800; text-transform: uppercase; color: #fff !important; }
-html:not(.pro) .rx-step i { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 15px !important; color: #fff !important; }
-html:not(.pro) .rx-step.s1 { border-color: var(--neon-pink) !important; background: rgba(var(--neon-pink-rgb), .1) !important; box-shadow: 0 0 10px rgba(var(--neon-pink-rgb), .45) !important; }
-html:not(.pro) .rx-step.s1 i { color: var(--neon-pink) !important; }
-/* Your week: no frame; a label with a rule, four big stats with dividers. */
+html:not(.pro) .rx-step b { color: #fff !important; }
+html:not(.pro) .rx-step i { font-family: 'Press Start 2P', monospace !important; font-size: 10px !important; color: #fff !important; }
+html:not(.pro) .rx-step.s1 { border-color: var(--arcade-gold) !important; background: rgba(var(--arcade-gold-rgb), .08) !important; }
+html:not(.pro) .rx-step.s1 i { color: var(--arcade-gold) !important; }
+/* Your week: one strip, ruled pixel label. */
 html:not(.pro) .rx-you { background: none !important; border: 0 !important; box-shadow: none !important; padding: 2px 0 4px !important; }
-html:not(.pro) .rx-yl { display: flex; align-items: center; gap: 10px; font-family: var(--rx-disp) !important; font-style: italic; font-weight: 700; font-size: 11px !important; letter-spacing: .25em !important; color: #e8eaf6 !important; text-shadow: none !important; margin-bottom: 3px !important; }
-html:not(.pro) .rx-yl::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(var(--neon-cyan-rgb), .6), rgba(var(--neon-purple-rgb), .2)); }
+html:not(.pro) .rx-yl { display: flex; align-items: center; gap: 8px; font-family: 'Press Start 2P', monospace !important; font-size: 7.5px !important; letter-spacing: .14em !important; color: var(--neon-cyan) !important; text-shadow: none !important; margin-bottom: 5px !important; }
+html:not(.pro) .rx-yl::after { content: ""; flex: 1; height: 1px; background: var(--card-border); }
 html:not(.pro) .rx-ycols { grid-template-columns: repeat(4, 1fr) !important; gap: 0 !important; }
-html:not(.pro) .rx-ycols > div { background: transparent !important; border: 0 !important; border-left: 1px solid rgba(var(--neon-cyan-rgb), .35) !important; border-radius: 0 !important; padding: 2px 3px !important; justify-content: flex-start; }
+html:not(.pro) .rx-ycols > div { background: transparent !important; border: 0 !important; border-left: 1px solid var(--card-border) !important; border-radius: 0 !important; padding: 2px 3px !important; justify-content: flex-start; }
 html:not(.pro) .rx-ycols > div:first-child { border-left: 0 !important; }
-html:not(.pro) .rx-ycols b { font-family: var(--rx-disp) !important; font-style: italic; font-weight: 800; font-size: 22px !important; line-height: 1 !important; color: #fff !important; text-shadow: none !important; }
-html:not(.pro) .rx-ycols .up b { color: var(--neon-cyan) !important; } html:not(.pro) .rx-ycols .dn b { color: var(--neon-pink) !important; }
-html:not(.pro) .rx-ycols span { font-size: 8.5px !important; line-height: 1.25 !important; text-transform: uppercase; letter-spacing: .04em; color: #c9cde0 !important; }
+html:not(.pro) .rx-ycols b { font-family: 'Press Start 2P', monospace !important; font-size: 13px !important; line-height: 1.3 !important; color: #fff !important; text-shadow: none !important; }
+html:not(.pro) .rx-ycols .up b { color: var(--neon-green) !important; } html:not(.pro) .rx-ycols .dn b { color: var(--neon-pink) !important; }
+html:not(.pro) .rx-ycols span { font-size: 8.5px !important; line-height: 1.25 !important; text-transform: uppercase; color: var(--text-meta) !important; }
 html:not(.pro) .rx-grid { gap: 8px !important; }
 /* Movement sheet */
-html:not(.pro) .rx-sheet-card { border: 2px solid var(--neon-cyan); box-shadow: 0 -6px 24px rgba(var(--neon-cyan-rgb), .3); }
+html:not(.pro) .rx-sheet-card { background: var(--bg2) !important; border: 1.5px solid var(--card-border); box-shadow: none; }
 html:not(.pro) .rx-sheet .rm-h { color: var(--neon-cyan) !important; }
 html:not(.pro) .rx-sheet .rm-cols span { color: var(--text-meta) !important; }
-html:not(.pro) .rx-sheet .rm-rank li .rm-pts { color: #fff !important; }
-html:not(.pro) .rx-sheet .rm-rank li > span small { color: var(--neon-cyan) !important; opacity: .85; }
-html:not(.pro) .rx-sheet .rm-rank li > i.up { color: var(--neon-cyan) !important; }
+html:not(.pro) .rx-sheet .rm-rank li .rm-pts { color: var(--neon-yellow) !important; }
+html:not(.pro) .rx-sheet .rm-rank li > span small { color: var(--neon-green) !important; opacity: .85; }
+html:not(.pro) .rx-sheet .rm-rank li > i.up { color: var(--neon-green) !important; }
 html:not(.pro) .rx-sheet .rm-rank li > i.down { color: var(--neon-pink) !important; }
-html:not(.pro) .rx-sheet .rm-rank li.p1 em { color: var(--neon-pink) !important; }
+html:not(.pro) .rx-sheet .rm-rank li.p1 em { color: var(--arcade-gold) !important; }
 html:not(.pro) .rx-sheet .rm-rank li.me { background: rgba(var(--neon-cyan-rgb), .14) !important; box-shadow: inset 2px 0 0 var(--neon-cyan); border-radius: 4px; }
-/* Backdrop grid in pink, like the arcade floor. */
-html:not(.pro) .synth-grid { background-image: linear-gradient(rgba(var(--neon-pink-rgb), .28) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--neon-pink-rgb), .28) 1px, transparent 1px) !important; }
+html:not(.pro) .synth-grid { background-image: linear-gradient(rgba(var(--neon-pink-rgb), .22) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--neon-pink-rgb), .22) 1px, transparent 1px) !important; }
+
+/* ==== RETRO: frames (navy glass, thin purple frame, no glow) ==== */
+html:not(.pro) .home-header { background: rgba(10, 12, 24, .97) !important; }
+html:not(.pro) .scorebug, html:not(.pro) .game-card, html:not(.pro) .pot-table, html:not(.pro) .rankings-list { background: var(--card-bg) !important; border: 1.5px solid var(--card-border) !important; box-shadow: none !important; }
+html:not(.pro) .rankings-list::after { display: none !important; }
+html:not(.pro) .ranking-row { box-shadow: none !important; }
 
 /* ==== RETRO: layout (one card shape, tight) ==== */
 html:not(.pro) .scorebug, html:not(.pro) .game-card, html:not(.pro) .recap-card, html:not(.pro) .rx-you, html:not(.pro) .pot-table, html:not(.pro) .rankings-list { border-radius: 10px !important; }

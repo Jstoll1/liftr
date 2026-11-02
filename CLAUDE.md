@@ -54,19 +54,19 @@ a GitHub Action and never commit its output.
 
 ## Retro arcade rules
 Retro is the base look (`styles.css`; Pro overrides in `themes/pro.css`).
-Keep it a clean arcade, not a funhouse:
+One look everywhere, a clean arcade, not a funhouse:
 
-- **Palette, with meaning**: deep purple ink (`--bg`, `--bg2`); cyan =
-  you / live / structure; green = right / won; pink = wrong / lost; gold =
-  money / champion; purple = frames. The week replay is the one place each
-  card wears its own neon. No new colours: use the tokens in `:root`
-  (`var(--neon-*)`, `rgba(var(--*-rgb), a)`), never raw hex in a Retro rule.
-- **Type**: pixel font (Press Start 2P) for kickers and headings only; body
-  stays plain.
-- **One card shape**: 10px corners, 1.5px purple frame. No boxes inside
-  boxes; stats sit on one line with thin dividers.
-- **One standout per screen** (logo, leaderboard frame, replay cards);
-  everything else stays quiet.
+- **Background**: navy glass (`--bg`, `--bg2`, `--card-bg`).
+- **Frames**: thin 1.5px purple (`--card-border`), no glow. Only the one
+  standout per screen glows (the replay champion, gold).
+- **Corners**: Retro 10px radius. No chamfers.
+- **Type**: pixel font (Press Start 2P) for kickers, headings and big
+  numbers; body stays plain.
+- **Colour, with meaning**: cyan = you / live / structure; green = right /
+  won; pink = wrong / lost; gold = money / champion; purple = frames. Use
+  the tokens in `:root` (`var(--neon-*)`, `rgba(var(--*-rgb), a)`), never
+  raw hex in a Retro rule.
+- **No boxes inside boxes**: stats sit on one line with thin dividers.
 - **One block per component**: change a Retro rule where it lives (search
   `==== RETRO:`); never append another override layer below it.
 - Run `node scripts/check-retro.mjs` before pushing style changes, and
