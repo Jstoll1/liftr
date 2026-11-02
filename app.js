@@ -9446,20 +9446,29 @@ function rxCountUp(root) {
 }
 // Theme poll: one vote per player, shown until they vote, then never again.
 const THEME_POLL = "theme-v1", THEME_POLL_SEEN = `brochiefs_poll_${THEME_POLL}`;
+let themePollBusy = false, themePollVoted = false;
 async function maybeThemePoll() {
+  if (themePollBusy || themePollVoted) return;
   const me = loadMe();
   if (!me || !MANAGERS.includes(me) || !WORKER_URL || PREVIEW || window.__liveView || window.__adminEntry) return;
   try { if (localStorage.getItem(THEME_POLL_SEEN)) return; } catch {}
   if (document.getElementById("theme-poll")) return;
   let mine = null;
-  try { const r = await fetch(`${WORKER_URL}/poll?id=${THEME_POLL}&manager=${encodeURIComponent(me)}&t=${Date.now()}`, { cache: "no-store" }); if (!r.ok) return; mine = (await r.json()).vote; } catch { return; }
-  if (mine) { try { localStorage.setItem(THEME_POLL_SEEN, mine); } catch {} return; }
+  themePollBusy = true;
+  try { const r = await fetch(`${WORKER_URL}/poll?id=${THEME_POLL}&manager=${encodeURIComponent(me)}&t=${Date.now()}`, { cache: "no-store" }); if (r.ok) mine = (await r.json()).vote; } catch {} // a failed check still shows the poll: no vote, no way past
+  themePollBusy = false;
+  if (mine) { themePollVoted = true; try { localStorage.setItem(THEME_POLL_SEEN, mine); } catch {} return; }
+  if (document.getElementById("theme-poll")) return;
   const opts = [["retro", "🕹️", "Retro Arcade"], ["dark", "🌙", "Current Dark Mode"], ["either", "🤷", "Who Cares"]];
   const m = document.createElement("div");
   m.id = "theme-poll"; m.className = "modal-overlay tpoll"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Theme poll");
   m.innerHTML = `<div class="modal-card tpoll-card"><div class="tpoll-k">QUICK POLL · ONE VOTE</div><h3>Which theme do you prefer?</h3>
     <div class="tpoll-opts">${opts.map(([k, ic, t]) => `<button type="button" data-tv="${k}"><span>${ic}</span><b>${t}</b></button>`).join("")}</div><div class="tpoll-err" hidden>Couldn't save that. Try again.</div></div>`;
   document.body.appendChild(m);
+  // A hard gate: nothing closes it but a vote. If anything removes or hides
+  // it, it comes straight back.
+  const keep = new MutationObserver(() => { if (themePollVoted) { keep.disconnect(); return; } if (!m.isConnected) document.body.appendChild(m); if (m.classList.contains("hidden")) m.classList.remove("hidden"); if (m.style.display) m.style.removeProperty("display"); });
+  keep.observe(document.body, { childList: true }); keep.observe(m, { attributes: true, attributeFilter: ["class", "style"] });
   fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: THEME_POLL, manager: me, action: "view" }) }).catch(() => {});
   noteUse("theme-poll-shown");
   m.addEventListener("click", async (e) => {
@@ -9474,6 +9483,7 @@ async function maybeThemePoll() {
     try {
       const r = await fetch(`${WORKER_URL}/poll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: THEME_POLL, manager: me, choice: b.dataset.tv, token: loadAuth()?.manager === me ? loadAuth().token : undefined }) });
       if (!r.ok) throw new Error();
+      themePollVoted = true;
       try { localStorage.setItem(THEME_POLL_SEEN, b.dataset.tv); } catch {}
       noteUse("theme-poll-vote", b.dataset.tv);
       m.querySelector(".tpoll-card").innerHTML = `<div class="tpoll-done">✓ Vote in. Thanks!</div>`;
@@ -9481,7 +9491,9 @@ async function maybeThemePoll() {
     } catch { m.querySelector(".tpoll-err").hidden = false; m.querySelectorAll("button").forEach((x) => (x.disabled = false)); b.classList.remove("on"); }
   });
 }
-setTimeout(() => maybeThemePoll(), 2500);
+setTimeout(() => maybeThemePoll(), 600);
+// Keep checking: picking your name later, or a failed load, still lands on the poll.
+setInterval(() => { themePollBusy = false; maybeThemePoll(); }, 5000);
 
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
