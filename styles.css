@@ -9240,3 +9240,14 @@ html:not(.pro) .rx-ycols span { line-height: 1.3 !important; }
 html:not(.pro) .rx-ycols span i { font-style: normal; color: var(--text-dim); text-transform: none; }
 html:not(.pro) .rx-yl::before, html:not(.pro) .rx-yl::after { background: rgba(var(--neon-cyan-rgb), .22) !important; }
 html.pro .rx-ycols span i { font-style: normal; opacity: .7; }
+/* Balance and alignment pass. */
+/* Wide cards: one fixed stat column so Pick and Worst line up, centred. */
+html:not(.pro) .recap-card.rx.rx-wide .recap-stat { width: 78px !important; flex: none !important; text-align: center !important; display: flex; flex-direction: column; align-items: center; }
+html:not(.pro) .recap-card.rx .recap-stat span { white-space: nowrap; }
+/* Subtext wraps in even lines, no orphaned score. */
+html:not(.pro) .recap-card.rx .recap-sub, html:not(.pro) .recap-card.rx .recap-main { text-wrap: balance; }
+/* Podium: three equal pills, contents centred. */
+html:not(.pro) .rx-podium { grid-template-columns: 1fr 1fr 1fr !important; align-items: stretch !important; }
+html:not(.pro) .rx-step { justify-content: center !important; }
+/* Tiles in a row share a height; rows inside stay top-aligned. */
+html:not(.pro) .rx-grid { align-items: stretch !important; }
