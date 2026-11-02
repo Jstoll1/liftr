@@ -9251,3 +9251,11 @@ html:not(.pro) .rx-podium { grid-template-columns: 1fr 1fr 1fr !important; align
 html:not(.pro) .rx-step { justify-content: center !important; }
 /* Tiles in a row share a height; rows inside stay top-aligned. */
 html:not(.pro) .rx-grid { align-items: stretch !important; }
+/* Vertical rhythm: one 10px gap between every block, even inner padding. */
+html:not(.pro) .recap-panel { gap: 10px !important; }
+html:not(.pro) .rx-grid { gap: 10px !important; }
+html:not(.pro) .recap-panel .rx-hero { padding: 10px !important; }
+html:not(.pro) .rx-you { padding-top: 8px !important; padding-bottom: 8px !important; }
+html:not(.pro) .recap-card.rx { padding-bottom: 10px !important; }
+html:not(.pro) .recap-card.rx .rx-row { margin: 0 !important; }
+html:not(.pro) .recap-card.rx .recap-body > :last-child, html:not(.pro) .recap-card.rx .rx-viz { margin-bottom: 0 !important; }
