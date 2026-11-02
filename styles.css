@@ -9186,6 +9186,7 @@ html:not(.pro) .games-list { gap: 8px !important; }
 .ask-q[data-reask] { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .1s; }
 .ask-q[data-reask]:active { transform: scale(.97); background: rgba(5, 217, 232, .28); }
 
-/* Replay sheet: pinned to the bottom edge on every phone (dvh, no inset gap). */
-.rx-sheet { position: fixed !important; inset: 0 !important; height: 100dvh; padding: 0 !important; align-items: flex-end !important; justify-content: center !important; }
-.rx-sheet-card { margin: 0 auto !important; max-height: 82dvh !important; min-height: 38dvh; }
+/* Replay breakdown: a centred pop-up, never a bottom sheet. */
+.rx-sheet { position: fixed !important; inset: 0 !important; height: 100dvh; padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom)) !important; align-items: center !important; justify-content: center !important; }
+.rx-sheet-card { margin: 0 auto !important; width: min(440px, 100%) !important; max-height: 78dvh !important; min-height: 0 !important; border-radius: 14px !important; border-bottom: 1.5px solid var(--card-border) !important; padding-bottom: 14px !important; }
+.rx-sheet-card::before { display: none !important; }
