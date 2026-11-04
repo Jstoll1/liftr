@@ -1523,7 +1523,7 @@ function goToPlayerSelect() {
   const me = loadMe();
   if (me) {
     currentManager = me;
-    if (firstKickoffPassed()) {
+    if (!picksStillOpen()) {
       loginScreen.classList.add("hidden");
       showScoreboard();
     } else {
@@ -10525,6 +10525,7 @@ const SPLASH_TTL = 12 * 60 * 60 * 1000;
 // A signed-in player goes straight to the scoreboard: this week's games
 // and the last board from this phone draw at once, and fresh ones replace
 // them as they land. No splash, at any point in the week.
+const picksStillOpen = () => GAMES.length > 0 && GAMES.some((g) => !isGameLocked(g));
 function goToScoresNow() {
   logoScreen.classList.add("hidden");
   loginScreen.classList.add("hidden");
@@ -10534,7 +10535,8 @@ function goToScoresNow() {
   updateMePill();
   // A new slate with nothing kicked off yet: picks first. Once the week is
   // under way, the scoreboard.
-  if (GAMES.length && !firstKickoffPassed()) showPicksScreen(); else showScoreboard();
+  // Picks while any game can still be picked or changed; Scores once all are locked.
+  if (picksStillOpen()) showPicksScreen(); else showScoreboard();
   document.documentElement.classList.remove("known");
 }
 (async () => {
@@ -10565,7 +10567,7 @@ function goToScoresNow() {
     // from the one this phone had (a new week, a changed game).
     // The saved slate was last week's: the new one is open for picks, so
     // go there instead of the old board.
-    if (slateChanged && !firstKickoffPassed() && !scoreboardScreen.classList.contains("hidden")) { showPicksScreen(); return; }
+    if (picksStillOpen() && !scoreboardScreen.classList.contains("hidden")) { showPicksScreen(); return; }
     if (slateChanged && !scoreboardScreen.classList.contains("hidden")) withScrollPreserved(renderScoreboard);
     return;
   }
@@ -10581,7 +10583,7 @@ function goToScoresNow() {
   // splash entirely and lands on the scoreboard.
   if (window.__liveView) {
     startLiveView();
-  } else if (loadMe() && (firstKickoffPassed() || (fresh && !nowPlayingDue()))) {
+  } else if (loadMe() && (!picksStillOpen() || firstKickoffPassed() || (fresh && !nowPlayingDue()))) {
     goToPlayerSelect();
   } else {
     track("/splash");
