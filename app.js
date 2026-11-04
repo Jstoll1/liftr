@@ -1638,6 +1638,13 @@ addEventListener("pagehide", () => presenceSend(true));
 // touches load or scrolling.
 const sessionUse = new Set();
 let sessionStart = document.hidden ? null : Date.now();
+// Last real interaction: a session ends after 10 idle minutes and its time
+// stops at the last tap, so a phone left on the table (or put away without
+// iOS saying so) never logs a ten-hour visit.
+let lastAct = Date.now();
+const IDLE_MS = 10 * 60000;
+for (const ev of ["pointerdown", "keydown", "scroll", "touchstart"]) addEventListener(ev, () => { const now = Date.now(); if (sessionStart == null && !document.hidden) sessionStart = now; lastAct = now; }, { passive: true, capture: true });
+setInterval(() => { if (sessionStart != null && Date.now() - lastAct > IDLE_MS) endSession(); }, 60000);
 function noteUse(key, detail) { if (key) { sessionUse.add(String(key).replace(/^\//, "")); presenceNote(key, detail); } }
 // Minutes on each game's live view: started when a live game cast opens,
 // stopped when the sheet closes or the app is put away.
@@ -1704,7 +1711,7 @@ function openLocksSheet() {
 document.addEventListener("click", (e) => { const t = e.target.closest?.("[data-locks], .pick-cell .pick-lk"); if (!t || !lockRule()) return; e.preventDefault(); e.stopPropagation(); openLocksSheet(); }, true);
 function endSession() {
   if (sessionStart == null) return;
-  const start = sessionStart, dur = Date.now() - start;
+  const start = sessionStart, dur = Math.min(Date.now(), Math.max(lastAct, start) + 60000) - start;
   sessionStart = null;
   gcStop();
   const f = [...sessionUse]; sessionUse.clear();
@@ -1721,8 +1728,9 @@ function endSession() {
     if (!(navigator.sendBeacon && navigator.sendBeacon(`${WORKER_URL}/visit`, new Blob([body], { type: "text/plain" })))) fetch(`${WORKER_URL}/visit`, { method: "POST", body, keepalive: true }).catch(() => queueTele(JSON.parse(body)));
   } catch {}
 }
-document.addEventListener("visibilitychange", () => { if (document.hidden) endSession(); else if (sessionStart == null) sessionStart = Date.now(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) endSession(); else { lastAct = Date.now(); if (sessionStart == null) sessionStart = lastAct; } });
 addEventListener("pagehide", endSession);
+addEventListener("freeze", endSession);
 
 // Jake's friction (errors, rage taps, dead taps, sheets shut at once) goes
 // to its own log on the live page, never into league usage.
