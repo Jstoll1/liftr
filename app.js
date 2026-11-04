@@ -9849,8 +9849,12 @@ function playerSeason(name) {
   }
   const played = scores.filter((x) => !x.missed);
   const sorted = [...played].sort((a, b) => b.score - a.score);
-  const best = picks.filter((p) => p.hit).sort((a, b) => b.pts - a.pts || a.with_ - b.with_)[0];
-  const worst = picks.filter((p) => !p.hit).sort((a, b) => b.others - a.others || b.worth - a.worth)[0];
+  // How one-sided the game was against you: your side vs the other side.
+  const gap = (p) => (p.oppNames?.length || 0) - (p.with_ || 1);
+  // Best: most points, then the loneliest call (1 vs 9 beats 5 vs 5).
+  const best = picks.filter((p) => p.hit).sort((a, b) => b.pts - a.pts || gap(b) - gap(a))[0];
+  // Worst: the miss where you were most alone against a right league.
+  const worst = picks.filter((p) => !p.hit).sort((a, b) => gap(b) - gap(a) || b.others - a.others || b.worth - a.worth)[0];
   return {
     scores, w, l, best, worst,
     top: sorted[0], low: sorted[sorted.length - 1],
@@ -9918,7 +9922,7 @@ function openPlayerCard(name, again) {
   const logo = (full, known) => { const id = known || teamIdOf(full); return id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : `<span class="plc-nologo"></span>`; };
   const pick = (p, hit) => !p ? "" : `<div class="plc-pick ${hit ? "hit" : "miss"}">
       <div class="plc-pt"><small>${hit ? "BEST PICK" : "WORST PICK"} · WEEK ${p.week}</small><b>${hit ? `+${p.pts}` : "0"} PTS</b></div>
-      <div class="plc-call">${logo(p.teamFull, p.teamId)}<span><b>${esc(p.text)}</b><small>${hit ? `${p.with_} of ${p.of} made this pick${p.with_ <= 2 ? " · almost nobody else" : ""}` : p.others ? `${p.others} of ${p.of} took the other side and got it right` : `${p.with_} of ${p.of} made this pick`}</small></span></div>
+      <div class="plc-call">${logo(p.teamFull, p.teamId)}<span><b>${esc(p.text)}</b><small><i class="plc-vs">${p.with_ || 1} vs ${p.oppNames?.length || 0}</i> · ${hit ? `${p.with_} of ${p.of} made this pick${p.with_ <= 2 ? " · almost nobody else" : ""}` : p.others ? `${p.others} of ${p.of} took the other side and got it right` : `${p.with_} of ${p.of} made this pick`}</small></span></div>
       ${p.away ? `<div class="plc-score"><span class="${p.as > p.hs ? "w" : ""}">${logo(p.away, p.awayId)}<i>${esc(p.awayShort)}</i><b>${Number.isFinite(p.as) ? p.as : ""}</b></span><em>FINAL</em><span class="${p.hs > p.as ? "w" : ""}"><b>${Number.isFinite(p.hs) ? p.hs : ""}</b><i>${esc(p.homeShort)}</i>${logo(p.home, p.homeId)}</span></div>` : ""}
       <div class="plc-more">${p.sameNames?.length ? `<div class="plc-wh"><small>ALSO ON IT</small><div class="pick-chips">${nameChips(p.sameNames)}</div></div>` : `<div class="plc-wh"><small>ALSO ON IT</small><em>Nobody else</em></div>`}${p.oppNames?.length ? `<div class="plc-wh"><small>OTHER SIDE</small><div class="pick-chips">${nameChips(p.oppNames)}</div></div>` : ""}</div>
       <i class="plc-caret">▾</i>
