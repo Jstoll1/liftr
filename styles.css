@@ -9279,3 +9279,5 @@ body:has(.modal-overlay:not(.hidden), .wpx-overlay:not(.hidden)) #app-scroll { o
 /* Theme poll is a hard gate: above every sheet, nav and pop-up. */
 #theme-poll { z-index: 2147483000 !important; position: fixed !important; inset: 0 !important; }
 .plc-vs { font-style: normal; font-weight: 800; color: var(--text); }
+.plc-lock { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: rgba(var(--arcade-gold-rgb), .16); color: var(--arcade-gold); }
+html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
