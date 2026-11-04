@@ -1582,6 +1582,9 @@ body::before { display: none; }
     const dupTap = (x) => x.k === "scorebug-open" && feed.some((y) => y.n === x.n && /^(game-final|gamecast|game-info)$/.test(y.k) && String(y.d) === String(x.d) && Math.abs(y.at - x.at) < 3000);
     for (const e of feed.filter((x) => !/^path-of-/.test(x.k) && !dupTap(x)).slice().reverse()) {
       let s = open[e.n];
+      // A phone put away without a goodbye (iOS often skips it) must not
+      // glue tomorrow's taps onto today's visit: 30 quiet minutes ends it.
+      if (s && e.at - s.end > 30 * 60000) { s.done = true; delete open[e.n]; s = null; }
       if (e.k === "in" || !s) {
         s = open[e.n] = { n: e.n, start: e.at, end: e.at, app: e.k === "in" ? e.d : "", acts: [], done: false };
         list.push(s);
