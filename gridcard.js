@@ -76,6 +76,7 @@
     return [x, y, `rgb(${p[0]},${p[1]},${p[2]})`];
   }
 
+  window.openGridCard = (...a) => openGridCard(...a);
   async function openGridCard() {
     try { window.noteUse?.("grid-card"); } catch {}
     const picks = (typeof fetchAllPicks === "function" ? await fetchAllPicks() : null) || lastGoodCloudPicks || {};

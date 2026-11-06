@@ -125,7 +125,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=348127049454", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=732000226073", "sim.js?v=374204176553", "gridcard.js?v=430672613255"];
+const EXTRAS = ["ask-ui.js?v=348127049454", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=732000226073", "sim.js?v=374204176553", "gridcard.js?v=714072170231"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -10603,6 +10603,8 @@ async function startLiveView() {
   currentManager = null;
   if (view === "history") return showHistory();
   if (view === "trivia") return showTrivia();
+  // The grid check card for the admin page: counts only, picks stay masked.
+  if (view === "grid") { showScoreboard(); await ensureExtras(); for (let i = 0; i < 50 && !window.openGridCard; i++) await new Promise((r) => setTimeout(r, 100)); return window.openGridCard?.(); }
   showScoreboard();
   const until = async (ok, ms = 10000) => { const t0 = Date.now(); while (!ok() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100)); return ok(); };
   if (!(await until(() => liveWeekRows.length))) return;
