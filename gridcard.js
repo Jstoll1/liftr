@@ -52,7 +52,7 @@
   // columns, measured from the art. Everything drawn is relative to a
   // panel's name-bar corner.
   const PANELS = [[265, 410], [263, 614], [259, 825], [256, 1047], [251, 1276], [697, 410], [705, 614], [715, 825], [724, 1047], [737, 1277]]; // measured from the art
-  const BG = "assets/grid-bg-100-race.webp";
+  const BG = "assets/grid-bg-100-race2.webp";
   let bgImg = null;
   const loadBg = () => new Promise((res) => { if (bgImg) return res(bgImg); const im = new Image(); im.onload = () => { bgImg = im; res(im); }; im.onerror = () => res(null); im.src = BG; });
   const SMALL_FLAG = ["FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "P.......", "P.......", "P......."];
@@ -108,7 +108,7 @@
     // (1024x1536), left column then right. Every other part of a panel sits
     // at a fixed offset from its name bar (measured from panel 1).
     const BARS = [[245, 370, 250], [245, 588, 250], [245, 803, 250], [245, 1016, 250], [245, 1236, 250], [752, 370, 248], [752, 588, 248], [752, 803, 248], [752, 1016, 248], [752, 1236, 248]];
-    const O = { nameH: 32, cntY: 67, cntR: 215, cellX: 10, cellY: 85, cellW: 162, cellH: 26, tbX: 122, tbY: 140, flagX: 184, flagY: 84, flagW: 70, flagH: 70 };
+    const O = { nameH: 32, cntY: 67, cntR: 215, cellX: 10, cellY: 85, cellW: 162, cellH: 26, tbX: 133, tbY: 140, flagX: 184, flagY: 84, flagW: 70, flagH: 70 };
     // The week and the ready count ride in one plate under the title.
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const sub = `${WEEK_LABEL.toUpperCase()} · ${left} · ${ready}/${rows.length} READY`;
@@ -138,7 +138,7 @@
         ctx.fillStyle = "#2a1e00"; ctx.fillText(tag, bx + 14, by - 8);
       }
       // Selections count.
-      ctx.fillStyle = BODY; ctx.fillRect(bx + O.cntR - 92, by + O.cntY - 15, 124, 30);
+      ctx.fillStyle = BODY; ctx.fillRect(bx + O.cntR - 74, by + O.cntY - 15, 106, 30);
       ctx.font = "700 20px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#fff";
       ctx.fillText(`${r.n} / ${total}`, bx + O.cntR, by + O.cntY);
       // Ten cells.
@@ -150,7 +150,7 @@
         ctx.fillStyle = k < r.n ? "rgba(255,255,255,.35)" : "rgba(255,255,255,.12)"; ctx.fillRect(cx, by + O.cellY, cw, 5);
       }
       // Tiebreaker in or not; the number stays private until kickoff.
-      ctx.fillStyle = BODY; ctx.fillRect(bx + O.tbX - 4, by + O.tbY - 14, 58, 28);
+      ctx.fillStyle = BODY; ctx.fillRect(bx + O.tbX, by + O.tbY - 14, 54, 28);
       ctx.font = "900 20px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = r.tb ? "#39ff88" : "#e0102a";
       ctx.fillText(r.tb ? "✓ IN" : "✗", bx + O.tbX, by + O.tbY);
       // Flag box in the state colour.
