@@ -6512,19 +6512,21 @@ function openEngineTerm() {
   const paint = () => {
     // Keeps the last 200 lines to scroll back through; follows the newest
     // line only while you are at the bottom.
-    const atEnd = body.scrollHeight - body.scrollTop - body.clientHeight < 24;
     body.insertAdjacentHTML("beforeend", step());
     while (body.children.length > 200) body.firstElementChild.remove();
-    if (atEnd) body.scrollTop = body.scrollHeight;
+    // Running means following: it only stays scrolled back while held.
+    body.scrollTop = body.scrollHeight;
     foot.textContent = open.length ? `Run ${run.toLocaleString()} of ${N.toLocaleString()} · one possible Saturday each` : "Every game is final";
   };
+  w.__paint = paint;
   paint();
   clearInterval(engineTimer);
   // Press and hold anywhere on the box to pause it; let go to resume.
   if (!w.dataset.hold) {
     w.dataset.hold = "1";
     // Letting go resumes from the newest line, scrolled back to the bottom.
-    const hold = (on) => { w.classList.toggle("held", on); if (!on) { const b = w.querySelector(".eng-body"); if (b) b.scrollTo({ top: b.scrollHeight, behavior: "smooth" }); } };
+    // Letting go snaps to the newest line and the next run lands at once.
+    const hold = (on) => { w.classList.toggle("held", on); if (!on) { const b = w.querySelector(".eng-body"); if (b) b.scrollTop = b.scrollHeight; w.__paint?.(); } };
     w.addEventListener("pointerdown", (e) => { if (!e.target.closest(".eng-x")) hold(true); });
     for (const ev of ["pointerup", "pointercancel", "pointerleave"]) w.addEventListener(ev, () => hold(false));
     w.addEventListener("contextmenu", (e) => e.preventDefault());
