@@ -224,6 +224,13 @@
       "at": 1793654635000,
       "commit": "ae5762e",
       "note": "OpenAI slow note now at 20s (model replies run 5-10s); 25s deadline and one retry per call; Ask clients time out at 60s and show an error"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".lr-sc",
+      "at": 1794021613000,
+      "commit": "8f9fa32",
+      "note": "Any tap on a locked pick card, the score included, opens that game's sheet"
     }
   ]
 }
