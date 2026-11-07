@@ -6490,7 +6490,7 @@ function openEngineTerm() {
       ? `<b>TIE ${best} PTS</b> ${escapeCd(who.map((x) => shown(x).toUpperCase()).join(", "))} <span class="eng-c">→ tiebreaker</span>`
       : `<b>${escapeCd(shown(who[0]).toUpperCase())}</b> wins the week, ${best} pts`;
   };
-  let run = runNo(), queue = [];
+  let run = runNo(), queue = [], lastWin = "";
   const nextRun = () => {
     const out = models.map((m) => m.fixed || draw(m));
     const lines = models.map((m, k) => m.fixed ? null : gameLine(m, out[k])).filter(Boolean);
@@ -6502,7 +6502,10 @@ function openEngineTerm() {
   const step = (t = Date.now()) => {
     if (!open.length) return line(t, `<span class="eng-c">ALL GAMES FINAL · NOTHING LEFT TO RUN</span>`);
     if (!queue.length) nextRun();
-    return line(t, queue.shift());
+    const html = queue.shift();
+    // The footer leads with the latest run's winner as it prints.
+    if (html.startsWith("→ ")) { const t = html.slice(2).replace(/<[^>]+>/g, "").replace(/\s*→ tiebreaker/, "").trim(); const m = t.match(/^TIE (\d+) PTS (.+)$/); lastWin = m ? (m[2].split(", ").length > 2 ? `TIE ${m[1]} PTS · ${m[2].split(", ").length} players` : `TIE ${m[1]} PTS · ${m[2].replace(", ", " & ")}`) : t; }
+    return line(t, html);
   };
   // Mid-stream: a screen's worth already printed, timestamps just behind.
   const now = Date.now();
@@ -6516,7 +6519,7 @@ function openEngineTerm() {
     while (body.children.length > 200) body.firstElementChild.remove();
     // Running means following: it only stays scrolled back while held.
     body.scrollTop = body.scrollHeight;
-    foot.textContent = open.length ? `Run ${run.toLocaleString()} of ${N.toLocaleString()} · one possible Saturday each` : "Every game is final";
+    foot.textContent = open.length ? `${lastWin ? `🏆 ${lastWin} · ` : ""}Run ${run.toLocaleString()} of ${N.toLocaleString()}` : "Every game is final";
   };
   w.__paint = paint;
   paint();
