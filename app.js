@@ -6512,7 +6512,10 @@ function openEngineTerm() {
   // Mid-stream: a screen's worth already printed, timestamps just behind.
   const now = Date.now();
   nextRun(); queue.splice(0, Math.floor(Math.random() * queue.length));
-  body.innerHTML = Array.from({ length: 7 }, (_, i) => step(now - (7 - i) * 350)).join("");
+  // Opens mid-session: 200 lines already printed (the scroll-back limit),
+  // timestamps running back from now, so it reads as long under way.
+  const PRE = 200;
+  body.innerHTML = Array.from({ length: PRE }, (_, i) => step(now - (PRE - i) * 350)).join("");
   requestAnimationFrame(() => { body.scrollTop = body.scrollHeight; });
   const paint = () => {
     // Keeps the last 200 lines to scroll back through; follows the newest
