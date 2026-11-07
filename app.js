@@ -6523,7 +6523,8 @@ function openEngineTerm() {
   // Press and hold anywhere on the box to pause it; let go to resume.
   if (!w.dataset.hold) {
     w.dataset.hold = "1";
-    const hold = (on) => { w.classList.toggle("held", on); };
+    // Letting go resumes from the newest line, scrolled back to the bottom.
+    const hold = (on) => { w.classList.toggle("held", on); if (!on) { const b = w.querySelector(".eng-body"); if (b) b.scrollTo({ top: b.scrollHeight, behavior: "smooth" }); } };
     w.addEventListener("pointerdown", (e) => { if (!e.target.closest(".eng-x")) hold(true); });
     for (const ev of ["pointerup", "pointercancel", "pointerleave"]) w.addEventListener(ev, () => hold(false));
     w.addEventListener("contextmenu", (e) => e.preventDefault());
