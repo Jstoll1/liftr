@@ -8742,7 +8742,7 @@ body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }
 .eng-g { color: #ffe45e; }
 .eng-c { color: #9fd8ff; }
 .eng-l i { color: #ff9f43; font-style: normal; }
-.eng-foot { padding: 3px 10px 6px; border-top: 1px dashed #1f4a1f; color: #3d9a3d; font-size: 13px; white-space: nowrap; overflow: hidden; }
+.eng-foot { padding: 3px 10px 6px; border-top: 1px dashed #1f4a1f; color: #3d9a3d; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .eng-foot::after { content: "▌"; margin-left: 4px; animation: gc-ezblink 1s steps(2, start) infinite; color: #6dff6d; }
 @keyframes eng-in { from { opacity: 0; } }
 .wpx-run { display: block; margin: 12px auto 4px; padding: 8px 14px; border: 1px solid rgba(57, 255, 136, .6); border-radius: 8px; background: rgba(57, 255, 136, .08); color: #39ff88; font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .08em; cursor: pointer; }
