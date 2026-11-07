@@ -3389,8 +3389,12 @@ async function renderScoreboard() {
   maybeShowQotw();
   if (bootBoard) {
     const b = bootBoard; bootBoard = null;
-    if (!Object.keys(latestLive).length && b.week === currentWeek) { latestLive = Object.fromEntries(Object.entries(b.live || {}).filter(([id, g]) => !(g?.completed && finalTooSoon(id)))); latestLiveWeek = b.week; }
-    try { paintScoreboard(b.picks, b.live, true); } catch (err) { console.warn("cached board", err); }
+    // A saved final only counts if it was saved after the game could have
+    // ended: a copy saved off a bad early read (VT 26-34 at halftime) must
+    // not come back on the next open. Judged by when it was saved, not now.
+    const savedLive = Object.fromEntries(Object.entries(b.live || {}).filter(([id, g]) => !(g?.completed && (finalTooSoon(id) || finalTooSoon(id, b.at)))));
+    if (!Object.keys(latestLive).length && b.week === currentWeek) { latestLive = savedLive; latestLiveWeek = b.week; }
+    try { paintScoreboard(b.picks, savedLive, true); } catch (err) { console.warn("cached board", err); }
   }
   // Picks and scores together, not picks and then scores.
   const [fetched, live] = await Promise.all([fetchBoardPicks(), fetchLiveScores()]);
@@ -4273,7 +4277,7 @@ document.getElementById("side-screen-body")?.addEventListener("click", (e) => {
 // final — no manual score entry. A game only counts once ESPN marks it
 // completed, so scores never lock in early off a still-live number.
 // A final reported before the game could have been played is not a final.
-function finalTooSoon(id) { const g = GAMES.find((x) => String(x.id) === String(id)); const k = Date.parse(g?.kickoff); return Number.isFinite(k) && Date.now() < k + 135 * 60000; }
+function finalTooSoon(id, at = Date.now()) { const g = GAMES.find((x) => String(x.id) === String(id)); const k = Date.parse(g?.kickoff); return Number.isFinite(k) && at < k + 135 * 60000; }
 function computeLiveResults(live) {
   const results = {};
   GAMES.forEach((game) => {
