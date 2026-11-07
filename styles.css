@@ -9282,10 +9282,9 @@ body:has(.modal-overlay:not(.hidden), .wpx-overlay:not(.hidden)) #app-scroll { o
 .plc-lock { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: rgba(var(--arcade-gold-rgb), .16); color: var(--arcade-gold); }
 html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 /* SIM button (matrix green) and the engine as a centred pop-up. */
-.lb-head .sim-btn { position: absolute; right: 58px; top: 50%; transform: translateY(-50%); z-index: 2; padding: 4px 8px; border-radius: 8px; border: 1.5px solid #39ff88; background: rgba(0, 20, 6, .85); color: #39ff88; font-family: 'VT323', ui-monospace, monospace; font-size: 17px; letter-spacing: .08em; line-height: 1; text-shadow: 0 0 6px rgba(57, 255, 136, .8); box-shadow: 0 0 10px rgba(57, 255, 136, .25), inset 0 0 8px rgba(57, 255, 136, .15); cursor: pointer; }
+.lb-head .sim-btn { position: absolute; right: 78px; top: 50%; transform: translateY(-50%); z-index: 2; padding: 4px 8px; border-radius: 8px; border: 1.5px solid #39ff88; background: rgba(0, 20, 6, .85); color: #39ff88; font-family: 'VT323', ui-monospace, monospace; font-size: 17px; letter-spacing: .08em; line-height: 1; text-shadow: 0 0 6px rgba(57, 255, 136, .8); box-shadow: 0 0 10px rgba(57, 255, 136, .25), inset 0 0 8px rgba(57, 255, 136, .15); cursor: pointer; }
 .lb-head .sim-btn:active { transform: translateY(-50%) scale(.96); }
 .eng-bd { position: fixed; inset: 0; z-index: 2590; background: rgba(0, 8, 2, .7); display: none; }
 .eng-bd.on { display: block; }
 .eng-term.pop { top: 50%; bottom: auto; width: min(380px, calc(100vw - 32px)); transform: translate(-50%, -50%); }
 .eng-term.pop.on { transform: translate(-50%, -50%); }
-#scoreboard-screen .lb-head:has(.sim-btn) #leaderboard-toggle { max-width: calc(100% - 112px) !important; white-space: nowrap; }
