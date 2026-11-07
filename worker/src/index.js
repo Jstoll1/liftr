@@ -2805,10 +2805,15 @@ const etDay = (iso) => {
   return new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
 };
 
+// Guards against a wrong result: the event must be the slate's game (same
+// day, not another meeting of the two teams), and nothing is final until
+// the game has had time to be played (2 h 15 m after kickoff).
+const sameGameDay = (evDate, kickoff) => { const a = Date.parse(evDate), b = Date.parse(kickoff); return !Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a - b) < 36 * 3600000; };
+const tooSoonForFinal = (kickoff) => { const k = Date.parse(kickoff); return Number.isFinite(k) && Date.now() < k + 135 * 60000; };
 async function liveTargets(env, week = null) {
   if (week === null) week = (await readWeeks(env)).current;
   const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
-  const games = (slate?.games || []).map((g) => ({ id: g.id, awayId: Number(g.awayId), homeId: Number(g.homeId) }));
+  const games = (slate?.games || []).map((g) => ({ id: g.id, awayId: Number(g.awayId), homeId: Number(g.homeId), kickoff: g.kickoff }));
   const dates = [...new Set((slate?.games || []).map((g) => etDay(g.kickoff)).filter(Boolean))].sort();
   return { games, dates };
 }
@@ -2930,7 +2935,7 @@ async function liveGames(env, week = null) {
         const event = events.find((e) => {
           const comp = e?.competitions?.[0];
           const ids = (comp?.competitors || []).map((c) => Number(c?.team?.id));
-          return ids.includes(g.awayId) && ids.includes(g.homeId);
+          return ids.includes(g.awayId) && ids.includes(g.homeId) && sameGameDay(e?.date, g.kickoff);
         });
         if (!event) return { id: g.id, found: false };
 
@@ -2983,8 +2988,8 @@ async function liveGames(env, week = null) {
           homeRank: rankOf(home),
           awayRecord: recordSummary(away),
           homeRecord: recordSummary(home),
-          state: statusType.state || "pre", // "pre" | "in" | "post"
-          completed: !!statusType.completed,
+          state: statusType.completed && tooSoonForFinal(g.kickoff) ? "in" : (statusType.state || "pre"), // "pre" | "in" | "post"
+          completed: !!statusType.completed && !tooSoonForFinal(g.kickoff),
           detail: statusType.shortDetail || statusType.detail || "",
           period: comp.status?.period ?? null,
           clock: comp.status?.displayClock ?? null,
