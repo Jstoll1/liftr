@@ -231,6 +231,13 @@
       "at": 1794021613000,
       "commit": "8f9fa32",
       "note": "Any tap on a locked pick card, the score included, opens that game's sheet"
+    },
+    {
+      "k": "espn-fail",
+      "match": "final changed",
+      "at": 1794076047000,
+      "commit": "033fac5",
+      "note": "Saved board drops finals saved before kickoff+2h15m, so Friday's bad early VT-SMU final can't replay on open"
     }
   ]
 }
