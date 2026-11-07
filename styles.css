@@ -9298,3 +9298,4 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 /* Paused: a taller window to read back through, same width. */
 .eng-term.held .eng-body { height: 280px; }
 .eng-term .eng-body { transition: height .18s ease; }
+.eng-bar .eng-left { margin: 0 auto 0 10px; padding: 0 6px; border: 1px solid #39ff88; border-radius: 3px; font-style: normal; font-size: 13px; color: #39ff88; letter-spacing: .06em; white-space: nowrap; }
