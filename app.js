@@ -626,6 +626,8 @@ function parseEspnEvents(events, games = GAMES) {
     // Nothing is final before it could have been played (2 h 15 m after kickoff).
     const kk = Date.parse(game.kickoff), tooSoon = Number.isFinite(kk) && Date.now() < kk + 135 * 60000;
     const finalNow = !tooSoon && (isFinal(st1) || isFinal(st2));
+    // Alarm: ESPN says final before the game could be over. Shown on Live's Health.
+    if (tooSoon && (isFinal(st1) || isFinal(st2))) { try { opsEvent("espn-fail", `early final rejected: G${game.id} ${game.awayShort} ${away?.score}-${home?.score} ${game.homeShort} (${st1.name || st2.name || "final"})`); } catch {} }
     const statusType = finalNow ? { ...st2, ...st1, completed: true, state: "post", shortDetail: (st1.shortDetail && /final/i.test(st1.shortDetail)) ? st1.shortDetail : (st2.shortDetail && /final/i.test(st2.shortDetail)) ? st2.shortDetail : "Final" } : tooSoon && (isFinal(st1) || isFinal(st2)) ? { ...(Object.keys(st1).length ? st1 : st2), completed: false, state: "in", shortDetail: "In progress", detail: "In progress" } : (Object.keys(st1).length ? st1 : st2);
     const prob = comp.situation?.lastPlay?.probability;
     const winProb = prob && Number.isFinite(prob.homeWinPercentage) && Number.isFinite(prob.awayWinPercentage)
@@ -827,6 +829,8 @@ async function fetchLiveScoresNow() {
   // A game this phone already saw finish stays finished: a read that
   // missed it is no reason to play it out again.
   if (Object.keys(live).length && latestLiveWeek === currentWeek) for (const [id, g] of Object.entries(latestLive)) if (g?.completed && !live[id] && !finalTooSoon(id)) live[id] = g;
+  // Alarm: a final whose score then changes means one of the two reads was wrong.
+  for (const [id, g] of Object.entries(live)) { const p = latestLive[id]; if (latestLiveWeek === currentWeek && p?.completed && g?.completed && (p.awayScore !== g.awayScore || p.homeScore !== g.homeScore)) { try { opsEvent("espn-fail", `final changed: G${id} ${p.awayScore}-${p.homeScore} -> ${g.awayScore}-${g.homeScore}`); } catch {} } }
   if (Object.keys(live).length) { latestLive = live; latestLiveWeek = currentWeek; saveRecords(live); }
   // A failed fetch is never reused; an answer (even "no games yet") is.
   if (answered) liveFetchedAt = Date.now();
