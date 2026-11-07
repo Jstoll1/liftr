@@ -2715,7 +2715,7 @@ gamesList?.addEventListener("click", (e) => {
   const chip = e.target.closest(".game-status");
   if (chip) { const id = Number(chip.closest(".game-card")?.dataset.gameId); if (id) { track("status-tap", { event: true }); openInsights(id); } return; }
   // A team's logo or name opens the game's info sheet too.
-  const tm = e.target.closest(".hz-tm, .tm-id, .lr-foot");
+  const tm = e.target.closest(".hz-tm, .tm-id, .lr-foot, .locked-result"); // any part of a locked card, scores included
   if (!tm) return;
   const id = Number(tm.closest(".game-card")?.dataset.gameId);
   if (id) { track("team-tap", { event: true }); openInsights(id); }
