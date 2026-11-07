@@ -826,7 +826,7 @@ async function fetchLiveScoresNow() {
   }
   // A game this phone already saw finish stays finished: a read that
   // missed it is no reason to play it out again.
-  if (Object.keys(live).length && latestLiveWeek === currentWeek) for (const [id, g] of Object.entries(latestLive)) if (g?.completed && !live[id]) live[id] = g;
+  if (Object.keys(live).length && latestLiveWeek === currentWeek) for (const [id, g] of Object.entries(latestLive)) if (g?.completed && !live[id] && !finalTooSoon(id)) live[id] = g;
   if (Object.keys(live).length) { latestLive = live; latestLiveWeek = currentWeek; saveRecords(live); }
   // A failed fetch is never reused; an answer (even "no games yet") is.
   if (answered) liveFetchedAt = Date.now();
@@ -3385,7 +3385,7 @@ async function renderScoreboard() {
   maybeShowQotw();
   if (bootBoard) {
     const b = bootBoard; bootBoard = null;
-    if (!Object.keys(latestLive).length && b.week === currentWeek) { latestLive = b.live; latestLiveWeek = b.week; }
+    if (!Object.keys(latestLive).length && b.week === currentWeek) { latestLive = Object.fromEntries(Object.entries(b.live || {}).filter(([id, g]) => !(g?.completed && finalTooSoon(id)))); latestLiveWeek = b.week; }
     try { paintScoreboard(b.picks, b.live, true); } catch (err) { console.warn("cached board", err); }
   }
   // Picks and scores together, not picks and then scores.
@@ -4268,11 +4268,13 @@ document.getElementById("side-screen-body")?.addEventListener("click", (e) => {
 // Results are derived straight from ESPN's live feed once a game goes
 // final — no manual score entry. A game only counts once ESPN marks it
 // completed, so scores never lock in early off a still-live number.
+// A final reported before the game could have been played is not a final.
+function finalTooSoon(id) { const g = GAMES.find((x) => String(x.id) === String(id)); const k = Date.parse(g?.kickoff); return Number.isFinite(k) && Date.now() < k + 135 * 60000; }
 function computeLiveResults(live) {
   const results = {};
   GAMES.forEach((game) => {
     const g = live[game.id];
-    if (g && g.completed && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore)) {
+    if (g && g.completed && !finalTooSoon(game.id) && Number.isFinite(g.awayScore) && Number.isFinite(g.homeScore)) {
       results[game.id] = { awayScore: g.awayScore, homeScore: g.homeScore };
     }
   });
