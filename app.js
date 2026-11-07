@@ -604,7 +604,9 @@ function parseEspnEvents(events, games = GAMES) {
   games.forEach((game) => {
     const event = events.find((e) => {
       const ids = ((e?.competitions?.[0]?.competitors) || []).map((c) => Number(c?.team?.id));
-      return ids.includes(game.awayId) && ids.includes(game.homeId);
+      // The slate's game, not another meeting of the two teams.
+      const ea = Date.parse(e?.date), kb = Date.parse(game.kickoff);
+      return ids.includes(game.awayId) && ids.includes(game.homeId) && (!Number.isFinite(ea) || !Number.isFinite(kb) || Math.abs(ea - kb) < 36 * 3600000);
     });
     if (!event) return;
     const comp = event.competitions[0];
@@ -621,8 +623,10 @@ function parseEspnEvents(events, games = GAMES) {
     // final, and free-text status strings are never used for scoring.
     const isVoid = (t) => /^STATUS_(POSTPONED|CANCELED|CANCELLED|SUSPENDED|FORFEIT)/.test(t.name || "");
     const isFinal = (t) => !isVoid(t) && (t.completed === true || /^STATUS_FINAL/.test(t.name || ""));
-    const finalNow = isFinal(st1) || isFinal(st2);
-    const statusType = finalNow ? { ...st2, ...st1, completed: true, state: "post", shortDetail: (st1.shortDetail && /final/i.test(st1.shortDetail)) ? st1.shortDetail : (st2.shortDetail && /final/i.test(st2.shortDetail)) ? st2.shortDetail : "Final" } : (Object.keys(st1).length ? st1 : st2);
+    // Nothing is final before it could have been played (2 h 15 m after kickoff).
+    const kk = Date.parse(game.kickoff), tooSoon = Number.isFinite(kk) && Date.now() < kk + 135 * 60000;
+    const finalNow = !tooSoon && (isFinal(st1) || isFinal(st2));
+    const statusType = finalNow ? { ...st2, ...st1, completed: true, state: "post", shortDetail: (st1.shortDetail && /final/i.test(st1.shortDetail)) ? st1.shortDetail : (st2.shortDetail && /final/i.test(st2.shortDetail)) ? st2.shortDetail : "Final" } : tooSoon && (isFinal(st1) || isFinal(st2)) ? { ...(Object.keys(st1).length ? st1 : st2), completed: false, state: "in", shortDetail: "In progress", detail: "In progress" } : (Object.keys(st1).length ? st1 : st2);
     const prob = comp.situation?.lastPlay?.probability;
     const winProb = prob && Number.isFinite(prob.homeWinPercentage) && Number.isFinite(prob.awayWinPercentage)
       ? { home: prob.homeWinPercentage * 100, away: prob.awayWinPercentage * 100 }
