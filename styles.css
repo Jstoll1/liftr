@@ -9295,3 +9295,6 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .eng-term { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .eng-term .eng-body { touch-action: pan-y; }
 .eng-term.held .eng-foot::after { content: " · PAUSED"; color: #ffe45e; animation: none; }
+/* Paused: a taller window to read back through, same width. */
+.eng-term.held .eng-body { height: 280px; }
+.eng-term .eng-body { transition: height .18s ease; }

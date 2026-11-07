@@ -6527,8 +6527,13 @@ function openEngineTerm() {
     // Letting go resumes from the newest line, scrolled back to the bottom.
     // Letting go snaps to the newest line and the next run lands at once.
     const hold = (on) => { w.classList.toggle("held", on); if (!on) { const b = w.querySelector(".eng-body"); if (b) b.scrollTop = b.scrollHeight; w.__paint?.(); } };
-    w.addEventListener("pointerdown", (e) => { if (!e.target.closest(".eng-x")) hold(true); });
-    for (const ev of ["pointerup", "pointercancel", "pointerleave"]) w.addEventListener(ev, () => hold(false));
+    // Touch: a scroll fires pointercancel the moment it starts, which ended
+    // the pause mid-swipe, so phones use touchstart/touchend (fires only on
+    // lift, scroll or not). A mouse uses pointer events.
+    w.addEventListener("touchstart", (e) => { if (!e.target.closest(".eng-x")) hold(true); }, { passive: true });
+    w.addEventListener("touchend", (e) => { if (!e.touches.length) setTimeout(() => hold(false), 250); }, { passive: true });
+    w.addEventListener("pointerdown", (e) => { if (e.pointerType === "mouse" && !e.target.closest(".eng-x")) hold(true); });
+    for (const ev of ["pointerup", "pointerleave"]) w.addEventListener(ev, (e) => { if (e.pointerType === "mouse") hold(false); });
     w.addEventListener("contextmenu", (e) => e.preventDefault());
   }
   engineTimer = setInterval(() => { if (!document.hidden && !w.classList.contains("held")) paint(); }, 350);
