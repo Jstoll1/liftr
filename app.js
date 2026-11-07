@@ -6520,6 +6520,7 @@ function openEngineTerm() {
   requestAnimationFrame(() => w.scrollIntoView({ behavior: "smooth", block: "nearest" }));
 }
 function stopEngineTerm() {
+  document.getElementById("eng-bd")?.classList.remove("on"); document.getElementById("eng-term")?.classList.remove("pop");
   const w = document.getElementById("eng-term");
   w?.classList.remove("on");
   clearInterval(engineTimer); engineTimer = null;
@@ -10843,3 +10844,18 @@ renderLiveScores = withLogosKept(renderLiveScores, () => liveScoresList);
 renderScoreboardTable = withLogosKept(renderScoreboardTable, () => scoreboardTable);
 renderRankings = withLogosKept(renderRankings, () => rankingsList);
 renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
+
+// SIM next to VS: the engine in a pop-up box, simulating every open game
+// on its own. Uses the board's current picks and finals.
+document.getElementById("sim-open")?.addEventListener("click", () => {
+  window.__wpCtx = window.__wpCtx || { rows: [], cloudPicks: lastGoodCloudPicks || {}, results: computeLiveResults(latestLive || {}) };
+  noteUse("sim-open");
+  openEngineTerm();
+  const w = document.getElementById("eng-term");
+  if (w && !w.classList.contains("inline")) {
+    w.classList.add("pop");
+    let bd = document.getElementById("eng-bd");
+    if (!bd) { bd = document.createElement("div"); bd.id = "eng-bd"; bd.className = "eng-bd"; bd.addEventListener("click", () => stopEngineTerm()); document.body.appendChild(bd); }
+    bd.classList.add("on");
+  }
+});
