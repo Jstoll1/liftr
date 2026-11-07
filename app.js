@@ -6443,7 +6443,7 @@ function openEngineTerm() {
     w.className = "eng-term pro-keep";
     w.setAttribute("role", "dialog");
     w.setAttribute("aria-label", "The engine running");
-    w.innerHTML = `<div class="eng-bar"><span>C:\\BROCHIEFS\\ENGINE.EXE</span><button type="button" class="eng-x" aria-label="Close">✕</button></div><div class="eng-body" aria-live="off"></div><div class="eng-foot"></div>`;
+    w.innerHTML = `<div class="eng-bar"><span>C:\\BROCHIEFS\\ENGINE.EXE</span><em class="eng-left"></em><button type="button" class="eng-x" aria-label="Close">✕</button></div><div class="eng-body" aria-live="off"></div><div class="eng-foot"></div>`;
     w.querySelector(".eng-x").addEventListener("click", () => stopEngineTerm());
   }
   // Docked in the explainer, where the button is, at the card's width.
@@ -6454,8 +6454,10 @@ function openEngineTerm() {
   const ctx = window.__wpCtx || {};
   const results = ctx.results || {}, cloud = ctx.cloudPicks || lastGoodCloudPicks || {};
   const body = w.querySelector(".eng-body"), foot = w.querySelector(".eng-foot");
+  const leftEl = w.querySelector(".eng-left");
   const models = simModels(results, latestLive || {});
   const open = models.filter((m) => !m.fixed);
+  if (leftEl) leftEl.textContent = open.length ? `${open.length} ${open.length === 1 ? "GAME" : "GAMES"} LEFT` : "ALL FINAL";
   const anyHidden = MANAGERS.some((n) => Object.values(cloud[n]?.picks || {}).some((p) => p?.hidden));
   const RUN_MS = 40, N = 5000;
   const runNo = () => Math.floor(Date.now() / RUN_MS) % N + 1;
