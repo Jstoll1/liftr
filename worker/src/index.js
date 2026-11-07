@@ -2636,6 +2636,17 @@ async function handleSeason(request, env, corsHeaders, url) {
       if (!kickoffs[id] || Date.now() < kickoffs[id]) continue; // not started: ignore
       clean[id] = { awayScore: a, homeScore: h };
     }
+    // Second source: the phone's finals must match the Worker's own ESPN
+    // read. A disagreement keeps the result out and lands on Live's Health.
+    try {
+      const own = Object.fromEntries(((await liveGames(env, week)).games || []).map((g) => [String(g.id), g]));
+      for (const [id, r] of Object.entries(clean)) {
+        const g = own[id];
+        if (g?.found && g.completed && Number.isInteger(g.awayScore) && Number.isInteger(g.homeScore)) {
+          if (g.awayScore !== r.awayScore || g.homeScore !== r.homeScore) { opsNote("upstream-fail", `final mismatch G${id} wk${week}: phone ${r.awayScore}-${r.homeScore}, ESPN ${g.awayScore}-${g.homeScore}`, { src: "worker" }); delete clean[id]; }
+        } else if (g?.found && !g.completed) { opsNote("upstream-fail", `final rejected G${id} wk${week}: phone says final, ESPN says ${g.detail || g.state}`, { src: "worker" }); delete clean[id]; }
+      }
+    } catch (err) { console.error("final cross-check", err?.stack || String(err)); }
     if (!Object.keys(clean).length) return json({ error: "No usable results" }, 400, corsHeaders);
     const prior = (await env.LIFTR_KV.get(resultsKey(week), "json")) || {};
     await env.LIFTR_KV.put(resultsKey(week), JSON.stringify({ ...prior, ...clean }));
@@ -3060,6 +3071,18 @@ export function parseAtsRecord(j) {
 // nobody may open the board after a late Saturday game. Every Monday
 // morning the Worker asks ESPN itself for any week not yet frozen, stores
 // the finals it finds, and seals.
+async function summaryAgrees(g) {
+  try {
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${g.eventId}`, { headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1" }, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return true; // the page being down is no evidence against the scoreboard
+    const comp = (await r.json())?.header?.competitions?.[0];
+    const done = comp?.status?.type?.completed === true;
+    const sc = (side) => Number(comp?.competitors?.find((c) => c.homeAway === side)?.score);
+    const ok = done && sc("away") === g.awayScore && sc("home") === g.homeScore;
+    if (!ok) opsNote("upstream-fail", `final mismatch G${g.id}: scoreboard ${g.awayScore}-${g.homeScore}, game page ${done ? `${sc("away")}-${sc("home")}` : "not final"}`, { src: "worker" });
+    return ok;
+  } catch { return true; }
+}
 async function sealFromEspn(env) {
   const weeks = await readWeeks(env);
   const out = [];
@@ -3074,6 +3097,8 @@ async function sealFromEspn(env) {
     for (const g of games) {
       if (!g.found || !g.completed) continue;
       if (!Number.isInteger(g.awayScore) || !Number.isInteger(g.homeScore)) continue;
+      // Second source: ESPN's game page must agree with its scoreboard.
+      if (g.eventId && !(await summaryAgrees(g))) continue;
       finals[g.id] = { awayScore: g.awayScore, homeScore: g.homeScore };
     }
     if (Object.keys(finals).length) {
