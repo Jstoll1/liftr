@@ -6508,9 +6508,14 @@ function openEngineTerm() {
   const now = Date.now();
   nextRun(); queue.splice(0, Math.floor(Math.random() * queue.length));
   body.innerHTML = Array.from({ length: 7 }, (_, i) => step(now - (7 - i) * 350)).join("");
+  requestAnimationFrame(() => { body.scrollTop = body.scrollHeight; });
   const paint = () => {
+    // Keeps the last 200 lines to scroll back through; follows the newest
+    // line only while you are at the bottom.
+    const atEnd = body.scrollHeight - body.scrollTop - body.clientHeight < 24;
     body.insertAdjacentHTML("beforeend", step());
-    while (body.children.length > 9) body.firstElementChild.remove();
+    while (body.children.length > 200) body.firstElementChild.remove();
+    if (atEnd) body.scrollTop = body.scrollHeight;
     foot.textContent = open.length ? `Run ${run.toLocaleString()} of ${N.toLocaleString()} · one possible Saturday each` : "Every game is final";
   };
   paint();
