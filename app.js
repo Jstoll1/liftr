@@ -6515,7 +6515,15 @@ function openEngineTerm() {
   };
   paint();
   clearInterval(engineTimer);
-  engineTimer = setInterval(() => { if (!document.hidden) paint(); }, 350);
+  // Press and hold anywhere on the box to pause it; let go to resume.
+  if (!w.dataset.hold) {
+    w.dataset.hold = "1";
+    const hold = (on) => { w.classList.toggle("held", on); };
+    w.addEventListener("pointerdown", (e) => { if (!e.target.closest(".eng-x")) hold(true); });
+    for (const ev of ["pointerup", "pointercancel", "pointerleave"]) w.addEventListener(ev, () => hold(false));
+    w.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+  engineTimer = setInterval(() => { if (!document.hidden && !w.classList.contains("held")) paint(); }, 350);
   w.classList.add("on");
   requestAnimationFrame(() => w.scrollIntoView({ behavior: "smooth", block: "nearest" }));
 }
