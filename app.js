@@ -7991,7 +7991,11 @@ async function openInsights(gameId) {
     const pb = (poss) => poss ? `<i class="gc-pball gc-pfloat" title="Has the ball"></i>` : "";
     // Timeouts left: three pips under the name, lit for each one still in
     // hand (college teams get three a half).
-    const toOf = (side) => { const v = side === "a" ? (sit.awayTimeouts ?? summaryRaw?.situation?.awayTimeouts) : (sit.homeTimeouts ?? summaryRaw?.situation?.homeTimeouts); return Number.isFinite(v) ? Math.max(0, Math.min(3, v)) : null; };
+    // The game page (summary) is fresher than the scoreboard, so it leads;
+    // the scoreboard fills in. Hidden at halftime, between quarters' breaks
+    // the feed leaves stale, and once the game is over.
+    const toLive = lv?.state === "in" && !/half|end of|final/i.test(String(lv?.detail || ""));
+    const toOf = (side) => { if (!toLive) return null; const s = summaryRaw?.situation, v = side === "a" ? (s?.awayTimeouts ?? sit.awayTimeouts) : (s?.homeTimeouts ?? sit.homeTimeouts); return Number.isFinite(v) ? Math.max(0, Math.min(3, v)) : null; };
     const toPips = (side) => { const n = toOf(side); return n == null ? "" : `<span class="gc-to" title="${n} timeout${n === 1 ? "" : "s"} left" aria-label="${n} timeouts left">${[0, 1, 2].map((i) => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</span>`; };
     const tm = (id, ab, poss, side) => `<div class="gc-t ${side}${poss ? " poss" : ""}" style="--tc:${side === "a" ? aCol : hCol}">${lg(id, "gc-tlogo")}<span class="gc-tn">${side === "h" ? pb(poss) : ""}<b>${esc(ab)}</b>${side === "a" ? pb(poss) : ""}</span>${toPips(side)}</div>`;
     const wp = lv.winProb;
