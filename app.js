@@ -6565,6 +6565,9 @@ function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
   if (weekIsLive(results)) {
     const ch = weekWinChances(cloudPicks, results, live);
     for (const row of rows) row.winPct = ch[row.name] ?? 0;
+    // Points first, then each player's chance of winning the week, so the
+    // order moves with every score update. Places (T-3RD) are unchanged.
+    rows.sort((a, b) => b.score - a.score || (b.winPct ?? 0) - (a.winPct ?? 0) || a.tbDiff - b.tbDiff);
     window.__wpCtx = { rows, cloudPicks, results };
   } else for (const row of rows) delete row.winPct;
   renderRankingRows(rows, cloudPicks, results, live);
