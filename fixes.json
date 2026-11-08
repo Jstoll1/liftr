@@ -238,6 +238,55 @@
       "at": 1794076047000,
       "commit": "033fac5",
       "note": "Saved board drops finals saved before kickoff+2h15m, so Friday's bad early VT-SMU final can't replay on open"
+    },
+    {
+      "k": "espn-fail",
+      "match": "final changed",
+      "at": 1794106742000,
+      "commit": "4f6433b",
+      "note": "Only finals read fresh from ESPN this session count as done, so a bad saved final is re-read, not re-saved"
+    },
+    {
+      "k": "espn-fail",
+      "match": "scoreboard and Worker /live both failed",
+      "at": 1794106742000,
+      "commit": "4f6433b",
+      "note": "Connection drop (same minute as slow calls); app already retries the Worker after 3s and keeps the last board on screen"
+    },
+    {
+      "k": "worker-slow",
+      "match": "/games",
+      "at": 1794106742000,
+      "commit": "4f6433b",
+      "note": "Burst of slow calls on one phone (connection/wake) now logs once as slow-load"
+    },
+    {
+      "k": "worker-slow",
+      "match": "/insights/news",
+      "at": 1794106742000,
+      "commit": "4f6433b",
+      "note": "Burst of slow calls on one phone now logs once; news already cached 5 min"
+    },
+    {
+      "k": "worker-slow",
+      "match": "/app-control",
+      "at": 1794106742000,
+      "commit": "4f6433b",
+      "note": "Cached 30s in the Worker; slow bursts log once"
+    },
+    {
+      "k": "worker-slow",
+      "match": "/lightning",
+      "at": 1794106742000,
+      "commit": "4f6433b",
+      "note": "Anonymous reads cached 5s in the Worker; slow bursts log once"
+    },
+    {
+      "k": "worker-slow",
+      "match": "/insights/injuries",
+      "at": 1794106742000,
+      "commit": "4f6433b",
+      "note": "Cached 10 min in the Worker; slow bursts log once"
     }
   ]
 }
