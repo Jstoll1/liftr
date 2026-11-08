@@ -10895,3 +10895,21 @@ document.getElementById("sim-open")?.addEventListener("click", () => {
     bd.classList.add("on");
   }
 });
+
+// One-off announcement: shown once per phone, until it expires.
+(() => {
+  const A = { id: "nissan-wedding-2026", until: Date.parse("2026-11-10T11:00:00Z"), kicker: "ANNOUNCEMENT", title: "Happy wedding weekend, Nissan!", body: "We love you." };
+  const KEY = `brochiefs_announce_${A.id}`;
+  const show = () => {
+    try { if (localStorage.getItem(KEY) || Date.now() > A.until || window.__liveView || window.__adminEntry) return; } catch { return; }
+    if (document.getElementById("theme-poll") || document.querySelector(".modal-overlay:not(.hidden)")) return setTimeout(show, 4000);
+    const m = document.createElement("div");
+    m.id = "announce"; m.className = "ann-ov"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", A.title);
+    m.innerHTML = `<div class="ann-card"><div class="ann-k">${A.kicker}</div><h2>${A.title}</h2><p>${A.body}</p><button type="button" class="ann-b">🥂 Cheers</button></div>`;
+    const close = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch {} m.classList.add("out"); setTimeout(() => m.remove(), 250); };
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".ann-b")) close(); });
+    document.body.appendChild(m);
+    try { noteUse("announce-seen", A.id); } catch {}
+  };
+  setTimeout(show, 1500);
+})();

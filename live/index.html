@@ -1539,6 +1539,7 @@ body::before { display: none; }
     if (e.k === "recap-you") return ["Tapped their week in the replay", ""];
     if (e.k === "recap-sheet-close") return ["Closed a replay breakdown", ({ x: "with ✕", outside: "tapping outside", swipe: "swiping down" })[e.d] || ""];
     if (e.k === "pot-sort") return ["Sorted the pot table", e.d || ""];
+    if (e.k === "announce-seen") return ["Saw the announcement", e.d || ""];
     if (e.k === "sim-open") return ["Opened the live simulator", ""];
     if (e.k === "ask-reask") return ["Tapped an old question to ask it again", ""];
     if (e.k === "theme-poll-dodge") return ["Chased the Who Cares button", ({ "1": "it jumped sides", "2": "it ran to the top", "3": "it ran to the bottom" })[e.d] || ""];
