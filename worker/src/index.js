@@ -676,7 +676,7 @@ async function handleOps(request, env, corsHeaders, url) {
 // cache-busting ?t= is left out of the key; a write clears the memory copy.
 // A cached copy can only ever be older, never earlier: at worst a reveal at
 // lock shows a few seconds late, never a pick before it.
-const READ_TTL = { "/games": 15, "/weeks": 30, "/results": 20, "/season": 30, "/qotw": 15, "/avatars": 60, "/ats": 600, "/insights/game": 120, "/insights/news": 300 };
+const READ_TTL = { "/games": 15, "/weeks": 30, "/results": 20, "/season": 30, "/qotw": 15, "/avatars": 60, "/ats": 600, "/insights/game": 120, "/insights/news": 300, "/insights/injuries": 600, "/app-control": 30, "/lightning": 5 };
 const PERSONAL = ["key", "device", "token", "me", "slate", "admin"];
 const memCache = new Map();
 // Bumped on every clear: an answer built while something was written is

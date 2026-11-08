@@ -143,7 +143,19 @@ const opsQueue = [], opsSent = new Set();
 let pageLeaving = false;
 addEventListener("beforeunload", () => { pageLeaving = true; });
 addEventListener("pageshow", () => { pageLeaving = false; });
+// Several calls slow in the same few seconds is the phone's connection
+// (or a wake from sleep), not each route: one line for the burst.
+let slowBurst = [];
 function opsEvent(k, d) {
+  if (/-slow$/.test(k)) {
+    slowBurst.push({ k, d });
+    clearTimeout(opsEvent.sb);
+    opsEvent.sb = setTimeout(() => { const b = slowBurst; slowBurst = []; if (b.length >= 3) opsEventNow("slow-load", `${b.length} calls slow together (connection): ${b.map((x) => x.d).join(", ").slice(0, 120)}`); else b.forEach((x) => opsEventNow(x.k, x.d)); }, 3000);
+    return;
+  }
+  opsEventNow(k, d);
+}
+function opsEventNow(k, d) {
   const key = `${k}|${d}`;
   if (pageLeaving || opsSent.has(key) || opsSent.size >= 10 || window.__liveView) return;
   opsSent.add(key); opsQueue.push({ k, d });
@@ -563,7 +575,10 @@ function espnScoreboardDates() {
   // A day whose games this phone has already seen finish is not asked
   // again: finished games carry over from the last read. Saturday night
   // reads one day, not Thursday through Saturday.
-  const done = (g) => latestLiveWeek === currentWeek && latestLive[g.id]?.completed;
+  // Only a final this session read fresh from ESPN counts as done: one that
+  // came from the saved board (or a carry-over) is asked for again, so a
+  // bad saved final cannot stick for good by never being re-read.
+  const done = (g) => latestLiveWeek === currentWeek && latestLive[g.id]?.completed && confirmedFinals.has(String(g.id));
   const open = GAMES.filter((g) => !done(g));
   for (const g of open.length ? open : GAMES) {
     const t = new Date(g.kickoff).getTime();
@@ -740,7 +755,9 @@ async function fetchLiveFromEspn() {
   // No date answered: throw so the caller falls back and retries soon.
   if (!ok) throw new Error("espn scoreboard unavailable");
   espnPartial = ok < answers.length;
-  return parseEspnEvents(events);
+  const parsed = parseEspnEvents(events);
+  freshFinals = Object.keys(parsed).filter((id) => parsed[id]?.completed);
+  return parsed;
 }
 
 async function fetchLiveFromWorker() {
@@ -764,6 +781,8 @@ async function fetchLiveFromWorker() {
 // Latest live map, shared with the picks screen so locked games there show
 // the score without their own fetch.
 let latestLive = {}, latestLiveWeek = null;
+const confirmedFinals = new Set(); // finals read fresh from ESPN this session
+let freshFinals = [];
 // Team records and ranks from the last scores fetch, kept on the phone so
 // the cards show them at once on the next open. Only records and ranks:
 // nothing here is a score, so a stale copy can never show a wrong result.
@@ -830,7 +849,8 @@ async function fetchLiveScoresNow() {
   // missed it is no reason to play it out again.
   if (Object.keys(live).length && latestLiveWeek === currentWeek) for (const [id, g] of Object.entries(latestLive)) if (g?.completed && !live[id] && !finalTooSoon(id)) live[id] = g;
   // Alarm: a final whose score then changes means one of the two reads was wrong.
-  for (const [id, g] of Object.entries(live)) { const p = latestLive[id]; if (latestLiveWeek === currentWeek && p?.completed && g?.completed && (p.awayScore !== g.awayScore || p.homeScore !== g.homeScore)) { try { opsEvent("espn-fail", `final changed: G${id} ${p.awayScore}-${p.homeScore} -> ${g.awayScore}-${g.homeScore}`); } catch {} } }
+  for (const [id, g] of Object.entries(live)) { const p = latestLive[id]; if (latestLiveWeek === currentWeek && p?.completed && g?.completed && confirmedFinals.has(String(id)) && (p.awayScore !== g.awayScore || p.homeScore !== g.homeScore)) { try { opsEvent("espn-fail", `final changed: G${id} ${p.awayScore}-${p.homeScore} -> ${g.awayScore}-${g.homeScore}`); } catch {} } }
+  for (const id of freshFinals) confirmedFinals.add(String(id)); freshFinals = [];
   if (Object.keys(live).length) { latestLive = live; latestLiveWeek = currentWeek; saveRecords(live); }
   // A failed fetch is never reused; an answer (even "no games yet") is.
   if (answered) liveFetchedAt = Date.now();
