@@ -9722,8 +9722,19 @@ function recapDetail(sum, kind) {
     // One row per lock and result, everyone who had it underneath.
     const grp = new Map();
     for (const x of L.list) { const k = `${x.id}|${x.line}|${x.result}`; const e = grp.get(k) || { ...x, who: [] }; e.who.push(x.name); grp.set(k, e); }
+    // How much each lock beat or missed its number, from the sealed score.
+    const finalOf = (gid) => { for (const r of sum.rows || []) { const l = (r.ledger || []).find((y) => Number(y.g) === Number(gid) && /^\d+-\d+$/.test(String(y.score || ""))); if (l) return l.score.split("-").map(Number); } return null; };
+    const slateG = (gid) => (sum.slate || []).find((g) => Number(g.id) === Number(gid)) || GAMES.find((g) => Number(g.id) === Number(gid));
+    const byWhat = (x) => {
+      const f = finalOf(x.g), g = slateG(x.g); if (!f || !g) return "";
+      const [as, hs] = f, home = x.team === g.home, margin = home ? hs - as : as - hs;
+      const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+      if (x.line === "SU" || !Number.isFinite(parseFloat(x.line))) return margin > 0 ? `won by ${margin}` : margin < 0 ? `lost by ${-margin}` : "tied";
+      const d = margin + parseFloat(x.line);
+      return d > 0 ? `covered by ${fmt(d)}` : d < 0 ? `missed by ${fmt(-d)}` : "landed on the number";
+    };
     const order = { hit: 0, push: 1, miss: 2 };
-    return `<div class="rm-h">Every lock this week</div>${[...grp.values()].sort((a, b) => (order[a.result] ?? 3) - (order[b.result] ?? 3) || b.who.length - a.who.length).map((x) => `<div class="rm-side ${x.result === "hit" ? "hit" : x.result === "push" ? "" : "miss"}"><span>${lg(x.id)}${esc(x.short)} ${esc(x.line === "SU" ? "to win" : x.line)}</span><i>${x.result === "hit" ? `HIT +${x.pts}` : x.result === "push" ? "PUSH" : `MISSED ${x.pts < 0 ? "−" + Math.abs(x.pts) : "0"}`}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`).join("")}${L.none.length ? `<div class="rm-foot">No lock: ${L.none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}<div class="rm-close">Tap to close</div>`;
+    return `<div class="rm-h">Every lock this week</div>${[...grp.values()].sort((a, b) => (order[a.result] ?? 3) - (order[b.result] ?? 3) || b.who.length - a.who.length).map((x) => `<div class="rm-side ${x.result === "hit" ? "hit" : x.result === "push" ? "" : "miss"}"><span>${lg(x.id)}${esc(x.short)} ${esc(x.line === "SU" ? "to win" : x.line)}</span><i>${x.result === "hit" ? `HIT +${x.pts}` : x.result === "push" ? "PUSH" : `MISSED ${x.pts < 0 ? "−" + Math.abs(x.pts) : "0"}`}</i>${byWhat(x) ? `<small class="rm-by">${byWhat(x)}</small>` : ""}<div class="pick-chips">${nameChips(x.who)}</div></div>`).join("")}${L.none.length ? `<div class="rm-foot">No lock: ${L.none.map((n) => esc(shown(n))).join(", ")}</div>` : ""}<div class="rm-close">Tap to close</div>`;
   }
   if (kind === "move") {
     // Season standings after this week, with how far each player moved

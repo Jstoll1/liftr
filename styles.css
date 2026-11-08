@@ -9309,3 +9309,5 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .ann-b { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #333; background: #111; color: #fff; font: 600 15px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; cursor: pointer; }
 .ann-b:active { background: #1c1c1c; }
 @keyframes ann-in { from { opacity: 0; } }
+.rm-side .rm-by { grid-column: 1 / -1; margin-top: -2px; font-size: 11px; font-weight: 600; color: var(--text-dim); }
+.rm-side.hit .rm-by { color: var(--neon-green); } .rm-side.miss .rm-by { color: var(--neon-pink); }
