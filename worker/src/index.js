@@ -91,7 +91,7 @@ const app = {
       return handleWeekSummaries(request, env, corsHeaders, url);
     }
     if (url.pathname === "/season") {
-      return handleSeason(request, env, corsHeaders, url);
+      return handleSeason(request, env, corsHeaders, url, ctx);
     }
     if (url.pathname === "/trivia") {
       return handleTrivia(request, env, corsHeaders);
@@ -2614,7 +2614,20 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
   return json(data, 200, corsHeaders);
 }
 
-async function handleSeason(request, env, corsHeaders, url) {
+// A phone's final that ESPN had not flipped yet: try ESPN again twice,
+// 45 s apart; store it once ESPN calls it final with the same score.
+async function recheckFinals(env, week, items) {
+  for (let i = 0; i < 2 && items.length; i++) {
+    await new Promise((r) => setTimeout(r, 45000));
+    try {
+      const own = Object.fromEntries(((await liveGames(env, week)).games || []).map((g) => [String(g.id), g]));
+      const add = {};
+      items = items.filter(([id, r]) => { const g = own[id]; if (g?.completed && g.awayScore === r.awayScore && g.homeScore === r.homeScore) { add[id] = r; return false; } return true; });
+      if (Object.keys(add).length) { const prior = (await env.LIFTR_KV.get(resultsKey(week), "json")) || {}; await env.LIFTR_KV.put(resultsKey(week), JSON.stringify({ ...prior, ...add })); seasonCache = null; await sealWeek(env, week); }
+    } catch (err) { console.error("recheck finals", err?.stack || String(err)); }
+  }
+}
+async function handleSeason(request, env, corsHeaders, url, ctx = null) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
 
   if (request.method === "POST") {
@@ -2636,6 +2649,7 @@ async function handleSeason(request, env, corsHeaders, url) {
       if (!kickoffs[id] || Date.now() < kickoffs[id]) continue; // not started: ignore
       clean[id] = { awayScore: a, homeScore: h };
     }
+    const laterFinals = [];
     // Second source: the phone's finals must match the Worker's own ESPN
     // read. A disagreement keeps the result out and lands on Live's Health.
     try {
@@ -2644,10 +2658,20 @@ async function handleSeason(request, env, corsHeaders, url) {
         const g = own[id];
         if (g?.found && g.completed && Number.isInteger(g.awayScore) && Number.isInteger(g.homeScore)) {
           if (g.awayScore !== r.awayScore || g.homeScore !== r.homeScore) { opsNote("upstream-fail", `final mismatch G${id} wk${week}: phone ${r.awayScore}-${r.homeScore}, ESPN ${g.awayScore}-${g.homeScore}`, { src: "worker" }); delete clean[id]; }
-        } else if (g?.found && !g.completed) { opsNote("upstream-fail", `final rejected G${id} wk${week}: phone says final, ESPN says ${g.detail || g.state}`, { src: "worker" }); delete clean[id]; }
+        } else if (g?.found && !g.completed) {
+          // ESPN's scoreboard often trails the phone's read by a minute at
+          // the whistle ("End of 4th" before "Final"). That is a lag, not a
+          // bad final: hold it back, check again shortly, and store it then
+          // if ESPN agrees. Anything earlier than the 4th is a real mismatch.
+          delete clean[id];
+          const lagging = Number(g.period) >= 4;
+          if (!lagging) opsNote("upstream-fail", `final rejected G${id} wk${week}: phone says final, ESPN says ${g.detail || g.state}`, { src: "worker" });
+          else if (ctx?.waitUntil) laterFinals.push([id, r]);
+        }
       }
     } catch (err) { console.error("final cross-check", err?.stack || String(err)); }
-    if (!Object.keys(clean).length) return json({ error: "No usable results" }, 400, corsHeaders);
+    if (laterFinals.length) ctx.waitUntil(recheckFinals(env, week, laterFinals));
+    if (!Object.keys(clean).length) return json(laterFinals.length ? { ok: true, pending: laterFinals.map(([id]) => id) } : { error: "No usable results" }, laterFinals.length ? 202 : 400, corsHeaders);
     const prior = (await env.LIFTR_KV.get(resultsKey(week), "json")) || {};
     await env.LIFTR_KV.put(resultsKey(week), JSON.stringify({ ...prior, ...clean }));
     seasonCache = null;
