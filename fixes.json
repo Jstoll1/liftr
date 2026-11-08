@@ -287,6 +287,13 @@
       "at": 1794106742000,
       "commit": "4f6433b",
       "note": "Cached 10 min in the Worker; slow bursts log once"
+    },
+    {
+      "k": "upstream-fail",
+      "match": "final rejected",
+      "at": 1794141541000,
+      "commit": "cc2789a",
+      "note": "ESPN trailing the phone at the whistle (End of 4th) is re-checked and stored when ESPN agrees, not logged"
     }
   ]
 }
