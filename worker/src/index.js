@@ -284,6 +284,12 @@ const app = {
     if (url.pathname === "/live") {
       return handleLive(corsHeaders, env);
     }
+    // Admin: pull the live fantasy season now instead of waiting for the cron.
+    if (url.pathname === "/history-refresh") {
+      if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+      try { return json(await pullCurrentSeason(env, MATCHUPS.espnOwners, { force: true }), 200, corsHeaders); }
+      catch (err) { return json({ error: String(err?.message || err).slice(0, 200) }, 502, corsHeaders); }
+    }
     if (url.pathname === "/history-ask") {
       return handleHistoryAsk(request, env, corsHeaders);
     }
