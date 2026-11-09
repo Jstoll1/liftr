@@ -168,6 +168,8 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   form.addEventListener('submit',async e=>{
     e.preventDefault();
     const q=input.value.trim();if(q.length<3||form.classList.contains('busy'))return;
+    // One Chief: the question goes to the Ask Chief sheet, which answers history and this week alike.
+    if(window.__weekAskSend){input.value='';sync();window.__weekAskSend(q);return}
     if(!worker){typeOut('The archive is offline right now.','error');return}
     form.classList.add('busy');clearExtras();typeOut('SEARCHING THE ARCHIVE…');try{window.presenceNote&&window.presenceNote('history-ask',q)}catch{}try{window.goatcounter&&window.goatcounter.count({path:'archive-ask',title:'archive-ask',event:true})}catch{}
     try{

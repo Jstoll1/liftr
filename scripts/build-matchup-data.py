@@ -275,6 +275,31 @@ if years_with_draft:
              'scope': 'Draft slot means the position in round one. First overall is slot 1. Player names come from ESPN where available.'}
     league['notAvailable'] = league['notAvailable'].replace('no player, draft, injury or transaction data', 'no injury or transaction data and no player stats beyond the draft board')
 
-M = {'headToHead': h2h, 'ownerMatchupStats': per, 'leagueMatchupRecords': league, 'everyGameByYear': compact, 'draft': draft}
+# Season in progress: live standings and every decided game so far.
+current = None
+if in_progress:
+    y = in_progress[-1]; cs = d['seasons'][y]; owner_of = resolve_owners(y, cs)
+    rec = {o: {'owner': o, 'wins': 0, 'losses': 0, 'ties': 0, 'pointsFor': 0.0, 'pointsAgainst': 0.0} for o in owner_of.values()}
+    played, results = set(), []
+    for m in sorted(cs['matchups'], key=lambda m: m['week']):
+        if not m['home'] or not m['away'] or m['winner'] == 'UNDECIDED':
+            continue
+        h, a = owner_of[m['home']['teamId']], owner_of[m['away']['teamId']]
+        hp, ap = m['home']['points'], m['away']['points']
+        played.add(m['week'])
+        for o, me, them in ((h, hp, ap), (a, ap, hp)):
+            r = rec[o]; r['pointsFor'] = R(r['pointsFor'] + me); r['pointsAgainst'] = R(r['pointsAgainst'] + them)
+            r['wins' if me > them else 'losses' if me < them else 'ties'] += 1
+        w, l = (h, a) if hp >= ap else (a, h)
+        results.append(f"W{m['week']}{' playoff' if m['playoff'] else ''}: {w} {max(hp, ap)} def. {l} {min(hp, ap)}")
+    table = sorted(rec.values(), key=lambda r: (-r['wins'], -r['pointsFor']))
+    for i, r in enumerate(table): r['rank'] = i + 1
+    current = {'year': int(y), 'exportedAt': d['exportedAt'], 'regularSeasonWeeks': cs['regularSeasonWeeks'],
+               'weeksPlayed': max(played) if played else 0, 'standings': table, 'results': results,
+               'note': f"Live {y} season as of the export date; ranked by wins then points for. Not final."}
+    if played:
+        draft['currentSeasonNote'] = f"The {y} season is in progress through week {max(played)}; see currentSeason for standings and results."
+
+M = {'headToHead': h2h, 'currentSeason': current, 'espnOwners': owner_by_espn_id, 'ownerMatchupStats': per, 'leagueMatchupRecords': league, 'everyGameByYear': compact, 'draft': draft}
 open('worker/src/matchup-data.js', 'w').write("// Derived from data/espn-history.json (ESPN league matchup export).\n// Regenerate with scripts/build-matchup-data.py when the export changes.\nexport const MATCHUPS = " + json.dumps(M, separators=(',', ':')) + ";\n")
 print(f"wrote worker/src/matchup-data.js: {len(games)} games, {len(owners)} owners, {len(json.dumps(M))} bytes")
