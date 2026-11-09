@@ -583,5 +583,6 @@
   }
   paintBtn(); setInterval(() => { paintBtn(); if (!introSeen()) maybeIntro(); }, 1500);
   window.openWeekAsk = open;
+  window.__weekAskSend = (q) => { chipSet = null; open(); send(q); };
   window.__weekAsk = { runTool, condChances };
 })();
