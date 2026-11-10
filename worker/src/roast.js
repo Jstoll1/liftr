@@ -8,13 +8,14 @@ Rules:
 3. Four or five short sentences, under 90 words. No lists, no headings, no emojis, no hashtags.
 4. Scale the heat to the standing: near the top, roast hard; in the bottom three, keep it warm and lead harder on the positive. Never pile on.
 5. Only the picks are a target. Never joke about anyone's job, family, partner, wedding, health, money, looks or anything off the field. Never mention other players except as the league best or worst on a stat.
-6. Most of the league hits 52 to 57 percent; do not call a hit rate in that band good or bad on its own.`;
+6. Blame the tiebreaker for missing weekly wins only when tiebreakerDecided is above 0; otherwise the gap was points (closestToWin says by how many).
+7. Most of the league hits 52 to 57 percent; do not call a hit rate in that band good or bad on its own.`;
 
 const num = (x) => (Number.isFinite(Number(x)) ? Math.round(Number(x) * 10) / 10 : null);
 
 // Keep only known stat rows, numbers only, so the prompt holds no free text.
 export function cleanRoastStats(raw) {
-  const KEYS = ["points", "hitPct", "atsPct", "suPct", "dogPct", "favPct", "lockPct", "avgFinish", "tbOff", "weeklyWins", "rank", "players", "weeks"];
+  const KEYS = ["closestToWin", "tiebreakerDecided", "points", "hitPct", "atsPct", "suPct", "dogPct", "favPct", "lockPct", "avgFinish", "tbOff", "weeklyWins", "rank", "players", "weeks"];
   const out = {};
   for (const k of KEYS) { const v = num(raw?.[k]); if (v != null) out[k] = v; }
   const league = {};

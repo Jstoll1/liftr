@@ -1698,6 +1698,23 @@ function gcStop() { if (!gcOpen) return; const k = `g${gcOpen.id}`; gcTime[k] = 
  new MutationObserver(() => { if (m.classList.contains("hidden")) gcStop(); }).observe(m, { attributes: true, attributeFilter: ["class"] });
 })();
 const insTap = { last: "" };
+// Every tap on a control, for Live: what was tapped and on which screen.
+// Batched with the rest of the visit, so it costs no extra requests.
+(() => {
+  const clean = (t) => String(t || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  let last = "", lastAt = 0;
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest?.("button, a, summary, select, input, label, [role=button], [data-pot-row], [data-rc], [data-statrank], [data-wkstand], .pick-chip, .rx-season");
+    if (!el) return;
+    const what = el.id ? `#${el.id}` : clean(el.getAttribute("aria-label") || el.dataset.name || el.textContent) || `.${String(el.className || "").split(" ")[0]}`;
+    const where = el.closest("[role=dialog], .modal-overlay")?.id || (typeof activeScreenName === "string" ? activeScreenName : "") || "";
+    const d = where ? `${where} › ${what}` : what;
+    const now = Date.now();
+    if (d === last && now - lastAt < 1500) return;
+    last = d; lastAt = now;
+    presenceNote("tap", d);
+  }, { capture: true, passive: true });
+})();
 // A game row on a player's card opens that game (Gamecast once it has
 // kicked off). Ahead of the row's own tap, which folds the card.
 document.addEventListener("click", (e) => {
@@ -9582,7 +9599,8 @@ let renderRecap = function () {
   if (!toggle || !panel) return;
   const last = Object.values(weekSummaries).filter((s) => s?.complete && s.recap).sort((a, b) => b.week - a.week)[0];
   // Gone once the next slate is up, or Thursday morning, whichever first.
-  if (!last || currentWeek > last.week || Date.now() >= recapExpiry(last)) { toggle.classList.add("hidden"); panel.classList.add("hidden"); return; }
+  if (!last || currentWeek > last.week || Date.now() >= recapExpiry(last)) { toggle.classList.add("hidden"); panel.classList.add("hidden"); paintSeasonStrip(true); return; }
+  paintSeasonStrip(false);
   const r = last.recap;
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
@@ -10146,16 +10164,30 @@ function recapSeasonStrip() {
   // then draw the replay again so the strip appears.
   if (!(seasonLedger && seasonLedger.length) && !recapSeasonStrip.asked) {
     recapSeasonStrip.asked = true;
-    fetchSeasonLedger().then((l) => { if (l && l.length) try { renderRecap(); } catch {} }).catch(() => {});
+    fetchSeasonLedger().then((l) => { if (l && l.length) try { renderRecap(); } catch {} else setTimeout(() => { recapSeasonStrip.asked = false; }, 30000); }).catch(() => setTimeout(() => { recapSeasonStrip.asked = false; }, 30000));
   }
   const b = seasonBoardData(currentManager);
-  if (!b || b.rows.length < 3) return "";
+  // Wait for the picks: without them only points, finish and tiebreaker
+  // exist, and "your best three" would just be whatever three loaded.
+  if (!b || !b.rows.some((r) => r.k === "hitPct")) return "";
   const top3 = [...b.rows].sort((x, y) => x.place - y.place || y.share - x.share).slice(0, 3);
   return `<div class="rx-season" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Your season against the league">
     <div class="rx-ssh"><span>YOUR SEASON <i>vs the league</i></span><b>ALL STATS ›</b></div>
     <div class="sbd">${seasonBoardRows(b, top3, currentManager)}</div>
   </div>`;
 }
+// Once the recap is gone (next slate up), the strip keeps its own spot on
+// Scores until the first kickoff of the new slate.
+function paintSeasonStrip(standalone) {
+  const el = document.getElementById("season-strip");
+  if (!el) return;
+  const html = standalone && !firstKickoffPassed() ? recapSeasonStrip() : "";
+  if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+  el.classList.toggle("hidden", !html);
+}
+document.getElementById("season-strip")?.addEventListener("click", (e) => {
+  if (e.target.closest(".rx-season")) { noteUse("season-strip"); openSeasonSheet(currentManager); }
+});
 // The dedicated window: every stat, best and worst at, and the Chief's roast.
 function openSeasonSheet(name = currentManager) {
   const b = name && seasonBoardData(name);
@@ -10189,7 +10221,11 @@ async function roastMySeason(name, btn) {
   const d = b.d, rankRow = b.rows.find((r) => r.k === "points");
   const stats = { points: d.points, hitPct: d.w + d.l ? Math.round((100 * d.w) / (d.w + d.l)) : null, atsPct: d.ats, suPct: d.su, dogPct: d.dog, favPct: d.fav,
     lockPct: d.lockW + d.lockL ? Math.round((100 * d.lockW) / (d.lockW + d.lockL)) : null, avgFinish: d.avgFinish, tbOff: d.tbOff, weeklyWins: b.weeklyWins,
-    rank: rankRow?.place, players: b.players, weeks: d.scores.filter((x) => !x.missed).length, league };
+    rank: rankRow?.place, players: b.players, weeks: d.scores.filter((x) => !x.missed).length, league,
+    // Ground truth for "why no wins": how close you came, and whether the
+    // tiebreaker ever decided your week (only when tied for the top score).
+    closestToWin: (() => { const g = d.scores.filter((x) => !x.missed && !x.won && Number.isFinite(x.high)).map((x) => x.high - x.score); return g.length ? Math.min(...g) : null; })(),
+    tiebreakerDecided: d.scores.filter((x) => !x.missed && Number.isFinite(x.high) && x.score === x.high).length };
   btn.classList.add("busy"); btn.lastChild.textContent = "THE CHIEF IS LOOKING…";
   noteUse("season-roast");
   try {
