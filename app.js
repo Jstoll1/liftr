@@ -10189,7 +10189,11 @@ async function roastMySeason(name, btn) {
   const d = b.d, rankRow = b.rows.find((r) => r.k === "points");
   const stats = { points: d.points, hitPct: d.w + d.l ? Math.round((100 * d.w) / (d.w + d.l)) : null, atsPct: d.ats, suPct: d.su, dogPct: d.dog, favPct: d.fav,
     lockPct: d.lockW + d.lockL ? Math.round((100 * d.lockW) / (d.lockW + d.lockL)) : null, avgFinish: d.avgFinish, tbOff: d.tbOff, weeklyWins: b.weeklyWins,
-    rank: rankRow?.place, players: b.players, weeks: d.scores.filter((x) => !x.missed).length, league };
+    rank: rankRow?.place, players: b.players, weeks: d.scores.filter((x) => !x.missed).length, league,
+    // Ground truth for "why no wins": how close you came, and whether the
+    // tiebreaker ever decided your week (only when tied for the top score).
+    closestToWin: (() => { const g = d.scores.filter((x) => !x.missed && !x.won && Number.isFinite(x.high)).map((x) => x.high - x.score); return g.length ? Math.min(...g) : null; })(),
+    tiebreakerDecided: d.scores.filter((x) => !x.missed && Number.isFinite(x.high) && x.score === x.high).length };
   btn.classList.add("busy"); btn.lastChild.textContent = "THE CHIEF IS LOOKING…";
   noteUse("season-roast");
   try {
