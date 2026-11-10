@@ -10061,7 +10061,6 @@ function openPlayerCard(name, again) {
       ${d.suN ? bar("TO WIN", `${d.su}%`, d.su / 100, `${d.suN} picks`) : ""}
       ${d.lockW + d.lockL ? bar("🔒 LOCKS", `${d.lockW}-${d.lockL}`, d.lockW / (d.lockW + d.lockL), `${Math.round((100 * d.lockW) / (d.lockW + d.lockL))}%`) : ""}
     </div>
-    ${seasonBoard(name)}
     ${pick(d.best, true)}${pick(d.worst, false)}` : `<div class="plc-none">No finished weeks yet.</div>`}
   </div>`;
   m.classList.remove("hidden");
@@ -10139,13 +10138,6 @@ function seasonBoardRows(b, rows, name) {
 function seasonBoardFoot(b) {
   return b.top && b.low && b.top !== b.low
     ? `<div class="sbd-foot"><span><small>BEST AT</small>${b.top.label.toLowerCase()} (${ordinal(b.top.place).toLowerCase()})</span><span><small>WORST AT</small>${b.weeklyWins === 0 && b.low.place < b.low.of ? "weekly wins (0)" : `${b.low.label.toLowerCase()} (${ordinal(b.low.place).toLowerCase()})`}</span></div>` : "";
-}
-// Player card: the full board, no roast (that lives in the season window).
-function seasonBoard(name) {
-  const b = seasonBoardData(name);
-  if (!b || !b.rows.length) return "";
-  return `<div class="plc-sec">VS THE LEAGUE <span class="plc-key">worst ← → best</span></div>
-    <div class="sbd">${seasonBoardRows(b, b.rows, name)}</div>${seasonBoardFoot(b)}`;
 }
 // Recap, under the week's winner: your three best stats, tap for the rest.
 function recapSeasonStrip() {
