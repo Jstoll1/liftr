@@ -656,3 +656,11 @@ html.pro .tpoll-k { color: var(--acc) !important; }
 html.pro .tpoll-opts button { background: var(--s2) !important; border-color: var(--line2) !important; }
 html.pro .tpoll-opts button.on { border-color: var(--win) !important; background: rgba(46, 207, 122, .12) !important; }
 html.pro .tpoll-done { color: var(--win) !important; }
+
+/* Season board on the player card */
+html.pro .sbd-l, html.pro .sbd-e b, html.pro .sbd-bar i em, html.pro .sbd-foot small, html.pro .sbd-roast { font-family: inherit !important; }
+html.pro .sbd-l { font-size: 12px; font-weight: 500; }
+html.pro .sbd-e b { font-size: 13px; font-weight: 600; }
+html.pro .sbd-bar i em { font-size: 11px; font-weight: 600; }
+html.pro .sbd-foot small { font-size: 10px; letter-spacing: .06em; }
+html.pro .sbd-roast { font-size: 13px; font-weight: 600; }

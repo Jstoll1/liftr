@@ -85,7 +85,7 @@ const WORKER_URL = "https://liftr-ai.jhs797.workers.dev";
 const PREVIEW = /(^|\.)brochiefs-preview\.pages\.dev$/.test(location.hostname);
 if (PREVIEW) {
   const realFetch = window.fetch.bind(window);
-  const readOnlyPost = /^\/(insights\/|history-ask$|week-ask$|week-chat$)/;
+  const readOnlyPost = /^\/(insights\/|history-ask$|week-ask$|week-chat$|season-roast$)/;
   window.fetch = (input, init = {}) => {
     const url = typeof input === "string" ? input : input?.url || "";
     const method = String(init.method || (typeof input === "string" ? "GET" : input?.method) || "GET").toUpperCase();
@@ -9903,17 +9903,20 @@ function playerSeason(name) {
   for (const w of seasonLedger || []) if (w?.complete) byWeek.set(w.week, w);
   const weeks = [...byWeek.values()].sort((a, b) => a.week - b.week);
   const scores = [], picks = [];
-  let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0, lockW = 0, lockL = 0;
+  let w = 0, l = 0, atsW = 0, atsN = 0, suW = 0, suN = 0, lockW = 0, lockL = 0, dogW = 0, dogN = 0, favW = 0, favN = 0, placeSum = 0, placeN = 0, tbSum = 0, tbN = 0;
   for (const wk of weeks) {
     const me = (wk.rows || []).find((r) => r.name === name);
     if (!me) { scores.push({ week: wk.week, score: null, missed: true }); continue; }
     scores.push({ week: wk.week, score: me.score, won: (wk.winners || []).includes(name), high: wk.highScore });
+    if (Number.isFinite(me.place)) { placeSum += me.place; placeN++; }
+    if (Number.isFinite(me.tbDiff)) { tbSum += me.tbDiff; tbN++; }
     for (const lg of me.ledger || []) {
       if (lg.result !== "hit" && lg.result !== "miss") continue;
       const hit = lg.result === "hit";
       hit ? w++ : l++;
       if (lg.mode === "ATS") { atsN++; if (hit) atsW++; } else { suN++; if (hit) suW++; }
       if (lg.lock) hit ? lockW++ : lockL++;
+      if (lg.favorite) { if (lg.team === lg.favorite) { favN++; if (hit) favW++; } else { dogN++; if (hit) dogW++; } }
       // How many others were on the same team that week.
       const with_ = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team === lg.team)).length;
       const others = (wk.rows || []).filter((r) => (r.ledger || []).some((x) => x.g === lg.g && x.team !== lg.team && x.result === "hit")).length;
@@ -9944,6 +9947,9 @@ function playerSeason(name) {
     wins: scores.filter((x) => x.won),
     ats: atsN ? Math.round((atsW / atsN) * 100) : null, atsN, atsW, su: suN ? Math.round((suW / suN) * 100) : null, suN, suW,
     lockW, lockL,
+    dog: dogN ? Math.round((dogW / dogN) * 100) : null, dogN, fav: favN ? Math.round((favW / favN) * 100) : null, favN,
+    avgFinish: placeN ? placeSum / placeN : null, tbOff: tbN ? tbSum / tbN : null,
+    points: played.reduce((t, x) => t + (x.score || 0), 0),
   };
 }
 // Team logos for past weeks: the sealed weeks keep names, not ESPN ids, so
@@ -10013,6 +10019,7 @@ function openPlayerCard(name, again) {
     m.dataset.pickTap = "1";
     m.addEventListener("click", (e) => {
       if (e.target.closest("[data-champs]")) return openChampions(m.dataset.name);
+      if (e.target.closest("[data-roast]")) return roastMySeason(m.dataset.name, e.target.closest("[data-roast]"));
       const sr = e.target.closest("[data-statrank]");
       if (sr) return openStatBreakdown(sr.dataset.statrank, m.dataset.name);
       // The avatar: yours opens the avatar editor, anyone else's the season
@@ -10054,6 +10061,7 @@ function openPlayerCard(name, again) {
       ${d.suN ? bar("TO WIN", `${d.su}%`, d.su / 100, `${d.suN} picks`) : ""}
       ${d.lockW + d.lockL ? bar("🔒 LOCKS", `${d.lockW}-${d.lockL}`, d.lockW / (d.lockW + d.lockL), `${Math.round((100 * d.lockW) / (d.lockW + d.lockL))}%`) : ""}
     </div>
+    ${seasonBoard(name)}
     ${pick(d.best, true)}${pick(d.worst, false)}` : `<div class="plc-none">No finished weeks yet.</div>`}
   </div>`;
   m.classList.remove("hidden");
@@ -10076,6 +10084,86 @@ function bottomSheet(id) {
   m.addEventListener("click", (e) => { if (e.target === m || e.target.closest(".wks-x")) m.classList.add("hidden"); });
   pullToClose(m, () => m.querySelector(".wks-card"), () => m.classList.add("hidden"), 70);
   return m;
+}
+
+// --- Season scoreboard ----------------------------------------------------
+// Six stats, each on a bar whose ends are the league's worst (left) and best
+// (right), with this player's marker between. Lower-is-better stats are
+// flipped so the right end always means best.
+const SEASON_BOARD = [
+  { k: "points", label: "POINTS", get: (d) => d.points, fmt: (v) => `${v}` },
+  { k: "hitPct", label: "PICKS RIGHT", get: (d) => (d.w + d.l ? Math.round((100 * d.w) / (d.w + d.l)) : null), fmt: (v) => `${v}%` },
+  { k: "atsPct", label: "VS SPREAD", get: (d) => d.ats, fmt: (v) => `${v}%` },
+  { k: "dogPct", label: "UNDERDOGS", get: (d) => d.dog, fmt: (v) => `${v}%` },
+  { k: "avgFinish", label: "AVG FINISH", get: (d) => d.avgFinish, fmt: (v) => v.toFixed(1), low: true },
+  { k: "tbOff", label: "TIEBREAKER", get: (d) => d.tbOff, fmt: (v) => `${Math.round(v)} off`, efmt: (v) => `${Math.round(v)}`, low: true },
+];
+function seasonBoardData(name) {
+  const all = MANAGERS.map((n) => ({ n, d: playerSeason(n) })).filter((x) => x.d.points || x.d.w + x.d.l);
+  const me = all.find((x) => x.n === name);
+  if (!me || all.length < 3) return null;
+  const rows = SEASON_BOARD.map((s) => {
+    const vals = all.map((x) => ({ n: x.n, v: s.get(x.d) })).filter((x) => x.v != null && Number.isFinite(x.v));
+    const mine = vals.find((x) => x.n === name);
+    if (!mine || vals.length < 3) return null;
+    const better = (a, b) => (s.low ? a < b : a > b);
+    const sorted = [...vals].sort((a, b) => (s.low ? a.v - b.v : b.v - a.v));
+    const best = sorted[0], worst = sorted[sorted.length - 1];
+    const bestN = vals.filter((x) => x.v === best.v).length, worstN = vals.filter((x) => x.v === worst.v).length;
+    const place = 1 + vals.filter((x) => better(x.v, mine.v)).length;
+    const span = best.v - worst.v;
+    const share = span ? (mine.v - worst.v) / span : 0.5;
+    return { ...s, mine: mine.v, best, worst, bestN, worstN, place, of: vals.length, share: Math.max(0, Math.min(1, share)) };
+  }).filter(Boolean);
+  const ranked = rows.filter((r) => r.of >= 3);
+  const top = [...ranked].sort((a, b) => a.place - b.place)[0], low = [...ranked].sort((a, b) => b.place - a.place)[0];
+  const d = me.d;
+  return { rows, top, low, d, weeklyWins: d.wins.length, players: all.length };
+}
+function seasonBoard(name) {
+  const b = seasonBoardData(name);
+  if (!b || !b.rows.length) return "";
+  const esc = escapeCd, mine = name === currentManager;
+  const end = (x, nTied, v, fmt, you) => `<b>${fmt(v)}</b><small>${you ? (mine ? "YOU" : esc(shown(name).toUpperCase())) + (nTied > 1 ? ` +${nTied - 1}` : "") : nTied > 1 ? `${nTied} TIED` : esc(shown(x.n).toUpperCase())}</small>`;
+  const rows = b.rows.map((r) => {
+    const cls = r.place === 1 ? "lead" : r.place <= 3 ? "t-hi" : r.place > r.of - 3 ? "t-lo" : "t-mid";
+    const atBest = r.mine === r.best.v, atWorst = !atBest && r.mine === r.worst.v;
+    const atEnd = atBest ? " at-best" : atWorst ? " at-worst" : "";
+    const ef = r.efmt || r.fmt;
+    return `<div class="sbd-r ${cls}${atEnd}">
+      <span class="sbd-l">${r.label}</span>
+      <span class="sbd-e w">${end(r.worst, r.worstN, r.worst.v, ef, atWorst)}</span>
+      <span class="sbd-bar"><u></u><i style="left:${(r.share * 100).toFixed(1)}%"><em class="${r.share > 0.75 ? "r" : r.share < 0.25 ? "l" : ""}">${r.fmt(r.mine)}</em></i></span>
+      <span class="sbd-e b">${end(r.best, r.bestN, r.best.v, ef, atBest)}</span>
+    </div>`;
+  }).join("");
+  const foot = b.top && b.low && b.top !== b.low
+    ? `<div class="sbd-foot"><span><small>BEST AT</small>${b.top.label.toLowerCase()} (${ordinal(b.top.place).toLowerCase()})</span><span><small>WORST AT</small>${b.weeklyWins === 0 && b.low.place < b.low.of ? "weekly wins (0)" : `${b.low.label.toLowerCase()} (${ordinal(b.low.place).toLowerCase()})`}</span></div>` : "";
+  return `<div class="plc-sec">VS THE LEAGUE <span class="plc-key">worst ← → best</span></div>
+    <div class="sbd">${rows}</div>${foot}
+    ${mine ? `<button type="button" class="sbd-roast" data-roast="1"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async">ROAST MY SEASON</button><div class="sbd-said hidden" aria-live="polite"></div>` : ""}`;
+}
+// The Chief's take on your own season: once per finished week, cached on
+// the Worker, so a re-tap shows the same roast.
+async function roastMySeason(name, btn) {
+  if (name !== currentManager || btn.classList.contains("busy")) return;
+  const out = btn.nextElementSibling; const b = seasonBoardData(name);
+  if (!b) return;
+  const week = Math.max(0, ...b.d.scores.filter((x) => !x.missed).map((x) => x.week));
+  const league = {};
+  for (const r of b.rows) league[r.k] = { best: r.best.v, worst: r.worst.v, place: r.place };
+  const d = b.d, rankRow = b.rows.find((r) => r.k === "points");
+  const stats = { points: d.points, hitPct: d.w + d.l ? Math.round((100 * d.w) / (d.w + d.l)) : null, atsPct: d.ats, suPct: d.su, dogPct: d.dog, favPct: d.fav,
+    lockPct: d.lockW + d.lockL ? Math.round((100 * d.lockW) / (d.lockW + d.lockL)) : null, avgFinish: d.avgFinish, tbOff: d.tbOff, weeklyWins: b.weeklyWins,
+    rank: rankRow?.place, players: b.players, weeks: d.scores.filter((x) => !x.missed).length, league };
+  btn.classList.add("busy"); btn.lastChild.textContent = "THE CHIEF IS LOOKING…";
+  noteUse("season-roast");
+  try {
+    const r = await fetch(`${WORKER_URL}/season-roast`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, week, stats }) });
+    const j = await r.json().catch(() => ({}));
+    out.textContent = j.roast || j.error || "The Chief is out. Try again soon.";
+  } catch { out.textContent = "Couldn't reach the Chief. Try again."; }
+  out.classList.remove("hidden"); btn.classList.add("hidden");
 }
 
 // --- Stat ranking -------------------------------------------------------
