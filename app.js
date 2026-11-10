@@ -9694,7 +9694,7 @@ let renderRecap = function () {
     </div>`;
   window.__recapWeek = last.week;
   document.getElementById("week-champ")?.classList.add("hidden");
-  panel.innerHTML = hero + you + `<div class="rx-grid">${cards.map(card).join("")}</div>`;
+  panel.innerHTML = hero + recapSeasonStrip() + you + `<div class="rx-grid">${cards.map(card).join("")}</div>`;
   // Count up the first time this week's replay is seen.
   const seenKey = `brochiefs_rx_seen_${last.week}`;
   let seen = false; try { seen = !!localStorage.getItem(seenKey); localStorage.setItem(seenKey, "1"); } catch {}
@@ -9769,6 +9769,7 @@ function recapDetail(sum, kind) {
 }
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
   if (e.target.closest(".rx-hero")) { noteUse("recap-hero"); return; }
+  if (e.target.closest(".rx-season")) { noteUse("recap-season"); return openSeasonSheet(currentManager); }
   if (e.target.closest(".rx-you")) { noteUse("recap-you"); if (currentManager) openPlayerCard(currentManager); return; }
   const c = e.target.closest(".recap-card[data-rc]");
   if (!c || e.target.closest(".pick-chip, a, button")) return;
@@ -10019,7 +10020,6 @@ function openPlayerCard(name, again) {
     m.dataset.pickTap = "1";
     m.addEventListener("click", (e) => {
       if (e.target.closest("[data-champs]")) return openChampions(m.dataset.name);
-      if (e.target.closest("[data-roast]")) return roastMySeason(m.dataset.name, e.target.closest("[data-roast]"));
       const sr = e.target.closest("[data-statrank]");
       if (sr) return openStatBreakdown(sr.dataset.statrank, m.dataset.name);
       // The avatar: yours opens the avatar editor, anyone else's the season
@@ -10120,12 +10120,10 @@ function seasonBoardData(name) {
   const d = me.d;
   return { rows, top, low, d, weeklyWins: d.wins.length, players: all.length };
 }
-function seasonBoard(name) {
-  const b = seasonBoardData(name);
-  if (!b || !b.rows.length) return "";
+function seasonBoardRows(b, rows, name) {
   const esc = escapeCd, mine = name === currentManager;
   const end = (x, nTied, v, fmt, you) => `<b>${fmt(v)}</b><small>${you ? (mine ? "YOU" : esc(shown(name).toUpperCase())) + (nTied > 1 ? ` +${nTied - 1}` : "") : nTied > 1 ? `${nTied} TIED` : esc(shown(x.n).toUpperCase())}</small>`;
-  const rows = b.rows.map((r) => {
+  return rows.map((r) => {
     const cls = r.place === 1 ? "lead" : r.place <= 3 ? "t-hi" : r.place > r.of - 3 ? "t-lo" : "t-mid";
     const atBest = r.mine === r.best.v, atWorst = !atBest && r.mine === r.worst.v;
     const atEnd = atBest ? " at-best" : atWorst ? " at-worst" : "";
@@ -10137,11 +10135,49 @@ function seasonBoard(name) {
       <span class="sbd-e b">${end(r.best, r.bestN, r.best.v, ef, atBest)}</span>
     </div>`;
   }).join("");
-  const foot = b.top && b.low && b.top !== b.low
+}
+function seasonBoardFoot(b) {
+  return b.top && b.low && b.top !== b.low
     ? `<div class="sbd-foot"><span><small>BEST AT</small>${b.top.label.toLowerCase()} (${ordinal(b.top.place).toLowerCase()})</span><span><small>WORST AT</small>${b.weeklyWins === 0 && b.low.place < b.low.of ? "weekly wins (0)" : `${b.low.label.toLowerCase()} (${ordinal(b.low.place).toLowerCase()})`}</span></div>` : "";
+}
+// Player card: the full board, no roast (that lives in the season window).
+function seasonBoard(name) {
+  const b = seasonBoardData(name);
+  if (!b || !b.rows.length) return "";
   return `<div class="plc-sec">VS THE LEAGUE <span class="plc-key">worst ← → best</span></div>
-    <div class="sbd">${rows}</div>${foot}
-    ${mine ? `<button type="button" class="sbd-roast" data-roast="1"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async">ROAST MY SEASON</button><div class="sbd-said hidden" aria-live="polite"></div>` : ""}`;
+    <div class="sbd">${seasonBoardRows(b, b.rows, name)}</div>${seasonBoardFoot(b)}`;
+}
+// Recap, under the week's winner: your three best stats, tap for the rest.
+function recapSeasonStrip() {
+  if (!currentManager || !MANAGERS.includes(currentManager)) return "";
+  const b = seasonBoardData(currentManager);
+  if (!b || b.rows.length < 3) return "";
+  const top3 = [...b.rows].sort((x, y) => x.place - y.place || y.share - x.share).slice(0, 3);
+  return `<div class="rx-season" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Your season against the league">
+    <div class="rx-ssh"><span>YOUR SEASON <i>vs the league</i></span><b>ALL STATS ›</b></div>
+    <div class="sbd">${seasonBoardRows(b, top3, currentManager)}</div>
+  </div>`;
+}
+// The dedicated window: every stat, best and worst at, and the Chief's roast.
+function openSeasonSheet(name = currentManager) {
+  const b = name && seasonBoardData(name);
+  if (!b) return;
+  const esc = escapeCd;
+  const m = bottomSheet("season-board");
+  if (!m.dataset.roastTap) {
+    m.dataset.roastTap = "1";
+    m.addEventListener("click", (e) => { const r = e.target.closest("[data-roast]"); if (r) roastMySeason(m.dataset.name, r); });
+  }
+  m.dataset.name = name;
+  m.innerHTML = `<div class="modal-card wks-card sbd-card"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>VS THE LEAGUE</b><small>${esc(shown(name).toUpperCase())}</small><button type="button" class="wks-x" aria-label="Close">✕</button></div>
+    <div class="sbd-key"><span>WORST</span><span>BEST</span></div>
+    <div class="sbd">${seasonBoardRows(b, b.rows, name)}</div>${seasonBoardFoot(b)}
+    ${name === currentManager ? `<button type="button" class="sbd-roast" data-roast="1"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async">ROAST MY SEASON</button>
+    <div class="sbd-said hidden" aria-live="polite"><div class="sbd-who"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async"><b>THE CHIEF</b></div><p></p></div>` : ""}
+  </div>`;
+  noteUse("season-sheet");
+  m.classList.remove("hidden");
 }
 // The Chief's take on your own season: once per finished week, cached on
 // the Worker, so a re-tap shows the same roast.
@@ -10161,8 +10197,8 @@ async function roastMySeason(name, btn) {
   try {
     const r = await fetch(`${WORKER_URL}/season-roast`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, week, stats }) });
     const j = await r.json().catch(() => ({}));
-    out.textContent = j.roast || j.error || "The Chief is out. Try again soon.";
-  } catch { out.textContent = "Couldn't reach the Chief. Try again."; }
+    out.querySelector("p").textContent = j.roast || j.error || "The Chief is out. Try again soon.";
+  } catch { out.querySelector("p").textContent = "Couldn't reach the Chief. Try again."; }
   out.classList.remove("hidden"); btn.classList.add("hidden");
 }
 

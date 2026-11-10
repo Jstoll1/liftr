@@ -3746,7 +3746,7 @@ async function handleSeasonRoast(request, env, corsHeaders) {
   const name = PICKS_MANAGERS.includes(body?.name) ? body.name : null;
   const week = Number.isInteger(body?.week) && body.week > 0 && body.week < 30 ? body.week : null;
   if (!name || !week) return json({ error: "Nothing to roast" }, 400, corsHeaders);
-  const key = `roast:2026:${name}:${week}`;
+  const key = `roast:v2:2026:${name}:${week}`;
   const cached = env.LIFTR_KV ? await env.LIFTR_KV.get(key) : null;
   if (cached) return json({ roast: cached, cached: true }, 200, corsHeaders);
   if (!env.OPENAI_API_KEY) return json({ error: "The Chief is out" }, 503, corsHeaders);
