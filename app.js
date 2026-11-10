@@ -10150,6 +10150,12 @@ function seasonBoard(name) {
 // Recap, under the week's winner: your three best stats, tap for the rest.
 function recapSeasonStrip() {
   if (!currentManager || !MANAGERS.includes(currentManager)) return "";
+  // The plain week summaries carry no picks; load the detailed weeks once,
+  // then draw the replay again so the strip appears.
+  if (!(seasonLedger && seasonLedger.length) && !recapSeasonStrip.asked) {
+    recapSeasonStrip.asked = true;
+    fetchSeasonLedger().then((l) => { if (l && l.length) try { renderRecap(); } catch {} }).catch(() => {});
+  }
   const b = seasonBoardData(currentManager);
   if (!b || b.rows.length < 3) return "";
   const top3 = [...b.rows].sort((x, y) => x.place - y.place || y.share - x.share).slice(0, 3);
