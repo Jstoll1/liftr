@@ -4625,14 +4625,6 @@ async function weekChatLog(env, id, patch) {
     return key;
   } catch { return null; }
 }
-// Past seasons, titles, all-time records and the fantasy league belong to
-// the archive; this week's pick'em stays with the week chat.
-export function isHistoryQuestion(q) {
-  const t = ` ${String(q || "").toLowerCase()} `;
-  if (/\b(pick'?em|picks?|spread|cover|lock|this week|tiebreak|win ?%|chance|odds)\b/.test(t) && !/\b(fantasy|all[- ]time|ever|history|20(1[4-9]|2[0-5]))\b/.test(t)) return false;
-  return /\b20(1[4-9]|2[0-5])\b|\b(fantasy|all[- ]time|ever|history|historic|archive|career|titles?|championships?|champions?|ring|runner[- ]up|last place|drought|draft(ed)?|head[- ]to[- ]head|team names?|commissioner|founded|former members?|seasons? ago|last (year|season)|dynasty|goat)\b/.test(t);
-}
-
 async function handleWeekChat(request, env, corsHeaders, url = new URL(request.url)) {
   if (request.method === "GET") {
     if (!isAdmin(env, url) && !(await deviceTokenOk(env.ARCHIVE_LOG_KEY, url.searchParams.get("device"), Date.now()))) return json({ error: "Not authorized" }, 403, corsHeaders);
@@ -4679,18 +4671,6 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
   const sid = String(body?.sid || "").replace(/[^a-z0-9]/gi, "").slice(0, 16) || null;
   const build = String(body?.build || "").replace(/\D/g, "").slice(0, 14) || null;
   let logId = typeof body?.logId === "string" && body.logId.startsWith(WCHAT_LOG) ? body.logId : null;
-  // One Chief: league history questions (past seasons, titles, all-time
-  // records, the fantasy league) go to the archive and come back as a reply.
-  const lastQ = messages[messages.length - 1];
-  if (lastQ.role === "user" && isHistoryQuestion(lastQ.content)) {
-    const hreq = new Request("https://worker/history-ask", { method: "POST", headers: request.headers, body: JSON.stringify({ question: lastQ.content, asker: HISTORY.owners.includes(asker) ? asker : undefined }) });
-    const hres = await handleHistoryAsk(hreq, env, corsHeaders);
-    const hj = await hres.clone().json().catch(() => ({}));
-    if (hres.ok && hj.answer) {
-      const id = await weekChatLog(env, logId, { at: Date.now(), asker, sid, build, q: String(lastQ.content).slice(0, 500), a: String(hj.answer).slice(0, 1500), status: "answered", via: "history" }).catch(() => logId);
-      return json({ message: { role: "assistant", content: hj.answer }, logId: id || logId, via: "history" }, 200, corsHeaders);
-    }
-  }
   if (messages[messages.length - 1].role === "user") {
     logId = await weekChatLog(env, null, { at: Date.now(), asker, sid, build, q: String(messages[messages.length - 1].content).slice(0, 500), a: null, status: "asked", tools: [], turn: messages.filter((x) => x.role === "user").length });
   }
