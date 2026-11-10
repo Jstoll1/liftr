@@ -10131,7 +10131,7 @@ function seasonBoardRows(b, rows, name) {
     return `<div class="sbd-r ${cls}${atEnd}">
       <span class="sbd-l">${r.label}</span>
       <span class="sbd-e w">${end(r.worst, r.worstN, r.worst.v, ef, atWorst)}</span>
-      <span class="sbd-bar"><u></u><i style="left:${(r.share * 100).toFixed(1)}%"><em class="${r.share > 0.75 ? "r" : r.share < 0.25 ? "l" : ""}">${r.fmt(r.mine)}</em></i></span>
+      <span class="sbd-bar"><u></u><s style="width:${(r.share * 100).toFixed(1)}%"></s><i style="left:${(r.share * 100).toFixed(1)}%"><em class="${r.share > 0.75 ? "r" : r.share < 0.25 ? "l" : ""}">${r.fmt(r.mine)}</em></i></span>
       <span class="sbd-e b">${end(r.best, r.bestN, r.best.v, ef, atBest)}</span>
     </div>`;
   }).join("");
