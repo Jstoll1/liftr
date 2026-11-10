@@ -667,3 +667,5 @@ html.pro .sbd-roast { font-size: 13px; font-weight: 600; }
 html.pro .rx-ssh span, html.pro .rx-ssh b, html.pro .sbd-key, html.pro .sbd-who b { font-family: inherit !important; }
 html.pro .rx-ssh span { font-size: 12px; font-weight: 600; } html.pro .rx-ssh b { font-size: 11px; font-weight: 600; }
 html.pro .sbd-key { font-size: 9px; letter-spacing: .06em; } html.pro .sbd-who b { font-size: 12px; font-weight: 600; }
+
+html.pro .ask-which button { font-family: inherit !important; font-size: 13px; font-weight: 600; }
