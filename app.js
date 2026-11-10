@@ -10130,7 +10130,8 @@ function seasonBoardData(name) {
     const place = 1 + vals.filter((x) => better(x.v, mine.v)).length;
     const span = best.v - worst.v;
     const share = span ? (mine.v - worst.v) / span : 0.5;
-    return { ...s, mine: mine.v, best, worst, bestN, worstN, place, of: vals.length, share: Math.max(0, Math.min(1, share)) };
+    const tied = vals.filter((x) => x.v === mine.v).length > 1;
+    return { ...s, mine: mine.v, best, worst, bestN, worstN, place, tied, of: vals.length, share: Math.max(0, Math.min(1, share)) };
   }).filter(Boolean);
   const ranked = rows.filter((r) => r.of >= 3);
   const top = [...ranked].sort((a, b) => a.place - b.place)[0], low = [...ranked].sort((a, b) => b.place - a.place)[0];
@@ -10146,7 +10147,7 @@ function seasonBoardRows(b, rows, name) {
     const atEnd = atBest ? " at-best" : atWorst ? " at-worst" : "";
     const ef = r.efmt || r.fmt;
     return `<div class="sbd-r ${cls}${atEnd}">
-      <span class="sbd-l">${r.label}</span>
+      <span class="sbd-l">${r.label}<em class="sbd-rk">${r.tied ? "T-" : ""}${ordinal(r.place)}<small> of ${r.of}</small></em></span>
       <span class="sbd-e w">${end(r.worst, r.worstN, r.worst.v, ef, atWorst)}</span>
       <span class="sbd-bar"><u></u><s style="width:${(r.share * 100).toFixed(1)}%"></s><i style="left:${(r.share * 100).toFixed(1)}%"><em class="${r.share > 0.75 ? "r" : r.share < 0.25 ? "l" : ""}">${r.fmt(r.mine)}</em></i></span>
       <span class="sbd-e b">${end(r.best, r.bestN, r.best.v, ef, atBest)}</span>

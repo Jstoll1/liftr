@@ -9325,6 +9325,9 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .sbd-r.t-lo { --tier: var(--neon-pink); --tier-rgb: var(--neon-pink-rgb); }
 .sbd-r.lead { --tier: var(--neon-yellow); --tier-rgb: var(--arcade-gold-rgb); }
 .sbd-l { grid-area: l; align-self: end; margin-bottom: 1px; line-height: 10px; font-family: "Press Start 2P", monospace; font-size: 7px; letter-spacing: 0; white-space: nowrap; color: var(--text-dim, rgba(255,255,255,.6)); }
+.sbd-l { display: flex; flex-direction: column; gap: 5px; }
+.sbd-rk { font-style: normal; font-family: "Press Start 2P", monospace; font-size: 8px; color: var(--tier); }
+.sbd-rk small { font-family: inherit; font-size: 6px; color: var(--text-dim, rgba(255,255,255,.5)); }
 .sbd-e { display: flex; flex-direction: column; gap: 3px; line-height: 1; min-width: 0; }
 .sbd-e.w { grid-area: w; align-items: flex-end; text-align: right; }
 .sbd-e.b { grid-area: b; align-items: flex-start; }
@@ -9367,7 +9370,7 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
   html:not(.phone) .rx-season .sbd { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 22px; padding-top: 4px; }
   html:not(.phone) .rx-season .sbd-r { grid-template-columns: 46px minmax(0, 1fr) 46px; grid-template-areas: "l l l" "w bar b"; row-gap: 2px; border-top: 0; padding: 4px 0 8px; }
   html:not(.phone) .rx-season .sbd-r + .sbd-r { border-left: 1px solid rgba(var(--neon-purple-rgb), .16); padding-left: 22px; margin-left: -22px; }
-  html:not(.phone) .rx-season .sbd-l { align-self: start; margin-bottom: 0; }
+  html:not(.phone) .rx-season .sbd-l { align-self: start; margin-bottom: 0; flex-direction: row; align-items: baseline; gap: 8px; }
 }
 /* The season window */
 .sbd-card { padding-bottom: 16px; }
