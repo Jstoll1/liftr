@@ -187,6 +187,16 @@
     return `tie on points (${tied.map(shown).join(", ")}); tiebreaker total ${cuts.map(([a, b, w]) => `${b == null ? `${a}+` : a === b ? a : `${a} to ${b}`}: ${w}`).join("; ")}`;
   }
   const TOOLS = {
+    // The fantasy league archive, answered by the Worker's archivist.
+    archive: async ({ question }) => {
+      const q = String(question || "").trim().slice(0, 300);
+      if (q.length < 3) return { error: "Ask the archive a full question." };
+      try {
+        const r = await fetch(`${WORKER_URL}/history-ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, asker: typeof currentManager !== "undefined" ? currentManager : undefined }) });
+        const j = await r.json().catch(() => ({}));
+        return j.answer ? { answer: j.answer, receipts: j.receipts || [] } : { error: j.error || "The archive did not answer." };
+      } catch { return { error: "Couldn't reach the archive." }; }
+    },
     // The season so far, from the sealed weeks (the Worker's record) plus
     // this week's points so far, as The Pot shows it.
     season() {
@@ -507,7 +517,7 @@
         if (j.message.tool_calls?.length) {
           for (const c of j.message.tool_calls) {
             let args = {}; try { args = JSON.parse(c.function.arguments || "{}"); } catch {}
-            const out = runTool(c.function.name, args);
+            const out = await runTool(c.function.name, args);
             item.tools.push({ name: c.function.name, args, out });
             convo.push({ role: "tool", tool_call_id: c.id, content: JSON.stringify(out) });
           }

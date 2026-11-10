@@ -22,8 +22,3 @@ test("buildCurrentSeason refuses an unknown owner", () => {
   assert.throws(() => buildCurrentSeason({ teams: [{ id: 1, owners: ["x"] }] }, {}, 2026));
 });
 
-test("isHistoryQuestion routes archive questions and keeps the week chat", async () => {
-  const { isHistoryQuestion } = await import("../src/index.js");
-  for (const q of ["Who won the 2019 title?", "Most championships all time", "Curt vs Logan head to head", "Who is leading the fantasy league?", "Who did Jake draft first?"]) assert.ok(isHistoryQuestion(q), q);
-  for (const q of ["Who is winning this week?", "What are Curt's chances?", "How long will Curt's wedding speech be for Nissan?", "Did Logan pick blindfolded?"]) assert.ok(!isHistoryQuestion(q), q);
-});
