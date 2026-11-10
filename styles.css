@@ -8661,6 +8661,8 @@ body:has(#ask-sheet:not(.hidden)) #ask-fab { display: none !important; }
 .ask { padding: 0 8px 8px; }
 .ask-hint { margin: 0; font-size: 13px; line-height: 1.35; color: var(--text-meta, #a99cc7); }
 .ask-chips { display: flex; flex-direction: column; gap: 0; border-top: 1px solid rgba(255, 255, 255, .08); }
+.ask-which { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 2px 0 10px; }
+.ask-which button { padding: 10px 8px; border-radius: 10px; border: 1.5px solid rgba(var(--neon-cyan-rgb), .55); background: rgba(var(--neon-cyan-rgb), .08); color: var(--neon-cyan); font-family: "Press Start 2P", monospace; font-size: 9px; letter-spacing: .04em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ask-chips button { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 44px; padding: 0 2px; border: 0; border-bottom: 1px solid rgba(255, 255, 255, .08); border-radius: 0; background: none; color: var(--text, #f4f0ff); font-size: 14px; text-align: left; cursor: pointer; }
 .ask-chips button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ask-chips button i { flex: none; font-style: normal; color: var(--neon-cyan, #05d9e8); font-size: 15px; }
