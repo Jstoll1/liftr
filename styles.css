@@ -9344,3 +9344,21 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .sbd-roast.busy { opacity: .7; }
 .sbd-said { margin: 10px 0 4px; padding: 10px 12px; border-left: 2px solid var(--neon-cyan); font-size: 14px; line-height: 1.45; color: var(--text, #fff); }
 .sbd-said.hidden, .sbd-roast.hidden { display: none; }
+/* Recap strip under the week's winner: your three best stats, tap for all */
+.rx-season { margin: 10px 0 4px; padding: 10px 12px 8px; border-radius: 10px; border: 1.5px solid var(--card-border); background: var(--card-bg); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rx-ssh { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.rx-ssh span { font-family: "Press Start 2P", monospace; font-size: 8px; color: var(--neon-cyan); letter-spacing: .04em; }
+.rx-ssh span i { font-style: normal; color: var(--text-dim, rgba(255,255,255,.55)); }
+.rx-ssh b { font-family: "Press Start 2P", monospace; font-size: 7px; font-weight: 400; color: var(--neon-cyan); padding: 4px 7px; border: 1.5px solid rgba(var(--neon-cyan-rgb), .55); border-radius: 10px; white-space: nowrap; }
+.rx-season .sbd { margin: 0; }
+/* The season window */
+.sbd-card { padding-bottom: 16px; }
+.sbd-key { display: grid; grid-template-columns: 84px 46px minmax(0, 1fr) 46px; column-gap: 7px; margin: 4px 0 2px; font-family: "Press Start 2P", monospace; font-size: 6px; }
+.sbd-key span:first-child { grid-column: 2; text-align: right; color: var(--neon-pink); }
+.sbd-key span:last-child { grid-column: 4; color: var(--neon-green); }
+.sbd-said { border-left: 0; padding: 12px; border-radius: 10px; border: 1.5px solid rgba(var(--neon-cyan-rgb), .45); background: rgba(var(--neon-cyan-rgb), .06); }
+.sbd-said p { margin: 6px 0 0; }
+.sbd-who { display: flex; align-items: center; gap: 8px; }
+.sbd-who .chief-ico { width: 24px; height: 24px; border-radius: 50%; }
+.sbd-who b { font-family: "Press Start 2P", monospace; font-size: 8px; font-weight: 400; color: var(--neon-cyan); }
+.sbd-card .wks-h b { white-space: nowrap; }
