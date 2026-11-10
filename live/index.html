@@ -1541,6 +1541,10 @@ body::before { display: none; }
     if (e.k === "pot-sort") return ["Sorted the pot table", e.d || ""];
     if (e.k === "announce-seen") return ["Saw the announcement", e.d || ""];
     if (e.k === "sim-open") return ["Opened the live simulator", ""];
+    if (e.k === "tap") return ["Tapped", e.d || ""];
+    if (e.k === "recap-season" || e.k === "season-strip") return ["Opened their season vs the league", ""];
+    if (e.k === "season-sheet") return ["Saw their season vs the league", ""];
+    if (e.k === "season-roast") return ["Asked the Chief to roast their season", ""];
     if (e.k === "ask-reask") return ["Tapped an old question to ask it again", ""];
     if (e.k === "theme-poll-dodge") return ["Chased the Who Cares button", ({ "1": "it jumped sides", "2": "it ran to the top", "3": "it ran to the bottom" })[e.d] || ""];
     if (e.k === "since-game") return ["Opened a game from Since you last looked", e.d || ""];

@@ -9357,6 +9357,16 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .rx-ssh span i { font-style: normal; color: var(--text-dim, rgba(255,255,255,.55)); }
 .rx-ssh b { font-family: "Press Start 2P", monospace; font-size: 7px; font-weight: 400; color: var(--neon-cyan); padding: 4px 7px; border: 1.5px solid rgba(var(--neon-cyan-rgb), .55); border-radius: 10px; white-space: nowrap; }
 .rx-season .sbd { margin: 0; }
+.season-strip.hidden { display: none; }
+.season-strip .rx-season { margin-top: 0; }
+/* Wide screens (never phones): the three stats sit side by side, label on
+   top, so no meter stretches across an empty half page. */
+@media (min-width: 700px) {
+  html:not(.phone) .rx-season .sbd { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 22px; padding-top: 4px; }
+  html:not(.phone) .rx-season .sbd-r { grid-template-columns: 46px minmax(0, 1fr) 46px; grid-template-areas: "l l l" "w bar b"; row-gap: 2px; border-top: 0; padding: 4px 0 8px; }
+  html:not(.phone) .rx-season .sbd-r + .sbd-r { border-left: 1px solid rgba(var(--neon-purple-rgb), .16); padding-left: 22px; margin-left: -22px; }
+  html:not(.phone) .rx-season .sbd-l { align-self: start; margin-bottom: 0; }
+}
 /* The season window */
 .sbd-card { padding-bottom: 16px; }
 .sbd-card .wks-h b { white-space: nowrap; }
