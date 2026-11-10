@@ -18,7 +18,7 @@ export function buildCurrentSeason(league, ownerMap, year, now = Date.now()) {
   const rec = {};
   for (const o of Object.values(ownerOf)) rec[o] = { owner: o, wins: 0, losses: 0, ties: 0, pointsFor: 0, pointsAgainst: 0 };
   const reg = league.settings?.scheduleSettings?.matchupPeriodCount || 13;
-  const results = [];
+  const results = [], scores = [], margins = [];
   let weeksPlayed = 0;
   for (const m of [...(league.schedule || [])].sort((a, b) => a.matchupPeriodId - b.matchupPeriodId)) {
     if (!m.home || !m.away || m.winner === "UNDECIDED") continue;
@@ -29,11 +29,22 @@ export function buildCurrentSeason(league, ownerMap, year, now = Date.now()) {
       const x = rec[o]; x.pointsFor = r2(x.pointsFor + me); x.pointsAgainst = r2(x.pointsAgainst + them);
       x[me > them ? "wins" : me < them ? "losses" : "ties"] += 1;
     }
+    scores.push({ owner: h, points: hp, week: wk, opponent: a }, { owner: a, points: ap, week: wk, opponent: h });
+    margins.push({ winner: hp >= ap ? h : a, loser: hp >= ap ? a : h, margin: r2(Math.abs(hp - ap)), week: wk, score: `${Math.max(hp, ap)}-${Math.min(hp, ap)}` });
     const [w, l] = hp >= ap ? [h, a] : [a, h];
     results.push(`W${wk}${wk > reg ? " playoff" : ""}: ${w} ${Math.max(hp, ap)} def. ${l} ${Math.min(hp, ap)}`);
   }
   const standings = Object.values(rec).sort((x, y) => y.wins - x.wins || y.pointsFor - x.pointsFor).map((x, i) => ({ ...x, rank: i + 1 }));
-  return { year, exportedAt: new Date(now).toISOString(), regularSeasonWeeks: reg, weeksPlayed, standings, results,
+  // Record leaderboards for this season, so "ever" and "all time" questions
+  // weigh the season in progress against the archive.
+  const line = (x) => `${x.owner} ${x.points} in ${year} week ${x.week} vs ${x.opponent}`;
+  const records = {
+    highestWeeklyScores: [...scores].sort((a, b) => b.points - a.points).slice(0, 5).map(line),
+    lowestWeeklyScores: [...scores].filter((x) => x.points > 0).sort((a, b) => a.points - b.points).slice(0, 5).map(line),
+    biggestWins: [...margins].sort((a, b) => b.margin - a.margin).slice(0, 3).map((x) => `${x.winner} over ${x.loser} by ${x.margin} (${x.score}) in ${year} week ${x.week}`),
+    closestGames: [...margins].sort((a, b) => a.margin - b.margin).slice(0, 3).map((x) => `${x.winner} over ${x.loser} by ${x.margin} (${x.score}) in ${year} week ${x.week}`),
+  };
+  return { year, exportedAt: new Date(now).toISOString(), regularSeasonWeeks: reg, weeksPlayed, standings, results, records,
     note: `Live ${year} season as of the pull time; ranked by wins then points for. Not final.` };
 }
 
