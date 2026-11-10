@@ -24,6 +24,7 @@ const MINUTES_TO_COUNT = { 15: 2, 30: 3, 45: 4, 60: 6 };
 import { HISTORY } from "./history-data.js";
 import { MATCHUPS } from "./matchup-data.js";
 import { pullCurrentSeason, CURRENT_KEY } from "./fantasy.js";
+import { ROAST_SYSTEM, cleanRoastStats } from "./roast.js";
 
 const app = {
   async scheduled(event, env, ctx) {
@@ -155,6 +156,9 @@ const app = {
     }
     if (url.pathname === "/lightning") {
       return handleLightning(request, env, corsHeaders, url);
+    }
+    if (url.pathname === "/season-roast") {
+      return handleSeasonRoast(request, env, corsHeaders);
     }
     if (url.pathname === "/week-chat") {
       return handleWeekChat(request, env, corsHeaders, url);
@@ -3733,6 +3737,34 @@ async function handleOpening(body, env, corsHeaders) {
     console.error("Worker error (opening)", err?.stack || String(err));
     return json({ error: "Worker error" }, 500, corsHeaders);
   }
+}
+
+// POST { name, week, stats } -> { roast }. One per player per finished week.
+async function handleSeasonRoast(request, env, corsHeaders) {
+  if (request.method !== "POST") return json({ error: "POST only" }, 405, corsHeaders);
+  let body; try { body = await request.json(); } catch { return json({ error: "Bad JSON" }, 400, corsHeaders); }
+  const name = PICKS_MANAGERS.includes(body?.name) ? body.name : null;
+  const week = Number.isInteger(body?.week) && body.week > 0 && body.week < 30 ? body.week : null;
+  if (!name || !week) return json({ error: "Nothing to roast" }, 400, corsHeaders);
+  const key = `roast:2026:${name}:${week}`;
+  const cached = env.LIFTR_KV ? await env.LIFTR_KV.get(key) : null;
+  if (cached) return json({ roast: cached, cached: true }, 200, corsHeaders);
+  if (!env.OPENAI_API_KEY) return json({ error: "The Chief is out" }, 503, corsHeaders);
+  const stats = cleanRoastStats(body?.stats);
+  if (!stats.points && !stats.hitPct) return json({ error: "No season yet" }, 400, corsHeaders);
+  const res = await openaiChat(env, "season-roast", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model: env.OPENAI_MODEL_PLAN || "gpt-4o", temperature: 0.8, max_tokens: 220,
+      messages: [{ role: "system", content: ROAST_SYSTEM }, { role: "user", content: JSON.stringify({ player: name, throughWeek: week, ...stats }) }],
+    }),
+  });
+  if (!res.ok) return json({ error: "The Chief is not answering right now." }, 502, corsHeaders);
+  const roast = String((await res.json()).choices?.[0]?.message?.content || "").trim().slice(0, 700);
+  if (!roast) return json({ error: "The Chief had nothing. Rare." }, 502, corsHeaders);
+  if (env.LIFTR_KV) await env.LIFTR_KV.put(key, roast, { expirationTtl: 30 * 86400 });
+  return json({ roast }, 200, corsHeaders);
 }
 
 // --- League history Q&A -----------------------------------------------------
