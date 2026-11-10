@@ -9313,52 +9313,61 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .rm-side.hit .rm-by { color: var(--neon-green); } .rm-side.miss .rm-by { color: var(--neon-pink); }
 
 /* ==== RETRO: season board (one block; see CLAUDE.md "Retro arcade rules") ====
-   Player card "VS THE LEAGUE": worst and best as bookends, you between. */
-.sbd { display: flex; flex-direction: column; gap: 6px; margin: 2px 0 6px; }
-.sbd-r { display: grid; grid-template-columns: 84px 46px minmax(0, 1fr) 46px; grid-template-areas: "l w bar b"; align-items: center; column-gap: 7px; min-height: 30px; }
-.sbd-l { grid-area: l; font-family: "Press Start 2P", monospace; font-size: 7px; letter-spacing: 0; white-space: nowrap; color: var(--text-dim, rgba(255,255,255,.6)); line-height: 1.4; }
-.sbd-e { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+   "VS THE LEAGUE": worst and best as bookends, a segmented meter filled up
+   to you, a pixel marker with your number above it. Hairlines, no boxes.
+   Colour by standing: gold leads, green top 3, cyan middle, pink bottom 3. */
+.sbd { --tier: var(--neon-cyan); --tier-rgb: var(--neon-cyan-rgb); display: flex; flex-direction: column; margin: 2px 0 6px; }
+.sbd-r { --tier: var(--neon-cyan); --tier-rgb: var(--neon-cyan-rgb); display: grid; grid-template-columns: 84px 46px minmax(0, 1fr) 46px; grid-template-areas: "l w bar b"; align-items: end; column-gap: 7px; padding: 7px 0 8px; border-top: 1px solid rgba(var(--neon-purple-rgb), .16); }
+.sbd-r:first-child { border-top: 0; }
+.sbd-r.t-hi { --tier: var(--neon-green); --tier-rgb: var(--neon-green-rgb); }
+.sbd-r.t-lo { --tier: var(--neon-pink); --tier-rgb: var(--neon-pink-rgb); }
+.sbd-r.lead { --tier: var(--neon-yellow); --tier-rgb: var(--arcade-gold-rgb); }
+.sbd-l { grid-area: l; align-self: center; font-family: "Press Start 2P", monospace; font-size: 7px; letter-spacing: 0; white-space: nowrap; color: var(--text-dim, rgba(255,255,255,.6)); }
+.sbd-e { display: flex; flex-direction: column; gap: 3px; line-height: 1; min-width: 0; }
 .sbd-e.w { grid-area: w; align-items: flex-end; text-align: right; }
 .sbd-e.b { grid-area: b; align-items: flex-start; }
 .sbd-e b { font-family: "Press Start 2P", monospace; font-size: 8px; font-weight: 400; }
-.sbd-e.w b { color: var(--neon-pink); } .sbd-e.b b { color: var(--neon-green); }
-.sbd-e small { font-size: 9px; color: var(--text-dim, rgba(255,255,255,.55)); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sbd-bar { grid-area: bar; position: relative; height: 22px; }
-.sbd-bar u { position: absolute; left: 0; right: 0; top: 6px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, rgba(var(--neon-pink-rgb), .55), rgba(var(--neon-purple-rgb), .35), rgba(var(--neon-green-rgb), .55)); }
-.sbd-bar u::before, .sbd-bar u::after { content: ""; position: absolute; top: -3px; width: 1.5px; height: 9px; background: var(--card-border); }
-.sbd-bar u::before { left: 0; } .sbd-bar u::after { right: 0; }
-.sbd-bar i { position: absolute; top: 2px; width: 11px; height: 11px; margin-left: -5.5px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 0 2px var(--bg2, #0b0f2a); }
-.sbd-bar i em { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-style: normal; font-family: "Press Start 2P", monospace; font-size: 7px; color: var(--neon-cyan); white-space: nowrap; }
-.sbd-bar i em.r { left: auto; right: -4px; transform: none; } .sbd-bar i em.l { left: -4px; transform: none; }
+.sbd-e.w b { color: rgba(var(--neon-pink-rgb), .9); } .sbd-e.b b { color: rgba(var(--neon-green-rgb), .9); }
+.sbd-e small { font-size: 9px; letter-spacing: .02em; color: var(--text-dim, rgba(255,255,255,.5)); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The meter: 8px cells, dim track, lit up to the marker */
+.sbd-bar { grid-area: bar; position: relative; height: 30px; }
+.sbd-bar u, .sbd-bar s { position: absolute; left: 0; bottom: 2px; height: 8px; border-radius: 1px; }
+.sbd-bar u { right: 0; background: repeating-linear-gradient(90deg, rgba(var(--neon-purple-rgb), .22) 0 5px, transparent 5px 7px); }
+.sbd-bar s { min-width: 5px; background: repeating-linear-gradient(90deg, var(--tier) 0 5px, transparent 5px 7px); opacity: .9; }
+.sbd-bar u::before, .sbd-bar u::after { content: ""; position: absolute; bottom: -2px; width: 1.5px; height: 12px; background: var(--card-border); }
+.sbd-bar u::before { left: -4px; } .sbd-bar u::after { right: -4px; }
+/* Marker: a pixel down arrow sitting on the meter, the number above it */
+.sbd-bar i { position: absolute; bottom: 12px; width: 0; height: 5px; }
+.sbd-bar i::after { content: ""; position: absolute; left: -4px; bottom: 0; width: 8px; height: 5px; background: var(--tier); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.sbd-bar i em { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-style: normal; font-family: "Press Start 2P", monospace; font-size: 8px; line-height: 1; color: var(--tier); white-space: nowrap; }
+.sbd-bar i em.r { left: auto; right: -2px; transform: none; } .sbd-bar i em.l { left: -2px; transform: none; }
+/* You are an end: the end reads YOU (or the name), no second number */
 .sbd-r.at-best .sbd-bar i em, .sbd-r.at-worst .sbd-bar i em { display: none; }
-.sbd-r.at-best .sbd-e.b small, .sbd-r.at-worst .sbd-e.w small { color: var(--neon-cyan); }
-.sbd-r.at-best .sbd-bar i, .sbd-r.lead .sbd-bar i { background: var(--neon-yellow); }
-.sbd-r.lead .sbd-bar i em { color: var(--neon-yellow); }
-.sbd-r.t-lo .sbd-bar i em { color: var(--neon-pink); }
-.sbd-foot { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0 2px; border-top: 1.5px solid var(--card-border); font-size: 12px; }
-.sbd-foot span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.sbd-foot span:last-child { text-align: right; }
+.sbd-r.at-best .sbd-e.b small, .sbd-r.at-worst .sbd-e.w small { color: var(--tier); }
+.sbd-r.at-best .sbd-e.b b, .sbd-r.at-worst .sbd-e.w b { color: var(--tier); }
+.sbd-foot { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0 2px; border-top: 1.5px solid var(--card-border); font-size: 12px; }
+.sbd-foot span { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sbd-foot span:first-child { color: var(--neon-green); } .sbd-foot span:last-child { text-align: right; color: var(--neon-pink); }
 .sbd-foot small { font-family: "Press Start 2P", monospace; font-size: 7px; color: var(--text-dim, rgba(255,255,255,.55)); }
-.sbd-roast { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: 10px 0 4px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid rgba(var(--neon-cyan-rgb), .6); background: rgba(var(--neon-cyan-rgb), .08); color: var(--neon-cyan); font-family: "Press Start 2P", monospace; font-size: 9px; letter-spacing: .04em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.sbd-roast .chief-ico { width: 20px; height: 20px; border-radius: 50%; }
-.sbd-roast.busy { opacity: .7; }
-.sbd-said { margin: 10px 0 4px; padding: 10px 12px; border-left: 2px solid var(--neon-cyan); font-size: 14px; line-height: 1.45; color: var(--text, #fff); }
-.sbd-said.hidden, .sbd-roast.hidden { display: none; }
 /* Recap strip under the week's winner: your three best stats, tap for all */
-.rx-season { margin: 10px 0 4px; padding: 10px 12px 8px; border-radius: 10px; border: 1.5px solid var(--card-border); background: var(--card-bg); cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.rx-ssh { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.rx-season { margin: 10px 0 4px; padding: 10px 12px 4px; border-radius: 10px; border: 1.5px solid var(--card-border); background: var(--card-bg); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rx-ssh { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 4px; }
 .rx-ssh span { font-family: "Press Start 2P", monospace; font-size: 8px; color: var(--neon-cyan); letter-spacing: .04em; }
 .rx-ssh span i { font-style: normal; color: var(--text-dim, rgba(255,255,255,.55)); }
 .rx-ssh b { font-family: "Press Start 2P", monospace; font-size: 7px; font-weight: 400; color: var(--neon-cyan); padding: 4px 7px; border: 1.5px solid rgba(var(--neon-cyan-rgb), .55); border-radius: 10px; white-space: nowrap; }
 .rx-season .sbd { margin: 0; }
 /* The season window */
 .sbd-card { padding-bottom: 16px; }
-.sbd-key { display: grid; grid-template-columns: 84px 46px minmax(0, 1fr) 46px; column-gap: 7px; margin: 4px 0 2px; font-family: "Press Start 2P", monospace; font-size: 6px; }
+.sbd-card .wks-h b { white-space: nowrap; }
+.sbd-key { display: grid; grid-template-columns: 84px 46px minmax(0, 1fr) 46px; column-gap: 7px; margin: 4px 0 0; font-family: "Press Start 2P", monospace; font-size: 6px; }
 .sbd-key span:first-child { grid-column: 2; text-align: right; color: var(--neon-pink); }
 .sbd-key span:last-child { grid-column: 4; color: var(--neon-green); }
-.sbd-said { border-left: 0; padding: 12px; border-radius: 10px; border: 1.5px solid rgba(var(--neon-cyan-rgb), .45); background: rgba(var(--neon-cyan-rgb), .06); }
+.sbd-roast { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin: 12px 0 4px; padding: 12px; border-radius: 10px; border: 1.5px solid rgba(var(--neon-cyan-rgb), .6); background: rgba(var(--neon-cyan-rgb), .08); color: var(--neon-cyan); font-family: "Press Start 2P", monospace; font-size: 9px; letter-spacing: .06em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sbd-roast .chief-ico { width: 22px; height: 22px; border-radius: 50%; }
+.sbd-roast.busy { opacity: .7; }
+.sbd-said { margin: 12px 0 4px; padding: 12px; border-radius: 10px; border: 1.5px solid rgba(var(--neon-cyan-rgb), .45); background: rgba(var(--neon-cyan-rgb), .06); font-size: 14px; line-height: 1.45; color: var(--text, #fff); }
 .sbd-said p { margin: 6px 0 0; }
 .sbd-who { display: flex; align-items: center; gap: 8px; }
 .sbd-who .chief-ico { width: 24px; height: 24px; border-radius: 50%; }
 .sbd-who b { font-family: "Press Start 2P", monospace; font-size: 8px; font-weight: 400; color: var(--neon-cyan); }
-.sbd-card .wks-h b { white-space: nowrap; }
+.sbd-said.hidden, .sbd-roast.hidden { display: none; }
