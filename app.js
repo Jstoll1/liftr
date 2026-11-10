@@ -9670,7 +9670,7 @@ let renderRecap = function () {
       : line2("worst", "Missed", L.miss.length ? nm(L.miss) : "Nobody", "", `${L.miss.length} missed`);
     cards.push(["🔒 LOCKS", "lk", lkArt, `<span class="recap-pick">${word}</span>`, pad, "", "", mine(L.hit), `<div class="rx-tbw">${box1}${box2}</div>`]);
   }
-  const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}`;
+  const key = `${last.week}|${cards.length}|${currentManager}|${creativeArt.at || 0}|${[...recapOpen].join(",")}|${(seasonLedger || []).length}`;
   toggle.classList.remove("hidden");
   toggle.firstChild.textContent = `📰 ${String(last.label || `WEEK ${last.week}`).toUpperCase()} RECAP `;
   if (panel.dataset.drawn === key) return;
