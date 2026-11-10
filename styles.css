@@ -9322,7 +9322,7 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .sbd-r.t-hi { --tier: var(--neon-green); --tier-rgb: var(--neon-green-rgb); }
 .sbd-r.t-lo { --tier: var(--neon-pink); --tier-rgb: var(--neon-pink-rgb); }
 .sbd-r.lead { --tier: var(--neon-yellow); --tier-rgb: var(--arcade-gold-rgb); }
-.sbd-l { grid-area: l; align-self: center; font-family: "Press Start 2P", monospace; font-size: 7px; letter-spacing: 0; white-space: nowrap; color: var(--text-dim, rgba(255,255,255,.6)); }
+.sbd-l { grid-area: l; align-self: end; margin-bottom: 1px; line-height: 10px; font-family: "Press Start 2P", monospace; font-size: 7px; letter-spacing: 0; white-space: nowrap; color: var(--text-dim, rgba(255,255,255,.6)); }
 .sbd-e { display: flex; flex-direction: column; gap: 3px; line-height: 1; min-width: 0; }
 .sbd-e.w { grid-area: w; align-items: flex-end; text-align: right; }
 .sbd-e.b { grid-area: b; align-items: flex-start; }
@@ -9343,6 +9343,7 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .sbd-bar i em.r { left: auto; right: -2px; transform: none; } .sbd-bar i em.l { left: -2px; transform: none; }
 /* You are an end: the end reads YOU (or the name), no second number */
 .sbd-r.at-best .sbd-bar i em, .sbd-r.at-worst .sbd-bar i em { display: none; }
+.sbd-r.at-best .sbd-bar, .sbd-r.at-worst .sbd-bar { height: 19px; }
 .sbd-r.at-best .sbd-e.b small, .sbd-r.at-worst .sbd-e.w small { color: var(--tier); }
 .sbd-r.at-best .sbd-e.b b, .sbd-r.at-worst .sbd-e.w b { color: var(--tier); }
 .sbd-foot { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0 2px; border-top: 1.5px solid var(--card-border); font-size: 12px; }
