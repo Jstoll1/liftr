@@ -72,3 +72,10 @@ One look everywhere, a clean arcade, not a funhouse:
 - Run `node scripts/check-retro.mjs` before pushing style changes, and
   screenshot with animations finished (not disabled) so the check matches
   a real phone.
+
+## Pushing to main: one deploy at a time
+Every push to main starts a GitHub Pages deploy, and a new push cancels the
+one still running. Before pushing again, check the last "pages build and
+deployment" run (workflow 346657123) has finished. If its publish step times
+out or fails, the site stays on the last good build: push a real change
+(never an empty commit) to start a fresh deploy, then check it went green.
