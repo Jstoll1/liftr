@@ -3049,7 +3049,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-row.me { background: rgba(5, 217, 232, .1); box-shadow: inset 3px 0 0 var(--neon-cyan); }
 .pot-row.inmoney .pot-name { color: var(--neon-yellow); }
 .pot-place { font-family: 'Press Start 2P', monospace; font-size: 7px; white-space: nowrap; color: var(--text-dim); }
-.pot-mv { display: inline; margin-left: 3px; font-style: normal; font-size: 7px; letter-spacing: 0; }
+.pot-row:not(.head) .pot-place { display: grid; grid-template-columns: 18px 1fr; align-items: center; column-gap: 2px; }
+.pot-mv { display: block; font-style: normal; font-size: 7px; letter-spacing: 0; }
 .pot-mv.up { color: var(--neon-green); } .pot-mv.dn { color: var(--neon-pink); }
 .pot-name { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pot-proj { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--neon-purple); flex: none; }
@@ -5147,10 +5148,10 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 .story-next b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; letter-spacing: .1em; color: #fff; background: #c8102e; padding: 4px 5px; border-radius: 3px; }
 .story-next em { font-style: normal; font-weight: 500; color: #6b5f4f; }
 .story-logo { width: 18px; height: 18px; object-fit: contain; }
-.pot-row { grid-template-columns: 40px minmax(0, 1fr) 36px 44px 46px 56px; }
+.pot-row { grid-template-columns: 42px minmax(0, 1fr) 36px 44px 46px 56px; column-gap: 3px; }
 .pot-rec { text-align: center; font-variant-numeric: tabular-nums; color: var(--text-dim); font-size: 11px; }
 .pot-row.head .pot-rec, .pot-row.head span:nth-child(4) { text-align: center; }
-@media (max-width: 360px) { .pot-row { grid-template-columns: 36px minmax(0, 1fr) 32px 40px 40px 50px; } }
+@media (max-width: 360px) { .pot-row { grid-template-columns: 40px minmax(0, 1fr) 32px 40px 40px 50px; } }
 
 /* ===== Week over: recap, pot, leaderboard, scores, in that order ===== */
 #scores-toggle { display: none; }
