@@ -13,7 +13,8 @@
      readable on a card the board is deliberately recessing. */
   --text-meta: #b4a7cd;
   --card-bg: rgba(12, 14, 29, 0.94);
-  --card-border: rgba(193, 60, 255, 0.45);
+  --card-border: rgba(150, 160, 190, 0.16); /* charcoal frame for standard cards */
+  --card-border-feature: rgba(193, 60, 255, 0.55); /* featured content only */
   /* Repeat Retro colours as tokens, so a theme swaps them in one place.
      Pro only names, given Retro values so new code can use them now. */
   --arcade-gold: #ffd23f;
