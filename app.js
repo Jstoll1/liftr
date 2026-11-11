@@ -9682,8 +9682,18 @@ let renderRecap = function () {
   // Every team the replay names gets its logo: the week's slate maps each
   // name (full and short, ranks stripped) to its ESPN id, longest first so
   // "Miami OH" wins over "Miami". Runs on text that is already escaped.
+  // The light week summary the phone draws from has no slate, so the names
+  // also come from the detailed week when loaded, this week's games when it
+  // is still this week, and the replay's own cards (they carry team ids).
   const tmNames = new Map();
-  for (const g of last.slate || []) for (const [n, id] of [[g.away, g.awayId], [g.home, g.homeId], [g.awayShort, g.awayId], [g.homeShort, g.homeId]]) { const k = esc(String(n || "").replace(/^#\d+\s+/, "").trim()); if (k.length > 1 && id && !tmNames.has(k)) tmNames.set(k, id); }
+  const tmAdd = (n, id) => { const k = esc(String(n || "").replace(/^#\d+\s+/, "").trim()); if (k.length > 1 && id && !tmNames.has(k)) tmNames.set(k, Number(id)); };
+  const slateFor = last.slate || (seasonLedger || []).find((w) => w.week === last.week)?.slate || (currentWeek === last.week ? GAMES : []);
+  for (const g of slateFor || []) { tmAdd(g.away, g.awayId); tmAdd(g.home, g.homeId); tmAdd(g.awayShort, g.awayId); tmAdd(g.homeShort, g.homeId); }
+  if (r.best) tmAdd(String(r.best.team || ""), r.best.teamId);
+  if (r.worst) tmAdd(String(r.worst.team || ""), r.worst.teamId);
+  for (const x of r.consensus?.sides || []) tmAdd(x.team, x.id);
+  for (const x of r.locks?.list || []) tmAdd(x.short, x.id);
+  if (r.tb) { const [ta, th] = String(r.tb.matchup || "").split(/\s+(?:at|@)\s+/); tmAdd(ta, r.tb.awayId); tmAdd(th, r.tb.homeId); }
   const tmRx = tmNames.size ? new RegExp(`(?<![A-Za-z])(${[...tmNames.keys()].sort((x, y) => y.length - x.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![A-Za-z])`, "g") : null;
   const tl = (html) => (tmRx ? String(html).replace(tmRx, (m) => `<em class="t-inl"><img class="t-inl-logo" src="${logoUrl(tmNames.get(m))}" alt="" loading="lazy" decoding="async" onerror="this.remove()">${m}</em>`) : html);
   const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);
