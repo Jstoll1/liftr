@@ -9483,8 +9483,10 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .sbr-pane[hidden] { display: none; }
 .sbr-note { margin: 0 0 6px; font-size: 11.5px; color: var(--text-meta); }
 .sbr-card .sbk-list { display: flex; flex-direction: column; }
-.sbr-card .sbk-r { display: grid; grid-template-columns: 34px minmax(0, 1fr) 54px 96px; align-items: center; column-gap: 10px; padding: 7px 6px; margin: 0; border: 0; border-top: 1px solid rgba(var(--neon-purple-rgb), .16); border-radius: 0; background: none; }
+.sbr-card .sbk-r { display: grid; grid-template-columns: 34px minmax(0, 1fr) calc(var(--vc, 4) * 9px + 2px) min(96px, calc(var(--nc, 12) * 0.62em + 2px)) !important; align-items: center; column-gap: 10px; padding: 7px 6px; margin: 0; border: 0; border-top: 1px solid rgba(var(--neon-purple-rgb), .16); border-radius: 0; background: none; }
 .sbr-card .sbk-r:first-child { border-top: 0; }
+.sbr-card .sbk-list.nonote .sbk-r { grid-template-columns: 34px minmax(0, 1fr) calc(var(--vc, 4) * 9px + 2px) !important; }
+.sbr-card .sbk-list.nonote .sbk-r em { display: none; }
 .sbr-card .sbk-w { font-family: "Press Start 2P", monospace; font-size: 8px; color: var(--text-meta); }
 .sbr-card .sbk-bar { position: relative; display: block; height: 6px; border-radius: 1px; background: repeating-linear-gradient(90deg, rgba(var(--neon-purple-rgb), .22) 0 4px, transparent 4px 6px); }
 .sbr-card .sbk-bar u { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, var(--neon-pink) 0%, var(--neon-orange) 50%, var(--neon-green) 100%); background-size: calc(100% / var(--sw, 1)) 100%; background-repeat: no-repeat; -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 4px, transparent 4px 6px); mask-image: repeating-linear-gradient(90deg, #000 0 4px, transparent 4px 6px); }
