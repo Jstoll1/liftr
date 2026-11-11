@@ -9391,3 +9391,9 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .sbd-who .chief-ico { width: 24px; height: 24px; border-radius: 50%; }
 .sbd-who b { font-family: "Press Start 2P", monospace; font-size: 8px; font-weight: 400; color: var(--neon-cyan); }
 .sbd-said.hidden, .sbd-roast.hidden { display: none; }
+
+/* A team named in a line of text (teamInline in app.js): logo then name,
+   sized to the text and sat on its line, so labels and sentences alike
+   read as "[logo] Utah". */
+.t-inl { display: inline-flex; align-items: center; gap: .3em; white-space: nowrap; vertical-align: bottom; font-style: normal; font-weight: inherit; color: inherit; }
+.t-inl-logo { width: max(1.25em, 12px); height: max(1.25em, 12px); object-fit: contain; flex: none; }
