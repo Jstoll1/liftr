@@ -10247,7 +10247,7 @@ function seasonBoardRows(b, rows, name) {
     return `<div class="sbd-r ${cls}${atEnd}" data-sbk="${r.k}" role="button" tabindex="0" aria-label="${r.label}: league ranking">
       <span class="sbd-l">${r.label}<em class="sbd-rk">${r.tied ? "T-" : ""}${ordinal(r.place)}<small> of ${r.of}</small></em>${r.recTxt ? `<i class="sbd-rec">${r.recTxt}</i>` : ""}</span>
       <span class="sbd-e w">${end(r.worst, r.worstN, r.worst.v, ef, atWorst)}</span>
-      <span class="sbd-bar"><u></u><s style="width:${(r.share * 100).toFixed(1)}%"></s><i style="left:${(r.share * 100).toFixed(1)}%"><em class="${r.share > 0.75 ? "r" : r.share < 0.25 ? "l" : ""}">${r.fmt(r.mine)}${r.recTxt ? `<small>${r.recTxt}</small>` : ""}</em></i></span>
+      <span class="sbd-bar"><u></u><s style="width:${(r.share * 100).toFixed(1)}%;--sw:${Math.max(0.04, r.share).toFixed(3)}"></s><i style="left:${(r.share * 100).toFixed(1)}%"><em class="${r.share > 0.75 ? "r" : r.share < 0.25 ? "l" : ""}">${r.fmt(r.mine)}${r.recTxt ? `<small>${r.recTxt}</small>` : ""}</em></i></span>
       <span class="sbd-e b">${end(r.best, r.bestN, r.best.v, ef, atBest)}</span>
     </div>`;
   }).join("");
@@ -10313,7 +10313,7 @@ function openBoardRank(k, name = currentManager) {
     const place = 1 + rows.filter((x) => better(x.v, r.v)).length, tied = rows.filter((x) => x.v === r.v).length > 1;
     const share = span ? (r.v - worst) / span : 1;
     const tier = place === 1 ? "lead" : place <= 3 ? "t-hi" : place > rows.length - 3 ? "t-lo" : "t-mid";
-    return `<li class="sbr-r ${tier}${r.n === name ? " me" : ""}"><span class="sbr-rk">${tied ? "T-" : ""}${ordinal(place)}</span><span class="sbr-nm">${esc(shown(r.n))}</span><span class="sbr-bar"><i style="width:${Math.max(4, Math.round(share * 100))}%"></i></span><span class="sbr-v">${(st.rfmt || st.fmt)(r.v)}${r.rec ? `<small>${esc(r.rec)}</small>` : ""}</span></li>`;
+    return `<li class="sbr-r ${tier}${r.n === name ? " me" : ""}"><span class="sbr-rk">${tied ? "T-" : ""}${ordinal(place)}</span><span class="sbr-nm">${esc(shown(r.n))}</span><span class="sbr-bar"><i style="width:${Math.max(4, Math.round(share * 100))}%;--sw:${Math.max(0.04, share).toFixed(3)}"></i></span><span class="sbr-v">${(st.rfmt || st.fmt)(r.v)}${r.rec ? `<small>${esc(r.rec)}</small>` : ""}</span></li>`;
   }).join("");
   const m = bottomSheet("season-rank");
   document.body.appendChild(m); // on top of the season window
