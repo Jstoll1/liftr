@@ -9263,10 +9263,12 @@ html:not(.pro) .home-header:not(.compact) { padding-bottom: 4px !important; }
 html:not(.pro) .home-header .home-logo-img { height: 21px !important; width: auto !important; object-fit: contain; filter: none !important; }
 html:not(.pro) .home-logo-btn:hover .home-logo-img { filter: brightness(1.08) !important; }
 html:not(.pro) .home-header.compact .home-logo-img { height: 21px !important; }
-html:not(.pro) .home-header.compact { padding-top: max(3px, env(safe-area-inset-top)) !important; padding-bottom: 3px !important; }
+html:not(.pro) .home-header.compact { padding-top: max(1px, env(safe-area-inset-top)) !important; padding-bottom: 1px !important; }
 html:not(.pro) .home-header.compact .home-logo-btn { padding: 0 !important; }
 #head-score, .head-cd { display: none !important; }
-html:not(.pro) #me-pill { height: 24px !important; box-sizing: border-box; display: inline-flex !important; top: 50% !important; transform: translateY(-50%) !important; margin: 0 !important; align-items: center !important; border: 1.5px solid rgba(var(--neon-cyan-rgb), .45) !important; border-radius: 15px !important; background: var(--card-bg) !important; box-shadow: none !important; }
+html:not(.pro) #me-pill { height: 20px !important; padding: 2px 7px 2px 3px !important; gap: 4px !important; font-size: 8.5px !important; box-sizing: border-box; display: inline-flex !important; top: 50% !important; transform: translateY(-50%) !important; margin: 0 !important; align-items: center !important; border: 1px solid rgba(var(--neon-cyan-rgb), .3) !important; border-radius: 15px !important; background: var(--card-bg) !important; box-shadow: none !important; }
+/* A smaller avatar, so the pill reads as one quiet shape beside the logo. */
+html:not(.pro) #me-pill .me-pill-avatar { width: 14px !important; height: 14px !important; font-size: 7px !important; }
 html:not(.pro) .home-header { background: rgba(10, 12, 24, .97) !important; }
 html:not(.pro) .scorebug, html:not(.pro) .game-card, html:not(.pro) .pot-table, html:not(.pro) .rankings-list { background: var(--card-bg) !important; border: 1.5px solid var(--card-border) !important; box-shadow: none !important; }
 html:not(.pro) .rankings-list::after { display: none !important; }
