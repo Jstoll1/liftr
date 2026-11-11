@@ -9253,7 +9253,7 @@ html:not(.pro) .rx-yl::before, html:not(.pro) .rx-yl::after { background: rgba(v
 html.pro .rx-ycols span i { font-style: normal; opacity: .7; }
 /* Balance and alignment pass. */
 /* Wide cards: one fixed stat column so Pick and Worst line up, centred. */
-html:not(.pro) .recap-card.rx.rx-wide .recap-stat { width: 78px !important; flex: none !important; text-align: center !important; display: flex; flex-direction: column; align-items: center; }
+html:not(.pro) .recap-card.rx.rx-wide .recap-stat { width: 92px !important; flex: none !important; padding: 0 0 0 11px !important; align-self: center; text-align: center !important; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 html:not(.pro) .recap-card.rx .recap-stat span { white-space: nowrap; }
 /* Subtext wraps in even lines, no orphaned score. */
 html:not(.pro) .recap-card.rx .recap-sub, html:not(.pro) .recap-card.rx .recap-main { text-wrap: balance; }
