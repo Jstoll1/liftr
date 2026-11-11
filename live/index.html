@@ -1294,6 +1294,8 @@ body::before { display: none; }
 .recs .ph .seg { flex: none; margin-left: auto; }
 @media (max-width: 520px) { .recs .ph .sub { display: none; } }
 .rec-m span { white-space: normal; line-height: 1.3; }
+.chat-r.unk { border-left: 2px solid #ffd23f; padding-left: 6px; }
+.chat-unk { display: block; margin: 3px 0; font-style: normal; font-size: 11px; font-weight: 700; color: #ffd23f; letter-spacing: .02em; }
 </style>
 </head>
 <body>
@@ -1984,7 +1986,7 @@ body::before { display: none; }
       const groups = [];
       const keep = st.biFilter === "others" ? (r) => r.asker !== "Jake" : st.biFilter === "flagged" ? (r) => r.flagged : () => true;
       for (const r of rows.filter(keep)) { const k = r.sid || r.id; let g = groups.find((x) => x.k === k); if (!g) groups.push(g = { k, rows: [] }); g.rows.push(r); }
-      return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; const other = first.asker !== "Jake"; return `<div class="afr-day${other ? " chat-other" : " chat-me"}">${other ? "🧠 " : ""}${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div class="afr-r chat-r${r.flagged ? " flagged" : ""}${other ? " other" : " me"}"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b><span class="chat-la${r.status && r.status !== "answered" ? " miss" : ""}">${esc(r.a ?? (r.status === "asked" && Date.now() - r.at < 60000 ? "(answering…)" : "(no answer: they left before it finished)"))}</span>${r.flagged ? `<em class="chat-note">🚩 ${esc(r.note || "flagged")}</em>` : ""}${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><span class="chat-btns"><button type="button" class="afr-one" data-chatflag="${esc(r.id)}" aria-pressed="${!!r.flagged}" aria-label="${r.flagged ? "Unflag" : "Flag as wrong"}">${r.flagged ? "unflag" : "🚩"}</button><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></span></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
+      return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; const other = first.asker !== "Jake"; return `<div class="afr-day${other ? " chat-other" : " chat-me"}">${other ? "🧠 " : ""}${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div class="afr-r chat-r${r.flagged ? " flagged" : ""}${r.unknownTerm ? " unk" : ""}${other ? " other" : " me"}"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b>${r.unknownTerm ? `<em class="chat-unk">❓ UNKNOWN TERM: ${esc(r.unknownTerm)} · add it to the glossary</em>` : ""}<span class="chat-la${r.status && r.status !== "answered" ? " miss" : ""}">${esc(r.a ?? (r.status === "asked" && Date.now() - r.at < 60000 ? "(answering…)" : "(no answer: they left before it finished)"))}</span>${r.flagged ? `<em class="chat-note">🚩 ${esc(r.note || "flagged")}</em>` : ""}${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><span class="chat-btns"><button type="button" class="afr-one" data-chatflag="${esc(r.id)}" aria-pressed="${!!r.flagged}" aria-label="${r.flagged ? "Unflag" : "Flag as wrong"}">${r.flagged ? "unflag" : "🚩"}</button><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></span></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
     };
     const opsPanel = () => {
       if (!st.ops) return "";
@@ -2285,7 +2287,8 @@ body::before { display: none; }
     for (const v of quick) { const a = [...v.acts].reverse().find((x) => /^Went to |^Looked at /.test(x.a)); const k = a ? a.a.replace(/^Went to |^Looked at (the )?/, "") : "the home screen"; lastScr.set(k, (lastScr.get(k) || 0) + 1); }
     const topQuick = [...lastScr.entries()].sort((a, b) => b[1] - a[1])[0];
     // BI: answers that went wrong.
-    const biBad = chatDay.filter((r) => r.flagged || (r.status && r.status !== "answered" && r.status !== "asked"));
+    const biBad = chatDay.filter((r) => r.flagged || r.unknownTerm || (r.status && r.status !== "answered" && r.status !== "asked"));
+    const biUnk = chatDay.filter((r) => r.unknownTerm);
     const biNo = chatDay.filter((r) => r.status && r.status !== "answered" && r.status !== "asked");
     if (topFr) recs.issues = { tone: "warn", t: `Fix: ${topFr.a}${topFr.d ? ` on ${topFr.d}` : ""}`, why: `${topFr.n} time${topFr.n === 1 ? "" : "s"} by ${topFr.who.size} ${topFr.who.size === 1 ? "person" : "people"} in 24h, the most common stuck moment.`,
       copy: `Brochiefs ${LEAGUE.toUpperCase()} app: players keep hitting "${topFr.a}"${topFr.d ? ` on ${topFr.d}` : ""} (${topFr.n}x, ${topFr.who.size} people, last 24h). Find what that element is meant to do, make the tap do it (or make it clearly not tappable), test at 390px, and add a fixes.json entry.` };
@@ -2320,7 +2323,7 @@ body::before { display: none; }
     if (vs.length >= 10 && onGameDay && pct(quick.length, vs.length) >= 25) recs.activity = { tone: "info", t: `${qShare} of visits are a quick look`, why: `${qCtx}.${topQuick ? ` Most ended on ${topQuick[0]} (${topQuick[1]}).` : ""}`,
       copy: `Brochiefs ${LEAGUE.toUpperCase()}: ${qShare} of visits in the last 24h lasted under a minute (${qCtx})${topQuick ? `, most ending on ${topQuick[0]}` : ""}. On a game day a quick exit can mean the first screen missed what they came for (score, my picks, standing). Suggest and build the one change that answers it without adding clutter. Test at 390px.` };
     else recs.activity = { tone: "ok", t: quick.length && !onGameDay ? "Quick checks on an off day" : "Visits look healthy", why: `${qCtx}. ${quick.length} under a minute${!onGameDay && quick.length ? ", which is normal with no games on" : vs.length < 10 ? ", too few visits to read into" : ""}. Nothing to fix here today.`, copy: "" };
-    if (biBad.length) recs.bi = { tone: "warn", t: `Tune the Chief: ${biBad.length} answer${biBad.length === 1 ? "" : "s"} went wrong`, why: `${biNo.length} got no answer, ${biBad.length - biNo.length} flagged, of ${chatDay.length} in 24h.`,
+    if (biBad.length) recs.bi = { tone: "warn", t: `Tune the Chief: ${biBad.length} answer${biBad.length === 1 ? "" : "s"} went wrong`, why: `${biNo.length} got no answer, ${biUnk.length} hit an unknown term (${[...new Set(biUnk.map((r) => r.unknownTerm))].join(", ") || "none"}), ${biBad.length - biNo.length - biUnk.length} flagged, of ${chatDay.length} in 24h.`,
       copy: `Ask Chief misses from the last 24h. For each, find why (tool data, system prompt, or the phone's tool) and fix the cause, not the one answer:\n\n${chatLog(biBad)}` };
     else if (chatDay.length) recs.bi = { tone: "ok", t: "The Chief answered everything", why: `${chatDay.length} questions, none flagged or unanswered in 24h.`, copy: "" };
     const feats0 = [...featMap.entries()].sort((a, b) => a[1].who.size - b[1].who.size);
@@ -2813,7 +2816,7 @@ body::before { display: none; }
   st.opsOpen = store.get("brochiefs_live_ops_open") === "1";
   st.chatOpen = store.get("brochiefs_live_chat_open") === "1";
   // A chat as plain text for pasting: when, who, build, Q, A, each tool call.
-  const chatLog = (rows) => rows.map((c) => `${new Date(c.at).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · ${c.asker || "not signed in"}${c.build ? ` · build ${c.build}` : ""}${c.flagged ? `\nFLAGGED${c.note ? `: ${c.note}` : ""}` : ""}\nQ: ${c.q}\nA: ${c.a ?? "(no answer)"}${c.status && c.status !== "answered" ? ` [${c.status}]` : ""}${(c.tools || []).map((t) => `\n   tool ${t.name}(${t.args}) -> ${t.out}`).join("")}`).join("\n\n");
+  const chatLog = (rows) => rows.map((c) => `${new Date(c.at).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · ${c.asker || "not signed in"}${c.build ? ` · build ${c.build}` : ""}${c.flagged ? `\nFLAGGED${c.note ? `: ${c.note}` : ""}` : ""}${c.unknownTerm ? `\nUNKNOWN TERM: ${c.unknownTerm}` : ""}\nQ: ${c.q}\nA: ${c.a ?? "(no answer)"}${c.status && c.status !== "answered" ? ` [${c.status}]` : ""}${(c.tools || []).map((t) => `\n   tool ${t.name}(${t.args}) -> ${t.out}`).join("")}`).join("\n\n");
   async function loadChats() {
     try { const x = await fetch(`${WORKER}/week-chat?${auth()}&t=${Date.now()}`, { cache: "no-store" }); if (x.ok) { const j = await x.json(); st.chats = Array.isArray(j.chats) ? j.chats : []; st.sig = ""; render(); } } catch {}
   }

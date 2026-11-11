@@ -79,3 +79,10 @@ one still running. Before pushing again, check the last "pages build and
 deployment" run (workflow 346657123) has finished. If its publish step times
 out or fails, the site stays on the last good build: push a real change
 (never an empty commit) to start a fresh deploy, then check it went green.
+
+## Teach the Chief every new term
+Ask Chief only knows what its prompt and tools tell it. When a feature adds
+a name members will say (a stat, a line, a button, a pot), add one line to
+the glossary in `weekChatSystem` (`worker/src/weekask.js`): what it means
+and which tool has its numbers. Terms the Chief still doesn't know show on
+Live as "UNKNOWN TERM"; add each to the glossary when you see it.

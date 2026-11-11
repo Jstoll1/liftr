@@ -4699,7 +4699,11 @@ async function handleWeekChat(request, env, corsHeaders, url = new URL(request.u
     let u = messages.length - 1; while (u > 0 && messages[u].role !== "user") u--;
     const after = messages.slice(u + 1), outs = new Map(after.filter((x) => x.role === "tool").map((x) => [x.tool_call_id, x.content]));
     const tools = after.filter((x) => x.role === "assistant" && x.tool_calls).flatMap((x) => x.tool_calls.map((c) => ({ name: c.function.name, args: String(c.function.arguments || "").slice(0, 300), out: String(outs.get(c.id) || "").slice(0, 1500) })));
-    const patch = { a: String(m.content || "").slice(0, 2000), tools, status: "answered" };
+    // The Chief flags a term it doesn't know; the log keeps it for Live and
+    // the reply goes out without the marker.
+    const unk = String(m.content || "").match(/\[\[UNKNOWN_TERM:\s*([^\]]{1,60})\]\]/);
+    if (unk) m.content = String(m.content).replace(unk[0], "").trim();
+    const patch = { a: String(m.content || "").slice(0, 2000), tools, status: "answered", ...(unk ? { unknownTerm: unk[1].trim() } : {}) };
     logId = await weekChatLog(env, logId, logId ? patch : { at: Date.now(), asker, sid, build, q: String(messages[u]?.content || "").slice(0, 500), turn: messages.filter((x) => x.role === "user").length, ...patch });
   }
   return json({ message: { role: "assistant", content: m.content || null, ...(calls.length ? { tool_calls: calls } : {}) }, logId }, 200, corsHeaders);
