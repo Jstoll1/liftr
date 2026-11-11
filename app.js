@@ -482,7 +482,8 @@ function mergeStates(a, b) {
 const PENDING_KEY = "brochiefs_pending_push_v1";
 let syncStatus = "idle"; // idle | saving | saved | failed
 const syncListeners = new Set();
-function setSyncStatus(next) { syncStatus = next; syncListeners.forEach((fn) => fn(next)); }
+// A redraw that throws must never abort a save: each listener runs alone.
+function setSyncStatus(next) { syncStatus = next; syncListeners.forEach((fn) => { try { fn(next); } catch (e) { try { opsEvent?.("js-error", `sync redraw: ${String(e?.message || e).slice(0, 80)}`); } catch {} } }); }
 
 // The queue, not the last tap, is the truth about whether a pick reached
 // the cloud. A badge tied to the tap goes stale the moment the pulse timer
@@ -494,14 +495,22 @@ function pendingPushFor(manager) {
 // The state the Worker sent back on the last successful push, so the
 // tiebreaker card can confirm what the cloud actually holds.
 let lastPushEcho = null;
-async function pushManagerState(manager, state, { attempts = 3 } = {}) {
+// In flight: written before the save goes out, so a save cut off by the app
+// closing is retried on the next open. The queue (PENDING_KEY) only marks
+// saves that failed; PENDING_WEEK_KEY says which week they belong to.
+const INFLIGHT_KEY = "brochiefs_push_inflight_v1", PENDING_WEEK_KEY = "brochiefs_pending_week_v1";
+const weekStorageKey = (w) => (w === 1 ? STORAGE_KEY_BASE : `${STORAGE_KEY_BASE}_w${w}`);
+function queuePush(manager, week) { try { localStorage.setItem(PENDING_KEY, manager); localStorage.setItem(PENDING_WEEK_KEY, String(week)); } catch {} }
+async function pushManagerState(manager, state, { attempts = 3, week = currentWeek } = {}) {
   if (!WORKER_URL) return false;
   setSyncStatus("saving");
+  try { localStorage.setItem(INFLIGHT_KEY, JSON.stringify({ manager, week, at: Date.now() })); } catch {}
+  const otherWeek = week !== currentWeek;
   // Read, merge, then write: only this device's newer picks go up, and a
   // stale copy of the other games never overwrites what the cloud holds.
   // Locked games are always taken from the cloud.
   let toSend = state;
-  try {
+  if (!otherWeek) try {
     const cloud = await fetchAllPicks(manager);
     const remote = cloud && cloud[manager] ? { ...cloud[manager], picks: sanitizePicks(cloud[manager].picks) } : null;
     if (remote) {
@@ -520,28 +529,52 @@ async function pushManagerState(manager, state, { attempts = 3 } = {}) {
       const res = await fetch(`${WORKER_URL}/picks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ manager, state: toSend, week: currentWeek, token: tokenFor(manager) || undefined }),
+        body: JSON.stringify({ manager, state: toSend, week, token: tokenFor(manager) || undefined }),
         cache: "no-store",
       });
       // Signed out: retrying cannot help, so stop and ask for the code.
       if (res.status === 401) {
+        queuePush(manager, week);
+        try { localStorage.removeItem(INFLIGHT_KEY); } catch {}
         setSyncStatus("failed");
         handleAuthFailure(manager);
         return false;
       }
       if (res.ok) {
         try { lastPushEcho = (await res.json())?.state || null; } catch { lastPushEcho = null; }
-        try { localStorage.removeItem(PENDING_KEY); } catch {}
+        try { localStorage.removeItem(INFLIGHT_KEY); } catch {}
+        // Check what the league actually kept. A pick the Worker turned away
+        // (it reached it after kickoff) is not saved, whatever the reply code.
+        const kept = lastPushEcho?.picks || null;
+        const refused = kept ? Object.entries(toSend.picks || {}).filter(([id, p]) => p && (!kept[id] || kept[id].team !== p.team || kept[id].mode !== p.mode)) : [];
+        if (kept) {
+          // The Worker's clock on every kept pick, so SAVED shows when the
+          // league got it, not when the phone was tapped.
+          try {
+            const key = weekStorageKey(week), all = JSON.parse(localStorage.getItem(key) || "{}"), mine = all[manager];
+            if (mine?.picks) {
+              for (const [id, p] of Object.entries(mine.picks)) { const k = kept[id]; if (k && p && k.team === p.team && k.mode === p.mode && k.savedAt) p.savedAt = k.savedAt; }
+              // A refused pick on a game now locked: the league's pick stands.
+              for (const [id] of refused) { const g = GAMES.find((x) => String(x.id) === String(id)); if (!otherWeek && g && isGameLocked(g)) { if (kept[id]) mine.picks[id] = kept[id]; else delete mine.picks[id]; } }
+              localStorage.setItem(key, JSON.stringify(all));
+            }
+          } catch {}
+        }
+        if (refused.length && typeof opsEvent === "function") opsEvent("pick-refused", `${manager} wk${week} game${refused.length > 1 ? "s" : ""} ${refused.map(([id]) => id).join(",")}`);
+        // Refused on a game still open is a race, not a lock: keep it queued.
+        const retryable = refused.some(([id]) => { const g = GAMES.find((x) => String(x.id) === String(id)); return !otherWeek && g && !isGameLocked(g); });
+        try { if (retryable) queuePush(manager, week); else { localStorage.removeItem(PENDING_KEY); localStorage.removeItem(PENDING_WEEK_KEY); } } catch {}
         boardPicks.at = 0;
-        setSyncStatus("saved");
-        return true;
+        setSyncStatus(refused.length ? "refused" : "saved");
+        return !refused.length;
       }
     } catch {
       // fall through to retry
     }
     await new Promise((r) => setTimeout(r, 600 * (i + 1)));
   }
-  try { localStorage.setItem(PENDING_KEY, manager); } catch {}
+  queuePush(manager, week);
+  try { localStorage.removeItem(INFLIGHT_KEY); } catch {}
   setSyncStatus("failed");
   return false;
 }
@@ -549,10 +582,17 @@ async function pushManagerState(manager, state, { attempts = 3 } = {}) {
 // Retry anything that failed to reach the Worker, on a timer and whenever
 // the app comes back to the foreground.
 async function flushPendingPush() {
-  let manager = null;
-  try { manager = localStorage.getItem(PENDING_KEY); } catch {}
-  if (!manager) return;
-  const ok = await pushManagerState(manager, getManagerState(manager), { attempts: 1 });
+  let manager = null, week = currentWeek;
+  try {
+    manager = localStorage.getItem(PENDING_KEY);
+    week = Number(localStorage.getItem(PENDING_WEEK_KEY)) || currentWeek;
+    // A save cut off mid-flight (the app closed): queue it now.
+    const f = JSON.parse(localStorage.getItem(INFLIGHT_KEY) || "null");
+    if (!manager && f?.manager && Date.now() - f.at > 20000) { manager = f.manager; week = f.week || currentWeek; queuePush(manager, week); localStorage.removeItem(INFLIGHT_KEY); }
+  } catch {}
+  if (!manager || syncStatus === "saving") return;
+  const stateFor = () => { try { const s = (JSON.parse(localStorage.getItem(weekStorageKey(week)) || "{}"))[manager] || { picks: {} }; return { ...s, picks: sanitizePicks(s.picks) }; } catch { return getManagerState(manager); } };
+  const ok = await pushManagerState(manager, week === currentWeek ? getManagerState(manager) : stateFor(), { attempts: 1, week });
   if (ok && manager === currentManager && !picksScreen.classList.contains("hidden")) withScrollPreserved(renderPicksScreen);
 }
 
@@ -6963,7 +7003,7 @@ function renderPicksCountdown() {
   const parts = [["DAYS", Math.floor(tot / 86400)], ["HRS", Math.floor((tot % 86400) / 3600)], ["MIN", Math.floor((tot % 3600) / 60)], ["SEC", tot % 60]].filter(([k, v], i) => i > 0 || v > 0);
   const cells = parts.map(([k, v]) => `<span class="cd-cell"><b>${String(v).padStart(2, "0")}</b><em>${k}</em></span>`).join('<i class="cd-colon">:</i>');
   const logoImg = (id) => id ? `<img class="cd-logo" src="${logoUrl(id)}" alt="" loading="lazy">` : "";
-  const match = `<em class="cd-first">${lockAll || next.id === first.id ? "FIRST UP" : "NEXT UP"}</em><span class="cd-match">${logoImg(next.awayId)}<span>${escapeCd(next.awayShort)} <i>at</i> ${escapeCd(next.homeShort)}</span>${logoImg(next.homeId)}</span><span class="cd-when"><i>KICK</i>${escapeCd(next.kickoffLabel.replace(/\s*ET$/, ""))}</span>`;
+  const match = `<em class="cd-first">${lockAll || next.id === first.id ? "FIRST UP" : "NEXT UP"}</em><span class="cd-match">${logoImg(next.awayId)}<span>${escapeCd(next.awayShort)} <i>at</i> ${escapeCd(next.homeShort)}</span>${logoImg(next.homeId)}</span><span class="cd-when"><i>KICK</i>${escapeCd(String(next.kickoffLabel || "").replace(/\s*ET$/, ""))}</span>`;
   // Fuse: burns from when the slate opened (Monday's seal, 10:00 UTC) to lock.
   const lockAt = new Date(next.kickoff).getTime();
   const opened = (() => { const d = new Date(lockAt); const back = (d.getUTCDay() + 6) % 7; const m = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back, 10); return m < lockAt ? m : lockAt - 5 * 86400000; })();
