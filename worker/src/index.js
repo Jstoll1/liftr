@@ -4117,8 +4117,11 @@ function selectContext(question, asker, cur = MATCHUPS.currentSeason) {
 // repo (?sha=), refused when that copy postdates the week's first kickoff
 // and never over a game that already has an archive.
 async function handleExpertRecord(request, env, corsHeaders, url) {
-  if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
+  // Reading is for the owner: the key, or a device it signed (Live's
+  // Experts panel). Backfilling stays key only.
+  if (!(await liveAdmin(env, url))) return json({ error: "Not authorized" }, 403, corsHeaders);
   if (request.method === "POST") {
+    if (!isAdmin(env, url)) return json({ error: "Not authorized" }, 403, corsHeaders);
     const week = Number(url.searchParams.get("week"));
     const sha = String(url.searchParams.get("sha") || "");
     if (!Number.isInteger(week) || !/^[0-9a-f]{7,40}$/.test(sha)) return json({ error: "week and sha required" }, 400, corsHeaders);

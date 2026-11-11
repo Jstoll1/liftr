@@ -86,6 +86,39 @@ body.lz-on { overflow: hidden; }
 .lz-p { display: flex; align-items: center; gap: 10px; padding: 6px 9px; border-radius: 9px; background: var(--panel2); margin-bottom: 4px; font-size: 13.5px; }
 .lz-p > span { color: var(--meta); font-size: 12.5px; } .lz-p .lz-pay { margin-left: auto; } .lz-pay.on { color: var(--green); border-color: rgba(61, 252, 143, .45); }
 .lz-p.win b { color: var(--gold); }
+.exp-k { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.exp-k > div { padding: 9px 10px; border-radius: 10px; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); min-width: 0; }
+.exp-k em { display: block; font: 700 9.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); font-style: normal; }
+.exp-k b { display: block; margin-top: 5px; font: 800 18px/1 var(--mono); color: var(--cyan); }
+.exp-k span { display: block; margin-top: 4px; font-size: 11px; color: var(--meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exp-wk { display: flex; gap: 3px; height: 54px; margin-bottom: 10px; }
+.exp-wk button { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 3px; padding: 0; border: 0; background: none; color: var(--dim); cursor: pointer; }
+.exp-wk i { display: block; border-radius: 2px 2px 0 0; background: var(--line2); }
+.exp-wk i.up { background: var(--green); } .exp-wk i.dn { background: #ff5c8a; }
+.exp-wk small { font: 9px var(--mono); text-align: center; }
+.exp-wk button.on small { color: var(--cyan); font-weight: 800; } .exp-wk button.on i { outline: 1.5px solid var(--cyan); }
+.exp-ctl { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.exp-list { display: flex; flex-direction: column; }
+.exp-o { border-top: 1px solid var(--line); } .exp-o:first-child { border-top: 0; }
+.exp-r { display: grid; grid-template-columns: 16px minmax(0, 1fr) 28px 44px 36px 10px; align-items: center; gap: 8px; width: 100%; padding: 8px 2px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.exp-rk { font: 700 11px var(--mono); color: var(--dim); }
+.exp-n { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.exp-n b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exp-n small { font: 10.5px var(--mono); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exp-st { font: 700 10.5px var(--mono); font-style: normal; text-align: right; white-space: nowrap; } .exp-st.hot { color: #ff9f1c; } .exp-st.cold { color: var(--cyan); }
+.exp-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.exp-bar s { display: block; height: 100%; border-radius: 3px; background: var(--green); }
+.exp-pc { text-align: right; font: 800 13px var(--mono); }
+.exp-cv { font-style: normal; color: var(--dim); font-size: 10px; }
+.exp-log { display: flex; flex-direction: column; gap: 4px; padding: 0 0 10px 26px; }
+.exp-p { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, .03); }
+.exp-w { font: 700 10.5px var(--mono); color: var(--dim); }
+.exp-m { display: flex; flex-direction: column; min-width: 0; font-size: 12.5px; }
+.exp-m small { font: 10.5px var(--mono); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exp-g { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.exp-g i { font: 700 10px var(--mono); font-style: normal; padding: 2px 6px; border-radius: 5px; background: rgba(255, 255, 255, .06); color: var(--meta); white-space: nowrap; }
+.exp-g i.r-W { background: var(--green-bg); color: var(--green); } .exp-g i.r-L { background: rgba(255, 92, 138, .1); color: #ff5c8a; }
+
 :root {
   --bg: #0b0716; --panel: #140e24; --panel2: #1b1430; --line: #2a2140; --line2: #3a2f58;
   --text: #f3efff; --meta: #b8afd3; --dim: #8a80a8;
@@ -1646,7 +1679,7 @@ body::before { display: none; }
       if (res.status === 403) { const was = device; forget(); gate(was ? "This computer's sign-in has expired. Enter the key again." : "That key didn't work."); return; }
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
-      if (HAS_STUDIO) loadCosts(full);
+      if (HAS_STUDIO) { loadCosts(full); loadExperts(full); }
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
       if (r.asks) st.asks = r.asks;
       // The week comes with seven days of taps; the live view keeps one.
@@ -2100,7 +2133,7 @@ body::before { display: none; }
       </section>
       ${frictionPanel((wk.feed || []).filter((e) => e.at >= wFrom), "last 7 days")}
       ${askPanel(wFrom, "last 7 days")}
-      ${cardStatus("rail")}${HAS_STUDIO ? costPanel() : ""}
+      ${cardStatus("rail")}${HAS_STUDIO ? expertsPanel() + costPanel() : ""}
     </aside>`;
     };
     const maxH = Math.max(1, ...hours.map((h) => h.n));
@@ -2116,7 +2149,7 @@ body::before { display: none; }
       </section>` : ""}
       ${frictionPanel(actions, "last 24h")}
       ${askPanel(from, "last 24h")}
-      ${cardStatus("rail")}${HAS_STUDIO ? costPanel() : ""}
+      ${cardStatus("rail")}${HAS_STUDIO ? expertsPanel() + costPanel() : ""}
     </aside>`;
 
     // The feed: one card per visit, newest first.
@@ -3105,6 +3138,67 @@ body::before { display: none; }
       <div class="note">From each answer's token counts at OpenAI's list prices. Your OpenAI bill is the final word.</div>
     </section>`;
   }
+
+  // ---- Experts ----------------------------------------------------------
+  // Every outlet's picks as archived before kickoff, graded on the finals
+  // (the Worker's /expert-record). Rank by ATS, SU or both; a tap opens an
+  // outlet's whole pick log, week by week.
+  const ex = { data: null, at: 0, err: "", kind: "ATS", min: 3, open: null, week: "all" };
+  async function loadExperts(force) {
+    if (!force && Date.now() - ex.at < 5 * 60000) return;
+    ex.at = Date.now();
+    try {
+      const r = await fetch(`${WORKER}/expert-record?${auth()}&t=${Date.now()}`, { cache: "no-store" });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || r.status);
+      ex.data = d; ex.err = "";
+    } catch (e) { ex.err = String(e.message || e); }
+    st.sig = ""; render();
+  }
+  const exRec = (t) => (t ? `${t.W}-${t.L}${t.P ? `-${t.P}` : ""}` : "0-0");
+  const exPct = (t) => (t && t.W + t.L ? t.W / (t.W + t.L) : null);
+  const exPctTxt = (p) => (p == null ? "–" : `${Math.round(p * 100)}%`);
+  function expertsPanel() {
+    const d = ex.data;
+    if (!d?.outlets) return `<section class="panel exp"><div class="ph"><h2>Experts</h2><span class="sub">${ex.err ? esc(ex.err) : "loading…"}</span></div></section>`;
+    const graded = (d.graded || []).filter((g) => ex.week === "all" || g.week === Number(ex.week));
+    const weeks = [...new Set((d.graded || []).map((g) => g.week))].sort((a, b) => a - b);
+    // Tally from the graded picks so the week filter applies to everything.
+    const by = {};
+    for (const g of graded) {
+      const o = (by[g.outlet] ||= { outlet: g.outlet, picks: 0, ATS: { W: 0, L: 0, P: 0 }, SU: { W: 0, L: 0, P: 0 }, ALL: { W: 0, L: 0, P: 0 }, last: [] });
+      o.picks += 1;
+      for (const r of g.grades) { o[r.kind][r.result] += 1; o.ALL[r.result] += 1; o.last.push(r.result); }
+    }
+    const K = ex.kind, rows = Object.values(by).map((o) => ({ ...o, n: o[K].W + o[K].L, p: exPct(o[K]) }));
+    const qual = rows.filter((o) => o.n >= ex.min).sort((a, b) => b.p - a.p || b.n - a.n);
+    const thin = rows.filter((o) => o.n < ex.min && o.n > 0).length;
+    const tot = { ATS: { W: 0, L: 0, P: 0 }, SU: { W: 0, L: 0, P: 0 } };
+    for (const o of rows) for (const k of ["ATS", "SU"]) for (const r of ["W", "L", "P"]) tot[k][r] += o[k][r];
+    // Week strip: every outlet together, week by week (always the whole season).
+    const wk = weeks.map((w) => { const t = { W: 0, L: 0 }; for (const g of d.graded) if (g.week === w) for (const r of g.grades) if (r.kind === K || K === "ALL") { if (r.result === "W") t.W++; else if (r.result === "L") t.L++; } return { w, t, p: exPct(t) }; });
+    const streak = (last) => { if (!last.length) return `<em class="exp-st"></em>`; const r = last[last.length - 1]; let n = 0; for (let i = last.length - 1; i >= 0 && last[i] === r; i--) n++; return n >= 2 && r !== "P" ? `<em class="exp-st ${r === "W" ? "hot" : "cold"}">${r === "W" ? "🔥" : "🧊"}${n}</em>` : `<em class="exp-st"></em>`; };
+    const row = (o, i) => {
+      const open = ex.open === o.outlet;
+      const log = !open ? "" : `<div class="exp-log">${graded.filter((g) => g.outlet === o.outlet).sort((a, b) => b.week - a.week).map((g) => `<div class="exp-p"><span class="exp-w">W${g.week}</span><span class="exp-m"><span><b>${esc(g.team)}</b> ${esc(g.type)}${g.picker ? ` · ${esc(g.picker)}` : ""}</span><small>${esc(g.matchup)}${g.final ? ` · ${esc(g.final)}` : ""}</small></span><span class="exp-g">${g.grades.length ? g.grades.map((r) => `<i class="r-${r.result}" title="${esc(r.kind)}${r.line != null ? ` ${r.line > 0 ? "+" : ""}${r.line} (${r.lineFrom})` : ""}">${r.kind} ${r.result}</i>`).join("") : `<i class="r-none">no final</i>`}</span></div>`).join("")}</div>`;
+      return `<div class="exp-o${open ? " open" : ""}"><button type="button" class="exp-r" data-exo="${esc(o.outlet)}" aria-expanded="${open}"><span class="exp-rk">${i + 1}</span><span class="exp-n"><b>${esc(o.outlet)}</b><small>ATS ${exRec(o.ATS)} · SU ${exRec(o.SU)} · ${o.picks}p</small></span>${streak(o.last)}<span class="exp-bar"><s style="width:${((o.p || 0) * 100).toFixed(0)}%"></s></span><b class="num exp-pc">${exPctTxt(o.p)}</b><i class="exp-cv">${open ? "▾" : "▸"}</i></button>${log}</div>`;
+    };
+    const seg = (key, opts) => `<span class="seg sm" role="group">${opts.map(([v, l]) => `<button type="button" class="${String(ex[key]) === String(v) ? "on" : ""}" data-ex="${key}:${v}">${l}</button>`).join("")}</span>`;
+    return `<section class="panel exp"><div class="ph"><h2>Experts</h2><span class="sub">${rows.length} outlets · ${graded.length} picks graded${ex.week === "all" ? "" : ` · week ${ex.week}`}</span></div>
+      <div class="exp-k"><div><em>All outlets ATS</em><b class="num">${exPctTxt(exPct(tot.ATS))}</b><span>${exRec(tot.ATS)}</span></div><div><em>All outlets SU</em><b class="num">${exPctTxt(exPct(tot.SU))}</b><span>${exRec(tot.SU)}</span></div><div><em>Best ${K}</em><b class="num">${qual[0] ? exPctTxt(qual[0].p) : "–"}</b><span>${qual[0] ? esc(qual[0].outlet) : "nobody qualifies"}</span></div></div>
+      ${wk.length ? `<div class="exp-wk">${wk.map((x) => `<button type="button" class="${String(ex.week) === String(x.w) ? "on" : ""}" data-ex="week:${String(ex.week) === String(x.w) ? "all" : x.w}" title="Week ${x.w}: ${x.t.W}-${x.t.L}"><i style="height:${Math.max(8, (x.p || 0) * 100).toFixed(0)}%" class="${x.p == null ? "" : x.p >= 0.5 ? "up" : "dn"}"></i><small>W${x.w}</small></button>`).join("")}</div>` : ""}
+      <div class="exp-ctl">${seg("kind", [["ATS", "ATS"], ["SU", "SU"], ["ALL", "Both"]])}${seg("min", [[1, "All"], [3, "3+"], [5, "5+"]])}</div>
+      <div class="exp-list">${qual.length ? qual.map(row).join("") : `<div class="note">No outlet has ${ex.min}+ graded ${K === "ALL" ? "" : K + " "}picks${ex.week === "all" ? "" : " this week"}.</div>`}</div>
+      ${thin ? `<div class="note">${thin} more outlet${thin === 1 ? "" : "s"} under ${ex.min} graded picks, hidden. ATS uses the outlet's own line when it wrote one, else the sealed line; pushes are left out of the percentage.</div>` : `<div class="note">ATS uses the outlet's own line when it wrote one, else the sealed line; pushes are left out of the percentage.</div>`}
+    </section>`;
+  }
+  app.addEventListener("click", (e) => {
+    const o = e.target.closest("[data-exo]"), c = e.target.closest("[data-ex]");
+    if (!o && !c) return;
+    if (o) ex.open = ex.open === o.dataset.exo ? null : o.dataset.exo;
+    if (c) { const [k, v] = c.dataset.ex.split(":"); ex[k] = k === "min" ? Number(v) : v; }
+    st.sig = ""; render();
+  });
 
   // ---- Creative Studio --------------------------------------------------
   // AI graphics for the league, made with OpenAI on the Worker and kept
