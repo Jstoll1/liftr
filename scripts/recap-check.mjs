@@ -84,9 +84,12 @@ for (const wk of weeks) {
     ? ok(wk, `tiebreaker ${closest} off by ${minOff}`) : fail(wk, `tiebreaker ${JSON.stringify(r.tb)}; expected ${closest} off by ${minOff}`);
 
   // Movement: season rank through the previous counting week vs through this one.
-  const earlier = weeksAll.filter((w) => w.week < wk.week && w.complete && !w.exhibition);
+  // Week 1 (the exhibition) counts toward season points (league call, 63e00f5
+  // on 21 Oct 2026); weeks sealed before that froze their card without it.
+  const RULE_AT = Date.parse("2026-10-21T02:37:01Z"), withEx = (wk.sealedAt || 0) >= RULE_AT;
+  const earlier = weeksAll.filter((w) => w.week < wk.week && w.complete && (withEx || !w.exhibition));
   if (wk.exhibition) r.movement ? fail(wk, "movement card on an exhibition") : ok(wk, "movement: exhibition, card absent");
-  else if (!earlier.length) r.movement ? fail(wk, "movement card on the first counting week") : ok(wk, "movement: first counting week, card absent");
+  else if (!earlier.some((w) => !w.exhibition)) r.movement ? fail(wk, "movement card on the first counting week") : ok(wk, "movement: first counting week, card absent");
   else {
     const before = seasonRanks(earlier), after = seasonRanks([...earlier, wk]);
     const climbs = rows.filter((x) => before.has(x.name)).map((x) => ({ name: x.name, d: before.get(x.name) - after.get(x.name), from: before.get(x.name), to: after.get(x.name) }));
