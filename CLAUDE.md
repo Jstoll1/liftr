@@ -79,6 +79,8 @@ one still running. Before pushing again, check the last "pages build and
 deployment" run (workflow 346657123) has finished. If its publish step times
 out or fails, the site stays on the last good build: push a real change
 (never an empty commit) to start a fresh deploy, then check it went green.
+Check the run's head_sha too: Pages has built the commit before the one
+just pushed, which leaves the site a push behind while showing green.
 
 ## Teach the Chief every new term
 Ask Chief only knows what its prompt and tools tell it. When a feature adds
