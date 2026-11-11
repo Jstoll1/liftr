@@ -93,4 +93,6 @@ Live as "UNKNOWN TERM"; add each to the glossary when you see it.
 Anywhere a team is named on screen, show its logo with it. In a line of
 text use `teamInline(name, espnId)` or `matchInline(game)` from app.js
 (logo then name, sized to the text); cards and rows use their own logo
-slot. Never print a bare team name in new UI.
+slot. Never print a bare team name in new UI. One logo per team per card:
+if the card's art or an earlier line already shows that team, the name
+stays plain text.

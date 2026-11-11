@@ -9695,18 +9695,22 @@ let renderRecap = function () {
   for (const x of r.locks?.list || []) tmAdd(x.short, x.id);
   if (r.tb) { const [ta, th] = String(r.tb.matchup || "").split(/\s+(?:at|@)\s+/); tmAdd(ta, r.tb.awayId); tmAdd(th, r.tb.homeId); }
   const tmRx = tmNames.size ? new RegExp(`(?<![A-Za-z])(${[...tmNames.keys()].sort((x, y) => y.length - x.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![A-Za-z])`, "g") : null;
-  const tl = (html) => (tmRx ? String(html).replace(tmRx, (m) => `<em class="t-inl"><img class="t-inl-logo" src="${logoUrl(tmNames.get(m))}" alt="" loading="lazy" decoding="async" onerror="this.remove()">${m}</em>`) : html);
+  // One logo per team per card: \`seen\` is the card's set of team ids already
+  // shown (its art logo included), so a repeat of the name stays plain text.
+  const tl = (html, seen = new Set()) => (tmRx ? String(html).replace(tmRx, (m) => { const id = tmNames.get(m); if (seen.has(id)) return m; seen.add(id); return `<em class="t-inl"><img class="t-inl-logo" src="${logoUrl(id)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">${m}</em>`; }) : html);
   const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);
   // [label, class, art, headline, sub, stat, statLabel, isMe]
   if (r.best) {
     const b = r.best;
-    cards.push([ICON.target + "PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${tl(esc(b.pick))}</span>`,
-      `${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : "on it"}${Array.isArray(b.who) && b.who.length < b.takers ? ` · ${b.who.length} cashed` : ""} · ${tl(esc(b.final || b.score))}`, `+${b.pts}`, Array.isArray(b.who) && b.who.length > 1 ? "PTS TOP" : "PTS", mine(b.who), rxDots(b.takers, b.of, "hit")]);
+    const seenB = new Set([Number(b.teamId)]);
+    cards.push([ICON.target + "PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${tl(esc(b.pick), seenB)}</span>`,
+      `${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : "on it"}${Array.isArray(b.who) && b.who.length < b.takers ? ` · ${b.who.length} cashed` : ""} · ${tl(esc(b.final || b.score), seenB)}`, `+${b.pts}`, Array.isArray(b.who) && b.who.length > 1 ? "PTS TOP" : "PTS", mine(b.who), rxDots(b.takers, b.of, "hit")]);
   }
   if (r.worst) {
     const w = r.worst;
-    cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${tl(esc(w.pick))}</span>`,
-      `${w.takers} of ${w.of} on it · ${tl(esc(w.final || w.score))}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who), rxBar(w.takers, w.of, "miss")]);
+    const seenW = new Set([Number(w.teamId)]);
+    cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${tl(esc(w.pick), seenW)}</span>`,
+      `${w.takers} of ${w.of} on it · ${tl(esc(w.final || w.score), seenW)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who), rxBar(w.takers, w.of, "miss")]);
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
@@ -9716,8 +9720,9 @@ let renderRecap = function () {
   if (r.consensus?.sides?.length > 1) {
     const c = r.consensus;
     const [a, b] = c.sides;
+    const seenC = new Set();
     cards.push([ICON.coin + "COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="recap-pick">League split ${a.n}-${b.n}</span>`,
-      `${tl(esc(c.matchup))}<br>${tl(esc(c.final || c.score))}`, `${a.n}-${b.n}`, "SPLIT", false, `<span class="rx-split"><i style="flex:${a.n}">${tl(esc(a.team))} ${a.n}</i><i style="flex:${b.n}">${tl(esc(b.team))} ${b.n}</i></span>`]);
+      `${tl(esc(c.matchup), seenC)}<br>${tl(esc(c.final || c.score), seenC)}`, `${a.n}-${b.n}`, "SPLIT", false, `<span class="rx-split"><i style="flex:${a.n}">${esc(a.team)} ${a.n}</i><i style="flex:${b.n}">${esc(b.team)} ${b.n}</i></span>`]);
   }
   if (r.tb) {
     const t = r.tb;
