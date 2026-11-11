@@ -9097,6 +9097,7 @@ html:root .tpoll-card .tpoll-opts button[data-tv="retro"] b { font-size: 7.5px !
 /* Pot table: sortable headers */
 .pot-row.head .pot-sort { all: unset; display: block; font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; white-space: nowrap; }
 .pot-row.head > .pot-sort:nth-child(3), .pot-row.head > .pot-sort:nth-child(6) { text-align: right; }
+.pot-row.head > .pot-sort:nth-child(3) { padding-right: 8px; } /* clears the live dot slot after the points */
 .pot-row.head > .pot-sort:nth-child(4), .pot-row.head > .pot-sort:nth-child(5) { text-align: center; }
 .pot-row.head .pot-sort.on { color: var(--neon-yellow); }
 html.pro .pot-row.head .pot-sort.on { color: var(--acc) !important; }
