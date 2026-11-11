@@ -6931,6 +6931,16 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .hs-none { border-top: 0; padding-top: 2px; }
 .hs-av { flex: none; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--accent); color: var(--ink); font-family: 'Press Start 2P', monospace; font-size: 9px; line-height: 1; padding-left: .12em; box-shadow: 2px 2px 0 rgba(0, 0, 0, .5); }
 .hs-full { display: flex; flex-direction: column; gap: 3px; padding: 0 10px 10px; animation: hs-open .2s ease-out both; }
+.hs-card .hs-full { padding: 4px 0 0; animation: none; }
+/* One column set for every row, so the bars start and end together. */
+@supports (grid-template-columns: subgrid) {
+  .hs-card .hs-full { display: grid; grid-template-columns: 16px 22px minmax(56px, 92px) minmax(0, 1fr) auto; column-gap: 8px; row-gap: 3px; }
+  .hs-card .hs-full > .hs-note { grid-column: 1 / -1; }
+  .hs-card .hs-full > .hs-r { grid-column: 1 / -1; grid-template-columns: subgrid; }
+}
+.hs-all-card .hs-grid { margin-top: 6px; }
+.hs-all-btn { display: block; width: 100%; margin-top: 0; padding: 11px 12px; border: 1.5px solid var(--card-border); border-radius: 10px; background: var(--card-bg); color: var(--neon-cyan); font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .08em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.hs-all-btn:active { transform: translateY(1px); }
 @keyframes hs-open { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .hs-note { font-size: 10.5px; color: var(--text-dim); padding: 0 0 6px; }
 .hs-r { display: grid; grid-template-columns: 16px 22px minmax(56px, 92px) minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 7px; }
