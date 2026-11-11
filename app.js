@@ -343,6 +343,13 @@ function weekIsFinal() {
 // 50px logo on a 3x screen and about a sixth of the 500px file's weight.
 // A failed resized logo falls back to the full file, then to the light cut.
 const LOGO_PX = 160;
+// A team named in a line of text: its logo, then its name. Small and on the
+// text's baseline; the name stands alone if the logo cannot load.
+function teamInline(name, id) {
+  const n = escapeCd(name ?? "");
+  return id ? `<em class="t-inl"><img class="t-inl-logo" src="${logoUrl(id)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">${n}</em>` : n;
+}
+const matchInline = (g, sep = "@") => `${teamInline(g.awayShort, g.awayId)} ${sep} ${teamInline(g.homeShort, g.homeId)}`;
 function logoUrl(espnId) {
   return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/${espnId}.png&w=${LOGO_PX}&h=${LOGO_PX}`;
 }
@@ -3805,7 +3812,7 @@ function renderSidePot() {
   if (sideOpen(pot)) {
     const cd = kickoffCountdown(new Date(pot.closesAt).toISOString());
     body = `<div class="sp-head"><span class="sp-kick">💰 LATE NIGHT SIDE POT</span><span class="sp-pot">${sideMoney(total)}</span></div>
-      <div class="sp-games">${games.map((g) => `<span>${escapeCd(g.awayShort)} @ ${escapeCd(g.homeShort)}</span>`).join("")}</div>
+      <div class="sp-games">${games.map((g) => `<span>${matchInline(g)}</span>`).join("")}</div>
       <div class="sp-in">${names.length ? `<b>${names.length} IN</b> ${names.map((n) => escapeCd(shown(n))).join(" · ")}` : "Nobody's in yet."}</div>
       <div class="sp-foot"><span class="sp-close">$${pot.buyIn} to get in · closes in <b data-sp-cd>${cd && !cd.past ? cd.text : "now"}</b></span>
         <button type="button" class="sp-btn${mine && !sideNeedsPicks(pot, me) ? " in" : ""}" data-sp="open">${sideNeedsPicks(pot, me) ? "NEW GAMES · FINISH PICKS" : mine ? "✓ YOU'RE IN · EDIT" : `I'M IN · $${pot.buyIn}`}</button></div>`;
@@ -4197,7 +4204,7 @@ function openSideSheet(asked) {
         <div class="sp-match">${matchupCardsHtml(g, draft[g.id]?.team ? { team: draft[g.id].team, mode: draft[g.id].mode || "ATS" } : null)}</div>
         ${g.total != null ? `<div class="sp-segs">${ou(g, "over")}${ou(g, "under")}</div>` : ""}
       </div>`).join("")}
-      ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${escapeCd(sideMatch(tbG))}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="Your guess" value="${escapeCd(String(draftTb))}"></label>` : ""}
+      ${tbG ? `<label class="sp-tbin"><span>TIEBREAKER · total points in ${matchInline(tbG)}${tbG.half ? ` (${tbG.half === 2 ? "2nd" : "1st"} half)` : ""}</span><input type="number" inputmode="numeric" min="0" max="200" step="1" placeholder="Your guess" value="${escapeCd(String(draftTb))}"></label>` : ""}
       <div class="sp-sheet-note">Most points takes the pot${tbG ? "; a tie goes to the closest guess" : "; a tie splits it"}. Nobody sees your picks until ${closes}. Money is settled between you, not in the app.</div>
       </div>
       <div class="sp-sh-foot">
@@ -5065,7 +5072,7 @@ const pathLiveTag = (g, st) => {
   const want = st?.res && resultOutcome(g, st.res), now = resultOutcome(g, { awayScore: l.awayScore, homeScore: l.homeScore });
   const k = /cover/i.test(st?.txt || "") ? "atsWinner" : "suWinner";
   const on = want && now ? (want[k] === now[k] ? " on" : " off") : "";
-  return `<small class="pr-now${on}">${on === " on" ? "✓ " : ""}LIVE ${escapeCd(g.awayShort)} ${l.awayScore}-${l.homeScore} ${escapeCd(g.homeShort)}</small>`;
+  return `<small class="pr-now${on}">${on === " on" ? "✓ " : ""}LIVE ${teamInline(g.awayShort, g.awayId)} ${l.awayScore}-${l.homeScore} ${teamInline(g.homeShort, g.homeId)}</small>`;
 };
 // Once a path has been watched, the button opens this instead: a small
 // card with only the games that must go a certain way, the team's logo,
@@ -5092,7 +5099,7 @@ function openPathCard(name) {
     const free = sc.all.length - sc.need.length;
     body = `<ul class="pc-list">${rowsHtml}</ul>
       ${pathStaleNote()}${free ? `<div class="pc-free">The other ${free} game${free === 1 ? "" : "s"} can go either way.</div>` : ""}
-      ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : ""}
+      ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${matchInline(sc.tbGame)} total near ${sc.guess}</div>` : ""}
       <div class="pc-win">${escapeCd(me)} WINS THE WEEK</div>
       <div class="pc-foot"><span>${oneIn ? (oneIn > 10000 ? "Rarer than 1 in 10,000" : `About 1 in ${oneIn.toLocaleString()}`) : ""}</span><span class="pc-btns"><button type="button" class="pc-share">↗ Share</button><button type="button" class="pc-replay">▶ Replay</button></span></div>`;
   }
@@ -5257,7 +5264,7 @@ function openPathRun(name, replay = false) {
     const foot = document.createElement("div");
     foot.className = "pr-end";
     foot.innerHTML = `${free ? `<div class="pc-free">The other ${free} game${free === 1 ? "" : "s"} can go either way.</div>` : ""}
-      ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${escapeCd(sc.tbGame.awayShort)} @ ${escapeCd(sc.tbGame.homeShort)} total near ${sc.guess}</div>` : ""}
+      ${tied && sc.guess != null && sc.tbGame ? `<div class="pc-tie">Tied at ${top}: needs the tiebreaker, ${matchInline(sc.tbGame)} total near ${sc.guess}</div>` : ""}
       <div class="pc-win">${escapeCd(me)} WINS THE WEEK</div>
       <div class="pc-foot"><span>${oneIn ? (oneIn > 10000 ? "Rarer than 1 in 10,000" : `About 1 in ${oneIn.toLocaleString()}`) : ""}</span><span class="pc-btns"><button type="button" class="pc-share">↗ Share</button><button type="button" class="pc-replay">▶ Replay</button></span></div>`;
     foot.querySelector(".pc-replay").addEventListener("click", () => openPathRun(name, true));
@@ -5439,7 +5446,7 @@ function playerBreakdownHtml(name, state, results, live) {
   else tbLine = `Guessed <b>${tbGuess}</b> · Waiting on kickoff`;
   // Tapping it opens the tiebreaker game (Gamecast once it has kicked off).
   const tbRow = `<div class="rd-tb${tbSealed ? "" : " go"}"${tbSealed ? "" : ` data-rdgame="${tbGame.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(tbGame.awayShort)} at ${escapeCd(tbGame.homeShort)}"`}>
-    <span class="rd-tb-label">TIEBREAKER · ${tbGame.awayShort} @ ${tbGame.homeShort} total</span>
+    <span class="rd-tb-label">TIEBREAKER · ${matchInline(tbGame)} total</span>
     <span class="rd-tb-line">${tbLine}${tbSealed ? "" : `<i class="rd-tb-go" aria-hidden="true">›</i>`}</span>
   </div>`;
   // One line on the week: settled points and record, plus what is in
@@ -6432,7 +6439,7 @@ function openPlayerChance(name) {
     const gameLines = splits.map((x) => {
       const you = x.best.net > 0 ? `<span class="up">${esc(x.best.txt)} → ${isMe ? "you" : esc(shown(name))} +${x.best.net}</span>` : "";
       const them = x.worst.net < 0 ? `<span class="dn">${esc(x.worst.txt)} → ${R} +${-x.worst.net}</span>` : "";
-      return `<li><b>${esc(x.g.awayShort)} at ${esc(x.g.homeShort)}</b>${you}${them}</li>`;
+      return `<li><b>${matchInline(x.g, "at")}</b>${you}${them}</li>`;
     }).join("");
     let bottom;
     const you = isMe ? "you" : N, You = isMe ? "You" : N;
