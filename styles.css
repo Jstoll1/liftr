@@ -7196,6 +7196,23 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .rm-side.hit > i { color: var(--neon-green); }
 .rm-side > div { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--text-meta); }
 .rm-side b, .rm-list b { font-weight: 600; color: var(--text-meta); }
+/* Everyone's pick, grouped by team: a header (logo, team, how many took it)
+   then a line per bet type (spread or to win) with its result and pickers. */
+.rm-team { padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .03); border-left: 2px solid rgba(var(--neon-pink-rgb), .5); }
+.rm-team + .rm-team { margin-top: 6px; }
+.rm-team.hit { border-left-color: rgba(var(--neon-green-rgb), .7); }
+.rm-team.none { border-left-color: var(--card-border); }
+.rm-th { display: flex; align-items: center; gap: 8px; }
+.rm-th img { width: 22px; height: 22px; object-fit: contain; flex: none; }
+.rm-th b { font-size: 14px; font-weight: 700; color: var(--text, #fff); }
+.rm-th i { margin-left: auto; font-style: normal; font-size: 11px; color: var(--text-meta); }
+.rm-bet { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 8px; padding: 6px 0 2px; margin-left: 30px; }
+.rm-bet + .rm-bet { border-top: 1px solid rgba(var(--neon-purple-rgb), .14); margin-top: 4px; }
+.rm-bl { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-meta); }
+.rm-bet em { justify-self: end; font-style: normal; font-weight: 700; font-size: 11.5px; color: var(--text-dim); }
+.rm-bet em.hit { color: var(--neon-green); } .rm-bet em.miss { color: var(--neon-pink); }
+.rm-bet .pick-chips { grid-column: 1 / -1; }
+.rm-team.none .rm-bet { margin-left: 0; }
 .rm-side b.me, .rm-list b.me { color: var(--neon-cyan); }
 .rm-list { margin: 0; padding: 0 0 0 18px; display: grid; gap: 3px; font-size: 12px; }
 .rm-list li { display: flex; justify-content: space-between; gap: 8px; }

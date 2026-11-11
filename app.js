@@ -9861,14 +9861,25 @@ function recapDetail(sum, kind) {
   const team = kind === "hit" ? r.best?.team : kind === "miss" ? r.worst?.team : r.consensus?.sides?.[0]?.team;
   const g = (sum.slate || []).find((x) => [x.awayShort, x.homeShort].includes(team));
   if (!g) return `<div class="rm-none">Couldn't find that game.</div>`;
-  const sides = new Map();
+  // Grouped by team: one block per side of the game, its spread and
+  // straight-up pickers as labelled lines inside, blanks in their own block.
+  const teams = new Map();
   for (const row of rows) {
     const l = (row.ledger || []).find((x) => Number(x.g) === Number(g.id));
-    const side = l ? `${l.team === g.home ? g.homeShort : l.team === g.away ? g.awayShort : l.team} ${l.line || l.mode || ""}`.trim() : "No pick";
-    const x = sides.get(side) || { side, team: l?.team, teamId: l ? (l.team === g.home ? g.homeId : l.team === g.away ? g.awayId : null) : null, hit: l?.result === "hit", pts: l?.result === "hit" ? l.pts : 0, who: [] };
-    x.who.push(row.name); sides.set(side, x);
+    const has = l && l.team && l.mode;
+    const key = has ? l.team : "__none";
+    const t = teams.get(key) || { key, short: has ? (l.team === g.home ? g.homeShort : l.team === g.away ? g.awayShort : l.team) : "No pick", id: has ? (l.team === g.home ? g.homeId : l.team === g.away ? g.awayId : teamIdOf(l.team)) : null, bets: new Map(), n: 0, hit: false };
+    t.n++;
+    const bk = has ? (l.mode === "SU" ? "SU" : `ATS ${l.line || ""}`) : "none";
+    const bet = t.bets.get(bk) || { label: !has ? "" : l.mode === "SU" ? "TO WIN" : (l.line || "SPREAD"), su: has && l.mode === "SU", hit: has && l.result === "hit", push: has && l.result === "push", pts: has && l.result === "hit" ? l.pts : 0, who: [] };
+    bet.who.push(row.name); t.bets.set(bk, bet); if (bet.hit) t.hit = true; teams.set(key, t);
   }
-  return `<div class="rm-h">Everyone's pick: ${esc(g.awayShort)} at ${esc(g.homeShort)}</div>${[...sides.values()].sort((a, b) => (b.hit - a.hit) || b.who.length - a.who.length).map((x) => { const id = x.teamId || (x.team ? teamIdOf(x.team) : null); return `<div class="rm-side ${x.hit ? "hit" : "miss"}"><span>${id ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(x.side)}</span><i>${x.side === "No pick" ? "NO PICK" : x.hit ? `CASHED +${x.pts} each` : "MISSED"}</i><div class="pick-chips">${nameChips(x.who)}</div></div>`; }).join("")}<div class="rm-close">Tap to close</div>`;
+  const order = [...teams.values()].sort((a, b) => (a.key === "__none") - (b.key === "__none") || (b.hit - a.hit) || b.n - a.n);
+  const status = (x) => x.hit ? `<em class="hit">CASHED +${x.pts} each</em>` : x.push ? `<em>PUSH</em>` : `<em class="miss">MISSED</em>`;
+  return `<div class="rm-h">Everyone's pick: ${esc(g.awayShort)} at ${esc(g.homeShort)}</div>${order.map((t) => `<div class="rm-team ${t.key === "__none" ? "none" : t.hit ? "hit" : "miss"}">
+    <div class="rm-th">${t.id ? `<img src="${logoUrl(t.id)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<b>${esc(t.short)}</b><i>${t.n} ${t.n === 1 ? "pick" : "picks"}</i></div>
+    ${[...t.bets.values()].sort((a, b) => a.su - b.su).map((x) => `<div class="rm-bet">${x.label ? `<span class="rm-bl">${esc(x.label)}</span>${status(x)}` : ""}<div class="pick-chips">${nameChips(x.who)}</div></div>`).join("")}
+  </div>`).join("")}<div class="rm-close">Tap to close</div>`;
 }
 document.getElementById("recap-panel")?.addEventListener("click", (e) => {
   if (e.target.closest(".rx-hero")) { noteUse("recap-hero"); return; }
