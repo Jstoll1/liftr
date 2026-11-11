@@ -1335,7 +1335,19 @@ function renderHeadScore() {
 // with a small gap either side. No chip on the left, no limit.
 // Retro wears its own wordmark: set the file directly (iOS can ignore a
 // CSS content swap on an img).
-if (window.APP_STYLE !== "pro") { const li = document.querySelector(".home-logo-img"); if (li && !/wordmark-retro/.test(li.src)) li.src = "themes/wordmark-retro.png"; }
+// The page loads it directly; Pro swaps to its own file here.
+const WORDMARK = window.APP_STYLE === "pro" ? "themes/wordmark-pro.png" : "themes/wordmark-retro.png";
+{ const li = document.querySelector(".home-logo-img"); if (li && !li.src.endsWith(WORDMARK)) li.src = WORDMARK; }
+// iOS can drop a decoded image while the app sits in the background and
+// come back with an empty header. On every return, reload it if it is
+// blank and measure it again.
+function reviveHeaderLogo() {
+  const li = document.querySelector(".home-logo-img");
+  if (li && (!li.complete || !li.naturalWidth || !li.offsetWidth)) { delete li.dataset.retry; li.src = `${WORDMARK}?r=${Date.now()}`; li.addEventListener("load", () => fitHeaderLogo(), { once: true }); }
+  requestAnimationFrame(() => fitHeaderLogo());
+}
+addEventListener("pageshow", reviveHeaderLogo);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) reviveHeaderLogo(); });
 function fitHeaderLogo() {
   const img = homeHeader.querySelector(".home-logo-img");
   if (!img) return;
