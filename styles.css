@@ -1646,8 +1646,9 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   font-family: 'Chakra Petch', sans-serif;
   font-weight: 900;
   font-size: clamp(30px, 10vw, 68px);
-  /* ~9 Orbitron-900 glyphs at 0.75em each: 12.5cqw keeps the word inside the sun */
-  font-size: clamp(28px, 12.5cqw, 56px);
+  /* 9 Chakra Petch bold glyphs at about 0.62em each: 15cqw fills the sun
+     about as wide as the kicker above it */
+  font-size: clamp(30px, 15cqw, 66px);
   letter-spacing: 0.03em;
   white-space: nowrap;
   color: var(--neon-cyan);
