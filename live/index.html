@@ -97,6 +97,9 @@ body.lz-on { overflow: hidden; }
 .exp-wk i.up { background: var(--green); } .exp-wk i.dn { background: #ff5c8a; }
 .exp-wk small { font: 9px var(--mono); text-align: center; }
 .exp-wk button.on small { color: var(--cyan); font-weight: 800; } .exp-wk button.on i { outline: 1.5px solid var(--cyan); }
+.exp-view { margin-bottom: 8px; } .exp-view .seg { width: 100%; } .exp-view .seg button { flex: 1; }
+.exp-r.exp-gr { grid-template-columns: 30px minmax(0, 1fr) auto 10px; }
+.exp-side { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 2px; font-size: 12.5px; } .exp-side small { font: 10.5px var(--mono); color: var(--dim); }
 .exp-ctl { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .exp-list { display: flex; flex-direction: column; }
 .exp-o { border-top: 1px solid var(--line); } .exp-o:first-child { border-top: 0; }
@@ -105,6 +108,7 @@ body.lz-on { overflow: hidden; }
 .exp-n { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .exp-n b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .exp-n small { font: 10.5px var(--mono); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exp-n small.exp-from { color: var(--meta); }
 .exp-st { font: 700 10.5px var(--mono); font-style: normal; text-align: right; white-space: nowrap; } .exp-st.hot { color: #ff9f1c; } .exp-st.cold { color: var(--cyan); }
 .exp-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: hidden; }
 .exp-bar s { display: block; height: 100%; border-radius: 3px; background: var(--green); }
@@ -3143,7 +3147,7 @@ body::before { display: none; }
   // Every outlet's picks as archived before kickoff, graded on the finals
   // (the Worker's /expert-record). Rank by ATS, SU or both; a tap opens an
   // outlet's whole pick log, week by week.
-  const ex = { data: null, at: 0, err: "", kind: "ATS", min: 3, open: null, week: "all" };
+  const ex = { data: null, at: 0, err: "", kind: "ATS", min: 3, open: null, week: "all", view: "outlets" };
   async function loadExperts(force) {
     if (!force && Date.now() - ex.at < 5 * 60000) return;
     ex.at = Date.now();
@@ -3164,9 +3168,11 @@ body::before { display: none; }
     const graded = (d.graded || []).filter((g) => ex.week === "all" || g.week === Number(ex.week));
     const weeks = [...new Set((d.graded || []).map((g) => g.week))].sort((a, b) => a - b);
     // Tally from the graded picks so the week filter applies to everything.
+    // Group by outlet, or by the person who made the pick (with their outlet).
+    const who = (g) => (ex.view === "pickers" ? (g.picker ? `${g.picker} · ${g.outlet}` : `${g.outlet} (no byline)`) : g.outlet);
     const by = {};
     for (const g of graded) {
-      const o = (by[g.outlet] ||= { outlet: g.outlet, picks: 0, ATS: { W: 0, L: 0, P: 0 }, SU: { W: 0, L: 0, P: 0 }, ALL: { W: 0, L: 0, P: 0 }, last: [] });
+      const o = (by[who(g)] ||= { outlet: who(g), title: ex.view === "pickers" ? g.picker || "No byline" : g.outlet, from: ex.view === "pickers" ? g.outlet : "", picks: 0, ATS: { W: 0, L: 0, P: 0 }, SU: { W: 0, L: 0, P: 0 }, ALL: { W: 0, L: 0, P: 0 }, last: [] });
       o.picks += 1;
       for (const r of g.grades) { o[r.kind][r.result] += 1; o.ALL[r.result] += 1; o.last.push(r.result); }
     }
@@ -3180,23 +3186,42 @@ body::before { display: none; }
     const streak = (last) => { if (!last.length) return `<em class="exp-st"></em>`; const r = last[last.length - 1]; let n = 0; for (let i = last.length - 1; i >= 0 && last[i] === r; i--) n++; return n >= 2 && r !== "P" ? `<em class="exp-st ${r === "W" ? "hot" : "cold"}">${r === "W" ? "🔥" : "🧊"}${n}</em>` : `<em class="exp-st"></em>`; };
     const row = (o, i) => {
       const open = ex.open === o.outlet;
-      const log = !open ? "" : `<div class="exp-log">${graded.filter((g) => g.outlet === o.outlet).sort((a, b) => b.week - a.week).map((g) => `<div class="exp-p"><span class="exp-w">W${g.week}</span><span class="exp-m"><span><b>${esc(g.team)}</b> ${esc(g.type)}${g.picker ? ` · ${esc(g.picker)}` : ""}</span><small>${esc(g.matchup)}${g.final ? ` · ${esc(g.final)}` : ""}</small></span><span class="exp-g">${g.grades.length ? g.grades.map((r) => `<i class="r-${r.result}" title="${esc(r.kind)}${r.line != null ? ` ${r.line > 0 ? "+" : ""}${r.line} (${r.lineFrom})` : ""}">${r.kind} ${r.result}</i>`).join("") : `<i class="r-none">no final</i>`}</span></div>`).join("")}</div>`;
-      return `<div class="exp-o${open ? " open" : ""}"><button type="button" class="exp-r" data-exo="${esc(o.outlet)}" aria-expanded="${open}"><span class="exp-rk">${i + 1}</span><span class="exp-n"><b>${esc(o.outlet)}</b><small>ATS ${exRec(o.ATS)} · SU ${exRec(o.SU)} · ${o.picks}p</small></span>${streak(o.last)}<span class="exp-bar"><s style="width:${((o.p || 0) * 100).toFixed(0)}%"></s></span><b class="num exp-pc">${exPctTxt(o.p)}</b><i class="exp-cv">${open ? "▾" : "▸"}</i></button>${log}</div>`;
+      const log = !open ? "" : `<div class="exp-log">${graded.filter((g) => who(g) === o.outlet).sort((a, b) => b.week - a.week).map((g) => `<div class="exp-p"><span class="exp-w">W${g.week}</span><span class="exp-m"><span><b>${esc(g.team)}</b> ${esc(g.type)}${g.picker && ex.view !== "pickers" ? ` · ${esc(g.picker)}` : ""}</span><small>${esc(g.matchup)}${g.final ? ` · ${esc(g.final)}` : ""}</small></span><span class="exp-g">${g.grades.length ? g.grades.map((r) => `<i class="r-${r.result}" title="${esc(r.kind)}${r.line != null ? ` ${r.line > 0 ? "+" : ""}${r.line} (${r.lineFrom})` : ""}">${r.kind} ${r.result}</i>`).join("") : `<i class="r-none">no final</i>`}</span></div>`).join("")}</div>`;
+      return `<div class="exp-o${open ? " open" : ""}"><button type="button" class="exp-r" data-exo="${esc(o.outlet)}" aria-expanded="${open}"><span class="exp-rk">${i + 1}</span><span class="exp-n"><b>${esc(o.title)}</b>${o.from ? `<small class="exp-from">${esc(o.from)}</small>` : ""}<small>ATS ${exRec(o.ATS)} · SU ${exRec(o.SU)}</small></span>${streak(o.last)}<span class="exp-bar"><s style="width:${((o.p || 0) * 100).toFixed(0)}%"></s></span><b class="num exp-pc">${exPctTxt(o.p)}</b><i class="exp-cv">${open ? "▾" : "▸"}</i></button>${log}</div>`;
+    };
+    // Games: every game with the experts split by the side they took.
+    const games = () => {
+      const gm = {};
+      for (const g of graded) { const k = `${g.week}:${g.gameId}`; (gm[k] ||= { week: g.week, matchup: g.matchup, final: g.final, sides: {} }); (gm[k].sides[g.team] ||= []).push(g); }
+      const list = Object.values(gm).sort((a, b) => b.week - a.week || a.matchup.localeCompare(b.matchup));
+      if (!list.length) return `<div class="note">No graded picks${ex.week === "all" ? "" : " this week"}.</div>`;
+      return list.map((x) => {
+        const k = `g:${x.week}:${x.matchup}`, open = ex.open === k;
+        const sides = Object.entries(x.sides).sort((a, b) => b[1].length - a[1].length);
+        const total = sides.reduce((t, [, l]) => t + l.length, 0);
+        const res = (l) => { const t = { W: 0, L: 0 }; for (const g of l) for (const r of g.grades) if (K === "ALL" || r.kind === K) { if (r.result === "W") t.W++; else if (r.result === "L") t.L++; } return t; };
+        const top = sides[0], tt = top ? res(top[1]) : { W: 0, L: 0 };
+        const verdict = !x.final ? `<i class="r-none">no final</i>` : tt.W + tt.L === 0 ? "" : `<i class="r-${tt.W >= tt.L ? "W" : "L"}">crowd ${tt.W >= tt.L ? "right" : "wrong"}</i>`;
+        const split = sides.map(([t, l]) => `${esc(t)} ${l.length}`).join(" · ");
+        const body = !open ? "" : `<div class="exp-log">${sides.map(([t, l]) => `<div class="exp-side"><b>${esc(t)}</b><small>${l.length} of ${total}</small></div>${l.map((g) => `<div class="exp-p"><span class="exp-w">${esc(g.type)}</span><span class="exp-m"><span><b>${esc(g.outlet)}</b>${g.picker ? ` · ${esc(g.picker)}` : ""}</span></span><span class="exp-g">${g.grades.length ? g.grades.map((r) => `<i class="r-${r.result}">${r.kind} ${r.result}</i>`).join("") : `<i class="r-none">no final</i>`}</span></div>`).join("")}`).join("")}</div>`;
+        return `<div class="exp-o${open ? " open" : ""}"><button type="button" class="exp-r exp-gr" data-exo="${esc(k)}" aria-expanded="${open}"><span class="exp-rk">W${x.week}</span><span class="exp-n"><b>${esc(x.matchup)}</b><small>${split}${x.final ? ` · final ${esc(x.final)}` : ""}</small></span><span class="exp-g">${verdict}</span><i class="exp-cv">${open ? "▾" : "▸"}</i></button>${body}</div>`;
+      }).join("");
     };
     const seg = (key, opts) => `<span class="seg sm" role="group">${opts.map(([v, l]) => `<button type="button" class="${String(ex[key]) === String(v) ? "on" : ""}" data-ex="${key}:${v}">${l}</button>`).join("")}</span>`;
-    return `<section class="panel exp"><div class="ph"><h2>Experts</h2><span class="sub">${rows.length} outlets · ${graded.length} picks graded${ex.week === "all" ? "" : ` · week ${ex.week}`}</span></div>
-      <div class="exp-k"><div><em>All outlets ATS</em><b class="num">${exPctTxt(exPct(tot.ATS))}</b><span>${exRec(tot.ATS)}</span></div><div><em>All outlets SU</em><b class="num">${exPctTxt(exPct(tot.SU))}</b><span>${exRec(tot.SU)}</span></div><div><em>Best ${K}</em><b class="num">${qual[0] ? exPctTxt(qual[0].p) : "–"}</b><span>${qual[0] ? esc(qual[0].outlet) : "nobody qualifies"}</span></div></div>
+    return `<section class="panel exp"><div class="ph"><h2>Experts</h2><span class="sub">${rows.length} ${ex.view === "pickers" ? "pickers" : "outlets"} · ${graded.length} picks graded${ex.week === "all" ? "" : ` · week ${ex.week}`}</span></div>
+      <div class="exp-k"><div><em>All outlets ATS</em><b class="num">${exPctTxt(exPct(tot.ATS))}</b><span>${exRec(tot.ATS)}</span></div><div><em>All outlets SU</em><b class="num">${exPctTxt(exPct(tot.SU))}</b><span>${exRec(tot.SU)}</span></div><div><em>Best ${K}</em><b class="num">${qual[0] ? exPctTxt(qual[0].p) : "–"}</b><span>${qual[0] ? esc(qual[0].title) : "nobody qualifies"}</span></div></div>
       ${wk.length ? `<div class="exp-wk">${wk.map((x) => `<button type="button" class="${String(ex.week) === String(x.w) ? "on" : ""}" data-ex="week:${String(ex.week) === String(x.w) ? "all" : x.w}" title="Week ${x.w}: ${x.t.W}-${x.t.L}"><i style="height:${Math.max(8, (x.p || 0) * 100).toFixed(0)}%" class="${x.p == null ? "" : x.p >= 0.5 ? "up" : "dn"}"></i><small>W${x.w}</small></button>`).join("")}</div>` : ""}
-      <div class="exp-ctl">${seg("kind", [["ATS", "ATS"], ["SU", "SU"], ["ALL", "Both"]])}${seg("min", [[1, "All"], [3, "3+"], [5, "5+"]])}</div>
-      <div class="exp-list">${qual.length ? qual.map(row).join("") : `<div class="note">No outlet has ${ex.min}+ graded ${K === "ALL" ? "" : K + " "}picks${ex.week === "all" ? "" : " this week"}.</div>`}</div>
-      ${thin ? `<div class="note">${thin} more outlet${thin === 1 ? "" : "s"} under ${ex.min} graded picks, hidden. ATS uses the outlet's own line when it wrote one, else the sealed line; pushes are left out of the percentage.</div>` : `<div class="note">ATS uses the outlet's own line when it wrote one, else the sealed line; pushes are left out of the percentage.</div>`}
+      <div class="exp-view">${seg("view", [["outlets", "Outlets"], ["pickers", "Pickers"], ["games", "Games"]])}</div>
+      <div class="exp-ctl">${seg("kind", [["ATS", "ATS"], ["SU", "SU"], ["ALL", "Both"]])}${ex.view === "games" ? "" : seg("min", [[1, "All"], [3, "3+"], [5, "5+"]])}</div>
+      <div class="exp-list">${ex.view === "games" ? games() : qual.length ? qual.map(row).join("") : `<div class="note">Nobody has ${ex.min}+ graded ${K === "ALL" ? "" : K + " "}picks${ex.week === "all" ? "" : " this week"}.</div>`}</div>
+      ${ex.view === "games" ? "" : thin ? `<div class="note">${thin} more ${ex.view === "pickers" ? "picker" : "outlet"}${thin === 1 ? "" : "s"} under ${ex.min} graded picks, hidden. ATS uses the outlet's own line when it wrote one, else the sealed line; pushes are left out of the percentage.</div>` : `<div class="note">ATS uses the outlet's own line when it wrote one, else the sealed line; pushes are left out of the percentage.</div>`}
     </section>`;
   }
   app.addEventListener("click", (e) => {
     const o = e.target.closest("[data-exo]"), c = e.target.closest("[data-ex]");
     if (!o && !c) return;
     if (o) ex.open = ex.open === o.dataset.exo ? null : o.dataset.exo;
-    if (c) { const [k, v] = c.dataset.ex.split(":"); ex[k] = k === "min" ? Number(v) : v; }
+    if (c) { const [k, v] = c.dataset.ex.split(":"); ex[k] = k === "min" ? Number(v) : v; if (k === "view") ex.open = null; }
     st.sig = ""; render();
   });
 
