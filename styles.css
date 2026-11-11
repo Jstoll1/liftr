@@ -9180,13 +9180,13 @@ html:not(.pro) .recap-panel .rx-hero { --rx-c: var(--arcade-gold); box-shadow: 0
     repeating-conic-gradient(from -90deg at 50% -18%, rgba(var(--arcade-gold-rgb), .10) 0deg 3deg, transparent 3deg 9deg),
     var(--bg2) !important; }
 html:not(.pro) .rx-kicker { font-family: 'Press Start 2P', monospace !important; font-size: 7.5px !important; letter-spacing: .14em !important; color: var(--arcade-gold) !important; text-shadow: none !important; }
-html:not(.pro) .rx-champ { gap: 8px !important; margin: 2px 0 !important; }
+html:not(.pro) .rx-champ { gap: 8px !important; margin: 0 !important; }
 html:not(.pro) .rx-champ .rx-cn { font-family: 'Press Start 2P', monospace !important; font-size: 15px !important; line-height: 1.2 !important; color: #fff !important; text-shadow: none !important; }
 html:not(.pro) .rx-num b { font-family: 'Press Start 2P', monospace !important; font-size: 20px !important; line-height: 1.2 !important; color: var(--arcade-gold) !important; text-shadow: 2px 2px 0 rgba(0, 0, 0, .6) !important; }
 html:not(.pro) .rx-num span { font-size: 9px; color: var(--text-meta) !important; }
-html:not(.pro) .rx-margin { font-size: 11px !important; color: var(--text-meta) !important; }
+html:not(.pro) .rx-margin { font-size: 11px !important; line-height: 1.2 !important; margin-top: 0 !important; color: var(--text-meta) !important; }
 html:not(.pro) .recap-panel .rx-hero .rx-av.big { width: 34px !important; height: 34px !important; font-size: 16px !important; box-shadow: 0 0 0 2px var(--arcade-gold) !important; }
-html:not(.pro) .rx-podium { gap: 6px !important; margin-top: 6px !important; }
+html:not(.pro) .rx-podium { gap: 6px !important; margin-top: 4px !important; }
 html:not(.pro) .rx-step { background: transparent !important; border: 1px solid var(--card-border) !important; border-radius: 10px !important; box-shadow: none !important; padding: 3px 6px !important; min-height: 0 !important; }
 html:not(.pro) .rx-step .rx-av { width: 20px !important; height: 20px !important; font-size: 10px !important; }
 html:not(.pro) .rx-step b { color: #fff !important; font-size: 11px !important; overflow: visible !important; text-overflow: clip !important; }
