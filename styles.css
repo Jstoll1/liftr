@@ -9355,7 +9355,15 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
    "VS THE LEAGUE": worst and best as bookends, a segmented meter filled up
    to you, a pixel marker with your number above it. Hairlines, no boxes.
    Colour by standing: gold leads, green top 3, cyan middle, pink bottom 3. */
+/* One grid for all rows (subgrid): the label and bookend columns size to
+   their widest entry across the rows, so the columns line up and every
+   spare pixel goes to the meters instead of empty bands. */
 .sbd { --tier: var(--neon-cyan); --tier-rgb: var(--neon-cyan-rgb); display: flex; flex-direction: column; margin: 2px 0 6px; }
+.sbd-key { grid-template-columns: 84px 46px minmax(0, 1fr) 46px; column-gap: 7px; }
+@supports (grid-template-columns: subgrid) {
+  .sbd { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr) max-content; column-gap: 8px; }
+  .sbd > .sbd-r, .sbd > .sbd-key { grid-column: 1 / -1; grid-template-columns: subgrid; column-gap: 8px; }
+}
 .sbd-r { --tier: var(--neon-cyan); --tier-rgb: var(--neon-cyan-rgb); display: grid; grid-template-columns: 84px 46px minmax(0, 1fr) 46px; grid-template-areas: "l w bar b"; align-items: end; column-gap: 7px; padding: 4px 0 5px; border-top: 1px solid rgba(var(--neon-purple-rgb), .16); }
 .sbd-r:first-child { border-top: 0; }
 .sbd-r.t-hi { --tier: var(--neon-green); --tier-rgb: var(--neon-green-rgb); }
@@ -9407,7 +9415,7 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
    top, so no meter stretches across an empty half page. */
 @media (min-width: 700px) {
   html:not(.phone) .rx-season .sbd { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 22px; padding-top: 4px; }
-  html:not(.phone) .rx-season .sbd-r { grid-template-columns: 46px minmax(0, 1fr) 46px; grid-template-areas: "l l l" "w bar b"; row-gap: 2px; border-top: 0; padding: 4px 0 8px; }
+  html:not(.phone) .rx-season .sbd > .sbd-r { grid-column: auto; grid-template-columns: 46px minmax(0, 1fr) 46px; grid-template-areas: "l l l" "w bar b"; row-gap: 2px; border-top: 0; padding: 4px 0 8px; }
   html:not(.phone) .rx-season .sbd-r + .sbd-r { border-left: 1px solid rgba(var(--neon-purple-rgb), .16); padding-left: 22px; margin-left: -22px; }
   html:not(.phone) .rx-season .sbd-l { align-self: start; margin-bottom: 0; flex-direction: row; align-items: baseline; gap: 8px; }
   html:not(.phone) .rx-season .sbd-bar i em small { display: none; }
@@ -9415,7 +9423,7 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 /* The season window */
 .sbd-card { padding-bottom: 16px; }
 .sbd-card .wks-h b { white-space: nowrap; }
-.sbd-key { display: grid; grid-template-columns: 84px 46px minmax(0, 1fr) 46px; column-gap: 7px; margin: 4px 0 0; font-family: "Press Start 2P", monospace; font-size: 6px; }
+.sbd-key { display: grid; margin: 4px 0 0; font-family: "Press Start 2P", monospace; font-size: 6px; }
 .sbd-key span:first-child { grid-column: 2; text-align: right; color: var(--neon-pink); }
 .sbd-key span:last-child { grid-column: 4; color: var(--neon-green); }
 .sbd-roast { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin: 12px 0 4px; padding: 12px; border-radius: 10px; border: 1.5px solid rgba(var(--neon-cyan-rgb), .6); background: rgba(var(--neon-cyan-rgb), .08); color: var(--neon-cyan); font-family: "Press Start 2P", monospace; font-size: 9px; letter-spacing: .06em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
