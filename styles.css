@@ -9133,7 +9133,15 @@ html:not(.pro) .rx-tbl b { font-family: 'Press Start 2P', monospace !important; 
 html:not(.pro) .rx-tbl em { font-size: 10.5px !important; white-space: nowrap !important; }
 html:not(.pro) .rx-tbl.best em { color: var(--neon-green) !important; } html:not(.pro) .rx-tbl.worst em { color: var(--neon-pink) !important; }
 /* Champion hero: gold, the one glow. */
-html:not(.pro) .recap-panel .rx-hero { --rx-c: var(--arcade-gold); box-shadow: 0 0 14px rgba(var(--arcade-gold-rgb), .3) !important; padding: 8px 10px !important; }
+html:not(.pro) .recap-panel .rx-hero { --rx-c: var(--arcade-gold); box-shadow: 0 0 14px rgba(var(--arcade-gold-rgb), .3) !important; padding: 8px 10px !important;
+  /* Trophy spotlight: a gold glow behind the winner and faint sunburst rays
+     fanning from above, fading out toward the edges (the Jackpot's cousin:
+     its glow and scan lines are money; this is the spotlight on the champ). */
+  background:
+    radial-gradient(55% 85% at 50% 0%, rgba(var(--arcade-gold-rgb), .20), transparent 70%),
+    radial-gradient(85% 120% at 50% 0%, transparent 25%, var(--bg2) 88%),
+    repeating-conic-gradient(from -90deg at 50% -18%, rgba(var(--arcade-gold-rgb), .10) 0deg 3deg, transparent 3deg 9deg),
+    var(--bg2) !important; }
 html:not(.pro) .rx-kicker { font-family: 'Press Start 2P', monospace !important; font-size: 7.5px !important; letter-spacing: .14em !important; color: var(--arcade-gold) !important; text-shadow: none !important; }
 html:not(.pro) .rx-champ { gap: 8px !important; margin: 2px 0 !important; }
 html:not(.pro) .rx-champ .rx-cn { font-family: 'Press Start 2P', monospace !important; font-size: 15px !important; line-height: 1.2 !important; color: #fff !important; text-shadow: none !important; }
