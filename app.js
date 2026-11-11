@@ -9966,7 +9966,7 @@ function playerSeason(name) {
     wins: scores.filter((x) => x.won),
     ats: atsN ? Math.round((atsW / atsN) * 100) : null, atsN, atsW, su: suN ? Math.round((suW / suN) * 100) : null, suN, suW,
     lockW, lockL,
-    dog: dogN ? Math.round((dogW / dogN) * 100) : null, dogN, fav: favN ? Math.round((favW / favN) * 100) : null, favN,
+    dog: dogN ? Math.round((dogW / dogN) * 100) : null, dogN, dogW, fav: favN ? Math.round((favW / favN) * 100) : null, favN,
     avgFinish: placeN ? placeSum / placeN : null, tbOff: tbN ? tbSum / tbN : null,
     points: played.reduce((t, x) => t + (x.score || 0), 0),
   };
@@ -10109,9 +10109,11 @@ function bottomSheet(id) {
 // flipped so the right end always means best.
 const SEASON_BOARD = [
   { k: "points", label: "POINTS", get: (d) => d.points, fmt: (v) => `${v}` },
-  { k: "hitPct", label: "PICKS RIGHT", get: (d) => (d.w + d.l ? Math.round((100 * d.w) / (d.w + d.l)) : null), fmt: (v) => `${v}%` },
-  { k: "atsPct", label: "VS SPREAD", get: (d) => d.ats, fmt: (v) => `${v}%` },
-  { k: "dogPct", label: "UNDERDOGS", get: (d) => d.dog, fmt: (v) => `${v}%` },
+  { k: "weeklyWins", label: "WEEKLY WINS", get: (d) => d.wins.length, fmt: (v) => `${v}` },
+  // Rates rank fairly when people sat out weeks; the record shows the count.
+  { k: "hitPct", label: "PICKS RIGHT", get: (d) => (d.w + d.l ? Math.round((100 * d.w) / (d.w + d.l)) : null), fmt: (v) => `${v}%`, rec: (d) => `${d.w}-${d.l}` },
+  { k: "atsPct", label: "VS SPREAD", get: (d) => d.ats, fmt: (v) => `${v}%`, rec: (d) => `${d.atsW}-${d.atsN - d.atsW}` },
+  { k: "dogPct", label: "UNDERDOGS", get: (d) => d.dog, fmt: (v) => `${v}%`, rec: (d) => `${d.dogW}-${d.dogN - d.dogW}` },
   { k: "avgFinish", label: "AVG FINISH", get: (d) => d.avgFinish, fmt: (v) => v.toFixed(1), low: true },
   { k: "tbOff", label: "TIEBREAKER", get: (d) => d.tbOff, fmt: (v) => `${Math.round(v)} off`, efmt: (v) => `${Math.round(v)}`, low: true },
 ];
@@ -10131,7 +10133,7 @@ function seasonBoardData(name) {
     const span = best.v - worst.v;
     const share = span ? (mine.v - worst.v) / span : 0.5;
     const tied = vals.filter((x) => x.v === mine.v).length > 1;
-    return { ...s, mine: mine.v, best, worst, bestN, worstN, place, tied, of: vals.length, share: Math.max(0, Math.min(1, share)) };
+    return { ...s, mine: mine.v, recTxt: s.rec ? s.rec(me.d) : "", best, worst, bestN, worstN, place, tied, of: vals.length, share: Math.max(0, Math.min(1, share)) };
   }).filter(Boolean);
   const ranked = rows.filter((r) => r.of >= 3);
   const top = [...ranked].sort((a, b) => a.place - b.place)[0], low = [...ranked].sort((a, b) => b.place - a.place)[0];
@@ -10147,16 +10149,16 @@ function seasonBoardRows(b, rows, name) {
     const atEnd = atBest ? " at-best" : atWorst ? " at-worst" : "";
     const ef = r.efmt || r.fmt;
     return `<div class="sbd-r ${cls}${atEnd}">
-      <span class="sbd-l">${r.label}<em class="sbd-rk">${r.tied ? "T-" : ""}${ordinal(r.place)}<small> of ${r.of}</small></em></span>
+      <span class="sbd-l">${r.label}<em class="sbd-rk">${r.tied ? "T-" : ""}${ordinal(r.place)}<small> of ${r.of}</small></em>${r.recTxt ? `<i class="sbd-rec">${r.recTxt}</i>` : ""}</span>
       <span class="sbd-e w">${end(r.worst, r.worstN, r.worst.v, ef, atWorst)}</span>
-      <span class="sbd-bar"><u></u><s style="width:${(r.share * 100).toFixed(1)}%"></s><i style="left:${(r.share * 100).toFixed(1)}%"><em class="${r.share > 0.75 ? "r" : r.share < 0.25 ? "l" : ""}">${r.fmt(r.mine)}</em></i></span>
+      <span class="sbd-bar"><u></u><s style="width:${(r.share * 100).toFixed(1)}%"></s><i style="left:${(r.share * 100).toFixed(1)}%"><em class="${r.share > 0.75 ? "r" : r.share < 0.25 ? "l" : ""}">${r.fmt(r.mine)}${r.recTxt ? `<small>${r.recTxt}</small>` : ""}</em></i></span>
       <span class="sbd-e b">${end(r.best, r.bestN, r.best.v, ef, atBest)}</span>
     </div>`;
   }).join("");
 }
 function seasonBoardFoot(b) {
   return b.top && b.low && b.top !== b.low
-    ? `<div class="sbd-foot"><span><small>BEST AT</small>${b.top.label.toLowerCase()} (${ordinal(b.top.place).toLowerCase()})</span><span><small>WORST AT</small>${b.weeklyWins === 0 && b.low.place < b.low.of ? "weekly wins (0)" : `${b.low.label.toLowerCase()} (${ordinal(b.low.place).toLowerCase()})`}</span></div>` : "";
+    ? `<div class="sbd-foot"><span><small>BEST AT</small>${b.top.label.toLowerCase()} (${b.top.tied ? "t-" : ""}${ordinal(b.top.place).toLowerCase()})</span><span><small>WORST AT</small>${b.low.label.toLowerCase()} (${b.low.tied ? "t-" : ""}${ordinal(b.low.place).toLowerCase()})</span></div>` : "";
 }
 // Recap, under the week's winner: your three best stats, tap for the rest.
 function recapSeasonStrip() {
