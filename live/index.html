@@ -108,6 +108,7 @@ body.lz-on { overflow: hidden; }
 .exp-n { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .exp-n b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .exp-n small { font: 10.5px var(--mono); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exp-m small.exp-dis { color: #ff9fbf; }
 .exp-n small.exp-from { color: var(--meta); }
 .exp-st { font: 700 10.5px var(--mono); font-style: normal; text-align: right; white-space: nowrap; } .exp-st.hot { color: #ff9f1c; } .exp-st.cold { color: var(--cyan); }
 .exp-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .06); overflow: hidden; }
@@ -3170,8 +3171,21 @@ body::before { display: none; }
     // Tally from the graded picks so the week filter applies to everything.
     // Group by outlet, or by the person who made the pick (with their outlet).
     const who = (g) => (ex.view === "pickers" ? (g.picker ? `${g.picker} · ${g.outlet}` : `${g.outlet} (no byline)`) : g.outlet);
+    // An outlet makes one call per game: the side most of its writers took,
+    // graded once (a fan site's nine writers on one game is one pick, not
+    // nine). Pickers keep every writer's own pick.
+    const units = ex.view === "pickers" ? graded : (() => {
+      const m = new Map();
+      for (const g of graded) { const k = `${g.outlet}|${g.week}|${g.gameId}`; (m.get(k) || m.set(k, []).get(k)).push(g); }
+      return [...m.values()].map((l) => {
+        const sides = new Map(); for (const g of l) (sides.get(g.team) || sides.set(g.team, []).get(g.team)).push(g);
+        const [team, maj] = [...sides.entries()].sort((a, b) => b[1].length - a[1].length)[0];
+        const top = maj[0];
+        return { ...top, staff: l.length, agree: maj.length, others: l.filter((g) => g.team !== team) };
+      }).sort((a, b) => a.week - b.week);
+    })();
     const by = {};
-    for (const g of graded) {
+    for (const g of units) {
       const o = (by[who(g)] ||= { outlet: who(g), title: ex.view === "pickers" ? g.picker || "No byline" : g.outlet, from: ex.view === "pickers" ? g.outlet : "", picks: 0, ATS: { W: 0, L: 0, P: 0 }, SU: { W: 0, L: 0, P: 0 }, ALL: { W: 0, L: 0, P: 0 }, last: [] });
       o.picks += 1;
       for (const r of g.grades) { o[r.kind][r.result] += 1; o.ALL[r.result] += 1; o.last.push(r.result); }
@@ -3186,7 +3200,7 @@ body::before { display: none; }
     const streak = (last) => { if (!last.length) return `<em class="exp-st"></em>`; const r = last[last.length - 1]; let n = 0; for (let i = last.length - 1; i >= 0 && last[i] === r; i--) n++; return n >= 2 && r !== "P" ? `<em class="exp-st ${r === "W" ? "hot" : "cold"}">${r === "W" ? "🔥" : "🧊"}${n}</em>` : `<em class="exp-st"></em>`; };
     const row = (o, i) => {
       const open = ex.open === o.outlet;
-      const log = !open ? "" : `<div class="exp-log">${graded.filter((g) => who(g) === o.outlet).sort((a, b) => b.week - a.week).map((g) => `<div class="exp-p"><span class="exp-w">W${g.week}</span><span class="exp-m"><span><b>${esc(g.team)}</b> ${esc(g.type)}${g.picker && ex.view !== "pickers" ? ` · ${esc(g.picker)}` : ""}</span><small>${esc(g.matchup)}${g.final ? ` · ${esc(g.final)}` : ""}</small></span><span class="exp-g">${g.grades.length ? g.grades.map((r) => `<i class="r-${r.result}" title="${esc(r.kind)}${r.line != null ? ` ${r.line > 0 ? "+" : ""}${r.line} (${r.lineFrom})` : ""}">${r.kind} ${r.result}</i>`).join("") : `<i class="r-none">no final</i>`}</span></div>`).join("")}</div>`;
+      const log = !open ? "" : `<div class="exp-log">${units.filter((g) => who(g) === o.outlet).sort((a, b) => b.week - a.week).map((g) => `<div class="exp-p"><span class="exp-w">W${g.week}</span><span class="exp-m"><span><b>${esc(g.team)}</b> ${esc(g.type)}${g.staff > 1 ? ` · ${g.agree} of ${g.staff} staff` : g.picker && ex.view !== "pickers" ? ` · ${esc(g.picker)}` : ""}</span>${g.others?.length ? `<small class="exp-dis">${g.others.map((x) => `${esc(x.picker || "staff")} on ${esc(x.team)}`).join(", ")}</small>` : ""}<small>${esc(g.matchup)}${g.final ? ` · ${esc(g.final)}` : ""}</small></span><span class="exp-g">${g.grades.length ? g.grades.map((r) => `<i class="r-${r.result}" title="${esc(r.kind)}${r.line != null ? ` ${r.line > 0 ? "+" : ""}${r.line} (${r.lineFrom})` : ""}">${r.kind} ${r.result}</i>`).join("") : `<i class="r-none">no final</i>`}</span></div>`).join("")}</div>`;
       return `<div class="exp-o${open ? " open" : ""}"><button type="button" class="exp-r" data-exo="${esc(o.outlet)}" aria-expanded="${open}"><span class="exp-rk">${i + 1}</span><span class="exp-n"><b>${esc(o.title)}</b>${o.from ? `<small class="exp-from">${esc(o.from)}</small>` : ""}<small>ATS ${exRec(o.ATS)} · SU ${exRec(o.SU)}</small></span>${streak(o.last)}<span class="exp-bar"><s style="width:${((o.p || 0) * 100).toFixed(0)}%"></s></span><b class="num exp-pc">${exPctTxt(o.p)}</b><i class="exp-cv">${open ? "▾" : "▸"}</i></button>${log}</div>`;
     };
     // Games: every game with the experts split by the side they took.
@@ -3208,7 +3222,7 @@ body::before { display: none; }
       }).join("");
     };
     const seg = (key, opts) => `<span class="seg sm" role="group">${opts.map(([v, l]) => `<button type="button" class="${String(ex[key]) === String(v) ? "on" : ""}" data-ex="${key}:${v}">${l}</button>`).join("")}</span>`;
-    return `<section class="panel exp"><div class="ph"><h2>Experts</h2><span class="sub">${rows.length} ${ex.view === "pickers" ? "pickers" : "outlets"} · ${graded.length} picks graded${ex.week === "all" ? "" : ` · week ${ex.week}`}</span></div>
+    return `<section class="panel exp"><div class="ph"><h2>Experts</h2><span class="sub">${rows.length} ${ex.view === "pickers" ? "pickers" : "outlets"} · ${ex.view === "pickers" ? `${graded.length} picks` : `${units.length} calls from ${graded.length} picks`} graded${ex.week === "all" ? "" : ` · week ${ex.week}`}</span></div>
       <div class="exp-k"><div><em>All outlets ATS</em><b class="num">${exPctTxt(exPct(tot.ATS))}</b><span>${exRec(tot.ATS)}</span></div><div><em>All outlets SU</em><b class="num">${exPctTxt(exPct(tot.SU))}</b><span>${exRec(tot.SU)}</span></div><div><em>Best ${K}</em><b class="num">${qual[0] ? exPctTxt(qual[0].p) : "–"}</b><span>${qual[0] ? esc(qual[0].title) : "nobody qualifies"}</span></div></div>
       ${wk.length ? `<div class="exp-wk">${wk.map((x) => `<button type="button" class="${String(ex.week) === String(x.w) ? "on" : ""}" data-ex="week:${String(ex.week) === String(x.w) ? "all" : x.w}" title="Week ${x.w}: ${x.t.W}-${x.t.L}"><i style="height:${Math.max(8, (x.p || 0) * 100).toFixed(0)}%" class="${x.p == null ? "" : x.p >= 0.5 ? "up" : "dn"}"></i><small>W${x.w}</small></button>`).join("")}</div>` : ""}
       <div class="exp-view">${seg("view", [["outlets", "Outlets"], ["pickers", "Pickers"], ["games", "Games"]])}</div>
