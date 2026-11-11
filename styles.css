@@ -5181,8 +5181,16 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 .week-done .ranking-row .ranking-name { flex: 0 0 76px; width: 76px; max-width: 76px; }
 
 /* ===== The Pot: jackpot, season bar, avatars ===== */
-.pot-jackpot { position: relative; text-align: center; padding: 14px 10px 12px; border: 2px solid var(--neon-yellow); border-radius: 10px; background: radial-gradient(120% 90% at 50% 0%, #2a1a00 0%, var(--ink-2) 75%); box-shadow: 4px 4px 0 rgba(0, 0, 0, .55), 0 0 22px rgba(255, 210, 63, .25), inset 0 0 18px rgba(0, 0, 0, .7); overflow: hidden; }
-.pot-jackpot::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 3px); pointer-events: none; }
+.pot-jackpot { position: relative; text-align: center; padding: 14px 10px 12px; border: 2px solid var(--neon-yellow); border-radius: 10px; background:
+    radial-gradient(40% 50% at 50% 52%, rgba(var(--arcade-gold-rgb), .22), transparent 75%),
+    radial-gradient(90% 75% at 50% 0%, rgba(var(--arcade-gold-rgb), .30), transparent 70%),
+    radial-gradient(90% 70% at 50% 115%, rgba(var(--neon-pink-rgb), .38), transparent 70%),
+    linear-gradient(180deg, rgba(var(--arcade-gold-rgb), .08), transparent 55%),
+    var(--ink-2);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, .55), 0 0 22px rgba(var(--arcade-gold-rgb), .28), inset 0 0 12px rgba(0, 0, 0, .45); overflow: hidden; }
+/* Arcade-screen scan lines, strong enough to see on a phone, fading toward
+   the bottom so the small print stays clean. */
+.pot-jackpot::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(var(--arcade-gold-rgb), .09) 0 1px, transparent 1px 3px); -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, .35) 100%); mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, .35) 100%); pointer-events: none; }
 .pj-label { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .14em; color: var(--neon-pink); animation: ss-blink 2.4s steps(1) infinite; }
 .pj-amount { margin: 10px 0 8px; font-family: 'Press Start 2P', monospace; font-size: 30px; line-height: 1; color: var(--arcade-gold); text-shadow: 3px 3px 0 #b5179e, 0 0 16px rgba(255, 210, 63, .6); }
 .pj-sub { font-size: 10.5px; color: var(--text-dim); }
