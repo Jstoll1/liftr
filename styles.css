@@ -3049,6 +3049,8 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-row.me { background: rgba(5, 217, 232, .1); box-shadow: inset 3px 0 0 var(--neon-cyan); }
 .pot-row.inmoney .pot-name { color: var(--neon-yellow); }
 .pot-place { font-family: 'Press Start 2P', monospace; font-size: 7px; white-space: nowrap; color: var(--text-dim); }
+.pot-mv { display: block; margin-top: 2px; font-style: normal; font-size: 7px; letter-spacing: 0; }
+.pot-mv.up { color: var(--neon-green); } .pot-mv.dn { color: var(--neon-pink); }
 .pot-name { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pot-proj { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--neon-purple); flex: none; }
 .pot-pts { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; text-align: right; }
@@ -9181,7 +9183,7 @@ html:not(.pro) .recap-panel .rx-hero { --rx-c: var(--arcade-gold); box-shadow: 0
     var(--bg2) !important; }
 html:not(.pro) .rx-kicker { font-family: 'Press Start 2P', monospace !important; font-size: 7.5px !important; letter-spacing: .14em !important; color: var(--arcade-gold) !important; text-shadow: none !important; }
 html:not(.pro) .rx-champ { gap: 8px !important; margin: 0 !important; }
-html:not(.pro) .rx-champ .rx-cn { font-family: 'Press Start 2P', monospace !important; font-size: 15px !important; line-height: 1.2 !important; color: #fff !important; text-shadow: none !important; }
+html:not(.pro) .rx-champ .rx-cn { font-family: 'Press Start 2P', monospace !important; font-size: 13px !important; line-height: 1.2 !important; color: #fff !important; text-shadow: none !important; }
 html:not(.pro) .rx-num b { font-family: 'Press Start 2P', monospace !important; font-size: 20px !important; line-height: 1.2 !important; color: var(--arcade-gold) !important; text-shadow: 2px 2px 0 rgba(0, 0, 0, .6) !important; }
 html:not(.pro) .rx-num span { font-size: 9px; color: var(--text-meta) !important; }
 html:not(.pro) .rx-margin { font-size: 11px !important; line-height: 1.2 !important; margin-top: 0 !important; color: var(--text-meta) !important; }
