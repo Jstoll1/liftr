@@ -10312,8 +10312,7 @@ function openSeasonSheet(name = currentManager, waited) {
   m.dataset.name = name;
   m.innerHTML = `<div class="modal-card wks-card sbd-card"><i class="wks-grab" aria-hidden="true"></i>
     <div class="wks-h"><b>VS THE LEAGUE</b><small>${esc(shown(name).toUpperCase())}</small><button type="button" class="wks-x" aria-label="Close">✕</button></div>
-    <div class="sbd-key"><span>WORST</span><span>BEST</span></div>
-    <div class="sbd">${seasonBoardRows(b, b.rows, name)}</div>${seasonBoardFoot(b)}
+    <div class="sbd"><div class="sbd-key"><span>WORST</span><span>BEST</span></div>${seasonBoardRows(b, b.rows, name)}</div>${seasonBoardFoot(b)}
     ${name === currentManager ? `<button type="button" class="sbd-roast" data-roast="1"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async">ROAST MY SEASON</button>
     <div class="sbd-said hidden" aria-live="polite"><div class="sbd-who"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async"><b>THE CHIEF</b></div><p></p></div>` : ""}
   </div>`;
