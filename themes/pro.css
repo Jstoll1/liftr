@@ -671,3 +671,5 @@ html.pro .sbd-key { font-size: 9px; letter-spacing: .06em; } html.pro .sbd-who b
 html.pro .ask-which button { font-family: inherit !important; font-size: 13px; font-weight: 600; }
 html.pro .sbd-rk { font-family: inherit !important; font-size: 12px; font-weight: 700; } html.pro .sbd-rk small { font-size: 10px; font-weight: 500; }
 html.pro .sbr-rk, html.pro .sbr-v { font-family: inherit !important; font-weight: 700; } html.pro .sbr-rk { font-size: 12px; } html.pro .sbr-v { font-size: 13px; }
+html.pro .sbr-s1 b, html.pro .sbr-s1 span, html.pro .sbr-tabs button, html.pro .sbr-card .sbk-w, html.pro .sbr-card .sbk-r b { font-family: inherit !important; font-weight: 700; }
+html.pro .sbr-sum b { font-size: 16px; } html.pro .sbr-tabs button { font-size: 12px; } html.pro .sbr-card .sbk-w, html.pro .sbr-card .sbk-r b { font-size: 12px; }
