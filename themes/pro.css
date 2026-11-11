@@ -670,3 +670,4 @@ html.pro .sbd-key { font-size: 9px; letter-spacing: .06em; } html.pro .sbd-who b
 
 html.pro .ask-which button { font-family: inherit !important; font-size: 13px; font-weight: 600; }
 html.pro .sbd-rk { font-family: inherit !important; font-size: 12px; font-weight: 700; } html.pro .sbd-rk small { font-size: 10px; font-weight: 500; }
+html.pro .sbr-rk, html.pro .sbr-v { font-family: inherit !important; font-weight: 700; } html.pro .sbr-rk { font-size: 12px; } html.pro .sbr-v { font-size: 13px; }

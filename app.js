@@ -10211,7 +10211,7 @@ const SEASON_BOARD = [
   { k: "atsPct", label: "VS SPREAD", get: (d) => d.ats, fmt: (v) => `${v}%`, rec: (d) => `${d.atsW}-${d.atsN - d.atsW}` },
   { k: "dogPct", label: "UNDERDOGS", get: (d) => d.dog, fmt: (v) => `${v}%`, rec: (d) => `${d.dogW}-${d.dogN - d.dogW}` },
   { k: "avgFinish", label: "AVG FINISH", get: (d) => d.avgFinish, fmt: (v) => v.toFixed(1), low: true },
-  { k: "tbOff", label: "TIEBREAKER", get: (d) => d.tbOff, fmt: (v) => `${Math.round(v)} off`, efmt: (v) => `${Math.round(v)}`, low: true },
+  { k: "tbOff", label: "TIEBREAKER", get: (d) => d.tbOff, fmt: (v) => `${Math.round(v)} off`, efmt: (v) => `${Math.round(v)}`, rfmt: (v) => `${v.toFixed(1)} off`, low: true },
 ];
 function seasonBoardData(name) {
   const all = MANAGERS.map((n) => ({ n, d: playerSeason(n) })).filter((x) => x.d.points || x.d.w + x.d.l);
@@ -10244,7 +10244,7 @@ function seasonBoardRows(b, rows, name) {
     const atBest = r.mine === r.best.v, atWorst = !atBest && r.mine === r.worst.v;
     const atEnd = atBest ? " at-best" : atWorst ? " at-worst" : "";
     const ef = r.efmt || r.fmt;
-    return `<div class="sbd-r ${cls}${atEnd}">
+    return `<div class="sbd-r ${cls}${atEnd}" data-sbk="${r.k}" role="button" tabindex="0" aria-label="${r.label}: league ranking">
       <span class="sbd-l">${r.label}<em class="sbd-rk">${r.tied ? "T-" : ""}${ordinal(r.place)}<small> of ${r.of}</small></em>${r.recTxt ? `<i class="sbd-rec">${r.recTxt}</i>` : ""}</span>
       <span class="sbd-e w">${end(r.worst, r.worstN, r.worst.v, ef, atWorst)}</span>
       <span class="sbd-bar"><u></u><s style="width:${(r.share * 100).toFixed(1)}%"></s><i style="left:${(r.share * 100).toFixed(1)}%"><em class="${r.share > 0.75 ? "r" : r.share < 0.25 ? "l" : ""}">${r.fmt(r.mine)}${r.recTxt ? `<small>${r.recTxt}</small>` : ""}</em></i></span>
@@ -10298,6 +10298,31 @@ function paintSeasonStrip(standalone) {
 document.getElementById("season-strip")?.addEventListener("click", (e) => {
   if (e.target.closest(".rx-season")) { noteUse("season-strip"); openSeasonSheet(currentManager); }
 });
+// One stat, the whole league: every player ranked best first, with the
+// value and (for rates) the record, the viewer highlighted.
+function openBoardRank(k, name = currentManager) {
+  const st = SEASON_BOARD.find((x) => x.k === k);
+  if (!st) return;
+  const esc = escapeCd;
+  const rows = MANAGERS.map((n) => { const d = playerSeason(n); const v = st.get(d); return v != null && Number.isFinite(v) ? { n, v, rec: st.rec ? st.rec(d) : "" } : null; }).filter(Boolean)
+    .sort((a, b) => (st.low ? a.v - b.v : b.v - a.v));
+  if (!rows.length) return;
+  const better = (a, b) => (st.low ? a < b : a > b);
+  const best = rows[0].v, worst = rows[rows.length - 1].v, span = best - worst;
+  const list = rows.map((r) => {
+    const place = 1 + rows.filter((x) => better(x.v, r.v)).length, tied = rows.filter((x) => x.v === r.v).length > 1;
+    const share = span ? (r.v - worst) / span : 1;
+    const tier = place === 1 ? "lead" : place <= 3 ? "t-hi" : place > rows.length - 3 ? "t-lo" : "t-mid";
+    return `<li class="sbr-r ${tier}${r.n === name ? " me" : ""}"><span class="sbr-rk">${tied ? "T-" : ""}${ordinal(place)}</span><span class="sbr-nm">${esc(shown(r.n))}</span><span class="sbr-bar"><i style="width:${Math.max(4, Math.round(share * 100))}%"></i></span><span class="sbr-v">${(st.rfmt || st.fmt)(r.v)}${r.rec ? `<small>${esc(r.rec)}</small>` : ""}</span></li>`;
+  }).join("");
+  const m = bottomSheet("season-rank");
+  document.body.appendChild(m); // on top of the season window
+  m.innerHTML = `<div class="modal-card wks-card sbr-card"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>${esc(st.label)}</b><small>${st.low ? "LOWER IS BETTER" : "THE LEAGUE"}</small><button type="button" class="wks-x" aria-label="Back">✕</button></div>
+    <ol class="sbr">${list}</ol></div>`;
+  noteUse("season-rank", k);
+  m.classList.remove("hidden");
+}
 // The dedicated window: every stat, best and worst at, and the Chief's roast.
 function openSeasonSheet(name = currentManager, waited) {
   const b = name && seasonBoardData(name);
@@ -10307,7 +10332,7 @@ function openSeasonSheet(name = currentManager, waited) {
   const m = bottomSheet("season-board");
   if (!m.dataset.roastTap) {
     m.dataset.roastTap = "1";
-    m.addEventListener("click", (e) => { const r = e.target.closest("[data-roast]"); if (r) roastMySeason(m.dataset.name, r); });
+    m.addEventListener("click", (e) => { const r = e.target.closest("[data-roast]"); if (r) return roastMySeason(m.dataset.name, r); const row = e.target.closest("[data-sbk]"); if (row) openBoardRank(row.dataset.sbk, m.dataset.name); });
   }
   m.dataset.name = name;
   m.innerHTML = `<div class="modal-card wks-card sbd-card"><i class="wks-grab" aria-hidden="true"></i>
