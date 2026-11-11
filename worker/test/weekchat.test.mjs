@@ -104,3 +104,17 @@ test("cleanChat keeps up to 12 tool calls and drops results whose call was dropp
   assert.equal(tools.length, 12);
   assert.ok(tools.every((t) => a.tool_calls.some((c) => c.id === t.tool_call_id)));
 });
+
+test("week chat worker: an unknown term is flagged in the log and stripped from the reply", async () => {
+  const m = new Map();
+  const kv = { get: async (k, t) => { const v = m.get(k); return v == null ? null : t === "json" ? JSON.parse(v) : v; }, put: async (k, v) => { m.set(k, String(v)); }, delete: async (k) => m.delete(k), list: async ({ prefix } = {}) => ({ keys: [...m.keys()].filter((k) => !prefix || k.startsWith(prefix)).map((name) => ({ name, metadata: {} })), list_complete: true }) };
+  const real = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: "I don't know what the gauntlet is yet. What do you mean?\n[[UNKNOWN_TERM: gauntlet]]" } }], usage: {} }), { status: 200 });
+  const env = { OPENAI_API_KEY: "k", DEFAULT_ROSTER: "Jake,Curt", LIFTR_KV: kv, ARCHIVE_LOG_KEY: "adm" };
+  const res = await (await worker.fetch(new Request("https://w.test/week-chat", { method: "POST", body: JSON.stringify({ messages: [{ role: "user", content: "who won the gauntlet" }], context: { asker: "Jake", members: ["Jake", "Curt"], games } }) }), env, { waitUntil() {} })).json();
+  const j = await (await worker.fetch(new Request("https://w.test/week-chat?key=adm"), env, { waitUntil() {} })).json();
+  globalThis.fetch = real;
+  assert.doesNotMatch(res.message.content, /UNKNOWN_TERM/);
+  assert.equal(j.chats[0].unknownTerm, "gauntlet");
+  assert.match(weekChatSystem({ members: ["Jake"] }), /Chalk line: the dashed line/);
+});
