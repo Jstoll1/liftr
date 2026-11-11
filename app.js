@@ -9839,7 +9839,7 @@ function recapDetail(sum, kind) {
   else if (kind !== "move" && !(sum.rows || []).some((r) => r.ledger)) { fetchSeasonLedger().then(() => { if ((seasonLedger || []).some((w) => w.week === sum.week)) { document.getElementById("recap-panel").dataset.drawn = ""; renderRecap(); } }); return `<div class="rm-none">Loading the picks…</div>`; }
   const rows = (sum.rows || []).filter((r) => r && r.name);
   if (!rows.length) return `<div class="rm-none">Details aren't saved for this week.</div>`;
-  const nm = (n) => `<b class="${n === currentManager ? "me" : ""}">${esc(shown(n))}</b>`;
+  const nm = (n) => `<b class="${n === currentManager ? "me" : ""}" data-rxp="${esc(n)}" role="button">${esc(shown(n))}</b>`;
   if (kind === "lk") {
     const L = (sum.recap || {}).locks || last_locks(sum);
     if (!L || !(L.list || []).length) return `<div class="rm-none">No locks this week.</div>`;
@@ -9923,7 +9923,16 @@ function openRecapSheet(kind, title) {
     m.innerHTML = `<div class="modal-card rx-sheet-card"><div class="rx-sh-h"><b></b><button type="button" class="rx-sh-x" aria-label="Close">✕</button></div><div class="rx-sh-body recap-more"></div></div>`;
     document.body.appendChild(m);
     const close = (how = "swipe") => { if (!m.classList.contains("hidden")) noteUse("recap-sheet-close", how); m.classList.add("hidden"); };
-    m.addEventListener("click", (e) => { if (e.target === m) close("outside"); else if (e.target.closest(".rx-sh-x")) close("x"); });
+    // A name opens that player's card; any other tap inside the story closes
+    // it, as its "Tap to close" says (a tap there used to do nothing).
+    m.addEventListener("click", (e) => {
+      if (e.target === m) return close("outside");
+      if (e.target.closest(".rx-sh-x")) return close("x");
+      const p = e.target.closest("[data-rxp]");
+      if (p) { noteUse("recap-sheet-player", p.dataset.rxp); close("player"); return openPlayerCard(p.dataset.rxp); }
+      if (e.target.closest("a, button, .pick-chip, input")) return;
+      if (e.target.closest(".rx-sh-body")) close("tap");
+    });
     if (typeof swipeToClose === "function") swipeToClose(m, m.querySelector(".rx-sheet-card"), () => close("swipe"));
   }
   m.setAttribute("aria-label", title);
