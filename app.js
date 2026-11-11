@@ -5524,7 +5524,9 @@ function payoutLedger() {
 
 // Pot table sort: tap a header to sort by it, tap again to flip. Place is the default.
 const potSort = { k: "place", dir: 1 };
-const potWins = (n) => Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition && (w.winners || []).includes(n)).length;
+// Every trophy the WON column shows, exhibition weeks included, so the sort
+// matches what you see.
+const potWins = (n) => Object.values(weekSummaries).filter((w) => w?.complete && (w.winners || []).includes(n)).length;
 function potSorted(list, rec) {
   const val = { place: (r) => r.seasonPlace, name: (r) => shown(r.name).toLowerCase(), pts: (r) => r.points, rec: (r) => rec[r.name]?.w || 0, won: (r) => potWins(r.name), earned: (r) => r.earned || 0 }[potSort.k];
   return list.map((r, i) => [r, i]).sort(([a, ia], [b, ib]) => { const x = val(a), y = val(b); const c = x < y ? -1 : x > y ? 1 : 0; return c * potSort.dir || a.seasonPlace - b.seasonPlace || ia - ib; }).map(([r]) => r);
