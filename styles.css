@@ -9443,6 +9443,20 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .sbd-who .chief-ico { width: 24px; height: 24px; border-radius: 50%; }
 .sbd-who b { font-family: "Press Start 2P", monospace; font-size: 8px; font-weight: 400; color: var(--neon-cyan); }
 .sbd-said.hidden, .sbd-roast.hidden { display: none; }
+/* Tap a stat row: that stat across the league, best first */
+.sbd-r[data-sbk] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sbr { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
+.sbr-r { --tier: var(--neon-cyan); display: grid; grid-template-columns: 44px minmax(0, 1fr) 64px 84px; align-items: center; column-gap: 10px; padding: 8px 6px; border-top: 1px solid rgba(var(--neon-purple-rgb), .16); }
+.sbr-r:first-child { border-top: 0; }
+.sbr-r.t-hi { --tier: var(--neon-green); } .sbr-r.t-lo { --tier: var(--neon-pink); } .sbr-r.lead { --tier: var(--neon-yellow); }
+.sbr-r.me { background: rgba(var(--neon-cyan-rgb), .08); border-radius: 10px; box-shadow: inset 2px 0 0 var(--neon-cyan); }
+.sbr-rk { font-family: "Press Start 2P", monospace; font-size: 8px; color: var(--tier); }
+.sbr-nm { font-size: 14px; font-weight: 600; color: var(--text, #fff); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbr-r.me .sbr-nm { color: var(--neon-cyan); }
+.sbr-bar { height: 6px; border-radius: 1px; background: repeating-linear-gradient(90deg, rgba(var(--neon-purple-rgb), .22) 0 4px, transparent 4px 6px); }
+.sbr-bar i { display: block; height: 100%; background: repeating-linear-gradient(90deg, var(--tier) 0 4px, transparent 4px 6px); }
+.sbr-v { justify-self: end; text-align: right; font-family: "Press Start 2P", monospace; font-size: 9px; color: var(--tier); white-space: nowrap; }
+.sbr-v small { display: block; margin-top: 3px; font-family: "Chakra Petch", sans-serif; font-size: 11px; color: var(--text-dim, rgba(255,255,255,.55)); }
 
 /* A team named in a line of text (teamInline in app.js): logo then name,
    sized to the text and sat on its line, so labels and sentences alike
