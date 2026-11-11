@@ -10,7 +10,7 @@
     },
     {
       "k": "dead-tap",
-      "match": ".gold “🏆”",
+      "match": ".gold \u201c\ud83c\udfc6\u201d",
       "at": 1792758880000,
       "commit": "683eeca",
       "note": "Trophy on a player card opens the champions sheet"
@@ -115,7 +115,7 @@
     },
     {
       "k": "dead-tap",
-      "match": ".LI “2”",
+      "match": ".LI \u201c2\u201d",
       "at": 1793061186000,
       "commit": "67b2cb6",
       "note": "Steps in the How chance to win works explainer are reading, not controls; no longer logged as dead taps"
@@ -294,6 +294,13 @@
       "at": 1794141541000,
       "commit": "cc2789a",
       "note": "ESPN trailing the phone at the whistle (End of 4th) is re-checked and stored when ESPN agrees, not logged"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".rm-list",
+      "at": 1794425703000,
+      "commit": "0fb0dc4",
+      "note": "Names in recap sheets open the player's card; other taps inside close the sheet"
     }
   ]
 }
