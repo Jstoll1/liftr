@@ -128,19 +128,19 @@
       const fc = r.state === "go" ? "#39ff88" : r.state === "warn" ? "#ffe45e" : "#e0102a";
       // Name over the "USER N" bar.
       ctx.fillStyle = colour; ctx.fillRect(bx + 8, by + 3, bw - 22, O.nameH - 4);
-      ctx.font = "italic 900 22px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.font = "italic 900 22px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
       ctx.fillStyle = dark ? "#111" : "#fff";
       ctx.fillText(shown(r.name).toUpperCase(), bx + 18, by + O.nameH / 2 + 1);
       if (r.last) {
         const tag = lastWeek ? `WEEK ${lastWeek.week} CHAMP 🏆` : "LAST WEEK'S CHAMP 🏆";
-        ctx.font = "900 11px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left";
+        ctx.font = "900 11px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "left";
         const tw = ctx.measureText(tag).width + 12;
         ctx.fillStyle = "#ffe45e"; ctx.fillRect(bx + 8, by - 16, tw, 16);
         ctx.fillStyle = "#2a1e00"; ctx.fillText(tag, bx + 14, by - 8);
       }
       // Selections count.
       ctx.fillStyle = BODY; ctx.fillRect(bx + O.cntR - 74, by + O.cntY - 15, 106, 30);
-      ctx.font = "700 20px Orbitron, system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#fff";
+      ctx.font = "700 20px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#fff";
       ctx.fillText(`${r.n} / ${total}`, bx + O.cntR, by + O.cntY);
       // Ten cells.
       ctx.fillStyle = BODY; ctx.fillRect(bx + O.cellX - 2, by + O.cellY - 3, O.cellW + 4, O.cellH + 6);
@@ -152,7 +152,7 @@
       }
       // Tiebreaker in or not; the number stays private until kickoff.
       ctx.fillStyle = BODY; ctx.fillRect(bx + O.tbX, by + O.tbY - 14, 54, 28);
-      ctx.font = "900 20px Orbitron, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = r.tb ? "#39ff88" : "#e0102a";
+      ctx.font = "900 20px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillStyle = r.tb ? "#39ff88" : "#e0102a";
       ctx.fillText(r.tb ? "✓ IN" : "✗", bx + O.tbX, by + O.tbY);
       // Flag box in the state colour.
       const fx = bx + O.flagX, fy = by + O.flagY;
@@ -216,10 +216,10 @@
     ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
     ctx.font = "26px 'Press Start 2P', monospace"; ctx.fillStyle = "#05d9e8";
     ctx.fillText(`${WEEK_LABEL.toUpperCase()} PICKS`, PAD, 104);
-    ctx.font = "800 64px Orbitron, system-ui, sans-serif"; ctx.fillStyle = "#fff";
+    ctx.font = "800 64px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillStyle = "#fff";
     ctx.fillText(shown(me).toUpperCase(), PAD, 184);
     const n = games.filter((g) => st.picks?.[g.id]?.team).length;
-    ctx.textAlign = "right"; ctx.font = "700 30px Orbitron, system-ui, sans-serif"; ctx.fillStyle = n === games.length ? "#39ff88" : "#ffe45e";
+    ctx.textAlign = "right"; ctx.font = "700 30px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillStyle = n === games.length ? "#39ff88" : "#ffe45e";
     ctx.fillText(`${n}/${games.length} IN`, W - PAD, 184);
     ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(PAD, TOP - 26, W - PAD * 2, 2);
     // One row per game.
@@ -233,7 +233,7 @@
       ctx.fillText(`${g.awayShort} @ ${g.homeShort}`, PAD, y + 66);
       const rx = W - PAD;
       if (!p?.team) {
-        ctx.textAlign = "right"; ctx.font = "800 36px Orbitron, system-ui, sans-serif"; ctx.fillStyle = "#ff4f6d";
+        ctx.textAlign = "right"; ctx.font = "800 36px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillStyle = "#ff4f6d";
         ctx.fillText("NO PICK", rx, y + 62);
         return;
       }
@@ -241,12 +241,12 @@
       const terms = p.mode === "SU" ? "TO WIN" : `${p.team === g.favorite ? "-" : "+"}${g.spread}`;
       const pts = pointValue(g, p.team, p.mode === "SU" ? "SU" : "ATS") + (p.lock && p.mode === "ATS" && lr ? lr.hit : 0);
       // Right block: logo, side and terms, then what it pays under it.
-      ctx.textAlign = "right"; ctx.font = "800 40px Orbitron, system-ui, sans-serif"; ctx.fillStyle = "#fff";
+      ctx.textAlign = "right"; ctx.font = "800 40px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillStyle = "#fff";
       const main = `${short} ${terms}`; ctx.fillText(main, rx, y + 58);
       const mw = ctx.measureText(main).width;
       const lx = rx - mw - 64;
       if (logos[id]) ctx.drawImage(logos[id], lx, y + 16, 52, 52);
-      else { ctx.fillStyle = "#c13cff"; ctx.beginPath(); ctx.arc(lx + 26, y + 42, 24, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "800 24px Orbitron, system-ui, sans-serif"; ctx.fillText(short[0], lx + 26, y + 51); ctx.textAlign = "right"; }
+      else { ctx.fillStyle = "#c13cff"; ctx.beginPath(); ctx.arc(lx + 26, y + 42, 24, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "800 24px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillText(short[0], lx + 26, y + 51); ctx.textAlign = "right"; }
       ctx.font = "700 22px system-ui, sans-serif"; ctx.fillStyle = "#05d9e8";
       ctx.fillText(`${p.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${pts} PT${pts === 1 ? "" : "S"}`, rx, y + 96);
       if (p.lock && p.mode === "ATS" && lr) { const lw = ctx.measureText(`${p.mode === "SU" ? "STRAIGHT UP" : "SPREAD"} · ${pts} PT${pts === 1 ? "" : "S"}`).width; ctx.fillStyle = "#ffe45e"; ctx.fillText("🔒 LOCK  ", rx - lw, y + 96); }
@@ -258,7 +258,7 @@
     ctx.textAlign = "left"; ctx.font = "16px 'Press Start 2P', monospace"; ctx.fillStyle = "#9a8bb8";
     ctx.fillText(`TIEBREAKER${tbg ? ` · ${tbg.awayShort} @ ${tbg.homeShort} TOTAL` : ""}`, PAD, fy + 56);
     const tb = String(st.tiebreaker ?? "").trim();
-    ctx.textAlign = "right"; ctx.font = "800 40px Orbitron, system-ui, sans-serif"; ctx.fillStyle = tb ? "#fff" : "#ff4f6d";
+    ctx.textAlign = "right"; ctx.font = "800 40px \"Chakra Petch\", system-ui, sans-serif"; ctx.fillStyle = tb ? "#fff" : "#ff4f6d";
     ctx.fillText(tb || "NOT SET", W - PAD, fy + 62);
     ctx.textAlign = "center"; ctx.font = "14px 'Press Start 2P', monospace"; ctx.fillStyle = "rgba(255,255,255,.35)";
     ctx.fillText(`BROCHIEFS · ${new Date().toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).toUpperCase()}`, W / 2, H - 40);

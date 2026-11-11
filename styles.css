@@ -37,7 +37,7 @@ html, body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Orbitron', system-ui, sans-serif;
+  font-family: 'Chakra Petch', system-ui, sans-serif;
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
@@ -248,7 +248,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 }
 
 .nav-btn-label {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -326,7 +326,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   border-radius: 6px;
   clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   color: var(--text);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
   font-weight: 700;
   cursor: pointer;
   overflow: hidden;
@@ -515,7 +515,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 }
 
 .coin-sub {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -531,7 +531,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   background: none;
   border: none;
   color: var(--neon-cyan);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
   font-weight: 700;
   font-size: 12px;
   letter-spacing: 1px;
@@ -677,7 +677,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   border: 2px solid var(--card-border);
   border-radius: 10px;
   color: var(--text);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
   font-weight: 700;
   font-size: 12px;
   padding: 12px 6px;
@@ -776,7 +776,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
    left, the box you type into on the right. */
 .tb-game { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 auto; overflow: hidden; }
 .tb-logo { width: 22px; height: 22px; object-fit: contain; flex: none; }
-.tb-tm { min-width: 0; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-tm { min-width: 0; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tb-at { font-size: 9px; color: var(--text-dim); flex: none; }
 
 .tiebreaker-input {
@@ -784,7 +784,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   border: 2px solid var(--card-border);
   border-radius: 8px;
   color: var(--text);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
   font-weight: 800;
   font-size: 16px;
   text-align: center;
@@ -1028,7 +1028,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   100% { transform: scale(1); }
 }
 
-.bug-caret { color: var(--neon-purple); font-family: 'Orbitron', system-ui, sans-serif; font-size: 13px; line-height: 1; font-weight: 900; }
+.bug-caret { color: var(--neon-purple); font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 13px; line-height: 1; font-weight: 900; }
 
 @keyframes live-blink {
   0%, 100% { opacity: 1; }
@@ -1122,7 +1122,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .tm-rank {
   flex: none;
   align-self: baseline;
-  font-family: 'Orbitron', system-ui, sans-serif;
+  font-family: 'Chakra Petch', system-ui, sans-serif;
   font-style: normal;
   font-weight: 800;
   font-size: 9px;
@@ -1496,7 +1496,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 
 .scoreboard-table .ap-place {
   margin-left: 4px;
-  font-family: 'Orbitron', system-ui, sans-serif;
+  font-family: 'Chakra Petch', system-ui, sans-serif;
   font-weight: 800;
   font-size: 8px;
   color: rgba(255, 255, 255, .78);
@@ -1643,7 +1643,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   position: relative;
   margin: 0;
   max-width: 100%;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
   font-weight: 900;
   font-size: clamp(30px, 10vw, 68px);
   /* ~9 Orbitron-900 glyphs at 0.75em each: 12.5cqw keeps the word inside the sun */
@@ -1772,7 +1772,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   border: 2px solid var(--card-border);
   border-radius: 8px;
   color: var(--neon-cyan);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
   font-weight: 700;
   font-size: 11px;
   padding: 10px 16px;
@@ -1937,10 +1937,10 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 }
 .tm-name .tm-rank { font-size: 7.5px; }
 .tm-name .tm-at { font-style: normal; font-size: 7.5px; color: var(--text-dim); margin-right: 1px; }
-.tm-spread { flex: none; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 10px; letter-spacing: 0; font-variant-numeric: tabular-nums; margin-left: 2px; color: var(--text-dim); opacity: .8; }
+.tm-spread { flex: none; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 10px; letter-spacing: 0; font-variant-numeric: tabular-nums; margin-left: 2px; color: var(--text-dim); opacity: .8; }
 .tm-row.picked .tm-name { color: var(--neon-cyan); }
 .tm-line {
-  font-family: 'Orbitron', system-ui, sans-serif;
+  font-family: 'Chakra Petch', system-ui, sans-serif;
   font-weight: 800;
   font-size: 13px;
   color: var(--text-meta);
@@ -1969,7 +1969,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .pk-label { font-size: 6.5px; letter-spacing: .06em; }
 /* The number you are taking, on the chip that takes it. Signed, which
    points never are, so the two numbers on a chip cannot be confused. */
-.pk-line { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text); }
+.pk-line { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text); }
 .pick-mini-btn.selected .pk-line { color: #fff; }
 /* Both signs occupy the same width, so the two spread chips in a card are
    the same size and line up with each other and with the WIN chips. */
@@ -2102,7 +2102,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   border: 2px solid var(--card-border);
   border-radius: 8px;
   color: var(--text);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
   font-size: 20px;
   text-align: center;
   padding: 10px;
@@ -2187,7 +2187,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
   font-weight: 700;
   font-size: 12px;
   cursor: pointer;
@@ -2245,7 +2245,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   border-radius: 999px;
   background: rgba(5, 217, 232, 0.08);
   color: var(--neon-cyan);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Chakra Petch', sans-serif;
   font-weight: 700;
   font-size: 10px;
   letter-spacing: 0.04em;
@@ -2371,7 +2371,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .scoreboard-table th.live::after { content: ""; display: block; width: 6px; height: 6px; margin: 2px auto 0; border-radius: 50%; background: #fff; box-shadow: 0 0 5px rgba(255, 255, 255, .8); }
 .pick-cell-pts { display: none; }
 
-.updated-stamp { display: block; margin: 4px auto 10px; background: none; border: 0; color: var(--text-dim); font-family: 'Orbitron', sans-serif; font-size: 9px; letter-spacing: .04em; cursor: pointer; }
+.updated-stamp { display: block; margin: 4px auto 10px; background: none; border: 0; color: var(--text-dim); font-family: 'Chakra Petch', sans-serif; font-size: 9px; letter-spacing: .04em; cursor: pointer; }
 .updated-stamp.busy { color: var(--neon-cyan); }
 
 .pick-cell.correct .pick-mark { filter: drop-shadow(0 0 4px rgba(57, 255, 136, .6)); }
@@ -2397,7 +2397,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 /* Result pills under the logo (replaces the corner badges) */
 .pick-pill { display: inline-block; margin-top: 3px; min-width: 22px; padding: 1px 5px; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 7px; line-height: 12px; text-align: center; }
 .pick-pill.hit { background: rgba(57, 255, 136, .22); color: var(--neon-green); border: 1px solid rgba(57, 255, 136, .5); }
-.pick-pill.miss { background: rgba(255, 32, 121, .18); color: var(--neon-pink); border: 1px solid rgba(255, 32, 121, .5); font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 9px; }
+.pick-pill.miss { background: rgba(255, 32, 121, .18); color: var(--neon-pink); border: 1px solid rgba(255, 32, 121, .5); font-family: 'Chakra Petch', sans-serif; font-weight: 900; font-size: 9px; }
 .pick-cell.correct .pick-mark { filter: none; }
 .pick-cell.incorrect .pick-cell-logo { opacity: .4; filter: grayscale(.6); }
 .pick-cell.correct .pick-cell-spread { display: none; }
@@ -2414,7 +2414,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .ranking-caret { color: var(--neon-purple); font-size: 10px; margin-left: 2px; }
 .ranking-row.open { border-color: var(--neon-purple); }
 /* --- Rankings breakdown v3: GAME / PICK / PTS, arcade tags, readable body text --- */
-.rank-detail { border-top: 1px solid var(--card-border); padding: 8px 10px 12px; display: flex; flex-direction: column; background: rgba(0, 0, 0, .28); font-family: 'Orbitron', system-ui, sans-serif; }
+.rank-detail { border-top: 1px solid var(--card-border); padding: 8px 10px 12px; display: flex; flex-direction: column; background: rgba(0, 0, 0, .28); font-family: 'Chakra Petch', system-ui, sans-serif; }
 .rd-head, .rd-row { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr) 44px; column-gap: 8px; align-items: center; }
 .rd-head { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-cyan); letter-spacing: .08em; padding: 0 0 6px; border-bottom: 1px solid rgba(5, 217, 232, .35); margin-bottom: 2px; }
 .rd-head span:last-child { text-align: center; }
@@ -2484,7 +2484,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .lr-team.picked .lr-name { color: var(--neon-cyan); }
 /* The bet itself, on the row it belongs to: which side, what number,
    what it pays. */
-.lr-bet { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 999px; border: 1px solid rgba(5, 217, 232, .6); background: rgba(5, 217, 232, .12); font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 12px; color: var(--neon-cyan); white-space: nowrap; }
+.lr-bet { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 999px; border: 1px solid rgba(5, 217, 232, .6); background: rgba(5, 217, 232, .12); font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 12px; color: var(--neon-cyan); white-space: nowrap; }
 /* What the pick is worth, not how it went, so it stays quiet. Yellow made
    it a third coloured thing on a card that already colours the result
    sentence and the points pill. */
@@ -2526,7 +2526,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .rank-trophies { flex: none; font-size: 10px; line-height: 1; letter-spacing: -1px; }
 .rank-trophy-x { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-yellow); letter-spacing: 0; margin-left: 1px; }
 
-.ranking-name .ranking-lock { font-family: 'Orbitron', system-ui, sans-serif; font-size: 8px; font-weight: 700; color: var(--text-dim); letter-spacing: .06em; }
+.ranking-name .ranking-lock { font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 8px; font-weight: 700; color: var(--text-dim); letter-spacing: .06em; }
 .ranking-row.is-me .ranking-name::before { display: none; }
 .ranking-row.is-me .ranking-name { color: var(--neon-cyan); }
 .ranking-dots { flex: 1; height: 0; margin: 0 2px; border-bottom: 2px dotted rgba(244, 240, 255, .22); align-self: center; transform: translateY(-4px); }
@@ -2539,7 +2539,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .game-status.submitted.failed { color: var(--neon-pink); border-color: var(--neon-pink); }
 
 /* --- Phone vs cloud mismatch repair --- */
-.picks-mismatch { display: flex; flex-direction: column; gap: 6px; width: 100%; margin: 10px 0 4px; padding: 10px 12px; text-align: left; font-family: 'Orbitron', system-ui, sans-serif; font-size: 11px; color: var(--text); background: rgba(255, 32, 121, .08); border: 2px solid var(--neon-pink); border-radius: 8px; cursor: pointer; }
+.picks-mismatch { display: flex; flex-direction: column; gap: 6px; width: 100%; margin: 10px 0 4px; padding: 10px 12px; text-align: left; font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 11px; color: var(--text); background: rgba(255, 32, 121, .08); border: 2px solid var(--neon-pink); border-radius: 8px; cursor: pointer; }
 .picks-mismatch b { color: var(--neon-pink); }
 .picks-mismatch span { color: var(--text-dim); line-height: 1.5; }
 .picks-mismatch-cta { color: var(--neon-cyan) !important; font-weight: 700; }
@@ -2697,7 +2697,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   border: 0;
   background: none;
   color: var(--text-meta);
-  font-family: 'Orbitron', system-ui, sans-serif;
+  font-family: 'Chakra Petch', system-ui, sans-serif;
   font-weight: 700;
   font-size: 10px;
   letter-spacing: .02em;
@@ -2725,18 +2725,18 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .bug-pick-tagline .pick-pill { flex: none; margin: 0; min-width: 26px; padding: 0 5px; font-size: 6px; line-height: 13px; height: 15px; box-sizing: border-box; text-align: center; }
 .bug-pick-tagline .pick-pill.miss { font-size: 8px; line-height: 13px; }
 .bug-pick-tagline .bug-pick-worth { flex: none; }
-.bug-pick-worth { font-family: 'Orbitron', system-ui, sans-serif; font-size: 7px; font-weight: 700; color: var(--text-dim); letter-spacing: .06em; }
+.bug-pick-worth { font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 7px; font-weight: 700; color: var(--text-dim); letter-spacing: .06em; }
 
 /* --- Commissioner slate editor (#admin) --- */
 .admin-intro { color: var(--text-dim); font-size: 12px; line-height: 1.6; margin: 0 0 4px; }
 .admin-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
 .admin-field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 130px; min-width: 0; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--neon-cyan); letter-spacing: .08em; }
 .admin-field.small { flex: 0 0 88px; }
-.admin-field input { padding: 9px 10px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; }
+.admin-field input { padding: 9px 10px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 16px; }
 .admin-btn { -webkit-tap-highlight-color: transparent; touch-action: manipulation; min-height: 44px; padding: 10px 14px; border-radius: 8px; border: 2px solid var(--neon-cyan); background: rgba(5, 217, 232, .08); color: var(--neon-cyan); font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; }
 .admin-btn:disabled { opacity: .35; cursor: not-allowed; }
 .admin-btn.primary { border-color: var(--neon-green); color: var(--neon-green); background: rgba(57, 255, 136, .1); }
-.admin-status { min-height: 16px; font-family: 'Orbitron', system-ui, sans-serif; font-size: 11px; color: var(--text-dim); }
+.admin-status { min-height: 16px; font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 11px; color: var(--text-dim); }
 .admin-status.ok { color: var(--neon-green); }
 .admin-status.bad { color: var(--neon-pink); }
 .admin-when { font-family: 'Press Start 2P', monospace; font-size: 6.5px; line-height: 1.7; color: var(--neon-pink); letter-spacing: .06em; }
@@ -2751,7 +2751,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .admin-filter-row { display: flex; align-items: center; gap: 6px; }
 .admin-filter-row .admin-search { flex: 1 1 auto; }
 .admin-search { display: block; }
-.admin-search input { -webkit-appearance: none; appearance: none; width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; }
+.admin-search input { -webkit-appearance: none; appearance: none; width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 16px; }
 .admin-search input:focus { outline: none; border-color: var(--neon-cyan); }
 .admin-search input::-webkit-search-cancel-button { -webkit-appearance: none; width: 18px; height: 18px; background: var(--text-dim); border-radius: 50%; -webkit-mask: linear-gradient(45deg, transparent 44%, #000 44%, #000 56%, transparent 56%), linear-gradient(-45deg, transparent 44%, #000 44%, #000 56%, transparent 56%); cursor: pointer; }
 .admin-listhead { display: flex; justify-content: space-between; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); letter-spacing: .08em; padding-bottom: 4px; border-bottom: 1px solid var(--card-border); }
@@ -2773,17 +2773,17 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .admin-logos { grid-area: logos; display: flex; align-items: center; gap: 2px; }
 .admin-logos img, .admin-logos i { width: 19px; height: 19px; object-fit: contain; }
 .admin-game:not(.on) .admin-logos { filter: grayscale(.35); opacity: .85; }
-.admin-teams { grid-area: teams; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; line-height: 1.25; overflow-wrap: anywhere; }
+.admin-teams { grid-area: teams; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 12px; line-height: 1.25; overflow-wrap: anywhere; }
 .admin-time { grid-area: time; font-size: 8.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .admin-line input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--neon-cyan); flex: none; }
 .admin-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 8px 8px; }
-.admin-odds { grid-area: odds; justify-self: start; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 11px; color: var(--neon-yellow); letter-spacing: .04em; white-space: nowrap; }
+.admin-odds { grid-area: odds; justify-self: start; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 11px; color: var(--neon-yellow); letter-spacing: .04em; white-space: nowrap; }
 .admin-odds.none { color: var(--text-dim); font-weight: 400; }
 .admin-game.noline .admin-pick { opacity: .45; }
 .admin-tb { -webkit-tap-highlight-color: transparent; touch-action: manipulation; min-height: 40px; padding-right: 6px; flex-direction: row !important; font-size: 8px !important; align-items: center; gap: 6px !important; color: var(--neon-purple) !important; }
 .admin-check-row input { width: 22px; height: 22px; accent-color: var(--neon-cyan); }
-.admin-check-row { -webkit-tap-highlight-color: transparent; touch-action: manipulation; min-height: 44px; display: flex; align-items: center; gap: 8px; font-family: 'Orbitron', system-ui, sans-serif; font-size: 12px; color: var(--text-dim); }
-.admin-field select { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--neon-cyan) 50%), linear-gradient(135deg, var(--neon-cyan) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 12px) 50%; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; padding: 9px 34px 9px 10px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; }
+.admin-check-row { -webkit-tap-highlight-color: transparent; touch-action: manipulation; min-height: 44px; display: flex; align-items: center; gap: 8px; font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 12px; color: var(--text-dim); }
+.admin-field select { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--neon-cyan) 50%), linear-gradient(135deg, var(--neon-cyan) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 12px) 50%; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; padding: 9px 34px 9px 10px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 16px; }
 .admin-day { position: sticky; top: 0; z-index: 1; padding: 6px 2px 4px; background: #0a0014; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--neon-pink); letter-spacing: .1em; }
 
 /* Recommended-games pop up. Full height on a phone with the action bar
@@ -2800,7 +2800,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .sg-row.on .sg-check { border-color: var(--neon-green); background: rgba(0, 255, 143, .12); color: var(--neon-green); }
 .sg-body { grid-column: 2; }
 .sg-num { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--neon-cyan); padding-top: 3px; }
-.sg-teams { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 13px; }
+.sg-teams { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 13px; }
 .sg-meta { font-size: 10px; color: var(--neon-yellow); margin-top: 2px; }
 .sg-why { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
 .sg-why span { padding: 2px 6px; border-radius: 999px; border: 1px solid rgba(185, 103, 255, .5); font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--neon-purple); letter-spacing: .06em; }
@@ -2809,7 +2809,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .ov-body { padding: 0 14px 10px; }
 .ov-lead { margin: 8px 0; font-size: 12px; line-height: 1.5; color: var(--text); }
 .ov-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.ov-col { padding: 8px; border-radius: 8px; border: 2px solid var(--card-border); font-family: 'Orbitron', system-ui, sans-serif; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.ov-col { padding: 8px; border-radius: 8px; border: 2px solid var(--card-border); font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
 .ov-col.out { border-color: rgba(255, 92, 138, .55); color: var(--neon-pink); }
 .ov-col.in { border-color: rgba(0, 255, 143, .5); color: var(--neon-green); }
 .ov-head { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .08em; margin-bottom: 6px; color: var(--text-dim); }
@@ -2857,7 +2857,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .con-row.bad { border-left-color: var(--neon-pink); }
 .con-row.warn { border-left-color: #ffb347; }
 .con-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 11px; }
-.con-row-head b { font-family: 'Orbitron', system-ui, sans-serif; color: var(--neon-yellow); }
+.con-row-head b { font-family: 'Chakra Petch', system-ui, sans-serif; color: var(--neon-yellow); }
 .con-row-head span { color: var(--text-dim); font-size: 10px; }
 .con-line { font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
 .con-line.dim { color: var(--text-dim); font-size: 10px; }
@@ -2908,7 +2908,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .lp-row.noline { border-color: rgba(255, 32, 121, .5); }
 .lp-logos { grid-area: logos; display: flex; align-items: center; gap: 2px; }
 .lp-logos img, .lp-logos i { width: 20px; height: 20px; object-fit: contain; }
-.lp-teams { grid-area: teams; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; line-height: 1.2; overflow-wrap: anywhere; }
+.lp-teams { grid-area: teams; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 12px; line-height: 1.2; overflow-wrap: anywhere; }
 .lp-at { color: var(--text-dim); font-weight: 500; font-size: 10px; }
 .lp-tb { font-family: 'Press Start 2P', monospace; font-size: 6px; color: var(--neon-yellow); border: 1px solid var(--neon-yellow); border-radius: 3px; padding: 1px 3px; vertical-align: middle; }
 .lp-line { grid-area: line; justify-self: end; font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--neon-yellow); white-space: nowrap; }
@@ -2921,7 +2921,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 @media (max-width: 359px) { .admin-owners-list { grid-template-columns: minmax(0, 1fr); } }
 .admin-owner { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border: 2px solid var(--card-border); border-radius: 8px; background: rgba(0, 0, 0, .25); }
 .admin-owner.on { border-color: var(--neon-green); background: rgba(57, 255, 136, .07); }
-.ao-name { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; }
+.ao-name { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 12px; }
 .ao-state { font-size: 9px; color: var(--text-dim); margin-right: auto; }
 .admin-owner.on .ao-state { color: var(--neon-green); }
 .ao-reset { min-height: 30px; padding: 4px 8px; font-size: 7px; }
@@ -2944,7 +2944,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   border: 2px solid var(--card-border);
   background: rgba(0, 0, 0, 0.4);
   color: var(--text);
-  font-family: 'Orbitron', system-ui, sans-serif;
+  font-family: 'Chakra Petch', system-ui, sans-serif;
   font-size: 16px;
   text-align: center;
   letter-spacing: 0.08em;
@@ -2963,7 +2963,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 
 /* The key gate rides above the editor overlay, not below it. */
 .admin-gate { z-index: 45; }
-.admin-gate-input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; text-align: center; letter-spacing: .08em; }
+.admin-gate-input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--card-border); background: rgba(0, 0, 0, .4); color: var(--text); font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 16px; text-align: center; letter-spacing: .08em; }
 .admin-gate-input:focus { outline: none; border-color: var(--neon-cyan); }
 .admin-gate .admin-status { text-align: center; }
 
@@ -3023,7 +3023,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .payouts-panel.hidden { display: none; }
 .pot-head { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .pot-stat { display: flex; flex-direction: column; gap: 3px; padding: 8px 6px; border: 2px solid var(--card-border); border-radius: 8px; background: rgba(0, 255, 143, .05); text-align: center; }
-.pot-stat b { font-family: 'Orbitron', system-ui, sans-serif; font-size: 15px; color: var(--neon-green); }
+.pot-stat b { font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 15px; color: var(--neon-green); }
 .pot-stat span { font-family: 'Press Start 2P', monospace; font-size: 5.5px; line-height: 1.6; color: var(--text-dim); letter-spacing: .05em; }
 .pot-note { font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.8; color: var(--text-dim); letter-spacing: .05em; }
 .pot-live { align-self: flex-start; padding: 3px 8px; border: 1px solid rgba(255, 228, 94, .5); border-radius: 999px; background: rgba(255, 228, 94, .08); color: var(--neon-yellow); font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .06em; }
@@ -3047,11 +3047,11 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-row.me { background: rgba(5, 217, 232, .1); box-shadow: inset 3px 0 0 var(--neon-cyan); }
 .pot-row.inmoney .pot-name { color: var(--neon-yellow); }
 .pot-place { font-family: 'Press Start 2P', monospace; font-size: 7px; white-space: nowrap; color: var(--text-dim); }
-.pot-name { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pot-name { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pot-proj { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--neon-purple); flex: none; }
-.pot-pts { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; text-align: right; }
+.pot-pts { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; text-align: right; }
 .pot-won { font-size: 10px; text-align: center; white-space: nowrap; }
-.pot-earned { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; color: var(--neon-green); text-align: right; }
+.pot-earned { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; color: var(--neon-green); text-align: right; }
 .pot-empty { font-size: 11px; color: var(--text-dim); text-align: center; padding: 4px 0; }
 @media (max-width: 360px) { .pot-row { grid-template-columns: 20px minmax(0, 1fr) 38px 44px 56px; font-size: 11px; } }
 
@@ -3073,7 +3073,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .recap-art { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; }
 .recap-logo { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(0, 0, 0, .6)); }
 .recap-logo.blank { width: 44px; height: 44px; }
-.recap-logo.arrow { display: flex; align-items: center; justify-content: center; font-family: 'Orbitron', sans-serif; font-size: 30px; color: var(--c); text-shadow: 0 0 10px var(--c); }
+.recap-logo.arrow { display: flex; align-items: center; justify-content: center; font-family: 'Chakra Petch', sans-serif; font-size: 30px; color: var(--c); text-shadow: 0 0 10px var(--c); }
 .recap-vs { display: flex; align-items: center; }
 .recap-vs .recap-logo { width: 32px; height: 32px; }
 .recap-vs .recap-logo + .recap-logo { margin-left: -12px; }
@@ -3090,7 +3090,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .recap-pick { font-weight: 700; color: #fff; }
 .recap-sub { font-size: 11px; line-height: 1.35; color: var(--text-meta); margin-top: 3px; }
 .recap-stat { display: flex; flex-direction: column; align-items: center; min-width: 46px; padding-left: 8px; border-left: 1px solid rgba(255, 255, 255, .08); }
-.recap-stat b { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 22px; line-height: 1; color: var(--c); text-shadow: 0 0 10px color-mix(in srgb, var(--c) 60%, transparent); }
+.recap-stat b { font-family: 'Chakra Petch', sans-serif; font-weight: 900; font-size: 22px; line-height: 1; color: var(--c); text-shadow: 0 0 10px color-mix(in srgb, var(--c) 60%, transparent); }
 .recap-stat span { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .12em; color: var(--text-dim); margin-top: 5px; }
 @media (max-width: 360px) { .recap-card { grid-template-columns: 44px minmax(0, 1fr) auto; } .recap-logo { width: 38px; height: 38px; } .recap-stat b { font-size: 19px; } }
 
@@ -3198,12 +3198,12 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .grid-lights i { width: 14px; height: 14px; border-radius: 50%; background: #3a0810; border: 1px solid #5a1020; transition: background .3s, box-shadow .3s; }
 .grid-lights i.on { background: #ff2a3a; box-shadow: 0 0 8px #ff2a3a, 0 0 16px rgba(255, 42, 58, .6); }
 .grid-clock-label { font-size: 6.5px; letter-spacing: .2em; color: var(--neon-yellow); margin-top: 2px; }
-.grid-clock { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 900; font-size: 34px; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 10px rgba(255, 255, 255, .5), 0 0 22px rgba(5, 217, 232, .5); font-style: italic; }
+.grid-clock { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 900; font-size: 34px; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 10px rgba(255, 255, 255, .5), 0 0 22px rgba(5, 217, 232, .5); font-style: italic; }
 .grid-clock small { font-size: 14px; margin-right: 2px; color: var(--neon-yellow); }
 .grid-rows { display: flex; flex-direction: column; gap: 6px; width: calc(100% - 40px); margin-top: 6px; }
 .grid-row { display: grid; grid-template-columns: 1fr auto 18px; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, .05); border-left: 4px solid transparent; font-size: 8px; letter-spacing: .06em; text-align: left; }
 .grid-row .gr-k { color: var(--text-dim); }
-.grid-row .gr-v { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 13px; letter-spacing: 0; color: #fff; }
+.grid-row .gr-v { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 13px; letter-spacing: 0; color: #fff; }
 .grid-row .gr-s { text-align: center; font-size: 10px; }
 .grid-row.ok { border-left-color: var(--neon-green); }
 .grid-row.ok .gr-s { color: var(--neon-green); }
@@ -3231,7 +3231,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-loading { font-size: 11px; color: var(--text-dim); padding: 8px 0; }
 .ins-line { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 10px; align-items: center; }
 .ins-line-nums { display: flex; flex-direction: column; gap: 3px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .06em; color: var(--text-dim); }
-.ins-line-nums b { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 12px; letter-spacing: 0; color: #fff; margin-left: 2px; }
+.ins-line-nums b { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 12px; letter-spacing: 0; color: #fff; margin-left: 2px; }
 .ins-move { color: var(--neon-cyan); }
 .ins-flat { color: var(--text-dim); }
 .ins-spark { width: 120px; height: 28px; color: var(--neon-cyan); }
@@ -3265,7 +3265,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-g { display: grid; grid-template-columns: 74px 1fr 1fr; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; background: rgba(255, 255, 255, .04); }
 .ins-g.head { background: none; padding: 0 8px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--neon-cyan); letter-spacing: .06em; text-align: center; }
 .ins-gk { font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .06em; color: var(--text-dim); }
-.ins-gv { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 13px; text-align: center; color: #fff; font-variant-numeric: tabular-nums; }
+.ins-gv { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 13px; text-align: center; color: #fff; font-variant-numeric: tabular-nums; }
 .ins-gv.lead { color: var(--neon-green); }
 .ins-wx { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: 10.5px; color: var(--text-dim); }
 .ins-leads { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
@@ -3281,7 +3281,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ins-timeline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; margin-top: 4px; }
 .ins-step { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; }
 .ins-step-l { font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .06em; color: var(--text-dim); }
-.ins-step-v { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 12px; color: #fff; padding: 4px 7px; border-radius: 6px; background: rgba(255, 255, 255, .06); white-space: nowrap; }
+.ins-step-v { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 12px; color: #fff; padding: 4px 7px; border-radius: 6px; background: rgba(255, 255, 255, .06); white-space: nowrap; }
 .ins-step.seal .ins-step-v { border: 1px solid rgba(255, 228, 94, .5); color: var(--neon-yellow); }
 .ins-step.now .ins-step-v { border: 1px solid rgba(5, 217, 232, .6); color: var(--neon-cyan); box-shadow: 0 0 8px rgba(5, 217, 232, .3); }
 .ins-step-arrow { font-size: 10px; color: var(--text-dim); margin: 12px 5px 0; }
@@ -3474,7 +3474,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ln-track { display: flex; align-items: stretch; gap: 4px; margin-top: 4px; }
 .ln-step { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 4px; border-radius: 8px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .1); min-width: 0; }
 .ln-step em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: var(--text-dim); }
-.ln-step b { display: inline-flex; align-items: center; gap: 4px; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 15px; color: #fff; }
+.ln-step b { display: inline-flex; align-items: center; gap: 4px; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 15px; color: #fff; }
 .ln-step b .ins-logo { width: 18px; height: 18px; margin: 0; }
 .ln-step.seal { border-color: rgba(255, 228, 94, .55); } .ln-step.seal b { color: var(--neon-yellow); }
 .ln-step.now { border-color: rgba(5, 217, 232, .6); box-shadow: 0 0 10px rgba(5, 217, 232, .2); } .ln-step.now b { color: var(--neon-cyan); }
@@ -3494,13 +3494,13 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ln-pt.seal rect { stroke: var(--neon-yellow); fill: var(--neon-yellow); }
 .ln-pt.now rect { fill: var(--neon-cyan); }
 .ln-pt.open rect { stroke: var(--text-dim); }
-.ln-v { font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 9px; fill: #fff; }
+.ln-v { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 9px; fill: #fff; }
 .ln-pt.seal .ln-v { fill: var(--neon-yellow); }
 .ln-pt.now .ln-v { fill: var(--neon-cyan); }
 .ln-pt.seal .ln-x { fill: var(--neon-yellow); }
 .ln-pt.now .ln-x { fill: var(--neon-cyan); }
 .ln-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
-.ln-chip { display: inline-flex; align-items: baseline; gap: 5px; padding: 5px 8px; border-radius: 6px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .12); font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 12px; color: #fff; }
+.ln-chip { display: inline-flex; align-items: baseline; gap: 5px; padding: 5px 8px; border-radius: 6px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .12); font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 12px; color: #fff; }
 .ln-chip em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .08em; color: var(--text-dim); }
 .ln-chip.seal { border-color: rgba(255, 228, 94, .55); color: var(--neon-yellow); }
 .ln-chip.now { border-color: rgba(5, 217, 232, .6); color: var(--neon-cyan); }
@@ -3528,7 +3528,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ln-chip { flex: 0 1 auto; min-width: 0; padding: 4px 6px; font-size: 11px; white-space: nowrap; }
 .ln-chip.ou { margin-left: auto; font-size: 10px; color: var(--text-dim); }
 .ln-arrow { flex: none; font-size: 11px; }
-.ln-arrow.mv { display: inline-flex; flex-direction: column; align-items: center; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 700; font-size: 8.5px; line-height: 1; }
+.ln-arrow.mv { display: inline-flex; flex-direction: column; align-items: center; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 8.5px; line-height: 1; }
 .ln-arrow.mv b { font-size: 7px; }
 .ln-arrow.fav { color: var(--neon-yellow); } .ln-arrow.dog { color: var(--neon-cyan); }
 .ln-more { margin-top: 6px; }
@@ -3590,10 +3590,10 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .ln-chips { display: flex; flex-wrap: wrap; align-items: stretch; gap: 3px; }
 .ln-chip { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 3px; white-space: nowrap; }
 .ln-chip em { font-size: 5.5px; }
-.ln-chip b { display: inline-flex; align-items: center; gap: 3px; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 13px; }
+.ln-chip b { display: inline-flex; align-items: center; gap: 3px; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 13px; }
 .ln-chip b .ins-logo { width: 16px; height: 16px; margin: 0; }
 .ln-arrow { align-self: center; min-width: 14px; text-align: center; }
-.ln-ou { flex-basis: 100%; text-align: right; font-family: 'Orbitron', system-ui, sans-serif; font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.ln-ou { flex-basis: 100%; text-align: right; font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 10px; color: var(--text-dim); margin-top: 2px; }
 .ln-ou em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5.5px; margin-right: 4px; letter-spacing: .08em; }
 /* Live chance to win the week */
 .wp-note { display: flex; align-items: center; gap: 6px; margin: 2px 4px 6px; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: var(--neon-cyan); }
@@ -3613,7 +3613,7 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .wp-live .rank-who { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Picks header: pay chips, then the lock clock with your card status */
 .picks-pay { display: flex; justify-content: center; align-items: center; gap: 6px; margin: 6px 0 12px; }
-.picks-pay span { display: inline-flex; align-items: baseline; gap: 5px; padding: 6px 9px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .04); font-family: 'Orbitron', system-ui, sans-serif; font-size: 10.5px; color: var(--text); white-space: nowrap; }
+.picks-pay span { display: inline-flex; align-items: baseline; gap: 5px; padding: 6px 9px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .04); font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 10.5px; color: var(--text); white-space: nowrap; }
 .picks-pay em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .08em; color: var(--text-dim); }
 .picks-pay b { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--neon-yellow); }
 .picks-q { width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(5, 217, 232, .5); background: rgba(5, 217, 232, .08); color: var(--neon-cyan); font-family: 'Press Start 2P', monospace; font-size: 9px; cursor: pointer; flex: none; }
@@ -3841,7 +3841,7 @@ button.cd-chip { appearance: none; line-height: inherit; font-weight: inherit; c
 .hz-row { display: grid !important; grid-template-columns: 1fr auto auto auto 1fr; align-items: center; gap: 6px; }
 .hz-tm { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
 .hz-tm .tm-logo { width: 38px; height: 38px; object-fit: contain; }
-.hz-nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 12px; letter-spacing: .02em; color: var(--text); white-space: nowrap; text-transform: uppercase; }
+.hz-nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 12px; letter-spacing: .02em; color: var(--text); white-space: nowrap; text-transform: uppercase; }
 .hz-tm.picked .hz-nm { color: var(--neon-cyan); }
 .hz-rec { min-height: 9px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: var(--text-dim); white-space: nowrap; }
 .hz-rec b { font-weight: normal; color: var(--neon-yellow); margin-left: 4px; }
@@ -3893,7 +3893,7 @@ button.cd-chip { appearance: none; line-height: inherit; font-weight: inherit; c
 .lm-pt.now { border-color: var(--neon-cyan); background: var(--neon-cyan); border-radius: 50%; box-shadow: 0 0 8px rgba(5, 217, 232, .7); }
 .lm-lab { position: absolute; transform: translateX(-50%); font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; white-space: nowrap; text-align: center; line-height: 1.6; }
 .lm-lab.up { bottom: 13px; } .lm-lab.dn { top: 13px; }
-.lm-lab b { display: block; font-family: 'Orbitron', system-ui, sans-serif; font-weight: 800; font-size: 11px; letter-spacing: 0; }
+.lm-lab b { display: block; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 800; font-size: 11px; letter-spacing: 0; }
 .lm-lab.open { color: var(--text-dim); } .lm-lab.seal { color: var(--neon-yellow); } .lm-lab.now { color: var(--neon-cyan); }
 .lm-end { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; font-family: 'Press Start 2P', monospace; font-size: 5px; color: var(--text-dim); }
 .lm-end img { width: 22px; height: 22px; object-fit: contain; }
@@ -6764,7 +6764,7 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .ssg-who span { font-size: 14px; color: var(--text); }
 .ssg-who small { font-size: 10px; color: var(--text-dim); }
 .ssg-who b { margin-left: auto; display: flex; align-items: baseline; gap: 6px; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 12px; color: var(--neon-green); }
-.ssg-who b em { font-family: 'Orbitron', sans-serif; font-style: normal; font-size: 10px; color: var(--neon-cyan); }
+.ssg-who b em { font-family: 'Chakra Petch', sans-serif; font-style: normal; font-size: 10px; color: var(--neon-cyan); }
 .ssg-row.me .ssg-who span { color: var(--neon-cyan); }
 .ssg-row.win .ssg-who i { color: var(--neon-yellow); }
 .ssg-cells .ssb-box { min-width: 0; padding: 6px 8px; gap: 4px; }
@@ -7179,7 +7179,7 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .recap-card.arc .recap-main .pick-chip { font-size: 11px; }
 .recap-card.arc .recap-sub { font-size: 11px; opacity: .85; }
 .recap-card.arc .recap-stat { min-width: 52px; padding: 0 0 0 10px; background: none; border: 0; border-left: 1px solid rgba(255, 255, 255, .08); border-radius: 0; box-shadow: none; }
-.recap-card.arc .recap-stat b { font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 18px; text-shadow: none; }
+.recap-card.arc .recap-stat b { font-family: 'Chakra Petch', sans-serif; font-weight: 800; font-size: 18px; text-shadow: none; }
 .recap-card.arc .recap-stat span { margin-top: 4px; font-size: 5px; opacity: .8; }
 /* Admin screens on a phone never pan sideways. */
 .admin-overlay { overflow-x: hidden; }
@@ -7191,7 +7191,7 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .rm-none { font-size: 11px; color: var(--text-dim); }
 .rm-side { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; padding: 6px 8px; border-radius: 7px; background: rgba(255, 255, 255, .03); }
 .rm-side > span { font-size: 12.5px; font-weight: 700; color: #fff; }
-.rm-side > i { font-style: normal; font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 12px; color: var(--text-dim); }
+.rm-side > i { font-style: normal; font-family: 'Chakra Petch', sans-serif; font-weight: 800; font-size: 12px; color: var(--text-dim); }
 .rm-side.hit > i { color: var(--neon-green); }
 .rm-side > div { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--text-meta); }
 .rm-side b, .rm-list b { font-weight: 600; color: var(--text-meta); }
@@ -7476,7 +7476,7 @@ img.wc-trophy { width: 26px; height: 26px; object-fit: contain; filter: drop-sha
 .sh-swing small { display: block; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .1em; color: #9aa3b8; margin-bottom: 4px; }
 .sh-swing span { font-size: 12px; color: #eef2ff; }
 .sh-argfoot { font-size: 10.5px; color: #9aa3b8; text-align: center; }
-#sh2h-modal .sh-args .sh-agree-h small { font-family: 'Orbitron', system-ui, sans-serif; font-size: 10.5px; letter-spacing: 0; white-space: nowrap; } #sh2h-modal .sh-args .sh-agree-h span { white-space: nowrap; }
+#sh2h-modal .sh-args .sh-agree-h small { font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 10.5px; letter-spacing: 0; white-space: nowrap; } #sh2h-modal .sh-args .sh-agree-h span { white-space: nowrap; }
 /* Season head to head v5: calm. Dark slate, two soft accents, no glow,
    no scanlines, thin solid bars, more air. Shareable. */
 #sh2h-modal { --L: #7cc7ff; --R: #ff9bb5; }
@@ -8146,7 +8146,7 @@ html:not(.qr-seen) .hz-mid .qr-tog { animation: qr-glint 6s ease-in-out 2s infin
 .wks-r:nth-child(odd) { background: rgba(255, 255, 255, .03); }
 .wks-p { font-size: 12px; color: var(--text-meta); font-variant-numeric: tabular-nums; }
 .wks-n { font-size: 15px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wks-s { font-family: 'Orbitron', system-ui, sans-serif; font-size: 16px; font-variant-numeric: tabular-nums; }
+.wks-s { font-family: 'Chakra Petch', system-ui, sans-serif; font-size: 16px; font-variant-numeric: tabular-nums; }
 .wks-r.won .wks-n, .wks-r.won .wks-s { color: var(--neon-yellow); }
 .wks-r.won .wks-p::after { content: " 🏆"; }
 .wks-r.me { outline: 1px solid var(--neon-cyan); background: rgba(5, 217, 232, .08); }
@@ -8206,7 +8206,7 @@ button.plc-av { padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .ins-fold[open] .ins-fold-car { transform: rotate(180deg); }
 
 /* ---- Lightning: the late night five-bet pot ---------------------------- */
-.lt-fab { position: fixed; right: 14px; bottom: calc(var(--nav-h) + 14px); z-index: 900; display: flex; align-items: center; gap: 6px; padding: 9px 14px 9px 11px; border-radius: 999px; border: 1px solid rgba(255, 228, 94, .55); background: #1b1030; color: var(--neon-yellow); font: 700 12px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .04em; box-shadow: 0 6px 18px rgba(0, 0, 0, .5); cursor: pointer; }
+.lt-fab { position: fixed; right: 14px; bottom: calc(var(--nav-h) + 14px); z-index: 900; display: flex; align-items: center; gap: 6px; padding: 9px 14px 9px 11px; border-radius: 999px; border: 1px solid rgba(255, 228, 94, .55); background: #1b1030; color: var(--neon-yellow); font: 700 12px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .04em; box-shadow: 0 6px 18px rgba(0, 0, 0, .5); cursor: pointer; }
 .lt-fab b { font-size: 16px; }
 .lt-fab.call { background: var(--neon-yellow); color: #1b1030; animation: lt-call 1.6s ease-in-out infinite; }
 @keyframes lt-call { 50% { box-shadow: 0 0 0 6px rgba(255, 228, 94, .18), 0 6px 18px rgba(0, 0, 0, .5); } }
@@ -8218,13 +8218,13 @@ button.plc-av { padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .lt-x { margin-left: auto; width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .15); background: none; color: var(--text); cursor: pointer; }
 .lt-bolt { font-size: 56px; text-align: center; margin: 14px 0 4px; filter: drop-shadow(0 0 18px rgba(255, 228, 94, .55)); }
 .lt-bolt.small { font-size: 36px; margin-top: 8px; }
-.lt-card h2 { margin: 0; text-align: center; font: 700 22px 'Orbitron', system-ui, sans-serif; }
+.lt-card h2 { margin: 0; text-align: center; font: 700 22px 'Chakra Petch', system-ui, sans-serif; }
 .lt-sub { margin: 8px 0; text-align: center; font-size: 13.5px; color: var(--text-meta); line-height: 1.45; }
 .lt-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 4px; }
 .lt-facts span { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-radius: 12px; background: rgba(255, 255, 255, .05); font-size: 11px; color: var(--text-meta); text-transform: uppercase; letter-spacing: .06em; }
-.lt-facts b { font: 700 18px 'Orbitron', system-ui, sans-serif; color: #fff; letter-spacing: 0; text-transform: none; }
+.lt-facts b { font: 700 18px 'Chakra Petch', system-ui, sans-serif; color: #fff; letter-spacing: 0; text-transform: none; }
 .lt-btns { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; margin-top: 16px; }
-.lt-btns button, .lt-back { font: 700 14px 'Orbitron', system-ui, sans-serif; padding: 13px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .05); color: #fff; cursor: pointer; }
+.lt-btns button, .lt-back { font: 700 14px 'Chakra Petch', system-ui, sans-serif; padding: 13px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .05); color: #fff; cursor: pointer; }
 .lt-go { background: var(--neon-yellow) !important; color: #1b1030 !important; border-color: var(--neon-yellow) !important; }
 .lt-go:disabled { opacity: .4; cursor: default; }
 .lt-err { margin: 10px 0 0; text-align: center; color: #ff8aa0; font-size: 13px; }
@@ -8238,11 +8238,11 @@ button.plc-av { padding: 0; font: inherit; color: inherit; cursor: pointer; }
 .lt-match { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 14px 0 6px; }
 .lt-match span { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
 .lt-match img { width: 56px; height: 56px; object-fit: contain; }
-.lt-match b { font: 700 15px 'Orbitron', system-ui, sans-serif; }
+.lt-match b { font: 700 15px 'Chakra Petch', system-ui, sans-serif; }
 .lt-match em { font-style: normal; color: var(--text-meta); font-size: 12px; }
 .lt-when { font-size: 12px; color: var(--text-meta); }
 .lt-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-.lt-side { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px 6px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .04); font: 700 15px 'Orbitron', system-ui, sans-serif; cursor: pointer; white-space: nowrap; min-width: 0; }
+.lt-side { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px 6px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .04); font: 700 15px 'Chakra Petch', system-ui, sans-serif; cursor: pointer; white-space: nowrap; min-width: 0; }
 .lt-side b { overflow: hidden; text-overflow: ellipsis; }
 .lt-side i { font: 400 11px system-ui, sans-serif; color: var(--text-meta); }
 .lt-side img { width: 64px; height: 64px; object-fit: contain; }
@@ -8260,7 +8260,7 @@ button.plc-av { padding: 0; font: inherit; color: inherit; cursor: pointer; }
 button.lt-rc { cursor: pointer; }
 .lt-rc em { font-style: normal; color: var(--neon-yellow); font-weight: 700; } .lt-rc span { color: var(--text-meta); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .lt-rc b { white-space: nowrap; }
 .lt-tb { display: grid; gap: 6px; margin-top: 14px; font-size: 13px; color: var(--text-meta); }
-.lt-tb input { font: 700 18px 'Orbitron', system-ui, sans-serif; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .18); background: #0b0616; color: #fff; }
+.lt-tb input { font: 700 18px 'Chakra Petch', system-ui, sans-serif; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .18); background: #0b0616; color: #fff; }
 .lt-win { margin: 12px 0 4px; padding: 10px 12px; border-radius: 12px; text-align: center; background: rgba(255, 228, 94, .12); color: var(--neon-yellow); font-weight: 700; }
 .lt-bets { display: grid; gap: 6px; margin-top: 10px; }
 .lt-br { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 9px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); font-size: 13px; }
@@ -8478,7 +8478,7 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 .ask-f input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .18); background: rgba(0, 0, 0, .3); color: #fff; font-size: 16px; }
 .ask-f button { padding: 0 16px; border-radius: 10px; border: 0; background: var(--neon-cyan, #05d9e8); color: #0a0014; font-weight: 800; cursor: pointer; }
 .ask-f button:disabled, .ask-f input:disabled { opacity: .5; }
-.ask-fab { position: fixed; left: 12px; bottom: calc(var(--nav-h) + 12px); z-index: 900; display: flex; align-items: center; gap: 5px; padding: 7px 12px 7px 9px; opacity: .95; border-radius: 999px; border: 1px solid rgba(5, 217, 232, .55); background: #12102a; color: var(--neon-cyan, #05d9e8); font: 700 12px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .04em; box-shadow: 0 6px 18px rgba(0, 0, 0, .5); cursor: pointer; }
+.ask-fab { position: fixed; left: 12px; bottom: calc(var(--nav-h) + 12px); z-index: 900; display: flex; align-items: center; gap: 5px; padding: 7px 12px 7px 9px; opacity: .95; border-radius: 999px; border: 1px solid rgba(5, 217, 232, .55); background: #12102a; color: var(--neon-cyan, #05d9e8); font: 700 12px/1 'Chakra Petch', system-ui, sans-serif; letter-spacing: .04em; box-shadow: 0 6px 18px rgba(0, 0, 0, .5); cursor: pointer; }
 .ask-fab b { font-size: 13px; }
 .ask-fab[hidden] { display: none; }
 @media (min-width: 900px) { html:not(.phone) .ask-fab { left: 106px; } }
@@ -8546,7 +8546,7 @@ i.lk.rank-lk.lk-dn { background: rgba(255, 32, 121, .16); box-shadow: inset 0 0 
 #trivia-screen .trivia-hero { padding-bottom: 12px; margin-bottom: 8px; }
 .tq-over { margin-top: 6px; padding: 16px; border-radius: 12px; border: 2px solid #ff2079; background: rgba(255, 32, 121, .08); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; animation: tqin .35s ease-out; }
 .tq-over-h { font: 400 16px/1 'Press Start 2P', monospace; color: #ff2079; letter-spacing: .06em; }
-.tq-over-n b { font: 800 34px/1 'Orbitron', sans-serif; color: #fff; margin-right: 6px; }
+.tq-over-n b { font: 800 34px/1 'Chakra Petch', sans-serif; color: #fff; margin-right: 6px; }
 .tq-over-n span { font-size: 13px; color: var(--text-meta, #b8afd3); }
 .tq-over-s { margin: 0; font-size: 15px; line-height: 1.4; }
 @keyframes tqin { from { opacity: 0; transform: translateY(6px); } }
