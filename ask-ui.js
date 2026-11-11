@@ -205,7 +205,13 @@
       const L = payoutLedger();
       const list = (L.list || []).map((r) => ({ member: r.name, place: r.seasonPlace, tied: !!r.tied, seasonPoints: r.points, thisWeekSoFar: r.livePoints ?? null, weeksPlayed: r.played, weeksWon: r.weeksWon, winnings: Math.round((r.earned || 0) * 100) / 100 }));
       const sealedN = Object.values(weekSummaries).filter((w) => w?.complete && !w.exhibition).length, total = typeof POT === "object" ? POT.weeks : null;
-      return { weeksSealed: Object.values(weekSummaries).filter((w) => w?.complete).length, seasonWeeks: total, weeksLeft: total != null ? Math.max(0, total - sealedN) : null, thisWeekCounts: total != null && !weekSummaries[currentWeek]?.complete, currentWeek, includesThisWeek: list.some((r) => r.thisWeekSoFar != null), members: list };
+      // The chalk line, week by week: what a card of every favorite against
+      // the spread scored (the dashed line on the board). On it counts as above.
+      const chalkWeeks = Object.values(weekSummaries).filter((w) => w?.complete && Array.isArray(w.slate) && w.finals).sort((a, b) => a.week - b.week).map((w) => ({ week: w.week, exhibition: !!w.exhibition, chalk: w.slate.reduce((t, g) => t + (scorePick(g, { team: g.favorite, mode: "ATS" }, w.finals[g.id] || w.finals[String(g.id)]) || 0), 0), rows: w.rows || [] }));
+      const chalkLine = { meaning: "Each week's chalk line is what picking every favorite against the spread scored. Below it means a member scored less than that card; on it counts as above. Exhibition weeks are marked; say whether a claim counts them.",
+        byWeek: chalkWeeks.map((c) => ({ week: c.week, chalk: c.chalk, ...(c.exhibition ? { exhibition: true } : {}) })),
+        members: MANAGERS.map((n) => { const played = chalkWeeks.filter((c) => c.rows.some((r) => r.name === n)); const below = played.filter((c) => c.rows.find((r) => r.name === n).score < c.chalk).map((c) => c.week); const real = below.filter((wk) => !chalkWeeks.find((c) => c.week === wk).exhibition); return { member: n, weeksPlayed: played.length, weeksBelowChalk: below, neverBelowChalk: played.length > 0 && !below.length, neverBelowOutsideExhibition: played.length > 0 && !real.length }; }) };
+      return { chalkLine, weeksSealed: Object.values(weekSummaries).filter((w) => w?.complete).length, seasonWeeks: total, weeksLeft: total != null ? Math.max(0, total - sealedN) : null, thisWeekCounts: total != null && !weekSummaries[currentWeek]?.complete, currentWeek, includesThisWeek: list.some((r) => r.thisWeekSoFar != null), members: list };
     },
     standings() {
       const memo = base(), live = typeof inFlightPoints === "function" ? (n) => inFlightPoints((lastGoodCloudPicks || {})[n]?.picks || {}, latestLive) : () => 0;
