@@ -9109,6 +9109,9 @@ html:not(.pro) .recap-card.rx .recap-logo { width: 32px !important; height: 32px
 html:not(.pro) .recap-card.rx .rx-viz { margin-top: 6px !important; }
 html:not(.pro) .rx-grid > .rx-tile { gap: 0 !important; justify-content: flex-start !important; }
 html:not(.pro) .recap-panel .rx-grid > .recap-card.rx.rx-tile { padding-bottom: 7px !important; }
+/* Wide cards: the row (logo, text, stat column) sits as far from the bottom
+   edge as from the header line, so the stat reads centred in the card. */
+html:not(.pro) .recap-panel .rx-grid > .recap-card.rx.rx-wide { padding-bottom: 6px !important; }
 /* A tile shorter than its row partner centres its text in the spare height
    instead of leaving it all at the bottom. */
 html:not(.pro) .rx-grid > .rx-tile:not(.tb):not(.lk) .rx-row { flex: 1 1 auto; justify-content: center !important; }
