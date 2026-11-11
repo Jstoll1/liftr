@@ -211,7 +211,13 @@
       const chalkLine = { meaning: "Each week's chalk line is what picking every favorite against the spread scored. Below it means a member scored less than that card; on it counts as above. Exhibition weeks are marked; say whether a claim counts them.",
         byWeek: chalkWeeks.map((c) => ({ week: c.week, chalk: c.chalk, ...(c.exhibition ? { exhibition: true } : {}) })),
         members: MANAGERS.map((n) => { const played = chalkWeeks.filter((c) => c.rows.some((r) => r.name === n)); const below = played.filter((c) => c.rows.find((r) => r.name === n).score < c.chalk).map((c) => c.week); const real = below.filter((wk) => !chalkWeeks.find((c) => c.week === wk).exhibition); return { member: n, weeksPlayed: played.length, weeksBelowChalk: below, neverBelowChalk: played.length > 0 && !below.length, neverBelowOutsideExhibition: played.length > 0 && !real.length }; }) };
-      return { chalkLine, weeksSealed: Object.values(weekSummaries).filter((w) => w?.complete).length, seasonWeeks: total, weeksLeft: total != null ? Math.max(0, total - sealedN) : null, thisWeekCounts: total != null && !weekSummaries[currentWeek]?.complete, currentWeek, includesThisWeek: list.some((r) => r.thisWeekSoFar != null), members: list };
+      // Each member's points and place in every sealed week, so 'my best /
+      // worst week' and 'which week did X score most' read straight off it.
+      const sealed = Object.values(weekSummaries).filter((w) => w?.complete && Array.isArray(w.rows)).sort((a, b) => a.week - b.week);
+      const weekly = MANAGERS.map((n) => { const wks = sealed.map((w) => { const r = w.rows.find((x) => x.name === n); return r ? { week: w.week, points: r.score, place: r.place, ...(w.exhibition ? { exhibition: true } : {}), ...((w.winners || []).includes(n) ? { won: true } : {}) } : null; }).filter(Boolean);
+        const pts = wks.map((x) => x.points).filter(Number.isFinite); const lo = Math.min(...pts), hi = Math.max(...pts);
+        return { member: n, weeks: wks, lowestWeeks: pts.length ? wks.filter((x) => x.points === lo).map((x) => x.week) : [], lowest: pts.length ? lo : null, highestWeeks: pts.length ? wks.filter((x) => x.points === hi).map((x) => x.week) : [], highest: pts.length ? hi : null }; });
+      return { weekByWeek: { meaning: "Every sealed week's points and place for each member (exhibition weeks marked; say whether a claim counts them).", members: weekly }, chalkLine, weeksSealed: Object.values(weekSummaries).filter((w) => w?.complete).length, seasonWeeks: total, weeksLeft: total != null ? Math.max(0, total - sealedN) : null, thisWeekCounts: total != null && !weekSummaries[currentWeek]?.complete, currentWeek, includesThisWeek: list.some((r) => r.thisWeekSoFar != null), members: list };
     },
     standings() {
       const memo = base(), live = typeof inFlightPoints === "function" ? (n) => inFlightPoints((lastGoodCloudPicks || {})[n]?.picks || {}, latestLive) : () => 0;
