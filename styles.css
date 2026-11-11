@@ -9108,6 +9108,14 @@ html:not(.pro) .recap-card.rx .recap-art { width: 34px !important; height: 34px 
 html:not(.pro) .recap-card.rx .recap-logo { width: 32px !important; height: 32px !important; }
 html:not(.pro) .recap-card.rx .rx-viz { margin-top: 6px !important; }
 html:not(.pro) .rx-grid > .rx-tile { gap: 0 !important; justify-content: flex-start !important; }
+html:not(.pro) .recap-panel .rx-grid > .recap-card.rx.rx-tile { padding-bottom: 7px !important; }
+/* A tile shorter than its row partner centres its text in the spare height
+   instead of leaving it all at the bottom. */
+html:not(.pro) .rx-grid > .rx-tile:not(.tb):not(.lk) .rx-row { flex: 1 1 auto; justify-content: center !important; }
+html:not(.pro) .rx-grid > .rx-tile:not(.tb):not(.lk) .rx-row > .recap-body { flex: none !important; }
+/* The last text line sits as far from the bottom edge as the header does
+   from the top: no extra band under short tiles. */
+html:not(.pro) .rx-grid > .rx-tile .recap-sub { line-height: 1.3 !important; }
 html:not(.pro) .rx-grid > .rx-tile .rx-viz { margin-top: 6px !important; padding-top: 0 !important; }
 html:not(.pro) .rx-grid > .rx-tile .rx-row { gap: 2px !important; }
 html:not(.pro) .recap-card.rx .pick-chip { background: transparent !important; border: 1px solid rgba(var(--rx-t-rgb), .6) !important; border-radius: 10px !important; font-size: 11px !important; color: #fff !important; padding: 0 7px 0 2px !important; box-shadow: none !important; }
