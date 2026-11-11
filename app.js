@@ -10135,7 +10135,7 @@ function openPlayerCard(name, again) {
     m.addEventListener("click", (e) => {
       if (e.target.closest("[data-champs]")) return openChampions(m.dataset.name);
       const sr = e.target.closest("[data-statrank]");
-      if (sr) return openStatBreakdown(sr.dataset.statrank, m.dataset.name);
+      if (sr) return openStatSheet(sr.dataset.statrank, m.dataset.name, "week");
       // The avatar: yours opens the avatar editor, anyone else's the season
       // head to head, you against them.
       if (e.target.closest("[data-plcav]")) {
@@ -10204,14 +10204,14 @@ function bottomSheet(id) {
 // (right), with this player's marker between. Lower-is-better stats are
 // flipped so the right end always means best.
 const SEASON_BOARD = [
-  { k: "points", label: "POINTS", get: (d) => d.points, fmt: (v) => `${v}` },
-  { k: "weeklyWins", label: "WEEKLY WINS", get: (d) => d.wins.length, fmt: (v) => `${v}` },
+  { k: "points", label: "POINTS", wk: "WEEK", get: (d) => d.points, fmt: (v) => `${v}` },
+  { k: "weeklyWins", label: "WEEKLY WINS", wk: "FINISH", get: (d) => d.wins.length, fmt: (v) => `${v}` },
   // Rates rank fairly when people sat out weeks; the record shows the count.
-  { k: "hitPct", label: "PICKS RIGHT", get: (d) => (d.w + d.l ? Math.round((100 * d.w) / (d.w + d.l)) : null), fmt: (v) => `${v}%`, rec: (d) => `${d.w}-${d.l}` },
-  { k: "atsPct", label: "VS SPREAD", get: (d) => d.ats, fmt: (v) => `${v}%`, rec: (d) => `${d.atsW}-${d.atsN - d.atsW}` },
-  { k: "dogPct", label: "UNDERDOGS", get: (d) => d.dog, fmt: (v) => `${v}%`, rec: (d) => `${d.dogW}-${d.dogN - d.dogW}` },
-  { k: "avgFinish", label: "AVG FINISH", get: (d) => d.avgFinish, fmt: (v) => v.toFixed(1), low: true },
-  { k: "tbOff", label: "TIEBREAKER", get: (d) => d.tbOff, fmt: (v) => `${Math.round(v)} off`, efmt: (v) => `${Math.round(v)}`, rfmt: (v) => `${v.toFixed(1)} off`, low: true },
+  { k: "hitPct", label: "PICKS RIGHT", wk: "RIGHT", get: (d) => (d.w + d.l ? Math.round((100 * d.w) / (d.w + d.l)) : null), fmt: (v) => `${v}%`, rec: (d) => `${d.w}-${d.l}` },
+  { k: "atsPct", label: "VS SPREAD", wk: "SPREAD", get: (d) => d.ats, fmt: (v) => `${v}%`, rec: (d) => `${d.atsW}-${d.atsN - d.atsW}` },
+  { k: "dogPct", label: "UNDERDOGS", wk: "DOG", get: (d) => d.dog, fmt: (v) => `${v}%`, rec: (d) => `${d.dogW}-${d.dogN - d.dogW}` },
+  { k: "avgFinish", label: "AVG FINISH", wk: "FINISH", get: (d) => d.avgFinish, fmt: (v) => v.toFixed(1), low: true },
+  { k: "tbOff", label: "TIEBREAKER", wk: "TB", get: (d) => d.tbOff, fmt: (v) => `${Math.round(v)} off`, efmt: (v) => `${Math.round(v)}`, rfmt: (v) => `${v.toFixed(1)} off`, low: true },
 ];
 function seasonBoardData(name) {
   const all = MANAGERS.map((n) => ({ n, d: playerSeason(n) })).filter((x) => x.d.points || x.d.w + x.d.l);
@@ -10298,31 +10298,56 @@ function paintSeasonStrip(standalone) {
 document.getElementById("season-strip")?.addEventListener("click", (e) => {
   if (e.target.closest(".rx-season")) { noteUse("season-strip"); openSeasonSheet(currentManager); }
 });
-// One stat, the whole league: every player ranked best first, with the
-// value and (for rates) the record, the viewer highlighted.
-function openBoardRank(k, name = currentManager) {
-  const st = SEASON_BOARD.find((x) => x.k === k);
+// The player card's stats, in the same shape as SEASON_BOARD.
+const CARD_STATS = {
+  "AVG WEEK": { k: "avgWeek", label: "AVG WEEK", wk: "WEEK", get: (d) => d.avg, fmt: (v) => v.toFixed(1) },
+  "BEST WEEK": { k: "bestWeek", label: "BEST WEEK", wk: "WEEK", get: (d) => d.top?.score, fmt: (v) => `${v}` },
+  "WORST WEEK": { k: "worstWeek", label: "WORST WEEK", wk: "WEEK", get: (d) => d.low?.score, fmt: (v) => `${v}` },
+  "PICKS RIGHT": "hitPct", "ON SPREAD": "atsPct",
+  "TO WIN": { k: "suPct", label: "TO WIN", wk: "WIN", get: (d) => d.su, fmt: (v) => `${v}%`, rec: (d) => `${d.suW}-${d.suN - d.suW}` },
+  "🔒 LOCKS": { k: "lockPct", label: "LOCKS", wk: "LOCK", get: (d) => (d.lockW + d.lockL ? Math.round((100 * d.lockW) / (d.lockW + d.lockL)) : null), fmt: (v) => `${v}%`, rec: (d) => `${d.lockW}-${d.lockL}` },
+};
+const statSpec = (key) => { const c = CARD_STATS[key]; const k = typeof c === "string" ? c : c ? null : key; return k ? SEASON_BOARD.find((x) => x.k === k) : c; };
+// One stat, one sheet: a summary line, then LEAGUE (every player ranked,
+// best first) and BY WEEK (this player's weeks against the league), the
+// same look everywhere. The season window opens on LEAGUE; a player card
+// opens on BY WEEK.
+function openStatSheet(key, name = currentManager, tab = "league") {
+  const st = statSpec(key);
   if (!st) return;
   const esc = escapeCd;
   const rows = MANAGERS.map((n) => { const d = playerSeason(n); const v = st.get(d); return v != null && Number.isFinite(v) ? { n, v, rec: st.rec ? st.rec(d) : "" } : null; }).filter(Boolean)
     .sort((a, b) => (st.low ? a.v - b.v : b.v - a.v));
-  if (!rows.length) return;
   const better = (a, b) => (st.low ? a < b : a > b);
-  const best = rows[0].v, worst = rows[rows.length - 1].v, span = best - worst;
+  const fmt = st.rfmt || st.fmt;
+  const best = rows[0]?.v, worst = rows[rows.length - 1]?.v, span = rows.length ? best - worst : 0;
+  const placeOf = (v) => 1 + rows.filter((x) => better(x.v, v)).length, tiedOf = (v) => rows.filter((x) => x.v === v).length > 1;
+  const me = rows.find((r) => r.n === name);
+  const avg = rows.length ? rows.reduce((a, r) => a + r.v, 0) / rows.length : null;
+  const sum = me ? `<div class="sbr-sum"><div class="sbr-s1"><b>${fmt(me.v)}</b><span>${tiedOf(me.v) ? "T-" : ""}${ordinal(placeOf(me.v))} of ${rows.length}</span></div><div class="sbr-s2">league avg ${fmt(/%$/.test(st.fmt(1)) ? Math.round(avg) : Math.round(avg * 10) / 10)} · best ${esc(shown(rows[0].n))} ${fmt(best)}</div></div>` : "";
   const list = rows.map((r) => {
-    const place = 1 + rows.filter((x) => better(x.v, r.v)).length, tied = rows.filter((x) => x.v === r.v).length > 1;
-    const share = span ? (r.v - worst) / span : 1;
+    const place = placeOf(r.v), share = span ? (r.v - worst) / span : 1;
     const tier = place === 1 ? "lead" : place <= 3 ? "t-hi" : place > rows.length - 3 ? "t-lo" : "t-mid";
-    return `<li class="sbr-r ${tier}${r.n === name ? " me" : ""}"><span class="sbr-rk">${tied ? "T-" : ""}${ordinal(place)}</span><span class="sbr-nm">${esc(shown(r.n))}</span><span class="sbr-bar"><i style="width:${Math.max(4, Math.round(share * 100))}%;--sw:${Math.max(0.04, share).toFixed(3)}"></i></span><span class="sbr-v">${(st.rfmt || st.fmt)(r.v)}${r.rec ? `<small>${esc(r.rec)}</small>` : ""}</span></li>`;
+    return `<li class="sbr-r ${tier}${r.n === name ? " me" : ""}"><span class="sbr-rk">${tiedOf(r.v) ? "T-" : ""}${ordinal(place)}</span><span class="sbr-nm">${esc(shown(r.n))}</span><span class="sbr-bar"><i style="width:${Math.max(4, Math.round(share * 100))}%;--sw:${Math.max(0.04, share).toFixed(3)}"></i></span><span class="sbr-v">${fmt(r.v)}${r.rec ? `<small>${esc(r.rec)}</small>` : ""}</span></li>`;
   }).join("");
+  const wk = st.wk ? weekRowsFor(st.wk, name) : null;
   const m = bottomSheet("season-rank");
-  document.body.appendChild(m); // on top of the season window
+  document.body.appendChild(m); // over whatever opened it
   m.innerHTML = `<div class="modal-card wks-card sbr-card"><i class="wks-grab" aria-hidden="true"></i>
-    <div class="wks-h"><b>${esc(st.label)}</b><small>${st.low ? "LOWER IS BETTER" : "THE LEAGUE"}</small><button type="button" class="wks-x" aria-label="Back">✕</button></div>
-    <ol class="sbr">${list}</ol></div>`;
-  noteUse("season-rank", k);
+    <div class="wks-h"><b>${esc(st.label)}</b><small>${esc(shown(name).toUpperCase())}</small><button type="button" class="wks-x" aria-label="Back">✕</button></div>
+    ${sum}
+    ${wk ? `<div class="sbr-tabs" role="tablist"><button type="button" role="tab" data-sbtab="league" aria-selected="${tab === "league"}">LEAGUE</button><button type="button" role="tab" data-sbtab="week" aria-selected="${tab !== "league"}">BY WEEK</button></div>` : ""}
+    <div class="sbr-pane" data-pane="league"${wk && tab !== "league" ? " hidden" : ""}>${st.low ? `<div class="sbr-note">Lower is better</div>` : ""}<ol class="sbr">${list}</ol></div>
+    ${wk ? `<div class="sbr-pane" data-pane="week"${tab === "league" ? " hidden" : ""}><div class="sbr-note">${esc(wk.sub)}</div><div class="sbk-list">${wk.body || `<div class="sbk-none">No finished weeks yet.</div>`}</div></div>` : ""}
+  </div>`;
+  if (!m.dataset.tabs) {
+    m.dataset.tabs = "1";
+    m.addEventListener("click", (e) => { const t = e.target.closest("[data-sbtab]"); if (!t) return; for (const b of m.querySelectorAll("[data-sbtab]")) b.setAttribute("aria-selected", String(b === t)); for (const p of m.querySelectorAll("[data-pane]")) p.hidden = p.dataset.pane !== t.dataset.sbtab; noteUse("stat-tab", t.dataset.sbtab); });
+  }
+  noteUse("stat-sheet", `${st.k}:${tab}`);
   m.classList.remove("hidden");
 }
+const openBoardRank = (k, name) => openStatSheet(k, name, "league");
 // The dedicated window: every stat, best and worst at, and the Chief's roast.
 function openSeasonSheet(name = currentManager, waited) {
   const b = name && seasonBoardData(name);
@@ -10396,7 +10421,8 @@ function statPlace(stat, name) {
   } catch { return ""; }
 }
 // One stat, week by week, for one player: what built the number.
-function openStatBreakdown(stat, name) {
+// Week by week for one stat and one player: the rows of the BY WEEK tab.
+function weekRowsFor(stat, name) {
   const esc = escapeCd;
   const byWeek = new Map();
   for (const w of Object.values(weekSummaries)) if (w?.complete) byWeek.set(w.week, w);
@@ -10405,7 +10431,7 @@ function openStatBreakdown(stat, name) {
   const teamOf = (wk, lg) => { const g = (wk.slate || []).find((x) => Number(x.id) === Number(lg.g)); return g ? (lg.team === g.home ? g.homeShort : lg.team === g.away ? g.awayShort : lg.team) : lg.team; };
   const tally = (me, pred) => { let w = 0, n = 0; for (const lg of me?.ledger || []) { if (lg.result !== "hit" && lg.result !== "miss") continue; if (!pred(lg)) continue; n++; if (lg.result === "hit") w++; } return { w, n }; };
   const pc = (x) => Math.max(0, Math.min(100, Math.round(x * 100)));
-  const row = (wkNo, barShare, val, note, cls = "", lg = null) => `<div class="sbk-r ${cls}"><span class="sbk-w">W${wkNo}</span><i class="sbk-bar"><u style="width:${pc(barShare)}%"></u>${lg != null ? `<s style="left:${pc(lg)}%" title="League average"></s>` : ""}</i><b>${val}</b><em>${note}</em></div>`;
+  const row = (wkNo, barShare, val, note, cls = "", lg = null) => `<div class="sbk-r ${cls}"><span class="sbk-w">W${wkNo}</span><i class="sbk-bar"><u style="width:${pc(barShare)}%;--sw:${Math.max(0.04, Math.min(1, barShare || 0)).toFixed(3)}"></u>${lg != null ? `<s style="left:${pc(lg)}%" title="League average"></s>` : ""}</i><b>${val}</b><em>${note}</em></div>`;
   // League average for one week, on the same scale as the row's bar.
   const lgAvg = (wk, f) => { const v = (wk.rows || []).map(f).filter((x) => x != null && Number.isFinite(x)); return v.length ? v.reduce((a, x) => a + x, 0) / v.length : null; };
   let title = stat, sub = "", body = "";
@@ -10418,32 +10444,19 @@ function openStatBreakdown(stat, name) {
   } else if (/LOCK/.test(stat)) {
     sub = "Every lock, week by week";
     body = weeks.map(({ wk, me }) => { const lk = (me?.ledger || []).find((l) => l.lock); if (!lk) return row(wk.week, 0, "–", "no lock", "dim"); const hit = lk.result === "hit"; const all = (wk.rows || []).map((r) => (r.ledger || []).find((l) => l.lock)).filter(Boolean), lh = all.filter((l) => l.result === "hit").length; return row(wk.week, hit ? 1 : 0, hit ? "HIT" : lk.result === "push" ? "PUSH" : "MISS", `${esc(teamOf(wk, lk))} · lg ${lh}/${all.length} hit`, hit ? "hi" : "lo", all.length ? lh / all.length : null); }).join("");
+  } else if (stat === "FINISH") {
+    sub = "Your place each week (higher bar is better)";
+    body = weeks.map(({ wk, me }) => { if (!me || !Number.isFinite(me.place)) return row(wk.week, 0, "–", "sat out", "dim"); const n = (wk.rows || []).length || 10; return row(wk.week, (n - me.place + 1) / n, ordinal(me.place), (wk.winners || []).includes(name) ? "won the week" : `of ${n}`, me.place <= 3 ? "hi" : me.place > n - 3 ? "lo" : ""); }).join("");
+  } else if (stat === "TB") {
+    sub = "Tiebreaker miss each week vs the league average (tick); shorter is better";
+    const tmax = Math.max(1, ...weeks.flatMap(({ wk }) => (wk.rows || []).map((r) => Number(r.tbDiff) || 0)));
+    body = weeks.map(({ wk, me }) => { if (!me || !Number.isFinite(me.tbDiff)) return row(wk.week, 0, "–", "no guess", "dim"); const la = lgAvg(wk, (r) => (Number.isFinite(r.tbDiff) ? r.tbDiff : null)); return row(wk.week, 1 - me.tbDiff / tmax, `${me.tbDiff} off`, la == null ? "" : `lg ${la.toFixed(1)}`, la != null && me.tbDiff < la ? "hi" : la != null && me.tbDiff > la ? "lo" : "", la == null ? null : 1 - la / tmax); }).join("");
   } else {
-    const pred = /SPREAD/.test(stat) ? (l) => l.mode === "ATS" : /WIN/.test(stat) ? (l) => l.mode !== "ATS" : () => true;
-    sub = (/SPREAD/.test(stat) ? "Spread picks right" : /WIN/.test(stat) ? "To-win picks right" : "Picks right") + " each week vs the league average (tick)";
+    const pred = /DOG/.test(stat) ? (l) => l.favorite && l.team !== l.favorite : /SPREAD/.test(stat) ? (l) => l.mode === "ATS" : /WIN/.test(stat) ? (l) => l.mode !== "ATS" : () => true;
+    sub = (/DOG/.test(stat) ? "Underdog picks right" : /SPREAD/.test(stat) ? "Spread picks right" : /WIN/.test(stat) ? "To-win picks right" : "Picks right") + " each week vs the league average (tick)";
     body = weeks.map(({ wk, me }) => { const la = lgAvg(wk, (r) => { const t = tally(r, pred); return t.n ? t.w / t.n : null; }); if (!me) return row(wk.week, 0, "–", "sat out", "dim"); const t = tally(me, pred); if (!t.n) return row(wk.week, 0, "–", "none", "dim"); const p = t.w / t.n; return row(wk.week, p, `${t.w}-${t.n - t.w}`, la == null ? `${Math.round(p * 100)}%` : `${Math.round(p * 100)}% · lg ${Math.round(la * 100)}%`, la == null ? "" : p > la + 0.001 ? "hi" : p < la - 0.001 ? "lo" : "", la); }).join("");
   }
-  // The season number against the league: you, the league average, the best.
-  let league = "";
-  try {
-    const f = STAT_RANK[stat];
-    if (f) {
-      const all = MANAGERS.map((n) => { const v = f(playerSeason(n)); return v ? { n, v: v[0], t: v[1] } : null; }).filter(Boolean);
-      const me = all.find((x) => x.n === name);
-      if (me && all.length > 1) {
-        const isPct = /RIGHT|SPREAD|WIN|LOCK/.test(stat), fmt = (v) => isPct ? `${Math.round((v > 1 ? v : v * 100))}%` : (Math.round(v * 10) / 10).toString();
-        const avgV = all.reduce((a, x) => a + x.v, 0) / all.length, top = all.reduce((a, x) => (x.v > a.v ? x : a));
-        const place = 1 + all.filter((x) => x.v > me.v).length;
-        league = `<div class="sbk-lg"><div><span>${esc(shown(name))}</span><b>${esc(me.t)}</b></div><div><span>League avg</span><b>${fmt(avgV)}</b></div><div><span>Best · ${esc(shown(top.n))}</span><b>${esc(top.t)}</b></div><div><span>Rank of ${all.length}</span><b>${ordinal(place).toLowerCase()}</b></div></div>`;
-      }
-    }
-  } catch {}
-  const m = bottomSheet("stat-break");
-  m.innerHTML = `<div class="modal-card wks-card sbk-card"><i class="wks-grab" aria-hidden="true"></i>
-    <div class="wks-h"><b>${esc(title.replace("🔒 ", ""))}</b><small>${esc(shown(name).toUpperCase())}</small><button type="button" class="wks-x" aria-label="Back to the card">✕</button></div>
-    ${league}<div class="sbk-sub">${esc(sub)}</div><div class="sbk-list">${body || `<div class="sbk-none">No finished weeks yet.</div>`}</div></div>`;
-  noteUse("stat-break", stat);
-  m.classList.remove("hidden");
+  return { sub, body };
 }
 function openStatRank(stat, name) {
   const f = STAT_RANK[stat];
