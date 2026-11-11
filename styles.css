@@ -3050,8 +3050,12 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .pot-row.inmoney .pot-name { color: var(--neon-yellow); }
 .pot-place { font-family: 'Press Start 2P', monospace; font-size: 7px; white-space: nowrap; color: var(--text-dim); }
 .pot-row:not(.head) .pot-place { display: grid; grid-template-columns: 18px 1fr; align-items: center; column-gap: 2px; }
-.pot-mv { display: block; font-style: normal; font-size: 7px; letter-spacing: 0; }
+.pot-mv { display: inline-flex; align-items: center; gap: 2px; line-height: 1; font-style: normal; font-size: 7px; letter-spacing: 0; }
 .pot-mv.up { color: var(--neon-green); } .pot-mv.dn { color: var(--neon-pink); }
+/* The arrow is drawn, not a glyph: the pixel font has no triangle, and the
+   fallback one sat below the digit. */
+.pot-mv::before { content: ""; width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; }
+.pot-mv.up::before { border-bottom: 5px solid currentColor; } .pot-mv.dn::before { border-top: 5px solid currentColor; }
 .pot-name { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pot-proj { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: var(--neon-purple); flex: none; }
 .pot-pts { font-family: 'Chakra Petch', system-ui, sans-serif; font-weight: 700; text-align: right; }

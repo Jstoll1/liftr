@@ -5665,7 +5665,7 @@ function renderPayouts() {
     <div class="pot-table">
       <div class="pot-row head">${[["place","#"],["name","MANAGER"],["pts","PTS"],["rec","REC"],["won","WON"],["earned","EARNED"]].map(([k, t]) => `<button type="button" class="pot-sort${potSort.k === k ? " on" : ""}" data-psort="${k}" aria-label="Sort by ${t}">${t}${potSort.k === k && k !== "place" ? `<i>${potSort.dir > 0 ? "▲" : "▼"}</i>` : ""}</button>`).join("")}</div>
       ${potSorted(list, rec).map((r) => `<div class="pot-row${r.name === currentManager ? " me" : ""}${r.seasonPrize ? " inmoney" : ""}${r.seasonPlace === 1 && r.points > 0 ? " leader" : ""}" data-pot-row="${escapeCd(r.name)}" role="button" tabindex="0">
-        <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}${r.move ? `<i class="pot-mv ${r.move > 0 ? "up" : "dn"}" aria-label="${r.move > 0 ? "up" : "down"} ${Math.abs(r.move)}">${r.move > 0 ? "▲" : "▼"}${Math.abs(r.move)}</i>` : ""}</span>
+        <span class="pot-place">${r.tied ? "T" : ""}${r.seasonPlace}${r.move ? `<i class="pot-mv ${r.move > 0 ? "up" : "dn"}" aria-label="${r.move > 0 ? "up" : "down"} ${Math.abs(r.move)}">${Math.abs(r.move)}</i>` : ""}</span>
         <span class="pot-name"><span class="pot-av" style="--accent:${accentFor(r.name)}">${avatarOverrides[r.name] || shown(r.name)[0]}</span>${r.seasonPlace === 1 && r.points > 0 ? `<i class="pot-crown">♛</i>` : ""}${shown(r.name).toUpperCase()}${r.seasonPrize ? `<span class="pot-proj">+${money(r.seasonPrize)} ${done ? "" : "proj"}</span>` : ""}</span>
         <span class="pot-pts"><b>${r.points}</b><i class="pot-livemark">${r.livePoints ? "•" : ""}</i></span>
         <span class="pot-rec">${rec[r.name] ? `${rec[r.name].w}-${rec[r.name].l}` : "–"}</span>
