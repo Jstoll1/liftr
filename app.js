@@ -10173,13 +10173,21 @@ function recapSeasonStrip() {
   }
   const b = seasonBoardData(currentManager);
   // Wait for the picks: without them only points, finish and tiebreaker
-  // exist, and "your best three" would just be whatever three loaded.
-  if (!b || !b.rows.some((r) => r.k === "hitPct")) return "";
+  // exist, and "your best three" would just be whatever three loaded. Until
+  // they land, show the strip this phone drew last time (it only changes
+  // when a week is sealed).
+  const CK = "brochiefs_season_strip_v1", sealed = Math.max(0, ...Object.values(weekSummaries).filter((w) => w?.complete).map((w) => w.week));
+  if (!b || !b.rows.some((r) => r.k === "hitPct")) {
+    try { const c = JSON.parse(localStorage.getItem(CK) || "null"); if (c && c.me === currentManager && c.week === sealed) return c.html; } catch {}
+    return "";
+  }
   const top3 = [...b.rows].sort((x, y) => x.place - y.place || y.share - x.share).slice(0, 3);
-  return `<div class="rx-season" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Your season against the league">
+  const html = `<div class="rx-season" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Your season against the league">
     <div class="rx-ssh"><span>YOUR SEASON <i>vs the league</i></span><b>ALL STATS ›</b></div>
     <div class="sbd">${seasonBoardRows(b, top3, currentManager)}</div>
   </div>`;
+  try { localStorage.setItem(CK, JSON.stringify({ me: currentManager, week: sealed, html })); } catch {}
+  return html;
 }
 // Once the recap is gone (next slate up), the strip keeps its own spot on
 // Scores until the first kickoff of the new slate.
@@ -10194,9 +10202,10 @@ document.getElementById("season-strip")?.addEventListener("click", (e) => {
   if (e.target.closest(".rx-season")) { noteUse("season-strip"); openSeasonSheet(currentManager); }
 });
 // The dedicated window: every stat, best and worst at, and the Chief's roast.
-function openSeasonSheet(name = currentManager) {
+function openSeasonSheet(name = currentManager, waited) {
   const b = name && seasonBoardData(name);
-  if (!b) return;
+  // Tapped the remembered strip before the picks landed: open once they do.
+  if (!b || !b.rows.some((r) => r.k === "hitPct")) { if (!waited) fetchSeasonLedger().then(() => openSeasonSheet(name, true)).catch(() => {}); if (!b) return; }
   const esc = escapeCd;
   const m = bottomSheet("season-board");
   if (!m.dataset.roastTap) {
@@ -10799,6 +10808,9 @@ function goToScoresNow() {
   // so nothing waits on them. Once the slate is in, the board's picks and
   // scores start loading at once, so a game day open finds them ready.
   loadWeekSummaries();
+  // The season strip needs every pick: start that download now, not after
+  // the replay draws, so it lands with the board.
+  if (loadMe()) setTimeout(() => fetchSeasonLedger().then((l) => { if (l && l.length) try { renderRecap(); } catch {} }).catch(() => {}), 0);
   await Promise.all([
     loadSlate().then(() => { if (firstKickoffPassed()) { fetchLiveScores().catch(() => {}); fetchBoardPicks().catch(() => {}); } }),
     refreshAuthState(),
