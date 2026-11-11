@@ -9679,17 +9679,24 @@ let renderRecap = function () {
   const logo = (id, alt = "") => !id ? `<span class="recap-logo blank"></span>`
     : studio(id) ? `<img class="recap-logo px-art" data-slot="team:${Number(id)}" src="${WORKER_URL}/art/img/${encodeURIComponent(studio(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.onerror=null;this.src='${logoUrl(Number(id))}';this.className='recap-logo'">`
     : `<img class="recap-logo" src="${logoUrl(Number(id))}" alt="${esc(alt)}" loading="lazy" onerror="this.style.visibility='hidden'">`;
+  // Every team the replay names gets its logo: the week's slate maps each
+  // name (full and short, ranks stripped) to its ESPN id, longest first so
+  // "Miami OH" wins over "Miami". Runs on text that is already escaped.
+  const tmNames = new Map();
+  for (const g of last.slate || []) for (const [n, id] of [[g.away, g.awayId], [g.home, g.homeId], [g.awayShort, g.awayId], [g.homeShort, g.homeId]]) { const k = esc(String(n || "").replace(/^#\d+\s+/, "").trim()); if (k.length > 1 && id && !tmNames.has(k)) tmNames.set(k, id); }
+  const tmRx = tmNames.size ? new RegExp(`(?<![A-Za-z])(${[...tmNames.keys()].sort((x, y) => y.length - x.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![A-Za-z])`, "g") : null;
+  const tl = (html) => (tmRx ? String(html).replace(tmRx, (m) => `<em class="t-inl"><img class="t-inl-logo" src="${logoUrl(tmNames.get(m))}" alt="" loading="lazy" decoding="async" onerror="this.remove()">${m}</em>`) : html);
   const mine = (w) => (Array.isArray(w) ? w : [w]).includes(currentManager);
   // [label, class, art, headline, sub, stat, statLabel, isMe]
   if (r.best) {
     const b = r.best;
-    cards.push([ICON.target + "PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${esc(b.pick)}</span>`,
-      `${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : "on it"}${Array.isArray(b.who) && b.who.length < b.takers ? ` · ${b.who.length} cashed` : ""} · ${esc(b.final || b.score)}`, `+${b.pts}`, Array.isArray(b.who) && b.who.length > 1 ? "PTS TOP" : "PTS", mine(b.who), rxDots(b.takers, b.of, "hit")]);
+    cards.push([ICON.target + "PICK OF THE WEEK", "hit", logo(b.teamId, b.team), `${chips(b.who)}<span class="recap-pick">${tl(esc(b.pick))}</span>`,
+      `${b.takers} of ${b.of} ${b.takers === 1 ? "took it" : "on it"}${Array.isArray(b.who) && b.who.length < b.takers ? ` · ${b.who.length} cashed` : ""} · ${tl(esc(b.final || b.score))}`, `+${b.pts}`, Array.isArray(b.who) && b.who.length > 1 ? "PTS TOP" : "PTS", mine(b.who), rxDots(b.takers, b.of, "hit")]);
   }
   if (r.worst) {
     const w = r.worst;
-    cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${esc(w.pick)}</span>`,
-      `${w.takers} of ${w.of} on it · ${esc(w.final || w.score)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who), rxBar(w.takers, w.of, "miss")]);
+    cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${tl(esc(w.pick))}</span>`,
+      `${w.takers} of ${w.of} on it · ${tl(esc(w.final || w.score))}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who), rxBar(w.takers, w.of, "miss")]);
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
@@ -9700,7 +9707,7 @@ let renderRecap = function () {
     const c = r.consensus;
     const [a, b] = c.sides;
     cards.push([ICON.coin + "COIN FLIP", "split", `<span class="recap-vs">${logo(a.id, a.team)}${logo(b.id, b.team)}</span>`, `<span class="recap-pick">League split ${a.n}-${b.n}</span>`,
-      `${esc(c.matchup)} · ${esc(c.final || c.score)}`, `${a.n}-${b.n}`, "SPLIT", false, `<span class="rx-split"><i style="flex:${a.n}">${esc(a.team)} ${a.n}</i><i style="flex:${b.n}">${esc(b.team)} ${b.n}</i></span>`]);
+      `${tl(esc(c.matchup))}<br>${tl(esc(c.final || c.score))}`, `${a.n}-${b.n}`, "SPLIT", false, `<span class="rx-split"><i style="flex:${a.n}">${tl(esc(a.team))} ${a.n}</i><i style="flex:${b.n}">${tl(esc(b.team))} ${b.n}</i></span>`]);
   }
   if (r.tb) {
     const t = r.tb;
@@ -9712,7 +9719,7 @@ let renderRecap = function () {
     const bestNames = (t.who || []).map((x) => shown(x)).join(", ");
     const viz = `<div class="rx-tbw">${line("best", "Closest", bestNames, guess, t.off)}${worst.length && worstOff > t.off ? line("worst", "Furthest", worst.map((x) => shown(x.n)).join(", "), [...new Set(worst.map((x) => x.g))].join(" & "), worstOff) : ""}</div>`;
     cards.push([ICON.hash + "TIEBREAKER", "tb", `<span class="recap-vs">${logo(t.awayId)}${logo(t.homeId)}</span>`, `<span class="recap-pick">Actual total ${t.actual}</span>`,
-      esc(t.matchup), "", "", mine(t.who), viz]);
+      tl(esc(t.matchup)), "", "", mine(t.who), viz]);
   }
   // Lock of the week: who hit theirs, who missed, the best lock leading.
   if (r.locks && (r.locks.list || []).length) {
@@ -9729,7 +9736,7 @@ let renderRecap = function () {
     // Two boxes, the same shape as the tiebreaker's: who hit, and yours
     // (or who missed, when you had no lock).
     const box1 = line2("best", "Hit", L.hit.length ? (L.hit.length === 1 ? nm(L.hit) : `${L.hit.length} players`) : "Nobody", hitPts != null ? `+${hitPts}` : "", L.hit.length ? "each" : "");
-    const box2 = myLk ? line2(myLk.result === "hit" ? "best" : myLk.result === "push" ? "" : "worst", "Your lock", `${esc(myLk.short)} ${esc(myLk.line === "SU" ? "to win" : myLk.line)}`, myLk.result === "hit" ? `+${myLk.pts}` : myLk.result === "push" ? "0" : (myLk.pts < 0 ? "−" + Math.abs(myLk.pts) : "0"), myLk.result === "hit" ? "hit" : myLk.result === "push" ? "push" : "missed")
+    const box2 = myLk ? line2(myLk.result === "hit" ? "best" : myLk.result === "push" ? "" : "worst", "Your lock", `${tl(esc(myLk.short))} ${esc(myLk.line === "SU" ? "to win" : myLk.line)}`, myLk.result === "hit" ? `+${myLk.pts}` : myLk.result === "push" ? "0" : (myLk.pts < 0 ? "−" + Math.abs(myLk.pts) : "0"), myLk.result === "hit" ? "hit" : myLk.result === "push" ? "push" : "missed")
       : line2("worst", "Missed", L.miss.length ? nm(L.miss) : "Nobody", "", `${L.miss.length} missed`);
     cards.push(["🔒 LOCKS", "lk", lkArt, `<span class="recap-pick">${word}</span>`, pad, "", "", mine(L.hit), `<div class="rx-tbw">${box1}${box2}</div>`]);
   }
@@ -9755,7 +9762,7 @@ let renderRecap = function () {
   if (meRow) {
     const place = 1 + rows.filter((x) => x.score > meRow.score).length, avg = rows.reduce((a, x) => a + x.score, 0) / rows.length, vs = Math.round((meRow.score - avg) * 10) / 10;
     const best = (meRow.ledger || []).filter((l) => l.result === "hit").sort((a, b) => (b.pts || 0) - (a.pts || 0))[0];
-    const bestTxt = best ? (() => { const g = (last.slate || []).find((x) => Number(x.id) === Number(best.g)); const t = g ? (best.team === g.home ? g.homeShort : best.team === g.away ? g.awayShort : best.team) : best.team; return `${esc(t)} ${esc(best.line || "")} +${best.pts}`; })() : "";
+    const bestTxt = best ? (() => { const g = (last.slate || []).find((x) => Number(x.id) === Number(best.g)); const t = g ? (best.team === g.home ? g.homeShort : best.team === g.away ? g.awayShort : best.team) : best.team; return `${tl(esc(t))} ${esc(best.line || "")} +${best.pts}`; })() : "";
     const avgR = Math.round(avg * 10) / 10;
     you = `<div class="rx-you"><div class="rx-yl">YOUR WEEK</div><div class="rx-ycols">
       <div><b>${ordinal(place)}</b><span>place<br><i>of ${rows.length}</i></span></div>
