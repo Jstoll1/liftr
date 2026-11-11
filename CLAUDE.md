@@ -57,13 +57,15 @@ Retro is the base look (`styles.css`; Pro overrides in `themes/pro.css`).
 One look everywhere, a clean arcade, not a funhouse:
 
 - **Background**: navy glass (`--bg`, `--bg2`, `--card-bg`).
-- **Frames**: thin 1.5px purple (`--card-border`), no glow. Only the one
-  standout per screen glows (the replay champion, gold).
+- **Frames**: standard cards wear a thin subtle charcoal frame
+  (`--card-border`), no glow. Purple (`--card-border-feature`) and gold
+  are for featured content only; the one standout per screen glows (the
+  replay champion, gold).
 - **Corners**: Retro 10px radius. No chamfers.
 - **Type**: pixel font (Press Start 2P) for kickers, headings and big
   numbers; body stays plain.
 - **Colour, with meaning**: cyan = you / live / structure; green = right /
-  won; pink = wrong / lost; gold = money / champion; purple = frames. Use
+  won; pink = wrong / lost; gold = money / champion; purple = featured frames. Use
   the tokens in `:root` (`var(--neon-*)`, `rgba(var(--*-rgb), a)`), never
   raw hex in a Retro rule.
 - **No boxes inside boxes**: stats sit on one line with thin dividers.
