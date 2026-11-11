@@ -131,7 +131,21 @@ function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
   return extrasP;
 }
-const extrasSoon = () => setTimeout(() => (window.requestIdleCallback || ((f) => setTimeout(f, 1)))(() => ensureExtras(), { timeout: 2000 }), 600);
+const extrasSoon = () => setTimeout(() => (window.requestIdleCallback || ((f) => setTimeout(f, 1)))(() => { ensureExtras(); seasonSoon(); }, { timeout: 2000 }), 600);
+// The season strip's pick download (every pick, every week) waits until the
+// screen is usable, so it never competes with what the moment needs: the
+// slate, sign in and picks while picks are open; live scores and standings
+// once games are under way. It is skipped while a week is being played
+// (the strip only shows before the first kickoff or on the week's replay);
+// opening a player card or the season window still fetches on demand.
+function seasonSoon() {
+  try {
+    if (!loadMe() || typeof fetchSeasonLedger !== "function") return;
+    const weekDone = !!weekSummaries?.[currentWeek]?.complete;
+    if (firstKickoffPassed() && !weekDone) return;
+    fetchSeasonLedger().then((l) => { if (l && l.length) try { renderRecap(); } catch {} }).catch(() => {});
+  } catch {}
+}
 addEventListener("load", () => setTimeout(ensureExtras, 4000));
 function markUsable() { if (appHealth.ld == null) { extrasSoon(); appHealth.ld = Math.round(performance.now() - healthT0); if (appHealth.ld > 6000 && !document.hidden && hiddenSince === 0) opsEvent("slow-load", `first screen ${(appHealth.ld / 1000).toFixed(1)}s`); } }
 // Each failure as it happens, for the live page's health log: batched a few
@@ -10167,9 +10181,12 @@ function recapSeasonStrip() {
   if (!currentManager || !MANAGERS.includes(currentManager)) return "";
   // The plain week summaries carry no picks; load the detailed weeks once,
   // then draw the replay again so the strip appears.
-  if (!(seasonLedger && seasonLedger.length) && !recapSeasonStrip.asked) {
+  // Only once the real slate is in and the screen is usable (seasonSoon
+  // decides the phase); before that the strip comes from this phone's copy.
+  if (!(seasonLedger && seasonLedger.length) && !recapSeasonStrip.asked && slateFromNetwork && appHealth.ld != null) {
     recapSeasonStrip.asked = true;
-    fetchSeasonLedger().then((l) => { if (l && l.length) try { renderRecap(); } catch {} else setTimeout(() => { recapSeasonStrip.asked = false; }, 30000); }).catch(() => setTimeout(() => { recapSeasonStrip.asked = false; }, 30000));
+    seasonSoon();
+    setTimeout(() => { recapSeasonStrip.asked = false; }, 30000);
   }
   const b = seasonBoardData(currentManager);
   // Wait for the picks: without them only points, finish and tiebreaker
@@ -10808,13 +10825,13 @@ function goToScoresNow() {
   // so nothing waits on them. Once the slate is in, the board's picks and
   // scores start loading at once, so a game day open finds them ready.
   loadWeekSummaries();
-  // The season strip needs every pick: start that download now, not after
-  // the replay draws, so it lands with the board.
-  if (loadMe()) setTimeout(() => fetchSeasonLedger().then((l) => { if (l && l.length) try { renderRecap(); } catch {} }).catch(() => {}), 0);
   await Promise.all([
     loadSlate().then(() => { if (firstKickoffPassed()) { fetchLiveScores().catch(() => {}); fetchBoardPicks().catch(() => {}); } }),
     refreshAuthState(),
   ]);
+  // Week done and nothing live: nothing competes, so the season strip's
+  // picks start now. Picks open waits for idle; live games skip it.
+  if (weekSummaries?.[currentWeek]?.complete) seasonSoon();
   const slateChanged = routed && slateSignature() !== lastSlateSignature;
   lastSlateSignature = slateSignature();
   lastLockSignature = lockSignature();
