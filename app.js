@@ -10729,7 +10729,9 @@ function sideSeasonStats(history) {
 // Season stats: a case of trophy tiles, two across. Each tile shows the
 // leader and where the viewer stands; a tap opens the full ranking, with
 // a bar for each player. Side bets sit underneath, off the books.
-const seasonOpenTiles = new Set();
+// Each board's full ranking, kept for its pop-up.
+const HS_BOARDS = {};
+let HS_ALL = "";
 async function renderSeasonStats() {
   const panel = document.getElementById("season-panel");
   if (!panel || panel.classList.contains("hidden")) return;
@@ -10758,53 +10760,73 @@ async function renderSeasonStats() {
   const ORD = (k) => `${k}${k % 100 >= 11 && k % 100 <= 13 ? "TH" : ["TH", "ST", "ND", "RD"][k % 10] || "TH"}`;
   const tile = (key, icon, label, note, rows, color, art = key) => {
     const list = ranked(rows);
-    const open = seasonOpenTiles.has(key);
+    const open = false;
     const lead = list[0];
     const tied = lead ? list.filter((r) => r.rank === 1).length - 1 : 0;
     const mine = list.find((r) => r.name === me);
     const top = Math.max(...list.map((r) => Math.abs(r.n)), 0) || 1;
     const lo = Math.min(...list.map((r) => r.n));
     const width = (r) => Math.max(6, Math.round(100 * (r.low ? (lo || 0.1) / (r.n || 0.1) : Math.abs(r.n) / top)));
-    const full = !open ? "" : `<div class="hs-full"><div class="hs-note">${note}</div>${list.map((r) => `<div class="hs-r${r.name === me ? " me" : ""}${r.rank === 1 ? " first" : ""}"><i class="hs-rk">${r.rank}</i>${av(r.name)}<span class="hs-nm">${esc(shown(r.name))}</span><span class="hs-bar"><u class="${r.signed && r.n < 0 ? "neg" : ""}" style="width:${width(r)}%"></u></span><b class="hs-v${r.signed ? (r.n > 0 ? " up" : r.n < 0 ? " down" : "") : ""}">${esc(r.value)}<small>${esc(r.more || r.sub || "")}</small></b></div>`).join("")}</div>`;
+    const full = `<div class="hs-full"><div class="hs-note">${note}</div>${list.map((r) => `<div class="hs-r${r.name === me ? " me" : ""}${r.rank === 1 ? " first" : ""}"><i class="hs-rk">${r.rank}</i>${av(r.name)}<span class="hs-nm">${esc(shown(r.name))}</span><span class="hs-bar"><u class="${r.signed && r.n < 0 ? "neg" : ""}" style="width:${width(r)}%"></u></span><b class="hs-v${r.signed ? (r.n > 0 ? " up" : r.n < 0 ? " down" : "") : ""}">${esc(r.value)}<small>${esc(r.more || r.sub || "")}</small></b></div>`).join("")}</div>`;
+    HS_BOARDS[key] = { label, color, icon, html: lead ? full : `<div class="hs-none">NOBODY YET</div>` };
     // The tile art is pixel art cut from the league's own template, one
     // per board; the emoji stands in if it fails to load.
     return `<div class="hs-tile${open ? " open" : ""}${!lead ? " empty" : ""}" style="--c:${color}">
       <button type="button" class="hs-tap" data-hs="${key}" aria-expanded="${open}">
         <span class="hs-art"><img src="${awardArt(`hs/${art}`)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'${icon}'}))"></span>
         <span class="hs-body">
-          <span class="hs-t-head"><span>${label}</span><em>${lead ? (open ? "▴" : "▾") : ""}</em></span>
+          <span class="hs-t-head"><span>${label}</span><em>${lead ? "›" : ""}</em></span>
           ${lead ? `<span class="hs-name"><b>${esc(shown(lead.name))}</b>${tied ? `<i title="tied with ${tied} more">+${tied}</i>` : ""}</span>
           <span class="hs-line"><small>${esc(lead.sub || "")}</small><strong class="${lead.signed && lead.n < 0 ? "down" : ""}">${esc(lead.value)}</strong></span>
           <span class="hs-you">${mine && mine.rank > 1 ? `YOU · ${ORD(mine.rank)} · ${esc(mine.value)}` : mine ? "YOU LEAD" : `${list.length} RANKED`}</span>` : `<span class="hs-none">NOBODY YET</span>`}
         </span>
-      </button>${full}</div>`;
+      </button></div>`;
   };
-  panel.innerHTML = `<div class="hs-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} ON THE RECORD · TAP A BOARD FOR EVERYONE</small></div>
-    <div class="hs-grid">
-      ${tile("ats", "🎯", "BEST ATS", "Spread picks, at least 3", s.ats, "var(--neon-green)")}
-      ${tile("streak", "🔥", "HOT HAND", "Longest run of correct picks this season", s.streak, "#ff9f1c")}
-      ${tile("dogs", "🐶", "DOG HITS", "Underdogs straight up, 3 pts each", s.dogs, "var(--neon-pink)")}
-      ${tile("lone", "🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "#b9a6ff")}
-      ${tile("fader", "🙃", "FADER", "Share of picks against the favorite", s.fader, "var(--neon-cyan)")}
-      ${tile("tb", "📏", "TB SNIPER", "Average tiebreaker miss, lower is better", s.tb, "var(--neon-yellow)")}
-      ${tile("best", "🏆", "BEST WEEK", "Highest single week score", s.best, "#3fd0ff")}
-      ${s.blanks.length ? tile("blanks", "💤", "NO SHOWS", "Games left unpicked", s.blanks, "#a77bff") : ""}
-    </div>
+  // Four featured boards up front; every board, side bets included, sits
+  // behind VIEW ALL HIGH SCORES in a pop-up. A board opens its full
+  // ranking in its own pop-up rather than growing in place.
+  const all = [
+    ["streak", "🔥", "HOT HAND", "Longest run of correct picks this season", s.streak, "#ff9f1c"],
+    ["lone", "🐺", "LONE WOLF", "Correct with 3 or fewer on the team", s.lone, "#b9a6ff"],
+    ["dogs", "🐶", "DOG HITS", "Underdogs straight up, 3 pts each", s.dogs, "var(--neon-pink)"],
+    ["best", "🏆", "BEST WEEK", "Highest single week score", s.best, "#3fd0ff"],
+    ["ats", "🎯", "BEST ATS", "Spread picks, at least 3", s.ats, "var(--neon-green)"],
+    ["fader", "🙃", "FADER", "Share of picks against the favorite", s.fader, "var(--neon-cyan)"],
+    ["tb", "📏", "TB SNIPER", "Average tiebreaker miss, lower is better", s.tb, "var(--neon-yellow)"],
+    ...(s.blanks.length ? [["blanks", "💤", "NO SHOWS", "Games left unpicked", s.blanks, "#a77bff"]] : []),
+  ].map((a) => tile(...a));
+  const sideTiles = tile("side-bank", "💵", "BANKROLL", "Money won or lost across side bets", side.bank, "var(--neon-green)", "bank") + tile("side-picks", "🎲", "SIDE PICKS", "Side bet picks right, over/unders included", side.picks, "var(--neon-yellow)", "dice");
+  HS_ALL = `<div class="hs-grid">${all.join("")}</div>
     <div class="hs-side">
       <div class="hs-side-h"><img src="${awardArt("hs/coins")}" alt="" loading="lazy" decoding="async"><span>SIDE BETS</span><small>OFF THE BOOKS · ${side.bets} BET${side.bets === 1 ? "" : "S"}</small></div>
       <div class="hs-side-note">Their own record. Side bets never count toward pool standings, payouts or the boards above.</div>
-      <div class="hs-grid">
-        ${tile("side-bank", "💵", "BANKROLL", "Money won or lost across side bets", side.bank, "var(--neon-green)", "bank")}
-        ${tile("side-picks", "🎲", "SIDE PICKS", "Side bet picks right, over/unders included", side.picks, "var(--neon-yellow)", "dice")}
-      </div>
+      <div class="hs-grid">${sideTiles}</div>
     </div>`;
+  panel.innerHTML = `<div class="hs-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} ON THE RECORD · TAP A BOARD FOR EVERYONE</small></div>
+    <div class="hs-grid">${all.slice(0, 4).join("")}</div>
+    <button type="button" class="hs-all-btn" data-hs-all>VIEW ALL HIGH SCORES ›</button>`;
+}
+function openHsBoard(key) {
+  const b = HS_BOARDS[key]; if (!b) return;
+  const m = bottomSheet("hs-board");
+  document.body.appendChild(m); // over the all-boards sheet when opened from it
+  m.innerHTML = `<div class="modal-card wks-card hs-card" style="--c:${b.color}"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>${escapeCd(b.label)}</b><small>THE LEAGUE</small><button type="button" class="wks-x" aria-label="Back">✕</button></div>${b.html}</div>`;
+  m.classList.remove("hidden");
+  track("hs-board", { event: true, d: key });
+}
+function openHsAll() {
+  const m = bottomSheet("hs-all");
+  m.innerHTML = `<div class="modal-card wks-card hs-card hs-all-card"><i class="wks-grab" aria-hidden="true"></i>
+    <div class="wks-h"><b>HIGH SCORES</b><small>EVERY BOARD</small><button type="button" class="wks-x" aria-label="Back">✕</button></div>${HS_ALL}</div>`;
+  if (!m.dataset.wired) { m.dataset.wired = "1"; m.addEventListener("click", (e) => { const t = e.target.closest("[data-hs]"); if (t) openHsBoard(t.dataset.hs); }); }
+  m.classList.remove("hidden");
+  track("hs-all", { event: true });
 }
 document.getElementById("season-panel")?.addEventListener("click", (e) => {
+  if (e.target.closest("[data-hs-all]")) return openHsAll();
   const b = e.target.closest("[data-hs]");
-  if (!b) return;
-  const k = b.dataset.hs;
-  if (seasonOpenTiles.has(k)) seasonOpenTiles.delete(k); else { seasonOpenTiles.add(k); track("hs-board", { event: true, d: k }); }
-  renderSeasonStats();
+  if (b) openHsBoard(b.dataset.hs);
 });
 (() => {
   const toggle = document.getElementById("season-toggle");
