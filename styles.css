@@ -9181,7 +9181,7 @@ html:not(.pro) .recap-panel .rx-hero { --rx-c: var(--arcade-gold); box-shadow: 0
     var(--bg2) !important; }
 html:not(.pro) .rx-kicker { font-family: 'Press Start 2P', monospace !important; font-size: 7.5px !important; letter-spacing: .14em !important; color: var(--arcade-gold) !important; text-shadow: none !important; }
 html:not(.pro) .rx-champ { gap: 8px !important; margin: 0 !important; }
-html:not(.pro) .rx-champ .rx-cn { font-family: 'Press Start 2P', monospace !important; font-size: 15px !important; line-height: 1.2 !important; color: #fff !important; text-shadow: none !important; }
+html:not(.pro) .rx-champ .rx-cn { font-family: 'Press Start 2P', monospace !important; font-size: 13px !important; line-height: 1.2 !important; color: #fff !important; text-shadow: none !important; }
 html:not(.pro) .rx-num b { font-family: 'Press Start 2P', monospace !important; font-size: 20px !important; line-height: 1.2 !important; color: var(--arcade-gold) !important; text-shadow: 2px 2px 0 rgba(0, 0, 0, .6) !important; }
 html:not(.pro) .rx-num span { font-size: 9px; color: var(--text-meta) !important; }
 html:not(.pro) .rx-margin { font-size: 11px !important; line-height: 1.2 !important; margin-top: 0 !important; color: var(--text-meta) !important; }
