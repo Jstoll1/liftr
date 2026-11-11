@@ -10338,7 +10338,7 @@ function openStatSheet(key, name = currentManager, tab = "league") {
     ${sum}
     ${wk ? `<div class="sbr-tabs" role="tablist"><button type="button" role="tab" data-sbtab="league" aria-selected="${tab === "league"}">LEAGUE</button><button type="button" role="tab" data-sbtab="week" aria-selected="${tab !== "league"}">BY WEEK</button></div>` : ""}
     <div class="sbr-pane" data-pane="league"${wk && tab !== "league" ? " hidden" : ""}>${st.low ? `<div class="sbr-note">Lower is better</div>` : ""}<ol class="sbr">${list}</ol></div>
-    ${wk ? `<div class="sbr-pane" data-pane="week"${tab === "league" ? " hidden" : ""}><div class="sbr-note">${esc(wk.sub)}</div><div class="sbk-list">${wk.body || `<div class="sbk-none">No finished weeks yet.</div>`}</div></div>` : ""}
+    ${wk ? `<div class="sbr-pane" data-pane="week"${tab === "league" ? " hidden" : ""}><div class="sbr-note">${esc(wk.sub)}</div><div class="sbk-list${colW(wk.body, "em") ? "" : " nonote"}" style="--nc:${colW(wk.body, "em")};--vc:${colW(wk.body, "b")}">${wk.body || `<div class="sbk-none">No finished weeks yet.</div>`}</div></div>` : ""}
   </div>`;
   if (!m.dataset.tabs) {
     m.dataset.tabs = "1";
@@ -10422,6 +10422,8 @@ function statPlace(stat, name) {
 }
 // One stat, week by week, for one player: what built the number.
 // Week by week for one stat and one player: the rows of the BY WEEK tab.
+// Widest text in a column of week rows, in characters, so the column hugs it.
+const colW = (html, tag) => Math.max(0, ...[...(html || "").matchAll(new RegExp(`<${tag}>([^<]*)</${tag}>`, "g"))].map((m) => m[1].replace(/&[a-z#0-9]+;/g, "x").length));
 function weekRowsFor(stat, name) {
   const esc = escapeCd;
   const byWeek = new Map();
@@ -10446,11 +10448,11 @@ function weekRowsFor(stat, name) {
     body = weeks.map(({ wk, me }) => { const lk = (me?.ledger || []).find((l) => l.lock); if (!lk) return row(wk.week, 0, "–", "no lock", "dim"); const hit = lk.result === "hit"; const all = (wk.rows || []).map((r) => (r.ledger || []).find((l) => l.lock)).filter(Boolean), lh = all.filter((l) => l.result === "hit").length; return row(wk.week, hit ? 1 : 0, hit ? "HIT" : lk.result === "push" ? "PUSH" : "MISS", `${esc(teamOf(wk, lk))} · lg ${lh}/${all.length} hit`, hit ? "hi" : "lo", all.length ? lh / all.length : null); }).join("");
   } else if (stat === "FINISH") {
     sub = "Your place each week (higher bar is better)";
-    body = weeks.map(({ wk, me }) => { if (!me || !Number.isFinite(me.place)) return row(wk.week, 0, "–", "sat out", "dim"); const n = (wk.rows || []).length || 10; return row(wk.week, (n - me.place + 1) / n, ordinal(me.place), (wk.winners || []).includes(name) ? "won the week" : `of ${n}`, me.place <= 3 ? "hi" : me.place > n - 3 ? "lo" : ""); }).join("");
+    body = weeks.map(({ wk, me }) => { if (!me || !Number.isFinite(me.place)) return row(wk.week, 0, "–", "sat out", "dim"); const n = (wk.rows || []).length || 10; return row(wk.week, (n - me.place + 1) / n, ordinal(me.place), (wk.winners || []).includes(name) ? "🏆 WON" : "", me.place <= 3 ? "hi" : me.place > n - 3 ? "lo" : ""); }).join("");
   } else if (stat === "TB") {
     sub = "Tiebreaker miss each week vs the league average (tick); shorter is better";
     const tmax = Math.max(1, ...weeks.flatMap(({ wk }) => (wk.rows || []).map((r) => Number(r.tbDiff) || 0)));
-    body = weeks.map(({ wk, me }) => { if (!me || !Number.isFinite(me.tbDiff)) return row(wk.week, 0, "–", "no guess", "dim"); const la = lgAvg(wk, (r) => (Number.isFinite(r.tbDiff) ? r.tbDiff : null)); return row(wk.week, 1 - me.tbDiff / tmax, `${me.tbDiff} off`, la == null ? "" : `lg ${la.toFixed(1)}`, la != null && me.tbDiff < la ? "hi" : la != null && me.tbDiff > la ? "lo" : "", la == null ? null : 1 - la / tmax); }).join("");
+    body = weeks.map(({ wk, me }) => { if (!me || !Number.isFinite(me.tbDiff)) return row(wk.week, 0, "–", "no guess", "dim"); const la = lgAvg(wk, (r) => (Number.isFinite(r.tbDiff) ? r.tbDiff : null)); return row(wk.week, 1 - me.tbDiff / tmax, `${me.tbDiff}`, la == null ? "off" : `off · lg ${la.toFixed(1)}`, la != null && me.tbDiff < la ? "hi" : la != null && me.tbDiff > la ? "lo" : "", la == null ? null : 1 - la / tmax); }).join("");
   } else {
     const pred = /DOG/.test(stat) ? (l) => l.favorite && l.team !== l.favorite : /SPREAD/.test(stat) ? (l) => l.mode === "ATS" : /WIN/.test(stat) ? (l) => l.mode !== "ATS" : () => true;
     sub = (/DOG/.test(stat) ? "Underdog picks right" : /SPREAD/.test(stat) ? "Spread picks right" : /WIN/.test(stat) ? "To-win picks right" : "Picks right") + " each week vs the league average (tick)";
