@@ -9382,8 +9382,8 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .sbd-rk { font-style: normal; font-family: "Press Start 2P", monospace; font-size: 8px; color: var(--tier); }
 .sbd-rk small { font-family: inherit; font-size: 6px; color: var(--text-dim, rgba(255,255,255,.5)); }
 .sbd-e { display: flex; flex-direction: column; gap: 3px; line-height: 1; min-width: 0; }
-.sbd-e.w { grid-area: w; align-items: flex-end; text-align: right; padding-right: 6px; }
-.sbd-e.b { grid-area: b; align-items: flex-start; padding-left: 6px; }
+.sbd-e.w { grid-area: w; align-items: center; text-align: center; padding-right: 6px; }
+.sbd-e.b { grid-area: b; align-items: center; text-align: center; padding-left: 6px; }
 .sbd-e b { font-family: "Press Start 2P", monospace; font-size: 8px; font-weight: 400; }
 .sbd-e.w b { color: rgba(var(--neon-pink-rgb), .9); } .sbd-e.b b { color: rgba(var(--neon-green-rgb), .9); }
 .sbd-e small { font-size: 9px; letter-spacing: .02em; color: var(--text-dim, rgba(255,255,255,.5)); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -9432,8 +9432,8 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .sbd-card { padding-bottom: 16px; }
 .sbd-card .wks-h b { white-space: nowrap; }
 .sbd-key { display: grid; margin: 4px 0 0; font-family: "Press Start 2P", monospace; font-size: 6px; }
-.sbd-key span:first-child { grid-column: 2; text-align: right; color: var(--neon-pink); }
-.sbd-key span:last-child { grid-column: 4; color: var(--neon-green); }
+.sbd-key span:first-child { grid-column: 2; text-align: center; padding-right: 6px; color: var(--neon-pink); }
+.sbd-key span:last-child { grid-column: 4; text-align: center; padding-left: 6px; color: var(--neon-green); }
 .sbd-roast { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin: 12px 0 4px; padding: 12px; border-radius: 10px; border: 1.5px solid rgba(var(--neon-cyan-rgb), .6); background: rgba(var(--neon-cyan-rgb), .08); color: var(--neon-cyan); font-family: "Press Start 2P", monospace; font-size: 9px; letter-spacing: .06em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .sbd-roast .chief-ico { width: 22px; height: 22px; border-radius: 50%; }
 .sbd-roast.busy { opacity: .7; }
