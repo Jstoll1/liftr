@@ -3148,7 +3148,7 @@ body::before { display: none; }
   // Every outlet's picks as archived before kickoff, graded on the finals
   // (the Worker's /expert-record). Rank by ATS, SU or both; a tap opens an
   // outlet's whole pick log, week by week.
-  const ex = { data: null, at: 0, err: "", kind: "ATS", min: 3, open: null, week: "all", view: "outlets" };
+  const ex = { data: null, at: 0, err: "", kind: "ATS", min: 3, open: null, week: "all", view: "outlets", sort: "pct" };
   async function loadExperts(force) {
     if (!force && Date.now() - ex.at < 5 * 60000) return;
     ex.at = Date.now();
@@ -3166,7 +3166,12 @@ body::before { display: none; }
   function expertsPanel() {
     const d = ex.data;
     if (!d?.outlets) return `<section class="panel exp"><div class="ph"><h2>Experts</h2><span class="sub">${ex.err ? esc(ex.err) : "loading…"}</span></div></section>`;
-    const graded = (d.graded || []).filter((g) => ex.week === "all" || g.week === Number(ex.week));
+    // One outlet under one name: "SportsLine.com", "www.sportsline.com" and
+    // "SportsLine" are the same desk. The first spelling seen is shown.
+    const okey = (n) => String(n || "").toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").replace(/\.(com|net|org|co)\b.*$/, "").replace(/^the\s+/, "").replace(/[^a-z0-9]/g, "");
+    const oname = {};
+    const all = (d.graded || []).map((g) => { const k = okey(g.outlet); oname[k] ||= g.outlet; return { ...g, outlet: oname[k] }; });
+    const graded = all.filter((g) => ex.week === "all" || g.week === Number(ex.week));
     const weeks = [...new Set((d.graded || []).map((g) => g.week))].sort((a, b) => a - b);
     // Tally from the graded picks so the week filter applies to everything.
     // Group by outlet, or by the person who made the pick (with their outlet).
@@ -3191,7 +3196,7 @@ body::before { display: none; }
       for (const r of g.grades) { o[r.kind][r.result] += 1; o.ALL[r.result] += 1; o.last.push(r.result); }
     }
     const K = ex.kind, rows = Object.values(by).map((o) => ({ ...o, n: o[K].W + o[K].L, p: exPct(o[K]) }));
-    const qual = rows.filter((o) => o.n >= ex.min).sort((a, b) => b.p - a.p || b.n - a.n);
+    const qual = rows.filter((o) => o.n >= ex.min).sort((a, b) => (ex.sort === "n" ? b.n - a.n || b.p - a.p : b.p - a.p || b.n - a.n));
     const thin = rows.filter((o) => o.n < ex.min && o.n > 0).length;
     const tot = { ATS: { W: 0, L: 0, P: 0 }, SU: { W: 0, L: 0, P: 0 } };
     for (const o of rows) for (const k of ["ATS", "SU"]) for (const r of ["W", "L", "P"]) tot[k][r] += o[k][r];
@@ -3226,7 +3231,7 @@ body::before { display: none; }
       <div class="exp-k"><div><em>All outlets ATS</em><b class="num">${exPctTxt(exPct(tot.ATS))}</b><span>${exRec(tot.ATS)}</span></div><div><em>All outlets SU</em><b class="num">${exPctTxt(exPct(tot.SU))}</b><span>${exRec(tot.SU)}</span></div><div><em>Best ${K}</em><b class="num">${qual[0] ? exPctTxt(qual[0].p) : "–"}</b><span>${qual[0] ? esc(qual[0].title) : "nobody qualifies"}</span></div></div>
       ${wk.length ? `<div class="exp-wk">${wk.map((x) => `<button type="button" class="${String(ex.week) === String(x.w) ? "on" : ""}" data-ex="week:${String(ex.week) === String(x.w) ? "all" : x.w}" title="Week ${x.w}: ${x.t.W}-${x.t.L}"><i style="height:${Math.max(8, (x.p || 0) * 100).toFixed(0)}%" class="${x.p == null ? "" : x.p >= 0.5 ? "up" : "dn"}"></i><small>W${x.w}</small></button>`).join("")}</div>` : ""}
       <div class="exp-view">${seg("view", [["outlets", "Outlets"], ["pickers", "Pickers"], ["games", "Games"]])}</div>
-      <div class="exp-ctl">${seg("kind", [["ATS", "ATS"], ["SU", "SU"], ["ALL", "Both"]])}${ex.view === "games" ? "" : seg("min", [[1, "All"], [3, "3+"], [5, "5+"]])}</div>
+      <div class="exp-ctl">${seg("kind", [["ATS", "ATS"], ["SU", "SU"], ["ALL", "Both"]])}${ex.view === "games" ? "" : seg("sort", [["pct", "Best"], ["n", "Most"]]) + seg("min", [[1, "All"], [3, "3+"], [10, "10+"]])}</div>
       <div class="exp-list">${ex.view === "games" ? games() : qual.length ? qual.map(row).join("") : `<div class="note">Nobody has ${ex.min}+ graded ${K === "ALL" ? "" : K + " "}picks${ex.week === "all" ? "" : " this week"}.</div>`}</div>
       ${ex.view === "games" ? "" : thin ? `<div class="note">${thin} more ${ex.view === "pickers" ? "picker" : "outlet"}${thin === 1 ? "" : "s"} under ${ex.min} graded picks, hidden. ATS uses the outlet's own line when it wrote one, else the sealed line; pushes are left out of the percentage.</div>` : `<div class="note">ATS uses the outlet's own line when it wrote one, else the sealed line; pushes are left out of the percentage.</div>`}
     </section>`;
