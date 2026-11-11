@@ -9367,7 +9367,7 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .sbd-foot span:first-child { color: var(--neon-green); } .sbd-foot span:last-child { text-align: right; color: var(--neon-pink); }
 .sbd-foot small { font-family: "Press Start 2P", monospace; font-size: 7px; color: var(--text-dim, rgba(255,255,255,.55)); }
 /* Recap strip under the week's winner: your three best stats, tap for all */
-.rx-season { margin: 10px 0 4px; padding: 9px 12px 3px; border-radius: 10px; border: 1.5px solid var(--card-border); background: var(--card-bg); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rx-season { margin: 0; padding: 9px 12px 3px; border-radius: 10px; border: 1.5px solid var(--card-border); background: var(--card-bg); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .rx-ssh { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 2px; }
 .rx-ssh span { font-family: "Press Start 2P", monospace; font-size: 8px; color: var(--neon-cyan); letter-spacing: .04em; }
 .rx-ssh span i { font-style: normal; color: var(--text-dim, rgba(255,255,255,.55)); }
