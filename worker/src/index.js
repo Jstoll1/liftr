@@ -2518,10 +2518,13 @@ async function handleQotw(request, env, corsHeaders, url) {
 // Worst pick avoids pick of the week's game (rule 2, 12 Nov 2026). The
 // newest sealed week, the one on screen, is rebuilt to it once from its
 // own frozen slate and ledger; older weeks keep the card members saw.
-function fixWorstRule(s) {
-  if (!s?.recap || s.recap.worstRule === 2 || !Array.isArray(s.rows) || !Array.isArray(s.slate)) return false;
-  const tb = s.slate.find((g) => g.tiebreakerGame) || null;
-  const fresh = buildRecap(s.slate, s.rows, s.tiebreaker?.actual ?? null, tb, null);
+// The frozen slate keeps no team ids, so they come from the stored slate
+// (ids only: nothing is rescored); without them the card loses its logo.
+function fixWorstRule(s, ids = {}) {
+  if (!s?.recap || (s.recap.worstRule === 2 && s.recap.worst?.teamId != null) || !Array.isArray(s.rows) || !Array.isArray(s.slate)) return false;
+  const games = s.slate.map((g) => ({ ...g, awayId: g.awayId ?? ids[g.id]?.awayId ?? null, homeId: g.homeId ?? ids[g.id]?.homeId ?? null }));
+  const tb = games.find((g) => g.tiebreakerGame) || null;
+  const fresh = buildRecap(games, s.rows, s.tiebreaker?.actual ?? null, tb, null);
   if (fresh.worst) s.recap.worst = fresh.worst;
   s.recap.worstRule = 2;
   return true;
@@ -2630,7 +2633,11 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
     // name only the best-paid line; re-name everyone who cashed on that
     // team from the stored ledger. Nothing is rescored.
     let changed = !!(s && fixBestWho(s));
-    if (s?.complete && n === latestSealed && fixWorstRule(s)) changed = true;
+    if (s?.complete && n === latestSealed && (s.recap?.worstRule !== 2 || s.recap?.worst?.teamId == null)) {
+      const sl = await env.LIFTR_KV.get(gamesKey(n), "json");
+      const ids = Object.fromEntries((sl?.games || []).map((g) => [Number(g.id), { awayId: g.awayId, homeId: g.homeId }]));
+      if (fixWorstRule(s, ids)) changed = true;
+    }
     if (changed) await env.LIFTR_KV.put(summaryKey(n), JSON.stringify(s));
     return [n, s];
   }));
