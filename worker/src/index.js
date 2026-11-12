@@ -2257,7 +2257,18 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
     if (!losers.has(key)) losers.set(key, { ...l, who: [], mixed: !lineHit });
     losers.get(key).who.push(...l.who);
   }
-  const worst = [...losers.values()].sort((a, b) => b.who.length - a.who.length || b.worth - a.worth)[0];
+  // Worst pick shows a different game from pick of the week: Curt alone on
+  // Utah and nine on BYU are one story told twice. The same game stays only
+  // when it is clearly the week's story: the whole league lost on it, or the
+  // next biggest miss elsewhere drew half as many takers or fewer.
+  const lossList = [...losers.values()].sort((a, b) => b.who.length - a.who.length || b.worth - a.worth);
+  const worst = (() => {
+    const top = lossList[0];
+    if (!top || !best || Number(top.g) !== Number(best.g)) return top;
+    const alt = lossList.find((l) => Number(l.g) !== Number(best.g));
+    if (!alt || top.who.length >= N || alt.who.length * 2 <= top.who.length) return top;
+    return alt;
+  })();
 
 
   const splits = games.map((g) => {
