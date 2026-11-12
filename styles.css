@@ -5189,7 +5189,10 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 .week-done .rank-hits:not(.hd) { gap: 0 2px; }
 .week-done .rh { width: min(28px, 100%); }
 /* Same name width on every row so the logo columns still line up. */
-.week-done .ranking-row .ranking-name { flex: 0 0 76px; width: 76px; max-width: 76px; }
+.week-done .ranking-row .ranking-name { flex: 0 0 86px; width: 86px; max-width: 86px; }
+/* The lock rides on the record line once the week is done, so the name gets the full column. */
+.week-done .ranking-name .ranking-lock { white-space: nowrap; overflow: visible; }
+.week-done .ranking-name .ranking-lock .rank-lk { margin-left: 4px; font-size: 8px; }
 
 /* ===== The Pot: jackpot, season bar, avatars ===== */
 .pot-jackpot { position: relative; text-align: center; padding: 14px 10px 12px; border: 2px solid var(--neon-yellow); border-radius: 10px; background:
