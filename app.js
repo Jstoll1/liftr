@@ -10812,8 +10812,8 @@ async function renderSeasonStats() {
         <span class="hs-body">
           <span class="hs-t-head"><span>${label}</span><em>${lead ? "›" : ""}</em></span>
           ${lead ? `<span class="hs-name"><b>${esc(shown(lead.name))}</b>${tied ? `<i title="tied with ${tied} more">+${tied}</i>` : ""}</span>
-          <span class="hs-line"><small>${esc(lead.sub || "")}</small><strong class="${lead.signed && lead.n < 0 ? "down" : ""}">${esc(lead.value)}</strong></span>
-          <span class="hs-you">${mine && mine.rank > 1 ? `YOU · ${ORD(mine.rank)} · ${esc(mine.value)}` : mine ? "YOU LEAD" : `${list.length} RANKED`}</span>` : `<span class="hs-none">NOBODY YET</span>`}
+          <strong class="hs-v-top${lead.signed && lead.n < 0 ? " down" : ""}${String(lead.value).length > 3 ? " long" : ""}">${esc(lead.value)}</strong>
+          <span class="hs-foot"><small>${esc(lead.sub || "")}</small><span class="hs-you">${mine && mine.rank > 1 ? `YOU ${ORD(mine.rank)} · ${esc(mine.value)}` : mine ? "YOU LEAD" : `${list.length} RANKED`}</span></span>` : `<span class="hs-none">NOBODY YET</span>`}
         </span>
       </button></div>`;
   };
@@ -10837,7 +10837,7 @@ async function renderSeasonStats() {
       <div class="hs-side-note">Their own record. Side bets never count toward pool standings, payouts or the boards above.</div>
       <div class="hs-grid">${sideTiles}</div>
     </div>`;
-  panel.innerHTML = `<div class="hs-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} ON THE RECORD · TAP A BOARD FOR EVERYONE</small></div>
+  panel.innerHTML = `<div class="hs-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} · TAP A BOARD</small></div>
     <div class="hs-grid">${all.slice(0, 4).join("")}</div>
     <button type="button" class="hs-all-btn" data-hs-all>VIEW ALL HIGH SCORES ›</button>`;
 }
