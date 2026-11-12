@@ -6900,7 +6900,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     div.innerHTML = `
       <div class="ranking-main" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
-        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span>${rankLockHtml(row)}</span><span class="ranking-lock">${row.subline}</span></span>
+        <span class="ranking-name"><span class="rank-nameline"><span class="rank-who">${shown(row.name).toUpperCase()}</span>${weekDone ? "" : rankLockHtml(row)}</span><span class="ranking-lock">${row.subline}${weekDone ? rankLockHtml(row) : ""}</span></span>
         <i class="rank-live mid${row.inFlight > 0 ? " on" : row.inFlight < 0 ? " neg" : row.inFlight === 0 ? " zero" : ""}" title="${row.inFlight != null ? "Points from live games if they ended now (a losing lock counts its penalty)" : "No games live"}">${row.inFlight != null ? signedPts(row.inFlight) : "–"}</i>
         ${(() => {
           // The week at a glance: one square per game in kickoff order.
