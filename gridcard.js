@@ -52,7 +52,7 @@
   // columns, measured from the art. Everything drawn is relative to a
   // panel's name-bar corner.
   const PANELS = [[265, 410], [263, 614], [259, 825], [256, 1047], [251, 1276], [697, 410], [705, 614], [715, 825], [724, 1047], [737, 1277]]; // measured from the art
-  const BG = "assets/grid-bg-100-race2.webp";
+  const BG = "assets/grid-bg-100-v3.webp";
   let bgImg = null;
   const loadBg = () => new Promise((res) => { if (bgImg) return res(bgImg); const im = new Image(); im.onload = () => { bgImg = im; res(im); }; im.onerror = () => res(null); im.src = BG; });
   const SMALL_FLAG = ["FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "FFFFFFFF", "P.......", "P.......", "P......."];
@@ -108,8 +108,8 @@
     // Name-bar top-left corners and widths on the $100 race-grid art
     // (1024x1536), left column then right. Every other part of a panel sits
     // at a fixed offset from its name bar (measured from panel 1).
-    const BARS = [[245, 370, 250], [245, 588, 250], [245, 803, 250], [245, 1016, 250], [245, 1236, 250], [752, 370, 248], [752, 588, 248], [752, 803, 248], [752, 1016, 248], [752, 1236, 248]];
-    const O = { nameH: 32, cntY: 67, cntR: 215, cellX: 10, cellY: 85, cellW: 162, cellH: 26, tbX: 133, tbY: 140, flagX: 184, flagY: 84, flagW: 70, flagH: 70 };
+    const BARS = [[244, 347, 240], [254, 564, 236], [258, 782, 232], [258, 1000, 232], [258, 1216, 232], [768, 347, 240], [772, 564, 236], [774, 782, 232], [774, 1000, 232], [774, 1216, 232]];
+    const O = { nameH: 42, cntY: 66, cntR: 234, cellX: 12, cellY: 91, cellW: 160, cellH: 28, tbX: 118, tbY: 143, flagX: 180, flagY: 88, flagW: 70, flagH: 70 };
     // The week and the ready count ride in one plate under the title.
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const sub = `${WEEK_LABEL.toUpperCase()} · ${left} · ${ready}/${rows.length} READY`;
@@ -122,7 +122,7 @@
     const BODY = "rgb(18,20,34)";
     rows.forEach((r, i) => {
       const [bx, by, bw] = BARS[i];
-      const p = ctx.getImageData(bx + 12, by + 6, 1, 1).data;
+      const p = ctx.getImageData(bx + bw - 30, by + 30, 1, 1).data; // right of the art's USER text
       const colour = `rgb(${p[0]},${p[1]},${p[2]})`;
       const dark = (p[0] * 0.299 + p[1] * 0.587 + p[2] * 0.114) > 170;
       const fc = r.state === "go" ? "#39ff88" : r.state === "warn" ? "#ffe45e" : "#e0102a";
@@ -139,11 +139,11 @@
         ctx.fillStyle = "#2a1e00"; ctx.fillText(tag, bx + 14, by - 8);
       }
       // Selections count.
-      ctx.fillStyle = BODY; ctx.fillRect(bx + O.cntR - 74, by + O.cntY - 15, 106, 30);
+      ctx.fillStyle = BODY; ctx.fillRect(bx + O.cntR - 88, by + O.cntY - 16, 120, 32);
       ctx.font = "700 20px \"Chakra Petch\", system-ui, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#fff";
       ctx.fillText(`${r.n} / ${total}`, bx + O.cntR, by + O.cntY);
       // Ten cells.
-      ctx.fillStyle = BODY; ctx.fillRect(bx + O.cellX - 2, by + O.cellY - 3, O.cellW + 4, O.cellH + 6);
+      ctx.fillStyle = BODY; ctx.fillRect(bx + O.cellX - 4, by + O.cellY - 8, O.cellW + 8, O.cellH + 12);
       const step = O.cellW / total, cw = step - 2.4;
       for (let k = 0; k < total; k++) {
         const cx = bx + O.cellX + k * step;
@@ -156,7 +156,7 @@
       ctx.fillText(r.tb ? "✓ IN" : "✗", bx + O.tbX, by + O.tbY);
       // Flag box in the state colour.
       const fx = bx + O.flagX, fy = by + O.flagY;
-      ctx.fillStyle = BODY; ctx.fillRect(fx - 4, fy - 4, O.flagW + 10, O.flagH + 8);
+      ctx.fillStyle = BODY; ctx.fillRect(fx - 8, fy - 8, O.flagW + 18, O.flagH + 18);
       ctx.strokeStyle = fc; ctx.lineWidth = 5; ctx.strokeRect(fx + 2, fy + 2, O.flagW - 4, O.flagH - 4);
       px_(ctx, SMALL_FLAG, fx + 12, fy + 18, 5, { F: fc, P: "#ddd" });
       if (r.state === "go") for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 8; xx++) if ((xx + yy) % 2) { ctx.fillStyle = "#052010"; ctx.fillRect(fx + 12 + xx * 5, fy + 18 + yy * 5, 5, 5); }
