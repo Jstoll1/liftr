@@ -2167,7 +2167,7 @@ export function buildSummary(week, slate, results, picks, kickoffs = null, earli
     sealedAt: Date.now(),
     // The week in five lines, written once here so every phone tells the
     // same story. Only a complete week gets one.
-    recap: complete ? { ...buildRecap(games, rows, actualTotal, tbGame, seasonMovement(earlier, rows, EXHIBITION_WEEKS.has(Number(week)))), bestWhoFixed: true } : null,
+    recap: complete ? { ...buildRecap(games, rows, actualTotal, tbGame, seasonMovement(earlier, rows, EXHIBITION_WEEKS.has(Number(week)))), bestWhoFixed: true, worstRule: 2 } : null,
   };
 }
 
@@ -2515,6 +2515,18 @@ async function handleQotw(request, env, corsHeaders, url) {
   return json({ ok: true }, 200, corsHeaders);
 }
 
+// Worst pick avoids pick of the week's game (rule 2, 12 Nov 2026). The
+// newest sealed week, the one on screen, is rebuilt to it once from its
+// own frozen slate and ledger; older weeks keep the card members saw.
+function fixWorstRule(s) {
+  if (!s?.recap || s.recap.worstRule === 2 || !Array.isArray(s.rows) || !Array.isArray(s.slate)) return false;
+  const tb = s.slate.find((g) => g.tiebreakerGame) || null;
+  const fresh = buildRecap(s.slate, s.rows, s.tiebreaker?.actual ?? null, tb, null);
+  if (fresh.worst) s.recap.worst = fresh.worst;
+  s.recap.worstRule = 2;
+  return true;
+}
+
 function fixBestWho(s) {
   const b = s?.recap?.best;
   if (!b || s.recap.bestWhoFixed || !Array.isArray(s.rows)) return false;
@@ -2606,6 +2618,9 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
     const cur = await env.LIFTR_KV.get(summaryKey(weeks.current), "json");
     if (cur?.frozen) { const sl = await env.LIFTR_KV.get(gamesKey(weeks.current), "json"); if ((sl?.games || []).some((g) => !couldBeFinal(Date.parse(g.kickoff), now))) await sealWeek(env, weeks.current); }
   } catch (err) { console.error("early seal check", err?.stack || String(err)); }
+  // The newest week that has sealed, whose recap is the one on screen.
+  let latestSealed = null;
+  for (const n of [...weeks.list].sort((a, b) => b - a)) { const x = await env.LIFTR_KV.get(summaryKey(n), "json"); if (x?.complete) { latestSealed = n; break; } }
   const rows = await Promise.all(weeks.list.map(async (n) => {
     let s = await env.LIFTR_KV.get(summaryKey(n), "json");
     // Written by an older Worker: rebuild it from the stored picks and
@@ -2614,7 +2629,9 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
     // Frozen weeks keep their recap as written. Pick of the week used to
     // name only the best-paid line; re-name everyone who cashed on that
     // team from the stored ledger. Nothing is rescored.
-    if (s && fixBestWho(s)) await env.LIFTR_KV.put(summaryKey(n), JSON.stringify(s));
+    let changed = !!(s && fixBestWho(s));
+    if (s?.complete && n === latestSealed && fixWorstRule(s)) changed = true;
+    if (changed) await env.LIFTR_KV.put(summaryKey(n), JSON.stringify(s));
     return [n, s];
   }));
   // The ledger is every pick of every manager, which the board does not
