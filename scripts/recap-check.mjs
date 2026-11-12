@@ -64,8 +64,20 @@ for (const wk of weeks) {
     const k = teamHit ? `${l.g}|${l.team}|${l.mode}` : `${l.g}|${l.team}`;
     groups.set(k, (groups.get(k) || 0) + 1);
   }
-  const most = Math.max(...groups.values());
-  r.worst?.takers === most ? ok(wk, `worst pick ${r.worst.pick}, ${most} takers`) : fail(wk, `worst pick says ${r.worst?.takers} takers, ledger's biggest losing group is ${most}`);
+  // From 12 Nov 2026 worst pick avoids pick of the week's game unless that
+  // game is clearly the story (whole league lost on it, or the next miss
+  // elsewhere drew half as many or fewer). Weeks sealed before keep the old card.
+  const lossSorted = [...groups.entries()].sort((a, b) => b[1] - a[1]);
+  let most = lossSorted[0][1];
+  if ((wk.sealedAt || 0) >= Date.parse("2026-11-12T00:00:00Z") && r.best) {
+    const bestG = settled.find((l) => l.result === "hit" && (wk.slate || []).some((g) => Number(g.id) === Number(l.g) && [g.awayShort, g.homeShort].includes(r.best.team)))?.g;
+    const gOf = (k) => k.split("|")[0];
+    if (bestG != null && gOf(lossSorted[0][0]) === String(bestG)) {
+      const alt = lossSorted.find(([k]) => gOf(k) !== String(bestG));
+      if (alt && most < rows.length && alt[1] * 2 > most) most = alt[1];
+    }
+  }
+  r.worst?.takers === most ? ok(wk, `worst pick ${r.worst.pick}, ${most} takers`) : fail(wk, `worst pick says ${r.worst?.takers} takers, expected ${most}`);
 
   // Coin flip: the game with the smallest gap between its two most-taken sides.
   const gaps = [...new Set(all.map((l) => l.g))].map((g) => {
