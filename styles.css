@@ -9568,3 +9568,23 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 
 /* The simulator belongs to the open board: it folds away with it, as VS does. */
 #sim-open.lb-folded { display: none !important; }
+
+/* ==== Slate editor inside Live (html.slate-embed) ====
+   Only the editor: no app nav, Ask button or screens behind it. On a wide
+   window: week, Suggest and filter share one toolbar row, the games fill
+   the width below, and the slate is pinned on the right. */
+html.slate-embed #bottom-nav, html.slate-embed .ask-fab, html.slate-embed #home-header, html.slate-embed main.screen:not(#admin-screen) { display: none !important; }
+html.slate-embed .admin-overlay { left: 0 !important; bottom: 0 !important; padding-top: 14px; }
+@media (min-width: 900px) and (hover: hover) {
+  html.slate-embed #admin-screen { padding: 0 28px 28px; }
+  html.slate-embed #admin-screen .wrap.wide { max-width: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 360px; grid-auto-flow: row dense; column-gap: 16px; align-items: center; }
+  html.slate-embed #admin-screen .wrap.wide > * { grid-column: 1 / 4; }
+  html.slate-embed #admin-screen .wrap.wide > .admin-week { grid-column: 1; }
+  html.slate-embed #admin-screen .wrap.wide > #admin-suggest-btn { grid-column: 2; margin: 0; align-self: end; }
+  html.slate-embed #admin-screen .wrap.wide > .admin-filter-row { grid-column: 3; margin: 0; align-self: end; }
+  html.slate-embed #admin-screen .wrap.wide > .admin-slate { grid-column: 4; grid-row: 1 / span 40; position: sticky; top: 12px; max-height: calc(100vh - 40px); overflow-y: auto; align-self: start; }
+  html.slate-embed #admin-screen .topbar.centered { justify-content: flex-start; padding-left: 40px; }
+  html.slate-embed #admin-screen .admin-games { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+  html.slate-embed #admin-screen .admin-slate > summary { pointer-events: none; }
+  html.slate-embed #admin-screen .admin-slate .as-car { display: none; }
+}
