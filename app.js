@@ -5650,11 +5650,11 @@ function renderPayouts() {
     return `<span class="ps-seg"></span>`;
   }).join("");
   panel.innerHTML = `
-    <div class="pot-jackpot">
+    ${typeof betweenWeeks === "function" && betweenWeeks() ? `<div class="pot-jackpot mini"><span class="pj-label">JACKPOT</span><span class="pj-amount">${money(Math.max(0, left + (POT.seasonTotal || 0)))}</span><span class="pj-sub">still in play<br>${money(POT.weekly)} a week${POT.season.length ? "" : " · 1st only"}</span></div>` : `<div class="pot-jackpot">
       <div class="pj-label">★ JACKPOT · STILL IN PLAY ★</div>
       <div class="pj-amount">${money(Math.max(0, left + (POT.seasonTotal || 0)))}</div>
       <div class="pj-sub">${money(POT.total)} pot · ${POT.members} × ${money(POT.buyIn)} · ${money(POT.weekly)} a week${POT.season.length ? ` · season ${POT.season.map(money).join(" / ")}` : " · 1st only"}</div>
-    </div>
+    </div>`}
     <div class="pot-season">
       <div class="ps-head"><span>SEASON</span><b>${sealed} / ${POT.weeks}</b></div>
       <div class="ps-bar" style="grid-template-columns: repeat(${POT.weeks + exh.length}, 1fr)">${seasonSegs}</div>
@@ -10323,17 +10323,26 @@ function recapSeasonStrip() {
 // Scores until the first kickoff of the new slate.
 // Between weeks: the week on screen has sealed, its replay has gone, and
 // the next slate is not up yet. One card at the top says so.
+// Between weeks: the week on screen has sealed and its replay has gone,
+// and the next slate is not up yet.
+function lastSealedWeek() { return Object.values(weekSummaries).filter((s) => s?.complete).sort((a, b) => b.week - a.week)[0] || null; }
+function betweenWeeks() { const last = lastSealedWeek(); return !!last && Number(last.week) === Number(currentWeek) && Date.now() >= recapExpiry(last); }
+// One row at the top: the week to come, and last week's winner as a chip
+// (tap for their card).
 function paintNextSlate() {
   const el = document.getElementById("next-slate");
   if (!el) return;
-  const last = Object.values(weekSummaries).filter((s) => s?.complete).sort((a, b) => b.week - a.week)[0];
-  const on = !!last && Number(last.week) === Number(currentWeek) && Date.now() >= recapExpiry(last);
-  const html = !on ? "" : `<div class="ns-top"><span class="ns-k">NEXT SLATE</span><span class="ns-pill">AWAITING RELEASE</span></div>
-    <div class="ns-t"><svg class="ns-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Week ${Number(last.week) + 1} coming soon</div>
-    ${(last.winners || []).length ? `<p class="ns-s">Defending champ <b>${last.winners.map((n) => escapeCd(shown(n))).join(" & ")}</b></p>` : ""}`;
+  const last = lastSealedWeek();
+  const champs = betweenWeeks() ? last.winners || [] : [];
+  const html = !betweenWeeks() ? "" : `<div class="ns-main"><span class="ns-k">NEXT SLATE</span><span class="ns-t">Week ${Number(last.week) + 1} coming soon</span></div>
+    ${champs.length ? `<button type="button" class="ns-champ" data-nschamp="${escapeCd(champs[0])}" aria-label="Defending champ ${escapeCd(champs.map(shown).join(" and "))}">${champs.map((n) => `<span class="ns-av" style="--accent:${accentFor(n)}">${escapeCd(avatarOverrides[n] || shown(n)[0])}</span>`).join("")}<span class="ns-cn"><small>CHAMP</small><b>${champs.map((n) => escapeCd(shown(n))).join(" & ")}</b></span></button>` : ""}`;
   if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
   el.classList.toggle("hidden", !html);
 }
+document.getElementById("next-slate")?.addEventListener("click", (e) => {
+  const c = e.target.closest("[data-nschamp]");
+  if (c) { noteUse("next-slate-champ", c.dataset.nschamp); openPlayerCard(c.dataset.nschamp); }
+});
 function paintSeasonStrip(standalone) {
   const el = document.getElementById("season-strip");
   if (!el) return;
