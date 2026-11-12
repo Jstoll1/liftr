@@ -6714,7 +6714,9 @@ function renderWeekChamp(rows, results) {
   const allFinal = GAMES.every((g) => results[g.id]);
   // The replay's hero card already crowns this week's winner.
   const rp = document.getElementById("recap-panel");
-  if (!allFinal || !rows.length || (rp && !rp.classList.contains("hidden") && window.__recapWeek === currentWeek)) { el.classList.add("hidden"); return; }
+  // It bridges the last final to the seal only: once the week seals, the
+  // replay and then the season strip own the top of the board.
+  if (!allFinal || !rows.length || weekSummaries[currentWeek]?.complete || (rp && !rp.classList.contains("hidden") && window.__recapWeek === currentWeek)) { el.classList.add("hidden"); return; }
   const top = rows.filter((r) => r.place === rows[0].place);
   const names = top.map((r) => shown(r.name).toUpperCase()).join(" & ");
   const trophy = `<img class="wc-trophy" src="${awardArt("recap/trophy")}" alt="" aria-hidden="true" decoding="async">`;
@@ -10322,7 +10324,9 @@ function recapSeasonStrip() {
 function paintSeasonStrip(standalone) {
   const el = document.getElementById("season-strip");
   if (!el) return;
-  const html = standalone && !firstKickoffPassed() ? recapSeasonStrip() : "";
+  // Until the next first kickoff: a sealed week still on screen (no new
+  // slate yet) means that kickoff has not come.
+  const html = standalone && (!firstKickoffPassed() || weekSummaries[currentWeek]?.complete) ? recapSeasonStrip() : "";
   if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
   el.classList.toggle("hidden", !html);
 }
