@@ -9543,3 +9543,4 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .next-slate .ns-t { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 17px; font-weight: 700; color: var(--text); }
 .next-slate .ns-ic { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--text-meta); stroke-width: 2; stroke-linecap: round; }
 .next-slate .ns-s { margin: 6px 0 0; font-size: 13px; line-height: 1.4; color: var(--text-dim); }
+.next-slate .ns-s b { color: var(--neon-yellow); font-weight: 700; }
