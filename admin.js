@@ -17,6 +17,31 @@
   const el = (id) => document.getElementById(id);
   const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const MAX_PICKS = 10;   // the league plays ten games a week
+  // Desktop view: only inside Live (html.slate-embed), never on a phone.
+  // Same state, save and warnings; just laid out for a wide screen: a day
+  // rail, rich cards with the suggestion score, and a 10-slot slate board.
+  const DESK = () => { const h = document.documentElement; return h.classList.contains("slate-embed") && !h.classList.contains("phone") && innerWidth >= 900; };
+  let deskBuilt = false;
+  function buildDesk() {
+    if (deskBuilt || !DESK()) return;
+    deskBuilt = true;
+    document.documentElement.classList.add("slate-desk");
+    const wrap = root.querySelector(".wrap");
+    const rail = document.createElement("nav"); rail.id = "ad-days"; rail.className = "ad-days"; rail.setAttribute("aria-label", "Days");
+    const side = document.createElement("aside"); side.id = "ad-side"; side.className = "ad-side";
+    side.append(el("admin-slate"), wrap.querySelector(".admin-foot"));
+    // Week, Suggest and the filter on one toolbar row.
+    const tools = document.createElement("div"); tools.className = "ad-tools";
+    wrap.querySelector(".admin-week").before(tools);
+    tools.append(wrap.querySelector(".admin-week"), el("admin-suggest-btn"), wrap.querySelector(".admin-filter-row"));
+    wrap.prepend(rail); wrap.append(side);
+    el("admin-slate").setAttribute("open", "");
+    rail.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-day]");
+      if (b) document.getElementById(b.dataset.day)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (e.target.closest("[data-noline]")) { el("admin-games").classList.toggle("ad-hide-noline"); renderFound(); }
+    });
+  }
   let found = [];         // games ESPN returned for the chosen week
   let picked = new Map(); // espn event id -> { spread, favSide, tiebreaker }
 
@@ -460,9 +485,15 @@
       return;
     }
     let lastDay = "";
+    const desk = DESK(); if (desk) buildDesk();
+    const days = [];
+    const rated = desk ? new Map(found.map((g) => [g.key, rateGame(g)])) : null;
+    const top = desk ? Math.max(1, ...[...rated.values()].map((r) => r.score)) : 1;
     list.innerHTML = rows.map((g) => {
       const dayLabel = new Date(g.kickoff).toLocaleDateString("en-US", { weekday: "long", month: "numeric", day: "numeric" });
-      const header = dayLabel !== lastDay ? `<div class="admin-day">${esc(dayLabel)}</div>` : "";
+      if (dayLabel !== lastDay) days.push({ id: `ad-day-${days.length}`, label: dayLabel, n: 0, on: 0 });
+      const d = days[days.length - 1]; d.n += 1; if (picked.has(g.key)) d.on += 1;
+      const header = dayLabel !== lastDay ? `<div class="admin-day" id="${d.id}">${esc(dayLabel)}</div>` : "";
       lastDay = dayLabel;
       const on = picked.has(g.key);
       const p = picked.get(g.key) || {};
@@ -477,12 +508,19 @@
           <span class="admin-teams">${esc(g.awayShort)} @ ${esc(g.homeShort)}</span>
           <span class="admin-odds ${g.spread === null ? "none" : ""}">${esc(lineText)}</span>
           <span class="admin-time">${esc(time)}${g.tv ? " · " + esc(g.tv) : ""}</span>
+          ${desk ? (() => { const r = rated.get(g.key); const pct = g.spread === null ? 0 : Math.max(4, Math.min(100, Math.round((r.score / top) * 100)));
+            const rk = (n) => (n <= 25 ? `<em class="ad-rk">${n}</em>` : "");
+            return `<span class="ad-names"><span>${rk(g.awayRank)}${esc(g.awayShort)}</span><span>${rk(g.homeRank)}${esc(g.homeShort)}</span></span><span class="ad-rate" title="How good a watch for the league"><i style="width:${pct}%"></i></span><span class="ad-why">${esc(r.why.join(" · "))}</span>`; })() : ""}
         </button>
         ${on ? `<div class="admin-line">
           <label class="admin-tb"><input type="checkbox" data-act="tb" ${p.tiebreaker ? "checked" : ""} /> Tiebreaker game</label>
         </div>` : ""}
       </div>`;
     }).join("");
+    if (desk) {
+      const hide = list.classList.contains("ad-hide-noline");
+      el("ad-days").innerHTML = `<b class="ad-days-h">DAYS</b>${days.map((d) => `<button type="button" data-day="${d.id}"><span>${esc(d.label.split(",")[0])}</span><small>${d.on ? `<i>${d.on}</i> · ` : ""}${d.n}</small></button>`).join("")}<button type="button" class="ad-tog${hide ? " on" : ""}" data-noline="1">${hide ? "✓ " : ""}Hide no-line games</button>`;
+    }
     updateCount();
   }
 
@@ -494,6 +532,20 @@
     const sel = found.filter((g) => picked.has(g.key)).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
     const tb = sel.some((g) => picked.get(g.key).tiebreaker);
     el("admin-slate-n").textContent = `${sel.length} of ${MAX_PICKS}${sel.length ? (tb ? " · TB set" : " · no TB") : ""}`;
+    if (DESK()) {
+      const now = Date.now();
+      const warn = [];
+      if (sel.length && !tb) warn.push("No tiebreaker yet: tap ★ on one game.");
+      const kicked = sel.filter((g) => new Date(g.kickoff).getTime() <= now);
+      if (kicked.length) warn.push(`${kicked.map((g) => `${g.awayShort} @ ${g.homeShort}`).join(", ")} already kicked off.`);
+      const withPicks = sel.map((g) => [g, pickersOf(savedGameOf(g))]).filter(([, n]) => n.length);
+      if (withPicks.length) warn.push(`Picks already in on ${withPicks.length} game${withPicks.length === 1 ? "" : "s"}: changing ${withPicks.length === 1 ? "it" : "them"} asks first.`);
+      const slot = (g, i) => { if (!g) return `<li class="ad-slot open"><span class="ad-n">${i + 1}</span><span class="ad-open">Open slot</span></li>`;
+        const k = new Date(g.kickoff), fav = g.favSide === "home" ? g.homeShort : g.awayShort, isTb = picked.get(g.key).tiebreaker;
+        return `<li class="ad-slot${isTb ? " tb" : ""}" data-key="${esc(g.key)}"><span class="ad-n">${i + 1}</span><button type="button" class="as-go" data-act="go"><span class="as-logos">${g.awayLogo ? `<img src="${esc(g.awayLogo)}" alt="">` : "<i></i>"}${g.homeLogo ? `<img src="${esc(g.homeLogo)}" alt="">` : "<i></i>"}</span><span class="as-t"><b>${esc(g.awayShort)} @ ${esc(g.homeShort)}</b><small>${esc(k.toLocaleDateString("en-US", { weekday: "short" }))} ${esc(k.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }))} · ${g.spread === null ? "no line" : esc(`${fav} -${g.spread}`)}</small></span></button><button type="button" class="ad-star${isTb ? " on" : ""}" data-act="tb" title="${isTb ? "Tiebreaker" : "Make this the tiebreaker"}" aria-label="Tiebreaker">★</button><button type="button" class="as-x" data-act="drop" aria-label="Remove ${esc(g.awayShort)} at ${esc(g.homeShort)}">✕</button></li>`; };
+      list.innerHTML = Array.from({ length: MAX_PICKS }, (_, i) => slot(sel[i], i)).join("") + (warn.length ? `<li class="ad-warn">${warn.map((w) => `<span>⚠ ${esc(w)}</span>`).join("")}</li>` : sel.length === MAX_PICKS ? `<li class="ad-ok">✓ Ten games and a tiebreaker. Ready to save.</li>` : "");
+      return;
+    }
     if (!sel.length) { list.innerHTML = `<li class="as-empty">Tap games below to build the slate.</li>`; return; }
     list.innerHTML = sel.map((g) => {
       const k = new Date(g.kickoff);
@@ -507,6 +559,7 @@
     const act = e.target.closest("[data-act]")?.dataset.act;
     const card = document.querySelector(`#admin-games .admin-game[data-key="${CSS.escape(li.dataset.key)}"]`);
     if (act === "drop") { card?.querySelector('[data-act="toggle"]')?.click(); return; }
+    if (act === "tb") { const p = picked.get(li.dataset.key); if (!p) return; const was = p.tiebreaker; picked.forEach((v) => { v.tiebreaker = false; }); p.tiebreaker = !was; renderFound(); return; }
     if (card) { card.scrollIntoView({ behavior: "smooth", block: "center" }); card.classList.add("as-ping"); setTimeout(() => card.classList.remove("as-ping"), 1200); }
   });
   if (matchMedia("(min-width: 1100px)").matches) el("admin-slate")?.setAttribute("open", "");
@@ -685,5 +738,6 @@
   el("admin-preview-close").addEventListener("click", closePreview);
   el("admin-preview").addEventListener("click", (e) => { if (e.target.id === "admin-preview") closePreview(); });
 
+  addEventListener("resize", () => { if (DESK() && !deskBuilt && found.length) renderFound(); });
   show();
 })();

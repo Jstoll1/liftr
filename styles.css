@@ -9575,16 +9575,62 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
    the width below, and the slate is pinned on the right. */
 html.slate-embed #bottom-nav, html.slate-embed .ask-fab, html.slate-embed #home-header, html.slate-embed main.screen:not(#admin-screen) { display: none !important; }
 html.slate-embed .admin-overlay { left: 0 !important; bottom: 0 !important; padding-top: 14px; }
-@media (min-width: 900px) {
-  html.slate-embed:not(.phone) #admin-screen { padding: 0 28px 28px; }
-  html.slate-embed:not(.phone) #admin-screen .wrap.wide { max-width: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 360px; grid-auto-flow: row dense; column-gap: 16px; align-items: center; }
-  html.slate-embed:not(.phone) #admin-screen .wrap.wide > * { grid-column: 1 / 4; }
-  html.slate-embed:not(.phone) #admin-screen .wrap.wide > .admin-week { grid-column: 1; }
-  html.slate-embed:not(.phone) #admin-screen .wrap.wide > #admin-suggest-btn { grid-column: 2; margin: 0; align-self: end; }
-  html.slate-embed:not(.phone) #admin-screen .wrap.wide > .admin-filter-row { grid-column: 3; margin: 0; align-self: end; }
-  html.slate-embed:not(.phone) #admin-screen .wrap.wide > .admin-slate { grid-column: 4; grid-row: 1 / span 40; position: sticky; top: 12px; max-height: calc(100vh - 40px); overflow-y: auto; align-self: start; }
-  html.slate-embed:not(.phone) #admin-screen .topbar.centered { justify-content: flex-start; padding-left: 40px; }
-  html.slate-embed:not(.phone) #admin-screen .admin-games { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
-  html.slate-embed:not(.phone) #admin-screen .admin-slate > summary { pointer-events: none; }
-  html.slate-embed:not(.phone) #admin-screen .admin-slate .as-car { display: none; }
-}
+/* Desktop view (admin.js adds html.slate-desk): day rail | games | slate board. */
+html.slate-desk #admin-screen { padding: 0 24px 24px; }
+html.slate-desk #admin-screen .wrap.wide { max-width: none; display: grid; grid-template-columns: 150px minmax(0, 1fr) 360px; grid-auto-flow: row dense; column-gap: 22px; align-items: center; }
+html.slate-desk #admin-screen .wrap.wide > * { grid-column: 2; }
+html.slate-desk #admin-screen .wrap.wide > #ad-days { grid-column: 1; grid-row: 1 / span 60; align-self: start; position: sticky; top: 8px; display: flex; flex-direction: column; gap: 4px; padding-top: 44px; }
+html.slate-desk #admin-screen .wrap.wide > #ad-side { grid-column: 3; grid-row: 1 / span 60; align-self: start; position: sticky; top: 8px; display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 24px); }
+html.slate-desk #admin-screen .topbar.centered { justify-content: flex-start; margin-bottom: 2px; }
+html.slate-desk #admin-screen .admin-intro { display: none; }
+/* Toolbar: week, suggest and filter on one row. */
+.ad-tools { display: grid; grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr); align-items: end; gap: 12px; margin: 4px 0 6px; }
+.ad-tools .admin-week, .ad-tools #admin-suggest-btn, .ad-tools .admin-filter-row { margin: 0 !important; }
+.ad-tools #admin-suggest-btn { width: auto; min-height: 42px; padding: 0 22px; white-space: nowrap; }
+/* The tiebreaker is set with the star on the board, so the card stays one height. */
+html.slate-desk .admin-game .admin-line { display: none; }
+/* Day rail */
+.ad-days-h { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .1em; color: var(--text-meta); padding: 0 8px 4px; }
+#ad-days button { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 8px 10px; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card-bg); color: var(--text); font: 600 13px 'Chakra Petch', system-ui, sans-serif; text-align: left; cursor: pointer; }
+#ad-days button:hover { border-color: rgba(var(--neon-cyan-rgb), .5); }
+#ad-days small { font-size: 11px; color: var(--text-dim); } #ad-days small i { font-style: normal; color: var(--neon-green); font-weight: 700; }
+#ad-days .ad-tog { margin-top: 8px; justify-content: center; font-size: 11.5px; color: var(--text-meta); } #ad-days .ad-tog.on { color: var(--neon-cyan); border-color: rgba(var(--neon-cyan-rgb), .5); }
+#admin-games.ad-hide-noline .admin-game.noline { display: none; }
+/* Rich game cards */
+html.slate-desk #admin-screen .admin-games { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+html.slate-desk #admin-screen .admin-day { grid-column: 1 / -1; position: sticky; top: 0; z-index: 2; margin-top: 6px; padding: 6px 8px; background: var(--bg); }
+html.slate-desk .admin-game { border: 1.5px solid var(--card-border); border-radius: 10px; background: var(--card-bg); transition: border-color .12s, transform .12s; }
+html.slate-desk .admin-game:not(.noline):hover { border-color: rgba(var(--neon-cyan-rgb), .55); transform: translateY(-1px); }
+html.slate-desk .admin-game.on { border-color: var(--neon-green); background: rgba(var(--neon-green-rgb, 57, 255, 136), .07); }
+html.slate-desk .admin-game.noline { opacity: .45; }
+html.slate-desk .admin-pick { display: grid !important; grid-template-columns: 1fr auto; grid-template-areas: "logos check" "names names" "odds odds" "time time" "rate rate" "why why"; gap: 4px; padding: 12px 12px 10px !important; text-align: left; }
+html.slate-desk .admin-pick .admin-logos { grid-area: logos; display: flex; gap: 10px; align-items: center; }
+html.slate-desk .admin-pick .admin-logos img, html.slate-desk .admin-pick .admin-logos i { width: 34px; height: 34px; object-fit: contain; }
+html.slate-desk .admin-pick .admin-check { grid-area: check; align-self: start; }
+html.slate-desk .admin-pick .admin-teams { display: none; }
+html.slate-desk .ad-names { grid-area: names; display: flex; flex-direction: column; gap: 1px; font: 700 14px 'Chakra Petch', system-ui, sans-serif; color: var(--text); }
+html.slate-desk .ad-names span:first-child::after { content: " @"; color: var(--text-dim); font-weight: 500; }
+html.slate-desk .ad-rk { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-yellow); margin-right: 5px; vertical-align: 2px; }
+html.slate-desk .admin-pick .admin-odds { grid-area: odds; font-size: 13px; }
+html.slate-desk .admin-pick .admin-time { grid-area: time; font-size: 11.5px; color: var(--text-dim); }
+.ad-rate { grid-area: rate; display: block; height: 5px; margin-top: 4px; border-radius: 3px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+.ad-rate i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--neon-pink), var(--neon-orange) 50%, var(--neon-green)); }
+.ad-why { grid-area: why; min-height: 14px; font-size: 11px; color: var(--text-meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Slate board */
+html.slate-desk #ad-side .admin-slate { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+html.slate-desk #ad-side .admin-slate > summary { pointer-events: none; } html.slate-desk #ad-side .as-car { display: none; }
+#admin-slate-list .ad-slot { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 4px 8px; border-top: 1px solid rgba(255, 255, 255, .06); }
+#admin-slate-list .ad-slot.open { color: var(--text-dim); font-size: 12px; }
+#admin-slate-list .ad-slot.tb { background: rgba(var(--arcade-gold-rgb), .07); }
+.ad-n { flex: none; width: 18px; font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-meta); text-align: right; }
+#admin-slate-list .ad-slot .as-go { flex: 1; min-width: 0; }
+.ad-star { flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .1); background: none; color: var(--text-dim); font-size: 14px; cursor: pointer; }
+.ad-star:hover, .ad-star.on { color: var(--arcade-gold); border-color: rgba(var(--arcade-gold-rgb), .55); }
+#admin-slate-list .ad-warn, #admin-slate-list .ad-ok { display: flex; flex-direction: column; gap: 4px; margin: 8px; padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.35; }
+#admin-slate-list .ad-warn { background: rgba(var(--neon-pink-rgb), .08); color: #ff9fbf; }
+#admin-slate-list .ad-ok { background: rgba(57, 255, 136, .08); color: var(--neon-green); }
+/* The foot (status, Save, Exit, Live week, Preview) sits under the board, not as a bar across the page. */
+html.slate-desk #ad-side .admin-foot { position: static !important; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border: 1.5px solid var(--card-border); border-radius: 10px; background: var(--card-bg); }
+html.slate-desk #ad-side .admin-foot .admin-status { flex-basis: 100%; }
+html.slate-desk #ad-side #admin-save { flex: 1 1 100%; min-height: 42px; }
+html.slate-desk #ad-side .admin-count { flex-basis: 100%; text-align: left; }
