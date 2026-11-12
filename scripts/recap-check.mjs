@@ -64,12 +64,12 @@ for (const wk of weeks) {
     const k = teamHit ? `${l.g}|${l.team}|${l.mode}` : `${l.g}|${l.team}`;
     groups.set(k, (groups.get(k) || 0) + 1);
   }
-  // From 12 Nov 2026 worst pick avoids pick of the week's game unless that
+  // Rule 2 (12 Nov 2026, recap.worstRule): worst pick avoids pick of the week's game unless that
   // game is clearly the story (whole league lost on it, or the next miss
-  // elsewhere drew half as many or fewer). Weeks sealed before keep the old card.
+  // elsewhere drew half as many or fewer). Older cards keep the old rule.
   const lossSorted = [...groups.entries()].sort((a, b) => b[1] - a[1]);
   let most = lossSorted[0][1];
-  if ((wk.sealedAt || 0) >= Date.parse("2026-11-12T00:00:00Z") && r.best) {
+  if (r.worstRule === 2 && r.best) {
     const bestG = settled.find((l) => l.result === "hit" && (wk.slate || []).some((g) => Number(g.id) === Number(l.g) && [g.awayShort, g.homeShort].includes(r.best.team)))?.g;
     const gOf = (k) => k.split("|")[0];
     if (bestG != null && gOf(lossSorted[0][0]) === String(bestG)) {
