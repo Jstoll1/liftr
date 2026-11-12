@@ -10837,7 +10837,7 @@ async function renderSeasonStats() {
       <div class="hs-side-note">Their own record. Side bets never count toward pool standings, payouts or the boards above.</div>
       <div class="hs-grid">${sideTiles}</div>
     </div>`;
-  panel.innerHTML = `<div class="hs-marquee"><span>★ HIGH SCORES ★</span><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} · TAP A BOARD</small></div>
+  panel.innerHTML = `<div class="hs-marquee"><small>${weeks.length} WEEK${weeks.length === 1 ? "" : "S"} · TAP A BOARD</small></div>
     <div class="hs-grid">${all.slice(0, 4).join("")}</div>
     <button type="button" class="hs-all-btn" data-hs-all>VIEW ALL HIGH SCORES ›</button>`;
 }
