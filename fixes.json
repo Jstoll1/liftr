@@ -301,6 +301,13 @@
       "at": 1794425703000,
       "commit": "0fb0dc4",
       "note": "Names in recap sheets open the player's card; other taps inside close the sheet"
+    },
+    {
+      "k": "js-error",
+      "match": "Credential Management",
+      "at": 1794524384000,
+      "commit": "7430adf",
+      "note": "Password manager save of the admin key catches its async rejection; it never blocked the screen"
     }
   ]
 }
