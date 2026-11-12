@@ -2535,7 +2535,7 @@ body::before { display: none; }
             ${HAS_STUDIO ? `<button type="button" role="menuitem" data-studio="1">${ICONS.studio}<span>Studio</span>${sd.review ? `<i class="on">${sd.review}</i>` : ""}</button>` : ""}
             <a role="menuitem" href="../index.html?view=grid" target="_blank" rel="noopener">${ICONS.app}<span>🏁 Grid card</span><i>↗</i></a>
             <a role="menuitem" href="../" target="_blank" rel="noopener">${ICONS.app}<span>Open Pick'em</span><i>↗</i></a>
-            ${LEAGUE === "cfb" ? `<button type="button" role="menuitem" data-slate="1">${ICONS.console}<span>Slate editor</span></button>` : ""}
+            ${LEAGUE === "cfb" ? `<button type="button" role="menuitem" data-slateed="1">${ICONS.console}<span>Slate editor</span></button>` : ""}
             <a role="menuitem" href="../?admin" target="_blank" rel="noopener">${ICONS.console}<span>Admin console</span><i>↗</i></a>
             <hr>
             <button type="button" role="menuitem" class="danger" data-signout="1">${ICONS.out}<span>${device ? "Forget this device" : "Sign out"}</span></button>
@@ -3167,7 +3167,7 @@ body::before { display: none; }
   };
   const closeSlate = () => { slateEd.hidden = true; slateEd.querySelector("iframe").src = "about:blank"; document.body.style.overflow = ""; };
   document.addEventListener("click", (e) => {
-    if (e.target.closest("[data-slate]")) { st.menu = false; openSlate(); st.sig = ""; render(); }
+    if (e.target.closest("[data-slateed]")) { st.menu = false; openSlate(); st.sig = ""; render(); }
     else if (e.target.closest("[data-slateclose]")) closeSlate();
   });
   window.addEventListener("message", (e) => { if (e.origin === location.origin && e.data?.type === "slate-close") closeSlate(); });
