@@ -86,6 +86,11 @@ body.lz-on { overflow: hidden; }
 .lz-p { display: flex; align-items: center; gap: 10px; padding: 6px 9px; border-radius: 9px; background: var(--panel2); margin-bottom: 4px; font-size: 13.5px; }
 .lz-p > span { color: var(--meta); font-size: 12.5px; } .lz-p .lz-pay { margin-left: auto; } .lz-pay.on { color: var(--green); border-color: rgba(61, 252, 143, .45); }
 .lz-p.win b { color: var(--gold); }
+.slate-ed { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; background: var(--bg); }
+.slate-ed[hidden] { display: none; }
+/* The editor carries its own title and Exit; this corner ✕ is only a way out if it fails to load. */
+.slate-ed-x { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 10px; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel2); color: var(--meta); font-size: 13px; cursor: pointer; }
+.slate-ed iframe { flex: 1; width: 100%; border: 0; background: #0a0714; }
 .exp-k { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
 .exp-k > div { padding: 9px 10px; border-radius: 10px; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); min-width: 0; }
 .exp-k em { display: block; font: 700 9.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); font-style: normal; }
@@ -1339,6 +1344,7 @@ body::before { display: none; }
 <body>
 <div id="app"></div>
 <div id="studio" hidden></div>
+<div id="slate-ed" class="slate-ed" hidden><iframe title="Slate editor"></iframe><button type="button" class="slate-ed-x" data-slateclose="1" aria-label="Close the slate editor">✕</button></div>
 <div class="pv-back" id="pv-back"></div>
 <aside id="pv" class="pv" aria-label="Preview" role="dialog"></aside>
 <aside id="lz" class="lz" aria-label="Lightning editor" role="dialog" hidden></aside>
@@ -1400,6 +1406,10 @@ body::before { display: none; }
   const session = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch {} }, del: (k) => { try { sessionStorage.removeItem(k); } catch {} } };
   let device = store.get(DEVICE_STORE) || "", key = session.get(KEY_STORE) || "";
   const auth = () => (device ? `device=${encodeURIComponent(device)}` : `key=${encodeURIComponent(key)}`);
+  // The slate editor runs in a frame from the app (same site) and reads the
+  // key this tab signed in with; a remembered device holds no key, so the
+  // editor asks for it once.
+  window.__liveSlateKey = () => key || "";
   async function remember(k) {
     try {
       const r = await fetch(`${WORKER}/presence-device?key=${encodeURIComponent(k)}`, { method: "POST", cache: "no-store" });
@@ -2525,6 +2535,7 @@ body::before { display: none; }
             ${HAS_STUDIO ? `<button type="button" role="menuitem" data-studio="1">${ICONS.studio}<span>Studio</span>${sd.review ? `<i class="on">${sd.review}</i>` : ""}</button>` : ""}
             <a role="menuitem" href="../index.html?view=grid" target="_blank" rel="noopener">${ICONS.app}<span>🏁 Grid card</span><i>↗</i></a>
             <a role="menuitem" href="../" target="_blank" rel="noopener">${ICONS.app}<span>Open Pick'em</span><i>↗</i></a>
+            ${LEAGUE === "cfb" ? `<button type="button" role="menuitem" data-slate="1">${ICONS.console}<span>Slate editor</span></button>` : ""}
             <a role="menuitem" href="../?admin" target="_blank" rel="noopener">${ICONS.console}<span>Admin console</span><i>↗</i></a>
             <hr>
             <button type="button" role="menuitem" class="danger" data-signout="1">${ICONS.out}<span>${device ? "Forget this device" : "Sign out"}</span></button>
@@ -3143,6 +3154,23 @@ body::before { display: none; }
       <div class="note">From each answer's token counts at OpenAI's list prices. Your OpenAI bill is the final word.</div>
     </section>`;
   }
+
+  // ---- Slate editor -----------------------------------------------------
+  // The app's own editor (admin.js), full screen in a frame: one editor,
+  // with its ESPN loader, suggestions and the warning before a published
+  // game with picks on it changes.
+  const slateEd = document.getElementById("slate-ed");
+  const openSlate = () => {
+    const f = slateEd.querySelector("iframe");
+    f.src = `../?admin=1&embed=slate&t=${Date.now()}`;
+    slateEd.hidden = false; document.body.style.overflow = "hidden";
+  };
+  const closeSlate = () => { slateEd.hidden = true; slateEd.querySelector("iframe").src = "about:blank"; document.body.style.overflow = ""; };
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("[data-slate]")) { st.menu = false; openSlate(); st.sig = ""; render(); }
+    else if (e.target.closest("[data-slateclose]")) closeSlate();
+  });
+  window.addEventListener("message", (e) => { if (e.origin === location.origin && e.data?.type === "slate-close") closeSlate(); });
 
   // ---- Experts ----------------------------------------------------------
   // Every outlet's picks as archived before kickoff, graded on the finals

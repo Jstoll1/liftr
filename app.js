@@ -1,5 +1,7 @@
 // Arrived via brochiefs.com/admin: set before anything else runs.
 window.__adminEntry = /[?&]admin(=|&|$)/.test(location.search) || location.hash === "#admin";
+// Live hosts the slate editor in a frame (?admin=1&embed=slate): either key opens the editor, never the console.
+window.__slateEmbed = window.__adminEntry && /[?&]embed=slate\b/.test(location.search) && window.parent !== window;
 // Opened by the admin's live page as a preview (?view=game&x=401): a quiet
 // look at one screen, nobody signed in, no popups, nothing reported.
 window.__liveView = new URLSearchParams(location.search).get("view") || "";
@@ -1950,9 +1952,18 @@ homeLogoBtn.addEventListener("click", () => {
 
 // brochiefs.com/admin lands here as /?admin=1: open the key prompt straight
 // away, then tidy the address bar so a refresh is just the app.
-if (window.__adminEntry) {
+if (window.__adminEntry && !window.__slateEmbed) {
   history.replaceState(null, "", location.pathname);
   window.addEventListener("load", () => setTimeout(() => requestAdmin(), 600));
+}
+// Inside Live: use the key Live already holds (same site), else ask once.
+if (window.__slateEmbed) {
+  document.documentElement.classList.add("slate-embed");
+  window.addEventListener("load", () => setTimeout(() => {
+    let k = "";
+    try { k = window.parent.__liveSlateKey?.() || ""; } catch {}
+    if (k) submitAdminKey(k); else requestAdmin();
+  }, 300));
 }
 
 // Already unlocked in this tab: straight back to that surface. Otherwise
@@ -2020,7 +2031,7 @@ async function submitAdminKey(remembered) {
     else if (!rememberedTry) localStorage.removeItem(ADMIN_REMEMBER_KEY);
   } catch {}
   // Hands the key to the browser's password manager (Face ID / Touch ID fill).
-  try { if (window.PasswordCredential) navigator.credentials.store(new PasswordCredential({ id: "brochiefs-admin", password: key, name: "Brochiefs admin" })); } catch {}
+  try { if (window.PasswordCredential && !window.__slateEmbed) navigator.credentials.store(new PasswordCredential({ id: "brochiefs-admin", password: key, name: "Brochiefs admin" })); } catch {}
   adminKeyHeld = key;
   setAdminGateStatus(role === "app" ? "App console…" : "Slate editor…", "ok");
   // admin.js reads the key from here rather than from a field on screen.
@@ -2031,12 +2042,13 @@ async function submitAdminKey(remembered) {
 }
 
 function openRole(role) {
+  if (window.__slateEmbed) return openAdmin();
   if (role === "app") openAppConsole();
   else openAdmin();
 }
 
 document.getElementById("admin-gate-ok")?.addEventListener("click", () => submitAdminKey());
-document.getElementById("admin-gate-cancel")?.addEventListener("click", closeAdminGate);
+document.getElementById("admin-gate-cancel")?.addEventListener("click", () => { closeAdminGate(); if (window.__slateEmbed) { try { window.parent.postMessage({ type: "slate-close" }, location.origin); } catch {} } });
 document.getElementById("admin-gate-key")?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") { e.preventDefault(); submitAdminKey(); }
 });
@@ -2057,6 +2069,7 @@ function openAdmin() {
 }
 
 function closeAdmin() {
+  if (window.__slateEmbed) { try { window.parent.postMessage({ type: "slate-close" }, location.origin); } catch {} }
   adminOverlay?.classList.add("hidden");
   document.body.classList.remove("admin-open");
   lockAdmin();
