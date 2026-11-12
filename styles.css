@@ -5165,6 +5165,8 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 #scoreboard-screen.week-over > .wrap { display: flex; flex-direction: column; }
 #scoreboard-screen.week-over > .wrap > * { order: 50; }
 #scoreboard-screen.week-over #week-champ { order: 0; }
+/* Between weeks the season strip leads (it had no slot, so it fell to the bottom). */
+#scoreboard-screen.week-over #season-strip { order: 0; }
 #scoreboard-screen.week-over #scoreboard-updated, #scoreboard-screen.week-over #insert-coin, #scoreboard-screen.week-over #my-score { order: 1; }
 #scoreboard-screen.week-over #recap-toggle { order: 2; }
 #scoreboard-screen.week-over #recap-panel { order: 3; }
