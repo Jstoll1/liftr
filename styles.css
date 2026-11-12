@@ -9375,6 +9375,8 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .lb-head .sim-btn { position: absolute; right: 46px; top: 50%; transform: translateY(-50%); z-index: 2; padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(57, 255, 136, .7); background: rgba(57, 255, 136, .08); color: #39ff88; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .08em; line-height: normal; text-shadow: 0 0 5px rgba(57, 255, 136, .7); box-shadow: 0 0 8px rgba(57, 255, 136, .2); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .lb-head .sim-btn:active { transform: translateY(-50%) scale(.96); }
 #scoreboard-screen .lb-head:has(.sim-btn) #leaderboard-toggle { padding-right: 104px !important; white-space: nowrap; }
+/* Folded, its SIM and VS buttons are gone: the rule and caret run full width like every other heading. */
+#scoreboard-screen .lb-head:has(#sim-open.lb-folded) #leaderboard-toggle { padding-right: 2px !important; }
 .eng-bd { position: fixed; inset: 0; z-index: 2590; background: rgba(0, 8, 2, .7); display: none; }
 .eng-bd.on { display: block; }
 .eng-term.pop { top: 50%; bottom: auto; width: min(380px, calc(100vw - 32px)); transform: translate(-50%, -50%); }
@@ -9563,3 +9565,6 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .next-slate .ns-cn { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
 .next-slate .ns-cn small { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; color: var(--text-meta); }
 .next-slate .ns-cn b { font-size: 12.5px; font-weight: 700; color: var(--neon-yellow); }
+
+/* The simulator belongs to the open board: it folds away with it, as VS does. */
+#sim-open.lb-folded { display: none !important; }

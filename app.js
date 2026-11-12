@@ -6850,12 +6850,17 @@ function setWeekOverLayout(on) {
   // The week-over overview: the replay, the pot and season stats, in that
   // order, all open the first time the finished week is drawn. Each still
   // folds by hand.
-  if (on && weekOverSeen !== currentWeek) {
-    weekOverSeen = currentWeek;
-    for (const id of ["payouts-toggle", "season-toggle"]) {
-      const t = document.getElementById(id);
-      if (t && !t.classList.contains("open")) t.click();
-    }
+  // Between weeks (replay gone, next slate not up) only Next Slate, the
+  // season strip and the Pot are open; High Scores and last week's board
+  // start folded. Each phase sets the folds once; taps after that stick.
+  const between = on && typeof betweenWeeks === "function" && betweenWeeks();
+  const phase = `${currentWeek}:${between ? "between" : "over"}`;
+  if (on && weekOverSeen !== phase) {
+    weekOverSeen = phase;
+    const set = (id, want) => { const t = document.getElementById(id); if (t && t.classList.contains("open") !== want) t.click(); };
+    set("payouts-toggle", true);
+    set("season-toggle", !between);
+    if (between) { set("leaderboard-toggle", false); set("scores-toggle", false); }
     const recap = document.getElementById("recap-panel");
     if (recap?.classList.contains("folded")) {
       recap.classList.remove("folded");
@@ -10003,6 +10008,7 @@ try { if (localStorage.getItem("brochiefs_recap_folded_v1") === "1") document.ge
     toggle.setAttribute("aria-expanded", String(open));
     // The compare button belongs to the list, so it folds with it.
     h2hBtn?.classList.toggle("hidden", !open);
+    document.getElementById("sim-open")?.classList.toggle("lb-folded", !open);
   };
   toggle.addEventListener("click", () => {
     open = !open;
