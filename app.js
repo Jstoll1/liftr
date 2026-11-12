@@ -9686,8 +9686,8 @@ let renderRecap = function () {
   if (!toggle || !panel) return;
   const last = Object.values(weekSummaries).filter((s) => s?.complete && s.recap).sort((a, b) => b.week - a.week)[0];
   // Gone once the next slate is up, or Thursday morning, whichever first.
-  if (!last || currentWeek > last.week || Date.now() >= recapExpiry(last)) { toggle.classList.add("hidden"); panel.classList.add("hidden"); paintSeasonStrip(true); return; }
-  paintSeasonStrip(false);
+  if (!last || currentWeek > last.week || Date.now() >= recapExpiry(last)) { toggle.classList.add("hidden"); panel.classList.add("hidden"); paintSeasonStrip(true); paintNextSlate(); return; }
+  paintSeasonStrip(false); paintNextSlate();
   const r = last.recap;
   const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const names = (w) => w.length <= 2 ? w.join(" & ") : `${w.slice(0, -1).join(", ")} & ${w.at(-1)}`;
@@ -10321,6 +10321,19 @@ function recapSeasonStrip() {
 }
 // Once the recap is gone (next slate up), the strip keeps its own spot on
 // Scores until the first kickoff of the new slate.
+// Between weeks: the week on screen has sealed, its replay has gone, and
+// the next slate is not up yet. One card at the top says so.
+function paintNextSlate() {
+  const el = document.getElementById("next-slate");
+  if (!el) return;
+  const last = Object.values(weekSummaries).filter((s) => s?.complete).sort((a, b) => b.week - a.week)[0];
+  const on = !!last && Number(last.week) === Number(currentWeek) && Date.now() >= recapExpiry(last);
+  const html = !on ? "" : `<div class="ns-top"><span class="ns-k">NEXT SLATE</span><span class="ns-pill">AWAITING RELEASE</span></div>
+    <div class="ns-t"><svg class="ns-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Week ${Number(last.week) + 1} picks coming soon</div>
+    <p class="ns-s">Standings stay up while the next slate is prepared.</p>`;
+  if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+  el.classList.toggle("hidden", !html);
+}
 function paintSeasonStrip(standalone) {
   const el = document.getElementById("season-strip");
   if (!el) return;

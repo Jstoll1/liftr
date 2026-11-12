@@ -5166,6 +5166,7 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 #scoreboard-screen.week-over > .wrap > * { order: 50; }
 #scoreboard-screen.week-over #week-champ { order: 0; }
 /* Between weeks the season strip leads (it had no slot, so it fell to the bottom). */
+#scoreboard-screen.week-over #next-slate { order: -1; }
 #scoreboard-screen.week-over #season-strip { order: 0; }
 #scoreboard-screen.week-over #scoreboard-updated, #scoreboard-screen.week-over #insert-coin, #scoreboard-screen.week-over #my-score { order: 1; }
 #scoreboard-screen.week-over #recap-toggle { order: 2; }
@@ -9533,3 +9534,12 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
    read as "[logo] Utah". */
 .t-inl { display: inline-flex; align-items: center; gap: .3em; white-space: nowrap; vertical-align: bottom; font-style: normal; font-weight: inherit; color: inherit; }
 .t-inl-logo { width: max(1.25em, 12px); height: max(1.25em, 12px); object-fit: contain; flex: none; }
+
+/* ==== RETRO: next slate (between weeks, top of Scores) ==== */
+.next-slate { margin: 0 0 10px; padding: 12px 14px; border: 1.5px solid var(--card-border); border-radius: 10px; background: var(--card-bg); }
+.next-slate .ns-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.next-slate .ns-k { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .08em; color: var(--text-meta); }
+.next-slate .ns-pill { padding: 4px 8px; border: 1px solid rgba(var(--neon-cyan-rgb), .35); border-radius: 999px; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .06em; color: var(--neon-cyan); white-space: nowrap; }
+.next-slate .ns-t { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 17px; font-weight: 700; color: var(--text); }
+.next-slate .ns-ic { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--text-meta); stroke-width: 2; stroke-linecap: round; }
+.next-slate .ns-s { margin: 6px 0 0; font-size: 13px; line-height: 1.4; color: var(--text-dim); }
