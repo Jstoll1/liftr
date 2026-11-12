@@ -5167,6 +5167,9 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 #scoreboard-screen.week-over #week-champ { order: 0; }
 /* Between weeks the season strip leads (it had no slot, so it fell to the bottom). */
 #scoreboard-screen.week-over #next-slate { order: -1; }
+/* Even rhythm between weeks: 16px above each section heading, 8px from a heading to its card (the wrap's own gap). */
+#scoreboard-screen.week-over #next-slate, #scoreboard-screen.week-over #payouts-panel, #scoreboard-screen.week-over #season-panel { margin-bottom: 0 !important; }
+#scoreboard-screen.week-over .lb-head, #scoreboard-screen.week-over #season-toggle, #scoreboard-screen.week-over #all-picks-toggle, #scoreboard-screen.week-over #scores-toggle { margin-top: 8px !important; }
 #scoreboard-screen.week-over #season-strip { order: 0; }
 #scoreboard-screen.week-over #scoreboard-updated, #scoreboard-screen.week-over #insert-coin, #scoreboard-screen.week-over #my-score { order: 1; }
 #scoreboard-screen.week-over #recap-toggle { order: 2; }
@@ -6918,7 +6921,7 @@ section[data-ldview="features"] .lvz-fb { grid-template-columns: minmax(110px, 3
 .season-panel.hidden { display: none; }
 .hs-marquee { text-align: center; padding: 2px 0; }
 .hs-marquee span { display: block; font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: .12em; color: var(--neon-yellow); text-shadow: 1px 1px 0 var(--neon-pink); }
-.hs-marquee small { display: block; margin-top: 5px; font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.6; letter-spacing: .12em; color: var(--neon-cyan); opacity: .8; }
+.hs-marquee small { display: block; margin-top: 0; font-family: 'Press Start 2P', monospace; font-size: 6px; line-height: 1.6; letter-spacing: .12em; color: var(--neon-cyan); opacity: .8; }
 .hs-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; gap: 6px; }
 .hs-tile { --c: var(--neon-cyan); min-width: 0; border: 1.5px solid var(--c); border-radius: 10px; background: radial-gradient(90% 120% at 0% 50%, color-mix(in srgb, var(--c) 16%, transparent), transparent 70%), var(--ink-2);  overflow: hidden; }
 .hs-tile.open { grid-column: 1 / -1; box-shadow: 0 0 20px color-mix(in srgb, var(--c) 45%, transparent); }
