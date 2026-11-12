@@ -10329,8 +10329,8 @@ function paintNextSlate() {
   const last = Object.values(weekSummaries).filter((s) => s?.complete).sort((a, b) => b.week - a.week)[0];
   const on = !!last && Number(last.week) === Number(currentWeek) && Date.now() >= recapExpiry(last);
   const html = !on ? "" : `<div class="ns-top"><span class="ns-k">NEXT SLATE</span><span class="ns-pill">AWAITING RELEASE</span></div>
-    <div class="ns-t"><svg class="ns-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Week ${Number(last.week) + 1} picks coming soon</div>
-    <p class="ns-s">Standings stay up while the next slate is prepared.</p>`;
+    <div class="ns-t"><svg class="ns-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Week ${Number(last.week) + 1} coming soon</div>
+    ${(last.winners || []).length ? `<p class="ns-s">Defending champ <b>${last.winners.map((n) => escapeCd(shown(n))).join(" & ")}</b></p>` : ""}`;
   if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
   el.classList.toggle("hidden", !html);
 }
