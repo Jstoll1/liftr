@@ -2031,7 +2031,10 @@ async function submitAdminKey(remembered) {
     else if (!rememberedTry) localStorage.removeItem(ADMIN_REMEMBER_KEY);
   } catch {}
   // Hands the key to the browser's password manager (Face ID / Touch ID fill).
-  try { if (window.PasswordCredential && !window.__slateEmbed) navigator.credentials.store(new PasswordCredential({ id: "brochiefs-admin", password: key, name: "Brochiefs admin" })); } catch {}
+  // Optional: the store is async and can fail (no credential service, a
+  // frame, a private window); the rejection is swallowed so it never logs
+  // as an app error, and the key is already accepted either way.
+  try { if (window.PasswordCredential && !window.__slateEmbed) navigator.credentials.store(new PasswordCredential({ id: "brochiefs-admin", password: key, name: "Brochiefs admin" }))?.catch?.(() => {}); } catch {}
   adminKeyHeld = key;
   setAdminGateStatus(role === "app" ? "App console…" : "Slate editor…", "ok");
   // admin.js reads the key from here rather than from a field on screen.
