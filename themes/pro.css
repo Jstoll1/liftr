@@ -649,7 +649,7 @@ html.pro .plc-key { display: inline-flex; align-items: center; gap: 4px; }
 html.pro .plc-key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-left: 4px; }
 html.pro .plc-key .k-hi { background: var(--win); } html.pro .plc-key .k-lo { background: var(--loss); } html.pro .plc-key .k-won { background: var(--acc); }
 /* Season stats panel in Pro: no Retro gradient frame. */
-html.pro .season-panel { background: none !important; box-shadow: none !important; padding: 0 !important; }
+html.pro .season-panel { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; }
 html.pro .season-panel::before, html.pro .season-panel::after { display: none !important; }
 html.pro .tpoll-card { background: var(--s1) !important; border: 1px solid var(--line2) !important; }
 html.pro .tpoll-k { color: var(--acc) !important; }
