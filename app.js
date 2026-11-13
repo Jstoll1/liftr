@@ -1779,6 +1779,9 @@ const insTap = { last: "" };
   const clean = (t) => String(t || "").replace(/\s+/g, " ").trim().slice(0, 40);
   let last = "", lastAt = 0;
   document.addEventListener("click", (e) => {
+    // Only a person's tap: the app opens and folds sections itself with
+    // .click() (between weeks, for one), and those are not taps.
+    if (!e.isTrusted) return;
     const el = e.target.closest?.("button, a, summary, select, input, label, [role=button], [data-pot-row], [data-rc], [data-statrank], [data-wkstand], .pick-chip, .rx-season");
     if (!el) return;
     const what = el.id ? `#${el.id}` : clean(el.getAttribute("aria-label") || el.dataset.name || el.textContent) || `.${String(el.className || "").split(" ")[0]}`;
