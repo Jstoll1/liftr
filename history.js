@@ -127,7 +127,11 @@ renderLineage();renderLedger();renderFranchises();renderSeasons();renderNames();
   input.addEventListener('blur',()=>{if(idle())startAttract()});
   if(facts.length)startAttract();
   input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();form.requestSubmit()}});
-  form.querySelector('.archive-ask-line').addEventListener('click',()=>input.focus());
+  // One Chief: tapping the box opens the Ask Chief chat (it reads the
+  // archive too), so a question never starts here and answers over there.
+  const toChief=(e)=>{if(!window.__weekAskOpen)return false;e?.preventDefault?.();input.blur();window.__weekAskOpen();try{window.noteUse&&window.noteUse('history-ask-open')}catch{}return true};
+  form.querySelector('.archive-ask-line').addEventListener('click',(e)=>{if(e.target.closest('.ghost-ask'))return;if(!toChief(e))input.focus()});
+  input.addEventListener('focus',(e)=>{if(window.__weekAskOpen&&!input.value)toChief(e)});
   const receiptsEl=document.getElementById('archive-receipts'),followEl=document.getElementById('archive-followups');
   function typeOut(text,cls){
     clearInterval(timer);out.className='archive-ask-answer'+(cls?' '+cls:'');out.textContent='';let i=0;

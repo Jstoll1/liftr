@@ -419,9 +419,11 @@
   // Suggestions: three from a pool written for the chat, filled in with
   // this week's leader, a rival, games still open and the locks; a fresh
   // three after every answer.
-  let chipSet = null;
+  let chipSet = null, fromHistory = false;
   function chips() {
     if (chipSet) return chipSet;
+    // Opened from League History: questions about the archive first.
+    if (fromHistory) { const me0 = me(); return (chipSet = [me0 ? `What's ${shown(me0)}'s best season ever?` : "Who has the most titles?", "Who has the most regular season wins all time?", "Which season had the closest title game?"]); }
     const f = fins(), open = GAMES.filter((g) => !f[g.id]), live = open.filter((g) => latestLive[g.id]?.state === "in");
     const pick = (a) => a[Math.floor(Math.random() * a.length)];
     const memo = base(), mine = me();
@@ -497,7 +499,7 @@
       document.body.appendChild(m);
     }
     m.innerHTML = `<div class="ask-card"><span class="ask-grip" aria-hidden="true"></span><div class="ask-h"><b><span class="ask-title"><img class="chief-ico" src="assets/images/chief/chief2-96.webp" alt="" aria-hidden="true" decoding="async">ASK CHIEF</span></b>${log.length ? `<button type="button" class="ask-cp" data-askcopy="1">${copied ? "✓ Copied" : "Copy"}</button>` : ""}<button type="button" class="ask-x" aria-label="Close">✕</button></div>
-      <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q" role="button" tabindex="0" data-reask="${esc(x.q)}" title="Tap to ask again or edit">${esc(x.q)}</p><div class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : fmtA(String(x.a).replace("[[WHICH_LEAGUE]]", "").trim())}</div>${x.a && x.a.includes("[[WHICH_LEAGUE]]") && x === log[log.length - 1] && !busy ? `<div class="ask-which"><button type="button" data-ask="${esc(x.q)} (pick'em)">🏈 PICK'EM</button><button type="button" data-ask="${esc(x.q)} (fantasy league)">🏆 FANTASY</button></div>` : ""}`).join("") : `<p class="ask-hint">Odds, what-ifs, who's out, picks, the tiebreaker and season points.</p>`}</div>
+      <div class="ask-log">${log.length ? log.map((x) => `<p class="ask-q" role="button" tabindex="0" data-reask="${esc(x.q)}" title="Tap to ask again or edit">${esc(x.q)}</p><div class="ask-a${x.a == null ? " wait" : ""}">${x.a == null ? "Working it out…" : fmtA(String(x.a).replace("[[WHICH_LEAGUE]]", "").trim())}</div>${x.a && x.a.includes("[[WHICH_LEAGUE]]") && x === log[log.length - 1] && !busy ? `<div class="ask-which"><button type="button" data-ask="${esc(x.q)} (pick'em)">🏈 PICK'EM</button><button type="button" data-ask="${esc(x.q)} (fantasy league)">🏆 FANTASY</button></div>` : ""}`).join("") : `<p class="ask-hint">This week and every season: odds, what-ifs, picks, records and the archive.</p>`}</div>
       ${log.length ? "" : `<div class="ask-chips">${chips().map((c) => `<button type="button" data-ask="${esc(c)}"><span>${esc(c)}</span><i aria-hidden="true">↗</i></button>`).join("")}</div>`}
       <form class="ask-f"><input type="text" maxlength="200" placeholder="If Michigan wins can I still win?" ${busy ? "disabled" : ""} autocomplete="off"><button type="submit" ${busy ? "disabled" : ""}>Ask</button></form></div>`;
     const lg = m.querySelector(".ask-log"); lg.scrollTop = lg.scrollHeight;
@@ -606,5 +608,7 @@
   paintBtn(); setInterval(() => { paintBtn(); if (!introSeen()) maybeIntro(); }, 1500);
   window.openWeekAsk = open;
   window.__weekAskSend = (q) => { chipSet = null; open(); send(q); };
+  // The History page's box opens this same chat rather than a second one.
+  window.__weekAskOpen = () => { chipSet = null; fromHistory = true; open(); fromHistory = false; };
   window.__weekAsk = { runTool, condChances };
 })();
