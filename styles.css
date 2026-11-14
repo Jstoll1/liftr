@@ -9905,3 +9905,10 @@ body.rs-open #ask-fab { display: none; }
 .bs { padding: 8px 12px; margin-bottom: 4px; }
 .bs-k { margin-bottom: 6px; }
 .bs-r { margin-top: 6px; }
+/* Header v3.4: chance to win on one balanced line: label, number, bar, VS ME. */
+.rs-hero { align-items: center; gap: 10px; }
+.rs-chance { display: flex; align-items: center; gap: 8px; row-gap: 0; }
+.rs-k { grid-column: auto; flex: none; font-size: 6px; }
+.rs-pct { flex: none; font-size: 13px; }
+.rs-chance .rank-wp-bar { flex: 1; height: 8px; margin: 0; }
+.rs-btns .rs-vs { min-height: 26px; padding: 0 10px; font-size: 7px; }
