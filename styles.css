@@ -9653,7 +9653,7 @@ body.rs-open #ask-fab { display: none; }
 .rank-sheet.is-me .rs-card { border-color: var(--neon-cyan); }
 .rs-grab { width: 40px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .18); margin: 7px auto 0; flex: none; }
 .rs-head { position: relative; flex: none; padding: 6px 12px 10px; border-bottom: 1px solid var(--card-border); display: flex; flex-direction: column; gap: 8px; }
-.rs-top { display: flex; align-items: center; gap: 8px; padding-right: 26px; }
+.rs-top { display: flex; align-items: center; gap: 8px; padding-right: 34px; }
 .rs-top .ranking-place { flex: none; }
 .rs-name { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
 .rs-name b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; color: #fff; }
@@ -9661,8 +9661,13 @@ body.rs-open #ask-fab { display: none; }
 .rs-name small { flex-basis: 100%; font-size: 12px; color: rgba(255, 255, 255, .6); }
 .rs-top .ranking-score { flex: none; }
 .rs-nav { flex: none; width: 26px; height: 34px; border: 0; background: none; color: var(--neon-cyan); font-size: 22px; line-height: 1; cursor: pointer; padding: 0; }
-.rs-x { position: absolute; top: 2px; right: 10px; width: 28px; height: 28px; border: 0; background: none; color: rgba(255, 255, 255, .55); font-size: 15px; cursor: pointer; }
-.rs-count { position: absolute; top: 34px; right: 12px; font-family: 'Press Start 2P', monospace; font-size: 6px; color: rgba(255, 255, 255, .35); }
+.rs-x { position: absolute; top: 6px; right: 10px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); border-radius: 50%; background: rgba(255, 255, 255, .06); color: #fff; font-size: 13px; line-height: 1; cursor: pointer; padding: 0; }
+.rs-x::after { content: ""; position: absolute; inset: -8px; }
+.rs-card { transition: transform .24s cubic-bezier(.2, .8, .2, 1); touch-action: pan-y; }
+.rs-card.dragging { transition: none; }
+.rs-scrim { transition: opacity .24s ease; }
+.rank-sheet.closing .rs-card { animation: none; }
+.rs-count { position: absolute; top: 2px; left: 14px; font-family: 'Press Start 2P', monospace; font-size: 6px; color: rgba(255, 255, 255, .35); }
 .rs-wp { display: flex; align-items: center; gap: 10px; }
 .rs-wp .rank-wp { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: auto; margin: 0; background: none; overflow: visible; }
 .rs-wp .rank-wp b { position: static; transform: none; font-size: 8px; color: var(--neon-cyan); text-shadow: none; min-width: 34px; text-align: right; }
