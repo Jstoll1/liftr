@@ -127,7 +127,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=978913993431", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "sim.js?v=374204176553", "gridcard.js?v=540128865130"];
+const EXTRAS = ["ask-ui.js?v=895182167162", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "sim.js?v=374204176553", "gridcard.js?v=540128865130"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
@@ -5432,7 +5432,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const terms = pick.mode === "ATS" ? `${pick.team === game.favorite ? "-" : "+"}${game.spread}` : "SU";
       const mode = `<span class="rd-mode ${pick.mode === "ATS" ? "ats" : "su"}">${terms}<span class="rd-mode-pt">${worth}PT</span></span>`;
       const lk = pick.lock && lockRule();
-      pickHtml = `<span class="rd-pickcard${lk ? " lk" : ""}">${lk ? lkI(lockState(game, pick), "rd-lk", game, pick) : ""}<span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}${pickTimeLabel(pick) ? `<span class="rd-when">${pickTimeLabel(pick)}</span>` : ""}</span></span>`;
+      pickHtml = `<span class="rd-pickcard${lk ? " lk" : ""}">${lk ? lkI(lockState(game, pick), "rd-lk", game, pick) : ""}<span class="rd-pickteam"><img class="rd-logo" src="${logoUrl(pickId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span class="rd-team">${short}</span></span><span class="rd-pickmeta">${mode}${!opts.sheet && pickTimeLabel(pick) ? `<span class="rd-when">${pickTimeLabel(pick)}</span>` : ""}</span></span>`;
       const pts = scorePick(game, pick, results[game.id]);
       if (pts !== null) {
         banked += pts;
