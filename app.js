@@ -5401,6 +5401,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   // Nothing moves an OUT manager's chance, so no impact is drawn for them.
   const sway = wd?.alive === false ? {} : Object.fromEntries((wd?.games || []).map((e) => [e.game.id, e]));
   const topLev = Math.max(0, ...Object.values(sway).map((e) => e.lev));
+  const longShot = !!wd && wd.alive !== false && (wd.pct ?? 0) < 0.03 && Object.values(sway).every((e) => e.ifHit - e.ifMiss < 0.03);
   const maxSpan = Math.max(0.03, ...Object.values(sway).map((e) => e.ifHit - e.ifMiss));
   const swayHtml = (e) => {
     const lit = topLev > 0 ? Math.max(e.gap >= 0.01 ? 1 : 0, Math.round(5 * e.lev / topLev)) : 0;
@@ -5511,8 +5512,8 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       // The game impact line: their chance to win the week if this pick
       // misses (left end) and if it hits (right end), on a 0 to 100 track,
       // with a tick where they stand now. Finals and live games show points.
-      let imp = ptsHtml;
-      if (sw && !isFinal && wd?.alive !== false) {
+      let imp = longShot && !isLive && !isFinal ? (pick?.team && locked ? `<span class="ps-stake">+${pickWorth(game, pick)}</span>` : "") : ptsHtml;
+      if (sw && !isFinal && wd?.alive !== false && !(longShot && !isLive)) {
         // How far this pick moves their chance from where it is now: up if
         // it hits, down if it misses, in percentage points.
         const now = wd.pct ?? 0, up = Math.round((sw.ifHit - now) * 100), dn = Math.round((now - sw.ifMiss) * 100);
@@ -5558,7 +5559,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   } else {
     const slots = [];
     for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
-    rowsHtml = (Object.keys(sway).length ? `<div class="ps-cols" title="Their overall chance to win the week if this pick hits or misses, not the chance the pick itself hits"><span>WEEK WIN PROBABILITY ⓘ</span><span class="up">HIT</span><span class="dn">MISS</span></div>` : "") + fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
+    rowsHtml = (Object.keys(sway).length && !longShot ? `<div class="ps-cols" title="Their overall chance to win the week if this pick hits or misses, not the chance the pick itself hits"><span>WEEK WIN PROBABILITY ⓘ</span><span class="up">HIT</span><span class="dn">MISS</span></div>` : "") + fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
   }
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.
@@ -5593,7 +5594,11 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
     const sw = wd.swing;
     const why = wd.alive === false ? outReason(name, results) : "";
     const canPath = wd.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((row) => row.some((p) => p?.hidden));
-    if (opts.sheet && !opts.vs && sw && !why) {
+    if (opts.sheet && !opts.vs && longShot && !why) {
+      const open = GAMES.filter((x) => !results[x.id] && state.picks[x.id]?.team).length;
+      const self = name === currentManager;
+      wpRow = `<div class="bs long"><span class="bs-k">LONG SHOT · ${winChanceLabel(wd.pct, wd)}</span><span class="bs-r">${self ? "You need" : `${escapeCd(shown(name))} needs`} nearly all ${open} open pick${open === 1 ? "" : "s"} to hit and the leaders to miss. No single game moves ${self ? "you" : "them"} much on its own.${canPath ? ` Tap <b>Path to Win</b> for the one route that works.` : ""}</span></div>`;
+    } else if (opts.sheet && !opts.vs && sw && !why) {
       const m = mirrorOf(name, sw, results), g = sw.game, pk = sw.pick;
       const terms = pk.mode === "SU" ? "to win" : `${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
       const tShort = pk.team === g.away ? g.awayShort : g.homeShort, oShort = pk.team === g.away ? g.homeShort : g.awayShort;

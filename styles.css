@@ -9912,3 +9912,7 @@ body.rs-open #ask-fab { display: none; }
 .rs-pct { flex: none; font-size: 13px; }
 .rs-chance .rank-wp-bar { flex: 1; height: 8px; margin: 0; }
 .rs-btns .rs-vs { min-height: 26px; padding: 0 10px; font-size: 7px; }
+.bs.long { border-color: var(--card-border); cursor: default; }
+.bs.long .bs-k { color: rgba(255, 255, 255, .6); margin-bottom: 4px; }
+.bs.long .bs-r { margin-top: 0; font-size: 13px; line-height: 1.45; }
+.ps-stake { font-family: 'Press Start 2P', monospace; font-size: 10px; color: rgba(255, 255, 255, .55); }
