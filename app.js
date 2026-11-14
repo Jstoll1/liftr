@@ -9854,6 +9854,51 @@ setTimeout(() => maybeThemePoll(), 600);
 // Keep checking: picking your name later, or a failed load, still lands on the poll.
 setInterval(() => { themePollBusy = false; maybeThemePoll(); }, 5000);
 
+// Messages from the Chief: the commissioner writes one on Live; it pops up
+// here once, as the Chief, on the member's next visit. THANKS CHIEF or a
+// reply closes it, and Live sees it was seen, thanked and any reply. It
+// keeps showing on each visit until answered.
+let chiefMsgBusy = false;
+async function maybeChiefMsg() {
+  if (chiefMsgBusy || document.getElementById("chief-msg") || document.getElementById("theme-poll")) return;
+  const me = loadMe();
+  if (!me || !MANAGERS.includes(me) || !WORKER_URL || PREVIEW || window.__liveView || window.__adminEntry || document.hidden) return;
+  chiefMsgBusy = true;
+  let msgs = [];
+  try { const r = await fetch(`${WORKER_URL}/chief-msg?manager=${encodeURIComponent(me)}&t=${Date.now()}`, { cache: "no-store" }); if (r.ok) msgs = (await r.json()).messages || []; } catch {}
+  chiefMsgBusy = false;
+  const msg = msgs[0];
+  if (!msg || document.getElementById("chief-msg") || loadMe() !== me) return;
+  const send = (body) => fetch(`${WORKER_URL}/chief-msg`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manager: me, id: msg.id, ...body }) });
+  send({ seen: 1 }).catch(() => {});
+  const m = document.createElement("div");
+  m.id = "chief-msg"; m.className = "modal-overlay cmsg"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Message from the Chief");
+  m.innerHTML = `<div class="modal-card cmsg-card">
+    <div class="cmsg-top"><img class="cmsg-av" src="assets/images/chief/chief2-96.webp" alt="" decoding="async"><div><b>THE CHIEF</b><small>to ${escapeCd(shown(me))} · ${new Date(msg.at).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</small></div></div>
+    <p class="cmsg-text">${escapeCd(msg.text).replace(/\n/g, "<br>")}</p>
+    <div class="cmsg-reply" hidden><textarea maxlength="500" rows="3" placeholder="Reply to the Chief"></textarea></div>
+    <div class="cmsg-err" hidden>Couldn't send. Check your signal and try again.</div>
+    <div class="cmsg-btns"><button type="button" class="cmsg-rep">REPLY</button><button type="button" class="cmsg-ok">THANKS CHIEF</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  const ta = m.querySelector("textarea"), rep = m.querySelector(".cmsg-rep"), ok = m.querySelector(".cmsg-ok");
+  const done = async (reply) => {
+    rep.disabled = ok.disabled = true; m.querySelector(".cmsg-err").hidden = true;
+    try { const r = await send(reply ? { reply } : {}); if (!r.ok) throw 0; m.remove(); track("chief-msg", { event: true, d: reply ? "reply" : "thanks" }); setTimeout(maybeChiefMsg, 400); }
+    catch { m.querySelector(".cmsg-err").hidden = false; rep.disabled = ok.disabled = false; }
+  };
+  rep.addEventListener("click", () => {
+    const box = m.querySelector(".cmsg-reply");
+    if (box.hidden) { box.hidden = false; rep.textContent = "SEND"; rep.classList.add("on"); ok.textContent = "JUST THANKS"; ta.focus(); return; }
+    const t = ta.value.trim(); if (!t) { ta.focus(); return; }
+    done(t);
+  });
+  ok.addEventListener("click", () => done(""));
+}
+setTimeout(() => maybeChiefMsg(), 1500);
+setInterval(() => maybeChiefMsg(), 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(maybeChiefMsg, 800); });
+
 // Last sealed week in five lines, computed by the Worker at seal time.
 // Leads the board, open, until Thursday morning, then it is gone.
 let renderRecap = function () {

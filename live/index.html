@@ -91,6 +91,20 @@ body.lz-on { overflow: hidden; }
 /* The editor carries its own title and Exit; this corner ✕ is only a way out if it fails to load. */
 .slate-ed-x { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 10px; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel2); color: var(--meta); font-size: 13px; cursor: pointer; }
 .slate-ed iframe { flex: 1; width: 100%; border: 0; background: #0a0714; }
+.cmp-form { display: grid; gap: 8px; margin-bottom: 12px; }
+.cmp-form select, .cmp-form textarea { width: 100%; box-sizing: border-box; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, .03); color: var(--text); font: inherit; font-size: 14px; }
+.cmp-form textarea { resize: vertical; min-height: 64px; }
+.cmp-send { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cmp-send .note { margin: 0; font-size: 12px; }
+.cmp-send button { flex: none; padding: 9px 14px; border-radius: 10px; border: 0; background: var(--gold); color: #111; font: 700 12px var(--mono); letter-spacing: .06em; cursor: pointer; }
+.cmp-send button:disabled { opacity: .5; }
+.cmp-row { padding: 9px 0; border-top: 1px solid var(--line); }
+.cmp-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--dim); }
+.cmp-h b { color: var(--text); font-size: 13px; }
+.cmp-st { color: var(--dim); } .cmp-st.seen { color: var(--cyan); } .cmp-st.ok, .cmp-st.rep { color: var(--green); }
+.cmp-del { margin-left: auto; border: 0; background: none; color: var(--dim); cursor: pointer; font-size: 12px; padding: 0 2px; }
+.cmp-t { margin-top: 4px; font-size: 13.5px; color: var(--meta); white-space: pre-wrap; }
+.cmp-r { margin-top: 6px; padding-left: 10px; border-left: 2px solid var(--green); font-size: 13.5px; color: var(--text); white-space: pre-wrap; }
 .wpc-key { display: flex; gap: 14px; margin: 2px 0 8px; font-size: 11px; color: var(--dim); }
 .wpc-key i { display: inline-block; width: 10px; height: 6px; border-radius: 2px; margin-right: 5px; vertical-align: 1px; }
 .wpc-b { display: grid; grid-template-columns: 64px minmax(0, 1fr) 118px; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid var(--line); font-size: 12px; }
@@ -1704,7 +1718,7 @@ body::before { display: none; }
       if (res.status === 403) { const was = device; forget(); gate(was ? "This computer's sign-in has expired. Enter the key again." : "That key didn't work."); return; }
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
-      if (HAS_STUDIO) { loadCosts(full); loadExperts(full); loadWpCal(full); }
+      if (HAS_STUDIO) { loadCosts(full); loadExperts(full); loadWpCal(full); loadChiefMsgs(full); }
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
       if (r.asks) st.asks = r.asks;
       // The week comes with seven days of taps; the live view keeps one.
@@ -1739,7 +1753,9 @@ body::before { display: none; }
   const hourLab = (t) => { const h = new Date(t).getHours(); return `${h % 12 || 12}${h < 12 ? "a" : "p"}`; };
   // A drawing error shows itself (with a copy) instead of a blank page.
   function render() {
-    try { renderPage(); }
+    // Typing a Chief message survives a redraw: focus and caret come back.
+    const fx = document.activeElement?.closest?.("[data-cm]") ? { k: document.activeElement.dataset.cm, a: document.activeElement.selectionStart, b: document.activeElement.selectionEnd } : null;
+    try { renderPage(); if (fx) { const f = app.querySelector(`[data-cm="${fx.k}"]`); if (f) { f.focus(); try { f.setSelectionRange(fx.a, fx.b); } catch {} } } }
     catch (err) {
       console.error(err);
       const msg = `Brochiefs Live render error (${LEAGUE}, page ${st.page}, range ${st.range}): ${err?.stack || err}`;
@@ -2158,7 +2174,7 @@ body::before { display: none; }
       </section>
       ${frictionPanel((wk.feed || []).filter((e) => e.at >= wFrom), "last 7 days")}
       ${askPanel(wFrom, "last 7 days")}
-      ${cardStatus("rail")}${HAS_STUDIO ? expertsPanel() + wpCalPanel() + costPanel() : ""}
+      ${cardStatus("rail")}${HAS_STUDIO ? chiefMsgPanel() + expertsPanel() + wpCalPanel() + costPanel() : ""}
     </aside>`;
     };
     const maxH = Math.max(1, ...hours.map((h) => h.n));
@@ -2174,7 +2190,7 @@ body::before { display: none; }
       </section>` : ""}
       ${frictionPanel(actions, "last 24h")}
       ${askPanel(from, "last 24h")}
-      ${cardStatus("rail")}${HAS_STUDIO ? expertsPanel() + wpCalPanel() + costPanel() : ""}
+      ${cardStatus("rail")}${HAS_STUDIO ? chiefMsgPanel() + expertsPanel() + wpCalPanel() + costPanel() : ""}
     </aside>`;
 
     // The feed: one card per visit, newest first.
@@ -3280,6 +3296,62 @@ body::before { display: none; }
     if (o) ex.open = ex.open === o.dataset.exo ? null : o.dataset.exo;
     if (c) { const [k, v] = c.dataset.ex.split(":"); ex[k] = k === "min" ? Number(v) : v; if (k === "view") ex.open = null; }
     st.sig = ""; render();
+  });
+
+  // ---- Messages from the Chief -------------------------------------------
+  // Write to one member (or everyone); it pops up as the Chief on their next
+  // visit. Each message shows Sent, Seen, then Thanked or their reply.
+  const cm = { data: null, at: 0, err: "", to: "", draft: "", busy: false, note: "" };
+  async function loadChiefMsgs(force) {
+    if (!force && Date.now() - cm.at < 60000) return;
+    cm.at = Date.now();
+    try {
+      const r = await fetch(`${WORKER}/chief-msg?all=1&${auth()}&t=${Date.now()}`, { cache: "no-store" });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || r.status);
+      cm.data = d; cm.err = "";
+    } catch (e) { cm.err = String(e.message || e); }
+    st.sig = ""; render();
+  }
+  function chiefMsgPanel() {
+    const d = cm.data;
+    const head = (sub) => `<section class="panel cmp"><div class="ph"><h2>Chief messages</h2><span class="sub">${sub}</span></div>`;
+    if (!d?.members) return head(cm.err ? esc(cm.err) : "loading…") + `</section>`;
+    const all = Object.entries(d.messages || {}).flatMap(([m, list]) => (list || []).map((x) => ({ ...x, m }))).sort((a, b) => b.at - a.at);
+    const replies = all.filter((x) => x.reply).length, open = all.filter((x) => !x.ackAt).length;
+    const when = (t) => new Date(t).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
+    const status = (x) => x.reply ? `<span class="cmp-st rep">Replied ${when(x.ackAt)}</span>` : x.ackAt ? `<span class="cmp-st ok">Thanked ${when(x.ackAt)}</span>` : x.seenAt ? `<span class="cmp-st seen">Seen ${when(x.seenAt)}${x.seenCount > 1 ? ` · ${x.seenCount}×` : ""}</span>` : `<span class="cmp-st">Sent · not seen yet</span>`;
+    const rows = all.slice(0, 40).map((x) => `<div class="cmp-row"><div class="cmp-h"><b>${esc(x.m)}</b><span>${when(x.at)}</span>${status(x)}<button type="button" class="cmp-del" data-cmdel="${esc(x.m)}|${esc(x.id)}" title="Delete" aria-label="Delete">✕</button></div><div class="cmp-t">${esc(x.text)}</div>${x.reply ? `<div class="cmp-r">↩ ${esc(x.reply)}</div>` : ""}</div>`).join("");
+    return head(`${all.length} sent · ${open} waiting · ${replies} repl${replies === 1 ? "y" : "ies"}`) + `
+      <div class="cmp-form">
+        <select data-cm="to"><option value="">To…</option>${d.members.map((m) => `<option value="${esc(m)}"${cm.to === m ? " selected" : ""}>${esc(m)}</option>`).join("")}<option value="*"${cm.to === "*" ? " selected" : ""}>Everyone</option></select>
+        <textarea data-cm="draft" maxlength="600" rows="3" placeholder="Message, as the Chief">${esc(cm.draft)}</textarea>
+        <div class="cmp-send"><span class="note">${esc(cm.note)}</span><button type="button" data-cmsend ${cm.busy ? "disabled" : ""}>Send as Chief</button></div>
+      </div>
+      <div class="cmp-list">${rows || `<div class="note">No messages yet.</div>`}</div>
+    </section>`;
+  }
+  app.addEventListener("input", (e) => { const f = e.target.closest("[data-cm]"); if (f) cm[f.dataset.cm] = f.value; });
+  app.addEventListener("change", (e) => { const f = e.target.closest("[data-cm]"); if (f) cm[f.dataset.cm] = f.value; });
+  app.addEventListener("click", async (e) => {
+    const snd = e.target.closest("[data-cmsend]"), del = e.target.closest("[data-cmdel]");
+    if (!snd && !del) return;
+    if (del) {
+      const [manager, id] = del.dataset.cmdel.split("|");
+      if (!confirm(`Delete this message to ${manager}?`)) return;
+      await fetch(`${WORKER}/chief-msg?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manager, id, del: 1 }) }).catch(() => {});
+      return loadChiefMsgs(true);
+    }
+    if (!cm.to || !cm.draft.trim()) { cm.note = "Pick who and write a message."; st.sig = ""; return render(); }
+    if (cm.to === "*" && !confirm("Send this to every member?")) return;
+    cm.busy = true; cm.note = ""; st.sig = ""; render();
+    try {
+      const r = await fetch(`${WORKER}/chief-msg?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: cm.to, text: cm.draft }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || r.status);
+      cm.draft = ""; cm.note = `Sent to ${cm.to === "*" ? "everyone" : cm.to}. It pops up on their next visit.`;
+    } catch (err) { cm.note = `Not sent: ${err.message || err}`; }
+    cm.busy = false; loadChiefMsgs(true);
   });
 
   // ---- Win% calibration -------------------------------------------------
