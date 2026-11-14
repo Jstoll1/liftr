@@ -9953,3 +9953,16 @@ html.phone .rs-top .rs-nav { display: none; }
 .rs-top .ranking-place { margin: 0; }
 .rs-btns .rs-vs { width: auto; padding: 0 16px; }
 .ps-row .ps-sub { flex-basis: 100%; }
+/* Swipe cues: a dot per player under the grab bar (current one lit), and a
+   one-time sideways nudge with a hint on a phone's first open. */
+.rs-dots { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; pointer-events: none; }
+.rs-dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255, 255, 255, .2); }
+.rs-dots i.on { width: 14px; border-radius: 3px; background: var(--neon-cyan); }
+.rs-grab { display: none; }
+.rs-head { padding-top: 18px; }
+.rs-card.peek { animation: rs-peek 1.2s ease-in-out; }
+@keyframes rs-peek { 20% { transform: translateX(-22px); } 45% { transform: translateX(0); } 65% { transform: translateX(-12px); } 85% { transform: translateX(0); } }
+.rs-hint { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); padding: 10px 16px; border-radius: 20px; background: rgba(var(--neon-cyan-rgb), .95); color: var(--bg); font-family: 'Press Start 2P', monospace; font-size: 8px; white-space: nowrap; box-shadow: 0 8px 30px rgba(0, 0, 0, .5); animation: rs-hint 2.6s ease forwards; z-index: 3; pointer-events: none; }
+@keyframes rs-hint { 0% { opacity: 0; } 12%, 80% { opacity: 1; } 100% { opacity: 0; } }
+.rs-dots.pulse i:not(.on) { animation: rs-dot 1.2s ease-in-out 2; }
+@keyframes rs-dot { 50% { background: rgba(var(--neon-cyan-rgb), .7); } }
