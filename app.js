@@ -6779,8 +6779,7 @@ function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
     rows.sort((a, b) => b.score - a.score || (b.winPct ?? 0) - (a.winPct ?? 0) || a.tbDiff - b.tbDiff);
     window.__wpCtx = { rows, cloudPicks, results };
     sendWpSnap(ch, cloudPicks, results, live);
-    // Before the first final, chances barely beat a coin flip, so the column
-    // shows leverage instead: picks only you made, and your closest twin.
+    // Leverage under each name until the first final: picks nobody else made.
     if (!GAMES.some((g) => results?.[g.id])) for (const row of rows) row.solo = soloOf(row.name, cloudPicks);
     else for (const row of rows) delete row.solo;
   } else for (const row of rows) delete row.winPct;
@@ -6974,7 +6973,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     const hd = document.createElement("div");
     hd.className = "ranking-row rank-hd";
     hd.setAttribute("aria-hidden", "true");
-    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span>${weekDone ? `<span class="rank-hits hd">CORRECT PICKS</span>` : `<i class="rank-live mid">LIVE</i>`}${weekDone ? "" : rows.some((r) => r.solo) ? `<span class="rank-wp rank-solo"><span class="rank-twin hd" title="Who your card matches most">TWIN</span><b title="Picks only you made, until the first game is final">SOLO</b></span>` : anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b class="rank-hd-wp" role="button" tabindex="0" title="How chance to win is worked out">WIN%</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
+    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span>${weekDone ? `<span class="rank-hits hd">CORRECT PICKS</span>` : `<i class="rank-live mid">LIVE</i>`}${weekDone ? "" : anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b class="rank-hd-wp" role="button" tabindex="0" title="How chance to win is worked out">WIN%</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
     hd.querySelector(".rank-hd-wp")?.addEventListener("click", openWinChanceExplainer);
     rankingsList.appendChild(hd);
   }
@@ -7013,11 +7012,11 @@ function renderRankingRows(rows, cloudPicks, results, live) {
             const hits = gamesByKickoff().map((g) => { const pk = row.state.picks?.[g.id]; const p = pk && results?.[g.id] ? scorePick(g, pk, results[g.id]) : 0; return p > 0 ? { g, pk, p } : null; }).filter(Boolean);
             return `<span class="rank-hits">${hits.map((h) => `<span class="rh${h.pk.lock && lockRule() ? " lk" : ""}" title="${h.pk.lock && lockRule() ? "LOCK · " : ""}${h.pk.team} ${h.pk.mode === "SU" ? "to win" : "ATS"} · +${h.p}"><img src="${logoUrl(h.pk.team === h.g.home ? h.g.homeId : h.g.awayId)}" alt="" loading="lazy"><b class="t${h.p}">+${h.p}</b></span>`).join("") || `<em>No hits</em>`}</span>`;
           }
-          if (row.solo) { const so = row.solo; const tip = `${so.solo} pick${so.solo === 1 ? "" : "s"} only you made` + (so.twin ? ` · you and ${so.twin.name} match on ${so.twin.n} of ${so.seen}` : ""); return `<span class="rank-wp rank-solo${so.solo ? " hot" : ""}" title="${escapeCd(tip)}">${so.twin ? `<span class="rank-twin">≈ ${escapeCd(shown(so.twin.name).toUpperCase())} ${so.twin.n}/${so.seen}</span>` : ""}<b>${so.solo}</b></span>`; }
           return pct != null ? `<span class="rank-wp${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>` : `<span class="ranking-dots" aria-hidden="true"></span>`;
         })()}
         <span class="ranking-score">${pts2(row.score)}</span>
       </div>
+      ${open && row.solo ? `<div class="rank-solo-line"><b>${row.solo.solo}</b> pick${row.solo.solo === 1 ? "" : "s"} nobody else made${row.solo.twin ? ` · matches <b>${escapeCd(shown(row.solo.twin.name))}</b> on ${row.solo.twin.n} of ${row.solo.seen}` : ""}</div>` : ""}
       ${open ? playerBreakdownHtml(row.name, row.state, results, live) : ""}
     `;
     // Double tap the chance bar: that player's scenario. A single tap still
