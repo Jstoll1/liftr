@@ -1805,7 +1805,10 @@ document.addEventListener("click", (e) => {
   const r = e.target.closest?.(".rd-row[data-rdgame], .ps-row[data-rdgame], .rd-tb[data-rdgame]");
   if (!r || e.target.closest("[data-locks]")) return;
   e.preventDefault(); e.stopPropagation();
-  const g = GAMES.find((x) => String(x.id) === r.dataset.rdgame); if (g) openInsights(g.id);
+  const g = GAMES.find((x) => String(x.id) === r.dataset.rdgame); if (!g) return;
+  // From the player sheet: close it first so the game opens on top.
+  if (r.closest("#rank-sheet")) closeRankSheet();
+  openInsights(g.id);
 }, true);
 // Everyone's lock of the week in one sheet, from any 🔒 tap. Only what the
 // Worker has shown: a lock on a game that hasn't kicked off stays hidden.
@@ -5464,7 +5467,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const opp = pick ? (pick.team === game.away ? game.homeShort : game.awayShort) : null;
       const mine = pickedSide === "away" ? aS : hS, theirs = pickedSide === "away" ? hS : aS;
       const sc = pick && mine !== null && theirs !== null ? ` <b>${mine}–${theirs}</b>` : (!pick && aS !== null ? ` <b>${aS}–${hS}</b>` : "");
-      const when = isFinal ? ` · <span class="ps-when">${sc.trim()}</span>` : isLive ? ` · <span class="ps-when"><b class="ps-live">LIVE</b> ${sc.trim()}${g.detail ? ` · ${escapeCd((() => { const m = String(g.detail).match(/^(\d+:\d+)\s*-\s*(\d)/); return m ? `Q${m[2]} ${m[1]}` : g.detail; })())}` : ""}${/rd-pts[^"]*"[^>]*>([^<]+)/.test(ptsHtml) ? (() => { const v = ptsHtml.match(/rd-pts[^"]*"[^>]*>([^<]+)/)[1]; return ` · <b class="ps-lp${v.startsWith("+") ? "" : " z"}">${v === "0" ? "+0" : v}</b>`; })() : ""}</span>` : "";
+      const when = isFinal ? ` · <span class="ps-when"><b class="ps-fin">FINAL</b> ${sc.trim()}</span>` : isLive ? ` · <span class="ps-when"><b class="ps-live">LIVE</b> ${sc.trim()}${g.detail ? ` · ${escapeCd((() => { const m = String(g.detail).match(/^(\d+:\d+)\s*-\s*(\d)/); return m ? `Q${m[2]} ${m[1]}` : g.detail; })())}` : ""}${/rd-pts[^"]*"[^>]*>([^<]+)/.test(ptsHtml) ? (() => { const v = ptsHtml.match(/rd-pts[^"]*"[^>]*>([^<]+)/)[1]; return ` · <b class="ps-lp${v.startsWith("+") ? "" : " z"}">${v === "0" ? "+0" : v}</b>`; })() : ""}</span>` : "";
       // VS ME: the game head to head. Each side shows its pick and the
       // points it has at stake (a lock shows what it wins and what it costs),
       // or what it scored once final. Shared picks are dimmed, no logos twice.
@@ -5514,6 +5517,11 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       // misses (left end) and if it hits (right end), on a 0 to 100 track,
       // with a tick where they stand now. Finals and live games show points.
       let imp = longShot && !isLive && !isFinal ? "" : ptsHtml;
+      if (isLive && !sw && pick && wd && wd.alive !== false) {
+        const prov = Number.isFinite(g?.awayScore) ? scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore }) : 0;
+        const pcs = (v) => winChanceLabel(v, { alive: true });
+        imp = `<span class="ps-hm t4" title="All but settled">${prov > 0 ? `<b class="up">${pcs(wd.pct ?? 0)}</b><b class="dn">—</b>` : `<b class="up">—</b><b class="dn">${pcs(wd.pct ?? 0)}</b>`}</span>`;
+      }
       if (sw && !isFinal && wd?.alive !== false && !(longShot && !isLive)) {
         // How far this pick moves their chance from where it is now: up if
         // it hits, down if it misses, in percentage points.
@@ -6480,16 +6488,17 @@ function weekWinChances(cloudPicks, results, live) {
     for (let k = 0; k < models.length; k++) {
       if (!open[k] || !picks[i][k]) continue;
       const hN = hitN[i][k], mN = N - hN;
-      if (hN < 100 || mN < 100) continue;
+      if (hN < 20 || mN < 20) continue;
+      const thin = hN < 100 || mN < 100;
       const ifHit = hitW[i][k] / hN, ifMiss = (wins[i] - hitW[i][k]) / mN;
       const gap = Math.abs(ifHit - ifMiss), p = hN / N;
       // Leverage: how far the result moves you, times how open it still is.
       // A pick that is 97% in barely matters however big the gap, so
       // p(1-p) weighs it down; a coin flip with the same gap ranks first.
       const lev = gap * p * (1 - p);
-      const entry = { gap, lev, ifHit, ifMiss, pHit: p, game: models[k].g, pick: picks[i][k] };
+      const entry = { gap, lev: thin ? 0 : lev, ifHit, ifMiss, pHit: p, game: models[k].g, pick: picks[i][k], thin };
       all.push(entry);
-      if (!best || lev > best.lev) best = entry;
+      if (!thin && (!best || lev > best.lev)) best = entry;
     }
     all.sort((x, y) => y.lev - x.lev);
     // Final points they could finish on, how often, and how often that wins.
