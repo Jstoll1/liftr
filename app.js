@@ -5512,7 +5512,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       // The game impact line: their chance to win the week if this pick
       // misses (left end) and if it hits (right end), on a 0 to 100 track,
       // with a tick where they stand now. Finals and live games show points.
-      let imp = longShot && !isLive && !isFinal ? (pick?.team && locked ? `<span class="ps-stake">+${pickWorth(game, pick)}</span>` : "") : ptsHtml;
+      let imp = longShot && !isLive && !isFinal ? "" : ptsHtml;
       if (sw && !isFinal && wd?.alive !== false && !(longShot && !isLive)) {
         // How far this pick moves their chance from where it is now: up if
         // it hits, down if it misses, in percentage points.
