@@ -7075,23 +7075,47 @@ function openRankSheet(name) {
       if (b.dataset.rs === "x") return closeRankSheet();
       stepRankSheet(b.dataset.rs === "next" ? 1 : -1);
     });
-    let x0 = null, y0 = 0;
+    // Drag: sideways steps to the next player; down from the top of the
+    // list (or from the header) pulls the sheet with the finger, and a long
+    // or quick pull lets it slide away, a short one springs back.
+    let x0 = null, y0 = 0, t0 = 0, mode = null, fromHead = false;
     const card = el.querySelector(".rs-card");
-    card.addEventListener("touchstart", (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; }, { passive: true });
+    const body = () => card.querySelector(".rs-body");
+    card.addEventListener("touchstart", (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); mode = null; fromHead = !e.target.closest(".rs-body"); }, { passive: true });
+    card.addEventListener("touchmove", (e) => {
+      if (x0 == null) return; const t = e.touches[0]; const dx = t.clientX - x0, dy = t.clientY - y0;
+      if (!mode) { if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; mode = Math.abs(dy) > Math.abs(dx) && dy > 0 && (fromHead || body().scrollTop <= 0) ? "down" : "other"; if (mode === "down") card.classList.add("dragging"); }
+      if (mode !== "down") return;
+      e.preventDefault();
+      const d = Math.max(0, dy); card.style.transform = `translateY(${d}px)`; el.querySelector(".rs-scrim").style.opacity = String(Math.max(0, 1 - d / 400));
+    }, { passive: false });
     card.addEventListener("touchend", (e) => {
       if (x0 == null) return; const t = e.changedTouches[0]; const dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+      if (mode === "down") {
+        card.classList.remove("dragging");
+        const fast = dy / Math.max(1, Date.now() - t0) > 0.6;
+        if (dy > 110 || (fast && dy > 40)) closeRankSheet(true);
+        else { card.style.transform = ""; el.querySelector(".rs-scrim").style.opacity = ""; }
+        return;
+      }
       if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) stepRankSheet(dx < 0 ? 1 : -1);
-      else if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.5 && card.querySelector(".rs-body").scrollTop <= 0) closeRankSheet();
     }, { passive: true });
     document.addEventListener("keydown", (e) => { if (!rankSheet.name) return; if (e.key === "Escape") closeRankSheet(); else if (e.key === "ArrowRight") stepRankSheet(1); else if (e.key === "ArrowLeft") stepRankSheet(-1); });
     document.getElementById("bottom-nav")?.addEventListener("click", closeRankSheet, true);
   }
   drawRankSheet(false);
+  el.classList.remove("closing"); el.querySelector(".rs-card").style.transform = ""; el.querySelector(".rs-scrim").style.opacity = "";
   el.classList.add("open"); document.body.classList.add("rs-open");
 }
+// Every close slides the sheet down and fades the board back in.
 function closeRankSheet() {
+  const el = document.getElementById("rank-sheet");
   rankSheet.name = null;
-  document.getElementById("rank-sheet")?.classList.remove("open"); document.body.classList.remove("rs-open");
+  if (!el?.classList.contains("open")) return;
+  el.classList.add("closing"); document.body.classList.remove("rs-open");
+  const card = el.querySelector(".rs-card"), scrim = el.querySelector(".rs-scrim");
+  card.style.transform = "translateY(100%)"; scrim.style.opacity = "0";
+  setTimeout(() => { el.classList.remove("open", "closing"); card.style.transform = ""; scrim.style.opacity = ""; }, 240);
 }
 function stepRankSheet(d) {
   const rows = rankSheet.ctx?.rows || []; const i = rows.findIndex((r) => r.name === rankSheet.name);
