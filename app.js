@@ -1799,7 +1799,10 @@ const insTap = { last: "" };
 // A game row on a player's card opens that game (Gamecast once it has
 // kicked off). Ahead of the row's own tap, which folds the card.
 document.addEventListener("click", (e) => {
-  const r = e.target.closest?.(".rd-row[data-rdgame], .rd-tb[data-rdgame]");
+  // Player sheet: a tap on an impact bar shows that game's hit / miss odds.
+  const bar = e.target.closest?.(".ps-row .rd-sway");
+  if (bar) { e.preventDefault(); e.stopPropagation(); const w = bar.closest(".ps-row").querySelector(".ps-what"); if (w) { w.hidden = !w.hidden; bar.closest(".ps-row").classList.toggle("what", !w.hidden); } return; }
+  const r = e.target.closest?.(".rd-row[data-rdgame], .ps-row[data-rdgame], .rd-tb[data-rdgame]");
   if (!r || e.target.closest("[data-locks]")) return;
   e.preventDefault(); e.stopPropagation();
   const g = GAMES.find((x) => String(x.id) === r.dataset.rdgame); if (g) openInsights(g.id);
@@ -5453,16 +5456,30 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
     const scoreCell = (s, other) => `<span class="rd-sc ${isFinal && s !== null && s > other ? "win" : ""}">${s === null ? "" : s}</span>`;
     if (opts.sheet) {
       // One line per game in the player sheet: the pick (logo, team, terms)
-      // over the opponent and the state of play, points or impact on the right.
+      // over the opponent and the score, points or impact on the right. The
+      // kickoff time is the section heading, so rows don't repeat it.
       const opp = pick ? (pick.team === game.away ? game.homeShort : game.awayShort) : null;
       const mine = pickedSide === "away" ? aS : hS, theirs = pickedSide === "away" ? hS : aS;
       const sc = pick && mine !== null && theirs !== null ? ` <b>${mine}–${theirs}</b>` : (!pick && aS !== null ? ` <b>${aS}–${hS}</b>` : "");
-      const when = isFinal ? `FINAL${sc}` : isLive ? `LIVE${sc}${g.detail ? ` · ${escapeCd(g.detail.replace(/\s*-\s*/, " "))}` : ""}` : game.kickoffLabel.replace(/ ET$/, "");
-      const sub = `${pick ? `vs ${escapeCd(opp)}` : `${escapeCd(game.awayShort)} @ ${escapeCd(game.homeShort)}`} · <span class="ps-when">${when}</span>`;
+      const when = isFinal ? ` · <span class="ps-when">FINAL${sc}</span>` : isLive ? ` · <span class="ps-when">LIVE${sc}${g.detail ? ` · ${escapeCd(g.detail.replace(/\s*-\s*/, " "))}` : ""}</span>` : "";
+      // Against the viewer's own card: same pick, or what they took instead.
+      let vs = "", cmp = null;
+      if (opts.vs && pick && locked) {
+        const m = opts.vs[game.id];
+        if (m?.team && !m.hidden) {
+          cmp = m.team === pick.team && m.mode === pick.mode ? "same" : "diff";
+          const mShort = m.team === game.away ? game.awayShort : game.homeShort;
+          const mTerms = m.mode === "ATS" ? `${m.team === game.favorite ? "−" : "+"}${game.spread}` : "to win";
+          vs = cmp === "same" ? `<span class="ps-vs same">SAME AS YOU</span>` : `<span class="ps-vs diff">YOU: ${escapeCd(mShort)} ${mTerms}</span>`;
+        } else cmp = "diff";
+      }
+      const sub = `${pick ? `vs ${escapeCd(opp)}` : `${escapeCd(game.awayShort)} @ ${escapeCd(game.homeShort)}`}${when}`;
       const main = !locked ? `<span class="ps-hid">HIDDEN</span>` : !pick ? `<span class="ps-hid">NO PICK</span>` : pickHtml;
-      const lev = sway[game.id]?.lev || 0;
+      const sw = sway[game.id];
+      const lev = sw?.lev || 0;
+      const what = sw && !isFinal && !isLive ? `<div class="ps-what" hidden>If it hits <b class="up">${winChanceLabel(sw.ifHit, { alive: true })}</b> · If it misses <b class="dn">${winChanceLabel(sw.ifMiss, { alive: true })}</b> to win the week</div>` : "";
       const order = isLive ? 0 : isFinal ? 2 : 1;
-      return { order, lev, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><div class="ps-pick">${main}<span class="ps-sub">${sub}</span></div><div class="rd-result">${ptsHtml}</div></div>` };
+      return { order, lev, cmp, slot: isLive ? "LIVE NOW" : isFinal ? "FINAL" : game.kickoffLabel.replace(/ ET$/, "").toUpperCase(), t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><div class="ps-pick">${main}<span class="ps-sub">${sub}</span>${vs}</div><div class="rd-result">${ptsHtml}</div>${what}</div>` };
     }
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
@@ -5473,7 +5490,20 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       <div class="rd-result">${ptsHtml}</div>
     </div>`;
   });
-  const rowsHtml = opts.sheet ? rows.sort((a, b) => a.order - b.order || (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t).map((r) => r.html).join("") : rows.join("");
+  // Sheet sections: live, then each kickoff slot in time order (biggest
+  // impact first inside a slot), then finals. With VS ME on: where the
+  // viewer differs first, then the picks they share.
+  const section = (title, list) => list.length ? `<div class="ps-sec">${title}</div>${list.map((r) => r.html).join("")}` : "";
+  let rowsHtml;
+  if (!opts.sheet) rowsHtml = rows.join("");
+  else if (opts.vs) {
+    const byImp = (a, b) => a.order - b.order || b.lev - a.lev || a.t - b.t;
+    rowsHtml = section("WHERE YOU DIFFER", rows.filter((r) => r.cmp === "diff").sort(byImp)) + section("SAME AS YOU", rows.filter((r) => r.cmp === "same").sort(byImp)) + section("NO PICK TO COMPARE", rows.filter((r) => !r.cmp).sort(byImp));
+  } else {
+    const slots = [];
+    for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
+    rowsHtml = slots.map((sl) => section(sl.k, sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t))).join("");
+  }
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.
   const tbGame = tiebreakerGameOf();
@@ -5512,7 +5542,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   // A Scouting Report published from the Creative Studio, under the week.
   const scout = creativeArt?.art?.[`owner-card:owner:${name}`]?.text;
   const scoutRow = scout ? `<div class="rd-scout"><em>📋 SCOUTING REPORT</em><b>${escapeCd(scout.headline)}</b>${String(scout.body).split(/\n\s*\n/).map((p) => `<p>${escapeCd(p)}</p>`).join("")}</div>` : "";
-  if (opts.sheet) return `<div class="rank-detail ps-detail">${wpRow}<div class="rd-head ps-head"><span>PICK</span><span>${Object.keys(sway).length ? "PTS · IMPACT" : "PTS"}</span></div>${rowsHtml}${tbRow}${scoutRow}</div>`;
+  if (opts.sheet) return `<div class="rank-detail ps-detail">${wpRow}${rowsHtml}${tbRow}${scoutRow}</div>`;
   return `<div class="rank-detail">${wpRow}${scoutRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rowsHtml}${tbRow}${summary}</div>`;
 }
 
@@ -7060,7 +7090,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
 // win), then one line per pick, live first, then the open games by how
 // much they matter, then the finals. Swipe sideways (or the arrows) for
 // the next player on the board; the board stays where it was underneath.
-const rankSheet = { name: null, ctx: null };
+const rankSheet = { name: null, ctx: null, vs: false };
 function openRankSheet(name) {
   rankSheet.name = name;
   let el = document.getElementById("rank-sheet");
@@ -7073,6 +7103,7 @@ function openRankSheet(name) {
     el.addEventListener("click", (e) => {
       const b = e.target.closest("[data-rs]"); if (!b) return;
       if (b.dataset.rs === "x") return closeRankSheet();
+      if (b.dataset.rs === "vs") { rankSheet.vs = !rankSheet.vs; return drawRankSheet(false); }
       stepRankSheet(b.dataset.rs === "next" ? 1 : -1);
     });
     // Drag: sideways steps to the next player; down from the top of the
@@ -7134,6 +7165,10 @@ function drawRankSheet(keepScroll) {
   const txt = pct == null ? "" : winChanceLabel(row.winPct, winChanceMemo.detail?.[name]);
   const wd = winChanceMemo.detail?.[name];
   const canPath = pct != null && wd?.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((r) => r.some((p) => p?.hidden));
+  const myPicks = rankSheet.ctx?.cloudPicks?.[currentManager]?.picks;
+  const canVs = name !== currentManager && myPicks && Object.values(myPicks).some((p) => p?.team);
+  const vsOn = canVs && rankSheet.vs;
+  const vsBtn = canVs ? `<button type="button" class="rs-vs${vsOn ? " on" : ""}" data-rs="vs" aria-pressed="${vsOn}">VS ME</button>` : "";
   const solo = row.solo ? `<div class="rs-solo"><b>${row.solo.solo}</b> pick${row.solo.solo === 1 ? "" : "s"} nobody else made${row.solo.twin ? ` · matches <b>${escapeCd(shown(row.solo.twin.name))}</b> on ${row.solo.twin.n} of ${row.solo.seen}` : ""}</div>` : "";
   el.querySelector(".rs-head").innerHTML = `
     <div class="rs-top">
@@ -7143,11 +7178,11 @@ function drawRankSheet(keepScroll) {
       <span class="ranking-score">${pts2(row.score)}</span>
       <button type="button" class="rs-nav" data-rs="next" aria-label="Next player">›</button>
     </div>
-    ${pct != null ? `<div class="rs-wp"><span class="rank-wp${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</div>` : ""}
+    ${pct != null ? `<div class="rs-wp"><span class="rank-wp${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>${vsBtn}${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</div>` : vsBtn ? `<div class="rs-wp">${vsBtn}</div>` : ""}
     ${solo}
     <span class="rs-count">${i + 1} / ${rows.length}</span><button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>`;
   const body = el.querySelector(".rs-body"); const top = body.scrollTop;
-  body.innerHTML = playerBreakdownHtml(name, row.state, c.results, c.live, { sheet: true });
+  body.innerHTML = playerBreakdownHtml(name, row.state, c.results, c.live, { sheet: true, vs: vsOn ? myPicks : null });
   body.scrollTop = keepScroll ? top : 0;
   el.classList.toggle("is-me", name === currentManager);
 }
