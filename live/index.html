@@ -91,6 +91,8 @@ body.lz-on { overflow: hidden; }
 /* The editor carries its own title and Exit; this corner ✕ is only a way out if it fails to load. */
 .slate-ed-x { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 10px; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel2); color: var(--meta); font-size: 13px; cursor: pointer; }
 .slate-ed iframe { flex: 1; width: 100%; border: 0; background: #0a0714; }
+@media (min-width: 900px) { .cmp-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: start; } .cmp-grid .cmp-form { margin: 0; position: sticky; top: 70px; } .cmp-grid .cmp-form textarea { min-height: 150px; } .cmp-list .cmp-row:first-child { border-top: 0; padding-top: 0; } .cmp-list { max-height: 520px; overflow-y: auto; } }
+.panel.cmp { margin-bottom: 14px; border-color: rgba(139, 124, 255, .55); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 0 0 1px rgba(139, 124, 255, .12), 0 10px 30px rgba(0, 0, 0, .25); }
 .cmp-form { display: grid; gap: 8px; margin-bottom: 12px; }
 .cmp-form select, .cmp-form textarea { width: 100%; box-sizing: border-box; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, .03); color: var(--text); font: inherit; font-size: 14px; }
 .cmp-form textarea { resize: vertical; min-height: 64px; }
@@ -1718,7 +1720,8 @@ body::before { display: none; }
       if (res.status === 403) { const was = device; forget(); gate(was ? "This computer's sign-in has expired. Enter the key again." : "That key didn't work."); return; }
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
-      if (HAS_STUDIO) { loadCosts(full); loadExperts(full); loadWpCal(full); loadChiefMsgs(full); }
+      if (HAS_STUDIO) { loadCosts(full); loadExperts(full); loadWpCal(full); }
+      loadChiefMsgs(full);
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
       if (r.asks) st.asks = r.asks;
       // The week comes with seven days of taps; the live view keeps one.
@@ -2174,7 +2177,7 @@ body::before { display: none; }
       </section>
       ${frictionPanel((wk.feed || []).filter((e) => e.at >= wFrom), "last 7 days")}
       ${askPanel(wFrom, "last 7 days")}
-      ${cardStatus("rail")}${HAS_STUDIO ? chiefMsgPanel() + expertsPanel() + wpCalPanel() + costPanel() : ""}
+      ${cardStatus("rail")}${HAS_STUDIO ? expertsPanel() + wpCalPanel() + costPanel() : ""}
     </aside>`;
     };
     const maxH = Math.max(1, ...hours.map((h) => h.n));
@@ -2190,7 +2193,7 @@ body::before { display: none; }
       </section>` : ""}
       ${frictionPanel(actions, "last 24h")}
       ${askPanel(from, "last 24h")}
-      ${cardStatus("rail")}${HAS_STUDIO ? chiefMsgPanel() + expertsPanel() + wpCalPanel() + costPanel() : ""}
+      ${cardStatus("rail")}${HAS_STUDIO ? expertsPanel() + wpCalPanel() + costPanel() : ""}
     </aside>`;
 
     // The feed: one card per visit, newest first.
@@ -2542,7 +2545,7 @@ body::before { display: none; }
       home: `${ucPanel}${recCard("home")}${kpisNb}${recordsPanel}${timeline}${feedHtml}${strips}${overview}${flowPanel}`,
       activity: "",
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
-      bi: `<div class="pg-bar"><h1>Ask Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
+      bi: `<div class="pg-bar"><h1>Ask Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${chiefMsgPanel()}${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
       stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${rail}`,
     }[st.page] || "";
     app.innerHTML = `
@@ -3323,12 +3326,12 @@ body::before { display: none; }
     const status = (x) => x.reply ? `<span class="cmp-st rep">Replied ${when(x.ackAt)}</span>` : x.ackAt ? `<span class="cmp-st ok">Thanked ${when(x.ackAt)}</span>` : x.seenAt ? `<span class="cmp-st seen">Seen ${when(x.seenAt)}${x.seenCount > 1 ? ` · ${x.seenCount}×` : ""}</span>` : `<span class="cmp-st">Sent · not seen yet</span>`;
     const rows = all.slice(0, 40).map((x) => `<div class="cmp-row"><div class="cmp-h"><b>${esc(x.m)}</b><span>${when(x.at)}</span>${status(x)}<button type="button" class="cmp-del" data-cmdel="${esc(x.m)}|${esc(x.id)}" title="Delete" aria-label="Delete">✕</button></div><div class="cmp-t">${esc(x.text)}</div>${x.reply ? `<div class="cmp-r">↩ ${esc(x.reply)}</div>` : ""}</div>`).join("");
     return head(`${all.length} sent · ${open} waiting · ${replies} repl${replies === 1 ? "y" : "ies"}`) + `
-      <div class="cmp-form">
+      <div class="cmp-grid"><div class="cmp-form">
         <select data-cm="to"><option value="">To…</option>${d.members.map((m) => `<option value="${esc(m)}"${cm.to === m ? " selected" : ""}>${esc(m)}</option>`).join("")}<option value="*"${cm.to === "*" ? " selected" : ""}>Everyone</option></select>
         <textarea data-cm="draft" maxlength="600" rows="3" placeholder="Message, as the Chief">${esc(cm.draft)}</textarea>
         <div class="cmp-send"><span class="note">${esc(cm.note)}</span><button type="button" data-cmsend ${cm.busy ? "disabled" : ""}>Send as Chief</button></div>
       </div>
-      <div class="cmp-list">${rows || `<div class="note">No messages yet.</div>`}</div>
+      <div class="cmp-list">${rows || `<div class="note">No messages yet.</div>`}</div></div>
     </section>`;
   }
   app.addEventListener("input", (e) => { const f = e.target.closest("[data-cm]"); if (f) cm[f.dataset.cm] = f.value; });
