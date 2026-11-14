@@ -9979,3 +9979,18 @@ html.phone .rs-top .rs-nav { display: none; }
 .ps-fin { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; color: rgba(255, 255, 255, .75); padding: 2px 4px; border: 1px solid rgba(255, 255, 255, .3); border-radius: 3px; margin-right: 2px; }
 .ps-row.final .ps-sub b:not(.ps-fin) { color: #fff; }
 .rs-x { top: 0; right: 0; }
+/* ==== Player sheet header (final): two rows on one grid.
+   Row 1: badge | name + stats | close.  Row 2: chance + bar | VS ME | PATH.
+   Both action buttons the same height; close is a plain icon. */
+#rank-sheet .rs-head { padding: 18px 14px 10px; gap: 10px; }
+#rank-sheet .rs-top { display: grid; grid-template-columns: auto minmax(0, 1fr) 32px; align-items: center; column-gap: 10px; padding: 0; }
+#rank-sheet .rs-top .rs-nav { display: none; }
+#rank-sheet .rs-x { position: relative; inset: auto; width: 32px; height: 32px; margin: 0; justify-self: end; }
+#rank-sheet .rs-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; }
+#rank-sheet .rs-chance { display: flex; align-items: center; gap: 8px; min-width: 0; }
+#rank-sheet .rs-chance .rank-wp-bar { flex: 1; min-width: 30px; }
+#rank-sheet .rs-btns { display: flex; flex-direction: row; gap: 6px; width: auto; }
+#rank-sheet .rs-btns > button { min-height: 30px; height: 30px; padding: 0 10px; margin: 0; font-size: 7px; width: auto; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+#rank-sheet .rs-btns .rs-path .rd-path-play { margin-right: 4px; }
+html:not(.phone) #rank-sheet .rs-top { grid-template-columns: 22px auto minmax(0, 1fr) 22px 32px; }
+html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
