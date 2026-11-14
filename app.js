@@ -5387,7 +5387,8 @@ document.addEventListener("click", (e) => {
   e.stopPropagation();
   if (pathOpening) return;
   pathOpening = true; b.classList.add("busy");
-  pathFresh().finally(() => { pathOpening = false; b.classList.remove("busy"); openPathRun(b.dataset.path); });
+  const inSheet = !!b.closest("#rank-sheet");
+  pathFresh().finally(() => { pathOpening = false; b.classList.remove("busy"); if (inSheet) closeRankSheet(); openPathRun(b.dataset.path); });
 }, true);
 
 function playerBreakdownHtml(name, state, results, live, opts = {}) {
@@ -7254,7 +7255,7 @@ function drawRankSheet(keepScroll) {
       <button type="button" class="rs-nav" data-rs="prev" aria-label="Previous player">‹</button>
       <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
       <span class="rs-name"><b>${escapeCd(shown(name).toUpperCase())}</b>${rankLockHtml(row)}<small>${row.subline || ""} · <span class="rs-pts">${row.score} PTS</span></small></span>
-      ${canPath ? `<button type="button" class="rd-path-btn rs-path" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>PATH TO WIN</button>` : ""}
+      ${canPath ? `<button type="button" class="rd-path-btn rs-path" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>PATH</button>` : ""}
       <button type="button" class="rs-nav" data-rs="next" aria-label="Next player">›</button>
       <button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>
     </div>

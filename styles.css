@@ -9966,3 +9966,9 @@ html.phone .rs-top .rs-nav { display: none; }
 @keyframes rs-hint { 0% { opacity: 0; } 12%, 80% { opacity: 1; } 100% { opacity: 0; } }
 .rs-dots.pulse i:not(.on) { animation: rs-dot 1.2s ease-in-out 2; }
 @keyframes rs-dot { 50% { background: rgba(var(--neon-cyan-rgb), .7); } }
+/* Header v4.3: compact Path button, stats line on one baseline. */
+.rs-top .rs-path { min-height: 30px; padding: 0 12px; font-size: 7px; }
+.rs-name small, .rs-name small * { font-family: inherit; font-size: 12px; line-height: 1.2; vertical-align: baseline; }
+.rs-name small .rank-max b { font-family: inherit; font-weight: 700; text-shadow: none; }
+.rs-name { gap: 3px 6px; }
+.rs-x { width: 30px; height: 30px; }
