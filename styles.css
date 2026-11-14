@@ -9976,3 +9976,6 @@ html.phone .rs-top .rs-nav { display: none; }
 /* The sheet shows every pick at full strength; only the numbers carry weight. */
 .ps-row.low { opacity: 1; }
 .ps-hm.t3 b, .ps-hm.t4 b { opacity: 1; }
+.ps-fin { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; color: rgba(255, 255, 255, .75); padding: 2px 4px; border: 1px solid rgba(255, 255, 255, .3); border-radius: 3px; margin-right: 2px; }
+.ps-row.final .ps-sub b:not(.ps-fin) { color: #fff; }
+.rs-x { top: 0; right: 0; }
