@@ -8802,7 +8802,7 @@ body:has(#since-line:not(.hidden)) #head-score .ms-live { display: none; }
 .eng-term * { font-family: 'VT323', ui-monospace, monospace !important; }
 .eng-bar { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 4px 10px; background: #123a12; color: #b6ffb6; font-size: 15px; letter-spacing: .04em; }
 .eng-x { width: 26px; height: 24px; border: 1px solid #3c8a3c; border-radius: 4px; background: none; color: #b6ffb6; font-size: 14px; cursor: pointer; }
-.eng-body { height: 160px; padding: 6px 10px 2px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: block; }
+.eng-body { height: 216px; padding: 6px 10px 2px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: block; }
 .eng-l { color: #6dff6d; font-size: 14px; line-height: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: eng-in .18s steps(3, end); }
 .eng-l b { color: #e9ffe9; font-weight: 400; }
 .eng-t { color: #3d9a3d; }
@@ -9387,7 +9387,7 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .eng-term .eng-body { touch-action: pan-y; }
 .eng-term.held .eng-foot::after { content: " · PAUSED"; color: #ffe45e; animation: none; }
 /* Paused: a taller window to read back through, same width. */
-.eng-term.held .eng-body { height: 280px; }
+.eng-term.held .eng-body { height: 336px; }
 .eng-term .eng-body { transition: height .18s ease; }
 .eng-bar .eng-left { margin: 0 auto 0 10px; padding: 0 6px; border: 1px solid #39ff88; border-radius: 3px; font-style: normal; font-size: 13px; color: #39ff88; letter-spacing: .06em; white-space: nowrap; }
 /* One-off announcement: all black, quiet type. */
