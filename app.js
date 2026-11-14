@@ -5387,7 +5387,7 @@ document.addEventListener("click", (e) => {
   pathFresh().finally(() => { pathOpening = false; b.classList.remove("busy"); openPathRun(b.dataset.path); });
 }, true);
 
-function playerBreakdownHtml(name, state, results, live) {
+function playerBreakdownHtml(name, state, results, live, opts = {}) {
   const ordered = gamesByKickoff();
   let banked = 0, liveCovering = 0, liveOpen = 0, wins = 0, losses = 0, liveFly = 0;
   // How much each open pick matters to this manager's week, from the same
@@ -5451,6 +5451,19 @@ function playerBreakdownHtml(name, state, results, live) {
     const aS = src && Number.isFinite(src.awayScore) ? src.awayScore : null;
     const hS = src && Number.isFinite(src.homeScore) ? src.homeScore : null;
     const scoreCell = (s, other) => `<span class="rd-sc ${isFinal && s !== null && s > other ? "win" : ""}">${s === null ? "" : s}</span>`;
+    if (opts.sheet) {
+      // One line per game in the player sheet: the pick (logo, team, terms)
+      // over the opponent and the state of play, points or impact on the right.
+      const opp = pick ? (pick.team === game.away ? game.homeShort : game.awayShort) : null;
+      const mine = pickedSide === "away" ? aS : hS, theirs = pickedSide === "away" ? hS : aS;
+      const sc = pick && mine !== null && theirs !== null ? ` <b>${mine}–${theirs}</b>` : (!pick && aS !== null ? ` <b>${aS}–${hS}</b>` : "");
+      const when = isFinal ? `FINAL${sc}` : isLive ? `LIVE${sc}${g.detail ? ` · ${escapeCd(g.detail.replace(/\s*-\s*/, " "))}` : ""}` : game.kickoffLabel.replace(/ ET$/, "");
+      const sub = `${pick ? `vs ${escapeCd(opp)}` : `${escapeCd(game.awayShort)} @ ${escapeCd(game.homeShort)}`} · <span class="ps-when">${when}</span>`;
+      const main = !locked ? `<span class="ps-hid">HIDDEN</span>` : !pick ? `<span class="ps-hid">NO PICK</span>` : pickHtml;
+      const lev = sway[game.id]?.lev || 0;
+      const order = isLive ? 0 : isFinal ? 2 : 1;
+      return { order, lev, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><div class="ps-pick">${main}<span class="ps-sub">${sub}</span></div><div class="rd-result">${ptsHtml}</div></div>` };
+    }
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
         <span class="rd-gline">G${game.id} ${statusTag}</span>
@@ -5459,7 +5472,8 @@ function playerBreakdownHtml(name, state, results, live) {
       <div class="rd-pick">${pickHtml}</div>
       <div class="rd-result">${ptsHtml}</div>
     </div>`;
-  }).join("");
+  });
+  const rowsHtml = opts.sheet ? rows.sort((a, b) => a.order - b.order || (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t).map((r) => r.html).join("") : rows.join("");
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.
   const tbGame = tiebreakerGameOf();
@@ -5493,12 +5507,13 @@ function playerBreakdownHtml(name, state, results, live) {
     const sw = wd.swing;
     const why = wd.alive === false ? outReason(name, results) : "";
     const canPath = wd.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((row) => row.some((p) => p?.hidden));
-    wpRow = `<div class="rd-wp"><span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
+    wpRow = `<div class="rd-wp">${opts.sheet ? "" : `<span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>`}${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
   }
   // A Scouting Report published from the Creative Studio, under the week.
   const scout = creativeArt?.art?.[`owner-card:owner:${name}`]?.text;
   const scoutRow = scout ? `<div class="rd-scout"><em>📋 SCOUTING REPORT</em><b>${escapeCd(scout.headline)}</b>${String(scout.body).split(/\n\s*\n/).map((p) => `<p>${escapeCd(p)}</p>`).join("")}</div>` : "";
-  return `<div class="rank-detail">${wpRow}${scoutRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rows}${tbRow}${summary}</div>`;
+  if (opts.sheet) return `<div class="rank-detail ps-detail">${wpRow}<div class="rd-head ps-head"><span>PICK</span><span>${Object.keys(sway).length ? "PTS · IMPACT" : "PTS"}</span></div>${rowsHtml}${tbRow}${scoutRow}</div>`;
+  return `<div class="rank-detail">${wpRow}${scoutRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rowsHtml}${tbRow}${summary}</div>`;
 }
 
 // Second line under a leaderboard name. How many picks are in is fair
@@ -7032,12 +7047,85 @@ function renderRankingRows(rows, cloudPicks, results, live) {
       }
       toggleRow();
     });
-    const toggleRow = () => {
-      if (expandedRankings.has(row.name)) expandedRankings.delete(row.name); else { expandedRankings.add(row.name); track("ranking-expand", { event: true, d: row.name }); }
-      withScrollPreserved(() => renderRankings(cloudPicks, results, live));
-    };
+    const toggleRow = () => { track("ranking-expand", { event: true, d: row.name }); openRankSheet(row.name); };
     rankingsList.appendChild(div);
   });
+  rankSheet.ctx = { rows, cloudPicks, results, live, weekDone };
+  if (rankSheet.name) drawRankSheet(true);
+}
+
+// --- Player sheet -----------------------------------------------------
+// Tapping a leaderboard row opens that player's week in a sheet over the
+// board: a pinned header (place, name, points, chance to win, path to
+// win), then one line per pick, live first, then the open games by how
+// much they matter, then the finals. Swipe sideways (or the arrows) for
+// the next player on the board; the board stays where it was underneath.
+const rankSheet = { name: null, ctx: null };
+function openRankSheet(name) {
+  rankSheet.name = name;
+  let el = document.getElementById("rank-sheet");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "rank-sheet"; el.className = "rank-sheet"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Player card");
+    el.innerHTML = `<div class="rs-scrim"></div><div class="rs-card"><div class="rs-grab"></div><div class="rs-head"></div><div class="rs-body"></div></div>`;
+    document.body.appendChild(el);
+    el.querySelector(".rs-scrim").addEventListener("click", closeRankSheet);
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-rs]"); if (!b) return;
+      if (b.dataset.rs === "x") return closeRankSheet();
+      stepRankSheet(b.dataset.rs === "next" ? 1 : -1);
+    });
+    let x0 = null, y0 = 0;
+    const card = el.querySelector(".rs-card");
+    card.addEventListener("touchstart", (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; }, { passive: true });
+    card.addEventListener("touchend", (e) => {
+      if (x0 == null) return; const t = e.changedTouches[0]; const dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) stepRankSheet(dx < 0 ? 1 : -1);
+      else if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.5 && card.querySelector(".rs-body").scrollTop <= 0) closeRankSheet();
+    }, { passive: true });
+    document.addEventListener("keydown", (e) => { if (!rankSheet.name) return; if (e.key === "Escape") closeRankSheet(); else if (e.key === "ArrowRight") stepRankSheet(1); else if (e.key === "ArrowLeft") stepRankSheet(-1); });
+    document.getElementById("bottom-nav")?.addEventListener("click", closeRankSheet, true);
+  }
+  drawRankSheet(false);
+  el.classList.add("open"); document.body.classList.add("rs-open");
+}
+function closeRankSheet() {
+  rankSheet.name = null;
+  document.getElementById("rank-sheet")?.classList.remove("open"); document.body.classList.remove("rs-open");
+}
+function stepRankSheet(d) {
+  const rows = rankSheet.ctx?.rows || []; const i = rows.findIndex((r) => r.name === rankSheet.name);
+  if (i < 0 || rows.length < 2) return;
+  rankSheet.name = rows[(i + d + rows.length) % rows.length].name;
+  const card = document.querySelector("#rank-sheet .rs-card");
+  card?.classList.remove("slide-l", "slide-r"); void card?.offsetWidth; card?.classList.add(d > 0 ? "slide-l" : "slide-r");
+  drawRankSheet(false);
+}
+function drawRankSheet(keepScroll) {
+  const el = document.getElementById("rank-sheet"); const c = rankSheet.ctx; if (!el || !c) return;
+  const rows = c.rows, i = rows.findIndex((r) => r.name === rankSheet.name);
+  if (i < 0) return closeRankSheet();
+  const row = rows[i], name = row.name;
+  const pct = row.winPct != null ? row.winPct * 100 : null;
+  const txt = pct == null ? "" : winChanceLabel(row.winPct, winChanceMemo.detail?.[name]);
+  const wd = winChanceMemo.detail?.[name];
+  const canPath = pct != null && wd?.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((r) => r.some((p) => p?.hidden));
+  const solo = row.solo ? `<div class="rs-solo"><b>${row.solo.solo}</b> pick${row.solo.solo === 1 ? "" : "s"} nobody else made${row.solo.twin ? ` · matches <b>${escapeCd(shown(row.solo.twin.name))}</b> on ${row.solo.twin.n} of ${row.solo.seen}` : ""}</div>` : "";
+  el.querySelector(".rs-head").innerHTML = `
+    <div class="rs-top">
+      <button type="button" class="rs-nav" data-rs="prev" aria-label="Previous player">‹</button>
+      <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
+      <span class="rs-name"><b>${escapeCd(shown(name).toUpperCase())}</b>${rankLockHtml(row)}<small>${row.subline || ""}</small></span>
+      <span class="ranking-score">${pts2(row.score)}</span>
+      <button type="button" class="rs-nav" data-rs="next" aria-label="Next player">›</button>
+    </div>
+    ${pct != null ? `<div class="rs-wp"><span class="rank-wp${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</div>` : ""}
+    ${solo}
+    <span class="rs-count">${i + 1} / ${rows.length}</span><button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>`;
+  const body = el.querySelector(".rs-body"); const top = body.scrollTop;
+  body.innerHTML = playerBreakdownHtml(name, row.state, c.results, c.live, { sheet: true });
+  body.scrollTop = keepScroll ? top : 0;
+  el.classList.toggle("is-me", name === currentManager);
 }
 
 // --- Kickoff countdown ------------------------------------------------
@@ -11172,9 +11260,8 @@ async function startLiveView() {
   const who = MANAGERS.find((n) => n === x);
   if (view === "game" && GAMES.some((g) => String(g.id) === x)) openInsights(Number(x));
   else if (view === "card" && who) {
-    expandedRankings.add(who);
     await renderScoreboard();
-    document.querySelector(`.rd-path-btn[data-path="${CSS.escape(who)}"]`)?.closest(".ranking-row")?.scrollIntoView({ block: "start" });
+    openRankSheet(who);
   } else if (view === "path" && who && (await until(() => winChanceMemo.ctx))) openPathCard(who);
   else if (view === "h2h") openH2H();
 }
