@@ -1570,7 +1570,7 @@ body::before { display: none; }
   const COPY_ICON = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 3.5v-.5a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3v5A1.5 1.5 0 0 0 4 9.5h.5"/></svg>`;
   const SAYS = {
     "game-info": "Opened game info", gamecast: "Watched a game live (Gamecast)", "game-final": "Opened a finished game",
-    "scorebug-open": "Opened a live score", "ranking-expand": "Expanded a player on the leaderboard",
+    "scorebug-open": "Opened a live score", "ranking-expand": "Opened a player card", "chief-msg-seen": "Saw a message from the Chief", "chief-msg": "Answered the Chief",
     "path-share": "Shared a Path to Win", "path-intro": "Saw the Path to Win intro",
     "wp-player": "Checked someone's odds to win the week", "wp-explain": "Read how win odds work", h2h: "Compared two players (VS)",
     "pot-open": "Opened the pot and standings", "pot-seen": "Looked at the pot and standings", "season-open": "Opened season stats", "season-seen": "Looked at season stats", "recap-seen": "Looked at the week replay", "board-seen": "Looked at the leaderboard", "scores-seen": "Looked at the game scores", "all-picks-open": "Opened everyone's picks", "pick-saved": "Saved a pick", "pick-updated": "Changed a pick",
@@ -1634,7 +1634,7 @@ body::before { display: none; }
       return [e.k === "path-run" ? "Ran Path to Win" : "Opened a Path to Win card", of ? `for ${name(nameFrom(of.k.slice(8)))}` : ""];
     }
     if (e.k === "hs-board") return ["Opened a high score board", ({ ats: "Best ATS", streak: "Hot Hand", dogs: "Dog Hits", lone: "Lone Wolf", fader: "Fader", tb: "TB Sniper", best: "Best Week", blanks: "No Shows", "side-bank": "Bankroll", "side-picks": "Side Picks" })[e.d] || e.d || ""];
-    if (SAYS[e.k]) return [SAYS[e.k], /^(game-|gamecast|scorebug)/.test(e.k) ? st.games[e.d] || "" : e.k === "ranking-expand" && e.d ? name(e.d) : e.k === "history-ask" && e.d ? `“${e.d}”` : e.k === "h2h" && e.d ? String(e.d).split(" vs ").map(name).join(" vs ") : ""];
+    if (SAYS[e.k]) return [SAYS[e.k], /^(game-|gamecast|scorebug)/.test(e.k) ? st.games[e.d] || "" : e.k === "ranking-expand" && e.d ? name(e.d) : e.k === "chief-msg" && e.d ? (e.d === "reply" ? "replied" : "tapped Thanks Chief") : e.k === "history-ask" && e.d ? `“${e.d}”` : e.k === "h2h" && e.d ? String(e.d).split(" vs ").map(name).join(" vs ") : ""];
     if (SCREENS[e.k]) return [`Went to ${SCREENS[e.k]}`, ""];
     return [e.k.charAt(0).toUpperCase() + e.k.slice(1).replace(/-/g, " "), ""];
   }
