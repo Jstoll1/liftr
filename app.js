@@ -9996,7 +9996,9 @@ async function maybeChiefMsg() {
   const m = document.createElement("div");
   m.id = "chief-msg"; m.className = "modal-overlay cmsg"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Message from the Chief");
   m.innerHTML = `<div class="modal-card cmsg-card">
-    <div class="cmsg-top"><img class="cmsg-av" src="assets/images/chief/chief2-96.webp" alt="" decoding="async"><div><b>THE CHIEF</b><small>to ${escapeCd(shown(me))} · ${new Date(msg.at).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</small></div></div>
+    <div class="cmsg-badge"><img src="assets/images/chief/chief2-96.webp" alt="" decoding="async"></div>
+    <div class="cmsg-k">MESSAGE FROM THE CHIEF</div>
+    <div class="cmsg-to">to ${escapeCd(shown(me))} · ${new Date(msg.at).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</div>
     <p class="cmsg-text">${escapeCd(msg.text).replace(/\n/g, "<br>")}</p>
     <div class="cmsg-reply" hidden><textarea maxlength="500" rows="3" placeholder="Reply to the Chief"></textarea></div>
     <div class="cmsg-err" hidden>Couldn't send. Check your signal and try again.</div>

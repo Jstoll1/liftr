@@ -9700,22 +9700,25 @@ body.rs-open #ask-fab { display: none; }
 }
 
 /* ==== RETRO: message from the Chief ==== */
-.cmsg { z-index: 3500; align-items: center; justify-content: center; padding: 16px; }
-.cmsg-card { width: min(400px, 100%); padding: 16px; gap: 12px; border-color: var(--card-border-feature); }
-.cmsg-top { display: flex; align-items: center; gap: 10px; }
-.cmsg-av { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; border: 1px solid var(--card-border-feature); }
-.cmsg-top div { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.cmsg-top b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 10px; color: var(--neon-cyan); }
-.cmsg-top small { font-size: 12px; color: rgba(255, 255, 255, .55); }
-.cmsg-text { margin: 0; font-size: 16px; line-height: 1.45; color: #fff; }
+/* The Chief's badge sits on the top edge in a gold ring; a pixel kicker,
+   the message in plain type, then reply / thanks. */
+.cmsg { z-index: 3500; align-items: center; justify-content: center; padding: 16px; background: rgba(5, 0, 12, .86); }
+.cmsg-card { position: relative; width: min(380px, 100%); max-height: none; overflow: visible; margin-top: 44px; padding: 52px 18px 18px; gap: 0; text-align: center; border: 1px solid rgba(var(--arcade-gold-rgb), .55); border-radius: 14px; background: linear-gradient(180deg, rgba(var(--neon-purple-rgb), .14), rgba(var(--neon-purple-rgb), 0) 46%), var(--bg2); box-shadow: 0 0 0 1px rgba(0, 0, 0, .4), 0 18px 50px rgba(0, 0, 0, .6), 0 0 26px rgba(var(--arcade-gold-rgb), .18); animation: cmsg-in .32s cubic-bezier(.2, .9, .25, 1.15); }
+@keyframes cmsg-in { from { transform: translateY(18px) scale(.96); opacity: 0; } }
+.cmsg-badge { position: absolute; left: 50%; top: -44px; width: 88px; height: 88px; margin-left: -44px; border-radius: 50%; padding: 4px; background: conic-gradient(from 200deg, var(--neon-yellow), rgba(var(--arcade-gold-rgb), .4), var(--neon-yellow)); box-shadow: 0 0 22px rgba(var(--arcade-gold-rgb), .45); }
+.cmsg-badge img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: var(--bg); display: block; }
+.cmsg-k { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: .1em; color: var(--neon-yellow); }
+.cmsg-to { margin-top: 7px; font-size: 12px; color: rgba(255, 255, 255, .5); }
+.cmsg-text { margin: 14px 0 16px; padding: 14px 0 0; border-top: 1px solid var(--card-border); font-size: 16px; line-height: 1.5; color: #fff; text-align: left; }
+.cmsg-reply { margin-bottom: 12px; }
 .cmsg-reply textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 72px; padding: 10px; border-radius: 10px; border: 1px solid var(--card-border); background: rgba(255, 255, 255, .04); color: #fff; font: inherit; font-size: 16px; }
 .cmsg-reply textarea:focus { outline: none; border-color: var(--neon-cyan); }
-.cmsg-err { font-size: 12px; color: var(--neon-pink); }
-.cmsg-btns { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
-.cmsg-btns button { min-height: 44px; border-radius: 10px; font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: .04em; cursor: pointer; }
-.cmsg-rep { border: 1px solid var(--neon-cyan); background: none; color: var(--neon-cyan); }
-.cmsg-rep.on { background: var(--neon-cyan); color: var(--bg); }
-.cmsg-ok { border: 0; background: var(--neon-yellow); color: #111; }
+.cmsg-err { margin-bottom: 10px; font-size: 12px; color: var(--neon-pink); }
+.cmsg-btns { display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; }
+.cmsg-btns button { min-height: 46px; border-radius: 10px; font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: .04em; cursor: pointer; }
+.cmsg-rep { border: 1px solid rgba(255, 255, 255, .25); background: none; color: rgba(255, 255, 255, .85); }
+.cmsg-rep.on { border-color: var(--neon-cyan); background: var(--neon-cyan); color: var(--bg); }
+.cmsg-ok { border: 0; background: var(--neon-yellow); color: var(--bg); box-shadow: 0 0 16px rgba(var(--arcade-gold-rgb), .35); }
 .cmsg-btns button:disabled { opacity: .5; }
 /* Player sheet: the lock sits in line after the stake, not floating. */
 .ps-row .rd-pickcard i.lk.rd-lk { position: static; order: 3; flex: none; }
@@ -9891,3 +9894,14 @@ body.rs-open #ask-fab { display: none; }
 @media (max-width: 400px) { .rs-top .rs-nav { width: 18px; } .rs-name b { font-size: 10px; } }
 .ps-opp { flex-basis: 100%; font-size: 11.5px; line-height: 1.1; color: rgba(255, 255, 255, .42); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ps-opp { padding-left: 24px; }
+/* Header v3.3: tighter so open picks can carry their opponent line. */
+.rs-grab { margin-top: 5px; }
+.rs-head { padding: 2px 12px 8px; gap: 6px; }
+.rs-count { display: none; }
+.rs-pct { font-size: 18px; }
+.rs-chance { row-gap: 4px; }
+.rs-btns .rs-vs { min-height: 28px; }
+.rs-top .rs-path { min-height: 30px; }
+.bs { padding: 8px 12px; margin-bottom: 4px; }
+.bs-k { margin-bottom: 6px; }
+.bs-r { margin-top: 6px; }
