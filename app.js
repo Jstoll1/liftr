@@ -5462,7 +5462,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const opp = pick ? (pick.team === game.away ? game.homeShort : game.awayShort) : null;
       const mine = pickedSide === "away" ? aS : hS, theirs = pickedSide === "away" ? hS : aS;
       const sc = pick && mine !== null && theirs !== null ? ` <b>${mine}–${theirs}</b>` : (!pick && aS !== null ? ` <b>${aS}–${hS}</b>` : "");
-      const when = isFinal ? ` · <span class="ps-when">${sc.trim()}</span>` : isLive ? ` · <span class="ps-when">${sc.trim()}${g.detail ? ` · ${escapeCd(g.detail.replace(/\s*-\s*/, " "))}` : ""}</span>` : "";
+      const when = isFinal ? ` · <span class="ps-when">${sc.trim()}</span>` : isLive ? ` · <span class="ps-when">${sc.trim()}</span>` : "";
       // VS ME: the game head to head. Each side shows its pick and the
       // points it has at stake (a lock shows what it wins and what it costs),
       // or what it scored once final. Shared picks are dimmed, no logos twice.
@@ -5530,7 +5530,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const tcell = isLive ? `<b class="live">LIVE</b>` : isFinal ? `<b>FINAL</b>` : kl ? `<b>${kl[2]}</b><small>${kl[1] === "Sat" ? "" : kl[1].toUpperCase() + " "}${kl[3] || ""}</small>` : "";
       const order = isLive ? 0 : isFinal ? 2 : 1;
       const slot = isLive ? "LIVE" : isFinal ? "FINAL" : game.kickoffLabel;
-      return { order, lev, cmp, vsRow, swing, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}${isFinal || !pick ? `<span class="ps-sub">${sub}</span>` : ""}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
+      return { order, lev, cmp, vsRow, swing, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}${isFinal || isLive || !pick ? `<span class="ps-sub">${sub}</span>` : ""}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
     }
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
