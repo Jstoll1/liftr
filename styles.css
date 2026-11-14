@@ -9972,3 +9972,4 @@ html.phone .rs-top .rs-nav { display: none; }
 .rs-name small .rank-max b { font-family: inherit; font-weight: 700; text-shadow: none; }
 .rs-name { gap: 3px 6px; }
 .rs-x { width: 30px; height: 30px; }
+.rs-x { position: relative; }
