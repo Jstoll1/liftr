@@ -219,6 +219,36 @@
         return { member: n, weeks: wks, lowestWeeks: pts.length ? wks.filter((x) => x.points === lo).map((x) => x.week) : [], lowest: pts.length ? lo : null, highestWeeks: pts.length ? wks.filter((x) => x.points === hi).map((x) => x.week) : [], highest: pts.length ? hi : null }; });
       return { weekByWeek: { meaning: "Every sealed week's points and place for each member (exhibition weeks marked; say whether a claim counts them).", members: weekly }, chalkLine, weeksSealed: Object.values(weekSummaries).filter((w) => w?.complete).length, seasonWeeks: total, weeksLeft: total != null ? Math.max(0, total - sealedN) : null, thisWeekCounts: total != null && !weekSummaries[currentWeek]?.complete, currentWeek, includesThisWeek: list.some((r) => r.thisWeekSoFar != null), members: list };
     },
+    // When members were knocked out (could no longer catch the leader on
+    // points) in every sealed pick'em week, replayed game by game in kickoff
+    // order from the sealed ledgers. A tie on points is still alive (the
+    // tiebreaker can win it). Day and time are Eastern, at about when that
+    // game ended (kickoff plus 3.5 hours).
+    eliminations() {
+      if (!weekSummariesReady) { try { loadWeekSummaries(); } catch {} return { error: "The season record is still loading; ask again in a moment." }; }
+      const et = (ms) => new Date(ms).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long", hour: "numeric", minute: "2-digit" });
+      // A game ending after midnight belongs to the night before ("Friday night").
+      const day = (ms) => new Date(ms - 6 * 3600e3).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long" });
+      const weeks = Object.values(weekSummaries).filter((w) => w?.complete && Array.isArray(w.rows) && Array.isArray(w.slate)).sort((a, b) => a.week - b.week).map((w) => {
+        const order = [...w.slate].sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff) || a.id - b.id);
+        const led = Object.fromEntries(w.rows.map((r) => [r.name, Object.fromEntries((r.ledger || []).map((x) => [x.g, x]))]));
+        const banked = Object.fromEntries(w.rows.map((r) => [r.name, 0]));
+        const out = [];
+        order.forEach((g, i) => {
+          for (const r of w.rows) banked[r.name] += Number(led[r.name][g.id]?.pts) || 0;
+          const top = Math.max(...Object.values(banked));
+          const left = order.slice(i + 1);
+          for (const r of w.rows) {
+            if (out.some((o) => o.member === r.name)) continue;
+            const max = banked[r.name] + left.reduce((t, h) => t + Math.max(0, Number(led[r.name][h.id]?.worth) || 0), 0);
+            if (max < top) { const at = Date.parse(g.kickoff) + 3.5 * 3600e3; const dd = day(at); out.push({ member: r.name, afterGame: `${g.awayShort} at ${g.homeShort}`, gameNumber: i + 1, gamesLeft: left.length, endedAround: et(at), day: dd, night: new Date(at).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long" }) !== dd ? `${dd} night (after midnight)` : undefined, maxLeft: max, leaderHad: top, ...((w.rows.find((x) => x.name === r.name)?.picked ?? 1) === 0 ? { noPicksThatWeek: true } : {}) }); }
+          }
+        });
+        return { week: w.week, ...(w.exhibition ? { exhibition: true } : {}), firstKickoff: et(Date.parse(order[0]?.kickoff)), knockedOut: out, survivedToTheEnd: w.rows.filter((r) => !out.some((o) => o.member === r.name)).map((r) => r.name), winners: w.winners || [] };
+      });
+      const early = weeks.flatMap((w) => w.knockedOut.filter((o) => !/Saturday|Sunday/.test(o.day)).map((o) => ({ week: w.week, ...o })));
+      return { meaning: "Knocked out = could no longer reach the leader's points with every remaining pick hitting. Days are Eastern time, about when the deciding game ended.", beforeSaturday: early, weeks };
+    },
     standings() {
       const memo = base(), live = typeof inFlightPoints === "function" ? (n) => inFlightPoints((lastGoodCloudPicks || {})[n]?.picks || {}, latestLive) : () => 0;
       // While everyone else's picks are hidden the odds would only count the
