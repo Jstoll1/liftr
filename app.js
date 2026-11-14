@@ -724,6 +724,9 @@ function parseEspnEvents(events, games = GAMES) {
       spread: Number.isFinite(oSpread) ? Math.abs(oSpread) : null,
       favoriteSide: o.homeTeamOdds?.favorite === true ? "home" : o.awayTeamOdds?.favorite === true ? "away" : Number.isFinite(oSpread) ? (oSpread < 0 ? "home" : "away") : null,
       overUnder: Number.isFinite(Number(o.overUnder)) ? Number(o.overUnder) : null,
+      // Moneylines, for the market's own straight-up price.
+      mlHome: Number.isFinite(Number(o.homeTeamOdds?.moneyLine)) ? Number(o.homeTeamOdds.moneyLine) : null,
+      mlAway: Number.isFinite(Number(o.awayTeamOdds?.moneyLine)) ? Number(o.awayTeamOdds.moneyLine) : null,
     } : null;
     byId[game.id] = {
       id: game.id,
@@ -4983,7 +4986,7 @@ function pathChance(name, fixed, tbTotal = null, N = 1500) {
     ctx.models.forEach((m, k) => {
       let res = m.fixed || fixed.get(m.g.id);
       if (!res) {
-        let h = m.curH, a = m.curA;
+        let h = m.curH + (m.base || 0), a = m.curA + (m.base || 0);
         const n = poissonRand(m.lam, rnd);
         for (let q = 0; q < n; q++) { const v = rnd() < 0.6 ? 7 : 3; if (rnd() < m.pHome) h += v; else a += v; }
         if (h === a) { const v = rnd() < 0.6 ? 7 : 3; if (rnd() < m.pHome) h += v; else a += v; }
@@ -6243,13 +6246,26 @@ function simModels(results, live) {
     // what the remaining time is worth. A full game comes out about 16 to
     // 18 points either side of the line, matching college results; late
     // in a game it correctly makes "needs one more score" unlikely.
+    // Each side also banks a steady 6 points a game outside the drawn
+    // scores (scaled to the time left), so the total keeps its over/under
+    // while the margin spreads about 16 points either side of the line,
+    // what this season's 100 games did (it was about 18 before).
     const ou = odds?.overUnder ?? 52;
-    const lam = Math.max(0, (ou * rem) / 5.4);
-    const pHome = Math.min(0.95, Math.max(0.05, 0.5 + homeEdge / (2 * Math.max(30, ou))));
+    const base = Math.round(6 * rem);
+    const drawn = Math.max(0, ou * rem - 2 * base);
+    const lam = drawn / 5.4;
+    const pHome = Math.min(0.95, Math.max(0.05, 0.5 + homeEdge / (2 * Math.max(18, ou - 12))));
     const curA = inGame ? (l.awayScore || 0) : 0, curH = inGame ? (l.homeScore || 0) : 0;
     const espnWp = inGame && l.winProb && Number.isFinite(l.winProb.home) ? l.winProb.home / 100 : null;
-    if (espnWp != null) { const c = calibrateLive(lam, curH - curA, espnWp); return { g, rem, lam: c.lam, pHome: c.p, curA, curH, espn: espnWp }; }
-    return { g, rem, lam, pHome, curA, curH };
+    if (espnWp != null) { const c = calibrateLive(lam, curH - curA, espnWp); return { g, rem, lam: c.lam, pHome: c.p, curA, curH, base, espn: espnWp }; }
+    // Before kickoff, straight-up chances come from the moneyline (the
+    // market's own price, vig removed) when the book has one.
+    const ml = (x) => (x < 0 ? -x / (-x + 100) : 100 / (x + 100));
+    if (!inGame && odds && odds.mlHome != null && odds.mlAway != null) {
+      const h = ml(odds.mlHome), a = ml(odds.mlAway), t = h / (h + a);
+      if (t > 0.02 && t < 0.98) { const c = calibrateLive(lam, 0, t); return { g, rem, lam: c.lam, pHome: c.p, curA, curH, base, ml: t }; }
+    }
+    return { g, rem, lam, pHome, curA, curH, base };
   });
 }
 function weekWinChances(cloudPicks, results, live) {
@@ -6288,7 +6304,7 @@ function weekWinChances(cloudPicks, results, live) {
       const m = models[k];
       let res = m.fixed;
       if (!res) {
-        let h = m.curH, a = m.curA;
+        let h = m.curH + (m.base || 0), a = m.curA + (m.base || 0);
         const n = poissonRand(m.lam, rnd);
         for (let q = 0; q < n; q++) { const pts = rnd() < 0.6 ? 7 : 3; if (rnd() < m.pHome) h += pts; else a += pts; }
         // Level at the end: overtime, decided by a score for one side.
@@ -6609,7 +6625,7 @@ function openEngineTerm() {
   const ts = (t) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
   const ab = (g, side) => { const c = teamCode(g, side === "home" ? g.home : g.away), n = side === "home" ? g.homeShort : g.awayShort; return escapeCd(c.length <= 2 ? n.replace(/[^A-Za-z]/g, "").slice(0, 4).toUpperCase() : c.toUpperCase()); };
   const draw = (m) => {
-    let h = m.curH || 0, a = m.curA || 0;
+    let h = (m.curH || 0) + (m.base || 0), a = (m.curA || 0) + (m.base || 0);
     const n = poissonRand(m.lam, Math.random);
     for (let q = 0; q < n; q++) { const pts = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += pts; else a += pts; }
     if (h === a) { const pts = Math.random() < 0.6 ? 7 : 3; if (Math.random() < m.pHome) h += pts; else a += pts; }
@@ -6701,6 +6717,49 @@ function stopEngineTerm() {
   const btn = document.querySelector("#wp-explain .wpx-run"); if (btn) { btn.textContent = "▶ WATCH THE ENGINE"; btn.classList.remove("stop"); }
 }
 
+// Win% snapshots for the Live calibration chart: one at lock, one at each
+// final and one per 15 minutes while a game is live. The Worker keeps the
+// first copy of each key, so every phone can send; this one remembers what
+// it sent. Skipped while any pick is still hidden (chances would be partial).
+// Leverage: revealed picks (side and mode) that no one else made, plus the
+// player whose card matches yours most ("you and X match on N of M").
+function soloOf(name, cloudPicks) {
+  const mine = cloudPicks?.[name]?.picks || {};
+  const key = (p) => (p && !p.hidden && p.team ? `${p.team}|${p.mode}` : null);
+  let solo = 0, seen = 0; const same = {};
+  for (const g of GAMES) {
+    const k = key(mine[g.id]); if (!k) continue;
+    seen++; let alone = true;
+    for (const [n, c] of Object.entries(cloudPicks || {})) {
+      if (n === name) continue;
+      if (key(c?.picks?.[g.id]) === k) { alone = false; same[n] = (same[n] || 0) + 1; }
+    }
+    if (alone) solo++;
+  }
+  const twin = Object.entries(same).sort((a, b) => b[1] - a[1])[0];
+  return { solo, seen, twin: twin ? { name: twin[0], n: twin[1] } : null };
+}
+
+function sendWpSnap(ch, cloudPicks, results, live) {
+  try {
+    if (PREVIEW || !WORKER_URL) return;
+    if (Object.values(cloudPicks || {}).some((c) => Object.values(c?.picks || {}).some((p) => p?.hidden))) return;
+    const finals = GAMES.filter((g) => results?.[g.id]).length;
+    const liveN = GAMES.filter((g) => live?.[g.id]?.state === "in").length;
+    const keys = [finals ? `f${finals}` : "lock"];
+    if (liveN) keys.push(`t${Math.floor(Date.now() / 9e5)}`);
+    const sk = `wpsnap-sent-${currentWeek}`;
+    let sent = []; try { sent = JSON.parse(localStorage.getItem(sk) || "[]"); } catch {}
+    const pct = {}; for (const [n, v] of Object.entries(ch || {})) if (Number.isFinite(v)) pct[n] = v;
+    for (const key of keys) {
+      if (sent.includes(key)) continue;
+      sent.push(key);
+      fetch(`${WORKER_URL}/wp-snaps`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ week: currentWeek, key, finals, live: liveN, pct }) }).catch(() => {});
+    }
+    try { localStorage.setItem(sk, JSON.stringify(sent.slice(-200))); } catch {}
+  } catch {}
+}
+
 function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
   const rows = precomputed || rankManagers(cloudPicks, results);
   if (anyGameLive(live)) {
@@ -6719,6 +6778,11 @@ function renderRankings(cloudPicks, results, live = {}, precomputed = null) {
     // order moves with every score update. Places (T-3RD) are unchanged.
     rows.sort((a, b) => b.score - a.score || (b.winPct ?? 0) - (a.winPct ?? 0) || a.tbDiff - b.tbDiff);
     window.__wpCtx = { rows, cloudPicks, results };
+    sendWpSnap(ch, cloudPicks, results, live);
+    // Before the first final, chances barely beat a coin flip, so the column
+    // shows leverage instead: picks only you made, and your closest twin.
+    if (!GAMES.some((g) => results?.[g.id])) for (const row of rows) row.solo = soloOf(row.name, cloudPicks);
+    else for (const row of rows) delete row.solo;
   } else for (const row of rows) delete row.winPct;
   renderRankingRows(rows, cloudPicks, results, live);
   drawChalkLine(rows, results);
@@ -6910,7 +6974,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
     const hd = document.createElement("div");
     hd.className = "ranking-row rank-hd";
     hd.setAttribute("aria-hidden", "true");
-    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span>${weekDone ? `<span class="rank-hits hd">CORRECT PICKS</span>` : `<i class="rank-live mid">LIVE</i>`}${weekDone ? "" : anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b class="rank-hd-wp" role="button" tabindex="0" title="How chance to win is worked out">WIN%</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
+    hd.innerHTML = `<div class="ranking-main"><span class="ranking-place">#</span><span class="ranking-name">PLAYER</span>${weekDone ? `<span class="rank-hits hd">CORRECT PICKS</span>` : `<i class="rank-live mid">LIVE</i>`}${weekDone ? "" : rows.some((r) => r.solo) ? `<span class="rank-wp rank-solo"><span class="rank-twin hd" title="Who your card matches most">TWIN</span><b title="Picks only you made, until the first game is final">SOLO</b></span>` : anyWp ? `<span class="rank-wp"><span class="rank-wp-bar"></span><b class="rank-hd-wp" role="button" tabindex="0" title="How chance to win is worked out">WIN%</b></span>` : `<span class="ranking-dots"></span>`}<span class="ranking-score">PTS</span></div>`;
     hd.querySelector(".rank-hd-wp")?.addEventListener("click", openWinChanceExplainer);
     rankingsList.appendChild(hd);
   }
@@ -6949,6 +7013,7 @@ function renderRankingRows(rows, cloudPicks, results, live) {
             const hits = gamesByKickoff().map((g) => { const pk = row.state.picks?.[g.id]; const p = pk && results?.[g.id] ? scorePick(g, pk, results[g.id]) : 0; return p > 0 ? { g, pk, p } : null; }).filter(Boolean);
             return `<span class="rank-hits">${hits.map((h) => `<span class="rh${h.pk.lock && lockRule() ? " lk" : ""}" title="${h.pk.lock && lockRule() ? "LOCK · " : ""}${h.pk.team} ${h.pk.mode === "SU" ? "to win" : "ATS"} · +${h.p}"><img src="${logoUrl(h.pk.team === h.g.home ? h.g.homeId : h.g.awayId)}" alt="" loading="lazy"><b class="t${h.p}">+${h.p}</b></span>`).join("") || `<em>No hits</em>`}</span>`;
           }
+          if (row.solo) { const so = row.solo; const tip = `${so.solo} pick${so.solo === 1 ? "" : "s"} only you made` + (so.twin ? ` · you and ${so.twin.name} match on ${so.twin.n} of ${so.seen}` : ""); return `<span class="rank-wp rank-solo${so.solo ? " hot" : ""}" title="${escapeCd(tip)}">${so.twin ? `<span class="rank-twin">≈ ${escapeCd(shown(so.twin.name).toUpperCase())} ${so.twin.n}/${so.seen}</span>` : ""}<b>${so.solo}</b></span>`; }
           return pct != null ? `<span class="rank-wp${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}" title="Chance to win the week"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>` : `<span class="ranking-dots" aria-hidden="true"></span>`;
         })()}
         <span class="ranking-score">${pts2(row.score)}</span>

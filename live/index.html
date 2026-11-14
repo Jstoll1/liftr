@@ -91,6 +91,16 @@ body.lz-on { overflow: hidden; }
 /* The editor carries its own title and Exit; this corner ✕ is only a way out if it fails to load. */
 .slate-ed-x { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 10px; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel2); color: var(--meta); font-size: 13px; cursor: pointer; }
 .slate-ed iframe { flex: 1; width: 100%; border: 0; background: #0a0714; }
+.wpc-key { display: flex; gap: 14px; margin: 2px 0 8px; font-size: 11px; color: var(--dim); }
+.wpc-key i { display: inline-block; width: 10px; height: 6px; border-radius: 2px; margin-right: 5px; vertical-align: 1px; }
+.wpc-b { display: grid; grid-template-columns: 64px minmax(0, 1fr) 118px; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid var(--line); font-size: 12px; }
+.wpc-l { font: 700 10.5px var(--mono); color: var(--meta); }
+.wpc-t { position: relative; height: 12px; border-radius: 3px; background: rgba(255, 255, 255, .04); overflow: hidden; }
+.wpc-t i { position: absolute; left: 0; border-radius: 2px; }
+.wpc-t i.pr, .wpc-key i.pr { top: 0; height: 5px; background: var(--cyan); }
+.wpc-t i.ac, .wpc-key i.ac { bottom: 0; height: 5px; background: var(--gold); }
+.wpc-key i.pr, .wpc-key i.ac { position: static; }
+.wpc-v { white-space: nowrap; color: var(--dim); text-align: right; } .wpc-v b { color: var(--text, #fff); } .wpc-v em { font-style: normal; font-size: 10.5px; margin-left: 4px; }
 .exp-k { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
 .exp-k > div { padding: 9px 10px; border-radius: 10px; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); min-width: 0; }
 .exp-k em { display: block; font: 700 9.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); font-style: normal; }
@@ -1694,7 +1704,7 @@ body::before { display: none; }
       if (res.status === 403) { const was = device; forget(); gate(was ? "This computer's sign-in has expired. Enter the key again." : "That key didn't work."); return; }
       if (!res.ok) throw new Error(res.status);
       const r = await res.json();
-      if (HAS_STUDIO) { loadCosts(full); loadExperts(full); }
+      if (HAS_STUDIO) { loadCosts(full); loadExperts(full); loadWpCal(full); }
       if (r.names) { st.names = r.names; st.seen = r.seen || {}; st.games = r.games || {}; }
       if (r.asks) st.asks = r.asks;
       // The week comes with seven days of taps; the live view keeps one.
@@ -2148,7 +2158,7 @@ body::before { display: none; }
       </section>
       ${frictionPanel((wk.feed || []).filter((e) => e.at >= wFrom), "last 7 days")}
       ${askPanel(wFrom, "last 7 days")}
-      ${cardStatus("rail")}${HAS_STUDIO ? expertsPanel() + costPanel() : ""}
+      ${cardStatus("rail")}${HAS_STUDIO ? expertsPanel() + wpCalPanel() + costPanel() : ""}
     </aside>`;
     };
     const maxH = Math.max(1, ...hours.map((h) => h.n));
@@ -2164,7 +2174,7 @@ body::before { display: none; }
       </section>` : ""}
       ${frictionPanel(actions, "last 24h")}
       ${askPanel(from, "last 24h")}
-      ${cardStatus("rail")}${HAS_STUDIO ? expertsPanel() + costPanel() : ""}
+      ${cardStatus("rail")}${HAS_STUDIO ? expertsPanel() + wpCalPanel() + costPanel() : ""}
     </aside>`;
 
     // The feed: one card per visit, newest first.
@@ -3271,6 +3281,55 @@ body::before { display: none; }
     if (c) { const [k, v] = c.dataset.ex.split(":"); ex[k] = k === "min" ? Number(v) : v; if (k === "view") ex.open = null; }
     st.sig = ""; render();
   });
+
+  // ---- Win% calibration -------------------------------------------------
+  // The app saves everyone's chance to win the week at lock, at each final
+  // and every 15 minutes (Worker /wp-snaps). Once a week is complete each
+  // saved chance is scored against who won: Brier (lower is better) next to
+  // equal odds, and buckets that check "30%" really wins about 30% of the time.
+  const wpc = { data: null, at: 0, err: "" };
+  async function loadWpCal(force) {
+    if (!force && Date.now() - wpc.at < 10 * 60000) return;
+    wpc.at = Date.now();
+    try {
+      const r = await fetch(`${WORKER}/wp-snaps?${auth()}&t=${Date.now()}`, { cache: "no-store" });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || r.status);
+      wpc.data = d; wpc.err = "";
+    } catch (e) { wpc.err = String(e.message || e); }
+    st.sig = ""; render();
+  }
+  function wpCalPanel() {
+    const d = wpc.data;
+    const head = (sub) => `<section class="panel wpc"><div class="ph"><h2>Win% check</h2><span class="sub">${sub}</span></div>`;
+    if (!d?.weeks) return head(wpc.err ? esc(wpc.err) : "loading…") + `</section>`;
+    const done = d.weeks.filter((w) => w.complete && w.winners?.length);
+    const open = d.weeks.length - done.length;
+    if (!done.length) { const ns = d.weeks.reduce((n, w) => n + w.snaps.length, 0); return head(`${ns} snapshot${ns === 1 ? "" : "s"} saved`) + `<div class="note">Collecting data. Scores appear once a week with snapshots is final${open ? ` (${open} week${open === 1 ? "" : "s"} in progress)` : ""}.</div></section>`; }
+    const phaseOf = (s, games) => (s.key === "lock" ? "lock" : s.finals * 2 < games ? "early" : "late");
+    const ph = { lock: [0, 0, 0], early: [0, 0, 0], late: [0, 0, 0] };
+    const B = [[0, .1], [.1, .25], [.25, .5], [.5, .75], [.75, 1.01]].map(([lo, hi]) => ({ lo, hi, n: 0, p: 0, y: 0 }));
+    for (const w of done) {
+      const games = Math.max(...w.snaps.map((s) => s.finals), 1);
+      for (const s of w.snaps) {
+        const names = Object.keys(s.pct); const eq = 1 / names.length; const P = ph[phaseOf(s, games)];
+        for (const n of names) {
+          const p = s.pct[n], y = w.winners.includes(n) ? 1 / w.winners.length : 0;
+          P[0] += (p - y) ** 2; P[1] += (eq - y) ** 2; P[2]++;
+          const b = B.find((x) => p >= x.lo && p < x.hi); b.n++; b.p += p; b.y += y;
+        }
+      }
+    }
+    const pc = (v) => `${Math.round(v * 100)}%`;
+    const kp = (k, label) => { const [m, e, n] = ph[k]; if (!n) return `<div><em>${label}</em><b class="num">–</b><span>no snapshots</span></div>`; const better = m < e; return `<div><em>${label}</em><b class="num" style="color:var(${better ? "--green" : "--red, #f87171"})">${(m / n).toFixed(3)}</b><span>vs ${(e / n).toFixed(3)} even</span></div>`; };
+    const bars = B.filter((b) => b.n).map((b) => `<div class="wpc-b"><span class="wpc-l">${pc(b.lo)}–${pc(Math.min(b.hi, 1))}</span><span class="wpc-t"><i class="pr" style="width:${(b.p / b.n * 100).toFixed(1)}%"></i><i class="ac" style="width:${(b.y / b.n * 100).toFixed(1)}%"></i></span><span class="wpc-v">${pc(b.p / b.n)} → <b>${pc(b.y / b.n)}</b> <em>n ${b.n}</em></span></div>`).join("");
+    return head(`${done.length} final week${done.length === 1 ? "" : "s"} · ${done.reduce((n, w) => n + w.snaps.length, 0)} snapshots`) + `
+      <div class="exp-k">${kp("lock", "At lock")}${kp("early", "First half")}${kp("late", "Second half")}</div>
+      <div class="wpc-key"><span><i class="pr"></i>said</span><span><i class="ac"></i>happened</span></div>
+      <div class="wpc-bars">${bars}</div>
+      <div class="note">Brier score: lower is better; green beats even odds for everyone.</div>
+    </section>`;
+  }
 
   // ---- Creative Studio --------------------------------------------------
   // AI graphics for the league, made with OpenAI on the Worker and kept
