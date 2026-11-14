@@ -9717,3 +9717,6 @@ body.rs-open #ask-fab { display: none; }
 .cmsg-rep.on { background: var(--neon-cyan); color: var(--bg); }
 .cmsg-ok { border: 0; background: var(--neon-yellow); color: #111; }
 .cmsg-btns button:disabled { opacity: .5; }
+/* Player sheet: the lock sits in line after the stake, not floating. */
+.ps-row .rd-pickcard i.lk.rd-lk { position: static; order: 3; flex: none; }
+.ps-row .rd-pickcard.lk .rd-pickteam { padding-right: 0; }

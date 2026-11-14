@@ -29,7 +29,8 @@ landscape) before pushing.
 ## Keep the "SAVED" stamp on game cards
 The "SAVED <day> <time>" line on each pick card stays: it is the user's
 audit trail that a pick reached the league. Never hide or shorten it to
-save space.
+save space. One exception, at Jake's request: the leaderboard player sheet
+(tap a row) shows picks without the saved time.
 
 ## Tick off fixes from a pasted friction log
 When Jake pastes lines from the Live "Admin friction" log and a fix ships,
