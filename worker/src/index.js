@@ -78,6 +78,9 @@ const app = {
     if (url.pathname === "/games") {
       return handleGames(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/chief-msg") {
+      return handleChiefMsg(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/wp-snaps") {
       return handleWpSnaps(request, env, corsHeaders, url);
     }
@@ -4155,6 +4158,58 @@ function selectContext(question, asker, cur = MATCHUPS.currentSeason) {
 // week (lock, each final f1..f10, each 15 minutes t<n>); the first one in
 // for a moment is kept. GET (the owner, Live): every week's snapshots with
 // that week's winners, for the calibration chart.
+// Messages from the Chief: the commissioner writes one on Live to a
+// member; it pops up once on that member's next visit, as the Chief. The
+// member taps THANKS CHIEF or replies; Live sees when it was seen, thanked
+// and any reply. KV chiefmsg:<member> holds that member's last 30.
+//   GET  ?manager=X            the member's open messages (not answered yet)
+//   POST {manager,id,seen}     shown on screen
+//   POST {manager,id,reply?}   answered (thanks, or a reply up to 500 chars)
+//   GET  ?all=1  (Live)        every member's messages
+//   POST {to,text} (Live)      send one; {to:"*"} sends to every member
+//   POST {manager,id,del:1} (Live) remove one
+async function handleChiefMsg(request, env, corsHeaders, url) {
+  const key = (m) => `chiefmsg:${m}`;
+  const read = async (m) => (await env.LIFTR_KV.get(key(m), "json")) || [];
+  const write = (m, list) => env.LIFTR_KV.put(key(m), JSON.stringify(list.slice(-30)));
+  if (request.method === "GET") {
+    if (url.searchParams.get("all")) {
+      if (!(await liveAdmin(env, url))) return json({ error: "Not authorized" }, 403, corsHeaders);
+      const out = {};
+      await Promise.all(PICKS_MANAGERS.map(async (m) => { out[m] = await read(m); }));
+      return json({ members: PICKS_MANAGERS, messages: out }, 200, corsHeaders);
+    }
+    const m = url.searchParams.get("manager");
+    if (!PICKS_MANAGERS.includes(m)) return json({ messages: [] }, 200, corsHeaders);
+    const open = (await read(m)).filter((x) => !x.ackAt).map((x) => ({ id: x.id, text: x.text, at: x.at }));
+    return json({ messages: open }, 200, corsHeaders);
+  }
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, corsHeaders);
+  let b; try { b = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+  if (b?.to != null || b?.del) {
+    if (!(await liveAdmin(env, url))) return json({ error: "Not authorized" }, 403, corsHeaders);
+    if (b.del) {
+      if (!PICKS_MANAGERS.includes(b.manager)) return json({ error: "Unknown member" }, 400, corsHeaders);
+      await write(b.manager, (await read(b.manager)).filter((x) => x.id !== b.id));
+      return json({ ok: true }, 200, corsHeaders);
+    }
+    const text = String(b.text || "").trim().slice(0, 600);
+    const to = b.to === "*" ? PICKS_MANAGERS : [b.to];
+    if (!text || !to.every((m) => PICKS_MANAGERS.includes(m))) return json({ error: "Pick a member and write a message" }, 400, corsHeaders);
+    const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    await Promise.all(to.map(async (m) => { const list = await read(m); list.push({ id, text, at: Date.now(), seenAt: null, ackAt: null, reply: null }); await write(m, list); }));
+    return json({ ok: true, id, sent: to.length }, 200, corsHeaders);
+  }
+  const m = b?.manager;
+  if (!PICKS_MANAGERS.includes(m)) return json({ error: "Unknown member" }, 400, corsHeaders);
+  const list = await read(m); const x = list.find((y) => y.id === b.id);
+  if (!x) return json({ ok: false }, 200, corsHeaders);
+  if (b.seen) { x.seenAt ||= Date.now(); x.seenCount = (x.seenCount || 0) + 1; }
+  else { x.ackAt ||= Date.now(); x.seenAt ||= x.ackAt; const r = String(b.reply || "").trim().slice(0, 500); if (r) x.reply = r; }
+  await write(m, list);
+  return json({ ok: true }, 200, corsHeaders);
+}
+
 async function handleWpSnaps(request, env, corsHeaders, url) {
   if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
   if (request.method === "POST") {
