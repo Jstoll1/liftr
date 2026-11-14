@@ -7244,10 +7244,11 @@ function drawRankSheet(keepScroll) {
       <span class="rs-name"><b>${escapeCd(shown(name).toUpperCase())}</b>${rankLockHtml(row)}<small>${row.subline || ""} · <span class="rs-pts">${row.score} PTS</span></small></span>
       ${canPath ? `<button type="button" class="rd-path-btn rs-path" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>PATH TO WIN</button>` : ""}
       <button type="button" class="rs-nav" data-rs="next" aria-label="Next player">›</button>
+      <button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>
     </div>
     ${pct != null ? `<div class="rs-hero"><div class="rs-chance"><span class="rs-k">CHANCE TO WIN</span><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}">${txt}</b><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span></div><div class="rs-btns">${vsBtn}</div></div>` : vsBtn ? `<div class="rs-wp">${vsBtn}</div>` : ""}
     ${solo}
-    <span class="rs-count">${i + 1} / ${rows.length}</span><button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>`;
+    <span class="rs-count">${i + 1} / ${rows.length}</span>`;
   const body = el.querySelector(".rs-body"); const top = body.scrollTop;
   body.innerHTML = playerBreakdownHtml(name, row.state, c.results, c.live, { sheet: true, vs: vsOn ? myPicks : null, all: Object.fromEntries(rows.map((r) => [r.name, r.state])), rank: Object.fromEntries([...rows].sort((a, b) => (b.winPct ?? 0) - (a.winPct ?? 0) || b.score - a.score).map((r, i) => [r.name, i])) });
   body.scrollTop = keepScroll ? top : 0;

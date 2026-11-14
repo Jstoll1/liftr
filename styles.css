@@ -9941,3 +9941,15 @@ body.rs-open #ask-fab { display: none; }
 .ps-sub { padding-left: 22px; }
 .ps-live { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; color: var(--neon-pink); margin-right: 2px; }
 .ps-row.live { margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+/* Header v4.2: one left edge (badge and CHANCE label) and one right edge
+   (close and VS ME). Phones swipe between players, so the arrows go. */
+html.phone .rs-top .rs-nav { display: none; }
+.rs-head { padding-left: 14px; padding-right: 14px; }
+.rs-top { padding-right: 0; gap: 10px; }
+.rs-x { position: static; flex: none; width: 34px; height: 34px; }
+.rs-top .rs-path { margin-left: auto; min-height: 34px; }
+.rs-hero { gap: 10px; }
+.rs-btns .rs-vs { min-height: 30px; width: 112px; }
+.rs-top .ranking-place { margin: 0; }
+.rs-btns .rs-vs { width: auto; padding: 0 16px; }
+.ps-row .ps-sub { flex-basis: 100%; }
