@@ -9869,3 +9869,14 @@ body.rs-open #ask-fab { display: none; }
   .rs-btns .rd-path-btn, .rs-btns .rs-vs { padding: 0 14px; width: auto; flex: none; }
   .rs-pct { font-size: 18px; }
 }
+/* Player sheet v3.1 */
+.rs-pts { color: var(--neon-green); font-weight: 700; }
+.rs-top { padding-right: 34px; }
+.rs-btns .rd-path-btn { background: none !important; color: var(--neon-cyan) !important; border: 1px solid var(--neon-cyan) !important; box-shadow: none !important; text-shadow: none !important; }
+.rs-btns .rd-path-btn .rd-path-play { color: var(--neon-cyan); }
+.rs-btns .rs-vs { border-color: rgba(255, 255, 255, .3); color: rgba(255, 255, 255, .8); }
+.rs-btns .rs-vs.on { background: rgba(255, 255, 255, .85); color: var(--bg); }
+.ps-cols span:first-child { cursor: help; }
+.ps-row.low { opacity: .55; }
+.ps-lp { color: var(--neon-green); }
+.ps-lp.z { color: rgba(255, 255, 255, .5); }
