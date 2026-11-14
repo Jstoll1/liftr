@@ -5462,7 +5462,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const opp = pick ? (pick.team === game.away ? game.homeShort : game.awayShort) : null;
       const mine = pickedSide === "away" ? aS : hS, theirs = pickedSide === "away" ? hS : aS;
       const sc = pick && mine !== null && theirs !== null ? ` <b>${mine}–${theirs}</b>` : (!pick && aS !== null ? ` <b>${aS}–${hS}</b>` : "");
-      const when = isFinal ? ` · <span class="ps-when">${sc.trim()}</span>` : isLive ? ` · <span class="ps-when">${sc.trim()}</span>` : "";
+      const when = isFinal ? ` · <span class="ps-when">${sc.trim()}</span>` : isLive ? ` · <span class="ps-when">${sc.trim()}${g.detail ? ` · ${escapeCd((() => { const m = String(g.detail).match(/^(\d+:\d+)\s*-\s*(\d)/); return m ? `Q${m[2]} ${m[1]}` : g.detail; })())}` : ""}${/rd-pts[^"]*"[^>]*>([^<]+)/.test(ptsHtml) ? (() => { const v = ptsHtml.match(/rd-pts[^"]*"[^>]*>([^<]+)/)[1]; return ` · <b class="ps-lp${v.startsWith("+") ? "" : " z"}">${v === "0" ? "+0" : v}</b>`; })() : ""}</span>` : "";
       // VS ME: the game head to head. Each side shows its pick and the
       // points it has at stake (a lock shows what it wins and what it costs),
       // or what it scored once final. Shared picks are dimmed, no logos twice.
@@ -5512,7 +5512,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       // misses (left end) and if it hits (right end), on a 0 to 100 track,
       // with a tick where they stand now. Finals and live games show points.
       let imp = ptsHtml;
-      if (sw && !isFinal && !isLive && wd?.alive !== false) {
+      if (sw && !isFinal && wd?.alive !== false) {
         // How far this pick moves their chance from where it is now: up if
         // it hits, down if it misses, in percentage points.
         const now = wd.pct ?? 0, up = Math.round((sw.ifHit - now) * 100), dn = Math.round((now - sw.ifMiss) * 100);
@@ -5530,7 +5530,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const tcell = isLive ? `<b class="live">LIVE</b>` : isFinal ? `<b>FINAL</b>` : kl ? `<b>${kl[2]}</b><small>${kl[1] === "Sat" ? "" : kl[1].toUpperCase() + " "}${kl[3] || ""}</small>` : "";
       const order = isLive ? 0 : isFinal ? 2 : 1;
       const slot = isLive ? "LIVE" : isFinal ? "FINAL" : game.kickoffLabel;
-      return { order, lev, cmp, vsRow, swing, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}${isFinal || isLive || !pick ? `<span class="ps-sub">${sub}</span>` : ""}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
+      return { order, lev, cmp, vsRow, swing, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${imp.includes("ps-heat t5") ? " low" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}${isFinal || isLive || !pick ? `<span class="ps-sub">${sub}</span>` : ""}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
     }
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
@@ -5558,7 +5558,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   } else {
     const slots = [];
     for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
-    rowsHtml = (Object.keys(sway).length ? `<div class="ps-cols"><span>CHANCE TO WIN IF IT</span><span class="up">HITS</span><span class="dn">MISSES</span></div>` : "") + fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
+    rowsHtml = (Object.keys(sway).length ? `<div class="ps-cols" title="Their overall chance to win the week if this pick hits or misses, not the chance the pick itself hits"><span>WEEK WIN PROBABILITY ⓘ</span><span class="up">HIT</span><span class="dn">MISS</span></div>` : "") + fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
   }
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.
@@ -5597,7 +5597,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const m = mirrorOf(name, sw, results), g = sw.game, pk = sw.pick;
       const terms = pk.mode === "SU" ? "to win" : `${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
       const tShort = pk.team === g.away ? g.awayShort : g.homeShort, oShort = pk.team === g.away ? g.homeShort : g.awayShort;
-      const rival = m ? `<b>${escapeCd(shown(m.n))}</b> has ${escapeCd(m.tp.team === g.away ? g.awayShort : g.homeShort)}${m.tp.mode === "SU" ? " to win" : ` ${m.tp.team === g.favorite ? "−" : "+"}${g.spread}`} and ${m.k} of the other ${m.total} picks.` : "";
+      const rival = m ? `<b>${escapeCd(shown(m.n))}</b> picked ${escapeCd(m.tp.team === g.away ? g.awayShort : g.homeShort)}. ${m.k} of ${m.total} remaining picks match.` : "";
       wpRow = `<div class="bs${sw.ifMiss < 0.01 ? " must" : ""}" data-rdgame="${g.id}" role="button" tabindex="0"><span class="bs-k">BIGGEST SWING${sw.ifMiss < 0.01 ? " · <em>MUST HIT</em>" : ""}</span><div class="bs-main"><img src="${logoUrl(pk.team === g.away ? g.awayId : g.homeId)}" alt="" onerror="this.style.visibility='hidden'"><span class="bs-t"><b>${escapeCd(tShort)} ${terms}${pk.lock && lockRule() ? " 🔒" : ""}</b><small>vs ${escapeCd(oShort)} · ${pickWorth(g, pk)} PT</small></span><span class="bs-o"><small>IF HIT</small><b class="up">${pc(sw.ifHit)}</b></span><span class="bs-o"><small>IF MISS</small><b class="dn">${pc(sw.ifMiss)}</b></span></div>${rival ? `<span class="bs-r">${rival}</span>` : ""}</div>`;
     } else wpRow = `<div class="rd-wp">${opts.sheet ? "" : `<span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>`}${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length && !opts.sheet ? `<span class="rd-wp-key">${opts.sheet ? `Impact on ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance to win the week (now ${winChanceLabel(wd.pct, wd)}): + if the pick hits, − if it misses` : `Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week`}</span>` : ""}</div>`;
   }
@@ -7236,8 +7236,7 @@ function drawRankSheet(keepScroll) {
     <div class="rs-top">
       <button type="button" class="rs-nav" data-rs="prev" aria-label="Previous player">‹</button>
       <span class="ranking-place${row.score > 0 && row.place <= 3 ? ` medal m${row.place}` : ""}">${row.tied ? "T" : ""}${row.place}</span>
-      <span class="rs-name"><b>${escapeCd(shown(name).toUpperCase())}</b>${rankLockHtml(row)}<small>${row.subline || ""}</small></span>
-      <span class="ranking-score">${pts2(row.score)}</span>
+      <span class="rs-name"><b>${escapeCd(shown(name).toUpperCase())}</b>${rankLockHtml(row)}<small>${row.subline || ""} · <span class="rs-pts">${row.score} PTS</span></small></span>
       <button type="button" class="rs-nav" data-rs="next" aria-label="Next player">›</button>
     </div>
     ${pct != null ? `<div class="rs-hero"><div class="rs-chance"><span class="rs-k">CHANCE TO WIN</span><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}">${txt}</b><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span></div><div class="rs-btns">${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>PATH TO WIN</button>` : ""}${vsBtn}</div></div>` : vsBtn ? `<div class="rs-wp">${vsBtn}</div>` : ""}
