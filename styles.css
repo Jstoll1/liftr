@@ -9973,3 +9973,6 @@ html.phone .rs-top .rs-nav { display: none; }
 .rs-name { gap: 3px 6px; }
 .rs-x { width: 30px; height: 30px; }
 .rs-x { position: relative; }
+/* The sheet shows every pick at full strength; only the numbers carry weight. */
+.ps-row.low { opacity: 1; }
+.ps-hm.t3 b, .ps-hm.t4 b { opacity: 1; }
