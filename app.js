@@ -5461,7 +5461,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const opp = pick ? (pick.team === game.away ? game.homeShort : game.awayShort) : null;
       const mine = pickedSide === "away" ? aS : hS, theirs = pickedSide === "away" ? hS : aS;
       const sc = pick && mine !== null && theirs !== null ? ` <b>${mine}–${theirs}</b>` : (!pick && aS !== null ? ` <b>${aS}–${hS}</b>` : "");
-      const when = isFinal ? ` · <span class="ps-when">FINAL${sc}</span>` : isLive ? ` · <span class="ps-when">LIVE${sc}${g.detail ? ` · ${escapeCd(g.detail.replace(/\s*-\s*/, " "))}` : ""}</span>` : "";
+      const when = isFinal ? ` · <span class="ps-when">${sc.trim()}</span>` : isLive ? ` · <span class="ps-when">${sc.trim()}${g.detail ? ` · ${escapeCd(g.detail.replace(/\s*-\s*/, " "))}` : ""}</span>` : "";
       // Against the viewer's own card: same pick, or what they took instead.
       let vs = "", cmp = null;
       if (opts.vs && pick && locked) {
@@ -5477,9 +5477,20 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const main = !locked ? `<span class="ps-hid">HIDDEN</span>` : !pick ? `<span class="ps-hid">NO PICK</span>` : pickHtml;
       const sw = sway[game.id];
       const lev = sw?.lev || 0;
-      const what = sw && !isFinal && !isLive ? `<div class="ps-what" hidden>If it hits <b class="up">${winChanceLabel(sw.ifHit, { alive: true })}</b> · If it misses <b class="dn">${winChanceLabel(sw.ifMiss, { alive: true })}</b> to win the week</div>` : "";
+      // The game impact line: their chance to win the week if this pick
+      // misses (left end) and if it hits (right end), on a 0 to 100 track,
+      // with a tick where they stand now. Finals and live games show points.
+      let imp = ptsHtml;
+      if (sw && !isFinal && !isLive && wd?.alive !== false) {
+        const lo = Math.min(sw.ifMiss, sw.ifHit), hi = Math.max(sw.ifMiss, sw.ifHit), now = wd.pct ?? 0;
+        const pc = (v) => (v < 0.005 ? "<1" : Math.round(v * 100));
+        imp = `<span class="ps-imp${wd.swing && game.id === wd.swing.game.id ? " top" : ""}" title="Miss it: ${pc(sw.ifMiss)}% · Hit it: ${pc(sw.ifHit)}%"><span class="ps-il"><i class="rng" style="left:${(lo * 100).toFixed(1)}%;width:${Math.max(2, (hi - lo) * 100).toFixed(1)}%"></i><i class="now" style="left:${(now * 100).toFixed(1)}%"></i></span><span class="ps-ilv"><b class="dn">${pc(sw.ifMiss)}%</b> → <b class="up">${pc(sw.ifHit)}%</b></span></span>`;
+      }
+      const kl = game.kickoffLabel.replace(/ ET$/, "").match(/^(\w{3}) (.+?) ?(AM|PM)?$/);
+      const tcell = isLive ? `<b class="live">LIVE</b>` : isFinal ? `<b>FINAL</b>` : kl ? `<b>${kl[2]}</b><small>${kl[1].toUpperCase()} ${kl[3] || ""}</small>` : "";
       const order = isLive ? 0 : isFinal ? 2 : 1;
-      return { order, lev, cmp, slot: isLive ? "LIVE NOW" : isFinal ? "FINAL" : game.kickoffLabel.replace(/ ET$/, "").toUpperCase(), t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><div class="ps-pick">${main}<span class="ps-sub">${sub}</span>${vs}</div><div class="rd-result">${ptsHtml}</div>${what}</div>` };
+      const slot = isLive ? "LIVE" : isFinal ? "FINAL" : game.kickoffLabel;
+      return { order, lev, cmp, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}<span class="ps-sub">${sub}</span>${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
     }
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
@@ -5493,7 +5504,9 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   // Sheet sections: live, then each kickoff slot in time order (biggest
   // impact first inside a slot), then finals. With VS ME on: where the
   // viewer differs first, then the picks they share.
-  const section = (title, list) => list.length ? `<div class="ps-sec">${title}</div>${list.map((r) => r.html).join("")}` : "";
+  // Each row shows its kickoff time only when it starts a new time slot.
+  const fill = (list) => list.map((r, i) => { const first = i === 0 || list[i - 1].slot !== r.slot; return r.html.replace("%%FIRST%%", first && i ? " first" : "").replace("%%T%%", first ? r.tcell : ""); }).join("");
+  const section = (title, list) => list.length ? `<div class="ps-sec">${title}</div>${fill(list)}` : "";
   let rowsHtml;
   if (!opts.sheet) rowsHtml = rows.join("");
   else if (opts.vs) {
@@ -5502,7 +5515,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   } else {
     const slots = [];
     for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
-    rowsHtml = slots.map((sl) => section(sl.k, sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t))).join("");
+    rowsHtml = fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
   }
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.
@@ -5537,7 +5550,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
     const sw = wd.swing;
     const why = wd.alive === false ? outReason(name, results) : "";
     const canPath = wd.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((row) => row.some((p) => p?.hidden));
-    wpRow = `<div class="rd-wp">${opts.sheet ? "" : `<span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>`}${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week</span>` : ""}</div>`;
+    wpRow = `<div class="rd-wp">${opts.sheet ? "" : `<span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>`}${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">${opts.sheet ? `Impact line: ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance to win the week if each pick misses → hits` : `Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week`}</span>` : ""}</div>`;
   }
   // A Scouting Report published from the Creative Studio, under the week.
   const scout = creativeArt?.art?.[`owner-card:owner:${name}`]?.text;

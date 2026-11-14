@@ -9742,3 +9742,24 @@ body.rs-open #ask-fab { display: none; }
 .rs-vs.on { background: var(--neon-cyan); color: var(--bg); }
 .rs-wp .rd-path-btn { padding-left: 10px; padding-right: 10px; }
 @media (max-width: 420px) { .rs-wp { gap: 8px; } .rs-wp .rank-wp { gap: 6px; } .rs-wp .rank-wp b { min-width: 0; } }
+/* Player sheet rows v2: time column, one-line pick, game impact line. */
+.ps-row { grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-areas: "t pick res"; column-gap: 10px; padding: 7px 0; border-top: 1px solid rgba(150, 160, 190, .07); }
+.ps-row.first { border-top-color: var(--card-border); }
+.ps-sec + .ps-row, .rd-wp + .ps-row { border-top: 0; }
+.ps-t { grid-area: t; display: flex; flex-direction: column; gap: 3px; align-self: start; padding-top: 4px; }
+.ps-t b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8px; color: #fff; }
+.ps-t b.live { color: var(--neon-pink); }
+.ps-t small { font-family: 'Press Start 2P', monospace; font-size: 5.5px; color: rgba(255, 255, 255, .4); letter-spacing: .04em; }
+.ps-row.final .ps-t b { font-size: 6.5px; color: rgba(255, 255, 255, .5); }
+.ps-pick { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.ps-sub { font-size: 12px; }
+.ps-row .rd-pickcard { flex-wrap: nowrap; }
+.ps-imp { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; width: 92px; cursor: pointer; }
+.ps-il { position: relative; width: 100%; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .06); }
+.ps-il i.rng { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, var(--neon-pink), var(--neon-green)); opacity: .85; }
+.ps-il i.now { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #fff; border-radius: 1px; box-shadow: 0 0 4px rgba(255, 255, 255, .6); }
+.ps-ilv { font-size: 11px; color: rgba(255, 255, 255, .4); white-space: nowrap; }
+.ps-ilv b { font-weight: 700; }
+.ps-ilv b { font-weight: normal; } .ps-ilv b.dn { color: var(--neon-pink); } .ps-ilv b.up { color: var(--neon-green); }
+.ps-imp.top .ps-il { box-shadow: 0 0 0 1px var(--neon-yellow); }
+.ps-row.lk::before, .ps-row.live::before { left: -9px; }
