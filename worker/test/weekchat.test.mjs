@@ -29,7 +29,7 @@ test("week chat worker: relays the model's tool calls, then its reply", async ()
   const second = await call([...q, first.message, { role: "tool", tool_call_id: "c1", content: JSON.stringify({ Jake: 0.12 }) }]);
   globalThis.fetch = real;
   assert.match(second.message.content, /12%/);
-  assert.equal(sent[0].tools.length, 13);
+  assert.equal(sent[0].tools.length, 14);
   assert.ok(sent[0].tools.some((t) => t.function.name === "season"));
   assert.ok(sent[0].tools.some((t) => t.function.name === "endedNow"));
   assert.match(sent[0].messages[0].content, /if the scores stay the same.*endedNow/i);
