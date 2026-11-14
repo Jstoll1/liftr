@@ -9823,3 +9823,49 @@ body.rs-open #ask-fab { display: none; }
 .ps-heat.t3 b { color: rgba(193, 60, 255, .85); } .ps-heat.t3 small { color: rgba(255, 255, 255, .85); }
 .ps-heat.t4 b, .ps-heat.t4 small { color: rgba(255, 255, 255, .4); }
 .ps-heat.t5 { font-family: 'Press Start 2P', monospace; font-size: 9px; color: rgba(255, 255, 255, .25); }
+/* Player sheet v3: chance to win is the hero, one biggest swing card,
+   HIT / MISS on every open pick, live rows tinted, tighter rows. */
+.rs-hero { display: flex; align-items: center; gap: 12px; }
+.rs-chance { flex: 1; min-width: 0; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; row-gap: 6px; align-items: end; }
+.rs-k { grid-column: 1 / -1; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .08em; color: rgba(255, 255, 255, .5); }
+.rs-pct { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 22px; line-height: 1; color: var(--neon-cyan); }
+.rs-pct.hot { color: var(--neon-green); } .rs-pct.out { color: rgba(255, 255, 255, .4); }
+.rs-chance .rank-wp-bar { height: 8px; margin-bottom: 3px; }
+.rs-btns { flex: none; width: 150px; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.rs-btns .rd-path-btn, .rs-btns .rs-vs { min-height: 30px; justify-content: center; text-align: center; }
+.rs-top .ranking-score { transform: scale(.8); transform-origin: right center; opacity: .85; }
+.bs { display: block; margin: 2px 0 6px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--card-border); background: rgba(255, 255, 255, .03); cursor: pointer; }
+.bs.must { border-color: var(--neon-yellow); background: rgba(255, 210, 63, .06); }
+.bs-k { display: block; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .08em; color: rgba(255, 255, 255, .55); margin-bottom: 8px; }
+.bs-k em { font-style: normal; color: var(--neon-yellow); }
+.bs-main { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
+.bs-main img { width: 30px; height: 30px; object-fit: contain; }
+.bs-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bs-t b { font-size: 15px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bs-t small { font-size: 12px; color: rgba(255, 255, 255, .55); }
+.bs-o { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.bs-o small, .ps-hm small { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; color: rgba(255, 255, 255, .45); }
+.bs-o b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 13px; }
+.bs-o b.up, .ps-hm b.up { color: var(--neon-green); } .bs-o b.dn, .ps-hm b.dn { color: var(--neon-pink); }
+.bs-r { display: block; margin-top: 8px; font-size: 12px; color: rgba(255, 255, 255, .6); }
+.bs-r b { color: #fff; }
+.ps-hm { display: grid; grid-template-columns: 48px 52px; gap: 6px; text-align: right; }
+.ps-hm b { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ps-hm.t3 b, .ps-hm.t4 b { opacity: .55; }
+.ps-hm.t1 b.up { color: var(--neon-yellow); }
+.ps-heat.t5 { width: 106px; margin: 0; text-align: center; }
+.ps-cols { display: grid; grid-template-columns: minmax(0, 1fr) 48px 52px; gap: 6px; padding: 2px 0 6px; font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; color: rgba(255, 255, 255, .45); text-align: right; border-bottom: 1px solid var(--card-border); }
+.ps-cols span:first-child { text-align: left; }
+.ps-cols .up { color: var(--neon-green); } .ps-cols .dn { color: var(--neon-pink); }
+.ps-row.live::before { display: none; }
+.ps-row { padding: 8px 0; }
+.ps-row.live { background: rgba(var(--neon-pink-rgb), .07); border-radius: 8px; padding-left: 8px; padding-right: 8px; margin: 0 -8px; }
+.ps-row.live .ps-t b.live { animation: rs-blink 1.4s steps(2) infinite; }
+@keyframes rs-blink { 50% { opacity: .45; } }
+.rs-btns .rs-vs { width: 100%; align-self: stretch; }
+@media (max-height: 500px) {
+  .rs-hero { flex: 1 1 100%; }
+  .rs-btns { width: auto; flex-direction: row; }
+  .rs-btns .rd-path-btn, .rs-btns .rs-vs { padding: 0 14px; width: auto; flex: none; }
+  .rs-pct { font-size: 18px; }
+}

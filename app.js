@@ -5521,10 +5521,10 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
         // / −miss when uneven, ± when even), then a plain label. Only their
         // most consequential game is gold.
         const span = sw.ifHit - sw.ifMiss, avg = Math.round(span * 50);
-        const pctTxt = Math.abs(up - dn) >= 3 ? `+${Math.max(0, up)}% / −${Math.max(0, dn)}%` : `±${avg}%`;
-        const tier = top ? ["CRITICAL", "t1"] : avg >= 8 ? ["HIGH IMPACT", "t2"] : avg >= 4 ? ["MED IMPACT", "t3"] : ["LOW IMPACT", "t4"];
+        const tier = top ? "t1" : avg >= 8 ? "t2" : avg >= 4 ? "t3" : "t4";
+        const pcs = (v) => winChanceLabel(v, { alive: true });
         imp = avg < 2 ? `<span class="ps-heat t5" title="Barely moves it">—</span>`
-          : `<span class="ps-heat ${tier[1]}" title="Hit it: ${winChanceLabel(sw.ifHit, { alive: true })} · Miss it: ${winChanceLabel(sw.ifMiss, { alive: true })}"><small>${pctTxt}</small><b>${tier[0]}</b></span>`;
+          : `<span class="ps-hm ${tier}"><b class="up">${pcs(sw.ifHit)}</b><b class="dn">${pcs(sw.ifMiss)}</b></span>`;
       }
       const kl = game.kickoffLabel.replace(/ ET$/, "").match(/^(\w{3}) (.+?) ?(AM|PM)?$/);
       const tcell = isLive ? `<b class="live">LIVE</b>` : isFinal ? `<b>FINAL</b>` : kl ? `<b>${kl[2]}</b><small>${kl[1] === "Sat" ? "" : kl[1].toUpperCase() + " "}${kl[3] || ""}</small>` : "";
@@ -5558,7 +5558,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   } else {
     const slots = [];
     for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
-    rowsHtml = fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
+    rowsHtml = (Object.keys(sway).length ? `<div class="ps-cols"><span>CHANCE TO WIN IF IT</span><span class="up">HITS</span><span class="dn">MISSES</span></div>` : "") + fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
   }
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.
@@ -5593,7 +5593,13 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
     const sw = wd.swing;
     const why = wd.alive === false ? outReason(name, results) : "";
     const canPath = wd.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((row) => row.some((p) => p?.hidden));
-    wpRow = `<div class="rd-wp">${opts.sheet ? "" : `<span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>`}${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">${opts.sheet ? `Impact on ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance to win the week (now ${winChanceLabel(wd.pct, wd)}): + if the pick hits, − if it misses` : `Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week`}</span>` : ""}</div>`;
+    if (opts.sheet && !opts.vs && sw && !why) {
+      const m = mirrorOf(name, sw, results), g = sw.game, pk = sw.pick;
+      const terms = pk.mode === "SU" ? "to win" : `${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
+      const tShort = pk.team === g.away ? g.awayShort : g.homeShort, oShort = pk.team === g.away ? g.homeShort : g.awayShort;
+      const rival = m ? `<b>${escapeCd(shown(m.n))}</b> has ${escapeCd(m.tp.team === g.away ? g.awayShort : g.homeShort)}${m.tp.mode === "SU" ? " to win" : ` ${m.tp.team === g.favorite ? "−" : "+"}${g.spread}`} and ${m.k} of the other ${m.total} picks.` : "";
+      wpRow = `<div class="bs${sw.ifMiss < 0.01 ? " must" : ""}" data-rdgame="${g.id}" role="button" tabindex="0"><span class="bs-k">BIGGEST SWING${sw.ifMiss < 0.01 ? " · <em>MUST HIT</em>" : ""}</span><div class="bs-main"><img src="${logoUrl(pk.team === g.away ? g.awayId : g.homeId)}" alt="" onerror="this.style.visibility='hidden'"><span class="bs-t"><b>${escapeCd(tShort)} ${terms}${pk.lock && lockRule() ? " 🔒" : ""}</b><small>vs ${escapeCd(oShort)} · ${pickWorth(g, pk)} PT</small></span><span class="bs-o"><small>IF HIT</small><b class="up">${pc(sw.ifHit)}</b></span><span class="bs-o"><small>IF MISS</small><b class="dn">${pc(sw.ifMiss)}</b></span></div>${rival ? `<span class="bs-r">${rival}</span>` : ""}</div>`;
+    } else wpRow = `<div class="rd-wp">${opts.sheet ? "" : `<span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>`}${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length && !opts.sheet ? `<span class="rd-wp-key">${opts.sheet ? `Impact on ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance to win the week (now ${winChanceLabel(wd.pct, wd)}): + if the pick hits, − if it misses` : `Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week`}</span>` : ""}</div>`;
   }
   // A Scouting Report published from the Creative Studio, under the week.
   const scout = creativeArt?.art?.[`owner-card:owner:${name}`]?.text;
@@ -7234,7 +7240,7 @@ function drawRankSheet(keepScroll) {
       <span class="ranking-score">${pts2(row.score)}</span>
       <button type="button" class="rs-nav" data-rs="next" aria-label="Next player">›</button>
     </div>
-    ${pct != null ? `<div class="rs-wp"><span class="rank-wp${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}"><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span><b>${txt}</b></span>${vsBtn}${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</div>` : vsBtn ? `<div class="rs-wp">${vsBtn}</div>` : ""}
+    ${pct != null ? `<div class="rs-hero"><div class="rs-chance"><span class="rs-k">CHANCE TO WIN</span><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}">${txt}</b><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span></div><div class="rs-btns">${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>PATH TO WIN</button>` : ""}${vsBtn}</div></div>` : vsBtn ? `<div class="rs-wp">${vsBtn}</div>` : ""}
     ${solo}
     <span class="rs-count">${i + 1} / ${rows.length}</span><button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>`;
   const body = el.querySelector(".rs-body"); const top = body.scrollTop;
