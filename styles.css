@@ -9889,3 +9889,5 @@ body.rs-open #ask-fab { display: none; }
 .rs-top .rs-path { padding: 0 8px; font-size: 6.5px; letter-spacing: .02em; }
 .rs-top .rs-path .rd-path-play { margin-right: 4px; }
 @media (max-width: 400px) { .rs-top .rs-nav { width: 18px; } .rs-name b { font-size: 10px; } }
+.ps-opp { flex-basis: 100%; font-size: 11.5px; line-height: 1.1; color: rgba(255, 255, 255, .42); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ps-opp { padding-left: 24px; }
