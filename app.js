@@ -5517,12 +5517,14 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
         // it hits, down if it misses, in percentage points.
         const now = wd.pct ?? 0, up = Math.round((sw.ifHit - now) * 100), dn = Math.round((now - sw.ifMiss) * 100);
         const top = wd.swing && game.id === wd.swing.game.id;
-        // Heat: how much this game decides their week, ranked against their
-        // biggest game, with the swing either way in points of chance.
+        // Impact on winning the week: the change in their chance first (+hit
+        // / −miss when uneven, ± when even), then a plain label. Only their
+        // most consequential game is gold.
         const span = sw.ifHit - sw.ifMiss, avg = Math.round(span * 50);
-        const tier = top || avg >= 15 ? ["DECIDER", "t1"] : avg >= 8 ? ["BIG", "t2"] : avg >= 4 ? ["SOME", "t3"] : ["SMALL", "t4"];
+        const pctTxt = Math.abs(up - dn) >= 3 ? `+${Math.max(0, up)}% / −${Math.max(0, dn)}%` : `±${avg}%`;
+        const tier = top ? ["CRITICAL", "t1"] : avg >= 8 ? ["HIGH IMPACT", "t2"] : avg >= 4 ? ["MED IMPACT", "t3"] : ["LOW IMPACT", "t4"];
         imp = avg < 2 ? `<span class="ps-heat t5" title="Barely moves it">—</span>`
-          : `<span class="ps-heat ${tier[1]}" title="Hit it: ${winChanceLabel(sw.ifHit, { alive: true })} · Miss it: ${winChanceLabel(sw.ifMiss, { alive: true })}"><small>±${avg}%</small><b>${tier[0]}</b></span>`;
+          : `<span class="ps-heat ${tier[1]}" title="Hit it: ${winChanceLabel(sw.ifHit, { alive: true })} · Miss it: ${winChanceLabel(sw.ifMiss, { alive: true })}"><small>${pctTxt}</small><b>${tier[0]}</b></span>`;
       }
       const kl = game.kickoffLabel.replace(/ ET$/, "").match(/^(\w{3}) (.+?) ?(AM|PM)?$/);
       const tcell = isLive ? `<b class="live">LIVE</b>` : isFinal ? `<b>FINAL</b>` : kl ? `<b>${kl[2]}</b><small>${kl[1] === "Sat" ? "" : kl[1].toUpperCase() + " "}${kl[3] || ""}</small>` : "";
@@ -5591,7 +5593,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
     const sw = wd.swing;
     const why = wd.alive === false ? outReason(name, results) : "";
     const canPath = wd.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((row) => row.some((p) => p?.hidden));
-    wpRow = `<div class="rd-wp">${opts.sheet ? "" : `<span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>`}${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">${opts.sheet ? `How much each pick decides ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} week: ± is the change in chance to win (now ${winChanceLabel(wd.pct, wd)}) if it hits or misses` : `Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week`}</span>` : ""}</div>`;
+    wpRow = `<div class="rd-wp">${opts.sheet ? "" : `<span class="rd-wp-top"><span class="rd-wp-label">CHANCE TO WIN THE WEEK · <b>${winChanceLabel(wd.pct, wd)}</b></span>${canPath ? `<button type="button" class="rd-path-btn" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>${name === currentManager ? "MY " : ""}PATH TO WIN</button>` : ""}</span>`}${why ? `<span class="rd-wp-line">${escapeCd(why)}</span>` : sw ? (() => { const m = mirrorOf(name, sw, results); return `${swingMatchupHtml(name, sw, m)}<span class="rd-wp-line">Hit it → <b class="up">${pc(sw.ifHit)}</b> to win the week · Miss it → <b class="dn">${pc(sw.ifMiss)}</b></span>${m ? `<span class="rd-wp-why">${mirrorLine(name, m, sw.game)}</span>` : ""}`; })() : `<span class="rd-wp-line">No open pick moves it much now.</span>`}${Object.keys(sway).length ? `<span class="rd-wp-key">${opts.sheet ? `Impact on ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance to win the week (now ${winChanceLabel(wd.pct, wd)}): + if the pick hits, − if it misses` : `Impact bars: how much each game matters to ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} chance this week`}</span>` : ""}</div>`;
   }
   // A Scouting Report published from the Creative Studio, under the week.
   const scout = creativeArt?.art?.[`owner-card:owner:${name}`]?.text;
