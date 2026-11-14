@@ -127,7 +127,7 @@ addEventListener("unhandledrejection", (e) => noteError(e?.reason?.message || e?
 // not needed for the first screen, so they load once it is up (or the
 // moment History, Trivia or the simulator is opened, whichever is first).
 // In order: the facts before history, which reads them.
-const EXTRAS = ["ask-ui.js?v=220196055091", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "sim.js?v=374204176553", "gridcard.js?v=540128865130"];
+const EXTRAS = ["ask-ui.js?v=978913993431", "lightning-ui.js?v=688637262626", "attract-facts.js?v=621767480045", "history.js?v=451197308157", "sim.js?v=374204176553", "gridcard.js?v=540128865130"];
 let extrasP = null;
 function ensureExtras() {
   if (!extrasP) extrasP = EXTRAS.reduce((p, src) => p.then(() => new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = () => res(); document.body.appendChild(s); })), Promise.resolve());
