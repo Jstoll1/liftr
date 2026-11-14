@@ -9916,3 +9916,28 @@ body.rs-open #ask-fab { display: none; }
 .bs.long .bs-k { color: rgba(255, 255, 255, .6); margin-bottom: 4px; }
 .bs.long .bs-r { margin-top: 0; font-size: 13px; line-height: 1.45; }
 .ps-stake { font-family: 'Press Start 2P', monospace; font-size: 10px; color: rgba(255, 255, 255, .55); }
+/* Player sheet v4: denser rows. Terms as plain text, not a box; smaller
+   type; tighter padding; time column narrower. */
+.ps-row { grid-template-columns: 38px minmax(0, 1fr) auto; column-gap: 8px; padding: 6px 0; }
+.ps-row .ps-t b { font-size: 7px; } .ps-row .ps-t small { font-size: 5px; }
+.ps-row .rd-pickcard { gap: 2px 6px; }
+.ps-row .rd-team { font-size: 14px; }
+.ps-row .rd-logo { width: 16px; height: 16px; }
+.ps-row .rd-mode { border: 0 !important; background: none !important; padding: 0 !important; font-size: 7px; opacity: .85; box-shadow: none !important; }
+.ps-row .rd-mode .rd-mode-pt { margin-left: 4px; opacity: .6; }
+.ps-opp { padding-left: 22px; font-size: 11px; margin-top: -1px; }
+.ps-hm b { font-size: 12px; }
+.ps-hm { grid-template-columns: 40px 44px; }
+.ps-cols { grid-template-columns: minmax(0, 1fr) 40px 44px; padding-bottom: 4px; }
+.ps-row.live { padding-top: 6px; padding-bottom: 6px; }
+.ps-sub { font-size: 11px; }
+.rs-body .ps-detail { padding-top: 4px; }
+/* v4.1: no time column; time sits in the second line of each row. */
+.ps-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "pick res"; }
+.ps-row .ps-t { display: none; }
+.ps-row.first { border-top-color: var(--card-border); }
+.ps-opp { padding-left: 22px; }
+.ps-opp b { font-weight: 600; color: rgba(255, 255, 255, .6); }
+.ps-sub { padding-left: 22px; }
+.ps-live { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; color: var(--neon-pink); margin-right: 2px; }
+.ps-row.live { margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
