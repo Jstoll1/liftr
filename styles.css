@@ -9872,11 +9872,20 @@ body.rs-open #ask-fab { display: none; }
 /* Player sheet v3.1 */
 .rs-pts { color: var(--neon-green); font-weight: 700; }
 .rs-top { padding-right: 34px; }
-.rs-btns .rd-path-btn { background: none !important; color: var(--neon-cyan) !important; border: 1px solid var(--neon-cyan) !important; box-shadow: none !important; text-shadow: none !important; }
-.rs-btns .rd-path-btn .rd-path-play { color: var(--neon-cyan); }
 .rs-btns .rs-vs { border-color: rgba(255, 255, 255, .3); color: rgba(255, 255, 255, .8); }
 .rs-btns .rs-vs.on { background: rgba(255, 255, 255, .85); color: var(--bg); }
 .ps-cols span:first-child { cursor: help; }
 .ps-row.low { opacity: .55; }
 .ps-lp { color: var(--neon-green); }
 .ps-lp.z { color: rgba(255, 255, 255, .5); }
+/* Header v3.2: gold Path to Win up in the name row, VS ME beside the bar. */
+.rs-top .rs-path { flex: none; margin-left: auto; min-height: 32px; padding: 0 10px; font-size: 7px; }
+.rs-btns { width: auto; }
+.rs-btns .rs-vs { width: auto; min-height: 30px; padding: 0 14px; }
+.rs-hero { align-items: flex-end; }
+@media (max-width: 380px) { .rs-top .rs-path { padding: 0 7px; font-size: 6px; } }
+.rs-name small { white-space: nowrap; }
+.rs-top { gap: 6px; }
+.rs-top .rs-path { padding: 0 8px; font-size: 6.5px; letter-spacing: .02em; }
+.rs-top .rs-path .rd-path-play { margin-right: 4px; }
+@media (max-width: 400px) { .rs-top .rs-nav { width: 18px; } .rs-name b { font-size: 10px; } }
