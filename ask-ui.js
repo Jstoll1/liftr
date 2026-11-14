@@ -247,7 +247,31 @@
         return { week: w.week, ...(w.exhibition ? { exhibition: true } : {}), firstKickoff: et(Date.parse(order[0]?.kickoff)), knockedOut: out, survivedToTheEnd: w.rows.filter((r) => !out.some((o) => o.member === r.name)).map((r) => r.name), winners: w.winners || [] };
       });
       const early = weeks.flatMap((w) => w.knockedOut.filter((o) => !/Saturday|Sunday/.test(o.day)).map((o) => ({ week: w.week, ...o })));
-      return { meaning: "Knocked out = could no longer reach the leader's points with every remaining pick hitting. Days are Eastern time, about when the deciding game ended.", beforeSaturday: early, weeks };
+      // This week so far, replayed the same way over the finals in.
+      let thisWeek = null;
+      try {
+        const f = fins(), all = lastGoodCloudPicks || {};
+        const order = GAMES.filter((g) => f[g.id]).sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff) || a.id - b.id);
+        const open = GAMES.filter((g) => !f[g.id]);
+        const names = MANAGERS.filter((n) => all[n]);
+        const banked = Object.fromEntries(names.map((n) => [n, 0])), out = [];
+        order.forEach((g, i) => {
+          for (const n of names) { const p = all[n].picks?.[g.id]; if (p?.team && !p.hidden) banked[n] += scorePick(g, p, f[g.id]) || 0; }
+          const top = Math.max(...Object.values(banked));
+          const left = [...order.slice(i + 1), ...open];
+          for (const n of names) {
+            if (out.some((o) => o.member === n)) continue;
+            const max = banked[n] + left.reduce((t, h) => { const p = all[n].picks?.[h.id]; return t + (p?.team && !p.hidden ? pickWorth(h, p) : 0); }, 0);
+            if (max < top) { const at = Date.parse(g.kickoff) + 3.5 * 3600e3; out.push({ member: n, afterGame: `${g.awayShort} at ${g.homeShort}`, gameNumber: i + 1, gamesLeft: GAMES.length - (i + 1), endedAround: et(at), day: day(at) }); }
+          }
+        });
+        thisWeek = { week: currentWeek, finalsSoFar: order.length, knockedOut: out };
+      } catch {}
+      // Fastest ever: fewest games played before being knocked out (members
+      // who made picks; this week included).
+      const all2 = [...weeks.flatMap((w) => w.knockedOut.filter((o) => !o.noPicksThatWeek).map((o) => ({ week: w.week, ...o }))), ...(thisWeek?.knockedOut || []).map((o) => ({ week: thisWeek.week, thisWeek: true, ...o }))];
+      const fastest = all2.sort((a, b) => a.gameNumber - b.gameNumber).slice(0, 5);
+      return { meaning: "Knocked out = could no longer reach the leader's points with every remaining pick hitting. Days are Eastern time, about when the deciding game ended. fastest ranks every knockout this season (this week included) by how few games had finished.", thisWeek, fastest, beforeSaturday: early, weeks };
     },
     standings() {
       const memo = base(), live = typeof inFlightPoints === "function" ? (n) => inFlightPoints((lastGoodCloudPicks || {})[n]?.picks || {}, latestLive) : () => 0;
