@@ -9694,8 +9694,9 @@ body.rs-open #ask-fab { display: none; }
 @media (max-height: 500px) {
   .rs-grab { display: none; }
   .rs-head { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 12px 6px; }
-  .rs-top { flex: 1 1 52%; min-width: 0; }
-  .rs-wp { flex: 1 1 38%; min-width: 0; padding-right: 30px; }
+  .rs-top { min-width: 0; }
+  .rs-wp { flex: 1 1 100%; min-width: 0; }
+  .rs-top { flex-basis: 100%; }
   .rs-count { display: none; }
 }
 
@@ -9720,3 +9721,22 @@ body.rs-open #ask-fab { display: none; }
 /* Player sheet: the lock sits in line after the stake, not floating. */
 .ps-row .rd-pickcard i.lk.rd-lk { position: static; order: 3; flex: none; }
 .ps-row .rd-pickcard.lk .rd-pickteam { padding-right: 0; }
+/* Player sheet: kickoff sections, VS ME, impact odds on tap. */
+.ps-sec { padding: 12px 0 4px; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .08em; color: var(--neon-cyan); opacity: .75; }
+.ps-sec:first-child { padding-top: 4px; }
+.ps-sec + .ps-row { border-top: 0; }
+.ps-row { grid-template-areas: "pick res" "what what"; row-gap: 0; }
+.ps-row.what .ps-what { padding-top: 6px; }
+.ps-row .ps-pick { grid-area: pick; } .ps-row .rd-result { grid-area: res; }
+.ps-what { grid-area: what; font-size: 12px; color: rgba(255, 255, 255, .65); padding-top: 2px; }
+.ps-what b.up { color: var(--neon-green); } .ps-what b.dn { color: var(--neon-pink); }
+.ps-row .rd-sway { cursor: pointer; padding: 8px 0 8px 8px; margin: -8px 0; }
+.ps-row.what .rd-sway { opacity: 1; filter: brightness(1.25); }
+.ps-row.lk { box-shadow: inset 3px 0 0 var(--neon-yellow); padding-left: 8px; }
+.ps-vs { align-self: flex-start; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .04em; padding: 3px 5px; border-radius: 4px; margin-top: 2px; }
+.ps-vs.same { color: rgba(255, 255, 255, .5); border: 1px solid var(--card-border); }
+.ps-vs.diff { color: var(--neon-cyan); border: 1px solid var(--neon-cyan); }
+.rs-vs { flex: none; align-self: center; min-height: 34px; padding: 0 10px; border-radius: 15px; border: 1px solid var(--neon-cyan); background: none; color: var(--neon-cyan); font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; }
+.rs-vs.on { background: var(--neon-cyan); color: var(--bg); }
+.rs-wp .rd-path-btn { padding-left: 10px; padding-right: 10px; }
+@media (max-width: 420px) { .rs-wp { gap: 8px; } .rs-wp .rank-wp { gap: 6px; } .rs-wp .rank-wp b { min-width: 0; } }
