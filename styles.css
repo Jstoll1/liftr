@@ -9791,3 +9791,9 @@ body.rs-open #ask-fab { display: none; }
 .h2-g b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 7px; color: rgba(255, 255, 255, .75); white-space: nowrap; }
 .h2-g b.live { color: var(--neon-pink); }
 .h2-g small { font-family: 'Press Start 2P', monospace; font-size: 6.5px; color: rgba(255, 255, 255, .45); white-space: nowrap; }
+/* Player sheet: change in chance per pick, ▲ if it hits over ▼ if it misses. */
+.ps-imp { width: auto; min-width: 44px; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; padding: 4px 6px; border-radius: 6px; }
+.ps-imp b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 9px; }
+.ps-imp b.up { color: var(--neon-green); } .ps-imp b.dn { color: var(--neon-pink); } .ps-imp b.zero { color: rgba(255, 255, 255, .3); }
+.ps-imp.top { box-shadow: inset 0 0 0 1px var(--neon-yellow); background: rgba(255, 210, 63, .06); }
+.ps-imp.low { font-family: 'Press Start 2P', monospace; font-size: 9px; color: rgba(255, 255, 255, .25); align-items: center; }
