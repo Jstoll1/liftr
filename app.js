@@ -10010,7 +10010,10 @@ async function maybeChiefMsg() {
   });
   ok.addEventListener("click", () => done(""));
 }
-setTimeout(() => maybeChiefMsg(), 1500);
+// Right away: a visit can be a second long, so the message is fetched at
+// startup and shown the moment the first screen is up.
+setTimeout(() => maybeChiefMsg(), 0);
+document.addEventListener("DOMContentLoaded", () => maybeChiefMsg());
 setInterval(() => maybeChiefMsg(), 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(maybeChiefMsg, 800); });
 
