@@ -5474,6 +5474,19 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
         } else cmp = "diff";
       }
       const sub = `${pick ? `vs ${escapeCd(opp)}` : `${escapeCd(game.awayShort)} @ ${escapeCd(game.homeShort)}`}${when}`;
+      // Who this pick moves them against: the members on the same side and
+      // the contenders (by chance to win) who are not, so a hit gains on them.
+      let why = "";
+      if (opts.all && pick && locked) {
+        const key = (p) => (p && !p.hidden && p.team ? `${p.team}|${p.mode}` : null), k = key(pick);
+        const others = Object.keys(opts.all).filter((n) => n !== name);
+        const same = others.filter((n) => key(opts.all[n]?.picks?.[game.id]) === k);
+        const off = others.filter((n) => !same.includes(n) && !opts.all[n]?.picks?.[game.id]?.hidden).sort((a, b) => (opts.rank?.[a] ?? 99) - (opts.rank?.[b] ?? 99));
+        const nm = (list) => `<b>${escapeCd(shown(list[0]))}</b>${list.length > 1 ? ` and ${list.length - 1} more` : ""}`;
+        const fp = isFinal ? scorePick(game, pick, results[game.id]) : null;
+        if (isFinal) { const cashed = others.filter((n) => { const q = opts.all[n]?.picks?.[game.id]; return q?.team && !q.hidden && scorePick(game, q, results[game.id]) > 0; }).length; why = fp > 0 ? `Cashed with ${same.length} other${same.length === 1 ? "" : "s"}` : `Missed · ${cashed} cashed`; }
+        else why = same.length ? `With ${same.length}${off.length ? ` · gains on ${nm(off)}` : " · gains on nobody"}` : `Alone on this · gains on ${off.length ? `all ${off.length}` : "nobody"}`;
+      }
       const main = !locked ? `<span class="ps-hid">HIDDEN</span>` : !pick ? `<span class="ps-hid">NO PICK</span>` : pickHtml;
       const sw = sway[game.id];
       const lev = sw?.lev || 0;
@@ -5490,7 +5503,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const tcell = isLive ? `<b class="live">LIVE</b>` : isFinal ? `<b>FINAL</b>` : kl ? `<b>${kl[2]}</b><small>${kl[1].toUpperCase()} ${kl[3] || ""}</small>` : "";
       const order = isLive ? 0 : isFinal ? 2 : 1;
       const slot = isLive ? "LIVE" : isFinal ? "FINAL" : game.kickoffLabel;
-      return { order, lev, cmp, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}<span class="ps-sub">${sub}</span>${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
+      return { order, lev, cmp, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}<span class="ps-sub">${sub}</span>${why ? `<span class="ps-why">${why}</span>` : ""}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
     }
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
@@ -7195,7 +7208,7 @@ function drawRankSheet(keepScroll) {
     ${solo}
     <span class="rs-count">${i + 1} / ${rows.length}</span><button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>`;
   const body = el.querySelector(".rs-body"); const top = body.scrollTop;
-  body.innerHTML = playerBreakdownHtml(name, row.state, c.results, c.live, { sheet: true, vs: vsOn ? myPicks : null });
+  body.innerHTML = playerBreakdownHtml(name, row.state, c.results, c.live, { sheet: true, vs: vsOn ? myPicks : null, all: Object.fromEntries(rows.map((r) => [r.name, r.state])), rank: Object.fromEntries([...rows].sort((a, b) => (b.winPct ?? 0) - (a.winPct ?? 0) || b.score - a.score).map((r, i) => [r.name, i])) });
   body.scrollTop = keepScroll ? top : 0;
   el.classList.toggle("is-me", name === currentManager);
 }
