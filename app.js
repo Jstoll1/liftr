@@ -7202,6 +7202,18 @@ function openRankSheet(name) {
     document.getElementById("bottom-nav")?.addEventListener("click", closeRankSheet, true);
   }
   drawRankSheet(false);
+  // Once per phone: nudge the card sideways and say it swipes.
+  try {
+    if (IS_PHONE && !localStorage.getItem("brochiefs_sheet_swipe_v1")) {
+      localStorage.setItem("brochiefs_sheet_swipe_v1", "1");
+      setTimeout(() => {
+        const c = el.querySelector(".rs-card"); if (!c || !rankSheet.name) return;
+        c.querySelector(".rs-dots")?.classList.add("pulse"); setTimeout(() => c.querySelector(".rs-dots")?.classList.remove("pulse"), 2600);
+        const h = document.createElement("div"); h.className = "rs-hint"; h.textContent = "‹  SWIPE FOR NEXT PLAYER  ›";
+        c.appendChild(h); setTimeout(() => h.remove(), 2600);
+      }, 450);
+    }
+  } catch {}
   el.classList.remove("closing"); el.querySelector(".rs-card").style.transform = ""; el.querySelector(".rs-scrim").style.opacity = "";
   el.classList.add("open"); document.body.classList.add("rs-open");
 }
@@ -7248,7 +7260,7 @@ function drawRankSheet(keepScroll) {
     </div>
     ${pct != null ? `<div class="rs-hero"><div class="rs-chance"><span class="rs-k">CHANCE TO WIN</span><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}">${txt}</b><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span></div><div class="rs-btns">${vsBtn}</div></div>` : vsBtn ? `<div class="rs-wp">${vsBtn}</div>` : ""}
     ${solo}
-    <span class="rs-count">${i + 1} / ${rows.length}</span>`;
+    <span class="rs-count">${i + 1} / ${rows.length}</span><div class="rs-dots" aria-hidden="true">${rows.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("")}</div>`;
   const body = el.querySelector(".rs-body"); const top = body.scrollTop;
   body.innerHTML = playerBreakdownHtml(name, row.state, c.results, c.live, { sheet: true, vs: vsOn ? myPicks : null, all: Object.fromEntries(rows.map((r) => [r.name, r.state])), rank: Object.fromEntries([...rows].sort((a, b) => (b.winPct ?? 0) - (a.winPct ?? 0) || b.score - a.score).map((r, i) => [r.name, i])) });
   body.scrollTop = keepScroll ? top : 0;
