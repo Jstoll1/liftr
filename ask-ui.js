@@ -340,7 +340,7 @@
       const g = GAMES.find((x) => String(x.id) === String(game).replace(/^G/i, "")); if (!g) return { error: `No game ${game}.` };
       const all = lastGoodCloudPicks || {};
       if (!isGameLocked(g) && MANAGERS.some((n) => all[n]?.picks?.[g.id]?.hidden)) return { game: gName(g), picksHidden: "Picks on this game are hidden until it kicks off." };
-      const side = (team) => MANAGERS.filter((n) => all[n]?.picks?.[g.id]?.team === team).map((n) => { const p = all[n].picks[g.id]; return { member: n, bet: p.mode === "ATS" ? `${team === g.favorite ? "−" : "+"}${g.spread}` : "to win", lock: !!(p.lock && lockRule()) }; });
+      const side = (team) => MANAGERS.filter((n) => all[n]?.picks?.[g.id]?.team === team).map((n) => { const p = all[n].picks[g.id]; const fin = fins()[g.id]; const pts = fin ? scorePick(g, p, fin) : null; return { member: n, bet: p.mode === "ATS" ? `${team === g.favorite ? "−" : "+"}${g.spread}` : "to win", worth: pickWorth(g, p), ...(pts != null ? { scored: pts } : {}), lock: !!(p.lock && lockRule()) }; });
       return { game: gName(g), [g.away]: side(g.away), [g.home]: side(g.home), noPick: MANAGERS.filter((n) => !all[n]?.picks?.[g.id]) };
     },
     // One time slot (the 12 PM games): every way its games can finish, and
