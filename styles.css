@@ -9681,7 +9681,6 @@ body.rs-open #ask-fab { display: none; }
 .ps-detail > .rd-wp:first-child { padding-top: 4px; }
 .ps-head { display: flex; justify-content: space-between; }
 .ps-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--card-border); cursor: pointer; }
-.ps-row.live { box-shadow: inset 3px 0 0 var(--neon-pink); padding-left: 8px; }
 .ps-pick { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .ps-row .rd-pickcard { border: 0; background: none; padding: 0; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .ps-row .rd-pickcard.lk { box-shadow: none; }
@@ -9722,8 +9721,8 @@ body.rs-open #ask-fab { display: none; }
 .ps-row .rd-pickcard i.lk.rd-lk { position: static; order: 3; flex: none; }
 .ps-row .rd-pickcard.lk .rd-pickteam { padding-right: 0; }
 /* Player sheet: kickoff sections, VS ME, impact odds on tap. */
-.ps-sec { padding: 12px 0 4px; font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .08em; color: var(--neon-cyan); opacity: .75; }
-.ps-sec:first-child { padding-top: 4px; }
+.ps-sec { padding: 8px 0 2px; margin-top: 2px; border-top: 1px solid var(--card-border); font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: .08em; color: var(--neon-cyan); opacity: .75; }
+.ps-sec:first-child { padding-top: 4px; border-top: 0; margin-top: 0; }
 .ps-sec + .ps-row { border-top: 0; }
 .ps-row { grid-template-areas: "pick res" "what what"; row-gap: 0; }
 .ps-row.what .ps-what { padding-top: 6px; }
@@ -9732,7 +9731,10 @@ body.rs-open #ask-fab { display: none; }
 .ps-what b.up { color: var(--neon-green); } .ps-what b.dn { color: var(--neon-pink); }
 .ps-row .rd-sway { cursor: pointer; padding: 8px 0 8px 8px; margin: -8px 0; }
 .ps-row.what .rd-sway { opacity: 1; filter: brightness(1.25); }
-.ps-row.lk { box-shadow: inset 3px 0 0 var(--neon-yellow); padding-left: 8px; }
+.ps-row { position: relative; }
+.ps-row.lk::before, .ps-row.live::before { content: ""; position: absolute; left: -9px; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--neon-yellow); }
+.ps-row.live::before { background: var(--neon-pink); }
+.rd-wp + .ps-sec { border-top: 0; margin-top: 0; }
 .ps-vs { align-self: flex-start; font-family: 'Press Start 2P', monospace; font-size: 6.5px; letter-spacing: .04em; padding: 3px 5px; border-radius: 4px; margin-top: 2px; }
 .ps-vs.same { color: rgba(255, 255, 255, .5); border: 1px solid var(--card-border); }
 .ps-vs.diff { color: var(--neon-cyan); border: 1px solid var(--neon-cyan); }
