@@ -78,6 +78,9 @@ const app = {
     if (url.pathname === "/games") {
       return handleGames(request, env, corsHeaders, url);
     }
+    if (url.pathname === "/wp-snaps") {
+      return handleWpSnaps(request, env, corsHeaders, url);
+    }
     if (url.pathname === "/expert-record") {
       return handleExpertRecord(request, env, corsHeaders, url);
     }
@@ -4145,6 +4148,42 @@ function selectContext(question, asker, cur = MATCHUPS.currentSeason) {
   if (ERA_WORDS.test(q)) slice.eras = HISTORY.eras;
   if (FORMER_WORDS.test(q)) slice.formerMemberDetails = HISTORY.formerMembers;
   return slice;
+}
+
+// Win% snapshots, so the chance to win can be checked against who won.
+// POST (any app, once picks are visible): one snapshot per moment of the
+// week (lock, each final f1..f10, each 15 minutes t<n>); the first one in
+// for a moment is kept. GET (the owner, Live): every week's snapshots with
+// that week's winners, for the calibration chart.
+async function handleWpSnaps(request, env, corsHeaders, url) {
+  if (!env.LIFTR_KV) return json({ error: "Sync not configured" }, 500, corsHeaders);
+  if (request.method === "POST") {
+    let b; try { b = await request.json(); } catch { return json({ error: "Invalid JSON body" }, 400, corsHeaders); }
+    const week = Number(b?.week), key = String(b?.key || "");
+    if (!Number.isInteger(week) || week < 1 || week > 30 || !/^(lock|f\d{1,2}|t\d{6,12})$/.test(key)) return json({ error: "Bad snapshot" }, 400, corsHeaders);
+    const pct = {};
+    for (const [n, v] of Object.entries(b?.pct || {})) if (PICKS_MANAGERS.includes(n) && Number.isFinite(Number(v)) && v >= 0 && v <= 1) pct[n] = Math.round(Number(v) * 10000) / 10000;
+    if (Object.keys(pct).length < 2) return json({ error: "Bad snapshot" }, 400, corsHeaders);
+    // Only once the first game has kicked off: before that each phone
+    // knows only its own picks, so its chances are not the league's.
+    const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
+    const first = Math.min(...(slate?.games || []).map((g) => Date.parse(g.kickoff)).filter(Number.isFinite));
+    if (!(Date.now() >= first)) return json({ ok: false, why: "before kickoff" }, 200, corsHeaders);
+    const k = `wpsnap:${week}`;
+    const list = (await env.LIFTR_KV.get(k, "json")) || [];
+    if (list.some((x) => x.key === key)) return json({ ok: true, kept: false }, 200, corsHeaders);
+    list.push({ key, at: Date.now(), finals: Math.max(0, Math.min(20, Number(b?.finals) || 0)), live: Math.max(0, Math.min(20, Number(b?.live) || 0)), pct });
+    await env.LIFTR_KV.put(k, JSON.stringify(list.slice(-150)));
+    return json({ ok: true, kept: true }, 200, corsHeaders);
+  }
+  if (!(await liveAdmin(env, url))) return json({ error: "Not authorized" }, 403, corsHeaders);
+  const weeks = (await readWeeks(env)).list;
+  const out = [];
+  for (const week of weeks) {
+    const [snaps, sum] = await Promise.all([env.LIFTR_KV.get(`wpsnap:${week}`, "json"), env.LIFTR_KV.get(summaryKey(week), "json")]);
+    if (snaps?.length) out.push({ week, complete: !!sum?.complete, winners: sum?.complete ? sum.winners || [] : [], snaps });
+  }
+  return json({ weeks: out }, 200, corsHeaders);
 }
 
 // Admin only: expert picks as archived before kickoff, graded on the

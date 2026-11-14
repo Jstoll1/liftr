@@ -3618,6 +3618,13 @@ body.sheet-open #admin-overlay { overflow: hidden; }
 .rank-wp.hot .rank-wp-bar i { background: linear-gradient(90deg, rgba(57, 255, 136, .5), var(--neon-green)); }
 .ranking-main .rank-wp b { position: static; transform: none; flex: none; min-width: 28px; text-align: right; font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 6.5px; color: var(--neon-cyan); text-shadow: none; }
 .ranking-main .rank-wp.hot b { color: var(--neon-green); }
+.ranking-main .rank-wp.rank-solo { justify-content: flex-end; }
+.ranking-main .rank-wp.rank-solo b { min-width: 0; color: var(--neon-cyan); opacity: .65; }
+.ranking-main .rank-wp.rank-solo.hot b { opacity: 1; }
+.ranking-main .rank-twin { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: var(--muted, rgba(255, 255, 255, .5)); text-align: left; }
+.ranking-main .rank-wp.rank-solo { justify-content: flex-end; }
+.ranking-main .rank-wp.rank-solo b { min-width: 0; color: rgba(var(--cyan-rgb), .7); }
+.ranking-main .rank-wp.rank-solo.hot b { color: var(--neon-cyan); }
 .wp-live .ranking-name { flex: 0 0 78px; min-width: 0; }
 .wp-live .rank-who { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Picks header: pay chips, then the lock clock with your card status */
@@ -4881,7 +4888,7 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 /* Column key: tiny dim labels, no plates or glow. */
 .ranking-row.rank-hd { background: none !important; border: 0 !important; box-shadow: none !important; pointer-events: none; padding-top: 0; padding-bottom: 0; }
 .ranking-row.rank-hd .ranking-main { padding-top: 2px; padding-bottom: 4px; min-height: 0; cursor: default; }
-.ranking-row.rank-hd :is(.ranking-place, .ranking-name, .rank-live, .rank-wp b, .ranking-score) { background: none !important; border: 0 !important; box-shadow: none !important; text-shadow: none !important; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: rgba(255, 255, 255, .32) !important; }
+.ranking-row.rank-hd :is(.ranking-place, .ranking-name, .rank-live, .rank-wp b, .rank-twin, .ranking-score) { background: none !important; border: 0 !important; box-shadow: none !important; text-shadow: none !important; font-family: 'Press Start 2P', monospace; font-size: 6px; letter-spacing: .1em; color: rgba(255, 255, 255, .32) !important; }
 .ranking-row.rank-hd .ranking-place { height: auto; }
 .ranking-row.rank-hd .rank-wp-bar { visibility: hidden; }
 .ranking-row.rank-hd .ranking-score::before, .ranking-row.rank-hd .ranking-score::after { display: none !important; }
