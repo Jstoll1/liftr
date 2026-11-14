@@ -5463,14 +5463,23 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const sc = pick && mine !== null && theirs !== null ? ` <b>${mine}–${theirs}</b>` : (!pick && aS !== null ? ` <b>${aS}–${hS}</b>` : "");
       const when = isFinal ? ` · <span class="ps-when">${sc.trim()}</span>` : isLive ? ` · <span class="ps-when">${sc.trim()}${g.detail ? ` · ${escapeCd(g.detail.replace(/\s*-\s*/, " "))}` : ""}</span>` : "";
       // Against the viewer's own card: same pick, or what they took instead.
-      let vs = "", cmp = null;
+      let vs = "", cmp = null, vsRow = "", swing = 0;
       if (opts.vs && pick && locked) {
         const m = opts.vs[game.id];
         if (m?.team && !m.hidden) {
           cmp = m.team === pick.team && m.mode === pick.mode ? "same" : "diff";
           const mShort = m.team === game.away ? game.awayShort : game.homeShort;
           const mTerms = m.mode === "ATS" ? `${m.team === game.favorite ? "−" : "+"}${game.spread}` : "to win";
-          vs = cmp === "same" ? `<span class="ps-vs same">SAME AS YOU</span>` : `<span class="ps-vs diff">YOU: ${escapeCd(mShort)} ${mTerms}</span>`;
+          const tTerms = pick.mode === "ATS" ? `${pick.team === game.favorite ? "−" : "+"}${game.spread}` : "SU";
+          const side = (team, short, terms, w, cls, lk) => `<span class="h2-side ${cls}"><img src="${logoUrl(team === game.away ? game.awayId : game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span><b>${escapeCd(short)}</b><small>${terms === "SU" || terms === "to win" ? "TO WIN" : terms} · ${w}PT${lk ? " 🔒" : ""}</small></span></span>`;
+          const short = pick.team === game.away ? game.awayShort : game.homeShort;
+          const tW = pickWorth(game, pick), mW = pickWorth(game, m);
+          let mid;
+          if (isFinal) { const a = scorePick(game, pick, results[game.id]), b = scorePick(game, m, results[game.id]); mid = `<span class="h2-mid fin"><b class="${a > b ? "dn" : a < b ? "up" : ""}">${a > b ? `−${a - b}` : a < b ? `+${b - a}` : "EVEN"}</b><small>FINAL</small></span>`; }
+          else { swing = m.team === pick.team ? Math.abs(tW - mW) || Math.max(tW, mW) : tW + mW; mid = `<span class="h2-mid"><b>${swing}</b><small>PT SWING</small></span>`; }
+          vs = cmp === "same" ? "" : "";
+          vsRow = cmp === "same" ? `<span class="h2-chip"><img src="${logoUrl(pick.team === game.away ? game.awayId : game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">${escapeCd(short)} <small>${tTerms === "SU" ? "TO WIN" : tTerms}</small></span>`
+            : `<div class="h2-row${isLive ? " live" : ""}${isFinal ? " final" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}>${side(pick.team, short, tTerms, tW, "them", pick.lock && lockRule())}${mid}${side(m.team, mShort, m.mode === "ATS" ? mTerms : "SU", mW, "you", m.lock && lockRule())}</div>`;
         } else cmp = "diff";
       }
       const sub = `${pick ? `vs ${escapeCd(opp)}` : `${escapeCd(game.awayShort)} @ ${escapeCd(game.homeShort)}`}${when}`;
@@ -5503,7 +5512,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const tcell = isLive ? `<b class="live">LIVE</b>` : isFinal ? `<b>FINAL</b>` : kl ? `<b>${kl[2]}</b><small>${kl[1].toUpperCase()} ${kl[3] || ""}</small>` : "";
       const order = isLive ? 0 : isFinal ? 2 : 1;
       const slot = isLive ? "LIVE" : isFinal ? "FINAL" : game.kickoffLabel;
-      return { order, lev, cmp, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}<span class="ps-sub">${sub}</span>${why ? `<span class="ps-why">${why}</span>` : ""}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
+      return { order, lev, cmp, vsRow, swing, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}<span class="ps-sub">${sub}</span>${why ? `<span class="ps-why">${why}</span>` : ""}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
     }
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
@@ -5524,7 +5533,10 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   if (!opts.sheet) rowsHtml = rows.join("");
   else if (opts.vs) {
     const byImp = (a, b) => a.order - b.order || b.lev - a.lev || a.t - b.t;
-    rowsHtml = section("WHERE YOU DIFFER", rows.filter((r) => r.cmp === "diff").sort(byImp)) + section("SAME AS YOU", rows.filter((r) => r.cmp === "same").sort(byImp)) + section("NO PICK TO COMPARE", rows.filter((r) => !r.cmp).sort(byImp));
+    const diff = rows.filter((r) => r.cmp === "diff" && r.vsRow).sort((a, b) => a.order - b.order || b.swing - a.swing || a.t - b.t), same = rows.filter((r) => r.cmp === "same").sort(byImp);
+    const themName = escapeCd(shown(name).toUpperCase());
+    rowsHtml = (diff.length ? `<div class="ps-sec">WHERE YOU DIFFER · ${diff.length}</div><div class="h2-head"><span>${themName}</span><span></span><span>YOU</span></div>${diff.map((r) => r.vsRow).join("")}` : `<div class="ps-sec">NO DIFFERENCES YET</div>`)
+      + (same.length ? `<div class="ps-sec">SAME AS YOU · ${same.length}</div><div class="h2-chips">${same.map((r) => r.vsRow).join("")}</div>` : "");
   } else {
     const slots = [];
     for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
