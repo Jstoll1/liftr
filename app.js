@@ -5406,6 +5406,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   const sway = wd?.alive === false ? {} : Object.fromEntries((wd?.games || []).map((e) => [e.game.id, e]));
   const topLev = Math.max(0, ...Object.values(sway).map((e) => e.lev));
   const longShot = !!wd && wd.alive !== false && (wd.pct ?? 0) < 0.03 && Object.values(sway).every((e) => e.ifHit - e.ifMiss < 0.03);
+  // Long shots still show every pick's hit / miss numbers (Jake's call).
   const maxSpan = Math.max(0.03, ...Object.values(sway).map((e) => e.ifHit - e.ifMiss));
   const swayHtml = (e) => {
     const lit = topLev > 0 ? Math.max(e.gap >= 0.01 ? 1 : 0, Math.round(5 * e.lev / topLev)) : 0;
@@ -5516,13 +5517,13 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       // The game impact line: their chance to win the week if this pick
       // misses (left end) and if it hits (right end), on a 0 to 100 track,
       // with a tick where they stand now. Finals and live games show points.
-      let imp = longShot && !isLive && !isFinal ? "" : ptsHtml;
+      let imp = ptsHtml;
       if (isLive && !sw && pick && wd && wd.alive !== false) {
         const prov = Number.isFinite(g?.awayScore) ? scorePick(game, pick, { awayScore: g.awayScore, homeScore: g.homeScore }) : 0;
         const pcs = (v) => winChanceLabel(v, { alive: true });
         imp = `<span class="ps-hm t4" title="All but settled">${prov > 0 ? `<b class="up">${pcs(wd.pct ?? 0)}</b><b class="dn">—</b>` : `<b class="up">—</b><b class="dn">${pcs(wd.pct ?? 0)}</b>`}</span>`;
       }
-      if (sw && !isFinal && wd?.alive !== false && !(longShot && !isLive)) {
+      if (sw && !isFinal && wd?.alive !== false) {
         // How far this pick moves their chance from where it is now: up if
         // it hits, down if it misses, in percentage points.
         const now = wd.pct ?? 0, up = Math.round((sw.ifHit - now) * 100), dn = Math.round((now - sw.ifMiss) * 100);
@@ -5533,7 +5534,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
         const span = sw.ifHit - sw.ifMiss, avg = Math.round(span * 50);
         const tier = top ? "t1" : avg >= 8 ? "t2" : avg >= 4 ? "t3" : "t4";
         const pcs = (v) => winChanceLabel(v, { alive: true });
-        imp = avg < 2 ? `<span class="ps-heat t5" title="Barely moves it">—</span>`
+        imp = avg < 2 && !longShot ? `<span class="ps-heat t5" title="Barely moves it">—</span>`
           : `<span class="ps-hm ${tier}"><b class="up">${pcs(sw.ifHit)}</b><b class="dn">${pcs(sw.ifMiss)}</b></span>`;
       }
       const kl = game.kickoffLabel.replace(/ ET$/, "").match(/^(\w{3}) (.+?) ?(AM|PM)?$/);
@@ -5568,7 +5569,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   } else {
     const slots = [];
     for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
-    rowsHtml = (Object.keys(sway).length && !longShot ? `<div class="ps-cols" title="Their overall chance to win the week if this pick hits or misses, not the chance the pick itself hits"><span>WEEK WIN PROBABILITY ⓘ</span><span class="up">HIT</span><span class="dn">MISS</span></div>` : "") + fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
+    rowsHtml = (Object.keys(sway).length ? `<div class="ps-cols" title="Their overall chance to win the week if this pick hits or misses, not the chance the pick itself hits"><span>WEEK WIN PROBABILITY ⓘ</span><span class="up">HIT</span><span class="dn">MISS</span></div>` : "") + fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
   }
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.
