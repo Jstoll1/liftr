@@ -5462,25 +5462,33 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const mine = pickedSide === "away" ? aS : hS, theirs = pickedSide === "away" ? hS : aS;
       const sc = pick && mine !== null && theirs !== null ? ` <b>${mine}–${theirs}</b>` : (!pick && aS !== null ? ` <b>${aS}–${hS}</b>` : "");
       const when = isFinal ? ` · <span class="ps-when">${sc.trim()}</span>` : isLive ? ` · <span class="ps-when">${sc.trim()}${g.detail ? ` · ${escapeCd(g.detail.replace(/\s*-\s*/, " "))}` : ""}</span>` : "";
-      // Against the viewer's own card: same pick, or what they took instead.
+      // VS ME: the game head to head. Each side shows its pick and the
+      // points it has at stake (a lock shows what it wins and what it costs),
+      // or what it scored once final. Shared picks are dimmed, no logos twice.
       let vs = "", cmp = null, vsRow = "", swing = 0;
-      if (opts.vs && pick && locked) {
-        const m = opts.vs[game.id];
-        if (m?.team && !m.hidden) {
-          cmp = m.team === pick.team && m.mode === pick.mode ? "same" : "diff";
-          const mShort = m.team === game.away ? game.awayShort : game.homeShort;
-          const mTerms = m.mode === "ATS" ? `${m.team === game.favorite ? "−" : "+"}${game.spread}` : "to win";
-          const tTerms = pick.mode === "ATS" ? `${pick.team === game.favorite ? "−" : "+"}${game.spread}` : "SU";
-          const side = (team, short, terms, w, cls, lk) => `<span class="h2-side ${cls}"><img src="${logoUrl(team === game.away ? game.awayId : game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span><b>${escapeCd(short)}</b><small>${terms === "SU" || terms === "to win" ? "TO WIN" : terms} · ${w}PT${lk ? " 🔒" : ""}</small></span></span>`;
-          const short = pick.team === game.away ? game.awayShort : game.homeShort;
-          const tW = pickWorth(game, pick), mW = pickWorth(game, m);
-          let mid;
-          if (isFinal) { const a = scorePick(game, pick, results[game.id]), b = scorePick(game, m, results[game.id]); mid = `<span class="h2-mid fin"><b class="${a > b ? "dn" : a < b ? "up" : ""}">${a > b ? `−${a - b}` : a < b ? `+${b - a}` : "EVEN"}</b><small>FINAL</small></span>`; }
-          else { swing = m.team === pick.team ? Math.abs(tW - mW) || Math.max(tW, mW) : tW + mW; mid = `<span class="h2-mid"><b>${swing}</b><small>PT SWING</small></span>`; }
-          vs = cmp === "same" ? "" : "";
-          vsRow = cmp === "same" ? `<span class="h2-chip"><img src="${logoUrl(pick.team === game.away ? game.awayId : game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">${escapeCd(short)} <small>${tTerms === "SU" ? "TO WIN" : tTerms}</small></span>`
-            : `<div class="h2-row${isLive ? " live" : ""}${isFinal ? " final" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}>${side(pick.team, short, tTerms, tW, "them", pick.lock && lockRule())}${mid}${side(m.team, mShort, m.mode === "ATS" ? mTerms : "SU", mW, "you", m.lock && lockRule())}</div>`;
-        } else cmp = "diff";
+      if (opts.vs && locked) {
+        const m = opts.vs[game.id] && !opts.vs[game.id].hidden && opts.vs[game.id].team ? opts.vs[game.id] : null;
+        cmp = pick && m ? (m.team === pick.team && m.mode === pick.mode ? "same" : "diff") : pick || m ? "diff" : null;
+        const fin = isFinal ? results[game.id] : null;
+        const stake = (p) => {
+          if (!p) return `<b class="pts none">0</b>`;
+          if (fin) { const v = scorePick(game, p, fin); return `<b class="pts ${v > 0 ? "up" : v < 0 ? "dn" : "zero"}">${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v)}</b>`; }
+          const lk = p.lock && lockRule();
+          return `<b class="pts">+${pickWorth(game, p)}</b>${lk ? `<small class="pts-lk">−${Math.abs(lockRule().miss)}</small>` : ""}`;
+        };
+        const side = (p, cls) => {
+          if (!p) return `<span class="h2-s ${cls} none"><span class="h2-stake">${stake(p)}</span><span class="h2-tm"><b>NO PICK</b></span></span>`;
+          const sh = p.team === game.away ? game.awayShort : game.homeShort;
+          const terms = p.mode === "ATS" ? `${p.team === game.favorite ? "−" : "+"}${game.spread}` : "TO WIN";
+          const logo = cmp === "same" && cls === "you" ? "" : `<img src="${logoUrl(p.team === game.away ? game.awayId : game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
+          return `<span class="h2-s ${cls}"><span class="h2-stake">${stake(p)}</span><span class="h2-tm">${logo}<span><b>${escapeCd(sh)}</b><small>${terms}${p.lock && lockRule() ? " · 🔒" : ""}</small></span></span></span>`;
+        };
+        const src = isFinal ? results[game.id] : isLive ? g : null;
+        const score = src && Number.isFinite(src.awayScore) ? `${src.awayScore}–${src.homeScore}` : "";
+        const kl = game.kickoffLabel.replace(/ ET$/, "").replace(/^\w{3} /, "");
+        const mid = `<span class="h2-g">${isLive ? `<b class="live">LIVE</b><small>${score}</small>` : isFinal ? `<b>FINAL</b><small>${score}</small>` : `<b>${escapeCd(kl.replace(/ (AM|PM)$/, ""))}</b><small>${escapeCd(kl.match(/(AM|PM)$/)?.[1] || "")}</small>`}</span>`;
+        if (pick && m && cmp === "diff") swing = (m.team === pick.team ? Math.abs(pickWorth(game, pick) - pickWorth(game, m)) : pickWorth(game, pick) + pickWorth(game, m));
+        vsRow = `<div class="h2-row ${cmp}${isLive ? " live" : ""}${isFinal ? " final" : ""}" data-rdgame="${game.id}" role="button" tabindex="0">${side(pick, "them")}${mid}${side(m, "you")}</div>`;
       }
       const sub = `${pick ? `vs ${escapeCd(opp)}` : `${escapeCd(game.awayShort)} @ ${escapeCd(game.homeShort)}`}${when}`;
       // Who this pick moves them against: the members on the same side and
@@ -5533,10 +5541,10 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   if (!opts.sheet) rowsHtml = rows.join("");
   else if (opts.vs) {
     const byImp = (a, b) => a.order - b.order || b.lev - a.lev || a.t - b.t;
-    const diff = rows.filter((r) => r.cmp === "diff" && r.vsRow).sort((a, b) => a.order - b.order || b.swing - a.swing || a.t - b.t), same = rows.filter((r) => r.cmp === "same").sort(byImp);
+    const list = rows.filter((r) => r.vsRow).sort((a, b) => a.order - b.order || a.t - b.t);
+    const nDiff = list.filter((r) => r.cmp === "diff").length;
     const themName = escapeCd(shown(name).toUpperCase());
-    rowsHtml = (diff.length ? `<div class="ps-sec">WHERE YOU DIFFER · ${diff.length}</div><div class="h2-head"><span>${themName}</span><span></span><span>YOU</span></div>${diff.map((r) => r.vsRow).join("")}` : `<div class="ps-sec">NO DIFFERENCES YET</div>`)
-      + (same.length ? `<div class="ps-sec">SAME AS YOU · ${same.length}</div><div class="h2-chips">${same.map((r) => r.vsRow).join("")}</div>` : "");
+    rowsHtml = `<div class="h2-head"><span>${themName}</span><span>${nDiff}/${list.length} DIFFER</span><span>YOU</span></div>${list.map((r) => r.vsRow).join("")}`;
   } else {
     const slots = [];
     for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
@@ -5580,7 +5588,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   // A Scouting Report published from the Creative Studio, under the week.
   const scout = creativeArt?.art?.[`owner-card:owner:${name}`]?.text;
   const scoutRow = scout ? `<div class="rd-scout"><em>📋 SCOUTING REPORT</em><b>${escapeCd(scout.headline)}</b>${String(scout.body).split(/\n\s*\n/).map((p) => `<p>${escapeCd(p)}</p>`).join("")}</div>` : "";
-  if (opts.sheet) return `<div class="rank-detail ps-detail">${wpRow}${rowsHtml}${tbRow}${scoutRow}</div>`;
+  if (opts.sheet) return `<div class="rank-detail ps-detail">${opts.vs ? "" : wpRow}${rowsHtml}${tbRow}${scoutRow}</div>`;
   return `<div class="rank-detail">${wpRow}${scoutRow}<div class="rd-head"><span>GAME</span><span>PICK</span><span>${Object.keys(sway).length ? "PTS<br>IMPACT" : "PTS"}</span></div>${rowsHtml}${tbRow}${summary}</div>`;
 }
 
