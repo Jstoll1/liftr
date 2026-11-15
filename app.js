@@ -3601,6 +3601,10 @@ function boardCloudPicks(rawPicks) {
 }
 function paintScoreboard(fetched, live, cached) {
   cloudPicksStale = fetched === null;
+  // A failed picks read with nothing saved would draw everyone on zero, a
+  // board that looks like the week just started. Keep what is on screen
+  // and let the next poll try again.
+  if (fetched === null && !lastGoodCloudPicks && !cached) { console.warn("picks unavailable; keeping the board"); return; }
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
   const cloudPicks = boardCloudPicks(rawPicks);
   if (fetched !== null && !cached) lastGoodCloudPicks = rawPicks;
