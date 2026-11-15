@@ -329,6 +329,13 @@
       "at": 1794703611075,
       "commit": "2455709",
       "note": "Cold injuries fetch answers within 3s and finishes in the background; phone retries once"
+    },
+    {
+      "k": "dead-tap",
+      "match": ".h2x-teams",
+      "at": 1794705465000,
+      "commit": "02e60ce",
+      "note": "Head to head matchup in the middle of each row opens that game (gamecast live, info before kickoff)"
     }
   ]
 }
