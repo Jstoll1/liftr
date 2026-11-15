@@ -2184,7 +2184,7 @@ export function buildSummary(week, slate, results, picks, kickoffs = null, earli
     sealedAt: Date.now(),
     // The week in five lines, written once here so every phone tells the
     // same story. Only a complete week gets one.
-    recap: complete ? { ...buildRecap(games, rows, actualTotal, tbGame, seasonMovement(earlier, rows, EXHIBITION_WEEKS.has(Number(week)))), bestWhoFixed: true, worstRule: 2 } : null,
+    recap: complete ? { ...buildRecap(games, rows, actualTotal, tbGame, seasonMovement(earlier, rows, EXHIBITION_WEEKS.has(Number(week)))), bestWhoFixed: true, worstRule: 3 } : null,
   };
 }
 
@@ -2271,19 +2271,32 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
     const k = `${l.g}|${l.team}`;
     const lineHit = all.some((x) => x.g === l.g && x.team === l.team && x.result === "hit");
     const key = lineHit ? `${k}|${l.mode}` : k;
-    if (!losers.has(key)) losers.set(key, { ...l, who: [], mixed: !lineHit });
-    losers.get(key).who.push(...l.who);
+    if (!losers.has(key)) losers.set(key, { ...l, who: [], mixed: !lineHit, missBy: -Infinity });
+    const lo = losers.get(key);
+    lo.who.push(...l.who);
+    lo.missBy = Math.max(lo.missBy, missBy(l));
+  }
+  // How badly a pick missed: points short of what it needed. Florida −1.5
+  // losing by 30 missed by 31.5; a +7 dog losing by 8 missed by 1. Size of
+  // the miss decides the worst pick; how many took it only breaks ties.
+  function missBy(l) {
+    const g = byId.get(l.g);
+    const [a, h] = String(l.score || "").split("-").map(Number);
+    if (!g || !Number.isFinite(a) || !Number.isFinite(h)) return 0;
+    const margin = l.team === g.away ? a - h : h - a;
+    const n = l.mode === "SU" ? 0 : Number(String(l.line || "").replace("−", "-"));
+    return -(margin + (Number.isFinite(n) ? n : 0));
   }
   // Worst pick shows a different game from pick of the week: Curt alone on
   // Utah and nine on BYU are one story told twice. The same game stays only
   // when it is clearly the week's story: the whole league lost on it, or the
   // next biggest miss elsewhere drew half as many takers or fewer.
-  const lossList = [...losers.values()].sort((a, b) => b.who.length - a.who.length || b.worth - a.worth);
+  const lossList = [...losers.values()].sort((a, b) => b.missBy - a.missBy || b.who.length - a.who.length || b.worth - a.worth);
   const worst = (() => {
     const top = lossList[0];
     if (!top || !best || Number(top.g) !== Number(best.g)) return top;
     const alt = lossList.find((l) => Number(l.g) !== Number(best.g));
-    if (!alt || top.who.length >= N || alt.who.length * 2 <= top.who.length) return top;
+    if (!alt || top.who.length >= N) return top;
     return alt;
   })();
 
@@ -2538,12 +2551,12 @@ async function handleQotw(request, env, corsHeaders, url) {
 // The frozen slate keeps no team ids, so they come from the stored slate
 // (ids only: nothing is rescored); without them the card loses its logo.
 function fixWorstRule(s, ids = {}) {
-  if (!s?.recap || (s.recap.worstRule === 2 && s.recap.worst?.teamId != null) || !Array.isArray(s.rows) || !Array.isArray(s.slate)) return false;
+  if (!s?.recap || (s.recap.worstRule === 3 && s.recap.worst?.teamId != null) || !Array.isArray(s.rows) || !Array.isArray(s.slate)) return false;
   const games = s.slate.map((g) => ({ ...g, awayId: g.awayId ?? ids[g.id]?.awayId ?? null, homeId: g.homeId ?? ids[g.id]?.homeId ?? null }));
   const tb = games.find((g) => g.tiebreakerGame) || null;
   const fresh = buildRecap(games, s.rows, s.tiebreaker?.actual ?? null, tb, null);
   if (fresh.worst) s.recap.worst = fresh.worst;
-  s.recap.worstRule = 2;
+  s.recap.worstRule = 3;
   return true;
 }
 
@@ -2650,7 +2663,7 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
     // name only the best-paid line; re-name everyone who cashed on that
     // team from the stored ledger. Nothing is rescored.
     let changed = !!(s && fixBestWho(s));
-    if (s?.complete && n === latestSealed && (s.recap?.worstRule !== 2 || s.recap?.worst?.teamId == null)) {
+    if (s?.complete && n === latestSealed && (s.recap?.worstRule !== 3 || s.recap?.worst?.teamId == null)) {
       const sl = await env.LIFTR_KV.get(gamesKey(n), "json");
       const ids = Object.fromEntries((sl?.games || []).map((g) => [Number(g.id), { awayId: g.awayId, homeId: g.homeId }]));
       if (fixWorstRule(s, ids)) changed = true;
