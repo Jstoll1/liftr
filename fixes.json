@@ -313,21 +313,21 @@
       "k": "worker-fail",
       "match": "exceeded memory limit",
       "at": 1794703611075,
-      "commit": "PENDING",
+      "commit": "2455709",
       "note": "Read cache bounded by size (16 MB, expired copies dropped first, nothing over 2 MB held); big bodies were filling the isolate"
     },
     {
       "k": "worker-slow",
       "match": "/insights/news",
       "at": 1794703611075,
-      "commit": "PENDING",
+      "commit": "2455709",
       "note": "Cold news fetch answers within 3s and finishes in the background; empty results cached 15 min, found ones a day; phone retries once"
     },
     {
       "k": "worker-slow",
       "match": "/insights/injuries",
       "at": 1794703611075,
-      "commit": "PENDING",
+      "commit": "2455709",
       "note": "Cold injuries fetch answers within 3s and finishes in the background; phone retries once"
     }
   ]
