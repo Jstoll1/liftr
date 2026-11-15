@@ -745,7 +745,7 @@ function parseEspnEvents(events, games = GAMES) {
       homeRecord: recordOf(home),
       state: statusType.state || "pre",
       // Postponed, canceled, suspended or forfeit: ESPN's word for it.
-      voided: isVoid(statusType) || isVoid(st1) || isVoid(st2) ? (/CANCEL/.test(statusType.name || st1.name || st2.name || "") ? "CANCELED" : /SUSPEND/.test(statusType.name || st1.name || st2.name || "") ? "SUSPENDED" : /FORFEIT/.test(statusType.name || st1.name || st2.name || "") ? "FORFEIT" : "POSTPONED") : null,
+      voided: isVoid(statusType) || isVoid(st1) || isVoid(st2) || /postpon|cancel|suspend/i.test(`${st1.shortDetail || ""} ${st1.detail || ""} ${st2.shortDetail || ""} ${st2.detail || ""} ${st1.description || ""} ${st2.description || ""}`) ? (/CANCEL/i.test(`${statusType.name || ""} ${st1.name || ""} ${st2.name || ""} ${st1.detail || ""} ${st2.detail || ""}`) ? "CANCELED" : /SUSPEND/.test(statusType.name || st1.name || st2.name || "") ? "SUSPENDED" : /FORFEIT/.test(statusType.name || st1.name || st2.name || "") ? "FORFEIT" : "POSTPONED") : null,
       completed: !!statusType.completed,
       rawStatus: { comp: { name: st1.name, state: st1.state, completed: st1.completed, detail: st1.shortDetail }, event: { name: st2.name, state: st2.state, completed: st2.completed, detail: st2.shortDetail } },
       detail: statusType.shortDetail || statusType.detail || "",
@@ -4631,7 +4631,7 @@ function renderLiveScores(live, cloudPicks) {
           ? "FINAL"
           : isLive
             ? shortStatus(g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
-            : g?.voided ? `<span class="bug-void">${g.voided}</span>` : (found && g.state === "pre" ? (Date.now() - Date.parse(game.kickoff) > 45 * 60000 ? `<span class="bug-void">NOT STARTED</span>` : timeOnly) : found ? shortStatus(g.detail || "Scheduled") : Date.now() - Date.parse(game.kickoff) > 45 * 60000 ? `<span class="bug-void">NO SCORE YET</span>` : "Waiting…");
+            : g?.voided ? `<span class="bug-void">${g.voided === "POSTPONED" ? "PPD" : g.voided === "CANCELED" ? "CNCL" : g.voided === "SUSPENDED" ? "SUSP" : g.voided}</span>` : (found && g.state === "pre" ? timeOnly : found ? shortStatus(g.detail || "Scheduled") : Date.now() - Date.parse(game.kickoff) > 45 * 60000 ? `<span class="bug-void">NO SCORE</span>` : "Waiting…");
       // The channel matters right up to the final whistle, not just before
       // kickoff: on a ten game Saturday the question "which channel is
       // that one on" is asked most often about a game already in
