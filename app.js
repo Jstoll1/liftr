@@ -1804,12 +1804,14 @@ document.addEventListener("click", (e) => {
   // Player sheet: a tap on an impact bar shows that game's hit / miss odds.
   const bar = e.target.closest?.(".ps-row .rd-sway");
   if (bar) { e.preventDefault(); e.stopPropagation(); const w = bar.closest(".ps-row").querySelector(".ps-what"); if (w) { w.hidden = !w.hidden; bar.closest(".ps-row").classList.toggle("what", !w.hidden); } return; }
-  const r = e.target.closest?.(".rd-row[data-rdgame], .ps-row[data-rdgame], .rd-tb[data-rdgame]");
+  const r = e.target.closest?.(".rd-row[data-rdgame], .ps-row[data-rdgame], .rd-tb[data-rdgame], .h2x-mid[data-rdgame]");
   if (!r || e.target.closest("[data-locks]")) return;
   e.preventDefault(); e.stopPropagation();
   const g = GAMES.find((x) => String(x.id) === r.dataset.rdgame); if (!g) return;
   // From the player sheet: close it first so the game opens on top.
   if (r.closest("#rank-sheet")) closeRankSheet();
+  // From head to head: close it so the game opens on top.
+  r.closest(".modal-overlay")?.classList.add("hidden");
   openInsights(g.id);
 }, true);
 // Everyone's lock of the week in one sheet, from any 🔒 tap. Only what the
@@ -9735,7 +9737,7 @@ function renderH2H() {
     const sc = r ? `${r.awayScore}–${r.homeScore}` : st === "live" ? `${lv.awayScore ?? 0}–${lv.homeScore ?? 0}` : "@";
     const k = new Date(g.kickoff);
     const when = st === "final" ? (/OT/i.test(String(lv?.detail || "")) ? "FINAL/OT" : "FINAL") : st === "live" ? esc(String(lv.detail || "LIVE").replace(/\s*-\s*/, " ").toUpperCase()) : st === "void" ? "NO RESULT" : `${k.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" }).toUpperCase()} ${k.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).replace(":00", "")}`;
-    return `<div class="h2x-mid"><span class="h2x-teams">${esc(abbr(g, "away"))} <b>${sc}</b> ${esc(abbr(g, "home"))}</span><small class="h2x-when ${st}">${st === "live" ? "<u></u>" : ""}${when}</small></div>`;
+    return `<div class="h2x-mid" data-rdgame="${g.id}" role="button" tabindex="0" aria-label="Open ${esc(g.awayShort)} at ${esc(g.homeShort)}"><span class="h2x-teams">${esc(abbr(g, "away"))} <b>${sc}</b> ${esc(abbr(g, "home"))}</span><small class="h2x-when ${st}">${st === "live" ? "<u></u>" : ""}${when}</small></div>`;
   };
   const pickCell = (g, name, pick, side) => {
     if (hiddenFor(name, g)) return `<div class="h2x-pick ${side} locked"><span class="h2x-tm">Hidden</span><small>until kickoff</small></div>`;

@@ -9995,3 +9995,5 @@ html.phone .rs-top .rs-nav { display: none; }
 html:not(.phone) #rank-sheet .rs-top { grid-template-columns: 22px auto minmax(0, 1fr) 22px 32px; }
 html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .bug-void, .ps-void { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 7px; letter-spacing: .04em; color: var(--neon-orange) !important; }
+.h2x-mid[data-rdgame] { cursor: pointer; border-radius: 8px; }
+.h2x-mid[data-rdgame]:active { background: rgba(var(--neon-cyan-rgb), .12); }
