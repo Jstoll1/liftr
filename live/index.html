@@ -2228,18 +2228,22 @@ body::before { display: none; }
     // What a visit did, in a sentence, plus badges for what matters. Page
     // views ("Went to", "Looked at") are scenery: they drop out of the
     // action list and the summary, which leads with real choices.
-    const PASSIVE = /^(Went to |Looked at )/;
-    const BADGES = [[/Saw a message from the Chief/, "💬", "saw your message"], [/Answered the Chief/, "✅", "answered your message"], [/Saved a pick|Chang/, "✏️", "picks"], [/Opened a player card/, "🔍", "player card"], [/Asked Chief|Asked the history/, "❓", "asked the Chief"], [/Path to Win|PATH/i, "▶", "path to win"], [/Compared two players/, "⚔", "head to head"], [/^⚠/, "⚠", "issue"]];
+    const PASSIVE = /^(Went to |Looked at |Scrolled )/;
+    const BADGES = [[/Saw a message from the Chief/, "💬", () => "saw your message"], [/Answered the Chief/, "✅", (d) => /thank/i.test(d) || !d ? "thanked you" : `replied: ${d}`], [/Saved a pick|Chang/, "✏️", () => "changed picks"], [/Opened a player card/, "🔍", (d) => d ? `${d}'s card` : "player card"], [/Asked Chief|Asked the history/, "❓", (d) => d ? `“${d.replace(/^“|”$/g, "")}”` : "asked the Chief"], [/Path to Win/i, "▶", (d) => d ? `Path ${d}` : "Path to Win"], [/Compared two players/, "⚔", (d) => d ? `VS ${d}` : "head to head"], [/Opened everyone's picks/, "📋", () => "everyone's picks"], [/Opened a live score|gamecast|game info|Opened the game/i, "🏈", (d) => d || "a game"], [/^⚠/, "⚠", (d, a) => a.replace(/^⚠\s*/, "")]];
+    const where = (a) => a.replace(/^(Went to |Looked at (the )?|Scrolled \d+% of )/, "").replace(/^game scores$/i, "Scores").replace(/^leaderboard$/i, "Scores");
     const sumOf = (acts) => {
-      // Raw tap traces ("Tapped (scoreboard › #h2h-open)") are for debugging:
-      // the badges already say what the taps were for.
       const real = acts.filter((a) => !PASSIVE.test(a.a) && !/^Tapped\b/.test(a.a));
-      const seen = [...new Set(acts.filter((a) => PASSIVE.test(a.a)).map((a) => a.a.replace(/^(Went to |Looked at (the )?)/, "")))];
-      const did = [...new Set(real.filter((a) => !/^⚠/.test(a.a)).map((a) => a.a.replace(/^🧠 /, "")))];
-      const badges = BADGES.filter(([re]) => acts.some((a) => re.test(a.a))).map(([, ic, t]) => `<span class="vb" title="${t}">${ic} ${t}</span>`).join("");
-      const rest = did.filter((t) => !BADGES.some(([re]) => re.test(t)));
-      if (rest.length < did.length) { did.length = 0; did.push(...rest); }
-      const line = did.length ? did.slice(0, 3).join(" · ") + (did.length > 3 ? ` · +${did.length - 3} more` : "") : seen.length ? `checked ${seen.filter((x) => !/^Scores$/i.test(x) || seen.length === 1).slice(0, 3).join(", ").toLowerCase()}` : badges ? "" : "opened, nothing tapped";
+      const screens = [...new Set(acts.filter((a) => PASSIVE.test(a.a)).map((a) => where(a.a)))];
+      // One chip per thing they did, with who or what it was about.
+      const chips = [];
+      for (const a of real) {
+        const b = BADGES.find(([re]) => re.test(a.a));
+        const d = String(a.d || "").replace(/^for /, "").trim();
+        const txt = b ? `${b[1]} ${b[2](d, a.a)}` : `${a.a.replace(/^🧠 /, "")}${d ? ` · ${d}` : ""}`;
+        if (!chips.includes(txt)) chips.push(txt);
+      }
+      const badges = chips.slice(0, 6).map((t) => `<span class="vb">${esc(t)}</span>`).join("") + (chips.length > 6 ? `<span class="vb more">+${chips.length - 6}</span>` : "");
+      const line = screens.length ? `on ${screens.slice(0, 4).join(" · ")}` : chips.length ? "" : "opened, nothing tapped";
       return { line, badges, real };
     };
     let day = null;
@@ -2269,7 +2273,7 @@ body::before { display: none; }
       const id = `${s.n}|${s.start}`, open = st.open.has(id);
       const ms = Math.max(s.end - s.start, 1000);
       const issues = s.acts.filter((a) => /^⚠/.test(a.a));
-      const what = sumOf(s.acts).line || BADGES.filter(([re]) => s.acts.some((a) => re.test(a.a))).map(([, ic, t]) => `${ic} ${t}`).join(" · ");
+      const what = (() => { const sm = sumOf(s.acts); const t = sm.badges.replace(/<[^>]+>/g, " · ").replace(/( · )+/g, " · ").replace(/^ · | · $/g, ""); return t || sm.line; })();
       return `<div class="gv${open ? " open" : ""}${issues.length ? " warn" : ""}" data-v="${esc(id)}">
         <div class="gv-h" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}"><time class="num">${esc(hm(s.start))}</time><span class="gv-d num">${esc(dur(ms))}${s.app ? ` · ${s.app === "home" ? "app" : "web"}` : ""}</span><span class="gv-w">${esc(what || (issues[0] ? issues[0].a.replace(/^⚠\s*/, "") : `${s.acts.length} action${s.acts.length === 1 ? "" : "s"}`))}${issues.length ? ` <b class="iss">⚠ ${issues.length}</b>` : ""}</span>${open ? `<button type="button" class="gv-cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" title="Copy this visit">${st.copied === id ? "✓" : COPY_ICON}</button>` : ""}<i class="gv-car">${open ? "▴" : "▾"}</i></div>
         ${open ? `<ul class="acts">${(s.acts.some((a) => !PASSIVE.test(a.a) && !/^Tapped\b/.test(a.a)) ? s.acts.filter((a) => !PASSIVE.test(a.a) && !/^Tapped\b/.test(a.a)) : s.acts).map((a) => `<li class="${/^⚠/.test(a.a) ? "iss" : ""}"><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}</span></li>`).join("")}</ul>` : ""}
