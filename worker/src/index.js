@@ -3100,7 +3100,7 @@ async function liveGames(env, week = null) {
           awayRecord: recordSummary(away),
           homeRecord: recordSummary(home),
           state: statusType.completed && tooSoonForFinal(g.kickoff) ? "in" : (statusType.state || "pre"), // "pre" | "in" | "post"
-          voided: VOID_STATUS.test(statusType.name || "") ? (/CANCEL/.test(statusType.name) ? "CANCELED" : /SUSPEND/.test(statusType.name) ? "SUSPENDED" : /FORFEIT/.test(statusType.name) ? "FORFEIT" : "POSTPONED") : null,
+          voided: VOID_STATUS.test(statusType.name || "") || /postpon|cancel|suspend/i.test(`${statusType.shortDetail || ""} ${statusType.detail || ""} ${statusType.description || ""}`) ? (/CANCEL/i.test(`${statusType.name} ${statusType.detail || ""}`) ? "CANCELED" : /SUSPEND/i.test(`${statusType.name} ${statusType.detail || ""}`) ? "SUSPENDED" : /FORFEIT/.test(statusType.name) ? "FORFEIT" : "POSTPONED") : null,
           completed: !!statusType.completed && !tooSoonForFinal(g.kickoff),
           detail: statusType.shortDetail || statusType.detail || "",
           period: comp.status?.period ?? null,
