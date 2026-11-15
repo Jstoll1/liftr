@@ -677,6 +677,18 @@ function rankBadge(rank) {
   return rank ? `<i class="tm-rank" title="AP rank">${rank}</i>` : "";
 }
 
+// A game ESPN has moved (its date is an hour or more off the slate's):
+// the new kickoff, as a label like the slate's ("Sun 12:00 PM ET").
+function movedKickoff(game, lv = latestLive?.[game.id]) {
+  const at = Date.parse(lv?.espnKickoff), was = Date.parse(game.kickoff);
+  if (!Number.isFinite(at) || !Number.isFinite(was) || Math.abs(at - was) < 3600000 || lv?.state !== "pre") return null;
+  const d = new Date(at);
+  const tbd = d.getUTCHours() === 4 && d.getUTCMinutes() === 59; // ESPN's "time to be decided" placeholder
+  const day = d.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short" });
+  const date = d.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
+  const time = tbd ? "TBD" : d.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
+  return { at, label: `${day} ${date} ${time}`, short: `${day} ${time}` };
+}
 function parseEspnEvents(events, games = GAMES) {
   const byId = {};
   games.forEach((game) => {
@@ -687,7 +699,9 @@ function parseEspnEvents(events, games = GAMES) {
       // A postponed game keeps the teams but gets a new date (or none), so
       // a voided status matches whatever its date says.
       const voidNow = /^STATUS_(POSTPONED|CANCELED|CANCELLED|SUSPENDED|FORFEIT)/.test(e?.status?.type?.name || e?.competitions?.[0]?.status?.type?.name || "");
-      return ids.includes(game.awayId) && ids.includes(game.homeId) && (voidNow || !Number.isFinite(ea) || !Number.isFinite(kb) || Math.abs(ea - kb) < 36 * 3600000);
+      // A rescheduled game keeps its teams and gets a later date: up to ten
+      // days after the slate's kickoff still counts as this game.
+      return ids.includes(game.awayId) && ids.includes(game.homeId) && (voidNow || !Number.isFinite(ea) || !Number.isFinite(kb) || Math.abs(ea - kb) < 36 * 3600000 || (ea > kb && ea - kb < 10 * 86400000));
     });
     if (!event) return;
     const comp = event.competitions[0];
@@ -744,6 +758,8 @@ function parseEspnEvents(events, games = GAMES) {
       awayRecord: recordOf(away),
       homeRecord: recordOf(home),
       state: statusType.state || "pre",
+      // ESPN's own kickoff: differs from the slate when a game was moved.
+      espnKickoff: event.date || null,
       // Postponed, canceled, suspended or forfeit: ESPN's word for it.
       voided: isVoid(statusType) || isVoid(st1) || isVoid(st2) || /postpon|cancel|suspend/i.test(`${st1.shortDetail || ""} ${st1.detail || ""} ${st2.shortDetail || ""} ${st2.detail || ""} ${st1.description || ""} ${st2.description || ""}`) ? (/CANCEL/i.test(`${statusType.name || ""} ${st1.name || ""} ${st2.name || ""} ${st1.detail || ""} ${st2.detail || ""}`) ? "CANCELED" : /SUSPEND/.test(statusType.name || st1.name || st2.name || "") ? "SUSPENDED" : /FORFEIT/.test(statusType.name || st1.name || st2.name || "") ? "FORFEIT" : "POSTPONED") : null,
       completed: !!statusType.completed,
@@ -4625,13 +4641,13 @@ function renderLiveScores(live, cloudPicks) {
       const kl = game.kickoffLabel.match(/^(Sat|Sun|Mon|Tue|Wed|Thu|Fri) (.+?)(?: ET)?$/);
       // AM/PM shrinks to a tiny suffix so the hour and the day carry it.
       const timeOnly = (kl ? `${kl[2]} <span class="bug-day${kl[1] === "Sat" ? " sat" : ""}">${kl[1]}</span>` : game.kickoffLabel.replace(/ ET$/, "")).replace(/\s?(AM|PM)\b/, '<small class="ampm">$1</small>');
-      const statusText = !locked
+      const statusText = movedKickoff(game, g) ? `<span class="bug-void" title="Moved from ${escapeCd(game.kickoffLabel)}">→ ${movedKickoff(game, g).short.replace(/:00/, "").replace(/ (AM|PM)$/, (m, x) => x[0].toLowerCase())}</span>` : !locked
         ? timeOnly
         : isFinal
           ? "FINAL"
           : isLive
             ? shortStatus(g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
-            : g?.voided ? `<span class="bug-void">${g.voided === "POSTPONED" ? "PPD" : g.voided === "CANCELED" ? "CNCL" : g.voided === "SUSPENDED" ? "SUSP" : g.voided}</span>` : (found && g.state === "pre" ? timeOnly : found ? shortStatus(g.detail || "Scheduled") : Date.now() - Date.parse(game.kickoff) > 45 * 60000 ? `<span class="bug-void">NO SCORE</span>` : "Waiting…");
+            : movedKickoff(game, g) ? `<span class="bug-void">MOVED · ${movedKickoff(game, g).short}</span>` : g?.voided ? `<span class="bug-void">${g.voided === "POSTPONED" ? "PPD" : g.voided === "CANCELED" ? "CNCL" : g.voided === "SUSPENDED" ? "SUSP" : g.voided}</span>` : (found && g.state === "pre" ? timeOnly : found ? shortStatus(g.detail || "Scheduled") : Date.now() - Date.parse(game.kickoff) > 45 * 60000 ? `<span class="bug-void">NO SCORE</span>` : "Waiting…");
       // The channel matters right up to the final whistle, not just before
       // kickoff: on a ten game Saturday the question "which channel is
       // that one on" is asked most often about a game already in
@@ -5566,7 +5582,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const tcell = isLive ? `<b class="live">LIVE</b>` : isFinal ? `<b>FINAL</b>` : kl ? `<b>${kl[2]}</b><small>${kl[1] === "Sat" ? "" : kl[1].toUpperCase() + " "}${kl[3] || ""}</small>` : "";
       const order = isLive ? 0 : isFinal ? 2 : 1;
       const slot = isLive ? "LIVE" : isFinal ? "FINAL" : game.kickoffLabel;
-      return { order, lev, cmp, vsRow, swing, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${imp.includes("ps-heat t5") ? " low" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}${isFinal || isLive || !pick ? `<span class="ps-sub">${imp === ptsHtml ? sub.replace(/ · <b class="ps-lp[^"]*">[^<]*<\/b>/, "") : sub}</span>` : `<span class="ps-opp">vs ${escapeCd(opp)} · ${g?.voided ? `<b class="ps-void">${g.voided}</b>` : `<b>${escapeCd(game.kickoffLabel.replace(/ ET$/, "").replace(/^Sat /, ""))}</b>`}</span>`}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
+      return { order, lev, cmp, vsRow, swing, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${imp.includes("ps-heat t5") ? " low" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}${isFinal || isLive || !pick ? `<span class="ps-sub">${imp === ptsHtml ? sub.replace(/ · <b class="ps-lp[^"]*">[^<]*<\/b>/, "") : sub}</span>` : `<span class="ps-opp">vs ${escapeCd(opp)} · ${movedKickoff(game, g) ? `<b class="ps-void">MOVED · ${escapeCd(movedKickoff(game, g).short)}</b>` : g?.voided ? `<b class="ps-void">${g.voided}</b>` : `<b>${escapeCd(game.kickoffLabel.replace(/ ET$/, "").replace(/^Sat /, ""))}</b>`}</span>`}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
     }
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
@@ -8285,7 +8301,7 @@ async function openInsights(gameId) {
     while (t && t.scrollWidth > t.clientWidth + 1 && px > 7) { px -= 0.5; titleEl.style.fontSize = `${px}px`; }
   });
   const guest = !GAMES.includes(game);
-  modal.querySelector("#insights-sub").textContent = [game.kickoffLabel, game.tv].filter(Boolean).join(" · ");
+  modal.querySelector("#insights-sub").textContent = [movedKickoff(game) ? `Moved to ${movedKickoff(game).label} (was ${game.kickoffLabel.replace(/ ET$/, "")})` : game.kickoffLabel, game.tv].filter(Boolean).join(" · ");
   const links = () => `<div class="ins-h">ELSEWHERE ↗</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
   body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
   modal.classList.remove("hidden");

@@ -3046,7 +3046,7 @@ async function liveGames(env, week = null) {
         const event = events.find((e) => {
           const comp = e?.competitions?.[0];
           const ids = (comp?.competitors || []).map((c) => Number(c?.team?.id));
-          return ids.includes(g.awayId) && ids.includes(g.homeId) && (VOID_STATUS.test(e?.status?.type?.name || e?.competitions?.[0]?.status?.type?.name || "") || sameGameDay(e?.date, g.kickoff));
+          return ids.includes(g.awayId) && ids.includes(g.homeId) && (VOID_STATUS.test(e?.status?.type?.name || e?.competitions?.[0]?.status?.type?.name || "") || sameGameDay(e?.date, g.kickoff) || (Date.parse(e?.date) > Date.parse(g.kickoff) && Date.parse(e?.date) - Date.parse(g.kickoff) < 10 * 86400000));
         });
         if (!event) return { id: g.id, found: false };
 
@@ -3100,6 +3100,7 @@ async function liveGames(env, week = null) {
           awayRecord: recordSummary(away),
           homeRecord: recordSummary(home),
           state: statusType.completed && tooSoonForFinal(g.kickoff) ? "in" : (statusType.state || "pre"), // "pre" | "in" | "post"
+          espnKickoff: event.date || null,
           voided: VOID_STATUS.test(statusType.name || "") || /postpon|cancel|suspend/i.test(`${statusType.shortDetail || ""} ${statusType.detail || ""} ${statusType.description || ""}`) ? (/CANCEL/i.test(`${statusType.name} ${statusType.detail || ""}`) ? "CANCELED" : /SUSPEND/i.test(`${statusType.name} ${statusType.detail || ""}`) ? "SUSPENDED" : /FORFEIT/.test(statusType.name) ? "FORFEIT" : "POSTPONED") : null,
           completed: !!statusType.completed && !tooSoonForFinal(g.kickoff),
           detail: statusType.shortDetail || statusType.detail || "",
