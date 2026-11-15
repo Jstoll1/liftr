@@ -5609,7 +5609,8 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   // impact first inside a slot), then finals. With VS ME on: where the
   // viewer differs first, then the picks they share.
   // Each row shows its kickoff time only when it starts a new time slot.
-  const fill = (list) => list.map((r, i) => { const first = i === 0 || list[i - 1].slot !== r.slot; return r.html.replace("%%FIRST%%", first && i ? " first" : "").replace("%%T%%", first ? r.tcell : ""); }).join("");
+  const isFin = (r) => r.html.startsWith('<div class="ps-row final');
+  const fill = (list) => list.map((r, i) => { const first = i === 0 || list[i - 1].slot !== r.slot; return (opts.sheet && !opts.vs && isFin(r) && (i === 0 || !isFin(list[i - 1])) ? `<div class="ps-cols res"><span>FINAL</span><span></span><span>RESULT</span></div>` : "") + r.html.replace("%%FIRST%%", first && i ? " first" : "").replace("%%T%%", first ? r.tcell : ""); }).join("");
   const section = (title, list) => list.length ? `<div class="ps-sec">${title}</div>${fill(list)}` : "";
   let rowsHtml;
   if (!opts.sheet) rowsHtml = rows.join("");
@@ -5622,7 +5623,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   } else {
     const slots = [];
     for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
-    rowsHtml = (Object.keys(sway).length ? `<div class="ps-cols" title="Their overall chance to win the week if this pick hits or misses, not the chance the pick itself hits"><span>WEEK WIN PROBABILITY ⓘ</span><span class="up">HIT</span><span class="dn">MISS</span></div>` : "") + fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
+    rowsHtml = (Object.keys(sway).length && rows.some((r) => !isFin(r)) ? `<div class="ps-cols" title="Their overall chance to win the week if this pick hits or misses, not the chance the pick itself hits"><span>WEEK WIN PROBABILITY ⓘ</span><span class="up">HIT</span><span class="dn">MISS</span></div>` : "") + fill(slots.flatMap((sl) => sl.list.sort((a, b) => (a.order === 1 ? b.lev - a.lev : 0) || a.t - b.t)));
   }
   // Tiebreaker row: the game, the guess, the real total once final, and
   // the miss, so the tiebreak ordering on the board is explained here.
@@ -5662,7 +5663,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const self = name === currentManager;
       wpRow = `<div class="bs long"><span class="bs-k">LONG SHOT · ${winChanceLabel(wd.pct, wd)}</span><span class="bs-r">${self ? "You need" : `${escapeCd(shown(name))} needs`} nearly all ${open} open pick${open === 1 ? "" : "s"} to hit and the leaders to miss. No single game moves ${self ? "you" : "them"} much on its own.${canPath ? ` Tap <b>Path to Win</b> for the one route that works.` : ""}</span></div>`;
     } else if (opts.sheet && !opts.vs && !sw && !why && wd.pct >= 0.9) {
-      wpRow = `<div class="bs long"><span class="bs-k">IN CONTROL</span><span class="bs-r">Hit or miss, no open game changes this.</span></div>`;
+      wpRow = `<div class="bs long ctl"><span class="bs-k">${clinchedWeek(name) ? "CLINCHED" : "IN CONTROL"}</span><span class="bs-r">No remaining game changes ${name === currentManager ? "your" : `${escapeCd(shown(name))}'s`} projected finish.</span></div>`;
     } else if (opts.sheet && !opts.vs && sw && !why) {
       const m = mirrorOf(name, sw, results), g = sw.game, pk = sw.pick;
       const terms = pk.mode === "SU" ? "to win" : `${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
@@ -6266,6 +6267,13 @@ function gameCats(g) {
 // The week's win chance as shown. Never "0%": a manager the simulation
 // never saw win is either out (no way left to finish first, checked
 // exactly) or a long shot the 5,000 runs were too few to catch.
+// Clinched: the exact walk proved every other manager has no way left.
+function clinchedWeek(name) {
+  const d = winChanceMemo.detail; if (!d || !d[name] || d[name].alive === false) return false;
+  const others = Object.keys(d).filter((n) => n !== name);
+  return others.length > 0 && others.every((n) => d[n].alive === false);
+}
+
 function winChanceLabel(x, d) {
   if (x > 0) return x >= 0.995 ? "99%+" : x < 0.01 ? "<1%" : `${Math.round(x * 100)}%`;
   return d?.alive === false ? "OUT" : "<1%";
@@ -7307,9 +7315,9 @@ function drawRankSheet(keepScroll) {
   if (i < 0) return closeRankSheet();
   const row = rows[i], name = row.name;
   const pct = row.winPct != null ? row.winPct * 100 : null;
-  const txt = pct == null ? "" : winChanceLabel(row.winPct, winChanceMemo.detail?.[name]);
+  const txt = pct == null ? "" : clinchedWeek(name) ? "CLINCHED" : winChanceLabel(row.winPct, winChanceMemo.detail?.[name]);
   const wd = winChanceMemo.detail?.[name];
-  const canPath = pct != null && wd?.alive !== false && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((r) => r.some((p) => p?.hidden));
+  const canPath = pct != null && wd?.alive !== false && !clinchedWeek(name) && winChanceMemo.ctx && !winChanceMemo.ctx.picks.some((r) => r.some((p) => p?.hidden));
   const myPicks = rankSheet.ctx?.cloudPicks?.[currentManager]?.picks;
   const canVs = name !== currentManager && myPicks && Object.values(myPicks).some((p) => p?.team);
   const vsOn = canVs && rankSheet.vs;
@@ -7323,7 +7331,7 @@ function drawRankSheet(keepScroll) {
       <button type="button" class="rs-nav" data-rs="next" aria-label="Next player">›</button>
       <button type="button" class="rs-x" data-rs="x" aria-label="Close">✕</button>
     </div>
-    ${pct != null ? `<div class="rs-hero"><div class="rs-chance"><span class="rs-k">CHANCE TO WIN</span><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}">${txt}</b><span class="rank-wp-bar"><i style="width:${Math.max(pct, pct > 0 ? 2 : 0).toFixed(1)}%"></i></span></div><div class="rs-btns">${vsBtn}${canPath ? `<button type="button" class="rd-path-btn rs-path" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>PATH</button>` : ""}</div></div>` : vsBtn ? `<div class="rs-wp">${vsBtn}</div>` : ""}
+    ${pct != null ? `<div class="rs-hero"><div class="rs-chance"><span class="rs-k">CHANCE TO WIN</span><b class="rs-pct${pct >= 50 ? " hot" : ""}${txt === "OUT" ? " out" : ""}${txt === "CLINCHED" ? " clin" : ""}">${txt}</b></div><div class="rs-btns">${vsBtn}${canPath ? `<button type="button" class="rd-path-btn rs-path" data-path="${escapeCd(name)}"><span class="rd-path-play">▶</span>PATH</button>` : ""}</div></div>` : vsBtn ? `<div class="rs-wp">${vsBtn}</div>` : ""}
     ${solo}
     <span class="rs-count">${i + 1} / ${rows.length}</span><div class="rs-dots" aria-hidden="true">${rows.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("")}</div>`;
   const body = el.querySelector(".rs-body"); const top = body.scrollTop;
