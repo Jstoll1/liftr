@@ -9297,20 +9297,20 @@ html:not(.pro) .game-card, html:not(.pro) .pot-table, html:not(.pro) .rankings-l
    are the hero in clean tabular numbers; the winner bright, the loser
    grey; FINAL muted; your side tinted cyan. Live cards breathe cyan
    (cyan = live), finals stay still. Same card height as before. */
-html:not(.pro) .scorebug { background: linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, 0)) , var(--card-bg) !important; border: 1px solid rgba(255, 255, 255, .07) !important; box-shadow: 0 2px 8px rgba(0, 0, 0, .35) !important; }
+html:not(.pro) .scorebug { background: linear-gradient(180deg, rgba(var(--neon-purple-rgb), .07), rgba(var(--neon-purple-rgb), 0) 45%), var(--card-bg) !important; border: 1px solid rgba(var(--neon-purple-rgb), .28) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 2px 10px rgba(0, 0, 0, .4) !important; }
 html:not(.pro) .scorebug.is-live { border-color: rgba(var(--neon-cyan-rgb), .45) !important; animation: bug-breathe 2.4s ease-in-out infinite; }
 @keyframes bug-breathe { 50% { box-shadow: 0 2px 8px rgba(0, 0, 0, .35), 0 0 12px rgba(var(--neon-cyan-rgb), .3); } }
 @media (prefers-reduced-motion: reduce) { html:not(.pro) .scorebug.is-live { animation: none; } }
 html:not(.pro) .scorebug.is-final .bug-status { color: rgba(255, 255, 255, .42); }
 html:not(.pro) .scorebug.is-live .bug-status { color: var(--neon-cyan); }
-html:not(.pro) .bug-score { font-family: 'Chakra Petch', sans-serif; font-weight: 600; font-size: 15px; line-height: 1; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, .4); text-shadow: none !important; }
-html:not(.pro) .bug-row.leading .bug-score, html:not(.pro) .scorebug.is-final .bug-row.leading .bug-score { color: #fff; text-shadow: none; }
+html:not(.pro) .bug-score { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 11px; line-height: 1; color: rgba(255, 255, 255, .35); text-shadow: none !important; }
+html:not(.pro) .bug-row.leading .bug-score, html:not(.pro) .scorebug.is-final .bug-row.leading .bug-score { color: #fff; text-shadow: 0 0 6px rgba(255, 255, 255, .35) !important; }
 html:not(.pro) .scorebug.is-final .bug-row:not(.leading) { opacity: 1; }
 html:not(.pro) .scorebug.is-final .bug-row:not(.leading) .bug-team { color: rgba(255, 255, 255, .5); }
 html:not(.pro) .bug-team { font-weight: 500; }
 html:not(.pro) .bug-row.leading .bug-team { font-weight: 600; }
 html:not(.pro) .bug-fav { font-family: 'Chakra Petch', sans-serif; font-weight: 500; font-size: 10px; color: rgba(255, 255, 255, .35); }
-html:not(.pro) .bug-row.mine { background: rgba(var(--neon-cyan-rgb), .1); border-radius: 6px; }
+html:not(.pro) .bug-row.mine { background: linear-gradient(90deg, rgba(var(--neon-cyan-rgb), .16), rgba(var(--neon-cyan-rgb), 0) 75%); border-radius: 0; }
 html:not(.pro) .bug-row.mine .bug-team { color: #fff; }
 html:not(.pro) .rankings-list::after { display: none !important; }
 html:not(.pro) .ranking-row { box-shadow: none !important; }
