@@ -117,6 +117,9 @@ body.lz-on { overflow: hidden; }
 .wpc-t i.ac, .wpc-key i.ac { bottom: 0; height: 5px; background: var(--gold); }
 .wpc-key i.pr, .wpc-key i.ac { position: static; }
 .wpc-v { white-space: nowrap; color: var(--dim); text-align: right; } .wpc-v b { color: var(--text, #fff); } .wpc-v em { font-style: normal; font-size: 10.5px; margin-left: 4px; }
+.vline { margin-top: 4px; font-size: 13px; line-height: 1.35; color: var(--meta); }
+.vbs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.vb { font-size: 11px; padding: 2px 7px; border-radius: 10px; background: rgba(255, 255, 255, .06); color: var(--text); white-space: nowrap; }
 .exp-k { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
 .exp-k > div { padding: 9px 10px; border-radius: 10px; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); min-width: 0; }
 .exp-k em { display: block; font: 700 9.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); font-style: normal; }
@@ -2222,6 +2225,21 @@ body::before { display: none; }
     const avgMs = lens.length ? lens.reduce((t, x) => t + x, 0) / lens.length : 8 * 60000;
     const cutLo = Math.max(90000, avgMs * 0.6), cutHi = Math.max(cutLo + 60000, avgMs * 1.5);
     const mnt = (x) => `${Math.round(x / 60000)}m`;
+    // What a visit did, in a sentence, plus badges for what matters. Page
+    // views ("Went to", "Looked at") are scenery: they drop out of the
+    // action list and the summary, which leads with real choices.
+    const PASSIVE = /^(Went to |Looked at )/;
+    const BADGES = [[/Saw a message from the Chief/, "💬", "saw your message"], [/Answered the Chief/, "✅", "answered your message"], [/Saved a pick|Chang/, "✏️", "picks"], [/Opened a player card/, "🔍", "player card"], [/Asked Chief|Asked the history/, "❓", "asked the Chief"], [/Path to Win|PATH/i, "▶", "path to win"], [/Compared two players/, "⚔", "head to head"], [/^⚠/, "⚠", "issue"]];
+    const sumOf = (acts) => {
+      const real = acts.filter((a) => !PASSIVE.test(a.a));
+      const seen = [...new Set(acts.filter((a) => PASSIVE.test(a.a)).map((a) => a.a.replace(/^(Went to |Looked at (the )?)/, "")))];
+      const did = [...new Set(real.filter((a) => !/^⚠/.test(a.a)).map((a) => `${a.a.replace(/^🧠 /, "")}${a.d && !/^for /.test(a.d) ? ` (${a.d})` : ""}`))];
+      const badges = BADGES.filter(([re]) => acts.some((a) => re.test(a.a))).map(([, ic, t]) => `<span class="vb" title="${t}">${ic} ${t}</span>`).join("");
+      const rest = did.filter((t) => !BADGES.some(([re]) => re.test(t)));
+      if (rest.length < did.length) { did.length = 0; did.push(...rest); }
+      const line = did.length ? did.slice(0, 3).join(" · ") + (did.length > 3 ? ` · +${did.length - 3} more` : "") : seen.length ? `checked ${seen.slice(0, 3).join(", ")}` : badges ? "" : "opened, nothing tapped";
+      return { line, badges, real };
+    };
     let day = null;
     const cardOf = (s) => {
       const id = `${s.n}|${s.start}`, LIM = 6;
@@ -2238,8 +2256,8 @@ body::before { display: none; }
       const meta = `${hm(s.start)}${s.live ? "" : s.done || s.end > s.start ? ` to ${hm(s.end)}` : ""}${s.live && people[s.n]?.screen && SCREENS[people[s.n].screen] ? ` · on ${SCREENS[people[s.n].screen]}` : ""}`;
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
       return `<div class="sess t-${tier}${issues.length ? errs.length ? " bad" : " warn" : ""}${open ? " open" : " shut"}${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
-        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm"><span class="nmt">${esc(name(s.n))}</span>${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}</div><div class="meta num">${esc(meta)}</div><div class="vsum"><span>${s.acts.length} action${s.acts.length === 1 ? "" : "s"}</span>${used ? `<span>${used} feature${used === 1 ? "" : "s"}</span>` : ""}${issues.length ? `<span class="iss${errs.length ? " bad" : ""}">⚠ ${issues.length} issue${issues.length === 1 ? "" : "s"}</span>` : ""}</div></div><div class="sh-r">${s.live ? `<span class="badge num" data-since="${s.since}">${clock(now - s.since)}</span>` : `<span class="tia num"><b>${esc(dur(ms))}</b><small>in app</small></span>`}<i class="vcar">${open ? "Close ▴" : "Open ▾"}</i>${open ? `<button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button>` : ""}</div></div>
-        ${s.acts.length && open ? `<ul class="acts">${acts.map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${/^⚠/.test(a.a) ? " iss" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
+        <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm"><span class="nmt">${esc(name(s.n))}</span>${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}</div><div class="meta num">${esc(meta)}</div>${(() => { const sm = sumOf(s.acts); return `${sm.line ? `<div class="vline">${esc(sm.line)}</div>` : ""}${sm.badges ? `<div class="vbs">${sm.badges}</div>` : ""}`; })()}</div><div class="sh-r">${s.live ? `<span class="badge num" data-since="${s.since}">${clock(now - s.since)}</span>` : `<span class="tia num"><b>${esc(dur(ms))}</b><small>in app</small></span>`}<i class="vcar">${open ? "Close ▴" : "Open ▾"}</i>${open ? `<button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button>` : ""}</div></div>
+        ${s.acts.length && open ? `<ul class="acts">${(acts.some((a) => !PASSIVE.test(a.a)) ? acts.filter((a) => !PASSIVE.test(a.a)) : acts).map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${/^⚠/.test(a.a) ? " iss" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
       </div>`;
     };
     // Inside a group: one line per visit (time, device, length, what it
@@ -2249,17 +2267,17 @@ body::before { display: none; }
       const id = `${s.n}|${s.start}`, open = st.open.has(id);
       const ms = Math.max(s.end - s.start, 1000);
       const issues = s.acts.filter((a) => /^⚠/.test(a.a));
-      const what = s.acts.filter((a) => !/^⚠/.test(a.a)).map((a) => a.a.replace(/^Went to /, "")).filter((x, i, l) => l.indexOf(x) === i).slice(0, 3).join(" · ");
+      const what = sumOf(s.acts).line || BADGES.filter(([re]) => s.acts.some((a) => re.test(a.a))).map(([, ic, t]) => `${ic} ${t}`).join(" · ");
       return `<div class="gv${open ? " open" : ""}${issues.length ? " warn" : ""}" data-v="${esc(id)}">
         <div class="gv-h" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}"><time class="num">${esc(hm(s.start))}</time><span class="gv-d num">${esc(dur(ms))}${s.app ? ` · ${s.app === "home" ? "app" : "web"}` : ""}</span><span class="gv-w">${esc(what || (issues[0] ? issues[0].a.replace(/^⚠\s*/, "") : `${s.acts.length} action${s.acts.length === 1 ? "" : "s"}`))}${issues.length ? ` <b class="iss">⚠ ${issues.length}</b>` : ""}</span>${open ? `<button type="button" class="gv-cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" title="Copy this visit">${st.copied === id ? "✓" : COPY_ICON}</button>` : ""}<i class="gv-car">${open ? "▴" : "▾"}</i></div>
-        ${open ? `<ul class="acts">${s.acts.map((a) => `<li class="${/^⚠/.test(a.a) ? "iss" : ""}"><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}</span></li>`).join("")}</ul>` : ""}
+        ${open ? `<ul class="acts">${(s.acts.some((a) => !PASSIVE.test(a.a)) ? s.acts.filter((a) => !PASSIVE.test(a.a)) : s.acts).map((a) => `<li class="${/^⚠/.test(a.a) ? "iss" : ""}"><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}</span></li>`).join("")}</ul>` : ""}
       </div>`;
     };
     const rowsOf = (list) => {
       const out = [];
       let quiet = [];
-      const flush = () => { if (!quiet.length) return; out.push(quiet.length === 1 ? `<div class="gv quiet"><div class="gv-h"><time class="num">${esc(hm(quiet[0].start))}</time><span class="gv-d num">${esc(dur(Math.max(quiet[0].end - quiet[0].start, 1000)))}</span><span class="gv-w">opened, nothing tapped</span></div></div>` : `<div class="gv quiet"><div class="gv-h"><time class="num">${esc(hm(quiet[quiet.length - 1].start))}</time><span class="gv-d num">${quiet.length}×</span><span class="gv-w">quick opens, nothing tapped</span></div></div>`); quiet = []; };
-      for (const v of list) { if (!v.acts.length) quiet.push(v); else { flush(); out.push(rowOf(v)); } }
+      const flush = () => { if (!quiet.length) return; out.push(quiet.length === 1 ? `<div class="gv quiet"><div class="gv-h"><time class="num">${esc(hm(quiet[0].start))}</time><span class="gv-d num">${esc(dur(Math.max(quiet[0].end - quiet[0].start, 1000)))}</span><span class="gv-w">opened, nothing tapped</span></div></div>` : `<div class="gv quiet"><div class="gv-h"><time class="num">${esc(hm(quiet[quiet.length - 1].start))}</time><span class="gv-d num">${quiet.length}×</span><span class="gv-w">quick peeks</span></div></div>`); quiet = []; };
+      for (const v of list) { if (!v.acts.length || (v.end - v.start < 5000 && v.acts.every((a) => PASSIVE.test(a.a)))) quiet.push(v); else { flush(); out.push(rowOf(v)); } }
       flush();
       return out.join("");
     };
@@ -2284,7 +2302,7 @@ body::before { display: none; }
       const nErr = g.list.reduce((t, v) => t + v.acts.filter((x) => /^⚠/.test(x.a) && /error/i.test(x.a)).length, 0);
       const isNew = g.list.some((v) => v.end > seenBase.at);
       return `${head}<div class="sess grp${gopen ? " open" : " shut"}${nIss ? nErr ? " bad" : " warn" : ""}" data-v="${esc(gid)}">
-        <div class="sh" data-open="${esc(gid)}" role="button" tabindex="0" aria-expanded="${gopen}">${av(g.n, "lg")}<div class="who"><div class="nm">${esc(name(g.n))}${isNew ? `<i class="newb">NEW</i>` : ""}<span class="vd num">${g.list.length} visits</span></div><div class="meta num">${esc(hm(first.start))} to ${esc(hm(last.end))}</div><div class="vsum"><span>${nActs} action${nActs === 1 ? "" : "s"}</span>${nIss ? `<span class="iss${nErr ? " bad" : ""}">⚠ ${nIss} issue${nIss === 1 ? "" : "s"}</span>` : ""}</div></div><div class="sh-r"><span class="tia num"><b>${esc(dur(total))}</b><small>in app</small></span><i class="vcar">${gopen ? "Close ▴" : "Open ▾"}</i></div></div>
+        <div class="sh" data-open="${esc(gid)}" role="button" tabindex="0" aria-expanded="${gopen}">${av(g.n, "lg")}<div class="who"><div class="nm">${esc(name(g.n))}${isNew ? `<i class="newb">NEW</i>` : ""}<span class="vd num">${g.list.length} opens</span></div><div class="meta num">${esc(hm(first.start))} to ${esc(hm(last.end))}</div>${(() => { const sm = sumOf(g.list.flatMap((v) => v.acts)); return `${sm.line ? `<div class="vline">${esc(sm.line)}</div>` : ""}${sm.badges ? `<div class="vbs">${sm.badges}</div>` : ""}`; })()}</div><div class="sh-r"><span class="tia num"><b>${esc(dur(total))}</b><small>in app</small></span><i class="vcar">${gopen ? "Close ▴" : "Open ▾"}</i></div></div>
         ${gopen ? `<div class="grp-in">${rowsOf(g.list)}</div>` : ""}
       </div>`;
     }).join("");
