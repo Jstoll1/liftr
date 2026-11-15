@@ -3604,7 +3604,7 @@ function paintScoreboard(fetched, live, cached) {
   // A failed picks read with nothing saved would draw everyone on zero, a
   // board that looks like the week just started. Keep what is on screen
   // and let the next poll try again.
-  if (fetched === null && !lastGoodCloudPicks && !cached) { console.warn("picks unavailable; keeping the board"); return; }
+  const noPicks = fetched === null && !lastGoodCloudPicks && !cached;
   const rawPicks = fetched !== null ? fetched : (lastGoodCloudPicks || {});
   const cloudPicks = boardCloudPicks(rawPicks);
   if (fetched !== null && !cached) lastGoodCloudPicks = rawPicks;
@@ -3615,6 +3615,7 @@ function paintScoreboard(fetched, live, cached) {
 
   if (!cached) archiveWeekIfFinal(results);
   renderLiveScores(live, cloudPicks);
+  if (noPicks) { console.warn("picks unavailable; keeping the leaderboard"); return; }
   // Ranked once and handed to both, so the table and the leaderboard
   // cannot end up in different orders.
   const ranked = rankManagers(cloudPicks, results);
