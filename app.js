@@ -5719,7 +5719,8 @@ function rankingSubline(row, actualTotal, tbGame, inFlight = null, results = nul
       } else if (pick) max += pickWorth(g, pick);
     }
     const lead = row.submittedCount < GAMES.length ? `${picked} · ` : "";
-    return `${lead}${w}-${l} · <span class="rank-max">MAX <b>${max}</b></span>${inFlight ? ` · <span class="rank-inflight${inFlight < 0 ? " neg" : ""}">${signedPts(inFlight)} LIVE</span>` : ""}`;
+    const tail = row.tbSplit ? `<span class="rank-tb ${row.tbSplit}">${row.tbSplit === "win" ? "WON TB" : "TB"} · OFF <b>${row.tbDiff}</b></span>` : `<span class="rank-max">MAX <b>${max}</b></span>`;
+    return `${lead}${w}-${l} · ${tail}${inFlight ? ` · <span class="rank-inflight${inFlight < 0 ? " neg" : ""}">${signedPts(inFlight)} LIVE</span>` : ""}`;
   }
   const off = row.tbGuess === null || actualTotal === null ? "OFF –" : `OFF ${row.tbDiff}`;
   return `${picked} · ${guess} · ${off}`;
@@ -6149,6 +6150,9 @@ function rankManagers(cloudPicks, results) {
   rows.forEach((row, i) => {
     const next = rows[i + 1];
     row.tied = (rows[i - 1] && rows[i - 1].place === row.place) || (next && next.place === row.place);
+    // Level on points for first and split by the tiebreaker: both cards say so.
+    const level = rows.filter((r) => r.score === row.score);
+    row.tbSplit = actualTotal !== null && row.score > 0 && row.score === rows[0].score && level.length > 1 && Number.isFinite(row.tbDiff) ? (row.tbDiff === Math.min(...level.map((r) => r.tbDiff)) ? "win" : "lose") : null;
     row.subline = rankingSubline(row, actualTotal, tiebreakerGame, null, results);
   });
   return rows;
