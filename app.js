@@ -7978,9 +7978,11 @@ function isVideoArticle(a) {
 async function fetchWiderNews(gameId) {
   if (!WORKER_URL) return [];
   try {
-    const res = await fetch(`${WORKER_URL}/insights/news?week=${currentWeek}&game=${gameId}&t=${Math.floor(Date.now() / 600000)}`);
-    if (!res.ok) return [];
-    const j = await res.json();
+    const get = (t) => fetch(`${WORKER_URL}/insights/news?week=${currentWeek}&game=${gameId}&t=${t}`).then((r) => (r.ok ? r.json() : { items: [] }));
+    // The Worker answers a cold fetch in about three seconds and finishes it
+    // behind the scenes; one quiet retry picks up the stored result.
+    let j = await get(Math.floor(Date.now() / 600000));
+    if (j.pending) { await new Promise((r) => setTimeout(r, 4000)); j = await get(Date.now()).catch(() => j); }
     const items = j.items || [];
     items.errors = j.errors || [];
     return items;
@@ -7997,7 +7999,9 @@ async function fetchNewsInjuries(gameId, items) {
       ? await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items }) })
       : await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}`);
     if (!res.ok) return null;
-    return await res.json();
+    const j = await res.json();
+    if (j?.pending) { await new Promise((r) => setTimeout(r, 4000)); return await fetch(`${WORKER_URL}/insights/injuries?week=${currentWeek}&game=${gameId}&t=${Date.now()}`).then((r) => (r.ok ? r.json() : j)).catch(() => j); }
+    return j;
   } catch { return null; }
 }
 // GDELT straight from the phone: a free news index whose API allows
