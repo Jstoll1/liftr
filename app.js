@@ -4659,7 +4659,7 @@ function renderLiveScores(live, cloudPicks) {
           ? "FINAL"
           : isLive
             ? shortStatus(g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
-            : movedKickoff(game, g) ? `<span class="bug-void">MOVED · ${movedKickoff(game, g).short}</span>` : g?.voided ? `<span class="bug-void">${g.voided === "POSTPONED" ? "PPD" : g.voided === "CANCELED" ? "CNCL" : g.voided === "SUSPENDED" ? "SUSP" : g.voided}</span>` : (found && g.state === "pre" ? timeOnly : found ? shortStatus(g.detail || "Scheduled") : Date.now() - Date.parse(game.kickoff) > 45 * 60000 ? `<span class="bug-void">NO SCORE</span>` : "Waiting…");
+            : movedKickoff(game, g) ? `<span class="bug-void">MOVED · ${movedKickoff(game, g).short}</span>` : g?.voided ? `<span class="bug-void">${g.voided === "POSTPONED" ? "PPD" : g.voided === "CANCELED" ? "CNCL" : g.voided === "SUSPENDED" ? "SUSP" : g.voided}</span>` : (found && g.state === "pre" ? timeOnly : found ? shortStatus(g.detail || "Scheduled") : Date.now() - Date.parse(game.kickoff) > 45 * 60000 && Object.values(live || {}).some((x) => x?.found) ? `<span class="bug-void">NO SCORE</span>` : "Waiting…");
       // The channel matters right up to the final whistle, not just before
       // kickoff: on a ten game Saturday the question "which channel is
       // that one on" is asked most often about a game already in
