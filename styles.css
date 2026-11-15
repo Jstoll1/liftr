@@ -9775,7 +9775,7 @@ body.rs-open #ask-fab { display: none; }
 .h2-head span:last-child { text-align: right; color: var(--neon-cyan); }
 .h2-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr); align-items: center; padding: 6px 0; border-top: 1px solid rgba(150, 160, 190, .09); cursor: pointer; position: relative; }
 .h2-row .h2-tm b { font-weight: 500; color: rgba(255, 255, 255, .6); }
-.h2-row .h2-stake .pts, .h2-row .h2-stake .pts.up, .h2-row .h2-stake .pts.dn { color: rgba(255, 255, 255, .45); }
+#rank-sheet .h2-row:not(.diff):not(.sdiff) .h2-stake .pts { color: rgba(255, 255, 255, .45); }
 .h2-row .h2-tm img { opacity: .55; }
 .h2-row:not(.diff) .h2-tm small { color: rgba(255, 255, 255, .45); }
 .h2-row.diff .h2-tm b { font-weight: 700; color: #fff; }
