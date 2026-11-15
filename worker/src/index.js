@@ -248,7 +248,7 @@ const app = {
         const slate = await env.LIFTR_KV.get(gamesKey(week), "json");
         const g = (slate?.games || []).find((x) => Number(x.id) === Number(url.searchParams.get("game")));
         if (!g) return json({ items: [], error: "no such game" }, 404, corsHeaders);
-        return json(await gameNews(env, g, ctx), 200, { ...corsHeaders, "Cache-Control": "public, max-age=600" });
+        { const out = await gameNews(env, g, ctx); return json(out, 200, { ...corsHeaders, "Cache-Control": out.pending ? "no-store" : "public, max-age=600" }); }
       } catch (err) {
         console.error("insights news", err?.stack || String(err));
         return json({ items: [], error: "News failed" }, 200, corsHeaders);
@@ -697,11 +697,12 @@ async function handleOps(request, env, corsHeaders, url) {
 const READ_TTL = { "/games": 15, "/weeks": 30, "/results": 20, "/season": 30, "/qotw": 15, "/avatars": 60, "/ats": 600, "/insights/game": 120, "/insights/news": 300, "/insights/injuries": 600, "/app-control": 30, "/lightning": 5 };
 const PERSONAL = ["key", "device", "token", "me", "slate", "admin"];
 const memCache = new Map();
+let memBytes = 0;
 // Bumped on every clear: an answer built while something was written is
 // not kept, or a background slate refresh that lands mid-request would be
 // undone by the older answer the request then stores.
 let cacheGen = 0;
-const clearReadCache = () => { cacheGen++; memCache.clear(); };
+const clearReadCache = () => { cacheGen++; memCache.clear(); memBytes = 0; };
 // Tests that change storage behind the Worker's back clear it by hand.
 export function resetReadCache() { clearReadCache(); }
 // One cache per storage binding (a test's fresh KV never sees another's).
@@ -751,9 +752,19 @@ async function cachedRead(request, env, ctx, run) {
   const headers = Object.fromEntries(r.headers);
   // Something was written meanwhile: answer, but do not keep it.
   if (gen !== cacheGen) return new Response(body, { status: 200, headers });
-  memCache.set(key, { at: now, body, status: 200, headers });
-  if (memCache.size > 300) memCache.delete(memCache.keys().next().value);
-  if (edge) { try { ctx?.waitUntil?.(edge.put(edgeKey, new Response(body, { status: 200, headers: { ...headers, "Cache-Control": `public, max-age=${ttl}` } }))); } catch {} }
+  // Bounded by size, not just count: big bodies (the season's weeks, news)
+  // filled an isolate past its memory limit. Expired copies go first, then
+  // the oldest, and nothing over 2 MB is held in memory at all.
+  // A "still looking" reply is never kept: the next open gets the real one.
+  if (body.length <= 2e6 && !body.includes('"pending":true')) {
+    memCache.set(key, { at: now, body, status: 200, headers, ttl });
+    memBytes += body.length;
+    if (memBytes > 16e6 || memCache.size > 300) {
+      for (const [k, v] of memCache) if (now - v.at >= v.ttl * 1000) { memBytes -= v.body.length; memCache.delete(k); }
+      while ((memBytes > 16e6 || memCache.size > 300) && memCache.size) { const [k, v] = memCache.entries().next().value; memBytes -= v.body.length; memCache.delete(k); }
+    }
+  }
+  if (edge && !body.includes('"pending":true')) { try { ctx?.waitUntil?.(edge.put(edgeKey, new Response(body, { status: 200, headers: { ...headers, "Cache-Control": `public, max-age=${ttl}` } }))); } catch {} }
   return new Response(body, { status: 200, headers });
 }
 
