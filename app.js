@@ -649,6 +649,10 @@ function espnScoreboardDates() {
     // Eastern, because that is the day ESPN files a game under, and a
     // Friday night kickoff is already Saturday in UTC.
     days.add(new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, ""));
+    // A game ESPN moved (postponed to Sunday, say) is filed under its new
+    // day; ask that day too or the card never goes live or final.
+    const moved = Date.parse(latestLive[g.id]?.espnKickoff);
+    if (Number.isFinite(moved)) days.add(new Date(moved).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, ""));
   }
   return [...days].sort();
 }
