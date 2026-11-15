@@ -5661,6 +5661,9 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const open = GAMES.filter((x) => !results[x.id] && state.picks[x.id]?.team).length;
       const self = name === currentManager;
       wpRow = `<div class="bs long"><span class="bs-k">LONG SHOT · ${winChanceLabel(wd.pct, wd)}</span><span class="bs-r">${self ? "You need" : `${escapeCd(shown(name))} needs`} nearly all ${open} open pick${open === 1 ? "" : "s"} to hit and the leaders to miss. No single game moves ${self ? "you" : "them"} much on its own.${canPath ? ` Tap <b>Path to Win</b> for the one route that works.` : ""}</span></div>`;
+    } else if (opts.sheet && !opts.vs && !sw && !why && wd.pct >= 0.9) {
+      const self = name === currentManager;
+      wpRow = `<div class="bs long"><span class="bs-k">IN CONTROL · ${winChanceLabel(wd.pct, wd)}</span><span class="bs-r">No open game changes ${self ? "your" : `${escapeCd(shown(name))}'s`} odds. Hit or miss, ${self ? "you stay" : "they stay"} on top.</span></div>`;
     } else if (opts.sheet && !opts.vs && sw && !why) {
       const m = mirrorOf(name, sw, results), g = sw.game, pk = sw.pick;
       const terms = pk.mode === "SU" ? "to win" : `${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
@@ -6552,7 +6555,7 @@ function weekWinChances(cloudPicks, results, live) {
       const lev = gap * p * (1 - p);
       const entry = { gap, lev: thin ? 0 : lev, ifHit, ifMiss, pHit: p, game: models[k].g, pick: picks[i][k], thin };
       all.push(entry);
-      if (!thin && (!best || lev > best.lev)) best = entry;
+      if (!thin && gap >= 0.02 && (!best || lev > best.lev)) best = entry;
     }
     all.sort((x, y) => y.lev - x.lev);
     // Final points they could finish on, how often, and how often that wins.
