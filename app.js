@@ -5662,8 +5662,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const self = name === currentManager;
       wpRow = `<div class="bs long"><span class="bs-k">LONG SHOT · ${winChanceLabel(wd.pct, wd)}</span><span class="bs-r">${self ? "You need" : `${escapeCd(shown(name))} needs`} nearly all ${open} open pick${open === 1 ? "" : "s"} to hit and the leaders to miss. No single game moves ${self ? "you" : "them"} much on its own.${canPath ? ` Tap <b>Path to Win</b> for the one route that works.` : ""}</span></div>`;
     } else if (opts.sheet && !opts.vs && !sw && !why && wd.pct >= 0.9) {
-      const self = name === currentManager;
-      wpRow = `<div class="bs long"><span class="bs-k">IN CONTROL · ${winChanceLabel(wd.pct, wd)}</span><span class="bs-r">No open game changes ${self ? "your" : `${escapeCd(shown(name))}'s`} odds. Hit or miss, ${self ? "you stay" : "they stay"} on top.</span></div>`;
+      wpRow = `<div class="bs long"><span class="bs-k">IN CONTROL</span><span class="bs-r">Hit or miss, no open game changes this.</span></div>`;
     } else if (opts.sheet && !opts.vs && sw && !why) {
       const m = mirrorOf(name, sw, results), g = sw.game, pk = sw.pick;
       const terms = pk.mode === "SU" ? "to win" : `${pk.team === g.favorite ? "−" : "+"}${g.spread}`;
