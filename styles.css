@@ -9774,7 +9774,15 @@ body.rs-open #ask-fab { display: none; }
 .h2-head span:nth-child(2) { text-align: center; font-size: 5.5px; color: rgba(255, 255, 255, .4); }
 .h2-head span:last-child { text-align: right; color: var(--neon-cyan); }
 .h2-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr); align-items: center; padding: 6px 0; border-top: 1px solid rgba(150, 160, 190, .09); cursor: pointer; position: relative; }
-.h2-row.same .h2-tm b, .h2-row.same .h2-stake .pts { color: rgba(255, 255, 255, .7); }
+.h2-row .h2-tm b { font-weight: 500; color: rgba(255, 255, 255, .6); }
+.h2-row .h2-stake .pts, .h2-row .h2-stake .pts.up, .h2-row .h2-stake .pts.dn { color: rgba(255, 255, 255, .45); }
+.h2-row .h2-tm img { opacity: .55; }
+.h2-row:not(.diff) .h2-tm small { color: rgba(255, 255, 255, .45); }
+.h2-row.diff .h2-tm b { font-weight: 700; color: #fff; }
+.h2-row.diff .h2-tm img { opacity: 1; }
+.h2-row.diff .h2-stake .pts, .h2-row.sdiff .h2-stake .pts { color: #fff; }
+.h2-row.diff .h2-stake .pts.up, .h2-row.sdiff .h2-stake .pts.up { color: var(--neon-green); }
+.h2-row.diff .h2-stake .pts.dn, .h2-row.sdiff .h2-stake .pts.dn { color: var(--neon-pink); }
 .h2-row.diff::after, .h2-row.sdiff::after { content: ""; position: absolute; left: -9px; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: rgba(255, 255, 255, .55); }
 .h2-row.live::after { display: none; }
 .h2-sum { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 4px 8px; padding: 6px 0 10px; border-bottom: 1px solid var(--card-border); margin-bottom: 2px; }
