@@ -10532,7 +10532,11 @@ function playerSeason(name) {
       const game = g ? `${g.awayShort} ${Number.isFinite(as) ? as : ""} at ${g.homeShort} ${Number.isFinite(hs) ? hs : ""}`.replace(/\s+/g, " ").trim() : "";
       const margin = Number.isFinite(as) && Number.isFinite(hs) && g ? (as === hs ? "tied" : `${as > hs ? g.awayShort : g.homeShort} by ${Math.abs(as - hs)}`) : "";
       const line = g && g.spread != null ? `${g.favorite === g.home ? g.homeShort : g.awayShort} −${g.spread}` : "";
-      picks.push({ who: name, lock: !!lg.lock, teamFull: lg.team, teamId: g ? (lg.team === g.home ? g.homeId : lg.team === g.away ? g.awayId : null) : null, awayId: g?.awayId, homeId: g?.homeId, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, sameNames, oppNames, with_, of: (wk.rows || []).length, others, game, margin, line });
+      // Points short of what the pick needed (−1.5 losing by 30 = 31.5).
+      const tMargin = g && Number.isFinite(as) && Number.isFinite(hs) ? (lg.team === g.away ? as - hs : hs - as) : null;
+      const lineN = lg.mode === "SU" ? 0 : Number(String(lg.line || "").replace("−", "-"));
+      const missBy = tMargin === null ? 0 : -(tMargin + (Number.isFinite(lineN) ? lineN : 0));
+      picks.push({ who: name, missBy, lock: !!lg.lock, teamFull: lg.team, teamId: g ? (lg.team === g.home ? g.homeId : lg.team === g.away ? g.awayId : null) : null, awayId: g?.awayId, homeId: g?.homeId, away: g?.away, home: g?.home, awayShort: g?.awayShort, homeShort: g?.homeShort, as, hs, week: wk.week, hit, pts: hit ? lg.pts || 0 : 0, worth: lg.worth || lg.pts || 0, text: lg.mode === "SU" ? `${team} to win` : `${team} ${lg.line || ""} on the spread`.replace(/\s+/g, " ").trim(), mode: lg.mode, sameNames, oppNames, with_, of: (wk.rows || []).length, others, game, margin, line });
     }
   }
   const played = scores.filter((x) => !x.missed);
@@ -10541,8 +10545,8 @@ function playerSeason(name) {
   const gap = (p) => (p.oppNames?.length || 0) - (p.with_ || 1);
   // Best: most points, then the loneliest call (1 vs 9 beats 5 vs 5).
   const best = picks.filter((p) => p.hit).sort((a, b) => b.pts - a.pts || gap(b) - gap(a))[0];
-  // Worst: the miss where you were most alone against a right league.
-  const worst = picks.filter((p) => !p.hit).sort((a, b) => gap(b) - gap(a) || b.others - a.others || b.worth - a.worth)[0];
+  // Worst: the biggest miss on the field; being alone on it only breaks ties.
+  const worst = picks.filter((p) => !p.hit).sort((a, b) => b.missBy - a.missBy || gap(b) - gap(a) || b.worth - a.worth)[0];
   return {
     scores, w, l, best, worst,
     top: sorted[0], low: sorted[sorted.length - 1],
