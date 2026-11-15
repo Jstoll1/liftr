@@ -9303,7 +9303,7 @@ html:not(.pro) .scorebug.is-live { border-color: rgba(var(--neon-cyan-rgb), .45)
 @media (prefers-reduced-motion: reduce) { html:not(.pro) .scorebug.is-live { animation: none; } }
 html:not(.pro) .scorebug.is-final .bug-status { color: rgba(255, 255, 255, .42); }
 html:not(.pro) .scorebug.is-live .bug-status { color: var(--neon-cyan); }
-html:not(.pro) .bug-score { font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 18px; line-height: 1; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, .4); text-shadow: none !important; }
+html:not(.pro) .bug-score { font-family: 'Chakra Petch', sans-serif; font-weight: 600; font-size: 15px; line-height: 1; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, .4); text-shadow: none !important; }
 html:not(.pro) .bug-row.leading .bug-score, html:not(.pro) .scorebug.is-final .bug-row.leading .bug-score { color: #fff; text-shadow: none; }
 html:not(.pro) .scorebug.is-final .bug-row:not(.leading) { opacity: 1; }
 html:not(.pro) .scorebug.is-final .bug-row:not(.leading) .bug-team { color: rgba(255, 255, 255, .5); }
