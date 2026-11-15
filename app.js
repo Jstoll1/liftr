@@ -741,6 +741,8 @@ function parseEspnEvents(events, games = GAMES) {
       awayRecord: recordOf(away),
       homeRecord: recordOf(home),
       state: statusType.state || "pre",
+      // Postponed, canceled, suspended or forfeit: ESPN's word for it.
+      voided: isVoid(statusType) || isVoid(st1) || isVoid(st2) ? (/CANCEL/.test(statusType.name || st1.name || st2.name || "") ? "CANCELED" : /SUSPEND/.test(statusType.name || st1.name || st2.name || "") ? "SUSPENDED" : /FORFEIT/.test(statusType.name || st1.name || st2.name || "") ? "FORFEIT" : "POSTPONED") : null,
       completed: !!statusType.completed,
       rawStatus: { comp: { name: st1.name, state: st1.state, completed: st1.completed, detail: st1.shortDetail }, event: { name: st2.name, state: st2.state, completed: st2.completed, detail: st2.shortDetail } },
       detail: statusType.shortDetail || statusType.detail || "",
@@ -4606,7 +4608,7 @@ function renderLiveScores(live, cloudPicks) {
           ? "FINAL"
           : isLive
             ? shortStatus(g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
-            : (found && g.state === "pre" ? timeOnly : found ? shortStatus(g.detail || "Scheduled") : "Waiting…");
+            : g?.voided ? `<span class="bug-void">${g.voided}</span>` : (found && g.state === "pre" ? timeOnly : found ? shortStatus(g.detail || "Scheduled") : "Waiting…");
       // The channel matters right up to the final whistle, not just before
       // kickoff: on a ten game Saturday the question "which channel is
       // that one on" is asked most often about a game already in
@@ -5419,7 +5421,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
     const g = live[game.id];
     const isFinal = !!results[game.id];
     const isLive = !isFinal && g && g.found && g.state === "in";
-    const statusTag = isFinal ? `<span class="rd-tag final">FINAL</span>` : isLive ? `<span class="rd-tag live"><i class="rd-dot"></i>LIVE${g.detail ? ` · ${g.detail.replace(/\s*-\s*/, " ")}` : ""}</span>` : locked ? `<span class="rd-tag wait">WAITING</span>` : `<span class="rd-tag time">${game.kickoffLabel.replace(/^(Sat|Sun) /, "")}</span>`;
+    const statusTag = isFinal ? `<span class="rd-tag final">FINAL</span>` : isLive ? `<span class="rd-tag live"><i class="rd-dot"></i>LIVE${g.detail ? ` · ${g.detail.replace(/\s*-\s*/, " ")}` : ""}</span>` : g?.voided ? `<span class="rd-tag wait">${g.voided}</span>` : locked ? `<span class="rd-tag wait">WAITING</span>` : `<span class="rd-tag time">${game.kickoffLabel.replace(/^(Sat|Sun) /, "")}</span>`;
 
     let pickHtml, ptsHtml = `<span class="rd-pts none">–</span>`;
     let pickedSide = null;
@@ -5541,7 +5543,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const tcell = isLive ? `<b class="live">LIVE</b>` : isFinal ? `<b>FINAL</b>` : kl ? `<b>${kl[2]}</b><small>${kl[1] === "Sat" ? "" : kl[1].toUpperCase() + " "}${kl[3] || ""}</small>` : "";
       const order = isLive ? 0 : isFinal ? 2 : 1;
       const slot = isLive ? "LIVE" : isFinal ? "FINAL" : game.kickoffLabel;
-      return { order, lev, cmp, vsRow, swing, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${imp.includes("ps-heat t5") ? " low" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}${isFinal || isLive || !pick ? `<span class="ps-sub">${imp === ptsHtml ? sub.replace(/ · <b class="ps-lp[^"]*">[^<]*<\/b>/, "") : sub}</span>` : `<span class="ps-opp">vs ${escapeCd(opp)} · <b>${escapeCd(game.kickoffLabel.replace(/ ET$/, "").replace(/^Sat /, ""))}</b></span>`}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
+      return { order, lev, cmp, vsRow, swing, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${imp.includes("ps-heat t5") ? " low" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}${isFinal || isLive || !pick ? `<span class="ps-sub">${imp === ptsHtml ? sub.replace(/ · <b class="ps-lp[^"]*">[^<]*<\/b>/, "") : sub}</span>` : `<span class="ps-opp">vs ${escapeCd(opp)} · ${g?.voided ? `<b class="ps-void">${g.voided}</b>` : `<b>${escapeCd(game.kickoffLabel.replace(/ ET$/, "").replace(/^Sat /, ""))}</b>`}</span>`}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
     }
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
