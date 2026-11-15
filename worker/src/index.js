@@ -2907,6 +2907,7 @@ const etDay = (iso) => {
 // Guards against a wrong result: the event must be the slate's game (same
 // day, not another meeting of the two teams), and nothing is final until
 // the game has had time to be played (2 h 15 m after kickoff).
+const VOID_STATUS = /^STATUS_(POSTPONED|CANCELED|CANCELLED|SUSPENDED|FORFEIT)/;
 const sameGameDay = (evDate, kickoff) => { const a = Date.parse(evDate), b = Date.parse(kickoff); return !Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a - b) < 36 * 3600000; };
 const tooSoonForFinal = (kickoff) => { const k = Date.parse(kickoff); return Number.isFinite(k) && Date.now() < k + 135 * 60000; };
 async function liveTargets(env, week = null) {
@@ -3028,13 +3029,24 @@ async function liveGames(env, week = null) {
       }
     }));
     for (const a of answers) { debug.push(a.dbg); events.push(...a.events); }
+    // A game past its kickoff that the scoreboard no longer lists (moved by a
+    // postponement, or dropped): read it off the home team's schedule.
+    const pair = (e, g) => { const ids = (e?.competitions?.[0]?.competitors || []).map((c) => Number(c?.team?.id)); return ids.includes(g.awayId) && ids.includes(g.homeId); };
+    const lost = targets.filter((g) => Date.parse(g.kickoff) < Date.now() - 15 * 60000 && !events.some((e) => pair(e, g))).slice(0, 4);
+    await Promise.all(lost.map(async (g) => {
+      try {
+        const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${g.homeId}/schedule`, { headers: { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", Accept: "application/json" }, cf: { cacheTtl: 600, cacheEverything: true } });
+        const d = r.ok ? await r.json() : null;
+        for (const e of d?.events || []) if (pair(e, g)) { for (const c of e.competitions?.[0]?.competitors || []) if (c.score && typeof c.score === "object") c.score = c.score.value ?? c.score.displayValue ?? null; events.push(e); }
+      } catch {}
+    }));
 
     const games = targets.map((g) => {
       try {
         const event = events.find((e) => {
           const comp = e?.competitions?.[0];
           const ids = (comp?.competitors || []).map((c) => Number(c?.team?.id));
-          return ids.includes(g.awayId) && ids.includes(g.homeId) && sameGameDay(e?.date, g.kickoff);
+          return ids.includes(g.awayId) && ids.includes(g.homeId) && (VOID_STATUS.test(e?.status?.type?.name || e?.competitions?.[0]?.status?.type?.name || "") || sameGameDay(e?.date, g.kickoff));
         });
         if (!event) return { id: g.id, found: false };
 
@@ -3088,6 +3100,7 @@ async function liveGames(env, week = null) {
           awayRecord: recordSummary(away),
           homeRecord: recordSummary(home),
           state: statusType.completed && tooSoonForFinal(g.kickoff) ? "in" : (statusType.state || "pre"), // "pre" | "in" | "post"
+          voided: VOID_STATUS.test(statusType.name || "") ? (/CANCEL/.test(statusType.name) ? "CANCELED" : /SUSPEND/.test(statusType.name) ? "SUSPENDED" : /FORFEIT/.test(statusType.name) ? "FORFEIT" : "POSTPONED") : null,
           completed: !!statusType.completed && !tooSoonForFinal(g.kickoff),
           detail: statusType.shortDetail || statusType.detail || "",
           period: comp.status?.period ?? null,
