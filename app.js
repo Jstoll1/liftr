@@ -5545,7 +5545,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
           if (!p) return `<span class="h2-s ${cls} none"><span class="h2-stake">${stake(p)}</span><span class="h2-tm"><b>NO PICK</b></span></span>`;
           const sh = p.team === game.away ? game.awayShort : game.homeShort;
           const terms = p.mode === "ATS" ? `${p.team === game.favorite ? "−" : "+"}${game.spread}` : "TO WIN";
-          const logo = cmp === "same" && cls === "you" ? "" : `<img src="${logoUrl(p.team === game.away ? game.awayId : game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
+          const logo = `<img src="${logoUrl(p.team === game.away ? game.awayId : game.homeId)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
           return `<span class="h2-s ${cls}"><span class="h2-stake">${stake(p)}</span><span class="h2-tm">${logo}<span><b>${escapeCd(sh)}</b><small>${terms}${p.lock && lockRule() ? " · 🔒" : ""}</small></span></span></span>`;
         };
         const src = isFinal ? results[game.id] : isLive ? g : null;
