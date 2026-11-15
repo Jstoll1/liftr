@@ -2231,13 +2231,15 @@ body::before { display: none; }
     const PASSIVE = /^(Went to |Looked at )/;
     const BADGES = [[/Saw a message from the Chief/, "💬", "saw your message"], [/Answered the Chief/, "✅", "answered your message"], [/Saved a pick|Chang/, "✏️", "picks"], [/Opened a player card/, "🔍", "player card"], [/Asked Chief|Asked the history/, "❓", "asked the Chief"], [/Path to Win|PATH/i, "▶", "path to win"], [/Compared two players/, "⚔", "head to head"], [/^⚠/, "⚠", "issue"]];
     const sumOf = (acts) => {
-      const real = acts.filter((a) => !PASSIVE.test(a.a));
+      // Raw tap traces ("Tapped (scoreboard › #h2h-open)") are for debugging:
+      // the badges already say what the taps were for.
+      const real = acts.filter((a) => !PASSIVE.test(a.a) && !/^Tapped\b/.test(a.a));
       const seen = [...new Set(acts.filter((a) => PASSIVE.test(a.a)).map((a) => a.a.replace(/^(Went to |Looked at (the )?)/, "")))];
-      const did = [...new Set(real.filter((a) => !/^⚠/.test(a.a)).map((a) => `${a.a.replace(/^🧠 /, "")}${a.d && !/^for /.test(a.d) ? ` (${a.d})` : ""}`))];
+      const did = [...new Set(real.filter((a) => !/^⚠/.test(a.a)).map((a) => a.a.replace(/^🧠 /, "")))];
       const badges = BADGES.filter(([re]) => acts.some((a) => re.test(a.a))).map(([, ic, t]) => `<span class="vb" title="${t}">${ic} ${t}</span>`).join("");
       const rest = did.filter((t) => !BADGES.some(([re]) => re.test(t)));
       if (rest.length < did.length) { did.length = 0; did.push(...rest); }
-      const line = did.length ? did.slice(0, 3).join(" · ") + (did.length > 3 ? ` · +${did.length - 3} more` : "") : seen.length ? `checked ${seen.slice(0, 3).join(", ")}` : badges ? "" : "opened, nothing tapped";
+      const line = did.length ? did.slice(0, 3).join(" · ") + (did.length > 3 ? ` · +${did.length - 3} more` : "") : seen.length ? `checked ${seen.filter((x) => !/^Scores$/i.test(x) || seen.length === 1).slice(0, 3).join(", ").toLowerCase()}` : badges ? "" : "opened, nothing tapped";
       return { line, badges, real };
     };
     let day = null;
@@ -2257,7 +2259,7 @@ body::before { display: none; }
       const fresh = s.acts.some((a) => a.ids.some((x) => st.fresh.has(x))) || st.fresh.has(`${s.n}|${s.start}|in`);
       return `<div class="sess t-${tier}${issues.length ? errs.length ? " bad" : " warn" : ""}${open ? " open" : " shut"}${s.live ? " live" : ""}${st.fresh.has(`${s.n}|${s.start}|in`) ? " fresh" : ""}${st.focus === id ? " focus" : ""}" data-v="${esc(id)}">
         <div class="sh" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">${av(s.n, "lg", s.live)}<div class="who"><div class="nm"><span class="nmt">${esc(name(s.n))}</span>${!s.live && s.end > seenBase.at ? `<i class="newb">NEW</i>` : ""}</div><div class="meta num">${esc(meta)}</div>${(() => { const sm = sumOf(s.acts); return `${sm.line ? `<div class="vline">${esc(sm.line)}</div>` : ""}${sm.badges ? `<div class="vbs">${sm.badges}</div>` : ""}`; })()}</div><div class="sh-r">${s.live ? `<span class="badge num" data-since="${s.since}">${clock(now - s.since)}</span>` : `<span class="tia num"><b>${esc(dur(ms))}</b><small>in app</small></span>`}<i class="vcar">${open ? "Close ▴" : "Open ▾"}</i>${open ? `<button type="button" class="cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" aria-label="Copy ${esc(name(s.n))}'s visit" title="Copy this visit">${st.copied === id ? "✓ Copied" : COPY_ICON}</button>` : ""}</div></div>
-        ${s.acts.length && open ? `<ul class="acts">${(acts.some((a) => !PASSIVE.test(a.a)) ? acts.filter((a) => !PASSIVE.test(a.a)) : acts).map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${/^⚠/.test(a.a) ? " iss" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
+        ${s.acts.length && open ? `<ul class="acts">${(acts.some((a) => !PASSIVE.test(a.a) && !/^Tapped\b/.test(a.a)) ? acts.filter((a) => !PASSIVE.test(a.a) && !/^Tapped\b/.test(a.a)) : acts).map((a) => { const pid = `${s.n}|${a.at}`; return `<li class="${a.ids.some((x) => st.fresh.has(x)) && fresh ? "new" : ""}${/^⚠/.test(a.a) ? " iss" : ""}${a.go ? " go" : ""}${st.pv?.id === pid ? " on" : ""}"${a.go ? ` data-go="${esc(a.go)}" data-pid="${esc(pid)}" data-who="${esc(s.n)}" data-at="${a.at}" data-what="${esc(a.a + (a.d ? ` ${a.d}` : ""))}" tabindex="0" role="button"` : ""}><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}${a.go ? `<i class="peek" aria-hidden="true">▸</i>` : ""}</span></li>`; }).join("")}</ul>` : ""}
       </div>`;
     };
     // Inside a group: one line per visit (time, device, length, what it
@@ -2270,7 +2272,7 @@ body::before { display: none; }
       const what = sumOf(s.acts).line || BADGES.filter(([re]) => s.acts.some((a) => re.test(a.a))).map(([, ic, t]) => `${ic} ${t}`).join(" · ");
       return `<div class="gv${open ? " open" : ""}${issues.length ? " warn" : ""}" data-v="${esc(id)}">
         <div class="gv-h" data-open="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}"><time class="num">${esc(hm(s.start))}</time><span class="gv-d num">${esc(dur(ms))}${s.app ? ` · ${s.app === "home" ? "app" : "web"}` : ""}</span><span class="gv-w">${esc(what || (issues[0] ? issues[0].a.replace(/^⚠\s*/, "") : `${s.acts.length} action${s.acts.length === 1 ? "" : "s"}`))}${issues.length ? ` <b class="iss">⚠ ${issues.length}</b>` : ""}</span>${open ? `<button type="button" class="gv-cp${st.copied === id ? " ok" : ""}" data-copy="${esc(id)}" title="Copy this visit">${st.copied === id ? "✓" : COPY_ICON}</button>` : ""}<i class="gv-car">${open ? "▴" : "▾"}</i></div>
-        ${open ? `<ul class="acts">${(s.acts.some((a) => !PASSIVE.test(a.a)) ? s.acts.filter((a) => !PASSIVE.test(a.a)) : s.acts).map((a) => `<li class="${/^⚠/.test(a.a) ? "iss" : ""}"><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}</span></li>`).join("")}</ul>` : ""}
+        ${open ? `<ul class="acts">${(s.acts.some((a) => !PASSIVE.test(a.a) && !/^Tapped\b/.test(a.a)) ? s.acts.filter((a) => !PASSIVE.test(a.a) && !/^Tapped\b/.test(a.a)) : s.acts).map((a) => `<li class="${/^⚠/.test(a.a) ? "iss" : ""}"><time class="num">${esc(hm(a.at))}</time><span>${esc(a.a)}${a.d ? ` <em>${esc(a.d)}</em>` : ""}${a.x > 1 ? ` <span class="x">×${a.x}</span>` : ""}</span></li>`).join("")}</ul>` : ""}
       </div>`;
     };
     const rowsOf = (list) => {
