@@ -310,7 +310,7 @@
       "note": "Password manager save of the admin key catches its async rejection; it never blocked the screen"
     },
     {
-      "k": "worker-fail",
+      "k": "route-fail",
       "match": "exceeded memory limit",
       "at": 1794703611075,
       "commit": "2455709",
