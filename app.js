@@ -684,7 +684,10 @@ function parseEspnEvents(events, games = GAMES) {
       const ids = ((e?.competitions?.[0]?.competitors) || []).map((c) => Number(c?.team?.id));
       // The slate's game, not another meeting of the two teams.
       const ea = Date.parse(e?.date), kb = Date.parse(game.kickoff);
-      return ids.includes(game.awayId) && ids.includes(game.homeId) && (!Number.isFinite(ea) || !Number.isFinite(kb) || Math.abs(ea - kb) < 36 * 3600000);
+      // A postponed game keeps the teams but gets a new date (or none), so
+      // a voided status matches whatever its date says.
+      const voidNow = /^STATUS_(POSTPONED|CANCELED|CANCELLED|SUSPENDED|FORFEIT)/.test(e?.status?.type?.name || e?.competitions?.[0]?.status?.type?.name || "");
+      return ids.includes(game.awayId) && ids.includes(game.homeId) && (voidNow || !Number.isFinite(ea) || !Number.isFinite(kb) || Math.abs(ea - kb) < 36 * 3600000);
     });
     if (!event) return;
     const comp = event.competitions[0];
@@ -799,6 +802,7 @@ function fetchCapped(url, opts = {}, ms = 5000) {
   const timer = ctl ? setTimeout(() => ctl.abort(), ms) : null;
   return fetch(url, ctl ? { ...opts, signal: ctl.signal } : opts).finally(() => clearTimeout(timer));
 }
+const schedCache = {};
 async function fetchLiveFromEspn() {
   const events = [];
   let ok = 0;
@@ -823,6 +827,18 @@ async function fetchLiveFromEspn() {
   // No date answered: throw so the caller falls back and retries soon.
   if (!ok) throw new Error("espn scoreboard unavailable");
   espnPartial = ok < answers.length;
+  // Locked games ESPN's scoreboard no longer lists (postponed to another
+  // date, or dropped): look each up on the home team's schedule, at most
+  // every ten minutes, so the card can say POSTPONED instead of Waiting.
+  const missing = GAMES.filter((g) => isGameLocked(g) && Date.now() - Date.parse(g.kickoff) > 15 * 60000 && !events.some((e) => { const ids = (e?.competitions?.[0]?.competitors || []).map((c) => Number(c?.team?.id)); return ids.includes(g.awayId) && ids.includes(g.homeId); }));
+  for (const g of missing.slice(0, 4)) {
+    const k = `sched:${g.homeId}`;
+    if (!schedCache[k] || Date.now() - schedCache[k].at > 10 * 60000) {
+      schedCache[k] = { at: Date.now(), events: [] };
+      try { const r = await fetchCapped(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${g.homeId}/schedule`, { cache: "no-store", soft: true }, 4000); if (r.ok) schedCache[k].events = (await r.json())?.events || []; } catch {}
+    }
+    events.push(...schedCache[k].events.filter((e) => { const ids = (e?.competitions?.[0]?.competitors || []).map((c) => Number(c?.team?.id)); return ids.includes(g.awayId) && ids.includes(g.homeId); }).map((e) => { for (const c of e.competitions?.[0]?.competitors || []) if (c.score && typeof c.score === "object") c.score = c.score.value ?? c.score.displayValue ?? null; return e; }));
+  }
   const parsed = parseEspnEvents(events);
   freshFinals = Object.keys(parsed).filter((id) => parsed[id]?.completed);
   return parsed;
