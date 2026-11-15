@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0b0716">
 <title>Brochiefs Live</title>
@@ -1368,6 +1368,21 @@ body::before { display: none; }
 .rec-m span { white-space: normal; line-height: 1.3; }
 .chat-r.unk { border-left: 2px solid #ffd23f; padding-left: 6px; }
 .chat-unk { display: block; margin: 3px 0; font-style: normal; font-size: 11px; font-weight: 700; color: #ffd23f; letter-spacing: .02em; }
+/* Phones: 16px fields so iOS never zooms on focus; no double-tap zoom. */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+@media (pointer: coarse) { input, select, textarea { font-size: 16px !important; } }
+/* Chief messages: one line each, tap to read; composer behind a button. */
+.cmp .ph { flex-wrap: nowrap; align-items: center; }
+.cmp .ph .sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-new { flex: none; margin-left: auto; font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line2); background: transparent; color: var(--text); cursor: pointer; }
+.cmp-row { cursor: pointer; }
+.cmp-row:not(.open) .cmp-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmp-row:not(.open) .cmp-r { display: none; }
+.cmp-more { display: block; width: 100%; margin-top: 6px; padding: 8px; font: inherit; font-size: 12px; color: var(--muted, #9aa); background: transparent; border: 1px dashed var(--line); border-radius: 8px; cursor: pointer; }
+/* Chats: answers clamp to two lines until tapped. */
+.chat-r:not(.open) .chat-la { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.chat-r:not(.open) .afr-d > i { display: none; }
+.chat-r { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -2066,7 +2081,7 @@ body::before { display: none; }
       const groups = [];
       const keep = st.biFilter === "others" ? (r) => r.asker !== "Jake" : st.biFilter === "flagged" ? (r) => r.flagged : () => true;
       for (const r of rows.filter(keep)) { const k = r.sid || r.id; let g = groups.find((x) => x.k === k); if (!g) groups.push(g = { k, rows: [] }); g.rows.push(r); }
-      return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; const other = first.asker !== "Jake"; return `<div class="afr-day${other ? " chat-other" : " chat-me"}">${other ? "🧠 " : ""}${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div class="afr-r chat-r${r.flagged ? " flagged" : ""}${r.unknownTerm ? " unk" : ""}${other ? " other" : " me"}"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b>${r.unknownTerm ? `<em class="chat-unk">❓ UNKNOWN TERM: ${esc(r.unknownTerm)} · add it to the glossary</em>` : ""}<span class="chat-la${r.status && r.status !== "answered" ? " miss" : ""}">${esc(r.a ?? (r.status === "asked" && Date.now() - r.at < 60000 ? "(answering…)" : "(no answer: they left before it finished)"))}</span>${r.flagged ? `<em class="chat-note">🚩 ${esc(r.note || "flagged")}</em>` : ""}${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><span class="chat-btns"><button type="button" class="afr-one" data-chatflag="${esc(r.id)}" aria-pressed="${!!r.flagged}" aria-label="${r.flagged ? "Unflag" : "Flag as wrong"}">${r.flagged ? "unflag" : "🚩"}</button><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></span></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
+      return `<section class="afr chat">${head}${groups.length ? groups.slice(0, 40).map((g) => { const first = g.rows[g.rows.length - 1]; const other = first.asker !== "Jake"; return `<div class="afr-day${other ? " chat-other" : " chat-me"}">${other ? "🧠 " : ""}${esc(opsWho({ n: first.asker }) || first.asker || "not signed in")} · ${esc(afrDay(first.at))} ${esc(hm(first.at))}${g.rows.length > 1 ? ` · ${g.rows.length} questions` : ""}</div>${[...g.rows].reverse().map((r) => `<div data-chatx="${esc(r.id)}" class="afr-r chat-r${(st.chatX || new Set()).has(r.id) ? " open" : ""}${r.flagged ? " flagged" : ""}${r.unknownTerm ? " unk" : ""}${other ? " other" : " me"}"><span class="afr-t">${esc(hm(r.at))}</span><span class="afr-d"><b class="chat-lq">${esc(r.q)}</b>${r.unknownTerm ? `<em class="chat-unk">❓ UNKNOWN TERM: ${esc(r.unknownTerm)} · add it to the glossary</em>` : ""}<span class="chat-la${r.status && r.status !== "answered" ? " miss" : ""}">${esc(r.a ?? (r.status === "asked" && Date.now() - r.at < 60000 ? "(answering…)" : "(no answer: they left before it finished)"))}</span>${r.flagged ? `<em class="chat-note">🚩 ${esc(r.note || "flagged")}</em>` : ""}${(r.tools || []).length ? `<i>${esc(r.tools.map((t) => t.name).join(" · "))}</i>` : ""}</span><span class="chat-btns"><button type="button" class="afr-one" data-chatflag="${esc(r.id)}" aria-pressed="${!!r.flagged}" aria-label="${r.flagged ? "Unflag" : "Flag as wrong"}">${r.flagged ? "unflag" : "🚩"}</button><button type="button" class="afr-one" data-chatone="${esc(r.id)}" aria-label="Copy this one">${st.copied === `chat:${r.id}` ? "✓" : "copy"}</button></span></div>`).join("")}`; }).join("") : `<p class="afr-none">Nobody has asked anything yet.</p>`}</section>`;
     };
     const opsPanel = () => {
       if (!st.ops) return "";
@@ -2438,7 +2453,7 @@ body::before { display: none; }
     // gone until the recommendation itself changes.
     const recCard = (k) => {
       const r = recs[k]; if (!r || recHidden[k] === r.t) return "";
-      const shut = recShut.has(k);
+      const shut = r.tone === "ok" ? !recShut.has(k) : recShut.has(k);
       return `<section class="rec ${r.tone}${shut ? " shut" : ""}"><div class="rec-i" aria-hidden="true">${r.tone === "ok" ? "✓" : r.tone === "bad" ? "!" : "→"}</div><button type="button" class="rec-b" data-recfold="${k}" aria-expanded="${!shut}"><em>Recommended action <i>${shut ? "▸" : "▾"}</i></em><b>${esc(r.t)}</b>${shut ? "" : `<span>${esc(r.why)}</span>`}</button><button type="button" class="rec-x" data-recclear="${k}" aria-label="Clear this recommendation">✕</button>${r.copy && !shut ? `<button type="button" class="rec-cp" data-reccopy="${k}">${st.copied === `rec:${k}` ? "✓ Copied" : "Copy for Claude"}</button>` : ""}</section>`;
     };
     // --- User flow: where visits start, the paths they take, where they end.
@@ -2542,7 +2557,7 @@ body::before { display: none; }
     }).join("")}</div>${byWeek ? `<div class="note" style="margin-top:8px">This week: ${weeks[curW]?.days || 0} of 7 days in.</div>` : ""}</section>` : "";
     // Theme poll: the tally, each vote with its name, and who has not voted.
     const tp = st.themePoll, TPL = { retro: "🕹️ Retro Arcade", dark: "🌙 Current Dark Mode", either: "🤷 Who Cares" };
-    const themeCard = !tp ? "" : `<section class="card tpl"><div class="tpl-h"><b>Theme poll</b><span>${tp.voted} of ${tp.of} voted</span></div>
+    const themeCard = !tp || !tp.of ? "" : `<section class="card tpl"><div class="tpl-h"><b>Theme poll</b><span>${tp.voted} of ${tp.of} voted</span></div>
       <div class="tpl-bars">${Object.keys(TPL).map((k) => { const n = tp.counts?.[k] || 0, pct = tp.voted ? Math.round((100 * n) / tp.voted) : 0; const who = Object.entries(tp.votes || {}).filter(([, v]) => v === k).map(([m]) => esc(name(m))); return `<div class="tpl-r"><span class="tpl-l">${TPL[k]}</span><span class="tpl-b"><i style="width:${pct}%"></i></span><b>${n}</b><small>${who.join(", ") || "&nbsp;"}</small></div>`; }).join("")}</div>
       ${(tp.waitingOn || []).length ? `<div class="tpl-w">Still to vote: ${tp.waitingOn.map((m) => `${esc(name(m))}${tp.views?.[m] ? ` <em>(seen ${tp.views[m].n}×)</em>` : ""}`).join(", ")}</div>` : `<div class="tpl-w">Everyone has voted.</div>`}</section>`;
     const strips = `<div class="vote-wrap">${themeCard}${joinPanel()}${auditStrip()}</div>`;
@@ -2566,11 +2581,11 @@ body::before { display: none; }
     ].filter(Boolean).join("");
     const kpisNb = kpis.replace("<!--NB-->", nRows ? `<div class="nb-rows">${nRows}</div>` : "");
     const pageBody = {
-      home: `${ucPanel}${recCard("home")}${kpisNb}${recordsPanel}${timeline}${feedHtml}${strips}${overview}${flowPanel}`,
+      home: `${ucPanel}${recCard("home")}${kpisNb}${overview}${timeline}${feedHtml}${strips}`,
       activity: "",
       issues: `${recCard("issues")}${forceOpen(() => `${adminFriction()}${opsPanel()}`)}`,
       bi: `<div class="pg-bar"><h1>Ask Chief</h1><span class="seg" role="group" aria-label="Show">${[["all", "All"], ["others", "Others"], ["flagged", "🚩"]].map(([f, l]) => `<button type="button" class="${(st.biFilter || "all") === f ? "on" : ""}" data-bif="${f}">${l}</button>`).join("")}</span></div>${chiefMsgPanel()}${recCard("bi")}${forceOpen(() => chatPanel()) || `<div class="note">No questions yet.</div>`}`,
-      stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${rail}`,
+      stats: `<div class="pg-bar"><h1>Stats</h1><span class="seg" role="group" aria-label="Range">${[["24h", "24 hours"], ["7d", "7 days"]].map(([r, l]) => `<button type="button" class="${(r === "7d") === (st.range === "7d") ? "on" : ""}" data-range="${r === "7d" ? "7d" : "24h"}">${l}</button>`).join("")}</span></div>${recCard("stats")}${recordsPanel}${flowPanel}${rail}`,
     }[st.page] || "";
     app.innerHTML = `
       <div class="top${st.ok ? "" : " stale"}"><div class="top-in">
@@ -3328,7 +3343,7 @@ body::before { display: none; }
   // ---- Messages from the Chief -------------------------------------------
   // Write to one member (or everyone); it pops up as the Chief on their next
   // visit. Each message shows Sent, Seen, then Thanked or their reply.
-  const cm = { data: null, at: 0, err: "", to: "", draft: "", busy: false, note: "" };
+  const cm = { data: null, at: 0, err: "", to: "", draft: "", busy: false, note: "", compose: false, all: false, open: new Set() };
   async function loadChiefMsgs(force) {
     if (!force && Date.now() - cm.at < 60000) return;
     cm.at = Date.now();
@@ -3342,26 +3357,32 @@ body::before { display: none; }
   }
   function chiefMsgPanel() {
     const d = cm.data;
-    const head = (sub) => `<section class="panel cmp"><div class="ph"><h2>Chief messages</h2><span class="sub">${sub}</span></div>`;
+    const head = (sub) => `<section class="panel cmp"><div class="ph"><h2>Chief messages</h2><span class="sub">${sub}</span>${d?.members ? `<button type="button" class="cmp-new" data-cmnew="1">${cm.compose ? "Cancel" : "＋ New"}</button>` : ""}</div>`;
     if (!d?.members) return head(cm.err ? esc(cm.err) : "loading…") + `</section>`;
     const all = Object.entries(d.messages || {}).flatMap(([m, list]) => (list || []).map((x) => ({ ...x, m }))).sort((a, b) => b.at - a.at);
     const replies = all.filter((x) => x.reply).length, open = all.filter((x) => !x.ackAt).length;
     const when = (t) => new Date(t).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
     const status = (x) => x.reply ? `<span class="cmp-st rep">Replied ${when(x.ackAt)}</span>` : x.ackAt ? `<span class="cmp-st ok">Thanked ${when(x.ackAt)}</span>` : x.seenAt ? `<span class="cmp-st seen">Seen ${when(x.seenAt)}${x.seenCount > 1 ? ` · ${x.seenCount}×` : ""}</span>` : `<span class="cmp-st">Sent · not seen yet</span>`;
-    const rows = all.slice(0, 40).map((x) => `<div class="cmp-row"><div class="cmp-h"><b>${esc(x.m)}</b><span>${when(x.at)}</span>${status(x)}<button type="button" class="cmp-del" data-cmdel="${esc(x.m)}|${esc(x.id)}" title="Delete" aria-label="Delete">✕</button></div><div class="cmp-t">${esc(x.text)}</div>${x.reply ? `<div class="cmp-r">↩ ${esc(x.reply)}</div>` : ""}</div>`).join("");
+    const rows = all.slice(0, cm.all ? 40 : 4).map((x) => `<div class="cmp-row${cm.open.has(x.id) ? " open" : ""}" data-cmopen="${esc(x.id)}"><div class="cmp-h"><b>${esc(x.m)}</b><span>${when(x.at)}</span>${status(x)}<button type="button" class="cmp-del" data-cmdel="${esc(x.m)}|${esc(x.id)}" title="Delete" aria-label="Delete">✕</button></div><div class="cmp-t">${esc(x.text)}</div>${x.reply ? `<div class="cmp-r">↩ ${esc(x.reply)}</div>` : ""}</div>`).join("");
     return head(`${all.length} sent · ${open} waiting · ${replies} repl${replies === 1 ? "y" : "ies"}`) + `
-      <div class="cmp-grid"><div class="cmp-form">
+      <div class="cmp-grid">${cm.compose || cm.note ? `<div class="cmp-form">
         <select data-cm="to"><option value="">To…</option>${d.members.map((m) => `<option value="${esc(m)}"${cm.to === m ? " selected" : ""}>${esc(m)}</option>`).join("")}<option value="*"${cm.to === "*" ? " selected" : ""}>Everyone</option></select>
         <textarea data-cm="draft" maxlength="600" rows="3" placeholder="Message, as the Chief">${esc(cm.draft)}</textarea>
         <div class="cmp-send"><span class="note">${esc(cm.note)}</span><button type="button" data-cmsend ${cm.busy ? "disabled" : ""}>Send as Chief</button></div>
-      </div>
-      <div class="cmp-list">${rows || `<div class="note">No messages yet.</div>`}</div></div>
+      </div>` : ""}
+      <div class="cmp-list">${rows || `<div class="note">No messages yet.</div>`}${all.length > 4 ? `<button type="button" class="cmp-more" data-cmall="1">${cm.all ? "Show fewer" : `Show all ${all.length}`}</button>` : ""}</div></div>
     </section>`;
   }
+  // Tap a chat to read the whole answer; buttons inside keep their own job.
+  app.addEventListener("click", (e) => { const r = e.target.closest("[data-chatx]"); if (!r || e.target.closest("button, a")) return; st.chatX = st.chatX || new Set(); const id = r.dataset.chatx; st.chatX.has(id) ? st.chatX.delete(id) : st.chatX.add(id); r.classList.toggle("open"); });
   app.addEventListener("input", (e) => { const f = e.target.closest("[data-cm]"); if (f) cm[f.dataset.cm] = f.value; });
   app.addEventListener("change", (e) => { const f = e.target.closest("[data-cm]"); if (f) cm[f.dataset.cm] = f.value; });
   app.addEventListener("click", async (e) => {
     const snd = e.target.closest("[data-cmsend]"), del = e.target.closest("[data-cmdel]");
+    if (e.target.closest("[data-cmnew]")) { cm.compose = !cm.compose; cm.note = ""; st.sig = ""; return render(); }
+    if (e.target.closest("[data-cmall]")) { cm.all = !cm.all; st.sig = ""; return render(); }
+    const op = !snd && !del && e.target.closest("[data-cmopen]");
+    if (op) { const id = op.dataset.cmopen; cm.open.has(id) ? cm.open.delete(id) : cm.open.add(id); op.classList.toggle("open"); return; }
     if (!snd && !del) return;
     if (del) {
       const [manager, id] = del.dataset.cmdel.split("|");
@@ -3376,7 +3397,7 @@ body::before { display: none; }
       const r = await fetch(`${WORKER}/chief-msg?${auth()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: cm.to, text: cm.draft }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || r.status);
-      cm.draft = ""; cm.note = `Sent to ${cm.to === "*" ? "everyone" : cm.to}. It pops up on their next visit.`;
+      cm.draft = ""; cm.compose = false; cm.note = `Sent to ${cm.to === "*" ? "everyone" : cm.to}. It pops up on their next visit.`;
     } catch (err) { cm.note = `Not sent: ${err.message || err}`; }
     cm.busy = false; loadChiefMsgs(true);
   });
