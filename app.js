@@ -4899,8 +4899,13 @@ function outReason(name, results, all = lastGoodCloudPicks || {}) {
   const others = MANAGERS.filter((n) => n !== name);
   let max = now[name];
   for (const g of open) { const p = pickOf(name, g); if (p) max += pickWorth(g, p); }
-  const banked = others.filter((n) => now[n] > max).sort((a, b) => now[b] - now[a])[0];
-  if (banked) return `Max ${max} can't reach ${shown(banked)}'s ${now[banked]} already banked.`;
+  // Guaranteed floor: banked points plus the worst result on every open
+  // game. Name the current leader when their floor already beats this
+  // max; otherwise the highest placed rival whose floor does.
+  const floor = Object.fromEntries(others.map((n) => [n, now[n] + open.reduce((t, g) => t + Math.min(...gameCats(g).map((c) => pts(n, g, c.res))), 0)]));
+  const byPlace = [...others].sort((a, b) => now[b] - now[a] || floor[b] - floor[a]);
+  const beats = byPlace.find((n) => floor[n] > max);
+  if (beats) return `${shown(name)} can finish with at most ${max} point${max === 1 ? "" : "s"}, below ${shown(beats)}'s guaranteed total.`;
   const best = { ...now };
   for (const g of open) {
     const cats = gameCats(g);
