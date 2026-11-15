@@ -5530,10 +5530,10 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       // VS ME: the game head to head. Each side shows its pick and the
       // points it has at stake (a lock shows what it wins and what it costs),
       // or what it scored once final. Shared picks are dimmed, no logos twice.
-      let vs = "", cmp = null, vsRow = "", swing = 0;
+      let vs = "", cmp = null, vsRow = "", swing = 0, vsPts = null;
       if (opts.vs && locked) {
         const m = opts.vs[game.id] && !opts.vs[game.id].hidden && opts.vs[game.id].team ? opts.vs[game.id] : null;
-        cmp = pick && m ? (m.team === pick.team && m.mode === pick.mode ? "same" : "diff") : pick || m ? "diff" : null;
+        cmp = pick && m ? (m.team !== pick.team ? "diff" : m.mode === pick.mode && !!m.lock === !!pick.lock ? "same" : "sdiff") : pick || m ? "diff" : null;
         const fin = isFinal ? results[game.id] : null;
         const stake = (p) => {
           if (!p) return `<b class="pts none">0</b>`;
@@ -5551,7 +5551,9 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
         const src = isFinal ? results[game.id] : isLive ? g : null;
         const score = src && Number.isFinite(src.awayScore) ? `${src.awayScore}–${src.homeScore}` : "";
         const kl = game.kickoffLabel.replace(/ ET$/, "").replace(/^\w{3} /, "");
-        const mid = `<span class="h2-g">${isLive ? `<b class="live">LIVE</b><small>${score}</small>` : isFinal ? `<b>FINAL</b><small>${score}</small>` : `<b>${escapeCd(kl.replace(/ (AM|PM)$/, ""))}</b><small>${escapeCd(kl.match(/(AM|PM)$/)?.[1] || "")}</small>`}</span>`;
+        const mu = `<small class="h2-mu">${escapeCd(g?.awayAbbr || game.awayShort)} @ ${escapeCd(g?.homeAbbr || game.homeShort)}</small>`;
+        const mid = `<span class="h2-g">${isLive ? `<b class="live">LIVE ${score}</b>` : isFinal ? `<b>FINAL ${score}</b>` : `<b>${escapeCd(kl)}</b>`}${mu}</span>`;
+        if (fin) { vsPts = [pick ? scorePick(game, pick, fin) || 0 : 0, m ? scorePick(game, m, fin) || 0 : 0]; if (pick && m && m.team === pick.team) cmp = vsPts[0] !== vsPts[1] ? "sdiff" : "same"; }
         if (pick && m && cmp === "diff") swing = (m.team === pick.team ? Math.abs(pickWorth(game, pick) - pickWorth(game, m)) : pickWorth(game, pick) + pickWorth(game, m));
         vsRow = `<div class="h2-row ${cmp}${isLive ? " live" : ""}${isFinal ? " final" : ""}" data-rdgame="${game.id}" role="button" tabindex="0">${side(pick, "them")}${mid}${side(m, "you")}</div>`;
       }
@@ -5599,7 +5601,7 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
       const tcell = isLive ? `<b class="live">LIVE</b>` : isFinal ? `<b>FINAL</b>` : kl ? `<b>${kl[2]}</b><small>${kl[1] === "Sat" ? "" : kl[1].toUpperCase() + " "}${kl[3] || ""}</small>` : "";
       const order = isLive ? 0 : isFinal ? 2 : 1;
       const slot = isLive ? "LIVE" : isFinal ? "FINAL" : game.kickoffLabel;
-      return { order, lev, cmp, vsRow, swing, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${imp.includes("ps-heat t5") ? " low" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}${isFinal || isLive || !pick ? `<span class="ps-sub">${imp === ptsHtml ? sub.replace(/ · <b class="ps-lp[^"]*">[^<]*<\/b>/, "") : sub}</span>` : `<span class="ps-opp">vs ${escapeCd(opp)} · ${movedKickoff(game, g) ? `<b class="ps-void">MOVED · ${escapeCd(movedKickoff(game, g).short)}</b>` : g?.voided ? `<b class="ps-void">${g.voided}</b>` : `<b>${escapeCd(game.kickoffLabel.replace(/ ET$/, "").replace(/^Sat /, ""))}</b>`}</span>`}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
+      return { order, lev, cmp, vsRow, swing, vsPts, slot, t: new Date(game.kickoff).getTime() || 0, html: `<div class="ps-row ${isFinal ? "final" : isLive ? "live" : ""}${imp.includes("ps-heat t5") ? " low" : ""}${pick?.lock && lockRule() ? " lk" : ""}${locked ? " go" : ""}%%FIRST%%"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0"` : ""}><span class="ps-t">%%T%%</span><div class="ps-pick">${main}${isFinal || isLive || !pick ? `<span class="ps-sub">${imp === ptsHtml ? sub.replace(/ · <b class="ps-lp[^"]*">[^<]*<\/b>/, "") : sub}</span>` : `<span class="ps-opp">vs ${escapeCd(opp)} · ${movedKickoff(game, g) ? `<b class="ps-void">MOVED · ${escapeCd(movedKickoff(game, g).short)}</b>` : g?.voided ? `<b class="ps-void">${g.voided}</b>` : `<b>${escapeCd(game.kickoffLabel.replace(/ ET$/, "").replace(/^Sat /, ""))}</b>`}</span>`}${vs}</div><div class="rd-result">${imp}</div></div>`, tcell };
     }
     return `<div class="rd-row ${isFinal ? "final" : isLive ? "live" : ""}${locked ? " go" : ""}"${locked ? ` data-rdgame="${game.id}" role="button" tabindex="0" aria-label="Open ${escapeCd(game.awayShort)} at ${escapeCd(game.homeShort)}"` : ""}>
       <div class="rd-game">
@@ -5622,9 +5624,10 @@ function playerBreakdownHtml(name, state, results, live, opts = {}) {
   else if (opts.vs) {
     const byImp = (a, b) => a.order - b.order || b.lev - a.lev || a.t - b.t;
     const list = rows.filter((r) => r.vsRow).sort((a, b) => a.order - b.order || a.t - b.t);
-    const nDiff = list.filter((r) => r.cmp === "diff").length;
+    const nDiff = list.filter((r) => r.cmp === "diff").length, nScore = list.filter((r) => r.cmp === "sdiff").length;
     const themName = escapeCd(shown(name).toUpperCase());
-    rowsHtml = `<div class="h2-head"><span>${themName}</span><span>${nDiff}/${list.length} DIFFER</span><span>YOU</span></div>${list.map((r) => r.vsRow).join("")}`;
+    const tot = list.reduce((t, r) => r.vsPts ? [t[0] + r.vsPts[0], t[1] + r.vsPts[1]] : t, [0, 0]);
+    rowsHtml = `<div class="h2-sum"><span class="h2-sum-n"><small>${themName}</small><b class="${tot[0] > tot[1] ? "ahead" : ""}">${tot[0]}</b></span><span class="h2-sum-k">POINTS SO FAR</span><span class="h2-sum-n you"><small>YOU</small><b class="${tot[1] > tot[0] ? "ahead" : ""}">${tot[1]}</b></span><span class="h2-sum-d">${nDiff} different pick${nDiff === 1 ? "" : "s"} · ${nScore + nDiff} scoring difference${nScore + nDiff === 1 ? "" : "s"}</span></div>${list.map((r) => r.vsRow).join("")}`;
   } else {
     const slots = [];
     for (const r of [...rows].sort((a, b) => a.order - b.order || a.t - b.t)) { const k = r.slot; let sl = slots.find((x) => x.k === k); if (!sl) slots.push((sl = { k, list: [] })); sl.list.push(r); }
