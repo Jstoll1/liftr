@@ -912,6 +912,11 @@ async function fetchLiveScoresNow() {
   try {
     live = await fetchLiveFromEspn();
     answered = true;
+    // Games the phone could not place (postponed off the scoreboard): ask
+    // the Worker, which also checks the team schedules, and take its status.
+    if (GAMES.some((g) => !live[g.id]?.found && Date.now() - Date.parse(g.kickoff) > 15 * 60000)) {
+      try { const w = await fetchLiveFromWorker(); for (const [id, x] of Object.entries(w)) if (!live[id]?.found && x?.found) live[id] = x; } catch {}
+    }
   } catch (err) {
     console.warn("ESPN direct fetch failed, falling back to Worker", err);
   }
@@ -4626,7 +4631,7 @@ function renderLiveScores(live, cloudPicks) {
           ? "FINAL"
           : isLive
             ? shortStatus(g.detail || `Q${g.period ?? "?"} ${g.clock ?? ""}`)
-            : g?.voided ? `<span class="bug-void">${g.voided}</span>` : (found && g.state === "pre" ? timeOnly : found ? shortStatus(g.detail || "Scheduled") : "Waiting…");
+            : g?.voided ? `<span class="bug-void">${g.voided}</span>` : (found && g.state === "pre" ? (Date.now() - Date.parse(game.kickoff) > 45 * 60000 ? `<span class="bug-void">NOT STARTED</span>` : timeOnly) : found ? shortStatus(g.detail || "Scheduled") : Date.now() - Date.parse(game.kickoff) > 45 * 60000 ? `<span class="bug-void">NO SCORE YET</span>` : "Waiting…");
       // The channel matters right up to the final whistle, not just before
       // kickoff: on a ten game Saturday the question "which channel is
       // that one on" is asked most often about a game already in
