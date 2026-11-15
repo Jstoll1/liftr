@@ -9994,3 +9994,4 @@ html.phone .rs-top .rs-nav { display: none; }
 #rank-sheet .rs-btns .rs-path .rd-path-play { margin-right: 4px; }
 html:not(.phone) #rank-sheet .rs-top { grid-template-columns: 22px auto minmax(0, 1fr) 22px 32px; }
 html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
+.bug-void, .ps-void { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 7px; letter-spacing: .04em; color: var(--neon-orange) !important; }
