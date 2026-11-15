@@ -9311,6 +9311,10 @@ html:not(.pro) .bug-team { font-weight: 500; }
 html:not(.pro) .bug-row.leading .bug-team { font-weight: 600; }
 html:not(.pro) .bug-fav { font-family: 'Chakra Petch', sans-serif; font-weight: 500; font-size: 10px; color: rgba(255, 255, 255, .35); }
 html:not(.pro) .bug-row.mine { background: linear-gradient(90deg, rgba(var(--neon-cyan-rgb), .16), rgba(var(--neon-cyan-rgb), 0) 75%); border-radius: 0; }
+html:not(.pro) .bug-row.mine.hit { background: linear-gradient(90deg, rgba(var(--neon-green-rgb), .14), rgba(var(--neon-green-rgb), 0) 75%); }
+html:not(.pro) .bug-row.mine.miss { background: linear-gradient(90deg, rgba(var(--neon-pink-rgb), .12), rgba(var(--neon-pink-rgb), 0) 75%); }
+/* Rank rides after the name in small grey, never on the logo. */
+html:not(.pro) .bug-team .tm-rank { position: static; margin-left: 4px; background: none; border: 0; padding: 0; font-family: 'Chakra Petch', sans-serif; font-size: 9px; font-weight: 500; color: rgba(255, 255, 255, .4); box-shadow: none; flex: none; }
 html:not(.pro) .bug-row.mine .bug-team { color: #fff; }
 html:not(.pro) .rankings-list::after { display: none !important; }
 html:not(.pro) .ranking-row { box-shadow: none !important; }

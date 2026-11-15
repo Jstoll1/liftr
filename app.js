@@ -4697,12 +4697,12 @@ function renderLiveScores(live, cloudPicks) {
       const inRz = !!possSide && !!(g.situation?.isRedZone ?? g.redZone);
       const ballHtml = (side) => possSide === side ? `<i class="bug-ball${inRz ? " rz" : ""}" title="${inRz ? "Has the ball in the red zone" : "Has the ball"}"></i>${inRz ? `<b class="bug-rz">RZ</b>` : ""}` : "";
       const row = (team, short, id, score, lead, fav, pop, rank, side) => `
-        <div class="bug-row ${lead ? "leading" : ""} ${myPick && myPick.team === team ? "mine" : ""}">
+        <div class="bug-row ${lead ? "leading" : ""} ${myPick && myPick.team === team ? `mine${isFinal && Number.isFinite(g?.awayScore) ? ((scorePick(game, myPick, { awayScore: g.awayScore, homeScore: g.homeScore }) || 0) > 0 ? " hit" : " miss") : ""}` : ""}">
           <span class="bug-mark">
             <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
-            ${rankBadge(rank)}
+            
           </span>
-          <span class="bug-team"><span class="tm-nm">${short.length > 12 ? short.replace(/^(South|North|East|West|Central)\s/, (m, d) => d[0] + " ") : short}</span>${ballHtml(side)}</span>
+          <span class="bug-team"><span class="tm-nm">${short.length > 12 ? short.replace(/^(South|North|East|West|Central)\s/, (m, d) => d[0] + " ") : short}</span>${rankBadge(rank)}${ballHtml(side)}</span>
           ${fav ? `<span class="bug-fav">-${game.spread}</span>` : `<span class="bug-fav dog"></span>`}
           <span class="bug-score ${pop ? "pop" : ""}">${score}</span>
         </div>`;
