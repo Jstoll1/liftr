@@ -689,6 +689,18 @@ function movedKickoff(game, lv = latestLive?.[game.id]) {
   const time = tbd ? "TBD" : d.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
   return { at, label: `${day} ${date} ${time}`, short: `${day} ${time}` };
 }
+// The notice at the top of the game preview for a moved, postponed or
+// canceled game: what changed, when it is now, and what happens to picks.
+function gameChangeNote(game) {
+  const lv = latestLive?.[game.id], mv = movedKickoff(game, lv);
+  const was = game.kickoffLabel.replace(/ ET$/, "");
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  let k, h, lines;
+  if (mv) { k = "RESCHEDULED"; h = `Now ${esc(mv.label)} ET`; lines = [`Was ${esc(was)}.`, "Picks on this game stay as made and score when it's played.", "The week stays open until it's final."]; }
+  else if (lv?.voided) { k = lv.voided; h = lv.voided === "CANCELED" ? "This game won't be played" : "No new date yet"; lines = [`Was ${esc(was)}.`, lv.voided === "CANCELED" ? "Picks on this game will score 0 for everyone." : "Picks stay as made. If it isn't played this week, the commissioner may void it (0 for everyone)."]; }
+  else return "";
+  return `<div class="ins-moved"><span class="ins-moved-k">⚠ ${esc(k)}</span><b>${h}</b>${lines.map((l) => `<span>${l}</span>`).join("")}</div>`;
+}
 function parseEspnEvents(events, games = GAMES) {
   const byId = {};
   games.forEach((game) => {
@@ -8303,7 +8315,7 @@ async function openInsights(gameId) {
   const guest = !GAMES.includes(game);
   modal.querySelector("#insights-sub").textContent = [movedKickoff(game) ? `Moved to ${movedKickoff(game).label} (was ${game.kickoffLabel.replace(/ ET$/, "")})` : game.kickoffLabel, game.tv].filter(Boolean).join(" · ");
   const links = () => `<div class="ins-h">ELSEWHERE ↗</div><div class="ins-chips">${insightsLinks(game).map((l) => `<a class="ins-chip" href="${l.href}" target="_blank" rel="noopener">${esc(l.label)} ›</a>`).join("")}</div>`;
-  body.innerHTML = `<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
+  body.innerHTML = `${gameChangeNote(game)}<div class="ins-loading">Pulling injuries, the line and the numbers…</div>${links()}`;
   modal.classList.remove("hidden");
   // Paint as each source lands instead of waiting for the slowest. The
   // ESPN game page (from the phone) fills most of the sheet; news and the
@@ -9291,6 +9303,9 @@ async function openInsights(gameId) {
     const out = head.filter((el) => el !== sim);
     for (const k of [...ORDER.filter((k) => secs[k]), ...Object.keys(secs).filter((k) => !ORDER.includes(k))]) out.push(...secs[k]);
     body.replaceChildren(...out, ...tail);
+    // A moved or postponed game says so first, with what it means for picks.
+    const note = gameChangeNote(game);
+    if (note) body.insertAdjacentHTML("afterbegin", note);
   })();
   // Simulation context: names, logos, and the line it draws the score around.
   const comps = summaryRaw?.header?.competitions?.[0]?.competitors || [];
