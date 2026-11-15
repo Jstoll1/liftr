@@ -9405,6 +9405,11 @@ html.pro .plc-lock { background: rgba(212, 175, 55, .16); color: #d4af37; }
 .rm-side .rm-by { grid-column: 1 / -1; margin-top: -2px; font-size: 11px; font-weight: 600; color: var(--text-dim); }
 .rm-side.hit .rm-by { color: var(--neon-green); } .rm-side.miss .rm-by { color: var(--neon-pink); }
 
+.rank-tb { color: rgba(255, 255, 255, .5); white-space: nowrap; }
+.rank-tb b { color: inherit; }
+.rank-tb.win { color: var(--neon-green); }
+.rank-tb.win b { color: var(--neon-green); }
+
 /* ==== RETRO: season board (one block; see CLAUDE.md "Retro arcade rules") ====
    "VS THE LEAGUE": worst and best as bookends, a segmented meter filled up
    to you, a pixel marker with your number above it. Hairlines, no boxes.
