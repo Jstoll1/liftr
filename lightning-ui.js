@@ -80,6 +80,13 @@
     return m;
   }
   function close() { document.getElementById("lt-modal")?.remove(); paintFab(); }
+  // An NFL night (Monday Night Football, say) is named for its night; a
+  // college card stays the late night round. One game names itself.
+  const title = (n) => {
+    if (n.bets.every((b) => b.game.sport === "nfl")) { const d = new Date(n.bets[0].game.kickoff).toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" }); return `${d} Night Football ⚡️`; }
+    return "Late night lightning ⚡️ Round";
+  };
+  const games = (n) => { const ids = [...new Set(n.bets.map((b) => b.game.eventId))]; if (ids.length !== 1) return ""; const g = n.bets[0].game; const tl = (id, t) => `<span class="lt-tl">${id && typeof logoUrl === "function" ? `<img src="${logoUrl(id)}" alt="" loading="lazy">` : ""}${esc(t)}</span>`; return `${tl(g.awayId, g.awayShort)} at ${tl(g.homeId, g.homeShort)} · `; };
   function openSheet(from = "fab") {
     const e = mine();
     draft = e?.picks ? { ...e.picks } : {}; draftTb = e?.tb != null ? String(e.tb) : ""; step = 0; err = "";
@@ -97,10 +104,10 @@
     const m = modal(), n = night, bets = n.bets;
     if (view === "intro") {
       m.innerHTML = `<div class="lt-card lt-intro">${head()}
-        <h2>Late night lightning ⚡️ Round</h2>
-        <p class="lt-sub">5 Picks - Are you in?</p>
+        <h2>${title(n)}</h2>
+        <p class="lt-sub">${games(n)}${bets.length} pick${bets.length === 1 ? "" : "s"} - Are you in?</p>
         <p class="lt-pay">Venmo Jake $${n.buyIn}</p>
-        <div class="lt-facts"><span><b>5</b>picks</span><span><b>${esc(hm(n.closesAt))}</b>locks</span></div>
+        <div class="lt-facts"><span><b>${bets.length}</b>pick${bets.length === 1 ? "" : "s"}</span><span><b>${esc(hm(n.closesAt))}</b>locks</span></div>
         ${err ? `<p class="lt-err">${esc(err)}</p>` : ""}
         <div class="lt-btns"><button type="button" class="lt-pass" data-lt="pass"${busy ? " disabled" : ""}>Pass</button><button type="button" class="lt-go" data-lt="play">⚡ I'm in</button></div>
       </div>`;
@@ -242,6 +249,9 @@
     openSheet("flash");
   }
   check();
+  // Also while the app stays open, so someone already in when the
+  // commissioner switches it on gets the offer within a minute.
+  setInterval(() => { if (!document.hidden) check(); }, 60000);
   setInterval(() => { if (!document.hidden) load().then(() => { if (document.getElementById("lt-modal") && view === "board") readScores().then(paint); }); }, 60000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
   window.openLightning = openSheet;
