@@ -10107,7 +10107,12 @@ async function maybeChiefMsg() {
   let msgs = [];
   try { const r = await fetch(`${WORKER_URL}/chief-msg?manager=${encodeURIComponent(me)}&t=${Date.now()}`, { cache: "no-store" }); if (r.ok) msgs = (await r.json()).messages || []; } catch {}
   chiefMsgBusy = false;
-  const msg = msgs[0];
+  // Messages already thanked or answered on this phone. The Worker's store
+  // can serve an old copy for up to a minute, which brought the same
+  // message straight back after Thanks.
+  const DONE_KEY = "brochiefs_chief_done_v1";
+  const doneIds = (() => { try { return JSON.parse(localStorage.getItem(DONE_KEY) || "[]"); } catch { return []; } })();
+  const msg = msgs.find((x) => !doneIds.includes(x.id));
   if (!msg || document.getElementById("chief-msg") || loadMe() !== me) return;
   const send = (body) => fetch(`${WORKER_URL}/chief-msg`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manager: me, id: msg.id, ...body }) });
   send({ seen: 1 }).catch(() => {});
@@ -10120,15 +10125,19 @@ async function maybeChiefMsg() {
     <div class="cmsg-to">to ${escapeCd(shown(me))} · ${new Date(msg.at).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</div>
     <p class="cmsg-text">${escapeCd(msg.text).replace(/\n/g, "<br>")}</p>
     <div class="cmsg-reply" hidden><textarea maxlength="500" rows="3" placeholder="Reply to the Chief"></textarea></div>
-    <div class="cmsg-err" hidden>Couldn't send. Check your signal and try again.</div>
     <div class="cmsg-btns"><button type="button" class="cmsg-rep">REPLY</button><button type="button" class="cmsg-ok">THANKS CHIEF</button></div>
   </div>`;
   document.body.appendChild(m);
   const ta = m.querySelector("textarea"), rep = m.querySelector(".cmsg-rep"), ok = m.querySelector(".cmsg-ok");
-  const done = async (reply) => {
-    rep.disabled = ok.disabled = true; m.querySelector(".cmsg-err").hidden = true;
-    try { const r = await send(reply ? { reply } : {}); if (!r.ok) throw 0; m.remove(); track("chief-msg", { event: true, d: reply ? "reply" : "thanks" }); setTimeout(maybeChiefMsg, 400); }
-    catch { m.querySelector(".cmsg-err").hidden = false; rep.disabled = ok.disabled = false; }
+  // Closes at once and is remembered on this phone; the send retries in
+  // the background so a slow signal never leaves the pop-up stuck open.
+  const done = (reply) => {
+    try { localStorage.setItem(DONE_KEY, JSON.stringify([...doneIds, msg.id].slice(-50))); } catch {}
+    m.remove();
+    track("chief-msg", { event: true, d: reply ? "reply" : "thanks" });
+    const body = reply ? { reply } : {};
+    const attempt = (n) => send(body).then((r) => { if (!r.ok) throw 0; }).catch(() => { if (n < 4) setTimeout(() => attempt(n + 1), 3000 * (n + 1)); });
+    attempt(0);
   };
   rep.addEventListener("click", () => {
     const box = m.querySelector(".cmsg-reply");
