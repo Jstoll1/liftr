@@ -77,6 +77,22 @@ for (const wk of weeks) {
       if (alt && most < rows.length && alt[1] * 2 > most) most = alt[1];
     }
   }
+  // Rule 4 (16 Nov 2026): worst pick is the biggest miss against the line
+  // (points short of what the pick needed); takers only break ties. Still
+  // off pick of the week's game unless the whole league lost on it.
+  if (r.worstRule >= 3) {
+    const slateOf = (g) => (wk.slate || []).find((x) => Number(x.id) === Number(g));
+    const missBy = (l) => { const g = slateOf(l.g); const [a, h] = String(l.score || "").split("-").map(Number); if (!g || !Number.isFinite(a) || !Number.isFinite(h)) return 0; const m = l.team === g.away ? a - h : h - a; const n = l.mode === "SU" ? 0 : Number(String(l.line || "").replace("\u2212", "-")); return -(m + (Number.isFinite(n) ? n : 0)); };
+    const misses = settled.filter((l) => l.result === "miss");
+    const bestG = r.best ? settled.find((l) => l.result === "hit" && [slateOf(l.g)?.awayShort, slateOf(l.g)?.homeShort].includes(r.best.team))?.g : null;
+    const top = Math.max(...misses.map(missBy));
+    const topG = misses.find((l) => missBy(l) === top)?.g;
+    const pool = bestG != null && String(topG) === String(bestG) && misses.filter((l) => String(l.g) === String(bestG)).length < rows.length ? misses.filter((l) => String(l.g) !== String(bestG)) : misses;
+    const want = Math.round(Math.max(...pool.map(missBy)) * 10) / 10;
+    const wantL = pool.find((l) => Math.round(missBy(l) * 10) / 10 === want), wantTeam = wantL ? (wantL.team === slateOf(wantL.g)?.away ? slateOf(wantL.g)?.awayShort : slateOf(wantL.g)?.homeShort) : null;
+    const good = r.worst?.team === wantTeam && (r.worst?.missBy == null || r.worst.missBy === want);
+    good ? ok(wk, `worst pick ${r.worst.pick}, missed by ${want}`) : fail(wk, `worst pick says ${r.worst?.team} (missed by ${r.worst?.missBy ?? "?"}), expected ${wantTeam} missed by ${want}`);
+  } else
   r.worst?.takers === most ? ok(wk, `worst pick ${r.worst.pick}, ${most} takers`) : fail(wk, `worst pick says ${r.worst?.takers} takers, expected ${most}`);
 
   // Coin flip: the game with the smallest gap between its two most-taken sides.
