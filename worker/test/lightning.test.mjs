@@ -20,7 +20,11 @@ test("lightning: a night is five checked bets, labels written, the last game is 
   assert.equal(night.status, "draft");
   assert.deepEqual(night.bets.map((b) => [b.id, b.a, b.b]), [["b1", "Virginia +2.5", "Clemson -2.5"], ["b2", "Over 48.5", "Under 48.5"], ["b3", "Oregon", "USC"], ["b4", "Oregon PK", "USC PK"], ["b5", "Over 41", "Under 41"]]);
   assert.equal(night.tbEvent, "401003");
-  assert.match(buildNight({ week: 9, bets: five().slice(0, 4), buyIn: 10, closesAt: NOW + H, now: NOW }).error, /5 bets/);
+  // One to five bets: a single Monday night game is a night of its own.
+  assert.equal(buildNight({ week: 9, bets: five().slice(0, 1), buyIn: 10, closesAt: NOW + H, now: NOW }).night.bets.length, 1);
+  assert.match(buildNight({ week: 9, bets: [], buyIn: 10, closesAt: NOW + H, now: NOW }).error, /1 to 5 bets/);
+  assert.match(buildNight({ week: 9, bets: [...five(), five()[0]], buyIn: 10, closesAt: NOW + H, now: NOW }).error, /1 to 5 bets/);
+  assert.equal(buildNight({ week: 9, bets: [{ ...five()[0], game: { ...five()[0].game, sport: "nfl" } }], buyIn: 10, closesAt: NOW + H, now: NOW }).night.bets[0].game.sport, "nfl");
   assert.match(buildNight({ week: 9, bets: [...five().slice(0, 4), five()[0]], buyIn: 10, closesAt: NOW + H, now: NOW }).error, /same bet/);
   assert.match(buildNight({ week: 9, bets: five(), buyIn: 10, closesAt: NOW - 1, now: NOW }).error, /lock time/);
   assert.match(buildNight({ week: 9, bets: [{ ...five()[0], favorite: "Nobody" }, ...five().slice(1)], buyIn: 10, closesAt: NOW + H, now: NOW }).error, /favoured/);

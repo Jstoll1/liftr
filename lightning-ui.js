@@ -42,10 +42,11 @@
   async function readScores() {
     if (!night || Date.now() - scoresAt < 30000) return;
     scoresAt = Date.now();
-    const days = [...new Set(night.bets.map((b) => new Date(b.game.kickoff).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "")))];
+    // Each game's own feed and day: college late games, or an NFL night game.
+    const days = [...new Set(night.bets.map((b) => `${b.game.sport === "nfl" ? "nfl" : "cfb"}|${new Date(b.game.kickoff).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "")}`))];
     const want = new Set(night.bets.map((b) => b.game.eventId));
     try {
-      const boards = await Promise.all(days.map((d) => fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${d}&groups=80&limit=300&t=${Date.now()}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
+      const boards = await Promise.all(days.map((k) => { const [sp, d] = k.split("|"); return sp === "nfl" ? `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${d}&t=${Date.now()}` : `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${d}&groups=80&limit=300&t=${Date.now()}`; }).map((u) => fetch(u, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
       for (const ev of boards.flatMap((b) => b?.events || [])) {
         if (!want.has(String(ev.id))) continue;
         const c = ev.competitions?.[0] || {}, side = (ha) => (c.competitors || []).find((x) => x.homeAway === ha) || {};
@@ -123,7 +124,7 @@
     if (view === "tb") {
       const ready = bets.every((x) => draft[x.id]) && /^\d{1,3}$/.test(draftTb);
       m.innerHTML = `<div class="lt-card">${head()}
-        <h3 class="lt-h3">Your five</h3>
+        <h3 class="lt-h3">Your picks</h3>
         <div class="lt-recap">${bets.map((x, i) => `<button type="button" class="lt-rc" data-lt="edit" data-i="${i}"><em>${i + 1}</em><span>${esc(x.game.awayShort)} at ${esc(x.game.homeShort)} · ${esc(KIND[x.kind])}</span><b>${esc(draft[x.id] === "a" ? x.a : draft[x.id] === "b" ? x.b : "?")}</b></button>`).join("")}</div>
         <label class="lt-tb"><span>Tiebreaker: total points in ${esc(n.tbLabel)}</span><input type="number" inputmode="numeric" min="0" max="200" data-lt-tb="1" value="${esc(draftTb)}" placeholder="e.g. 51"></label>
         ${err ? `<p class="lt-err">${esc(err)}</p>` : ""}

@@ -41,6 +41,7 @@ body.lz-on { overflow: hidden; }
 .lz-sec h3 { margin: 14px 0 6px; font: 700 11.5px var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--dim); display: flex; align-items: center; gap: 10px; }
 .lz-dim { margin: 6px 0; color: var(--dim); font-size: 12.5px; }
 .lz-link { background: none; border: 0; padding: 0; color: var(--cyan); font: inherit; font-size: 12px; text-transform: none; letter-spacing: 0; cursor: pointer; }
+.lz-src .lz-link.on { color: var(--text); text-decoration: underline; }
 .lz-games { display: grid; gap: 4px; max-height: 360px; overflow-y: auto; }
 @media (max-width: 600px) {
   .lz-g { grid-template-columns: repeat(3, auto) !important; justify-content: start; }
@@ -2984,14 +2985,16 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
   // sees the swipe cards as players will, then saves and activates. It sits
   // outside the page so the live redraws never touch a half-typed edit.
   const lzEl = document.getElementById("lz");
-  const lz = { games: [], bets: [], buyIn: 25, lockAt: null, prompt: "", busy: "", msg: "", night: null, loaded: false };
+  const lz = { sport: "cfb", games: [], bets: [], buyIn: 25, lockAt: null, prompt: "", busy: "", msg: "", night: null, loaded: false };
   const LZ_KIND = { ats: "Spread", su: "To win", ou: "Total" };
   const etDate = (t = Date.now()) => new Date(t).toLocaleDateString("en-CA", { timeZone: "America/New_York" }).replace(/-/g, "");
   const lzTime = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   async function lzLoadGames() {
     lz.busy = "Reading tonight's games…"; lzPaint();
     try {
-      const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${etDate()}&groups=80&limit=300&t=${Date.now()}`, { cache: "no-store" });
+      // College late games, or the NFL (Monday or Thursday night) for a
+      // one-off: the same card, one to five bets.
+      const r = await fetch(lz.sport === "nfl" ? `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${etDate()}&t=${Date.now()}` : `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${etDate()}&groups=80&limit=300&t=${Date.now()}`, { cache: "no-store" });
       const data = await r.json();
       lz.games = (data.events || []).map((ev) => {
         const c = ev.competitions?.[0] || {}, side = (ha) => (c.competitors || []).find((x) => x.homeAway === ha) || {};
@@ -3003,6 +3006,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
           awayId: Number(a.team?.id), homeId: Number(h.team?.id), kickoff: ev.date, kickoffLabel: lzTime(ev.date),
           state: c.status?.type?.state || "pre", spread, favorite: spread === 0 ? null : favHome ? h.team?.displayName : favAway ? a.team?.displayName : null,
           total: Number.isFinite(Number(o.overUnder)) ? Number(o.overUnder) : null,
+          ...(lz.sport === "nfl" ? { sport: "nfl" } : {}),
         };
       }).filter((g) => g.away && g.home && g.state !== "post").sort((x, y) => new Date(y.kickoff) - new Date(x.kickoff));
       lz.busy = "";
@@ -3024,7 +3028,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     const line = (team) => (s === 0 ? "PK" : `${team === b.favorite ? "-" : "+"}${Number.isFinite(s) ? s : "?"}`);
     return [`${A} ${line(g.away)}`, `${Hm} ${line(g.home)}`];
   };
-  const lzBetFrom = (g, kind) => ({ game: { eventId: g.eventId, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, awayId: g.awayId, homeId: g.homeId, kickoff: g.kickoff, kickoffLabel: g.kickoffLabel }, kind, ...(kind === "ats" ? { spread: g.spread ?? 0, favorite: g.favorite } : {}), ...(kind === "ou" ? { total: g.total } : {}) });
+  const lzBetFrom = (g, kind) => ({ game: { eventId: g.eventId, away: g.away, home: g.home, awayShort: g.awayShort, homeShort: g.homeShort, awayId: g.awayId, homeId: g.homeId, kickoff: g.kickoff, kickoffLabel: g.kickoffLabel, ...(g.sport ? { sport: g.sport } : {}) }, kind, ...(kind === "ats" ? { spread: g.spread ?? 0, favorite: g.favorite } : {}), ...(kind === "ou" ? { total: g.total } : {}) });
   // Five to start from: the latest games, the kinds taken in turn (spread,
   // total, to win), so the card is a mix; a game without that line moves on.
   function lzAuto() {
@@ -3046,7 +3050,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
   }
   const lzCard = (b, i) => {
     const [a, bb] = lzSides(b), g = b.game;
-    return `<div class="lzc"><div class="lzc-top"><span>${i + 1} / 5</span><b>${esc(LZ_KIND[b.kind])}</b><span>${esc(g.awayShort)} at ${esc(g.homeShort)} · ${esc(g.kickoffLabel || lzTime(g.kickoff))}</span></div>
+    return `<div class="lzc"><div class="lzc-top"><span>${i + 1} / ${lz.bets.length}</span><b>${esc(LZ_KIND[b.kind])}</b><span>${esc(g.awayShort)} at ${esc(g.homeShort)} · ${esc(g.kickoffLabel || lzTime(g.kickoff))}</span></div>
       <div class="lzc-sides"><div class="lzc-s b"><i>←</i><b>${esc(bb)}</b></div><div class="lzc-s a"><b>${esc(a)}</b><i>→</i></div></div></div>`;
   };
   function lzPaint() {
@@ -3061,7 +3065,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       const line = b.kind === "ou" ? `<label>Total <input type="number" step="0.5" data-lzf="${i}|total" value="${b.total ?? ""}"></label>`
         : b.kind === "ats" ? `<label>Fav <select data-lzf="${i}|favorite"><option value="">PK</option><option ${b.favorite === g.away ? "selected" : ""} value="${esc(g.away)}">${esc(g.awayShort)}</option><option ${b.favorite === g.home ? "selected" : ""} value="${esc(g.home)}">${esc(g.homeShort)}</option></select></label><label>by <input type="number" step="0.5" min="0" data-lzf="${i}|spread" value="${b.spread ?? ""}"></label>` : `<span class="lz-dim">no line</span>`;
       return `<div class="lz-b"><b class="lz-n">${i + 1}</b><span class="lz-bt">${esc(g.awayShort)} at ${esc(g.homeShort)} <em>${esc(LZ_KIND[b.kind])}</em></span><span class="lz-bl">${line}</span><button type="button" class="lz-x" data-lzdel="${i}" aria-label="Remove">✕</button></div>`;
-    }).join("") + (lz.bets.length < 5 ? `<p class="lz-dim">${5 - lz.bets.length} more to add${lz.games.length ? ` · <button type="button" class="lz-link" data-lzauto="1">fill automatically</button>` : ""}</p>` : "");
+    }).join("") + (lz.bets.length < 5 ? `<p class="lz-dim">${lz.bets.length ? `One is enough (a single Monday night game works). Up to ${5 - lz.bets.length} more` : "Add one to five bets"}${lz.games.length ? ` · <button type="button" class="lz-link" data-lzauto="1">fill automatically</button>` : ""}</p>` : "");
     const lockVal = lz.lockAt ? new Date(lz.lockAt).toTimeString().slice(0, 5) : "";
     const ent = n ? Object.entries(n.entrants || {}) : [];
     const people = live ? `<div class="lz-sec"><h3>In tonight · ${ent.length}</h3>${ent.length ? ent.map(([name2, e]) => `<div class="lz-p"><b>${esc(name(name2))}</b>${e.picks ? `<span class="lz-dim">${n.bets.map((bt) => e.picks[bt.id] === "a" ? "→" : "←").join(" ")} · TB ${e.tb}</span>` : ""}<button type="button" class="lz-pay${e.paid ? " on" : ""}" data-lzpaid="${esc(name2)}">${e.paid ? "✓ paid" : "mark paid"}</button></div>`).join("") : `<p class="lz-dim">Nobody yet.</p>`}${n.declined?.length ? `<p class="lz-dim">Passed: ${n.declined.map((x) => esc(name(x))).join(", ")}</p>` : ""}
@@ -3070,12 +3074,12 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
       <div class="lz-h"><b>⚡ LIGHTNING</b><span class="lz-st${live ? " live" : ""}">${esc(status)}</span><button type="button" class="lz-close" data-lzclose="1" aria-label="Close">✕</button></div>
       ${lz.msg ? `<p class="lz-msg">${esc(lz.msg)}</p>` : ""}
       <div class="lz-cols">
-        <div class="lz-sec"><h3>Tonight's games <button type="button" class="lz-link" data-lzreload="1">refresh</button></h3><div class="lz-games">${games}</div></div>
-        <div class="lz-sec"><h3>The five</h3>${bets}
+        <div class="lz-sec"><h3>Tonight's games <span class="lz-src">${[["cfb", "College"], ["nfl", "NFL"]].map(([k, l]) => `<button type="button" class="lz-link${lz.sport === k ? " on" : ""}" data-lzsport="${k}">${l}</button>`).join(" · ")}</span> <button type="button" class="lz-link" data-lzreload="1">refresh</button></h3><div class="lz-games">${games}</div></div>
+        <div class="lz-sec"><h3>The bets</h3>${bets}
           <div class="lz-row"><label>Buy-in <b>$25</b></label><label>Locks at <input type="time" data-lzlock="1" value="${lockVal}"></label></div>
-          <p class="lz-dim">Tiebreaker: total points in the last of the five to kick off.</p>
+          <p class="lz-dim">Tiebreaker: total points in the last game to kick off.</p>
           <div class="lz-ask"><input type="text" data-lzprompt="1" placeholder="Ask for an edit, e.g. swap bet 3 for the Utah total" value="${esc(lz.prompt)}"><button type="button" data-lzedit="1" ${lz.bets.length === 5 ? "" : "disabled"}>Apply</button></div>
-          <div class="lz-acts"><button type="button" data-lzsave="1" ${lz.bets.length === 5 ? "" : "disabled"}>Save draft</button><button type="button" class="go" data-lzgo="1" ${n && !live ? "" : "disabled"}>⚡ Activate</button>${n ? `<button type="button" class="danger" data-lzcancel="1">Cancel night</button>` : ""}</div>
+          <div class="lz-acts"><button type="button" data-lzsave="1" ${lz.bets.length >= 1 ? "" : "disabled"}>Save draft</button><button type="button" class="go" data-lzgo="1" ${n && !live ? "" : "disabled"}>⚡ Activate</button>${n ? `<button type="button" class="danger" data-lzcancel="1">Cancel night</button>` : ""}</div>
           ${lz.busy && lz.games.length ? `<p class="lz-dim">${esc(lz.busy)}</p>` : ""}
         </div>
       </div>
@@ -3104,6 +3108,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
     if (!b) return;
     lz.msg = "";
     if (b.dataset.lzreload) return lzLoadGames();
+    if (b.dataset.lzsport) { if (lz.sport !== b.dataset.lzsport) { lz.sport = b.dataset.lzsport; lz.games = []; lzLoadGames(); } return; }
     if (b.dataset.lzauto) return lzAuto();
     if (b.dataset.lzadd) { const [id, k] = b.dataset.lzadd.split("|"); const g = lz.games.find((x) => x.eventId === id); if (g && lz.bets.length < 5) { lz.bets.push(lzBetFrom(g, k)); if (!lz.lockAt) lzDefaultLock(); } return lzPaint(); }
     if (b.dataset.lzdel) { lz.bets.splice(Number(b.dataset.lzdel), 1); return lzPaint(); }
