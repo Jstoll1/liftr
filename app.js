@@ -5868,11 +5868,8 @@ function renderPayouts() {
     return `<span class="ps-seg"></span>`;
   }).join("");
   panel.innerHTML = `
-    ${typeof betweenWeeks === "function" && betweenWeeks() ? `<div class="pot-jackpot mini"><span class="pj-label">JACKPOT</span><span class="pj-amount">${money(Math.max(0, left + (POT.seasonTotal || 0)))}</span><span class="pj-sub">still in play<br>${money(POT.weekly)} a week${POT.season.length ? "" : " · 1st only"}</span></div>` : `<div class="pot-jackpot">
-      <div class="pj-label">★ JACKPOT · STILL IN PLAY ★</div>
-      <div class="pj-amount">${money(Math.max(0, left + (POT.seasonTotal || 0)))}</div>
-      <div class="pj-sub">${money(POT.total)} pot · ${POT.members} × ${money(POT.buyIn)} · ${money(POT.weekly)} a week${POT.season.length ? ` · season ${POT.season.map(money).join(" / ")}` : " · 1st only"}</div>
-    </div>`}
+    <!-- One line all season: the jackpot, what is left in play. -->
+    <div class="pot-jackpot mini"><span class="pj-label">JACKPOT</span><span class="pj-amount">${money(Math.max(0, left + (POT.seasonTotal || 0)))}</span><span class="pj-sub">still in play<br>${money(POT.weekly)} a week${POT.season.length ? "" : " · 1st only"}</span></div>
     <div class="pot-season">
       <div class="ps-head"><span>SEASON</span><b>${sealed} / ${POT.weeks}</b></div>
       <div class="ps-bar" style="grid-template-columns: repeat(${POT.weeks + exh.length}, 1fr)">${seasonSegs}</div>
