@@ -31,7 +31,7 @@ export function cleanGame(g) {
   const awayId = Number(g.awayId), homeId = Number(g.homeId), kick = kickMs(g);
   if (!away || !home || !awayShort || !homeShort || away === home) return null;
   if (!Number.isInteger(awayId) || !Number.isInteger(homeId) || !Number.isFinite(kick)) return null;
-  return { eventId, away, home, awayShort, homeShort, awayId, homeId, kickoff: new Date(kick).toISOString(), ...(str(g.kickoffLabel, 40) ? { kickoffLabel: str(g.kickoffLabel, 40) } : {}) };
+  return { eventId, away, home, awayShort, homeShort, awayId, homeId, kickoff: new Date(kick).toISOString(), ...(str(g.kickoffLabel, 40) ? { kickoffLabel: str(g.kickoffLabel, 40) } : {}), ...(g.sport === "nfl" ? { sport: "nfl" } : {}) };
 }
 
 // One bet: a game, a kind and its line. Side A is the away team (spread or
@@ -64,7 +64,7 @@ export function cleanBet(b) {
 // id (so nobody in is dropped) unless replace is asked for.
 export function buildNight({ week, bets, buyIn, closesAt, now, prev = null }) {
   const list = Array.isArray(bets) ? bets : [];
-  if (list.length !== LIGHTNING_BETS) return { error: `Lightning is ${LIGHTNING_BETS} bets; this has ${list.length}.` };
+  if (list.length < 1 || list.length > LIGHTNING_BETS) return { error: `Lightning is 1 to ${LIGHTNING_BETS} bets; this has ${list.length}.` };
   const clean = [];
   for (const b of list) { const c = cleanBet(b); if (c.error) return c; clean.push(c.bet); }
   const seen = new Set(clean.map((b) => `${b.game.eventId}:${b.kind}`));
@@ -201,10 +201,10 @@ export function historyRecord(night, entries, finals) {
 // in the same shape; the Worker checks every one before the editor sees it.
 export function editPrompt() {
   return [
-    "You edit a five-bet 'Lightning' card for a friends' college football pick'em, late night games only.",
+    "You edit a 'Lightning' card (one to five bets) for a friends' football pick'em: late college games or an NFL night game.",
     "Each bet is {eventId, kind, spread, favorite, total}: kind is 'ats' (point spread: set spread as a positive half or whole number and favorite as the favoured team's full name, or spread 0 for a pick'em), 'su' (straight up winner: no line) or 'ou' (over/under: set total).",
     "Only use games from the 'games' list (by eventId) and their real lines from that list unless the instruction gives a number. Never invent a game or a team.",
-    "Apply the instruction to the current card and return exactly five bets, keeping the ones the instruction does not touch. Two bets may be on the same game only if their kinds differ.",
+    "Apply the instruction to the current card and return the same number of bets as the current card (one to five) unless the instruction adds or drops some, keeping the ones the instruction does not touch. Two bets may be on the same game only if their kinds differ.",
     "Return JSON: {\"bets\": [{\"eventId\": \"...\", \"kind\": \"ats|su|ou\", \"spread\": number|null, \"favorite\": string|null, \"total\": number|null}], \"note\": \"one short sentence on what changed\"}",
   ].join(" ");
 }
