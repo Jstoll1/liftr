@@ -2184,7 +2184,7 @@ export function buildSummary(week, slate, results, picks, kickoffs = null, earli
     sealedAt: Date.now(),
     // The week in five lines, written once here so every phone tells the
     // same story. Only a complete week gets one.
-    recap: complete ? { ...buildRecap(games, rows, actualTotal, tbGame, seasonMovement(earlier, rows, EXHIBITION_WEEKS.has(Number(week)))), bestWhoFixed: true, worstRule: 3 } : null,
+    recap: complete ? { ...buildRecap(games, rows, actualTotal, tbGame, seasonMovement(earlier, rows, EXHIBITION_WEEKS.has(Number(week)))), bestWhoFixed: true, worstRule: 4 } : null,
   };
 }
 
@@ -2241,7 +2241,7 @@ function buildRecap(games, rows, actualTotal, tbGame, movement) {
   };
   const card = (l) => ({ who: l.who, team: short(byId.get(l.g), l.team), teamId: idOf(byId.get(l.g), l.team),
     pick: l.mixed && new Set(all.filter((x) => x.g === l.g && x.team === l.team).map((x) => x.mode)).size > 1 ? short(byId.get(l.g), l.team) : line(l),
-    matchup: l.matchup, score: l.score, final: finalOf(l)?.text || null, takers: l.teamTakers ?? l.who.length, of: N, pts: l.result === "hit" ? l.pts : l.worth });
+    matchup: l.matchup, score: l.score, final: finalOf(l)?.text || null, takers: l.teamTakers ?? l.who.length, of: N, pts: l.result === "hit" ? l.pts : l.worth, ...(Number.isFinite(l.missBy) ? { missBy: Math.round(l.missBy * 10) / 10 } : {}) });
 
   // Pick of the week is about the team, not the line. Three people on
   // Georgia State, two straight up and one at +8.5, is one bold call by
@@ -2551,12 +2551,12 @@ async function handleQotw(request, env, corsHeaders, url) {
 // The frozen slate keeps no team ids, so they come from the stored slate
 // (ids only: nothing is rescored); without them the card loses its logo.
 function fixWorstRule(s, ids = {}) {
-  if (!s?.recap || (s.recap.worstRule === 3 && s.recap.worst?.teamId != null) || !Array.isArray(s.rows) || !Array.isArray(s.slate)) return false;
+  if (!s?.recap || (s.recap.worstRule === 4 && s.recap.worst?.teamId != null) || !Array.isArray(s.rows) || !Array.isArray(s.slate)) return false;
   const games = s.slate.map((g) => ({ ...g, awayId: g.awayId ?? ids[g.id]?.awayId ?? null, homeId: g.homeId ?? ids[g.id]?.homeId ?? null }));
   const tb = games.find((g) => g.tiebreakerGame) || null;
   const fresh = buildRecap(games, s.rows, s.tiebreaker?.actual ?? null, tb, null);
   if (fresh.worst) s.recap.worst = fresh.worst;
-  s.recap.worstRule = 3;
+  s.recap.worstRule = 4;
   return true;
 }
 
@@ -2663,7 +2663,7 @@ async function handleWeekSummaries(request, env, corsHeaders, url) {
     // name only the best-paid line; re-name everyone who cashed on that
     // team from the stored ledger. Nothing is rescored.
     let changed = !!(s && fixBestWho(s));
-    if (s?.complete && n === latestSealed && (s.recap?.worstRule !== 3 || s.recap?.worst?.teamId == null)) {
+    if (s?.complete && n === latestSealed && (s.recap?.worstRule !== 4 || s.recap?.worst?.teamId == null)) {
       const sl = await env.LIFTR_KV.get(gamesKey(n), "json");
       const ids = Object.fromEntries((sl?.games || []).map((g) => [Number(g.id), { awayId: g.awayId, homeId: g.homeId }]));
       if (fixWorstRule(s, ids)) changed = true;

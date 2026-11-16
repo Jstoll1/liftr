@@ -10210,7 +10210,7 @@ let renderRecap = function () {
     const w = r.worst;
     const seenW = new Set([Number(w.teamId)]);
     cards.push([ICON.skull + "WORST PICK", "miss", logo(w.teamId, w.team), `<span class="recap-pick">${tl(esc(w.pick), seenW)}</span>`,
-      `${w.takers} of ${w.of} on it · ${tl(esc(w.final || w.score), seenW)}`, `${w.takers}/${w.of}`, "PICKED", mine(w.who), rxBar(w.takers, w.of, "miss")]);
+      `${w.takers} of ${w.of} on it · ${tl(esc(w.final || w.score), seenW)}`, ...(Number.isFinite(w.missBy) ? [String(w.missBy), "MISSED BY", mine(w.who), ""] : [`${w.takers}/${w.of}`, "PICKED", mine(w.who), rxBar(w.takers, w.of, "miss")])]);
   }
   if (r.movement?.up) {
     const u = r.movement.up, d = r.movement.down;
