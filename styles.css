@@ -3926,11 +3926,11 @@ button.cd-chip { appearance: none; line-height: inherit; font-weight: inherit; c
 /* Fluid card: chips, logos, names and the AT pill scale with the card's width
    (cqw = 1% of the card), clamped so tiny and huge phones both stay sane. */
 .game-card { container-type: inline-size; }
-.hz-row { gap: clamp(3px, 1.4cqw, 6px); }
+.hz-row { gap: clamp(3px, 1.4cqw, 6px); grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) auto minmax(0, 1.1fr) minmax(0, .9fr) !important; }
 .hz-col .pick-mini-btn { width: clamp(68px, 22cqw, 90px); min-height: clamp(26px, 8cqw, 31px); }
 .hz-col .pick-mini-btn .pk-line { font-size: clamp(10px, 3.4cqw, 13px); }
 .hz-col .pick-mini-btn .pk-pts { font-size: clamp(7px, 2.4cqw, 9.5px); }
-.hz-tm .tm-logo { width: clamp(30px, 11cqw, 44px); height: clamp(30px, 11cqw, 44px); }
+.hz-tm .tm-logo { width: clamp(36px, 15cqw, 60px); height: clamp(36px, 15cqw, 60px); }
 .hz-nm, .hz-nm.lg, .hz-nm.xl { font-size: clamp(8px, 2.7cqw, 11px); }
 .hz-rec { font-size: clamp(5.5px, 1.8cqw, 7px); }
 .hz-at { font-size: clamp(5.5px, 1.8cqw, 7px); padding: clamp(3px, 1.2cqw, 5px) clamp(2px, 1cqw, 4px); }
@@ -3945,7 +3945,9 @@ button.cd-chip { appearance: none; line-height: inherit; font-weight: inherit; c
 .picks-countdown .cd-cells { margin-top: 0; }
 /* Name scale trimmed so the longest one-word name still fits */
 .hz-nm, .hz-nm.lg, .hz-nm.xl { font-size: clamp(8px, 2.45cqw, 10.5px); }
-.hz-col .pick-mini-btn { width: clamp(66px, 21cqw, 88px); }
+/* Chips fill their column, so the card has no dead bands beside them. */
+.hz-col .pick-mini-btn { width: 100%; min-height: clamp(30px, 9.5cqw, 38px); }
+.hz-col .pick-mini-btn .pk-line { font-size: clamp(11px, 3.9cqw, 15px); }
 
 /* Countdown digits: a flip-style tick when a number changes, and a slow breathing glow on the seconds cell */
 .cd-cell b.tick { animation: cd-tick .22s steps(3) both; }
