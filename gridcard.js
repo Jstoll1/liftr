@@ -1,5 +1,5 @@
 // Grid card: the week's starting grid as a shareable picture, on the pool hall
-// in each manager's colour, name above, picks and tiebreaker below, and a
+// art: each manager's name on a panel, picks and tiebreaker below, and a
 // green, yellow or red pixel flag for full, partial or nothing in.
 // Opens by tapping the four nav buttons left to right within a few seconds.
 // Exports a PNG through the share sheet, or shows it for a long press.
