@@ -4746,7 +4746,10 @@ function renderLiveScores(live, cloudPicks) {
           tone = `lean ${lean > 0 ? ptsTier(worth) : "miss"}`;
           face = lean > 0 ? `+${worth}` : "0";
         }
-        myPill = `<span class="stake ${tone}" title="You took ${mine} ${terms} for ${worth} pt">${face}</span>`;
+        // Before a result the pill is coloured by the kind of pick: spread 2
+        // cyan, favourite to win 1 muted, underdog to win 3 purple.
+        const kind = tone === "pending" ? (myPick.mode === "ATS" ? " t2" : isFav ? " t1" : " t3") : "";
+        myPill = `<span class="stake ${tone}${kind}" title="You took ${mine} ${terms} for ${worth} pt">${face}</span>`;
       }
       return `
         <div class="${cls}${myPick?.lock && lockRule() ? " lk" : ""}" data-game="${game.id}" role="button" tabindex="0" aria-label="Open ${game.awayShort} at ${game.homeShort}">
