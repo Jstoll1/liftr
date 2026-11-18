@@ -9525,6 +9525,12 @@ function sinceState(game, pick, l) {
 // The last play each live game showed, so a new one can flash.
 const lvnSeen = {}, lvnScore = {};
 function liveNowHtml(games, live, mine) {
+  // How much each game moves your chance to win the week (the gap between
+  // your chance if your pick hits and if it misses), from the simulation.
+  const wd = typeof winChanceMemo !== "undefined" ? winChanceMemo.detail?.[currentManager] : null;
+  const gapOf = (g) => { const e = wd?.games?.find((x) => Number(x.game?.id) === Number(g.id) && !x.thin); return e ? Math.abs(e.ifHit - e.ifMiss) : 0; };
+  // Most important first; kickoff order breaks ties.
+  games = [...games].sort((a, b) => gapOf(b) - gapOf(a) || Date.parse(a.kickoff) - Date.parse(b.kickoff));
   const clock = (l) => { const m = String(l.detail || "").match(/^(\d+:\d+)\s*-\s*(\d)/); return m ? `Q${m[2]} ${m[1]}` : String(l.detail || "LIVE").replace(/ - /, " "); };
   const side = (g, l, k) => {
     const id = k === "a" ? g.awayId : g.homeId, team = k === "a" ? g.away : g.home;
@@ -9548,11 +9554,9 @@ function liveNowHtml(games, live, mine) {
     }
     // How much this game moves your chance to win the week: the gap between
     // your chance if the pick hits and if it misses, from the simulation.
-    const wd = typeof winChanceMemo !== "undefined" ? winChanceMemo.detail?.[currentManager] : null;
-    const imp = wd?.games?.find((x) => Number(x.game?.id) === Number(g.id) && !x.thin);
-    const gap = imp ? Math.abs(imp.ifHit - imp.ifMiss) : 0;
-    const big = gap >= 0.15 ? `<span class="lvn-imp big" title="Moves your chance to win the week by ${Math.round(gap * 100)} points">BIG SWING</span>` : gap >= 0.05 ? `<span class="lvn-imp" title="Moves your chance to win the week by ${Math.round(gap * 100)} points">MATTERS</span>` : "";
-    pts = big + pts;
+    // Three bars, no words: how much this game moves your week.
+    const gap = gapOf(g), lit = gap >= 0.15 ? 3 : gap >= 0.05 ? 2 : gap >= 0.01 ? 1 : 0;
+    const bars = `<span class="lvn-imp l${lit}" title="Moves your chance to win the week by ${Math.round(gap * 100)} points"><i></i><i></i><i></i></span>`;
     // A play this phone has not shown yet: the row lights up for a moment.
     const fresh = play && lvnSeen[g.id] !== undefined && lvnSeen[g.id] !== play;
     if (play) lvnSeen[g.id] = play;
@@ -9565,7 +9569,7 @@ function liveNowHtml(games, live, mine) {
     const turnover = fresh && /intercept|fumble[^.]*recover|turnover on downs|\bsafety\b|blocked (punt|field goal|kick)/i.test(play) ? (/intercept/i.test(play) ? "INTERCEPTION" : /fumble/i.test(play) ? "FUMBLE" : /downs/i.test(play) ? "TURNOVER ON DOWNS" : /safety/i.test(play) ? "SAFETY" : "BLOCKED") : "";
     const rz = !!sit.isRedZone && !scored;
     const alert = scored ? `<span class="lvn-al score">${scored}</span>` : turnover ? `<span class="lvn-al turn">${turnover}</span>` : rz ? `<span class="lvn-al rz">RED ZONE</span>` : "";
-    return `<button type="button" class="lvn-row${fresh ? " fresh" : ""}${scored ? ` al-score${scored === "TOUCHDOWN" ? " td" : ""}` : turnover ? " al-turn" : rz ? " al-rz" : ""}" data-lvn="${g.id}"><span class="lvn-top">${side(g, l, "a")}<span class="lvn-mid"><span class="lvn-clk">${escapeCd(clock(l))}</span>${alert}</span>${side(g, l, "h")}</span><span class="lvn-bot">${ticker}${pts}</span></button>`;
+    return `<button type="button" class="lvn-row${fresh ? " fresh" : ""}${scored ? ` al-score${scored === "TOUCHDOWN" ? " td" : ""}` : turnover ? " al-turn" : rz ? " al-rz" : ""}" data-lvn="${g.id}"><span class="lvn-top">${bars}${side(g, l, "a")}<span class="lvn-mid"><span class="lvn-clk">${escapeCd(clock(l))}</span>${alert}</span>${side(g, l, "h")}</span><span class="lvn-bot">${ticker}${pts}</span></button>`;
   }).join("");
   return `<i class="since-h lvn-h"><span class="lvn-dot"></span>LIVE NOW<em> · ${games.length} game${games.length === 1 ? "" : "s"}</em></i>${rows}`;
 }
