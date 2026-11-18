@@ -1978,7 +1978,7 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
 .pk-sign { font-style: normal; display: inline-block; width: .58em; text-align: center; }
 /* What a chip pays. The unit is spelled out so the number cannot be read
    as another line, and set small so the digit carries. */
-.pk-pts { display: inline-flex; align-items: baseline; font-size: 9px; color: var(--neon-yellow); }
+.pk-pts { display: inline-flex; align-items: baseline; font-size: 9px; color: var(--neon-cyan); }
 .pk-pts i { font-style: normal; font-size: 6px; opacity: .75; margin-left: 1px; }
 
 /* One filled chip is the whole selected state: no extra glow, no
@@ -2009,12 +2009,12 @@ html.known #scoreboard-screen.hidden { display: flex !important; }
   .tm-name { font-size: 8px; }
   .tm-line { font-size: 12px; }
 }
-.pick-mini-btn.chalk .pk-pts { color: var(--neon-green); }
-/* A lift off --neon-pink. The 3PT digit is 9px, and the selected chip's
+.pick-mini-btn.chalk .pk-pts { color: rgba(255, 255, 255, .6); }
+/* Underdog to win (3 PT) is purple, spread (2) cyan, favourite to win (1) muted. Was: a lift off --neon-pink; the selected chip
    cyan fill raises the ground under it: the full-saturation pink measures
    3.37:1 there, the lift 4.73:1, so the value stays readable on the chip
    you took. */
-.pick-mini-btn.upset .pk-pts { color: #ff6fa3; }
+.pick-mini-btn.upset .pk-pts { color: var(--neon-purple); }
 
 
 .ghost-btn.small {
@@ -3728,8 +3728,8 @@ button.cd-chip { appearance: none; line-height: inherit; font-weight: inherit; c
 .picks-pay .pp em { white-space: nowrap; }
 /* Dog WIN is the biggest swing on the card: a warmer resting state so the
    eye finds it before the tap. Picked state still wins. */
-.pick-mini-btn.upset:not(.selected) { border-color: rgba(255, 32, 121, .45); background: rgba(255, 32, 121, .07); box-shadow: inset 0 0 10px rgba(255, 32, 121, .08); }
-.pick-mini-btn.upset:not(.selected) .pk-label { color: #ffd6e6; }
+.pick-mini-btn.upset:not(.selected) { border-color: rgba(var(--neon-purple-rgb), .5); background: rgba(var(--neon-purple-rgb), .08); box-shadow: inset 0 0 10px rgba(var(--neon-purple-rgb), .1); }
+.pick-mini-btn.upset:not(.selected) .pk-label { color: #fff; }
 /* Kickoff time as a right-aligned tag on the FIRST UP strip */
 .cd-when { margin-left: auto; display: inline-flex; align-items: baseline; gap: 5px; padding: 3px 7px; border-radius: 5px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(0, 0, 0, .3); font-size: 9.5px; color: var(--text); white-space: nowrap; }
 .cd-when i { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 5px; letter-spacing: .1em; color: var(--text-dim); }
@@ -3995,13 +3995,16 @@ button.cd-chip { appearance: none; line-height: inherit; font-weight: inherit; c
 .hz-tm.picked .tm-logo { filter: drop-shadow(0 0 8px rgba(5, 217, 232, .8)); }
 .hz-tm.picked .hz-nm { text-shadow: 0 0 8px rgba(5, 217, 232, .6); }
 /* Middle ground: translucent cyan fill, firm border, white text, the check badge stays */
-.hz-col .pick-mini-btn.selected, .hz-col .pick-mini-btn.selected.upset, .hz-col .pick-mini-btn.selected.chalk { background: rgba(5, 217, 232, .22); border: 2px solid var(--neon-cyan); color: #fff; box-shadow: 0 0 10px rgba(5, 217, 232, .35); }
+.hz-col .pick-mini-btn.selected, .hz-col .pick-mini-btn.selected.upset, .hz-col .pick-mini-btn.selected.chalk { background: rgba(var(--neon-cyan-rgb), .34); border: 2px solid var(--neon-cyan); color: #fff; box-shadow: 0 0 10px rgba(5, 217, 232, .35); }
 .hz-col .pick-mini-btn.selected .pk-line, .hz-col .pick-mini-btn.selected .pk-label { color: #fff; text-shadow: none; }
-.hz-col .pick-mini-btn.selected .pk-pts, .hz-col .pick-mini-btn.selected .pk-pts i { color: var(--neon-yellow); }
-.hz-col .pick-mini-btn.selected.upset .pk-pts, .hz-col .pick-mini-btn.selected.upset .pk-pts i { color: #ff6fa3; }
+.hz-col .pick-mini-btn.selected .pk-pts, .hz-col .pick-mini-btn.selected .pk-pts i { color: #fff; }
+.hz-col .pick-mini-btn.selected.upset .pk-pts, .hz-col .pick-mini-btn.selected.upset .pk-pts i { color: #fff; }
 .hz-col .pick-mini-btn.selected::before { background: var(--neon-cyan); color: #06121a; box-shadow: 0 0 5px rgba(5, 217, 232, .7); }
 .hz-tm.picked .tm-logo { filter: none; }
 .hz-tm.picked .hz-nm { text-shadow: none; }
+.hz-nm { color: #fff; }
+.hz-tm .tm-logo { filter: drop-shadow(0 0 2px rgba(255, 255, 255, .35)) brightness(1.08); }
+.hz-tm.picked .tm-logo { filter: drop-shadow(0 0 6px rgba(var(--neon-cyan-rgb), .55)) brightness(1.1); }
 
 /* Line meter v2: one wedge from SEALED to NOW carrying the move, coloured by your pick; no arrowheads, no extra row */
 .lm-axis { margin-bottom: 36px; }
