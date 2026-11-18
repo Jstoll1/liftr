@@ -677,6 +677,17 @@ function ptsValueTier(points) {
 
 // Point totals: Retro keeps its two digit LED look ("03"); Pro shows "3".
 const pts2 = (n) => (window.APP_STYLE === "pro" ? String(n) : String(n).padStart(2, "0"));
+// A team name short enough for the scorebug row next to a rank and a
+// spread: Virginia Tech is Va Tech, Ohio State is Ohio St, North Carolina
+// is N Carolina. Names that already fit are left alone.
+function bugName(name) {
+  let n = String(name || "");
+  if (n.length <= 9) return n;
+  const known = { "Virginia Tech": "Va Tech", "West Virginia": "W Virginia", "Mississippi State": "Miss St", "Mississippi St": "Miss St", "Michigan State": "Mich St", "Oklahoma State": "Okla St", "Washington State": "Wash St", "Northwestern": "N'western", "Georgia Tech": "Ga Tech", "Texas Tech": "Tex Tech" };
+  if (known[n]) return known[n];
+  n = n.replace(/^(South|North|East|West|Central)\s/, (m, d) => d[0] + " ").replace(/\sState$/, " St");
+  return n;
+}
 function rankBadge(rank) {
   return rank ? `<i class="tm-rank" title="AP rank">${rank}</i>` : "";
 }
@@ -4706,7 +4717,7 @@ function renderLiveScores(live, cloudPicks) {
             <img class="bug-logo" src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
             
           </span>
-          <span class="bug-team"><span class="tm-nm">${short.length > 12 ? short.replace(/^(South|North|East|West|Central)\s/, (m, d) => d[0] + " ") : short}</span>${rankBadge(rank)}${ballHtml(side)}</span>
+          <span class="bug-team"><span class="tm-nm" title="${escapeCd(short)}">${bugName(short)}</span>${rankBadge(rank)}${ballHtml(side)}</span>
           ${fav ? `<span class="bug-fav">-${game.spread}</span>` : `<span class="bug-fav dog"></span>`}
           <span class="bug-score ${pop ? "pop" : ""}">${score}</span>
         </div>`;
