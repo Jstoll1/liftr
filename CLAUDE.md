@@ -92,6 +92,11 @@ the glossary in `weekChatSystem` (`worker/src/weekask.js`): what it means
 and which tool has its numbers. Terms the Chief still doesn't know show on
 Live as "UNKNOWN TERM"; add each to the glossary when you see it.
 
+## Always keep the rank
+A ranked team shows its rank (#12) wherever it shows on a card. When space
+is short the name shortens (Va Tech, Ohio St) or truncates; the rank never
+drops or shrinks.
+
 ## Every team mention gets its logo
 Anywhere a team is named on screen, show its logo with it. In a line of
 text use `teamInline(name, espnId)` or `matchInline(game)` from app.js
