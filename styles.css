@@ -10086,13 +10086,15 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .lvn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); animation: lvn-pulse 1.4s ease-in-out infinite; }
 @keyframes lvn-pulse { 50% { opacity: .35; } }
 .lvn-row { display: flex; flex-direction: column; gap: 5px; width: 100%; padding: 7px 9px; border-radius: 8px; border: 1px solid rgba(var(--neon-cyan-rgb), .25); background: rgba(var(--neon-cyan-rgb), .04); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-.lvn-top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.lvn-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
 .lvn-bot { display: flex; align-items: center; gap: 8px; min-width: 0; border-top: 1px solid rgba(255, 255, 255, .06); padding-top: 5px; }
 .lvn-bot .lvn-tk { flex: 1; border-top: 0; padding-top: 0; }
 .lvn-bot .lvn-pts { flex: none; }
 .lvn-pts { font-family: 'Press Start 2P', monospace; font-size: 9px; padding: 3px 6px; border-radius: 999px; border: 1px dashed currentColor; white-space: nowrap; }
-.lvn-imp { flex: none; font-family: 'Press Start 2P', monospace; font-size: 6.5px; padding: 3px 5px; border-radius: 4px; color: var(--arcade-gold); border: 1px solid rgba(var(--arcade-gold-rgb), .5); white-space: nowrap; }
-.lvn-imp.big { background: var(--arcade-gold); color: var(--ink); border-color: var(--arcade-gold); }
+.lvn-imp { display: flex; align-items: flex-end; gap: 2px; height: 14px; flex: none; }
+.lvn-imp i { width: 3px; border-radius: 1px; background: rgba(255, 255, 255, .14); }
+.lvn-imp i:nth-child(1) { height: 5px; } .lvn-imp i:nth-child(2) { height: 9px; } .lvn-imp i:nth-child(3) { height: 14px; }
+.lvn-imp.l1 i:nth-child(1), .lvn-imp.l2 i:nth-child(-n+2), .lvn-imp.l3 i { background: var(--arcade-gold); }
 .lvn-pts.up { color: var(--neon-green); }
 .lvn-pts.dn { color: var(--neon-pink); }
 /* A new play: the row flashes cyan and the play text lights up. */
