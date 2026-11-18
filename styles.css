@@ -9312,7 +9312,7 @@ html:not(.pro) .bug-score { font-family: 'Press Start 2P', monospace; font-weigh
 html:not(.pro) .bug-row.leading .bug-score, html:not(.pro) .scorebug.is-final .bug-row.leading .bug-score { color: #fff; text-shadow: 0 0 6px rgba(255, 255, 255, .35) !important; }
 html:not(.pro) .scorebug.is-final .bug-row:not(.leading) { opacity: 1; }
 html:not(.pro) .scorebug.is-final .bug-row:not(.leading) .bug-team { color: rgba(255, 255, 255, .68); }
-html:not(.pro) .bug-team { font-weight: 600; color: #fff; }
+html:not(.pro) .bug-team { font-weight: 600; color: #fff; font-size: 12px; }
 html:not(.pro) .bug-logo { filter: brightness(1.1) drop-shadow(0 0 2px rgba(255, 255, 255, .3)); }
 html:not(.pro) .bug-row.leading .bug-team { font-weight: 600; }
 html:not(.pro) .bug-fav { font-family: 'Chakra Petch', sans-serif; font-weight: 500; font-size: 10px; color: rgba(255, 255, 255, .35); }
