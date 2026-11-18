@@ -9523,7 +9523,7 @@ function sinceState(game, pick, l) {
   return scorePick(game, pick, res) > 0 ? "up" : "down";
 }
 // The last play each live game showed, so a new one can flash.
-const lvnSeen = {};
+const lvnSeen = {}, lvnScore = {};
 function liveNowHtml(games, live, mine) {
   const clock = (l) => { const m = String(l.detail || "").match(/^(\d+:\d+)\s*-\s*(\d)/); return m ? `Q${m[2]} ${m[1]}` : String(l.detail || "LIVE").replace(/ - /, " "); };
   const side = (g, l, k) => {
@@ -9549,7 +9549,16 @@ function liveNowHtml(games, live, mine) {
     // A play this phone has not shown yet: the row lights up for a moment.
     const fresh = play && lvnSeen[g.id] !== undefined && lvnSeen[g.id] !== play;
     if (play) lvnSeen[g.id] = play;
-    return `<button type="button" class="lvn-row${fresh ? " fresh" : ""}" data-lvn="${g.id}"><span class="lvn-top">${side(g, l, "a")}<span class="lvn-clk">${escapeCd(clock(l))}</span>${side(g, l, "h")}</span><span class="lvn-bot">${ticker}${pts}</span></button>`;
+    // Alerts: a score since this phone last drew the box (touchdown when it
+    // went up by 6 or more), a turnover in the latest play, and the red
+    // zone while a team is inside the 20.
+    const tot = (Number(l.awayScore) || 0) + (Number(l.homeScore) || 0), was = lvnScore[g.id];
+    lvnScore[g.id] = tot;
+    const scored = was !== undefined && tot > was ? (tot - was >= 6 ? "TOUCHDOWN" : tot - was === 3 ? "FIELD GOAL" : "SCORE") : "";
+    const turnover = fresh && /intercept|fumble[^.]*recover|turnover on downs|\bsafety\b|blocked (punt|field goal|kick)/i.test(play) ? (/intercept/i.test(play) ? "INTERCEPTION" : /fumble/i.test(play) ? "FUMBLE" : /downs/i.test(play) ? "TURNOVER ON DOWNS" : /safety/i.test(play) ? "SAFETY" : "BLOCKED") : "";
+    const rz = !!sit.isRedZone && !scored;
+    const alert = scored ? `<span class="lvn-al score">${scored}</span>` : turnover ? `<span class="lvn-al turn">${turnover}</span>` : rz ? `<span class="lvn-al rz">RED ZONE</span>` : "";
+    return `<button type="button" class="lvn-row${fresh ? " fresh" : ""}${scored ? " al-score" : turnover ? " al-turn" : rz ? " al-rz" : ""}" data-lvn="${g.id}"><span class="lvn-top">${side(g, l, "a")}<span class="lvn-mid"><span class="lvn-clk">${escapeCd(clock(l))}</span>${alert}</span>${side(g, l, "h")}</span><span class="lvn-bot">${ticker}${pts}</span></button>`;
   }).join("");
   return `<i class="since-h lvn-h"><span class="lvn-dot"></span>LIVE NOW<em> · ${games.length} game${games.length === 1 ? "" : "s"}</em></i>${rows}`;
 }
