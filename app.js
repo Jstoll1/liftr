@@ -9544,8 +9544,15 @@ function liveNowHtml(games, live, mine) {
     let pts = "";
     if (pk?.team) {
       const v = scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) || 0, worth = pickWorth(g, pk);
-      pts = `<span class="lvn-pts ${v > 0 ? "up" : "dn"}" title="If it ended now">${v > 0 ? `+${v}` : v < 0 ? `−${-v}` : "0"}<small>/${worth}</small></span>`;
+      pts = `<span class="lvn-pts ${v > 0 ? "up" : "dn"}" title="Your points if it ended now (worth ${worth})">${v > 0 ? `+${v}` : v < 0 ? `−${-v}` : "0"}</span>`;
     }
+    // How much this game moves your chance to win the week: the gap between
+    // your chance if the pick hits and if it misses, from the simulation.
+    const wd = typeof winChanceMemo !== "undefined" ? winChanceMemo.detail?.[currentManager] : null;
+    const imp = wd?.games?.find((x) => Number(x.game?.id) === Number(g.id) && !x.thin);
+    const gap = imp ? Math.abs(imp.ifHit - imp.ifMiss) : 0;
+    const big = gap >= 0.15 ? `<span class="lvn-imp big" title="Moves your chance to win the week by ${Math.round(gap * 100)} points">BIG SWING</span>` : gap >= 0.05 ? `<span class="lvn-imp" title="Moves your chance to win the week by ${Math.round(gap * 100)} points">MATTERS</span>` : "";
+    pts = big + pts;
     // A play this phone has not shown yet: the row lights up for a moment.
     const fresh = play && lvnSeen[g.id] !== undefined && lvnSeen[g.id] !== play;
     if (play) lvnSeen[g.id] = play;

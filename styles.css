@@ -10091,7 +10091,8 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .lvn-bot .lvn-tk { flex: 1; border-top: 0; padding-top: 0; }
 .lvn-bot .lvn-pts { flex: none; }
 .lvn-pts { font-family: 'Press Start 2P', monospace; font-size: 9px; padding: 3px 6px; border-radius: 999px; border: 1px dashed currentColor; white-space: nowrap; }
-.lvn-pts small { font-size: 6px; opacity: .7; margin-left: 1px; }
+.lvn-imp { flex: none; font-family: 'Press Start 2P', monospace; font-size: 6.5px; padding: 3px 5px; border-radius: 4px; color: var(--arcade-gold); border: 1px solid rgba(var(--arcade-gold-rgb), .5); white-space: nowrap; }
+.lvn-imp.big { background: var(--arcade-gold); color: var(--ink); border-color: var(--arcade-gold); }
 .lvn-pts.up { color: var(--neon-green); }
 .lvn-pts.dn { color: var(--neon-pink); }
 /* A new play: the row flashes cyan and the play text lights up. */
