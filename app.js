@@ -9522,12 +9522,36 @@ function sinceState(game, pick, l) {
   if (pick.mode === "ATS" && resultOutcome(game, res)?.push) return "push";
   return scorePick(game, pick, res) > 0 ? "up" : "down";
 }
+function liveNowHtml(games, live, mine) {
+  const clock = (l) => { const m = String(l.detail || "").match(/^(\d+:\d+)\s*-\s*(\d)/); return m ? `Q${m[2]} ${m[1]}` : String(l.detail || "LIVE").replace(/ - /, " "); };
+  const side = (g, l, k) => {
+    const id = k === "a" ? g.awayId : g.homeId, team = k === "a" ? g.away : g.home;
+    const nm = bugName(k === "a" ? g.awayShort : g.homeShort), sc = k === "a" ? l.awayScore : l.homeScore;
+    const lead = k === "a" ? l.awayScore > l.homeScore : l.homeScore > l.awayScore;
+    return `<span class="lvn-tm${mine[g.id]?.team === team ? " me" : ""}${lead ? " lead" : ""}"><img src="${logoUrl(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>${escapeCd(nm)}</b><em>${sc ?? 0}</em></span>`;
+  };
+  const rows = games.map((g) => {
+    const l = live[g.id], sit = l.situation || {};
+    const play = String(sit.lastPlay || "").trim();
+    const pid = sit.lastPlayTeamId;
+    const plogo = pid ? `<img class="lvn-pl" src="${logoUrl(pid)}" alt="" loading="lazy" onerror="this.style.display='none'">` : "";
+    const ticker = play ? `<span class="lvn-tk${play.length > 44 ? " run" : ""}">${plogo}<span><span>${escapeCd(play)}</span>${play.length > 44 ? `<span aria-hidden="true">${escapeCd(play)}</span>` : ""}</span></span>` : `<span class="lvn-tk dim">${escapeCd(sit.downDistance || "Waiting on the next play")}</span>`;
+    return `<button type="button" class="lvn-row" data-lvn="${g.id}"><span class="lvn-top">${side(g, l, "a")}<span class="lvn-clk">${escapeCd(clock(l))}</span>${side(g, l, "h")}</span>${ticker}</button>`;
+  }).join("");
+  return `<i class="since-h lvn-h"><span class="lvn-dot"></span>LIVE NOW<em> · ${games.length} game${games.length === 1 ? "" : "s"}</em></i>${rows}`;
+}
 function renderSinceLine(ranked, cloudPicks, live) {
   const el = document.getElementById("since-line");
   const me = currentManager;
   if (!el || !me || !MANAGERS.includes(me)) return;
   // Nothing to report before the first kickoff of the week.
   if (!GAMES.some((g) => isGameLocked(g) || live[g.id]?.found && live[g.id].state !== "pre")) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  // While games are being played: a LIVE NOW box, one row per game in
+  // progress with the score, the clock and a ticker of the latest play
+  // from the gamecast. Tap a row for that game.
+  const inPlay = GAMES.filter((g) => live[g.id]?.found && live[g.id].state === "in" && !live[g.id].completed);
+  if (inPlay.length) { el.innerHTML = liveNowHtml(inPlay, live, cloudPicks?.[me]?.picks || {}); el.dataset.sg = ""; el.classList.add("lv-now-on"); el.classList.remove("hidden"); return; }
+  el.classList.remove("lv-now-on");
   const row = ranked.find((r) => r.name === me);
   const picks = sanitizePicks(cloudPicks[me]?.picks || {});
   const cov = {};
@@ -9603,6 +9627,8 @@ function renderSinceLine(ranked, cloudPicks, live) {
 // Tap: jump to that game's score card (the flip tapped, else the first).
 var sinceOpen = false; // var: read by renderSinceLine, which can run before this line
 document.getElementById("since-line")?.addEventListener("click", (e) => {
+  const lvn = e.target.closest("[data-lvn]");
+  if (lvn) { noteUse("live-now"); return openInsights(Number(lvn.dataset.lvn)); }
   const more = e.target.closest(".since-more");
   if (more) {
     sinceOpen = !sinceOpen; noteUse("since-more", sinceOpen ? "open" : "close");
