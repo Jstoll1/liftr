@@ -11793,11 +11793,34 @@ renderScoreboardTable = withLogosKept(renderScoreboardTable, () => scoreboardTab
 renderRankings = withLogosKept(renderRankings, () => rankingsList);
 renderPicksScreen = withLogosKept(renderPicksScreen, () => gamesList);
 
+// SIM before the first kickoff: a terminal standing by, cursor blinking,
+// with the first game and when it kicks off. Tap anywhere to close.
+function openSimStandby() {
+  document.getElementById("sim-standby")?.remove();
+  const first = [...GAMES].sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff))[0];
+  const when = first ? new Date(first.kickoff).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }) : "";
+  const m = document.createElement("div");
+  m.id = "sim-standby"; m.className = "sim-sb"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Simulator standing by");
+  m.innerHTML = `<div class="sim-sb-term"><div class="sim-sb-bar"><i></i><i></i><i></i><span>BROCHIEFS SIM</span></div>
+    <pre>C:\\BROCHIEFS&gt; run sim.exe
+SIM ENGINE ........ READY
+GAMES LOADED ...... ${GAMES.length}
+${first ? `FIRST UP .......... ${escapeCd(first.awayShort)} @ ${escapeCd(first.homeShort)}
+KICKOFF ........... ${escapeCd(when.toUpperCase())}` : ""}
+
+C:\\BROCHIEFS&gt; Standing by for kickoff.exe<b class="sim-sb-cur">█</b></pre>
+    <p class="sim-sb-hint">The sim goes live at the first kickoff · tap to close</p></div>`;
+  m.addEventListener("click", () => m.remove());
+  document.body.appendChild(m);
+}
+
 // SIM next to VS: the engine in a pop-up box, simulating every open game
 // on its own. Uses the board's current picks and finals.
 document.getElementById("sim-open")?.addEventListener("click", () => {
   window.__wpCtx = window.__wpCtx || { rows: [], cloudPicks: lastGoodCloudPicks || {}, results: computeLiveResults(latestLive || {}) };
   noteUse("sim-open");
+  // Nothing to simulate until a game is under way: a terminal on standby.
+  if (!GAMES.some((g) => isGameLocked(g))) return openSimStandby();
   openEngineTerm();
   const w = document.getElementById("eng-term");
   if (w && !w.classList.contains("inline")) {
