@@ -9558,7 +9558,7 @@ function liveNowHtml(games, live, mine) {
     const turnover = fresh && /intercept|fumble[^.]*recover|turnover on downs|\bsafety\b|blocked (punt|field goal|kick)/i.test(play) ? (/intercept/i.test(play) ? "INTERCEPTION" : /fumble/i.test(play) ? "FUMBLE" : /downs/i.test(play) ? "TURNOVER ON DOWNS" : /safety/i.test(play) ? "SAFETY" : "BLOCKED") : "";
     const rz = !!sit.isRedZone && !scored;
     const alert = scored ? `<span class="lvn-al score">${scored}</span>` : turnover ? `<span class="lvn-al turn">${turnover}</span>` : rz ? `<span class="lvn-al rz">RED ZONE</span>` : "";
-    return `<button type="button" class="lvn-row${fresh ? " fresh" : ""}${scored ? " al-score" : turnover ? " al-turn" : rz ? " al-rz" : ""}" data-lvn="${g.id}"><span class="lvn-top">${side(g, l, "a")}<span class="lvn-mid"><span class="lvn-clk">${escapeCd(clock(l))}</span>${alert}</span>${side(g, l, "h")}</span><span class="lvn-bot">${ticker}${pts}</span></button>`;
+    return `<button type="button" class="lvn-row${fresh ? " fresh" : ""}${scored ? ` al-score${scored === "TOUCHDOWN" ? " td" : ""}` : turnover ? " al-turn" : rz ? " al-rz" : ""}" data-lvn="${g.id}"><span class="lvn-top">${side(g, l, "a")}<span class="lvn-mid"><span class="lvn-clk">${escapeCd(clock(l))}</span>${alert}</span>${side(g, l, "h")}</span><span class="lvn-bot">${ticker}${pts}</span></button>`;
   }).join("");
   return `<i class="since-h lvn-h"><span class="lvn-dot"></span>LIVE NOW<em> · ${games.length} game${games.length === 1 ? "" : "s"}</em></i>${rows}`;
 }
