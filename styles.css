@@ -4409,7 +4409,7 @@ body:has(#insights-modal.gc-full:not(.hidden)) .bottom-nav { display: none; }
 .bug-head .stake.pending { color: var(--text-dim); background: rgba(244, 240, 255, .05); }
 .bug-head .stake.pending.t1 { color: rgba(255, 255, 255, .62); border-color: rgba(255, 255, 255, .28); }
 .bug-head .stake.pending.t2 { color: var(--neon-cyan); border-color: rgba(var(--neon-cyan-rgb), .5); background: rgba(var(--neon-cyan-rgb), .08); }
-.bug-head .stake.pending.t3 { color: var(--neon-purple); border-color: rgba(var(--neon-purple-rgb), .55); background: rgba(var(--neon-purple-rgb), .1); }
+.bug-head .stake.pending.t3 { color: color-mix(in srgb, var(--neon-purple) 45%, #fff); border-color: rgba(var(--neon-purple-rgb), .55); background: rgba(var(--neon-purple-rgb), .1); }
 
 /* Possession: a small pixel football beside the team, not the word BALL. */
 .gc-pball { position: relative; display: inline-block; width: 12px; height: 7px; border-radius: 50%; background: #8b4513; box-shadow: 0 0 0 1px #3a1a05, 0 0 6px rgba(255, 228, 94, .55); animation: gcbob 1s steps(2, start) infinite; }
