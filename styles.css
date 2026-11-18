@@ -10114,7 +10114,9 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .lvn-al.score { background: var(--arcade-gold); color: var(--ink); }
 .lvn-al.turn { background: var(--neon-orange); color: var(--ink); }
 @keyframes lvn-blink { 50% { opacity: .25; } }
-.lvn-row.al-rz { border-color: rgba(var(--neon-pink-rgb), .6); box-shadow: inset 3px 0 0 var(--neon-pink); }
+.lvn-row.al-rz, .lvn-row.al-rz.fresh { background: rgba(var(--neon-pink-rgb), .26); border-color: var(--neon-pink); box-shadow: 0 0 12px rgba(var(--neon-pink-rgb), .35); animation: lvn-rz 1.6s ease-in-out infinite; }
+@keyframes lvn-rz { 50% { background: rgba(var(--neon-pink-rgb), .4); } }
+@media (prefers-reduced-motion: reduce) { .lvn-row.al-rz { animation: none; } }
 .lvn-row.al-score { animation: lvn-gold 1.2s ease-in-out 3; border-color: var(--arcade-gold); }
 .lvn-row.al-turn { animation: lvn-turn 1.2s ease-in-out 3; border-color: var(--neon-orange); }
 @keyframes lvn-gold { 50% { background: rgba(var(--arcade-gold-rgb), .22); box-shadow: 0 0 16px rgba(var(--arcade-gold-rgb), .45); } }
