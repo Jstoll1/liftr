@@ -9522,6 +9522,8 @@ function sinceState(game, pick, l) {
   if (pick.mode === "ATS" && resultOutcome(game, res)?.push) return "push";
   return scorePick(game, pick, res) > 0 ? "up" : "down";
 }
+// The last play each live game showed, so a new one can flash.
+const lvnSeen = {};
 function liveNowHtml(games, live, mine) {
   const clock = (l) => { const m = String(l.detail || "").match(/^(\d+:\d+)\s*-\s*(\d)/); return m ? `Q${m[2]} ${m[1]}` : String(l.detail || "LIVE").replace(/ - /, " "); };
   const side = (g, l, k) => {
@@ -9536,7 +9538,18 @@ function liveNowHtml(games, live, mine) {
     const pid = sit.lastPlayTeamId;
     const plogo = pid ? `<img class="lvn-pl" src="${logoUrl(pid)}" alt="" loading="lazy" onerror="this.style.display='none'">` : "";
     const ticker = play ? `<span class="lvn-tk${play.length > 44 ? " run" : ""}">${plogo}<span><span>${escapeCd(play)}</span>${play.length > 44 ? `<span aria-hidden="true">${escapeCd(play)}</span>` : ""}</span></span>` : `<span class="lvn-tk dim">${escapeCd(sit.downDistance || "Waiting on the next play")}</span>`;
-    return `<button type="button" class="lvn-row" data-lvn="${g.id}"><span class="lvn-top">${side(g, l, "a")}<span class="lvn-clk">${escapeCd(clock(l))}</span>${side(g, l, "h")}</span>${ticker}</button>`;
+    // Your points in play: what the pick scores if it ended now, out of
+    // what it is worth (a losing lock shows its penalty).
+    const pk = mine[g.id];
+    let pts = "";
+    if (pk?.team) {
+      const v = scorePick(g, pk, { awayScore: l.awayScore, homeScore: l.homeScore }) || 0, worth = pickWorth(g, pk);
+      pts = `<span class="lvn-pts ${v > 0 ? "up" : "dn"}" title="If it ended now">${v > 0 ? `+${v}` : v < 0 ? `−${-v}` : "0"}<small>/${worth}</small></span>`;
+    }
+    // A play this phone has not shown yet: the row lights up for a moment.
+    const fresh = play && lvnSeen[g.id] !== undefined && lvnSeen[g.id] !== play;
+    if (play) lvnSeen[g.id] = play;
+    return `<button type="button" class="lvn-row${fresh ? " fresh" : ""}" data-lvn="${g.id}"><span class="lvn-top">${side(g, l, "a")}<span class="lvn-clk">${escapeCd(clock(l))}</span>${side(g, l, "h")}</span><span class="lvn-bot">${ticker}${pts}</span></button>`;
   }).join("");
   return `<i class="since-h lvn-h"><span class="lvn-dot"></span>LIVE NOW<em> · ${games.length} game${games.length === 1 ? "" : "s"}</em></i>${rows}`;
 }
