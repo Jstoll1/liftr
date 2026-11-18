@@ -10078,3 +10078,29 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 @keyframes sim-sb-blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .sim-sb-cur { animation: none; } }
 .sim-sb-hint { margin: 0; padding: 4px 14px 12px; font-size: 11px; color: rgba(var(--neon-green-rgb), .55); }
+
+/* ==== RETRO: live now (top of Scores while games are in progress) ==== */
+#since-line.lv-now-on { display: flex; flex-direction: column; gap: 6px; }
+.lvn-h { display: flex; align-items: center; gap: 6px; }
+.lvn-h em { font-style: normal; color: var(--text-dim); }
+.lvn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); animation: lvn-pulse 1.4s ease-in-out infinite; }
+@keyframes lvn-pulse { 50% { opacity: .35; } }
+.lvn-row { display: flex; flex-direction: column; gap: 5px; width: 100%; padding: 7px 9px; border-radius: 8px; border: 1px solid rgba(var(--neon-cyan-rgb), .25); background: rgba(var(--neon-cyan-rgb), .04); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.lvn-top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.lvn-tm { display: flex; align-items: center; gap: 6px; min-width: 0; color: rgba(255, 255, 255, .7); }
+.lvn-tm:last-child { flex-direction: row-reverse; text-align: right; }
+.lvn-tm img { width: 20px; height: 20px; object-fit: contain; flex: none; }
+.lvn-tm b { font-size: 12px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lvn-tm em { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 11px; margin-left: auto; color: rgba(255, 255, 255, .55); }
+.lvn-tm:last-child em { margin-left: 0; margin-right: auto; }
+.lvn-tm.lead, .lvn-tm.lead em { color: #fff; }
+.lvn-tm.me b { color: var(--neon-cyan); }
+.lvn-clk { font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--neon-cyan); white-space: nowrap; }
+.lvn-tk { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; font-size: 11.5px; color: rgba(255, 255, 255, .8); white-space: nowrap; border-top: 1px solid rgba(255, 255, 255, .06); padding-top: 5px; }
+.lvn-tk.dim { color: var(--text-dim); }
+.lvn-pl { width: 14px; height: 14px; object-fit: contain; flex: none; }
+.lvn-tk > span { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lvn-tk.run > span { display: flex; gap: 40px; text-overflow: clip; mask-image: linear-gradient(90deg, transparent, #000 6px, #000 calc(100% - 16px), transparent); }
+.lvn-tk.run > span > span { flex: none; animation: lvn-tick 16s linear infinite; }
+@keyframes lvn-tick { from { transform: translateX(0); } to { transform: translateX(calc(-100% - 40px)); } }
+@media (prefers-reduced-motion: reduce) { .lvn-tk.run > span > span { animation: none; } .lvn-tk.run > span > span + span { display: none; } }
