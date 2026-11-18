@@ -10087,6 +10087,19 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 @keyframes lvn-pulse { 50% { opacity: .35; } }
 .lvn-row { display: flex; flex-direction: column; gap: 5px; width: 100%; padding: 7px 9px; border-radius: 8px; border: 1px solid rgba(var(--neon-cyan-rgb), .25); background: rgba(var(--neon-cyan-rgb), .04); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .lvn-top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.lvn-bot { display: flex; align-items: center; gap: 8px; min-width: 0; border-top: 1px solid rgba(255, 255, 255, .06); padding-top: 5px; }
+.lvn-bot .lvn-tk { flex: 1; border-top: 0; padding-top: 0; }
+.lvn-bot .lvn-pts { flex: none; }
+.lvn-pts { font-family: 'Press Start 2P', monospace; font-size: 9px; padding: 3px 6px; border-radius: 999px; border: 1px dashed currentColor; white-space: nowrap; }
+.lvn-pts small { font-size: 6px; opacity: .7; margin-left: 1px; }
+.lvn-pts.up { color: var(--neon-green); }
+.lvn-pts.dn { color: var(--neon-pink); }
+/* A new play: the row flashes cyan and the play text lights up. */
+.lvn-row.fresh { animation: lvn-fresh 2.4s ease-out 1; }
+.lvn-row.fresh .lvn-tk { color: #fff; font-weight: 600; }
+.lvn-row.fresh .lvn-tk::before { content: "NEW PLAY"; flex: none; font-family: 'Press Start 2P', monospace; font-size: 6px; padding: 3px 5px; border-radius: 4px; background: var(--neon-cyan); color: var(--ink); }
+@keyframes lvn-fresh { 0%, 20% { background: rgba(var(--neon-cyan-rgb), .28); border-color: var(--neon-cyan); box-shadow: 0 0 14px rgba(var(--neon-cyan-rgb), .45); } 100% { background: rgba(var(--neon-cyan-rgb), .04); } }
+@media (prefers-reduced-motion: reduce) { .lvn-row.fresh { animation: none; border-color: var(--neon-cyan); } }
 .lvn-tm { display: flex; align-items: center; gap: 6px; min-width: 0; color: rgba(255, 255, 255, .7); }
 .lvn-tm:last-child { flex-direction: row-reverse; text-align: right; }
 .lvn-tm img { width: 20px; height: 20px; object-fit: contain; flex: none; }
