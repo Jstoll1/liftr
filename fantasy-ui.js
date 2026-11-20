@@ -260,12 +260,12 @@
   // Twelve years of BroChiefs history against this season.
   const historyHtml = () => {
     const h = data.history; if (!h) return "";
-    const rows = [...(h.before || []).map((x) => ({ o: x.owner, t: x.line, k: x.kind })), ...(h.record || []).map((x) => ({ o: x.owner, t: x.text, k: "rec" }))];
+    const rows = [...(h.before || []).map((x) => ({ o: x.owner, t: x.line, k: x.kind, why: x.why })), ...(h.record || []).map((x) => ({ o: x.owner, t: x.text, k: "rec", why: x.why }))];
     // One owner's lines together, record-breakers first.
     const firstAt = {}; rows.forEach((r, i) => { if (!(r.o in firstAt)) firstAt[r.o] = r.k === "rec" ? -1 : i; else if (r.k === "rec") firstAt[r.o] = Math.min(firstAt[r.o], -1); });
     rows.sort((a, b) => firstAt[a.o] - firstAt[b.o] || (a.o === b.o ? 0 : a.o.localeCompare(b.o)));
     if (!rows.length) return "";
-    return `<div class="fx-sec"><span class="fx-k2">AGAINST HISTORY</span><ul class="fx-hist">${rows.map((r) => `<li class="${esc(r.k)}">${owner(r.o)} ${esc(r.t)}</li>`).join("")}</ul></div>`;
+    return `<div class="fx-sec"><span class="fx-k2">AGAINST HISTORY</span><ul class="fx-hist">${rows.map((r, i) => { const id = `${r.o}|${r.t}`; const on = histOpen === id; return `<li class="${esc(r.k)}${r.why ? " tap" : ""}${on ? " open" : ""}"${r.why ? ` data-fxh="${esc(id)}" role="button" tabindex="0" aria-expanded="${on}"` : ""}><span>${owner(r.o)} ${esc(r.t)}</span>${on && r.why ? tbl(r.why.head.map(esc), r.why.rows.map((x) => ({ me: x.me, c: x.c.map((v) => esc(v)) }))) : ""}</li>`; }).join("")}</ul></div>`;
   };
   // Both leagues: fantasy place next to pick'em place this season.
   let pickem = null;
@@ -301,7 +301,7 @@
     </ul></div>${rg.length ? `<div class="fx-sec"><span class="fx-k2">BENCH REGRET · SEASON</span><ul class="fx-aw">${rg.slice(0, 5).map((x, i) => `<li><small>${i + 1}</small>${owner(x.owner)}<span>${pts(x.season)} pts left${x.worst ? ` · worst wk ${x.worst.week} (${pts(x.worst.left)})` : ""}</span></li>`).join("")}</ul></div>` : ""}`;
   };
 
-  let fullById = {};
+  let fullById = {}, histOpen = null;
   const openMu = (id) => {
     document.getElementById("fx-mupop")?.remove();
     const m = document.createElement("div");
@@ -379,10 +379,12 @@
     if (o) { insOpen = null; return openTeam(o.dataset.fxo); }
     const side = e.target.closest("[data-fxteam]");
     if (side) { e.stopPropagation(); return openTeam(side.dataset.fxteam); }
+    const hx = e.target.closest("[data-fxh]");
+    if (hx && !e.target.closest(".fx-why")) { histOpen = histOpen === hx.dataset.fxh ? null : hx.dataset.fxh; try { window.noteUse?.("fantasy-history", hx.dataset.fxh.split("|")[0]); } catch {} return paint(); }
     const mu = e.target.closest("[data-fxmu]");
     if (mu) { const id = Number(mu.dataset.fxmu); openMu(id); try { const mm = data.live?.matchups?.find((x) => x.id === id); window.noteUse?.("fantasy-matchup", mm ? `${mm.away?.owner} vs ${mm.home?.owner}` : ""); } catch {} paint(); }
   });
-  root.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-fxmu],[data-fxo]")) { e.preventDefault(); e.target.click(); } });
+  root.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-fxmu],[data-fxo],[data-fxh]")) { e.preventDefault(); e.target.click(); } });
 
   const visible = () => !document.getElementById("history-screen")?.classList.contains("hidden") && !document.hidden;
   window.paintFantasy = async (force) => { paint(); await load(force); paint(); };
