@@ -10350,7 +10350,13 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
    open matchup spans the full width. An odd last card centres. */
 .fx-mus { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .fx-mus > .fx-mu, .fx-mus > .fx-mine-k { grid-column: 1 / -1; }
-.fx-mus > .fx-card-mu:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 4px); }
+/* Your matchup spans the top, mirrored (you left, them right), so the rest
+   pair up below; a lone last card still centres. */
+.fx-mus > .fx-card-mu.mine { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; padding: 10px 12px; }
+.fx-card-mu.mine .fx-cr + .fx-cr { flex-direction: row-reverse; text-align: right; }
+.fx-card-mu.mine .fx-cbar { grid-column: 1 / -1; margin-top: 6px; }
+.fx-mus:not(:has(> .fx-card-mu.mine)) > .fx-card-mu:last-child:nth-child(odd),
+.fx-mus:has(> .fx-card-mu.mine) > .fx-card-mu:last-child:nth-child(even) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 4px); }
 .fx-card-mu { display: flex; flex-direction: column; gap: 5px; padding: 8px 9px 9px; border-radius: 10px; border: 1px solid var(--card-border); background: rgba(255, 255, 255, .025); cursor: pointer; min-width: 0; }
 .fx-card-mu.mine { border-color: rgba(var(--neon-cyan-rgb), .55); background: rgba(var(--neon-cyan-rgb), .06); }
 .fx-cmk { font-family: 'Press Start 2P', monospace; font-size: 5.5px; letter-spacing: .06em; color: var(--neon-cyan); }
