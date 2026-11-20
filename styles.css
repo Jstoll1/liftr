@@ -10270,3 +10270,8 @@ html:not(.phone) #rank-sheet .rs-top .rs-nav { display: block; }
 .fx-ro em { text-align: right; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 7px; color: rgba(255, 255, 255, .5); }
 .fx-ro.bench li { opacity: .7; }
 .fx-tlink { display: contents; cursor: pointer; }
+.fx-ro s { text-decoration: none; margin-left: 5px; padding: 1px 4px; border-radius: 3px; font-family: 'Press Start 2P', monospace; font-size: 6px; vertical-align: 1px; }
+.fx-ro s.go { color: var(--ink); background: var(--neon-green); }
+.fx-ro s.sit { color: var(--neon-pink); border: 1px solid rgba(var(--neon-pink-rgb), .6); }
+.fx-ro li.gap span { color: var(--neon-pink); }
+.fx-tcard .fx-note b { color: var(--neon-green); }

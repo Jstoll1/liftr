@@ -105,14 +105,38 @@
     if (rg?.season) out.push(`Left <b>${pts(rg.season)}</b> points on the bench${rg.worst ? `, most in week ${rg.worst.week} (${pts(rg.worst.left)})` : ""}.`);
     return out;
   };
+  // The best lineup this week: fill each starting slot with the highest
+  // average player who can play it, skipping byes and anyone OUT, on IR,
+  // doubtful or suspended. Rarest slots first; FLEX takes RB, WR or TE.
+  const unavailable = (p) => (Object.keys(nfl).length > 4 && p.nfl && !nfl[String(p.nfl).toUpperCase()]) || ["OUT", "INJURY_RESERVE", "DOUBTFUL", "SUSPENSION", "PUP"].includes(p.injury);
+  const optimal = (roster) => {
+    const order = ["QB", "K", "D/ST", "TE", "RB", "WR", "FLEX"];
+    const slots = roster.filter((p) => p.slot !== "BE" && p.slot !== "IR").map((p) => p.slot);
+    const pool = roster.filter((p) => !unavailable(p)).sort((a, b) => b.avg - a.avg), used = new Set(), lineup = [];
+    for (const slot of [...slots].sort((a, b) => order.indexOf(a) - order.indexOf(b))) {
+      const pick = pool.find((p) => !used.has(p) && (slot === "FLEX" ? ["RB", "WR", "TE"].includes(p.pos) : p.pos === slot));
+      if (pick) used.add(pick);
+      lineup.push({ slot, p: pick || null });
+    }
+    return { lineup, used };
+  };
   const rosterHtml = (o) => {
     const r = data.rosters?.[o] || [];
     if (!r.length) return `<p class="fx-note">The roster shows after the next ESPN pull.</p>`;
     const order = ["QB", "RB", "WR", "TE", "FLEX", "D/ST", "K"];
-    const starters = r.filter((p) => p.slot !== "BE" && p.slot !== "IR").sort((a, b) => order.indexOf(a.slot) - order.indexOf(b.slot));
-    const bench = r.filter((p) => p.slot === "BE" || p.slot === "IR");
-    const row = (p) => `<li><i>${esc(p.slot === "BE" ? p.pos : p.slot)}</i><span>${esc(p.name)}${status(p)}</span>${nflLogo(p.nfl)}<b>${pts(p.season)}</b><em>${pts(p.avg)}</em></li>`;
-    return `<div class="fx-rh"><span></span><span>SEASON</span><span>AVG</span></div><ol class="fx-ro">${starters.map(row).join("")}</ol><div class="fx-k2 fx-bench">BENCH</div><ol class="fx-ro bench">${bench.map(row).join("")}</ol>`;
+    const { lineup, used } = optimal(r);
+    const starting = (p) => p.slot !== "BE" && p.slot !== "IR";
+    const row = (slot, p) => {
+      if (!p) return `<li class="gap"><i>${esc(slot)}</i><span>No one available</span><span></span><b></b><em></em></li>`;
+      const tag = used.has(p) && !starting(p) ? `<s class="go">START</s>` : !used.has(p) && starting(p) ? `<s class="sit">SIT</s>` : "";
+      return `<li class="${used.has(p) ? "" : "out"}"><i>${esc(slot)}</i><span>${esc(p.name)}${status(p)}${tag}</span>${nflLogo(p.nfl)}<b>${pts(p.season)}</b><em>${pts(p.avg)}</em></li>`;
+    };
+    const best = lineup.sort((a, b) => order.indexOf(a.slot) - order.indexOf(b.slot));
+    const rest = r.filter((p) => !used.has(p)).sort((a, b) => (unavailable(a) - unavailable(b)) || b.avg - a.avg);
+    const swaps = r.filter((p) => used.has(p) && !starting(p)).length;
+    return `<p class="fx-note">${swaps ? `Best lineup by average, byes and injuries left out: <b>${swaps} change${swaps === 1 ? "" : "s"}</b> from what is set on ESPN.` : "What is set on ESPN is already the best lineup by average."}</p>
+      <div class="fx-rh"><span></span><span>SEASON</span><span>AVG</span></div><ol class="fx-ro">${best.map((x) => row(x.slot, x.p)).join("")}</ol>
+      <div class="fx-k2 fx-bench">BENCH</div><ol class="fx-ro bench">${rest.map((p) => row(p.pos, p)).join("")}</ol>`;
   };
   const posBars = (o) => {
     const ti = data.stats?.teams?.[o]; if (!ti?.posRank) return "";
